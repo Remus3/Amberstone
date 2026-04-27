@@ -1584,8 +1584,8 @@
         "ap-hybrid": {
           "label": "AP Hybrid",
           "modes": [
-            "sr",
-            "aram"
+            "aram",
+            "sr"
           ],
           "runes": {
             "keystone": "Hail of Blades",
@@ -1594,14 +1594,14 @@
           },
           "summoners": [
             4,
-            7
+            32
           ],
           "items": [
-            "Manamune",
             "Berserker's Greaves",
             "Nashor's Tooth",
+            "Guinsoo's Rageblade",
+            "Lich Bane",
             "Rabadon's Deathcap",
-            "Zhonya's Hourglass",
             "Void Staff"
           ]
         },
@@ -1649,6 +1649,30 @@
             "Guinsoo's Rageblade",
             "Terminus",
             "Sterak's Gage"
+          ]
+        },
+        "bruiser-trinity": {
+          "label": "Bruiser Trinity (saved 2026-04-26)",
+          "modes": [
+            "aram",
+            "sr"
+          ],
+          "runes": {
+            "keystone": "Conqueror",
+            "primary": "Precision",
+            "secondary": "Resolve"
+          },
+          "summoners": [
+            4,
+            32
+          ],
+          "items": [
+            "Berserker's Greaves",
+            "Trinity Force",
+            "Stridebreaker",
+            "Immortal Shieldbow",
+            "Mortal Reminder",
+            "Lord Dominik's Regards"
           ]
         }
       }

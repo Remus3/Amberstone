@@ -182,5 +182,31 @@
       "raw": "Seeded by user 2026-04-26 — pure AS on-hit Jinx ARAM experimental"
     },
     "history": []
+  },
+  "Kai'Sa": {
+    "current": {
+      "label": "Bruiser Trinity (saved 2026-04-26)",
+      "rationale": "User-saved live build from carry game (29/15/32 Mayhem). Trinity Force + Stridebreaker for sustained DPS + slow, Shieldbow for the burst-survival proc, MR + LDR finishers for anti-heal + anti-armor. Conqueror scales the long fights this build wants.",
+      "runes": {
+        "keystone": "Conqueror",
+        "primary": "Precision",
+        "secondary": "Resolve"
+      },
+      "summoners": [
+        4,
+        32
+      ],
+      "items": [
+        "Berserker's Greaves",
+        "Trinity Force",
+        "Stridebreaker",
+        "Immortal Shieldbow",
+        "Mortal Reminder",
+        "Lord Dominik's Regards"
+      ],
+      "iteration": 1,
+      "raw": "Saved by user 2026-04-26 from live Kai'Sa game build"
+    },
+    "history": []
   }
 }

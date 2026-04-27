@@ -1,20 +1,20 @@
 {
-  "rating": "B",
-  "label": "SOLID \u2014 on track, tighten fundamentals",
-  "champion": "Jinx",
+  "rating": "D",
+  "label": "BELOW \u2014 focus on one area at a time",
+  "champion": "Nilah",
   "game_mode": "KIWI",
   "mode_category": "ARAM",
-  "game_time": "10:28",
+  "game_time": "15:05",
   "stats": {
-    "cs_per_min": 1.9,
-    "kda": "8/8/32",
-    "deaths": 8,
-    "kill_participation": 78,
-    "gold_per_min": 186
+    "cs_per_min": 4.0,
+    "kda": "6/13/17",
+    "deaths": 13,
+    "kill_participation": 68,
+    "gold_per_min": 30
   },
   "notes": [
-    "Dominant KDA (5.0)",
-    "Too many deaths (8)"
+    "Low KDA (1.8)",
+    "Too many deaths (13)"
   ],
-  "timestamp": "2026-04-26 23:03"
+  "timestamp": "2026-04-27 00:14"
 }
