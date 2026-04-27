@@ -472,13 +472,41 @@ _MODE_TO_FILE = {
 
 
 def _read_json(rel: str) -> dict:
+    # 2026-04-27 audit: guarantee dict return. If the file is empty,
+    # contains a list/string/null, or hits a JSON error, callers get
+    # {} rather than a value that crashes downstream .get() chains.
     try:
         p = _APP_DIR / rel
         if p.exists():
-            return json.loads(p.read_text(encoding="utf-8"))
+            d = json.loads(p.read_text(encoding="utf-8"))
+            if isinstance(d, dict):
+                return d
+            _log.debug("read %s: not a dict (%s)", rel, type(d).__name__)
     except Exception as exc:
         _log.debug("read %s: %s", rel, exc)
     return {}
+
+
+def _resolve_safe_icon(root: Path, rel: str) -> Path | None:
+    # 2026-04-27 audit: defense-in-depth for /icons/* endpoints. The
+    # original substring checks ("/" in rel or ".." in rel) miss
+    # backslashes on Windows and symlink targets. This helper canonicalises
+    # both paths and returns None unless the resolved file is a regular
+    # file inside `root`.
+    if not rel or "/" in rel or "\\" in rel or ".." in rel or not rel.endswith(".png"):
+        return None
+    try:
+        candidate = (root / rel).resolve()
+        root_resolved = root.resolve()
+    except Exception:
+        return None
+    try:
+        candidate.relative_to(root_resolved)
+    except ValueError:
+        return None
+    if not candidate.is_file():
+        return None
+    return candidate
 
 
 def _build_home_summary() -> dict:
@@ -4439,10 +4467,8 @@ class _Handler(BaseHTTPRequestHandler):
             # Serve champion square icons from data/icons/champions/
             try:
                 rel = self.path[len("/icons/champions/"):]
-                if "/" in rel or ".." in rel or not rel.endswith(".png"):
-                    self._send(404, b"not found", "text/plain"); return
-                p = _APP_DIR / "data" / "icons" / "champions" / rel
-                if not p.exists():
+                p = _resolve_safe_icon(_APP_DIR / "data" / "icons" / "champions", rel)
+                if p is None:
                     self._send(404, b"not found", "text/plain"); return
                 self._send(200, p.read_bytes(), "image/png")
             except Exception as exc:
@@ -4452,10 +4478,8 @@ class _Handler(BaseHTTPRequestHandler):
             # Serve local minimap/rift images (map11 = SR, map12 = Howling Abyss).
             try:
                 rel = self.path[len("/icons/maps/"):]
-                if "/" in rel or ".." in rel or not rel.endswith(".png"):
-                    self._send(404, b"not found", "text/plain"); return
-                p = _APP_DIR / "data" / "icons" / "maps" / rel
-                if not p.exists():
+                p = _resolve_safe_icon(_APP_DIR / "data" / "icons" / "maps", rel)
+                if p is None:
                     self._send(404, b"not found", "text/plain"); return
                 self._send(200, p.read_bytes(), "image/png")
             except Exception as exc:
@@ -4464,10 +4488,8 @@ class _Handler(BaseHTTPRequestHandler):
         elif self.path.startswith("/icons/spells/"):
             try:
                 rel = self.path[len("/icons/spells/"):]
-                if "/" in rel or ".." in rel or not rel.endswith(".png"):
-                    self._send(404, b"not found", "text/plain"); return
-                p = _APP_DIR / "data" / "icons" / "spells" / rel
-                if not p.exists():
+                p = _resolve_safe_icon(_APP_DIR / "data" / "icons" / "spells", rel)
+                if p is None:
                     self._send(404, b"not found", "text/plain"); return
                 self._send(200, p.read_bytes(), "image/png")
             except Exception as exc:
@@ -4476,10 +4498,8 @@ class _Handler(BaseHTTPRequestHandler):
         elif self.path.startswith("/icons/runes/"):
             try:
                 rel = self.path[len("/icons/runes/"):]
-                if "/" in rel or ".." in rel or not rel.endswith(".png"):
-                    self._send(404, b"not found", "text/plain"); return
-                p = _APP_DIR / "data" / "icons" / "runes" / rel
-                if not p.exists():
+                p = _resolve_safe_icon(_APP_DIR / "data" / "icons" / "runes", rel)
+                if p is None:
                     self._send(404, b"not found", "text/plain"); return
                 self._send(200, p.read_bytes(), "image/png")
             except Exception as exc:
@@ -4492,13 +4512,10 @@ class _Handler(BaseHTTPRequestHandler):
             # naming used by modes/aram_overlay._load_icon).
             try:
                 rel = self.path[len("/icons/items/"):]
-                if "/" in rel or ".." in rel or not rel.endswith(".png"):
+                p = _resolve_safe_icon(_APP_DIR / "data" / "icons" / "aram_items", rel)
+                if p is None:
                     self._send(404, b"not found", "text/plain"); return
-                p = _APP_DIR / "data" / "icons" / "aram_items" / rel
-                if not p.exists():
-                    self._send(404, b"not found", "text/plain"); return
-                body = p.read_bytes()
-                self._send(200, body, "image/png")
+                self._send(200, p.read_bytes(), "image/png")
             except Exception as exc:
                 _log.warning("icons/items: %s", exc)
                 self._send(500, b"icon_serve_failed", "text/plain")
@@ -4542,12 +4559,24 @@ class _Handler(BaseHTTPRequestHandler):
             self._send(404, b"not found", "text/plain")
 
     def do_POST(self):
+        # 2026-04-27 audit: cap POST body at 1 MiB. RC is LAN-only and the
+        # legitimate inputs (chat text, /api/bridge messages) are tiny —
+        # an unbounded read on Content-Length: 999999999 would let a LAN
+        # attacker (or a misbehaving tab) allocate a multi-GB buffer per
+        # request. Also: don't echo the exception message back to the
+        # client, since urllib/json error strings can leak file paths or
+        # unrelated headers.
+        _MAX_POST_BYTES = 1 << 20
         try:
             n = int(self.headers.get("Content-Length", "0"))
+            if n > _MAX_POST_BYTES:
+                self._send(413, b'{"error":"payload_too_large"}', "application/json")
+                return
             body = self.rfile.read(n) if n else b""
             payload = json.loads(body.decode("utf-8", errors="replace")) if body else {}
         except Exception as exc:
-            self._send(400, f'{{"error":"bad_body: {exc}"}}'.encode(), "application/json")
+            _log.debug("do_POST bad_body: %s", exc)
+            self._send(400, b'{"error":"bad_body"}', "application/json")
             return
 
         if self.path == "/api/input":
