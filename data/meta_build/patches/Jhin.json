@@ -1,0 +1,19 @@
+{
+  "champion": "Jhin",
+  "aram_tier": "A",
+  "build_note": "Hexoptics C44 first (55 AD + 25% crit) — Jhin gains AD from crit, so crit items scale his base damage. RFC second (25% crit, 50% total) for the empowered long-range 4th shot. IE third (IE passive active at 50%+ crit before adding IE's own). 4th shot crits with RFC for 30%+ HP on squishies. W root from fog of war wins trades.",
+  "core_items": ["Hexoptics C44", "Rapid Firecannon", "Infinity Edge"],
+  "full_build": [
+    "Sorcerer's Shoes",
+    "Hexoptics C44",
+    "Rapid Firecannon",
+    "Infinity Edge",
+    "Lord Dominik's Regards",
+    "Bloodthirster"
+  ],
+  "vs_tanks": "Lord Dominik's Regards 4th — armor pen amplifies his fixed-damage 4th shot",
+  "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies — never run both",
+  "vs_burst": "Immortal Shieldbow replaces Bloodthirster vs heavy dive — delays IE one slot",
+  "kit_notes": "Jhin has 4 shots then a reload — plan your 4th shot as the crit/execute. W (Deadly Flourish) roots enemies who have been hit by minions or allies recently — look for rooted kills in ARAM constant damage. Lotus Trap (E) slows approaching enemies — place at health pack paths. Curtain Call (R) from safe angle after engage.",
+  "aram_specific": "The ARAM corridor means every 4th shot can hit grouped enemies. Use W roots to lock down grouped fights. Position behind your frontline — his reload is a vulnerability window. Lotus Traps slow enemies approaching your side. R from behind cover after your team engages."
+}

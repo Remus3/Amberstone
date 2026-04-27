@@ -1,0 +1,161 @@
+PROJECT NAME
+LoL Live ADC Coaching / Riot Commander
+
+PURPOSE
+This project is for live League of Legends coaching during matches, focused on ADC play.
+Primary champions: Vayne, Jinx, Tristana, Caitlyn, Nilah, Miss Fortune
+
+PRIMARY GOAL
+Provide concise, high-signal live coaching that improves win probability through better:
+lane control, wave management, recalls and tempo, item adaptation, objective setup,
+positioning, target selection, map movement, time efficiency
+
+═══════════════════════════════════════════════════════════════════
+PHASE 2 COMPLETE — CURRENT BASELINE STATE (as of 2026-04-13)
+═══════════════════════════════════════════════════════════════════
+
+All Phase 2 steps are signed off. The project is production-ready.
+
+KEY FILE HASHES (Phase 2 final baseline):
+  app.py                  866909A14368F6C12F14228E547E1C9C3E632F1CF7D8DCADF96DF88CF63CAE76
+  core/sr_aram_worker.py  2F8C30A8E8CB4EDF13AFCF8902BB82D92E540695FFB50AE1F518DCC626305C85
+  core/tft_worker.py      873BCEE21C02AF44D4B6B49B3A42EF03EFE1A379D8788910EBC8A50F247FBDEC
+  core/feature_policy.py  C251C10EC2E8E3DFDA150A123053C3D2068F774DF34AE3D67DAD11BFD59C52AD
+  core/metrics_cache.py   56AF9424CBE476C2CAC41A5934EE206223BA593332E701B280521FC47F4F5372
+  core/tk_ai_bar_proxy.py D28744FF7ABDC48E98A9EB3F93334C72123629773FA0560E7ED3868A195C1000
+  ui/client_panel.py      5EC714AD17B66C6554655919AC9E03D82FFAA6C7578DF3525F863FF64BAEF8EC
+  coach_integration.py    550ADD50C7ADA2741C17053C4700BA6949EDE48F2B69327501DEBEDFA52CF5E0
+  coaches/arena_coach.py  A5A94E5EF96E2F49669EABD12DCE8820485F1072EADB10ECBFA17715E463604B
+  coaches/brawl_coach.py  A7378E590B51E4FA2F5EC18FBBFB31C129912DDB4B18FD09AF1FF3E2DAA57065
+
+FROZEN PHASE 0 FILES (must never change):
+  ops/rc_supervisor.py              9D5277C5C4C4C498B158655BCC18C92988E567470DFA6702EF535359D2E85BD9
+  ops/rc_self_monitor.py            55D1B07AE0CC1A5A295AB8FF5F466CC93CC259A50D73BFEFB7F9B61F564697A5
+  ops/rc_incident_log.py            837516485DE40895BBC95AD209EC45FD63CA22CA9FE07CF007EF022C8F4624AE
+  ops/rc_league_watcher.ps1         37B0AC0E9745039DA6F7CDCF71D802018FCE21CC6C3B88F562555CA9291488BF
+  ops/run_self_healing_watchdog.ps1 CFCF7031F725A37D84FB69436913F16DCB78AC55427A1CD927F6E5270A8CCF84
+
+═══════════════════════════════════════════════════════════════════
+PHASE 2 STEPS COMPLETED
+═══════════════════════════════════════════════════════════════════
+
+Step 1 / 1.1 — Polish/Hardening
+  - sr_aram_worker.py docstring corrected (ARAM deferred wording removed)
+  - coach_integration.py: _write_fields(update_ts=True/False); writes
+    ops/runtime/last_coaching_ts.json on successful SR coaching only
+  - _write_status_field uses update_ts=False (error/timeout writes don't
+    advance last_coaching_ts)
+  - coaches/arena_coach.py + coaches/brawl_coach.py: policy gate moved
+    BEFORE _client check in _run_coach()
+
+Step 2 / 2.1 — Hot-reload + OPS Policy Visibility
+  - core/feature_policy.py: _PolicyCache class with lazy mtime-check
+    hot-reload, last-known-good semantics, get_policy_state()
+  - get_policy_state() calls _cache._check_reload() (Step 2.1 fix) so
+    MetricsCache/OPS works in idle mode without coach gate call
+  - core/metrics_cache.py: 9 new policy fields in MetricsSummary;
+    _read_policy_state()
+  - ui/client_panel.py: FEATURE POLICY section in OPS tab; _policy_vars
+    dict; _policy_warn_var
+
+Step 3 / 3.1 — Deterministic Smoke Harness
+  - tests/ directory with fixtures and phase2_smoke test modules
+  - 68 tests, all pass, exit 0, ~1.4s runtime
+  - No live deps (no Riot API, no Anthropic API, no Tk)
+  - write_disabled_placeholder() has artifact_root seam for test isolation
+  - All source lookups project-relative (Path(__file__)-based)
+  - Run: python tools/run_phase2_smoke.py
+
+Step 4 / 4.1 — Performance Probe
+  - tools/run_phase2_perf.py: deterministic local perf probe
+  - Measures: feature_policy, MetricsCache, snapshot translation,
+    placeholder writes, worker start/stop + queue handoff
+  - Exit 0 on success, exit 1 on section failure
+  - Explicit run_failed + section_failures in perf_baseline.json
+  - --fail-section <n> CLI flag for forced-failure proof
+  - Baseline: audit/phase2_step4_proof/perf_baseline.json
+
+Step 5 / 5.1 — Packaging / Launcher Ergonomics
+  - tools/dev_cli.py: single CLI for all dev/ops actions
+    subcommands: status, start, start-clean, preflight, smoke, perf,
+    snapshot, rollback-last
+  - start delegates to start.bat (API key + pythonw main.py)
+  - start-clean delegates to restart_clean.bat (kills proc, clears cache)
+  - tools/DEV_WORKFLOW.md: full operator documentation
+  - tools/dev_cli.cmd: Windows wrapper
+  - Run: python tools/dev_cli.py status
+
+═══════════════════════════════════════════════════════════════════
+AUTHORITY MODEL (immutable)
+═══════════════════════════════════════════════════════════════════
+
+  app.py              = sole GameEnvelope authority
+  SrAramWorker        = sole non-TFT worker
+  TftWorker           = sole TFT worker
+  MetricsCache        = derived observability only (never writes)
+  feature_policy      = advisory/gating only
+  UI                  = read-only/derived only
+  Phase 0 ops files   = frozen, never touch
+
+═══════════════════════════════════════════════════════════════════
+OPERATOR QUICK REFERENCE
+═══════════════════════════════════════════════════════════════════
+
+Launch app:           python tools/dev_cli.py start
+Clean start:          python tools/dev_cli.py start-clean
+Environment check:    python tools/dev_cli.py status
+Smoke tests (68):     python tools/dev_cli.py smoke
+Perf probe:           python tools/dev_cli.py perf
+Git checkpoint:       python tools/dev_cli.py snapshot
+Rollback (with confirm): python tools/dev_cli.py rollback-last
+Preflight (lint):     python tools/dev_cli.py preflight
+
+Policy hot-reload:    edit config/feature_flags.json
+                      (change is live within ≤5s, no restart needed)
+
+Proof bundles:        C:\Riot Commander\audit\phase2_step*_proof\
+
+═══════════════════════════════════════════════════════════════════
+COACHING SYSTEM (unchanged from pre-Phase 2)
+═══════════════════════════════════════════════════════════════════
+
+LIVE ENVIRONMENT
+- Single monitor, 1920x1080 desktop, League client at 1600x900
+- Coaching should be concise and easy to scan rapidly during gameplay
+
+DECISION PRIORITIES
+1. Survival  2. Tempo  3. Gold/XP efficiency  4. Objective conversion
+5. Fight setup  6. DPS uptime  7. Mechanical optimization
+
+RESPONSE FORMAT
+Immediate: / Next: / Wave: / Objective: / Fight rule: / Reset / item: / Risk:
+
+SUPPORTED ADC POOL
+Vayne, Jinx, Tristana, Caitlyn, Nilah, Miss Fortune
+
+CHAMPION-SPECIFIC NOTES
+Vayne:   safe uptime, self-peel, spacing, anti-dive, condemn usage
+Jinx:    resets, front-to-back, rocket usage, objective snowballing
+Tristana: all-in windows, shove tempo, explosive charge plate pressure
+Caitlyn: lane priority, trap control, plate conversion, range abuse
+Nilah:   all-in windows, engage timing, melee spacing, comp synergy
+MF:      lane trading, objective setups, grouped fight angles, ult value
+
+LIVE INPUT TEMPLATE
+Time: / Champion: / My support: / Our comp: / Enemy comp: / Lane state: /
+Wave: / Me HP/Mana: / Enemy lane HP/Mana: / Items: / Levels: / CS: /
+Jungle info: / Nearby allies: / Nearby enemies: / Objective timer: /
+Summoners: / Question:
+
+HARDWARE / SYSTEM CONTEXT
+Treat prior system decisions as already optimized unless explicitly reported broken.
+MiniPC setup, OpenWRT/router, Samsung Q90R — do not re-troubleshoot these.
+
+═══════════════════════════════════════════════════════════════════
+HOW THIS PROJECT IS USED
+═══════════════════════════════════════════════════════════════════
+
+- One chat per match or per session
+- Project files contain persistent reference information
+- Live chat messages contain current match state
+- The local overlay app consumes and displays Claude outputs

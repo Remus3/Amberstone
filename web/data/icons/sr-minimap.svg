@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none" shape-rendering="geometricPrecision">
+  <!-- Muted SR minimap approximation: bot-left blue base, top-right red base,
+       3 lanes (top/mid/bot), 2 jungle quadrants, river running diagonal
+       from top-left to bot-right. Designed to read under ZOI color overlays. -->
+  <defs>
+    <radialGradient id="blue-base" cx="0%" cy="100%" r="28%">
+      <stop offset="0%" stop-color="#3a5d9a" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#3a5d9a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="red-base" cx="100%" cy="0%" r="28%">
+      <stop offset="0%" stop-color="#9a3a3a" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#9a3a3a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="river" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#2a3a4a" stop-opacity="0.0"/>
+      <stop offset="42%"  stop-color="#3f5773" stop-opacity="0.35"/>
+      <stop offset="50%"  stop-color="#4c6688" stop-opacity="0.5"/>
+      <stop offset="58%"  stop-color="#3f5773" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#2a3a4a" stop-opacity="0.0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Neutral jungle floor -->
+  <rect x="0" y="0" width="100" height="100" fill="#1e2433"/>
+
+  <!-- River running top-left to bot-right (anti-diagonal) — this is the
+       team-boundary axis on SR. Drawn as a thick rotated band. -->
+  <g transform="translate(50 50) rotate(-45)">
+    <rect x="-80" y="-10" width="160" height="20" fill="url(#river)"/>
+  </g>
+
+  <!-- Lanes: top-lane (top edge curves), mid (diagonal bot-left→top-right),
+       bot-lane (bottom edge curves). Muted teal stroke. -->
+  <g fill="none" stroke="#4a6b84" stroke-width="2.4" stroke-opacity="0.4" stroke-linecap="round">
+    <!-- Top lane: from red-base top-right, hugs top edge, curves to blue bot-left -->
+    <path d="M 88,12 L 55,12 Q 25,12 18,25 Q 12,40 12,72"/>
+    <!-- Mid lane: diagonal from blue bot-left to red top-right -->
+    <path d="M 18,82 L 82,18"/>
+    <!-- Bot lane: from blue-base bot-left, hugs bottom edge, curves to red top-right -->
+    <path d="M 28,88 L 72,88 Q 82,88 85,82 Q 88,72 88,40"/>
+  </g>
+
+  <!-- Base blobs -->
+  <rect x="0" y="0" width="100" height="100" fill="url(#blue-base)"/>
+  <rect x="0" y="0" width="100" height="100" fill="url(#red-base)"/>
+
+  <!-- Jungle camp markers — small tinted dots at approximate positions.
+       Each side has: Blue buff, Red buff, Gromp, Wolves, Raptors, Krugs. -->
+  <g fill="#4a6b4a" fill-opacity="0.55" stroke="#6b8a6b" stroke-opacity="0.4" stroke-width="0.3">
+    <!-- Blue-side jungle (bot-left quadrant) -->
+    <circle cx="22" cy="60" r="1.6"/>  <!-- Blue buff (top-blue-jg) -->
+    <circle cx="18" cy="50" r="1.6"/>  <!-- Gromp -->
+    <circle cx="28" cy="68" r="1.6"/>  <!-- Wolves -->
+    <circle cx="35" cy="72" r="1.6"/>  <!-- Raptors -->
+    <circle cx="40" cy="80" r="1.6"/>  <!-- Red buff (bot-blue-jg) -->
+    <circle cx="45" cy="85" r="1.6"/>  <!-- Krugs -->
+    <!-- Red-side jungle (top-right quadrant) -->
+    <circle cx="78" cy="40" r="1.6"/>
+    <circle cx="82" cy="50" r="1.6"/>
+    <circle cx="72" cy="32" r="1.6"/>
+    <circle cx="65" cy="28" r="1.6"/>
+    <circle cx="60" cy="20" r="1.6"/>
+    <circle cx="55" cy="15" r="1.6"/>
+  </g>
+
+  <!-- Dragon pit (bot-right river) -->
+  <circle cx="68" cy="70" r="3" fill="#c85a5a" fill-opacity="0.25" stroke="#e08a8a" stroke-opacity="0.5" stroke-width="0.5"/>
+  <!-- Baron pit (top-left river) -->
+  <circle cx="32" cy="30" r="3" fill="#8a5ac8" fill-opacity="0.25" stroke="#b088d0" stroke-opacity="0.5" stroke-width="0.5"/>
+
+  <!-- Blue base fortification squares (bot-left) -->
+  <g fill="#5a8ac8" fill-opacity="0.5" stroke="#8ab3e0" stroke-opacity="0.6" stroke-width="0.5">
+    <rect x="8"  y="82" width="4" height="4"/>   <!-- nexus -->
+    <rect x="4"  y="86" width="3" height="3"/>
+    <rect x="12" y="86" width="3" height="3"/>
+    <rect x="8"  y="78" width="3" height="3"/>
+  </g>
+  <!-- Red base fortification squares (top-right) -->
+  <g fill="#c85a5a" fill-opacity="0.5" stroke="#e08a8a" stroke-opacity="0.6" stroke-width="0.5">
+    <rect x="88" y="14" width="4" height="4"/>
+    <rect x="93" y="11" width="3" height="3"/>
+    <rect x="93" y="19" width="3" height="3"/>
+    <rect x="85" y="11" width="3" height="3"/>
+  </g>
+</svg>

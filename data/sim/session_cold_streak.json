@@ -1,0 +1,59 @@
+{
+  "meta": {
+    "name": "session_cold_streak",
+    "label": "Session \u00b7 cold streak (5L)",
+    "mode": "client",
+    "summary": "Cold-streak digest \u00b7 5 losses on Ahri vs Zed \u00b7 break advisory active"
+  },
+  "health": {
+    "type": "health",
+    "source": "sim",
+    "payload": {
+      "pid": 99999,
+      "alive": true,
+      "has_game": false,
+      "mode": "client",
+      "last_reload_ok": true
+    }
+  },
+  "state": {
+    "type": "state",
+    "mode": "client",
+    "source": "coaching_data.json",
+    "payload": {
+      "game_time": "",
+      "kda": "",
+      "champion": "Ahri",
+      "action": "\u2744 COLD STREAK \u2014 pause recommended",
+      "immediate": "Last 5 games: 0W-5L on Ahri vs Zed. Recent KDA 1.4 (baseline 2.9). Win-prob model says next-game expected outcome is sub-30%.",
+      "risk": "Tilt window active \u00b7 queue dodge / take 30 min break before requeue",
+      "fight_rule": "\u2014",
+      "reset_item": "\u2014",
+      "next": "Pause queue \u00b7 review the loss patterns clips below",
+      "objective": "Rank goal: stop the bleed \u00b7 prevent \u2212LP cascade",
+      "advice_headline": "Stop. Take a break. Re-queue when reset.",
+      "advice_objective": "Cold streak: 5 losses, all on Ahri vs Zed lane",
+      "key_points_review": "1. Don't take Ahri vs Zed (32% wr, 5 game sample) \u00b7 2. Vision when behind: 8 wards avg vs 14 in winning games \u00b7 3. Don't ult-engage at sub-50% HP",
+      "clips_review": "5 deaths to Zed R-W-Q combo at full HP \u2014 re-watch positioning at 0:00-0:30 of each death",
+      "digest_state": "alert",
+      "digest_label": "\u2744 ALERT",
+      "digest_state_long": "Cold streak \u2014 5 game losing run",
+      "digest_streak": "5L on Ahri",
+      "digest_recent": "0W-5L last 5 \u00b7 12% wr",
+      "digest_kda_trend": "\u2193 KDA 1.4 (baseline 2.9, \u221252%)",
+      "digest_time_of_day": "Late night plays (11pm-2am) trending \u221218% wr",
+      "digest_fatigue": "5 games in 90 min \u2014 fatigue threshold crossed",
+      "digest_advice": "Stop queue \u00b7 break \u226530min \u00b7 don't queue Ahri vs Zed",
+      "what_went_good": [
+        "Held own first 8 min in last game \u00b7 6 CS lead by 6:00"
+      ],
+      "what_went_bad": [
+        "5 deaths to Zed R-W-Q at full HP \u2014 pattern over 5 games",
+        "Vision: 8 wards avg vs 14 in winning games",
+        "Mid lane prio lost in 4/5 games (lost first tower)",
+        "Tilt indicator: response time +180ms vs baseline",
+        "Late-night plays: 4 of 5 losses after 11pm"
+      ]
+    }
+  }
+}

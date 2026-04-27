@@ -1,0 +1,3388 @@
+/* Riot Commander — Phase 3 dashboard.
+ * Round 46: Neo-fintech palette (inspired by dribbble #2590277).
+ * Deep blue-black canvas, tonal card separation, coral-pink primary
+ * accent, lavender secondary accent, generous corner radius, soft
+ * shadows in place of borders. Lato sans-serif (mono preserved for
+ * code, task IDs, activity ticker).
+ * Authoring canvas: 1920×1080; iPad target: 1920×1280 @ 125% OS scale.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap");
+
+:root {
+  /* ───── Neo-fintech palette ──────────────────────────────────── */
+  --canvas:        #171821;   /* deep blue-black — page bg */
+  --surface:       #21222D;   /* panel bg — one step lighter */
+  --surface-head:  #272836;   /* panel header bg */
+  --surface-alt:   #1C1D27;   /* subtle alt / input bg */
+  --text:          #F5F5F7;   /* primary text */
+  --text-dim:      #9DA0B3;   /* secondary text / labels */
+  --text-faint:    #6B6D7C;   /* ternary / captions */
+  --border:        #2E3040;   /* de-emphasized — panels rely on tone */
+  --border-soft:   #262734;   /* dashed dividers */
+
+  /* Accent pairs. Primary live-data accent is coral pink; secondary
+   * comparative accent is lavender. Greens / warm alerts kept for
+   * positive / destructive semantics but retuned to the palette. */
+  --good:          #7FD19A;   /* cool mint — up / success / positive */
+  --good-soft:     #2E4A3A;
+  --bad:           #F07E8B;   /* coral pink — down / error / hot live data */
+  --bad-soft:      #4A2A31;
+  --gold:          #F5B87C;   /* soft coral-amber — action / KDA / emphasis */
+  --gold-soft:     #4A3723;
+
+  --info:          #8A8CF0;   /* lavender — info / intents / passive series */
+  --info-soft:     #2E2E4A;
+  --advisory:      #F07E8B;   /* coral pink — cold-streak advisories */
+  --advisory-soft: #4A2A31;
+
+  /* Shape language */
+  --radius:        16px;      /* card corner radius */
+  --radius-sm:     8px;       /* chips/pills radius */
+  --shadow-card:   0 6px 24px -8px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35);
+  --shadow-card-soft: 0 2px 10px -4px rgba(0,0,0,0.5);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ───── App-wide custom tooltip ──────────────────────────────────
+ * Replaces browser-native `title` tooltips across the dashboard. Larger
+ * readable font, muted aesthetic that matches the "Mode does not support
+ * Augments" placeholder. Positioned by JS (tooltip-system.js) so it flips
+ * left/right/up to stay inside the viewport no matter where the anchor
+ * sits. Native `title` is moved to `data-tt` on hover to suppress the
+ * browser's own popup. */
+.app-tooltip {
+  position: fixed;
+  /* Width is content-driven since JS wraps at 6 words per line. max-width
+   * is just a safety ceiling for very long words (no break-word — a long
+   * item name should never split mid-word). */
+  max-width: 400px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--surface-alt);
+  color: var(--text-faint);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  border: 1px solid rgba(255,255,255,0.7);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.55);
+  z-index: 10000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  /* pre-wrap renders JS-inserted \n line breaks without further wrapping
+   * inside a line (since each line is already ≤ 6 words). */
+  white-space: pre-wrap;
+}
+.app-tooltip.show { opacity: 1; }
+
+html { height: 100%; }
+
+body {
+  /* Flex column — header, main, activity, input-bar, footer stack and
+   * main flex-grows to fill remaining height. Zoom-safe: no vh math. */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  transition: cursor 150ms;
+  font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 26px; font-weight: 400;
+  background: var(--canvas);
+  color: var(--text);
+  user-select: none;
+  overflow: hidden;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  letter-spacing: 0.01em;
+}
+
+/* Global +33% scale for at-a-glance viewing from ~4 feet. Applied to
+ * body via CSS zoom (Chromium + WebKit/iPad Safari support this).
+ * Overrides are via --ui-scale; bump to 1.0 for reference size. */
+body { zoom: 1.33; }
+body.cursor-hidden, body.cursor-hidden * { cursor: none !important; }
+
+/* Game-phase theming — JS sets body[data-phase] from game_time_s:
+ * early  <15:00  calm blue tint
+ * mid    15–25   engaged gold tint
+ * late   25+     urgent coral tint
+ * The tint is a single-pixel-thick top border + title-accent shift. */
+/* (2026-04-23) Phase-tinted title-left border removed — user wanted the
+ * title position identical across client and in-game states; the border
+ * was shifting "RIOT COMMANDER" 16px right whenever data-phase was set. */
+body[data-phase="mid"]   header { background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 6%, var(--canvas)) 0%, var(--canvas) 100%); }
+body[data-phase="late"]  header { background: linear-gradient(180deg, color-mix(in srgb, var(--bad)  7%, var(--canvas)) 0%, var(--canvas) 100%); }
+
+/* ───── Dev-preview banner ─────────────────────────────────────── */
+.sim-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+  padding: 8px 18px;
+  background: var(--advisory-soft);
+  color: var(--advisory);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  z-index: 100;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+.sim-banner[data-mode="sr"]     { background: var(--info-soft); color: var(--info); }
+.sim-banner[data-mode="sr"] .sim-tag  { background: var(--info); }
+.sim-banner[data-mode="aram"]   { background: var(--gold-soft); color: var(--gold); }
+.sim-banner[data-mode="aram"] .sim-tag { background: var(--gold); }
+.sim-banner[data-mode="tft"]    { background: var(--bad-soft); color: var(--bad); }
+.sim-banner[data-mode="tft"] .sim-tag  { background: var(--bad); }
+.sim-banner[data-mode="arena"]  { background: var(--advisory-soft); color: var(--advisory); }
+.sim-banner[data-mode="client"] { background: var(--surface); color: var(--text-dim); }
+.sim-banner[data-mode="client"] .sim-tag { background: var(--text-dim); color: var(--canvas); }
+.sim-banner.hidden { display: none; }
+/* (2026-04-25) When the user collapses the dev banner from the footer
+ * toggle, body[data-dev-banner="off"] is set → banner hides + the
+ * footer toggle restyles to show the "▾" arrow. Persisted via
+ * localStorage("rc-dev-banner") so the choice survives auto-reload.
+ * The toggle only renders when sim.js has been activated (?sim=… in
+ * URL) — production users never see it. */
+body[data-dev-banner="off"] .sim-banner { display: none; }
+.dev-banner-toggle {
+  font-family: "SF Mono", Consolas, monospace;
+  letter-spacing: 0.06em;
+  padding: 3px 10px !important;
+  font-size: 11px !important;
+  background: var(--advisory-soft) !important;
+  color: var(--advisory) !important;
+  border: 1px solid var(--advisory-soft) !important;
+}
+body[data-dev-banner="off"] .dev-banner-toggle::after { content: " ▾"; }
+body[data-dev-banner="on"]  .dev-banner-toggle::after,
+body:not([data-dev-banner]) .dev-banner-toggle::after { content: " ⌃"; }
+
+/* Voice TTS toggle — same chrome as the dev-banner toggle but with an
+ * "active" state so the user can see at a glance whether speech is on. */
+.voice-toggle.active {
+  color: var(--good);
+  border-color: color-mix(in srgb, var(--good) 40%, transparent);
+}
+
+/* Voice picker dropdown — only visible when the toggle is on. Matches
+ * the footer-btn chrome so they read as one control pair. */
+.voice-picker {
+  background: var(--surface);
+  color: var(--text-dim);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 3px 6px;
+  font-size: 11px;
+  max-width: 180px;
+  margin-left: 4px;
+}
+.voice-picker:focus {
+  outline: 1px solid var(--info);
+  outline-offset: 1px;
+}
+.sim-banner .sim-tag {
+  background: var(--advisory);
+  color: var(--canvas);
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+.sim-banner .sim-label {
+  color: var(--advisory);
+  flex: 1;
+  font-weight: 700;
+}
+.sim-banner .sim-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.sim-banner select {
+  background: var(--surface);
+  color: var(--text);
+  border: none;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+.sim-banner .sim-hints {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  font-family: "SF Mono", Consolas, monospace;
+  opacity: 0.75;
+}
+.sim-banner .sim-exit {
+  color: var(--canvas);
+  background: var(--advisory);
+  padding: 5px 14px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  font-size: 12px;
+}
+.sim-banner .sim-exit:hover { filter: brightness(1.1); }
+
+/* Placeholder styling for panels that have no fixture data. */
+.panel.sim-missing .panel-body::after {
+  content: "(fixture: no data)";
+  display: block;
+  font-size: 13px;
+  color: var(--text-faint);
+  font-style: italic;
+  padding-top: 8px;
+  letter-spacing: 0.08em;
+}
+
+/* ───── Header bar ─────────────────────────────────────────────── */
+/* 2-row layout is permanent: row 1 = identity + instantaneous state, row 2
+ * = bars + session-level info. Explicit rows (flex-column with row flex
+ * containers) instead of flex-wrap overflow, so layout is deterministic
+ * regardless of content width. */
+header {
+  padding: 5px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: var(--canvas);
+  flex-shrink: 0;
+}
+.header-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 34px;
+}
+/* Row-2 pills are slightly tighter so the bars + session metrics read
+ * cleanly without matching the 34px body-text height of row 1. */
+.header-row-2 {
+  min-height: 27px;
+}
+/* Static-pill rule: every header pill keeps its slot even when its
+ * underlying data is missing. `.hidden` toggles on individual pills are
+ * no-ops visually — the pill retains its footprint with a "—" placeholder
+ * so peripheral vision can anchor to the slot map by position, not by
+ * scanning a reshuffled row. JS can still toggle the class freely. */
+header .lvl-pill.hidden,
+header .vis-pill.hidden,
+header .ult-pill.hidden,
+header .zone-pill.hidden,
+header .cs-pill.hidden,
+header .gold-pill.hidden,
+header .kda.hidden,
+header .mp-group.hidden,
+header .hp-group.hidden,
+header .win-pill.hidden,
+header .trend-pill.hidden,
+header .augments-pill.hidden,
+header .advisory-badge.hidden,
+header .self-spells.hidden {
+  display: inline-flex !important;
+  opacity: 0.55;   /* faded rather than gone — still readable at a glance */
+}
+/* (2026-04-25) HP / MP / gold / 30d-trend pills hidden in-game per
+ * user — "wasn't looking at them while playing". Visible during
+ * client mode (lobby + aftergame) where they help frame post-match
+ * review. Wins over the static-pill !important rule above via higher
+ * specificity (body[data-mode] + header + .pill = 0,3,2 vs the
+ * static-pill 0,2,1) and matched !important. */
+body:not([data-mode="client"]) header .hp-group,
+body:not([data-mode="client"]) header .mp-group,
+body:not([data-mode="client"]) header .gold-pill,
+body:not([data-mode="client"]) header .trend-pill {
+  display: none !important;
+}
+/* (2026-04-26) Also hide HP / MP / WIN pills in CLIENT mode per user —
+ * "client panel does not need the hp,mana, win% pills". Visual-only
+ * hide; JS still populates #hp-bar / #mp-bar / #win-pct-val so any
+ * future ALT-tab indicator or aftergame summary can read the values. */
+body[data-mode="client"] header .hp-group,
+body[data-mode="client"] header .mp-group,
+body[data-mode="client"] header .win-pill {
+  display: none !important;
+}
+/* (2026-04-25) KDA pill removed from top bar per user — "not needed".
+ * Visual-only hide (the JS keeps updating #kda + the burst animation
+ * stays wired) so this is a one-line revert if they change their mind. */
+header .kda {
+  display: none !important;
+}
+/* (2026-04-25) Summoner-spell pills (D/F slot) hidden too. JS still
+ * populates the cells (Flash/Heal/Teleport icons + cooldown overlay
+ * remain wired); only the visual is dropped. WIN pill now occupies
+ * the slot where these used to sit on row 1. */
+header .self-spells {
+  display: none !important;
+}
+/* (2026-04-25) WIN pill moved to row 1 — drop the row-2 right-pin so
+ * it sits naturally between champion and zone pills instead of being
+ * pushed against the row's right edge. */
+header .header-row-1 .win-pill {
+  margin-left: 0;
+}
+/* (2026-04-25) Advisory + Digest pills relocated to the footer.
+ * Footer-scale variants: smaller font/padding so they don't bump the
+ * footer height or look out of proportion next to the latency/frames
+ * stats. The header-scale styling above stays intact for any future
+ * un-relocate. */
+footer .advisory-badge.in-footer,
+footer .digest-icon.in-footer {
+  width: auto;
+  font-size: 11px !important;
+  padding: 2px 8px !important;
+  letter-spacing: 0.04em;
+}
+footer .advisory-badge.in-footer b,
+footer .digest-icon.in-footer b {
+  font-size: 11px;
+}
+
+/* ───── Static widths + heights ─────────────────────────────────────
+ * Every header pill gets a fixed width sized for its *widest anticipated*
+ * content (e.g. "CLIENT" for mode-pill, "Renata Glasc" for champion,
+ * "DEEP ENEMY" for zone, "XX/XX/XX" for KDA). Shorter content centers in
+ * the pill. No pill ever widens, narrows, grows taller, or shrinks shorter
+ * as content changes — the pill grid is a fixed slot map the eye can
+ * anchor by position alone. */
+.header-row > * {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+}
+/* Row 1 is 43px so the 38px champion portrait fits. Row 2 at 40px
+ * comfortably holds 20px text + HP/MP bar without vertical cramp.
+ * (Heights shrunk 2026-04-24 so heartbeat fits on 1180px iPad viewport.) */
+.header-row-1 > * { height: 43px; }
+.header-row-2 > * { height: 40px; }
+
+/* Font-uniformity rule: every header pill's primary readable text
+ * renders at 20px — matching the HP pill so row 1 and row 2 share a
+ * visual "size grammar". Internal <b> elements inherit. Sub-labels
+ * (WIN, LVL placeholders) sit at 20px too for a cohesive look.
+ * (Stepped down 22→20 2026-04-24 so row 2 fits 1180px iPad viewport.) */
+.title, .mode-pill, .champion-pill, .champ-name,
+.vis-pill, .zone-pill, .game-time, .kda, .cs-pill,
+.hp, .mp, .gold-pill, .win-pill, .advisory-badge,
+.hb, .augments-pill {
+  font-size: 20px;
+}
+.mode-pill, .title { font-size: 20px; letter-spacing: 0.04em; }
+.vis-pill b, .cs-pill b, .gold-pill b, .win-pill b { font-size: 20px; }
+
+/* Widths sized for 20px content + tight padding. The WIN label
+ * ("WIN" after the number) stays a smaller visual sub-label so the
+ * % number dominates. (Shrunk ~10% 2026-04-24 with the font step-down.) */
+.mode-pill      { width: 128px; }
+.champion-pill  { width: 222px; }
+.vis-pill       { width: 72px;  }
+.zone-pill      { width: 142px; }
+.game-time      { width: 107px; text-align: center; white-space: nowrap; overflow: hidden; }
+.kda            { width: 125px; text-align: center; }
+.cs-pill        { width: 185px; }
+.hp-group       { width: 178px; }
+.mp-group       { width: 169px; }
+.gold-pill      { width: 89px;  }
+.win-pill       { width: 125px; }
+.advisory-badge { width: 71px;  }
+.hb             { width: 147px; text-align: center; white-space: nowrap; margin-left: auto; }
+
+/* Heartbeat color encodes connection state (the removed status-pill used
+ * to carry this). Green when live, muted gray when offline/pending. */
+.hb.hb-connected { color: var(--good); opacity: 1; }
+.hb.hb-offline   { color: var(--text-dim); opacity: 0.55; }
+
+/* HP pill DEAD state is styled by the existing `.hp.hp-dead` rule further
+ * down (coral background + dark text + pill padding). This comment is
+ * left as a signpost so future tuning doesn't overlap. */
+.title {
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  font-weight: 900;
+  color: var(--text);
+}
+.mode-pill {
+  padding: 5px 14px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  font-weight: 900;
+  color: var(--text-dim);
+  background: var(--surface);
+}
+/* Mode accent vocabulary — blue for modes that historically used
+ * cyan (aram), pink for arena, gold for brawl, rust for tft. */
+.mode-pill.aram   { color: var(--info);      border-color: var(--info-soft); }
+.mode-pill.arena  { color: var(--advisory);  border-color: var(--advisory-soft); }
+.mode-pill.brawl  { color: var(--gold);      border-color: var(--gold-soft); }
+.mode-pill.tft    { color: var(--bad);       border-color: var(--bad-soft); }
+.mode-pill.sr     { color: var(--good);      border-color: var(--good-soft); }
+.mode-pill.client { color: var(--text-dim);  border-color: var(--border); }
+
+.champion-pill {
+  padding: 3px 12px 3px 4px;
+  border: 1px solid var(--info-soft);
+  border-radius: 999px;
+  font-size: 20px;
+  letter-spacing: 0.02em;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--surface);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1;
+}
+.self-spells {
+  display: inline-flex;
+  gap: 3px;
+  /* Static width for the 2-cell pair (2 × 32px + 3px gap). Prevents the
+   * slot from collapsing when data is missing and placeholder D/F cells
+   * render — adjacent pills never shift. */
+  width: 67px;
+}
+.self-spells.hidden { display: none; }
+/* Placeholder cells (D / F) when no real summoner spell data — muted so
+ * they read as "slot reserved" not "ready-to-fire spell". */
+.self-spell.placeholder {
+  color: var(--text-faint);
+  background: var(--surface-alt);
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.55;
+}
+.self-spell {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--surface);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+.self-spell img { width: 100%; height: 100%; display: block; }
+.self-spell.on-cd img { opacity: 0.35; filter: grayscale(0.6); }
+.self-spell.cd-ready-flash {
+  animation: spellReady 1.1s ease-out;
+}
+.self-spell.cd-ready-flash img { opacity: 1 !important; filter: none !important; }
+.self-spell .cd-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--gold);
+  text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  font-variant-numeric: tabular-nums;
+}
+
+.champion-pill .champ-portrait {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: block;
+  object-fit: cover;
+  background: var(--surface-alt);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+.champion-pill .champ-name {
+  display: inline-block;
+  /* Fits 12-char names at 20px font — Aurelion Sol / Renata Glasc /
+   * Twisted Fate / Miss Fortune / Heimerdinger / Fiddlesticks. */
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.champion-pill.stale, .champion-pill:empty { padding: 5px 14px; }
+.champion-pill.fallback   { color: var(--gold); border-color: var(--gold-soft); }
+.champion-pill.stale      { color: var(--text-faint); border-color: var(--border); }
+.game-time { font-size: 20px; color: var(--text); font-weight: 900; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.kda       { font-size: 20px; color: var(--gold); font-weight: 900; font-variant-numeric: tabular-nums; transition: color 300ms ease; position: relative; }
+.kda.hidden { display: none; }
+.kda.kda-carry    { color: var(--good); }
+.kda.kda-even     { color: var(--gold); }
+.kda.kda-struggle { color: var(--bad); }
+.kda.kda-flash { animation: kdaFlash 900ms ease-out; }
+@keyframes kdaFlash {
+  0%   { color: var(--text); text-shadow: 0 0 14px rgba(245,184,124,0.7); }
+  100% { color: var(--gold); text-shadow: none; }
+}
+.kda-burst {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px; font-weight: 900;
+  letter-spacing: 0.14em;
+  opacity: 0;
+  transform: translate(-50%, 0);
+  transition: opacity 300ms ease, transform 1300ms cubic-bezier(0.2,0.6,0.4,1);
+  pointer-events: none;
+  z-index: 10;
+  white-space: nowrap;
+}
+.kda-burst.show { opacity: 1; transform: translate(-50%, -12px); }
+.kda-burst-kill   { background: var(--good-soft); color: var(--good); }
+.kda-burst-assist { background: var(--info-soft); color: var(--info); }
+.kda-burst-death  { background: var(--bad-soft);  color: var(--bad);  }
+.hp-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 11px 3px 6px;
+  border-radius: 999px;
+  background: var(--surface);
+}
+.hp-bar-vis {
+  display: inline-block;
+  width: 70px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--canvas);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+.hp-bar-vis i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--text-dim);
+  border-radius: inherit;
+  transition: width 350ms ease, background-color 250ms ease;
+}
+.hp-fill.hp-critical { background: var(--bad); }
+.hp-fill.hp-low      { background: var(--gold); }
+.hp-fill.hp-mid      { background: var(--good); }
+.hp-fill.hp-high     { background: var(--text-dim); }
+.hp-fill.hp-dead     { background: var(--bad-soft); }
+
+/* Mana / resource — thinner than HP, lavender */
+.mp-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px 2px 6px;
+  border-radius: 999px;
+  background: var(--surface);
+}
+.mp-group.hidden { display: none; }
+.mp-bar-vis {
+  display: inline-block;
+  width: 60px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--canvas);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+.mp-bar-vis i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--info);
+  border-radius: inherit;
+  transition: width 350ms ease;
+}
+.mp { font-size: 20px; color: var(--info); font-weight: 900; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.cs-pill, .gold-pill, .lvl-pill, .vis-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: var(--surface);
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.cs-pill.hidden, .gold-pill.hidden, .lvl-pill.hidden, .vis-pill.hidden { display: none; }
+.cs-pill.cs-excellent b { color: var(--good); }
+.cs-pill.cs-good      b { color: var(--text); }
+.cs-pill.cs-fair      b { color: var(--gold); }
+.cs-pill.cs-low       b { color: var(--bad); }
+.lvl-pill b { color: var(--text); font-size: 16px; font-weight: 900; }
+.lvl-pill .lvl-label { font-size: 9px; letter-spacing: 0.12em; color: var(--text-faint); }
+.lvl-pill.spike {
+  background: var(--gold-soft);
+  color: var(--gold);
+  animation: lvlSpike 1.2s ease-out;
+}
+.lvl-pill.spike b { color: var(--gold); }
+@keyframes lvlSpike {
+  0%   { box-shadow: 0 0 0 0 rgba(245,184,124,0); }
+  40%  { box-shadow: 0 0 16px 6px rgba(245,184,124,0.55); }
+  100% { box-shadow: 0 0 0 0 rgba(245,184,124,0); }
+}
+.vis-pill b { color: var(--info); font-size: 20px; font-weight: 900; }
+.vis-pill .obj-ico { width: 18px; height: 18px; color: var(--info); flex-shrink: 0; }
+.cs-pill b, .gold-pill b { font-size: 20px; }
+
+/* Ultimate readiness pill — "R · UP" in mint when ready, "R · 42s" in
+ * gold when on cooldown. Pulses briefly on transition to ready. */
+.ult-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  background: var(--surface);
+  transition: background-color 200ms ease, box-shadow 500ms ease;
+}
+.ult-pill.hidden { display: none; }
+.ult-pill b {
+  font-size: 18px;
+  color: var(--text);
+}
+.ult-pill span { font-size: 13px; }
+.ult-pill.ult-cd    { color: var(--gold); }
+.ult-pill.ult-cd b  { color: var(--gold); }
+.ult-pill.ult-ready {
+  background: var(--good-soft);
+  color: var(--good);
+  box-shadow: 0 0 10px rgba(127,209,154,0.35);
+}
+.ult-pill.ult-ready b { color: var(--good); }
+
+.zone-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  font-weight: 900;
+  background: var(--surface);
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.zone-pill.hidden { display: none; }
+.zone-pill.zone-safe   { background: var(--good-soft); color: var(--good); }
+.zone-pill.zone-dmz    { background: var(--gold-soft); color: var(--gold); }
+.zone-pill.zone-enemy  {
+  background: var(--bad-soft); color: var(--bad);
+  animation: zoneWarn 1.4s ease-in-out infinite;
+}
+@keyframes zoneWarn {
+  0%,100% { box-shadow: 0 0 0 0 rgba(240,126,139,0); }
+  50%     { box-shadow: 0 0 0 6px rgba(240,126,139,0.25); }
+}
+
+/* Keyboard shortcuts toast — bottom-right, fades in on `?`. */
+.keybinds-toast {
+  position: fixed;
+  right: 22px;
+  bottom: 80px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: var(--shadow-card);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 200ms ease, transform 200ms ease;
+  pointer-events: none;
+  z-index: 500;
+}
+.keybinds-toast.show { opacity: 1; transform: translateY(0); }
+.keybinds-toast b {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--info);
+  letter-spacing: 0.1em;
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+/* Advisory toast — coral-tinted card with pulse-in, bottom-right. */
+.advisory-toast {
+  position: fixed;
+  right: 22px;
+  bottom: 80px;
+  max-width: 360px;
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-card), inset 0 0 0 2px var(--advisory);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.45;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 200ms ease, transform 200ms ease;
+  pointer-events: auto;
+  z-index: 450;
+  cursor: pointer;
+}
+.advisory-toast.show { opacity: 1; transform: translateY(0); }
+.advisory-toast b {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--advisory);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 900;
+}
+.advisory-toast p { margin: 0; }
+.advisory-toast .toast-dismiss {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.advisory-toast:hover .toast-dismiss { background: var(--advisory-soft); color: var(--advisory); }
+
+.rebuild-toast {
+  position: fixed;
+  top: 22px; right: 22px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--good-soft);
+  color: var(--good);
+  font-size: 12px; font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  z-index: 500;
+  pointer-events: none;
+}
+.rebuild-toast.show { opacity: 1; }
+
+.keybinds-toast kbd {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 4px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+}
+.cs-pill b, .gold-pill b { color: var(--text); font-size: 20px; font-weight: 900; }
+.gold-pill b { color: var(--gold); }
+.gold-pill .g-icon {
+  font-style: normal;
+  color: var(--gold);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+}
+.hp        { font-size: 20px; color: var(--text-dim);  font-weight: 900; letter-spacing: 0.02em; transition: color 180ms ease; }
+.hp.hp-critical { color: var(--bad); text-shadow: 0 0 12px rgba(240,126,139,0.4); animation: hpBlink 1.4s ease-in-out infinite; }
+.hp.hp-low      { color: var(--gold); }
+.hp.hp-mid      { color: var(--good); }
+.hp.hp-high     { color: var(--text-dim); }
+.hp.hp-dead     { color: var(--canvas); background: var(--bad); padding: 3px 11px; border-radius: 999px; letter-spacing: 0.12em; }
+@keyframes hpBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+
+/* win-pill starts the right-aligned group on header row 2 — auto-margin
+ * here pushes it (and everything after: trend, advisory, status, heart)
+ * against the right edge of the row. */
+.win-pill {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  /* (2026-04-25) Horizontal-center the {value · WIN} pair inside the
+   * fixed 125 px pill so a 2-digit (50%) and 3-digit (100%) read both
+   * sit visually centered rather than left-pushed. */
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 11px 4px 13px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  background: var(--surface);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  transition: background-color 600ms ease, color 600ms ease, box-shadow 600ms ease;
+}
+.win-pill.win-strong { box-shadow: 0 0 12px rgba(127,209,154,0.25); }
+.win-pill.win-losing { box-shadow: 0 0 12px rgba(240,126,139,0.25); }
+.win-pill.hidden { display: none; }
+.win-pill b { font-size: 20px; }
+.win-pill .win-pct-label { color: var(--text-faint); font-size: 20px; letter-spacing: 0.08em; font-weight: 700; }
+.win-pill.win-strong { background: var(--good-soft); color: var(--good); }
+.win-pill.win-even   { background: var(--surface); color: var(--text); }
+.win-pill.win-behind { background: var(--gold-soft); color: var(--gold); }
+.win-pill.win-losing { background: var(--bad-soft);  color: var(--bad); }
+
+.advisory-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 11px;
+  border-radius: 999px;
+  background: var(--advisory-soft);
+  color: var(--advisory);
+  font-weight: 900; font-size: 20px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  position: relative;
+  /* margin-left:auto removed — only .win-pill has the right-push anchor
+   * on row 2. Having it on both created a 50/50 free-space split that
+   * visually separated win/trend from advisory/heartbeat. */
+  transition: transform 200ms ease;
+}
+.advisory-badge.hidden { display: none; }
+.advisory-badge::before {
+  content: "⚠ ";
+  font-weight: 900;
+}
+.advisory-badge:hover { filter: brightness(1.15); }
+
+/* Cross-session digest icon — neighbour of advisory-badge. Static-pill
+ * footprint; background tint communicates state:
+ *   neutral  = nothing to surface
+ *   warn     = minor pattern (mild slump, late-night plays)
+ *   alert    = cold streak / stop-playing recommendation
+ * Click opens #digest-popout overlay. */
+.digest-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 11px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-faint);
+  font-weight: 900; font-size: 20px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  position: relative;
+  transition: filter 200ms ease;
+}
+.digest-icon:hover { filter: brightness(1.15); }
+.digest-icon::before {
+  content: "⟳ ";
+  opacity: 0.85;
+}
+.digest-icon.warn  { background: var(--gold-soft); color: var(--gold); }
+.digest-icon.alert { background: var(--bad-soft);  color: var(--bad); }
+
+/* Digest popout — modal-like overlay, centered, dark backdrop. */
+.digest-popout {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9500;
+}
+.digest-popout.hidden { display: none; }
+.digest-popout-body {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  border: 1px solid rgba(255,255,255,0.08);
+  width: min(560px, 90vw);
+  max-height: 82vh;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.digest-popout-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: var(--surface-head);
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 15px;
+  letter-spacing: 0.18em;
+  font-weight: 900;
+  color: var(--info);
+  text-transform: uppercase;
+}
+.digest-popout-head button {
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  font-size: 24px;
+  font-weight: 900;
+  cursor: pointer;
+  width: 28px; height: 28px;
+  border-radius: 4px;
+}
+.digest-popout-head button:hover { background: var(--bad-soft); color: var(--bad); }
+.digest-popout-content {
+  padding: 14px 18px 18px 18px;
+  overflow-y: auto;
+}
+.digest-popout-advice {
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: var(--surface-alt);
+  border-left: 3px solid var(--info);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* TOP INSIGHTS list inside the digest popout — populated from
+ * /api/digest. Severity tone drives the left border color. */
+.digest-insights-head {
+  margin: 16px 0 6px 0;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.digest-insights-head .dim {
+  margin-left: 6px;
+  color: var(--text-faint);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.digest-insights {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.digest-insights .ins-row {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 10px;
+  padding: 6px 10px;
+  background: var(--surface-alt);
+  border-left: 3px solid var(--text-faint);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.digest-insights .ins-row.tone-alert { border-left-color: var(--bad); }
+.digest-insights .ins-row.tone-warn  { border-left-color: var(--gold); }
+.digest-insights .ins-row.tone-ok    { border-left-color: var(--good); }
+.digest-insights .ins-tag {
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  align-self: center;
+}
+.digest-insights .ins-msg { color: var(--text); }
+.digest-insights .dim { color: var(--text-faint); padding: 4px 8px; }
+.advisory-badge.pulse {
+  animation: advPulse 1.8s ease-in-out infinite;
+}
+@keyframes advPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240,126,139,0.0); }
+  50%      { box-shadow: 0 0 0 8px rgba(240,126,139,0.25); }
+}
+
+.pill {
+  padding: 7px 18px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  background: var(--surface);
+}
+.pill.pending   { color: var(--gold); border-color: var(--gold-soft); }
+.pill.connected { color: var(--good); border-color: var(--good-soft); }
+.pill.stale     { color: var(--bad);  border-color: var(--bad-soft); }
+.pill.pill-pulse { animation: pillPulse 600ms ease-out; }
+@keyframes pillPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(127,209,154,0); }
+  35%  { box-shadow: 0 0 0 6px rgba(127,209,154,0.25); }
+  100% { box-shadow: 0 0 0 0 rgba(127,209,154,0); }
+}
+.hb { color: var(--text-dim); opacity: 0.7; font-size: 20px; font-weight: 900; font-variant-numeric: tabular-nums; transition: color 300ms ease; }
+.hb.hb-pulse { animation: hbPulse 800ms ease-out; }
+@keyframes hbPulse {
+  0%   { color: var(--bad); opacity: 1; text-shadow: 0 0 8px rgba(240,126,139,0.7); }
+  100% { color: var(--text-dim); opacity: 0.7; text-shadow: none; }
+}
+
+/* ───── 2×3 panel grid ─────────────────────────────────────────── */
+/* (2026-04-25) Layout swap: NEXT+STATS moved from right column to left,
+ * MAP STATE moved from left to right. (2026-04-26) MAP STATE column
+ * widened to 1fr per user — matches the NEXT/STATS column on the left
+ * (its original sizing before the swap). Center column kept at 1.1fr
+ * for the wider RIGHT NOW / ITEM BUILD copy. */
+main {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 18px;
+  padding: 6px 18px 14px 18px;
+  flex: 1 1 auto;   /* fills whatever's left after header/activity/input/footer */
+  min-height: 0;    /* allow children to shrink below their content size */
+}
+/* Explicit grid placement (post-swap):
+ *   col 1 (left)   : NEXT (row 1) + STATS (row 2)
+ *   col 2 (center) : RIGHT NOW (row 1) + ITEM BUILD (row 2)
+ *   col 3 (right)  : MAP STATE (spans both rows) */
+.panel-next       { grid-column: 1; grid-row: 1; }
+.panel-adaptation { grid-column: 1; grid-row: 2; }
+.panel-right-now  { grid-column: 2; grid-row: 1; }
+.panel-item-build { grid-column: 2; grid-row: 2; }
+.panel-minimap    { grid-column: 3; grid-row: 1 / span 2; }
+
+.minimap-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;     /* left-column panel spans 2 rows — content can exceed height */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Match-phase strip — three colored segments (early/mid/late) + a
+ * marker showing where in the typical 40-min match arc we are. */
+.phase-strip {
+  position: relative;
+  display: flex;
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-alt);
+}
+.phase-strip.hidden { display: none; }
+.phase-seg { flex: 1; opacity: 0.35; transition: opacity 250ms ease; }
+.phase-seg.phase-early { background: var(--info); }
+.phase-seg.phase-mid   { background: var(--gold); }
+.phase-seg.phase-late  { background: var(--bad);  }
+body[data-phase="early"] .phase-seg.phase-early,
+body[data-phase="mid"]   .phase-seg.phase-mid,
+body[data-phase="late"]  .phase-seg.phase-late { opacity: 1; }
+.phase-marker {
+  position: absolute;
+  top: -2px; bottom: -2px;
+  width: 3px;
+  background: var(--text);
+  border-radius: 999px;
+  transform: translateX(-50%);
+  box-shadow: 0 0 4px rgba(0,0,0,0.6);
+  transition: left 500ms ease;
+}
+.phase-marker.phase-transition {
+  animation: phaseTransition 1.8s ease-out;
+}
+@keyframes phaseTransition {
+  0%   { width: 3px; box-shadow: 0 0 4px rgba(255,255,255,1); }
+  50%  { width: 10px; background: var(--gold); box-shadow: 0 0 20px rgba(245,184,124,0.9); }
+  100% { width: 3px; box-shadow: 0 0 4px rgba(0,0,0,0.6); }
+}
+.minimap-body::-webkit-scrollbar { width: 6px; }
+.minimap-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.minimap-state {
+  font-size: 16px;
+  color: var(--text-dim);
+  padding: 4px 12px;
+  background: var(--surface-alt);
+  border-radius: var(--radius-sm);
+  border-left: 4px solid var(--border);
+  font-weight: 700;
+  text-align: center;
+  /* 2026-04-26: keep pill on its own line, prevent left-clip when text
+   * is longer than the panel width during transient states. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.minimap-state.hidden { display: none; }
+.minimap-state.live {
+  color: var(--good);
+  border-left-color: var(--good);
+  background: var(--good-soft);
+}
+/* Heartbeat dot inside the state line — pulses on every state poll so
+ * the user can read "this is live" peripherally instead of staring at
+ * static text. The .pulse class is added by JS each render and removed
+ * on animationend so the next render re-fires the animation. */
+.minimap-state .mm-heart {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--good);
+  margin: 0 6px 1px 0;
+  vertical-align: middle;
+  opacity: 0.55;
+  transition: opacity 0.2s;
+}
+.minimap-state .mm-heart.pulse {
+  animation: mmHeartPulse 0.9s ease-out;
+}
+@keyframes mmHeartPulse {
+  0%   { transform: scale(1.0); opacity: 1;
+         box-shadow: 0 0 0 0 rgba(127,209,154,0.6); }
+  60%  { transform: scale(1.5); opacity: 0.9;
+         box-shadow: 0 0 0 6px rgba(127,209,154,0); }
+  100% { transform: scale(1.0); opacity: 0.55;
+         box-shadow: 0 0 0 0 rgba(127,209,154,0); }
+}
+.minimap-state .mm-age {
+  margin-left: 6px;
+  color: var(--text-faint);
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+.minimap-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+/* Gold diff bar — horizontal track, centered at 50%, fill extends right
+ * (we're ahead / mint) or left (we're behind / coral). Clamped ±10k. */
+.gold-diff {
+  margin-bottom: 10px;
+}
+.gold-diff.hidden { display: none; }
+.gold-diff-track {
+  position: relative;
+  height: 8px;
+  background: var(--surface-alt);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.gold-diff-fill {
+  position: absolute;
+  top: 0; bottom: 0;
+  border-radius: inherit;
+  transition: left 400ms ease, right 400ms ease, background-color 200ms ease;
+}
+.gold-diff-fill.ahead  { background: linear-gradient(90deg, transparent 0%, var(--good) 100%); }
+.gold-diff-fill.behind { background: linear-gradient(90deg, var(--bad) 0%,  transparent 100%); }
+.gold-diff-center {
+  position: absolute;
+  left: 50%; top: -2px; bottom: -2px;
+  width: 2px;
+  background: var(--border);
+  transform: translateX(-50%);
+}
+.gold-diff-label {
+  margin-top: 4px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.gold-diff-label #gold-diff-val.gd-ahead  { color: var(--good); font-weight: 900; font-size: 14px; }
+.gold-diff-label #gold-diff-val.gd-behind { color: var(--bad);  font-weight: 900; font-size: 14px; }
+
+.mm-chips {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.mm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.mm-chip b {
+  color: var(--text);
+  font-weight: 900;
+}
+.mm-chip .obj-ico {
+  width: 14px;
+  height: 14px;
+  color: var(--text-faint);
+}
+
+/* Team strips — ally (mint ring) and enemy (coral ring). Shared tile shape. */
+.team-strip {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-soft);
+}
+.team-strip.hidden { display: none; }
+.team-strip-label {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+.ally-strip  .team-strip-label { color: var(--good); }
+.enemy-strip .team-strip-label { color: var(--bad); }
+.team-strip-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.team-tile-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.tile-spells {
+  display: flex;
+  gap: 2px;
+}
+.tile-spell {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: var(--surface-alt);
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  font-size: 10px;
+  font-weight: 900;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+.tile-spell img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.tile-spell.no-icon img { display: none; }
+.tile-spell.on-cd img { opacity: 0.35; filter: grayscale(0.6); }
+.tile-spell.cd-ready-flash {
+  animation: spellReady 1.1s ease-out;
+}
+.tile-spell.cd-ready-flash img { opacity: 1 !important; filter: none !important; }
+@keyframes spellReady {
+  0%   { box-shadow: 0 0 0 0 rgba(127,209,154,0.0), inset 0 0 0 1px rgba(255,255,255,0.04); }
+  35%  { box-shadow: 0 0 10px 3px rgba(127,209,154,0.7), inset 0 0 0 2px var(--good); }
+  100% { box-shadow: 0 0 0 0 rgba(127,209,154,0.0), inset 0 0 0 1px rgba(255,255,255,0.04); }
+}
+.tile-spell .cd-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--gold);
+  text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  letter-spacing: 0;
+}
+.team-tile {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--surface-alt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  font-weight: 900;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.team-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.team-tile.no-icon { color: var(--text-faint); }
+
+/* Default ring colors: ally = mint-soft, enemy = coral-soft. */
+.ally-strip  .team-tile { box-shadow: 0 0 0 2px var(--good-soft), inset 0 0 0 1px rgba(255,255,255,0.04); }
+.enemy-strip .team-tile { box-shadow: 0 0 0 2px var(--bad-soft),  inset 0 0 0 1px rgba(255,255,255,0.04); }
+.ally-strip  .team-tile.no-icon { background: var(--good-soft); }
+.enemy-strip .team-tile.no-icon { background: var(--bad-soft);  color: var(--bad); }
+
+/* "You are here" indicator on the ally strip. */
+.team-tile.is-self {
+  box-shadow: 0 0 0 3px var(--gold), 0 0 12px rgba(245,184,124,0.4);
+  transform: scale(1.08);
+}
+
+/* Hard-matchup highlight on the enemy strip. */
+.team-tile.danger {
+  box-shadow: 0 0 0 3px var(--bad), 0 0 10px rgba(240,126,139,0.5);
+  animation: enemyDangerPulse 2.2s ease-in-out infinite;
+}
+.team-tile.favorable {
+  box-shadow: 0 0 0 3px var(--good), 0 0 10px rgba(127,209,154,0.45);
+}
+/* Target-priority crosshair — gold crosshair overlay for the coach's
+ * "focus this one" call. Draws as pseudo-elements so it composites
+ * cleanly over whatever portrait is there. */
+.team-tile.target {
+  position: relative;
+  box-shadow: 0 0 0 3px var(--gold), 0 0 16px rgba(245,184,124,0.55);
+  animation: targetPulse 1.6s ease-in-out infinite;
+}
+.team-tile.target::before,
+.team-tile.target::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.team-tile.target::before {
+  background:
+    linear-gradient(to bottom, transparent 47%, var(--gold) 47%, var(--gold) 53%, transparent 53%),
+    linear-gradient(to right,  transparent 47%, var(--gold) 47%, var(--gold) 53%, transparent 53%);
+  mix-blend-mode: screen;
+  opacity: 0.6;
+}
+@keyframes targetPulse {
+  0%,100% { box-shadow: 0 0 0 3px var(--gold), 0 0 10px rgba(245,184,124,0.4); }
+  50%     { box-shadow: 0 0 0 3px var(--gold), 0 0 22px rgba(245,184,124,0.85); }
+}
+
+.team-tile.dead { position: relative; }
+.team-tile.dead img { filter: grayscale(0.9) brightness(0.45); }
+.team-tile .respawn-timer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bad);
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+  font-variant-numeric: tabular-nums;
+}
+@keyframes enemyDangerPulse {
+  0%, 100% { box-shadow: 0 0 0 3px var(--bad), 0 0 8px  rgba(240,126,139,0.35); }
+  50%      { box-shadow: 0 0 0 3px var(--bad), 0 0 16px rgba(240,126,139,0.75); }
+}
+.minimap-img-wrap {
+  position: relative;
+  background: var(--surface-alt);
+  border-radius: var(--radius-sm);
+  padding: 6px;
+}
+.mm-canvas-stack {
+  position: relative;
+  width: 100%;
+  /* 2026-04-24: bumped 320 → 460 so the minimap fills more of the left
+   * column (≈415px inner at iPad 1536, ≈530px at 1920). The map asset is
+   * 512×512 so upscaling to 460 is still within source resolution. */
+  max-width: 460px;
+  margin: 0 auto;
+  aspect-ratio: 1;
+  background: var(--surface-alt);
+  border-radius: var(--radius-sm);
+}
+/* Backdrop map — uses ::before so the filter doesn't cascade to the ZOI
+ * canvas or position-dot canvas layered on top. */
+.mm-canvas-stack::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: url("/data/ddragon/16.8.1/img/map/map11.png") center/100% 100% no-repeat;
+  filter: saturate(0.55) brightness(0.7);
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  animation: mapFadeIn 500ms ease-out 100ms forwards;
+}
+@keyframes mapFadeIn {
+  to { opacity: 1; }
+}
+.panel-minimap.mode-arena .mm-canvas-stack::before,
+.panel-minimap.mode-tft .mm-canvas-stack::before {
+  display: none;
+}
+.panel-minimap.mode-aram .mm-canvas-stack::before {
+  background-image: url("/data/ddragon/16.8.1/img/map/map12.png");
+}
+.mm-canvas-stack.hidden { display: none; }
+
+.zoi-debug {
+  margin-top: 6px;
+  padding: 4px 10px;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 10px;
+  color: var(--text-faint);
+  background: var(--surface-alt);
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.02em;
+}
+.zoi-debug.hidden { display: none; }
+
+.mm-canvas-stack > * {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: var(--radius-sm);
+}
+.mm-zoi-canvas { pointer-events: none; z-index: 2; opacity: 0; transition: opacity 300ms ease; }
+.mm-canvas-stack:not(.hidden) .mm-zoi-canvas { opacity: 1; }
+.mm-canvas-stack::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  border-radius: inherit;
+  /* Very subtle vignette — just enough to frame the corners without
+   * dimming the near-edge region where Dragon / Baron markers sit.
+   * (2026-04-24: softened with the map size bump so the larger minimap
+   * reads cleaner and closer to the live in-game minimap aesthetic.) */
+  background: radial-gradient(
+    ellipse at center,
+    transparent 80%,
+    rgba(23, 24, 33, 0.10) 95%,
+    rgba(23, 24, 33, 0.18) 100%
+  );
+}
+.mm-pos-canvas { pointer-events: none; z-index: 3; }
+.minimap-img-wrap.hidden { display: none; }
+#mm-img {
+  display: block;
+  width: 100%;
+  max-width: 460px;    /* matches .mm-canvas-stack — kept in sync 2026-04-24 */
+  margin: 0 auto;
+  image-rendering: pixelated;
+  border-radius: var(--radius-sm);
+}
+/* (2026-04-26) After bumping ARAM/Brawl max-width 460→580 the live
+ * screenshot crop started looking blocky under image-rendering:
+ * pixelated. Use bilinear (auto) for ARAM/Brawl where the upscale
+ * factor exceeds 1.0; SR keeps pixelated since 460 ≤ source size. */
+body[data-mode="aram"]  #mm-img,
+body[data-mode="brawl"] #mm-img { image-rendering: auto; }
+.minimap-img-caption {
+  display: block;
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--text-faint);
+  text-align: center;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+.minimap-img-wrap.stale #mm-img { opacity: 0.5; filter: grayscale(0.5); }
+.latency-stat {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+.latency-stat.slow   { color: var(--gold); }
+.latency-stat.severe { color: var(--bad); }
+.analyze-stat {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+.analyze-stat.pending { color: var(--gold); }
+.analyze-stat.running { color: var(--good); }
+.footer-btn {
+  background: var(--surface);
+  color: var(--text-dim);
+  border: none;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  cursor: pointer;
+}
+.footer-btn:hover    { background: var(--info-soft); color: var(--info); }
+.footer-btn:disabled { opacity: 0.4; cursor: wait; }
+
+.adapt-notice {
+  padding: 8px 14px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  background: var(--surface-alt);
+}
+.adapt-notice.hidden  { display: none; }
+.adapt-notice.pending { color: var(--gold); border-left-color: var(--gold); background: var(--gold-soft); }
+.adapt-notice.running { color: var(--good); border-left-color: var(--good); background: var(--good-soft); }
+
+.trend-pill {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.trend-pill.hidden  { display: none; }
+/* Trend pill content like "30d 45% ↑" must stay on one line — in narrow
+ * pill widths, it was wrapping to two visual rows. */
+.trend-pill { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trend-pill.up      { color: var(--good); background: var(--good-soft); }
+.trend-pill.down    { color: var(--bad);  background: var(--bad-soft); }
+.trend-pill.neutral { color: var(--text-dim); }
+
+/* Augments pill — lives on header row 2, right of the trend pill. Row 2
+ * has more horizontal room than row 1, so the pill reads larger + wider
+ * without increasing the top-bar height. Hard 1-line cap still enforced:
+ * overflow ellipsizes so the pill can never wrap onto a 3rd row. */
+.augments-pill {
+  /* (2026-04-26) Auto-expand to text content per user — was clipping
+   * "Goredrink, Ice Cold" + 3rd augment with ellipsis. Removed fixed
+   * width and ellipsis; pill now grows to fit. Soft cap via max-width
+   * keeps it from pushing the heartbeat off the row at 4+ long names. */
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 1.4;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--gold-soft);
+  color: var(--gold);
+  font-size: 20px;
+  font-weight: 700;
+  max-width: 100%;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+}
+.augments-pill::before {
+  content: "⬢ ";
+  margin-right: 4px;
+  opacity: 0.8;
+}
+.augments-pill.hidden { display: none; }
+/* Not-supported variant: muted colors so it reads as a placeholder rather
+ * than "here is your augment advice". */
+.augments-pill.no-support {
+  background: var(--surface-alt);
+  color: var(--text-faint);
+  font-weight: 600;
+}
+
+.panel {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  transition: box-shadow 250ms ease, transform 250ms ease;
+  contain: layout paint;
+}
+/* Right Now is the hierarchy winner — slightly brighter, stronger shadow,
+ * bigger radius. Eye sorts to it first even without reading. */
+.panel-right-now {
+  background: linear-gradient(180deg, var(--surface-head) 0%, var(--surface) 45%);
+  border-radius: calc(var(--radius) + 2px);
+  box-shadow: 0 10px 36px -12px rgba(0,0,0,0.7),
+              0 3px 10px rgba(0,0,0,0.4),
+              inset 0 0 0 1px rgba(255,255,255,0.02);
+}
+/* Brief flash when the action text updates — gold inset ring only (no
+ * scale) so the panel stays dimensionally stable. */
+.panel-right-now.rn-fresh {
+  box-shadow: 0 10px 36px -12px rgba(0,0,0,0.7),
+              0 3px 10px rgba(0,0,0,0.4),
+              inset 0 0 0 2px var(--gold);
+}
+
+/* Zen mode — Z keybind (default-off 2026-04-24) hides Next + Adaptation
+ * and re-composes the grid so Minimap (col 1, both rows), Right Now
+ * (col 2 row 1), and Item Build (col 2 row 2) own the full real estate.
+ * Also hides the below-grid QUEUE strip and the Ask-Agent input bar —
+ * zen is a focus-only reading mode, input + queue are noise there.
+ * `display: none` (rather than visibility: hidden) so the freed ~110 px
+ * propagates upward through the body flex column into `main` (flex: 1 1
+ * auto), which lets the Map State panel actually expand vertically to
+ * the footer rather than just leaving dead space. The footer itself
+ * stays pinned at viewport bottom because body is `height: 100%` with
+ * footer as the last flex child — its Y position doesn't move when
+ * its predecessors disappear. */
+body[data-zen="1"] main {
+  grid-template-columns: 1fr 1.2fr;
+}
+body[data-zen="1"] .panel-next,
+body[data-zen="1"] .panel-adaptation,
+body[data-zen="1"] #activity-strip,
+body[data-zen="1"] #input-bar {
+  display: none;
+}
+/* Re-pin the three surviving panels so the 2-col zen grid actually places
+ * them. The non-zen layout puts NEXT+ADAPT in col 1, RIGHT NOW+ITEM BUILD
+ * in col 2, MAP in col 3 — but in zen we only have 2 columns, so MAP at
+ * col 3 fell into an auto-created narrow third column and the freed col 1
+ * sat empty. (2026-04-26 user-flipped layout regression.) */
+body[data-zen="1"] .panel-right-now  { grid-column: 1; grid-row: 1; }
+body[data-zen="1"] .panel-item-build { grid-column: 1; grid-row: 2; }
+body[data-zen="1"] .panel-minimap    { grid-column: 2; grid-row: 1 / span 2; }
+/* In zen mode the Map State panel inherits the freed-up height from the
+ * dropped Next + Adaptation + activity-strip + input-bar siblings. Lift
+ * the minimap cap (zen only) so the canvas (aspect-ratio: 1) grows and
+ * the panel reads as filled. Cap history (2026-04-24): 720 pushed all
+ * objectives off-screen, 600 clipped Baron + Herald, 540 clipped only
+ * Herald, 510 left Herald partially clipped at the panel's bottom edge.
+ * 480 gives Herald comfortable clearance while still ~4 % bigger than
+ * the non-zen 460 cap. The non-zen cap stays at 460 so the 3-col grid
+ * layout doesn't get a too-tall left column. */
+body[data-zen="1"] .mm-canvas-stack,
+body[data-zen="1"] #mm-img {
+  max-width: 480px;
+}
+/* Zen headline can go to 90px; 2 lines at 90 × 1.1 ≈ 198. */
+body[data-zen="1"] .panel-right-now .action { max-height: 210px; }
+/* (2026-04-24) DEV PREVIEW banner keeps identical dimensions across zen
+ * on/off so Z-spamming doesn't introduce layout shifts that complicate
+ * visual diffs while iterating. */
+/* Small "ZEN" tag in the corner of the Right Now header so the user
+ * knows they're in focus-only mode. Press Z again to exit. */
+body[data-zen="1"] .panel-right-now .panel-head::after {
+  content: "ZEN ⟨Z⟩";
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--gold-soft);
+  color: var(--gold);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+/* Spatial danger mode — when user's dot sits in enemy-colored ZOI, the
+ * Right Now panel and the canvas-stack get a subtle coral outline so
+ * the warning is peripheral-readable, not just a pill in the header. */
+body[data-zone="enemy"] .panel-right-now {
+  box-shadow: 0 10px 36px -12px rgba(0,0,0,0.7),
+              0 3px 10px rgba(0,0,0,0.4),
+              inset 0 0 0 2px var(--bad);
+}
+body[data-zone="enemy"] .mm-canvas-stack {
+  box-shadow: 0 0 0 2px var(--bad), 0 0 16px rgba(240,126,139,0.3);
+}
+/* Deep-enemy — pulsing thicker ring for the existential-threat case. */
+body[data-zone="deep"] .panel-right-now {
+  box-shadow: 0 10px 36px -12px rgba(0,0,0,0.7),
+              0 3px 10px rgba(0,0,0,0.4),
+              inset 0 0 0 3px var(--bad);
+  animation: deepZoneWarn 1.6s ease-in-out infinite;
+}
+body[data-zone="deep"] .mm-canvas-stack {
+  box-shadow: 0 0 0 3px var(--bad), 0 0 24px rgba(240,126,139,0.55);
+}
+.zone-pill.zone-deep {
+  animation: zoneWarn 0.9s ease-in-out infinite;
+  background: var(--bad);
+  color: var(--canvas);
+}
+@keyframes deepZoneWarn {
+  0%,100% { box-shadow: 0 10px 36px -12px rgba(0,0,0,0.7), 0 3px 10px rgba(0,0,0,0.4), inset 0 0 0 3px var(--bad); }
+  50%     { box-shadow: 0 10px 36px -12px rgba(0,0,0,0.7), 0 3px 10px rgba(0,0,0,0.4), inset 0 0 0 3px var(--bad), 0 0 28px rgba(240,126,139,0.55); }
+}
+.panel-head {
+  padding: 10px 18px 6px 18px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: transparent;
+  flex-shrink: 0;
+}
+.panel-title {
+  font-size: 15px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-weight: 700;
+}
+.panel-right-now  .panel-title { color: var(--gold); font-size: 16px; letter-spacing: 0.22em; }
+.panel-next       .panel-title { color: var(--info); }
+.panel-minimap    .panel-title { color: var(--text-dim); }
+.panel-item-build .panel-title { color: var(--text-dim); }
+.panel-adaptation .panel-title { color: var(--text-faint); }
+/* Compact empty state — don't eat vertical space for placeholder em-dashes. */
+.panel-adaptation.adapt-empty .adapt-section-head,
+.panel-adaptation.adapt-empty #adapt-counters,
+.panel-adaptation.adapt-empty #adapt-items,
+.panel-adaptation.adapt-empty #adapt-streaks,
+.panel-adaptation.adapt-empty .adapt-footer { display: none; }
+/* Round 44: no-scroll glanceable panels — content is clipped, not
+ * scrolled. Shrink type/padding here before re-enabling overflow. */
+.panel-body {
+  padding: 6px 18px 14px 18px;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
+/* Item-build + Adaptation panels can exceed cell height with dense data;
+ * allow scroll so nothing clips off-panel. */
+.panel-item-build .panel-body,
+.panel-adaptation .panel-body {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.panel-item-build .panel-body::-webkit-scrollbar,
+.panel-adaptation .panel-body::-webkit-scrollbar { width: 6px; }
+.panel-item-build .panel-body::-webkit-scrollbar-thumb,
+.panel-adaptation .panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* (2026-04-24) Item Build horizontal padding trimmed so 4-icon OWNED +
+ * 3-icon RECOMMENDED rows fit without horizontal scroll at the typical
+ * panel width. Reduces left/right buffer from 18px to 10px; tile gap
+ * shrunk below. Vertical padding unchanged so the panel title + build
+ * section rhythm stays intact. */
+.panel-item-build .panel-body {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+/* (2026-04-24) In-game STATS panel now fills the full grid cell — same
+ * height as Item Build — and scrolls when the 23-field list exceeds the
+ * cell. Previously capped to 240px; the user wants the full real estate. */
+
+/* Aftergame / client-mode (queue #3) — hide Item Build so SESSION SUMMARY
+ * (Right Now) absorbs the vertical space. The design says: no "next item
+ * to buy" outside live gameplay; Item Build is a live-game panel only. */
+body[data-mode="client"] .panel-item-build {
+  display: none;
+}
+body[data-mode="client"] .panel-right-now {
+  grid-row: 1 / span 2;
+}
+
+/* MAP STATE panel body swap (queue #3 aftergame reassignment).
+ * In-game shows the objectives grid; client/aftergame shows WHAT WENT. */
+#mm-whatwent-view { display: none; }
+body[data-mode="client"] #mm-objectives-view { display: none; }
+body[data-mode="client"] #mm-whatwent-view   { display: block; }
+
+.what-went-view {
+  padding: 10px 12px 6px 12px;
+}
+.what-went-section { margin-bottom: 14px; }
+.what-went-section:last-child { margin-bottom: 0; }
+.what-went-title {
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.what-went-good .what-went-title { color: var(--good); border-bottom-color: var(--good-soft); }
+.what-went-bad  .what-went-title { color: var(--bad);  border-bottom-color: var(--bad-soft); }
+.what-went-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.what-went-list li {
+  padding: 5px 0 5px 18px;
+  position: relative;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text);
+}
+.what-went-good .what-went-list li::before {
+  content: "+";
+  position: absolute;
+  left: 2px;
+  top: 5px;
+  color: var(--good);
+  font-weight: 900;
+}
+.what-went-bad .what-went-list li::before {
+  content: "−";
+  position: absolute;
+  left: 2px;
+  top: 5px;
+  color: var(--bad);
+  font-weight: 900;
+}
+.what-went-list li.ww-empty {
+  color: var(--text-faint);
+  font-style: italic;
+}
+.what-went-list li.ww-empty::before { content: ""; }
+/* STATS view (in-game) vs ADAPTATION view (client/aftergame).
+ * Mode-toggled visibility — in-game shows STATS, other modes keep the
+ * legacy ADAPTATION markup. */
+#stats-view { display: none; }
+#adapt-view { display: block; }
+body[data-mode="sr"] #stats-view,
+body[data-mode="aram"] #stats-view,
+body[data-mode="arena"] #stats-view,
+body[data-mode="brawl"] #stats-view,
+body[data-mode="tft"] #stats-view  { display: block; }
+body[data-mode="sr"] #adapt-view,
+body[data-mode="aram"] #adapt-view,
+body[data-mode="arena"] #adapt-view,
+body[data-mode="brawl"] #adapt-view,
+body[data-mode="tft"] #adapt-view   { display: none; }
+
+/* ARAM/Brawl/Mayhem: no dragons/barons/heralds on the Howling Abyss.
+ * The mm-objectives-view block contains only those three rows, so hide
+ * the whole block in those modes. (2026-04-26 user request mid-game.) */
+body[data-mode="aram"]  #mm-objectives-view,
+body[data-mode="brawl"] #mm-objectives-view { display: none; }
+/* Reclaim the freed-up vertical space: bump the minimap canvas/img cap
+ * in ARAM/Brawl since the objectives row is gone. Non-zen 460→580,
+ * zen 480→640. The canvas keeps aspect-ratio: 1 so width drives height
+ * — the panel-minimap container already provides the column space. */
+body[data-mode="aram"]  .mm-canvas-stack,
+body[data-mode="aram"]  #mm-img,
+body[data-mode="brawl"] .mm-canvas-stack,
+body[data-mode="brawl"] #mm-img { max-width: 580px; }
+body[data-zen="1"][data-mode="aram"]  .mm-canvas-stack,
+body[data-zen="1"][data-mode="aram"]  #mm-img,
+body[data-zen="1"][data-mode="brawl"] .mm-canvas-stack,
+body[data-zen="1"][data-mode="brawl"] #mm-img { max-width: 640px; }
+
+/* STATS field groups — a title row + stacked label/value rows per group.
+ * Tabular-nums keep numbers from jittering as values update. Font sizes
+ * bumped for readability from ~4ft viewing distance. */
+.stats-view {
+  font-variant-numeric: tabular-nums;
+}
+.stats-group {
+  padding: 8px 0 10px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.stats-group:last-child { border-bottom: none; }
+/* (2026-04-25) Stage-gated visibility for STATS groups. body[data-phase]
+ * is set live by `_applyGamePhase(gtS)` in dashboard.js (early < 15min,
+ * mid 15-25min, late 25min+). Each .stats-group carries data-stage:
+ *   "early"     — LANING PHASE (only relevant in laning)
+ *   "mid late"  — COMBAT/TEAMFIGHT, MAP PRESENCE
+ *   "all"       — IDENTITY, RANK / SESSION (always visible)
+ * Out-of-game (client/aftergame mode) shows ALL groups for review —
+ * the body:not([data-mode="client"]) gate skips filtering there. */
+body:not([data-mode="client"])[data-phase="early"] .stats-group:not([data-stage~="early"]):not([data-stage="all"]) { display: none; }
+body:not([data-mode="client"])[data-phase="mid"]   .stats-group:not([data-stage~="mid"]):not([data-stage="all"])   { display: none; }
+body:not([data-mode="client"])[data-phase="late"]  .stats-group:not([data-stage~="late"]):not([data-stage="all"])  { display: none; }
+.stats-group-title {
+  font-size: 15px;
+  letter-spacing: 0.16em;
+  /* Distinct accent (info cyan) so group headers read visibly separate
+   * from the text-faint field labels. Keeps the 5 section boundaries
+   * glance-parseable in a dense scroll. */
+  color: var(--info);
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.stats-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 16px;
+  align-items: baseline;
+  line-height: 1.35;
+}
+.stats-row .stats-label {
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  font-size: 13px;
+}
+.stats-row .stats-val {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 16px;
+  word-break: break-word;
+}
+
+/* GAME SENSE block — shown at the top of adapt-view in client/aftergame
+ * modes. Three phase rows (Early / Mid / Late) each carry one descriptor
+ * word from the approved 12-word vocabulary (Chaotic, Tilted, Drowning,
+ * Scattered, Hesitant, Reactive, Steady, Composed, Patient, Opportunistic,
+ * Dominant, On Point) plus a short blurb. Below them: a trend line
+ * aggregating the last N matches' phase ratings. */
+.game-sense-block {
+  padding: 10px 0 14px 0;
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 10px;
+}
+.game-sense-title {
+  font-size: 15px;
+  letter-spacing: 0.16em;
+  color: var(--info);
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.game-sense-row {
+  display: grid;
+  grid-template-columns: 72px 140px 1fr;
+  gap: 12px;
+  align-items: baseline;
+  padding: 6px 0;
+  font-size: 16px;
+}
+.game-sense-phase {
+  color: var(--text-faint);
+  letter-spacing: 0.14em;
+  font-weight: 900;
+  font-size: 13px;
+}
+.game-sense-word {
+  color: var(--gold);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  font-size: 18px;
+  text-transform: uppercase;
+}
+/* Tone-tinted words map to the 12-word vocabulary's rough valence. */
+.game-sense-word.v-bad  { color: var(--bad); }
+.game-sense-word.v-warn { color: var(--gold); }
+.game-sense-word.v-ok   { color: var(--text); }
+.game-sense-word.v-good { color: var(--good); }
+.game-sense-blurb {
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.game-sense-trend {
+  margin-top: 12px;
+  padding: 8px 10px;
+  background: var(--surface-alt);
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Staleness indicator — empty/fresh/stale/severe */
+.staleness {
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  color: var(--text-faint);
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+}
+.staleness.fresh  { color: var(--good); background: var(--good-soft); }
+.staleness.stale  { color: var(--gold); background: var(--gold-soft); }
+.staleness.severe { color: var(--bad);  background: var(--bad-soft); }
+.panel.stale  .panel-body { opacity: 0.6; }
+.panel.severe .panel-body { opacity: 0.45; filter: grayscale(0.4); }
+
+.counter {
+  font-size: 15px;
+  color: var(--text-dim);
+}
+
+/* ───── Right Now panel ────────────────────────────────────────── */
+/* Round 44: responsive headline — scales with panel width so it can't
+ * push the immediate/risk/fight lines below the panel clip.
+ * Size history (2026-04-24): 48 → 40 (headline "still very large"),
+ * then 40 → 20 to match the new Next headline size. The hero-scale look
+ * was drowning the immediate/risk rows underneath; weight+color still
+ * differentiate the headline from the 20px body copy below. */
+.action {
+  /* Size-to-content with a hard 2-line cap. 1-line content takes 22px,
+   * 2-line takes 44px, 3+ lines clip at line 2 with ellipsis. Prior
+   * revisions used a fixed 52px slot to keep subsequent rows from
+   * shifting between fixtures — but that reserved ~30px of whitespace
+   * below 1-line headlines (the common case), which is what the user
+   * flagged as "20+ pixel space" (2026-04-24). Layout now flexes by
+   * one line height between 1- and 2-line fixtures; acceptable trade
+   * given the current coach prompts target short headlines. */
+  font-size: 20px;
+  letter-spacing: 0.005em;
+  font-weight: 900;
+  margin-bottom: 4px;
+  word-break: break-word;
+  line-height: 1.1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* Color semantics based on classifyAction() verdict. */
+.action.action-urgent { color: var(--bad); }
+.action.action-fight  { color: var(--gold); }
+.action.action-good   { color: var(--good); }
+.action.action-empty  {
+  color: var(--text-faint);
+  font-size: 20px !important;    /* don't balloon a lonely em-dash via fitText */
+  letter-spacing: 0.12em;
+  opacity: 0.55;
+}
+
+/* Reset-item gold affordability coloring */
+#rn-reset.can-afford  { color: var(--good); font-weight: 900; }
+#rn-reset.short-gold  { color: var(--gold); }
+.action.copied        { animation: copiedFlash 900ms ease-out; }
+@keyframes copiedFlash {
+  0%   { color: var(--good); text-shadow: 0 0 10px rgba(127,209,154,0.5); }
+  100% { text-shadow: none; }
+}
+.copied-bubble {
+  position: absolute;
+  top: -10px;
+  right: 0;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--good);
+  color: var(--canvas);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 200ms ease, transform 500ms ease;
+  pointer-events: none;
+}
+.copied-bubble.show { opacity: 1; transform: translateY(0); }
+.action { position: relative; }
+.immediate {
+  font-size: 20px;
+  color: var(--text);
+  font-weight: 400;
+  line-height: 1.35;
+  margin-bottom: 4px;
+  /* Fixed 2-line slot at the sub-headline font size. Short text still
+   * leaves the box the same height, so subsequent KV rows never shift
+   * between fixtures. (2026-04-24: shrunk from 3-line / 84px + 10px
+   * margin to a 2-line / 54px + 4px margin — the previous 3-line slot
+   * was reserving ~30px of whitespace on typical 2-line coach output.
+   * Coach prompts already cap the immediate around 12 words, so the
+   * 3rd-line escape hatch was rarely used.) */
+  height: 54px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* Arena pregame briefing — dense card (build + augments + combos +
+ * round phasing). Clipped, not scrolled per round 44. */
+.immediate.is-pregame {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-dim);
+  border-left: 3px solid var(--gold-soft);
+  padding-left: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.immediate.is-pregame br { line-height: 1.55; }
+
+/* ───── Next panel ─────────────────────────────────────────────── */
+/* Fixed font with hard 2-line cap via line-clamp. Coach is expected to
+ * produce 1-2 line copy; anything longer is ellipsized rather than shrunk
+ * to an unreadable font size. Size history (2026-04-24): 28 → 24 → 20.
+ * The Right Now headline is now pinned to this same 20px so the two
+ * panel heroes share a size grammar; differentiation is by color (info
+ * lavender here vs gold on Right Now) and vertical position, not size. */
+.action-mid {
+  font-size: 20px;
+  color: var(--info);
+  font-weight: 900;
+  margin-bottom: 10px;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* NEXT body rows — 3-line cap via line-clamp. Wave-state lanes are
+ * now block-display + nowrap (.wave-line) so they're guaranteed
+ * exactly 3 lines, no sub-pixel wrap risk; the older 4-line bump
+ * isn't needed. */
+.panel-next .kv > span:last-child {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* NEXT kv rows min-height locked at 3 lines of body font so short-content
+ * rows reserve the same slot height as long-content rows. Stops rows
+ * from stacking at different Y positions across fixtures. */
+.panel-next .kv { min-height: 90px; }
+
+/* RIGHT NOW kv rows (Risk / Fight rule / Reset) — 2-line cap + fixed
+ * min-height so all three rows are the same height regardless of whether
+ * their content is 1 short sentence or 2 lines of stress text. */
+.panel-right-now .kv > span:last-child {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.panel-right-now .kv { min-height: 68px; }
+
+/* ───── Item Build panel ───────────────────────────────────────── */
+.build-section {
+  padding: 6px 0 10px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.build-section:last-child { border-bottom: none; }
+.build-label {
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.build-value {
+  font-size: 18px;
+  color: var(--text);
+  font-weight: 400;
+  line-height: 1.3;
+  word-break: break-word;
+}
+.build-value.highlight { color: var(--gold); font-weight: 700; }
+
+/* Icon tile row: icon on top, 2-line centered name below. Horizontal
+ * scroll on overflow — keeps OWNED and RECOMMENDED on one row each so
+ * the panel doesn't clip downstream sections. Gaps tightened 2026-04-24
+ * so more tiles fit before the row clips + horizontal scroll appears. */
+.item-tiles {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 6px 7px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  padding-bottom: 4px;
+  /* 64 icon + 6 gap + ~22 2-line label — preserves row; the "need 3444"
+   * cost pill sits as a tag on the icon so it doesn't add tile height. */
+  min-height: 92px;
+}
+.item-tiles.is-path { gap: 4px 5px; }
+.item-tiles::-webkit-scrollbar { height: 6px; }
+.item-tiles::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.item-tile {
+  /* 2026-04-25: 76 → 70 so 6 owned tiles + 5 gaps fit inside the
+   * Item Build panel's column-2 width (~483 CSS px inner at 1920×1080
+   * non-zen with body-zoom 1.33). Was clipping the 6th tile at 76. */
+  width: 70px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.item-arrow { flex-shrink: 0; }
+.item-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  background: var(--surface-alt);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+.item-icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+.item-icon.no-icon::before {
+  content: "?";
+  color: var(--text-faint);
+  font-size: 22px;
+  font-weight: 900;
+}
+.item-name {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.18;
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  /* Clamp to 2 lines with ellipsis — tight but readable at 3ft.
+   * `word-break: normal` + `overflow-wrap: break-word` so multi-word
+   * names break at the space first; only single tokens longer than
+   * the tile width fall through to a mid-word break.
+   * (2026-04-25) Font 12 → 13 + no artificial max-width cap. The
+   * 13px bump alone is enough to push "Doran's Ring", "Mortal
+   * Reminder", "Refillable Potion" etc. to natural 2-line wraps
+   * within the 70px tile width — earlier 56px cap was too narrow
+   * and forced mid-word breaks like "Refillabl / e Potion". */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: normal;
+  overflow-wrap: break-word;
+  hyphens: none;
+  text-align: center;
+  min-height: 2.4em;   /* reserve 2 lines so rows align */
+  /* (2026-04-26) Honor explicit `\n` from per-item display overrides
+   * (e.g. "Morello\nnomicon"). pre-line preserves newlines but still
+   * collapses other whitespace, so existing names render unchanged. */
+  white-space: pre-line;
+}
+.item-tiles.is-path .item-name { color: var(--gold); }
+
+/* "Next to buy" highlight on the first tile of the recommended path. */
+.item-tile.next-up {
+  position: relative;
+}
+.item-tile.next-up .item-icon {
+  box-shadow: 0 0 0 2px var(--gold), 0 0 14px rgba(245,184,124,0.45);
+  animation: nextUpPulse 2.4s ease-in-out infinite;
+}
+.item-tile.next-up.can-afford .item-icon {
+  box-shadow: 0 0 0 2px var(--good), 0 0 14px rgba(127,209,154,0.55);
+  animation: canAffordPulse 1.5s ease-in-out infinite;
+}
+.item-tile.next-up .item-cost {
+  position: absolute;
+  left: 50%;
+  /* (2026-04-25) Moved ABOVE the icon (was overlaying its bottom-edge).
+   * The user couldn't read "need 1240" cleanly when it was sat on top
+   * of the icon art. `.item-tiles:has(.next-up) { padding-top: 22px }`
+   * rule below reserves space so the pill doesn't clip. Font 10 → 13
+   * for legibility (one bump up after the user moved it above-icon). */
+  top: -22px;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--canvas);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  z-index: 2;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+}
+/* Reserve space at the top of any tile-row that contains a next-up
+ * tile so the relocated cost-pill (top: -20) doesn't clip against the
+ * Item Build panel-body's overflow:hidden. Owned tile rows (no next-up)
+ * stay flush — :has scopes the padding to recommended only. */
+.item-tiles:has(.item-tile.next-up) {
+  padding-top: 22px;
+}
+.item-tile.next-up.can-afford .item-cost {
+  color: var(--good);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.6), 0 0 8px rgba(127,209,154,0.4);
+}
+@keyframes nextUpPulse {
+  0%,100% { box-shadow: 0 0 0 2px var(--gold), 0 0 10px rgba(245,184,124,0.3); }
+  50%     { box-shadow: 0 0 0 2px var(--gold), 0 0 20px rgba(245,184,124,0.65); }
+}
+@keyframes canAffordPulse {
+  0%,100% { box-shadow: 0 0 0 2px var(--good), 0 0 12px rgba(127,209,154,0.4); }
+  50%     { box-shadow: 0 0 0 3px var(--good), 0 0 24px rgba(127,209,154,0.75); }
+}
+/* (2026-04-25) Arrows between recommended-path tiles hidden per user —
+ * tile order communicates sequence on its own. JS still inserts them so
+ * a CSS un-hide is one-line if we want them back. */
+.item-arrow { display: none; }
+.item-arrow {
+  align-self: center;
+  margin-top: -14px;    /* align vertically with icon center */
+  color: var(--text-faint);
+  font-size: 22px;
+  font-weight: 900;
+}
+
+/* ───── KV pairs ───────────────────────────────────────────────── */
+.kv {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 14px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 19px;
+  align-items: flex-start;
+  line-height: 1.3;
+}
+.kv:last-child { border-bottom: none; }
+.kv span:first-child { color: var(--text-faint); letter-spacing: 0.1em; font-size: 13px; text-transform: uppercase; font-weight: 700; padding-top: 5px; }
+.kv span:last-child  { color: var(--text); white-space: pre-wrap; word-break: break-word; font-weight: 700; }
+
+/* (2026-04-25) Right Now + Next panel kv rows — tighter label-to-value
+ * spacing per user feedback: 170 px fixed label column wasted ~120 px
+ * of dead space after short labels like "RISK" or "RESET". Switching
+ * to a max-content label column with a 10 px gap puts the value
+ * roughly 10 px after the label text, ending the dead-space drift.
+ * Other panels (minimap-grid, stats-view, etc.) keep their existing
+ * grid since they need cross-row column alignment for scanning. */
+.panel-right-now .kv {
+  grid-template-columns: 56px 1fr;
+  gap: 10px;
+}
+/* (2026-04-25) Next panel — fixed label column so OBJECTIVE / POSITION /
+ * WAVE STATE values all start at the same X. Width = "WAVE STATE" at
+ * 13 px caps + 0.1em letter-spacing ≈ 90 px. Trade-off vs Right Now:
+ * here vertical alignment beats max-tightness because the eye scans
+ * Objective → Position → Wave state down a single column. */
+.panel-next .kv {
+  grid-template-columns: 92px 1fr;
+  gap: 10px;
+}
+
+/* (2026-04-25) Wave-state percentage colors — match coach-prompt
+ * trigger thresholds so the visual reads the same as the advice the
+ * coach would emit at that wave position. Used by `_renderWaveState`
+ * in the Next panel for SR (per-lane TOP/MID/BOT lines) and ARAM/
+ * Brawl (single percentage). The ▶ marker on the player's own lane
+ * is plain text (no color class), keeping the eye on the value. */
+/* Wave-line blocks (one lane per line, no wrap, no extra rows). The
+ * marker is a fixed-width slot so TOP/MID/BOT labels align by column
+ * whether or not the ▶ is shown. Font + weight inherit from .kv body
+ * so all three lines (and the colored .wave-pct value) render at the
+ * exact same size — earlier some lines looked smaller because the
+ * inline rendering allowed sub-pixel rendering quirks.
+ * #nx-wave override below disables the parent .panel-next .kv
+ * span:last-child's `-webkit-box-orient: vertical` because that flex-
+ * box-style stacking was forcing the value text inside each .wave-line
+ * to wrap (TOP: → newline → 28%) instead of honoring white-space:
+ * nowrap. With normal block layout each wave-line stays one tight row. */
+/* `all: unset` to escape the parent .kv span:last-child rules
+ * (display: -webkit-box, white-space: pre-wrap, word-break: break-word,
+ * -webkit-line-clamp: 3) which combined to wrap each lane row's "TOP:"
+ * and "28%" onto separate lines no matter what white-space rule we
+ * tried on the children. Redeclare only what's needed. */
+/* Wave-state tree: every element pinned to the same explicit font-size
+ * and weight so no inherited rule can scale individual lines. Only the
+ * .wave-pct value carries the threshold color; .wave-label is locked to
+ * --text so the label never inherits the threshold hue from a sibling. */
+#nx-wave,
+#nx-wave .wave-line,
+#nx-wave .wave-marker,
+#nx-wave .wave-label,
+#nx-wave .wave-pct,
+#nx-wave .wave-arrow,
+#nx-wave .wave-verb {
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+#nx-wave {
+  all: unset;
+  display: block;
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 400;
+}
+.wave-line {
+  display: block;
+  white-space: nowrap;
+  position: relative;       /* anchor for absolute .wave-marker */
+}
+/* Marker is taken out of flow so lane labels start at the same X as
+ * Objective / Position values. Sits in the column gap to the left of
+ * the value cell, only present for the player's own lane.
+ * Sized smaller than body text and vertically centered so it can NEVER
+ * extend the line height and shift adjacent rows. */
+#nx-wave .wave-marker {
+  position: absolute;
+  right: calc(100% + 4px);            /* just left of the lane label */
+  top: 50%;
+  transform: translateY(-50%);        /* vertically centered on text */
+  color: #F5FF00;                     /* fluorescent yellow — your-lane pip */
+  font-size: 13px !important;         /* shrunk vs 19px body text */
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 0 6px rgba(245, 255, 0, 0.85);
+  pointer-events: none;
+}
+/* Lock identical row heights so the marker presence on MID can't
+ * visually nudge spacing relative to TOP/BOT. Padding/letter-spacing/
+ * text-transform reset because the global `.kv span:first-child` label
+ * rule unintentionally matches the FIRST .wave-line (which is also a
+ * span first-child of its #nx-wave parent), pushing TOP down 5px and
+ * making the TOP→MID gap shorter than MID→BOT. */
+#nx-wave .wave-line {
+  min-height: calc(19px * 1.4);
+  padding: 0;
+  letter-spacing: normal;
+  text-transform: none;
+  color: inherit;
+}
+/* Four fixed-width column slots — label / pct / arrow / verb — so each
+ * column lands at the same X across all rows regardless of value
+ * length. Sized so the worst-case "100%" fills the pct slot without
+ * pushing the arrow. */
+#nx-wave .wave-label {
+  color: var(--text);
+  display: inline-block;
+  width: 5ch;          /* TOP:/MID:/BOT: + ~1.2ch of breathing space */
+  text-align: left;
+}
+#nx-wave .wave-pct {
+  display: inline-block;
+  width: 4.5ch;        /* fits "100%" exactly; right-aligned so short
+                          values pad on the left and 100% fills toward
+                          the lane label rather than the arrow */
+  text-align: right;
+}
+#nx-wave .wave-arrow {
+  display: inline-block;
+  width: 2ch;
+  margin: 0 1ch;       /* even gap on both sides — locks verb column */
+  text-align: center;
+}
+#nx-wave .wave-verb {
+  display: inline-block;
+}
+/* Threshold colors apply to pct, arrow, and verb so the value-and-
+ * action read as one continuous-color block while the lane label
+ * stays white. */
+#nx-wave .wave-pct.wave-our,
+#nx-wave .wave-arrow.wave-our,
+#nx-wave .wave-verb.wave-our  { color: #5BC0F8 !important; }   /* <= 30 %  icy blue       → FREEZE    */
+#nx-wave .wave-pct.wave-mid,
+#nx-wave .wave-arrow.wave-mid,
+#nx-wave .wave-verb.wave-mid  { color: #4DD0A8 !important; }   /* 30 - 65 %  potion green → TRADE     */
+#nx-wave .wave-pct.wave-warn,
+#nx-wave .wave-arrow.wave-warn,
+#nx-wave .wave-verb.wave-warn { color: var(--gold) !important; } /* 65 - 80 %  gold       → CRASH     */
+#nx-wave .wave-pct.wave-bad,
+#nx-wave .wave-arrow.wave-bad,
+#nx-wave .wave-verb.wave-bad  { color: #FF4646 !important; }   /* >= 80 %  vibrant red    → DISENGAGE */
+#nx-wave .wave-pct.wave-dim,
+#nx-wave .wave-arrow.wave-dim,
+#nx-wave .wave-verb.wave-dim  { color: var(--text-faint); }
+
+.kv-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.obj-ico {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--info);
+  fill: currentColor;
+}
+/* Per-objective accent tint so the icons read at a glance. */
+#mm-dragon + span, .kv:has(#mm-dragon) .obj-ico  { color: var(--bad); }
+.kv:has(#mm-dragon)  .obj-ico { color: var(--bad); }
+.kv:has(#mm-baron)   .obj-ico { color: var(--advisory); }
+.kv:has(#mm-herald)  .obj-ico { color: var(--gold); }
+.kv:has(#mm-atakhan) .obj-ico { color: var(--info); }
+/* Countdown state cues. */
+#mm-dragon.obj-soon, #mm-baron.obj-soon, #mm-herald.obj-soon, #mm-atakhan.obj-soon {
+  color: var(--gold);
+  text-shadow: 0 0 8px rgba(245, 184, 124, 0.35);
+}
+#mm-dragon.obj-up, #mm-baron.obj-up, #mm-herald.obj-up, #mm-atakhan.obj-up {
+  color: var(--good);
+  font-weight: 900;
+  text-shadow: 0 0 10px rgba(127, 209, 154, 0.45);
+}
+
+/* Objective progress bar — slim fill under each .kv row, colored per
+ * objective type. Width comes from --pct custom property set by JS. */
+.minimap-grid .kv {
+  position: relative;
+  /* Labels here are short (Dragon/Baron/Herald/Atakhan) — reclaim the slack
+   * from the default 170px column so "1-0 (Cloud taken 12:04) · in 1:44
+   * Infernal" lays out on two lines instead of spilling to a clipped third. */
+  grid-template-columns: 110px 1fr;
+  gap: 10px;
+}
+.minimap-grid .kv .obj-bar {
+  position: absolute;
+  left: 0; bottom: 0;
+  height: 3px;
+  width: var(--pct, 0%);
+  background: var(--border-soft);
+  border-radius: 0 2px 2px 0;
+  transition: width 500ms linear, background-color 300ms ease;
+  pointer-events: none;
+}
+.minimap-grid .kv:has(#mm-dragon)   .obj-bar { background: color-mix(in srgb, var(--bad)      70%, transparent); }
+.minimap-grid .kv:has(#mm-baron)    .obj-bar { background: color-mix(in srgb, var(--advisory) 70%, transparent); }
+.minimap-grid .kv:has(#mm-herald)   .obj-bar { background: color-mix(in srgb, var(--gold)     70%, transparent); }
+.minimap-grid .kv:has(#mm-atakhan)  .obj-bar { background: color-mix(in srgb, var(--info)     70%, transparent); }
+.minimap-grid .kv .obj-bar.full {
+  background: var(--good);
+  box-shadow: 0 0 8px rgba(127,209,154,0.7);
+}
+.kv:has(#mm-towers)  .obj-ico { color: var(--good); }
+.kv:has(#mm-score)   .obj-ico { color: var(--text-dim); }
+.kv:has(#mm-gametime) .obj-ico { color: var(--text-dim); }
+
+/* ───── Adaptation panel — round 44: no-scroll, glanceable ────── */
+.adapt-section-head {
+  margin-top: 10px;
+  font-size: 14px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-weight: 700;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--border-soft);
+}
+#adapt-counters {
+  margin-top: 5px;
+  font-size: 16px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+#adapt-items { font-size: 16px; line-height: 1.35; }
+/* Cap visible counter-line rows in each section so long lists
+ * don't push the KDA streaks + footer out of the panel. Top-N
+ * carry the most signal; extras are clipped. */
+#adapt-counters .counter-line:nth-of-type(n+4),
+#adapt-items    .counter-line:nth-of-type(n+4) { display: none; }
+.counter-line {
+  padding: 3px 10px;
+  margin-bottom: 3px;
+  border-left: 3px solid var(--border);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--surface-alt);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.counter-line.positive { border-left-color: var(--good); color: var(--good); background: var(--good-soft); }
+
+/* Adaptation recent-WR trend arrow tint. */
+#adapt-recent.trend-up   { color: var(--good); font-weight: 900; }
+#adapt-recent.trend-down { color: var(--bad);  font-weight: 900; }
+#adapt-recent.trend-flat { color: var(--text-dim); }
+.counter-line.negative { border-left-color: var(--bad);  color: var(--bad);  background: var(--bad-soft); }
+#adapt-streaks {
+  display: flex; flex-direction: column; gap: 2px;
+  margin-bottom: 5px;
+  font-size: 16px;
+  letter-spacing: 0.01em;
+}
+.streak-row {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 1px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.streak-row.hot  .streak-label { color: var(--good); font-weight: 900; width: 14px; }
+.streak-row.cold .streak-label { color: var(--bad);  font-weight: 900; width: 14px; }
+.streak-row.hot  { color: var(--good); }
+.streak-row.cold { color: var(--bad); }
+.streak-row .dim { color: var(--text-faint); }
+.adapt-footer {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 13px;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.adapt-footer b       { color: var(--gold); }
+.adapt-footer b.on    { color: var(--good); }
+
+/* ───── Input bar — round 44: compact for glanceable layout ─────
+ * (2026-04-25) Hidden globally per user request — "Ask Agent 7" wasn't
+ * working as intended. Per the static-layout / visual-only-remove rule,
+ * the form, input element, send button, and all JS event handlers stay
+ * wired (Stop/UserPromptSubmit hooks still query the bridge, history
+ * popout still listens for keys); only the visual display is dropped.
+ * Flip back to display:flex (or remove this override) to restore. */
+#input-bar { display: none; }
+.input-bar {
+  background: var(--canvas);
+  padding: 8px 14px 10px 14px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+#input-form {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 4px 4px 4px 18px;
+  box-shadow: var(--shadow-card-soft);
+}
+.input-prompt {
+  font-size: 20px;
+  color: var(--info);
+  font-weight: 900;
+}
+#input-text {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 12px 6px;
+  font-family: inherit;
+  font-size: 19px; font-weight: 400;
+  outline: none;
+}
+#input-text::placeholder     { color: var(--text-faint); }
+.input-clear {
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  font-size: 22px;
+  line-height: 1;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  margin-right: 4px;
+  font-family: inherit;
+}
+.input-clear:hover { background: var(--surface-alt); color: var(--text); }
+.input-clear.hidden { display: none; }
+
+#input-send {
+  background: var(--bad);
+  color: var(--canvas);
+  border: none;
+  border-radius: 999px;
+  padding: 11px 26px;
+  font-family: inherit;
+  font-size: 15px; font-weight: 900; letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+#input-send:hover    { filter: brightness(1.1); }
+#input-send:disabled { opacity: 0.4; cursor: wait; }
+
+.warm-indicator {
+  font-size: 23px;
+  line-height: 1;
+  color: var(--bad);
+  width: 20px;
+  text-align: center;
+}
+.warm-indicator.warm    { color: var(--good); }
+.warm-indicator.pending { color: var(--gold); }
+
+.input-reply {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card-soft);
+  padding: 12px 18px;
+}
+.input-reply.hidden { display: none; }
+.reply-head {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 12px; letter-spacing: 0.08em;
+  font-weight: 700;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 8px;
+}
+.reply-intent { color: var(--info); }
+.reply-path   { color: var(--text-faint); }
+.reply-dismiss {
+  margin-left: auto;
+  background: var(--surface-alt);
+  border: none;
+  border-radius: 999px;
+  color: var(--text-dim);
+  width: 30px; height: 30px;
+  font-family: inherit;
+  font-size: 16px; cursor: pointer;
+}
+.reply-dismiss:hover { background: var(--bad-soft); color: var(--bad); }
+.reply-body {
+  font-size: 17px;
+  color: var(--text);
+  line-height: 1.4;
+  white-space: pre-wrap; word-break: break-word;
+}
+.reply-filed { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+.filed-chip {
+  font-size: 11px;
+  color: var(--gold);
+  background: var(--gold-soft);
+  border-radius: 999px;
+  padding: 3px 10px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+/* Chat history */
+.input-history {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card-soft);
+  padding: 10px 14px 12px 14px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.input-history.hidden { display: none; }
+.history-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; letter-spacing: 0.14em;
+  color: var(--text-dim);
+  padding-bottom: 5px;
+  border-bottom: 1px dashed var(--border-soft);
+  margin-bottom: 5px;
+}
+.history-title { letter-spacing: 0.16em; }
+.history-turn {
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border-soft);
+}
+.history-turn:last-child { border-bottom: none; }
+.turn-user {
+  font-size: 15px;
+  color: var(--info);
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+.turn-user::before { content: "› "; opacity: 0.6; }
+.turn-reply {
+  font-size: 15px;
+  color: var(--text);
+  white-space: pre-wrap; word-break: break-word;
+  line-height: 1.35;
+}
+.turn-meta {
+  margin-top: 4px;
+  font-size: 11px; letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+.turn-meta .turn-chip {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  color: var(--text-dim);
+}
+.turn-error .turn-reply { color: var(--bad); }
+.turn-sim { border-left: 3px solid var(--advisory); padding-left: 8px; }
+.turn-refused .turn-reply { color: var(--advisory); }
+
+/* Inline proposed-changes preview (round 42 ui_feedback replies). */
+.ui-proposal-diff {
+  margin-top: 8px;
+  border: 1px dashed var(--info-soft);
+  background: var(--surface-alt);
+  padding: 8px 12px;
+  max-height: 260px;
+  overflow: auto;
+}
+.ui-proposal-head {
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: var(--info);
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+.ui-proposal-snippet {
+  font-family: "SF Mono", Consolas, "Courier New", monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+}
+.ui-proposal-status {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--info);
+  letter-spacing: 0.04em;
+}
+.ui-proposal-status.ui-proposal-failed { color: var(--bad); }
+
+/* Round 44: grid reserves enough for header (70) + activity (36) +
+ * compact input bar w/ history hidden (~110) + footer (36). When
+ * the history opens it's scrollable in-place and doesn't push the
+ * grid — so the grid doesn't need to reserve for it. */
+/* Round 44 height calc removed — main is flex-grow now. See top of file. */
+
+/* ───── Task detail modal ──────────────────────────────────────── */
+.task-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+}
+.task-modal.hidden { display: none; }
+.task-modal-body {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 22px 26px 26px 26px;
+  min-width: 640px;
+  max-width: 880px;
+  max-height: 80vh;
+  overflow-y: auto;
+  color: var(--text);
+}
+.task-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 15px; letter-spacing: 0.14em;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--border);
+  margin-bottom: 16px;
+}
+#task-modal-close {
+  background: var(--surface-alt);
+  border: none;
+  border-radius: 999px;
+  color: var(--text-dim);
+  width: 36px; height: 36px;
+  font-family: inherit;
+  font-size: 16px; cursor: pointer;
+}
+#task-modal-close:hover { background: var(--bad-soft); color: var(--bad); }
+.task-modal-kv .kv { grid-template-columns: 140px 1fr; }
+.task-modal-kv .kv span:first-child { color: var(--text-faint); }
+.task-modal-kv .kv span:last-child  {
+  font-family: "SF Mono", Consolas, "Courier New", monospace;
+  font-size: 13px;
+  color: var(--text);
+}
+.task-modal-section {
+  margin-top: 16px; padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+.task-section-head {
+  font-size: 13px; letter-spacing: 0.14em;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+}
+.tm-event-row {
+  padding: 5px 10px;
+  margin-bottom: 3px;
+  border-left: 3px solid var(--border);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--surface-alt);
+  font-size: 12px;
+  font-family: "SF Mono", Consolas, "Courier New", monospace;
+}
+.tm-event-row.ev-completed   { border-left-color: var(--good); }
+.tm-event-row.ev-failed      { border-left-color: var(--bad); color: var(--bad); }
+.tm-event-row.ev-dead_letter { border-left-color: var(--bad); color: var(--bad); }
+.tm-event-row.ev-filed       { border-left-color: var(--gold); }
+.tm-event-row.ev-dispatched  { border-left-color: var(--info); }
+.tm-event-row .tm-ts   { color: var(--text-faint); margin-right: 10px; }
+.tm-event-row .tm-kind { margin-right: 10px; color: var(--info); }
+
+.activity-event { cursor: pointer; }
+.activity-event:hover { filter: brightness(1.2); }
+
+/* ───── Activity ticker strip ──────────────────────────────────── */
+.activity-strip {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 8px 22px;
+  background: var(--canvas);
+  font-family: "SF Mono", Consolas, "Courier New", monospace;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  height: 44px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.activity-label {
+  color: var(--text-dim);
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  font-size: 13px;
+  font-family: "Lato", -apple-system, sans-serif;
+}
+.activity-line {
+  flex: 1;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activity-count {
+  color: var(--text-dim);
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  font-family: "Lato", -apple-system, sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+}
+.activity-event {
+  display: inline-block;
+  margin-right: 18px;
+}
+.activity-event .ev-glyph {
+  display: inline-block;
+  width: 16px;
+  text-align: center;
+  margin-right: 4px;
+  color: var(--text-faint);
+  font-weight: 900;
+  font-family: "Lato", -apple-system, sans-serif;
+}
+.activity-event.op-advisory .ev-glyph { color: var(--advisory); }
+.activity-event.event-completed   .ev-glyph { color: var(--good); }
+.activity-event.event-failed      .ev-glyph { color: var(--bad); }
+.activity-event.event-filed       .ev-glyph { color: var(--gold); }
+.activity-event.event-dispatched  .ev-glyph { color: var(--info); }
+.activity-event .ev-ts   { color: var(--text-faint); margin-right: 8px; }
+.activity-event .ev-op   { color: var(--info); margin-right: 8px; }
+.activity-event .ev-kind { color: var(--text-dim); }
+.activity-event.event-completed   .ev-kind { color: var(--good); }
+.activity-event.event-failed      .ev-kind { color: var(--bad); }
+.activity-event.event-dead_letter .ev-kind { color: var(--bad); }
+.activity-event.event-filed       .ev-kind { color: var(--gold); }
+.activity-event.event-dispatched  .ev-kind { color: var(--info); }
+
+/* Pink advisory treatment — overrides the per-event-color above so
+ * cold-streak / coaching-insight advisories pop visually. */
+.activity-event.op-advisory .ev-op { color: var(--advisory); }
+.activity-event.op-advisory .ev-kind { color: var(--advisory); }
+.tm-event-row[data-op*="advisory"] { border-left-color: var(--advisory); }
+
+/* ───── Footer ─────────────────────────────────────────────────── */
+footer {
+  height: 44px;
+  padding: 0 22px;
+  display: flex; align-items: center; gap: 18px;
+  font-size: 14px;
+  color: var(--text-faint);
+  background: var(--canvas);
+}
+footer code { color: var(--text-dim); font-family: "SF Mono", Consolas, "Courier New", monospace; font-size: 13px; }
+footer .spacer { flex: 1; }
+footer .ui-version {
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 10px;
+  color: var(--text-faint);
+  opacity: 0.6;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--surface);
+  letter-spacing: 0.02em;
+}
+footer .prefs-chip {
+  font-size: 10px;
+  color: var(--gold);
+  background: var(--gold-soft);
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+footer .prefs-chip:hover { background: var(--bad-soft); color: var(--bad); }
+
+/* ───── Reduced motion — respect OS preference ─────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  /* Keep essential transitions for interactive states, just instant. */
+}
+
+/* ───── iPad narrow viewport fallback ──────────────────────────── */
+@media (max-width: 1600px) {
+  .action     { font-size: 29px; }
+  .action-mid { font-size: 21px; }
+  header       { gap: 10px; padding: 6px 16px; }
+  main         { gap: 14px; padding: 4px 14px 12px 14px; }
+  .panel       { border-radius: 12px; }
+  .panel-head  { padding: 8px 14px 4px 14px; }
+  .panel-body  { padding: 4px 14px 10px 14px; }
+  .team-tile   { width: 38px; height: 38px; }
+  .tile-spell  { width: 16px; height: 16px; }
+  .item-tile   { width: 68px; }
+  .item-icon   { width: 56px; height: 56px; }
+  /* Narrow viewport: icon 56 → tag sits at 46px pinned to icon bottom. */
+  .item-tile.next-up .item-cost { top: 46px; }
+}
+
+/* Very narrow (half-screen / portrait iPad) — drop the 3-col main grid to 2. */
+@media (max-width: 1280px) {
+  main {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+  }
+  .panel-minimap    { grid-row: 1 / span 3; grid-column: 1; }
+  .panel-right-now  { grid-column: 2; grid-row: 1; }
+  .panel-next       { grid-column: 2; grid-row: 2; }
+  .panel-item-build { grid-column: 2; grid-row: 3; }
+  .panel-adaptation { display: none; }
+}
+
+/* ── Champion-select overlay (Phase 1, 2026-04-25) ────────────────────
+   Shown only while phase=ChampSelect. JS toggles .hidden via
+   renderChampSelectPanel(lcu). Bench cells fire bench_swap which
+   bypasses League's 5s client cooldown via the LCU API. */
+.cs-overlay {
+  position: fixed; inset: 0;
+  background: rgba(8, 9, 14, 0.96);
+  z-index: 9000; overflow-y: auto;
+  display: flex; justify-content: center;
+  padding: 24px;
+}
+.cs-overlay.hidden { display: none; }
+.cs-card {
+  width: min(1400px, 96vw);
+  display: flex; flex-direction: column; gap: 18px;
+}
+.cs-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  border-bottom: 1px solid var(--border-soft); padding-bottom: 10px;
+}
+.cs-phase-label {
+  font-size: 22px; font-weight: 900; letter-spacing: 0.18em;
+  color: var(--info); text-transform: uppercase;
+}
+.cs-phase-sub { font-size: 13px; color: var(--label); letter-spacing: 0.5px; }
+.cs-my-block {
+  display: flex; gap: 20px; align-items: center; padding: 16px;
+  background: var(--surface); border-radius: var(--radius);
+  border: 1px solid var(--border-soft);
+}
+.cs-my-icon {
+  width: 96px; height: 96px; border-radius: 8px;
+  border: 3px solid var(--border); background: var(--surface-head);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-faint); font-size: 30px; overflow: hidden; flex-shrink: 0;
+}
+.cs-my-icon img { width: 100%; height: 100%; object-fit: cover; }
+.cs-my-icon.locked   { border-color: #44ff88; }
+.cs-my-icon.hovering { border-color: var(--clock); border-style: dashed; }
+.cs-my-meta { flex: 1; }
+.cs-my-name { font-size: 24px; font-weight: 700; color: #e8ecf2; }
+.cs-my-state {
+  font-size: 12px; color: var(--label); margin-top: 4px;
+  letter-spacing: 0.6px; text-transform: uppercase;
+}
+.cs-actions { display: flex; gap: 10px; }
+.cs-btn {
+  padding: 12px 20px; font-size: 14px; font-weight: 700;
+  background: var(--surface-head); color: var(--text-faint);
+  border: 1px solid var(--border); border-radius: 6px;
+  cursor: pointer; transition: 0.15s; letter-spacing: 0.4px;
+}
+.cs-btn:hover { background: #1c1c2a; border-color: var(--clock); color: var(--clock); }
+.cs-lock-btn:hover { border-color: #44ff88; color: #44ff88; background: #0a2014; }
+.cs-btn[disabled] { opacity: 0.4; cursor: not-allowed; }
+
+.cs-teams { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.cs-team-block {
+  background: var(--surface); border-radius: var(--radius);
+  padding: 12px; border: 1px solid var(--border-soft);
+}
+.cs-team-label {
+  font-size: 11px; color: var(--label); margin-bottom: 8px;
+  text-transform: uppercase; letter-spacing: 0.8px;
+}
+/* Allies: vertical column matching the in-game ARAM screen orientation
+   (top-to-bottom). Enemies stay horizontal since you can't interact
+   with them. Cells in the allies column are clickable in ARAM —
+   click fires a trade request with that teammate. */
+.cs-team-row {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+}
+.cs-team-row.cs-team-vert {
+  grid-template-columns: 1fr; grid-template-rows: repeat(5, 1fr);
+  gap: 6px;
+}
+.cs-team-cell {
+  background: var(--surface-head); border-radius: 5px;
+  border: 1px solid var(--border); padding: 8px 4px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  min-height: 88px;
+}
+.cs-team-row.cs-team-vert .cs-team-cell {
+  flex-direction: row; padding: 6px 10px; min-height: 56px; gap: 10px;
+  text-align: left;
+}
+.cs-team-row.cs-team-vert .cs-team-cell .nm,
+.cs-team-row.cs-team-vert .cs-team-cell .summ { text-align: left; }
+.cs-team-row.cs-team-vert .cs-team-cell .cs-cell-text {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+}
+.cs-team-cell.empty    { opacity: 0.45; border-style: dashed; }
+.cs-team-cell.locked   { border-color: #44ff88; }
+.cs-team-cell.hovering { border-color: var(--clock); border-style: dashed; }
+.cs-team-cell.me       { box-shadow: 0 0 0 2px var(--info) inset; cursor: default; }
+/* Trade-clickable cells (allies in ARAM, not me). */
+.cs-team-cell.trade-able {
+  cursor: pointer; transition: transform 0.12s, border-color 0.12s, background 0.12s;
+}
+.cs-team-cell.trade-able:hover {
+  background: #1c1c2a; border-color: var(--clock); transform: translateX(2px);
+}
+.cs-team-cell.trade-busy   { opacity: 0.55; cursor: not-allowed; }
+.cs-team-cell.trade-busy::after {
+  content: "BUSY"; font-size: 9px; color: var(--label);
+  margin-left: auto; padding: 2px 6px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 3px; letter-spacing: 0.6px;
+}
+.cs-team-cell.trade-sent {
+  border-color: var(--info);
+}
+.cs-team-cell.trade-sent::after {
+  content: "TRADE SENT"; font-size: 9px; color: var(--info);
+  margin-left: auto; padding: 2px 6px; background: var(--surface);
+  border: 1px solid var(--info); border-radius: 3px; letter-spacing: 0.6px;
+}
+.cs-team-cell.trade-received {
+  border-color: var(--clock); animation: cs-status-pulse 0.7s infinite alternate;
+  cursor: pointer;
+}
+/* RECEIVED cells get an "ACCEPT" badge instead of ::after so we can also
+   add a real <button> for decline. Click anywhere on the cell accepts. */
+.cs-trade-actions {
+  margin-left: auto; display: flex; gap: 4px; align-items: center;
+}
+.cs-trade-actions .accept-pill {
+  font-size: 9px; color: var(--clock);
+  padding: 3px 8px; background: var(--surface);
+  border: 1px solid var(--clock); border-radius: 3px;
+  letter-spacing: 0.6px; font-weight: 700;
+}
+.cs-trade-actions .decline-x {
+  width: 22px; height: 22px; display: flex;
+  align-items: center; justify-content: center;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 3px; color: var(--text-faint);
+  font-size: 14px; line-height: 1; cursor: pointer; padding: 0;
+}
+.cs-trade-actions .decline-x:hover {
+  border-color: var(--bad); color: var(--bad); background: var(--bad-soft);
+}
+.cs-team-cell img { width: 48px; height: 48px; border-radius: 4px; }
+.cs-team-cell .nm { font-size: 11px; color: #c8d0dc; font-weight: 600;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-team-cell .summ { font-size: 9px; color: var(--label);
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Team-comp analyzer panel — sits above bench. Displays AI recommendation
+   (stay / swap / variant) with reason. Recommended bench cell or variant
+   dropdown option gets a glow highlight. */
+.cs-analyzer-block {
+  background: var(--surface); border-radius: var(--radius);
+  padding: 12px 14px; border: 1px solid var(--border-soft);
+}
+.cs-analyzer-head {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 6px;
+}
+.cs-analyzer-label {
+  font-size: 11px; color: var(--label);
+  text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;
+}
+.cs-analyzer-verdict {
+  font-size: 13px; font-weight: 700; letter-spacing: 0.4px;
+  padding: 4px 10px; border-radius: 4px;
+  background: var(--surface-head); border: 1px solid var(--border);
+  color: var(--text-faint);
+}
+.cs-analyzer-verdict.stay    { color: #44ff88; border-color: #44ff88; }
+.cs-analyzer-verdict.swap    { color: var(--info);  border-color: var(--info); }
+.cs-analyzer-verdict.variant { color: var(--clock); border-color: var(--clock); }
+.cs-analyzer-verdict.busy    { color: var(--label); animation: cs-status-pulse 0.8s infinite alternate; }
+.cs-analyzer-conf {
+  margin-left: auto; font-size: 10px; color: var(--label);
+  text-transform: uppercase; letter-spacing: 0.6px;
+}
+.cs-analyzer-reason {
+  font-size: 13px; color: #c8d0dc; line-height: 1.45;
+}
+/* Highlight the bench cell that the analyzer recommends as a swap target. */
+.cs-bench-cell.recommended {
+  box-shadow: 0 0 0 2px var(--info) inset;
+  animation: cs-recommend-pulse 1.4s infinite alternate;
+  position: relative;
+}
+.cs-bench-cell.recommended::before {
+  content: "★"; position: absolute;
+  top: 2px; right: 4px; color: var(--info);
+  font-size: 14px; line-height: 1;
+}
+@keyframes cs-recommend-pulse {
+  from { box-shadow: 0 0 0 2px var(--info) inset; }
+  to   { box-shadow: 0 0 0 3px var(--info) inset, 0 0 12px var(--info); }
+}
+.cs-bench-block {
+  background: var(--surface); border-radius: var(--radius);
+  padding: 12px; border: 1px solid var(--border-soft);
+}
+.cs-bench-label {
+  font-size: 12px; color: var(--clock); margin-bottom: 10px;
+  text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;
+}
+.cs-bench-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
+.cs-bench-cell {
+  background: var(--surface-head); border-radius: 5px;
+  border: 1px solid var(--border); padding: 8px 4px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  transition: transform 0.12s, border-color 0.12s, background 0.12s;
+  min-height: 88px;
+}
+.cs-bench-cell:hover {
+  background: #1c1c2a; border-color: var(--clock); transform: scale(1.04);
+}
+.cs-bench-cell:active { transform: scale(0.98); }
+.cs-bench-cell.swapping {
+  border-color: var(--info);
+  animation: cs-swap-pulse 0.6s infinite alternate;
+}
+@keyframes cs-swap-pulse {
+  from { background: #1c1c2a; }
+  to   { background: #2a2a4a; }
+}
+.cs-bench-cell img { width: 48px; height: 48px; border-radius: 4px; }
+.cs-bench-cell .nm { font-size: 11px; color: #c8d0dc; }
+.cs-bench-empty {
+  grid-column: 1 / -1; padding: 16px; font-size: 12px;
+  color: var(--dim); font-style: italic; text-align: center;
+}
+
+/* Loadout block (Phase 2) — variant picker + auto-applied runes/items/spells */
+.cs-loadout-block {
+  background: var(--surface); border-radius: var(--radius);
+  padding: 12px 14px; border: 1px solid var(--border-soft);
+}
+.cs-loadout-head {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+}
+.cs-loadout-label {
+  font-size: 11px; color: var(--label);
+  text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;
+}
+.cs-loadout-status {
+  font-size: 11px; color: var(--label); flex: 1; text-align: right;
+  letter-spacing: 0.5px;
+}
+.cs-loadout-status.ok    { color: #44ff88; }
+.cs-loadout-status.err   { color: var(--bad); }
+.cs-loadout-status.busy  { color: var(--clock); animation: cs-status-pulse 0.8s infinite alternate; }
+@keyframes cs-status-pulse { from { opacity: 0.6; } to { opacity: 1; } }
+.cs-loadout-empty {
+  padding: 8px; font-size: 11px; color: var(--dim); font-style: italic;
+}
+
+/* Build chooser (2026-04-26): one selectable row per variant with inline
+   keystone + item preview. Replaces the old <select> dropdown. The
+   chosen row gets .selected (drives the box-shadow + filled checkbox).
+   The analyzer recommendation hangs off .has-recommendation. */
+.cs-build-list {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.cs-build-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 6px;
+  background: var(--surface-head); border: 1px solid var(--border);
+  cursor: pointer; transition: background 0.12s, border-color 0.12s;
+}
+.cs-build-row:hover { background: #1c1c2a; border-color: var(--clock); }
+.cs-build-row.selected {
+  background: #1c1c2a;
+  border-color: var(--clock);
+  box-shadow: 0 0 0 1px var(--clock) inset;
+}
+.cs-build-row.has-recommendation {
+  border-color: var(--info);
+  box-shadow: 0 0 8px rgba(138, 140, 240, 0.45);
+}
+.cs-build-checkbox {
+  width: 16px; height: 16px; border-radius: 3px;
+  border: 1.5px solid var(--border); background: var(--surface-alt);
+  flex-shrink: 0; position: relative;
+}
+.cs-build-row.selected .cs-build-checkbox {
+  background: var(--clock); border-color: var(--clock);
+}
+.cs-build-row.selected .cs-build-checkbox::after {
+  content: ""; position: absolute;
+  left: 4px; top: 1px; width: 4px; height: 9px;
+  border: solid #1a1a26; border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.cs-build-meta { display: flex; flex-direction: column; gap: 2px; min-width: 130px; }
+.cs-build-label {
+  font-size: 13px; color: #e2e6ee; font-weight: 600;
+  letter-spacing: 0.2px;
+}
+.cs-build-label .default-tag {
+  display: inline-block; margin-left: 6px;
+  font-size: 9px; color: var(--clock); letter-spacing: 0.6px;
+  text-transform: uppercase; font-weight: 700;
+}
+.cs-build-label .reco-tag {
+  display: inline-block; margin-left: 6px;
+  font-size: 9px; color: var(--info); letter-spacing: 0.6px;
+  text-transform: uppercase; font-weight: 700;
+}
+.cs-build-runes {
+  font-size: 11px; color: var(--label); letter-spacing: 0.3px;
+}
+.cs-build-items {
+  display: flex; gap: 4px; margin-left: auto; flex-wrap: nowrap;
+}
+.cs-build-items .cs-build-item {
+  width: 28px; height: 28px; border-radius: 3px;
+  background: var(--surface-alt); border: 1px solid var(--border);
+  overflow: hidden; flex-shrink: 0;
+}
+.cs-build-items .cs-build-item img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.cs-build-items .cs-build-item.placeholder {
+  background: repeating-linear-gradient(45deg,
+    var(--surface-alt) 0 4px, var(--surface-head) 4px 8px);
+}
+.cs-build-row.experimental .cs-build-label {
+  color: #d6c4f3;
+}

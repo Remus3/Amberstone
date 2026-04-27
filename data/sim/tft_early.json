@@ -1,0 +1,52 @@
+{
+  "meta": {
+    "name": "tft_early",
+    "label": "TFT \u00b7 early \u00b7 stage 2-2 econ",
+    "mode": "tft",
+    "summary": "TFT early \u00b7 stage 2-2 \u00b7 econ-roll path, 3 traits active"
+  },
+  "health": {
+    "type": "health",
+    "source": "sim",
+    "payload": {
+      "pid": 99999,
+      "alive": true,
+      "has_game": true,
+      "mode": "tft",
+      "last_reload_ok": true,
+      "tft_mode": true
+    }
+  },
+  "state": {
+    "type": "state",
+    "mode": "tft",
+    "source": "tft_coaching_data.json",
+    "payload": {
+      "game_time": "Stage 2-2",
+      "game_time_s": 0,
+      "level": 4,
+      "gold": 22,
+      "hp": 85,
+      "round": "2-2",
+      "stage": 2,
+      "round_num": 2,
+      "action": "Save \u00b7 push to 30g interest cap",
+      "immediate": "Don't roll. Open at 50g for 3-stars. Slam Spear of Shojin if you have components.",
+      "risk": "Health 85 \u2014 comfortable; can econ to stage 4",
+      "fight_rule": "Don't itemize duplicate components yet",
+      "reset_item": "Spear of Shojin if components allow",
+      "next": "Stage 3-1: roll only if uncontested \u00b7 else push level",
+      "objective": "Reach 50g + level 6 before rolling",
+      "shop": "Caitlyn, Vex, Lulu, Wukong, Riven (refresh: 2g)",
+      "augments": [
+        "Cybernetic Implants",
+        "Heart of the Lotus",
+        "Pumping Up I"
+      ],
+      "comp_synergy": "Sniper 2/3 \u00b7 Inkshadow 2/4 \u00b7 Heavenly 1/2",
+      "board": "3\u00d7 Caitlyn, 2\u00d7 Wukong, 1\u00d7 Lulu (4 units, level 4)",
+      "items_display": "Sparring Gloves, Tear, Recurve Bow",
+      "item_build": "Spear of Shojin \u2192 Last Whisper \u2192 Infinity Edge"
+    }
+  }
+}

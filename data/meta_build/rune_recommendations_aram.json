@@ -1,0 +1,984 @@
+{
+  "_meta": {
+    "updated": "2026-04-19",
+    "note": "ADC + common ARAM champion rune recommendations"
+  },
+  "Vayne": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Stack Tempo early — don't all-in until 4+ stacks. Condemn into walls for W proc."
+  },
+  "Jinx": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Switch to rockets once Tempo is stacked. Gathering Storm becomes dominant late."
+  },
+  "Tristana": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Land W, build 4 Explosive Charge stacks under Tempo, auto reset with E."
+  },
+  "Caitlyn": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Precision",
+    "coaching_note": "Place traps to proc headshots then trigger Comet. Every trap is a free headshot."
+  },
+  "Nilah": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "You take poke walking in — Resolve secondary reduces that tax. Tempo in extended trades."
+  },
+  "Miss Fortune": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Scatter E into clumped enemies triggers Comet. Stay behind frontline until ult window."
+  },
+  "Lux": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Inspiration",
+    "coaching_note": "Root confirms Comet. CDR from Cosmic Insight maximizes E spam uptime."
+  },
+  "Xerath": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Inspiration",
+    "coaching_note": "Safe poke lane — Comet on every Q. Never be in auto range."
+  },
+  "Brand": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Passive explosions proc Comet. W stun is the key combo starter."
+  },
+  "Ziggs": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Inspiration",
+    "coaching_note": "Max Q poke. Short Fuse empowered autos proc Comet. Satchel is your escape."
+  },
+  "Zyra": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Root into Comet is the core trade. Plants tank skillshots — position them as shields."
+  },
+  "Heimerdinger": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Inspiration",
+    "coaching_note": "Turrets proc Comet. Place H-28G at max range to hold the lane indefinitely."
+  },
+  "Karthus": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Stack AP. Your ult is free damage every teamfight. Slow W to confirm Q hits."
+  },
+  "Cassiopeia": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Poison uptime = DPS. Twin Fang spam with Conqueror stacks shreds any target."
+  },
+  "Ahri": {
+    "keystone": "Electrocute",
+    "primary_tree": "Domination",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "E into full combo procs Electrocute. Use R aggressively once you hit level 6."
+  },
+  "Syndra": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Q poke into E stun combos. Comet confirms on every stun. Collect spheres for R power."
+  },
+  "Veigar": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Inspiration",
+    "coaching_note": "Stack AP passive aggressively. Event Horizon cage = free Comet proc + R execute."
+  },
+  "Fiddlesticks": {
+    "keystone": "Dark Harvest",
+    "primary_tree": "Domination",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Drain isolated targets to stack Dark Harvest. R into clumped enemies is fight-winning."
+  },
+  "Amumu": {
+    "keystone": "Glacial Augment",
+    "primary_tree": "Inspiration",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Land Q then R for full lockdown. Glacial slows help peel and follow up."
+  },
+  "Malphite": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Stack armor against AD teams. R into Comet poke is your gameplan. Never miss ult."
+  },
+  "Sona": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Inspiration",
+    "coaching_note": "Q poke with Comet every few seconds. Ult + Comet in grouped fights."
+  },
+  "Janna": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Tornado into Comet + slow is safe poke. R to disengage and heal grouped allies."
+  },
+  "Lulu": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Resolve",
+    "coaching_note": "W polymorph confirms Comet. Ult your carry entering fights, not when they're already dead."
+  },
+  "Swain": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Stack Conqueror in drain fights. E root into Q damage is the bread and butter."
+  },
+  "Kennen": {
+    "keystone": "Phase Rush",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Phase Rush lets you run through stuns after R. Stack marks with auto-Q-auto."
+  },
+  "Ashe": {
+    "keystone": "Glacial Augment",
+    "primary_tree": "Inspiration",
+    "secondary_tree": "Precision",
+    "coaching_note": "Permanent slow makes Glacial even stronger. R from distance into fight is game-changing."
+  },
+  "Kog'Maw": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Bio-Arcane Barrage uptime = W active as much as possible. Stack AP/AS hybrid."
+  },
+  "Twitch": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Stack passive stacks then R for mass execute. Never engage before full stacks."
+  },
+  "Lucian": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Q procs Spellblade AND Tempo — Q-auto-auto pattern stacks Tempo instantly."
+  },
+  "Varus": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "W blight stacks proc faster with Tempo AS. Stack 3 blight then E for root."
+  },
+  "Sivir": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Ricochet bounces stack Tempo fast vs grouped enemies in ARAM corridor."
+  },
+  "Draven": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Spinning Axe double-catch with Tempo = highest sustained DPS in ARAM."
+  },
+  "Ezreal": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "TF Spellblade + Tempo = Q then autos. Tempo stacks faster with short-range fights."
+  },
+  "Jhin": {
+    "keystone": "Fleet Footwork",
+    "primary_tree": "Precision",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "4th shot crit heals with Fleet — saves life in ARAM fights. No CDR needed."
+  },
+  "Xayah": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Feather planting is fastest with Tempo AS. More feathers = bigger E root."
+  },
+  "Zeri": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Q charges and Sparkling Surge proc off Tempo autos. Chain E wall-hops."
+  },
+  "Samira": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Style rank S unlocks R — Conqueror stacks fastest during combo chains."
+  },
+  "Aphelios": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Crescendum turret fires with Tempo AS. Infernum + Tempo = AOE sustained DPS."
+  },
+  "Kalista": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Spear stacking is fastest with Tempo AS. Rend when 4+ spears stacked."
+  },
+  "Senna": {
+    "keystone": "Fleet Footwork",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Long range + Fleet sustain keeps Senna alive poke phase. Deny health packs with Umbral Glaive."
+  },
+  "Kindred": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Mark collection gives bonus AS. Tempo amplifies mark-target burst window."
+  },
+  "Quinn": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Blinding Shot extends Tempo window vs ADC. Valor tag proc on Tempo autos."
+  },
+  "Smolder": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Q spam stacks at 225 charges faster with Tempo AS synergy."
+  },
+  "Corki": {
+    "keystone": "Fleet Footwork",
+    "primary_tree": "Precision",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Fleet sustain in constant ARAM poke. Package (Special Delivery) bomb for burst spike."
+  },
+  "Akshan": {
+    "keystone": "Fleet Footwork",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Revive passive needs survival — Fleet sustain keeps him alive for W revive."
+  },
+  "Taliyah": {
+    "keystone": "Phase Rush",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Phase Rush + Seismic Shove (W) repositions Taliyah after Q to avoid burst."
+  },
+  "Vel'Koz": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Q split path guarantees Comet on one target. Research stacks + Comet = true damage burst."
+  },
+  "Orianna": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "W at ball location procs Comet. Shockwave R into Comet window = wombo execute."
+  },
+  "Viktor": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "E laser guarantees Comet. Death Ray + Comet on grouped = AOE burst."
+  },
+  "Ryze": {
+    "keystone": "Phase Rush",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Overload + Flux proc Phase Rush instantly. Phase Rush kiting in ARAM = unkillable mage."
+  },
+  "Karma": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Inspiration",
+    "coaching_note": "Mantra-Q AOE slow procs Comet on all enemies hit simultaneously."
+  },
+  "Lissandra": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Ice chain + Comet. R self-stasis is a free Zhonya — Comet after R return."
+  },
+  "Morgana": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "3s Q root procs Comet perfectly. W pool + Comet on rooted target = guaranteed damage."
+  },
+  "Rumble": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "E harpoon slow guarantees Comet. Danger Zone flamethrower procs Comet repeatedly."
+  },
+  "Malzahar": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "E Malefic Visions + Comet on channeled targets. Void swarm procs through Comet."
+  },
+  "Annie": {
+    "keystone": "Electrocute",
+    "primary_tree": "Domination",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Stun proc confirms Electrocute. Tibbers + Electrocute on same target = instant burst."
+  },
+  "Zoe": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Sleep doubles next damage — Comet into sleep = massive burst. Long-range consistent proc."
+  },
+  "Vex": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Fear passive procs Comet. E-Looming Darkness AOE Comet on grouped enemies."
+  },
+  "Neeko": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "E root confirms Comet. R stun from untargetable = guaranteed Comet burst window."
+  },
+  "Hwei": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "QE bolt guarantees Comet on stationary targets. WE fear chains into Comet."
+  },
+  "Aurelion Sol": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Q-breath sustained Comet procs. Stardust stacks increase Q size = wider Comet window."
+  },
+  "Aurora": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Q detonation guarantees Comet. R realm + Comet = enhanced burst on detonation."
+  },
+  "Azir": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Q soldier advance procs Comet. Soldier attacks chain Comet procs on grouped."
+  },
+  "Twisted Fate": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Gold Card stun guarantees Comet. Comet proc every 3-4s on Q spam."
+  },
+  "LeBlanc": {
+    "keystone": "Electrocute",
+    "primary_tree": "Domination",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Q-W-E-auto 4-hit Electrocute guaranteed. Proc at combo start = full Electrocute burst."
+  },
+  "Kassadin": {
+    "keystone": "Electrocute",
+    "primary_tree": "Domination",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Q-W-auto Electrocute combo kills any squishy instantly. Late game R spam stacks fast."
+  },
+  "Fizz": {
+    "keystone": "Electrocute",
+    "primary_tree": "Domination",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Q-W-E combo auto-completes Electrocute. R shark procs instantly on landing."
+  },
+  "Ekko": {
+    "keystone": "Electrocute",
+    "primary_tree": "Domination",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "W-Q-R burst Electrocute. Passive 3-hit also procs vs melee range."
+  },
+  "Katarina": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Reset chains stack Conqueror instantly. Sinister Steel spin stacks 5+ fast."
+  },
+  "Akali": {
+    "keystone": "Electrocute",
+    "primary_tree": "Domination",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Q-passive-auto in W shroud procs Electrocute safely. Shroud buy time for CD."
+  },
+  "Diana": {
+    "keystone": "Electrocute",
+    "primary_tree": "Domination",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Q-auto (Moonsilver)-E-R triggers Electrocute before AOE pull."
+  },
+  "Sylas": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Extended chain fights stack Conqueror fast. W heals amplified by Conqueror stacks."
+  },
+  "Elise": {
+    "keystone": "Electrocute",
+    "primary_tree": "Domination",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "E cocoon → spider pounce → Q Electrocute. Rappel dodge to reset proc window."
+  },
+  "Evelynn": {
+    "keystone": "Electrocute",
+    "primary_tree": "Domination",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "W-Q-E Electrocute burst. Last Caress R executes after Electrocute detonation."
+  },
+  "Nidalee": {
+    "keystone": "Electrocute",
+    "primary_tree": "Domination",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Long-range Javelin procs hunt; Pounce-Takedown-Q completes Electrocute."
+  },
+  "Aatrox": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "World Ender R heals from Conqueror stacks. Sustained Q-auto Conqueror stacking."
+  },
+  "Darius": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Hemorrhage 5 stacks + full Conqueror = Noxian Might + execute. W heal procs."
+  },
+  "Garen": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "E spin stacks Conqueror instantly. Perseverance + Conqueror out-sustain most ARAM fights."
+  },
+  "Tryndamere": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Undying Rage extends Conqueror. Low HP passive amp = max Conqueror + max AS synergy."
+  },
+  "Olaf": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Berserker Rage (low HP AS) amplifies Conqueror stacking. R CC-immune Conqueror fight."
+  },
+  "Jax": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "E dodge-stun into full Conqueror dump. Relentless Assault stacks Conqueror fast."
+  },
+  "Irelia": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Ionian Fervor 6-stack = max DPS + full Conqueror. Bladesurge resets extend."
+  },
+  "Fiora": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Grand Challenge R reveals all Vitals — full Conqueror during R = massive heal + damage."
+  },
+  "Riven": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Fast combo animation-cancels full Conqueror in 2s. R execute + full Conqueror stacks."
+  },
+  "Camille": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Q double-hit stacks Conqueror fast. Hextech Ultimatum cage burst window = full stack."
+  },
+  "Gwen": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "W Hallowed Mist safe Conqueror stacking. Q scissors in W = full Conqueror without risk."
+  },
+  "Renekton": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Empowered W fury stun = instant Conqueror stacks. R AOE aura extends fight duration."
+  },
+  "Ambessa": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Dash-chain combat stacks Conqueror instantly. W follow-up dash resets after kill."
+  },
+  "Briar": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "No Mercy bleed + Conqueror = massive sustain. R frenzy always stacks fully."
+  },
+  "Illaoi": {
+    "keystone": "Grasp of the Undying",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Tentacle slams proc Grasp repeatedly. Grasp sustain + tentacle heal = unkillable in ARAM."
+  },
+  "Mordekaiser": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Riftmaker heals + Conqueror = infinite sustain in death realm. R isolates for full stacks."
+  },
+  "Nasus": {
+    "keystone": "Grasp of the Undying",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Grasp procs on every Q-stacking auto. Siphoning Strike charges from Grasp procs in ARAM."
+  },
+  "Cho'Gath": {
+    "keystone": "Grasp of the Undying",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Rupture (Q) knockup procs Grasp. Feast gives HP; more HP = larger Grasp heals."
+  },
+  "Dr. Mundo": {
+    "keystone": "Grasp of the Undying",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "R heals % max HP — Grasp + R = infinite sustain. More HP = more Grasp healing."
+  },
+  "Sion": {
+    "keystone": "Grasp of the Undying",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "W detonation triggers Grasp. More HP from passive = larger Grasp heals."
+  },
+  "Urgot": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Purge (W) rapid autos stack Conqueror instantly. Death machine stacked Conqueror = massive DPS."
+  },
+  "Trundle": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Subjugate (R) steals enemy stats — full Conqueror during R = insane damage amplification."
+  },
+  "Warwick": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "R suppress = full Conqueror window. Q heal amplified by Conqueror stacks."
+  },
+  "Master Yi": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Alpha Strike dodge burst then Tempo dump. Highlander reset extends Tempo indefinitely."
+  },
+  "Hecarim": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Rampage (Q) stacks + Spirit of Dread (W) ally heal = Conqueror amplified by W."
+  },
+  "Kled": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "W passive 4-auto proc stacks Conqueror. Remount mechanic resets Conqueror timer."
+  },
+  "Wukong": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Cyclone R stacks Conqueror on every rotation. Clone body slam extends fight."
+  },
+  "Rengar": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Q burst procs instant Conqueror. Battle Roar (W) removes CC then dumps stacks."
+  },
+  "Vi": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "R Cease and Desist guaranteed knockup = Aftershock. Q Vault Breaker also procs."
+  },
+  "Xin Zhao": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Three Talon Strike (Q) 3-hit = Conqueror fast. Crescent Guard (R) safe burst window."
+  },
+  "Zed": {
+    "keystone": "Electrocute",
+    "primary_tree": "Domination",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "W-R-W-E-Q instant Electrocute burst. Duskblade invis post-R extends burst window."
+  },
+  "Talon": {
+    "keystone": "Electrocute",
+    "primary_tree": "Domination",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "W-Q-auto instant Electrocute. Wall-hop flank + Electrocute = surprise one-shot."
+  },
+  "Kha'Zix": {
+    "keystone": "Electrocute",
+    "primary_tree": "Domination",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Q-auto-E procs Electrocute vs isolated carry. Isolation bonus + Electrocute = one-shot."
+  },
+  "Naafiri": {
+    "keystone": "Electrocute",
+    "primary_tree": "Domination",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Q-W leap-auto instant Electrocute. Packmates assist in proc completion."
+  },
+  "Qiyana": {
+    "keystone": "Electrocute",
+    "primary_tree": "Domination",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Element Q + R shockwave instant Electrocute. Wall element Q AOE procs on groups."
+  },
+  "Nocturne": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Duskbringer trail AS + Tempo stacks. W spell shield then auto dump into Tempo peak."
+  },
+  "Shaco": {
+    "keystone": "Electrocute",
+    "primary_tree": "Domination",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Q invis backstab crit + auto + E completes Electrocute instantly. Box chain fear trap."
+  },
+  "Pyke": {
+    "keystone": "Electrocute",
+    "primary_tree": "Domination",
+    "secondary_tree": "Precision",
+    "coaching_note": "E stun + Q + auto instant Electrocute. R reset chain = free Electrocute per kill."
+  },
+  "Kayn": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Darkin form (Rhaast) heals from Conqueror stacks. SA form: Electrocute instead."
+  },
+  "Leona": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "E + W + R all proc Aftershock. Eclipse (W) damage reduction + Aftershock = full tank burst."
+  },
+  "Nautilus": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Q hook + R chain knockup proc Aftershock. Every auto roots (Riptide) sustains proc."
+  },
+  "Shen": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Shadow Dash (E) taunt guaranteed Aftershock proc. Twilight Assault % HP damage amplified."
+  },
+  "Braum": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Q freeze + E-anchor procs Aftershock. Unbreakable (E) projectile blocking reduces burst."
+  },
+  "Thresh": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Q hook + E flay proc Aftershock. Death Sentence landing confirms Aftershock."
+  },
+  "Blitzcrank": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Q hook + R static proc Aftershock. Power Fist (E) uppercutt extends Aftershock duration."
+  },
+  "Alistar": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "W-Q double knockback/up procs Aftershock both times. R damage reduction + Aftershock."
+  },
+  "Rell": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "E tether stun + R magnetic field proc Aftershock. Magnet Storm continuous CC."
+  },
+  "Sejuani": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Q + E + R triple CC chain procs Aftershock. Permafrost stun procs after Aftershock."
+  },
+  "Galio": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "W charge taunt guarantees Aftershock. R global arrive + Aftershock on crowd."
+  },
+  "Rammus": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Q ball knockup + E taunt proc Aftershock. Defensive Ball Curl (W) reflects amplified."
+  },
+  "Gragas": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "E body slam stun procs Aftershock. R keg throw throws tanks into Aftershock procs."
+  },
+  "Jarvan IV": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "E+Q knockup guarantees Aftershock immediately. Cataclysm cage + Aftershock burst."
+  },
+  "Poppy": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "E terrain pin stuns and procs Aftershock. W anti-dash stops all gap-closes during proc."
+  },
+  "Ornn": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "W unstoppable + R Ram knockup proc Aftershock. Forge upgrades + Aftershock durability."
+  },
+  "Gnar": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Mega Gnar R wall-slam knockup guarantees Aftershock. Build full tank for Mega duration."
+  },
+  "Zac": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "E launch + R bounce 4x proc Aftershock multiple times. Chunk passive = more HP = more sustain."
+  },
+  "Maokai": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Q knock-back proc Aftershock. Nature's Grasp R root chain confirms it down corridor."
+  },
+  "Nunu & Willump": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "W snowball knockup procs Aftershock. R Absolute Zero channels inside Aftershock window."
+  },
+  "Tahm Kench": {
+    "keystone": "Grasp of the Undying",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Tongue Lash (Q) 3-stack proc Grasp. Thick Skin (E) grey health converts more with Grasp."
+  },
+  "Skarner": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Spines 3-stack stun procs Aftershock. R Impale drags target through Aftershock zone."
+  },
+  "Volibear": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Thundering Smash (Q) stun guaranteed Aftershock. Stormbringer (R) leap slam procs too."
+  },
+  "Soraka": {
+    "keystone": "Summon Aery",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Inspiration",
+    "coaching_note": "Aery sends on every Q poke and W heal. Starcall (Q) poke procs Aery repeatedly."
+  },
+  "Nami": {
+    "keystone": "Summon Aery",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Inspiration",
+    "coaching_note": "E on ally procs Aery on their autos. High Aery spam with Q bubble + W bounce."
+  },
+  "Bard": {
+    "keystone": "Glacial Augment",
+    "primary_tree": "Inspiration",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Q double-stun + Glacial Augment slows = complete corridor lockdown."
+  },
+  "Zilean": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Q double bomb stun procs Comet. W rewind resets Q immediately for another Comet."
+  },
+  "Rakan": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "W Battle Dance knockup + R charm proc Aftershock. Gleaming Quill (Q) heal support."
+  },
+  "Taric": {
+    "keystone": "Aftershock",
+    "primary_tree": "Resolve",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "E Dazzle 2-person stun procs Aftershock. R invincibility during Aftershock window."
+  },
+  "Seraphine": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Inspiration",
+    "coaching_note": "Every echo ability double-procs Comet. R global charm across ARAM map = free Comet."
+  },
+  "Renata Glasc": {
+    "keystone": "Summon Aery",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Inspiration",
+    "coaching_note": "W Bailout send Aery to rescued ally. Chemtech Putrifier applies grievous via heals."
+  },
+  "Yuumi": {
+    "keystone": "Summon Aery",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Inspiration",
+    "coaching_note": "Every heal and buff procs Aery while attached. Detach briefly to proc Aery on self."
+  },
+  "Ivern": {
+    "keystone": "Summon Aery",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Inspiration",
+    "coaching_note": "E shield on Daisy + allies procs Aery. Q root + Aery proc on hit champion."
+  },
+  "Teemo": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Q blind guarantees Comet. Mushrooms and poison proc Comet dots on every tick."
+  },
+  "Singed": {
+    "keystone": "Phase Rush",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Fling (E) cast procs Phase Rush instantly. Run through enemies in poison = unstoppable."
+  },
+  "Gangplank": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Q crit auto with Spellblade + Tempo on barrel chains. Powder Keg chains slow enemies in range."
+  },
+  "Graves": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Buckshot close range Tempo dump. True Grit armor procs let you stand in Tempo range."
+  },
+  "Shyvana": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Dragon form extended fight = full Conqueror. Nashor's on-hit Conqueror stack synergy."
+  },
+  "Udyr": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "R Wingborne Storm in Conqueror window = sustained AOE. Stance cycling stacks fast."
+  },
+  "Yorick": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Maiden + ghouls + Conqueror = 3 damage sources simultaneously. Q stacks extend it."
+  },
+  "Lillia": {
+    "keystone": "Phase Rush",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Blooming Blows (Q) procs Phase Rush — kite then Lullaby stack application at range."
+  },
+  "Yone": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Every-other auto magic damage + Tempo = insane sustained split DPS output."
+  },
+  "Yasuo": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Double crit passive means Tempo crits every auto late. R into tornado = instant stack."
+  },
+  "Lee Sin": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Q-auto-Q-auto rapid Conqueror stacking. Flurry passive every ability = fast stacks."
+  },
+  "Rek'Sai": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Queen's Wrath (Q) 3-hit AOE stacks Conqueror fast in groups. Burrow-to-above transition."
+  },
+  "Jayce": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Ranged E-empowered Q + melee Q-W-E combo Tempo stacks both forms."
+  },
+  "Kayle": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Level 11+ flame swords: Tempo AS = fire swords hit everyone near target simultaneously."
+  },
+  "Bel'Veth": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Bel'Veth: sustained Conqueror fight in ARAM. Resolve secondary for survivability."
+  },
+  "Kai'Sa": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Kai'Sa: Tempo stacks on grouped ARAM fights. Domination secondary for burst."
+  },
+  "Pantheon": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "coaching_note": "Pantheon: sustained Conqueror fight in ARAM. Resolve secondary for survivability."
+  }
+}

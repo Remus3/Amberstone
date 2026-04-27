@@ -1,0 +1,19 @@
+{
+  "_version": 1,
+  "sr": {
+    "live_coaching": "allow"
+  },
+  "aram": {
+    "live_coaching": "allow"
+  },
+  "arena": {
+    "live_coaching": "allow"
+  },
+  "brawl": {
+    "live_coaching": "allow"
+  },
+  "tft": {
+    "live_coaching": "allow",
+    "tft_vision_analysis": "allow"
+  }
+}

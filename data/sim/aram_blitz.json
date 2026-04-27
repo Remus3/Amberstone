@@ -1,0 +1,146 @@
+{
+  "meta": {
+    "name": "aram_blitz",
+    "label": "ARAM · Zeri mid-fight",
+    "mode": "aram"
+  },
+  "health": {
+    "type": "health",
+    "source": "sim",
+    "payload": {
+      "pid": 99999,
+      "alive": true,
+      "aram_mode": true,
+      "mode": "aram",
+      "last_reload_ok": true
+    }
+  },
+  "state": {
+    "type": "state",
+    "mode": "aram",
+    "source": "aram_coaching_data.json",
+    "payload": {
+      "game_time": "14:32",
+      "game_time_s": 872,
+      "kda": "6/2/11",
+      "hp_pct": 82,
+      "champion": "Zeri",
+      "action": "Engage 2-on-1 at enemy mid with Overlay App E grab",
+      "immediate": "Ult after top dive → focus Jinx",
+      "risk": "Blitz hook + Morgana Q — stay behind frontline",
+      "fight_rule": "Only fight with minion wave support",
+      "reset_item": "Statikk Shiv",
+      "next": "Rotate top after this push, reset on 18:00",
+      "objective": "Poke + all-in when Overlay App E flash down",
+      "positioning": "Back line, hug Sion — Morgana roots deep",
+      "wave_pct": 72,
+      "items_display": "Statikk Shiv, Berserkers, Pickaxe",
+      "item_build": "Statikk → Rapid Firecannon → Lord Dominik's → Infinity Edge",
+      "augments": "",
+      "enemy_comp": ["Jinx", "Blitzcrank", "Morgana", "Sion", "Lux"],
+      "ally_comp":  ["Zeri", "Braum", "Sion", "Cho'Gath", "Janna"],
+      "my_team": "blue",
+      "positions": {
+        "allies": {
+          "Zeri":     { "x": 0.45, "y": 0.55 },
+          "Braum":    { "x": 0.42, "y": 0.58 },
+          "Sion":     { "x": 0.40, "y": 0.60 },
+          "ChoGath":  { "x": 0.47, "y": 0.53 },
+          "Janna":    { "x": 0.38, "y": 0.62 }
+        },
+        "enemies": {
+          "Jinx":       { "x": 0.60, "y": 0.40 },
+          "Blitzcrank": { "x": 0.58, "y": 0.42 },
+          "Morgana":    { "x": 0.55, "y": 0.45 },
+          "Sion":       { "x": 0.62, "y": 0.38 },
+          "Lux":        { "x": 0.57, "y": 0.43 }
+        }
+      },
+      "dragon_state": "—",
+      "baron_state": "—",
+      "my_tower_hp": 1800,
+      "enemy_tower_hp": 1400,
+      "score": "12-9",
+      "win_pct": 58
+    }
+  },
+  "adaptation": {
+    "champion": "Zeri",
+    "mode": "aram",
+    "present": true,
+    "games_played": 48,
+    "wins": 27,
+    "losses": 21,
+    "win_rate": 0.5625,
+    "recent_win_rate": 0.6,
+    "recent_sample_size": 10,
+    "avg_duration_sec": 1204.3,
+    "top_items": [
+      {"item_id": 6672, "name": "Kraken Slayer", "matches": 32, "observed_wr": 0.72, "delta": 0.16},
+      {"item_id": 3094, "name": "Rapid Firecannon", "matches": 28, "observed_wr": 0.64, "delta": 0.08}
+    ],
+    "first_legendary": [
+      {"item_id": 3087, "name": "Statikk Shiv", "matches": 22, "observed_wr": 0.77, "delta": 0.21, "avg_timing_sec": 702.4}
+    ],
+    "recency_30d": {"games": 10, "wins": 6, "win_rate": 0.6, "delta_vs_alltime": 0.04, "window_days": 30},
+    "avg_kda": {"k": 12.4, "d": 6.2, "a": 18.1, "ratio": 4.92, "sample": 48},
+    "recent_kda": {"k": 14.0, "d": 5.3, "a": 19.8, "ratio": 6.37, "sample": 10, "delta_ratio": 1.45},
+    "counters": [
+      {"opponent": "Jinx", "sample": 6, "observed_wr": 0.17, "baseline_wr": 0.56, "delta": -0.39, "kda_ratio": 2.8, "kda_sample": 6, "kda_delta": -2.1},
+      {"opponent": "Blitzcrank", "sample": 5, "observed_wr": 0.80, "baseline_wr": 0.56, "delta": 0.24, "kda_ratio": 5.2, "kda_sample": 5, "kda_delta": 0.3}
+    ],
+    "hint": "Zeri ARAM baseline 56% wr (n=48). recent 60% ↑. typical KDA 4.92 · recent 6.37 ↑. active matchups: vs Jinx -39% KDA 2.8 (-2.1)."
+  },
+  "trending": {
+    "mode": "aram",
+    "hot": [
+      {"champion": "Zeri", "baseline_ratio": 4.92, "recent_ratio": 6.37, "delta": 1.45, "sample": 10},
+      {"champion": "Kindred", "baseline_ratio": 3.21, "recent_ratio": 3.92, "delta": 0.71, "sample": 10}
+    ],
+    "cold": [
+      {"champion": "Jinx", "baseline_ratio": 3.94, "recent_ratio": 3.14, "delta": -0.81, "sample": 10},
+      {"champion": "Thresh", "baseline_ratio": 4.05, "recent_ratio": 3.40, "delta": -0.65, "sample": 10}
+    ]
+  },
+  "activity": {
+    "events": [
+      {"ts": "2026-04-22T18:15:00Z", "event": "filed", "task_id": "t-sim-1", "op": "analyze-now", "owner_agent": "4", "status": "ready", "priority": 50},
+      {"ts": "2026-04-22T18:14:12Z", "event": "completed", "task_id": "t-sim-2", "op": "game-summary", "owner_agent": "2", "status": "completed", "priority": 60},
+      {"ts": "2026-04-22T18:13:05Z", "event": "filed", "task_id": "t-sim-3", "op": "cold-streak-advisory", "owner_agent": "1", "status": "ready", "priority": 70}
+    ],
+    "snapshot": {"ready": 3, "in_progress": 0, "completed": 42, "failed": 0}
+  },
+  "env": {
+    "warm_agent7": true,
+    "warm_last_activity_s": 12,
+    "flags": {
+      "RC_COACH_ADAPTATION": "on"
+    },
+    "auto_analyze": {
+      "state": "idle",
+      "next_in_s": 87,
+      "last_summary": {
+        "champion_buckets": 138,
+        "advisories_filed": 1,
+        "insight_advisories_filed": 2
+      }
+    }
+  },
+  "advisories": {
+    "advisories": [
+      {
+        "id": "t-sim-adv-1",
+        "op": "cold-streak-advisory",
+        "status": "ready",
+        "created_at": "2026-04-22T17:30:00Z",
+        "mode": "aram",
+        "champion": "Jinx",
+        "message": "Jinx (aram) KDA dropped 3.94 → 3.14 (-0.81) over last 10 games.",
+        "delta": -0.81,
+        "sample": 10,
+        "baseline_kda_ratio": 3.94,
+        "recent_kda_ratio": 3.14
+      }
+    ]
+  }
+}

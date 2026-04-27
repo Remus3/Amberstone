@@ -1,0 +1,65 @@
+[
+  {
+    "label": "SR Jinx pre-drake",
+    "status": "PASS",
+    "ms": 4509,
+    "issues": [],
+    "preview": "Action: BASE NOW\nImmediate: Crash wave under tower, base immediately\u2014hit Yun Tal before drake fight.\nNext: [A]Thresh[/A] holds lane, you arrive drake pit at [T]8:35[/T] with spike active.\nWave: Hard shove crashing enemy tower\u2014free base window before objective.\nObjective: TAKE DRAKE at [T]8:50[/T]\u2014yo"
+  },
+  {
+    "label": "SR Vayne vs dive",
+    "status": "PASS",
+    "ms": 5715,
+    "issues": [],
+    "preview": "Action: BASE LOW HP\n\nImmediate: Recall now\u2014[A]Thresh[/A] dead, [A]Garen[/A] dead, you cannot fight 3v5 mid. Flash down is critical.\n\nNext: Base, buy [T]22:45[/T], then rotate baron pit. [A]Graves[/A] hold mid tower; wait for [A]Orianna[/A] to scale.\n\nWave: Neutral mid \u2014 cede it, reset resources befo"
+  },
+  {
+    "label": "ARAM Caitlyn push inhib",
+    "status": "PASS",
+    "ms": 4909,
+    "issues": [],
+    "preview": "Action: POKE PHASE\n\nImmediate: [E] net back after Q poke; mana low so single rotation only. Left pack safe if HP dips below 50%.\n\nFight rule: [E] all-in only if Malphite ult still down AND Amumu lands bandage toss first. Never chase past their T1.\n\nPositioning: Maximum range behind Sett/Amumu frontl"
+  },
+  {
+    "label": "ARAM Nilah low HP",
+    "status": "PASS",
+    "ms": 4236,
+    "issues": [],
+    "preview": "Action: FOUNTAIN NOW\n\nImmediate: [E] back immediately\u2014no packs available, 28% HP is critical danger zone.\n\nFight rule: Do NOT engage. Enemy has Malphite + Hecarim stacked engage ready. You are one rotation away from deleted. Reset first.\n\nPositioning: Path straight back to fountain. Zero fight invol"
+  },
+  {
+    "label": "Arena Jinx round 7",
+    "status": "PASS",
+    "ms": 5860,
+    "issues": [],
+    "preview": "Action: KITE BACK\n\nRound strategy: [E]Malphite+Sett 80% HP vs your 35% \u2014 avoid all-in. Poke with Runaan's, kite to next camp. Thresh peels CC threats.\n\nFight rule: Engage ONLY if [E]Sett drops below 40% HP AND Malphite's R is on cooldown (visible timer). Thresh stun ready = go. Otherwise disengage h"
+  },
+  {
+    "label": "Brawl NB Bardle Royale",
+    "status": "PASS",
+    "ms": 4536,
+    "issues": [],
+    "preview": "Action: CONTEST EVENT\n\nImmediate: [A]Hecarim rotate mid NOW \u2014 zone [E]Darius from center. You position side-angle for [E]Jinx poke.\n\nEvent: Bardle Royale + PUSH CENTER ZONE IMMEDIATELY + [T]15s remaining[/T] + both lanes collapse mid\n\nFight rule: [E]Jinx first (immobile carry) \u2014 E rain slow, reposit"
+  },
+  {
+    "label": "Brawl URF anti-heal",
+    "status": "PASS",
+    "ms": 6026,
+    "issues": [],
+    "preview": "Action: RESET BASE\nImmediate: Back now \u2014 you have 2200g exactly for Serrated \u2192 Mortal Reminder. Enemy Soraka + Warwick sustain is unkillable without Grievous.\nFight rule: Do NOT engage 5v5 mid yet. [E]Warwick has all-in threat; [E]Soraka silence zones you. Wait for picks or objective setup.\nWave: Sh"
+  },
+  {
+    "label": "TFT Dark Star augment 4-2",
+    "status": "PASS",
+    "ms": 4518,
+    "issues": [],
+    "preview": "Action: TAKE DARK STAR SOUL\n\nBoard: Mordekaiser A3, Cho'Gath A1, Lissandra A5, Karma C4, Jhin D6\n\nEcon: Level 6 rolldown 4-2, push level 7 at 4-5 (25g hold post-roll)\n\nRolldown: Hit 3-star Cho now (3x bench). Stagger: roll 10g, stop at 2-star threshold or DStar 4 hit.\n\nItems: Mordekaiser=Emblem+Warm"
+  },
+  {
+    "label": "TFT NOVA low HP roll 5-1",
+    "status": "PASS",
+    "ms": 4863,
+    "issues": [],
+    "preview": "Action: LEVEL TO 9\nBoard: Jinx(D6), Corki(D7), Urgot(A3), Maokai(A1), Leona(A5), Blitzcrank(C3), Namu(C4), Karma(C2)\nEcon: 9 @ 5-2 rolldown. 12g insufficient\u2014sell Namu/Karma post-level\nRolldown: Hit 9, then rolldown remaining after stage. Stagger bench rebuild round-by-round\nItems: Jinx carries BT+I"
+  }
+]

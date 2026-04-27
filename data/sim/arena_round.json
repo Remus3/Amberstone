@@ -1,0 +1,78 @@
+{
+  "meta": {
+    "name": "arena_round",
+    "label": "Arena · Round 4 Samira",
+    "mode": "arena"
+  },
+  "health": {
+    "type": "health",
+    "source": "sim",
+    "payload": {
+      "pid": 99999,
+      "alive": true,
+      "arena_mode": true,
+      "mode": "arena",
+      "last_reload_ok": true
+    }
+  },
+  "state": {
+    "type": "state",
+    "mode": "arena",
+    "source": "arena_coaching_data.json",
+    "payload": {
+      "game_time": "Round 4",
+      "kda": "",
+      "champion": "Samira",
+      "action": "2v2 — go in on Lux first",
+      "immediate": "Ult Lux while she's casting E — your Rakan peels Garen",
+      "risk": "Garen E shreds once you're at 2 stacks",
+      "fight_rule": "Force W when Lux has Q on cooldown",
+      "reset_item": "Infinity Edge",
+      "next": "Augment pick next round — priority: Executioner",
+      "objective": "Win R4 to dodge pool of poison",
+      "positioning": "Flank left through ruins, duo with Rakan",
+      "items_display": "IE, Berserker's, Serrated Dirk",
+      "item_build": "IE → Collector → Bloodthirster",
+      "augments": "Gotta Go Fast; Back-to-Basics; Jeweled Gauntlet",
+      "enemy_comp": ["Lux", "Garen"]
+    }
+  },
+  "adaptation": {
+    "champion": "Samira",
+    "mode": "arena",
+    "present": true,
+    "games_played": 11,
+    "wins": 7,
+    "losses": 4,
+    "win_rate": 0.636,
+    "recent_win_rate": 0.7,
+    "recent_sample_size": 10,
+    "avg_duration_sec": 662.1,
+    "avg_kda": {"k": 9.1, "d": 4.2, "a": 6.8, "ratio": 3.79, "sample": 11},
+    "recent_kda": {"k": 10.5, "d": 3.8, "a": 7.4, "ratio": 4.71, "sample": 10, "delta_ratio": 0.92},
+    "top_items": [],
+    "first_legendary": [],
+    "counters": [],
+    "hint": "Samira ARENA baseline 64% wr (n=11). recent 70% ↑. typical KDA 3.79 · recent 4.71 ↑."
+  },
+  "trending": {
+    "mode": "arena",
+    "hot": [
+      {"champion": "Samira", "baseline_ratio": 3.79, "recent_ratio": 4.71, "delta": 0.92, "sample": 10}
+    ],
+    "cold": []
+  },
+  "activity": {
+    "events": [
+      {"ts": "2026-04-22T18:10:00Z", "event": "filed", "task_id": "t-sim-30", "op": "augment-eval", "owner_agent": "5", "status": "ready", "priority": 60}
+    ],
+    "snapshot": {"ready": 1, "in_progress": 1, "completed": 51, "failed": 0}
+  },
+  "env": {
+    "warm_agent7": false,
+    "warm_last_activity_s": 960,
+    "flags": {"RC_COACH_ADAPTATION": "on"},
+    "auto_analyze": {"state": "idle", "next_in_s": 120}
+  },
+  "advisories": {"advisories": []}
+}

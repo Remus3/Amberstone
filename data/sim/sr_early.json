@@ -1,0 +1,133 @@
+{
+  "meta": {
+    "name": "sr_early",
+    "label": "SR \u00b7 early laning \u00b7 4:30",
+    "mode": "sr",
+    "summary": "Early laning \u00b7 Ahri mid \u00b7 wave-crash + ward river before Drake 1"
+  },
+  "health": {
+    "type": "health",
+    "source": "sim",
+    "payload": {
+      "pid": 99999,
+      "alive": true,
+      "has_game": true,
+      "mode": "sr",
+      "last_reload_ok": true
+    }
+  },
+  "state": {
+    "type": "state",
+    "mode": "sr",
+    "source": "aram_coaching_data.json",
+    "payload": {
+      "game_time": "04:30",
+      "game_time_s": 270,
+      "kda": "0/0/1",
+      "cs": 32,
+      "gold": 880,
+      "level": 4,
+      "vision_score": 3,
+      "hp_pct": 88,
+      "mp_pct": 91,
+      "champion": "Ahri",
+      "lane": "MID",
+      "action": "Shove wave, ward river",
+      "immediate": "Next wave is yours \u2014 crash then place river ward bush-side",
+      "risk": "Jungle pathing toward mid after Drake scuttle",
+      "fight_rule": "No all-in without flash up on Zed",
+      "reset_item": "Dark Seal + Refillable (400g)",
+      "next": "Push 5 \u2192 recall \u2192 950 gold for Lost Chapter spike",
+      "objective": "First Drake spawns 5:00 \u2014 vision contest",
+      "positioning": "Mid lane, near river bush for safe ward",
+      "wave_pct": 45,
+      "wave_top": 28,
+      "wave_mid": 55,
+      "wave_bot": 50,
+      "items_display": "Doran's Ring, Refillable Potion, Stealth Ward",
+      "item_build": "Lost Chapter \u2192 Luden's Echo \u2192 Sorcerer's Shoes",
+      "ally_spells": {
+        "Ahri": [
+          {
+            "spell": "Flash",
+            "cd_s": 0
+          },
+          {
+            "spell": "Teleport",
+            "cd_s": 0
+          }
+        ]
+      },
+      "ally_comp": [
+        "Ahri",
+        "LeeSin",
+        "Sion",
+        "Jinx",
+        "Nami"
+      ],
+      "enemy_comp": [
+        "Zed",
+        "Graves",
+        "Darius",
+        "Kaisa",
+        "Thresh"
+      ],
+      "dragon_state": "First spawns 5:00 \u2014 contest vision",
+      "baron_state": "\u2014",
+      "herald_state": "spawns 14:00",
+      "atakhan_state": "\u2014",
+      "towers_us": 11,
+      "towers_them": 11,
+      "score": "0-0",
+      "team_gold_diff": 180,
+      "win_pct": 50,
+      "my_team": "ORDER",
+      "positions": {
+        "allies": {
+          "Ahri": [
+            0.5,
+            0.5
+          ],
+          "LeeSin": [
+            0.4,
+            0.62
+          ],
+          "Sion": [
+            0.18,
+            0.3
+          ],
+          "Jinx": [
+            0.66,
+            0.82
+          ],
+          "Nami": [
+            0.62,
+            0.82
+          ]
+        },
+        "enemies": {
+          "Zed": [
+            0.55,
+            0.45
+          ],
+          "Graves": [
+            0.58,
+            0.42
+          ],
+          "Darius": [
+            0.78,
+            0.2
+          ],
+          "Kaisa": [
+            0.32,
+            0.18
+          ],
+          "Thresh": [
+            0.3,
+            0.22
+          ]
+        }
+      }
+    }
+  }
+}

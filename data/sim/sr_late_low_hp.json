@@ -1,0 +1,60 @@
+{
+  "meta": {
+    "name": "sr_late_low_hp",
+    "label": "SR Ranked · Ahri mid · 31:15 low HP",
+    "mode": "sr"
+  },
+  "health": {
+    "type": "health",
+    "source": "sim",
+    "payload": {
+      "pid": 99999,
+      "alive": true,
+      "has_game": true,
+      "mode": "sr",
+      "last_reload_ok": true
+    }
+  },
+  "state": {
+    "type": "state",
+    "mode": "sr",
+    "source": "coaching_data.json",
+    "payload": {
+      "game_time": "31:15",
+      "game_time_s": 1875,
+      "kda": "7/5/11",
+      "cs": 245,
+      "gold": 420,
+      "level": 16,
+      "vision_score": 28,
+      "r_cooldown_s": 42,
+      "hp_pct": 18,
+      "mp_pct": 8,
+      "champion": "Ahri",
+      "action": "DISENGAGE — Zhonya or flash",
+      "immediate": "You're at 18% HP. Zed has R up. Back off behind Sion NOW.",
+      "risk": "Zed R window is ~4s, Shaco could be flanking",
+      "fight_rule": "Do NOT face-check river — vision first",
+      "reset_item": "—",
+      "next": "Survive to next wave, get Elixir of Sorcery, regroup mid",
+      "objective": "Baron up in 45s — don't give a free pick before it",
+      "positioning": "Retreat to tier-2 mid, stay far back line",
+      "wave_pct": 20,
+      "items_display": "Luden's Echo, Sorcerer's Shoes, Shadowflame, Rabadon's Deathcap, Zhonya's Hourglass",
+      "item_build": "Zhonya's → Void Staff → Elixir of Sorcery",
+      "augments": "",
+      "ally_comp":  ["Ahri", "LeeSin", "Sion", "Jinx", "Nami"],
+      "enemy_comp": ["Zed", "Graves", "Darius", "Kaisa", "Thresh"],
+      "dragon_state": "3-2 (Mountain next 36:00)",
+      "baron_state": "spawns 32:00 — priority contest",
+      "herald_state": "—",
+      "atakhan_state": "—",
+      "towers_us": 5,
+      "towers_them": 4,
+      "score": "24-22",
+      "team_score": "24-22",
+      "team_gold_diff": 1200,
+      "win_pct": 52
+    }
+  }
+}

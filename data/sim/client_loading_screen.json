@@ -1,0 +1,150 @@
+{
+  "meta": {
+    "name": "client_loading_screen",
+    "label": "Client \u00b7 loading screen (champ-select \u2192 in-game)",
+    "mode": "client",
+    "summary": "Loading screen \u00b7 all 10 players' meta data, transitions to in-game on completion"
+  },
+  "health": {
+    "type": "health",
+    "source": "sim",
+    "payload": {
+      "pid": 99999,
+      "alive": true,
+      "has_game": false,
+      "mode": "client",
+      "last_reload_ok": true
+    }
+  },
+  "state": {
+    "type": "state",
+    "mode": "client",
+    "source": "coaching_data.json",
+    "payload": {
+      "game_time": "",
+      "kda": "",
+      "champion": "Ahri",
+      "queue": "Ranked Solo/Duo \u00b7 SR",
+      "action": "LOADING \u2014 4/10 players in",
+      "immediate": "All 10 players' rank + recent perf snapshot. Will flip to in-game at first minion spawn.",
+      "risk": "Enemy Zed is Diamond II 67%wr last 10 \u00b7 primary threat. Don't lane-trade until level 6.",
+      "fight_rule": "\u2014",
+      "reset_item": "\u2014",
+      "next": "First wave at 1:30 \u2192 vision ping at 2:35",
+      "objective": "Pre-game intel \u00b7 queue: Ranked Solo \u00b7 est duration 28-34min",
+      "positioning": "Mid lane",
+      "items_display": "Doran's Ring, Refillable Potion, Stealth Ward",
+      "item_build": "Lost Chapter \u2192 Luden's Echo \u2192 Sorcerer's Shoes",
+      "loading_progress": {
+        "loaded": 4,
+        "total": 10,
+        "stuck_at": [
+          "Zed",
+          "Thresh"
+        ]
+      },
+      "ally_meta": [
+        {
+          "champion": "Ahri",
+          "summoner": "you",
+          "rank": "Plat I",
+          "recent_wr": 0.62,
+          "kda_avg": 2.9,
+          "main": true
+        },
+        {
+          "champion": "LeeSin",
+          "summoner": "ally-jng",
+          "rank": "Plat II",
+          "recent_wr": 0.55,
+          "kda_avg": 3.1
+        },
+        {
+          "champion": "Sion",
+          "summoner": "ally-top",
+          "rank": "Plat I",
+          "recent_wr": 0.58,
+          "kda_avg": 2.4
+        },
+        {
+          "champion": "Jinx",
+          "summoner": "ally-adc",
+          "rank": "Diamond IV",
+          "recent_wr": 0.51,
+          "kda_avg": 2.8
+        },
+        {
+          "champion": "Nami",
+          "summoner": "ally-supp",
+          "rank": "Plat II",
+          "recent_wr": 0.6,
+          "kda_avg": 2.2
+        }
+      ],
+      "enemy_meta": [
+        {
+          "champion": "Zed",
+          "summoner": "en-mid",
+          "rank": "Diamond II",
+          "recent_wr": 0.67,
+          "kda_avg": 3.4,
+          "primary_threat": true
+        },
+        {
+          "champion": "Graves",
+          "summoner": "en-jng",
+          "rank": "Plat I",
+          "recent_wr": 0.52,
+          "kda_avg": 2.8
+        },
+        {
+          "champion": "Darius",
+          "summoner": "en-top",
+          "rank": "Plat II",
+          "recent_wr": 0.49,
+          "kda_avg": 2.1
+        },
+        {
+          "champion": "Kaisa",
+          "summoner": "en-adc",
+          "rank": "Plat I",
+          "recent_wr": 0.55,
+          "kda_avg": 2.6
+        },
+        {
+          "champion": "Thresh",
+          "summoner": "en-supp",
+          "rank": "Plat II",
+          "recent_wr": 0.5,
+          "kda_avg": 1.9
+        }
+      ],
+      "ally_comp": [
+        "Ahri",
+        "LeeSin",
+        "Sion",
+        "Jinx",
+        "Nami"
+      ],
+      "enemy_comp": [
+        "Zed",
+        "Graves",
+        "Darius",
+        "Kaisa",
+        "Thresh"
+      ],
+      "ally_spells": {
+        "Ahri": [
+          {
+            "spell": "Flash",
+            "cd_s": 0
+          },
+          {
+            "spell": "Teleport",
+            "cd_s": 0
+          }
+        ]
+      }
+    }
+  }
+}

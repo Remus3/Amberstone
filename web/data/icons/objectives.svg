@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- Dragon — curled stylized mark -->
+    <symbol id="obj-dragon" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M4 14c3-2 5-4 8-4s5 2 5 2l3-3-1 4c0 3-3 6-8 6-4 0-8-2-8-6 0-2 0-3 1-3l2 1v-2l-2-1 1-2 3 1v-2l-2-1h2l3 2 2-1-1 3z"/>
+    </symbol>
+    <!-- Baron — skull-horn silhouette -->
+    <symbol id="obj-baron" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M12 2c-4 0-7 3-7 7v3l-2 3 2 1 1 3 2 1v2h2v-2l1 1h2l1-1v2h2v-2l2-1 1-3 2-1-2-3V9c0-4-3-7-7-7zm-3 8a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm6 0a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm-3 5l2 3h-4z"/>
+    </symbol>
+    <!-- Rift Herald — eye + horns -->
+    <symbol id="obj-herald" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M4 4l3 3 2-1 3 1 3-1 2 1 3-3-2 5 1 3-4 2-1 3h-2l-2-2-2 2h-2l-1-3-4-2 1-3zm8 6a2 2 0 100 4 2 2 0 000-4z"/>
+    </symbol>
+    <!-- Atakhan — spiked orb -->
+    <symbol id="obj-atakhan" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M12 2l2 4 4-2-2 4 4 2-4 2 2 4-4-2-2 4-2-4-4 2 2-4-4-2 4-2-2-4 4 2zm0 6a4 4 0 100 8 4 4 0 000-8z"/>
+    </symbol>
+    <!-- Tower / Turret -->
+    <symbol id="obj-tower" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M9 2h6v3h2v4l-2 1v10h-2v-4h-2v4h-2v-4h-2v4H7V10L5 9V5h2V2h2zm1 8h4V7h-4z"/>
+    </symbol>
+    <!-- Score tally -->
+    <symbol id="obj-score" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M5 4h3v16H5zm5 0h3v16h-3zm5 0h3v16h-3zm6 3l-2 11h-2l2-11z"/>
+    </symbol>
+    <!-- Game time / clock -->
+    <symbol id="obj-clock" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 3a7 7 0 110 14 7 7 0 010-14zm-1 2v6l5 3 1-2-4-2V7z"/>
+    </symbol>
+  </defs>
+</svg>
