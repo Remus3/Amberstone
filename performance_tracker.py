@@ -10,11 +10,11 @@ import logging
 from datetime import datetime
 from pathlib import Path
 _log = logging.getLogger("rc.tracker")
-# 2026-04-25: relocated from project root → data/ratings/ for organizational
-# consistency with the per-mode last_<mode>.json siblings. Old path was a
-# legacy artifact from the single-mode rating era. supervisor.py:1839
-# updated in lockstep.
-RATING_FILE = "data/ratings/last_game_rating.json"; RATINGS_DIR = "data/ratings"
+# 2026-04-27: unification — the per-mode last_<mode>.json files are the
+# canonical source of truth. The "last across all modes" is now derived as
+# the most-recently-modified per-mode file (see _latest_rating_file). This
+# removes the dual-write that ignored RC_ACCOUNT_ID namespacing.
+RATINGS_DIR = "data/ratings"
 
 
 def _atomic_write_json(path: Path, data: dict) -> None:
@@ -72,6 +72,20 @@ def _ratings_dir(sd):
 
 
 def _mode_file(sd, cat): return _ratings_dir(sd) / f"last_{cat.lower()}.json"
+_RATING_CATEGORIES = ("SR", "ARAM", "ARENA", "BRAWL", "TFT")
+def _latest_rating_file(sd):
+    """Return the per-mode rating file with the newest mtime, or None.
+    Used as the "last across all modes" pointer that replaced the
+    legacy data/ratings/last_game_rating.json (2026-04-27 unification)."""
+    newest = None; newest_m = -1.0
+    d = _ratings_dir(sd)
+    for cat in _RATING_CATEGORIES:
+        p = d / f"last_{cat.lower()}.json"
+        try:
+            m = p.stat().st_mtime
+            if m > newest_m: newest, newest_m = p, m
+        except OSError: continue
+    return newest
 def is_valid_match(gs):
     gm = (gs.get("game_mode","") or "").upper()
     if gm in _EXCLUDED_MODES or gm.startswith("TUTORIAL") or gm.startswith("PRACTICE"): return False
@@ -251,7 +265,6 @@ def save_tft_rating(script_dir,tft_live,tft_coaching=None):
         "tft_unit_positions":_unit_positions,"tft_unit_placement":_raw_placement}
     try:
         _atomic_write_json(_mode_file(script_dir, "TFT"), data)
-        _atomic_write_json(Path(script_dir) / RATING_FILE, data)
     except Exception as _e:
         _log.warning("TFT rating save failed: %s", _e)  # QUAL-002
     db=_get_db(script_dir)
@@ -282,7 +295,6 @@ def save_rating(script_dir,champion,game_state,ally_kills_total):
         "notes":notes,"timestamp":datetime.now().strftime("%Y-%m-%d %H:%M")}
     try:
         _atomic_write_json(_mode_file(script_dir, category), data)
-        _atomic_write_json(Path(script_dir) / RATING_FILE, data)
     except Exception as _e:
         _log.warning("Rating save failed (%s): %s", category, _e)  # QUAL-002
     db=_get_db(script_dir)
@@ -323,8 +335,8 @@ def save_rating(script_dir,champion,game_state,ally_kills_total):
 
 def load_rating(sd,category=""):
     try:
-        p=_mode_file(sd,category) if category else Path(sd)/RATING_FILE
-        if p.exists(): return json.loads(p.read_text(encoding="utf-8"))
+        p = _mode_file(sd, category) if category else _latest_rating_file(sd)
+        if p and p.exists(): return json.loads(p.read_text(encoding="utf-8"))
     except Exception as _e: _log.debug("load_rating %s: %s", category or 'default', _e)  # QUAL-002
     return None
 def load_all_ratings(sd):
