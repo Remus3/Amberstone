@@ -909,6 +909,13 @@ class CoachIntegration:
                 with coaching_data_lock():
                     if self.data_file.exists():
                         current = json.loads(self.data_file.read_text(encoding="utf-8"))
+                        # 2026-04-27 audit: a partially-flushed file or a bad
+                        # external write could leave non-dict JSON here, and
+                        # current.update(...) would crash on TypeError. Treat
+                        # it like a fresh start rather than propagating.
+                        if not isinstance(current, dict):
+                            logger.warning("coaching_data.json was %s, resetting", type(current).__name__)
+                            current = self._default_data()
                     else:
                         current = self._default_data()
 

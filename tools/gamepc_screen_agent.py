@@ -192,6 +192,14 @@ def loop(interval: float, monitor_index: int | None,
             consecutive_fail += 1
             log.warning("capture/upload failed (%dx): %s", consecutive_fail, e)
         # Backoff if Legion is unreachable; recover quickly when it returns.
+        # 2026-04-27 audit: cap consecutive_fail so the exponential doesn't
+        # silently park at 30s forever. After ~5 failures, log loudly so
+        # the operator notices a sustained outage instead of stale frames
+        # being served from the server's cache.
+        if consecutive_fail == 6:
+            log.critical("vision stream down for 6 consecutive uploads — Legion unreachable?")
+        if consecutive_fail > 8:
+            consecutive_fail = 8  # cap exponent so backoff stays at 30s ceiling
         sleep_for = interval if consecutive_fail < 3 else min(30.0, interval * (2 ** (consecutive_fail - 2)))
         elapsed = time.time() - t0
         time.sleep(max(0.0, sleep_for - elapsed))
