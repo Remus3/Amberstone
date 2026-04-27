@@ -505,7 +505,10 @@ footer .digest-icon.in-footer b {
   min-width: 280px;
   max-width: calc(100vw - 36px);
   padding: 8px;
-  display: flex; flex-direction: column; gap: 4px;
+  /* gap is the SOLE source of spacing between rows + dividers — every
+   * adjacent pair is exactly `gap` apart. Don't add margins on items
+   * or dividers; they'll compound and break uniformity. */
+  display: flex; flex-direction: column; gap: 6px;
 }
 .view-menu.hidden { display: none; }
 .view-menu-item {
@@ -544,7 +547,9 @@ footer .digest-icon.in-footer b {
   outline: 2px solid var(--info); outline-offset: 1px;
 }
 .view-menu-divider {
-  height: 1px; background: var(--border-soft); margin: 4px 6px;
+  /* No margin — the parent flex `gap: 6px` provides uniform spacing
+   * around dividers AND items. (2026-04-26 v3 fix.) */
+  height: 1px; background: var(--border-soft); margin: 0;
 }
 /* Special menu rows — keep the same surface-head base background as
  * regular items so all rows look unified, but tint the border + text
