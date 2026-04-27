@@ -490,19 +490,18 @@ footer .digest-icon.in-footer b {
 .title-auto-pill:active { transform: scale(0.97); }
 
 .view-menu {
-  /* (2026-04-26 v6) HARDCODED top: 70px — bottom edge of header-row-1
-   * is at ~36-40px CSS-pixels (row min-height 34 + header padding-top
-   * 5). 70px lands the menu just below row 1 with breathing room.
-   * !important added because earlier attempts (v3 fixed, v4 zoom,
-   * v5 top:100% absolute) all failed for reasons that turned out to
-   * be elusive — likely a stacking-context interaction we can't
-   * fully isolate. Hardcoding makes it bulletproof. */
-  position: absolute !important;
+  /* (2026-04-26 v7) The menu is moved to be a direct child of <body>
+   * via JS on first wire (escapes ALL parent positioning quirks).
+   * position: fixed with hardcoded top in CSS pixels — visual lands
+   * at top * body-zoom (~93px at 70px CSS / 1.33 zoom). Hardcoded
+   * bottom/right/transform clearance so nothing can override. */
+  position: fixed !important;
   top: 70px !important;
-  left: 18px !important;
+  left: 30px !important;
   bottom: auto !important;
   right: auto !important;
   transform: none !important;
+  margin: 0 !important;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
