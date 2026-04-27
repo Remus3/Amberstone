@@ -1,20 +1,20 @@
 {
-  "rating": "C",
-  "label": "AVERAGE \u2014 clear gaps to address",
+  "rating": "B",
+  "label": "SOLID \u2014 on track, tighten fundamentals",
   "champion": "Jinx",
   "game_mode": "KIWI",
   "mode_category": "ARAM",
-  "game_time": "17:51",
+  "game_time": "10:28",
   "stats": {
-    "cs_per_min": 2.8,
-    "kda": "10/14/24",
-    "deaths": 14,
-    "kill_participation": 74,
-    "gold_per_min": 12
+    "cs_per_min": 1.9,
+    "kda": "8/8/32",
+    "deaths": 8,
+    "kill_participation": 78,
+    "gold_per_min": 186
   },
   "notes": [
-    "KDA (2.4) \u2014 pick fights carefully",
-    "Too many deaths (14)"
+    "Dominant KDA (5.0)",
+    "Too many deaths (8)"
   ],
-  "timestamp": "2026-04-26 20:14"
+  "timestamp": "2026-04-26 23:03"
 }

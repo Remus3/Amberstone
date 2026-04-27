@@ -4776,32 +4776,55 @@
     // the bench even though it's clearly populated. Treat "has bench" as
     // an authoritative ARAM-style signal — bench champ selection only
     // exists in ARAM modes regardless of queue id.
+    // (2026-04-26 v2) Mayhem rolled options surface in cs.rolled_options
+    // (extracted from action.championOptions / myTeam[].championOptions /
+    // top-level championOptions etc by the agent). When my_champion is
+    // 0 AND bench is empty, fall back to rolled_options as the
+    // pickable cards. Click fires lock_pick instead of bench_swap since
+    // there's no current pick to swap from.
     const _benchPresent = Array.isArray(cs.bench) && cs.bench.length > 0;
-    if (!cs.is_aram && !_benchPresent) {
+    const _rolls = Array.isArray(cs.rolled_options) ? cs.rolled_options : [];
+    const _showAsRolls = !_benchPresent && _rolls.length > 0 && (cs.my_champion | 0) === 0;
+    const _anyClickable = _benchPresent || _showAsRolls;
+    if (!cs.is_aram && !_anyClickable) {
       benchBlock.hidden = true;
       return;
     }
     benchBlock.hidden = false;
     const grid = document.getElementById("cs-bench-grid");
     if (!grid) return;
-    const bench = cs.bench || [];
-    if (!bench.length) {
+    // Update the section label to telegraph what these are.
+    const benchLabel = benchBlock.querySelector(".cs-bench-label");
+    if (benchLabel) {
+      benchLabel.textContent = _showAsRolls
+        ? "Rolled options — click to pick"
+        : "Bench — click for instant swap (no cooldown)";
+    }
+    const list = _showAsRolls ? _rolls : (cs.bench || []);
+    if (!list.length) {
       grid.innerHTML = '<div class="cs-bench-empty">No bench champs yet — wait for a teammate to reroll</div>';
       return;
     }
     grid.innerHTML = "";
-    bench.forEach((cid) => {
+    list.forEach((cid) => {
       const champNm = _csChampName(cid) || "cid:" + cid;
       const cell = document.createElement("div");
       cell.className = "cs-bench-cell";
-      cell.title = "Swap to " + champNm + " (instant)";
+      cell.title = _showAsRolls
+        ? "Pick " + champNm
+        : "Swap to " + champNm + " (instant)";
       const url = _csChampImg(cid);
       cell.innerHTML =
         (url ? `<img src="${url}" alt="" onerror="this.style.display='none'">` : "") +
         `<div class="nm">${champNm.slice(0, 11)}</div>`;
       cell.addEventListener("click", () => {
         cell.classList.add("swapping");
-        lcuCmd({ cmd: "bench_swap", championId: cid });
+        // For Mayhem rolled options (no current pick), use lock_pick to
+        // commit. For bench rerolls (active pick), bench_swap is instant.
+        const cmd = _showAsRolls
+          ? { cmd: "lock_pick", championId: cid }
+          : { cmd: "bench_swap", championId: cid };
+        lcuCmd(cmd);
         setTimeout(() => cell.classList.remove("swapping"), 1200);
       });
       grid.appendChild(cell);
