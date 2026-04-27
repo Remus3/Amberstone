@@ -1834,13 +1834,19 @@ class Supervisor:
             except (OSError, json.JSONDecodeError) as e:
                 log.debug("post-game summary read failed for %s: %s", newest, e)
 
-        # Also pull the rating file for per-mode grade + stats. This is
-        # what performance_tracker.save_rating writes on every match end.
-        # Path moved 2026-04-25: project-root → data/ratings/ for
-        # consistency with last_<mode>.json siblings.
-        rating_path = _PROJECT_ROOT / "data" / "ratings" / "last_game_rating.json"
+        # Also pull the most recent per-mode rating file for grade + stats.
+        # 2026-04-27: switched from the legacy data/ratings/last_game_rating.json
+        # (which ignored RC_ACCOUNT_ID namespacing) to the most-recently-
+        # modified last_<mode>.json — performance_tracker._latest_rating_file
+        # is the authoritative locator.
         try:
-            if rating_path.exists():
+            from performance_tracker import _latest_rating_file as _lrf  # type: ignore
+            rating_path = _lrf(str(_PROJECT_ROOT))
+        except Exception as e:
+            log.debug("rating-file locator import failed: %s", e)
+            rating_path = None
+        try:
+            if rating_path and rating_path.exists():
                 rating_data = json.loads(rating_path.read_text(encoding="utf-8"))
                 for k in ("rating", "label", "stats", "notes", "mode_category"):
                     if k in rating_data:
@@ -1852,7 +1858,7 @@ class Supervisor:
                 if "game_mode" in rating_data and "game_mode" not in summary_payload:
                     summary_payload["game_mode"] = rating_data["game_mode"]
         except (OSError, json.JSONDecodeError) as e:
-            log.debug("last_game_rating.json read failed: %s", e)
+            log.debug("rating file read failed: %s", e)
 
         try:
             self._scheduler.file_task(
