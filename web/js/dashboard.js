@@ -489,25 +489,12 @@
       m.classList.remove("hidden");
       m.setAttribute("aria-hidden", "false");
       t.setAttribute("aria-expanded", "true");
-      // Position the menu BELOW the trigger button. body { zoom: 1.33 }
-      // is the gotcha here: getBoundingClientRect() returns POST-zoom
-      // screen coordinates, but position:fixed top/left inside a
-      // zoomed body interprets values as PRE-zoom CSS pixels (which
-      // then get scaled by the body's zoom). Divide by the body
-      // zoom factor so the menu lands where we expect.
-      const zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
-      const r = t.getBoundingClientRect();
-      m.style.top  = ((r.bottom + 6) / zoom) + "px";
-      m.style.left = (r.left / zoom) + "px";
-      // If menu would overflow right edge of viewport, snap left.
-      requestAnimationFrame(() => {
-        const mr = m.getBoundingClientRect();
-        const overhang = mr.right - (window.innerWidth - 8);
-        if (overhang > 0) {
-          const newLeft = Math.max(8, r.left - overhang);
-          m.style.left = (newLeft / zoom) + "px";
-        }
-      });
+      // Positioning is fully CSS-driven now (v5): the menu is a child
+      // of .header-row-1 (which is position:relative), and CSS sets
+      // top: 100% + margin-top: 6px + left: 0. No zoom math, no
+      // getBoundingClientRect. Clear any stale inline coords from
+      // earlier v3/v4 fixed-positioning attempts so they don't stick.
+      m.style.top = ""; m.style.left = "";
     } else {
       _viewMenuClose();
     }
