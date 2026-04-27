@@ -489,19 +489,23 @@
       m.classList.remove("hidden");
       m.setAttribute("aria-hidden", "false");
       t.setAttribute("aria-expanded", "true");
-      // Position the menu BELOW the trigger button using fixed
-      // coordinates from getBoundingClientRect — bypasses the
-      // offset-parent ambiguity that was leaving the menu pinned
-      // to viewport y=0 despite header { position: relative }.
+      // Position the menu BELOW the trigger button. body { zoom: 1.33 }
+      // is the gotcha here: getBoundingClientRect() returns POST-zoom
+      // screen coordinates, but position:fixed top/left inside a
+      // zoomed body interprets values as PRE-zoom CSS pixels (which
+      // then get scaled by the body's zoom). Divide by the body
+      // zoom factor so the menu lands where we expect.
+      const zoom = parseFloat(getComputedStyle(document.body).zoom) || 1;
       const r = t.getBoundingClientRect();
-      m.style.top  = (r.bottom + 6) + "px";
-      m.style.left = r.left + "px";
-      // If menu would overflow right edge of viewport, snap right.
+      m.style.top  = ((r.bottom + 6) / zoom) + "px";
+      m.style.left = (r.left / zoom) + "px";
+      // If menu would overflow right edge of viewport, snap left.
       requestAnimationFrame(() => {
         const mr = m.getBoundingClientRect();
         const overhang = mr.right - (window.innerWidth - 8);
         if (overhang > 0) {
-          m.style.left = Math.max(8, r.left - overhang) + "px";
+          const newLeft = Math.max(8, r.left - overhang);
+          m.style.left = (newLeft / zoom) + "px";
         }
       });
     } else {
