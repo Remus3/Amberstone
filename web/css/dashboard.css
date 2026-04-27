@@ -266,6 +266,12 @@ header {
   width: 100%;
   min-height: 34px;
 }
+/* Anchor for the absolutely-positioned view-menu (which is a child
+ * of header-row-1). Using row-1 as the offset parent means the menu's
+ * top:100% lands exactly at the bottom of row 1 — no zoom math
+ * needed (the body { zoom: 1.33 } scales everything uniformly inside
+ * an absolute-positioned tree). */
+.header-row-1 { position: relative; }
 /* Row-2 pills are slightly tighter so the bars + session metrics read
  * cleanly without matching the 34px body-text height of row 1. */
 .header-row-2 {
@@ -484,14 +490,16 @@ footer .digest-icon.in-footer b {
 .title-auto-pill:active { transform: scale(0.97); }
 
 .view-menu {
-  /* (2026-04-26 v3) Position via JS getBoundingClientRect — `top: 100%`
-   * inside a position:relative header was rendering at viewport y=0
-   * regardless (likely due to a stacking-context interaction with
-   * body { overflow: hidden } or the header-row flex). Position:
-   * fixed avoids the offset-parent ambiguity entirely; the JS sets
-   * top + left from the trigger's rect on every open. */
-  position: fixed;
-  top: 0; left: 18px;  /* placeholder — JS overwrites on open */
+  /* (2026-04-26 v5) Plain position: absolute anchored to .header-row-1
+   * (which has position: relative). top: 100% places the menu's top
+   * edge at the bottom of header-row-1 — clean, no zoom math, no
+   * getBoundingClientRect. The earlier v3/v4 attempts at position:
+   * fixed + JS rect failed because position:fixed inside a body {
+   * zoom: 1.33 } has weirdly-scaled visual coordinates. */
+  position: absolute;
+  top: 100%;
+  margin-top: 6px;
+  left: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
