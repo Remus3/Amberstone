@@ -411,6 +411,314 @@ footer .digest-icon.in-footer b {
   font-weight: 900;
   color: var(--text);
 }
+/* Title becomes a dropdown trigger (2026-04-26 view router). Acts as
+ * a button but inherits .title typography. Caret rotates when open. */
+.title-dropdown {
+  background: transparent; border: none; cursor: pointer;
+  padding: 4px 10px 4px 0; display: inline-flex; align-items: center; gap: 8px;
+  color: inherit; font: inherit;
+}
+.title-dropdown:hover { color: var(--clock); }
+.title-dropdown:focus-visible {
+  outline: 2px solid var(--info); outline-offset: 2px; border-radius: 4px;
+}
+.title-current {
+  font-size: 12px; color: var(--info); letter-spacing: 0.18em;
+  text-transform: uppercase; font-weight: 700; opacity: 0.85;
+  border-left: 1px solid var(--border-soft); padding-left: 10px;
+}
+.title-current:empty { display: none; }
+.title-caret {
+  font-size: 12px; color: var(--text-faint);
+  transition: transform 0.12s, color 0.12s;
+}
+.title-dropdown[aria-expanded="true"] .title-caret {
+  transform: rotate(180deg); color: var(--clock);
+}
+.view-menu {
+  position: absolute; top: 50px; left: 14px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  z-index: 9100; min-width: 220px;
+  padding: 4px 0;
+  display: flex; flex-direction: column;
+}
+.view-menu.hidden { display: none; }
+.view-menu-item {
+  background: transparent; border: none; cursor: pointer;
+  padding: 9px 16px; text-align: left;
+  font-size: 13px; color: var(--text-dim);
+  letter-spacing: 0.04em;
+  transition: background 0.08s, color 0.08s;
+}
+.view-menu-item:hover {
+  background: var(--surface-head); color: var(--text);
+}
+.view-menu-item.active {
+  background: var(--info-soft); color: var(--info); font-weight: 700;
+}
+.view-menu-divider {
+  height: 1px; background: var(--border-soft); margin: 4px 8px;
+}
+.view-menu-clear {
+  font-size: 11px; color: var(--text-faint); font-style: italic;
+}
+.view-menu-clear:hover { color: var(--clock); font-style: normal; }
+
+/* Auto-promotion banner — appears when manual view is set but a game
+ * event wants to switch (ChampSelect / InProgress). */
+.view-banner {
+  position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+  background: var(--gold-soft); color: var(--clock);
+  border: 1px solid var(--clock); border-radius: var(--radius-sm);
+  padding: 8px 14px; z-index: 9050;
+  display: flex; align-items: center; gap: 12px;
+  font-size: 13px; font-weight: 700;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  animation: bannerSlide 250ms ease-out;
+}
+.view-banner.hidden { display: none; }
+.view-banner-text { letter-spacing: 0.04em; }
+.view-banner-accept {
+  background: var(--clock); color: var(--canvas);
+  border: none; border-radius: 4px; padding: 4px 10px;
+  font-size: 12px; font-weight: 800; letter-spacing: 0.06em;
+  cursor: pointer; text-transform: uppercase;
+}
+.view-banner-dismiss {
+  background: transparent; border: none; color: var(--text-faint);
+  font-size: 18px; cursor: pointer; padding: 0 4px;
+}
+@keyframes bannerSlide {
+  from { transform: translate(-50%, -20px); opacity: 0; }
+  to   { transform: translate(-50%, 0);     opacity: 1; }
+}
+
+/* View-router section visibility (2026-04-26). Each section hides
+ * unless body[data-view] matches its id. Main panels hide for any
+ * non-default view. Default views (last-match in client mode,
+ * current-match in game mode) keep main visible. */
+.view-content { display: contents; }
+.view-section {
+  margin: 12px 18px 0; padding: 16px 18px;
+  background: var(--surface); border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto;
+}
+.view-section[hidden] { display: none; }
+.view-section-head {
+  display: flex; align-items: baseline; gap: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border-soft); padding-bottom: 10px;
+}
+.view-section-head h2 {
+  margin: 0; font-size: 16px; letter-spacing: 0.18em;
+  color: var(--info); font-weight: 900;
+}
+.view-section-sub {
+  font-size: 11px; color: var(--text-faint); letter-spacing: 0.04em;
+}
+.view-section-tabs { display: flex; gap: 4px; margin-left: auto; }
+.view-section-btn, .view-tab {
+  background: var(--surface-head); border: 1px solid var(--border);
+  color: var(--text-dim); padding: 5px 12px; font-size: 11px;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  border-radius: 4px; cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.view-section-btn:hover, .view-tab:hover {
+  background: #1c1c2a; color: var(--text); border-color: var(--clock);
+}
+.view-tab.active {
+  background: var(--info-soft); color: var(--info);
+  border-color: var(--info); font-weight: 700;
+}
+
+/* When a non-default view is active, hide the 5 main panels + the
+ * inline overlays that are mode-specific. Lobby/Home overlays show
+ * via their own logic. */
+body[data-view="session"] main,
+body[data-view="history"] main,
+body[data-view="loadouts"] main,
+body[data-view="settings"] main,
+body[data-view="diagnostics"] main { display: none; }
+body[data-view="session"]      #view-session,
+body[data-view="history"]      #view-history,
+body[data-view="loadouts"]     #view-loadouts,
+body[data-view="settings"]     #view-settings,
+body[data-view="diagnostics"]  #view-diagnostics { display: block; }
+/* Hide home + lobby overlays when a non-default view is active. */
+body[data-view="session"]      #home-overlay,
+body[data-view="history"]      #home-overlay,
+body[data-view="loadouts"]     #home-overlay,
+body[data-view="settings"]     #home-overlay,
+body[data-view="diagnostics"]  #home-overlay,
+body[data-view="last-match"]   #home-overlay,
+body[data-view="lobby"]        #home-overlay { display: none; }
+
+/* Session view layout */
+.session-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+}
+.session-card {
+  background: var(--surface-head); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+}
+.session-card-wide { grid-column: 1 / -1; }
+.session-card-head {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--label);
+  margin-bottom: 8px; border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 5px;
+}
+.session-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 12px; padding: 3px 0;
+}
+.session-row > span:first-child { color: var(--text-dim); }
+.session-row > span:last-child {
+  color: var(--text); font-variant-numeric: tabular-nums; font-weight: 700;
+}
+.session-champ-list, .session-match-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 4px;
+}
+
+/* History view layout */
+.history-grid {
+  display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 14px;
+}
+.history-card {
+  background: var(--surface-head); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+  max-height: 540px; overflow-y: auto;
+}
+.history-card-head {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--label);
+  margin-bottom: 8px; border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 5px;
+  display: flex; align-items: baseline; gap: 8px;
+}
+.history-count, .diag-sub {
+  font-size: 10px; color: var(--clock); margin-left: auto;
+  letter-spacing: 0.06em;
+}
+.history-session-list, .history-match-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.history-session-row, .history-match-row {
+  background: var(--surface-alt); border-radius: 4px;
+  padding: 6px 10px; font-size: 11px; cursor: pointer;
+  transition: background 0.08s, border-color 0.08s;
+  border: 1px solid transparent;
+  display: flex; align-items: center; gap: 8px;
+}
+.history-session-row:hover, .history-match-row:hover {
+  background: #1c1c2a; border-color: var(--clock);
+}
+.history-session-row.active, .history-match-row.active {
+  border-color: var(--info); background: var(--info-soft);
+}
+
+/* Loadouts view layout */
+.loadouts-toolbar {
+  display: flex; gap: 10px; align-items: center;
+  padding: 6px 0 12px;
+}
+.loadouts-toolbar input[type="text"] {
+  flex: 1; padding: 6px 10px; font-size: 12px;
+  background: var(--surface-alt); border: 1px solid var(--border);
+  border-radius: 4px; color: var(--text);
+}
+.loadouts-toolbar select {
+  padding: 6px 10px; background: var(--surface-alt);
+  border: 1px solid var(--border); color: var(--text);
+  font-size: 12px; border-radius: 4px;
+}
+.loadouts-count {
+  font-size: 10px; color: var(--text-faint); letter-spacing: 0.06em;
+}
+.loadouts-list {
+  display: flex; flex-direction: column; gap: 8px;
+  max-height: 600px; overflow-y: auto;
+}
+.loadout-champ {
+  background: var(--surface-head); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 14px;
+}
+.loadout-champ-name {
+  font-size: 13px; font-weight: 800; letter-spacing: 0.06em;
+  color: var(--text); margin-bottom: 6px;
+}
+
+/* Settings view layout */
+.settings-body { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.settings-card {
+  background: var(--surface-head); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+}
+.settings-card-head {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--label);
+  margin-bottom: 10px; border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 5px;
+}
+.settings-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 0; font-size: 12px; color: var(--text-dim);
+  cursor: pointer;
+}
+.settings-row-static { cursor: default; }
+.settings-row input[type="checkbox"] {
+  width: 14px; height: 14px; accent-color: var(--clock);
+}
+.settings-row select, .settings-row input[type="range"] {
+  flex: 1; max-width: 240px;
+}
+
+/* Diagnostics view layout */
+.diag-grid {
+  display: grid; grid-template-columns: 1fr 1.6fr; gap: 14px;
+  grid-template-areas: "conn log" "health log";
+}
+.diag-card {
+  background: var(--surface-head); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+  max-height: 360px; overflow: auto;
+}
+.diag-card-wide { grid-area: log; max-height: 740px; }
+.diag-card:nth-child(1) { grid-area: conn; }
+.diag-card:nth-child(3) { grid-area: health; }
+.diag-card-head {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--label);
+  margin-bottom: 8px; border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 5px;
+  display: flex; align-items: baseline; gap: 8px;
+}
+.diag-conn-list { list-style: none; margin: 0; padding: 0; }
+.diag-conn-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 0; font-size: 11px;
+}
+.diag-conn-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text-faint); flex-shrink: 0;
+}
+.diag-conn-dot.ok { background: var(--good); box-shadow: 0 0 4px rgba(127,209,154,0.5); }
+.diag-conn-dot.err { background: var(--bad); }
+.diag-log, .diag-health {
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 10px; color: var(--text-dim);
+  background: var(--surface-alt); border-radius: 4px;
+  padding: 8px 10px; margin: 0;
+  white-space: pre-wrap; word-break: break-word;
+  max-height: 580px; overflow-y: auto;
+}
 .mode-pill {
   padding: 5px 14px;
   border: 1px solid transparent;

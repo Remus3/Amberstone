@@ -152,7 +152,38 @@
          Pills are always present with a "—" placeholder when no data; the
          static-pill rule means layout never reshuffles across modes. -->
     <div class="header-row header-row-1">
-      <span class="title">RIOT COMMANDER</span>
+      <!-- Title is the dropdown trigger for the view router (2026-04-26).
+           Click to open the menu: Home / Lobby / Last Match / Session /
+           History / Loadouts / Settings / Diagnostics. ESC, outside-click,
+           or second click closes. URL hash routes (#home etc.) so the
+           selection persists across refresh. -->
+      <button type="button" class="title title-dropdown" id="view-trigger"
+              aria-haspopup="menu" aria-expanded="false">
+        <span class="title-label">RIOT COMMANDER</span>
+        <span class="title-current" id="view-current-label"></span>
+        <span class="title-caret">▾</span>
+      </button>
+      <div id="view-menu" class="view-menu hidden" role="menu" aria-hidden="true">
+        <button type="button" class="view-menu-item" data-view="home"        role="menuitem">Home</button>
+        <button type="button" class="view-menu-item" data-view="lobby"       role="menuitem">Lobby</button>
+        <button type="button" class="view-menu-item" data-view="last-match"  role="menuitem">Last Match</button>
+        <button type="button" class="view-menu-item" data-view="session"     role="menuitem">Session</button>
+        <button type="button" class="view-menu-item" data-view="history"     role="menuitem">History</button>
+        <div class="view-menu-divider"></div>
+        <button type="button" class="view-menu-item" data-view="loadouts"    role="menuitem">Loadouts</button>
+        <button type="button" class="view-menu-item" data-view="settings"    role="menuitem">Settings</button>
+        <button type="button" class="view-menu-item" data-view="diagnostics" role="menuitem">Diagnostics</button>
+        <div class="view-menu-divider"></div>
+        <button type="button" class="view-menu-item view-menu-clear" data-view="auto" role="menuitem">↻ Auto (clear manual)</button>
+      </div>
+      <!-- Auto-promotion banner: appears when manual view is active but
+           an urgent game-state event (ChampSelect / InProgress) wants to
+           switch. Click to accept, X to dismiss. -->
+      <div id="view-banner" class="view-banner hidden" role="alert">
+        <span class="view-banner-text" id="view-banner-text"></span>
+        <button type="button" class="view-banner-accept" id="view-banner-accept">Switch</button>
+        <button type="button" class="view-banner-dismiss" id="view-banner-dismiss" aria-label="dismiss">×</button>
+      </div>
       <span class="mode-pill" id="mode-pill">CLIENT</span>
       <span class="champion-pill" id="champion-pill" title="from live-client or fallback">—</span>
       <!-- self-spells (D/F summoners) hidden via .self-spells { display:none }
@@ -521,6 +552,164 @@
       </div>
     </section>
   </main>
+
+  <!-- View-router content sections (2026-04-26). Each is hidden unless
+       body[data-view] matches its id. The 5 main panels above are the
+       implicit "Last Match" view in client mode + in-game view. When
+       these view sections are active, the main panels are hidden. -->
+  <div id="view-content" class="view-content">
+    <section id="view-session" class="view-section" hidden>
+      <div class="view-section-head">
+        <h2>SESSION</h2>
+        <span class="view-section-sub" id="session-window">—</span>
+      </div>
+      <div class="view-section-body" id="session-body">
+        <div class="session-grid">
+          <div class="session-card">
+            <div class="session-card-head">OVERVIEW</div>
+            <div class="session-row"><span>Games</span><span id="session-games">—</span></div>
+            <div class="session-row"><span>Time played</span><span id="session-time">—</span></div>
+            <div class="session-row"><span>Started</span><span id="session-start">—</span></div>
+            <div class="session-row"><span>Last game</span><span id="session-last">—</span></div>
+          </div>
+          <div class="session-card">
+            <div class="session-card-head">PERFORMANCE</div>
+            <div class="session-row"><span>Total KDA</span><span id="session-kda">—</span></div>
+            <div class="session-row"><span>Avg ratio</span><span id="session-avg">—</span></div>
+            <div class="session-row"><span>Grades</span><span id="session-grades">—</span></div>
+            <div class="session-row"><span>Modes</span><span id="session-modes">—</span></div>
+          </div>
+          <div class="session-card session-card-wide">
+            <div class="session-card-head">CHAMPIONS THIS SESSION</div>
+            <ul class="session-champ-list" id="session-champs"><li class="home-empty">—</li></ul>
+          </div>
+          <div class="session-card session-card-wide">
+            <div class="session-card-head">MATCHES</div>
+            <ul class="session-match-list" id="session-matches"><li class="home-empty">—</li></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-history" class="view-section" hidden>
+      <div class="view-section-head">
+        <h2>HISTORY</h2>
+        <div class="view-section-tabs" id="history-scope-tabs">
+          <button type="button" class="view-tab active" data-scope="14d">14 Days</button>
+          <button type="button" class="view-tab" data-scope="season">Whole Season</button>
+          <button type="button" class="view-tab" data-scope="prior_season">Prior Season</button>
+          <button type="button" class="view-tab" data-scope="all">Whole DB</button>
+        </div>
+      </div>
+      <div class="view-section-body" id="history-body">
+        <div class="history-grid">
+          <div class="history-card history-card-sessions">
+            <div class="history-card-head">SESSIONS <span class="history-count" id="history-session-count">—</span></div>
+            <ul class="history-session-list" id="history-session-list"><li class="home-empty">loading…</li></ul>
+          </div>
+          <div class="history-card history-card-detail">
+            <div class="history-card-head" id="history-detail-head">SELECT A SESSION</div>
+            <ul class="history-match-list" id="history-match-list"><li class="home-empty">click a session to see its matches</li></ul>
+          </div>
+          <div class="history-card history-card-season">
+            <div class="history-card-head">SEASON STATS</div>
+            <div class="session-row"><span>Total matches</span><span id="history-season-total">—</span></div>
+            <div class="session-row"><span>Avg KDA</span><span id="history-season-kda">—</span></div>
+            <div class="session-row"><span>Most-played</span><span id="history-season-fav">—</span></div>
+            <div class="session-row"><span>Win-rate</span><span id="history-season-wr">— <span class="dim">(needs Riot key)</span></span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-loadouts" class="view-section" hidden>
+      <div class="view-section-head">
+        <h2>LOADOUTS</h2>
+        <span class="view-section-sub">View champion build variants (champion_loadouts.json)</span>
+      </div>
+      <div class="view-section-body" id="loadouts-body">
+        <div class="loadouts-toolbar">
+          <input type="text" id="loadouts-filter" placeholder="Filter champion…" autocomplete="off" />
+          <select id="loadouts-mode-filter">
+            <option value="aram">ARAM</option>
+            <option value="sr">SR</option>
+            <option value="arena">Arena</option>
+          </select>
+          <span class="loadouts-count" id="loadouts-count">—</span>
+        </div>
+        <div class="loadouts-list" id="loadouts-list"><div class="home-empty">loading…</div></div>
+      </div>
+    </section>
+
+    <section id="view-settings" class="view-section" hidden>
+      <div class="view-section-head">
+        <h2>SETTINGS</h2>
+      </div>
+      <div class="view-section-body settings-body" id="settings-body">
+        <div class="settings-card">
+          <div class="settings-card-head">VOICE</div>
+          <label class="settings-row">
+            <input type="checkbox" id="set-voice-on" />
+            <span>Voice TTS for Right Now headline</span>
+          </label>
+          <label class="settings-row">
+            <span>Voice picker</span>
+            <select id="set-voice-name"></select>
+          </label>
+        </div>
+        <div class="settings-card">
+          <div class="settings-card-head">CHAMP SELECT</div>
+          <label class="settings-row">
+            <input type="checkbox" id="set-force-flash-snowball" />
+            <span>Force Flash + Snowball in ARAM (default for new champ-selects)</span>
+          </label>
+        </div>
+        <div class="settings-card">
+          <div class="settings-card-head">DISPLAY</div>
+          <label class="settings-row">
+            <input type="checkbox" id="set-zen" />
+            <span>Zen mode (hide side panels)</span>
+          </label>
+          <label class="settings-row">
+            <span>Zoom (1× to 1.4×)</span>
+            <input type="range" id="set-zoom" min="1.0" max="1.4" step="0.05" />
+            <span id="set-zoom-val">1.0×</span>
+          </label>
+        </div>
+        <div class="settings-card">
+          <div class="settings-card-head">DATA / METRICS</div>
+          <label class="settings-row settings-row-static">
+            <span>Live metric streamer</span>
+            <span id="set-live-metrics-status">—</span>
+            <span class="dim">(env var RC_LIVE_METRICS — supervisor restart required to change)</span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-diagnostics" class="view-section" hidden>
+      <div class="view-section-head">
+        <h2>DIAGNOSTICS</h2>
+        <button type="button" class="view-section-btn" id="diag-refresh">Refresh</button>
+      </div>
+      <div class="view-section-body" id="diag-body">
+        <div class="diag-grid">
+          <div class="diag-card">
+            <div class="diag-card-head">CONNECTIONS</div>
+            <ul class="diag-conn-list" id="diag-conn-list"><li class="home-empty">loading…</li></ul>
+          </div>
+          <div class="diag-card diag-card-wide">
+            <div class="diag-card-head">RC LOG TAIL <span class="diag-sub">last 40 lines</span></div>
+            <pre class="diag-log" id="diag-log">loading…</pre>
+          </div>
+          <div class="diag-card">
+            <div class="diag-card-head">HEALTH JSON</div>
+            <pre class="diag-health" id="diag-health">loading…</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
 
   <div id="activity-strip" class="activity-strip">
     <span class="activity-label">QUEUE</span>
