@@ -489,6 +489,21 @@
       m.classList.remove("hidden");
       m.setAttribute("aria-hidden", "false");
       t.setAttribute("aria-expanded", "true");
+      // Position the menu BELOW the trigger button using fixed
+      // coordinates from getBoundingClientRect — bypasses the
+      // offset-parent ambiguity that was leaving the menu pinned
+      // to viewport y=0 despite header { position: relative }.
+      const r = t.getBoundingClientRect();
+      m.style.top  = (r.bottom + 6) + "px";
+      m.style.left = r.left + "px";
+      // If menu would overflow right edge of viewport, snap right.
+      requestAnimationFrame(() => {
+        const mr = m.getBoundingClientRect();
+        const overhang = mr.right - (window.innerWidth - 8);
+        if (overhang > 0) {
+          m.style.left = Math.max(8, r.left - overhang) + "px";
+        }
+      });
     } else {
       _viewMenuClose();
     }
