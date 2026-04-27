@@ -1,0 +1,16 @@
+{
+  "_comment": "Golden snapshot for SR/Rift translation. Generated from SR_STATE fixture.",
+  "snapshot_type": "rift",
+  "game_mode": "CLASSIC",
+  "game_time": "05:30",
+  "champion": "Jinx",
+  "level": 8,
+  "gold": 1800,
+  "cs": 72,
+  "hp_pct": 100,
+  "kda": "2/0/1",
+  "items": ["Yun Tal Wildarrows", "Long Sword"],
+  "ally_comp": ["Lux", "Malphite", "Vi", "Sett"],
+  "enemy_comp": ["Caitlyn", "Thresh", "Garen", "Jarvan IV", "Jinx"],
+  "raw_state_present": true
+}

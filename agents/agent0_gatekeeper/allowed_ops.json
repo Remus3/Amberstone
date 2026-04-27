@@ -1,0 +1,26 @@
+{
+  "_comment": "Catalog of known-legitimate cross-machine operations (§11.6.2).",
+  "version": 1,
+  "operations": {
+    "push-forwarder-update": {
+      "authorized_agents": ["2"],
+      "target_subdir": "forwarder",
+      "payload_extensions": [".py", ".exe", ".ps1", ".bat", ".json", ".yaml", ".yml"]
+    },
+    "push-forwarder-config": {
+      "authorized_agents": ["2"],
+      "target_subdir": "forwarder",
+      "payload_extensions": [".json", ".ini", ".toml", ".yaml", ".yml"]
+    },
+    "push-web-ui": {
+      "authorized_agents": ["2", "5"],
+      "target_subdir": "web",
+      "payload_extensions": [".html", ".js", ".css", ".json", ".svg", ".png", ".webp", ".ico", ".woff2", ".woff", ".map"]
+    },
+    "trigger-forwarder-restart": {
+      "authorized_agents": ["2"],
+      "target_subdir": "forwarder",
+      "payload_extensions": [".txt"]
+    }
+  }
+}

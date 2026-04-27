@@ -1,0 +1,19 @@
+{
+  "champion": "Xayah",
+  "aram_tier": "A",
+  "build_note": "Season 16: Yun Tal Wildarrows gives 0% crit (pure AS). Build RFC second for 25% crit, then Collector for 50% crit before IE (75% total, IE fully active). R (Featherstorm) invincibility on demand is ARAM's best defensive ADC ability — use it to dodge every ult and engage.",
+  "core_items": ["Yun Tal Wildarrows", "Rapid Firecannon", "The Collector"],
+  "full_build": [
+    "Berserker's Greaves",
+    "Yun Tal Wildarrows",
+    "Rapid Firecannon",
+    "The Collector",
+    "Infinity Edge",
+    "Lord Dominik's Regards"
+  ],
+  "vs_tanks": "Lord Dominik's Regards 5th — Feathers bounce through tanks for good damage",
+  "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies — never run both",
+  "vs_burst": "Immortal Shieldbow 4th replaces The Collector — still hits 50% crit for IE",
+  "kit_notes": "Auto-E-auto pattern: autos plant feathers, E pulls them back rooting caught enemies. Double Daggers (Q) fires two feathers — use before E for maximum feather recall. R Featherstorm: INVINCIBLE during — use it to dodge any CC or burst. Rakan passive (Lovers' Leap) only if Rakan is your support.",
+  "aram_specific": "Time R to dodge the enemy's biggest ability (Malphite R, Amumu R, Lux R). Never pre-cast R — wait to see the threat. Plant feathers with autos first, then use E to pull them back through grouped enemies for AOE root. Crowd the middle of ARAM for maximum feather coverage."
+}

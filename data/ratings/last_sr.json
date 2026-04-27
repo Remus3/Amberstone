@@ -1,0 +1,21 @@
+{
+  "rating": "D",
+  "label": "BELOW \u2014 focus on one area at a time",
+  "champion": "Kai'Sa",
+  "game_mode": "CLASSIC",
+  "mode_category": "SR",
+  "game_time": "34:41",
+  "stats": {
+    "cs_per_min": 6.6,
+    "kda": "7/8/3",
+    "deaths": 8,
+    "kill_participation": 50,
+    "gold_per_min": 27
+  },
+  "notes": [
+    "CS/min (6.6) below target",
+    "Too many deaths (8)",
+    "GPM (27) low"
+  ],
+  "timestamp": "2026-04-23 01:11"
+}

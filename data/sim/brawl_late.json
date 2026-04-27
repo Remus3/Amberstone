@@ -1,0 +1,73 @@
+{
+  "meta": {
+    "name": "brawl_late",
+    "label": "Brawl \u00b7 late \u00b7 14:25 endgame teamfight",
+    "mode": "brawl",
+    "summary": "Brawl late \u00b7 Yasuo 11/3/8 \u00b7 final teamfight, full build, nexus open"
+  },
+  "health": {
+    "type": "health",
+    "source": "sim",
+    "payload": {
+      "pid": 99999,
+      "alive": true,
+      "has_game": true,
+      "mode": "brawl",
+      "last_reload_ok": true,
+      "brawl_mode": true
+    }
+  },
+  "state": {
+    "type": "state",
+    "mode": "brawl",
+    "source": "brawl_coaching_data.json",
+    "payload": {
+      "game_time": "14:25",
+      "game_time_s": 865,
+      "kda": "11/3/8",
+      "cs": 132,
+      "gold": 580,
+      "level": 16,
+      "vision_score": 0,
+      "hp_pct": 70,
+      "mp_pct": 100,
+      "champion": "Yasuo",
+      "game_mode": "Brawl",
+      "action": "R into 4-man \u00b7 Sett follows",
+      "immediate": "Last fight before nexus. Q3 + R = teamwipe if Sett lands grab. Karthus passive will tick \u2014 finish nexus before he respawns.",
+      "risk": "Karthus passive damage + Pyke ult reset chain",
+      "fight_rule": "R 3+ enemies \u00b7 never solo Pyke",
+      "reset_item": "Mortal Reminder vs Vlad lifesteal (Long Sword + 700g)",
+      "next": "End game \u00b7 break nexus",
+      "objective": "Endgame teamfight + nexus break",
+      "positioning": "Flank from side bush",
+      "wave_pct": 95,
+      "items_display": "Infinity Edge, Phantom Dancer, Bloodthirster, Berserker's Greaves, Mortal Reminder, Long Sword",
+      "item_build": "(full build)",
+      "ally_spells": {
+        "Yasuo": [
+          {
+            "spell": "Flash",
+            "cd_s": 18
+          },
+          {
+            "spell": "Heal",
+            "cd_s": 0
+          }
+        ]
+      },
+      "ally_comp": [
+        "Yasuo",
+        "Sett",
+        "Karma",
+        "Nami"
+      ],
+      "enemy_comp": [
+        "Karthus",
+        "Pyke",
+        "Vladimir",
+        "Heimerdinger"
+      ]
+    }
+  }
+}

@@ -1,0 +1,265 @@
+{
+  "meta": {
+    "name": "sr_red_team",
+    "label": "SR Ranked \u00b7 Tristana ADC \u00b7 Challenger 612 LP",
+    "mode": "sr",
+    "source_match": "NA1_5182398158 (patch 14.24, 2024-12-14)"
+  },
+  "health": {
+    "type": "health",
+    "source": "sim",
+    "payload": {
+      "pid": 99999,
+      "alive": true,
+      "has_game": true,
+      "mode": "sr",
+      "last_reload_ok": true
+    }
+  },
+  "state": {
+    "type": "state",
+    "mode": "sr",
+    "source": "coaching_data.json",
+    "payload": {
+      "game_time": "23:30",
+      "game_time_s": 1410,
+      "kda": "12/1/7",
+      "cs": 188,
+      "gold": 1410,
+      "hp_pct": 74,
+      "mp_pct": 82,
+      "level": 15,
+      "vision_score": 19,
+      "r_ready": true,
+      "champion": "Tristana",
+      "action": "Siege nexus turrets \u2014 burst Akshan next",
+      "immediate": "W over wall onto Akshan if Maokai engages \u2014 barrier ready for ult dodge",
+      "risk": "Camille hookshot + Thresh hook can 100-0 you from flank",
+      "fight_rule": "Stay behind Maokai \u2014 burst priority target then kite",
+      "reset_item": "\u2014",
+      "next": "Push for nexus turrets after this fight",
+      "objective": "Close game \u2014 2 nexus turrets + nexus left",
+      "positioning": "Mid lane, far back behind Maokai frontline",
+      "wave_pct": 85,
+      "items_display": "Infinity Edge, Doran's Blade, Mortal Reminder, Navori Quickblades, The Collector, Berserker's Greaves",
+      "item_build": "Phantom Dancer \u2192 Bloodthirster (full-build)",
+      "augments": "",
+      "xp_to_next": 1180,
+      "cannon_cs_summary": "14 / 2 missed",
+      "cs_at_10": "82 CS \u00b7 +10 vs Ezreal",
+      "csd_at_15": "+18 \u00b7 widened from +10",
+      "gd_at_15": "+1.2k \u00b7 snowballing",
+      "wave_state_now": "minions crashing into enemy nexus",
+      "back_gold_summary": "1840g avg \u00b7 4 recalls",
+      "enemy_side_pct": "52% of map time \u00b7 sieging",
+      "build_deviation": "on path \u00b7 Navori > Collector order",
+      "next_spike": "Mortal Reminder up \u00b7 full-build close",
+      "wave_control": "2 crashed \u00b7 0 frozen \u00b7 aggressive lane",
+      "trade_winrate": "8W-2L \u00b7 +1.4k HP net",
+      "roams_summary": "0 attempted \u00b7 locked bot until group",
+      "wave_freezes": "0 freezes \u00b7 forced push lane",
+      "jungle_pathing": "\u2014",
+      "lane_prio": "prio 11min \u00b7 dominated vs Ezreal",
+      "enemy_laner_mastery": "Ezreal M6 \u00b7 42k pts \u00b7 comfort",
+      "powerspike_status": "L6 hit \u00b7 L11 hit \u00b7 L16 pending (L15 now)",
+      "first_recall_timing": "5:14 \u00b7 standard ADC window",
+      "kill_participation_pct": "61% \u00b7 20/33 team kills",
+      "damage_share_summary": "24% \u00b7 26.6k to champs",
+      "damage_taken_summary": "13.4k taken \u00b7 7.1k mitigated (53%)",
+      "cc_score_summary": "9s applied \u00b7 77s total",
+      "heal_shield_summary": "4.8k self-heal \u00b7 0 ally",
+      "peel_on_carry": "\u2014",
+      "time_dead_summary": "28s dead \u00b7 2% of game",
+      "time_alive_pct": "98% \u00b7 longest 13:19 alive",
+      "skillshot_summary": "Q reset 92% \u00b7 E 26/32 stacks",
+      "combo_hit_rate": "W-E-R: 9/13 \u00b7 69%",
+      "engage_count": "3 engages \u00b7 3 converted",
+      "ult_efficiency": "5 R cast \u00b7 4 killed target \u00b7 1 wasted",
+      "teamfight_outcomes": "3W-0L-1N \u00b7 team won 80%",
+      "dive_outcomes": "4 dove \u00b7 3 killed \u00b7 1 blown flash",
+      "flash_discipline": "flash up 80% of engages",
+      "solo_death_rate": "0 solo (of 1 total) \u00b7 0%",
+      "top_enemy_threat": "Akshan \u00b7 24% enemy dmg \u00b7 priority target",
+      "team_comp_id": "ally: hyper-carry + dive \u00b7 enemy: poke + pick",
+      "carry_index": "PRIMARY carry \u00b7 24% team dmg \u00b7 4 tower kills",
+      "auto_attack_mix": "148 AAs \u00b7 58% on champs \u00b7 42% CS/structures",
+      "wasted_clicks": "2 clicks during Thresh hook \u00b7 clean",
+      "apm": "94 act/min \u00b7 280 peak fight",
+      "reaction_time": "162ms avg \u00b7 88ms best dodge",
+      "cancel_windows": "9/13 canceled AAs \u00b7 clean kiting",
+      "animation_cancels": "W-AA canceled 8\u00d7 \u00b7 clean reset",
+      "fight_windows": "you ready now \u00b7 enemy in 22s (Flash)",
+      "wall_collision_deaths": "0 \u00b7 clean pathing all game",
+      "death_locations": "1\u00d7 mid teamfight at 18:40",
+      "death_pattern": "1\u00d7 teamfight",
+      "wincon_ability_up": "R up 54% \u00b7 E up 78%",
+      "ally_summs_up": "D: 3 flash \u00b7 F: 2 heal \u00b7 1 smite",
+      "enemy_summs_tracked": "Akshan flash down 32s \u00b7 Thresh flash up",
+      "flank_success": "2 flanks \u00b7 2 converted to kills",
+      "vision_summary": "19 score \u00b7 9 placed / 1 cleared",
+      "trinket_uptime": "68% \u00b7 Farsight blue",
+      "pink_ward_uptime": "180s \u00b7 2 placed \u00b7 1 alive",
+      "vision_denied": "1 cleared \u00b7 60 dmg to wards",
+      "objective_setup": "3 wards pre-baron \u00b7 1 pre-drake",
+      "objective_dance": "drakes 2/4 \u00b7 baron 1/1 \u00b7 scuttles 2/4",
+      "baron_prep": "3 wards \u00b7 1 cleared \u00b7 took at 19:10",
+      "scuttle_control": "2/4 scuttles \u00b7 shared with Noct",
+      "jungler_tracking": "Taliyah last seen bot 12:30 \u00b7 top next",
+      "split_push_pressure": "0 solo push \u00b7 team grouped for siege 18:00+",
+      "mastery_summary": "M7 \u00b7 284k pts \u00b7 peak Challenger last split",
+      "runes_chosen": "Lethal Tempo \u00b7 Triumph \u00b7 Alacrity \u00b7 Coup \u00b7 Magical Footwear \u00b7 Biscuit",
+      "power_spike_map": "IE (13:10) \u00b7 L11 Navori \u00b7 L16 Collector done",
+      "matchup_history": "vs Ezreal 5-2 \u00b7 KDA 4.8 (7)",
+      "counter_warning": "Ezreal: favorable \u00b7 +8% wr (7 games)",
+      "champ_key_metric": "Trist W+E combo: 9/13 \u00b7 69%",
+      "keystone_procs": "Lethal Tempo 24 stacks \u00b7 peak AS 2.41",
+      "rune_adapt_hint": "Lethal Tempo stacked \u00b7 no adapt needed",
+      "current_rank_lp": "Challenger \u00b7 612 LP",
+      "lp_forecast": "Win +14 \u00b7 Loss \u221228",
+      "lp_session_delta": "+48 LP \u00b7 5W-2L today",
+      "session_duration": "2h 15min \u00b7 7 games",
+      "team_gold_diff_trend": "+3.8k \u00b7 snowballing \u00b7 last 4min",
+      "promo_status": "rank-stable \u00b7 top 180 NA",
+      "rank_goal_progress": "Challenger 750 by season end \u00b7 612/750",
+      "break_recommendation": "on pace \u2014 one more game",
+      "lobby_mmr": "avg Challenger \u00b7 2 top-30 opponents",
+      "rank_benchmark": "You CSD@10 +10 \u00b7 Chall avg +6",
+      "improvement_target": "Vision: 19 low vs Chall avg 32",
+      "chat_tone": "calm \u00b7 12 pings \u00b7 no chat activity",
+      "strength_of_game": "Turret siege: 14.4k dmg \u00b7 4 turret kills",
+      "weakness_of_game": "Vision placement: 9 wards (avg 14 at Chall)",
+      "adjustment_rate": "1 shift \u00b7 moved up lane after L11",
+      "tilt_meter": "low \u00b7 on the upswing",
+      "comeback_odds": "88% favored \u00b7 close via nexus siege",
+      "comp_alignment": "on strat \u00b7 kite into dive pressure",
+      "wincon_phase": "sieging phase \u00b7 close via tier-3 push",
+      "session_to_session_delta": "vs yesterday: KP +8% \u00b7 dmg +12%",
+      "game_close_eta": "est 24:00 \u00b7 on pace \u00b7 30s to nexus",
+      "comp_synergy": "w/ this comp: 71% wr (7 games) \u00b7 dive synergy",
+      "self_judgement": "0 bad plays flagged \u00b7 clean game",
+      "coach_interventions": "4 pings acted on \u00b7 0 ignored",
+      "enemy_comp": [
+        "Ezreal",
+        "Taliyah",
+        "Akshan",
+        "Camille",
+        "Thresh"
+      ],
+      "ally_comp": [
+        "Tristana",
+        "Nocturne",
+        "Katarina",
+        "Riven",
+        "Maokai"
+      ],
+      "my_team": "red",
+      "positions": {
+        "allies": {
+          "Tristana": {
+            "x": 0.38,
+            "y": 0.42
+          },
+          "Nocturne": {
+            "x": 0.34,
+            "y": 0.38
+          },
+          "Katarina": {
+            "x": 0.4,
+            "y": 0.44
+          },
+          "Riven": {
+            "x": 0.3,
+            "y": 0.36
+          },
+          "Maokai": {
+            "x": 0.36,
+            "y": 0.4
+          }
+        },
+        "enemies": {
+          "Ezreal": {
+            "x": 0.18,
+            "y": 0.22
+          },
+          "Taliyah": {
+            "x": 0.2,
+            "y": 0.18
+          },
+          "Akshan": {
+            "x": 0.22,
+            "y": 0.2
+          },
+          "Camille": {
+            "x": 0.15,
+            "y": 0.28
+          },
+          "Thresh": {
+            "x": 0.19,
+            "y": 0.21
+          }
+        }
+      },
+      "dragon_state": "2-2 (contested \u00b7 no soul)",
+      "baron_state": "1-0 (us \u00b7 taken 19:10)",
+      "herald_state": "1-0 (us \u00b7 taken 14:22)",
+      "atakhan_state": "\u2014",
+      "towers_us": 8,
+      "towers_them": 2,
+      "score": "33-19",
+      "team_gold_diff": 3800,
+      "win_pct": 88,
+      "ally_spells": {
+        "Tristana": [
+          {
+            "spell": "Flash",
+            "cd_s": 0
+          },
+          {
+            "spell": "Heal",
+            "cd_s": 0
+          }
+        ],
+        "Maokai": [
+          {
+            "spell": "Flash",
+            "cd_s": 0
+          },
+          {
+            "spell": "Teleport",
+            "cd_s": 0
+          }
+        ],
+        "Ahri": [
+          {
+            "spell": "Flash",
+            "cd_s": 0
+          },
+          {
+            "spell": "Ignite",
+            "cd_s": 0
+          }
+        ],
+        "Graves": [
+          {
+            "spell": "Flash",
+            "cd_s": 0
+          },
+          {
+            "spell": "Smite",
+            "cd_s": 0
+          }
+        ],
+        "Thresh": [
+          {
+            "spell": "Flash",
+            "cd_s": 0
+          },
+          {
+            "spell": "Exhaust",
+            "cd_s": 0
+          }
+        ]
+      }
+    }
+  }
+}

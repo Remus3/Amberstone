@@ -1,0 +1,1 @@
+﻿Replaced by SelfMonitor threads inside rc_supervisor.py (Phase 0). rc_league_watcher.ps1 no longer starts this.

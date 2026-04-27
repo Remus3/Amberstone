@@ -1,0 +1,62 @@
+{
+  "_comment": "Scraper source-quality tracker owned by Agent 6 (\u00a79, \u00a711.6, \u00a78). Populated by signals from Agent 4; consulted by lib/http/client.py via Agent 6 policies. Not per-mode \u2014 scrapers are cross-mode.",
+  "version": 1,
+  "updated_at": "2026-04-22T09:51:10Z",
+  "sources": {
+    "aggregator D": {
+      "weight": 1.0,
+      "circuit": "closed",
+      "last_win_rate_correlation": null,
+      "sample_count": 0,
+      "last_fetch_ok_at": null,
+      "last_fetch_err_at": null,
+      "cease_and_desist": false
+    },
+    "ugg": {
+      "weight": 1.0,
+      "circuit": "closed",
+      "last_win_rate_correlation": null,
+      "sample_count": 0,
+      "last_fetch_ok_at": null,
+      "last_fetch_err_at": null,
+      "cease_and_desist": false
+    },
+    "ddragon": {
+      "weight": 1.0,
+      "circuit": "closed",
+      "consecutive_errors": 0,
+      "last_ok_ts": null,
+      "last_error_ts": null,
+      "note": "stub added by agent6 third-audit 2026-04-22T13:44:27.854962+00:00 to match resolved_decisions.json sources list"
+    },
+    "live_client": {
+      "weight": 1.0,
+      "circuit": "closed",
+      "consecutive_errors": 0,
+      "last_ok_ts": null,
+      "last_error_ts": null,
+      "note": "stub added by agent6 third-audit 2026-04-22T13:44:27.854962+00:00 to match resolved_decisions.json sources list"
+    },
+    "lcu": {
+      "weight": 1.0,
+      "circuit": "closed",
+      "consecutive_errors": 0,
+      "last_ok_ts": null,
+      "last_error_ts": null,
+      "note": "stub added by agent6 third-audit 2026-04-22T13:44:27.854962+00:00 to match resolved_decisions.json sources list"
+    }
+  },
+  "reweighting_policy": {
+    "min_sample_to_compare": 20,
+    "reweight_ladder": [
+      1.0,
+      0.75,
+      0.5,
+      0.25,
+      0.0
+    ],
+    "trip_threshold_consecutive_errors": 5,
+    "trip_cooldown_seconds": 600,
+    "cease_and_desist_fallback": "curated_jsons"
+  }
+}

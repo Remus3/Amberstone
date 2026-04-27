@@ -1,0 +1,69 @@
+{
+  "meta": {
+    "name": "sr_split_push",
+    "label": "SR Ranked · Tryndamere split-push",
+    "mode": "sr"
+  },
+  "health": {
+    "type": "health",
+    "source": "sim",
+    "payload": { "pid": 99999, "alive": true, "has_game": true, "mode": "sr", "last_reload_ok": true }
+  },
+  "state": {
+    "type": "state",
+    "mode": "sr",
+    "source": "coaching_data.json",
+    "payload": {
+      "game_time": "26:10",
+      "game_time_s": 1570,
+      "kda": "8/2/3",
+      "cs": 242,
+      "gold": 1850,
+      "hp_pct": 72,
+      "level": 15,
+      "vision_score": 18,
+      "r_ready": true,
+      "champion": "Tryndamere",
+      "action": "✓ Push top T2, force rotation",
+      "immediate": "Your team grouped bot for Drake. Take top T2, R to escape if 2+ collapse. Valid split — outside team ZOI is expected.",
+      "risk": "Enemy TP + Jhin R can reach you fast",
+      "fight_rule": "Ult when low, force 1-for-Drake trade",
+      "reset_item": "Guardian Angel if 1900g after plate",
+      "next": "Plate + T2 → TP mid on team siege",
+      "objective": "Drake soul in 4 — trade top for Drake",
+      "positioning": "Top lane alone — valid split, respect Shaco box flanks",
+      "wave_pct": 95,
+      "items_display": "Kraken Slayer, Berserker's Greaves, Phantom Dancer, Bloodthirster",
+      "item_build": "Infinity Edge → Guardian Angel",
+      "augments": "",
+      "enemy_comp": ["Shaco", "Rengar", "Nocturne", "Jhin", "Lulu"],
+      "ally_comp":  ["Tryndamere", "Graves", "Malzahar", "Kaisa", "Thresh"],
+      "my_team": "blue",
+      "positions": {
+        "allies": {
+          "Tryndamere": { "x": 0.15, "y": 0.18 },
+          "Graves":     { "x": 0.68, "y": 0.80 },
+          "Malzahar":   { "x": 0.70, "y": 0.82 },
+          "Kaisa":      { "x": 0.72, "y": 0.84 },
+          "Thresh":     { "x": 0.70, "y": 0.80 }
+        },
+        "enemies": {
+          "Shaco":      { "x": 0.40, "y": 0.35 },
+          "Rengar":     { "x": 0.55, "y": 0.60 },
+          "Nocturne":   { "x": 0.30, "y": 0.50 },
+          "Jhin":       { "x": 0.48, "y": 0.78 },
+          "Lulu":       { "x": 0.45, "y": 0.80 }
+        }
+      },
+      "dragon_state": "3-1 (Soul in 4:50)",
+      "baron_state": "spawns 28:00",
+      "herald_state": "—",
+      "atakhan_state": "—",
+      "towers_us": 8,
+      "towers_them": 6,
+      "score": "14-11",
+      "team_gold_diff": 1820,
+      "win_pct": 59
+    }
+  }
+}

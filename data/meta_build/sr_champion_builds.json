@@ -1,0 +1,178 @@
+{
+ "_meta": {
+ "description": "SR-specific champion builds for coach_integration.py SR coaching.",
+ "format": "start_item + first_back_target + full_build_order + notes",
+ "patch": "16.8.1",
+ "notes": "Different from ARAM builds — SR starts 450g, no ARAM buffs, matchup-dependent first items"
+ },
+ "Vayne": {
+ "start": "Doran's Blade",
+ "first_back": "Recurve Bow (800g) or Long Sword if <800g",
+ "full_build": ["Berserker's Greaves", "Kraken Slayer", "Blade of the Ruined King", "Guinsoo's Rageblade", "Immortal Shieldbow", "Mortal Reminder"],
+ "vs_tanks": "Kraken + BotRK + Rageblade is the full tank-shred setup",
+ "vs_healing": "Mortal Reminder 5th or 6th — always vs sustain supports",
+ "vs_burst": "Immortal Shieldbow 4th if dive-heavy",
+ "build_note": "Rush Kraken first — % HP on-hit defines her anti-tank. BotRK second for lifesteal + active. Rageblade converts crit to double on-hit synergy. Play safe until Kraken complete.",
+ "recall_timing": "Back at 800g (Recurve) or 1100g (Recurve + Long Sword). Never sit at 500g — wasteful."
+ },
+ "Jinx": {
+ "start": "Doran's Blade",
+ "first_back": "Recurve Bow (800g) or Dagger × 2 if < 800g",
+ "full_build": ["Berserker's Greaves", "Yun Tal Wildarrows", "Rapid Firecannon", "The Collector", "Infinity Edge", "Lord Dominik's Regards"],
+ "vs_tanks": "LDR 5th — Collector(25%) + RFC(25%) + IE(25%) = 75% crit active before LDR",
+ "vs_healing": "Mortal Reminder replaces LDR if 2+ sustain — never both",
+ "vs_burst": "Immortal Shieldbow replaces The Collector if 3+ divers",
+ "build_note": "Yun Tal gives AS not crit in S16. Need RFC for 25% crit, then Collector for 50% before IE. IE fully activates at 75% total. Never switch to rockets until Yun Tal complete — minigun stacks plates faster.",
+ "recall_timing": "Back at 1050g (Yun Tal component BF Sword) or 900g (Recurve + pickaxe path)."
+ },
+ "Tristana": {
+ "start": "Doran's Blade",
+ "first_back": "Pickaxe (875g) or BF Sword (1300g)",
+ "full_build": ["Berserker's Greaves", "The Collector", "Stormrazor", "Infinity Edge", "Lord Dominik's Regards", "Rapid Firecannon"],
+ "vs_tanks": "LDR 4th — physical burst scales with armor pen",
+ "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+ "vs_burst": "Immortal Shieldbow replaces Stormrazor vs heavy burst",
+ "build_note": "Collector first for early execute + plates value. Stormrazor slows make E all-ins guaranteed. Never use W offensively when behind — it's your escape. E stacks: 3 on tower before 14min = plates gold.",
+ "recall_timing": "Back at 1300g (BF Sword) or 875g (Pickaxe). Never sit on 500g."
+ },
+ "Caitlyn": {
+ "start": "Doran's Blade",
+ "first_back": "Pickaxe (875g) or BF Sword (1300g)",
+ "full_build": ["Berserker's Greaves", "Hexoptics C44", "Rapid Firecannon", "Infinity Edge", "Lord Dominik's Regards", "Bloodthirster"],
+ "vs_tanks": "LDR 4th — headshot crits + LDR shreds tanks through armor",
+ "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+ "vs_burst": "Immortal Shieldbow replaces Bloodthirster vs burst",
+ "build_note": "Hexoptics C44 (25% crit + 55 AD) is her best first item — headshot every 6 autos. RFC extends headshot range to 850+. Hexoptics + RFC = 50% crit before IE, IE activates at 75% total.",
+ "recall_timing": "Back at 1100g (Hexoptics C44 half-item). E is escape only — never burn offensively."
+ },
+ "Nilah": {
+ "start": "Doran's Blade",
+ "first_back": "Recurve Bow (800g) or Long Sword if < 800g",
+ "full_build": ["Berserker's Greaves", "Kraken Slayer", "Blade of the Ruined King", "Immortal Shieldbow", "Mortal Reminder", "Guinsoo's Rageblade"],
+ "vs_tanks": "Kraken Slayer + BotRK core — never skip either",
+ "vs_healing": "Mortal Reminder 4th — melee range means you sustain fight long enough for it to matter",
+ "vs_burst": "Immortal Shieldbow 3rd provides shield during melee all-in",
+ "build_note": "All-in ONLY on confirmed ally CC. E flip = engage AND escape — never use without a CC chain. W active reduces enemy healing. Melee ADC in lane — play passive until jungler comes or level 6.",
+ "recall_timing": "Back at 800g (Recurve Bow). Never extend when support is dead."
+ },
+ "Miss Fortune": {
+ "start": "Long Sword",
+ "first_back": "BF Sword (1300g) or Caulfield's Warhammer (1100g) vs armor",
+ "full_build": ["Berserker's Greaves", "The Collector", "Phantom Dancer", "Lord Dominik's Regards", "Infinity Edge", "Bloodthirster"],
+ "vs_tanks": "LDR mandatory — Collector(25%) + Phantom Dancer(20%) + IE(25%) = 70% crit active",
+ "vs_healing": "Mortal Reminder replaces LDR — never both",
+ "vs_burst": "Immortal Shieldbow replaces Phantom Dancer vs heavy burst",
+ "build_note": "Strut (W) stacks when out of combat — don't get poked. E rain slows then Bullet Time = guaranteed full channel. Ult angle: perpendicular to enemy team, 30-45 degrees for max spread.",
+ "recall_timing": "Back at 1300g (BF Sword for Collector) or 1100g (Caulfield's vs all-in threat)."
+ },
+ "Lucian": {
+ "start": "Long Sword",
+ "first_back": "Caulfield's Warhammer (1100g) or Pickaxe (875g)",
+ "full_build": ["Berserker's Greaves", "Trinity Force", "Phantom Dancer", "Navori Flickerblades", "The Collector", "Lord Dominik's Regards"],
+ "vs_tanks": "LDR 5th — TF Spellblade + Navori haste means more Q cycles amplifying LDR",
+ "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+ "vs_burst": "Immortal Shieldbow replaces Phantom Dancer vs 3+ divers — always keep TF",
+ "build_note": "Trinity Force is MANDATORY first item. Q activates Spellblade AND Lightslinger: bonus damage + empowered auto + second auto = 3-hit burst. Rush TF via Long Sword → Caulfield's → Sheen. Never RFC.",
+ "recall_timing": "Back at 1100g (Caulfield's Warhammer) or 800g (Pickaxe + Dagger). TF complete by 12-13min target."
+ },
+ "Ezreal": {
+ "start": "Doran's Blade",
+ "first_back": "Tear of the Goddess (400g) — buy at first recall regardless of gold",
+ "full_build": ["Sorcerer's Shoes", "Trinity Force", "Manamune", "Serylda's Grudge", "Lord Dominik's Regards", "Bloodthirster"],
+ "vs_tanks": "LDR + Serylda's double armor pen — Q applies both",
+ "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+ "vs_burst": "Immortal Shieldbow replaces Bloodthirster vs assassins",
+ "build_note": "Buy Tear FIRST back no matter what — stack immediately via Q spam. TF Spellblade + Muramana on Q = core damage. Serylda's slows enemies on Q hit. E is your ONLY escape — never burn forward.",
+ "recall_timing": "Buy Tear at first recall (400g). Full Manamune stacked = power spike. TF complete ~14min."
+ },
+ "Jhin": {
+ "start": "Doran's Blade",
+ "first_back": "Pickaxe (875g) or BF Sword (1300g)",
+ "full_build": ["Sorcerer's Shoes", "Hexoptics C44", "Rapid Firecannon", "Infinity Edge", "Lord Dominik's Regards", "Bloodthirster"],
+ "vs_tanks": "LDR 4th — 4th shot crit + LDR procs through armor stacks",
+ "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+ "vs_burst": "Immortal Shieldbow replaces Bloodthirster vs burst",
+ "build_note": "Jhin gains AD from crit chance — more crit items = more AD passive. RFC 4th shot at 850 range crits for 30%+ HP squishy. Plan 4th shot as the execute. W root sets up R.",
+ "recall_timing": "Back at 1100g (BF Sword path) or 875g (Pickaxe). Reload window forces repositioning — track enemy aggression."
+ },
+ "Ashe": {
+ "start": "Doran's Blade",
+ "first_back": "Pickaxe (875g) or Recurve Bow (800g)",
+ "full_build": ["Berserker's Greaves", "Rapid Firecannon", "The Collector", "Infinity Edge", "Lord Dominik's Regards", "Bloodthirster"],
+ "vs_tanks": "LDR mandatory — perma-slow keeps tanks in LDR proc range",
+ "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+ "vs_burst": "Immortal Shieldbow replaces Bloodthirster vs assassins",
+ "build_note": "RFC + max range Frost Shot crits at 850+ range. Ranger's Focus (Q) at 4 stacks: AOE cone slow. Crystal Arrow (R) is global — throw at fight start, then engage. Always have R available at objectives.",
+ "recall_timing": "Back at 875g (Pickaxe) or 800g (Recurve Bow). Stack Ranger's Focus on minions before trades."
+ },
+ "Draven": {
+ "start": "Long Sword",
+ "first_back": "Caulfield's Warhammer (1100g) or BF Sword (1300g)",
+ "full_build": ["Berserker's Greaves", "The Collector", "Phantom Dancer", "Navori Flickerblades", "Infinity Edge", "Lord Dominik's Regards"],
+ "vs_tanks": "LDR 5th — Collector(25%) + Phantom Dancer(20%) + Navori(25%) + IE(25%) = 95% crit",
+ "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+ "vs_burst": "Immortal Shieldbow replaces Phantom Dancer vs heavy burst",
+ "build_note": "Catch BOTH Spinning Axes on every throw — lose axes = lose stacks. League of Draven passive stacks on every kill. Convert stacks with R on low-HP escaping enemies. Caulfield's rush for early haste.",
+ "recall_timing": "Back at 1100g (Caulfield's) or 1300g (BF Sword). Never extend when axes are dropped."
+ },
+ "Xayah": {
+ "start": "Doran's Blade",
+ "first_back": "Recurve Bow (800g) or Dagger × 2",
+ "full_build": ["Berserker's Greaves", "Yun Tal Wildarrows", "Rapid Firecannon", "The Collector", "Infinity Edge", "Lord Dominik's Regards"],
+ "vs_tanks": "LDR 5th — Yun Tal(0%) + RFC(25%) + Collector(25%) + IE(25%) = 75% crit",
+ "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+ "vs_burst": "Immortal Shieldbow replaces The Collector vs assassins",
+ "build_note": "Yun Tal gives AS not crit in S16 — need RFC as crit bridge. Plant feathers with autos, E pulls all through the group. R (Featherstorm) is invincible — use to dodge Malphite R, Lux R, any burst.",
+ "recall_timing": "Back at 800g (Recurve Bow) to start Yun Tal path. Never use R proactively — save for incoming burst."
+ },
+ "Samira": {
+ "start": "Long Sword",
+ "first_back": "Caulfield's Warhammer (1100g) or BF Sword (1300g)",
+ "full_build": ["Berserker's Greaves", "The Collector", "Navori Flickerblades", "Immortal Shieldbow", "Infinity Edge", "Lord Dominik's Regards"],
+ "vs_tanks": "LDR 5th — Collector(25%) + Navori(25%) + ISB(25%) + IE(25%) = 100% crit",
+ "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+ "vs_burst": "Immortal Shieldbow already in core build",
+ "build_note": "Style rank D→S via alternating melee Q / ranged auto + using ally CC nearby. R (Inferno Trigger) only at S rank — build rank on 3+ enemies before R. Weave through grouped enemies with passive dashes.",
+ "recall_timing": "Back at 1100g (Caulfield's). Don't extend when style rank is below C — vulnerable before R available."
+ },
+ "Sivir": {
+ "start": "Doran's Blade",
+ "first_back": "Pickaxe (875g) or BF Sword (1300g)",
+ "full_build": ["Berserker's Greaves", "Navori Flickerblades", "Rapid Firecannon", "Infinity Edge", "Lord Dominik's Regards", "Bloodthirster"],
+ "vs_tanks": "LDR 4th — Boomerang Blade (Q) procs LDR through groups",
+ "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+ "vs_burst": "Immortal Shieldbow replaces Bloodthirster vs assassins",
+ "build_note": "Navori reduces Q/W cooldown on crit — Ricochet (W) bounces become constant. Spell Shield (E) blocks one ability — save for hard CC or Caitlyn R. On-hit from Ricochet stacks Q haste faster.",
+ "recall_timing": "Back at 875g (Pickaxe). Q/W to clear waves fast — crash and recall every 3 waves."
+ },
+ "Varus": {
+ "start": "Doran's Blade",
+ "first_back": "Recurve Bow (800g) or Pickaxe if ahead",
+ "full_build": ["Berserker's Greaves", "Kraken Slayer", "Phantom Dancer", "The Collector", "Infinity Edge", "Lord Dominik's Regards"],
+ "vs_tanks": "Kraken + LDR — W blight + Kraken true damage shreds through max armor",
+ "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+ "vs_burst": "Immortal Shieldbow replaces The Collector vs assassins",
+ "build_note": "W (Blighted Quiver): stack 3 blight with autos, then E root detonates for % max HP burst. R chain of corruption jumps between enemies — throw into grouped cluster at objectives.",
+ "recall_timing": "Back at 800g (Recurve Bow). Never Q charge in place — stationary = gank target."
+ },
+ "Kalista": {
+ "start": "Doran's Blade",
+ "first_back": "Recurve Bow (800g)",
+ "full_build": ["Berserker's Greaves", "Kraken Slayer", "Navori Flickerblades", "Runaan's Hurricane", "Lord Dominik's Regards", "Immortal Shieldbow"],
+ "vs_tanks": "Kraken + LDR — Rend detonates Kraken procs through tanks simultaneously",
+ "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+ "vs_burst": "Immortal Shieldbow in core build",
+ "build_note": "NEVER stand still — every auto hops to new position. Stack 4+ spears on target before Rend (E). Hurricane plants spears on 3 targets simultaneously. R throws support into enemy team — coordinate the timing.",
+ "recall_timing": "Back at 800g (Recurve Bow). Kalista needs AS more than AD early — Recurve first is correct."
+ },
+ "Zeri": {
+ "start": "Doran's Blade",
+ "first_back": "Recurve Bow (800g) or Pickaxe (875g)",
+ "full_build": ["Berserker's Greaves", "Kraken Slayer", "Navori Flickerblades", "Runaan's Hurricane", "Lord Dominik's Regards", "Guinsoo's Rageblade"],
+ "vs_tanks": "Kraken + LDR + Rageblade double on-hit synergy",
+ "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+ "vs_burst": "Immortal Shieldbow replaces Guinsoo's vs heavy assassin",
+ "build_note": "Q (Burst Fire) passes through minions — chip enemies through waves for free. E (Spark Surge) wall-hop for flank angles or escape. R overcharge: every kill extends — all-in at 2+ enemies grouped.",
+ "recall_timing": "Back at 800g (Recurve Bow). E wall-hops available — use to find safe recall paths."
+ }
+}

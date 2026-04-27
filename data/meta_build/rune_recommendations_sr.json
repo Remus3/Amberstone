@@ -1,0 +1,230 @@
+{
+  "_meta": {
+    "description": "Per-champion SR rune recommendations for RC coaching. Hand-curated from challenger SR bot lane data, patch 16.8.",
+    "format": "primary_keystone | primary_tree / secondary_tree — reasoning",
+    "last_updated": "2026-04-18",
+    "patch": "16.8.1"
+  },
+  "Vayne": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "secondary_runes": [
+      "Taste of Blood",
+      "Treasure Hunter"
+    ],
+    "stat_shards": [
+      "Attack Speed",
+      "Adaptive Force",
+      "Armor"
+    ],
+    "reasoning": "Tempo is mandatory — Vayne's silver bolt DPS requires sustained autos. Short-range means you need the DPS ramp to justify the all-in.",
+    "situational": {
+      "vs_poke_lane": "Fleet Footwork for healing in rough lane matchups",
+      "vs_engage_support": "Conqueror for extended fights in tanky metas"
+    },
+    "coaching_note": "Don't engage until 4+ Tempo stacks. Condemn wall-stuns extend the Tempo window. Safe uptime > risky burst."
+  },
+  "Jinx": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Sorcery",
+    "secondary_runes": [
+      "Absolute Focus",
+      "Gathering Storm"
+    ],
+    "stat_shards": [
+      "Attack Speed",
+      "Adaptive Force",
+      "Armor"
+    ],
+    "reasoning": "Standard Jinx: Tempo into Fishbones is the primary damage pattern. Gathering Storm scales into teamfight phase where Jinx dominates.",
+    "situational": {
+      "ahead": "Dark Harvest for reset snowball playstyle",
+      "vs_burst": "Fleet Footwork in assassin-heavy metas"
+    },
+    "coaching_note": "Stay back in lane — poke with rockets when safe. Tempo fights: switch to rockets after 4 stacks. Never stop moving."
+  },
+  "Tristana": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "secondary_runes": [
+      "Taste of Blood",
+      "Treasure Hunter"
+    ],
+    "stat_shards": [
+      "Attack Speed",
+      "Adaptive Force",
+      "Armor"
+    ],
+    "reasoning": "Tempo maximizes Explosive Charge damage windows. Tristana's all-in pattern relies on stacking charge under sustained autos.",
+    "situational": {
+      "lane_bully": "Electrocute for burst-heavy kill lane with aggressive support",
+      "safe_lane": "Fleet Footwork for passive scaling playstyle"
+    },
+    "coaching_note": "W onto target, auto x4 under Tempo stacks, pop charge at 4 stacks, E out of danger. W reset on kill is the core loop."
+  },
+  "Caitlyn": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Precision",
+    "secondary_runes": [
+      "Manaflow Band",
+      "Gathering Storm"
+    ],
+    "stat_shards": [
+      "Attack Speed",
+      "Adaptive Force",
+      "Armor"
+    ],
+    "reasoning": "Fleet Footwork on SR for sustained laning — headshot procs give free healing. Manaflow handles early mana demands. Range abuse lane doesn't need Tempo.",
+    "situational": {
+      "stomp_lane": "Lethal Tempo if heavily favored — maximize damage output",
+      "vs_melee_support": "Arcane Comet for poke damage vs immobile supports"
+    },
+    "coaching_note": "Arcane Comet on traps/Q poke. Manaflow + Gathering Storm for scaling. Triumph + Alacrity secondary for lane sustain and team fight contribution."
+  },
+  "Nilah": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Resolve",
+    "secondary_runes": [
+      "Second Wind",
+      "Unflinching"
+    ],
+    "stat_shards": [
+      "Attack Speed",
+      "Adaptive Force",
+      "Health"
+    ],
+    "reasoning": "Conqueror on SR for extended 2v2 all-ins. Nilah's kit enables long trades where Conqueror stacks matter. Resolve secondary for approach safety.",
+    "situational": {
+      "poke_lane": "Fleet Footwork if struggling to approach heavy poke",
+      "ahead": "Lethal Tempo for DPS maximization when winning"
+    },
+    "coaching_note": "Conqueror stacks in melee all-in. W reduces healing on enemies. Bone Plating essential vs burst when diving. Revitalize enhances W passive healing share."
+  },
+  "Miss Fortune": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "secondary_runes": [
+      "Taste of Blood",
+      "Treasure Hunter"
+    ],
+    "stat_shards": [
+      "Attack Speed",
+      "Adaptive Force",
+      "Armor"
+    ],
+    "reasoning": "Tempo on MF for sustained DPS during Love Tap trading. Double Up bounce + Tempo autos is the core lane trade pattern.",
+    "situational": {
+      "hard_engage_support": "Dark Harvest with CC setup support for kill lane",
+      "poke_lane": "Arcane Comet for E scatter poke dominance"
+    },
+    "coaching_note": "Arcane Comet procs off Double Up Q. Manaflow for mana. Gathering Storm into late-game lethality. Sudden Impact for Bullet Time burst setup."
+  },
+  "Lucian": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "TF Spellblade + Tempo: Q procs Spellblade, then fire 2 Tempo autos. Never auto without a proc queued."
+  },
+  "Ezreal": {
+    "keystone": "Phase Rush",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Phase Rush lets you kite after Q. Manaflow stacks via Q spam. Gathering Storm provides scaling AD. Sudden Impact for lethality on E."
+  },
+  "Jhin": {
+    "keystone": "Fleet Footwork",
+    "primary_tree": "Precision",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Fleet Footwork sustain in lane — crits trigger it. Presence of Mind for mana on kills. Gathering Storm for scaling AD since Jhin gains AD from crit %."
+  },
+  "Ashe": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Lethal Tempo stacks fast on perma-slow targets. Triumph + Alacrity standard. Sudden Impact + Treasure Hunter for poke-to-kill windows."
+  },
+  "Xayah": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Lethal Tempo stacks fast on feather plant autos. Bloodline secondary for lifesteal in extended trades. Sudden Impact for Bladecaller burst."
+  },
+  "Zeri": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Lethal Tempo stacks on rapid Q autos. Alacrity for AS scaling. Sudden Impact procs on E wall-hop. Treasure Hunter for income."
+  },
+  "Samira": {
+    "keystone": "Conqueror",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Conqueror stacks via style combo. Triumph heals on R kills. Bone Plating + Revitalize for dive survivability in extended all-ins."
+  },
+  "Aphelios": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Crescendum turret fires at Tempo AS. Weapon rotation synergy with Tempo uptime."
+  },
+  "Kalista": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Lethal Tempo syncs with Kalista's hop-and-auto rhythm. Presence of Mind for mana. Alacrity + CdG for spear stacking efficiency."
+  },
+  "Draven": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Lethal Tempo into Coup de Grace — axes deal bonus AD so getting 3 autos per trade is critical. Sudden Impact + Treasure Hunter for kill snowball."
+  },
+  "Sivir": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Lethal Tempo stacks on Ricochet bounces. Manaflow for mana management. Gathering Storm scales with her late-game crit build."
+  },
+  "Varus": {
+    "keystone": "Arcane Comet",
+    "primary_tree": "Sorcery",
+    "secondary_tree": "Domination",
+    "coaching_note": "Arcane Comet procs on Q poke. Manaflow for Q spam. Sudden Impact + Treasure Hunter for blight detonation kill windows."
+  },
+  "Kog'Maw": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "W % max HP fires on every Tempo auto. 5-auto Tempo window = 5x Void Ooze procs."
+  },
+  "Twitch": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Deadly Venom stacks with Tempo AS. 6-stack detonation + Tempo active = execute window."
+  },
+  "Senna": {
+    "keystone": "Fleet Footwork",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Long range + Fleet sustain. Umbral Glaive denies health packs. Dawning Shadow (R) globally."
+  },
+  "Corki": {
+    "keystone": "Fleet Footwork",
+    "primary_tree": "Precision",
+    "secondary_tree": "Sorcery",
+    "coaching_note": "Hybrid damage: Q magic + autos. Fleet sustain in poke lanes. Package W/E path rotations."
+  },
+  "Quinn": {
+    "keystone": "Lethal Tempo",
+    "primary_tree": "Precision",
+    "secondary_tree": "Domination",
+    "coaching_note": "Valor tag proc + Tempo auto for bonus damage. Behind Enemy Lines (R) engage with Tempo active."
+  }
+}

@@ -1,0 +1,490 @@
+"""
+scripts/data_pipeline.py — Riot Commander data asset pipeline.
+
+Usage:
+    python data_pipeline.py ddragon         # Download DDragon meta JSON files
+    python data_pipeline.py runes           # Download DDragon rune metadata + icons
+    python data_pipeline.py icons           # Download champion / spell / item icons
+    python data_pipeline.py meta            # Print current patch version info
+    python data_pipeline.py aram_builds     # Update ARAM tier rankings (or verify)
+    python data_pipeline.py aram_builds --verify  # Print current tier distribution
+    python data_pipeline.py all             # Run ddragon + runes + icons + aram_builds
+
+Downloads to:
+    data/meta/ddragon_version.json
+    data/meta/ddragon_champions.json
+    data/meta/ddragon_items.json
+    data/meta/ddragon_runes.json
+    data/meta/ddragon_summoner_spells.json
+    data/icons/champions/     (champion square PNGs)
+    data/icons/spells/        (summoner spell PNGs)
+    data/icons/runes/         (keystone + rune tree PNGs)
+
+Version-aware: skips downloads if patch version unchanged.
+Logs to logs/data_pipeline.log
+"""
+
+import json
+import sys
+import time
+import logging
+import urllib.request
+import urllib.error
+from pathlib import Path
+
+ROOT     = Path(__file__).parent.parent
+DATA     = ROOT / "data"
+META     = DATA / "meta"
+ICONS    = DATA / "icons"
+LOG_FILE = ROOT / "logs" / "data_pipeline.log"
+
+META.mkdir(parents=True, exist_ok=True)
+ICONS.mkdir(parents=True, exist_ok=True)
+LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler(str(LOG_FILE), encoding="utf-8"),
+    ],
+)
+log = logging.getLogger("data_pipeline")
+
+DDRAGON_BASE = "https://ddragon.leagueoflegends.com"
+VERSIONS_URL = f"{DDRAGON_BASE}/api/versions.json"
+
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+
+def _fetch_json(url: str, timeout: int = 15) -> dict | list:
+    req = urllib.request.Request(url, headers={"User-Agent": "RiotCommander/3.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read())
+
+
+def _fetch_bytes(url: str, timeout: int = 30) -> bytes:
+    req = urllib.request.Request(url, headers={"User-Agent": "RiotCommander/3.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return r.read()
+
+
+def _write_json(path: Path, data) -> None:
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(path)
+
+
+def _write_bytes(path: Path, data: bytes) -> None:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_bytes(data)
+    tmp.replace(path)
+
+
+def _get_live_version() -> str:
+    versions = _fetch_json(VERSIONS_URL)
+    return versions[0]
+
+
+def _get_cached_version() -> str:
+    p = META / "ddragon_version.json"
+    if p.exists():
+        return json.loads(p.read_text(encoding="utf-8")).get("version", "")
+    return ""
+
+
+def _download_icon(url: str, dest: Path, label: str = "") -> bool:
+    """Download a single icon. Returns True on success, False on skip/fail."""
+    if dest.exists():
+        return False  # already have it
+    try:
+        data = _fetch_bytes(url)
+        _write_bytes(dest, data)
+        if label:
+            log.debug("  icon: %s", label)
+        time.sleep(0.05)  # polite rate limit
+        return True
+    except Exception as e:
+        log.warning("  icon failed %s: %s", url, e)
+        return False
+
+
+# ── Commands ──────────────────────────────────────────────────────────────────
+
+def cmd_items_index(force: bool = False) -> bool:
+    """Regenerate web/data/items_index.json from data/meta/ddragon_items.json.
+
+    Output schema mirrors the existing index used by web/js/dashboard.js:
+      {
+        "version": "<patch>",
+        "byName":  { "<lowercased-stripped-name>": "<id-string>", ... },
+        "byId":    { "<id-string>": "<display-name>", ... },
+      }
+
+    No-op if web/data/items_index.json's version already matches the
+    cached DDragon patch (unless force=True). Run after
+    `cmd_ddragon` to keep the dashboard's item resolution in sync with
+    the latest patch automatically.
+    """
+    src = META / "ddragon_items.json"
+    dest = ROOT / "web" / "data" / "items_index.json"
+    if not src.exists():
+        log.error("ddragon_items.json missing — run `data_pipeline.py ddragon` first")
+        return False
+    try:
+        d = json.loads(src.read_text(encoding="utf-8"))
+    except Exception as e:
+        log.error("ddragon_items.json parse failed: %s", e)
+        return False
+
+    version = d.get("version", "")
+    items   = d.get("data", {}) or {}
+
+    # Skip if already current
+    if dest.exists() and not force:
+        try:
+            existing = json.loads(dest.read_text(encoding="utf-8"))
+            if existing.get("version") == version:
+                log.info("items_index.json already at patch %s — skipping (use force=True)", version)
+                return True
+        except Exception:
+            pass
+
+    by_name: dict[str, str] = {}
+    by_id:   dict[str, str] = {}
+    for item_id, info in items.items():
+        name = info.get("name") or ""
+        if not name:
+            continue
+        # byName key matches dashboard.js _normItemName: lowercase, strip non-alnum.
+        norm = "".join(c for c in name.lower() if c.isalnum())
+        # First-seen wins for byName collisions (DDragon sometimes reuses display names).
+        by_name.setdefault(norm, str(item_id))
+        by_id[str(item_id)] = name
+
+    payload = {"version": version, "byName": by_name, "byId": by_id}
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dest.with_suffix(".tmp")
+    tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(dest)
+    log.info("items_index.json: %d items, patch %s — written to %s",
+             len(by_id), version, dest)
+    return True
+
+
+def cmd_meta():
+    """Print current version state without downloading anything."""
+    cached = _get_cached_version()
+    try:
+        live = _get_live_version()
+    except Exception as e:
+        live = f"(fetch failed: {e})"
+    log.info("Cached patch: %s", cached or "(none)")
+    log.info("Live patch:   %s", live)
+    if cached and live and cached == live:
+        log.info("Status: UP TO DATE")
+    else:
+        log.info("Status: UPDATE AVAILABLE" if cached else "Status: NOT DOWNLOADED")
+
+
+def cmd_ddragon(force: bool = False):
+    """Download DDragon champion, item, spell JSON files."""
+    log.info("=== DDragon meta download ===")
+    try:
+        live = _get_live_version()
+    except Exception as e:
+        log.error("Cannot fetch version list: %s", e)
+        return False
+
+    cached = _get_cached_version()
+    if cached == live and not force:
+        log.info("Already on patch %s — skipping (use force=True to override)", live)
+        return True
+
+    log.info("Downloading patch %s meta...", live)
+    base = f"{DDRAGON_BASE}/cdn/{live}/data/en_US"
+
+    targets = {
+        "ddragon_champions.json":       f"{base}/champion.json",
+        "ddragon_items.json":           f"{base}/item.json",
+        "ddragon_summoner_spells.json": f"{base}/summoner.json",
+    }
+
+    ok = True
+    for filename, url in targets.items():
+        dest = META / filename
+        try:
+            log.info("  Fetching %s...", filename)
+            data = _fetch_json(url)
+            _write_json(dest, data)
+            log.info("  OK: %s (%d bytes)", filename, dest.stat().st_size)
+        except Exception as e:
+            log.error("  FAILED %s: %s", filename, e)
+            ok = False
+
+    if ok:
+        _write_json(META / "ddragon_version.json", {"version": live, "downloaded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ")})
+        log.info("DDragon meta complete — patch %s", live)
+    return ok
+
+
+def cmd_runes(force: bool = False):
+    """Download DDragon rune metadata JSON + keystone/tree icons."""
+    log.info("=== Rune metadata + icons download ===")
+
+    try:
+        live = _get_live_version()
+    except Exception as e:
+        log.error("Cannot fetch version list: %s", e)
+        return False
+
+    rune_dest = META / "ddragon_runes.json"
+    rune_url  = f"{DDRAGON_BASE}/cdn/{live}/data/en_US/runesReforged.json"
+
+    if not rune_dest.exists() or force:
+        try:
+            log.info("  Fetching runesReforged.json...")
+            data = _fetch_json(rune_url)
+            _write_json(rune_dest, data)
+            log.info("  OK: ddragon_runes.json (%d bytes)", rune_dest.stat().st_size)
+        except Exception as e:
+            log.error("  FAILED rune JSON: %s", e)
+            return False
+    else:
+        log.info("  ddragon_runes.json already exists — skipping JSON fetch")
+        data = json.loads(rune_dest.read_text(encoding="utf-8"))
+
+    rune_icon_dir = ICONS / "runes"
+    rune_icon_dir.mkdir(parents=True, exist_ok=True)
+
+    downloaded = skipped = failed = 0
+    for tree in data:
+        tree_icon_url  = f"{DDRAGON_BASE}/cdn/img/{tree.get('icon', '')}"
+        tree_icon_name = Path(tree.get("icon", "")).name
+        if tree_icon_name:
+            result = _download_icon(tree_icon_url, rune_icon_dir / tree_icon_name, tree.get("name", ""))
+            if result: downloaded += 1
+            else: skipped += 1
+
+        for slot in tree.get("slots", []):
+            for rune in slot.get("runes", []):
+                rune_icon_url  = f"{DDRAGON_BASE}/cdn/img/{rune.get('icon', '')}"
+                rune_icon_name = Path(rune.get("icon", "")).name
+                if rune_icon_name:
+                    result = _download_icon(rune_icon_url, rune_icon_dir / rune_icon_name, rune.get("name", ""))
+                    if result: downloaded += 1
+                    else: skipped += 1
+
+    log.info("Rune icons: %d downloaded, %d already existed, %d failed", downloaded, skipped, failed)
+    return True
+
+
+def cmd_icons(force: bool = False):
+    """Download champion square icons and summoner spell icons."""
+    log.info("=== Champion + spell icon download ===")
+
+    try:
+        live = _get_live_version()
+    except Exception as e:
+        log.error("Cannot fetch version list: %s", e)
+        return False
+
+    base_img = f"{DDRAGON_BASE}/cdn/{live}/img"
+
+    champ_dir = ICONS / "champions"
+    champ_dir.mkdir(parents=True, exist_ok=True)
+
+    champ_json = META / "ddragon_champions.json"
+    if not champ_json.exists():
+        log.warning("ddragon_champions.json missing — run 'ddragon' first")
+    else:
+        champs = json.loads(champ_json.read_text(encoding="utf-8")).get("data", {})
+        log.info("  Downloading %d champion icons...", len(champs))
+        dl = sk = 0
+        for name, info in champs.items():
+            icon_file = info.get("image", {}).get("full", f"{name}.png")
+            url  = f"{base_img}/champion/{icon_file}"
+            dest = champ_dir / icon_file
+            if _download_icon(url, dest, name): dl += 1
+            else: sk += 1
+        log.info("  Champion icons: %d downloaded, %d already existed", dl, sk)
+
+    spell_dir = ICONS / "spells"
+    spell_dir.mkdir(parents=True, exist_ok=True)
+
+    spell_json = META / "ddragon_summoner_spells.json"
+    if not spell_json.exists():
+        log.warning("ddragon_summoner_spells.json missing — run 'ddragon' first")
+    else:
+        spells = json.loads(spell_json.read_text(encoding="utf-8")).get("data", {})
+        log.info("  Downloading %d summoner spell icons...", len(spells))
+        dl = sk = 0
+        for name, info in spells.items():
+            icon_file = info.get("image", {}).get("full", f"{name}.png")
+            url  = f"{base_img}/spell/{icon_file}"
+            dest = spell_dir / icon_file
+            if _download_icon(url, dest, name): dl += 1
+            else: sk += 1
+        log.info("  Spell icons: %d downloaded, %d already existed", dl, sk)
+
+    return True
+
+
+def cmd_aram_builds(force: bool = False) -> bool:
+    """
+    Update ARAM champion tier rankings in data/meta_build/aram_champion_builds.json.
+
+    Attempts automated fetch from Aggregator B. Falls back gracefully (non-fatal) if
+    sources are unavailable — anti-scraping protections are common on stats sites.
+
+    Manual update guide (patch day):
+      1. https://www.leagueoflegends.com/en-us/news/game-updates/patch-notes/
+      2. Find ARAM balance section
+      3. Edit aram_tier fields in data/meta_build/aram_champion_builds.json
+      4. Verify: python data_pipeline.py aram_builds --verify
+
+    Tier mapping: S>=55% | A>=53% | B>=51% | C>=49% | D<49%
+    """
+    log.info("=== ARAM champion tier update ===")
+
+    BUILDS_FILE = ROOT / "data" / "meta_build" / "aram_champion_builds.json"
+    if not BUILDS_FILE.exists():
+        log.error("aram_champion_builds.json not found"); return False
+
+    try:
+        builds = json.loads(BUILDS_FILE.read_text(encoding="utf-8"))
+    except Exception as e:
+        log.error("Failed to load aram_champion_builds.json: %s", e); return False
+
+    # --verify flag: print current tier distribution without updating
+    if len(sys.argv) > 2 and sys.argv[2] == "--verify":
+        tiers: dict = {}
+        for k, v in builds.items():
+            if k.startswith("_") or not isinstance(v, dict): continue
+            t = v.get("aram_tier", "?")
+            tiers.setdefault(t, []).append(k)
+        note = builds.get("_note", "(no note)")
+        log.info("Build note: %s", note)
+        log.info("Tier distribution:")
+        for tier in ("S", "A", "B", "C", "D", "?"):
+            champs = tiers.get(tier, [])
+            if champs:
+                log.info("  %s (%d): %s%s", tier, len(champs),
+                         ", ".join(sorted(champs)[:15]),
+                         "..." if len(champs) > 15 else "")
+        return True
+
+    live_version = ""
+    try:
+        live_version = _get_live_version()
+    except Exception:
+        pass
+
+    note = builds.get("_note", "")
+    if not force and live_version and live_version in note:
+        log.info("Already at patch %s — skipping (use force=True to override)", live_version)
+        log.info("Patch notes: https://www.leagueoflegends.com/en-us/news/game-updates/patch-notes/")
+        return True
+
+    tier_data: dict[str, str] = {}
+
+    # Try Aggregator B stats API
+    try:
+        raw = _fetch_json(
+            "https://aggregator-b-stats.invalid/lol/1.5/table/aram/world/platinum_plus/aram/1/overview.json",
+            timeout=12
+        )
+        ddragon_champs = {}
+        _dd = ROOT / "data" / "meta" / "ddragon_champions.json"
+        if _dd.exists():
+            for key, v in (json.loads(_dd.read_text(encoding="utf-8")).get("data") or {}).items():
+                ddragon_champs[str(v.get("key", ""))] = v.get("id", key)
+
+        WR_THRESHOLDS = [(55.0, "S"), (53.0, "A"), (51.0, "B"), (49.0, "C")]
+        for entry in (raw if isinstance(raw, list) else []):
+            if not isinstance(entry, list) or len(entry) < 4: continue
+            champ_id   = str(entry[0])
+            champ_name = ddragon_champs.get(champ_id, "")
+            wr = float(entry[3]) * 100 if float(entry[3]) < 1 else float(entry[3])
+            if not champ_name: continue
+            tier = "D"
+            for threshold, letter in WR_THRESHOLDS:
+                if wr >= threshold: tier = letter; break
+            tier_data[champ_name] = tier
+
+        if tier_data:
+            log.info("Aggregator B: fetched tier data for %d champions", len(tier_data))
+    except Exception as e:
+        log.warning("Aggregator B fetch failed (%s) — automated tier update unavailable", e)
+
+    if not tier_data:
+        log.warning(
+            "Automated tier sources unavailable (anti-scraping protections).\n"
+            "  Manual update: edit aram_tier in data/meta_build/aram_champion_builds.json\n"
+            "  Patch notes:   https://www.leagueoflegends.com/en-us/news/game-updates/patch-notes/\n"
+            "  Verify after:  python data_pipeline.py aram_builds --verify"
+        )
+        return True  # Non-fatal
+
+    updated = unchanged = skipped = 0
+    for champ_key, champ_data in builds.items():
+        if champ_key.startswith("_") or not isinstance(champ_data, dict): continue
+        fetched = tier_data.get(champ_key) or tier_data.get(champ_key.replace(" ", ""))
+        if fetched is None: skipped += 1; continue
+        if fetched != champ_data.get("aram_tier", ""):
+            champ_data["aram_tier"] = fetched; updated += 1
+        else:
+            unchanged += 1
+
+    if live_version:
+        builds["_note"] = (
+            f"ARAM builds for full champion roster. "
+            f"Patch {live_version}. Updated {time.strftime('%Y-%m-%d')}. "
+            f"Tiers auto-updated; build notes manually curated."
+        )
+
+    tmp = BUILDS_FILE.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(builds, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(BUILDS_FILE)
+    log.info("ARAM builds: %d updated, %d unchanged, %d not in source", updated, unchanged, skipped)
+    return True
+
+
+def cmd_all():
+    """Run full pipeline: ddragon + items_index + runes + icons + aram_builds."""
+    log.info("=== Full data pipeline run ===")
+    ok = True
+    ok &= cmd_ddragon()
+    ok &= cmd_items_index()
+    ok &= cmd_runes()
+    ok &= cmd_icons()
+    ok &= cmd_aram_builds()
+    if ok:
+        log.info("=== Pipeline complete ===")
+    else:
+        log.warning("=== Pipeline completed with errors — check log ===")
+    return ok
+
+
+# ── Entry point ───────────────────────────────────────────────────────────────
+
+COMMANDS = {
+    "ddragon":     cmd_ddragon,
+    "items_index": cmd_items_index,
+    "runes":       cmd_runes,
+    "icons":       cmd_icons,
+    "meta":        cmd_meta,
+    "aram_builds": cmd_aram_builds,
+    "all":         cmd_all,
+}
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2 or sys.argv[1] not in COMMANDS:
+        print(f"Usage: python data_pipeline.py [{' | '.join(COMMANDS)}]")
+        print("       python data_pipeline.py aram_builds --verify")
+        sys.exit(1)
+    cmd = sys.argv[1]
+    log.info("data_pipeline: running '%s'", cmd)
+    result = COMMANDS[cmd]()
+    sys.exit(0 if result is not False else 1)

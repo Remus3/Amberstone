@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "feature_flags",
+  "description": "Per-mode feature policy matrix for Riot Commander. Read by core/feature_policy.py.",
+  "type": "object",
+  "properties": {
+    "_comment": { "type": "string" },
+    "_version": { "type": "integer" },
+    "sr":    { "$ref": "#/definitions/modePolicy" },
+    "aram":  { "$ref": "#/definitions/modePolicy" },
+    "arena": { "$ref": "#/definitions/modePolicy" },
+    "brawl": { "$ref": "#/definitions/modePolicy" },
+    "tft":   { "$ref": "#/definitions/tftModePolicy" }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "decision": {
+      "type": "string",
+      "enum": ["allow", "disabled"],
+      "description": "allow = feature is active; disabled = feature is suppressed"
+    },
+    "modePolicy": {
+      "type": "object",
+      "properties": {
+        "live_coaching": { "$ref": "#/definitions/decision" }
+      },
+      "additionalProperties": false
+    },
+    "tftModePolicy": {
+      "type": "object",
+      "properties": {
+        "live_coaching":       { "$ref": "#/definitions/decision" },
+        "tft_vision_analysis": { "$ref": "#/definitions/decision" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,160 @@
+{
+  "Lulu": {
+    "current": {
+      "label": "Polymorph Disruption Control",
+      "rationale": "Exploit Lulu's W cooldown reduction and AP scaling to chain polymorphs while building tanky utility, making her unkillable frontline disruptor.",
+      "runes": {
+        "keystone": "Glacial Augment",
+        "primary": "Inspiration",
+        "secondary": "Resolve"
+      },
+      "summoners": [
+        32,
+        7
+      ],
+      "items": [
+        "Hollow Radiance",
+        "Kindlegem",
+        "Evenshroud",
+        "Kaenic Lifeburst",
+        "Thornmail",
+        "Rylai's Crystal Scepter"
+      ],
+      "raw": "Label: Polymorph Disruption Control\nRationale: Exploit Lulu's W cooldown reduction and AP scaling to chain polymorphs while building tanky utility, making her unkillable frontline disruptor.\nKeystone: Glacial Augment\nPrimary: Inspiration\nSecondary: Resolve\nSummoners: Snowball, Heal\nItems: Hollow Radiance, Kindlegem, Evenshroud, Kaenic Lifeburst, Thornmail, Rylai's Crystal Scepter",
+      "iteration": 2,
+      "created_at": 1777215424.5180829,
+      "validated": false
+    },
+    "history": [
+      {
+        "label": "Aggressive Enchanter Burst",
+        "rationale": "Lulu's W has surprising AD scaling and cooldown refund on enemy hits; stack ability haste + AP for early teamfight dominance instead of pure shielding.",
+        "runes": {
+          "keystone": "Summon Aery",
+          "primary": "Sorcery",
+          "secondary": "Precision"
+        },
+        "summoners": [
+          32,
+          4
+        ],
+        "items": [
+          "Liandry's Torment",
+          "Kindlegem",
+          "Zhonya's Hourglass",
+          "Void Staff",
+          "Deathcap",
+          "Morellonomicon"
+        ],
+        "raw": "Label: Aggressive Enchanter Burst\nRationale: Lulu's W has surprising AD scaling and cooldown refund on enemy hits; stack ability haste + AP for early teamfight dominance instead of pure shielding.\nKeystone: Summon Aery\nPrimary: Sorcery\nSecondary: Precision\nSummoners: Snowball, Flash\nItems: Liandry's Torment, Kindlegem, Zhonya's Hourglass, Void Staff, Deathcap, Morellonomicon",
+        "iteration": 1,
+        "created_at": 1777215360.4569254,
+        "validated": false,
+        "result": {
+          "grade": "C",
+          "kda_str": "5/8/12",
+          "kp_pct": 45,
+          "gold_per_min": 390,
+          "notes": [
+            "low cs",
+            "died early"
+          ]
+        },
+        "verdict": "regen",
+        "ended_at": 1777215422.0330846
+      }
+    ]
+  },
+  "Nidalee": {
+    "current": {
+      "label": "Spear Spike Assassin",
+      "rationale": "Stack early lethality and ability haste to spam long-range spear poke, pivot to burst on isolated targets in ARAM teamfights.",
+      "runes": {
+        "keystone": "Electrocute",
+        "primary": "Domination",
+        "secondary": "Sorcery"
+      },
+      "summoners": [
+        32,
+        4
+      ],
+      "items": [
+        "Manamune",
+        "Sorcerer's Shoes",
+        "Serrated Dirk",
+        "Duskblade of Draktharr",
+        "Maw of Malmortius",
+        "Hubris"
+      ],
+      "raw": "Label: Spear Spike Assassin\nRationale: Stack early lethality and ability haste to spam long-range spear poke, pivot to burst on isolated targets in ARAM teamfights.\nKeystone: Electrocute\nPrimary: Domination\nSecondary: Sorcery\nSummoners: Snowball, Flash\nItems: Manamune, Sorcerer's Shoes, Serrated Dirk, Duskblade of Draktharr, Maw of Malmortius, Hubris",
+      "iteration": 3,
+      "created_at": 1777220294.0266235,
+      "validated": false
+    },
+    "history": [
+      {
+        "iteration": 2,
+        "label": "Hybrid AP-Hunter",
+        "rationale": "Nidalee Q scales AP heavily (~70%); cougar form benefits from on-hit + AD. Lich Bane + Nashor's creates a hybrid burst-poke pattern that punishes both ranged poke AND cougar dives.",
+        "runes": {
+          "keystone": "Arcane Comet",
+          "primary": "Sorcery",
+          "secondary": "Domination"
+        },
+        "summoners": [
+          4,
+          32
+        ],
+        "items": [
+          "Malignance",
+          "Sorcerer's Shoes",
+          "Lich Bane",
+          "Nashor's Tooth",
+          "Rabadon's Deathcap",
+          "Shadowflame"
+        ],
+        "created_at": 1777219379.400026,
+        "validated": false,
+        "result": {
+          "grade": "D",
+          "kda_str": "5/10/21",
+          "kp_pct": 67,
+          "gold_per_min": 72,
+          "notes": [
+            "KDA (2.6) — pick fights carefully",
+            "Too many deaths (10)"
+          ]
+        },
+        "verdict": "regen",
+        "ended_at": 1777220291.6990962
+      }
+    ]
+  },
+  "Senna": {
+    "current": {
+      "label": "On-Hit Attack Speed",
+      "rationale": "User-requested experimental for this match. Lethal Tempo + on-hit core lets Senna stack effective DPS in extended ARAM fights despite her low base AS. Soul stacking continues to scale her AD/range; Kraken/Wit's End/BotRK pump on-hit %HP through enemy frontline.",
+      "runes": {
+        "keystone": "Lethal Tempo",
+        "primary": "Precision",
+        "secondary": "Sorcery"
+      },
+      "summoners": [
+        4,
+        32
+      ],
+      "items": [
+        "Berserker's Greaves",
+        "Statikk Shiv",
+        "Wit's End",
+        "Kraken Slayer",
+        "Blade of the Ruined King",
+        "Mortal Reminder"
+      ],
+      "raw": "Label: On-Hit Attack Speed\nRationale: User-requested experimental for this match. Lethal Tempo + on-hit core lets Senna stack effective DPS in extended ARAM fights despite her low base AS. Soul stacking continues to scale her AD/range; Kraken/Wit's End/BotRK pump on-hit %HP through enemy frontline.\nKeystone: Lethal Tempo\nPrimary: Precision\nSecondary: Sorcery\nSummoners: Flash, Snowball\nItems: Berserker's Greaves, Statikk Shiv, Wit's End, Kraken Slayer, Blade of the Ruined King, Mortal Reminder",
+      "iteration": 1,
+      "created_at": 1777222084.7241879,
+      "validated": false
+    }
+  }
+}
