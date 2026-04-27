@@ -67,7 +67,7 @@ C:\Riot Commander\
 | BUG-6 | DONE | `item_advisor.py` print → logger.debug — only 2 prints remain, both in `if __name__=="__main__"` smoke-test block (correct) |
 | STRUCT (Moon-PC dual routing) | DONE | `modes/shared_vision.py` already routes through `core.moon_proxy` (BUG-5 fix). `lan_bridge.py` dead-code path (`add_vision_job` / `get_job_result`) removed (ARCH-003) |
 | CLEANUP (debug artifacts) | DONE 2026-04-25 | `data/debug_crops/` (6 MB, 85 files), `data/debug_frame*.jpg` (670 KB) deleted. Regenerated on demand by `tools/calibrate_vision.py`. |
-| STRUCT (`last_game_rating.json`) | PARTIAL | Stale duplicate at `data/ratings/last_game_rating.json` deleted. Root file kept (still actively read by supervisor + performance_tracker). Architectural unification deferred. |
+| STRUCT (`last_game_rating.json`) | DONE 2026-04-27 | Dual-write eliminated. Per-mode `last_<mode>.json` files are canonical; "last across all modes" derived via `performance_tracker._latest_rating_file()` (most-recent mtime). Supervisor uses same locator. Account-namespacing (RC_ACCOUNT_ID) now respected uniformly. Orphan file deleted. |
 | STRUCT (`lan_bridge.py`) | DONE 2026-04-25 | Moved to `legacy/` — not imported, not running anywhere, never deployed to Game-PC |
 | STRUCT (`core/moon_sync.py`) | DONE 2026-04-25 | Moved to `legacy/` — Moon-PC retired post-migration, no production importers |
 
