@@ -484,36 +484,48 @@ footer .digest-icon.in-footer b {
 .title-auto-pill:active { transform: scale(0.97); }
 
 .view-menu {
-  /* Anchor to header (which has position: relative). top:100% sits
-   * the menu just below the header bar, full padding avoids clipping. */
+  /* Anchor to header (which has position: relative). top:100% +
+   * margin-top works more reliably than calc() across browsers. */
   position: absolute;
-  top: calc(100% + 4px);
+  top: 100%;
+  margin-top: 6px;
   left: 18px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: 0 12px 32px rgba(0,0,0,0.55);
   z-index: 9100;
+  /* width: max-content sizes the menu to its WIDEST item + padding;
+   * combined with .view-menu-item { width: 100% } below, every row
+   * ends up uniform width matching the widest entry. min-width keeps
+   * a sensible minimum even if all items are short. */
+  width: max-content;
   min-width: 280px;
+  max-width: calc(100vw - 36px);
   padding: 8px;
-  display: flex; flex-direction: column; gap: 3px;
+  display: flex; flex-direction: column; gap: 4px;
 }
 .view-menu.hidden { display: none; }
 .view-menu-item {
   /* Pill-row aesthetic — rounded rectangles inside the menu container,
    * mirroring the title-dropdown's rounded shape. Solid theme background
    * fixes the "no background on hover" bug (button user-agent defaults
-   * were overriding). */
+   * were overriding). width: 100% + box-sizing: border-box forces every
+   * row to fill the menu container so widths are uniform. */
   appearance: none; -webkit-appearance: none;
   background: var(--surface-head);
   color: var(--text-dim);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  padding: 11px 16px; text-align: left;
+  padding: 11px 18px; text-align: left;
   font-family: inherit; font-size: 15px; font-weight: 700;
   letter-spacing: 0.05em;
   transition: background 0.1s, color 0.1s, border-color 0.1s;
+  width: 100%;
+  box-sizing: border-box;
+  display: block;       /* avoid flex-item shrink quirks */
+  white-space: nowrap;  /* keep labels on one line so the widest item drives the menu width */
 }
 .view-menu-item:hover {
   background: var(--info-soft);
