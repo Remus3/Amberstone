@@ -3092,6 +3092,120 @@ footer .prefs-chip:hover { background: var(--bad-soft); color: var(--bad); }
 }
 .cs-overlay.hidden { display: none; }
 
+/* Home / lobby landing view (2026-04-26). Shown when the user is sat
+ * in the lobby/idle with no game or champ-select active. Replaces the
+ * empty client-mode panel labels with actually-useful at-a-glance
+ * data: today's session, last 5 matches, this week's champ summary,
+ * service health. Reads from /api/home/summary which queries
+ * data/match_history.db (fresh per-game capture). */
+.home-overlay {
+  margin: 12px 18px 0; padding: 14px 18px;
+  background: var(--surface); border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+}
+.home-overlay.hidden { display: none; }
+.home-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1.1fr 0.9fr;
+  gap: 14px;
+}
+.home-card {
+  background: var(--surface-head);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  min-height: 140px;
+  display: flex; flex-direction: column;
+}
+.home-card-head {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--label);
+  margin-bottom: 8px;
+  display: flex; align-items: baseline; gap: 8px;
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 6px;
+}
+.home-card-sub {
+  font-size: 11px; color: var(--clock); font-weight: 700;
+  letter-spacing: 0.06em; margin-left: auto;
+}
+.home-empty {
+  padding: 6px 0; font-size: 11px; color: var(--text-faint);
+  font-style: italic; list-style: none;
+}
+.home-today-stats { display: flex; flex-direction: column; gap: 4px; }
+.home-today-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 12px;
+}
+.home-today-lbl { color: var(--text-dim); letter-spacing: 0.04em; }
+.home-today-val {
+  color: var(--text); font-variant-numeric: tabular-nums; font-weight: 700;
+}
+.home-recent-list, .home-week-list, .home-services-list {
+  list-style: none; padding: 0; margin: 0;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.home-recent-row {
+  display: grid;
+  grid-template-columns: 36px 1fr 70px 24px;
+  align-items: center; gap: 8px;
+  padding: 4px 6px;
+  background: var(--surface-alt);
+  border-radius: 4px;
+  font-size: 11px;
+}
+.home-recent-grade {
+  font-weight: 900; font-size: 13px; text-align: center;
+  padding: 1px 0; border-radius: 3px;
+  letter-spacing: 0.04em;
+}
+.home-recent-grade.S { color: #ffd166; background: rgba(245,184,124,0.18); }
+.home-recent-grade.A { color: var(--good); background: var(--good-soft); }
+.home-recent-grade.B { color: #b6e8c4; background: rgba(127,209,154,0.12); }
+.home-recent-grade.C { color: var(--text); background: var(--surface-head); }
+.home-recent-grade.D { color: #f5c1c8; background: rgba(240,126,139,0.12); }
+.home-recent-grade.F { color: var(--bad); background: var(--bad-soft); }
+.home-recent-champ { color: var(--text); font-weight: 700; }
+.home-recent-meta  { color: var(--text-faint); font-size: 10px; }
+.home-recent-kda   { color: var(--text-dim); font-variant-numeric: tabular-nums; text-align: right; }
+.home-recent-mode  {
+  color: var(--info); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.08em; text-align: right;
+}
+.home-week-row {
+  display: grid;
+  grid-template-columns: 1fr 50px 30px 30px;
+  align-items: center; gap: 6px;
+  padding: 4px 6px;
+  background: var(--surface-alt);
+  border-radius: 4px;
+  font-size: 11px;
+}
+.home-week-champ { color: var(--text); font-weight: 600; }
+.home-week-games { color: var(--text-dim); text-align: right; font-size: 10px; }
+.home-week-kda   { color: var(--text); font-variant-numeric: tabular-nums; text-align: right; font-weight: 700; }
+.home-week-grade {
+  text-align: center; font-weight: 800; font-size: 11px;
+  padding: 1px 0; border-radius: 3px;
+}
+.home-services-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 6px; font-size: 11px;
+}
+.home-services-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text-faint); flex-shrink: 0;
+}
+.home-services-dot.ok { background: var(--good); box-shadow: 0 0 4px rgba(127,209,154,0.5); }
+.home-services-dot.err { background: var(--bad); }
+.home-services-name { color: var(--text); font-weight: 700; }
+.home-services-detail { color: var(--text-faint); font-size: 10px; margin-left: auto; }
+
+@media (max-width: 1100px) {
+  .home-grid { grid-template-columns: 1fr 1fr; }
+}
+
 /* Pre-queue lobby card (2026-04-26). Sits inline above the main grid
  * (NOT a fullscreen overlay like cs-overlay) so the dashboard panels
  * remain visible. Hides when not in lobby phase. Find Match button

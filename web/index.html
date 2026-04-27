@@ -7,6 +7,36 @@
   <link rel="stylesheet" href="/css/dashboard.css" />
 </head>
 <body>
+  <!-- Home overlay (2026-04-26). Replaces the empty client-mode panels
+       when the user is sitting in the lobby with no game/champ-select
+       active. Pulls /api/home/summary every 20s. Hidden during champ-
+       select / in-game so the main panel grid is unobstructed. -->
+  <div id="home-overlay" class="home-overlay hidden" aria-hidden="true">
+    <div class="home-grid">
+      <div class="home-card home-card-today" id="home-card-today">
+        <div class="home-card-head">TODAY <span class="home-card-sub" id="home-today-count">—</span></div>
+        <div class="home-today-stats">
+          <div class="home-today-row"><span class="home-today-lbl">Total KDA</span><span class="home-today-val" id="home-today-kda">—</span></div>
+          <div class="home-today-row"><span class="home-today-lbl">Avg ratio</span><span class="home-today-val" id="home-today-avg">—</span></div>
+          <div class="home-today-row"><span class="home-today-lbl">Grades</span><span class="home-today-val" id="home-today-grades">—</span></div>
+          <div class="home-today-row"><span class="home-today-lbl">Modes</span><span class="home-today-val" id="home-today-modes">—</span></div>
+        </div>
+      </div>
+      <div class="home-card home-card-recent">
+        <div class="home-card-head">RECENT 5</div>
+        <ul class="home-recent-list" id="home-recent-list"><li class="home-empty">loading…</li></ul>
+      </div>
+      <div class="home-card home-card-week">
+        <div class="home-card-head">THIS WEEK</div>
+        <ul class="home-week-list" id="home-week-list"><li class="home-empty">loading…</li></ul>
+      </div>
+      <div class="home-card home-card-services">
+        <div class="home-card-head">SERVICES</div>
+        <ul class="home-services-list" id="home-services-list"><li class="home-empty">loading…</li></ul>
+      </div>
+    </div>
+  </div>
+
   <!-- Lobby overlay (2026-04-26). Shown when lcu.phase === "Lobby"
        AND lcu.lobby is populated. Surfaces queue type, party
        composition, leader status, and a Find Match button. The button
