@@ -7,6 +7,31 @@
   <link rel="stylesheet" href="/css/dashboard.css" />
 </head>
 <body>
+  <!-- Lobby overlay (2026-04-26). Shown when lcu.phase === "Lobby"
+       AND lcu.lobby is populated. Surfaces queue type, party
+       composition, leader status, and a Find Match button. The button
+       degrades to status-only when localMember is not the leader (per
+       LCU's restriction). Expects /api/state to expose:
+         lcu.lobby = { queue_id, queue_name, party_size, max_party_size,
+                       is_leader, can_search, search_state }
+       Data feed = Game-PC LCU agent polling /lol-lobby/v2/lobby. -->
+  <div id="lobby-overlay" class="lobby-overlay hidden" aria-hidden="true">
+    <div class="lobby-card">
+      <div class="lobby-head">
+        <span class="lobby-queue" id="lobby-queue">—</span>
+        <span class="lobby-party" id="lobby-party">—</span>
+        <span class="lobby-leader-tag" id="lobby-leader-tag" hidden>★ LEADER</span>
+      </div>
+      <div class="lobby-actions">
+        <button type="button" class="lobby-find-match" id="lobby-find-match" disabled>
+          <span id="lobby-find-match-label">Find Match</span>
+        </button>
+        <button type="button" class="lobby-cancel-match" id="lobby-cancel-match" hidden>Cancel Search</button>
+      </div>
+      <div class="lobby-status" id="lobby-status">—</div>
+    </div>
+  </div>
+
   <!-- Champion-select overlay (Phase 1, 2026-04-25). Shown only while
        lcu.phase === "ChampSelect". Renders my pick + ally/enemy team rows
        + ARAM bench + reroll/lock controls. Clicking bench cells fires
@@ -39,6 +64,10 @@
       <div class="cs-loadout-block" id="cs-loadout-block" hidden>
         <div class="cs-loadout-head">
           <div class="cs-loadout-label">Item Build &amp; Runes — pick one (auto-pushes to client)</div>
+          <label class="cs-force-summs" title="Override the variant's summoner spells with Flash + Snowball on every push">
+            <input type="checkbox" id="cs-force-flash-snowball" />
+            <span>Force Flash + Snowball</span>
+          </label>
           <div class="cs-loadout-status" id="cs-loadout-status"></div>
         </div>
         <div class="cs-build-list" id="cs-build-list"></div>
@@ -48,7 +77,10 @@
           <div class="cs-team-label">Allies</div>
           <div class="cs-team-row" id="cs-allies"></div>
         </div>
-        <div class="cs-team-block">
+        <!-- Enemy team block. Hidden in ARAM (incl. Mayhem) where the
+             enemy roster isn't revealed during champ-select — leaving the
+             empty row was misleading. CSS selectors below drop it. -->
+        <div class="cs-team-block" id="cs-enemy-block">
           <div class="cs-team-label">Enemies</div>
           <div class="cs-team-row" id="cs-enemies"></div>
         </div>
@@ -248,6 +280,18 @@
         <div class="build-section">
           <div class="build-label">Owned</div>
           <div class="item-tiles" id="ib-owned">—</div>
+        </div>
+        <!-- In-game build chooser (2026-04-26 user request). Mirror of the
+             cs-build-list rows; clicking a row mid-game pushes the new
+             build to LCU on the fly. Pre-game choice (saved to
+             localStorage) is the default highlight. Hidden when no
+             variants exist for the live champion+mode. -->
+        <div class="build-section ib-builds-block" id="ib-builds-block" hidden>
+          <div class="build-label">
+            <span>Switch build</span>
+            <span class="ib-builds-status" id="ib-builds-status"></span>
+          </div>
+          <div class="cs-build-list" id="ib-build-list"></div>
         </div>
         <!-- Augments moved to header (#augments-pill) 2026-04-23 so info panels
              don't reflow when arena augments appear/disappear. -->

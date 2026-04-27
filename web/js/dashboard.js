@@ -1379,6 +1379,11 @@
     const arena = isArenaPayload(p);
     // Update header label with champion + active variant.
     _updateItemBuildHeader(p.champion, state.mode);
+    // In-game multi-build picker (2026-04-26 user request) — mirrors the
+    // cs-build-list inside ITEM BUILD, lets the user hot-swap the item
+    // set mid-game. Runes + summoners are locked at game start so we
+    // only push items; the LCU agent updates the recommended shop order.
+    _ibMaybeRenderBuilds(p);
     const owned = _splitItemList(p.items_display || p.items, false);
     const path = _splitItemList(p.item_build, true);
     // Defensive dedup: a coach payload occasionally leaves an already-owned
@@ -3148,6 +3153,164 @@
     });
   }
 
+  // ── In-game build chooser (2026-04-26) ───────────────────────────
+  // Lives inside #item-build, NOT the champ-select overlay. Pre-game
+  // selection is persisted in localStorage so this chooser highlights
+  // the same row by default. Mid-game pushes items only (runes +
+  // summoners are locked at game start).
+  const _ibBuilds = {
+    lastChamp:  "",
+    lastMode:   "",
+    variants:   [],
+    chosen:     "",
+    inflight:   false,
+    lastAppliedKey: "",
+  };
+  function _ibSetStatus(text, cls) {
+    const el = document.getElementById("ib-builds-status");
+    if (!el) return;
+    el.className = "ib-builds-status" + (cls ? " " + cls : "");
+    el.textContent = text || "";
+  }
+  function _ibStorageKey(champion) { return "rc-ingame-build-" + (champion || ""); }
+  function _ibSavedChoice(champion) {
+    try { return localStorage.getItem(_ibStorageKey(champion)) || ""; }
+    catch (_) { return ""; }
+  }
+  function _ibSaveChoice(champion, variant) {
+    try { localStorage.setItem(_ibStorageKey(champion), variant); }
+    catch (_) {}
+  }
+  function _ibRenderRows(variants, chosen) {
+    const wrap = document.getElementById("ib-build-list");
+    if (!wrap) return;
+    wrap.innerHTML = "";
+    if (!variants || !variants.length) return;
+    const ver = CHAMPS.version || "latest";
+    variants.forEach((v) => {
+      const row = document.createElement("div");
+      const isExp = v.key === "experimental";
+      row.className = "cs-build-row" + (v.key === chosen ? " selected" : "")
+        + (isExp ? " experimental" : "");
+      row.dataset.variant = v.key;
+      const cb = document.createElement("div");
+      cb.className = "cs-build-checkbox"; row.appendChild(cb);
+      const meta = document.createElement("div");
+      meta.className = "cs-build-meta";
+      const label = document.createElement("div");
+      label.className = "cs-build-label";
+      label.textContent = v.label || v.key;
+      meta.appendChild(label);
+      const runes = document.createElement("div");
+      runes.className = "cs-build-runes";
+      runes.textContent = (v.keystone || "—");
+      meta.appendChild(runes);
+      row.appendChild(meta);
+      const items = document.createElement("div");
+      items.className = "cs-build-items";
+      (v.item_ids || []).slice(0, 4).forEach((iid, idx) => {
+        const cell = document.createElement("div");
+        cell.className = "cs-build-item";
+        cell.title = (v.item_names || [])[idx] || ("item " + iid);
+        cell.innerHTML = `<img src="/data/ddragon/${ver}/img/item/${iid}.png" onerror="this.style.display='none'" alt="">`;
+        items.appendChild(cell);
+      });
+      row.appendChild(items);
+      row.addEventListener("click", () => _ibOnRowClick(v.key));
+      wrap.appendChild(row);
+    });
+  }
+  function _ibMarkSelectedRow(variantKey) {
+    const wrap = document.getElementById("ib-build-list");
+    if (!wrap) return;
+    wrap.querySelectorAll(".cs-build-row").forEach((r) => {
+      if (r.dataset.variant === variantKey) r.classList.add("selected");
+      else r.classList.remove("selected");
+    });
+  }
+  function _ibPushItems(champion, variant, mode) {
+    if (!champion || !variant) return;
+    const key = champion + "|" + mode + "|" + variant;
+    if (key === _ibBuilds.lastAppliedKey) return;
+    if (_ibBuilds.inflight) return;
+    _ibBuilds.inflight = true;
+    _ibSetStatus("pushing…", "busy");
+    fetch("/api/loadout/apply", {
+      method: "POST", cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        champion: champion, variant: variant, mode: mode,
+        push_runes: false, push_summoners: false, push_items: true,
+      }),
+    })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((data) => {
+        _ibBuilds.inflight = false;
+        if (!data || !data.ok) { _ibSetStatus("push failed", "err"); return; }
+        _ibBuilds.lastAppliedKey = key;
+        _ibSetStatus("✓ " + (data.label || variant), "ok");
+        _ibMarkSelectedRow(variant);
+        _ibSaveChoice(champion, variant);
+      })
+      .catch(() => { _ibBuilds.inflight = false; _ibSetStatus("push failed", "err"); });
+  }
+  function _ibOnRowClick(variant) {
+    if (!variant) return;
+    _ibBuilds.chosen = variant;
+    _ibBuilds.lastAppliedKey = "";
+    _ibMarkSelectedRow(variant);
+    if (_ibBuilds.lastChamp && _ibBuilds.lastMode) {
+      _ibPushItems(_ibBuilds.lastChamp, variant, _ibBuilds.lastMode);
+    }
+  }
+  function _ibFetchAndRender(champion, mode) {
+    fetch("/api/loadout/list", {
+      method: "POST", cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ champion: champion, mode: mode }),
+    })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((data) => {
+        const block = document.getElementById("ib-builds-block");
+        if (!data || !data.variants || data.variants.length < 2) {
+          // <2 variants is uninteresting (just "default + experimental")
+          // — hide rather than clutter the small panel.
+          if (block) block.hidden = true;
+          return;
+        }
+        if (block) block.hidden = false;
+        _ibBuilds.variants = data.variants;
+        // Default highlight: persisted pre-game choice if it's still a valid
+        // variant for this champion+mode; otherwise the resolver's default.
+        const saved = _ibSavedChoice(champion);
+        const valid = data.variants.some((v) => v.key === saved);
+        _ibBuilds.chosen = (saved && valid) ? saved : (data.default || data.variants[0].key);
+        _ibRenderRows(data.variants, _ibBuilds.chosen);
+        _ibSetStatus("ready · " + data.variants.length + " builds", "");
+      })
+      .catch(() => {});
+  }
+  function _ibMaybeRenderBuilds(p) {
+    // Only show in modes where loadout variants make sense + the live
+    // champion is known. Skip Arena/TFT (no fixed builds) and client mode.
+    const mode = state.mode;
+    const champion = p && p.champion;
+    if (!champion || !["sr","aram","brawl"].includes(mode)) {
+      const block = document.getElementById("ib-builds-block");
+      if (block) block.hidden = true;
+      return;
+    }
+    if (champion === _ibBuilds.lastChamp && mode === _ibBuilds.lastMode
+        && _ibBuilds.variants.length) {
+      // Already rendered for this champion+mode; nothing to do.
+      return;
+    }
+    _ibBuilds.lastChamp = champion;
+    _ibBuilds.lastMode  = mode;
+    _ibBuilds.lastAppliedKey = "";
+    _ibFetchAndRender(champion, mode);
+  }
+
   // Single click handler shared by every row (no per-row delegation
   // needed since we re-render the whole list on champion/variant change).
   function _csOnBuildRowClick(variant) {
@@ -3183,9 +3346,37 @@
     }
   }
 
+  // Force-summoners override (2026-04-26 user request). When the
+  // checkbox is on, _csApplyLoadout suppresses the variant's summoner
+  // push (push_summoners:false) and instead sends a separate
+  // set_summoners {d:4, f:32} via /api/lcu-cmd. State persists in
+  // localStorage rc-force-flash-snowball.
+  function _csForceSummsOn() {
+    try { return localStorage.getItem("rc-force-flash-snowball") === "1"; }
+    catch (_) { return false; }
+  }
+  function _csWireForceSummsOnce() {
+    const cb = document.getElementById("cs-force-flash-snowball");
+    if (!cb || cb._wired) return;
+    cb._wired = true;
+    cb.checked = _csForceSummsOn();
+    cb.addEventListener("change", () => {
+      try { localStorage.setItem("rc-force-flash-snowball", cb.checked ? "1" : "0"); }
+      catch (_) {}
+      // Force re-push so the override takes effect immediately on the
+      // currently-selected build (no need to re-click the row).
+      _csLoadout.lastAppliedKey = "";
+      const champ = _csChampName(_csLoadout.lastChamp);
+      if (champ && _csLoadout.chosen) {
+        _csApplyLoadout(champ, _csLoadout.chosen, _csLoadout.lastMode);
+      }
+    });
+  }
+
   function _csApplyLoadout(champion, variant, mode) {
     if (!champion || !variant) return;
-    const key = champion + "|" + mode + "|" + variant;
+    const force = _csForceSummsOn();
+    const key = champion + "|" + mode + "|" + variant + (force ? "|F" : "");
     if (key === _csLoadout.lastAppliedKey) return;  // already pushed
     if (_csLoadout.inflight) return;
     _csLoadout.inflight = true;
@@ -3193,7 +3384,10 @@
     fetch("/api/loadout/apply", {
       method: "POST", cache: "no-store",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ champion: champion, variant: variant, mode: mode }),
+      body: JSON.stringify({
+        champion: champion, variant: variant, mode: mode,
+        push_summoners: !force,  // skip variant summoners when override is on
+      }),
     })
       .then((r) => (r && r.ok ? r.json() : null))
       .then((data) => {
@@ -3203,12 +3397,22 @@
           return;
         }
         _csLoadout.lastAppliedKey = key;
+        if (force) {
+          // Send the override AFTER the build apply — set_summoners is
+          // its own LCU command path, doesn't conflict with item/rune push.
+          lcuCmd({ cmd: "set_summoners", d: 4, f: 32 });
+        }
+        // Persist this pre-game choice so the in-game build chooser
+        // (renderItemBuild → _ibMaybeRenderBuilds) can pre-select it.
+        try { localStorage.setItem("rc-ingame-build-" + champion, variant); }
+        catch (_) {}
         const queued = (data.queued || []).join(", ") || "nothing";
-        _csSetStatus("✓ pushed: " + queued, "ok");
+        const tag = force ? " · F+S forced" : "";
+        _csSetStatus("✓ pushed: " + queued + tag, "ok");
         _csMarkSelectedRow(variant);
         // Clear the OK flash after a few seconds
         setTimeout(() => {
-          if (_csLoadout.lastAppliedKey === key) _csSetStatus("✓ active: " + (data.label || variant), "ok");
+          if (_csLoadout.lastAppliedKey === key) _csSetStatus("✓ active: " + (data.label || variant) + tag, "ok");
         }, 2400);
       })
       .catch(() => {
@@ -3360,8 +3564,15 @@
 
   function _csMaybeRunAnalyzer(cs, myCid, myName, mode) {
     // Only in ARAM (or ARAM Mayhem). Other modes don't have bench/swap
-    // and the analyzer prompt is ARAM-tuned.
-    if (!cs || !cs.is_aram) {
+    // and the analyzer prompt is ARAM-tuned. Mayhem queue_ids don't
+    // always set cs.is_aram (LCU agent only flags 450/920) — fall back
+    // to "bench present" or mode === aram as additional ARAM signals
+    // so Mayhem games surface the analyzer too. (2026-04-26 user-
+    // reported regression: analyzer never rendered during Mayhem.)
+    const _aramish = !!(cs && (cs.is_aram
+                               || (Array.isArray(cs.bench) && cs.bench.length > 0)
+                               || mode === "aram"));
+    if (!_aramish) {
       const block = document.getElementById("cs-analyzer-block");
       if (block) block.hidden = true;
       return;
@@ -3421,9 +3632,132 @@
     }
   }
 
+  // ── Lobby overlay (2026-04-26) ──────────────────────────────────────
+  // Pre-queue: shows what queue the user is sitting in + a Find Match
+  // button. Hidden during ChampSelect / InProgress (cs-overlay takes
+  // over). Find Match is only enabled when localMember.isLeader is true
+  // (LCU restriction); otherwise the button degrades to a status pill
+  // showing "Awaiting party leader". Cancel Search appears when
+  // search_state === "Searching".
+  //
+  // Expected /api/state shape (Game-PC LCU agent forwards from
+  // /lol-lobby/v2/lobby):
+  //   lcu.lobby = {
+  //     queue_id:        int,    // 920 = ARAM Mayhem, 450 = ARAM, etc.
+  //     queue_name:      str,    // "ARAM Mayhem", "Normal Draft", etc.
+  //     party_size:      int,
+  //     max_party_size:  int,
+  //     is_leader:       bool,   // localMember.isLeader
+  //     can_search:      bool,   // canStartActivity from LCU
+  //     search_state:    "Idle" | "Searching" | "MatchFound"
+  //   }
+  const _LOBBY = { wired: false };
+  function _wireLobbyButtonsOnce() {
+    if (_LOBBY.wired) return;
+    _LOBBY.wired = true;
+    const find = document.getElementById("lobby-find-match");
+    if (find) find.addEventListener("click", () => {
+      if (find.disabled) return;
+      find.disabled = true;
+      lcuCmd({ cmd: "start_matchmaking" });
+      _setLobbyStatus("starting…", "searching");
+      setTimeout(() => { find.disabled = false; }, 1500);
+    });
+    const cancel = document.getElementById("lobby-cancel-match");
+    if (cancel) cancel.addEventListener("click", () => {
+      lcuCmd({ cmd: "cancel_matchmaking" });
+      _setLobbyStatus("cancelling…", "");
+    });
+  }
+  function _setLobbyStatus(text, cls) {
+    const el = document.getElementById("lobby-status");
+    if (!el) return;
+    el.className = "lobby-status" + (cls ? " " + cls : "");
+    el.textContent = text || "";
+  }
+  function renderLobbyPanel(lcu) {
+    const overlay = document.getElementById("lobby-overlay");
+    if (!overlay) return;
+    _wireLobbyButtonsOnce();
+    const lobby = lcu && lcu.lobby;
+    const phase = lcu && lcu.phase;
+    // Hide whenever we're past the lobby (ChampSelect / loading / in-game)
+    // OR when no lobby data is available. Keep visible during early
+    // game-states ("None"/"Lobby"/"Matchmaking") so the user has an
+    // anchor while waiting on the queue.
+    const phaseAllowsLobby = !phase
+      || phase === "Lobby" || phase === "None"
+      || phase === "Matchmaking" || phase === "ReadyCheck";
+    if (!lobby || !phaseAllowsLobby) {
+      overlay.classList.add("hidden");
+      overlay.setAttribute("aria-hidden", "true");
+      return;
+    }
+    overlay.classList.remove("hidden");
+    overlay.setAttribute("aria-hidden", "false");
+
+    const qLabel = document.getElementById("lobby-queue");
+    if (qLabel) qLabel.textContent = (lobby.queue_name
+      || ("queue " + (lobby.queue_id || "?"))).toUpperCase();
+
+    const party = document.getElementById("lobby-party");
+    if (party) {
+      const size = lobby.party_size | 0;
+      const max  = lobby.max_party_size | 0;
+      party.textContent = max > 0 ? `Party ${size || 1}/${max}` : "Party —";
+    }
+    const leaderTag = document.getElementById("lobby-leader-tag");
+    if (leaderTag) leaderTag.hidden = !lobby.is_leader;
+
+    const find = document.getElementById("lobby-find-match");
+    const findLabel = document.getElementById("lobby-find-match-label");
+    const cancel = document.getElementById("lobby-cancel-match");
+    const searching = lobby.search_state === "Searching";
+    const found     = lobby.search_state === "MatchFound" || phase === "ReadyCheck";
+
+    if (cancel) cancel.hidden = !searching;
+    if (find) {
+      // Leader gating: button only fires when isLeader; otherwise it's
+      // disabled and the status line explains why.
+      const enabled = !!lobby.is_leader && !!lobby.can_search && !searching && !found;
+      find.disabled = !enabled;
+      if (findLabel) {
+        findLabel.textContent = searching ? "Searching…"
+          : found ? "Match Found"
+          : (lobby.is_leader ? "Find Match" : "Leader-only");
+      }
+    }
+    // Status line — reads as a single peripheral signal.
+    if (searching) _setLobbyStatus("Searching…", "searching");
+    else if (found) _setLobbyStatus("Match Found · accept in client", "found");
+    else if (!lobby.is_leader) _setLobbyStatus("Awaiting party leader", "");
+    else if (!lobby.can_search) _setLobbyStatus("Lobby not ready", "err");
+    else _setLobbyStatus("Ready to queue", "");
+  }
+
   function renderChampSelectPanel(lcu) {
     const overlay = document.getElementById("cs-overlay");
     if (!overlay) return;
+    // Diagnostic dump (?dbg=1 in URL): one-line console.log of cs.*
+    // fields per state poll so we can see what the LCU agent forwards
+    // during Mayhem pre-pick (benchChampions vs championPickIntent vs
+    // something else). Throttled by a "last-keys" comparison so the
+    // console doesn't get spammed on every 2s tick. (2026-04-26 Issue B.)
+    if (/[?&]dbg=1/.test(location.search) && lcu && lcu.champ_select) {
+      const cs = lcu.champ_select;
+      const sig = JSON.stringify({
+        phase: lcu.phase,
+        keys:  Object.keys(cs).sort(),
+        my_champion: cs.my_champion,
+        bench_n: (cs.bench || []).length,
+        my_team_n: (cs.my_team || []).length,
+        their_team_n: (cs.their_team || []).length,
+      });
+      if (window.__rcLastCsSig !== sig) {
+        window.__rcLastCsSig = sig;
+        console.log("[rc-dbg] champ_select sig:", sig, "full:", cs);
+      }
+    }
     if (!lcu || lcu.phase !== "ChampSelect") {
       overlay.classList.add("hidden");
       overlay.setAttribute("aria-hidden", "true");
@@ -3432,9 +3766,20 @@
     overlay.classList.remove("hidden");
     overlay.setAttribute("aria-hidden", "false");
     _csWireButtonsOnce();
+    _csWireForceSummsOnce();
     if (!CHAMPS.ready) return;  // names not loaded yet — wait next tick
 
     const cs = lcu.champ_select || {};
+    // ARAM-style mode? Used to hide the enemy team block + collapse the
+    // ally row to full width since ARAM doesn't reveal enemies pre-game.
+    // Mayhem queue_ids don't always set cs.is_aram, so accept "bench
+    // present" as an additional ARAM signal — same fallback used by the
+    // bench renderer + analyzer.
+    {
+      const _aramish = !!(cs.is_aram
+                          || (Array.isArray(cs.bench) && cs.bench.length > 0));
+      overlay.classList.toggle("aram-mode", _aramish);
+    }
     const myCid = cs.my_champion | 0;
     const myName = _csChampName(myCid) || "—";
     const locked = !!cs.my_completed;
@@ -3649,6 +3994,7 @@
   function handleChampSelect(lcu) {
     // Render the interactive overlay first (drives visibility on every poll).
     renderChampSelectPanel(lcu);
+    renderLobbyPanel(lcu);
     if (!lcu || lcu.phase !== "ChampSelect") return;
     const cs = lcu.champ_select || {};
     if (!cs.my_champion || cs.my_champion <= 0) return;
