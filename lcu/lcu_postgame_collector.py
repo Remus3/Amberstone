@@ -464,21 +464,19 @@ def _save_eog(eog: dict, game_mode: str, item_map: dict, rune_map: dict):
     with _db_lock:
         conn = _get_conn()
         try:
-            # Idempotency check
-            exists = conn.execute(
-                f"SELECT 1 FROM {tbl}_matches WHERE match_id = ?", (match_id,)
-            ).fetchone()
-            if exists:
-                _log.info("postgame: match %s already stored — skip", match_id)
-                return
-
-            # Insert match row
-            conn.execute(
-                f"""INSERT INTO {tbl}_matches
+            # 2026-04-27 audit: collapse SELECT-then-INSERT into one
+            # INSERT OR IGNORE so a same-process race on _db_lock release
+            # (or a parallel external writer of the same DB) can't sneak
+            # a second insert between the existence check and the write.
+            cur = conn.execute(
+                f"""INSERT OR IGNORE INTO {tbl}_matches
                     (match_id, game_mode, map_id, game_duration_s, patch, captured_at, raw_mode_string)
                     VALUES (?,?,?,?,?,?,?)""",
                 (match_id, mode, map_id, game_len, patch, captured_at, game_mode)
             )
+            if cur.rowcount == 0:
+                _log.info("postgame: match %s already stored — skip", match_id)
+                return
 
             # Insert player rows
             for team in teams:

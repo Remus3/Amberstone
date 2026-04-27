@@ -481,6 +481,12 @@ class RuneWriter:
             "isRecommendationOverride": False,
         }
 
+        # 2026-04-27 audit: exponential backoff (0.5s, 1s, 2s) instead of
+        # flat 0.5s. Champ-select windows often have multiple LCU calls
+        # in-flight; a flat retry hammers the client during the exact
+        # 1.5s window when it's most likely transiently busy. Also: log
+        # the final failure at WARNING so a sustained outage surfaces.
+        last_exc: Exception | None = None
         for attempt in range(self.MAX_RETRIES):
             try:
                 result = self._lcu._request("POST", "/lol-perks/v1/pages", data=payload)
@@ -497,8 +503,11 @@ class RuneWriter:
                 else:
                     _log.debug("POST page attempt %d failed: %s", attempt + 1, result)
             except Exception as exc:
+                last_exc = exc
                 _log.debug("_write_page POST attempt %d: %s", attempt + 1, exc)
             if attempt < self.MAX_RETRIES - 1:
-                time.sleep(0.5)
+                time.sleep(0.5 * (2 ** attempt))
 
+        _log.warning("RuneWriter: gave up after %d attempts for [%s]: %s",
+                     self.MAX_RETRIES, name, last_exc)
         return False
