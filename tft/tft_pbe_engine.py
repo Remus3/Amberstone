@@ -436,11 +436,12 @@ class TftPbeCoachEngine:
             logger.error("Failed to write TFT PBE coaching data: %s", exc)
 
     def _write_status(self, msg: str):
+        # 2026-04-27 audit: atomic-write per CLAUDE.md hard rule — overlay
+        # polls this file, raw write_text could expose mid-write content.
         try:
-            self._data_file.write_text(
-                json.dumps({"mode": "tft_pbe", "action": "ERROR", "risk": msg},
-                           indent=2),
-                encoding="utf-8"
-            )
+            payload = json.dumps({"mode": "tft_pbe", "action": "ERROR", "risk": msg}, indent=2)
+            tmp = self._data_file.with_suffix(".tmp")
+            tmp.write_text(payload, encoding="utf-8")
+            tmp.replace(self._data_file)
         except Exception:
             pass

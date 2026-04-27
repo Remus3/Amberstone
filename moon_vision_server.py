@@ -258,6 +258,14 @@ def handle_upload_frame(body):
     if not img:
         _record("frame_upload", int((time.time() - t0) * 1000), ok=False)
         return {"error": "no image_b64"}
+    # 2026-04-27 audit: cap b64 payload at ~7 MB (≈5 MB decoded). Typical
+    # frames are ~150 KB; anything 50× that is either a 4K screenshot we
+    # don't want to cache or a misbehaving uploader. Without this, a stray
+    # 100 MB upload would OOM the server before magic-byte validation runs.
+    _MAX_FRAME_B64 = 7_000_000
+    if len(img) > _MAX_FRAME_B64:
+        _record("frame_upload", int((time.time() - t0) * 1000), ok=False)
+        return {"error": "frame_too_large", "size": len(img), "limit": _MAX_FRAME_B64}
     # 2026-04-25: Magic-byte validation. Catches a corrupt / truncated /
     # non-image payload at upload time so coaches don't get garbage at
     # the /latest-frame fetch and waste a Sonnet call analyzing it. Cost
