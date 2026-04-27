@@ -4915,10 +4915,12 @@ class _Handler(BaseHTTPRequestHandler):
                 "apply_runes", "apply_item_set",
                 "trade_request", "accept_trade", "decline_trade",
                 # Lobby actions (2026-04-26): start/cancel matchmaking
-                # from the dashboard's Find Match button. LCU restricts
-                # these to the lobby leader; the UI gates the button on
+                # from the dashboard's Find Match button + change queue
+                # type from the lobby dropdown. LCU restricts these to
+                # the lobby leader; the UI gates the controls on
                 # lobby.is_leader before sending.
                 "start_matchmaking", "cancel_matchmaking",
+                "change_queue_type",
             }
             cmd_name = (payload.get("cmd") or "").strip()
             if cmd_name not in _LCU_ALLOWED_CMDS:
