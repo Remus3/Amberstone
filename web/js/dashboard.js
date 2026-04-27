@@ -456,6 +456,7 @@
     _viewUpdateTitleLabel(viewId);
     _viewUpdateMenuActive(viewId);
     // Lazy-fetch view content (wire-once + fetch on first activate)
+    if (viewId === "lobby")       { _lobbyViewWireOnce(); _lobbyViewRefresh(); }
     if (viewId === "session")     { _sessionFetchAndRender(); }
     if (viewId === "history")     { _historyWireOnce(); _historyFetchAndRender(); }
     if (viewId === "loadouts")    { _loadoutsWireOnce(); _loadoutsFetchAndRender(); }
@@ -4203,6 +4204,200 @@
     }
   }
 
+  // ── Lobby view (2026-04-26 v2) ──────────────────────────────────
+  // Full-grid lobby surface (QUEUE / PARTY / TIPS / RECENT IN QUEUE)
+  // that replaces the post-match-duped 5-panel layout. Reuses the
+  // same lcu.lobby data feed as the inline #lobby-overlay; this view
+  // is the richer presentation when the user explicitly navigates
+  // here OR auto-mode resolves to lobby.
+  const _LV = { wired: false };
+  // Static queue-tip table — per queue_id, a list of short tips.
+  // Hardcoded since they don't change per-game; feel free to extend.
+  const LV_QUEUE_TIPS = {
+    450:  ["Bench-swap is instant via the LCU API (5s client cooldown bypassed).",
+           "Snowball + Flash is the standard summoner combo.",
+           "ARAM Mayhem? Coach treats KIWI mode as ARAM — same loadouts apply."],
+    920:  ["ARAM Mayhem rolls 2-3 champions per slot — pick from the cs-overlay.",
+           "Augments roll mid-game; the panel surfaces them in the header pill.",
+           "Score 1-100 for a win, not 0 deaths — fight more often."],
+    400:  ["Normal Draft — 6 bans per side, hover before lock.",
+           "Counterpick last-pick role if possible."],
+    420:  ["Ranked Solo — match decides LP. Don't dodge unless griefed.",
+           "Ban on what enemy team comp / role threats."],
+    440:  ["Ranked Flex — premade up to 5; matchmaking pools differ from solo."],
+    1700: ["Arena 2v2v2v2 — pick a synergy duo.",
+           "Anvil decisions matter more than build path. Read the augment."],
+  };
+  function _lvSetStatus(text, cls) {
+    const el = document.getElementById("lv-status");
+    if (!el) return;
+    el.className = "lobby-status" + (cls ? " " + cls : "");
+    el.textContent = text || "";
+  }
+  function _lobbyViewWireOnce() {
+    if (_LV.wired) return;
+    _LV.wired = true;
+    const find = document.getElementById("lv-find-match");
+    if (find) find.addEventListener("click", () => {
+      if (find.disabled) return;
+      find.disabled = true;
+      lcuCmd({ cmd: "start_matchmaking" });
+      _lvSetStatus("starting…", "searching");
+      setTimeout(() => { find.disabled = false; }, 1500);
+    });
+    const cancel = document.getElementById("lv-cancel-match");
+    if (cancel) cancel.addEventListener("click", () => {
+      lcuCmd({ cmd: "cancel_matchmaking" });
+      _lvSetStatus("cancelling…", "");
+    });
+    const qsel = document.getElementById("lv-queue-select");
+    if (qsel) qsel.addEventListener("change", () => {
+      const qid = parseInt(qsel.value, 10);
+      if (!qid) return;
+      lcuCmd({ cmd: "change_queue_type", queue_id: qid });
+      _lvSetStatus("changing queue…", "searching");
+      qsel.value = "";
+    });
+  }
+  function _lobbyViewRefresh() {
+    const lcu = (state.latest && state.latest.lcu) || {};
+    const lobby = lcu.lobby || null;
+    const wn = document.getElementById("lv-window");
+    if (wn) wn.textContent = lobby ? "live" : "awaiting LCU lobby data feed";
+
+    const qName = document.getElementById("lv-queue-name");
+    if (qName) qName.textContent = lobby
+      ? (lobby.queue_name || ("queue " + (lobby.queue_id || "?"))).toUpperCase()
+      : "—";
+
+    const party = document.getElementById("lv-party-pill");
+    if (party) {
+      if (lobby) {
+        const size = lobby.party_size | 0;
+        const max  = lobby.max_party_size | 0;
+        party.textContent = max > 0 ? `Party ${size || 1}/${max}` : "Party —";
+      } else party.textContent = "Party —";
+    }
+    const leaderTag = document.getElementById("lv-leader-tag");
+    if (leaderTag) leaderTag.hidden = !(lobby && lobby.is_leader);
+    const qsel = document.getElementById("lv-queue-select");
+    if (qsel) qsel.hidden = !(lobby && lobby.is_leader);
+
+    const find = document.getElementById("lv-find-match");
+    const findLabel = document.getElementById("lv-find-match-label");
+    const cancel = document.getElementById("lv-cancel-match");
+    const searching = lobby && lobby.search_state === "Searching";
+    const found = lobby && (lobby.search_state === "MatchFound" || lcu.phase === "ReadyCheck");
+    if (cancel) cancel.hidden = !searching;
+    if (find) {
+      // Enable the button as long as we're not currently searching/
+      // matched. LCU enforces leader check + lobby readiness on the
+      // server side, so even without forwarded lobby data the click
+      // is safe (it'll just no-op for non-leaders). User asked
+      // 2026-04-26: "include the find match button into the UI".
+      const enabled = !searching && !found;
+      find.disabled = !enabled;
+      if (findLabel) {
+        findLabel.textContent = searching ? "Searching…"
+          : found ? "Match Found"
+          : (lobby && lobby.is_leader === false ? "Leader-only (LCU enforces)" : "Find Match");
+      }
+    }
+    if (searching)               _lvSetStatus("Searching…", "searching");
+    else if (found)              _lvSetStatus("Match Found · accept in client", "found");
+    else if (!lobby)             _lvSetStatus("Click Find Match — LCU enforces leader check (no lobby feed yet)", "");
+    else if (!lobby.is_leader)   _lvSetStatus("Awaiting party leader", "");
+    else if (!lobby.can_search)  _lvSetStatus("Lobby not ready", "err");
+    else                         _lvSetStatus("Ready to queue", "");
+
+    // Members
+    const ul = document.getElementById("lv-members-list");
+    const cnt = document.getElementById("lv-members-count");
+    const members = (lobby && lobby.members) || [];
+    if (cnt) cnt.textContent = members.length + (members.length === 1 ? " member" : " members");
+    if (ul) {
+      if (!members.length) {
+        ul.innerHTML = '<li class="home-empty">no members visible — Game-PC LCU agent needs to forward lcu.lobby.members[]</li>';
+      } else {
+        ul.innerHTML = "";
+        members.forEach((m) => {
+          const li = document.createElement("li");
+          li.className = "lobby-member-row" +
+            (m.is_self ? " is-self" : "") +
+            (m.is_leader ? " is-leader" : "");
+          const tags = [];
+          if (m.is_self)   tags.push('<span class="lobby-member-tag you">YOU</span>');
+          if (m.is_leader) tags.push('<span class="lobby-member-tag leader">★ LEADER</span>');
+          const stats = [];
+          if (m.played_with_me_count > 0) {
+            stats.push(`<span class="lobby-member-stat">${m.played_with_me_count}g together</span>`);
+            if (m.played_with_me_record) stats.push(`<span class="lobby-member-stat">${m.played_with_me_record}</span>`);
+          } else if (!m.is_self) {
+            stats.push(`<span class="lobby-member-stat" style="color:var(--text-faint)">no shared games</span>`);
+          }
+          const lookup = (m.summoner_name && !m.is_self)
+            ? `<a class="lobby-member-link" href="https://aggregator-b.invalid/lol/profile/na1/${encodeURIComponent(m.summoner_name)}" target="_blank" rel="noopener">aggregator-b ↗</a>`
+            : "";
+          li.innerHTML = `<div class="lobby-member-name">${m.summoner_name || "Unknown"}${tags.join("")}</div>` +
+                         `<div class="lobby-member-meta">${stats.join("")}${lookup}</div>`;
+          ul.appendChild(li);
+        });
+      }
+    }
+
+    // Tips per queue
+    const tipsEl = document.getElementById("lv-tips");
+    if (tipsEl) {
+      const tips = lobby && LV_QUEUE_TIPS[lobby.queue_id];
+      if (tips && tips.length) {
+        tipsEl.innerHTML = tips.map((t) => `<div class="tip-row">${t}</div>`).join("");
+      } else if (lobby) {
+        tipsEl.innerHTML = `<div class="home-empty">no tips defined for queue ${lobby.queue_id} — extend LV_QUEUE_TIPS in dashboard.js</div>`;
+      } else {
+        tipsEl.innerHTML = '<div class="home-empty">queue-specific tips populate when lobby data is available</div>';
+      }
+    }
+
+    // Recent in this queue (filter match_history client-side via /api/home/summary)
+    fetch("/api/home/summary", { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((d) => {
+        const ul2 = document.getElementById("lv-recent-list");
+        const cnt2 = document.getElementById("lv-recent-count");
+        if (!ul2) return;
+        const all = (d && d.recent) || [];
+        // Map queue_id → mode-string for filtering. Best-effort.
+        const qid = (lobby && lobby.queue_id) | 0;
+        const wantMode = (qid === 450 || qid === 920) ? "ARAM"
+                       : (qid === 1700) ? "ARENA"
+                       : (qid === 400 || qid === 420 || qid === 430 || qid === 440) ? "SR"
+                       : "";
+        const filtered = wantMode ? all.filter((m) => (m.mode || "").toUpperCase() === wantMode) : all;
+        if (cnt2) cnt2.textContent = filtered.length + (wantMode ? " in " + wantMode : " recent");
+        ul2.innerHTML = "";
+        filtered.slice(0, 5).forEach((m) => {
+          const li = document.createElement("li");
+          li.className = "lv-recent-row";
+          const grade = String(m.grade || "—")[0];
+          const dur = m.duration_s
+            ? `${Math.floor(m.duration_s / 60)}:${String(m.duration_s % 60).padStart(2, "0")}` : "";
+          li.innerHTML =
+            `<span class="lv-recent-grade home-recent-grade ${grade}">${grade}</span>` +
+            `<span><strong>${m.champion}</strong> <span class="dim">${(m.timestamp||"").split(" ")[1]?.slice(0,5) || ""}</span></span>` +
+            `<span class="dim">${m.kda || "—"}</span>` +
+            `<span class="dim">${dur}</span>`;
+          ul2.appendChild(li);
+        });
+        if (!ul2.children.length) ul2.innerHTML = '<li class="home-empty">no recent matches in this queue</li>';
+      })
+      .catch(() => {});
+  }
+  // Trigger a refresh of view-lobby on every state envelope when it's
+  // the active view (so members/queue update without a manual nav).
+  function _maybeRefreshLobbyView() {
+    if (_VIEW.current === "lobby") _lobbyViewRefresh();
+  }
+
   // ── Lobby overlay (2026-04-26) ──────────────────────────────────────
   // Pre-queue: shows what queue the user is sitting in + a Find Match
   // button. Hidden during ChampSelect / InProgress (cs-overlay takes
@@ -4626,6 +4821,9 @@
     // View router: re-resolve view based on current lcu.phase + state.mode.
     // Fires the auto-promote banner if manual blocks an urgent target.
     _viewResolveAndApply(lcu);
+    // If view-lobby is active, refresh its content from the new envelope
+    // so members / queue / Find Match state update without a manual nav.
+    _maybeRefreshLobbyView();
     if (!lcu || lcu.phase !== "ChampSelect") return;
     const cs = lcu.champ_select || {};
     if (!cs.my_champion || cs.my_champion <= 0) return;

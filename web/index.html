@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=1920, initial-scale=1, user-scalable=no" />
   <title>Riot Commander — Phase 3</title>
-  <link rel="stylesheet" href="/css/dashboard.css?v=2026042612" />
+  <link rel="stylesheet" href="/css/dashboard.css?v=2026042613" />
 </head>
 <body>
   <!-- Home overlay (2026-04-26). Replaces the empty client-mode panels
@@ -592,6 +592,66 @@
        implicit "Last Match" view in client mode + in-game view. When
        these view sections are active, the main panels are hidden. -->
   <div id="view-content" class="view-content">
+    <!-- Lobby view (2026-04-26 v2): replaces the post-match-duped
+         5-panel grid with a lobby-themed layout. The inline #lobby-
+         overlay is hidden when this view is active (its content lives
+         here instead). -->
+    <section id="view-lobby" class="view-section" hidden>
+      <div class="view-section-head">
+        <h2>LOBBY</h2>
+        <span class="view-section-sub" id="lv-window">awaiting LCU lobby data…</span>
+      </div>
+      <div class="view-section-body">
+        <div class="lobby-view-grid">
+          <div class="lobby-view-card lobby-view-card-queue">
+            <div class="lobby-view-card-head">QUEUE</div>
+            <div class="lobby-view-queue-block">
+              <div class="lobby-view-queue-name" id="lv-queue-name">—</div>
+              <div class="lobby-view-queue-meta">
+                <span class="lobby-view-party-pill" id="lv-party-pill">Party —</span>
+                <span class="lobby-view-leader-tag" id="lv-leader-tag" hidden>★ LEADER</span>
+                <select class="lobby-queue-select" id="lv-queue-select" hidden>
+                  <option value="">Change queue…</option>
+                  <option value="450">ARAM (450)</option>
+                  <option value="920">ARAM Mayhem (920)</option>
+                  <option value="430">Normal Blind (430)</option>
+                  <option value="400">Normal Draft (400)</option>
+                  <option value="420">Ranked Solo (420)</option>
+                  <option value="440">Ranked Flex (440)</option>
+                  <option value="1700">Arena (1700)</option>
+                </select>
+              </div>
+              <div class="lobby-view-actions">
+                <button type="button" class="lobby-find-match" id="lv-find-match" disabled>
+                  <span id="lv-find-match-label">Find Match</span>
+                </button>
+                <button type="button" class="lobby-cancel-match" id="lv-cancel-match" hidden>Cancel Search</button>
+              </div>
+              <div class="lobby-status" id="lv-status">awaiting lobby data feed…</div>
+            </div>
+          </div>
+          <div class="lobby-view-card lobby-view-card-party">
+            <div class="lobby-view-card-head">PARTY <span class="lobby-members-count" id="lv-members-count">0 members</span></div>
+            <ul class="lobby-members-list" id="lv-members-list">
+              <li class="home-empty">no members visible — Game-PC LCU agent needs to forward lcu.lobby.members[]</li>
+            </ul>
+          </div>
+          <div class="lobby-view-card lobby-view-card-tips">
+            <div class="lobby-view-card-head">QUEUE TIPS</div>
+            <div class="lobby-view-tips" id="lv-tips">
+              <div class="home-empty">queue-specific tips populate when lobby data is available</div>
+            </div>
+          </div>
+          <div class="lobby-view-card lobby-view-card-recent">
+            <div class="lobby-view-card-head">RECENT IN THIS QUEUE <span class="history-count" id="lv-recent-count">—</span></div>
+            <ul class="lobby-view-recent-list" id="lv-recent-list">
+              <li class="home-empty">loading…</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="view-session" class="view-section" hidden>
       <div class="view-section-head">
         <h2>SESSION</h2>
@@ -845,6 +905,6 @@
       .then(t => { if (t) document.getElementById("svg-sprite-host").innerHTML = t; });
   </script>
   <script src="/js/sim.js"></script>
-  <script src="/js/dashboard.js?v=2026042612"></script>
+  <script src="/js/dashboard.js?v=2026042613"></script>
 </body>
 </html>
