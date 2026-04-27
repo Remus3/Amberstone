@@ -504,6 +504,13 @@
     _VIEW._wired = true;
     const trig = document.getElementById("view-trigger");
     const menu = document.getElementById("view-menu");
+    // (v7) Reparent the menu to <body> so no header/row positioning
+    // quirk can shift it. Combined with CSS position: fixed + hardcoded
+    // top, the menu lands at viewport y = 70 * body-zoom regardless
+    // of the cascade above it.
+    if (menu && menu.parentElement !== document.body) {
+      document.body.appendChild(menu);
+    }
     if (trig) trig.addEventListener("click", (e) => { e.stopPropagation(); _viewMenuToggle(); });
     document.addEventListener("click", (e) => {
       if (menu && !menu.contains(e.target) && e.target !== trig) _viewMenuClose();
