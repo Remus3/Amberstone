@@ -1,0 +1,7 @@
+{
+  "model": "claude-haiku-4-5-20251001",
+  "debounce_seconds": 15,
+  "timeout": 20,
+  "max_tokens": 700,
+  "tft_pbe": true
+}

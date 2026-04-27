@@ -1,0 +1,548 @@
+"""
+coaches/_base_coach.py — AUDIT-PHASE-2-ARCH-002
+
+Shared utilities AND base class for ARAM, Arena, and Brawl coaches.
+
+Section 1: Utility functions (unchanged from Phase 2 session 4-5)
+Section 2: BaseCoach ABC — full lifecycle base for all non-TFT coaches
+
+ARCH-002 (full) — 2026-04-18
+  Extracted: __init__, submit_state, reset_state, shutdown, attach_overlay,
+             detach_overlay, _poll_loop, _vision_loop, _maybe_coach,
+             _poll_overlay_file, _teardown_overlay, _ensure_data,
+             _write_blank_artifact, _fetch_game_data
+  Each mode overrides: _DATA_FILENAME, _MODE_NAME, _blank_artifact_data(),
+             _parse_raw_state(), _attach_overlay_windows(), _run_coach(),
+             _run_vision()
+  Optional hooks: _init_extra(), _reset_extra(), _on_state_received(),
+             _fast_path_trigger(), _VISION_INTERVAL, _DEBOUNCE_S,
+             _FAST_PATH_MIN_S, _HP_DROP_THRESHOLD
+"""
+import abc
+import json
+import logging
+import os
+import re
+import ssl
+import threading
+import time
+import urllib.request
+from pathlib import Path
+
+_log = logging.getLogger("rc.coaches.base")
+
+# Root directory (two levels up from coaches/)
+_APP_DIR = Path(__file__).parent.parent
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 1 — Utility functions
+# ══════════════════════════════════════════════════════════════════════════════
+
+def read_api_key(app_dir: Path = _APP_DIR) -> str:
+    """Load Anthropic API key from file or environment."""
+    p = app_dir / "API-Key-Claude.txt"
+    if p.exists():
+        try:
+            k = p.read_text(encoding="utf-8").strip()
+            if k.startswith("sk-ant-"):
+                return k
+        except Exception:
+            pass
+    return os.environ.get("ANTHROPIC_API_KEY", "")
+
+
+def load_json(path: Path) -> dict:
+    """Load a JSON file safely. Returns {} on any error."""
+    try:
+        if path.exists():
+            return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        _log.debug("load_json %s: %s", path.name, exc)
+    return {}
+
+
+def safe_write(path: Path, data: dict) -> None:
+    """Atomic JSON write via .tmp -> replace.
+    Retries up to 3x on Windows WinError 5 (Defender/lock races).
+    """
+    tmp = path.with_suffix(".tmp")
+    try:
+        tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    except Exception as exc:
+        _log.error("safe_write write %s: %s", path.name, exc)
+        return
+    for attempt in range(3):
+        try:
+            tmp.replace(path)
+            return
+        except PermissionError:
+            if attempt == 2:
+                _log.warning("safe_write %s: gave up after 3 retries", path.name)
+                try: tmp.unlink(missing_ok=True)
+                except Exception: pass
+            else:
+                import time as _tw; _tw.sleep(0.015 * (2 ** attempt))
+        except Exception as exc:
+            _log.error("safe_write %s: %s", path.name, exc)
+            return
+
+
+def parse_field(text: str, key: str) -> str:
+    """Extract a single labeled field from coach response text."""
+    for line in text.strip().splitlines():
+        s = line.strip()
+        if s.lower().startswith(key.lower() + ":"):
+            return s[len(key) + 1:].strip()
+    return ""
+
+
+def parse_fields(text: str, keys: list) -> dict:
+    """
+    Extract multiple labeled fields from coach response text.
+    Strips markdown bold/headers before parsing.
+
+    Positional fallback (2026-04-26): when Haiku occasionally omits the
+    "Label:" prefixes and just emits values one-per-line in the same
+    order the prompt declared, map them positionally so the cycle isn't
+    a total loss. Triggered only when the labeled pass returned 0 fields
+    AND we have at least len(keys)//2 non-empty lines.
+    """
+    text = re.sub(r'\*{1,3}(.*?)\*{1,3}', r'\1', text)
+    text = re.sub(r'^#+\s*', '', text, flags=re.MULTILINE)
+    fields: dict = {}
+    raw_lines = [l.strip() for l in text.strip().splitlines() if l.strip()]
+    for line in raw_lines:
+        for key in keys:
+            if line.lower().startswith(key + ":"):
+                val = re.sub(r'\*{1,3}(.*?)\*{1,3}', r'\1', line[len(key) + 1:].strip())
+                fields[key] = val[:220]
+                break
+    if not fields and len(raw_lines) >= max(2, len(keys) // 2):
+        # Positional fallback: map lines to keys in declared order.
+        for key, line in zip(keys, raw_lines):
+            fields[key] = re.sub(r'\*{1,3}(.*?)\*{1,3}', r'\1', line)[:220]
+    return fields
+
+
+def make_ssl_ctx() -> ssl.SSLContext:
+    """Create an SSL context suitable for Riot's local API (self-signed cert)."""
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    return ctx
+
+
+def _silence_chatty_loggers() -> None:
+    """Damp PIL DEBUG (~3500/4700 lines/day) + lcu_client lockfile INFO
+    spam (~1/sec post-migration; LCU lives on Game-PC not Legion).
+    Idempotent — safe to call multiple times. Module-level call below
+    runs once at first import."""
+    import logging as _lg
+    for name in ("PIL", "PIL.PngImagePlugin", "PIL.Image", "PIL.JpegImagePlugin"):
+        _lg.getLogger(name).setLevel(_lg.WARNING)
+    # lcu_client.py spams "LCU lockfile not found — client may not be running"
+    # at INFO every poll. Bump to WARNING so the message only surfaces if
+    # something actually goes wrong (the WARNING level on this logger covers
+    # the real failures we'd want to see).
+    _lg.getLogger("rc.lcu").setLevel(_lg.WARNING)
+
+
+_silence_chatty_loggers()
+
+
+def fetch_game_data(ssl_ctx: "ssl.SSLContext | None" = None) -> "dict | None":
+    """
+    Fetch /allgamedata from the Riot Live Client API.
+    Returns parsed dict or None if the API is not responding.
+    """
+    ctx = ssl_ctx or make_ssl_ctx()
+    try:
+        req = urllib.request.Request(
+            "https://192.168.8.237:2999/liveclientdata/allgamedata"
+        )
+        with urllib.request.urlopen(req, context=ctx, timeout=2) as r:
+            return json.loads(r.read())
+    except Exception:
+        return None
+
+
+def teardown_overlay(overlay: dict) -> None:
+    """
+    Destroy all overlay windows in the overlay dict.
+    Safe to call with an empty dict or windows already destroyed.
+    """
+    for win in list(overlay.values()):
+        try:
+            if hasattr(win, "destroy_clock"):
+                win.destroy_clock()
+            win.destroy()
+        except Exception:
+            pass
+    overlay.clear()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SECTION 2 — BaseCoach ABC
+# ══════════════════════════════════════════════════════════════════════════════
+
+def fmt_abilities(abilities: dict) -> str:
+    """Format ability cooldown dict for Haiku prompt.
+    Input: {q: {name, cooldown, level}, ...}
+    Output: Q:Tumble(lv3) cd=0.5s | W:SilverBolts(lv3) | ...
+    """
+    if not abilities:
+        return "unknown"
+    parts = []
+    for slot in ("q", "w", "e", "r"):
+        ab = abilities.get(slot)
+        if not ab:
+            continue
+        name = ab.get("name", slot.upper())
+        cd   = ab.get("cooldown")
+        lvl  = ab.get("level")
+        part = f"{slot.upper()}:{name}"
+        if lvl is not None:
+            part += f"(lv{lvl})"
+        if cd is not None:
+            part += f" cd={cd}s"
+        parts.append(part)
+    return " | ".join(parts) or "unknown"
+
+
+class BaseCoach(abc.ABC):
+    """
+    AUDIT-PHASE-2-ARCH-002 (full) — 2026-04-18
+
+    Shared lifecycle base for ARAM, Arena, and Brawl coaches.
+    Owns: __init__, poll/vision loops, debounce, overlay polling, teardown.
+
+    Subclasses MUST set:
+        GAME_MODES      tuple[str, ...]   mode strings this coach handles
+        _MODE_NAME      str               logging / thread label
+        _DATA_FILENAME  str               output JSON filename under data/
+
+    Subclasses MAY override tunables (class attrs):
+        _VISION_INTERVAL    float   seconds between vision scans   (default 15)
+        _DEBOUNCE_S         float   normal coaching debounce        (default 8)
+        _FAST_PATH_MIN_S    float   fast-path minimum gap           (default 5)
+        _HP_DROP_THRESHOLD  float   HP% drop that triggers fast path (default 20)
+
+    Subclasses MUST implement abstract methods:
+        _blank_artifact_data()      -> dict
+        _parse_raw_state(raw)       -> dict
+        _attach_overlay_windows(root) -> dict
+        _run_coach(state)           -> None
+        _run_vision()               -> None
+
+    Subclasses MAY override hooks:
+        _init_extra()               called before threads start (set mode state)
+        _reset_extra()              called in reset_state (clear mode counters)
+        _on_state_received(state)   called after parse, before storage
+        _fast_path_trigger(state, prev) -> bool  custom debounce bypass
+    """
+
+    # ── Class attrs (override in subclass) ────────────────────────────────────
+    GAME_MODES:            tuple = ()
+    _MODE_NAME:            str   = "base"
+    _DATA_FILENAME:        str   = ""
+    _VISION_INTERVAL:      float = 15.0
+    _DEBOUNCE_S:           float = 8.0
+    _FAST_PATH_MIN_S:      float = 5.0
+    _HP_DROP_THRESHOLD:    float = 20.0
+
+    # ── Lifecycle ─────────────────────────────────────────────────────────────
+
+    def __init__(self, data_file, debug: bool = False):
+        self._data_file         = Path(data_file)
+        self._debug             = debug
+        self._running           = False
+        self._overlay: dict     = {}
+        self._lock              = threading.Lock()
+        self._last_state: dict  = {}
+        self._last_coach: float = 0.0
+        self._vision_state: dict = {}
+        self._last_vision: float = 0.0
+        self._last_force_check: float = 0.0
+
+        self._out = self._data_file.parent / self._DATA_FILENAME
+
+        # Hook: subclass sets mode-specific state before threads launch
+        self._init_extra()
+
+        self._ensure_data()
+        self._api_key = read_api_key(_APP_DIR)
+        self._client = None
+        if self._api_key:
+            import anthropic
+            self._client = anthropic.Anthropic(api_key=self._api_key)
+
+        self._running = True
+        _mn = self._MODE_NAME.capitalize()
+        threading.Thread(
+            target=self._poll_loop, daemon=True, name=f"{_mn}Poll"
+        ).start()
+        threading.Thread(
+            target=self._vision_loop, daemon=True, name=f"{_mn}Vision"
+        ).start()
+        try:
+            from core.hotkeys import register_coach as _hk_reg
+            _hk_reg(self)
+        except Exception:
+            pass
+        logging.getLogger(f"rc.coaches.{self._MODE_NAME}").info(
+            "%s Coach started", _mn
+        )
+
+    def submit_state(self, state: dict) -> None:
+        pass
+
+    def reset_state(self) -> None:
+        self._last_state = {}
+        self._last_coach = 0.0
+        self._reset_extra()
+        self._write_blank_artifact()
+
+    def shutdown(self) -> None:
+        self._running = False
+        try:
+            from core.hotkeys import unregister_coach as _hk_unreg
+            _hk_unreg(self)
+        except Exception:
+            pass
+        self._teardown_overlay()
+        logging.getLogger(f"rc.coaches.{self._MODE_NAME}").info(
+            "%s Coach shutdown", self._MODE_NAME.capitalize()
+        )
+
+    def attach_overlay(self, root) -> None:
+        self._teardown_overlay()
+        try:
+            self._overlay = self._attach_overlay_windows(root)
+            # HEADLESS mode (web dashboard on :8888 replaces tkinter): hide
+            # every window this coach just created so ARAM/Arena/Brawl/TFT
+            # panels never flash on Legion's desktop.
+            try:
+                from app._overlay_manager import _HEADLESS
+                if _HEADLESS and isinstance(self._overlay, dict):
+                    for win in self._overlay.values():
+                        try:
+                            if hasattr(win, "withdraw"): win.withdraw()
+                            elif hasattr(win, "hide"):    win.hide()
+                        except Exception: pass
+            except Exception: pass
+            root.after(500, lambda: self._poll_overlay_file(root))
+            logging.getLogger(f"rc.coaches.{self._MODE_NAME}").info(
+                "%s overlay attached", self._MODE_NAME.capitalize()
+            )
+        except Exception as exc:
+            logging.getLogger(f"rc.coaches.{self._MODE_NAME}").error(
+                "%s overlay attach: %s", self._MODE_NAME.capitalize(), exc
+            )
+
+    def detach_overlay(self) -> None:
+        self._teardown_overlay()
+
+    # ── Loops ─────────────────────────────────────────────────────────────────
+
+    def _poll_loop(self) -> None:
+        while self._running:
+            try:
+                raw = self._fetch_game_data()
+                if raw:
+                    state = self._parse_raw_state(raw)
+                    if state:
+                        self._on_state_received(state)
+                        self._last_state = state
+                        self._maybe_coach(state)
+            except Exception as exc:
+                logging.getLogger(f"rc.coaches.{self._MODE_NAME}").debug(
+                    "%s poll: %s", self._MODE_NAME, exc
+                )
+            time.sleep(1.5)
+
+    def _vision_loop(self) -> None:
+        _force_file = _APP_DIR / "data" / "force_scan.json"
+        while self._running:
+            try:
+                now = time.time()
+                forced = False
+                try:
+                    if _force_file.exists():
+                        _ft = json.loads(
+                            _force_file.read_text(encoding="utf-8")
+                        ).get("force", 0)
+                        if _ft > self._last_force_check:
+                            self._last_force_check = _ft
+                            forced = True
+                except Exception:
+                    pass
+                if forced or now - self._last_vision >= self._VISION_INTERVAL:
+                    self._last_vision = now
+                    self._run_vision()
+            except Exception as exc:
+                logging.getLogger(f"rc.coaches.{self._MODE_NAME}").debug(
+                    "%s vision: %s", self._MODE_NAME, exc
+                )
+            time.sleep(3.0)
+
+    def _maybe_coach(self, state: dict) -> None:
+        now      = time.time()
+        prev     = self._last_state or {}
+        fast     = self._fast_path_trigger(state, prev)
+        debounce = now - self._last_coach
+
+        if fast and debounce > self._FAST_PATH_MIN_S:
+            pass  # fall through to coaching
+        elif debounce < self._DEBOUNCE_S:
+            return
+
+        # _lock guards only the spawn-decision moment (last_coach update +
+        # Thread.start). It is NOT held across the actual coaching call —
+        # _run_coach runs on its own daemon thread and may take seconds.
+        # Real serialization comes from the debounce check on _last_coach
+        # above; the lock just prevents two near-simultaneous calls into
+        # _maybe_coach from both passing the debounce window before either
+        # has bumped _last_coach.
+        if not self._lock.acquire(blocking=False):
+            return
+        self._last_coach = now
+        _mn = self._MODE_NAME.capitalize()
+        threading.Thread(
+            target=self._run_coach, args=(dict(state),),
+            daemon=True, name=f"{_mn}Coach"
+        ).start()
+        self._lock.release()
+
+    def _poll_overlay_file(self, root) -> None:
+        if not self._overlay or not self._running:
+            return
+        try:
+            if self._out.exists():
+                data = json.loads(self._out.read_text(encoding="utf-8"))
+                for win in self._overlay.values():
+                    try:
+                        win.update(data)
+                    except Exception:
+                        pass
+        except Exception as exc:
+            logging.getLogger(f"rc.coaches.{self._MODE_NAME}").debug(
+                "%s overlay poll: %s", self._MODE_NAME, exc
+            )
+        root.after(500, lambda: self._poll_overlay_file(root))
+
+    def _teardown_overlay(self) -> None:
+        teardown_overlay(self._overlay)
+
+    def _ensure_data(self) -> None:
+        try:
+            self._out.parent.mkdir(parents=True, exist_ok=True)
+            if not self._out.exists():
+                self._write_blank_artifact()
+        except Exception as exc:
+            logging.getLogger(f"rc.coaches.{self._MODE_NAME}").warning(
+                "%s data init: %s", self._MODE_NAME, exc
+            )
+
+    def _write_blank_artifact(self) -> None:
+        try:
+            self._out.parent.mkdir(parents=True, exist_ok=True)
+            safe_write(self._out, self._blank_artifact_data())
+        except Exception as exc:
+            logging.getLogger(f"rc.coaches.{self._MODE_NAME}").warning(
+                "%s blank artifact: %s", self._MODE_NAME, exc
+            )
+
+    def _fetch_game_data(self) -> "dict | None":
+        """Fetch /allgamedata via Game-PC relay (post-2026-04-19 migration).
+
+        Riot's :2999 binds to 127.0.0.1 only on Game-PC, so the LAN URL
+        below has been unreachable from Legion since the topology split.
+        Primary path is now the vision server's cached relay snapshot
+        (gamepc_liveclient_relay.py pushes every 1s to /upload-liveclient).
+        Falls back to the direct LAN URL only as a last resort — used to
+        always time out, which made the entire base-coach poll loop dead
+        and silently never call _maybe_coach.
+        """
+        # Lazy import — vision_token resolver may not be importable in some
+        # test contexts where this module is loaded standalone.
+        try:
+            from core.vision_token import get_vision_token as _gvt
+            tok = _gvt()
+        except Exception:
+            tok = "8e8f131e212b329438218eca27372dde"
+        try:
+            import time as _t
+            req = urllib.request.Request(
+                "http://127.0.0.1:8889/latest-liveclient",
+                headers={"X-RC-Token": tok},
+            )
+            with urllib.request.urlopen(req, timeout=2) as r:
+                wrap = json.loads(r.read())
+            if "error" in wrap:
+                return None
+            age = _t.time() - wrap.get("ts", 0)
+            if age > 12.0:    # match game_reader.RELAY_MAX_AGE_S
+                return None
+            data = wrap.get("data")
+            if isinstance(data, dict):
+                return data
+        except Exception:
+            pass
+        # Direct fallback (rarely useful post-migration; kept for parity).
+        ctx = make_ssl_ctx()
+        try:
+            req = urllib.request.Request(
+                "https://192.168.8.237:2999/liveclientdata/allgamedata"
+            )
+            with urllib.request.urlopen(req, context=ctx, timeout=2) as r:
+                return json.loads(r.read())
+        except Exception:
+            return None
+
+    # ── Hooks (override as needed) ────────────────────────────────────────────
+
+    def _init_extra(self) -> None:
+        """Called in __init__ before threads start. Override for mode state."""
+        pass
+
+    def _reset_extra(self) -> None:
+        """Called in reset_state. Override to reset mode-specific counters."""
+        pass
+
+    def _on_state_received(self, state: dict) -> None:
+        """Called after _parse_raw_state, before _last_state assignment."""
+        pass
+
+    def _fast_path_trigger(self, state: dict, prev: dict) -> bool:
+        """Return True to bypass normal debounce (FAST_PATH_MIN_S still applies)."""
+        hp_drop  = (prev.get("hp_pct", 100) - state.get("hp_pct", 100)) >= self._HP_DROP_THRESHOLD
+        new_kill = len(state.get("dead_enemies", [])) > len(prev.get("dead_enemies", []))
+        return hp_drop or new_kill
+
+    # ── Abstract ──────────────────────────────────────────────────────────────
+
+    @abc.abstractmethod
+    def _blank_artifact_data(self) -> dict:
+        """Return the initial/blank artifact dict for this mode."""
+        ...
+
+    @abc.abstractmethod
+    def _parse_raw_state(self, raw: dict) -> dict:
+        """Parse /allgamedata dict -> coaching state dict."""
+        ...
+
+    @abc.abstractmethod
+    def _attach_overlay_windows(self, root) -> dict:
+        """Create overlay windows; return as {name: window} dict."""
+        ...
+
+    @abc.abstractmethod
+    def _run_coach(self, state: dict) -> None:
+        """Execute a coaching API call and write result to artifact file."""
+        ...
+
+    @abc.abstractmethod
+    def _run_vision(self) -> None:
+        """Execute a vision scan and write partial result to artifact file."""
+        ...

@@ -1,0 +1,11 @@
+{
+  "_comment": "Golden snapshot for TFT translation. Generated from TFT_STATE fixture.",
+  "snapshot_type": "tft",
+  "game_mode": "TFT",
+  "stage": 2,
+  "round": 1,
+  "level": 5,
+  "gold": 6,
+  "health": 100,
+  "raw_state_present": true
+}

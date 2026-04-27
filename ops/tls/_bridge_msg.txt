@@ -1,0 +1,15 @@
+DASHBOARD SCREENSHOT — please capture now.
+
+Target: https://192.168.8.230:8888/?sim=aram_blitz  (Chrome/Edge on display 2, iPad-mirrored via Duet)
+
+The normal RC-ScreenAgent captures display 1 only (PIL.ImageGrab.grab() defaults to primary). For display 2, use all_screens:
+
+  py -c "from PIL import ImageGrab; import base64, io, urllib.request, json, ssl; img = ImageGrab.grab(all_screens=True); w2 = img.width - 1920; crop = img.crop((1920, 0, img.width, img.height)); buf = io.BytesIO(); crop.save(buf, 'PNG'); b64 = base64.b64encode(buf.getvalue()).decode(); req = urllib.request.Request('http://192.168.8.230:8889/upload-frame', data=json.dumps({'image_b64': b64, 'source': 'dashboard-screenshot', 'format': 'png', 'width': crop.width, 'height': crop.height}).encode(), headers={'Content-Type': 'application/json', 'X-RC-Token': '8e8f131e212b329438218eca27372dde'}, method='POST'); print(urllib.request.urlopen(req, timeout=10).read())"
+
+Adjust the crop (1920, 0, img.width, img.height) if display 2 is positioned differently. For a standard side-by-side dual-monitor setup the second display starts at x=1920.
+
+After upload, post a short bridge ack so Legion knows to pull:
+  py C:\RC-Agent\bridge_post.py "dashboard uploaded" 2>nul  (if bridge_post exists)
+  OR just: py -c "import urllib.request,ssl,json; ctx=ssl._create_unverified_context(); urllib.request.urlopen(urllib.request.Request('https://192.168.8.230:8888/api/bridge', data=json.dumps({'source':'gamepc','summary':'dashboard uploaded'}).encode(), headers={'Content-Type':'application/json'}, method='POST'), context=ctx).read()"
+
+Context: Legion is visually debugging the dashboard after major CSS fixes. Need to confirm PRO tabs render, team-max damage bars look right, chat-log expanded left, minimap structures appear, vertical spacing is even.

@@ -1,0 +1,47 @@
+{
+  "version": 2,
+  "games_counted": 1,
+  "last_updated": "2026-04-16T21:26:59",
+  "positions": {
+    "Nomad": {
+      "cells": {
+        "A1": {
+          "count": 1,
+          "pct": 100.0
+        }
+      },
+      "top_cell": "A1",
+      "games": 1
+    },
+    "Firefighter": {
+      "cells": {
+        "A2": {
+          "count": 1,
+          "pct": 100.0
+        }
+      },
+      "top_cell": "A2",
+      "games": 1
+    },
+    "Breaker": {
+      "cells": {
+        "A3": {
+          "count": 1,
+          "pct": 100.0
+        }
+      },
+      "top_cell": "A3",
+      "games": 1
+    },
+    "Conduct": {
+      "cells": {
+        "B3": {
+          "count": 1,
+          "pct": 100.0
+        }
+      },
+      "top_cell": "B3",
+      "games": 1
+    }
+  }
+}

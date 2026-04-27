@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none" shape-rendering="geometricPrecision">
+  <!-- ARAM: single bridge lane running diagonal (same axis as SR mid: bot-left to top-right).
+       Blue nexus bot-left, red nexus top-right, river void on both sides of the bridge. -->
+  <defs>
+    <radialGradient id="aram-blue" cx="0%" cy="100%" r="22%">
+      <stop offset="0%" stop-color="#3a5d9a" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#3a5d9a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="aram-red" cx="100%" cy="0%" r="22%">
+      <stop offset="0%" stop-color="#9a3a3a" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#9a3a3a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- Dark water -->
+  <rect x="0" y="0" width="100" height="100" fill="#182432"/>
+  <!-- Bridge — thicker band from bot-left to top-right -->
+  <g transform="translate(50 50) rotate(-45)">
+    <rect x="-60" y="-11" width="120" height="22" fill="#2a3748" stroke="#3a4a60" stroke-width="0.5" stroke-opacity="0.6"/>
+    <!-- Center line on bridge -->
+    <line x1="-60" y1="0" x2="60" y2="0" stroke="#4c6688" stroke-width="0.7" stroke-opacity="0.4" stroke-dasharray="3 2"/>
+  </g>
+  <!-- Bases -->
+  <rect x="0" y="0" width="100" height="100" fill="url(#aram-blue)"/>
+  <rect x="0" y="0" width="100" height="100" fill="url(#aram-red)"/>
+  <!-- Blue nexus + inhib (bot-left) -->
+  <g fill="#5a8ac8" fill-opacity="0.5" stroke="#8ab3e0" stroke-opacity="0.6" stroke-width="0.5">
+    <rect x="10" y="80" width="4" height="4"/>
+    <rect x="18" y="74" width="3" height="3"/>
+    <rect x="6" y="88" width="3" height="3"/>
+  </g>
+  <!-- Red nexus + inhib (top-right) -->
+  <g fill="#c85a5a" fill-opacity="0.5" stroke="#e08a8a" stroke-opacity="0.6" stroke-width="0.5">
+    <rect x="86" y="16" width="4" height="4"/>
+    <rect x="79" y="23" width="3" height="3"/>
+    <rect x="91" y="9" width="3" height="3"/>
+  </g>
+</svg>

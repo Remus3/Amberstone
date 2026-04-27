@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "self_monitor_profile.schema.json",
+  "_doc": "Minimal schema for config/self_monitor_profile.json. Read by ops/rc_supervisor.py on boot (FROZEN) and ops/rc_self_monitor.py on every tick (FROZEN). Phase 1 does NOT add new reads from frozen files. This schema documents what the file contains today for audit purposes only.",
+
+  "required_keys": [
+    "enabled",
+    "auto_retry",
+    "remediation_ladder"
+  ],
+
+  "optional_keys": [
+    "resume_on_boot",
+    "max_restart_attempts",
+    "restart_window_seconds",
+    "restart_cooldown_seconds",
+    "max_hot_reload_attempts",
+    "screen_validation_enabled",
+    "screen_validation_interval_s",
+    "safe_live_patch_only",
+    "incident_log_retention_days",
+    "allowed_hot_reload_modules",
+    "allowed_panel_rebuild_keys"
+  ],
+
+  "field_types": {
+    "enabled":                    "boolean",
+    "resume_on_boot":             "boolean",
+    "auto_retry":                 "boolean",
+    "max_restart_attempts":       "integer",
+    "restart_window_seconds":     "number",
+    "restart_cooldown_seconds":   "number",
+    "max_hot_reload_attempts":    "integer",
+    "screen_validation_enabled":  "boolean",
+    "screen_validation_interval_s": "number",
+    "safe_live_patch_only":       "boolean",
+    "incident_log_retention_days": "integer",
+    "remediation_ladder":         "array",
+    "allowed_hot_reload_modules": "array",
+    "allowed_panel_rebuild_keys": "array"
+  },
+
+  "_notes": {
+    "frozen_reader_warning": "ops/rc_supervisor.py and ops/rc_self_monitor.py are Phase 0 FROZEN. Phase 1 must not add new keys that those files read. Any new keys added to this file in Phase 1 must only be read by non-frozen code.",
+    "remediation_ladder": "Must be a non-empty list. Values are validated by rc_self_monitor.py internally against its known step names.",
+    "max_restart_attempts": "This value also appears in ops/rc_config.json. They are read independently by different subsystems and may differ. See CONFIG_AUTHORITY.md."
+  }
+}

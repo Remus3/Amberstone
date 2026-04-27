@@ -1,0 +1,180 @@
+{
+  "_meta": {
+    "purpose": "Item exclusion / redundancy groups. Owning any item in a group makes the others redundant (or, in some cases, hard-blocked by Riot's inventory rules). Used by item_advisor.is_redundant() and the SR build renderer to prevent suggesting a 2nd item that adds zero functional value.",
+    "categories": {
+      "hard_riot_rules": "Riot's engine refuses to let you carry both (e.g. lifeline passives, multiple boots, multiple Tear-built items)",
+      "functional_overlap": "Allowed by engine but provides no gain (e.g. two armor-pen legendaries, two anti-heal sources)"
+    }
+  },
+
+  "boots": {
+    "kind": "hard",
+    "rule": "Inventory allows exactly 1 pair of boots. Picking one excludes all other boots.",
+    "items": [
+      "Boots", "Boots of Speed", "Berserker's Greaves", "Plated Steelcaps",
+      "Mercury's Treads", "Sorcerer's Shoes", "Ionian Boots of Lucidity",
+      "Boots of Swiftness", "Mobility Boots",
+      "Symbiotic Soles", "Synchronized Souls",
+      "Crimson Lucidity", "Forever Forward", "Echoing Flames", "Spellslinger's Shoes"
+    ]
+  },
+
+  "trinket": {
+    "kind": "hard",
+    "rule": "Trinket slot allows exactly 1.",
+    "items": [
+      "Stealth Ward", "Farsight Alteration", "Oracle Lens", "Scrying Orb",
+      "Yellow Trinket", "Warding Totem"
+    ]
+  },
+
+  "lifeline_passive": {
+    "kind": "hard",
+    "rule": "Riot enforces: only 1 item with the 'Lifeline' passive can be equipped. Hexdrinker is omitted here because lifeline_upgrade allows Hexdrinker → Maw upgrade chain.",
+    "items": ["Maw of Malmortius", "Sterak's Gage"]
+  },
+
+  "tear_built": {
+    "kind": "hard",
+    "rule": "Riot rule: only 1 Tear-built item per inventory (each consumes the Tear stack mechanic).",
+    "items": [
+      "Tear of the Goddess", "Manamune", "Muramana",
+      "Archangel's Staff", "Seraph's Embrace",
+      "Winter's Approach", "Fimbulwinter"
+    ]
+  },
+
+  "ad_armor_pen_legendary": {
+    "kind": "functional",
+    "rule": "Both upgrade from Last Whisper and stack the same 'percent armor pen' bucket. Owning one makes the other a wasted slot for AD carries.",
+    "items": ["Lord Dominik's Regards", "Mortal Reminder"]
+  },
+
+  "ap_magic_pen_legendary": {
+    "kind": "functional",
+    "rule": "All three give magic pen with diminishing returns. Most champs only need one.",
+    "items": ["Void Staff", "Cryptbloom", "Shadowflame"]
+  },
+
+  "antiheal_ad_components": {
+    "kind": "functional",
+    "rule": "Anti-heal effect doesn't stack across sources — pick the one that fits your slot priority.",
+    "items": ["Executioner's Calling", "Mortal Reminder", "Chempunk Chainsword", "Morellonomicon"]
+  },
+
+  "antiheal_ap": {
+    "kind": "functional",
+    "rule": "Anti-heal doesn't stack — Cryptbloom and Morellonomicon each provide it; one is enough.",
+    "items": ["Oblivion Orb", "Morellonomicon", "Cryptbloom"]
+  },
+
+  "antiheal_tank": {
+    "kind": "functional",
+    "upgrade_chain": true,
+    "rule": "Bramble is a Thornmail component; once Thornmail is built, Bramble is consumed (upgrade allowed).",
+    "items": ["Bramble Vest", "Thornmail"]
+  },
+
+  "antiheal_ad_path": {
+    "kind": "functional",
+    "upgrade_chain": true,
+    "rule": "Executioner's upgrades to Mortal Reminder; both share grievous wounds, only one needed.",
+    "items": ["Executioner's Calling", "Mortal Reminder"]
+  },
+
+  "antiheal_ap_path": {
+    "kind": "functional",
+    "upgrade_chain": true,
+    "rule": "Oblivion Orb upgrades to Morellonomicon (and Cryptbloom uses an Oblivion Orb); only one anti-heal AP item needed.",
+    "items": ["Oblivion Orb", "Morellonomicon"]
+  },
+
+  "tear_path_ad": {
+    "kind": "functional",
+    "upgrade_chain": true,
+    "rule": "Tear→Manamune→Muramana is the AD upgrade chain.",
+    "items": ["Tear of the Goddess", "Manamune", "Muramana"]
+  },
+
+  "tear_path_ap": {
+    "kind": "functional",
+    "upgrade_chain": true,
+    "rule": "Tear→Archangel's Staff→Seraph's Embrace is the AP upgrade chain.",
+    "items": ["Tear of the Goddess", "Archangel's Staff", "Seraph's Embrace"]
+  },
+
+  "winter_path": {
+    "kind": "functional",
+    "upgrade_chain": true,
+    "rule": "Tear→Winter's Approach→Fimbulwinter (tank Tear chain).",
+    "items": ["Tear of the Goddess", "Winter's Approach", "Fimbulwinter"]
+  },
+
+  "lifeline_upgrade": {
+    "kind": "functional",
+    "upgrade_chain": true,
+    "rule": "Hexdrinker → Maw of Malmortius is the upgrade path; both are 'Lifeline' items.",
+    "items": ["Hexdrinker", "Maw of Malmortius"]
+  },
+
+  "stopwatch_upgrade": {
+    "kind": "hard",
+    "upgrade_chain": true,
+    "rule": "Stopwatch upgrades to Zhonya's Hourglass (or Seeker's Armguard intermediate). Only 1 active.",
+    "items": ["Commencing Stopwatch", "Stopwatch", "Seeker's Armguard", "Zhonya's Hourglass"]
+  },
+
+  "qss_active": {
+    "kind": "functional",
+    "rule": "QSS-style cleanse actives — only one can be on cooldown at a time effectively, and game caps duplicate uniques.",
+    "items": ["Quicksilver Sash", "Mercurial Scimitar", "Banshee's Veil"]
+  },
+
+  "stopwatch_active": {
+    "kind": "hard",
+    "rule": "Riot rule: only 1 Stopwatch-derived active item.",
+    "items": ["Commencing Stopwatch", "Stopwatch", "Zhonya's Hourglass", "Seeker's Armguard"]
+  },
+
+  "doran_blade": {
+    "kind": "soft",
+    "rule": "Stacking 2x Doran's Blade is rare — typically only 1 starter.",
+    "items": ["Doran's Blade"]
+  },
+
+  "doran_ring": {
+    "kind": "soft",
+    "rule": "Stacking 2x Doran's Ring is rare.",
+    "items": ["Doran's Ring"]
+  },
+
+  "doran_shield": {
+    "kind": "soft",
+    "rule": "Stacking 2x Doran's Shield is rare.",
+    "items": ["Doran's Shield"]
+  },
+
+  "support_quest": {
+    "kind": "hard",
+    "rule": "Riot rule: only 1 support quest item per inventory.",
+    "items": [
+      "Spectral Sickle", "Spellthief's Edge", "Steel Shoulderguards", "Relic Shield",
+      "Black Mist Scythe", "Bloodsong",
+      "Bandleglass Mirror", "Solstice Sleigh",
+      "Runesteel Spaulders", "Targon's Buckler",
+      "Frostfang", "Harrowing Crescent"
+    ]
+  },
+
+  "tear_to_archangel_paths": {
+    "kind": "functional",
+    "rule": "Archangel's and Seraph's are AP path; Manamune/Muramana are AD path. Owning either AP variant makes AD variant redundant and vice versa (and Tear is a component of all four).",
+    "items": ["Archangel's Staff", "Seraph's Embrace", "Manamune", "Muramana"]
+  },
+
+  "lethality_collector": {
+    "kind": "functional",
+    "rule": "The Collector and Edge of Night both build from Serrated Dirk; their lethality + base AD overlap is partly redundant. Most assassins pick one as the lethality core.",
+    "items": ["The Collector", "Edge of Night", "Youmuu's Ghostblade", "Opportunity"]
+  }
+}

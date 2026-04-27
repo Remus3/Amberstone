@@ -1,0 +1,26 @@
+{
+  "_comment": "Outbound HTTP deny list. Agent 6 owns updates. Block-list approach per §7.",
+  "version": 1,
+  "updated_at": "2026-04-22",
+  "hostnames": [
+    "facebook.com",
+    "www.facebook.com",
+    "twitter.com",
+    "x.com",
+    "instagram.com",
+    "tiktok.com",
+    "www.tiktok.com",
+    "reddit.com",
+    "www.reddit.com",
+    "snapchat.com",
+    "discord.com",
+    "pinterest.com"
+  ],
+  "suffixes": [
+    ".ru",
+    ".cn",
+    ".tk",
+    ".top",
+    ".xyz"
+  ]
+}

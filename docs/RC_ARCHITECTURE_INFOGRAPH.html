@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Riot Commander — Architecture</title>
+<style>
+  body { margin:0; padding:32px; font-family:'Segoe UI',system-ui,sans-serif;
+         background:#0b0b12; color:#e0e0e8; min-width:1200px; }
+  h1 { font-size:28px; margin:0 0 8px; color:#4a9eff; letter-spacing:1px; }
+  h2 { font-size:18px; color:#9090aa; text-transform:uppercase;
+       letter-spacing:2px; margin:28px 0 12px; border-bottom:1px solid #252535;
+       padding-bottom:6px; }
+  .board { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; margin-top:20px; }
+  .pc { background:#111119; border:2px solid; border-radius:12px;
+        padding:18px; position:relative; }
+  .pc.gamepc { border-color:#4a9eff; }
+  .pc.legion { border-color:#ff4a6a; }
+  .pc.ipad   { border-color:#44ff88; }
+  .pc h3 { margin:0 0 4px; font-size:20px; font-weight:700; }
+  .pc .ip { font-size:11px; color:#888; font-family:'Consolas',monospace; margin-bottom:14px; }
+  .role { background:#14141d; border-radius:6px; padding:10px 12px; margin-bottom:8px;
+          border-left:3px solid; font-size:13px; line-height:1.4; }
+  .role b { color:#fff; }
+  .pc.gamepc .role { border-left-color:#4a9eff; }
+  .pc.legion .role { border-left-color:#ff4a6a; }
+  .pc.ipad   .role { border-left-color:#44ff88; }
+  .flow-table { width:100%; border-collapse:collapse; margin-top:8px; font-size:12px; }
+  .flow-table th, .flow-table td { padding:8px 10px; text-align:left;
+       border-bottom:1px solid #252535; }
+  .flow-table th { background:#1a1a26; color:#9090aa; font-weight:600;
+       text-transform:uppercase; letter-spacing:1px; font-size:10px; }
+  .flow-table .from { color:#4a9eff; font-weight:600; }
+  .flow-table .to   { color:#ff4a6a; font-weight:600; }
+  .flow-table .proto { font-family:'Consolas',monospace; font-size:11px; color:#aaa; }
+  .flow-table .cadence { color:#ffd700; font-size:11px; font-variant-numeric:tabular-nums; }
+  .arrow-diagram { background:#0f0f18; border:1px solid #252535; border-radius:8px;
+       padding:18px; margin-top:12px; font-family:'Consolas',monospace; font-size:12px;
+       line-height:1.55; white-space:pre; color:#c8c8d8; overflow-x:auto; }
+  .ally { color:#44ff88; font-weight:600; }
+  .enemy{ color:#ff4a6a; font-weight:600; }
+  .timer{ color:#ffd700; font-weight:700; }
+  .gotcha { background:#1a0f0a; border-left:3px solid #ffa84a; border-radius:4px;
+       padding:10px 14px; margin:8px 0; font-size:13px; line-height:1.45; }
+  .gotcha b { color:#ffa84a; }
+  ul.proc { font-family:'Consolas',monospace; font-size:12px; line-height:1.7;
+       color:#aabbcc; margin:0; padding-left:18px; }
+  ul.proc li b { color:#e8ecf0; }
+  .footer { margin-top:40px; color:#666; font-size:11px; text-align:center; }
+</style>
+</head><body>
+
+<h1>Riot Commander — System Architecture</h1>
+<div style="color:#888;font-size:13px">2026-04-20 · Post-migration topology</div>
+
+<h2>The Three Machines</h2>
+<div class="board">
+  <div class="pc gamepc">
+    <h3>🎮 Game-PC</h3>
+    <div class="ip">192.168.8.237 · source of truth for game state</div>
+    <div class="role"><b>League client</b> runs here. In-game exe + launcher + all 8 render processes.</div>
+    <div class="role"><b>3 relay agents</b> at <code>C:\RC-Agent\</code>: screen capture (2s), live client API (1s), LCU session + cmd executor (1s).</div>
+    <div class="role"><b>Duet mirror output</b> — iPad connected via USB-C sees the actual gameplay view.</div>
+    <div class="role"><b>Claude Code #2</b> for fast system-level debugging (taskkill, netsh, schtasks). Scope: C:\RC-Agent\.</div>
+  </div>
+
+  <div class="pc legion">
+    <h3>🧠 Legion</h3>
+    <div class="ip">192.168.8.230 · the brain</div>
+    <div class="role"><b>RC main</b> (<code>main.py</code>) — game state ingest, coach orchestration, OCR pipeline.</div>
+    <div class="role"><b>Web dashboard</b> on <code>:8888</code> — PWA, lobby inputs, build preview, LCU control panel.</div>
+    <div class="role"><b>Vision server</b> on <code>:8889</code> — relay caches (frame/liveclient/LCU), Sonnet vision on demand.</div>
+    <div class="role"><b>Haiku coaching</b> — in-game tactics + champ-select briefs. ~350ms OCR, ~2s full brief.</div>
+    <div class="role"><b>Claude Code #1</b> owns this repo. Scope: C:\Riot Commander\.</div>
+  </div>
+
+  <div class="pc ipad">
+    <h3>📱 iPad</h3>
+    <div class="ip">— · the viewport</div>
+    <div class="role"><b>Two live panes</b>: (a) Duet mirror of Game-PC = gameplay, (b) Edge PWA of <code>192.168.8.230:8888</code> = coach.</div>
+    <div class="role"><b>1180×820 dashboard layout</b>: header with mode + clock + KDA + WIN%; 3-col main; input bar bottom.</div>
+    <div class="role"><b>Installed as PWA</b> (chromeless, offline-capable shell). Requires Edge's insecure-origin flag for HTTP/LAN.</div>
+    <div class="role"><b>Input controls</b>: draft inputs, quick coach queries, LCU toggles (auto-accept, summoner override), bench swap.</div>
+  </div>
+</div>
+
+<h2>Data Flows</h2>
+<table class="flow-table">
+  <thead><tr><th>From</th><th>To</th><th>Protocol</th><th>Purpose</th><th>Cadence</th></tr></thead>
+  <tbody>
+    <tr><td class="from">Game-PC / screen_agent</td><td class="to">Legion :8889/upload-frame</td><td class="proto">HTTP POST (JPEG b64)</td><td>Screenshots for vision + OCR</td><td class="cadence">every 2s</td></tr>
+    <tr><td class="from">Game-PC / liveclient_relay</td><td class="to">Legion :8889/upload-liveclient</td><td class="proto">HTTP POST (JSON)</td><td>Live game telemetry</td><td class="cadence">every 1s</td></tr>
+    <tr><td class="from">Game-PC / lcu_agent</td><td class="to">Legion :8889/upload-lcu</td><td class="proto">HTTP POST (JSON)</td><td>Champ-select, queue, lobby state</td><td class="cadence">every 1s</td></tr>
+    <tr><td class="from">Legion dashboard (user click)</td><td class="to">Legion :8889/lcu-cmd</td><td class="proto">HTTP POST (JSON)</td><td>Queue accept / bench swap / etc.</td><td class="cadence">on action</td></tr>
+    <tr><td class="from">Game-PC / lcu_agent</td><td class="to">Legion :8889/lcu-cmd-pending</td><td class="proto">HTTP GET</td><td>Drain queued commands</td><td class="cadence">every 0.5s</td></tr>
+    <tr><td class="from">iPad / any browser</td><td class="to">Legion :8888/</td><td class="proto">HTTP GET (HTML/JSON)</td><td>Dashboard render + state polling</td><td class="cadence">every 500ms</td></tr>
+    <tr><td class="from">Both Claudes</td><td class="to">Legion :8888/api/bridge</td><td class="proto">HTTP POST + GET</td><td>Cross-Claude activity log (hooks)</td><td class="cadence">per prompt</td></tr>
+  </tbody>
+</table>
+
+<h2>The ASCII Picture</h2>
+<div class="arrow-diagram">
+             <span class="ally">┌── Game-PC ──────────────────┐</span>      <span class="enemy">┌── Legion ────────────────────┐</span>     <span class="timer">┌── iPad ──────┐</span>
+             <span class="ally">│  🎮 League of Legends       │</span>      <span class="enemy">│  🧠 RC main.py               │</span>     <span class="timer">│              │</span>
+             <span class="ally">│  ├─ LCU (127.0.0.1)         │</span>      <span class="enemy">│  ├─ game_reader              │</span>     <span class="timer">│  Duet mirror │</span>  ◄── USB-C
+             <span class="ally">│  └─ Live Client (:2999)     │</span>      <span class="enemy">│  ├─ coaches (aram/sr/tft)    │</span>     <span class="timer">│  (gameplay)  │</span>
+             <span class="ally">│                             │</span>      <span class="enemy">│  └─ OCR + vision pipeline    │</span>     <span class="timer">│              │</span>
+             <span class="ally">│  📸 screen_agent            │</span> ──────► <span class="enemy">│  📦 Vision Server :8889      │</span>     <span class="timer">│  Edge PWA    │</span>  ◄── HTTP
+             <span class="ally">│  📡 liveclient_relay        │</span> ──────► <span class="enemy">│    ├─ /upload-frame          │</span>     <span class="timer">│  dashboard   │</span>
+             <span class="ally">│  🎫 lcu_agent               │</span> ◄─────► <span class="enemy">│    ├─ /upload-liveclient     │</span>     <span class="timer">│  :8888       │</span>
+             <span class="ally">│                             │</span>      <span class="enemy">│    ├─ /upload-lcu            │</span>     <span class="timer">│              │</span>
+             <span class="ally">│                             │</span>      <span class="enemy">│    └─ /lcu-cmd queue         │</span>     <span class="timer">│              │</span>
+             <span class="ally">│  🔸 Claude Code #2 (RC-Agent)│</span>◄──────► <span class="enemy">│  🌐 Web Dashboard :8888      │</span> ──► <span class="timer">│              │</span>
+             <span class="ally">└─────────────────────────────┘</span>      <span class="enemy">│  🔸 Claude Code #1 (RC repo) │</span>     <span class="timer">└──────────────┘</span>
+                                                <span class="enemy">│  🪝 /api/bridge (cross-Claude)│</span>
+                                                <span class="enemy">└──────────────────────────────┘</span>
+</div>
+
+<h2>Key Processes (files on disk)</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+  <div>
+    <h3 style="color:#4a9eff;font-size:13px;margin:0 0 8px">Game-PC <code>C:\RC-Agent\</code></h3>
+    <ul class="proc">
+      <li><b>gamepc_screen_agent.py</b> — JPEG screenshot push</li>
+      <li><b>gamepc_liveclient_relay.py</b> — Riot Live Client JSON push</li>
+      <li><b>gamepc_lcu_agent.py</b> — LCU state + command queue executor</li>
+      <li><b>bridge_fetch.py</b> + <b>bridge_post.py</b> — Claude Code hooks</li>
+      <li><b>CLAUDE.md</b> — Game-PC Claude's scope brief</li>
+    </ul>
+  </div>
+  <div>
+    <h3 style="color:#ff4a6a;font-size:13px;margin:0 0 8px">Legion <code>C:\Riot Commander\</code></h3>
+    <ul class="proc">
+      <li><b>main.py</b> — RC orchestrator (logging, DevRuntime, coaches)</li>
+      <li><b>web_dashboard.py</b> — :8888 PWA + APIs</li>
+      <li><b>moon_vision_server.py</b> — :8889 relay caches + Sonnet</li>
+      <li><b>game_reader.py</b> — reads liveclient cache → game state</li>
+      <li><b>coach_integration.py</b> — Haiku SR/Classic/Ranked coach</li>
+      <li><b>coaches/aram_coach.py</b>, <b>brawl_coach.py</b>, <b>arena_coach.py</b>, <b>tft_coach.py</b></li>
+      <li><b>core/vision_tesseract.py</b> — OCR (~125 ms/tick)</li>
+      <li><b>core/sr_aram_worker.py</b> — background poll thread</li>
+      <li><b>item_advisor.py</b> + <b>data/item_exclusions.json</b> — builds + mutex rules</li>
+      <li><b>tools/match_monitor.py</b> — live state tail for debugging</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Learned Gotchas</h2>
+<div class="gotcha"><b>1. Riot's APIs are localhost-only.</b> LCU and Live Client refuse LAN connections even when bound to <code>0.0.0.0</code>. Solution: relay agents on Game-PC push to Legion.</div>
+<div class="gotcha"><b>2. iphlpsvc port-proxy self-loops.</b> Silently eats port 2999 (symptoms: SSL <code>UNEXPECTED_EOF_WHILE_READING</code>, curl schannel handshake fails). Check <code>netsh interface portproxy show all</code> first.</div>
+<div class="gotcha"><b>3. Python 3.14+ stdout is cp1252 on Windows.</b> Agents with Unicode arrows crash on first <code>print()</code>. Set <code>PYTHONUTF8=1</code> + <code>PYTHONIOENCODING=utf-8</code>.</div>
+<div class="gotcha"><b>4. HEADLESS mode disables tkinter on Legion.</b> <code>_HEADLESS = True</code> in <code>app/_overlay_manager.py</code>. Web dashboard is the only UI. Fix every <code>show()/deiconify()</code> path to respect the flag.</div>
+<div class="gotcha"><b>5. Vision media-type mismatch.</b> Screen agent pushes JPEG; Anthropic rejects 400 if <code>media_type</code> says <code>image/png</code>. Auto-detect: <code>"image/jpeg" if data.startswith("/9j/") else "image/png"</code>.</div>
+<div class="gotcha"><b>6. Python triple-quoted strings double-escape backslashes.</b> <code>\[</code> in a JS regex inside a Python <code>"""..."""</code> HTML template leaks through as literal <code>\\[</code> in the browser. Use <code>.replaceAll()</code> with string literals, not regex.</div>
+
+<div class="footer">Riot Commander · <operator-email></div>
+</body></html>

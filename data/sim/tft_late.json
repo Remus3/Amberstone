@@ -1,0 +1,53 @@
+{
+  "meta": {
+    "name": "tft_late",
+    "label": "TFT \u00b7 late \u00b7 stage 6 finale",
+    "mode": "tft",
+    "summary": "TFT late \u00b7 stage 6 \u00b7 8-unit cap board, 1st-place fight"
+  },
+  "health": {
+    "type": "health",
+    "source": "sim",
+    "payload": {
+      "pid": 99999,
+      "alive": true,
+      "has_game": true,
+      "mode": "tft",
+      "last_reload_ok": true,
+      "tft_mode": true
+    }
+  },
+  "state": {
+    "type": "state",
+    "mode": "tft",
+    "source": "tft_coaching_data.json",
+    "payload": {
+      "game_time": "Stage 6-1",
+      "game_time_s": 0,
+      "level": 9,
+      "gold": 72,
+      "hp": 30,
+      "round": "6-1",
+      "stage": 6,
+      "round_num": 1,
+      "action": "1st-place fight \u2014 full board",
+      "immediate": "Board uncontested. Don't change positions. Slam Bramble on Setho.",
+      "risk": "Top 2 has identical comp \u00b7 who positions better wins",
+      "fight_rule": "Setho front-left \u00b7 Aphelios back-right \u00b7 tank line at hex 1",
+      "reset_item": "\u2014",
+      "next": "Stage 6-2 finals",
+      "objective": "1st place fight",
+      "shop": "Aphelios (already 3\u2605), Setho, Lulu, Vex, refresh 2g",
+      "augments": [
+        "Cybernetic Implants",
+        "Heart of the Lotus",
+        "Pumping Up I",
+        "Trade Sector"
+      ],
+      "comp_synergy": "Sniper 6/6 \u00b7 Inkshadow 4/4 \u00b7 Heavenly 4/4 \u00b7 Bruiser 2/4",
+      "board": "Aphelios\u2605\u2605\u2605, Caitlyn\u2605\u2605\u2605, Vex\u2605\u2605\u2605, Wukong\u2605\u2605, Lulu\u2605\u2605, Setho\u2605\u2605\u2605, Lillia\u2605\u2605, Riven\u2605\u2605 (8 units, level 9)",
+      "items_display": "Spear of Shojin, Last Whisper, Infinity Edge (all Aphelios), Bramble Vest, Warmog's, Quicksilver",
+      "item_build": "(full \u00b7 final slam Crownguard on Setho)"
+    }
+  }
+}

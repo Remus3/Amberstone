@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "coach_settings.schema.json",
+  "_doc": "Minimal schema for config/coach_settings.json. Read by coach_integration.py and coaches/__init__.py at runtime.",
+
+  "required_keys": [
+    "model",
+    "debounce_seconds",
+    "timeout",
+    "max_tokens"
+  ],
+
+  "optional_keys": [
+    "tft_pbe"
+  ],
+
+  "field_types": {
+    "model":            "string",
+    "debounce_seconds": "number",
+    "timeout":          "number",
+    "max_tokens":       "integer",
+    "tft_pbe":          "boolean"
+  },
+
+  "field_constraints": {
+    "debounce_seconds": { "minimum": 1, "maximum": 120 },
+    "timeout":          { "minimum": 5, "maximum": 120 },
+    "max_tokens":       { "minimum": 100, "maximum": 4096 }
+  },
+
+  "_notes": {
+    "model": "Must be a valid Anthropic model string. claude-haiku-4-5-20251001 is the default for low-latency live coaching.",
+    "tft_pbe": "When true, coaches/__init__.py routes TFT sessions to tft_pbe_coach.py (Set 17 data). Defaults to false if absent."
+  }
+}

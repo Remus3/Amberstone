@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rc_config.schema.json",
+  "_doc": "Documentation artifact for ops/rc_config.json. NOT loaded by config_validator.py at runtime — validation logic is hardcoded in core/config_validator.py. See CONFIG_AUTHORITY.md for the rationale.",
+
+  "_schema_status": "documentation-only in Phase 1 Step 1",
+
+  "required_keys": [
+    "project_root",
+    "runtime_dir",
+    "python_exe",
+    "app_cmd",
+    "health_file",
+    "admin_bridge_enabled"
+  ],
+
+  "optional_keys": [
+    "heartbeat_interval_s",
+    "command_poll_interval_s",
+    "max_heartbeat_age_seconds",
+    "poll_interval_seconds",
+    "max_restart_attempts",
+    "restart_window_seconds",
+    "restart_cooldown_seconds",
+    "bridge_poll_interval_seconds",
+    "image_retention_days",
+    "control_file_retention_hours",
+    "backup_retention_count",
+    "deploy_script",
+    "api_key_file"
+  ],
+
+  "field_types": {
+    "project_root":               "string",
+    "runtime_dir":                "string",
+    "python_exe":                 "string",
+    "app_cmd":                    "array",
+    "health_file":                "string",
+    "admin_bridge_enabled":       "boolean",
+    "heartbeat_interval_s":       "number",
+    "command_poll_interval_s":    "number",
+    "max_heartbeat_age_seconds":  "number",
+    "poll_interval_seconds":      "number",
+    "max_restart_attempts":       "integer",
+    "restart_window_seconds":     "number",
+    "restart_cooldown_seconds":   "number",
+    "bridge_poll_interval_seconds": "number",
+    "image_retention_days":       "integer",
+    "control_file_retention_hours": "number",
+    "backup_retention_count":     "integer"
+  },
+
+  "_field_notes": {
+    "heartbeat_interval_s": "Read by main.py when constructing DevRuntime. Default 1.0s if absent. Not present in the live rc_config.json today — main.py falls back to hardcoded default.",
+    "command_poll_interval_s": "Read by main.py when constructing DevRuntime. Default 0.5s if absent. Not present in live rc_config.json today.",
+    "heartbeat_timeout": "max_heartbeat_age_seconds (here) is read directly by rc_supervisor.py (FROZEN). Validator covers the non-frozen read path; the frozen read is self-documenting.",
+    "app_cmd": "Must be a list with at least one element. First element is the Python executable."
+  }
+}

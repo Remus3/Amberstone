@@ -1,0 +1,19 @@
+{
+  "champion": "Jinx",
+  "aram_tier": "S",
+  "build_note": "Yun Tal Wildarrows first for AS + AD — Season 16 Yun Tal gives 0% crit so build RFC second to reach 25% crit, then Collector (50% total) before IE (75% crit, IE passive fully active). Switch to rockets after first reset kill — rockets hit multiple targets and chain resets. Never stop shooting.",
+  "core_items": ["Yun Tal Wildarrows", "Rapid Firecannon", "The Collector"],
+  "full_build": [
+    "Berserker's Greaves",
+    "Yun Tal Wildarrows",
+    "Rapid Firecannon",
+    "The Collector",
+    "Infinity Edge",
+    "Lord Dominik's Regards"
+  ],
+  "vs_tanks": "Lord Dominik's Regards 5th — or replace BT slot if already ahead",
+  "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies — never run both",
+  "vs_burst": "Immortal Shieldbow replaces The Collector vs heavy burst/dive — delays IE but safer",
+  "kit_notes": "Rockets in ARAM hit every grouped enemy every auto. Crit threshold for IE: RFC(25%) + Collector(25%) = 50% before IE → 75% total. Reset passive (Jinx Get Excited) activates on any kill/assist — use aggression resets freely. W flame chompers for zoning packs. E mine field at health pack approaches.",
+  "aram_specific": "ARAM is Jinx's best game mode. Grouped enemies + infinite ammo + reset passive = snowball engine. Use rockets the moment you get a reset. Super Mega Death Rocket at 70%+ HP enemies — don't use as execute, the damage scales with missing HP of the FIRST target hit."
+}

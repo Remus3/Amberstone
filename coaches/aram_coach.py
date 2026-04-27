@@ -1,0 +1,901 @@
+﻿"""
+coaches/aram_coach.py  — v3  (ARCH-002 BaseCoach inheritance)
+
+ARAM / ARAM Mayhem full coaching engine.
+Inherits lifecycle from coaches.BaseCoach.
+Self-polls Riot API every 1.5s.
+Vision fires every 15s (Sonnet): tower HP, health packs, fight state, augments.
+Claude Haiku coaches every ~8s or on kill/HP events.
+Writes: data/aram_coaching_data.json
+"""
+
+import os
+import sys
+import json
+import logging
+import threading
+import time
+from pathlib import Path
+
+from coaches._base_coach import (
+    BaseCoach,
+    load_json,
+    safe_write,
+    parse_field,
+    parse_fields,
+    read_api_key,
+)
+
+logger = logging.getLogger("rc.coaches.aram")
+_APP_DIR = Path(__file__).parent.parent
+
+# ── Live metric recording feature flag ─────────────────────────────────────
+# When True, this coach emits a metric snapshot to data/match_metrics.db on
+# milestone boundaries (game_start / 10/15/20/25/30 min / L6/11/16 spikes /
+# game_end) plus 60s periodic sampling. Flag is OFF by default so enabling
+# live metric capture is a deliberate act after verifying the coach
+# doesn't regress — flip to True here (or set RC_LIVE_METRICS=1 in env)
+# once you want to start building the live dataset.
+import os
+_RC_LIVE_METRICS_ENABLED = os.environ.get("RC_LIVE_METRICS", "0") == "1"
+if _RC_LIVE_METRICS_ENABLED:
+    try:
+        from core.metric_streamer import MetricStreamer
+    except Exception as _exc:
+        logger.warning("live-metrics import failed: %s", _exc)
+        _RC_LIVE_METRICS_ENABLED = False
+
+
+def _parse_item_reasons(reasons_str: str) -> dict:
+    """Parse "Item reasons:" output line into a {item_name: reason} map.
+
+    Format (as specified in the ARAM prompt): semicolon-separated
+    "ItemName=reason" pairs, e.g.
+      "Liandry's=anti-tank HP burn; Zhonya's=vs Zed R; Rylai's=kite slow"
+
+    The UI hover tooltip reads from p.item_build_reasons[name] and
+    appends the reason to the name + cost on the Recommended tile.
+
+    Returns {} on empty or malformed input.
+    """
+    if not reasons_str:
+        return {}
+    out: dict[str, str] = {}
+    for pair in reasons_str.split(";"):
+        pair = pair.strip()
+        if not pair or "=" not in pair:
+            continue
+        name, _, reason = pair.partition("=")
+        name, reason = name.strip(), reason.strip()
+        if name and reason:
+            out[name] = reason
+    return out
+
+
+# Item-class peer table (2026-04-26): items in the same set are functional
+# alternates — buying a 2nd one is almost always wrong (you've already paid
+# the slot for the role). The dedup helper below uses this to strip from
+# the recommended next-buy any item whose CLASS PEER is already owned, not
+# just the literal owned name. Catches "MR owned, coach suggests LDR" (both
+# anti-armor + grievous-wounds for ADCs).
+_ITEM_CLASS_PEERS: tuple[tuple[str, ...], ...] = (
+    # Anti-armor / armor-pen ADC items — pick one. User-reported regression
+    # 2026-04-26: coach kept suggesting Lord Dominik's even after Mortal
+    # Reminder was built, then Serylda's after that.
+    ("lord dominik", "mortal reminder", "serylda"),
+    # Anti-heal grievous-wounds items spanning roles (only ONE makes sense
+    # and the *finished* slot covers it). Components like Executioner's /
+    # Oblivion Orb are NOT in this list — those are upgrade paths.
+    ("morellonomicon", "chempunk chainsword"),
+    # Mythic mage burst-cap items that overlap heavily on AP scaling.
+    # ("luden", "shadowflame"),  # disabled — these stack fine in many builds
+    # ADC mythic-tier crit cores — IE is the canonical first; second crit
+    # mythic is rare. Leave commented unless user complains.
+    # ("infinity edge", "navori"),
+)
+
+
+def _dedup_build_vs_owned(item_build: str, items_display: str) -> str:
+    """Strip from `item_build` any item already present in `items_display`,
+    OR any item whose CLASS PEER is owned (e.g. don't suggest Lord Dominik's
+    when Mortal Reminder is built — both are anti-armor finishers).
+
+    The LLM occasionally keeps the next-slot item the same as a completed
+    item in inventory (Zhonya's appears in both "owned" and "next to buy"),
+    producing the coach bug where the Recommended tile highlights a
+    completed item. Match is case/space-normalised and substring-both-ways
+    so short form ("Zhonya's") catches long form ("Zhonya's Hourglass").
+
+    Arrow separator in item_build is U+2192 "→" per coach prompt convention.
+    """
+    if not item_build or not items_display:
+        return item_build or ""
+    def _norm(s: str) -> str:
+        return "".join(c.lower() for c in s if c.isalnum())
+    owned = [_norm(s) for s in items_display.split(",")]
+    owned = [o for o in owned if len(o) >= 3]
+    if not owned:
+        return item_build
+    # Build a banned-class set: every class peer of any owned item.
+    # Match owned against each peer string with substring-both-ways so the
+    # canonical short form ("lord dominik") catches "Lord Dominik's Regards".
+    banned_peers: set[str] = set()
+    for owned_norm in owned:
+        for peer_set in _ITEM_CLASS_PEERS:
+            owned_in_class = any(_norm(p) in owned_norm or owned_norm in _norm(p)
+                                  for p in peer_set)
+            if owned_in_class:
+                banned_peers.update(_norm(p) for p in peer_set)
+    # AUDIT 2026-04-26: Haiku now returns items COMMA-separated (not "→");
+    # splitting only on "→" produced a single 6-item blob whose normalised
+    # form contained every owned item as a substring, so the dedup
+    # nuked the entire build. Split on BOTH separators so individual
+    # items get matched correctly.
+    import re as _re
+    parts = [p.strip() for p in _re.split(r'[→,]', item_build) if p.strip()]
+    kept = []
+    for p in parts:
+        np = _norm(p)
+        if len(np) < 3:
+            kept.append(p)
+            continue
+        is_dupe = any((np in o) or (o in np) for o in owned)
+        is_class_dupe = any((b in np) or (np in b) for b in banned_peers)
+        if not is_dupe and not is_class_dupe:
+            kept.append(p)
+    return " → ".join(kept)
+if str(_APP_DIR) not in sys.path:
+    sys.path.insert(0, str(_APP_DIR))
+
+
+# ── Challenger system prompt ───────────────────────────────────────────────────
+_SYSTEM = """\
+You are a Challenger-level ARAM{mayhem_tag} coach on Howling Abyss.
+
+CHAMPION: {profile}
+Recommended runes: {rune_rec}
+ARAM meta: {aram_meta}
+{adaptation_hint}
+═══ ARAM DECISION TREE ═══
+WAVE POSITION (wave_pct field): 0=crashed to your base | 50=mid-lane | 100=pushed into enemy base
+  wave_pct >65 -> wave punishes enemy for dying; extend aggression by one tier
+  wave_pct <35 -> wave punishes YOU for fighting; drop one tier (e.g. POKE->HOLD)
+  wave_pct 35-65 -> neutral, use HP thresholds below as written
+HP > 80% AND enemy has ≥2 targets low → ALL-IN  → push for kills
+HP 60-80% AND poke available → POKE PHASE  → trade single abilities, deny packs
+HP 40-60% → HOLD  → stay behind your frontline, poke only when totally safe
+HP 30-40% → DISENGAGE → collect health pack if safe to reach, retreat to your tower
+HP < 30% → FALL BACK → step into your turret range, wait for HP regen / pack / death
+
+═══ ARAM FOUNTAIN RULE (HARD) ═══
+ARAM has NO recall. You CANNOT base. The fountain only restores you on
+death-respawn or if you have the AUGMENT "Cheater" (which adds normal
+recall). Therefore:
+  - The word "fountain" MUST NOT appear in the Action label OR the
+    Immediate text UNLESS the augment list explicitly contains
+    "Cheater" (case-insensitive substring match).
+  - For the Action label specifically: do NOT use "FOUNTAIN", "BASE",
+    "RECALL", "FOUNTAIN NOW", "FOUNTAIN FALL BACK", or any variant.
+    Use instead: "FALL BACK", "DISENGAGE", "HOLD", "WAIT RESPAWN",
+    "HUG TOWER", "GRAB PACK", "SPRINT TO PACK".
+  - Without Cheater: low HP → use health packs, hug tower, wait for
+    regen, or accept the death and use the respawn fountain time to
+    reposition. NEVER advise leaving lane to fountain.
+  - "reset / item" advice: only "Wait for respawn fountain" (passive,
+    after death) is acceptable phrasing — that means buying when you
+    next die and respawn at fountain, not walking there now. Default
+    to "Buy after next death — N gold short of <item>" or
+    "Complete <item> on respawn".
+
+═══ FIGHT COMMITMENT RULES ═══
+ALL-IN requires: your key damage ability ready + at least 1 ally CC ability up + enemy tank not blocking + enemy carry within range
+DO NOT all-in: when enemy has stacked engage ready (Malphite, Amumu, Zac ult off CD)
+NEVER chase past enemy T1 range without 2+ your allies ahead of you
+RESET PRIORITY: if enemy T1 is dead and inhib open → group + push ONLY with numbers advantage
+
+═══ POSITIONING ═══
+Always: stand at maximum effective range for your champion
+Poke phase: step up → throw poke → immediately step back behind your frontline
+Melee ADC (Nilah/Yasuo): find isolated poke targets only; do not walk into poke range
+Caitlyn/Jinx/Tristana: use superior range; never let a diver close to auto range without peel
+Health pack collection: grab when HP < 50% AND you have safe path; do not greed into death
+
+═══ OBJECTIVE ═══
+Your T1 up → defend first; dying to save T1 is correct if it buys 1min+ respawn time
+Enemy T1 dead → push wave to their base; group mid ONLY if enemy inhib is accessible
+Enemy inhib dead → team fight to force Nexus; never solo-push
+
+═══ HEALTH PACK RULES ═══
+HP packs restore ~30% HP. Treat them as a key resource, not a bonus.
+Both packs available: you can trade more aggressively → you have a safety net.
+One pack available: take calculated risks only; do not greed into low HP.
+No packs available: play conservatively until packs respawn or you use fountain.
+Pack is reachable AND you are HP<50%: collect it BEFORE re-engaging.
+Do NOT walk into enemy range to reach a pack. Path safety first.
+Report pack status in Positioning or Reset/item fields whenever relevant.
+
+═══ ARAM MAYHEM AUGMENT RULES ═══
+Active augments should be used in EVERY trade window, not saved
+Best augments for carries: Shield Bash, Eyeball Collection, Cut Down, Sudden Impact
+Prioritize augments that proc on your main damage type (AD vs AP)
+
+═══ ═══ ARAM ITEM RESTRICTIONS ═══
+This is ARAM (Howling Abyss) NOT Summoner's Rift. STRICTLY:
+- No control wards, no stealth wards, no ward items
+- No jungle items (Smite, camp items)
+- No lane-specific quest items unavailable in ARAM
+- Recommend only items purchasable on Howling Abyss
+- ARAM has health packs, NOT bushes or warding zones
+- No dragon/baron/rift herald — only towers and Nexus matter
+Use enemy items (provided in user context) to adapt build recommendations.
+Item build MUST contain only FULLY COMPLETED items (e.g. Infinity Edge, Kraken Slayer).
+
+═══ BUILD COMMITMENT (HARD) ═══
+When the player's owned-items list contains a COMPONENT of the previously
+recommended NEXT item, COMPLETE that item before pivoting to a new path.
+Switching mid-build wastes 500-1500g of half-built components and is
+almost never worth it. Common component → final mappings to recognize:
+  Recurve Bow / Noonquiver / Cloak of Agility / Pickaxe → Kraken Slayer or IE (whichever was being built; Galeforce is REMOVED, never recommend it)
+  B.F. Sword / Pickaxe / Cloak of Agility → Infinity Edge
+  Long Sword / Serrated Dirk → Youmuu's / Profane Hydra / Opportunity
+  Vampiric Scepter / Long Sword / Cloak of Agility → Bloodthirster
+  Hearthbound Axe / Pickaxe → Stridebreaker / Trinity Force
+  Caulfield's Warhammer / Pickaxe → Black Cleaver / Eclipse / Sundered Sky
+  Amp Tome / Blasting Wand → Luden's Echo / Lich Bane / Shadowflame / Liandry's
+  Needlessly Large Rod → Rabadon's Deathcap
+  Fiendish Codex → Cosmic Drive / Morellonomicon / Malignance
+  Ruby Crystal / Giant's Belt → Heartsteel / Sunfire / Warmog's
+  Cloth Armor / Chain Vest → Plated Steelcaps / Frozen Heart / Thornmail
+Rule: pick the FIRST recommended item to be the FINAL FORM of whatever
+the owned components most-progress toward. Only swap the path's first
+item if the player has ZERO components for the previously-recommended
+slot AND the new slot fits enemy comp better.
+
+DAMAGE-TYPE ALIGNMENT (HARD) — match items to the champion's primary damage type:
+- AD-only items: Mortal Reminder, Lord Dominik's Regards, Last Whisper, Serylda's Grudge,
+  Bloodthirster, Infinity Edge, The Collector, Kraken Slayer, Phantom Dancer, Navori,
+  Yun Tal, Hexoptics C44, Statikk Shiv, Rapid Firecannon, Runaan's Hurricane,
+  Youmuu's Ghostblade, Profane Hydra, Opportunity, Eclipse, Black Cleaver,
+  Stridebreaker, Trinity Force (hybrid lean AD), Sundered Sky, Hubris, Manamune.
+- AP-only items: Rabadon's Deathcap, Luden's Companion, Shadowflame, Liandry's Torment,
+  Lich Bane, Nashor's Tooth, Cosmic Drive, Morellonomicon, Malignance, Void Staff,
+  Rylai's Crystal Scepter, Riftmaker, Banshee's Veil (AP), Zhonya's Hourglass,
+  Cryptbloom, Stormsurge, Horizon Focus.
+- Anti-heal: AD champions use **Mortal Reminder** OR Executioner's Calling (Mortal completes
+  it). AP champions use **Morellonomicon** (Oblivion Orb completes it). NEVER recommend
+  Mortal Reminder for an AP champion or Morellonomicon for an AD champion.
+
+ITEM MUTUAL EXCLUSIONS — never recommend both in the same build:
+- Lord Dominik's Regards vs Mortal Reminder (AD only): choose ONE armor-pen slot.
+  → Default: Lord Dominik's Regards (vs tanks / high armor)
+  → Swap to: Mortal Reminder (if enemy has 2+ healing sources — Soraka, Sona, Lifesteal stackers)
+- Kraken Slayer vs Lord Dominik's Regards: choose ONE anti-tank item if already have the other
+
+NEVER include components (unfinished items that build into complete items).
+Banned components -- these must NEVER appear in item_build:
+Dagger, Long Sword, Pickaxe, B.F. Sword, Amp Tome, Brawler's Gloves,
+Cloak of Agility, Blasting Wand, Null-Magic Mantle, Chain Vest, Cloth Armor,
+Ruby Crystal, Sapphire Crystal, Needlessly Large Rod, Fiendish Codex,
+Vampiric Scepter, Aether Wisp, Recurve Bow, Noonquiver, Caulfield's Warhammer.
+If the player currently has a component, replace it with its completed form (e.g. B.F. Sword + Cloak of Agility -> Infinity Edge) -- show the completed item, not the component.
+All 4-6 items in the build must be purchasable final items on Howling Abyss.
+
+OUTPUT FORMAT ═══
+Exactly 7 fields, NO markdown, NO filler:
+Action: <1-3 WORDS ALL-CAPS — single decision>
+Immediate: <what to do right now + where to stand, [A]/[E] tags, max 12 words>
+Fight rule: <one engage condition, [E] ability to respect, max 12 words>
+Reset / item: <fountain yes/no + next ARAM item (no wards, no jungle items), max 10 words>
+Risk: <single most dangerous enemy ability, max 10 words>
+Item build: <comma-separated FULL COMPLETED items ONLY, 4-6 items — NO components (no Dagger, Long Sword, Pickaxe, B.F. Sword, etc.); omit boots unless critical; prefix 7th item with "+" if excess gold warrants it>
+Item extra: <ONLY if no 7th item: "Pot: X" for potion boots OR "Shard: X" for rune shard — else omit>
+Item reasons: <per-item one-liner (max 6 words each), semicolon-separated, format "ItemName=reason"; e.g. "Liandry's=anti-tank HP burn; Zhonya's=vs Zed R; Rylai's=kite slow" — only for items in Item build>
+"""
+
+_USER_TMPL = """\
+=== {game_time} | ARAM{mayhem_tag} ===
+HP: {hp}%  Mana: {mp}%  Gold: {gold}g  Level: {lv}  KDA: {kda}
+Wave position: {wave_pct}% (0=your base, 50=mid, 100=enemy base)
+Items: {items}
+Your team: {allies}
+Enemy team: {enemies}
+Enemy items (from API): {enemy_items}
+Priority items vs enemy: {matchup_ctx}
+Dead enemies: {dead}  Alive: {alive}  Respawns: {dead_resp}
+My T1: {my_t}%  Enemy T1: {en_t}%
+Augments: {augs}
+HP packs available: {packs}
+My abilities (Q/W/E/R): {my_abilities}
+My runes: {my_runes}
+Enemy keystones: {enemy_runes}
+{event_line}
+"""
+
+_AUG_SELECT_PROMPT = """\
+ARAM{mayhem} augment select. Challenger coaching.
+Your champion: {champion}  HP: {hp}%
+Allies: {allies}
+Enemies: {enemies}
+Choices: {choices}
+NO markdown. Output exactly:
+Take: <augment name>
+Why: <one sentence mechanical reason>
+Gameplan: <how this changes your fight window>
+"""
+
+_VISION_PROMPT = """\
+Analyze this ARAM (Howling Abyss) League of Legends screenshot.
+Return ONLY valid JSON with no markdown:
+{
+  "my_tower_hp": 85,
+  "enemy_tower_hp": 60,
+  "augments": [],
+  "augment_select": false,
+  "augment_choices": [],
+  "hp_packs": [true, true],
+  "wave_pct": 50,
+  "fight_state": "poke"
+}
+Rules:
+- my_tower_hp: YOUR nearest tower HP% (0-100), or null if not visible
+- enemy_tower_hp: ENEMY nearest tower HP%, or null if not visible
+- augments: active augment names visible in HUD (Mayhem mode only), empty list if none
+- augment_select: true ONLY if augment card selection panel is visible
+- augment_choices: list of augment names from selection panel, empty if not selecting
+- hp_packs: [left_pack_available, right_pack_available]
+  Detection rules:
+  true  = green/white circular pack icon IS visible at that lane position
+  false = spawn point is empty (consumed or not yet respawned)
+  Default both to true ONLY when lane is fully off-screen; never default true when uncertain
+  A consumed pack shows an empty ring or nothing -- not a green icon
+  Accurate pack detection directly affects coaching quality
+- wave_pct: estimated minion wave position as 0-100 (0=at your base, 100=at enemy base)
+- fight_state: "poke" / "all-in" / "retreating" / "idle"
+- Return ONLY the JSON object, no markdown
+"""
+
+
+# ── Rune recommendation loader ─────────────────────────────────────────────────
+
+def _load_rune_rec(champion: str, mode: str = "aram") -> str:
+    """Load recommended rune string for a champion from meta_build JSON."""
+    try:
+        # KIWI = ARAM Mayhem; both map to ARAM rune recommendations
+        _ARAM_MODES = {"ARAM", "KIWI", "ARAM_5V5", "ARAM_MAYHEM"}
+        fname = (
+            "rune_recommendations_aram.json"
+            if mode.upper() in _ARAM_MODES or "aram" in mode.lower()
+            else "rune_recommendations_sr.json"
+        )
+        p = _APP_DIR / "data" / "meta_build" / fname
+        if not p.exists():
+            return ""
+        data = json.loads(p.read_text(encoding="utf-8"))
+        rec = data.get(champion)
+        if not rec:
+            return ""
+        ks   = rec.get("keystone", "")
+        pri  = rec.get("primary_tree", "")
+        sec  = rec.get("secondary_tree", "")
+        note = rec.get("coaching_note", "")
+        result = f"{ks} | {pri} / {sec}"
+        if note:
+            result += f" — {note}"
+        return result
+    except Exception:
+        return ""
+
+
+def _load_build_note(champion: str) -> str:
+    """Load ARAM build note + tier for a champion from aram_champion_builds.json."""
+    try:
+        p = _APP_DIR / "data" / "meta_build" / "aram_champion_builds.json"
+        if not p.exists():
+            return ""
+        data = json.loads(p.read_text(encoding="utf-8"))
+        entry = data.get(champion)
+        if not entry or isinstance(entry, str):
+            return ""
+        tier = entry.get("aram_tier", "")
+        note = entry.get("build_note", "")
+        result = f"{tier} tier — {note}" if tier and note else note or tier
+        return result[:220]
+    except Exception:
+        return ""
+
+
+def _fmt_abilities(abilities: dict) -> str:
+    """Format ability dict as compact string for Haiku prompt."""
+    if not abilities:
+        return "unknown"
+    parts = []
+    for slot in ("q", "w", "e", "r"):
+        ab = abilities.get(slot)
+        if not ab:
+            continue
+        name = ab.get("name", slot.upper())
+        cd   = ab.get("cooldown")
+        lvl  = ab.get("level")
+        part = f"{slot.upper()}:{name}"
+        if lvl is not None:
+            part += f"(lv{lvl})"
+        if cd is not None:
+            part += f" cd={cd}s"
+        parts.append(part)
+    return " | ".join(parts) or "unknown"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Coach class
+# ══════════════════════════════════════════════════════════════════════════════
+
+class Coach(BaseCoach):
+    """ARAM / ARAM Mayhem coach. Inherits full lifecycle from BaseCoach."""
+
+    GAME_MODES     = ("ARAM",)
+    _MODE_NAME     = "aram"
+    _DATA_FILENAME = "aram_coaching_data.json"
+
+    _VISION_INTERVAL    = 15.0
+    _DEBOUNCE_S         = 8.0
+    _FAST_PATH_MIN_S    = 5.0
+    _HP_DROP_THRESHOLD  = 20.0
+
+    def _blank_artifact_data(self) -> dict:
+        return {
+            "mode": "aram", "action": "", "immediate": "", "fight_rule": "",
+            "reset_item": "", "risk": "", "item_build": "", "item_extra": "",
+            "my_tower_hp": 100, "enemy_tower_hp": 100,
+            "wave_pct": 50, "hp_packs": [True, True],
+        }
+
+    def _parse_raw_state(self, raw: dict) -> dict:
+        return _parse_state(raw)
+
+    def _attach_overlay_windows(self, root) -> dict:
+        from modes.aram_overlay import (
+            AramRightTop, AramRightBot, AramBottomStrip,
+            AramAiStatusBar, AramCoachStatusBar,
+        )
+        return {
+            "rtop":      AramRightTop(root),
+            "ai_bar":    AramAiStatusBar(root),
+            "coach_bar": AramCoachStatusBar(root),
+            "rbot":      AramRightBot(root),
+            "bottom":    AramBottomStrip(root),
+        }
+
+    def _on_state_received(self, state: dict) -> None:
+        """AUDIT-OPUS BUG-2: eagerly write my_team for CHAOS-side orientation."""
+        try:
+            mt = state.get("my_team")
+            if mt:
+                cur = load_json(self._out)
+                if cur.get("my_team") != mt:
+                    cur["my_team"] = mt
+                    safe_write(self._out, cur)
+        except Exception:
+            pass
+
+    def _run_vision(self) -> None:
+        try:
+            from core.feature_policy import is_allowed as _fp_ok
+            if not _fp_ok("aram", "live_coaching"):
+                return
+        except Exception:
+            pass
+
+        _ai = self._overlay.get("ai_bar") if self._overlay else None
+        if _ai:
+            try:
+                _ai.set_scanning(0)
+            except Exception:
+                pass
+        try:
+            import anthropic
+            from modes.shared_vision import GameVisionReader
+            r = GameVisionReader.__new__(GameVisionReader)
+            r._client = anthropic.Anthropic(api_key=self._api_key)
+            r._model  = "claude-sonnet-4-6"
+            r._last   = {}
+            r.PROMPT  = _VISION_PROMPT
+            state = r.read()
+            if not state:
+                return
+            self._vision_state = state
+            cur = load_json(self._out)
+            for k, v in [
+                ("my_tower_hp",    state.get("my_tower_hp")),
+                ("enemy_tower_hp", state.get("enemy_tower_hp")),
+                ("wave_pct",       state.get("wave_pct")),
+                ("hp_packs",       state.get("hp_packs")),
+            ]:
+                if v is not None:
+                    cur[k] = v
+            if state.get("augments"):
+                cur["augments"] = ", ".join(state["augments"])
+            if state.get("augment_select") and state.get("augment_choices"):
+                self._handle_augment_select(state)
+            # (2026-04-25) Always-on champion + self-spell write — pulls
+            # from self._last_state (live-client snapshot, refreshed every
+            # 1.5s by _base_coach._poll_loop), so the dashboard's header
+            # self-spells pill flips D/F → Flash/Heal as soon as the
+            # vision tick fires (~every 8-12s on this mode), not gated
+            # on the slower coach-Haiku-API tick. Same envelope shape as
+            # the API tick path; harmless if pre-existing keys differ.
+            ls = self._last_state or {}
+            _champ = ls.get("champion", "")
+            _sd = ls.get("summoner_d", "")
+            _sf = ls.get("summoner_f", "")
+            if _champ:
+                cur["champion"] = _champ
+            if _champ and (_sd or _sf):
+                cur["ally_spells"] = {
+                    _champ: [{"spell": _sd, "cd_s": 0},
+                             {"spell": _sf, "cd_s": 0}],
+                }
+            safe_write(self._out, cur)
+            _ai2 = self._overlay.get("ai_bar") if self._overlay else None
+            if _ai2:
+                try:
+                    _ai2.set_done()
+                except Exception:
+                    pass
+        except Exception as exc:
+            logger.debug("ARAM vision run: %s", exc)
+
+    def _run_coach(self, state: dict) -> None:
+        try:
+            from core.feature_policy import is_allowed as _fp_ok, write_disabled_placeholder as _fp_wr
+            if not _fp_ok("aram", "live_coaching"):
+                _fp_wr("aram")
+                return
+        except Exception:
+            pass
+        if not self._client:
+            return
+        try:
+            from coach_integration import CHAMPION_PROFILES, GENERIC_PROFILE
+            champ    = state.get("champion", "Unknown")
+            profile  = CHAMPION_PROFILES.get(champ, GENERIC_PROFILE)
+            gm       = state.get("game_mode", "ARAM")
+            mayhem   = " Mayhem" if "MAYHEM" in gm.upper() else ""
+            rune_rec  = _load_rune_rec(champ, gm)
+            aram_meta = _load_build_note(champ)
+            # (2026-04-26) USER EXPERIMENTAL OVERRIDE — when the champ has a
+            # current entry in experimental_builds.json, append it as a hard
+            # override hint so Haiku biases item recommendations toward the
+            # user's intended experimental build (e.g. on-hit AS Senna).
+            try:
+                _exp_path = _APP_DIR / "data" / "experimental_builds.json"
+                if _exp_path.exists():
+                    _exp_data = json.loads(_exp_path.read_text(encoding="utf-8"))
+                    _exp_cur = ((_exp_data.get(champ) or {}).get("current") or {})
+                    _exp_label = _exp_cur.get("label")
+                    _exp_items = _exp_cur.get("items") or []
+                    if _exp_label and _exp_items:
+                        _exp_line = (
+                            f"\n\nUSER EXPERIMENTAL INTENT (HARD OVERRIDE) — label: {_exp_label}. "
+                            f"Items pool: {', '.join(_exp_items)}. "
+                            "Recommend ONLY items from this pool (or their direct components when "
+                            "owned, per the BUILD COMMITMENT rule). Do NOT pivot to the default "
+                            "meta build for this champion this match."
+                        )
+                        aram_meta = (aram_meta or "unknown") + _exp_line
+            except Exception:
+                pass
+            try:
+                from item_advisor import get_matchup_context as _gmc
+                matchup_ctx = _gmc(state.get("enemy_comp", []))
+            except Exception:
+                matchup_ctx = ""
+            _hint = ""
+            if os.environ.get("RC_COACH_ADAPTATION") == "1":
+                try:
+                    from coaches.adaptation_hint import format_hint_line as _fhl
+                    _hint = _fhl(champ, "aram", state.get("enemy_comp", []))
+                except Exception:
+                    pass
+            system   = _SYSTEM.format(
+                profile=profile, mayhem_tag=mayhem,
+                rune_rec=rune_rec or "unknown",
+                aram_meta=aram_meta or "unknown",
+                adaptation_hint=_hint,
+            )
+
+            vs = self._vision_state
+            _packs_raw = vs.get("hp_packs", [True, True])
+            if isinstance(_packs_raw, list) and len(_packs_raw) >= 2:
+                _left  = "available" if _packs_raw[0] else "consumed"
+                _right = "available" if _packs_raw[1] else "consumed"
+                packs_str = f"Left: {_left}, Right: {_right}"
+            else:
+                packs_str = "unknown"
+            event_line = "AUGMENT SELECTION ACTIVE" if vs.get("augment_select") else ""
+
+            user = _USER_TMPL.format(
+                game_time   = state.get("game_time",  "0:00"),
+                mayhem_tag  = mayhem,
+                hp          = state.get("hp_pct",     100),
+                mp          = state.get("mana_pct",   100),
+                gold        = state.get("gold",        0),
+                lv          = state.get("level",       1),
+                kda         = state.get("kda",         "0/0/0"),
+                items       = ", ".join(state.get("items", [])) or "none",
+                allies      = ", ".join(state.get("ally_comp",  [])) or "unknown",
+                enemies     = ", ".join(state.get("enemy_comp", [])) or "unknown",
+                enemy_items = state.get("enemy_items", "unknown"),
+                matchup_ctx = matchup_ctx or "none",
+                dead        = ", ".join(state.get("dead_enemies",  [])) or "none",
+                alive       = ", ".join(state.get("alive_enemies", [])) or "all",
+                dead_resp   = state.get("dead_respawn_str", "") or "none",
+                my_t        = vs.get("my_tower_hp")    if vs.get("my_tower_hp")    is not None else "?",
+                en_t        = vs.get("enemy_tower_hp") if vs.get("enemy_tower_hp") is not None else "?",
+                augs        = ", ".join(vs.get("augments", [])) or "none",
+                packs       = packs_str,
+                wave_pct    = vs.get("wave_pct", 50),
+                my_abilities = _fmt_abilities(state.get("my_abilities", {})),
+                my_runes    = state.get("my_runes",   "") or "unknown",
+                enemy_runes = ", ".join(
+                    f"{ch}: {ks}" for ch, ks in
+                    (state.get("enemy_runes") or {}).items()
+                ) or "unknown",
+                event_line  = event_line,
+            )
+
+            _cb = self._overlay.get("coach_bar") if self._overlay else None
+            if _cb:
+                try:
+                    _cb.set_calling()
+                except Exception:
+                    pass
+
+            resp = self._client.messages.create(
+                model      = "claude-haiku-4-5-20251001",
+                max_tokens = 900,
+                system     = system,
+                messages   = [{"role": "user", "content": user}],
+                timeout    = 20,
+            )
+            raw  = resp.content[0].text
+            # AUDIT 2026-04-26: log raw response so we can diagnose when
+            # parse_fields returns empty values (output format drift, etc).
+            try:
+                logger.info("ARAM Haiku raw (%d chars): %s",
+                            len(raw or ""), (raw or "")[:600].replace("\n", " | "))
+            except Exception:
+                pass
+            flds = parse_fields(raw, [
+                "action", "immediate", "fight rule",
+                "reset / item", "risk", "item build", "item extra",
+                "item reasons",
+            ])
+            if not flds:
+                logger.warning("ARAM: no fields parsed (raw len=%d)", len(raw or ""))
+                return
+            if not (flds.get("action") or flds.get("immediate")):
+                logger.warning("ARAM: parsed but action+immediate empty. flds keys: %s",
+                               list(flds.keys()))
+
+            # Self-spell pair, shaped to match the dashboard's expected
+            # `ally_spells[champion] -> [{spell, cd_s}, ...]` envelope.
+            # Live cooldowns aren't tracked here yet (cd_s=0); that wires
+            # in later when the spell-CD pipeline lands. For now this is
+            # enough to flip the header self-spells pill from "D / F"
+            # placeholder text to the real Flash/Heal/etc. icons.
+            _champ = state.get("champion", "")
+            _spell_d = state.get("summoner_d", "")
+            _spell_f = state.get("summoner_f", "")
+            _ally_spells = (
+                {_champ: [{"spell": _spell_d, "cd_s": 0},
+                          {"spell": _spell_f, "cd_s": 0}]}
+                if _champ and (_spell_d or _spell_f) else {}
+            )
+            # AUDIT 2026-04-26: server-side fountain scrub.
+            # ARAM has no recall — the word "fountain" in Action/Immediate
+            # is misleading unless the user has the "Cheater" augment.
+            # Strip "FOUNTAIN" from Action label and rewrite Immediate
+            # references to "fountain" → "respawn" so the coach never
+            # tells the user to leave lane to base.
+            _augs = (state.get("augments") or [])
+            _aug_str = ", ".join(_augs) if isinstance(_augs, list) else str(_augs)
+            _has_cheater = "cheater" in _aug_str.lower()
+            _action_raw = flds.get("action", "")
+            _imm_raw    = flds.get("immediate", "")
+            if not _has_cheater:
+                # Strip leading "FOUNTAIN" tokens from action label.
+                import re as _re
+                _action_raw = _re.sub(r'\bFOUNTAIN\s*', '', _action_raw, flags=_re.I).strip()
+                if not _action_raw or _action_raw.upper() == "FALL BACK":
+                    _action_raw = "FALL BACK"
+                # Soften "go to fountain" / "return to fountain" in Immediate.
+                _imm_raw = _re.sub(
+                    r'\b(go|return|sprint|head|walk|run)\s+to\s+(the\s+)?fountain\b',
+                    r'fall back to your tower',
+                    _imm_raw, flags=_re.I,
+                )
+                _imm_raw = _re.sub(
+                    r'\bfountain\s+now\b', 'fall back', _imm_raw, flags=_re.I,
+                )
+            cur = load_json(self._out)
+            cur.update({
+                "action":        _action_raw.upper(),
+                "immediate":     _imm_raw,
+                "fight_rule":    flds.get("fight rule", ""),
+                "positioning":   "",
+                "reset_item":    flds.get("reset / item", ""),
+                "objective":     flds.get("objective", ""),
+                "risk":          flds.get("risk", ""),
+                "game_time":     state.get("game_time",    "0:00"),
+                "game_time_s":   state.get("game_seconds",  0),
+                "hp_pct":        state.get("hp_pct",        100),
+                "kda":           state.get("kda",           "0/0/0"),
+                "champion":      _champ,
+                "ally_spells":   _ally_spells,
+                "items_display": user.split("Items:")[-1].split("\n")[0].strip(),
+                "game_mode":     gm,
+                "my_team":       state.get("my_team", "ORDER"),
+                # Strip already-owned items from the build path so the
+                # Recommended tile never highlights a completed legendary
+                # (the "Zhonya's bug" — see _dedup_build_vs_owned docstring).
+                "item_build":    _dedup_build_vs_owned(
+                                     flds.get("item build", ""),
+                                     user.split("Items:")[-1].split("\n")[0].strip(),
+                                 ),
+                "item_extra":    flds.get("item extra", ""),
+                # Per-item coach reasons — keyed by item name so the UI
+                # can show "why this next" on the Recommended tile hover
+                # (opts.reasons → tile.title in renderItemTiles).
+                "item_build_reasons": _parse_item_reasons(flds.get("item reasons", "")),
+            })
+            safe_write(self._out, cur)
+
+            # ── Live metric streaming (feature-flagged) ──────────────
+            # Gated on RC_LIVE_METRICS env var. Streamer is lazy-created
+            # on the first tick of each match; it decides internally
+            # whether this tick crosses a milestone (10min_mark,
+            # l6_spike, etc.) + emits periodic 60s samples. Never
+            # crashes the coach: any error is logged + swallowed.
+            if _RC_LIVE_METRICS_ENABLED:
+                try:
+                    game_id = str(state.get("game_id") or state.get("gameId") or "")
+                    if game_id:
+                        mid = f"live_{game_id}"
+                        existing = getattr(self, "_streamer", None)
+                        if existing is None or existing.match_id != mid:
+                            self._streamer = MetricStreamer(
+                                match_id=mid,
+                                champion=state.get("champion"),
+                                mode=self._MODE_NAME,
+                            )
+                        self._streamer.on_state(cur)
+                except Exception as _exc:
+                    logger.debug("live-metrics stream error: %s", _exc)
+
+            if _cb:
+                try:
+                    _cb.set_done(cur.get("action", ""))
+                except Exception:
+                    pass
+            try:
+                from core.coaching_timestamps import write_coaching_ts as _wts
+                _wts("aram")
+            except Exception:
+                pass
+        except Exception as exc:
+            logger.error("ARAM coach: %s", exc)
+
+    def _handle_augment_select(self, vs: dict) -> None:
+        if not self._client:
+            return
+        gs = self._last_state
+        choices = vs.get("augment_choices", [])
+        mayhem  = " Mayhem" if "MAYHEM" in gs.get("game_mode", "").upper() else ""
+        prompt  = _AUG_SELECT_PROMPT.format(
+            mayhem   = mayhem,
+            champion = gs.get("champion", "?"),
+            hp       = gs.get("hp_pct", 100),
+            allies   = ", ".join(gs.get("ally_comp",  [])) or "unknown",
+            enemies  = ", ".join(gs.get("enemy_comp", [])) or "unknown",
+            choices  = "\n".join(f"- {c}" for c in choices),
+        )
+        try:
+            resp = self._client.messages.create(
+                model="claude-haiku-4-5-20251001", max_tokens=250,
+                messages=[{"role": "user", "content": prompt}], timeout=15,
+            )
+            raw = resp.content[0].text
+            cur = load_json(self._out)
+            cur.update({
+                "augment_select":  True,
+                "aug_take":        parse_field(raw, "Take"),
+                "aug_why":         parse_field(raw, "Why"),
+                "aug_plan":        parse_field(raw, "Gameplan"),
+                "augment_choices": choices,
+            })
+            safe_write(self._out, cur)
+        except Exception as exc:
+            logger.error("ARAM aug select: %s", exc)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# State parser
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _parse_state(raw: dict) -> dict:
+    ap    = raw.get("activePlayer", {})
+    gd    = raw.get("gameData", {})
+    all_p = [p for p in (raw.get("allPlayers", []) or []) if isinstance(p, dict)]
+
+    game_time = float(gd.get("gameTime", 0))
+    game_mode = gd.get("gameMode", "ARAM")
+    mins, secs = int(game_time // 60), int(game_time % 60)
+
+    stats  = ap.get("championStats", {}) or {}
+    hp     = int(stats.get("currentHealth",  0))
+    hp_max = int(stats.get("maxHealth",      1))
+    mp     = int(stats.get("resourceValue",  0))
+    mp_max = int(stats.get("resourceMax",    1))
+
+    my_name = (ap.get("summonerName") or ap.get("riotIdGameName") or "").split("#")[0]
+    me = None
+    my_team = "ORDER"
+    for p in all_p:
+        pn = (p.get("summonerName") or "").split("#")[0]
+        if pn == my_name or p.get("championName") == ap.get("championName"):
+            me = p
+            my_team = p.get("team", "ORDER")
+            break
+
+    allies  = [p for p in all_p if p.get("team") == my_team]
+    enemies = [p for p in all_p if p.get("team") != my_team]
+    sc = ((me or {}).get("scores") or {})
+    items = [
+        it.get("displayName", "")
+        for it in ((me or {}).get("items") or [])
+        if isinstance(it, dict) and it.get("displayName")
+    ]
+
+    enemy_items_map = {}
+    for _e in enemies:
+        _en = _e.get("championName", "?")
+        _ei = [
+            _it.get("displayName", "")
+            for _it in (_e.get("items") or [])
+            if isinstance(_it, dict) and _it.get("displayName")
+        ]
+        if _ei:
+            enemy_items_map[_en] = _ei
+    enemy_items_str = (
+        "; ".join(f"{k}: {', '.join(v)}" for k, v in enemy_items_map.items())
+        or "unknown"
+    )
+
+    my_runes    = raw.get("my_runes",    "")   # game_reader key (no _ prefix)
+    enemy_runes = raw.get("enemy_runes", {})   # game_reader key (no _ prefix)
+
+    return {
+        "game_mode":     game_mode,
+        "game_time":     f"{mins}:{secs:02d}",
+        "game_seconds":  game_time,
+        "champion":      (me or ap).get("championName", "Unknown"),
+        "hp_pct":        int(100 * hp / max(hp_max, 1)),
+        "mana_pct":      int(100 * mp / max(mp_max, 1)),
+        "gold":          int(ap.get("currentGold", 0)),
+        "level":         ap.get("level", 1),
+        "kda":           f"{sc.get('kills',0)}/{sc.get('deaths',0)}/{sc.get('assists',0)}",
+        "items":         items,
+        "my_team":       my_team,
+        "ally_comp":     [
+            a.get("championName", "?") for a in allies
+            if a.get("championName") != (me or {}).get("championName")
+        ],
+        "enemy_comp":    [e.get("championName", "?") for e in enemies],
+        "enemy_items":   enemy_items_str,
+        "dead_enemies":     [e.get("championName", "?") for e in enemies if e.get("isDead")],
+        "alive_enemies":    [e.get("championName", "?") for e in enemies if not e.get("isDead")],
+        "dead_respawn_str": raw.get("dead_respawn_str", ""),  # from game_reader
+        "my_abilities":  raw.get("my_abilities", {}),
+        "my_runes":      my_runes,
+        "enemy_runes":   enemy_runes,
+    }

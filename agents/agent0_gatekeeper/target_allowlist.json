@@ -1,0 +1,9 @@
+{
+  "_comment": "Destination path allowlist for cross-machine writes (§11.6.3).",
+  "version": 1,
+  "share_unc": "\\\\192.168.8.237\\RCClient",
+  "allowed_prefixes": [
+    "\\\\192.168.8.237\\RCClient\\forwarder\\",
+    "\\\\192.168.8.237\\RCClient\\web\\"
+  ]
+}

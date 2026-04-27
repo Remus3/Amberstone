@@ -1,0 +1,329 @@
+"""coaches/loadout_resolver.py — Phase 2 champion loadout resolver.
+
+Reads `data/champion_loadouts.json` (single mode-keyed file with per-
+champion variants) and resolves a variant choice to concrete LCU
+payloads ready for the gamepc_lcu_agent command queue:
+
+  - rune perk_ids + tree IDs  → apply_runes command
+  - item ID list              → apply_item_set command
+  - summoner spell IDs        → set_summoners command
+
+Variants are scoped per champion. Mode (aram / sr / arena) filters
+which variants are visible — a variant only shows in a mode if that
+mode appears in its `modes` array. The default variant per mode is
+controlled by `default_per_mode`; changing it just edits the JSON.
+
+The resolver re-checks the file mtime on every call so hand-edits to
+champion_loadouts.json are picked up live (no RC restart needed).
+"""
+from __future__ import annotations
+
+import json
+import logging
+import re
+from pathlib import Path
+from typing import Optional
+
+# These are private constants in the frozen lcu_rune_writer, but we
+# need them to translate variant rune names into LCU perk IDs. We're
+# not modifying the file — only importing constants.
+from lcu.lcu_rune_writer import _TREES, build_perk_ids
+
+_log = logging.getLogger("rc.loadout")
+
+_ROOT           = Path(__file__).resolve().parent.parent
+_LOADOUTS_PATH  = _ROOT / "data" / "champion_loadouts.json"
+_DDRAGON_ITEMS  = _ROOT / "data" / "meta" / "ddragon_items.json"
+_DDRAGON_CHAMPS = _ROOT / "data" / "meta" / "ddragon_champions.json"
+
+_loadouts_cache: dict | None = None
+_items_by_name_cache: dict[str, str] | None = None
+_champ_id_by_name_cache: dict[str, int] | None = None
+
+
+def _norm(name: str) -> str:
+    """Fuzzy normalizer: lowercase, strip apostrophes/spaces/punctuation."""
+    return re.sub(r"[^a-z0-9]+", "", str(name).lower())
+
+
+def _load_items_by_name() -> dict[str, str]:
+    global _items_by_name_cache
+    if _items_by_name_cache is not None:
+        return _items_by_name_cache
+    out: dict[str, str] = {}
+    try:
+        d = json.loads(_DDRAGON_ITEMS.read_text(encoding="utf-8"))
+        for item_id, info in (d.get("data") or {}).items():
+            nm = info.get("name") or ""
+            if nm:
+                out[_norm(nm)] = str(item_id)
+    except Exception as exc:
+        _log.warning("ddragon items load failed: %s", exc)
+    _items_by_name_cache = out
+    return out
+
+
+def _load_champ_id_by_name() -> dict[str, int]:
+    global _champ_id_by_name_cache
+    if _champ_id_by_name_cache is not None:
+        return _champ_id_by_name_cache
+    out: dict[str, int] = {}
+    try:
+        d = json.loads(_DDRAGON_CHAMPS.read_text(encoding="utf-8"))
+        for slug, info in (d.get("data") or {}).items():
+            try:
+                cid = int(info.get("key", -1))
+                if cid > 0:
+                    out[info.get("name", slug)] = cid
+                    out[slug] = cid
+            except (ValueError, TypeError):
+                pass
+    except Exception as exc:
+        _log.warning("ddragon champs load failed: %s", exc)
+    _champ_id_by_name_cache = out
+    return out
+
+
+def _load_loadouts() -> dict:
+    """Load + mtime-check loadouts so hand-edits are picked up live."""
+    global _loadouts_cache
+    try:
+        if not _LOADOUTS_PATH.exists():
+            return {"champions": {}}
+        mt = _LOADOUTS_PATH.stat().st_mtime_ns
+        if _loadouts_cache is not None and _loadouts_cache.get("_mtime") == mt:
+            return _loadouts_cache
+        raw = json.loads(_LOADOUTS_PATH.read_text(encoding="utf-8"))
+        raw["_mtime"] = mt
+        _loadouts_cache = raw
+        return raw
+    except Exception as exc:
+        _log.warning("loadouts load failed: %s", exc)
+        return {"champions": {}}
+
+
+def _normalize_mode(mode: str) -> str:
+    """Map LCU/queue mode strings → variant mode keys (aram/sr/arena/tft)."""
+    m = (mode or "").lower()
+    if "aram" in m or m in ("kiwi", "450", "920"):
+        return "aram"
+    if "arena" in m or m in ("1700", "1710"):
+        return "arena"
+    if "tft" in m or "teamfight" in m:
+        return "tft"
+    return "sr"
+
+
+def list_variants(champion: str, mode: str) -> list[dict]:
+    """Return per-variant rows for this mode.
+
+    Each row: {key, label, is_default, keystone, primary, secondary,
+    summoners, item_names, item_ids}. The extra fields let the dashboard
+    render an inline preview (icons + keystone) per build without a
+    second round-trip to /api/loadout/apply. Always appends an
+    "experimental" entry for ARAM modes so the user can opt into the
+    auto-adapting funky build (generated lazily on first pick if no
+    current iteration exists yet).
+    """
+    loadouts = _load_loadouts().get("champions", {}) or {}
+    champ = loadouts.get(champion) or {}
+    variants = champ.get("variants") or {}
+    mode_key = _normalize_mode(mode)
+    defaults = champ.get("default_per_mode") or {}
+    default_key = defaults.get(mode_key, "")
+
+    def _row(key: str, v: dict, is_default: bool) -> dict:
+        runes = v.get("runes") or {}
+        items = list(v.get("items") or [])
+        summ = v.get("summoners") or []
+        try:
+            d_id, f_id = (int(summ[0]), int(summ[1])) if len(summ) >= 2 else (0, 0)
+        except (ValueError, TypeError):
+            d_id, f_id = 0, 0
+        return {
+            "key":         key,
+            "label":       v.get("label") or key,
+            "is_default":  is_default,
+            "keystone":    runes.get("keystone") or "",
+            "primary":     runes.get("primary") or runes.get("primary_tree") or "",
+            "secondary":   runes.get("secondary") or runes.get("secondary_tree") or "",
+            "summoners":   [d_id, f_id],
+            "item_names":  items,
+            "item_ids":    _resolve_item_ids(items),
+        }
+
+    out = []
+    for key, v in variants.items():
+        modes = [str(m).lower() for m in (v.get("modes") or [])]
+        if mode_key not in modes:
+            continue
+        out.append(_row(key, v, key == default_key))
+    out.sort(key=lambda r: (not r["is_default"], r["label"]))
+
+    if mode_key == "aram":
+        try:
+            from coaches.experimental_builder import get_current as _exp_current
+            cur = _exp_current(champion)
+            iter_n = (cur.get("iteration") if cur else 0) or 0
+            label = f"⚗ Experimental (it.{iter_n})" if iter_n else "⚗ Experimental (new)"
+            cur_v = cur or {}
+            out.append(_row("experimental", {
+                "label": label,
+                "modes": ["aram"],
+                "runes": cur_v.get("runes") or {},
+                "summoners": cur_v.get("summoners") or [],
+                "items": cur_v.get("items") or [],
+            }, False))
+            # Restore the synthesized label (the _row helper would default
+            # to "experimental"); we want the iteration counter visible.
+            out[-1]["label"] = label
+        except Exception as exc:
+            _log.debug("experimental list_variants check: %s", exc)
+    return out
+
+
+def default_variant(champion: str, mode: str) -> str:
+    """Return the default variant key for this champion+mode, or ''."""
+    loadouts = _load_loadouts().get("champions", {}) or {}
+    champ = loadouts.get(champion) or {}
+    mode_key = _normalize_mode(mode)
+    default_key = (champ.get("default_per_mode") or {}).get(mode_key, "")
+    variants = champ.get("variants") or {}
+    if default_key and variants.get(default_key):
+        modes = [str(m).lower() for m in (variants[default_key].get("modes") or [])]
+        if mode_key in modes:
+            return default_key
+    # Fallback: first variant that allows this mode
+    for key, v in variants.items():
+        modes = [str(m).lower() for m in (v.get("modes") or [])]
+        if mode_key in modes:
+            return key
+    return ""
+
+
+def resolve(champion: str, variant: str, mode: str) -> dict:
+    """Resolve champion+variant+mode → concrete LCU command payloads.
+
+    Returns:
+        {
+          "ok": bool, "champion", "variant", "label", "mode": str,
+          "rune_cmd":  {cmd, page_name, primary_id, sub_id, perk_ids} | None,
+          "item_cmd":  {cmd, set_uid, title, champion_id, blocks}     | None,
+          "summ_cmd":  {cmd, d, f}                                     | None,
+          "raw_items": [str item names — for UI display]
+        }
+    """
+    loadouts = _load_loadouts().get("champions", {}) or {}
+    champ = loadouts.get(champion) or {}
+    variants = champ.get("variants") or {}
+    mode_key = _normalize_mode(mode)
+    # Special case: experimental variant is sourced from experimental_builds.json
+    # and only available in ARAM. If the current iteration doesn't exist yet,
+    # the caller should have hit /api/experimental/get first to generate it.
+    if variant == "experimental":
+        if mode_key != "aram":
+            return {"ok": False, "err": "experimental variant is ARAM-only"}
+        try:
+            from coaches.experimental_builder import get_current as _exp_current
+            cur = _exp_current(champion)
+        except Exception as exc:
+            return {"ok": False, "err": f"experimental load failed: {exc}"}
+        if not cur:
+            return {"ok": False, "err": "no experimental build generated yet"}
+        v = {
+            "label":     f"⚗ {cur.get('label','Experimental')}",
+            "modes":     ["aram"],
+            "runes":     cur.get("runes") or {},
+            "summoners": cur.get("summoners") or [],
+            "items":     cur.get("items") or [],
+        }
+    else:
+        v = variants.get(variant)
+        if not v:
+            return {"ok": False, "err": f"no variant {variant!r} for {champion!r}"}
+        if mode_key not in [str(m).lower() for m in (v.get("modes") or [])]:
+            return {"ok": False, "err": f"variant {variant!r} not allowed in {mode_key}"}
+
+    out: dict = {
+        "ok": True,
+        "champion": champion,
+        "variant":  variant,
+        "label":    v.get("label") or variant,
+        "mode":     mode_key,
+        "rune_cmd": None,
+        "item_cmd": None,
+        "summ_cmd": None,
+        "raw_items": list(v.get("items") or []),
+    }
+
+    # Runes ----------------------------------------------------------------
+    runes = v.get("runes") or {}
+    keystone  = runes.get("keystone") or ""
+    primary   = runes.get("primary")   or runes.get("primary_tree")   or ""
+    secondary = runes.get("secondary") or runes.get("secondary_tree") or ""
+    if keystone and primary and secondary:
+        is_aram = (mode_key == "aram")
+        perk_ids = build_perk_ids(keystone, primary, secondary, is_aram)
+        primary_id = _TREES.get(primary, 0)
+        sub_id = _TREES.get(secondary, 0)
+        if perk_ids and primary_id and sub_id:
+            out["rune_cmd"] = {
+                "cmd": "apply_runes",
+                "page_name": f"RC: {champion} {variant} ({mode_key.upper()})"[:75],
+                "primary_id": primary_id,
+                "sub_id":     sub_id,
+                "perk_ids":   perk_ids,
+            }
+
+    # Items ----------------------------------------------------------------
+    item_ids = _resolve_item_ids(out["raw_items"])
+    if item_ids:
+        champ_id = _load_champ_id_by_name().get(champion, 0)
+        out["item_cmd"] = {
+            "cmd": "apply_item_set",
+            "set_uid":    f"RC-{_norm(champion)}-{mode_key}-{_norm(variant)}",
+            "title":      f"RC: {champion} {variant.replace('-', ' ')} ({mode_key.upper()})"[:50],
+            "champion_id": champ_id,
+            "blocks": [{
+                "type":  "Build (RC)",
+                "items": [{"id": i, "count": 1} for i in item_ids],
+            }],
+        }
+
+    # Summoners ------------------------------------------------------------
+    summ = v.get("summoners") or []
+    if isinstance(summ, list) and len(summ) >= 2:
+        try:
+            out["summ_cmd"] = {
+                "cmd": "set_summoners",
+                "d": int(summ[0]), "f": int(summ[1]),
+            }
+        except (ValueError, TypeError):
+            pass
+
+    return out
+
+
+def _resolve_item_ids(names: list[str]) -> list[str]:
+    """Resolve display names to ddragon item IDs. Drops names that miss
+    after both exact-fuzzy AND substring fallback (handles abbreviations
+    like 'Deathcap' → 'Rabadon's Deathcap' that LLMs sometimes produce)."""
+    by_name = _load_items_by_name()
+    # Build inverted lookup: list of (norm_name, id) tuples for substring search
+    norm_pairs = [(n, i) for n, i in by_name.items()]
+    out: list[str] = []
+    for nm in names or []:
+        n = _norm(nm)
+        rid = by_name.get(n)
+        if not rid and len(n) >= 5:
+            # Substring fallback — find a ddragon name that CONTAINS this token.
+            # Bias toward shortest match (most specific).
+            candidates = [(len(full), iid) for full, iid in norm_pairs if n in full]
+            if candidates:
+                candidates.sort()
+                rid = candidates[0][1]
+        if rid:
+            out.append(rid)
+        else:
+            _log.debug("loadout: item resolve miss: %s", nm)
+    return out

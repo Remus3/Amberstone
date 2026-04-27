@@ -1,0 +1,59 @@
+{
+  "meta": {
+    "name": "session_hot_streak",
+    "label": "Session \u00b7 hot streak (5W)",
+    "mode": "client",
+    "summary": "Hot-streak digest \u00b7 5W-1L on Ahri \u00b7 climb pace +14 LP/hr"
+  },
+  "health": {
+    "type": "health",
+    "source": "sim",
+    "payload": {
+      "pid": 99999,
+      "alive": true,
+      "has_game": false,
+      "mode": "client",
+      "last_reload_ok": true
+    }
+  },
+  "state": {
+    "type": "state",
+    "mode": "client",
+    "source": "coaching_data.json",
+    "payload": {
+      "game_time": "",
+      "kda": "",
+      "champion": "Ahri",
+      "action": "\ud83d\udd25 HOT STREAK \u2014 extend the run",
+      "immediate": "5W-1L last 6. Recent KDA 4.4 (baseline 2.9). Climb pace: +14 LP/hr.",
+      "risk": "Don't tilt-queue past 8 games \u00b7 streaks reverse on fatigue",
+      "fight_rule": "\u2014",
+      "reset_item": "\u2014",
+      "next": "1-2 more games max \u00b7 log out at +24 LP",
+      "objective": "Rank goal: extend +14 LP/hr pace \u00b7 cap at +24 today",
+      "advice_headline": "Hot streak active \u2014 preserve, don't burn",
+      "advice_objective": "Climb pace: +14 LP/hr \u00b7 target +24 by EOD",
+      "key_points_review": "1. Don't go for 4th game past 9pm \u00b7 2. Stick to 70%+ wr matchups \u00b7 3. Reset if you tilt-queue 1 loss",
+      "clips_review": "Winning fights at 18:00-25:00 \u2014 outplays vs Zed in 3 games",
+      "digest_state": "good",
+      "digest_label": "\ud83d\udd25 HOT",
+      "digest_state_long": "Hot streak \u2014 5W-1L",
+      "digest_streak": "5W on Ahri",
+      "digest_recent": "5W-1L last 6 \u00b7 83% wr",
+      "digest_kda_trend": "\u2191 KDA 4.4 (baseline 2.9, +52%)",
+      "digest_time_of_day": "Peak window 7-9pm \u00b7 play here for streak preservation",
+      "digest_fatigue": "Comfortable \u00b7 6 games in 2.5 hours",
+      "digest_advice": "1-2 more games \u00b7 log out at +24 LP today",
+      "what_went_good": [
+        "Burst Zed at 18:30 \u2014 read his all-in pattern",
+        "5/6 games: lane lead at 8:00 (CS +12 avg)",
+        "Vision score Challenger-tier: 14 wards/game",
+        "Drake control: secured 4/5 games",
+        "Skillshot accuracy Q 88% \u00b7 charm 71% \u00b7 R 4/5 hit"
+      ],
+      "what_went_bad": [
+        "1 loss in 6 \u2014 vs Vladimir (avoid until matchup study)"
+      ]
+    }
+  }
+}

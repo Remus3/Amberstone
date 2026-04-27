@@ -1,0 +1,131 @@
+{
+  "meta": {
+    "name": "aram_mayhem_mid",
+    "label": "ARAM Mayhem \u00b7 mid \u00b7 10:30 augment pick",
+    "mode": "aram",
+    "summary": "Mayhem mid \u00b7 Tristana \u00b7 5k-gold augment select active (3 cards offered)"
+  },
+  "health": {
+    "type": "health",
+    "source": "sim",
+    "payload": {
+      "pid": 99999,
+      "alive": true,
+      "has_game": true,
+      "mode": "aram",
+      "last_reload_ok": true,
+      "aram_mode": true
+    }
+  },
+  "state": {
+    "type": "state",
+    "mode": "aram",
+    "source": "aram_coaching_data.json",
+    "payload": {
+      "game_time": "10:30",
+      "game_time_s": 630,
+      "kda": "7/2/9",
+      "cs": 64,
+      "gold": 5240,
+      "level": 12,
+      "vision_score": 0,
+      "hp_pct": 65,
+      "mp_pct": 70,
+      "champion": "Tristana",
+      "game_mode": "Mayhem",
+      "action": "PICK AUGMENT \u2014 Goldrend",
+      "immediate": "5k gold milestone hit. Goldrend > Fan The Hammer for your build path. Burst > sustained.",
+      "risk": "Yone has Crit augment \u2014 Bork must come before this fight at 11:00",
+      "fight_rule": "Don't fight until augment picked + Bork bought",
+      "reset_item": "Bork (1400g remaining)",
+      "next": "Buy Bork \u2192 siege first tower at 11:30",
+      "positioning": "Behind Sion \u00b7 disengage with W if Yasuo windwalls",
+      "wave_pct": 60,
+      "hp_packs": "ours up \u00b7 theirs 0:40",
+      "items_display": "Long Sword, Long Sword, Berserker's Greaves, Refillable",
+      "item_build": "Bork \u2192 Phantom Dancer \u2192 Infinity Edge",
+      "augments": "Limited Shopping, Platform Regen Disabled",
+      "augment_select": true,
+      "augment_choices": [
+        "Goldrend \u2014 Damage attacks deal +50\u2013150 magic damage, grants gold + MS for 1.5s",
+        "Fan The Hammer \u2014 Attacks fire 5 extra Firecrackers, each direction has its own CD",
+        "Draw Your Sword \u2014 Become melee, gain AD/HP/AS/Lifesteal/MS scaling with range given up"
+      ],
+      "ally_spells": {
+        "Tristana": [
+          {
+            "spell": "Flash",
+            "cd_s": 0
+          },
+          {
+            "spell": "Heal",
+            "cd_s": 0
+          }
+        ]
+      },
+      "ally_comp": [
+        "Tristana",
+        "Sion",
+        "Yasuo",
+        "Lulu",
+        "Soraka"
+      ],
+      "enemy_comp": [
+        "Yone",
+        "Heimerdinger",
+        "Senna",
+        "Akali",
+        "Olaf"
+      ],
+      "my_team": "ORDER",
+      "my_tower_hp": 100,
+      "enemy_tower_hp": 8,
+      "positions": {
+        "allies": {
+          "Tristana": [
+            0.55,
+            0.46
+          ],
+          "Sion": [
+            0.58,
+            0.42
+          ],
+          "Yasuo": [
+            0.56,
+            0.4
+          ],
+          "Lulu": [
+            0.52,
+            0.46
+          ],
+          "Soraka": [
+            0.5,
+            0.48
+          ]
+        },
+        "enemies": {
+          "Yone": [
+            0.62,
+            0.4
+          ],
+          "Heimerdinger": [
+            0.65,
+            0.36
+          ],
+          "Senna": [
+            0.6,
+            0.42
+          ],
+          "Akali": [
+            0.66,
+            0.38
+          ],
+          "Olaf": [
+            0.68,
+            0.34
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "_comment": "Golden snapshot for client envelope. No game state.",
+  "snapshot_type": "client",
+  "mode": "client"
+}

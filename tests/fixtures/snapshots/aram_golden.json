@@ -1,0 +1,15 @@
+{
+  "_comment": "Golden snapshot for ARAM translation. Generated from ARAM_STATE fixture.",
+  "snapshot_type": "aram",
+  "game_mode": "ARAM",
+  "game_time": "08:12",
+  "champion": "Vayne",
+  "level": 10,
+  "gold": 2200,
+  "hp_pct": 82,
+  "kda": "4/1/5",
+  "items": ["BotRK", "Phantom Drive"],
+  "ally_comp": ["Lux", "Sejuani", "Orianna", "Zyra"],
+  "enemy_comp": ["Garen", "Malphite", "Morgana", "Sona", "Blitzcrank"],
+  "raw_state_present": true
+}
