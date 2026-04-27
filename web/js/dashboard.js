@@ -3632,6 +3632,134 @@
     }
   }
 
+  // ── Home / lobby landing view (2026-04-26) ───────────────────────────
+  // Shown when the user is sitting in client mode with no game/champ-
+  // select active (i.e. between matches or just after RC boot). Pulls
+  // /api/home/summary every 20s. Hides during ChampSelect / InProgress
+  // so the main panel grid is unobstructed.
+  const _HOME = { lastFetchAt: 0, intervalMs: 20000, fetching: false };
+  function _homeShouldShow(lcu) {
+    if (state.mode !== "client") return false;
+    if (lcu && (lcu.phase === "ChampSelect"
+                || lcu.phase === "InProgress"
+                || lcu.phase === "GameStart")) return false;
+    return true;
+  }
+  function _homeRenderRecent(rows) {
+    const ul = document.getElementById("home-recent-list");
+    if (!ul) return;
+    ul.innerHTML = "";
+    if (!rows || !rows.length) {
+      ul.innerHTML = '<li class="home-empty">no matches yet</li>';
+      return;
+    }
+    for (const m of rows) {
+      const li = document.createElement("li");
+      li.className = "home-recent-row";
+      const grade = String(m.grade || "—").toUpperCase()[0] || "—";
+      const dur = m.duration_s
+        ? `${Math.floor(m.duration_s / 60)}:${String(m.duration_s % 60).padStart(2,"0")}`
+        : "";
+      const tsShort = (m.timestamp || "").split(" ")[1]?.slice(0,5) || "";
+      li.innerHTML =
+        `<span class="home-recent-grade ${grade}">${grade}</span>` +
+        `<span><span class="home-recent-champ">${m.champion || "?"}</span> ` +
+          `<span class="home-recent-meta">${tsShort} · ${dur}</span></span>` +
+        `<span class="home-recent-kda">${m.kda || "—"}</span>` +
+        `<span class="home-recent-mode">${m.mode || ""}</span>`;
+      ul.appendChild(li);
+    }
+  }
+  function _homeRenderWeek(rows) {
+    const ul = document.getElementById("home-week-list");
+    if (!ul) return;
+    ul.innerHTML = "";
+    if (!rows || !rows.length) {
+      ul.innerHTML = '<li class="home-empty">no games this week</li>';
+      return;
+    }
+    for (const r of rows) {
+      const li = document.createElement("li");
+      li.className = "home-week-row";
+      const grade = String(r.best_grade || "—").toUpperCase()[0] || "—";
+      li.innerHTML =
+        `<span class="home-week-champ">${r.champion}</span>` +
+        `<span class="home-week-games">${r.games}g</span>` +
+        `<span class="home-week-kda">${r.avg_kda.toFixed(1)}</span>` +
+        `<span class="home-week-grade home-recent-grade ${grade}">${grade}</span>`;
+      ul.appendChild(li);
+    }
+  }
+  function _homeRenderToday(t) {
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    const games = (t && t.games) || 0;
+    set("home-today-count", games > 0 ? `${games} game${games===1?"":"s"}` : "");
+    set("home-today-kda", t && t.total_kda ? t.total_kda : "—");
+    set("home-today-avg", t && t.avg_kda ? t.avg_kda.toFixed(2) : "—");
+    const gradeStr = t && t.grades
+      ? Object.entries(t.grades).map(([g,n]) => `${g}×${n}`).join(" ")
+      : "—";
+    set("home-today-grades", gradeStr || "—");
+    const modeStr = t && t.modes
+      ? Object.entries(t.modes).map(([m,n]) => `${m} ${n}`).join(" · ")
+      : "—";
+    set("home-today-modes", modeStr || "—");
+  }
+  function _homeRenderServices(rows) {
+    const ul = document.getElementById("home-services-list");
+    if (!ul) return;
+    ul.innerHTML = "";
+    if (!rows || !rows.length) {
+      ul.innerHTML = '<li class="home-empty">no services reporting</li>';
+      return;
+    }
+    for (const s of rows) {
+      const li = document.createElement("li");
+      li.className = "home-services-row";
+      li.innerHTML =
+        `<span class="home-services-dot ${s.ok ? "ok" : "err"}"></span>` +
+        `<span class="home-services-name">${s.name}</span>` +
+        `<span class="home-services-detail">${s.detail || ""}</span>`;
+      ul.appendChild(li);
+    }
+  }
+  function _homeFetchAndRender() {
+    if (_HOME.fetching) return;
+    _HOME.fetching = true;
+    fetch("/api/home/summary", { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((data) => {
+        _HOME.fetching = false;
+        if (!data) return;
+        _HOME.lastFetchAt = Date.now();
+        _homeRenderToday(data.today || {});
+        _homeRenderRecent(data.recent || []);
+        _homeRenderWeek(data.this_week || []);
+        _homeRenderServices(data.services || []);
+      })
+      .catch(() => { _HOME.fetching = false; });
+  }
+  function renderHomePanel(lcu) {
+    const overlay = document.getElementById("home-overlay");
+    if (!overlay) return;
+    if (!_homeShouldShow(lcu)) {
+      overlay.classList.add("hidden");
+      overlay.setAttribute("aria-hidden", "true");
+      return;
+    }
+    overlay.classList.remove("hidden");
+    overlay.setAttribute("aria-hidden", "false");
+    // Initial fetch + 20s refresh tick (registered once).
+    if (!_HOME.lastFetchAt) _homeFetchAndRender();
+    if (!overlay._tickWired) {
+      overlay._tickWired = true;
+      setInterval(() => {
+        if (!_homeShouldShow(state.latest && state.latest.lcu ? { phase: state.latest.lcu.phase } : null)) return;
+        _homeFetchAndRender();
+      }, _HOME.intervalMs);
+    }
+  }
+
   // ── Lobby overlay (2026-04-26) ──────────────────────────────────────
   // Pre-queue: shows what queue the user is sitting in + a Find Match
   // button. Hidden during ChampSelect / InProgress (cs-overlay takes
@@ -3995,6 +4123,7 @@
     // Render the interactive overlay first (drives visibility on every poll).
     renderChampSelectPanel(lcu);
     renderLobbyPanel(lcu);
+    renderHomePanel(lcu);
     if (!lcu || lcu.phase !== "ChampSelect") return;
     const cs = lcu.champ_select || {};
     if (!cs.my_champion || cs.my_champion <= 0) return;
