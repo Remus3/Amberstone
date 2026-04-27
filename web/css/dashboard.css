@@ -484,12 +484,14 @@ footer .digest-icon.in-footer b {
 .title-auto-pill:active { transform: scale(0.97); }
 
 .view-menu {
-  /* Anchor to header (which has position: relative). top:100% +
-   * margin-top works more reliably than calc() across browsers. */
-  position: absolute;
-  top: 100%;
-  margin-top: 6px;
-  left: 18px;
+  /* (2026-04-26 v3) Position via JS getBoundingClientRect — `top: 100%`
+   * inside a position:relative header was rendering at viewport y=0
+   * regardless (likely due to a stacking-context interaction with
+   * body { overflow: hidden } or the header-row flex). Position:
+   * fixed avoids the offset-parent ambiguity entirely; the JS sets
+   * top + left from the trigger's rect on every open. */
+  position: fixed;
+  top: 0; left: 18px;  /* placeholder — JS overwrites on open */
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -544,16 +546,20 @@ footer .digest-icon.in-footer b {
 .view-menu-divider {
   height: 1px; background: var(--border-soft); margin: 4px 6px;
 }
+/* Special menu rows — keep the same surface-head base background as
+ * regular items so all rows look unified, but tint the border + text
+ * to telegraph "this is a different kind of action". (2026-04-26 v3:
+ * earlier transparent backgrounds made these rows look disconnected.) */
 .view-menu-clear {
-  background: transparent; color: var(--clock); font-style: italic;
-  border: 1px dashed var(--border);
+  background: var(--surface-head); color: var(--clock); font-style: italic;
+  border: 1px dashed var(--border-soft);
 }
 .view-menu-clear:hover {
   background: var(--gold-soft); color: var(--clock);
   border-color: var(--clock); font-style: normal;
 }
 .view-menu-dev {
-  background: transparent; color: var(--bad);
+  background: var(--surface-head); color: var(--bad);
   border: 1px dashed var(--bad-soft);
 }
 .view-menu-dev:hover {
