@@ -396,6 +396,186 @@
     const adaptT = el("adapt-panel-title"); if (adaptT) adaptT.textContent = titles.adapt;
   }
 
+  // ── View router (2026-04-26) ──────────────────────────────────────
+  // Title-bar dropdown (RIOT COMMANDER) toggles between 8 views:
+  //   home / lobby / last-match / session / history / loadouts /
+  //   settings / diagnostics
+  // Default is auto-mode: view is derived from state.mode + lcu.phase.
+  // Manual selection from the dropdown sets rc-view-manual in
+  // localStorage and a body[data-view] attribute. Auto promotes to
+  // ChampSelect/in-game on urgent game events; if a manual view is
+  // active during a promote-worthy event, the banner appears instead.
+  const VIEW_IDS = ["home","lobby","last-match","session","history","loadouts","settings","diagnostics"];
+  const VIEW_LABELS = {
+    "home":"Home","lobby":"Lobby","last-match":"Last Match","session":"Session",
+    "history":"History","loadouts":"Loadouts","settings":"Settings","diagnostics":"Diagnostics",
+  };
+  const _VIEW = {
+    current: null,
+    manual: null,    // user-pinned view id, or null for auto
+    bannerDismissed: null,  // last dismissed promote-target view id
+  };
+  function _viewFromHash() {
+    const h = (location.hash || "").replace(/^#/, "").trim();
+    return VIEW_IDS.includes(h) ? h : null;
+  }
+  function _viewFromStorage() {
+    try { return localStorage.getItem("rc-view-manual") || null; }
+    catch (_) { return null; }
+  }
+  function _viewSaveManual(id) {
+    try {
+      if (id) localStorage.setItem("rc-view-manual", id);
+      else    localStorage.removeItem("rc-view-manual");
+    } catch (_) {}
+    _VIEW.manual = id;
+  }
+  // Auto-derive view from observed state. Returns one of VIEW_IDS.
+  function _viewAutoDerive(lcu, mode) {
+    const phase = lcu && lcu.phase;
+    if (phase === "ChampSelect")            return "lobby";   // cs-overlay still wins visually
+    if (phase === "InProgress" || phase === "GameStart") return "last-match";  // panels are in-game in game mode
+    if (phase === "Lobby" || phase === "Matchmaking" || phase === "ReadyCheck") return "lobby";
+    if (mode === "client" || mode === "lobby" || !mode) return "home";
+    return "last-match";  // in-game default → main panels
+  }
+  // Should we auto-promote past a manual selection? Only for urgent
+  // game-state events where missing the actual view is harmful.
+  function _viewIsUrgent(targetView) {
+    return targetView === "lobby"   // ChampSelect-driven (cs-overlay)
+        || targetView === "last-match";  // game InProgress
+  }
+  function applyView(viewId) {
+    if (!VIEW_IDS.includes(viewId)) viewId = "home";
+    if (viewId === _VIEW.current) {
+      _viewUpdateMenuActive(viewId);
+      return;
+    }
+    _VIEW.current = viewId;
+    document.body.dataset.view = viewId;
+    _viewUpdateTitleLabel(viewId);
+    _viewUpdateMenuActive(viewId);
+    // Lazy-fetch view content (wire-once + fetch on first activate)
+    if (viewId === "session")     { _sessionFetchAndRender(); }
+    if (viewId === "history")     { _historyWireOnce(); _historyFetchAndRender(); }
+    if (viewId === "loadouts")    { _loadoutsWireOnce(); _loadoutsFetchAndRender(); }
+    if (viewId === "diagnostics") { _diagWireOnce(); _diagFetchAndRender(); }
+    if (viewId === "settings")    { _settingsRefresh(); }
+  }
+  function _viewUpdateTitleLabel(viewId) {
+    const el = document.getElementById("view-current-label");
+    if (!el) return;
+    el.textContent = (_VIEW.manual ? "" : "AUTO · ") + (VIEW_LABELS[viewId] || viewId).toUpperCase();
+  }
+  function _viewUpdateMenuActive(viewId) {
+    document.querySelectorAll(".view-menu-item").forEach((b) => {
+      b.classList.toggle("active", b.dataset.view === viewId);
+    });
+  }
+  function _viewMenuClose() {
+    const m = document.getElementById("view-menu");
+    const t = document.getElementById("view-trigger");
+    if (m) { m.classList.add("hidden"); m.setAttribute("aria-hidden", "true"); }
+    if (t) t.setAttribute("aria-expanded", "false");
+  }
+  function _viewMenuToggle() {
+    const m = document.getElementById("view-menu");
+    const t = document.getElementById("view-trigger");
+    if (!m || !t) return;
+    const open = m.classList.contains("hidden");
+    if (open) {
+      m.classList.remove("hidden");
+      m.setAttribute("aria-hidden", "false");
+      t.setAttribute("aria-expanded", "true");
+    } else {
+      _viewMenuClose();
+    }
+  }
+  function _viewWireOnce() {
+    if (_VIEW._wired) return;
+    _VIEW._wired = true;
+    const trig = document.getElementById("view-trigger");
+    const menu = document.getElementById("view-menu");
+    if (trig) trig.addEventListener("click", (e) => { e.stopPropagation(); _viewMenuToggle(); });
+    document.addEventListener("click", (e) => {
+      if (menu && !menu.contains(e.target) && e.target !== trig) _viewMenuClose();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") _viewMenuClose();
+    });
+    document.querySelectorAll(".view-menu-item").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const v = btn.dataset.view;
+        _viewMenuClose();
+        if (v === "auto") {
+          _viewSaveManual(null);
+          location.hash = "";
+        } else {
+          _viewSaveManual(v);
+          location.hash = "#" + v;
+        }
+        _viewResolveAndApply();
+      });
+    });
+    window.addEventListener("hashchange", _viewResolveAndApply);
+    // Initial manual state from localStorage
+    _VIEW.manual = _viewFromStorage();
+    // Banner buttons
+    const accept = document.getElementById("view-banner-accept");
+    if (accept) accept.addEventListener("click", () => {
+      const target = accept.dataset.target;
+      if (target) {
+        _viewSaveManual(null);
+        location.hash = "#" + target;
+        _viewResolveAndApply();
+      }
+      _viewBannerHide();
+    });
+    const dismiss = document.getElementById("view-banner-dismiss");
+    if (dismiss) dismiss.addEventListener("click", () => {
+      _VIEW.bannerDismissed = accept && accept.dataset.target;
+      _viewBannerHide();
+    });
+  }
+  function _viewBannerShow(target, text) {
+    const b = document.getElementById("view-banner");
+    const t = document.getElementById("view-banner-text");
+    const accept = document.getElementById("view-banner-accept");
+    if (!b || !accept) return;
+    if (t) t.textContent = text;
+    accept.dataset.target = target;
+    b.classList.remove("hidden");
+  }
+  function _viewBannerHide() {
+    const b = document.getElementById("view-banner");
+    if (b) b.classList.add("hidden");
+  }
+  // Resolve current view from hash → manual → auto, then apply.
+  // Also handle the auto-promote banner when manual blocks an urgent
+  // auto target.
+  function _viewResolveAndApply(latestLcu) {
+    const lcu = latestLcu || (state.latest && state.latest.lcu) || {};
+    const auto = _viewAutoDerive(lcu, state.mode);
+    const hashView = _viewFromHash();
+    const manual = hashView || _VIEW.manual;
+    if (manual) {
+      // Manual sticky — apply it
+      applyView(manual);
+      // Banner if auto wants to promote to an urgent target we're not on
+      if (_viewIsUrgent(auto) && auto !== manual && auto !== _VIEW.bannerDismissed) {
+        _viewBannerShow(auto,
+          (auto === "lobby" ? "Champ Select active" : "Game in progress")
+          + " — switch to " + (VIEW_LABELS[auto] || auto) + "?");
+      } else {
+        _viewBannerHide();
+      }
+    } else {
+      _VIEW.bannerDismissed = null;
+      applyView(auto);
+      _viewBannerHide();
+    }
+  }
+
   function fmtList(v) {
     if (Array.isArray(v)) return v.filter(Boolean).join(", ");
     return (v == null ? "" : String(v));
@@ -3632,6 +3812,236 @@
     }
   }
 
+  // ── Session view fetchers (2026-04-26) ───────────────────────────
+  function _sessionFetchAndRender() {
+    fetch("/api/session/summary", { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d) return;
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        set("session-window", d.window_label || "—");
+        set("session-games", d.games || "0");
+        const sec = (d.time_played_s | 0);
+        const hh = Math.floor(sec / 3600), mm = Math.floor((sec % 3600) / 60);
+        set("session-time", hh > 0 ? `${hh}h ${mm}m` : `${mm}m`);
+        set("session-start", d.started_at || "—");
+        set("session-last", d.last_at || "—");
+        set("session-kda", d.total_kda || "—");
+        set("session-avg", d.avg_kda != null ? d.avg_kda.toFixed(2) : "—");
+        set("session-grades",
+          d.grades ? Object.entries(d.grades).map(([g,n]) => `${g}×${n}`).join(" ") : "—");
+        set("session-modes",
+          d.modes ? Object.entries(d.modes).map(([m,n]) => `${m} ${n}`).join(" · ") : "—");
+        const champUl = document.getElementById("session-champs");
+        if (champUl) {
+          champUl.innerHTML = "";
+          (d.champions || []).forEach((c) => {
+            const li = document.createElement("li");
+            li.className = "history-match-row";
+            li.innerHTML = `<span style="flex:1">${c.champion}</span>` +
+              `<span class="dim">${c.games}g</span>` +
+              `<span style="margin-left:10px">${c.kda || "—"}</span>`;
+            champUl.appendChild(li);
+          });
+          if (!champUl.children.length) champUl.innerHTML = '<li class="home-empty">no champs in session</li>';
+        }
+        const matchUl = document.getElementById("session-matches");
+        if (matchUl) {
+          matchUl.innerHTML = "";
+          (d.matches || []).forEach((m) => {
+            const li = document.createElement("li");
+            li.className = "history-match-row";
+            const grade = String(m.grade || "—")[0];
+            li.innerHTML = `<span class="home-recent-grade ${grade}">${grade}</span>` +
+              `<span style="flex:1; margin-left:8px">${m.champion} · ${m.mode}</span>` +
+              `<span class="dim">${m.kda}</span>` +
+              `<span class="dim" style="margin-left:8px">${m.timestamp}</span>`;
+            matchUl.appendChild(li);
+          });
+          if (!matchUl.children.length) matchUl.innerHTML = '<li class="home-empty">no matches in session</li>';
+        }
+      })
+      .catch(() => {});
+  }
+
+  // ── History view fetchers (2026-04-26) ───────────────────────────
+  const _HISTORY = { scope: "14d", selectedSession: null };
+  function _historyFetchAndRender() {
+    fetch("/api/history?scope=" + encodeURIComponent(_HISTORY.scope), { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d) return;
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        set("history-session-count", (d.sessions || []).length + " session" + ((d.sessions||[]).length===1?"":"s"));
+        const ul = document.getElementById("history-session-list");
+        if (ul) {
+          ul.innerHTML = "";
+          (d.sessions || []).forEach((s, idx) => {
+            const li = document.createElement("li");
+            li.className = "history-session-row";
+            li.dataset.sessionIdx = idx;
+            li.innerHTML = `<span style="flex:1">${s.date}</span>` +
+              `<span class="dim">${s.games}g</span>` +
+              `<span class="dim" style="margin-left:8px">${s.duration_label || ""}</span>`;
+            li.addEventListener("click", () => {
+              _HISTORY.selectedSession = idx;
+              ul.querySelectorAll(".history-session-row").forEach((r) => r.classList.remove("active"));
+              li.classList.add("active");
+              _historyRenderMatches(s);
+              const head = document.getElementById("history-detail-head");
+              if (head) head.textContent = `MATCHES · ${s.date} · ${s.games}g`;
+            });
+            ul.appendChild(li);
+          });
+          if (!ul.children.length) ul.innerHTML = '<li class="home-empty">no sessions in scope</li>';
+        }
+        // Season stats panel
+        const ss = d.season_stats || {};
+        set("history-season-total", ss.total != null ? ss.total : "—");
+        set("history-season-kda",   ss.avg_kda != null ? ss.avg_kda.toFixed(2) : "—");
+        set("history-season-fav",   ss.favorite || "—");
+      })
+      .catch(() => {});
+  }
+  function _historyRenderMatches(session) {
+    const ul = document.getElementById("history-match-list");
+    if (!ul) return;
+    ul.innerHTML = "";
+    (session.matches || []).forEach((m) => {
+      const li = document.createElement("li");
+      li.className = "history-match-row";
+      const grade = String(m.grade || "—")[0];
+      li.innerHTML = `<span class="home-recent-grade ${grade}">${grade}</span>` +
+        `<span style="flex:1; margin-left:8px">${m.champion} · ${m.mode}</span>` +
+        `<span class="dim">${m.kda}</span>` +
+        `<span class="dim" style="margin-left:8px">${m.timestamp}</span>`;
+      ul.appendChild(li);
+    });
+    if (!ul.children.length) ul.innerHTML = '<li class="home-empty">no matches in session</li>';
+  }
+  function _historyWireOnce() {
+    if (_HISTORY._wired) return;
+    _HISTORY._wired = true;
+    document.querySelectorAll("#history-scope-tabs .view-tab").forEach((b) => {
+      b.addEventListener("click", () => {
+        document.querySelectorAll("#history-scope-tabs .view-tab")
+          .forEach((x) => x.classList.remove("active"));
+        b.classList.add("active");
+        _HISTORY.scope = b.dataset.scope;
+        _historyFetchAndRender();
+      });
+    });
+  }
+
+  // ── Loadouts view (2026-04-26) ───────────────────────────────────
+  function _loadoutsFetchAndRender() {
+    const mode = (document.getElementById("loadouts-mode-filter") || {}).value || "aram";
+    const filter = ((document.getElementById("loadouts-filter") || {}).value || "").toLowerCase();
+    fetch("/api/loadouts/all?mode=" + encodeURIComponent(mode), { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d) return;
+        const list = document.getElementById("loadouts-list");
+        const cnt = document.getElementById("loadouts-count");
+        if (!list) return;
+        list.innerHTML = "";
+        const champs = (d.champions || []).filter((c) =>
+          !filter || c.champion.toLowerCase().includes(filter));
+        if (cnt) cnt.textContent = `${champs.length} of ${(d.champions||[]).length} champions`;
+        champs.forEach((c) => {
+          const card = document.createElement("div");
+          card.className = "loadout-champ";
+          const variants = (c.variants || [])
+            .filter((v) => v.key !== "experimental")
+            .map((v) => `<span style="color:var(--text-dim); font-size:11px; margin-right:14px">${v.label} <span style="color:var(--text-faint)">(${v.keystone||"?"})</span></span>`)
+            .join("");
+          card.innerHTML = `<div class="loadout-champ-name">${c.champion}</div><div>${variants}</div>`;
+          list.appendChild(card);
+        });
+        if (!champs.length) list.innerHTML = '<div class="home-empty">no champions match filter</div>';
+      })
+      .catch(() => {});
+  }
+  function _loadoutsWireOnce() {
+    if (window.__loadoutsWired) return;
+    window.__loadoutsWired = true;
+    const f = document.getElementById("loadouts-filter");
+    const m = document.getElementById("loadouts-mode-filter");
+    if (f) f.addEventListener("input", _loadoutsFetchAndRender);
+    if (m) m.addEventListener("change", _loadoutsFetchAndRender);
+  }
+
+  // ── Settings view (2026-04-26) ───────────────────────────────────
+  function _settingsRefresh() {
+    if (window.__settingsWired) return;
+    window.__settingsWired = true;
+    const get = (k) => { try { return localStorage.getItem(k); } catch (_) { return null; }};
+    const setLS = (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} };
+    const cb = (id, key, onSet) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.checked = get(key) === "1";
+      el.addEventListener("change", () => {
+        setLS(key, el.checked ? "1" : "0");
+        if (onSet) onSet(el.checked);
+      });
+    };
+    cb("set-voice-on", "rc-voice-on");
+    cb("set-force-flash-snowball", "rc-force-flash-snowball");
+    cb("set-zen", "rc-zen", (v) => { document.body.dataset.zen = v ? "1" : ""; });
+    const zoom = document.getElementById("set-zoom");
+    const zoomVal = document.getElementById("set-zoom-val");
+    if (zoom) {
+      zoom.value = parseFloat(get("rc-zoom") || "1.0");
+      if (zoomVal) zoomVal.textContent = parseFloat(zoom.value).toFixed(2) + "×";
+      zoom.addEventListener("input", () => {
+        setLS("rc-zoom", zoom.value);
+        if (zoomVal) zoomVal.textContent = parseFloat(zoom.value).toFixed(2) + "×";
+        document.body.style.zoom = zoom.value;
+      });
+    }
+    // Live metrics status (read-only — env var)
+    fetch("/api/diagnostics", { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((d) => {
+        const el = document.getElementById("set-live-metrics-status");
+        if (el && d) el.textContent = d.live_metrics_enabled ? "ON" : "OFF";
+      }).catch(() => {});
+  }
+
+  // ── Diagnostics view (2026-04-26) ────────────────────────────────
+  function _diagFetchAndRender() {
+    fetch("/api/diagnostics", { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d) return;
+        const ul = document.getElementById("diag-conn-list");
+        if (ul) {
+          ul.innerHTML = "";
+          (d.connections || []).forEach((c) => {
+            const li = document.createElement("li");
+            li.className = "diag-conn-row";
+            li.innerHTML = `<span class="diag-conn-dot ${c.ok ? "ok" : "err"}"></span>` +
+              `<span style="flex:1; color:var(--text); font-weight:700">${c.name}</span>` +
+              `<span class="dim" style="font-size:10px">${c.detail || ""}</span>`;
+            ul.appendChild(li);
+          });
+          if (!ul.children.length) ul.innerHTML = '<li class="home-empty">no connections reporting</li>';
+        }
+        const log = document.getElementById("diag-log");
+        if (log) log.textContent = (d.log_tail || []).join("\n") || "(no log lines)";
+        const health = document.getElementById("diag-health");
+        if (health) health.textContent = JSON.stringify(d.health || {}, null, 2);
+      })
+      .catch(() => {});
+  }
+  function _diagWireOnce() {
+    if (window.__diagWired) return;
+    window.__diagWired = true;
+    const r = document.getElementById("diag-refresh");
+    if (r) r.addEventListener("click", _diagFetchAndRender);
+  }
+
   // ── Home / lobby landing view (2026-04-26) ───────────────────────────
   // Shown when the user is sitting in client mode with no game/champ-
   // select active (i.e. between matches or just after RC boot). Pulls
@@ -4124,6 +4534,9 @@
     renderChampSelectPanel(lcu);
     renderLobbyPanel(lcu);
     renderHomePanel(lcu);
+    // View router: re-resolve view based on current lcu.phase + state.mode.
+    // Fires the auto-promote banner if manual blocks an urgent target.
+    _viewResolveAndApply(lcu);
     if (!lcu || lcu.phase !== "ChampSelect") return;
     const cs = lcu.champ_select || {};
     if (!cs.my_champion || cs.my_champion <= 0) return;
@@ -4714,6 +5127,12 @@
   if (/[?&]zen=1/.test(location.search)) {
     document.body.dataset.zen = "1";
   }
+
+  // Boot view router (2026-04-26): wire dropdown, restore manual view
+  // from localStorage / URL hash, apply initial view. Auto-derive runs
+  // again on every state envelope (see onState dispatcher).
+  _viewWireOnce();
+  _viewResolveAndApply();
   // Map underlay brightness override: ?map-br=0.55&map-sat=0.6
   (function mapFilterOverride() {
     const q = new URLSearchParams(location.search);
