@@ -490,16 +490,19 @@ footer .digest-icon.in-footer b {
 .title-auto-pill:active { transform: scale(0.97); }
 
 .view-menu {
-  /* (2026-04-26 v5) Plain position: absolute anchored to .header-row-1
-   * (which has position: relative). top: 100% places the menu's top
-   * edge at the bottom of header-row-1 — clean, no zoom math, no
-   * getBoundingClientRect. The earlier v3/v4 attempts at position:
-   * fixed + JS rect failed because position:fixed inside a body {
-   * zoom: 1.33 } has weirdly-scaled visual coordinates. */
-  position: absolute;
-  top: 100%;
-  margin-top: 6px;
-  left: 0;
+  /* (2026-04-26 v6) HARDCODED top: 70px — bottom edge of header-row-1
+   * is at ~36-40px CSS-pixels (row min-height 34 + header padding-top
+   * 5). 70px lands the menu just below row 1 with breathing room.
+   * !important added because earlier attempts (v3 fixed, v4 zoom,
+   * v5 top:100% absolute) all failed for reasons that turned out to
+   * be elusive — likely a stacking-context interaction we can't
+   * fully isolate. Hardcoding makes it bulletproof. */
+  position: absolute !important;
+  top: 70px !important;
+  left: 18px !important;
+  bottom: auto !important;
+  right: auto !important;
+  transform: none !important;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
