@@ -464,8 +464,10 @@
   }
   function _viewUpdateTitleLabel(viewId) {
     const el = document.getElementById("view-current-label");
-    if (!el) return;
-    el.textContent = (_VIEW.manual ? "" : "AUTO · ") + (VIEW_LABELS[viewId] || viewId).toUpperCase();
+    if (el) el.textContent = (_VIEW.manual ? "" : "AUTO · ") + (VIEW_LABELS[viewId] || viewId).toUpperCase();
+    // Show the prominent ↻ AUTO pill only when manual is sticky.
+    const pill = document.getElementById("view-auto-pill");
+    if (pill) pill.classList.toggle("hidden", !_VIEW.manual);
   }
   function _viewUpdateMenuActive(viewId) {
     document.querySelectorAll(".view-menu-item").forEach((b) => {
@@ -510,12 +512,30 @@
         if (v === "auto") {
           _viewSaveManual(null);
           location.hash = "";
+        } else if (v === "dev") {
+          // Dev / Sim Preview — appends ?sim=default + ?dbg=1 to the
+          // URL so sim.js boots its fixture-loader banner. Keeps any
+          // existing query params + drops the manual hash so the dev
+          // session is isolated. (User asked for a dropdown entry to
+          // enter the dev "area" for UI testing.)
+          const params = new URLSearchParams(location.search);
+          if (!params.has("sim")) params.set("sim", "default");
+          params.set("dbg", "1");
+          location.search = "?" + params.toString();
+          return;
         } else {
           _viewSaveManual(v);
           location.hash = "#" + v;
         }
         _viewResolveAndApply();
       });
+    });
+    // Prominent ↻ AUTO pill — clears the manual override in one click.
+    const autoPill = document.getElementById("view-auto-pill");
+    if (autoPill) autoPill.addEventListener("click", () => {
+      _viewSaveManual(null);
+      location.hash = "";
+      _viewResolveAndApply();
     });
     window.addEventListener("hashchange", _viewResolveAndApply);
     // Initial manual state from localStorage
@@ -4206,6 +4226,57 @@
       lcuCmd({ cmd: "cancel_matchmaking" });
       _setLobbyStatus("cancelling…", "");
     });
+    const qsel = document.getElementById("lobby-queue-select");
+    if (qsel) qsel.addEventListener("change", () => {
+      const qid = parseInt(qsel.value, 10);
+      if (!qid) return;
+      lcuCmd({ cmd: "change_queue_type", queue_id: qid });
+      _setLobbyStatus("changing queue…", "searching");
+      qsel.value = "";  // reset to placeholder
+    });
+  }
+  // Render the party member list from lcu.lobby.members[]. Each member
+  // shape (forwarded by Game-PC LCU agent — pending):
+  //   { puuid, summoner_name, is_self, is_leader,
+  //     played_with_me_count, played_with_me_record }  // local match_history join
+  function _renderLobbyMembers(members, meIsLeader) {
+    const wrap = document.getElementById("lobby-members");
+    const ul   = document.getElementById("lobby-members-list");
+    const cnt  = document.getElementById("lobby-members-count");
+    if (!wrap || !ul) return;
+    if (!Array.isArray(members) || !members.length) {
+      wrap.hidden = true;
+      return;
+    }
+    wrap.hidden = false;
+    if (cnt) cnt.textContent = members.length + (members.length === 1 ? " member" : " members");
+    ul.innerHTML = "";
+    members.forEach((m) => {
+      const li = document.createElement("li");
+      const cls = "lobby-member-row" +
+        (m.is_self ? " is-self" : "") +
+        (m.is_leader ? " is-leader" : "");
+      li.className = cls;
+      const tags = [];
+      if (m.is_self)   tags.push('<span class="lobby-member-tag you">YOU</span>');
+      if (m.is_leader) tags.push('<span class="lobby-member-tag leader">★ LEADER</span>');
+      const stats = [];
+      if (m.played_with_me_count > 0) {
+        stats.push(`<span class="lobby-member-stat">${m.played_with_me_count}g together</span>`);
+        if (m.played_with_me_record)
+          stats.push(`<span class="lobby-member-stat">${m.played_with_me_record}</span>`);
+      } else if (!m.is_self) {
+        stats.push(`<span class="lobby-member-stat" style="color:var(--text-faint)">no shared games</span>`);
+      }
+      // Public-stats fallback link (no Riot key — user opens manually).
+      const lookup = (m.summoner_name && !m.is_self)
+        ? `<a class="lobby-member-link" href="https://aggregator-b.invalid/lol/profile/na1/${encodeURIComponent(m.summoner_name)}" target="_blank" rel="noopener">aggregator-b ↗</a>`
+        : "";
+      li.innerHTML =
+        `<div class="lobby-member-name">${m.summoner_name || "Unknown"}${tags.join("")}</div>` +
+        `<div class="lobby-member-meta">${stats.join("")}${lookup}</div>`;
+      ul.appendChild(li);
+    });
   }
   function _setLobbyStatus(text, cls) {
     const el = document.getElementById("lobby-status");
@@ -4246,6 +4317,11 @@
     }
     const leaderTag = document.getElementById("lobby-leader-tag");
     if (leaderTag) leaderTag.hidden = !lobby.is_leader;
+    // Change-queue dropdown: leader-only
+    const qsel = document.getElementById("lobby-queue-select");
+    if (qsel) qsel.hidden = !lobby.is_leader;
+    // Member list (forwarded by Game-PC LCU agent in lcu.lobby.members[])
+    _renderLobbyMembers(lobby.members || [], !!lobby.is_leader);
 
     const find = document.getElementById("lobby-find-match");
     const findLabel = document.getElementById("lobby-find-match-label");

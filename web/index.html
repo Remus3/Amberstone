@@ -51,6 +51,19 @@
         <span class="lobby-queue" id="lobby-queue">—</span>
         <span class="lobby-party" id="lobby-party">—</span>
         <span class="lobby-leader-tag" id="lobby-leader-tag" hidden>★ LEADER</span>
+        <!-- Change-queue control: triggers a list of common queues
+             (ARAM, ARAM Mayhem, Normal Draft, etc) → posts
+             change_queue_type LCU cmd. Hidden when not leader. -->
+        <select class="lobby-queue-select" id="lobby-queue-select" hidden>
+          <option value="">Change queue…</option>
+          <option value="450">ARAM (450)</option>
+          <option value="920">ARAM Mayhem (920)</option>
+          <option value="430">Normal Blind (430)</option>
+          <option value="400">Normal Draft (400)</option>
+          <option value="420">Ranked Solo (420)</option>
+          <option value="440">Ranked Flex (440)</option>
+          <option value="1700">Arena (1700)</option>
+        </select>
       </div>
       <div class="lobby-actions">
         <button type="button" class="lobby-find-match" id="lobby-find-match" disabled>
@@ -59,6 +72,18 @@
         <button type="button" class="lobby-cancel-match" id="lobby-cancel-match" hidden>Cancel Search</button>
       </div>
       <div class="lobby-status" id="lobby-status">—</div>
+      <!-- Party member list (2026-04-26 scaffold). Each row =
+           {name, puuid, is_self, is_leader, played_with_me_count}.
+           Meta-stats chips show "played 3 with you · 2W1L" from local
+           match_history.db when puuid matches; "look up on aggregator B" link
+           is the public-stats fallback (no Riot API key). Data feed
+           = Game-PC LCU agent forwarding lcu.lobby.members[]. -->
+      <div class="lobby-members" id="lobby-members" hidden>
+        <div class="lobby-members-head">PARTY <span class="lobby-members-count" id="lobby-members-count">0</span></div>
+        <ul class="lobby-members-list" id="lobby-members-list">
+          <li class="home-empty">waiting for LCU agent to forward members…</li>
+        </ul>
+      </div>
     </div>
   </div>
 
@@ -174,8 +199,15 @@
         <button type="button" class="view-menu-item" data-view="settings"    role="menuitem">Settings</button>
         <button type="button" class="view-menu-item" data-view="diagnostics" role="menuitem">Diagnostics</button>
         <div class="view-menu-divider"></div>
+        <button type="button" class="view-menu-item view-menu-dev" data-view="dev" role="menuitem">⚙ Dev / Sim Preview</button>
+        <div class="view-menu-divider"></div>
         <button type="button" class="view-menu-item view-menu-clear" data-view="auto" role="menuitem">↻ Auto (clear manual)</button>
       </div>
+      <!-- Prominent Auto pill: appears next to the title only when a
+           manual view is sticky. One-click clears the manual override
+           so the user doesn't have to dig through the dropdown. -->
+      <button type="button" class="title-auto-pill hidden" id="view-auto-pill"
+              title="Currently in MANUAL mode — click to restore AUTO">↻ AUTO</button>
       <!-- Auto-promotion banner: appears when manual view is active but
            an urgent game-state event (ChampSelect / InProgress) wants to
            switch. Click to accept, X to dismiss. -->
@@ -184,7 +216,6 @@
         <button type="button" class="view-banner-accept" id="view-banner-accept">Switch</button>
         <button type="button" class="view-banner-dismiss" id="view-banner-dismiss" aria-label="dismiss">×</button>
       </div>
-      <span class="mode-pill" id="mode-pill">CLIENT</span>
       <span class="champion-pill" id="champion-pill" title="from live-client or fallback">—</span>
       <!-- self-spells (D/F summoners) hidden via .self-spells { display:none }
            per user 2026-04-25. JS still populates the cells so the data
@@ -220,6 +251,9 @@
         <span class="mp" id="mp-bar">MP —</span>
       </span>
       <span class="gold-pill" id="gold-pill" title="gold"><b id="gold-val">—</b></span>
+      <!-- Mode pill moved to row 2 (2026-04-26) — was crowding row 1
+           after the title became a wider dropdown. Sits left of augments. -->
+      <span class="mode-pill" id="mode-pill">CLIENT</span>
       <span class="augments-pill" id="augments-pill">—</span>
       <!-- 30d trend-pill removed 2026-04-24, advisory + digest moved
            to the footer 2026-04-25. -->

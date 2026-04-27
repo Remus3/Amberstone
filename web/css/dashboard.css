@@ -254,6 +254,10 @@ header {
   gap: 5px;
   background: var(--canvas);
   flex-shrink: 0;
+  /* Anchor for absolutely-positioned children (view-menu dropdown).
+   * Without this, the menu positioned from body and got clipped by
+   * body { overflow: hidden } on smaller viewports. */
+  position: relative;
 }
 .header-row {
   display: flex;
@@ -308,6 +312,13 @@ body:not([data-mode="client"]) header .trend-pill {
 body[data-mode="client"] header .hp-group,
 body[data-mode="client"] header .mp-group,
 body[data-mode="client"] header .win-pill {
+  display: none !important;
+}
+/* (2026-04-26) Win% pill is in-game-only — outcome is known by the
+ * time post-match lobby renders, so the live probability has no
+ * meaning. Hide outside in-game modes (covers any view-router state
+ * where data-mode might briefly be missing or 'client'). */
+body:not([data-mode="aram"]):not([data-mode="sr"]):not([data-mode="brawl"]):not([data-mode="arena"]):not([data-mode="tft"]) header .win-pill {
   display: none !important;
 }
 /* (2026-04-25) KDA pill removed from top bar per user — "not needed".
@@ -411,60 +422,132 @@ footer .digest-icon.in-footer b {
   font-weight: 900;
   color: var(--text);
 }
-/* Title becomes a dropdown trigger (2026-04-26 view router). Acts as
- * a button but inherits .title typography. Caret rotates when open. */
+/* Title is now a stylized pill-button (2026-04-26 unified aesthetic).
+ * Matches the .mode-pill rounded shape, theme tokens (surface +
+ * border-soft + info), and hover behavior. Dropdown items below mirror
+ * the pill style (rounded rectangles in a panel container) so the
+ * trigger and the menu read as one element. */
 .title-dropdown {
-  background: transparent; border: none; cursor: pointer;
-  padding: 4px 10px 4px 0; display: inline-flex; align-items: center; gap: 8px;
-  color: inherit; font: inherit;
+  /* Kill button user-agent defaults so theme styles apply cleanly. */
+  appearance: none; -webkit-appearance: none;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 14px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: inherit; font-size: 20px; font-weight: 900;
+  letter-spacing: 0.06em;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
-.title-dropdown:hover { color: var(--clock); }
+.title-dropdown:hover {
+  background: var(--surface-head); border-color: var(--info);
+}
+.title-dropdown[aria-expanded="true"] {
+  background: var(--info-soft);
+  border-color: var(--info);
+  color: var(--info);
+}
 .title-dropdown:focus-visible {
-  outline: 2px solid var(--info); outline-offset: 2px; border-radius: 4px;
+  outline: 2px solid var(--info); outline-offset: 2px;
 }
+.title-label { white-space: nowrap; }
 .title-current {
-  font-size: 12px; color: var(--info); letter-spacing: 0.18em;
-  text-transform: uppercase; font-weight: 700; opacity: 0.85;
+  font-size: 13px; color: var(--info); letter-spacing: 0.16em;
+  text-transform: uppercase; font-weight: 700;
   border-left: 1px solid var(--border-soft); padding-left: 10px;
 }
 .title-current:empty { display: none; }
 .title-caret {
-  font-size: 12px; color: var(--text-faint);
+  font-size: 14px; color: var(--text-faint);
   transition: transform 0.12s, color 0.12s;
 }
 .title-dropdown[aria-expanded="true"] .title-caret {
-  transform: rotate(180deg); color: var(--clock);
+  transform: rotate(180deg); color: var(--info);
 }
+
+/* Auto-restore pill (2026-04-26): a more prominent way to clear a
+ * sticky manual view than digging through the menu. Sits next to the
+ * title-dropdown when manual is active; hides in auto mode. */
+.title-auto-pill {
+  appearance: none; -webkit-appearance: none;
+  background: var(--gold-soft); color: var(--clock);
+  border: 1px solid var(--clock);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 13px; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: uppercase; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: background 0.12s, transform 0.06s;
+}
+.title-auto-pill.hidden { display: none; }
+.title-auto-pill:hover { background: rgba(245,184,124,0.28); }
+.title-auto-pill:active { transform: scale(0.97); }
+
 .view-menu {
-  position: absolute; top: 50px; left: 14px;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-  z-index: 9100; min-width: 220px;
-  padding: 4px 0;
-  display: flex; flex-direction: column;
+  /* Anchor to header (which has position: relative). top:100% sits
+   * the menu just below the header bar, full padding avoids clipping. */
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.55);
+  z-index: 9100;
+  min-width: 280px;
+  padding: 8px;
+  display: flex; flex-direction: column; gap: 3px;
 }
 .view-menu.hidden { display: none; }
 .view-menu-item {
-  background: transparent; border: none; cursor: pointer;
-  padding: 9px 16px; text-align: left;
-  font-size: 13px; color: var(--text-dim);
-  letter-spacing: 0.04em;
-  transition: background 0.08s, color 0.08s;
+  /* Pill-row aesthetic — rounded rectangles inside the menu container,
+   * mirroring the title-dropdown's rounded shape. Solid theme background
+   * fixes the "no background on hover" bug (button user-agent defaults
+   * were overriding). */
+  appearance: none; -webkit-appearance: none;
+  background: var(--surface-head);
+  color: var(--text-dim);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  padding: 11px 16px; text-align: left;
+  font-family: inherit; font-size: 15px; font-weight: 700;
+  letter-spacing: 0.05em;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
 }
 .view-menu-item:hover {
-  background: var(--surface-head); color: var(--text);
+  background: var(--info-soft);
+  color: var(--text);
+  border-color: var(--info);
 }
 .view-menu-item.active {
-  background: var(--info-soft); color: var(--info); font-weight: 700;
+  background: var(--info-soft);
+  color: var(--info);
+  border-color: var(--info);
+  font-weight: 800;
+}
+.view-menu-item:focus-visible {
+  outline: 2px solid var(--info); outline-offset: 1px;
 }
 .view-menu-divider {
-  height: 1px; background: var(--border-soft); margin: 4px 8px;
+  height: 1px; background: var(--border-soft); margin: 4px 6px;
 }
 .view-menu-clear {
-  font-size: 11px; color: var(--text-faint); font-style: italic;
+  background: transparent; color: var(--clock); font-style: italic;
+  border: 1px dashed var(--border);
 }
-.view-menu-clear:hover { color: var(--clock); font-style: normal; }
+.view-menu-clear:hover {
+  background: var(--gold-soft); color: var(--clock);
+  border-color: var(--clock); font-style: normal;
+}
+.view-menu-dev {
+  background: transparent; color: var(--bad);
+  border: 1px dashed var(--bad-soft);
+}
+.view-menu-dev:hover {
+  background: var(--bad-soft); color: var(--bad);
+  border-color: var(--bad);
+}
 
 /* Auto-promotion banner — appears when manual view is set but a game
  * event wants to switch (ChampSelect / InProgress). */
@@ -3576,6 +3659,72 @@ footer .prefs-chip:hover { background: var(--bad-soft); color: var(--bad); }
 .lobby-status.found     { color: var(--good); font-weight: 700; }
 .lobby-status.err       { color: var(--bad); }
 @keyframes lobbyPulse { from { opacity: 0.55; } to { opacity: 1; } }
+
+/* Change-queue dropdown (leader only). Theme-matched select. */
+.lobby-queue-select {
+  appearance: none; -webkit-appearance: none;
+  background: var(--surface-alt); color: var(--text);
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 5px 14px; font-size: 13px; cursor: pointer;
+  font-family: inherit; font-weight: 600;
+}
+.lobby-queue-select:hover { border-color: var(--clock); }
+
+/* Lobby member list — full-width row of party-member cards under the
+ * action row. Scaffolded; data feed is a follow-up (Game-PC LCU
+ * agent forwarding lcu.lobby.members[]). */
+.lobby-members {
+  width: 100%;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+}
+.lobby-members-head {
+  font-size: 12px; font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--label);
+  margin-bottom: 8px;
+  display: flex; align-items: baseline; gap: 8px;
+}
+.lobby-members-count {
+  font-size: 12px; color: var(--clock); font-weight: 700;
+  margin-left: 6px;
+}
+.lobby-members-list {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+.lobby-member-row {
+  background: var(--surface-head); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.lobby-member-row.is-self { border-color: var(--info); }
+.lobby-member-row.is-leader { border-color: var(--clock); }
+.lobby-member-name {
+  font-size: 14px; font-weight: 700; color: var(--text);
+  display: flex; align-items: center; gap: 6px;
+}
+.lobby-member-tag {
+  font-size: 9px; padding: 2px 6px; border-radius: 999px;
+  letter-spacing: 0.1em; font-weight: 800; text-transform: uppercase;
+}
+.lobby-member-tag.you    { background: var(--info-soft); color: var(--info); }
+.lobby-member-tag.leader { background: var(--gold-soft); color: var(--clock); }
+.lobby-member-meta {
+  font-size: 11px; color: var(--text-faint); letter-spacing: 0.04em;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.lobby-member-stat {
+  font-size: 11px; color: var(--text-dim);
+  background: var(--surface-alt); padding: 2px 7px; border-radius: 4px;
+}
+.lobby-member-link {
+  font-size: 11px; color: var(--info); text-decoration: none;
+  margin-left: auto;
+}
+.lobby-member-link:hover { text-decoration: underline; color: var(--clock); }
 .cs-card {
   width: min(1400px, 96vw);
   display: flex; flex-direction: column; gap: 18px;
