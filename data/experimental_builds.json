@@ -156,5 +156,31 @@
       "created_at": 1777222084.7241879,
       "validated": false
     }
+  },
+  "Jinx": {
+    "current": {
+      "label": "Pure AS On-Hit",
+      "rationale": "Stack capped attack speed and on-hit damage. Guinsoo doubles every other AA, Terminus + Wit's End add hybrid magic-on-hit, Kraken's every-third empowers cap the burst. BoRK closes for sustain + slow. Range fall-off less punishing in ARAM than SR.",
+      "runes": {
+        "keystone": "Lethal Tempo",
+        "primary": "Precision",
+        "secondary": "Sorcery"
+      },
+      "summoners": [
+        4,
+        32
+      ],
+      "items": [
+        "Berserker's Greaves",
+        "Guinsoo's Rageblade",
+        "Kraken Slayer",
+        "Terminus",
+        "Wit's End",
+        "Blade of The Ruined King"
+      ],
+      "iteration": 1,
+      "raw": "Seeded by user 2026-04-26 — pure AS on-hit Jinx ARAM experimental"
+    },
+    "history": []
   }
 }
