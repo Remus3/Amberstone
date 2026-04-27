@@ -481,6 +481,103 @@ def _read_json(rel: str) -> dict:
     return {}
 
 
+def _build_home_summary() -> dict:
+    """Aggregate read-only data for the dashboard home view.
+
+    Source of truth: data/match_history.db (live-captured per game,
+    today's matches present). rewind_history.db is NOT used here —
+    it's stale until the user runs a manual backfill pass.
+
+    Win/loss is not stored on rows — we surface grade (S-F) instead
+    as the per-game performance signal.
+    """
+    import sqlite3
+    from datetime import datetime, timedelta
+    out = {"today": {}, "recent": [], "this_week": [], "services": []}
+    db_path = _APP_DIR / "data" / "match_history.db"
+    if not db_path.exists():
+        out["error"] = "match_history.db missing"
+        return out
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    try:
+        # Recent 5 games (any mode)
+        cur = conn.execute(
+            "SELECT timestamp, mode, champion, grade, kda_str, "
+            "       game_time_s, kills, deaths, assists, label "
+            "FROM matches ORDER BY timestamp DESC LIMIT 5"
+        )
+        for ts, mode, champ, grade, kda, dur, k, d, a, label in cur:
+            out["recent"].append({
+                "timestamp": ts, "mode": mode, "champion": champ or "?",
+                "grade": grade or "—", "kda": kda or f"{k}/{d}/{a}",
+                "duration_s": int(dur or 0), "label": label or "",
+            })
+        # Today's session — group all rows whose timestamp date == today.
+        today = datetime.now().strftime("%Y-%m-%d")
+        rows = conn.execute(
+            "SELECT mode, champion, grade, kills, deaths, assists "
+            "FROM matches WHERE timestamp LIKE ? || '%'", (today,)
+        ).fetchall()
+        grades: dict[str, int] = {}
+        modes:  dict[str, int] = {}
+        tk = td = ta = 0
+        for mode, champ, g, k, d, a in rows:
+            grades[g or "—"] = grades.get(g or "—", 0) + 1
+            modes[mode or "?"] = modes.get(mode or "?", 0) + 1
+            tk += int(k or 0); td += int(d or 0); ta += int(a or 0)
+        out["today"] = {
+            "games": len(rows),
+            "grades": grades,
+            "modes": modes,
+            "total_kda": f"{tk}/{td}/{ta}",
+            "avg_kda": round((tk + ta) / max(td, 1), 2) if rows else 0.0,
+        }
+        # This week (last 7 days) — top 5 most-played champions.
+        week_cutoff = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+        cur = conn.execute(
+            "SELECT champion, mode, grade, kills, deaths, assists "
+            "FROM matches WHERE timestamp >= ? AND champion != ''",
+            (week_cutoff,)
+        )
+        champ_agg: dict[str, dict] = {}
+        for champ, mode, g, k, d, a in cur:
+            row = champ_agg.setdefault(champ, {
+                "games": 0, "k": 0, "d": 0, "a": 0,
+                "grades": [], "modes": set(),
+            })
+            row["games"] += 1
+            row["k"] += int(k or 0); row["d"] += int(d or 0); row["a"] += int(a or 0)
+            row["grades"].append(g or "—")
+            row["modes"].add(mode or "?")
+        ranked = sorted(champ_agg.items(), key=lambda kv: -kv[1]["games"])[:5]
+        for champ, r in ranked:
+            best = sorted(r["grades"], key=lambda x: "SABCDF—".index(x) if x in "SABCDF—" else 99)[0]
+            out["this_week"].append({
+                "champion": champ, "games": r["games"],
+                "avg_kda": round((r["k"] + r["a"]) / max(r["d"], 1), 2),
+                "best_grade": best,
+                "modes": sorted(r["modes"]),
+            })
+    finally:
+        conn.close()
+    # Services snapshot — RC + vision + dashboard self.
+    h = _read_json("ops/runtime/health.json")
+    out["services"].append({
+        "name": "RC", "ok": bool(h.get("alive")),
+        "detail": f"pid {h.get('pid','?')} · {h.get('mode','?')}",
+    })
+    # Vision server probe (loopback, fast)
+    try:
+        import urllib.request as _ur
+        with _ur.urlopen("http://127.0.0.1:8889/health", timeout=1) as r:
+            out["services"].append({
+                "name": "Vision", "ok": r.status == 200, "detail": "127.0.0.1:8889",
+            })
+    except Exception:
+        out["services"].append({"name": "Vision", "ok": False, "detail": "down"})
+    return out
+
+
 def _atomic_write_json(rel: str, data: dict) -> None:
     p = _APP_DIR / rel
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -3840,6 +3937,22 @@ class _Handler(BaseHTTPRequestHandler):
         elif self.path == "/api/health":
             payload = json.dumps(_read_json("ops/runtime/health.json")).encode("utf-8")
             self._send(200, payload, "application/json")
+        elif self.path == "/api/home/summary":
+            # Read-only aggregate for the dashboard's home/lobby view.
+            # Pulls from data/match_history.db (the freshest source —
+            # rewind_history.db is stale). Returns:
+            #   today: {games, grades, total_kda, modes}
+            #   recent: [{ts, mode, champion, grade, kda, duration_s}, ...]
+            #   this_week: [{champion, games, avg_kda, best_grade}, ...]
+            #   services: [{name, ok, detail}, ...]
+            try:
+                payload = _build_home_summary()
+                self._send(200, json.dumps(payload).encode("utf-8"),
+                           "application/json")
+            except Exception as exc:
+                _log.warning("api/home/summary: %s", exc)
+                self._send(500, json.dumps({"error": str(exc)}).encode(),
+                           "application/json")
         elif any(self.path == p or self.path.startswith(p + "?") or self.path.startswith(p + "/")
                  for p in _SUPERVISOR_PROXY_PATHS):
             # 2026-04-23: forward routes that only exist on the agents
