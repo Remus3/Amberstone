@@ -578,6 +578,243 @@ def _build_home_summary() -> dict:
     return out
 
 
+# ── Session / History / Loadouts / Diagnostics endpoints (2026-04-26) ──
+# Shared helper: groups match_history.db rows into sessions where each
+# session is a run of consecutive matches with no ≥SESSION_GAP_S gap
+# between them. Sessions span midnight; Riot client restarts (which
+# manifest as nothing in the DB) are NOT a boundary on their own —
+# only the gap rule decides.
+SESSION_GAP_S = 2 * 3600   # 2 hours
+def _load_match_rows(limit: int | None = None) -> list[dict]:
+    import sqlite3
+    db = _APP_DIR / "data" / "match_history.db"
+    if not db.exists():
+        return []
+    conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    try:
+        sql = ("SELECT timestamp, mode, champion, grade, kda_str, "
+               "       game_time_s, kills, deaths, assists, label "
+               "FROM matches ORDER BY timestamp DESC")
+        if limit:
+            sql += f" LIMIT {int(limit)}"
+        rows = []
+        for ts, mode, champ, grade, kda, dur, k, d, a, label in conn.execute(sql):
+            rows.append({
+                "timestamp": ts, "mode": mode or "?", "champion": champ or "?",
+                "grade": grade or "—", "kda": kda or f"{k}/{d}/{a}",
+                "duration_s": int(dur or 0),
+                "kills": int(k or 0), "deaths": int(d or 0), "assists": int(a or 0),
+                "label": label or "",
+            })
+        return rows
+    finally:
+        conn.close()
+
+
+def _ts_to_epoch(ts: str) -> int:
+    """match_history timestamps are 'YYYY-MM-DD HH:MM:SS' strings."""
+    from datetime import datetime
+    try:
+        return int(datetime.strptime(ts, "%Y-%m-%d %H:%M:%S").timestamp())
+    except Exception:
+        return 0
+
+
+def _group_sessions(rows: list[dict]) -> list[list[dict]]:
+    """Group descending-timestamp match rows into sessions.
+
+    Walks rows newest-first; closes a session when the gap to the
+    PREVIOUS (older-than-current-but-newer-in-our-iteration) match is
+    ≥SESSION_GAP_S, where the gap is measured from the older match's
+    end (timestamp + game_time_s) to the newer match's start.
+    """
+    sessions: list[list[dict]] = []
+    current: list[dict] = []
+    for row in rows:
+        if not current:
+            current.append(row); continue
+        prev = current[-1]  # newer than `row` since rows are DESC
+        # `row` is OLDER than `prev`. Gap = prev start - row end.
+        prev_start = _ts_to_epoch(prev["timestamp"])
+        row_end = _ts_to_epoch(row["timestamp"]) + (row["duration_s"] or 0)
+        gap = prev_start - row_end
+        if gap >= SESSION_GAP_S:
+            sessions.append(current)
+            current = [row]
+        else:
+            current.append(row)
+    if current:
+        sessions.append(current)
+    return sessions
+
+
+def _agg_session(rows: list[dict]) -> dict:
+    """Reduce a list of match rows into a session summary dict."""
+    if not rows:
+        return {}
+    grades, modes, champs = {}, {}, {}
+    tk = td = ta = 0
+    total_dur = 0
+    for r in rows:
+        grades[r["grade"]] = grades.get(r["grade"], 0) + 1
+        modes[r["mode"]]   = modes.get(r["mode"], 0) + 1
+        c = champs.setdefault(r["champion"], {"games": 0, "k": 0, "d": 0, "a": 0})
+        c["games"] += 1
+        c["k"] += r["kills"]; c["d"] += r["deaths"]; c["a"] += r["assists"]
+        tk += r["kills"]; td += r["deaths"]; ta += r["assists"]
+        total_dur += r["duration_s"]
+    champ_list = [
+        {"champion": ch, "games": v["games"],
+         "kda": f"{v['k']}/{v['d']}/{v['a']}"}
+        for ch, v in sorted(champs.items(), key=lambda kv: -kv[1]["games"])
+    ]
+    # rows[0] is newest (we kept DESC), rows[-1] is oldest
+    return {
+        "games": len(rows),
+        "started_at": rows[-1]["timestamp"],
+        "last_at":    rows[0]["timestamp"],
+        "time_played_s": total_dur,
+        "total_kda": f"{tk}/{td}/{ta}",
+        "avg_kda":  round((tk + ta) / max(td, 1), 2),
+        "grades": grades,
+        "modes":  modes,
+        "champions": champ_list,
+        "matches": rows,
+    }
+
+
+def _build_session_summary() -> dict:
+    rows = _load_match_rows(limit=200)
+    sessions = _group_sessions(rows)
+    if not sessions:
+        return {"games": 0, "window_label": "no matches"}
+    current = sessions[0]
+    summary = _agg_session(current)
+    summary["window_label"] = f"current session · {summary['started_at']} → {summary['last_at']}"
+    return summary
+
+
+def _build_history(scope: str) -> dict:
+    """List all sessions in scope. Scopes:
+        14d            — last 14 days
+        season         — current season (best-effort: last 90d)
+        prior_season   — 90 → 180d ago
+        all            — every match in match_history.db
+    """
+    from datetime import datetime, timedelta
+    now = datetime.now()
+    rows = _load_match_rows(limit=None)
+    if scope == "14d":
+        cutoff = (now - timedelta(days=14)).strftime("%Y-%m-%d %H:%M:%S")
+        rows = [r for r in rows if r["timestamp"] >= cutoff]
+    elif scope == "season":
+        cutoff = (now - timedelta(days=90)).strftime("%Y-%m-%d %H:%M:%S")
+        rows = [r for r in rows if r["timestamp"] >= cutoff]
+    elif scope == "prior_season":
+        old = (now - timedelta(days=180)).strftime("%Y-%m-%d %H:%M:%S")
+        new = (now - timedelta(days=90)).strftime("%Y-%m-%d %H:%M:%S")
+        rows = [r for r in rows if old <= r["timestamp"] < new]
+    sessions_groups = _group_sessions(rows)
+    sessions_out = []
+    for grp in sessions_groups:
+        s = _agg_session(grp)
+        date = (s.get("started_at") or "")[:10]
+        dur_min = (s["time_played_s"] // 60) if s.get("time_played_s") else 0
+        s["date"] = date
+        s["duration_label"] = f"{dur_min}m"
+        sessions_out.append(s)
+    # Season stats from rewind_history.db (full historical set)
+    season_stats = {}
+    try:
+        import sqlite3
+        rdb = _APP_DIR / "data" / "rewind_history.db"
+        if rdb.exists():
+            conn = sqlite3.connect(f"file:{rdb}?mode=ro", uri=True)
+            try:
+                row = conn.execute(
+                    "SELECT COUNT(*), AVG(CASE WHEN tracked_deaths > 0 "
+                    "  THEN (tracked_kills + tracked_assists) * 1.0 / tracked_deaths "
+                    "  ELSE tracked_kills + tracked_assists END), "
+                    "  (SELECT tracked_champion_name FROM matches "
+                    "   WHERE tracked_champion_name != '' "
+                    "   GROUP BY tracked_champion_name "
+                    "   ORDER BY COUNT(*) DESC LIMIT 1) "
+                    "FROM matches"
+                ).fetchone()
+                season_stats = {
+                    "total":     int(row[0] or 0),
+                    "avg_kda":   round(float(row[1] or 0), 2),
+                    "favorite":  row[2] or "—",
+                }
+            finally:
+                conn.close()
+    except Exception as exc:
+        _log.debug("history season stats: %s", exc)
+    return {"scope": scope, "sessions": sessions_out, "season_stats": season_stats}
+
+
+def _build_loadouts_all(mode: str) -> dict:
+    """Return all champions + their variants for a given mode."""
+    from coaches.loadout_resolver import list_variants, _load_loadouts
+    loadouts = _load_loadouts().get("champions", {}) or {}
+    out_champs = []
+    for champ_name in sorted(loadouts.keys()):
+        rows = list_variants(champ_name, mode)
+        if not rows:
+            continue
+        # Strip raw item_ids from this view — we just want labels.
+        slim = [{"key": r["key"], "label": r["label"], "is_default": r["is_default"],
+                 "keystone": r.get("keystone", "")} for r in rows]
+        out_champs.append({"champion": champ_name, "variants": slim})
+    return {"mode": mode, "champions": out_champs}
+
+
+def _build_diagnostics() -> dict:
+    """Connection status + log tail + health snapshot for the
+    Diagnostics view. Folds in the connection-check use case from
+    the dropped Current Match view."""
+    import os
+    out = {
+        "connections": [],
+        "log_tail": [],
+        "health": _read_json("ops/runtime/health.json"),
+        "live_metrics_enabled": os.environ.get("RC_LIVE_METRICS", "0") == "1",
+    }
+    h = out["health"]
+    out["connections"].append({
+        "name": "RC supervisor", "ok": bool(h.get("alive")),
+        "detail": f"pid {h.get('pid','?')} · mode {h.get('mode','?')} · reload_ok {h.get('last_reload_ok')}"
+    })
+    # Vision relay (loopback)
+    try:
+        import urllib.request as _ur
+        with _ur.urlopen("http://127.0.0.1:8889/health", timeout=1) as r:
+            out["connections"].append({"name": "Vision relay", "ok": r.status == 200,
+                                        "detail": "127.0.0.1:8889"})
+    except Exception as exc:
+        out["connections"].append({"name": "Vision relay", "ok": False,
+                                    "detail": f"down ({type(exc).__name__})"})
+    # Game-PC liveclient relay (LAN)
+    try:
+        import urllib.request as _ur
+        with _ur.urlopen("http://192.168.8.237:2999/liveclientdata/activeplayer", timeout=2) as r:
+            out["connections"].append({"name": "Live Client API (Game-PC)", "ok": r.status == 200,
+                                        "detail": "192.168.8.237:2999"})
+    except Exception as exc:
+        out["connections"].append({"name": "Live Client API (Game-PC)", "ok": False,
+                                    "detail": f"unreachable ({type(exc).__name__}) — normal if no game"})
+    # Tail today's log
+    try:
+        from datetime import datetime
+        log_path = _APP_DIR / "logs" / f"{datetime.now().strftime('%Y-%m-%d')}.log"
+        if log_path.exists():
+            content = log_path.read_text(encoding="utf-8", errors="replace")
+            out["log_tail"] = content.splitlines()[-40:]
+    except Exception as exc:
+        _log.debug("diag log tail: %s", exc)
+    return out
+
+
 def _atomic_write_json(rel: str, data: dict) -> None:
     p = _APP_DIR / rel
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -3937,6 +4174,40 @@ class _Handler(BaseHTTPRequestHandler):
         elif self.path == "/api/health":
             payload = json.dumps(_read_json("ops/runtime/health.json")).encode("utf-8")
             self._send(200, payload, "application/json")
+        elif self.path == "/api/session/summary":
+            try:
+                self._send(200, json.dumps(_build_session_summary()).encode(),
+                           "application/json")
+            except Exception as exc:
+                _log.warning("api/session/summary: %s", exc)
+                self._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+        elif self.path.startswith("/api/history"):
+            try:
+                from urllib.parse import urlparse, parse_qs
+                qs = parse_qs(urlparse(self.path).query)
+                scope = (qs.get("scope") or ["14d"])[0]
+                self._send(200, json.dumps(_build_history(scope)).encode(),
+                           "application/json")
+            except Exception as exc:
+                _log.warning("api/history: %s", exc)
+                self._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+        elif self.path.startswith("/api/loadouts/all"):
+            try:
+                from urllib.parse import urlparse, parse_qs
+                qs = parse_qs(urlparse(self.path).query)
+                mode = (qs.get("mode") or ["aram"])[0]
+                self._send(200, json.dumps(_build_loadouts_all(mode)).encode(),
+                           "application/json")
+            except Exception as exc:
+                _log.warning("api/loadouts/all: %s", exc)
+                self._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+        elif self.path == "/api/diagnostics":
+            try:
+                self._send(200, json.dumps(_build_diagnostics()).encode(),
+                           "application/json")
+            except Exception as exc:
+                _log.warning("api/diagnostics: %s", exc)
+                self._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
         elif self.path == "/api/home/summary":
             # Read-only aggregate for the dashboard's home/lobby view.
             # Pulls from data/match_history.db (the freshest source —
