@@ -655,24 +655,96 @@ footer .digest-icon.in-footer b {
 /* When a non-default view is active, hide the 5 main panels + the
  * inline overlays that are mode-specific. Lobby/Home overlays show
  * via their own logic. */
+body[data-view="lobby"] main,
 body[data-view="session"] main,
 body[data-view="history"] main,
 body[data-view="loadouts"] main,
 body[data-view="settings"] main,
 body[data-view="diagnostics"] main { display: none; }
+body[data-view="lobby"]        #view-lobby,
 body[data-view="session"]      #view-session,
 body[data-view="history"]      #view-history,
 body[data-view="loadouts"]     #view-loadouts,
 body[data-view="settings"]     #view-settings,
 body[data-view="diagnostics"]  #view-diagnostics { display: block; }
-/* Hide home + lobby overlays when a non-default view is active. */
+/* Hide home + lobby overlays when a non-default view is active.
+ * In lobby view specifically, the inline #lobby-overlay strip is
+ * suppressed since its content moved into #view-lobby. */
 body[data-view="session"]      #home-overlay,
 body[data-view="history"]      #home-overlay,
 body[data-view="loadouts"]     #home-overlay,
 body[data-view="settings"]     #home-overlay,
 body[data-view="diagnostics"]  #home-overlay,
 body[data-view="last-match"]   #home-overlay,
-body[data-view="lobby"]        #home-overlay { display: none; }
+body[data-view="lobby"]        #home-overlay,
+body[data-view="lobby"]        #lobby-overlay { display: none; }
+
+/* Lobby view layout (2026-04-26 v2): replaces the post-match-duped
+ * 5-panel grid with a 2x2 lobby-themed grid. Queue card spans 1 col,
+ * party card 1 col, tips + recent below. Wraps to 1-col at smaller
+ * widths. */
+.lobby-view-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+}
+.lobby-view-card {
+  background: var(--surface-head); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  min-height: 160px;
+  display: flex; flex-direction: column;
+}
+.lobby-view-card-head {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--label);
+  margin-bottom: 10px; border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 6px;
+  display: flex; align-items: baseline; gap: 8px;
+}
+.lobby-view-queue-block {
+  display: flex; flex-direction: column; gap: 12px; flex: 1;
+}
+.lobby-view-queue-name {
+  font-size: 22px; font-weight: 900; letter-spacing: 0.1em;
+  color: var(--info); text-transform: uppercase;
+}
+.lobby-view-queue-meta {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.lobby-view-party-pill {
+  font-size: 13px; color: var(--text-dim); letter-spacing: 0.04em;
+  padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface-alt);
+}
+.lobby-view-leader-tag {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.16em;
+  color: var(--clock); padding: 3px 9px;
+  background: var(--gold-soft); border-radius: 999px;
+}
+.lobby-view-actions {
+  display: flex; gap: 10px; align-items: center;
+}
+.lobby-view-tips {
+  font-size: 13px; color: var(--text-dim); line-height: 1.5;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.lobby-view-tips .tip-row {
+  background: var(--surface-alt); border-radius: 4px;
+  padding: 6px 10px;
+}
+.lobby-view-recent-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.lobby-view-recent-list .lv-recent-row {
+  display: grid; grid-template-columns: 32px 1fr 70px 60px;
+  align-items: center; gap: 8px; font-size: 12px;
+  background: var(--surface-alt); border-radius: 4px;
+  padding: 5px 8px;
+}
+.lobby-view-recent-list .lv-recent-grade {
+  font-weight: 900; font-size: 13px; text-align: center;
+  padding: 1px 0; border-radius: 3px;
+}
 
 /* Session view layout */
 .session-grid {
