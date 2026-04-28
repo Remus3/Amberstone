@@ -417,7 +417,12 @@ def _load_lane_matchup_note(enemy_adc: str) -> str:
 
 def _build_user_prompt(gs: dict, wave_state: str) -> str:
     """Build a rich context prompt from the full game_reader state dict."""
-    game_time  = gs.get("game_time", "0:00")
+    # AUDIT 2026-04-28 (deferred-low-value): defense-in-depth sanitizer
+    # for external-string fields. LCU + DDragon are trusted today; the
+    # cleaner is a hedge against a future MITM / mirror swap that could
+    # smuggle injection text through champion/item/summoner names.
+    from core.prompt_sanitize import clean as _ps_clean, clean_iter as _ps_iter
+    game_time  = _ps_clean(gs.get("game_time", "0:00"), max_len=12)
     game_s     = gs.get("game_seconds", 0)
     phase      = "early" if game_s < 600 else "mid" if game_s < 1500 else "late"
     hp_pct     = gs.get("hp_pct", 100)
@@ -428,31 +433,31 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
     cs         = gs.get("cs", 0)
     cs_pm      = gs.get("cs_per_min", 0)
     level      = gs.get("level", 1)
-    kda        = gs.get("kda", "0/0/0")
-    items      = ", ".join(gs.get("items", [])) or "none"
-    summ_d     = gs.get("summoner_d", "?")
-    summ_f     = gs.get("summoner_f", "?")
-    allies     = ", ".join(gs.get("ally_comp", [])) or "unknown"
-    enemies    = ", ".join(gs.get("enemy_comp", [])) or "unknown"
-    enemy_locs = gs.get("enemy_locs", "unknown")
-    objectives = gs.get("objectives", "none")
+    kda        = _ps_clean(gs.get("kda", "0/0/0"), max_len=24)
+    items      = ", ".join(_ps_iter(gs.get("items", []))) or "none"
+    summ_d     = _ps_clean(gs.get("summoner_d", "?"), max_len=24)
+    summ_f     = _ps_clean(gs.get("summoner_f", "?"), max_len=24)
+    allies     = ", ".join(_ps_iter(gs.get("ally_comp", []))) or "unknown"
+    enemies    = ", ".join(_ps_iter(gs.get("enemy_comp", []))) or "unknown"
+    enemy_locs = _ps_clean(gs.get("enemy_locs", "unknown"))
+    objectives = _ps_clean(gs.get("objectives", "none"))
     walk_drake = gs.get("walk_time_drake")
     walk_baron = gs.get("walk_time_baron")
-    camp_hint  = gs.get("camp_hint", "")
-    ally_status = gs.get("ally_status_str", allies)
-    dead_info  = gs.get("dead_respawn_str", "")
-    next_spike = gs.get("next_item_str", "")
+    camp_hint  = _ps_clean(gs.get("camp_hint", ""))
+    ally_status = _ps_clean(gs.get("ally_status_str", allies))
+    dead_info  = _ps_clean(gs.get("dead_respawn_str", ""))
+    next_spike = _ps_clean(gs.get("next_item_str", ""))
     ally_kills = gs.get("ally_kills_total", 0)
     enemy_kills = gs.get("enemy_kills_total", 0)
     kill_diff   = ally_kills - enemy_kills
     kill_str    = (f"+{kill_diff}" if kill_diff > 0 else str(kill_diff)) + f" ({ally_kills}v{enemy_kills})"
 
-    gank_threat   = gs.get("gank_threat", "")
-    friendly_jg   = gs.get("friendly_jg", "")
-    position_note = gs.get("position_note", "")
-    ward_hint     = gs.get("ward_hint", "")
-    enemy_lane    = gs.get("enemy_lane_str", "")
-    game_mode     = gs.get("game_mode", "CLASSIC")
+    gank_threat   = _ps_clean(gs.get("gank_threat", ""))
+    friendly_jg   = _ps_clean(gs.get("friendly_jg", ""))
+    position_note = _ps_clean(gs.get("position_note", ""))
+    ward_hint     = _ps_clean(gs.get("ward_hint", ""))
+    enemy_lane    = _ps_clean(gs.get("enemy_lane_str", ""))
+    game_mode     = _ps_clean(gs.get("game_mode", "CLASSIC"), max_len=32)
     is_aram       = "ARAM" in game_mode
 
     walk_str = ""

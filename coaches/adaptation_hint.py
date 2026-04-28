@@ -34,7 +34,7 @@ logger = logging.getLogger("coaches.adaptation_hint")
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DB_DIR = _PROJECT_ROOT / "data" / "db"
 
-SUPPORTED_MODES = ("sr_draft", "sr_ranked", "aram", "arena", "brawl")
+from lib.modes import PHASE3_MODES as SUPPORTED_MODES
 
 # How many top counter-matchups to surface.
 _DEFAULT_TOP_COUNTERS = 3

@@ -672,8 +672,9 @@ for comp_name, corrections in UNIT_LIST_CORRECTIONS.items():
         comps[comp_name][field] = value
         changes.append(f"Fixed {comp_name}.{field}: {len(old) if old else 0} → {len(value)} units")
 
-# Write back
-META.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
+# Write back — AUDIT 2026-04-28 (deferred-low-value): atomic write.
+from core.polled_json import atomic_write_json as _atomic_write_json
+_atomic_write_json(META, meta)
 print(f"Done. {len(changes)} changes applied:")
 for c in changes:
     print(f"  - {c}")

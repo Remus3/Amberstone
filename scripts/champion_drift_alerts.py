@@ -154,13 +154,11 @@ def main() -> int:
 
     if not args.no_write:
         try:
-            args.out.parent.mkdir(parents=True, exist_ok=True)
-            args.out.write_text(
-                json.dumps({"alerts": alerts,
-                            "generated_at": datetime.now().isoformat()},
-                           indent=2),
-                encoding="utf-8",
-            )
+            from core.polled_json import atomic_write_json
+            atomic_write_json(args.out, {
+                "alerts": alerts,
+                "generated_at": datetime.now().isoformat(),
+            })
         except Exception as exc:
             print(f"warning: write {args.out}: {exc}", file=sys.stderr)
     return 0
