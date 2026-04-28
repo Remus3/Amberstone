@@ -111,13 +111,16 @@
             const op = (e.op || "").slice(0, 34);
             // Op-type glyph prefix for fast pattern-match of recent events.
             const glyph = _opGlyph(e.op);
-            span.innerHTML =
-              `<span class="ev-glyph">${glyph}</span>` +
-              `<span class="ev-ts">${ts}</span>` +
-              `<span class="ev-op"></span>` +
-              `<span class="ev-kind"></span>`;
-            span.children[2].textContent = op;
-            span.children[3].textContent = e.event || "";
+            // AUDIT 2026-04-28 (P-audit4-m04): build the row with
+            // createElement + textContent so a future event payload that
+            // overrides ts/op/event with HTML can't inject markup. The
+            // dashboard runs in an unsandboxed kiosk-mode Edge — any XSS
+            // here can same-origin call /api/* on the supervisor.
+            const g = document.createElement("span"); g.className = "ev-glyph"; g.textContent = glyph;
+            const t = document.createElement("span"); t.className = "ev-ts";    t.textContent = ts;
+            const o = document.createElement("span"); o.className = "ev-op";    o.textContent = op;
+            const k = document.createElement("span"); k.className = "ev-kind";  k.textContent = e.event || "";
+            span.append(g, t, o, k);
             span.title = `agent${e.owner_agent || "?"} · ${e.task_id} · click for detail`;
             span.dataset.taskId = e.task_id || "";
             // Round 41: expose op as data attr so CSS can pink-tag advisories.

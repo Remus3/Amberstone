@@ -97,6 +97,11 @@ class HttpClient:
         self._blocklist_path = blocklist_path
         self._blocklist_hosts: set[str] = set()
         self._blocklist_suffixes: tuple[str, ...] = ()
+        # AUDIT 2026-04-28 (P-audit4-l03): track mtime so is_blocked()
+        # auto-reloads when Agent 6 edits the file mid-process. Removes
+        # the manual `client.reload_blocklist()` step that used to be
+        # required after every blocklist edit.
+        self._blocklist_mtime: float = 0.0
         self._hosts: dict[str, _HostState] = {}
         self._hosts_lock = threading.Lock()
         self._reload_blocklist()
@@ -104,22 +109,47 @@ class HttpClient:
     # ----- blocklist -------------------------------------------------
     def _reload_blocklist(self) -> None:
         try:
-            data = _json.loads(self._blocklist_path.read_text(encoding="utf-8"))
+            stat = self._blocklist_path.stat()
         except FileNotFoundError:
             logger.warning("blocklist missing at %s — allowing all", self._blocklist_path)
             self._blocklist_hosts = set()
             self._blocklist_suffixes = ()
+            self._blocklist_mtime = 0.0
+            return
+        try:
+            data = _json.loads(self._blocklist_path.read_text(encoding="utf-8"))
+        except (OSError, _json.JSONDecodeError, UnicodeDecodeError) as e:
+            logger.warning("blocklist parse failed (%s): %s — allowing all",
+                           self._blocklist_path, e)
+            self._blocklist_hosts = set()
+            self._blocklist_suffixes = ()
+            self._blocklist_mtime = stat.st_mtime
             return
         hosts = data.get("hostnames") or []
         suffixes = data.get("suffixes") or []
         self._blocklist_hosts = {h.lower() for h in hosts}
         self._blocklist_suffixes = tuple(s.lower() for s in suffixes)
+        self._blocklist_mtime = stat.st_mtime
+
+    def _maybe_reload_blocklist(self) -> None:
+        """Cheap mtime check on each is_blocked() call. One stat syscall;
+        only re-parses when the file actually changed."""
+        try:
+            mtime = self._blocklist_path.stat().st_mtime
+        except FileNotFoundError:
+            if self._blocklist_mtime != 0.0:
+                self._reload_blocklist()
+            return
+        if mtime != self._blocklist_mtime:
+            self._reload_blocklist()
 
     def reload_blocklist(self) -> None:
-        """Agent 6 calls this after editing blocklist.json."""
+        """Manual reload — kept for callers that want to force a refresh
+        without waiting for the next is_blocked() to notice."""
         self._reload_blocklist()
 
     def is_blocked(self, url: str) -> bool:
+        self._maybe_reload_blocklist()
         host = (urlparse(url).hostname or "").lower()
         if not host:
             return True
