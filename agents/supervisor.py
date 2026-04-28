@@ -37,6 +37,7 @@ import json
 import logging
 import logging.handlers
 import os
+import re
 import shutil
 import signal
 import socket
@@ -153,6 +154,27 @@ _DETERMINISTIC_RECORDKEEPING_OPS = frozenset({
 
 def _iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+# AUDIT 2026-04-28 (P-audit4-m03): patterns for secret-shaped substrings
+# that should never land in a per-task log. Conservative — false positives
+# are fine, missing a real key is not.
+_SECRET_PATTERNS = (
+    re.compile(r"sk-ant-[A-Za-z0-9_\-]{20,}"),
+    re.compile(r"(?i)ANTHROPIC_API_KEY\s*[:=]\s*\S+"),
+    re.compile(r"(?i)api[_\-]?key[\"'\s:=]+[A-Za-z0-9_\-]{20,}"),
+    re.compile(r"(?i)bearer\s+[A-Za-z0-9_\-]{20,}"),
+)
+
+
+def _redact_secrets(s: str) -> str:
+    """Replace secret-shaped substrings with [REDACTED-SECRET]. Idempotent.
+    Empty/non-str inputs pass through untouched."""
+    if not isinstance(s, str) or not s:
+        return s or ""
+    for p in _SECRET_PATTERNS:
+        s = p.sub("[REDACTED-SECRET]", s)
+    return s
 
 
 def _build_logger() -> logging.Logger:
@@ -1408,6 +1430,11 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
 
     # Mirror the full exchange into a per-task log file so the report can
     # be inspected without tail-chasing the rolling agent log.
+    # AUDIT 2026-04-28 (P-audit4-m03): redact secret-shaped strings before
+    # write. The supervisor injects ANTHROPIC_API_KEY into the spawn env;
+    # an agent that introspects os.environ (or a traceback that exposes
+    # KeyError on the var) would otherwise leak the key into a file on
+    # disk readable by anyone with shell access.
     try:
         per_task_log.write_text(
             f"=== task {task_id} agent{agent} op={op} ===\n"
@@ -1417,8 +1444,8 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
             f"timeout_sec: {timeout}\n"
             f"elapsed_sec: {elapsed:.1f}\n"
             f"exit_code: {proc.returncode}\n\n"
-            f"--- stdout ---\n{proc.stdout}\n\n"
-            f"--- stderr ---\n{proc.stderr}\n",
+            f"--- stdout ---\n{_redact_secrets(proc.stdout)}\n\n"
+            f"--- stderr ---\n{_redact_secrets(proc.stderr)}\n",
             encoding="utf-8",
         )
     except OSError as e:

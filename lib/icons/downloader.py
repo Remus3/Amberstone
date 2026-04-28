@@ -33,6 +33,31 @@ def _atomic_write_bytes(path: Path, data: bytes) -> None:
     os.replace(tmp, path)
 
 
+def _safe_basename(img: str) -> str | None:
+    """AUDIT 2026-04-28 (P-audit4-m01): defense-in-depth for DDragon icon
+    filenames. A future Riot CDN regression — or an attacker who
+    successfully MITMs DDragon (TLS bypass) — could return ``image.full``
+    of ``../../../etc/x.png``. We accept ONLY a plain basename: no path
+    separators, no leading dot, no drive letter.
+
+    Returns the validated basename, or None to reject."""
+    if not img or not isinstance(img, str):
+        return None
+    if "/" in img or "\\" in img:
+        return None
+    if img in (".", "..") or img.startswith(".") or img.startswith("..."):
+        return None
+    # Strip control chars + null bytes; reject if anything was stripped.
+    cleaned = "".join(ch for ch in img if ch.isprintable() and ch != "\x00")
+    if cleaned != img:
+        return None
+    # Final sanity: basename must equal input (catches ":" device paths
+    # like "C:foo" on Windows that os.path treats as having a drive).
+    if os.path.basename(img) != img:
+        return None
+    return img
+
+
 class IconDownloader:
     def __init__(self, version: str | None = None) -> None:
         self._client = get_client()
@@ -64,10 +89,13 @@ class IconDownloader:
         n = 0
         for key, meta in data.get("data", {}).items():
             img = (meta.get("image") or {}).get("full")
-            if not img:
+            bn = _safe_basename(img) if img else None
+            if not bn:
+                if img:
+                    logger.warning("rejecting suspicious champion icon name %r for %s", img, key)
                 continue
-            url = f"{DDRAGON_CDN}/{self._version}/img/champion/{img}"
-            if self._download(url, out / img, force):
+            url = f"{DDRAGON_CDN}/{self._version}/img/champion/{bn}"
+            if self._download(url, out / bn, force):
                 n += 1
         return n
 
@@ -78,10 +106,13 @@ class IconDownloader:
         n = 0
         for key, meta in data.get("data", {}).items():
             img = (meta.get("image") or {}).get("full")
-            if not img:
+            bn = _safe_basename(img) if img else None
+            if not bn:
+                if img:
+                    logger.warning("rejecting suspicious spell icon name %r for %s", img, key)
                 continue
-            url = f"{DDRAGON_CDN}/{self._version}/img/spell/{img}"
-            if self._download(url, out / img, force):
+            url = f"{DDRAGON_CDN}/{self._version}/img/spell/{bn}"
+            if self._download(url, out / bn, force):
                 n += 1
         return n
 
@@ -92,10 +123,13 @@ class IconDownloader:
         n = 0
         for item_id, meta in data.get("data", {}).items():
             img = (meta.get("image") or {}).get("full")
-            if not img:
+            bn = _safe_basename(img) if img else None
+            if not bn:
+                if img:
+                    logger.warning("rejecting suspicious item icon name %r for %s", img, item_id)
                 continue
-            url = f"{DDRAGON_CDN}/{self._version}/img/item/{img}"
-            if self._download(url, out / img, force):
+            url = f"{DDRAGON_CDN}/{self._version}/img/item/{bn}"
+            if self._download(url, out / bn, force):
                 n += 1
         return n
 
