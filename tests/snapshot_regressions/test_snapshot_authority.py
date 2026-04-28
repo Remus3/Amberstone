@@ -314,13 +314,18 @@ class TestDerivedCompatibilitySurfaces(unittest.TestCase):
         self.assertEqual(s.champion, "Jinx")
 
     def test_rift_raw_state_is_input_dict(self):
-        """RiftSnapshot.raw_state is the same dict passed to from_state_dict."""
+        """RiftSnapshot.raw_state mirrors the dict passed to from_state_dict.
+        Audit 2026-04-28 (deferred-frozen): producer-side defensive copy
+        means raw_state is now value-equal but not identity-equal — that
+        is the safety contract."""
         s = RiftSnapshot.from_state_dict(SR_STATE)
-        self.assertIs(s.raw_state, SR_STATE)
+        self.assertEqual(s.raw_state, SR_STATE)
+        self.assertIsNot(s.raw_state, SR_STATE)
 
     def test_aram_raw_state_is_input_dict(self):
         s = AramSnapshot.from_state_dict(ARAM_STATE)
-        self.assertIs(s.raw_state, ARAM_STATE)
+        self.assertEqual(s.raw_state, ARAM_STATE)
+        self.assertIsNot(s.raw_state, ARAM_STATE)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -393,7 +398,8 @@ class TestNonTftRawDictFallbackClosure(unittest.TestCase):
             s = RiftSnapshot.emergency_raw_state_only(SR_STATE)
             self.assertIsNotNone(s)
             self.assertIsInstance(s, RiftSnapshot)
-            self.assertIs(s.raw_state, SR_STATE)
+            # Audit 2026-04-28 (deferred-frozen): value-equal, not identity
+            self.assertEqual(s.raw_state, SR_STATE)
         finally:
             RiftSnapshot.__init__ = orig_init
 
@@ -417,17 +423,18 @@ class TestNonTftRawDictFallbackClosure(unittest.TestCase):
             AramSnapshot.from_state_dict = staticmethod(orig)
 
     def test_rift_emergency_raw_state_only(self):
-        """emergency_raw_state_only produces a valid RiftSnapshot with raw_state."""
+        """emergency_raw_state_only produces a valid RiftSnapshot with raw_state.
+        Audit 2026-04-28 (deferred-frozen): value-equal, not identity."""
         s = RiftSnapshot.emergency_raw_state_only(SR_STATE)
         self.assertIsNotNone(s)
         self.assertIsInstance(s, RiftSnapshot)
-        self.assertIs(s.raw_state, SR_STATE)
+        self.assertEqual(s.raw_state, SR_STATE)
 
     def test_aram_emergency_raw_state_only(self):
         s = AramSnapshot.emergency_raw_state_only(ARAM_STATE)
         self.assertIsNotNone(s)
         self.assertIsInstance(s, AramSnapshot)
-        self.assertIs(s.raw_state, ARAM_STATE)
+        self.assertEqual(s.raw_state, ARAM_STATE)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

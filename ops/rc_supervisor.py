@@ -1180,15 +1180,21 @@ class Supervisor:
                         self.log("circuit breaker reset via flag file")
 
                     # â”€â”€ Process requests and deploys â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                    # AUDIT-PHASE-2-OPS-001: restart_trigger.txt watcher
+                    # AUDIT-PHASE-2-OPS-001: restart_trigger.txt watcher.
+                    # AUDIT 2026-04-28 (deferred-frozen): clear via
+                    # tmp+rename so a writer racing the clear can't see
+                    # the file mid-truncate. Pairs with the atomic-write
+                    # helper used by writers (proposal 4.3).
                     try:
                         _tf = self.project_root / "restart_trigger.txt"
                         if _tf.exists() and _tf.stat().st_size > 0:
-                            _tf.write_text("", encoding="utf-8")
+                            _tf_tmp = _tf.with_suffix(".clear.tmp")
+                            _tf_tmp.write_text("", encoding="utf-8")
+                            os.replace(_tf_tmp, _tf)
                             self.log("restart_trigger.txt detected -- restarting")
                             self.restart_app(reason="restart_trigger")
-                    except Exception:
-                        pass
+                    except (OSError, ValueError) as exc:
+                        self.log(f"restart_trigger watcher: {exc}")
                     self.process_deploy_requests()
                     self.process_supervisor_requests()
                     self.write_status()

@@ -96,7 +96,8 @@ class MoonProxy:
             if _cached is not None:
                 log.debug("Moon vision dedupe hit (%s…)", _key[7:15])
                 return _cached
-        except Exception:
+        # AUDIT 2026-04-28 (deferred-frozen): narrowed from bare Exception.
+        except (ImportError, AttributeError, TypeError, OSError, ValueError):
             _key = ""
         try:
             payload = json.dumps({
@@ -116,7 +117,7 @@ class MoonProxy:
                     try:
                         from core.cost_tracker import get_tracker as _gt
                         _gt().vision_dedupe_put(_key, result, ttl_s=2.0)
-                    except Exception:
+                    except (OSError, TypeError, AttributeError):
                         pass
                 return result
             log.warning("Moon vision error: %s", resp.get("error"))
@@ -126,7 +127,10 @@ class MoonProxy:
             log.debug("Moon vision network: %s", e)
             self._mark_failed()
             return None
-        except Exception as e:
+        # AUDIT 2026-04-28 (deferred-frozen): narrowed from bare Exception
+        # so SystemExit/KeyboardInterrupt propagate during shutdown.
+        except (OSError, TimeoutError, json.JSONDecodeError,
+                UnicodeDecodeError, ValueError) as e:
             log.warning("Moon vision exception: %s", e)
             self._mark_failed()
             return None
@@ -159,7 +163,9 @@ class MoonProxy:
             log.debug("Moon coach network: %s", e)
             self._mark_failed()
             return None
-        except Exception as e:
+        # AUDIT 2026-04-28 (deferred-frozen): narrowed from bare Exception.
+        except (OSError, TimeoutError, json.JSONDecodeError,
+                UnicodeDecodeError, ValueError) as e:
             log.warning("Moon coach exception: %s", e)
             self._mark_failed()
             return None
@@ -181,7 +187,9 @@ class MoonProxy:
             if resp.get("ok"):
                 return resp.get("result")
             return None
-        except Exception as e:
+        # AUDIT 2026-04-28 (deferred-frozen): narrowed from bare Exception.
+        except (urllib.error.URLError, OSError, TimeoutError,
+                json.JSONDecodeError, UnicodeDecodeError, ValueError) as e:
             log.debug("Moon OCR: %s", e)
             return None
 

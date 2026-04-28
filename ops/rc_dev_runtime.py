@@ -610,12 +610,22 @@ class DevRuntime:
             }
         except subprocess.TimeoutExpired:
             return {"ok": False, "error": f"timeout after {timeout}s"}
-        except Exception as exc:
+        # AUDIT 2026-04-28 (deferred-frozen): narrowed from bare Exception.
+        except (OSError, FileNotFoundError, ValueError, UnicodeDecodeError) as exc:
             return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
 
     def _start_process(
-        self, exe: str, args: list, cwd: str
+        self, exe: str, args: list, cwd: str,
+        verify_alive_s: float = 0.5,
     ) -> Dict[str, Any]:
+        """Spawn a fire-and-forget child process. Briefly polls the child
+        after launch so an immediate exec failure (e.g. exe missing args)
+        surfaces as an error instead of a phantom successful spawn.
+
+        AUDIT 2026-04-28 (deferred-frozen): the prior Popen with no
+        post-launch verification let "ok=true, pid=…" return for a process
+        that immediately died. The verify window is intentionally short
+        (default 500 ms) so this stays a spawner, not a wait()."""
         if not exe:
             return {"ok": False, "error": "empty exe"}
         try:
@@ -627,6 +637,19 @@ class DevRuntime:
                 stderr=subprocess.DEVNULL,
                 creationflags=flags,
             )
-            return {"ok": True, "pid": proc.pid}
-        except Exception as exc:
+        except (OSError, FileNotFoundError, ValueError) as exc:
             return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+        # Brief liveness check: if the child died inside verify_alive_s,
+        # report exit_code rather than "ok".
+        try:
+            if verify_alive_s > 0:
+                rc = proc.wait(timeout=verify_alive_s)
+                return {"ok": False, "pid": proc.pid,
+                        "error": f"process exited immediately (rc={rc})"}
+        except subprocess.TimeoutExpired:
+            # Still alive — fire-and-forget success path.
+            return {"ok": True, "pid": proc.pid}
+        except OSError as exc:
+            return {"ok": False, "pid": proc.pid,
+                    "error": f"{type(exc).__name__}: {exc}"}
+        return {"ok": True, "pid": proc.pid}

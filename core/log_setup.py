@@ -7,6 +7,13 @@ Centralised logging configuration for Riot Commander.
 - One log file per session named by date: logs/YYYY-MM-DD.log
 - Console output only in debug mode (pythonw.exe has no console)
 - Safe under pythonw.exe (sys.stderr may be None)
+
+AUDIT 2026-04-28 (deferred-frozen): the RotatingFileHandler is size-only.
+A long-lived RC that crosses midnight kept writing into yesterday's
+date-stamped file. The DailyRotatingFileHandler subclass below adds the
+time component on top: if the calendar day changes between emits, it
+closes the current handle and opens today's file. Size rotation still
+works inside a single day.
 """
 
 import os
@@ -15,7 +22,7 @@ import logging
 import traceback
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
-from datetime import datetime
+from datetime import datetime, date
 
 # Maximum 3 MB per log file, keep 3 backups → 9 MB total ceiling
 _MAX_BYTES   = 3 * 1024 * 1024   # 3 MB
@@ -29,6 +36,43 @@ _BACKUP_COUNT = 3
 _RETENTION_DAYS = 30
 
 _root_logger_configured = False
+
+
+class DailyRotatingFileHandler(RotatingFileHandler):
+    """RotatingFileHandler that ALSO rolls to a fresh date-stamped file
+    when the calendar day changes. Combines size-based rotation (existing
+    3 MB / 3 backup behaviour) with daily rotation so a long-lived RC
+    doesn't keep writing yesterday's log past midnight.
+
+    The `baseFilename` is rewritten on each day-roll to point at today's
+    `logs/YYYY-MM-DD.log`. Size-based backups (`.1`, `.2`, …) accumulate
+    against whatever date is current at the moment of overflow.
+    """
+
+    def __init__(self, log_dir: Path, *args, **kwargs):
+        self._log_dir = Path(log_dir)
+        self._current_day = date.today()
+        super().__init__(str(self._path_for(self._current_day)), *args, **kwargs)
+
+    def _path_for(self, d: date) -> Path:
+        return self._log_dir / f"{d:%Y-%m-%d}.log"
+
+    def shouldRollover(self, record) -> int:
+        # Day rollover beats size rollover: if we crossed midnight, swap
+        # the file path before the size check sees a stale baseFilename.
+        today = date.today()
+        if today != self._current_day:
+            try:
+                if self.stream:
+                    self.stream.close()
+                    self.stream = None
+            except Exception:
+                pass
+            self._current_day = today
+            self.baseFilename = str(self._path_for(today))
+            # New day, fresh file — no need to rotate via size logic.
+            return 0
+        return super().shouldRollover(record)
 
 
 def _prune_old_logs(log_dir: Path, retention_days: int = _RETENTION_DAYS) -> int:
@@ -71,9 +115,6 @@ def setup(app_dir: Path, debug: bool = False) -> logging.Logger:
     except Exception:
         _n_pruned = 0
 
-    # Log file named by date — new file each calendar day
-    log_file = log_dir / f"{datetime.now():%Y-%m-%d}.log"
-
     level = logging.DEBUG if debug else logging.INFO
 
     # Formatter
@@ -87,9 +128,9 @@ def setup(app_dir: Path, debug: bool = False) -> logging.Logger:
         datefmt="%H:%M:%S",
     )
 
-    # ── Rotating file handler ────────────────────────────────────────────────
-    fh = RotatingFileHandler(
-        str(log_file),
+    # ── Daily + size rotating file handler ──────────────────────────────────
+    fh = DailyRotatingFileHandler(
+        log_dir,
         maxBytes=_MAX_BYTES,
         backupCount=_BACKUP_COUNT,
         encoding="utf-8",
@@ -97,6 +138,7 @@ def setup(app_dir: Path, debug: bool = False) -> logging.Logger:
     )
     fh.setLevel(logging.DEBUG)          # always verbose to file
     fh.setFormatter(verbose)
+    log_file = Path(fh.baseFilename)
 
     # ── Console handler (debug mode only) ────────────────────────────────────
     handlers: list = [fh]
