@@ -841,23 +841,44 @@ class CoachIntegration:
                 messages=[{"role": "user", "content": user}],
             )
             raw = response.content[0].text
-            # AUDIT 2026-04-28 (5.8): record token telemetry. usage may
-            # include cache_creation_input_tokens / cache_read_input_tokens
+            # AUDIT 2026-04-28 (5.8 + 2.5): record token telemetry +
+            # persistent coach trace for the "why did the coach say that?"
+            # dashboard tab. usage may include cache_*_input_tokens
             # depending on SDK version; fall back to plain input_tokens.
+            _tin = _tout = _cr = _cw = 0
             try:
-                from core.cost_tracker import get_tracker as _gt
                 u = getattr(response, "usage", None)
                 if u is not None:
-                    _gt().record_call(
-                        model=self._model,
-                        input_tokens=getattr(u, "input_tokens", 0) or 0,
-                        output_tokens=getattr(u, "output_tokens", 0) or 0,
-                        cache_read=getattr(u, "cache_read_input_tokens", 0) or 0,
-                        cache_write=getattr(u, "cache_creation_input_tokens", 0) or 0,
-                        purpose="sr_coach",
-                    )
-            except Exception as _exc:  # never let telemetry break coaching
+                    _tin  = getattr(u, "input_tokens", 0) or 0
+                    _tout = getattr(u, "output_tokens", 0) or 0
+                    _cr   = getattr(u, "cache_read_input_tokens", 0) or 0
+                    _cw   = getattr(u, "cache_creation_input_tokens", 0) or 0
+            except Exception:
+                pass
+            try:
+                from core.cost_tracker import get_tracker as _gt
+                _gt().record_call(
+                    model=self._model,
+                    input_tokens=_tin, output_tokens=_tout,
+                    cache_read=_cr, cache_write=_cw,
+                    purpose="sr_coach",
+                )
+            except Exception as _exc:
                 logger.debug("cost_tracker record_call: %s", _exc)
+            try:
+                from core.coach_trace import append as _trace_append
+                _trace_append(
+                    mode="sr",
+                    model=self._model,
+                    system_prompt=system,
+                    user_prompt=user,
+                    response=raw,
+                    latency_ms=int((time.time() - t0) * 1000),
+                    tokens_in=_tin, tokens_out=_tout,
+                    cache_read=_cr, cache_write=_cw,
+                )
+            except Exception as _exc:
+                logger.debug("coach_trace append: %s", _exc)
             self._last_sig = sig
         except anthropic.APITimeoutError:
             logger.warning("Claude API timeout after %ds — will retry at next trigger", self._timeout_s)

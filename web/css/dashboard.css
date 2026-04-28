@@ -4166,3 +4166,132 @@ footer .prefs-chip:hover { background: var(--bad-soft); color: var(--bad); }
 .cs-build-row.experimental .cs-build-label {
   color: #d6c4f3;
 }
+
+/* ─────────────────────────────────────────────────────────────────────
+ * AUDIT 2026-04-28 — proposals 3.2, 3.3, 3.4, 3.5, 3.6
+ * Card primitive, sticky-header compression, contrast bump, win-pct
+ * 5-band gradient, loading skeletons.
+ * ───────────────────────────────────────────────────────────────────── */
+
+/* 3.4 — bump dead-state placeholder contrast (#666 reads as background
+ * at iPad viewing distance). Apply to "—" inside .home-empty + value
+ * cells that currently render as text-faint. */
+.home-empty,
+.home-card .home-today-val,
+.home-card .home-recent-grade,
+[data-placeholder="dim"] {
+  color: #989aaa !important;  /* ≈ #888 on the cool palette */
+}
+
+/* 3.5 — five-band win-pct gradient. Existing four bands kept for back-
+ * compat; the new .win-pill.win-lead sits between strong and even. */
+.win-pill.win-lead {
+  background: #2A4035;
+  color:      #B5DC8E;
+  box-shadow: 0 0 12px rgba(181,220,142,0.20);
+}
+/* Re-tune .win-even to amber so it visually differs from .win-lead. */
+.win-pill.win-even {
+  background: var(--gold-soft);
+  color:      var(--gold);
+}
+
+/* 3.2 — .rc-card design primitive in three sizes. Use this for any new
+ * panel rather than re-implementing padding/radius/shadow per feature.
+ * Migration target: home/lobby/cs cards adopt over time; existing
+ * declarations are NOT mass-replaced (avoiding visual churn).
+ *
+ *   <div class="rc-card rc-card-m">
+ *     <div class="rc-card-head">TITLE</div>
+ *     <div class="rc-card-body">…</div>
+ *   </div>
+ */
+.rc-card {
+  background:    var(--surface);
+  border-radius: var(--radius);
+  box-shadow:    var(--shadow-card);
+  display:       flex;
+  flex-direction: column;
+  overflow:      hidden;
+}
+.rc-card-s { padding: 12px 14px; gap: 6px; }
+.rc-card-m { padding: 18px 20px; gap: 10px; }
+.rc-card-l { padding: 24px 28px; gap: 14px; }
+.rc-card-head {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.rc-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* 3.3 — sticky header that compresses on scroll. JS toggles
+ * <header data-compressed="1"> at scroll-Y > 200 (see dashboard.js). */
+header[data-compressed="1"] {
+  height: 44px !important;
+  min-height: 44px;
+  transition: height 180ms ease;
+}
+header[data-compressed="1"] .header-row.header-row-2 { display: none; }
+header[data-compressed="1"] .header-row.header-row-1 {
+  align-items: center;
+}
+header { transition: height 180ms ease; }
+
+/* 3.6 — loading skeletons. Drop .rc-skel on any block during the first
+ * 500 ms after game-start to replace the "—" placeholder with a subtle
+ * shimmer. JS adds + removes the class. */
+.rc-skel {
+  position: relative;
+  background: linear-gradient(
+    90deg,
+    var(--surface) 0%,
+    var(--surface-head) 40%,
+    var(--surface) 80%
+  );
+  background-size: 220% 100%;
+  animation: rc-skel-shimmer 1.4s ease-in-out infinite;
+  color: transparent !important;       /* hide the underlying "—" */
+  border-radius: var(--radius-sm);
+}
+@keyframes rc-skel-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* AUDIT 2026-04-28 — proposal 2.1 cost tile + 2.2 coach toggles +
+ * 2.5 trace tab. These pieces live in the ops/diagnostics view and
+ * are therefore wrapped in their own selector prefix to avoid colliding
+ * with the existing diagnostics-card styles. */
+.cost-tile { display: grid; gap: 6px; min-width: 220px; }
+.cost-tile .cost-tile-row { display: flex; justify-content: space-between; gap: 16px; }
+.cost-tile .cost-tile-key { color: var(--text-dim); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+.cost-tile .cost-tile-val { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.cost-tile .cost-tile-banner { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; }
+.cost-tile .cost-tile-banner.ok    { background: var(--good-soft);  color: var(--good); }
+.cost-tile .cost-tile-banner.warn  { background: var(--gold-soft);  color: var(--gold); }
+.cost-tile .cost-tile-banner.over  { background: var(--bad-soft);   color: var(--bad);  }
+
+.coach-toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.coach-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; background: var(--surface-alt); border-radius: var(--radius-sm); }
+.coach-toggle-row .coach-toggle-label { font-size: 13px; font-weight: 700; letter-spacing: 0.05em; color: var(--text); text-transform: uppercase; }
+.coach-toggle-row .coach-toggle-pill { font-size: 11px; padding: 2px 10px; border-radius: 999px; font-weight: 800; letter-spacing: 0.1em; cursor: pointer; user-select: none; }
+.coach-toggle-row .coach-toggle-pill.on  { background: var(--good-soft); color: var(--good); }
+.coach-toggle-row .coach-toggle-pill.off { background: var(--bad-soft);  color: var(--bad);  }
+
+.trace-list { display: flex; flex-direction: column; gap: 6px; max-height: 70vh; overflow-y: auto; }
+.trace-item { padding: 10px 12px; background: var(--surface-alt); border-radius: var(--radius-sm); font-size: 12px; }
+.trace-item .trace-meta { display: flex; gap: 12px; color: var(--text-dim); font-size: 11px; letter-spacing: 0.05em; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.trace-item pre { white-space: pre-wrap; word-break: break-word; color: var(--text); margin-top: 4px; font-size: 11px; line-height: 1.4; }
+
+/* Health rollup dot (proposal 4.4). Sits in the header. */
+.health-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-left: 8px; vertical-align: middle; }
+.health-dot.green  { background: var(--good); box-shadow: 0 0 6px rgba(127,209,154,0.55); }
+.health-dot.yellow { background: var(--gold); box-shadow: 0 0 6px rgba(245,184,124,0.55); }
+.health-dot.red    { background: var(--bad);  box-shadow: 0 0 6px rgba(240,126,139,0.65); }
+

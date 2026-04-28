@@ -471,6 +471,47 @@ _MODE_TO_FILE = {
 }
 
 
+_ASSET_HASH_CACHE: dict = {"hash": "", "mtime": 0.0}
+
+
+def _compute_asset_hash() -> str:
+    """AUDIT 2026-04-28 (3.1): hash the css+js+html mtimes the dashboard
+    serves out of web/. Cached for 2 s so repeated index requests don't
+    re-stat. The same files drive /api/ui-version so reload behaviour
+    stays consistent."""
+    import hashlib as _hashlib
+    now = time.time()
+    if _ASSET_HASH_CACHE.get("hash") and (now - _ASSET_HASH_CACHE["mtime"]) < 2.0:
+        return _ASSET_HASH_CACHE["hash"]
+    web_root = _APP_DIR / "web"
+    parts = []
+    for rel in ("index.html", "css/dashboard.css", "js/dashboard.js",
+                "js/sim.js", "js/ws_client.js"):
+        p = web_root / rel
+        try:
+            parts.append(f"{rel}:{int(p.stat().st_mtime)}")
+        except OSError:
+            parts.append(f"{rel}:0")
+    h = _hashlib.sha1("|".join(parts).encode("utf-8")).hexdigest()[:10]
+    _ASSET_HASH_CACHE["hash"] = h
+    _ASSET_HASH_CACHE["mtime"] = now
+    return h
+
+
+def _inject_asset_hash(html: bytes) -> bytes:
+    """Rewrite hardcoded `?v=YYYYMMDDNN` cache-bust queries on css/js refs
+    in index.html with a freshly computed asset hash. Touches only the
+    href/src attributes that already carry a `?v=…` so unrelated query
+    strings aren't disturbed."""
+    import re as _re
+    h = _compute_asset_hash()
+    text = html.decode("utf-8", errors="replace")
+    text = _re.sub(r'(\.(?:css|js))\?v=[^"\']+',
+                   lambda m: f"{m.group(1)}?v={h}",
+                   text)
+    return text.encode("utf-8")
+
+
 def _read_json(rel: str) -> dict:
     # 2026-04-27 audit: guarantee dict return. If the file is empty,
     # contains a list/string/null, or hits a JSON error, callers get
@@ -4126,6 +4167,12 @@ class _Handler(BaseHTTPRequestHandler):
             if not use_legacy:
                 try:
                     new_index = (Path(__file__).resolve().parent / "web" / "index.html").read_bytes()
+                    # AUDIT 2026-04-28 (proposal 3.1): replace the manual
+                    # ?v=YYYYMMDDNN cache-bust query with a content hash.
+                    # Computed once per request from CSS/JS mtimes — same
+                    # signal /api/ui-version uses, so reload behaviour is
+                    # consistent. No human has to bump a counter.
+                    new_index = _inject_asset_hash(new_index)
                     self._send(200, new_index, "text/html; charset=utf-8")
                     return
                 except Exception as exc:
@@ -4555,6 +4602,130 @@ class _Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 _log.warning("agent serve %s: %s", name, exc)
                 self._send(500, b"agent_read_failed", "text/plain")
+        # ── AUDIT 2026-04-28 endpoints (proposals 4.4, 4.5, 2.1, 2.5) ─────
+        elif self.path == "/api/health/all":
+            # Consolidated rollup: RC health + vision-server health +
+            # supervisor PID lock view + cost-banner state. One green/
+            # yellow/red dot for the dashboard top-right.
+            try:
+                import urllib.request as _ur
+                rollup = {"rc": _read_json("ops/runtime/health.json")}
+                # vision server
+                try:
+                    with _ur.urlopen("http://127.0.0.1:8889/health", timeout=2) as r:
+                        rollup["vision"] = json.loads(r.read())
+                except Exception as e:
+                    rollup["vision"] = {"alive": False, "error": str(e)[:120]}
+                # supervisor pid file
+                try:
+                    sup = _read_json("ops/runtime/supervisor.pid")
+                    rollup["supervisor"] = {"pid": sup.get("pid"),
+                                             "run_id": sup.get("run_id"),
+                                             "locked_at": sup.get("locked_at")}
+                except Exception as e:
+                    rollup["supervisor"] = {"error": str(e)[:120]}
+                # cost banner
+                try:
+                    from core.cost_tracker import get_tracker as _gt
+                    rollup["cost"] = {"banner": _gt().banner_state(),
+                                       "today_usd": _gt().daily_spend().get("total_usd", 0.0)}
+                except Exception as e:
+                    rollup["cost"] = {"error": str(e)[:120]}
+                # Overall status: red if RC dead OR vision dead OR cost over.
+                rc_ok = bool(rollup.get("rc", {}).get("alive"))
+                vis_ok = bool(rollup.get("vision", {}).get("alive"))
+                cost_ok = rollup.get("cost", {}).get("banner") != "over"
+                if not rc_ok or not vis_ok:
+                    rollup["status"] = "red"
+                elif not cost_ok or rollup.get("cost", {}).get("banner") == "warn":
+                    rollup["status"] = "yellow"
+                else:
+                    rollup["status"] = "green"
+                self._send(200, json.dumps(rollup).encode("utf-8"), "application/json")
+            except Exception as exc:
+                _log.warning("api/health/all: %s", exc)
+                self._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
+                           "application/json")
+        elif self.path == "/api/cost":
+            # Daily spend ledger from core.cost_tracker. Tile data source.
+            try:
+                from core.cost_tracker import get_tracker as _gt
+                t = _gt()
+                payload = {
+                    "spend":  t.daily_spend(),
+                    "banner": t.banner_state(),
+                    "allowed": t.allow_call(),
+                }
+                self._send(200, json.dumps(payload).encode("utf-8"),
+                           "application/json")
+            except Exception as exc:
+                _log.warning("api/cost: %s", exc)
+                self._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
+                           "application/json")
+        elif self.path == "/api/coach/trace" or self.path.startswith("/api/coach/trace?"):
+            # Most recent coach calls (prompt + response + tokens). Used by
+            # the "why did the coach say that?" dashboard tab.
+            try:
+                from urllib.parse import urlparse, parse_qs
+                qs = parse_qs(urlparse(self.path).query)
+                limit = int((qs.get("limit") or ["50"])[0])
+                limit = max(1, min(limit, 200))
+                from core.coach_trace import read_recent as _read_recent
+                self._send(200, json.dumps({"records": _read_recent(limit)}).encode("utf-8"),
+                           "application/json")
+            except Exception as exc:
+                _log.warning("api/coach/trace: %s", exc)
+                self._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
+                           "application/json")
+        elif self.path == "/api/coach/state":
+            # Per-mode coach kill-switch state. GET only; toggle via POST.
+            try:
+                from core.cost_tracker import _COACH_CFG, CFG_COACH_DISABLED_MODES
+                cfg = _read_json(str(_COACH_CFG)) if _COACH_CFG.exists() else {}
+                disabled = cfg.get(CFG_COACH_DISABLED_MODES, []) or []
+                modes = ["sr", "aram", "arena", "brawl", "tft"]
+                state = {m: (m not in {x.lower() for x in disabled}) for m in modes}
+                self._send(200, json.dumps({"enabled": state, "disabled": disabled}).encode(),
+                           "application/json")
+            except Exception as exc:
+                _log.warning("api/coach/state: %s", exc)
+                self._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
+                           "application/json")
+        elif self.path == "/api/logs" or self.path.startswith("/api/logs?"):
+            # Tail today's log. Optional ?n=200 (max 1000) and ?q=substring.
+            try:
+                from urllib.parse import urlparse, parse_qs
+                qs = parse_qs(urlparse(self.path).query)
+                n = int((qs.get("n") or ["200"])[0])
+                n = max(1, min(n, 1000))
+                q = (qs.get("q") or [""])[0]
+                day = time.strftime("%Y-%m-%d")
+                p = _APP_DIR / "logs" / f"{day}.log"
+                if not p.exists():
+                    self._send(200, json.dumps({"day": day, "lines": [],
+                                                 "missing": True}).encode("utf-8"),
+                               "application/json")
+                    return
+                # Stream tail without loading the whole file. Cap at 4 MiB
+                # read window, and walk from the end.
+                with p.open("rb") as f:
+                    f.seek(0, 2)
+                    size = f.tell()
+                    cap = min(size, 1 << 22)
+                    f.seek(size - cap)
+                    chunk = f.read(cap)
+                text = chunk.decode("utf-8", errors="replace")
+                lines = text.splitlines()
+                if q:
+                    lines = [l for l in lines if q in l]
+                tail = lines[-n:]
+                self._send(200, json.dumps({"day": day, "lines": tail,
+                                             "total_lines_in_window": len(lines)}).encode("utf-8"),
+                           "application/json")
+            except Exception as exc:
+                _log.warning("api/logs: %s", exc)
+                self._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
+                           "application/json")
         else:
             self._send(404, b"not found", "text/plain")
 
@@ -4974,6 +5145,24 @@ class _Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 _log.warning("api/lcu-cmd: %s", exc)
                 self._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+        # AUDIT 2026-04-28 (proposal 2.2): per-mode coach kill-switches.
+        # Body: {mode: "aram", disabled: true}
+        elif self.path == "/api/coach/toggle":
+            try:
+                mode = str(payload.get("mode") or "").strip().lower()
+                disabled = bool(payload.get("disabled"))
+                if mode not in {"sr", "aram", "arena", "brawl", "tft"}:
+                    self._send(400, b'{"error":"invalid mode"}', "application/json")
+                    return
+                from core.cost_tracker import get_tracker as _gt
+                cur = _gt().set_coach_disabled(mode, disabled)
+                self._send(200, json.dumps({"ok": True,
+                                             "disabled_modes": cur}).encode(),
+                           "application/json")
+            except Exception as exc:
+                _log.warning("api/coach/toggle: %s", exc)
+                self._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
+                           "application/json")
         else:
             self._send(404, b"not found", "text/plain")
 

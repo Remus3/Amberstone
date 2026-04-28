@@ -2661,10 +2661,14 @@
         const v = Math.round(p.win_pct);
         winVal.textContent = v + "%";
         winPill.classList.remove("hidden");
+        // AUDIT 2026-04-28 (proposal 3.5): 5-band gradient instead of 4
+        // so a 26% loss reads visibly different from a 12% loss.
         winPill.className = "win-pill win-" + (
-          v >= 65 ? "strong" :
-          v >= 50 ? "even"   :
-          v >= 35 ? "behind" : "losing"
+          v >= 70 ? "strong" :   // green
+          v >= 55 ? "lead"   :   // lime
+          v >= 45 ? "even"   :   // amber
+          v >= 30 ? "behind" :   // orange
+                    "losing"      // red
         );
       } else {
         winPill.classList.add("hidden");
@@ -6091,5 +6095,65 @@
     window.addEventListener("scroll", hide, true);
     window.addEventListener("resize", hide);
     document.body.addEventListener("click", hide, true);
+  })();
+
+  // ───── AUDIT 2026-04-28 — proposals 3.3, 3.6 + 4.4, 2.1 ─────
+  // Sticky-header compression on scroll + skeleton loaders + health
+  // rollup dot + cost-tile poll. All passive — no-ops if the target
+  // elements are absent.
+  (function rcAuditUiEnhancements() {
+    const header = document.querySelector("header");
+    const COMPRESS_AT = 200;
+    if (header) {
+      // 3.3 — compress on scroll-Y > 200, restore below.
+      window.addEventListener("scroll", () => {
+        const y = window.scrollY || document.documentElement.scrollTop || 0;
+        if (y > COMPRESS_AT) header.dataset.compressed = "1";
+        else delete header.dataset.compressed;
+      }, { passive: true });
+
+      // 4.4 — health rollup dot in the header.
+      try {
+        let dot = header.querySelector(".health-dot");
+        if (!dot) {
+          dot = document.createElement("span");
+          dot.className = "health-dot yellow";
+          dot.title = "Loading…";
+          dot.setAttribute("data-tt", "Loading…");
+          header.appendChild(dot);
+        }
+        const refreshHealth = () => {
+          fetch("/api/health/all")
+            .then(r => r.ok ? r.json() : null)
+            .then(j => {
+              if (!j) return;
+              dot.classList.remove("green","yellow","red");
+              dot.classList.add(j.status || "yellow");
+              const cost = (j.cost || {});
+              const banner = cost.banner || "ok";
+              dot.title = `RC=${j.rc?.alive ? "up" : "down"} · vision=${j.vision?.alive ? "up" : "down"} · cost=$${(cost.today_usd || 0).toFixed(2)} (${banner})`;
+              dot.setAttribute("data-tt", dot.title);
+            })
+            .catch(()=>{});
+        };
+        refreshHealth();
+        setInterval(refreshHealth, 15000);
+      } catch (e) { /* never let the dot break the dashboard */ }
+    }
+
+    // 3.6 — flag elements with data-rc-skel for the first 500 ms after
+    // game-start. Anything bearing the attribute that still reads "—"
+    // gets the .rc-skel class until the first data tick lands.
+    document.querySelectorAll("[data-rc-skel]").forEach(el => {
+      el.classList.add("rc-skel");
+    });
+    // Strip skeletons once any non-placeholder text appears in the
+    // tracked element. Polled cheaply from the regular state tick.
+    window.addEventListener("rc:state-tick", () => {
+      document.querySelectorAll(".rc-skel").forEach(el => {
+        const t = (el.textContent || "").trim();
+        if (t && t !== "—" && t.length > 0) el.classList.remove("rc-skel");
+      });
+    });
   })();
 })();
