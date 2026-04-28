@@ -39,13 +39,13 @@ from typing import Literal
 
 logger = logging.getLogger("core.vision_token")
 
-# AUDIT (2026-04-22): retire this literal after rotation. Kept today
-# because Game-PC tools haven't been redeployed with the resolver —
-# removing it would break vision auth across the LAN.
-_LEGACY_DEFAULT = "8e8f131e212b329438218eca27372dde"
+# AUDIT 2026-04-28 (proposal 1.7): legacy hardcoded fallback retired.
+# Resolution is env var OR config file ONLY; absence raises RuntimeError
+# so a misconfigured deploy fails loud at import time instead of silently
+# authenticating every request with a known constant.
 _CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "vision_token.txt"
 
-TokenSource = Literal["env", "config", "legacy"]
+TokenSource = Literal["env", "config"]
 
 
 def _resolve() -> tuple[str, TokenSource]:
@@ -59,7 +59,11 @@ def _resolve() -> tuple[str, TokenSource]:
                 return first_line, "config"
     except OSError:
         pass
-    return _LEGACY_DEFAULT, "legacy"
+    raise RuntimeError(
+        "vision_token: no token configured. Set RC_VISION_TOKEN env var "
+        f"OR write a token to {_CONFIG_PATH}. See module docstring for "
+        "rotation procedure."
+    )
 
 
 def get_vision_token() -> str:
@@ -75,7 +79,9 @@ def get_vision_token_source() -> TokenSource:
 
 
 def is_using_legacy_fallback() -> bool:
-    return get_vision_token_source() == "legacy"
+    # 2026-04-28 (proposal 1.7): legacy fallback retired; always False.
+    # Kept as a no-op shim for callers (e.g., dashboards) that probe it.
+    return False
 
 
 def debug() -> None:
@@ -90,18 +96,9 @@ def debug() -> None:
 
 
 # Log resolution source once at import time so operators see it in the
-# supervisor log without having to probe.
-try:
-    _src = get_vision_token_source()
-    if _src == "legacy":
-        logger.warning(
-            "vision_token: using LEGACY hardcoded fallback — rotate by "
-            "setting RC_VISION_TOKEN env var or writing config/vision_token.txt"
-        )
-    else:
-        logger.info("vision_token: resolved from %s", _src)
-except Exception:           # never let diagnostics break imports
-    pass
+# supervisor log without having to probe. A missing token raises here —
+# allow that to propagate so a misconfigured deploy fails loud.
+logger.info("vision_token: resolved from %s", get_vision_token_source())
 
 # Module-level constant for sites that can't call a function at import time.
 VISION_TOKEN = get_vision_token()

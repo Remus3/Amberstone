@@ -24,11 +24,11 @@ COACH_MODEL  = "claude-haiku-4-5-20251001"
 # AUDIT (2026-04-22): token resolved via core.vision_token (env var,
 # config file, legacy default). Rotate by setting RC_VISION_TOKEN on
 # both Legion and Game-PC then restarting both sides.
-try:
-    from core.vision_token import get_vision_token as _get_vision_token
-    AUTH_TOKEN = _get_vision_token()
-except ImportError:
-    AUTH_TOKEN = "8e8f131e212b329438218eca27372dde"
+# AUDIT 2026-04-28 (proposal 1.7): no in-source fallback. core.vision_token
+# is the only resolver; if it can't be imported, fail loud rather than
+# silently authenticate every probe with a known constant.
+from core.vision_token import get_vision_token as _get_vision_token
+AUTH_TOKEN   = _get_vision_token()
 AUTH_HEADER  = "X-RC-Token"
 SYNC_DIR     = Path("moon_sync_inbox")
 SYNC_DIR.mkdir(exist_ok=True)

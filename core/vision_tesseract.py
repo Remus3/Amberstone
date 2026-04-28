@@ -28,6 +28,12 @@ _APP_DIR = Path(__file__).parent.parent
 _TESSERACT_DEFAULT = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 _REGIONS_FILE = _APP_DIR / "data" / "vision_regions.json"
 
+# AUDIT 2026-04-28 (proposal 1.6): regions are calibrated against this base
+# resolution; bboxes scale proportionally for any other detected frame size.
+# Override per-deployment by adding a top-level `_base: [W, H]` entry in
+# data/vision_regions.json (e.g., for an ultrawide-native calibration).
+BASE_W, BASE_H = 1920, 1080
+
 # Best-guess defaults for League at 1920x1080 borderless.
 # CALIBRATE against a real in-game frame and persist to vision_regions.json.
 # Format: [left, top, right, bottom]
@@ -42,22 +48,37 @@ _DEFAULT_REGIONS = {
 }
 
 _REGIONS_CACHE: Optional[dict] = None
+_BASE_CACHE: tuple = (BASE_W, BASE_H)
 
 
 def _regions() -> dict:
-    """Load region config from disk, falling back to defaults."""
-    global _REGIONS_CACHE
+    """Load region config from disk, falling back to defaults.
+
+    A top-level `_base: [W, H]` key, if present, declares the resolution
+    the bboxes were calibrated against (used by `_scale_bbox` to scale at
+    crop time for frames of other sizes). Other underscore-prefixed keys
+    are reserved metadata and are stripped from the returned region dict.
+    """
+    global _REGIONS_CACHE, _BASE_CACHE
     if _REGIONS_CACHE is not None:
         return _REGIONS_CACHE
     if _REGIONS_FILE.exists():
         try:
             data = json.loads(_REGIONS_FILE.read_text(encoding="utf-8"))
-            _REGIONS_CACHE = {k: list(v) for k, v in data.items()}
+            base = data.get("_base")
+            if isinstance(base, (list, tuple)) and len(base) == 2:
+                _BASE_CACHE = (int(base[0]), int(base[1]))
+            _REGIONS_CACHE = {
+                k: list(v) for k, v in data.items()
+                if not k.startswith("_") and isinstance(v, (list, tuple))
+            }
         except Exception as exc:
             _log.warning("vision_regions.json load failed: %s — using defaults", exc)
             _REGIONS_CACHE = dict(_DEFAULT_REGIONS)
+            _BASE_CACHE = (BASE_W, BASE_H)
     else:
         _REGIONS_CACHE = dict(_DEFAULT_REGIONS)
+        _BASE_CACHE = (BASE_W, BASE_H)
         try:
             _REGIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
             _REGIONS_FILE.write_text(
@@ -68,9 +89,22 @@ def _regions() -> dict:
     return _REGIONS_CACHE
 
 
+def _scale_bbox(bbox, frame_w: int, frame_h: int) -> tuple:
+    """Scale a bbox calibrated at _BASE_CACHE resolution to the actual
+    frame size. No-op when the frame matches the base."""
+    base_w, base_h = _BASE_CACHE
+    if frame_w == base_w and frame_h == base_h:
+        return tuple(bbox)
+    sx = frame_w / base_w
+    sy = frame_h / base_h
+    l, t, r, b = bbox
+    return (int(l * sx), int(t * sy), int(r * sx), int(b * sy))
+
+
 def reload_regions() -> None:
-    global _REGIONS_CACHE
+    global _REGIONS_CACHE, _BASE_CACHE
     _REGIONS_CACHE = None
+    _BASE_CACHE = (BASE_W, BASE_H)
 
 
 def _ensure_tesseract() -> None:
@@ -440,6 +474,7 @@ def read_fast_fields(img_b64: str, fields: Optional[Iterable[str]] = None,
     regions = _regions()
     targets = list(fields) if fields else list(regions.keys())
     img = _decode_img(img_b64)
+    fw, fh = img.size
 
     # Tier split + drop-set filter (atomic increment via itertools.count)
     skip_slow_this_tick = (next(_slow_tick_counter) % _SLOW_MODULO) != 0
@@ -452,7 +487,7 @@ def read_fast_fields(img_b64: str, fields: Optional[Iterable[str]] = None,
         bbox = regions.get(name)
         if not bbox:
             continue
-        work.append((name, _crop(img, bbox)))
+        work.append((name, _crop(img, _scale_bbox(bbox, fw, fh))))
 
     # Pre-pass: own hp (used to skip death_timer). Cheap, just one OCR.
     hp_known = None
@@ -507,7 +542,7 @@ def crop_png_b64(img_b64: str, field: str) -> Optional[str]:
     if not bbox:
         return None
     img = _decode_img(img_b64)
-    crop = _crop(img, bbox)
+    crop = _crop(img, _scale_bbox(bbox, img.width, img.height))
     buf = io.BytesIO()
     crop.save(buf, format="PNG")
     return base64.b64encode(buf.getvalue()).decode("ascii")
