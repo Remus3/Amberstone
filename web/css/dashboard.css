@@ -4292,8 +4292,18 @@ header { transition: height 180ms ease; }
 .trace-item .trace-meta { display: flex; gap: 12px; color: var(--text-dim); font-size: 11px; letter-spacing: 0.05em; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
 .trace-item pre { white-space: pre-wrap; word-break: break-word; color: var(--text); margin-top: 4px; font-size: 11px; line-height: 1.4; }
 
-/* Health rollup dot (proposal 4.4). Sits in the header. */
-.health-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-left: 8px; vertical-align: middle; }
+/* Health rollup dot (proposal 4.4). Anchored to row 2 of the header at
+ * the far right via margin-left:auto so it shares the row with the
+ * existing pills instead of getting a 3rd row of its own. */
+.health-dot {
+  display: inline-block;
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  margin-left: auto;       /* push to far right of row 2 */
+  align-self: center;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
 .health-dot.green  { background: var(--good); box-shadow: 0 0 6px rgba(127,209,154,0.55); }
 .health-dot.yellow { background: var(--gold); box-shadow: 0 0 6px rgba(245,184,124,0.55); }
 .health-dot.red    { background: var(--bad);  box-shadow: 0 0 6px rgba(240,126,139,0.65); }
