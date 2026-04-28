@@ -1,0 +1,60 @@
+# AUDIT 2026-04-28 (proposal 4.2): CI bare-minimum guard.
+# py_compile every .py + run the phase2 smoke + snapshot regression tests.
+# Catches drift before it lands on main.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install minimal test deps
+        run: |
+          python -m pip install --upgrade pip
+          # Test runner only — RC's runtime stack (anthropic/PIL/pytesseract)
+          # is intentionally not installed; tests that import it must guard
+          # for ImportError or be marked phase2_smoke / snapshot_regressions
+          # which are pure-Python.
+          pip install pytest pytest-asyncio pytest-timeout
+
+      - name: py_compile sweep
+        run: |
+          # All .py except legacy/ (kept for archaeology) and __pycache__.
+          python - <<'PY'
+          import py_compile, sys
+          from pathlib import Path
+          fails = []
+          for p in Path(".").rglob("*.py"):
+              parts = p.parts
+              if "legacy" in parts or "__pycache__" in parts:
+                  continue
+              try:
+                  py_compile.compile(str(p), doraise=True)
+              except Exception as exc:
+                  fails.append((p, exc))
+          if fails:
+              for p, exc in fails:
+                  print(f"FAIL: {p}: {exc}", file=sys.stderr)
+              sys.exit(1)
+          print(f"OK: {sum(1 for _ in Path('.').rglob('*.py'))} .py files compile clean")
+          PY
+
+      - name: phase2 smoke + snapshot regressions
+        run: |
+          pytest tests/phase2_smoke tests/snapshot_regressions \
+            --ignore=tests/snapshot_regressions/test_app_authority.py \
+            -q --tb=line --timeout=60

@@ -1,0 +1,20 @@
+#!/bin/sh
+# Riot Commander pre-commit hook (proposal 4.1).
+#
+# Install per-clone with:
+#   git config core.hooksPath .githooks
+#
+# The hook py_compiles every staged .py file. A syntax error here is a
+# silent crash under pythonw.exe at runtime (see CLAUDE.md hard rule).
+
+set -e
+
+ROOT="$(git rev-parse --show-toplevel)"
+PY="${PYTHON:-py}"
+
+# Python 3.x — prefer `py` (the Windows launcher) but fall back to `python`.
+if ! command -v "$PY" >/dev/null 2>&1; then
+    PY=python
+fi
+
+exec "$PY" "$ROOT/scripts/precommit_pycompile.py"
