@@ -83,6 +83,21 @@ class MoonProxy:
         """Send base64 PNG to Moon-PC /vision. Returns parsed game-state dict or None."""
         if not self.is_available():
             return None
+        # AUDIT 2026-04-28 (5.5): coalesce duplicate calls within a short
+        # TTL. Two coach loops can fetch the exact same /latest-frame
+        # within milliseconds; this skips the redundant Sonnet round-trip.
+        try:
+            import hashlib as _hashlib
+            from core.cost_tracker import get_tracker as _gt
+            _key = "vision:" + _hashlib.sha1(
+                (img_b64 + "|" + (model or "")).encode("utf-8")
+            ).hexdigest()
+            _cached = _gt().vision_dedupe_get(_key)
+            if _cached is not None:
+                log.debug("Moon vision dedupe hit (%s…)", _key[7:15])
+                return _cached
+        except Exception:
+            _key = ""
         try:
             payload = json.dumps({
                 "image_b64": img_b64,
@@ -96,7 +111,14 @@ class MoonProxy:
                 resp = json.loads(r.read().decode())
             if resp.get("ok"):
                 log.debug("Moon vision OK (%dms)", resp.get("latency_ms", -1))
-                return resp.get("result")
+                result = resp.get("result")
+                if _key and result is not None:
+                    try:
+                        from core.cost_tracker import get_tracker as _gt
+                        _gt().vision_dedupe_put(_key, result, ttl_s=2.0)
+                    except Exception:
+                        pass
+                return result
             log.warning("Moon vision error: %s", resp.get("error"))
             self._mark_failed()
             return None

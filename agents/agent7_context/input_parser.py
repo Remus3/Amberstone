@@ -175,10 +175,13 @@ class InputParser:
 
         # Restart RC.
         if _RE_RESTART_RC.match(text):
+            # AUDIT 2026-04-28 (4.3): atomic-write so the supervisor's poll
+            # loop never reads a half-written trigger.
+            from core.polled_json import atomic_write_text
             trigger = _PROJECT_ROOT / "restart_trigger.txt"
-            trigger.write_text(
+            atomic_write_text(
+                trigger,
                 f"user-request-{__import__('time').strftime('%Y%m%dT%H%M%SZ', __import__('time').gmtime())}",
-                encoding="utf-8",
             )
             return ParseResult(
                 reply="RC restart trigger written. The existing RC supervisor will pick it up within ~1s.",
