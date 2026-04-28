@@ -12,20 +12,26 @@ audit pass:
 | 2 | All five mode DBs exist with schema | Yes (`init_all_dbs`) | `supervisor.start` |
 | 3 | SMB cmdkey present OR cross-machine dispatch disabled | Yes (flag) | `supervisor.start` |
 | 4 | Rewind migration has been run at least once | **NO — implicit via tests only** | — |
-| 5 | Web port 8890 available | NO — bind raises | `start_web_server` |
-| 6 | WS port 8891 available | NO — bind raises | `WSServer.start` |
-| 7 | `task_queue.jsonl` not corrupted (all lines parse) | Partial — bad lines silently dropped | `Scheduler._load` |
-| 8 | `resolved_decisions.json` version matches code expectations | **NO** | — |
+| 5 | Web port 8890 available | Yes (audit L2 landed) | `supervisor.py:286, 1499-1501` |
+| 6 | WS port 8891 available | Yes (audit L2 landed) | `supervisor.py:286, 1499-1501` |
+| 7 | `task_queue.jsonl` not corrupted (all lines parse) | Partial — bad lines logged loudly (audit3 M-04) | `Scheduler._load` lines 243, 466, 580 |
+| 8 | `resolved_decisions.json` version matches code expectations | Yes (audit3 H-03 landed) | `supervisor.py:258-282`, called at `:1489` |
 | 9 | DDragon cache populated OR scheduled for first fetch | NO | — |
 
 ## Required follow-ups (filed as proposals)
 
 - Invariant 4 — add a startup check that queries `matches` across all 5
-  DBs; if total==0, file a task to re-run `migration_rewind`.
-- Invariants 5/6 — preflight `socket.socket().bind` with friendly log
-  messages before the actual server `bind`.
-- Invariant 8 — read `resolved_decisions.json` on startup, compare
-  `version` field to a code-level constant; fail closed on mismatch.
+  DBs; if total==0, file a task to re-run `migration_rewind`. Still open.
+- Invariant 9 — DDragon cache populated OR scheduled for first fetch.
+  Still open.
+
+## Resolved (recorded for audit history)
+
+- Invariants 5/6: preflight bind landed via audit L2.
+- Invariant 7: corrupted `task_queue.jsonl` lines now log error+offset
+  instead of silent drop (audit3 M-04).
+- Invariant 8: `resolved_decisions.json` version mismatch fails closed
+  in `Supervisor.start()` (audit3 H-03).
 
 ## Hard rules Agent 6 enforces on other agents' proposals
 
