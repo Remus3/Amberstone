@@ -81,7 +81,10 @@ for name, code in cdragon_codes.items():
         existing_codes[name] = code
         new_added += 1
         print(f"  NEW code: {name} -> {code}")
-(META / "tft_set17_champion_codes.json").write_text(json.dumps(existing_codes, indent=2, sort_keys=True))
+# AUDIT 2026-04-28 (deferred-low-value): atomic so a Ctrl-C during
+# write doesn't leave half-flushed JSON in the meta directory.
+from core.polled_json import atomic_write_json as _atomic_write_json
+_atomic_write_json(META / "tft_set17_champion_codes.json", existing_codes)
 print(f"\nCodes: {len(existing_codes)} total ({new_added} new from CDragon)")
 
 # --- Update meta JSON ---
@@ -96,5 +99,5 @@ meta["all_traits"] = sorted(all_traits)
 # Update champion list in vision analysis (for validation)
 meta["champions_set17"] = sorted(playable)
 
-meta_file.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
+_atomic_write_json(meta_file, meta)
 print(f"Meta updated: unit_costs={len(unit_costs)}, traits={len(all_traits)}, champions={len(playable)}")

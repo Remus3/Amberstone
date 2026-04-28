@@ -63,7 +63,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 COACH_CACHE_DIR = _PROJECT_ROOT / "data" / "coach_cache"
 CURATED_DIR = _PROJECT_ROOT / "data" / "meta_build" / "curated"
 
-SUPPORTED_MODES = ("sr_draft", "sr_ranked", "aram", "arena", "brawl")
+from lib.modes import PHASE3_MODES as SUPPORTED_MODES
 
 # Mode mapping for scraper backends. SR ranked and SR draft share the
 # same scrape target (build paths aren't materially different per Riot's

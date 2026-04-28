@@ -53,6 +53,7 @@ from typing import Any
 from agents.agent0_gatekeeper.evaluator import Evaluator, Task as Agent0Task
 from agents.agent1_lead.scheduler import Scheduler, TaskStatus
 from agents.agent2_backend.db_schema import init_all as init_all_dbs
+from lib.modes import verify_modes as _verify_modes
 from agents.agent2_backend.db_migrate_kda import ensure_all as _ensure_kda_columns_all
 from agents.agent2_backend.file_ingest import FileIngest
 from agents.agent2_backend.ws_server import WSServer
@@ -1514,6 +1515,8 @@ class Supervisor:
         log.info("supervisor starting (pid=%d)", os.getpid())
         # AUDIT P-audit3-h03: fail closed on decisions-file drift.
         _verify_decisions_version()
+        # AUDIT P-audit4-m02: assert PHASE3_MODES still matches db.files.
+        _verify_modes()
         init_all_dbs()
         # Round 23 — retro-fit KDA columns on pre-existing DBs. No-op on
         # already-migrated DBs; fast on fresh DBs (columns land via CREATE

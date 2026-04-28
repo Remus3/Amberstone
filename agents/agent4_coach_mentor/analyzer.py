@@ -37,7 +37,7 @@ logger = logging.getLogger("agent4.analyzer")
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DB_DIR = _PROJECT_ROOT / "data" / "db"
 
-SUPPORTED_MODES = ("sr_draft", "sr_ranked", "aram", "arena", "brawl")
+from lib.modes import PHASE3_MODES as SUPPORTED_MODES
 
 # Spec §8: matchup modifier activates only at ≥5 games sample size.
 MATCHUP_ACTIVATE_THRESHOLD = 5
