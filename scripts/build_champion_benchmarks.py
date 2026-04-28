@@ -172,7 +172,11 @@ def main() -> int:
         out["champions"][key] = entry
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(out, indent=2), encoding="utf-8")
+    # AUDIT 2026-04-28 (deferred-low-value): output file is read by
+    # core.benchmarks at runtime; atomic write protects against a
+    # crash-mid-write leaving a half-flushed file.
+    from core.polled_json import atomic_write_json
+    atomic_write_json(OUT, out)
 
     print(f"champions with data: {len(out['champions'])}")
     print(f"wrote {OUT} ({OUT.stat().st_size // 1024} KB)")

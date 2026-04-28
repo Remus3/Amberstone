@@ -135,7 +135,10 @@ def _state(mode: str, source: str, payload: dict) -> dict:
 
 def _write(name: str, fixture: dict) -> None:
     out = SIM_DIR / f"{name}.json"
-    out.write_text(json.dumps(fixture, indent=2), encoding="utf-8")
+    # AUDIT 2026-04-28 (deferred-low-value): atomic so an interrupted
+    # rebuild leaves the previous fixture intact instead of a partial.
+    from core.polled_json import atomic_write_json
+    atomic_write_json(out, fixture)
 
 
 # ── SR (3) ─────────────────────────────────────────────────────────────────
@@ -1030,9 +1033,9 @@ def main() -> int:
             payload["positions"] = {"allies": allies, "enemies": enemies}
         _write(name, fixture)
         written += 1
-    (SIM_DIR / "manifest.json").write_text(
-        json.dumps(manifest, indent=2), encoding="utf-8"
-    )
+    # AUDIT 2026-04-28 (deferred-low-value): atomic manifest write.
+    from core.polled_json import atomic_write_json as _atomic_write_json
+    _atomic_write_json(SIM_DIR / "manifest.json", manifest)
     print(f"wrote {written} fixtures + manifest ({len(MANIFEST_ORDER)} entries)")
     # Sanity: every manifest entry must have a corresponding file
     missing = [m["name"] for m in manifest["fixtures"]

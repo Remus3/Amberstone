@@ -190,11 +190,44 @@ def _bridge_hydrate_from_disk() -> None:
             pass  # tolerate a torn final write
 
 
+# AUDIT 2026-04-28 (deferred-low-value): every Nth append, check the
+# JSONL size and trim if it has crept past _BRIDGE_LOG_DISK_MAX. The
+# original rotation only ran at startup; between RC restarts the file
+# could grow unbounded.
+_BRIDGE_ROTATE_INTERVAL = 100
+_bridge_writes_since_rotate = 0
+
+
+def _bridge_maybe_rotate(force: bool = False) -> None:
+    """Trim bridge_log.jsonl to the last _BRIDGE_LOG_DISK_MAX lines if it
+    has grown past that. Called periodically from _bridge_post; safe to
+    call from any thread (caller should already hold _bridge_lock or
+    accept the rare two-rotates-collide case as harmless)."""
+    try:
+        if not _BRIDGE_LOG_PATH.exists():
+            return
+        # Cheap line count via a single read. The file is JSONL bounded
+        # at ~1 MB at the trim point — affordable.
+        text = _BRIDGE_LOG_PATH.read_text(encoding="utf-8")
+        lines = text.splitlines()
+        if len(lines) <= _BRIDGE_LOG_DISK_MAX and not force:
+            return
+        keep = lines[-_BRIDGE_LOG_DISK_MAX:]
+        tmp = _BRIDGE_LOG_PATH.with_suffix(".jsonl.tmp")
+        tmp.write_text("\n".join(keep) + "\n", encoding="utf-8")
+        tmp.replace(_BRIDGE_LOG_PATH)
+        _log.info("bridge log rotated: %d → %d lines",
+                  len(lines), len(keep))
+    except OSError as exc:
+        _log.debug("bridge rotate failed: %s", exc)
+
+
 def _bridge_post(source: str, summary: str, *,
                  kind: str = "note", entry_id: str | None = None,
                  target: str | None = None,
                  body: dict | None = None,
                  in_reply_to: str | None = None) -> dict:
+    global _bridge_writes_since_rotate
     entry = {
         "ts":      time.time(),
         "source":  (source or "unknown")[:40],
@@ -213,6 +246,10 @@ def _bridge_post(source: str, summary: str, *,
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         except OSError as exc:
             _log.debug("bridge JSONL append failed: %s", exc)
+        _bridge_writes_since_rotate += 1
+        if _bridge_writes_since_rotate >= _BRIDGE_ROTATE_INTERVAL:
+            _bridge_writes_since_rotate = 0
+            _bridge_maybe_rotate()
     return entry
 
 
@@ -4729,6 +4766,52 @@ class _Handler(BaseHTTPRequestHandler):
         else:
             self._send(404, b"not found", "text/plain")
 
+    def _csrf_ok(self) -> bool:
+        """AUDIT 2026-04-28 (deferred-low-value): same-origin guard for
+        POST endpoints. RC is LAN-only so cross-site CSRF is mitigated by
+        threat model, but a misbehaving / compromised tab on Legion could
+        still cross-origin-POST into 8888. Browsers send Origin (and
+        Referer) on cross-origin POSTs; non-browser clients (curl, our
+        own scripts) typically send neither and are allowed.
+
+        Rule: if Origin or Referer is present, its host:port must match
+        our request's Host header. Absent both → allow (script callers).
+        """
+        try:
+            origin  = self.headers.get("Origin", "") or ""
+            referer = self.headers.get("Referer", "") or ""
+            if not origin and not referer:
+                return True
+            host = (self.headers.get("Host", "") or "").strip().lower()
+            if not host:
+                return False
+            from urllib.parse import urlparse
+            for src in (origin, referer):
+                if not src:
+                    continue
+                p = urlparse(src)
+                src_hp = (p.hostname or "").lower()
+                src_port = p.port
+                # Accept either bare hostname-only Origin (no port) or
+                # exact host:port match. The Host header may be either
+                # "192.168.8.230:8888" or "192.168.8.230" depending on
+                # client; normalize both sides.
+                hh, _, hp = host.partition(":")
+                # Allow if hostnames match — port equality is not
+                # mandatory because dashboard is also reachable via
+                # localhost/127.0.0.1 from local scripts.
+                if src_hp and src_hp != hh and src_hp not in {"127.0.0.1", "localhost"} and hh not in {"127.0.0.1", "localhost"}:
+                    return False
+                if src_port and hp and str(src_port) != hp:
+                    # Different port — only allowed if both are local.
+                    if src_hp not in {"127.0.0.1", "localhost"} and hh not in {"127.0.0.1", "localhost"}:
+                        return False
+            return True
+        except Exception:
+            # Don't block POSTs on parse errors — fail open with a log.
+            _log.debug("csrf_ok parse failed; allowing")
+            return True
+
     def do_POST(self):
         # 2026-04-27 audit: cap POST body at 1 MiB. RC is LAN-only and the
         # legitimate inputs (chat text, /api/bridge messages) are tiny —
@@ -4737,6 +4820,17 @@ class _Handler(BaseHTTPRequestHandler):
         # request. Also: don't echo the exception message back to the
         # client, since urllib/json error strings can leak file paths or
         # unrelated headers.
+        # AUDIT 2026-04-28 (deferred-low-value): same-origin CSRF guard.
+        # Browser-driven cross-origin POSTs (Origin/Referer mismatch) are
+        # rejected with 403; script callers without those headers pass.
+        if not self._csrf_ok():
+            _log.warning("do_POST CSRF reject path=%s origin=%r referer=%r host=%r",
+                         self.path,
+                         self.headers.get("Origin"),
+                         self.headers.get("Referer"),
+                         self.headers.get("Host"))
+            self._send(403, b'{"error":"cross_origin"}', "application/json")
+            return
         _MAX_POST_BYTES = 1 << 20
         try:
             n = int(self.headers.get("Content-Length", "0"))

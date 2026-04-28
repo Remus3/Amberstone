@@ -18,7 +18,8 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 # that silently break after an upgrade.
 PY = Path(os.environ.get("RC_PYTHON") or sys.executable)
 
-MODE_DBS = ["sr_draft.db", "sr_ranked.db", "aram.db", "arena.db", "brawl.db"]
+from lib.modes import PHASE3_MODES
+MODE_DBS = [f"{m}.db" for m in PHASE3_MODES]
 
 
 def test_mode_dbs_exist() -> None:
