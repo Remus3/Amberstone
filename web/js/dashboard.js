@@ -408,10 +408,11 @@
   // localStorage and a body[data-view] attribute. Auto promotes to
   // ChampSelect/in-game on urgent game events; if a manual view is
   // active during a promote-worthy event, the banner appears instead.
-  const VIEW_IDS = ["home","lobby","last-match","session","history","loadouts","settings","diagnostics"];
+  const VIEW_IDS = ["home","lobby","last-match","session","history","replay","loadouts","settings","diagnostics"];
   const VIEW_LABELS = {
     "home":"Home","lobby":"Lobby","last-match":"Last Match","session":"Session",
-    "history":"History","loadouts":"Loadouts","settings":"Settings","diagnostics":"Diagnostics",
+    "history":"History","replay":"Replay",
+    "loadouts":"Loadouts","settings":"Settings","diagnostics":"Diagnostics",
   };
   const _VIEW = {
     current: null,
@@ -462,6 +463,7 @@
     if (viewId === "lobby")       { _lobbyViewWireOnce(); _lobbyViewRefresh(); }
     if (viewId === "session")     { _sessionFetchAndRender(); }
     if (viewId === "history")     { _historyWireOnce(); _historyFetchAndRender(); }
+    if (viewId === "replay")      { _replayViewWireOnce(); _replayViewRefresh(); }
     if (viewId === "loadouts")    { _loadoutsWireOnce(); _loadoutsFetchAndRender(); }
     if (viewId === "diagnostics") { _diagWireOnce(); _diagFetchAndRender(); }
     if (viewId === "settings")    { _settingsRefresh(); }
@@ -4081,6 +4083,189 @@
     window.__diagWired = true;
     const r = document.getElementById("diag-refresh");
     if (r) r.addEventListener("click", _diagFetchAndRender);
+  }
+
+  // ── Replay scrubber (audit suggestion 2.3, 2026-04-28) ────────────
+  // Loads recent matches from /api/replay/matches; clicking one fetches
+  // /api/replay/match/<id> and lets the user scrub through per-minute
+  // snapshots. Items, level, gold, CS reflect the slider position.
+  const _REPLAY = { match: null, snapshotIdx: 0, itemsIndex: null };
+  function _replayQueueLabel(q) {
+    return ({
+      400:"Normal Draft",420:"Ranked Solo",430:"Normal Blind",
+      440:"Ranked Flex",450:"ARAM",700:"Clash",900:"ARURF",
+      920:"ARAM Mayhem",1700:"Arena",1900:"URF",
+    })[q] || ("queue " + q);
+  }
+  function _replayDurStr(s) {
+    const m = Math.floor(s / 60), ss = s % 60;
+    return `${m}:${String(ss).padStart(2,"0")}`;
+  }
+  function _replayDateStr(ts) {
+    if (!ts) return "?";
+    const d = new Date(ts);
+    return d.toLocaleString("en-US", { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
+  }
+  function _replayChampIconUrl(name) {
+    if (!name) return "";
+    return "/icons/champions/" + encodeURIComponent(String(name).replace(/[^A-Za-z]/g, "")) + ".png";
+  }
+  function _replayItemIconUrl(id) {
+    return "/icons/items/" + id + ".png";
+  }
+  function _replayLoadItemsIndex() {
+    if (_REPLAY.itemsIndex) return Promise.resolve(_REPLAY.itemsIndex);
+    return fetch("/data/items_index.json")
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { _REPLAY.itemsIndex = j; return j; })
+      .catch(() => null);
+  }
+  function _replayViewRefresh() {
+    fetch("/api/replay/matches?limit=30")
+      .then(r => r.ok ? r.json() : null)
+      .then(j => {
+        const ul = document.getElementById("replay-match-list");
+        if (!ul) return;
+        ul.innerHTML = "";
+        const items = (j && j.matches) || [];
+        if (!items.length) {
+          ul.innerHTML = '<li class="home-empty">no matches in rewind_history.db</li>';
+          return;
+        }
+        for (const m of items) {
+          const li = document.createElement("li");
+          li.className = "replay-match-row";
+          if (m.tracked && m.tracked.win === true)  li.classList.add("won");
+          if (m.tracked && m.tracked.win === false) li.classList.add("lost");
+          li.dataset.matchId = m.match_id;
+          const champ = (m.tracked && m.tracked.champion_name) || "?";
+          const verdict = m.tracked && m.tracked.win === true ? "W" :
+                          m.tracked && m.tracked.win === false ? "L" : "—";
+          const top = document.createElement("div");
+          top.className = "replay-match-top";
+          const span1 = document.createElement("span");
+          span1.className = "replay-match-verdict " + (verdict === "W" ? "won" : verdict === "L" ? "lost" : "");
+          span1.textContent = verdict;
+          const span2 = document.createElement("span");
+          span2.className = "replay-match-champ";
+          span2.textContent = champ;
+          const span3 = document.createElement("span");
+          span3.className = "replay-match-queue";
+          span3.textContent = _replayQueueLabel(m.queue_id);
+          top.append(span1, span2, span3);
+          const bot = document.createElement("div");
+          bot.className = "replay-match-bot";
+          bot.textContent = `${_replayDateStr(m.game_creation_ts)} · ${_replayDurStr(m.duration_s)} · patch ${m.patch || "?"}`;
+          li.append(top, bot);
+          li.addEventListener("click", () => _replayLoadMatch(m.match_id, li));
+          ul.appendChild(li);
+        }
+      })
+      .catch(e => console.warn("replay matches:", e));
+    _replayLoadItemsIndex();
+  }
+  function _replayLoadMatch(matchId, rowEl) {
+    document.querySelectorAll(".replay-match-row.active").forEach(r => r.classList.remove("active"));
+    if (rowEl) rowEl.classList.add("active");
+    const meta = document.getElementById("replay-meta");
+    if (meta) meta.textContent = "loading " + matchId + "…";
+    fetch("/api/replay/match/" + encodeURIComponent(matchId))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return;
+        _REPLAY.match = d;
+        _REPLAY.snapshotIdx = 0;
+        const slider = document.getElementById("replay-slider");
+        if (slider) {
+          slider.max = String(Math.max(0, (d.snapshots || []).length - 1));
+          slider.value = "0";
+          slider.disabled = !((d.snapshots || []).length);
+        }
+        const m = document.getElementById("replay-meta");
+        if (m) {
+          const verdict = (d.participants || []).find(p =>
+            p.champion_id === (d.tracked && d.tracked.champion_id));
+          const v = verdict ? (verdict.team_won ? " (W)" : " (L)") : "";
+          m.textContent = `${d.match_id} · ${_replayQueueLabel(d.queue_id)} · ${_replayDurStr(d.duration_s)} · patch ${d.patch || "?"}${v}`;
+        }
+        _replayRenderSnapshot(0);
+      })
+      .catch(e => console.warn("replay match:", e));
+  }
+  function _replayRenderSnapshot(idx) {
+    const d = _REPLAY.match;
+    if (!d || !d.snapshots || !d.snapshots.length) return;
+    const snap = d.snapshots[Math.max(0, Math.min(idx, d.snapshots.length - 1))];
+    const clock = document.getElementById("replay-clock");
+    if (clock) clock.textContent = `t = ${snap.minute.toFixed(1)}min`;
+    const tbody = document.getElementById("replay-grid-body");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    const partsByPid = new Map();
+    for (const p of d.participants || []) partsByPid.set(p.participant_id, p);
+    // Sort: team 100 first, then team 200; preserve participant_id order.
+    const entries = (snap.entries || []).slice().sort((a, b) => {
+      const pa = partsByPid.get(a.participant_id);
+      const pb = partsByPid.get(b.participant_id);
+      const ta = (pa && pa.team_id) || 0, tb = (pb && pb.team_id) || 0;
+      if (ta !== tb) return ta - tb;
+      return a.participant_id - b.participant_id;
+    });
+    for (const e of entries) {
+      const p = partsByPid.get(e.participant_id) || {};
+      const tr = document.createElement("tr");
+      if (p.team_won === true) tr.classList.add("won");
+      if (p.team_won === false) tr.classList.add("lost");
+      const cells = [
+        ["replay-col-team",   p.team_id === 200 ? "R" : "B"],
+        ["replay-col-champ",  null, _replayChampIconUrl(p.champion_name), p.champion_name],
+        ["replay-col-name",   p.summoner_name || ""],
+        ["replay-col-num",    e.level != null ? String(e.level) : "—"],
+        ["replay-col-num",    e.total_gold != null ? e.total_gold.toLocaleString() : "—"],
+        ["replay-col-num",    e.cs != null ? String(e.cs) : "—"],
+      ];
+      for (const c of cells) {
+        const td = document.createElement("td");
+        td.className = c[0];
+        if (c[2]) {
+          const img = document.createElement("img");
+          img.className = "replay-champ-icon";
+          img.src = c[2]; img.alt = c[3] || "";
+          img.title = c[3] || "";
+          const sp = document.createElement("span");
+          sp.textContent = c[3] || "";
+          td.append(img, sp);
+        } else {
+          td.textContent = c[1];
+        }
+        tr.appendChild(td);
+      }
+      const itemsCell = document.createElement("td");
+      itemsCell.className = "replay-col-items";
+      for (const itemId of (e.items || []).slice(0, 7)) {
+        const img = document.createElement("img");
+        img.className = "replay-item-icon";
+        img.src = _replayItemIconUrl(itemId);
+        img.alt = String(itemId);
+        const lookup = _REPLAY.itemsIndex && _REPLAY.itemsIndex.byId;
+        img.title = (lookup && lookup[String(itemId)]) || ("item " + itemId);
+        img.onerror = () => { img.style.display = "none"; };
+        itemsCell.appendChild(img);
+      }
+      tr.appendChild(itemsCell);
+      tbody.appendChild(tr);
+    }
+  }
+  function _replayViewWireOnce() {
+    if (window.__replayWired) return;
+    window.__replayWired = true;
+    const slider = document.getElementById("replay-slider");
+    if (slider) {
+      slider.addEventListener("input", () => {
+        _REPLAY.snapshotIdx = parseInt(slider.value, 10) || 0;
+        _replayRenderSnapshot(_REPLAY.snapshotIdx);
+      });
+    }
   }
 
   // ── Home / lobby landing view (2026-04-26) ───────────────────────────

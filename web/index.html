@@ -194,6 +194,7 @@
         <button type="button" class="view-menu-item" data-view="last-match"  role="menuitem">Last Match</button>
         <button type="button" class="view-menu-item" data-view="session"     role="menuitem">Session</button>
         <button type="button" class="view-menu-item" data-view="history"     role="menuitem">History</button>
+        <button type="button" class="view-menu-item" data-view="replay"      role="menuitem">Replay</button>
         <div class="view-menu-divider"></div>
         <button type="button" class="view-menu-item" data-view="loadouts"    role="menuitem">Loadouts</button>
         <button type="button" class="view-menu-item" data-view="settings"    role="menuitem">Settings</button>
@@ -801,6 +802,53 @@
             <pre class="diag-health" id="diag-health">loading…</pre>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- AUDIT 2026-04-28 (suggestion 2.3): Replay scrubber. Reads
+         data/rewind_history.db (2846 matches as of writing) via
+         /api/replay/matches and /api/replay/match/<id>. Slider scrubs
+         per-minute snapshots; player grid reflects the selected minute. -->
+    <section id="view-replay" class="view-section" hidden>
+      <div class="view-section-head">
+        <h2>REPLAY</h2>
+        <span class="view-section-sub">Scrub through past matches (rewind_history.db)</span>
+      </div>
+      <div class="view-section-body replay-body" id="replay-body">
+        <aside class="replay-list-pane">
+          <div class="replay-list-head">RECENT MATCHES</div>
+          <ul class="replay-match-list" id="replay-match-list">
+            <li class="home-empty">loading…</li>
+          </ul>
+        </aside>
+        <main class="replay-main-pane">
+          <div class="replay-meta-row">
+            <div class="replay-meta" id="replay-meta">Select a match from the list ←</div>
+            <div class="replay-clock" id="replay-clock">—</div>
+          </div>
+          <input type="range" id="replay-slider"
+                 class="replay-slider"
+                 min="0" max="0" value="0" step="1"
+                 disabled />
+          <div class="replay-grid-wrap">
+            <table class="replay-grid">
+              <thead>
+                <tr>
+                  <th class="replay-col-team">T</th>
+                  <th class="replay-col-champ">Champion</th>
+                  <th class="replay-col-name">Player</th>
+                  <th class="replay-col-num">Lvl</th>
+                  <th class="replay-col-num">Gold</th>
+                  <th class="replay-col-num">CS</th>
+                  <th class="replay-col-items">Items</th>
+                </tr>
+              </thead>
+              <tbody id="replay-grid-body">
+                <tr><td colspan="7" class="home-empty">no match selected</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </main>
       </div>
     </section>
   </div>
