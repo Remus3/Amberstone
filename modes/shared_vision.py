@@ -92,11 +92,26 @@ def _capture_screen() -> Optional[str]:
         return None
 
 
+# AUDIT 2026-04-28 (suggestion 5.6): Haiku model for cheap pre-screens
+# that gate the expensive Sonnet vision call. Subclasses can pass a
+# `state_summary` to read() so the pre-screen skips Sonnet when the
+# summary hasn't drifted from the last successful extraction.
+HAIKU_MODEL = "claude-haiku-4-5-20251001"
+SONNET_MODEL = "claude-sonnet-4-6"
+
+
 class GameVisionReader:
     """
     Base class for screen extraction.
     Subclasses provide PROMPT and override _postprocess(raw_dict).
     Always uses claude-sonnet-4-6 for best small-text OCR.
+
+    AUDIT 2026-04-28 (5.6): pass `state_summary` to read() — a short
+    text snapshot of HUD-relevant facts the LCU/live-client API
+    already gives us (gold bucket, level, dead-count, items hash, etc.)
+    When that summary equals the previous successful read's, the cached
+    result is returned without firing Sonnet. This is the cheap
+    state-key dedupe sister to 5.5 (image-key dedupe).
     """
 
     # Subclasses MUST override
@@ -105,10 +120,22 @@ class GameVisionReader:
     def __init__(self, api_key: str):
         import anthropic
         self._client = anthropic.Anthropic(api_key=api_key)
-        self._model  = "claude-sonnet-4-6"
+        self._model  = SONNET_MODEL
         self._last   = {}
+        # Cache of (last successful state_summary, last result) for the
+        # 5.6 pre-screen short-circuit.
+        self._last_state_summary: Optional[str] = None
+        self._last_result: Optional[dict] = None
 
-    def read(self) -> Optional[dict]:
+    def read(self, state_summary: Optional[str] = None) -> Optional[dict]:
+        # AUDIT 2026-04-28 (5.6): cheap state-summary pre-screen. If the
+        # caller supplies a summary identical to the one paired with the
+        # last successful extraction, return the cached result and skip
+        # the entire vision call. No Anthropic API hit.
+        if state_summary and state_summary == self._last_state_summary \
+                and self._last_result is not None:
+            logger.debug("Vision pre-screen skip: state_summary unchanged")
+            return self._last_result
         img = _capture_screen()
         if not img:
             return None
@@ -116,6 +143,9 @@ class GameVisionReader:
         if raw:
             raw = self._postprocess(raw)
             self._last = raw
+            if state_summary:
+                self._last_state_summary = state_summary
+                self._last_result = raw
         return raw
 
     def last(self) -> dict:
