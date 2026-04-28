@@ -46,15 +46,19 @@ class LcuClient(_PGMixin):
     def connect(self):
         for lf in _LOCKFILE_PATHS:
             if lf.exists():
+                # AUDIT 2026-04-28 (deferred-frozen): narrow from bare
+                # Exception. Lockfile parse can fail with: OSError (read
+                # fails), IndexError (split has < 4 parts), ValueError
+                # (port int() fails), UnicodeDecodeError (non-utf8).
                 try:
-                    parts = lf.read_text().strip().split(":")
+                    parts = lf.read_text(encoding="utf-8").strip().split(":")
                     self._port = int(parts[2])
                     pw = parts[3]
                     self._auth = base64.b64encode(f"riot:{pw}".encode()).decode()
                     _log.info("LCU connected: port %d (from %s)", self._port, lf)
                     return True
-                except Exception as e:
-                    _log.warning("LCU lockfile parse: %s", e)
+                except (OSError, IndexError, ValueError, UnicodeDecodeError) as e:
+                    _log.warning("LCU lockfile parse (%s): %s", type(e).__name__, e)
         _log.info("LCU lockfile not found — client may not be running")
         return False
 

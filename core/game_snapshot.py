@@ -31,8 +31,28 @@ Python 3.9 compatible: no X|Y unions, no walrus, no match.
 """
 from __future__ import annotations
 
+import copy
 import time
 from typing import Any, Dict, List, Optional
+
+
+# AUDIT 2026-04-28 (deferred-frozen): raw_state was stored as a reference
+# to the producer's dict, leaving it exposed to mutation after the
+# snapshot was published. StateAuthority already deepcopies at consume
+# time; this duplicates the safety at producer construction so a snapshot
+# is independent the moment it leaves the factory. Marginal CPU; the
+# defensive copy lives in one helper so we can swap to copy.copy()
+# later if profiling justifies a shallow copy.
+def _snapshot_copy(d: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    if d is None:
+        return None
+    try:
+        return copy.deepcopy(d)
+    except Exception:
+        # If a value isn't deepcopyable (e.g. a thread lock), fall back
+        # to a shallow dict copy. Better than handing out the producer's
+        # live reference.
+        return dict(d)
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +253,10 @@ class RiftSnapshot:
         s.camp_hint        = d.get("camp_hint", "")
         s.ally_kills_total  = int(d.get("ally_kills_total", 0))
         s.enemy_kills_total = int(d.get("enemy_kills_total", 0))
-        s.raw_state        = d   # kept for legacy consumers in Step 3
+        # AUDIT 2026-04-28 (deferred-frozen): producer-side defensive
+        # copy so a snapshot is safe to publish even if the producer
+        # keeps mutating its working dict.
+        s.raw_state        = _snapshot_copy(d)
         return s
 
     @classmethod
@@ -254,15 +277,19 @@ class RiftSnapshot:
         After this method, payload=None for SR/ARAM/Arena/Brawl is impossible
         through any handled software failure path.
         """
+        # AUDIT 2026-04-28 (deferred-frozen): copy here too — the
+        # emergency path is rare, but if we ever take it the snapshot
+        # should still be mutation-safe.
+        copied = _snapshot_copy(state_dict)
         try:
             s = object.__new__(cls)
-            s.raw_state = state_dict
+            s.raw_state = copied
             return s
         except Exception:
             pass
         try:
             s = object.__new__(cls)
-            object.__setattr__(s, "raw_state", state_dict)
+            object.__setattr__(s, "raw_state", copied)
             return s
         except Exception:
             return None
@@ -394,7 +421,8 @@ class AramSnapshot:
         s.ally_kills_total  = int(d.get("ally_kills_total", 0))
         s.enemy_kills_total = int(d.get("enemy_kills_total", 0))
         s.risk_derived     = d.get("risk_derived", "")
-        s.raw_state        = d
+        # AUDIT 2026-04-28 (deferred-frozen): producer-side defensive copy.
+        s.raw_state        = _snapshot_copy(d)
         return s
 
     @classmethod
@@ -405,15 +433,17 @@ class AramSnapshot:
         Returns None ONLY if Python's allocator cannot produce ANY instance
         of this class (fatal runtime condition, not a handled failure).
         """
+        # AUDIT 2026-04-28 (deferred-frozen): producer-side defensive copy.
+        copied = _snapshot_copy(state_dict)
         try:
             s = object.__new__(cls)
-            s.raw_state = state_dict
+            s.raw_state = copied
             return s
         except Exception:
             pass
         try:
             s = object.__new__(cls)
-            object.__setattr__(s, "raw_state", state_dict)
+            object.__setattr__(s, "raw_state", copied)
             return s
         except Exception:
             return None
