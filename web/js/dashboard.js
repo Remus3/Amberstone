@@ -6301,6 +6301,9 @@
       }, { passive: true });
 
       // 4.4 — health rollup dot in the header.
+      // 2026-04-28 fix: was appended to <header> directly which made it a
+      // 3rd row. Anchor inside .header-row-2 so it sits inline at the far
+      // right (CSS margin-left:auto pushes it past mode-pill / augments).
       try {
         let dot = header.querySelector(".health-dot");
         if (!dot) {
@@ -6308,7 +6311,8 @@
           dot.className = "health-dot yellow";
           dot.title = "Loading…";
           dot.setAttribute("data-tt", "Loading…");
-          header.appendChild(dot);
+          const row2 = header.querySelector(".header-row-2");
+          (row2 || header).appendChild(dot);
         }
         const refreshHealth = () => {
           fetch("/api/health/all")
