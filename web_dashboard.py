@@ -4714,6 +4714,42 @@ class _Handler(BaseHTTPRequestHandler):
                 _log.warning("api/coach/trace: %s", exc)
                 self._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
                            "application/json")
+        elif self.path == "/api/replay/matches" or self.path.startswith("/api/replay/matches?"):
+            # AUDIT 2026-04-28 (suggestion 2.3): replay scrubber match list.
+            try:
+                from urllib.parse import urlparse, parse_qs
+                qs = parse_qs(urlparse(self.path).query)
+                limit = int((qs.get("limit") or ["25"])[0])
+                limit = max(1, min(limit, 200))
+                queue = (qs.get("queue") or [""])[0]
+                from core.replay_history import list_matches as _lm
+                out = _lm(limit=limit, queue_filter=int(queue) if queue.isdigit() else None)
+                self._send(200, json.dumps({"matches": out}).encode("utf-8"),
+                           "application/json")
+            except Exception as exc:
+                _log.warning("api/replay/matches: %s", exc)
+                self._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
+                           "application/json")
+        elif self.path.startswith("/api/replay/match/"):
+            # /api/replay/match/<match_id>
+            try:
+                mid = self.path[len("/api/replay/match/"):].split("?", 1)[0]
+                # match_id format: "NA1_5438342899" — alnum + underscore only.
+                import re as _re
+                if not _re.match(r"^[A-Z0-9_]{6,40}$", mid):
+                    self._send(400, b'{"error":"bad match_id"}', "application/json")
+                    return
+                from core.replay_history import match_detail as _md
+                d = _md(mid)
+                if d is None:
+                    self._send(404, json.dumps({"error": "not found"}).encode(),
+                               "application/json")
+                    return
+                self._send(200, json.dumps(d).encode("utf-8"), "application/json")
+            except Exception as exc:
+                _log.warning("api/replay/match: %s", exc)
+                self._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
+                           "application/json")
         elif self.path == "/api/recommend-champ" or self.path.startswith("/api/recommend-champ?"):
             # AUDIT 2026-04-28 (suggestion 2.6): champ-pool recommender.
             # Query: ?pool=Vayne,Jinx,Tristana&enemy=Malphite,Vi,Akali,Lulu,Thresh&min_games=3
