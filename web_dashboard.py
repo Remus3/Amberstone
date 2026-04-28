@@ -4714,6 +4714,31 @@ class _Handler(BaseHTTPRequestHandler):
                 _log.warning("api/coach/trace: %s", exc)
                 self._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
                            "application/json")
+        elif self.path == "/api/recommend-champ" or self.path.startswith("/api/recommend-champ?"):
+            # AUDIT 2026-04-28 (suggestion 2.6): champ-pool recommender.
+            # Query: ?pool=Vayne,Jinx,Tristana&enemy=Malphite,Vi,Akali,Lulu,Thresh&min_games=3
+            try:
+                from urllib.parse import urlparse, parse_qs
+                qs = parse_qs(urlparse(self.path).query)
+                pool = [c.strip() for c in (qs.get("pool") or [""])[0].split(",") if c.strip()]
+                enemy = [c.strip() for c in (qs.get("enemy") or [""])[0].split(",") if c.strip()]
+                min_games = int((qs.get("min_games") or ["3"])[0])
+                min_games = max(1, min(min_games, 50))
+                if not pool:
+                    self._send(400, b'{"error":"pool required"}', "application/json")
+                    return
+                from coaches.champ_pool_recommender import recommend as _rec
+                t0 = time.time()
+                out = _rec(pool, enemy, min_games=min_games)
+                self._send(200, json.dumps({
+                    "recommendations": out,
+                    "query": {"pool": pool, "enemy": enemy, "min_games": min_games},
+                    "elapsed_ms": int((time.time() - t0) * 1000),
+                }).encode("utf-8"), "application/json")
+            except Exception as exc:
+                _log.warning("api/recommend-champ: %s", exc)
+                self._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
+                           "application/json")
         elif self.path == "/api/coach/state":
             # Per-mode coach kill-switch state. GET only; toggle via POST.
             try:
