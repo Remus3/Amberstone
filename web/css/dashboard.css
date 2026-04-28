@@ -660,13 +660,15 @@ body[data-view="session"] main,
 body[data-view="history"] main,
 body[data-view="loadouts"] main,
 body[data-view="settings"] main,
-body[data-view="diagnostics"] main { display: none; }
+body[data-view="diagnostics"] main,
+body[data-view="replay"] main { display: none; }
 body[data-view="lobby"]        #view-lobby,
 body[data-view="session"]      #view-session,
 body[data-view="history"]      #view-history,
 body[data-view="loadouts"]     #view-loadouts,
 body[data-view="settings"]     #view-settings,
-body[data-view="diagnostics"]  #view-diagnostics { display: block; }
+body[data-view="diagnostics"]  #view-diagnostics,
+body[data-view="replay"]       #view-replay { display: block; }
 /* Hide home + lobby overlays when a non-default view is active.
  * In lobby view specifically, the inline #lobby-overlay strip is
  * suppressed since its content moved into #view-lobby. */
@@ -675,6 +677,7 @@ body[data-view="history"]      #home-overlay,
 body[data-view="loadouts"]     #home-overlay,
 body[data-view="settings"]     #home-overlay,
 body[data-view="diagnostics"]  #home-overlay,
+body[data-view="replay"]       #home-overlay,
 body[data-view="last-match"]   #home-overlay,
 body[data-view="lobby"]        #home-overlay,
 body[data-view="lobby"]        #lobby-overlay { display: none; }
@@ -4294,4 +4297,155 @@ header { transition: height 180ms ease; }
 .health-dot.green  { background: var(--good); box-shadow: 0 0 6px rgba(127,209,154,0.55); }
 .health-dot.yellow { background: var(--gold); box-shadow: 0 0 6px rgba(245,184,124,0.55); }
 .health-dot.red    { background: var(--bad);  box-shadow: 0 0 6px rgba(240,126,139,0.65); }
+
+/* ─────────────────────────────────────────────────────────────────────
+ * AUDIT 2026-04-28 — suggestion 2.3 replay scrubber.
+ * Layout: 2-column (match list left, scrubber+grid right).
+ * ───────────────────────────────────────────────────────────────────── */
+
+#view-replay { display: none; padding: 14px 22px 22px; }
+.replay-body {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 18px;
+  align-items: start;
+  height: calc(100vh - 200px);
+}
+.replay-list-pane {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+.replay-list-head {
+  padding: 12px 16px;
+  background: var(--surface-head);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.replay-match-list {
+  list-style: none;
+  margin: 0; padding: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+.replay-match-row {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-soft);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.replay-match-row:hover  { background: var(--surface-alt); }
+.replay-match-row.active { background: var(--surface-head); }
+.replay-match-row.won    { box-shadow: inset 3px 0 0 var(--good); }
+.replay-match-row.lost   { box-shadow: inset 3px 0 0 var(--bad); }
+.replay-match-top {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: 13px; font-weight: 700;
+}
+.replay-match-verdict {
+  display: inline-block; min-width: 16px; text-align: center;
+  font-weight: 900; letter-spacing: 0.05em;
+}
+.replay-match-verdict.won  { color: var(--good); }
+.replay-match-verdict.lost { color: var(--bad);  }
+.replay-match-champ {
+  color: var(--text); font-weight: 700;
+}
+.replay-match-queue {
+  margin-left: auto; font-size: 10px;
+  color: var(--text-faint); letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.replay-match-bot {
+  margin-top: 2px;
+  font-size: 11px; color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-main-pane {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  overflow: hidden;
+}
+.replay-meta-row {
+  display: flex; align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.replay-meta {
+  font-size: 13px; color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  flex: 1;
+}
+.replay-clock {
+  font-size: 18px; font-weight: 900;
+  color: var(--text);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.replay-slider {
+  width: 100%; margin: 4px 0;
+  accent-color: var(--good);
+}
+.replay-slider:disabled { opacity: 0.3; }
+
+.replay-grid-wrap {
+  flex: 1; overflow: auto;
+  border-radius: var(--radius-sm);
+}
+.replay-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.replay-grid th {
+  text-align: left;
+  padding: 8px 10px;
+  background: var(--surface-head);
+  position: sticky; top: 0;
+  font-size: 10px; letter-spacing: 0.1em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.replay-grid td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.replay-grid tr.won  td.replay-col-team { color: var(--good); font-weight: 800; }
+.replay-grid tr.lost td.replay-col-team { color: var(--bad);  font-weight: 800; }
+.replay-grid tr.won  { background: rgba(127,209,154,0.04); }
+.replay-grid tr.lost { background: rgba(240,126,139,0.04); }
+.replay-col-team   { width: 24px; }
+.replay-col-champ  { display: flex; align-items: center; gap: 8px; }
+.replay-col-num    { text-align: right; width: 70px; }
+.replay-col-items  { padding: 4px 6px; }
+.replay-champ-icon {
+  width: 28px; height: 28px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--surface-alt);
+}
+.replay-item-icon {
+  display: inline-block;
+  width: 22px; height: 22px;
+  border-radius: 3px;
+  margin-right: 2px;
+  background: var(--surface-alt);
+  vertical-align: middle;
+  border: 1px solid var(--border);
+}
 
