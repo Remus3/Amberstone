@@ -387,6 +387,21 @@ class BaseCoach(abc.ABC):
             time.sleep(3.0)
 
     def _maybe_coach(self, state: dict) -> None:
+        # AUDIT 2026-04-28 (2.2): per-mode kill switch — toggled from the
+        # dashboard ops tab via /api/coach/toggle.
+        try:
+            from core.cost_tracker import get_tracker as _gt
+            if _gt().coach_disabled(self._MODE_NAME):
+                return
+        except Exception:
+            pass
+        # AUDIT 2026-04-28 (5.4): hard daily-budget gate.
+        try:
+            from core.cost_tracker import get_tracker as _gt
+            if not _gt().allow_call():
+                return
+        except Exception:
+            pass
         now      = time.time()
         prev     = self._last_state or {}
         fast     = self._fast_path_trigger(state, prev)

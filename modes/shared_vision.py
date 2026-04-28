@@ -129,6 +129,20 @@ class GameVisionReader:
         # is an HTTPServer module whose import-time `serve_forever()` call
         # blocks (or raises OSError if port 8888 is already bound by the
         # running lan_bridge process) — it was never a functioning client.
+        # AUDIT 2026-04-28 (5.1 + 5.4): gate every vision call on (a) the
+        # daily spend cap and (b) a token-bucket rate limit so a chaotic
+        # teamfight can't spike calls per second.
+        try:
+            from core.cost_tracker import get_tracker as _gt
+            _ct = _gt()
+            if not _ct.allow_call():
+                logger.warning("Vision call blocked: daily budget exceeded")
+                return None
+            if not _ct.acquire_vision_token():
+                logger.debug("Vision call rate-limited")
+                return None
+        except Exception:
+            pass
         try:
             from core.moon_proxy import moon_proxy as _mp
             t0 = time.time()
@@ -161,6 +175,21 @@ class GameVisionReader:
             ms  = int((time.time() - t0) * 1000)
             raw = resp.content[0].text.strip()
             logger.debug("Vision direct (fallback) in %dms", ms)
+            # AUDIT 2026-04-28 (5.8): record direct-fallback Sonnet calls.
+            try:
+                from core.cost_tracker import get_tracker as _gt
+                u = getattr(resp, "usage", None)
+                if u is not None:
+                    _gt().record_call(
+                        model=self._model,
+                        input_tokens=getattr(u, "input_tokens", 0) or 0,
+                        output_tokens=getattr(u, "output_tokens", 0) or 0,
+                        cache_read=getattr(u, "cache_read_input_tokens", 0) or 0,
+                        cache_write=getattr(u, "cache_creation_input_tokens", 0) or 0,
+                        purpose="vision_direct",
+                    )
+            except Exception:
+                pass
             raw = re.sub(r'^```(?:json)?', '', raw).strip().strip('`')
             return json.loads(raw)
         except json.JSONDecodeError as exc:

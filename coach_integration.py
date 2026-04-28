@@ -620,6 +620,13 @@ class CoachIntegration:
         """Called from _apply_auto_fields every 2s. Non-blocking."""
         if not self._client:
             return
+        # AUDIT 2026-04-28 (2.2): per-mode kill switch.
+        try:
+            from core.cost_tracker import get_tracker as _gt
+            if _gt().coach_disabled("sr"):
+                return
+        except Exception:
+            pass
         if not self._should_coach(game_state):
             return
         self._last_submitted_state = game_state
@@ -661,6 +668,32 @@ class CoachIntegration:
     def set_wave_override(self, state: str):
         self._wave.set_override(state, duration_s=30)
         logger.info("Wave override: %s (30s)", state)
+
+    def _state_signature(self, coach_state: dict) -> str:
+        """AUDIT 2026-04-28 (5.7): compact stable hash of the coach-relevant
+        state fields. If this is identical to the last call's signature,
+        the previous coach response is still correct and we can skip a
+        round-trip. Keep the field set narrow: drift in irrelevant fields
+        (e.g., minor timer ticks) shouldn't force a new call."""
+        try:
+            import hashlib
+            keys = (
+                "champion", "wave_state", "hp_bucket", "mana_bucket",
+                "gold_bucket", "level", "kda", "objective_window",
+                "dead_count", "kill_window",
+            )
+            parts = []
+            for k in keys:
+                v = coach_state.get(k)
+                # Bucket continuous values to absorb noise.
+                if k in ("hp_bucket",) and v is None:
+                    v = int(coach_state.get("hp_pct", 0) // 10)
+                if k == "gold_bucket" and v is None:
+                    v = int(coach_state.get("gold", 0) // 300)
+                parts.append(f"{k}={v}")
+            return hashlib.sha1("|".join(parts).encode("utf-8")).hexdigest()
+        except Exception:
+            return ""
 
     def _should_coach(self, state: dict) -> bool:
         now = time.time()
@@ -775,15 +808,57 @@ class CoachIntegration:
         if self.debug:
             logger.debug("User prompt:\n%s", user)
 
+        # AUDIT 2026-04-28 (5.7): if the coach-relevant slice of state is
+        # byte-identical to the last submitted slice, the previous response
+        # is already correct — skip the API call entirely.
+        sig = self._state_signature(coach_state)
+        if sig and sig == getattr(self, "_last_sig", None):
+            logger.debug("Coach skip: state signature unchanged (%s)", sig[:16])
+            return
+        # AUDIT 2026-04-28 (5.4): hard daily spend cap.
         try:
+            from core.cost_tracker import get_tracker as _gt
+            if not _gt().allow_call():
+                logger.warning("Coach call blocked: daily budget exceeded")
+                self._write_status_field("daily budget — paused until midnight")
+                return
+        except Exception:
+            pass
+        try:
+            # AUDIT 2026-04-28 (5.3): mark the system prompt with
+            # cache_control=ephemeral so subsequent ticks with the same
+            # prefix replay at ~10% of the input-token cost. system param
+            # accepts a list of content blocks for fine-grained caching.
             response = self._client.messages.create(
                 model=self._model,
                 max_tokens=500,
                 timeout=self._timeout_s,
-                system=system,
+                system=[{
+                    "type": "text",
+                    "text": system,
+                    "cache_control": {"type": "ephemeral"},
+                }],
                 messages=[{"role": "user", "content": user}],
             )
             raw = response.content[0].text
+            # AUDIT 2026-04-28 (5.8): record token telemetry. usage may
+            # include cache_creation_input_tokens / cache_read_input_tokens
+            # depending on SDK version; fall back to plain input_tokens.
+            try:
+                from core.cost_tracker import get_tracker as _gt
+                u = getattr(response, "usage", None)
+                if u is not None:
+                    _gt().record_call(
+                        model=self._model,
+                        input_tokens=getattr(u, "input_tokens", 0) or 0,
+                        output_tokens=getattr(u, "output_tokens", 0) or 0,
+                        cache_read=getattr(u, "cache_read_input_tokens", 0) or 0,
+                        cache_write=getattr(u, "cache_creation_input_tokens", 0) or 0,
+                        purpose="sr_coach",
+                    )
+            except Exception as _exc:  # never let telemetry break coaching
+                logger.debug("cost_tracker record_call: %s", _exc)
+            self._last_sig = sig
         except anthropic.APITimeoutError:
             logger.warning("Claude API timeout after %ds — will retry at next trigger", self._timeout_s)
             self._last_coach_time = time.time() - self._debounce_s + 2.0

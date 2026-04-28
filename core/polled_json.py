@@ -39,6 +39,18 @@ def atomic_write_json(path: Path, payload: Any, *, indent: int = 2) -> None:
     os.replace(tmp, path)
 
 
+def atomic_write_text(path: Path, content: str) -> None:
+    """Atomic text write via tmp + rename. AUDIT 2026-04-28 (proposal 4.3):
+    use this for restart_trigger.txt writers so the supervisor never sees
+    a half-written trigger. PowerShell callers should mirror the pattern:
+    `Set-Content $tmp; Move-Item -Force $tmp restart_trigger.txt`."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(content, encoding="utf-8")
+    os.replace(tmp, path)
+
+
 def read_json_dict(path: Path, default: Optional[dict] = None) -> dict:
     """Read JSON expected to be a dict. Returns a fresh copy of `default`
     (or {}) when the file is missing, unreadable, or stores something
