@@ -4774,8 +4774,10 @@ class _Handler(BaseHTTPRequestHandler):
         Referer) on cross-origin POSTs; non-browser clients (curl, our
         own scripts) typically send neither and are allowed.
 
-        Rule: if Origin or Referer is present, its host:port must match
-        our request's Host header. Absent both → allow (script callers).
+        Rule: if Origin or Referer is present, its hostname must match
+        the request's Host header — OR the origin must itself be a local
+        loopback address (127.0.0.1 / localhost) coming from a script on
+        the same machine. Absent both headers → allow (script caller).
         """
         try:
             origin  = self.headers.get("Origin", "") or ""
@@ -4785,27 +4787,32 @@ class _Handler(BaseHTTPRequestHandler):
             host = (self.headers.get("Host", "") or "").strip().lower()
             if not host:
                 return False
+            host_h, _, _ = host.partition(":")
             from urllib.parse import urlparse
+            local_aliases = {"127.0.0.1", "localhost", "::1"}
             for src in (origin, referer):
                 if not src:
                     continue
+                # "null" Origin is what some sandboxed iframes / file://
+                # contexts send. Treat as cross-origin.
+                if src == "null":
+                    return False
                 p = urlparse(src)
                 src_hp = (p.hostname or "").lower()
-                src_port = p.port
-                # Accept either bare hostname-only Origin (no port) or
-                # exact host:port match. The Host header may be either
-                # "192.168.8.230:8888" or "192.168.8.230" depending on
-                # client; normalize both sides.
-                hh, _, hp = host.partition(":")
-                # Allow if hostnames match — port equality is not
-                # mandatory because dashboard is also reachable via
-                # localhost/127.0.0.1 from local scripts.
-                if src_hp and src_hp != hh and src_hp not in {"127.0.0.1", "localhost"} and hh not in {"127.0.0.1", "localhost"}:
+                if not src_hp:
                     return False
-                if src_port and hp and str(src_port) != hp:
-                    # Different port — only allowed if both are local.
-                    if src_hp not in {"127.0.0.1", "localhost"} and hh not in {"127.0.0.1", "localhost"}:
-                        return False
+                # Same hostname is fine (port may differ — e.g. dashboard
+                # opened via localhost vs LAN IP from same machine).
+                if src_hp == host_h:
+                    continue
+                # Origin from local loopback when request host is the LAN
+                # bind is also fine — script callers, dev probes.
+                if src_hp in local_aliases and host_h not in local_aliases:
+                    continue
+                if host_h in local_aliases and src_hp in local_aliases:
+                    continue
+                # Anything else: reject.
+                return False
             return True
         except Exception:
             # Don't block POSTs on parse errors — fail open with a log.
