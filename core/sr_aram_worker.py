@@ -41,6 +41,8 @@ import threading
 import time
 from typing import Any, Dict, Optional
 
+from core.base_worker import BaseCoachWorker
+
 _log = logging.getLogger("rc.worker")
 
 # ── Poll timing constants (shared with app.py) ─────────────────────────────
@@ -81,52 +83,24 @@ class WorkerResult:
 
 # ── SrAramWorker ──────────────────────────────────────────────────────────
 
-class SrAramWorker:
+class SrAramWorker(BaseCoachWorker):
+    # AUDIT 2026-04-28 (proposal 1.4): lifecycle (start/stop/join/restart/
+    # is_alive + pulse timestamps) lives on BaseCoachWorker. Subclass
+    # holds reader + coaching specifics and the _run loop body only.
+    _thread_name_prefix = "SrAramWorker"
+    _restart_join_timeout_s = BACKOFF_MIN_S * 2
+
     def __init__(
         self,
         result_queue: "queue.Queue[WorkerResult]",
         coach: Any = None,
         comp_context_fn: Any = None,
     ) -> None:
+        super().__init__()
         self._result_queue   = result_queue
         self._coach          = coach
         self._comp_ctx_fn    = comp_context_fn
         self._reader: Any = None
-        self._stop_event     = threading.Event()
-        self._generation     = 0
-        self._thread: Optional[threading.Thread] = None
-        self.pulse_ts:         float = 0.0
-        self.last_success_ts:  float = 0.0
-
-    def start(self) -> None:
-        self._stop_event.clear()
-        self._generation += 1
-        gen = self._generation
-        self._thread = threading.Thread(
-            target=self._run,
-            args=(gen,),
-            name=f"SrAramWorker-{gen}",
-            daemon=True,
-        )
-        self._thread.start()
-        _log.info("SrAramWorker gen=%d started", gen)
-
-    def stop(self) -> None:
-        self._stop_event.set()
-        _log.info("SrAramWorker stop signalled")
-
-    def join(self, timeout: float = 3.0) -> None:
-        if self._thread is not None:
-            self._thread.join(timeout=timeout)
-
-    def restart(self) -> None:
-        self.stop()
-        if self._thread is not None:
-            self._thread.join(timeout=BACKOFF_MIN_S * 2)
-        self.start()
-
-    def is_alive(self) -> bool:
-        return self._thread is not None and self._thread.is_alive()
 
     def reset_reader_state(self, reason: str = "") -> None:
         if self._reader is not None:
