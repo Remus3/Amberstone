@@ -47,6 +47,11 @@ DATA_FILE   = SCRIPT_DIR / "coaching_data.json"
 POLL_DATA_MS = 500
 POLL_GAME_MS = 1500
 
+# Audit 2026-04-28 (proposals 1.1 + 1.3): coaching_data.json is polled by
+# web_dashboard + overlays. Atomic write goes through the shared
+# core.polled_json helper so the tmp+replace rule lives in one place.
+from core.polled_json import atomic_write_json as _atomic_write_json
+
 try:
     from game_reader import GameReader; HAS_READER = True
 except ImportError: HAS_READER = False
@@ -371,7 +376,7 @@ class OverlayApp:
             "risk": "", "map": "", "win_pct": None, "log": [],
             "pregame": pg or "Waiting for draft data...\n\nPaste game state in chat to begin coaching.",
         }
-        try: DATA_FILE.write_text(json.dumps(cl, indent=2), encoding="utf-8")
+        try: _atomic_write_json(DATA_FILE, cl)
         except Exception: pass
 
     def _poll_file(self):
@@ -390,7 +395,7 @@ class OverlayApp:
 
     def _write_data(self):
         try:
-            DATA_FILE.write_text(json.dumps(self.data, indent=2), encoding="utf-8")
+            _atomic_write_json(DATA_FILE, self.data)
             self._last_mtime = DATA_FILE.stat().st_mtime
         except Exception: pass
 

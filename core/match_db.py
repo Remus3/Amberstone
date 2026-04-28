@@ -10,6 +10,12 @@ Usage:
     db.save_match({...})
     recent = db.get_recent("TFT", limit=20)
     best = db.get_best_comps(min_placement=4, limit=10)
+
+AUDIT 2026-04-28 (proposal 1.2): WAL journal mode + per-thread connections.
+Replaces the previous single-connection-under-Lock model. WAL allows
+concurrent readers without blocking writes; per-thread connections drop
+the lock from the hot path entirely. SQLite still serializes write
+commits internally via its WAL writer slot, so multi-writer remains safe.
 """
 
 import json
@@ -69,20 +75,34 @@ class MatchDB:
     def __init__(self, db_path):
         self._path = Path(db_path)
         self._path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(str(self._path), check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
-        # 2026-04-27 audit: 5s busy_timeout so a concurrent reader (eg
-        # web_dashboard opening match_history.db?mode=ro) can't hang the
-        # writer indefinitely on lock contention.
-        self._conn.execute("PRAGMA busy_timeout = 5000")
-        self._conn.executescript(_SCHEMA)
-        self._conn.commit()
-        # check_same_thread=False allows cross-thread access — serialize
-        # writes with this lock so two simultaneous save_match calls
-        # don't race the INSERT + commit pair.
-        self._lock = threading.Lock()
-        _log.info("MatchDB opened: %s", self._path)
+        # Per-thread connections held in thread-local storage. SQLite
+        # rejects sharing a connection across threads by default, and WAL
+        # mode is happiest when each thread has its own handle anyway.
+        self._tlocal = threading.local()
+        # One-shot setup: enable WAL + populate schema. The connection is
+        # discarded on exit; later threads re-open via _conn().
+        setup = sqlite3.connect(str(self._path))
+        try:
+            # journal_mode=WAL is a persistent file property; once set the
+            # DB stays in WAL across reopens. synchronous=NORMAL is the
+            # WAL-safe fast pairing.
+            setup.execute("PRAGMA journal_mode = WAL")
+            setup.execute("PRAGMA synchronous = NORMAL")
+            setup.execute("PRAGMA busy_timeout = 5000")
+            setup.executescript(_SCHEMA)
+            setup.commit()
+        finally:
+            setup.close()
+        _log.info("MatchDB opened (WAL): %s", self._path)
 
+    def _conn(self) -> sqlite3.Connection:
+        c = getattr(self._tlocal, "conn", None)
+        if c is None:
+            c = sqlite3.connect(str(self._path))
+            c.row_factory = sqlite3.Row
+            c.execute("PRAGMA busy_timeout = 5000")
+            self._tlocal.conn = c
+        return c
 
     def save_match(self, data: dict):
         """Save a match record. Accepts rating data dict from performance_tracker."""
@@ -109,77 +129,72 @@ class MatchDB:
         placeholders = ", ".join(f":{c}" for c in cols)
         col_names = ", ".join(cols)
         try:
-            with self._lock:
-                self._conn.execute(
-                    f"INSERT INTO matches ({col_names}) VALUES ({placeholders})", vals)
-                self._conn.commit()
+            c = self._conn()
+            c.execute(
+                f"INSERT INTO matches ({col_names}) VALUES ({placeholders})", vals)
+            c.commit()
             _log.info("Match saved: mode=%s grade=%s", vals["mode"], vals["grade"])
         except Exception as exc:
             _log.error("Match save failed: %s", exc)
 
     def get_recent(self, mode: str = "", limit: int = 20) -> list:
         """Get recent matches, optionally filtered by mode."""
-        # 2026-04-27 audit: take the lock for reads. Concurrent reads on a
-        # single sqlite3 connection (check_same_thread=False) hit
-        # InterfaceError("bad parameter or other API misuse") under load
-        # — confirmed via 8-reader stress test. Connection is shared, so
-        # all execute calls must serialize.
-        with self._lock:
-            if mode:
-                rows = self._conn.execute(
-                    "SELECT * FROM matches WHERE mode = ? ORDER BY timestamp DESC LIMIT ?",
-                    (mode, limit)).fetchall()
-            else:
-                rows = self._conn.execute(
-                    "SELECT * FROM matches ORDER BY timestamp DESC LIMIT ?",
-                    (limit,)).fetchall()
+        c = self._conn()
+        if mode:
+            rows = c.execute(
+                "SELECT * FROM matches WHERE mode = ? ORDER BY timestamp DESC LIMIT ?",
+                (mode, limit)).fetchall()
+        else:
+            rows = c.execute(
+                "SELECT * FROM matches ORDER BY timestamp DESC LIMIT ?",
+                (limit,)).fetchall()
         return [dict(r) for r in rows]
 
     def get_best_comps(self, min_games: int = 2, limit: int = 10) -> list:
         """Get TFT comps ranked by average placement (best first).
         Only includes comps played at least min_games times."""
-        with self._lock:
-            rows = self._conn.execute("""
-                SELECT tft_comp,
-                       COUNT(*) as games,
-                       ROUND(AVG(tft_placement), 1) as avg_place,
-                       MIN(tft_placement) as best,
-                       MAX(tft_placement) as worst,
-                       ROUND(AVG(CASE WHEN tft_placement <= 4 THEN 1.0 ELSE 0.0 END) * 100) as top4_pct,
-                       GROUP_CONCAT(DISTINCT tft_traits) as all_traits
-                FROM matches
-                WHERE mode = 'TFT' AND tft_comp != '' AND tft_placement > 0
-                GROUP BY tft_comp
-                HAVING games >= ?
-                ORDER BY avg_place ASC
-                LIMIT ?
-            """, (min_games, limit)).fetchall()
+        c = self._conn()
+        rows = c.execute("""
+            SELECT tft_comp,
+                   COUNT(*) as games,
+                   ROUND(AVG(tft_placement), 1) as avg_place,
+                   MIN(tft_placement) as best,
+                   MAX(tft_placement) as worst,
+                   ROUND(AVG(CASE WHEN tft_placement <= 4 THEN 1.0 ELSE 0.0 END) * 100) as top4_pct,
+                   GROUP_CONCAT(DISTINCT tft_traits) as all_traits
+            FROM matches
+            WHERE mode = 'TFT' AND tft_comp != '' AND tft_placement > 0
+            GROUP BY tft_comp
+            HAVING games >= ?
+            ORDER BY avg_place ASC
+            LIMIT ?
+        """, (min_games, limit)).fetchall()
         return [dict(r) for r in rows]
 
     def get_worst_comps(self, min_games: int = 2, limit: int = 5) -> list:
         """Get TFT comps ranked by worst average placement."""
-        with self._lock:
-            rows = self._conn.execute("""
-                SELECT tft_comp, COUNT(*) as games,
-                       ROUND(AVG(tft_placement), 1) as avg_place,
-                       ROUND(AVG(CASE WHEN tft_placement <= 4 THEN 1.0 ELSE 0.0 END) * 100) as top4_pct
-                FROM matches
-                WHERE mode = 'TFT' AND tft_comp != '' AND tft_placement > 0
-                GROUP BY tft_comp
-                HAVING games >= ?
-                ORDER BY avg_place DESC
-                LIMIT ?
-            """, (min_games, limit)).fetchall()
+        c = self._conn()
+        rows = c.execute("""
+            SELECT tft_comp, COUNT(*) as games,
+                   ROUND(AVG(tft_placement), 1) as avg_place,
+                   ROUND(AVG(CASE WHEN tft_placement <= 4 THEN 1.0 ELSE 0.0 END) * 100) as top4_pct
+            FROM matches
+            WHERE mode = 'TFT' AND tft_comp != '' AND tft_placement > 0
+            GROUP BY tft_comp
+            HAVING games >= ?
+            ORDER BY avg_place DESC
+            LIMIT ?
+        """, (min_games, limit)).fetchall()
         return [dict(r) for r in rows]
 
     def get_tft_streak(self, limit: int = 10) -> dict:
         """Get recent TFT performance summary."""
-        with self._lock:
-            rows = self._conn.execute("""
-                SELECT tft_placement FROM matches
-                WHERE mode = 'TFT' AND tft_placement > 0
-                ORDER BY timestamp DESC LIMIT ?
-            """, (limit,)).fetchall()
+        c = self._conn()
+        rows = c.execute("""
+            SELECT tft_placement FROM matches
+            WHERE mode = 'TFT' AND tft_placement > 0
+            ORDER BY timestamp DESC LIMIT ?
+        """, (limit,)).fetchall()
         if not rows:
             return {}
         placements = [r["tft_placement"] for r in rows]
@@ -194,11 +209,11 @@ class MatchDB:
 
     def get_mode_stats(self, mode: str, limit: int = 20) -> dict:
         """Get aggregate stats for a mode over recent games."""
-        with self._lock:
-            rows = self._conn.execute("""
-                SELECT grade, kills, deaths, assists, cs_per_min, gold_per_min, kp_pct
-                FROM matches WHERE mode = ? ORDER BY timestamp DESC LIMIT ?
-            """, (mode, limit)).fetchall()
+        c = self._conn()
+        rows = c.execute("""
+            SELECT grade, kills, deaths, assists, cs_per_min, gold_per_min, kp_pct
+            FROM matches WHERE mode = ? ORDER BY timestamp DESC LIMIT ?
+        """, (mode, limit)).fetchall()
         if not rows:
             return {}
         grades = [r["grade"] for r in rows]
@@ -212,11 +227,13 @@ class MatchDB:
         }
 
     def close(self):
-        # 2026-04-27 audit: take the lock so a close() racing with a
-        # concurrent read/write doesn't hit "Cannot operate on a closed
-        # database" mid-statement.
+        """Close the calling thread's connection. Other threads' connections
+        are released by the OS when those threads exit."""
+        c = getattr(self._tlocal, "conn", None)
+        if c is None:
+            return
         try:
-            with self._lock:
-                self._conn.close()
+            c.close()
         except Exception as exc:
             _log.debug("MatchDB close: %s", exc)
+        self._tlocal.conn = None

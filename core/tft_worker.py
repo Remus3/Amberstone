@@ -37,6 +37,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from core.base_worker import BaseCoachWorker
+
 _log = logging.getLogger("rc.tft_worker")
 
 # Poll cadence (matches coaches/tft_coach.py historical interval)
@@ -73,7 +75,7 @@ class TftWorkerResult:
 
 # ── TftWorker ─────────────────────────────────────────────────────────────────
 
-class TftWorker:
+class TftWorker(BaseCoachWorker):
     """
     Background worker for TFT runtime polling and coaching orchestration.
 
@@ -97,6 +99,12 @@ class TftWorker:
     No Tk calls in this module.
     """
 
+    # AUDIT 2026-04-28 (proposal 1.4): lifecycle (start/stop/join/restart/
+    # is_alive + pulse timestamps) lives on BaseCoachWorker. Subclass keeps
+    # `shutdown()` for component teardown and the _run loop body only.
+    _thread_name_prefix = "TftWorker"
+    _restart_join_timeout_s = POLL_INTERVAL_S * 2
+
     def __init__(
         self,
         result_queue: "queue.Queue[TftWorkerResult]",
@@ -104,6 +112,7 @@ class TftWorker:
         api_key: str = "",
         debug: bool = False,
     ) -> None:
+        super().__init__()
         self._result_queue = result_queue
         self._data_dir     = data_dir or (Path(__file__).parent.parent / "data")
         self._api_key      = api_key
@@ -120,52 +129,7 @@ class TftWorker:
         # Invariant: _ai_bar is always applied to _live whenever both exist.
         self._ai_bar: Any = None
 
-        # Lifecycle
-        self._stop_event  = threading.Event()
-        self._generation  = 0
-        self._thread: Optional[threading.Thread] = None
-
-        # Liveness (GIL-atomic float writes)
-        self.pulse_ts:        float = 0.0
-        self.last_success_ts: float = 0.0
-
-    # ── Public lifecycle API ──────────────────────────────────────────────────
-
-    def start(self) -> None:
-        """
-        Spawn a new background poll thread.
-
-        NOT idempotent: always increments generation.  Old thread exits
-        via generation mismatch within one POLL_INTERVAL_S boundary.
-        """
-        self._stop_event.clear()
-        self._generation += 1
-        gen = self._generation
-        self._thread = threading.Thread(
-            target=self._run,
-            args=(gen,),
-            name=f"TftWorker-{gen}",
-            daemon=True,
-        )
-        self._thread.start()
-        _log.info("TftWorker gen=%d started", gen)
-
-    def stop(self) -> None:
-        """Signal the worker to stop at the next iteration boundary."""
-        self._stop_event.set()
-        _log.info("TftWorker stop signalled")
-
-    def join(self, timeout: float = 3.0) -> None:
-        """Wait for the worker thread to finish (optional — thread is daemon)."""
-        if self._thread is not None:
-            self._thread.join(timeout=timeout)
-
-    def restart(self) -> None:
-        """stop() + bounded join + start() with a new generation."""
-        self.stop()
-        if self._thread is not None:
-            self._thread.join(timeout=POLL_INTERVAL_S * 2)
-        self.start()
+    # ── Public lifecycle API (start/stop/join/restart/is_alive on base) ──
 
     def shutdown(self) -> None:
         """
@@ -176,10 +140,6 @@ class TftWorker:
         if self._thread is not None:
             self._thread.join(timeout=3.0)
         self._teardown_components()
-
-    def is_alive(self) -> bool:
-        """True if the current worker thread is running."""
-        return self._thread is not None and self._thread.is_alive()
 
     # ── Internal ─────────────────────────────────────────────────────────────
 

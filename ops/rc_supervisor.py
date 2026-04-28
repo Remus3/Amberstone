@@ -115,59 +115,77 @@ class PidLock:
     JSON lock file: {pid, start_time, run_id, locked_at}.
     The 'pid' field is kept as a top-level integer for backward compatibility
     with rc_league_watcher.ps1 which reads it as a plain number.
+
+    AUDIT 2026-04-28 (proposal 1.5): replaced write+sleep+verify with a real
+    Win32 byte-range lock via msvcrt.locking(). The fd stays open for the
+    lifetime of the supervisor process; the OS releases the lock on crash,
+    closing the theoretical race window where two supervisors could both
+    pass the verify step.
     """
 
     def __init__(self, lock_file: Path) -> None:
         self.lock_file = lock_file
         self.lock_file.parent.mkdir(parents=True, exist_ok=True)
+        # Sidecar file holding the OS-level byte-range lock. Kept separate
+        # from the readable JSON pid file so msvcrt's exclusive lock doesn't
+        # block rc_league_watcher.ps1's plain-text read of the pid field.
+        self._os_lock_path = lock_file.parent / (lock_file.name + ".oslock")
         self._run_id = _new_id()
+        self._fd: Optional[int] = None
 
     def acquire(self) -> bool:
+        import msvcrt
         my_pid  = os.getpid()
         my_time = time.time()
-
-        if self.lock_file.exists():
-            try:
-                raw = self.lock_file.read_text(encoding="utf-8").strip()
-                # Support both plain-PID (legacy) and JSON formats
-                if raw.startswith("{"):
-                    rec = json.loads(raw)
-                    other_pid = int(rec.get("pid", 0))
-                else:
-                    other_pid = int(raw)
-                if other_pid and other_pid != my_pid and _pid_alive(other_pid):
-                    return False
-            except Exception:
-                pass  # corrupt / stale â€” overwrite
-
-        payload = {
-            "pid":        my_pid,
-            "start_time": my_time,
-            "run_id":     self._run_id,
-            "locked_at":  utc_now(),
-        }
-        self.lock_file.write_text(json.dumps(payload), encoding="utf-8")
-        time.sleep(0.05)
         try:
-            written = json.loads(self.lock_file.read_text(encoding="utf-8"))
-            return int(written.get("pid", 0)) == my_pid
-        except Exception:
+            fd = os.open(str(self._os_lock_path), os.O_RDWR | os.O_CREAT, 0o644)
+        except OSError:
             return False
+        try:
+            # Non-blocking exclusive byte-range lock on byte 0. If another
+            # supervisor holds the lock the OS returns OSError immediately;
+            # if a previous supervisor crashed without releasing, the OS has
+            # already cleared the lock so we proceed.
+            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+        except OSError:
+            os.close(fd)
+            return False
+        self._fd = fd
+        # Write the readable JSON payload for league_watcher.ps1 (and any
+        # other observers). atomic_write_json gives mid-write safety on the
+        # readable file without coupling to the OS-lock fd.
+        try:
+            atomic_write_json(self.lock_file, {
+                "pid":        my_pid,
+                "start_time": my_time,
+                "run_id":     self._run_id,
+                "locked_at":  utc_now(),
+            })
+        except OSError:
+            self.release()
+            return False
+        return True
 
     def release(self) -> None:
-        try:
-            if not self.lock_file.exists():
-                return
-            raw = self.lock_file.read_text(encoding="utf-8").strip()
-            if raw.startswith("{"):
-                rec = json.loads(raw)
-                if int(rec.get("pid", 0)) == os.getpid():
-                    self.lock_file.unlink(missing_ok=True)
-            else:
-                if int(raw) == os.getpid():
-                    self.lock_file.unlink(missing_ok=True)
-        except Exception:
-            pass
+        if self._fd is not None:
+            import msvcrt
+            try:
+                os.lseek(self._fd, 0, os.SEEK_SET)
+                msvcrt.locking(self._fd, msvcrt.LK_UNLCK, 1)
+            except OSError:
+                pass
+            try:
+                os.close(self._fd)
+            except OSError:
+                pass
+            self._fd = None
+        # Best-effort cleanup of both files (oslock may still be held by the
+        # kernel if the OS hasn't fully released; harmless either way).
+        for p in (self.lock_file, self._os_lock_path):
+            try:
+                p.unlink(missing_ok=True)
+            except OSError:
+                pass
 
 
 # â”€â”€ Circuit Breaker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
