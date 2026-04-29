@@ -6436,9 +6436,20 @@
               if (!j) return;
               dot.classList.remove("green","yellow","red");
               dot.classList.add(j.status || "yellow");
-              const cost = (j.cost || {});
+              const cost = j.cost || {};
+              const sup = j.supervisor || {};
               const banner = cost.banner || "ok";
-              dot.title = `RC=${j.rc?.alive ? "up" : "down"} · vision=${j.vision?.alive ? "up" : "down"} · cost=$${(cost.today_usd || 0).toFixed(2)} (${banner})`;
+              const rcVer = j.rc_version || "?";
+              const runId = (sup.run_id || "").slice(0, 8) || "?";
+              const oslock = sup.oslock_present ? "lock" : "no-lock";
+              const lines = [
+                `RC ${rcVer} (pid ${j.rc?.pid ?? "?"})`,
+                `supervisor pid ${sup.pid ?? "?"} · run_id ${runId} · ${oslock}`,
+                `vision ${j.vision?.alive ? "up" : "down"}` +
+                  (j.vision?.uptime_s ? ` · uptime ${Math.round(j.vision.uptime_s/60)}m` : ""),
+                `cost $${(cost.today_usd || 0).toFixed(2)} · ${banner}`,
+              ];
+              dot.title = lines.join("\n");
               dot.setAttribute("data-tt", dot.title);
             })
             .catch(()=>{});
