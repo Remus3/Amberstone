@@ -77,9 +77,21 @@ INTERVAL_S     = 2.0          # base interval between captures
 USE_JPEG       = True         # JPEG = 5-10x smaller than PNG; PNG = lossless
 JPEG_QUALITY   = 85           # 80-90 is the sweet spot for vision
 MAX_WIDTH      = None         # set e.g. 1280 to downscale; None = native
-MONITOR_INDEX  = None         # None = whole virtual desktop; 0 = primary; 1 = secondary, ...
+# AUDIT 2026-04-29 (gap D): default to monitor 0 instead of virtual
+# desktop. The full 3840×1280 stitched capture is ~14.7 MB raw and
+# Win32 BitBlt on it stalls every ~2 min under fullscreen-game
+# compositor pressure (audit observed 4-5 s spikes). Monitor 0 is
+# 1920×1080 = 4× smaller, no stalls. Use `--monitor` flag explicitly
+# to override (or `-1` / pass --all-monitors via env to opt back into
+# the old virtual-desktop behaviour).
+MONITOR_INDEX  = 0            # was None; primary monitor only by default
 CHANNEL        = "game-pc"    # upload `source` field; distinguishes concurrent streams
 PRIMARY        = True         # False = don't update the global /latest-frame slot
+
+# Stall-warn threshold (seconds). A single cycle slower than this gets
+# a WARNING with the capture/upload breakdown so the operator can see
+# whether it was the OS capture call or the network upload that stalled.
+STALL_WARN_S   = 2.5
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(message)s")
@@ -179,11 +191,24 @@ def loop(interval: float, monitor_index: int | None,
     while True:
         t0 = time.time()
         try:
+            t_capture_start = time.time()
             b64, fmt, w, h = capture(monitor_index)
+            t_capture_done = time.time()
             r = upload(b64, fmt, w, h, channel=channel, primary=primary)
-            ms = int((time.time() - t0) * 1000)
-            log.info("uploaded %s %dx%d %dKB in %dms ok=%s",
-                     fmt, w, h, len(b64) // 1024, ms, r.get("ok"))
+            t_done = time.time()
+            cap_ms = int((t_capture_done - t_capture_start) * 1000)
+            up_ms  = int((t_done - t_capture_done) * 1000)
+            total_ms = cap_ms + up_ms
+            # AUDIT 2026-04-29 (gap D): split capture vs upload time so
+            # a stall is attributable. >2.5s in either is unusual and
+            # gets logged at WARNING.
+            if total_ms > STALL_WARN_S * 1000:
+                log.warning("STALL %s %dx%d %dKB total=%dms (capture=%dms upload=%dms)",
+                            fmt, w, h, len(b64) // 1024, total_ms, cap_ms, up_ms)
+            else:
+                log.info("uploaded %s %dx%d %dKB in %dms (cap %dms / up %dms) ok=%s",
+                         fmt, w, h, len(b64) // 1024, total_ms, cap_ms, up_ms,
+                         r.get("ok"))
             consecutive_fail = 0
         except urllib.error.URLError as e:
             consecutive_fail += 1
