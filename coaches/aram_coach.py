@@ -652,10 +652,16 @@ class Coach(BaseCoach):
 
             import time as _time_a
             _t0 = _time_a.perf_counter()
+            # AUDIT 2026-04-29 (gap E): mark the system prompt with
+            # cache_control: ephemeral so subsequent ticks reuse the
+            # cached prefix at ~10% of input-token cost. SR coach has
+            # this since batch 5 (5.3) but ARAM/Arena/Brawl were
+            # missed; in-game telemetry showed cache_r=0 on every call.
             resp = self._client.messages.create(
                 model      = "claude-haiku-4-5-20251001",
                 max_tokens = 900,
-                system     = system,
+                system     = [{"type": "text", "text": system,
+                               "cache_control": {"type": "ephemeral"}}],
                 messages   = [{"role": "user", "content": user}],
                 timeout    = 20,
             )

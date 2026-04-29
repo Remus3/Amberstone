@@ -400,12 +400,17 @@ def handle_vision(body):
     img_send, media_type = _crop_to_primary(img)
     t0=time.time()
     try:
+        # AUDIT 2026-04-29 (gap E): _VISION_PROMPT is identical for every
+        # vision call this session — promote to a cache_control:ephemeral
+        # system block instead of repeating it in user content. Cuts the
+        # text-portion input cost ~90% on subsequent calls.
         resp=_get_client().messages.create(model=model, max_tokens=1400,
+            system=[{"type":"text","text":_VISION_PROMPT,
+                     "cache_control":{"type":"ephemeral"}}],
             messages=[{"role":"user","content":[
                 {"type":"image","source":{"type":"base64",
                     "media_type": media_type,
-                    "data":img_send}},
-                {"type":"text","text":_VISION_PROMPT}]}])
+                    "data":img_send}}]}])
         ms=int((time.time()-t0)*1000)
         raw=resp.content[0].text.strip()
         result=_parse_json(raw)
