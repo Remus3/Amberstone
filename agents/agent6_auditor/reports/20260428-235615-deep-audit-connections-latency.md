@@ -125,17 +125,18 @@ grows. WAL files are < 32 KB so no checkpoint pressure.
 
 ## 5. Anomalies / concerns
 
-### 🟡 Duplicate scheduled task
+### ✅ Duplicate scheduled task — RESOLVED 2026-04-28
 ```
 \RC-VisionServer    Running   last 4/28/2026 4:34 PM   result 267009 (running)
 \RCVisionServer     Ready     last 4/28/2026 3:21 PM   result 0      (success)
 ```
-Two tasks point at the same vision server. The currently-running one is
-`RC-VisionServer` (with hyphen). The other (`RCVisionServer`, no hyphen) ran
-once at 3:21 PM and is now idle — but if it ever fires alongside the live one,
-the second instance will fail to bind port 8889 and crash. **Recommend deleting
-`RCVisionServer`** via `schtasks /Delete /TN RCVisionServer /F` (manual,
-needs your call).
+Two tasks pointed at the same vision server. The currently-running one is
+`RC-VisionServer` (with hyphen); the duplicate `RCVisionServer` (no hyphen)
+would have collided on port 8889 if it ever fired alongside.
+
+**Action taken** (post-audit): `schtasks /Delete /TN RCVisionServer /F` →
+SUCCESS. Verified `RC-VisionServer` still Running, /health alive
+(uptime 8978 s).
 
 ### 🟡 /api/diagnostics is 2 s
 The dashboard's diagnostics view fans out to several heavy probes (DB
@@ -219,7 +220,7 @@ works and the auto-scale handles the resolution mismatch transparently.
 
 | # | Priority | Action |
 |---|---|---|
-| 1 | low | `schtasks /Delete /TN RCVisionServer /F` — drop the duplicate vision-server task. Manual, one-line. |
+| 1 | ✅ done | `schtasks /Delete /TN RCVisionServer /F` — duplicate vision-server task deleted post-audit; survivor `RC-VisionServer` still Running, /health alive. |
 | 2 | low | Consider a nightly job that materializes per-champion KDA aggregates from `rewind_history.db` into a small JSON, so `/api/recommend-champ` cold-call drops from 474 ms to ≈ 50 ms. |
 | 3 | low | When you get back into a live game, re-run this audit so the `liveclient_upload` line + Sonnet vision-call latency are also captured. |
 | 4 | info | Daily spend ledger will populate the moment a coach loop or vision call fires; the empty file today is correct. |
