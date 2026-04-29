@@ -1,0 +1,79 @@
+============================================================
+DIRECT CHROME IMPORT — bypasses Windows trust store entirely
+============================================================
+
+If Chrome still shows "Not Secure" after running install +
+verify scripts, do this instead. It writes the CA into Chrome's
+own trust store (separate from Windows), so OS-level trust
+issues don't matter.
+
+------------------------------------------------------------
+On Game-PC, in Chrome:
+------------------------------------------------------------
+
+1. Address bar:   chrome://settings/certificates
+                  (or chrome://settings/security → "Manage
+                  certificates" if your Chrome version moved it)
+
+2. Click the "Authorities" tab (NOT "Your certificates").
+
+3. Click "Import".
+
+4. In the file picker, navigate to:
+       \\DESKTOP-3NT1UG3\RCClient\rc-mkcert-rootCA.pem
+   (or \\192.168.8.237\RCClient\rc-mkcert-rootCA.pem,
+   or wherever you have a local copy)
+
+   You may need to change the file-type filter from
+   "DER-encoded …" to "All files (*.*)" so the .pem is visible.
+
+5. A dialog appears asking what to trust. Check ALL THREE:
+       [x] Trust this certificate for identifying websites
+       [x] Trust this certificate for identifying email users
+       [x] Trust this certificate for identifying software makers
+
+6. Click OK.
+
+7. Fully close Chrome:
+   - Right-click the Chrome icon in the taskbar → Close window
+   - Open Task Manager, end EVERY chrome.exe (there are usually
+     several background helpers)
+   - Or run verify-rc-rootca-on-gamepc.cmd which kills them all.
+
+8. Reopen Chrome, visit:
+       https://192.168.8.230:8888/
+   You should see the padlock with no warning.
+
+------------------------------------------------------------
+Why this works when the OS install didn't:
+------------------------------------------------------------
+
+Chrome on Windows uses a hybrid trust model since version 105:
+  - Chrome's own Root Store (CRS) is consulted first.
+  - Windows trust store is consulted for private CAs IF the cert
+    is in LocalMachine\Root AND passes Chrome's path checks.
+
+The "Authorities" import bypasses both layers — it directly
+adds the CA to Chrome's per-user trust list, no admin needed,
+no policy negotiation. The trade-off: only that user profile
+trusts it (per Chrome profile, not system-wide).
+
+------------------------------------------------------------
+Verify in Chrome
+------------------------------------------------------------
+
+After import, visit chrome://settings/certificates again and
+look in the Authorities tab. Search "mkcert" — you should see
+a single entry like:
+   org-mkcert development CA
+       mkcert LEGION-RC\Administrator@LEGION-RC
+
+Right-click → Edit → all three checkboxes ticked.
+
+------------------------------------------------------------
+Edge users
+------------------------------------------------------------
+
+Edge uses a similar UI: edge://settings/privacy → Security →
+"Manage certificates" → Authorities tab → Import. Same .pem
+file, same checkboxes.
