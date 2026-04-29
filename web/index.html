@@ -793,6 +793,36 @@
             <div class="diag-card-head">CONNECTIONS</div>
             <ul class="diag-conn-list" id="diag-conn-list"><li class="home-empty">loading…</li></ul>
           </div>
+          <!-- AUDIT 2026-04-28: cost tile (proposal 2.1) live-wired.
+               Reads /api/cost. -->
+          <div class="diag-card">
+            <div class="diag-card-head">API COST <span class="diag-sub">today</span></div>
+            <div class="cost-tile" id="cost-tile">
+              <div class="cost-tile-row"><span class="cost-tile-key">SPEND</span><span class="cost-tile-val" id="cost-val">$0.0000</span></div>
+              <div class="cost-tile-row"><span class="cost-tile-key">CALLS</span><span class="cost-tile-val" id="cost-calls">0</span></div>
+              <div class="cost-tile-row"><span class="cost-tile-key">TOK IN/OUT</span><span class="cost-tile-val" id="cost-tokens">0 / 0</span></div>
+              <div class="cost-tile-row"><span class="cost-tile-key">CACHE</span><span class="cost-tile-val" id="cost-cache">0 / 0</span></div>
+              <div class="cost-tile-row"><span class="cost-tile-key">STATUS</span><span class="cost-tile-banner ok" id="cost-banner">ok</span></div>
+            </div>
+          </div>
+          <!-- AUDIT 2026-04-28: per-mode coach kill-switches (proposal
+               2.2). Click a pill to toggle. POSTs /api/coach/toggle. -->
+          <div class="diag-card">
+            <div class="diag-card-head">COACH TOGGLES</div>
+            <div class="coach-toggle-grid" id="coach-toggle-grid">
+              <div class="coach-toggle-row" data-mode="sr"><span class="coach-toggle-label">SR</span><span class="coach-toggle-pill on" data-mode="sr">ON</span></div>
+              <div class="coach-toggle-row" data-mode="aram"><span class="coach-toggle-label">ARAM</span><span class="coach-toggle-pill on" data-mode="aram">ON</span></div>
+              <div class="coach-toggle-row" data-mode="arena"><span class="coach-toggle-label">ARENA</span><span class="coach-toggle-pill on" data-mode="arena">ON</span></div>
+              <div class="coach-toggle-row" data-mode="brawl"><span class="coach-toggle-label">BRAWL</span><span class="coach-toggle-pill on" data-mode="brawl">ON</span></div>
+              <div class="coach-toggle-row" data-mode="tft" title="TFT vision broken post-2026-04-19 migration; toggle disabled until relay refactor lands"><span class="coach-toggle-label">TFT</span><span class="coach-toggle-pill off" data-mode="tft" data-disabled="1">HOLD</span></div>
+            </div>
+          </div>
+          <!-- AUDIT 2026-04-28: coach trace tab (proposal 2.5).
+               Reads /api/coach/trace. -->
+          <div class="diag-card diag-card-wide">
+            <div class="diag-card-head">COACH TRACE <span class="diag-sub">last 20 calls</span></div>
+            <div class="trace-list" id="trace-list"><div class="home-empty">loading…</div></div>
+          </div>
           <div class="diag-card diag-card-wide">
             <div class="diag-card-head">RC LOG TAIL <span class="diag-sub">last 40 lines</span></div>
             <pre class="diag-log" id="diag-log">loading…</pre>
