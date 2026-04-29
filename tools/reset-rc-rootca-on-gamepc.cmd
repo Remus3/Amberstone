@@ -72,6 +72,10 @@ echo.
 
 REM PowerShell sweep — finds and deletes by issuer-substring AND thumbprint
 REM across every common store on both LocalMachine and CurrentUser.
+REM 2026-04-28: previous version built the Remove-Item path manually from
+REM PSParentPath which produced a malformed string ('Cert:\:\CurrentUser\…')
+REM and silently failed. Switched to pipeline Remove-Item which deletes
+REM via the real PSPath.
 powershell -NoProfile -Command ^
     "$thumb = '%THUMB%';" ^
     "$paths = @(" ^
@@ -83,8 +87,8 @@ powershell -NoProfile -Command ^
     "  Get-ChildItem $p -ErrorAction SilentlyContinue |" ^
     "    Where-Object { $_.Subject -match 'mkcert' -or $_.Issuer -match 'mkcert' -or ($thumb -and $_.Thumbprint -eq $thumb) } |" ^
     "    ForEach-Object {" ^
-    "      Write-Host ('  delete '+$p+' / '+$_.Thumbprint+' '+$_.Subject);" ^
-    "      Remove-Item ('Cert:\'+$_.PSParentPath.Split(':',2)[1]+'\'+$_.Thumbprint) -Force -ErrorAction SilentlyContinue;" ^
+    "      Write-Host ('  delete '+$_.PSPath+' '+$_.Subject);" ^
+    "      $_ | Remove-Item -Force -ErrorAction SilentlyContinue;" ^
     "      $total++" ^
     "    }" ^
     "};" ^
