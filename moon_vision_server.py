@@ -325,6 +325,52 @@ def get_latest_frame(source: str | None = None):
 
 
 # ── Handlers ───────────────────────────────────────────────────────────────
+def _crop_to_primary(img_b64: str) -> tuple[str, str]:
+    """AUDIT 2026-04-29 (gap C): the Game-PC screen agent stitches both
+    monitors into one frame (3840×1280 typical). League runs on monitor 0
+    at 1920×1080; the right half of the stitched frame is the dashboard
+    on the iPad-via-Duet display, which Sonnet wastes time analysing.
+
+    Crop to the primary 1920×1080 region before /vision. Cuts Sonnet
+    input by ~50% (image area) → roughly halves latency and cost.
+
+    Returns (cropped_b64, media_type). On any decode/encode failure,
+    returns the original b64 + best-guess media type — the worst case
+    is "we burned 3.6 s instead of 1.8 s on this one call".
+
+    Disable via env: RC_VISION_NO_CROP=1.
+    """
+    if os.environ.get("RC_VISION_NO_CROP") == "1":
+        mt = "image/jpeg" if img_b64.startswith("/9j/") else "image/png"
+        return img_b64, mt
+    try:
+        from PIL import Image
+        import base64 as _b64
+        import io as _io
+        raw = _b64.b64decode(img_b64)
+        img = Image.open(_io.BytesIO(raw))
+        w, h = img.size
+        # Already small? Skip — this is a non-stitched frame from a
+        # single-monitor capture (or a future cropped agent).
+        if w <= 1920 and h <= 1080:
+            mt = "image/jpeg" if img_b64.startswith("/9j/") else "image/png"
+            return img_b64, mt
+        cropped = img.crop((0, 0, min(1920, w), min(1080, h)))
+        buf = _io.BytesIO()
+        # JPEG quality 85 keeps text legible while being ~70% smaller
+        # than PNG. Sonnet sees the same content either way.
+        cropped.save(buf, format="JPEG", quality=85, optimize=True)
+        out = _b64.b64encode(buf.getvalue()).decode("ascii")
+        log.debug("Vision crop: %dx%d → %dx%d (%d → %d KB)",
+                  w, h, cropped.width, cropped.height,
+                  len(raw)//1024, len(buf.getvalue())//1024)
+        return out, "image/jpeg"
+    except Exception as exc:
+        log.warning("Vision crop failed (%s) — sending original frame", exc)
+        mt = "image/jpeg" if img_b64.startswith("/9j/") else "image/png"
+        return img_b64, mt
+
+
 def _record_to_cost_tracker(resp, *, model: str, purpose: str) -> None:
     """AUDIT 2026-04-29 (in-game audit gap B): the vision server holds
     the only Anthropic client that runs Sonnet for vision calls. Without
@@ -349,13 +395,16 @@ def _record_to_cost_tracker(resp, *, model: str, purpose: str) -> None:
 def handle_vision(body):
     d=json.loads(body); img=d.get("image_b64",""); model=d.get("model",VISION_MODEL)
     if not img: return {"error":"no image_b64"}
+    # AUDIT 2026-04-29 (gap C): crop stitched dual-monitor frame to the
+    # primary 1920×1080 region before sending. Halves Sonnet input area.
+    img_send, media_type = _crop_to_primary(img)
     t0=time.time()
     try:
         resp=_get_client().messages.create(model=model, max_tokens=1400,
             messages=[{"role":"user","content":[
                 {"type":"image","source":{"type":"base64",
-                    "media_type": ("image/jpeg" if img.startswith("/9j/") else "image/png"),
-                    "data":img}},
+                    "media_type": media_type,
+                    "data":img_send}},
                 {"type":"text","text":_VISION_PROMPT}]}])
         ms=int((time.time()-t0)*1000)
         raw=resp.content[0].text.strip()
