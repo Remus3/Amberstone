@@ -315,9 +315,12 @@ class Coach(BaseCoach):
 
             import time as _time_a
             _t0 = _time_a.perf_counter()
+            # AUDIT 2026-04-29 (gap E): cache_control: ephemeral.
             resp = self._client.messages.create(
                 model="claude-haiku-4-5-20251001", max_tokens=600,
-                system=system, messages=[{"role": "user", "content": user}],
+                system=[{"type": "text", "text": system,
+                         "cache_control": {"type": "ephemeral"}}],
+                messages=[{"role": "user", "content": user}],
                 timeout=20,
             )
             # AUDIT 2026-04-29 (gap A): cost + trace telemetry.
