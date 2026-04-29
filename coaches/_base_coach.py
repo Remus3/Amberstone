@@ -535,6 +535,62 @@ class BaseCoach(abc.ABC):
         new_kill = len(state.get("dead_enemies", [])) > len(prev.get("dead_enemies", []))
         return hp_drop or new_kill
 
+    def _record_coach_call(self, resp, *,
+                           system: str = "",
+                           user: str = "",
+                           t0_perf: "float | None" = None,
+                           model: "str | None" = None,
+                           purpose: "str | None" = None,
+                           extra: "dict | None" = None) -> None:
+        """AUDIT 2026-04-29 (in-game audit gap A): wire mode-coach
+        Anthropic responses into the same telemetry the SR coach uses —
+        cost ledger (5.8) + coach trace (2.5). Subclasses call this
+        immediately after `resp = self._client.messages.create(...)`.
+
+        Best-effort: any failure in extracting usage / writing the file
+        is swallowed so a telemetry hiccup never breaks coaching.
+        """
+        try:
+            import time as _time
+            usage = getattr(resp, "usage", None)
+            tin  = getattr(usage, "input_tokens", 0) or 0 if usage else 0
+            tout = getattr(usage, "output_tokens", 0) or 0 if usage else 0
+            cr   = getattr(usage, "cache_read_input_tokens", 0) or 0 if usage else 0
+            cw   = getattr(usage, "cache_creation_input_tokens", 0) or 0 if usage else 0
+            mdl  = model or getattr(resp, "model", "") or ""
+            latency_ms = int((_time.perf_counter() - t0_perf) * 1000) if t0_perf is not None else 0
+            try:
+                from core.cost_tracker import get_tracker as _gt
+                _gt().record_call(
+                    model=mdl, input_tokens=tin, output_tokens=tout,
+                    cache_read=cr, cache_write=cw,
+                    purpose=purpose or f"{self._MODE_NAME}_coach",
+                )
+            except Exception as exc:
+                _log.debug("cost_tracker record_call: %s", exc)
+            try:
+                from core.coach_trace import append as _trace_append
+                # Pull response text defensively — content may be empty.
+                resp_text = ""
+                content = getattr(resp, "content", None) or []
+                if content and hasattr(content[0], "text"):
+                    resp_text = content[0].text or ""
+                _trace_append(
+                    mode=self._MODE_NAME,
+                    model=mdl,
+                    system_prompt=system or "",
+                    user_prompt=user or "",
+                    response=resp_text,
+                    latency_ms=latency_ms,
+                    tokens_in=tin, tokens_out=tout,
+                    cache_read=cr, cache_write=cw,
+                    extra=extra,
+                )
+            except Exception as exc:
+                _log.debug("coach_trace append: %s", exc)
+        except Exception as exc:
+            _log.debug("_record_coach_call swallowed: %s", exc)
+
     # ── Abstract ──────────────────────────────────────────────────────────────
 
     @abc.abstractmethod

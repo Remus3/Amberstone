@@ -313,11 +313,18 @@ class Coach(BaseCoach):
                 )
             )
 
+            import time as _time_a
+            _t0 = _time_a.perf_counter()
             resp = self._client.messages.create(
                 model="claude-haiku-4-5-20251001", max_tokens=600,
                 system=system, messages=[{"role": "user", "content": user}],
                 timeout=20,
             )
+            # AUDIT 2026-04-29 (gap A): cost + trace telemetry.
+            self._record_coach_call(resp, system=system, user=user,
+                                    t0_perf=_t0,
+                                    model="claude-haiku-4-5-20251001",
+                                    purpose="brawl_coach")
             raw    = resp.content[0].text
             fields = parse_fields(raw, output_keys)
             if not fields:

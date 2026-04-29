@@ -339,11 +339,18 @@ class Coach(BaseCoach):
                 vision_context = vision_ctx,
             )
 
+            import time as _time_a
+            _t0 = _time_a.perf_counter()
             resp = self._client.messages.create(
                 model="claude-haiku-4-5-20251001", max_tokens=650,
                 system=system, messages=[{"role": "user", "content": user}],
                 timeout=20,
             )
+            # AUDIT 2026-04-29 (gap A): cost + trace telemetry.
+            self._record_coach_call(resp, system=system, user=user,
+                                    t0_perf=_t0,
+                                    model="claude-haiku-4-5-20251001",
+                                    purpose="arena_coach")
             raw    = resp.content[0].text
             # ARCH-002 bug fix: pass keys argument (was missing — caused silent TypeError)
             fields = parse_fields(raw, _OUTPUT_KEYS)
@@ -405,10 +412,16 @@ class Coach(BaseCoach):
             choices  = "\n".join(f"- {c}" for c in choices),
         )
         try:
+            import time as _time_b
+            _t0b = _time_b.perf_counter()
             resp = self._client.messages.create(
                 model="claude-haiku-4-5-20251001", max_tokens=250,
                 messages=[{"role": "user", "content": prompt}], timeout=15,
             )
+            self._record_coach_call(resp, system="", user=prompt,
+                                    t0_perf=_t0b,
+                                    model="claude-haiku-4-5-20251001",
+                                    purpose="arena_aug_select")
             raw     = resp.content[0].text
             current = load_json(self._out)
             current.update({
@@ -435,10 +448,16 @@ class Coach(BaseCoach):
             "NO markdown. Output: Take: <item>\nWhy: <one line reason>"
         )
         try:
+            import time as _time_c
+            _t0c = _time_c.perf_counter()
             resp = self._client.messages.create(
                 model="claude-haiku-4-5-20251001", max_tokens=100,
                 messages=[{"role": "user", "content": prompt}], timeout=10,
             )
+            self._record_coach_call(resp, system="", user=prompt,
+                                    t0_perf=_t0c,
+                                    model="claude-haiku-4-5-20251001",
+                                    purpose="arena_anvil")
             raw     = resp.content[0].text
             current = load_json(self._out)
             current["anvil_advice"] = f"Take: {parse_field(raw, 'Take')} — {parse_field(raw, 'Why')}"
