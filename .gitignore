@@ -23,6 +23,11 @@ data/aram_coaching_data.json
 data/arena_coaching_data.json
 data/brawl_coaching_data.json
 data/tft_coaching_data.json
+data/cold_advisories.json
+data/insight_cooldowns.json
+data/ratings/last_*.json
+data/coach_trace.jsonl
+data/spend/
 
 # Local-only Claude / MCP config (may contain server URLs, tokens)
 .claude/
