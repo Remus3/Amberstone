@@ -1,0 +1,1042 @@
+{
+  "generated_at": "2026-04-29T01:44:07.531766+00:00",
+  "user_puuid": "v8HzkOaP3OKe_Ayi",
+  "champions": {
+    "1": {
+      "name": "Annie",
+      "games": 2,
+      "kills": 7,
+      "deaths": 17,
+      "assists": 30
+    },
+    "2": {
+      "name": "Olaf",
+      "games": 18,
+      "kills": 197,
+      "deaths": 192,
+      "assists": 377
+    },
+    "3": {
+      "name": "Galio",
+      "games": 8,
+      "kills": 56,
+      "deaths": 44,
+      "assists": 61
+    },
+    "4": {
+      "name": "Twisted Fate",
+      "games": 6,
+      "kills": 33,
+      "deaths": 67,
+      "assists": 193
+    },
+    "5": {
+      "name": "Xin Zhao",
+      "games": 40,
+      "kills": 439,
+      "deaths": 499,
+      "assists": 975
+    },
+    "6": {
+      "name": "Urgot",
+      "games": 6,
+      "kills": 62,
+      "deaths": 72,
+      "assists": 156
+    },
+    "7": {
+      "name": "LeBlanc",
+      "games": 30,
+      "kills": 385,
+      "deaths": 355,
+      "assists": 810
+    },
+    "8": {
+      "name": "Vladimir",
+      "games": 132,
+      "kills": 1016,
+      "deaths": 565,
+      "assists": 1510
+    },
+    "9": {
+      "name": "Fiddlesticks",
+      "games": 1,
+      "kills": 2,
+      "deaths": 17,
+      "assists": 26
+    },
+    "10": {
+      "name": "Kayle",
+      "games": 20,
+      "kills": 174,
+      "deaths": 223,
+      "assists": 622
+    },
+    "11": {
+      "name": "Master Yi",
+      "games": 20,
+      "kills": 298,
+      "deaths": 256,
+      "assists": 477
+    },
+    "12": {
+      "name": "Alistar",
+      "games": 6,
+      "kills": 15,
+      "deaths": 59,
+      "assists": 183
+    },
+    "13": {
+      "name": "Ryze",
+      "games": 1,
+      "kills": 20,
+      "deaths": 12,
+      "assists": 30
+    },
+    "14": {
+      "name": "Sion",
+      "games": 1,
+      "kills": 6,
+      "deaths": 16,
+      "assists": 35
+    },
+    "15": {
+      "name": "Sivir",
+      "games": 19,
+      "kills": 175,
+      "deaths": 218,
+      "assists": 664
+    },
+    "16": {
+      "name": "Soraka",
+      "games": 15,
+      "kills": 57,
+      "deaths": 155,
+      "assists": 638
+    },
+    "17": {
+      "name": "Teemo",
+      "games": 11,
+      "kills": 127,
+      "deaths": 161,
+      "assists": 325
+    },
+    "18": {
+      "name": "Tristana",
+      "games": 147,
+      "kills": 1678,
+      "deaths": 1165,
+      "assists": 1927
+    },
+    "19": {
+      "name": "Warwick",
+      "games": 4,
+      "kills": 37,
+      "deaths": 60,
+      "assists": 86
+    },
+    "21": {
+      "name": "Miss Fortune",
+      "games": 54,
+      "kills": 747,
+      "deaths": 584,
+      "assists": 1351
+    },
+    "22": {
+      "name": "Ashe",
+      "games": 20,
+      "kills": 226,
+      "deaths": 189,
+      "assists": 549
+    },
+    "23": {
+      "name": "Tryndamere",
+      "games": 1,
+      "kills": 16,
+      "deaths": 12,
+      "assists": 32
+    },
+    "24": {
+      "name": "Jax",
+      "games": 11,
+      "kills": 104,
+      "deaths": 125,
+      "assists": 213
+    },
+    "25": {
+      "name": "Morgana",
+      "games": 10,
+      "kills": 70,
+      "deaths": 106,
+      "assists": 381
+    },
+    "26": {
+      "name": "Zilean",
+      "games": 1,
+      "kills": 5,
+      "deaths": 6,
+      "assists": 12
+    },
+    "28": {
+      "name": "Evelynn",
+      "games": 1,
+      "kills": 4,
+      "deaths": 13,
+      "assists": 18
+    },
+    "29": {
+      "name": "Twitch",
+      "games": 34,
+      "kills": 451,
+      "deaths": 346,
+      "assists": 955
+    },
+    "30": {
+      "name": "Karthus",
+      "games": 16,
+      "kills": 230,
+      "deaths": 202,
+      "assists": 594
+    },
+    "32": {
+      "name": "Amumu",
+      "games": 7,
+      "kills": 46,
+      "deaths": 91,
+      "assists": 276
+    },
+    "34": {
+      "name": "Anivia",
+      "games": 3,
+      "kills": 16,
+      "deaths": 24,
+      "assists": 89
+    },
+    "36": {
+      "name": "Dr. Mundo",
+      "games": 8,
+      "kills": 64,
+      "deaths": 84,
+      "assists": 203
+    },
+    "37": {
+      "name": "Sona",
+      "games": 2,
+      "kills": 6,
+      "deaths": 27,
+      "assists": 104
+    },
+    "38": {
+      "name": "Kassadin",
+      "games": 2,
+      "kills": 22,
+      "deaths": 22,
+      "assists": 42
+    },
+    "39": {
+      "name": "Irelia",
+      "games": 33,
+      "kills": 491,
+      "deaths": 455,
+      "assists": 726
+    },
+    "40": {
+      "name": "Janna",
+      "games": 6,
+      "kills": 10,
+      "deaths": 48,
+      "assists": 161
+    },
+    "41": {
+      "name": "Gangplank",
+      "games": 1,
+      "kills": 16,
+      "deaths": 6,
+      "assists": 25
+    },
+    "42": {
+      "name": "Corki",
+      "games": 12,
+      "kills": 152,
+      "deaths": 145,
+      "assists": 334
+    },
+    "43": {
+      "name": "Karma",
+      "games": 9,
+      "kills": 42,
+      "deaths": 68,
+      "assists": 193
+    },
+    "45": {
+      "name": "Veigar",
+      "games": 1,
+      "kills": 2,
+      "deaths": 6,
+      "assists": 46
+    },
+    "48": {
+      "name": "Trundle",
+      "games": 6,
+      "kills": 41,
+      "deaths": 82,
+      "assists": 215
+    },
+    "50": {
+      "name": "Swain",
+      "games": 11,
+      "kills": 87,
+      "deaths": 109,
+      "assists": 361
+    },
+    "51": {
+      "name": "Caitlyn",
+      "games": 93,
+      "kills": 974,
+      "deaths": 812,
+      "assists": 1419
+    },
+    "53": {
+      "name": "Blitzcrank",
+      "games": 12,
+      "kills": 83,
+      "deaths": 142,
+      "assists": 344
+    },
+    "54": {
+      "name": "Malphite",
+      "games": 1,
+      "kills": 9,
+      "deaths": 13,
+      "assists": 29
+    },
+    "55": {
+      "name": "Katarina",
+      "games": 31,
+      "kills": 373,
+      "deaths": 416,
+      "assists": 814
+    },
+    "56": {
+      "name": "Nocturne",
+      "games": 3,
+      "kills": 29,
+      "deaths": 39,
+      "assists": 112
+    },
+    "57": {
+      "name": "Maokai",
+      "games": 2,
+      "kills": 5,
+      "deaths": 22,
+      "assists": 59
+    },
+    "58": {
+      "name": "Renekton",
+      "games": 1,
+      "kills": 4,
+      "deaths": 10,
+      "assists": 15
+    },
+    "59": {
+      "name": "Jarvan IV",
+      "games": 7,
+      "kills": 62,
+      "deaths": 88,
+      "assists": 280
+    },
+    "61": {
+      "name": "Orianna",
+      "games": 65,
+      "kills": 764,
+      "deaths": 669,
+      "assists": 2047
+    },
+    "62": {
+      "name": "Wukong",
+      "games": 2,
+      "kills": 21,
+      "deaths": 33,
+      "assists": 70
+    },
+    "63": {
+      "name": "Brand",
+      "games": 4,
+      "kills": 37,
+      "deaths": 29,
+      "assists": 136
+    },
+    "64": {
+      "name": "Lee Sin",
+      "games": 18,
+      "kills": 254,
+      "deaths": 223,
+      "assists": 431
+    },
+    "67": {
+      "name": "Vayne",
+      "games": 182,
+      "kills": 1918,
+      "deaths": 1679,
+      "assists": 2911
+    },
+    "68": {
+      "name": "Rumble",
+      "games": 3,
+      "kills": 32,
+      "deaths": 44,
+      "assists": 101
+    },
+    "69": {
+      "name": "Cassiopeia",
+      "games": 5,
+      "kills": 44,
+      "deaths": 57,
+      "assists": 155
+    },
+    "75": {
+      "name": "Nasus",
+      "games": 1,
+      "kills": 4,
+      "deaths": 12,
+      "assists": 13
+    },
+    "76": {
+      "name": "Nidalee",
+      "games": 31,
+      "kills": 377,
+      "deaths": 293,
+      "assists": 663
+    },
+    "77": {
+      "name": "Udyr",
+      "games": 2,
+      "kills": 18,
+      "deaths": 31,
+      "assists": 41
+    },
+    "78": {
+      "name": "Poppy",
+      "games": 13,
+      "kills": 115,
+      "deaths": 150,
+      "assists": 384
+    },
+    "80": {
+      "name": "Pantheon",
+      "games": 5,
+      "kills": 32,
+      "deaths": 40,
+      "assists": 59
+    },
+    "81": {
+      "name": "Ezreal",
+      "games": 62,
+      "kills": 681,
+      "deaths": 505,
+      "assists": 1363
+    },
+    "82": {
+      "name": "Mordekaiser",
+      "games": 21,
+      "kills": 175,
+      "deaths": 221,
+      "assists": 502
+    },
+    "83": {
+      "name": "Yorick",
+      "games": 7,
+      "kills": 55,
+      "deaths": 77,
+      "assists": 185
+    },
+    "84": {
+      "name": "Akali",
+      "games": 6,
+      "kills": 59,
+      "deaths": 60,
+      "assists": 97
+    },
+    "89": {
+      "name": "Leona",
+      "games": 10,
+      "kills": 22,
+      "deaths": 53,
+      "assists": 194
+    },
+    "90": {
+      "name": "Malzahar",
+      "games": 1,
+      "kills": 3,
+      "deaths": 8,
+      "assists": 49
+    },
+    "91": {
+      "name": "Talon",
+      "games": 2,
+      "kills": 20,
+      "deaths": 25,
+      "assists": 41
+    },
+    "92": {
+      "name": "Riven",
+      "games": 20,
+      "kills": 161,
+      "deaths": 223,
+      "assists": 339
+    },
+    "96": {
+      "name": "Kog'Maw",
+      "games": 10,
+      "kills": 110,
+      "deaths": 97,
+      "assists": 234
+    },
+    "99": {
+      "name": "Lux",
+      "games": 22,
+      "kills": 176,
+      "deaths": 148,
+      "assists": 622
+    },
+    "101": {
+      "name": "Xerath",
+      "games": 3,
+      "kills": 32,
+      "deaths": 33,
+      "assists": 126
+    },
+    "102": {
+      "name": "Shyvana",
+      "games": 1,
+      "kills": 6,
+      "deaths": 8,
+      "assists": 5
+    },
+    "103": {
+      "name": "Ahri",
+      "games": 72,
+      "kills": 666,
+      "deaths": 724,
+      "assists": 1893
+    },
+    "104": {
+      "name": "Graves",
+      "games": 4,
+      "kills": 44,
+      "deaths": 25,
+      "assists": 74
+    },
+    "105": {
+      "name": "Fizz",
+      "games": 6,
+      "kills": 45,
+      "deaths": 58,
+      "assists": 110
+    },
+    "106": {
+      "name": "Volibear",
+      "games": 4,
+      "kills": 23,
+      "deaths": 40,
+      "assists": 91
+    },
+    "107": {
+      "name": "Rengar",
+      "games": 4,
+      "kills": 37,
+      "deaths": 56,
+      "assists": 66
+    },
+    "110": {
+      "name": "Varus",
+      "games": 21,
+      "kills": 253,
+      "deaths": 203,
+      "assists": 404
+    },
+    "111": {
+      "name": "Nautilus",
+      "games": 20,
+      "kills": 65,
+      "deaths": 128,
+      "assists": 417
+    },
+    "112": {
+      "name": "Viktor",
+      "games": 15,
+      "kills": 145,
+      "deaths": 140,
+      "assists": 454
+    },
+    "113": {
+      "name": "Sejuani",
+      "games": 13,
+      "kills": 93,
+      "deaths": 176,
+      "assists": 506
+    },
+    "114": {
+      "name": "Fiora",
+      "games": 71,
+      "kills": 558,
+      "deaths": 498,
+      "assists": 903
+    },
+    "115": {
+      "name": "Ziggs",
+      "games": 11,
+      "kills": 112,
+      "deaths": 86,
+      "assists": 368
+    },
+    "117": {
+      "name": "Lulu",
+      "games": 21,
+      "kills": 112,
+      "deaths": 197,
+      "assists": 594
+    },
+    "119": {
+      "name": "Draven",
+      "games": 42,
+      "kills": 585,
+      "deaths": 446,
+      "assists": 917
+    },
+    "120": {
+      "name": "Hecarim",
+      "games": 3,
+      "kills": 35,
+      "deaths": 34,
+      "assists": 65
+    },
+    "121": {
+      "name": "Kha'Zix",
+      "games": 1,
+      "kills": 8,
+      "deaths": 9,
+      "assists": 11
+    },
+    "122": {
+      "name": "Darius",
+      "games": 13,
+      "kills": 155,
+      "deaths": 154,
+      "assists": 374
+    },
+    "126": {
+      "name": "Jayce",
+      "games": 19,
+      "kills": 273,
+      "deaths": 230,
+      "assists": 407
+    },
+    "131": {
+      "name": "Diana",
+      "games": 42,
+      "kills": 516,
+      "deaths": 514,
+      "assists": 1112
+    },
+    "133": {
+      "name": "Quinn",
+      "games": 93,
+      "kills": 1182,
+      "deaths": 984,
+      "assists": 2090
+    },
+    "134": {
+      "name": "Syndra",
+      "games": 15,
+      "kills": 162,
+      "deaths": 145,
+      "assists": 396
+    },
+    "141": {
+      "name": "Kayn",
+      "games": 1,
+      "kills": 4,
+      "deaths": 18,
+      "assists": 65
+    },
+    "143": {
+      "name": "Zyra",
+      "games": 3,
+      "kills": 12,
+      "deaths": 31,
+      "assists": 65
+    },
+    "145": {
+      "name": "Kai'Sa",
+      "games": 45,
+      "kills": 630,
+      "deaths": 480,
+      "assists": 1004
+    },
+    "147": {
+      "name": "Seraphine",
+      "games": 8,
+      "kills": 38,
+      "deaths": 35,
+      "assists": 144
+    },
+    "157": {
+      "name": "Yasuo",
+      "games": 12,
+      "kills": 125,
+      "deaths": 171,
+      "assists": 356
+    },
+    "161": {
+      "name": "Vel'Koz",
+      "games": 18,
+      "kills": 192,
+      "deaths": 154,
+      "assists": 612
+    },
+    "163": {
+      "name": "Taliyah",
+      "games": 32,
+      "kills": 317,
+      "deaths": 388,
+      "assists": 1058
+    },
+    "164": {
+      "name": "Camille",
+      "games": 5,
+      "kills": 41,
+      "deaths": 65,
+      "assists": 128
+    },
+    "166": {
+      "name": "Akshan",
+      "games": 35,
+      "kills": 384,
+      "deaths": 149,
+      "assists": 237
+    },
+    "200": {
+      "name": "Bel'Veth",
+      "games": 35,
+      "kills": 259,
+      "deaths": 174,
+      "assists": 209
+    },
+    "201": {
+      "name": "Braum",
+      "games": 4,
+      "kills": 7,
+      "deaths": 15,
+      "assists": 63
+    },
+    "202": {
+      "name": "Jhin",
+      "games": 39,
+      "kills": 569,
+      "deaths": 378,
+      "assists": 1086
+    },
+    "203": {
+      "name": "Kindred",
+      "games": 37,
+      "kills": 435,
+      "deaths": 390,
+      "assists": 919
+    },
+    "221": {
+      "name": "Zeri",
+      "games": 34,
+      "kills": 502,
+      "deaths": 384,
+      "assists": 1028
+    },
+    "222": {
+      "name": "Jinx",
+      "games": 120,
+      "kills": 1597,
+      "deaths": 1115,
+      "assists": 2677
+    },
+    "223": {
+      "name": "Tahm Kench",
+      "games": 1,
+      "kills": 5,
+      "deaths": 14,
+      "assists": 21
+    },
+    "233": {
+      "name": "Briar",
+      "games": 2,
+      "kills": 10,
+      "deaths": 35,
+      "assists": 43
+    },
+    "234": {
+      "name": "Viego",
+      "games": 17,
+      "kills": 184,
+      "deaths": 176,
+      "assists": 268
+    },
+    "235": {
+      "name": "Senna",
+      "games": 42,
+      "kills": 317,
+      "deaths": 411,
+      "assists": 1176
+    },
+    "236": {
+      "name": "Lucian",
+      "games": 31,
+      "kills": 451,
+      "deaths": 366,
+      "assists": 585
+    },
+    "238": {
+      "name": "Zed",
+      "games": 10,
+      "kills": 114,
+      "deaths": 122,
+      "assists": 203
+    },
+    "245": {
+      "name": "Ekko",
+      "games": 13,
+      "kills": 131,
+      "deaths": 151,
+      "assists": 280
+    },
+    "246": {
+      "name": "Qiyana",
+      "games": 7,
+      "kills": 101,
+      "deaths": 105,
+      "assists": 147
+    },
+    "254": {
+      "name": "Vi",
+      "games": 20,
+      "kills": 207,
+      "deaths": 286,
+      "assists": 422
+    },
+    "266": {
+      "name": "Aatrox",
+      "games": 5,
+      "kills": 41,
+      "deaths": 55,
+      "assists": 122
+    },
+    "267": {
+      "name": "Nami",
+      "games": 7,
+      "kills": 18,
+      "deaths": 68,
+      "assists": 286
+    },
+    "268": {
+      "name": "Azir",
+      "games": 2,
+      "kills": 13,
+      "deaths": 19,
+      "assists": 34
+    },
+    "350": {
+      "name": "Yuumi",
+      "games": 1,
+      "kills": 0,
+      "deaths": 5,
+      "assists": 39
+    },
+    "360": {
+      "name": "Samira",
+      "games": 52,
+      "kills": 990,
+      "deaths": 601,
+      "assists": 1017
+    },
+    "412": {
+      "name": "Thresh",
+      "games": 25,
+      "kills": 153,
+      "deaths": 236,
+      "assists": 980
+    },
+    "420": {
+      "name": "Illaoi",
+      "games": 2,
+      "kills": 14,
+      "deaths": 26,
+      "assists": 82
+    },
+    "429": {
+      "name": "Kalista",
+      "games": 51,
+      "kills": 904,
+      "deaths": 546,
+      "assists": 1101
+    },
+    "432": {
+      "name": "Bard",
+      "games": 1,
+      "kills": 5,
+      "deaths": 12,
+      "assists": 5
+    },
+    "498": {
+      "name": "Xayah",
+      "games": 54,
+      "kills": 679,
+      "deaths": 532,
+      "assists": 1101
+    },
+    "516": {
+      "name": "Ornn",
+      "games": 4,
+      "kills": 13,
+      "deaths": 22,
+      "assists": 54
+    },
+    "517": {
+      "name": "Sylas",
+      "games": 7,
+      "kills": 86,
+      "deaths": 97,
+      "assists": 175
+    },
+    "518": {
+      "name": "Neeko",
+      "games": 2,
+      "kills": 6,
+      "deaths": 15,
+      "assists": 15
+    },
+    "523": {
+      "name": "Aphelios",
+      "games": 22,
+      "kills": 273,
+      "deaths": 205,
+      "assists": 494
+    },
+    "526": {
+      "name": "Rell",
+      "games": 5,
+      "kills": 20,
+      "deaths": 30,
+      "assists": 113
+    },
+    "555": {
+      "name": "Pyke",
+      "games": 1,
+      "kills": 7,
+      "deaths": 16,
+      "assists": 12
+    },
+    "711": {
+      "name": "Vex",
+      "games": 1,
+      "kills": 11,
+      "deaths": 8,
+      "assists": 31
+    },
+    "777": {
+      "name": "Yone",
+      "games": 29,
+      "kills": 281,
+      "deaths": 307,
+      "assists": 646
+    },
+    "799": {
+      "name": "Ambessa",
+      "games": 10,
+      "kills": 96,
+      "deaths": 134,
+      "assists": 187
+    },
+    "800": {
+      "name": "Mel",
+      "games": 11,
+      "kills": 181,
+      "deaths": 114,
+      "assists": 311
+    },
+    "804": {
+      "name": "Yunara",
+      "games": 7,
+      "kills": 113,
+      "deaths": 79,
+      "assists": 153
+    },
+    "875": {
+      "name": "Sett",
+      "games": 2,
+      "kills": 22,
+      "deaths": 27,
+      "assists": 41
+    },
+    "876": {
+      "name": "Lillia",
+      "games": 9,
+      "kills": 73,
+      "deaths": 113,
+      "assists": 177
+    },
+    "887": {
+      "name": "Gwen",
+      "games": 4,
+      "kills": 31,
+      "deaths": 39,
+      "assists": 83
+    },
+    "893": {
+      "name": "Aurora",
+      "games": 19,
+      "kills": 187,
+      "deaths": 221,
+      "assists": 471
+    },
+    "895": {
+      "name": "Nilah",
+      "games": 46,
+      "kills": 551,
+      "deaths": 558,
+      "assists": 923
+    },
+    "897": {
+      "name": "K'Sante",
+      "games": 4,
+      "kills": 16,
+      "deaths": 32,
+      "assists": 83
+    },
+    "901": {
+      "name": "Smolder",
+      "games": 11,
+      "kills": 99,
+      "deaths": 100,
+      "assists": 237
+    },
+    "902": {
+      "name": "Milio",
+      "games": 5,
+      "kills": 20,
+      "deaths": 56,
+      "assists": 238
+    },
+    "910": {
+      "name": "Hwei",
+      "games": 2,
+      "kills": 14,
+      "deaths": 14,
+      "assists": 15
+    },
+    "950": {
+      "name": "Naafiri",
+      "games": 1,
+      "kills": 4,
+      "deaths": 11,
+      "assists": 18
+    }
+  }
+}

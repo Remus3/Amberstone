@@ -510,6 +510,30 @@ _MODE_TO_FILE = {
 
 _ASSET_HASH_CACHE: dict = {"hash": "", "mtime": 0.0}
 
+# 30 s TTL cache for /api/diagnostics — see handler comment.
+_DIAG_CACHE: dict = {"payload": b"", "expires": 0.0}
+_DIAG_TTL_S = 30.0
+_DIAG_LOCK = threading.Lock()
+
+
+def _diagnostics_cached() -> bytes:
+    """Cached encoder for /api/diagnostics. Single-flight: while one
+    thread is rebuilding, others wait briefly for the result rather
+    than each running their own ~2 s rebuild."""
+    now = time.time()
+    cur = _DIAG_CACHE
+    if cur.get("payload") and now < cur.get("expires", 0):
+        return cur["payload"]
+    with _DIAG_LOCK:
+        # Re-check inside the lock (another thread may have rebuilt).
+        cur = _DIAG_CACHE
+        if cur.get("payload") and time.time() < cur.get("expires", 0):
+            return cur["payload"]
+        payload = json.dumps(_build_diagnostics()).encode("utf-8")
+        _DIAG_CACHE["payload"] = payload
+        _DIAG_CACHE["expires"] = time.time() + _DIAG_TTL_S
+    return payload
+
 
 def _compute_asset_hash() -> str:
     """AUDIT 2026-04-28 (3.1): hash the css+js+html mtimes the dashboard
@@ -4191,6 +4215,20 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        # AUDIT 2026-04-29: Strict-Transport-Security so any browser that
+        # touches the dashboard once over HTTPS never falls back to plain
+        # HTTP for this origin again — eliminates the original Game-PC
+        # "http://… not connecting" symptom permanently. 1-year max-age is
+        # standard. We don't include preload / includeSubDomains because
+        # this is LAN-only and we don't own the rest of the IP space.
+        # Only set when the connection itself is TLS — when wrap_socket
+        # is in play, the underlying request socket has an .cipher() attr.
+        try:
+            sock = self.connection
+            if hasattr(sock, "cipher") and callable(sock.cipher):
+                self.send_header("Strict-Transport-Security", "max-age=31536000")
+        except Exception:
+            pass
         self.end_headers()
         try: self.wfile.write(body)
         except Exception: pass
@@ -4321,9 +4359,14 @@ class _Handler(BaseHTTPRequestHandler):
                 _log.warning("api/loadouts/all: %s", exc)
                 self._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
         elif self.path == "/api/diagnostics":
+            # AUDIT 2026-04-29: 30 s TTL cache. _build_diagnostics fans out
+            # to several heavy probes (DB introspection, log tail, RC +
+            # vision health) and sustains ~2 s. Dashboard hits it on
+            # diagnostics-view activate; nothing polls it. 30 s feels
+            # instant on repeat opens without staling the data.
             try:
-                self._send(200, json.dumps(_build_diagnostics()).encode(),
-                           "application/json")
+                payload = _diagnostics_cached()
+                self._send(200, payload, "application/json")
             except Exception as exc:
                 _log.warning("api/diagnostics: %s", exc)
                 self._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
@@ -4663,11 +4706,26 @@ class _Handler(BaseHTTPRequestHandler):
                 # supervisor pid file
                 try:
                     sup = _read_json("ops/runtime/supervisor.pid")
-                    rollup["supervisor"] = {"pid": sup.get("pid"),
-                                             "run_id": sup.get("run_id"),
-                                             "locked_at": sup.get("locked_at")}
+                    # AUDIT 2026-04-29: also surface oslock state — when
+                    # the .oslock sidecar exists, the OS-level msvcrt
+                    # byte-range lock is held by the supervisor process.
+                    oslock_path = _APP_DIR / "ops" / "runtime" / "supervisor.pid.oslock"
+                    rollup["supervisor"] = {
+                        "pid":       sup.get("pid"),
+                        "run_id":    sup.get("run_id"),
+                        "locked_at": sup.get("locked_at"),
+                        "oslock_present": oslock_path.exists(),
+                    }
                 except Exception as e:
                     rollup["supervisor"] = {"error": str(e)[:120]}
+                # AUDIT 2026-04-29: stamp app version so the dashboard's
+                # health-dot tooltip can show "RC <version>" without a
+                # second /api/health round-trip.
+                try:
+                    from core.version import version_string as _vs
+                    rollup["rc_version"] = _vs()
+                except Exception:
+                    rollup["rc_version"] = ""
                 # cost banner
                 try:
                     from core.cost_tracker import get_tracker as _gt

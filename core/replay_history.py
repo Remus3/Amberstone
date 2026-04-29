@@ -41,6 +41,15 @@ _DDR_CHAMPS   = _PROJECT_ROOT / "data" / "meta" / "ddragon_champions.json"
 _id_to_champ: dict[int, str] = {}
 _idx_lock = threading.Lock()
 
+# AUDIT 2026-04-29 (item 8): LRU cache for match_detail(). Matches are
+# immutable once recorded — no invalidation needed. 8 entries × ~75 KB
+# JSON ≈ 600 KB RAM. Returning to a previously-viewed match is now ~0
+# ms instead of 7 ms warm / 100 ms cold-after-idle.
+import collections as _collections
+_MATCH_DETAIL_CACHE: "_collections.OrderedDict[str, dict]" = _collections.OrderedDict()
+_MATCH_DETAIL_CACHE_MAX = 8
+_match_cache_lock = threading.Lock()
+
 
 def _load_champ_index() -> None:
     if _id_to_champ:
@@ -174,6 +183,13 @@ def match_detail(match_id: str, *, max_frames: int = 60) -> Optional[dict]:
     `max_frames` caps per-minute snapshots so a 90-minute Aram doesn't
     explode the response. Frames are sampled evenly across the match
     duration when the cap is hit."""
+    cache_key = f"{match_id}|{max_frames}"
+    with _match_cache_lock:
+        cached = _MATCH_DETAIL_CACHE.get(cache_key)
+        if cached is not None:
+            # touch — move to end of OrderedDict (most-recent)
+            _MATCH_DETAIL_CACHE.move_to_end(cache_key)
+            return cached
     _load_champ_index()
     c = _open()
     if c is None:
@@ -311,7 +327,7 @@ def match_detail(match_id: str, *, max_frames: int = 60) -> Optional[dict]:
                                   if r["kill_pos_x"] is not None else None,
             })
 
-        return {
+        result = {
             "match_id":         m["match_id"],
             "queue_id":         m["queue_id"],
             "game_mode":        m["game_mode"],
@@ -327,6 +343,11 @@ def match_detail(match_id: str, *, max_frames: int = 60) -> Optional[dict]:
             "snapshots":        snapshots,
             "kills":            kills,
         }
+        with _match_cache_lock:
+            _MATCH_DETAIL_CACHE[cache_key] = result
+            while len(_MATCH_DETAIL_CACHE) > _MATCH_DETAIL_CACHE_MAX:
+                _MATCH_DETAIL_CACHE.popitem(last=False)  # evict LRU
+        return result
     finally:
         try:
             c.close()
