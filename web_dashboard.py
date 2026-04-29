@@ -4284,7 +4284,14 @@ class _Handler(BaseHTTPRequestHandler):
                 _log.warning("api/sim-state: %s", exc)
                 self._send(500, b'{"error":"sim_state_failed"}', "application/json")
         elif self.path == "/api/health":
-            payload = json.dumps(_read_json("ops/runtime/health.json")).encode("utf-8")
+            d = _read_json("ops/runtime/health.json")
+            # AUDIT 2026-04-28: stamp the canonical RC app version.
+            try:
+                from core.version import version_string as _vs
+                d["rc_version"] = _vs()
+            except Exception:
+                d["rc_version"] = ""
+            payload = json.dumps(d).encode("utf-8")
             self._send(200, payload, "application/json")
         elif self.path == "/api/session/summary":
             try:

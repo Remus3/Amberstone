@@ -4064,9 +4064,16 @@
           (d.connections || []).forEach((c) => {
             const li = document.createElement("li");
             li.className = "diag-conn-row";
-            li.innerHTML = `<span class="diag-conn-dot ${c.ok ? "ok" : "err"}"></span>` +
-              `<span style="flex:1; color:var(--text); font-weight:700">${c.name}</span>` +
-              `<span class="dim" style="font-size:10px">${c.detail || ""}</span>`;
+            const dot = document.createElement("span");
+            dot.className = "diag-conn-dot " + (c.ok ? "ok" : "err");
+            const nm = document.createElement("span");
+            nm.style.cssText = "flex:1; color:var(--text); font-weight:700";
+            nm.textContent = c.name;
+            const det = document.createElement("span");
+            det.className = "dim";
+            det.style.fontSize = "10px";
+            det.textContent = c.detail || "";
+            li.append(dot, nm, det);
             ul.appendChild(li);
           });
           if (!ul.children.length) ul.innerHTML = '<li class="home-empty">no connections reporting</li>';
@@ -4077,12 +4084,104 @@
         if (health) health.textContent = JSON.stringify(d.health || {}, null, 2);
       })
       .catch(() => {});
+    // 2026-04-28: also refresh the cost tile, coach toggles, and trace
+    // list. Each is independent; one failure doesn't block the others.
+    _diagFetchCost();
+    _diagFetchCoachState();
+    _diagFetchTrace();
+  }
+  function _diagFetchCost() {
+    fetch("/api/cost", { cache: "no-store" })
+      .then(r => r.ok ? r.json() : null)
+      .then(j => {
+        if (!j) return;
+        const sp = j.spend || {};
+        const v = document.getElementById("cost-val");
+        if (v) v.textContent = "$" + (sp.total_usd || 0).toFixed(4);
+        const c = document.getElementById("cost-calls");
+        if (c) c.textContent = String(sp.calls || 0);
+        const t = document.getElementById("cost-tokens");
+        if (t) t.textContent = `${(sp.tokens_in||0).toLocaleString()} / ${(sp.tokens_out||0).toLocaleString()}`;
+        const cc = document.getElementById("cost-cache");
+        if (cc) cc.textContent = `${(sp.cache_in||0).toLocaleString()} / ${(sp.cache_write||0).toLocaleString()}`;
+        const b = document.getElementById("cost-banner");
+        if (b) {
+          b.classList.remove("ok","warn","over");
+          b.classList.add(j.banner || "ok");
+          b.textContent = (j.banner || "ok").toUpperCase();
+        }
+      })
+      .catch(()=>{});
+  }
+  function _diagFetchCoachState() {
+    fetch("/api/coach/state", { cache: "no-store" })
+      .then(r => r.ok ? r.json() : null)
+      .then(j => {
+        if (!j || !j.enabled) return;
+        for (const mode of Object.keys(j.enabled)) {
+          const pill = document.querySelector(`.coach-toggle-pill[data-mode="${mode}"]`);
+          if (!pill) continue;
+          if (pill.dataset.disabled === "1") continue;   // tft on hold
+          const on = j.enabled[mode];
+          pill.classList.remove("on","off");
+          pill.classList.add(on ? "on" : "off");
+          pill.textContent = on ? "ON" : "OFF";
+        }
+      })
+      .catch(()=>{});
+  }
+  function _diagFetchTrace() {
+    fetch("/api/coach/trace?limit=20", { cache: "no-store" })
+      .then(r => r.ok ? r.json() : null)
+      .then(j => {
+        const host = document.getElementById("trace-list");
+        if (!host) return;
+        host.innerHTML = "";
+        const rows = (j && j.records) || [];
+        if (!rows.length) {
+          host.innerHTML = '<div class="home-empty">no coach calls yet today</div>';
+          return;
+        }
+        for (const rec of rows.slice().reverse()) {  // newest first
+          const item = document.createElement("div");
+          item.className = "trace-item";
+          const meta = document.createElement("div");
+          meta.className = "trace-meta";
+          const tsStr = new Date((rec.ts || 0) * 1000).toLocaleTimeString();
+          meta.textContent = `${tsStr} · ${rec.mode || "?"} · ${rec.model || ""} · ${rec.latency_ms || 0}ms · in ${rec.tokens_in || 0} / out ${rec.tokens_out || 0}` +
+            ((rec.cache_read || rec.cache_write) ? ` · cache r ${rec.cache_read || 0} w ${rec.cache_write || 0}` : "");
+          const resp = document.createElement("pre");
+          resp.textContent = (rec.response || "").slice(0, 600);
+          item.append(meta, resp);
+          host.appendChild(item);
+        }
+      })
+      .catch(()=>{});
+  }
+  function _diagToggleCoach(mode, currentlyOn) {
+    fetch("/api/coach/toggle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Requested-With": "rc-dashboard" },
+      body: JSON.stringify({ mode: mode, disabled: currentlyOn })
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(_ => _diagFetchCoachState())
+      .catch(()=>{});
   }
   function _diagWireOnce() {
     if (window.__diagWired) return;
     window.__diagWired = true;
     const r = document.getElementById("diag-refresh");
     if (r) r.addEventListener("click", _diagFetchAndRender);
+    // Coach-toggle clicks
+    document.querySelectorAll(".coach-toggle-pill").forEach(p => {
+      if (p.dataset.disabled === "1") return;
+      p.addEventListener("click", () => {
+        const mode = p.dataset.mode;
+        const currentlyOn = p.classList.contains("on");
+        _diagToggleCoach(mode, currentlyOn);
+      });
+    });
   }
 
   // ── Replay scrubber (audit suggestion 2.3, 2026-04-28) ────────────
@@ -6136,22 +6235,38 @@
   // Keeps iPad in sync with Legion edits without needing manual refresh.
   (function autoReload() {
     let known = null;
+    let rcVer = null;
+    function stampFooter(uiHash) {
+      // 2026-04-28: stamp BOTH the RC app version and the ui asset hash
+      // in the footer so a quick glance tells you which build is live.
+      let host = document.querySelector("footer .ui-version");
+      if (!host) {
+        host = document.createElement("span");
+        host.className = "ui-version";
+        const spacer = document.querySelector("footer .spacer");
+        if (spacer) spacer.parentNode.insertBefore(host, spacer);
+      }
+      const v = rcVer ? `RC ${rcVer}` : "";
+      const u = uiHash ? `ui ${uiHash}` : "";
+      host.textContent = [v, u].filter(Boolean).join(" · ");
+    }
+    async function fetchRcVersion() {
+      try {
+        const r = await fetch("/api/health", { cache: "no-store" });
+        if (!r.ok) return;
+        const h = await r.json();
+        rcVer = h.rc_version || null;
+      } catch (_) {}
+    }
     async function check() {
       try {
+        if (rcVer === null) await fetchRcVersion();
         const r = await fetch("/api/ui-version", { cache: "no-store" });
         if (!r.ok) return;
         const j = await r.json();
         if (known === null) {
           known = j.v;
-          // Stamp version in footer so current build is visible at a glance.
-          const host = document.querySelector("footer .ui-version");
-          if (!host) {
-            const span = document.createElement("span");
-            span.className = "ui-version";
-            span.textContent = `ui ${j.v}`;
-            const spacer = document.querySelector("footer .spacer");
-            if (spacer) spacer.parentNode.insertBefore(span, spacer);
-          }
+          stampFooter(j.v);
           return;
         }
         if (j.v && j.v !== known) {
