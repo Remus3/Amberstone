@@ -650,6 +650,8 @@ class Coach(BaseCoach):
                 except Exception:
                     pass
 
+            import time as _time_a
+            _t0 = _time_a.perf_counter()
             resp = self._client.messages.create(
                 model      = "claude-haiku-4-5-20251001",
                 max_tokens = 900,
@@ -657,6 +659,11 @@ class Coach(BaseCoach):
                 messages   = [{"role": "user", "content": user}],
                 timeout    = 20,
             )
+            # AUDIT 2026-04-29 (gap A): cost + trace telemetry.
+            self._record_coach_call(resp, system=system, user=user,
+                                    t0_perf=_t0,
+                                    model="claude-haiku-4-5-20251001",
+                                    purpose="aram_coach")
             raw  = resp.content[0].text
             # AUDIT 2026-04-26: log raw response so we can diagnose when
             # parse_fields returns empty values (output format drift, etc).
@@ -800,10 +807,17 @@ class Coach(BaseCoach):
             choices  = "\n".join(f"- {c}" for c in choices),
         )
         try:
+            import time as _time_b
+            _t0b = _time_b.perf_counter()
             resp = self._client.messages.create(
                 model="claude-haiku-4-5-20251001", max_tokens=250,
                 messages=[{"role": "user", "content": prompt}], timeout=15,
             )
+            # AUDIT 2026-04-29 (gap A): augment-select call telemetry.
+            self._record_coach_call(resp, system="", user=prompt,
+                                    t0_perf=_t0b,
+                                    model="claude-haiku-4-5-20251001",
+                                    purpose="aram_aug_select")
             raw = resp.content[0].text
             cur = load_json(self._out)
             cur.update({

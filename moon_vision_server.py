@@ -325,6 +325,27 @@ def get_latest_frame(source: str | None = None):
 
 
 # ── Handlers ───────────────────────────────────────────────────────────────
+def _record_to_cost_tracker(resp, *, model: str, purpose: str) -> None:
+    """AUDIT 2026-04-29 (in-game audit gap B): the vision server holds
+    the only Anthropic client that runs Sonnet for vision calls. Without
+    this hook, cost_tracker stays at $0.00 forever even as vision burns
+    real dollars. Best-effort: a telemetry hiccup must never break the
+    coach loop, so failures are swallowed."""
+    try:
+        from core.cost_tracker import get_tracker as _gt
+        u = getattr(resp, "usage", None)
+        _gt().record_call(
+            model=model,
+            input_tokens=getattr(u, "input_tokens", 0) or 0 if u else 0,
+            output_tokens=getattr(u, "output_tokens", 0) or 0 if u else 0,
+            cache_read=getattr(u, "cache_read_input_tokens", 0) or 0 if u else 0,
+            cache_write=getattr(u, "cache_creation_input_tokens", 0) or 0 if u else 0,
+            purpose=purpose,
+        )
+    except Exception as e:
+        log.debug("cost_tracker record_call: %s", e)
+
+
 def handle_vision(body):
     d=json.loads(body); img=d.get("image_b64",""); model=d.get("model",VISION_MODEL)
     if not img: return {"error":"no image_b64"}
@@ -341,6 +362,8 @@ def handle_vision(body):
         result=_parse_json(raw)
         tok=getattr(resp, 'usage', None)
         tokens=(tok.input_tokens+tok.output_tokens) if tok else 0
+        # AUDIT 2026-04-29 (gap B): feed cost_tracker.
+        _record_to_cost_tracker(resp, model=model, purpose="vision_relay")
         if result is None:
             _record("vision", ms, ok=False)
             return {"error":"parse_failed","raw":raw[:200]}
@@ -363,6 +386,8 @@ def handle_coach(body):
         text=resp.content[0].text.strip()
         tok=getattr(resp,'usage',None)
         tokens=(tok.input_tokens+tok.output_tokens) if tok else 0
+        # AUDIT 2026-04-29 (gap B): feed cost_tracker.
+        _record_to_cost_tracker(resp, model=model, purpose="coach_relay")
         _record("coach", ms, ok=True, tokens=tokens)
         log.info("Coach OK %dms tok=%d", ms, tokens)
         return {"ok":True,"text":text,"latency_ms":ms}
