@@ -17,6 +17,33 @@
   const WS_PORT = 8891;
   const WS_URL = `ws://${WS_HOST}:${WS_PORT}/push`;
 
+  // ── 12-hour clock helpers (user 2026-04-29: all wall-clock time
+  // displays use AM/PM format, not 24h). Accepts a Date or a "HH:MM"
+  // / "HH:MM:SS" string; returns "10:30 PM" or "10:30:45 PM" with
+  // seconds preserved when present in the input. Duration formats
+  // (game time, cooldown timers, "20m" played) are NOT clocks and
+  // stay in their original numeric form.
+  function _to12(input) {
+    let h, m, s = null;
+    if (input instanceof Date) {
+      h = input.getHours(); m = input.getMinutes(); s = input.getSeconds();
+    } else if (typeof input === "string") {
+      const parts = input.split(":");
+      if (parts.length < 2) return input;
+      h = parseInt(parts[0], 10);
+      m = parseInt(parts[1], 10);
+      if (parts.length >= 3) s = parseInt(parts[2], 10);
+      if (Number.isNaN(h) || Number.isNaN(m)) return input;
+    } else { return ""; }
+    const ampm = h >= 12 ? "PM" : "AM";
+    let h12 = h % 12; if (h12 === 0) h12 = 12;
+    const mm = String(m).padStart(2, "0");
+    if (s !== null && !Number.isNaN(s)) {
+      return `${h12}:${mm}:${String(s).padStart(2, "0")} ${ampm}`;
+    }
+    return `${h12}:${mm} ${ampm}`;
+  }
+
   // ── DOM refs ────────────────────────────────────────────────────────
   const el = (id) => document.getElementById(id);
   const statusPill = el("status-pill");
@@ -107,7 +134,7 @@
           for (const e of top) {
             const span = document.createElement("span");
             span.className = `activity-event event-${e.event || "?"}`;
-            const ts = (e.ts || "").slice(11, 19);   // HH:MM:SS
+            const ts = _to12((e.ts || "").slice(11, 19));   // 12hr AM/PM
             const op = (e.op || "").slice(0, 34);
             // Op-type glyph prefix for fast pattern-match of recent events.
             const glyph = _opGlyph(e.op);
@@ -4147,7 +4174,7 @@
           item.className = "trace-item";
           const meta = document.createElement("div");
           meta.className = "trace-meta";
-          const tsStr = new Date((rec.ts || 0) * 1000).toLocaleTimeString();
+          const tsStr = _to12(new Date((rec.ts || 0) * 1000));
           meta.textContent = `${tsStr} · ${rec.mode || "?"} · ${rec.model || ""} · ${rec.latency_ms || 0}ms · in ${rec.tokens_in || 0} / out ${rec.tokens_out || 0}` +
             ((rec.cache_read || rec.cache_write) ? ` · cache r ${rec.cache_read || 0} w ${rec.cache_write || 0}` : "");
           const resp = document.createElement("pre");
@@ -4385,77 +4412,205 @@
     if (!ul) return;
     ul.innerHTML = "";
     if (!rows || !rows.length) {
-      ul.innerHTML = '<li class="home-empty">no matches yet</li>';
+      ul.innerHTML = '<div class="home-empty">no matches yet</div>';
       return;
     }
+    // V1 redesign 2026-04-29: render each match as a visual card with a
+    // colored W/L-proxy stripe on the left (grade tier), champion name +
+    // mode/time meta, KDA pill, and grade badge on the right. Click
+    // routes to the Replay view (graceful no-op if no replay handler).
     for (const m of rows) {
-      const li = document.createElement("li");
-      li.className = "home-recent-row";
-      const grade = String(m.grade || "—").toUpperCase()[0] || "—";
+      const card = document.createElement("div");
+      card.className = "home-recent-card";
+      card.dataset.matchId = m.match_id || "";
+      const gradeRaw = String(m.grade || "—").toUpperCase()[0] || "—";
+      const tier = (gradeRaw === "S" || gradeRaw === "A") ? "tier-good"
+                 : (gradeRaw === "D" || gradeRaw === "F") ? "tier-bad"
+                 : "tier-mid";
       const dur = m.duration_s
-        ? `${Math.floor(m.duration_s / 60)}:${String(m.duration_s % 60).padStart(2,"0")}`
+        ? `${Math.floor(m.duration_s / 60)}m`
         : "";
-      const tsShort = (m.timestamp || "").split(" ")[1]?.slice(0,5) || "";
-      li.innerHTML =
-        `<span class="home-recent-grade ${grade}">${grade}</span>` +
-        `<span><span class="home-recent-champ">${m.champion || "?"}</span> ` +
-          `<span class="home-recent-meta">${tsShort} · ${dur}</span></span>` +
-        `<span class="home-recent-kda">${m.kda || "—"}</span>` +
-        `<span class="home-recent-mode">${m.mode || ""}</span>`;
-      ul.appendChild(li);
+      const tsShort = _to12((m.timestamp || "").split(" ")[1]?.slice(0,5) || "");
+      const metaParts = [m.mode, tsShort, dur].filter(Boolean).join(" · ");
+
+      const stripe = document.createElement("div");
+      stripe.className = `home-recent-stripe ${tier}`;
+      // Champion portrait (DDragon icon, locally mirrored). Falls back
+      // to a "?" placeholder if the file is missing.
+      const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : "16.8.1";
+      const img = document.createElement("img");
+      img.className = "home-recent-img";
+      img.alt = "";
+      img.loading = "lazy";
+      img.src = `/data/ddragon/${ver}/img/champion/${encodeURIComponent(m.champion || "")}.png`;
+      img.onerror = () => { img.style.visibility = "hidden"; };
+      const main = document.createElement("div");
+      main.className = "home-recent-main";
+      const champ = document.createElement("span");
+      champ.className = "home-recent-champ";
+      champ.textContent = m.champion || "?";
+      const meta = document.createElement("span");
+      meta.className = "home-recent-meta";
+      meta.textContent = metaParts;
+      main.append(champ, meta);
+      const kda = document.createElement("span");
+      kda.className = "home-recent-kda";
+      kda.textContent = m.kda || "—";
+      const grade = document.createElement("span");
+      grade.className = `home-recent-grade-badge ${gradeRaw}`;
+      grade.textContent = gradeRaw;
+      card.append(stripe, img, main, kda, grade);
+
+      // Click → open replay view if a match_id is present. Use the
+      // existing applyView helper so the URL hash + menu state stay in sync.
+      if (m.match_id && typeof applyView === "function") {
+        card.addEventListener("click", () => applyView("replay"));
+      }
+      ul.appendChild(card);
     }
   }
   function _homeRenderWeek(rows) {
-    const ul = document.getElementById("home-week-list");
-    if (!ul) return;
-    ul.innerHTML = "";
+    // V2 redesign 2026-04-29: replace bullet list with horizontal bar
+    // chart. Each row's name cell carries a CSS gradient bar whose
+    // width = (games / max_games), giving instant "what did I play
+    // most" comparison across the top champs.
+    const host = document.getElementById("home-week-list");
+    if (!host) return;
+    host.innerHTML = "";
     if (!rows || !rows.length) {
-      ul.innerHTML = '<li class="home-empty">no games this week</li>';
+      host.innerHTML = '<div class="home-empty">no games this week</div>';
       return;
     }
+    const maxGames = Math.max(1, ...rows.map(r => r.games || 0));
     for (const r of rows) {
-      const li = document.createElement("li");
-      li.className = "home-week-row";
-      const grade = String(r.best_grade || "—").toUpperCase()[0] || "—";
-      li.innerHTML =
-        `<span class="home-week-champ">${r.champion}</span>` +
-        `<span class="home-week-games">${r.games}g</span>` +
-        `<span class="home-week-kda">${r.avg_kda.toFixed(1)}</span>` +
-        `<span class="home-week-grade home-recent-grade ${grade}">${grade}</span>`;
-      ul.appendChild(li);
+      const row = document.createElement("div");
+      row.className = "home-week-bar-row";
+      const gradeRaw = String(r.best_grade || "—").toUpperCase()[0] || "—";
+      const pct = Math.round(((r.games || 0) / maxGames) * 100);
+
+      const name = document.createElement("span");
+      name.className = "home-week-bar-name";
+      name.style.setProperty("--bar-pct", pct + "%");
+      name.textContent = r.champion || "?";
+
+      const games = document.createElement("span");
+      games.className = "home-week-bar-games";
+      const gn = r.games || 0;
+      games.textContent = `${gn} game${gn === 1 ? "" : "s"}`;
+
+      const kda = document.createElement("span");
+      kda.className = "home-week-bar-kda";
+      kda.textContent = (r.avg_kda != null) ? r.avg_kda.toFixed(1) : "—";
+
+      const grade = document.createElement("span");
+      grade.className = `home-recent-grade-badge ${gradeRaw}`;
+      grade.textContent = gradeRaw;
+      // No inline sizing — the .home-week-bar-row .home-recent-grade-badge
+      // selector in CSS handles the inline-row variant (28x28 / 13px).
+      row.append(name, games, kda, grade);
+      host.appendChild(row);
     }
   }
-  function _homeRenderToday(t) {
+  function _homeRenderToday(t, streaks) {
+    // V1 redesign 2026-04-29: populate the hero banner instead of the
+    // previous TODAY card grid. Greeting derives from local hour;
+    // headline is a one-line read of today's volume + perf direction;
+    // chips below carry the detailed numbers.
+    // V3 (2026-04-30, suggestion #7): when streaks exist, surface them
+    // in the sub-text instead of the bland "no games yet today".
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
     const games = (t && t.games) || 0;
-    set("home-today-count", games > 0 ? `${games} game${games===1?"":"s"}` : "");
-    set("home-today-kda", t && t.total_kda ? t.total_kda : "—");
-    set("home-today-avg", t && t.avg_kda ? t.avg_kda.toFixed(2) : "—");
+    const avg = t && t.avg_kda;
+
+    // Time-of-day greeting
+    const hr = new Date().getHours();
+    const greet = hr < 5 ? "Burning the midnight oil"
+                : hr < 12 ? "Good morning"
+                : hr < 17 ? "Good afternoon"
+                : hr < 22 ? "Good evening"
+                          : "Late night session";
+    set("home-hero-time", greet);
+    // Streak-aware sub-text: prefer the most useful active streak when
+    // available, otherwise fall back to today's game count line.
+    const streakParts = [];
+    if (streaks) {
+      const pd = streaks.play_days || 0;
+      const gg = streaks.good_grades || 0;
+      if (pd >= 2) streakParts.push(`${pd}-day play streak`);
+      if (gg >= 2) streakParts.push(`${gg} S/A in a row`);
+    }
+    let sub;
+    if (games > 0) {
+      sub = `${games} game${games===1?"":"s"} today`;
+      if (streakParts.length) sub += " · " + streakParts.join(" · ");
+    } else if (streakParts.length) {
+      sub = streakParts.join(" · ");
+    } else {
+      sub = "no games yet today";
+    }
+    set("home-hero-sub", sub);
+
+    // Headline: empty state vs games today
+    const headline = document.getElementById("home-hero-headline");
+    if (headline) {
+      headline.classList.remove("up", "down", "flat");
+      if (games === 0) {
+        headline.textContent = "Ready when you are";
+        headline.classList.add("flat");
+      } else {
+        const avgStr = avg != null ? avg.toFixed(2) : "—";
+        headline.textContent = `${games} game${games===1?"":"s"} · ${avgStr} avg KDA`;
+        if (avg != null) {
+          if (avg >= 2.5) headline.classList.add("up");
+          else if (avg < 1.5) headline.classList.add("down");
+          else headline.classList.add("flat");
+        }
+      }
+    }
+
+    // Chips
+    set("home-hero-kda", t && t.total_kda ? t.total_kda : "—");
+    set("home-hero-avg", avg != null ? avg.toFixed(2) : "—");
     const gradeStr = t && t.grades
       ? Object.entries(t.grades).map(([g,n]) => `${g}×${n}`).join(" ")
       : "—";
-    set("home-today-grades", gradeStr || "—");
+    set("home-hero-grades", gradeStr || "—");
     const modeStr = t && t.modes
       ? Object.entries(t.modes).map(([m,n]) => `${m} ${n}`).join(" · ")
       : "—";
-    set("home-today-modes", modeStr || "—");
+    set("home-hero-modes", modeStr || "—");
+
+    // Legacy IDs (set if present so any external reader still works).
+    set("home-today-count", games > 0 ? `${games} game${games===1?"":"s"}` : "");
+    set("home-today-kda",   t && t.total_kda ? t.total_kda : "—");
+    set("home-today-avg",   avg != null ? avg.toFixed(2) : "—");
+    set("home-today-grades", gradeStr || "—");
+    set("home-today-modes",  modeStr || "—");
   }
   function _homeRenderServices(rows) {
-    const ul = document.getElementById("home-services-list");
-    if (!ul) return;
-    ul.innerHTML = "";
+    // V1 redesign 2026-04-29: render as a thin strip of compact pills
+    // (dot + name) instead of a card-sized bulleted list. Detail string
+    // moves to the title attribute (hover tooltip) — services are a
+    // glance check, not browsable content. Container changed from <ul>
+    // to <div class="home-services-strip"> in the new HTML.
+    const strip = document.getElementById("home-services-list");
+    if (!strip) return;
+    strip.innerHTML = "";
     if (!rows || !rows.length) {
-      ul.innerHTML = '<li class="home-empty">no services reporting</li>';
+      strip.innerHTML = '<span class="home-empty">no services reporting</span>';
       return;
     }
     for (const s of rows) {
-      const li = document.createElement("li");
-      li.className = "home-services-row";
-      li.innerHTML =
-        `<span class="home-services-dot ${s.ok ? "ok" : "err"}"></span>` +
-        `<span class="home-services-name">${s.name}</span>` +
-        `<span class="home-services-detail">${s.detail || ""}</span>`;
-      ul.appendChild(li);
+      const pill = document.createElement("span");
+      pill.className = `home-services-pill ${s.ok ? "ok" : "err"}`;
+      if (s.detail) pill.title = s.detail;
+      const dot = document.createElement("span");
+      dot.className = "home-services-dot";
+      const name = document.createElement("span");
+      name.className = "home-services-name";
+      name.textContent = s.name || "?";
+      pill.append(dot, name);
+      strip.appendChild(pill);
     }
   }
   function _homeFetchAndRender() {
@@ -4467,32 +4622,269 @@
         _HOME.fetching = false;
         if (!data) return;
         _HOME.lastFetchAt = Date.now();
-        _homeRenderToday(data.today || {});
+        _homeRenderToday(data.today || {}, data.streaks || {});
         _homeRenderRecent(data.recent || []);
         _homeRenderWeek(data.this_week || []);
         _homeRenderServices(data.services || []);
+        _homeUpdateHeroMotif(data);
+        // Render trends FIRST so its hidden flag is current when
+        // _homeRenderCoach decides whether the combo wrapper shows.
+        _homeRenderTrends(data.trends || {});
+        _homeRenderCoach(data.tonight_pick, data.last_build);
       })
       .catch(() => { _HOME.fetching = false; });
+  }
+  // V3 (suggestion #5, redesign 2026-04-30): paint sparklines INTO the
+  // hero chips (inline next to each chip's value), replacing the prior
+  // standalone .home-trends row. Each chip carries data-metric on its
+  // wrapper so the right SVG gets the right series.
+  function _homeRenderTrends(trends) {
+    const series = ["cs_per_min", "gold_per_min", "kda"];
+    for (const metric of series) {
+      const chip = document.querySelector(`.home-hero-chip[data-metric="${metric}"]`);
+      if (!chip) continue;
+      const points = trends[metric] || [];
+      const svg = chip.querySelector(".home-hero-spark");
+      if (!svg) continue;
+      // Set the chip's headline value to the latest non-null trend point
+      // (CS / GOLD only — KDA chip val stays driven by _homeRenderToday
+      // which uses today's KDA, more relevant than 14d-latest).
+      const latest = [...points].reverse().find(p => p && p.value != null);
+      if (latest != null && metric !== "kda") {
+        const valId = metric === "cs_per_min" ? "home-hero-cs"
+                    : metric === "gold_per_min" ? "home-hero-gold" : null;
+        if (valId) {
+          const valEl = document.getElementById(valId);
+          if (valEl) valEl.textContent = latest.value.toFixed(1);
+        }
+      }
+      // Build SVG path. Skip if all null.
+      svg.innerHTML = "";
+      const vals = points.map(p => (p && p.value != null) ? p.value : null);
+      const realVals = vals.filter(v => v != null);
+      if (realVals.length < 2) continue;
+      const minV = Math.min(...realVals);
+      const maxV = Math.max(...realVals);
+      const span = (maxV - minV) || 1;
+      const W = 60, H = 18;
+      const xs = points.map((_, i) => (i / (points.length - 1)) * W);
+      const ys = vals.map(v => v == null ? null : H - ((v - minV) / span) * (H - 4) - 2);
+      // Polyline path skipping nulls
+      let d = "";
+      let started = false;
+      for (let i = 0; i < points.length; i++) {
+        if (ys[i] == null) { started = false; continue; }
+        d += (started ? " L" : " M") + xs[i].toFixed(1) + " " + ys[i].toFixed(1);
+        started = true;
+      }
+      // Area path (fill under curve)
+      let area = "";
+      started = false;
+      let areaStartX = 0;
+      for (let i = 0; i < points.length; i++) {
+        if (ys[i] == null) {
+          if (started) area += " L" + xs[i-1].toFixed(1) + " " + H + " Z";
+          started = false; continue;
+        }
+        if (!started) { areaStartX = xs[i]; area += " M" + xs[i].toFixed(1) + " " + H + " L" + xs[i].toFixed(1) + " " + ys[i].toFixed(1); started = true; }
+        else area += " L" + xs[i].toFixed(1) + " " + ys[i].toFixed(1);
+      }
+      if (started) area += " L" + xs[points.length - 1].toFixed(1) + " " + H + " Z";
+      // Append SVG nodes (createElementNS so they render)
+      const NS = "http://www.w3.org/2000/svg";
+      const a = document.createElementNS(NS, "path");
+      a.setAttribute("class", "spark-area"); a.setAttribute("d", area);
+      svg.appendChild(a);
+      const l = document.createElementNS(NS, "path");
+      l.setAttribute("class", "spark-line"); l.setAttribute("d", d);
+      svg.appendChild(l);
+      // Highlight last data point
+      const lastIdx = ys.findLastIndex ? ys.findLastIndex(v => v != null)
+                                        : (function(){ for (let j = ys.length-1; j>=0; j--) if (ys[j]!=null) return j; return -1; })();
+      if (lastIdx >= 0) {
+        const dot = document.createElementNS(NS, "circle");
+        dot.setAttribute("class", "spark-dot");
+        dot.setAttribute("cx", xs[lastIdx].toFixed(1));
+        dot.setAttribute("cy", ys[lastIdx].toFixed(1));
+        dot.setAttribute("r", "2");
+        svg.appendChild(dot);
+      }
+    }
+  }
+  // V3 (suggestions #1 + #4): tonight's pick + last build cards.
+  // After 2026-04-30 redesign, pickCard lives inside #home-combo
+  // (alongside sparklines); buildCard is its own row below.
+  function _homeRenderCoach(pick, build) {
+    const combo = document.getElementById("home-combo");
+    const pickCard = document.getElementById("home-coach-pick");
+    const buildCard = document.getElementById("home-coach-build");
+    const trends = document.getElementById("home-trends");
+    if (!combo || !pickCard || !buildCard) return;
+    const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : "16.8.1";
+    // Tonight's pick
+    if (pick && pick.champion) {
+      pickCard.hidden = false;
+      const img = document.getElementById("home-coach-pick-img");
+      const champ = document.getElementById("home-coach-pick-champ");
+      const reason = document.getElementById("home-coach-pick-reason");
+      if (img) {
+        img.src = `/data/ddragon/${ver}/img/champion/${encodeURIComponent(pick.champion)}.png`;
+        img.alt = pick.champion;
+        img.onerror = () => { img.style.visibility = "hidden"; };
+      }
+      if (champ) champ.textContent = pick.champion;
+      if (reason) {
+        const modeStr = (pick.modes || []).join("/");
+        reason.textContent = pick.reason
+          + (modeStr ? ` · ${modeStr}` : "")
+          + (pick.grade ? ` · best ${pick.grade}` : "");
+      }
+    } else {
+      pickCard.hidden = true;
+    }
+    // Last build (6 item slots, fills with .empty placeholders if <6)
+    if (build && Array.isArray(build.items) && build.items.length) {
+      buildCard.hidden = false;
+      const sub = document.getElementById("home-coach-build-sub");
+      const items = document.getElementById("home-coach-build-items");
+      if (sub) sub.textContent = (build.champion ? `· ${build.champion}` : "")
+                                 + (build.mode ? ` · ${build.mode}` : "");
+      if (items) {
+        items.innerHTML = "";
+        const slots = build.items.slice(0, 6);
+        while (slots.length < 6) slots.push(0);
+        for (const id of slots) {
+          if (id) {
+            const im = document.createElement("img");
+            im.className = "home-coach-build-item";
+            im.alt = "";
+            im.loading = "lazy";
+            im.src = `/data/ddragon/${ver}/img/item/${id}.png`;
+            im.onerror = () => { im.classList.add("empty"); im.removeAttribute("src"); };
+            items.appendChild(im);
+          } else {
+            const sp = document.createElement("span");
+            sp.className = "home-coach-build-item empty";
+            items.appendChild(sp);
+          }
+        }
+      }
+    } else {
+      buildCard.hidden = true;
+    }
+    // Show the combo wrapper if EITHER tonight's-pick or trends has data
+    // (trends visibility is set independently by _homeRenderTrends).
+    const trendsVisible = !!(trends && !trends.hidden);
+    combo.hidden = pickCard.hidden && !trendsVisible;
+  }
+  // Champion motif on the hero bg. Picks the most-played champion from
+  // this_week (or the most-recent match as a fallback) and sets the
+  // local DDragon icon as the hero background. Local-only — no CDN
+  // round-trip; falls back silently if no champion data is available.
+  function _homeUpdateHeroMotif(data) {
+    const bg = document.getElementById("home-hero-bg");
+    if (!bg) return;
+    let champ = null;
+    const wk = (data && data.this_week) || [];
+    if (wk.length && wk[0].champion) champ = wk[0].champion;
+    if (!champ) {
+      const r = (data && data.recent) || [];
+      if (r.length && r[0].champion) champ = r[0].champion;
+    }
+    if (!champ) return;
+    const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : "16.8.1";
+    bg.style.backgroundImage =
+      `url("/data/ddragon/${ver}/img/champion/${encodeURIComponent(champ)}.png")`;
+  }
+  // Mirror advisory + digest into the icon-button badges on Tonight's
+  // Pick (V3 redesign 2026-04-30). Sets the badge text + toggles
+  // .has-data so CSS recolors the button when the count/label is
+  // non-default. Badge tooltip carries the verbose text.
+  function _homeMirrorAlerts() {
+    const advCount = document.getElementById("advisory-count");
+    const advBtn = document.getElementById("home-alerts-advisory");
+    const advBadge = document.getElementById("home-alerts-advisory-val");
+    if (advCount && advBtn && advBadge) {
+      const n = parseInt(advCount.textContent || "0", 10) || 0;
+      advBadge.textContent = n;
+      advBtn.classList.toggle("has-data", n > 0);
+      advBtn.title = n === 0 ? "No open advisories"
+                             : `${n} open advisor${n === 1 ? "y" : "ies"}`;
+    }
+    const digLabel = document.getElementById("digest-label");
+    const digBtn = document.getElementById("home-alerts-digest");
+    const digBadge = document.getElementById("home-alerts-digest-val");
+    if (digLabel && digBtn && digBadge) {
+      const t = (digLabel.textContent || "").trim();
+      const hasData = !!t && t !== "—";
+      digBadge.textContent = hasData ? t : "—";
+      digBtn.classList.toggle("has-data", hasData);
+      digBtn.title = hasData ? `Cross-session digest: ${t}` : "No streak data yet";
+    }
   }
   function renderHomePanel(lcu) {
     const overlay = document.getElementById("home-overlay");
     if (!overlay) return;
-    if (!_homeShouldShow(lcu)) {
+    // V2 visibility: also un-hide whenever the user is explicitly on
+    // the Home view (manual nav). Was previously gated only on
+    // state.mode === "client" via _homeShouldShow.
+    const onHomeView = document.body.dataset.view === "home";
+    if (!onHomeView && !_homeShouldShow(lcu)) {
       overlay.classList.add("hidden");
       overlay.setAttribute("aria-hidden", "true");
       return;
     }
     overlay.classList.remove("hidden");
     overlay.setAttribute("aria-hidden", "false");
-    // Initial fetch + 20s refresh tick (registered once).
     if (!_HOME.lastFetchAt) _homeFetchAndRender();
-    if (!overlay._tickWired) {
-      overlay._tickWired = true;
-      setInterval(() => {
-        if (!_homeShouldShow(state.latest && state.latest.lcu ? { phase: state.latest.lcu.phase } : null)) return;
-        _homeFetchAndRender();
-      }, _HOME.intervalMs);
-    }
+  }
+  // V3 (2026-04-29): unconditional startup wiring + fetch tick. Click
+  // handlers and the data poll now run regardless of whether
+  // renderHomePanel ever fires (the previous design left them dormant
+  // when LCU was offline). Runs once via DOMContentLoaded.
+  function _homeWireStartup() {
+    const overlay = document.getElementById("home-overlay");
+    if (!overlay || overlay._wiredV3) return;
+    overlay._wiredV3 = true;
+    // Action tiles → save as manual override + navigate (same flow the
+     // dropdown menu uses). Without _viewSaveManual the next LCU poll's
+     // _viewResolveAndApply auto-derives back to "home" within 2s.
+    overlay.querySelectorAll(".home-action-tile[data-target]").forEach((tile) => {
+      tile.addEventListener("click", () => {
+        const t = tile.dataset.target;
+        if (!t) return;
+        if (typeof _viewSaveManual === "function") _viewSaveManual(t);
+        try { location.hash = "#" + t; } catch (_) {}
+        if (typeof _viewResolveAndApply === "function") _viewResolveAndApply();
+        else if (typeof applyView === "function") applyView(t);
+      });
+    });
+    // Alerts rows → synthesize click on the original hidden footer
+    // triggers so the existing popout / cycle handlers fire unchanged.
+    const wireAlertRow = (rowId, anchorId) => {
+      const row = document.getElementById(rowId);
+      const anchor = document.getElementById(anchorId);
+      if (!row || !anchor) return;
+      row.addEventListener("click", () => anchor.click());
+      // Keyboard parity for ENTER/SPACE
+      row.tabIndex = 0;
+      row.setAttribute("role", "button");
+      row.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); anchor.click(); }
+      });
+    };
+    wireAlertRow("home-alerts-advisory", "advisory-badge");
+    wireAlertRow("home-alerts-digest",   "digest-icon");
+    // Initial fetch + recurring tick + alerts mirror.
+    _homeFetchAndRender();
+    setInterval(_homeFetchAndRender, _HOME.intervalMs);
+    setInterval(_homeMirrorAlerts, 2000);
+    _homeMirrorAlerts();
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", _homeWireStartup);
+  } else {
+    _homeWireStartup();
   }
 
   // ── Lobby view (2026-04-26 v2) ──────────────────────────────────
@@ -4674,7 +5066,7 @@
             ? `${Math.floor(m.duration_s / 60)}:${String(m.duration_s % 60).padStart(2, "0")}` : "";
           li.innerHTML =
             `<span class="lv-recent-grade home-recent-grade ${grade}">${grade}</span>` +
-            `<span><strong>${m.champion}</strong> <span class="dim">${(m.timestamp||"").split(" ")[1]?.slice(0,5) || ""}</span></span>` +
+            `<span><strong>${m.champion}</strong> <span class="dim">${_to12((m.timestamp||"").split(" ")[1]?.slice(0,5) || "")}</span></span>` +
             `<span class="dim">${m.kda || "—"}</span>` +
             `<span class="dim">${dur}</span>`;
           ul2.appendChild(li);
@@ -5346,7 +5738,7 @@
       MM.img.dataset.blobUrl = url;
       MM.img.src = url;
       const size = (blob.size / 1024).toFixed(1);
-      MM.imgCaption.textContent = `${state.mode.toUpperCase()} · ${size} KB · ${new Date().toLocaleTimeString()}`;
+      MM.imgCaption.textContent = `${state.mode.toUpperCase()} · ${size} KB · ${_to12(new Date())}`;
       MM.imgWrap.classList.remove("hidden", "stale");
       lastMinimapMode = state.mode;
     } catch (e) {
@@ -5798,10 +6190,10 @@
       state.frames += 1;
       frameCountEl.textContent = state.frames + " frames";
       if (env.type === "heartbeat") {
-        // Compact 24h HH:MM:SS — saves header width vs locale "6:51:12 AM".
+        // 12hr AM/PM clock (user 2026-04-29). Wider than 24h compact
+        // but matches the rest of the wall-clock displays in the app.
         const hbT = new Date((env.t || Date.now()/1000) * 1000);
-        const pad = (n) => n.toString().padStart(2, "0");
-        hbEl.textContent = `♥ ${pad(hbT.getHours())}:${pad(hbT.getMinutes())}:${pad(hbT.getSeconds())}`;
+        hbEl.textContent = `♥ ${_to12(hbT)}`;
         hbEl.classList.remove("hb-pulse");
         void hbEl.offsetWidth;
         hbEl.classList.add("hb-pulse");
@@ -5929,8 +6321,12 @@
       return;
     }
     if (!chip) {
-      const spacer = document.querySelector("footer .spacer");
-      if (!spacer) return;
+      // Insert immediately before the mode-pill so the footer order is
+      // VOICE → ZEN → CLIENT (per user 2026-04-29). Falls back to the
+      // legacy spacer position if the mode-pill isn't in the DOM.
+      const anchor = document.getElementById("mode-pill")
+                  || document.querySelector("footer .spacer");
+      if (!anchor) return;
       chip = document.createElement("span");
       chip.className = "prefs-chip";
       chip.title = "click to reset saved prefs";
@@ -5941,7 +6337,7 @@
         localStorage.removeItem("rc-header-lock");
         window.location.reload();
       });
-      spacer.parentNode.insertBefore(chip, spacer);
+      anchor.parentNode.insertBefore(chip, anchor);
     }
     chip.textContent = flags.join(" · ");
   }
@@ -6650,19 +7046,30 @@
         else delete header.dataset.compressed;
       }, { passive: true });
 
-      // 4.4 — health rollup dot in the header.
-      // 2026-04-28 fix: was appended to <header> directly which made it a
-      // 3rd row. Anchor inside .header-row-2 so it sits inline at the far
-      // right (CSS margin-left:auto pushes it past mode-pill / augments).
+      // 4.4 — health rollup dot ("claude cost pill" — tooltip carries
+      // Claude $/day + supervisor + vision health). 2026-04-29: moved
+      // from header.header-row-2 to the footer (right of mode-pill) per
+      // user — it was visually distracting in the header. Lookup goes
+      // both header AND footer for back-compat with any cached layout.
       try {
-        let dot = header.querySelector(".health-dot");
+        let dot = document.querySelector(".health-dot");
         if (!dot) {
           dot = document.createElement("span");
           dot.className = "health-dot yellow";
           dot.title = "Loading…";
           dot.setAttribute("data-tt", "Loading…");
-          const row2 = header.querySelector(".header-row-2");
-          (row2 || header).appendChild(dot);
+          const footer = document.querySelector("footer");
+          const modePill = document.getElementById("mode-pill");
+          if (modePill && modePill.parentNode === footer) {
+            // Insert right after mode-pill (so order is mode → dot → next pill).
+            modePill.parentNode.insertBefore(dot, modePill.nextSibling);
+          } else if (footer) {
+            footer.appendChild(dot);
+          } else {
+            // Last-ditch fallback to header so the JS doesn't no-op.
+            const row2 = header.querySelector(".header-row-2");
+            (row2 || header).appendChild(dot);
+          }
         }
         const refreshHealth = () => {
           fetch("/api/health/all")

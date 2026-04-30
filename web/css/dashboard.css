@@ -362,6 +362,52 @@ footer .advisory-badge.in-footer b,
 footer .digest-icon.in-footer b {
   font-size: 11px;
 }
+/* Mode pill in footer (moved 2026-04-29). Parent-selector scale-down so
+ * we don't need a `.in-footer` modifier — JS does
+ * `modePill.className = "mode-pill " + tag` which would clobber any
+ * extra class on every mode change. Parent-selector survives that. */
+footer .mode-pill {
+  font-size: 11px !important;
+  padding: 3px 10px !important;
+  letter-spacing: 0.08em;
+  width: auto !important;
+  font-weight: 700;
+}
+/* Gold pill scaled to match (moved 2026-04-29). Parent-selector for the
+ * same reason — JS sets gold-pill .hidden / .stale classes that would
+ * conflict with a fixed in-footer modifier. */
+footer .gold-pill {
+  font-size: 11px !important;
+  padding: 3px 10px !important;
+  width: auto !important;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+footer .gold-pill b { font-size: 11px; }
+/* DEV ⌃ + VOICE buttons + voice-picker reduced to in-footer scale per
+ * user 2026-04-29 — they were standing taller than the surrounding
+ * pills (advisory / digest / mode / gold). Parent-selector overrides
+ * the base .footer-btn padding without touching the .footer-btn class
+ * (which is also used outside the footer e.g. in the adapt panel). */
+footer .footer-btn,
+footer .voice-picker {
+  font-size: 11px !important;
+  padding: 2px 9px !important;
+  letter-spacing: 0.06em;
+}
+/* prefs-chip ("ZEN:OFF") sits between voice-picker and mode-pill in
+ * the footer (insertion point set by _refreshPrefsChip in dashboard.js).
+ * Match the in-footer pill scale so it doesn't look like a runt. */
+footer .prefs-chip {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-faint);
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+footer .prefs-chip:hover { color: var(--text); }
 
 /* ───── Static widths + heights ─────────────────────────────────────
  * Every header pill gets a fixed width sized for its *widest anticipated*
@@ -461,6 +507,17 @@ footer .digest-icon.in-footer b {
   font-size: 13px; color: var(--info); letter-spacing: 0.16em;
   text-transform: uppercase; font-weight: 700;
   border-left: 1px solid var(--border-soft); padding-left: 10px;
+  /* Reserve space for the longest label auto-mode can surface so the
+   * title-dropdown doesn't change width when the view changes (that
+   * width-jitter was shifting every other pill in the row left/right).
+   * Auto-derive only ever returns home / lobby / last-match — manual
+   * picks (diagnostics / session / etc.) drop the AUTO prefix and read
+   * shorter, so they comfortably fit too. Longest realistic label:
+   * "AUTO · LAST MATCH" (17 chars at 13px / 0.16em letter-spacing). */
+  display: inline-block;
+  min-width: 145px;
+  text-align: left;
+  white-space: nowrap;
 }
 .title-current:empty { display: none; }
 .title-caret {
@@ -655,6 +712,7 @@ footer .digest-icon.in-footer b {
 /* When a non-default view is active, hide the 5 main panels + the
  * inline overlays that are mode-specific. Lobby/Home overlays show
  * via their own logic. */
+body[data-view="home"] main,
 body[data-view="lobby"] main,
 body[data-view="session"] main,
 body[data-view="history"] main,
@@ -1359,7 +1417,14 @@ body[data-view="lobby"]        #lobby-overlay { display: none; }
    * visually separated win/trend from advisory/heartbeat. */
   transition: transform 200ms ease;
 }
-.advisory-badge.hidden { display: none; }
+.advisory-badge.hidden,
+.advisory-badge[hidden],
+.digest-icon[hidden] { display: none !important; }
+/* HTML `hidden` attribute is normally a UA `display: none` rule, but
+ * .advisory-badge / .digest-icon override it with explicit
+ * `display: inline-flex`. That left a 20px-tall pill in the footer
+ * even with `<span hidden>`, varying footer height across views.
+ * The !important above wins over the inline-flex class rules. */
 .advisory-badge::before {
   content: "⚠ ";
   font-weight: 900;
@@ -2096,6 +2161,41 @@ body[data-mode="brawl"] #mm-img { image-rendering: auto; }
 }
 .analyze-stat.pending { color: var(--gold); }
 .analyze-stat.running { color: var(--good); }
+
+/* User request 2026-04-29: visually hidden — JS still updates these
+ * elements (latency stat ticks per /api/input round-trip; ANALYZE NOW
+ * still wired to /api/command analyze; analyze-footer status text and
+ * frame-count WS counter still update via JS). Restore by removing rules. */
+#input-latency-footer { display: none; }
+#analyze-now          { display: none; }
+#analyze-footer       { display: none; }
+#frame-count          { display: none; }
+
+/* User request 2026-04-29: visually hide row-1 header pills. JS still
+ * populates these elements so values stay queryable for tooltips and a
+ * one-line CSS un-hide if priorities change. Same pattern as the
+ * already-hidden .self-spells and .kda pills. */
+.champion-pill { display: none; }
+.cs-pill       { display: none; }
+.vis-pill      { display: none; }
+
+/* Mode-scoped hides. Augments are an in-game concept (ARAM Mayhem /
+ * Arena / Brawl) — not relevant in the lobby. Hide while body[data-mode]
+ * is "client" OR while data-mode hasn't been set yet (initial page load
+ * before setMode fires — JS sets dataset.mode lazily on first state
+ * tick, so without :not([data-mode]) the pill flashes visible until a
+ * mode arrives). JS still populates #augments-pill so the pill restores
+ * automatically when a game starts. */
+body[data-mode="client"] .augments-pill,
+body:not([data-mode])   .augments-pill { display: none; }
+
+/* Home-view-scoped hides. The home card is a session-summary surface;
+ * the live in-game zone (ZOI) + clock pills add no signal there. JS
+ * still updates them so they're correct the moment the user switches
+ * to a game-mode view. */
+body[data-view="home"] .zone-pill,
+body[data-view="home"] .game-time { display: none; }
+
 .footer-btn {
   background: var(--surface);
   color: var(--text-dim);
@@ -3514,8 +3614,12 @@ body:not([data-mode="client"])[data-phase="late"]  .stats-group:not([data-stage~
 .activity-event:hover { filter: brightness(1.2); }
 
 /* ───── Activity ticker strip ──────────────────────────────────── */
+/* User request 2026-04-29: visually hidden — supervisor task tracking
+ * (refreshActivity / activity-line / activity-count = "165/193") still
+ * runs server-side and the JS still polls; only the strip is hidden so
+ * the row doesn't take screen real estate. Set display:flex to restore. */
 .activity-strip {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 18px;
   padding: 8px 22px;
@@ -3680,13 +3784,567 @@ footer .prefs-chip:hover { background: var(--bad-soft); color: var(--bad); }
   margin: 12px 18px 0; padding: 14px 18px;
   background: var(--surface); border: 1px solid var(--border-soft);
   border-radius: var(--radius);
+  display: flex; flex-direction: column; gap: 14px;
+  /* Match the view-section flex behavior so the footer stays pinned to
+   * the viewport bottom regardless of which view is active. Without
+   * this, home-overlay was content-sized and the footer floated up to
+   * sit just below the services strip, then dropped when switching to
+   * a view-section view (lobby/history/etc., which all flex: 1).
+   * The trailing min-height: 0 lets the overlay shrink below its
+   * intrinsic content if the viewport is short.
+   * 2026-04-30: gaps + padding tightened (14→10) to recover the
+   * vertical space the alerts/services were overflowing into. */
+  flex: 1 1 auto;
+  min-height: 0;
 }
 .home-overlay.hidden { display: none; }
+/* User request 2026-04-29: when the user manually navigates to the home
+ * view, force the overlay visible regardless of _homeShouldShow's
+ * mode/lcu-phase gating. Specificity (0,2,1) beats .home-overlay.hidden
+ * (0,2,0); !important keeps that win even if a later rule drops in. */
+body[data-view="home"] .home-overlay { display: flex !important; }
+
+/* Legacy 4-card grid kept for any consumer outside home-overlay that
+ * might still depend on it. New home V1 layout below uses
+ * .home-hero / .home-body / .home-services-strip. */
 .home-grid {
   display: grid;
   grid-template-columns: 1fr 1.4fr 1.1fr 0.9fr;
   gap: 14px;
 }
+
+/* ── V1 hero banner ───────────────────────────────────────────────── */
+.home-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 2fr auto;
+  gap: 24px;
+  align-items: center;
+  padding: 16px 20px;
+  background: linear-gradient(135deg,
+              rgba(138, 140, 240, 0.06),
+              rgba(245, 184, 124, 0.04));
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  min-height: 110px;
+  overflow: hidden;
+}
+/* Champion motif background. JS sets background-image inline based on
+ * this-week's top champion (or a fallback). Positioned to bleed out
+ * the right edge so it reads as a motif, not a portrait. Large + faded
+ * + monochromed so it's visual texture, not foreground content. */
+.home-hero-bg {
+  position: absolute;
+  top: 50%; right: -40px;
+  transform: translateY(-50%);
+  width: 360px; height: 360px;
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: 0.18;
+  filter: grayscale(0.4) blur(0.5px);
+  pointer-events: none;
+  mask-image: linear-gradient(to left, black 30%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to left, black 30%, transparent 100%);
+}
+/* Make the foreground content sit above the motif. */
+.home-hero-greet,
+.home-hero-headline,
+.home-hero-chips { position: relative; z-index: 1; }
+.home-hero-greet { min-width: 0; }
+.home-hero-time {
+  font-size: 22px; font-weight: 800; color: var(--text);
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+.home-hero-sub {
+  font-size: 12px; color: var(--text-faint);
+  letter-spacing: 0.06em; text-transform: uppercase;
+  margin-top: 4px;
+}
+.home-hero-headline {
+  font-size: 26px; font-weight: 800; color: var(--text);
+  letter-spacing: 0.01em;
+  text-align: center;
+  line-height: 1.2;
+}
+.home-hero-headline.up    { color: var(--good); }
+.home-hero-headline.down  { color: var(--bad); }
+.home-hero-headline.flat  { color: var(--text-dim); }
+.home-hero-chips {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.home-hero-chip {
+  display: inline-flex; flex-direction: column; align-items: flex-start;
+  padding: 6px 12px; min-width: 110px;
+  background: var(--surface-head);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.home-hero-chip-lbl {
+  font-size: 12px; letter-spacing: 0.18em; font-weight: 700;
+  color: var(--label); text-transform: uppercase;
+}
+.home-hero-chip-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 3px;
+}
+.home-hero-chip-val {
+  font-size: 19px; font-weight: 800; color: var(--text);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Inline sparkline inside hero chip — small, sits next to the value */
+.home-hero-spark {
+  width: 60px; height: 18px;
+  flex: none;
+}
+.home-hero-spark .spark-line {
+  fill: none; stroke: var(--info);
+  stroke-width: 1.5; vector-effect: non-scaling-stroke;
+}
+.home-hero-spark .spark-area {
+  fill: var(--info); opacity: 0.18;
+}
+.home-hero-spark .spark-dot { fill: var(--gold); }
+
+/* ── V1 body: 2-column row (recent cards | week list) ─────────────── */
+.home-body {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 14px;
+}
+
+/* ── V1 recent matches as visual cards ────────────────────────────── */
+#home-recent-list.home-recent-list {
+  display: flex; flex-direction: column; gap: 8px;
+  list-style: none; margin: 0; padding: 0;
+}
+.home-recent-card {
+  display: grid;
+  grid-template-columns: 6px 44px 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px 10px 0;
+  background: var(--surface-head);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.12s, transform 0.12s;
+}
+.home-recent-img {
+  width: 44px; height: 44px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+}
+.home-recent-card:hover {
+  border-color: var(--info);
+  transform: translateX(2px);
+}
+.home-recent-stripe {
+  width: 6px; height: 100%; min-height: 44px;
+  background: var(--text-dim);
+}
+.home-recent-stripe.tier-good { background: var(--good); }
+.home-recent-stripe.tier-mid  { background: var(--info); }
+.home-recent-stripe.tier-bad  { background: var(--bad); }
+.home-recent-main { min-width: 0; padding-left: 4px; }
+.home-recent-champ {
+  font-size: 18px; font-weight: 800; color: var(--text);
+  letter-spacing: 0.02em;
+  display: block;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.home-recent-meta {
+  font-size: 13px; color: var(--text-faint);
+  letter-spacing: 0.04em; text-transform: uppercase;
+  margin-top: 3px;
+  display: block;
+}
+.home-recent-kda {
+  font-size: 16px; font-weight: 700; color: var(--text);
+  font-variant-numeric: tabular-nums;
+  padding: 5px 12px;
+  background: var(--surface);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.home-recent-grade-badge {
+  width: 36px; height: 36px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 900;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  margin-right: 12px;
+}
+.home-recent-grade-badge.S { color: var(--good);     border-color: var(--good); }
+.home-recent-grade-badge.A { color: var(--good);     border-color: var(--good-soft); }
+.home-recent-grade-badge.B { color: var(--info);     border-color: var(--info-soft); }
+.home-recent-grade-badge.C { color: var(--text-dim); }
+.home-recent-grade-badge.D { color: var(--advisory); border-color: var(--advisory-soft); }
+.home-recent-grade-badge.F { color: var(--bad);      border-color: var(--bad-soft); }
+
+/* ── V3 combo row (2026-04-30 v2): only Tonight's Pick now (sparklines
+ * moved into hero chips). Single column = full-width Tonight's Pick. */
+.home-combo {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.home-combo[hidden] { display: none; }
+
+/* ── V3 trends row (suggestion #5): 14-day sparklines ─────────────── */
+.home-trends {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.home-trends[hidden] { display: none; }
+.home-trend-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 12px;
+  align-items: center;
+  padding: 8px 14px;
+  background: var(--surface-head);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.home-trend-lbl {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
+  color: var(--label); text-transform: uppercase;
+  grid-column: 1; grid-row: 1;
+}
+.home-trend-val {
+  font-size: 20px; font-weight: 800; color: var(--text);
+  font-variant-numeric: tabular-nums;
+  grid-column: 1; grid-row: 2;
+  white-space: nowrap;
+}
+.home-trend-spark {
+  grid-column: 2; grid-row: 1 / span 2;
+  width: 100%; height: 36px;
+}
+.home-trend-spark .spark-line {
+  fill: none;
+  stroke: var(--info);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.home-trend-spark .spark-area {
+  fill: var(--info);
+  opacity: 0.15;
+}
+.home-trend-spark .spark-dot {
+  fill: var(--gold);
+}
+
+/* ── V3 coach row (suggestions #1 + #4) — Tonight's Pick now lives
+ * inside .home-combo (with sparklines). Last Build is its own row
+ * below, hidden until postgame_stats data exists. ────────────────── */
+.home-coach-pick,
+.home-coach-build {
+  background: var(--surface-head);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+.home-coach-pick[hidden],
+.home-coach-build[hidden] { display: none; }
+/* Tonight's pick → border accent + slight glow to read as primary */
+.home-coach-pick {
+  border-color: var(--info-soft);
+  box-shadow: 0 0 8px rgba(138, 140, 240, 0.12);
+}
+.home-coach-pick-head,
+.home-coach-build-head {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
+  color: var(--label); text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.home-coach-build-sub {
+  font-size: 10px; font-weight: 700; color: var(--text-faint);
+  margin-left: 8px; letter-spacing: 0.06em;
+}
+.home-coach-pick-body {
+  display: flex; align-items: center; gap: 14px;
+}
+/* Stacked icon buttons on the right side of Tonight's Pick (V3 redesign
+ * 2026-04-30). Replaces the standalone .home-alerts panel — same
+ * advisory + digest popouts, much smaller footprint. */
+.home-coach-pick-actions {
+  display: flex; flex-direction: column; gap: 6px;
+  margin-left: auto;
+  flex: none;
+}
+.home-pick-btn {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text-faint);
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+.home-pick-btn:hover {
+  background: var(--surface-head);
+  border-color: var(--info);
+  color: var(--info);
+}
+.home-pick-btn-icon {
+  font-size: 18px; font-weight: 900;
+  line-height: 1;
+}
+/* Notification badge in the bottom-right corner — only visible when the
+ * underlying value is non-zero / non-default. JS toggles `.has-data`
+ * via _homeMirrorAlerts. Default empty state is muted. */
+.home-pick-btn-badge {
+  position: absolute;
+  bottom: -4px; right: -4px;
+  min-width: 16px; height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  color: var(--text-faint);
+  font-size: 10px; font-weight: 800;
+  letter-spacing: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border);
+}
+.home-pick-btn.has-data .home-pick-btn-badge {
+  background: var(--bad-soft);
+  color: var(--bad);
+  border-color: var(--bad-soft);
+}
+.home-pick-btn.has-data { color: var(--bad); border-color: var(--bad-soft); }
+#home-alerts-digest.has-data { color: var(--info); border-color: var(--info-soft); }
+#home-alerts-digest.has-data .home-pick-btn-badge {
+  background: var(--info-soft);
+  color: var(--info);
+  border-color: var(--info-soft);
+}
+.home-coach-pick-img {
+  width: 56px; height: 56px;
+  border-radius: 8px;
+  border: 1px solid var(--info-soft);
+  background: var(--surface);
+  object-fit: cover;
+  flex: none;
+}
+.home-coach-pick-meta {
+  display: flex; flex-direction: column; min-width: 0; gap: 4px;
+}
+.home-coach-pick-champ {
+  font-size: 22px; font-weight: 800; color: var(--info);
+  letter-spacing: 0.02em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.home-coach-pick-reason {
+  font-size: 13px; color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
+.home-coach-build-items {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.home-coach-build-item {
+  width: 44px; height: 44px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  object-fit: cover;
+}
+.home-coach-build-item.empty {
+  background: repeating-linear-gradient(45deg,
+              var(--surface), var(--surface) 4px,
+              var(--surface-alt) 4px, var(--surface-alt) 8px);
+  opacity: 0.5;
+}
+
+/* ── V2 quick-action tiles row (suggestion #3) ────────────────────── */
+.home-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.home-action-tile {
+  display: flex; flex-direction: column; align-items: flex-start;
+  padding: 14px 16px;
+  background: var(--surface-head);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: border-color 0.12s, transform 0.12s, background 0.12s;
+}
+.home-action-tile:hover {
+  border-color: var(--info);
+  background: var(--surface);
+  transform: translateY(-2px);
+}
+.home-action-tile:active { transform: translateY(0); }
+.home-action-icon {
+  width: 28px; height: 28px;
+  margin-bottom: 8px;
+  color: var(--info);
+  transition: color 0.12s, transform 0.12s;
+}
+.home-action-tile:hover .home-action-icon {
+  color: var(--gold);
+  transform: scale(1.08);
+}
+.home-action-label {
+  font-size: 17px; font-weight: 800; color: var(--text);
+  letter-spacing: 0.02em;
+}
+.home-action-sub {
+  font-size: 13px; color: var(--text-faint);
+  letter-spacing: 0.06em; text-transform: uppercase;
+  margin-top: 3px;
+}
+
+/* ── V2 this-week mini-chart (suggestion #5) ──────────────────────── */
+.home-week-chart {
+  display: flex; flex-direction: column; gap: 6px;
+  list-style: none; margin: 0; padding: 0;
+}
+.home-week-bar-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) auto auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: var(--surface-head);
+  border: 1px solid var(--border-soft);
+}
+/* Grade badge sits inline at the right of the bar row (not below it),
+ * so each week-row is a single visual line. Slightly smaller than the
+ * RECENT-card badge since the row height target is tighter. */
+.home-week-bar-row .home-recent-grade-badge {
+  width: 28px; height: 28px;
+  font-size: 13px;
+  margin-right: 0;
+}
+.home-week-bar-name {
+  position: relative;
+  font-size: 15px; font-weight: 700; color: var(--text);
+  letter-spacing: 0.02em;
+  padding: 6px 10px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  border-radius: 3px;
+  background: linear-gradient(to right,
+              var(--info-soft) 0%, var(--info-soft) var(--bar-pct, 50%),
+              transparent var(--bar-pct, 50%), transparent 100%);
+}
+.home-week-bar-games {
+  font-size: 13px; color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.home-week-bar-kda {
+  font-size: 15px; font-weight: 700; color: var(--text);
+  font-variant-numeric: tabular-nums;
+  padding: 3px 10px;
+  background: var(--surface);
+  border-radius: 999px;
+  min-width: 44px;
+  text-align: center;
+}
+
+/* ── V2 alerts panel (advisory + digest moved out of footer) ──────── */
+.home-alerts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.home-alerts-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 12px;
+  background: var(--surface-head);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.12s, transform 0.12s;
+}
+.home-alerts-row:hover {
+  border-color: var(--info);
+  transform: translateX(2px);
+}
+.home-alerts-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  font-weight: 900; font-size: 16px;
+  font-family: inherit;
+}
+.home-alerts-icon.advisory { background: var(--bad-soft);  color: var(--bad); }
+.home-alerts-icon.digest   { background: var(--info-soft); color: var(--info); }
+.home-alerts-row.empty .home-alerts-icon { opacity: 0.5; }
+.home-alerts-text {
+  display: flex; flex-direction: column; min-width: 0;
+}
+.home-alerts-lbl {
+  font-size: 13px; font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--label);
+}
+.home-alerts-val {
+  font-size: 15px; color: var(--text);
+  margin-top: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.home-alerts-cta {
+  font-size: 13px; color: var(--text-faint);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  white-space: nowrap;
+}
+.home-alerts-row:hover .home-alerts-cta { color: var(--info); }
+
+/* ── V1 services strip (replaces the SERVICES card) ───────────────── */
+.home-services-strip {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 8px 10px;
+  background: var(--surface-head);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  list-style: none; margin: 0;
+}
+.home-services-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-weight: 700;
+  cursor: default;
+}
+.home-services-pill .home-services-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text-dim);
+  flex: none;
+}
+.home-services-pill.ok  .home-services-dot  { background: var(--good); }
+.home-services-pill.err .home-services-dot  { background: var(--bad); }
+.home-services-pill.err { color: var(--bad); border-color: var(--bad-soft); }
 .home-card {
   background: var(--surface-head);
   border: 1px solid var(--border);
@@ -3696,7 +4354,7 @@ footer .prefs-chip:hover { background: var(--bad-soft); color: var(--bad); }
   display: flex; flex-direction: column;
 }
 .home-card-head {
-  font-size: 10px; font-weight: 800; letter-spacing: 0.18em;
+  font-size: 13px; font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--label);
   margin-bottom: 8px;
   display: flex; align-items: baseline; gap: 8px;
