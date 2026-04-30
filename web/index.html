@@ -261,6 +261,15 @@
     </div>
   </header>
 
+  <!-- Coach decisions banner: surfaces coachable moments (objective contest,
+       etc.) detected by core/decision_detector. Hidden when no pending
+       decisions; populated + animated by JS in dashboard.js (`COACH_DECISIONS`
+       block). Per-decision row carries action buttons that POST to
+       /api/decisions/<id> and animate removal. -->
+  <section id="coach-decisions" class="coach-decisions" hidden aria-live="polite">
+    <ol id="coach-decisions-list" class="coach-decisions-list"></ol>
+  </section>
+
   <main aria-label="Coaching panels">
     <section id="minimap" class="panel panel-minimap">
       <div class="panel-head">
@@ -280,6 +289,7 @@
              enemy") sits under it so the eye lands on the map first. -->
         <div class="minimap-img-wrap hidden" id="mm-img-wrap">
           <img id="mm-img" alt="minimap crop" />
+          <canvas id="mm-vt-overlay" class="mm-vt-overlay"></canvas>
           <span class="minimap-img-caption" id="mm-img-caption">—</span>
         </div>
         <div class="mm-canvas-stack hidden" id="mm-canvas-stack">

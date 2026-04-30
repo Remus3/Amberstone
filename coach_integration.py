@@ -415,6 +415,57 @@ def _load_lane_matchup_note(enemy_adc: str) -> str:
         return ""
 
 
+def _vision_tracker_locs() -> str:
+    """Read data/vision_state.json (written by core/vision_tracker) and
+    return a coach-prompt-ready enemy-locations string. Returns "" if
+    the tracker file is missing, stale (>10s), or empty.
+
+    Format mirrors game_reader._derive_enemy_locations so coaches see a
+    familiar shape: visible champs first, MIA after, dead at the end.
+    The tracker's position-freeze detection is more accurate than the
+    legacy (0,0)-based heuristic, especially right after a champion
+    enters fog of war (where the legacy reader has a 0-position blind
+    spot for ~1s).
+    """
+    try:
+        from pathlib import Path as _P
+        p = _P(__file__).parent / "data" / "vision_state.json"
+        if not p.exists():
+            return ""
+        if (time.time() - p.stat().st_mtime) > 10:
+            return ""
+        d = json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return ""
+    enemies = d.get("enemies") or {}
+    if not enemies:
+        return ""
+    visible, mia, dead = [], [], []
+    for name, e in enemies.items():
+        zone = e.get("last_seen_zone") or "?"
+        if e.get("is_dead"):
+            r = e.get("respawn_in_s")
+            dead.append(f"{name} ({int(r)}s)" if isinstance(r, (int, float)) else name)
+            continue
+        if e.get("visible"):
+            visible.append(f"{name} [{zone}]")
+        else:
+            ago = e.get("missing_for_s")
+            if isinstance(ago, (int, float)):
+                if ago < 8:
+                    visible.append(f"{name} [{zone}]")
+                elif ago < 45:
+                    mia.append(f"{name} MIA {int(ago)}s ({zone})")
+                else:
+                    mia.append(f"{name} MIA ({zone} last seen)")
+            else:
+                mia.append(f"{name} untracked")
+    parts = visible + mia
+    if dead:
+        parts.append(f"Dead: {', '.join(dead)}")
+    return "\n".join(parts)
+
+
 def _build_user_prompt(gs: dict, wave_state: str) -> str:
     """Build a rich context prompt from the full game_reader state dict."""
     # AUDIT 2026-04-28 (deferred-low-value): defense-in-depth sanitizer
@@ -439,7 +490,10 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
     summ_f     = _ps_clean(gs.get("summoner_f", "?"), max_len=24)
     allies     = ", ".join(_ps_iter(gs.get("ally_comp", []))) or "unknown"
     enemies    = ", ".join(_ps_iter(gs.get("enemy_comp", []))) or "unknown"
-    enemy_locs = _ps_clean(gs.get("enemy_locs", "unknown"))
+    # Prefer vision_tracker output (position-freeze detection — more
+    # accurate fog-of-war model than game_reader's (0,0) heuristic).
+    # Falls through to game_reader's enemy_locs when tracker is cold/stale.
+    enemy_locs = _ps_clean(_vision_tracker_locs() or gs.get("enemy_locs", "unknown"))
     objectives = _ps_clean(gs.get("objectives", "none"))
     walk_drake = gs.get("walk_time_drake")
     walk_baron = gs.get("walk_time_baron")

@@ -1996,6 +1996,85 @@ body[data-mode="brawl"] #mm-img { image-rendering: auto; }
   font-weight: 700;
 }
 .minimap-img-wrap.stale #mm-img { opacity: 0.5; filter: grayscale(0.5); }
+
+/* ── Coach decisions banner (decision_detector) ──────────────────────────
+ * Sits between header and main. Hidden when no pending decisions.
+ * Each .coach-decision row has a title + subtitle + action buttons.
+ * Slide-in animation when a new decision appears. */
+.coach-decisions {
+  margin: 8px 14px 0;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, rgba(245, 184, 124, 0.08), rgba(245, 184, 124, 0.04));
+  border: 1px solid rgba(245, 184, 124, 0.45);
+  box-shadow: 0 0 12px rgba(245, 184, 124, 0.18);
+}
+.coach-decisions[hidden] { display: none; }
+.coach-decisions-list { list-style: none; margin: 0; padding: 0; }
+.coach-decision {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(245, 184, 124, 0.2);
+  animation: coachDecisionIn 240ms ease-out;
+}
+.coach-decision:last-child { border-bottom: none; }
+.coach-decision.resolving {
+  opacity: 0.35;
+  transition: opacity 200ms ease, transform 240ms ease;
+  transform: translateX(8px);
+  pointer-events: none;
+}
+.coach-decision-text { min-width: 0; }
+.coach-decision-title {
+  font-weight: 700;
+  font-size: 16px;
+  color: #F5B87C;
+  margin: 0 0 2px;
+}
+.coach-decision-sub {
+  font-size: 13px;
+  color: var(--text-faint);
+  margin: 0;
+}
+.coach-decision-actions {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+.coach-decision-btn {
+  padding: 6px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 6px;
+  border: 1px solid currentColor;
+  background: transparent;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  font-family: inherit;
+}
+.coach-decision-btn[data-choice="contest"] { color: #F07E8B; }
+.coach-decision-btn[data-choice="give"]    { color: #8A8CF0; }
+.coach-decision-btn[data-choice="skip"]    { color: var(--text-faint); }
+.coach-decision-btn:hover     { background: rgba(255, 255, 255, 0.08); }
+.coach-decision-btn:active    { transform: translateY(1px); }
+.coach-decision-btn:disabled  { opacity: 0.4; cursor: default; }
+@keyframes coachDecisionIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Vector overlay (vision_tracker dots + ghost markers) layered on top of
+ * the live minimap image. Sized in JS to match the rendered <img> bounds
+ * exactly; pointer-events:none so clicks pass through. */
+.mm-vt-overlay {
+  position: absolute;
+  pointer-events: none;
+  z-index: 4;
+  image-rendering: auto;
+}
 .latency-stat {
   padding: 3px 10px;
   border-radius: 999px;

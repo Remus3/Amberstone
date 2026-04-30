@@ -4331,6 +4331,22 @@ class _Handler(BaseHTTPRequestHandler):
                 d["rc_version"] = ""
             payload = json.dumps(d).encode("utf-8")
             self._send(200, payload, "application/json")
+        elif self.path == "/api/vision-state":
+            # Fog-of-war state derived by core/vision_tracker from Live
+            # Client position freshness. Empty {} when no game running.
+            d = _read_json("data/vision_state.json") or {}
+            self._send(200, json.dumps(d).encode("utf-8"), "application/json")
+        elif self.path == "/api/decisions":
+            # Pending coachable decisions detected by core/decision_detector.
+            # Empty list when no game / no triggers.
+            try:
+                from core.decision_detector import get_loop
+                pending = get_loop().store().list_pending()
+                self._send(200, json.dumps({"pending": pending}).encode("utf-8"),
+                           "application/json")
+            except Exception as exc:
+                _log.warning("api/decisions: %s", exc)
+                self._send(500, b'{"error":"decisions_read_failed"}', "application/json")
         elif self.path == "/api/session/summary":
             try:
                 self._send(200, json.dumps(_build_session_summary()).encode(),
@@ -5012,6 +5028,30 @@ class _Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 _log.warning("api/command %s: %s", cmd, exc)
                 self._send(500, b'{"error":"command_failed"}', "application/json")
+        elif self.path.startswith("/api/decisions/"):
+            # POST /api/decisions/<id>  body: {choice: "contest"|"give"|"skip", note?}
+            # Records the player's choice and removes the decision from pending.
+            try:
+                decision_id = self.path[len("/api/decisions/"):].split("?", 1)[0]
+                if not decision_id:
+                    self._send(400, b'{"error":"id required"}', "application/json"); return
+                choice = (payload.get("choice") or "").strip()
+                if choice not in ("contest", "give", "skip"):
+                    self._send(400, b'{"error":"choice must be contest|give|skip"}',
+                               "application/json"); return
+                from core.decision_detector import get_loop
+                extra = {}
+                if "note" in payload:
+                    extra["note"] = str(payload.get("note") or "")[:500]
+                entry = get_loop().store().record_choice(decision_id, choice, extra=extra)
+                if entry is None:
+                    self._send(404, b'{"error":"id not pending"}', "application/json"); return
+                self._send(200, json.dumps({"ok": True, "id": entry["id"],
+                                            "choice": entry["choice"]}).encode(),
+                           "application/json")
+            except Exception as exc:
+                _log.warning("api/decisions POST: %s", exc)
+                self._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
         elif self.path == "/api/bridge":
             # Post a message to the cross-Claude bridge. Body shape:
             #   {source, summary, kind?, id?, target?, body?, in_reply_to?}
@@ -5535,3 +5575,20 @@ def start_dashboard(app_dir: Path) -> None:
                   HOST, PORT, PORT)
     else:
         _log.info("Web dashboard on http://%s:%d/  (no TLS cert)", HOST, PORT)
+
+    # Vision tracker: derives fog-of-war state from Live Client position
+    # freshness, writes data/vision_state.json. Consumed by the minimap
+    # overlay layer and (later) by coach prompt builders.
+    try:
+        from core.vision_tracker import get_tracker
+        get_tracker().start_background()
+    except Exception as exc:
+        _log.warning("vision_tracker failed to start: %s", exc)
+
+    # Decision detector: surfaces coachable moments (objective contest,
+    # etc.) to the dashboard Coach panel + records the player's choice.
+    try:
+        from core.decision_detector import get_loop
+        get_loop().start_background()
+    except Exception as exc:
+        _log.warning("decision_detector failed to start: %s", exc)
