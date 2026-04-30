@@ -7,159 +7,6 @@
   <link rel="stylesheet" href="/css/dashboard.css?v=2026042614" />
 </head>
 <body>
-  <!-- Home overlay (2026-04-26). Replaces the empty client-mode panels
-       when the user is sitting in the lobby with no game/champ-select
-       active. Pulls /api/home/summary every 20s. Hidden during champ-
-       select / in-game so the main panel grid is unobstructed. -->
-  <div id="home-overlay" class="home-overlay hidden" aria-hidden="true">
-    <div class="home-grid">
-      <div class="home-card home-card-today" id="home-card-today">
-        <div class="home-card-head">TODAY <span class="home-card-sub" id="home-today-count">—</span></div>
-        <div class="home-today-stats">
-          <div class="home-today-row"><span class="home-today-lbl">Total KDA</span><span class="home-today-val" id="home-today-kda">—</span></div>
-          <div class="home-today-row"><span class="home-today-lbl">Avg ratio</span><span class="home-today-val" id="home-today-avg">—</span></div>
-          <div class="home-today-row"><span class="home-today-lbl">Grades</span><span class="home-today-val" id="home-today-grades">—</span></div>
-          <div class="home-today-row"><span class="home-today-lbl">Modes</span><span class="home-today-val" id="home-today-modes">—</span></div>
-        </div>
-      </div>
-      <div class="home-card home-card-recent">
-        <div class="home-card-head">RECENT 5</div>
-        <ul class="home-recent-list" id="home-recent-list"><li class="home-empty">loading…</li></ul>
-      </div>
-      <div class="home-card home-card-week">
-        <div class="home-card-head">THIS WEEK</div>
-        <ul class="home-week-list" id="home-week-list"><li class="home-empty">loading…</li></ul>
-      </div>
-      <div class="home-card home-card-services">
-        <div class="home-card-head">SERVICES</div>
-        <ul class="home-services-list" id="home-services-list"><li class="home-empty">loading…</li></ul>
-      </div>
-    </div>
-  </div>
-
-  <!-- Lobby overlay (2026-04-26). Shown when lcu.phase === "Lobby"
-       AND lcu.lobby is populated. Surfaces queue type, party
-       composition, leader status, and a Find Match button. The button
-       degrades to status-only when localMember is not the leader (per
-       LCU's restriction). Expects /api/state to expose:
-         lcu.lobby = { queue_id, queue_name, party_size, max_party_size,
-                       is_leader, can_search, search_state }
-       Data feed = Game-PC LCU agent polling /lol-lobby/v2/lobby. -->
-  <div id="lobby-overlay" class="lobby-overlay hidden" aria-hidden="true">
-    <div class="lobby-card">
-      <div class="lobby-head">
-        <span class="lobby-queue" id="lobby-queue">—</span>
-        <span class="lobby-party" id="lobby-party">—</span>
-        <span class="lobby-leader-tag" id="lobby-leader-tag" hidden>★ LEADER</span>
-        <!-- Change-queue control: triggers a list of common queues
-             (ARAM, ARAM Mayhem, Normal Draft, etc) → posts
-             change_queue_type LCU cmd. Hidden when not leader. -->
-        <select class="lobby-queue-select" id="lobby-queue-select" hidden>
-          <option value="">Change queue…</option>
-          <option value="450">ARAM (450)</option>
-          <option value="920">ARAM Mayhem (920)</option>
-          <option value="430">Normal Blind (430)</option>
-          <option value="400">Normal Draft (400)</option>
-          <option value="420">Ranked Solo (420)</option>
-          <option value="440">Ranked Flex (440)</option>
-          <option value="1700">Arena (1700)</option>
-        </select>
-      </div>
-      <div class="lobby-actions">
-        <button type="button" class="lobby-find-match" id="lobby-find-match" disabled>
-          <span id="lobby-find-match-label">Find Match</span>
-        </button>
-        <button type="button" class="lobby-cancel-match" id="lobby-cancel-match" hidden>Cancel Search</button>
-      </div>
-      <div class="lobby-status" id="lobby-status">—</div>
-      <!-- Party member list (2026-04-26 scaffold). Each row =
-           {name, puuid, is_self, is_leader, played_with_me_count}.
-           Meta-stats chips show "played 3 with you · 2W1L" from local
-           match_history.db when puuid matches; "look up on aggregator B" link
-           is the public-stats fallback (no Riot API key). Data feed
-           = Game-PC LCU agent forwarding lcu.lobby.members[]. -->
-      <div class="lobby-members" id="lobby-members" hidden>
-        <div class="lobby-members-head">PARTY <span class="lobby-members-count" id="lobby-members-count">0</span></div>
-        <ul class="lobby-members-list" id="lobby-members-list">
-          <li class="home-empty">waiting for LCU agent to forward members…</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-
-  <!-- Champion-select overlay (Phase 1, 2026-04-25). Shown only while
-       lcu.phase === "ChampSelect". Renders my pick + ally/enemy team rows
-       + ARAM bench + reroll/lock controls. Clicking bench cells fires
-       bench_swap (LCU API bypasses the 5s client-side cooldown) so swaps
-       are effectively instant. -->
-  <div id="cs-overlay" class="cs-overlay hidden" aria-hidden="true">
-    <div class="cs-card">
-      <div class="cs-head">
-        <div class="cs-phase-label">Champion Select</div>
-        <div class="cs-phase-sub" id="cs-phase-sub">—</div>
-      </div>
-      <div class="cs-my-block">
-        <div class="cs-my-icon empty" id="cs-my-icon">?</div>
-        <div class="cs-my-meta">
-          <div class="cs-my-name" id="cs-my-name">—</div>
-          <div class="cs-my-state" id="cs-my-state">no pick yet</div>
-        </div>
-        <div class="cs-actions">
-          <button type="button" class="cs-btn cs-reroll-btn" id="cs-reroll-btn" hidden>⟳ Reroll</button>
-          <button type="button" class="cs-btn cs-lock-btn" id="cs-lock-btn" hidden>🔒 Lock In</button>
-        </div>
-      </div>
-      <!-- Loadout block: build chooser as a radio-style row list (one row
-           per variant). Each row carries inline keystone + item icons so
-           the user can see what they're picking. Selecting a row fires
-           /api/loadout/apply which overwrites the LCU rune page + RC-
-           prefixed item set + summoner spells immediately. Rebuilt
-           2026-04-26 — replaced the single-line <select> dropdown which
-           hid the alternate builds behind a click. -->
-      <div class="cs-loadout-block" id="cs-loadout-block" hidden>
-        <div class="cs-loadout-head">
-          <div class="cs-loadout-label">Item Build &amp; Runes — pick one (auto-pushes to client)</div>
-          <label class="cs-force-summs" title="Override the variant's summoner spells with Flash + Snowball on every push">
-            <input type="checkbox" id="cs-force-flash-snowball" />
-            <span>Force Flash + Snowball</span>
-          </label>
-          <div class="cs-loadout-status" id="cs-loadout-status"></div>
-        </div>
-        <div class="cs-build-list" id="cs-build-list"></div>
-      </div>
-      <div class="cs-teams">
-        <div class="cs-team-block">
-          <div class="cs-team-label">Allies</div>
-          <div class="cs-team-row" id="cs-allies"></div>
-        </div>
-        <!-- Enemy team block. Hidden in ARAM (incl. Mayhem) where the
-             enemy roster isn't revealed during champ-select — leaving the
-             empty row was misleading. CSS selectors below drop it. -->
-        <div class="cs-team-block" id="cs-enemy-block">
-          <div class="cs-team-label">Enemies</div>
-          <div class="cs-team-row" id="cs-enemies"></div>
-        </div>
-      </div>
-      <!-- ARAM team-comp analyzer (Phase 3, 2026-04-26). Hidden when no
-           analysis available. Displays AI recommendation: stay, swap to
-           a specific bench champ (highlighted in the bench grid below),
-           or change variant on current champ (highlighted in the
-           Loadout dropdown above). -->
-      <div class="cs-analyzer-block" id="cs-analyzer-block" hidden>
-        <div class="cs-analyzer-head">
-          <span class="cs-analyzer-label">Team Comp Analyzer</span>
-          <span class="cs-analyzer-verdict" id="cs-analyzer-verdict">—</span>
-          <span class="cs-analyzer-conf" id="cs-analyzer-conf"></span>
-        </div>
-        <div class="cs-analyzer-reason" id="cs-analyzer-reason">analyzing…</div>
-      </div>
-      <div class="cs-bench-block" id="cs-bench-block" hidden>
-        <div class="cs-bench-label">Bench — click for instant swap (no cooldown)</div>
-        <div class="cs-bench-grid" id="cs-bench-grid"></div>
-      </div>
-    </div>
-  </div>
-
   <div id="sim-banner" class="sim-banner hidden">
     <span class="sim-tag">DEV PREVIEW</span>
     <span id="sim-label" class="sim-label">—</span>
@@ -252,14 +99,306 @@
         <span class="mp" id="mp-bar">MP —</span>
       </span>
       <span class="gold-pill" id="gold-pill" title="gold"><b id="gold-val">—</b></span>
-      <!-- Mode pill moved to row 2 (2026-04-26) — was crowding row 1
-           after the title became a wider dropdown. Sits left of augments. -->
-      <span class="mode-pill" id="mode-pill">CLIENT</span>
+      <!-- Mode pill moved to footer 2026-04-29. Row 2 keeps gold + HP/MP
+           groups (the latter hidden in client mode by an existing rule).
+           min-height: 27px keeps the row visually present in client mode
+           so the header doesn't shift when a game starts. -->
       <span class="augments-pill" id="augments-pill">—</span>
       <!-- 30d trend-pill removed 2026-04-24, advisory + digest moved
            to the footer 2026-04-25. -->
     </div>
   </header>
+
+  <!-- Home overlay V1 redesign (2026-04-29). Hero banner + 2-col body
+       (recent matches as visual cards / this week list) + thin services
+       strip at bottom. Pulls /api/home/summary every 20s. Hidden during
+       ChampSelect / InProgress so the main panel grid is unobstructed.
+       Hidden IDs (#home-today-count etc.) retained as historical pegs
+       for any tooling that grepped for them; new IDs are #home-hero-*. -->
+  <div id="home-overlay" class="home-overlay hidden" aria-hidden="true">
+    <!-- Hero banner: greeting + headline + day-summary chips.
+         Champion motif background is set inline via JS (--hero-bg-champ
+         CSS var resolves to a champion image URL) so the bg rotates
+         with this week's top champion. -->
+    <div class="home-hero" id="home-hero">
+      <div class="home-hero-bg" id="home-hero-bg" aria-hidden="true"></div>
+      <div class="home-hero-greet">
+        <div class="home-hero-time" id="home-hero-time">Welcome back</div>
+        <div class="home-hero-sub"  id="home-hero-sub">no games yet today</div>
+      </div>
+      <div class="home-hero-headline" id="home-hero-headline">Ready when you are</div>
+      <!-- 3 stat chips with inline 14-day sparklines (V3 redesign
+           2026-04-30): replaces the standalone trends row. Each chip
+           shows a label + latest-day value + tiny inline sparkline.
+           GRADES + MODES dropped — they were redundant with the
+           headline string + duplicate of THIS WEEK panel data. -->
+      <div class="home-hero-chips">
+        <span class="home-hero-chip" data-metric="kda">
+          <span class="home-hero-chip-lbl">KDA</span>
+          <span class="home-hero-chip-row">
+            <span class="home-hero-chip-val" id="home-hero-kda">—</span>
+            <svg class="home-hero-spark" viewBox="0 0 60 18" preserveAspectRatio="none"></svg>
+          </span>
+        </span>
+        <span class="home-hero-chip" data-metric="cs_per_min">
+          <span class="home-hero-chip-lbl">CS / MIN</span>
+          <span class="home-hero-chip-row">
+            <span class="home-hero-chip-val" id="home-hero-cs">—</span>
+            <svg class="home-hero-spark" viewBox="0 0 60 18" preserveAspectRatio="none"></svg>
+          </span>
+        </span>
+        <span class="home-hero-chip" data-metric="gold_per_min">
+          <span class="home-hero-chip-lbl">GOLD / MIN</span>
+          <span class="home-hero-chip-row">
+            <span class="home-hero-chip-val" id="home-hero-gold">—</span>
+            <svg class="home-hero-spark" viewBox="0 0 60 18" preserveAspectRatio="none"></svg>
+          </span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Inline SVG sprite for the home action-tile icons. League-UI-themed:
+         crossed swords (post-game), hex-play badge (queue), keystone rune
+         circles (runes/builds), hex-tech gear (settings). All currentColor
+         so the .home-action-icon CSS can tint them. -->
+    <svg class="home-icon-sprite" aria-hidden="true" focusable="false"
+         width="0" height="0" style="position:absolute">
+      <defs>
+        <!-- Last Match: crossed swords (kept; reads as "battle / past match"). -->
+        <symbol id="hi-swords" viewBox="0 0 24 24">
+          <path fill="currentColor" d="M3 3h4l8.5 8.5-3 3L3 6V3Zm15 4 3-3v4l-7 7-2-2 6-6Zm-2.5 9.5 3-3 4 4v3h-3l-4-4ZM4.5 17.5 7 15l5 5-2.5 2.5H7v-3l-2.5-2Z"/>
+        </symbol>
+        <!-- Find Match: hexagonal "play" badge — mirrors League client's
+             PLAY-button silhouette (hex outline with an inner triangle). -->
+        <symbol id="hi-hex-play" viewBox="0 0 24 24">
+          <path fill="currentColor" d="M12 1.5 2.5 7v10L12 22.5 21.5 17V7L12 1.5Zm0 2.3 7.5 4.3v7.8L12 20.2 4.5 15.9V8.1L12 3.8Zm-2.5 4.7v7l6-3.5-6-3.5Z"/>
+        </symbol>
+        <!-- Loadouts: Hextech crystal — cut-gem silhouette with internal
+             facet lines. Reads as the rune-page / hextech crafting gem
+             icon. Single bold shape so it survives at 28px. -->
+        <symbol id="hi-crystal" viewBox="0 0 24 24">
+          <path fill="currentColor" d="M12 1.5 3.5 9 12 22.5 20.5 9 12 1.5Zm0 2.6L17.6 9H6.4L12 4.1Zm-5.5 6.4h11L12 19l-5.5-9Z"/>
+        </symbol>
+        <!-- Settings: classic 8-tooth gear (no hex wrapper — hexes
+             repeat across the other tiles, so a clean gear gives this
+             tile its own silhouette). -->
+        <symbol id="hi-gear-clean" viewBox="0 0 24 24">
+          <path fill="currentColor" d="m19.4 13 2-1.7-2-3.5-2.4.7a7.5 7.5 0 0 0-1.6-.9l-.4-2.6h-4l-.4 2.6a7.5 7.5 0 0 0-1.6.9l-2.4-.7-2 3.5L4.6 13a7.5 7.5 0 0 0 0 2l-2 1.7 2 3.5L7 19.5a7.5 7.5 0 0 0 1.6.9l.4 2.6h4l.4-2.6a7.5 7.5 0 0 0 1.6-.9l2.4.7 2-3.5L19.4 15a7.5 7.5 0 0 0 0-2ZM12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5Z"/>
+        </symbol>
+      </defs>
+    </svg>
+
+    <!-- Quick-action tiles row (V2 suggestion #3). Each tile is a
+         single-click shortcut to a manual view; the JS click handler
+         calls applyView(target) which the dropdown menu also uses. -->
+    <div class="home-actions">
+      <button type="button" class="home-action-tile" data-target="last-match">
+        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-swords"/></svg>
+        <span class="home-action-label">Last Match</span>
+        <span class="home-action-sub">post-game review</span>
+      </button>
+      <button type="button" class="home-action-tile" data-target="lobby">
+        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-hex-play"/></svg>
+        <span class="home-action-label">Find Match</span>
+        <span class="home-action-sub">queue + party</span>
+      </button>
+      <button type="button" class="home-action-tile" data-target="loadouts">
+        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-crystal"/></svg>
+        <span class="home-action-label">Loadouts</span>
+        <span class="home-action-sub">runes + builds</span>
+      </button>
+      <button type="button" class="home-action-tile" data-target="settings">
+        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-gear-clean"/></svg>
+        <span class="home-action-label">Settings</span>
+        <span class="home-action-sub">prefs + flags</span>
+      </button>
+    </div>
+
+    <!-- Combined row (V3 redesign 2026-04-30): Tonight's Pick (left)
+         + Trends sparkline trio (right) share one row to save vertical
+         space. Last Build sits below the row, hidden when no data. -->
+    <div class="home-combo" id="home-combo" hidden>
+      <div class="home-coach-pick" id="home-coach-pick" hidden>
+        <div class="home-coach-pick-head">TONIGHT'S PICK</div>
+        <div class="home-coach-pick-body">
+          <img class="home-coach-pick-img" id="home-coach-pick-img" alt="" />
+          <div class="home-coach-pick-meta">
+            <span class="home-coach-pick-champ" id="home-coach-pick-champ">—</span>
+            <span class="home-coach-pick-reason" id="home-coach-pick-reason">—</span>
+          </div>
+          <!-- Advisory + digest buttons (V3 redesign 2026-04-30): moved
+               from a separate .home-alerts panel into here as stacked
+               icon buttons. IDs match the prior alerts-row IDs so the
+               existing _homeWireStartup click handlers keep working. -->
+          <div class="home-coach-pick-actions">
+            <button type="button" class="home-pick-btn" id="home-alerts-advisory"
+                    title="Open advisories" aria-label="Open advisories">
+              <span class="home-pick-btn-icon">!</span>
+              <span class="home-pick-btn-badge" id="home-alerts-advisory-val">0</span>
+            </button>
+            <button type="button" class="home-pick-btn" id="home-alerts-digest"
+                    title="Open cross-session digest" aria-label="Open cross-session digest">
+              <span class="home-pick-btn-icon">≡</span>
+              <span class="home-pick-btn-badge" id="home-alerts-digest-val">—</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="home-coach-build" id="home-coach-build" hidden>
+      <div class="home-coach-build-head">LAST BUILD <span class="home-coach-build-sub" id="home-coach-build-sub"></span></div>
+      <div class="home-coach-build-items" id="home-coach-build-items"></div>
+    </div>
+
+    <!-- Body: 2 columns. Left = recent matches as visual cards.
+         Right = this-week champion bar chart (V2 suggestion #5). -->
+    <div class="home-body">
+      <div class="home-card home-card-recent">
+        <div class="home-card-head">RECENT 5</div>
+        <div class="home-recent-list" id="home-recent-list">
+          <div class="home-empty">loading…</div>
+        </div>
+      </div>
+      <div class="home-card home-card-week">
+        <div class="home-card-head">THIS WEEK</div>
+        <div class="home-week-chart" id="home-week-list">
+          <div class="home-empty">loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Services strip removed from home overlay 2026-04-30 — the
+         footer health-dot already aggregates RC + Vision + Supervisor
+         status. Element removed entirely; if a service goes down the
+         dot in the footer turns yellow/red. -->
+  </div>
+
+  <!-- Lobby overlay (2026-04-26). Shown when lcu.phase === "Lobby"
+       AND lcu.lobby is populated. Surfaces queue type, party
+       composition, leader status, and a Find Match button. The button
+       degrades to status-only when localMember is not the leader (per
+       LCU's restriction). Expects /api/state to expose:
+         lcu.lobby = { queue_id, queue_name, party_size, max_party_size,
+                       is_leader, can_search, search_state }
+       Data feed = Game-PC LCU agent polling /lol-lobby/v2/lobby.
+       Moved 2026-04-29 from top-of-body to after </header> for
+       consistency with all other views (header above content). -->
+  <div id="lobby-overlay" class="lobby-overlay hidden" aria-hidden="true">
+    <div class="lobby-card">
+      <div class="lobby-head">
+        <span class="lobby-queue" id="lobby-queue">—</span>
+        <span class="lobby-party" id="lobby-party">—</span>
+        <span class="lobby-leader-tag" id="lobby-leader-tag" hidden>★ LEADER</span>
+        <!-- Change-queue control: triggers a list of common queues
+             (ARAM, ARAM Mayhem, Normal Draft, etc) → posts
+             change_queue_type LCU cmd. Hidden when not leader. -->
+        <select class="lobby-queue-select" id="lobby-queue-select" hidden>
+          <option value="">Change queue…</option>
+          <option value="450">ARAM (450)</option>
+          <option value="920">ARAM Mayhem (920)</option>
+          <option value="430">Normal Blind (430)</option>
+          <option value="400">Normal Draft (400)</option>
+          <option value="420">Ranked Solo (420)</option>
+          <option value="440">Ranked Flex (440)</option>
+          <option value="1700">Arena (1700)</option>
+        </select>
+      </div>
+      <div class="lobby-actions">
+        <button type="button" class="lobby-find-match" id="lobby-find-match" disabled>
+          <span id="lobby-find-match-label">Find Match</span>
+        </button>
+        <button type="button" class="lobby-cancel-match" id="lobby-cancel-match" hidden>Cancel Search</button>
+      </div>
+      <div class="lobby-status" id="lobby-status">—</div>
+      <!-- Party member list (2026-04-26 scaffold). Each row =
+           {name, puuid, is_self, is_leader, played_with_me_count}.
+           Meta-stats chips show "played 3 with you · 2W1L" from local
+           match_history.db when puuid matches; "look up on aggregator B" link
+           is the public-stats fallback (no Riot API key). Data feed
+           = Game-PC LCU agent forwarding lcu.lobby.members[]. -->
+      <div class="lobby-members" id="lobby-members" hidden>
+        <div class="lobby-members-head">PARTY <span class="lobby-members-count" id="lobby-members-count">0</span></div>
+        <ul class="lobby-members-list" id="lobby-members-list">
+          <li class="home-empty">waiting for LCU agent to forward members…</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Champion-select overlay (Phase 1, 2026-04-25). Shown only while
+       lcu.phase === "ChampSelect". Renders my pick + ally/enemy team rows
+       + ARAM bench + reroll/lock controls. Clicking bench cells fires
+       bench_swap (LCU API bypasses the 5s client-side cooldown) so swaps
+       are effectively instant.
+       Moved 2026-04-29 from top-of-body to after </header> for
+       consistency with all other views (header above content). -->
+  <div id="cs-overlay" class="cs-overlay hidden" aria-hidden="true">
+    <div class="cs-card">
+      <div class="cs-head">
+        <div class="cs-phase-label">Champion Select</div>
+        <div class="cs-phase-sub" id="cs-phase-sub">—</div>
+      </div>
+      <div class="cs-my-block">
+        <div class="cs-my-icon empty" id="cs-my-icon">?</div>
+        <div class="cs-my-meta">
+          <div class="cs-my-name" id="cs-my-name">—</div>
+          <div class="cs-my-state" id="cs-my-state">no pick yet</div>
+        </div>
+        <div class="cs-actions">
+          <button type="button" class="cs-btn cs-reroll-btn" id="cs-reroll-btn" hidden>⟳ Reroll</button>
+          <button type="button" class="cs-btn cs-lock-btn" id="cs-lock-btn" hidden>🔒 Lock In</button>
+        </div>
+      </div>
+      <!-- Loadout block: build chooser as a radio-style row list (one row
+           per variant). Each row carries inline keystone + item icons so
+           the user can see what they're picking. Selecting a row fires
+           /api/loadout/apply which overwrites the LCU rune page + RC-
+           prefixed item set + summoner spells immediately. Rebuilt
+           2026-04-26 — replaced the single-line <select> dropdown which
+           hid the alternate builds behind a click. -->
+      <div class="cs-loadout-block" id="cs-loadout-block" hidden>
+        <div class="cs-loadout-head">
+          <div class="cs-loadout-label">Item Build &amp; Runes — pick one (auto-pushes to client)</div>
+          <label class="cs-force-summs" title="Override the variant's summoner spells with Flash + Snowball on every push">
+            <input type="checkbox" id="cs-force-flash-snowball" />
+            <span>Force Flash + Snowball</span>
+          </label>
+          <div class="cs-loadout-status" id="cs-loadout-status"></div>
+        </div>
+        <div class="cs-build-list" id="cs-build-list"></div>
+      </div>
+      <div class="cs-teams">
+        <div class="cs-team-block">
+          <div class="cs-team-label">Allies</div>
+          <div class="cs-team-row" id="cs-allies"></div>
+        </div>
+        <!-- Enemy team block. Hidden in ARAM (incl. Mayhem) where the
+             enemy roster isn't revealed during champ-select — leaving the
+             empty row was misleading. CSS selectors below drop it. -->
+        <div class="cs-team-block" id="cs-enemy-block">
+          <div class="cs-team-label">Enemies</div>
+          <div class="cs-team-row" id="cs-enemies"></div>
+        </div>
+      </div>
+      <!-- ARAM team-comp analyzer (Phase 3, 2026-04-26). Hidden when no
+           analysis available. Displays AI recommendation: stay, swap to
+           a specific bench champ (highlighted in the bench grid below),
+           or change variant on current champ (highlighted in the
+           Loadout dropdown above). -->
+      <div class="cs-analyzer-block" id="cs-analyzer-block" hidden>
+        <div class="cs-analyzer-head">
+          <span class="cs-analyzer-label">Team Comp Analyzer</span>
+          <span class="cs-analyzer-verdict" id="cs-analyzer-verdict">—</span>
+          <span class="cs-analyzer-conf" id="cs-analyzer-conf"></span>
+        </div>
+        <div class="cs-analyzer-reason" id="cs-analyzer-reason">analyzing…</div>
+      </div>
+      <div class="cs-bench-block" id="cs-bench-block" hidden>
+        <div class="cs-bench-label">Bench — click for instant swap (no cooldown)</div>
+        <div class="cs-bench-grid" id="cs-bench-grid"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- Coach decisions banner: surfaces coachable moments (objective contest,
        etc.) detected by core/decision_detector. Hidden when no pending
@@ -930,10 +1069,23 @@
          [rc-voice-on]. Voice selection lives in [rc-voice-name]. -->
     <button id="voice-toggle" class="footer-btn voice-toggle" type="button" title="Toggle voice TTS for Right Now headline">🔇 VOICE</button>
     <select id="voice-picker" class="voice-picker" title="Pick TTS voice" aria-label="Voice"></select>
-    <!-- Advisory + digest moved here from row 2 (2026-04-25). Both pills
-         get a `.in-footer` class for the shrunken footer-scale styling. -->
-    <span id="advisory-badge" class="advisory-badge in-footer" title="open advisories" role="button" tabindex="0" aria-label="Open latest advisory"><b id="advisory-count">0</b></span>
-    <span id="digest-icon" class="digest-icon in-footer" title="cross-session digest" role="button" tabindex="0" aria-label="Open cross-session digest"><b id="digest-label">—</b></span>
+    <!-- Mode pill — moved here from row 2 2026-04-29. Tells you whether
+         RC is in client/lobby vs an active game mode. Scaled down via
+         `footer .mode-pill` rule so it fits the footer height. The
+         JS-inserted prefs-chip (.prefs-chip = "ZEN:OFF") is dropped
+         in immediately before this element by _refreshPrefsChip().
+         The .health-dot (auto-inserted by rcAuditUiEnhancements) lands
+         immediately AFTER mode-pill in the footer (carries Claude cost,
+         supervisor health, vision uptime in its tooltip). -->
+    <span class="mode-pill" id="mode-pill">CLIENT</span>
+    <!-- Advisory + digest pills removed from footer 2026-04-29; their
+         content is now rendered as rows inside .home-alerts at the
+         bottom of the home overlay (still click-to-open the same
+         popouts). The hidden spans remain so JS that updates
+         #advisory-count / #digest-label keeps writing to defined
+         elements without errors; no visual footprint. -->
+    <span id="advisory-badge" class="advisory-badge" hidden role="button" aria-label="Open latest advisory"><b id="advisory-count">0</b></span>
+    <span id="digest-icon" class="digest-icon" hidden role="button" aria-label="Open cross-session digest"><b id="digest-label">—</b></span>
     <span id="input-latency-footer" class="latency-stat">latency —</span>
     <span id="analyze-footer" class="analyze-stat">analyze idle</span>
     <button id="analyze-now" class="footer-btn" type="button" title="Run Agent 4 analyzer across all mode DBs now">ANALYZE NOW</button>
