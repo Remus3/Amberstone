@@ -481,19 +481,13 @@ Return ONLY valid JSON:
   "augment_choices": [],
   "anvil_choices": [],
   "camp_phase": false,
-  "round_number": 1,
-  "teams": [
-    {"name": "Jinx", "hp_pct": 100, "is_you": false, "is_partner": false, "is_dead": false}
-  ]
+  "round_number": 1
 }
 Rules:
 - augment_select: true if large augment card selection panel visible
 - augment_choices: list of augment names if selection visible
 - anvil_choices: list of item names if item anvil visible
 - camp_phase: true if in the between-round camp phase (not in combat arena)
-- teams: extract all visible team health bars (4 pairs = 8 players)
-- is_you: true for your own character; is_partner: true for your pair partner
-- hp_pct: health percentage 0-100
 - Return ONLY the JSON
 """
 

@@ -119,13 +119,18 @@ def _enum_monitor_rects() -> list[tuple[int, int, int, int]]:
     return rects
 
 
-def capture(monitor_index: int | None = MONITOR_INDEX) -> tuple[str, str, int, int]:
+def capture(monitor_index: int | None = MONITOR_INDEX,
+            crop: tuple[int, int, int, int] | None = None) -> tuple[str, str, int, int]:
     """Return (b64, format, width, height) for the chosen monitor.
 
     monitor_index:
         None → whole virtual desktop spanning all monitors
         0    → the first monitor EnumDisplayMonitors returns (usually primary)
         1..N → subsequent monitors; N must be < number of enumerated displays
+
+    crop: optional (left, top, right, bottom) bbox in monitor-local coords
+    applied AFTER the monitor grab. Used by the fast minimap stream so
+    Game-PC sends a ~30KB region instead of a 200KB full frame at 5-10Hz.
     """
     from PIL import ImageGrab
     if monitor_index is None:
@@ -144,6 +149,13 @@ def capture(monitor_index: int | None = MONITOR_INDEX) -> tuple[str, str, int, i
             # is required — without it ImageGrab clips to the primary monitor's
             # rect and a negative-x / off-primary monitor returns black pixels.
             img = ImageGrab.grab(bbox=rects[monitor_index], all_screens=True)
+    if crop is not None:
+        l, t, r, b = crop
+        l = max(0, min(l, img.width))
+        t = max(0, min(t, img.height))
+        r = max(l + 1, min(r, img.width))
+        b = max(t + 1, min(b, img.height))
+        img = img.crop((l, t, r, b))
     if MAX_WIDTH and img.width > MAX_WIDTH:
         ratio = MAX_WIDTH / img.width
         img = img.resize((MAX_WIDTH, int(img.height * ratio)))
@@ -175,14 +187,16 @@ def upload(b64: str, fmt: str, w: int, h: int,
 
 
 def loop(interval: float, monitor_index: int | None,
-         channel: str, primary: bool) -> None:
+         channel: str, primary: bool,
+         crop: tuple[int, int, int, int] | None = None) -> None:
     rects = _enum_monitor_rects()
     label = (f"virtual-desktop ({len(rects)} monitors)" if monitor_index is None
              else f"monitor {monitor_index}/{len(rects) or '?'}")
+    crop_label = f" crop={crop}" if crop else ""
     log.info("Screen agent -> %s every %.1fs (jpeg=%s q=%d) "
-             "capturing %s channel=%s primary=%s",
+             "capturing %s%s channel=%s primary=%s",
              LEGION_URL, interval, USE_JPEG, JPEG_QUALITY,
-             label, channel, primary)
+             label, crop_label, channel, primary)
     if rects:
         for i, r in enumerate(rects):
             log.info("  monitor %d: %dx%d at (%d,%d)",
@@ -192,7 +206,7 @@ def loop(interval: float, monitor_index: int | None,
         t0 = time.time()
         try:
             t_capture_start = time.time()
-            b64, fmt, w, h = capture(monitor_index)
+            b64, fmt, w, h = capture(monitor_index, crop=crop)
             t_capture_done = time.time()
             r = upload(b64, fmt, w, h, channel=channel, primary=primary)
             t_done = time.time()
@@ -247,16 +261,30 @@ if __name__ == "__main__":
                              help="update the global /latest-frame slot (default)")
     primary_grp.add_argument("--no-primary", dest="primary", action="store_false",
                              help="per-source cache only; don't touch /latest-frame")
+    p.add_argument("--crop", type=str, default="",
+                   help="monitor-local bbox L,T,R,B to crop after capture; "
+                        "use for the fast minimap stream (e.g. 1500,750,1920,1080)")
     args = p.parse_args()
+    crop_tuple = None
+    if args.crop:
+        try:
+            parts = [int(x) for x in args.crop.split(",")]
+            if len(parts) != 4:
+                raise ValueError("need 4 integers")
+            crop_tuple = (parts[0], parts[1], parts[2], parts[3])
+        except ValueError as e:
+            log.error("--crop must be L,T,R,B integers: %s", e)
+            sys.exit(2)
     if args.once:
-        b64, fmt, w, h = capture(args.monitor)
+        b64, fmt, w, h = capture(args.monitor, crop=crop_tuple)
         mon_label = "all" if args.monitor is None else str(args.monitor)
-        log.info("ONE-SHOT monitor=%s channel=%s primary=%s %s %dx%d %dKB",
-                 mon_label, args.channel, args.primary, fmt, w, h, len(b64) // 1024)
+        log.info("ONE-SHOT monitor=%s channel=%s primary=%s crop=%s %s %dx%d %dKB",
+                 mon_label, args.channel, args.primary, crop_tuple,
+                 fmt, w, h, len(b64) // 1024)
         log.info("upload result: %s",
                  upload(b64, fmt, w, h, channel=args.channel, primary=args.primary))
         sys.exit(0)
     try:
-        loop(args.interval, args.monitor, args.channel, args.primary)
+        loop(args.interval, args.monitor, args.channel, args.primary, crop=crop_tuple)
     except KeyboardInterrupt:
         log.info("Screen agent stopped.")

@@ -5297,12 +5297,17 @@
   setInterval(refreshEnv, 15000);
 
   // ── Minimap image polling ──────────────────────────────────────────
-  // Polls /api/minimap-crop every 2s when mode ∈ {sr, aram, brawl} and
-  // the page is visible. Falls back silently — the backend returns 502
-  // if the vision server isn't up, in which case we hide the img and
-  // keep showing the KV scaffold.
+  // Polls /api/minimap-crop on a fast cadence when the dedicated Game-PC
+  // minimap stream is live (5-10Hz pre-cropped JPEGs on source=minimap),
+  // otherwise the supervisor falls back to crop-from-full-frame which is
+  // bounded by the 2s full-frame upload cadence — pointless to poll
+  // faster than that. We pick the interval based on which path served
+  // the last response: JPEG = fast stream, PNG = slow re-crop.
   const MINIMAP_MODES = new Set(["sr", "aram", "brawl"]);
+  const MINIMAP_INTERVAL_FAST = 250;    // 4Hz when fast stream is live
+  const MINIMAP_INTERVAL_SLOW = 2000;   // 0.5Hz fallback
   let minimapTimer = null;
+  let minimapInterval = MINIMAP_INTERVAL_SLOW;
   let lastMinimapMode = null;
 
   async function refreshMinimap() {
@@ -5313,7 +5318,7 @@
       return;
     }
     const tNow = Date.now();
-    const bust = tNow - (tNow % 2000);   // cache-bust per 2s window
+    const bust = tNow - (tNow % minimapInterval);
     try {
       const resp = await fetch(`/api/minimap-crop?mode=${state.mode}&_=${bust}`);
       if (!resp.ok) {
@@ -5321,9 +5326,18 @@
         return;
       }
       const blob = await resp.blob();
-      if (blob.type !== "image/png") {
+      if (blob.type !== "image/png" && blob.type !== "image/jpeg") {
         MM.imgWrap.classList.add("hidden");
         return;
+      }
+      // Adapt the polling cadence to which path served us. JPEG comes
+      // from the fast Game-PC minimap stream; PNG from the slow re-crop.
+      const desired = (blob.type === "image/jpeg")
+        ? MINIMAP_INTERVAL_FAST : MINIMAP_INTERVAL_SLOW;
+      if (desired !== minimapInterval) {
+        minimapInterval = desired;
+        if (minimapTimer) clearInterval(minimapTimer);
+        minimapTimer = setInterval(refreshMinimap, minimapInterval);
       }
       // Revoke previous blob URL to avoid leaks.
       const prev = MM.img.dataset.blobUrl;
@@ -5339,8 +5353,229 @@
       MM.imgWrap.classList.add("stale");
     }
   }
-  minimapTimer = setInterval(refreshMinimap, 2000);
+  minimapTimer = setInterval(refreshMinimap, minimapInterval);
   refreshMinimap();   // fire once on load
+
+  // ── Vision-tracker overlay on the live minimap ─────────────────────
+  // Reads /api/vision-state (written by core/vision_tracker), projects
+  // game coords onto the rendered minimap image, draws dots:
+  //   - bright dot at current position when visible
+  //   - faded ghost dot at last_seen_pos with "Xs" label when missing
+  // Skips when no game is running or the minimap image isn't displayed.
+  const VT_OVERLAY = el("mm-vt-overlay");
+  const VT_INTERVAL_MS = 500;
+  // SR / ARAM map sizes in game units (Howling Abyss is smaller than SR).
+  const VT_MAP_SIZE = { CLASSIC: 14800, ARAM: 13800, KIWI: 13800,
+                        URF: 14800, NEXUSBLITZ: 14800, ULTBOOK: 14800 };
+
+  async function refreshVisionOverlay() {
+    if (!VT_OVERLAY) return;
+    if (document.hidden) return;
+    if (!MM.imgWrap || MM.imgWrap.classList.contains("hidden")) {
+      VT_OVERLAY.style.display = "none";
+      return;
+    }
+    let vs;
+    try {
+      const r = await fetch("/api/vision-state");
+      if (!r.ok) { VT_OVERLAY.style.display = "none"; return; }
+      vs = await r.json();
+    } catch (_) { VT_OVERLAY.style.display = "none"; return; }
+    if (!vs || !vs.enemies || Object.keys(vs.enemies).length === 0) {
+      VT_OVERLAY.style.display = "none";
+      return;
+    }
+    // Size the canvas to the rendered <img> bounds (it's centered in the
+    // wrap with margin auto and padded — getBoundingClientRect gives the
+    // post-layout box we need to align to).
+    const img = MM.img;
+    if (!img.complete || !img.naturalWidth) {
+      VT_OVERLAY.style.display = "none"; return;
+    }
+    const imgRect = img.getBoundingClientRect();
+    const wrapRect = MM.imgWrap.getBoundingClientRect();
+    const w = Math.round(imgRect.width);
+    const h = Math.round(imgRect.height);
+    if (w < 4 || h < 4) { VT_OVERLAY.style.display = "none"; return; }
+    VT_OVERLAY.style.display = "block";
+    VT_OVERLAY.style.left = (imgRect.left - wrapRect.left) + "px";
+    VT_OVERLAY.style.top  = (imgRect.top  - wrapRect.top)  + "px";
+    VT_OVERLAY.style.width  = w + "px";
+    VT_OVERLAY.style.height = h + "px";
+    if (VT_OVERLAY.width !== w)  VT_OVERLAY.width  = w;
+    if (VT_OVERLAY.height !== h) VT_OVERLAY.height = h;
+
+    const ctx = VT_OVERLAY.getContext("2d");
+    ctx.clearRect(0, 0, w, h);
+
+    const mapSize = VT_MAP_SIZE[(vs.game_mode || "").toUpperCase()] || 14800;
+    function project(x, z) {
+      // Game origin = bottom-left, z grows up. Canvas y grows down → flip.
+      const px = (x / mapSize) * w;
+      const py = h - (z / mapSize) * h;
+      return [px, py];
+    }
+
+    for (const [name, e] of Object.entries(vs.enemies)) {
+      if (e.is_dead) continue;
+      const pos = e.last_seen_pos;
+      if (!pos || typeof pos.x !== "number") continue;
+      const [px, py] = project(pos.x, pos.z);
+
+      if (e.visible) {
+        // Bright current-position dot
+        ctx.beginPath();
+        ctx.arc(px, py, 5, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(240, 126, 139, 0.95)";
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      } else {
+        // Ghost dot at last-seen, fading with missing time
+        const missing = e.missing_for_s || 0;
+        const alpha = Math.max(0.25, 1.0 - missing / 30);
+        ctx.beginPath();
+        ctx.arc(px, py, 5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(240, 126, 139, ${alpha * 0.5})`;
+        ctx.fill();
+        ctx.setLineDash([3, 3]);
+        ctx.strokeStyle = `rgba(240, 126, 139, ${alpha})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // "Xs" missing label above the ghost dot
+        ctx.font = "bold 10px Lato, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const label = `${Math.round(missing)}s`;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
+        ctx.strokeText(label, px, py - 12);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+        ctx.fillText(label, px, py - 12);
+      }
+    }
+  }
+  setInterval(refreshVisionOverlay, VT_INTERVAL_MS);
+  refreshVisionOverlay();
+
+  // ── Coach decisions banner ─────────────────────────────────────────
+  // Polls /api/decisions, renders pending coachable moments as a
+  // banner between header and main. Clicking Contest/Give/Skip POSTs
+  // to /api/decisions/<id> and animates removal. Records survive in
+  // data/decisions_log.jsonl on the backend for postmortem (V2).
+  const COACH_DECISIONS = {
+    section: el("coach-decisions"),
+    list: el("coach-decisions-list"),
+    intervalMs: 1500,
+    resolving: new Set(),   // ids currently animating-out (suppress redraw)
+  };
+
+  function renderCoachDecisions(pending) {
+    const C = COACH_DECISIONS;
+    if (!C.section || !C.list) return;
+    if (!Array.isArray(pending) || pending.length === 0) {
+      // Don't hide while animating — would yank the row mid-animation.
+      if (C.resolving.size === 0) C.section.hidden = true;
+      C.list.innerHTML = "";
+      return;
+    }
+    C.section.hidden = false;
+    // Diff by id so we don't re-create rows that already exist (animations
+    // re-run on every render = visual chaos when poll fires every 1.5s).
+    const wantIds = new Set(pending.map(p => p.id));
+    for (const li of Array.from(C.list.children)) {
+      if (!wantIds.has(li.dataset.id)) li.remove();
+    }
+    const haveIds = new Set(Array.from(C.list.children).map(li => li.dataset.id));
+    for (const p of pending) {
+      if (haveIds.has(p.id) || C.resolving.has(p.id)) continue;
+      const li = document.createElement("li");
+      li.className = "coach-decision";
+      li.dataset.id = p.id;
+      li.dataset.type = p.type || "";
+
+      const text = document.createElement("div");
+      text.className = "coach-decision-text";
+      const title = document.createElement("p");
+      title.className = "coach-decision-title";
+      title.textContent = p.title || p.id;
+      const sub = document.createElement("p");
+      sub.className = "coach-decision-sub";
+      sub.textContent = p.subtitle || "";
+      text.appendChild(title);
+      if (p.subtitle) text.appendChild(sub);
+
+      const actions = document.createElement("div");
+      actions.className = "coach-decision-actions";
+      const opts = (Array.isArray(p.options) && p.options.length)
+        ? p.options : ["contest", "give"];
+      // Always offer skip as a final option so the user can dismiss.
+      const allOpts = opts.includes("skip") ? opts : [...opts, "skip"];
+      for (const opt of allOpts) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "coach-decision-btn";
+        btn.dataset.choice = opt;
+        btn.textContent = opt.toUpperCase();
+        btn.addEventListener("click", () => recordChoice(p.id, opt, li, actions));
+        actions.appendChild(btn);
+      }
+
+      li.appendChild(text);
+      li.appendChild(actions);
+      C.list.appendChild(li);
+    }
+  }
+
+  async function recordChoice(id, choice, li, actions) {
+    // Disable the row's buttons immediately so a fast double-click can't
+    // double-post. Mark id as resolving so the next poll doesn't repaint.
+    COACH_DECISIONS.resolving.add(id);
+    for (const b of actions.querySelectorAll("button")) b.disabled = true;
+    li.classList.add("resolving");
+    try {
+      const r = await fetch(`/api/decisions/${encodeURIComponent(id)}`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({choice}),
+      });
+      if (!r.ok) {
+        // Roll back: re-enable, drop resolving so next poll resurrects it.
+        for (const b of actions.querySelectorAll("button")) b.disabled = false;
+        li.classList.remove("resolving");
+        COACH_DECISIONS.resolving.delete(id);
+        return;
+      }
+    } catch (_) {
+      for (const b of actions.querySelectorAll("button")) b.disabled = false;
+      li.classList.remove("resolving");
+      COACH_DECISIONS.resolving.delete(id);
+      return;
+    }
+    // Success — let CSS finish the fade, then remove + clear resolving.
+    setTimeout(() => {
+      try { li.remove(); } catch (_) {}
+      COACH_DECISIONS.resolving.delete(id);
+      // If list is now empty, hide the banner.
+      if (COACH_DECISIONS.list && COACH_DECISIONS.list.children.length === 0) {
+        if (COACH_DECISIONS.section) COACH_DECISIONS.section.hidden = true;
+      }
+    }, 240);
+  }
+
+  async function pollCoachDecisions() {
+    if (document.hidden) return;
+    try {
+      const r = await fetch("/api/decisions");
+      if (!r.ok) return;
+      const d = await r.json();
+      renderCoachDecisions(d.pending || []);
+    } catch (_) {}
+  }
+  setInterval(pollCoachDecisions, COACH_DECISIONS.intervalMs);
+  pollCoachDecisions();
 
   // ── Input bar → /api/input (with chat history) ─────────────────────
   const INPUT = {

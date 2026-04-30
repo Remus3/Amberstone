@@ -617,6 +617,38 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             return
 
         tok = get_vision_token()
+
+        # Fast path: a dedicated Game-PC minimap stream uploads pre-cropped
+        # frames to source=minimap at high cadence (5-10Hz). When fresh,
+        # serve it directly — no decode/re-encode on the supervisor.
+        # Falls through to the slow path on any failure.
+        try:
+            req = urllib.request.Request(
+                "http://127.0.0.1:8889/latest-frame?source=minimap",
+                headers={"X-RC-Token": tok},
+            )
+            with urllib.request.urlopen(req, timeout=1.5) as r:
+                fast = json.loads(r.read())
+            fast_b64 = fast.get("b64") if isinstance(fast, dict) else None
+            fast_ts = float(fast.get("ts", 0) or 0)
+            if fast_b64 and (time.time() - fast_ts) < 3.0:
+                raw = base64.b64decode(fast_b64)
+                # Source frame is JPEG from the agent; re-encode only if the
+                # caller specifically wants PNG semantics. For overlay use,
+                # JPEG is fine and ~5x smaller — pass through as-is.
+                ctype = "image/jpeg" if fast_b64.startswith("/9j/") else "image/png"
+                self.send_response(200)
+                self.send_header("Content-Type", ctype)
+                self.send_header("Content-Length", str(len(raw)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                if self.command != "HEAD":
+                    self.wfile.write(raw)
+                return
+        except Exception:
+            pass
+
+        # Slow path: crop on demand from the global full-frame cache.
         try:
             req = urllib.request.Request(
                 "http://127.0.0.1:8889/latest-frame",

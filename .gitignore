@@ -28,6 +28,9 @@ data/insight_cooldowns.json
 data/ratings/last_*.json
 data/coach_trace.jsonl
 data/spend/
+data/vision_state.json
+data/decisions_pending.json
+data/decisions_log.jsonl
 
 # Local-only Claude / MCP config (may contain server URLs, tokens)
 .claude/
