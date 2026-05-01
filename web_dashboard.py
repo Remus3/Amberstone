@@ -733,58 +733,7 @@ class _Handler(BaseHTTPRequestHandler):
         if _dispatch.dispatch_post(self, payload):
             return
 
-        if self.path == "/api/replay-coach":
-            # Postgame analysis of a past match in rewind_history.db.
-            # Body: {match_id}
-            try:
-                from coaches.replay_coach import analyze_match
-                _key_path = _APP_DIR / "API-Key-Claude.txt"
-                api_key = ""
-                if _key_path.exists():
-                    api_key = _key_path.read_text(encoding="utf-8").strip()
-                mid = (payload.get("match_id") or "").strip()
-                if not mid:
-                    self._send(400, b'{"error":"empty_match_id"}', "application/json"); return
-                result = analyze_match(mid, api_key=api_key)
-                self._send(200, json.dumps(result).encode(), "application/json")
-            except Exception as exc:
-                _log.warning("api/replay-coach: %s", exc)
-                self._send(500, json.dumps({"error": str(exc)}).encode(),
-                           "application/json")
-        elif self.path == "/api/speak":
-            # Opt-in voice TTS for the Right Now headline. Body: {text, rate?}.
-            # Throttled + deduped server-side via voice_coach module.
-            try:
-                from coaches.voice_coach import speak
-                text = (payload.get("text") or "").strip()
-                rate = int(payload.get("rate") or 0)
-                if not text:
-                    self._send(400, b'{"error":"empty_text"}', "application/json"); return
-                spoken = speak(text, rate=rate)
-                self._send(200, json.dumps({"ok": True, "spoken": spoken}).encode(),
-                           "application/json")
-            except Exception as exc:
-                _log.warning("api/speak: %s", exc)
-                self._send(500, json.dumps({"error": str(exc)}).encode(),
-                           "application/json")
-        elif self.path == "/api/champ-select-coach":
-            # Live champ-select coaching — Haiku call with the current pick
-            # state. Dashboard POSTs whenever picks change (debounced).
-            # Body: {is_aram, queue_id, my_champion, my_team, their_team, bench}
-            try:
-                from coaches.champ_select_coach import coach_pick
-                # Read API key from same path coaches use.
-                _key_path = _APP_DIR / "API-Key-Claude.txt"
-                api_key = ""
-                if _key_path.exists():
-                    api_key = _key_path.read_text(encoding="utf-8").strip()
-                result = coach_pick(payload or {}, api_key)
-                self._send(200, json.dumps(result).encode(), "application/json")
-            except Exception as exc:
-                _log.warning("api/champ-select-coach: %s", exc)
-                self._send(500, json.dumps({"error": str(exc)}).encode(),
-                           "application/json")
-        elif self.path == "/api/analyze":
+        if self.path == "/api/analyze":
             # Dashboard's "Analyze Now" button — forward POST to the
             # supervisor at :8890. Was silently 404ing because the GET-only
             # supervisor proxy didn't list /api/analyze and there was no
@@ -1033,24 +982,6 @@ class _Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 _log.warning("api/lcu-cmd: %s", exc)
                 self._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
-        # AUDIT 2026-04-28 (proposal 2.2): per-mode coach kill-switches.
-        # Body: {mode: "aram", disabled: true}
-        elif self.path == "/api/coach/toggle":
-            try:
-                mode = str(payload.get("mode") or "").strip().lower()
-                disabled = bool(payload.get("disabled"))
-                if mode not in {"sr", "aram", "arena", "brawl", "tft"}:
-                    self._send(400, b'{"error":"invalid mode"}', "application/json")
-                    return
-                from core.cost_tracker import get_tracker as _gt
-                cur = _gt().set_coach_disabled(mode, disabled)
-                self._send(200, json.dumps({"ok": True,
-                                             "disabled_modes": cur}).encode(),
-                           "application/json")
-            except Exception as exc:
-                _log.warning("api/coach/toggle: %s", exc)
-                self._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                           "application/json")
         else:
             self._send(404, b"not found", "text/plain")
 

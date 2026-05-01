@@ -171,6 +171,84 @@ def _serve_logs(h) -> None:
                 "application/json")
 
 
+# ── POST handlers (slice 2C-7c) ──────────────────────────────────────
+
+
+def _serve_replay_coach_post(h, payload) -> None:
+    # Postgame analysis of a past match in rewind_history.db. Body: {match_id}
+    try:
+        from coaches.replay_coach import analyze_match
+        api_key = ""
+        _key_path = APP_DIR / "API-Key-Claude.txt"
+        if _key_path.exists():
+            api_key = _key_path.read_text(encoding="utf-8").strip()
+        mid = (payload.get("match_id") or "").strip()
+        if not mid:
+            h._send(400, b'{"error":"empty_match_id"}', "application/json"); return
+        result = analyze_match(mid, api_key=api_key)
+        h._send(200, json.dumps(result).encode(), "application/json")
+    except Exception as exc:
+        log.warning("api/replay-coach: %s", exc)
+        h._send(500, json.dumps({"error": str(exc)}).encode(),
+                "application/json")
+
+
+def _serve_speak_post(h, payload) -> None:
+    # Opt-in voice TTS for the Right Now headline. Body: {text, rate?}.
+    # Throttled + deduped server-side via voice_coach module.
+    try:
+        from coaches.voice_coach import speak
+        text = (payload.get("text") or "").strip()
+        rate = int(payload.get("rate") or 0)
+        if not text:
+            h._send(400, b'{"error":"empty_text"}', "application/json"); return
+        spoken = speak(text, rate=rate)
+        h._send(200, json.dumps({"ok": True, "spoken": spoken}).encode(),
+                "application/json")
+    except Exception as exc:
+        log.warning("api/speak: %s", exc)
+        h._send(500, json.dumps({"error": str(exc)}).encode(),
+                "application/json")
+
+
+def _serve_champ_select_coach_post(h, payload) -> None:
+    # Live champ-select coaching — Haiku call with the current pick state.
+    # Dashboard POSTs whenever picks change (debounced).
+    # Body: {is_aram, queue_id, my_champion, my_team, their_team, bench}
+    try:
+        from coaches.champ_select_coach import coach_pick
+        api_key = ""
+        _key_path = APP_DIR / "API-Key-Claude.txt"
+        if _key_path.exists():
+            api_key = _key_path.read_text(encoding="utf-8").strip()
+        result = coach_pick(payload or {}, api_key)
+        h._send(200, json.dumps(result).encode(), "application/json")
+    except Exception as exc:
+        log.warning("api/champ-select-coach: %s", exc)
+        h._send(500, json.dumps({"error": str(exc)}).encode(),
+                "application/json")
+
+
+def _serve_coach_toggle_post(h, payload) -> None:
+    # AUDIT 2026-04-28 (proposal 2.2): per-mode coach kill-switches.
+    # Body: {mode: "aram", disabled: true}
+    try:
+        mode = str(payload.get("mode") or "").strip().lower()
+        disabled = bool(payload.get("disabled"))
+        if mode not in {"sr", "aram", "arena", "brawl", "tft"}:
+            h._send(400, b'{"error":"invalid mode"}', "application/json")
+            return
+        from core.cost_tracker import get_tracker as _gt
+        cur = _gt().set_coach_disabled(mode, disabled)
+        h._send(200, json.dumps({"ok": True,
+                                  "disabled_modes": cur}).encode(),
+                "application/json")
+    except Exception as exc:
+        log.warning("api/coach/toggle: %s", exc)
+        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
+                "application/json")
+
+
 # ── route table ──────────────────────────────────────────────────────
 
 # Ordering: more-specific paths first. /api/replay/match/ uses prefix()
@@ -186,4 +264,9 @@ GET_ROUTES = [
     (equals("/api/logs"),             _serve_logs),
 ]
 
-POST_ROUTES: list = []
+POST_ROUTES = [
+    (equals("/api/replay-coach"),        _serve_replay_coach_post),
+    (equals("/api/speak"),               _serve_speak_post),
+    (equals("/api/champ-select-coach"),  _serve_champ_select_coach_post),
+    (equals("/api/coach/toggle"),        _serve_coach_toggle_post),
+]
