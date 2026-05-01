@@ -9,10 +9,10 @@ Group 6 — three GET endpoints:
 
 `/api/bridge` reads from `dashboard._bridge_log` directly (the in-memory
 deque + JSONL backup were extracted from web_dashboard.py in the Tier 2
-helper-shake). `/api/preview-build` still reaches a couple of helpers
-that live in web_dashboard.py (`_lcu_summary`,
-`_champ_select_brief_via_coach`) via deferred import to avoid a
-circular import at start-up.
+helper-shake). `/api/preview-build` reaches `lcu_summary` directly from
+`dashboard._liveclient` (Tier 2 #4) and still does a deferred import of
+`_champ_select_brief_via_coach` from web_dashboard to avoid the
+circular start-up cost.
 
 `/api/champions` keeps its module-level cache (`_CACHE`) here; nothing
 outside this handler reads it.
@@ -25,6 +25,7 @@ from urllib.parse import parse_qs, urlparse
 from dashboard._bridge_log import bridge_post, bridge_since
 from dashboard._context import APP_DIR
 from dashboard._dispatch import equals
+from dashboard._liveclient import lcu_summary
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -51,7 +52,7 @@ def _serve_preview_build(h) -> None:
     # the champion is curated and the mode isn't ARAM; runes + ally
     # notes always come from Haiku (cheap).
     try:
-        from web_dashboard import _champ_select_brief_via_coach, _lcu_summary
+        from web_dashboard import _champ_select_brief_via_coach
         qs = parse_qs(urlparse(h.path).query)
         champ = (qs.get("champion") or [""])[0].strip()
         enemies = [s.strip() for s in
@@ -62,7 +63,7 @@ def _serve_preview_build(h) -> None:
         mode = (qs.get("mode") or ["SR"])[0].strip().upper()
         # Auto-detect ARAM from live LCU state if caller didn't pass.
         if mode == "SR":
-            lcu = _lcu_summary() or {}
+            lcu = lcu_summary() or {}
             if ((lcu.get("champ_select") or {}).get("is_aram")):
                 mode = "ARAM"
         if not champ:
