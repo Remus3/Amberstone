@@ -100,3 +100,72 @@ def test_blocked_by_dependency_waits_for_completion(tmp_path: Path) -> None:
     s.complete(first.id)
     # Now second is unblocked.
     assert s.next_ready().id == second.id
+
+
+def test_compact_keeps_latest_per_task(tmp_path: Path) -> None:
+    """compact() rewrites task_queue.jsonl to the latest event per task_id.
+
+    Verifies (a) line count drops to distinct task ids, (b) reload from
+    the compacted file yields the same in-memory state as before.
+    """
+    log = tmp_path / "q.jsonl"
+    s1 = Scheduler(queue_log=log, agent0_evaluate=Evaluator().evaluate,
+                   compact_interval_s=0)  # disable daemon
+    t_done = s1.file_task("done-task", owner_agent="6", priority=10)
+    s1.next_ready()            # filed → dispatched
+    s1.complete(t_done.id, result={"ok": True})
+    t_open = s1.file_task("open-task", owner_agent="6", priority=20)
+    # log now has: filed, dispatched, completed, filed = 4 lines, 2 task_ids
+
+    raw = log.read_text(encoding="utf-8").splitlines()
+    assert len(raw) == 4
+
+    before, after = s1.compact()
+    assert (before, after) == (4, 2)
+
+    raw2 = log.read_text(encoding="utf-8").splitlines()
+    assert len(raw2) == 2
+
+    # State after reload is identical
+    s2 = Scheduler(queue_log=log, agent0_evaluate=Evaluator().evaluate,
+                   compact_interval_s=0)
+    assert s2.get(t_done.id).status == TaskStatus.COMPLETED
+    assert s2.get(t_done.id).result == {"ok": True}
+    assert s2.get(t_open.id).status == TaskStatus.READY
+    # Heap rebuilt: only the non-terminal task is dispatchable
+    assert s2.next_ready().id == t_open.id
+    assert s2.next_ready() is None
+
+
+def test_compact_is_idempotent_when_already_unique(tmp_path: Path) -> None:
+    """compact() on a file that's already 1-line-per-task is a no-op."""
+    log = tmp_path / "q.jsonl"
+    s = Scheduler(queue_log=log, agent0_evaluate=Evaluator().evaluate,
+                  compact_interval_s=0)
+    s.file_task("a", owner_agent="6", priority=10)
+    s.file_task("b", owner_agent="6", priority=10)
+    before_lines = log.read_text(encoding="utf-8").splitlines()
+    assert len(before_lines) == 2  # one filed event each
+
+    before, after = s.compact()
+    assert (before, after) == (2, 2)
+    assert log.read_text(encoding="utf-8").splitlines() == before_lines
+
+
+def test_compact_skips_corrupt_lines(tmp_path: Path) -> None:
+    """Corrupt lines are dropped on compaction."""
+    log = tmp_path / "q.jsonl"
+    s = Scheduler(queue_log=log, agent0_evaluate=Evaluator().evaluate,
+                  compact_interval_s=0)
+    t = s.file_task("a", owner_agent="6", priority=10)
+    with log.open("a", encoding="utf-8") as f:
+        f.write("not-json-at-all\n")
+    s.complete(t.id)
+    raw = log.read_text(encoding="utf-8").splitlines()
+    assert len(raw) == 3  # filed + corrupt + completed
+
+    before, after = s.compact()
+    assert (before, after) == (3, 1)
+    raw2 = log.read_text(encoding="utf-8").splitlines()
+    assert len(raw2) == 1
+    assert "not-json-at-all" not in raw2[0]
