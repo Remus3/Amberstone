@@ -203,31 +203,15 @@ from dashboard._diagnostics import (  # noqa: E402, F401
     diagnostics_cached as _diagnostics_cached,
 )
 
-
-def _atomic_write_json(rel: str, data: dict) -> None:
-    p = _APP_DIR / rel
-    p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_suffix(p.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    tmp.replace(p)
-
-
-def _set_pregame(text: str) -> None:
-    """Write user-supplied text into root coaching_data.json.pregame field.
-    Coach reads this on next poll cycle. Atomic write to avoid mid-read.
-    Holds the shared coaching_data_lock so a coach R-M-W in another thread
-    can't clobber this update (NOTE-003 fix)."""
-    from core.coaching_data_lock import coaching_data_lock
-    with coaching_data_lock():
-        data = _read_json("coaching_data.json")
-        data["pregame"] = text
-        _atomic_write_json("coaching_data.json", data)
-
-
-def _force_vision_scan() -> None:
-    """Trigger BaseCoach._vision_loop forced scan (matches Ctrl+Tab hotkey)."""
-    import time as _t
-    _atomic_write_json("data/force_scan.json", {"force": _t.time()})
+# Tier 2 helper-shake (2026-05-01): the atomic JSON writers moved to
+# dashboard/_writers.py. Re-bind under the original underscored names
+# so any in-process caller that still does `from web_dashboard import
+# _set_pregame` keeps working without churn.
+from dashboard._writers import (  # noqa: E402, F401
+    atomic_write_json as _atomic_write_json,
+    force_vision_scan as _force_vision_scan,
+    set_pregame as _set_pregame,
+)
 
 
 def _lcu_summary() -> dict:
