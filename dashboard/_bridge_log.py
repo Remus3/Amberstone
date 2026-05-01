@@ -147,4 +147,20 @@ def bridge_since(since_ts: float, limit: int = 20, *,
     return items[-limit:]
 
 
+def gamepc_result_age_s() -> float | None:
+    """Seconds since the most recent {kind:"result", source:"gamepc"} entry,
+    or None if there is no such entry in the in-memory deque.
+
+    Used by /api/health/all to surface a "bridge silent for N minutes"
+    indicator. The Game-PC `/loop /process-bridge-tasks` posts a result
+    after each task it processes, so silence here means either no tasks
+    have been dispatched OR the auto-flow loop on Game-PC died (the
+    typical post-Claude-restart failure mode)."""
+    with _bridge_lock:
+        for e in reversed(_bridge_log):
+            if e.get("kind") == "result" and e.get("source") == "gamepc":
+                return max(0.0, time.time() - float(e.get("ts") or 0))
+    return None
+
+
 bridge_hydrate_from_disk()
