@@ -7,19 +7,22 @@ Group 6 — three GET endpoints:
   /api/preview-build   champ-select build + runes + ally-notes brief
   /api/champions       DDragon championId -> {name, slug} map (cached)
 
-`/api/bridge` and `/api/preview-build` reach helpers that still live in
-web_dashboard.py (`_bridge_since`, `_lcu_summary`,
-`_champ_select_brief_via_coach`) — those are deferred-imported inside
-each handler to avoid the same circular-import that web_dashboard
-imports the dashboard package at start-up. Same pattern as routes_diag.
+`/api/bridge` reads from `dashboard._bridge_log` directly (the in-memory
+deque + JSONL backup were extracted from web_dashboard.py in the Tier 2
+helper-shake). `/api/preview-build` still reaches a couple of helpers
+that live in web_dashboard.py (`_lcu_summary`,
+`_champ_select_brief_via_coach`) via deferred import to avoid a
+circular import at start-up.
 
 `/api/champions` keeps its module-level cache (`_CACHE`) here; nothing
 outside this handler reads it.
 """
 import json
 import logging
+import time
 from urllib.parse import parse_qs, urlparse
 
+from dashboard._bridge_log import bridge_post, bridge_since
 from dashboard._context import APP_DIR
 from dashboard._dispatch import equals
 
@@ -30,14 +33,12 @@ def _serve_bridge(h) -> None:
     # Cross-Claude message log read.
     # GET ?since=<ts>&limit=N&kind=<>&target=<>
     try:
-        import time
-        from web_dashboard import _bridge_since
         qs = parse_qs(urlparse(h.path).query)
         since  = float((qs.get("since") or ["0"])[0])
         limit  = int((qs.get("limit") or ["20"])[0])
         kind   = (qs.get("kind")   or [None])[0]
         target = (qs.get("target") or [None])[0]
-        items = _bridge_since(since, limit, kind=kind, target=target)
+        items = bridge_since(since, limit, kind=kind, target=target)
         payload = {"now": time.time(), "messages": items}
         h._send(200, json.dumps(payload).encode(), "application/json")
     except Exception as exc:
@@ -125,7 +126,6 @@ def _serve_bridge_post(h, payload) -> None:
     #   {source, summary, kind?, id?, target?, body?, in_reply_to?}
     # Existing {source, summary} posts default to kind="note".
     try:
-        from web_dashboard import _bridge_post
         src     = (payload.get("source") or "").strip()
         msg     = (payload.get("summary") or "").strip()
         kind    = (payload.get("kind") or "note").strip()
@@ -135,8 +135,8 @@ def _serve_bridge_post(h, payload) -> None:
         replyto = payload.get("in_reply_to")
         if not msg and kind == "note":
             h._send(400, b'{"error":"empty summary"}', "application/json"); return
-        entry = _bridge_post(src, msg, kind=kind, entry_id=eid,
-                             target=target, body=msg_body, in_reply_to=replyto)
+        entry = bridge_post(src, msg, kind=kind, entry_id=eid,
+                            target=target, body=msg_body, in_reply_to=replyto)
         h._send(200, json.dumps({"ok": True, "ts": entry["ts"],
                                   "id": entry.get("id"),
                                   "kind": entry.get("kind")}).encode(),
