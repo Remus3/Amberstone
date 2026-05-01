@@ -3320,12 +3320,34 @@
     el.textContent = text || "";
   }
 
+  // Build the set of item_ids that appear in some variants but NOT all
+  // — these are the "differing" items that distinguish one build from
+  // another. Used by both renderers to mark items with .cs-build-item--diff
+  // so the user's eye lands on exactly what trades off between variants.
+  // Returns an empty set when there's only one variant (nothing to diff).
+  function _csDiffItemIds(variants) {
+    const out = new Set();
+    if (!variants || variants.length < 2) return out;
+    const sets = variants.map((v) =>
+      new Set((v.item_ids || []).slice(0, 6).map(String)));
+    // Union of all item ids across variants
+    const union = new Set();
+    sets.forEach((s) => s.forEach((id) => union.add(id)));
+    // An id is "diff" if it isn't present in EVERY variant's set.
+    union.forEach((id) => {
+      if (!sets.every((s) => s.has(id))) out.add(id);
+    });
+    return out;
+  }
+
   // Render the variant list as selectable rows. Each row carries inline
   // keystone + first-N item icons so the user can compare builds at a
   // glance. Clicking a row selects it (radio-style) and triggers an
   // /api/loadout/apply push. Rebuilt 2026-04-26 — the old <select>
   // dropdown hid alternate builds behind a click and gave the user the
-  // impression there was only one choice.
+  // impression there was only one choice. 2026-05-01: items that differ
+  // across variants get .cs-build-item--diff so the eye lands on the
+  // tradeoffs (Tier 4 #17 side-by-side comparison).
   function _csRenderBuildList(variants, chosen) {
     const wrap = document.getElementById("cs-build-list");
     if (!wrap) return;
@@ -3337,6 +3359,7 @@
       return;
     }
     const ver = CHAMPS.version || "latest";
+    const diffIds = _csDiffItemIds(variants);
     variants.forEach((v) => {
       const row = document.createElement("div");
       const isExp = v.key === "experimental";
@@ -3380,9 +3403,10 @@
       } else {
         ids.forEach((iid, idx) => {
           const cell = document.createElement("div");
-          cell.className = "cs-build-item";
+          const isDiff = diffIds.has(String(iid));
+          cell.className = "cs-build-item" + (isDiff ? " cs-build-item--diff" : "");
           const nm = (v.item_names || [])[idx] || ("item " + iid);
-          cell.title = nm;
+          cell.title = isDiff ? `${nm} (differs across variants)` : nm;
           cell.innerHTML = `<img src="/data/ddragon/${ver}/img/item/${iid}.png" onerror="this.style.display='none'" alt="">`;
           items.appendChild(cell);
         });
@@ -3437,6 +3461,7 @@
     wrap.innerHTML = "";
     if (!variants || !variants.length) return;
     const ver = CHAMPS.version || "latest";
+    const diffIds = _csDiffItemIds(variants);
     variants.forEach((v) => {
       const row = document.createElement("div");
       const isExp = v.key === "experimental";
@@ -3460,8 +3485,10 @@
       items.className = "cs-build-items";
       (v.item_ids || []).slice(0, 4).forEach((iid, idx) => {
         const cell = document.createElement("div");
-        cell.className = "cs-build-item";
-        cell.title = (v.item_names || [])[idx] || ("item " + iid);
+        const isDiff = diffIds.has(String(iid));
+        cell.className = "cs-build-item" + (isDiff ? " cs-build-item--diff" : "");
+        const nm = (v.item_names || [])[idx] || ("item " + iid);
+        cell.title = isDiff ? `${nm} (differs across variants)` : nm;
         cell.innerHTML = `<img src="/data/ddragon/${ver}/img/item/${iid}.png" onerror="this.style.display='none'" alt="">`;
         items.appendChild(cell);
       });
