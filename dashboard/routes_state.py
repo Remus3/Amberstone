@@ -207,6 +207,28 @@ _CE_LAST_TS: float = 0.0
 _CE_DROPPED: int   = 0
 
 
+def _serve_analyze_post(h, payload) -> None:
+    # Dashboard's "Analyze Now" button — forward POST to the supervisor
+    # at :8890. Synchronous: returns supervisor's response. timeout=30
+    # because analysis runs are multi-second (default 4 would lop them off).
+    try:
+        import urllib.request as _ur
+        req = _ur.Request(
+            "http://127.0.0.1:8890/api/analyze",
+            data=json.dumps(payload or {}).encode(),
+            method="POST",
+            headers={"Content-Type": "application/json"},
+        )
+        with _ur.urlopen(req, timeout=30) as r:
+            body = r.read()
+            ctype = r.headers.get("Content-Type", "application/json")
+        h._send(200, body, ctype)
+    except Exception as exc:
+        log.warning("api/analyze: %s", exc)
+        h._send(500, json.dumps({"error": str(exc)}).encode(),
+                "application/json")
+
+
 def _serve_console_error_post(h, payload) -> None:
     # Receives browser-side JS errors from the dashboard
     # (window.onerror, unhandledrejection, console.error). Lands
@@ -266,4 +288,5 @@ POST_ROUTES = [
     (equals("/api/input"),          _serve_input_post),
     (equals("/api/command"),        _serve_command_post),
     (equals("/api/console-error"),  _serve_console_error_post),
+    (equals("/api/analyze"),        _serve_analyze_post),
 ]

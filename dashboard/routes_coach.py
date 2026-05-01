@@ -249,6 +249,130 @@ def _serve_coach_toggle_post(h, payload) -> None:
                 "application/json")
 
 
+def _serve_experimental_get_post(h, payload) -> None:
+    # Body: {champion, mode}. Returns current experimental build
+    # (auto-generates if none exists yet). Caller is expected to then
+    # hit /api/loadout/apply with variant=experimental.
+    try:
+        from coaches import experimental_builder as eb
+        champ = (payload.get("champion") or "").strip()
+        if not champ:
+            h._send(400, b'{"error":"champion required"}', "application/json"); return
+        cur = eb.get_current(champ)
+        if not cur:
+            api_key = ""
+            _key_path = APP_DIR / "API-Key-Claude.txt"
+            if _key_path.exists():
+                try:
+                    api_key = _key_path.read_text(encoding="utf-8").strip()
+                except Exception:
+                    pass
+            cur = eb.generate(champ, api_key)
+        h._send(200, json.dumps({
+            "ok": bool(cur), "champion": champ,
+            "current": cur,
+            "history": eb.get_history(champ),
+        }).encode(), "application/json")
+    except Exception as exc:
+        log.warning("api/experimental/get: %s", exc)
+        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+
+
+def _serve_experimental_adapt_post(h, payload) -> None:
+    # Manual trigger: regenerate the next iteration via Haiku, informed
+    # by full history.
+    try:
+        from coaches import experimental_builder as eb
+        champ = (payload.get("champion") or "").strip()
+        if not champ:
+            h._send(400, b'{"error":"champion required"}', "application/json"); return
+        api_key = ""
+        _key_path = APP_DIR / "API-Key-Claude.txt"
+        if _key_path.exists():
+            try:
+                api_key = _key_path.read_text(encoding="utf-8").strip()
+            except Exception:
+                pass
+        new = eb.adapt(champ, api_key)
+        h._send(200, json.dumps({
+            "ok": bool(new), "champion": champ, "current": new,
+        }).encode(), "application/json")
+    except Exception as exc:
+        log.warning("api/experimental/adapt: %s", exc)
+        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+
+
+def _serve_experimental_mark_post(h, payload) -> None:
+    # Body: {champion, mode}. Drop a marker file so postgame
+    # performance_tracker can attribute the result to this iter.
+    try:
+        from coaches import experimental_builder as eb
+        champ = (payload.get("champion") or "").strip()
+        mode = (payload.get("mode") or "aram").strip()
+        if not champ:
+            h._send(400, b'{"error":"champion required"}', "application/json"); return
+        eb.mark_active(champ, mode)
+        h._send(200, b'{"ok":true}', "application/json")
+    except Exception as exc:
+        log.warning("api/experimental/mark: %s", exc)
+        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+
+
+def _serve_aram_analyze_post(h, payload) -> None:
+    # Body: {my_champion, my_team[], their_team[], bench[],
+    #        current_variant, mode}
+    # Pulls variant list for current champion+mode from loadouts,
+    # builds compact summaries, calls aram_team_analyzer.
+    try:
+        from coaches import aram_team_analyzer
+        from coaches.loadout_resolver import _load_loadouts, list_variants, _normalize_mode
+        my_champ = (payload.get("my_champion") or "").strip()
+        if not my_champ:
+            h._send(400, b'{"error":"my_champion required"}', "application/json"); return
+        mode = (payload.get("mode") or "aram").strip()
+        _normalize_mode(mode)  # validate; mode_key not used downstream
+        # Build compact variant summaries for the analyzer prompt.
+        # Each: "{keystone}/{primary} → {first 4 items}"
+        loadouts = _load_loadouts().get("champions", {}) or {}
+        champ_data = loadouts.get(my_champ) or {}
+        all_variants = champ_data.get("variants") or {}
+        variant_summaries = []
+        for vinfo in list_variants(my_champ, mode):
+            vkey = vinfo["key"]
+            v = all_variants.get(vkey) or {}
+            runes = v.get("runes") or {}
+            items = (v.get("items") or [])[:4]
+            summary = (
+                f"{runes.get('keystone','?')}/{runes.get('primary','?')} → "
+                + (", ".join(items) if items else "(no items)")
+            )
+            variant_summaries.append({
+                "key":     vkey,
+                "label":   vinfo.get("label") or vkey,
+                "summary": summary,
+            })
+        api_key = ""
+        _key_path = APP_DIR / "API-Key-Claude.txt"
+        if _key_path.exists():
+            try:
+                api_key = _key_path.read_text(encoding="utf-8").strip()
+            except Exception:
+                pass
+        state = {
+            "my_champion":     my_champ,
+            "my_team":         payload.get("my_team")    or [],
+            "their_team":      payload.get("their_team") or [],
+            "bench":           payload.get("bench")      or [],
+            "current_variant": payload.get("current_variant") or "",
+            "variants":        variant_summaries,
+        }
+        result = aram_team_analyzer.analyze(state, api_key)
+        h._send(200, json.dumps(result).encode(), "application/json")
+    except Exception as exc:
+        log.warning("api/aram-analyze: %s", exc)
+        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+
+
 # ── route table ──────────────────────────────────────────────────────
 
 # Ordering: more-specific paths first. /api/replay/match/ uses prefix()
@@ -269,4 +393,8 @@ POST_ROUTES = [
     (equals("/api/speak"),               _serve_speak_post),
     (equals("/api/champ-select-coach"),  _serve_champ_select_coach_post),
     (equals("/api/coach/toggle"),        _serve_coach_toggle_post),
+    (equals("/api/experimental/get"),    _serve_experimental_get_post),
+    (equals("/api/experimental/adapt"),  _serve_experimental_adapt_post),
+    (equals("/api/experimental/mark"),   _serve_experimental_mark_post),
+    (equals("/api/aram-analyze"),        _serve_aram_analyze_post),
 ]
