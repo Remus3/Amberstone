@@ -4854,6 +4854,7 @@ class _Handler(BaseHTTPRequestHandler):
             name = self.path[len("/agent/"):]
             ALLOWED = {"gamepc_screen_agent.py", "gamepc_liveclient_relay.py",
                        "gamepc_lcu_agent.py", "gamepc_mcp_server.py",
+                       "gamepc_hotkey_listener.py",
                        "GAMEPC_CLAUDE.md",
                        "bridge_fetch.py", "bridge_post.py",
                        "bridge_pull_tasks.py", "bridge_post_result.py",
