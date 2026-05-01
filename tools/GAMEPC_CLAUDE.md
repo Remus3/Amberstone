@@ -39,6 +39,7 @@ accepts inbound from Legion on `:8892`.
 | `gamepc_liveclient_relay.py` | → Legion | `POST :8889/upload-liveclient` (Riot Live Client JSON every 1s) | `RC-LiveClientRelay` |
 | `gamepc_lcu_agent.py` | → Legion | `POST :8889/upload-lcu`, `GET :8889/lcu-cmd-pending`, `POST :8889/lcu-cmd-done` | `RC-LCU` |
 | `gamepc_mcp_server.py` | ← Legion | listens on `:8892/mcp` (JSON-RPC) + `:8892/health` | `RC-MCP-Server` |
+| `gamepc_hotkey_listener.py` | local-only | Win32 RegisterHotKey: `Ctrl+Shift+1` posts choice option[0], `Ctrl+Shift+2` posts option[1] for the topmost pending coach decision. Lets the player answer without alt-tabbing | `RC-HotkeyListener` |
 
 The push agents use `X-RC-Token: 8e8f131e212b329438218eca27372dde`. The
 MCP server uses `Authorization: Bearer <same token>`.
@@ -56,8 +57,8 @@ iwr http://192.168.8.230:8888/agent/gamepc_lcu_agent.py -O C:\RC-Agent\gamepc_lc
 ```
 
 Allowed agent names: `gamepc_screen_agent.py`, `gamepc_liveclient_relay.py`,
-`gamepc_lcu_agent.py`, `gamepc_mcp_server.py`, `gamepc_boot.ps1`. Other
-paths return 404.
+`gamepc_lcu_agent.py`, `gamepc_mcp_server.py`, `gamepc_hotkey_listener.py`,
+`gamepc_boot.ps1`. Other paths return 404.
 
 Bootstrapping a fresh Game-PC (or recovering after a reboot where agents
 didn't auto-start) is one line:

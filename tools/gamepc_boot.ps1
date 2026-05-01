@@ -40,7 +40,8 @@ $AGENTS = @(
     @{ name = 'gamepc_screen_agent.py';     port = $null;  task = 'RC-ScreenAgent'      },
     @{ name = 'gamepc_lcu_agent.py';        port = $null;  task = 'RC-LCU'              },
     @{ name = 'gamepc_liveclient_relay.py'; port = $null;  task = 'RC-LiveClientRelay'  },
-    @{ name = 'gamepc_mcp_server.py';       port = 8892;   task = 'RC-MCP-Server'       }
+    @{ name = 'gamepc_mcp_server.py';       port = 8892;   task = 'RC-MCP-Server'       },
+    @{ name = 'gamepc_hotkey_listener.py';  port = $null;  task = 'RC-HotkeyListener'   }
 )
 
 # Use curl.exe (bundled with Win10/11 in System32) instead of
