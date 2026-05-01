@@ -1,0 +1,2977 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Riot Commander</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<meta name="theme-color" content="#0b0b12">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RC">
+<link rel="apple-touch-icon" href="/icon.svg">
+<style>
+:root {
+  --bg:        #0b0b12;
+  --bg-sec:    #111119;
+  --bg-field:  #16161f;
+  --border:    #252535;
+  --label:     #9090aa;
+  --dim:       #888898;
+  --action:    #ff2244;
+  --immediate: #ff6b4a;
+  --next:      #4a9eff;
+  --fight:     #ffa84a;
+  --wave:      #3ddba8;
+  --objective: #c77dff;
+  --reset:     #a8c023;
+  --risk:      #ff4a6a;
+  --map:       #6a8cbb;
+  --clock:     #ffdd00;
+  --winpct:    #aaffcc;
+  --stat:      #d0d0e0;
+}
+* { box-sizing: border-box; }
+html, body { margin:0; padding:0; width:100vw; height:100vh; overflow:hidden;
+  background: var(--bg); color: var(--stat);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased; }
+.app { display:grid;
+  grid-template-rows: clamp(46px, 6vh, 70px) 1fr;
+  height:100vh; width:100vw; }
+header {
+  display:grid;
+  /* Match the main game-layout's column widths AND padding exactly so
+     the per-team trackers align with the ally/enemy card columns below
+     — otherwise chips bleed past the minimap boundary. */
+  grid-template-columns: 1fr minmax(340px, 1.3fr) 1fr;
+  column-gap: 3px;
+  align-items:center; padding: 0 clamp(20px, 1.3vw, 26px);
+  background: var(--bg-sec); border-bottom: 1px solid var(--border); }
+/* Bottom-aligned with padding-bottom matching the visual buffer seen
+   between objective number fonts and the header's bottom edge (≈ 4px). */
+.hdr-left, .hdr-right { height: 100%; display: flex; flex-direction: column;
+                        align-items: center; justify-content: flex-end;
+                        padding-bottom: 4px; gap: 2px; }
+/* Mode badge + in-game clock — fixed-positioned at the viewport's horizontal
+   center so they stack directly above the RT-clock overlay (which uses the
+   same left:50%/translateX strategy). This sidesteps any sub-pixel drift
+   that can happen when mixing grid-centered and fixed-positioned siblings. */
+/* Mode badge + ingame clock on ONE horizontal row (not stacked). Per user
+   request [21]: "Title bar, True Center The mode, Game Time just to the
+   right of the mode and in 1 line (not 2)". Both bottom-aligned to the
+   header edge so the gap under the fonts matches the objective-number
+   gap on either side [49]. */
+.hdr-stack  { position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+              height: clamp(46px, 6vh, 70px); z-index: 55;
+              display: flex; flex-direction: row; align-items: flex-end;
+              justify-content: center; padding-bottom: 4px; gap: 10px;
+              white-space: nowrap; pointer-events: none; }
+.hdr-stack > * { pointer-events: auto; }
+.mode-badge { font-size: clamp(13px, 1.2vw, 21px); font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; padding: 3px 12px; border-radius: 4px;
+  background: var(--bg-field); border: 1px solid var(--border); text-align:center;
+  line-height: 1.1; }
+.mode-badge[data-mode="aram"]  { color: #44FF88; border-color:#44FF88; }
+.mode-badge[data-mode="arena"] { color: #FFA84A; border-color:#FFA84A; }
+.mode-badge[data-mode="brawl"] { color: #FF4A6A; border-color:#FF4A6A; }
+.mode-badge[data-mode="tft"]   { color: #FFD700; border-color:#FFD700; }
+.mode-badge[data-mode="game"], .mode-badge[data-mode="sr"] { color: #4A9EFF; border-color:#4A9EFF; }
+.mode-badge[data-mode="client"] { color: var(--dim); }
+.clock { color: var(--clock); font-size: clamp(16px, 1.7vw, 28px); font-weight: 700;
+  font-variant-numeric: tabular-nums; text-align:center; line-height: 1.1; }
+.action-bar { font-size: clamp(20px, 2.2vw, 36px); font-weight: 700; color: var(--action);
+  text-align: center; text-transform: uppercase; letter-spacing: 1.5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Win% block shared size across blue and red side; label + value same size */
+.hdr-winpct { display: flex; align-items: baseline; gap: 8px;
+              font-variant-numeric: tabular-nums;
+              font-size: clamp(9px, 0.9vw, 17px);
+              font-weight: 800; line-height: 1.1; letter-spacing: 1px;
+              text-transform: uppercase; }
+/* WIN% pinned to the minimap-facing edge of each team column per user [51]:
+   "blue side right align to the vertical right side border of the character
+   cards, red side the same just left aligned." The obj-tracker fills the
+   full column width below; WIN% sits just above it near the minimap edge. */
+.hdr-left  .hdr-winpct { align-self: flex-end;   }
+.hdr-right .hdr-winpct { align-self: flex-start; }
+.hdr-winpct .label { color: var(--label); }
+.hdr-winpct .val   { color: #dadfe3; }
+/* Bucket colors match HP-square thresholds */
+.hdr-winpct .val[data-wp="100"]{ color: #28ff72; text-shadow: 0 0 6px rgba(40,255,114,0.5); }
+.hdr-winpct .val[data-wp="75"] { color: #f8ff2e; text-shadow: 0 0 6px rgba(248,255,46,0.5); }
+.hdr-winpct .val[data-wp="50"] { color: #ff8a2e; text-shadow: 0 0 6px rgba(255,138,46,0.5); }
+.hdr-winpct .val[data-wp="25"] { color: #ff2a48; text-shadow: 0 0 8px rgba(255,42,72,0.6); }
+.hdr-winpct .val[data-wp="0"]  { color: #6a6a72; }
+/* Real-world clock overlay — fixed-position band between the header and
+   the minimap area, centered horizontally with the mode badge. */
+.rtclock-overlay { position: fixed;
+                   top: calc(clamp(46px, 6vh, 70px) + 4px);
+                   left: 50%; transform: translateX(-50%);
+                   z-index: 50; pointer-events: none;
+                   color: #ffffff; font-size: clamp(9px, 0.9vw, 16px);
+                   font-weight: 700; line-height: 1.1;
+                   letter-spacing: 1.2px;
+                   font-variant-numeric: tabular-nums;
+                   text-shadow: -1px -1px 0 #000, 1px -1px 0 #000,
+                                -1px 1px 0 #000, 1px 1px 0 #000,
+                                0 0 3px rgba(0,0,0,0.9); }
+
+main { display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-auto-rows: min-content;
+  gap: clamp(8px, 1vw, 16px);
+  padding: clamp(8px, 1vw, 16px);
+  overflow-y: auto; align-content: start; }
+.card { background: var(--bg-sec); border: 1px solid var(--border);
+  border-radius: 6px; padding: clamp(8px, 0.9vw, 14px) clamp(10px, 1.1vw, 16px);
+  min-width:0; display:flex; flex-direction:column; }
+.card .label { color: var(--label); font-size: clamp(12px, 1vw, 14px);
+  text-transform: uppercase; letter-spacing: 1.5px; display:block; margin-bottom:6px; }
+.card .value { font-size: clamp(15px, 1.3vw, 20px); line-height: 1.4; word-wrap: break-word; }
+.card.immediate { border-left: 3px solid var(--immediate); }
+.card.immediate .value { color: var(--immediate); }
+.card.fight     { border-left: 3px solid var(--fight); }
+.card.fight     .value { color: var(--fight); }
+.card.wave      { border-left: 3px solid var(--wave); }
+.card.wave      .value { color: var(--wave); }
+.card.objective { border-left: 3px solid var(--objective); }
+.card.objective .value { color: var(--objective); }
+.card.reset     { border-left: 3px solid var(--reset); }
+.card.reset     .value { color: var(--reset); }
+.card.risk      { border-left: 3px solid var(--risk); background: #1a0f12; }
+.card.risk      .value { color: #f0d8d8; }
+.card.risk      .value .tag-enemy { color: #ff4a6a; text-shadow: 0 0 4px rgba(255,74,106,0.5); }
+
+/* SR item build grid — 3-col, icon + 2-line name, owned = green border */
+.card.build         { border-left: 3px solid var(--map); }
+.card.build .meta   { font-size: 11px; color: var(--dim); margin: 4px 0 8px; }
+.item-grid          { display:grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.item-cell          { display:flex; flex-direction:column; align-items:center;
+                      padding: 6px 4px; border: 1px solid #2a2a3a;
+                      background: #14141d; border-radius: 4px; min-height: 78px;
+                      text-align:center; }
+.item-cell.owned    { border-color: #44ff88; background: #002211; box-shadow: 0 0 6px rgba(68,255,136,0.25); }
+.item-cell.next     { border-color: #4a9eff; background: #0a1320; }
+.item-cell.next .iname1, .item-cell.next .iname2 { color: #6ab2ff; }
+.item-cell .icon    { width: 36px; height: 36px; image-rendering: -webkit-optimize-contrast;
+                      border-radius: 3px; }
+.item-cell .iname1, .item-cell .iname2 { font-size: 10px; color: #aabbcc;
+                      line-height: 1.15; max-width: 100%; overflow: hidden;
+                      text-overflow: ellipsis; white-space: nowrap; }
+.item-cell.owned .iname1, .item-cell.owned .iname2 { color: #66ff99; font-weight: 600; }
+.item-cell .iname1  { margin-top: 4px; }
+.swap-hint          { margin-top: 8px; padding: 6px 8px; background: #1a1a26;
+                      border-left: 2px solid var(--clock); color: #ffe879;
+                      font-size: 11px; line-height: 1.3; border-radius: 3px; }
+
+/* Pre-game lobby form (client mode) */
+.lobby                { display:grid;
+                        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                        gap: clamp(8px, 1vw, 14px);
+                        padding: clamp(8px, 1vw, 14px);
+                        width:100%; height:100%; overflow:auto;
+                        grid-column: 1 / -1; align-content: start; }
+.lobby-section        { background: var(--bg-sec); border: 1px solid var(--border);
+                        border-radius: 6px; padding: 12px 14px; min-width:0;
+                        display:flex; flex-direction:column; gap: 8px; }
+.lobby-section h3     { margin: 0; font-size: 11px; color: var(--label);
+                        text-transform: uppercase; letter-spacing: 1.5px;
+                        font-weight: 600; }
+.lobby-section label  { font-size: 11px; color: var(--label);
+                        text-transform: uppercase; letter-spacing: 1px; }
+.lobby-section select,
+.lobby-section input,
+.lobby-section textarea { background: var(--bg-field); color: var(--stat);
+                          border: 1px solid var(--border); border-radius: 4px;
+                          padding: 6px 8px; font-size: 15px; font-family: inherit;
+                          outline: none; }
+.lobby-section select:focus,
+.lobby-section input:focus,
+.lobby-section textarea:focus { border-color: var(--next); }
+.lobby-section textarea { resize: vertical; min-height: 50px; line-height: 1.35; }
+.lobby-actions         { display:grid; grid-template-columns: 1fr 1fr; gap: 6px;
+                         margin-top: 4px; }
+.lobby-actions button  { background: var(--bg-field); color: var(--stat);
+                         border: 1px solid var(--border); border-radius: 4px;
+                         padding: 8px 10px; font-size: 12px; font-weight: 600;
+                         cursor: pointer; text-align:left; transition: 0.1s; }
+.lobby-actions button:hover { background: #1c1c28; border-color: var(--next); }
+.lobby-actions button:active { transform: translateY(1px); }
+.lobby-resp            { flex: 1; overflow:auto; font-size: 15px; line-height: 1.45;
+                         color: #c8d0dc; }
+.lobby-resp .empty     { color: var(--dim); font-style: italic; }
+.lobby-resp .tag-ally  { color: #44ff88; font-weight: 600; }
+.lobby-resp .tag-enemy { color: #ff4a6a; font-weight: 600; }
+.lobby-resp .tag-timer { color: #ffd700; font-weight: 700; }
+
+/* LCU Live panel */
+.lcu-row              { display:flex; gap: 8px; align-items:center;
+                        font-size: 12px; padding: 4px 0; }
+.lcu-row label        { flex:1; color: var(--label);
+                        text-transform: none; letter-spacing: 0; font-size: 12px; }
+.lcu-row input[type=checkbox] { width:18px; height:18px; cursor:pointer; }
+.lcu-phase            { font-size: 13px; padding: 6px 10px; border-radius: 4px;
+                        background: #14141d; border: 1px solid var(--border); }
+.lcu-phase.alive      { color: #44ff88; border-color: #44ff88; }
+.lcu-phase.idle       { color: var(--dim); }
+.lcu-phase.ready      { color: var(--clock); border-color: var(--clock);
+                        animation: pulse 1s infinite alternate; }
+@keyframes pulse { from {opacity:0.65;} to {opacity:1;} }
+.my-champ             { display:flex; align-items:center; gap: 10px;
+                        padding: 8px; background: #14141d; border-radius: 4px;
+                        border: 1px solid var(--border); }
+.my-champ img         { width: 48px; height: 48px; border-radius: 6px;
+                        border: 2px solid #2a2a3a; }
+.my-champ.locked img  { border-color: #44ff88; }
+.my-champ .nm-fallback { width:48px; height:48px; border-radius:6px;
+                        border: 2px solid #2a2a3a; display:flex;
+                        align-items:center; justify-content:center;
+                        font-weight: 700; color: var(--label);
+                        background: #1a1a26; font-size: 16px; }
+.my-champ.locked .nm-fallback { border-color: #44ff88; color: #44ff88; }
+.my-champ .nm         { font-size: 14px; font-weight: 600; }
+.my-champ .st         { font-size: 11px; color: var(--dim); }
+.bench-grid           { display:grid; grid-template-columns: repeat(4, 1fr);
+                        gap: 6px; }
+.bench-cell           { cursor:pointer; padding: 4px; background:#14141d;
+                        border:1px solid var(--border); border-radius:4px;
+                        text-align:center; transition: 0.1s; }
+.bench-cell:hover     { border-color: var(--next); transform: scale(1.05); }
+.bench-cell img       { width: 38px; height: 38px; border-radius: 4px; }
+.bench-cell .nm       { font-size: 9px; color: #aaa; margin-top: 2px;
+                        max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+                        white-space: nowrap; }
+.summ-row             { display:flex; gap:8px; align-items:center; }
+.summ-row select      { flex:1; }
+.lcu-offline          { color: var(--dim); font-style: italic; font-size: 12px;
+                        padding: 12px; text-align:center; }
+.runes-box            { margin-top: 8px; padding: 8px; background: #14141d;
+                        border: 1px solid var(--border); border-radius: 4px; }
+.runes-box .row       { display:flex; align-items:center; gap: 8px;
+                        padding: 3px 0; font-size: 11px; }
+.runes-box .row .lbl  { color: var(--label); min-width: 60px;
+                        text-transform: uppercase; letter-spacing: 0.5px; }
+.runes-box .row .val  { color: #c8d0dc; }
+.runes-box .kstone    { color: var(--clock); font-weight: 600; }
+.runes-box .shard     { font-size: 10px; padding: 1px 6px; background: #1a1a26;
+                        border: 1px solid #2a2a3a; border-radius: 3px;
+                        color: #aabbcc; }
+.ally-notes           { margin-top: 8px; padding: 8px 10px;
+                        background: #0a1a12; border-left: 2px solid #44ff88;
+                        color: #c8e5d6; font-size: 11px; line-height: 1.4;
+                        border-radius: 3px; }
+.card.next      { border-left: 3px solid var(--next); }
+.card.next      .value { color: var(--next); }
+.card.map       { border-left: 3px solid var(--map); }
+.card.items     { flex: 1; }
+.card.items .value { font-size: 13px; color: var(--map); }
+
+.empty .value { color: var(--dim); font-style: italic; font-size: 13px; }
+
+/* ── Game-mode layout ──────────────────────────────────────────────
+   DESIGN BASELINE — all sizes below are tuned for:
+     Windows OS display scale : 100%
+     Edge browser zoom        : 100%
+     Edge window state        : fullscreen (F11)
+     → effective CSS viewport : 1920 × 1080
+   Everything below (clamp mins/maxes, row heights, padding, fonts)
+   should read well at that target.
+
+   SECONDARY VIEWING TARGET — iPad via Duet:
+     physical resolution     : 1920 × 1280
+     Windows OS display scale: 125%
+     Edge browser zoom       : 100%
+     Edge window state       : fullscreen (F11)
+     → effective CSS viewport: 1536 × 1024
+   At this smaller viewport the current clamp ceilings + row heights
+   exceed the 1024-px main area, so the bottom coach panels (risk,
+   objective, chat-input, merged item-build/augments row) clip. User is
+   iterating future adjustments from this 1536 × 1024 vantage. */
+main.has-game-layout { overflow: hidden; padding: 0; }
+.game-layout      { grid-column: 1 / -1; display: grid;
+                    grid-template-columns: 1fr minmax(340px, 1.3fr) 1fr;
+                    grid-template-rows:
+                      repeat(5, clamp(78px, 9.2vh, 110px))
+                      /* r6: pos / imm / cmp (3-line panels) */
+                      clamp(70px, 8.2vh, 94px)
+                      /* r7: frl / obj / wav */
+                      clamp(52px, 6vh, 68px)
+                      /* r8: rsk / log(m+r wide) top half */
+                      clamp(56px, 6.6vh, 74px)
+                      /* r9: rsk / log continues */
+                      clamp(56px, 6.6vh, 74px)
+                      /* r10: BUILD strip — full width recommended-item row */
+                      clamp(40px, 4.4vh, 50px)
+                      /* r11: chat-entry — full width */
+                      clamp(36px, 4.2vh, 46px);
+                    grid-template-areas:
+                      "a1  mini e1"
+                      "a2  mini e2"
+                      "a3  mini e3"
+                      "a4  mini e4"
+                      "a5  mini e5"
+                      "pos imm  cmp"
+                      "frl obj  wav"
+                      "rsk log  log"
+                      "rsk log  log"
+                      "bld bld  bld"
+                      "cbx cbx  cbx";
+                    /* row-gap unchanged; column-gap shrunk another 25% */
+                    row-gap: clamp(5px, 0.7vh, 10px);
+                    column-gap: 3px;
+                    width:100%; height:100%;
+                    min-height: 0; min-width: 0;
+                    /* Horizontal padding shrunk another 25% so cards extend
+                       that much closer to the screen edges.
+                       Top padding matches the visual gap beneath each card
+                       (row-height − card-height ≈ 20px) so the space above
+                       the top card = space between cards, giving an evenly
+                       distributed vertical rhythm along the column. */
+                    padding: clamp(18px, 2vh, 26px) clamp(20px, 1.3vw, 26px) clamp(6px, 0.8vh, 12px) clamp(20px, 1.3vw, 26px);
+                    background: linear-gradient(90deg,
+                      #1a3e8a 0%, #0e1d45 24%,
+                      #111119 50%,
+                      #45111e 76%, #80263b 100%); }
+.gl-ally-1 { grid-area: a1; } .gl-ally-2 { grid-area: a2; }
+.gl-ally-3 { grid-area: a3; } .gl-ally-4 { grid-area: a4; }
+.gl-ally-5 { grid-area: a5; }
+.gl-enemy-1 { grid-area: e1; } .gl-enemy-2 { grid-area: e2; }
+.gl-enemy-3 { grid-area: e3; } .gl-enemy-4 { grid-area: e4; }
+.gl-enemy-5 { grid-area: e5; }
+.gl-mini  { grid-area: mini; } .gl-aug { grid-area: aug; }
+.gl-cmp   { grid-area: cmp;  } .gl-bld { grid-area: bld; }
+.gl-log   { grid-area: log;  } .gl-cbx { grid-area: cbx; }
+.gl-pos   { grid-area: pos; } .gl-frl { grid-area: frl; }
+.gl-rsk   { grid-area: rsk; }
+.gl-imm   { grid-area: imm; } .gl-obj { grid-area: obj; }
+.gl-wav   { grid-area: wav; }
+
+/* Champion row — 5-col flex. Card hugs top of its grid row (align-self:start)
+   so popout tabs can jut below the card's border into the row's spare space. */
+.champ-row        { display: flex; align-items: stretch; gap: 10px;
+                    padding: 6px 10px; background: #14141d;
+                    border: 2px solid #2a2a3a; border-radius: 6px;
+                    min-width: 0; overflow: visible;
+                    /* Absolute-positioned children (PRO tab, popout tabs,
+                       rank badge) need this row as their positioning
+                       ancestor — without it they resolve to .app and
+                       render off-screen. */
+                    position: relative;
+                    /* align-self: start keeps card flush with row top so
+                       popout tabs can occupy the ~20px of headroom beneath
+                       the card without bleeding into the next row. Equal
+                       inter-card spacing is achieved via the grid's top
+                       padding matching the row-gap + headroom combination
+                       (see .game-layout padding). */
+                    align-self: start;
+                    font-variant-numeric: tabular-nums; line-height: 1.1; }
+.champ-row.enemy-row { flex-direction: row-reverse; }
+.cr-col           { position: relative;
+                    display: flex; flex-direction: column;
+                    gap: 4px; justify-content: center; align-items: center;
+                    min-width: 0; }
+.cr-col-icon      { flex: none; width: 64px; }
+/* Info column: top-align so the champion name hugs the top edge,
+   using the space vacated by the bottom-aligned HP square. */
+.cr-col-info      { flex: 1; min-width: 0; padding: 0 2px;
+                    justify-content: flex-start; gap: 3px; }
+.cr-col-items     { flex: none; }
+.cr-col-dmg       { flex: 1; min-width: 140px; align-items: stretch; }
+
+/* Tabs sit flush against the card's bottom border (no gap) so the card's
+   leader glow never peeks through between card and tab. */
+.cr-col .cr-tab   { position: absolute; top: 100%;
+                    left: 50%; transform: translateX(-50%);
+                    z-index: 3; max-width: 96%; }
+/* Rank (icon column) → flush with the card's OUTER border. Card has 10px
+   horizontal padding + 2px border (border-box), so content area starts 12px
+   inside the outer edge — the tab must shift -12px to land on it. */
+.cr-col-icon .cr-tab              { left: -12px; transform: none;
+                                     border-radius: 0 0 6px 0; }
+.champ-row.enemy-row .cr-col-icon .cr-tab
+                                   { left: auto; right: -12px; transform: none;
+                                     border-radius: 0 0 0 6px; }
+/* Gold tab → flush to the outer edge of the items area
+   (left border for ally, right border for enemy). */
+.cr-col-items .cr-tab             { left: 0; transform: none;
+                                     border-radius: 0 0 6px 0; }
+.champ-row.enemy-row .cr-col-items .cr-tab
+                                   { left: auto; right: 0; transform: none;
+                                     border-radius: 0 0 0 6px; }
+/* Summoner name tab → flush to card's OUTER border on the dmg side
+   (padding 10px + border 2px under border-box = -12px offset). */
+.cr-col-dmg .cr-tab               { left: auto; right: -12px; transform: none;
+                                     border-radius: 0 0 0 6px;
+                                     max-width: none; min-width: 120px; }
+.champ-row.enemy-row .cr-col-dmg .cr-tab
+                                   { left: -12px; right: auto; transform: none;
+                                     border-radius: 0 0 6px 0; }
+
+/* Role outlines — priority: me > dmg-leader > ehp-leader — with shadow.
+   The leader color also propagates to popout tabs so the card outline
+   visually wraps around them. */
+.champ-row        { box-shadow: 0 2px 6px rgba(0,0,0,0.45); }
+
+/* PRO title tab — iridescent gradient, vertical P·R·O on the outer
+   (screen-edge) side of the card. Rendered only if player.title==="PRO". */
+.cr-pro-tab       { position: absolute !important; top: 0; bottom: 0;
+                    left: -20px; width: 18px;
+                    display: flex !important; align-items: center; justify-content: center;
+                    writing-mode: vertical-rl; text-orientation: upright;
+                    font-weight: 900; font-size: 15px; letter-spacing: 10px;
+                    color: #0b0b12;
+                    background: linear-gradient(180deg,
+                      #ff6a6a 0%, #ffaa40 14%, #f8ff2e 28%, #44ff88 42%,
+                      #22d3ee 56%, #60a5fa 70%, #a855f7 84%, #ff6a6a 100%) !important;
+                    background-size: 100% 240%;
+                    animation: pro-iridescent 5s linear infinite;
+                    border: 2px solid #ffffff; border-right: none;
+                    border-radius: 4px 0 0 4px;
+                    box-shadow: 0 0 10px rgba(255,255,255,0.8),
+                                0 0 4px #fff,
+                                0 2px 4px rgba(0,0,0,0.6);
+                    text-shadow: 0 0 2px #fff, -1px 0 0 #fff, 1px 0 0 #fff,
+                                 0 -1px 0 #fff, 0 1px 0 #fff;
+                    z-index: 100 !important; pointer-events: none;
+                    opacity: 1 !important; visibility: visible !important; }
+.champ-row.enemy-row .cr-pro-tab { left: auto !important; right: -20px !important;
+                                    border: 2px solid #ffffff !important;
+                                    border-left: none !important;
+                                    border-radius: 0 4px 4px 0 !important; }
+@keyframes pro-iridescent {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 0% 260%; }
+}
+
+/* Runes + Summoners on ONE horizontal row. DOM order is keystone · sec
+   · summ-D · summ-F. Ally-row (icon on LEFT) reverses so summoners land
+   next to the icon; enemy-row keeps default so summoners land next to
+   the icon on the right. */
+.cr-icons-row     { display: flex; align-items: center; justify-content: center;
+                    gap: 3px; margin: 1px 0; flex-wrap: nowrap; }
+.ally-row  .cr-icons-row { flex-direction: row-reverse; }
+.cr-icons-row .rune-key { width: 18px; height: 18px; border-radius: 50%;
+                          background: #0b0b12; border: 1px solid #3a3a4a;
+                          flex: none; }
+.cr-icons-row .rune-sec { width: 12px; height: 12px; border-radius: 50%;
+                          background: #0b0b12; border: 1px solid #2a2a3a;
+                          flex: none; opacity: 0.9; }
+.cr-icons-row .summ-sep { width: 1px; height: 12px; background: #2a2a3a;
+                          margin: 0 2px; flex: none; }
+.cr-icons-row .summ     { width: 14px; height: 14px; border-radius: 3px;
+                          background: #0b0b12; border: 1px solid #2a2a3a;
+                          flex: none; }
+/* Leader borders + matching glow on tabs so the card's outline + shadow
+   appear continuous around the popout pills instead of getting cut off. */
+.champ-row.me             .cr-tab,
+.champ-row.dmg-leader     .cr-tab,
+.champ-row.ehp-leader     .cr-tab { border-width: 2px; padding: 1px 9px; }
+.champ-row.me             .cr-tab { border-color: #44ff88;
+                                    box-shadow: 0 2px 4px rgba(0,0,0,0.45),
+                                                0 0 8px rgba(68,255,136,0.35); }
+.champ-row.dmg-leader     .cr-tab { border-color: #ff4a6a;
+                                    box-shadow: 0 2px 4px rgba(0,0,0,0.45),
+                                                0 0 8px rgba(255,74,106,0.35); }
+.champ-row.ehp-leader     .cr-tab { border-color: #4a9eff;
+                                    box-shadow: 0 2px 4px rgba(0,0,0,0.45),
+                                                0 0 8px rgba(74,158,255,0.35); }
+.champ-row.me.dmg-leader  .cr-tab { border-color: #ff4a6a;
+                                    box-shadow: 0 2px 4px rgba(0,0,0,0.45),
+                                                0 0 8px rgba(255,74,106,0.35),
+                                                0 0 4px rgba(68,255,136,0.35); }
+.champ-row.me.ehp-leader  .cr-tab { border-color: #4a9eff;
+                                    box-shadow: 0 2px 4px rgba(0,0,0,0.45),
+                                                0 0 8px rgba(74,158,255,0.35),
+                                                0 0 4px rgba(68,255,136,0.35); }
+/* Jungle-buff glyphs pinned to the minimap-facing edge of the card,
+   vertically aligned to the damage-bar separators.
+   Red (fire)  = separator between Phys and Magic bars
+   Blue (water)= separator between Magic and True bars
+   Heights: 21px per bar + 4px gap → phys-mag separator at 23px,
+   mag-true separator at 48px from top of .cr-dmg. */
+.cr-dmg           { position: relative; }
+.cr-buff          { position: absolute; width: 30px; height: 30px;
+                    display: flex; align-items: center; justify-content: center;
+                    font-size: 26px; line-height: 1; z-index: 3;
+                    text-shadow: 0 0 3px rgba(0,0,0,0.85); }
+.cr-buff.buff-red  { top: 25px; transform: translateY(-50%);
+                     right: -28px; color: #ff8a2e;
+                     filter: drop-shadow(0 0 3px rgba(255,100,40,0.85)); }
+.cr-buff.buff-blue { top: 52px; transform: translateY(-50%);
+                     right: -28px; color: #60a5fa;
+                     filter: drop-shadow(0 0 3px rgba(96,165,250,0.85)); }
+.champ-row.enemy-row .cr-buff.buff-red,
+.champ-row.enemy-row .cr-buff.buff-blue { right: auto; left: -24px; }
+/* Baron-buff active: applied to <body> (baron-order / baron-chaos).
+   Cards themselves are NOT tinted — the team's page-background half
+   gets a purple smokey overlay instead. */
+body.baron-order::before,
+body.baron-chaos::before {
+  content: ''; position: fixed; top: 0; width: 52vw; height: 100vh;
+  background: radial-gradient(ellipse at center,
+              rgba(168,85,247,0.22) 0%,
+              rgba(80,30,120,0.10) 45%,
+              transparent 75%);
+  pointer-events: none; z-index: 0;
+  animation: baron-pulse 3.2s ease-in-out infinite;
+}
+body.baron-order::before  { left: 0; }
+body.baron-chaos::before  { right: 0; }
+@keyframes baron-pulse {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1;    }
+}
+.app { position: relative; z-index: 1; }
+
+/* Top-bar per-team objectives tracker — spans the full width of its
+   team's grid column (header column matches main grid). First chip's
+   left edge sits on the champ cards' outer-left edge; last chip's right
+   edge sits on the champ cards' outer-right edge. Equal gaps between. */
+.obj-tracker      { display: flex; align-items: center;
+                    justify-content: space-between; gap: 4px;
+                    padding: 0; font-size: 18px;
+                    font-variant-numeric: tabular-nums; line-height: 1;
+                    height: 100%; width: 100%; }
+.obj-tracker .obj     { display: inline-flex; align-items: center; gap: 6px;
+                        padding: 5px 10px; border-radius: 5px;
+                        background: rgba(0,0,0,0.45);
+                        border: 1px solid #2a2a3a;
+                        color: #dadfe3; flex: none; }
+.obj-tracker .obj .ic { font-size: 20px; line-height: 1; }
+.obj-tracker .obj .ic-img { width: 22px; height: 22px; object-fit: contain;
+                            display: inline-block; }
+.obj-tracker .obj .n  { font-weight: 800; font-size: 18px; color: #ffe879; }
+/* Dragon chip reserves room for up to 4 aspect pips + soul label above */
+.obj-tracker .obj.obj-dragon       { min-width: 130px; position: relative; }
+/* Dragon Soul — chasing gold pulse border + white label on top of chip */
+.obj-tracker .obj.obj-dragon.has-soul {
+  border-color: transparent;
+  background:
+    linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)) padding-box,
+    conic-gradient(from 0deg,
+      #ffd24a, #fff1a8, #ffd24a, #b8860b, #ffd24a) border-box;
+  border: 2px solid transparent;
+  animation: soul-chase 3s linear infinite;
+}
+@keyframes soul-chase {
+  0%   { filter: drop-shadow(0 0 3px rgba(255,210,74,0.55)); }
+  50%  { filter: drop-shadow(0 0 9px rgba(255,210,74,0.95)); }
+  100% { filter: drop-shadow(0 0 3px rgba(255,210,74,0.55)); }
+}
+.obj-tracker .obj.obj-dragon.has-soul::before {
+  content: attr(data-soul);
+  position: absolute; left: 50%; top: -16px; transform: translateX(-50%);
+  color: #ffffff; font-size: 11px; font-weight: 900;
+  letter-spacing: 1px; text-transform: uppercase; white-space: nowrap;
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000,
+               -1px 1px 0 #000, 1px 1px 0 #000,
+               0 0 4px rgba(255,210,74,0.85);
+}
+.obj-tracker .obj.obj-tower   .ic { color: #a3a3b5; }
+.obj-tracker .obj.obj-inhib   .ic { color: #88ddff; }
+.obj-tracker .obj.obj-dragon  .ic { filter: hue-rotate(0deg); }
+.obj-tracker .obj.obj-herald  .ic { color: #c08aff; }
+.obj-tracker .obj.obj-baron   .ic { color: #c08aff; }
+.obj-tracker .obj.obj-mite    .ic { color: #6ee7b7; }
+/* Aspect-tinted dragon pips */
+.obj-tracker .obj.obj-dragon .pip { display: inline-block; width: 10px;
+                                     height: 10px; border-radius: 50%;
+                                     border: 1px solid #0b0b12; margin-left: 2px; }
+.obj-tracker .obj.obj-dragon .pip.d-ocean    { background: #4aa0ff; }
+.obj-tracker .obj.obj-dragon .pip.d-mountain { background: #c4a070; }
+.obj-tracker .obj.obj-dragon .pip.d-cloud    { background: #9fd8f0; }
+.obj-tracker .obj.obj-dragon .pip.d-infernal { background: #ff6a2e; }
+.obj-tracker .obj.obj-dragon .pip.d-hextech  { background: #4ae0dc; }
+.obj-tracker .obj.obj-dragon .pip.d-chemtech { background: #88c05a; }
+.obj-tracker .obj.obj-dragon .pip.d-elder    { background: #e0d5ff;
+                                               box-shadow: 0 0 6px #c08aff; }
+/* Border is always the single 2px line — no inset shadow layer that would
+   make the card's visible edge thicker than the tab's 2px border. */
+.champ-row.me             { border-color: #44ff88;
+                            box-shadow: 0 0 10px rgba(68,255,136,0.35),
+                                        0 2px 6px rgba(0,0,0,0.55); }
+.champ-row.dmg-leader     { border-color: #ff4a6a;
+                            box-shadow: 0 0 10px rgba(255,74,106,0.35),
+                                        0 2px 6px rgba(0,0,0,0.55); }
+.champ-row.ehp-leader     { border-color: #4a9eff;
+                            box-shadow: 0 0 10px rgba(74,158,255,0.35),
+                                        0 2px 6px rgba(0,0,0,0.55); }
+/* "me" + leader: leader color on the card's border, a 2-px solid GREEN
+   outer ring wrapping OUTSIDE the leader color so both identities read. */
+.champ-row.me.dmg-leader  { border-color: #ff4a6a;
+                            box-shadow: 0 0 0 2px #44ff88,
+                                        0 0 10px rgba(255,74,106,0.45),
+                                        0 0 6px rgba(68,255,136,0.4),
+                                        0 2px 6px rgba(0,0,0,0.55); }
+.champ-row.me.ehp-leader  { border-color: #4a9eff;
+                            box-shadow: 0 0 0 2px #44ff88,
+                                        0 0 10px rgba(74,158,255,0.45),
+                                        0 0 6px rgba(68,255,136,0.4),
+                                        0 2px 6px rgba(0,0,0,0.55); }
+.champ-row.dmg-leader.ehp-leader { border-color: #ff4a6a;
+                                    box-shadow: 0 0 10px rgba(255,74,106,0.45),
+                                                0 0 4px rgba(74,158,255,0.4),
+                                                0 2px 6px rgba(0,0,0,0.55); }
+/* Tabs get the same outer green ring when their card is me+leader */
+.champ-row.me.dmg-leader .cr-tab,
+.champ-row.me.ehp-leader .cr-tab {
+  box-shadow: 0 0 0 2px #44ff88,
+              0 2px 4px rgba(0,0,0,0.45); }
+
+/* Icon + Lv overlay */
+/* static positioning so .cr-lv-badge inside resolves to .champ-row (relative)
+   and can sit 1px from the card's outer border. */
+.cr-iconwrap      { position: static; width: 64px; height: 64px; flex: none; }
+.cr-icon          { width: 64px; height: 64px; border-radius: 50%;
+                    border: 1px solid #4a4a5a; object-fit: cover;
+                    background: #0b0b12; display: block;
+                    image-rendering: -webkit-optimize-contrast; }
+/* Level badge nudged 4px further toward the outer screen edge on each side. */
+.cr-lv-badge      { position: absolute; top: 1px; left: -3px;
+                    min-width: 26px; padding: 1px 7px;
+                    background: #0b0b12; color: var(--clock);
+                    border: 1px solid var(--clock); border-radius: 10px;
+                    font-weight: 800; font-size: 15px; line-height: 1.15;
+                    text-align: center;
+                    box-shadow: 0 0 4px rgba(0,0,0,0.8);
+                    font-variant-numeric: tabular-nums; z-index: 2; }
+.champ-row.enemy-row .cr-lv-badge { left: auto; right: -3px; top: 1px; }
+
+/* Info col internal layout — name, combined icons row, EHP, CS stacked. */
+.cr-col-info      { gap: 1px; padding: 2px 2px; }
+.cr-name          { text-align: center; font-weight: 700; color: #e6e6f0;
+                    font-size: clamp(14px, 1.1vw, 19px); line-height: 1.2;
+                    padding-bottom: 3px;  /* room for descenders on g,p,y,j */
+                    /* Break only at whitespace (e.g. "Miss Fortune") — never
+                       mid-word. Single long words that still don't fit fall
+                       back to break-word so they don't visually blow up. */
+                    word-break: keep-all;
+                    overflow-wrap: break-word;
+                    hyphens: none;
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2; line-clamp: 2;
+                    -webkit-box-orient: vertical; overflow: hidden;
+                    max-height: 2.7em; width: 100%; }
+/* Names center on both sides (matches the centered EHP / CS / W/L stack). */
+.champ-row.enemy-row .cr-name { text-align: center; padding-right: 0; }
+.cr-lvg-row       { display: flex; justify-content: space-between;
+                    align-items: baseline; padding: 0 4px; width: 100%;
+                    font-size: 15px; font-weight: 700; white-space: nowrap; }
+.champ-row.enemy-row .cr-lvg-row { flex-direction: row-reverse; }
+.cr-lvg-row .lv   { color: #c8d0dc; }
+.cr-lvg-row .g    { color: var(--clock); }
+/* Push EHP to the bottom of the info column; CS follows below it
+   (last flex child). Name stays top-aligned. */
+.cr-ehp           { margin-top: auto;
+                    text-align: center; color: #aaccee;
+                    font-weight: 700; font-size: 15px;
+                    white-space: nowrap; width: 100%; }
+.cr-ehp .lbl      { color: var(--dim); margin-right: 4px; font-size: 12px; font-weight: 600; }
+.cr-cs            { text-align: center; color: #ffd890;
+                    font-weight: 700; font-size: 15px;
+                    white-space: nowrap; width: 100%; }
+.cr-cs .lbl       { color: var(--dim); margin-right: 4px; font-size: 12px; font-weight: 600; }
+/* EHP and CS stay center-aligned on both teams (keeps them vertically
+   aligned with each other regardless of side). */
+
+/* HP + Ult column: HP square fills full vertical height; Ult R-dot
+   is absolute-positioned at the bottom, overlaying the HP square. */
+.cr-hp-col        { position: relative; flex: none; width: 34px;
+                    align-self: stretch; padding: 4px 0; }
+/* Shift HP square + Ult dot 6px toward the MINIMAP on each side so the
+   group is centered in its space between info and items columns. */
+.ally-row  .cr-hp-col { transform: translateX( 6px); }
+.enemy-row .cr-hp-col { transform: translateX(-6px); }
+.cr-hp            { width: 34px; height: 100%;
+                    border-radius: 4px; border: 1px solid #2a2a3a;
+                    position: relative; overflow:hidden;
+                    background: #0b0b12; }
+/* Ult R vertically aligned with the BOTTOM row of the items grid alongside.
+   Bottom-row center sits 16px below the card's vertical midpoint.
+   Shrunk to 26px (was 28) so it reads like the item squares size-wise. */
+.cr-ult           { position: absolute; top: calc(50% + 16px); left: 50%;
+                    transform: translate(-50%, -50%); z-index: 2;
+                    width: 26px; height: 26px; border-radius: 50%;
+                    display: flex; align-items: center; justify-content: center;
+                    font-weight: 900; font-size: 16px;
+                    /* Crisp 1-px black stroke, no blur — the R stays sharp */
+                    text-shadow:
+                      -1px -1px 0 #000, 1px -1px 0 #000,
+                      -1px  1px 0 #000, 1px  1px 0 #000,
+                       0    1px 0 #000, 0   -1px 0 #000,
+                       1px  0   0 #000, -1px 0   0 #000;
+                    font-variant-numeric: tabular-nums; flex: none;
+                    transition: opacity 0.2s, box-shadow 0.2s; }
+.cr-ult.ult-ready { background: radial-gradient(circle at 35% 30%,
+                                 #c4f5ff 0%, #22d3ee 45%, #0e5a70 100%);
+                    color: #fff; border: 2px solid #a5f3fc;
+                    box-shadow: 0 0 10px rgba(34,211,238,0.75),
+                                0 0 3px rgba(165,243,252,0.5) inset; }
+.cr-ult.ult-cd    { background: #050509; color: #3a3a45;
+                    border: 2px solid #1a1a22;
+                    box-shadow: none; opacity: 0.8; }
+.cr-hp[data-hp="100"] { background: #28ff72; box-shadow: 0 0 8px rgba(40,255,114,0.55) inset; }
+.cr-hp[data-hp="75"]  { background: #f8ff2e; box-shadow: 0 0 8px rgba(248,255,46,0.55) inset; }
+.cr-hp[data-hp="50"]  { background: #ff8a2e; box-shadow: 0 0 8px rgba(255,138,46,0.55) inset; }
+.cr-hp[data-hp="25"]  { background: #ff2a48; box-shadow: 0 0 10px rgba(255,42,72,0.7)  inset; }
+.cr-hp[data-hp="0"]   { background: #3a3a42; }
+/* Vertical position matches the TOP row of the items grid next door exactly,
+   regardless of card height. Items are 2×30 + 2gap centered in the card, so
+   top-row center sits 16px above the card's vertical midpoint. */
+.cr-hp .revive-timer  { position: absolute; top: calc(50% - 16px);
+                        left: 0; right: 0; transform: translateY(-50%);
+                        text-align: center; line-height: 1;
+                        font-size: 15px; font-weight: 900; color: #ffe8e8;
+                        text-shadow: -1px -1px 0 #000, 1px -1px 0 #000,
+                                     -1px 1px 0 #000, 1px 1px 0 #000,
+                                     0 0 3px rgba(0,0,0,0.9);
+                        font-variant-numeric: tabular-nums; letter-spacing: 0.3px; }
+
+/* Items 3 across, 2 rows of icons. Gold popout-tab sits just below them. */
+.cr-items         { display: grid; grid-template-columns: repeat(3, 30px);
+                    grid-template-rows: 30px 30px; gap: 2px; flex: none; }
+.cr-items .ci     { width: 30px; height: 30px; background:#0b0b12;
+                    border: 1px solid #2a2a3a; border-radius: 3px;
+                    overflow:hidden; }
+.cr-items .ci.empty { border-style: dashed; opacity: 0.25; }
+.cr-items .ci img { width:100%; height:100%; display:block; object-fit:cover; }
+
+/* Damage — 3 stacked horizontal bars, width weighted by team share,
+   value printed at the start of the colored fill. */
+/* Damage column content — 3 weighted bars stacked vertically */
+.cr-dmg           { display: flex; flex-direction: column; gap: 4px;
+                    min-width: 140px; width: 100%;
+                    justify-content: center;
+                    padding: 0 2px; }
+.cr-dmg .dr       { position: relative; height: 23px; background:#0b0b12;
+                    border: 1px solid #1e1e2a; border-radius: 2px;
+                    overflow:hidden;
+                    display: flex; align-items: center; }
+.cr-dmg .dr .df   { position: absolute; top: 0; left: 0; bottom: 0;
+                    transition: width 0.3s ease-out; }
+.cr-dmg .dr.phys .df { background: #ff4a6a; }
+.cr-dmg .dr.mag  .df { background: #4a9eff; }
+.cr-dmg .dr.tru  .df { background: #f0f0f0; }
+.cr-dmg .dr .dv   { position: relative; z-index: 2;
+                    display: inline-flex; align-items: center;
+                    height: 100%;
+                    padding: 0 10px; font-size: 15px; font-weight: 900;
+                    color: #fff; line-height: 1;
+                    /* Two-pass 2-px solid outline + soft glow → reads clearly
+                       over any bar-fill color. */
+                    text-shadow:
+                      /* 2-px outer ring */
+                       2px  0 0 #000, -2px  0 0 #000,
+                       0    2px 0 #000,  0  -2px 0 #000,
+                       2px  2px 0 #000, -2px  2px 0 #000,
+                       2px -2px 0 #000, -2px -2px 0 #000,
+                      /* 1-px filler to smooth corners */
+                       1px  0 0 #000, -1px  0 0 #000,
+                       0    1px 0 #000,  0  -1px 0 #000,
+                       1px  1px 0 #000, -1px  1px 0 #000,
+                       1px -1px 0 #000, -1px -1px 0 #000,
+                      /* soft glow pad so bright fills don't over-saturate */
+                       0    0   4px rgba(0,0,0,0.9);
+                    font-variant-numeric: tabular-nums; letter-spacing: 0.3px; }
+.cr-dmg .dr.tru .dv { color: #111;
+                      text-shadow:
+                         2px  0 0 #fff, -2px  0 0 #fff,
+                         0    2px 0 #fff,  0  -2px 0 #fff,
+                         2px  2px 0 #fff, -2px  2px 0 #fff,
+                         2px -2px 0 #fff, -2px -2px 0 #fff,
+                         1px  0 0 #fff, -1px  0 0 #fff,
+                         0    1px 0 #fff,  0  -1px 0 #fff,
+                         1px  1px 0 #fff, -1px  1px 0 #fff,
+                         1px -1px 0 #fff, -1px -1px 0 #fff,
+                         0    0   4px rgba(255,255,255,0.9); }
+.champ-row.enemy-row .cr-dmg .dr   { justify-content: flex-end; }
+.champ-row.enemy-row .cr-dmg .dr .df { left: auto; right: 0; }
+
+/* Popout tabs — small pill labels that pop off the card from below. */
+.cr-tab           { display: inline-flex; align-items: center; justify-content: center;
+                    padding: 2px 10px; border-radius: 0 0 6px 6px;
+                    border: 1px solid var(--border); border-top: none;
+                    background: #0f1018; font-size: 14px;
+                    font-weight: 700; letter-spacing: 0.3px;
+                    white-space: nowrap; line-height: 1.4;
+                    font-variant-numeric: tabular-nums;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+                    min-width: 44px; max-width: 100%; overflow: hidden;
+                    text-overflow: ellipsis; color: #c8d0dc; }
+.cr-gold-tab      { /* visually smaller than item-row width */
+                    color: var(--clock); border-color: #5c4410;
+                    background: linear-gradient(180deg, #171513 0%, #2a1f08 100%);
+                    width: 80%; }
+/* Rank tier colors: text + bg keep the tier identity; borders are DIMMED
+   toward the card's default #2a2a3a so the tab blends gently with the
+   card on non-leader cards (no hard color-cutoff at the junction). Leader
+   cards override border-color anyway, so this only affects neutral cards. */
+.cr-tab.rk-iron        { color: #a08670; border-color: #3a2c22; background: #0e0b08; }
+.cr-tab.rk-bronze      { color: #d48d5a; border-color: #422a1a; background: #160e08; }
+.cr-tab.rk-silver      { color: #dadfe3; border-color: #3a3e44; background: #10131a; }
+.cr-tab.rk-gold        { color: #ffc84a; border-color: #4e3a14; background: #141007; }
+.cr-tab.rk-plat        { color: #4adfd1; border-color: #163e3a; background: #08141a; }
+.cr-tab.rk-emerald     { color: #3fe37a; border-color: #1a3a25; background: #071a0d; }
+.cr-tab.rk-diamond     { color: #7fb5ff; border-color: #1c2e4e; background: #081220; }
+.cr-tab.rk-master      { color: #c07dff; border-color: #34204c; background: #14082a; }
+.cr-tab.rk-grandmaster { color: #ff6a6a; border-color: #4c1e1e; background: #1a0808; }
+.cr-tab.rk-challenger  { color: #ffd24a;
+                         border-color: #4e3a18;
+                         background: linear-gradient(180deg,#1a1008 0%,#2a1b08 100%);
+                         box-shadow: 0 0 5px rgba(255,210,74,0.25), 0 2px 4px rgba(0,0,0,0.4); }
+/* Name tab + record tab use same base .cr-tab with subtle color tweaks.
+   Rec tab widened to fit up to 3-digit W / 3-digit L ("732W / 684L"). */
+.cr-rec-tab       { color: #ffffff; border-color: #14b8a6; background: #06181a;
+                    min-width: 104px; max-width: none; padding: 2px 8px;
+                    font-weight: 800; }
+.cr-name-tab      { color: #c8d0dc; border-color: #3a3a52;
+                    max-width: none;
+                    /* Blue side: text right-aligns to the tab's right edge */
+                    justify-content: flex-end; text-align: right; padding-right: 12px; }
+/* Red side: text left-aligns to the tab's left edge */
+.champ-row.enemy-row .cr-name-tab {
+                    justify-content: flex-start; text-align: left;
+                    padding-left: 12px; padding-right: 10px; }
+.cr-gold-tab      { min-width: 60px; }
+
+/* Coach panels — title on top (smaller font), content below. Minimal
+   buffer between title and content. 4-line clamp, no scroll. */
+.gl-panel         { background: var(--bg-sec); border: 1px solid var(--border);
+                    border-radius: 5px; padding: 3px 8px 4px;
+                    display: flex; flex-direction: column;
+                    min-width: 0; min-height: 0; overflow: hidden; }
+.gl-panel .pnl-lbl { font-size: 10px; color: var(--label);
+                     text-transform: uppercase; letter-spacing: 1.5px;
+                     font-weight: 800; line-height: 1;
+                     text-align: center; margin-bottom: 1px; }
+.gl-panel .pnl-val { font-size: clamp(13px, 1.05vw, 16px); line-height: 1.32;
+                     color: var(--stat); word-wrap: break-word;
+                     text-align: left; flex: 1;
+                     display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4;
+                     -webkit-box-orient: vertical; overflow: hidden;
+                     padding: 0; min-width: 0; }
+.gl-panel .pnl-val .sline { display: block; }
+.gl-panel.cmp .pnl-val { white-space: pre-line; -webkit-line-clamp: 3; line-clamp: 3; }
+/* Row-specific panel constraints. Rows use fr-units so these panels grow to
+   fill their grid row; we set max-height to prevent over-growth, not under. */
+.gl-panel { height: 100%; }
+.gl-panel.bld { height: 100%; }
+.gl-panel.empty .pnl-val { color: var(--dim); font-style: italic; }
+/* Coach panels: no per-kind accent border; all share the same neutral look.
+   Risk panel no longer has its red-tinted background — matches the others. */
+.gl-panel.bld   { padding: 6px 10px 8px; }
+/* Item-build icon strip: horizontal row of 24–34px item cells, green outline
+   on icons that the active player already owns. */
+.bld-strip      { display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+                  justify-content: center; padding: 4px 0; flex: 1; }
+.bld-strip .bi  { position: relative; width: 46px; height: 46px;
+                  border: 2px solid #2a2a3a; border-radius: 4px;
+                  background: #0b0b12; overflow: hidden; flex: none;
+                  transition: border-color 0.15s; }
+.bld-strip .bi.owned { border-color: #44ff88;
+                       box-shadow: 0 0 6px rgba(68,255,136,0.45);
+                       background: #002211; }
+.bld-strip .bi img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.bld-strip .bi .fb { position: absolute; inset: 0;
+                     display: flex; align-items: center; justify-content: center;
+                     color: #666; font-size: 11px; font-weight: 700; }
+.bld-strip .bi-arrow { color: var(--dim); font-size: 14px; padding: 0 2px;
+                       user-select: none; }
+.bld-aug             { margin-top: 6px; padding-top: 6px;
+                       border-top: 1px solid #1f1f2c;
+                       font-size: 13px; line-height: 1.4; color: #c8d0dc;
+                       text-align: center; }
+
+/* Minimap cell: the ARAM map background + the "RIGHT NOW" action-bar below.
+   Top margin leaves ~18px for the fixed .rtclock-overlay band; the same
+   ~18px at the bottom so the minimap visually centers between the top
+   champ-card's top border and the last champ-card's tab-bottom border. */
+.gl-mini-box      { margin: 18px 14px 18px 14px;
+                    background: radial-gradient(ellipse at center, #1a2740 0%, #0b0b12 85%);
+                    border: 1px solid var(--border); border-radius: 6px;
+                    display: flex; flex-direction: column;
+                    min-height: 220px; position: relative; overflow: hidden; }
+/* Minimap inner area holds the map image (Howling Abyss for ARAM); falls
+   back to the gradient ring if the image 404s. Annotations later go on
+   top via an SVG overlay. */
+.gl-mini-inner    { flex: 1; position: relative;
+                    background-image: url('/icons/maps/map11.png');
+                    background-size: contain;
+                    background-position: center;
+                    background-repeat: no-repeat;
+                    background-color: #0b0b12;
+                    border-radius: 4px; overflow: hidden;
+                    display: flex; align-items: flex-start; justify-content: flex-start; }
+/* Minimap SVG overlay: champion dots, dead markers, wave indicators.
+   Coords are %-normalized in SVG viewBox 0 0 100 100. */
+.gl-mini-svg      { position: absolute; inset: 0; width: 100%; height: 100%;
+                    pointer-events: none; z-index: 2; }
+.mm-dot-ally      { fill: #44ff88; stroke: #0f1a12; stroke-width: 0.6; }
+.mm-dot-enemy     { fill: #ff4a6a; stroke: #1a0f12; stroke-width: 0.6; }
+.mm-dot-me        { fill: #7cffa8; stroke: #ffffff; stroke-width: 1.2; }
+.mm-dot-dead      { opacity: 0.35; stroke-dasharray: 0.9 0.7; }
+.mm-x-mark        { stroke-width: 1.4; stroke-linecap: round; }
+.mm-x-ally        { stroke: #44ff88; }
+.mm-x-enemy       { stroke: #ff4a6a; }
+.mm-label         { font-family: Inter, Segoe UI, sans-serif; font-weight: 800;
+                    font-size: 2.8px; fill: #fff;
+                    paint-order: stroke; stroke: #000; stroke-width: 0.8;
+                    text-anchor: middle; dominant-baseline: middle; }
+.mm-respawn       { font-family: Inter, Segoe UI, sans-serif; font-weight: 700;
+                    font-size: 3.2px; fill: #ffd86b;
+                    paint-order: stroke; stroke: #000; stroke-width: 0.9;
+                    text-anchor: middle; dominant-baseline: middle; }
+.mm-wave          { stroke-width: 0.6; fill-opacity: 0.85; }
+.mm-wave-ally     { fill: #44ff88; stroke: #0f1a12; }
+.mm-wave-enemy    { fill: #ff4a6a; stroke: #1a0f12; }
+.mm-tower         { fill: #cfb26e; stroke: #2a1c08; stroke-width: 0.6; }
+.mm-tower-fallen  { fill: #333; opacity: 0.5; }
+/* Map-structure layer: team-tinted turrets / inhibitors / nexus. Live
+   buildings use saturated team colors; fallen ones desaturate + dim. */
+.mm-struct        { stroke-width: 0.5; }
+.mm-struct-blue   { fill: #4a9eff; stroke: #0a1a3a; }
+.mm-struct-red    { fill: #ff4a6a; stroke: #3a0a14; }
+.mm-struct-fallen { fill: #2a2a34; stroke: #111; opacity: 0.55; }
+.mm-struct-inhib  { stroke-width: 0.6; }
+.mm-struct-nexus  { stroke-width: 0.8; }
+.mm-pit           { fill: rgba(168,85,247,0.15); stroke-width: 0.6;
+                    stroke-dasharray: 1.2 0.8; }
+.mm-pit-baron     { stroke: #a855f7; }
+.mm-pit-dragon    { stroke: #ff8a2e; fill: rgba(255,138,46,0.12); }
+/* Placeholder label removed — minimap shows just the map image now. */
+.gl-mini-action   { padding: clamp(8px, 1vh, 16px) 14px;
+                    text-align: center;
+                    font-size: clamp(22px, 2.4vw, 38px); font-weight: 800;
+                    color: var(--action); text-transform: uppercase;
+                    letter-spacing: 2px; line-height: 1.1;
+                    border-top: 1px solid #2a2a3a;
+                    background: linear-gradient(180deg, transparent 0%, rgba(255,34,68,0.08) 100%); }
+.gl-mini-action:empty::before { content: '4'; color: var(--dim); }
+
+/* Chat dock: embedded inside the game grid uses display:contents so log + input
+   become direct grid items. Total chat height capped ~1/9 screen.
+   (Row heights in .game-layout already reserve: log=minmax(70px,1fr),
+    cbx=clamp(44-60px). Here we just flatten backdrops and fill cells.) */
+.chat-dock.docked { display: contents; }
+.chat-dock.docked .chat-log   { grid-area: log; max-height: none;
+                                height: 100%; min-height: 0;
+                                border-radius: 5px; backdrop-filter: none;
+                                -webkit-backdrop-filter: none;
+                                font-size: 13px; padding: 5px 10px;
+                                background: var(--bg-sec); }
+.chat-dock.docked .chat-log .msg { margin-bottom: 0.2em; }
+.chat-dock.docked .chat-input input { font-size: 15px; }
+.chat-dock.docked .chat-log:empty { display: block; }
+.chat-dock.docked .chat-input { grid-area: cbx; backdrop-filter: none;
+                                -webkit-backdrop-filter: none;
+                                background: var(--bg-field);
+                                border-radius: 5px; height: 100%; }
+
+/* legacy combat HUD card (not used in game-layout) */
+.card.combat      { grid-column: 1 / -1; padding: 10px 12px;
+                    border-left: 3px solid var(--next);
+                    display:flex; flex-direction:column; gap: 8px;
+                    background: linear-gradient(90deg,#0e1628 0%,#111119 50%,#1a0f1a 100%); }
+.combat-vs        { display:grid; grid-template-columns: 1fr auto 1fr;
+                    gap: clamp(10px, 1.2vw, 18px); align-items:stretch;
+                    min-height: 260px; }
+.team-col         { display:flex; flex-direction:column; min-width:0; gap: 6px; }
+.team-col.order   { }                     /* blue/left-tinted */
+.team-col.chaos   { }                     /* red/right-tinted */
+.team-header      { font-size: clamp(11px, 0.95vw, 13px);
+                    letter-spacing: 1.5px; text-transform: uppercase;
+                    font-weight: 700; padding: 2px 6px; }
+.team-col.order .team-header   { color: #4a9eff; text-align:left;
+                                  border-bottom: 2px solid #2458a8; }
+.team-col.chaos .team-header   { color: #ff4a6a; text-align:right;
+                                  border-bottom: 2px solid #8c2c2c; }
+.champ-stack      { display:grid;
+                    grid-template-columns: repeat(5, minmax(0, 1fr));
+                    gap: clamp(4px, 0.5vw, 8px); }
+
+.champ-card       { background:#14141d; border: 1px solid #2a2a3a;
+                    border-radius: 6px; padding: 6px; min-width: 0;
+                    display:flex; flex-direction:column; gap: 4px;
+                    font-size: clamp(11px, 0.95vw, 13px); }
+.champ-card.me    { border-color: #44ff88;
+                    box-shadow: 0 0 8px rgba(68,255,136,0.35); }
+.champ-card.enemy { border-color: #3a2030; }
+
+.cc-top           { position:relative; width:100%; aspect-ratio: 1 / 1;
+                    border-radius: 4px; overflow:hidden; background:#0b0b12; }
+.cc-top img       { width:100%; height:100%; display:block; object-fit:cover; }
+.cc-top .cc-lvl   { position:absolute; bottom: 2px; right: 2px;
+                    min-width: 22px; padding: 1px 5px;
+                    background: rgba(0,0,0,0.78); color: var(--clock);
+                    font-weight: 700; font-size: 12px; text-align:center;
+                    border-radius: 3px; font-variant-numeric: tabular-nums; }
+.cc-top .cc-kda   { position:absolute; top: 2px; left: 2px;
+                    padding: 1px 5px; font-size: 10px;
+                    background: rgba(0,0,0,0.78); color: #c8d0dc;
+                    border-radius: 3px; font-variant-numeric: tabular-nums; }
+.cc-top .cc-fb    { position:absolute; inset:0;
+                    display:flex; align-items:center; justify-content:center;
+                    color:#666; font-weight:700; font-size: 22px; }
+
+.cc-name          { text-align:center; font-weight: 600; color: #c8d0dc;
+                    white-space: nowrap; overflow:hidden; text-overflow: ellipsis;
+                    font-size: clamp(11px, 0.9vw, 13px); }
+
+.cc-items         { display:grid; grid-template-columns: repeat(3, 1fr);
+                    gap: 2px; }
+.cc-items .ci     { aspect-ratio: 1 / 1; background:#0b0b12;
+                    border: 1px solid #2a2a3a; border-radius: 3px;
+                    overflow:hidden; }
+.cc-items .ci.empty { background: #0e0e16; border-style: dashed; opacity: 0.35; }
+.cc-items .ci img { width:100%; height:100%; display:block; object-fit:cover; }
+
+.cc-bar           { position:relative; height: 15px; background:#0b0b12;
+                    border: 1px solid #2a2a3a; border-radius: 2px;
+                    overflow:hidden; }
+.cc-bar .cc-fill  { position:absolute; top:0; left:0; bottom:0;
+                    transition: width 0.25s ease-out; }
+.cc-bar.hp   .cc-fill { background: linear-gradient(90deg,#2c8c4a,#44ff88); }
+.cc-bar.mana .cc-fill { background: linear-gradient(90deg,#2458a8,#4a9eff); }
+.cc-bar.hp.low  .cc-fill { background: linear-gradient(90deg,#8c2c2c,#ff4444); }
+.cc-bar.hp.mid  .cc-fill { background: linear-gradient(90deg,#8c6c2c,#ffaa00); }
+.cc-bar .cc-bar-txt { position:absolute; inset:0;
+                    font-size: 10px; color:#f2f2f8; font-weight: 700;
+                    display:flex; align-items:center; justify-content:center;
+                    text-shadow: 0 0 3px #000, 0 0 2px #000;
+                    font-variant-numeric: tabular-nums; letter-spacing: 0.3px; }
+.cc-bar.mana.nomana { opacity: 0.25; }
+.cc-bar.mana.nomana .cc-bar-txt { content: 'N/A'; }
+
+.cc-dmg           { display:flex; flex-direction:column; gap: 2px;
+                    padding-top: 2px; border-top: 1px solid #222230; }
+.cc-dmg .dmg-row  { display:grid; grid-template-columns: 12px 1fr auto;
+                    gap: 4px; align-items:center;
+                    font-size: 10px; font-variant-numeric: tabular-nums;
+                    line-height: 1; }
+.cc-dmg .dmg-row .dmg-key { font-weight: 700; text-align:center;
+                            font-size: 10px; line-height: 1; }
+.cc-dmg .dmg-row.phys .dmg-key { color: #ff4a6a; }
+.cc-dmg .dmg-row.mag  .dmg-key { color: #4a9eff; }
+.cc-dmg .dmg-row.tru  .dmg-key { color: #ffffff; }
+.cc-dmg .dmg-row .dmg-bar { height: 5px; background:#0b0b12;
+                            border-radius: 2px; overflow:hidden;
+                            border: 1px solid #1e1e2a; }
+.cc-dmg .dmg-row .dmg-fill { height:100%; transition: width 0.3s ease-out; }
+.cc-dmg .dmg-row.phys .dmg-fill { background: #ff4a6a; }
+.cc-dmg .dmg-row.mag  .dmg-fill { background: #4a9eff; }
+.cc-dmg .dmg-row.tru  .dmg-fill { background: #f0f0f0; }
+.cc-dmg .dmg-row .dmg-val { color: #c8d0dc; min-width: 36px; text-align:right;
+                            font-weight: 600; }
+
+.cc-ehp           { display:flex; justify-content: space-between;
+                    align-items:center; font-size: 11px; padding-top: 2px;
+                    border-top: 1px solid #222230;
+                    font-variant-numeric: tabular-nums; }
+.cc-ehp .ehp-lbl  { color: var(--label); letter-spacing: 0.5px;
+                    text-transform: uppercase; font-size: 9px; }
+.cc-ehp .ehp-val  { color: #a8d8a8; font-weight: 700; font-size: 13px; }
+
+.vs-center        { display:flex; align-items:center; justify-content:center;
+                    color: var(--dim); font-weight: 800; letter-spacing: 4px;
+                    font-size: clamp(14px, 1.3vw, 20px);
+                    writing-mode: vertical-rl; text-orientation: upright;
+                    padding: 0 4px; user-select:none; }
+
+/* Inline tags from coach output: [A]name[/A], [E]name[/E], [T]time[/T] */
+.tag-ally  { color: #44ff88; font-weight: 600; }
+.tag-enemy { color: #ff4a6a; font-weight: 600; }
+.tag-timer { color: #ffd700; font-weight: 700; font-variant-numeric: tabular-nums;
+             padding: 0 2px; }
+/* Sentence break — coach text is split on `. ` to make scannable lines */
+.card .value .sline { display:block; margin-top: 4px; }
+.card .value .sline:first-child { margin-top: 0; }
+
+.pregame { padding: 24px; font-size: 18px; line-height: 1.6;
+  color: #c8c8d8; white-space: pre-wrap; }
+footer { display: none; }
+.dot { display:inline-block; width:8px; height:8px; border-radius:50%;
+  background: var(--dim); margin-right:4px; vertical-align: middle; }
+.dot.alive { background: #44ff88; }
+.dot.stale { background: #ffaa00; }
+.dot.dead  { background: #ff4444; }
+
+/* In-game-style chat dock: fixed bottom-center, ~20% viewport width */
+.chat-dock         { position: fixed; bottom: clamp(6px, 0.8vh, 14px);
+                     left: 50%; transform: translateX(-50%);
+                     width: 25vw; min-width: 320px; max-width: 520px;
+                     display: flex; flex-direction: column; gap: 4px;
+                     z-index: 50; pointer-events: none; }
+.chat-dock > *     { pointer-events: auto; }
+.chat-log          { background: rgba(17,17,25,0.90);
+                     border: 1px solid var(--border); border-radius: 6px;
+                     padding: 8px 14px; font-size: 17px; line-height: 1.45;
+                     max-height: calc(1.45em * 10 + 16px);
+                     overflow-y: auto; color: #c8d0dc;
+                     backdrop-filter: blur(3px);
+                     -webkit-backdrop-filter: blur(3px); }
+.chat-log:empty    { display: none; }
+/* Small vertical gap between messages; timestamps live next to the entry,
+   not inside the log, so no hanging-indent reservation is needed. */
+.chat-log .msg     { margin: 0 0 0.35em 0; word-wrap: break-word; }
+.chat-log .msg:last-child { margin-bottom: 0; }
+.chat-log .msg.user      { color: #aad8ff; }
+.chat-log .msg.user .src { color: #6ab2ff; font-weight: 600; }
+.chat-log .msg.coach      { color: #99f6e4; }
+.chat-log .msg.coach .src { color: #ffffff; font-weight: 700;
+                            text-transform: uppercase; letter-spacing: 0.5px; }
+.chat-log .msg.system .src { color: var(--dim); font-weight: 600; }
+.chat-log .msg.system { color: var(--dim); font-style: italic; font-size: 15px; }
+.chat-log .msg.delivered { opacity: 0.6; }
+.chat-log .msg.flagged      { border-left: 3px solid #ff4a6a;
+                              padding: 2px 6px 2px 8px;
+                              margin-left: -10px; margin-top: 4px;
+                              background: rgba(255,74,106,0.08);
+                              border-radius: 0 3px 3px 0; }
+.chat-log .msg.flagged.reviewed { border-left-color: #3ddba8;
+                                  background: rgba(61,219,168,0.08); }
+.chat-log .msg .flag-bang   { display:inline-block; margin-left: 6px;
+                              padding: 1px 6px; border-radius: 3px;
+                              background: #ff4a6a; color: #fff;
+                              font-weight: 700; font-size: 12px;
+                              cursor: pointer; user-select:none;
+                              vertical-align: 2px; }
+.chat-log .msg.flagged.reviewed .flag-bang { background: #3ddba8;
+                                              color: #0b0b12; }
+/* Inline coach-tag styling inside chat log */
+.chat-log .tag-ally  { color: #44ff88; font-weight: 600; }
+.chat-log .tag-enemy { color: #ff4a6a; font-weight: 600; }
+.chat-log .tag-timer { color: #ffd700; font-weight: 700; padding: 0 2px;
+                       font-variant-numeric: tabular-nums; }
+
+.chat-input        { display: flex; gap: 4px; align-items: center;
+                     background: rgba(17,17,25,0.92);
+                     border: 1px solid var(--border); border-radius: 6px;
+                     padding: 5px 8px; backdrop-filter: blur(3px);
+                     -webkit-backdrop-filter: blur(3px); }
+.chat-input .chat-ts { color: var(--dim); font-size: 12px;
+                       font-variant-numeric: tabular-nums; flex: none;
+                       padding: 0 8px 0 4px; border-right: 1px solid #2a2a3a;
+                       min-width: 42px; text-align: center; font-weight: 600; }
+.chat-input input  { flex: 1; background: transparent; color: var(--stat);
+                     border: none; outline: none; font-size: 18px;
+                     font-family: inherit; padding: 6px 8px; min-width: 0; }
+.chat-input input::placeholder { color: var(--dim); }
+.chat-input button { flex: none; background: transparent; color: var(--dim);
+                     border: 1px solid transparent; border-radius: 4px;
+                     cursor: pointer; padding: 5px 10px; font-size: 20px;
+                     line-height: 1; transition: color 0.1s, border-color 0.1s; }
+.chat-input button:hover:not(:disabled) { color: var(--stat); border-color: #2a2a3a; }
+.chat-input button:active { transform: translateY(1px); }
+.chat-input button:disabled { opacity: 0.3; cursor: not-allowed; }
+.chat-input button.send { color: var(--next); font-weight: 700; }
+.chat-input button.send:hover:not(:disabled) { color: #6ab2ff; }
+/* Flush-confirm modal */
+.flush-ovl        { position: fixed; inset: 0; background: rgba(0,0,0,0.72);
+                    z-index: 80; display: none; align-items: center;
+                    justify-content: center; backdrop-filter: blur(3px);
+                    -webkit-backdrop-filter: blur(3px); }
+.flush-ovl.open   { display: flex; }
+.flush-box        { background: var(--bg-sec); border: 1px solid var(--border);
+                    border-radius: 8px; padding: 20px 22px; max-width: 640px;
+                    min-width: 360px; max-height: 70vh; display: flex;
+                    flex-direction: column; gap: 12px; color: var(--stat); }
+.flush-box h3     { margin: 0; font-size: 16px; letter-spacing: 1px;
+                    text-transform: uppercase; color: #ff4a6a; }
+.flush-box .flush-list { flex: 1; overflow-y: auto; margin: 0;
+                         padding: 8px 10px; border: 1px solid var(--border);
+                         border-radius: 4px; background: #14141d;
+                         font-size: 14px; line-height: 1.5; }
+.flush-box .flush-list .fi { padding: 4px 0; border-bottom: 1px solid #1e1e2a;
+                             color: #ffcccc; }
+.flush-box .flush-list .fi:last-child { border-bottom: none; }
+.flush-box .flush-list .fi .ts { color: var(--dim); font-size: 11px;
+                                  margin-right: 6px; font-variant-numeric: tabular-nums; }
+.flush-box .flush-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.flush-box button { font-family: inherit; font-size: 14px;
+                    font-weight: 600; padding: 8px 14px; cursor: pointer;
+                    background: var(--bg-field); color: var(--stat);
+                    border: 1px solid var(--border); border-radius: 6px; }
+.flush-box button:hover { background: #1c1c28; border-color: #3a3a52; }
+.flush-box button.primary { background: var(--next); color: #06121f;
+                            border-color: var(--next); }
+.flush-box button.danger  { background: #8c2c2c; color: #fff;
+                            border-color: #ff4a6a; }
+
+.toast { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-sec); border: 1px solid var(--border); color: var(--stat);
+  padding: 8px 16px; border-radius: 6px; font-size: 13px; opacity: 0;
+  transition: opacity 0.2s; pointer-events: none; }
+.toast.show { opacity: 1; }
+.toast.err { border-color: var(--risk); color: var(--risk); }
+</style>
+</head><body>
+<div class="app">
+  <header>
+    <div class="hdr-left"></div>
+    <div class="hdr-stack">
+      <div class="mode-badge" id="mode-badge" data-mode="client">CLIENT</div>
+      <div class="clock" id="clock">--:--</div>
+    </div>
+    <div class="hdr-right"></div>
+  </header>
+  <main id="main"></main>
+</div>
+<div class="rtclock-overlay" id="rtclock">--:--</div>
+<div class="chat-dock floating">
+  <div class="chat-log" id="chat-log"></div>
+  <div class="chat-input">
+    <span class="chat-ts" id="chat-ts">--:--</span>
+    <input type="text" id="inp" autocomplete="off" spellcheck="false"
+           placeholder="Report error, ask coach&hellip; (Enter to send)">
+    <button class="send" id="btn-send" title="Send (Enter)">&#10148;</button>
+    <button id="btn-scan"  title="Force vision scan">&#128065;</button>
+    <button id="btn-coach" title="Refresh">&#8635;</button>
+    <button id="btn-clear" title="Clear entry">&#10005;</button>
+    <button id="btn-flush" title="Flush chat log (review flagged first)">&#128465;</button>
+  </div>
+</div>
+<div class="flush-ovl" id="flush-ovl">
+  <div class="flush-box">
+    <h3 id="flush-title">Flush chat log?</h3>
+    <div id="flush-body"></div>
+    <div class="flush-list" id="flush-list"></div>
+    <div class="flush-actions" id="flush-actions"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<footer><span class="dot" id="dot"></span><span id="footer-text">connecting&hellip;</span></footer>
+<script>
+const MAIN = document.getElementById('main');
+const CARDS = [
+  ['immediate', 'Immediate'],
+  ['risk',      'Risk'],
+  ['fight_rule','Fight Rule', 'fight'],
+  ['positioning','Positioning'],
+  ['wave',      'Wave'],
+  ['objective', 'Objective'],
+  ['map',       'Map'],
+  ['item_build','Item Build', 'items'],
+  ['augments',  'Augments'],
+];
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val || '—';
+}
+// Escape HTML, then convert coach inline tags to spans + split sentences
+// for easier glance-reading. Returns innerHTML-safe string.
+// Uses string replaceAll instead of regex to avoid Python-string-literal
+// double-escape issues with bracket metacharacters.
+function markupHTML(raw) {
+  if (raw == null) return '';
+  // 1. HTML-escape
+  let s = String(raw)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // After HTML-escape, tag markers become &lt;/A&gt; etc? No — the tags
+  // use [A]/[E]/[T] brackets, which are NOT escaped. Safe for replaceAll.
+  // Opening tags
+  s = s.replaceAll('[A]', '<span class="tag-ally">');
+  s = s.replaceAll('[E]', '<span class="tag-enemy">');
+  s = s.replaceAll('[T]', '<span class="tag-timer">');
+  // Closing tags
+  s = s.replaceAll('[/A]', '</span>');
+  s = s.replaceAll('[/E]', '</span>');
+  s = s.replaceAll('[/T]', '</span>');
+  // 3. Sentence-break: turn ". " into a soft line break for scannability.
+  s = s.replace(/\. ([A-Z])/g, '.<br>$1');
+  return s;
+}
+function fmtClock(s) {
+  if (s == null || isNaN(s)) return '--:--';
+  const t = Math.max(0, Math.floor(s));
+  const mm = String(Math.floor(t/60)).padStart(2,'0');
+  const ss = String(t%60).padStart(2,'0');
+  return mm + ':' + ss;
+}
+// ── Pre-game Lobby renderer (client mode) ──────────────────────────────
+// Three columns: (1) draft inputs, (2) quick-action buttons, (3) coach response.
+// Inputs persist in localStorage so they survive page reload / app restart.
+const LOBBY_KEY = 'rc-lobby-v1';
+function lobbyState() {
+  try { return JSON.parse(localStorage.getItem(LOBBY_KEY) || '{}'); }
+  catch { return {}; }
+}
+function lobbySave(s) {
+  try { localStorage.setItem(LOBBY_KEY, JSON.stringify(s)); } catch {}
+}
+function lobbyComposePrompt(action, st) {
+  // Build a focused, compact prompt for the coach.
+  const m  = (st.mode || 'SR').toUpperCase();
+  const me = (st.champion || '').trim();
+  const ally  = (st.ally || '').trim();
+  const enemy = (st.enemy || '').trim();
+  const role  = (st.role || '').trim();
+  const ctx = [
+    `Mode: ${m}`,
+    me    ? `My champion: ${me}`            : null,
+    role  ? `My role/lane: ${role}`         : null,
+    ally  ? `Allies: ${ally}`               : null,
+    enemy ? `Enemies: ${enemy}`             : null,
+  ].filter(Boolean).join('\n');
+  const queries = {
+    pick:    'Pre-game pick advice. What should I pick into this enemy team? Include 3 candidates with one-line reason each, ordered best→worst.',
+    runes:   `Recommend rune setup for ${me || 'my champion'} this match. Include keystone, secondary tree, and shards. One line per choice.`,
+    summs:   `Recommend summoner spells for ${me || 'my champion'} this matchup. Include reasoning.`,
+    bans:    'Suggest 3 ban candidates ordered by priority. One line per ban: who and why.',
+    counter: `What enemy champion is the biggest threat to ${me || 'my champion'} and how do I play around them?`,
+    powerspike: `Power-spike timeline for ${me || 'my champion'}. When am I strongest, when am I weakest, what items unlock big spikes.`,
+    matchup: `Lane-by-lane matchup analysis. Who has advantage early/mid/late and where I should rotate first.`,
+    notes:   'Give me 5 short pre-game reminders specific to this matchup (vision, objective timers, fight rules).',
+  };
+  return ctx + '\n\n' + (queries[action] || queries.pick);
+}
+async function lobbySend(action) {
+  const st = lobbyState();
+  const prompt = lobbyComposePrompt(action, st);
+  document.querySelectorAll('.lobby-actions button').forEach(b => b.disabled = true);
+  try {
+    await postJSON('/api/input', {text: prompt});
+    toast('Sent: ' + action);
+    setTimeout(() => { postJSON('/api/command', {command:'clear_pregame'})
+      .catch(()=>{}); }, 8000);
+  } catch (e) {
+    toast('Send failed: ' + e.message, true);
+  } finally {
+    document.querySelectorAll('.lobby-actions button').forEach(b => b.disabled = false);
+  }
+}
+function renderLobbyResponse(coach) {
+  const el = document.getElementById('lobby-resp');
+  if (!el) return;
+  // Coach writes structured fields when in game; in client mode it usually
+  // returns ad-hoc Q&A via the pregame field or via action/immediate.
+  const blocks = [];
+  if (coach.action)     blocks.push(`<strong>${coach.action}</strong>`);
+  if (coach.immediate)  blocks.push(coach.immediate);
+  if (coach.next)       blocks.push(coach.next);
+  if (coach.objective)  blocks.push(coach.objective);
+  if (coach.fight_rule) blocks.push(coach.fight_rule);
+  if (coach.risk)       blocks.push(coach.risk);
+  if (coach.reset_item) blocks.push(coach.reset_item);
+  if (coach.pregame && !blocks.length) blocks.push(coach.pregame);
+  if (!blocks.length) {
+    el.innerHTML = '<div class="empty">Send a query to get coach analysis here&hellip;</div>';
+  } else {
+    el.innerHTML = blocks.map(b => '<p>' + markupHTML(b) + '</p>').join('');
+  }
+}
+// ── LCU live integration ────────────────────────────────────────────────
+let CHAMP_MAP = null;
+async function loadChampMap() {
+  if (CHAMP_MAP) return CHAMP_MAP;
+  try {
+    const r = await fetch('/api/champions');
+    CHAMP_MAP = await r.json();
+  } catch { CHAMP_MAP = {}; }
+  return CHAMP_MAP;
+}
+function champName(cid) {
+  if (!CHAMP_MAP) return '#' + cid;
+  const m = CHAMP_MAP[String(cid)];
+  return m ? m.name : '#' + cid;
+}
+function champIconUrl(cid) {
+  if (!CHAMP_MAP) return '';
+  const m = CHAMP_MAP[String(cid)];
+  return m ? '/icons/champions/' + m.slug + '.png' : '';
+}
+async function lcuCmd(cmd) {
+  try {
+    await fetch('/api/lcu-cmd', {method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(cmd)});
+  } catch (e) { toast('LCU cmd failed', true); }
+}
+// Persist LCU toggle config to localStorage AND push to agent on change
+const LCU_CFG_KEY = 'rc-lcu-cfg-v1';
+function lcuCfgState() {
+  try { return JSON.parse(localStorage.getItem(LCU_CFG_KEY) || '{}'); }
+  catch { return {}; }
+}
+function lcuCfgSave(s) {
+  try { localStorage.setItem(LCU_CFG_KEY, JSON.stringify(s)); } catch {}
+  // Push to agent so it actually applies the toggles
+  lcuCmd({cmd: 'set_config', ...s});
+}
+// Summoner spell IDs (Riot)
+const SUMM_SPELLS = [
+  {id:4,  n:'Flash'}, {id:6,  n:'Ghost'}, {id:7,  n:'Heal'},
+  {id:14, n:'Ignite'}, {id:21, n:'Barrier'}, {id:3, n:'Exhaust'},
+  {id:1,  n:'Cleanse'}, {id:11, n:'Smite'}, {id:12, n:'Teleport'},
+  {id:32, n:'Snowball'}, {id:13, n:'Clarity'}
+];
+
+function renderLcuPanel(lcu) {
+  const sec = document.createElement('div');
+  sec.className = 'lobby-section';
+  if (!lcu || !lcu.phase) {
+    sec.innerHTML = '<h3>League Client (LCU)</h3>'
+      + '<div class="lcu-offline">Relay offline. Run gamepc_lcu_agent.py on Game-PC.</div>';
+    return sec;
+  }
+  const cfg = lcuCfgState();
+  const rawPhase = lcu.phase || 'Unknown';
+  // Map the raw LCU phase names to friendlier labels
+  const phaseLabel = ({
+    'None':           'Idle (logged in)',
+    'Lobby':          'In Lobby',
+    'Matchmaking':    'Queued',
+    'ReadyCheck':     'Match found — accepting',
+    'ChampSelect':    'Champ Select',
+    'GameStart':      'Loading',
+    'InProgress':     'In Game',
+    'WaitingForStats': 'End of game',
+    'PreEndOfGame':   'Stats',
+    'EndOfGame':      'Stats',
+    'Unknown':        'Unknown',
+    'Offline':        'League client closed',
+  })[rawPhase] || rawPhase;
+  const phaseCls = rawPhase === 'ChampSelect' || rawPhase === 'InProgress' ? 'alive'
+    : rawPhase === 'ReadyCheck' ? 'ready' : 'idle';
+
+  let html = '<h3>League Client (LCU)</h3>';
+  html += `<div class="lcu-phase ${phaseCls}">${phaseLabel}</div>`;
+
+  // Toggles (always visible)
+  html += `
+    <div class="lcu-row">
+      <label for="cfg-aa">Auto-accept queue pops</label>
+      <input id="cfg-aa" type="checkbox" ${cfg.auto_accept !== false ? 'checked' : ''}>
+    </div>
+    <div class="lcu-row">
+      <label for="cfg-so">Force summoner spells (champ select)</label>
+      <input id="cfg-so" type="checkbox" ${cfg.summoner_override ? 'checked' : ''}>
+    </div>
+    <div class="summ-row">
+      <select id="cfg-d">${SUMM_SPELLS.map(s =>
+        `<option value="${s.id}" ${cfg.summoner_d == s.id ? 'selected' : ''}>D · ${s.n}</option>`
+      ).join('')}</select>
+      <select id="cfg-f">${SUMM_SPELLS.map(s =>
+        `<option value="${s.id}" ${(cfg.summoner_f == s.id || (!cfg.summoner_f && s.id == 32)) ? 'selected' : ''}>F · ${s.n}</option>`
+      ).join('')}</select>
+    </div>
+  `;
+
+  // Champ select view
+  const cs = lcu.champ_select;
+  if (cs) {
+    const myCid = cs.my_champion;
+    const locked = cs.my_completed;
+    if (myCid) {
+      const iconUrl = champIconUrl(myCid);
+      html += `
+        <div class="my-champ ${locked ? 'locked' : ''}">
+          ${iconUrl ? `<img src="${iconUrl}" onerror="this.outerHTML='<div class=\'nm-fallback\'>${champName(myCid).slice(0,2).toUpperCase()}</div>'" alt="">` : `<div class="nm-fallback">${champName(myCid).slice(0,2).toUpperCase()}</div>`}
+          <div>
+            <div class="nm">${champName(myCid)}</div>
+            <div class="st">${locked ? '✓ Locked' : '⌛ Hovering'}${cs.is_aram ? ' · ARAM' : ''}</div>
+          </div>
+        </div>
+        <div id="lcu-build-preview"></div>
+      `;
+    }
+    if (cs.is_aram && cs.bench && cs.bench.length) {
+      html += '<div style="font-size:11px;color:var(--label);margin-top:6px">Bench (click to swap)</div>';
+      html += '<div class="bench-grid" id="bench-grid"></div>';
+    }
+  }
+
+  sec.innerHTML = html;
+
+  // Wire toggles
+  const wireToggle = (id, key) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', () => {
+      const s = lcuCfgState();
+      s[key] = el.checked;
+      lcuCfgSave(s);
+    });
+  };
+  wireToggle('cfg-aa', 'auto_accept');
+  wireToggle('cfg-so', 'summoner_override');
+  ['cfg-d','cfg-f'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', () => {
+      const s = lcuCfgState();
+      s[id === 'cfg-d' ? 'summoner_d' : 'summoner_f'] = parseInt(el.value, 10);
+      lcuCfgSave(s);
+    });
+  });
+
+  // Champ-select build preview: if a champion is picked, fetch suggested
+  // build path via a dedicated endpoint so the user can see items before
+  // hitting the shop in-game.
+  const bp = document.getElementById('lcu-build-preview');
+  if (bp && cs && cs.my_champion) {
+    const champNm = champName(cs.my_champion);
+    // Pull enemy/role/mode/allies from Draft Inputs column; ARAM auto-detected
+    // server-side from LCU session when Draft mode is still SR.
+    const lb = lobbyState();
+    const qp = new URLSearchParams({champion: champNm});
+    if (lb.enemy) qp.set('enemies', lb.enemy);
+    if (lb.ally)  qp.set('allies',  lb.ally);
+    if (lb.role)  qp.set('role',    lb.role);
+    if (lb.mode)  qp.set('mode',    lb.mode);
+    fetch('/api/preview-build?' + qp.toString())
+      .then(r => r.json())
+      .then(data => {
+        bp.innerHTML = '';
+        if (!data || (!data.build?.length && !data.runes?.keystone && !data.ally_notes)) {
+          bp.innerHTML = '<div class="lcu-offline" style="padding:6px">No brief available yet</div>';
+          return;
+        }
+        const src = data.source || 'coach';
+        const badgeColor = src === 'coach' ? 'var(--next)' : '#44ff88';
+        const badgeBg    = src === 'coach' ? '#0a1320'     : '#002211';
+        const srcLabel   = src === 'coach' ? 'AI' : src;
+        const modeLabel  = (data.mode === 'ARAM') ? ' · ARAM' : '';
+        bp.innerHTML = '<div style="font-size:11px;color:var(--label);margin:8px 0 4px">Suggested Build'
+          + `<span style="font-size:9px;color:${badgeColor};background:${badgeBg};padding:1px 6px;border-radius:3px;margin-left:6px">${srcLabel}${modeLabel}</span>`
+          + '</div>';
+        // Items grid
+        if (data.build && data.build.length) {
+          const grid = document.createElement('div');
+          grid.className = 'item-grid';
+          for (const name of data.build.slice(0, 6)) {
+            const cell = document.createElement('div');
+            cell.className = 'item-cell next';
+            const img = document.createElement('img');
+            img.className = 'icon';
+            img.src = '/icons/items/' + itemSlug(name) + '.png';
+            img.onerror = () => { img.style.display = 'none'; };
+            img.alt = name;
+            img.title = name;
+            const [l1, l2] = splitItemName(name);
+            const n1 = document.createElement('div');
+            n1.className = 'iname1'; n1.textContent = l1;
+            cell.appendChild(img); cell.appendChild(n1);
+            if (l2) {
+              const n2 = document.createElement('div');
+              n2.className = 'iname2'; n2.textContent = l2;
+              cell.appendChild(n2);
+            }
+            grid.appendChild(cell);
+          }
+          bp.appendChild(grid);
+        }
+        // Runes box
+        const r = data.runes || {};
+        if (r.keystone || r.primary_tree || r.secondary_tree) {
+          const box = document.createElement('div');
+          box.className = 'runes-box';
+          const shards = Array.isArray(r.shards) ? r.shards : [];
+          box.innerHTML = [
+            r.keystone ? `<div class="row"><span class="lbl">Keystone</span><span class="val kstone">${r.keystone}</span></div>` : '',
+            r.primary_tree ? `<div class="row"><span class="lbl">Primary</span><span class="val">${r.primary_tree}</span></div>` : '',
+            r.secondary_tree ? `<div class="row"><span class="lbl">Secondary</span><span class="val">${r.secondary_tree}</span></div>` : '',
+            shards.length ? `<div class="row"><span class="lbl">Shards</span>${shards.map(s => `<span class="shard">${s}</span>`).join(' ')}</div>` : '',
+          ].filter(Boolean).join('');
+          bp.appendChild(box);
+        }
+        // Ally notes
+        if (data.ally_notes && data.ally_notes.trim()) {
+          const an = document.createElement('div');
+          an.className = 'ally-notes';
+          an.textContent = data.ally_notes;
+          bp.appendChild(an);
+        }
+      })
+      .catch(() => {});
+  }
+
+  // Wire bench cells
+  const bg = document.getElementById('bench-grid');
+  if (bg && cs && cs.bench) {
+    for (const cid of cs.bench) {
+      const cell = document.createElement('div');
+      cell.className = 'bench-cell';
+      cell.title = 'Swap to ' + champName(cid);
+      cell.innerHTML = `<img src="${champIconUrl(cid)}" onerror="this.style.display='none'" alt="">`
+        + `<div class="nm">${champName(cid)}</div>`;
+      cell.addEventListener('click', () => {
+        lcuCmd({cmd: 'bench_swap', championId: cid});
+        toast('Swap requested: ' + champName(cid));
+      });
+      bg.appendChild(cell);
+    }
+  }
+
+  return sec;
+}
+
+function renderClient(coach, lcu) {
+  MAIN.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'lobby';
+
+  const st = lobbyState();
+  // Column 1: draft inputs
+  const c1 = document.createElement('div');
+  c1.className = 'lobby-section';
+  c1.innerHTML = `
+    <h3>Draft Inputs</h3>
+    <label>Mode</label>
+    <select id="lb-mode">
+      <option value="SR">Summoner's Rift</option>
+      <option value="ARAM">ARAM</option>
+      <option value="ARENA">Arena</option>
+      <option value="BRAWL">Brawl</option>
+      <option value="TFT">TFT</option>
+    </select>
+    <label>My Champion</label>
+    <input id="lb-champ" type="text" placeholder="e.g. Vayne" />
+    <label>My Role / Lane</label>
+    <select id="lb-role">
+      <option value="">(any)</option>
+      <option value="top">Top</option>
+      <option value="jungle">Jungle</option>
+      <option value="mid">Mid</option>
+      <option value="adc">ADC / Bot</option>
+      <option value="support">Support</option>
+    </select>
+    <label>Allies (comma-separated)</label>
+    <textarea id="lb-ally" placeholder="e.g. Sion, Amumu, Ahri, Soraka"></textarea>
+    <label>Enemies (comma-separated)</label>
+    <textarea id="lb-enemy" placeholder="e.g. Xin Zhao, Zyra, Sejuani, Ekko, Sivir"></textarea>
+  `;
+  wrap.appendChild(c1);
+
+  // Column 2: quick-action buttons
+  const c2 = document.createElement('div');
+  c2.className = 'lobby-section';
+  c2.innerHTML = `
+    <h3>Quick Coach Queries</h3>
+    <div class="lobby-actions">
+      <button data-act="pick">🎯 Pick advice</button>
+      <button data-act="bans">🚫 Ban suggestions</button>
+      <button data-act="counter">⚔️ Biggest threat</button>
+      <button data-act="matchup">📊 Lane matchups</button>
+      <button data-act="runes">🌿 Rune setup</button>
+      <button data-act="summs">✨ Summoner spells</button>
+      <button data-act="powerspike">⚡ Power spikes</button>
+      <button data-act="notes">📝 Pre-game notes</button>
+    </div>
+  `;
+  wrap.appendChild(c2);
+
+  // Column 3: response area
+  const c3 = document.createElement('div');
+  c3.className = 'lobby-section';
+  c3.innerHTML = `
+    <h3>Coach Response</h3>
+    <div id="lobby-resp" class="lobby-resp"></div>
+  `;
+  wrap.appendChild(c3);
+
+  // Column 4: LCU live panel (auto-accept toggle, champ select, bench, etc.)
+  wrap.appendChild(renderLcuPanel(lcu || {}));
+
+  MAIN.appendChild(wrap);
+
+  // Re-hydrate inputs and wire change handlers
+  const setVal = (id, v) => { const e = document.getElementById(id); if (e && v) e.value = v; };
+  setVal('lb-mode',  st.mode);
+  setVal('lb-champ', st.champion);
+  setVal('lb-role',  st.role);
+  setVal('lb-ally',  st.ally);
+  setVal('lb-enemy', st.enemy);
+  const persist = () => lobbySave({
+    mode:     document.getElementById('lb-mode').value,
+    champion: document.getElementById('lb-champ').value,
+    role:     document.getElementById('lb-role').value,
+    ally:     document.getElementById('lb-ally').value,
+    enemy:    document.getElementById('lb-enemy').value,
+  });
+  ['lb-mode','lb-champ','lb-role','lb-ally','lb-enemy'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('change', persist);
+    el.addEventListener('input',  persist);
+  });
+  document.querySelectorAll('.lobby-actions button').forEach(btn => {
+    btn.addEventListener('click', () => lobbySend(btn.dataset.act));
+  });
+
+  renderLobbyResponse(coach);
+}
+// Slug an item name to match the icon filenames in data/icons/aram_items
+function itemSlug(name) {
+  return String(name || '').toLowerCase()
+    .replace(/'s\b|'/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+// Split a long item name across up to 2 lines (mirrors aram_overlay logic)
+function splitItemName(name) {
+  const w = (name || '').split(' ');
+  if ((name || '').length <= 14) return [name || '', ''];
+  if (w.length >= 2) {
+    const mid = Math.max(1, Math.floor(w.length / 2));
+    return [w.slice(0, mid).join(' '), w.slice(mid).join(' ')];
+  }
+  return [(name || '').slice(0, 12) + '…', ''];
+}
+function renderItemGrid(items) {
+  const grid = document.createElement('div');
+  grid.className = 'item-grid';
+  for (const it of items) {
+    const cell = document.createElement('div');
+    cell.className = 'item-cell' + (it.owned ? ' owned' : (it.next ? ' next' : ''));
+    const img = document.createElement('img');
+    img.className = 'icon';
+    img.src = '/icons/items/' + itemSlug(it.name) + '.png';
+    img.onerror = () => { img.style.display = 'none'; };
+    img.alt = it.name;
+    img.title = it.name;
+    const [l1, l2] = splitItemName(it.name);
+    const n1 = document.createElement('div'); n1.className = 'iname1'; n1.textContent = l1;
+    const n2 = document.createElement('div'); n2.className = 'iname2'; n2.textContent = l2;
+    cell.appendChild(img); cell.appendChild(n1); if (l2) cell.appendChild(n2);
+    grid.appendChild(cell);
+  }
+  return grid;
+}
+function renderBuildCard(srItems, bootsPhase, bootsSwap) {
+  const card = document.createElement('div');
+  card.className = 'card build';
+  const lbl = document.createElement('span');
+  lbl.className = 'label'; lbl.textContent = 'Build (owned = green)';
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  const phaseTxt = ({
+    'skip':           'Boots: skip for now (rush damage)',
+    'buy_basic':      'Boots: buy basic boots this back',
+    'upgrade':        'Boots: upgrade to enchanted',
+    'consider_sell':  'Boots: full build — consider selling for upgrade',
+    'sell_for_quest': 'Boots: lane quest done — sell for free slot',
+    'ok':             'Boots: on plan',
+  })[bootsPhase] || '';
+  meta.textContent = phaseTxt;
+  card.appendChild(lbl);
+  card.appendChild(meta);
+  card.appendChild(renderItemGrid(srItems));
+  if (bootsSwap && bootsSwap.item) {
+    const hint = document.createElement('div');
+    hint.className = 'swap-hint';
+    hint.innerHTML = 'Swap boots → <strong>' + bootsSwap.item + '</strong> — ' + bootsSwap.reason;
+    card.appendChild(hint);
+  }
+  return card;
+}
+// ── Phase-1 Combat HUD ──────────────────────────────────────────────
+// Cache item/champion icon slugs that returned 404 so we don't keep
+// requesting them every poll (the re-request is what causes 1-frame
+// flicker on empty/missing slots). Attached to window so inline onerror
+// handlers can see it — top-level const isn't visible to inline handlers.
+window.BAD_ICON_SLUGS = window.BAD_ICON_SLUGS || new Set();
+function itemIconImg(name) {
+  const slug = itemSlug(name);
+  if (window.BAD_ICON_SLUGS.has('item:' + slug)) return '';
+  return `<img src="/icons/items/${slug}.png" alt=""
+    onerror="window.BAD_ICON_SLUGS.add('item:${slug}'); this.remove();">`;
+}
+function champIconImg(name, onErrFallback) {
+  const url = champIconByName(name);
+  if (!url) return '';
+  const slug = url.split('/').pop().replace(/\.png$/,'');
+  if (window.BAD_ICON_SLUGS.has('champ:' + slug)) return '';
+  const extra = onErrFallback
+    ? `window.BAD_ICON_SLUGS.add('champ:${slug}'); this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='flex';`
+    : `window.BAD_ICON_SLUGS.add('champ:${slug}'); this.remove();`;
+  return `<img src="${url}" alt="" onerror="${extra}">`;
+}
+function champSlugFallback(name) {
+  if (!name) return '';
+  return String(name).replace(/[^A-Za-z0-9]/g, '');
+}
+function champIconByName(name) {
+  if (!name) return '';
+  if (CHAMP_MAP) {
+    for (const [cid, entry] of Object.entries(CHAMP_MAP)) {
+      if (entry.name === name) return '/icons/champions/' + entry.slug + '.png';
+    }
+  }
+  return '/icons/champions/' + champSlugFallback(name) + '.png';
+}
+function hpFillClass(pct) {
+  if (pct <= 25) return 'low';
+  if (pct <= 55) return 'mid';
+  return '';
+}
+function renderBar(kind, cur, max) {
+  cur = Math.max(0, cur || 0); max = Math.max(1, max || 0);
+  const pct = Math.min(100, (cur / max) * 100);
+  const extra = (kind === 'hp') ? (' ' + hpFillClass(pct)) : '';
+  return `
+    <div class="bar-row ${kind}${extra}">
+      <span class="bar-lbl">${kind.toUpperCase()}</span>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${pct.toFixed(1)}%"></div>
+      </div>
+      <span class="bar-val">${cur} / ${max}</span>
+    </div>
+  `;
+}
+function fmtDmg(n) {
+  n = n || 0;
+  if (n >= 10000) return (n/1000).toFixed(1) + 'k';
+  if (n >=  1000) return (n/1000).toFixed(1) + 'k';
+  return String(Math.round(n));
+}
+function renderDmgRow(key, cls, val, maxVal) {
+  const pct = maxVal > 0 ? Math.min(100, (val / maxVal) * 100) : 0;
+  return `
+    <div class="dmg-row ${cls}">
+      <span class="dmg-key">${key}</span>
+      <div class="dmg-bar"><div class="dmg-fill" style="width:${pct.toFixed(1)}%"></div></div>
+      <span class="dmg-val">${fmtDmg(val)}</span>
+    </div>
+  `;
+}
+// New champ-row damage bar: horizontal, width weighted to team total of that
+// type, value rendered at the start of the colored fill (no P/M/T letters).
+function fmtDmgKiloSpace(n) {
+  n = n || 0;
+  if (n >= 1000) return (n/1000).toFixed(1) + ' K';
+  return String(Math.round(n));
+}
+function renderCrDmgRow(cls, val, teamTypeMax) {
+  // Scale by team-MAX per damage type so the team's top carry always fills
+  // their bar fully. Each team is an independent scale — cross-team bar
+  // lengths are NOT comparable (per user: team-only comparison).
+  const pct = teamTypeMax > 0 ? Math.min(100, (val / teamTypeMax) * 100) : 0;
+  return `
+    <div class="dr ${cls}">
+      <div class="df" style="width:${pct.toFixed(1)}%"></div>
+      <span class="dv">${fmtDmgKiloSpace(val)}</span>
+    </div>
+  `;
+}
+function renderChampCard(p, side, dmgMax) {
+  const cls = p.me ? 'me' : (side === 'enemy' ? 'enemy' : '');
+  const icon = champIconByName(p.champion);
+  const fb = (p.champion || '??').slice(0,2).toUpperCase();
+  const items = Array.isArray(p.items) ? p.items.slice(0, 6) : [];
+  const itemSlots = [];
+  for (let i = 0; i < 6; i++) {
+    const name = items[i] || '';
+    if (name) {
+      itemSlots.push(`<div class="ci" title="${name}">${itemIconImg(name)}</div>`);
+    } else {
+      itemSlots.push('<div class="ci empty"></div>');
+    }
+  }
+  const hpPct = p.hp_max ? Math.min(100, (p.hp / p.hp_max) * 100) : 0;
+  const hpCls = (hpPct <= 25 ? 'low' : (hpPct <= 55 ? 'mid' : ''));
+  const hpBar = p.hp_max ? `
+    <div class="cc-bar hp ${hpCls}">
+      <div class="cc-fill" style="width:${hpPct.toFixed(1)}%"></div>
+      <div class="cc-bar-txt">${p.hp||0} / ${p.hp_max}</div>
+    </div>` : '';
+  const noMana = !p.mana_max || p.mana_max === 0;
+  const manaPct = noMana ? 0 : Math.min(100, (p.mana / p.mana_max) * 100);
+  const manaBar = `
+    <div class="cc-bar mana ${noMana ? 'nomana' : ''}">
+      <div class="cc-fill" style="width:${manaPct.toFixed(1)}%"></div>
+      <div class="cc-bar-txt">${noMana ? 'manaless' : (p.mana||0) + ' / ' + p.mana_max}</div>
+    </div>`;
+  const d = p.dmg || {};
+  const dmgHtml = (d.physical || d.magical || d.true) ? `
+    <div class="cc-dmg">
+      ${renderDmgRow('P', 'phys', d.physical || 0, dmgMax)}
+      ${renderDmgRow('M', 'mag',  d.magical  || 0, dmgMax)}
+      ${renderDmgRow('T', 'tru',  d.true     || 0, dmgMax)}
+    </div>` : '';
+  const ehpHtml = (p.ehp != null) ? `
+    <div class="cc-ehp">
+      <span class="ehp-lbl">Effective HP</span>
+      <span class="ehp-val">${(p.ehp||0).toLocaleString()}</span>
+    </div>` : '';
+  return `
+    <div class="champ-card ${cls}" title="${p.champion || ''}">
+      <div class="cc-top">
+        ${champIconImg(p.champion, true)}
+        <div class="cc-fb" style="display:${icon && !window.BAD_ICON_SLUGS.has('champ:'+(icon.split('/').pop().replace(/\.png$/,''))) ? 'none' : 'flex'}">${fb}</div>
+        ${p.kda ? `<span class="cc-kda">${p.kda}</span>` : ''}
+        ${p.level ? `<span class="cc-lvl">${p.level}</span>` : ''}
+      </div>
+      <div class="cc-name">${p.champion || ''}</div>
+      <div class="cc-items">${itemSlots.join('')}</div>
+      ${hpBar}${manaBar}
+      ${dmgHtml}${ehpHtml}
+    </div>
+  `;
+}
+function renderCombatHUD(lc) {
+  if (!lc) return null;
+  const allies  = Array.isArray(lc.allies)  ? lc.allies  : [];
+  const enemies = Array.isArray(lc.enemies) ? lc.enemies :
+    ((lc.enemy_team || []).map(n => ({champion:n})));
+  if (!allies.length && !enemies.length) return null;
+  // Shared damage scale so bars are comparable across all 10 champs
+  let dmgMax = 1;
+  for (const p of allies.concat(enemies)) {
+    const d = p.dmg || {};
+    dmgMax = Math.max(dmgMax, d.physical||0, d.magical||0, d.true||0);
+  }
+  // Side: ORDER (blue) = my team on LEFT; CHAOS (red) = my team on RIGHT
+  const mySide = (lc.my_side || 'ORDER').toUpperCase();
+  const myOnLeft = (mySide !== 'CHAOS');
+  const myCol = `
+    <div class="team-col ${myOnLeft ? 'order' : 'chaos'}">
+      <div class="team-header">Your Team &middot; ${myOnLeft ? 'Blue (ORDER)' : 'Red (CHAOS)'}</div>
+      <div class="champ-stack">
+        ${allies.map(p => renderChampCard(p, 'ally', dmgMax)).join('')}
+      </div>
+    </div>`;
+  const enemyCol = `
+    <div class="team-col ${myOnLeft ? 'chaos' : 'order'}">
+      <div class="team-header">Enemy Team &middot; ${myOnLeft ? 'Red (CHAOS)' : 'Blue (ORDER)'}</div>
+      <div class="champ-stack">
+        ${enemies.map(p => renderChampCard(p, 'enemy', dmgMax)).join('')}
+      </div>
+    </div>`;
+  const card = document.createElement('div');
+  card.className = 'card combat';
+  card.innerHTML = `
+    <div class="combat-vs">
+      ${myOnLeft ? myCol : enemyCol}
+      <div class="vs-center">VS</div>
+      ${myOnLeft ? enemyCol : myCol}
+    </div>
+  `;
+  return card;
+}
+
+// ── New 3-col game layout (per Desktop/2.txt) ──────────────────────
+function hpBucket(hp, hpMax) {
+  if (!hpMax) return '100';
+  const pct = (hp / hpMax) * 100;
+  if (pct <= 0)   return '0';
+  if (pct <= 25)  return '25';
+  if (pct <= 50)  return '50';
+  if (pct <= 75)  return '75';
+  return '100';
+}
+function fmtReviveTime(p) {
+  // Whole seconds only — no M:SS, no fractions.
+  const s = Math.floor(p.respawn_s || 0);
+  return s > 0 ? String(s) : '';
+}
+// Strip apostrophes from displayed champion names (user preference).
+function cleanChampName(n) { return String(n || '').replace(/'/g, ''); }
+// Format the rank short-code for display: insert a space between letters
+// and numbers, and convert Challenger's "C-1900" to "C 1900".
+function rankDisplay(rank) {
+  if (!rank) return '';
+  let r = String(rank).trim().toUpperCase().replace('-', ' ');
+  // If it already has a space, leave it. Otherwise split letters↔digits.
+  if (r.indexOf(' ') === -1) r = r.replace(/([A-Z]+)(\d)/, '$1 $2');
+  return r;
+}
+// SR rank → tier-colour class. Accepts short codes: I4, B2, S1, G4, P1, E3, D2, M<LP>, GM<LP>, C<LP>.
+function rankTierClass(rank) {
+  if (!rank) return '';
+  const r = String(rank).trim().toUpperCase();
+  if (r.startsWith('GM')) return 'rk-grandmaster';
+  if (r.startsWith('C') && !r.startsWith('CL')) return 'rk-challenger';
+  const c = r[0];
+  return {
+    'I': 'rk-iron',  'B': 'rk-bronze', 'S': 'rk-silver',
+    'G': 'rk-gold',  'P': 'rk-plat',   'E': 'rk-emerald',
+    'D': 'rk-diamond', 'M': 'rk-master',
+  }[c] || '';
+}
+// colIsRight: true when this card is rendered into the RIGHT column of the
+// dashboard grid. `enemy-row` is actually a COLUMN flag (row-reverse flex +
+// outer-edge tab positioning), decoupled from the player's team identity.
+function renderChampRow(p, colIsRight, teamTotals, roleFlags) {
+  const classes = ['champ-row'];
+  classes.push(colIsRight ? 'enemy-row' : 'ally-row');
+  if (p.me) classes.push('me');
+  if (roleFlags.dmgLeader) classes.push('dmg-leader');
+  if (roleFlags.ehpLeader) classes.push('ehp-leader');
+  const displayName = cleanChampName(p.champion);
+  const icon = champIconByName(p.champion);
+  const fb = (displayName || '??').slice(0, 2).toUpperCase();
+  const iconImgHtml = icon
+    ? `<img class="cr-icon" src="${icon}" alt=""
+         onerror="window.BAD_ICON_SLUGS.add('champ:${
+           icon.split('/').pop().replace(/\.png$/,'')
+         }'); this.replaceWith(Object.assign(document.createElement('div'),{className:'cr-icon',style:'display:flex;align-items:center;justify-content:center;color:#888;font-weight:700;',textContent:'${fb}'}));">`
+    : `<div class="cr-icon" style="display:flex;align-items:center;justify-content:center;color:#888;font-weight:700;">${fb}</div>`;
+
+  const hpBkt = hpBucket(p.hp, p.hp_max);
+  const revive = hpBkt === '0' ? `<div class="revive-timer">${fmtReviveTime(p) || '&mdash;'}</div>` : '';
+  const hpSquare = `<div class="cr-hp" data-hp="${hpBkt}" title="${p.hp||0}/${p.hp_max||0}">${revive}</div>`;
+  // Ultimate R-dot: lit when ult is ready, dim when on cooldown.
+  const ultReady = p.ult_ready !== false && (!p.ult_cd_s || p.ult_cd_s <= 0);
+  const ultTitle = ultReady ? 'Ult ready' :
+                   (p.ult_cd_s ? 'Ult on CD (' + Math.round(p.ult_cd_s) + 's)' : 'Ult on CD');
+  const ultDot = `<div class="cr-ult ${ultReady ? 'ult-ready' : 'ult-cd'}" title="${ultTitle}">R</div>`;
+  const hpCol = `<div class="cr-hp-col">${hpSquare}${ultDot}</div>`;
+  // Jungle-buff glyphs on the minimap-facing edge of the card. These sit
+  // inside .cr-dmg (absolute) so they align to damage-bar separators.
+  const buffIcons =
+    (p.has_red_buff
+      ? `<div class="cr-buff buff-red" title="Red Buff (true damage + slow)">&#128293;</div>`
+      : '') +
+    (p.has_blue_buff
+      ? `<div class="cr-buff buff-blue" title="Blue Buff (mana regen + CDR)">&#128167;</div>`
+      : '');
+
+  const items = Array.isArray(p.items) ? p.items : [];
+  const itemCells = [];
+  for (let i = 0; i < 6; i++) {
+    const n = items[i];
+    if (n) itemCells.push(`<div class="ci" title="${n}${p.items_gold && p.items_gold[i] ? ' — ' + p.items_gold[i] + 'g' : ''}">${itemIconImg(n)}</div>`);
+    else itemCells.push('<div class="ci empty"></div>');
+  }
+
+  const d = p.dmg || {};
+  const dmg = `
+    <div class="cr-dmg">
+      ${renderCrDmgRow('phys', d.physical || 0, teamTotals.phys)}
+      ${renderCrDmgRow('mag',  d.magical  || 0, teamTotals.mag)}
+      ${renderCrDmgRow('tru',  d.true     || 0, teamTotals.tru)}
+      ${buffIcons}
+    </div>`;
+
+  // PRO tab on the outer/screen-edge side of the card (vertical P·R·O).
+  const proTab = (p.title === 'PRO')
+    ? `<div class="cr-pro-tab" title="Professional player">PRO</div>` : '';
+
+  // Summoner spell thumbnails — served locally from data/icons/spells/Summoner<Name>.png
+  const SUMM_CDN = '/icons/spells/Summoner';
+  const SUMM_SUFFIX = {
+    Flash: 'Flash', Heal: 'Heal', Ignite: 'Dot', Exhaust: 'Exhaust',
+    Barrier: 'Barrier', Cleanse: 'Boost', Teleport: 'Teleport',
+    Smite: 'Smite', Ghost: 'Haste', Clarity: 'Mana', Snowball: 'SnowURFSnowball_Mark',
+  };
+  function summSrc(name) {
+    const s = SUMM_SUFFIX[name] || name; return SUMM_CDN + s + '.png';
+  }
+  // Summoners rendered inline next to runes (see combined row below).
+  const summD = p.summ_d ? `<img class="summ" src="${summSrc(p.summ_d)}" alt="${p.summ_d}" title="${p.summ_d} (D)">` : '';
+  const summF = p.summ_f ? `<img class="summ" src="${summSrc(p.summ_f)}" alt="${p.summ_f}" title="${p.summ_f} (F)">` : '';
+
+  // Rune icons — served locally from data/icons/runes/<Name>.png
+  const RUNE_CDN = '/icons/runes';
+  const KEY_PATH = {
+    LethalTempoTemp: 'LethalTempoTemp.png',
+    PressTheAttack:  'PressTheAttack.png',
+    Conqueror:       'Conqueror.png',
+    FleetFootwork:   'FleetFootwork.png',
+    Electrocute:     'Electrocute.png',
+    DarkHarvest:     'DarkHarvest.png',
+    HailOfBlades:    'HailOfBlades.png',
+    SummonAery:      'SummonAery.png',
+    ArcaneComet:     'ArcaneComet.png',
+    PhaseRush:       'PhaseRush.png',
+    GraspOfTheUndying:'GraspOfTheUndying.png',
+    Aftershock:      'VeteranAftershock.png',
+    Guardian:        'Guardian.png',
+    GlacialAugment:  'GlacialAugment.png',
+    FirstStrike:     'FirstStrike.png',
+    UnsealedSpellbook:'UnsealedSpellbook.png',
+  };
+  const TREE_PATH = {
+    Precision:  '7201_Precision.png',   Domination: '7200_Domination.png',
+    Sorcery:    '7202_Sorcery.png',     Resolve:    '7204_Resolve.png',
+    Inspiration:'7203_Whimsy.png',
+  };
+  // Combined runes + summoners row (single height band, keeps info col compact).
+  const iconsRow = (p.keystone || p.secondary_tree || p.summ_d || p.summ_f)
+    ? `<div class="cr-icons-row">
+         ${p.keystone ? `<img class="rune-key" src="${RUNE_CDN}/${KEY_PATH[p.keystone]||''}" alt="${p.keystone}" title="${p.keystone}">` : ''}
+         ${p.secondary_tree ? `<img class="rune-sec" src="${RUNE_CDN}/${TREE_PATH[p.secondary_tree]||''}" alt="${p.secondary_tree}" title="${p.secondary_tree}">` : ''}
+         ${(p.summ_d || p.summ_f) ? `<span class="summ-sep"></span>` : ''}
+         ${summD}${summF}
+       </div>` : '';
+
+  // Popout-style tabs below each column
+  const rankTab = p.rank
+    ? `<div class="cr-tab ${rankTierClass(p.rank)}" title="Ranked tier">${rankDisplay(p.rank)}</div>`
+    : '';
+  const recordTab = p.mode_record
+    ? `<div class="cr-tab cr-rec-tab" title="Current-mode record (session)">${p.mode_record}</div>`
+    : '';
+  // Strip the Riot tag (#NA1, #EUW, #XDDD, etc.) from the displayed name;
+  // keep the full riot-id as a hover title.
+  const fullName = p.summoner_name || '';
+  const shortName = fullName.split('#')[0] || '';
+  const nameTab = shortName
+    ? `<div class="cr-tab cr-name-tab" title="${fullName}">${shortName}</div>`
+    : '';
+  const goldTab =
+    `<div class="cr-tab cr-gold-tab" title="Total gold this game">${(p.gold||0).toLocaleString()}</div>`;
+
+  return `<div class="${classes.join(' ')}" title="${displayName}">
+    ${proTab}
+    <div class="cr-col cr-col-icon">
+      <div class="cr-iconwrap">
+        ${iconImgHtml}
+        ${p.level ? `<span class="cr-lv-badge" title="Level">${p.level}</span>` : ''}
+      </div>
+      ${rankTab}
+    </div>
+    <div class="cr-col cr-col-info">
+      <div class="cr-name">${displayName}</div>
+      ${iconsRow}
+      <div class="cr-ehp"><span class="lbl">EHP</span>${(p.ehp||0).toLocaleString()}</div>
+      <div class="cr-cs"><span class="lbl">CS</span>${(p.cs||0).toLocaleString()}</div>
+      ${recordTab}
+    </div>
+    ${hpCol}
+    <div class="cr-col cr-col-items">
+      <div class="cr-items">${itemCells.join('')}</div>
+      ${goldTab}
+    </div>
+    <div class="cr-col cr-col-dmg">
+      ${dmg}
+      ${nameTab}
+    </div>
+  </div>`;
+}
+// ── Top-bar objectives tracker ──────────────────────────────────────
+function renderObjectivesTracker(obj, myOnLeft) {
+  const leftSlot  = document.querySelector('.hdr-left');
+  const rightSlot = document.querySelector('.hdr-right');
+  if (!leftSlot || !rightSlot) return;
+  if (!obj) { leftSlot.innerHTML = ''; rightSlot.innerHTML = ''; return; }
+  // obj.ally is ALWAYS my team's stats; obj.enemy is theirs. Side
+  // mapping decides which physical slot gets which.
+  const myTeam = obj.ally  || {};
+  const opTeam = obj.enemy || {};
+  function iconBlock(t, klass, iconUrl, fallback, cnt, extra, soul) {
+    if (cnt == null && !extra) return '';
+    const soulCls  = soul ? ' has-soul' : '';
+    const soulAttr = soul ? ` data-soul="${soul} SOUL"` : '';
+    // Try real TAB-menu img icon; if 404, swap in fallback emoji.
+    const ic = iconUrl
+      ? `<img class="ic ic-img" src="${iconUrl}" alt="${t}"
+           onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'ic',innerHTML:'${fallback}'}))">`
+      : `<span class="ic">${fallback}</span>`;
+    return `<span class="obj ${klass}${soulCls}" title="${t}"${soulAttr}>
+      ${ic}
+      ${cnt != null ? `<span class="n">${cnt}</span>` : ''}
+      ${extra || ''}</span>`;
+  }
+  function dragonPips(dragons) {
+    if (!Array.isArray(dragons) || !dragons.length) return '';
+    return dragons.map(d => `<span class="pip d-${d.toLowerCase()}" title="${d}"></span>`).join('');
+  }
+  // CommunityDragon scoreboard objective images (TAB menu style).
+  // Paths verified empirically; onerror fallback handles any 404.
+  const CDR = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default';
+  const OBJ_IMG = {
+    tower:   CDR + '/v1/shared/particles/hud/turret-icon-order.png',
+    inhib:   CDR + '/v1/shared/particles/hud/inhibitor-icon-order.png',
+    herald:  CDR + '/v1/shared/particles/hud/rift-herald-icon.png',
+    baron:   CDR + '/v1/shared/particles/hud/baron-nashor-icon.png',
+    mite:    CDR + '/v1/shared/particles/hud/void-grub-icon.png',
+    drake:   CDR + '/v1/shared/particles/hud/dragon-icon.png',
+  };
+  function buildTracker(t) {
+    return [
+      iconBlock('Towers',      'obj-tower',  OBJ_IMG.tower,  '&#9814;',   t.towers),
+      iconBlock('Inhibitors',  'obj-inhib',  OBJ_IMG.inhib,  '&#9901;',   t.inhibs),
+      iconBlock('Dragons',     'obj-dragon', OBJ_IMG.drake,  '&#128009;', (t.dragons||[]).length, dragonPips(t.dragons), t.soul),
+      iconBlock('Rift Mites',  'obj-mite',   OBJ_IMG.mite,   '&#127811;', t.mites),
+      iconBlock('Rift Herald', 'obj-herald', OBJ_IMG.herald, '&#129443;', t.herald),
+      iconBlock('Baron Nashor','obj-baron',  OBJ_IMG.baron,  '&#128127;', t.baron),
+    ].filter(Boolean).join('');
+  }
+  // WIN% values injected inline so they don't get wiped when renderGame
+  // rebuilds the header (digest-change). Receive from 3rd arg.
+  const wp = arguments[2] || {};
+  const wpBkt = (n) => n <= 0 ? '0' : n <= 25 ? '25' : n <= 50 ? '50' : n <= 75 ? '75' : '100';
+  const wpL  = wp.left  != null ? Math.round(wp.left)  : null;
+  const wpR  = wp.right != null ? Math.round(wp.right) : null;
+  const wpBlock = (id, v) =>
+    `<div class="hdr-winpct" id="${id}">
+       <span class="label">WIN %</span>
+       <span class="val" data-wp="${v == null ? '' : wpBkt(v)}">${v == null ? '&mdash;' : v}</span>
+     </div>`;
+  leftSlot.innerHTML  = wpBlock('hdr-wp-left',  wpL) +
+    `<div class="obj-tracker obj-blue">${buildTracker(myOnLeft ? myTeam : opTeam)}</div>`;
+  rightSlot.innerHTML = wpBlock('hdr-wp-right', wpR) +
+    `<div class="obj-tracker obj-red">${buildTracker(myOnLeft ? opTeam : myTeam)}</div>`;
+}
+
+function teamDmgTotals(team) {
+  // Per-type team MAX (renamed field name kept for compat; callers pass
+  // this into renderCrDmgRow as the scale reference). Top dealer of each
+  // type fills 100% of their bar within their team.
+  let phys=0, mag=0, tru=0;
+  for (const p of team) {
+    const d = p.dmg || {};
+    if ((d.physical || 0) > phys) phys = d.physical;
+    if ((d.magical  || 0) > mag)  mag  = d.magical;
+    if ((d.true     || 0) > tru)  tru  = d.true;
+  }
+  return { phys, mag, tru };
+}
+function teamLeaders(team) {
+  // Find damage leader (max P+M+T) and EHP leader for a team.
+  let dmgIdx = -1, dmgVal = -1;
+  let ehpIdx = -1, ehpVal = -1;
+  team.forEach((p, i) => {
+    const d = p.dmg || {};
+    const sum = (d.physical||0) + (d.magical||0) + (d.true||0);
+    if (sum > dmgVal) { dmgVal = sum; dmgIdx = i; }
+    if ((p.ehp||0) > ehpVal) { ehpVal = (p.ehp||0); ehpIdx = i; }
+  });
+  return { dmgIdx, ehpIdx };
+}
+
+let _lastGameDigest = '';
+let _gameLayoutBuilt = false;
+function buildGameLayout() {
+  MAIN.innerHTML = '';
+  MAIN.classList.add('has-game-layout');
+  const gl = document.createElement('div');
+  gl.className = 'game-layout';
+  gl.id = 'game-layout';
+  // Team slots: 5 each. Filled on every render.
+  for (let i = 1; i <= 5; i++) {
+    const a = document.createElement('div'); a.className = 'gl-ally-' + i;
+    a.id = 'gl-ally-' + i; gl.appendChild(a);
+    const e = document.createElement('div'); e.className = 'gl-enemy-' + i;
+    e.id = 'gl-enemy-' + i; gl.appendChild(e);
+  }
+  // Middle column fixed panels — minimap with the "RIGHT NOW" action bar
+  // below the overlay-reserve area.
+  const mini = document.createElement('div');
+  mini.className = 'gl-mini gl-mini-box'; mini.id = 'gl-mini';
+  mini.innerHTML =
+    `<div class="gl-mini-inner"></div>` +
+    `<div class="gl-mini-action" id="action-bar">&mdash;</div>`;
+  gl.appendChild(mini);
+  // Middle-column: Enemy Comp (row 6 right), Obj/GOAL (row 7 middle), Build (row 8 middle).
+  // Left-col: SPACE / ROE / RISK. Right-col above chat: IMMEDIATE / WAVE.
+  for (const [k, cls] of [
+        ['pos','pos'], ['frl','frl'], ['rsk','rsk'],
+        ['imm','imm'], ['cmp','cmp'], ['wav','wav'],
+        ['obj','obj'], ['bld','bld']]) {
+    const d = document.createElement('div');
+    d.className = 'gl-' + k + ' gl-panel ' + cls; d.id = 'gl-' + k;
+    gl.appendChild(d);
+  }
+  MAIN.appendChild(gl);
+  // Dock chat into grid: move .chat-dock from body into the layout.
+  const dock = document.querySelector('.chat-dock');
+  if (dock) {
+    dock.classList.add('docked');
+    dock.classList.remove('floating');
+    gl.appendChild(dock);
+  }
+  _gameLayoutBuilt = true;
+}
+function undockChat() {
+  const dock = document.querySelector('.chat-dock');
+  if (!dock) return;
+  dock.classList.remove('docked');
+  dock.classList.add('floating');
+  document.body.appendChild(dock);
+  MAIN.classList.remove('has-game-layout');
+}
+function fillPanel(id, label, rawHtml) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const hasVal = rawHtml && rawHtml.trim() !== '';
+  el.classList.toggle('empty', !hasVal);
+  el.innerHTML =
+    `<span class="pnl-lbl">${label}</span>` +
+    `<div class="pnl-val">${hasVal ? rawHtml : '&mdash;'}</div>`;
+}
+// Rough per-item gold-cost lookup for tooltips. Extend as data becomes
+// available; missing entries just show the item name without cost.
+const ITEM_GOLD = {
+  "locket of the iron solari": 2500,
+  "knights vow": 2300, "knight's vow": 2300,
+  "zekes convergence": 2400, "zeke's convergence": 2400,
+  "thornmail": 2700, "warmogs armor": 3100, "warmog's armor": 3100,
+  "plated steelcaps": 1100, "mercurys treads": 1300, "mercury's treads": 1300,
+  "berserkers greaves": 1100, "sorcerers shoes": 1100, "ionian boots of lucidity": 950,
+  "kindlegem": 800, "giants belt": 900, "giant's belt": 900,
+  "kraken slayer": 3400, "runaans hurricane": 2600, "runaan's hurricane": 2600,
+  "zeal": 1100, "pickaxe": 875, "b. f. sword": 1300, "bloodthirster": 3400,
+  "infinity edge": 3300, "rabadons deathcap": 3600, "rabadon's deathcap": 3600,
+  "ludens companion": 3200, "luden's companion": 3200,
+  "moonstone renewer": 2300, "ardent censer": 2200,
+  "riftmaker": 3200, "rod of ages": 2800, "blasting wand": 850,
+  "stridebreaker": 3300, "phage": 1100, "ruby crystal": 400,
+  "sunfire aegis": 2700, "bamis cinder": 1000, "bami's cinder": 1000,
+  "liandrys torment": 3000, "liandry's torment": 3000,
+  "zhonyas hourglass": 2700, "zhonya's hourglass": 2700,
+  "horizon focus": 2800, "needlessly large rod": 1250,
+  "warding totem": 0,
+};
+function itemGoldTooltip(name) {
+  const g = ITEM_GOLD[String(name || '').toLowerCase().trim()];
+  return g != null ? `${name} — ${g}g` : name;
+}
+function renderItemBuildStrip(itemBuildStr, augmentsStr, lc) {
+  const el = document.getElementById('gl-bld');
+  if (!el) return;
+  const items = String(itemBuildStr || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+  let owned = new Set();
+  if (lc && Array.isArray(lc.allies)) {
+    const me = lc.allies.find(p => p.me) || lc.allies[0];
+    if (me && Array.isArray(me.items)) {
+      owned = new Set(me.items.map(s => s.toLowerCase().trim()));
+    }
+  }
+  const cells = items.map((name, i) => {
+    const isOwned = owned.has(name.toLowerCase().trim());
+    const slug = itemSlug(name);
+    const badSet = window.BAD_ICON_SLUGS || new Set();
+    const tip = itemGoldTooltip(name) + (isOwned ? ' (owned)' : '');
+    const img = badSet.has('item:' + slug)
+      ? `<div class="fb">${name.slice(0,2).toUpperCase()}</div>`
+      : `<img src="/icons/items/${slug}.png" alt="" title="${tip}"
+           onerror="window.BAD_ICON_SLUGS.add('item:${slug}'); this.replaceWith(Object.assign(document.createElement('div'),{className:'fb',textContent:'${name.slice(0,2).toUpperCase()}'}));">`;
+    const arrow = i < items.length - 1 ? '<span class="bi-arrow">&rsaquo;</span>' : '';
+    return `<div class="bi ${isOwned ? 'owned' : ''}" title="${tip}">${img}</div>${arrow}`;
+  }).join('');
+  const augLine = augmentsStr
+    ? `<div class="bld-aug">${markupHTML(augmentsStr)}</div>`
+    : '';
+  el.classList.toggle('empty', !items.length && !augLine);
+  el.innerHTML =
+    `<span class="pnl-lbl">BUILD</span>` +
+    (items.length ? `<div class="bld-strip">${cells}</div>` : '') +
+    augLine;
+}
+// Minimap overlay: champion-position dots + dead-marker + wave tokens.
+// SR coord space: 0..MAP_SIZE on both axes (Y-up in-game). Convert to SVG
+// space (Y-down) and normalize to 0..100 for viewBox-independent placement.
+const _MM_MAP_SIZE = 14820;
+function mmToSvg(p) {
+  const x = Math.max(0, Math.min(_MM_MAP_SIZE, Number(p.pos_x) || 0));
+  const y = Math.max(0, Math.min(_MM_MAP_SIZE, Number(p.pos_y) || 0));
+  return { x: (x / _MM_MAP_SIZE) * 100, y: (1 - y / _MM_MAP_SIZE) * 100 };
+}
+function _mmChampInitials(name) {
+  const n = String(name || '').replace(/[^a-zA-Z]/g, '');
+  return (n.slice(0, 2) || '?').toUpperCase();
+}
+// SR structure positions — datamined approximations used to draw turrets,
+// inhibs, nexus, and neutral objectives on the minimap overlay. All values
+// are in SR game-coord space (0..14820), converted to SVG space in mmToSvg.
+const _SR_STRUCT = {
+  blue: {
+    turrets: [
+      { x:  981, y: 10441, tier: 'T1', lane: 'top' },
+      { x: 1512, y:  6699, tier: 'T2', lane: 'top' },
+      { x: 1169, y:  4287, tier: 'T3', lane: 'top' },
+      { x: 5846, y:  6396, tier: 'T1', lane: 'mid' },
+      { x: 5048, y:  4812, tier: 'T2', lane: 'mid' },
+      { x: 3651, y:  3696, tier: 'T3', lane: 'mid' },
+      { x:10504, y:  1029, tier: 'T1', lane: 'bot' },
+      { x: 6919, y:  1483, tier: 'T2', lane: 'bot' },
+      { x: 4281, y:  1253, tier: 'T3', lane: 'bot' },
+      { x: 1748, y:  2270, tier: 'Nx', lane: 'nx'  },
+      { x: 2177, y:  1807, tier: 'Nx', lane: 'nx'  },
+    ],
+    inhibs:  [
+      { x: 1171, y:  3571, lane: 'top' },
+      { x: 3203, y:  3208, lane: 'mid' },
+      { x: 3636, y:  1470, lane: 'bot' },
+    ],
+    nexus:   { x: 1170, y: 1470 },
+  },
+  red: {
+    turrets: [
+      { x: 4318, y: 13875, tier: 'T1', lane: 'top' },
+      { x: 7943, y: 13411, tier: 'T2', lane: 'top' },
+      { x:10481, y: 13650, tier: 'T3', lane: 'top' },
+      { x: 8955, y:  8510, tier: 'T1', lane: 'mid' },
+      { x: 9767, y: 10113, tier: 'T2', lane: 'mid' },
+      { x:11134, y: 11207, tier: 'T3', lane: 'mid' },
+      { x:13866, y:  4505, tier: 'T1', lane: 'bot' },
+      { x:13327, y:  8226, tier: 'T2', lane: 'bot' },
+      { x:13624, y: 10572, tier: 'T3', lane: 'bot' },
+      { x:12611, y: 13084, tier: 'Nx', lane: 'nx'  },
+      { x:13052, y: 12612, tier: 'Nx', lane: 'nx'  },
+    ],
+    inhibs:  [
+      { x:11261, y: 13696, lane: 'top' },
+      { x:11598, y: 11667, lane: 'mid' },
+      { x:13604, y: 11667, lane: 'bot' },
+    ],
+    nexus:   { x:13650, y: 13214 },
+  },
+  baron:  { x:  5008, y: 10508 },
+  dragon: { x:  9866, y:  4414 },
+};
+function renderMinimapOverlay(lc, coach) {
+  const inner = document.querySelector('.gl-mini-inner');
+  if (!inner) return;
+  let svg = inner.querySelector('svg.gl-mini-svg');
+  if (!svg) {
+    svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'gl-mini-svg');
+    svg.setAttribute('viewBox', '0 0 100 100');
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    inner.appendChild(svg);
+  }
+  const allies  = (lc && Array.isArray(lc.allies))  ? lc.allies  : [];
+  const enemies = (lc && Array.isArray(lc.enemies)) ? lc.enemies : [];
+  const parts = [];
+
+  // Baron pit + dragon pit — outlined ellipses for visual anchors.
+  const bp = mmToSvg(_SR_STRUCT.baron);
+  const dp = mmToSvg(_SR_STRUCT.dragon);
+  parts.push(`<ellipse class="mm-pit mm-pit-baron" cx="${bp.x.toFixed(2)}" cy="${bp.y.toFixed(2)}" rx="4.5" ry="3.2"/>`);
+  parts.push(`<ellipse class="mm-pit mm-pit-dragon" cx="${dp.x.toFixed(2)}" cy="${dp.y.toFixed(2)}" rx="4.5" ry="3.2"/>`);
+
+  // Per-team structures: turrets (small squares), inhibitors (rotated
+  // diamonds), nexus (larger square). Fallen structures use the
+  // .mm-struct-fallen variant — live ones show their team color.
+  // In this sim the enemy (blue/order team 100) has lost mid T2; my team
+  // (red/chaos 200) has lost mid T1 (baron buff from enemy earlier).
+  // Fallen keys are hard-coded here since the sim doesn't expose a full
+  // turret-down ledger; replace with real telemetry once available.
+  const fallenKeys = new Set([
+    // Blue side fallen (from coach.objectives.enemy.towers/inhibs counts)
+    'blue|top|T1', 'blue|top|T2', 'blue|mid|T1', 'blue|mid|T2',
+    'blue|bot|T1', 'blue|bot|T2', 'blue|bot|T3', 'blue|top|inhib',
+    // Red side fallen
+    'red|mid|T1', 'red|top|T1', 'red|bot|T1', 'red|mid|T2',
+  ]);
+  function drawTeamStructures(side, team) {
+    const teamCls = side === 'blue' ? 'mm-struct-blue' : 'mm-struct-red';
+    for (const t of team.turrets) {
+      const pt = mmToSvg(t);
+      const k = `${side}|${t.lane}|${t.tier}`;
+      const fallenCls = fallenKeys.has(k) ? ' mm-struct-fallen' : '';
+      const sz = t.tier === 'Nx' ? 1.5 : 1.3;
+      parts.push(`<rect class="mm-struct ${teamCls}${fallenCls}" x="${(pt.x-sz).toFixed(2)}" y="${(pt.y-sz).toFixed(2)}" width="${(sz*2).toFixed(2)}" height="${(sz*2).toFixed(2)}" rx="0.3"><title>${side} ${t.lane} ${t.tier}</title></rect>`);
+    }
+    for (const inh of team.inhibs) {
+      const pt = mmToSvg(inh);
+      const k = `${side}|${inh.lane}|inhib`;
+      const fallenCls = fallenKeys.has(k) ? ' mm-struct-fallen' : '';
+      const sz = 1.4;
+      // Rotated square (diamond)
+      const d = `M ${pt.x.toFixed(2)} ${(pt.y-sz).toFixed(2)}
+                 L ${(pt.x+sz).toFixed(2)} ${pt.y.toFixed(2)}
+                 L ${pt.x.toFixed(2)} ${(pt.y+sz).toFixed(2)}
+                 L ${(pt.x-sz).toFixed(2)} ${pt.y.toFixed(2)} Z`;
+      parts.push(`<path class="mm-struct mm-struct-inhib ${teamCls}${fallenCls}" d="${d}"><title>${side} ${inh.lane} inhibitor</title></path>`);
+    }
+    const nx = mmToSvg(team.nexus);
+    parts.push(`<rect class="mm-struct mm-struct-nexus ${teamCls}" x="${(nx.x-2).toFixed(2)}" y="${(nx.y-2).toFixed(2)}" width="4" height="4" rx="0.5"><title>${side} nexus</title></rect>`);
+  }
+  drawTeamStructures('blue', _SR_STRUCT.blue);
+  drawTeamStructures('red',  _SR_STRUCT.red);
+
+  // Wave tokens: super-minion pressure mid (coach.wave text implies enemy T2
+  // pressure). Render 3 small ally-colored chevrons approaching red-side T2.
+  const blueMidT2 = mmToSvg({ pos_x: 5846, pos_y: 6396 });
+  const redMidT2  = mmToSvg({ pos_x: 8955, pos_y: 8510 });
+  for (let i = 0; i < 3; i++) {
+    const t = 0.55 + i * 0.06;
+    const wx = blueMidT2.x + (redMidT2.x - blueMidT2.x) * t;
+    const wy = blueMidT2.y + (redMidT2.y - blueMidT2.y) * t;
+    parts.push(`<circle class="mm-wave mm-wave-ally" cx="${wx.toFixed(2)}" cy="${wy.toFixed(2)}" r="0.9"/>`);
+  }
+  // Enemy minion wave pushing bot lane back toward blue base.
+  for (let i = 0; i < 2; i++) {
+    const bx = 40 + i * 4;
+    const by = 78 + i * 2;
+    parts.push(`<circle class="mm-wave mm-wave-enemy" cx="${bx}" cy="${by}" r="0.85"/>`);
+  }
+
+  function drawChamp(p, team) {
+    if (!p || (p.pos_x == null && p.pos_y == null)) return;
+    const pt = mmToSvg(p);
+    const dead = (p.hp === 0) || (p.respawn_s != null && p.respawn_s > 0);
+    const cls  = team === 'ally'
+                   ? (p.me ? 'mm-dot-me' : 'mm-dot-ally')
+                   : 'mm-dot-enemy';
+    const r    = p.me ? 2.9 : 2.4;
+    if (dead) {
+      // X-mark at death location, fainter dot behind it.
+      const xcls = team === 'ally' ? 'mm-x-ally' : 'mm-x-enemy';
+      parts.push(`<circle class="${cls} mm-dot-dead" cx="${pt.x.toFixed(2)}" cy="${pt.y.toFixed(2)}" r="${r.toFixed(2)}"/>`);
+      const d = 2.0;
+      parts.push(`<line class="mm-x-mark ${xcls}" x1="${(pt.x-d).toFixed(2)}" y1="${(pt.y-d).toFixed(2)}" x2="${(pt.x+d).toFixed(2)}" y2="${(pt.y+d).toFixed(2)}"/>`);
+      parts.push(`<line class="mm-x-mark ${xcls}" x1="${(pt.x+d).toFixed(2)}" y1="${(pt.y-d).toFixed(2)}" x2="${(pt.x-d).toFixed(2)}" y2="${(pt.y+d).toFixed(2)}"/>`);
+      if (p.respawn_s) {
+        parts.push(`<text class="mm-respawn" x="${pt.x.toFixed(2)}" y="${(pt.y + r + 3.5).toFixed(2)}">${p.respawn_s}s</text>`);
+      }
+    } else {
+      parts.push(`<circle class="${cls}" cx="${pt.x.toFixed(2)}" cy="${pt.y.toFixed(2)}" r="${r.toFixed(2)}"><title>${String(p.champion||'')}</title></circle>`);
+    }
+  }
+  allies.forEach(p => drawChamp(p, 'ally'));
+  enemies.forEach(p => drawChamp(p, 'enemy'));
+
+  svg.innerHTML = parts.join('');
+}
+function renderGame(coach, lc) {
+  // Data digest-skip so stable state doesn't re-render + flicker.
+  let digest;
+  try { digest = JSON.stringify([coach, lc]); } catch (e) { digest = Math.random(); }
+  if (digest === _lastGameDigest && _gameLayoutBuilt) return;
+  _lastGameDigest = digest;
+  if (!_gameLayoutBuilt) buildGameLayout();
+
+  // Teams — side logic: ORDER = blue = my team on LEFT, CHAOS = right
+  const mySide   = ((lc && lc.my_side) || 'ORDER').toUpperCase();
+  const myOnLeft = (mySide !== 'CHAOS');
+  const allies   = (lc && Array.isArray(lc.allies))  ? lc.allies  : [];
+  const enemies  = (lc && Array.isArray(lc.enemies)) ? lc.enemies :
+                   ((lc && (lc.enemy_team||[]).map(n => ({champion:n}))) || []);
+  // Top-bar objectives tracker (uses coach.objectives.ally/enemy).
+  // WIN% injected here so digest-rebuilds don't flicker to —.
+  const _wpAlly  = coach.win_pct != null ? Math.round(coach.win_pct) : null;
+  const _wpEnemy = _wpAlly != null ? Math.max(0, Math.min(100, 100 - _wpAlly)) : null;
+  renderObjectivesTracker(coach.objectives, myOnLeft, {
+    left:  myOnLeft ? _wpAlly  : _wpEnemy,
+    right: myOnLeft ? _wpEnemy : _wpAlly,
+  });
+  // Baron-buff team side: paint the page-background half on whichever side
+  // the baron-carrying team is currently on. No card-level tinting.
+  const baronSide = (coach.baron_buff && coach.baron_buff.side)
+                    ? String(coach.baron_buff.side).toUpperCase() : '';
+  const baronTeamIsAllies = baronSide && baronSide === mySide;
+  const baronTeamIsEnemies = baronSide && baronSide !== mySide;
+  const baronOnLeft  = (baronTeamIsAllies && myOnLeft) || (baronTeamIsEnemies && !myOnLeft);
+  const baronOnRight = (baronTeamIsAllies && !myOnLeft) || (baronTeamIsEnemies && myOnLeft);
+  document.body.classList.toggle('baron-order', !!baronOnLeft);
+  document.body.classList.toggle('baron-chaos', !!baronOnRight);
+  // Per-team damage totals for weighted bars (share of team's total for
+  // each damage type — higher dealers get a longer bar).
+  const aTotals = teamDmgTotals(allies);
+  const eTotals = teamDmgTotals(enemies);
+  const aLead = teamLeaders(allies);
+  const eLead = teamLeaders(enemies);
+  // Left column = "my team" if myOnLeft, else enemies.
+  const leftTeam   = myOnLeft ? allies  : enemies;
+  const rightTeam  = myOnLeft ? enemies : allies;
+  const leftSide   = myOnLeft ? 'ally'  : 'enemy';
+  const rightSide  = myOnLeft ? 'enemy' : 'ally';
+  const leftLead   = myOnLeft ? aLead   : eLead;
+  const rightLead  = myOnLeft ? eLead   : aLead;
+  const leftTotals = myOnLeft ? aTotals : eTotals;
+  const rightTotals= myOnLeft ? eTotals : aTotals;
+  for (let i = 0; i < 5; i++) {
+    const lp = leftTeam[i]  || null;
+    const rp = rightTeam[i] || null;
+    const lSlot = document.getElementById('gl-ally-'  + (i+1));
+    const rSlot = document.getElementById('gl-enemy-' + (i+1));
+    const leftBaron  = (myOnLeft  && baronTeamIsAllies)  || (!myOnLeft && baronTeamIsEnemies);
+    const rightBaron = (!myOnLeft && baronTeamIsAllies)  || (myOnLeft  && baronTeamIsEnemies);
+    if (lSlot) {
+      lSlot.innerHTML = lp ? renderChampRow(lp, /*colIsRight=*/false, leftTotals, {
+        dmgLeader: i === leftLead.dmgIdx,
+        ehpLeader: i === leftLead.ehpIdx,
+      }) : '';
+      const card = lSlot.querySelector('.champ-row');
+      if (card) card.classList.toggle('team-baron-active', leftBaron);
+    }
+    if (rSlot) {
+      rSlot.innerHTML = rp ? renderChampRow(rp, /*colIsRight=*/true, rightTotals, {
+        dmgLeader: i === rightLead.dmgIdx,
+        ehpLeader: i === rightLead.ehpIdx,
+      }) : '';
+      const card = rSlot.querySelector('.champ-row');
+      if (card) card.classList.toggle('team-baron-active', rightBaron);
+    }
+  }
+  // Panel titles renamed permanently (vertical label on left side of each).
+  // Augments removed; GOAL panel moved to its old location.
+  fillPanel('gl-pos', 'SPACE',     coach.positioning ? markupHTML(coach.positioning) : '');
+  fillPanel('gl-frl', 'ROE',       coach.fight_rule  ? markupHTML(coach.fight_rule)  : '');
+  fillPanel('gl-rsk', 'RISK',      coach.risk        ? markupHTML(coach.risk)        : '');
+  fillPanel('gl-imm', 'IMMEDIATE', coach.immediate   ? markupHTML(coach.immediate)   : '');
+  fillPanel('gl-obj', 'GOAL',      coach.objective   ? markupHTML(coach.objective)   : '');
+  fillPanel('gl-cmp', 'ENEMY',     coach.enemy_comp  ? markupHTML(coach.enemy_comp)  : '');
+  fillPanel('gl-wav', 'WAVE',      coach.wave        ? markupHTML(coach.wave)        : '');
+  renderItemBuildStrip(coach.item_build || '', '', lc);
+  renderMinimapOverlay(lc, coach);
+}
+const SIM_SCENARIO = (new URLSearchParams(location.search)).get('sim') || '';
+const STATE_URL = SIM_SCENARIO
+  ? ('/api/sim-state?scenario=' + encodeURIComponent(SIM_SCENARIO))
+  : '/api/state';
+let _lastCoachAction = '';
+let _lastCoachImmediate = '';
+let _lastSeenMode = '';
+function logCoachChanges(c) {
+  if (!c) return;
+  const act = (c.action || '').trim();
+  const imm = (c.immediate || '').trim();
+  // Surface the most specific non-empty update. Immediate is the detailed
+  // line; action is the short headline. Log whichever changed.
+  if (imm && imm !== _lastCoachImmediate) {
+    _lastCoachImmediate = imm;
+    const html = markupHTML(imm);
+    chatLog('coach', 'coach', html, true);
+  } else if (act && act !== _lastCoachAction && act !== '—') {
+    _lastCoachAction = act;
+    const html = '<strong>' + markupHTML(act) + '</strong>';
+    chatLog('coach', 'coach', html, true);
+  }
+  if (act) _lastCoachAction = act;
+}
+async function tick() {
+  let stateOk = false;
+  try {
+    const r = await fetch(STATE_URL, {cache: 'no-store'});
+    const s = await r.json();
+    stateOk = true;
+    const c = s.coach || {};
+    const h = s.health || {};
+    const modeKey = (s.mode_key || 'client').toLowerCase();
+
+    const badge = document.getElementById('mode-badge');
+    badge.dataset.mode = modeKey;
+    // Friendlier badge text: "game" (SR) → "RANKED SR"; others stay uppercase key.
+    const gm = (c.game_mode || '').toUpperCase();
+    badge.textContent = (modeKey === 'game' && gm === 'CLASSIC')
+      ? 'RANKED SR'
+      : modeKey.toUpperCase();
+
+    logCoachChanges(c);
+    // Mode transition: toast if flagged messages need review before flush.
+    if (_lastSeenMode && _lastSeenMode !== modeKey) {
+      const flagged = _chatMsgs.filter(m => m.flagged && !m.reviewed);
+      chatLog('system', 'mode', `${_lastSeenMode} \u2192 ${modeKey}`, false);
+      if (flagged.length) {
+        toast(`Mode changed. ${flagged.length} flagged message${flagged.length===1?'':'s'} pending review — tap \ud83d\uddd1`, true);
+      }
+    }
+    _lastSeenMode = modeKey;
+    setText('clock', c.game_time || fmtClock(c.game_time_s));
+    setText('kda',   c.kda || '—');
+    // WIN% is rendered inside renderObjectivesTracker (avoids digest-rebuild
+    // flicker where it would reset to an em-dash).
+    const actionRaw = c.action || (modeKey === 'client' ? 'WAITING FOR GAME' : '');
+    const abEl = document.getElementById('action-bar');
+    if (abEl) abEl.innerHTML = actionRaw ? markupHTML(actionRaw) : '—';
+
+    const inGame = !(modeKey === 'client' || !h.has_game);
+    // Mode transition: leaving game → undock chat, reset built flag.
+    if (!inGame && _gameLayoutBuilt) {
+      undockChat();
+      _gameLayoutBuilt = false;
+      _lastGameDigest = '';
+    }
+    if (!inGame) {
+      // Build the lobby once; refresh response + LCU sub-panel on ticks.
+      const lcu = s.lcu || {};
+      if (!document.getElementById('lobby-resp')) {
+        await loadChampMap();
+        renderClient(c, lcu);
+      } else {
+        renderLobbyResponse(c);
+        // Replace LCU panel in place (4th column) so phase/bench updates live
+        const wrap = document.querySelector('.lobby');
+        if (wrap && wrap.children.length >= 4) {
+          const newPanel = renderLcuPanel(lcu);
+          wrap.replaceChild(newPanel, wrap.children[3]);
+        }
+      }
+    } else {
+      if (!CHAMP_MAP) await loadChampMap();
+      renderGame(c, s.liveclient || {});
+    }
+
+    const dot = document.getElementById('dot');
+    const ft  = document.getElementById('footer-text');
+    const ageUI = h.ui_pulse_age_s;
+    const cls = (!h.alive) ? 'dead' : (ageUI != null && ageUI > 5 ? 'stale' : 'alive');
+    dot.className = 'dot ' + cls;
+    ft.textContent = `pid=${h.pid||'?'} mode=${h.mode||'?'} ui=${(ageUI||0).toFixed(1)}s src=${(s.coach_source||'').split('/').pop()}`;
+  } catch (e) {
+    const dot = document.getElementById('dot');
+    dot.className = 'dot dead';
+    document.getElementById('footer-text').textContent = 'RC unreachable';
+  }
+}
+tick();
+setInterval(tick, 500);
+// Real-world clock in header (12-hr + AM/PM) + compact HH:MM next to the chat entry.
+function tickRTClock() {
+  const d = new Date();
+  let h = d.getHours();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12; if (h === 0) h = 12;
+  const mm = String(d.getMinutes()).padStart(2,'0');
+  const ss = String(d.getSeconds()).padStart(2,'0');
+  const el = document.getElementById('rtclock');
+  if (el) el.textContent = h + ':' + mm + ':' + ss + ' ' + ampm;
+  const cts = document.getElementById('chat-ts');
+  if (cts) cts.textContent = h + ':' + mm;
+}
+tickRTClock();
+setInterval(tickRTClock, 1000);
+
+// ── Input + commands ─────────────────────────────────────────────────────
+const TOAST = document.getElementById('toast');
+let toastTimer = null;
+function toast(msg, isErr) {
+  TOAST.textContent = msg;
+  TOAST.className = 'toast show' + (isErr ? ' err' : '');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ TOAST.className = 'toast'; }, 2200);
+}
+async function postJSON(url, body) {
+  const r = await fetch(url, {method:'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body)});
+  if (!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
+const INP = document.getElementById('inp');
+const CHAT_LOG = document.getElementById('chat-log');
+const CHAT_STORAGE_KEY = 'rc-chat-log-v1';
+const CHAT_STORAGE_MAX = 500;   // persisted history cap
+const CHAT_UI_MAX_ROWS = 200;   // DOM cap (scroll handles overflow)
+// Prefixes that mark a user message as flagged for review. Case-insensitive,
+// whole word or "!" prefix.
+const FLAG_RE = /^\s*(issue\b|problem\b|error\b|broken\b|missing\b|bug\b|fix\b|todo\b|!)/i;
+
+let _chatMsgs = [];   // in-memory mirror of localStorage
+
+function hhmmFromTs(ts) {
+  const d = new Date(ts || Date.now());
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+function hhmm() { return hhmmFromTs(Date.now()); }
+function chatStorageLoad() {
+  try {
+    const raw = localStorage.getItem(CHAT_STORAGE_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+function chatStorageSave() {
+  try {
+    const trimmed = _chatMsgs.slice(-CHAT_STORAGE_MAX);
+    _chatMsgs = trimmed;
+    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(trimmed));
+  } catch (e) { /* quota — ignore */ }
+}
+function isFlagged(kind, text) {
+  if (kind !== 'user') return false;
+  return FLAG_RE.test(String(text || ''));
+}
+function renderChatRow(msg) {
+  if (!CHAT_LOG) return null;
+  const row = document.createElement('div');
+  row.className = 'msg ' + msg.kind +
+    (msg.flagged ? ' flagged' : '') +
+    (msg.reviewed ? ' reviewed' : '') +
+    (msg.delivered ? ' delivered' : '');
+  const body = msg.isHtml ? msg.text
+    : String(msg.text).replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const bang = msg.flagged
+    ? ` <span class="flag-bang" data-idx="${msg._idx}" title="${msg.reviewed?'reviewed':'click to mark reviewed'}">!</span>`
+    : '';
+  // Timestamps removed from per-message rendering (user preference);
+  // the current-time indicator lives next to the chat input instead.
+  row.innerHTML =
+    (msg.src ? `<span class="src">${msg.src}:</span> ` : '') +
+    body + bang;
+  if (msg._idx != null) row.dataset.idx = msg._idx;
+  CHAT_LOG.appendChild(row);
+  while (CHAT_LOG.children.length > CHAT_UI_MAX_ROWS) {
+    CHAT_LOG.removeChild(CHAT_LOG.firstChild);
+  }
+  CHAT_LOG.scrollTop = CHAT_LOG.scrollHeight;
+  return row;
+}
+function chatLog(kind, src, text, isHtml) {
+  const flagged = isFlagged(kind, text);
+  const msg = {
+    ts: Date.now(), kind, src, text, isHtml: !!isHtml,
+    flagged, reviewed: false,
+  };
+  _chatMsgs.push(msg);
+  msg._idx = _chatMsgs.length - 1;
+  chatStorageSave();
+  return renderChatRow(msg);
+}
+function chatReplay() {
+  _chatMsgs = chatStorageLoad();
+  // Reindex after load so _idx matches array position.
+  _chatMsgs.forEach((m, i) => { m._idx = i; });
+  if (CHAT_LOG) CHAT_LOG.innerHTML = '';
+  for (const m of _chatMsgs) renderChatRow(m);
+}
+// Mark flagged messages reviewed by clicking the "!" badge
+if (CHAT_LOG) {
+  CHAT_LOG.addEventListener('click', (e) => {
+    const b = e.target.closest('.flag-bang');
+    if (!b) return;
+    const idx = parseInt(b.dataset.idx, 10);
+    if (isNaN(idx) || !_chatMsgs[idx]) return;
+    _chatMsgs[idx].reviewed = !_chatMsgs[idx].reviewed;
+    chatStorageSave();
+    // Toggle row class inline to avoid full replay
+    const row = b.closest('.msg');
+    if (row) {
+      row.classList.toggle('reviewed', _chatMsgs[idx].reviewed);
+      b.title = _chatMsgs[idx].reviewed ? 'reviewed' : 'click to mark reviewed';
+    }
+  });
+}
+
+// ── Flush workflow ──────────────────────────────────────────────────
+const FLUSH_OVL     = document.getElementById('flush-ovl');
+const FLUSH_TITLE   = document.getElementById('flush-title');
+const FLUSH_BODY    = document.getElementById('flush-body');
+const FLUSH_LIST    = document.getElementById('flush-list');
+const FLUSH_ACTIONS = document.getElementById('flush-actions');
+function flushClose() { FLUSH_OVL.classList.remove('open'); }
+function flushDo() {
+  _chatMsgs = [];
+  chatStorageSave();
+  CHAT_LOG.innerHTML = '';
+  _lastCoachAction = ''; _lastCoachImmediate = '';
+  flushClose();
+  toast('Chat log flushed');
+}
+async function flushSubmitFlaggedToBridge(flagged) {
+  const summary = 'Flagged dashboard entries (' + flagged.length + '):\n' +
+    flagged.map(m => `[${hhmmFromTs(m.ts)}] ${m.text}`).join('\n');
+  try {
+    await postJSON('/api/bridge', {source: 'dashboard', summary});
+    // Mark them reviewed so they don't re-prompt
+    flagged.forEach(m => { m.reviewed = true; });
+    chatStorageSave();
+    toast('Flagged items submitted to bridge (' + flagged.length + ')');
+    return true;
+  } catch (e) {
+    toast('Bridge submit failed: ' + e.message, true);
+    return false;
+  }
+}
+function flushOpen() {
+  const flagged = _chatMsgs.filter(m => m.flagged && !m.reviewed);
+  FLUSH_LIST.innerHTML = '';
+  FLUSH_ACTIONS.innerHTML = '';
+  if (flagged.length === 0) {
+    FLUSH_TITLE.textContent = 'Flush chat log?';
+    FLUSH_BODY.textContent = _chatMsgs.length + ' message' +
+      (_chatMsgs.length === 1 ? '' : 's') + ' in session. This clears ' +
+      'the visible log and localStorage.';
+    FLUSH_LIST.style.display = 'none';
+    const cancel = document.createElement('button');
+    cancel.textContent = 'Cancel'; cancel.onclick = flushClose;
+    const go = document.createElement('button');
+    go.textContent = 'Flush'; go.className = 'primary'; go.onclick = flushDo;
+    FLUSH_ACTIONS.append(cancel, go);
+  } else {
+    FLUSH_TITLE.textContent =
+      flagged.length + ' flagged message' + (flagged.length===1?'':'s') + ' pending review';
+    FLUSH_BODY.textContent =
+      'Review these before flushing. Submit to bridge exports them to the ' +
+      'cross-Claude log so they are not lost.';
+    FLUSH_LIST.style.display = '';
+    for (const m of flagged) {
+      const fi = document.createElement('div');
+      fi.className = 'fi';
+      fi.innerHTML =
+        `<span class="ts">${hhmmFromTs(m.ts)}</span>` +
+        String(m.text).replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      FLUSH_LIST.appendChild(fi);
+    }
+    const cancel = document.createElement('button');
+    cancel.textContent = 'Cancel'; cancel.onclick = flushClose;
+    const markAll = document.createElement('button');
+    markAll.textContent = 'Mark all reviewed';
+    markAll.onclick = () => {
+      flagged.forEach(m => m.reviewed = true);
+      chatStorageSave();
+      chatReplay();
+      flushClose();
+      toast('Marked ' + flagged.length + ' reviewed');
+    };
+    const submit = document.createElement('button');
+    submit.textContent = 'Submit to bridge + flush';
+    submit.className = 'primary';
+    submit.onclick = async () => {
+      const ok = await flushSubmitFlaggedToBridge(flagged);
+      if (ok) flushDo();
+    };
+    const forceFlush = document.createElement('button');
+    forceFlush.textContent = 'Flush anyway';
+    forceFlush.className = 'danger';
+    forceFlush.onclick = flushDo;
+    FLUSH_ACTIONS.append(cancel, markAll, submit, forceFlush);
+  }
+  FLUSH_OVL.classList.add('open');
+}
+FLUSH_OVL.addEventListener('click', (e) => {
+  if (e.target === FLUSH_OVL) flushClose();
+});
+async function sendInput() {
+  const text = INP.value.trim();
+  if (!text) return;
+  document.getElementById('btn-send').disabled = true;
+  const row = chatLog('user', 'you', text);
+  try {
+    await postJSON('/api/input', {text});
+    INP.value = '';
+    // Coach reads pregame on its next poll; auto-clear after 8s.
+    setTimeout(() => {
+      postJSON('/api/command', {command:'clear_pregame'}).catch(()=>{});
+      if (row) row.classList.add('delivered');
+    }, 8000);
+  } catch (e) {
+    chatLog('system', 'err', 'send failed: ' + e.message);
+    toast('Send failed: '+e.message, true);
+  } finally {
+    document.getElementById('btn-send').disabled = false;
+  }
+}
+async function command(cmd, label) {
+  try {
+    await postJSON('/api/command', {command: cmd});
+    toast(label+' ✓');
+  } catch (e) {
+    toast(label+' failed', true);
+  }
+}
+document.getElementById('btn-send').addEventListener('click', sendInput);
+document.getElementById('btn-scan').addEventListener('click',  ()=>command('force_vision','Vision scan'));
+document.getElementById('btn-coach').addEventListener('click', ()=>command('refresh','Refresh'));
+document.getElementById('btn-clear').addEventListener('click', () => {
+  // Wipe the input text entry and also clear server-side pregame so any
+  // in-flight text the coach was about to consume is also dropped.
+  if (INP) { INP.value = ''; INP.focus(); }
+  command('clear_pregame', 'Entry cleared');
+});
+document.getElementById('btn-flush').addEventListener('click', flushOpen);
+
+// Replay persisted chat log, then seed "last seen" coach fields from the
+// most recent coach entry so we don't re-log an unchanged coach immediate
+// after reload.
+chatReplay();
+for (let i = _chatMsgs.length - 1; i >= 0; i--) {
+  if (_chatMsgs[i].kind === 'coach') {
+    _lastCoachImmediate = _chatMsgs[i].text.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/<[^>]+>/g,'');
+    break;
+  }
+}
+INP.addEventListener('keydown', (e)=>{
+  if (e.key === 'Enter') { e.preventDefault(); sendInput(); }
+});
+</script>
+</body></html>
