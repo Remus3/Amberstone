@@ -2196,6 +2196,22 @@ body:not([data-mode])   .augments-pill { display: none; }
 body[data-view="home"] .zone-pill,
 body[data-view="home"] .game-time { display: none; }
 
+/* (2026-04-30) Same reasoning for CS / vision / gold pills — they're
+ * in-game telemetry with no bearing on a session-summary home card. JS
+ * still populates the elements (and the in-game/lobby views still show
+ * them per their existing rules); only the home-view visual is dropped.
+ * Both bare and `.hidden` forms are listed so the static-pill un-hide
+ * rule (`header .X.hidden { display: inline-flex !important }`, 0,2,1)
+ * loses to this 0,3,2 + !important. */
+body[data-view="home"] header .cs-pill,
+body[data-view="home"] header .cs-pill.hidden,
+body[data-view="home"] header .vis-pill,
+body[data-view="home"] header .vis-pill.hidden,
+body[data-view="home"] header .gold-pill,
+body[data-view="home"] header .gold-pill.hidden {
+  display: none !important;
+}
+
 .footer-btn {
   background: var(--surface);
   color: var(--text-dim);
