@@ -9,9 +9,11 @@ lookup at ops/tls/rc.pem + rc-key.pem, and the daemon-thread bootstrap
 that spins up the vision_tracker and decision_detector loops alongside
 the server.
 
-`_Handler` stays in web_dashboard.py — it references many module-scope
-helpers there (`_build_state`, `_diagnostics_cached`, `_VISION_TOKEN`,
-etc.). We deferred-import it inside start_dashboard.
+Tier 2 #7 (2026-05-01): `Handler` was extracted out of web_dashboard.py
+into `dashboard/_handler.py`. We import it directly here. The
+`web_dashboard._APP_DIR` mutation below is kept as a defensive backward-
+compat hook for any external caller that still reads it; nothing in
+the dashboard package consumes it anymore.
 """
 from __future__ import annotations
 
@@ -136,11 +138,14 @@ def start_dashboard(app_dir: Path) -> None:
     _DualProtocolHTTPServer (HTTP requests get a 301 to HTTPS on the same
     port); otherwise falls back to plain HTTP."""
     import web_dashboard
+    from dashboard._handler import Handler
     app_dir = Path(app_dir)
-    # Mutate web_dashboard._APP_DIR so other module-scope helpers there
-    # (_build_state, the API-key path resolver, etc.) see the same root.
+    # Defensive backward-compat: mutate web_dashboard._APP_DIR so any
+    # external caller that still reads it sees the resolved root. No
+    # in-package consumer reads it as of Tier 2 #6 (champ-select brief
+    # extraction switched to dashboard._context.APP_DIR).
     web_dashboard._APP_DIR = app_dir
-    handler_class = web_dashboard._Handler
+    handler_class = Handler
 
     cert_path = app_dir / "ops" / "tls" / "rc.pem"
     key_path  = app_dir / "ops" / "tls" / "rc-key.pem"
