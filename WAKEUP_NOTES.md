@@ -1,7 +1,8 @@
-# Wakeup Notes — 2026-05-01 (session 8 hand-off)
+# Wakeup Notes — 2026-05-01 (session 9 hand-off)
 
-> Hand-off from session that shipped Slice 2B of Tier 1 #5
-> (split `web_dashboard.py`). Next session continues with Slice 2C.
+> Hand-off from session that shipped the dispatcher infrastructure +
+> first route group of Slice 2C (Tier 1 #5). Next session continues
+> migrating route groups out of `_Handler`.
 
 ---
 
@@ -9,94 +10,91 @@
 
 | Commit | Summary |
 |---|---|
-| 07e8f77 | Extract 13 pure-builder helpers + their shared sqlite cache out of `web_dashboard.py` into a new `dashboard/` package. New files: `dashboard/__init__.py`, `dashboard/_context.py` (APP_DIR + `ro_conn` + `read_json` + `DB_CONN_LOCAL`), `dashboard/builders.py` (the 13 builders + `SESSION_GAP_S`). Function bodies byte-identical to originals; `web_dashboard.py` re-imports each one under its original underscored name. **`web_dashboard.py`: 2612 → 2103 lines (-509).** Smoke-tested: builders return live data, `_diagnostics_cached()` still works, `DB_CONN_LOCAL` is a shared singleton across both modules. |
-| 3984fba | (prev session) Extract `_SIM_STATES` / `_MANIFEST` / `_ICON_SVG`. 2830 → 2612 lines. |
-| 6aca30e | (older) Extract `_INDEX_HTML` blob. 5799 → 2830 lines. |
+| 26312de | **Slice 2C-1**: dispatcher + static-asset routes. New: `dashboard/_dispatch.py` (equals/prefix matchers + `dispatch_get`/`dispatch_post` walking a cached registry), `dashboard/_static.py` (6 helpers: `compute_asset_hash`, `inject_asset_hash`, `resolve_safe_icon`, `legacy_index_html`, `manifest_bytes`, `icon_svg_bytes`), `dashboard/routes_static.py` (12 GET handlers — index, css/js/data, manifest, icon, 5× icons subdirs, agent). web_dashboard.py: 2103 → 1892 (-211). do_GET/do_POST each gained a 2-line dispatch call at the top; misses fall through to the legacy elif chain. Static-asset elif blocks + the 6 helpers deleted from web_dashboard. Helpers re-imported under their original underscored names for back-compat. Smoke-tested all 12 matchers + asset loaders. |
+| 5760b0c | (prev session) Slice 2B — dashboard/builders.py (13 builders + sqlite cache). 2612 → 2103. |
 
 ## State at hand-off
 
-- **14 unpushed commits** on `main` (was 12). User decides on push before 5/10 cloud routine.
-- **RC still NOT restarted.** Five queued changes (#3 log-retention, #4 queue-compaction, #5 first slice, #5 slice 2A, #5 slice 2B) all activate together at next restart. None is user-visible — all are internal refactor / housekeeping.
+- **15 unpushed commits** on `main` (was 14). User decides on push before 5/10 cloud routine.
+- **RC still NOT restarted.** Six queued changes (#3 log-retention, #4 queue-compaction, #5 first slice, slice 2A, slice 2B, slice 2C-1) all activate together at next restart. None is user-visible — all are internal refactor / housekeeping.
 - Restart timing is user's call. `echo restart > restart_trigger.txt`; verify via `ops/runtime/health.json`.
 - Game-PC bridge still dead. Liveclient relay snapshots still stale.
 - `RC-PatchRefresh` still showing residual `last_result=2147942402` — fixed at script level; clears on next scheduled run.
 
-## Inventory of `web_dashboard.py` (2103 lines remaining)
+## Inventory of `web_dashboard.py` (1892 lines)
 
-Section map (post-2B):
+Section map (post-2C-1):
 
 | Lines | Section |
 |---|---|
-| 1–70 | imports, constants, `_VISION_TOKEN`, `_APP_DIR`, **dashboard package re-imports** |
-| 72–187 | `_champ_select_brief_via_coach` |
-| 188–298 | bridge log: `_BRIDGE_*` constants + hydrate / rotate / post / since |
-| 300–319 | `_MODE_TO_FILE`, `_DIAG_*` cache constants |
-| 321–337 | `_diagnostics_cached` |
-| 340–376 | `_compute_asset_hash`, `_inject_asset_hash` |
-| 378–397 | `_resolve_safe_icon` *(stays — only used by icon routes)* |
-| 400–425 | `_atomic_write_json`, `_set_pregame`, `_force_vision_scan` |
-| 426–600 | `_lcu_summary`, `_liveclient_summary`, `_build_state` |
-| 601–660 | static-asset lazy loaders (`_legacy_index_html`, `_manifest_bytes`, `_icon_svg_bytes`, `_sim_states`) |
-| 662–667 | `_SUPERVISOR_PROXY_PATHS`, `_SUPERVISOR_ORIGIN` |
-| 668–1944 | `class _Handler(BaseHTTPRequestHandler)` — ~1276 lines, all routes (the big remaining target) |
-| 1946–2048 | `class _DualProtocolHTTPServer` — TLS+HTTP same-port server |
-| 2050–2103 | `start_dashboard()` entry point |
+| 1–80 | imports, constants, `_VISION_TOKEN`, `_APP_DIR`, **dashboard package re-imports** (now includes `_static`, `_dispatch`) |
+| 82–197 | `_champ_select_brief_via_coach` |
+| 198–308 | bridge log: `_BRIDGE_*` constants + hydrate / rotate / post / since |
+| 310–329 | `_MODE_TO_FILE`, `_DIAG_*` cache constants, `_diagnostics_cached` |
+| 331–407 | `_atomic_write_json`, `_set_pregame`, `_force_vision_scan`, `_lcu_summary`, `_liveclient_summary`, `_build_state` (rough — verify) |
+| 408–540 | `_build_state` continuation + `_sim_states` loader |
+| ~540–640 | static-asset proxy constants (`_SUPERVISOR_PROXY_PATHS`), supervisor origin |
+| 645–1255 | `class _Handler(BaseHTTPRequestHandler)` — ~610 lines remaining (down from 1276; -666 net via 2C-1) |
+| 1257–1740 | `do_POST` body + remaining POST routes |
+| 1745–1840 | `class _DualProtocolHTTPServer` |
+| 1842–1892 | `start_dashboard()` |
 
-External import surface unchanged — only `start_dashboard` is consumed externally (`main.py:142`).
+Re-run `grep -n "def \|class " web_dashboard.py` at session start to refresh the actual line numbers — the table above is approximate.
 
-## `dashboard/` package shape (locked in 2B)
+## Slice 2C plan (recap, with progress)
 
-```
-dashboard/
-  __init__.py       package marker
-  _context.py       APP_DIR + ro_conn + read_json + DB_CONN_LOCAL
-                    (web_dashboard.py and dashboard.builders share this)
-  builders.py       13 builders + SESSION_GAP_S
-                    (re-imported into web_dashboard.py with underscored aliases)
-```
+Carve `_Handler` into focused route modules. Dispatcher infra is in place — each subsequent group is just (a) a new `dashboard/routes_<name>.py` + (b) deletion of the corresponding elif blocks in web_dashboard.
 
-Slice 2C should add `dashboard/routes_*.py` modules that import from `_context`.
+Status:
+- ✅ **Group 1 — static** (12 GET routes, 0 POST): shipped in 26312de
+- ⏳ **Group 2 — state** (`/api/state`, `/api/health`, `/api/health/all`, `/api/ui-version`, `/api/asset-stamp`, `/api/sim-state`)
+- ⏳ **Group 3 — history/home** (`/api/home/summary`, `/api/session/summary`, `/api/history`, `/api/loadouts/all`)
+- ⏳ **Group 4 — diag/vision** (`/api/diagnostics`, `/api/vision-state`, `/api/decisions`, `/api/ocr`, `/api/validate-ocr`, `/api/ocr-crop`, `/api/reload-regions`)
+- ⏳ **Group 5 — coach + replay + cost** (`/api/cost`, `/api/coach/trace`, `/api/coach/state`, `/api/replay/matches`, `/api/replay/match/*`, `/api/recommend-champ`, `/api/logs`)
+- ⏳ **Group 6 — bridge + champions + preview** (`/api/bridge` GET, `/api/preview-build`, `/api/champions`)
+- ⏳ **Group 7 — POST commands** (`/api/input`, `/api/command`, `/api/decisions/*`, `/api/bridge` POST, `/api/console-error`, `/api/replay-coach`, `/api/speak`, `/api/champ-select-coach`, `/api/analyze`, `/api/experimental/*`, `/api/aram-analyze`, `/api/loadout/*`, `/api/lcu-cmd`, `/api/coach/toggle`)
 
-## Next: Tier 1 #5 — Slice 2C (the "real" decomposition)
+Each group is one commit. Recommended order: 2 → 3 → 4 → 5 → 6 → 7.
 
-Carve `_Handler` (lines 668–1944, ~1276 lines) into focused route modules. The class is a single mega-class with one method per HTTP path; each method is small and largely independent.
+## Pattern for the next group (example: state)
 
-**Recommended grouping** (based on a quick scan of routes — confirm before splitting):
-- `dashboard/routes_state.py` — `/api/state`, `/api/health`, `/api/ui-version`
-- `dashboard/routes_history.py` — `/api/home`, `/api/session`, `/api/history`, `/api/loadouts`
-- `dashboard/routes_diag.py` — `/api/diagnostics`, `/api/vision-state`, `/api/ocr*`
-- `dashboard/routes_ingame.py` — champ-select brief, build chooser, vision endpoints
-- `dashboard/routes_static.py` — `/`, `/manifest.json`, `/icon.svg`, `/icons/*`, `/data/*`, `/web/*`
-- `dashboard/routes_command.py` — POST `/api/input`, `/api/command`
-- `dashboard/routes_bridge.py` — bridge log endpoints
-- `dashboard/routes_supervisor.py` — `/api/analyze` proxy + Phase 3 supervisor proxies
+1. Create `dashboard/routes_state.py`. For each handler:
+   - Lift the `elif self.path == "…":` body into a free function `def _serve_state(h): …` — replace `self` with `h`.
+   - State variables that the original handler referenced via `global _STATE_CACHE_PAYLOAD, _STATE_CACHE_TS` need to either move into the new module, or stay in web_dashboard and be imported back. (For `/api/state`, easiest is to move the cache vars into the routes module.)
+2. Add `GET_ROUTES = [(equals("/api/state"), _serve_state), …]` (use `equals` for exact paths, `prefix` for `/api/sim-state` style).
+3. Wire into the dispatcher: edit `dashboard/_dispatch.py`'s `_gather_get`/`_gather_post` to also include `routes_state.GET_ROUTES`.
+4. Delete the corresponding elif blocks from web_dashboard's `do_GET`/`do_POST`.
+5. py_compile + smoke-import + matcher coverage check.
+6. Commit.
 
-Approach (recommended):
-1. Make `_Handler` a thin dispatcher: a `do_GET`/`do_POST` that walks an ordered list of `(matcher, handler)` pairs imported from each routes module. Each route handler is a free function `(handler_self, parsed_url, body) -> None`.
-2. Move routes one group at a time. Each group is one commit.
-3. Keep response bytes byte-identical — diff `/api/state` etc. before/after if possible.
+## Subtleties to watch
 
-Buys ~1000+ lines off `web_dashboard.py`. Multiple commits, possibly 2-3 sessions.
-
-## Slice 2D (later, optional)
-
-Extract the cert-generation + `_DualProtocolHTTPServer` into `dashboard/server.py`. Small, self-contained. Save for after 2C.
+- **`_global` caches inside route bodies**: `/api/state` uses `_STATE_CACHE_PAYLOAD/_TS`, `/api/champions` uses `_CHAMP_MAP_CACHE`, `/api/console-error` uses `_CE_LAST_TS/_CE_DROPPED`. These need to move with the route, or be imported back. Easiest: move them into the routes module — they're not used elsewhere.
+- **Import-time vs request-time**: many handlers do `import urllib.request as _ur` *inside* the handler body. Keep that pattern when migrating — moving imports to module top-level changes startup cost characteristics (some of these modules are slow to import).
+- **`self._send` / `self._proxy_to_supervisor` / `self.headers`**: still on `_Handler` — handlers receive `h` (the BaseHTTPRequestHandler instance) and call them via `h._send(...)`.
+- **CSRF / body-parsing**: `do_POST` still does CSRF + body parsing at the entry, before dispatch. POST handlers receive the parsed dict as second arg.
+- **Ordering matters within a group** (more-specific paths first). Cross-group ordering matters too — currently `_dispatch._gather_get` only includes `routes_static.GET_ROUTES`, but as you add `routes_state.GET_ROUTES` etc, append in the order that produces correct first-match wins. None of the current static routes overlap with API routes so this is mostly moot, but `/api/sim-state` would conflict with a hypothetical `/api/sim-state/foo` matcher in another module.
 
 ## Bookkeeping to verify when next restarting RC
 
 After `echo restart > restart_trigger.txt`:
 1. `ops/runtime/health.json` shows new pid + `alive=true` + `last_reload_ok=true`.
-2. `curl -k https://127.0.0.1:8888/api/home` returns the home summary (now from `dashboard/builders.py`).
-3. `curl -k https://127.0.0.1:8888/api/diagnostics` returns the cached diagnostics blob.
-4. `curl -k 'https://127.0.0.1:8888/api/history?scope=14d'` returns the 14-day session list.
-5. `curl -k 'https://127.0.0.1:8888/api/sim-state?scenario=aram_blitz'` still returns the fixture (slice 2A check).
+2. `curl -k https://127.0.0.1:8888/` returns the dashboard HTML (now from `routes_static._serve_index`).
+3. `curl -k https://127.0.0.1:8888/manifest.json` returns the manifest (from `routes_static._serve_manifest`).
+4. `curl -k https://127.0.0.1:8888/icon.svg` returns the icon SVG.
+5. `curl -k https://127.0.0.1:8888/api/home` and `/api/diagnostics` still work (slice 2B builders, untouched).
+6. `curl -k https://127.0.0.1:8888/agent/gamepc_screen_agent.py` returns the agent script.
 
-If any of those fail, the dashboard package import is broken — likely a path resolution issue under `pythonw.exe` cwd. Hard fallback: revert `07e8f77` (and `3984fba` if needed).
+If any of those fail, the dashboard package wiring is broken — likely an import-order issue under `pythonw.exe`. Hard fallback: revert `26312de` (slice 2B at `5760b0c` was the last green build).
+
+## Slice 2D (later)
+
+Extract cert-generation + `_DualProtocolHTTPServer` into `dashboard/server.py`. Small, self-contained. After 2C is fully done.
 
 ## After #5
 
-Tier 1 list complete after the full #5 (which will span multiple sessions). Tier 2 priorities live in `git show 201ff3a -- WAKEUP_NOTES.md`.
+Tier 1 list complete after the full #5 (multi-session). Tier 2 priorities live in `git show 201ff3a -- WAKEUP_NOTES.md`.
 
 ## Session workflow note
 
-Scoped sessions per CLAUDE.md "Session workflow". `/clear` between Tier items, and `/clear` between #5 slices too — each slice is its own focused task.
+Per CLAUDE.md "Session workflow": `/clear` between #5 sub-slices. Each route group is its own focused task.
