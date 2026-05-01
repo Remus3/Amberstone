@@ -471,51 +471,18 @@ class BaseCoach(abc.ABC):
             )
 
     def _fetch_game_data(self) -> "dict | None":
-        """Fetch /allgamedata via Game-PC relay (post-2026-04-19 migration).
+        """Read latest /allgamedata snapshot from the shared cache.
 
-        Riot's :2999 binds to 127.0.0.1 only on Game-PC, so the LAN URL
-        below has been unreachable from Legion since the topology split.
-        Primary path is now the vision server's cached relay snapshot
-        (gamepc_liveclient_relay.py pushes every 1s to /upload-liveclient).
-        Falls back to the direct LAN URL only as a last resort — used to
-        always time out, which made the entire base-coach poll loop dead
-        and silently never call _maybe_coach.
+        Pre-2026-05-01 each mode coach hit the relay endpoint on its own
+        1.5s thread; consolidated into core.liveclient_cache (one shared
+        0.5s background poll). Returns None when the cache is empty or
+        the snapshot is older than 12s (match game_reader.RELAY_MAX_AGE_S).
         """
-        # Lazy import — vision_token resolver may not be importable in some
-        # test contexts where this module is loaded standalone.
-        try:
-            from core.vision_token import get_vision_token as _gvt
-            tok = _gvt()
-        except Exception:
-            tok = "8e8f131e212b329438218eca27372dde"
-        try:
-            import time as _t
-            req = urllib.request.Request(
-                "http://127.0.0.1:8889/latest-liveclient",
-                headers={"X-RC-Token": tok},
-            )
-            with urllib.request.urlopen(req, timeout=2) as r:
-                wrap = json.loads(r.read())
-            if "error" in wrap:
-                return None
-            age = _t.time() - wrap.get("ts", 0)
-            if age > 12.0:    # match game_reader.RELAY_MAX_AGE_S
-                return None
-            data = wrap.get("data")
-            if isinstance(data, dict):
-                return data
-        except Exception:
-            pass
-        # Direct fallback (rarely useful post-migration; kept for parity).
-        ctx = make_ssl_ctx()
-        try:
-            req = urllib.request.Request(
-                "https://192.168.8.237:2999/liveclientdata/allgamedata"
-            )
-            with urllib.request.urlopen(req, context=ctx, timeout=2) as r:
-                return json.loads(r.read())
-        except Exception:
+        from core.liveclient_cache import get as _lc_get
+        snap = _lc_get()
+        if snap.data is None or snap.age_s > 12.0:
             return None
+        return snap.data
 
     # ── Hooks (override as needed) ────────────────────────────────────────────
 

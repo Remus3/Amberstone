@@ -20,7 +20,6 @@ import threading
 import time
 from pathlib import Path
 from typing import Optional
-from urllib.request import Request, urlopen
 
 _log = logging.getLogger("rc.vision_tracker")
 _APP_DIR = Path(__file__).parent.parent
@@ -36,20 +35,9 @@ _POS_EPSILON = 5.0
 # the natural ~1s relay polling cadence.
 _VISIBILITY_STALL_S = 2.5
 
-# Relay endpoint that caches the latest /liveclientdata/allgamedata snapshot.
-# Requires X-RC-Token auth (resolved lazily so import doesn't fail if the
-# token file isn't present on disk yet — tracker just won't fetch until it is).
-_RELAY_URL = "http://127.0.0.1:8889/latest-liveclient"
-_RELAY_TIMEOUT = 2.0
+# Stale-snapshot threshold — anything older than this is treated as
+# "no game / relay dead" and triggers a tracked-state reset.
 _RELAY_MAX_AGE_S = 8.0
-
-
-def _auth_headers() -> dict:
-    try:
-        from core.vision_token import get_vision_token
-        return {"X-RC-Token": get_vision_token()}
-    except Exception:
-        return {}
 
 # Default poll interval when running as background daemon. Matches the
 # Game-PC liveclient relay's own ~1s cadence — going faster wastes CPU
@@ -238,18 +226,14 @@ class VisionTracker:
             self._stop.wait(self._poll_s)
 
     def _fetch_snapshot(self) -> tuple[Optional[dict], float]:
-        try:
-            req = Request(_RELAY_URL, headers=_auth_headers())
-            with urlopen(req, timeout=_RELAY_TIMEOUT) as r:
-                wrap = json.loads(r.read())
-        except Exception:
+        # 2026-05-01: pulled off direct HTTP onto the shared liveclient_cache
+        # (core/liveclient_cache.py) so a single background poll feeds all
+        # consumers instead of each thread hitting the relay on its own.
+        from core.liveclient_cache import get as _lc_get
+        snap = _lc_get()
+        if snap.data is None:
             return None, 0.0
-        data = wrap.get("data") if isinstance(wrap, dict) else None
-        ts = float(wrap.get("ts", 0.0)) if isinstance(wrap, dict) else 0.0
-        if not isinstance(data, dict):
-            return None, 0.0
-        age = max(0.0, time.time() - ts) if ts else 0.0
-        return data, age
+        return snap.data, snap.age_s
 
     def _identify_team(self, active: dict, all_players: list) -> Optional[str]:
         """Return 'ORDER' or 'CHAOS' for the active player."""

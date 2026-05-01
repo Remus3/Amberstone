@@ -118,6 +118,16 @@ try:
 except Exception as _e:
     _log.warning("MetricsCache start failed (non-fatal): %s", _e)
 
+# — Live Client snapshot cache (Tier 1 #2, 2026-05-01)
+# One shared 0.5s background poll feeds 4 mode coaches + vision_tracker +
+# decision_detector. Pre-refactor each consumer hit the relay on its own
+# thread (~6-8 polls/sec idle); now ~2/sec total.
+try:
+    from core.liveclient_cache import start as _lc_start
+    _lc_start()
+except Exception as _e:
+    _log.warning("liveclient_cache start failed (non-fatal): %s", _e)
+
 # — Web dashboard (iPad extended display via Duet to Game-PC)
 try:
     from web_dashboard import start_dashboard as _start_dash

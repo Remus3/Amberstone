@@ -40,14 +40,12 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
-from urllib.request import Request, urlopen
 
 _log = logging.getLogger("rc.decision_detector")
 _APP_DIR = Path(__file__).parent.parent
 
-# Endpoints + paths (all Legion-local; no Game-PC hardcoded paths).
-_RELAY_URL        = "http://127.0.0.1:8889/latest-liveclient"
-_RELAY_TIMEOUT    = 2.0
+# Stale-snapshot threshold — anything older than this is treated as
+# "no game" and clears any pending decisions.
 _RELAY_MAX_AGE_S  = 8.0
 _VISION_STATE     = _APP_DIR / "data" / "vision_state.json"
 _PENDING_PATH     = _APP_DIR / "data" / "decisions_pending.json"
@@ -538,21 +536,14 @@ class DecisionLoop:
             self._thread.join(timeout=3)
 
     def _fetch_snapshot(self) -> tuple[Optional[dict], float]:
-        try:
-            from core.vision_token import get_vision_token
-            req = Request(_RELAY_URL, headers={"X-RC-Token": get_vision_token()})
-            with urlopen(req, timeout=_RELAY_TIMEOUT) as r:
-                wrap = json.loads(r.read())
-        except Exception:
+        # 2026-05-01: pulled off direct HTTP onto the shared liveclient_cache
+        # (core/liveclient_cache.py) so a single background poll feeds all
+        # consumers instead of each thread hitting the relay on its own.
+        from core.liveclient_cache import get as _lc_get
+        snap = _lc_get()
+        if snap.data is None:
             return None, 0.0
-        if not isinstance(wrap, dict):
-            return None, 0.0
-        data = wrap.get("data")
-        ts = float(wrap.get("ts") or 0)
-        if not isinstance(data, dict):
-            return None, 0.0
-        age = max(0.0, time.time() - ts) if ts else 0.0
-        return data, age
+        return snap.data, snap.age_s
 
     def _read_vision_state(self) -> dict:
         try:
