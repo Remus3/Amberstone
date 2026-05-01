@@ -23,6 +23,7 @@ import time
 from urllib.parse import parse_qs, urlparse
 
 from dashboard._bridge_log import bridge_post, bridge_since
+from dashboard._champ_select import brief_via_coach
 from dashboard._context import APP_DIR
 from dashboard._dispatch import equals
 from dashboard._liveclient import lcu_summary
@@ -52,7 +53,6 @@ def _serve_preview_build(h) -> None:
     # the champion is curated and the mode isn't ARAM; runes + ally
     # notes always come from Haiku (cheap).
     try:
-        from web_dashboard import _champ_select_brief_via_coach
         qs = parse_qs(urlparse(h.path).query)
         champ = (qs.get("champion") or [""])[0].strip()
         enemies = [s.strip() for s in
@@ -72,7 +72,7 @@ def _serve_preview_build(h) -> None:
         import sys as _sys
         _sys.path.insert(0, str(APP_DIR))
         from item_advisor import resolve_build, CHAMPION_BUILDS
-        brief = _champ_select_brief_via_coach(champ, enemies, allies, role, mode)
+        brief = brief_via_coach(champ, enemies, allies, role, mode)
         source = "coach"
         # Curated build wins outside ARAM. Runes/ally_notes still from coach.
         if champ in CHAMPION_BUILDS and mode != "ARAM":
