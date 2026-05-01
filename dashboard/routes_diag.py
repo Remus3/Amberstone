@@ -9,16 +9,17 @@ Each route receives the BaseHTTPRequestHandler (`h`) as its sole
 argument and uses `h._send(code, body, ctype)` to write the response.
 Module-level GET_ROUTES is consumed by `dashboard._dispatch`.
 
-`_VISION_TOKEN` and `_diagnostics_cached` are deferred-imported from
-web_dashboard inside each handler to avoid a circular import at module
-load time (web_dashboard imports the dashboard package during
-start-up).
+`_VISION_TOKEN` is deferred-imported from web_dashboard inside the
+OCR handlers to avoid a circular import at module load time.
+`diagnostics_cached` is imported directly from `dashboard._diagnostics`
+(Tier 2 #2 helper-shake — no longer routed through web_dashboard).
 """
 import json
 import logging
 from urllib.parse import parse_qs, urlparse
 
 from dashboard._context import read_json
+from dashboard._diagnostics import diagnostics_cached
 from dashboard._dispatch import equals, prefix
 
 log = logging.getLogger("rc.web_dashboard")
@@ -45,14 +46,8 @@ def _serve_decisions(h) -> None:
 
 
 def _serve_diagnostics(h) -> None:
-    # AUDIT 2026-04-29: 30 s TTL cache. _build_diagnostics fans out to
-    # several heavy probes (DB introspection, log tail, RC + vision
-    # health) and sustains ~2 s. Dashboard hits it on diagnostics-view
-    # activate; nothing polls it. 30 s feels instant on repeat opens
-    # without staling the data.
     try:
-        from web_dashboard import _diagnostics_cached
-        payload = _diagnostics_cached()
+        payload = diagnostics_cached()
         h._send(200, payload, "application/json")
     except Exception as exc:
         log.warning("api/diagnostics: %s", exc)
