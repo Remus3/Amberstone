@@ -1,0 +1,157 @@
+# gamepc_boot.ps1 — idempotent boot script for the 4 Game-PC agents.
+#
+# Run from the Game-PC desktop shortcut. Ensures each agent is actually
+# *bound* to its expected port, not just running with a matching command
+# line — covers the 2026-04-30 zombie py.exe case where the MCP process
+# was running but never listening. Also installs the firewall rule for
+# the inbound MCP port (8892) if missing.
+#
+# Pulls the canonical script from Legion before launching, so a stale
+# copy on Game-PC self-heals on next boot.
+#
+# Usage (single-line paste, never wraps):
+#   iex (iwr https://192.168.8.230:8888/agent/gamepc_boot.ps1).Content
+#
+# Or, after installation, just run from C:\RC-Agent\:
+#   powershell -ExecutionPolicy Bypass -File C:\RC-Agent\gamepc_boot.ps1
+
+$ErrorActionPreference = 'Stop'
+$dest = 'C:\RC-Agent'
+if (-not (Test-Path $dest)) { New-Item -ItemType Directory -Path $dest | Out-Null }
+
+# Self-elevate for firewall rule + scheduled task creation.
+$principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
+if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Start-Process powershell.exe -ArgumentList '-NoExit','-ExecutionPolicy','Bypass','-File',"`"$PSCommandPath`"" -Verb RunAs
+    exit
+}
+
+# PS 5.1 defaults to TLS 1.0/1.1 which the RC dashboard rejects.
+# ServicePointManager state is per-process; setting it here covers
+# every Invoke-WebRequest call below.
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+
+Write-Host ''
+Write-Host '=== Game-PC pre-flight ===' -ForegroundColor Cyan
+
+# 1. Refresh agent scripts from Legion (canonical source).
+$AGENTS = @(
+    @{ name = 'gamepc_screen_agent.py';     port = $null;  task = 'RC-ScreenAgent'      },
+    @{ name = 'gamepc_lcu_agent.py';        port = $null;  task = 'RC-LCU'              },
+    @{ name = 'gamepc_liveclient_relay.py'; port = $null;  task = 'RC-LiveClientRelay'  },
+    @{ name = 'gamepc_mcp_server.py';       port = 8892;   task = 'RC-MCP-Server'       }
+)
+
+# Use curl.exe (bundled with Win10/11 in System32) instead of
+# Invoke-WebRequest. PS 5.1's iwr fails the TLS handshake against the
+# dashboard's self-signed cert under iex even with SecurityProtocol set
+# and ServerCertificateValidationCallback assigned — the callback
+# doesn't take effect from inside an iex'd script. curl.exe -sk is
+# unaffected by any of that.
+foreach ($a in $AGENTS) {
+    $url = "https://192.168.8.230:8888/agent/$($a.name)"
+    $out = Join-Path $dest $a.name
+    & curl.exe -sk -m 5 -o $out $url 2>$null
+    if ($LASTEXITCODE -eq 0 -and (Test-Path $out) -and (Get-Item $out).Length -gt 0) {
+        Write-Host "  fetched $($a.name)" -ForegroundColor Green
+    } elseif (Test-Path $out) {
+        Write-Host "  fetch $($a.name) failed, using existing local copy" -ForegroundColor Yellow
+    } else {
+        Write-Host "  fetch $($a.name) FAILED and no local copy" -ForegroundColor Red
+    }
+}
+
+# 2. Firewall — ensure inbound rule for the MCP server port. The other
+#    three agents don't accept inbound (they're outbound-only POSTs).
+$fw = Get-NetFirewallRule -DisplayName 'RC-MCP' -ErrorAction SilentlyContinue
+if (-not $fw) {
+    try {
+        New-NetFirewallRule -DisplayName 'RC-MCP' -Direction Inbound -Protocol TCP -LocalPort 8892 -Action Allow -Profile Any -ErrorAction Stop | Out-Null
+        Write-Host '  firewall rule RC-MCP (TCP 8892) added' -ForegroundColor Green
+    } catch {
+        Write-Host "  firewall rule add FAILED: $($_.Exception.Message)" -ForegroundColor Red
+    }
+} else {
+    Write-Host '  firewall rule RC-MCP already present' -ForegroundColor Green
+}
+
+# 3. Per-agent: verify it's actually listening (port-bound, not just
+#    process-alive — the zombie case). If a stale process owns the
+#    CommandLine but no listener exists, taskkill /F it before relaunch.
+function Ensure-Agent {
+    param($name, $port, $task)
+
+    $script = Join-Path 'C:\RC-Agent' $name
+
+    # For agents that bind a port, the listener is the source of truth.
+    $listenerOk = $false
+    if ($port) {
+        $conn = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
+        if ($conn) { $listenerOk = $true }
+    }
+
+    # Find any python process whose command line mentions the script.
+    $procs = Get-CimInstance Win32_Process -Filter "Name='py.exe' OR Name='python.exe' OR Name='pythonw.exe'" |
+             Where-Object { $_.CommandLine -like "*$name*" }
+
+    if ($port -and -not $listenerOk -and $procs) {
+        # Zombie: process exists but no listener. Kill before restart.
+        foreach ($p in $procs) {
+            Write-Host "  $name`: zombie PID $($p.ProcessId) (no listener), killing" -ForegroundColor Yellow
+            taskkill /F /PID $p.ProcessId 2>&1 | Out-Null
+        }
+        $procs = $null
+    }
+
+    if ($procs) {
+        Write-Host "  $name`: running (PID $($procs[0].ProcessId))" -ForegroundColor Green
+        return
+    }
+
+    if (-not (Test-Path $script)) {
+        Write-Host "  $name`: SCRIPT MISSING at $script" -ForegroundColor Red
+        return
+    }
+    Start-Process -WindowStyle Hidden py -ArgumentList $script
+    Write-Host "  $name`: started" -ForegroundColor Green
+
+    # If a port is expected, give it 3s to bind and verify.
+    if ($port) {
+        Start-Sleep -Seconds 3
+        $conn = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
+        if ($conn) {
+            Write-Host "    bound :$port" -ForegroundColor Green
+        } else {
+            Write-Host "    WARNING: did not bind :$port within 3s" -ForegroundColor Red
+        }
+    }
+}
+
+foreach ($a in $AGENTS) {
+    Ensure-Agent -name $a.name -port $a.port -task $a.task
+}
+
+# 4. Persistence — install scheduled tasks at logon if missing.
+#    Wildcard-prefix match so we don't create a stray RC-ScreenAgent
+#    alongside an existing variant set (e.g. RC-ScreenAgent-League,
+#    RC-ScreenAgent-Minimap, RC-ScreenAgent-UI). Same protection covers
+#    any future agent that grows variant tasks.
+foreach ($a in $AGENTS) {
+    $existing = Get-ScheduledTask -TaskName "$($a.task)*" -ErrorAction SilentlyContinue
+    if ($existing) {
+        # Already covered (exact or variant). Nothing to do.
+        continue
+    }
+    $tr = "py C:\RC-Agent\$($a.name)"
+    schtasks /Create /TN $a.task /SC ONLOGON /RL HIGHEST /F /TR $tr 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "  scheduled task $($a.task) installed" -ForegroundColor Green
+    } else {
+        Write-Host "  scheduled task $($a.task) install failed" -ForegroundColor Red
+    }
+}
+
+Write-Host ''
+Write-Host '=== ready ===' -ForegroundColor Cyan
+Write-Host ''

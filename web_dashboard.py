@@ -4843,7 +4843,8 @@ class _Handler(BaseHTTPRequestHandler):
                        "bridge_pull_tasks.py", "bridge_post_result.py",
                        "bridge_task.py",
                        "bridge_ping.py", "bridge_heartbeat.py",
-                       "bridge_setup.ps1",
+                       "bridge_setup.ps1", "gamepc_boot.ps1",
+                       "process-bridge-tasks.md",
                        "rc_rootCA.pem"}
             if name not in ALLOWED:
                 self._send(404, b"not found", "text/plain"); return

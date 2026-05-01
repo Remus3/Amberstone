@@ -27,18 +27,25 @@ You do NOT own:
 - The web dashboard, vision server, RC main process — all on Legion.
 - Anything you can't reach from `C:\RC-Agent\` or local Windows commands.
 
-## The 3 relay agents
+## The 4 agents
 
-All live at `C:\RC-Agent\` after deploy. All push to Legion's vision server
-on `http://192.168.8.230:8889/`.
+All live at `C:\RC-Agent\` after deploy. The first three push outbound to
+Legion's vision server on `http://192.168.8.230:8889/`. The MCP server
+accepts inbound from Legion on `:8892`.
 
-| File | Pushes | Endpoint on Legion | Default scheduled task |
+| File | Direction | Endpoint | Default scheduled task |
 |---|---|---|---|
-| `gamepc_screen_agent.py` | 1920×1080 JPEG screenshot every 2s | `POST /upload-frame` | `RC-ScreenAgent` |
-| `gamepc_liveclient_relay.py` | Riot Live Client `/liveclientdata/allgamedata` JSON every 1s | `POST /upload-liveclient` | `RC-LiveClientRelay` |
-| `gamepc_lcu_agent.py` | LCU session/champ-select/ready-check state every 1s + drains command queue every 0.5s | `POST /upload-lcu`, `GET /lcu-cmd-pending`, `POST /lcu-cmd-done` | `RC-LCU` |
+| `gamepc_screen_agent.py` | → Legion | `POST :8889/upload-frame` (1920×1080 JPEG every 2s) | `RC-ScreenAgent-League`, `RC-ScreenAgent-Minimap`, `RC-ScreenAgent-UI` (variants) |
+| `gamepc_liveclient_relay.py` | → Legion | `POST :8889/upload-liveclient` (Riot Live Client JSON every 1s) | `RC-LiveClientRelay` |
+| `gamepc_lcu_agent.py` | → Legion | `POST :8889/upload-lcu`, `GET :8889/lcu-cmd-pending`, `POST :8889/lcu-cmd-done` | `RC-LCU` |
+| `gamepc_mcp_server.py` | ← Legion | listens on `:8892/mcp` (JSON-RPC) + `:8892/health` | `RC-MCP-Server` |
 
-All three use `X-RC-Token: 8e8f131e212b329438218eca27372dde` for auth.
+The push agents use `X-RC-Token: 8e8f131e212b329438218eca27372dde`. The
+MCP server uses `Authorization: Bearer <same token>`.
+
+The MCP server also requires a Windows Firewall inbound allow rule on
+TCP 8892 — `gamepc_boot.ps1` provisions it as `RC-MCP`. Without the
+rule Legion sees `Failed to connect` even if the listener is up.
 
 ## Refreshing an agent from Legion (canonical source)
 
@@ -49,7 +56,20 @@ iwr http://192.168.8.230:8888/agent/gamepc_lcu_agent.py -O C:\RC-Agent\gamepc_lc
 ```
 
 Allowed agent names: `gamepc_screen_agent.py`, `gamepc_liveclient_relay.py`,
-`gamepc_lcu_agent.py`. Other paths return 404.
+`gamepc_lcu_agent.py`, `gamepc_mcp_server.py`, `gamepc_boot.ps1`. Other
+paths return 404.
+
+Bootstrapping a fresh Game-PC (or recovering after a reboot where agents
+didn't auto-start) is one line:
+
+```powershell
+iex (iwr https://192.168.8.230:8888/agent/gamepc_boot.ps1).Content
+```
+
+`gamepc_boot.ps1` re-fetches all four agents, installs the firewall rule
+for the MCP port if missing, kills zombie processes (running but not
+port-bound), starts whatever isn't already healthy, and installs the
+scheduled tasks for boot persistence.
 
 ## Agent process management
 
@@ -123,6 +143,37 @@ curl.exe -s -H "X-RC-Token: 8e8f131e212b329438218eca27372dde" http://192.168.8.2
    the user — Legion Claude needs to fix it.
 4. If the issue is local (lockfile, firewall, ports, League state), fix
    here on Game-PC.
+
+## Auto-pulling bridge tasks (DO THIS — stop relying on the user to nudge you)
+
+Legion's Claude posts tasks targeted at `gamepc` via the bridge. The user
+should NOT have to type "go check the bridge" — your `/loop` should be
+polling. Install the canonical `process-bridge-tasks` command once:
+
+```powershell
+# One-time install on Game-PC:
+$cmdDir = Join-Path $env:USERPROFILE '.claude\commands'
+New-Item -ItemType Directory -Force -Path $cmdDir | Out-Null
+Invoke-WebRequest -Uri 'https://192.168.8.230:8888/agent/process-bridge-tasks.md' `
+    -OutFile (Join-Path $cmdDir 'process-bridge-tasks.md') `
+    -UseBasicParsing
+```
+
+Then in your Claude Code session, kick off the loop **once**:
+
+```
+/loop 30s /process-bridge-tasks
+```
+
+It will silently no-op when no tasks are pending and execute + post
+results via `bridge_post_result.py` when there are. 30 s is comfortable
+for non-time-critical work; tighten to 10 s if you're actively
+iterating with Legion.
+
+**Hard rule:** when you do execute a bridge task, you call
+`py C:\RC-Agent\bridge_post_result.py …` to return the result. Never
+print results to chat expecting the user to paste them to Legion. The
+user is not a relay.
 
 ## Coordinating with Legion Claude
 

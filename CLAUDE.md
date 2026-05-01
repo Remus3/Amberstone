@@ -83,13 +83,17 @@ RC on Legion can't see Game-PC's screen directly. The pipeline:
 Tesseract installed at `C:\Program Files\Tesseract-OCR\tesseract.exe`
 (via winget; not in PATH — vision server pins explicitly via `_TESSERACT_DEFAULT`).
 
-**Game-PC deploy** (one time):
+**Game-PC deploy** (one-line bootstrap, idempotent):
 ```
-1. Copy tools\gamepc_screen_agent.py to Game-PC at C:\RC-Agent\
-2. py -m pip install Pillow
-3. py C:\RC-Agent\gamepc_screen_agent.py
-4. (optional) schtasks /Create /TN "RC-ScreenAgent" /SC ONLOGON /F /TR "py C:\RC-Agent\gamepc_screen_agent.py"
+iex (iwr https://192.168.8.230:8888/agent/gamepc_boot.ps1).Content
 ```
+Pulls all 4 agents (`gamepc_screen_agent.py`, `gamepc_lcu_agent.py`,
+`gamepc_liveclient_relay.py`, `gamepc_mcp_server.py`) from Legion's
+`/agent/` allowlist, kills any zombie listeners, ensures the inbound
+firewall rule for `:8892` (MCP), starts whatever isn't healthy, and
+installs scheduled tasks (`RC-LCU`, `RC-LiveClientRelay`, `RC-MCP-Server`,
+plus `RC-ScreenAgent-*` variants) for boot persistence. See `tools/GAMEPC_CLAUDE.md` for the
+agent map.
 
 TFT vision (`tft/tft_vision_reader.py`, `tft/tft_ocr_reader.py`) still uses
 local `ImageGrab` and is broken post-migration — needs the same relay refactor.

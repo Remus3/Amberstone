@@ -71,6 +71,18 @@ try {
     Write-Host "  Game-PC screen agent: no frames -- start gamepc_screen_agent.py on Game-PC" -ForegroundColor Yellow
 }
 
+# 7. Check Game-PC MCP server :8892 (inbound listener — Bearer auth, /health endpoint).
+#    Process-not-listening + missing firewall rule are the two failure modes.
+try {
+    $h = @{ 'Authorization' = 'Bearer 8e8f131e212b329438218eca27372dde' }
+    $r = Invoke-WebRequest -Uri "http://192.168.8.237:8892/health" -Headers $h -TimeoutSec 3 -UseBasicParsing
+    if ($r.StatusCode -eq 200) {
+        Write-Host "  Game-PC MCP server :8892 alive" -ForegroundColor Green
+    }
+} catch {
+    Write-Host "  Game-PC MCP server :8892 NOT reachable -- run C:\RC-Agent\gamepc_boot.ps1 on Game-PC" -ForegroundColor Yellow
+}
+
 # 7. Echo health.json snapshot
 $healthPath = "C:\Riot Commander\ops\runtime\health.json"
 if (Test-Path $healthPath) {
