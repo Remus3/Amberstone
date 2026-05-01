@@ -1,8 +1,7 @@
-# Wakeup Notes — 2026-05-01 (session 2 hand-off)
+# Wakeup Notes — 2026-05-01 (session 3 hand-off)
 
-> Hand-off from session that fixed the audit regression and shipped Tier 1 #1.
-> Next session picks up Tier 1 #2 fresh. The 2026-05-01 audit hand-off is preserved
-> in git history at commit `201ff3a` if you need it.
+> Hand-off from session that shipped Tier 1 #2 (centralized LiveClient fetch).
+> Next session picks up Tier 1 #3 fresh.
 
 ---
 
@@ -10,33 +9,28 @@
 
 | Commit | Summary |
 |---|---|
-| `0bceb14` | Re-add `import threading` to `app/__init__.py` — undo audit regression that crash-looped RC every supervisor restart (NameError on `threading.Event()` at line 130). Other audit-touched frozen files re-verified clean. |
-| `9bca527` | Per-thread sqlite conn cache in `web_dashboard.py` (Tier 1 #1). Helper `_ro_conn()` near `_DIAG_CACHE`. All 6 `sqlite3.connect()` sites migrated. Measured: p50 3.7 ms warm vs ~20–80 ms cold pre-refactor. |
+| _pending_ | New `core/liveclient_cache.py` — singleton background poll at 0.5s feeds the latest relay snapshot via immutable `Snapshot` dataclass (`data`, `ts`, `fetched_at`, `no_game`, `age_s` property). Module-level reference + atomic rebind under GIL — no reader lock. Auto-starts on first `get()`; `start()` wired in `main.py` near MetricsCache so the cache is warm before web_dashboard or coaches launch. Migrated 3 consumers off direct HTTP: `coaches/_base_coach._fetch_game_data`, `core/vision_tracker._fetch_snapshot`, `core/decision_detector._fetch_snapshot`. Idle relay traffic drops from ~6–8 polls/s → ~2/s (cache 0.5s + game_reader's overlay-loop poll). |
 
 ## State at hand-off
 
-- 3 unpushed commits on `main` (`201ff3a` audit, `0bceb14` regression fix, `9bca527` perf). User decides on push before 5/10 cloud routine.
-- RC is alive on Legion — verify each session via `ops/runtime/health.json` (pid varies).
-- Game-PC `/loop /process-bridge-tasks` was dead at session start; not re-armed. If the user invokes Game-PC Claude, type `/loop 1m /process-bridge-tasks` over there to revive bridge auto-flow.
-- `_archive/2026-05-01-audit/` quarantine still in place. After a few clean days, user may `rm -rf` it.
+- 4 unpushed commits on `main` (`201ff3a` audit, `0bceb14` regression fix, `9bca527` perf, _pending Tier 1 #2_). User decides on push before 5/10 cloud routine.
+- RC alive on Legion — verified post-restart: pid=10916, alive=True, last_reload_ok=True, cache+tracker+detector all logged clean start lines.
+- Game-PC `/loop /process-bridge-tasks` was dead at session start (53453s since last bridge result); not re-armed. Liveclient relay snapshot is also stale (Game-PC not pushing fresh data) — cache correctly returns stale snap with age_s ~15h, consumers see age > 12s and treat as no-game. Once Game-PC bridge revives, cache will start serving fresh data immediately.
+- `RC-PatchRefresh` scheduled task still showing `last_result=2147942402` — already fixed at the script level (see `project_rc_patchrefresh_fixed.md`); residual error code is from the prior failed run, will clear on next scheduled execution.
 
-## Next: Tier 1 #2 — centralize LiveClient fetch
+## Next: Tier 1 #3 — log retention sweep
 
-`coaches/_base_coach.py` × 4 modes (aram, arena, brawl, sr) each spawn 2 daemon threads, all polling `127.0.0.1:8889/latest-liveclient` every 1.5 s. Plus `vision_tracker` (0.75 s) and `decision_detector` (1.0 s) hit the same endpoint. Idle relay sees ~6–8 polls/sec with no game running.
+`logs/` directory at 191 MB, no day-cap or rotation. Daily log files keep accumulating.
 
-**Goal:** consolidate into one shared 0.5 s poll cached process-wide. Each consumer reads from cache; no consumer hits HTTP directly. Model: `_STATE_CACHE_PAYLOAD` at `web_dashboard.py:1261`.
+**Goal:** add a retention policy that caps total log dir size or trims by age (e.g. keep last 14 days). Atomic + safe — run from supervisor or dedicated daemon thread.
 
 **Sketch:**
-1. New `core/liveclient_cache.py` — module with `get()` returning the latest cached payload + ts, `start()` launching the singleton fetcher thread.
-2. `_base_coach.py` poll loop and vision loop call `liveclient_cache.get()` instead of urlopen. Drop the HTTP fetch from each mode coach.
-3. `vision_tracker.py` and `decision_detector.py` migrate to the same cache.
-4. `main.py` calls `liveclient_cache.start()` once near MetricsCache init.
+1. New `core/log_retention.py` — function that scans `logs/*.log`, sorts by date, deletes anything older than N days (default 14) OR older than oldest file when total > 100 MB.
+2. Call from supervisor on its own slow cadence (every hour, say) OR from main.py at startup + via threading.Timer for periodic runs.
+3. Frozen file alert: `core/log_setup.py` is on the frozen list — don't touch its rotation logic. New module sits beside it.
 
-**Safety:** cache TTL <= 0.5 s so consumers see ~live data; if no game, fetch returns None (existing semantics).
+## After #3
 
-## After #2
-
-- Tier 1 #3 — log retention sweep (logs/ at 191 MB, no day-cap)
 - Tier 1 #4 — `agents/state/task_queue.jsonl` rotation (600 KB, no policy)
 - Tier 1 #5 — split `web_dashboard.py` (5,775-line monolith)
 
@@ -44,4 +38,4 @@ Full Tier 1–4 list lives in git: `git show 201ff3a -- WAKEUP_NOTES.md` for the
 
 ## Session workflow note
 
-CLAUDE.md now codifies scoped-session discipline: commit + WAKEUP_NOTES update + memory write at end of each task; `/clear` to start fresh. Auto-compact at 75% is a safety net, not the primary tool. See "Session workflow" section in CLAUDE.md.
+Scoped sessions per CLAUDE.md "Session workflow". `/clear` between Tier items.
