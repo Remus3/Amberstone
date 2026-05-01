@@ -16,13 +16,10 @@ import logging
 import sqlite3
 import threading
 import time
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
 _log = logging.getLogger("rc.web_dashboard")
-
-PORT = 8888
-HOST = "0.0.0.0"
 
 # AUDIT (2026-04-22): vision bearer token routed through core.vision_token
 # for rotation support (env / config file / legacy default).
@@ -735,161 +732,10 @@ class _Handler(BaseHTTPRequestHandler):
         self._send(404, b"not found", "text/plain")
 
 
-class _DualProtocolHTTPServer(ThreadingHTTPServer):
-    """Accept BOTH plain HTTP and TLS on the same port (proposal: 2026-04-28
-    Game-PC fix). Stdlib wrap_socket() over the listen socket forces every
-    accept() into a TLS handshake — a plaintext `http://` request from a
-    LAN host then connects, never receives bytes back, and times out.
-
-    This server peeks the first byte per connection:
-      * 0x16 (TLS ClientHello)  → wrap in the TLS context, hand off as TLS
-      * anything else           → emit an inline 301 to https://<host>:8888,
-                                   close, raise OSError so the framework
-                                   skips the slot.
-    """
-
-    def __init__(self, server_address, handler_class, *, ssl_ctx):
-        super().__init__(server_address, handler_class)
-        self._ssl_ctx = ssl_ctx
-
-    def get_request(self):
-        sock, addr = self.socket.accept()
-        try:
-            import socket as _socket
-            sock.settimeout(5.0)
-            first = sock.recv(1, _socket.MSG_PEEK)
-        except (OSError, ValueError):
-            try: sock.close()
-            except OSError: pass
-            raise
-        if first == b"\x16":
-            # TLS ClientHello — wrap and hand off. Wrap can raise on a
-            # malformed handshake; that's a normal scanner / probe and
-            # should be silently dropped.
-            try:
-                wrapped = self._ssl_ctx.wrap_socket(sock, server_side=True)
-                wrapped.settimeout(None)
-                return wrapped, addr
-            except OSError as exc:
-                try: sock.close()
-                except OSError: pass
-                raise OSError(f"TLS handshake failed: {exc}")
-        # Plain HTTP — answer with a 301 inline + close.
-        try:
-            self._inline_redirect(sock)
-        except OSError:
-            pass
-        finally:
-            try: sock.close()
-            except OSError: pass
-        # Tell socketserver to skip this slot. It catches OSError quietly.
-        raise OSError("plain HTTP redirected to HTTPS")
-
-    def _inline_redirect(self, sock) -> None:
-        """Read enough of the request to extract Host + path, send a 301,
-        close. Best-effort — scanner/garbage traffic just gets a generic
-        redirect to /."""
-        sock.settimeout(2.0)
-        buf = b""
-        while b"\r\n\r\n" not in buf and len(buf) < 8192:
-            try:
-                chunk = sock.recv(4096)
-            except (OSError, ValueError):
-                break
-            if not chunk:
-                break
-            buf += chunk
-        path = "/"
-        host = "192.168.8.230"
-        try:
-            head, _, _ = buf.partition(b"\r\n\r\n")
-            lines = head.split(b"\r\n")
-            if lines:
-                req = lines[0].decode("ascii", errors="replace").split(" ")
-                if len(req) >= 2 and req[1].startswith("/"):
-                    # cap path length to keep the Location header sane
-                    path = req[1][:512]
-            for h in lines[1:]:
-                lo = h.lower()
-                if lo.startswith(b"host:"):
-                    raw = h.split(b":", 1)[1].decode("ascii", errors="replace").strip()
-                    # Strip the existing port; we always redirect to PORT.
-                    host = raw.split(":", 1)[0] or host
-                    break
-        except (UnicodeDecodeError, ValueError):
-            pass
-        location = f"https://{host}:{PORT}{path}"
-        body = (
-            b"<!doctype html><meta charset=utf-8>"
-            b"<title>RC dashboard \xe2\x86\x92 HTTPS</title>"
-            b"<p>RC dashboard requires HTTPS. Open "
-            b"<a href=\"" + location.encode("utf-8") + b"\">"
-            + location.encode("utf-8") + b"</a>.</p>"
-        )
-        resp = (
-            b"HTTP/1.1 301 Moved Permanently\r\n"
-            b"Location: " + location.encode("utf-8") + b"\r\n"
-            b"Content-Type: text/html; charset=utf-8\r\n"
-            b"Content-Length: " + str(len(body)).encode("ascii") + b"\r\n"
-            b"Connection: close\r\n\r\n"
-        ) + body
-        try:
-            sock.sendall(resp)
-        except OSError:
-            pass
-
-
-def start_dashboard(app_dir: Path) -> None:
-    """Launch the dashboard HTTP(S) server in a daemon thread. Idempotent-ish.
-    If ops/tls/rc.pem + rc-key.pem exist (mkcert-issued), serves TLS via
-    _DualProtocolHTTPServer (HTTP requests get a 301 to HTTPS on the same
-    port); otherwise falls back to plain HTTP."""
-    global _APP_DIR
-    _APP_DIR = Path(app_dir)
-
-    cert_path = _APP_DIR / "ops" / "tls" / "rc.pem"
-    key_path  = _APP_DIR / "ops" / "tls" / "rc-key.pem"
-    scheme = "http"
-    srv = None
-    if cert_path.exists() and key_path.exists():
-        try:
-            import ssl
-            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-            ctx.load_cert_chain(certfile=str(cert_path), keyfile=str(key_path))
-            srv = _DualProtocolHTTPServer((HOST, PORT), _Handler, ssl_ctx=ctx)
-            scheme = "https"
-        except Exception as exc:
-            _log.warning("TLS setup failed, falling back to HTTP: %s", exc)
-            srv = None
-    if srv is None:
-        try:
-            srv = ThreadingHTTPServer((HOST, PORT), _Handler)
-        except OSError as exc:
-            _log.warning("Dashboard port %d unavailable: %s", PORT, exc)
-            return
-
-    t = threading.Thread(target=srv.serve_forever, daemon=True, name="WebDashboard")
-    t.start()
-    if scheme == "https":
-        _log.info("Web dashboard on https://%s:%d/  (HTTP requests on the "
-                  "same port 301-redirect)  (iPad: https://192.168.8.230:%d/)",
-                  HOST, PORT, PORT)
-    else:
-        _log.info("Web dashboard on http://%s:%d/  (no TLS cert)", HOST, PORT)
-
-    # Vision tracker: derives fog-of-war state from Live Client position
-    # freshness, writes data/vision_state.json. Consumed by the minimap
-    # overlay layer and (later) by coach prompt builders.
-    try:
-        from core.vision_tracker import get_tracker
-        get_tracker().start_background()
-    except Exception as exc:
-        _log.warning("vision_tracker failed to start: %s", exc)
-
-    # Decision detector: surfaces coachable moments (objective contest,
-    # etc.) to the dashboard Coach panel + records the player's choice.
-    try:
-        from core.decision_detector import get_loop
-        get_loop().start_background()
-    except Exception as exc:
-        _log.warning("decision_detector failed to start: %s", exc)
+# Slice 2D (2026-05-01): _DualProtocolHTTPServer + start_dashboard live
+# in dashboard/server.py. Re-export here so `from web_dashboard import
+# start_dashboard` (main.py) keeps working without churn.
+from dashboard.server import (  # noqa: E402, F401
+    _DualProtocolHTTPServer,
+    start_dashboard,
+)
