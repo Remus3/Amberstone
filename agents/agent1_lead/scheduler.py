@@ -48,6 +48,15 @@ except ImportError:
 _APPEND_LOCK_RETRY_SEC = 0.05
 _APPEND_LOCK_MAX_WAIT_SEC = 5.0
 
+# Compaction policy: the queue log is append-only, but every reader
+# (`_load`, `_latest_status_from_log`, `recent_events`) scans the whole
+# file. Without periodic compaction the file grows unbounded and slows
+# the cold-start `_load()`. Compaction keeps only the latest event per
+# task_id — `_load()` already has latest-wins semantics, so this preserves
+# the in-memory state reconstruction exactly.
+_COMPACT_INTERVAL_S = 3600.0  # hourly check
+_COMPACT_THRESHOLD_BYTES = 2 * 1024 * 1024  # compact above 2 MB
+
 logger = logging.getLogger("agent1.scheduler")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -161,6 +170,8 @@ class Scheduler:
         self,
         queue_log: Path | None = None,
         agent0_evaluate: Callable | None = None,
+        compact_interval_s: float = _COMPACT_INTERVAL_S,
+        compact_threshold_bytes: int = _COMPACT_THRESHOLD_BYTES,
     ) -> None:
         # Resolve QUEUE_LOG at call time so tests / runtime reconfig
         # that monkeypatch the module-level constant take effect.
@@ -172,7 +183,13 @@ class Scheduler:
         self._counter = itertools.count()
         self._lock = threading.RLock()
         self._agent0_evaluate = agent0_evaluate
+        self._compact_interval_s = float(compact_interval_s)
+        self._compact_threshold_bytes = int(compact_threshold_bytes)
+        self._compact_stop = threading.Event()
+        self._compact_thread: threading.Thread | None = None
         self._load()
+        if self._compact_interval_s > 0:
+            self._start_compactor()
 
     # ----- persistence --------------------------------------------
     @staticmethod
@@ -228,6 +245,106 @@ class Scheduler:
                 f.flush()
             finally:
                 self._unlock_file(f)
+
+    # ----- compaction ---------------------------------------------
+    def compact(self) -> tuple[int, int]:
+        """Rewrite ``task_queue.jsonl`` to keep only the latest event per task_id.
+
+        Returns ``(lines_before, lines_after)``. Safe to call from any
+        thread — holds the in-process RLock and the cross-process file
+        lock for the entire read-truncate-rewrite cycle so concurrent
+        ``_append_log`` calls from any process block until done.
+
+        Latest-wins matches ``_load()`` semantics, so the reconstructed
+        in-memory state after compaction is identical to before. Corrupt
+        lines are dropped (already logged by ``_load`` on next reload).
+        """
+        if not self._queue_log.exists():
+            return (0, 0)
+
+        with self._lock:
+            try:
+                with self._queue_log.open("r+", encoding="utf-8") as f:
+                    self._lock_file_exclusive(f)
+                    try:
+                        f.seek(0)
+                        lines = f.read().splitlines()
+
+                        # dict preserves insertion order; del+set on hit
+                        # keeps the most-recent occurrence of each task_id
+                        # at the end, so iteration order matches "newest
+                        # last" which `recent_events()` relies on.
+                        latest: dict[str, str] = {}
+                        non_empty = 0
+                        for line in lines:
+                            line = line.strip()
+                            if not line:
+                                continue
+                            non_empty += 1
+                            try:
+                                rec = json.loads(line)
+                            except json.JSONDecodeError:
+                                continue
+                            tid = (rec.get("task") or {}).get("id")
+                            if not tid:
+                                continue
+                            if tid in latest:
+                                del latest[tid]
+                            latest[tid] = line
+
+                        if len(latest) >= non_empty:
+                            return (non_empty, non_empty)
+
+                        new_content = "".join(latest[tid] + "\n" for tid in latest)
+                        f.seek(0)
+                        f.truncate()
+                        f.write(new_content)
+                        f.flush()
+                        logger.info(
+                            "task_queue.jsonl compact: %d → %d lines",
+                            non_empty, len(latest),
+                        )
+                        return (non_empty, len(latest))
+                    finally:
+                        self._unlock_file(f)
+            except OSError as exc:
+                logger.warning("task_queue.jsonl compact failed: %s", exc)
+                return (0, 0)
+
+    def _maybe_compact(self) -> None:
+        try:
+            size = self._queue_log.stat().st_size
+        except OSError:
+            return
+        if size < self._compact_threshold_bytes:
+            return
+        self.compact()
+
+    def _compact_loop(self) -> None:
+        while not self._compact_stop.is_set():
+            try:
+                self._maybe_compact()
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.warning("compact loop iteration failed: %s", exc)
+            self._compact_stop.wait(self._compact_interval_s)
+
+    def _start_compactor(self) -> None:
+        t = threading.Thread(
+            target=self._compact_loop, daemon=True, name="agent1-compact",
+        )
+        self._compact_thread = t
+        t.start()
+        logger.info(
+            "task_queue.jsonl compactor started (interval=%.0fs threshold=%dB)",
+            self._compact_interval_s, self._compact_threshold_bytes,
+        )
+
+    def stop_compactor(self) -> None:
+        """Stop the periodic compactor thread (mostly for tests)."""
+        self._compact_stop.set()
+        if self._compact_thread is not None:
+            self._compact_thread.join(timeout=3)
+            self._compact_thread = None
 
     def _load(self) -> None:
         if not self._queue_log.exists():
