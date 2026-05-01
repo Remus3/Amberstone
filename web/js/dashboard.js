@@ -6001,6 +6001,73 @@
   setInterval(pollCoachDecisions, COACH_DECISIONS.intervalMs);
   pollCoachDecisions();
 
+  // ── Recent coach calls (Tier 4 #18, 2026-05-01) ─────────────────────
+  // Reads /api/decisions/log every 30s and renders the last N resolved
+  // decisions so the user can review "did I contest the right Barons?"
+  // alongside the live pending banner above. The audit's "kill-time
+  // graph overlay" was speculative; the resolved-log readout is the
+  // useful contained version of that idea.
+  const RECENT_CALLS = {
+    section: el("recent-coach-calls"),
+    list:    el("recent-coach-calls-list"),
+    intervalMs: 30000,
+    limit:   8,
+  };
+
+  function _formatRelativeAge(unixSec) {
+    if (!unixSec) return "—";
+    const ageS = Math.max(0, (Date.now() / 1000) - unixSec);
+    if (ageS < 60)    return `${Math.round(ageS)}s ago`;
+    if (ageS < 3600)  return `${Math.round(ageS / 60)}m ago`;
+    if (ageS < 86400) return `${(ageS / 3600).toFixed(1)}h ago`;
+    return `${Math.round(ageS / 86400)}d ago`;
+  }
+
+  function renderRecentCoachCalls(entries) {
+    const R = RECENT_CALLS;
+    if (!R.section || !R.list) return;
+    if (!Array.isArray(entries) || entries.length === 0) {
+      R.section.hidden = true;
+      R.list.innerHTML = "";
+      return;
+    }
+    R.section.hidden = false;
+    R.list.innerHTML = "";
+    for (const e of entries) {
+      const li = document.createElement("li");
+      li.className = "recent-coach-call rcc-choice-" + (e.choice || "skip");
+
+      const when = document.createElement("span");
+      when.className = "rcc-when";
+      when.textContent = _formatRelativeAge(e.decided_at_unix || e.created_at_unix);
+
+      const title = document.createElement("span");
+      title.className = "rcc-title";
+      title.textContent = e.title || e.id || "decision";
+
+      const choice = document.createElement("span");
+      choice.className = "rcc-choice";
+      choice.textContent = (e.choice || "skip").toUpperCase();
+
+      li.appendChild(when);
+      li.appendChild(title);
+      li.appendChild(choice);
+      R.list.appendChild(li);
+    }
+  }
+
+  async function pollRecentCoachCalls() {
+    if (document.hidden) return;
+    try {
+      const r = await fetch(`/api/decisions/log?limit=${RECENT_CALLS.limit}`);
+      if (!r.ok) return;
+      const d = await r.json();
+      renderRecentCoachCalls(d.entries || []);
+    } catch (_) {}
+  }
+  setInterval(pollRecentCoachCalls, RECENT_CALLS.intervalMs);
+  pollRecentCoachCalls();
+
   // ── Input bar → /api/input (with chat history) ─────────────────────
   const INPUT = {
     form: document.getElementById("input-form"),

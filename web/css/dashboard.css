@@ -2131,6 +2131,68 @@ body[data-mode="brawl"] #mm-img { image-rendering: auto; }
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Tier 4 #18 (2026-05-01): resolved decisions log readout. Sits below
+   the live pending banner and shows the last N flagged decisions with
+   the user's choice for self-review. Muted compared to the live banner
+   so it doesn't compete for attention; choice tag color-matches the
+   live banner button colors (contest=coral, give=lavender, skip=dim). */
+.recent-coach-calls {
+  margin: 6px 14px 0;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+}
+.recent-coach-calls[hidden] { display: none; }
+.recent-coach-calls-head {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 6px 12px 4px;
+  border-bottom: 1px dashed var(--border-soft);
+}
+.recent-coach-calls-label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-weight: 700;
+}
+.recent-coach-calls-hint {
+  font-size: 11px;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
+.recent-coach-calls-list { list-style: none; margin: 0; padding: 0; }
+.recent-coach-call {
+  display: grid;
+  grid-template-columns: 70px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 5px 12px;
+  border-bottom: 1px dashed var(--border-soft);
+  font-size: 12px;
+}
+.recent-coach-call:last-child { border-bottom: none; }
+.rcc-when {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+.rcc-title {
+  color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rcc-choice {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+}
+.rcc-choice-contest .rcc-choice { color: #F07E8B; }
+.rcc-choice-give    .rcc-choice { color: #8A8CF0; }
+.rcc-choice-skip    .rcc-choice { color: var(--text-faint); }
+
 /* Vector overlay (vision_tracker dots + ghost markers) layered on top of
  * the live minimap image. Sized in JS to match the rendered <img> bounds
  * exactly; pointer-events:none so clicks pass through. */
