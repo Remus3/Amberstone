@@ -18,7 +18,7 @@ import json
 import logging
 from urllib.parse import parse_qs, urlparse
 
-from dashboard._context import read_json
+from dashboard._context import APP_DIR, read_json
 from dashboard._diagnostics import diagnostics_cached
 from dashboard._dispatch import equals, prefix
 
@@ -43,6 +43,56 @@ def _serve_decisions(h) -> None:
     except Exception as exc:
         log.warning("api/decisions: %s", exc)
         h._send(500, b'{"error":"decisions_read_failed"}', "application/json")
+
+
+# Tier 4 #18 (2026-05-01): tail of resolved decisions for the dashboard's
+# "Recent Coach Calls" panel. Reads the JSONL log directly so we don't
+# depend on the in-memory pending store (which only holds active
+# decisions). Cap is 50 — past that the dashboard panel doesn't add value.
+_LOG_PATH = APP_DIR / "data" / "decisions_log.jsonl"
+
+
+def _serve_decisions_log(h) -> None:
+    """GET /api/decisions/log?limit=N — last N resolved decisions, newest
+    first. N caps at 50. Tolerates a torn final line (mid-write append)."""
+    try:
+        from urllib.parse import parse_qs, urlparse
+        qs = parse_qs(urlparse(h.path).query)
+        try:
+            limit = max(1, min(50, int((qs.get("limit") or ["20"])[0])))
+        except ValueError:
+            limit = 20
+        if not _LOG_PATH.exists():
+            h._send(200, b'{"entries":[]}', "application/json"); return
+        # Read whole file — bounded by the JSONL's natural size cap (the
+        # detector emits at most ~5 decisions per game).
+        try:
+            text = _LOG_PATH.read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            log.debug("api/decisions/log read: %s", exc)
+            h._send(200, b'{"entries":[]}', "application/json"); return
+        lines = text.splitlines()
+        # Take last N candidates (we'll skip torn ones, so over-fetch a bit
+        # so a torn tail line doesn't shrink the result).
+        candidates = lines[-(limit + 4):]
+        entries: list = []
+        for line in candidates:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                e = json.loads(line)
+                if isinstance(e, dict) and e.get("id"):
+                    entries.append(e)
+            except json.JSONDecodeError:
+                continue  # tolerate torn append
+        # Newest first
+        entries = list(reversed(entries))[:limit]
+        h._send(200, json.dumps({"entries": entries}).encode("utf-8"),
+                "application/json")
+    except Exception as exc:
+        log.warning("api/decisions/log: %s", exc)
+        h._send(500, b'{"error":"log_read_failed"}', "application/json")
 
 
 def _serve_diagnostics(h) -> None:
@@ -228,6 +278,7 @@ def _serve_decision_choice_post(h, payload) -> None:
 GET_ROUTES = [
     (equals("/api/vision-state"),    _serve_vision_state),
     (equals("/api/decisions"),       _serve_decisions),
+    (equals("/api/decisions/log"),   _serve_decisions_log),
     (equals("/api/diagnostics"),     _serve_diagnostics),
     (equals("/api/reload-regions"),  _serve_reload_regions),
     (equals("/api/ocr"),             _serve_ocr),
