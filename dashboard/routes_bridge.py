@@ -117,6 +117,34 @@ def _serve_champions(h) -> None:
     h._send(200, json.dumps(_CACHE).encode(), "application/json")
 
 
+# ── POST handlers (slice 2C-7b) ──────────────────────────────────────
+
+
+def _serve_bridge_post(h, payload) -> None:
+    # Post a message to the cross-Claude bridge. Body shape:
+    #   {source, summary, kind?, id?, target?, body?, in_reply_to?}
+    # Existing {source, summary} posts default to kind="note".
+    try:
+        from web_dashboard import _bridge_post
+        src     = (payload.get("source") or "").strip()
+        msg     = (payload.get("summary") or "").strip()
+        kind    = (payload.get("kind") or "note").strip()
+        eid     = payload.get("id")
+        target  = payload.get("target")
+        msg_body = payload.get("body")
+        replyto = payload.get("in_reply_to")
+        if not msg and kind == "note":
+            h._send(400, b'{"error":"empty summary"}', "application/json"); return
+        entry = _bridge_post(src, msg, kind=kind, entry_id=eid,
+                             target=target, body=msg_body, in_reply_to=replyto)
+        h._send(200, json.dumps({"ok": True, "ts": entry["ts"],
+                                  "id": entry.get("id"),
+                                  "kind": entry.get("kind")}).encode(),
+                "application/json")
+    except Exception as exc:
+        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+
+
 # ── route table ──────────────────────────────────────────────────────
 
 # /api/bridge accepts query strings (`?since=…&limit=…`) — equals()
@@ -128,4 +156,6 @@ GET_ROUTES = [
     (equals("/api/champions"),      _serve_champions),
 ]
 
-POST_ROUTES: list = []
+POST_ROUTES = [
+    (equals("/api/bridge"),         _serve_bridge_post),
+]
