@@ -4494,6 +4494,22 @@ class _Handler(BaseHTTPRequestHandler):
                 d["rc_version"] = ""
             payload = json.dumps(d).encode("utf-8")
             self._send(200, payload, "application/json")
+        elif self.path == "/api/asset-stamp":
+            # 2026-04-30: hot-reload signal. Returns the max mtime across
+            # the dashboard's static assets so a tiny client poller can
+            # detect file changes and refresh without the user alt-tabbing
+            # to hit Ctrl+F5. Cheap (3 stat() calls) and cache-busted.
+            try:
+                import os as _os
+                root = _APP_DIR / "web"
+                files = ["index.html", "css/dashboard.css", "js/dashboard.js"]
+                stamp = max(_os.path.getmtime(root / f) for f in files
+                            if (root / f).exists())
+                self._send(200, json.dumps({"mtime": stamp}).encode(),
+                           "application/json")
+            except Exception as exc:
+                _log.debug("asset-stamp: %s", exc)
+                self._send(200, b'{"mtime":0}', "application/json")
         elif self.path == "/api/vision-state":
             # Fog-of-war state derived by core/vision_tracker from Live
             # Client position freshness. Empty {} when no game running.
