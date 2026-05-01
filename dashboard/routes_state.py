@@ -11,6 +11,7 @@ import hashlib
 import json
 import logging
 import os
+import threading
 import time
 import urllib.request
 from urllib.parse import parse_qs, urlparse
@@ -57,6 +58,80 @@ def _serve_state(h) -> None:
     except Exception as exc:
         log.warning("api/state: %s", exc)
         h._send(500, b'{"error":"state_build_failed"}', "application/json")
+
+
+# /api/state-stream SSE — Tier 4 #16 (2026-05-01). Pushes /api/state
+# payload on change + heartbeat every _SSE_HEARTBEAT_S so the dashboard
+# can skip its dedicated LCU poller and HTTP-fallback /api/state polls
+# while a stream is connected. EventSource on the client auto-reconnects
+# on disconnect, so we cap connection lifetime at _SSE_MAX_DURATION_S
+# to keep dispatcher threads from accumulating across long sessions.
+_SSE_TICK_S         = 1.0     # how often we re-build state to compare
+_SSE_HEARTBEAT_S    = 15.0    # max idle gap before a forced emit
+_SSE_MAX_DURATION_S = 600.0   # close + let client reconnect after 10min
+_SSE_MAX_SUBSCRIBERS = 8      # cap concurrent open streams
+_sse_count = 0
+_sse_count_lock = threading.Lock()
+
+
+def _serve_state_stream(h) -> None:
+    """Long-lived SSE response. Streams /api/state payloads as `data: …\\n\\n`
+    events whenever the JSON hash changes, plus a periodic heartbeat so a
+    dead connection drops within ~15s instead of accumulating silently."""
+    global _sse_count
+    with _sse_count_lock:
+        if _sse_count >= _SSE_MAX_SUBSCRIBERS:
+            h._send(503, b'{"error":"too_many_subscribers"}', "application/json")
+            return
+        _sse_count += 1
+    try:
+        # Send the SSE response headers manually — `_send` sets a
+        # Content-Length, which would terminate the response after
+        # the first chunk.
+        h.send_response(200)
+        h.send_header("Content-Type", "text/event-stream")
+        h.send_header("Cache-Control", "no-store")
+        h.send_header("Connection", "close")  # one-shot per connection
+        h.send_header("X-Accel-Buffering", "no")
+        try:
+            sock = h.connection
+            if hasattr(sock, "cipher") and callable(sock.cipher):
+                h.send_header("Strict-Transport-Security", "max-age=31536000")
+        except Exception:
+            pass
+        h.end_headers()
+
+        last_hash: bytes | None = None
+        last_emit = 0.0
+        start = time.time()
+        # Suggested retry delay if the connection drops (browsers honor this).
+        try:
+            h.wfile.write(b"retry: 2000\n\n")
+            h.wfile.flush()
+        except OSError:
+            return
+
+        while time.time() - start < _SSE_MAX_DURATION_S:
+            try:
+                payload = json.dumps(build_state())
+            except Exception as exc:
+                log.warning("state-stream build: %s", exc)
+                payload = "{}"
+            ph = hashlib.md5(payload.encode("utf-8")).digest()
+            now = time.time()
+            if ph != last_hash or (now - last_emit) >= _SSE_HEARTBEAT_S:
+                line = ("data: " + payload + "\n\n").encode("utf-8")
+                try:
+                    h.wfile.write(line)
+                    h.wfile.flush()
+                except (OSError, ConnectionError):
+                    return  # client disconnected
+                last_hash = ph
+                last_emit = now
+            time.sleep(_SSE_TICK_S)
+    finally:
+        with _sse_count_lock:
+            _sse_count -= 1
 
 
 def _serve_sim_state(h) -> None:
@@ -312,6 +387,7 @@ def _serve_console_error_post(h, payload) -> None:
 # uses prefix() because the legacy do_GET used `startswith`.
 GET_ROUTES = [
     (equals("/api/state"),         _serve_state),
+    (equals("/api/state-stream"),  _serve_state_stream),
     (prefix("/api/sim-state"),     _serve_sim_state),
     (equals("/api/health"),        _serve_health),
     (equals("/api/health/all"),    _serve_health_all),
