@@ -70,8 +70,6 @@ from dashboard._static import (  # noqa: E402
 )
 from dashboard import _dispatch  # noqa: E402
 
-_CHAMP_MAP_CACHE = None
-
 # ── Haiku-backed build preview for champions not in CHAMPION_BUILDS ────
 # Cached by (champion, frozenset(enemies), role, mode) for 10 minutes.
 _PREVIEW_BUILD_CACHE: dict = {}
@@ -634,9 +632,10 @@ class _Handler(BaseHTTPRequestHandler):
         except Exception: pass
 
     def do_GET(self):
-        # Slice 2C (2026-05-01): dispatcher tries each migrated route
-        # first; falls through to the legacy elif chain below for routes
-        # that haven't moved into dashboard/routes_*.py yet.
+        # Slice 2C (2026-05-01): all GET routes live in dashboard/routes_*.
+        # Anything that doesn't match a registered route either falls
+        # through to the agents-supervisor proxy (:8890) for routes that
+        # only exist there, or returns 404.
         if _dispatch.dispatch_get(self):
             return
         if any(self.path == p or self.path.startswith(p + "?") or self.path.startswith(p + "/")
@@ -646,83 +645,6 @@ class _Handler(BaseHTTPRequestHandler):
             # side panels (adaptation, activity, env, minimap-crop,
             # locked-champion, etc.) populate when accessed via 8888.
             self._proxy_to_supervisor()
-        elif self.path.startswith("/api/bridge"):
-            # Cross-Claude message log. GET ?since=<ts>&limit=N&kind=<>&target=<>
-            try:
-                from urllib.parse import urlparse, parse_qs
-                qs = parse_qs(urlparse(self.path).query)
-                since  = float((qs.get("since") or ["0"])[0])
-                limit  = int((qs.get("limit") or ["20"])[0])
-                kind   = (qs.get("kind")   or [None])[0]
-                target = (qs.get("target") or [None])[0]
-                items = _bridge_since(since, limit, kind=kind, target=target)
-                payload = {"now": time.time(), "messages": items}
-                self._send(200, json.dumps(payload).encode(), "application/json")
-            except Exception as exc:
-                self._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
-        elif self.path.startswith("/api/preview-build"):
-            # Unified champ-select brief: build + runes + ally notes.
-            # CHAMPION_BUILDS curated path still used for build ONLY when
-            # available; runes+ally_notes always come from Haiku (cheap).
-            try:
-                from urllib.parse import urlparse, parse_qs
-                qs = parse_qs(urlparse(self.path).query)
-                champ = (qs.get("champion") or [""])[0].strip()
-                enemies = [s.strip() for s in
-                           (qs.get("enemies") or [""])[0].split(",") if s.strip()]
-                allies  = [s.strip() for s in
-                           (qs.get("allies")  or [""])[0].split(",") if s.strip()]
-                role = (qs.get("role") or [""])[0].strip()
-                mode = (qs.get("mode") or ["SR"])[0].strip().upper()
-                # Auto-detect ARAM from live LCU state if caller didn't pass
-                if mode == "SR":
-                    lcu = _lcu_summary() or {}
-                    if ((lcu.get("champ_select") or {}).get("is_aram")):
-                        mode = "ARAM"
-                if not champ:
-                    self._send(400, b'{"error":"champion required"}', "application/json"); return
-                import sys as _sys
-                _sys.path.insert(0, str(_APP_DIR))
-                from item_advisor import resolve_build, CHAMPION_BUILDS
-                brief = _champ_select_brief_via_coach(champ, enemies, allies, role, mode)
-                source = "coach"
-                # If champion is curated AND not in ARAM, prefer the curated
-                # build (fast, handcrafted). Runes/ally_notes still from coach.
-                if champ in CHAMPION_BUILDS and mode != "ARAM":
-                    brief["build"] = resolve_build(champ, enemies, [])
-                    source = "curated+coach"
-                payload = {
-                    "champion": champ, "mode": mode, "source": source,
-                    "build":      brief["build"],
-                    "runes":      brief["runes"],
-                    "ally_notes": brief["ally_notes"],
-                }
-                self._send(200, json.dumps(payload).encode(), "application/json")
-            except Exception as exc:
-                _log.warning("api/preview-build: %s", exc)
-                self._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
-        elif self.path == "/api/champions":
-            # Return {championId: {name, slug}} map for the lobby's champ
-            # icon lookups. Cached on first read.
-            global _CHAMP_MAP_CACHE
-            if "_CHAMP_MAP_CACHE" not in globals() or _CHAMP_MAP_CACHE is None:
-                try:
-                    p = _APP_DIR / "data" / "meta" / "ddragon_champions.json"
-                    raw = json.loads(p.read_text(encoding="utf-8"))
-                    out = {}
-                    for slug, entry in raw.get("data", {}).items():
-                        try:
-                            cid = int(entry.get("key"))
-                            out[str(cid)] = {"name": entry.get("name", slug),
-                                              "slug": slug}
-                        except Exception:
-                            pass
-                    _CHAMP_MAP_CACHE = out
-                except Exception as exc:
-                    _log.warning("api/champions: %s", exc)
-                    _CHAMP_MAP_CACHE = {}
-            self._send(200, json.dumps(_CHAMP_MAP_CACHE).encode(),
-                       "application/json")
         else:
             self._send(404, b"not found", "text/plain")
 
