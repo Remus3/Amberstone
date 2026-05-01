@@ -35,9 +35,16 @@ def _serve_vision_state(h) -> None:
 def _serve_decisions(h) -> None:
     # Pending coachable decisions detected by core/decision_detector.
     # Empty list when no game / no triggers.
+    #
+    # Tier 3 #15 (2026-05-01): instantiate DecisionStore directly instead
+    # of routing through get_loop(). The store is a thin file-I/O wrapper
+    # over data/decisions_pending.json — no need to touch the singleton's
+    # threading machinery just to read the file. Decouples the API from
+    # the loop's process location: a future move of the detector to
+    # agents/supervisor.py won't break this endpoint.
     try:
-        from core.decision_detector import get_loop
-        pending = get_loop().store().list_pending()
+        from core.decision_detector import DecisionStore
+        pending = DecisionStore().list_pending()
         h._send(200, json.dumps({"pending": pending}).encode("utf-8"),
                 "application/json")
     except Exception as exc:
@@ -252,6 +259,10 @@ def _serve_ocr_crop(h) -> None:
 def _serve_decision_choice_post(h, payload) -> None:
     # POST /api/decisions/<id>  body: {choice: "contest"|"give"|"skip", note?}
     # Records the player's choice and removes the decision from pending.
+    #
+    # Tier 3 #15 (2026-05-01): same singleton-decoupling as the GET — the
+    # write path is also pure file I/O and doesn't need the loop's
+    # threading.Lock since DecisionStore has its own.
     try:
         decision_id = h.path[len("/api/decisions/"):].split("?", 1)[0]
         if not decision_id:
@@ -260,11 +271,11 @@ def _serve_decision_choice_post(h, payload) -> None:
         if choice not in ("contest", "give", "skip"):
             h._send(400, b'{"error":"choice must be contest|give|skip"}',
                     "application/json"); return
-        from core.decision_detector import get_loop
+        from core.decision_detector import DecisionStore
         extra = {}
         if "note" in payload:
             extra["note"] = str(payload.get("note") or "")[:500]
-        entry = get_loop().store().record_choice(decision_id, choice, extra=extra)
+        entry = DecisionStore().record_choice(decision_id, choice, extra=extra)
         if entry is None:
             h._send(404, b'{"error":"id not pending"}', "application/json"); return
         h._send(200, json.dumps({"ok": True, "id": entry["id"],
