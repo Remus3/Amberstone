@@ -1,7 +1,7 @@
-# Wakeup Notes — 2026-05-01 (session 14 hand-off)
+# Wakeup Notes — 2026-05-01 (session 15 hand-off)
 
-> Hand-off from session that shipped Slice 2C-6 (bridge + preview-build + champions route group).
-> Next session continues with group 7 (POST migration — full do_POST carve-out).
+> Hand-off from session that shipped Slice 2C-7a (first POST sub-slice).
+> Next session continues 7b — bridge POSTs.
 
 ---
 
@@ -9,7 +9,8 @@
 
 | Commit | Summary |
 |---|---|
-| (this) | **Slice 2C-6**: bridge + preview-build + champions route group. New: `dashboard/routes_bridge.py` with 3 GET handlers — `/api/bridge`, `/api/preview-build`, `/api/champions`. The first two deferred-import their helpers (`_bridge_since`, `_lcu_summary`, `_champ_select_brief_via_coach`) from `web_dashboard` inside the handler body — same circular-import workaround as `routes_diag`. `/api/champions` migrated its module-level cache (`_CHAMP_MAP_CACHE`) into `routes_bridge._CACHE`; the orphaned global was removed from `web_dashboard.py`. `_dispatch._gather_get/_post` now register `routes_bridge.{GET,POST}_ROUTES`. `do_GET` is now a one-liner over the dispatcher + supervisor-proxy fallback + 404 — no `elif` chain remains. web_dashboard.py: 1417 → 1339 (−78). Smoke-tested: 39 GET routes total (12 static + 6 state + 4 history + 7 diag + 7 coach + 3 bridge); each group-6 path matches exactly one handler; `/api/analyze` & `/api/adaptation` still fall through to supervisor-proxy. `_bridge_since`, `_lcu_summary`, `_champ_select_brief_via_coach` all still importable from `web_dashboard`. |
+| (this) | **Slice 2C-7a**: input + command + console-error POST group. New POST handlers in `dashboard/routes_state.py` — `_serve_input_post`, `_serve_command_post`, `_serve_console_error_post` — wired into `routes_state.POST_ROUTES`. The `/api/console-error` throttle cache (`_CE_LAST_TS`, `_CE_DROPPED`) moved from `web_dashboard` module-level into `routes_state`; same migration pattern as `_CHAMP_MAP_CACHE` → `routes_bridge._CACHE` in 2C-6. The other handlers deferred-import `_set_pregame`, `_force_vision_scan`, `_atomic_write_json` from `web_dashboard` inside the handler body. `_dispatch._gather_post` already pulls them in (wired in 2C-6). web_dashboard.py: 1339 → 1261 (−78). routes_state.py: 174 → 269 (+95). Smoke-tested: 3 new POST routes total, each path matches exactly one handler; `/api/decisions/*` & `/api/replay-coach` still fall through to legacy elif chain; `_set_pregame`, `_force_vision_scan`, `_atomic_write_json` all still importable from `web_dashboard`; `_CE_LAST_TS` / `_CE_DROPPED` no longer attributes of `web_dashboard`. |
+| 5851cab | Slice 2C-6: bridge + preview-build + champions group. 1417 → 1339 (−78). |
 | (prev) | Slice 2C-5: coach + replay + cost group. 1559 → 1417 (−142). |
 | (prev) | Slice 2C-4: diag/vision group. 1710 → 1559 (−151). |
 | (prev) | Slice 2C-3: history/home group. 1757 → 1710 (−47). |
@@ -19,15 +20,17 @@
 
 ## State at hand-off
 
-- **23 unpushed commits** on `main` (was 22). User decides on push before 5/10 cloud routine.
-- **RC still NOT restarted.** Eleven queued changes (#3 log-retention, #4 queue-compaction, #5 first slice, slice 2A, slice 2B, slice 2C-1, slice 2C-2, slice 2C-3, slice 2C-4, slice 2C-5, slice 2C-6) all activate together at next restart. None is user-visible — all are internal refactor / housekeeping.
+- **24 unpushed commits** on `main` (was 23 + this refactor; the wakeup-notes commit
+  for 2C-7a will land alongside this file). User decides on push before 5/10
+  cloud routine.
+- **RC still NOT restarted.** Twelve queued changes (#3 log-retention, #4 queue-compaction, #5 first slice, slice 2A, slice 2B, slice 2C-1 through 2C-6, slice 2C-7a) all activate together at next restart. None is user-visible — all are internal refactor / housekeeping.
 - Restart timing is user's call. `echo restart > restart_trigger.txt`; verify via `ops/runtime/health.json`.
 - Game-PC bridge still dead. Liveclient relay snapshots still stale.
 - `RC-PatchRefresh` still showing residual `last_result=2147942402` — fixed at script level; clears on next scheduled run.
 
-## Inventory of `web_dashboard.py` (1339 lines)
+## Inventory of `web_dashboard.py` (1261 lines)
 
-Section map (post-2C-6) — re-run `grep -n "def \|class " web_dashboard.py` at session start to refresh; table is approximate.
+Section map (post-2C-7a) — re-run `grep -n "def \|class " web_dashboard.py` at session start to refresh; table is approximate.
 
 | Lines | Section |
 |---|---|
@@ -37,14 +40,30 @@ Section map (post-2C-6) — re-run `grep -n "def \|class " web_dashboard.py` at 
 | ~325–~345 | `_diagnostics_cached`, `_MODE_TO_FILE`, `_DIAG_*` cache constants |
 | ~345–~495 | `_atomic_write_json`, `_set_pregame`, `_force_vision_scan`, `_lcu_summary`, `_liveclient_summary` |
 | ~495–~570 | `_build_state`, `_sim_states`, `_SUPERVISOR_PROXY_PATHS` |
-| ~575–~650 | `class _Handler(BaseHTTPRequestHandler)` do_GET — now a one-liner over the dispatcher + supervisor-proxy fallback + 404 (no elif chain remains) |
-| ~700–~1185 | `do_POST` body + remaining POST routes (target of group 7) |
-| ~1185–~1290 | `class _DualProtocolHTTPServer` |
-| ~1290+ | `start_dashboard()` |
+| ~575–~650 | `class _Handler(BaseHTTPRequestHandler)` do_GET — one-liner over the dispatcher + supervisor-proxy fallback + 404 |
+| ~700–~1100 | `do_POST` body + remaining POST routes (target of group 7b–d) |
+| ~1100–~1210 | `class _DualProtocolHTTPServer` |
+| ~1210+ | `start_dashboard()` |
+
+## Remaining POST endpoints in legacy `do_POST` elif chain
+
+Migrated in 2C-7a (gone): `/api/input`, `/api/command`, `/api/console-error`.
+
+Still in legacy chain (target of 7b–d):
+- `/api/decisions/<id>` — record decision choice
+- `/api/bridge` — cross-Claude bridge POST
+- `/api/replay-coach` — postgame match analysis
+- `/api/speak` — TTS
+- `/api/champ-select-coach` — live champ-select coaching
+- `/api/analyze` — supervisor proxy POST
+- `/api/experimental/get` / `/adapt` / `/mark` — experimental builder
+- `/api/aram-analyze` — ARAM team analyzer
+- `/api/loadout/list` — variant list (POST-style query)
+- `/api/loadout/apply` — apply loadout (queues LCU commands via :8889)
+- `/api/lcu-cmd` — forward to vision server LCU queue
+- `/api/coach/toggle` — per-mode coach kill-switch
 
 ## Slice 2C plan (recap, with progress)
-
-Carve `_Handler` into focused route modules. Dispatcher infra in place — each subsequent group is just (a) a new `dashboard/routes_<name>.py` + (b) deletion of the corresponding elif blocks.
 
 Status:
 - ✅ **Group 1 — static** (12 GET routes): shipped in 26312de
@@ -52,74 +71,86 @@ Status:
 - ✅ **Group 3 — history/home** (4 GET routes): shipped (2C-3)
 - ✅ **Group 4 — diag/vision** (7 GET routes): shipped (2C-4)
 - ✅ **Group 5 — coach + replay + cost** (7 GET routes): shipped (2C-5)
-- ✅ **Group 6 — bridge + preview-build + champions** (3 GET routes): shipped this session
-- ⏳ **Group 7 — POST commands** (full POST migration; see prior hand-off)
+- ✅ **Group 6 — bridge + preview-build + champions** (3 GET routes): shipped (2C-6)
+- 🟡 **Group 7 — POST migration** (multi-slice — 7a done, 7b–d remain)
 
-GET migration is complete after 2C-6. `do_GET` is now a 12-line method (dispatcher + supervisor-proxy fallback + 404). All future work is on POST.
+GET migration is complete. POST migration ~25% done by handler count.
 
-## Pattern for the next group (group 7: POST migration)
+## Pattern for the next sub-slice (7b: bridge POSTs)
 
-`do_POST` (~lines 700–1185) still owns the full POST chain. Body parsing + CSRF check stay at the entry; each registered POST handler receives `(h, body)` per `_dispatch.dispatch_post`. Re-read `do_POST` at session start; the elif chain has many endpoints (input write, command, console-error, bridge-write, kill-switch toggles, validate-ocr write, decisions ack, replay write, etc.).
+`/api/bridge` (lines ~760–~782 of web_dashboard.py) is the obvious target.
+The bridge GET migrated in 2C-6 to `routes_bridge.py` and deferred-imports
+`_bridge_since` from `web_dashboard`. The POST equivalent will deferred-import
+`_bridge_post` (and possibly `_bridge_maybe_rotate` if needed) the same way.
 
-Recommended sub-slicing:
-- 7a — small/self-contained POSTs: `/api/input`, `/api/command`, `/api/console-error` (note `_CE_LAST_TS/_CE_DROPPED` cache — migrate alongside the handler, same pattern as `_CHAMP_MAP_CACHE` → `routes_bridge._CACHE`).
-- 7b — bridge POSTs: `/api/bridge` (POST), `/api/bridge/ack`, etc. Bridge helpers (`_bridge_post`, `_bridge_maybe_rotate`) live in `web_dashboard` and stay there — deferred-import into `routes_bridge` POST handlers.
-- 7c — coach POSTs: `/api/coach/state` toggle, kill-switch writes — sibling to `routes_coach` GETs.
-- 7d — vision/OCR POSTs (calibration, region writes) — sibling to `routes_diag`.
+There's only one `/api/bridge` POST today; if it's the entire 7b slice,
+that's a small one — consider folding `/api/decisions/<id>` into 7b too
+since it's also small/self-contained and the wakeup-note's 7a definition
+was loose. Alternatively keep 7b strictly to bridge and pull
+decisions into 7c (coach group, since decision_detector lives in core
+but is conceptually decision/coach state).
 
-After all four, `do_POST` reduces to a body-read + CSRF + `_dispatch.dispatch_post(self, body)` + 404 fallback.
-
-Subtleties (group 7 specific):
-- CSRF + body parsing happen *before* dispatch — handlers receive a parsed dict.
-- Several POST handlers do their own auth checks (`_VISION_TOKEN` for vision writes). Keep that pattern; deferred-import the constant if needed.
-- POST registry list per module is currently empty; populate `POST_ROUTES = [...]` and the existing `_dispatch._gather_post` already pulls them in (wired in 2C-6).
+Recommended placement:
+- `/api/bridge` POST → `routes_bridge.POST_ROUTES`
+- `/api/decisions/<id>` POST → `routes_state.POST_ROUTES` (state mutation,
+  no coach module — but `routes_coach` is fine if you'd rather keep
+  decisions next to coach kill-switches)
 
 ## Subtleties to watch
 
-- **Cross-module circular imports**: `routes_state`, `routes_diag`, and now `routes_bridge` all use `from web_dashboard import …` *inside* the handler body — deferred import. `routes_coach` needed none. Group 7 (POST) will likely need it for `_bridge_post`, `_set_pregame`, `_force_vision_scan`, etc.
-- **`_global` caches inside route bodies**: `_CHAMP_MAP_CACHE` already migrated (now `routes_bridge._CACHE`). `_CE_LAST_TS/_CE_DROPPED` (console-error in POST group) still in `web_dashboard.py` — move with the handler in 7a.
-- **Import-time vs request-time**: many handlers do `import urllib.request as _ur` *inside* the handler body. Keep that pattern when migrating — moving to module top-level changes startup cost characteristics.
-- **`self._send` / `self._proxy_to_supervisor` / `self.headers`**: still on `_Handler` — handlers receive `h` and call them via `h._send(...)`.
-- **CSRF / body-parsing**: `do_POST` still does CSRF + body parsing at the entry, before dispatch. POST handlers receive the parsed dict as second arg.
-- **First `if` vs `elif` after migration**: leading-block promotion only matters when you delete the current top branch. After 2C-4 the leading `if` is the supervisor-proxy block; group 5's branches all sit below it.
-- **Ordering matters within a group** (more-specific paths first). Cross-group ordering matters too — append groups in registration order. None of the current groups overlap.
-- **Deferred-import gotcha**: `routes_diag` imports `_VISION_TOKEN` from `web_dashboard` *each request*. That's fine — it's a module-level constant — but don't refactor it into a top-level import; that re-introduces the circular import that the deferred pattern exists to avoid.
+- **Cross-module circular imports**: `routes_state` POST handlers in 7a use
+  `from web_dashboard import …` *inside* the handler body — deferred
+  import. Same workaround as `routes_diag` / `routes_bridge` GETs. Group
+  7b–d will likely need it for `_bridge_post`, `_set_pregame`, etc.
+- **`_global` caches inside route bodies**: `_CE_LAST_TS / _CE_DROPPED`
+  migrated in 2C-7a (now `routes_state._CE_LAST_TS / _CE_DROPPED`). No
+  more orphan caches in `web_dashboard.py` for the migrated handlers.
+  Future POST handlers that move similar globals should follow this
+  pattern: declare in the new module, remove from `web_dashboard`.
+- **`self._send` / `self._proxy_to_supervisor` / `self.headers`**: still
+  on `_Handler` — POST handlers receive `h` and call them via
+  `h._send(...)`. The 7a console-error handler reads
+  `h.headers.get("User-Agent", ...)` — `h.headers` is the BaseHTTPRequestHandler
+  attribute, NOT something the dispatcher provides.
+- **CSRF / body-parsing**: `do_POST` still does CSRF + body parsing at
+  the entry, before dispatch. POST handlers receive the parsed dict
+  as second arg — handler signature is `(h, payload)` (named `body`
+  in `_dispatch.py` docstring; either is fine).
+- **First `if` vs `elif` after migration**: the leading branch in the
+  legacy chain after dispatch is now `/api/decisions/` (was `/api/input`).
+  When 7b deletes `/api/bridge`'s elif, the chain reflows fine.
+- **`/api/loadout/list`** uses `startswith` not `==` — when migrating,
+  use `prefix("/api/loadout/list")` not `equals(...)`. Same for
+  `/api/decisions/`.
+- **Deferred-import gotcha**: `routes_state` POST handlers import
+  `_set_pregame` etc. from `web_dashboard` *each request*. Don't refactor
+  to top-level imports; that re-introduces the circular import.
 
 ## Bookkeeping to verify when next restarting RC
 
 After `echo restart > restart_trigger.txt`:
-1. `ops/runtime/health.json` shows new pid + `alive=true` + `last_reload_ok=true`.
-2. `curl -k https://127.0.0.1:8888/api/state` returns the live state JSON.
-3. `curl -k https://127.0.0.1:8888/api/health` and `/api/health/all` return RC + rollup health.
-4. `curl -k https://127.0.0.1:8888/api/home/summary` returns home aggregate (`routes_history._serve_home_summary`).
-5. `curl -k https://127.0.0.1:8888/api/session/summary` returns session aggregate.
-6. `curl -k "https://127.0.0.1:8888/api/history?scope=14d"` returns 14-day history.
-7. `curl -k "https://127.0.0.1:8888/api/loadouts/all?mode=aram"` returns ARAM loadouts.
-8. `curl -k https://127.0.0.1:8888/api/diagnostics` returns diag JSON (slice 2C-4).
-9. `curl -k https://127.0.0.1:8888/api/vision-state` returns `{}` (no game) or fog state.
-10. `curl -k https://127.0.0.1:8888/api/decisions` returns `{"pending": []}` when idle.
-11. `curl -k https://127.0.0.1:8888/api/ocr` and `/api/validate-ocr` work when a game is running (will 500-ish without a frame, that's fine).
-12. `curl -k "https://127.0.0.1:8888/api/ocr-crop?field=hp"` returns a PNG when a frame is cached.
-13. `curl -k https://127.0.0.1:8888/` and `/manifest.json` still work (slice 2C-1).
-14. `curl -k https://127.0.0.1:8888/api/cost` returns spend ledger (slice 2C-5).
-15. `curl -k "https://127.0.0.1:8888/api/coach/trace?limit=10"` returns recent coach calls.
-16. `curl -k https://127.0.0.1:8888/api/coach/state` returns per-mode coach kill-switch state.
-17. `curl -k "https://127.0.0.1:8888/api/replay/matches?limit=5"` returns recent matches.
-18. `curl -k "https://127.0.0.1:8888/api/logs?n=20"` returns the last 20 log lines.
-19. `curl -k "https://127.0.0.1:8888/api/bridge?since=0&limit=5"` returns recent cross-Claude messages (slice 2C-6).
-20. `curl -k "https://127.0.0.1:8888/api/preview-build?champion=Vayne&mode=ARAM"` returns build/runes/ally_notes (will hit Haiku — costs a few cents).
-21. `curl -k https://127.0.0.1:8888/api/champions` returns the championId→name/slug map.
+1. Items 1–21 from session-14 hand-off (state, health, history, diag,
+   vision, decisions GET, OCR, ocr-crop, root, manifest, cost, coach
+   trace, coach state GET, replay matches, logs, bridge GET,
+   preview-build, champions) — all unchanged for 7a.
+2. NEW: `curl -k -X POST -H 'Content-Type: application/json' -d '{"text":"smoke"}' https://127.0.0.1:8888/api/input` returns `{"ok":true}`; check `data/coaching_data.json` for `pregame: "smoke"`.
+3. NEW: `curl -k -X POST -H 'Content-Type: application/json' -d '{"command":"clear_pregame"}' https://127.0.0.1:8888/api/command` clears the field.
+4. NEW: `curl -k -X POST -H 'Content-Type: application/json' -d '{"kind":"smoke","message":"ignore"}' https://127.0.0.1:8888/api/console-error` returns `{"ok":true}`; today's log shows the smoke entry.
 
-If any of those fail, the dashboard package wiring is broken — likely an import-order issue under `pythonw.exe`. Hard fallback: revert the slice 2C-6 commit; slice 2C-5 was the last green build.
+If any of those fail, the dispatcher wiring is broken. Hard fallback:
+revert this commit; slice 2C-6 was the last green build.
 
 ## Slice 2D (later)
 
-Extract cert-generation + `_DualProtocolHTTPServer` into `dashboard/server.py`. Small, self-contained. After 2C is fully done.
+Extract cert-generation + `_DualProtocolHTTPServer` into `dashboard/server.py`.
+Small, self-contained. After 2C is fully done.
 
 ## After #5
 
-Tier 1 list complete after the full #5 (multi-session). Tier 2 priorities live in `git show 201ff3a -- WAKEUP_NOTES.md`.
+Tier 1 list complete after the full #5 (multi-session). Tier 2 priorities
+live in `git show 201ff3a -- WAKEUP_NOTES.md`.
 
 ## Session workflow note
 
-Per CLAUDE.md "Session workflow": `/clear` between #5 sub-slices. Each route group is its own focused task.
+Per CLAUDE.md "Session workflow": `/clear` between #5 sub-slices. Each
+POST sub-slice (7b, 7c, 7d) is its own focused task.
