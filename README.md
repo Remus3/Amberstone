@@ -1,13 +1,13 @@
 # Riot Commander
 
-Live coaching overlay + tablet dashboard for League of Legends and Teamfight Tactics. Reads Riot's local Live Client API, runs vision and LLM coaching, and serves a PWA-installable dashboard for second-screen viewing.
+Live coaching overlay + second-screen dashboard for League of Legends and Teamfight Tactics. Reads Riot's local Live Client API, runs vision and LLM coaching, and serves an HTTPS dashboard viewed in Edge on Game-PC's secondary display.
 
 Personal project. Private repo. Not packaged for general use.
 
 ## What it does
 
 - **Real-time coaching** — Claude Haiku for fast in-game tips, Claude Sonnet for screenshot-based vision reasoning, Tesseract OCR for cheap region reads
-- **Web dashboard** (`:8888`, HTTPS) — home / lobby / last-match / session / history / replay / loadouts / settings / diagnostics views, installable as a PWA on iPad over Duet
+- **Web dashboard** (`:8888`, HTTPS) — home / lobby / last-match / session / history / replay / loadouts / settings / diagnostics views, viewed in Edge fullscreen on Game-PC's secondary display
 - **Match history** — local SQLite (`rewind_history.db`, ~2,800 matches of full participant + timeline data) is the primary data source; no Riot API key required
 - **Champion-select build chooser** — surfaces preferred keystone + items per matchup, writes runes via the LCU
 - **TFT coaching** — separate worker for autobattler mode (vision pipeline pending refactor)
@@ -15,11 +15,10 @@ Personal project. Private repo. Not packaged for general use.
 
 ## Topology
 
-| Machine | Role |
-|---|---|
-| **Legion** (`192.168.8.230`) | Hosts the main RC process, web dashboard `:8888`, vision server `:8889`, MCP client connecting to Game-PC |
-| **Game-PC** (`192.168.8.237`) | Runs the League client + four relay agents (screen, LCU, Live-Client, MCP server) that feed Legion |
-| **iPad** | Loads the dashboard PWA, mirrors the Game-PC display via Duet for split attention during games |
+| Machine | Display | Role |
+|---|---|---|
+| **Legion** (`192.168.8.230`) | 1 monitor | Hosts the main RC process, web dashboard `:8888`, vision server `:8889`, MCP client connecting to Game-PC |
+| **Game-PC** (`192.168.8.237`) | 2 monitors — TV (primary, the game) + an iPad used as a wireless extended display via Duet (secondary, 1920×1280 @ 125% scale, no touch, no apps installed) | Runs the League client + four relay agents (screen, LCU, Live-Client, MCP server) that feed Legion. Edge runs fullscreen on the secondary display showing the dashboard |
 
 ## Architecture
 
@@ -62,9 +61,9 @@ iex (iwr https://192.168.8.230:8888/agent/gamepc_boot.ps1 -UseBasicParsing).Cont
 
 This fetches the four agents, provisions the inbound firewall rule for the MCP server (TCP 8892), kills any zombie listeners, starts whatever isn't already healthy, and installs the at-logon scheduled tasks for persistence.
 
-### iPad
+### Dashboard surface
 
-Open `https://192.168.8.230:8888/` in Edge, install as a PWA. The dashboard is HTTPS with a self-signed cert; flag `edge://flags/#unsafely-treat-insecure-origin-as-secure` to allow the origin.
+Edge on Game-PC, fullscreened (F11) on the secondary display, pointed at `https://192.168.8.230:8888/`. The dashboard is HTTPS with a self-signed cert; flag `edge://flags/#unsafely-treat-insecure-origin-as-secure` to allow the origin if the cert hasn't been imported.
 
 ## Vision pipeline
 

@@ -2,15 +2,14 @@
 
 Live League / TFT coaching overlay + dashboard. Reads Riot Live Client API,
 calls Claude Haiku for fast coaching and Sonnet for vision, writes JSON to
-`data/`, and serves a tkinter overlay + a `:8888` web dashboard for iPad.
+`data/`, and serves a tkinter overlay + a `:8888` web dashboard viewed in Edge fullscreen on Game-PC's secondary display.
 
 ## Topology (post-2026-04-19 migration)
 
-| Machine | IP | Role |
-|---|---|---|
-| **Legion** | 192.168.8.230 | Runs RC (`main.py`), supervisor, vision server, web dashboard |
-| **Game-PC** | 192.168.8.237 | Runs League client; exposes Riot Live Client API on `:2999` (read by Legion over LAN) |
-| **iPad** | — | Mirrors Game-PC via Duet USB-C; loads `http://192.168.8.230:8888/` as installed PWA |
+| Machine | IP | Display | Role |
+|---|---|---|---|
+| **Legion** | 192.168.8.230 | 1 monitor | Runs RC (`main.py`), supervisor, vision server, web dashboard |
+| **Game-PC** | 192.168.8.237 | 2 monitors — primary TV (the game) + secondary iPad-as-monitor over Duet (1920×1280 @ 125% scale, no touch, no apps; the iPad is just a wireless display panel) | Runs League client; exposes Riot Live Client API on `:2999` (read by Legion over LAN). Edge runs fullscreen on the secondary display showing the RC dashboard |
 
 Vision is **in-process on Legion** at `127.0.0.1:8889` — no Moon-PC anymore.
 Historic LAN refs (`192.168.8.230:8889` from RC code) were migrated to loopback.
@@ -59,9 +58,7 @@ Supervisor has a PID lock — duplicate launches abort cleanly.
 - GET `/`, `/api/state`, `/api/health`, `/manifest.json`, `/icon.svg`
 - POST `/api/input` `{text}` — writes to `coaching_data.json.pregame`
 - POST `/api/command` `{command: "force_vision"|"refresh"|"clear_pregame"}`
-PWA-installable via Edge (after `edge://flags/#unsafely-treat-insecure-origin-as-secure`
-adds `http://192.168.8.230:8888`).
-Layout: 1180×820 retina (iPad Air via Duet); header 70 / body 670 / input bar 80.
+Viewed in Edge fullscreen on Game-PC's secondary display (1920×1280 @ 125% OS scale → 1536×1024 effective). HTTPS with self-signed cert; either import the cert or set `edge://flags/#unsafely-treat-insecure-origin-as-secure` for `https://192.168.8.230:8888`.
 
 ## Headless mode
 
@@ -120,7 +117,7 @@ ui/                       OverlayWindow base + ClientPanel (tabbed lobby panel)
 ops/                      rc_supervisor, rc_self_monitor, rc_dev_runtime, runtime/health.json
 lcu/                      LCU client, auto-accept, rune writer, postgame collector
 data/                     coaching artifacts (atomic-written, polled by overlays + dashboard)
-web_dashboard.py          :8888 HTTP read-only dashboard for iPad
+web_dashboard.py          :8888 HTTPS dashboard (Edge fullscreen on Game-PC's secondary display)
 moon_vision_server.py     :8889 local vision server (Sonnet screenshots)
 ```
 
@@ -165,7 +162,7 @@ python data_pipeline.py all                          # full refresh
 
 ## Active priorities (2026-04-19)
 
-1. ✅ Web dashboard `:8888` for iPad (PWA installed)
+1. ✅ Web dashboard `:8888` (Edge fullscreen on Game-PC's secondary display)
 2. ✅ Tkinter overlays disabled; dashboard is the UI (no overlay-geometry work needed)
 3. 🟡 Tiered vision — relay live, Game-PC agent running (RC-ScreenAgent task), Tesseract installed, `core/vision_tesseract.py` module with default 1920×1080 regions in `data/vision_regions.json`. Dashboard exposes `/api/ocr` (run all fields) and `/api/ocr-crop?field=NAME` (PNG preview). Needs: (a) calibration against an in-game frame, (b) coach-side routing that calls Tesseract for cheap fields and only escalates to Sonnet when needed.
 4. ✅ This file
