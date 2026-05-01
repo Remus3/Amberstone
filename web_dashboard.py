@@ -13,8 +13,6 @@ Architecture:
 """
 import json
 import logging
-import sqlite3
-import threading
 import time
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
@@ -194,29 +192,16 @@ _MODE_TO_FILE = {
 }
 
 
-# 30 s TTL cache for /api/diagnostics — see handler comment.
-_DIAG_CACHE: dict = {"payload": b"", "expires": 0.0}
-_DIAG_TTL_S = 30.0
-_DIAG_LOCK = threading.Lock()
-
-
-def _diagnostics_cached() -> bytes:
-    """Cached encoder for /api/diagnostics. Single-flight: while one
-    thread is rebuilding, others wait briefly for the result rather
-    than each running their own ~2 s rebuild."""
-    now = time.time()
-    cur = _DIAG_CACHE
-    if cur.get("payload") and now < cur.get("expires", 0):
-        return cur["payload"]
-    with _DIAG_LOCK:
-        # Re-check inside the lock (another thread may have rebuilt).
-        cur = _DIAG_CACHE
-        if cur.get("payload") and time.time() < cur.get("expires", 0):
-            return cur["payload"]
-        payload = json.dumps(_build_diagnostics()).encode("utf-8")
-        _DIAG_CACHE["payload"] = payload
-        _DIAG_CACHE["expires"] = time.time() + _DIAG_TTL_S
-    return payload
+# Tier 2 helper-shake (2026-05-01): the diagnostics cache moved to
+# dashboard/_diagnostics.py. Re-bind under the original underscored
+# names so any in-process caller that still does `from web_dashboard
+# import _diagnostics_cached` keeps working without churn.
+from dashboard._diagnostics import (  # noqa: E402, F401
+    _DIAG_CACHE,
+    _DIAG_LOCK,
+    _DIAG_TTL_S,
+    diagnostics_cached as _diagnostics_cached,
+)
 
 
 def _atomic_write_json(rel: str, data: dict) -> None:
