@@ -1,11 +1,13 @@
-# Wakeup Notes — 2026-05-01 (session 19 hand-off)
+# Wakeup Notes — 2026-05-01 (session 20 hand-off)
 
-> Hand-off from session that shipped **Slice 2D** (server module).
-> **Tier 1 #5 is closed.** `dashboard/` package now owns every route
-> AND the HTTP/TLS server. `web_dashboard.py` is down to 741 lines —
-> stateful helpers + `_Handler`. Next focus is the Tier 2 list
-> (`git show 201ff3a -- WAKEUP_NOTES.md`) — top of which is the
-> helper-shake into `dashboard/_helpers.py`.
+> Hand-off from session that shipped **Tier 2 #1** (bridge log extraction).
+> `dashboard/_bridge_log.py` now owns the cross-Claude bridge state
+> + its four operations. `web_dashboard.py` is down to **621 lines**.
+> Next focus: continue the helper-shake into `dashboard/_helpers.py`
+> (or split modules) — the remaining stateful helpers in
+> `web_dashboard.py` are the diagnostics cache, mode-resolution +
+> liveclient/lcu summaries, and the `_set_pregame` /
+> `_force_vision_scan` writers.
 
 ---
 
@@ -13,28 +15,20 @@
 
 | Commit | Summary |
 |---|---|
-| (this) | **Slice 2D**: `_DualProtocolHTTPServer` + `start_dashboard` extracted into `dashboard/server.py`. Cert lookup (`ops/tls/rc.pem` + `rc-key.pem`), TLS context, daemon-thread bootstrap, vision_tracker + decision_detector spin-up — all moved. `_Handler` stays in `web_dashboard.py` (deferred-imported by `start_dashboard` via `web_dashboard._Handler`). `_APP_DIR` mutation now done by setting `web_dashboard._APP_DIR = app_dir` from inside `start_dashboard`. `PORT`, `HOST`, `ThreadingHTTPServer` import all dropped from `web_dashboard.py`. Re-export `from dashboard.server import _DualProtocolHTTPServer, start_dashboard` preserves the public surface; `main.py` import (`from web_dashboard import start_dashboard`) untouched. web_dashboard.py: 895 → 741 (−154). dashboard/server.py: 190 (new). Smoke-tested: re-exported objects are identity-equal (`start_dashboard is dashboard.server.start_dashboard`), both files `py_compile` clean. |
+| (this) | **Tier 2 #1**: bridge log extracted to `dashboard/_bridge_log.py`. State (`_bridge_lock`, `_bridge_log` deque) + four ops (`bridge_hydrate_from_disk`, `bridge_maybe_rotate`, `bridge_post`, `bridge_since`) all moved. `routes_bridge.py` switched to module-scope direct imports — the deferred `from web_dashboard import _bridge_*` pattern (added in slice 2C-6 to dodge the import cycle) is no longer needed since `_bridge_log` doesn't depend on `web_dashboard`. `web_dashboard.py` retains `_bridge_post`/`_bridge_since`/etc. re-exports (slice-2D pattern) for any external caller. New module uses `dashboard._context.APP_DIR` so the JSONL path stays identical. web_dashboard.py: 741 → 621 (−120). dashboard/_bridge_log.py: 150 (new). Smoke-tested: re-exports identity-equal, 75 entries hydrate from disk on first import, post+since round-trip works. |
+| 1428040 | Tier 1 #5 closed: docs hand-off after slice 2D. |
+| f22bd01 | Slice 2D: HTTP server + start_dashboard → dashboard/server.py. 895 → 741 (−154). |
 | 64b1427 | Slice 2C-7d: catch-all POSTs. 1146 → 895 (−251). |
-| (prev)  | Slice 2C-7c: coach-flavored POSTs. 1215 → 1146 (−69). |
-| (prev)  | Slice 2C-7b: bridge POST + decisions POST. 1261 → 1215 (−46). |
-| (prev)  | Slice 2C-7a: input + command + console-error POSTs. 1339 → 1261 (−78). |
-| 5851cab | Slice 2C-6: bridge + preview-build + champions. 1417 → 1339 (−78). |
-| (prev)  | Slice 2C-5: coach + replay + cost. 1559 → 1417 (−142). |
-| (prev)  | Slice 2C-4: diag/vision. 1710 → 1559 (−151). |
-| (prev)  | Slice 2C-3: history/home. 1757 → 1710 (−47). |
-| 0805e2c | Slice 2C-2: state-group routes. 1892 → 1757 (−135). |
-| 26312de | Slice 2C-1: dispatcher + 12 static-asset GETs. 2103 → 1892 (−211). |
-| 5760b0c | Slice 2B: dashboard/builders.py. 2612 → 2103 (−509). |
 
-**Cumulative since slice 2B start: 2612 → 741 in `web_dashboard.py` (−1871 lines).**
+**Cumulative since slice 2B start: 2612 → 621 in `web_dashboard.py` (−1991 lines).**
 
 ## State at hand-off
 
-- **29 unpushed commits** on `main` (was 28 + slice 2D + this wakeup).
-  User decides on push before the 2026-05-10 cloud routine.
-- **RC still NOT restarted.** Sixteen queued changes (#3 log-retention,
-  #4 queue-compaction, #5 slices 1–2D + first slice) all activate
-  together at next restart. None is user-visible — all internal refactor.
+- **30 unpushed commits** on `main` (was 29 + this refactor + this wakeup).
+  Origin push still pending — user's call before the 2026-05-10 cloud routine.
+- **RC still NOT restarted.** Sixteen+ queued changes (#3 log-retention,
+  #4 queue-compaction, slices 1–2D + Tier 2 #1) all activate together
+  at next restart. None is user-visible — all internal refactor.
 - Restart timing is user's call. `echo restart > restart_trigger.txt`;
   verify via `ops/runtime/health.json`.
 - Game-PC bridge still dead. Liveclient relay snapshots still stale.
@@ -44,7 +38,7 @@
 - `RC-PatchRefresh` still showing residual `last_result=2147942402` —
   fixed at script level; clears on next scheduled run.
 
-## Inventory of `web_dashboard.py` (741 lines)
+## Inventory of `web_dashboard.py` (621 lines)
 
 Re-run `grep -n "def \|class " web_dashboard.py` at session start to
 refresh; table is approximate.
@@ -52,13 +46,13 @@ refresh; table is approximate.
 | Lines | Section |
 |---|---|
 | 1–69 | imports, constants, `_VISION_TOKEN`, `_APP_DIR`, dashboard package re-imports + slice-2D re-export |
-| ~70–~190 | `_champ_select_brief_via_coach` |
-| ~190–~325 | bridge log: `_BRIDGE_*` constants + hydrate / rotate / post / since |
-| ~325–~345 | `_diagnostics_cached`, `_MODE_TO_FILE`, `_DIAG_*` cache constants |
-| ~345–~495 | `_atomic_write_json`, `_set_pregame`, `_force_vision_scan`, `_lcu_summary`, `_liveclient_summary` |
-| ~495–~570 | `_build_state`, `_sim_states`, `_SUPERVISOR_PROXY_PATHS` |
-| ~570–~736 | `_Handler` — `do_GET`, `do_POST`, `_csrf_ok`, `_send`, `_proxy_to_supervisor` |
-| 737–end | slice-2D re-export shim |
+| ~70–~167 | `_champ_select_brief_via_coach` (Haiku build/runes/ally-notes) |
+| 169–183 | bridge_log re-export shim (Tier 2 #1) |
+| ~185–~225 | `_MODE_TO_FILE`, `_DIAG_*` cache, `_diagnostics_cached` |
+| ~227–~370 | `_atomic_write_json`, `_set_pregame`, `_force_vision_scan`, `_lcu_summary`, `_liveclient_summary` |
+| ~372–~445 | `_build_state`, `_sim_states`, `_SUPERVISOR_PROXY_PATHS` |
+| ~450–~615 | `_Handler` — `do_GET`, `do_POST`, `_csrf_ok`, `_send`, `_proxy_to_supervisor` |
+| 617–end | slice-2D server re-export shim |
 
 ## Bookkeeping to verify when next restarting RC
 
@@ -68,77 +62,64 @@ After `echo restart > restart_trigger.txt`:
    + bridge round-trip + decisions POST 404 from session 16 +
    replay-coach / speak / champ-select-coach / coach/toggle from
    session 17 + slice 2C-7d /api/analyze + experimental + loadout +
-   lcu-cmd allowlist negative test (session 18) — all unchanged.
+   lcu-cmd allowlist negative test (session 18) + slice 2D dashboard
+   TLS / 301 / `_APP_DIR` propagation (session 19) — all unchanged.
 
-2. **NEW (slice 2D): Dashboard responds on :8888 over TLS:**
+2. **NEW (Tier 2 #1): bridge GET still works:**
    ```
-   curl -k https://127.0.0.1:8888/api/health
+   curl -k 'https://127.0.0.1:8888/api/bridge?since=0&limit=5'
    ```
-   returns the health JSON. The server is now backed by
-   `dashboard.server._DualProtocolHTTPServer` rather than a class
-   inside `web_dashboard.py`.
+   returns recent messages from the in-memory deque. The deque is
+   now hydrated by `dashboard._bridge_log.bridge_hydrate_from_disk()`
+   at module-import time (the explicit call moved out of
+   `web_dashboard.py`). On a fresh process the count should match
+   `wc -l ops/runtime/bridge_log.jsonl` capped at 100.
 
-3. **NEW (slice 2D): Plain HTTP redirects to HTTPS on the same port:**
+3. **NEW (Tier 2 #1): bridge POST still works:**
    ```
-   curl -v http://127.0.0.1:8888/api/health
+   curl -k -X POST https://127.0.0.1:8888/api/bridge \
+     -H 'Content-Type: application/json' \
+     -d '{"source":"smoke","summary":"post-restart Tier 2 #1 check"}'
    ```
-   returns `301 Moved Permanently` with `Location:
-   https://127.0.0.1:8888/api/health`. Confirms `_inline_redirect` +
-   the peek-first-byte multiplexer survived the move.
+   returns `{ok: true, ts, kind: "note"}`. Then `tail -1
+   ops/runtime/bridge_log.jsonl` should show the new entry —
+   confirms the JSONL append path still resolves to
+   `<APP_DIR>/ops/runtime/bridge_log.jsonl`.
 
-4. **NEW (slice 2D): `_APP_DIR` propagation:**
-   ```
-   curl -k https://127.0.0.1:8888/api/state
-   ```
-   returns a populated state envelope. Failures here would mean
-   `web_dashboard._APP_DIR` was not mutated by the new
-   `dashboard.server.start_dashboard`, so all downstream JSON reads
-   point at the wrong root.
+If either of those fail, the most likely cause is `APP_DIR`
+divergence — `_bridge_log` resolves the JSONL via
+`dashboard._context.APP_DIR` (project root), while web_dashboard's
+`start_dashboard` mutates `web_dashboard._APP_DIR`. They should
+agree because both derive from `Path(__file__)`, but mkdir +
+append happens against `_bridge_log`'s view.
 
-5. **NEW (slice 2D): vision_tracker + decision_detector spawn:**
-   `ops/runtime/health.json` shouldn't change shape — but a tail of
-   today's log should still show `vision_tracker started` /
-   `decision_detector started` (the optional spin-up branches at the
-   bottom of `start_dashboard`). Absence is non-fatal but is the only
-   way to spot a silent regression.
+Hard fallback: revert this commit (`git revert HEAD~1` after the
+docs commit lands); slice 2D (commit f22bd01) was the last green
+build with bridge state inside `web_dashboard.py`.
 
-If any of those fail, the cert/server extraction is broken. Hard
-fallback: revert this commit; slice 2C-7d (commit 64b1427) was the
-last green build with `start_dashboard` still in `web_dashboard.py`.
+## Tier 2 progress
 
-## Tier 1 #5 — CLOSED ✅
+- ✅ **#1 — bridge_log → `dashboard/_bridge_log.py`** (this session)
+- ⏳ #2 — diagnostics cache (`_DIAG_CACHE` + `_diagnostics_cached`)
+  could move next, alongside `_MODE_TO_FILE`. Small (~30 LOC). Lone
+  caller is `routes_diag.py` via deferred import.
+- ⏳ #3 — `_atomic_write_json` + `_set_pregame` + `_force_vision_scan`.
+  Writers; tightly coupled to coaching-data lock + atomic-write
+  invariant. Worth a `dashboard/_writers.py` of its own.
+- ⏳ #4 — `_lcu_summary` + `_liveclient_summary`. ~120 LOC. The
+  liveclient summary embeds item_advisor calls — keep that here or
+  pull into `dashboard/_liveclient.py`.
+- ⏳ #5 — `_build_state` + `_sim_states` + `_SUPERVISOR_PROXY_PATHS`.
+  These are the dispatcher-facing helpers. Could be the last group
+  before `web_dashboard.py` reduces to just `_Handler` + re-exports.
 
-`web_dashboard.py` decomposition complete:
-
-- ✅ Slice 2A: `dashboard/_context.py` (sqlite cache + read_json)
-- ✅ Slice 2B: `dashboard/builders.py` (13 builders)
-- ✅ Slice 2C-1: dispatcher + static-asset GETs
-- ✅ Slice 2C-2 through 2C-6: state / history / diag / coach / bridge GETs
-- ✅ Slice 2C-7a through 2C-7d: every POST migrated
-- ✅ **Slice 2D**: server + cert + start_dashboard
-
-Final shape:
-- `web_dashboard.py` (741 lines): `_Handler` + state helpers used by
-  the dispatcher's deferred imports.
-- `dashboard/`: 7 routes_* modules (39 GET + 17 POST), `_dispatch.py`,
-  `_static.py`, `_context.py`, `builders.py`, `server.py`.
-
-## NEXT — Tier 2 helper-shake (optional)
-
-The remaining ~700 lines of `web_dashboard.py` are stateful helpers
-consumed only by the dispatcher's deferred imports from
-`dashboard/*`. The next refactor pass would shake them into
-`dashboard/_helpers.py` (or split into bridge_log + state_helpers),
-leaving `web_dashboard.py` as effectively just `_Handler` + the
-re-exports. **This is Tier 2**, not Tier 1 — strictly polish; the
-dashboard package surface is already complete.
-
-Other Tier 2 priorities live in `git show 201ff3a -- WAKEUP_NOTES.md`.
+Other Tier 2 priorities (non-helper-shake) in
+`git show 201ff3a -- WAKEUP_NOTES.md`.
 
 ## Session workflow note
 
 Per CLAUDE.md "Session workflow": `/clear` after this hand-off. The
-next focused task is whichever Tier 2 item the user wants picked up
-first. If continuing the helper-shake, start with bridge_log helpers
-(`_BRIDGE_*` constants + `_bridge_hydrate/_bridge_rotate/_bridge_post/
-_bridge_since`) — they're the most self-contained group.
+next focused task is whichever Tier 2 #2-5 item to pick up first.
+Diagnostics cache (#2) is the smallest and most self-contained
+follow-up — same shape as bridge_log, ~30 LOC plus the `_MODE_TO_FILE`
+constant.
