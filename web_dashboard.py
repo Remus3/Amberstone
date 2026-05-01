@@ -180,18 +180,6 @@ from dashboard._bridge_log import (  # noqa: E402, F401
 )
 
 
-_MODE_TO_FILE = {
-    "aram":  "data/aram_coaching_data.json",
-    "arena": "data/arena_coaching_data.json",
-    "brawl": "data/brawl_coaching_data.json",
-    "tft":   "data/tft_coaching_data.json",
-    # SR + client share the root coaching_data.json
-    "game":  "coaching_data.json",
-    "client": "coaching_data.json",
-    "sr":    "coaching_data.json",
-}
-
-
 # Tier 2 helper-shake (2026-05-01): the diagnostics cache moved to
 # dashboard/_diagnostics.py. Re-bind under the original underscored
 # names so any in-process caller that still does `from web_dashboard
@@ -222,57 +210,15 @@ from dashboard._liveclient import (  # noqa: E402, F401
     liveclient_summary as _liveclient_summary,
 )
 
-
-def _build_state() -> dict:
-    health = _read_json("ops/runtime/health.json")
-    # mode resolution: prefer specific mode flag from health, fall back to .mode
-    mode_key = "client"
-    if health.get("aram_mode"):  mode_key = "aram"
-    elif health.get("arena_mode"): mode_key = "arena"
-    elif health.get("tft_mode"):   mode_key = "tft"
-    elif health.get("has_game"):   mode_key = "game"
-    else:                          mode_key = health.get("mode", "client")
-
-    coach_file = _MODE_TO_FILE.get(mode_key, "coaching_data.json")
-    coach = _read_json(coach_file)
-
-    # Overlay live API fields onto coach data so the dashboard placeholders
-    # (game_time, kda, level, gold, hp, mana, cs) populate immediately.
-    # Coach values win when present (e.g. coach computes win_pct from comp).
-    lc = _liveclient_summary()
-    if lc:
-        for k, v in lc.items():
-            if coach.get(k) in (None, "", 0):
-                coach[k] = v
-
-    return {
-        "mode_key": mode_key,
-        "coach_source": coach_file,
-        "health": {
-            "alive":          health.get("alive"),
-            "pid":            health.get("pid"),
-            "mode":           health.get("mode"),
-            "has_game":       health.get("has_game"),
-            "ui_pulse_age_s": health.get("ui_pulse_age_s"),
-            "game_poll_age_s": health.get("game_poll_worker_age_s"),
-        },
-        "coach": coach,
-        "liveclient": lc,
-        "lcu": _lcu_summary(),
-    }
-
-
-_SIM_STATES_PATH = Path(__file__).resolve().parent / "data" / "sim_states.json"
-_SIM_STATES_CACHE: dict | None = None
-
-
-def _sim_states() -> dict:
-    global _SIM_STATES_CACHE
-    if _SIM_STATES_CACHE is None:
-        _SIM_STATES_CACHE = json.loads(_SIM_STATES_PATH.read_text(encoding="utf-8"))
-    return _SIM_STATES_CACHE
-
-
+# Tier 2 helper-shake (2026-05-01): the state-shape builder + sim-scenario
+# loader + MODE_TO_FILE moved to dashboard/_state_builder.py. Re-bind under
+# the original underscored names so any in-process caller that still does
+# `from web_dashboard import _build_state` keeps working without churn.
+from dashboard._state_builder import (  # noqa: E402, F401
+    MODE_TO_FILE as _MODE_TO_FILE,
+    build_state as _build_state,
+    sim_states as _sim_states,
+)
 
 
 # Paths that only the agents supervisor (:8890) implements. :8888 proxies
