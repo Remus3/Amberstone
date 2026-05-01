@@ -1,7 +1,7 @@
-# Wakeup Notes — 2026-05-01 (session 6 hand-off)
+# Wakeup Notes — 2026-05-01 (session 7 hand-off)
 
-> Hand-off from session that shipped the first incremental slice of Tier 1 #5
-> (split `web_dashboard.py`). Next session continues #5 with a second slice.
+> Hand-off from session that shipped Slice 2A of Tier 1 #5
+> (split `web_dashboard.py`). Next session continues with Slice 2B.
 
 ---
 
@@ -9,79 +9,66 @@
 
 | Commit | Summary |
 |---|---|
-| 6aca30e | Extract `_INDEX_HTML` (the `?ui=legacy` fallback HTML blob) from `web_dashboard.py` to `web/legacy_index.html`. Lazy-loaded + cached in a tiny `_legacy_index_html()` helper. **`web_dashboard.py`: 5799 → 2830 lines.** Verified the loader returns byte-identical content (sha256 `1fd93d33…`, 148,632 bytes) to what the original `_INDEX_HTML.encode('utf-8')` produced. The extracted file lives under `web/`, but is NOT under any of the public static prefixes (`/css/`, `/js/`, `/data/`), so it's not exposed by the asset server. Git's CRLF normalization on Windows checkouts will produce CRLF on disk; harmless for HTML/CSS/JS — browsers treat both line endings identically. |
+| 3984fba | Extract `_SIM_STATES` (228-line `aram_blitz` fixture) → `data/sim_states.json`, `_MANIFEST` → `web/manifest.json`, `_ICON_SVG` → `web/icon.svg`. Each gets a tiny `_X_bytes()` / `_sim_states()` lazy loader grouped with `_legacy_index_html()`. **`web_dashboard.py`: 2830 → 2612 lines.** Verified: manifest sha256 `8840117e…` (289 B), icon sha256 `32d58d04…` (370 B), sim `aram_blitz` route bytes sha256 `05c247b7…` (8568 B) all unchanged. The route output is byte-identical because `/api/sim-state` still calls `json.dumps(state).encode()` — only the in-memory source changed. |
+| 6aca30e | (prev session) Extract `_INDEX_HTML` → `web/legacy_index.html`. 5799 → 2830 lines. |
 
 ## State at hand-off
 
-- **8 unpushed commits** on `main` (was 7). User decides on push before 5/10 cloud routine.
-- **RC still NOT restarted.** Three queued changes (#3 log-retention, #4 queue-compaction, #5 first slice) all activate together at next restart. The #5 slice is purely a refactor — once activated, the legacy fallback path serves the file from disk instead of the in-memory string. No user-visible difference.
+- **9 unpushed commits** on `main` (was 8). User decides on push before 5/10 cloud routine.
+- **RC still NOT restarted.** Four queued changes (#3 log-retention, #4 queue-compaction, #5 first slice, #5 slice 2A) all activate together at next restart. None is user-visible — all are internal refactor / housekeeping.
 - Restart timing is user's call. `echo restart > restart_trigger.txt`; verify via `ops/runtime/health.json`.
 - Game-PC bridge still dead. Liveclient relay snapshots still stale.
 - `RC-PatchRefresh` still showing residual `last_result=2147942402` — fixed at script level; clears on next scheduled run.
+- Reminder: `data/sim_states.json` is now reachable via `/data/sim_states.json` (the static asset handler exposes the entire `/data/` prefix). Harmless — LAN-only, fixture data — but worth keeping in mind if anything secret ever lands under `data/`.
 
-## Inventory of `web_dashboard.py` (2830 lines remaining)
+## Inventory of `web_dashboard.py` (2612 lines remaining)
 
-A previous session's plan in WAKEUP_NOTES anticipated a `web/` Python package, but **`web/` is already in use as the static-asset directory** (index.html, css/, js/, data/). When this refactor needs a Python package, use `dashboard/` instead — don't mix Python under `web/`.
-
-Rough section map (post-extract):
+Section map (post-2A; line numbers approximate after the snip):
 
 | Lines | Section |
 |---|---|
 | 1–43 | imports, constants, `_VISION_TOKEN`, `_APP_DIR` |
 | 45–160 | `_champ_select_brief_via_coach` — single big helper |
 | 161–271 | bridge log: `_BRIDGE_*` constants + `_bridge_hydrate_from_disk` / `_maybe_rotate` / `_post` / `_since` |
-| 272–499 | `_SIM_STATES` — 228-line dict of sim/test fixtures |
-| 500–547 | `_MODE_TO_FILE`, `_DIAG_*`, `_DB_CONN_LOCAL`, `_ro_conn` |
-| 549–605 | `_diagnostics_cached`, `_compute_asset_hash`, `_inject_asset_hash` |
-| 606–643 | `_read_json`, `_resolve_safe_icon` |
-| 644–906 | home summary builders (`_build_home_summary`, `_home_tonight_pick`, `_home_last_build`, `_home_trends_14d`, `_home_streaks`) |
-| 907–1005 | session helpers (`_load_match_rows`, `_ts_to_epoch`, `_group_sessions`, `_agg_session`) |
-| 1006–1133 | builders (`_build_session_summary`, `_build_history`, `_build_loadouts_all`, `_build_diagnostics`) |
-| 1135–1330 | `_atomic_write_json`, `_set_pregame`, `_force_vision_scan`, `_lcu_summary`, `_liveclient_summary`, `_build_state` |
-| 1332–1340 | new `_legacy_index_html()` lazy loader |
-| ~1342–1366 | `_MANIFEST`, `_ICON_SVG` |
-| ~1370–1390 | `_SUPERVISOR_PROXY_PATHS`, `_SUPERVISOR_ORIGIN` |
-| ~1390–2660 | `class _Handler(BaseHTTPRequestHandler)` — ~1270 lines, all routes |
-| ~2660–2760 | `class _DualProtocolHTTPServer` — TLS+HTTP same-port server |
-| ~2760–2830 | `start_dashboard()` entry point |
+| 272–320 | `_MODE_TO_FILE`, `_DIAG_*`, `_DB_CONN_LOCAL`, `_ro_conn` *(was 500–547 pre-snip)* |
+| 320–380 | `_diagnostics_cached`, `_compute_asset_hash`, `_inject_asset_hash` |
+| 380–420 | `_read_json`, `_resolve_safe_icon` |
+| 420–680 | home summary builders (`_build_home_summary`, `_home_tonight_pick`, `_home_last_build`, `_home_trends_14d`, `_home_streaks`) |
+| 680–780 | session helpers (`_load_match_rows`, `_ts_to_epoch`, `_group_sessions`, `_agg_session`) |
+| 780–910 | builders (`_build_session_summary`, `_build_history`, `_build_loadouts_all`, `_build_diagnostics`) |
+| 910–1110 | `_atomic_write_json`, `_set_pregame`, `_force_vision_scan`, `_lcu_summary`, `_liveclient_summary`, `_build_state` |
+| 1110–1150 | static-asset lazy loaders: `_legacy_index_html`, `_manifest_bytes`, `_icon_svg_bytes`, `_sim_states` (new in 2A) |
+| 1150–1170 | `_SUPERVISOR_PROXY_PATHS`, `_SUPERVISOR_ORIGIN` |
+| 1170–2440 | `class _Handler(BaseHTTPRequestHandler)` — ~1270 lines, all routes |
+| 2440–2540 | `class _DualProtocolHTTPServer` — TLS+HTTP same-port server |
+| 2540–2612 | `start_dashboard()` entry point |
 
-External import surface: only `start_dashboard` is imported externally (`main.py:142`). The other "web_dashboard" hits across the repo are doc comments referencing the module by name. So the public API is one symbol.
+External import surface unchanged — only `start_dashboard` is consumed externally (`main.py:142`).
 
-## Routes catalogue (~40 in `_Handler`)
+## Next: Tier 1 #5 — Slice 2B (pure-builder helpers)
 
-GET — natural groups:
-- **Static / HTML:** `/`, `/css/*`, `/js/*`, `/data/*`, `/manifest.json`, `/icon.svg`, `/icons/champions/*`, `/icons/maps/*`, `/icons/spells/*`, `/icons/runes/*`, `/icons/items/*`, `/agent/*`
-- **Core state:** `/api/state`, `/api/sim-state`, `/api/health`, `/api/asset-stamp`, `/api/ui-version`, `/api/coach/state`, `/api/coach/trace`, `/api/health/all`, `/api/cost`
-- **Vision / decisions:** `/api/vision-state`, `/api/decisions`, `/api/ocr`, `/api/validate-ocr`, `/api/ocr-crop`, `/api/reload-regions`
-- **History / replay:** `/api/session/summary`, `/api/history`, `/api/replay/matches`, `/api/replay/match/*`, `/api/home/summary`, `/api/logs`
-- **Loadouts / champ data:** `/api/loadouts/all`, `/api/preview-build`, `/api/champions`, `/api/recommend-champ`
-- **Bridge:** `/api/bridge`
-- **Diagnostics:** `/api/diagnostics`
-- **Supervisor proxy:** all paths in `_SUPERVISOR_PROXY_PATHS` proxied to `:8890`
+The biggest line win available without touching the route handler.
+The cohesive block at ~lines 420–910 is home/session/history/loadouts/diagnostics builders. They share three helpers (`_ro_conn`, `_read_json`, `_resolve_safe_icon`) and the `_DB_CONN_LOCAL` thread-local.
 
-POST — natural groups:
-- **Pregame / coach commands:** `/api/input`, `/api/command`, `/api/coach/toggle`, `/api/champ-select-coach`, `/api/replay-coach`, `/api/aram-analyze`, `/api/speak`
-- **Decisions / experimental:** `/api/decisions/*`, `/api/experimental/get`, `/api/experimental/adapt`, `/api/experimental/mark`
-- **LCU / loadouts:** `/api/lcu-cmd`, `/api/loadout/list`, `/api/loadout/apply`
-- **Bridge / debug:** `/api/bridge`, `/api/console-error`, `/api/analyze`
+**Recommended target:** new `dashboard/builders.py` (start the package now, since 2C will need it anyway), or `core/dashboard_builders.py` if you'd rather defer the package decision. Importer-ergonomic shape: a small module that takes `app_dir: Path` once at construction and exposes pure functions returning dicts.
 
-## Next: Tier 1 #5 — second slice
+**Important — `web/` is the static-asset directory.** A previous plan suggested a `web/` Python package; **don't** mix Python under `web/`. Use `dashboard/` for any new package.
 
-The first slice was a static-asset extraction (mechanical, byte-exact). The remaining work is two flavours, in increasing order of risk:
+Buys ~500 more lines off `web_dashboard.py`. One commit, possibly two if you split home/ from session/.
 
-**Slice 2A — small static blobs + sim fixtures (very low risk).** Move:
-- `_MANIFEST` + `_ICON_SVG` → `web/manifest.json` + `web/icon.svg` (already served as those URLs; just stop synthesizing them in code).
-- `_SIM_STATES` (228 lines, pure data) → `data/sim_states.json` or `dashboard/sim_states.py`. Currently consumed by `/api/sim-state` only. Loaded once at module import; no shared mutable state.
+## Slice 2C (later — the "real" decomposition)
 
-Buys ~250 more lines off `web_dashboard.py`. One commit.
+Carve `_Handler` routes into `dashboard/routes_*.py` modules. Needs a shared `dashboard/_context.py` for the cache + per-thread sqlite conn + `_APP_DIR`. Multiple commits, multiple sessions. Defer until 2B is in.
 
-**Slice 2B — pure-builder helpers (low risk, biggest line win).** Group at lines 644–1133 is a coherent block — home/session/history/loadouts/diagnostics builders. They share three helpers (`_ro_conn`, `_read_json`, `_resolve_safe_icon`) and the `_DB_CONN_LOCAL` thread-local. Move to `core/dashboard_builders.py` (or `dashboard/builders.py` if we're starting the package now). Importer-ergonomic shape: a small module that takes `app_dir: Path` once and exposes pure functions returning dicts.
+## Bookkeeping to verify when next restarting RC
 
-Buys ~500 more lines off. One commit, possibly two if you separate home/ from session/.
+After `echo restart > restart_trigger.txt`:
+1. `ops/runtime/health.json` shows new pid + `alive=true` + `last_reload_ok=true`.
+2. `curl -k https://127.0.0.1:8888/manifest.json` returns the manifest (now from disk).
+3. `curl -k https://127.0.0.1:8888/icon.svg` returns the SVG (now from disk).
+4. `curl -k 'https://127.0.0.1:8888/api/sim-state?scenario=aram_blitz'` returns the fixture (now lazy-loaded from `data/sim_states.json`).
 
-**Slice 2C — start the `dashboard/` package + carve `_Handler` routes.** This is the "real" decomposition. Needs a shared `dashboard/_context.py` for the cache + per-thread sqlite conn + `_APP_DIR`. Then move route groups (static, state, vision, history, loadout, bridge, diagnostics) into `dashboard/routes_*.py`. Multiple commits, multiple sessions.
-
-**Recommended order:** 2A in one short session, 2B in a focused session, then start 2C with a careful design pass. Don't try to do 2A+2B in one shot — keep each commit small and reversible.
+If any of those fail, the lazy-load path is broken — likely a path resolution issue under `pythonw.exe` cwd. Hard fallback: revert `3984fba`.
 
 ## After #5
 
