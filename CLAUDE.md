@@ -9,7 +9,7 @@ calls Claude Haiku for fast coaching and Sonnet for vision, writes JSON to
 | Machine | IP | Display | Role |
 |---|---|---|---|
 | **Legion** | 192.168.8.230 | 1 monitor | Runs RC (`main.py`), supervisor, vision server, web dashboard |
-| **Game-PC** | 192.168.8.237 | 2 monitors — primary TV (the game) + secondary iPad-as-monitor over Duet (1920×1280 @ 125% scale, no touch, no apps; the iPad is just a wireless display panel) | Runs League client; exposes Riot Live Client API on `:2999` (read by Legion over LAN). Edge runs fullscreen on the secondary display showing the RC dashboard |
+| **Game-PC** | 192.168.8.237 | 2 monitors — primary TV (the game) + secondary iPad-as-monitor over Duet (1920×1280 native, 100% OS scale, no touch, no apps; the iPad is just a wireless display panel) | Runs League client; exposes Riot Live Client API on `:2999` (read by Legion over LAN). Edge runs fullscreen on the secondary display showing the RC dashboard |
 
 Vision is **in-process on Legion** at `127.0.0.1:8889` — no Moon-PC anymore.
 Historic LAN refs (`192.168.8.230:8889` from RC code) were migrated to loopback.
@@ -58,7 +58,7 @@ Supervisor has a PID lock — duplicate launches abort cleanly.
 - GET `/`, `/api/state`, `/api/health`, `/manifest.json`, `/icon.svg`
 - POST `/api/input` `{text}` — writes to `coaching_data.json.pregame`
 - POST `/api/command` `{command: "force_vision"|"refresh"|"clear_pregame"}`
-Viewed in Edge fullscreen on Game-PC's secondary display (1920×1280 @ 125% OS scale → 1536×1024 effective). HTTPS with self-signed cert; either import the cert or set `edge://flags/#unsafely-treat-insecure-origin-as-secure` for `https://192.168.8.230:8888`.
+Viewed in Edge fullscreen on Game-PC's secondary display (1920×1280 native, 100% OS scale → 1920×1280 effective CSS viewport). HTTPS with self-signed cert; either import the cert or set `edge://flags/#unsafely-treat-insecure-origin-as-secure` for `https://192.168.8.230:8888`.
 
 ## Headless mode
 
