@@ -13,6 +13,7 @@ Architecture:
 """
 import json
 import logging
+import sqlite3
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -516,6 +517,35 @@ _DIAG_TTL_S = 30.0
 _DIAG_LOCK = threading.Lock()
 
 
+# Per-thread read-only sqlite connection cache. ThreadingHTTPServer
+# recycles worker threads, so caching here amortizes sqlite3.connect()
+# (which acquires the GIL'd lock, opens the file, parses the schema,
+# init's the parser) across every request served by the same thread.
+# Each conn is pinned to its owning thread (sqlite3 default).
+# Safe because: (a) all consumers use ?mode=ro, (b) the DBs are
+# append-only — writers add rows without rename/replace, so cached RO
+# conns see new rows on subsequent queries.
+_DB_CONN_LOCAL = threading.local()
+
+
+def _ro_conn(db_path: Path):
+    """Per-thread read-only sqlite connection for db_path, opened
+    lazily on first call per thread and reused thereafter. Returns
+    None if the DB file is missing — caller decides the fallback."""
+    if not db_path.exists():
+        return None
+    cache = getattr(_DB_CONN_LOCAL, "conns", None)
+    if cache is None:
+        cache = {}
+        _DB_CONN_LOCAL.conns = cache
+    key = str(db_path)
+    conn = cache.get(key)
+    if conn is None:
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        cache[key] = conn
+    return conn
+
+
 def _diagnostics_cached() -> bytes:
     """Cached encoder for /api/diagnostics. Single-flight: while one
     thread is rebuilding, others wait briefly for the result rather
@@ -621,14 +651,13 @@ def _build_home_summary() -> dict:
     Win/loss is not stored on rows — we surface grade (S-F) instead
     as the per-game performance signal.
     """
-    import sqlite3
     from datetime import datetime, timedelta
     out = {"today": {}, "recent": [], "this_week": [], "services": []}
     db_path = _APP_DIR / "data" / "match_history.db"
-    if not db_path.exists():
+    conn = _ro_conn(db_path)
+    if conn is None:
         out["error"] = "match_history.db missing"
         return out
-    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     try:
         # Recent 5 games (any mode)
         cur = conn.execute(
@@ -688,8 +717,10 @@ def _build_home_summary() -> dict:
                 "best_grade": best,
                 "modes": sorted(r["modes"]),
             })
-    finally:
-        conn.close()
+    except sqlite3.Error:
+        # Evict poisoned conn so the next call reopens cleanly.
+        getattr(_DB_CONN_LOCAL, "conns", {}).pop(str(db_path), None)
+        raise
     # Services snapshot — RC + vision + dashboard self.
     h = _read_json("ops/runtime/health.json")
     out["services"].append({
@@ -739,13 +770,12 @@ def _home_last_build() -> dict | None:
     match for captured_at. Walks each mode's tables (aram/sr/arena/brawl),
     picks the latest by captured_at, returns champ + 6 item ids + spells.
     Skips item slot 6 (trinket / ward, not a build slot)."""
-    import sqlite3
     db = _APP_DIR / "data" / "postgame_stats.db"
-    if not db.exists():
+    conn = _ro_conn(db)
+    if conn is None:
         return None
     best = None  # (captured_at, mode, champion, items, spells)
     try:
-        conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
         for mode in ("aram", "sr", "arena", "brawl"):
             try:
                 cur = conn.execute(
@@ -765,8 +795,8 @@ def _home_last_build() -> dict | None:
                             [row[8] or "", row[9] or ""])
             except sqlite3.OperationalError:
                 continue
-        conn.close()
-    except Exception:
+    except sqlite3.Error:
+        getattr(_DB_CONN_LOCAL, "conns", {}).pop(str(db), None)
         return None
     if not best:
         return None
@@ -782,10 +812,10 @@ def _home_trends_14d(db_path) -> dict:
     """14-day daily aggregates of cs_per_min, gold_per_min, KDA from
     match_history.db. Each metric is a list of {date, value} entries
     in chronological order, padded with None for days with no games."""
-    import sqlite3
     from datetime import datetime, timedelta
     out = {"cs_per_min": [], "gold_per_min": [], "kda": []}
-    if not db_path.exists():
+    conn = _ro_conn(db_path)
+    if conn is None:
         return out
     days = [(datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
             for i in range(13, -1, -1)]
@@ -793,7 +823,6 @@ def _home_trends_14d(db_path) -> dict:
     by_day_gp: dict[str, list] = {d: [] for d in days}
     by_day_kda: dict[str, list] = {d: [] for d in days}
     try:
-        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
         cutoff = days[0]
         cur = conn.execute(
             "SELECT timestamp, cs_per_min, gold_per_min, kills, deaths, assists "
@@ -809,8 +838,8 @@ def _home_trends_14d(db_path) -> dict:
                 by_day_gp[day].append(float(gpm))
             kda_v = (int(k or 0) + int(a or 0)) / max(int(d or 0), 1)
             by_day_kda[day].append(kda_v)
-        conn.close()
-    except Exception:
+    except sqlite3.Error:
+        getattr(_DB_CONN_LOCAL, "conns", {}).pop(str(db_path), None)
         return out
     for d in days:
         out["cs_per_min"].append(
@@ -830,13 +859,12 @@ def _home_streaks(db_path) -> dict:
       - play_days: consecutive recent days (counting back from today) with ≥1 game
       - good_grades: consecutive most-recent matches at S/A grade
     Both reset when the chain breaks."""
-    import sqlite3
     from datetime import datetime, timedelta
     out = {"play_days": 0, "good_grades": 0}
-    if not db_path.exists():
+    conn = _ro_conn(db_path)
+    if conn is None:
         return out
     try:
-        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
         # Distinct days with games, recent cutoff 30 days
         cutoff = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
         days_with_games = {
@@ -865,9 +893,8 @@ def _home_streaks(db_path) -> dict:
             else:
                 break
         out["good_grades"] = good
-        conn.close()
-    except Exception:
-        pass
+    except sqlite3.Error:
+        getattr(_DB_CONN_LOCAL, "conns", {}).pop(str(db_path), None)
     return out
 
 
@@ -879,17 +906,16 @@ def _home_streaks(db_path) -> dict:
 # only the gap rule decides.
 SESSION_GAP_S = 2 * 3600   # 2 hours
 def _load_match_rows(limit: int | None = None) -> list[dict]:
-    import sqlite3
     db = _APP_DIR / "data" / "match_history.db"
-    if not db.exists():
+    conn = _ro_conn(db)
+    if conn is None:
         return []
-    conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    sql = ("SELECT timestamp, mode, champion, grade, kda_str, "
+           "       game_time_s, kills, deaths, assists, label "
+           "FROM matches ORDER BY timestamp DESC")
+    if limit:
+        sql += f" LIMIT {int(limit)}"
     try:
-        sql = ("SELECT timestamp, mode, champion, grade, kda_str, "
-               "       game_time_s, kills, deaths, assists, label "
-               "FROM matches ORDER BY timestamp DESC")
-        if limit:
-            sql += f" LIMIT {int(limit)}"
         rows = []
         for ts, mode, champ, grade, kda, dur, k, d, a, label in conn.execute(sql):
             rows.append({
@@ -900,8 +926,9 @@ def _load_match_rows(limit: int | None = None) -> list[dict]:
                 "label": label or "",
             })
         return rows
-    finally:
-        conn.close()
+    except sqlite3.Error:
+        getattr(_DB_CONN_LOCAL, "conns", {}).pop(str(db), None)
+        return []
 
 
 def _ts_to_epoch(ts: str) -> int:
@@ -1018,31 +1045,28 @@ def _build_history(scope: str) -> dict:
         sessions_out.append(s)
     # Season stats from rewind_history.db (full historical set)
     season_stats = {}
-    try:
-        import sqlite3
-        rdb = _APP_DIR / "data" / "rewind_history.db"
-        if rdb.exists():
-            conn = sqlite3.connect(f"file:{rdb}?mode=ro", uri=True)
-            try:
-                row = conn.execute(
-                    "SELECT COUNT(*), AVG(CASE WHEN tracked_deaths > 0 "
-                    "  THEN (tracked_kills + tracked_assists) * 1.0 / tracked_deaths "
-                    "  ELSE tracked_kills + tracked_assists END), "
-                    "  (SELECT tracked_champion_name FROM matches "
-                    "   WHERE tracked_champion_name != '' "
-                    "   GROUP BY tracked_champion_name "
-                    "   ORDER BY COUNT(*) DESC LIMIT 1) "
-                    "FROM matches"
-                ).fetchone()
-                season_stats = {
-                    "total":     int(row[0] or 0),
-                    "avg_kda":   round(float(row[1] or 0), 2),
-                    "favorite":  row[2] or "—",
-                }
-            finally:
-                conn.close()
-    except Exception as exc:
-        _log.debug("history season stats: %s", exc)
+    rdb = _APP_DIR / "data" / "rewind_history.db"
+    rconn = _ro_conn(rdb)
+    if rconn is not None:
+        try:
+            row = rconn.execute(
+                "SELECT COUNT(*), AVG(CASE WHEN tracked_deaths > 0 "
+                "  THEN (tracked_kills + tracked_assists) * 1.0 / tracked_deaths "
+                "  ELSE tracked_kills + tracked_assists END), "
+                "  (SELECT tracked_champion_name FROM matches "
+                "   WHERE tracked_champion_name != '' "
+                "   GROUP BY tracked_champion_name "
+                "   ORDER BY COUNT(*) DESC LIMIT 1) "
+                "FROM matches"
+            ).fetchone()
+            season_stats = {
+                "total":     int(row[0] or 0),
+                "avg_kda":   round(float(row[1] or 0), 2),
+                "favorite":  row[2] or "—",
+            }
+        except sqlite3.Error as exc:
+            getattr(_DB_CONN_LOCAL, "conns", {}).pop(str(rdb), None)
+            _log.debug("history season stats: %s", exc)
     return {"scope": scope, "sessions": sessions_out, "season_stats": season_stats}
 
 
