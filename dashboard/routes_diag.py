@@ -201,6 +201,35 @@ def _serve_ocr_crop(h) -> None:
 # /api/ocr-crop uses prefix() because the legacy do_GET used
 # `startswith` (the field is in the query string). All others are
 # exact matches.
+# ── POST handlers (slice 2C-7b) ──────────────────────────────────────
+
+
+def _serve_decision_choice_post(h, payload) -> None:
+    # POST /api/decisions/<id>  body: {choice: "contest"|"give"|"skip", note?}
+    # Records the player's choice and removes the decision from pending.
+    try:
+        decision_id = h.path[len("/api/decisions/"):].split("?", 1)[0]
+        if not decision_id:
+            h._send(400, b'{"error":"id required"}', "application/json"); return
+        choice = (payload.get("choice") or "").strip()
+        if choice not in ("contest", "give", "skip"):
+            h._send(400, b'{"error":"choice must be contest|give|skip"}',
+                    "application/json"); return
+        from core.decision_detector import get_loop
+        extra = {}
+        if "note" in payload:
+            extra["note"] = str(payload.get("note") or "")[:500]
+        entry = get_loop().store().record_choice(decision_id, choice, extra=extra)
+        if entry is None:
+            h._send(404, b'{"error":"id not pending"}', "application/json"); return
+        h._send(200, json.dumps({"ok": True, "id": entry["id"],
+                                  "choice": entry["choice"]}).encode(),
+                "application/json")
+    except Exception as exc:
+        log.warning("api/decisions POST: %s", exc)
+        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+
+
 GET_ROUTES = [
     (equals("/api/vision-state"),    _serve_vision_state),
     (equals("/api/decisions"),       _serve_decisions),
@@ -211,4 +240,9 @@ GET_ROUTES = [
     (prefix("/api/ocr-crop"),        _serve_ocr_crop),
 ]
 
-POST_ROUTES: list = []
+# /api/decisions/<id> uses prefix() — the legacy elif used
+# `startswith("/api/decisions/")`. The trailing slash is required so
+# this doesn't shadow the GET on `/api/decisions` (no id).
+POST_ROUTES = [
+    (prefix("/api/decisions/"),      _serve_decision_choice_post),
+]
