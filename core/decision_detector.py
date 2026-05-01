@@ -55,6 +55,13 @@ _LOG_PATH         = _APP_DIR / "data" / "decisions_log.jsonl"
 
 _DEFAULT_POLL_S   = 1.0
 
+# Global rate cap (per-game): never spam more than _MAX_PER_GAME total
+# decisions, never less than _MIN_GAP_S between two NEW decision ids
+# entering the pending list. Re-fires of an id already in pending don't
+# count — those just keep the existing decision alive.
+_MAX_PER_GAME     = 5
+_MIN_GAP_S        = 30.0
+
 
 # ── Data shape ────────────────────────────────────────────────────────────────
 
@@ -196,6 +203,219 @@ def detect_objective_contest_with_missing(
     )
 
 
+# ── Detector: low HP, time to back? ───────────────────────────────────────────
+
+@register_detector
+def detect_low_hp_backable(
+    snapshot: dict, vision_state: dict
+) -> Optional[Decision]:
+    """Self HP <40% and alive ≥45s past last respawn → back vs push.
+
+    Bucket the id to 60-second windows so a single drawn-out low-HP
+    episode doesn't re-prompt every tick."""
+    active = snapshot.get("activePlayer") or {}
+    stats = active.get("championStats") or {}
+    cur = float(stats.get("currentHealth") or 0.0)
+    mx = float(stats.get("maxHealth") or 0.0)
+    if mx <= 0:
+        return None
+    pct = cur / mx
+    if pct >= 0.40:
+        return None
+
+    game_data = snapshot.get("gameData") or {}
+    game_time = float(game_data.get("gameTime", 0.0))
+    if game_time < 90:        # nothing to back to in the first 90s
+        return None
+
+    # Find self in allPlayers to confirm alive + measure time since last death.
+    self_name = active.get("summonerName") or active.get("riotIdGameName")
+    all_players = snapshot.get("allPlayers") or []
+    me = None
+    for p in all_players:
+        nm = p.get("summonerName") or p.get("riotIdGameName")
+        if nm == self_name:
+            me = p
+            break
+    if not me or me.get("isDead"):
+        return None
+
+    # Walk events for our deaths; require ≥45s alive.
+    events = (snapshot.get("events") or {}).get("Events") or []
+    last_death_t = 0.0
+    for ev in events:
+        if (ev.get("EventName") == "ChampionKill"
+                and ev.get("VictimName") == self_name):
+            t = ev.get("EventTime")
+            if isinstance(t, (int, float)) and t > last_death_t:
+                last_death_t = float(t)
+    alive_for = game_time - last_death_t
+    if alive_for < 45:
+        return None
+
+    bucket = int(game_time // 60)
+    pct_int = int(round(pct * 100))
+    return Decision(
+        id=f"low_hp_back:{bucket}",
+        type="low_hp_back",
+        title=f"{pct_int}% HP — back or stay?",
+        subtitle=f"alive {int(alive_for)}s since last death",
+        options=["back", "push"],
+        created_at_unix=time.time(),
+        created_at_game_time=game_time,
+        expires_at_game_time=game_time + 30,
+        context={
+            "hp_pct": round(pct, 3),
+            "alive_for_s": round(alive_for, 1),
+        },
+    )
+
+
+# ── Detector: lane roam window (≥2 enemies missing, no objective in window) ──
+
+@register_detector
+def detect_lane_roam_window(
+    snapshot: dict, vision_state: dict
+) -> Optional[Decision]:
+    """≥2 enemies missing 12s+ AND no objective contest is the right
+    framing (deferred to detect_objective_contest_with_missing) → the
+    player has a roam-or-push window. Bucketed to 90s windows."""
+    game_data = snapshot.get("gameData") or {}
+    game_time = float(game_data.get("gameTime", 0.0))
+    if game_time < 240:    # roams matter past ~4min
+        return None
+    mode = str(game_data.get("gameMode", "")).upper()
+    if mode and mode != "CLASSIC":
+        return None     # ARAM has no roams
+
+    # If a major objective is in the contest window, the contest detector
+    # owns this signal — don't double-prompt.
+    events = (snapshot.get("events") or {}).get("Events") or []
+    for name, first_at, respawn, kill_event in (
+        ("Dragon", _DRAGON_FIRST_S, _DRAGON_RESPAWN_S, "DragonKill"),
+        ("Baron",  _BARON_FIRST_S,  _BARON_RESPAWN_S,  "BaronKill"),
+    ):
+        spawn_t = _next_objective_spawn(
+            events, game_time, name=name, first_at=first_at,
+            respawn=respawn, kill_event=kill_event,
+        )
+        if spawn_t is not None and -5 <= (spawn_t - game_time) <= 60:
+            return None
+
+    enemies = (vision_state or {}).get("enemies") or {}
+    missing_long = []
+    for nm, e in enemies.items():
+        if e.get("is_dead") or e.get("visible"):
+            continue
+        ago = e.get("missing_for_s")
+        if isinstance(ago, (int, float)) and ago >= 12:
+            zone = e.get("last_seen_zone") or "?"
+            missing_long.append(f"{nm} ({int(ago)}s, {zone})")
+    if len(missing_long) < 2:
+        return None
+
+    bucket = int(game_time // 90)
+    return Decision(
+        id=f"lane_roam:{bucket}",
+        type="lane_roam",
+        title=f"{len(missing_long)} enemies missing — roam or push?",
+        subtitle="Missing: " + ", ".join(missing_long),
+        options=["roam", "push"],
+        created_at_unix=time.time(),
+        created_at_game_time=game_time,
+        expires_at_game_time=game_time + 25,
+        context={"missing": missing_long},
+    )
+
+
+# ── Detector: post-fight objective opportunity ────────────────────────────────
+
+@register_detector
+def detect_postfight_objective(
+    snapshot: dict, vision_state: dict
+) -> Optional[Decision]:
+    """In the last 20s of game time, ally team has a +3 (or better) kill
+    differential AND a major objective is alive within ~30s. Player has
+    to choose: take the objective with tempo, or cross-map for towers."""
+    game_data = snapshot.get("gameData") or {}
+    game_time = float(game_data.get("gameTime", 0.0))
+    if game_time < 600:    # post-fight objectives are mid+ game
+        return None
+    mode = str(game_data.get("gameMode", "")).upper()
+    if mode and mode != "CLASSIC":
+        return None
+
+    active = snapshot.get("activePlayer") or {}
+    self_name = active.get("summonerName") or active.get("riotIdGameName")
+    all_players = snapshot.get("allPlayers") or []
+    self_team = None
+    for p in all_players:
+        if (p.get("summonerName") or p.get("riotIdGameName")) == self_name:
+            self_team = p.get("team")
+            break
+    if not self_team:
+        return None
+
+    # Walk events: count ally kills minus ally deaths in the last 20s.
+    events = (snapshot.get("events") or {}).get("Events") or []
+    window_start = game_time - 20
+    last_event_t = 0.0
+    diff = 0
+    for ev in events:
+        if ev.get("EventName") != "ChampionKill":
+            continue
+        t = ev.get("EventTime")
+        if not isinstance(t, (int, float)) or t < window_start:
+            continue
+        last_event_t = max(last_event_t, float(t))
+        # Resolve the killer's team. The Live Client gives KillerName as a
+        # summoner; cross-reference allPlayers.
+        killer = ev.get("KillerName")
+        victim = ev.get("VictimName")
+        for p in all_players:
+            nm = p.get("summonerName") or p.get("riotIdGameName")
+            if nm == killer:
+                diff += (1 if p.get("team") == self_team else -1)
+                break
+        for p in all_players:
+            nm = p.get("summonerName") or p.get("riotIdGameName")
+            if nm == victim:
+                diff += (-1 if p.get("team") == self_team else 1)
+                break
+    if diff < 3:
+        return None
+
+    # Is a major objective live or imminent?
+    obj_window = []
+    for name, first_at, respawn, kill_event in (
+        ("Dragon", _DRAGON_FIRST_S, _DRAGON_RESPAWN_S, "DragonKill"),
+        ("Baron",  _BARON_FIRST_S,  _BARON_RESPAWN_S,  "BaronKill"),
+    ):
+        spawn_t = _next_objective_spawn(
+            events, game_time, name=name, first_at=first_at,
+            respawn=respawn, kill_event=kill_event,
+        )
+        if spawn_t is None:
+            continue
+        if -10 <= (spawn_t - game_time) <= 30:
+            obj_window.append((name, spawn_t))
+    if not obj_window:
+        return None
+
+    obj_name = obj_window[0][0]
+    return Decision(
+        id=f"postfight_objective:{int(last_event_t)}",
+        type="postfight_objective",
+        title=f"+{diff} fight, {obj_name} live — take or cross-map?",
+        subtitle=f"ally kill diff {diff:+d} in last 20s · {obj_name} window open",
+        options=["take", "cross-map"],
+        created_at_unix=time.time(),
+        created_at_game_time=game_time,
+        expires_at_game_time=game_time + 35,
+        context={"kill_diff": diff, "objective": obj_name},
+    )
+
+
 # ── Store ─────────────────────────────────────────────────────────────────────
 
 class DecisionStore:
@@ -294,6 +514,10 @@ class DecisionLoop:
         self._poll_s = poll_interval_s
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
+        # Per-game rate-cap state (reset on game-time reversal).
+        self._game_decisions = 0
+        self._last_new_t = 0.0          # unix time of most recent NEW emit
+        self._prev_game_time = 0.0      # for new-game detection
 
     def store(self) -> DecisionStore:
         return self._store
@@ -336,6 +560,30 @@ class DecisionLoop:
         except Exception:
             return {}
 
+    def _apply_rate_cap(self, fresh: list[Decision]) -> list[Decision]:
+        """Drop NEW decision ids past the per-game cap or before the
+        min-gap window. Existing pending ids pass through unconditionally
+        so an active decision never gets evicted by the cap."""
+        if not fresh:
+            return fresh
+        existing_ids = {d["id"] for d in self._store.list_pending()}
+        kept: list[Decision] = []
+        now = time.time()
+        for d in fresh:
+            if d.id in existing_ids:
+                kept.append(d)            # already pending — pass through
+                continue
+            if self._game_decisions >= _MAX_PER_GAME:
+                _log.debug("rate-cap: dropping %s (per-game max)", d.id)
+                continue
+            if (now - self._last_new_t) < _MIN_GAP_S:
+                _log.debug("rate-cap: dropping %s (min-gap)", d.id)
+                continue
+            kept.append(d)
+            self._game_decisions += 1
+            self._last_new_t = now
+        return kept
+
     def _loop(self) -> None:
         while not self._stop.is_set():
             try:
@@ -348,6 +596,12 @@ class DecisionLoop:
                     continue
                 vs = self._read_vision_state()
                 game_time = float((snap.get("gameData") or {}).get("gameTime", 0.0))
+                # Reset per-game cap on a backwards game-time jump
+                # (new match) or a resync from 0.
+                if game_time + 5 < self._prev_game_time:
+                    self._game_decisions = 0
+                    self._last_new_t = 0.0
+                self._prev_game_time = game_time
                 fresh: list[Decision] = []
                 for fn in DECISION_REGISTRY:
                     try:
@@ -356,6 +610,7 @@ class DecisionLoop:
                             fresh.append(d)
                     except Exception as exc:
                         _log.debug("detector %s failed: %s", fn.__name__, exc)
+                fresh = self._apply_rate_cap(fresh)
                 self._store.reconcile(fresh, game_time)
             except Exception as exc:
                 _log.debug("decision_detector loop: %s", exc)
