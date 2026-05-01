@@ -733,53 +733,7 @@ class _Handler(BaseHTTPRequestHandler):
         if _dispatch.dispatch_post(self, payload):
             return
 
-        if self.path.startswith("/api/decisions/"):
-            # POST /api/decisions/<id>  body: {choice: "contest"|"give"|"skip", note?}
-            # Records the player's choice and removes the decision from pending.
-            try:
-                decision_id = self.path[len("/api/decisions/"):].split("?", 1)[0]
-                if not decision_id:
-                    self._send(400, b'{"error":"id required"}', "application/json"); return
-                choice = (payload.get("choice") or "").strip()
-                if choice not in ("contest", "give", "skip"):
-                    self._send(400, b'{"error":"choice must be contest|give|skip"}',
-                               "application/json"); return
-                from core.decision_detector import get_loop
-                extra = {}
-                if "note" in payload:
-                    extra["note"] = str(payload.get("note") or "")[:500]
-                entry = get_loop().store().record_choice(decision_id, choice, extra=extra)
-                if entry is None:
-                    self._send(404, b'{"error":"id not pending"}', "application/json"); return
-                self._send(200, json.dumps({"ok": True, "id": entry["id"],
-                                            "choice": entry["choice"]}).encode(),
-                           "application/json")
-            except Exception as exc:
-                _log.warning("api/decisions POST: %s", exc)
-                self._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
-        elif self.path == "/api/bridge":
-            # Post a message to the cross-Claude bridge. Body shape:
-            #   {source, summary, kind?, id?, target?, body?, in_reply_to?}
-            # Existing {source, summary} posts default to kind="note".
-            try:
-                src    = (payload.get("source") or "").strip()
-                msg    = (payload.get("summary") or "").strip()
-                kind   = (payload.get("kind") or "note").strip()
-                eid    = payload.get("id")
-                target = payload.get("target")
-                body   = payload.get("body")
-                replyto = payload.get("in_reply_to")
-                if not msg and kind == "note":
-                    self._send(400, b'{"error":"empty summary"}', "application/json"); return
-                entry = _bridge_post(src, msg, kind=kind, entry_id=eid,
-                                     target=target, body=body, in_reply_to=replyto)
-                self._send(200, json.dumps({"ok": True, "ts": entry["ts"],
-                                            "id": entry.get("id"),
-                                            "kind": entry.get("kind")}).encode(),
-                           "application/json")
-            except Exception as exc:
-                self._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
-        elif self.path == "/api/replay-coach":
+        if self.path == "/api/replay-coach":
             # Postgame analysis of a past match in rewind_history.db.
             # Body: {match_id}
             try:
