@@ -490,11 +490,6 @@ def _liveclient_summary() -> dict:
     return out
 
 
-# /api/console-error server-side throttle (10 Hz cap, all clients combined).
-_CE_LAST_TS: float = 0.0
-_CE_DROPPED: int   = 0
-
-
 def _build_state() -> dict:
     health = _read_json("ops/runtime/health.json")
     # mode resolution: prefer specific mode flag from health, fall back to .mode
@@ -738,42 +733,7 @@ class _Handler(BaseHTTPRequestHandler):
         if _dispatch.dispatch_post(self, payload):
             return
 
-        if self.path == "/api/input":
-            text = (payload.get("text") or "").strip()
-            if not text:
-                self._send(400, b'{"error":"empty_text"}', "application/json"); return
-            try:
-                _set_pregame(text)
-                _log.info("dashboard input: %d chars accepted", len(text))
-                self._send(200, b'{"ok":true}', "application/json")
-            except Exception as exc:
-                _log.warning("api/input write: %s", exc)
-                self._send(500, b'{"error":"write_failed"}', "application/json")
-
-        elif self.path == "/api/command":
-            cmd = (payload.get("command") or "").strip().lower()
-            try:
-                if cmd == "force_vision":
-                    _force_vision_scan()
-                elif cmd == "refresh":
-                    # Touch coaching_data.json to bump mtime; coaches re-emit.
-                    # Held under the shared coaching_data_lock so a coach
-                    # R-M-W in another thread can't clobber the read+rewrite
-                    # cycle (NOTE-003 fix).
-                    from core.coaching_data_lock import coaching_data_lock
-                    with coaching_data_lock():
-                        d = _read_json("coaching_data.json")
-                        _atomic_write_json("coaching_data.json", d)
-                elif cmd == "clear_pregame":
-                    _set_pregame("")
-                else:
-                    self._send(400, b'{"error":"unknown_command"}', "application/json"); return
-                _log.info("dashboard command: %s", cmd)
-                self._send(200, b'{"ok":true}', "application/json")
-            except Exception as exc:
-                _log.warning("api/command %s: %s", cmd, exc)
-                self._send(500, b'{"error":"command_failed"}', "application/json")
-        elif self.path.startswith("/api/decisions/"):
+        if self.path.startswith("/api/decisions/"):
             # POST /api/decisions/<id>  body: {choice: "contest"|"give"|"skip", note?}
             # Records the player's choice and removes the decision from pending.
             try:
@@ -819,44 +779,6 @@ class _Handler(BaseHTTPRequestHandler):
                            "application/json")
             except Exception as exc:
                 self._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
-        elif self.path == "/api/console-error":
-            # Receives browser-side JS errors from the dashboard
-            # (window.onerror, unhandledrejection, console.error). Lands
-            # them in RC's log so JS exceptions are visible without the
-            # user having to open DevTools. Body shape:
-            #   {kind, message, source, lineno, colno, stack, url, ts}
-            # Server-side throttle: cap at 10 Hz across ALL clients to
-            # prevent a runaway error loop in a misbehaving tab from
-            # flooding the daily log. Drops are silent (the client's own
-            # `dropped_since_last` field surfaces the count anyway).
-            _now_ce = time.time()
-            global _CE_LAST_TS, _CE_DROPPED
-            if _now_ce - _CE_LAST_TS < 0.1:
-                _CE_DROPPED += 1
-                self._send(200, b'{"ok":true,"throttled":true}', "application/json")
-                return
-            _CE_LAST_TS = _now_ce
-            if _CE_DROPPED:
-                _log.info("client-console: %d previously throttled", _CE_DROPPED)
-                _CE_DROPPED = 0
-            try:
-                kind  = (payload.get("kind") or "error")[:30]
-                msg   = (payload.get("message") or "")[:600]
-                src   = (payload.get("source") or "")[:200]
-                line  = int(payload.get("lineno") or 0)
-                col   = int(payload.get("colno") or 0)
-                stack = (payload.get("stack") or "")[:1500]
-                url   = (payload.get("url") or "")[:300]
-                ua    = self.headers.get("User-Agent", "")[:80]
-                _log.warning(
-                    "client-console %s | %s:%d:%d | %s | url=%s | ua=%s%s",
-                    kind, src, line, col, msg, url, ua,
-                    ("\n  stack: " + stack) if stack else "",
-                )
-                self._send(200, b'{"ok":true}', "application/json")
-            except Exception as exc:
-                self._send(500, json.dumps({"error": str(exc)}).encode(),
-                           "application/json")
         elif self.path == "/api/replay-coach":
             # Postgame analysis of a past match in rewind_history.db.
             # Body: {match_id}

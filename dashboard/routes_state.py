@@ -156,6 +156,97 @@ def _serve_asset_stamp(h) -> None:
         h._send(200, b'{"mtime":0}', "application/json")
 
 
+# ── POST handlers (slice 2C-7a) ──────────────────────────────────────
+
+
+def _serve_input_post(h, payload) -> None:
+    text = (payload.get("text") or "").strip()
+    if not text:
+        h._send(400, b'{"error":"empty_text"}', "application/json"); return
+    try:
+        from web_dashboard import _set_pregame
+        _set_pregame(text)
+        log.info("dashboard input: %d chars accepted", len(text))
+        h._send(200, b'{"ok":true}', "application/json")
+    except Exception as exc:
+        log.warning("api/input write: %s", exc)
+        h._send(500, b'{"error":"write_failed"}', "application/json")
+
+
+def _serve_command_post(h, payload) -> None:
+    cmd = (payload.get("command") or "").strip().lower()
+    try:
+        from web_dashboard import (_force_vision_scan, _atomic_write_json,
+                                    _set_pregame)
+        if cmd == "force_vision":
+            _force_vision_scan()
+        elif cmd == "refresh":
+            # Touch coaching_data.json to bump mtime; coaches re-emit.
+            # Held under the shared coaching_data_lock so a coach
+            # R-M-W in another thread can't clobber the read+rewrite
+            # cycle (NOTE-003 fix).
+            from core.coaching_data_lock import coaching_data_lock
+            with coaching_data_lock():
+                d = read_json("coaching_data.json")
+                _atomic_write_json("coaching_data.json", d)
+        elif cmd == "clear_pregame":
+            _set_pregame("")
+        else:
+            h._send(400, b'{"error":"unknown_command"}', "application/json"); return
+        log.info("dashboard command: %s", cmd)
+        h._send(200, b'{"ok":true}', "application/json")
+    except Exception as exc:
+        log.warning("api/command %s: %s", cmd, exc)
+        h._send(500, b'{"error":"command_failed"}', "application/json")
+
+
+# /api/console-error server-side throttle (10 Hz cap, all clients combined).
+# Migrated from web_dashboard._CE_LAST_TS/_CE_DROPPED in slice 2C-7a — nothing
+# outside this handler reads the counters.
+_CE_LAST_TS: float = 0.0
+_CE_DROPPED: int   = 0
+
+
+def _serve_console_error_post(h, payload) -> None:
+    # Receives browser-side JS errors from the dashboard
+    # (window.onerror, unhandledrejection, console.error). Lands
+    # them in RC's log so JS exceptions are visible without the
+    # user having to open DevTools. Body shape:
+    #   {kind, message, source, lineno, colno, stack, url, ts}
+    # Server-side throttle: cap at 10 Hz across ALL clients to
+    # prevent a runaway error loop in a misbehaving tab from
+    # flooding the daily log. Drops are silent (the client's own
+    # `dropped_since_last` field surfaces the count anyway).
+    global _CE_LAST_TS, _CE_DROPPED
+    _now_ce = time.time()
+    if _now_ce - _CE_LAST_TS < 0.1:
+        _CE_DROPPED += 1
+        h._send(200, b'{"ok":true,"throttled":true}', "application/json")
+        return
+    _CE_LAST_TS = _now_ce
+    if _CE_DROPPED:
+        log.info("client-console: %d previously throttled", _CE_DROPPED)
+        _CE_DROPPED = 0
+    try:
+        kind  = (payload.get("kind") or "error")[:30]
+        msg   = (payload.get("message") or "")[:600]
+        src   = (payload.get("source") or "")[:200]
+        line  = int(payload.get("lineno") or 0)
+        col   = int(payload.get("colno") or 0)
+        stack = (payload.get("stack") or "")[:1500]
+        url   = (payload.get("url") or "")[:300]
+        ua    = h.headers.get("User-Agent", "")[:80]
+        log.warning(
+            "client-console %s | %s:%d:%d | %s | url=%s | ua=%s%s",
+            kind, src, line, col, msg, url, ua,
+            ("\n  stack: " + stack) if stack else "",
+        )
+        h._send(200, b'{"ok":true}', "application/json")
+    except Exception as exc:
+        h._send(500, json.dumps({"error": str(exc)}).encode(),
+                "application/json")
+
+
 # ── route table ──────────────────────────────────────────────────────
 
 # Order: prefix("/api/sim-state") sits before equals matchers that
@@ -171,4 +262,8 @@ GET_ROUTES = [
     (equals("/api/asset-stamp"),   _serve_asset_stamp),
 ]
 
-POST_ROUTES: list = []
+POST_ROUTES = [
+    (equals("/api/input"),          _serve_input_post),
+    (equals("/api/command"),        _serve_command_post),
+    (equals("/api/console-error"),  _serve_console_error_post),
+]
