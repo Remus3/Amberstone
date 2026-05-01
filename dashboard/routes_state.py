@@ -17,6 +17,11 @@ from urllib.parse import parse_qs, urlparse
 
 from dashboard._context import APP_DIR, read_json
 from dashboard._dispatch import equals, prefix
+from dashboard._writers import (
+    atomic_write_json,
+    force_vision_scan,
+    set_pregame,
+)
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -164,8 +169,7 @@ def _serve_input_post(h, payload) -> None:
     if not text:
         h._send(400, b'{"error":"empty_text"}', "application/json"); return
     try:
-        from web_dashboard import _set_pregame
-        _set_pregame(text)
+        set_pregame(text)
         log.info("dashboard input: %d chars accepted", len(text))
         h._send(200, b'{"ok":true}', "application/json")
     except Exception as exc:
@@ -176,10 +180,8 @@ def _serve_input_post(h, payload) -> None:
 def _serve_command_post(h, payload) -> None:
     cmd = (payload.get("command") or "").strip().lower()
     try:
-        from web_dashboard import (_force_vision_scan, _atomic_write_json,
-                                    _set_pregame)
         if cmd == "force_vision":
-            _force_vision_scan()
+            force_vision_scan()
         elif cmd == "refresh":
             # Touch coaching_data.json to bump mtime; coaches re-emit.
             # Held under the shared coaching_data_lock so a coach
@@ -188,9 +190,9 @@ def _serve_command_post(h, payload) -> None:
             from core.coaching_data_lock import coaching_data_lock
             with coaching_data_lock():
                 d = read_json("coaching_data.json")
-                _atomic_write_json("coaching_data.json", d)
+                atomic_write_json("coaching_data.json", d)
         elif cmd == "clear_pregame":
-            _set_pregame("")
+            set_pregame("")
         else:
             h._send(400, b'{"error":"unknown_command"}', "application/json"); return
         log.info("dashboard command: %s", cmd)
