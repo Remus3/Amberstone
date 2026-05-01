@@ -103,13 +103,16 @@ def _load_key():
 
 _API_KEY = _load_key()
 _client  = None
+_client_lock = threading.Lock()
 
 def _get_client():
     global _client, _API_KEY
     if _client is None:
-        import anthropic
-        if not _API_KEY: _API_KEY = _load_key()
-        _client = anthropic.Anthropic(api_key=_API_KEY)
+        with _client_lock:
+            if _client is None:
+                import anthropic
+                if not _API_KEY: _API_KEY = _load_key()
+                _client = anthropic.Anthropic(api_key=_API_KEY)
     return _client
 
 
@@ -604,7 +607,15 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         if not self._auth(): self._j(401,{"error":"unauthorized"}); return
-        body=self.rfile.read(int(self.headers.get("Content-Length",0)))
+        # SAFETY: cap body size BEFORE rfile.read so a bad Content-Length can't OOM us.
+        # 10 MiB is well above the 7 MiB frame cap inside handle_upload_frame.
+        try:
+            cl = int(self.headers.get("Content-Length", 0))
+        except (TypeError, ValueError):
+            self._j(400, {"error": "bad content-length"}); return
+        if cl > 10 * 1024 * 1024:
+            self._j(413, {"error": "payload too large"}); return
+        body=self.rfile.read(cl)
         try:
             handlers={"vision":handle_vision,"coach":handle_coach,"ocr":handle_ocr,
                       "upload-frame":handle_upload_frame,
