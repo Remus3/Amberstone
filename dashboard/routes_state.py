@@ -15,6 +15,7 @@ import time
 import urllib.request
 from urllib.parse import parse_qs, urlparse
 
+from dashboard._bridge_log import gamepc_result_age_s
 from dashboard._context import APP_DIR, read_json
 from dashboard._dispatch import equals, prefix
 from dashboard._state_builder import build_state, sim_states
@@ -23,6 +24,13 @@ from dashboard._writers import (
     force_vision_scan,
     set_pregame,
 )
+
+# Bridge watchdog thresholds (seconds since last gamepc result).
+# Below WARN: green. WARN..ALERT: yellow. >= ALERT: red.
+# 600s/3600s match the existing rc_facts.py threshold (1hr) for the
+# alert level and the 10-min audit recommendation for the warn level.
+_BRIDGE_WARN_S = 600
+_BRIDGE_ALERT_S = 3600
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -111,12 +119,38 @@ def _serve_health_all(h) -> None:
                               "today_usd": _gt().daily_spend().get("total_usd", 0.0)}
         except Exception as e:
             rollup["cost"] = {"error": str(e)[:120]}
+        try:
+            age = gamepc_result_age_s()
+            if age is None:
+                bridge_status = "unknown"
+            elif age < _BRIDGE_WARN_S:
+                bridge_status = "green"
+            elif age < _BRIDGE_ALERT_S:
+                bridge_status = "yellow"
+            else:
+                bridge_status = "red"
+            rollup["bridge"] = {
+                "age_s":   round(age, 1) if age is not None else None,
+                "status":  bridge_status,
+                "warn_s":  _BRIDGE_WARN_S,
+                "alert_s": _BRIDGE_ALERT_S,
+            }
+        except Exception as e:
+            rollup["bridge"] = {"error": str(e)[:120], "status": "unknown"}
         rc_ok = bool(rollup.get("rc", {}).get("alive"))
         vis_ok = bool(rollup.get("vision", {}).get("alive"))
         cost_ok = rollup.get("cost", {}).get("banner") != "over"
+        # Bridge silence does not flip overall to red — RC + coaching keep
+        # working without it. Cap the bridge contribution at yellow so a
+        # dead bridge auto-flow doesn't drown out actual RC/vision down
+        # signals.
+        bridge_status = (rollup.get("bridge") or {}).get("status")
+        bridge_degraded = bridge_status in ("yellow", "red")
         if not rc_ok or not vis_ok:
             rollup["status"] = "red"
-        elif not cost_ok or rollup.get("cost", {}).get("banner") == "warn":
+        elif (not cost_ok
+              or rollup.get("cost", {}).get("banner") == "warn"
+              or bridge_degraded):
             rollup["status"] = "yellow"
         else:
             rollup["status"] = "green"

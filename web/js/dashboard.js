@@ -7080,16 +7080,33 @@
               dot.classList.add(j.status || "yellow");
               const cost = j.cost || {};
               const sup = j.supervisor || {};
+              const bridge = j.bridge || {};
               const banner = cost.banner || "ok";
               const rcVer = j.rc_version || "?";
               const runId = (sup.run_id || "").slice(0, 8) || "?";
               const oslock = sup.oslock_present ? "lock" : "no-lock";
+              // Bridge line: "bridge ok · last 12s ago" / "bridge silent
+              // 14m ago" / "bridge dead 2h ago" / "bridge no-data".
+              let bridgeLine;
+              if (bridge.status === "unknown" || bridge.age_s == null) {
+                bridgeLine = "bridge no-data";
+              } else {
+                const a = bridge.age_s;
+                const ago = a < 60 ? `${Math.round(a)}s`
+                          : a < 3600 ? `${Math.round(a/60)}m`
+                          : `${(a/3600).toFixed(1)}h`;
+                const label = bridge.status === "green" ? "ok"
+                            : bridge.status === "yellow" ? "silent"
+                            : "dead";
+                bridgeLine = `bridge ${label} · last ${ago} ago`;
+              }
               const lines = [
                 `RC ${rcVer} (pid ${j.rc?.pid ?? "?"})`,
                 `supervisor pid ${sup.pid ?? "?"} · run_id ${runId} · ${oslock}`,
                 `vision ${j.vision?.alive ? "up" : "down"}` +
                   (j.vision?.uptime_s ? ` · uptime ${Math.round(j.vision.uptime_s/60)}m` : ""),
                 `cost $${(cost.today_usd || 0).toFixed(2)} · ${banner}`,
+                bridgeLine,
               ];
               dot.title = lines.join("\n");
               dot.setAttribute("data-tt", dot.title);
