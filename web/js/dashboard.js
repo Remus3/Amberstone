@@ -7101,6 +7101,33 @@
       } catch (e) { /* never let the dot break the dashboard */ }
     }
 
+    // 3.7 — Hot-reload poller (2026-04-30). Polls /api/asset-stamp
+    // every 3s; on mtime increase, hard-reload the page so CSS/JS
+    // edits Legion-side land on Game-PC's secondary display without
+    // an alt-tab. Disabled if `localStorage.rc_hot_reload === '0'`.
+    (function _hotReloadInit() {
+      try {
+        if (localStorage.getItem("rc_hot_reload") === "0") return;
+      } catch (_) {}
+      let baseline = null;
+      const tick = async () => {
+        if (document.hidden) return;
+        try {
+          const r = await fetch("/api/asset-stamp", { cache: "no-store" });
+          if (!r.ok) return;
+          const j = await r.json();
+          const m = +j.mtime || 0;
+          if (!baseline) { baseline = m; return; }
+          if (m > baseline + 0.5) {
+            // Avoid reload storms while the file is mid-write.
+            setTimeout(() => location.reload(), 250);
+          }
+        } catch (_) { /* network blip; try again next tick */ }
+      };
+      tick();
+      setInterval(tick, 3000);
+    })();
+
     // 3.6 — flag elements with data-rc-skel for the first 500 ms after
     // game-start. Anything bearing the attribute that still reads "—"
     // gets the .rc-skel class until the first data tick lands.
