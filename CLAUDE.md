@@ -45,6 +45,15 @@ echo restart > restart_trigger.txt   # supervisor picks up within 1s, restarts i
 Verify after restart: read `ops/runtime/health.json`, confirm new `pid`, `alive=true`,
 `last_reload_ok=true`. Hard fallback: `taskkill /F /PID <pid>` then `restart.bat`.
 
+## Session workflow (2026-05-01)
+
+Scoped sessions, not long-lived ones — each focused task is one session.
+- **End** of each task: commit + update `WAKEUP_NOTES.md` with a short hand-off + save any non-obvious learning to memory.
+- **Start** of each task: `/clear`, bootstrap from CLAUDE.md + MEMORY.md + git log + WAKEUP_NOTES.
+- **Auto-compact at 75%** is a safety net only — don't rely on it as the primary continuity mechanism (it's lossy).
+- `/clear` between Tier items, between coding/reviewing modes, between focus area switches.
+- Continue without `/clear` only when actively debugging across files where compaction would lose mid-built understanding.
+
 ## Scheduled tasks (Legion)
 
 - `RC-Supervisor` — at logon, Administrator, HIGHEST. Runs `pythonw.exe ops/rc_supervisor.py --config ops/rc_config.json`.
