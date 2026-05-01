@@ -496,11 +496,6 @@ def _liveclient_summary() -> dict:
     return out
 
 
-# /api/state cache — populated lazily on first hit; declared at module
-# scope so the `global` statement in the request handler can rebind it.
-_STATE_CACHE_PAYLOAD: bytes | None = None
-_STATE_CACHE_TS: float = 0.0
-
 # /api/console-error server-side throttle (10 Hz cap, all clients combined).
 _CE_LAST_TS: float = 0.0
 _CE_DROPPED: int   = 0
@@ -648,79 +643,7 @@ class _Handler(BaseHTTPRequestHandler):
         # that haven't moved into dashboard/routes_*.py yet.
         if _dispatch.dispatch_get(self):
             return
-        if self.path.startswith("/api/ui-version"):
-            # Auto-reload signal: hash the mtimes of the css/js/html we serve
-            # from web/. Dashboard polls and reloads when the hash changes.
-            try:
-                import hashlib
-                web_root = Path(__file__).resolve().parent / "web"
-                files = [web_root / "index.html",
-                         web_root / "css" / "dashboard.css",
-                         web_root / "js" / "dashboard.js",
-                         web_root / "js" / "sim.js"]
-                sig = ":".join(f"{f.name}={int(f.stat().st_mtime_ns)}"
-                               for f in files if f.exists())
-                h = hashlib.sha1(sig.encode()).hexdigest()[:12]
-                self._send(200, json.dumps({"v": h}).encode(), "application/json")
-            except Exception as exc:
-                self._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
-        elif self.path == "/api/state":
-            try:
-                # Short cache (1.0s) to absorb high-frequency dashboard
-                # polls — _build_state() does an HTTP round-trip to the
-                # vision relay every call, wasted work when 5+ tabs poll
-                # tightly. Cache invalidates within 1s naturally.
-                _now = time.time()
-                global _STATE_CACHE_PAYLOAD, _STATE_CACHE_TS
-                if _STATE_CACHE_PAYLOAD is not None and (_now - _STATE_CACHE_TS) < 1.0:
-                    payload = _STATE_CACHE_PAYLOAD
-                else:
-                    payload = json.dumps(_build_state()).encode("utf-8")
-                    _STATE_CACHE_PAYLOAD = payload
-                    _STATE_CACHE_TS = _now
-                self._send(200, payload, "application/json")
-            except Exception as exc:
-                _log.warning("api/state: %s", exc)
-                self._send(500, b'{"error":"state_build_failed"}', "application/json")
-        elif self.path.startswith("/api/sim-state"):
-            try:
-                from urllib.parse import urlparse, parse_qs
-                qs = parse_qs(urlparse(self.path).query)
-                scenario = (qs.get("scenario") or ["aram_blitz"])[0]
-                state = _sim_states().get(scenario)
-                if not state:
-                    self._send(404, b'{"error":"unknown_scenario"}', "application/json"); return
-                self._send(200, json.dumps(state).encode(), "application/json")
-            except Exception as exc:
-                _log.warning("api/sim-state: %s", exc)
-                self._send(500, b'{"error":"sim_state_failed"}', "application/json")
-        elif self.path == "/api/health":
-            d = _read_json("ops/runtime/health.json")
-            # AUDIT 2026-04-28: stamp the canonical RC app version.
-            try:
-                from core.version import version_string as _vs
-                d["rc_version"] = _vs()
-            except Exception:
-                d["rc_version"] = ""
-            payload = json.dumps(d).encode("utf-8")
-            self._send(200, payload, "application/json")
-        elif self.path == "/api/asset-stamp":
-            # 2026-04-30: hot-reload signal. Returns the max mtime across
-            # the dashboard's static assets so a tiny client poller can
-            # detect file changes and refresh without the user alt-tabbing
-            # to hit Ctrl+F5. Cheap (3 stat() calls) and cache-busted.
-            try:
-                import os as _os
-                root = _APP_DIR / "web"
-                files = ["index.html", "css/dashboard.css", "js/dashboard.js"]
-                stamp = max(_os.path.getmtime(root / f) for f in files
-                            if (root / f).exists())
-                self._send(200, json.dumps({"mtime": stamp}).encode(),
-                           "application/json")
-            except Exception as exc:
-                _log.debug("asset-stamp: %s", exc)
-                self._send(200, b'{"mtime":0}', "application/json")
-        elif self.path == "/api/vision-state":
+        if self.path == "/api/vision-state":
             # Fog-of-war state derived by core/vision_tracker from Live
             # Client position freshness. Empty {} when no game running.
             d = _read_json("data/vision_state.json") or {}
@@ -999,64 +922,6 @@ class _Handler(BaseHTTPRequestHandler):
             self._send(200, json.dumps(_CHAMP_MAP_CACHE).encode(),
                        "application/json")
         # ── AUDIT 2026-04-28 endpoints (proposals 4.4, 4.5, 2.1, 2.5) ─────
-        elif self.path == "/api/health/all":
-            # Consolidated rollup: RC health + vision-server health +
-            # supervisor PID lock view + cost-banner state. One green/
-            # yellow/red dot for the dashboard top-right.
-            try:
-                import urllib.request as _ur
-                rollup = {"rc": _read_json("ops/runtime/health.json")}
-                # vision server
-                try:
-                    with _ur.urlopen("http://127.0.0.1:8889/health", timeout=2) as r:
-                        rollup["vision"] = json.loads(r.read())
-                except Exception as e:
-                    rollup["vision"] = {"alive": False, "error": str(e)[:120]}
-                # supervisor pid file
-                try:
-                    sup = _read_json("ops/runtime/supervisor.pid")
-                    # AUDIT 2026-04-29: also surface oslock state — when
-                    # the .oslock sidecar exists, the OS-level msvcrt
-                    # byte-range lock is held by the supervisor process.
-                    oslock_path = _APP_DIR / "ops" / "runtime" / "supervisor.pid.oslock"
-                    rollup["supervisor"] = {
-                        "pid":       sup.get("pid"),
-                        "run_id":    sup.get("run_id"),
-                        "locked_at": sup.get("locked_at"),
-                        "oslock_present": oslock_path.exists(),
-                    }
-                except Exception as e:
-                    rollup["supervisor"] = {"error": str(e)[:120]}
-                # AUDIT 2026-04-29: stamp app version so the dashboard's
-                # health-dot tooltip can show "RC <version>" without a
-                # second /api/health round-trip.
-                try:
-                    from core.version import version_string as _vs
-                    rollup["rc_version"] = _vs()
-                except Exception:
-                    rollup["rc_version"] = ""
-                # cost banner
-                try:
-                    from core.cost_tracker import get_tracker as _gt
-                    rollup["cost"] = {"banner": _gt().banner_state(),
-                                       "today_usd": _gt().daily_spend().get("total_usd", 0.0)}
-                except Exception as e:
-                    rollup["cost"] = {"error": str(e)[:120]}
-                # Overall status: red if RC dead OR vision dead OR cost over.
-                rc_ok = bool(rollup.get("rc", {}).get("alive"))
-                vis_ok = bool(rollup.get("vision", {}).get("alive"))
-                cost_ok = rollup.get("cost", {}).get("banner") != "over"
-                if not rc_ok or not vis_ok:
-                    rollup["status"] = "red"
-                elif not cost_ok or rollup.get("cost", {}).get("banner") == "warn":
-                    rollup["status"] = "yellow"
-                else:
-                    rollup["status"] = "green"
-                self._send(200, json.dumps(rollup).encode("utf-8"), "application/json")
-            except Exception as exc:
-                _log.warning("api/health/all: %s", exc)
-                self._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                           "application/json")
         elif self.path == "/api/cost":
             # Daily spend ledger from core.cost_tracker. Tile data source.
             try:
