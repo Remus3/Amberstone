@@ -61,6 +61,19 @@ from dashboard.builders import (  # noqa: E402
     _ts_to_epoch,
 )
 
+# 2026-05-01 (slice 2C): static-asset support helpers + the
+# legacy_index/manifest/icon byte loaders moved into dashboard/_static.py.
+# Re-bind under the original underscored names for any in-process callers.
+from dashboard._static import (  # noqa: E402
+    compute_asset_hash as _compute_asset_hash,
+    icon_svg_bytes as _icon_svg_bytes,
+    inject_asset_hash as _inject_asset_hash,
+    legacy_index_html as _legacy_index_html,
+    manifest_bytes as _manifest_bytes,
+    resolve_safe_icon as _resolve_safe_icon,
+)
+from dashboard import _dispatch  # noqa: E402
+
 _CHAMP_MAP_CACHE = None
 
 # ── Haiku-backed build preview for champions not in CHAMPION_BUILDS ────
@@ -310,8 +323,6 @@ _MODE_TO_FILE = {
 }
 
 
-_ASSET_HASH_CACHE: dict = {"hash": "", "mtime": 0.0}
-
 # 30 s TTL cache for /api/diagnostics — see handler comment.
 _DIAG_CACHE: dict = {"payload": b"", "expires": 0.0}
 _DIAG_TTL_S = 30.0
@@ -335,66 +346,6 @@ def _diagnostics_cached() -> bytes:
         _DIAG_CACHE["payload"] = payload
         _DIAG_CACHE["expires"] = time.time() + _DIAG_TTL_S
     return payload
-
-
-def _compute_asset_hash() -> str:
-    """AUDIT 2026-04-28 (3.1): hash the css+js+html mtimes the dashboard
-    serves out of web/. Cached for 2 s so repeated index requests don't
-    re-stat. The same files drive /api/ui-version so reload behaviour
-    stays consistent."""
-    import hashlib as _hashlib
-    now = time.time()
-    if _ASSET_HASH_CACHE.get("hash") and (now - _ASSET_HASH_CACHE["mtime"]) < 2.0:
-        return _ASSET_HASH_CACHE["hash"]
-    web_root = _APP_DIR / "web"
-    parts = []
-    for rel in ("index.html", "css/dashboard.css", "js/dashboard.js",
-                "js/sim.js", "js/ws_client.js"):
-        p = web_root / rel
-        try:
-            parts.append(f"{rel}:{int(p.stat().st_mtime)}")
-        except OSError:
-            parts.append(f"{rel}:0")
-    h = _hashlib.sha1("|".join(parts).encode("utf-8")).hexdigest()[:10]
-    _ASSET_HASH_CACHE["hash"] = h
-    _ASSET_HASH_CACHE["mtime"] = now
-    return h
-
-
-def _inject_asset_hash(html: bytes) -> bytes:
-    """Rewrite hardcoded `?v=YYYYMMDDNN` cache-bust queries on css/js refs
-    in index.html with a freshly computed asset hash. Touches only the
-    href/src attributes that already carry a `?v=…` so unrelated query
-    strings aren't disturbed."""
-    import re as _re
-    h = _compute_asset_hash()
-    text = html.decode("utf-8", errors="replace")
-    text = _re.sub(r'(\.(?:css|js))\?v=[^"\']+',
-                   lambda m: f"{m.group(1)}?v={h}",
-                   text)
-    return text.encode("utf-8")
-
-
-def _resolve_safe_icon(root: Path, rel: str) -> Path | None:
-    # 2026-04-27 audit: defense-in-depth for /icons/* endpoints. The
-    # original substring checks ("/" in rel or ".." in rel) miss
-    # backslashes on Windows and symlink targets. This helper canonicalises
-    # both paths and returns None unless the resolved file is a regular
-    # file inside `root`.
-    if not rel or "/" in rel or "\\" in rel or ".." in rel or not rel.endswith(".png"):
-        return None
-    try:
-        candidate = (root / rel).resolve()
-        root_resolved = root.resolve()
-    except Exception:
-        return None
-    try:
-        candidate.relative_to(root_resolved)
-    except ValueError:
-        return None
-    if not candidate.is_file():
-        return None
-    return candidate
 
 
 def _atomic_write_json(rel: str, data: dict) -> None:
@@ -594,39 +545,6 @@ def _build_state() -> dict:
     }
 
 
-_INDEX_HTML_PATH = Path(__file__).resolve().parent / "web" / "legacy_index.html"
-_INDEX_HTML_CACHE: bytes | None = None
-
-
-def _legacy_index_html() -> bytes:
-    global _INDEX_HTML_CACHE
-    if _INDEX_HTML_CACHE is None:
-        _INDEX_HTML_CACHE = _INDEX_HTML_PATH.read_bytes()
-    return _INDEX_HTML_CACHE
-
-
-_MANIFEST_PATH = Path(__file__).resolve().parent / "web" / "manifest.json"
-_MANIFEST_CACHE: bytes | None = None
-
-
-def _manifest_bytes() -> bytes:
-    global _MANIFEST_CACHE
-    if _MANIFEST_CACHE is None:
-        _MANIFEST_CACHE = _MANIFEST_PATH.read_bytes()
-    return _MANIFEST_CACHE
-
-
-_ICON_SVG_PATH = Path(__file__).resolve().parent / "web" / "icon.svg"
-_ICON_SVG_CACHE: bytes | None = None
-
-
-def _icon_svg_bytes() -> bytes:
-    global _ICON_SVG_CACHE
-    if _ICON_SVG_CACHE is None:
-        _ICON_SVG_CACHE = _ICON_SVG_PATH.read_bytes()
-    return _ICON_SVG_CACHE
-
-
 _SIM_STATES_PATH = Path(__file__).resolve().parent / "data" / "sim_states.json"
 _SIM_STATES_CACHE: dict | None = None
 
@@ -725,48 +643,12 @@ class _Handler(BaseHTTPRequestHandler):
         except Exception: pass
 
     def do_GET(self):
-        # 2026-04-23: serve the new modern UI from web/ by default; keep
-        # the legacy inline dashboard reachable at ?ui=legacy in case the
-        # new one misbehaves during a live match.
-        if self.path == "/" or self.path == "/index.html" or self.path.startswith("/?") or self.path.startswith("/index.html?"):
-            use_legacy = ("ui=legacy" in self.path)
-            if not use_legacy:
-                try:
-                    new_index = (Path(__file__).resolve().parent / "web" / "index.html").read_bytes()
-                    # AUDIT 2026-04-28 (proposal 3.1): replace the manual
-                    # ?v=YYYYMMDDNN cache-bust query with a content hash.
-                    # Computed once per request from CSS/JS mtimes — same
-                    # signal /api/ui-version uses, so reload behaviour is
-                    # consistent. No human has to bump a counter.
-                    new_index = _inject_asset_hash(new_index)
-                    self._send(200, new_index, "text/html; charset=utf-8")
-                    return
-                except Exception as exc:
-                    _log.warning("web/index.html serve failed, falling back to legacy: %s", exc)
-            self._send(200, _legacy_index_html(), "text/html; charset=utf-8")
-        elif self.path.startswith("/css/") or self.path.startswith("/js/") or self.path.startswith("/data/"):
-            # Serve static assets from web/. Defense: drop any ".." segment
-            # and reject anything with a null byte.
-            rel = self.path.split("?", 1)[0].lstrip("/")
-            if ".." in rel.split("/") or "\x00" in rel:
-                self._send(400, b'{"error":"bad path"}', "application/json"); return
-            try:
-                abs_path = (Path(__file__).resolve().parent / "web" / rel).resolve()
-                web_root = (Path(__file__).resolve().parent / "web").resolve()
-                if not str(abs_path).startswith(str(web_root)) or not abs_path.is_file():
-                    self._send(404, b'{"error":"not found"}', "application/json"); return
-                ctype = {
-                    ".css": "text/css; charset=utf-8",
-                    ".js":  "application/javascript; charset=utf-8",
-                    ".json":"application/json; charset=utf-8",
-                    ".svg": "image/svg+xml",
-                    ".png": "image/png",
-                }.get(abs_path.suffix.lower(), "application/octet-stream")
-                self._send(200, abs_path.read_bytes(), ctype)
-            except Exception as exc:
-                _log.warning("static serve %s: %s", self.path, exc)
-                self._send(500, b'{"error":"static_serve_failed"}', "application/json")
-        elif self.path.startswith("/api/ui-version"):
+        # Slice 2C (2026-05-01): dispatcher tries each migrated route
+        # first; falls through to the legacy elif chain below for routes
+        # that haven't moved into dashboard/routes_*.py yet.
+        if _dispatch.dispatch_get(self):
+            return
+        if self.path.startswith("/api/ui-version"):
             # Auto-reload signal: hash the mtimes of the css/js/html we serve
             # from web/. Dashboard polls and reloads when the hash changes.
             try:
@@ -916,10 +798,6 @@ class _Handler(BaseHTTPRequestHandler):
             # side panels (adaptation, activity, env, minimap-crop,
             # locked-champion, etc.) populate when accessed via 8888.
             self._proxy_to_supervisor()
-        elif self.path == "/manifest.json":
-            self._send(200, _manifest_bytes(), "application/manifest+json")
-        elif self.path == "/icon.svg":
-            self._send(200, _icon_svg_bytes(), "image/svg+xml")
         elif self.path == "/api/reload-regions":
             try:
                 from core.vision_tesseract import reload_regions
@@ -1120,100 +998,6 @@ class _Handler(BaseHTTPRequestHandler):
                     _CHAMP_MAP_CACHE = {}
             self._send(200, json.dumps(_CHAMP_MAP_CACHE).encode(),
                        "application/json")
-        elif self.path.startswith("/icons/champions/"):
-            # Serve champion square icons from data/icons/champions/
-            try:
-                rel = self.path[len("/icons/champions/"):]
-                p = _resolve_safe_icon(_APP_DIR / "data" / "icons" / "champions", rel)
-                if p is None:
-                    self._send(404, b"not found", "text/plain"); return
-                self._send(200, p.read_bytes(), "image/png")
-            except Exception as exc:
-                _log.warning("icons/champions: %s", exc)
-                self._send(500, b"icon_serve_failed", "text/plain")
-        elif self.path.startswith("/icons/maps/"):
-            # Serve local minimap/rift images (map11 = SR, map12 = Howling Abyss).
-            try:
-                rel = self.path[len("/icons/maps/"):]
-                p = _resolve_safe_icon(_APP_DIR / "data" / "icons" / "maps", rel)
-                if p is None:
-                    self._send(404, b"not found", "text/plain"); return
-                self._send(200, p.read_bytes(), "image/png")
-            except Exception as exc:
-                _log.warning("icons/maps: %s", exc)
-                self._send(500, b"icon_serve_failed", "text/plain")
-        elif self.path.startswith("/icons/spells/"):
-            try:
-                rel = self.path[len("/icons/spells/"):]
-                p = _resolve_safe_icon(_APP_DIR / "data" / "icons" / "spells", rel)
-                if p is None:
-                    self._send(404, b"not found", "text/plain"); return
-                self._send(200, p.read_bytes(), "image/png")
-            except Exception as exc:
-                _log.warning("icons/spells: %s", exc)
-                self._send(500, b"icon_serve_failed", "text/plain")
-        elif self.path.startswith("/icons/runes/"):
-            try:
-                rel = self.path[len("/icons/runes/"):]
-                p = _resolve_safe_icon(_APP_DIR / "data" / "icons" / "runes", rel)
-                if p is None:
-                    self._send(404, b"not found", "text/plain"); return
-                self._send(200, p.read_bytes(), "image/png")
-            except Exception as exc:
-                _log.warning("icons/runes: %s", exc)
-                self._send(500, b"icon_serve_failed", "text/plain")
-        elif self.path.startswith("/icons/items/"):
-            # Serve item icons for the dashboard build display.
-            # Allows /icons/items/<slug>.png from data/icons/aram_items/.
-            # Slug is item name lowercased, non-alnum→'-' (matches the
-            # naming used by modes/aram_overlay._load_icon).
-            try:
-                rel = self.path[len("/icons/items/"):]
-                p = _resolve_safe_icon(_APP_DIR / "data" / "icons" / "aram_items", rel)
-                if p is None:
-                    self._send(404, b"not found", "text/plain"); return
-                self._send(200, p.read_bytes(), "image/png")
-            except Exception as exc:
-                _log.warning("icons/items: %s", exc)
-                self._send(500, b"icon_serve_failed", "text/plain")
-        elif self.path.startswith("/agent/"):
-            # Serve agent files (e.g. gamepc_screen_agent.py) for Game-PC deploy.
-            # Strict allowlist: only files in tools/, no path traversal.
-            name = self.path[len("/agent/"):]
-            ALLOWED = {"gamepc_screen_agent.py", "gamepc_liveclient_relay.py",
-                       "gamepc_lcu_agent.py", "gamepc_mcp_server.py",
-                       "gamepc_hotkey_listener.py",
-                       "GAMEPC_CLAUDE.md",
-                       "bridge_fetch.py", "bridge_post.py",
-                       "bridge_pull_tasks.py", "bridge_post_result.py",
-                       "bridge_task.py",
-                       "bridge_ping.py", "bridge_heartbeat.py",
-                       "bridge_setup.ps1", "gamepc_boot.ps1",
-                       "process-bridge-tasks.md",
-                       "rc_rootCA.pem"}
-            if name not in ALLOWED:
-                self._send(404, b"not found", "text/plain"); return
-            try:
-                # Stream-read with 4 MiB cap — same defensive pattern as
-                # the MCP `tool_read_file` fix from cycle 2. Allowlisted
-                # files today are <50 KB so the cap doesn't truncate, but
-                # it future-proofs if logs/larger artifacts ever land in
-                # the allowlist.
-                _AGENT_FILE_CAP = 1 << 22
-                with open(_APP_DIR / "tools" / name, "rb") as _f:
-                    body = _f.read(_AGENT_FILE_CAP)
-                if name.endswith(".md"):
-                    ctype = "text/markdown; charset=utf-8"
-                elif name.endswith(".pem") or name.endswith(".crt"):
-                    ctype = "application/x-pem-file"
-                elif name.endswith(".ps1"):
-                    ctype = "text/plain; charset=utf-8"
-                else:
-                    ctype = "text/x-python; charset=utf-8"
-                self._send(200, body, ctype)
-            except Exception as exc:
-                _log.warning("agent serve %s: %s", name, exc)
-                self._send(500, b"agent_read_failed", "text/plain")
         # ── AUDIT 2026-04-28 endpoints (proposals 4.4, 4.5, 2.1, 2.5) ─────
         elif self.path == "/api/health/all":
             # Consolidated rollup: RC health + vision-server health +
@@ -1500,6 +1284,11 @@ class _Handler(BaseHTTPRequestHandler):
         except Exception as exc:
             _log.debug("do_POST bad_body: %s", exc)
             self._send(400, b'{"error":"bad_body"}', "application/json")
+            return
+
+        # Slice 2C (2026-05-01): dispatcher tries each migrated POST
+        # route first; falls through to the legacy elif chain below.
+        if _dispatch.dispatch_post(self, payload):
             return
 
         if self.path == "/api/input":
