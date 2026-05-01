@@ -16,23 +16,16 @@ import sys
 import os
 import json
 import logging
-import threading
 import time
 import traceback
 
-try:
-    from core.hotkeys import start as _start_hotkeys
-except Exception: _start_hotkeys = None
 import tkinter as tk
 from pathlib import Path
 from typing import Optional
-from core.theme import EXCLUDED_MODES, FIELD_COLORS
 from core.game_snapshot import (
-    GameEnvelope, ClientSnapshot, RiftSnapshot, AramSnapshot, TftSnapshot,
+    GameEnvelope, ClientSnapshot,
     MODE_CLIENT, MODE_SR, MODE_ARAM, MODE_TFT, MODE_ARENA, MODE_BRAWL,
-    mode_from_game_mode_string,
 )
-from ui import GameBottomStrip, GameRightTop, GameRightBot, ClientPanel, ModeIndicator
 from ._health_monitor  import HealthMonitor        # ARCH-001 Phase 1
 from ._remediation    import RemediationService    # ARCH-001 Phase 1
 from ._state_authority   import StateAuthority     # ARCH-001 Phase 2
@@ -73,11 +66,6 @@ except Exception: HAS_TRACKER = False
 try:
     from composition_advisor import comp_context_str; HAS_COMP_ADVISOR = True
 except Exception: HAS_COMP_ADVISOR = False
-
-
-def _safe_log(label):
-    try: _log.error("%s:\n%s", label, traceback.format_exc())
-    except Exception: pass
 
 
 class OverlayApp:

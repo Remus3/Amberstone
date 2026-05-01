@@ -7,7 +7,6 @@ Post-2026-04-19: vision server is in-process on Legion at 127.0.0.1:8889
 API) automatically if the vision server is offline. Availability check cached
 for 30s so no hot-path penalty.
 """
-import base64
 import json
 import logging
 import threading
@@ -202,13 +201,6 @@ class MoonProxy:
             "host":       MOON_HOST,
             "port":       MOON_PORT,
         }
-
-    def force_recheck(self):
-        """Force availability re-check on next call."""
-        with self._lock:
-            self._available = None
-            self._last_check = 0.0
-
 
 # Module-level singleton
 moon_proxy = MoonProxy()
