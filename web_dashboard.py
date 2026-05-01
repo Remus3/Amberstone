@@ -48,10 +48,6 @@ from dashboard.builders import (  # noqa: E402
     SESSION_GAP_S,
     _agg_session,
     _build_diagnostics,
-    _build_history,
-    _build_home_summary,
-    _build_loadouts_all,
-    _build_session_summary,
     _group_sessions,
     _home_last_build,
     _home_streaks,
@@ -659,33 +655,6 @@ class _Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 _log.warning("api/decisions: %s", exc)
                 self._send(500, b'{"error":"decisions_read_failed"}', "application/json")
-        elif self.path == "/api/session/summary":
-            try:
-                self._send(200, json.dumps(_build_session_summary()).encode(),
-                           "application/json")
-            except Exception as exc:
-                _log.warning("api/session/summary: %s", exc)
-                self._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
-        elif self.path.startswith("/api/history"):
-            try:
-                from urllib.parse import urlparse, parse_qs
-                qs = parse_qs(urlparse(self.path).query)
-                scope = (qs.get("scope") or ["14d"])[0]
-                self._send(200, json.dumps(_build_history(scope)).encode(),
-                           "application/json")
-            except Exception as exc:
-                _log.warning("api/history: %s", exc)
-                self._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
-        elif self.path.startswith("/api/loadouts/all"):
-            try:
-                from urllib.parse import urlparse, parse_qs
-                qs = parse_qs(urlparse(self.path).query)
-                mode = (qs.get("mode") or ["aram"])[0]
-                self._send(200, json.dumps(_build_loadouts_all(mode)).encode(),
-                           "application/json")
-            except Exception as exc:
-                _log.warning("api/loadouts/all: %s", exc)
-                self._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
         elif self.path == "/api/diagnostics":
             # AUDIT 2026-04-29: 30 s TTL cache. _build_diagnostics fans out
             # to several heavy probes (DB introspection, log tail, RC +
@@ -698,22 +667,6 @@ class _Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 _log.warning("api/diagnostics: %s", exc)
                 self._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
-        elif self.path == "/api/home/summary":
-            # Read-only aggregate for the dashboard's home/lobby view.
-            # Pulls from data/match_history.db (the freshest source —
-            # rewind_history.db is stale). Returns:
-            #   today: {games, grades, total_kda, modes}
-            #   recent: [{ts, mode, champion, grade, kda, duration_s}, ...]
-            #   this_week: [{champion, games, avg_kda, best_grade}, ...]
-            #   services: [{name, ok, detail}, ...]
-            try:
-                payload = _build_home_summary()
-                self._send(200, json.dumps(payload).encode("utf-8"),
-                           "application/json")
-            except Exception as exc:
-                _log.warning("api/home/summary: %s", exc)
-                self._send(500, json.dumps({"error": str(exc)}).encode(),
-                           "application/json")
         elif any(self.path == p or self.path.startswith(p + "?") or self.path.startswith(p + "/")
                  for p in _SUPERVISOR_PROXY_PATHS):
             # 2026-04-23: forward routes that only exist on the agents
