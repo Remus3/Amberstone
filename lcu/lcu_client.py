@@ -16,6 +16,7 @@ import time
 import threading
 import base64
 from pathlib import Path
+import urllib.error
 import urllib.request
 
 _log = logging.getLogger("rc.lcu")
@@ -79,7 +80,8 @@ class LcuClient(_PGMixin):
             with urllib.request.urlopen(req, context=self._ssl, timeout=3) as resp:
                 raw = resp.read().decode()
             return json.loads(raw) if raw.strip() else {}
-        except Exception:
+        except (urllib.error.URLError, OSError, TimeoutError,
+                json.JSONDecodeError, UnicodeDecodeError, ValueError):
             return None
 
     # ═══ Auto-Accept ═══════════════════════════════════════════════════════════

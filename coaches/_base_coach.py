@@ -421,13 +421,15 @@ class BaseCoach(abc.ABC):
         # has bumped _last_coach.
         if not self._lock.acquire(blocking=False):
             return
-        self._last_coach = now
-        _mn = self._MODE_NAME.capitalize()
-        threading.Thread(
-            target=self._run_coach, args=(dict(state),),
-            daemon=True, name=f"{_mn}Coach"
-        ).start()
-        self._lock.release()
+        try:
+            self._last_coach = now
+            _mn = self._MODE_NAME.capitalize()
+            threading.Thread(
+                target=self._run_coach, args=(dict(state),),
+                daemon=True, name=f"{_mn}Coach"
+            ).start()
+        finally:
+            self._lock.release()
 
     def _poll_overlay_file(self, root) -> None:
         if not self._overlay or not self._running:
