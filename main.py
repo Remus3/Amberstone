@@ -128,6 +128,15 @@ try:
 except Exception as _e:
     _log.warning("liveclient_cache start failed (non-fatal): %s", _e)
 
+# — Log retention (Tier 1 #3, 2026-05-01)
+# log_setup.py prunes >30d files only at boot; on a long-lived RC the dir
+# grew to 191 MB. Hourly sweep deletes >14d *.log* and caps total at 100 MB.
+try:
+    from core.log_retention import start as _lr_start
+    _lr_start(APP_DIR / "logs")
+except Exception as _e:
+    _log.warning("log_retention start failed (non-fatal): %s", _e)
+
 # — Web dashboard (iPad extended display via Duet to Game-PC)
 try:
     from web_dashboard import start_dashboard as _start_dash
