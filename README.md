@@ -18,7 +18,7 @@ Personal project. Private repo. Not packaged for general use.
 | Machine | Display | Role |
 |---|---|---|
 | **Legion** (`192.0.2.230`) | 1 monitor | Hosts the main RC process, web dashboard `:8888`, vision server `:8889`, MCP client connecting to Game-PC |
-| **Game-PC** (`192.0.2.237`) | 2 monitors — TV (primary, the game) + an iPad used as a wireless extended display via Duet (secondary, 1920×1280 @ 125% scale, no touch, no apps installed) | Runs the League client + four relay agents (screen, LCU, Live-Client, MCP server) that feed Legion. Edge runs fullscreen on the secondary display showing the dashboard |
+| **Game-PC** (`192.0.2.237`) | 2 monitors — TV (primary, the game) + an iPad used as a wireless extended display via Duet (secondary, 1920×1280 native, 100% OS scale, no touch, no apps installed) | Runs the League client + four relay agents (screen, LCU, Live-Client, MCP server) that feed Legion. Edge runs fullscreen on the secondary display showing the dashboard |
 
 ## Architecture
 
