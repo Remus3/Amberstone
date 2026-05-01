@@ -4919,6 +4919,16 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   background: repeating-linear-gradient(45deg,
     var(--surface-alt) 0 4px, var(--surface-head) 4px 8px);
 }
+/* Tier 4 #17 (2026-05-01): items that differ across variants get a soft
+   amber ring so the user's eye lands on the actual tradeoffs when
+   comparing two builds. Only applied when there are 2+ variants — the
+   _csDiffItemIds helper returns an empty set for single-variant lists.
+   Uses --gold (the dashboard.css "action/emphasis" token) rather than
+   --clock since the latter is only defined in the legacy layout. */
+.cs-build-items .cs-build-item.cs-build-item--diff {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold) inset, 0 0 4px rgba(245, 184, 124, 0.45);
+}
 .cs-build-row.experimental .cs-build-label {
   color: #d6c4f3;
 }
