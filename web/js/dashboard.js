@@ -367,6 +367,11 @@
     },
     // cached latest coaching frames by mode
     latest: {},
+    // ms timestamp of the last /api/state-stream event we processed.
+    // The LCU poller + HTTP fallback skip while this is fresh (<4s old)
+    // so SSE-pushed updates don't get duplicated by polling fetches.
+    // Tier 4 #16 (2026-05-01).
+    lastSseTs: 0,
   };
 
   // Refresh cadences from spec §5 (in seconds)
@@ -6571,6 +6576,9 @@
         lastFrameTs = Date.now();
         return;
       }
+      // Tier 4 #16: skip when /api/state-stream pushed something within
+      // the last 4s — SSE has already delivered the same payload.
+      if (Date.now() - state.lastSseTs < 4000) return;
       const ageMs = Date.now() - lastFrameTs;
       if (ageMs < 4000) return;
       try {
@@ -6601,19 +6609,57 @@
     setInterval(pollIfStale, 2000);
   })();
 
+  // ── /api/state-stream SSE subscription (Tier 4 #16, 2026-05-01) ──
+  // Server-pushes /api/state on every change + a 15s heartbeat, so the
+  // dashboard doesn't need to schedule its own /api/state polls. When
+  // a fresh SSE event lands we update state.lastSseTs; the LCU poller
+  // and HTTP fallback below check that timestamp and skip while SSE
+  // is alive (<4s old). EventSource auto-reconnects on disconnect
+  // (browser honors the server-sent `retry: 2000` hint), and the
+  // server caps each connection at 600s before forcing a reconnect.
+  (function setupStateStream() {
+    if (typeof EventSource === "undefined") return;
+    let es = null;
+    function connectSse() {
+      try {
+        es = new EventSource("/api/state-stream");
+      } catch (_) { return; }
+      es.onmessage = (ev) => {
+        try {
+          const st = JSON.parse(ev.data);
+          if (!st) return;
+          state.lastSseTs = Date.now();
+          // Pipe through the same handlers the WS / HTTP-fallback paths use.
+          const fileMode = st.mode_key || "client";
+          const coachPayload = st.coach || st;
+          onState({ type: "state", source: "state-sse",
+                    mode: fileMode, payload: coachPayload });
+          if (st.lcu) handleChampSelect(st.lcu);
+        } catch (_) { /* malformed event — skip */ }
+      };
+      es.onerror = () => {
+        // EventSource auto-reconnects per the server's `retry: 2000`
+        // hint; nothing to do here besides clear our handle so a new
+        // ES is created on next page load if this one is permanently
+        // closed.
+        if (es && es.readyState === 2 /* CLOSED */) { es = null; }
+      };
+    }
+    connectSse();
+  })();
+
   // ── Independent LCU / champ-select poller (2026-04-26) ────────────
-  // The WS state envelope only contains coach data — LCU phase /
-  // champ_select / trades come exclusively via /api/state's `lcu` key.
-  // Without this poller, the cs-overlay only updates when the WS-stale
-  // fallback fires (~5s+ after WS dies). When WS is alive, the overlay
-  // would NEVER appear during champ-select. Polls every 2s so the
-  // overlay shows up fast when phase=ChampSelect, and disappears just
-  // as fast when phase flips back.
+  // Fallback path: SSE (above) normally pushes /api/state including
+  // `lcu`, so this polling loop short-circuits while SSE is fresh.
+  // Still needed when SSE is unavailable (browser without EventSource,
+  // server slot pool exhausted, mid-reconnect window).
   (function setupLcuPoller() {
     let inflight = false;
     async function pollLcu() {
       if (document.hidden) return;
       if (inflight) return;
+      // Skip when SSE delivered something within the last 4s.
+      if (Date.now() - state.lastSseTs < 4000) return;
       inflight = true;
       try {
         const r = await fetch("/api/state", { cache: "no-store" });
