@@ -269,232 +269,6 @@ def _bridge_since(since_ts: float, limit: int = 20, *,
     return items[-limit:]
 
 
-_SIM_STATES = {
-    "aram_blitz": {
-        "mode_key": "game",
-        "coach_source": "SIMULATED:sr_ranked_vayne",
-        "health": {
-            "alive": True, "pid": 0, "mode": "sr",
-            "has_game": True, "ui_pulse_age_s": 0.3, "game_poll_age_s": 0.5,
-        },
-        "coach": {
-            "mode":       "game",
-            "action":     "SIEGE MID T2",
-            "immediate":  "[E]Draven[/E] + [E]Nidalee[/E] dead [T]14s[/T]. Collapse mid, Baron in 40s. [A]Kindred[/A] R up.",
-            "fight_rule": "Never engage until [A]Vladimir[/A] pool+R combo is up. Peel for [A]Kindred[/A] 2nd-reset window.",
-            "risk":       "[E]Jayce[/E] + [E]KSante[/E] alive, pushing top-side. Ward baron pit, watch flank from tri-brush.",
-            "positioning":"Pool forward on [E]Blitzcrank[/E] low HP, E-kite back. Side-hug raptors while [A]Kindred[/A] resets.",
-            "objective":  "Baron [T]30:15[/T]. 3rd drake soon — infernal soul pending. Force setup now, rotate via mid T2.",
-            "wave":       "Super-minion wave mid pressing [E]enemy[/E] T2. Let [A]Smolder[/A] clear; don't over-push, [E]Jayce[/E] TP unknown.",
-            "augments":   "",
-            # 3-line cap — threat/risk moved to RISK panel; no duplication here.
-            "enemy_comp": "Poke-Siege · 1 Tank ([E]KSante[/E]) · 1 Hyper-ADC ([E]Draven[/E]) · 2 Burst\nWin con: [A]Vladimir[/A] 6-item pool-engage + [A]Kindred[/A] R reset — pick picks post-16",
-            # Objective tracker payload (shown in header). ally/enemy maps to
-            # my_side; if my_side=ORDER then ally=ORDER stats, enemy=CHAOS stats.
-            # Real team objectives from NA1_5217712024 (team 200 = my team, won).
-            "objectives": {
-                "ally":  {"towers": 9, "inhibs": 1, "herald": 1, "baron": 0, "mites": 3,
-                          "dragons": ["infernal", "mountain"]},
-                "enemy": {"towers": 4, "inhibs": 0, "herald": 0, "baron": 1, "mites": 3,
-                          "dragons": ["cloud", "ocean"]},
-            },
-            "baron_buff": {},
-            # Vladimir full build path: owned (green outline) + 1 theorized upgrade.
-            "item_build": "Ionian Boots of Lucidity, Mejais Soulstealer, Rabadons Deathcap, Shadowflame, Cosmic Drive, Void Staff, Zhonyas Hourglass",
-            "items_display":"Ionian Boots of Lucidity, Mejais Soulstealer, Rabadons Deathcap, Shadowflame, Cosmic Drive, Void Staff",
-            "game_time":   "28:42",
-            "game_time_s": 1722,
-            "kda":         "15/6/8",
-            "win_pct":     62,
-            "hp_pct":      90,
-            "game_mode":   "CLASSIC",
-            "my_tower_hp": 100,
-            "enemy_tower_hp": 80,
-            "wave_pct":    72,
-            "my_team":     "ORDER",
-        },
-        "liveclient": {
-            "game_time":   "11:24",
-            "game_time_s": 684,
-            "level":       13,
-            "gold":        1850,
-            "hp":          1890, "hp_max":   2100,
-            "mana":         640, "mana_max":  980,
-            "kda":         "2/4/8",
-            "cs":          42,
-            "champion":    "Blitzcrank",
-            "game_mode":   "KIWI",
-            "owned_items": ["Locket of the Iron Solari", "Plated Steelcaps",
-                            "Kindlegem", "Giant's Belt", "Warding Totem"],
-            # Abilities: cd_s = seconds remaining (0 = ready). max_cd_s for ring.
-            "abilities": [
-                {"key": "Q", "name": "Rocket Grab",       "cd_s": 0.0, "max_cd_s": 14, "level": 5},
-                {"key": "W", "name": "Overdrive",         "cd_s": 3.2, "max_cd_s": 15, "level": 3},
-                {"key": "E", "name": "Power Fist",        "cd_s": 0.0, "max_cd_s":  7, "level": 3},
-                {"key": "R", "name": "Static Field",      "cd_s": 42,  "max_cd_s": 60, "level": 2},
-            ],
-            "summoners": [
-                {"slot": "D", "name": "Flash",    "cd_s": 118, "max_cd_s": 300},
-                {"slot": "F", "name": "Snowball", "cd_s": 0,   "max_cd_s": 80},
-            ],
-            "my_side":     "CHAOS",
-            # Data pulled from rewind_history.db match NA1_5217712024 (31:39, my team 200 won).
-            # My team (team 200) = RED side in-match → shown on the RIGHT of dashboard.
-            "allies": [
-                # TL HONDA IMPACT — Smolder (TOP) — Fleet Footwork, Flash+TP — PRO
-                {"champion": "Smolder", "me": False, "level": 16, "kda": "3/6/14",
-                 "hp": 1520, "hp_max": 1680, "mana": 610, "mana_max": 790,
-                 "gold": 12271, "rank": "GM 523", "mode_record": "88W / 54L",
-                 "summoner_name": "TL HONDA IMPACT#XDDD", "cs": 202,
-                 "pos_x": 9497, "pos_y": 9603,
-                 "title": "PRO",
-                 "ult_ready": False, "ult_cd_s": 38,
-                 "summ_d": "Flash", "summ_f": "Teleport",
-                 "keystone": "FleetFootwork", "secondary_tree": "Inspiration",
-                 "items": ["Berserkers Greaves", "Rapid Firecannon",
-                           "Runaans Hurricane", "Rabadons Deathcap",
-                           "Stormrazor"],
-                 "dmg": {"physical": 24198, "magical": 5961, "true": 3122},
-                 "ehp": 2340},
-                # Grell — Kindred (JUNGLE) — Conqueror, Flash+Smite — PRO
-                {"champion": "Kindred", "me": False, "level": 17, "kda": "14/7/9",
-                 "hp": 1510, "hp_max": 1790, "mana": 360, "mana_max": 500,
-                 "gold": 15932, "rank": "C 821", "mode_record": "310W / 212L",
-                 "summoner_name": "Grell#3010", "cs": 213,
-                 "pos_x": 7822, "pos_y": 9306,
-                 "title": "PRO", "has_blue_buff": True,
-                 "ult_ready": True,
-                 "summ_d": "Flash", "summ_f": "Smite",
-                 "keystone": "Conqueror", "secondary_tree": "Precision",
-                 "items": ["The Collector", "Kraken Slayer",
-                           "Lord Dominiks Regards", "Berserkers Greaves",
-                           "Cloak of Agility", "Infinity Edge"],
-                 "dmg": {"physical": 34045, "magical": 5748, "true": 2839},
-                 "ehp": 2120},
-                # SamplePlayer — Vladimir (MID) — Phase Rush, Flash+Ignite — me
-                {"champion": "Vladimir", "me": True, "level": 18, "kda": "15/6/8",
-                 "hp": 2320, "hp_max": 2540, "mana": 0, "mana_max": 0,
-                 "gold": 17274, "rank": "C 626", "mode_record": "142W / 98L",
-                 "summoner_name": "SamplePlayer#Vayne", "cs": 242,
-                 "pos_x": 7997, "pos_y": 9918,
-                 "ult_ready": True,
-                 "summ_d": "Flash", "summ_f": "Ignite",
-                 "keystone": "PhaseRush", "secondary_tree": "Sorcery",
-                 "items": ["Ionian Boots of Lucidity", "Mejais Soulstealer",
-                           "Rabadons Deathcap", "Shadowflame",
-                           "Cosmic Drive", "Void Staff"],
-                 "dmg": {"physical": 1930, "magical": 49979, "true": 1711},
-                 "ehp": 3180},
-                # setter — Cho'Gath (BOT, flex) — Arcane Comet, Flash+TP — M344
-                {"champion": "Chogath", "me": False, "level": 16, "kda": "6/6/12",
-                 "hp": 3120, "hp_max": 3480, "mana": 480, "mana_max": 720,
-                 "gold": 11861, "rank": "M 344", "mode_record": "44W / 38L",
-                 "summoner_name": "setter#uzi", "cs": 226,
-                 "pos_x": 8483, "pos_y": 8994,
-                 "ult_ready": True,
-                 "summ_d": "Flash", "summ_f": "Teleport",
-                 "keystone": "ArcaneComet", "secondary_tree": "Resolve",
-                 "items": ["Hextech Rocketbelt", "Boots of Swiftness",
-                           "Wardens Mail", "Riftmaker",
-                           "Abyssal Mask", "Ruby Crystal"],
-                 "dmg": {"physical": 1370, "magical": 17369, "true": 4413},
-                 "ehp": 5620},
-                # TooPsyched — Karma (SUPPORT) — Arcane Comet, Ignite+Flash — GM520
-                {"champion": "Karma", "me": False, "level": 14, "kda": "0/6/22",
-                 "hp": 0, "hp_max": 1520, "mana": 520, "mana_max": 760,
-                 "respawn_s": 22,
-                 "gold": 8575, "rank": "GM 520", "mode_record": "210W / 186L",
-                 "summoner_name": "TooPsyched#0713", "cs": 25,
-                 "pos_x": 8827, "pos_y": 9998,
-                 "ult_ready": True,
-                 "summ_d": "Ignite", "summ_f": "Flash",
-                 "keystone": "ArcaneComet", "secondary_tree": "Sorcery",
-                 "items": ["Black Mist Scythe", "Redemption",
-                           "Mandate", "Amplifying Tome",
-                           "Morellonomicon"],
-                 "dmg": {"physical": 864, "magical": 9791, "true": 1253},
-                 "ehp": 2460},
-            ],
-            "enemies": [
-                # DrCalculus — K'Sante (TOP) — Grasp, TP+Flash — GM509
-                {"champion": "KSante", "level": 17, "kda": "6/6/7",
-                 "hp": 2740, "hp_max": 3080, "mana": 360, "mana_max": 540,
-                 "gold": 11769, "rank": "GM 509", "mode_record": "132W / 108L",
-                 "summoner_name": "DrCalculus#NA1", "cs": 193,
-                 "pos_x": 7908, "pos_y": 9760,
-                 "ult_ready": True,
-                 "summ_d": "Teleport", "summ_f": "Flash",
-                 "keystone": "GraspOfTheUndying", "secondary_tree": "Inspiration",
-                 "items": ["Boots of Swiftness", "Dead Mans Plate",
-                           "Thornmail", "Unending Despair",
-                           "Spirit Visage", "Ruby Crystal"],
-                 "dmg": {"physical": 15041, "magical": 2223, "true": 1168},
-                 "ehp": 5760},
-                # Nidalee player (JG) — Conqueror, Smite+Flash — C780
-                {"champion": "Nidalee", "level": 16, "kda": "4/7/14",
-                 "hp": 0, "hp_max": 1640, "mana": 320, "mana_max": 520,
-                 "respawn_s": 14,
-                 "gold": 11639, "rank": "C 780", "mode_record": "268W / 194L",
-                 "summoner_name": "\ub5a1\ubcf6\uc774#1026", "cs": 186,
-                 "pos_x": 6234, "pos_y": 10231,
-                 "ult_ready": True, "has_red_buff": True,
-                 "summ_d": "Smite", "summ_f": "Flash",
-                 "keystone": "Conqueror", "secondary_tree": "Sorcery",
-                 "items": ["Liandrys Torment", "Malignance",
-                           "Sorcerers Shoes", "Dark Seal",
-                           "Oblivion Orb", "Ludens Companion"],
-                 "dmg": {"physical": 1115, "magical": 31244, "true": 3299},
-                 "ehp": 2040},
-                # Principal — Jayce (MID) — Phase Rush, Flash+TP — M345
-                {"champion": "Jayce", "level": 16, "kda": "11/12/9",
-                 "hp": 1520, "hp_max": 1680, "mana": 440, "mana_max": 680,
-                 "gold": 14108, "rank": "M 345", "mode_record": "56W / 44L",
-                 "summoner_name": "Principal#kat", "cs": 194,
-                 "pos_x": 6985, "pos_y": 13245,
-                 "ult_ready": True,
-                 "summ_d": "Flash", "summ_f": "Teleport",
-                 "keystone": "PhaseRush", "secondary_tree": "Inspiration",
-                 "items": ["Eclipse", "Maw of Malmortius",
-                           "Muramana", "Seryldas Grudge",
-                           "Dorans Blade", "Boots of Swiftness"],
-                 "dmg": {"physical": 27735, "magical": 4876, "true": 66},
-                 "ehp": 2160},
-                # ScaryJerry — Draven (ADC) — Lethal Tempo, Barrier+Flash — GM488 — PRO
-                {"champion": "Draven", "level": 16, "kda": "8/6/8",
-                 "hp": 0, "hp_max": 1900, "mana": 280, "mana_max": 400,
-                 "respawn_s": 14,
-                 "gold": 16040, "rank": "GM 488", "mode_record": "420W / 304L",
-                 "summoner_name": "ScaryJerry#Rank1", "cs": 267,
-                 "pos_x": 8444, "pos_y": 10034,
-                 "title": "PRO",
-                 "ult_ready": True,
-                 "summ_d": "Barrier", "summ_f": "Flash",
-                 "keystone": "LethalTempoTemp", "secondary_tree": "Domination",
-                 "items": ["Zeal", "Bloodthirster",
-                           "Phantom Dancer", "Kraken Slayer",
-                           "Berserkers Greaves", "Maw of Malmortius"],
-                 "dmg": {"physical": 37795, "magical": 0, "true": 885},
-                 "ehp": 2280},
-                # Likable — Blitzcrank (SUPPORT) — Glacial Augment, Flash+Ignite — M349
-                {"champion": "Blitzcrank", "level": 13, "kda": "2/7/18",
-                 "hp": 1240, "hp_max": 1780, "mana": 580, "mana_max": 820,
-                 "gold": 8664, "rank": "M 349", "mode_record": "38W / 32L",
-                 "summoner_name": "Likable#NA1", "cs": 17,
-                 "pos_x": 7842, "pos_y": 8458,
-                 "ult_ready": False, "ult_cd_s": 52,
-                 "summ_d": "Flash", "summ_f": "Ignite",
-                 "keystone": "GlacialAugment", "secondary_tree": "Sorcery",
-                 "items": ["Knights Vow", "Locket of the Iron Solari",
-                           "Bulwark of the Mountain", "Slightly Magical Footwear",
-                           "Boots of Swiftness", "Kindlegem"],
-                 "dmg": {"physical": 4812, "magical": 8393, "true": 1105},
-                 "ehp": 2880},
-            ],
-            "enemy_team":  ["KSante", "Nidalee", "Jayce", "Draven", "Blitzcrank"],
-        },
-        "lcu": {},
-    },
-}
 
 
 _MODE_TO_FILE = {
@@ -1340,31 +1114,39 @@ def _legacy_index_html() -> bytes:
     return _INDEX_HTML_CACHE
 
 
-_MANIFEST = json.dumps({
-    "name":             "Riot Commander",
-    "short_name":       "RC",
-    "start_url":        "/",
-    "scope":            "/",
-    "display":          "standalone",
-    "orientation":      "landscape",
-    "background_color": "#0b0b12",
-    "theme_color":      "#0b0b12",
-    "icons": [
-        {"src": "/icon.svg", "sizes": "any",
-         "type": "image/svg+xml", "purpose": "any maskable"},
-    ],
-})
+_MANIFEST_PATH = Path(__file__).resolve().parent / "web" / "manifest.json"
+_MANIFEST_CACHE: bytes | None = None
 
-_ICON_SVG = (
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">'
-    '<rect width="512" height="512" rx="64" fill="#0b0b12"/>'
-    '<rect x="24" y="24" width="464" height="464" rx="44" '
-    'fill="none" stroke="#252535" stroke-width="6"/>'
-    '<text x="256" y="332" text-anchor="middle" '
-    'font-family="Segoe UI, system-ui, sans-serif" '
-    'font-weight="700" font-size="240" fill="#ff2244">RC</text>'
-    '</svg>'
-)
+
+def _manifest_bytes() -> bytes:
+    global _MANIFEST_CACHE
+    if _MANIFEST_CACHE is None:
+        _MANIFEST_CACHE = _MANIFEST_PATH.read_bytes()
+    return _MANIFEST_CACHE
+
+
+_ICON_SVG_PATH = Path(__file__).resolve().parent / "web" / "icon.svg"
+_ICON_SVG_CACHE: bytes | None = None
+
+
+def _icon_svg_bytes() -> bytes:
+    global _ICON_SVG_CACHE
+    if _ICON_SVG_CACHE is None:
+        _ICON_SVG_CACHE = _ICON_SVG_PATH.read_bytes()
+    return _ICON_SVG_CACHE
+
+
+_SIM_STATES_PATH = Path(__file__).resolve().parent / "data" / "sim_states.json"
+_SIM_STATES_CACHE: dict | None = None
+
+
+def _sim_states() -> dict:
+    global _SIM_STATES_CACHE
+    if _SIM_STATES_CACHE is None:
+        _SIM_STATES_CACHE = json.loads(_SIM_STATES_PATH.read_text(encoding="utf-8"))
+    return _SIM_STATES_CACHE
+
+
 
 
 # Paths that only the agents supervisor (:8890) implements. :8888 proxies
@@ -1532,7 +1314,7 @@ class _Handler(BaseHTTPRequestHandler):
                 from urllib.parse import urlparse, parse_qs
                 qs = parse_qs(urlparse(self.path).query)
                 scenario = (qs.get("scenario") or ["aram_blitz"])[0]
-                state = _SIM_STATES.get(scenario)
+                state = _sim_states().get(scenario)
                 if not state:
                     self._send(404, b'{"error":"unknown_scenario"}', "application/json"); return
                 self._send(200, json.dumps(state).encode(), "application/json")
@@ -1644,9 +1426,9 @@ class _Handler(BaseHTTPRequestHandler):
             # locked-champion, etc.) populate when accessed via 8888.
             self._proxy_to_supervisor()
         elif self.path == "/manifest.json":
-            self._send(200, _MANIFEST.encode("utf-8"), "application/manifest+json")
+            self._send(200, _manifest_bytes(), "application/manifest+json")
         elif self.path == "/icon.svg":
-            self._send(200, _ICON_SVG.encode("utf-8"), "image/svg+xml")
+            self._send(200, _icon_svg_bytes(), "image/svg+xml")
         elif self.path == "/api/reload-regions":
             try:
                 from core.vision_tesseract import reload_regions
