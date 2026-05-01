@@ -193,3 +193,13 @@ def start_dashboard(app_dir: Path) -> None:
         get_loop().start_background()
     except Exception as exc:
         _log.warning("decision_detector failed to start: %s", exc)
+
+    # OBS publisher (Tier 3 #11, 2026-05-01): pushes a one-line RC
+    # state summary to an OBS Text source via OBS-WebSocket v5. Opt-in
+    # via config/coach_settings.json `obs.enabled`. start_background()
+    # is a no-op when the config block is absent or disabled.
+    try:
+        from core.obs_publisher import get_publisher
+        get_publisher().start_background()
+    except Exception as exc:
+        _log.warning("obs_publisher failed to start: %s", exc)
