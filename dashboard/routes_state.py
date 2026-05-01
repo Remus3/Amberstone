@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlparse
 
 from dashboard._context import APP_DIR, read_json
 from dashboard._dispatch import equals, prefix
+from dashboard._state_builder import build_state, sim_states
 from dashboard._writers import (
     atomic_write_json,
     force_vision_scan,
@@ -37,12 +38,11 @@ _STATE_CACHE_TS: float = 0.0
 def _serve_state(h) -> None:
     global _STATE_CACHE_PAYLOAD, _STATE_CACHE_TS
     try:
-        from web_dashboard import _build_state
         now = time.time()
         if _STATE_CACHE_PAYLOAD is not None and (now - _STATE_CACHE_TS) < 1.0:
             payload = _STATE_CACHE_PAYLOAD
         else:
-            payload = json.dumps(_build_state()).encode("utf-8")
+            payload = json.dumps(build_state()).encode("utf-8")
             _STATE_CACHE_PAYLOAD = payload
             _STATE_CACHE_TS = now
         h._send(200, payload, "application/json")
@@ -53,10 +53,9 @@ def _serve_state(h) -> None:
 
 def _serve_sim_state(h) -> None:
     try:
-        from web_dashboard import _sim_states
         qs = parse_qs(urlparse(h.path).query)
         scenario = (qs.get("scenario") or ["aram_blitz"])[0]
-        state = _sim_states().get(scenario)
+        state = sim_states().get(scenario)
         if not state:
             h._send(404, b'{"error":"unknown_scenario"}', "application/json"); return
         h._send(200, json.dumps(state).encode(), "application/json")
