@@ -409,6 +409,19 @@
     <ol id="coach-decisions-list" class="coach-decisions-list"></ol>
   </section>
 
+  <!-- Tier 4 #18 (2026-05-01): resolved coach decisions log — shows the
+       last N decisions the detector flagged plus the user's choice for
+       each. Self-review path: "did I contest the right Barons?" Hidden
+       when the log is empty. Polled every 30s by dashboard.js
+       (RECENT_COACH_CALLS block). -->
+  <section id="recent-coach-calls" class="recent-coach-calls" hidden aria-label="Recent coach calls">
+    <header class="recent-coach-calls-head">
+      <span class="recent-coach-calls-label">Recent Coach Calls</span>
+      <span class="recent-coach-calls-hint">— flag → choice review</span>
+    </header>
+    <ol id="recent-coach-calls-list" class="recent-coach-calls-list"></ol>
+  </section>
+
   <main aria-label="Coaching panels">
     <section id="minimap" class="panel panel-minimap">
       <div class="panel-head">
