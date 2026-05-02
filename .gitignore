@@ -20,6 +20,10 @@ _archive/
 **/*.sqlite
 **/*.sqlite3
 
+# Coach settings — runtime-mutated by /api/coach/toggle (dashboard ops tab).
+# Track config/coach_settings.example.json as the template instead.
+config/coach_settings.json
+
 # Live coaching state (mutates per game — written by main.py atomically)
 coaching_data.json
 data/aram_coaching_data.json
