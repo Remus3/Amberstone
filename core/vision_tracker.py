@@ -300,7 +300,13 @@ class VisionTracker:
         for p in enemies:
             champ = p.get("championName") or "?"
             key = champ  # Champion name is unique within a match
-            pos = p.get("position") or {}
+            # Live Client emits `position: "NONE"` (string) in ARAM and on
+            # dead/loading players in SR — `or {}` doesn't catch it because
+            # the string is truthy. isinstance guard keeps `pos.get(...)`
+            # below from raising "'str' object has no attribute 'get'".
+            pos = p.get("position")
+            if not isinstance(pos, dict):
+                pos = {}
             x = float(pos.get("x", 0.0))
             z = float(pos.get("z", 0.0))
             is_dead = bool(p.get("isDead", False))
