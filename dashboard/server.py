@@ -6,8 +6,8 @@ Slice 2D (2026-05-01): extracts _DualProtocolHTTPServer + cert lookup
 Owns the HTTP/TLS multiplexing socket layer (the 2026-04-28 Game-PC fix
 for plain-HTTP clients hanging on a TLS-only listen socket), the cert
 lookup at ops/tls/rc.pem + rc-key.pem, and the daemon-thread bootstrap
-that spins up the vision_tracker and decision_detector loops alongside
-the server.
+that spins up the vision_tracker and obs_publisher loops alongside
+the server. (decision_detector moved to agents/supervisor.py — T3 #15.)
 
 Tier 2 #7 (2026-05-01): `Handler` was extracted out of web_dashboard.py
 into `dashboard/_handler.py`. We import it directly here. The
@@ -186,13 +186,11 @@ def start_dashboard(app_dir: Path) -> None:
     except Exception as exc:
         _log.warning("vision_tracker failed to start: %s", exc)
 
-    # Decision detector: surfaces coachable moments (objective contest,
-    # etc.) to the dashboard Coach panel + records the player's choice.
-    try:
-        from core.decision_detector import get_loop
-        get_loop().start_background()
-    except Exception as exc:
-        _log.warning("decision_detector failed to start: %s", exc)
+    # Decision detector loop now runs in the Phase 3 supervisor process
+    # (agents/supervisor.py) — Tier 3 #15, 2026-05-01. The dashboard still
+    # reads pending + writes choices via DecisionStore directly; cross-
+    # process locking on data/decisions_pending.json is provided by
+    # core.decision_detector._decisions_critical_section.
 
     # OBS publisher (Tier 3 #11, 2026-05-01): pushes a one-line RC
     # state summary to an OBS Text source via OBS-WebSocket v5. Opt-in

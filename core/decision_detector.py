@@ -32,6 +32,7 @@ are referenced from this module.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import threading
@@ -39,7 +40,9 @@ import time
 import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Iterator, Optional
+
+import portalocker
 
 _log = logging.getLogger("rc.decision_detector")
 _APP_DIR = Path(__file__).parent.parent
@@ -50,8 +53,45 @@ _RELAY_MAX_AGE_S  = 8.0
 _VISION_STATE     = _APP_DIR / "data" / "vision_state.json"
 _PENDING_PATH     = _APP_DIR / "data" / "decisions_pending.json"
 _LOG_PATH         = _APP_DIR / "data" / "decisions_log.jsonl"
+_LOCK_PATH        = _APP_DIR / "ops" / "runtime" / "decisions.lock"
 
 _DEFAULT_POLL_S   = 1.0
+_LOCK_TIMEOUT_S   = 2.0
+
+# Tier 3 #15 (2026-05-01): the DecisionLoop now runs in agents/supervisor.py
+# while record_choice() is invoked from the dashboard handler in the RC
+# main process. The threading.Lock alone no longer serializes the two
+# read-modify-write paths on data/decisions_pending.json — pair it with
+# a portalocker file lock for cross-process safety. Same best-effort
+# pattern as core.coaching_data_lock: 2s timeout, fall through with TL
+# only if the file lock can't be acquired.
+_TL_DECISIONS = threading.Lock()
+
+
+@contextlib.contextmanager
+def _decisions_critical_section() -> Iterator[None]:
+    """Process-local + cross-process lock for decisions_pending.json
+    read-modify-writes. File-lock is best-effort with a 2s timeout."""
+    with _TL_DECISIONS:
+        fl: portalocker.Lock | None = None
+        try:
+            _LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
+            fl = portalocker.Lock(
+                str(_LOCK_PATH), mode="a+b", timeout=_LOCK_TIMEOUT_S,
+            )
+            fl.acquire()
+        except portalocker.LockException:
+            fl = None
+        except Exception:
+            fl = None
+        try:
+            yield
+        finally:
+            if fl is not None:
+                try:
+                    fl.release()
+                except Exception:
+                    pass
 
 # Global rate cap (per-game): never spam more than _MAX_PER_GAME total
 # decisions, never less than _MIN_GAP_S between two NEW decision ids
@@ -417,13 +457,17 @@ def detect_postfight_objective(
 # ── Store ─────────────────────────────────────────────────────────────────────
 
 class DecisionStore:
-    """Atomic file-backed pending list + append-only history log."""
+    """Atomic file-backed pending list + append-only history log.
+
+    `reconcile()` and `record_choice()` use `_decisions_critical_section()`
+    (threading.Lock + portalocker file lock) because the loop runs in the
+    Phase 3 supervisor process while record_choice runs in the RC dashboard
+    handler — see Tier 3 #15."""
 
     def __init__(self, pending_path: Path = _PENDING_PATH,
                  log_path: Path = _LOG_PATH):
         self._pending_path = pending_path
         self._log_path = log_path
-        self._lock = threading.Lock()
 
     def list_pending(self) -> list[dict]:
         try:
@@ -452,7 +496,7 @@ class DecisionStore:
           - add new ids from `fresh`
         """
         fresh_ids = {d.id for d in fresh}
-        with self._lock:
+        with _decisions_critical_section():
             current = self.list_pending()
             cur_by_id = {d["id"]: d for d in current}
             # 1) keep + drop
@@ -474,7 +518,7 @@ class DecisionStore:
                       extra: Optional[dict] = None) -> Optional[dict]:
         """Move a pending decision to the log with the player's choice.
         Returns the recorded entry or None if id not found."""
-        with self._lock:
+        with _decisions_critical_section():
             current = self.list_pending()
             match = None
             remaining = []
