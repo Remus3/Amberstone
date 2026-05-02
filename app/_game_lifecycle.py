@@ -72,7 +72,6 @@ class GameLifecycleManager:
 
     def on_game_start(self, canon_mode: str) -> None:
         app = self.app
-        app._teardown_preview_overlay()
         _log.info("New game detected")
         dbg = "--debug" in sys.argv or os.environ.get("RIOT_COMMANDER_DEBUG") == "1"
         app._update_envelope(canon_mode, payload=None)
@@ -125,12 +124,10 @@ class GameLifecycleManager:
                         app._tft_coach = getattr(mod, cn)(SCRIPT_DIR / "data" / dn, debug=dbg)
                         app._tft_coach.set_worker(app._tft_worker)
                         app._tft_worker.start()
-                        app._tft_coach.attach_overlay(app.root)
                         if app._tft_worker is not None:
                             app.root.after(1500, self._drain_tft_q)
                     elif _coaching_allowed:
                         app._tft_coach = getattr(mod, cn)(SCRIPT_DIR / "data" / dn, debug=dbg)
-                        app._tft_coach.attach_overlay(app.root)
                 except Exception:
                     _safe_log(f"{flag} coach start failed")
                 return
@@ -423,7 +420,6 @@ class GameLifecycleManager:
         if app._tft_mode:
             return
         changed = False
-        app.game_windows["rtop"].update_stats(state)
         app.data["ally_comp"]  = state.get("ally_comp", [])
         app.data["enemy_comp"] = state.get("enemy_comp", [])
         de = state.get("dead_enemies", []); dc = len(de); kw = dc >= 2
@@ -451,10 +447,6 @@ class GameLifecycleManager:
                 pass
         if aw and app.data.get("wave") != aw:
             app.data["wave"] = aw; changed = True
-        rb = app.game_windows.get("rbot")
-        if rb and hasattr(rb, "sync_clock"):
-            try: rb.sync_clock(state.get("game_seconds", 0))
-            except Exception: pass
         try:
             app.data["win_pct"] = StateAuthority.calc_win_pct(state); changed = True
         except Exception:
