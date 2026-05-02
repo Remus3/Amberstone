@@ -1718,4 +1718,102 @@ The audit backlog is still exhausted apart from #9 (avoid). Possibilities:
    PID 10796 with the new patches active and works. Main restarts via
    `restart_trigger.txt` are fine.
 
+---
+
+# s29 hand-off — 2026-05-02 15:05 (Game-PC on tailnet + RC bridge_monitor live)
+
+> Two-arc session, both operator-driven via the now-live cross-Claude
+> bridge. **Arc 1**: Game-PC joined the tailnet as `gamepc-rc`
+> (`100.95.66.128`); RC's bridge tooling flipped from `192.168.8.230`
+> LAN IP to `legion-rc` MagicDNS. **Arc 2**: RC's symmetric bridge
+> monitor sidecar (top of s28's next-session queue) shipped, smoke
+> verified, auto-pongs `kind=task summary=ping target=rc` in <100 ms.
+> Currently running RC PID 9832; supervisor still 10796.
+
+## What just shipped this session (in order)
+
+| Type | Files | Summary |
+|---|---|---|
+| network | (Tailscale on Game-PC, no repo change) | Game-PC installed Tailscale 1.96.3, joined tailnet `tailc150de.ts.net` as `gamepc-rc` (`100.95.66.128`). `tailscale ping` to legion-rc: 0% loss, 8 ms. `https://legion-rc:8888/api/bridge/status` from Game-PC → 200. Three-node tailnet now: legion-rc / peer-host / gamepc-rc. |
+| chore (uncommitted at hand-off) | `tools/bridge_*.py` (7), `tools/scheduled_boot_verify.py`, `tools/bridge_setup.ps1`, `tools/gamepc_boot.ps1`, `tools/rc_facts.py` | Bridge tooling URL constants flipped `https://192.168.8.230:8888` → `https://legion-rc:8888`; `rc_facts` Game-PC MCP probe → `http://gamepc-rc:8892/health`. Section headers in `rc_facts` now read `Legion (legion-rc · 100.70.22.55 · 192.168.8.230)` — all three identities side-by-side. LAN refs intentionally retained for LCU/MCP/screen-relay paths and cert/UNC scripts (those aren't "bridge" config). |
+| feat (uncommitted at hand-off) | `core/bridge_monitor.py` (NEW, ~210 LOC), `main.py` (frozen, +8 lines) | RC's mirror of Peer's `bridge_monitor_agent.py`. Daemon-thread/AppLoop poller (mirrors `core/vision_tracker.py` lifecycle); polls `dashboard._bridge_log.bridge_since()` every 2 s; filters `source.startswith("legion")`, `source.startswith("rc-monitor")`, `source == "self-test"`; auto-pong gate `kind=task summary=ping target=rc` → `bridge_post(source="rc-monitor", summary="pong", kind="result", body={replier:"rc-bridge_monitor", in_reply_to_summary:"ping", auto:true}, in_reply_to=<id>)`. State at `ops/runtime/bridge_monitor_state.json` (atomic-write w/ `os.replace` retry-with-backoff); cold-boot starts `last_seen_ts=time.time()` so historical entries don't replay; warm-restart hydrates from disk. |
+
+## RC restart state
+
+- **Main PID 9832** (was 11836). Single restart this session via
+  `restart_trigger.txt` to activate `core.bridge_monitor`. `last_reload_ok=true`.
+- **Supervisor PID 10796** — unchanged from s28.
+- **Bridge monitor live**: log line at boot
+  `bridge_monitor started (poll=2.0s, async, last_seen_ts=1777752207)`.
+  Smoke: simulated `peer-test` ping → auto-pong fired in **+0.09 s**;
+  state file shows `inbound_count=1, auto_pong_count=1, recent[1]`.
+
+## Cross-Claude bridge — operational state
+
+- **Tailnet**: 3 nodes now (was 2 in s28).
+  - `legion-rc` / `100.70.22.55`
+  - `peer-host`  / `<peer-tailnet-ip>`
+  - `gamepc-rc` / `100.95.66.128` *(new this session)*
+- **RC↔Peer bridge**: unchanged from s28; still opt-in, live.
+- **RC↔Game-PC bridge**: still on the legacy in-process `dashboard/_bridge_log.py`
+  + Game-PC `/loop /process-bridge-tasks`. Game-PC's `/loop` rebooted
+  fresh this session — last result 332 s ago at probe, healthy.
+  Game-PC's installed copies of `tools/bridge_*.py` still point to the
+  LAN IP; they self-update to `legion-rc` on next `gamepc_boot.ps1` re-pull.
+- **Bridge monitor scope**: only watches the RC↔Peer-shape bridge log
+  (the same `dashboard/_bridge_log.py` deque the dashboard's
+  `/api/bridge` POST writes into). Game-PC's task/result entries
+  ride the same log so the monitor sees them too — but `summary=="ping"`
+  with `target=="rc"` is the *only* auto-action; everything else is
+  log-only, exactly per spec.
+
+## Memory entries written this session
+
+None (the URL flip + monitor build are both code; no surprising or
+non-obvious facts to commit to memory). The s28 `feedback_rc_peer_bridge_live`
+remains the authoritative bridge-state memory.
+
+## Operational backlog (delta from s28)
+
+- ✅ ~~Bridge monitor mirror~~ (shipped; was top of s28 queue)
+- **Cloud routine deadline 2026-05-10** — 8 days. Push the s29 commits
+  before the routine fires.
+- **Push-channel for bridge inbox (v1)** — promote from "next-candidate"
+  if 2 s polling latency ever bites. Currently Peer→RC ping latency is
+  bounded by the polling interval; first smoke landed at +0.09 s only
+  because the post happened mid-polling-interval.
+- **Game-PC bridge tooling re-pull** — Game-PC still has the old `192.168.8.230`
+  copies. Non-breaking (LAN IP works), but tasking Game-PC to re-run
+  `gamepc_boot.ps1` would normalize them to `legion-rc`.
+- **Path-name alignment** (`/api/bridge/messages` as alias for `/api/bridge`)
+  — unchanged from s28.
+
+## Next-session candidates (ranked)
+
+1. **Push s29 commits** — URL flip + monitor land as two commits
+   (chore + feat). 8 days to cloud routine deadline.
+2. **Game-PC re-pull** — task Game-PC's Claude to `iex (iwr
+   https://legion-rc:8888/agent/gamepc_boot.ps1).Content` (note: also
+   updated to use the tailnet hostname) so Game-PC's local
+   `bridge_pull_tasks.py` etc. switch off the LAN IP.
+3. **Bridge monitor v1 (push channel)** — replace polling with
+   in-process notify in `bridge_post()` so the monitor sees inbound in
+   <10 ms. Touches frozen `dashboard/_bridge_log.py`.
+4. **Tiered vision** — still 🟡, unchanged from s28.
+5. **CLAUDE.md sync** — the post-2026-04-19 topology section still
+   names `192.168.8.230` / `192.168.8.237` as the canonical addresses.
+   Now that all three nodes have stable tailnet identity, the doc
+   could lead with the tailnet names. Low priority — the LAN IPs are
+   still valid.
+
+## Bootstrap for next session
+
+1. Read `CLAUDE.md` (frozen list + restart workflow)
+2. Read this hand-off (s29) + s28
+3. `git status` — confirm s29 commits land before any new work; push
+   ahead of the 2026-05-10 cloud-routine fire
+4. Bridge monitor is **live and self-managing** — no action needed.
+   To verify: `cat ops/runtime/bridge_monitor_state.json` shows
+   `inbound_count` ticking up if any non-legion source has posted.
+
 
