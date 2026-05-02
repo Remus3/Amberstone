@@ -65,11 +65,28 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _replace_with_retry(src: Path, dst: Path) -> None:
+    # Concurrent reader+writer on the same file (e.g. supervisor reads
+    # health.json while Main writes it) can transiently raise WinError 5
+    # PermissionError on Windows because the open-read holds a share lock.
+    # The conflicting reader closes within milliseconds; a short backoff
+    # clears it. Peer-VIP smoke 2026-05-02 surfaced this race.
+    delays = (0.025, 0.05, 0.2)
+    for i in range(len(delays) + 1):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if i >= len(delays):
+                raise
+            time.sleep(delays[i])
+
+
 def atomic_write_json(path: Path, data: Dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-    os.replace(tmp, path)
+    _replace_with_retry(tmp, path)
 
 
 def _pid_alive(pid: int) -> bool:
@@ -356,12 +373,21 @@ class Supervisor:
         )  # max seconds to wait for first healthy heartbeat after start
 
         # Launch identity: binds heartbeat acceptance to the specific spawned process.
-        # _expected_pid    — the PID of the process WE launched (from Popen or adoption)
+        # _expected_pid       — the PID Popen returned (or the adopted pid).
         # _launch_mtime_floor — wall-clock time just before Popen; any valid health.json
         #                       for THIS launch must have mtime >= this value.
-        # Both cleared by stop_app(); set by start_app()/adopt.
+        # _observed_pid       — the PID the child actually reports in health.json,
+        #                       latched on first valid heartbeat. Peer-VIP 2026-05-02
+        #                       surfaced that pythonw.exe under a venv is a launcher
+        #                       stub: Popen returns the stub pid but the real child
+        #                       (pythonw3.13.exe) writes its OWN pid to health.json.
+        #                       After first heartbeat we trust _observed_pid for
+        #                       liveness, not _expected_pid. Stale-from-previous-run
+        #                       protection still comes from the mtime floor.
+        # All three cleared by stop_app(); set by start_app() / _adopt_existing_app().
         self._expected_pid:        Optional[int]   = None
         self._launch_mtime_floor:  Optional[float] = None  # time.time() at launch
+        self._observed_pid:        Optional[int]   = None
 
         # Single-instance lock
         self.pid_lock = PidLock(self.runtime_dir / "supervisor.pid")
@@ -477,8 +503,12 @@ class Supervisor:
             self._owned_session_id = session_id or None
             self.last_start_at     = health.get("started_at")
             self.last_restart_reason = "adopted_existing"
-            # Adoption: identity is known immediately from the live health file
+            # Adoption: identity is known immediately from the live health file.
+            # _observed_pid is set to the same pid since adoption already validated
+            # this is the live process — there's no stub-indirection question,
+            # we read pid straight from the freshly-mtimed health.json.
             self._expected_pid         = pid
+            self._observed_pid         = pid
             self._launch_mtime_floor   = None  # adoption already validated freshness
             self._awaiting_first_heartbeat = False
             self._startup_mono_ts          = None
@@ -590,6 +620,7 @@ class Supervisor:
         self._startup_mono_ts          = None
         self._expected_pid             = None
         self._launch_mtime_floor       = None
+        self._observed_pid             = None
         self.write_status()
 
     def restart_app(self, reason: str) -> bool:
@@ -611,18 +642,25 @@ class Supervisor:
     def _is_current_launch_heartbeat(self, health: dict, mtime: float) -> tuple:
         """
         Return (is_current: bool, reject_reason: str).
-        A heartbeat belongs to the current launch if:
-          1. health["pid"] matches _expected_pid (the process we spawned)
-          2. mtime >= _launch_mtime_floor (file was written after we launched)
-        For adoption (_launch_mtime_floor is None), only pid is checked.
+        Used during startup grace only — establishes whether a freshly
+        appearing health.json belongs to the launch we just kicked off.
+
+        Peer-VIP 2026-05-02 surfaced that pythonw.exe inside a venv is a
+        LAUNCHER STUB: subprocess.Popen returns the stub's pid, but the
+        real child (pythonw3.13.exe) is a separate process and writes its
+        OWN pid to health.json. The two never match. Strict pid matching
+        here would treat every legitimate startup as a foreign heartbeat.
+
+        Acceptance rule:
+          - mtime >= _launch_mtime_floor (file written after we Popen'd).
+        Adoption sets _launch_mtime_floor=None (already-validated freshness),
+        so the floor check is skipped in that case.
+
+        We do NOT check pid here — _observed_pid is latched on first valid
+        heartbeat in _on_first_heartbeat() and enforced thereafter.
         """
-        expected = self._expected_pid
-        if expected is None:
+        if self._expected_pid is None:
             return False, "no_expected_pid"
-        reported_pid = int(health.get("pid") or 0)
-        if reported_pid != expected:
-            return False, ("startup_rejected_wrong_pid_heartbeat:"
-                           " expected=" + str(expected) + " got=" + str(reported_pid))
         floor = self._launch_mtime_floor
         if floor is not None and mtime < floor:
             return False, ("startup_rejected_stale_health_file:"
@@ -723,18 +761,37 @@ class Supervisor:
             return True
         if not health.get("alive"):
             return True
-        # PID check in normal operation: reject foreign/previous-run files
-        if self._expected_pid is not None:
+        # PID check in normal operation: enforce against _observed_pid (the
+        # pid the child actually reports, latched on first valid heartbeat).
+        # _expected_pid (the Popen-returned pid) may be a stub indirection on
+        # venv pythonw installs and is intentionally NOT compared here.
+        # If we somehow reach normal-operation without ever latching an
+        # observed pid, fall through and let _on_first_heartbeat capture it.
+        if self._observed_pid is not None:
             reported_pid = int(health.get("pid") or 0)
-            if reported_pid != self._expected_pid:
-                self.log("heartbeat_wrong_pid: expected="
-                         + str(self._expected_pid) + " got=" + str(reported_pid))
+            if reported_pid != self._observed_pid:
+                self.log("heartbeat_wrong_pid: observed="
+                         + str(self._observed_pid) + " got=" + str(reported_pid))
                 return True
         self._on_first_heartbeat(health)
         return False
 
     def _on_first_heartbeat(self, health: Dict[str, Any]) -> None:
         """Update owned identity from a live heartbeat payload."""
+        # Latch the pid the child actually reports — this may differ from
+        # _expected_pid (Popen pid) when pythonw.exe is a launcher stub.
+        # Only set on the FIRST valid heartbeat; subsequent calls are no-ops
+        # so a foreign or stale-runtime heartbeat can't overwrite our anchor.
+        if self._observed_pid is None:
+            reported_pid = int(health.get("pid") or 0)
+            if reported_pid > 0:
+                self._observed_pid = reported_pid
+                if reported_pid != self._expected_pid:
+                    self.log("observed_pid_diverged_from_expected:"
+                             " expected=" + str(self._expected_pid)
+                             + " observed=" + str(reported_pid)
+                             + " (pythonw stub indirection — expected on venvs)")
+
         reported_run_id     = str(health.get("run_id") or "")
         reported_session_id = str(health.get("session_id") or "")
         if reported_run_id and self._owned_run_id is None:
