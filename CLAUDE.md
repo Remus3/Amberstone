@@ -71,9 +71,11 @@ Viewed in Edge fullscreen on Game-PC's secondary display (1920×1280 native, 100
 
 ## Headless mode
 
-Tkinter overlays are disabled (`_HEADLESS = True` in `app/_overlay_manager.py`).
-Windows are still created (so `client_windows.get('main')` etc don't crash) but
-immediately hidden. Set the constant to `False` to restore on-screen overlays.
+Tkinter overlays are gone (T2 #6, 2026-05-01). The web dashboard at :8888 is
+the only UI. `tk.Tk()` root remains in `app/__init__.py` because game polling
+schedules itself via `root.after(...)`. `app.game_windows` and
+`app.client_windows` are now empty dicts kept only so `.get(...)` reads on
+removed paths still return None safely.
 
 ## Vision pipeline (relay-based)
 

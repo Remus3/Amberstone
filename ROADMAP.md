@@ -37,7 +37,7 @@ Living document — update as work lands.
 
 ### 2026-04-23 — dashboard era
 - Web dashboard at `:8888` HTTPS (mkcert) — PWA-installable on iPad
-- Tkinter overlays disabled (`_HEADLESS=True`), dashboard becomes primary UI
+- Tkinter overlays disabled (`_HEADLESS=True`), dashboard becomes primary UI (overlay code fully removed in T2 #6, 2026-05-01)
 - `/api/state`, `/api/health`, `/api/analyze`, `/api/lcu-cmd`, etc.
 - Cross-Claude bridge — bridge_task.py + MCP server on Game-PC `:8892` for cross-machine ops
 

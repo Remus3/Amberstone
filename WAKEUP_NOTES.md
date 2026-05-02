@@ -243,9 +243,82 @@ attach the rotating handler to `getLogger("rc")` too — out of scope.
   never started. Likely multi-session if dashboards are required;
   single-session if only the instrumentation pass.
 - **Moderate:** T2 #8 asyncio refactor — large, multi-session.
-- **Hard + needs approval:** T2 #6 tkinter shim removal — frozen file
-  (`app/_overlay_manager.py`).
 - **Avoid:** T2 #9 DB compression — high blast radius.
 - **Bridge watchdog says red, ~22h** — next time the user opens
   Game-PC Claude, kicking `/loop /process-bridge-tasks` back up is
   the actual fix (not RC-side).
+
+---
+
+# Session 27c — 2026-05-01 19:42 hand-off (T2 #6 ship)
+
+> User invoked T2 #6 (tkinter shim removal) directly. Three commits, two
+> RC restarts, both verified clean. **The audit's "Hard + needs approval"
+> item is done.**
+
+## What shipped
+
+| Commit | Audit | Summary |
+|---|---|---|
+| 27e8a43 | T2 #6 part 1 | RC-main process: `_overlay_manager.py` cut from 275L 12-method window manager to a 50L 3-method shell (build_windows / switch_mode / update_content). `__init__.py` lost `_wire_ops_tab`/`_refresh_ops_tab`/`_context_menu`/`_TAB_TO_MODE`/`_copy_state_to_clipboard` plus 7 dead overlay stub delegates. `_remediation.rebuild_panel_*` are no-ops returning `{ok: true}`. `_game_lifecycle` lost the preview-teardown call, two `attach_overlay` calls in TFT start, and the `game_windows[rtop].update_stats` push. `ops/reattach_overlay.py` deleted. **−466 lines.** |
+| 9a162a2 | T2 #6 part 2 | Coaches: BaseCoach lost `attach_overlay`/`detach_overlay`/`_poll_overlay_file`/`_teardown_overlay`/`_attach_overlay_windows`/`teardown_overlay`-free-fn + the `_HEADLESS` import. Mode coaches each dropped `_attach_overlay_windows`; arena lost its `_poll_overlay_file` override. `tft_coach.py` lost 230L (attach_overlay + _poll_overlay_files + comp/board wiring + `_active_instance` global). `tft_pbe_coach.py` parallel cut. `aram_pregame_panel.py` dropped its `_HEADLESS` deiconify branch — panel stays withdrawn. `self._overlay = {}` kept on every coach so existing `.get(...)` reads safely return None. **−502 lines.** |
+| (this) | T2 #6 part 3 | Doc sync: CLAUDE.md "Headless mode" §, README.md, ROADMAP.md, `RC_ARCHITECTURE_INFOGRAPH.{md,html}`. Historical audit ledgers (AUDIT_*, PHASE_7_*, ARCH-001-decomposition-plan, AUDIT_PHASE_2_STATUS, phase3_file_rc_audit_proposals.py) intentionally left untouched. |
+
+**Net: −968 lines** across 12 source files + 5 docs. py_compile clean,
+all 7 changed coach modules import clean, RC live + healthy.
+
+## What remains tkinter-shaped
+
+The Tk root itself stays — `app/__init__.py` still does `tk.Tk()` because
+game polling schedules via `root.after(POLL_DATA_MS, self._poll_file)` and
+`root.after(POLL_GAME_MS, self._drain_game_q)`. Replacing that with
+`threading.Timer` or asyncio is **T2 #8** (asyncio refactor), not this task.
+
+`AramPregamePanel` (`ui/aram_pregame_panel.py`) is still launched from
+frozen `main.py:234` and continues to poll LCU + apply summoner-spell
+data. It just never `deiconify()`s. No call sites visible to the user.
+
+`TftWorker.wire_ai_bar` and `core/tk_ai_bar_proxy.TkAiBarProxy` are now
+unused in production but still exercised by `tests/phase2_smoke/test_tft_worker.py`.
+Cleaning those up is outside T2 #6 scope.
+
+## Restarts this session
+
+| Process | Old PID → New PID | Why |
+|---|---|---|
+| RC main | 9252 → 8332 | Pick up C1 (overlay mgr + RC-main strip) |
+| RC main | 8332 → 3544 | Pick up C2 (coach overlay strip) |
+
+Both verified: PID change, `last_reload_ok=true`, all 4 dashboard
+endpoints (`/api/state`, `/api/health/all`, `/api/decisions`,
+`/api/decisions/log`) return 200, no ERROR/Traceback in post-restart logs.
+
+## Audit completion (updated)
+
+Tier 2 architecture & reliability:
+- ✅ #5 dashboard helper-shake (s27)
+- ✅ #6 dashboard helper-shake (s27)
+- ✅ #7 bridge auto-flow watchdog + dashboard helper-shake (s27)
+- ✅ **#6 tkinter shim removal (THIS)**
+- ⏳ #8 daemon threads → asyncio (large, multi-session)
+- ⏳ #9 DB compression (high blast radius)
+
+Tier 1 still 5/5, Tier 3 4/5 (only #12 left), Tier 4 3/3.
+
+## Operational backlog
+
+- **3 unpushed commits** (C1, C2, C3) on `main` — push at start of next
+  session before any new work.
+- **Game-PC `/loop /process-bridge-tasks` still dead** (>22h per the
+  bridge watchdog; same status as prior sessions).
+- `RC-PatchRefresh` residual error code clears on Wednesday's run.
+
+## Next-session candidates
+
+- **Push the 3 backlog commits** (one-line, ~30s).
+- **T3 #12 Prometheus + Grafana** is the only T1-T3 audit item left.
+  Multi-session if dashboards are wanted; single-session if just the
+  instrumentation pass on existing `cost_tracker`/`coach_trace`.
+- **T2 #8 asyncio refactor** — would finally let us drop `tk.Tk()`
+  and become genuinely Tk-free. Large, multi-session.
+- **T2 #9 DB compression** — still avoid.
