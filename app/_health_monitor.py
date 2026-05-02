@@ -1,8 +1,10 @@
 """
 app/_health_monitor.py — HealthMonitor extracted from app.py (ARCH-001)
 
-Owns the Tk pulse heartbeat and health-state reporting.
-Extracted so OverlayApp's health concern is independently readable.
+Owns the UI pulse heartbeat and health-state reporting. Extracted so
+OverlayApp's health concern is independently readable. Post-T2 #8 the
+heartbeat re-arms via `app.scheduler.schedule(...)` instead of
+`root.after(...)` — the loop name "ui_pulse" stuck since pre-headless.
 
 State transferred from OverlayApp:
   _ui_pulse_lock  → self._lock
@@ -19,11 +21,10 @@ class HealthMonitor:
 
     Usage::
         self.health = HealthMonitor(self)
-        # after Tk root is ready:
+        # after the scheduler is ready:
         self.health.start()
 
     OverlayApp delegates:
-        _tk_pulse()         → self.health.pulse()
         get_health_state()  → self.health.get_health_state()
     """
 
@@ -35,14 +36,14 @@ class HealthMonitor:
     # ── Public lifecycle ──────────────────────────────────────────────────────
 
     def start(self) -> None:
-        """Kick off the pulse loop. Call once after Tk root is ready."""
-        self.app.root.after(1000, self.pulse)
+        """Kick off the pulse loop. Call once after the scheduler is ready."""
+        self.app.scheduler.schedule(1000, self.pulse)
 
     def pulse(self) -> None:
-        """Runs on Tk main thread every 2s. Proves mainloop is alive."""
+        """Re-armed every 2s by the asyncio scheduler. Proves the loop is alive."""
         with self._lock:
             self._ts = time.monotonic()
-        self.app.root.after(2000, self.pulse)
+        self.app.scheduler.schedule(2000, self.pulse)
 
     def get_health_state(self) -> dict:
         """

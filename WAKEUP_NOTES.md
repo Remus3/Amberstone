@@ -439,4 +439,218 @@ No restarts, no source edits beyond this WAKEUP append.
 - **Stack install:** real Prometheus scraper + Grafana is a separate "ops day" task; RC-side `/metrics` is already ready.
 - **Bridge fix** is Game-PC-side. Next time the user opens Game-PC Claude, restarting `/loop /process-bridge-tasks` is the actual fix.
 
+---
+
+# Session 27f — 2026-05-01 21:25 hand-off (T2 #8 plan, no code)
+
+> User asked for T2 #8 plan only; no code shipped. `/clear` next, then C1
+> in a scoped session. Origin/main current through `b04b1c6` (no change).
+
+## T2 #8 plan summary
+
+Multi-session asyncio refactor. **Strategy: incremental, hybrid first.** Plan via Plan subagent — full output in this session's transcript; key points below.
+
+**Commit 1 (one focused session, ~250-350 LOC, 5 frozen files touched):** Replace `tk.Tk()` with asyncio scheduler.
+- New file: `app/_loop.py` — owns `asyncio.new_event_loop()`, exposes `schedule(ms, fn)` mimicking `root.after()`, exposes `spawn_task(coro)`, exposes `stop()` for graceful shutdown.
+- Frozen files touched (this is pre-approved as part of T2 #8 scope per WAKEUP s27c precedent):
+  - `app/__init__.py` — drop `import tkinter as tk`, `self.root = tk.Tk()`, `self.root.withdraw()`, `mainloop()`, `report_callback_exception`. Replace 12 `root.after(...)` call sites with `app.scheduler.schedule(...)`. (12 sites verified by Grep across `app/__init__.py`, `app/_health_monitor.py`, `app/_remediation.py`, `app/_game_lifecycle.py`.)
+  - `app/_health_monitor.py` — pulse heartbeat (lines 39, 45) → `scheduler.schedule(2000, self.pulse)`.
+  - `app/_remediation.py` — line 60 marshal `restart_game_poll` onto loop.
+  - `app/_game_lifecycle.py` — 4 sites (lines 128, 247, 267, 301) for `_drain_game_q`, `_drain_tft_q`, `_poll_file`.
+  - `main.py` — minor: `app.run()` semantics now wrap `loop.run_forever()`. Also: **delete the `AramPregamePanel(app.root, _lcu)` line at main.py:234** and delete `ui/aram_pregame_panel.py` (~480 LOC). WAKEUP s27c already flagged it as dead-but-launched; this is the natural cut.
+- Verification battery (run after restart, before commit ships):
+  - `py_compile` clean on every modified file
+  - `restart_trigger.txt` → new PID in `ops/runtime/health.json`
+  - `last_reload_ok=true`
+  - `ui_pulse_age_s < 6.0`, `game_poll_worker_age_s < 12.0` (steady over 30s)
+  - `/api/state`, `/api/health/all`, `/api/decisions`, `/api/decisions/log`, `/metrics` all 200
+  - No `ImportError: tkinter` or `Traceback` in post-restart log
+
+**Commit 2:** Repo-wide `import tkinter` purge (no frozen). ~15 files in `tft/`, `modes/`, `ui/`, `core/`, `ops/` are dead since T2 #6. Verify `tests/phase2_smoke/test_tft_worker.py:139` first (it asserts on `root.after`).
+
+**Commit 3:** Convert `_base_coach._poll_loop` + `_vision_loop` to async. ~150 LOC in `coaches/_base_coach.py`. Wrap blocking `messages.create` and Tesseract OCR calls in `asyncio.to_thread`. Mode coach subclasses don't change (abstract methods stay sync, run via `to_thread`).
+
+**Commit 4:** Convert isolated module pollers (`liveclient_cache`, `vision_tracker`, `obs_publisher`, `metrics_cache`, `log_retention`). ~120 LOC. Each is `_loop` daemon thread → `spawn_task(_loop_async())`.
+
+**Commit 5 (optional):** LCU pollers (`lcu_client`, `lcu_rune_writer`, `lcu_postgame_collector`). `lcu_client.py` is frozen — needs a fresh approval. Buys little, can defer.
+
+**Commit 6 (optional):** Doc sync — CLAUDE.md "Headless mode" §, README, ROADMAP, INFOGRAPH.
+
+## Out of scope (do NOT pull into T2 #8)
+
+- Dashboard HTTP server (`dashboard/server.py`) — `ThreadingHTTPServer` stays. Migrating to `aiohttp`/`Hypercorn` is a separate item.
+- Supervisor process (`agents/supervisor.py`) — already async; isolated process.
+- Hotkey listener (`core/hotkeys.py`) — Win32 polling, no benefit from converting.
+- DB compression (T2 #9), TFT vision relay refactor — separate audit items.
+
+## Risk register (top 3 to remember)
+
+- **R1 — `restart_trigger.txt` workflow break.** New scheduler must propagate `KeyboardInterrupt`/`SIGTERM` to `loop.stop()` so supervisor restarts cleanly. Wire `signal.signal(SIGTERM, ...)` early in `OverlayApp.run()`.
+- **R2 — Anthropic blocking calls.** Today's coach call is sync HTTP and runs in a per-call daemon thread. Under asyncio, must use `asyncio.to_thread(self._run_coach, ...)` or migrate to `anthropic.AsyncAnthropic` (out of scope for C3).
+- **R3 — `ui_pulse_age_s` health gauge stops updating** if pulse cadence subtly differs. Verify after restart that gauge stays under 6.0s for 30s.
+
+## Success criteria (when is T2 #8 done?)
+
+1. `Grep '^import tkinter'` → 0 hits in `app/`, `coaches/`, `core/`, `lcu/`, `ui/`, `main.py`
+2. `Grep 'tk\.Tk\(\)'` → 0 production hits
+3. `Grep 'root\.after'` → 0 hits in `app/` and `coaches/`
+4. `_base_coach._poll_loop` and `_vision_loop` are `async def`
+5. `restart_trigger.txt` workflow still works end-to-end
+6. All 5 dashboard endpoints 200, ARAM smoke (lobby → coaching_data updates)
+7. CLAUDE.md "Headless mode" section no longer says "tk.Tk() root remains"
+
+## Bootstrap for next session
+
+1. Read CLAUDE.md (frozen file list, restart workflow)
+2. Read this hand-off (s27f) + s27c (T2 #6 ship — same frozen-file pattern as C1 here)
+3. Read `app/__init__.py`, `app/_health_monitor.py`, `app/_remediation.py`, `app/_game_lifecycle.py` end-to-end before touching
+4. Start with C1 only. Do NOT bundle C2-C4 — each is its own restart + verification.
+
+---
+
+# Post-T2 #8 follow-ups (parked 2026-05-01)
+
+> Items the user wants revisited only AFTER T2 #8 ships. Don't pull these
+> forward — they're explicitly deferred so the asyncio refactor stays focused.
+
+## PowerShell 7 migration
+
+- Current env: Windows PowerShell 5.1 (`powershell.exe`).
+- PS 5.1 quirks we work around today: no `&&`/`||` chain operators (use `; if ($?) { ... }`), no `??`/`?.`/ternary, no `ConvertFrom-Json -AsHashtable`, default file encoding UTF-16 LE w/ BOM (we pass `-Encoding utf8` explicitly).
+- None of these have blocked RC work. Migration cost is near-zero (PS 7 installs side-by-side as `pwsh.exe`) but benefit is also near-zero until a specific PS 5.1 limit bites.
+- **Plan:** Bundle with the "ops day" hygiene pass that includes Prometheus+Grafana stack install and any other env upgrades. Not before T2 #8.
+
+## Plugin evaluation pass
+
+User-provided list at `C:\Users\Administrator\Desktop\plugins.txt`. Preliminary fit assessment (2026-05-01, based on claude.com plugin pages):
+
+| Plugin | Fit | Reason |
+|---|---|---|
+| `claude-md-management` | ✅ try | RC has 4 CLAUDE.md files; `/revise-claude-md` automates the session-learning capture currently done by hand in WAKEUP_NOTES |
+| `optibot` | ✅ try | diff-aware code review (uncommitted / branch-vs-main / patch); leaner everyday alternative to `/ultrareview` |
+| `frontend-design` | ✅ already loaded as skill | dashboard CSS/HTML work |
+| `superpowers` | ⚠ maybe | TDD + structured-debugging methodology; light test surface today (snapshot + smoke), could add discipline or friction |
+| `nimble` | ⚠ niche | web data extraction; only relevant if we resume league-of-graphs scraping (currently using `rewind_history.db` instead) |
+| `github` | ➖ likely overlap | RC uses `gh` CLI directly; plugin probably redundant |
+| `remember` | ➖ likely overlap | auto-memory system already at `~/.claude/projects/.../memory/` |
+| `sanity-plugin` | ❌ skip | Sanity CMS — RC doesn't use it |
+| `atomic-agents` | ❌ skip | Atomic Agents framework — RC doesn't use it |
+
+**Plan:** After T2 #8 ships, install `claude-md-management` and `optibot` in a single session, run each against the repo once to verify they don't conflict with existing workflows, then keep or revert based on actual fit. Defer `superpowers` until there's a session where TDD discipline is desired. Skip the rest unless requirements change.
+
+## Recent Coach Calls panel — move off home page
+
+- Shipped in T4 #18 (s27, commit 55332c7) under the live pending decisions banner. Sits just above the footer on the home page.
+- User wants it OFF the home page. Doesn't need to live there — likely belongs on a sub-page (e.g. a `/decisions` or `/coach-history` view) or behind a toggle.
+- Frontend files: `web/index.html` (panel markup), `web/dashboard.css` (styles), `web/dashboard.js` (renderer + `/api/decisions/log` fetch). Backend `/api/decisions/log` endpoint stays.
+- **Plan:** Small UI move, ~one commit. Verify with screenshot capture per `feedback_screenshot_after_ui_changes` memory.
+
+---
+
+# Session 27g — 2026-05-01 21:45 hand-off (T2 #8 C1 ship)
+
+> User invoked C1 directly off the s27f plan. One commit, one RC restart,
+> verified clean. **`tk.Tk()` is gone from the orchestrator** — RC is
+> genuinely Tk-free for the first time since the project started.
+
+## What shipped
+
+| Commit | Audit | Summary |
+|---|---|---|
+| (this) | T2 #8 C1 | Replace `tk.Tk()` with asyncio scheduler. New file `app/_loop.py` (AppLoop, ~95L) owns `asyncio.new_event_loop()` + thread-safe `schedule(ms, fn)` (drop-in for `root.after`) + `spawn_task(coro)` + `run_forever()`/`stop()`. Manager files swap their 7 `app.root.after(...)` sites to `app.scheduler.schedule(...)`. `app/__init__.py` drops `import tkinter as tk`, the `tk.Tk()` constructor, `withdraw()`, `report_callback_exception`, `mainloop()`, `_tk_exception` (no longer needed — AppLoop has its own exception handler), and `_tk_pulse` (was a dead delegate). `_quit()` calls `scheduler.stop()` instead of `root.quit()/.destroy()`. `run()` is `scheduler.run_forever()`. `main.py` drops the 7-line `AramPregamePanel(app.root, _lcu)` block. **Deleted `ui/aram_pregame_panel.py`** (~700L, dead since T2 #6). Test fixtures in `tests/snapshot_regressions/test_app_authority.py` switch from `app.root = FakeRoot()` to `app.scheduler = FakeScheduler()`. CLAUDE.md "Headless mode" §, frozen list, and architecture map synced. |
+
+**Net: app/_loop.py +95L, ~700L deletion (aram_pregame_panel.py), small touch-ups across 5 frozen files + main.py + tests + CLAUDE.md.**
+
+## What's still tkinter-shaped (deferred to C2/C3)
+
+- ~15 files in `tft/`, `modes/`, `ui/`, `core/`, `ops/` still `import tkinter`
+  but never instantiate widgets. Inert since T2 #6. **C2 is the repo-wide
+  purge.**
+- `coaches/_base_coach._poll_loop` and `_vision_loop` are still threading-based,
+  not async. **C3 converts them to `async def`** (wrap blocking
+  `messages.create` + Tesseract calls in `asyncio.to_thread`).
+- `lcu_client`, `lcu_rune_writer`, `lcu_postgame_collector` still use daemon
+  threads. **C5 (optional) covers LCU pollers.** `lcu_client.py` is frozen so
+  needs explicit approval first.
+- `dashboard/server.py` ThreadingHTTPServer stays — out of T2 #8 scope.
+
+## AppLoop design notes (so a future session doesn't relearn)
+
+- `schedule(ms, fn)` is thread-safe: from the loop thread it calls
+  `loop.call_later(...)` directly; from any other thread it uses
+  `loop.call_soon_threadsafe(loop.call_later, ...)` (an extra hop, negligible).
+- During `OverlayApp.__init__`, `_loop_thread_id` is still `None` (loop hasn't
+  started), so the very first `schedule(...)` calls take the threadsafe path.
+  That's fine — `call_soon_threadsafe` enqueues the task; it runs as soon as
+  `run_forever()` starts.
+- `_safe_call` wraps every scheduled callback in try/except → log. Mirrors
+  `tk.Tk().report_callback_exception` semantics.
+- `set_exception_handler` catches uncaught task exceptions (separate from
+  scheduled-callback failures).
+- `loop.is_closed()` short-circuits `schedule()` after `stop()` so post-shutdown
+  callers no-op cleanly.
+- No SIGTERM handler wired. The supervisor force-kills via `taskkill /F /PID`
+  per CLAUDE.md "Hard fallback" — SIGTERM doesn't fire on that path. The
+  `restart_trigger.txt` workflow uses force-kill; verified clean.
+
+## Restart verification
+
+| Process | Old PID → New PID | Why |
+|---|---|---|
+| RC main | 8636 → 4536 | Pick up T2 #8 C1 |
+
+- `last_reload_ok=true` on first health snapshot
+- `ui_pulse_age_s` oscillates 0.4 ↔ 1.4 over 30s (pulse loop intact, 2s cadence)
+- `game_poll_worker_age_s` 2.0–7.5 (under 12s threshold; SrAramWorker fine)
+- `/api/state`, `/api/health/all`, `/api/decisions`, `/api/decisions/log`,
+  `/metrics` all 200
+- No `Traceback`, `ImportError`, `AttributeError`, `tkinter`, or `self.root`
+  references in post-restart log
+- Bootstrap log shows clean init: DevRuntime + MetricsCache + liveclient_cache
+  + log_retention + dashboard + OverlayManager dashboard-only + 4 remediation
+  callbacks + LCU armed + RuneWriter
+
+## Audit completion (updated)
+
+Tier 2 architecture & reliability:
+- ✅ #5 dashboard helper-shake (s27)
+- ✅ #6 dashboard helper-shake (s27)
+- ✅ #6 tkinter shim removal (s27c)
+- ✅ #7 bridge auto-flow watchdog (s27)
+- ⏳ **#8 daemon threads → asyncio** — C1 done (this); C2/C3/C4 remain
+- ⏳ #9 DB compression (high blast radius)
+
+Tier 1 still 5/5, Tier 3 still 5/5, Tier 4 still 3/3.
+
+## Operational backlog
+
+- **1 unpushed commit** (this) — push at start of next session before any
+  new work. Cloud routine deadline 2026-05-10 — 9 days away.
+- **Game-PC `/loop /process-bridge-tasks`** — bridge gauge was ~36 minutes
+  stale at session start (much fresher than the prior 22h reported in s27e/f),
+  suggests the loop came back up at some point. Worth re-checking with
+  `rc_facts.py` next session.
+- `RC-PatchRefresh` residual error code clears on Wednesday 2026-05-06.
+
+## Next-session candidates (ranked)
+
+- **Easiest:** push the C1 commit, optional stop point.
+- **Logical next:** **T2 #8 C2** — repo-wide `import tkinter` purge (no
+  frozen files). ~15 files in `tft/`, `modes/`, `ui/`, `core/`, `ops/` carry
+  dead imports since T2 #6. Verify `tests/phase2_smoke/test_tft_worker.py:139`
+  doesn't break (it asserts `root.after` not in `tft_worker.py` source —
+  still fine). One small commit.
+- **Medium:** **T2 #8 C3** — convert `_base_coach._poll_loop` + `_vision_loop`
+  to `async def`. ~150L in `coaches/_base_coach.py`. Wrap blocking
+  `messages.create` and Tesseract OCR in `asyncio.to_thread`.
+- **Avoid:** T2 #9 DB compression (still high blast radius).
+
+## Bootstrap for next session
+
+1. Read CLAUDE.md (frozen list now includes `app/_loop.py`)
+2. Read this hand-off (s27g) — AppLoop design notes are non-obvious
+3. For C2: `Grep "^import tkinter" --glob "*.py"` to enumerate the purge set,
+   then verify each file doesn't actually use tk before deleting the import.
+4. For C3: read `coaches/_base_coach.py` end-to-end before touching.
+
 
