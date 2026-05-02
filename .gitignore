@@ -148,6 +148,16 @@ docs io RC peer/*ASKS*
 docs io RC peer/*BUNDLE*
 docs io RC peer/*POST_UPDATE*
 docs io RC peer/*PARITY*
+docs io RC peer/*SECRET*
+docs io RC peer/*HANDSHAKE*
+docs io RC peer/*PIVOT*
+docs io RC peer/*REPLY*
+# Catch-all for any cross-Claude scratch that mentions secrets/tokens/keys
+# in its filename. Add new round-trip-artifact patterns here as they emerge,
+# OR consider flipping to a "ignore everything, allow-list durables" model
+# once the pattern list grows past ~10.
+docs io RC peer/*TOKEN*
+docs io RC peer/*KEY*
 
 # Per-host bridge secrets. Tracked: ops/local_paths.example.json (template).
 # Gitignored: ops/local_paths.json (real, contains the shared bearer token).
