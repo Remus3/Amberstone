@@ -193,6 +193,15 @@ def _build_logger() -> logging.Logger:
     sh = logging.StreamHandler(sys.stderr)
     sh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
     lg.addHandler(sh)
+    # T3 #15 follow-on (2026-05-01): also route rc.* loggers (decision_detector,
+    # liveclient_cache, etc.) into supervisor.log when those modules run inside
+    # this process. Same handler instances — Python's logging.Handler.emit holds
+    # a per-handler lock so concurrent writes interleave safely.
+    rc_lg = logging.getLogger("rc")
+    if not rc_lg.handlers:
+        rc_lg.setLevel(logging.INFO)
+        rc_lg.addHandler(h)
+        rc_lg.addHandler(sh)
     return lg
 
 
