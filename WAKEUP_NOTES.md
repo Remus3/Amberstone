@@ -167,3 +167,85 @@ Three RC restarts ran cleanly:
 Each restart verified via the same battery: PID change, `last_reload_ok`,
 `ui_pulse_age_s`, all helper-shake shim identities, current endpoints.
 No regressions detected.
+
+---
+
+# Follow-on session 27b — 2026-05-01 19:14 hand-off
+
+> Short follow-on after the user opened the next session and chose
+> "push, then continue". Three small things shipped + the Tier 3 #15
+> finish. **Origin/main is current** through `fa9dc45`.
+
+## What shipped
+
+| Commit | Type | Summary |
+|---|---|---|
+| (push) | ops | Pushed the 59 backlog commits (`597df0a..54588bd`). Cloud routine deadline 2026-05-10 is now safe — origin will have a fresh tree when it fires. |
+| 3740dff | chore | Untracked `config/coach_settings.json` (runtime-mutated by `/api/coach/toggle`); shipped `coach_settings.example.json` as the template. Committed `tools/claude-rc.ps1` (personal launcher). Working tree clean for the first time this session. |
+| fa9dc45 | refactor | **T3 #15 finish** — moved DecisionLoop daemon thread out of RC main into `agents/supervisor.py`. Added `_decisions_critical_section()` (threading.Lock + portalocker file lock on `ops/runtime/decisions.lock`, mirrors `coaching_data_lock` pattern) so cross-process reconcile↔record_choice is safe. |
+
+## Cloud routine verification (trig_01RBhupHp49EhrhKdAtExVND)
+
+`RemoteTrigger get` showed: enabled, `run_once_at: 2026-05-10T14:00:00Z`,
+repo `Remus3/riot-commander`, model `claude-sonnet-4-6`, tools allowlist
+correct, no MCP attached. Creator is `Nicolas`. Schedule + repo wired
+correctly. **Untested:** GitHub OAuth on the private repo — only the
+browser dashboard at `claude.ai/code/routines/<id>` shows auth state, or
+`RemoteTrigger run` (which actually opens a real PR). Deferred.
+
+## Restarts this follow-on
+
+| Process | Old PID → New PID | Why |
+|---|---|---|
+| Phase 3 supervisor | 4564 → 2956 | Pick up T3 #15 — load DecisionLoop in `Supervisor.start()` |
+| RC main | 4556 → 9252 | Pick up T3 #15 — stop launching DecisionLoop in `dashboard/server.py` |
+
+Verified via probe-clear (write fake pending entry, observe wipe within ~1s):
+* Pre-RC-restart probe: wiped — supervisor loop alive
+* Post-RC-restart probe: still wiped — no double-launch, supervisor still alive
+
+Endpoint smoke after both restarts: `/api/decisions`, `/api/decisions/log`,
+`/api/health/all` bridge field — all 200 with expected shapes.
+
+## Audit completion (updated)
+
+Tier 3:
+- ✅ #11 OBS WebSocket — opt-in via config (last session)
+- ✅ #13 PyInstaller spec — opt-in starter (last session)
+- ✅ #14 portalocker swap (last session)
+- ✅ **#15 decisions process move (THIS — fa9dc45)**
+- ⏳ #12 Prometheus + Grafana — fresh stack, never started
+
+Everything else from the prior table unchanged. Tier 1 still 5/5,
+Tier 4 still 3/3, Tier 2 still has #6 (tkinter shim, frozen-file
+approval needed), #8 (asyncio refactor), #9 (DB compression) open.
+
+## Operational backlog
+
+- ~58 commits backlog → **0** (push cleared it)
+- **Game-PC `/loop /process-bridge-tasks` still dead** (>21h per the
+  bridge watchdog; same status as prior session). Not addressed here.
+- `RC-PatchRefresh` residual error code clears on Wednesday's
+  scheduled run (unchanged).
+
+## Known cosmetic gap from T3 #15
+
+`agents/supervisor.py` only configures the `supervisor` logger; INFO
+lines from `rc.decision_detector` (and other `rc.*` loggers) are
+silently dropped when those modules run inside the supervisor process
+under `pythonw.exe`. Loop liveness verified via probe-clear, not log
+grep. Saved to memory as `reference_supervisor_logger_gap`. Fix would
+attach the rotating handler to `getLogger("rc")` too — out of scope.
+
+## Next-session candidates (re-ranked)
+
+- **Easiest unstarted:** T3 #12 Prometheus + Grafana — fresh stack,
+  never started. Likely multi-session if dashboards are required;
+  single-session if only the instrumentation pass.
+- **Moderate:** T2 #8 asyncio refactor — large, multi-session.
+- **Hard + needs approval:** T2 #6 tkinter shim removal — frozen file
+  (`app/_overlay_manager.py`).
+- **Avoid:** T2 #9 DB compression — high blast radius.
+- **Bridge watchdog says red, ~22h** — next time the user opens
+  Game-PC Claude, kicking `/loop /process-bridge-tasks` back up is
+  the actual fix (not RC-side).
