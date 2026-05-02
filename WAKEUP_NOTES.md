@@ -1111,3 +1111,65 @@ The Recent Coach Calls move was a **parked s27f follow-up**, not an audit item. 
 2. Read this hand-off (s27m) — the `view-section` + `body[data-view]` pattern is the canonical way to add a sub-page. To add another, hit these 3 spots: VIEW_IDS/LABELS in dashboard.js, menu button + `<section id="view-X" class="view-section" hidden>` in index.html, and the 3 CSS visibility-rule lists in dashboard.css. No `applyView` lazy-fetch hook needed if the data is already polled globally.
 3. **Refresh tip**: dashboard `web/*` changes don't need an RC restart — Edge on the secondary display picks them up via Ctrl+F5. Useful to remember for any future UI-only commit.
 
+---
+
+# Session 27n — 2026-05-01 22:50 hand-off (ARAM "on_bridge" zone label)
+
+> User picked candidate #2 from s27m — small follow-up to s27l. One commit,
+> one RC restart, verified clean against the still-running ARAM game.
+> Every alive ARAM enemy now reports `last_seen_zone="on_bridge"` instead
+> of `None`, giving downstream consumers (minimap caption, coach prompts)
+> a meaningful state string for the most common game mode.
+
+## What shipped
+
+| Commit | Type | Summary |
+|---|---|---|
+| (this) | feature | `core/vision_tracker.py:_compute_enemies` shared-vision branch now stamps `tracked["last_seen_t"] = game_time` and `tracked["last_seen_zone"] = "on_bridge"` whenever an alive enemy is processed in shared-vision mode (ARAM/KIWI). Dead enemies still skip the stamp (the `is_dead` short-circuit runs first), so a dead champion's `last_seen_zone` reflects their most recent alive sighting — correct semantics. **+5 LOC.** |
+
+## Why "on_bridge" and not a coordinate-derived zone
+
+Live Client emits `position: "NONE"` for ARAM, so we can't compute *where* on the bridge any given champion is. The existing `_aggregator_k(x, z)` function returns `"blue_side_bridge" / "mid_bridge" / "red_side_bridge"` based on (x+z)/296 percent — but with no coordinates we can't call it. Constant `"on_bridge"` is the honest data: "alive on Howling Abyss, exact position unknown to us." Consumers can render this as "5 on bridge" rather than "5 alive (location unknown)" or, worse, blank.
+
+`_aggregator_k` stays in place — defensive; if Riot ever exposes ARAM positions, the SR path's `_zone_for(game_mode, x, z)` call would route through it automatically.
+
+## Verification
+
+- `py_compile` clean on `core/vision_tracker.py`
+- restart_trigger.txt consumed (size=0 post-restart)
+- RC PID 9624 → 2944, `last_reload_ok=true`
+- Initial `game_poll_worker_age_s=15.3` (slightly elevated) settled to **3.0 within 6s** — transient post-restart latency, not a regression. ui_pulse stayed healthy throughout (0.4 → 1.5).
+- All 6 dashboard endpoints 200
+- 0 problem lines (Traceback / ImportError / AttributeError / tkinter / vision_tracker loop:) in 242 post-restart log lines
+- **Live ARAM verification** (game still in progress from s27m):
+  - 5 enemies, all 5 now report `last_seen_zone="on_bridge"`
+  - 3 alive (Kassadin, Malphite, Poppy) → `visible=True, on_bridge`
+  - 2 dead (Jayce, LeBlanc) → `visible=False, is_dead=True, on_bridge` — zone persists from last alive sighting (correct semantics)
+- **Synthetic SR check**: CLASSIC mode with real position {x:7400, z:7400} → `last_seen_zone="mid"` — SR fog tracking unchanged.
+
+## Audit completion (no Tier change)
+
+Tier 1 ✅ 5/5 · Tier 2 ✅ #5/#6/#6/#7 + #8 C1-C4 ✅ + #9 (avoid) · Tier 3 ✅ 5/5 · Tier 4 ✅ 3/3.
+
+s27n was a follow-up to s27l, not an audit item.
+
+## Operational backlog
+
+- **3 unpushed commits** (s27l vision_tracker fix + s27m sub-page move + s27n on_bridge label). Cloud routine deadline 2026-05-10 — 9 days away. Push at start of next session.
+- **Game-PC `/loop /process-bridge-tasks`** — bridge gauge not re-checked this session; live ARAM data is fresh on RC-side independently of the bridge.
+- `RC-PatchRefresh` residual error code clears on Wednesday 2026-05-06.
+
+## Next-session candidates
+
+- **Easiest:** push the 3 backlog commits; optional stop point.
+- **Easy:** Capture screenshot of the new `#coach-calls` view next time the dashboard is idle (no live game) — verifies the visual layout. Current commit is verified by content, not by render.
+- **Easy / minimap UX:** the minimap caption (`#mm-img-caption` in index.html) probably renders the legacy "missing for X seconds" template that doesn't fit shared-vision mode. Quick survey: `Grep "last_seen_zone\|missing_for" web/` to see where the new `on_bridge` string would surface, then a small JS branch that says "5 on bridge · shared vision" for ARAM modes instead of the per-enemy timer list.
+- **Medium:** **T2 #8 C5 (optional)** — LCU pollers. `lcu_client.py` frozen, needs approval. Low payoff.
+- **Avoid:** T2 #9 DB compression (still high blast radius).
+
+## Bootstrap for next session
+
+1. Read CLAUDE.md (frozen list)
+2. Read this hand-off (s27n) — `tracked` dict accepts partial stamps (zone + t without pos), which is the pattern for shared-vision style branches. Any future "no positional data but enemies are observable" mode just needs a constant zone label, no coordinate plumbing.
+3. If picking up the minimap caption follow-up: start with `Grep "mm-img-caption\|last_seen_zone" web/js/dashboard.js` to find the render path, then check what it does with empty/None zone strings today — the fix may simply be "render the new on_bridge string verbatim" or "special-case ARAM caption text."
+
