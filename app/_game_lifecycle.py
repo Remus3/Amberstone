@@ -62,7 +62,8 @@ def _safe_log(label: str) -> None:
 class GameLifecycleManager:
     """
     Owns game start/end transitions, worker management, and state processing.
-    All methods run on the Tk main thread (drained from worker queues via root.after).
+    All methods run on the asyncio loop thread (drained from worker queues
+    via app.scheduler.schedule).
     """
 
     def __init__(self, app: "OverlayApp") -> None:  # type: ignore[name-defined]
@@ -125,7 +126,7 @@ class GameLifecycleManager:
                         app._tft_coach.set_worker(app._tft_worker)
                         app._tft_worker.start()
                         if app._tft_worker is not None:
-                            app.root.after(1500, self._drain_tft_q)
+                            app.scheduler.schedule(1500, self._drain_tft_q)
                     elif _coaching_allowed:
                         app._tft_coach = getattr(mod, cn)(SCRIPT_DIR / "data" / dn, debug=dbg)
                 except Exception:
@@ -244,7 +245,7 @@ class GameLifecycleManager:
         app = self.app
         if app._sr_aram_worker is not None:
             app._sr_aram_worker.start()
-            app.root.after(POLL_GAME_MS, self._drain_game_q)
+            app.scheduler.schedule(POLL_GAME_MS, self._drain_game_q)
         else:
             _log.warning("SrAramWorker unavailable; game polling disabled")
 
@@ -253,7 +254,7 @@ class GameLifecycleManager:
         _log.warning("Legacy _game_poll_worker called (gen=%d)", my_gen)
 
     def _drain_game_q(self) -> None:
-        """Tk main thread: drain SrAramWorker result queue and apply updates."""
+        """Loop thread: drain SrAramWorker result queue and apply updates."""
         app = self.app
         try:
             while not app._sr_aram_q.empty():
@@ -264,10 +265,10 @@ class GameLifecycleManager:
                     self._process_game_state(result)
         except Exception:
             pass
-        app.root.after(POLL_GAME_MS, self._drain_game_q)
+        app.scheduler.schedule(POLL_GAME_MS, self._drain_game_q)
 
     def _drain_tft_q(self) -> None:
-        """Tk main thread: drain TftWorker results → TftSnapshot → envelope."""
+        """Loop thread: drain TftWorker results → TftSnapshot → envelope."""
         app = self.app
         try:
             if not app._tft_mode:
@@ -298,7 +299,7 @@ class GameLifecycleManager:
         except Exception:
             pass
         if app._tft_worker is not None and app._tft_worker.is_alive() and app._tft_mode:
-            app.root.after(1500, self._drain_tft_q)
+            app.scheduler.schedule(1500, self._drain_tft_q)
 
     def _try_read_api_key(self) -> str:
         try:

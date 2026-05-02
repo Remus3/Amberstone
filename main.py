@@ -9,7 +9,7 @@ Handles:
 - DevRuntime for heartbeat + hot-reload + file-based commands
 - Mode detection + coach lazy-loading
 - LCU auto-accept
-- tkinter overlay launch
+- OverlayApp launch (asyncio scheduler since T2 #8)
 """
 
 import sys
@@ -228,13 +228,6 @@ def main():
                     _log.debug("PostgameCollector init skipped: %s", _pgc_e)
             except Exception as _e:
                 _log.warning("RuneWriter init failed: %s", _e)
-            # ARAM Pre-game panel — champion select / bench / summoner spells
-            try:
-                from ui.aram_pregame_panel import AramPregamePanel
-                _pregame_panel = AramPregamePanel(app.root, _lcu)
-                _log.info("AramPregamePanel started (ARAM champ select overlay)")
-            except Exception as _e:
-                _log.warning("AramPregamePanel init failed: %s", _e)
         except Exception as e:
             _log.debug("LCU init failed: %s", e)
 

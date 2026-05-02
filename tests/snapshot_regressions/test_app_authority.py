@@ -672,7 +672,7 @@ class TestAppTftRuntimeAuthority(unittest.TestCase):
         app._tft_q.put(tft_result)
 
         # Stub the after/worker check so _drain_tft_q doesn't reschedule
-        app.root = type("FakeRoot", (), {"after": lambda self, *a, **kw: None})()
+        app.scheduler = type("FakeScheduler", (), {"schedule": lambda self, *a, **kw: None})()
         app._tft_worker = None  # no live worker -- no reschedule needed
 
         # Drain the queue manually (simulates what Tk mainloop would do)
@@ -700,7 +700,7 @@ class TestAppTftRuntimeAuthority(unittest.TestCase):
         tft_result = TftWorkerResult(state=TFT_STATE)
         app._tft_q.put(tft_result)
 
-        app.root = type("FakeRoot", (), {"after": lambda self, *a, **kw: None})()
+        app.scheduler = type("FakeScheduler", (), {"schedule": lambda self, *a, **kw: None})()
         app._tft_worker = None
         app._drain_tft_q()
 
@@ -1032,8 +1032,8 @@ class TestTftFirstEntryWorkerIngress(unittest.TestCase):
         tft_result = TftWorkerResult(state=TFT_STATE)
         app._tft_q.put(tft_result)
 
-        # Stub root.after so _drain_tft_q doesn't try to reschedule via Tk
-        app.root = type("FakeRoot", (), {"after": lambda self, *a, **kw: None})()
+        # Stub scheduler.schedule so _drain_tft_q doesn't try to reschedule
+        app.scheduler = type("FakeScheduler", (), {"schedule": lambda self, *a, **kw: None})()
         app._tft_worker = None
 
         app._drain_tft_q()
