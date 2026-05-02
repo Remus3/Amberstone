@@ -1333,3 +1333,60 @@ Same as s27p's list, minus "push the commit":
 2. Skim s27p (MAP STATE pill pattern) and s27q (this push).
 3. Working tree clean, origin caught up — start fresh.
 
+---
+
+# Session 27r — 2026-05-01 23:30 hand-off (ARAM dead-tile greying — reverted, no target DOM)
+
+> User said "continue WAKEUP_NOTES" — picked s27q's top easy candidate
+> (ARAM enemy-comp tile alive/dead greying via vision_state).
+> Implemented, committed (`504d9af`), then **reverted on verify** when
+> the targeted DOM was found to not exist. **No code shipped this session.**
+> Origin/main still at `957dab7`. Memory updated to prevent re-chasing
+> this ghost.
+
+## What happened
+
+| Step | Detail |
+|---|---|
+| 1. Implemented | Added `data-champ` attribute to `renderTeamTile`, new `_applyVisionDeadState()` helper that toggles `.dead` on enemy-strip tiles in shared-vision modes (ARAM/KIWI), wired the cache into `refreshVisionOverlay`. JS syntax-clean (`node --check`). +23 LOC. Committed as `504d9af`. |
+| 2. Verified | curl-fetched `/js/dashboard.js`, confirmed 8 occurrences of new symbols (matches expected count). Captured Game-PC monitor 1: dashboard renders, MAP STATE pill from s27p still works (`5 on bridge · 0 dead`). **No enemy tile strip visible in the screenshot.** |
+| 3. Investigated | `curl -sk https://127.0.0.1:8888/ \| grep -ci 'team-tile\|enemy-strip\|ally-strip'` → **0 hits**. `git log -S "enemy-strip-row" -- web/` → only the 2 commits referencing it (initial + s27r). The IDs `enemy-strip`, `enemy-strip-row` (and ally counterparts) **have never existed in any served HTML in the project's git history**. |
+| 4. Reverted | `git reset --soft HEAD~1` + `git restore --staged` + `git checkout --`. Working tree clean. |
+
+## Root cause
+
+`web/js/dashboard.js` declares `renderAllyStrip`, `renderEnemyStrip`, and `renderTeamTile` (~lines 1810-1985) and calls them per state-poll from `renderMinimap` (line ~2497) — but the DOM IDs they look up (`ally-strip-row`, `enemy-strip-row`, `ally-strip`, `enemy-strip`) appear nowhere in `web/index.html` or `web/legacy_index.html`. The functions early-return on `if (!row || !wrap) return;` every call. The CSS rules at `web/css/dashboard.css:1803-1940` (`.team-tile`, `.enemy-strip`, `.team-tile.dead`) are also orphan.
+
+WAKEUP s27p mentioned "the dashboard COMP STRIPS (top of `enemy-comp` strip in the `last-match` view)" as a parked candidate. That description was based on a misperception — the strip doesn't exist in the production dashboard. The implicit "last match" view (default `<main>` content per `web/index.html:741-744` comment) shows RIGHT NOW + NEXT + MAP STATE + STATS + ITEM BUILD — no per-champion enemy tiles.
+
+## What was saved as memory
+
+`reference_orphan_team_strips.md` — added to `MEMORY.md` index. Covers:
+- Where the orphan functions/IDs/CSS live
+- Why s27p's "last-match enemy-comp strip" candidate has no target
+- The 3-step path if a future session genuinely wants per-enemy alive/dead visualization (add markup → reuse orphan CSS → wire `vision_state.is_dead`)
+
+## Audit completion (unchanged)
+
+Tier 1 ✅ 5/5 · Tier 2 ✅ #5/#6/#6/#7 + #8 C1-C4 ✅ + #9 (avoid) · Tier 3 ✅ 5/5 · Tier 4 ✅ 3/3.
+
+## Operational backlog
+
+- **0 unpushed commits.** Origin/main current through `957dab7`.
+- **Game-PC `/loop /process-bridge-tasks`** — bridge gauge ~2.5h stale at session start (9110s per SessionStart probe). Same Game-PC-side issue.
+- `RC-PatchRefresh` residual error code clears on Wednesday 2026-05-06.
+
+## Next-session candidates (revised — s27q's top candidate is now eliminated)
+
+- **Easy / new feature:** Decide whether per-enemy alive/dead visualization is wanted on the home/last-match view at all. If yes, ship the 3-step path documented in `reference_orphan_team_strips`: add `<section id="enemy-strip">` markup to index.html, the orphan `.team-tile` CSS already covers styling, then re-add the `_applyVisionDeadState` helper. ~50-80 LOC across 2 files. Single commit.
+- **Easy / Game-PC side:** kick `/loop /process-bridge-tasks` back up on Game-PC Claude.
+- **Medium:** **T2 #8 C5 (optional)** — LCU pollers. `lcu_client.py` frozen, needs approval. Low payoff.
+- **Avoid:** T2 #9 DB compression (still high blast radius).
+
+## Bootstrap for next session
+
+1. Read CLAUDE.md (frozen list).
+2. Read `reference_orphan_team_strips` memory before touching any team-strip rendering — saves the same investigation cycle.
+3. Working tree clean; origin caught up at `957dab7`. No carry-over.
+4. **Verification lesson:** when adding rendering code, confirm the target DOM element exists in served HTML *before* committing — `curl -sk https://127.0.0.1:8888/ \| grep -i 'target-id'` is the 5-second check. Saves a revert.
+
