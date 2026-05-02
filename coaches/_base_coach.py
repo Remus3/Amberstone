@@ -17,6 +17,7 @@ ARCH-002 (full) — 2026-04-18 (T2 #6 update — overlay methods removed 2026-05
              _FAST_PATH_MIN_S, _HP_DROP_THRESHOLD
 """
 import abc
+import asyncio
 import json
 import logging
 import os
@@ -261,12 +262,26 @@ class BaseCoach(abc.ABC):
 
         self._running = True
         _mn = self._MODE_NAME.capitalize()
-        threading.Thread(
-            target=self._poll_loop, daemon=True, name=f"{_mn}Poll"
-        ).start()
-        threading.Thread(
-            target=self._vision_loop, daemon=True, name=f"{_mn}Vision"
-        ).start()
+        # T2 #8 C3 (2026-05-01): poll/vision loops run on the AppLoop event
+        # loop instead of dedicated daemon threads. Falls back to threads if
+        # the AppLoop isn't running (tests, standalone scripts).
+        try:
+            from app._loop import get_loop as _get_loop
+            _sched = _get_loop()
+        except Exception:
+            _sched = None
+        if _sched is not None:
+            _sched.spawn_task(self._poll_loop())
+            _sched.spawn_task(self._vision_loop())
+        else:
+            threading.Thread(
+                target=lambda: asyncio.run(self._poll_loop()),
+                daemon=True, name=f"{_mn}Poll",
+            ).start()
+            threading.Thread(
+                target=lambda: asyncio.run(self._vision_loop()),
+                daemon=True, name=f"{_mn}Vision",
+            ).start()
         try:
             from core.hotkeys import register_coach as _hk_reg
             _hk_reg(self)
@@ -298,7 +313,7 @@ class BaseCoach(abc.ABC):
 
     # ── Loops ─────────────────────────────────────────────────────────────────
 
-    def _poll_loop(self) -> None:
+    async def _poll_loop(self) -> None:
         while self._running:
             try:
                 raw = self._fetch_game_data()
@@ -312,9 +327,9 @@ class BaseCoach(abc.ABC):
                 logging.getLogger(f"rc.coaches.{self._MODE_NAME}").debug(
                     "%s poll: %s", self._MODE_NAME, exc
                 )
-            time.sleep(1.5)
+            await asyncio.sleep(1.5)
 
-    def _vision_loop(self) -> None:
+    async def _vision_loop(self) -> None:
         _force_file = _APP_DIR / "data" / "force_scan.json"
         while self._running:
             try:
@@ -332,12 +347,14 @@ class BaseCoach(abc.ABC):
                     pass
                 if forced or now - self._last_vision >= self._VISION_INTERVAL:
                     self._last_vision = now
-                    self._run_vision()
+                    # _run_vision does blocking HTTP (vision relay + Sonnet);
+                    # marshal to a thread so we don't stall the loop.
+                    await asyncio.to_thread(self._run_vision)
             except Exception as exc:
                 logging.getLogger(f"rc.coaches.{self._MODE_NAME}").debug(
                     "%s vision: %s", self._MODE_NAME, exc
                 )
-            time.sleep(3.0)
+            await asyncio.sleep(3.0)
 
     def _maybe_coach(self, state: dict) -> None:
         # AUDIT 2026-04-28 (2.2): per-mode kill switch — toggled from the
@@ -366,21 +383,30 @@ class BaseCoach(abc.ABC):
             return
 
         # _lock guards only the spawn-decision moment (last_coach update +
-        # Thread.start). It is NOT held across the actual coaching call —
-        # _run_coach runs on its own daemon thread and may take seconds.
-        # Real serialization comes from the debounce check on _last_coach
-        # above; the lock just prevents two near-simultaneous calls into
-        # _maybe_coach from both passing the debounce window before either
-        # has bumped _last_coach.
+        # task spawn). It is NOT held across the actual coaching call —
+        # _run_coach is dispatched to a worker thread via asyncio.to_thread
+        # and may take seconds. Real serialization comes from the debounce
+        # check on _last_coach above; the lock just prevents two near-
+        # simultaneous calls into _maybe_coach from both passing the
+        # debounce window before either has bumped _last_coach.
         if not self._lock.acquire(blocking=False):
             return
         try:
             self._last_coach = now
             _mn = self._MODE_NAME.capitalize()
-            threading.Thread(
-                target=self._run_coach, args=(dict(state),),
-                daemon=True, name=f"{_mn}Coach"
-            ).start()
+            _state_copy = dict(state)
+            try:
+                from app._loop import get_loop as _get_loop
+                _sched = _get_loop()
+            except Exception:
+                _sched = None
+            if _sched is not None:
+                _sched.spawn_task(asyncio.to_thread(self._run_coach, _state_copy))
+            else:
+                threading.Thread(
+                    target=self._run_coach, args=(_state_copy,),
+                    daemon=True, name=f"{_mn}Coach",
+                ).start()
         finally:
             self._lock.release()
 
