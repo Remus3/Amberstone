@@ -60,6 +60,29 @@ foreach ($s in $SUPPORT_SCRIPTS) {
     }
 }
 
+# Slash-command files for the auto-launched Claude session. The bridge
+# Claude runs `/loop 1m /process-bridge-tasks`, which requires the
+# matching .md to live in ~/.claude/commands/ (user-global) before the
+# loop fires. Pulled fresh on each boot so RC-side edits to the skill
+# propagate without a manual copy.
+$cmdsDir = Join-Path $env:USERPROFILE '.claude\commands'
+if (-not (Test-Path $cmdsDir)) {
+    New-Item -ItemType Directory -Path $cmdsDir | Out-Null
+}
+$SLASH_COMMANDS = @('process-bridge-tasks.md')
+foreach ($c in $SLASH_COMMANDS) {
+    $url = "https://legion-rc:8888/agent/$c"
+    $out = Join-Path $cmdsDir $c
+    & curl.exe -sk -m 5 -o $out $url 2>$null
+    if ($LASTEXITCODE -eq 0 -and (Test-Path $out) -and (Get-Item $out).Length -gt 0) {
+        Write-Host "  fetched $c → ~/.claude/commands/" -ForegroundColor Green
+    } elseif (Test-Path $out) {
+        Write-Host "  fetch $c failed, using existing local copy" -ForegroundColor Yellow
+    } else {
+        Write-Host "  fetch $c FAILED and no local copy" -ForegroundColor Red
+    }
+}
+
 # Use curl.exe (bundled with Win10/11 in System32) instead of
 # Invoke-WebRequest. PS 5.1's iwr fails the TLS handshake against the
 # dashboard's self-signed cert under iex even with SecurityProtocol set
