@@ -32,7 +32,7 @@ import sys
 import time
 import urllib.request
 
-LEGION_BRIDGE = "https://192.168.8.230:8888/api/bridge"
+LEGION_BRIDGE = "https://legion-rc:8888/api/bridge"
 TIMEOUT = 4.0
 
 _SSL_CTX = ssl.create_default_context()

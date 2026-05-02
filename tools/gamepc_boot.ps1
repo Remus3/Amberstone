@@ -10,7 +10,7 @@
 # copy on Game-PC self-heals on next boot.
 #
 # Usage (single-line paste, never wraps):
-#   iex (iwr https://192.168.8.230:8888/agent/gamepc_boot.ps1).Content
+#   iex (iwr https://legion-rc:8888/agent/gamepc_boot.ps1).Content
 #
 # Or, after installation, just run from C:\RC-Agent\:
 #   powershell -ExecutionPolicy Bypass -File C:\RC-Agent\gamepc_boot.ps1
@@ -51,7 +51,7 @@ $AGENTS = @(
 # doesn't take effect from inside an iex'd script. curl.exe -sk is
 # unaffected by any of that.
 foreach ($a in $AGENTS) {
-    $url = "https://192.168.8.230:8888/agent/$($a.name)"
+    $url = "https://legion-rc:8888/agent/$($a.name)"
     $out = Join-Path $dest $a.name
     & curl.exe -sk -m 5 -o $out $url 2>$null
     if ($LASTEXITCODE -eq 0 -and (Test-Path $out) -and (Get-Item $out).Length -gt 0) {

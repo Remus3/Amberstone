@@ -3,7 +3,7 @@
 # then runs the ping validator so the user sees PASS/FAIL immediately.
 #
 # Usage (single-line paste on Game-PC, never wraps):
-#   iex (iwr https://192.168.8.230:8888/agent/bridge_setup.ps1).Content
+#   iex (iwr https://legion-rc:8888/agent/bridge_setup.ps1).Content
 
 $ErrorActionPreference = 'Stop'
 $dest = 'C:\RC-Agent'
@@ -11,7 +11,7 @@ if (-not (Test-Path $dest)) { New-Item -ItemType Directory -Path $dest | Out-Nul
 
 $files = @('bridge_fetch.py', 'bridge_ping.py', 'bridge_heartbeat.py')
 foreach ($f in $files) {
-    $url = "https://192.168.8.230:8888/agent/$f"
+    $url = "https://legion-rc:8888/agent/$f"
     $out = Join-Path $dest $f
     try {
         Invoke-WebRequest -Uri $url -OutFile $out -UseBasicParsing

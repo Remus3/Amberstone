@@ -31,7 +31,7 @@ import sys
 import time
 import urllib.request
 
-LEGION_BRIDGE = "https://192.168.8.230:8888/api/bridge"
+LEGION_BRIDGE = "https://legion-rc:8888/api/bridge"
 TIMEOUT = 4.0
 LOOKBACK_S = 86400   # only consider tasks issued within last 24 h
 

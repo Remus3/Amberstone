@@ -23,7 +23,7 @@ import re
 import sys
 import urllib.request
 
-LEGION = "http://192.168.8.230:8888/api/bridge"
+LEGION = "https://legion-rc:8888/api/bridge"
 TIMEOUT = 1.5
 MAX_LEN = 220   # one-line summary cap
 

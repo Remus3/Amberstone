@@ -26,8 +26,8 @@ import time
 import urllib.error
 import urllib.request
 
-LEGION_BRIDGE = "https://192.168.8.230:8888/api/bridge"
-VISION_HEALTH = "http://192.168.8.230:8889/health"
+LEGION_BRIDGE = "https://legion-rc:8888/api/bridge"
+VISION_HEALTH = "http://legion-rc:8889/health"
 AUTH_TOKEN    = "8e8f131e212b329438218eca27372dde"
 
 _CTX = ssl.create_default_context()
