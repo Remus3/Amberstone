@@ -40,7 +40,7 @@ $helper = Join-Path $Cwd '_bridge_loop_helper.cmd'
 @echo off
 cd /d C:\RC-Agent
 title Game-PC bridge
-claude --name "Game-PC bridge" "/loop 1m /process-bridge-tasks"
+claude --name "Game-PC bridge" --dangerously-skip-permissions "/loop 1m /process-bridge-tasks"
 '@ | Set-Content -Path $helper -Encoding ASCII
 
 $wt = Get-Command wt.exe -ErrorAction SilentlyContinue
