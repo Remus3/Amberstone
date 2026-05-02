@@ -19,11 +19,21 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
+from core.prom_metrics import Histogram
+
 _log = logging.getLogger("rc.coach_trace")
 
 _TRACE_FILE = Path(__file__).parent.parent / "data" / "coach_trace.jsonl"
 MAX_LINES = 200          # ring-buffer size
 _lock = threading.Lock()
+
+# Prometheus instrumentation (T3 #12, 2026-05-01). Every coach API call
+# round-trip lands here with `latency_ms` already measured by the caller.
+_M_COACH_LATENCY = Histogram(
+    "rc_coach_latency_seconds",
+    "Wall-clock latency of coach API calls.",
+    labelnames=("mode", "model"),
+)
 
 
 def _truncate(s: Any, n: int) -> str:
@@ -67,6 +77,14 @@ def append(
     }
     if extra:
         rec["extra"] = extra
+    try:
+        _M_COACH_LATENCY.observe(
+            (latency_ms or 0) / 1000.0,
+            mode=mode or "_unknown",
+            model=model or "_unknown",
+        )
+    except Exception as exc:
+        _log.debug("prom_metrics coach_latency: %s", exc)
     try:
         with _lock:
             _TRACE_FILE.parent.mkdir(parents=True, exist_ok=True)
