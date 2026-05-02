@@ -22,12 +22,23 @@ from typing import Any, Callable, Coroutine, Optional
 
 _log = logging.getLogger("rc.app.loop")
 
+_INSTANCE: "Optional[AppLoop]" = None
+
+
+def get_loop() -> "Optional[AppLoop]":
+    """Return the process-wide AppLoop, or None if OverlayApp hasn't constructed
+    one yet. Used by subsystems (coaches, module pollers) that need to spawn
+    tasks on the main loop without taking a constructor-time reference."""
+    return _INSTANCE
+
 
 class AppLoop:
     def __init__(self) -> None:
         self._loop = asyncio.new_event_loop()
         self._loop.set_exception_handler(self._on_exception)
         self._loop_thread_id: Optional[int] = None
+        global _INSTANCE
+        _INSTANCE = self
 
     # ── Public API ───────────────────────────────────────────────────────────
 
