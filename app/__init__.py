@@ -1,15 +1,17 @@
 """
-app/__init__.py — OverlayApp orchestrator (ARCH-001 complete)
+app/__init__.py — OverlayApp orchestrator (post-T2 #6 dashboard-only)
 
-Original app.py: 1228 lines
-After ARCH-001 Phases 1-4: 434 lines (-65%)
+ARCH-001 decomposed app.py 1228L into managers (HealthMonitor, RemediationService,
+StateAuthority, OverlayManager, GameLifecycleManager). T2 #6 then removed the
+tkinter overlay UI in favor of the web dashboard at :8888 — the tk.Tk() root
+remains as the scheduler for game polling via root.after().
 
-Extracted managers:
-  app/_health_monitor.py   (81L)  — HealthMonitor
-  app/_remediation.py     (132L)  — RemediationService
-  app/_state_authority.py  (95L)  — StateAuthority + calc_win_pct
-  app/_overlay_manager.py (238L)  — OverlayManager (12 Tk methods)
-  app/_game_lifecycle.py  (494L)  — GameLifecycleManager (10 game methods)
+Sub-managers:
+  app/_health_monitor.py     — HealthMonitor
+  app/_remediation.py        — RemediationService (rebuild_panel_* now no-op)
+  app/_state_authority.py    — StateAuthority + calc_win_pct
+  app/_overlay_manager.py    — OverlayManager (mode persistence shell)
+  app/_game_lifecycle.py     — GameLifecycleManager
 """
 import queue
 import sys
@@ -17,7 +19,6 @@ import os
 import json
 import logging
 import threading
-import time
 import traceback
 
 import tkinter as tk
@@ -27,11 +28,11 @@ from core.game_snapshot import (
     GameEnvelope, ClientSnapshot,
     MODE_CLIENT, MODE_SR, MODE_ARAM, MODE_TFT, MODE_ARENA, MODE_BRAWL,
 )
-from ._health_monitor  import HealthMonitor        # ARCH-001 Phase 1
-from ._remediation    import RemediationService    # ARCH-001 Phase 1
-from ._state_authority   import StateAuthority     # ARCH-001 Phase 2
-from ._overlay_manager   import OverlayManager     # ARCH-001 Phase 3
-from ._game_lifecycle    import GameLifecycleManager  # ARCH-001 Phase 4
+from ._health_monitor   import HealthMonitor
+from ._remediation     import RemediationService
+from ._state_authority   import StateAuthority
+from ._overlay_manager   import OverlayManager
+from ._game_lifecycle    import GameLifecycleManager
 
 _log = logging.getLogger("rc.app")
 SCRIPT_DIR  = Path(__file__).parent.parent
@@ -41,9 +42,6 @@ DATA_FILE   = SCRIPT_DIR / "coaching_data.json"
 POLL_DATA_MS = 500
 POLL_GAME_MS = 1500
 
-# Audit 2026-04-28 (proposals 1.1 + 1.3): coaching_data.json is polled by
-# web_dashboard + overlays. Atomic write goes through the shared
-# core.polled_json helper so the tmp+replace rule lives in one place.
 from core.polled_json import atomic_write_json as _atomic_write_json
 
 try:
@@ -73,12 +71,6 @@ class OverlayApp:
     def __init__(self):
         self.root = tk.Tk()
         self.root.withdraw()
-        try:
-            _cs = ROOT_PATH / "data" / "comp_state.json"
-            self._client_panel_closed = __import__("json").loads(
-                _cs.read_text(encoding="utf-8")).get("client_panel_closed", False) if _cs.exists() else False
-        except Exception:
-            self._client_panel_closed = False
         self.root.report_callback_exception = self._tk_exception
 
         self.mode          = "client"
@@ -138,7 +130,6 @@ class OverlayApp:
 
         self._poll_file()
         self.root.after(200, self._start_game_poll)
-        self.root.after(500, self._wire_ops_tab)
         # Managers
         self.health    = HealthMonitor(self)
         self.remediate = RemediationService(self)
@@ -165,64 +156,19 @@ class OverlayApp:
         _log.debug("envelope: mode=%s tft=%s aram=%s arena=%s brawl=%s",
                    mode, self._tft_mode, self._aram_mode, self._arena_mode, self._brawl_mode)
 
-    # ── OPS tab ───────────────────────────────────────────────────────────────
-
-    def _wire_ops_tab(self) -> None:
-        try:
-            panel = self.client_windows.get('main')
-            if panel is not None and hasattr(panel, 'set_metrics_cache'):
-                import sys as _sys
-                _entrypoint = _sys.modules.get('__main__')
-                mc = getattr(_entrypoint, '_metrics_cache', None) if _entrypoint is not None else None
-                if mc is not None:
-                    panel.set_metrics_cache(mc)
-            self.root.after(5000, self._refresh_ops_tab)
-        except Exception:
-            self.root.after(5000, self._refresh_ops_tab)
-
-    def _refresh_ops_tab(self) -> None:
-        try:
-            panel = self.client_windows.get('main')
-            if panel is not None and hasattr(panel, 'refresh_ops'):
-                panel.refresh_ops()
-        except Exception:
-            pass
-        self.root.after(5000, self._refresh_ops_tab)
-
     def _tk_exception(self, et, ev, tb):
         msg = "".join(traceback.format_exception(et, ev, tb))
         _log.error("Tkinter exception:\n%s", msg)
         if sys.stderr:
             sys.stderr.write(msg)
 
-    # ── Overlay stubs (Phase 3) ───────────────────────────────────────────────
+    # ── Overlay stubs (post-T2 #6: dashboard-only) ───────────────────────────
 
     def _build_windows(self):
         self.overlays.build_windows()
 
     def _all_windows(self):
         yield from self.overlays.all_windows()
-
-    def _get_active_client_tab(self) -> str:
-        return self.overlays.get_active_tab()
-
-    def _switch_to_game_from_tab(self) -> None:
-        self.overlays.switch_to_game_from_tab()
-
-    def _attach_preview_overlay(self, canon_mode: str) -> None:
-        self.overlays.attach_preview(canon_mode)
-
-    def _teardown_preview_overlay(self) -> None:
-        self.overlays.teardown_preview()
-
-    def _close_client_panel(self):
-        self.overlays.close_panel()
-
-    def _reopen_client_panel(self):
-        self.overlays.reopen_panel()
-
-    def _persist_panel_state(self, closed: bool):
-        self.overlays.persist_panel_state(closed)
 
     def _switch_mode(self, mode, auto=False):
         self.overlays.switch_mode(mode, auto=auto)
@@ -296,61 +242,6 @@ class OverlayApp:
     def _calc_win_pct(state):
         return StateAuthority.calc_win_pct(state)
 
-    # ── Context menu (stays in orchestrator) ──────────────────────────────────
-
-    _TAB_TO_MODE = {
-        "SR":    MODE_SR, "ARAM":  MODE_ARAM, "ARENA": MODE_ARENA,
-        "BRAWL": MODE_BRAWL, "TFT": MODE_TFT, "OPS": MODE_ARAM,
-    }
-
-    def _context_menu(self, event):
-        m = tk.Menu(self.root, tearoff=0, bg="#1a1a24", fg="#c0c0d0",
-                    activebackground="#2a2a3a", activeforeground="#ffffff",
-                    font=("Segoe UI", 9))
-        m.add_command(label="Client Mode",
-                      command=lambda: self._switch_mode("client", auto=False),
-                      state="disabled" if self.mode == "client" else "normal")
-        _tab_label = self._get_active_client_tab()
-        _game_label = f"Game Mode ({_tab_label})" if _tab_label != "SR" else "Game Mode"
-        m.add_command(label=_game_label,
-                      command=self._switch_to_game_from_tab,
-                      state="disabled" if self.mode == "game" else "normal")
-        m.add_separator()
-        if self.reader and self._game_state:
-            m.add_command(label="Copy State for Claude", command=self._copy_state_to_clipboard)
-            m.add_separator()
-        if self._coach and self._game_state:
-            m.add_command(label="Request Coaching Now",
-                          command=lambda: self._coach.request_now(self._game_state))
-            m.add_command(label="Flag Bad Advice", command=self._coach.flag_last_bad)
-            wm = tk.Menu(m, tearoff=0, bg="#1a1a24", fg="#c0c0d0",
-                         activebackground="#2a2a3a", activeforeground="#ffffff",
-                         font=("Segoe UI", 9))
-            for wk, wl in [
-                ("freeze_or_hold", "Freeze / Hold (30s)"),
-                ("neutral",        "Neutral (30s)"),
-                ("slowpush",       "Slowpush (30s)"),
-                ("hard_shove",     "Hard Shove (30s)"),
-                ("crash",          "Crash (30s)"),
-            ]:
-                wm.add_command(label=wl, command=lambda s=wk: self._coach.set_wave_override(s))
-            m.add_cascade(label="Wave Override \u2192", menu=wm)
-            m.add_separator()
-        m.add_command(
-            label="Auto-detect: ON" if self._auto_mode else "Auto-detect: OFF",
-            command=self._toggle_auto,
-        )
-        m.add_separator()
-        m.add_command(label="Refresh Now", command=self._force_refresh)
-        if self.mode == "client":
-            m.add_command(label="Close Panel", command=self._close_client_panel)
-        else:
-            m.add_command(label="Show Client Panel", command=self._reopen_client_panel)
-        m.add_separator()
-        m.add_command(label="Quit", command=self._quit)
-        try:   m.tk_popup(event.x_root, event.y_root)
-        finally: m.grab_release()
-
     # ── Data file / poll ──────────────────────────────────────────────────────
 
     def _init_data_file(self):
@@ -391,13 +282,6 @@ class OverlayApp:
     def _force_refresh(self): self._last_mtime = 0
 
     def _toggle_auto(self): self._auto_mode = not self._auto_mode
-
-    def _copy_state_to_clipboard(self):
-        if self.reader and self._game_state:
-            t = self.reader.format_for_claude(self._game_state)
-            if t:
-                self.root.clipboard_clear()
-                self.root.clipboard_append(t)
 
     # ── Process lifecycle ─────────────────────────────────────────────────────
 
