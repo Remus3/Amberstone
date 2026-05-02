@@ -405,3 +405,38 @@ memory `reference_prom_metrics`.
   already ready.
 - **Bridge fix** is still Game-PC-side, not RC-side.
 
+---
+
+# Session 27e — 2026-05-01 20:42 hand-off (push-only)
+
+> User picked the "push, then stop" option from s27d. One push, no code
+> changes. Origin/main is current through `b04b1c6`. **0 backlog.**
+
+## What shipped
+
+| Action | Detail |
+|---|---|
+| `git push origin main` | `3e765ab..b04b1c6` — the c9191a3 (T3 #12 Prometheus) + b04b1c6 (CLAUDE.md sync) pair. |
+
+No restarts, no source edits beyond this WAKEUP append.
+
+## Anomalies confirmed (no action taken — both already explained)
+
+- `RC-PatchRefresh` last_result=2147942402 — script-level fix already in place (memory `project_rc_patchrefresh_fixed`); error code clears on next scheduled run (Wednesday 2026-05-06).
+- Bridge gauge ~82,400s stale — Game-PC-side `/loop /process-bridge-tasks` outage, fix is on Game-PC Claude, not RC-side. Watchdog (T2 #7) is correctly surfacing it.
+
+## Audit completion (unchanged from s27d)
+
+- Tier 1: 5/5 ✅
+- Tier 2: ✅ #5 #6 (helper-shake) #6 (tkinter shim) #7 — only #8 (asyncio) and #9 (DB compression) remain
+- Tier 3: 5/5 ✅
+- Tier 4: 3/3 ✅
+
+## Next-session candidates (unchanged from s27d)
+
+- **T2 #8 asyncio refactor** is the only remaining Tier 1-2 item. Large, multi-session. Would let us drop `tk.Tk()` and become genuinely Tk-free.
+- **T2 #9 DB compression** — still avoid (high blast radius on 1.7 GB rewind_history.db).
+- **Stack install:** real Prometheus scraper + Grafana is a separate "ops day" task; RC-side `/metrics` is already ready.
+- **Bridge fix** is Game-PC-side. Next time the user opens Game-PC Claude, restarting `/loop /process-bridge-tasks` is the actual fix.
+
+
