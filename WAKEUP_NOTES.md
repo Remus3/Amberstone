@@ -1598,3 +1598,124 @@ The audit backlog is still exhausted apart from #9 (avoid). Possibilities:
 2. Read this hand-off (s27u). The pattern: when a CLAUDE.md claim is suspicious, `Grep` the codebase before treating it as truth.
 3. **Doc-sync discipline:** only update CLAUDE.md / living docs. `feedback_no_history_rewrite` says don't touch dated artifacts (AUDIT_*, PHASE_*, ARCH-* docs, the `(2026-04-19)` priority snapshot header).
 
+---
+
+# s28 hand-off — 2026-05-02 (RC↔Peer bridge live; inheritance arc closed)
+
+> Long session, two arcs. **Arc 1**: Peer-VIP inheritance — RC sent the
+> WT/PS7 + session-control discipline + bridge contract; Peer sent back
+> a parity report showing they applied nearly everything verbatim plus
+> two bug fixes RC mirrored. **Arc 2**: cross-Claude bridge stood up
+> end-to-end over Tailscale. RC ↔ Peer now exchanging acks/asks/notes
+> via `/api/bridge/inbox` without operator file relay. Currently
+> running RC PID 11836; supervisor PID 10796. **5 commits this session,
+> all pushed (origin/main at `7307e6a`).**
+
+## What just shipped this session (in order)
+
+| Commit | Type | Summary |
+|---|---|---|
+| `a38d002` | docs | Seed `docs io RC peer/` with 5 durable inheritance docs (3 Peer originals + RC update + WT inheritance). `.gitignore` patterns for `*ASKS*`/`*BUNDLE*`/`*POST_UPDATE*` so round-trip scratch auto-ignores. |
+| `3b22bce` | fix | `ops/rc_supervisor.py`: pythonw stub pid latch + `os.replace` retry-with-backoff. Both bugs surfaced by Peer's first multi-child supervisor smoke; RC mirrored defensively. Frozen-file edit (authorized). Activated via supervisor restart (taskkill 4996 + `schtasks /Run RC-Supervisor` → adopted Main 3312 cleanly). |
+| `64de1ca` | docs | WT inheritance hardening (explicit pwsh profile block per Peer's parity-reply flag) + session control inheritance + bridge contract from Peer. |
+| `7e80513` | feat | RC bridge: `core/bridge.py` (config readers + outbound `send()` via stdlib urllib) + `dashboard/routes_bridge.py` `/api/bridge/inbox` POST (Bearer guard) + `/api/bridge/status` GET + `ops/local_paths.example.json` template. Activated via Main restart. |
+| `7307e6a` | chore | `.gitignore` hardening: `*SECRET*`, `*HANDSHAKE*`, `*PIVOT*`, `*REPLY*`, `*TOKEN*`, `*KEY*` patterns + `ops/local_paths.json` (the actual secret store). |
+
+## RC restart state
+
+- **Main PID 11836** (was 3312 → 9432 → 2956 → 11836 across four
+  restarts: bridge endpoint activation, bridge URL IP form, bridge URL
+  MagicDNS form, plus the supervisor activation cycle). Each restart
+  verified clean (`last_reload_ok=true`, new pid).
+- **Supervisor PID 10796** (was 4996 — replaced once this session via
+  `taskkill /F` + `schtasks /Run RC-Supervisor` → adopted running Main).
+  msvcrt byte-range lock cleanly released and reclaimed.
+
+## Cross-Claude bridge — operational state (new since s27u)
+
+- **Transport**: Tailscale free Personal plan. Both nodes in tailnet
+  `tailc150de.ts.net` under `<operator-email>`. Direct
+  peer-to-peer (`tailscale status` shows "active; direct").
+  - **RC** = `legion-rc.tailc150de.ts.net` / `100.70.22.55`
+  - **Peer** = `peer-host.tailc150de.ts.net` / `<peer-tailnet-ip>`
+    (renamed from `desktop-ctbma25` mid-setup — see
+    `reference_tailscale_magicdns_rename.md`)
+- **Auth**: 43-char urlsafe-base64 bearer in each side's
+  `ops/local_paths.json` (gitignored). Identical on both sides.
+- **Endpoints live**: RC inbox `/api/bridge/inbox` (POST, Bearer-guarded,
+  503/401/400/200 path); RC outbound `from core import bridge;
+  bridge.send(...)`; Peer symmetric.
+- **Path-name asymmetry**: RC's read endpoint is at `/api/bridge` (legacy
+  pre-contract); Peer's at `/api/bridge/messages` (per contract). Tracked
+  in `feedback_rc_peer_bridge_live.md`. Future v1 alignment is a 2-line
+  add (route the same handler at both paths).
+- **First handshake**: bidirectional, `ts ~1777745800`. Peer→RC and
+  RC→Peer both `(True, 'ok')`, both persisted to bridge logs.
+- **Live use**: operator's "ask peer what's next" → bridge → Peer replied
+  via bridge → answer parsed, no operator-mediated file relay needed.
+  This is the new pattern.
+
+## Memory entries written this session
+
+- `reference_pythonw_launcher_stub` — pid mismatch under venv pythonw stub
+- `reference_os_replace_winerror5` — Windows transient PermissionError on rename
+- `reference_rc_peer_bridge` — endpoint + config + opt-in semantics
+- `feedback_rc_peer_bridge_live` — bridge live timestamp + path asymmetry
+- `reference_tailscale_magicdns_rename` — Tailscale hostname-rename gotcha
+
+## Operational backlog
+
+- **Bridge monitor mirror** — Peer shipped their `bridge_monitor_agent.py`
+  (commit `b2e30b5`, always-on auto-pong sidecar). RC needs the
+  symmetric agent. Design spec landed at
+  `docs io RC peer/PEER_VIP_BRIDGE_MONITOR_FOR_RC_2026-05-02.md`
+  (now tracked — committed in s28). **Top of next-session queue.**
+- **Cloud routine deadline 2026-05-10** — 8 days. Origin/main is current
+  through `7307e6a`. Repo OAuth still untested on private
+  `Remus3/riot-commander` (per `project_verify_github_access_cloud_routine`).
+- **Game-PC `/loop /process-bridge-tasks`** — old Legion↔Game-PC bridge
+  separate from the new RC↔Peer bridge. Watchdog still surfaces silence;
+  Game-PC-side fix.
+- **Tiered vision** still 🟡 (CLAUDE.md priority 3, unchanged).
+
+## Next-session candidates (ranked)
+
+1. **Bridge monitor mirror** — design doc in hand. RC stack uses different
+   agent base than Peer (no multi-child supervisor on RC). Adapt to RC's
+   pattern: probably a daemon thread spawned from `dashboard/server.py`
+   alongside `vision_tracker` and `obs_publisher` — same shape as those.
+   Filter: `ts > last_seen_ts AND not source.startswith("rc") AND source
+   != "self-test"`. Auto-pong gate: `kind=task AND
+   summary.strip().lower()=="ping" AND target.lower()=="rc"`. Reply with
+   `source="rc-monitor", kind="result", summary="pong",
+   in_reply_to=<original-id>`. State at `data/bridge_monitor_state.json`,
+   atomic-written, mirrors Peer's shape.
+2. **Push-channel for bridge inbox** (v1 conversation) — replace the
+   2s polling with an internal SSE/push from `_bridge_log.bridge_post()`
+   so the monitor sees inbound in <100ms instead of <2s. Peer mentioned
+   this as their v1 thinking too. Touches frozen `dashboard/_bridge_log.py`.
+3. **Cloud routine OAuth verification** — open `claude.ai/code/routines/<id>`
+   and confirm GitHub token is valid for `Remus3/riot-commander` ahead of
+   2026-05-10 fire.
+4. **Path-name alignment** — add `/api/bridge/messages` as a second
+   matcher on RC's existing `_serve_bridge` handler so Peer's contract
+   path also resolves on RC (1-line change in `dashboard/routes_bridge.py`
+   GET_ROUTES table).
+
+## Bootstrap for next session
+
+1. Read CLAUDE.md (frozen list).
+2. Read this hand-off (s28).
+3. Read `docs io RC peer/PEER_VIP_BRIDGE_MONITOR_FOR_RC_2026-05-02.md` —
+   the design spec for the mirror.
+4. Read memory: `reference_rc_peer_bridge`, `feedback_rc_peer_bridge_live`,
+   `reference_tailscale_magicdns_rename`.
+5. **Bridge is opt-in but currently ON** — `core/bridge.is_configured()`
+   returns True; `ops/local_paths.json` has the bearer + Peer URL. To
+   send a one-off message: `from core import bridge;
+   bridge.send(source='rc', summary='...', kind='note', target='peer')`.
+6. **Don't restart the supervisor** unless you have a reason — it's at
+   PID 10796 with the new patches active and works. Main restarts via
+   `restart_trigger.txt` are fine.
+
+
