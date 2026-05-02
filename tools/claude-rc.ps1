@@ -39,7 +39,7 @@ if (-not (Test-Path $RuntimeDir)) {
 @echo off
 cd /d "C:\Riot Commander"
 title Legion
-claude --name "Legion" --dangerously-skip-permissions
+claude --name "Legion" --dangerously-skip-permissions "/loop 1m /process-bridge-tasks"
 '@ | Set-Content -Path $Helper -Encoding ASCII
 
 # wt.exe has its own argv parser that doesn't reliably round-trip
