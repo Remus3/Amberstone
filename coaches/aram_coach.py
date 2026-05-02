@@ -452,19 +452,6 @@ class Coach(BaseCoach):
     def _parse_raw_state(self, raw: dict) -> dict:
         return _parse_state(raw)
 
-    def _attach_overlay_windows(self, root) -> dict:
-        from modes.aram_overlay import (
-            AramRightTop, AramRightBot, AramBottomStrip,
-            AramAiStatusBar, AramCoachStatusBar,
-        )
-        return {
-            "rtop":      AramRightTop(root),
-            "ai_bar":    AramAiStatusBar(root),
-            "coach_bar": AramCoachStatusBar(root),
-            "rbot":      AramRightBot(root),
-            "bottom":    AramBottomStrip(root),
-        }
-
     def _on_state_received(self, state: dict) -> None:
         """AUDIT-OPUS BUG-2: eagerly write my_team for CHAOS-side orientation."""
         try:

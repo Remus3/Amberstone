@@ -6,14 +6,12 @@ Shared utilities AND base class for ARAM, Arena, and Brawl coaches.
 Section 1: Utility functions (unchanged from Phase 2 session 4-5)
 Section 2: BaseCoach ABC — full lifecycle base for all non-TFT coaches
 
-ARCH-002 (full) — 2026-04-18
-  Extracted: __init__, submit_state, reset_state, shutdown, attach_overlay,
-             detach_overlay, _poll_loop, _vision_loop, _maybe_coach,
-             _poll_overlay_file, _teardown_overlay, _ensure_data,
-             _write_blank_artifact, _fetch_game_data
+ARCH-002 (full) — 2026-04-18 (T2 #6 update — overlay methods removed 2026-05-01)
+  Extracted: __init__, submit_state, reset_state, shutdown,
+             _poll_loop, _vision_loop, _maybe_coach,
+             _ensure_data, _write_blank_artifact, _fetch_game_data
   Each mode overrides: _DATA_FILENAME, _MODE_NAME, _blank_artifact_data(),
-             _parse_raw_state(), _attach_overlay_windows(), _run_coach(),
-             _run_vision()
+             _parse_raw_state(), _run_coach(), _run_vision()
   Optional hooks: _init_extra(), _reset_extra(), _on_state_received(),
              _fast_path_trigger(), _VISION_INTERVAL, _DEBOUNCE_S,
              _FAST_PATH_MIN_S, _HP_DROP_THRESHOLD
@@ -167,21 +165,6 @@ def fetch_game_data(ssl_ctx: "ssl.SSLContext | None" = None) -> "dict | None":
         return None
 
 
-def teardown_overlay(overlay: dict) -> None:
-    """
-    Destroy all overlay windows in the overlay dict.
-    Safe to call with an empty dict or windows already destroyed.
-    """
-    for win in list(overlay.values()):
-        try:
-            if hasattr(win, "destroy_clock"):
-                win.destroy_clock()
-            win.destroy()
-        except Exception:
-            pass
-    overlay.clear()
-
-
 # ══════════════════════════════════════════════════════════════════════════════
 # SECTION 2 — BaseCoach ABC
 # ══════════════════════════════════════════════════════════════════════════════
@@ -231,7 +214,6 @@ class BaseCoach(abc.ABC):
     Subclasses MUST implement abstract methods:
         _blank_artifact_data()      -> dict
         _parse_raw_state(raw)       -> dict
-        _attach_overlay_windows(root) -> dict
         _run_coach(state)           -> None
         _run_vision()               -> None
 
@@ -310,38 +292,9 @@ class BaseCoach(abc.ABC):
             _hk_unreg(self)
         except Exception:
             pass
-        self._teardown_overlay()
         logging.getLogger(f"rc.coaches.{self._MODE_NAME}").info(
             "%s Coach shutdown", self._MODE_NAME.capitalize()
         )
-
-    def attach_overlay(self, root) -> None:
-        self._teardown_overlay()
-        try:
-            self._overlay = self._attach_overlay_windows(root)
-            # HEADLESS mode (web dashboard on :8888 replaces tkinter): hide
-            # every window this coach just created so ARAM/Arena/Brawl/TFT
-            # panels never flash on Legion's desktop.
-            try:
-                from app._overlay_manager import _HEADLESS
-                if _HEADLESS and isinstance(self._overlay, dict):
-                    for win in self._overlay.values():
-                        try:
-                            if hasattr(win, "withdraw"): win.withdraw()
-                            elif hasattr(win, "hide"):    win.hide()
-                        except Exception: pass
-            except Exception: pass
-            root.after(500, lambda: self._poll_overlay_file(root))
-            logging.getLogger(f"rc.coaches.{self._MODE_NAME}").info(
-                "%s overlay attached", self._MODE_NAME.capitalize()
-            )
-        except Exception as exc:
-            logging.getLogger(f"rc.coaches.{self._MODE_NAME}").error(
-                "%s overlay attach: %s", self._MODE_NAME.capitalize(), exc
-            )
-
-    def detach_overlay(self) -> None:
-        self._teardown_overlay()
 
     # ── Loops ─────────────────────────────────────────────────────────────────
 
@@ -430,26 +383,6 @@ class BaseCoach(abc.ABC):
             ).start()
         finally:
             self._lock.release()
-
-    def _poll_overlay_file(self, root) -> None:
-        if not self._overlay or not self._running:
-            return
-        try:
-            if self._out.exists():
-                data = json.loads(self._out.read_text(encoding="utf-8"))
-                for win in self._overlay.values():
-                    try:
-                        win.update(data)
-                    except Exception:
-                        pass
-        except Exception as exc:
-            logging.getLogger(f"rc.coaches.{self._MODE_NAME}").debug(
-                "%s overlay poll: %s", self._MODE_NAME, exc
-            )
-        root.after(500, lambda: self._poll_overlay_file(root))
-
-    def _teardown_overlay(self) -> None:
-        teardown_overlay(self._overlay)
 
     def _ensure_data(self) -> None:
         try:
@@ -570,11 +503,6 @@ class BaseCoach(abc.ABC):
     @abc.abstractmethod
     def _parse_raw_state(self, raw: dict) -> dict:
         """Parse /allgamedata dict -> coaching state dict."""
-        ...
-
-    @abc.abstractmethod
-    def _attach_overlay_windows(self, root) -> dict:
-        """Create overlay windows; return as {name: window} dict."""
         ...
 
     @abc.abstractmethod
