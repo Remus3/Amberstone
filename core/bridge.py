@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import secrets
 import ssl
 import time
 import urllib.error
@@ -95,12 +96,21 @@ def send(*, source: str,
     if not is_configured():
         return (False, "bridge_not_configured")
 
+    # Auto-stamp id when caller doesn't supply one. Without an id, tasks
+    # get filtered out by bridge_pull_tasks.py (`m.get("id")` gate), so
+    # auto-execute on the peer never fires. Symmetric with Peer's planned
+    # core/bridge.py fix per the 2026-05-02 e2e validate result.
+    # Shape: <kind>-<12 hex chars> — short, collision-free, sortable enough
+    # that operators can eyeball pairs in the log.
+    if not entry_id:
+        entry_id = f"{kind}-{secrets.token_hex(6)}"
+
     payload: dict = {
         "source":  source,
         "summary": summary,
         "kind":    kind,
+        "id":      entry_id,
     }
-    if entry_id:    payload["id"]          = entry_id
     if target:      payload["target"]      = target
     if body is not None: payload["body"]   = body
     if in_reply_to: payload["in_reply_to"] = in_reply_to
