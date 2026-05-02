@@ -22,7 +22,7 @@ import urllib.request
 import uuid
 from pathlib import Path
 
-LEGION_BRIDGE = "https://192.0.2.230:8888/api/bridge"
+LEGION_BRIDGE = "https://rc-host:8888/api/bridge"
 WAIT_S = 120
 TASK_TIMEOUT = 4.0
 

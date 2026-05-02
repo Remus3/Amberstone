@@ -22,7 +22,7 @@ import time
 import urllib.error
 import urllib.request
 
-LEGION_BRIDGE = "https://192.0.2.230:8888/api/bridge"
+LEGION_BRIDGE = "https://rc-host:8888/api/bridge"
 INTERVAL_S    = 60.0
 SOURCE        = f"heartbeat-{platform.node().lower()}"
 
