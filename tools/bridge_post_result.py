@@ -77,6 +77,14 @@ def main() -> int:
                    help="optional exit code of the action")
     p.add_argument("--no-mark", action="store_true",
                    help="don't append task id to processed file")
+    p.add_argument("--reply-to", default=None,
+                   choices=["legion", "gamepc", "peer"],
+                   help="peer the original task came from. Defaults to "
+                        "the opposite of --source for backwards compat. "
+                        "Set explicitly to 'peer' when the task originated "
+                        "on Peer — routing is then via core.bridge.send() "
+                        "(POST to Peer's /api/bridge/inbox) instead of the "
+                        "local Legion bridge log.")
     args = p.parse_args()
     try:
         body_extra = json.loads(args.body)
@@ -88,7 +96,44 @@ def main() -> int:
         body["stdout"] = sys.stdin.read()
     if args.exit_code is not None:
         body["exit_code"] = args.exit_code
-    target = "legion" if args.source == "gamepc" else "gamepc"
+    if args.reply_to:
+        target = args.reply_to
+    else:
+        target = "legion" if args.source == "gamepc" else "gamepc"
+
+    # Routing: for Peer, use core.bridge.send() — POSTs to Peer's
+    # /api/bridge/inbox (cross-tailnet, bearer-auth). For legion/gamepc,
+    # POST to Legion's local /api/bridge (the canonical hub for that pair).
+    if target == "peer":
+        try:
+            # Add project root to path so `core` imports work when
+            # invoked as a script from any cwd.
+            here = os.path.dirname(os.path.abspath(__file__))
+            root = os.path.dirname(here)
+            if root not in sys.path:
+                sys.path.insert(0, root)
+            from core import bridge
+        except Exception as exc:
+            print(f"core.bridge import failed: {exc}", file=sys.stderr)
+            return 1
+        ok, detail = bridge.send(
+            source=args.source,
+            summary=args.summary,
+            kind="result",
+            target="peer",
+            body=body,
+            in_reply_to=args.task_id,
+        )
+        if not ok:
+            print(f"bridge.send failed: {detail}", file=sys.stderr)
+            return 1
+        if not args.no_mark:
+            mark_processed(args.task_id)
+        print(json.dumps({"posted": True, "task_id": args.task_id,
+                          "route": "core.bridge.send→peer",
+                          "detail": detail}, indent=2))
+        return 0
+
     envelope = {
         "kind":         "result",
         "in_reply_to":  args.task_id,
@@ -105,7 +150,7 @@ def main() -> int:
     if not args.no_mark:
         mark_processed(args.task_id)
     print(json.dumps({"posted": True, "task_id": args.task_id,
-                      "ts": ack.get("ts")}, indent=2))
+                      "route": "post→legion-rc", "ts": ack.get("ts")}, indent=2))
     return 0
 
 
