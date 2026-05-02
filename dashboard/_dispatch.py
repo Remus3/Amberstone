@@ -40,14 +40,15 @@ def _gather_get() -> list:
     if _GET_CACHE is None:
         from dashboard import (routes_static, routes_state, routes_history,
                                routes_diag, routes_coach, routes_bridge,
-                               routes_loadout)
+                               routes_loadout, routes_metrics)
         _GET_CACHE = (list(routes_static.GET_ROUTES)
                       + list(routes_state.GET_ROUTES)
                       + list(routes_history.GET_ROUTES)
                       + list(routes_diag.GET_ROUTES)
                       + list(routes_coach.GET_ROUTES)
                       + list(routes_bridge.GET_ROUTES)
-                      + list(routes_loadout.GET_ROUTES))
+                      + list(routes_loadout.GET_ROUTES)
+                      + list(routes_metrics.GET_ROUTES))
     return _GET_CACHE
 
 
@@ -56,14 +57,15 @@ def _gather_post() -> list:
     if _POST_CACHE is None:
         from dashboard import (routes_static, routes_state, routes_history,
                                routes_diag, routes_coach, routes_bridge,
-                               routes_loadout)
+                               routes_loadout, routes_metrics)
         _POST_CACHE = (list(routes_static.POST_ROUTES)
                        + list(routes_state.POST_ROUTES)
                        + list(routes_history.POST_ROUTES)
                        + list(routes_diag.POST_ROUTES)
                        + list(routes_coach.POST_ROUTES)
                        + list(routes_bridge.POST_ROUTES)
-                       + list(routes_loadout.POST_ROUTES))
+                       + list(routes_loadout.POST_ROUTES)
+                       + list(routes_metrics.POST_ROUTES))
     return _POST_CACHE
 
 
