@@ -322,3 +322,86 @@ Tier 1 still 5/5, Tier 3 4/5 (only #12 left), Tier 4 3/3.
 - **T2 #8 asyncio refactor** — would finally let us drop `tk.Tk()`
   and become genuinely Tk-free. Large, multi-session.
 - **T2 #9 DB compression** — still avoid.
+
+---
+
+# Session 27d — 2026-05-01 20:35 hand-off (push backlog + T3 #12 ship)
+
+> User opened the next session, picked the queue: pushed backlog, then
+> shipped T3 #12 (Prometheus instrumentation). Origin/main is current
+> through `c9191a3`. **Tier 3 is now 5/5 ✅.**
+
+## What shipped
+
+| Commit | Type | Summary |
+|---|---|---|
+| (push) | ops | Pushed `aff07fb..3e765ab` (the 3 T2 #6 commits) to origin/main. Cloud routine deadline 2026-05-10 again safe. |
+| c9191a3 | feat | **T3 #12** — `core/prom_metrics.py` (zero-dep Counter/Gauge/Histogram + `render_all`) + `dashboard/routes_metrics.py` serving `/metrics` in Prometheus 0.0.4 text format. Counters wired into `cost_tracker.record_call` (calls/tokens/USD by model+purpose), `acquire_vision_token` (granted/denied), `vision_dedupe_get` (hits/misses). Latency histogram in `coach_trace.append` (mode+model). 7 scrape-time gauges: `rc_alive`, `rc_dashboard_ui_pulse_age_seconds`, `rc_game_poll_worker_age_seconds`, `rc_bridge_gamepc_result_age_seconds`, `rc_decisions_pending`, `rc_daily_spend_usd`, `rc_daily_calls`. **Render ~0.3 ms, ~2.3 KB body.** |
+
+Plus a doc-sync of CLAUDE.md (architecture map + `curl /metrics` command)
+in the same commit.
+
+## Restarts this session
+
+| Process | Old PID → New PID | Why |
+|---|---|---|
+| RC main | 3544 → 5808 | Pick up T3 #12 (initial wire) |
+| RC main | 5808 → 8636 | Pick up eager-import fix so the `coach_latency` histogram declares before first traffic |
+
+Both verified clean: PID change, `last_reload_ok=true`, all 5 dashboard
+endpoints (`/api/state`, `/api/health/all`, `/api/decisions`,
+`/api/decisions/log`, `/metrics`) return 200.
+
+## Audit completion (updated)
+
+Tier 3 **complete (5/5)**:
+- ✅ #11 OBS WebSocket (s27)
+- ✅ #13 PyInstaller spec (s27)
+- ✅ #14 portalocker swap (s27)
+- ✅ #15 decisions process move (s27b)
+- ✅ **#12 Prometheus /metrics (THIS — c9191a3)**
+
+Tier 1 still 5/5, Tier 4 still 3/3. Tier 2 has #8 (asyncio refactor)
+and #9 (DB compression) still open — both flagged "avoid until needed".
+
+## What `/metrics` does NOT include yet
+
+By design, the endpoint is just exposition — nothing scrapes it. The
+counters with labels (`rc_coach_calls_total`, `rc_coach_tokens_total`,
+`rc_coach_cost_usd_total`, `rc_coach_latency_seconds`) emit only
+`# HELP`/`# TYPE` lines until first observation; that's correct
+Prometheus convention. Once the user plays a real game, the bumped
+samples appear automatically.
+
+## Operational backlog
+
+- **1 unpushed commit** (`c9191a3`) — push at start of next session if
+  cloud routine wiring matters before 2026-05-10.
+- **Game-PC `/loop /process-bridge-tasks` still dead** (>22.8h per the
+  bridge gauge `rc_bridge_gamepc_result_age_seconds`; ~82,000s).
+- `RC-PatchRefresh` residual error code clears on Wednesday 2026-05-06.
+
+## Known-non-obvious follow-on
+
+If a future session wants to add metrics from a new module that ISN'T
+already imported on dashboard boot, the metric won't appear in
+`/metrics` until the module loads (lazy registration pattern). The fix
+is to add `import core.<module>  # noqa: F401` to
+`dashboard/routes_metrics.py` near the eager-import block. Saved as
+memory `reference_prom_metrics`.
+
+## Next-session candidates (re-ranked)
+
+- **Easiest:** push `c9191a3` and stop. (Good stopping point — Tier 1-3
+  are all green.)
+- **T2 #8 asyncio refactor** is the only remaining Tier 1-2 item. Large,
+  multi-session. Would finally let us drop `tk.Tk()` and become Tk-free.
+- **T2 #9 DB compression** — still avoid (high blast radius on a 1.7 GB
+  rewind_history.db).
+- **Stack install:** if a real Prometheus scraper + Grafana is wanted,
+  that's a separate "ops day" task — install the binaries, write a
+  scrape config pointing at `https://127.0.0.1:8888/metrics`
+  (insecure_skip_verify=true), wire a Grafana panel set. RC-side is
+  already ready.
+- **Bridge fix** is still Game-PC-side, not RC-side.
+
