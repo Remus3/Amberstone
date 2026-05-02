@@ -1541,6 +1541,12 @@ class Supervisor:
         self._auto_analyze_running_since: float | None = None    # monotonic
         self._auto_analyze_last_done_at: float | None = None     # monotonic
         self._auto_analyze_last_summary: dict | None = None
+        # Tier 3 #15 (2026-05-01): DecisionLoop relocated from RC main
+        # process. Daemon thread; started in start(), stopped in stop().
+        # Cross-process file locking on data/decisions_pending.json lives
+        # in core.decision_detector._decisions_critical_section so the
+        # dashboard's record_choice() handler in RC main stays safe.
+        self._decision_loop: Any = None
 
     # ---- startup -----------------------------------------------------
     async def start(self) -> None:
@@ -1599,12 +1605,31 @@ class Supervisor:
         asyncio.create_task(self._dispatch_loop())
         asyncio.create_task(self._warm_ui_watchdog())
 
+        # Decision detector loop (T3 #15, 2026-05-01) — relocated from
+        # dashboard/server.py. Polls the Live Client relay + vision_state
+        # and reconciles data/decisions_pending.json. The dashboard reads
+        # pending + writes choices via DecisionStore directly; cross-
+        # process file locking serializes the two writers.
+        try:
+            from core.decision_detector import get_loop as _get_decision_loop
+            self._decision_loop = _get_decision_loop()
+            self._decision_loop.start_background()
+        except Exception as e:  # noqa: BLE001
+            log.warning("decision_detector failed to start: %s", e)
+            self._decision_loop = None
+
         log.info("supervisor started: ws=:%d web=:%d xmachine=%s", WS_PORT, WEB_PORT, self.cross_machine_enabled)
 
     # ---- shutdown ----------------------------------------------------
     async def stop(self) -> None:
         log.info("supervisor stopping")
         self._stop.set()
+        if self._decision_loop is not None:
+            try:
+                self._decision_loop.stop()
+            except Exception as e:  # noqa: BLE001
+                log.debug("decision_loop.stop() raised: %s", e)
+            self._decision_loop = None
         if self._warm_agent7:
             self._warm_agent7.close()
         if self._file_ingest:
