@@ -44,6 +44,22 @@ $AGENTS = @(
     @{ name = 'gamepc_hotkey_listener.py';  port = $null;  task = 'RC-HotkeyListener'   }
 )
 
+# Non-agent support scripts (launchers, helpers) pulled fresh on each boot
+# so updates ship via the same /agent/ allowlist.
+$SUPPORT_SCRIPTS = @('start_gamepc_claude.ps1')
+foreach ($s in $SUPPORT_SCRIPTS) {
+    $url = "https://legion-rc:8888/agent/$s"
+    $out = Join-Path $dest $s
+    & curl.exe -sk -m 5 -o $out $url 2>$null
+    if ($LASTEXITCODE -eq 0 -and (Test-Path $out) -and (Get-Item $out).Length -gt 0) {
+        Write-Host "  fetched $s" -ForegroundColor Green
+    } elseif (Test-Path $out) {
+        Write-Host "  fetch $s failed, using existing local copy" -ForegroundColor Yellow
+    } else {
+        Write-Host "  fetch $s FAILED and no local copy" -ForegroundColor Red
+    }
+}
+
 # Use curl.exe (bundled with Win10/11 in System32) instead of
 # Invoke-WebRequest. PS 5.1's iwr fails the TLS handshake against the
 # dashboard's self-signed cert under iex even with SecurityProtocol set
@@ -151,6 +167,35 @@ foreach ($a in $AGENTS) {
     } else {
         Write-Host "  scheduled task $($a.task) install failed" -ForegroundColor Red
     }
+}
+
+# 5. Logon-trigger scheduled task — auto-runs THIS script after every
+#    user logon so a Game-PC reboot self-restores agents + Claude session
+#    without a manual shortcut click. Idempotent: only installs if absent.
+$bootTaskName = 'RC-GamePCBoot'
+$bootTask = Get-ScheduledTask -TaskName $bootTaskName -ErrorAction SilentlyContinue
+if (-not $bootTask) {
+    $tr = "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File C:\RC-Agent\gamepc_boot.ps1"
+    schtasks /Create /TN $bootTaskName /SC ONLOGON /RL HIGHEST /F /TR $tr 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "  scheduled task $bootTaskName installed (logon trigger)" -ForegroundColor Green
+    } else {
+        Write-Host "  scheduled task $bootTaskName install failed" -ForegroundColor Red
+    }
+} else {
+    Write-Host "  scheduled task $bootTaskName already present" -ForegroundColor Green
+}
+
+# 6. Bridge-loop Claude session — idempotent launcher. Spawns a visible
+#    Windows Terminal window running `claude --name "Game-PC bridge"
+#    "/loop 1m /process-bridge-tasks"` if no such window already exists.
+#    Closes the operator-attention loop: the only way the bridge-task
+#    processor was previously alive was a hand-typed slash command.
+$claudeLauncher = Join-Path $dest 'start_gamepc_claude.ps1'
+if (Test-Path $claudeLauncher) {
+    & powershell.exe -ExecutionPolicy Bypass -File $claudeLauncher
+} else {
+    Write-Host "  start_gamepc_claude.ps1 missing; skipping Claude launch" -ForegroundColor Yellow
 }
 
 Write-Host ''

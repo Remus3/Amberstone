@@ -122,6 +122,7 @@ _AGENT_ALLOWED = {
     "bridge_task.py",
     "bridge_ping.py", "bridge_heartbeat.py",
     "bridge_setup.ps1", "gamepc_boot.ps1",
+    "start_gamepc_claude.ps1",
     "process-bridge-tasks.md",
     "rc_rootCA.pem",
 }
