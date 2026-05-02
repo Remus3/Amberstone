@@ -736,4 +736,81 @@ Tier 1 still 5/5, Tier 3 still 5/5, Tier 4 still 3/3.
 2. Read this hand-off (s27h) — archive pattern is the precedent for future dead-code purges
 3. For C3: read `coaches/_base_coach.py` end-to-end before touching. Pay attention to `_poll_loop`, `_vision_loop`, hotkey registration, debounce, and how mode-coach subclasses plug in.
 
+---
 
+# Session 27i — 2026-05-01 22:02 hand-off (T2 #8 C3 ship)
+
+> User invoked C3 directly off the s27f plan. One commit, one RC restart,
+> verified clean during a live ARAM game (Aram Coach hot-reattached and
+> produced 5 fresh Haiku calls within seconds of the new PID coming up).
+> **BaseCoach is now fully asyncio-native** — `_poll_loop` and
+> `_vision_loop` are `async def`, mode coaches' blocking `_run_coach` /
+> `_run_vision` calls dispatch via `asyncio.to_thread`.
+
+## What shipped
+
+| Commit | Audit | Summary |
+|---|---|---|
+| (this) | T2 #8 C3 | `coaches/_base_coach.py`: `_poll_loop` + `_vision_loop` → `async def` (use `await asyncio.sleep` not `time.sleep`). `_vision_loop` wraps `_run_vision()` in `asyncio.to_thread` (blocking HTTP relay + Sonnet). `_maybe_coach` replaces its per-call `threading.Thread(target=_run_coach)` with `_sched.spawn_task(asyncio.to_thread(self._run_coach, _state_copy))`. `__init__` swaps the two `threading.Thread(...).start()` lines for `_sched.spawn_task(self._poll_loop()) / spawn_task(self._vision_loop())`. Both spawn paths fall back to threads if `app._loop.get_loop()` returns None (tests / standalone scripts). `app/_loop.py` gains a module-level `_INSTANCE` set in `AppLoop.__init__` plus a `get_loop()` accessor — keeps coach constructor signatures unchanged. **+38L `_base_coach.py`, +12L `_loop.py`, ~30L deleted.** |
+
+## Why a singleton accessor in `app/_loop.py`
+
+Coaches don't have an app reference at construction time (mode-coach call sites in `app/_game_lifecycle.py` only pass `data_file` + `debug`). Two options:
+
+- (a) thread `app.scheduler` through every coach constructor — invasive, touches every coach + the lifecycle dispatch
+- (b) module-level singleton on the AppLoop side, accessed via `from app._loop import get_loop`
+
+Picked (b) because there's only ever one `AppLoop` per process (RC main), and the fallback-to-thread path keeps test harnesses and the rare standalone-coach-import case working without ceremony. The accessor returns `Optional[AppLoop]` — coaches branch on it.
+
+## Restart verification
+
+| Process | Old PID → New PID | Why |
+|---|---|---|
+| RC main | 3436 → 6792 | Pick up T2 #8 C3 |
+
+- `last_reload_ok=true` immediately
+- `ui_pulse_age_s=1.5` (under 6s threshold)
+- `game_poll_worker_age_s` 0.6→11.6 (under 12s; pre-existing oscillation, unchanged)
+- All 5 dashboard endpoints 200
+- **Live ARAM game in progress at restart** — `Aram Coach started` logged, `data/aram_coaching_data.json` mtime 8s after probe, `action="WAIT RESPAWN"` populated correctly
+- `/metrics`: `rc_coach_calls_total{model="claude-haiku-4-5-20251001",purpose="aram_coach"} 5` within ~30s of restart — `_maybe_coach` → `spawn_task(asyncio.to_thread(_run_coach))` path is firing real Anthropic calls, all latencies in the 2-5s histogram bucket
+- Post-restart log scan for `ERROR|Traceback|ImportError|AttributeError|tkinter` in the 400 lines after `Aram Coach started` → **0 matches**
+
+## What's still tkinter/threading-shaped (deferred)
+
+- **Module pollers** still daemon-thread: `liveclient_cache`, `vision_tracker`, `obs_publisher`, `metrics_cache`, `log_retention`. **C4** maps each `_loop` daemon → `spawn_task(_loop_async())`. ~120L total. Same `get_loop()` pattern works here.
+- **LCU pollers** (`lcu_client`, `lcu_rune_writer`, `lcu_postgame_collector`) still daemon-thread. `lcu_client.py` is frozen so **C5 (optional)** needs explicit approval. Buys little.
+- **`tft_coach.py` / `tft_pbe_coach.py`** are NOT BaseCoach subclasses (they have their own internal threading). C3 doesn't touch them; they'd be a separate refactor.
+- **`coach_integration.py` / `sr_coach.py`** are not BaseCoach subclasses either; SR coaching runs through the worker queue path, not the BaseCoach loop. Out of T2 #8 scope.
+- **`dashboard/server.py` `ThreadingHTTPServer`** stays — out of T2 #8 scope.
+
+## Audit completion (updated)
+
+Tier 2 architecture & reliability:
+- ✅ #5 dashboard helper-shake (s27)
+- ✅ #6 dashboard helper-shake (s27)
+- ✅ #6 tkinter shim removal (s27c)
+- ✅ #7 bridge auto-flow watchdog (s27)
+- ⏳ **#8 daemon threads → asyncio** — C1 ✅ (s27g), C2 ✅ (s27h), **C3 ✅ (THIS)**, C4/C5 remain
+- ⏳ #9 DB compression (high blast radius)
+
+Tier 1 still 5/5, Tier 3 still 5/5, Tier 4 still 3/3.
+
+## Operational backlog
+
+- **1 unpushed commit** (this) — push at start of next session before any new work. Cloud routine deadline 2026-05-10 — 9 days away.
+- **Game-PC `/loop /process-bridge-tasks`** — bridge gauge ~70 min stale at restart time (4220s). Same status as session start: Game-PC-side, not RC-side.
+- `RC-PatchRefresh` residual error code clears on Wednesday 2026-05-06.
+
+## Next-session candidates (ranked)
+
+- **Easiest:** push the C3 commit; optional stop point.
+- **Logical next:** **T2 #8 C4** — convert the 5 module pollers (`liveclient_cache`, `vision_tracker`, `obs_publisher`, `metrics_cache`, `log_retention`) from daemon threads to `spawn_task(_loop_async())`. ~120L total. Each module is independent; can ship as one commit or one-per-module.
+- **Medium:** **T2 #8 C5 (optional)** — LCU pollers. `lcu_client.py` frozen, needs approval. Low payoff.
+- **Avoid:** T2 #9 DB compression (still high blast radius).
+
+## Bootstrap for next session
+
+1. Read CLAUDE.md (frozen list)
+2. Read this hand-off (s27i) — `get_loop()` singleton accessor pattern is the reusable hook for any future "needs the AppLoop without a constructor reference" case
+3. For C4: `Grep "threading.Thread\(target.*_loop"` to enumerate the daemon-poller call sites; each module's `_loop` becomes `async def _loop_async`, and the module-level `start()` calls `_get_loop().spawn_task(_loop_async())` with the same thread-fallback pattern as `_base_coach.__init__`.
