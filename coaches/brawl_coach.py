@@ -209,14 +209,6 @@ class Coach(BaseCoach):
     def _parse_raw_state(self, raw: dict) -> dict:
         return _parse_brawl_state(raw)
 
-    def _attach_overlay_windows(self, root) -> dict:
-        from modes.brawl_overlay import BrawlRightTop, BrawlRightBot, BrawlBottomStrip
-        return {
-            "rtop":   BrawlRightTop(root),
-            "rbot":   BrawlRightBot(root),
-            "bottom": BrawlBottomStrip(root),
-        }
-
     # ── Vision ────────────────────────────────────────────────────────────────
 
     def _run_vision(self) -> None:
