@@ -32,6 +32,7 @@ Tail-reading strategy for incident_log.jsonl:
 from __future__ import annotations
 
 import json
+import asyncio
 import threading
 import time
 from copy import deepcopy
@@ -186,26 +187,45 @@ class MetricsCache:
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
+        self._task: Optional[Any] = None  # asyncio.Task / Future
 
     # ── Public API ──────────────────────────────────────────────────────────
 
     def start(self) -> None:
-        """Start the background refresh thread.  No-op if already running."""
-        if self._thread and self._thread.is_alive():
+        """Start the background refresh loop.  No-op if already running.
+        Prefers spawning on the main AppLoop; falls back to a daemon thread
+        when no loop exists. The first refresh runs synchronously here so
+        get_summary() returns real data immediately, regardless of path."""
+        if (self._thread and self._thread.is_alive()) or self._task is not None:
             return
         self._stop_event.clear()
-        self._thread = threading.Thread(
-            target=self._loop,
-            name="MetricsCache",
-            daemon=True,
-        )
-        self._thread.start()
+        # Immediate first refresh — matches the behavior the thread loop
+        # provided (it called _refresh() before the first wait).
+        self._refresh()
+        try:
+            from app._loop import get_loop as _get_loop
+            _sched = _get_loop()
+        except Exception:
+            _sched = None
+        if _sched is not None:
+            self._task = _sched.spawn_task(self._loop_async())
+        else:
+            self._thread = threading.Thread(
+                target=self._loop,
+                name="MetricsCache",
+                daemon=True,
+            )
+            self._thread.start()
 
     def stop(self, timeout_s: float = 10.0) -> None:
-        """Signal the refresh thread to stop and wait for it."""
+        """Signal the refresh loop to stop and wait for the worker."""
         self._stop_event.set()
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=timeout_s)
+        if self._task is not None:
+            try: self._task.cancel()
+            except Exception: pass
+            self._task = None
 
     def get_summary(self) -> MetricsSummary:
         """
@@ -257,10 +277,20 @@ class MetricsCache:
     # ── Background loop ─────────────────────────────────────────────────────
 
     def _loop(self) -> None:
-        """Background thread: refresh on interval until stop() is called."""
-        # Do an immediate first refresh so get_summary() returns real data quickly
-        self._refresh()
+        """Background thread fallback: refresh on interval until stop().
+        The immediate first refresh now runs in start(); this loop just
+        sleeps + refreshes."""
         while not self._stop_event.wait(timeout=self._refresh_interval):
+            self._refresh()
+
+    async def _loop_async(self) -> None:
+        """AppLoop-resident equivalent of _loop. start() runs the first
+        _refresh() synchronously so this just iterates the steady state."""
+        while not self._stop_event.is_set():
+            try:
+                await asyncio.sleep(self._refresh_interval)
+            except asyncio.CancelledError:
+                return
             self._refresh()
 
     def _refresh(self) -> None:

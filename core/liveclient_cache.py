@@ -20,12 +20,13 @@ explicitly so the cache is warm before coaches launch).
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import threading
 import time
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -62,6 +63,7 @@ class Snapshot:
 _EMPTY = Snapshot()
 _snapshot: Snapshot = _EMPTY
 _thread: Optional[threading.Thread] = None
+_task: Optional[Any] = None  # asyncio.Task or concurrent.futures.Future
 _stop = threading.Event()
 _start_lock = threading.Lock()
 
@@ -106,32 +108,61 @@ def _loop(poll_s: float) -> None:
         _stop.wait(poll_s)
 
 
+async def _loop_async(poll_s: float) -> None:
+    """Async equivalent of _loop. Wraps blocking HTTP in asyncio.to_thread
+    so a 2s urlopen timeout never stalls the event loop."""
+    global _snapshot
+    while not _stop.is_set():
+        try:
+            _snapshot = await asyncio.to_thread(_fetch_once)
+        except Exception as exc:
+            _log.debug("liveclient_cache loop: %s", exc)
+        try:
+            await asyncio.sleep(poll_s)
+        except asyncio.CancelledError:
+            return
+
+
 def start(poll_s: float = _DEFAULT_POLL_S) -> None:
-    """Launch the background fetcher (idempotent)."""
-    global _thread
+    """Launch the background fetcher (idempotent). Prefers spawning on the
+    main AppLoop if one exists; falls back to a daemon thread otherwise."""
+    global _thread, _task
     with _start_lock:
-        if _thread is not None and _thread.is_alive():
+        if (_thread is not None and _thread.is_alive()) or _task is not None:
             return
         _stop.clear()
-        _thread = threading.Thread(
-            target=_loop, args=(poll_s,),
-            daemon=True, name="liveclient-cache",
-        )
-        _thread.start()
-        _log.info("liveclient_cache started (poll=%.2fs)", poll_s)
+        try:
+            from app._loop import get_loop as _get_loop
+            _sched = _get_loop()
+        except Exception:
+            _sched = None
+        if _sched is not None:
+            _task = _sched.spawn_task(_loop_async(poll_s))
+            _log.info("liveclient_cache started (poll=%.2fs, async)", poll_s)
+        else:
+            _thread = threading.Thread(
+                target=_loop, args=(poll_s,),
+                daemon=True, name="liveclient-cache",
+            )
+            _thread.start()
+            _log.info("liveclient_cache started (poll=%.2fs, thread)", poll_s)
 
 
 def stop() -> None:
     """Stop the background fetcher (mostly for tests)."""
-    global _thread
+    global _thread, _task
     _stop.set()
     if _thread is not None:
         _thread.join(timeout=3)
         _thread = None
+    if _task is not None:
+        try: _task.cancel()
+        except Exception: pass
+        _task = None
 
 
 def get() -> Snapshot:
     """Return the latest Snapshot. Auto-starts the fetcher on first call."""
-    if _thread is None or not _thread.is_alive():
+    if _task is None and (_thread is None or not _thread.is_alive()):
         start()
     return _snapshot

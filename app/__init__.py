@@ -28,7 +28,7 @@ from core.game_snapshot import (
     GameEnvelope, ClientSnapshot,
     MODE_CLIENT, MODE_SR, MODE_ARAM, MODE_TFT, MODE_ARENA, MODE_BRAWL,
 )
-from ._loop             import AppLoop
+from ._loop             import AppLoop, ensure_loop as _ensure_loop
 from ._health_monitor   import HealthMonitor
 from ._remediation     import RemediationService
 from ._state_authority   import StateAuthority
@@ -70,7 +70,10 @@ except Exception: HAS_COMP_ADVISOR = False
 
 class OverlayApp:
     def __init__(self):
-        self.scheduler = AppLoop()
+        # Use ensure_loop() so we share the AppLoop with any subsystem that
+        # main.py created earlier (T2 #8 C4). Falls back to a fresh AppLoop
+        # if nothing's constructed one yet (tests / standalone harnesses).
+        self.scheduler = _ensure_loop()
 
         self.mode          = "client"
         self.data          = {}
