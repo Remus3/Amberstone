@@ -138,3 +138,12 @@ data/.*.tmp
 # every run. champ_kda.json IS committed (recommender consumes it for
 # fast cold-cache); db_sizes is just a numerical snapshot.
 data/coach_reference/db_sizes.json
+
+# Cross-Claude bridge folder (RC ↔ Peer-VIP). Durable inheritance docs
+# (PEER_VIP_ARCHITECTURE / SETUP / INTAKE_QA / UPDATE_FROM_RC_* /
+# WT_INHERITANCE_*) ARE tracked. Round-trip scratch — asks, file bundles,
+# post-update return prompts — gets consumed by the other Claude once and
+# becomes stale; keep it local.
+docs io RC peer/*ASKS*
+docs io RC peer/*BUNDLE*
+docs io RC peer/*POST_UPDATE*
