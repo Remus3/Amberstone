@@ -1282,3 +1282,54 @@ s27p was a parked s27n follow-up, not an audit item.
 2. Read this hand-off (s27p) — when the bridge is red but gamepc MCP is up (per SessionStart probe), prefer `mcp__gamepc__capture_monitor` directly for one-shot screenshot verification. Saves a session waiting for the bridge.
 3. The pill-split pattern (state-poll for SR, vision-overlay for shared-vision, with `_sharedSig` change-detection) is the model for any future "two refresh paths fighting over the same DOM" case.
 
+---
+
+# Session 27q — 2026-05-01 23:05+ hand-off (push to origin)
+
+> User said "commit to github". Working tree was clean — the prior session
+> (s27p) had already committed `957dab7` (MAP STATE pill) but never pushed.
+> This session was a one-shot `git push origin main`. **No code changes, no
+> RC restart.**
+
+## What shipped
+
+| Action | Detail |
+|---|---|
+| `git push origin main` | `29ed1e1..957dab7  main -> main`. origin/main is now caught up at `957dab7` (MAP STATE pill). |
+
+## State after
+
+- Local `main` == `origin/main` == `957dab7`.
+- **Unpushed commit count: 0.** Cloud-routine deadline 2026-05-10 (~9 days)
+  is no longer at risk of clone-empty-branch failure.
+- RC PID + bridge state per SessionStart probe at 23:03:50: PID 2944,
+  mode=game, last_reload_ok=True; bridge gauge ~2h stale (still the
+  Game-PC `/loop /process-bridge-tasks` outage); Game-PC LCU phase
+  `EndOfGame` (game just ended).
+
+## Anomalies surfaced by SessionStart probe (not addressed this session)
+
+- `RC-PatchRefresh` last_result `2147942402` (0x80070002 — file not found).
+  Memory `project_rc_patchrefresh_fixed` says the script-level fix is in
+  but the residual error code only clears on the next scheduled run
+  (Wednesday 2026-05-06). Ignore until then; if it re-fires post-Wed,
+  re-investigate.
+- Bridge auto-flow age `7888s` (~2h). Watchdog (s27, 22248fe) is correctly
+  surfacing this — fix is Game-PC-side (`/loop /process-bridge-tasks`).
+
+## Next-session candidates
+
+Same as s27p's list, minus "push the commit":
+
+- **Easy:** ARAM enemy-comp tile alive/dead greying via
+  `vision_state.enemies[champ].is_dead` (s27p's parked follow-up).
+- **Easy:** kick `/loop /process-bridge-tasks` back up on Game-PC Claude.
+- **Medium:** T2 #8 C5 (LCU pollers) — frozen file, low payoff.
+- **Avoid:** T2 #9 DB compression.
+
+## Bootstrap for next session
+
+1. Read CLAUDE.md (frozen list).
+2. Skim s27p (MAP STATE pill pattern) and s27q (this push).
+3. Working tree clean, origin caught up — start fresh.
+
