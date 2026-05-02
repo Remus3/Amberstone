@@ -390,6 +390,22 @@ def execute_command(cmd):
         if err is not None:
             return {"ok": False, "err": err}
         return {"ok": True, "trade_id": trade_id, "cell_id": cell_id}
+    if name == "start_matchmaking":
+        # Begin queueing for the current lobby. Leader-only; LCU returns
+        # 400 if a non-leader calls it.
+        _, err = lcu_request("POST", "/lol-lobby/v2/lobby/matchmaking/search")
+        return {"ok": err is None, "err": err}
+    if name == "cancel_matchmaking":
+        _, err = lcu_request("DELETE", "/lol-lobby/v2/lobby/matchmaking/search")
+        return {"ok": err is None, "err": err}
+    if name == "change_queue_type":
+        # Re-create the lobby on a different queue. JS sends queue_id
+        # (snake_case); LCU body wants queueId.
+        qid = int(cmd.get("queue_id", 0))
+        if qid <= 0:
+            return {"ok": False, "err": "no queue_id"}
+        _, err = lcu_request("POST", "/lol-lobby/v2/lobby", {"queueId": qid})
+        return {"ok": err is None, "err": err}
     if name == "lock_pick":
         cid = int(cmd.get("championId", 0))
         # Need to know action ID - fetch session first

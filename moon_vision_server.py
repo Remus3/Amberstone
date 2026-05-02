@@ -591,6 +591,21 @@ class Handler(BaseHTTPRequestHandler):
             # Agent drains queued commands. Returns and clears queue.
             if not self._auth(): self._j(401,{"error":"unauthorized"}); return
             self._j(200, {"commands": lcu_drain_pending()})
+        elif self.path == "/lcu-cmd-result" or self.path.startswith("/lcu-cmd-result?"):
+            # Dashboard polls this after queueing a command so it can
+            # surface LCU errors (e.g. non-leader tried to start_matchmaking).
+            if not self._auth(): self._j(401,{"error":"unauthorized"}); return
+            q = self.path.split("?", 1)[1] if "?" in self.path else ""
+            rid = None
+            for kv in q.split("&"):
+                if kv.startswith("id="):
+                    try: rid = int(kv[3:])
+                    except ValueError: pass
+            if rid is None: self._j(400, {"error":"id required"}); return
+            with _lcu_cmd_lock:
+                rec = _lcu_cmd_results.get(rid)
+            if rec is None: self._j(404, {"error":"pending"}); return
+            self._j(200, rec)
         elif self.path == "/sync/list":
             if not self._auth(): self._j(401,{"error":"unauthorized"}); return
             self._j(200,{"files":[f.name for f in SYNC_DIR.iterdir() if f.is_file()]})
