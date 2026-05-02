@@ -331,8 +331,13 @@ class VisionTracker:
                 visible = False
             elif shared_vision:
                 # ARAM-style: every alive enemy is on-map by design; position
-                # data is "NONE" so tracked state stays empty and that's fine.
+                # data is "NONE" so we can't derive a real zone, but stamp a
+                # constant label + current game_time so consumers (minimap
+                # caption, coach prompts) see meaningful "alive on bridge"
+                # state instead of None.
                 visible = True
+                tracked["last_seen_t"] = game_time
+                tracked["last_seen_zone"] = "on_bridge"
             else:
                 if tracked["last_pos"] is None:
                     # First sighting of this champion
