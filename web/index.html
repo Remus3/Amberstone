@@ -46,6 +46,7 @@
         <button type="button" class="view-menu-item" data-view="loadouts"    role="menuitem">Loadouts</button>
         <button type="button" class="view-menu-item" data-view="settings"    role="menuitem">Settings</button>
         <button type="button" class="view-menu-item" data-view="diagnostics" role="menuitem">Diagnostics</button>
+        <button type="button" class="view-menu-item" data-view="coach-calls" role="menuitem">Coach Calls</button>
         <div class="view-menu-divider"></div>
         <button type="button" class="view-menu-item view-menu-dev" data-view="dev" role="menuitem">⚙ Dev / Sim Preview</button>
         <div class="view-menu-divider"></div>
@@ -407,19 +408,6 @@
        /api/decisions/<id> and animate removal. -->
   <section id="coach-decisions" class="coach-decisions" hidden aria-live="polite">
     <ol id="coach-decisions-list" class="coach-decisions-list"></ol>
-  </section>
-
-  <!-- Tier 4 #18 (2026-05-01): resolved coach decisions log — shows the
-       last N decisions the detector flagged plus the user's choice for
-       each. Self-review path: "did I contest the right Barons?" Hidden
-       when the log is empty. Polled every 30s by dashboard.js
-       (RECENT_COACH_CALLS block). -->
-  <section id="recent-coach-calls" class="recent-coach-calls" hidden aria-label="Recent coach calls">
-    <header class="recent-coach-calls-head">
-      <span class="recent-coach-calls-label">Recent Coach Calls</span>
-      <span class="recent-coach-calls-hint">— flag → choice review</span>
-    </header>
-    <ol id="recent-coach-calls-list" class="recent-coach-calls-list"></ol>
   </section>
 
   <main aria-label="Coaching panels">
@@ -1041,6 +1029,29 @@
             </table>
           </div>
         </main>
+      </div>
+    </section>
+
+    <!-- Tier 4 #18 (2026-05-01) → moved off the home page (s27l follow-up):
+         resolved coach decisions log. Self-review surface — "did I contest
+         the right Barons?" The inner #recent-coach-calls section toggles
+         hidden when the log is empty (set by dashboard.js
+         renderRecentCoachCalls). Polled every 30s globally so the data is
+         fresh whenever the user navigates here. -->
+    <section id="view-coach-calls" class="view-section" hidden>
+      <div class="view-section-head">
+        <h2>COACH CALLS</h2>
+        <span class="view-section-sub">Resolved decisions — flag → choice review</span>
+      </div>
+      <div class="view-section-body">
+        <section id="recent-coach-calls" class="recent-coach-calls" hidden aria-label="Recent coach calls">
+          <header class="recent-coach-calls-head">
+            <span class="recent-coach-calls-label">Recent Coach Calls</span>
+            <span class="recent-coach-calls-hint">— flag → choice review</span>
+          </header>
+          <ol id="recent-coach-calls-list" class="recent-coach-calls-list"></ol>
+        </section>
+        <p id="recent-coach-calls-empty" class="home-empty">No resolved coach calls yet — they'll appear here after the detector flags a moment and you make a choice.</p>
       </div>
     </section>
   </div>
