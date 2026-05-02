@@ -45,6 +45,11 @@ _RELAY_MAX_AGE_S = 8.0
 # without surfacing new data.
 _DEFAULT_POLL_S = 0.75
 
+# Modes with shared lane vision — every alive enemy is map-visible by design,
+# so position tracking can't derive fog (and Live Client emits position="NONE"
+# anyway). KIWI is the internal name for ARAM Mayhem.
+_SHARED_VISION_MODES = frozenset({"ARAM", "KIWI"})
+
 
 # ── Zone labelling ────────────────────────────────────────────────────────────
 # League SR map is roughly 14800x14800 game units, origin at Order/Blue base
@@ -296,6 +301,7 @@ class VisionTracker:
         if not self._active_team:
             return {}
         enemies = [p for p in all_players if p.get("team") and p.get("team") != self._active_team]
+        shared_vision = game_mode.upper() in _SHARED_VISION_MODES
         out: dict = {}
         for p in enemies:
             champ = p.get("championName") or "?"
@@ -323,6 +329,10 @@ class VisionTracker:
             if is_dead:
                 # Death is its own state; don't update last_seen on respawn-pos jumps
                 visible = False
+            elif shared_vision:
+                # ARAM-style: every alive enemy is on-map by design; position
+                # data is "NONE" so tracked state stays empty and that's fine.
+                visible = True
             else:
                 if tracked["last_pos"] is None:
                     # First sighting of this champion
