@@ -4,12 +4,15 @@ Live League / TFT coaching overlay + dashboard. Reads Riot Live Client API,
 calls Claude Haiku for fast coaching and Sonnet for vision, writes JSON to
 `data/`, and serves a tkinter overlay + a `:8888` web dashboard viewed in Edge fullscreen on Game-PC's secondary display.
 
-## Topology (post-2026-04-19 migration)
+## Topology (post-2026-04-19 migration; tailnet primary since s29-s30, 2026-05-02)
 
-| Machine | IP | Display | Role |
-|---|---|---|---|
-| **Legion** | 192.168.8.230 | 1 monitor | Runs RC (`main.py`), supervisor, vision server, web dashboard |
-| **Game-PC** | 192.168.8.237 | 2 monitors — primary TV (the game) + secondary iPad-as-monitor over Duet (1920×1280 native, 100% OS scale, no touch, no apps; the iPad is just a wireless display panel) | Runs League client; exposes Riot Live Client API on `:2999` (read by Legion over LAN). Edge runs fullscreen on the secondary display showing the RC dashboard |
+| Machine | Tailnet name / IP | LAN IP (fallback) | Display | Role |
+|---|---|---|---|---|
+| **Legion** | `legion-rc` / `100.70.22.55` | `192.168.8.230` | 1 monitor | Runs RC (`main.py`), supervisor, vision server, web dashboard |
+| **Game-PC** | `gamepc-rc` / `100.95.66.128` | `192.168.8.237` | 2 monitors — primary TV (the game) + secondary iPad-as-monitor over Duet (1920×1280 native, 100% OS scale, no touch, no apps; the iPad is just a wireless display panel) | Runs League client; exposes Riot Live Client API on `:2999` (read by Legion). Edge runs fullscreen on the secondary display showing the RC dashboard |
+| **Peer** (cross-Claude peer) | `peer-host` / `<peer-tailnet-ip>` | — | — | Separate Peer-VIP project; reachable via `core/bridge.send()` for RC↔Peer message passing |
+
+All three nodes live in tailnet `tailc150de.ts.net` under `<operator-email>`. **Prefer tailnet hostnames** in new code (cert SAN covers `legion-rc`, `100.70.22.55`, and the FQDN). LAN IPs still resolve and are kept as fallback / for legacy probes.
 
 Vision is **in-process on Legion** at `127.0.0.1:8889` — no Moon-PC anymore.
 Historic LAN refs (`192.168.8.230:8889` from RC code) were migrated to loopback.
@@ -67,7 +70,7 @@ Supervisor has a PID lock — duplicate launches abort cleanly.
 - GET `/`, `/api/state`, `/api/health`, `/manifest.json`, `/icon.svg`
 - POST `/api/input` `{text}` — writes to `coaching_data.json.pregame`
 - POST `/api/command` `{command: "force_vision"|"refresh"|"clear_pregame"}`
-Viewed in Edge fullscreen on Game-PC's secondary display (1920×1280 native, 100% OS scale → 1920×1280 effective CSS viewport). HTTPS with self-signed cert; either import the cert or set `edge://flags/#unsafely-treat-insecure-origin-as-secure` for `https://192.168.8.230:8888`.
+Viewed in Edge fullscreen on Game-PC's secondary display (1920×1280 native, 100% OS scale → 1920×1280 effective CSS viewport). HTTPS with mkcert-signed cert (SAN covers `legion-rc`, `100.70.22.55`, `legion-rc.tailc150de.ts.net`, `192.168.8.230`, `localhost`, `127.0.0.1`); Game-PC trusts the root CA, so `https://legion-rc:8888` resolves cleanly without flags. Use `tools/regen_rc_cert.ps1` to refresh with the canonical SAN list.
 
 ## Headless mode
 
@@ -85,7 +88,7 @@ return None safely.
 RC on Legion can't see Game-PC's screen directly. The pipeline:
 
 1. **Game-PC** runs `tools/gamepc_screen_agent.py` — `PIL.ImageGrab` every 2s,
-   POSTs to `http://192.168.8.230:8889/upload-frame` (auth: `X-RC-Token`).
+   POSTs to `http://legion-rc:8889/upload-frame` (auth: `X-RC-Token`; LAN IP `192.168.8.230` still resolves).
 2. **Vision server** caches the latest frame in memory (`_latest_frame`).
 3. **Coaches on Legion** call `modes.shared_vision._capture_screen()`, which
    GETs `http://127.0.0.1:8889/latest-frame` and returns the cached b64.
@@ -96,15 +99,18 @@ Tesseract installed at `C:\Program Files\Tesseract-OCR\tesseract.exe`
 
 **Game-PC deploy** (one-line bootstrap, idempotent):
 ```
-iex (iwr https://192.168.8.230:8888/agent/gamepc_boot.ps1).Content
+iex (iwr https://legion-rc:8888/agent/gamepc_boot.ps1).Content
 ```
-Pulls all 4 agents (`gamepc_screen_agent.py`, `gamepc_lcu_agent.py`,
-`gamepc_liveclient_relay.py`, `gamepc_mcp_server.py`) from Legion's
-`/agent/` allowlist, kills any zombie listeners, ensures the inbound
-firewall rule for `:8892` (MCP), starts whatever isn't healthy, and
-installs scheduled tasks (`RC-LCU`, `RC-LiveClientRelay`, `RC-MCP-Server`,
-plus `RC-ScreenAgent-*` variants) for boot persistence. See `tools/GAMEPC_CLAUDE.md` for the
-agent map.
+Pulls all 5 agents (`gamepc_screen_agent.py`, `gamepc_lcu_agent.py`,
+`gamepc_liveclient_relay.py`, `gamepc_mcp_server.py`, `gamepc_hotkey_listener.py`)
+plus support scripts (`start_gamepc_claude.ps1`) and the
+`process-bridge-tasks.md` slash-command (deployed to `~/.claude/commands/`
+for the bridge Claude session) from Legion's `/agent/` allowlist, kills
+any zombie listeners, ensures the inbound firewall rule for `:8892`
+(MCP), starts whatever isn't healthy, and installs scheduled tasks
+(`RC-LCU`, `RC-LiveClientRelay`, `RC-MCP-Server`, `RC-HotkeyListener`,
+`RC-GamePCBoot`, plus `RC-ScreenAgent-*` variants) for boot persistence.
+See `tools/GAMEPC_CLAUDE.md` for the agent map.
 
 TFT vision (`tft/tft_vision_reader.py`, `tft/tft_ocr_reader.py`) was migrated
 to the same `/latest-frame` relay path; both call `modes.shared_vision._capture_screen`
