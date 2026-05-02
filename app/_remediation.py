@@ -57,7 +57,7 @@ class RemediationService:
             except Exception as exc:
                 result_q.put({"ok": False, "error": str(exc)})
 
-        app.root.after(0, _do_restart)
+        app.scheduler.schedule(0, _do_restart)
         try:
             return result_q.get(timeout=5.0)
         except queue.Empty:

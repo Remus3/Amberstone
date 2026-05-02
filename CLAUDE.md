@@ -34,7 +34,7 @@ Historic LAN refs (`192.168.8.230:8889` from RC code) were migrated to loopback.
   and regression-prone):
   `main.py`, `core/log_setup.py`, `core/moon_proxy.py`, `lcu/lcu_client.py`,
   `core/game_snapshot.py`, `ops/rc_dev_runtime.py`, `ops/rc_supervisor.py`,
-  `app/__init__.py`, `app/_health_monitor.py`, `app/_remediation.py`,
+  `app/__init__.py`, `app/_loop.py`, `app/_health_monitor.py`, `app/_remediation.py`,
   `app/_state_authority.py`, `app/_overlay_manager.py`, `app/_game_lifecycle.py`.
 
 ## Restart workflow
@@ -71,11 +71,14 @@ Viewed in Edge fullscreen on Game-PC's secondary display (1920×1280 native, 100
 
 ## Headless mode
 
-Tkinter overlays are gone (T2 #6, 2026-05-01). The web dashboard at :8888 is
-the only UI. `tk.Tk()` root remains in `app/__init__.py` because game polling
-schedules itself via `root.after(...)`. `app.game_windows` and
-`app.client_windows` are now empty dicts kept only so `.get(...)` reads on
-removed paths still return None safely.
+Tkinter overlays are gone (T2 #6, 2026-05-01). T2 #8 C1 then dropped `tk.Tk()`
+itself — game polling re-arms via `app.scheduler.schedule(ms, fn)` on an
+asyncio event loop owned by `app/_loop.py:AppLoop`. `app.run()` blocks on
+`loop.run_forever()`; `_quit()` calls `scheduler.stop()`. `schedule()` is
+thread-safe (uses `call_soon_threadsafe` from non-loop threads). The web
+dashboard at :8888 is the only UI. `app.game_windows` and `app.client_windows`
+are still empty dicts kept only so `.get(...)` reads on removed paths still
+return None safely.
 
 ## Vision pipeline (relay-based)
 
@@ -112,11 +115,12 @@ local `ImageGrab` and is broken post-migration — needs the same relay refactor
 main.py                   entry: logging, key, DevRuntime, MetricsCache, web_dashboard, OverlayApp
 overlay.py                shim → app/__init__.py
 app/                      OverlayApp + decomposed managers (ARCH-001 complete)
-  __init__.py             OverlayApp orchestrator (~430L)
+  __init__.py             OverlayApp orchestrator (~300L, Tk-free since T2 #8)
+  _loop.py                AppLoop — asyncio scheduler (T2 #8 C1, replaces tk.Tk())
   _health_monitor.py      heartbeat
   _remediation.py         restart_game_poll, rebuild_panel_*
   _state_authority.py     envelope + win-pct
-  _overlay_manager.py     tk window lifecycle
+  _overlay_manager.py     dashboard-only shell (Tk windows removed in T2 #6)
   _game_lifecycle.py      game start/end, worker dispatch
 coaches/                  BaseCoach (ARCH-002) + aram/arena/brawl/sr/tft variants
   _base_coach.py          shared poll/vision loops, debounce, hotkey reg

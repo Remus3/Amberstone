@@ -1,12 +1,15 @@
 """
-app/__init__.py — OverlayApp orchestrator (post-T2 #6 dashboard-only)
+app/__init__.py — OverlayApp orchestrator (post-T2 #8 asyncio scheduler)
 
 ARCH-001 decomposed app.py 1228L into managers (HealthMonitor, RemediationService,
 StateAuthority, OverlayManager, GameLifecycleManager). T2 #6 then removed the
-tkinter overlay UI in favor of the web dashboard at :8888 — the tk.Tk() root
-remains as the scheduler for game polling via root.after().
+tkinter overlay UI in favor of the web dashboard at :8888. T2 #8 C1 replaced
+the tk.Tk() root with an asyncio event loop; game polling re-arms via
+`self.scheduler.schedule(ms, fn)` instead of `root.after(ms, fn)`. RC is
+genuinely Tk-free.
 
 Sub-managers:
+  app/_loop.py               — AppLoop (asyncio scheduler, replaces tk.Tk())
   app/_health_monitor.py     — HealthMonitor
   app/_remediation.py        — RemediationService (rebuild_panel_* now no-op)
   app/_state_authority.py    — StateAuthority + calc_win_pct
@@ -19,15 +22,13 @@ import os
 import json
 import logging
 import threading
-import traceback
-
-import tkinter as tk
 from pathlib import Path
 from typing import Optional
 from core.game_snapshot import (
     GameEnvelope, ClientSnapshot,
     MODE_CLIENT, MODE_SR, MODE_ARAM, MODE_TFT, MODE_ARENA, MODE_BRAWL,
 )
+from ._loop             import AppLoop
 from ._health_monitor   import HealthMonitor
 from ._remediation     import RemediationService
 from ._state_authority   import StateAuthority
@@ -69,9 +70,7 @@ except Exception: HAS_COMP_ADVISOR = False
 
 class OverlayApp:
     def __init__(self):
-        self.root = tk.Tk()
-        self.root.withdraw()
-        self.root.report_callback_exception = self._tk_exception
+        self.scheduler = AppLoop()
 
         self.mode          = "client"
         self.data          = {}
@@ -129,7 +128,7 @@ class OverlayApp:
         self._overlay_visible:     bool    = False
 
         self._poll_file()
-        self.root.after(200, self._start_game_poll)
+        self.scheduler.schedule(200, self._start_game_poll)
         # Managers
         self.health    = HealthMonitor(self)
         self.remediate = RemediationService(self)
@@ -156,12 +155,6 @@ class OverlayApp:
         _log.debug("envelope: mode=%s tft=%s aram=%s arena=%s brawl=%s",
                    mode, self._tft_mode, self._aram_mode, self._arena_mode, self._brawl_mode)
 
-    def _tk_exception(self, et, ev, tb):
-        msg = "".join(traceback.format_exception(et, ev, tb))
-        _log.error("Tkinter exception:\n%s", msg)
-        if sys.stderr:
-            sys.stderr.write(msg)
-
     # ── Overlay stubs (post-T2 #6: dashboard-only) ───────────────────────────
 
     def _build_windows(self):
@@ -180,9 +173,6 @@ class OverlayApp:
         self.overlays.update_content()
 
     # ── Health stubs (Phase 1) ────────────────────────────────────────────────
-
-    def _tk_pulse(self):
-        self.health.pulse()
 
     def get_health_state(self) -> dict:
         return self.health.get_health_state()
@@ -271,7 +261,7 @@ class OverlayApp:
                 else:
                     self._update_content()
         except Exception: pass
-        self.root.after(POLL_DATA_MS, self._poll_file)
+        self.scheduler.schedule(POLL_DATA_MS, self._poll_file)
 
     def _write_data(self):
         try:
@@ -309,9 +299,8 @@ class OverlayApp:
             except Exception:
                 _log.exception("tft_worker.stop raised in _quit")
         self._game_poll_stop.set()
-        self.root.quit()
-        self.root.destroy()
+        self.scheduler.stop()
         sys.exit(0)
 
     def run(self):
-        self.root.mainloop()
+        self.scheduler.run_forever()
