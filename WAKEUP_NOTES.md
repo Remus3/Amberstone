@@ -1475,3 +1475,69 @@ Tier 1 still 5/5, Tier 3 still 5/5, Tier 4 still 3/3. **#9 is the only remaining
 3. **Postgame nuance:** the `threading.Event` + `asyncio.to_thread(event.wait, ...)` pattern is the right call for any "external sender wakes a long-running consumer" case where the sender lives on multiple threads. Pure-AppLoop senders should prefer `asyncio.Event`; mixed-source senders should stay on `threading.Event`.
 4. Working tree clean after push; origin caught up. No carry-over.
 
+---
+
+# Session 27t — 2026-05-02 00:38 hand-off (enemy-strip candidate killed; memory hardened)
+
+> User said "continue WAKEUP_NOTES" — picked s27s's top "Easy / new feature"
+> candidate (per-enemy alive/dead tiles via the orphan team-strip render
+> functions). **No code shipped.** Investigation surfaced two independent
+> blockers that make this NOT an easy task; updated `reference_orphan_team_strips`
+> memory so future sessions don't re-attempt without the full picture.
+
+## What happened
+
+| Step | Detail |
+|---|---|
+| 1. Verified state | Origin/main caught up at `7e7c8af` (s27s C5 already pushed). Working tree clean. RC PID 5268 alive, mode=game (live ARAM in progress, KIWI). |
+| 2. Re-read s27r memory | `reference_orphan_team_strips` documented "step 1: add `<section id="enemy-strip">` markup". Began drafting the markup add. |
+| 3. Inspected `web/index.html:458` | **Smoking gun**: artifact comment `<!-- Ally/Enemy team strips removed 2026-04-23: giving minimap panel more visual space. -->`. Strips were *deliberately* removed; the orphan JS+CSS exist only because `feedback_field_remove_visual_only` mandates JS hooks survive UI removals. |
+| 4. Verified the data plumbing | Orphan JS reads `p.enemy_comp`; server-side `dashboard/_liveclient.py:116` emits `out["enemy_team"]`. **No rename layer between them.** Even if markup were re-added, `renderEnemyStrip(p.enemy_comp, ...)` would receive `undefined` → silent no-op. `p.ally_comp / team_comp / ally_spells / enemy_spells / enemy_respawns / target_priority` are all absent from current state pipeline. |
+| 5. Updated memory | `reference_orphan_team_strips.md` rewritten to flag both blockers prominently. `MEMORY.md` index line updated to reflect "not easy". |
+
+## Why this matters
+
+s27p, s27q, and s27s all ranked "per-enemy alive/dead tiles" as an **easy** candidate based on s27r's analysis. s27r found blocker #1 (no DOM) but missed:
+- **Blocker #1 is a deliberate product decision** — re-adding the strips reverses the 2026-04-23 visual-space call, not just enables dead code
+- **Blocker #2 (data field mismatch)** — never surfaced in s27r's investigation. The orphan JS would still no-op silently even with markup added.
+
+If a future session genuinely wants this feature, the *real* path:
+1. **Get explicit user approval** to undo the 2026-04-23 visual-space decision
+2. Server-side: rename or alias `enemy_team` → `enemy_comp` in `dashboard/_liveclient.py`; populate `ally_comp` from the same `allPlayers` filter
+3. HTML markup add (placement is its own design decision — inside or outside `<section id="minimap">`?)
+4. CSS already covers it via the orphan rules at `dashboard.css:1803-1940`
+5. Then optional: ARAM dead-state greying via `vision_state.enemies[champ].is_dead` (the s27r code that got reverted)
+
+That's at least 3 commits across 3 files, not the "single small commit" s27s implied.
+
+## Audit completion (unchanged)
+
+Tier 1 ✅ 5/5 · Tier 2 ✅ #5/#6/#6/#7 + #8 C1-C5 ✅ + #9 (avoid) · Tier 3 ✅ 5/5 · Tier 4 ✅ 3/3.
+
+s27t was a research-and-document outcome — no code shipped, no audit deltas.
+
+## Operational backlog
+
+- **0 unpushed commits** going in. **1 unpushed commit** going out (this WAKEUP_NOTES + memory update). Cloud routine deadline 2026-05-10 — 8 days away.
+- **Game-PC `/loop /process-bridge-tasks`** — bridge gauge ~3.7h stale at session start (13,375s per SessionStart probe). Same Game-PC-side issue.
+- `RC-PatchRefresh` residual error code clears on Wednesday 2026-05-06 (4 days away).
+
+## Next-session candidates
+
+The s27s candidate list shrinks: "per-enemy alive/dead tiles" is now correctly tagged as **non-easy / needs UI approval**. Remaining options:
+
+- **Easiest:** push this hand-off; clean stop.
+- **Easy / Game-PC side:** kick `/loop /process-bridge-tasks` back up on Game-PC Claude. Not RC-side.
+- **If user wants the team-strip feature anyway:** explicit approval to revert the 2026-04-23 removal, then ship the 3-commit plan above.
+- **Avoid:** T2 #9 DB compression (still high blast radius).
+- **Speculative:** ARAM minimap coords if Riot ever exposes positions (no work to do today; existing `_aggregator_k(x,z)` would activate automatically).
+
+Note: every Tier 1-3 audit item is still done. The audit-driven backlog is exhausted apart from #9 (avoid). New work past this point is **product feature work**, not audit work.
+
+## Bootstrap for next session
+
+1. Read CLAUDE.md (frozen list).
+2. Read this hand-off (s27t) — the orphan-strip rabbit hole is now fully documented in `reference_orphan_team_strips`. Trust the memory; don't re-investigate.
+3. **Investigation lesson:** when memory says "step 1 was never done", verify the *reason* before treating it as a typo of intent. The 2026-04-23 removal comment was 5 lines from the proposed insertion site; reading the surrounding HTML before drafting the markup change would have caught it in step 1, not step 3.
+4. Working tree state at end-of-session: clean (this hand-off is its own commit).
+
