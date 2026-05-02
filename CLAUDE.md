@@ -122,7 +122,8 @@ coaches/                  BaseCoach (ARCH-002) + aram/arena/brawl/sr/tft variant
   _base_coach.py          shared poll/vision loops, debounce, hotkey reg
 modes/                    overlay UIs per mode (aram_overlay, arena_overlay, brawl_overlay, shared_vision)
 core/                     game_snapshot, sr_aram_worker, tft_worker, theme, hotkeys, log_setup,
-                          moon_proxy (vision client), metrics_cache, lcu integration helpers
+                          moon_proxy (vision client), metrics_cache, lcu integration helpers,
+                          prom_metrics (T3 #12 — Prometheus exposition, zero-dep)
 tft/                      TFT engine + overlay (separate worker)
 ui/                       OverlayWindow base + ClientPanel (tabbed lobby panel)
 ops/                      rc_supervisor, rc_self_monitor, rc_dev_runtime, runtime/health.json
@@ -164,6 +165,9 @@ curl http://127.0.0.1:8889/health
 
 # Probe web dashboard
 curl http://127.0.0.1:8888/api/state
+
+# Prometheus metrics (T3 #12 — text/plain exposition for any scraper)
+curl -k https://127.0.0.1:8888/metrics
 
 # Data pipeline (patch day)
 cd scripts && python data_pipeline.py meta          # check version
