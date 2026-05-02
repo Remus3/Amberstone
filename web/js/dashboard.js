@@ -1483,6 +1483,16 @@
 
   function renderItemTiles(container, names, opts) {
     opts = opts || {};
+    // Idempotency: every coach state push hits this path, even when the
+    // item list is unchanged. Without this guard the IMG nodes get torn
+    // down and recreated each tick, which flashes the panel (especially
+    // visible when an item id 404s and the broken-image icon flickers).
+    const sig = JSON.stringify([
+      names, opts.cap || 6, !!opts.withArrows,
+      opts.currentGold || 0, opts.reasons || null,
+    ]);
+    if (container.dataset.tilesSig === sig) return;
+    container.dataset.tilesSig = sig;
     container.innerHTML = "";
     if (!names.length) {
       container.textContent = "—";
