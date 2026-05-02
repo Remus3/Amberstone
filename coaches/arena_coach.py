@@ -212,32 +212,6 @@ class Coach(BaseCoach):
     def _parse_raw_state(self, raw: dict) -> dict:
         return _parse_arena_state(raw)
 
-    def _attach_overlay_windows(self, root) -> dict:
-        from modes.arena_overlay import ArenaRightTop, ArenaRightBot, ArenaBottomStrip
-        return {
-            "rtop":   ArenaRightTop(root),
-            "rbot":   ArenaRightBot(root),
-            "bottom": ArenaBottomStrip(root),
-        }
-
-    # ── Overlay poll override (Arena uses win.update(data, teams)) ────────────
-
-    def _poll_overlay_file(self, root) -> None:
-        if not self._overlay or not self._running:
-            return
-        try:
-            if self._out.exists():
-                data  = json.loads(self._out.read_text(encoding="utf-8"))
-                teams = data.get("teams", [])
-                for win in self._overlay.values():
-                    try:
-                        win.update(data, teams)
-                    except Exception:
-                        pass
-        except Exception as exc:
-            logger.debug("Arena overlay poll: %s", exc)
-        root.after(500, lambda: self._poll_overlay_file(root))
-
     # ── Round tracker ─────────────────────────────────────────────────────────
 
     def _update_round_from_events(self, state: dict) -> str:

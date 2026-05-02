@@ -484,15 +484,9 @@ class AramPregamePanel(tk.Toplevel):
         """Update panel contents from session (called on Tk thread)."""
         self._last_session = session
 
-        # Show panel - apply spells once on first show. Respect HEADLESS:
-        # when the web dashboard owns the UI, keep this panel hidden.
+        # Dashboard owns the UI (T2 #6); panel stays withdrawn — only the
+        # data-side polling + summoner-spell apply still runs.
         if self._hidden:
-            try:
-                from app._overlay_manager import _HEADLESS
-            except Exception:
-                _HEADLESS = False
-            if not _HEADLESS:
-                self.deiconify()
             self._hidden = False
             self._apply_summoner_spells()  # apply once on first show
 

@@ -107,7 +107,6 @@ class Coach:
             self._poll_thread.join(timeout=2.0)
         if hasattr(self, "_engine"):
             self._engine.shutdown()
-        self._teardown_overlay()
         logger.info("TFT PBE Coach shutdown complete")
 
     def _force_refresh_all(self):
@@ -117,46 +116,6 @@ class Coach:
         if hasattr(self, "_engine") and self._last_data:
             if hasattr(self._engine, "_last_call"): self._engine._last_call = 0
             self._engine.submit(self._last_data)
-
-    def attach_overlay(self, root):
-        try:
-            from tft.tft_overlay import TftRightTop, TftRightBot, TftBottomStrip, TftAiStatusBar
-            ai_bar = TftAiStatusBar(root)
-            ai_bar.set_interval(15.0)
-            self._overlay = {
-                "rtop":   TftRightTop(root),
-                "rbot":   TftRightBot(root),
-                "bottom": TftBottomStrip(root),
-                "ai_bar": ai_bar,
-            }
-            # Wire AI bar into live analysis
-            if hasattr(self, "_live"):
-                self._live.set_ai_bar(ai_bar)
-            # CTRL+Right Click any panel -> force refresh + flash AI bar
-            for key, win in self._overlay.items():
-                if key == "ai_bar":
-                    continue
-                if hasattr(win, "bind_force_scan"):
-                    win.bind_force_scan(self._force_refresh_all, ai_bar=ai_bar)
-            root.after(500, lambda: self._poll_overlay_files(root))
-            logger.info("TFT PBE overlay attached (CTRL+right-click = force scan, AI bar active)")
-            # Wire comp selection from RightBot to BottomStrip
-            rbot   = self._overlay.get("rbot")
-            bottom = self._overlay.get("bottom")
-            if rbot and bottom and hasattr(rbot, "get_comp_ctrl"):
-                ctrl = rbot.get_comp_ctrl()
-                if ctrl:
-                    _orig_cb = ctrl._on_select
-                    def _comp_bridge(name, data, _b=bottom, _orig=_orig_cb):
-                        if _orig: _orig(name, data)
-                        _b.set_comp_positions(data)
-                        logger.info("Comp bridge PBE: %s -> BottomStrip", name or "FLEX")
-                    ctrl._on_select = _comp_bridge
-        except Exception as e:
-            logger.error("TFT PBE overlay attach failed: %s", e)
-
-    def detach_overlay(self):
-        self._teardown_overlay()
 
     # ── Poll loop ─────────────────────────────────────────────────────────────
 
@@ -196,83 +155,7 @@ class Coach:
         state["is_boon_round"] = round_key == BOON_ROUND
         state["tempo_note"]  = TEMPO_MILESTONES.get(stage_round_str, "")
 
-    # ── Overlay polling ───────────────────────────────────────────────────────
-
-    def _poll_overlay_files(self, root):
-        if not self._overlay or not self._running:
-            return
-        try:
-            data = {}
-            if self._tft_data_file.exists():
-                data = json.loads(self._tft_data_file.read_text(encoding="utf-8"))
-                if "god" in data and "carousel" not in data:
-                    data["carousel"] = data["god"]
-
-            # Merge fresh state over stale coaching file (fixes stuck round counter)
-            if self._last_data:
-                for _k in ("stage", "round", "level", "stage_round",
-                            "alive_others", "dead_others", "variant",
-                            "game_time_s", "kills", "deaths"):
-                    _v = self._last_data.get(_k)
-                    if _v is not None:
-                        data[_k] = _v
-                try:
-                    _ld = json.loads(self._live_data_file.read_text(encoding="utf-8"))
-                    _vh = _ld.get("hp")
-                    if _vh and isinstance(_vh, (int, float)) and 0 < float(_vh) <= 100:
-                        data["health"] = int(float(_vh))
-                    _vs = _ld.get("stage_round", "")
-                    if _vs and "-" in str(_vs):
-                        try:
-                            _vp  = str(_vs).split("-")
-                            _vst = int(_vp[0]); _vrn = int(_vp[1])
-                            _ast = data.get("stage", 1); _arn = data.get("round", 1)
-                            _v_idx = _vst * 10 + _vrn
-                            _a_idx = _ast * 10 + _arn
-                            _diff  = _v_idx - _a_idx
-                            if 1 <= _vst <= 9 and 1 <= _vrn <= 9 and -2 <= _diff <= 8:
-                                if data.get("stage_round", "?") != _vs:
-                                    logger.debug("Round: vision=%s table=%s-%s diff=%d",
-                                                 _vs, _ast, _arn, _diff)
-                                data["stage"]       = _vst
-                                data["round"]       = _vrn
-                                data["stage_round"] = _vs
-                            elif _diff > 8:
-                                logger.debug("Round: vision=%s rejected (OCR error? diff=%d)", _vs, _diff)
-                        except (ValueError, IndexError):
-                            pass
-                except Exception:
-                    pass
-
-            for win in self._overlay.values():
-                try: win.update(data)
-                except Exception: pass
-
-            # Live analysis data
-            if self._live_data_file.exists():
-                live = json.loads(self._live_data_file.read_text(encoding="utf-8"))
-                bottom = self._overlay.get("bottom")
-                rbot   = self._overlay.get("rbot")
-                if bottom and hasattr(bottom, "update_live"):
-                    bottom.update_live(live)
-                if rbot and hasattr(rbot, "update_live"):
-                    rbot.update_live(live)
-
-        except Exception as exc:
-            logger.debug("TFT PBE overlay file poll error: %s", exc)
-        root.after(500, lambda: self._poll_overlay_files(root))
-
     # ── Helpers ───────────────────────────────────────────────────────────────
-
-    def _teardown_overlay(self):
-        for win in list(self._overlay.values()):
-            try:
-                if hasattr(win, "destroy_clock"):
-                    win.destroy_clock()
-                win.destroy()
-            except Exception:
-                pass
-        self._overlay = {}
 
     def _ensure_data_files(self):
         for path, default in [
