@@ -200,4 +200,15 @@ if (Test-Path $claudeLauncher) {
 
 Write-Host ''
 Write-Host '=== ready ===' -ForegroundColor Cyan
+Write-Host '(this window auto-closes in 60s; Game-PC bridge Claude is in its own terminal)' -ForegroundColor DarkGray
 Write-Host ''
+
+# Auto-close: once the boot is green, the operator just wanted visual
+# confirmation. Holding the launcher window open indefinitely clutters
+# the desktop with an idle PS prompt. 60s gives a beat to read the
+# output, then the process exits — Game-PC bridge Claude stays in its
+# own visible terminal. [Environment]::Exit kills the host process
+# (covers the iex case where -NoExit is set on the shortcut and a bare
+# `exit` would only return from the script).
+Start-Sleep -Seconds 60
+[Environment]::Exit(0)
