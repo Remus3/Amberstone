@@ -10,12 +10,13 @@ Manages only pages prefixed "RC: " — never touches user-created pages.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import threading
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 _log = logging.getLogger("rc.lcu.runes")
 
@@ -291,6 +292,7 @@ class RuneWriter:
         self._lcu = lcu_client
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
+        self._task: Optional[Any] = None
         self._champ_id_map: dict[int, str] = {}
         self._last_applied_champion: str = ""  # champion we last wrote runes for
         self._last_applied_mode: str = ""
@@ -299,14 +301,27 @@ class RuneWriter:
     def start(self) -> None:
         self._champ_id_map = build_champ_id_map()
         self._stop_event.clear()
-        self._thread = threading.Thread(
-            target=self._run, name="RuneWriter", daemon=True
-        )
-        self._thread.start()
-        _log.info("RuneWriter started (%d champion IDs loaded)", len(self._champ_id_map))
+        try:
+            from app._loop import get_loop as _get_loop
+            _sched = _get_loop()
+        except Exception:
+            _sched = None
+        if _sched is not None:
+            self._task = _sched.spawn_task(self._run_async())
+            _log.info("RuneWriter started (%d champion IDs loaded, async)", len(self._champ_id_map))
+        else:
+            self._thread = threading.Thread(
+                target=self._run, name="RuneWriter", daemon=True
+            )
+            self._thread.start()
+            _log.info("RuneWriter started (%d champion IDs loaded, thread)", len(self._champ_id_map))
 
     def stop(self) -> None:
         self._stop_event.set()
+        if self._task is not None:
+            try: self._task.cancel()
+            except Exception: pass
+            self._task = None
         _log.info("RuneWriter stopped")
 
     def _run(self) -> None:
@@ -316,6 +331,17 @@ class RuneWriter:
             except Exception as exc:
                 _log.debug("RuneWriter poll error: %s", exc)
             self._stop_event.wait(self.POLL_INTERVAL)
+
+    async def _run_async(self) -> None:
+        while not self._stop_event.is_set():
+            try:
+                await asyncio.to_thread(self._poll)
+            except Exception as exc:
+                _log.debug("RuneWriter poll error: %s", exc)
+            try:
+                await asyncio.sleep(self.POLL_INTERVAL)
+            except asyncio.CancelledError:
+                return
 
     def _poll(self) -> None:
         session = self._lcu.get_champ_select()

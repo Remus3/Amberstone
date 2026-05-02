@@ -1390,3 +1390,88 @@ Tier 1 ✅ 5/5 · Tier 2 ✅ #5/#6/#6/#7 + #8 C1-C4 ✅ + #9 (avoid) · Tier 3 �
 3. Working tree clean; origin caught up at `957dab7`. No carry-over.
 4. **Verification lesson:** when adding rendering code, confirm the target DOM element exists in served HTML *before* committing — `curl -sk https://127.0.0.1:8888/ \| grep -i 'target-id'` is the 5-second check. Saves a revert.
 
+---
+
+# Session 27s — 2026-05-02 00:08 hand-off (T2 #8 C5 ship — LCU pollers async)
+
+> User pre-approved the frozen-file touch for `lcu_client.py` ("2 approved").
+> One commit, one RC restart, verified clean during a live ARAM game (Aram
+> Coach hot-reattached and fired 4 Haiku calls within ~30s of the new PID
+> coming up). **All 3 LCU pollers now ride the AppLoop in production.**
+> T2 #8 is now **fully complete (C1-C5 ✅)** — Tier 2 only #9 (DB
+> compression, avoid) remains.
+
+## What shipped
+
+| Commit | Audit | Summary |
+|---|---|---|
+| (this) | T2 #8 C5 | All 3 LCU pollers gain `_*_async` siblings + `start*` branches that prefer the AppLoop via `app._loop.get_loop()` and fall back to a daemon thread when no loop exists (tests, standalone harnesses). Same pattern as C4. **`lcu/lcu_client.py` (frozen, pre-approved):** added `import asyncio` + `Optional/Any` typing, `self._task` attr, refactored `_auto_accept_loop` body into a shared `_auto_accept_tick()` (sync, used by both paths), added `_auto_accept_loop_async` that wraps the tick in `asyncio.to_thread` + `asyncio.sleep`. `start_auto_accept` branches on `get_loop()`; `stop_auto_accept` cancels `self._task`. **`lcu/lcu_rune_writer.py`:** identical pattern — `_run_async` wraps `self._poll` in `to_thread`, `start()` branches on get_loop(), `stop()` cancels the task. **`lcu/lcu_postgame_collector.py`:** trickier (event-driven, not poll-driven). Refactored `_run` body into a shared `_capture_after_trigger(game_mode)` that owns the EOG-poll/HTTP burst. `_run_async` does `await asyncio.to_thread(self._trigger.wait, 30.0)` + `await asyncio.to_thread(self._capture_after_trigger, ...)` — the threading.Event still drives signaling (since `trigger()` is called from game_lifecycle on another thread), but the wait+burst no longer block the AppLoop. **+~80 LOC, 3 files.** |
+
+## Why threading.Event for the postgame trigger
+
+`PostgameCollector.trigger(game_mode)` is called from `app/_game_lifecycle.py` when a game ends — that runs on the AppLoop thread, but the trigger is consumed asynchronously by the collector's loop. Using `asyncio.Event` would require either the trigger sender to be on the same loop (it is, but it's also called from worker threads in some paths) or an extra `loop.call_soon_threadsafe(event.set)`. `threading.Event` with `await asyncio.to_thread(self._trigger.wait, 30.0)` works for both senders without ceremony — wait blocks on a worker thread, returns to the event loop. Same approach the C4 work used for `_stop` events.
+
+## Restart verification
+
+| Process | Old PID → New PID | Why |
+|---|---|---|
+| RC main | 2944 → 5268 | Pick up T2 #8 C5 |
+
+- `last_reload_ok=true` immediately
+- `ui_pulse_age_s=0.6` (well under 6s threshold)
+- `game_poll_worker_age_s=0.6` (well under 12s threshold)
+- All 6 dashboard endpoints 200 (`/api/state`, `/api/health/all`, `/api/decisions`, `/api/decisions/log`, `/metrics`, `/api/vision-state`)
+- Boot log lines confirm async path:
+  - `Auto-accept started (1.0s interval, async)`
+  - `RuneWriter started (172 champion IDs loaded, async)`
+  - `PostgameCollector started (async)`
+- Live ARAM game (KIWI mode, in progress at restart): **4 Haiku calls fired within ~30s** (`rc_coach_calls_total{purpose="aram_coach"} 4`, latency sum 13.7s = ~3.4s avg, vision tokens granted 3/0 denied). Confirms the async coach path (C3) interacts cleanly with the now-async LCU pollers (C5).
+- 0 problem-pattern lines (`ERROR | Traceback | ImportError | AttributeError | tkinter`) in 272 post-restart log lines
+
+## What's now non-threading-shaped (T2 #8 done)
+
+T2 #8 success criteria from s27f all green:
+1. ✅ `^import tkinter` → 0 hits in production tree (s27h)
+2. ✅ `tk\.Tk\(\)` → 0 production hits (s27g)
+3. ✅ `root\.after` → 0 hits in `app/` and `coaches/` (s27g)
+4. ✅ `_base_coach._poll_loop` and `_vision_loop` are `async def` (s27i)
+5. ✅ `restart_trigger.txt` workflow still works end-to-end
+6. ✅ All 5 dashboard endpoints 200, ARAM smoke clean
+7. ✅ CLAUDE.md "Headless mode" section updated (s27g)
+
+Plus the C4/C5 expansion: every long-running poller in production rides the AppLoop. The only remaining threading sources are (a) `dashboard/server.py` ThreadingHTTPServer (out of T2 #8 scope), (b) `core/hotkeys.py` Win32 polling (no benefit from converting), and (c) `to_thread` worker-pool offload of blocking I/O inside async tasks (intentional — keeps the AppLoop responsive).
+
+## Audit completion (updated)
+
+Tier 2 architecture & reliability:
+- ✅ #5 dashboard helper-shake (s27)
+- ✅ #6 dashboard helper-shake (s27)
+- ✅ #6 tkinter shim removal (s27c)
+- ✅ #7 bridge auto-flow watchdog (s27)
+- ✅ **#8 daemon threads → asyncio** — C1 ✅ (s27g), C2 ✅ (s27h), C3 ✅ (s27i), C4 ✅ (s27j), **C5 ✅ (THIS)**
+- ⏳ #9 DB compression (high blast radius, avoid)
+
+Tier 1 still 5/5, Tier 3 still 5/5, Tier 4 still 3/3. **#9 is the only remaining audit item across all tiers.**
+
+## Operational backlog
+
+- **1 unpushed commit** (this). Cloud routine deadline 2026-05-10 — 8 days away. Push at start of next session.
+- **Game-PC `/loop /process-bridge-tasks`** — bridge gauge ~3.3h stale at restart time (11,775s per `rc_bridge_gamepc_result_age_seconds`). Same Game-PC-side issue.
+- `RC-PatchRefresh` residual error code clears on Wednesday 2026-05-06.
+
+## Next-session candidates (post-T2 #8)
+
+- **Easiest:** push the C5 commit; **clean stopping point — every Tier 1-3 audit item is done**, only #9 (avoid) remains.
+- **Easy / Game-PC side:** kick `/loop /process-bridge-tasks` back up on Game-PC Claude.
+- **Easy / new feature ideas (not from audit):**
+  - Per-enemy alive/dead tiles on home/last-match view (needs `<section id="enemy-strip">` markup added to `web/index.html` first; orphan CSS in `dashboard.css:1803-1940` already styles it). See memory `reference_orphan_team_strips`.
+  - Improve ARAM minimap coords if Riot ever exposes positions (today: `position: "NONE"` per s27k memory; the existing `_aggregator_k(x,z)` would activate automatically if positions appear).
+- **Avoid:** T2 #9 DB compression — high blast radius on 1.7 GB rewind_history.db, low real benefit.
+
+## Bootstrap for next session
+
+1. Read CLAUDE.md (frozen list).
+2. Read this hand-off (s27s) — the C4/C5 pattern (sibling `_loop_async` next to `_loop`, `start()` branches on `get_loop()` with thread fallback) is now applied to **every** poller in the codebase. If you add a new poller, follow this pattern.
+3. **Postgame nuance:** the `threading.Event` + `asyncio.to_thread(event.wait, ...)` pattern is the right call for any "external sender wakes a long-running consumer" case where the sender lives on multiple threads. Pure-AppLoop senders should prefer `asyncio.Event`; mixed-source senders should stay on `threading.Event`.
+4. Working tree clean after push; origin caught up. No carry-over.
+
