@@ -906,3 +906,77 @@ Tier 1 still 5/5, Tier 3 still 5/5, Tier 4 still 3/3.
 2. Read this hand-off (s27j) — `ensure_loop()` is the pattern for any future "subsystem needs the AppLoop before OverlayApp constructs" case. Add the early `ensure_loop()` call in `main.py` whenever you add another pre-OverlayApp subsystem.
 3. If picking up the vision_tracker bug: read `core/vision_tracker.py:228-300`, particularly `_fetch_snapshot` and `_compute_enemies` — the shape error is somewhere in there. Likely a Live Client field that flipped from dict to string in a recent patch.
 
+---
+
+# Session 27k — 2026-05-01 22:23 hand-off (vision_tracker fix + push)
+
+> User picked the queue: pushed C3 + C4 backlog (clean origin/main), then
+> fixed the pre-existing vision_tracker shape bug surfaced by C4. One
+> commit, one RC restart, vision_state.json now updates every 0.75s and
+> the 1856-per-day debug log spam is gone.
+
+## What shipped
+
+| Action | Detail |
+|---|---|
+| `git push origin main` | `7f97e9d..725bcaf` — C3 (async coach loops) + C4 (async module pollers). Backlog → 0. Cloud routine deadline 2026-05-10 again safe. |
+| (this commit) | **vision_tracker fix.** `_compute_enemies` line 303: `pos = p.get("position") or {}` couldn't catch the case where Live Client emits `position: "NONE"` as a string (always in ARAM, sometimes for dead/loading players in SR) — `'NONE'` is truthy so `or {}` never fires, then `pos.get("x", 0.0)` raised `'str' object has no attribute 'get'` once per iteration, swallowed by the catch-all in `_loop`/`_loop_async`. Replaced with explicit `isinstance(pos, dict)` guard. **+5 LOC.** |
+
+## Why ARAM was always broken
+
+The Live Client API at `:2999/liveclientdata/allgamedata` exposes `position` as a `{x, z}` dict only for SR-style maps with locational data. **ARAM (and SR-on-fountain / dead / loading) returns `position: "NONE"` (literal string).** The `or {}` idiom is the standard "default to empty" pattern but it relies on falsy values; `'NONE'` is truthy so it bypasses the fallback.
+
+This was not a recent regression — it's been broken since the relay rolled out. WAKEUP s27g first noted the spam ("pre-existing harmless DEBUG line keeps appearing every ~750ms"), s27h reiterated, s27j re-confirmed (1856 occurrences in the 2026-05-01 log alone). C4 didn't introduce the bug; it just put the same broken loop on the AppLoop and re-surfaced the noise.
+
+## Verification
+
+- `data/vision_state.json` mtime age **0.5s** post-restart (was 178,011s = ~2 days stale beforehand)
+- Live ARAM game showed `total: 5` enemies tracked, `dead_count: 0`, all `visible=False` and `missing_for_s=None` — correct behavior since ARAM doesn't expose positions, so the tracker can't derive fog. is_dead and respawn timing still flow through.
+- 0 `vision_tracker loop: '...'` debug lines in the 197 post-restart log lines (was firing every 0.75s before)
+- All 6 dashboard endpoints 200 (`/api/state`, `/api/health/all`, `/api/decisions`, `/api/decisions/log`, `/metrics`, `/api/vision-state`)
+- ARAM Coach producing fresh advice mid-restart, ui_pulse_age_s healthy
+
+## What this DOESN'T fix (deferred)
+
+`vision_tracker` in ARAM still produces no actionable fog data — every enemy reads `visible=False, missing_for_s=null` because there are no position deltas to track. Enriching ARAM tracking would require:
+
+- (a) Marking ARAM enemies as "always visible to map" (since ARAM has shared lane vision)
+- (b) Or: switching to a different signal (e.g. event-stream parsing for kills/objectives)
+
+That's a feature, not a fix. The bug fix here just stops the crash; future work can lift ARAM out of the "no useful state" pit.
+
+## Restart verification
+
+| Process | Old PID → New PID | Why |
+|---|---|---|
+| RC main | 7076 → 9464 | Pick up vision_tracker fix |
+
+- `last_reload_ok=true` immediately
+- `ui_pulse_age_s=1.4`, `game_poll_worker_age_s=8.2` — both healthy
+- All 6 dashboard endpoints 200
+- vision_state.json updating every 0.75s as expected
+
+## Audit completion (unchanged from s27j)
+
+Tier 1 ✅ 5/5, Tier 2: ✅ #5/#6/#6/#7 + #8 C1-C4 ✅ (C5 LCU pollers optional, frozen-file approval needed) + #9 (avoid). Tier 3 ✅ 5/5, Tier 4 ✅ 3/3.
+
+## Operational backlog
+
+- **1 unpushed commit** (this fix). Cloud routine deadline 2026-05-10 — 9 days away. Push at start of next session.
+- **Game-PC `/loop /process-bridge-tasks`** — bridge gauge ~75 min stale at restart time. Same Game-PC-side issue.
+- `RC-PatchRefresh` residual error code clears on Wednesday 2026-05-06.
+
+## Next-session candidates
+
+- **Easiest:** push the fix; optional stop point.
+- **Easy / feature:** improve vision_tracker for ARAM specifically — mark all enemies as `visible=True` when `game_mode in ("ARAM", "KIWI", ...)` since ARAM has shared lane vision. Updates the dashboard minimap to actually show ARAM enemy presence. ~10 LOC, single file.
+- **Medium:** **T2 #8 C5 (optional)** — LCU pollers. `lcu_client.py` frozen, needs approval. Low payoff.
+- **Avoid:** T2 #9 DB compression (still high blast radius).
+
+## Bootstrap for next session
+
+1. Read CLAUDE.md (frozen list)
+2. Read this hand-off (s27k) — the `position == "NONE"` Live Client quirk is worth remembering for any other code that touches `allPlayers[i].position`. **Always `isinstance(pos, dict)` before `.get()`** when the source is the Live Client API.
+3. If picking up ARAM vision improvement: `core/vision_tracker.py:_compute_enemies` is where to special-case `game_mode == "KIWI"` (ARAM Mayhem internal name per CLAUDE.md `mode_strings` map; also `"ARAM"`).
+
+
