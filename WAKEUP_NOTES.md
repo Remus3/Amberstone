@@ -653,4 +653,87 @@ Tier 1 still 5/5, Tier 3 still 5/5, Tier 4 still 3/3.
    then verify each file doesn't actually use tk before deleting the import.
 4. For C3: read `coaches/_base_coach.py` end-to-end before touching.
 
+---
+
+# Session 27h — 2026-05-01 21:55 hand-off (T2 #8 C2 ship)
+
+> User invoked C2 directly off the s27g/s27f plan. One commit, one RC restart,
+> verified clean during a live ARAM game (re-attached seamlessly). **Production
+> code is genuinely tkinter-free** for the first time since the project started —
+> success criteria #1 from s27f satisfied.
+
+## What shipped
+
+| Commit | Audit | Summary |
+|---|---|---|
+| (this) | T2 #8 C2 | Repo-wide `import tkinter` purge — but as **archive**, not delete. Per `reference_archive_dir` memory, dead files moved (not deleted) to `_archive/2026-05-01-audit/{ui,modes,tft,core}/`. **13 files, ~5000 LOC**: entire `ui/` package (7 files: `__init__.py`, `base.py`, `client_panel.py`, `game_bottom.py`, `game_right_bot.py`, `game_right_top.py`, `mode_indicator.py`); `modes/{aram,arena,brawl}_overlay.py` (3); `tft/tft_overlay.py` + `tft/comp_control.py` (2); `core/tk_ai_bar_proxy.py` (1). All git-mv'd as pure renames so history follows. CLAUDE.md architecture map synced (modes/ now lists only `shared_vision`; tft/ lists engine modules; ui/ marked empty). Headless mode § already correct. |
+
+**Net diff: 13 file renames, 0 byte changes** (the renames ARE the cleanup). 4999 LOC moved out of production tree.
+
+## Why archive, not delete
+
+User memory `reference_archive_dir` is explicit: "move dead files to dated _archive/YYYY-MM-DD-audit/<area>/ subtree, **never delete**; reversible." s27g's one-off delete of `ui/aram_pregame_panel.py` was a special case (small file, dead since T2 #6, deleted in C1 sweep). For a 13-file purge, follow the documented pattern. Recovery is a single `git mv _archive/...` away.
+
+## Verification
+
+- **Pre-archive grep** confirmed zero production importers of any candidate file. The only `from ui.*` imports were *internal* to the `ui/` package itself; the only `from tft.comp_control` was internal to `tft/tft_overlay.py`; `core/tk_ai_bar_proxy.py` was referenced only by tests using a `FakeAiBarProxy` stub.
+- **Post-archive `Grep "^import tkinter"`** in production tree → **0 hits**. (18 hits remain in `_archive/`, expected and correct.)
+- **`py_compile`** clean on `main.py`, all 8 files in `app/`, all 7 coach files, and `core/tft_worker.py` + `core/sr_aram_worker.py` + `core/game_snapshot.py` + `modes/shared_vision.py`.
+- **Smoke tests:** `tests/phase2_smoke/test_tft_worker.py` 8/8 OK (including `test_no_tk_import_in_worker`), `tests/phase2_smoke/test_sr_aram_worker.py` 8/8 OK.
+- **`ops/rc_self_monitor.py`'s `allowed_panel_rebuild_keys`** still references `"game_bottom"`, `"game_rtop"`, `"game_rbot"` strings — these route to `app/_remediation.py:rebuild_panel(key)` which is a no-op since T2 #6, so the strings are harmless.
+- **`ops/rc_dev_runtime.py`'s `RESTART_ONLY_MODULES`** frozenset still names the archived modules (`tft.tft_overlay`, `ui.base`, `ui.game_bottom`, etc.) but as a *blocklist* (modules that may NOT be hot-reloaded). Since they no longer exist in the tree they can't be reloaded anyway. Frozen file → leave it.
+
+## Restart verification
+
+| Process | Old PID → New PID | Why |
+|---|---|---|
+| RC main | 4536 → 3436 | Pick up T2 #8 C2 archive |
+
+- `last_reload_ok=true` immediately
+- `ui_pulse_age_s=1.4` (under 6s threshold; pulse loop intact)
+- `game_poll_worker_age_s=9.0` (under 12s; SR/ARAM worker fine)
+- All 5 dashboard endpoints return 200 (`/api/state`, `/api/health/all`, `/api/decisions`, `/api/decisions/log`, `/metrics`)
+- Post-restart log: **no Traceback, ImportError, AttributeError, or tkinter references**
+- Live game in progress at restart time — **ARAM Haiku coach producing fresh advice within seconds of new PID coming up**, so the live-game re-attach worked seamlessly
+
+(One pre-existing harmless DEBUG line keeps appearing every ~750ms: `vision_tracker loop: 'str' object has no attribute 'get'`. Not introduced by C2; it was present in the s27g log too. Worth investigating in a separate session if vision-tracker overlay starts misbehaving on the dashboard.)
+
+## What's still tkinter-shaped (deferred to C3+)
+
+- **`coaches/_base_coach._poll_loop` and `_vision_loop`** are still threading-based. **C3** converts to `async def` (wrap blocking `messages.create` + Tesseract OCR in `asyncio.to_thread`). ~150L in `coaches/_base_coach.py`.
+- **`lcu/lcu_client.py`, `lcu/lcu_rune_writer.py`, `lcu/lcu_postgame_collector.py`** still use daemon threads. **C5 (optional)** covers these — `lcu_client.py` is frozen so needs explicit approval.
+- **Other module pollers** (`liveclient_cache`, `vision_tracker`, `obs_publisher`, `metrics_cache`, `log_retention`) per the s27f plan map to **C4** (~120L total).
+- **`dashboard/server.py` `ThreadingHTTPServer`** stays — out of T2 #8 scope.
+
+## Audit completion (updated)
+
+Tier 2 architecture & reliability:
+- ✅ #5 dashboard helper-shake (s27)
+- ✅ #6 dashboard helper-shake (s27)
+- ✅ #6 tkinter shim removal (s27c)
+- ✅ #7 bridge auto-flow watchdog (s27)
+- ⏳ **#8 daemon threads → asyncio** — C1 ✅ (s27g), **C2 ✅ (THIS)**, C3/C4/C5 remain
+- ⏳ #9 DB compression (high blast radius)
+
+Tier 1 still 5/5, Tier 3 still 5/5, Tier 4 still 3/3.
+
+## Operational backlog
+
+- **1 unpushed commit** (this) — push at start of next session before any new work. Cloud routine deadline 2026-05-10 — 9 days away.
+- **Game-PC `/loop /process-bridge-tasks`** — bridge gauge was ~53 minutes stale at session start (much fresher than s27g's 22h+; loop appears to have come back up since). Worth re-checking with `rc_facts.py` next session.
+- `RC-PatchRefresh` residual error code clears on Wednesday 2026-05-06.
+
+## Next-session candidates (ranked)
+
+- **Easiest:** push the C2 commit, optional stop point. Tier 1+3+4 fully green; Tier 2 only #8 (partial) + #9 (avoid) remain.
+- **Logical next:** **T2 #8 C3** — convert `_base_coach._poll_loop` + `_vision_loop` to `async def`. ~150L in `coaches/_base_coach.py`. Wrap blocking `messages.create` and Tesseract OCR in `asyncio.to_thread`. Mode coach subclasses don't change (abstract methods stay sync, run via `to_thread`).
+- **Medium:** **T2 #8 C4** — convert isolated module pollers (`liveclient_cache`, `vision_tracker`, `obs_publisher`, `metrics_cache`, `log_retention`) from daemon threads to `spawn_task(_loop_async())`. ~120L total.
+- **Avoid:** T2 #9 DB compression (still high blast radius on 1.7 GB rewind_history.db).
+
+## Bootstrap for next session
+
+1. Read CLAUDE.md (frozen list, arch map now reflects post-C2 state)
+2. Read this hand-off (s27h) — archive pattern is the precedent for future dead-code purges
+3. For C3: read `coaches/_base_coach.py` end-to-end before touching. Pay attention to `_poll_loop`, `_vision_loop`, hotkey registration, debounce, and how mode-coach subclasses plug in.
+
 

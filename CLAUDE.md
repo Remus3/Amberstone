@@ -124,12 +124,14 @@ app/                      OverlayApp + decomposed managers (ARCH-001 complete)
   _game_lifecycle.py      game start/end, worker dispatch
 coaches/                  BaseCoach (ARCH-002) + aram/arena/brawl/sr/tft variants
   _base_coach.py          shared poll/vision loops, debounce, hotkey reg
-modes/                    overlay UIs per mode (aram_overlay, arena_overlay, brawl_overlay, shared_vision)
+modes/                    shared_vision (relay screen-grab client used by coaches)
+                          [aram/arena/brawl_overlay archived in T2 #8 C2 — _archive/2026-05-01-audit/modes/]
 core/                     game_snapshot, sr_aram_worker, tft_worker, theme, hotkeys, log_setup,
                           moon_proxy (vision client), metrics_cache, lcu integration helpers,
                           prom_metrics (T3 #12 — Prometheus exposition, zero-dep)
-tft/                      TFT engine + overlay (separate worker)
-ui/                       OverlayWindow base + ClientPanel (tabbed lobby panel)
+tft/                      TFT engine (tft_state_reader, tft_live_analysis, tft_coach_engine, tft_data, tft_pbe_*)
+                          [tft_overlay + comp_control archived in T2 #8 C2]
+ui/                       (empty — entire package archived in T2 #8 C2; see _archive/2026-05-01-audit/ui/)
 ops/                      rc_supervisor, rc_self_monitor, rc_dev_runtime, runtime/health.json
 lcu/                      LCU client, auto-accept, rune writer, postgame collector
 data/                     coaching artifacts (atomic-written, polled by overlays + dashboard)
