@@ -106,8 +106,11 @@ installs scheduled tasks (`RC-LCU`, `RC-LiveClientRelay`, `RC-MCP-Server`,
 plus `RC-ScreenAgent-*` variants) for boot persistence. See `tools/GAMEPC_CLAUDE.md` for the
 agent map.
 
-TFT vision (`tft/tft_vision_reader.py`, `tft/tft_ocr_reader.py`) still uses
-local `ImageGrab` and is broken post-migration — needs the same relay refactor.
+TFT vision (`tft/tft_vision_reader.py`, `tft/tft_ocr_reader.py`) was migrated
+to the same `/latest-frame` relay path; both call `modes.shared_vision._capture_screen`
+and crop client-side. The only remaining `ImageGrab` callers in the production tree
+are Game-PC-side tools (`tools/gamepc_screen_agent.py`, `tools/gamepc_mcp_server.py`,
+`ops/rc_file_bridge.py` — all expected, since Game-PC has the screen).
 
 ## Architecture map
 

@@ -1541,3 +1541,60 @@ Note: every Tier 1-3 audit item is still done. The audit-driven backlog is exhau
 3. **Investigation lesson:** when memory says "step 1 was never done", verify the *reason* before treating it as a typo of intent. The 2026-04-23 removal comment was 5 lines from the proposed insertion site; reading the surrounding HTML before drafting the markup change would have caught it in step 1, not step 3.
 4. Working tree state at end-of-session: clean (this hand-off is its own commit).
 
+---
+
+# Session 27u — 2026-05-02 00:55 hand-off (CLAUDE.md TFT-vision line sync)
+
+> User said "continue WAKEUP_NOTES" again after s27t. Audit backlog is
+> already exhausted; looked for stale-doc / known-bug cleanups instead.
+> Found CLAUDE.md carrying a stale "TFT vision is broken post-migration"
+> claim that was already fixed at the code level. One-line doc sync.
+
+## What shipped
+
+| Commit | Type | Summary |
+|---|---|---|
+| (this) | docs | `CLAUDE.md` line 109-110: replaced "TFT vision still uses local `ImageGrab` and is broken post-migration — needs the same relay refactor" with the current truth: both `tft/tft_vision_reader.py` and `tft/tft_ocr_reader.py` were already migrated to the `/latest-frame` relay (audit comments at lines 111-118 and 53-61 of those files prove the migration happened on 2026-04-22 and during cycle 11 / 2026-04-25 respectively). Added a positive statement of where `ImageGrab` is *correctly* still used: Game-PC-side tools (`tools/gamepc_screen_agent.py`, `tools/gamepc_mcp_server.py`, `ops/rc_file_bridge.py`) — Game-PC has the screen, so those calls are correct. **+5 LOC, -2 LOC in CLAUDE.md.** No code changes; no RC restart. |
+
+## How the staleness was caught
+
+s27t closed the obvious "easy" candidate with a Document outcome rather than code. With the audit backlog exhausted, scanning for stale-doc / known-bug items was the cleanest productive use of the session. CLAUDE.md was the natural target — it's the canonical "what's broken now" reference for future sessions. A `Grep "ImageGrab" --include="*.py"` confirmed the only production-tree callers are Game-PC-side, which means TFT vision is *not* broken — the doc was just out of date.
+
+## What this prevents
+
+Before this fix, a future session reading CLAUDE.md might:
+- Pick "TFT vision relay refactor" as a productive task
+- Spend an hour discovering both files have already been migrated
+- End with a doc-sync commit that does the same work this session does in 2 minutes
+
+That's exactly what would have happened to me this session if I hadn't stopped to verify the claim before working.
+
+## Audit completion (unchanged)
+
+Tier 1 ✅ 5/5 · Tier 2 ✅ #5/#6/#6/#7 + #8 C1-C5 ✅ + #9 (avoid) · Tier 3 ✅ 5/5 · Tier 4 ✅ 3/3.
+
+s27u was a doc-sync, not an audit item.
+
+## Operational backlog
+
+- **1 unpushed commit** (this) once committed. Cloud routine deadline 2026-05-10 — 8 days away.
+- **Game-PC `/loop /process-bridge-tasks`** — bridge gauge ~3.7h stale at session start. Same Game-PC-side issue.
+- `RC-PatchRefresh` residual error code clears on Wednesday 2026-05-06.
+
+## Next-session candidates
+
+The audit backlog is still exhausted apart from #9 (avoid). Possibilities:
+
+- **Easiest:** push this commit; clean stop.
+- **Easy / Game-PC side:** kick `/loop /process-bridge-tasks` back up on Game-PC Claude.
+- **Easy / doc audit:** scan the rest of CLAUDE.md (and README, ROADMAP, INFOGRAPH per `feedback_no_history_rewrite`) for any *other* stale claims like the TFT line. Quick win if any are found; cheap no-op if not. Low risk.
+- **Easy / known issue from CLAUDE.md priority 3:** Tiered vision still 🟡 — needs (a) calibration against an in-game frame and (b) coach-side routing that calls Tesseract for cheap fields and only escalates to Sonnet when needed. The pieces are in place (`/api/ocr`, `/api/ocr-crop`, regions in `data/vision_regions.json`). One scoped session per piece.
+- **Avoid:** T2 #9 DB compression.
+- **Speculative:** team-strip feature if user *explicitly* approves the 2026-04-23 visual-space reversal (per s27t memory).
+
+## Bootstrap for next session
+
+1. Read CLAUDE.md (frozen list) — now slightly more trustworthy after this sync.
+2. Read this hand-off (s27u). The pattern: when a CLAUDE.md claim is suspicious, `Grep` the codebase before treating it as truth.
+3. **Doc-sync discipline:** only update CLAUDE.md / living docs. `feedback_no_history_rewrite` says don't touch dated artifacts (AUDIT_*, PHASE_*, ARCH-* docs, the `(2026-04-19)` priority snapshot header).
+
