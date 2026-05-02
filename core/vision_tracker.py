@@ -14,12 +14,13 @@ Run as a background daemon thread; see VisionTracker.start_background().
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import threading
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 _log = logging.getLogger("rc.vision_tracker")
 _APP_DIR = Path(__file__).parent.parent
@@ -133,6 +134,7 @@ class VisionTracker:
         self._active_team: Optional[str] = None
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
+        self._task: Optional[Any] = None  # asyncio.Task / Future
         self._lock = threading.Lock()
 
     # ── Public API ────────────────────────────────────────────────────────
@@ -188,19 +190,32 @@ class VisionTracker:
             self._active_team = None
 
     def start_background(self) -> None:
-        """Launch a daemon thread that polls the relay and writes
-        vision_state.json on each successful tick."""
-        if self._thread and self._thread.is_alive():
+        """Launch the relay poller. Prefers spawning on the main AppLoop;
+        falls back to a daemon thread when no loop exists."""
+        if (self._thread and self._thread.is_alive()) or self._task is not None:
             return
         self._stop.clear()
-        self._thread = threading.Thread(target=self._loop, name="vision-tracker", daemon=True)
-        self._thread.start()
-        _log.info("vision_tracker started (poll=%.2fs, out=%s)", self._poll_s, self._out)
+        try:
+            from app._loop import get_loop as _get_loop
+            _sched = _get_loop()
+        except Exception:
+            _sched = None
+        if _sched is not None:
+            self._task = _sched.spawn_task(self._loop_async())
+            _log.info("vision_tracker started (poll=%.2fs, out=%s, async)", self._poll_s, self._out)
+        else:
+            self._thread = threading.Thread(target=self._loop, name="vision-tracker", daemon=True)
+            self._thread.start()
+            _log.info("vision_tracker started (poll=%.2fs, out=%s, thread)", self._poll_s, self._out)
 
     def stop(self) -> None:
         self._stop.set()
         if self._thread:
             self._thread.join(timeout=3)
+        if self._task is not None:
+            try: self._task.cancel()
+            except Exception: pass
+            self._task = None
 
     # ── Internals ─────────────────────────────────────────────────────────
 
@@ -224,6 +239,29 @@ class VisionTracker:
             except Exception as exc:
                 _log.debug("vision_tracker loop: %s", exc)
             self._stop.wait(self._poll_s)
+
+    async def _loop_async(self) -> None:
+        # _fetch_snapshot reads from the in-memory liveclient_cache (fast);
+        # ingest + _write_atomic are dict transforms + a tmp-file replace
+        # (also fast). All inline — no to_thread needed.
+        while not self._stop.is_set():
+            try:
+                snap, age = self._fetch_snapshot()
+                if snap is None:
+                    pass
+                elif age > _RELAY_MAX_AGE_S:
+                    if self._tracked:
+                        _log.info("vision_tracker: relay stale (%.1fs), resetting tracked state", age)
+                        self.reset()
+                else:
+                    self.ingest(snap)
+                    self._write_atomic()
+            except Exception as exc:
+                _log.debug("vision_tracker loop: %s", exc)
+            try:
+                await asyncio.sleep(self._poll_s)
+            except asyncio.CancelledError:
+                return
 
     def _fetch_snapshot(self) -> tuple[Optional[dict], float]:
         # 2026-05-01: pulled off direct HTTP onto the shared liveclient_cache

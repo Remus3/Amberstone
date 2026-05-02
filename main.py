@@ -100,6 +100,18 @@ try:
 except Exception as e:
     _log.warning("DevRuntime init failed (non-fatal): %s", e)
 
+# — Asyncio scheduler (T2 #8 C4, 2026-05-01)
+# Construct the AppLoop singleton early so the module pollers below
+# (metrics_cache, liveclient_cache, log_retention, vision_tracker via
+# the dashboard, obs_publisher via the dashboard) can spawn_task on it
+# instead of starting daemon threads. The loop only starts running when
+# `app.run()` calls `loop.run_forever()` near the end of `main()`.
+try:
+    from app._loop import ensure_loop as _ensure_app_loop
+    _ensure_app_loop()
+except Exception as _e:
+    _log.warning("ensure_loop failed (non-fatal, modules will use thread fallback): %s", _e)
+
 # — Metrics cache (Phase 1 Step 2)
 # Background thread reads runtime artifacts every 5s.
 # Uses the same runtime_dir authority as DevRuntime: resolved from _rc_cfg,
