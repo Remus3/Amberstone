@@ -1173,3 +1173,112 @@ s27n was a follow-up to s27l, not an audit item.
 2. Read this hand-off (s27n) — `tracked` dict accepts partial stamps (zone + t without pos), which is the pattern for shared-vision style branches. Any future "no positional data but enemies are observable" mode just needs a constant zone label, no coordinate plumbing.
 3. If picking up the minimap caption follow-up: start with `Grep "mm-img-caption\|last_seen_zone" web/js/dashboard.js` to find the render path, then check what it does with empty/None zone strings today — the fix may simply be "render the new on_bridge string verbatim" or "special-case ARAM caption text."
 
+---
+
+# Session 27o — 2026-05-01 22:54 hand-off (push backlog + screenshot verify)
+
+> User picked candidate (a) from s27n — pushed the 3-commit backlog and
+> closed s27m's deferred visual verification of the `#coach-calls` sub-page.
+> No code changes; ops + verification only.
+
+## What shipped
+
+| Action | Detail |
+|---|---|
+| `git push origin main` | `eaa35a8..29ed1e1` — s27l/s27m/s27n trio. Backlog → 0. Cloud routine deadline 2026-05-10 again safe. |
+| Screenshot verify | Captured Game-PC monitor 1 with dashboard navigated to `https://192.168.8.230:8888/#coach-calls`. View badge reads `AUTO · COACH CALLS`, section heading + subtitle render correctly, two `/api/decisions/log` entries display with `CONTEST` tags ("Dragon in 18s — 3 enemies missing", "Baron in 30s — 3 enemies missing"), empty placeholder correctly hidden. **s27m's deferred visual verification is now closed.** |
+
+## Bonus signal (still parked from s27n)
+
+While dashboard was on default `last-match` view (pre-nav), MAP STATE panel only rendered the timeline bar — no `on_bridge` enemy presence visible. That **confirms** the s27n on_bridge stamp data isn't being consumed by the minimap caption renderer. Fresh evidence that the parked s27n minimap-UX follow-up is real work, not speculative.
+
+## Audit completion (unchanged)
+
+Tier 1 ✅ 5/5 · Tier 2 ✅ #5/#6/#6/#7 + #8 C1-C4 ✅ + #9 (avoid) · Tier 3 ✅ 5/5 · Tier 4 ✅ 3/3.
+
+## Operational backlog
+
+- **0 unpushed commits.** Origin/main current through `29ed1e1`.
+- **Game-PC `/loop /process-bridge-tasks`** — bridge gauge ~115 min stale at session start (6916s per SessionStart probe). Same Game-PC-side issue.
+- `RC-PatchRefresh` residual error code clears on Wednesday 2026-05-06.
+
+## Next-session candidates
+
+- **Easy / minimap UX:** s27n's parked minimap caption follow-up — now backed by visual evidence from this session's first capture (MAP STATE panel doesn't surface on_bridge). `Grep "mm-img-caption\|last_seen_zone" web/js/dashboard.js` to find the render path, then either render `last_seen_zone` verbatim or special-case shared-vision modes. ~10–30 LOC.
+- **Easy / cosmetic:** Edge isn't currently fullscreen (visible browser chrome in the screenshot). User exited fullscreen to navigate. F11 restores the documented setup; no code change needed.
+- **Medium:** **T2 #8 C5 (optional)** — LCU pollers. `lcu_client.py` frozen, needs approval. Low payoff.
+- **Avoid:** T2 #9 DB compression (still high blast radius).
+
+## Bootstrap for next session
+
+1. Read CLAUDE.md (frozen list)
+2. Read this hand-off (s27o) — visual-verify-after-UI-changes per `feedback_screenshot_after_ui_changes` is now confirmed working: capture Game-PC monitor 1 (1920×1280, secondary display via Duet), browser will show the dashboard if user is on it.
+3. If picking up the minimap caption follow-up: the render path lives in `web/js/dashboard.js`; `data/vision_state.json` already updates every 0.75s with the new `last_seen_zone="on_bridge"` data per s27n verify.
+
+---
+
+# Session 27p — 2026-05-01 23:05 hand-off (MAP STATE pill — shared-vision render)
+
+> User said "continue WAKEUP_NOTES" — picked s27o's parked minimap-UX
+> follow-up. One commit, **no RC restart** (web/* are static, Edge picks
+> them up on refresh). Verified live against the in-progress ARAM game from
+> s27m/s27n — pill now reads `● 3 on bridge · 2 dead 0s ago` instead of
+> being hidden.
+
+## What shipped
+
+| Commit | Type | Summary |
+|---|---|---|
+| (this) | feature | `web/js/dashboard.js` — split the MAP STATE pill render into SR vs shared-vision paths. **(1)** Refactored `_renderMmStateLine(host, allyCount, enemyCount)` → `_renderMmStateLine(host, countText)` so callers build their own count line. SR site at L2511 now passes `` `${allyCount} ally · ${enemyCount} enemy` `` verbatim. **(2)** In `renderMinimapCanvases`, when `state.mode === "aram"`, skip the position-based pill render entirely (positions are always empty in shared-vision; would otherwise hide the pill). **(3)** In `refreshVisionOverlay`, hoisted the `/api/vision-state` fetch above the imgWrap-hidden early-return, then added a shared-vision branch driven by `vs.summary.visible_count` / `dead_count`: renders `` `${visibleCount} on bridge · ${deadCount} dead` `` via `_renderMmStateLine`. Caches the count signature on `MM.status._sharedSig` so we only force a heart-pulse + age-reset when numbers change; idle ticks just refresh `_lastT` to keep "Xs ago" pinned at 0s. SR path also clears `_sharedSig` on entry so a mode swap doesn't suppress the next shared-vision redraw. **+~30 LOC, 1 file.** |
+
+## Why split SR vs shared-vision in two places
+
+`renderMinimapCanvases` runs from state-poll (~1.5s); `refreshVisionOverlay` runs every 500ms. They both target `MM.status`. In SR-style modes the position-based path knows `ally/enemy` counts at state-poll time, so let it own the pill. In shared-vision modes positions are always empty, so state-poll has nothing useful to render — let vision overlay (which already fetches vision_state for the dot canvas) own it. Split avoids races (the slower poll would clobber the faster one); the `_sharedSig` cache avoids the heart-pulse re-firing every 500ms.
+
+## What this fixes (s27n's parked follow-up)
+
+s27n added `last_seen_zone="on_bridge"` to vision_state.json for shared-vision modes, but no consumer was reading it. s27o's screenshot bonus signal flagged the gap: MAP STATE panel "only rendered the timeline bar — no on_bridge enemy presence visible". Root cause: the pill render path in `renderMinimapCanvases` checked `p.positions?.allies/enemies`, which Live Client emits as `"NONE"` (not arrays) in ARAM, so `allyCount === 0` always → the `else` branch hid the pill. Fix routes the data flow through vision_state.summary instead.
+
+## What this DOESN'T fix (intentionally)
+
+- The dot-canvas overlay (`VT_OVERLAY`) still draws nothing in shared-vision because there are no `last_seen_pos` values. That's correct — Riot doesn't expose ARAM positions. The pill carries the meaningful signal; the canvas stays empty. If Riot ever exposed ARAM positions, the existing dot-render path would activate automatically (no code changes needed).
+- The `_renderMmStateLine` heart-pulse animation is still the SR-style 1s rhythm. In shared-vision modes the pill text only changes when someone dies/respawns (rare), so the pulse fires accurately on those events — anti-feature would be it pulsing every 500ms tick. Solved by `_sharedSig` change-detection.
+
+## Verification
+
+- **JS served by dashboard**: `curl -k https://127.0.0.1:8888/js/dashboard.js` → contains `sharedVision` (4×), `VT_SHARED_VISION` (2×), `_sharedSig` (3×), and the literal `on bridge ·` (1×). No RC restart needed.
+- **Live ARAM verification** (game still in progress from s27m/s27n/s27o, `game_mode=KIWI`):
+  - `/api/vision-state` summary: `{visible_count: 4, missing_count: 0, dead_count: 1, total: 5}` then later `{visible_count: 3, dead_count: 2}` as a second enemy died
+  - **Game-PC monitor 1 screenshot** captured via `mcp__gamepc__capture_monitor` (bridge dead per SessionStart, used direct MCP path bypass): MAP STATE panel shows `● 3 on bridge · 2 dead 0s ago` under the minimap image. Heart pulse and age suffix render correctly.
+- **No regressions on SR**: refactored `_renderMmStateLine` signature; only one production caller (the SR path), updated atomically. The `state.mode === "aram"` check matches `core/game_snapshot.py`'s ARAM/KIWI → MODE_ARAM normalization, so KIWI (ARAM Mayhem) correctly takes the shared-vision branch.
+
+## Cross-MCP-vs-bridge note
+
+Bridge gauge was ~2h stale at session start (Game-PC `/loop /process-bridge-tasks` still dead). Used `mcp__gamepc__capture_monitor` directly (the gamepc MCP server at :8892, listed alive in SessionStart probe) instead of routing the capture through the bridge. Worked first try. Future sessions: when the bridge is red but the gamepc MCP is up, direct MCP calls are the workaround for `feedback_screenshot_after_ui_changes` verification. (The bridge's value is async/round-trip; for one-shot screenshots the MCP path is fine.)
+
+## Audit completion (no Tier change)
+
+Tier 1 ✅ 5/5 · Tier 2 ✅ #5/#6/#6/#7 + #8 C1-C4 ✅ + #9 (avoid) · Tier 3 ✅ 5/5 · Tier 4 ✅ 3/3.
+
+s27p was a parked s27n follow-up, not an audit item.
+
+## Operational backlog
+
+- **1 unpushed commit** (this). Cloud routine deadline 2026-05-10 — 9 days away. Push at start of next session.
+- **Game-PC `/loop /process-bridge-tasks`** — bridge gauge ~2h stale at session start. Workaround for screenshot verification documented above. Underlying fix is still Game-PC-side.
+- `RC-PatchRefresh` residual error code clears on Wednesday 2026-05-06.
+
+## Next-session candidates
+
+- **Easiest:** push the commit; optional stop point.
+- **Easy:** the MAP STATE pill now reports a count, but the dashboard COMP STRIPS (top of `enemy-comp` strip in the `last-match` view) probably still don't reflect ARAM "this enemy is alive on map RIGHT NOW" status. If that's user-visible, surfacing `vision_state.enemies[champ].is_dead` on the enemy comp tiles (greying the dead, full color the alive) is a small JS pass.
+- **Easy:** Game-PC bridge fix — when the user opens Game-PC Claude next, kick `/loop /process-bridge-tasks` back up. RC watchdog correctly surfaces the outage; fix isn't on RC side.
+- **Medium:** **T2 #8 C5 (optional)** — LCU pollers. `lcu_client.py` frozen, needs approval. Low payoff.
+- **Avoid:** T2 #9 DB compression (still high blast radius).
+
+## Bootstrap for next session
+
+1. Read CLAUDE.md (frozen list)
+2. Read this hand-off (s27p) — when the bridge is red but gamepc MCP is up (per SessionStart probe), prefer `mcp__gamepc__capture_monitor` directly for one-shot screenshot verification. Saves a session waiting for the bridge.
+3. The pill-split pattern (state-poll for SR, vision-overlay for shared-vision, with `_sharedSig` change-detection) is the model for any future "two refresh paths fighting over the same DOM" case.
+
