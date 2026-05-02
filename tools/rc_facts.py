@@ -34,8 +34,8 @@ from pathlib import Path
 
 _APP = Path(__file__).resolve().parent.parent
 _HEALTH = _APP / "ops" / "runtime" / "health.json"
-_LEGION_BASE = "https://192.0.2.230:8888"
-_GAMEPC_MCP_HEALTH = "http://192.0.2.237:8892/health"
+_LEGION_BASE = "https://rc-host:8888"
+_GAMEPC_MCP_HEALTH = "http://peer-host:8892/health"
 _GAMEPC_TOKEN = "RETIRED-TOKEN"
 _TIMEOUT = 2.5
 
@@ -123,7 +123,7 @@ def main() -> int:
     anomalies: list[str] = []
 
     # ── Legion ──────────────────────────────────────────────────────────
-    out.append("## Legion (192.0.2.230)\n")
+    out.append("## Legion (rc-host · 100.64.0.1 · 192.0.2.230)\n")
     health = {}
     try:
         health = json.loads(_HEALTH.read_text(encoding="utf-8"))
@@ -174,7 +174,7 @@ def main() -> int:
         out.append(f"- Last boot: {lb}")
 
     # ── Game-PC ─────────────────────────────────────────────────────────
-    out.append("\n## Game-PC (192.0.2.237)\n")
+    out.append("\n## Game-PC (peer-host · 100.64.0.2 · 192.0.2.237)\n")
 
     # LCU agent freshness via Legion's /api/state
     state = _http_get_json(f"{_LEGION_BASE}/api/state") or {}
