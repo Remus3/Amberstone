@@ -3301,6 +3301,36 @@
     }).then((r) => (r && r.ok ? r.json() : null)).catch(() => null);
   }
 
+  // Poll /api/lcu-cmd-result for the agent's response to a queued LCU
+  // command (the POST itself returns immediately with just the queue id).
+  // Calls onResult({ok, err}) once the agent reports back, or once after
+  // ~3s of pending if the agent is unreachable. Used by the lobby Find
+  // Match / Cancel / Change-queue buttons so non-leader 400s and other
+  // LCU errors surface as a status line instead of vanishing silently.
+  function lcuPollResult(id, onResult) {
+    if (!id) { onResult && onResult({ ok: false, err: "no_queue_id" }); return; }
+    let tries = 0;
+    const tick = () => {
+      tries += 1;
+      fetch("/api/lcu-cmd-result?id=" + id, { cache: "no-store" })
+        .then((r) => r.json().then((j) => ({ status: r.status, body: j })))
+        .then(({ status, body }) => {
+          if (status === 200 && body && body.result) {
+            onResult && onResult(body.result);
+          } else if (tries < 6) {
+            setTimeout(tick, 500);
+          } else {
+            onResult && onResult({ ok: false, err: "timeout" });
+          }
+        })
+        .catch(() => {
+          if (tries < 6) setTimeout(tick, 500);
+          else onResult && onResult({ ok: false, err: "fetch_failed" });
+        });
+    };
+    setTimeout(tick, 300);  // give agent one poll cycle to drain
+  }
+
   function _csChampImg(cid) {
     if (!cid) return "";
     const nm = CHAMPS.byId[String(cid)];
@@ -4971,21 +5001,33 @@
     if (find) find.addEventListener("click", () => {
       if (find.disabled) return;
       find.disabled = true;
-      lcuCmd({ cmd: "start_matchmaking" });
       _lvSetStatus("starting…", "searching");
+      lcuCmd({ cmd: "start_matchmaking" }).then((res) => {
+        lcuPollResult(res && res.id, (r) => {
+          if (r && r.ok === false) _lvSetStatus("LCU: " + (r.err || "failed"), "err");
+        });
+      });
       setTimeout(() => { find.disabled = false; }, 1500);
     });
     const cancel = document.getElementById("lv-cancel-match");
     if (cancel) cancel.addEventListener("click", () => {
-      lcuCmd({ cmd: "cancel_matchmaking" });
       _lvSetStatus("cancelling…", "");
+      lcuCmd({ cmd: "cancel_matchmaking" }).then((res) => {
+        lcuPollResult(res && res.id, (r) => {
+          if (r && r.ok === false) _lvSetStatus("LCU: " + (r.err || "failed"), "err");
+        });
+      });
     });
     const qsel = document.getElementById("lv-queue-select");
     if (qsel) qsel.addEventListener("change", () => {
       const qid = parseInt(qsel.value, 10);
       if (!qid) return;
-      lcuCmd({ cmd: "change_queue_type", queue_id: qid });
       _lvSetStatus("changing queue…", "searching");
+      lcuCmd({ cmd: "change_queue_type", queue_id: qid }).then((res) => {
+        lcuPollResult(res && res.id, (r) => {
+          if (r && r.ok === false) _lvSetStatus("LCU: " + (r.err || "failed"), "err");
+        });
+      });
       qsel.value = "";
     });
   }
@@ -5155,21 +5197,33 @@
     if (find) find.addEventListener("click", () => {
       if (find.disabled) return;
       find.disabled = true;
-      lcuCmd({ cmd: "start_matchmaking" });
       _setLobbyStatus("starting…", "searching");
+      lcuCmd({ cmd: "start_matchmaking" }).then((res) => {
+        lcuPollResult(res && res.id, (r) => {
+          if (r && r.ok === false) _setLobbyStatus("LCU: " + (r.err || "failed"), "err");
+        });
+      });
       setTimeout(() => { find.disabled = false; }, 1500);
     });
     const cancel = document.getElementById("lobby-cancel-match");
     if (cancel) cancel.addEventListener("click", () => {
-      lcuCmd({ cmd: "cancel_matchmaking" });
       _setLobbyStatus("cancelling…", "");
+      lcuCmd({ cmd: "cancel_matchmaking" }).then((res) => {
+        lcuPollResult(res && res.id, (r) => {
+          if (r && r.ok === false) _setLobbyStatus("LCU: " + (r.err || "failed"), "err");
+        });
+      });
     });
     const qsel = document.getElementById("lobby-queue-select");
     if (qsel) qsel.addEventListener("change", () => {
       const qid = parseInt(qsel.value, 10);
       if (!qid) return;
-      lcuCmd({ cmd: "change_queue_type", queue_id: qid });
       _setLobbyStatus("changing queue…", "searching");
+      lcuCmd({ cmd: "change_queue_type", queue_id: qid }).then((res) => {
+        lcuPollResult(res && res.id, (r) => {
+          if (r && r.ok === false) _setLobbyStatus("LCU: " + (r.err || "failed"), "err");
+        });
+      });
       qsel.value = "";  // reset to placeholder
     });
   }
