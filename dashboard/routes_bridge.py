@@ -22,6 +22,7 @@ import logging
 import time
 from urllib.parse import parse_qs, urlparse
 
+from core import bridge as _bridge
 from dashboard._bridge_log import bridge_post, bridge_since
 from dashboard._champ_select import brief_via_coach
 from dashboard._context import APP_DIR
@@ -146,6 +147,60 @@ def _serve_bridge_post(h, payload) -> None:
         h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
 
 
+def _serve_bridge_inbox(h, payload) -> None:
+    # POST /api/bridge/inbox — receive a message from the peer (Peer).
+    # Mirrors Peer's /api/bridge/inbox per RC_BRIDGE_CONTRACT.md (v0).
+    #   503 — no shared_secret configured
+    #   401 — Authorization header missing or doesn't match
+    #   400 — no `summary` field in payload
+    #   200 — appended to bridge log; returns {ok, entry}
+    try:
+        if not _bridge.is_configured():
+            h._send(503, b'{"error":"bridge_not_configured"}', "application/json")
+            return
+
+        # Bearer guard. Header may arrive as "Authorization" or "authorization"
+        # depending on client; BaseHTTPRequestHandler.headers is case-insensitive
+        # so a single .get() suffices.
+        auth = (h.headers.get("Authorization") or "").strip()
+        expected = "Bearer " + _bridge.shared_secret()
+        if auth != expected:
+            log.warning("bridge inbox auth reject from %s", h.client_address[0])
+            h._send(401, b'{"error":"unauthorized"}', "application/json")
+            return
+
+        msg = (payload.get("summary") or "").strip()
+        if not msg:
+            h._send(400, b'{"error":"missing_summary"}', "application/json")
+            return
+
+        entry = bridge_post(
+            (payload.get("source") or "peer").strip(),
+            msg,
+            kind=(payload.get("kind") or "note").strip(),
+            entry_id=payload.get("id"),
+            target=payload.get("target"),
+            body=payload.get("body"),
+            in_reply_to=payload.get("in_reply_to"),
+        )
+        h._send(200, json.dumps({"ok": True, "entry": entry}).encode("utf-8"),
+                "application/json")
+    except Exception as exc:
+        log.warning("bridge inbox failed: %s", exc)
+        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
+                "application/json")
+
+
+def _serve_bridge_status(h) -> None:
+    # GET /api/bridge/status — operator-facing config gate; never leaks the secret.
+    try:
+        h._send(200, json.dumps(_bridge.status_summary()).encode("utf-8"),
+                "application/json")
+    except Exception as exc:
+        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
+                "application/json")
+
+
 # ── route table ──────────────────────────────────────────────────────
 
 # /api/bridge accepts query strings (`?since=…&limit=…`) — equals()
@@ -153,10 +208,12 @@ def _serve_bridge_post(h, payload) -> None:
 # /api/champions is exact.
 GET_ROUTES = [
     (equals("/api/bridge"),         _serve_bridge),
+    (equals("/api/bridge/status"),  _serve_bridge_status),
     (equals("/api/preview-build"),  _serve_preview_build),
     (equals("/api/champions"),      _serve_champions),
 ]
 
 POST_ROUTES = [
     (equals("/api/bridge"),         _serve_bridge_post),
+    (equals("/api/bridge/inbox"),   _serve_bridge_inbox),
 ]
