@@ -121,7 +121,7 @@ flowchart TB
 1. **Riot's LCU and Live Client APIs are `127.0.0.1`-only.** They refuse LAN connections even when bound to `0.0.0.0`. Hence the relay pattern — agents on Game-PC POST to Legion.
 2. **`iphlpsvc` portproxy self-loops** silently eat port 2999. Check `netsh interface portproxy show all` before anything else when Riot's API stops responding.
 3. **Python 3.14+ on Windows defaults to cp1252 for stdout**, so agents with Unicode arrows crash on startup. Set `PYTHONUTF8=1`.
-4. **HEADLESS mode disables tkinter overlays on Legion** (`_HEADLESS = True` in `app/_overlay_manager.py`) — web dashboard is the UI.
+4. **Tkinter overlays were removed (T2 #6, 2026-05-01).** Web dashboard at :8888 is the only UI. `tk.Tk()` root remains in `app/__init__.py` as the timer scheduler driving game polling via `root.after(...)`.
 5. **Vision server hardcodes `image/png` media type**; screen agent sends JPEG. Use `"image/jpeg" if data.startswith("/9j/") else "image/png"` auto-detect.
 
 ## The full life of one match

@@ -82,7 +82,7 @@ Each machine runs its own Claude Code instance. They post JSON envelopes to `/ap
 - `API-Key-Claude.txt` and runtime state under `ops/runtime/` are gitignored
 - All overlay file writes are atomic (`tmp.write_text(); tmp.replace(target)`) — overlays poll mid-write
 - Restarts are signalled via `restart_trigger.txt`; the supervisor picks it up within a second
-- `_HEADLESS = True` in `app/_overlay_manager.py` keeps the tkinter overlays hidden so the dashboard is the only UI; flip to `False` to restore on-screen overlays
+- Tkinter overlays were removed in T2 #6 (2026-05-01); the dashboard is the only UI. The `tk.Tk()` root in `app/__init__.py` stays because game polling schedules itself via `root.after(...)`
 - Frozen files in the architecture map (listed in `CLAUDE.md`) require explicit user approval to modify
 
 ## License

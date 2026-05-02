@@ -147,7 +147,7 @@
 <div class="gotcha"><b>1. Riot's APIs are localhost-only.</b> LCU and Live Client refuse LAN connections even when bound to <code>0.0.0.0</code>. Solution: relay agents on Game-PC push to Legion.</div>
 <div class="gotcha"><b>2. iphlpsvc port-proxy self-loops.</b> Silently eats port 2999 (symptoms: SSL <code>UNEXPECTED_EOF_WHILE_READING</code>, curl schannel handshake fails). Check <code>netsh interface portproxy show all</code> first.</div>
 <div class="gotcha"><b>3. Python 3.14+ stdout is cp1252 on Windows.</b> Agents with Unicode arrows crash on first <code>print()</code>. Set <code>PYTHONUTF8=1</code> + <code>PYTHONIOENCODING=utf-8</code>.</div>
-<div class="gotcha"><b>4. HEADLESS mode disables tkinter on Legion.</b> <code>_HEADLESS = True</code> in <code>app/_overlay_manager.py</code>. Web dashboard is the only UI. Fix every <code>show()/deiconify()</code> path to respect the flag.</div>
+<div class="gotcha"><b>4. Tkinter overlays were removed (T2 #6, 2026-05-01).</b> Web dashboard at :8888 is the only UI. <code>tk.Tk()</code> root remains in <code>app/__init__.py</code> as the timer scheduler driving game polling via <code>root.after(...)</code>.</div>
 <div class="gotcha"><b>5. Vision media-type mismatch.</b> Screen agent pushes JPEG; Anthropic rejects 400 if <code>media_type</code> says <code>image/png</code>. Auto-detect: <code>"image/jpeg" if data.startswith("/9j/") else "image/png"</code>.</div>
 <div class="gotcha"><b>6. Python triple-quoted strings double-escape backslashes.</b> <code>\[</code> in a JS regex inside a Python <code>"""..."""</code> HTML template leaks through as literal <code>\\[</code> in the browser. Use <code>.replaceAll()</code> with string literals, not regex.</div>
 
