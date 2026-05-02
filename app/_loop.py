@@ -26,10 +26,24 @@ _INSTANCE: "Optional[AppLoop]" = None
 
 
 def get_loop() -> "Optional[AppLoop]":
-    """Return the process-wide AppLoop, or None if OverlayApp hasn't constructed
-    one yet. Used by subsystems (coaches, module pollers) that need to spawn
-    tasks on the main loop without taking a constructor-time reference."""
+    """Return the process-wide AppLoop, or None if no AppLoop has been
+    constructed yet. Used by subsystems (coaches, module pollers) that
+    need to spawn tasks on the main loop without taking a constructor-
+    time reference. Subsystems that fall back to threads when the loop
+    isn't ready use the None branch."""
     return _INSTANCE
+
+
+def ensure_loop() -> "AppLoop":
+    """Idempotently create + return the process-wide AppLoop. Call this
+    before launching subsystems whose loops should ride the main event
+    loop, even if `OverlayApp` hasn't been constructed yet (T2 #8 C4 —
+    main.py creates the singleton early so liveclient_cache/etc. can
+    spawn_task on it during boot)."""
+    global _INSTANCE
+    if _INSTANCE is None:
+        AppLoop()  # constructor sets _INSTANCE
+    return _INSTANCE  # type: ignore[return-value]
 
 
 class AppLoop:

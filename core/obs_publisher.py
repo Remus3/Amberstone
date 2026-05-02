@@ -117,40 +117,60 @@ class OBSPublisher:
 
     def __init__(self) -> None:
         self._thread: threading.Thread | None = None
+        self._task = None  # asyncio.Task / Future when running on the AppLoop
         self._stop = threading.Event()
         # last-pushed text so we don't spam SetInputSettings when the
         # state hasn't changed (cheap to compute, saves OBS-side work)
         self._last_pushed: str = ""
 
     def start_background(self) -> None:
-        """Launch the publisher daemon if `obs.enabled` is true in config.
-        No-op otherwise (or if already running)."""
+        """Launch the publisher if `obs.enabled` is true in config.
+        Prefers spawning `_async_loop` directly on the main AppLoop (the
+        websockets lib is already async); falls back to a daemon thread
+        running `asyncio.run(_async_loop)` when no loop exists.
+        No-op when disabled or already running."""
         cfg = _load_obs_config()
         if not cfg.get("enabled"):
             _log.debug("OBS publisher disabled (config.obs.enabled=%r)",
                        cfg.get("enabled"))
             return
-        if self._thread and self._thread.is_alive():
+        if (self._thread and self._thread.is_alive()) or self._task is not None:
             return
         self._stop.clear()
-        self._thread = threading.Thread(
-            target=self._run, args=(cfg,),
-            name="obs-publisher", daemon=True,
-        )
-        self._thread.start()
-        _log.info("OBS publisher started (host=%s port=%s source=%r interval=%ss)",
-                  cfg.get("host", "127.0.0.1"), cfg.get("port", 4455),
-                  cfg.get("source_name", "RC State"),
-                  cfg.get("interval_s", 2.0))
+        try:
+            from app._loop import get_loop as _get_loop
+            _sched = _get_loop()
+        except Exception:
+            _sched = None
+        if _sched is not None:
+            self._task = _sched.spawn_task(self._async_loop(cfg))
+            _log.info("OBS publisher started (host=%s port=%s source=%r interval=%ss, async)",
+                      cfg.get("host", "127.0.0.1"), cfg.get("port", 4455),
+                      cfg.get("source_name", "RC State"),
+                      cfg.get("interval_s", 2.0))
+        else:
+            self._thread = threading.Thread(
+                target=self._run, args=(cfg,),
+                name="obs-publisher", daemon=True,
+            )
+            self._thread.start()
+            _log.info("OBS publisher started (host=%s port=%s source=%r interval=%ss, thread)",
+                      cfg.get("host", "127.0.0.1"), cfg.get("port", 4455),
+                      cfg.get("source_name", "RC State"),
+                      cfg.get("interval_s", 2.0))
 
     def stop(self) -> None:
         self._stop.set()
         if self._thread:
             self._thread.join(timeout=3)
+        if self._task is not None:
+            try: self._task.cancel()
+            except Exception: pass
+            self._task = None
 
     def _run(self, cfg: dict) -> None:
-        """Thread entrypoint. Owns the asyncio loop so we can use the
-        `websockets` lib without polluting the rest of RC with asyncio."""
+        """Thread entrypoint (fallback path). Owns its own asyncio loop so
+        we can use the `websockets` lib when not riding the main AppLoop."""
         try:
             asyncio.run(self._async_loop(cfg))
         except Exception:

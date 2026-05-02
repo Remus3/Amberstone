@@ -20,11 +20,12 @@ on unlink).
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import threading
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 _log = logging.getLogger("rc.log_retention")
 
@@ -33,6 +34,7 @@ _DEFAULT_MAX_TOTAL_MB = 100
 _DEFAULT_INTERVAL_S = 3600  # 1h
 
 _thread: Optional[threading.Thread] = None
+_task: Optional[Any] = None  # asyncio.Task / Future
 _stop = threading.Event()
 _start_lock = threading.Lock()
 
@@ -124,34 +126,65 @@ def _loop(log_dir: Path, interval_s: float, max_age_days: int, max_total_mb: int
         _stop.wait(interval_s)
 
 
+async def _loop_async(log_dir: Path, interval_s: float, max_age_days: int, max_total_mb: int) -> None:
+    while not _stop.is_set():
+        try:
+            prune(log_dir, max_age_days, max_total_mb)
+        except Exception as exc:
+            _log.warning("prune sweep failed: %s", exc)
+        try:
+            await asyncio.sleep(interval_s)
+        except asyncio.CancelledError:
+            return
+
+
 def start(
     log_dir: Path,
     interval_s: float = _DEFAULT_INTERVAL_S,
     max_age_days: int = _DEFAULT_MAX_AGE_DAYS,
     max_total_mb: int = _DEFAULT_MAX_TOTAL_MB,
 ) -> None:
-    """Launch the periodic prune thread (idempotent)."""
-    global _thread
+    """Launch the periodic prune loop (idempotent). Prefers spawning on
+    the main AppLoop; falls back to a daemon thread otherwise."""
+    global _thread, _task
     with _start_lock:
-        if _thread is not None and _thread.is_alive():
+        if (_thread is not None and _thread.is_alive()) or _task is not None:
             return
         _stop.clear()
-        _thread = threading.Thread(
-            target=_loop,
-            args=(Path(log_dir), interval_s, max_age_days, max_total_mb),
-            daemon=True, name="log-retention",
-        )
-        _thread.start()
-        _log.info(
-            "log_retention started (interval=%.0fs  max_age=%dd  max_total=%dMB)",
-            interval_s, max_age_days, max_total_mb,
-        )
+        try:
+            from app._loop import get_loop as _get_loop
+            _sched = _get_loop()
+        except Exception:
+            _sched = None
+        if _sched is not None:
+            _task = _sched.spawn_task(
+                _loop_async(Path(log_dir), interval_s, max_age_days, max_total_mb)
+            )
+            _log.info(
+                "log_retention started (interval=%.0fs  max_age=%dd  max_total=%dMB, async)",
+                interval_s, max_age_days, max_total_mb,
+            )
+        else:
+            _thread = threading.Thread(
+                target=_loop,
+                args=(Path(log_dir), interval_s, max_age_days, max_total_mb),
+                daemon=True, name="log-retention",
+            )
+            _thread.start()
+            _log.info(
+                "log_retention started (interval=%.0fs  max_age=%dd  max_total=%dMB, thread)",
+                interval_s, max_age_days, max_total_mb,
+            )
 
 
 def stop() -> None:
-    """Stop the periodic thread (mostly for tests)."""
-    global _thread
+    """Stop the periodic loop (mostly for tests)."""
+    global _thread, _task
     _stop.set()
     if _thread is not None:
         _thread.join(timeout=3)
         _thread = None
+    if _task is not None:
+        try: _task.cancel()
+        except Exception: pass
+        _task = None
