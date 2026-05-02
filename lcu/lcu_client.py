@@ -9,6 +9,7 @@ AUDIT-PHASE-2-API-001 — 2026-04-18
   Added: get_current_rune_page(), get_all_rune_pages(), format_rune_page()
   Added: _build_rune_id_map() — resolves perk IDs to names via local DDragon data
 """
+import asyncio
 import json
 import ssl
 import logging
@@ -16,6 +17,7 @@ import time
 import threading
 import base64
 from pathlib import Path
+from typing import Any, Optional
 import urllib.error
 import urllib.request
 
@@ -41,7 +43,8 @@ class LcuClient(_PGMixin):
         self._ssl.check_hostname = False
         self._ssl.verify_mode = ssl.CERT_NONE
         self._running = False
-        self._thread = None
+        self._thread: Optional[threading.Thread] = None
+        self._task: Optional[Any] = None  # AppLoop task when riding asyncio
         self._rune_id_map: dict = {}  # perk id -> name, lazy-loaded
 
     def connect(self):
@@ -96,34 +99,59 @@ class LcuClient(_PGMixin):
         self._running = True
         self._last_locked_champ = ""   # track last champion we applied runes for
         self._last_locked_mode  = ""
-        self._thread = threading.Thread(
-            target=self._auto_accept_loop, args=(interval,), daemon=True
-        )
-        self._thread.start()
-        _log.info("Auto-accept started (%.1fs interval)", interval)
+        try:
+            from app._loop import get_loop as _get_loop
+            _sched = _get_loop()
+        except Exception:
+            _sched = None
+        if _sched is not None:
+            self._task = _sched.spawn_task(self._auto_accept_loop_async(interval))
+            _log.info("Auto-accept started (%.1fs interval, async)", interval)
+        else:
+            self._thread = threading.Thread(
+                target=self._auto_accept_loop, args=(interval,), daemon=True
+            )
+            self._thread.start()
+            _log.info("Auto-accept started (%.1fs interval, thread)", interval)
 
     def stop_auto_accept(self):
         self._running = False
+        if self._task is not None:
+            try: self._task.cancel()
+            except Exception: pass
+            self._task = None
+
+    def _auto_accept_tick(self) -> None:
+        if not self._port:
+            self.connect()
+        if self._port:
+            state = self.get_queue_state()
+            if state and isinstance(state, dict):
+                ps = state.get("playerResponse", "")
+                not_responded = ps in ("None", None, "")
+                if state.get("state") == "InProgress" and not_responded:
+                    self.accept_queue()
+                    _log.info("Queue auto-accepted!")
+            self._maybe_apply_runes()
 
     def _auto_accept_loop(self, interval):
         while self._running:
             try:
-                if not self._port:
-                    self.connect()
-                if self._port:
-                    # Auto-accept queue pops
-                    state = self.get_queue_state()
-                    if state and isinstance(state, dict):
-                        ps = state.get("playerResponse", "")
-                        not_responded = ps in ("None", None, "")
-                        if state.get("state") == "InProgress" and not_responded:
-                            self.accept_queue()
-                            _log.info("Queue auto-accepted!")
-                    # Auto-apply runes when champion is locked in champ select
-                    self._maybe_apply_runes()
+                self._auto_accept_tick()
             except Exception:
                 pass
             time.sleep(interval)
+
+    async def _auto_accept_loop_async(self, interval):
+        while self._running:
+            try:
+                await asyncio.to_thread(self._auto_accept_tick)
+            except Exception:
+                pass
+            try:
+                await asyncio.sleep(interval)
+            except asyncio.CancelledError:
+                return
 
     def _maybe_apply_runes(self) -> None:
         """Check champ select state and apply recommended runes on lock-in."""

@@ -16,6 +16,7 @@ Tables:    {mode}_matches, {mode}_player_stats, {mode}_item_events
 Modes:     ARAM | SR | ARENA | BRAWL | TFT
 """
 
+import asyncio
 import json
 import logging
 import sqlite3
@@ -24,7 +25,7 @@ import threading
 import time
 import urllib.request
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 _log = logging.getLogger("rc.postgame")
 
@@ -593,7 +594,8 @@ class PostgameCollector:
         self._stop  = threading.Event()
         self._trigger = threading.Event()
         self._game_mode_hint = "CLASSIC"
-        self._thread = None
+        self._thread: Optional[threading.Thread] = None
+        self._task: Optional[Any] = None
 
         # Pre-load lookup maps (warm cache)
         global _ITEM_MAP, _RUNE_MAP
@@ -610,17 +612,32 @@ class PostgameCollector:
         """Start the background monitoring thread."""
         if self._thread and self._thread.is_alive():
             return
+        if self._task is not None:
+            return
         self._stop.clear()
-        self._thread = threading.Thread(
-            target=self._run, daemon=True, name="rc.postgame"
-        )
-        self._thread.start()
-        _log.info("PostgameCollector started")
+        try:
+            from app._loop import get_loop as _get_loop
+            _sched = _get_loop()
+        except Exception:
+            _sched = None
+        if _sched is not None:
+            self._task = _sched.spawn_task(self._run_async())
+            _log.info("PostgameCollector started (async)")
+        else:
+            self._thread = threading.Thread(
+                target=self._run, daemon=True, name="rc.postgame"
+            )
+            self._thread.start()
+            _log.info("PostgameCollector started (thread)")
 
     def stop(self):
         """Signal the monitoring thread to stop."""
         self._stop.set()
         self._trigger.set()
+        if self._task is not None:
+            try: self._task.cancel()
+            except Exception: pass
+            self._task = None
 
     def trigger(self, game_mode: str = "CLASSIC"):
         """
@@ -642,27 +659,44 @@ class PostgameCollector:
                 break
             if not triggered:
                 continue
-
             self._trigger.clear()
-            game_mode = self._game_mode_hint
-            _log.info("PostgameCollector: waiting for EndOfGame phase (mode=%s)", game_mode)
+            self._capture_after_trigger(self._game_mode_hint)
 
-            deadline = time.time() + self._EOG_TIMEOUT_S
-            captured = False
+    async def _run_async(self):
+        """Async equivalent of _run — wraps the blocking trigger.wait + the
+        EOG-poll/HTTP burst in asyncio.to_thread so the AppLoop never
+        blocks on the embedded time.sleep + synchronous LCU calls."""
+        while not self._stop.is_set():
+            triggered = await asyncio.to_thread(self._trigger.wait, 30.0)
+            if self._stop.is_set():
+                break
+            if not triggered:
+                continue
+            self._trigger.clear()
+            try:
+                await asyncio.to_thread(self._capture_after_trigger, self._game_mode_hint)
+            except asyncio.CancelledError:
+                return
+            except Exception as exc:
+                _log.debug("PostgameCollector async tick: %s", exc)
 
-            while time.time() < deadline and not self._stop.is_set():
-                phase = self._get_gameflow_phase()
-                if phase and "EndOfGame" in phase:
-                    _log.info("PostgameCollector: EndOfGame phase detected, waiting %ss then fetching", self._FETCH_DELAY)
-                    time.sleep(self._FETCH_DELAY)
-                    captured = self._capture(game_mode)
-                    break
-                time.sleep(self._POLL_INTERVAL)
-
-            if not captured:
-                # Try fetching anyway via match history fallback
-                _log.info("PostgameCollector: EOG phase not detected, trying match history fallback")
-                self._capture_via_history(game_mode)
+    def _capture_after_trigger(self, game_mode: str) -> None:
+        """One trigger cycle: poll for EOG phase, capture when seen, fall
+        back to match history if timeout. Shared by sync + async paths."""
+        _log.info("PostgameCollector: waiting for EndOfGame phase (mode=%s)", game_mode)
+        deadline = time.time() + self._EOG_TIMEOUT_S
+        captured = False
+        while time.time() < deadline and not self._stop.is_set():
+            phase = self._get_gameflow_phase()
+            if phase and "EndOfGame" in phase:
+                _log.info("PostgameCollector: EndOfGame phase detected, waiting %ss then fetching", self._FETCH_DELAY)
+                time.sleep(self._FETCH_DELAY)
+                captured = self._capture(game_mode)
+                break
+            time.sleep(self._POLL_INTERVAL)
+        if not captured:
+            _log.info("PostgameCollector: EOG phase not detected, trying match history fallback")
+            self._capture_via_history(game_mode)
 
     def _capture(self, game_mode: str) -> bool:
         """Try all EOG endpoints in order. Returns True if something was saved."""
