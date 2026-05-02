@@ -979,4 +979,57 @@ Tier 1 ✅ 5/5, Tier 2: ✅ #5/#6/#6/#7 + #8 C1-C4 ✅ (C5 LCU pollers optional,
 2. Read this hand-off (s27k) — the `position == "NONE"` Live Client quirk is worth remembering for any other code that touches `allPlayers[i].position`. **Always `isinstance(pos, dict)` before `.get()`** when the source is the Live Client API.
 3. If picking up ARAM vision improvement: `core/vision_tracker.py:_compute_enemies` is where to special-case `game_mode == "KIWI"` (ARAM Mayhem internal name per CLAUDE.md `mode_strings` map; also `"ARAM"`).
 
+---
+
+# Session 27l — 2026-05-01 22:32 hand-off (ARAM vision shared-vision branch)
+
+> User picked candidate #1 from s27k (the easy-feature item). One commit,
+> one RC restart, verified clean — though no live game right now, so the
+> ARAM `visible=True` behavior was proven via synthetic snapshot, not
+> against live `vision_state.json`. Both ARAM/KIWI alive enemies now
+> register as visible and the SR fog-of-war path is unchanged.
+
+## What shipped
+
+| Commit | Audit | Summary |
+|---|---|---|
+| (this) | feature | `core/vision_tracker.py`: new `_SHARED_VISION_MODES = frozenset({"ARAM","KIWI"})`. `_compute_enemies` precomputes `shared_vision = game_mode.upper() in _SHARED_VISION_MODES`, then per-enemy adds an `elif shared_vision: visible = True` branch between the `is_dead` short-circuit and the SR position-tracking path. Death still overrides — dead enemies report `is_dead=True, visible=False, respawn_in_s=N` as before. Tracked-state dict stays empty in shared-vision mode (no positions to track), which keeps `last_seen_pos / last_seen_t / last_seen_zone` as `None` — correct, since ARAM's Live Client emits `position: "NONE"` and there's nothing meaningful to record. **+12 LOC.** |
+
+## Verification
+
+- `py_compile` clean on `core/vision_tracker.py`
+- restart_trigger.txt consumed (size=0 post-restart)
+- RC PID 9464 → 9624, `last_reload_ok=true`, `ui_pulse_age_s=0.5`, `game_poll_worker_age_s=4.5`
+- 6 endpoints all 200: `/api/state`, `/api/health/all`, `/api/decisions`, `/api/decisions/log`, `/metrics`, `/api/vision-state`
+- 0 `Traceback / ImportError / AttributeError / tkinter / vision_tracker loop:` lines in 450 post-restart log lines
+- **Synthetic snapshot test** (no live game to probe against — disk file is leftover pre-restart):
+  - KIWI snapshot, 3 enemies: Lux (alive, position="NONE") → `visible=True`; Ezreal (dead) → `visible=False, is_dead=True`; Garen (alive) → `visible=True`. Summary `visible_count=2, dead_count=1, missing_count=0`.
+  - CLASSIC snapshot, 3 enemies: Yasuo (self), Zed (alive, position="NONE") → `visible=False, last_seen_zone=None` (SR fog can't establish first sighting without a real position); Akali (alive, position={7400,7400}) → `visible=True, last_seen_zone=mid`. SR fog path **untouched**.
+
+## What this fix does (and doesn't)
+
+- **Does:** updates the dashboard minimap to actually reflect ARAM enemy presence — every alive enemy on the enemy team registers as `visible=True` in `data/vision_state.json`, so any consumer (minimap overlay, coach prompts) gets a meaningful "yes you can see them" instead of the previous always-`False`.
+- **Doesn't:** add position tracking for ARAM. Live Client doesn't expose ARAM positions, so `last_seen_pos`, `last_seen_t`, `last_seen_zone` stay `None` for shared-vision modes. The minimap can show "enemy is visible / on map" but not "enemy is at coordinate X". That's a Riot API limitation, not a code limitation.
+
+## Audit completion (unchanged from s27k)
+
+Tier 1 ✅ 5/5 · Tier 2 ✅ #5/#6/#6/#7 + #8 C1-C4 ✅ (C5 LCU pollers optional, frozen-file approval needed) + #9 (avoid) · Tier 3 ✅ 5/5 · Tier 4 ✅ 3/3.
+
+## Operational backlog
+
+- **1 unpushed commit** (this fix). Cloud routine deadline 2026-05-10 — 9 days away. Push at start of next session.
+- **Game-PC `/loop /process-bridge-tasks`** — bridge gauge ~93 min stale at session start (5573s). Same Game-PC-side issue.
+- `RC-PatchRefresh` residual error code clears on Wednesday 2026-05-06.
+
+## Next-session candidates
+
+- **Easiest:** push the fix; optional stop point.
+- **Easy:** **Recent Coach Calls panel — move off home page** (parked from s27f). Frontend-only, ~one commit. Files: `web/index.html` markup, `web/dashboard.css` styles, `web/dashboard.js` renderer + `/api/decisions/log` fetch. Needs screenshot verify per `feedback_screenshot_after_ui_changes` memory.
+- **Medium:** **T2 #8 C5 (optional)** — LCU pollers. `lcu_client.py` frozen, needs approval. Low payoff.
+- **Avoid:** T2 #9 DB compression (still high blast radius).
+
+## Bootstrap for next session
+
+1. Read CLAUDE.md (frozen list)
+2. Read this hand-off (s27l) — `_SHARED_VISION_MODES` is the extension point if Riot ever ships another shared-vision mode (e.g. URF if they re-enable shared lane vision, or a new gamemode). Just add the upper-case mode string to the frozenset; no other code changes needed.
 
