@@ -440,11 +440,12 @@
   // localStorage and a body[data-view] attribute. Auto promotes to
   // ChampSelect/in-game on urgent game events; if a manual view is
   // active during a promote-worthy event, the banner appears instead.
-  const VIEW_IDS = ["home","lobby","last-match","session","history","replay","loadouts","settings","diagnostics"];
+  const VIEW_IDS = ["home","lobby","last-match","session","history","replay","loadouts","settings","diagnostics","coach-calls"];
   const VIEW_LABELS = {
     "home":"Home","lobby":"Lobby","last-match":"Last Match","session":"Session",
     "history":"History","replay":"Replay",
     "loadouts":"Loadouts","settings":"Settings","diagnostics":"Diagnostics",
+    "coach-calls":"Coach Calls",
   };
   const _VIEW = {
     current: null,
@@ -6010,6 +6011,7 @@
   const RECENT_CALLS = {
     section: el("recent-coach-calls"),
     list:    el("recent-coach-calls-list"),
+    empty:   el("recent-coach-calls-empty"),
     intervalMs: 30000,
     limit:   8,
   };
@@ -6029,9 +6031,11 @@
     if (!Array.isArray(entries) || entries.length === 0) {
       R.section.hidden = true;
       R.list.innerHTML = "";
+      if (R.empty) R.empty.hidden = false;
       return;
     }
     R.section.hidden = false;
+    if (R.empty) R.empty.hidden = true;
     R.list.innerHTML = "";
     for (const e of entries) {
       const li = document.createElement("li");

@@ -719,6 +719,7 @@ body[data-view="history"] main,
 body[data-view="loadouts"] main,
 body[data-view="settings"] main,
 body[data-view="diagnostics"] main,
+body[data-view="coach-calls"] main,
 body[data-view="replay"] main { display: none; }
 body[data-view="lobby"]        #view-lobby,
 body[data-view="session"]      #view-session,
@@ -726,6 +727,7 @@ body[data-view="history"]      #view-history,
 body[data-view="loadouts"]     #view-loadouts,
 body[data-view="settings"]     #view-settings,
 body[data-view="diagnostics"]  #view-diagnostics,
+body[data-view="coach-calls"]  #view-coach-calls,
 body[data-view="replay"]       #view-replay { display: block; }
 /* Hide home + lobby overlays when a non-default view is active.
  * In lobby view specifically, the inline #lobby-overlay strip is
@@ -735,6 +737,7 @@ body[data-view="history"]      #home-overlay,
 body[data-view="loadouts"]     #home-overlay,
 body[data-view="settings"]     #home-overlay,
 body[data-view="diagnostics"]  #home-overlay,
+body[data-view="coach-calls"]  #home-overlay,
 body[data-view="replay"]       #home-overlay,
 body[data-view="last-match"]   #home-overlay,
 body[data-view="lobby"]        #home-overlay,

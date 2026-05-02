@@ -1033,3 +1033,81 @@ Tier 1 ✅ 5/5 · Tier 2 ✅ #5/#6/#6/#7 + #8 C1-C4 ✅ (C5 LCU pollers optional
 1. Read CLAUDE.md (frozen list)
 2. Read this hand-off (s27l) — `_SHARED_VISION_MODES` is the extension point if Riot ever ships another shared-vision mode (e.g. URF if they re-enable shared lane vision, or a new gamemode). Just add the upper-case mode string to the frozenset; no other code changes needed.
 
+---
+
+# Session 27m — 2026-05-01 22:42 hand-off (Recent Coach Calls → /coach-calls sub-page)
+
+> User picked candidate #2 from s27l (the parked Recent Coach Calls move).
+> One commit, **no RC restart needed** — `web/*` are static assets the
+> dashboard server hands out per-request, so a browser refresh picks up
+> the change. Bonus: live ARAM game ran through restart and confirmed the
+> s27l vision_tracker fix against real data (3 alive enemies → visible=True,
+> 2 dead → is_dead=True).
+
+## What shipped
+
+| Commit | Type | Summary |
+|---|---|---|
+| (this) | feature | New `coach-calls` sub-page replaces the home-page Recent Coach Calls panel. Wired through the existing view-router system (no new routing infra). **HTML:** added `<button data-view="coach-calls">Coach Calls</button>` after Diagnostics in the menu; added `<section id="view-coach-calls" class="view-section" hidden>` after `#view-replay` containing the moved `<section id="recent-coach-calls">` plus a `#recent-coach-calls-empty` placeholder shown when the list is empty; **deleted** the old standalone `<section id="recent-coach-calls">` block that sat above `<main>` on every view. **JS:** `VIEW_IDS` += `"coach-calls"`, `VIEW_LABELS` += `"coach-calls":"Coach Calls"`, `RECENT_CALLS.empty = el("recent-coach-calls-empty")`, `renderRecentCoachCalls` toggles the empty placeholder inverse to the list section. **CSS:** extended the 3 visibility-rule lists in dashboard.css (hide `main`, show `#view-coach-calls`, hide `#home-overlay`) to include `body[data-view="coach-calls"]`. **Net: ~25 LOC across 3 files.** |
+
+## Why a sub-page (not a toggle, not in an existing view)
+
+s27f's parked plan said "likely belongs on a sub-page (e.g. a /decisions or /coach-history view) or behind a toggle." Sub-page won because:
+- The view-router system already exists with 9 views; adding a 10th costs ~15 lines vs. a toggle's bespoke show/hide JS
+- Coach Calls is logically distinct from any existing view (not session-scoped, not match-scoped, not history-of-matches)
+- Hash-based URL (`#coach-calls`) is shareable / linkable
+- Auto-derive logic stays untouched: live games still snap to `last-match`, lobby stays `lobby`, Coach Calls is purely manual navigation
+
+## What stayed the same
+
+- Polling: `/api/decisions/log?limit=8` every 30s, **globally**. Data is fresh whenever the user navigates to the view; no lazy-fetch hook needed in `applyView`.
+- The inner `<section id="recent-coach-calls">` still toggles `hidden` based on entries (used to control whether the styled card showed up on the home page; now it controls whether the styled card shows inside the view-section).
+- Empty state: when 0 entries, the inner section hides and the new `#recent-coach-calls-empty` placeholder shows ("No resolved coach calls yet — they'll appear here after the detector flags a moment and you make a choice."). Uses the existing `.home-empty` class for visual consistency with other empty states.
+
+## Verification
+
+- **Static-asset HTTPS fetch** confirmed all 3 file changes are live:
+  - `index.html` (71569 bytes): contains `data-view="coach-calls"` button, contains `id="view-coach-calls"` section, exactly 1 `id="recent-coach-calls"` (the old standalone block above main is gone)
+  - `dashboard.js`: `"coach-calls"` in VIEW_IDS, `"Coach Calls"` label present, `R.empty.hidden` empty-state handling present
+  - `dashboard.css`: `body[data-view="coach-calls"]` rules present (3 occurrences)
+- **Live `/api/decisions/log?limit=8`**: 2 entries available — when the user navigates to `#coach-calls`, the panel renders with content (not the empty state).
+- **No RC restart**: `web/*` are static files served by `dashboard/server.py` per-request. Confirmed by re-reading via curl after edits — the server delivers the new content without restart.
+- **No screenshot of the new view captured**: the dashboard was running an active ARAM game (auto-derived to `last-match` view) with the user playing on the primary display. Sending SendKeys to refresh would target the game, not Edge. The DOM/JS/CSS structure is fully verified via fetched-content checks; visual confirmation is deferred to the user's next refresh.
+
+## s27l fix verified live (bonus)
+
+Live ARAM (KIWI mode) snapshot at session-start time:
+- 5 enemies tracked
+- 3 alive (Malphite, Poppy, LeBlanc) → all `visible=True`
+- 2 dead (Kassadin, Jayce) → `visible=False, is_dead=True`
+- `summary: visible_count=3, missing_count=0, dead_count=2, total=5`
+- `vision_state.json` mtime 0.7s — actively updating
+
+Real-data confirmation that s27l's `_SHARED_VISION_MODES` branch produces the intended behavior in production. Synthetic-only verification from s27l is now backed by live data.
+
+## Audit completion (no Tier change)
+
+Tier 1 ✅ 5/5 · Tier 2 ✅ #5/#6/#6/#7 + #8 C1-C4 ✅ (C5 LCU pollers optional, frozen-file approval needed) + #9 (avoid) · Tier 3 ✅ 5/5 · Tier 4 ✅ 3/3.
+
+The Recent Coach Calls move was a **parked s27f follow-up**, not an audit item. No tier deltas.
+
+## Operational backlog
+
+- **2 unpushed commits** (s27l vision_tracker fix + s27m sub-page move). Cloud routine deadline 2026-05-10 — 9 days away. Push at start of next session.
+- **Game-PC `/loop /process-bridge-tasks`** — bridge gauge was ~93 min stale at s27l session start; not re-checked this session. A live ARAM game is running so RC-side data is fresh; the bridge silence is independent.
+- `RC-PatchRefresh` residual error code clears on Wednesday 2026-05-06.
+
+## Next-session candidates
+
+- **Easiest:** push the 2 backlog commits; optional stop point.
+- **Easy:** ARAM-side feature follow-up — the s27l fix surfaces visibility but `vision_tracker._compute_enemies` still leaves `last_seen_zone=None` for shared-vision modes. Could add a coarse "alive on bridge" zone string for ARAM so the dashboard minimap caption isn't blank. Or: drive shared-vision logic into per-mode UI ("see all 3 enemies on map" badge). Both are small.
+- **Easy:** Capture a screenshot of the new `#coach-calls` view next time the user has the dashboard idle (no live game) — verifies the visual layout matches expectation. Current commit is verified by content, not by render.
+- **Medium:** **T2 #8 C5 (optional)** — LCU pollers. `lcu_client.py` frozen, needs approval. Low payoff.
+- **Avoid:** T2 #9 DB compression (still high blast radius).
+
+## Bootstrap for next session
+
+1. Read CLAUDE.md (frozen list)
+2. Read this hand-off (s27m) — the `view-section` + `body[data-view]` pattern is the canonical way to add a sub-page. To add another, hit these 3 spots: VIEW_IDS/LABELS in dashboard.js, menu button + `<section id="view-X" class="view-section" hidden>` in index.html, and the 3 CSS visibility-rule lists in dashboard.css. No `applyView` lazy-fetch hook needed if the data is already polled globally.
+3. **Refresh tip**: dashboard `web/*` changes don't need an RC restart — Edge on the secondary display picks them up via Ctrl+F5. Useful to remember for any future UI-only commit.
+
