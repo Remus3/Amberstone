@@ -12,6 +12,8 @@ during start-up).
 """
 import json
 import logging
+import urllib.error
+from urllib.parse import parse_qs, urlparse
 
 from dashboard._dispatch import equals, prefix
 
@@ -151,6 +153,31 @@ def _serve_lcu_cmd_post(h, payload) -> None:
         h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
 
 
+def _serve_lcu_cmd_result_get(h) -> None:
+    # Pulls the stored result for a previously-queued LCU command so the
+    # UI can surface errors (e.g. start_matchmaking returning 400 from a
+    # non-leader). Vision server returns 404 while pending; client polls.
+    try:
+        import urllib.request as _ur
+        from web_dashboard import _VISION_TOKEN
+        qs = parse_qs(urlparse(h.path).query)
+        rid = (qs.get("id") or [""])[0]
+        if not rid:
+            h._send(400, b'{"error":"id required"}', "application/json"); return
+        req = _ur.Request(
+            f"http://127.0.0.1:8889/lcu-cmd-result?id={rid}",
+            headers={"X-RC-Token": _VISION_TOKEN},
+        )
+        try:
+            with _ur.urlopen(req, timeout=2) as r:
+                h._send(200, r.read(), "application/json")
+        except urllib.error.HTTPError as e:
+            h._send(e.code, e.read(), "application/json")
+    except Exception as exc:
+        log.warning("api/lcu-cmd-result: %s", exc)
+        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+
+
 # ── route table ──────────────────────────────────────────────────────
 
 # /api/loadout/list uses prefix() because the legacy do_POST used
@@ -158,7 +185,9 @@ def _serve_lcu_cmd_post(h, payload) -> None:
 # first so its exact-match fires before the /list prefix would
 # (`/list` does not prefix-match `/apply`, but ordering is explicit
 # for safety as future loadout/* endpoints land here).
-GET_ROUTES: list = []
+GET_ROUTES = [
+    (prefix("/api/lcu-cmd-result"), _serve_lcu_cmd_result_get),
+]
 
 POST_ROUTES = [
     (equals("/api/loadout/apply"),  _serve_loadout_apply_post),
