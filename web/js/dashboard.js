@@ -2504,11 +2504,25 @@
     // signal; "waiting on positions" is just noise that overlaps the map
     // visually. Only show the pill when there's something useful to say
     // (ZOI populated) or no data at all (offline state).
-    if (hasAny) {
+    // Shared-vision modes (ARAM/KIWI per core/vision_tracker._SHARED_VISION_MODES)
+    // have no Live Client positions — refreshVisionOverlay populates this
+    // pill from /api/vision-state.summary instead. Don't clobber its text.
+    const sharedVision = state.mode === "aram";
+    if (sharedVision) {
+      if (!hasAny) {
+        MM.status.textContent = "awaiting liveclient data…";
+        MM.status.classList.remove("hidden");
+      }
+      // else: leave whatever the vision-overlay tick last wrote (or empty
+      // until its 500ms tick populates).
+    } else if (hasAny) {
+      // Mode swap can leave a stale shared-vision signature on the pill;
+      // clear so re-entering shared-vision later forces a fresh render.
+      delete MM.status._sharedSig;
       const allyCount = p.positions?.allies ? Object.keys(p.positions.allies).length : 0;
       const enemyCount = p.positions?.enemies ? Object.keys(p.positions.enemies).length : 0;
       if (allyCount || enemyCount) {
-        _renderMmStateLine(MM.status, allyCount, enemyCount);
+        _renderMmStateLine(MM.status, `${allyCount} ally · ${enemyCount} enemy`);
         MM.status.classList.remove("hidden");
       } else {
         // Liveclient up but no positions yet — hide the pill so it
@@ -2528,7 +2542,7 @@
   // having to compare numbers across renders. The pulse re-fires every
   // call by removing then re-adding the .pulse class on the next frame.
   // The age suffix is auto-updated by a 1s setInterval (registered once).
-  function _renderMmStateLine(host, allyCount, enemyCount) {
+  function _renderMmStateLine(host, countText) {
     if (!host) return;
     if (!host._wired) {
       host._wired = true;
@@ -2548,7 +2562,7 @@
     }
     host._lastT = Date.now();
     const counts = host.querySelector(".mm-counts");
-    if (counts) counts.textContent = `${allyCount} ally · ${enemyCount} enemy`;
+    if (counts) counts.textContent = countText;
     const age = host.querySelector(".mm-age");
     if (age) age.textContent = "0s ago";
     const heart = host.querySelector(".mm-heart");
@@ -5792,14 +5806,15 @@
   // SR / ARAM map sizes in game units (Howling Abyss is smaller than SR).
   const VT_MAP_SIZE = { CLASSIC: 14800, ARAM: 13800, KIWI: 13800,
                         URF: 14800, NEXUSBLITZ: 14800, ULTBOOK: 14800 };
+  // Mirror of core/vision_tracker._SHARED_VISION_MODES — modes where the
+  // whole map is visible to both teams and Live Client emits no positions.
+  const VT_SHARED_VISION = new Set(["ARAM", "KIWI"]);
 
   async function refreshVisionOverlay() {
     if (!VT_OVERLAY) return;
     if (document.hidden) return;
-    if (!MM.imgWrap || MM.imgWrap.classList.contains("hidden")) {
-      VT_OVERLAY.style.display = "none";
-      return;
-    }
+    // Fetch first so the shared-vision pill can update even when the
+    // minimap PNG isn't currently visible (image still loading, etc.).
     let vs;
     try {
       const r = await fetch("/api/vision-state");
@@ -5807,6 +5822,33 @@
       vs = await r.json();
     } catch (_) { VT_OVERLAY.style.display = "none"; return; }
     if (!vs || !vs.enemies || Object.keys(vs.enemies).length === 0) {
+      VT_OVERLAY.style.display = "none";
+      return;
+    }
+    // Shared-vision modes (ARAM/KIWI) — Live Client has no positions, so
+    // the dot-overlay won't draw anything useful, but vision_tracker still
+    // produces a meaningful summary (visible/dead counts, on_bridge zone).
+    // Drive the MAP STATE pill from that summary.
+    const sharedVision = VT_SHARED_VISION.has((vs.game_mode || "").toUpperCase());
+    if (sharedVision && MM.status) {
+      const sum = vs.summary || {};
+      const visibleCount = sum.visible_count | 0;
+      const deadCount = sum.dead_count | 0;
+      const sig = `${visibleCount}|${deadCount}`;
+      if (MM.status._sharedSig !== sig) {
+        _renderMmStateLine(MM.status, `${visibleCount} on bridge · ${deadCount} dead`);
+        MM.status._sharedSig = sig;
+        MM.status.classList.remove("hidden");
+        if (!MM.status.classList.contains("live")) {
+          MM.status.className = "minimap-state live";
+        }
+      } else {
+        // Same summary — refresh the timestamp so "Xs ago" stays at 0
+        // instead of climbing while data is actually fresh.
+        MM.status._lastT = Date.now();
+      }
+    }
+    if (!MM.imgWrap || MM.imgWrap.classList.contains("hidden")) {
       VT_OVERLAY.style.display = "none";
       return;
     }
