@@ -1,89 +1,188 @@
 # Riot Commander
 
-Live coaching overlay + second-screen dashboard for League of Legends and Teamfight Tactics. Reads Riot's local Live Client API, runs vision and LLM coaching, and serves an HTTPS dashboard viewed in Edge on Game-PC's secondary display.
+Live coaching overlay + second-screen dashboard for League of Legends and Teamfight Tactics. Reads Riot's local Live Client API, runs tiered vision (Tesseract OCR + Claude Sonnet) and LLM coaching (Claude Haiku), and serves an HTTPS dashboard viewed in Edge fullscreen on Game-PC's secondary display.
 
-Personal project. Private repo. Not packaged for general use.
+Personal project. Private repo. Not packaged for general use. Codebase has been through a multi-tier engineering audit (Tier 1–3 complete, Tier 4 polish complete, Tier 2 #9 deliberately deferred); see [Engineering](#engineering) for the audit ledger.
+
+---
 
 ## What it does
 
-- **Real-time coaching** — Claude Haiku for fast in-game tips, Claude Sonnet for screenshot-based vision reasoning, Tesseract OCR for cheap region reads
-- **Web dashboard** (`:8888`, HTTPS) — home / lobby / last-match / session / history / replay / loadouts / settings / diagnostics views, viewed in Edge fullscreen on Game-PC's secondary display
-- **Match history** — local SQLite (`rewind_history.db`, ~2,800 matches of full participant + timeline data) is the primary data source; no Riot API key required
-- **Champion-select build chooser** — surfaces preferred keystone + items per matchup, writes runes via the LCU
-- **TFT coaching** — separate worker for autobattler mode (vision pipeline pending refactor)
-- **Cross-Claude bridge** — Legion and Game-PC each run a Claude Code instance; they coordinate via a JSONL bridge (auto-flow via `/loop /process-bridge-tasks`)
+- **Real-time coaching** — Claude Haiku for fast in-game tips, Claude Sonnet for screenshot-based vision reasoning, Tesseract OCR for cheap region reads, fast-path heuristics from the Live Client snapshot when an LLM call would be redundant
+- **Decision detector** — `core/decision_detector.py` watches game state and surfaces "decision moments" (dragon up with N enemies missing, baron contest, item spike) with a contest / give / skip choice tag; Recent Coach Calls history is on a dedicated `#coach-calls` sub-page
+- **Web dashboard** (`:8888`, HTTPS, mkcert-signed) — home / lobby / last-match / session / history / replay / loadouts / settings / diagnostics / coach-calls views, viewed in Edge fullscreen on Game-PC's secondary 1920×1280 display. Server-Sent Events on `/api/state-stream` for idle efficiency
+- **Champion-select build chooser** — surfaces preferred keystone + items per matchup from local match data; writes runes via the LCU
+- **Match history** — local SQLite (`data/rewind_history.db`, 2,846 matches / 29,064 participants / 645,982 timeline frames) is the primary data source; no Riot API key required, no rate limits
+- **TFT coaching** — separate worker for autobattler mode; vision migrated to the same screen-relay path as League coaches in 2026-04
+- **Prometheus instrumentation** — `/metrics` (text/plain exposition, zero-dep) for coach calls/tokens/USD by model+purpose, vision token allocation, latency histograms, scrape-time gauges for liveness and bridge freshness
+- **OBS publisher** (opt-in) — daemon thread pushes a one-line state summary to an OBS Text source via OBS-WS v5; resilient to OBS being down
+- **PyInstaller spec** (opt-in) — frozen-bundle starter for a self-contained dist/ build
+- **Cross-Claude infrastructure** — three Claude Code instances on three machines (Legion, Game-PC, Peer) coordinate over a Tailscale-secured HTTPS bridge with a shared bearer token; `/loop /process-bridge-tasks` makes round-trips hands-off
+
+---
 
 ## Topology
 
-| Machine | Display | Role |
-|---|---|---|
-| **Legion** (`192.168.8.230`) | 1 monitor | Hosts the main RC process, web dashboard `:8888`, vision server `:8889`, MCP client connecting to Game-PC |
-| **Game-PC** (`192.168.8.237`) | 2 monitors — TV (primary, the game) + an iPad used as a wireless extended display via Duet (secondary, 1920×1280 native, 100% OS scale, no touch, no apps installed) | Runs the League client + four relay agents (screen, LCU, Live-Client, MCP server) that feed Legion. Edge runs fullscreen on the secondary display showing the dashboard |
+Three machines on tailnet `tailc150de.ts.net` under `<operator-email>`. **Tailnet hostnames are primary**; LAN IPs are kept as fallback for legacy probes and intra-LAN paths.
+
+| Machine | Tailnet | LAN | Display | Role |
+|---|---|---|---|---|
+| **Legion** | `legion-rc` / `100.70.22.55` | `192.168.8.230` | 1 monitor | RC main process, web dashboard `:8888`, vision server `:8889`, supervisor, MCP client to Game-PC |
+| **Game-PC** | `gamepc-rc` / `100.95.66.128` | `192.168.8.237` | 2 — primary TV (the game) + secondary iPad-as-monitor over Duet (1920×1280 native, 100% OS scale, no touch, no apps) | League client + Live Client API on `:2999`; runs five relay agents (screen, LCU, Live-Client, MCP server, hotkey listener) that feed Legion. Edge fullscreen on the secondary display showing the dashboard |
+| **Peer** | `peer-host` / `<peer-tailnet-ip>` | — | — | Separate Peer-VIP project on a different machine and network. Cross-Claude peer; reachable via `core.bridge.send()` |
+
+mkcert-signed cert SAN covers all of `legion-rc`, `100.70.22.55`, `legion-rc.tailc150de.ts.net`, `192.168.8.230`, `localhost`, `127.0.0.1` — no `-SkipCertificateCheck` workarounds needed from any tailnet node. Refresh with `tools/regen_rc_cert.ps1`.
+
+---
 
 ## Architecture
 
 ```
-main.py                   entry: logging, key, supervisor, vision, dashboard, overlay
-app/                      OverlayApp + decomposed managers
-coaches/                  BaseCoach + per-mode variants (aram / arena / brawl / sr / tft)
-modes/                    overlay UIs per mode
-core/                     game_snapshot, theme, hotkeys, lcu helpers
-tft/                      TFT engine + overlay
-ui/                       OverlayWindow base + ClientPanel
-ops/                      supervisor, self-monitor, runtime/health.json
-lcu/                      LCU client, auto-accept, rune writer, postgame collector
-data/                     coaching artifacts (atomic-written, polled by overlays + dashboard)
-web/                      static dashboard assets (index.html, css/, js/)
-web_dashboard.py          :8888 HTTPS dashboard server
-moon_vision_server.py     :8889 vision server (Sonnet screenshots + Tesseract OCR)
-tools/                    Game-PC agents, cross-Claude bridge tooling, boot scripts
+main.py                   entry: logging, key, DevRuntime, MetricsCache, web_dashboard, OverlayApp
+overlay.py                shim → app/__init__.py
+app/                      OverlayApp orchestrator (Tk-free, asyncio-native since T2 #8)
+  __init__.py             ~300L orchestrator
+  _loop.py                AppLoop — asyncio scheduler + ensure_loop()/get_loop() singleton
+  _health_monitor.py      heartbeat
+  _remediation.py         restart hooks, panel rebuild stubs
+  _state_authority.py     state envelope + win-pct
+  _overlay_manager.py     dashboard-only shell (50L; Tk windows removed in T2 #6)
+  _game_lifecycle.py      game start/end, worker dispatch
+coaches/                  BaseCoach (async _poll_loop + _vision_loop) + per-mode variants
+  _base_coach.py          shared poll/vision loops, debounce, hotkey reg
+modes/                    shared_vision (relay screen-grab client used by coaches)
+core/                     game_snapshot, sr_aram_worker, tft_worker, theme, hotkeys, log_setup,
+                          metrics_cache, prom_metrics (zero-dep Prometheus exposition),
+                          obs_publisher (opt-in OBS-WS push), decision_detector, vision_tracker,
+                          bridge (RC↔Peer outbound + config), bridge_monitor (auto-pong sidecar)
+tft/                      TFT engine (state_reader, live_analysis, coach_engine, data, pbe)
+ops/                      rc_supervisor, rc_self_monitor, rc_dev_runtime, runtime/health.json,
+                          tls/ (mkcert leaf + key), local_paths.json (gitignored bridge config)
+lcu/                      LCU client, auto-accept, rune writer, postgame collector (all async)
+agents/                   Phase 3 supervisor (separate process; isolates DecisionLoop)
+data/                     coaching artifacts (atomic-written, polled by dashboard)
+web_dashboard.py          145L barrel → dashboard/ package
+dashboard/                _state_builder, _champ_select, _liveclient, _writers, _diagnostics,
+                          _bridge_log, _dispatch, _handler, server, routes_*, _static
+moon_vision_server.py     :8889 in-process vision server (Sonnet screenshots + Tesseract OCR)
+tools/                    Game-PC agents, cross-Claude bridge tooling, boot scripts, cert regen
 scripts/                  data pipeline (patch-day refreshes)
+_archive/                 dated quarantine of removed code (e.g. ui/ package, modes overlays)
 ```
 
-See [`CLAUDE.md`](./CLAUDE.md) for live operational context (paths, hard rules, restart workflow, where the truth lives).
+See [`CLAUDE.md`](./CLAUDE.md) for live operational context (paths, hard rules, restart workflow, frozen file list, where the truth lives).
+
+---
+
+## Coaching pipeline
+
+Frames are captured on Game-PC (`tools/gamepc_screen_agent.py`, PIL `ImageGrab` every 2s) and POSTed to Legion's vision server with a shared `X-RC-Token`. Coaches on Legion fetch the latest cached frame and route it by cost tier:
+
+1. **Live Client snapshot** — fast-path. Many fields (gold, KDA, level) come from `:2999/liveclientdata/allgamedata` on Game-PC and travel as JSON; no vision call needed.
+2. **Tesseract OCR** — region-bound, deterministic. Default regions in `data/vision_regions.json`; runtime crop preview at `/api/ocr-crop?field=NAME`.
+3. **Claude Sonnet** — full-frame visual reasoning when a region read isn't enough (wave state, fog-of-war inference, item-spike timing, end-screen reads).
+4. **Claude Haiku** — final-mile coaching tips. Streamed onto the dashboard with `kind=task` decision tags when the detector flagged a moment.
+
+`vision_tracker` derives fog-of-war from Live Client position freshness on SR-style maps and stamps `last_seen_zone="on_bridge"` for shared-vision modes (ARAM/KIWI) where Riot's API doesn't expose positions.
+
+---
+
+## Cross-Claude infrastructure
+
+Three Claudes coordinate over a Tailscale-secured bridge:
+
+- **Transport** — Tailscale free Personal plan, MagicDNS hostnames, direct peer-to-peer; HTTPS with mkcert-signed cert (Game-PC has the root CA trusted)
+- **Auth** — 43-char urlsafe-base64 bearer token in each side's `ops/local_paths.json` (gitignored); same secret on both ends. Bearer is the actual auth gate; TLS provides confidentiality
+- **Wire format** — JSON envelopes per [`docs io RC peer/RC_BRIDGE_CONTRACT.md`](./docs%20io%20RC%20atx/RC_BRIDGE_CONTRACT.md): `{source, summary, kind, id?, target?, body?, in_reply_to?}`
+- **Inbox** — `POST /api/bridge/inbox` (Bearer-guarded; 503 if unconfigured, 401 on bad token, 400 on bad JSON, 200 on accept)
+- **Outbound** — `from core import bridge; bridge.send(source=..., summary=..., kind=..., target=..., body=...)` returns `(ok, detail)` and never raises
+- **Auto-flow** — Game-PC and Peer run `/loop 1m /process-bridge-tasks` under `--dangerously-skip-permissions`; Legion's `bridge_monitor.py` sidecar auto-pongs `kind=task summary=ping target=rc` in <100ms
+- **Audit trail** — every inbound + outbound entry persists to `dashboard/_bridge_log.bridge_log` deque + `ops/runtime/bridge_log.jsonl`; bridge freshness is a Prometheus gauge (`rc_bridge_gamepc_result_age_seconds`) and a colored dot on the home dashboard
+
+Fully bidirectional and operator-typeable: `bridge_task.py --target gamepc "<prompt>"` and the result lands back via the bridge without operator-mediated relay.
+
+---
 
 ## Bring-up
 
 ### Legion (the brain)
 
-1. Python 3.14 at `C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe`.
-2. `python -m pip install -r requirements.txt` (Anthropic SDK + Pillow are the explicit deps; transitive ones come with).
-3. Drop your Anthropic API key in `API-Key-Claude.txt` at the repo root (gitignored).
-4. Run `start_claude.ps1` (or the **Claude RC** desktop shortcut) — it starts the `RC-Supervisor` and `RC-VisionServer` scheduled tasks idempotently and launches a Claude Code session in this repo.
+1. Python 3.14 at `C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe`
+2. `python -m pip install -r requirements.txt`
+3. Drop your Anthropic API key in `API-Key-Claude.txt` at the repo root (gitignored)
+4. (Optional, for the cross-Claude bridge) Create `ops/local_paths.json` from `ops/local_paths.example.json` with the shared bearer + peer URL
+5. Run `start_claude.ps1` (or the **Claude RC** desktop shortcut) — starts the `RC-Supervisor` and `RC-VisionServer` scheduled tasks idempotently and launches a Claude Code session in this repo
 
 ### Game-PC (the eyes and hands)
 
-One-line bootstrap from any Game-PC PowerShell session:
+One-line bootstrap from any Game-PC PowerShell session (idempotent, self-elevating):
 
 ```powershell
-iex (iwr https://192.168.8.230:8888/agent/gamepc_boot.ps1 -UseBasicParsing).Content
+iex (iwr https://legion-rc:8888/agent/gamepc_boot.ps1).Content
 ```
 
-This fetches the four agents, provisions the inbound firewall rule for the MCP server (TCP 8892), kills any zombie listeners, starts whatever isn't already healthy, and installs the at-logon scheduled tasks for persistence.
+This fetches all five agents + the `start_gamepc_claude.ps1` launcher + the `process-bridge-tasks.md` slash command (deployed to `~/.claude/commands/`), provisions the inbound firewall rule for the MCP server (TCP 8892), kills any zombie listeners, starts whatever isn't healthy, installs at-logon scheduled tasks (`RC-LCU`, `RC-LiveClientRelay`, `RC-MCP-Server`, `RC-HotkeyListener`, `RC-GamePCBoot` for the bootstrap itself), and spawns a visible Windows Terminal running the bridge Claude session.
 
 ### Dashboard surface
 
-Edge on Game-PC, fullscreened (F11) on the secondary display, pointed at `https://192.168.8.230:8888/`. The dashboard is HTTPS with a self-signed cert; flag `edge://flags/#unsafely-treat-insecure-origin-as-secure` to allow the origin if the cert hasn't been imported.
+Edge on Game-PC, fullscreened (F11) on the secondary display, pointed at `https://legion-rc:8888/`. The mkcert root CA is already trusted on Game-PC, so the cert validates cleanly with no flags.
 
-## Vision pipeline
+---
 
-Frames are captured on Game-PC (`tools/gamepc_screen_agent.py`) and POSTed to Legion's vision server every two seconds. Coaches on Legion fetch the latest cached frame and route it by cost tier:
+## Engineering
 
-- **Tesseract** (region-bound OCR) for cheap, deterministic fields — gold, CS, level, KDA
-- **Claude Sonnet** (full-frame visual reasoning) for anything that needs context — wave state, fog-of-war inference, item-spike timing
-- **Fast-path heuristics** before either of the above when the answer is computable from the Live Client snapshot alone
+Multi-tier engineering audit completed across spring 2026. Each tier item shipped with a restart-and-verify gate; PIDs and verification records are in `WAKEUP_NOTES.md`.
 
-## Cross-Claude bridge
+| Tier | Status | Highlights |
+|---|---|---|
+| **1 — load-bearing infra** | ✅ 5/5 | sqlite per-thread cache, liveclient consolidation, log retention, task-queue compaction, dashboard split |
+| **2 — architecture & reliability** | ✅ 5/6 (#9 deferred) | dashboard helper-shake (web_dashboard.py → 145L barrel), tkinter shim removal, bridge auto-flow watchdog, **#8 daemon threads → asyncio (C1–C5 complete)** — `tk.Tk()` gone, all 5 module pollers + 3 LCU pollers + BaseCoach loops on the AppLoop. #9 (DB compression on 1.7 GB rewind_history.db) avoided as high-blast-radius / low-benefit |
+| **3 — technologies** | ✅ 5/5 | OBS WebSocket publisher (opt-in), Prometheus `/metrics` (zero-dep), portalocker swap, decisions API decouple, PyInstaller spec |
+| **4 — UI polish** | ✅ 3/3 | SSE for `/api/state` (eliminates ~30 fetches/min when idle), loadout diff highlight, recent coach calls panel + dedicated sub-page |
 
-Each machine runs its own Claude Code instance. They post JSON envelopes to `/api/bridge` and pull each other's output via hooks. Game-PC's `/loop /process-bridge-tasks` makes the round-trip hands-off in ~30–90s end-to-end. See `tools/process-bridge-tasks.md` for the canonical pull-and-post-result loop.
+Production code is **genuinely tkinter-free** (zero `import tkinter` in production tree; archived inert files live under `_archive/2026-05-01-audit/`). Every long-running poller in production rides the AppLoop; remaining threading is deliberate (`ThreadingHTTPServer`, Win32 hotkey poll, `asyncio.to_thread` worker offloads for blocking I/O).
+
+Test surface: `tests/phase2_smoke/` (TFT worker, SR/ARAM worker) + `tests/snapshot_regressions/` (state-authority shape).
+
+---
+
+## Roadmap
+
+### Cross-Claude learning sync (2026-05+, in flight)
+
+Operator goal: lessons learned on one machine apply to the others overnight, with provenance memories and a SessionStart wake-up summary. Vision doc: [`docs io RC peer/CROSS_CLAUDE_LEARNING_SYNC_VISION_2026-05-02.md`](./docs%20io%20RC%20atx/CROSS_CLAUDE_LEARNING_SYNC_VISION_2026-05-02.md).
+
+- **Phase 1 — schema + filter contract.** Both sides agree on the `cross_project: true` + `applies_when` memory frontmatter, the `kind=lesson` envelope, and the sender/receiver filter tables. RC's commitment doc: [`RC_PHASE1_LESSON_SCHEMA_2026-05-02.md`](./docs%20io%20RC%20atx/RC_PHASE1_LESSON_SCHEMA_2026-05-02.md). Awaiting Peer's symmetric doc / divergence flags.
+- **Phase 2 — sender + receiver.** File-watcher over each side's memory dir; `bridge.send(kind="lesson", ...)` on new `cross_project: true` memories. `process-incoming-lessons` skill auto-invoked by `/loop` decides per-lesson: apply / queue / discard / reject, writes provenance memory, acks the peer.
+- **Phase 3 — wake-up surface.** Each machine's SessionStart probe extends with a `lessons_summary` block ("N synced overnight: M applied, K queued, L discarded").
+- **Phase 4 — polish.** Auto-revert if applied lessons cause test failures; lesson confidence scoring; symmetry check ("did the lesson take?").
+
+### Tiered vision calibration (🟡 in progress)
+
+Tesseract regions in `data/vision_regions.json` use 1920×1080 defaults — needs calibration against actual in-game frames + coach-side routing logic that calls Tesseract for cheap fields and only escalates to Sonnet when the region read is missing or low-confidence. The endpoints exist (`/api/ocr`, `/api/ocr-crop`); the gating logic doesn't yet.
+
+### Possible follow-ups
+
+Not committed — stack-of-ideas for sessions where audit work is exhausted.
+
+- **Per-enemy alive/dead tiles** on the home dashboard — orphan render functions exist (`renderEnemyStrip`) but the DOM was deliberately removed 2026-04-23 for minimap space + the data pipeline emits `enemy_team` while the JS reads `enemy_comp`. Reviving needs UI approval AND a server-side rename (~3 commits across 3 files). See memory `reference_orphan_team_strips`.
+- **Push channel for bridge inbox** — replace 2s polling on the bridge monitor with an in-process notify in `bridge_post()` so the monitor sees inbound in <10ms. Touches frozen `dashboard/_bridge_log.py`.
+- **Path-name alignment** — add `/api/bridge/messages` as an alias for RC's `/api/bridge` so Peer's contract path resolves on both sides. 1-line change.
+- **PowerShell 7 migration** — bundle with a future "ops day"; PS 5.1 quirks haven't blocked anything.
+
+---
 
 ## Operational notes
 
-- `API-Key-Claude.txt` and runtime state under `ops/runtime/` are gitignored
-- All overlay file writes are atomic (`tmp.write_text(); tmp.replace(target)`) — overlays poll mid-write
-- Restarts are signalled via `restart_trigger.txt`; the supervisor picks it up within a second
-- Tkinter overlays were removed in T2 #6 (2026-05-01); the dashboard is the only UI. The `tk.Tk()` root in `app/__init__.py` stays because game polling schedules itself via `root.after(...)`
-- Frozen files in the architecture map (listed in `CLAUDE.md`) require explicit user approval to modify
+- `API-Key-Claude.txt`, `ops/local_paths.json`, runtime state under `ops/runtime/`, and `ops/tls/*` are all gitignored
+- All overlay file writes are atomic (`tmp.write_text(); tmp.replace(target)`); `os.replace` carries a retry-with-backoff to handle Windows transient `WinError 5` when readers have the destination open
+- Restarts: `echo restart > restart_trigger.txt`; supervisor picks it up within 1s. Hard fallback: `taskkill /F /PID <pid>` then `restart.bat`. **Never `Stop-Process`** (hangs the MCP pipe).
+- Always `py_compile` before restart — syntax errors crash silently under `pythonw.exe`
+- Frozen files (listed in `CLAUDE.md`) require explicit user approval to modify; they're load-bearing and regression-prone
+- The supervisor is now hardened against a Windows venv pythonw stub bug: it latches the observed PID on first valid heartbeat instead of trusting the Popen pid
+- Session workflow: scoped sessions, not long-lived ones. End each task with a commit + `WAKEUP_NOTES.md` hand-off + memory save for non-obvious learning. `/clear` between focus areas
+
+---
 
 ## License
 
