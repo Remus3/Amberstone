@@ -27,8 +27,45 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from core.polled_json import atomic_write_json, read_json_dict
+from core.prom_metrics import Counter
 
 _log = logging.getLogger("rc.cost_tracker")
+
+# Prometheus instrumentation (T3 #12, 2026-05-01). Counters bumped from
+# the singleton's chokepoints — every Anthropic API call lands at
+# `record_call`, every vision-rate-limit decision lands at
+# `acquire_vision_token`, every dedup lookup at `vision_dedupe_get`.
+_M_COACH_CALLS = Counter(
+    "rc_coach_calls_total",
+    "Anthropic API calls recorded by the cost tracker.",
+    labelnames=("model", "purpose"),
+)
+_M_COACH_TOKENS = Counter(
+    "rc_coach_tokens_total",
+    "Tokens consumed by Anthropic API calls.",
+    labelnames=("model", "kind"),
+)
+_M_COACH_COST_USD = Counter(
+    "rc_coach_cost_usd_total",
+    "Estimated USD spend on Anthropic API calls (per local pricing table).",
+    labelnames=("model",),
+)
+_M_VISION_TOKEN_GRANTED = Counter(
+    "rc_vision_token_granted_total",
+    "Vision rate-limit tokens granted (acquire_vision_token returned True).",
+)
+_M_VISION_TOKEN_DENIED = Counter(
+    "rc_vision_token_denied_total",
+    "Vision rate-limit tokens denied (acquire_vision_token returned False).",
+)
+_M_VISION_DEDUPE_HITS = Counter(
+    "rc_vision_dedupe_hits_total",
+    "Frame-dedup cache hits (duplicate frame skipped).",
+)
+_M_VISION_DEDUPE_MISSES = Counter(
+    "rc_vision_dedupe_misses_total",
+    "Frame-dedup cache misses (frame submitted to vision).",
+)
 
 # Approximate per-model pricing (USD per 1M tokens). Conservative; used
 # only for the dashboard ledger — real billing is whatever Anthropic
@@ -146,6 +183,21 @@ class CostTracker:
         usd_cw     = (cache_write   / 1_000_000) * price["input"] * price["cache_write_mult"]
         usd_cr     = (cache_read    / 1_000_000) * price["input"] * price["cache_read_mult"]
         total_usd  = usd_input + usd_output + usd_cw + usd_cr
+        try:
+            purpose_lbl = purpose or "_unspecified"
+            _M_COACH_CALLS.inc(model=model, purpose=purpose_lbl)
+            if input_tokens:
+                _M_COACH_TOKENS.inc(input_tokens, model=model, kind="input")
+            if output_tokens:
+                _M_COACH_TOKENS.inc(output_tokens, model=model, kind="output")
+            if cache_read:
+                _M_COACH_TOKENS.inc(cache_read, model=model, kind="cache_read")
+            if cache_write:
+                _M_COACH_TOKENS.inc(cache_write, model=model, kind="cache_write")
+            if total_usd > 0:
+                _M_COACH_COST_USD.inc(total_usd, model=model)
+        except Exception as exc:
+            _log.debug("prom_metrics record_call: %s", exc)
         with self._lock:
             cur = read_json_dict(self._spend_path(), default=_empty_ledger())
             if cur.get("date") != _today_str():
@@ -216,23 +268,38 @@ class CostTracker:
             self._vb_tokens = min(burst, self._vb_tokens + elapsed * per_sec)
             if self._vb_tokens >= 1.0:
                 self._vb_tokens -= 1.0
-                return True
-            return False
+                granted = True
+            else:
+                granted = False
+        try:
+            (_M_VISION_TOKEN_GRANTED if granted
+             else _M_VISION_TOKEN_DENIED).inc()
+        except Exception as exc:
+            _log.debug("prom_metrics vision_token: %s", exc)
+        return granted
 
     # ── Frame dedupe (5.5) ────────────────────────────────────────────────
 
     def vision_dedupe_get(self, key: str) -> Any:
         if not key:
             return None
+        result: Any = None
+        hit = False
         with self._lock:
             entry = self._dedupe.get(key)
-            if not entry:
-                return None
-            result, expires = entry
-            if time.monotonic() >= expires:
-                self._dedupe.pop(key, None)
-                return None
-            return result
+            if entry:
+                cached, expires = entry
+                if time.monotonic() < expires:
+                    result = cached
+                    hit = True
+                else:
+                    self._dedupe.pop(key, None)
+        try:
+            (_M_VISION_DEDUPE_HITS if hit
+             else _M_VISION_DEDUPE_MISSES).inc()
+        except Exception as exc:
+            _log.debug("prom_metrics vision_dedupe_get: %s", exc)
+        return result
 
     def vision_dedupe_put(self, key: str, result: Any,
                           ttl_s: float = DEFAULT_DEDUPE_TTL_S) -> None:
