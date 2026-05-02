@@ -27,7 +27,7 @@ import sys
 import time
 import urllib.request
 
-LEGION = "https://192.0.2.230:8888/api/bridge"
+LEGION = "https://rc-host:8888/api/bridge"
 TIMEOUT = 1.5
 # Legion uses a mkcert-issued self-signed cert. The root CA is installed on
 # Game-PC's trusted store, but to be safe against fresh deploys this script
