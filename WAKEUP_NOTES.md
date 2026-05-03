@@ -638,6 +638,34 @@ mirror gap: state-builder overlay path vs WS push path read different
 sources at different cadences. May resolve naturally if the mirror fix
 lifts everything onto a single source of truth.
 
+## Coach action label decay — investigation scope (2026-05-02 22:00)
+
+s31/s32 candidate "BASE LOW HP action label persists 2+ minutes after
+based + healed" was scoped (read-only, no code change yet). Root cause:
+`coach_integration.py:_write_fields` does `current.update(fields)` —
+which only overwrites `action` when the parsed Haiku response contains
+an `Action: X` line. Haiku occasionally returns responses missing the
+action field (today's 22:00 tick observed `action: "I NEED TO FLAG A
+CRITICAL ISSUE WITH THIS SCENARIO:"` — clearly a meta-comment that
+slipped past the parser). When a clean response lands without action,
+the prior value survives → 2+ minute staleness symptoms.
+
+Two fix approaches for next session:
+
+1. **Always-clear** (~3 LOC): in `_write_fields` after `current.update(fields)`,
+   explicitly clear `current["action"] = ""` when `"action" not in fields`.
+   Forces every coach response to either set or clear. Side effect:
+   transient empty action between calls.
+2. **HP-premise check** (~10 LOC): if existing action contains "LOW HP" /
+   "BASE" / "RECALL" and `_last_gs.hp_pct > 70`, invalidate. Targeted but
+   needs an action-text → premise-condition mapping. More surgical.
+
+Same pattern applies to per-mode coaches (arena/aram/brawl) which have
+the same structure — `current.update({...})` writes whatever the prompt
+parsed, no decay. Could be lifted into the same `_base_coach.py` helper
+module as a `_clear_stale_action(payload, gs)` companion to
+`mirror_live_stats`.
+
 ## s32 fix shipped 2026-05-02 21:55 — mirror_live_stats helper (c58e689)
 
 Generalizes the SR-only s31 mirror block into a 4-line helper applied
