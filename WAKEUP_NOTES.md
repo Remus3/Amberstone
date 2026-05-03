@@ -961,4 +961,100 @@ behavior on subsequent ticks.
   lobby/matchmaking view-router. Captured 2026-05-02 mid-session per operator
   observation.
 
+## s33 round 4 — build data refresh (patch 26.9)
+
+Operator request: research arena/aram-mayhem/SR itemization for current
+patch + update base builds for all champs (multi-source comparison).
+
+**Phase 0 — Research (4 docs):**
+- `docs/ARENA_META_RESEARCH_2026-05-02.md` — Arena Season 2 launch,
+  augment-level system, anvil RNG breaks linear full_build schema
+- `docs/SR_ITEMIZATION_CHANGES_2026-05-02.md` — Mythic system gone since
+  V14.1; Opportunity + Trailblazer removed in 26.9; Statikk Shiv hybrid
+  AD/AP rework; Voltaic Cyclosword ability-trigger; Doran's Bow + Helm +
+  Gluttonous Greaves added. Patch URL slug is `26-9` not `16-9`.
+- `docs/ARAM_MAYHEM_RESEARCH_2026-05-02.md` — Permanent separate queue;
+  AS cap 5.0; per-player augments; Mayhem-only items (Atma's Reckoning,
+  Rite of Ruin, Sword of Blossoming Dawn, Stat Bonus); KIWI internal
+  name maps to MODE_ARAM in RC currently — Mayhem-aware coach path is
+  a separate followup.
+- `docs/BUILD_REFRESH_STRATEGY_2026-05-02.md` — Phased plan; only
+  aggregator A/aggregator K/aggregator J+aggregator C survive automated fetch; existing
+  cmd_aram_builds() silently no-ops because aggregator B API is now 403.
+
+**Phase 1 (multi-source top-30 per mode):** 3 parallel agents, ~25 min each.
+| Agent | Champs | Source | Issues found |
+|---|---|---|---|
+| SR top-30 | 31 | aggregator A + aggregator C cross-ref | Hexoptics on Ashe/Caitlyn (later confirmed legitimate per DDragon dual-IDs) |
+| ARAM top-30 | 30 | aggregator K + aggregator A | Clean (pre-filtered Hexoptics from Senna) |
+| Arena top-30 | 34 | aggregator J | Smolder Galeforce reference text (cleaned) |
+
+**Phase 2 (next-30 single-source):** 3 parallel agents.
+| Agent | Champs | Source | Issues |
+|---|---|---|---|
+| SR next-30 | 30 | aggregator A | Clean (no Opportunity/Galeforce in any 26.9 build) |
+| ARAM next-30 | 40 | aggregator K | Clean (Naafiri/Pyke/Talon/Yuumi got default vs_X swaps) |
+| Arena next-30 | 29 | aggregator J | 6 stale Opportunity/Galeforce refs (substituted to Voltaic Cyclosword / Phantom Dancer) |
+
+**New tooling shipped this round:**
+- `scripts/validate_build_data.py` — cross-mode item contamination guard.
+  Respects DDragon dual-IDs (Hexoptics 2523 vs 222523, Sundered Sky
+  6610 vs 226610, Overlord's Bloodmail 2501 vs 447111 — same display
+  name, different IDs per map). Auto-detects mode from `_meta.scope`.
+- `scripts/merge_refresh_builds.py` — folds phase JSONs into canonical
+  files with field-preserving merge.
+- `scripts/parse_external_arena.py` — Phase 2 reusable arena parser
+  (Nimble extract → schema fields).
+
+**Canonical files state after merge (`a2fce4c`):**
+- `aram_champion_builds.json` — 167 entries (66 updated, 4 new)
+- `sr_champion_builds.json` — 73 entries (was 18 — gained 56 new from Phase 1+2)
+- `arena_champion_builds.json` — **NEW** 63 entries with arena-specific
+  schema (`ideal_core_priority` + `prismatic_priority` +
+  `build_changing_augments` + `best_duos` + `arena_meta`)
+
+**Arena coach wire-in (`590af3e`):**
+`coaches/_arena_item_advisor.py` now reads from
+`arena_champion_builds.json` first (uses `ideal_core_priority`), falls
+back to `aram_champion_builds.json` `full_build` for the ~100 champs
+not yet in arena dataset. Anti-heal + anti-tank pivots + LDR→Mortal
+substitution all still work on either path. Activated PID 8120 → 4272.
+
+**Phase 3 IN FLIGHT:** 3 parallel agents fetching missing tail champs:
+- SR tail: 103 champs (aggregator A single-source)
+- ARAM tail: 7 champs (aggregator K — small gap)
+- Arena tail: 109 champs (aggregator J single-source)
+~30 min total. Will land in `data/meta_build/refresh_2026-05-02/{sr,aram,arena}_tail.json`,
+then re-run merge_refresh_builds.py.
+
+**My over-correction documented:** Earlier this session I removed
+"Hexoptics C44" from Caitlyn/Jhin/Varus/Zeri ARAM full_build thinking
+it was arena-only. Per DDragon `data/meta/ddragon_items.json`,
+Hexoptics has TWO ids: 2523 (SR/ARAM-available) and 222523 (Arena-only).
+Same for Sundered Sky and Overlord's Bloodmail. Stats sites referencing
+these in SR/ARAM builds mean the SR/ARAM variant. The cleanup outcome
+is fine since Phase 1 ARAM data has alternative builds for those champs,
+but the contamination filter is now corrected (only items with NO
+SR/ARAM-available alias-id are flagged: Reaper's Toll, Arcane Sweeper,
+Goliath, Mystic Punch, Shardblade, etc.).
+
+**Session commit ledger (s33 round 4 additions):**
+
+| Commit | Summary |
+|---|---|
+| `66520a0` | docs: 4 itemization research docs + surgical Hexoptics fix in ARAM |
+| `a2fce4c` | feat(builds): patch 26.9 build data refresh — SR + ARAM + Arena |
+| `590af3e` | feat(arena): advisor reads from arena_champion_builds.json (wire-in) |
+
+11 commits this session, all pushed.
+
+**Backlog after Phase 3 lands:**
+- Mayhem-specific build file (4th canonical) — research done in
+  ARAM_MAYHEM doc; needs `mayhem_champion_builds.json` + Mayhem coach
+  routing change (KIWI → Mayhem coach not ARAM coach)
+- All standard mid-game verifications still owed
+- Pre-game lobby top-bar pill hide
+- Arena `is_next_opponent` parser fix (advisor v3 enhancement)
+- Arena augment-aware reranking (advisor v3)
+
 
