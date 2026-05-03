@@ -21,6 +21,7 @@ from coaches._base_coach import (
     BaseCoach,
     load_json,
     safe_write,
+    mirror_live_stats,
     parse_field,
     parse_fields,
     read_api_key,
@@ -363,6 +364,7 @@ class Coach(BaseCoach):
                                             {"spell": state.get("summoner_f", ""), "cd_s": 0}]}
                                   if champ and (state.get("summoner_d") or state.get("summoner_f")) else {},
             })
+            mirror_live_stats(current, state)
             safe_write(self._out, current)
             logger.debug("Arena coaching written (%d fields)", len(fields))
             try:
