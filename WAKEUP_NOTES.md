@@ -1183,4 +1183,84 @@ Short follow-up session — picked up s34's "publisher landed?" open item.
 - Dashboard UI surface for `/api/health/all` peers section
   (currently API-only)
 
+---
+
+## s36 hand-off — 2026-05-03 (Fleet UI + Mayhem P1 + Daemon Slayer engine plan)
+
+Three arcs, two shipped + one designed:
+
+**Arc 1 — Fleet Health dashboard sub-page (`42dd733`).** Closes the s34
+"UI for /api/health/all peers" open item. Mirrors bridge-pending pattern:
+view-router entry + `/api/health/peer` poll every 30s + idempotent
+sig-based render. Border-left color coding for OK/STALE/DOWN/NO DATA.
+Menu badge counts stale peers. Live-verified in Edge fullscreen via
+Game-PC capture — both Peer + GAMEPC peers show fresh OK cards.
+
+**Arc 2 — Mayhem Phase 1 (`32db190`).** Closes the design-recommendation
+arc by FIXING A LIVE BUG: `aram_coach.py:550` checked `"MAYHEM" in
+gm.upper()` against Riot's actual live string `"KIWI"` — Haiku has been
+getting "ARAM coach" prompts for every Mayhem game since the queue went
+permanent. New `core/mayhem_detect.py` (single-source-of-truth helper
+covering KIWI/MAYHEM/ARAM_MAYHEM aliases) + `is_mayhem_mode` boolean
+surfaced into coach output payload + prompt's `mayhem_tag` substitution
+now actually fires. Activates next RC restart. Phase 2+ deferred.
+
+**Arc 3 — Daemon Slayer build engine (designed, not started).** Operator
+authorized full local port replacing `_arena_item_advisor` + Haiku
+item-rerank logic with a dedicated process on `:8893`. Deep-dived
+lolmath.net/itemop architecture: their Chrome extension is 400 bytes of
+CORS-bypass rules (no backend API), entire algorithm runs as client-side
+JS on Cloudflare Pages. Algorithm chunk (`14.ejgq2van4b.js`, 730KB)
+contains scenario configs as cleartext object literals — regex-extractable.
+DDragon = item/champion data; Riot patch notes = changelog upstream;
+lolmath = scenario reference only. **Locked design**:
+1. Engine name = **Daemon Slayer**
+2. HTTP-only on `:8893` (WS deferred)
+3. Patch cadence = on DDragon version change only (hourly poll, harvest on diff)
+4. Phase 4 item priority = Top-30 first session, remaining roster segmented across following sessions
+
+7 phases, ~6-10 weeks total; Phase 1+2+3 = ~2 weeks → first user-visible.
+Full design + locked decisions in `project_daemon_slayer_engine.md`.
+
+**Memory writes (5):**
+- `reference_riot_ca_cert_install.md` — install-cert.cmd is Riot's LoL
+  Game Engineering CA root, browsers need it for `:2999`, RC doesn't
+- `reference_lolmath_architecture.md` — no backend API, static SPA,
+  algorithm is client-side JS; full reverse-engineering is reading
+  bundles not network calls
+- `project_yunara_duplicate_matches.md` — Home → Recent 5 shows 3 Yunara
+  rows that are ONE disconnect-reconnect match; investigate whether
+  Riot's giving us separate match_ids or RC's reader is duping
+- `project_lcu_pengu_pregame_postgame.md` — operator parking-lot to
+  explore Pengu Loader's Discord/GitHub for richer LCU pre/post-game
+  data; research-first
+- `project_daemon_slayer_engine.md` — full engine design, all 4 locked
+  decisions, 7-phase plan
+
+**Things tomorrow-you should NOT redo:**
+- Don't re-research lolmath's architecture — verdict in
+  `reference_lolmath_architecture.md` is final: no API, just CORS shim.
+  Don't waste time looking for endpoints.
+- Don't rename Daemon Slayer or re-litigate the 4 locked design
+  decisions — operator chose them. Re-bikeshedding costs context.
+- Don't try to re-implement Mayhem detection — `core/mayhem_detect.py`
+  is the canonical helper. Add new consumers (vision_tracker, etc.) by
+  importing it; don't re-detect by raw string.
+- Fleet UI already renders peer cards correctly — don't duplicate the
+  data path. If you want extra fields (auto_actions_24h, etc.), they're
+  already in `/api/health/peer` body — extend `renderFleet()` cells
+  array, not the backend.
+
+**Open for next sessions:**
+- **Daemon Slayer Phase 1 step 1**: probe lolmath chunk
+  `14.ejgq2van4b.js` to validate scenario records are regex-extractable
+  without a real JS parser. Bounded: a few greps + a sample extract.
+  If feasible → write `tools/daemon_slayer_extract.py`.
+- All s34/s35 carryover items (Mayhem coach future phases, Bridge
+  Watcher Phase 5+) still apply.
+
+**Bridge state at session end:** RC PID 9740 alive, supervisor 10796,
+Game-PC + Peer peer publishers OK (~10s heartbeat ages on Fleet UI).
+Bridge loop verified live on both peers via liveness probe
+(`task-3ff94f7dae59` round-tripped in <90s). No game in progress.
 
