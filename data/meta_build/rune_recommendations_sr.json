@@ -132,10 +132,10 @@
     "coaching_note": "TF Spellblade + Tempo: Q procs Spellblade, then fire 2 Tempo autos. Never auto without a proc queued."
   },
   "Ezreal": {
-    "keystone": "Phase Rush",
+    "keystone": "Arcane Comet",
     "primary_tree": "Sorcery",
     "secondary_tree": "Domination",
-    "coaching_note": "Phase Rush lets you kite after Q. Manaflow stacks via Q spam. Gathering Storm provides scaling AD. Sudden Impact for lethality on E."
+    "coaching_note": "Arcane Comet procs on Q hits — landed Mystic Shot is a guaranteed comet. Manaflow stacks via Q spam. Gathering Storm provides scaling AD. Sudden Impact for lethality on E."
   },
   "Jhin": {
     "keystone": "Fleet Footwork",
