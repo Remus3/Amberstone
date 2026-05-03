@@ -27,6 +27,7 @@ from coaches._base_coach import (
     read_api_key,
     fmt_abilities,
 )
+from coaches._arena_item_advisor import recompute_arena_build
 
 logger = logging.getLogger("rc.coaches.arena")
 
@@ -365,6 +366,30 @@ class Coach(BaseCoach):
                                   if champ and (state.get("summoner_d") or state.get("summoner_f")) else {},
             })
             mirror_live_stats(current, state)
+
+            # Per-round item advisor (s33). Replaces the static champ-select
+            # item_build (frozen full_build joined) with a recommendation
+            # that dedups against owned items + re-ranks by alive opponents'
+            # tank/healer counts. Pure rule-based; no Haiku call.
+            try:
+                alive_opps = [
+                    t.get("name", "") for t in teams
+                    if not t.get("is_dead")
+                    and not t.get("is_you")
+                    and not t.get("is_partner")
+                ]
+                new_build = recompute_arena_build(
+                    champion=champ,
+                    current_items=state.get("items", []),
+                    gold=state.get("gold", 0),
+                    alive_opponents=alive_opps,
+                    hp_pct=state.get("hp_pct", 100),
+                )
+                if new_build:
+                    current["item_build"] = ", ".join(new_build)
+            except Exception as exc:
+                logger.debug("arena item advisor: %s", exc)
+
             safe_write(self._out, current)
             logger.debug("Arena coaching written (%d fields)", len(fields))
             try:
