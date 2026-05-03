@@ -1124,4 +1124,63 @@ endpoint listing. `983e9f6` ROADMAP marks read-only panel shipped.
 - Confirmation that peer publishers landed (deploy tasks dispatched
   at end of session)
 
+---
+
+## s35 hand-off — 2026-05-03 (publisher 401 fix + /done fleet rollout)
+
+Short follow-up session — picked up s34's "publisher landed?" open item.
+
+**Arc 1 — Game-PC publisher 401 root cause + fix:**
+- Peer publisher worked; Game-PC's sent token-rejected every minute. Logs
+  confirmed `health peer auth reject from 192.168.8.237` once/min.
+- Root cause: `tools/bridge_watcher_health_publisher.py:_resolve_token`
+  fallback chain only checked legacy aliases (`rc_peer_bridge_secret`,
+  `bridge_secret`, `shared_secret`) — never the canonical
+  `bridge_shared_secret` that `core/bridge.py:65` reads. Peer masked it
+  because Peer-VIP has its own `core.bridge` import path that bypasses
+  the fallback entirely.
+- `ec5a30e` — added `bridge_shared_secret` first in the lookup chain;
+  legacy aliases retained for backward compat.
+- Game-PC's local file used `bridge_secret` key with the wrong VALUE
+  (32-char X-RC-Token, not the 43-char canonical). Dispatched the
+  canonical secret via bridge task body (transit: TLS over Tailscale,
+  rest: gitignored Legion inbox + Game-PC's RC-Agent dir — same trust
+  boundary as `local_paths.json` itself).
+- Game-PC confirmed: publisher 401→200, age_s=10, stale=false.
+
+**Arc 2 — /done command on peers:**
+- Peer + Game-PC didn't have `/done` installed. Dispatched install tasks
+  to both:
+  - Game-PC: pull `done-gamepc.md` → `~/.claude/commands/done.md`
+    (wrap-only variant, no git).
+  - Peer: pull `done-peer.md` → `~/.claude/commands/done.md`, replace
+    `<peer-vip-root>` placeholder (8 occurrences → `C:\Peer-VIP`).
+- Both confirmed installed.
+- `abdeb46` — `gamepc_boot.ps1` `SLASH_COMMANDS` restructured from
+  string array to `{src, dst}` pair list so peer-variant skills can be
+  served under their full name and land at the user-facing slash name
+  without an extra rename. `/done` now persists across Game-PC reboots.
+
+**Housekeeping:**
+- Unregistered stale `RC-BootVerify-2026-05-03` scheduled task (one-shot
+  with `py.exe` PATH issue same as the old `RC-PatchRefresh` bug).
+  Anomaly should clear on next `rc_facts.py` probe.
+
+**Things tomorrow-you should NOT redo:**
+- Publisher token-key fallback now includes canonical key — don't
+  re-investigate 401s of the same shape unless a new peer with
+  no `core.bridge` and no token file is added.
+- `/done` is wired into `gamepc_boot.ps1`; only Peer needs to add the
+  pull to its own bootstrap (out of RC's scope; Peer-side decision).
+- `RC-BootVerify-2026-05-03` deleted; if a new dated `RC-BootVerify-*`
+  task appears, it's a fresh operator-created one — NOT a recurring
+  resurrection.
+
+**Open for next sessions** (from s34, still pending):
+- Mayhem coach routing (multi-day arc; research in
+  `docs/ARAM_MAYHEM_RESEARCH_2026-05-02.md`)
+- Bridge Watcher Phase 5+ (sliding-window counters, push notifications)
+- Dashboard UI surface for `/api/health/all` peers section
+  (currently API-only)
+
 
