@@ -21,7 +21,14 @@ from pathlib import Path
 from typing import Iterable
 
 _APP_DIR = Path(__file__).parent.parent
-_BUILDS_PATH = _APP_DIR / "data" / "meta_build" / "aram_champion_builds.json"
+# Arena-specific builds (patch 26.9, Arena Season 2). Schema differs
+# from ARAM/SR: uses ideal_core_priority + prismatic_priority instead
+# of full_build because arena anvil RNG dictates acquisition.
+_ARENA_BUILDS_PATH = _APP_DIR / "data" / "meta_build" / "arena_champion_builds.json"
+# ARAM as fallback for champions missing from arena_champion_builds
+# (we only have 63 arena entries; 100+ champions still rely on ARAM data
+# as a stand-in until Phase 3 covers the tail).
+_ARAM_BUILDS_PATH = _APP_DIR / "data" / "meta_build" / "aram_champion_builds.json"
 _DDRAGON_PATH = _APP_DIR / "data" / "meta" / "ddragon_champions.json"
 
 # Champions with sustained mid-fight heal (not just lifesteal). Targeted
@@ -58,18 +65,51 @@ _HEAL_SUBSTITUTIONS = {
     "Lord Dominik's Regards": "Mortal Reminder",
 }
 
-_builds_cache: dict | None = None
+_arena_builds_cache: dict | None = None
+_aram_builds_cache: dict | None = None
 _tags_cache: dict[str, list[str]] | None = None
 
 
-def _load_builds() -> dict:
-    global _builds_cache
-    if _builds_cache is None:
+def _load_arena_builds() -> dict:
+    global _arena_builds_cache
+    if _arena_builds_cache is None:
         try:
-            _builds_cache = json.loads(_BUILDS_PATH.read_text(encoding="utf-8"))
+            _arena_builds_cache = json.loads(_ARENA_BUILDS_PATH.read_text(encoding="utf-8"))
         except Exception:
-            _builds_cache = {}
-    return _builds_cache
+            _arena_builds_cache = {}
+    return _arena_builds_cache
+
+
+def _load_aram_builds() -> dict:
+    global _aram_builds_cache
+    if _aram_builds_cache is None:
+        try:
+            _aram_builds_cache = json.loads(_ARAM_BUILDS_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            _aram_builds_cache = {}
+    return _aram_builds_cache
+
+
+def _resolve_build_path(champion: str) -> tuple[list[str], str]:
+    """Find the canonical item path for a champion. Prefers
+    arena_champion_builds.json (s33 refresh — uses ideal_core_priority).
+    Falls back to aram_champion_builds.json (full_build) for champs
+    not yet in the arena dataset.
+
+    Returns (item_list, source_label) where source_label is "arena"
+    or "aram-fallback" or "" if no data found.
+    """
+    arena = _load_arena_builds()
+    arena_entry = arena.get(champion) or {}
+    icp = arena_entry.get("ideal_core_priority")
+    if icp:
+        return list(icp), "arena"
+    aram = _load_aram_builds()
+    aram_entry = aram.get(champion) or {}
+    full = aram_entry.get("full_build")
+    if full:
+        return list(full), "aram-fallback"
+    return [], ""
 
 
 def _load_tags() -> dict[str, list[str]]:
@@ -162,9 +202,7 @@ def recompute_arena_build(
     owned (caller should leave existing item_build untouched in that
     case).
     """
-    builds = _load_builds()
-    entry = builds.get(champion) or {}
-    full = list(entry.get("full_build") or [])
+    full, _source = _resolve_build_path(champion)
     if not full:
         return []
 
