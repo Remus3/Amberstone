@@ -1,0 +1,99 @@
+{
+  "_doc": "Per-node config for bridge_watcher (Phase 1+). Phase 1 ships this file; Phase 2 wires it to the auto-action lane. The watcher reads ONLY the entry matching its --node argument. See tools/BRIDGE_WATCHER_PLAN.md §6 for rationale.",
+  "schema_version": 1,
+  "legion": {
+    "auto_read_patterns": [
+      "tail .* log", "show .* state", "what is .*pid",
+      "list .*files", "cat .*", "git log", "git status",
+      "git diff", "/api/health", "/api/state"
+    ],
+    "auto_ops_verbs": [
+      "restart RC", "regen cert", "pull from origin/main",
+      "verify .* health"
+    ],
+    "_bash_restricted_doc": "Phase 3-ready narrow whitelist. Each pattern is anchored to a specific operation we want sub-Claude to be able to run; broad patterns like 'py *.py' or 'powershell -c *' were removed because they'd allow arbitrary file writes via the script body. The ops verbs in auto_ops_verbs above each map to exactly one of these commands.",
+    "bash_restricted": [
+      "git log*", "git status*", "git diff*",
+      "git pull origin main",
+      "py tools/bridge_pull_tasks.py *",
+      "py tools/bridge_post_result.py *",
+      "py tools/regen_rc_cert.ps1*",
+      "powershell -ExecutionPolicy Bypass -File tools/regen_rc_cert.ps1*",
+      "curl* https://127.0.0.1:8888/api/health*",
+      "curl* https://127.0.0.1:8888/api/state*",
+      "curl* http://127.0.0.1:8889/health*",
+      "type *.json", "type *.md", "type *.log",
+      "dir *"
+    ],
+    "max_turns": 6,
+    "timeout_s": 120,
+    "daily_token_cap_usd": 5.00,
+    "escalate_always": [
+      "main.py",
+      "core/log_setup.py",
+      "core/moon_proxy.py",
+      "lcu/lcu_client.py",
+      "core/game_snapshot.py",
+      "ops/rc_dev_runtime.py",
+      "ops/rc_supervisor.py",
+      "app/__init__.py",
+      "app/_loop.py",
+      "app/_health_monitor.py",
+      "app/_remediation.py",
+      "app/_state_authority.py",
+      "app/_overlay_manager.py",
+      "app/_game_lifecycle.py",
+      "restart_trigger.txt"
+    ]
+  },
+  "gamepc": {
+    "auto_read_patterns": [
+      "tail .* log", "what .*agent .*pid", "list .*files",
+      "cat .*", "show .*MCP server"
+    ],
+    "auto_ops_verbs": [
+      "restart agent .*", "kill agent .*", "ping LCU",
+      "ping liveclient relay"
+    ],
+    "bash_restricted": [
+      "py C:\\\\RC-Agent\\\\.*\\.py",
+      "Get-Process *", "taskkill /F /PID *",
+      "schtasks /Run /TN *", "wmic process *",
+      "type *", "dir *"
+    ],
+    "max_turns": 4,
+    "timeout_s": 60,
+    "daily_token_cap_usd": 2.00,
+    "escalate_always": [
+      "C:\\RC-Agent\\gamepc_screen_agent.py",
+      "C:\\RC-Agent\\gamepc_lcu_agent.py",
+      "C:\\RC-Agent\\gamepc_liveclient_relay.py",
+      "C:\\RC-Agent\\gamepc_mcp_server.py",
+      "C:\\RC-Agent\\gamepc_hotkey_listener.py"
+    ]
+  },
+  "peer": {
+    "auto_read_patterns": [
+      "git log", "git status", "git diff",
+      "show .*state", "show envelope", "show .*health",
+      "show .*drivers", "show .*jobs",
+      "what is .*pid", "list .*files", "list agents", "list managers",
+      "cat .*", "cat data/.*", "cat ops/runtime/.*"
+    ],
+    "auto_ops_verbs": [
+      "restart agent .*", "restart manager .*", "force-sync .*",
+      "pull from origin/main", "trigger smoke .*"
+    ],
+    "bash_restricted": [
+      "py *.py", "python core/.*", "python -m agents._sidecar .*",
+      "python tools/.*", "python scripts/.*",
+      "git log*", "git status*", "git diff*", "git pull*"
+    ],
+    "max_turns": 4,
+    "timeout_s": 90,
+    "daily_token_cap_usd": 2.00,
+    "escalate_always": [
+      "restart_trigger.txt"
+    ]
+  }
+}

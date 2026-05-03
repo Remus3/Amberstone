@@ -124,7 +124,16 @@ _AGENT_ALLOWED = {
     "bridge_setup.ps1", "gamepc_boot.ps1",
     "start_gamepc_claude.ps1",
     "process-bridge-tasks.md",
+    "process-bridge-tasks-peer.md",
     "rc_rootCA.pem",
+    "BRIDGE_WATCHER_PLAN.md",
+    "bridge_watcher.py",
+    "bridge_watcher_classify.py",
+    "bridge_watcher_config.json",
+    "bridge_watcher_hook.ps1",
+    "bridge_watcher_install.ps1",
+    "bridge_watcher_actions.py",
+    "bridge_watcher_action_prompt.md",
 }
 
 
@@ -149,6 +158,8 @@ def _serve_agent_file(h) -> None:
             ctype = "application/x-pem-file"
         elif name.endswith(".ps1"):
             ctype = "text/plain; charset=utf-8"
+        elif name.endswith(".json"):
+            ctype = "application/json; charset=utf-8"
         else:
             ctype = "text/x-python; charset=utf-8"
         h._send(200, body, ctype)
