@@ -1985,4 +1985,39 @@ None — knowledge captured in code (3 fixes + Phase 2 receiver) and in this han
 5. **Cron jobs are dead** — session-only, gone with this Claude session. If ongoing tick coverage desired, re-issue the two `/loop` commands.
 6. **For League work**: dashboard OWNED panel needs Ctrl+F5 in Edge to pick up the JS fix. Other than that, substrate unchanged from s30.
 
+---
+
+## s31 late follow-up — 2026-05-02 21:08 (Peer Finding A response + 3 coach/bridge fixes)
+
+> Three more commits after the s31 doc landed. All driven by Peer's
+> Finding A reply ("Legion's endpoint only logs chatter kinds") plus
+> the coach-pipeline bugs surfaced during the Jinx + Caitlyn games.
+> **All three need RC restart to activate.**
+
+| Commit | Type | Summary |
+|---|---|---|
+| `a4df4a4` | fix(bridge) | `dashboard/_bridge_log.py` deque maxlen 100 → 500. Peer claimed RC's `/api/bridge` GET only surfaces `note/ping/ack` — actually root cause is the deque's 100-entry cap getting flushed by high `kind=note` volume from every legion chat reply (Stop hook posts 1 note per response). Disk JSONL has 368 entries (53 task + 33 result + 11 ack + 5 ask + 265 note + 1 ping); deque was capping at 100 most-recent. Both `_bridge_log` init and `bridge_hydrate_from_disk` slice now reference the new constant. |
+| `dc73303` | fix(coach) | `coach_integration._write_fields` now force-overwrites `ally_comp`/`enemy_comp` from `self._last_state` every coach call. Mid-Jinx-game we saw `coaching_data.json` had ally_comp from a prior unrelated match — the read-merge-write cycle preserved it because Claude's response shape doesn't include comps. Direct assignment (not setdefault) — current state always trumps disk. |
+| `7d6483d` | fix(coach) | `coach_integration._run` now stashes `_last_gs` (raw game_reader output with unprefixed `kda`/`cs`/`level`/`gold`/`game_time_s`/`hp` keys); `_write_fields` mirrors them into `coaching_data.json`. Dashboard top-bar pills (CS / level / gold / KDA / game time) read these from the WS `/push` channel which broadcasts raw coaching JSON without liveclient overlay. Also captures `items`/`owned_items`/`enemy_team` so the OWNED-panel fix from `3a449a8` actually fires through the WS push path, not just /api/state polling. |
+
+**Restart-required summary:**
+- `a4df4a4` (deque) — module-level state captured at import; needs restart.
+- `dc73303` + `7d6483d` (coach) — `coach_integration` is loaded once; needs restart.
+- All three commits land cleanly via standard `restart_trigger.txt` workflow.
+- Operator action when convenient between games.
+
+**Operational status post-fix:**
+- ✅ Peer Finding A understood + deque cap raised
+- ✅ Coach sticky comp fixed (no more "previous game's ally_comp")
+- ✅ Dashboard top-bar pills (CS/KDA/level/gold/game-time) populate via WS push
+- ✅ OWNED panel populates via WS push (was previously /api/state-only)
+- ⏳ **All gated on RC restart**
+
+**Next-session candidates (revised):**
+1. **RC restart** — activate the 3 coach/bridge fixes. Verify top-bar populates + ally_comp matches current game.
+2. **Coach action label decay** — `BASE LOW HP` action label persists 2+ minutes after the user has based + healed. Action field is updated less frequently than immediate/next; needs a turnover trigger (maybe HP-pct-based override).
+3. **Game-PC re-pull tooling** — s30 backlog item; non-urgent.
+4. **Cert SAN doctrine helper** — s30 backlog; codify in tools/regen_rc_cert.ps1 if used again.
+5. **CLAUDE.md / WAKEUP_NOTES roll-up** — gradually decommission older s28-s30 hand-offs.
+
 
