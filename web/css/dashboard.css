@@ -739,28 +739,31 @@ body[data-view="loadouts"] main,
 body[data-view="settings"] main,
 body[data-view="diagnostics"] main,
 body[data-view="coach-calls"] main,
+body[data-view="bridge-pending"] main,
 body[data-view="replay"] main { display: none; }
-body[data-view="lobby"]        #view-lobby,
-body[data-view="session"]      #view-session,
-body[data-view="history"]      #view-history,
-body[data-view="loadouts"]     #view-loadouts,
-body[data-view="settings"]     #view-settings,
-body[data-view="diagnostics"]  #view-diagnostics,
-body[data-view="coach-calls"]  #view-coach-calls,
-body[data-view="replay"]       #view-replay { display: block; }
+body[data-view="lobby"]          #view-lobby,
+body[data-view="session"]        #view-session,
+body[data-view="history"]        #view-history,
+body[data-view="loadouts"]       #view-loadouts,
+body[data-view="settings"]       #view-settings,
+body[data-view="diagnostics"]    #view-diagnostics,
+body[data-view="coach-calls"]    #view-coach-calls,
+body[data-view="bridge-pending"] #view-bridge-pending,
+body[data-view="replay"]         #view-replay { display: block; }
 /* Hide home + lobby overlays when a non-default view is active.
  * In lobby view specifically, the inline #lobby-overlay strip is
  * suppressed since its content moved into #view-lobby. */
-body[data-view="session"]      #home-overlay,
-body[data-view="history"]      #home-overlay,
-body[data-view="loadouts"]     #home-overlay,
-body[data-view="settings"]     #home-overlay,
-body[data-view="diagnostics"]  #home-overlay,
-body[data-view="coach-calls"]  #home-overlay,
-body[data-view="replay"]       #home-overlay,
-body[data-view="last-match"]   #home-overlay,
-body[data-view="lobby"]        #home-overlay,
-body[data-view="lobby"]        #lobby-overlay { display: none; }
+body[data-view="session"]        #home-overlay,
+body[data-view="history"]        #home-overlay,
+body[data-view="loadouts"]       #home-overlay,
+body[data-view="settings"]       #home-overlay,
+body[data-view="diagnostics"]    #home-overlay,
+body[data-view="coach-calls"]    #home-overlay,
+body[data-view="bridge-pending"] #home-overlay,
+body[data-view="replay"]         #home-overlay,
+body[data-view="last-match"]     #home-overlay,
+body[data-view="lobby"]          #home-overlay,
+body[data-view="lobby"]          #lobby-overlay { display: none; }
 
 /* Lobby view layout (2026-04-26 v2): replaces the post-match-duped
  * 5-panel grid with a 2x2 lobby-themed grid. Queue card spans 1 col,
@@ -2214,6 +2217,121 @@ body[data-mode="brawl"] #mm-img { image-rendering: auto; }
 .rcc-choice-contest .rcc-choice { color: #F07E8B; }
 .rcc-choice-give    .rcc-choice { color: #8A8CF0; }
 .rcc-choice-skip    .rcc-choice { color: var(--text-faint); }
+
+/* Bridge Pending sub-page (2026-05-03) — escalation queue from
+ * bridge_watcher. Compact rows so 5-10 escalations fit without scroll;
+ * monospace prompt block when present so cross-Claude payloads stay
+ * readable. Claimed tasks dim slightly so operator can spot un-claimed
+ * work first. */
+.view-section-count {
+  display: inline-block;
+  margin-left: auto;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+.bridge-pending-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 14px;
+}
+.bridge-pending-item {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  font-size: 12px;
+}
+.bridge-pending-item.bp-claimed {
+  opacity: 0.55;
+}
+.bp-head {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+.bp-from {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 1px 7px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+  color: var(--gold);
+}
+.bp-kind {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+.bp-age {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+.bp-id {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--text-faint);
+  font-family: var(--mono, monospace);
+  user-select: all;
+}
+.bp-summary {
+  color: var(--text);
+  font-weight: 600;
+  margin: 2px 0;
+}
+.bp-reason {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+.bp-prompt {
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  border-radius: 3px;
+  background: rgba(0,0,0,0.18);
+  border: 1px dashed var(--border-soft);
+  color: var(--text-dim);
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 140px;
+  overflow: auto;
+}
+.bp-claim {
+  margin-top: 4px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+}
+/* Menu badge — small count next to the menu button label so the
+ * operator sees pending depth without opening the sub-page. Hidden
+ * when count is 0 (via the `hidden` HTML attribute set in JS). */
+.menu-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: #000;
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 14px;
+  text-align: center;
+}
+.menu-badge[hidden] { display: none; }
 
 /* Vector overlay (vision_tracker dots + ghost markers) layered on top of
  * the live minimap image. Sized in JS to match the rendered <img> bounds

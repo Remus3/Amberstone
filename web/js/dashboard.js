@@ -440,12 +440,12 @@
   // localStorage and a body[data-view] attribute. Auto promotes to
   // ChampSelect/in-game on urgent game events; if a manual view is
   // active during a promote-worthy event, the banner appears instead.
-  const VIEW_IDS = ["home","lobby","last-match","session","history","replay","loadouts","settings","diagnostics","coach-calls"];
+  const VIEW_IDS = ["home","lobby","last-match","session","history","replay","loadouts","settings","diagnostics","coach-calls","bridge-pending"];
   const VIEW_LABELS = {
     "home":"Home","lobby":"Lobby","last-match":"Last Match","session":"Session",
     "history":"History","replay":"Replay",
     "loadouts":"Loadouts","settings":"Settings","diagnostics":"Diagnostics",
-    "coach-calls":"Coach Calls",
+    "coach-calls":"Coach Calls","bridge-pending":"Bridge Pending",
   };
   const _VIEW = {
     current: null,
@@ -6192,6 +6192,109 @@
   }
   setInterval(pollRecentCoachCalls, RECENT_CALLS.intervalMs);
   pollRecentCoachCalls();
+
+  // ── Bridge Pending escalations (2026-05-03) ────────────────────────
+  // Reads /api/bridge/pending every 20s — the bridge_watcher writes
+  // the queue, this only displays it. Render is idempotent (sig
+  // change-detection) to avoid flicker. Menu badge shows depth so the
+  // operator sees pending work without navigating; sub-page shows full
+  // detail. Read-only at MVP; drain via /process-bridge-tasks.
+  const BRIDGE_PENDING = {
+    list:    el("bridge-pending-list"),
+    empty:   el("bridge-pending-empty"),
+    count:   el("bridge-pending-count"),
+    badge:   el("bridge-pending-menu-badge"),
+    intervalMs: 20000,
+  };
+
+  function renderBridgePending(payload) {
+    const B = BRIDGE_PENDING;
+    const tasks = (payload && Array.isArray(payload.tasks)) ? payload.tasks : [];
+    const now = Date.now() / 1000;
+    const live = tasks.filter(t => !t.ttl_at || t.ttl_at > now);
+
+    if (B.count) B.count.textContent = String(live.length);
+    if (B.badge) {
+      B.badge.textContent = String(live.length);
+      B.badge.hidden = live.length === 0;
+    }
+
+    if (!B.list) return;
+    if (live.length === 0) {
+      if (B.list.dataset.sig !== "empty") {
+        B.list.innerHTML = "";
+        B.list.dataset.sig = "empty";
+      }
+      if (B.empty) B.empty.hidden = false;
+      return;
+    }
+    if (B.empty) B.empty.hidden = true;
+
+    const sig = live.map(t => `${t.task_id}:${t.claimed_by||""}:${t.received_at||0}`).join("|");
+    if (B.list.dataset.sig === sig) return;
+    B.list.dataset.sig = sig;
+    B.list.innerHTML = "";
+    for (const t of live) {
+      const li = document.createElement("li");
+      li.className = "bridge-pending-item";
+      if (t.claimed_by) li.classList.add("bp-claimed");
+
+      const head = document.createElement("div");
+      head.className = "bp-head";
+      const from = document.createElement("span");
+      from.className = "bp-from";
+      from.textContent = (t.from || "?").toUpperCase();
+      const kind = document.createElement("span");
+      kind.className = "bp-kind";
+      kind.textContent = t.kind || "task";
+      const age = document.createElement("span");
+      age.className = "bp-age";
+      age.textContent = _formatRelativeAge(t.received_at);
+      const id = document.createElement("span");
+      id.className = "bp-id";
+      id.textContent = t.task_id || "";
+      id.title = "click to copy";
+      head.append(from, kind, age, id);
+
+      const summary = document.createElement("div");
+      summary.className = "bp-summary";
+      summary.textContent = t.summary || "(no summary)";
+
+      li.append(head, summary);
+
+      if (t.reason) {
+        const reason = document.createElement("div");
+        reason.className = "bp-reason";
+        reason.textContent = t.reason;
+        li.append(reason);
+      }
+      if (t.prompt) {
+        const prompt = document.createElement("pre");
+        prompt.className = "bp-prompt";
+        prompt.textContent = t.prompt;
+        li.append(prompt);
+      }
+      if (t.claimed_by) {
+        const claim = document.createElement("div");
+        claim.className = "bp-claim";
+        claim.textContent = `claimed by ${t.claimed_by}`;
+        li.append(claim);
+      }
+      B.list.appendChild(li);
+    }
+  }
+
+  async function pollBridgePending() {
+    if (document.hidden) return;
+    try {
+      const r = await fetch("/api/bridge/pending");
+      if (!r.ok) return;
+      const d = await r.json();
+      renderBridgePending(d);
+    } catch (_) {}
+  }
+  setInterval(pollBridgePending, BRIDGE_PENDING.intervalMs);
+  pollBridgePending();
 
   // ── Input bar → /api/input (with chat history) ─────────────────────
   const INPUT = {

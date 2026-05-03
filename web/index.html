@@ -47,6 +47,7 @@
         <button type="button" class="view-menu-item" data-view="settings"    role="menuitem">Settings</button>
         <button type="button" class="view-menu-item" data-view="diagnostics" role="menuitem">Diagnostics</button>
         <button type="button" class="view-menu-item" data-view="coach-calls" role="menuitem">Coach Calls</button>
+        <button type="button" class="view-menu-item" data-view="bridge-pending" role="menuitem">Bridge Pending<span class="menu-badge" id="bridge-pending-menu-badge" hidden>0</span></button>
         <div class="view-menu-divider"></div>
         <button type="button" class="view-menu-item view-menu-dev" data-view="dev" role="menuitem">⚙ Dev / Sim Preview</button>
         <div class="view-menu-divider"></div>
@@ -1052,6 +1053,24 @@
           <ol id="recent-coach-calls-list" class="recent-coach-calls-list"></ol>
         </section>
         <p id="recent-coach-calls-empty" class="home-empty">No resolved coach calls yet — they'll appear here after the detector flags a moment and you make a choice.</p>
+      </div>
+    </section>
+
+    <!-- Bridge Pending sub-page (2026-05-03): surfaces the bridge_watcher
+         escalation queue (ops/runtime/bridge_inbox_pending.json) so the
+         operator sees what cross-Claude work landed but wasn't auto-handled.
+         Read-only at MVP per routes_bridge_pending.py — drain via
+         /process-bridge-tasks (the watcher prunes resolved task_ids on its
+         next cycle so this list naturally empties). -->
+    <section id="view-bridge-pending" class="view-section" hidden>
+      <div class="view-section-head">
+        <h2>BRIDGE PENDING</h2>
+        <span class="view-section-sub">Watcher escalations — drain via <code>/process-bridge-tasks</code></span>
+        <span id="bridge-pending-count" class="view-section-count">0</span>
+      </div>
+      <div class="view-section-body">
+        <ol id="bridge-pending-list" class="bridge-pending-list" aria-label="Pending bridge tasks"></ol>
+        <p id="bridge-pending-empty" class="home-empty">No pending escalations — bridge auto-flow is clean. Tasks land here when the watcher classifies them as <code>escalate</code>.</p>
       </div>
     </section>
   </div>
