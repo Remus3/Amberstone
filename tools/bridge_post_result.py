@@ -85,6 +85,15 @@ def main() -> int:
                         "on Peer — routing is then via core.bridge.send() "
                         "(POST to Peer's /api/bridge/inbox) instead of the "
                         "local Legion bridge log.")
+    p.add_argument("--suggestions", action="append", default=None,
+                   help="(repeat) actionable next-steps to include in the "
+                        "result body when something failed. Repeat the flag "
+                        "for each suggestion, e.g. "
+                        "`--suggestions 'check ANTHROPIC_API_KEY' "
+                        "--suggestions 'verify peer reachable via tailnet'`. "
+                        "Lands as body.suggestions = [...]. Borrowed from "
+                        "n8n-mcp's error-shape pattern. Backward compatible: "
+                        "absent on success or when no suggestions warranted.")
     args = p.parse_args()
     try:
         body_extra = json.loads(args.body)
@@ -96,6 +105,11 @@ def main() -> int:
         body["stdout"] = sys.stdin.read()
     if args.exit_code is not None:
         body["exit_code"] = args.exit_code
+    # n8n-mcp-style suggestions array — list of actionable next-steps the
+    # recipient (or operator manually draining via /process-bridge-tasks)
+    # can act on without round-tripping. Only emit when actually present.
+    if args.suggestions:
+        body["suggestions"] = list(args.suggestions)
     if args.reply_to:
         target = args.reply_to
     else:
