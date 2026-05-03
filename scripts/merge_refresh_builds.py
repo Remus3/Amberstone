@@ -56,7 +56,7 @@ def merge_aram(dry_run: bool = False) -> tuple[int, int]:
     canonical_path = META_BUILD / "aram_champion_builds.json"
     canonical = json.loads(canonical_path.read_text(encoding="utf-8"))
     new_count = updated_count = 0
-    for phase in ("aram_top30.json", "aram_next30.json"):
+    for phase in ("aram_top30.json", "aram_next30.json", "aram_tail.json"):
         ref = load_refresh(phase)
         for name, entry in (ref.get("champions") or {}).items():
             if name in canonical:
@@ -87,7 +87,7 @@ def merge_sr(dry_run: bool = False) -> tuple[int, int]:
     canonical_path = META_BUILD / "sr_champion_builds.json"
     canonical = json.loads(canonical_path.read_text(encoding="utf-8"))
     new_count = updated_count = 0
-    for phase in ("sr_top30.json", "sr_next30.json"):
+    for phase in ("sr_top30.json", "sr_next30.json", "sr_tail.json"):
         ref = load_refresh(phase)
         for name, entry in (ref.get("champions") or {}).items():
             if name in canonical:
@@ -120,7 +120,7 @@ def merge_arena(dry_run: bool = False) -> tuple[int, int]:
     canonical_path = META_BUILD / "arena_champion_builds.json"
     canonical: dict = {}
     new_count = 0
-    for phase in ("arena_top30.json", "arena_next30.json"):
+    for phase in ("arena_top30.json", "arena_next30.json", "arena_tail.json"):
         ref = load_refresh(phase)
         for name, entry in (ref.get("champions") or {}).items():
             if name not in canonical:
