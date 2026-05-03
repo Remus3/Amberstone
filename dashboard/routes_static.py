@@ -139,6 +139,8 @@ _AGENT_ALLOWED = {
     "PEER_ROADMAP_SUGGESTIONS.md",
     "diagnose.md",
     "caveman.md",
+    "done-gamepc.md",
+    "done-peer.md",
 }
 
 
