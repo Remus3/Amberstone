@@ -960,6 +960,17 @@ behavior on subsequent ticks.
   visibility gate keyed off `liveclient_present` or `lcu.phase` in the
   lobby/matchmaking view-router. Captured 2026-05-02 mid-session per operator
   observation.
+  - **Partial fix shipped `baee8c7` (s33)** — `web/js/dashboard.js` early-return
+    in `renderHeader(p)` hides `lvl-pill / vis-pill / ult-pill / cs-pill /
+    gold-pill` and blanks `gameTime` when `state.mode === "client"`.
+    Needs Ctrl+F5 in Edge to activate.
+  - **Followup observed 2026-05-03 00:50** — operator still sees Zoi (champion
+    pill?), gametime, cs, vs, gold on lobby page. Either (a) Edge hasn't
+    Ctrl+F5'd to pick up `baee8c7`, or (b) there's a "Zoi" pill (likely the
+    champion-name pill — separate DOM element not in baee8c7's scope) that
+    needs the same `state.mode === "client"` gate. Audit `web/index.html`
+    for any other pill IDs in the top bar; extend the `inGamePills` array
+    in `renderHeader(p)`. UI-dev note for next session.
 
 ## s33 round 4 — build data refresh (patch 26.9)
 
