@@ -26,6 +26,7 @@ from coaches._base_coach import (
     parse_fields,
     read_api_key,
 )
+from core.mayhem_detect import is_mayhem
 
 logger = logging.getLogger("rc.coaches.aram")
 _APP_DIR = Path(__file__).parent.parent
@@ -547,7 +548,11 @@ class Coach(BaseCoach):
             champ    = state.get("champion", "Unknown")
             profile  = CHAMPION_PROFILES.get(champ, GENERIC_PROFILE)
             gm       = state.get("game_mode", "ARAM")
-            mayhem   = " Mayhem" if "MAYHEM" in gm.upper() else ""
+            # Detect Mayhem via the canonical helper. Pre-2026-05-03 this
+            # checked `"MAYHEM" in gm.upper()` which never matched because
+            # Riot's live value is "KIWI" — see core/mayhem_detect.py.
+            is_mayhem_mode = is_mayhem(gm)
+            mayhem   = " Mayhem" if is_mayhem_mode else ""
             rune_rec  = _load_rune_rec(champ, gm)
             aram_meta = _load_build_note(champ)
             # (2026-04-26) USER EXPERIMENTAL OVERRIDE — when the champ has a
@@ -735,6 +740,7 @@ class Coach(BaseCoach):
                 "ally_spells":   _ally_spells,
                 "items_display": user.split("Items:")[-1].split("\n")[0].strip(),
                 "game_mode":     gm,
+                "mayhem":        is_mayhem_mode,
                 "my_team":       state.get("my_team", "ORDER"),
                 # Strip already-owned items from the build path so the
                 # Recommended tile never highlights a completed legendary
