@@ -1,21 +1,20 @@
 {
-  "rating": "D",
-  "label": "BELOW \u2014 focus on one area at a time",
-  "champion": "Kai'Sa",
+  "rating": "C",
+  "label": "AVERAGE \u2014 clear gaps to address",
+  "champion": "Jinx",
   "game_mode": "CLASSIC",
   "mode_category": "SR",
-  "game_time": "34:41",
+  "game_time": "20:19",
   "stats": {
-    "cs_per_min": 6.6,
-    "kda": "7/8/3",
-    "deaths": 8,
+    "cs_per_min": 8.4,
+    "kda": "11/4/8",
+    "deaths": 4,
     "kill_participation": 50,
-    "gold_per_min": 27
+    "gold_per_min": 170
   },
   "notes": [
-    "CS/min (6.6) below target",
-    "Too many deaths (8)",
-    "GPM (27) low"
+    "Too many deaths (4)",
+    "GPM (170) low"
   ],
-  "timestamp": "2026-04-23 01:11"
+  "timestamp": "2026-05-02 20:24"
 }
