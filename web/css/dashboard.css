@@ -320,6 +320,25 @@ body[data-mode="client"] header .mp-group,
 body[data-mode="client"] header .win-pill {
   display: none !important;
 }
+/* (2026-05-03) Hide remaining in-game-only top-bar pills in CLIENT mode
+ * (lobby / matchmaking / champ-select / aftergame). s33 followup to
+ * baee8c7: that JS-side classList.add("hidden") was defeated by the
+ * static-pill rule above (.hidden → faded but visible), so cs/vs/gold
+ * stayed on screen with stale values + the champion-pill ("Zoi") had
+ * no gate at all. Higher specificity (0,3,1) + !important wins over
+ * static-pill (0,2,1). game-time is a fixed-width element that would
+ * otherwise hold a stale "—" placeholder. JS still updates these
+ * elements; only the visual is dropped. */
+body[data-mode="client"] header .champion-pill,
+body[data-mode="client"] header .zone-pill,
+body[data-mode="client"] header .game-time,
+body[data-mode="client"] header .cs-pill,
+body[data-mode="client"] header .vis-pill,
+body[data-mode="client"] header .gold-pill,
+body[data-mode="client"] header .lvl-pill,
+body[data-mode="client"] header .ult-pill {
+  display: none !important;
+}
 /* (2026-04-26) Win% pill is in-game-only — outcome is known by the
  * time post-match lobby renders, so the live probability has no
  * meaning. Hide outside in-game modes (covers any view-router state
