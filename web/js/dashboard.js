@@ -2599,6 +2599,21 @@
   }
 
   function renderHeader(p) {
+    // In lobby / matchmaking / champ-select / aftergame (state.mode === "client")
+    // there's no live game; in-game pills (CS/KDA/level/gold/vision/ult/game-time)
+    // would just show stale values from the prior game. Hide the lot and return.
+    // Exception: keep KDA visible in aftergame so the operator can review the
+    // just-finished match — but blank the in-game-only pills.
+    if (state.mode === "client") {
+      const inGamePills = ["lvl-pill", "vis-pill", "ult-pill", "cs-pill", "gold-pill"];
+      for (const id of inGamePills) {
+        const e = el(id);
+        if (e) e.classList.add("hidden");
+      }
+      // Blank the game-time display (no clock pre-game)
+      if (gameTime) gameTime.textContent = "";
+      return;
+    }
     if (typeof p.game_time_s === "number") {
       gameTime.textContent = _fmtMMSS(p.game_time_s);
     } else if (p.game_time != null) {
