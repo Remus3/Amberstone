@@ -793,4 +793,85 @@ between games via standard `restart_trigger.txt` workflow.
   return 200 with the same payload as `/api/bridge?limit=10`. Peer can
   drop the path-asymmetry workaround once they confirm.
 
+## s33 backlog round 2 — 22:54 (RC restart + arena advisor + Game-PC re-pull)
+
+Operator restarted RC ("restart rc") between games. Activations:
+- ✅ `0302fc7` action-clear: live for next SR coach call
+- ✅ `0fcf102` `/api/bridge/messages` alias: smoke-tested live (returns
+  same payload as `/api/bridge`); Peer can drop their path-asymmetry
+  workaround whenever they re-fetch RC's contract spec
+- PID 10452 → 12140 (clean, `last_reload_ok=true`)
+
+Then operator: "continue with all backlog". Two more items shipped:
+
+**c58e689 verified (post-arena game disk inspection):**
+`data/arena_coaching_data.json` showed `kda='3/6/12'`, `level=17`,
+`gold=300`, `game_time_s=1352.47` — all populating ✅. `cs` is
+correctly absent because `_parse_arena_state` doesn't emit it (arena
+has no minion CS — confirmed at `arena_coach.py:545-562`). Top-bar
+should hide that pill cleanly. **Thread closes for arena**; SR/ARAM
+verification still owed.
+
+**Arena per-round item advisor (`f05c4de`):**
+
+The "items always the same recommendation" bug the user surfaced
+mid-arena: arena coach's `current.update({...})` never touched
+`item_build`, so the curated champ-select build (joined `full_build`
+from `aram_champion_builds.json`) was frozen across all rounds and
+opponents.
+
+Shipped `coaches/_arena_item_advisor.py` (193 LOC):
+- Pure rule-based, no Haiku
+- Reads `aram_champion_builds.json` + DDragon tags
+- Filters owned items via substring dedup (ARAM idiom)
+- Counts alive opponents' tank/healer types
+- Anti-tank pivot: tanks ≥ 2 → push first matching anti-tank item
+  (Lord Dominik's, Mortal Reminder, Black Cleaver, Liandry, etc.)
+  to position 0
+- Anti-heal pivot: healers ≥ 2 → push first antiheal item
+  (Mortal Reminder, Executioner, Morellonomicon, Bramble, etc.) to
+  position 0
+- Returns top 6, [] on unknown champion (coach leaves item_build
+  untouched)
+
+Hooked into `arena_coach._run_coach` after `current.update(...)`,
+guarded by try/except. RC restart 12140 → 10028 activated.
+
+Defaults chosen (called out to operator at decision time):
+- Healer threshold: 2+
+- Finished items only (no components)
+- 6-item cap
+- `is_next_opponent` punted (parser at arena_coach.py:524 sets False
+  unconditionally; using all-alive-opponents as proxy for next 1-3
+  rounds since arena pairings rotate)
+
+**Known v1 gap:** When champion's `full_build` doesn't contain any
+matching anti-X item, the pivot is a no-op. E.g. Caitlyn vs 4 healers
+keeps Lord Dominik's at position 1 even though her `vs_healing` recipe
+in JSON says "Mortal Reminder replaces Lord Dominik's if 2+ sustain
+enemies". Fix needs a substitution table or vs_X recipe parser. v2
+followup.
+
+**Game-PC bridge tooling re-pull dispatched (`task-6d7285cef438`):**
+Asks Game-PC's `/loop` Claude to re-run `gamepc_boot.ps1`, which
+self-pulls `tools/bridge_*.py` from `https://legion-rc:8888/agent/`
+and normalizes the legacy `192.168.8.230` LAN-IP refs to `legion-rc`
+tailnet hostname. Closes the s30 backlog item. Result will land async
+via bridge.
+
+**Backlog state:** What's left and genuinely actionable next session:
+- ⏳ Mid-game verification of `dc73303` (ally_comp force-overwrite) —
+  needs SR or ARAM game (arena run earlier didn't exercise the
+  ally_comp array; arena uses partner-name string)
+- ⏳ Dashboard ↔ coach action mismatch — needs in-game observation
+- ⏳ Arena advisor v2 — vs_X recipe substitution for cases where
+  full_build lacks the pivot item; augment-aware reranking; component
+  recommendations when gold < 1500g
+- ⏳ Peer silent-loop pattern — async, awaiting Peer bridge reply
+- ⏳ Cross-Claude learning sync Phase 1 — schema doc agreement with Peer
+- ⏳ SR coach sticky comp on game-start — partially mitigated by
+  `dc73303`; deeper fix would reset on `mode_key` transition into game
+- ⏳ Tiered vision calibration — needs in-game frame
+- ⏳ Push channel for bridge inbox — touches frozen `dashboard/_bridge_log.py`
+
 
