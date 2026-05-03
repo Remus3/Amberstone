@@ -87,6 +87,29 @@ def safe_write(path: Path, data: dict) -> None:
             return
 
 
+def mirror_live_stats(payload: dict, state: dict) -> None:
+    """Mirror raw live-game stats into a coaching JSON payload.
+
+    The dashboard's WS push channel receives the full coaching JSON; its
+    JS reads `p.cs / p.kda / p.level / p.gold / p.game_time_s` for the
+    top-bar pills (web/js/dashboard.js:2647-2675). Without these in the
+    per-mode coaching JSON, the `typeof p.X === "number"` guards hide
+    the pills (-- symptom; s32 finding).
+
+    None-skip semantics: only writes keys actually present on `state`,
+    so absent fields don't overwrite anything. Mode coaches use
+    `game_seconds` while dashboard JS reads `game_time_s` — mapped here.
+    """
+    for k in ("cs", "kda", "level", "gold"):
+        v = state.get(k)
+        if v is not None:
+            payload[k] = v
+    if "game_time_s" not in payload:
+        gs = state.get("game_seconds")
+        if gs is not None:
+            payload["game_time_s"] = gs
+
+
 def parse_field(text: str, key: str) -> str:
     """Extract a single labeled field from coach response text."""
     for line in text.strip().splitlines():
