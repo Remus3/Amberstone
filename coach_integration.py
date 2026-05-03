@@ -801,6 +801,12 @@ class CoachIntegration:
         t0 = time.time()
         coach_state = self._convert(game_state)
         self._last_state = coach_state
+        # Stash the raw game_state too — _write_fields needs unprefixed
+        # live stats (kda / cs / level / gold / game_time_s) to populate
+        # the dashboard top-bar pills, which read from coaching_data.json
+        # via the WS /push channel (raw file content, no liveclient
+        # overlay). _last_state has these prefixed (my_cs, my_level…).
+        self._last_gs = game_state
 
         cached = self._cache.get(coach_state)
         if cached:
@@ -1064,6 +1070,22 @@ class CoachIntegration:
         # disk every tick.
         for _k in ("ally_comp", "enemy_comp"):
             _v = ls.get(_k)
+            if _v is not None:
+                fields[_k] = _v
+
+        # Mirror live game stats from the raw gs so the dashboard top-bar
+        # pills (CS / level / gold / KDA / game time) populate. Coaching
+        # JSON is what file_ingest broadcasts to the WS /push channel —
+        # without these keys, the pills hide via the dashboard JS's
+        # `if (typeof p.cs === "number")` guards. /api/state already does
+        # this via state-builder's liveclient overlay, but the WS push
+        # path reads the file content directly.
+        gs = getattr(self, "_last_gs", None) or {}
+        for _k in ("kda", "cs", "level", "gold",
+                   "game_time", "game_time_s",
+                   "hp", "hp_max", "hp_pct",
+                   "items", "owned_items", "enemy_team"):
+            _v = gs.get(_k)
             if _v is not None:
                 fields[_k] = _v
 
