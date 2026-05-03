@@ -100,6 +100,17 @@ Three Claudes coordinate over a Tailscale-secured bridge:
 
 Fully bidirectional and operator-typeable: `bridge_task.py --target gamepc "<prompt>"` and the result lands back via the bridge without operator-mediated relay.
 
+### Skills (`.claude/commands/`)
+
+Repo-level slash commands shipped to all 3 nodes via `/agent/`:
+
+- **`/process-bridge-tasks`** — drain the bridge inbox, action each `kind=task` envelope, post results back via `bridge_post_result.py`. Per-node variants (Legion / Game-PC / Peer) handle local path differences.
+- **`/diagnose`** (2026-05-03, mattpocock-derived) — systematic 5-phase debugging loop: REPRODUCE → MINIMIZE → HYPOTHESIZE → INSTRUMENT → FIX. Replaces ad-hoc investigation when a coach mode regresses or a watcher pattern declines.
+- **`/caveman`** (2026-05-03, mattpocock-derived) — ultra-compressed output mode (~75% token reduction). Use for headless cross-Claude tasks, when daily token cap is approaching, or when the operator says "be brief".
+- **`/process-incoming-lessons`** — Phase 2-receiver of the cross-Claude learning sync.
+- **`/wrap`** — end-of-session checkpoint (git clean, push, peer-loop liveness probe, frozen-file gate).
+- **`/game-monitor`** — live-game tutor tick (gates on `mode_key` + `liveclient`; 3-5 line surface).
+
 ### Bridge Watcher daemon (2026-05-03)
 
 The interactive `/loop /process-bridge-tasks` cron pattern was replaced by a

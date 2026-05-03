@@ -38,7 +38,19 @@ Historic LAN refs (`192.168.8.230:8889` from RC code) were migrated to loopback.
   `main.py`, `core/log_setup.py`, `core/moon_proxy.py`, `lcu/lcu_client.py`,
   `core/game_snapshot.py`, `ops/rc_dev_runtime.py`, `ops/rc_supervisor.py`,
   `app/__init__.py`, `app/_loop.py`, `app/_health_monitor.py`, `app/_remediation.py`,
-  `app/_state_authority.py`, `app/_overlay_manager.py`, `app/_game_lifecycle.py`.
+  `app/_state_authority.py`, `app/_overlay_manager.py`, `app/_game_lifecycle.py`,
+  `tools/bridge_watcher.py`, `tools/bridge_watcher_classify.py`,
+  `tools/bridge_watcher_actions.py`, `tools/bridge_watcher_action_prompt.md`,
+  `tools/bridge_watcher_history.py`, `tools/bridge_watcher_install.ps1`,
+  `tools/bridge_watcher_hook.ps1`, `tools/bridge_watcher_config.json`,
+  `tools/bridge_post_result.py`, `tools/bridge_pull_tasks.py`,
+  `tools/process-bridge-tasks.md`, `tools/diagnose.md`, `tools/caveman.md`,
+  `dashboard/routes_bridge_pending.py`, `ops/RC-BridgeWatcher.xml`.
+- **State assumptions explicitly before coding.** When a request is ambiguous
+  or could be interpreted multiple ways, surface the interpretation you're
+  acting on in one short sentence before doing the work. Borrowed from
+  Karpathy's LLM-coding-pitfalls observations (forrestchang/andrej-karpathy-skills);
+  cheap insurance against the "build the wrong thing fast" failure mode.
 
 ## Restart workflow
 
