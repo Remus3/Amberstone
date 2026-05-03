@@ -1112,6 +1112,8 @@ class CoachIntegration:
                         current = self._default_data()
 
                     current.update(fields)
+                    if "action" not in fields:
+                        current["action"] = ""
                     current["mode"] = "game"
 
                     imm = fields.get("immediate", "")
