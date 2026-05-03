@@ -1,6 +1,6 @@
 # Riot Commander — Roadmap
 
-_Last updated: 2026-05-03_
+_Last updated: 2026-05-03 (later session — overnight implementations)_
 
 A consolidated view of where RC has been, where it is, and where it could go.
 Living document — update as work lands.
@@ -186,6 +186,39 @@ TTL; §11 installer handles "cron already dead" gracefully.
 - `process-bridge-tasks.md` skill rewritten for "Step 1 ALWAYS runs the fetch"
   semantics; `process-bridge-tasks-peer.md` template added
 - Counter rename `*_24h` → `*_since_boot` (with backward-compat aliases)
+
+### 2026-05-03 — overnight rollouts (post-research review)
+
+After reviewing 32 repos (open-design, ruflo, browserbase/skills, n8n-mcp,
+mattpocock/skills, codex skills, hackingtool, karpathy, archon, rtk, plus 22
+awesome-lists), shipped fleet-wide:
+
+- **`/diagnose` skill** (mattpocock-derived 5-phase debugging loop) at
+  `tools/diagnose.md` + `.claude/commands/diagnose.md`. Frozen.
+- **`/caveman` skill** (mattpocock-derived token-efficient compressed-output
+  mode, ~75% reduction) at `tools/caveman.md` + `.claude/commands/caveman.md`.
+  Frozen.
+- **`bridge_post_result.py --suggestions`** (n8n-mcp-style array of actionable
+  next-steps in error/escalate result bodies). Backward compatible.
+  `tools/process-bridge-tasks*.md` updated to mention.
+- **`CLAUDE.md` "state assumptions" rule** (Karpathy-derived): when a request
+  is ambiguous, surface the interpretation in one sentence before working.
+- **Frozen list expanded** to include the new `tools/diagnose.md`,
+  `tools/caveman.md`, `tools/bridge_post_result.py`,
+  `tools/bridge_pull_tasks.py`, `tools/process-bridge-tasks.md`,
+  plus the bridge_watcher family (already included via prior commits).
+- **rtk-ai/rtk install deferred on Legion + Game-PC** — Windows-native mode is
+  CLAUDE.md-injection-only (no real Bash hook); ROI doesn't justify install
+  risk. Peer dispatch task includes "if Linux/WSL, install" branch.
+- **Game-PC + Peer dispatch tasks** sent in parallel to:
+  re-pull the patched `bridge_watcher.py` + `bridge_watcher_actions.py`,
+  drop `/diagnose` + `/caveman` into `~/.claude/commands/`,
+  pull schema-bumped `bridge_post_result.py`, restart their watcher tasks.
+
+**Documented for the operator overnight:** four desktop applicability files
+(`rc-applicability.md`, `peer-applicability.md`, `gamepc-applicability.md`,
+`fleet-applicability.md`) ranking all 32 reviewed repos 5★ → 1★, with trash
+tier removed per request.
 
 ---
 
