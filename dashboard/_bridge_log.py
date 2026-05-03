@@ -36,7 +36,13 @@ from dashboard._context import APP_DIR
 _log = logging.getLogger("rc.web_dashboard")
 
 _bridge_lock = threading.Lock()
-_bridge_log: collections.deque = collections.deque(maxlen=100)
+# 2026-05-02 (s31): bumped maxlen 100 → 500. The in-memory deque is what
+# /api/bridge GET reads; tasks/results can fall out within ~30 min when
+# legion chat replies post 1 kind=note per response via the Stop hook.
+# Peer's bridge_pull_tasks misses kind=task lookups when this window is
+# too small. JSONL retains 1000 lines on disk; deque cache is now 500.
+_BRIDGE_DEQUE_MAXLEN = 500
+_bridge_log: collections.deque = collections.deque(maxlen=_BRIDGE_DEQUE_MAXLEN)
 
 # 2026-04-25: persist bridge entries to JSONL so RC restart doesn't wipe
 # the cross-Claude conversation. Hydrated at module import time below.
@@ -71,7 +77,7 @@ def bridge_hydrate_from_disk() -> None:
             lines = lines[-BRIDGE_LOG_DISK_MAX:]
         except OSError:
             pass
-    for line in lines[-100:]:
+    for line in lines[-_BRIDGE_DEQUE_MAXLEN:]:
         try:
             entry = json.loads(line)
             if isinstance(entry, dict) and "ts" in entry and "summary" in entry:
