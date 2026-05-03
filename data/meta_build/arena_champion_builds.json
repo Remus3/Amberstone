@@ -1,0 +1,2882 @@
+{
+  "Xin Zhao": {
+    "tier": "S",
+    "wr_first": 19.6,
+    "wr_top4": null,
+    "banrate": null,
+    "pickrate": null,
+    "ideal_core_priority": [
+      "Moonflair Spellblade",
+      "Blade of The Ruined King",
+      "Guinsoo's Rageblade",
+      "Dusk and Dawn",
+      "Nashor's Tooth",
+      "Reverberation",
+      "Wit's End",
+      "Sterak's Gage"
+    ],
+    "prismatic_priority": [
+      "Reverberation (82.92% WR)",
+      "Moonflair Spellblade (78.72% WR)",
+      "Hemomancer's Helm",
+      "Dual Wield (augment-mirror)"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Mordekaiser (31.6% WR, +12% over solo)",
+      "Galio (31.6% WR)"
+    ],
+    "build_changing_augments": [
+      "Dual Wield - secondary bolts apply on-hit, push Kraken/Wit's End/BotRK",
+      "Mystic Punch - on-hit ability CDR, push Nashor's/Guinsoo's stack",
+      "Gain Prismatic Stat Anvil (26.1% pick)",
+      "Goliath - HP+adaptive, pivot toward Sterak's/Overlord's",
+      "Aim for the Head - if crit anvils appear, full crit pivot"
+    ],
+    "vs_tanks": "Prioritize BotRK + Guinsoo's Rageblade for on-hit %HP shred; take Last Whisper anvil if offered.",
+    "vs_healing": "Mortal Reminder anvil first; Chempunk Chainsword if below-50% HP comp (executes with R).",
+    "vs_burst": "Sterak's Gage + Edge of Night anvil; Moonflair's CC haste gives extra W stuns to disrupt combos.",
+    "kit_notes": "Functions as bruiser-AS hybrid in arena. R execute is win-condition; W three-hit passive synergizes with on-hit stacking. Highest single-champion 1st rate among non-Zaahen.",
+    "arena_meta": "Patch 26.9 standout - Moonflair pick is anti-intuitive but data-overwhelming (78.72% WR with it).",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/XinZhao/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 19.6
+      },
+      {
+        "url": "https://aggregator-a.invalid/lol/modes/arena",
+        "fetched": "2026-05-02",
+        "note": "Reverberation/Moonflair Prismatic WR pulled from aggregator A arena landing"
+      }
+    ]
+  },
+  "Veigar": {
+    "tier": "S",
+    "wr_first": 18.9,
+    "wr_top4": 51.5,
+    "banrate": null,
+    "pickrate": 0.7,
+    "ideal_core_priority": [
+      "Detonation Orb",
+      "Luden's Echo",
+      "Shadowflame",
+      "Runecarver",
+      "Rabadon's Deathcap",
+      "Liandry's Anguish",
+      "Storm Surge"
+    ],
+    "prismatic_priority": [
+      "Jeweled Gauntlet (17.4% pick - abilities crit, his identity)",
+      "Eureka (14.8% pick)",
+      "Crown of the Shattered Queen",
+      "Pyromancer's Cloak"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Illaoi (46.1% WR)",
+      "Shyvana (42.9% WR)"
+    ],
+    "build_changing_augments": [
+      "Jeweled Gauntlet - crit on abilities, push Storm Surge/Shadowflame for crit damage stacking",
+      "Phenomenal Evil - stacking AP from ability hits, slow-scale into Rabadon",
+      "ADAPt - convert AD to AP (rare on him but enables hybrid stat anvils)",
+      "Stackosaurus Rex (Silver) - 75% more permanent stacks, perfect for E-cage farming",
+      "Gain Prismatic Stat Anvil (26.6% pick)"
+    ],
+    "vs_tanks": "Runecarver anti-shield; Liandry's burn for %max-HP; Void Staff equivalent if offered.",
+    "vs_healing": "Morellonomicon anvil priority (80% GW under target heal threshold).",
+    "vs_burst": "Crown of the Shattered Queen + Banshee's Veil anvil; W cage to peel.",
+    "kit_notes": "E-cage in arena's small map is round-deciding - corners enemies for W stun + R execute. Stack AP via Q farm (ranged minions in some arena rounds).",
+    "arena_meta": "AP burst archetype - Veigar's hard-scaling + small map is a brutal combination.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Veigar/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 18.9
+      }
+    ]
+  },
+  "Yuumi": {
+    "tier": "S",
+    "wr_first": 18.6,
+    "wr_top4": 54.0,
+    "banrate": null,
+    "pickrate": 0.7,
+    "ideal_core_priority": [
+      "Empyrean Promise",
+      "Everfrost",
+      "Dawncore",
+      "Moonstone Renewer",
+      "Radiant Virtue",
+      "Echoes of Helia",
+      "Ardent Censer"
+    ],
+    "prismatic_priority": [
+      "Circle of Death (9.8% pick)",
+      "Spirit Link (8.7% pick)",
+      "Feel the Burn (6.9% pick)",
+      "Crown of the Shattered Queen (off-attach moments)"
+    ],
+    "boots": "Ionian Boots of Lucidity",
+    "best_duos": [
+      "Warwick (35.3% WR)",
+      "Diana (30.8% WR)",
+      "Xin Zhao (29.6% WR)"
+    ],
+    "build_changing_augments": [
+      "All For You (Gold, 18.3% pick) - share stats with attached, scale via partner's items",
+      "Critical Healing - heal procs crit, push crit-heal items",
+      "Sonic Boom - W detach scales, pivot to mobility/CDR",
+      "Spirit Link - shared damage = better attach uptime, stack HP enchanter items",
+      "Dark Blessing - heal-as-damage, push AP enchanter hybrid"
+    ],
+    "vs_tanks": "Liandry's-equivalent anvils on partner; Yuumi's job is uptime - feed Mortal Reminder to AD partner.",
+    "vs_healing": "Morellonomicon if AP partner; surface Mortal Reminder/Chempunk to AD partner.",
+    "vs_burst": "Detach defensively, pop Empyrean Promise shield, re-attach. Crown anvil saves attach window.",
+    "kit_notes": "Empyrean Promise + Everfrost + Dawncore is the 60% WR core - combines AOE shield, root, and heal-amp. Attach uptime is win-condition.",
+    "arena_meta": "Only enchanter that breaks the 'enchanters fail in arena' rule - Empyrean Promise core is round-deciding.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Yuumi/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 18.6
+      }
+    ]
+  },
+  "Aurelion Sol": {
+    "tier": "S",
+    "wr_first": 18.1,
+    "wr_top4": 54.4,
+    "banrate": null,
+    "pickrate": 0.6,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Malignance",
+      "Detonation Orb",
+      "Shadowflame",
+      "Riftmaker",
+      "Rabadon's Deathcap"
+    ],
+    "prismatic_priority": [
+      "Jeweled Gauntlet",
+      "Quest: Wooglet's Witchcap",
+      "Infernal Conduit",
+      "Pyromancer's Cloak (item)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Amumu (73.3% WR - strongest duo in dataset)",
+      "Shyvana (39.1% WR)"
+    ],
+    "build_changing_augments": [
+      "Phenomenal Evil (15.9% pick) - stacking AP from ability hits, perfect for his Q spam",
+      "Level Augments (15.6% pick) - ASol stars scale with augment level",
+      "Infernal Conduit (Prismatic) - burn synergy stacks with Liandry's/Pyromancer's",
+      "Stackosaurus Rex (Silver) - permanent star stacks compound late",
+      "Ice Cold (Silver, 9.7% pick) - slow on his Q's helps gather stars"
+    ],
+    "vs_tanks": "Liandry's + Pyromancer's burn already %max-HP; add Cryptbloom anvil for magic pen.",
+    "vs_healing": "Morellonomicon priority; his ult-pull denies kiting heal-procs.",
+    "vs_burst": "Quest: Wooglet's Witchcap (zhonya's-equivalent) anvil to dodge burst windows.",
+    "kit_notes": "Q-spam archetype - star stacks scale obscenely with Phenomenal Evil + Level Augments. R-pull pairs perfectly with Amumu R combo (73.3% WR duo).",
+    "arena_meta": "Pyromancer's Cloak is the universal AP-bruiser pickup - ASol is the highest-WR user.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/AurelionSol/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 18.1
+      }
+    ]
+  },
+  "Cho'Gath": {
+    "tier": "S",
+    "wr_first": 17.7,
+    "wr_top4": null,
+    "banrate": 39.5,
+    "pickrate": null,
+    "ideal_core_priority": [
+      "Gargoyle Stoneplate",
+      "Riftmaker",
+      "Heartsteel",
+      "Spirit Visage",
+      "Sunfire Aegis",
+      "Unending Despair",
+      "Warmog's Armor",
+      "Overlord's Bloodmail"
+    ],
+    "prismatic_priority": [
+      "Goliath (15% HP + 10% adaptive - compounds with R stacks)",
+      "Hemomancer's Helm",
+      "Black Hole Gauntlet",
+      "Dragonheart"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Galio (40% WR)",
+      "Ashe",
+      "Xin Zhao"
+    ],
+    "build_changing_augments": [
+      "Goliath (Prismatic) - HP/adaptive stacking, bias all subsequent picks toward HP items",
+      "Tank Engine (Gold) - size + HP per takedown, compounds with feast stacks",
+      "Stackosaurus Rex (Silver) - 75% more permanent R stacks (his identity augment)",
+      "Soul Siphon - lifesteal pivot if offered",
+      "Magical Girl - keystone payoff at lvl 3"
+    ],
+    "vs_tanks": "Riftmaker + Liandry's anvil priority for %max-HP; R execute still works on tanks regardless.",
+    "vs_healing": "Thornmail anvil for tank-AH; Bramble Vest if early option.",
+    "vs_burst": "Spirit Visage + Unending Despair stack defensively; Gargoyle into 1v1 R execute.",
+    "kit_notes": "R execute is the load-bearing identity. HP stacking augments compound with feast stacks. Banned 39.5% - RC ban-detection should treat this as fallback-pick logic.",
+    "arena_meta": "Highest-tier 1st WR among consistently-pickable champs (Zaahen often banned).",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/ChoGath/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 17.7
+      }
+    ]
+  },
+  "Vi": {
+    "tier": "S",
+    "wr_first": 16.9,
+    "wr_top4": 31.6,
+    "banrate": null,
+    "pickrate": null,
+    "ideal_core_priority": [
+      "Duskblade of Draktharr",
+      "Voltaic Cyclosword",
+      "The Collector",
+      "Eclipse",
+      "Edge of Night",
+      "Black Cleaver",
+      "Sundered Sky"
+    ],
+    "prismatic_priority": [
+      "Jeweled Gauntlet (her only S-tier augment - ability crit on R)",
+      "Hemomancer's Helm",
+      "Reverberation",
+      "Hubris (Prismatic-tier in arena)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Yasuo (21.4% WR / 3.0 avg)",
+      "Ahri (37.5%)",
+      "Sett (30.8%)"
+    ],
+    "build_changing_augments": [
+      "Jeweled Gauntlet - R crit, push lethality + crit-damage items",
+      "The Brutalizer (Silver) - AD/haste/lethality, smooths Duskblade buildup",
+      "Gain Prismatic Stat Anvil (28.6% pick)",
+      "Earthwake - terrain-based AOE on dashes, Q triggers it",
+      "Mystic Punch - on-hit CDR for Q resets"
+    ],
+    "vs_tanks": "Black Cleaver + Last Whisper anvil; her Q passive armor shred compounds.",
+    "vs_healing": "Mortal Reminder anvil priority (R + auto-procs Cull triggers).",
+    "vs_burst": "Edge of Night + Sterak's Gage anvil; Q charge cancel to survive engages.",
+    "kit_notes": "Lethality-first build is unusual for Vi but optimal in arena - small map + R-as-execute + Duskblade procs are easier in 2v2.",
+    "arena_meta": "S-tier alongside Sett - both 16.9% 1st WR. Stack-check bruiser archetype.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Vi/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 16.9
+      }
+    ]
+  },
+  "Sett": {
+    "tier": "S",
+    "wr_first": 16.9,
+    "wr_top4": null,
+    "banrate": 52.9,
+    "pickrate": 22.3,
+    "ideal_core_priority": [
+      "Overlord's Bloodmail",
+      "Warmog's Armor",
+      "Stridebreaker",
+      "Dragonheart",
+      "Demon King's Crown",
+      "Death's Dance",
+      "Goredrinker",
+      "Heartsteel"
+    ],
+    "prismatic_priority": [
+      "Goliath",
+      "Overlord's Bloodmail (Prismatic)",
+      "Demon King's Crown",
+      "Black Hole Gauntlet"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Shyvana",
+      "Xin Zhao",
+      "Zaahen (brawl synergy)"
+    ],
+    "build_changing_augments": [
+      "Goliath - HP/adaptive, compounds W shield",
+      "Tank Engine - size+HP per takedown",
+      "Gain Prismatic Stat Anvil (29.9% pick)",
+      "Mystic Punch - on-hit CDR for Q-W spam",
+      "ADAPt - rare AP-Sett enabler if offered"
+    ],
+    "vs_tanks": "Stridebreaker + Black Cleaver anvil for %max-HP cleave + armor shred.",
+    "vs_healing": "Chempunk Chainsword priority (60% GW under 50% target HP - synergizes with R execute window).",
+    "vs_burst": "Death's Dance + Sterak's Gage; W shield absorbs burst into True Damage payback.",
+    "kit_notes": "R is round-deciding when paired with engage partner. Banned 52.9% - top 3 ban target. Highest pickrate among top tier (22.3%).",
+    "arena_meta": "Brawler-tank hybrid that wins every stat-checking fight.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Sett/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 16.9
+      }
+    ]
+  },
+  "Galio": {
+    "tier": "A",
+    "wr_first": 16.3,
+    "wr_top4": 49.6,
+    "banrate": null,
+    "pickrate": 0.7,
+    "ideal_core_priority": [
+      "Black Hole Gauntlet",
+      "Riftmaker",
+      "Demonic Embrace",
+      "Liandry's Anguish",
+      "Cosmic Drive",
+      "Heartsteel",
+      "Spirit Visage"
+    ],
+    "prismatic_priority": [
+      "Goliath (9.6% pick)",
+      "Black Hole Gauntlet",
+      "Crown of the Shattered Queen",
+      "Pyromancer's Cloak"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Xin Zhao (31.6% WR, +15.3% vs baseline)",
+      "Zaahen (23.1%)",
+      "Smolder (23.5%)"
+    ],
+    "build_changing_augments": [
+      "Tank Engine (9.6% pick) - HP per takedown",
+      "Gain Prismatic Stat Anvil (27.5% pick)",
+      "Phenomenal Evil - AP stacking on hybrid",
+      "Goliath - HP+adaptive scales his W taunt damage",
+      "Desecrator (Silver) - bonus damage to CC'd targets"
+    ],
+    "vs_tanks": "Liandry's + Demonic Embrace burn for %max-HP; AP-tank hybrid handles tanks well.",
+    "vs_healing": "Morellonomicon anvil; Q DOT keeps GW debuff active.",
+    "vs_burst": "Crown of the Shattered Queen + W stance toggle absorbs burst combos.",
+    "kit_notes": "AP-tank archetype - W stance reduces magic damage, R global engage with partner. Best partnered with melee carries (Xin Zhao R-W-W combo).",
+    "arena_meta": "Sleeper A-tier - Cho'Gath best duo (40% WR with him).",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Galio/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 16.3
+      }
+    ]
+  },
+  "Briar": {
+    "tier": "S",
+    "wr_first": 16.3,
+    "wr_top4": 57.2,
+    "banrate": null,
+    "pickrate": null,
+    "ideal_core_priority": [
+      "Hemomancer's Helm",
+      "Death's Dance",
+      "Blade of The Ruined King",
+      "Ravenous Hydra",
+      "Sundered Sky",
+      "Sterak's Gage",
+      "Bloodthirster"
+    ],
+    "prismatic_priority": [
+      "Mystic Punch (on-hit CDR - premium for ability spam)",
+      "Hemomancer's Helm",
+      "Reaper's Toll",
+      "Symphony of War"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Shyvana (29.4%)",
+      "Sion",
+      "Mordekaiser (24.1%)"
+    ],
+    "build_changing_augments": [
+      "Mystic Punch - on-hit ability CDR, push Nashor's/Guinsoo's into Q spam",
+      "Symphony of War / Augment Slot (Gold)",
+      "Gain Prismatic Stat Anvil (29.0% pick)",
+      "Goliath - HP+adaptive on a sustain bruiser",
+      "Soul Siphon - lifesteal stacks with omnivamp profile"
+    ],
+    "vs_tanks": "BotRK + Ravenous Hydra for %HP; her R chase guarantees stick-to-target.",
+    "vs_healing": "Chempunk Chainsword (her sub-50% damage spike aligns with the GW threshold).",
+    "vs_burst": "Death's Dance + Sterak's Gage; W self-stun negates incoming CC if timed right.",
+    "kit_notes": "7.5/7.2/5.8 avg KDA - she trades aggressively. Death's Dance + Hemomancer compounds the omnivamp profile. R-chase makes kiting impossible.",
+    "arena_meta": "Top 5 1st WR. Self-sustain through frenzy makes her uniquely arena-suited.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Briar/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 16.3
+      }
+    ]
+  },
+  "Jax": {
+    "tier": "A",
+    "wr_first": 15.8,
+    "wr_top4": 56.4,
+    "banrate": null,
+    "pickrate": 0.8,
+    "ideal_core_priority": [
+      "Divine Sunderer",
+      "Reaper's Toll",
+      "Blade of The Ruined King",
+      "Hamstringer",
+      "Guinsoo's Rageblade",
+      "Sterak's Gage",
+      "Wit's End",
+      "Darksteel Talons"
+    ],
+    "prismatic_priority": [
+      "Reaper's Toll",
+      "Hemomancer's Helm",
+      "Mystic Punch (Augment-mirror)",
+      "Divine Sunderer"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Yuumi (30.2%)",
+      "Zyra (21.4%)",
+      "Ahri (15.4%)"
+    ],
+    "build_changing_augments": [
+      "Gain Prismatic Stat Anvil (29.0% pick)",
+      "Mystic Punch (13.5% pick) - on-hit CDR for E-stun resets",
+      "Dual Wield (12.7% pick) - on-hit bolts, push Guinsoo/Nashor",
+      "Lightning Strikes (12.5%) - bonus magic damage on autos",
+      "Goredrink (Silver) - lifesteal on E procs"
+    ],
+    "vs_tanks": "BotRK + Reaper's Toll for stacking %HP; his W magic damage already favours tank-shred.",
+    "vs_healing": "Mortal Reminder if AD-stack core; Bramble Vest anvil for tank-AH on his counter-attack.",
+    "vs_burst": "Sterak's Gage + Edge of Night; E counter-strike + R MR gain mid-burst.",
+    "kit_notes": "R passive (bonus AD/AR every 3 hits) compounds with arena's small map - he gets max stacks every fight. Best partner = enchanter (Yuumi 30.2%).",
+    "arena_meta": "On-hit bruiser archetype - 56.4% top-4 is one of the highest consistency rates.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Jax/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 15.8
+      }
+    ]
+  },
+  "Brand": {
+    "tier": "A",
+    "wr_first": 15.5,
+    "wr_top4": null,
+    "banrate": 24.5,
+    "pickrate": null,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Dragonheart",
+      "Liandry's Anguish",
+      "Riftmaker",
+      "Demonic Embrace",
+      "Rylai's Crystal Scepter",
+      "Shadowflame"
+    ],
+    "prismatic_priority": [
+      "Infernal Conduit",
+      "Pyromancer's Cloak",
+      "Dragonheart",
+      "Crown of the Shattered Queen"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Xin Zhao (28.6%)",
+      "Tahm Kench (28.6%)",
+      "Nautilus (22.2%)",
+      "Maokai (53.9%)"
+    ],
+    "build_changing_augments": [
+      "Infernal Conduit (13.1% pick) - burn auto-stacks his passive",
+      "Magic Missile (Gold) - bonus per-cast damage",
+      "Gain Prismatic Stat Anvil (27.7% pick)",
+      "Pyromaniac - passive ignite scaling",
+      "Phenomenal Evil - stacks AP from his constant AOE hits"
+    ],
+    "vs_tanks": "Liandry's + Pyromancer's burn already %max-HP; Cryptbloom anvil for magic pen.",
+    "vs_healing": "Morellonomicon priority - his DOTs keep GW debuff perpetually active.",
+    "vs_burst": "Dragonheart + Crown anvil - frontline-mage archetype that's hard to focus.",
+    "kit_notes": "Dragonheart on a mage is the arena-specific tweak - frontline-mage that's hard to focus. Banned 24.5%. 60% WR / 2.2 avg on optimal core.",
+    "arena_meta": "AP burst secondary archetype anchor. Maokai 53.9% WR pairing is one of dataset's best.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Brand/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 15.5
+      }
+    ]
+  },
+  "Olaf": {
+    "tier": "A",
+    "wr_first": 15.4,
+    "wr_top4": 57.9,
+    "banrate": null,
+    "pickrate": null,
+    "ideal_core_priority": [
+      "Hamstringer",
+      "Blade of The Ruined King",
+      "Ravenous Hydra",
+      "Reaper's Toll",
+      "Sterak's Gage",
+      "Death's Dance",
+      "Bloodthirster"
+    ],
+    "prismatic_priority": [
+      "Tap Dancer",
+      "Reaper's Toll",
+      "Hemomancer's Helm",
+      "Hamstringer (item)"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Ryze (41.7% WR)",
+      "Fizz",
+      "Veigar"
+    ],
+    "build_changing_augments": [
+      "Tap Dancer (Prismatic) - dance-based AS, perfect on his on-hit profile",
+      "Lightning Strikes (Gold)",
+      "Gain Prismatic Stat Anvil (30.9% pick - highest among top picks)",
+      "Mystic Punch - E ability spam pivot",
+      "Aim for the Head - if crit anvils appear (rare but powerful)"
+    ],
+    "vs_tanks": "BotRK + Ravenous Hydra %HP cleave; Reaper's Toll if Prismatic offered.",
+    "vs_healing": "Mortal Reminder priority; his R denies kiting heal-procs.",
+    "vs_burst": "Sterak's Gage + Death's Dance; R unstoppable bypasses CC-burst combos.",
+    "kit_notes": "Hamstringer (arena anvil) replaces Stridebreaker in his SR build - slow + AS scaling on a single item. R unstoppable is round-saving.",
+    "arena_meta": "57.9% top-4 - one of the most consistent placements in the meta.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Olaf/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 15.4
+      }
+    ]
+  },
+  "Ambessa": {
+    "tier": "A",
+    "wr_first": 15.4,
+    "wr_top4": 53.5,
+    "banrate": 25.8,
+    "pickrate": null,
+    "ideal_core_priority": [
+      "Divine Sunderer",
+      "Voltaic Cyclosword",
+      "Eclipse",
+      "Regicide",
+      "Hemomancer's Helm",
+      "Black Cleaver",
+      "Sundered Sky"
+    ],
+    "prismatic_priority": [
+      "Earthwake (15.5% pick)",
+      "Hemomancer's Helm",
+      "Regicide",
+      "Reverberation"
+    ],
+    "boots": "Ionian Boots of Lucidity (primary) / Gluttonous Greaves (alt)",
+    "best_duos": [
+      "Zaahen (33.3% - duo of patch)"
+    ],
+    "build_changing_augments": [
+      "Earthwake (15.5%) - terrain-based AOE on dashes, push mobility items (Phantom Dancer/Trinity/Stridebreaker)",
+      "Outlaw's Grit (Gold, 22.4%) - resists after dashing",
+      "Gain Prismatic Stat Anvil (28.6% pick)",
+      "Dashing - 200-350 haste on dashes, push Cosmic Drive/Black Cleaver",
+      "Mystic Punch - dash + on-hit CDR layer"
+    ],
+    "vs_tanks": "Divine Sunderer + Black Cleaver shred; her R triple-dash compounds Earthwake terrain damage.",
+    "vs_healing": "Mortal Reminder anvil; constant dash-procs keep GW active.",
+    "vs_burst": "Hemomancer's Helm omnivamp + Eclipse shield; dash-out windows.",
+    "kit_notes": "Hemomancer's Helm appears again - universal AD-bruiser anvil pull. Banned 25.8%. Triple-dash R is the win-condition.",
+    "arena_meta": "Engage bruiser - duo of patch with Zaahen (33.3%).",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Ambessa/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 15.4
+      }
+    ]
+  },
+  "Sion": {
+    "tier": "A",
+    "wr_first": 15.4,
+    "wr_top4": 53.8,
+    "banrate": null,
+    "pickrate": 0.8,
+    "ideal_core_priority": [
+      "Black Hole Gauntlet",
+      "Overlord's Bloodmail",
+      "Heartsteel",
+      "Gargoyle Stoneplate",
+      "Warmog's Armor",
+      "Turbo Chemtank",
+      "Demon King's Crown"
+    ],
+    "prismatic_priority": [
+      "Goliath",
+      "Black Hole Gauntlet",
+      "Overlord's Bloodmail",
+      "Demon King's Crown"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Xin Zhao (21.4%)",
+      "Briar (22.2%)",
+      "Pyke (22.2%)"
+    ],
+    "build_changing_augments": [
+      "Tank Engine (16.5% pick) - size + HP per takedown",
+      "Quest: Steel Your Heart (12.9%) - HP scaling quest",
+      "Gain Prismatic Stat Anvil (26.2% pick)",
+      "Goliath - HP/adaptive stacking",
+      "Heavy Hitter (Silver, 10.2%) - 4% max-HP on autos"
+    ],
+    "vs_tanks": "Heartsteel + Black Cleaver anvil; his Q-stun bypasses positioning.",
+    "vs_healing": "Thornmail anvil for tank-AH; his W passive damage keeps GW from autos.",
+    "vs_burst": "Gargoyle + Warmog's anvil; passive zombie state denies burst-kill windows.",
+    "kit_notes": "Q-stun in arena's small map is auto-hit. Passive zombie phase = round 2 chance.",
+    "arena_meta": "Engage tank - Pyke duo (22.2%) creates double-CC hook plays.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Sion/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 15.4
+      }
+    ]
+  },
+  "Amumu": {
+    "tier": "A",
+    "wr_first": 15.1,
+    "wr_top4": 50.9,
+    "banrate": null,
+    "pickrate": null,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Malignance",
+      "Sunfire Aegis",
+      "Riftmaker",
+      "Demonic Embrace",
+      "Spirit Visage"
+    ],
+    "prismatic_priority": [
+      "Dreadbringer",
+      "Pyromancer's Cloak",
+      "Black Hole Gauntlet",
+      "Crown of the Shattered Queen"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Aurelion Sol (73.3% WR / 1.7 avg - STRONGEST duo in dataset)",
+      "Ahri",
+      "Shyvana"
+    ],
+    "build_changing_augments": [
+      "Dreadbringer (Prismatic)",
+      "Tank Engine (Gold)",
+      "Gain Prismatic Stat Anvil (26.6% pick)",
+      "Goliath - HP+adaptive on a tank-mage",
+      "Ice Cold (Silver) - W passive slow stacks"
+    ],
+    "vs_tanks": "Liandry's + Pyromancer's already %max-HP; add Cryptbloom for pen.",
+    "vs_healing": "Morellonomicon - W aura keeps debuff up perpetually.",
+    "vs_burst": "Crown of the Shattered Queen anvil; R into double-burst window with partner.",
+    "kit_notes": "Pyromancer's Cloak (arena) is now a near-mandatory AP-bruiser anvil - drives the entire build. R-stun setup for ASol R-pull = 73.3% duo WR.",
+    "arena_meta": "Engage AP-tank with the dataset's strongest duo (ASol).",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Amumu/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 15.1
+      }
+    ]
+  },
+  "Pantheon": {
+    "tier": "A",
+    "wr_first": 14.7,
+    "wr_top4": 27.3,
+    "banrate": null,
+    "pickrate": null,
+    "ideal_core_priority": [
+      "Flesheater",
+      "Duskblade of Draktharr",
+      "Eclipse",
+      "Voltaic Cyclosword",
+      "Sundered Sky",
+      "Black Cleaver",
+      "Sterak's Gage"
+    ],
+    "prismatic_priority": [
+      "Flesheater",
+      "Hemomancer's Helm",
+      "Dashing (Blade Waltz)",
+      "Hubris"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Singed (28.6%)",
+      "Xin Zhao",
+      "Briar"
+    ],
+    "build_changing_augments": [
+      "Dashing or Blade Waltz (Prismatic)",
+      "Gain Prismatic Stat Anvil (26.8% pick)",
+      "Mystic Punch - Q ability spam pivot",
+      "Earthwake - stacks his W stun + dash terrain damage",
+      "Hubris - stacking AD on takedowns"
+    ],
+    "vs_tanks": "Black Cleaver anvil; his W passive armor shred on champion auto-applies.",
+    "vs_healing": "Chempunk priority (sub-50% damage spike aligns with Q execute window).",
+    "vs_burst": "W shield-block + Sterak's Gage; E-block during enemy combo.",
+    "kit_notes": "Flesheater (arena) was buffed in 26.9 to steal multiple stats per kill - synergizes with Pantheon's reliable kill-secure via Q.",
+    "arena_meta": "Lethality bruiser; Flesheater rework patch winner.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Pantheon/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 14.7
+      }
+    ]
+  },
+  "Diana": {
+    "tier": "A",
+    "wr_first": 14.6,
+    "wr_top4": 56.3,
+    "banrate": null,
+    "pickrate": 0.5,
+    "ideal_core_priority": [
+      "Riftmaker",
+      "Liandry's Anguish",
+      "Demonic Embrace",
+      "Pyromancer's Cloak",
+      "Hextech Rocketbelt",
+      "Cosmic Drive",
+      "Shadowflame"
+    ],
+    "prismatic_priority": [
+      "Jeweled Gauntlet (11.6% pick)",
+      "Pyromancer's Cloak",
+      "Hemomancer's Helm",
+      "Riftmaker (Prismatic)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Amumu (44.4%)",
+      "Yuumi (30.8%)",
+      "Urgot (18.2%)"
+    ],
+    "build_changing_augments": [
+      "Jeweled Gauntlet - R crit on cleave",
+      "Marksmage (Gold, 21.4% pick) - convert AP to physical damage",
+      "Gain Augment Slot (13.3%)",
+      "Dashing - R+E dash haste",
+      "Mystic Punch - on-hit CDR for ability spam"
+    ],
+    "vs_tanks": "Liandry's burn + Riftmaker omnivamp; her R cleave hits multiple targets in 2v2v2v2.",
+    "vs_healing": "Morellonomicon priority; passive moonsilver autos keep GW up.",
+    "vs_burst": "Riftmaker omnivamp + E-shield; R into burst then E away.",
+    "kit_notes": "Source notes Diana's strength comes from 'optimal augment selection each round' and partner pairing. R cleave AOE shines in 2v2.",
+    "arena_meta": "AP assassin-bruiser hybrid - 56.3% top-4 is among highest consistency.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Diana/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 14.6
+      }
+    ]
+  },
+  "Pyke": {
+    "tier": "A",
+    "wr_first": 14.6,
+    "wr_top4": 48.8,
+    "banrate": null,
+    "pickrate": 0.8,
+    "ideal_core_priority": [
+      "Duskblade of Draktharr",
+      "Voltaic Cyclosword",
+      "Hubris",
+      "Serpent's Fang",
+      "Prowler's Claw",
+      "Regicide",
+      "Divine Sunderer"
+    ],
+    "prismatic_priority": [
+      "Clown College",
+      "Hubris",
+      "Hemomancer's Helm",
+      "Regicide"
+    ],
+    "boots": "Ionian Boots of Lucidity",
+    "best_duos": [
+      "Sion (22.2%)",
+      "Swain (19.1%)",
+      "Jax (23.5%)"
+    ],
+    "build_changing_augments": [
+      "Clown College (Prismatic)",
+      "Gain Prismatic Stat Anvil (B-tier)",
+      "Transmute: Prismatic (Gold)",
+      "Thread the Needle (Gold) - 15% armor/magic pen",
+      "The Brutalizer (Silver) - AD/haste/lethality smooths buildup"
+    ],
+    "vs_tanks": "Serpent's Fang for shield shred; Last Whisper anvil; his R execute scales infinitely.",
+    "vs_healing": "Chempunk Chainsword (sub-50% threshold = his R execute window).",
+    "vs_burst": "Edge of Night anvil; W stealth dodges burst combos.",
+    "kit_notes": "R execute scales with lethality - Hubris stacking compounds infinite execute threshold. Hook-engage with tank partner (Sion).",
+    "arena_meta": "Lethality assassin - 14.6% 1st despite 48.8% top-4 = high variance kit.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Pyke/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 14.6
+      }
+    ]
+  },
+  "Maokai": {
+    "tier": "A",
+    "wr_first": 14.5,
+    "wr_top4": 50.8,
+    "banrate": null,
+    "pickrate": 0.7,
+    "ideal_core_priority": [
+      "Heartsteel",
+      "Thornmail",
+      "Warmog's Armor",
+      "Black Hole Gauntlet",
+      "Sunfire Aegis",
+      "Spirit Visage",
+      "Cruelty"
+    ],
+    "prismatic_priority": [
+      "Goliath",
+      "Black Hole Gauntlet",
+      "Dragonheart",
+      "Crown of the Shattered Queen"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Brand (53.9% WR)",
+      "Udyr (35.7%)",
+      "Kayle (23.1%)"
+    ],
+    "build_changing_augments": [
+      "Courage of the Colossus (Prismatic) - shield after immobilizing",
+      "Dreadbringer (Prismatic)",
+      "Tank Engine (Gold)",
+      "Transmute: Prismatic (Gold)",
+      "Desecrator (Silver) - bonus damage to CC'd targets (his entire kit applies CC)"
+    ],
+    "vs_tanks": "Liandry's anvil pivot if AP partner can carry; otherwise Thornmail + auto-attack passive damage.",
+    "vs_healing": "Morellonomicon if AP-leaning; Thornmail's CC GW trigger from his W root.",
+    "vs_burst": "Warmog's + Spirit Visage anvil; W root + R to peel for partner.",
+    "kit_notes": "AP frontline tank - W/R chain root gives partner free damage windows. Brand pairing (53.9%) is one of dataset's best.",
+    "arena_meta": "Tank-AP support archetype that enables burst partners.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Maokai/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 14.5
+      }
+    ]
+  },
+  "Shyvana": {
+    "tier": "S",
+    "wr_first": null,
+    "wr_top4": null,
+    "banrate": null,
+    "pickrate": null,
+    "ideal_core_priority": [
+      "Overlord's Bloodmail",
+      "Dragonheart",
+      "Riftmaker",
+      "Dusk and Dawn",
+      "Heartsteel",
+      "Titanic Hydra",
+      "Jak'Sho, The Protean"
+    ],
+    "prismatic_priority": [
+      "Goliath",
+      "Overlord's Bloodmail",
+      "Dragonheart",
+      "Riftmaker"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Veigar (42.9% WR)",
+      "Smolder",
+      "Aurelion Sol (39.1%)"
+    ],
+    "build_changing_augments": [
+      "Big Dragon Energy (Gold, Shyvana-only, 26.06) - full Dragon Fury at combat start, push Demonic Embrace/Liandry's/Riftmaker AP-burn build",
+      "Marksmage (Gold) - AP to physical conversion, fits her hybrid scaling",
+      "Goliath",
+      "Gain Prismatic Stat Anvil (29.3% pick - universal pickup)",
+      "Tank Engine"
+    ],
+    "vs_tanks": "Liandry's + Riftmaker burn; R-form passive damage scales with HP.",
+    "vs_healing": "Morellonomicon if AP build (Big Dragon Energy enabled); else Mortal Reminder.",
+    "vs_burst": "Overlord's Bloodmail + Dragonheart double-HP-pickup; R-form damage reduction.",
+    "kit_notes": "50% WR on optimal core (2.3 avg) - 'Gain Prismatic Stat Anvil' selected 29.3% of her games (universal pickup). Big Dragon Energy is build-defining.",
+    "arena_meta": "S-tier on core WR; low pickrate skews 1st%. Hybrid scaler that adapts to any anvil.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Shyvana/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 50.0,
+        "note": "50% on optimal core, not raw 1st place"
+      }
+    ]
+  },
+  "Zaahen": {
+    "tier": "S",
+    "wr_first": null,
+    "wr_top4": 63.7,
+    "banrate": 76.0,
+    "pickrate": null,
+    "ideal_core_priority": [
+      "Overlord's Bloodmail",
+      "Hemomancer's Helm",
+      "Divine Sunderer",
+      "Sundered Sky",
+      "Dragonheart",
+      "Blade of The Ruined King",
+      "Death's Dance"
+    ],
+    "prismatic_priority": [
+      "Mystic Punch",
+      "Hemomancer's Helm",
+      "Overlord's Bloodmail",
+      "Divine Sunderer"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Yuumi (33% WR)",
+      "Sion",
+      "Brand",
+      "Ambessa (33.3%)"
+    ],
+    "build_changing_augments": [
+      "Mystic Punch (Prismatic) - on-hit ability CDR",
+      "Undying Guard (Gold) - revive damage + KB",
+      "The Brutalizer (Silver) - AD + haste + lethality",
+      "Hemomancer's Helm pickup",
+      "If AS scaling augment offered: swap Sundered Sky -> BotRK"
+    ],
+    "vs_tanks": "BotRK + Divine Sunderer for %HP shred; Hemomancer's omnivamp keeps him in fight.",
+    "vs_healing": "Chempunk priority (sub-50% threshold aligns with execute pressure).",
+    "vs_burst": "Hemomancer's Helm + Death's Dance; Overlord's Bloodmail HP buffer.",
+    "kit_notes": "20% WR / 2.5 avg on optimal core. Hemomancer's Helm is the 'want it on every build' anvil pull. Top WR overall.",
+    "arena_meta": "Patch standout - 'ticks every box for arena'. Banned 76% (highest in mode). New release.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Zaahen/arena",
+        "fetched": "2026-05-02",
+        "wr_top4_seen": 63.7,
+        "banrate_seen": 76.0
+      }
+    ]
+  },
+  "Vayne": {
+    "tier": "A",
+    "wr_first": 14.1,
+    "wr_top4": 49.2,
+    "banrate": null,
+    "pickrate": 1.1,
+    "ideal_core_priority": [
+      "Reaper's Toll",
+      "Hamstringer",
+      "Blade of The Ruined King",
+      "Kraken Slayer",
+      "Hexbolt Companion",
+      "Mirage Blade",
+      "Fulmination",
+      "Darksteel Talons"
+    ],
+    "prismatic_priority": [
+      "Reaper's Toll",
+      "Hexbolt Companion",
+      "Mirage Blade",
+      "Hemomancer's Helm"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Cho'Gath (30.4% WR)",
+      "Yuumi (32.0%)",
+      "Shyvana (28.0%)",
+      "Singed (33.3%)"
+    ],
+    "build_changing_augments": [
+      "Dual Wield (Prismatic, 15.1%) - on-hit bolts compound her W true damage",
+      "Gain Augment Slot (12.5%)",
+      "Fan the Hammer (9.2%) - bonus auto-procs",
+      "Twice Thrice (Gold, 15.7%)",
+      "Lightning Strikes (13.3%)"
+    ],
+    "vs_tanks": "BotRK + Reaper's Toll - her W true damage already counters tanks; double-down with %HP.",
+    "vs_healing": "Mortal Reminder priority; her Q tumble repositions for kite heal-procs.",
+    "vs_burst": "Q tumble for invis frames; Edge of Night anvil if available.",
+    "kit_notes": "W true damage stacking is the win-condition - 3rd hit deletes any HP target. Tank-Vayne pairing (Cho'Gath 30.4%) is her best comp - tank engages, she kites and W-stacks.",
+    "arena_meta": "ADC archetype - one of the few non-Xin Zhao ADCs that breaks B-tier ceiling.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Vayne/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 14.1
+      }
+    ]
+  },
+  "Malphite": {
+    "tier": "B",
+    "wr_first": 13.7,
+    "wr_top4": null,
+    "banrate": null,
+    "pickrate": null,
+    "ideal_core_priority": [
+      "Black Hole Gauntlet",
+      "Shield of Molten Stone",
+      "Heartsteel",
+      "Sunfire Aegis",
+      "Thornmail",
+      "Gargoyle Stoneplate",
+      "Warmog's Armor"
+    ],
+    "prismatic_priority": [
+      "Goliath",
+      "Black Hole Gauntlet",
+      "Shield of Molten Stone",
+      "Crown of the Shattered Queen"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Sett",
+      "Xin Zhao",
+      "Brand"
+    ],
+    "build_changing_augments": [
+      "Goliath - HP+adaptive on a passive-shield tank",
+      "Tank Engine - HP per takedown",
+      "Courage of the Colossus - shield after R immobilize",
+      "Earthwake - terrain damage on R/E dashes",
+      "Gain Prismatic Stat Anvil"
+    ],
+    "vs_tanks": "Heartsteel + Thornmail anvil; passive shield + W bonus AR scales infinitely.",
+    "vs_healing": "Thornmail (CC trigger from R = 100% GW uptime in fight).",
+    "vs_burst": "Passive shield + Black Hole Gauntlet pull cancels engages mid-burst.",
+    "kit_notes": "R is round-deciding - small map = guaranteed 2-target hit. Pairs with bursty partner for instant follow-up.",
+    "arena_meta": "Engage tank archetype - 13.7% 1st but very high R-condition wins.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Malphite/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 13.7
+      }
+    ]
+  },
+  "Ahri": {
+    "tier": "B",
+    "wr_first": 13.5,
+    "wr_top4": null,
+    "banrate": null,
+    "pickrate": 11.0,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Runecarver",
+      "Liandry's Anguish",
+      "Shadowflame",
+      "Riftmaker",
+      "Storm Surge",
+      "Rabadon's Deathcap"
+    ],
+    "prismatic_priority": [
+      "Jeweled Gauntlet",
+      "Pyromancer's Cloak",
+      "Runecarver",
+      "Crown of the Shattered Queen"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Jax (15.4% WR / 2.5 avg - top)",
+      "Amumu (41.7%)"
+    ],
+    "build_changing_augments": [
+      "Jeweled Gauntlet - Q/E crit",
+      "Phenomenal Evil - stacking AP",
+      "Gain Prismatic Stat Anvil (28.1% pick)",
+      "Spellcraft (NEW 26.9) - upgrade-on-cast",
+      "Demonic Clasp (NEW 26.9) - replace Flee with multi-claw pull"
+    ],
+    "vs_tanks": "Runecarver (anti-shield) + Liandry's makes R+E lethal vs tanks.",
+    "vs_healing": "Morellonomicon priority; E charm prolongs target debuff.",
+    "vs_burst": "Crown of the Shattered Queen + R dashes = 3 reset windows out of burst.",
+    "kit_notes": "Burn-mage build, NOT the SR Luden's path. Runecarver (arena) is the anti-shield AP item that makes her R + E lethal vs tanks. Gluttonous Greaves on a burst mage is unusual but data-supported.",
+    "arena_meta": "11% pickrate but only 13.5% 1st - high-popularity but mid-WR.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Ahri/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 13.5
+      }
+    ]
+  },
+  "Tryndamere": {
+    "tier": "B",
+    "wr_first": 12.8,
+    "wr_top4": null,
+    "banrate": null,
+    "pickrate": null,
+    "ideal_core_priority": [
+      "Reaper's Toll",
+      "Blade of The Ruined King",
+      "Bloodthirster",
+      "Infinity Edge",
+      "Phantom Dancer",
+      "Mortal Reminder",
+      "Death's Dance"
+    ],
+    "prismatic_priority": [
+      "Reaper's Toll",
+      "Hemomancer's Helm",
+      "Hubris",
+      "Sundered Sky"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Morgana (33.3%)"
+    ],
+    "build_changing_augments": [
+      "Dual Wield (Prismatic) - on-hit bolts on auto-attacker",
+      "Aim for the Head (Gold) - excess crit chance to crit damage",
+      "Compulsion For Power (S-tier specific)",
+      "Gain Prismatic Stat Anvil (28.2% pick)",
+      "Mystic Punch - E ability spam pivot"
+    ],
+    "vs_tanks": "BotRK + Reaper's Toll %HP; her crit damage scales with target HP regardless.",
+    "vs_healing": "Mortal Reminder anvil priority; her R survives the GW window for full payback.",
+    "vs_burst": "R undying for 5s; Sterak's Gage anvil to survive post-R timer.",
+    "kit_notes": "Mediocre solo (4.3 avg) but highest ceiling with right augment combo. Reaper's Toll (arena prismatic) - %max-HP stacking damage fits R-tank scaling perfectly.",
+    "arena_meta": "C-tier despite popular pick - high variance, augment-dependent.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Tryndamere/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 12.8
+      }
+    ]
+  },
+  "Mordekaiser": {
+    "tier": "B",
+    "wr_first": 12.3,
+    "wr_top4": 53.7,
+    "banrate": null,
+    "pickrate": 4.3,
+    "ideal_core_priority": [
+      "Dragonheart",
+      "Liandry's Anguish",
+      "Riftmaker",
+      "Reality Fracture",
+      "Black Hole Gauntlet",
+      "Demonic Embrace",
+      "Spirit Visage"
+    ],
+    "prismatic_priority": [
+      "Goliath",
+      "Jeweled Gauntlet",
+      "Dreadbringer",
+      "Reality Fracture"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Xin Zhao (31.6%, +19.3% improvement - top arena duo)",
+      "Briar (24.1%)",
+      "Shyvana (21.7%)"
+    ],
+    "build_changing_augments": [
+      "Goliath - HP+adaptive",
+      "Marksmage (Gold) - convert AP to physical for hybrid hits",
+      "Tank Engine - HP per takedown",
+      "Phenomenal Evil - AP stacking on his AOE Q/E",
+      "ADAPt (Silver) - convert bonus AD to AP, gain 15% AP"
+    ],
+    "vs_tanks": "Liandry's + Demonic Embrace burn; R-isolation removes target from teamfight.",
+    "vs_healing": "Morellonomicon priority; R Death Realm prevents partner heals.",
+    "vs_burst": "Dragonheart + Spirit Visage; R isolation locks burster 1v1.",
+    "kit_notes": "R isolation in 2v2v2v2 = 1v1 mid-fight = swing the round. Xin Zhao pairing is dataset's strongest mage-bruiser combo (+19.3% over solo).",
+    "arena_meta": "53.7% top-4 consistency despite mid 1st%; reliable carry partner.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Mordekaiser/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 12.3
+      }
+    ]
+  },
+  "Singed": {
+    "tier": "B",
+    "wr_first": 12.1,
+    "wr_top4": 53.0,
+    "banrate": null,
+    "pickrate": 1.0,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Void Immolation",
+      "Cruelty",
+      "Riftmaker",
+      "Demonic Embrace",
+      "Detonation Orb"
+    ],
+    "prismatic_priority": [
+      "Infernal Conduit",
+      "Pyromancer's Cloak",
+      "Black Hole Gauntlet",
+      "Reality Fracture"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Vayne (33.3% WR)",
+      "Volibear (25.0%)",
+      "Sett (22.2%)"
+    ],
+    "build_changing_augments": [
+      "Infernal Conduit (13.1%) - burn auto-stacks his poison trail",
+      "Giant Slayer (5.7%) - bonus damage to high-HP targets",
+      "Transmute: Prismatic (Gold)",
+      "Tank Engine (Gold)",
+      "Gain Prismatic Stat Anvil (27.8% pick)"
+    ],
+    "vs_tanks": "Liandry's + Pyromancer's burn already %max-HP.",
+    "vs_healing": "Morellonomicon - poison trail keeps GW perpetually applied.",
+    "vs_burst": "W stance + Crown anvil - he wins extended, loses combo windows.",
+    "kit_notes": "40% WR on Pyromancer's + Void Immolation + Liandry's core. Poison trail in arena's small map = 100% uptime. Vayne pairing (33.3%) is a hard-to-pin/hard-to-kill double-up.",
+    "arena_meta": "Sustain DPS archetype - 53.0% top-4 = consistent placements.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Singed/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 12.1
+      }
+    ]
+  },
+  "Smolder": {
+    "tier": "B",
+    "wr_first": 11.9,
+    "wr_top4": 45.1,
+    "banrate": null,
+    "pickrate": 0.7,
+    "ideal_core_priority": [
+      "Hamstringer",
+      "Sword of the Divine",
+      "The Collector",
+      "Lord Dominik's Regards",
+      "Infinity Edge",
+      "Phantom Dancer",
+      "Bloodthirster"
+    ],
+    "prismatic_priority": [
+      "Hamstringer",
+      "Reaper's Toll",
+      "Diamond-Tipped Spear",
+      "Sword of the Divine"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Shyvana (35.5%)",
+      "Maokai (25.0%)",
+      "Galio (23.5%)",
+      "Rumble (30.8%)"
+    ],
+    "build_changing_augments": [
+      "Jeweled Gauntlet (13.1% pick) - W and R can crit",
+      "Doomsayer (6.1%) - stack threshold scaling",
+      "Vulnerability (Gold, 13.2%)",
+      "It's Critical (Gold, 8.5%)",
+      "Soul Siphon (Silver, 9.0%) - lifesteal pivot"
+    ],
+    "vs_tanks": "Lord Dominik's + Reaper's Toll for %HP; his R execute scales with stacks.",
+    "vs_healing": "Mortal Reminder priority; R execute denies heal-windows.",
+    "vs_burst": "Phantom Dancer for kite range and crit burst.",
+    "kit_notes": "Stack-scaling ranged ADC - need partner to peel while he ramps. Note: Galeforce removed from League; Phantom Dancer is functional analog.",
+    "arena_meta": "C-tier ADC - needs perfect anvil RNG to spike before round 4.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Smolder/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 11.9
+      }
+    ]
+  },
+  "K'Sante": {
+    "tier": "B",
+    "wr_first": 11.2,
+    "wr_top4": 47.8,
+    "banrate": null,
+    "pickrate": 0.5,
+    "ideal_core_priority": [
+      "Cloak of Starry Night",
+      "Shield of Molten Stone",
+      "Jak'Sho, The Protean",
+      "Gargoyle Stoneplate",
+      "Lightning Rod",
+      "Heartsteel",
+      "Spirit Visage"
+    ],
+    "prismatic_priority": [
+      "Cloak of Starry Night",
+      "Shield of Molten Stone",
+      "Goliath",
+      "Black Hole Gauntlet"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Swain (37.5% WR / 2.9 avg)",
+      "Naafiri (33.3% / 2.9)",
+      "Brand (22.2%)"
+    ],
+    "build_changing_augments": [
+      "Dashing (Prismatic)",
+      "Courage of the Colossus (Prismatic) - shield after immobilize",
+      "Outlaw's Grit (Gold, 15.0%) - resists after dashing",
+      "Transmute: Prismatic (Gold, 10.4%)",
+      "Gain Prismatic Stat Anvil (Silver, 25.6%)"
+    ],
+    "vs_tanks": "His R turns him into bruiser - take Last Whisper / Black Cleaver anvil for shred.",
+    "vs_healing": "Mortal Reminder if R-form bruiser; Thornmail in pre-R tank stance.",
+    "vs_burst": "Cloak of Starry Night + Gargoyle anvil; W shield + R-stance pivot.",
+    "kit_notes": "Dual-stance kit - tank pre-R (Cloak/Shield core) becomes bruiser post-R (anvil pivot to AD items). Swain pairing (37.5%) is highest-WR.",
+    "arena_meta": "Tank/bruiser hybrid - flexible build path is augment-dependent.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/KSante/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 11.2
+      }
+    ]
+  },
+  "Warwick": {
+    "tier": "B",
+    "wr_first": 11.1,
+    "wr_top4": 53.5,
+    "banrate": null,
+    "pickrate": 0.8,
+    "ideal_core_priority": [
+      "Hemomancer's Helm",
+      "Death's Dance",
+      "Blade of The Ruined King",
+      "Hamstringer",
+      "Fulmination",
+      "Reaper's Toll",
+      "Terminus",
+      "Guinsoo's Rageblade",
+      "Dragonheart"
+    ],
+    "prismatic_priority": [
+      "Hemomancer's Helm",
+      "Reaper's Toll",
+      "Mystic Punch (augment-mirror)",
+      "Dragonheart"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Yuumi (35.3% WR)",
+      "Shyvana (20.0%)",
+      "Cho'Gath (15.4%)"
+    ],
+    "build_changing_augments": [
+      "Dual Wield (Prismatic) - on-hit bolts",
+      "Mystic Punch - on-hit ability CDR for Q/E spam",
+      "Symphony of War (Prismatic)",
+      "Transmute: Prismatic (Gold, S-tier)",
+      "Firebrand / Deathtouch (Gold)"
+    ],
+    "vs_tanks": "BotRK + Reaper's Toll %HP; passive lifesteal scales with target HP.",
+    "vs_healing": "Mortal Reminder; R fear lockdown denies heal-procs.",
+    "vs_burst": "Death's Dance + Sterak's anvil; R unstoppable charge into target.",
+    "kit_notes": "Sustain bruiser - Yuumi pairing (35.3%) gives him perma-uptime. Q ability spam scales with on-hit augments.",
+    "arena_meta": "53.5% top-4 = consistent placements; low 1st% = lacks burst.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Warwick/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 11.1
+      }
+    ]
+  },
+  "Yorick": {
+    "tier": "B",
+    "wr_first": 10.5,
+    "wr_top4": null,
+    "banrate": null,
+    "pickrate": null,
+    "ideal_core_priority": [
+      "Trinity Force",
+      "Sundered Sky",
+      "Stridebreaker",
+      "Black Cleaver",
+      "Sterak's Gage",
+      "Death's Dance",
+      "Ravenous Hydra"
+    ],
+    "prismatic_priority": [
+      "Hemomancer's Helm",
+      "Overlord's Bloodmail",
+      "Hubris",
+      "Goliath"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Ashe",
+      "Malzahar",
+      "Yone"
+    ],
+    "build_changing_augments": [
+      "Minionmancer (S-tier, Yorick-defining) - 35% size/HP/damage on summons. Without this Yorick is C/D; with it he's S-tier",
+      "Goliath - HP+adaptive scales Maiden too",
+      "Tank Engine",
+      "Gain Prismatic Stat Anvil",
+      "Mystic Punch - E ghoul spam"
+    ],
+    "vs_tanks": "Black Cleaver + Stridebreaker shred; ghouls auto-apply on-hit.",
+    "vs_healing": "Mortal Reminder priority; W cage isolates target into GW window.",
+    "vs_burst": "Sterak's + Death's Dance; W cage interrupts engages.",
+    "kit_notes": "Minionmancer is build-defining - it's the difference between D-tier and S-tier.  Pair with disable partner (Malzahar suppress) so ghouls + Maiden can free-DPS.",
+    "arena_meta": "Augment-binary champ - if Minionmancer isn't offered, hard-int.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Yorick/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 10.5
+      }
+    ]
+  },
+  "Yone": {
+    "tier": "B",
+    "wr_first": 11.0,
+    "wr_top4": null,
+    "banrate": null,
+    "pickrate": null,
+    "ideal_core_priority": [
+      "Hamstringer",
+      "Kraken Slayer",
+      "Blade of The Ruined King",
+      "Guinsoo's Rageblade",
+      "Phantom Dancer",
+      "Wit's End",
+      "Sterak's Gage"
+    ],
+    "prismatic_priority": [
+      "Hamstringer",
+      "Reaper's Toll",
+      "Hemomancer's Helm",
+      "Reverberation"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Vi (Vi's best duo at 21.4%)",
+      "Yorick",
+      "Malzahar"
+    ],
+    "build_changing_augments": [
+      "Dual Wield - on-hit bolts compound his crit-storm passive",
+      "ADAPt - convert AD to AP (rare AP-Yone)",
+      "Mystic Punch - on-hit ability CDR for E reset spam",
+      "Aim for the Head - crit damage if crit anvils stack",
+      "Gain Prismatic Stat Anvil"
+    ],
+    "vs_tanks": "BotRK + Wit's End hybrid damage shreds bruisers/mages alike.",
+    "vs_healing": "Mortal Reminder anvil; R knock-up chains into partner GW.",
+    "vs_burst": "Sterak's + E retreat (return to E location); kite anvil round.",
+    "kit_notes": "Crit-AS hybrid - skewed by player base (first-timed often). Hamstringer replaces Stridebreaker.",
+    "arena_meta": "D-tier despite 16.4% pickrate - high mechanical floor in arena.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Yone/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 11.0
+      }
+    ]
+  },
+  "Sylas": {
+    "tier": "B",
+    "wr_first": 10.9,
+    "wr_top4": null,
+    "banrate": null,
+    "pickrate": null,
+    "ideal_core_priority": [
+      "Runecarver",
+      "Rod of Ages",
+      "Riftmaker",
+      "Cosmic Drive",
+      "Liandry's Anguish",
+      "Demonic Embrace",
+      "Hexdrinker"
+    ],
+    "prismatic_priority": [
+      "Runecarver",
+      "Hemomancer's Helm",
+      "Cosmic Drive",
+      "Crown of the Shattered Queen"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Yone",
+      "Mordekaiser"
+    ],
+    "build_changing_augments": [
+      "Dashing (Prismatic) - 200-350 haste on E dash, push Cosmic Drive/Black Cleaver",
+      "Marksmage - AP to physical (his W heal scales with bonus AD via this)",
+      "Mystic Punch - on-hit CDR for ability spam",
+      "Demonic Clasp (NEW 26.9) - replace Flee with multi-claw pull",
+      "Gain Prismatic Stat Anvil"
+    ],
+    "vs_tanks": "Runecarver anti-shield; Liandry's burn.",
+    "vs_healing": "Morellonomicon priority; W heal also gets reduced if he takes it.",
+    "vs_burst": "Crown of the Shattered Queen + Hexdrinker anvil; E shield + R steal.",
+    "kit_notes": "R steal in arena = ult-RNG variance. Best with predictable enemy ult pool. Runecarver core is his arena identity.",
+    "arena_meta": "D-tier despite popular pick - R steal RNG hurts consistency.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Sylas/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 10.9
+      }
+    ]
+  },
+  "Yasuo": {
+    "tier": "B",
+    "wr_first": 10.5,
+    "wr_top4": null,
+    "banrate": null,
+    "pickrate": 16.4,
+    "ideal_core_priority": [
+      "Hamstringer",
+      "Sword of the Divine",
+      "Blade of The Ruined King",
+      "Phantom Dancer",
+      "Infinity Edge",
+      "Bloodthirster",
+      "Sterak's Gage"
+    ],
+    "prismatic_priority": [
+      "Hamstringer",
+      "Sword of the Divine",
+      "Reaper's Toll",
+      "Hemomancer's Helm"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Vi (21.4% WR / 3.0 avg, +10.9% over solo)"
+    ],
+    "build_changing_augments": [
+      "Dual Wield - on-hit bolts",
+      "ADAPt - rare AP-Yasuo (joke pick but data-tracked)",
+      "Aim for the Head - excess crit to crit damage",
+      "Gain Prismatic Stat Anvil (27.4%)",
+      "Mystic Punch - E reset spam"
+    ],
+    "vs_tanks": "BotRK + Lord Dominik's anvil for %HP shred.",
+    "vs_healing": "Mortal Reminder priority.",
+    "vs_burst": "Wind Wall + Sterak's; R into knock-up follow-up partner.",
+    "kit_notes": "Skewed by player base (first-timed often). Sword of the Divine (component anvil) replaces IE in arena - crit takes too long to assemble from scratch.",
+    "arena_meta": "D-tier despite 16.4% pickrate - high mechanical floor.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Yasuo/arena",
+        "fetched": "2026-05-02",
+        "wr_first_seen": 10.5
+      }
+    ]
+  },
+  "Caitlyn": {
+    "tier": "C",
+    "wr_first": 10.5,
+    "wr_top4": 44.3,
+    "banrate": null,
+    "pickrate": 0.7,
+    "ideal_core_priority": [
+      "Diamond-Tipped Spear",
+      "Hamstringer",
+      "The Collector",
+      "Rapid Firecannon",
+      "Infinity Edge",
+      "Bloodthirster",
+      "Mortal Reminder"
+    ],
+    "prismatic_priority": [
+      "Dual Wield (14.0% pick — bolts apply on-hit, push Hamstringer/Sword of the Divine stack)",
+      "Fan the Hammer (9.0% pick — 5 bolts per attack on-hit)",
+      "Aim for the Head (13.1% pick — converts crit-cap overflow to crit damage)",
+      "Hexoptics C44 (situational arena-only AP/AS hybrid)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Vi (36.4% WR, +25.9% over solo)",
+      "Cho'Gath (29.4%)"
+    ],
+    "build_changing_augments": [
+      "Dual Wield — convert to on-hit/AS profile (Hamstringer/Sword of the Divine)",
+      "Fan the Hammer — multishot on-hit, push Statikk Shiv/Rapid Firecannon",
+      "Firebrand — burn-stack on-hit; push Liandry's anvil"
+    ],
+    "vs_tanks": "Mortal Reminder anvil first; Hexoptics C44 for %HP via AP-on-hit conversion.",
+    "vs_healing": "Mortal Reminder mandatory; Chempunk if any healer present.",
+    "vs_burst": "Edge of Night anvil; range-extending augments (Scopiest Weapons) keep Caitlyn outside burst threshold.",
+    "kit_notes": "Pure ranged ADC, range = HP in arena. Headshot procs spike with Fan the Hammer; struggles vs gap-closers without Vi/tank duo.",
+    "arena_meta": "Floor pick — F-tier on aggregator J's absolute scale but workable with Vi duo and Diamond-Tipped Spear core; 1239 matches is a thin sample.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Caitlyn/arena",
+        "fetched": "2026-05-03",
+        "matches": 1239,
+        "external_tier": "F"
+      }
+    ]
+  },
+  "Kai'Sa": {
+    "tier": "C",
+    "wr_first": 9.6,
+    "wr_top4": 43.5,
+    "banrate": null,
+    "pickrate": 0.8,
+    "ideal_core_priority": [
+      "Reaper's Toll",
+      "Kraken Slayer",
+      "Blade of The Ruined King",
+      "Guinsoo's Rageblade",
+      "Hamstringer",
+      "Terminus",
+      "Statikk Shiv",
+      "Nashor's Tooth"
+    ],
+    "prismatic_priority": [
+      "Dual Wield (15.3% pick — A-tier; double on-hit, mandatory)",
+      "Symphony of War (7.4% pick — Lethal Tempo + Conqueror keystones)",
+      "Tap Dancer (10.0% pick — MS→AS conversion, reposition tool)",
+      "Mystic Punch (CDR on-hit, R-spam)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Galio (23.1% WR, +13.5%)",
+      "Shyvana (26.7%)"
+    ],
+    "build_changing_augments": [
+      "Dual Wield — double on-hit, the build-defining anvil",
+      "Lightning Strikes — gold-tier AS+magic on-hit; pushes Nashor's/Terminus",
+      "Light 'em Up! — every-4th magic damage on-hit, AP scaling"
+    ],
+    "vs_tanks": "BotRK + Terminus for %HP shred; Lord Dominik's anvil if no AP partner.",
+    "vs_healing": "Mortal Reminder anvil; her R-evolved missiles already give burst-execute potential.",
+    "vs_burst": "Edge of Night + Sterak's Gage anvil; her R-passthrough is the disengage tool.",
+    "kit_notes": "Hybrid on-hit ADC. Plasma stacks reset her R cooldown — duo-target focus matters more than position. Falls off without Dual Wield anvil.",
+    "arena_meta": "F-tier on aggregator J (9.6%) but Galio/Shyvana shield-duos pull her placement up significantly; 1344-match sample.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Kaisa/arena",
+        "fetched": "2026-05-03",
+        "matches": 1344,
+        "external_tier": "F"
+      }
+    ]
+  },
+  "Kha'Zix": {
+    "tier": "C",
+    "wr_first": 10.1,
+    "wr_top4": 44.0,
+    "banrate": null,
+    "pickrate": 0.5,
+    "ideal_core_priority": [
+      "Voltaic Cyclosword",
+      "Duskblade of Draktharr",
+      "Voltaic Cyclosword",
+      "Serpent's Fang",
+      "Prowler's Claw",
+      "Serylda's Grudge",
+      "The Collector",
+      "Edge of Night"
+    ],
+    "prismatic_priority": [
+      "Jeweled Gauntlet (16.7% pick — abilities crit, Q burst spike)",
+      "Clown College (14.3% pick — Deceive + true-damage death box)",
+      "Giant Slayer (6.7% pick — anti-tank %HP)",
+      "Mystic Punch (build-changing on-hit CDR)"
+    ],
+    "boots": "Ionian Boots of Lucidity",
+    "best_duos": [
+      "Darius (37.5% WR, +27.4%)",
+      "Jhin (37.5%)"
+    ],
+    "build_changing_augments": [
+      "The Brutalizer (S-tier silver — 20 AD + 10 haste + 10 lethality)",
+      "Jeweled Gauntlet — Q crits become assassinate-tier",
+      "Clown College — pickoff + free Deceive on top of his isolation Q"
+    ],
+    "vs_tanks": "Serylda's Grudge + Giant Slayer prismatic; isolation Q damage boost shines vs solo splitter.",
+    "vs_healing": "Chempunk Chainsword anvil; assassinate priority enchanters first.",
+    "vs_burst": "Serpent's Fang + Edge of Night anvil; W slow + R invisibility = disengage tool.",
+    "kit_notes": "Isolation assassin — needs duo to peel/isolate target. Evolved Q one-shots squishies; struggles vs paired bruisers without Darius co-engage.",
+    "arena_meta": "F-tier on aggregator J (10.1%) but Darius/Jhin duos jump him to 37.5%; sample thin (802 matches).",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Khazix/arena",
+        "fetched": "2026-05-03",
+        "matches": 802,
+        "external_tier": "F"
+      }
+    ],
+    "_filtered_items": [
+      "Substituted removed items: Kha'Zix: Opportunity -> Voltaic Cyclosword"
+    ]
+  },
+  "Ornn": {
+    "tier": "D",
+    "wr_first": 9.6,
+    "wr_top4": 40.3,
+    "banrate": null,
+    "pickrate": 0.8,
+    "ideal_core_priority": [
+      "Black Hole Gauntlet",
+      "Heartsteel",
+      "Thornmail",
+      "Jak'Sho, The Protean",
+      "Unending Despair",
+      "Void Immolation",
+      "Protoplasm Harness"
+    ],
+    "prismatic_priority": [
+      "Dreadbringer (14.9% pick — Cursed Power → max HP aura)",
+      "Center of the Universe (5.0% pick — orbiting damage stars)",
+      "Quest: Steel Your Heart (Heartsteel-stack reward)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Xin Zhao (29.4% WR, +19.8%)",
+      "Briar (26.3%)"
+    ],
+    "build_changing_augments": [
+      "Desecrator (silver A — CC→armor/MR conversion, free with his W/R)",
+      "Tank Engine — size + HP per takedown",
+      "Impassable — Aftershock + Glacial Augment double-keystone"
+    ],
+    "vs_tanks": "Black Hole Gauntlet anti-tank; Thornmail mandatory vs AD bruisers.",
+    "vs_healing": "Thornmail (Grievous from Bramvest); chase healer with R knockup.",
+    "vs_burst": "Jak'Sho + Heartsteel HP stacking outscales burst; Unending Despair AOE return.",
+    "kit_notes": "Tank-only — no damage threat; sole purpose is enable Xin Zhao/Briar with W/R CC chain. R is best teamfight knockup in Cherry.",
+    "arena_meta": "F-tier on aggregator J (9.6%, 5.0 avg place), the worst pure-tank in arena 26.9 — kept for Xin Zhao mirror duos.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Ornn/arena",
+        "fetched": "2026-05-03",
+        "matches": 1355,
+        "external_tier": "F"
+      }
+    ]
+  },
+  "Volibear": {
+    "tier": "C",
+    "wr_first": 12.6,
+    "wr_top4": 53.0,
+    "banrate": null,
+    "pickrate": 0.8,
+    "ideal_core_priority": [
+      "Hemomancer's Helm",
+      "Sundered Sky",
+      "Heartsteel",
+      "Death's Dance",
+      "Sterak's Gage",
+      "Unending Despair",
+      "Wit's End"
+    ],
+    "prismatic_priority": [
+      "Mystic Punch (10.9% pick — A-tier on-hit CDR)",
+      "Dreadbringer (6.5% pick — Cursed Power max HP aura)",
+      "Symphony of War (7.3% pick — Lethal Tempo + Conqueror double keystone)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Trundle (30.8% WR, +18.2%, S-tier)",
+      "Graves (31.3%, S-tier)"
+    ],
+    "build_changing_augments": [
+      "Mystic Punch — passive lightning + on-hit CDR = R-spam",
+      "Heavy Hitter (silver B — 4% max HP on-hit, AS-bruiser pivot)",
+      "Critical Healing — heal/shield crit (Sundered Sky proc)"
+    ],
+    "vs_tanks": "Wit's End + Mystic Punch on-hit %HP; Sundered Sky proc heals through tank stalls.",
+    "vs_healing": "Bramble Vest → Thornmail; on-hit CDR keeps Q (auto-reset) on healer.",
+    "vs_burst": "Sterak's Gage + Heartsteel; passive ult-revive nullifies single-rotation burst.",
+    "kit_notes": "Bruiser-tank with on-hit reset Q and self-cast leap E. R passive grants undying 4-second window when low.",
+    "arena_meta": "C-tier (12.6% wr_first, 53% top4) — best of the 5 retries, viable mid pick especially with Trundle/Graves duo.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Volibear/arena",
+        "fetched": "2026-05-03",
+        "matches": 1390,
+        "external_tier": "C"
+      }
+    ]
+  },
+  "Aatrox": {
+    "tier": "D",
+    "wr_first": 9.8,
+    "wr_top4": 48.0,
+    "banrate": null,
+    "pickrate": 0.6,
+    "ideal_core_priority": [
+      "Hemomancer's Helm",
+      "Sundered Sky",
+      "Death's Dance",
+      "Goredrinker (or Goredrink-augment proxy)",
+      "Sterak's Gage",
+      "Black Cleaver",
+      "Spear of Shojin"
+    ],
+    "prismatic_priority": [
+      "Goliath (recommended prismatic — HP+adaptive, pivot to Sterak's/Overlord's)",
+      "Dreadbringer (Cursed Power max HP)",
+      "Symphony of War (Lethal Tempo + Conqueror)"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Lee Sin (18.2% WR)",
+      "Jax (30.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Goliath — push Sterak's/Overlord's HP-stacking pivot",
+      "Goredrink (Phase-2 new arena-only — 15% Omnivamp on aug)",
+      "Heavy Hitter — 4% max HP on-attack, push AS-bruiser"
+    ],
+    "vs_tanks": "Black Cleaver + Sundered Sky; %HP via passive auto-procs.",
+    "vs_healing": "Hemomancer's Helm + Bramble Vest anvil; his Q3 already heals through Grievous.",
+    "vs_burst": "Sterak's Gage + Death's Dance; R revive negates one-shots.",
+    "kit_notes": "Q3 knockup is the win-con; needs setup. Death-defying R is the late-round bracket-saver.",
+    "arena_meta": "F on aggregator J (9.8%) but high top4 (48%) — climbs better than wins. Niche pick, prefer Lee Sin pair.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Aatrox/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "F"
+      }
+    ]
+  },
+  "Aphelios": {
+    "tier": "D",
+    "wr_first": 9.7,
+    "wr_top4": 41.8,
+    "banrate": null,
+    "pickrate": 0.4,
+    "ideal_core_priority": [
+      "Hamstringer",
+      "The Collector",
+      "Bloodthirster",
+      "Infinity Edge",
+      "Mortal Reminder",
+      "Phantom Dancer",
+      "Lord Dominik's Regards"
+    ],
+    "prismatic_priority": [
+      "Dual Wield (recommended — double on-hit)",
+      "Lightning Strikes (gold rec — magic damage on-hit at 3.5 attacks/s)",
+      "Fan the Hammer (5 bolts per attack on-hit)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Swain (50.0% WR)",
+      "Cho'Gath (36.4% WR)"
+    ],
+    "build_changing_augments": [
+      "Dual Wield — double his weapon-rotation on-hit",
+      "Symphony of War — keystone double-up",
+      "Aim for the Head — crit-cap overflow → crit damage"
+    ],
+    "vs_tanks": "Mortal Reminder + Lord Dominik's anvil; Severum (red gun) for sustain.",
+    "vs_healing": "Severum healing carries; Mortal Reminder anvil for the rest.",
+    "vs_burst": "Crescendum (white gun) for self-peel; Calibrum (blue) ultimate is poke-disengage.",
+    "kit_notes": "Weapon-rotation marksman; flexibility hides skill cap. Ranged poke + adaptive damage. Underwhelming without Swain/Cho frontline.",
+    "arena_meta": "F on aggregator J — slow ramp doesn't suit 1-2 round rotations. Niche pick.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Aphelios/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "F"
+      }
+    ]
+  },
+  "Draven": {
+    "tier": "D",
+    "wr_first": 9.8,
+    "wr_top4": 44.2,
+    "banrate": null,
+    "pickrate": 0.4,
+    "ideal_core_priority": [
+      "Phantom Dancer",
+      "The Collector",
+      "Bloodthirster",
+      "Infinity Edge",
+      "Mortal Reminder",
+      "Lord Dominik's Regards",
+      "Hamstringer"
+    ],
+    "prismatic_priority": [
+      "Draw Your Sword (recommended — go melee, gain AD/HP/Lifesteal/MS)",
+      "Blood Brother (gold rec — Darius hemorrhage stacks)",
+      "Symphony of War (Lethal Tempo + Conqueror)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Lee Sin (per aggregator J summary)",
+      "Ornn (per aggregator J summary)"
+    ],
+    "build_changing_augments": [
+      "Draw Your Sword — full melee bruiser pivot, the Draven build-defining augment",
+      "Blood Brother — Darius bleed, ramps Q stacks",
+      "Goredrink (15% Omnivamp augment)"
+    ],
+    "vs_tanks": "Mortal Reminder anvil; Lord Dominik's for %HP shred.",
+    "vs_healing": "Mortal Reminder mandatory; Chempunk if low-HP comp.",
+    "vs_burst": "Edge of Night anvil; Phantom Dancer ghosting for E reposition.",
+    "kit_notes": "Stacks AD via passive on Q-axe catches. R is global-execute. Fragile without Ornn/Lee Sin frontline.",
+    "arena_meta": "F on aggregator J (9.8%) — paradoxically the Draw-Your-Sword melee pivot is the highest-WR build path now.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Draven/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "F"
+      }
+    ]
+  },
+  "Ezreal": {
+    "tier": "D",
+    "wr_first": 9.4,
+    "wr_top4": 45.2,
+    "banrate": null,
+    "pickrate": 0.8,
+    "ideal_core_priority": [
+      "Trinity Force",
+      "Muramana",
+      "Phantom Dancer",
+      "Ravenous Hydra",
+      "Black Cleaver",
+      "Iceborn Gauntlet",
+      "Lord Dominik's Regards"
+    ],
+    "prismatic_priority": [
+      "Trueshot Prodigy (recommended — long-range R/Q damage spike)",
+      "Transmute: Prismatic (gold rec — random Prismatic anvil)",
+      "Symphony of War"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Tahm Kench (18.8% WR — peel + W swallow)",
+      "Trundle (per aggregator J summary)"
+    ],
+    "build_changing_augments": [
+      "Trueshot Prodigy — global Q/R poke build pivot",
+      "Mystic Punch (on-hit CDR for Q-spam)",
+      "Spellblade — Trinity/Iceborn proc Q damage"
+    ],
+    "vs_tanks": "Lord Dominik's anvil + Black Cleaver; %HP from Q poke.",
+    "vs_healing": "Mortal Reminder anvil; sustain race vs Dr Mundo bad.",
+    "vs_burst": "Phantom Dancer ghosting on E + R disengage; Edge of Night anvil.",
+    "kit_notes": "Skill-shot poke ADC. Low-CD E = main escape. Trinity/Muramana procs are damage backbone.",
+    "arena_meta": "F on aggregator J (9.4%) — squishiest Cherry ADC, Tahm Kench peel partially saves him.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Ezreal/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "F"
+      }
+    ]
+  },
+  "Fiora": {
+    "tier": "S",
+    "wr_first": 18.4,
+    "wr_top4": 56.3,
+    "banrate": null,
+    "pickrate": 0.5,
+    "ideal_core_priority": [
+      "Hemomancer's Helm",
+      "Death's Dance",
+      "Trinity Force",
+      "Sundered Sky",
+      "Ravenous Hydra",
+      "Sterak's Gage",
+      "Black Cleaver"
+    ],
+    "prismatic_priority": [
+      "Dashing (recommended — repeated dashes/Q spam)",
+      "Outlaw's Grit (gold rec — ramping bonus damage)",
+      "Goliath / Heavy Hitter (HP+on-hit pivot)"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Karma (66.7% WR — shield+haste)",
+      "Nocturne / Singed (per aggregator J)"
+    ],
+    "build_changing_augments": [
+      "Dashing — Q reset chain, kite/dive tool",
+      "Outlaw's Grit — ramping AD per round",
+      "Goliath — HP-stacking bruiser pivot"
+    ],
+    "vs_tanks": "Sundered Sky + Trinity Force %HP; vital procs ignore armor.",
+    "vs_healing": "Hemomancer's Helm + Bramble; Riposte-W parries any hard CC.",
+    "vs_burst": "W (Riposte) negates one rotation; Sterak's Gage anvil for second.",
+    "kit_notes": "Vitals damage = % max HP true on procs. Riposte (W) is the strongest single-target negation in arena. R global heal aura keeps duo alive.",
+    "arena_meta": "S-tier (18.4% wr_first) — quiet Phase-2 standout. Should arguably have been Phase-1 included; under-picked at 0.5%.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Fiora/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "S"
+      }
+    ]
+  },
+  "Garen": {
+    "tier": "D",
+    "wr_first": 11.3,
+    "wr_top4": 48.5,
+    "banrate": null,
+    "pickrate": 0.6,
+    "ideal_core_priority": [
+      "Hamstringer",
+      "The Collector",
+      "Phantom Dancer",
+      "Stridebreaker",
+      "Trinity Force",
+      "Black Cleaver",
+      "Sterak's Gage"
+    ],
+    "prismatic_priority": [
+      "Goliath (HP-stacking pivot)",
+      "Heavy Hitter (4% max HP on-attack)",
+      "Symphony of War (double keystone)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Xin Zhao (per aggregator J top placement, sample-thin)",
+      "Lee Sin / Ambessa (bruiser duos)"
+    ],
+    "build_changing_augments": [
+      "Heavy Hitter — push max-HP on-attack scaling",
+      "Goliath — HP+adaptive",
+      "The Brutalizer — silver AD/lethality spike"
+    ],
+    "vs_tanks": "Black Cleaver + Stridebreaker %HP; R deals %max HP true at end.",
+    "vs_healing": "Bramble Vest anvil; passive sustain helps vs healers.",
+    "vs_burst": "Sterak's Gage + Black Cleaver HP; W (decisive strike) cleanses one CC.",
+    "kit_notes": "Simple bruiser. R = %max HP true execute. Q silence + MS = engage tool. No real disengage.",
+    "arena_meta": "Borderline D/C tier — lacks duo chemistry, R execute is his only real Cherry tool.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Garen/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "D"
+      }
+    ]
+  },
+  "Gwen": {
+    "tier": "C",
+    "wr_first": 13.4,
+    "wr_top4": 56.2,
+    "banrate": null,
+    "pickrate": 0.5,
+    "ideal_core_priority": [
+      "Runecarver",
+      "Riftmaker",
+      "Nashor's Tooth",
+      "Liandry's Anguish",
+      "Rabadon's Deathcap",
+      "Zhonya's Hourglass",
+      "Void Staff"
+    ],
+    "prismatic_priority": [
+      "Marksmage (Phase-2 new — AP-marksman crossover, on-hit AP scaling)",
+      "Symphony of War (keystones)",
+      "Jeweled Gauntlet (Q crits for assassinate burst)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Leona (27.3% WR — engage+lockdown)",
+      "tank/CC frontliners broadly"
+    ],
+    "build_changing_augments": [
+      "Marksmage — convert to ranged AP-on-hit profile",
+      "Mystic Punch — on-hit CDR fuels W cooldown",
+      "Phenomenal Evil — AP scaling per kill (Veigar-style)"
+    ],
+    "vs_tanks": "Nashor's + Liandry's Anguish; Q has %max HP on-hit conversion.",
+    "vs_healing": "Morellonomicon anvil; W mist makes her untargetable mid-trade.",
+    "vs_burst": "Zhonya's Hourglass + W mist invuln window.",
+    "kit_notes": "Mist Walker AP bruiser. W (Hallowed Mist) makes her untargetable to ranged outside the zone. R cone damage scales aggressively.",
+    "arena_meta": "C-tier (13.4%) — solid mid-range AP bruiser, the W mist trick is the differentiator vs other AP picks.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Gwen/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "C"
+      }
+    ]
+  },
+  "Hecarim": {
+    "tier": "C",
+    "wr_first": 12.3,
+    "wr_top4": 51.3,
+    "banrate": null,
+    "pickrate": 0.6,
+    "ideal_core_priority": [
+      "Trinity Force",
+      "Sundered Sky",
+      "Black Cleaver",
+      "Sterak's Gage",
+      "Dead Man's Plate",
+      "Spear of Shojin",
+      "Stridebreaker"
+    ],
+    "prismatic_priority": [
+      "Rabble Rousing (recommended — heal on ability cast)",
+      "Goliath (HP+adaptive)",
+      "Heavy Hitter (4% max HP on-attack)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Vayne (22.2% WR)",
+      "Other AS/on-hit ranged carries"
+    ],
+    "build_changing_augments": [
+      "Rabble Rousing — heal-per-ability fuels his Q spam",
+      "Symphony of War — Lethal Tempo + Conqueror",
+      "Mystic Punch — on-hit CDR enables R chain-CC"
+    ],
+    "vs_tanks": "Black Cleaver + Sundered Sky; Q %HP scales with MS.",
+    "vs_healing": "Bramble Vest anvil; Q life-steal-through-armor by design.",
+    "vs_burst": "Sterak's Gage + Dead Man's; R fear scatters burst combos.",
+    "kit_notes": "MS-scaling bruiser. R fear is multi-target disrupt. Q spam = primary damage; Sundered Sky proc heals.",
+    "arena_meta": "C-tier solid pick — MS scaling rewards mobility-stat anvils.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Hecarim/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "C"
+      }
+    ]
+  },
+  "Heimerdinger": {
+    "tier": "C",
+    "wr_first": 12.0,
+    "wr_top4": 50.9,
+    "banrate": null,
+    "pickrate": 0.4,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Morellonomicon",
+      "Rabadon's Deathcap",
+      "Shadowflame",
+      "Void Staff",
+      "Zhonya's Hourglass"
+    ],
+    "prismatic_priority": [
+      "Infernal Conduit (Phase-2 new — AP DOT scaling)",
+      "Phenomenal Evil (AP per kill)",
+      "Jeweled Gauntlet (turret crits)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Amumu (33.3% WR — AOE CC + turret zone)",
+      "Leona / engage tanks"
+    ],
+    "build_changing_augments": [
+      "Infernal Conduit — DOT-stacking with Liandry's/Morellonomicon",
+      "Tower Power-style turret augments (if offered)",
+      "Symphony of War keystones"
+    ],
+    "vs_tanks": "Liandry's + Pyromancer's burn; turret %HP burn vs Cho'Gath stacks.",
+    "vs_healing": "Morellonomicon mandatory; turret continuous Grievous uptime.",
+    "vs_burst": "Zhonya's Hourglass + turret zone-control to deny gap-close.",
+    "kit_notes": "Turret-zone mage. R upgrades next ability. Needs zone-control terrain to shine; weak in open Cherry rounds.",
+    "arena_meta": "C-tier — turret comp punishes melee dive teams; struggles vs ranged AP mirror.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Heimerdinger/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "C"
+      }
+    ]
+  },
+  "Irelia": {
+    "tier": "D",
+    "wr_first": 11.4,
+    "wr_top4": 49.3,
+    "banrate": null,
+    "pickrate": 0.6,
+    "ideal_core_priority": [
+      "Trinity Force",
+      "Sundered Sky",
+      "Blade of The Ruined King",
+      "Death's Dance",
+      "Black Cleaver",
+      "Wit's End",
+      "Sterak's Gage"
+    ],
+    "prismatic_priority": [
+      "Mystic Punch (on-hit CDR fuels Q resets)",
+      "Symphony of War (Lethal Tempo + Conqueror)",
+      "Heavy Hitter (4% max HP on-attack)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Braum (28.6% WR — shield+stun setup)",
+      "ranged stun/marker partners"
+    ],
+    "build_changing_augments": [
+      "Mystic Punch — Q-reset enabler",
+      "Symphony of War — keystone double",
+      "Goredrink — 15% Omnivamp"
+    ],
+    "vs_tanks": "BotRK + Wit's End on-hit %HP; Q resets sustain through tank trades.",
+    "vs_healing": "Bramble Vest + Wit's End; pierces magic-shield enchanters.",
+    "vs_burst": "Sterak's Gage + W (Defiant Dance) damage-reduction window.",
+    "kit_notes": "Q-reset assassin/bruiser. E stun requires marker setup. R disarm zone is repositioning tool.",
+    "arena_meta": "D-tier (11.4%) — strong solo Q-reset chain but Cherry duo synergy is weak; needs Braum to enable E.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Irelia/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "D"
+      }
+    ]
+  },
+  "Jhin": {
+    "tier": "D",
+    "wr_first": 11.3,
+    "wr_top4": 46.7,
+    "banrate": null,
+    "pickrate": 0.7,
+    "ideal_core_priority": [
+      "Phantom Dancer",
+      "The Collector",
+      "Bloodthirster",
+      "Infinity Edge",
+      "Lord Dominik's Regards",
+      "Hamstringer",
+      "Mortal Reminder"
+    ],
+    "prismatic_priority": [
+      "Trueshot Prodigy (long-range R poke)",
+      "Aim for the Head (crit-cap → crit damage; Jhin is built around 4th-shot crit)",
+      "Symphony of War"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Singed (12.5% WR per aggregator J summary)",
+      "Kha'Zix (37.5% — co-isolation)"
+    ],
+    "build_changing_augments": [
+      "Aim for the Head — guaranteed 4th-shot crit cap overflow",
+      "Trueshot Prodigy — global R sniping",
+      "Lightning Strikes — magic on-hit (does NOT consume his 4th-shot, so applies on every shot)"
+    ],
+    "vs_tanks": "Lord Dominik's + Mortal Reminder; W root setup vs immobile tanks.",
+    "vs_healing": "Mortal Reminder mandatory; W marks make him cleave through healers.",
+    "vs_burst": "Phantom Dancer ghosting on R disengage; Edge of Night anvil.",
+    "kit_notes": "4-shot reload ADC; passive crit damage scales with bonus AS. R = global poke. Mobility-locked during R cast.",
+    "arena_meta": "D-tier (11.3%) — Kha'Zix duo dramatically improves placement (37.5% wr); standalone underperforms.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Jhin/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "D"
+      }
+    ]
+  },
+  "Karma": {
+    "tier": "D",
+    "wr_first": 10.6,
+    "wr_top4": 49.8,
+    "banrate": null,
+    "pickrate": 0.5,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Malignance",
+      "Moonstone Renewer (enchanter pivot)",
+      "Locket of the Iron Solari",
+      "Mikael's Blessing",
+      "Imperial Mandate"
+    ],
+    "prismatic_priority": [
+      "Dark Blessing (Phase-2 new — empowered shield/heal AP scaling)",
+      "Symphony of War keystones",
+      "Center of the Universe (orbiting damage)"
+    ],
+    "boots": "Ionian Boots of Lucidity",
+    "best_duos": [
+      "Shyvana (28.6% WR — bruiser scaling)",
+      "Fiora (66.7% — see Fiora entry)"
+    ],
+    "build_changing_augments": [
+      "Dark Blessing — shield-power scales kill threat",
+      "Marksmage — convert to ranged AP-on-hit profile",
+      "Symphony of War — keystone double-up"
+    ],
+    "vs_tanks": "Liandry's Anguish + Pyromancer's; W bind is %HP-style root.",
+    "vs_healing": "Morellonomicon anvil; her R-Q poke applies stacked Grievous on hit.",
+    "vs_burst": "RE shield + Locket; Mikael's removes hard CC.",
+    "kit_notes": "Hybrid enchanter/poke mage. R upgrades next ability (Q poke / W bind / E shield+MS). Best Cherry use is RE shield-bomb + RW double-bind.",
+    "arena_meta": "D-tier (10.6%) — under-performs vs dedicated enchanters; her hybrid kit doesn't max either lane.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Karma/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "D"
+      }
+    ]
+  },
+  "Lillia": {
+    "tier": "B",
+    "wr_first": 13.9,
+    "wr_top4": 57.8,
+    "banrate": null,
+    "pickrate": 0.5,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Morellonomicon",
+      "Riftmaker",
+      "Rabadon's Deathcap",
+      "Nashor's Tooth",
+      "Cosmic Drive"
+    ],
+    "prismatic_priority": [
+      "Infernal Conduit (Phase-2 new — DOT scaling, BIS for her DOT kit)",
+      "Phenomenal Evil (AP per kill)",
+      "Center of the Universe"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Bard (7.1% WR — combo R sleep + Bard Q)",
+      "AP burst partners"
+    ],
+    "build_changing_augments": [
+      "Infernal Conduit — burn/DOT scaling, perfect synergy",
+      "Phenomenal Evil — Veigar-style AP-per-kill ramp",
+      "Mystic Punch — Q-spam CDR"
+    ],
+    "vs_tanks": "Liandry's + Riftmaker burn; %HP DOT stacks shred Cho'Gath / Sion HP pools.",
+    "vs_healing": "Morellonomicon mandatory; passive applies stacked dream-dust on every hit.",
+    "vs_burst": "Cosmic Drive MS + Q sweep kite-window.",
+    "kit_notes": "AP DOT bruiser. R global sleep is the build-around teamfight tool. Q-spam stacks dream dust on every champ hit.",
+    "arena_meta": "B-tier (13.9%, 57.8% top4) — quiet Phase-2 overperformer. Top4 rate suggests strong placement consistency.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Lillia/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "B"
+      }
+    ]
+  },
+  "Lulu": {
+    "tier": "D",
+    "wr_first": 10.9,
+    "wr_top4": 46.5,
+    "banrate": null,
+    "pickrate": 0.6,
+    "ideal_core_priority": [
+      "Moonstone Renewer",
+      "Mikael's Blessing",
+      "Locket of the Iron Solari",
+      "Ardent Censer",
+      "Staff of Flowing Water",
+      "Imperial Mandate",
+      "Redemption"
+    ],
+    "prismatic_priority": [
+      "Moonflair Spellblade (CC haste — repeated Polymorph/R)",
+      "Symphony of War keystones",
+      "Hemomancer's Helm (if HP-stack carry duo)"
+    ],
+    "boots": "Ionian Boots of Lucidity",
+    "best_duos": [
+      "Xin Zhao (60.0% WR — R-knockup + W speed)",
+      "AS-bruiser carries"
+    ],
+    "build_changing_augments": [
+      "Moonflair Spellblade — Polymorph/R CC chain",
+      "Marksmage — convert to ranged on-hit AP",
+      "Symphony of War — keystone enabling"
+    ],
+    "vs_tanks": "Imperial Mandate + Liandry's anvil; W (Polymorph) disables tank R for 2.25s.",
+    "vs_healing": "Morellonomicon; R + shield keeps carry alive through healer focus.",
+    "vs_burst": "R (Wild Growth) gives carry HP+knockup-immunity window; Mikael's removes CC.",
+    "kit_notes": "Pure enchanter. W Polymorph = best hard-CC in Cherry on a low CD. R targets ally for HP+knockup. No solo damage.",
+    "arena_meta": "D-tier alone (10.9%) but Xin Zhao duo is 60% WR — mirror of the Yuumi-with-X-Zhao Phase-1 finding.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Lulu/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "D"
+      }
+    ]
+  },
+  "Master Yi": {
+    "tier": "B",
+    "wr_first": 13.6,
+    "wr_top4": 50.2,
+    "banrate": null,
+    "pickrate": 0.7,
+    "ideal_core_priority": [
+      "Reaper's Toll",
+      "Darksteel Talons (Phase-2 new arena-only on-hit)",
+      "Kraken Slayer",
+      "Blade of The Ruined King",
+      "Wit's End",
+      "Guinsoo's Rageblade",
+      "Phantom Dancer"
+    ],
+    "prismatic_priority": [
+      "Lightning Strikes (gold rec — magic damage on-hit at high AS)",
+      "Dual Wield (double on-hit)",
+      "Mystic Punch (on-hit CDR for Q-spam reset)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Yuumi (18.2% WR — attached enchanter buffs)",
+      "shield/heal enchanters"
+    ],
+    "build_changing_augments": [
+      "Lightning Strikes — fuel for AS profile, magic on-hit",
+      "Dual Wield — second on-hit per attack",
+      "Symphony of War — Lethal Tempo + Conqueror"
+    ],
+    "vs_tanks": "BotRK + Kraken Slayer + Wit's End on-hit %HP shred.",
+    "vs_healing": "Mortal Reminder anvil; high AS uptime keeps Grievous applied.",
+    "vs_burst": "Q (Alpha Strike) is untargetable window; R MS+CC-immune escape.",
+    "kit_notes": "On-hit AS hyper-carry. Q untargetable, E true damage on-hit, R MS+CC-immune. Needs shield/heal partner.",
+    "arena_meta": "B-tier (13.6%) — Yuumi attachment makes him a sleeper carry; Phase-2 best on-hit ADC alternative to Xin Zhao.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/MasterYi/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "B"
+      }
+    ]
+  },
+  "Nilah": {
+    "tier": "B",
+    "wr_first": 13.8,
+    "wr_top4": 47.8,
+    "banrate": null,
+    "pickrate": 0.4,
+    "ideal_core_priority": [
+      "Reaper's Toll",
+      "Hamstringer",
+      "Sword of the Divine",
+      "Blade of The Ruined King",
+      "Bloodthirster",
+      "Phantom Dancer",
+      "Wit's End"
+    ],
+    "prismatic_priority": [
+      "Symphony of War (keystones)",
+      "Dual Wield (double on-hit)",
+      "Tap Dancer (MS→AS)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Malzahar (62.5% WR — R suppression setup)",
+      "AOE-CC partners"
+    ],
+    "build_changing_augments": [
+      "Dual Wield — double on-hit her R cleave",
+      "Mystic Punch — CDR for E dash spam",
+      "Symphony of War"
+    ],
+    "vs_tanks": "BotRK + Wit's End %HP via on-hit; Q water-jet poke.",
+    "vs_healing": "Passive doubles ally healing — anti-healing item conflicts; build Mortal Reminder + accept self-heal loss.",
+    "vs_burst": "W (Jubilant Veil) magic-immunity + dodge for self/ally; E dash repositions.",
+    "kit_notes": "Melee ADC with whip. Passive doubles ally healing/shielding (enchanter synergy). R cleave hits all enemies in big circle. W = untargetable to magic.",
+    "arena_meta": "B-tier (13.8%) — passive heal-doubling makes Yuumi/Soraka/Nami duos broken; Malzahar suppression chain hits 62.5% WR.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Nilah/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "B"
+      }
+    ]
+  },
+  "Renekton": {
+    "tier": "C",
+    "wr_first": 11.9,
+    "wr_top4": 50.6,
+    "banrate": null,
+    "pickrate": 0.5,
+    "ideal_core_priority": [
+      "Sundered Sky",
+      "Hemomancer's Helm",
+      "Death's Dance",
+      "Black Cleaver",
+      "Sterak's Gage",
+      "Trinity Force",
+      "Spear of Shojin"
+    ],
+    "prismatic_priority": [
+      "Goliath (HP+adaptive)",
+      "Heavy Hitter (4% max HP on-attack)",
+      "Goredrink (Omnivamp)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Shyvana (33.3% WR — paired bruisers)",
+      "AP burst back-line partners"
+    ],
+    "build_changing_augments": [
+      "Goliath — HP+adaptive scaling, push tanky bruiser",
+      "Heavy Hitter — Q empowered heal proc + max HP on-attack",
+      "Mystic Punch — empowered-Q reset CDR"
+    ],
+    "vs_tanks": "Black Cleaver + Sundered Sky %HP; empowered Q heal carries trades.",
+    "vs_healing": "Bramble Vest anvil; his Q already heals through Grievous on bonus.",
+    "vs_burst": "Sterak's Gage + Death's Dance; W stun + dash gap-close.",
+    "kit_notes": "Fury-stacking lane bully. R buffs HP+size. Empowered (50+ fury) Q heals; W stuns; E charge-and-dash-back is reposition.",
+    "arena_meta": "C-tier — Shyvana paired-bruiser duo is the strongest profile; standalone underwhelms vs scaling carries.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Renekton/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "C"
+      }
+    ]
+  },
+  "Soraka": {
+    "tier": "C",
+    "wr_first": 12.7,
+    "wr_top4": 51.0,
+    "banrate": null,
+    "pickrate": 0.5,
+    "ideal_core_priority": [
+      "Empyrean Promise (Phase-2 new arena-only enchanter)",
+      "Radiant Virtue (Phase-2 new arena-only AOE heal aura)",
+      "Moonstone Renewer",
+      "Ardent Censer",
+      "Staff of Flowing Water",
+      "Mikael's Blessing",
+      "Redemption"
+    ],
+    "prismatic_priority": [
+      "Circle of Death (Phase-2 new — death-zone heal damage)",
+      "Symphony of War (keystones — Aery for poke)",
+      "Hemomancer's Helm (if HP-stack carry)"
+    ],
+    "boots": "Ghostcrawlers",
+    "best_duos": [
+      "Sett (27.3% WR — front-line + heal-back)",
+      "frontline bruisers broadly"
+    ],
+    "build_changing_augments": [
+      "Circle of Death — death-zone heals turn deaths into utility",
+      "Marksmage — convert to ranged on-hit AP profile",
+      "Symphony of War — Aery + Conqueror double poke/sustain"
+    ],
+    "vs_tanks": "Liandry's anvil + Pyromancer's burn (offensive Soraka pivot).",
+    "vs_healing": "Morellonomicon mandatory; her ult-heal is global through Grievous if pre-applied.",
+    "vs_burst": "Mikael's removes CC; W heals through hard CC of ally; R global heal for low-HP ally save.",
+    "kit_notes": "Pure enchanter. W heals ally (costs HP). E silence + slow zone. R global ally heal. Needs frontline to have someone TO heal.",
+    "arena_meta": "C-tier — top4 (51%) higher than win (12.7%), classic 'never loses, never solo wins' enchanter profile.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Soraka/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "C"
+      }
+    ]
+  },
+  "Twisted Fate": {
+    "tier": "F",
+    "wr_first": 10.0,
+    "wr_top4": 40.6,
+    "banrate": null,
+    "pickrate": 0.4,
+    "ideal_core_priority": [
+      "Liandry's Anguish",
+      "Lich Bane",
+      "Nashor's Tooth",
+      "Rabadon's Deathcap",
+      "Shadowflame",
+      "Cosmic Drive",
+      "Void Staff"
+    ],
+    "prismatic_priority": [
+      "Marksmage (Phase-2 new — AP-on-hit scaling)",
+      "Jeweled Gauntlet (W gold-card crits)",
+      "Symphony of War (keystones)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Vi (20.0% WR — gap-close engage)",
+      "engage-CC partners broadly"
+    ],
+    "build_changing_augments": [
+      "Marksmage — convert TF to ranged AP-on-hit",
+      "Jeweled Gauntlet — W gold-card empowered auto crit",
+      "Trueshot Prodigy — long-range R global vision"
+    ],
+    "vs_tanks": "Liandry's burn + W blue-card mana; struggles vs HP-stackers.",
+    "vs_healing": "Morellonomicon anvil; W gold-card stun setup for chain Grievous applies.",
+    "vs_burst": "R (global teleport) is the disengage; Zhonya's Hourglass anvil.",
+    "kit_notes": "Card-pick mage. W = gold (stun) / red (slow+AOE) / blue (mana+poke). R global teleport. Needs Vi engage to land W.",
+    "arena_meta": "F-tier (10.0%, 40.6% top4) — worst Phase-2 mage. Without Vi engage, his W stun never lands on mobile carries.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/TwistedFate/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "F"
+      }
+    ]
+  },
+  "Vex": {
+    "tier": "D",
+    "wr_first": 10.6,
+    "wr_top4": 51.0,
+    "banrate": null,
+    "pickrate": 0.5,
+    "ideal_core_priority": [
+      "Detonation Orb",
+      "Luden's Echo",
+      "Shadowflame",
+      "Liandry's Anguish",
+      "Rabadon's Deathcap",
+      "Storm Surge",
+      "Void Staff"
+    ],
+    "prismatic_priority": [
+      "Jeweled Gauntlet (Q crit burst)",
+      "Phenomenal Evil (AP per kill ramp)",
+      "Symphony of War (keystones)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Vayne (11.1% WR — paired ranged carries)",
+      "AOE-CC engage partners"
+    ],
+    "build_changing_augments": [
+      "Jeweled Gauntlet — Q crit-burst spike",
+      "Phenomenal Evil — Veigar-style AP-per-kill ramp",
+      "Trueshot Prodigy — global R poke build"
+    ],
+    "vs_tanks": "Liandry's + Detonation Orb burn; passive doom procs % HP.",
+    "vs_healing": "Morellonomicon mandatory; passive fear removes healers from fight briefly.",
+    "vs_burst": "Zhonya's Hourglass + W (personal space) AOE fear when she dashes/E.",
+    "kit_notes": "Anti-mobility burst mage. Passive marks dashers/leapers and procs bonus damage. R = global execute.",
+    "arena_meta": "D-tier (10.6%) — anti-dash niche underrewarded in Cherry where everyone has gap-close. Top4 (51%) decent.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Vex/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "D"
+      }
+    ]
+  },
+  "Wukong": {
+    "tier": "D",
+    "wr_first": 11.9,
+    "wr_top4": 50.6,
+    "banrate": null,
+    "pickrate": 0.6,
+    "ideal_core_priority": [
+      "Hemomancer's Helm",
+      "Sundered Sky",
+      "Death's Dance",
+      "Trinity Force",
+      "Black Cleaver",
+      "Sterak's Gage",
+      "Spear of Shojin"
+    ],
+    "prismatic_priority": [
+      "Goliath (HP+adaptive)",
+      "Heavy Hitter (4% max HP on-attack)",
+      "Symphony of War (keystones)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Evelynn (22.2% WR — paired stealth-burst)",
+      "AP burst back-line partners"
+    ],
+    "build_changing_augments": [
+      "Goliath — HP+adaptive bruiser pivot",
+      "Heavy Hitter — push max-HP on-attack",
+      "Goredrink — 15% Omnivamp"
+    ],
+    "vs_tanks": "Black Cleaver + Trinity Force %HP; passive armor stacks make him tankier vs paired tanks.",
+    "vs_healing": "Bramble Vest anvil; passive heal sustains Q chase.",
+    "vs_burst": "W (clone) breaks targeting + crits next attack; Sterak's Gage anvil.",
+    "kit_notes": "AD bruiser/assassin. W = clone-stealth-reposition, then crit auto. R AOE multi-spin knockup is best teamfight tool. Passive armor stacks vs many enemies.",
+    "arena_meta": "D-tier (11.9%) — solid but unremarkable; W clone trick rewards skilled play, R is reliable Cherry teamfight ult.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/MonkeyKing/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "D"
+      }
+    ]
+  },
+  "Zac": {
+    "tier": "B",
+    "wr_first": 13.8,
+    "wr_top4": 48.1,
+    "banrate": null,
+    "pickrate": 0.5,
+    "ideal_core_priority": [
+      "Black Hole Gauntlet",
+      "Jak'Sho, The Protean",
+      "Heartsteel",
+      "Sunfire Aegis",
+      "Thornmail",
+      "Unending Despair",
+      "Riftmaker"
+    ],
+    "prismatic_priority": [
+      "Dreadbringer (Cursed Power max HP aura)",
+      "Tank Engine (size + HP per takedown)",
+      "Center of the Universe (orbiting damage)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Sion (41.7% WR — dual-tank engage)",
+      "tank/CC partners broadly"
+    ],
+    "build_changing_augments": [
+      "Tank Engine — multi-stack HP per round",
+      "Dreadbringer — Cursed Power aura + HP",
+      "Heavy Hitter — push max-HP on-auto"
+    ],
+    "vs_tanks": "Black Hole Gauntlet + Riftmaker; passive blob-revive triggers in tank brawls.",
+    "vs_healing": "Bramble Vest + Thornmail; chunk-and-disengage with E.",
+    "vs_burst": "Heartsteel HP stack outscales single-rotation; passive blob-revive is the second-life mechanic.",
+    "kit_notes": "AP-scaling jelly tank. E launches across map. R is multi-bounce knockup. Passive splits into 4 blobs on death — recombine to revive.",
+    "arena_meta": "B-tier (13.8%) — Sion dual-tank engage = 41.7% WR; passive revive nets him an effective second life per round.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Zac/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "B"
+      }
+    ]
+  },
+  "Zed": {
+    "tier": "A",
+    "wr_first": 15.8,
+    "wr_top4": 51.0,
+    "banrate": null,
+    "pickrate": 0.7,
+    "ideal_core_priority": [
+      "Kinkou Jitte (Phase-2 new arena-only Zed item)",
+      "Duskblade of Draktharr",
+      "Voltaic Cyclosword",
+      "Voltaic Cyclosword",
+      "Serylda's Grudge",
+      "Edge of Night",
+      "Serpent's Fang"
+    ],
+    "prismatic_priority": [
+      "It's Killing Time (recommended — store damage on R-marked targets)",
+      "Symphony of War (keystones)",
+      "Jeweled Gauntlet (Q crits)"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Fizz (33.3% WR — paired assassins, R-mark setup)",
+      "burst engage partners"
+    ],
+    "build_changing_augments": [
+      "It's Killing Time — R-mark stored-damage detonate is build-defining",
+      "Mystic Punch — on-hit CDR for Q-W-E spam",
+      "Goliath — surprise tank pivot"
+    ],
+    "vs_tanks": "Serylda's Grudge + Voltaic Cyclosword; R mark stores raw damage to detonate.",
+    "vs_healing": "Chempunk Chainsword anvil; R execute timing avoids healer save.",
+    "vs_burst": "Edge of Night + W shadow swap; R becomes untargetable transition.",
+    "kit_notes": "Shadow assassin. W places shadow, R places second shadow + marks target. Q-WE-Q-EQ pattern is full burst. Needs to land R post-CC.",
+    "arena_meta": "A-tier (15.8%) — Phase-2 standout assassin, should arguably be promoted to S given Killing Time augment synergy.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Zed/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "A"
+      }
+    ],
+    "_filtered_items": [
+      "Substituted removed items: Zed: Opportunity -> Voltaic Cyclosword"
+    ]
+  },
+  "Ziggs": {
+    "tier": "F",
+    "wr_first": 9.2,
+    "wr_top4": 50.5,
+    "banrate": null,
+    "pickrate": 0.4,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Runecarver",
+      "Liandry's Anguish",
+      "Luden's Echo",
+      "Detonation Orb",
+      "Rabadon's Deathcap",
+      "Shadowflame"
+    ],
+    "prismatic_priority": [
+      "Jeweled Gauntlet (Q crit burst)",
+      "Phenomenal Evil (AP per kill)",
+      "Symphony of War (keystones)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Tristana (28.6% WR — burst-and-chunk)",
+      "AOE-CC engage partners"
+    ],
+    "build_changing_augments": [
+      "Jeweled Gauntlet — Q crits, big satisfaction spike",
+      "Trueshot Prodigy — global R poke",
+      "Phenomenal Evil — Veigar-style AP-per-kill ramp"
+    ],
+    "vs_tanks": "Liandry's + Detonation Orb burn; W explosive tower-buster passive scales vs HP.",
+    "vs_healing": "Morellonomicon mandatory; AOE skillshots apply Grievous reliably.",
+    "vs_burst": "W self-knockback escape; Zhonya's Hourglass anvil.",
+    "kit_notes": "Skill-shot AOE mage. W = self-disengage knockback. R = long-range nuke. All damage telegraphed; positioning-sensitive.",
+    "arena_meta": "F-tier (9.2% wr_first) but 50.5% top4 — places consistently, never wins. Lowest Phase-2 wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Ziggs/arena",
+        "fetched": "2026-05-03",
+        "external_tier": "F"
+      }
+    ]
+  },
+  "_note": "Arena (2v2v2v2 / Cherry mode) builds. Patch 26.9 / Arena Season 2. Authored 2026-05-03 (s33). Schema differs from SR/ARAM: uses ideal_core_priority + prismatic_priority instead of full_build because anvil RNG dictates acquisition. 63 champions captured.",
+  "_refresh_metadata": {
+    "patch": "26.9",
+    "season": "Arena Season 2",
+    "merged_at": "2026-05-03",
+    "phases_merged": [
+      "top30",
+      "next30"
+    ],
+    "new": 63,
+    "schema_note": "Arena uses ideal_core_priority + prismatic_priority + build_changing_augments + best_duos + arena_meta. No linear full_build because anvils are random. Arena-only items (Hexoptics C44, Reaper's Toll, Goliath, Mystic Punch, etc.) are valid here."
+  }
+}
