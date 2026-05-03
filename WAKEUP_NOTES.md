@@ -690,4 +690,17 @@ real values instead of `--`. If still `--`, the WS push channel needs
 deeper inspection (cache invalidation, mtime detection in
 `agents/agent2_backend/file_ingest.py:_check_one`).
 
+## c58e689 ACTIVATED (RC restart 2026-05-02 22:04, PID 8868 → 10452)
+
+Triggered between full arena games (mode=client, liveclient empty).
+Restart verification clean: `last_reload_ok=true`,
+`ui_pulse_age_s=0.4`, `game_poll_worker_age_s=1.0`, all 6 dashboard
+endpoints 200, `from coaches._base_coach import mirror_live_stats`
+loads cleanly.
+
+Mid-game verification still owed. Next arena/aram/brawl run is the
+test window. If pills populate as expected, this thread closes; if
+still `--`, drop down to file_ingest mtime detection or WS push
+fanout.
+
 
