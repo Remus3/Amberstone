@@ -1,5 +1,5 @@
 {
-  "_note": "ARAM builds for full champion roster. Patch 26.8 / Season 16. Updated 2026-04-18.",
+  "_note": "ARAM builds for full champion roster. Patch 26.9 / Season 16. Updated 2026-05-02 (s33) — removed arena-only Hexoptics C44 contamination from 4 champs.",
   "_tiers": "S=dominant, A=strong, B=viable, C=weak, D=hard-griefing",
   "_format": "build_note is the coaching-relevant line injected into ARAM coach system prompt.",
   "Aatrox": {
@@ -396,7 +396,7 @@
     ],
     "full_build": [
       "Berserker's Greaves",
-      "Hexoptics C44",
+      "The Collector",
       "Rapid Firecannon",
       "Infinity Edge",
       "Lord Dominik's Regards",
@@ -1063,7 +1063,7 @@
     "vs_burst": "Immortal Shieldbow replaces Bloodthirster vs heavy dive — delays IE one slot",
     "full_build": [
       "Sorcerer's Shoes",
-      "Hexoptics C44",
+      "The Collector",
       "Rapid Firecannon",
       "Infinity Edge",
       "Lord Dominik's Regards",
@@ -2802,7 +2802,7 @@
     "aram_tier": "A",
     "build_note": "Kraken Slayer first for % HP damage through W-marked targets. R+W combo: ult to immobilize group, W to blight-stack, Q for 3-stack proc. Blighted Quiver stacks multiply with Kraken true damage vs tanks.",
     "core_items": [
-      "Hexoptics C44",
+      "Kraken Slayer",
       "Rapid Firecannon",
       "Infinity Edge"
     ],
@@ -3184,7 +3184,7 @@
     "aram_tier": "A",
     "build_note": "Q (Burst Fire) long-hold = charged shot through terrain. E (Spark Surge) wall-hop dash for repositioning. R (Lightning Crash) overcharges: every kill extends duration. Guinsoo's converts crits to double on-hit for Kraken synergy. W (Ultrashock Laser) slows and reveals — use before R engagement.",
     "core_items": [
-      "Hexoptics C44",
+      "Yun Tal Wildarrows",
       "Rapid Firecannon",
       "Infinity Edge"
     ],

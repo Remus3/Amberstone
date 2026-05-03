@@ -951,4 +951,14 @@ behavior on subsequent ticks.
 
 8 commits, all pushed to origin/main.
 
+## s33 backlog item — UI
+
+- **Pre-game lobby top-bar pills** — when on the lobby page (`mode_key=client`,
+  `lcu.phase=Lobby` or `Matchmaking`), the dashboard's top-bar pills include
+  CS / KDA / level / gold / game-time pills that aren't meaningful pre-game.
+  They should hide when no live game is in progress. Likely a JS-side
+  visibility gate keyed off `liveclient_present` or `lcu.phase` in the
+  lobby/matchmaking view-router. Captured 2026-05-02 mid-session per operator
+  observation.
+
 
