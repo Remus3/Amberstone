@@ -248,6 +248,63 @@ def _bucket_reasons(skipped: list[tuple[str, str]]) -> dict[str, int]:
     return out
 
 
+def _append_sent_ledger(entry: dict) -> None:
+    LESSONS_SENT_LOG.parent.mkdir(parents=True, exist_ok=True)
+    with LESSONS_SENT_LOG.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def send_now(memory_dir: Path = MEMORY_DIR,
+             only_path: str | None = None) -> dict:
+    """Fire kind=lesson envelopes for every eligible memory not already in
+    lessons_sent.jsonl. Appends to the sent-ledger with ack_received=False
+    on each successful POST.
+
+    `only_path` (optional): when set, restrict to a single memory path
+    (basename match against memory_dir). Useful for first-lesson smoke.
+    Returns a per-memory result list.
+    """
+    from core import bridge  # lazy — keeps dry-run path import-light
+
+    if not bridge.is_configured():
+        return {"ok": False, "reason": "bridge_not_configured", "results": []}
+
+    ledger = load_sent_ledger()
+    results: list[dict] = []
+    for lesson in iter_eligible(memory_dir):
+        if lesson.skip_reason is not None:
+            continue
+        if only_path and lesson.path.name != only_path:
+            continue
+        bhash = body_hash(lesson.body)
+        rel_path = f"memory/{lesson.path.name}"
+        if (rel_path, bhash) in ledger:
+            results.append({"path": rel_path, "skipped": "already_sent"})
+            continue
+        env = build_envelope(lesson.path, lesson.fm, lesson.body)
+        ok, detail = bridge.send(
+            source=ORIGIN,
+            summary=env["summary"],
+            kind="lesson",
+            entry_id=env["id"],
+            target=env["target"],
+            body=env["body"],
+        )
+        entry = {
+            "ts": time.time(),
+            "path": rel_path,
+            "body_hash": bhash,
+            "lesson_id": env["id"],
+            "ack_received": False,
+            "send_ok": ok,
+            "send_detail": detail,
+        }
+        _append_sent_ledger(entry)
+        results.append({"path": rel_path, "lesson_id": env["id"],
+                        "send_ok": ok, "send_detail": detail})
+    return {"ok": True, "results": results, "ledger_path": str(LESSONS_SENT_LOG)}
+
+
 if __name__ == "__main__":
     import pprint
     pprint.pprint(dry_run())
