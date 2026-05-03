@@ -638,4 +638,28 @@ mirror gap: state-builder overlay path vs WS push path read different
 sources at different cadences. May resolve naturally if the mirror fix
 lifts everything onto a single source of truth.
 
+## s32 fix shipped 2026-05-02 21:55 — mirror_live_stats helper (c58e689)
+
+Generalizes the SR-only s31 mirror block into a 4-line helper applied
+to all per-mode coaches:
+
+- `coaches/_base_coach.py` — added `mirror_live_stats(payload, state)`:
+  None-skip writes for `cs / kda / level / gold`, plus mapping
+  `state['game_seconds']` → `payload['game_time_s']`.
+- `coaches/arena_coach.py:366` — calls `mirror_live_stats(current, state)`
+  after the `current.update({...})` block in `_run_round`.
+- `coaches/aram_coach.py:752` — same pattern in `_run_coach`.
+- `coaches/brawl_coach.py:355` — same pattern in `_run_coach`.
+
+**Activation gated on RC restart between games.** SR path
+(`coach_integration.py:_write_fields`) was already patched in `7d6483d`
+and stays untouched.
+
+After restart, mid-game verification owed: capture `data/{arena,aram,
+brawl}_coaching_data.json` during play and confirm `cs / kda / level /
+gold / game_time_s` all populate. Dashboard top-bar pills should show
+real values instead of `--`. If still `--`, the WS push channel needs
+deeper inspection (cache invalidation, mtime detection in
+`agents/agent2_backend/file_ingest.py:_check_one`).
+
 
