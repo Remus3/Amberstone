@@ -1,5 +1,5 @@
 {
-  "_note": "ARAM builds for full champion roster. Patch 26.9 / Season 16. Updated 2026-05-03 (s33 phase merge — 70 champions refreshed via aggregator K + aggregator A primary sources).",
+  "_note": "ARAM builds for full champion roster. Patch 26.9 / Season 16. Updated 2026-05-03 (s33 phase merge — 77 champions refreshed via aggregator K + aggregator A primary sources).",
   "_tiers": "S=dominant, A=strong, B=viable, C=weak, D=hard-griefing",
   "_format": "build_note is the coaching-relevant line injected into ARAM coach system prompt.",
   "Aatrox": {
@@ -4061,7 +4061,175 @@
       "top30",
       "next30"
     ],
-    "updated": 66,
-    "new": 4
+    "updated": 70,
+    "new": 7
+  },
+  "Anivia": {
+    "tier": "C",
+    "wr": 50.4,
+    "pr": null,
+    "full_build": [
+      "Rod of Ages",
+      "Sorcerer's Shoes",
+      "Archangel's Staff",
+      "Liandry's Torment",
+      "Rabadon's Deathcap",
+      "Rylai's Crystal Scepter"
+    ],
+    "core_items": [
+      "Rod of Ages",
+      "Archangel's Staff",
+      "Liandry's Torment"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "vs_tanks": "Liandry's Torment + Rylai's chunks tank HP and locks them in your wall.",
+    "vs_healing": "Swap Rylai's for Morellonomicon (or add Bloodletter's Curse) into heavy heal comps.",
+    "kit_notes": "Control mage; wall splits the team and Q->R combo zones any choke.",
+    "build_note": "Arcane Comet + RoA scales hardest; Liandry's online by item 4 for tank uptime.",
+    "_source": "https://aggregator-k.invalid/champion/Anivia"
+  },
+  "KSante": {
+    "tier": "D",
+    "wr": 46.3,
+    "pr": null,
+    "full_build": [
+      "Heartsteel",
+      "Mercury's Treads",
+      "Iceborn Gauntlet",
+      "Jak'Sho, The Protean",
+      "Thornmail",
+      "Unending Despair"
+    ],
+    "core_items": [
+      "Heartsteel",
+      "Iceborn Gauntlet",
+      "Jak'Sho, The Protean"
+    ],
+    "boots": "Mercury's Treads",
+    "vs_tanks": "Swap Heartsteel for Kaenic Rookern to scale into tanky comps; R-engages still threaten backline.",
+    "vs_healing": "Thornmail is mandatory; Unending Despair adds passive grievous-wound pressure.",
+    "kit_notes": "Tank-bruiser; All Out (R) converts defenses to AD to brawl mid-fight.",
+    "build_note": "Grasp + defensive stack; play front-to-back and engage with W shield up.",
+    "_source": "https://aggregator-k.invalid/champion/KSante"
+  },
+  "Milio": {
+    "tier": "B",
+    "wr": 51.4,
+    "pr": null,
+    "full_build": [
+      "Moonstone Renewer",
+      "Ionian Boots of Lucidity",
+      "Whispering Circlet",
+      "Ardent Censer",
+      "Redemption",
+      "Staff of Flowing Water"
+    ],
+    "core_items": [
+      "Moonstone Renewer",
+      "Whispering Circlet",
+      "Ardent Censer"
+    ],
+    "boots": "Ionian Boots of Lucidity",
+    "vs_tanks": "Limited carry damage; bait poke with W shield and let frontline soak.",
+    "vs_healing": "Healing reduced 5% in ARAM; double down on shields/CC cleanse via R rather than racing heals.",
+    "kit_notes": "Pure enchanter; R cleanses CC and resets carry uptime in fights.",
+    "build_note": "Aery into mana/AH; Ardent + Staff of Flowing Water boost ADC/AP carry uptime.",
+    "_source": "https://aggregator-k.invalid/champion/Milio"
+  },
+  "Viego": {
+    "tier": "C",
+    "wr": 49.4,
+    "pr": null,
+    "full_build": [
+      "Sundered Sky",
+      "Mercury's Treads",
+      "Blade of The Ruined King",
+      "Death's Dance",
+      "Wit's End",
+      "Sterak's Gage"
+    ],
+    "core_items": [
+      "Sundered Sky",
+      "Blade of The Ruined King",
+      "Death's Dance"
+    ],
+    "boots": "Mercury's Treads",
+    "vs_tanks": "BORK + Wit's End melt high-HP frontliners; possess after a kill to chain pressure.",
+    "vs_healing": "Death's Dance bleed + Executioner's Calling early if heal comp; possession resets give you fresh cooldowns.",
+    "kit_notes": "Bruiser-assassin; passive possession of dead enemies extends fights.",
+    "build_note": "Conqueror line; Sundered Sky burst-heal lets him brawl into the backline.",
+    "_source": "https://aggregator-k.invalid/champion/Viego"
+  },
+  "Vladimir": {
+    "tier": "D",
+    "wr": 46.4,
+    "pr": null,
+    "full_build": [
+      "Riftmaker",
+      "Sorcerer's Shoes",
+      "Cosmic Drive",
+      "Rabadon's Deathcap",
+      "Spirit Visage",
+      "Liandry's Torment"
+    ],
+    "core_items": [
+      "Riftmaker",
+      "Cosmic Drive",
+      "Rabadon's Deathcap"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "vs_tanks": "Liandry's + Riftmaker omnivamp scales into long fights; kite with W pool through their frontline.",
+    "vs_healing": "Vlad's heal is reduced 10% in ARAM; build Morellonomicon over Cosmic Drive into heavy heal comps.",
+    "kit_notes": "Hemomancer mage; W untargetability and R AoE amp make him a teamfight delay.",
+    "build_note": "Dark Harvest + Riftmaker is the highest-WR line; needs 3 items before he stabilizes.",
+    "_source": "https://aggregator-k.invalid/champion/Vladimir"
+  },
+  "Yunara": {
+    "tier": "D",
+    "wr": 45.1,
+    "pr": null,
+    "full_build": [
+      "Berserker's Greaves",
+      "Fiendhunter Bolts",
+      "Infinity Edge",
+      "Lord Dominik's Regards",
+      "Bloodthirster",
+      "Runaan's Hurricane"
+    ],
+    "core_items": [
+      "Fiendhunter Bolts",
+      "Infinity Edge",
+      "Lord Dominik's Regards"
+    ],
+    "boots": "Berserker's Greaves",
+    "vs_tanks": "Lord Dominik's is mandatory; Fiendhunter Bolts pierce shields/HP stacking.",
+    "vs_healing": "Slot Mortal Reminder over Bloodthirster vs heavy heal comps.",
+    "kit_notes": "Attack-speed marksman; relies on uptime and Lethal Tempo to ramp damage.",
+    "build_note": "AS->IE->LDR power spike; play behind frontline since she has no escape.",
+    "_source": "https://aggregator-k.invalid/champion/Yunara"
+  },
+  "Zaahen": {
+    "tier": "S",
+    "wr": 53.0,
+    "pr": null,
+    "full_build": [
+      "Sundered Sky",
+      "Mercury's Treads",
+      "Spear of Shojin",
+      "Death's Dance",
+      "Spirit Visage",
+      "Endless Hunger"
+    ],
+    "core_items": [
+      "Sundered Sky",
+      "Spear of Shojin",
+      "Death's Dance"
+    ],
+    "boots": "Mercury's Treads",
+    "vs_tanks": "Spear of Shojin amps repeated Q hits; Sundered Sky + DD give brawl uptime against frontline.",
+    "vs_healing": "Death's Dance bleed + add Executioner's into heavy heal stacks; he doesn't out-sustain heal comps.",
+    "kit_notes": "Conqueror bruiser; max Q then E, Stridebreaker variant peaks at 62% WR but lower volume.",
+    "build_note": "Sundered Sky line is the popular safe path; pivot Stridebreaker if comp wants engage.",
+    "_source": "https://aggregator-k.invalid/champion/Zaahen"
   }
 }
