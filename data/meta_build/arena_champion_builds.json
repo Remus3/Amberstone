@@ -2878,5 +2878,80 @@
     ],
     "new": 63,
     "schema_note": "Arena uses ideal_core_priority + prismatic_priority + build_changing_augments + best_duos + arena_meta. No linear full_build because anvils are random. Arena-only items (Hexoptics C44, Reaper's Toll, Goliath, Mystic Punch, etc.) are valid here."
+  },
+  "Yunara": {
+    "tier": "B",
+    "wr_first": null,
+    "wr_top4": null,
+    "banrate": null,
+    "ideal_core_priority": [
+      "Fiendhunter Bolts",
+      "Infinity Edge",
+      "Phantom Dancer",
+      "Lord Dominik's Regards",
+      "Bloodthirster",
+      "Runaan's Hurricane",
+      "Mortal Reminder"
+    ],
+    "prismatic_priority": [
+      "Goliath",
+      "Mystic Punch",
+      "Empyrean Promise"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Hwei",
+      "Lulu",
+      "Soraka"
+    ],
+    "build_changing_augments": [
+      "Searing Dawn — push shield-proc items if Hwei provides shields",
+      "Sudden Impact — post-dash magic pen synergy",
+      "Goliath Prismatic — HP+adaptive into bruiser pivot"
+    ],
+    "vs_tanks": "Lord Dominik's mandatory; Fiendhunter Bolts pierces shields + HP-stacking; consider Black Cleaver Prismatic.",
+    "vs_healing": "Mortal Reminder over Bloodthirster when 2+ healers; preserves anti-armor + adds Grievous Wounds.",
+    "vs_burst": "Phantom Dancer + Bloodthirster for kite range and self-shield; Edge of Night Prismatic if available.",
+    "kit_notes": "Marksman; on-hit + crit hybrid; passive auto-cancel for empowered shots; ult is long-range execute.",
+    "arena_meta": "B-tier in current arena (45.1% ARAM WR baseline; arena-specific WR pending Phase 3 fetch). Strong with shield/heal partners; weak vs hard CC.",
+    "_synthetic": true,
+    "_synthesis_note": "Built from Phase 3 ARAM data + arena schema defaults. Replace with aggregator J-fetched data when arena_tail Phase 3 agent completes."
+  },
+  "Hwei": {
+    "tier": "B",
+    "wr_first": null,
+    "wr_top4": null,
+    "banrate": null,
+    "ideal_core_priority": [
+      "Detonation Orb",
+      "Luden's Companion",
+      "Shadowflame",
+      "Rabadon's Deathcap",
+      "Liandry's Anguish",
+      "Void Staff"
+    ],
+    "prismatic_priority": [
+      "Jeweled Gauntlet",
+      "Mystic Punch",
+      "Demonic Embrace"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Yunara",
+      "Caitlyn",
+      "Vayne"
+    ],
+    "build_changing_augments": [
+      "Searing Dawn — shield E synergy for self+partner damage amp",
+      "Magical Girl — keystone payoff at lvl 3",
+      "Phenomenal Evil — AP-per-kill ramp"
+    ],
+    "vs_tanks": "Liandry's + Void Staff mandatory; Shadowflame less valuable vs HP-stacking.",
+    "vs_healing": "Morellonomicon over Shadowflame when 2+ healers — antiheal + AP retains.",
+    "vs_burst": "Zhonya's Hourglass via Stopwatch; Banshee's Veil Prismatic if MR-burst threat.",
+    "kit_notes": "AP control mage; 9 abilities across QWE trees; setup-heavy; Q knockup combo; ult AOE.",
+    "arena_meta": "B-tier; high skill ceiling; ADC enabler; weak when isolated.",
+    "_synthetic": true,
+    "_synthesis_note": "Built from arena AP-mage defaults pending aggregator J fetch."
   }
 }
