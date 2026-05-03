@@ -207,10 +207,11 @@ def _serve_bridge_status(h) -> None:
 # already handles the `?…` suffix. /api/preview-build is the same.
 # /api/champions is exact.
 GET_ROUTES = [
-    (equals("/api/bridge"),         _serve_bridge),
-    (equals("/api/bridge/status"),  _serve_bridge_status),
-    (equals("/api/preview-build"),  _serve_preview_build),
-    (equals("/api/champions"),      _serve_champions),
+    (equals("/api/bridge"),          _serve_bridge),
+    (equals("/api/bridge/messages"), _serve_bridge),
+    (equals("/api/bridge/status"),   _serve_bridge_status),
+    (equals("/api/preview-build"),   _serve_preview_build),
+    (equals("/api/champions"),       _serve_champions),
 ]
 
 POST_ROUTES = [
