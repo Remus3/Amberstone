@@ -44,6 +44,7 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from bridge_watcher_classify import classify  # noqa: E402
 import bridge_watcher_actions as _actions  # noqa: E402
+import bridge_watcher_history as _history  # noqa: E402
 
 # Path defaults assume the canonical Legion layout (script at <root>/tools/...).
 # Phase 1 nodes (Game-PC at C:\RC-Agent\, Peer at <peer-repo>/tools/) override
@@ -63,6 +64,7 @@ _LOG_DIR:      Path = _DEFAULT_LOG_DIR
 _ARTIFACTS_DIR: Path = _DEFAULT_DATA_DIR / "bridge_action_artifacts"
 _ACTION_PROMPT: Path = _DEFAULT_TOOLS_DIR / "bridge_watcher_action_prompt.md"
 _CONFIG_PATH:   Path = _DEFAULT_TOOLS_DIR / "bridge_watcher_config.json"
+_HISTORY_DB:    Path = _DEFAULT_DATA_DIR / "bridge_action_history.db"
 
 _DEFAULT_POLL_S = 15.0
 _DEFAULT_LOOKBACK_S = 86400  # 24h
@@ -457,6 +459,59 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
                     # Phase 2: invoke claude --print for auto-action lanes.
                     new_auto += 1
                     stats["auto_actions_since_boot"] += 1
+                    prompt_text = ""
+                    bd_field = env.get("body") or {}
+                    if isinstance(bd_field, dict):
+                        prompt_text = str(bd_field.get("prompt") or "")
+
+                    # Past-task memory short-circuit (Phase 4).
+                    # If a near-identical prompt+lane succeeded recently, return
+                    # the cached body — no $ spent, no claude --print spawn.
+                    # If a near-identical prompt+lane FAILED recently, escalate
+                    # without re-spawning so we don't burn tokens on a known-bad path.
+                    cached = _history.lookup_recent_match(
+                        db_path=_HISTORY_DB, prompt=prompt_text, lane=cls)
+                    if cached and cached["match_type"] == "high_sim":
+                        if cached["status"] == "ok":
+                            cached_body = {
+                                "_cached": True,
+                                "_original_task_id": cached["original_task_id"],
+                                "_original_summary": cached["summary"],
+                                "_similarity":       cached["similarity"],
+                                "_hours_ago":        cached["hours_ago"],
+                                "note": "auto-action result reused from past-task memory",
+                            }
+                            stats["auto_ok_since_boot"] += 1
+                            _post_result_back(env, res_status="ok",
+                                              body=cached_body, node=node, tools_dir=tools_dir)
+                            _log.info("auto-action CACHE-HIT lane=%s id=%s sim=%.2f orig=%s ($0.00)",
+                                      cls, env.get("id"), cached["similarity"], cached["original_task_id"])
+                            _history.record_outcome(
+                                db_path=_HISTORY_DB, envelope=env, lane=cls,
+                                pattern_matched=reason, status="ok",
+                                cost_usd=0.0, latency_s=0.0,
+                                summary=f"cached from {cached['original_task_id']}",
+                                body=cached_body)
+                            continue
+                        if cached["status"] == "error":
+                            esc_reason = (f"recent failure on near-identical prompt "
+                                          f"(sim={cached['similarity']:.2f}, "
+                                          f"orig={cached['original_task_id']}, "
+                                          f"{cached['hours_ago']}h ago) — escalating without retry")
+                            if _add_to_pending(env, esc_reason):
+                                new_escalations += 1
+                            _log.info("auto-action SHORT-CIRCUIT-ESCALATE lane=%s id=%s reason=%s",
+                                      cls, env.get("id"), esc_reason)
+                            _history.record_outcome(
+                                db_path=_HISTORY_DB, envelope=env, lane=cls,
+                                pattern_matched=reason, status="escalate",
+                                cost_usd=0.0, latency_s=0.0,
+                                summary="short-circuit: cached recent failure",
+                                body={}, error_brief=esc_reason)
+                            continue
+
+                    # No high-sim cache hit — actually spawn claude --print.
+                    t0 = time.time()
                     res_status, res_body, cost = _actions.run_action(
                         envelope=env, lane=cls, node_config=node_config or {},
                         state=state,
@@ -465,12 +520,26 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
                         project_root=_PROJECT_ROOT,
                         api_key_path=_DEFAULT_API_KEY_PATH,
                     )
+                    latency_s = time.time() - t0
                     state["tokens_used_today_usd"] = float(state.get("tokens_used_today_usd", 0.0)) + cost
+
+                    # Record the outcome for future short-circuits + pattern stats.
+                    err_brief = ""
+                    if isinstance(res_body, dict) and res_status != "ok":
+                        err_brief = str(res_body.get("error") or res_body.get("reason") or "")[:500]
+                    _history.record_outcome(
+                        db_path=_HISTORY_DB, envelope=env, lane=cls,
+                        pattern_matched=reason, status=res_status,
+                        cost_usd=cost, latency_s=latency_s,
+                        summary=(res_body.get("_summary") if isinstance(res_body, dict) else "") or "",
+                        body=res_body if isinstance(res_body, dict) else {},
+                        error_brief=err_brief)
+
                     if res_status == "ok":
                         stats["auto_ok_since_boot"] += 1
                         _post_result_back(env, res_status="ok", body=res_body, node=node, tools_dir=tools_dir)
-                        _log.info("auto-action OK lane=%s id=%s cost=$%.4f",
-                                  cls, env.get("id"), cost)
+                        _log.info("auto-action OK lane=%s id=%s cost=$%.4f lat=%.1fs",
+                                  cls, env.get("id"), cost, latency_s)
                     elif res_status == "error":
                         stats["auto_err_since_boot"] += 1
                         _post_result_back(env, res_status="error", body=res_body, node=node, tools_dir=tools_dir)
@@ -562,7 +631,7 @@ def main() -> int:
         return 2
 
     # Re-bind path globals if operator passed --data-dir / --log-dir.
-    global _HEALTH_PATH, _PENDING_PATH, _STATE_PATH, _PID_PATH, _LOG_DIR, _ARTIFACTS_DIR, _ACTION_PROMPT, _CONFIG_PATH
+    global _HEALTH_PATH, _PENDING_PATH, _STATE_PATH, _PID_PATH, _LOG_DIR, _ARTIFACTS_DIR, _ACTION_PROMPT, _CONFIG_PATH, _HISTORY_DB
     if args.data_dir:
         d = Path(args.data_dir).expanduser().resolve()
         _HEALTH_PATH    = d / "bridge_watcher_health.json"
@@ -570,6 +639,7 @@ def main() -> int:
         _STATE_PATH     = d / "bridge_watcher_state.json"
         _PID_PATH       = d / "bridge_watcher.pid"
         _ARTIFACTS_DIR  = d / "bridge_action_artifacts"
+        _HISTORY_DB     = d / "bridge_action_history.db"
     if args.log_dir:
         _LOG_DIR = Path(args.log_dir).expanduser().resolve()
 
