@@ -79,7 +79,9 @@ Supervisor has a PID lock — duplicate launches abort cleanly.
 ## Web dashboard (replaces tkinter overlays — RC is headless)
 
 `web_dashboard.py` (root) — daemon thread launched from `main.py` after MetricsCache.
-- GET `/`, `/api/state`, `/api/health`, `/manifest.json`, `/icon.svg`
+- GET `/`, `/api/state`, `/api/health`, `/api/health/all`, `/manifest.json`, `/icon.svg`
+- GET `/api/bridge/pending` — bridge_watcher escalation queue (read by Bridge Pending sub-page)
+- POST `/api/bridge/pending/<id>/{accept,defer,dismiss}` — operator triage (in `dashboard/routes_bridge_pending_actions.py`; sibling of the frozen GET module)
 - POST `/api/input` `{text}` — writes to `coaching_data.json.pregame`
 - POST `/api/command` `{command: "force_vision"|"refresh"|"clear_pregame"}`
 Viewed in Edge fullscreen on Game-PC's secondary display (1920×1280 native, 100% OS scale → 1920×1280 effective CSS viewport). HTTPS with mkcert-signed cert (SAN covers `rc-host`, `100.64.0.1`, `rc-host.example-tailnet.ts.net`, `192.0.2.230`, `localhost`, `127.0.0.1`); Game-PC trusts the root CA, so `https://rc-host:8888` resolves cleanly without flags. Use `tools/regen_rc_cert.ps1` to refresh with the canonical SAN list.
