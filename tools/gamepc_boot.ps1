@@ -69,17 +69,23 @@ $cmdsDir = Join-Path $env:USERPROFILE '.claude\commands'
 if (-not (Test-Path $cmdsDir)) {
     New-Item -ItemType Directory -Path $cmdsDir | Out-Null
 }
-$SLASH_COMMANDS = @('process-bridge-tasks.md')
+# Each entry: @{src='<filename on /agent/>'; dst='<local name in ~/.claude/commands>'}
+# dst differs from src for peer-variant skills (e.g., done-gamepc.md is served
+# but lands as done.md so the user can type /done).
+$SLASH_COMMANDS = @(
+    @{ src = 'process-bridge-tasks.md'; dst = 'process-bridge-tasks.md' },
+    @{ src = 'done-gamepc.md';          dst = 'done.md' }
+)
 foreach ($c in $SLASH_COMMANDS) {
-    $url = "https://legion-rc:8888/agent/$c"
-    $out = Join-Path $cmdsDir $c
+    $url = "https://legion-rc:8888/agent/$($c.src)"
+    $out = Join-Path $cmdsDir $c.dst
     & curl.exe -sk -m 5 -o $out $url 2>$null
     if ($LASTEXITCODE -eq 0 -and (Test-Path $out) -and (Get-Item $out).Length -gt 0) {
-        Write-Host "  fetched $c → ~/.claude/commands/" -ForegroundColor Green
+        Write-Host "  fetched $($c.src) → ~/.claude/commands/$($c.dst)" -ForegroundColor Green
     } elseif (Test-Path $out) {
-        Write-Host "  fetch $c failed, using existing local copy" -ForegroundColor Yellow
+        Write-Host "  fetch $($c.src) failed, using existing local copy at $($c.dst)" -ForegroundColor Yellow
     } else {
-        Write-Host "  fetch $c FAILED and no local copy" -ForegroundColor Red
+        Write-Host "  fetch $($c.src) FAILED and no local copy" -ForegroundColor Red
     }
 }
 
