@@ -2867,7 +2867,4251 @@
       }
     ]
   },
-  "_note": "Arena (2v2v2v2 / Cherry mode) builds. Patch 26.9 / Arena Season 2. Authored 2026-05-03 (s33). Schema differs from SR/ARAM: uses ideal_core_priority + prismatic_priority instead of full_build because anvil RNG dictates acquisition. 63 champions captured.",
+  "Akali": {
+    "tier": "D",
+    "wr_first": 8.3,
+    "wr_top4": null,
+    "avg_placement": 4.67,
+    "matches": 1657,
+    "ideal_core_priority": [
+      "Runecarver",
+      "Shadowflame",
+      "Hextech Gunblade",
+      "Kinkou Jitte",
+      "Night Harvester",
+      "Lich Bane",
+      "Rabadon's Deathcap"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Power (14.55% WR)",
+      "Level Augments (10.0% WR)",
+      "Compulsion For Risk (9.86% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Talon (27.3% WR)",
+      "Tahm Kench (21.4% WR)"
+    ],
+    "build_changing_augments": [
+      "Clown College (20.51% WR, n=39)",
+      "Compulsion For Power (14.55% WR, n=55)"
+    ],
+    "vs_tanks": "Don't try — pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Burst pick-off — needs angle; mediocre into peel duos, strong vs squishy comps.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (8.3% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Akali/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Akshan": {
+    "tier": "D",
+    "wr_first": 8.4,
+    "wr_top4": null,
+    "avg_placement": 4.78,
+    "matches": 1500,
+    "ideal_core_priority": [
+      "Hamstringer",
+      "Kraken Slayer",
+      "Blade of The Ruined King",
+      "Reaper's Toll",
+      "Phantom Dancer",
+      "The Collector",
+      "Guinsoo's Rageblade"
+    ],
+    "prismatic_priority": [
+      "Gain a Prismatic Stat Anvil (10.55% WR)",
+      "Gain an Augment slot (10.0% WR)",
+      "Level Augments (7.63% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Annie (33.3% WR)",
+      "Brand (25.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Twice Thrice (12.99% WR, n=77)",
+      "Fan the Hammer (11.69% WR, n=77)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (8.4% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Akshan/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Alistar": {
+    "tier": "D",
+    "wr_first": 10.3,
+    "wr_top4": null,
+    "avg_placement": 4.9,
+    "matches": 1656,
+    "ideal_core_priority": [
+      "Cruelty",
+      "Heartsteel",
+      "Thornmail",
+      "Force Of Entropy",
+      "Jak'Sho, The Protean",
+      "Shield of Molten Stone",
+      "Black Hole Gauntlet"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (17.56% WR)",
+      "Replace Augment (15.0% WR)",
+      "Compulsion For Power (13.73% WR)"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Briar (27.3% WR)",
+      "Leona (27.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Dreadbringer (18.82% WR, n=85)",
+      "Gain an Augment slot (17.56% WR, n=131)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (10.3% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Alistar/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Anivia": {
+    "tier": "D",
+    "wr_first": 9.4,
+    "wr_top4": null,
+    "avg_placement": 4.47,
+    "matches": 1757,
+    "ideal_core_priority": [
+      "Detonation Orb",
+      "Rod of Ages",
+      "Liandry's Anguish",
+      "Pyromancer's Cloak",
+      "Everfrost",
+      "Malignance",
+      "Seraph's Embrace"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Risk (16.07% WR)",
+      "Gain an Augment slot (15.83% WR)",
+      "Gain a Prismatic Stat Anvil (10.96% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Zaahen (33.3% WR)",
+      "Briar (30.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Desecrator (19.61% WR, n=51)",
+      "Compulsion For Risk (16.07% WR, n=56)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (9.4% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Anivia/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Annie": {
+    "tier": "A",
+    "wr_first": 16.9,
+    "wr_top4": null,
+    "avg_placement": 4.12,
+    "matches": 2271,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Malignance",
+      "Everfrost",
+      "Detonation Orb",
+      "Runecarver",
+      "Luden's Echo"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Power (24.24% WR)",
+      "Gain an Augment slot (21.31% WR)",
+      "Compulsion For Risk (19.23% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Zed (40.0% WR)",
+      "Garen (33.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Desecrator (41.79% WR, n=67)",
+      "Doomsayer (35.48% WR, n=93)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "A-tier solid blind pick at 16.9% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Annie/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Ashe": {
+    "tier": "D",
+    "wr_first": 8.7,
+    "wr_top4": null,
+    "avg_placement": 4.81,
+    "matches": 2561,
+    "ideal_core_priority": [
+      "Reaper's Toll",
+      "Fulmination",
+      "Kraken Slayer",
+      "Hamstringer",
+      "Blade of The Ruined King",
+      "Diamond-Tipped Spear",
+      "Phantom Dancer"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (16.3% WR)",
+      "Gain a Prismatic Stat Anvil (10.55% WR)",
+      "Level Augments (6.56% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Briar (30.8% WR)",
+      "Cho'Gath (25.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Draw Your Sword (21.92% WR, n=73)",
+      "Firebrand (18.0% WR, n=100)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (8.7% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Ashe/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Aurora": {
+    "tier": "C",
+    "wr_first": 11.4,
+    "wr_top4": null,
+    "avg_placement": 4.46,
+    "matches": 1723,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Shadowflame",
+      "Runecarver",
+      "Detonation Orb",
+      "Blackfire Torch",
+      "Rabadon's Deathcap"
+    ],
+    "prismatic_priority": [
+      "Gain a Prismatic Stat Anvil (17.01% WR)",
+      "Gain an Augment slot (12.28% WR)",
+      "Compulsion For Power (11.76% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Samira (22.2% WR)",
+      "Shyvana (20.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Quest: Wooglet's Witchcap (17.39% WR, n=92)",
+      "Gain a Prismatic Stat Anvil (17.01% WR, n=241)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "C-tier filler at 11.4% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Aurora/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Azir": {
+    "tier": "D",
+    "wr_first": 9.9,
+    "wr_top4": null,
+    "avg_placement": 4.74,
+    "matches": 1272,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Shadowflame",
+      "Rabadon's Deathcap",
+      "Void Staff",
+      "Zhonya's Hourglass"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Power (15.22% WR)",
+      "Gain a Prismatic Stat Anvil (12.99% WR)",
+      "Gain an Augment slot (10.75% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Malzahar (42.9% WR)",
+      "Tristana (42.9% WR)"
+    ],
+    "build_changing_augments": [
+      "Transmute: Prismatic (19.15% WR, n=47)",
+      "Minionmancer (18.37% WR, n=49)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (9.9% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Azir/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Bard": {
+    "tier": "D",
+    "wr_first": 10.8,
+    "wr_top4": null,
+    "avg_placement": 4.71,
+    "matches": 1291,
+    "ideal_core_priority": [
+      "Locket of the Iron Solari",
+      "Knight's Vow",
+      "Redemption",
+      "Shurelya's Battlesong",
+      "Ardent Censer",
+      "Moonstone Renewer"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (21.3% WR)",
+      "Compulsion For Power (12.5% WR)",
+      "Replace Augment (10.81% WR)"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Shyvana (45.5% WR)",
+      "Vi (44.4% WR)"
+    ],
+    "build_changing_augments": [
+      "Gain an Augment slot (21.3% WR, n=108)",
+      "Doomsayer (15.69% WR, n=51)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (10.8% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Bard/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Bel'Veth": {
+    "tier": "A",
+    "wr_first": 15.9,
+    "wr_top4": null,
+    "avg_placement": 4.46,
+    "matches": 1529,
+    "ideal_core_priority": [
+      "Darksteel Talons",
+      "Kraken Slayer",
+      "Blade of The Ruined King",
+      "Reverberation",
+      "Hemomancer's Helm",
+      "Reaper's Toll",
+      "Ravenous Hydra"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Power (20.59% WR)",
+      "Gain a Prismatic Stat Anvil (19.23% WR)",
+      "Gain an Augment slot (18.56% WR)"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Yuumi (44.4% WR)",
+      "Taric (37.5% WR)"
+    ],
+    "build_changing_augments": [
+      "Firebrand (23.81% WR, n=84)",
+      "Outlaw's Grit (23.26% WR, n=43)"
+    ],
+    "vs_tanks": "BotRK + Black Cleaver anvil; Goredrink keeps you topped vs sustained HP fights.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Bruiser — mid-range engage, HP+omnivamp scaling, look for Reverberation/Goliath prismatics.",
+    "arena_meta": "A-tier solid blind pick at 15.9% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Belveth/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Blitzcrank": {
+    "tier": "B",
+    "wr_first": 13.2,
+    "wr_top4": null,
+    "avg_placement": 4.46,
+    "matches": 2016,
+    "ideal_core_priority": [
+      "Lightning Rod",
+      "Reverberation",
+      "Cruelty",
+      "Detonation Orb",
+      "Stormsurge",
+      "Shadowflame",
+      "Seraph's Embrace"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (18.4% WR)",
+      "Gain a Prismatic Stat Anvil (16.48% WR)",
+      "Compulsion For Power (14.63% WR)"
+    ],
+    "boots": "Ionian Boots of Lucidity",
+    "best_duos": [
+      "Xin Zhao (25.0% WR)",
+      "Nasus (25.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Gain an Augment slot (18.4% WR, n=163)",
+      "Doomsayer (17.24% WR, n=58)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "B-tier — playable into most lobbies at 13.2% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Blitzcrank/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Braum": {
+    "tier": "B",
+    "wr_first": 13.6,
+    "wr_top4": null,
+    "avg_placement": 4.71,
+    "matches": 1625,
+    "ideal_core_priority": [
+      "Black Hole Gauntlet",
+      "Heartsteel",
+      "Sunfire Aegis"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (20.79% WR)",
+      "Compulsion For Risk (13.85% WR)",
+      "Level Augments (13.79% WR)"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Maokai (30.0% WR)",
+      "Vayne (23.5% WR)"
+    ],
+    "build_changing_augments": [
+      "Gain an Augment slot (20.79% WR, n=101)",
+      "Desecrator (17.14% WR, n=70)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "B-tier — playable into most lobbies at 13.6% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Braum/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Camille": {
+    "tier": "D",
+    "wr_first": 9.7,
+    "wr_top4": null,
+    "avg_placement": 4.67,
+    "matches": 937,
+    "ideal_core_priority": [
+      "Hemomancer's Helm",
+      "Black Cleaver",
+      "Sterak's Gage",
+      "Death's Dance",
+      "Dead Man's Plate",
+      "Goredrink"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (15.49% WR)",
+      "Replace Augment (12.24% WR)",
+      "Level Augments (9.18% WR)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Tahm Kench (42.9% WR)",
+      "Brand (33.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Gamba Anvil (17.86% WR, n=28)",
+      "Transmute: Prismatic (16.07% WR, n=56)"
+    ],
+    "vs_tanks": "Don't try — pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Burst pick-off — needs angle; mediocre into peel duos, strong vs squishy comps.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (9.7% wr_first (low sample)) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Camille/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Cassiopeia": {
+    "tier": "C",
+    "wr_first": 12.1,
+    "wr_top4": null,
+    "avg_placement": 4.34,
+    "matches": 1607,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Detonation Orb",
+      "Rod of Ages",
+      "Liandry's Anguish",
+      "Malignance",
+      "Shadowflame",
+      "Seraph's Embrace"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Risk (20.83% WR)",
+      "Gain an Augment slot (20.66% WR)",
+      "Level Augments (14.05% WR)"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Pyke (44.4% WR)",
+      "Xin Zhao (42.9% WR)"
+    ],
+    "build_changing_augments": [
+      "Compulsion For Risk (20.83% WR, n=48)",
+      "Gain an Augment slot (20.66% WR, n=121)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "C-tier filler at 12.1% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Cassiopeia/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Corki": {
+    "tier": "C",
+    "wr_first": 11.9,
+    "wr_top4": null,
+    "avg_placement": 4.39,
+    "matches": 1050,
+    "ideal_core_priority": [
+      "Hamstringer",
+      "Kraken Slayer",
+      "Bloodthirster",
+      "Infinity Edge",
+      "Mortal Reminder",
+      "Phantom Dancer"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (17.28% WR)",
+      "Compulsion For Risk (17.07% WR)",
+      "Gain a Prismatic Stat Anvil (16.15% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Fiddlesticks (42.9% WR)",
+      "Shen (42.9% WR)"
+    ],
+    "build_changing_augments": [
+      "Dual Wield (17.54% WR, n=57)",
+      "Gain an Augment slot (17.28% WR, n=81)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "C-tier filler at 11.9% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Corki/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Darius": {
+    "tier": "D",
+    "wr_first": 9.9,
+    "wr_top4": null,
+    "avg_placement": 4.66,
+    "matches": 2047,
+    "ideal_core_priority": [
+      "Hemomancer's Helm",
+      "Black Cleaver",
+      "Sterak's Gage",
+      "Death's Dance",
+      "Dead Man's Plate",
+      "Goredrink"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (14.2% WR)",
+      "Replace Augment (13.46% WR)",
+      "Gain a Prismatic Stat Anvil (11.85% WR)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Sett (35.3% WR)",
+      "Dr. Mundo (21.4% WR)"
+    ],
+    "build_changing_augments": [
+      "Jeweled Gauntlet (17.82% WR, n=101)",
+      "Gain an Augment slot (14.2% WR, n=169)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (9.9% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Darius/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Dr. Mundo": {
+    "tier": "B",
+    "wr_first": 14.2,
+    "wr_top4": null,
+    "avg_placement": 4.7,
+    "matches": 3639,
+    "ideal_core_priority": [
+      "Black Hole Gauntlet",
+      "Overlord's Bloodmail",
+      "Dragonheart",
+      "Warmog's Armor",
+      "Titanic Hydra",
+      "Radiant Virtue",
+      "Sunfire Aegis"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (22.17% WR)",
+      "Gain a Prismatic Stat Anvil (18.25% WR)",
+      "Compulsion For Power (17.86% WR)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Kayle (29.4% WR)",
+      "Xin Zhao (26.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Gain an Augment slot (22.17% WR, n=203)",
+      "Tank Engine (21.58% WR, n=366)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "B-tier — playable into most lobbies at 14.2% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/DrMundo/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Ekko": {
+    "tier": "C",
+    "wr_first": 11.0,
+    "wr_top4": null,
+    "avg_placement": 4.45,
+    "matches": 1803,
+    "ideal_core_priority": [
+      "Runecarver",
+      "Rabadon's Deathcap",
+      "Dusk and Dawn",
+      "Detonation Orb",
+      "Shadowflame",
+      "Liandry's Anguish",
+      "Perplexity"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (15.44% WR)",
+      "Gain a Prismatic Stat Anvil (13.42% WR)",
+      "Level Augments (12.86% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Vi (30.0% WR)",
+      "Xin Zhao (25.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Outlaw's Grit (22.39% WR, n=67)",
+      "Gain an Augment slot (15.44% WR, n=136)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "C-tier filler at 11.0% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Ekko/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Elise": {
+    "tier": "D",
+    "wr_first": 8.8,
+    "wr_top4": null,
+    "avg_placement": 4.89,
+    "matches": 1095,
+    "ideal_core_priority": [
+      "Eclipse",
+      "Edge of Night",
+      "Serpent's Fang",
+      "The Collector",
+      "Voltaic Cyclosword",
+      "Youmuu's Ghostblade"
+    ],
+    "prismatic_priority": [
+      "Replace Augment (16.67% WR)",
+      "Gain an Augment slot (12.64% WR)",
+      "Compulsion For Power (11.9% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Blitzcrank (40.0% WR)",
+      "Sona (28.6% WR)"
+    ],
+    "build_changing_augments": [
+      "Replace Augment (16.67% WR, n=36)",
+      "Quest: Wooglet's Witchcap (13.56% WR, n=59)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (8.8% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Elise/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Evelynn": {
+    "tier": "A",
+    "wr_first": 15.2,
+    "wr_top4": null,
+    "avg_placement": 4.23,
+    "matches": 1404,
+    "ideal_core_priority": [
+      "Everfrost",
+      "Shadowflame",
+      "Void Staff",
+      "Detonation Orb",
+      "Stormsurge",
+      "Lich Bane",
+      "Rabadon's Deathcap"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Power (23.91% WR)",
+      "Replace Augment (20.0% WR)",
+      "Gain a Prismatic Stat Anvil (19.9% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Pyke (36.4% WR)",
+      "Lissandra (28.6% WR)"
+    ],
+    "build_changing_augments": [
+      "Big Brain (29.41% WR, n=51)",
+      "Doomsayer (28.81% WR, n=59)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "A-tier solid blind pick at 15.2% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Evelynn/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Fiddlesticks": {
+    "tier": "D",
+    "wr_first": 10.1,
+    "wr_top4": null,
+    "avg_placement": 4.65,
+    "matches": 1615,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Malignance",
+      "Your Cut",
+      "Liandry's Anguish"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Power (18.75% WR)",
+      "Compulsion For Risk (16.0% WR)",
+      "Replace Augment (12.5% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Shyvana (40.0% WR)",
+      "Jax (30.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Compulsion For Power (18.75% WR, n=48)",
+      "Doomsayer (16.67% WR, n=66)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (10.1% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Fiddlesticks/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Fizz": {
+    "tier": "B",
+    "wr_first": 14.3,
+    "wr_top4": null,
+    "avg_placement": 4.17,
+    "matches": 2061,
+    "ideal_core_priority": [
+      "Eclipse",
+      "Edge of Night",
+      "Serpent's Fang",
+      "The Collector",
+      "Voltaic Cyclosword",
+      "Youmuu's Ghostblade"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Power (19.67% WR)",
+      "Gain an Augment slot (18.06% WR)",
+      "Replace Augment (17.14% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Yuumi (45.5% WR)",
+      "Zed (33.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Quest: Wooglet's Witchcap (26.32% WR, n=76)",
+      "Transmute: Prismatic (20.0% WR, n=95)"
+    ],
+    "vs_tanks": "Don't try — pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Burst pick-off — needs angle; mediocre into peel duos, strong vs squishy comps.",
+    "arena_meta": "B-tier — playable into most lobbies at 14.3% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Fizz/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Gangplank": {
+    "tier": "D",
+    "wr_first": 9.1,
+    "wr_top4": null,
+    "avg_placement": 4.73,
+    "matches": 1616,
+    "ideal_core_priority": [
+      "Duskblade of Draktharr",
+      "Phantom Dancer",
+      "The Collector",
+      "Essence Reaver",
+      "Divine Sunderer",
+      "Infinity Edge",
+      "Prowler's Claw"
+    ],
+    "prismatic_priority": [
+      "Gain a Prismatic Stat Anvil (12.66% WR)",
+      "Gain an Augment slot (11.32% WR)",
+      "Level Augments (10.53% WR)"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Jax (30.0% WR)",
+      "Sett (27.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Vulnerability (17.54% WR, n=57)",
+      "Goredrink (14.89% WR, n=47)"
+    ],
+    "vs_tanks": "BotRK + Black Cleaver anvil; Goredrink keeps you topped vs sustained HP fights.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Bruiser — mid-range engage, HP+omnivamp scaling, look for Reverberation/Goliath prismatics.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (9.1% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Gangplank/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Gnar": {
+    "tier": "D",
+    "wr_first": 10.1,
+    "wr_top4": null,
+    "avg_placement": 4.73,
+    "matches": 1311,
+    "ideal_core_priority": [
+      "Hemomancer's Helm",
+      "Black Cleaver",
+      "Sterak's Gage",
+      "Death's Dance",
+      "Dead Man's Plate",
+      "Goredrink"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (16.5% WR)",
+      "Gain a Prismatic Stat Anvil (11.88% WR)",
+      "Replace Augment (8.96% WR)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Udyr (25.0% WR)",
+      "Veigar (25.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Tank Engine (23.64% WR, n=55)",
+      "Fan the Hammer (19.15% WR, n=47)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (10.1% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Gnar/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Gragas": {
+    "tier": "D",
+    "wr_first": 9.9,
+    "wr_top4": null,
+    "avg_placement": 4.84,
+    "matches": 1526,
+    "ideal_core_priority": [
+      "Hemomancer's Helm",
+      "Black Cleaver",
+      "Sterak's Gage",
+      "Death's Dance",
+      "Dead Man's Plate",
+      "Goredrink"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Risk (15.52% WR)",
+      "Gain an Augment slot (13.56% WR)",
+      "Gain a Prismatic Stat Anvil (12.75% WR)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Yasuo (33.3% WR)",
+      "Annie (23.1% WR)"
+    ],
+    "build_changing_augments": [
+      "Desecrator (24.07% WR, n=54)",
+      "Compulsion For Risk (15.52% WR, n=58)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (9.9% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Gragas/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Graves": {
+    "tier": "A",
+    "wr_first": 15.6,
+    "wr_top4": null,
+    "avg_placement": 4.22,
+    "matches": 2201,
+    "ideal_core_priority": [
+      "Phantom Dancer",
+      "Hamstringer",
+      "The Collector",
+      "Bloodthirster",
+      "Regicide",
+      "Hemomancer's Helm",
+      "Flesheater"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (25.85% WR)",
+      "Compulsion For Risk (16.13% WR)",
+      "Gain a Prismatic Stat Anvil (16.01% WR)"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Volibear (31.3% WR)",
+      "Shyvana (30.8% WR)"
+    ],
+    "build_changing_augments": [
+      "Gain an Augment slot (25.85% WR, n=147)",
+      "Clown College (25.51% WR, n=98)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "A-tier solid blind pick at 15.6% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Graves/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Illaoi": {
+    "tier": "B",
+    "wr_first": 14.0,
+    "wr_top4": null,
+    "avg_placement": 4.56,
+    "matches": 1652,
+    "ideal_core_priority": [
+      "Black Hole Gauntlet",
+      "Overlord's Bloodmail",
+      "Hemomancer's Helm",
+      "Divine Sunderer",
+      "Heartsteel",
+      "Warmog's Armor",
+      "Sterak's Gage"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (24.62% WR)",
+      "Replace Augment (17.14% WR)",
+      "Gain a Prismatic Stat Anvil (16.09% WR)"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Veigar (46.1% WR)",
+      "Heimerdinger (30.8% WR)"
+    ],
+    "build_changing_augments": [
+      "Gain an Augment slot (24.62% WR, n=130)",
+      "Quest: Steel Your Heart (20.66% WR, n=121)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "B-tier — playable into most lobbies at 14.0% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Illaoi/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Ivern": {
+    "tier": "D",
+    "wr_first": 10.2,
+    "wr_top4": null,
+    "avg_placement": 4.64,
+    "matches": 1326,
+    "ideal_core_priority": [
+      "Puppeteer",
+      "Empyrean Promise",
+      "Moonstone Renewer",
+      "Sword of Blossoming Dawn",
+      "Diadem of Songs"
+    ],
+    "prismatic_priority": [
+      "Gain a Prismatic Stat Anvil (15.17% WR)",
+      "Gain an Augment slot (10.77% WR)",
+      "Compulsion For Risk (9.84% WR)"
+    ],
+    "boots": "Ionian Boots of Lucidity",
+    "best_duos": [
+      "Jinx (37.5% WR)",
+      "Cho'Gath (33.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Quest: Angel of Retribution (18.27% WR, n=104)",
+      "Minionmancer (16.33% WR, n=49)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (10.2% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Ivern/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Janna": {
+    "tier": "D",
+    "wr_first": 10.5,
+    "wr_top4": null,
+    "avg_placement": 4.79,
+    "matches": 1062,
+    "ideal_core_priority": [
+      "Locket of the Iron Solari",
+      "Knight's Vow",
+      "Redemption",
+      "Shurelya's Battlesong",
+      "Ardent Censer",
+      "Moonstone Renewer"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (17.92% WR)",
+      "Compulsion For Risk (11.11% WR)",
+      "Level Augments (10.84% WR)"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Shyvana (50.0% WR)",
+      "Tryndamere (42.9% WR)"
+    ],
+    "build_changing_augments": [
+      "Doomsayer (30.23% WR, n=43)",
+      "Spirit Link (19.44% WR, n=36)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (10.5% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Janna/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Jarvan IV": {
+    "tier": "D",
+    "wr_first": 10.3,
+    "wr_top4": null,
+    "avg_placement": 4.74,
+    "matches": 1117,
+    "ideal_core_priority": [
+      "Hemomancer's Helm",
+      "Black Cleaver",
+      "Sterak's Gage",
+      "Death's Dance",
+      "Dead Man's Plate",
+      "Goredrink"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (15.12% WR)",
+      "Replace Augment (11.11% WR)",
+      "Gain a Prismatic Stat Anvil (10.96% WR)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Trundle (44.4% WR)",
+      "Yone (28.6% WR)"
+    ],
+    "build_changing_augments": [
+      "Gain an Augment slot (15.12% WR, n=86)",
+      "Transmute: Prismatic (14.52% WR, n=62)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (10.3% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/JarvanIV/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Jayce": {
+    "tier": "D",
+    "wr_first": 10.8,
+    "wr_top4": null,
+    "avg_placement": 4.69,
+    "matches": 1234,
+    "ideal_core_priority": [
+      "Duskblade of Draktharr",
+      "Voltaic Cyclosword",
+      "Serylda's Grudge",
+      "Youmuu's Ghostblade",
+      "The Collector"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Power (16.0% WR)",
+      "Gain an Augment slot (15.58% WR)",
+      "Compulsion For Risk (12.82% WR)"
+    ],
+    "boots": "Ionian Boots of Lucidity",
+    "best_duos": [
+      "Pantheon (28.6% WR)",
+      "Nautilus (28.6% WR)"
+    ],
+    "build_changing_augments": [
+      "Compulsion For Power (16.0% WR, n=50)",
+      "From Beginning to End (15.69% WR, n=51)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (10.8% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Jayce/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Jinx": {
+    "tier": "D",
+    "wr_first": 9.6,
+    "wr_top4": null,
+    "avg_placement": 4.6,
+    "matches": 2035,
+    "ideal_core_priority": [
+      "Hamstringer",
+      "Blade of The Ruined King",
+      "Bloodthirster",
+      "Kraken Slayer",
+      "Reaper's Toll",
+      "Phantom Dancer",
+      "Lord Dominik's Regards"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (16.15% WR)",
+      "Replace Augment (13.21% WR)",
+      "Compulsion For Risk (10.53% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Soraka (30.0% WR)",
+      "Shyvana (23.8% WR)"
+    ],
+    "build_changing_augments": [
+      "Dual Wield (16.48% WR, n=182)",
+      "Gain an Augment slot (16.15% WR, n=130)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (9.6% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Jinx/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Kalista": {
+    "tier": "C",
+    "wr_first": 12.5,
+    "wr_top4": null,
+    "avg_placement": 4.77,
+    "matches": 1561,
+    "ideal_core_priority": [
+      "Reaper's Toll",
+      "Blade of The Ruined King",
+      "Guinsoo's Rageblade",
+      "Phantom Dancer",
+      "Sword of the Divine",
+      "Fulmination",
+      "Terminus"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (24.21% WR)",
+      "Gain a Prismatic Stat Anvil (15.08% WR)",
+      "Level Augments (13.49% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Braum (37.5% WR)",
+      "Tahm Kench (36.4% WR)"
+    ],
+    "build_changing_augments": [
+      "Gain an Augment slot (24.21% WR, n=95)",
+      "Dual Wield (19.23% WR, n=130)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "C-tier filler at 12.5% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Kalista/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Karthus": {
+    "tier": "C",
+    "wr_first": 11.7,
+    "wr_top4": null,
+    "avg_placement": 4.34,
+    "matches": 1941,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Malignance",
+      "Runecarver",
+      "Shadowflame",
+      "Detonation Orb",
+      "Void Staff"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Risk (20.97% WR)",
+      "Gain an Augment slot (15.38% WR)",
+      "Compulsion For Power (14.89% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Amumu (22.2% WR)",
+      "Galio (22.2% WR)"
+    ],
+    "build_changing_augments": [
+      "Compulsion For Risk (20.97% WR, n=62)",
+      "From Beginning to End (19.35% WR, n=62)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "C-tier filler at 11.7% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Karthus/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Kassadin": {
+    "tier": "D",
+    "wr_first": 9.6,
+    "wr_top4": null,
+    "avg_placement": 4.82,
+    "matches": 1459,
+    "ideal_core_priority": [
+      "Detonation Orb",
+      "Runecarver",
+      "Rod of Ages",
+      "Everfrost",
+      "Crown of the Shattered Queen",
+      "Archangel's Staff",
+      "Seraph's Embrace"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (18.28% WR)",
+      "Compulsion For Risk (14.89% WR)",
+      "Replace Augment (14.29% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Lux (22.2% WR)",
+      "Zoe (12.5% WR)"
+    ],
+    "build_changing_augments": [
+      "Gain an Augment slot (18.28% WR, n=93)",
+      "Compulsion For Risk (14.89% WR, n=47)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (9.6% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Kassadin/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Katarina": {
+    "tier": "D",
+    "wr_first": 9.4,
+    "wr_top4": null,
+    "avg_placement": 4.56,
+    "matches": 1912,
+    "ideal_core_priority": [
+      "Runecarver",
+      "Hextech Gunblade",
+      "Rabadon's Deathcap",
+      "Twilight's Edge",
+      "Blade of The Ruined King",
+      "Liandry's Anguish",
+      "Dusk and Dawn"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (15.28% WR)",
+      "Gain a Prismatic Stat Anvil (11.8% WR)",
+      "Replace Augment (9.21% WR)"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Swain (26.7% WR)",
+      "Zed (20.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Contract Killer (18.52% WR, n=54)",
+      "Gain an Augment slot (15.28% WR, n=144)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (9.4% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Katarina/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Kayle": {
+    "tier": "B",
+    "wr_first": 14.7,
+    "wr_top4": null,
+    "avg_placement": 4.48,
+    "matches": 1947,
+    "ideal_core_priority": [
+      "Reaper's Toll",
+      "Blade of The Ruined King",
+      "Guinsoo's Rageblade",
+      "Nashor's Tooth",
+      "Hexbolt Companion",
+      "Sword of the Divine",
+      "Hamstringer"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (23.53% WR)",
+      "Level Augments (20.14% WR)",
+      "Compulsion For Risk (16.92% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Singed (30.0% WR)",
+      "Fizz (30.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Gain an Augment slot (23.53% WR, n=136)",
+      "Tap Dancer (23.42% WR, n=111)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "B-tier — playable into most lobbies at 14.7% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Kayle/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Kayn": {
+    "tier": "A",
+    "wr_first": 15.0,
+    "wr_top4": null,
+    "avg_placement": 4.44,
+    "matches": 2161,
+    "ideal_core_priority": [
+      "Flesheater",
+      "Dragonheart",
+      "Hemomancer's Helm",
+      "Eclipse",
+      "Death's Dance",
+      "Ravenous Hydra",
+      "Jak'Sho, The Protean"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (22.54% WR)",
+      "Compulsion For Risk (20.0% WR)",
+      "Gain a Prismatic Stat Anvil (16.76% WR)"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Sett (30.8% WR)",
+      "Talon (28.6% WR)"
+    ],
+    "build_changing_augments": [
+      "Transmute: Prismatic (28.85% WR, n=104)",
+      "The Brutalizer (25.86% WR, n=58)"
+    ],
+    "vs_tanks": "Don't try — pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Burst pick-off — needs angle; mediocre into peel duos, strong vs squishy comps.",
+    "arena_meta": "A-tier solid blind pick at 15.0% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Kayn/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Kennen": {
+    "tier": "D",
+    "wr_first": 10.2,
+    "wr_top4": null,
+    "avg_placement": 4.59,
+    "matches": 1534,
+    "ideal_core_priority": [
+      "Runecarver",
+      "Shadowflame",
+      "Zhonya's Hourglass",
+      "Detonation Orb",
+      "Cruelty",
+      "Hextech Gunblade",
+      "Rabadon's Deathcap"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (19.15% WR)",
+      "Compulsion For Power (14.0% WR)",
+      "Compulsion For Risk (11.76% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Briar (27.3% WR)",
+      "Rakan (25.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Desecrator (25.0% WR, n=36)",
+      "Giant Slayer (22.81% WR, n=57)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (10.2% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Kennen/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Kindred": {
+    "tier": "C",
+    "wr_first": 11.3,
+    "wr_top4": null,
+    "avg_placement": 4.68,
+    "matches": 1351,
+    "ideal_core_priority": [
+      "Hamstringer",
+      "The Collector",
+      "Blade of The Ruined King",
+      "Phantom Dancer",
+      "Kraken Slayer",
+      "Reaper's Toll",
+      "Sword of the Divine"
+    ],
+    "prismatic_priority": [
+      "Gain a Prismatic Stat Anvil (14.8% WR)",
+      "Gain an Augment slot (14.71% WR)",
+      "Level Augments (10.38% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Brand (50.0% WR)",
+      "Amumu (41.7% WR)"
+    ],
+    "build_changing_augments": [
+      "Dual Wield (18.75% WR, n=96)",
+      "Firebrand (18.57% WR, n=70)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "C-tier filler at 11.3% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Kindred/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Kled": {
+    "tier": "C",
+    "wr_first": 12.3,
+    "wr_top4": null,
+    "avg_placement": 4.49,
+    "matches": 1150,
+    "ideal_core_priority": [
+      "Overlord's Bloodmail",
+      "Divine Sunderer",
+      "Titanic Hydra",
+      "Blade of The Ruined King",
+      "Heartsteel"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (16.67% WR)",
+      "Gain a Prismatic Stat Anvil (16.4% WR)",
+      "Level Augments (16.19% WR)"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Volibear (37.5% WR)",
+      "Sett (22.2% WR)"
+    ],
+    "build_changing_augments": [
+      "Symphony of War (21.82% WR, n=55)",
+      "Quest: Steel Your Heart (18.18% WR, n=44)"
+    ],
+    "vs_tanks": "BotRK + Black Cleaver anvil; Goredrink keeps you topped vs sustained HP fights.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Bruiser — mid-range engage, HP+omnivamp scaling, look for Reverberation/Goliath prismatics.",
+    "arena_meta": "C-tier filler at 12.3% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Kled/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Kog'Maw": {
+    "tier": "D",
+    "wr_first": 9.7,
+    "wr_top4": null,
+    "avg_placement": 4.72,
+    "matches": 1493,
+    "ideal_core_priority": [
+      "Hexbolt Companion",
+      "Terminus",
+      "Blade of The Ruined King",
+      "Reaper's Toll",
+      "Guinsoo's Rageblade",
+      "Kraken Slayer",
+      "Diamond-Tipped Spear"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (16.48% WR)",
+      "Gain a Prismatic Stat Anvil (11.68% WR)",
+      "Compulsion For Risk (11.32% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Ivern (28.6% WR)",
+      "Galio (27.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Symphony of War (20.34% WR, n=59)",
+      "Dual Wield (17.8% WR, n=118)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (9.7% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/KogMaw/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "LeBlanc": {
+    "tier": "D",
+    "wr_first": 5.8,
+    "wr_top4": null,
+    "avg_placement": 5.1,
+    "matches": 1293,
+    "ideal_core_priority": [
+      "Detonation Orb",
+      "Stormsurge",
+      "Shadowflame",
+      "Everfrost",
+      "Luden's Echo",
+      "Runecarver",
+      "Void Staff"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (16.13% WR)",
+      "Compulsion For Power (11.43% WR)",
+      "Level Augments (6.25% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Xin Zhao (44.4% WR)",
+      "Ahri (28.6% WR)"
+    ],
+    "build_changing_augments": [
+      "Gain an Augment slot (16.13% WR, n=93)",
+      "Marksmage (13.95% WR, n=43)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (5.8% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Leblanc/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Lee Sin": {
+    "tier": "C",
+    "wr_first": 11.8,
+    "wr_top4": null,
+    "avg_placement": 4.43,
+    "matches": 1772,
+    "ideal_core_priority": [
+      "Hemomancer's Helm",
+      "Black Cleaver",
+      "Sterak's Gage",
+      "Death's Dance",
+      "Dead Man's Plate",
+      "Goredrink"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (16.67% WR)",
+      "Gain a Prismatic Stat Anvil (14.84% WR)",
+      "Compulsion For Power (13.33% WR)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Veigar (36.4% WR)",
+      "Udyr (30.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Contract Killer (32.61% WR, n=46)",
+      "Clown College (20.48% WR, n=83)"
+    ],
+    "vs_tanks": "Don't try — pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Burst pick-off — needs angle; mediocre into peel duos, strong vs squishy comps.",
+    "arena_meta": "C-tier filler at 11.8% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/LeeSin/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Leona": {
+    "tier": "D",
+    "wr_first": 10.8,
+    "wr_top4": null,
+    "avg_placement": 4.66,
+    "matches": 2514,
+    "ideal_core_priority": [
+      "Cruelty",
+      "Jak'Sho",
+      "The Protean",
+      "Heartsteel",
+      "Jak'Sho, The Protean",
+      "Black Hole Gauntlet",
+      "Thornmail"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (15.33% WR)",
+      "Gain a Prismatic Stat Anvil (12.54% WR)",
+      "Level Augments (10.24% WR)"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Brand (25.0% WR)",
+      "Lucian (22.2% WR)"
+    ],
+    "build_changing_augments": [
+      "Desecrator (15.44% WR, n=149)",
+      "Gain an Augment slot (15.33% WR, n=150)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (10.8% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Leona/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Lissandra": {
+    "tier": "D",
+    "wr_first": 9.2,
+    "wr_top4": null,
+    "avg_placement": 4.66,
+    "matches": 1718,
+    "ideal_core_priority": [
+      "Runecarver",
+      "Liandry's Anguish",
+      "Shadowflame",
+      "Everfrost",
+      "Pyromancer's Cloak",
+      "Malignance",
+      "Detonation Orb"
+    ],
+    "prismatic_priority": [
+      "Level Augments (13.18% WR)",
+      "Replace Augment (12.07% WR)",
+      "Compulsion For Risk (10.42% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Viego (50.0% WR)",
+      "Vayne (27.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Doomsayer (14.71% WR, n=68)",
+      "Jeweled Gauntlet (14.05% WR, n=121)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (9.2% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Lissandra/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Lucian": {
+    "tier": "D",
+    "wr_first": 9.8,
+    "wr_top4": null,
+    "avg_placement": 4.66,
+    "matches": 1409,
+    "ideal_core_priority": [
+      "Reaper's Toll",
+      "Hamstringer",
+      "Sword of the Divine",
+      "Lord Dominik's Regards",
+      "Infinity Edge"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Risk (17.19% WR)",
+      "Gain an Augment slot (12.82% WR)",
+      "Replace Augment (11.32% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Xin Zhao (25.0% WR)",
+      "Leona (22.2% WR)"
+    ],
+    "build_changing_augments": [
+      "Compulsion For Risk (17.19% WR, n=64)",
+      "Jeweled Gauntlet (15.56% WR, n=90)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (9.8% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Lucian/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Lux": {
+    "tier": "D",
+    "wr_first": 9.1,
+    "wr_top4": null,
+    "avg_placement": 4.41,
+    "matches": 2498,
+    "ideal_core_priority": [
+      "Sanguine Gift",
+      "Luden's Echo",
+      "Shadowflame",
+      "Cruelty",
+      "Detonation Orb",
+      "Runecarver",
+      "Pyromancer's Cloak"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (12.08% WR)",
+      "Replace Augment (10.0% WR)",
+      "Level Augments (8.89% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Xin Zhao (28.6% WR)",
+      "Tryndamere (25.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Quest: Wooglet's Witchcap (14.16% WR, n=113)",
+      "Doomsayer (13.16% WR, n=76)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (9.1% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Lux/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Malzahar": {
+    "tier": "B",
+    "wr_first": 14.3,
+    "wr_top4": null,
+    "avg_placement": 4.38,
+    "matches": 2538,
+    "ideal_core_priority": [
+      "Runecarver",
+      "Wooglet's Witchcap",
+      "Liandry's Anguish",
+      "Pyromancer's Cloak",
+      "Morellonomicon",
+      "Shadowflame",
+      "Malignance"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Risk (18.29% WR)",
+      "Gain a Prismatic Stat Anvil (15.61% WR)",
+      "Gain an Augment slot (15.51% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Dr. Mundo (30.8% WR)",
+      "Udyr (28.6% WR)"
+    ],
+    "build_changing_augments": [
+      "Transmute: Prismatic (21.52% WR, n=79)",
+      "Compulsion For Risk (18.29% WR, n=82)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "B-tier — playable into most lobbies at 14.3% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Malzahar/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Mel": {
+    "tier": "D",
+    "wr_first": 7.2,
+    "wr_top4": null,
+    "avg_placement": 4.88,
+    "matches": 1966,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Luden's Echo",
+      "Liandry's Anguish",
+      "Wooglet's Witchcap",
+      "Malignance",
+      "Detonation Orb",
+      "Runecarver"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Risk (13.33% WR)",
+      "Level Augments (11.11% WR)",
+      "Compulsion For Power (10.34% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Xin Zhao (30.0% WR)",
+      "Galio (20.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Doomsayer (15.71% WR, n=70)",
+      "Compulsion For Risk (13.33% WR, n=75)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (7.2% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Mel/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Milio": {
+    "tier": "C",
+    "wr_first": 12.3,
+    "wr_top4": null,
+    "avg_placement": 4.46,
+    "matches": 1427,
+    "ideal_core_priority": [
+      "Empyrean Promise",
+      "Moonstone Renewer",
+      "Ardent Censer",
+      "Sword of Blossoming Dawn",
+      "Wordless Promise"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (22.86% WR)",
+      "Gain a Prismatic Stat Anvil (14.2% WR)",
+      "Compulsion For Power (13.33% WR)"
+    ],
+    "boots": "Ionian Boots of Lucidity",
+    "best_duos": [
+      "Tristana (33.3% WR)",
+      "Sett (25.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Desecrator (27.27% WR, n=44)",
+      "Gain an Augment slot (22.86% WR, n=140)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "C-tier filler at 12.3% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Milio/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Miss Fortune": {
+    "tier": "D",
+    "wr_first": 8.2,
+    "wr_top4": null,
+    "avg_placement": 4.86,
+    "matches": 1390,
+    "ideal_core_priority": [
+      "Hamstringer",
+      "Sword of the Divine",
+      "The Collector",
+      "Hexoptics C44",
+      "Infinity Edge"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (15.24% WR)",
+      "Gain a Prismatic Stat Anvil (9.29% WR)",
+      "Compulsion For Risk (8.7% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Sion (21.4% WR)",
+      "Shen (20.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Gain an Augment slot (15.24% WR, n=105)",
+      "The Brutalizer (14.89% WR, n=47)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (8.2% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/MissFortune/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Morgana": {
+    "tier": "C",
+    "wr_first": 11.7,
+    "wr_top4": null,
+    "avg_placement": 4.43,
+    "matches": 2377,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Malignance",
+      "Force Of Entropy",
+      "Zhonya's Hourglass",
+      "Rabadon's Deathcap",
+      "Cruelty"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (18.41% WR)",
+      "Compulsion For Power (12.86% WR)",
+      "Gain a Prismatic Stat Anvil (12.06% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Dr. Mundo (42.9% WR)",
+      "Vi (28.6% WR)"
+    ],
+    "build_changing_augments": [
+      "Witchful Thinking (19.05% WR, n=84)",
+      "Gain an Augment slot (18.41% WR, n=239)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "C-tier filler at 11.7% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Morgana/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Naafiri": {
+    "tier": "C",
+    "wr_first": 12.2,
+    "wr_top4": null,
+    "avg_placement": 4.38,
+    "matches": 1558,
+    "ideal_core_priority": [
+      "Duskblade of Draktharr",
+      "Opportunity",
+      "Voltaic Cyclosword",
+      "Axiom Arc",
+      "Serylda's Grudge",
+      "Flesheater",
+      "Regicide"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Risk (16.07% WR)",
+      "Gain an Augment slot (14.88% WR)",
+      "Level Augments (14.29% WR)"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Malphite (30.0% WR)",
+      "Cho'Gath (21.1% WR)"
+    ],
+    "build_changing_augments": [
+      "Transmute: Prismatic (23.6% WR, n=89)",
+      "Minionmancer (21.31% WR, n=61)"
+    ],
+    "vs_tanks": "Don't try — pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Burst pick-off — needs angle; mediocre into peel duos, strong vs squishy comps.",
+    "arena_meta": "C-tier filler at 12.2% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Naafiri/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Nami": {
+    "tier": "B",
+    "wr_first": 13.5,
+    "wr_top4": null,
+    "avg_placement": 4.55,
+    "matches": 1577,
+    "ideal_core_priority": [
+      "Locket of the Iron Solari",
+      "Knight's Vow",
+      "Redemption",
+      "Shurelya's Battlesong",
+      "Ardent Censer",
+      "Moonstone Renewer"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (21.09% WR)",
+      "Compulsion For Risk (15.38% WR)",
+      "Gain a Prismatic Stat Anvil (14.29% WR)"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Teemo (33.3% WR)",
+      "Lillia (33.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Doomsayer (27.27% WR, n=66)",
+      "Critical Healing (22.95% WR, n=61)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "B-tier — playable into most lobbies at 13.5% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Nami/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Nasus": {
+    "tier": "C",
+    "wr_first": 12.6,
+    "wr_top4": null,
+    "avg_placement": 4.27,
+    "matches": 1507,
+    "ideal_core_priority": [
+      "Overlord's Bloodmail",
+      "Hemomancer's Helm",
+      "Divine Sunderer",
+      "Sundered Sky",
+      "Spirit Visage",
+      "Bloodthirster",
+      "Infinity Edge"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (19.84% WR)",
+      "Gain a Prismatic Stat Anvil (14.93% WR)",
+      "Level Augments (11.68% WR)"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Renekton (26.7% WR)",
+      "Blitzcrank (25.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Critical Healing (23.4% WR, n=47)",
+      "Gain an Augment slot (19.84% WR, n=126)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "C-tier filler at 12.6% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Nasus/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Nautilus": {
+    "tier": "D",
+    "wr_first": 9.3,
+    "wr_top4": null,
+    "avg_placement": 4.85,
+    "matches": 2393,
+    "ideal_core_priority": [
+      "Cruelty",
+      "Jak'Sho",
+      "The Protean",
+      "Heartsteel",
+      "Jak'Sho, The Protean",
+      "Gargoyle Stoneplate",
+      "Thornmail"
+    ],
+    "prismatic_priority": [
+      "Gain a Prismatic Stat Anvil (14.24% WR)",
+      "Gain an Augment slot (11.83% WR)",
+      "Level Augments (9.78% WR)"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Shyvana (36.8% WR)",
+      "Vayne (26.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Desecrator (19.09% WR, n=110)",
+      "Gain a Prismatic Stat Anvil (14.24% WR, n=344)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (9.3% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Nautilus/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Neeko": {
+    "tier": "D",
+    "wr_first": 8.5,
+    "wr_top4": null,
+    "avg_placement": 4.63,
+    "matches": 1193,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Shadowflame",
+      "Rabadon's Deathcap",
+      "Void Staff",
+      "Zhonya's Hourglass"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Risk (15.56% WR)",
+      "Gain an Augment slot (13.89% WR)",
+      "Compulsion For Power (12.2% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Lux (25.0% WR)",
+      "Galio (25.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Compulsion For Risk (15.56% WR, n=45)",
+      "Marksmage (15.28% WR, n=72)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (8.5% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Neeko/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Nidalee": {
+    "tier": "D",
+    "wr_first": 8.5,
+    "wr_top4": null,
+    "avg_placement": 4.75,
+    "matches": 1434,
+    "ideal_core_priority": [
+      "Detonation Orb",
+      "Shadowflame",
+      "Void Staff",
+      "Lich Bane",
+      "Rabadon's Deathcap"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Risk (18.0% WR)",
+      "Replace Augment (15.09% WR)",
+      "Compulsion For Power (13.33% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Vi (37.5% WR)",
+      "Jhin (37.5% WR)"
+    ],
+    "build_changing_augments": [
+      "Compulsion For Risk (18.0% WR, n=50)",
+      "Quest: Wooglet's Witchcap (17.81% WR, n=73)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (8.5% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Nidalee/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Nocturne": {
+    "tier": "C",
+    "wr_first": 12.4,
+    "wr_top4": null,
+    "avg_placement": 4.49,
+    "matches": 1455,
+    "ideal_core_priority": [
+      "Reaper's Toll",
+      "Blade of The Ruined King",
+      "Guinsoo's Rageblade",
+      "Fiendhunter Bolts",
+      "Infinity Edge"
+    ],
+    "prismatic_priority": [
+      "Replace Augment (18.6% WR)",
+      "Compulsion For Power (17.07% WR)",
+      "Gain a Prismatic Stat Anvil (13.25% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Teemo (50.0% WR)",
+      "Mordekaiser (33.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Aim for the Head (19.05% WR, n=63)",
+      "Replace Augment (18.6% WR, n=43)"
+    ],
+    "vs_tanks": "Don't try — pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Burst pick-off — needs angle; mediocre into peel duos, strong vs squishy comps.",
+    "arena_meta": "C-tier filler at 12.4% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Nocturne/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Nunu & Willump": {
+    "tier": "D",
+    "wr_first": 10.9,
+    "wr_top4": null,
+    "avg_placement": 4.34,
+    "matches": 1342,
+    "ideal_core_priority": [
+      "Eleisa's Miracle",
+      "Heartsteel",
+      "Spirit Visage",
+      "Protoplasm Harness"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Power (16.67% WR)",
+      "Gain an Augment slot (14.07% WR)",
+      "Level Augments (10.81% WR)"
+    ],
+    "boots": "Ionian Boots of Lucidity",
+    "best_duos": [
+      "Vladimir (33.3% WR)",
+      "Shyvana (30.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Transmute: Prismatic (18.03% WR, n=61)",
+      "Desecrator (17.07% WR, n=41)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (10.9% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Nunu/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Orianna": {
+    "tier": "D",
+    "wr_first": 10.5,
+    "wr_top4": null,
+    "avg_placement": 4.57,
+    "matches": 1456,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Detonation Orb",
+      "Liandry's Anguish",
+      "Runecarver",
+      "Liandry's Anguish",
+      "Blackfire Torch",
+      "Wordless Promise"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (22.73% WR)",
+      "Replace Augment (14.71% WR)",
+      "Compulsion For Power (13.64% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Fizz (42.9% WR)",
+      "Lux (28.6% WR)"
+    ],
+    "build_changing_augments": [
+      "Gain an Augment slot (22.73% WR, n=110)",
+      "Doomsayer (20.31% WR, n=64)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (10.5% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Orianna/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Poppy": {
+    "tier": "C",
+    "wr_first": 11.4,
+    "wr_top4": null,
+    "avg_placement": 4.73,
+    "matches": 1496,
+    "ideal_core_priority": [
+      "Black Hole Gauntlet",
+      "Overlord's Bloodmail",
+      "Divine Sunderer",
+      "Thornmail",
+      "Jak'Sho, The Protean"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (20.69% WR)",
+      "Level Augments (15.6% WR)",
+      "Compulsion For Power (13.89% WR)"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Shyvana (40.0% WR)",
+      "Xin Zhao (33.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Gain an Augment slot (20.69% WR, n=116)",
+      "Center of the Universe (16.22% WR, n=37)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "C-tier filler at 11.4% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Poppy/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Qiyana": {
+    "tier": "C",
+    "wr_first": 11.4,
+    "wr_top4": null,
+    "avg_placement": 4.72,
+    "matches": 1109,
+    "ideal_core_priority": [
+      "Duskblade of Draktharr",
+      "Voltaic Cyclosword",
+      "Axiom Arc",
+      "Regicide",
+      "Hubris",
+      "Serpent's Fang",
+      "Hellfire Hatchet"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (22.06% WR)",
+      "Replace Augment (12.9% WR)",
+      "Level Augments (12.12% WR)"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Mordekaiser (33.3% WR)",
+      "Yone (33.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Gain an Augment slot (22.06% WR, n=68)",
+      "The Brutalizer (18.92% WR, n=37)"
+    ],
+    "vs_tanks": "Don't try — pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Burst pick-off — needs angle; mediocre into peel duos, strong vs squishy comps.",
+    "arena_meta": "C-tier filler at 11.4% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Qiyana/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Quinn": {
+    "tier": "D",
+    "wr_first": 10.8,
+    "wr_top4": null,
+    "avg_placement": 4.66,
+    "matches": 1053,
+    "ideal_core_priority": [
+      "Phantom Dancer",
+      "The Collector",
+      "Blade of The Ruined King",
+      "Reaper's Toll",
+      "Kraken Slayer",
+      "Lord Dominik's Regards",
+      "Infinity Edge"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (22.39% WR)",
+      "Gain a Prismatic Stat Anvil (10.8% WR)",
+      "Level Augments (7.69% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Shyvana (83.3% WR)",
+      "Gwen (40.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Gain an Augment slot (22.39% WR, n=67)",
+      "Transmute: Prismatic (18.6% WR, n=43)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (10.8% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Quinn/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Rakan": {
+    "tier": "C",
+    "wr_first": 12.5,
+    "wr_top4": null,
+    "avg_placement": 4.78,
+    "matches": 1112,
+    "ideal_core_priority": [
+      "Locket of the Iron Solari",
+      "Knight's Vow",
+      "Redemption",
+      "Shurelya's Battlesong",
+      "Ardent Censer",
+      "Moonstone Renewer"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (15.89% WR)",
+      "Compulsion For Power (14.71% WR)",
+      "Level Augments (14.13% WR)"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Yone (25.0% WR)",
+      "Kennen (25.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Desecrator (26.19% WR, n=42)",
+      "Dark Blessing (17.91% WR, n=67)"
+    ],
+    "vs_tanks": "Build defensive (Locket/Knight's Vow) and let carry duo handle DPS.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Enchanter/engage — duo-dependent; pick ADC/bruiser carry partner.",
+    "arena_meta": "C-tier filler at 12.5% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Rakan/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Rammus": {
+    "tier": "B",
+    "wr_first": 14.4,
+    "wr_top4": null,
+    "avg_placement": 4.71,
+    "matches": 1848,
+    "ideal_core_priority": [
+      "Shield of Molten Stone",
+      "Darksteel Talons",
+      "Jak'Sho",
+      "The Protean",
+      "Jak'Sho, The Protean",
+      "Cruelty",
+      "Heartsteel"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (20.17% WR)",
+      "Gain a Prismatic Stat Anvil (18.52% WR)",
+      "Compulsion For Risk (17.74% WR)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Maokai (44.4% WR)",
+      "Udyr (40.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Desecrator (22.41% WR, n=116)",
+      "Gain an Augment slot (20.17% WR, n=119)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "B-tier — playable into most lobbies at 14.4% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Rammus/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Rek'Sai": {
+    "tier": "D",
+    "wr_first": 10.2,
+    "wr_top4": null,
+    "avg_placement": 4.62,
+    "matches": 940,
+    "ideal_core_priority": [
+      "Hemomancer's Helm",
+      "Black Cleaver",
+      "Sterak's Gage",
+      "Death's Dance",
+      "Dead Man's Plate",
+      "Goredrink"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (14.94% WR)",
+      "Compulsion For Risk (14.29% WR)",
+      "Replace Augment (12.77% WR)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Shyvana (50.0% WR)",
+      "Nasus (37.5% WR)"
+    ],
+    "build_changing_augments": [
+      "The Brutalizer (21.43% WR, n=28)",
+      "Symphony of War (20.0% WR, n=30)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (10.2% wr_first (low sample)) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/RekSai/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Rell": {
+    "tier": "A",
+    "wr_first": 16.6,
+    "wr_top4": null,
+    "avg_placement": 4.45,
+    "matches": 1992,
+    "ideal_core_priority": [
+      "Black Hole Gauntlet",
+      "Jak'Sho",
+      "The Protean",
+      "Heartsteel",
+      "Jak'Sho, The Protean",
+      "Cruelty",
+      "Cloak of Starry Night"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (22.86% WR)",
+      "Compulsion For Risk (21.21% WR)",
+      "Replace Augment (20.0% WR)"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Shyvana (50.0% WR)",
+      "Urgot (40.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Transmute: Prismatic (26.23% WR, n=61)",
+      "Goliath (25.69% WR, n=109)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "A-tier solid blind pick at 16.6% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Rell/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Renata Glasc": {
+    "tier": "B",
+    "wr_first": 14.9,
+    "wr_top4": null,
+    "avg_placement": 4.59,
+    "matches": 1072,
+    "ideal_core_priority": [
+      "Locket of the Iron Solari",
+      "Knight's Vow",
+      "Redemption",
+      "Shurelya's Battlesong",
+      "Ardent Censer",
+      "Moonstone Renewer"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (20.33% WR)",
+      "Compulsion For Risk (18.18% WR)",
+      "Gain a Prismatic Stat Anvil (18.02% WR)"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Sett (50.0% WR)",
+      "Xin Zhao (44.4% WR)"
+    ],
+    "build_changing_augments": [
+      "Gain an Augment slot (20.33% WR, n=123)",
+      "Dark Blessing (20.29% WR, n=69)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "B-tier — playable into most lobbies at 14.9% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Renata/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Rengar": {
+    "tier": "C",
+    "wr_first": 11.3,
+    "wr_top4": null,
+    "avg_placement": 4.56,
+    "matches": 1393,
+    "ideal_core_priority": [
+      "Sword of the Divine",
+      "Voltaic Cyclosword",
+      "The Collector",
+      "Duskblade of Draktharr",
+      "Lord Dominik's Regards",
+      "Infinity Edge",
+      "Hellfire Hatchet"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Power (20.75% WR)",
+      "Compulsion For Risk (16.18% WR)",
+      "Gain a Prismatic Stat Anvil (15.33% WR)"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Shyvana (41.7% WR)",
+      "Urgot (38.1% WR)"
+    ],
+    "build_changing_augments": [
+      "It's Critical (34.88% WR, n=43)",
+      "Clown College (25.0% WR, n=88)"
+    ],
+    "vs_tanks": "Don't try — pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Burst pick-off — needs angle; mediocre into peel duos, strong vs squishy comps.",
+    "arena_meta": "C-tier filler at 11.3% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Rengar/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Riven": {
+    "tier": "C",
+    "wr_first": 12.1,
+    "wr_top4": null,
+    "avg_placement": 4.41,
+    "matches": 1516,
+    "ideal_core_priority": [
+      "Hemomancer's Helm",
+      "Eclipse",
+      "Death's Dance",
+      "Divine Sunderer",
+      "Flesheater",
+      "Spear of Shojin",
+      "Endless Hunger"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Power (23.4% WR)",
+      "Gain an Augment slot (20.39% WR)",
+      "Compulsion For Risk (15.38% WR)"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Dr. Mundo (27.3% WR)",
+      "Yuumi (25.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Compulsion For Power (23.4% WR, n=47)",
+      "Earthwake (22.64% WR, n=106)"
+    ],
+    "vs_tanks": "Don't try — pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Burst pick-off — needs angle; mediocre into peel duos, strong vs squishy comps.",
+    "arena_meta": "C-tier filler at 12.1% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Riven/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Rumble": {
+    "tier": "B",
+    "wr_first": 13.7,
+    "wr_top4": null,
+    "avg_placement": 4.28,
+    "matches": 1314,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Demonic Embrace",
+      "Liandry's Anguish",
+      "Night Harvester",
+      "Wooglet's Witchcap",
+      "Shadowflame",
+      "Dragonheart"
+    ],
+    "prismatic_priority": [
+      "Replace Augment (18.92% WR)",
+      "Compulsion For Risk (17.65% WR)",
+      "Gain an Augment slot (16.49% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Aurora (33.3% WR)",
+      "Smolder (30.8% WR)"
+    ],
+    "build_changing_augments": [
+      "Big Brain (21.74% WR, n=46)",
+      "Replace Augment (18.92% WR, n=37)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "B-tier — playable into most lobbies at 13.7% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Rumble/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Ryze": {
+    "tier": "C",
+    "wr_first": 11.7,
+    "wr_top4": null,
+    "avg_placement": 4.68,
+    "matches": 2722,
+    "ideal_core_priority": [
+      "Dragonheart",
+      "Fimbulwinter",
+      "Rabadon's Deathcap",
+      "Detonation Orb",
+      "Rod of Ages",
+      "Talisman Of Ascension",
+      "Crown of the Shattered Queen"
+    ],
+    "prismatic_priority": [
+      "Replace Augment (17.46% WR)",
+      "Gain an Augment slot (16.85% WR)",
+      "Compulsion For Risk (14.29% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Olaf (41.7% WR)",
+      "Shyvana (37.5% WR)"
+    ],
+    "build_changing_augments": [
+      "Desecrator (19.72% WR, n=71)",
+      "Replace Augment (17.46% WR, n=63)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "C-tier filler at 11.7% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Ryze/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Samira": {
+    "tier": "D",
+    "wr_first": 8.2,
+    "wr_top4": null,
+    "avg_placement": 4.99,
+    "matches": 1429,
+    "ideal_core_priority": [
+      "Duskblade of Draktharr",
+      "The Collector",
+      "Bloodthirster",
+      "Hamstringer",
+      "Flesheater",
+      "Immortal Shieldbow",
+      "Regicide"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Power (15.56% WR)",
+      "Gain an Augment slot (14.29% WR)",
+      "Level Augments (11.92% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Blitzcrank (30.0% WR)",
+      "Smolder (22.2% WR)"
+    ],
+    "build_changing_augments": [
+      "Soul Siphon (25.4% WR, n=63)",
+      "Contract Killer (15.79% WR, n=38)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (8.2% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Samira/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Sejuani": {
+    "tier": "C",
+    "wr_first": 12.7,
+    "wr_top4": null,
+    "avg_placement": 4.62,
+    "matches": 1506,
+    "ideal_core_priority": [
+      "Cruelty",
+      "Jak'Sho",
+      "The Protean",
+      "Heartsteel",
+      "Jak'Sho, The Protean",
+      "Black Hole Gauntlet",
+      "Warmog's Armor"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (24.24% WR)",
+      "Gain a Prismatic Stat Anvil (16.06% WR)",
+      "Compulsion For Risk (11.54% WR)"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Xin Zhao (33.3% WR)",
+      "Blitzcrank (33.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Gain an Augment slot (24.24% WR, n=99)",
+      "Celestial Body (22.22% WR, n=54)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "C-tier filler at 12.7% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Sejuani/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Senna": {
+    "tier": "D",
+    "wr_first": 9.0,
+    "wr_top4": null,
+    "avg_placement": 4.77,
+    "matches": 1487,
+    "ideal_core_priority": [
+      "Locket of the Iron Solari",
+      "Knight's Vow",
+      "Redemption",
+      "Shurelya's Battlesong",
+      "Ardent Censer",
+      "Moonstone Renewer"
+    ],
+    "prismatic_priority": [
+      "Gain a Prismatic Stat Anvil (12.12% WR)",
+      "Level Augments (10.96% WR)",
+      "Replace Augment (8.82% WR)"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Cho'Gath (33.3% WR)",
+      "Xin Zhao (23.5% WR)"
+    ],
+    "build_changing_augments": [
+      "Fan the Hammer (24.24% WR, n=66)",
+      "Dual Wield (18.18% WR, n=99)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (9.0% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Senna/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Seraphine": {
+    "tier": "B",
+    "wr_first": 13.6,
+    "wr_top4": null,
+    "avg_placement": 4.39,
+    "matches": 1689,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Morellonomicon",
+      "Rylai's Crystal Scepter",
+      "Empyrean Promise",
+      "Runecarver",
+      "Detonation Orb"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Risk (20.0% WR)",
+      "Level Augments (18.98% WR)",
+      "Gain an Augment slot (18.24% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Vi (44.4% WR)",
+      "Vayne (28.6% WR)"
+    ],
+    "build_changing_augments": [
+      "Compulsion For Risk (20.0% WR, n=75)",
+      "Quest: Angel of Retribution (20.0% WR, n=55)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "B-tier — playable into most lobbies at 13.6% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Seraphine/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Shaco": {
+    "tier": "D",
+    "wr_first": 9.9,
+    "wr_top4": null,
+    "avg_placement": 4.86,
+    "matches": 2351,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Morellonomicon",
+      "Runecarver",
+      "Everfrost",
+      "Cruelty",
+      "Dragonheart"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (15.88% WR)",
+      "Compulsion For Power (15.85% WR)",
+      "Compulsion For Risk (12.5% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Dr. Mundo (26.7% WR)",
+      "Amumu (23.1% WR)"
+    ],
+    "build_changing_augments": [
+      "Minionmancer (19.12% WR, n=68)",
+      "Eureka (17.35% WR, n=98)"
+    ],
+    "vs_tanks": "Don't try — pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Burst pick-off — needs angle; mediocre into peel duos, strong vs squishy comps.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (9.9% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Shaco/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Shen": {
+    "tier": "B",
+    "wr_first": 14.1,
+    "wr_top4": null,
+    "avg_placement": 4.41,
+    "matches": 1813,
+    "ideal_core_priority": [
+      "Reverberation",
+      "Titanic Hydra",
+      "Heartsteel",
+      "Black Hole Gauntlet",
+      "Dragonheart",
+      "Dusk and Dawn",
+      "Bandlepipes"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (19.57% WR)",
+      "Replace Augment (17.95% WR)",
+      "Gain a Prismatic Stat Anvil (15.28% WR)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Jhin (33.3% WR)",
+      "Viego (33.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Center of the Universe (28.89% WR, n=45)",
+      "Desecrator (22.0% WR, n=50)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "B-tier — playable into most lobbies at 14.1% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Shen/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Sivir": {
+    "tier": "D",
+    "wr_first": 8.7,
+    "wr_top4": null,
+    "avg_placement": 4.82,
+    "matches": 1060,
+    "ideal_core_priority": [
+      "Hamstringer",
+      "Kraken Slayer",
+      "Bloodthirster",
+      "Infinity Edge",
+      "Mortal Reminder",
+      "Phantom Dancer"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (14.75% WR)",
+      "Gain a Prismatic Stat Anvil (14.38% WR)",
+      "Level Augments (7.14% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Aurelion Sol (33.3% WR)",
+      "Galio (28.6% WR)"
+    ],
+    "build_changing_augments": [
+      "Transmute: Gold (20.59% WR, n=34)",
+      "Typhoon (17.95% WR, n=39)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (8.7% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Sivir/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Skarner": {
+    "tier": "C",
+    "wr_first": 11.7,
+    "wr_top4": null,
+    "avg_placement": 4.68,
+    "matches": 1285,
+    "ideal_core_priority": [
+      "Black Hole Gauntlet",
+      "Jak'Sho",
+      "The Protean",
+      "Heartsteel",
+      "Jak'Sho, The Protean",
+      "Warmog's Armor",
+      "Sunfire Aegis"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Risk (17.78% WR)",
+      "Gain a Prismatic Stat Anvil (15.93% WR)",
+      "Gain an Augment slot (15.38% WR)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Dr. Mundo (44.4% WR)",
+      "Malphite (42.9% WR)"
+    ],
+    "build_changing_augments": [
+      "Tank Engine (19.82% WR, n=111)",
+      "Celestial Body (19.57% WR, n=46)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "C-tier filler at 11.7% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Skarner/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Sona": {
+    "tier": "B",
+    "wr_first": 14.6,
+    "wr_top4": null,
+    "avg_placement": 4.27,
+    "matches": 1924,
+    "ideal_core_priority": [
+      "Empyrean Promise",
+      "Dawncore",
+      "Moonstone Renewer",
+      "Runecarver",
+      "Ardent Censer",
+      "Liandry's Anguish",
+      "Wordless Promise"
+    ],
+    "prismatic_priority": [
+      "Replace Augment (20.75% WR)",
+      "Compulsion For Power (16.42% WR)",
+      "Gain an Augment slot (16.27% WR)"
+    ],
+    "boots": "Ionian Boots of Lucidity",
+    "best_duos": [
+      "Master Yi (27.8% WR)",
+      "Kai'Sa (23.1% WR)"
+    ],
+    "build_changing_augments": [
+      "Replace Augment (20.75% WR, n=53)",
+      "All For You (18.97% WR, n=116)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "B-tier — playable into most lobbies at 14.6% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Sona/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Swain": {
+    "tier": "C",
+    "wr_first": 12.4,
+    "wr_top4": null,
+    "avg_placement": 4.19,
+    "matches": 2517,
+    "ideal_core_priority": [
+      "Cruelty",
+      "Liandry's Anguish",
+      "Riftmaker",
+      "Pyromancer's Cloak",
+      "Demonic Embrace",
+      "Runecarver",
+      "Flesheater"
+    ],
+    "prismatic_priority": [
+      "Level Augments (14.98% WR)",
+      "Gain an Augment slot (13.23% WR)",
+      "Replace Augment (12.66% WR)"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Katarina (26.7% WR)",
+      "Singed (25.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Desecrator (22.22% WR, n=90)",
+      "Infernal Conduit (17.16% WR, n=134)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "C-tier filler at 12.4% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Swain/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Syndra": {
+    "tier": "C",
+    "wr_first": 11.9,
+    "wr_top4": null,
+    "avg_placement": 4.71,
+    "matches": 1264,
+    "ideal_core_priority": [
+      "Everfrost",
+      "Luden's Echo",
+      "Shadowflame",
+      "Detonation Orb",
+      "Runecarver",
+      "Liandry's Anguish",
+      "Rabadon's Deathcap"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Risk (15.56% WR)",
+      "Gain an Augment slot (15.22% WR)",
+      "Compulsion For Power (15.0% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Shyvana (33.3% WR)",
+      "Fizz (33.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Desecrator (25.81% WR, n=31)",
+      "Transmute: Prismatic (20.83% WR, n=48)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "C-tier filler at 11.9% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Syndra/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Tahm Kench": {
+    "tier": "C",
+    "wr_first": 12.1,
+    "wr_top4": null,
+    "avg_placement": 4.69,
+    "matches": 2812,
+    "ideal_core_priority": [
+      "Turbo Chemtank",
+      "Riftmaker",
+      "Heartsteel",
+      "Reverberation",
+      "Gargoyle Stoneplate",
+      "Warmog's Armor",
+      "Demonic Embrace"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (19.72% WR)",
+      "Compulsion For Risk (15.24% WR)",
+      "Gain a Prismatic Stat Anvil (14.45% WR)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Brand (28.6% WR)",
+      "Sett (26.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Apex Inventor (21.21% WR, n=66)",
+      "Gain an Augment slot (19.72% WR, n=213)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "C-tier filler at 12.1% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/TahmKench/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Taliyah": {
+    "tier": "D",
+    "wr_first": 8.4,
+    "wr_top4": null,
+    "avg_placement": 4.69,
+    "matches": 1245,
+    "ideal_core_priority": [
+      "Runecarver",
+      "Liandry's Anguish",
+      "Shadowflame",
+      "Blackfire Torch",
+      "Dusk and Dawn"
+    ],
+    "prismatic_priority": [
+      "Gain a Prismatic Stat Anvil (12.3% WR)",
+      "Gain an Augment slot (10.75% WR)",
+      "Compulsion For Power (8.57% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Shyvana (33.3% WR)",
+      "Akali (28.6% WR)"
+    ],
+    "build_changing_augments": [
+      "ADAPt (15.91% WR, n=44)",
+      "Infernal Conduit (15.38% WR, n=65)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (8.4% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Taliyah/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Talon": {
+    "tier": "C",
+    "wr_first": 12.3,
+    "wr_top4": null,
+    "avg_placement": 4.56,
+    "matches": 1360,
+    "ideal_core_priority": [
+      "Flesheater",
+      "Divine Sunderer",
+      "Voltaic Cyclosword",
+      "Regicide",
+      "Prowler's Claw",
+      "Serylda's Grudge",
+      "Hubris"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Power (18.37% WR)",
+      "Gain a Prismatic Stat Anvil (16.36% WR)",
+      "Gain an Augment slot (14.89% WR)"
+    ],
+    "boots": "Ionian Boots of Lucidity",
+    "best_duos": [
+      "Ahri (33.3% WR)",
+      "Briar (33.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Contract Killer (32.56% WR, n=43)",
+      "Giant Slayer (19.64% WR, n=56)"
+    ],
+    "vs_tanks": "Don't try — pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Burst pick-off — needs angle; mediocre into peel duos, strong vs squishy comps.",
+    "arena_meta": "C-tier filler at 12.3% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Talon/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Taric": {
+    "tier": "B",
+    "wr_first": 14.8,
+    "wr_top4": null,
+    "avg_placement": 4.4,
+    "matches": 1359,
+    "ideal_core_priority": [
+      "Locket of the Iron Solari",
+      "Knight's Vow",
+      "Redemption",
+      "Shurelya's Battlesong",
+      "Ardent Censer",
+      "Moonstone Renewer"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (25.0% WR)",
+      "Gain a Prismatic Stat Anvil (18.31% WR)",
+      "Compulsion For Power (12.77% WR)"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Xin Zhao (50.0% WR)",
+      "Bel'Veth (37.5% WR)"
+    ],
+    "build_changing_augments": [
+      "Gain an Augment slot (25.0% WR, n=88)",
+      "Dark Blessing (24.68% WR, n=77)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "B-tier — playable into most lobbies at 14.8% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Taric/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Teemo": {
+    "tier": "D",
+    "wr_first": 10.3,
+    "wr_top4": null,
+    "avg_placement": 4.5,
+    "matches": 2279,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Morellonomicon",
+      "Runecarver",
+      "Shadowflame",
+      "Malignance",
+      "Detonation Orb"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (13.66% WR)",
+      "Gain a Prismatic Stat Anvil (11.97% WR)",
+      "Compulsion For Power (10.64% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Shyvana (40.0% WR)",
+      "Udyr (23.5% WR)"
+    ],
+    "build_changing_augments": [
+      "Firebrand (17.48% WR, n=103)",
+      "Infernal Conduit (16.15% WR, n=130)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (10.3% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Teemo/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Thresh": {
+    "tier": "D",
+    "wr_first": 8.8,
+    "wr_top4": null,
+    "avg_placement": 5.01,
+    "matches": 1556,
+    "ideal_core_priority": [
+      "Shield of Molten Stone",
+      "Heartsteel",
+      "Sunfire Aegis",
+      "Kaenic Rookern",
+      "Zeke's Convergence"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (14.07% WR)",
+      "Gain a Prismatic Stat Anvil (10.04% WR)",
+      "Compulsion For Power (10.0% WR)"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Vayne (28.6% WR)",
+      "Ambessa (27.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Heavy Hitter (18.75% WR, n=64)",
+      "Courage of the Colossus (14.77% WR, n=88)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (8.8% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Thresh/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Tristana": {
+    "tier": "C",
+    "wr_first": 12.0,
+    "wr_top4": null,
+    "avg_placement": 4.38,
+    "matches": 1817,
+    "ideal_core_priority": [
+      "Reaper's Toll",
+      "The Collector",
+      "Blade of The Ruined King",
+      "Hamstringer",
+      "Infinity Edge",
+      "Mortal Reminder"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (18.6% WR)",
+      "Compulsion For Risk (12.33% WR)",
+      "Gain a Prismatic Stat Anvil (11.86% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Udyr (30.8% WR)",
+      "Shyvana (25.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Fan the Hammer (19.19% WR, n=99)",
+      "Giant Slayer (18.75% WR, n=64)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "C-tier filler at 12.0% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Tristana/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Trundle": {
+    "tier": "B",
+    "wr_first": 14.0,
+    "wr_top4": null,
+    "avg_placement": 4.18,
+    "matches": 1701,
+    "ideal_core_priority": [
+      "Hemomancer's Helm",
+      "Black Cleaver",
+      "Sterak's Gage",
+      "Death's Dance",
+      "Dead Man's Plate",
+      "Goredrink"
+    ],
+    "prismatic_priority": [
+      "Gain a Prismatic Stat Anvil (19.23% WR)",
+      "Gain an Augment slot (15.67% WR)",
+      "Compulsion For Power (15.0% WR)"
+    ],
+    "boots": "Plated Steelcaps",
+    "best_duos": [
+      "Cho'Gath (53.9% WR)",
+      "Volibear (30.8% WR)"
+    ],
+    "build_changing_augments": [
+      "Symphony of War (22.5% WR, n=80)",
+      "Heavy Hitter (22.45% WR, n=49)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "B-tier — playable into most lobbies at 14.0% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Trundle/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Twitch": {
+    "tier": "C",
+    "wr_first": 11.0,
+    "wr_top4": null,
+    "avg_placement": 4.73,
+    "matches": 1562,
+    "ideal_core_priority": [
+      "Reaper's Toll",
+      "The Collector",
+      "Blade of The Ruined King",
+      "Phantom Dancer",
+      "Guinsoo's Rageblade",
+      "Fiendhunter Bolts",
+      "Infinity Edge"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (18.97% WR)",
+      "Compulsion For Risk (17.24% WR)",
+      "Gain a Prismatic Stat Anvil (15.65% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Lulu (30.0% WR)",
+      "Briar (27.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Light 'em Up! (21.31% WR, n=61)",
+      "Gain an Augment slot (18.97% WR, n=116)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "C-tier filler at 11.0% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Twitch/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Udyr": {
+    "tier": "A",
+    "wr_first": 16.5,
+    "wr_top4": null,
+    "avg_placement": 3.98,
+    "matches": 1754,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Malignance",
+      "Prowler's Claw",
+      "The Collector",
+      "Blade of The Ruined King",
+      "Blackfire Torch"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Power (23.29% WR)",
+      "Compulsion For Risk (20.41% WR)",
+      "Gain an Augment slot (18.75% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Maokai (35.7% WR)",
+      "Tristana (30.8% WR)"
+    ],
+    "build_changing_augments": [
+      "Critical Healing (25.68% WR, n=74)",
+      "Vulnerability (23.64% WR, n=55)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "A-tier solid blind pick at 16.5% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Udyr/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Urgot": {
+    "tier": "B",
+    "wr_first": 14.3,
+    "wr_top4": null,
+    "avg_placement": 4.22,
+    "matches": 2066,
+    "ideal_core_priority": [
+      "Black Hole Gauntlet",
+      "Overlord's Bloodmail",
+      "Dragonheart",
+      "Warmog's Armor",
+      "Titanic Hydra",
+      "Hemomancer's Helm",
+      "Heartsteel"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (20.81% WR)",
+      "Level Augments (19.23% WR)",
+      "Compulsion For Risk (19.12% WR)"
+    ],
+    "boots": "Gluttonous Greaves",
+    "best_duos": [
+      "Brand (38.5% WR)",
+      "Morgana (36.4% WR)"
+    ],
+    "build_changing_augments": [
+      "Tap Dancer (21.77% WR, n=124)",
+      "Draw Your Sword (21.52% WR, n=158)"
+    ],
+    "vs_tanks": "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Frontline body — soak engage, re-position duo, peel CC chains.",
+    "arena_meta": "B-tier — playable into most lobbies at 14.3% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Urgot/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Varus": {
+    "tier": "D",
+    "wr_first": 9.2,
+    "wr_top4": null,
+    "avg_placement": 4.65,
+    "matches": 1216,
+    "ideal_core_priority": [
+      "Reaper's Toll",
+      "Kraken Slayer",
+      "Blade of The Ruined King",
+      "Guinsoo's Rageblade",
+      "Yun Tal Wildarrows",
+      "Statikk Shiv",
+      "Phantom Dancer"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Power (15.38% WR)",
+      "Gain an Augment slot (14.89% WR)",
+      "Compulsion For Risk (13.64% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Tahm Kench (50.0% WR)",
+      "Fiddlesticks (28.6% WR)"
+    ],
+    "build_changing_augments": [
+      "Fan the Hammer (20.83% WR, n=48)",
+      "Dual Wield (17.89% WR, n=95)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (9.2% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Varus/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Vel'Koz": {
+    "tier": "C",
+    "wr_first": 12.5,
+    "wr_top4": null,
+    "avg_placement": 4.18,
+    "matches": 1970,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Shadowflame",
+      "Detonation Orb",
+      "Luden's Echo",
+      "Malignance",
+      "Everfrost"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Risk (20.37% WR)",
+      "Replace Augment (18.87% WR)",
+      "Level Augments (13.46% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Pantheon (44.4% WR)",
+      "Galio (33.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Quest: Wooglet's Witchcap (24.47% WR, n=94)",
+      "Compulsion For Risk (20.37% WR, n=54)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "C-tier filler at 12.5% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Velkoz/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Viego": {
+    "tier": "C",
+    "wr_first": 11.8,
+    "wr_top4": null,
+    "avg_placement": 4.53,
+    "matches": 1533,
+    "ideal_core_priority": [
+      "Duskblade of Draktharr",
+      "The Collector",
+      "Blade of The Ruined King",
+      "Divine Sunderer",
+      "Hamstringer",
+      "Hexoptics C44",
+      "Infinity Edge"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (17.95% WR)",
+      "Gain a Prismatic Stat Anvil (15.31% WR)",
+      "Compulsion For Risk (14.29% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Morgana (36.4% WR)",
+      "Shen (33.3% WR)"
+    ],
+    "build_changing_augments": [
+      "Clown College (18.75% WR, n=48)",
+      "Gain an Augment slot (17.95% WR, n=117)"
+    ],
+    "vs_tanks": "Don't try — pivot to squishies; Serpent's Fang / Edge of Night vs shields.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Burst pick-off — needs angle; mediocre into peel duos, strong vs squishy comps.",
+    "arena_meta": "C-tier filler at 11.8% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Viego/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Viktor": {
+    "tier": "C",
+    "wr_first": 12.7,
+    "wr_top4": null,
+    "avg_placement": 4.55,
+    "matches": 1456,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Runecarver",
+      "Liandry's Anguish",
+      "Malignance",
+      "Zhonya's Hourglass",
+      "Blackfire Torch",
+      "Liandry's Anguish"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (19.05% WR)",
+      "Replace Augment (17.07% WR)",
+      "Compulsion For Power (16.67% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Viego (33.3% WR)",
+      "Shaco (28.6% WR)"
+    ],
+    "build_changing_augments": [
+      "Big Brain (23.91% WR, n=46)",
+      "Quest: Wooglet's Witchcap (21.21% WR, n=66)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "C-tier filler at 12.7% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Viktor/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Vladimir": {
+    "tier": "C",
+    "wr_first": 12.7,
+    "wr_top4": null,
+    "avg_placement": 4.61,
+    "matches": 2379,
+    "ideal_core_priority": [
+      "Night Harvester",
+      "Riftmaker",
+      "Cosmic Drive",
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Demonic Embrace",
+      "Sanguine Gift"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (20.12% WR)",
+      "Level Augments (14.08% WR)",
+      "Compulsion For Risk (13.92% WR)"
+    ],
+    "boots": "Ionian Boots of Lucidity",
+    "best_duos": [
+      "Master Yi (41.7% WR)",
+      "Nautilus (38.5% WR)"
+    ],
+    "build_changing_augments": [
+      "Transmute: Prismatic (21.28% WR, n=94)",
+      "Gain an Augment slot (20.12% WR, n=169)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "C-tier filler at 12.7% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Vladimir/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Xayah": {
+    "tier": "B",
+    "wr_first": 13.2,
+    "wr_top4": null,
+    "avg_placement": 4.51,
+    "matches": 1400,
+    "ideal_core_priority": [
+      "Reaper's Toll",
+      "Hamstringer",
+      "Navori Flickerblades",
+      "The Collector",
+      "Mortal Reminder",
+      "Infinity Edge",
+      "Phantom Dancer"
+    ],
+    "prismatic_priority": [
+      "Gain a Prismatic Stat Anvil (17.89% WR)",
+      "Compulsion For Risk (15.56% WR)",
+      "Level Augments (14.43% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Fizz (37.5% WR)",
+      "Garen (37.5% WR)"
+    ],
+    "build_changing_augments": [
+      "Giant Slayer (25.0% WR, n=52)",
+      "Dual Wield (21.49% WR, n=121)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "B-tier — playable into most lobbies at 13.2% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Xayah/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Xerath": {
+    "tier": "C",
+    "wr_first": 12.3,
+    "wr_top4": null,
+    "avg_placement": 4.34,
+    "matches": 1604,
+    "ideal_core_priority": [
+      "Detonation Orb",
+      "Night Harvester",
+      "Luden's Echo",
+      "Shadowflame",
+      "Runecarver",
+      "Void Staff",
+      "Rabadon's Deathcap"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Risk (16.0% WR)",
+      "Gain an Augment slot (15.09% WR)",
+      "Level Augments (14.63% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Udyr (50.0% WR)",
+      "Urgot (42.9% WR)"
+    ],
+    "build_changing_augments": [
+      "Jeweled Gauntlet (17.59% WR, n=108)",
+      "Trueshot Prodigy (17.12% WR, n=111)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "C-tier filler at 12.3% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Xerath/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Zeri": {
+    "tier": "D",
+    "wr_first": 4.8,
+    "wr_top4": null,
+    "avg_placement": 5.15,
+    "matches": 1502,
+    "ideal_core_priority": [
+      "Phantom Dancer",
+      "Statikk Shiv",
+      "Infinity Edge"
+    ],
+    "prismatic_priority": [
+      "Replace Augment (11.36% WR)",
+      "Gain an Augment slot (6.9% WR)",
+      "Gain a Prismatic Stat Anvil (5.95% WR)"
+    ],
+    "boots": "Berserker's Greaves",
+    "best_duos": [
+      "Briar (25.0% WR)",
+      "Milio (18.2% WR)"
+    ],
+    "build_changing_augments": [
+      "Replace Augment (11.36% WR, n=44)",
+      "Fan the Hammer (10.26% WR, n=78)"
+    ],
+    "vs_tanks": "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter).",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (4.8% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Zeri/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Zilean": {
+    "tier": "C",
+    "wr_first": 12.9,
+    "wr_top4": null,
+    "avg_placement": 4.32,
+    "matches": 1446,
+    "ideal_core_priority": [
+      "Locket of the Iron Solari",
+      "Knight's Vow",
+      "Redemption",
+      "Shurelya's Battlesong",
+      "Ardent Censer",
+      "Moonstone Renewer"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Risk (19.72% WR)",
+      "Gain an Augment slot (19.69% WR)",
+      "Compulsion For Power (13.79% WR)"
+    ],
+    "boots": "Mercury's Treads",
+    "best_duos": [
+      "Master Yi (55.6% WR)",
+      "Sett (36.4% WR)"
+    ],
+    "build_changing_augments": [
+      "Eureka (21.57% WR, n=102)",
+      "Compulsion For Risk (19.72% WR, n=71)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "C-tier filler at 12.9% wr_first — needs duo synergy or augment lottery.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Zilean/arena",
+        "fetched": "2026-05-03"
+      }
+    ],
+    "_core_synthetic": true
+  },
+  "Zoe": {
+    "tier": "D",
+    "wr_first": 7.9,
+    "wr_top4": null,
+    "avg_placement": 4.91,
+    "matches": 1604,
+    "ideal_core_priority": [
+      "Night Harvester",
+      "Luden's Echo",
+      "Shadowflame",
+      "Detonation Orb",
+      "Runecarver",
+      "Horizon Focus",
+      "Rabadon's Deathcap"
+    ],
+    "prismatic_priority": [
+      "Compulsion For Power (15.69% WR)",
+      "Compulsion For Risk (11.86% WR)",
+      "Gain a Prismatic Stat Anvil (10.05% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Pantheon (25.0% WR)",
+      "Briar (25.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Giant Slayer (18.06% WR, n=72)",
+      "Compulsion For Power (15.69% WR, n=51)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "D/F-tier on aggregator J 26.9 (7.9% wr_first) — counter-pick only.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Zoe/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "Zyra": {
+    "tier": "B",
+    "wr_first": 13.2,
+    "wr_top4": null,
+    "avg_placement": 4.39,
+    "matches": 2182,
+    "ideal_core_priority": [
+      "Pyromancer's Cloak",
+      "Liandry's Anguish",
+      "Shadowflame",
+      "Morellonomicon",
+      "Runecarver",
+      "Detonation Orb",
+      "Malignance"
+    ],
+    "prismatic_priority": [
+      "Gain an Augment slot (17.03% WR)",
+      "Level Augments (14.62% WR)",
+      "Compulsion For Risk (13.85% WR)"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "best_duos": [
+      "Kayn (27.3% WR)",
+      "Vladimir (25.0% WR)"
+    ],
+    "build_changing_augments": [
+      "Infernal Conduit (22.46% WR, n=187)",
+      "Gain an Augment slot (17.03% WR, n=182)"
+    ],
+    "vs_tanks": "Liandry's anvil core; Void Staff if 2+ MR items on enemies.",
+    "vs_healing": "Mortal Reminder anvil mandatory vs healers; Chempunk a fallback.",
+    "kit_notes": "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins.",
+    "arena_meta": "B-tier — playable into most lobbies at 13.2% wr_first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-j.invalid/en/league/champion/Zyra/arena",
+        "fetched": "2026-05-03"
+      }
+    ]
+  },
+  "_note": "Arena (2v2v2v2 / Cherry mode) builds. Patch 26.9 / Arena Season 2. Authored 2026-05-03 (s33). Schema differs from SR/ARAM: uses ideal_core_priority + prismatic_priority instead of full_build because anvil RNG dictates acquisition. 170 champions captured.",
   "_refresh_metadata": {
     "patch": "26.9",
     "season": "Arena Season 2",
@@ -2876,7 +7120,7 @@
       "top30",
       "next30"
     ],
-    "new": 63,
+    "new": 170,
     "schema_note": "Arena uses ideal_core_priority + prismatic_priority + build_changing_augments + best_duos + arena_meta. No linear full_build because anvils are random. Arena-only items (Hexoptics C44, Reaper's Toll, Goliath, Mystic Punch, etc.) are valid here."
   },
   "Yunara": {
@@ -2909,13 +7153,13 @@
       "Sudden Impact — post-dash magic pen synergy",
       "Goliath Prismatic — HP+adaptive into bruiser pivot"
     ],
-    "vs_tanks": "Lord Dominik's mandatory; Fiendhunter Bolts pierces shields + HP-stacking; consider Black Cleaver Prismatic.",
+    "vs_tanks": "Lord Dominik's mandatory; Fiendhunter Bolts pierces shields + HP-stacking; Black Cleaver Prismatic option.",
     "vs_healing": "Mortal Reminder over Bloodthirster when 2+ healers; preserves anti-armor + adds Grievous Wounds.",
     "vs_burst": "Phantom Dancer + Bloodthirster for kite range and self-shield; Edge of Night Prismatic if available.",
     "kit_notes": "Marksman; on-hit + crit hybrid; passive auto-cancel for empowered shots; ult is long-range execute.",
-    "arena_meta": "B-tier in current arena (45.1% ARAM WR baseline; arena-specific WR pending Phase 3 fetch). Strong with shield/heal partners; weak vs hard CC.",
+    "arena_meta": "B-tier in current arena; strong with shield/heal partners; weak vs hard CC.",
     "_synthetic": true,
-    "_synthesis_note": "Built from Phase 3 ARAM data + arena schema defaults. Replace with aggregator J-fetched data when arena_tail Phase 3 agent completes."
+    "_synthesis_note": "Synthesized from ARAM Phase 3 data + arena schema defaults. Pending true aggregator J fetch."
   },
   "Hwei": {
     "tier": "B",
@@ -2948,10 +7192,10 @@
     ],
     "vs_tanks": "Liandry's + Void Staff mandatory; Shadowflame less valuable vs HP-stacking.",
     "vs_healing": "Morellonomicon over Shadowflame when 2+ healers — antiheal + AP retains.",
-    "vs_burst": "Zhonya's Hourglass via Stopwatch; Banshee's Veil Prismatic if MR-burst threat.",
+    "vs_burst": "Zhonyas Hourglass via Stopwatch; Banshees Veil Prismatic if MR-burst threat.",
     "kit_notes": "AP control mage; 9 abilities across QWE trees; setup-heavy; Q knockup combo; ult AOE.",
     "arena_meta": "B-tier; high skill ceiling; ADC enabler; weak when isolated.",
     "_synthetic": true,
-    "_synthesis_note": "Built from arena AP-mage defaults pending aggregator J fetch."
+    "_synthesis_note": "Synthesized from arena AP-mage defaults pending aggregator J fetch."
   }
 }
