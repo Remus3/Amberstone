@@ -2315,6 +2315,34 @@ body[data-mode="brawl"] #mm-img { image-rendering: auto; }
   letter-spacing: 0.06em;
   color: var(--gold);
 }
+.bp-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border-soft);
+}
+.bp-btn {
+  flex: 1;
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 80ms, color 80ms;
+}
+.bp-btn:hover     { background: var(--info-soft); color: var(--info); }
+.bp-btn:disabled  { opacity: 0.4; cursor: wait; }
+.bp-btn-accept:hover  { color: #6FD080; border-color: #6FD080; }
+.bp-btn-defer:hover   { color: #8A8CF0; border-color: #8A8CF0; }
+.bp-btn-dismiss:hover { color: #F07E8B; border-color: #F07E8B; }
+.bp-btn-busy { opacity: 0.6; }
+.bp-btn-err  { color: #F07E8B; border-color: #F07E8B; }
 /* Menu badge — small count next to the menu button label so the
  * operator sees pending depth without opening the sub-page. Hidden
  * when count is 0 (via the `hidden` HTML attribute set in JS). */

@@ -6280,7 +6280,56 @@
         claim.textContent = `claimed by ${t.claimed_by}`;
         li.append(claim);
       }
+
+      // Action row (accept / defer / dismiss). POSTs to
+      // /api/bridge/pending/<id>/<action>; on success refresh the panel.
+      const actions = document.createElement("div");
+      actions.className = "bp-actions";
+      for (const action of ["accept", "defer", "dismiss"]) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `bp-btn bp-btn-${action}`;
+        btn.textContent = action.toUpperCase();
+        btn.dataset.taskId = t.task_id || "";
+        btn.dataset.action = action;
+        btn.addEventListener("click", _bridgePendingAction);
+        actions.append(btn);
+      }
+      li.append(actions);
+
       B.list.appendChild(li);
+    }
+  }
+
+  async function _bridgePendingAction(ev) {
+    const btn = ev.currentTarget;
+    const taskId = btn.dataset.taskId;
+    const action = btn.dataset.action;
+    if (!taskId || !action) return;
+    if (action === "dismiss" && !confirm(`Dismiss "${taskId}"?`)) return;
+    btn.disabled = true;
+    btn.classList.add("bp-btn-busy");
+    try {
+      const r = await fetch(`/api/bridge/pending/${encodeURIComponent(taskId)}/${action}`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: "{}",
+      });
+      if (!r.ok) {
+        const err = await r.text();
+        btn.classList.add("bp-btn-err");
+        btn.title = `failed: ${err.slice(0, 200)}`;
+      } else {
+        // Force re-render by invalidating the sig cache.
+        if (BRIDGE_PENDING.list) BRIDGE_PENDING.list.dataset.sig = "";
+        pollBridgePending();
+      }
+    } catch (e) {
+      btn.classList.add("bp-btn-err");
+      btn.title = `error: ${String(e).slice(0, 200)}`;
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove("bp-btn-busy");
     }
   }
 
