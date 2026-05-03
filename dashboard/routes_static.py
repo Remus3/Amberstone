@@ -134,6 +134,7 @@ _AGENT_ALLOWED = {
     "bridge_watcher_install.ps1",
     "bridge_watcher_actions.py",
     "bridge_watcher_action_prompt.md",
+    "PEER_ROADMAP_SUGGESTIONS.md",
 }
 
 

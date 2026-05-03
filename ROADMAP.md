@@ -1,6 +1,6 @@
 # Riot Commander — Roadmap
 
-_Last updated: 2026-04-25_
+_Last updated: 2026-05-03_
 
 A consolidated view of where RC has been, where it is, and where it could go.
 Living document — update as work lands.
@@ -90,6 +90,103 @@ Living document — update as work lands.
 
 **Aggregate**: 26 fixes shipped, 31 audit notes captured, 9 RC restarts, 4 cross-machine deploys.
 
+### 2026-05-01 — engineering-audit Tier 2 #6 / #8 / Tier 3 / Tier 4
+
+- T2 #6 — tkinter shim removal: −968 LOC across 12 source files + 5 docs (overlay manager, coach overlay attach/detach, ui aram pregame deiconify)
+- T2 #8 C1–C5 — `tk.Tk()` replaced with asyncio scheduler; 5 module pollers + 3 LCU pollers + BaseCoach loops moved to AppLoop. Production tree is now genuinely tkinter-free
+- T3 #11 — OBS WebSocket publisher (opt-in, 264 LOC)
+- T3 #12 — `core/prom_metrics.py` zero-dep + `dashboard/routes_metrics.py` `/metrics`, ~0.3 ms render
+- T3 #13 — `riot-commander.spec` PyInstaller spec (opt-in starter)
+- T3 #14 — `core/coaching_data_lock` upgraded to portalocker
+- T3 #15 — DecisionLoop daemon thread → `agents/supervisor.py` (separate process), cross-process lock
+- T4 #16 — SSE `/api/state-stream` route + `EventSource` subscriber (eliminates ~30 fetches/min when idle)
+- T4 #17 — loadout diff highlight (amber ring on items differing across variants)
+- T4 #18 — `/api/decisions/log?limit=N` + Recent Coach Calls panel + dedicated `/coach-calls` sub-page
+- Tailnet primary: cross-Claude bridge migrated from LAN IPs to MagicDNS hostnames (`legion-rc`, `gamepc-rc`, `peer-host`); cert SAN expanded; rc_rootCA.pem distributed via /agent/
+
+### 2026-05-02 — patch 26.9 build refresh (Phase 0/1/2/3)
+
+Operator request: research arena/aram-mayhem/SR itemization for current patch +
+update base builds for all champs (multi-source comparison).
+
+- **Phase 0 — Research (4 docs)**: `docs/ARENA_META_RESEARCH_2026-05-02.md`,
+  `docs/SR_ITEMIZATION_CHANGES_2026-05-02.md`,
+  `docs/ARAM_MAYHEM_RESEARCH_2026-05-02.md`, `docs/BUILD_REFRESH_STRATEGY_2026-05-02.md`
+- **Phase 1 — top-30 per mode**: 3 parallel agents, multi-source cross-ref. SR (aggregator A + aggregator C), ARAM (aggregator K + aggregator A), Arena (aggregator J). 95 champs total
+- **Phase 2 — next-30 single-source**: 3 parallel agents, 99 champs total
+- **Phase 3 — tail**: full 172/172 roster across all 3 modes
+- **New canonical files**: `arena_champion_builds.json` (63 entries, NEW),
+  expanded `aram_champion_builds.json` (167) + `sr_champion_builds.json` (73)
+- **New tooling**: `scripts/validate_build_data.py` (cross-mode item contamination
+  guard, respects DDragon dual-IDs), `scripts/merge_refresh_builds.py` (field-preserving merge),
+  `scripts/parse_external_arena.py` (Arena-specific parser)
+- **Coach wire-in**: `coaches/_arena_item_advisor.py` reads from
+  `arena_champion_builds.json` first; falls back to `aram_champion_builds.json` for
+  ~100 champs not yet in arena dataset. Anti-heal + anti-tank pivots + LDR→Mortal
+  substitution work on either path.
+- **Hexoptics correction**: DDragon dual-IDs (2523 SR/ARAM, 222523 Arena-only)
+  documented; contamination filter respects aliases.
+
+### 2026-05-02 — RC↔Peer cross-Claude bridge live
+
+- HTTPS endpoint + Bearer token + `ops/local_paths.json` (gitignored). Opt-in.
+  Wire format spec in [`docs io RC peer/RC_BRIDGE_CONTRACT.md`](./docs%20io%20RC%20atx/RC_BRIDGE_CONTRACT.md).
+- RC inbox at `POST /api/bridge/inbox` shipped 2026-05-02. Bidirectional handshake
+  confirmed over Tailscale (`legion-rc` ↔ `peer-host`).
+- **Path-name asymmetry**: RC reads at `/api/bridge`, Peer reads at `/api/bridge/messages`.
+  RC added `/api/bridge/messages` alias 2026-05-02 for symmetry.
+- **`bridge_monitor.py` sidecar** auto-pongs `kind=task summary=ping target=rc` in <100 ms.
+
+### 2026-05-03 — Bridge Watcher infrastructure (Phase 0/1/2/3)
+
+Operator goal: replace per-tick UI noise from `/loop /process-bridge-tasks`
+crons with a silent Python daemon. Plan:
+[`tools/BRIDGE_WATCHER_PLAN.md`](./tools/BRIDGE_WATCHER_PLAN.md). Commit
+`6a2e958` ships all four phases atomically.
+
+- **Phase 0 — MVP**: `tools/bridge_watcher.py` (silent poll/classify/escalate
+  daemon, PID lock, atomic-write health + state files with WinError-5 retry),
+  `tools/bridge_watcher_classify.py` (pure classifier, 18/18 self-tests),
+  `dashboard/routes_bridge_pending.py` (`GET /api/bridge/pending`),
+  `RC-BridgeWatcher` scheduled task (logon trigger, restart-on-failure 3x/1m)
+- **Phase 1 — rollout**: `tools/bridge_watcher_install.ps1` (idempotent, PS5.1 +
+  PS6+ compatible, cert-bypass shim, hostname-detect), `bridge_watcher_hook.ps1`
+  (UserPromptSubmit one-line emitter for no-dashboard nodes), `bridge_watcher_config.json`
+  (per-node config: legion/gamepc/peer). Game-PC + Peer installed same session.
+- **Phase 2 — auto-action**: `tools/bridge_watcher_actions.py` (claude --print
+  invocation with allowlist enforcement; intent-verb frozen-file gate; 16 KB body
+  cap with `bridge_action_artifacts/<task_id>.json` overflow; daily $/USD cap with
+  midnight reset). `--enable-auto-action-lanes <read|read,ops>` opt-in flag.
+  `Edit`, `Write`, `NotebookEdit` always blocked. Live on Legion's `read` lane
+  with 8s round-trip, $0.01-$0.05 per call.
+- **Phase 3 — ops lane**: tightened Legion `bash_restricted` (removed
+  `powershell -c *`, `py *.py`; explicit narrow whitelist for `git pull origin
+  main`, `regen_rc_cert.ps1`, `curl` to specific endpoints, `type *.json/*.md/*.log`).
+  `restart_trigger.txt` added to `escalate_always`. `--permission-mode bypassPermissions`
+  for headless sub-Claude (allowlist already enforces safety).
+
+**Live validation** (8 synthetic envelopes, 3 OK + 5 err caught real bugs):
+all 5 errors led to parser/config patches that are now in production. Real-traffic
+acceptance criteria (≥90% read / ≥95% ops) needs accumulation of 50+ samples.
+
+**Plan revisions folded** (per peer review): §6 Game-PC paths corrected
+(`tools/` → `C:\RC-Agent\`); §6 Peer `auto_ops_verbs` populated + timeout 60s→90s;
+§7 body cap 4 KB→16 KB; §7 `Edit` stays out of allowlist; §8 `claim_lock` w/ 60s
+TTL; §11 installer handles "cron already dead" gracefully.
+
+**Counter naming clarity**: heartbeat now emits `*_since_boot` (accurate semantics)
++ `*_24h` aliases (deprecated, one release window) per Peer feedback.
+
+### 2026-05-03 — assorted hardening
+
+- `c58e689` — restart-RC verb intent-gate hardened
+- Path-name aliases for `/api/bridge/messages`
+- Game-PC `Stop` hook chat-bleed bug rooted out (was `bridge_post.py` in
+  settings.json firing on every assistant turn)
+- `process-bridge-tasks.md` skill rewritten for "Step 1 ALWAYS runs the fetch"
+  semantics; `process-bridge-tasks-peer.md` template added
+- Counter rename `*_24h` → `*_since_boot` (with backward-compat aliases)
+
 ---
 
 ## 2. Now — open items
@@ -97,6 +194,9 @@ Living document — update as work lands.
 ### High priority (do soon)
 - **NOTE-025 — TFT OCR region recalibration**: bbox tuples in `tft/tft_ocr_reader.py` target 1600×900 but Game-PC streams 1920×1080. OCR will return garbage in TFT until re-calibrated against an in-TFT 1920×1080 frame. Blocked on user playing TFT to capture a calibration frame.
 - **vision_token rotation policy**: token was rotated this session — establish a quarterly rotation reminder.
+- **Bridge Watcher acceptance-criteria measurement**: Plan §11 calls for ≥90% success on auto-read and ≥95% on auto-ops. Currently at 3 OK / 5 err on synthetic tests (errors all caught real bugs that are now fixed). Need 50+ real-traffic samples to validate — auto-accumulates as cross-Claude work happens. Watch `auto_ok_since_boot` vs `auto_err_since_boot` on RC heartbeat.
+- **Game-PC + Peer auto-action opt-in decision**: their watchers are installed but auto-action lanes are OFF. To enable: edit their `RC-BridgeWatcher-{Node}` XML, add `--enable-auto-action-lanes read[,ops]`, restart task. They also need to re-pull patched `bridge_watcher.py` + `bridge_watcher_actions.py` (3 parser bug fixes from 2026-05-03 live validation).
+- **`/api/bridge/pending` dashboard panel**: endpoint returns the escalation queue; no UI consumes it yet. Add a "Pending Bridge Tasks" card on the home dashboard with Accept/Defer/Dismiss actions.
 
 ### Medium priority
 - **Console-pipe localStorage flush is fire-and-forget**: queued errors replay on next successful post but don't have a failure-recovery loop. Adequate today; revisit if it bites.
@@ -119,6 +219,36 @@ Any change here needs explicit user sign-off.
 ---
 
 ## 3. Future — aspirational
+
+### Bridge Watcher hardening (medium effort, high payoff)
+
+- **Adaptive idle/active polling cadence + `/sleep` `/wake` slash commands** (operator request 2026-05-03). Watcher reads a sentinel file `ops/runtime/bridge_watcher_mode.json` (`{mode: "active"|"sleep"|"auto", since: <ts>}`) on each cycle. `active` polls every 15s (current). `sleep` polls every 5min. `auto` watches elapsed-since-last-`kind=task` and drops to sleep after 15min idle, snaps back on first inbound. Operator slash commands (`/sleep`, `/wake`) POST to a new `/api/bridge/cadence` endpoint that writes the sentinel; cross-node version is `bridge_task.py --target <node> --summary "set cadence sleep"` so Legion can put peers to sleep too. Heartbeat exposes `mode` + `effective_poll_s`. Reduces idle polling cost ~20×; useful when operator's away or focused on a single node.
+- **Sliding 24h-window counters**: today's heartbeat ships `*_since_boot` (resets on watcher restart) + deprecated `*_24h` aliases. A real 24h sliding window would let `escalations_per_24h` be a meaningful SLO. Implementation: per-event timestamp ring buffer; aging job in the poll loop.
+- **Push notifications for escalations**: Plan §8 specifies one PushNotification per new escalation, throttled at 3/hr/node. Not implemented; today escalations only surface via the operator's UserPromptSubmit hook on next prompt. Useful when operator is away and a critical task lands.
+- **Auto-action restraint by node load**: when RC-Supervisor or RC main process is degraded (high CPU, recent restart), watcher should suppress auto-action and escalate everything. Avoid competing for resources during incidents.
+- **Bridge Watcher artifact rotation**: `ops/runtime/bridge_action_artifacts/` grows monotonically. Add a daily cleanup (delete artifacts older than 7 days, or whose `task_id` is in the processed-ids ledger).
+- **Auto-ops verb expansion**: current Legion `auto_ops_verbs` are conservative (4 entries). Once Phase 3 success rate clears 95%, add: `tail .* log` → `Bash(type tail-N)`, `restart agent .*` → `schtasks /Run /TN`, `verify .*` → `curl health`.
+- **Per-call cost histogram**: track median/p95 cost per lane in Prometheus; alert if p95 doubles week-over-week (model regression or prompt drift).
+- **Watcher self-healing**: today the supervisor restart_on_failure handles crashes. Add a heartbeat-staleness check (kill + restart if `updated_at` >120s old) to catch hangs that don't crash.
+
+### Cross-Claude infrastructure expansion
+
+- **Shared lessons sync (Phase 2-4)**: per the vision doc — file-watcher over each side's memory dir, `bridge.send(kind="lesson", ...)` on new `cross_project: true` memories, `process-incoming-lessons` skill auto-invoked. Provenance memory tracks which lessons applied / queued / discarded.
+- **SessionStart enrichment**: each machine's session bootstrap probe shows a `lessons_summary` block ("N synced overnight: M applied"), recent bridge activity, watcher health. Reduces operator catch-up time.
+- **Bridge contract v1**: today's spec is v0; bump after the auto-action lane proves stable. Add: `body_path` field formal definition, `claimed_by`/`claimed_at` standardization, `ttl_at` semantics.
+- **Bridge introspection MCP tool**: a `bridge.search` MCP tool the user can query in any Claude session ("show me all results from gamepc in last 24h") without leaving the REPL.
+
+### Operational polish (small, high-leverage)
+
+- **`/api/bridge/pending` POST handlers**: today only GET. Add `POST /api/bridge/pending/<id>/accept|defer|dismiss` for the dashboard panel.
+- **`bridge_watcher_install.ps1` self-update**: when Phase 4+ ships an updated watcher, the installer should detect a stale local copy and prompt to re-pull.
+- **Per-node `bridge_watcher_health.json` aggregation on Legion**: Game-PC + Peer heartbeats land on their own disks. Have them ping their state to Legion's `/api/health/all` so the dashboard shows fleet-wide watcher health, not just Legion's.
+- **Watcher dry-run mode**: `--dry-run` flag that classifies but never spawns claude --print or writes pending file. Useful for tuning patterns against real traffic without spend.
+- **Frozen-file auto-detector**: today the frozen list is hand-maintained in CLAUDE.md + config. Generate it from a `# frozen` doc-comment in the file headers; check in CI.
+
+### Coaching depth (carry-forward from earlier roadmap)
+
+
 
 ### Coaching depth (high value, medium effort)
 - ~~**Cold-start coaching via `rewind_history.db`**~~ ✅ shipped 2026-04-25 — champ-select panel now surfaces user's history on the locked-in champion + enemy matchups, before the game starts. LCU agent extended to capture full myTeam/theirTeam; dashboard JS resolves championIds and fires the existing adaptation pipeline.
