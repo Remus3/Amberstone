@@ -65,7 +65,11 @@ def _resolve_token(token_file: Path | None) -> str | None:
         try:
             data = json.loads(token_file.read_text(encoding="utf-8"))
             if isinstance(data, dict):
-                return (data.get("rc_peer_bridge_secret")
+                # bridge_shared_secret is the canonical RC key (matches
+                # core/bridge.py:_load_config). The legacy aliases stay for
+                # peers that wrote their token file before the rename.
+                return (data.get("bridge_shared_secret")
+                        or data.get("rc_peer_bridge_secret")
                         or data.get("bridge_secret")
                         or data.get("shared_secret"))
         except Exception as exc:
