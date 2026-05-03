@@ -1052,6 +1052,21 @@ class CoachIntegration:
                              {"spell": _sf, "cd_s": 0}],
                 })
 
+        # 2026-05-02 (s31): force-overwrite ally_comp/enemy_comp from the
+        # coach's current input. Claude's response shape doesn't include
+        # comps, so the read-merge-write cycle below preserves whatever
+        # was in coaching_data.json from a prior game. Without this, the
+        # dashboard's RIGHT NOW / target / fight-rule panels reference the
+        # PREVIOUS match's enemy comp for the first ~5 minutes of every
+        # new game (until the coach engine eventually surfaces fresh
+        # advice that names the actual current opponents). Use direct
+        # assignment (not setdefault) — these MUST trump whatever's on
+        # disk every tick.
+        for _k in ("ally_comp", "enemy_comp"):
+            _v = ls.get(_k)
+            if _v is not None:
+                fields[_k] = _v
+
         # NOTE-003: hold the shared coaching_data_lock around the entire
         # read-modify-write cycle so the dashboard's _set_pregame /
         # /api/command refresh handlers can't clobber our update with their
