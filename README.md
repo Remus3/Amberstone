@@ -96,10 +96,33 @@ Three Claudes coordinate over a Tailscale-secured bridge:
 - **Wire format** — JSON envelopes per [`docs io RC peer/RC_BRIDGE_CONTRACT.md`](./docs%20io%20RC%20atx/RC_BRIDGE_CONTRACT.md): `{source, summary, kind, id?, target?, body?, in_reply_to?}`
 - **Inbox** — `POST /api/bridge/inbox` (Bearer-guarded; 503 if unconfigured, 401 on bad token, 400 on bad JSON, 200 on accept)
 - **Outbound** — `from core import bridge; bridge.send(source=..., summary=..., kind=..., target=..., body=...)` returns `(ok, detail)` and never raises
-- **Auto-flow** — Game-PC and Peer run `/loop 1m /process-bridge-tasks` under `--dangerously-skip-permissions`; Legion's `bridge_monitor.py` sidecar auto-pongs `kind=task summary=ping target=rc` in <100ms
 - **Audit trail** — every inbound + outbound entry persists to `dashboard/_bridge_log.bridge_log` deque + `ops/runtime/bridge_log.jsonl`; bridge freshness is a Prometheus gauge (`rc_bridge_gamepc_result_age_seconds`) and a colored dot on the home dashboard
 
 Fully bidirectional and operator-typeable: `bridge_task.py --target gamepc "<prompt>"` and the result lands back via the bridge without operator-mediated relay.
+
+### Bridge Watcher daemon (2026-05-03)
+
+The interactive `/loop /process-bridge-tasks` cron pattern was replaced by a
+silent Python daemon (`tools/bridge_watcher.py`) that polls the bridge,
+classifies envelopes, and either auto-actions whitelisted tasks via a
+headless `claude --print` sub-process or escalates to a pending-queue file
+the operator drains via `/process-bridge-tasks`. Full plan:
+[`tools/BRIDGE_WATCHER_PLAN.md`](./tools/BRIDGE_WATCHER_PLAN.md).
+
+| Phase | What | Status |
+|---|---|---|
+| **0 — MVP** | daemon, classifier, escalation queue, `GET /api/bridge/pending`, `RC-BridgeWatcher` scheduled task | ✅ live on Legion |
+| **1 — rollout** | `bridge_watcher_install.ps1` one-liner installer, per-node config, UserPromptSubmit hook for no-dashboard nodes | ✅ installed on Game-PC + Peer |
+| **2 — auto-action** | `claude --print --bare` invocation with restricted tool allowlist, intent-verb frozen-file gate, 16 KB body cap with on-disk overflow, daily `$/USD` cap | ✅ `read` lane live on Legion |
+| **3 — ops lane** | tightened `bash_restricted` (no `powershell -c *`, no `py *.py`), `restart_trigger.txt` in `escalate_always`, `bypassPermissions` for headless | ✅ `ops` lane live on Legion |
+
+Hard rules baked into the watcher:
+- `Edit` / `Write` / `NotebookEdit` are NEVER in any auto-action allowlist
+- Frozen-file gate uses **intent-verb** matching (write verbs near the path) — read queries on frozen files are fine, write attempts escalate
+- Per-call budget is `min(config.per_call_budget_usd, remaining_daily_cap)`
+- Auto-action defaults to **OFF**; opt in via `--enable-auto-action-lanes <read|read,ops>`
+- Pending queue is dedupe-keyed by `task_id` (or `source::ts` composite) so the same envelope never escalates twice
+- Heartbeat exposes `auto_actions_since_boot`, `auto_ok_since_boot`, `auto_err_since_boot`, `tokens_used_today_usd` for acceptance-criteria measurement
 
 ---
 
@@ -148,11 +171,22 @@ Test surface: `tests/phase2_smoke/` (TFT worker, SR/ARAM worker) + `tests/snapsh
 
 ## Roadmap
 
+See [`ROADMAP.md`](./ROADMAP.md) for the full milestone ledger.
+Highlights of what's open after the 2026-05-03 Bridge Watcher ship:
+
+### Bridge Watcher hardening (2026-05+)
+
+- **Acceptance-criteria measurement.** Plan §11 calls for ≥90% success on auto-read and ≥95% on auto-ops. Need to accumulate ~50+ real-traffic samples and graph success rate per-pattern; downgrade specific patterns to escalate-only if they drag the rate down.
+- **Sliding 24h-window counters.** Today the heartbeat ships `*_since_boot` counters (reset on watcher restart) plus deprecated `*_24h` aliases. A real 24h sliding window would let `escalations_per_24h` be a meaningful SLO.
+- **Push notifications for escalations.** Plan §8 specifies one PushNotification per new escalation with a 3/hr/node throttle. Not implemented; today escalations only surface via the operator's UserPromptSubmit hook on next prompt.
+- **Dashboard panel for `/api/bridge/pending`.** Endpoint serves the queue; no UI consumes it yet. Add a "Pending Bridge Tasks" card on the home dashboard with Accept/Defer/Dismiss actions.
+- **Auto-action restraint by node load.** When RC-Supervisor or RC main process is degraded, suppress auto-action (escalate everything) so the watcher doesn't compete for resources.
+
 ### Cross-Claude learning sync (2026-05+, in flight)
 
 Operator goal: lessons learned on one machine apply to the others overnight, with provenance memories and a SessionStart wake-up summary. Vision doc: [`docs io RC peer/CROSS_CLAUDE_LEARNING_SYNC_VISION_2026-05-02.md`](./docs%20io%20RC%20atx/CROSS_CLAUDE_LEARNING_SYNC_VISION_2026-05-02.md).
 
-- **Phase 1 — schema + filter contract.** Both sides agree on the `cross_project: true` + `applies_when` memory frontmatter, the `kind=lesson` envelope, and the sender/receiver filter tables. RC's commitment doc: [`RC_PHASE1_LESSON_SCHEMA_2026-05-02.md`](./docs%20io%20RC%20atx/RC_PHASE1_LESSON_SCHEMA_2026-05-02.md). Awaiting Peer's symmetric doc / divergence flags.
+- **Phase 1 — schema + filter contract.** ✅ Both sides agreed on the `cross_project: true` + `applies_when` memory frontmatter, the `kind=lesson` envelope, and the sender/receiver filter tables. RC's commitment doc: [`RC_PHASE1_LESSON_SCHEMA_2026-05-02.md`](./docs%20io%20RC%20atx/RC_PHASE1_LESSON_SCHEMA_2026-05-02.md).
 - **Phase 2 — sender + receiver.** File-watcher over each side's memory dir; `bridge.send(kind="lesson", ...)` on new `cross_project: true` memories. `process-incoming-lessons` skill auto-invoked by `/loop` decides per-lesson: apply / queue / discard / reject, writes provenance memory, acks the peer.
 - **Phase 3 — wake-up surface.** Each machine's SessionStart probe extends with a `lessons_summary` block ("N synced overnight: M applied, K queued, L discarded").
 - **Phase 4 — polish.** Auto-revert if applied lessons cause test failures; lesson confidence scoring; symmetry check ("did the lesson take?").
@@ -167,8 +201,9 @@ Not committed — stack-of-ideas for sessions where audit work is exhausted.
 
 - **Per-enemy alive/dead tiles** on the home dashboard — orphan render functions exist (`renderEnemyStrip`) but the DOM was deliberately removed 2026-04-23 for minimap space + the data pipeline emits `enemy_team` while the JS reads `enemy_comp`. Reviving needs UI approval AND a server-side rename (~3 commits across 3 files). See memory `reference_orphan_team_strips`.
 - **Push channel for bridge inbox** — replace 2s polling on the bridge monitor with an in-process notify in `bridge_post()` so the monitor sees inbound in <10ms. Touches frozen `dashboard/_bridge_log.py`.
-- **Path-name alignment** — add `/api/bridge/messages` as an alias for RC's `/api/bridge` so Peer's contract path resolves on both sides. 1-line change.
 - **PowerShell 7 migration** — bundle with a future "ops day"; PS 5.1 quirks haven't blocked anything.
+- **Bridge Watcher artifact rotation** — `ops/runtime/bridge_action_artifacts/` grows monotonically. Add a daily cleanup (delete artifacts older than 7 days, or whose task_id is in the processed-ids ledger).
+- **Auto-ops verb expansion** — current Legion `auto_ops_verbs` are conservative (4 entries). Once Phase 3 success rate clears 95%, add: `tail .* log` → `Bash(type tail-N)`, `restart agent .*` → `schtasks /Run /TN`, `verify .*` → `curl health`.
 
 ---
 
