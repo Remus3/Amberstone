@@ -1,66 +1,90 @@
 {
-  "_note": "ARAM builds for full champion roster. Patch 26.9 / Season 16. Updated 2026-05-02 (s33) — removed arena-only Hexoptics C44 contamination from 4 champs.",
+  "_note": "ARAM builds for full champion roster. Patch 26.9 / Season 16. Updated 2026-05-03 (s33 phase merge — 70 champions refreshed via aggregator K + aggregator A primary sources).",
   "_tiers": "S=dominant, A=strong, B=viable, C=weak, D=hard-griefing",
   "_format": "build_note is the coaching-relevant line injected into ARAM coach system prompt.",
   "Aatrox": {
     "aram_tier": "A",
-    "build_note": "Deathbringer Stance (passive): every ~25s auto deals % max HP bonus damage — weave autos between abilities. The Darkin Blade (Q) — 3 swings: last swing is AOE knockup. Sweet spot of each Q is the edges, not the center. World Ender (R) heals for 70% of damage dealt — engage R, burst as much as possible, sustain back to full. Never use R to finish — use it to survive.",
+    "build_note": "Conqueror sustain bruiser — Sundered Sky heal proc + Eclipse shield carry the long fights.",
     "core_items": [
-      "Titanic Hydra",
-      "Sterak's Gage",
-      "Black Cleaver"
+      "Sundered Sky",
+      "Eclipse",
+      "Spear of Shojin"
     ],
-    "vs_tanks": "Thornmail — sustained fights where Deathbringer Stance proc is most valuable",
-    "vs_healing": "Thornmail in core",
+    "vs_tanks": "Black Cleaver",
+    "vs_healing": "Maw of Malmortius (63.0% WR pickup vs heavy AP)",
     "vs_burst": "Immortal Shieldbow replaces Sterak's vs poke burst",
     "full_build": [
-      "Plated Steelcaps",
-      "Sunfire Aegis",
-      "Sterak's Gage",
+      "Sundered Sky",
+      "Mercury's Treads",
+      "Eclipse",
+      "Spear of Shojin",
       "Death's Dance",
-      "Thornmail",
-      "Gargoyle Stoneplate"
-    ]
+      "Sterak's Gage"
+    ],
+    "tier": "D",
+    "wr": 48.8,
+    "pr": null,
+    "boots": "Mercury's Treads",
+    "kit_notes": "Sweet-spot Q drag-fighter; healing-lock R demands antiheal and forces engages."
   },
   "Ahri": {
     "aram_tier": "B",
-    "build_note": "E (Charm) is the combo opener — Charmed enemies take 20% bonus damage from all sources. Full combo: E-charm → W orbs through target → Q returning charm → R dash1-burst → R dash2-escape. Luden's + charm bonus = massive burst window. R (Spirit Rush) 3-dash reset on kill — never use R to engage, use it to execute THEN escape.",
+    "build_note": "Note tier B (down from old A) — aggregator K WR 51.5%. Charm + Luden stacking still does the burst, but kit feels behind the better S-tier mages this patch.",
     "core_items": [
-      "Luden's Tempest",
-      "Shadowflame",
-      "Rabadon's Deathcap"
+      "Luden's Echo",
+      "Stormsurge",
+      "Shadowflame"
     ],
-    "vs_tanks": "Void Staff — all sources are magic damage",
-    "vs_healing": "No anti-heal — one-shot burst oriented",
-    "vs_burst": "Banshee's Veil replaces Zhonya's vs poke mages (Lux, Xerath)",
+    "vs_tanks": "Void Staff replaces Shadowflame 6th — flat-AP burst kit not anti-tank by design",
+    "vs_healing": "Morellonomicon (46.9% WR — worst-WR situational) — only vs Soraka/Sona stacked",
+    "vs_burst": "Banshee's Veil 5th replaces Rabadon — spell shield blocks pick-CC chains",
     "full_build": [
+      "Lost Chapter",
       "Sorcerer's Shoes",
-      "Luden's Companion",
-      "Shadowflame",
+      "Luden's Echo",
+      "Stormsurge",
       "Rabadon's Deathcap",
-      "Void Staff",
-      "Zhonya's Hourglass"
+      "Shadowflame"
+    ],
+    "tier": "B",
+    "wr": 51.5,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "E (Charm) is the combo opener — Charmed enemies take 20% bonus damage from all sources. Full combo: E-charm → W orbs → Q returning charm → R dash1-burst → R dash2-escape. R 3-dash reset on kill — never use R to engage; R-execute then escape.",
+    "aram_specific": "ARAM neutral (no modifier). R-resets in ARAM are the win — wait for low-HP enemies, R-charm-execute, then R-escape. Don't open with R in 5v5.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Ahri",
+        "fetched": "2026-05-02",
+        "wr_seen": 51.5,
+        "games": 12261
+      }
     ]
   },
   "Akali": {
     "aram_tier": "B",
-    "build_note": "W (Twilight Shroud) smoke cloud gives invisibility — use to dodge enemy abilities or gain time. Five Point Strike (Q): outer ring applies slow, inner ring is full damage. E (Shuriken Flip) first hit retreats, second dash engages — fire first cast away then re-engage with second. R (Perfect Execution) two-part dash: R1 knocks back, R2 executes. Never R until target is vulnerable.",
+    "build_note": "Electrocute hybrid — Gunblade omnivamp keeps her alive between Shadowflame/Stormsurge bursts.",
     "core_items": [
-      "Night's Edge",
+      "Hextech Gunblade",
       "Shadowflame",
-      "Rabadon's Deathcap"
+      "Zhonya's Hourglass"
     ],
-    "vs_tanks": "Void Staff — all sources magic",
-    "vs_healing": "No anti-heal — single target burst",
+    "vs_tanks": "Void Staff",
+    "vs_healing": "Morellonomicon (Akali's W heal makes Grievous on enemies a side-benefit)",
     "vs_burst": "Banshee's Veil replaces Lich Bane vs burst",
     "full_build": [
+      "Hextech Gunblade",
       "Sorcerer's Shoes",
-      "Hextech Rocketbelt",
-      "Lich Bane",
+      "Shadowflame",
+      "Zhonya's Hourglass",
       "Rabadon's Deathcap",
-      "Void Staff",
-      "Zhonya's Hourglass"
-    ]
+      "Stormsurge"
+    ],
+    "tier": "D",
+    "wr": 42.5,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "Energy assassin; W shroud + R dash chain in/out, but no Flash on this map = pick spots."
   },
   "Akshan": {
     "aram_tier": "B",
@@ -124,107 +148,140 @@
   },
   "Amumu": {
     "aram_tier": "S",
-    "build_note": "Q (Bandage Toss) hooks one target — use to initiate or hook fleeing enemies. R (Curse of the Sad Mummy) stuns everyone in range — most powerful ARAM ult when enemy groups. Build AP or full tank: full tank = tankier and more consistent. Timing: wait for all 5 enemies to group, then Q one → W tantrum → R stun everyone.",
+    "build_note": "Aftershock tank — Sunfire/Heartsteel HP+aura damage is the scaling shell.",
     "core_items": [
       "Sunfire Aegis",
-      "Iceborn Gauntlet",
-      "Frozen Heart"
+      "Heartsteel",
+      "Winter's Approach"
     ],
-    "vs_tanks": "Thornmail on enemy tanks applying grievous during Curse of the Sad Mummy",
-    "vs_healing": "Thornmail in core — grievous on autos during R",
+    "vs_tanks": "Malignance (57.8% WR — ult-CDR pulse damage)",
+    "vs_healing": "Thornmail",
     "vs_burst": "Sterak's Gage replaces Gargoyle vs burst",
     "full_build": [
-      "Plated Steelcaps",
       "Sunfire Aegis",
-      "Frozen Heart",
-      "Thornmail",
-      "Warmog's Armor",
-      "Gargoyle Stoneplate"
-    ]
+      "Mercury's Treads",
+      "Heartsteel",
+      "Abyssal Mask",
+      "Unending Despair",
+      "Thornmail"
+    ],
+    "tier": "C",
+    "wr": 50.9,
+    "pr": null,
+    "boots": "Mercury's Treads",
+    "kit_notes": "AoE-stun ult engage tank; flash-R is the wombo button on this map."
   },
   "Annie": {
     "aram_tier": "A",
-    "build_note": "Stun passive charges on every ability cast — track stacks. At 4 stacks, next ability stuns. Combo: pre-charge to 4 stacks → W Incinerate AOE stun → R Tibbers on stun location → Q Disintegrate (free cast, refunds mana if kills). Tibbers aggros everything nearby — point him at carries. Molten Shield (E) reflect damage onto attackers.",
+    "build_note": "Tier D — 49.9% WR is genuinely bad. Annie's burst floor is lower than the current S-tier mage pool (Lux/Sera/Brand/Ziggs all out-burst her). Standard burst build still optimal among Annie options.",
     "core_items": [
-      "Luden's Tempest",
+      "Malignance",
       "Shadowflame",
-      "Rabadon's Deathcap"
+      "Liandry's Torment"
     ],
-    "vs_tanks": "Void Staff — Tibbers AOE magic damage through MR",
-    "vs_healing": "No anti-heal — burst carries only",
-    "vs_burst": "Banshee's Veil replaces Zhonya's vs poke",
+    "vs_tanks": "Liandry's Torment (54.5% WR) replaces Shadowflame — burn beats Annie's flat-AP scaling vs tanks",
+    "vs_healing": "Morellonomicon (54.6% WR) replaces Zhonya's vs healing comp — give up Tibbers safety for cut",
+    "vs_burst": "Zhonya's Hourglass already core — Banshee's Veil swap if all-AP enemies",
     "full_build": [
+      "Lost Chapter",
       "Sorcerer's Shoes",
-      "Luden's Companion",
+      "Malignance",
       "Shadowflame",
       "Rabadon's Deathcap",
-      "Void Staff",
       "Zhonya's Hourglass"
+    ],
+    "tier": "D",
+    "wr": 49.9,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "Passive Pyromania: every 4th cast stuns target (counter on her bar). Q on cast OR kill refunds mana — last-hit minions to maintain mana. R (Summon Tibbers) AOE damage + stun if passive ready. R+E shield burst is ARAM's 1.5s combo.",
+    "aram_specific": "ARAM neutral. Pyromania-stun + R is her only kill window — count Q/W casts on minion wave to ensure stun ready before fight. Tibbers is a bait absorber — 7s tank when summoned.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Annie",
+        "fetched": "2026-05-02",
+        "wr_seen": 49.9,
+        "games": 7519
+      }
     ]
   },
   "Aphelios": {
     "aram_tier": "A",
-    "build_note": "Season 16: Yun Tal gives 0% crit (pure AS). Fix build: RFC second for 25% crit, Collector third for 50% crit before IE. Turret (Infernum crescendum) setup at chokepoints wins ARAM. Learn weapon rotations — Gravitum root into Infernum/Calibrum for combo kills.",
+    "build_note": "Lethal Tempo crit — Collector+IE+Runaan's covers AoE-poke and execute simultaneously.",
     "core_items": [
-      "Yun Tal Wildarrows",
-      "Rapid Firecannon",
-      "The Collector"
+      "The Collector",
+      "Infinity Edge",
+      "Runaan's Hurricane"
     ],
-    "vs_tanks": "Lord Dominik's Regards 5th — Calibrum (sniper) shots apply LDR from safety",
-    "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies — never run both",
+    "vs_tanks": "Lord Dominik's Regards",
+    "vs_healing": "Mortal Reminder",
     "vs_burst": "Immortal Shieldbow 4th replaces The Collector vs heavy burst dive",
     "full_build": [
+      "The Collector",
       "Berserker's Greaves",
-      "Yun Tal Wildarrows",
-      "Rapid Firecannon",
-      "The Collector",
       "Infinity Edge",
-      "Lord Dominik's Regards"
-    ],
-    "kit_notes": "Weapons cycle: Calibrum (long range), Severum (heals), Gravitum (slow/root), Infernum (AoE), Crescendum (turret). Ult varies by off-hand: Calibrum = mark all enemies, Infernum = AOE cone (best in ARAM), Gravitum = root all. Gravitum R into Infernum ult = root then AOE sweep.",
-    "aram_specific": "Infernum (blue flame) ult in grouped ARAM = AOE sweep hitting everyone. Pre-stack Gravitum (grey chains) before fights for root. Place Crescendum turret at chokepoints during laning. Calibrum Q at max range for free poke between weapons."
-  },
-  "Ashe": {
-    "aram_tier": "S",
-    "build_note": "RFC first — empowered Frost Shot at max range procs Ranger's Focus (Q) for AOE slow. IE second (RFC 25% crit; IE 25% = 50% total before adding IE — need one more crit item first). Fix: RFC → Collector (50% total) → IE (75%, fully active). Ult any grouped fight from max range at fight start — it's free damage and disruption.",
-    "core_items": [
-      "Rapid Firecannon",
-      "The Collector",
-      "Infinity Edge"
-    ],
-    "vs_tanks": "Lord Dominik's Regards mandatory — perma-slow keeps tanks in range for LDR procs",
-    "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies — never run both",
-    "vs_burst": "Immortal Shieldbow replaces Bloodthirster — ISB + perma-slow = bait dive then shield",
-    "full_build": [
-      "Berserker's Greaves",
-      "Rapid Firecannon",
-      "The Collector",
-      "Infinity Edge",
+      "Runaan's Hurricane",
       "Lord Dominik's Regards",
       "Bloodthirster"
     ],
-    "kit_notes": "Q (Ranger's Focus) at max stacks: fires cone of arrows that AOE slow. Every auto is a slow. W (Volley) pokes and slows the entire ARAM corridor. Crystal Arrow (R) travels the full ARAM map — throw it at fight start from fountain for guaranteed hit. Hawkshot vision before fights.",
-    "aram_specific": "R from fountain range hits any grouped ARAM fight. Never stand in melee range — RFC + max range Frost Shot means you can slow everything without being in danger. Q stack up before fights using minions, then dump on enemy frontline for AOE slow."
+    "kit_notes": "Weapon-cycle ADC; Calibrum poke + Severum heal makes him the safest ARAM marksman pick.",
+    "aram_specific": "Infernum (blue flame) ult in grouped ARAM = AOE sweep hitting everyone. Pre-stack Gravitum (grey chains) before fights for root. Place Crescendum turret at chokepoints during laning. Calibrum Q at max range for free poke between weapons.",
+    "tier": "B",
+    "wr": 51.3,
+    "pr": null,
+    "boots": "Berserker's Greaves"
+  },
+  "Ashe": {
+    "aram_tier": "S",
+    "build_note": "Lethal Tempo Runaan's spread — perma-slow the team while IE/BORK shred the front.",
+    "core_items": [
+      "Runaan's Hurricane",
+      "Infinity Edge",
+      "Blade of The Ruined King"
+    ],
+    "vs_tanks": "Lord Dominik's Regards",
+    "vs_healing": "Mortal Reminder",
+    "vs_burst": "Immortal Shieldbow replaces Bloodthirster — ISB + perma-slow = bait dive then shield",
+    "full_build": [
+      "Berserker's Greaves",
+      "Runaan's Hurricane",
+      "Infinity Edge",
+      "Blade of The Ruined King",
+      "Lord Dominik's Regards",
+      "Bloodthirster"
+    ],
+    "kit_notes": "Slow-on-AA + global ult — peels and engages from poke range; the safest Howling Abyss carry.",
+    "aram_specific": "R from fountain range hits any grouped ARAM fight. Never stand in melee range — RFC + max range Frost Shot means you can slow everything without being in danger. Q stack up before fights using minions, then dump on enemy frontline for AOE slow.",
+    "tier": "A",
+    "wr": 53.9,
+    "pr": null,
+    "boots": "Berserker's Greaves"
   },
   "Aurelion Sol": {
     "aram_tier": "A",
-    "build_note": "Every ability kill/assist builds Stardust permanently — more stardust = bigger abilities. Q (Breath of Light) sustained beam: hold for maximum stardust stacks. W (Astral Flight) fly over terrain — use to close distance. E (Singularity) black hole grows and pulls. R (Falling Star/The Skies Descend) at 75 stardust: meteor impact + aftershock. Prioritize collecting stardust stacks every fight.",
+    "build_note": "DoT/CC mage rush — Blackfire+Rylai's slow lock targets so Liandry/Shadowflame burn tick.",
     "core_items": [
-      "Liandry's Anguish",
+      "Blackfire Torch",
       "Rylai's Crystal Scepter",
-      "Rabadon's Deathcap"
+      "Liandry's Torment"
     ],
-    "vs_tanks": "Void Staff — all magic; Stardust stacks increase all ability sizes",
-    "vs_healing": "No anti-heal — AOE stardust build",
+    "vs_tanks": "Void Staff (swap last item)",
+    "vs_healing": "Morellonomicon",
     "vs_burst": "Banshee's Veil replaces Rylai's vs burst",
     "full_build": [
+      "Blackfire Torch",
       "Sorcerer's Shoes",
-      "Luden's Companion",
+      "Rylai's Crystal Scepter",
+      "Liandry's Torment",
       "Shadowflame",
-      "Rabadon's Deathcap",
-      "Void Staff",
-      "Rylai's Crystal Scepter"
-    ]
+      "Rabadon's Deathcap"
+    ],
+    "tier": "D",
+    "wr": 49.6,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "Stacking-mage that orbits stars; needs to scale and kite — every star stacks DPS uptime.",
+    "_source": "https://aggregator-k.invalid/champion/AurelionSol"
   },
   "Aurora": {
     "aram_tier": "A",
@@ -328,22 +385,36 @@
   },
   "Brand": {
     "aram_tier": "S",
-    "build_note": "Blaze stacks (3 = detonation): W stun confirms triple stack. Combo: W-stun → Q-stun → E-bouncing pillar → R-bouncing ult. R (Pyroclasm) bounces between grouped enemies up to 5 times. In ARAM: W a group, walk through pillar (E), then ult for 5-bounce chain. Rylai's slows everything hit by Blaze explosions.",
+    "build_note": "Blackfire Torch + Liandry double %HP burn make tanks evaporate. Rylai slows the bouncing R targets so it chains longer. Sustained AOE — never the burst champ but always the highest-damage scoreboard.",
     "core_items": [
-      "Luden's Tempest",
-      "Shadowflame",
-      "Rabadon's Deathcap"
+      "Blackfire Torch",
+      "Liandry's Torment",
+      "Rylai's Crystal Scepter"
     ],
-    "vs_tanks": "Void Staff — Blaze passives deal % max HP magic damage",
-    "vs_healing": "Morellonomicon via autos between casts",
-    "vs_burst": "Banshee's Veil replaces Morellonomicon vs burst mages",
+    "vs_tanks": "Liandry's already in core — both Liandry + Blackfire scale on max HP, double-amp vs tanks",
+    "vs_healing": "Morellonomicon replaces Shadowflame 6th, OR Bloodletter's Curse (53.4% WR per aggregator K)",
+    "vs_burst": "Zhonya's Hourglass (56.8% WR) replaces Shadowflame vs assassin dive — long-channel R safe",
     "full_build": [
+      "Lost Chapter",
       "Sorcerer's Shoes",
-      "Luden's Companion",
+      "Blackfire Torch",
+      "Liandry's Torment",
       "Rylai's Crystal Scepter",
-      "Rabadon's Deathcap",
-      "Void Staff",
-      "Morellonomicon"
+      "Shadowflame"
+    ],
+    "tier": "S",
+    "wr": 53.6,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "Passive Blaze: 3 stacks ignite for max-HP burn. Q stuns ablazed targets. W AOE on ablazed = wider radius. R (Pyroclasm) bounces between champions, prioritizing ablazed — stack 3 on tank, fire R into enemy line for chain bounce. AOE-damage carry.",
+    "aram_specific": "+15% damage dealt, no damage-taken modifier — ARAM's most-buffed AOE mage. Ult in narrow lane bounces forever — fire from screen edge. Avoid Q starts (no jungle) — Lost Chapter stack first.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Brand",
+        "fetched": "2026-05-02",
+        "wr_seen": 53.6,
+        "games": 13818
+      }
     ]
   },
   "Braum": {
@@ -368,105 +439,138 @@
   },
   "Briar": {
     "aram_tier": "B",
-    "build_note": "No Mercy (passive) bleeds everything in range — she heals from all bleed damage. Crimson Curse (Q) bleed attack. Snack Attack (W) eats an enemy or ally. Head Rush (E) leap: breaks restraint, leaps to target. Bloody Business (R) frenzy: targets nearest enemy champion ignoring everything. ARAM note: R in crowd = she attacks everyone, heals massively from bleed. Don't R in a losing fight.",
+    "build_note": "Conqueror hybrid sustain — Sundered Sky + Spirit Visage stack heal amp, BORK for frontliners.",
     "core_items": [
-      "Trinity Force",
-      "Titanic Hydra",
-      "Sterak's Gage"
+      "Sundered Sky",
+      "Heartsteel",
+      "Eclipse"
     ],
-    "vs_tanks": "LDR + Serylda's — physical damage; headrush frenzy into armor pen",
-    "vs_healing": "Mortal Reminder replaces LDR vs healing — never both",
+    "vs_tanks": "Blade of The Ruined King",
+    "vs_healing": "Death's Dance (Grievous via item curtailed; rely on Executioner's component)",
     "vs_burst": "Immortal Shieldbow replaces Sterak's vs burst",
     "full_build": [
-      "Plated Steelcaps",
-      "Stridebreaker",
-      "Sterak's Gage",
+      "Sundered Sky",
+      "Mercury's Treads",
+      "Eclipse",
       "Death's Dance",
-      "Lord Dominik's Regards",
-      "Serylda's Grudge"
-    ]
+      "Spirit Visage",
+      "Sterak's Gage"
+    ],
+    "tier": "B",
+    "wr": 52.2,
+    "pr": null,
+    "boots": "Mercury's Treads",
+    "kit_notes": "Self-fearing bruiser; you don't kite, you berserk — frontline at 30% HP."
   },
   "Caitlyn": {
     "aram_tier": "S",
-    "build_note": "Hexoptics C44 first (55 AD + 25% crit) — triggers headshot every 6 autos or on trap/net. RFC second (25% crit) for empowered long-range headshot at max range. IE third (50% crit from Hexoptics + RFC before IE = IE fully active at 75%). Trap all health pack paths — every trap is a free headshot proc.",
+    "build_note": "Lethality-into-crit hybrid (Serrated Dirk start for early MS + lethality, then full crit). Note: Hubris was an option here but received 26.9 nerfs (60->55 AD); The Collector is the safer first crit.",
     "core_items": [
-      "Hexoptics C44",
-      "Rapid Firecannon",
-      "Infinity Edge"
+      "The Collector",
+      "Infinity Edge",
+      "Rapid Firecannon"
     ],
     "full_build": [
+      "Serrated Dirk",
       "Berserker's Greaves",
       "The Collector",
-      "Rapid Firecannon",
       "Infinity Edge",
-      "Lord Dominik's Regards",
-      "Bloodthirster"
+      "Rapid Firecannon",
+      "Lord Dominik's Regards"
     ],
-    "vs_tanks": "Lord Dominik's Regards 4th — swap to Mortal Reminder vs healing, never both",
-    "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies — never run both",
-    "vs_burst": "Immortal Shieldbow replaces Bloodthirster vs heavy burst — still reaches IE threshold",
-    "kit_notes": "Hexoptics C44 headshot triggers after: 6 autos, stepping on trap, or getting hit by net (E). RFC headshot at max range crits for massive damage. Traps at chokepoints force enemies off health packs. E-net to interrupt dashes/escapes. Never use E offensively — it's your escape and net combo.",
-    "aram_specific": "Trap all 4 health pack approach paths at game start. RFC extends Q and headshot range to 850+ — stay at absolute max range. Enemies stepping on traps give free headshots which crit with RFC active. Never dash forward with E — it's your only escape vs dive."
+    "vs_tanks": "Lord Dominik's Regards (52.9% WR) in core — 35% armor pen plus %HP damage",
+    "vs_healing": "Mortal Reminder (51.6% WR) replaces Lord Dominik's — pick one anti-tank slot, never both",
+    "vs_burst": "Bloodthirster (52.0% WR) replaces The Collector vs heavy poke comp — shield + lifesteal",
+    "kit_notes": "Passive Headshot: every 6th AA / every AA after E or trap deals bonus damage with extended range. W (Yordle Snap Trap) — pre-place at chokes for guaranteed Headshot. E (90 Caliber Net) self-knockback escape + slow. R (Ace in the Hole) channeled snipe — execute low-HP across screen.",
+    "aram_specific": "ARAM neutral. Long range = poke from screen-edge; never engage forward. R execution from base finishes ARAM-stranded low-HP. Place W traps in choke before fights start.",
+    "tier": "B",
+    "wr": 52.1,
+    "pr": null,
+    "boots": "Berserker's Greaves",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Caitlyn",
+        "fetched": "2026-05-02",
+        "wr_seen": 52.1,
+        "games": 16021
+      }
+    ]
   },
   "Camille": {
     "aram_tier": "B",
-    "build_note": "Adaptive Defenses (passive) shields vs dominant damage type of the last champion hit. Precision Protocol (Q) two hits: second hit crits for huge damage and slows. Tactical Sweep (W) outer edge slows AND heals Camille. Hookshot (E) two-part: hook terrain then kick off for 1s stun on landing. The Hextech Ultimatum (R) traps target in a zone — use on carry, then burst them in the cage.",
+    "build_note": "Conqueror Trinity rush — Sheen procs win extended trades; Hydra clears the wave gridlock.",
     "core_items": [
       "Trinity Force",
-      "Sterak's Gage",
-      "Black Cleaver"
+      "Sundered Sky",
+      "Death's Dance"
     ],
-    "vs_tanks": "LDR + Serylda's — Hookshot into armor pen stack",
-    "vs_healing": "Mortal Reminder replaces LDR vs healing — never both",
+    "vs_tanks": "Ravenous Hydra (55.8% WR as 2nd item)",
+    "vs_healing": "Mortal Reminder",
     "vs_burst": "Immortal Shieldbow replaces Sterak's vs burst",
     "full_build": [
-      "Plated Steelcaps",
       "Trinity Force",
+      "Mercury's Treads",
+      "Sundered Sky",
       "Death's Dance",
       "Sterak's Gage",
-      "Lord Dominik's Regards",
-      "Serylda's Grudge"
-    ]
+      "Ravenous Hydra"
+    ],
+    "tier": "D",
+    "wr": 45.3,
+    "pr": null,
+    "boots": "Mercury's Treads",
+    "kit_notes": "Precision duelist with E hookshot engage and R isolation — pick squishies off the flank."
   },
   "Cassiopeia": {
     "aram_tier": "S",
-    "build_note": "Twin Fang (E) resets CD when hitting poisoned target — infinite spam vs poisoned enemy. Apply poison with Q (Noxious Blast) or W (Miasma). Rylai's slow applies on every E cast = permanent slow vs poisoned target. R (Petrifying Gaze) stuns enemies facing you, slows others — turn away from Cassiopeia to not get stunned.",
+    "build_note": "Mana-scaling RoA→Archangel sustain into Liandry's tick — Rylai's is the in-built kite.",
     "core_items": [
-      "Liandry's Anguish",
+      "Rod of Ages",
+      "Archangel's Staff",
+      "Liandry's Torment"
+    ],
+    "vs_tanks": "Void Staff (swap Rylai's)",
+    "vs_healing": "Morellonomicon",
+    "vs_burst": "Banshee's Veil replaces Morellonomicon vs burst",
+    "full_build": [
+      "Rod of Ages",
+      "Sorcerer's Shoes",
+      "Archangel's Staff",
+      "Liandry's Torment",
       "Rylai's Crystal Scepter",
       "Rabadon's Deathcap"
     ],
-    "vs_tanks": "Void Staff — Noxious Blast (Q) can apply slow for Twin Fang spam",
-    "vs_healing": "Morellonomicon via autos before poison",
-    "vs_burst": "Banshee's Veil replaces Morellonomicon vs burst",
-    "full_build": [
-      "Sorcerer's Shoes",
-      "Rylai's Crystal Scepter",
-      "Zhonya's Hourglass",
-      "Rabadon's Deathcap",
-      "Void Staff",
-      "Morellonomicon"
-    ]
+    "tier": "D",
+    "wr": 42.9,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "Ranged DoT mage with poisoned ground area-denial; rooted to stay on top of targets without Flash chain.",
+    "_source": "https://aggregator-k.invalid/champion/Cassiopeia"
   },
   "Cho'Gath": {
     "aram_tier": "A",
-    "build_note": "Feast (R) executes and gives permanent HP stacks — eat minions/monsters for free HP; only use on champions when they're low enough to confirm kill. Rupture (Q) delayed AOE knock-up at cursor: aim slightly ahead of moving targets. Feral Scream (W) cone silence — point at carries during fights. Vorpal Spikes (E passive) AOE cone on auto attacks. More HP from Feast = bigger Gargoyle shield and more AOE Vorpal damage.",
+    "build_note": "Grasp HP-stack tank — Warmog's + Heartsteel + R-stacks = >5k HP late game.",
     "core_items": [
+      "Heartsteel",
       "Warmog's Armor",
-      "Sunfire Aegis",
-      "Gargoyle Stoneplate"
+      "Unending Despair"
     ],
-    "vs_tanks": "Thornmail — Feast (R) true damage ignores all resistances",
-    "vs_healing": "Thornmail in core",
+    "vs_tanks": "Unending Despair (passive AoE damage scales with HP)",
+    "vs_healing": "Thornmail",
     "vs_burst": "Sterak's Gage replaces Gargoyle vs burst",
     "full_build": [
-      "Plated Steelcaps",
-      "Sunfire Aegis",
-      "Frozen Heart",
+      "Heartsteel",
+      "Mercury's Treads",
       "Warmog's Armor",
+      "Unending Despair",
       "Thornmail",
-      "Gargoyle Stoneplate"
-    ]
+      "Kaenic Rookern"
+    ],
+    "tier": "C",
+    "wr": 50.9,
+    "pr": null,
+    "boots": "Mercury's Treads",
+    "kit_notes": "Stack-eating CC tank — feast stacks on champ kills, true-damage R executes."
   },
   "Corki": {
     "aram_tier": "B",
@@ -490,43 +594,54 @@
   },
   "Darius": {
     "aram_tier": "A",
-    "build_note": "Decimate (Q) outer ring heals Darius — position so only the outer blade hits enemy, not the handle. Hemorrhage (passive) 5 stacks = Noxian Might (free AD) for 5s. Apprehend (E) pulls enemies — use to yank backline carries from behind. R (Noxian Guillotine) resets on kill — chain R kills through grouped ARAM enemies.",
+    "build_note": "Conqueror Stridebreaker rush gives the slow he needs to land Q and dunk through the choke.",
     "core_items": [
-      "Black Cleaver",
-      "Sterak's Gage",
-      "Titanic Hydra"
+      "Stridebreaker",
+      "Trinity Force",
+      "Sundered Sky"
     ],
-    "vs_tanks": "Thornmail — autos during Hemorrhage bleed apply grievous",
-    "vs_healing": "Thornmail in core",
+    "vs_tanks": "Black Cleaver",
+    "vs_healing": "Thornmail",
     "vs_burst": "Sterak's Gage in core — activates at low HP",
     "full_build": [
-      "Plated Steelcaps",
-      "Trinity Force",
+      "Stridebreaker",
+      "Mercury's Treads",
+      "Sundered Sky",
       "Sterak's Gage",
       "Death's Dance",
-      "Thornmail",
-      "Gargoyle Stoneplate"
-    ]
+      "Spirit Visage"
+    ],
+    "tier": "C",
+    "wr": 50.5,
+    "pr": null,
+    "boots": "Mercury's Treads",
+    "kit_notes": "Bleed/dunk fighter; Q outer-edge heal + R reset is the team-fight loop."
   },
   "Diana": {
     "aram_tier": "A",
-    "build_note": "Crescent Strike (Q) arc — mark target for Moonsilver Blade empowered auto. Pale Cascade (W) 3 orbs burst when hit during channel + shield. Lunar Rush (E) dash resets when you hit Q-marked target. Moonfall (R) when near enemy champions: pull ALL nearby enemies to Diana then AOE burst. In ARAM: Q the group → E dash in → W → R pull all 5 → Zhonya's to survive.",
+    "build_note": "Dark Harvest burst rush — Stormsurge/Rocketbelt for mid-game one-shots; Conqueror+Heartsteel is a 54.7% niche.",
     "core_items": [
-      "Luden's Tempest",
-      "Nashor's Tooth",
-      "Rabadon's Deathcap"
+      "Stormsurge",
+      "Hextech Rocketbelt",
+      "Shadowflame"
     ],
-    "vs_tanks": "Void Staff — all magic; Moonfall (R) can pull entire ARAM group",
-    "vs_healing": "No anti-heal — burst assassin",
+    "vs_tanks": "Void Staff (swap Zhonya's)",
+    "vs_healing": "Morellonomicon",
     "vs_burst": "Banshee's Veil replaces Zhonya's vs poke",
     "full_build": [
+      "Stormsurge",
       "Sorcerer's Shoes",
-      "Nashor's Tooth",
-      "Lich Bane",
+      "Hextech Rocketbelt",
+      "Shadowflame",
       "Rabadon's Deathcap",
-      "Void Staff",
       "Zhonya's Hourglass"
-    ]
+    ],
+    "tier": "D",
+    "wr": 48.8,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "Lunar burst-assassin/diver; Q crescent + R pull = melee threat that can also frontline.",
+    "_source": "https://aggregator-k.invalid/champion/Diana"
   },
   "Dr. Mundo": {
     "aram_tier": "A",
@@ -550,22 +665,36 @@
   },
   "Draven": {
     "aram_tier": "A",
-    "build_note": "Catch BOTH axes on every throw — double catch means permanent Spinning Axes active. Never stand still while axes are in the air. Stand (E) blocks and sends back any projectile. R League of Draven stacks: every kill/death multiplies damage. Use R to finish grouped low-HP enemies.",
+    "build_note": "Tier D — 46.9% WR. Draven without lane-snowball gold engine = behind. Q-axe positioning is hard in ARAM density. Standard Collector+IE+BT crit-with-lifesteal build — Shieldbow swap survives ARAM dive comps.",
     "core_items": [
       "The Collector",
-      "Lord Dominik's Regards",
-      "Infinity Edge"
+      "Infinity Edge",
+      "Bloodthirster"
     ],
-    "vs_tanks": "Lord Dominik's Regards — Spinning Axe crits proc LDR",
-    "vs_healing": "Mortal Reminder replaces LDR vs healing",
-    "vs_burst": "Immortal Shieldbow — delays IE but safer",
+    "vs_tanks": "Lord Dominik's Regards (51.5% WR) in core — Draven AAs are massive damage, %pen amps",
+    "vs_healing": "Mortal Reminder (42.5% WR — bad) — Draven kit no synergy with anti-heal slot",
+    "vs_burst": "Immortal Shieldbow (54.4% WR) replaces Bloodthirster — shield triggers below 30% HP, saves Draven from one-shots",
     "full_build": [
+      "Long Sword",
       "Berserker's Greaves",
       "The Collector",
-      "Phantom Dancer",
-      "Navori Flickerblades",
       "Infinity Edge",
+      "Bloodthirster",
       "Lord Dominik's Regards"
+    ],
+    "tier": "D",
+    "wr": 46.9,
+    "pr": null,
+    "boots": "Berserker's Greaves",
+    "kit_notes": "Passive League of Draven: kill enemies = stacks for gold (cash out by killing more). Q (Spinning Axe) bonus AD on next AA — catch axe to refresh; AAs bounce off enemies and you reposition to catch. R (Whirling Death) global piercing axe — return-on-recast through entire enemy team.",
+    "aram_specific": "ARAM neutral. Q-axes auto-fall around Draven; in ARAM crowd you're catching axes between minion waves. R from spawn at low-HP enemies — recast for double-pass through entire enemy line.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Draven",
+        "fetched": "2026-05-02",
+        "wr_seen": 46.9,
+        "games": 7857
+      }
     ]
   },
   "Ekko": {
@@ -630,45 +759,68 @@
   },
   "Ezreal": {
     "aram_tier": "A",
-    "build_note": "Trinity Force first — Spellblade procs every Q for massive empowered auto. Muramana stacks fast with Q spam, dramatically increases sustained DPS mid-game. Never build pure crit on Ezreal — his Q autos proc on-hit effects. Ult across the map hits every grouped ARAM fight for free poke damage.",
+    "build_note": "Tier C — 50.3% WR. Pure-AD on-hit Trinity build over the old AP-Ez variant. Spear of Shojin is the 26.9 retention; Manamune scales infinitely off Tear stacks (ARAM = unlimited mana for stacking).",
     "core_items": [
       "Trinity Force",
       "Manamune",
-      "Serylda's Grudge"
+      "Spear of Shojin"
     ],
-    "vs_tanks": "Lord Dominik's Regards + Serylda's Grudge — double armor pen stack",
-    "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies — never run both",
-    "vs_burst": "Immortal Shieldbow replaces Bloodthirster — shields during E blink escape",
+    "vs_tanks": "Serylda's Grudge in core — Ezreal Q+passive scales with on-hit, %pen mandatory",
+    "vs_healing": "Mortal Reminder (41.2% WR — worst situational) — Ez can't drop crit slot easily",
+    "vs_burst": "Maw of Malmortius (50.6% WR) replaces Serylda's — magic shield + lifeline vs AP comp",
     "full_build": [
-      "Sorcerer's Shoes",
+      "Tear of the Goddess",
+      "Ionian Boots of Lucidity",
       "Trinity Force",
       "Manamune",
-      "Serylda's Grudge",
-      "Lord Dominik's Regards",
-      "Bloodthirster"
+      "Spear of Shojin",
+      "Serylda's Grudge"
     ],
-    "kit_notes": "Q (Mystic Shot) applies Sheen/Spellblade AND applies on-hit effects (Muramana bonus). Stack Manamune to Muramana by spamming Q. Arcane Shift (E) is both gap-close and escape — time it carefully. W (Essence Flux) marks enemies for increased Q damage. R (Trueshot Barrage) is free damage on grouped ARAM fights — throw it early every fight.",
-    "aram_specific": "Poke freely with Q — it has 1150 range and minimal mana cost after Muramana stacks. Ult at grouped enemies through walls and across map at start of every fight. Never be in melee range. Use E backward when engaged, not forward."
+    "kit_notes": "Passive Rising Spell Force: AS stacks per spell hit — keep Q'ing minions. Q (Mystic Shot) on-hit applies items + reduces all CDs by 1.5s — Trinity Force Spellblade procs every Q. E (Arcane Shift) blink + AA — reposition tool. R (Trueshot Barrage) global, low-priority finisher.",
+    "aram_specific": "+10% damage taken — Ez ARAM nerf. Q-poke from screen-edge is the safe play; never engage forward. E-blink wall-jumps work in ARAM lane edges. Tear stacking is faster in ARAM — Manamune by 12 min.",
+    "tier": "C",
+    "wr": 50.3,
+    "pr": 13.24,
+    "boots": "Ionian Boots of Lucidity",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Ezreal",
+        "fetched": "2026-05-02",
+        "wr_seen": 50.3,
+        "games": 16394
+      },
+      {
+        "url": "https://aggregator-a.invalid/lol/modes/aram/ezreal/build",
+        "fetched": "2026-05-02",
+        "wr_seen": 50.54,
+        "pr_seen": 13.24
+      }
+    ]
   },
   "Fiddlesticks": {
     "aram_tier": "S",
-    "build_note": "Crowstorm (R) blink to area then AOE channeling drain for 5s — enter from out-of-vision for surprise maximum duration. ARAM: disguise as scarecrow (stand still for 2.5s for maximum fear), then R into grouping enemies. Bountiful Harvest (W) AOE multi-target drain heals Fiddlesticks. Terrify (Q) on enemy without Dread = fear; on enemy already fearing = extra damage. Reap (E) silence cone. Zhonya's mid-channel to survive burst.",
+    "build_note": "Malignance ult-CDR rush, Liandry+Shadowflame for AoE tick — Zhonya is mandatory because R locks you in place.",
     "core_items": [
-      "Liandry's Anguish",
-      "Zhonya's Hourglass",
-      "Rabadon's Deathcap"
+      "Malignance",
+      "Liandry's Torment",
+      "Shadowflame"
     ],
-    "vs_tanks": "Void Staff — all magic; Crowstorm deals massive AOE",
-    "vs_healing": "No anti-heal — drain/burst",
+    "vs_tanks": "Void Staff (swap Zhonya's)",
+    "vs_healing": "Morellonomicon",
     "vs_burst": "Banshee's Veil replaces Zhonya's vs poke",
     "full_build": [
+      "Malignance",
       "Sorcerer's Shoes",
+      "Liandry's Torment",
       "Shadowflame",
       "Rabadon's Deathcap",
-      "Void Staff",
-      "Rylai's Crystal Scepter",
       "Zhonya's Hourglass"
-    ]
+    ],
+    "tier": "B",
+    "wr": 52.4,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "Fear/AoE menace; channeled R is the team-fight pivot — find the brush or the bait."
   },
   "Fiora": {
     "aram_tier": "C",
@@ -692,43 +844,53 @@
   },
   "Fizz": {
     "aram_tier": "B",
-    "build_note": "Urchin Strike (Q) dash through target, applies on-hit. Seastone Trident (W) applies grievous wounds — active during combo. Playful/Trickster (E) first part untargetable, second small area stun OR extended dodge. Chum the Waters (R) shark pulls enemies to it. Full combo: R at group → W active → Q through main target → E land near target → auto. Time E to dodge burst while in combo.",
+    "build_note": "Dark Harvest burst — Luden's procs, Lich Bane on E reset doubles up; Heartsteel-Grasp variant hits 57.4% niche.",
     "core_items": [
-      "Night's Edge",
-      "Shadowflame",
-      "Rabadon's Deathcap"
+      "Luden's Echo",
+      "Lich Bane",
+      "Shadowflame"
     ],
-    "vs_tanks": "Void Staff — all magic damage",
-    "vs_healing": "No anti-heal — one-shot burst oriented",
+    "vs_tanks": "Void Staff",
+    "vs_healing": "Morellonomicon",
     "vs_burst": "Banshee's Veil replaces Zhonya's vs poke",
     "full_build": [
+      "Luden's Echo",
       "Sorcerer's Shoes",
       "Lich Bane",
       "Shadowflame",
       "Rabadon's Deathcap",
-      "Void Staff",
       "Zhonya's Hourglass"
-    ]
+    ],
+    "tier": "D",
+    "wr": 47.7,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "E untargetable + R fish-spawn is the burst chain; ARAM crowding makes R hits trivial."
   },
   "Galio": {
     "aram_tier": "A",
-    "build_note": "Hero's Entrance (R) global teleport to any ally — in ARAM, R to ally engaging, then AOE knock-up on arrival. Winds of War (Q) large AOE tornado between two gusts. Shield of Durand (W) charge then taunt entire nearby enemy team — taunt is huge in ARAM when enemies are grouped. Justice Punch (E) dash with knock-back. Time W charge carefully — interrupt W cast to avoid being interrupted mid-taunt.",
+    "build_note": "Aftershock tank — Heartsteel + Winter's Approach scaling + MR/armor shells, not the AP variant.",
     "core_items": [
-      "Locket of the Iron Solari",
-      "Zhonya's Hourglass",
-      "Frozen Heart"
+      "Heartsteel",
+      "Hollow Radiance",
+      "Winter's Approach"
     ],
-    "vs_tanks": "Thornmail — Colossal Smash (passive) deals magic damage bonus",
-    "vs_healing": "Thornmail in core",
+    "vs_tanks": "Kaenic Rookern (58.2% WR — MR-stacking shield breaks tank-mage trades)",
+    "vs_healing": "Thornmail (51.6% WR)",
     "vs_burst": "Sterak's Gage replaces Gargoyle vs burst",
     "full_build": [
-      "Plated Steelcaps",
-      "Sunfire Aegis",
-      "Warmog's Armor",
-      "Frozen Heart",
+      "Heartsteel",
+      "Mercury's Treads",
+      "Hollow Radiance",
+      "Winter's Approach",
       "Thornmail",
-      "Gargoyle Stoneplate"
-    ]
+      "Kaenic Rookern"
+    ],
+    "tier": "B",
+    "wr": 52.8,
+    "pr": null,
+    "boots": "Mercury's Treads",
+    "kit_notes": "Tank-mage with CC, MR-scaling damage, and a global ult that the ARAM lane bottlenecks for."
   },
   "Gangplank": {
     "aram_tier": "A",
@@ -752,43 +914,56 @@
   },
   "Garen": {
     "aram_tier": "B",
-    "build_note": "Perseverance (passive) heals at full rate when out of combat — collect health packs and regen between fights. Decisive Strike (Q) silences + bonus damage on next auto — use Q before auto for silence proc. Judgment (E) spin — spin into grouped enemies for AOE damage. Demacian Justice (R) deals damage based on how many stacks of Villain the target has — use on fed enemies for bonus damage.",
+    "build_note": "Conqueror crit-Stridebreaker — Phantom Dancer + IE turns E into ranged-equivalent DPS.",
     "core_items": [
-      "Heartsteel",
-      "Warmog's Armor",
-      "Gargoyle Stoneplate"
+      "Stridebreaker",
+      "Phantom Dancer",
+      "Infinity Edge"
     ],
-    "vs_tanks": "Thornmail — spin applies grievous to tanks during E",
-    "vs_healing": "Thornmail in core",
+    "vs_tanks": "Black Cleaver",
+    "vs_healing": "Mortal Reminder",
     "vs_burst": "Sterak's Gage in core",
     "full_build": [
-      "Plated Steelcaps",
-      "Trinity Force",
-      "Sterak's Gage",
+      "Stridebreaker",
+      "Mercury's Treads",
+      "Phantom Dancer",
+      "Infinity Edge",
       "Dead Man's Plate",
-      "Thornmail",
-      "Gargoyle Stoneplate"
+      "Black Cleaver"
+    ],
+    "tier": "B",
+    "wr": 51.1,
+    "pr": null,
+    "boots": "Mercury's Treads",
+    "kit_notes": "Spinning crit-fighter; W tenacity + execute R = unkillable wave-clear with a finisher.",
+    "_filtered_items": [
+      "Galeforce removed from League — N/A here, Phantom Dancer functions as the analog crit-mobility item."
     ]
   },
   "Gnar": {
     "aram_tier": "A",
-    "build_note": "Mini Gnar: ranged poke, collect Rage. At max Rage: transform to Mega Gnar for teamfight. Mega Gnar: GNAR! (R) throws enemies against a wall — in ARAM, throw the entire group against the side wall. W (Wallop) giant AOE slam. Build full tank to maximize teamfight Mega Gnar duration. Never transform unless 5 enemies are grouped.",
+    "build_note": "Grasp/Heartsteel build is highest WR (55.5%); Trinity is the more flexible default.",
     "core_items": [
-      "Iceborn Gauntlet",
-      "Warmog's Armor",
-      "Sterak's Gage"
+      "Trinity Force",
+      "Heartsteel",
+      "Black Cleaver"
     ],
-    "vs_tanks": "Thornmail — Mega Gnar W and R have huge AoE; armor stacking amplifies tankyness",
-    "vs_healing": "Thornmail in core",
+    "vs_tanks": "Black Cleaver",
+    "vs_healing": "Kaenic Rookern (vs heavy AP teams; Mortal Reminder for AD-heal compositions)",
     "vs_burst": "Sterak's Gage in core",
     "full_build": [
-      "Plated Steelcaps",
       "Trinity Force",
+      "Mercury's Treads",
+      "Black Cleaver",
       "Sterak's Gage",
-      "Frozen Heart",
-      "Thornmail",
-      "Gargoyle Stoneplate"
-    ]
+      "Wit's End",
+      "Death's Dance"
+    ],
+    "tier": "C",
+    "wr": 50.2,
+    "pr": null,
+    "boots": "Mercury's Treads",
+    "kit_notes": "Mini→Mega rage cycle; ranged poke until R, then ult engage when Mega bar is full."
   },
   "Gragas": {
     "aram_tier": "A",
@@ -872,22 +1047,36 @@
   },
   "Heimerdinger": {
     "aram_tier": "S",
-    "build_note": "Place turrets at max range forward — they fire 3x AS when you're nearby. Q turret upgrade (UPGRADE! + Q) fires single huge beam. W (Hextech Micro-Rockets) cluster burst. E (CH-2 Electron Storm Grenade) stun on direct hit, slow on edge. In ARAM: place 3 turrets at choke, stay behind them for free damage. UPGRADE! + Q fires enhanced ability: beam turret fires endlessly during R.",
+    "build_note": "Liandry+Rylai is the AOE-burn-into-slow loop turrets feed off — every turret AA procs Liandry. Heimer's S-tier in ARAM is the single-lane choke pattern: drop 3 turrets in a triangle, force enemies through.",
     "core_items": [
-      "Liandry's Anguish",
+      "Liandry's Torment",
       "Rylai's Crystal Scepter",
-      "Rabadon's Deathcap"
+      "Blackfire Torch"
     ],
-    "vs_tanks": "Void Staff — all magic; turrets ignore MR scaling with Void Staff",
-    "vs_healing": "No anti-heal — turret zone control",
-    "vs_burst": "Banshee's Veil replaces Rylai's vs burst",
+    "vs_tanks": "Void Staff (53.4% WR) replaces Zhonya's 6th vs MR-stack tanks",
+    "vs_healing": "Morellonomicon (49.0% WR) replaces Rylai's vs healing comps",
+    "vs_burst": "Zhonya's Hourglass in core — Banshee's swap vs single AP burst (Lux/Xerath)",
     "full_build": [
+      "Lost Chapter",
       "Sorcerer's Shoes",
-      "Luden's Companion",
-      "Shadowflame",
+      "Liandry's Torment",
+      "Rylai's Crystal Scepter",
       "Rabadon's Deathcap",
-      "Void Staff",
-      "Rylai's Crystal Scepter"
+      "Zhonya's Hourglass"
+    ],
+    "tier": "S",
+    "wr": 53.8,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "Passive: turret AAs apply Hextech magic damage to nearby targets (mini-AOE). Q places turrets — 3 charges, build a wall in chokes. W rocket barrage hits priority target (low HP). R upgrades next ability — Q-R = giant turret with cannon, W-R = guided missiles. ARAM single-lane ideal for turret choke.",
+    "aram_specific": "+10% damage taken (Heimer ARAM nerf) — but turrets dealt 30% bonus damage in ARAM (offset). Set up turrets BEFORE fights — never engage without Q-R cannon ready. Single-lane geometry favors his W rockets.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Heimerdinger",
+        "fetched": "2026-05-02",
+        "wr_seen": 53.8,
+        "games": 10414
+      }
     ]
   },
   "Hwei": {
@@ -912,23 +1101,28 @@
   },
   "Illaoi": {
     "aram_tier": "A",
-    "build_note": "Test of Spirit (E) yanks enemy spirit out — damage spirit = damage the real champion. Prophet of an Elder God (passive) spawns tentacles near Illaoi. Tentacle Smash (Q) empowers nearby tentacle slam. Harsh Lesson (W) dashes to enemy while spawning tentacle. Leap of Faith (R) spawns a tentacle for EACH nearby enemy champion — group fight with R = 5 tentacles slamming everyone. R in grouped ARAM = win condition.",
+    "build_note": "Grasp sustain — Sundered Sky heal-proc + Iceborn slow stack to hold targets in tentacle range.",
     "core_items": [
-      "Black Cleaver",
-      "Sterak's Gage",
-      "Titanic Hydra"
+      "Sundered Sky",
+      "Iceborn Gauntlet",
+      "Spirit Visage"
     ],
-    "vs_tanks": "Thornmail — tentacle slams heal Illaoi; more hits = more heal",
-    "vs_healing": "Thornmail in core",
+    "vs_tanks": "Black Cleaver",
+    "vs_healing": "Thornmail",
     "vs_burst": "Sterak's Gage in core",
     "full_build": [
-      "Plated Steelcaps",
-      "Sunfire Aegis",
+      "Sundered Sky",
+      "Mercury's Treads",
+      "Iceborn Gauntlet",
+      "Spirit Visage",
       "Sterak's Gage",
-      "Thornmail",
-      "Warmog's Armor",
-      "Gargoyle Stoneplate"
-    ]
+      "Death's Dance"
+    ],
+    "tier": "B",
+    "wr": 52.7,
+    "pr": null,
+    "boots": "Mercury's Treads",
+    "kit_notes": "Tentacle bruiser; R drops a soul-arena — fight inside it, never outside."
   },
   "Irelia": {
     "aram_tier": "B",
@@ -972,22 +1166,36 @@
   },
   "Janna": {
     "aram_tier": "S",
-    "build_note": "Eye of the Storm (E) shield on carry or turret before fights. Monsoon (R) MASSIVE knockback — use to knock the entire enemy team away from your team. Howling Gale (Q) tornado: charge time = more knock-up height — hold Q while team repositions. Zephyr (W) passive gives movement speed to dodge skillshots. R is both offensive (scatter enemy engage) and defensive (heal your team).",
+    "build_note": "Tier C — 50.4% WR. Janna's peel kit is consistent but the meta is engage-tank/burst-mage; her disengage loses tempo. Standard enchanter build optimal.",
     "core_items": [
       "Moonstone Renewer",
-      "Ardent Censer",
-      "Staff of Flowing Water"
+      "Imperial Mandate",
+      "Whispering Circlet"
     ],
-    "vs_tanks": "No anti-tank — disengage and peel",
-    "vs_healing": "No anti-heal — disengage focused",
-    "vs_burst": "Locket of the Iron Solari replaces Mikael's vs burst",
+    "vs_tanks": "Imperial Mandate (51.9% WR) replaces Ardent — chain-mark tanks for ally execute",
+    "vs_healing": "Ardent Censer (55.3% WR) — Janna is HEALING-side; if facing healing, Morellonomicon awkward (41.8%)",
+    "vs_burst": "Mikael's Blessing OR Locket of the Iron Solari (55.6% WR) — burst-peel kit",
     "full_build": [
+      "Bandleglass Mirror",
       "Ionian Boots of Lucidity",
-      "Moonstone Renewer",
+      "Whispering Circlet",
       "Ardent Censer",
-      "Staff of Flowing Water",
       "Redemption",
-      "Mikael's Blessing"
+      "Moonstone Renewer"
+    ],
+    "tier": "C",
+    "wr": 50.4,
+    "pr": null,
+    "boots": "Ionian Boots of Lucidity",
+    "kit_notes": "Passive: AAs gain bonus MS for self/ally. Q charge-up tornado knockup — long range engage/disengage. W (Zephyr) MS + slow target. R (Monsoon) AOE knockback + heal channel — disengage when team is grouped.",
+    "aram_specific": "+10% damage taken in ARAM. R is the panic button — knockback all enemies when team is collapsing. Pre-position R away from team to push enemies into your own team's range.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Janna",
+        "fetched": "2026-05-02",
+        "wr_seen": 50.4,
+        "games": 7604
+      }
     ]
   },
   "Jarvan IV": {
@@ -1052,147 +1260,208 @@
   },
   "Jhin": {
     "aram_tier": "A",
-    "build_note": "Hexoptics C44 first (55 AD + 25% crit) — Jhin gains AD from crit, so crit items scale his base damage. RFC second (25% crit, 50% total) for the empowered long-range 4th shot. IE third (IE passive active at 50%+ crit before adding IE's own). 4th shot crits with RFC for 30%+ HP on squishies. W root from fog of war wins trades.",
+    "build_note": "26.9 Boots of Swiftness over Berserker's — Jhin's MS scales with crit (passive), and 4-shot reload doesn't gain from AS boots. Movement = damage for Jhin.",
     "core_items": [
-      "Hexoptics C44",
-      "Rapid Firecannon",
-      "Infinity Edge"
-    ],
-    "vs_tanks": "Lord Dominik's Regards 4th — armor pen amplifies his fixed-damage 4th shot",
-    "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies — never run both",
-    "vs_burst": "Immortal Shieldbow replaces Bloodthirster vs heavy dive — delays IE one slot",
-    "full_build": [
-      "Sorcerer's Shoes",
       "The Collector",
+      "Infinity Edge",
+      "Rapid Firecannon"
+    ],
+    "vs_tanks": "Lord Dominik's Regards (52.0% WR) replaces Rapid Firecannon — armor pen for 4-shot reload",
+    "vs_healing": "Mortal Reminder (48.7% WR) replaces Lord Dominik's slot — Jhin lethality kit prefers pen over crit slot",
+    "vs_burst": "Edge of Night (54.0% WR) OR Bloodthirster (52.5% WR) — 4-shot reload makes him vulnerable",
+    "full_build": [
+      "Serrated Dirk",
+      "Boots of Swiftness",
+      "The Collector",
+      "Infinity Edge",
       "Rapid Firecannon",
+      "Lord Dominik's Regards"
+    ],
+    "kit_notes": "Passive Whisper: 4 shots per reload, 4th shot crits + applies %missing-HP damage. R (Curtain Call) channeled global snipe, 4 shots, 4th = guaranteed crit + execute. Q (Dancing Grenade) bounces, deals more on lower-HP targets. W (Deadly Flourish) long-range root through marked targets.",
+    "aram_specific": "ARAM neutral. R from spawn at low-HP enemies — fire 4 shots, last is guaranteed crit-execute. Reload windows are death traps — back off to safe range every 4 shots.",
+    "tier": "B",
+    "wr": 51.6,
+    "pr": null,
+    "boots": "Boots of Swiftness",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Jhin",
+        "fetched": "2026-05-02",
+        "wr_seen": 51.6,
+        "games": 16819
+      }
+    ]
+  },
+  "Jinx": {
+    "aram_tier": "S",
+    "build_note": "Yun Tal Wildarrows (53.3% WR per aggregator K with 5999 matches) is a viable variant first item — listed as core if rune is Lethal Tempo. Standard Runaan+IE crit build for AOE Q-rocket teamfight DPS.",
+    "core_items": [
+      "Runaan's Hurricane",
+      "Infinity Edge",
+      "The Collector"
+    ],
+    "full_build": [
+      "Long Sword",
+      "Berserker's Greaves",
+      "Runaan's Hurricane",
       "Infinity Edge",
       "Lord Dominik's Regards",
       "Bloodthirster"
     ],
-    "kit_notes": "Jhin has 4 shots then a reload — plan your 4th shot as the crit/execute. W (Deadly Flourish) roots enemies who have been hit by minions or allies recently — look for rooted kills in ARAM constant damage. Lotus Trap (E) slows approaching enemies — place at health pack paths. Curtain Call (R) from safe angle after engage.",
-    "aram_specific": "The ARAM corridor means every 4th shot can hit grouped enemies. Use W roots to lock down grouped fights. Position behind your frontline — his reload is a vulnerability window. Lotus Traps slow enemies approaching your side. R from behind cover after your team engages."
-  },
-  "Jinx": {
-    "aram_tier": "S",
-    "build_note": "Yun Tal Wildarrows first for AS + AD — Season 16 Yun Tal gives 0% crit so build RFC second to reach 25% crit, then Collector (50% total) before IE (75% crit, IE passive fully active). Switch to rockets after first reset kill — rockets hit multiple targets and chain resets. Never stop shooting.",
-    "core_items": [
-      "Yun Tal Wildarrows",
-      "Rapid Firecannon",
-      "The Collector"
-    ],
-    "full_build": [
-      "Berserker's Greaves",
-      "Yun Tal Wildarrows",
-      "Rapid Firecannon",
-      "The Collector",
-      "Infinity Edge",
-      "Lord Dominik's Regards"
-    ],
-    "vs_tanks": "Lord Dominik's Regards 5th — or replace BT slot if already ahead",
-    "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies — never run both",
-    "vs_burst": "Immortal Shieldbow replaces The Collector vs heavy burst/dive — delays IE but safer",
-    "kit_notes": "Rockets in ARAM hit every grouped enemy every auto. Crit threshold for IE: RFC(25%) + Collector(25%) = 50% before IE → 75% total. Reset passive (Jinx Get Excited) activates on any kill/assist — use aggression resets freely. W flame chompers for zoning packs. E mine field at health pack approaches.",
-    "aram_specific": "ARAM is Jinx's best game mode. Grouped enemies + infinite ammo + reset passive = snowball engine. Use rockets the moment you get a reset. Super Mega Death Rocket at 70%+ HP enemies — don't use as execute, the damage scales with missing HP of the FIRST target hit."
+    "vs_tanks": "Lord Dominik's Regards (54.6% WR) in core — Jinx Q-rocket already AOE, %pen amps it",
+    "vs_healing": "Mortal Reminder (54.9% WR) replaces Lord Dominik's slot — anti-tank/anti-heal exclusive choice",
+    "vs_burst": "Bloodthirster (59.2% WR) in core — Jinx is glass cannon, lifesteal shield is mandatory",
+    "kit_notes": "Passive Get Excited: kill or assist grants huge MS for 4s. Q toggle: Pow-Pow (mini-gun, AS stacking) or Fishbones (rocket, AOE + range). W (Zap!) long-range slow + reveal. E (Flame Chompers) bear-trap zone. R (Super Mega Death Rocket) global %missing-HP execute.",
+    "aram_specific": "ARAM neutral. R from spawn at low-HP enemies — Get Excited stacks per kill, Jinx becomes uncatchable late game. Q-rocket AOE shreds full enemy team in ARAM choke.",
+    "tier": "A",
+    "wr": 52.5,
+    "pr": 11.34,
+    "boots": "Berserker's Greaves",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Jinx",
+        "fetched": "2026-05-02",
+        "wr_seen": 52.5,
+        "games": 14012
+      }
+    ]
   },
   "Kai'Sa": {
     "aram_tier": "A",
-    "build_note": "Plasma stacks (5 = Void Explosion): apply with autos and W, detonate with ally CC. W evolves at 100 AP — Kraken + ISB pushes toward AP evolution. E (Supercharge) evolved at 100% AS = invisible dash. R: charge into ally CC on low-HP target. Never ult without ally followup CC.",
+    "build_note": "Lethal Tempo on-hit hybrid — Rageblade+Nashor evolves W early, Terminus shred for late.",
     "core_items": [
-      "Kraken Slayer",
       "Guinsoo's Rageblade",
-      "Nashor's Tooth"
+      "Nashor's Tooth",
+      "Blade of The Ruined King"
     ],
-    "vs_tanks": "Kraken Slayer + LDR — W mark applies Plasma stacks, Kraken procs on empowered auto",
-    "vs_healing": "Mortal Reminder replaces LDR vs healing",
+    "vs_tanks": "Lord Dominik's Regards",
+    "vs_healing": "Terminus (52.0% WR)",
     "vs_burst": "Immortal Shieldbow replaces The Collector — evolves W at 100 AP",
     "full_build": [
       "Berserker's Greaves",
-      "Kraken Slayer",
-      "Navori Flickerblades",
-      "The Collector",
-      "Infinity Edge",
-      "Lord Dominik's Regards"
-    ]
+      "Guinsoo's Rageblade",
+      "Dusk and Dawn",
+      "Nashor's Tooth",
+      "Blade of The Ruined King",
+      "Terminus"
+    ],
+    "tier": "D",
+    "wr": 48.0,
+    "pr": null,
+    "boots": "Berserker's Greaves",
+    "kit_notes": "Hybrid evolve ADC; AP/AS/AD breakpoints unlock W/Q/E evolutions — itemize for which evolve you need."
   },
   "Kalista": {
     "aram_tier": "C",
-    "build_note": "Sentinel passive: ally standing still for 1.5s syncs with Kalista. Rend (E) pulls ALL spears from ALL targets simultaneously — use when 4+ spears stacked. Hurricane plants 3 spears per auto. Fate's Call (R) throws your support at enemies — coordinate with support for knock-up engage. Never stand still after casting anything.",
+    "build_note": "Lethal Tempo on-hit — BORK+Runaan+Rageblade rips through ARAM tank stacks via spear procs.",
     "core_items": [
-      "Kraken Slayer",
-      "Blade of the Ruined King",
+      "Blade of The Ruined King",
+      "Runaan's Hurricane",
       "Guinsoo's Rageblade"
     ],
-    "vs_tanks": "Kraken Slayer + LDR — Rend (E) detonates on-hit stacks through all targets",
-    "vs_healing": "Mortal Reminder replaces LDR vs healing",
+    "vs_tanks": "Lord Dominik's Regards",
+    "vs_healing": "Mortal Reminder",
     "vs_burst": "Immortal Shieldbow 5th as shield vs burst",
     "full_build": [
       "Berserker's Greaves",
-      "Kraken Slayer",
-      "Navori Flickerblades",
+      "Blade of The Ruined King",
       "Runaan's Hurricane",
-      "Lord Dominik's Regards",
-      "Immortal Shieldbow"
-    ]
+      "Guinsoo's Rageblade",
+      "Terminus",
+      "Wit's End"
+    ],
+    "tier": "A",
+    "wr": 53.4,
+    "pr": null,
+    "boots": "Berserker's Greaves",
+    "kit_notes": "Hop-AA spear-stacker; pair with the right Howling Abyss tank for R-pull engages."
   },
   "Karma": {
     "aram_tier": "A",
-    "build_note": "Mantra (R) empowers next ability: empowered Q deals AOE burst AND slows, empowered W heals + roots, empowered E shields allies around target. Use Mantra-Q for damage, Mantra-W to save ally, Mantra-E for teamfight shield + speed. Gathering Fire passive: ability hits on champions reduce Mantra CD. Always have Mantra ready for fights.",
+    "build_note": "Dark Harvest poke build via Malignance is most-popular; pure damage Luden's path scales harder.",
     "core_items": [
-      "Moonstone Renewer",
-      "Staff of Flowing Water",
-      "Ardent Censer"
+      "Luden's Echo",
+      "Liandry's Torment",
+      "Stormsurge"
     ],
-    "vs_tanks": "Void Staff — Mantra-Q AOE magic burst",
-    "vs_healing": "No anti-heal needed — utility focused",
+    "vs_tanks": "Void Staff",
+    "vs_healing": "Morellonomicon",
     "vs_burst": "Locket of the Iron Solari replaces Moonstone vs heavy burst",
     "full_build": [
-      "Ionian Boots of Lucidity",
-      "Moonstone Renewer",
-      "Staff of Flowing Water",
+      "Luden's Echo",
+      "Sorcerer's Shoes",
+      "Shadowflame",
       "Rabadon's Deathcap",
-      "Void Staff",
-      "Redemption"
+      "Zhonya's Hourglass",
+      "Void Staff"
+    ],
+    "tier": "D",
+    "wr": 47.3,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "Mage/support hybrid; mantra-shielded W and E shield-on-the-move are the scaling buttons.",
+    "_filtered_items": [
+      "Substituted Liandry's Torment as 3rd core in place of source-listed 'Stormsurge' duplicate slot — kept Stormsurge in core."
     ]
   },
   "Karthus": {
     "aram_tier": "S",
-    "build_note": "Q (Lay Waste) deals double damage to isolated targets — position for 1v1 hits not group Q. Wall of Pain (W) reduces MR briefly — walk through W before Q/E for bonus damage. Defile (E) AOE always on: toggle only when mana permits sustained fight. R (Requiem) hits ALL enemies globally — throw it every grouped fight.",
+    "build_note": "Tier dropped to C — 50.7% WR. Karthus's R-from-base playstyle is consistent but the kit doesn't gain from any 26.9 changes. Standard Liandry + Shadowflame double-burn build remains correct.",
     "core_items": [
-      "Liandry's Anguish",
+      "Liandry's Torment",
       "Shadowflame",
-      "Rabadon's Deathcap"
+      "Blackfire Torch"
     ],
-    "vs_tanks": "Void Staff — all damage is magic",
-    "vs_healing": "Morellonomicon via autos in lane",
-    "vs_burst": "Banshee's Veil replaces Morellonomicon vs heavy burst",
+    "vs_tanks": "Void Staff in core — %magic pen scales vs MR/HP stackers",
+    "vs_healing": "Morellonomicon (49.4% WR) replaces Shadowflame vs Soraka/Yuumi",
+    "vs_burst": "Zhonya's Hourglass (55.3% WR) replaces Void Staff — invuln during R channel is the canonical Karthus tech",
     "full_build": [
+      "Lost Chapter",
       "Sorcerer's Shoes",
-      "Luden's Companion",
+      "Liandry's Torment",
       "Shadowflame",
       "Rabadon's Deathcap",
-      "Void Staff",
-      "Morellonomicon"
+      "Void Staff"
+    ],
+    "tier": "C",
+    "wr": 50.7,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "Passive (Death Defied): on death, 7 seconds of free abilities. R (Requiem) global execute — fire from spawn at low-HP enemies. Q (Lay Waste) outer ring deals 2x damage if it hits only one target. E (Defile) AOE drain — toggle on in fights, off when low mana.",
+    "aram_specific": "ARAM neutral. Death Defied + free R from grave is the trademark — open fights, die mid-fight, ult low-HP carry from grave for double damage. Don't waste R on full-HP targets.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Karthus",
+        "fetched": "2026-05-02",
+        "wr_seen": 50.7,
+        "games": 7721
+      }
     ]
   },
   "Kassadin": {
     "aram_tier": "B",
-    "build_note": "Null Sphere (Q) silences AND gives brief magic shield — use before enemy ability lands. Riftwalk (R) short blink with stacking mana cost. At 6 items: spam R every 2s for massive AOE. Nether Blade (W) bonus magic damage on auto. ARAM note: stacks fast due to constant fighting — reach R spam tempo quickly by fighting every wave.",
+    "build_note": "Mana-stack scaler — RoA+Archangel scaling is mandatory; Lich Bane procs R-Q chains late.",
     "core_items": [
-      "Luden's Tempest",
-      "Shadowflame",
-      "Rabadon's Deathcap"
+      "Rod of Ages",
+      "Archangel's Staff",
+      "Malignance"
     ],
-    "vs_tanks": "Void Staff — Null Sphere (Q) magic damage, scales with AP",
-    "vs_healing": "No anti-heal — burst carry oriented",
+    "vs_tanks": "Void Staff",
+    "vs_healing": "Morellonomicon",
     "vs_burst": "Banshee's Veil replaces Zhonya's vs poke damage",
     "full_build": [
+      "Rod of Ages",
       "Sorcerer's Shoes",
+      "Archangel's Staff",
+      "Malignance",
       "Lich Bane",
-      "Shadowflame",
-      "Rabadon's Deathcap",
-      "Void Staff",
-      "Zhonya's Hourglass"
-    ]
+      "Rabadon's Deathcap"
+    ],
+    "tier": "D",
+    "wr": 42.6,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "Anti-mage scaler; R is short-CD on stacks but ARAM lane-length neuters his roam advantage."
   },
   "Katarina": {
     "aram_tier": "B",
@@ -1456,124 +1725,202 @@
   },
   "Lucian": {
     "aram_tier": "A",
-    "build_note": "Trinity Force FIRST, every time. Q activates Spellblade AND Lightslinger simultaneously: Q-proc + Spellblade-empowered auto + second auto = 3-hit burst per ability use. Phantom Dancer ghost supplements E for gap closing. His range is short — dash in, burst, dash out. Never RFC (siege item, wrong for his kit). Never pure crit without TF.",
+    "build_note": "Tier D — 47.1% WR. Lucian's lane-bully kit doesn't translate to ARAM teamfight (no laning phase to snowball). Standard ER+Navori AS-and-CDR build — best of bad options.",
     "core_items": [
-      "Trinity Force",
-      "Phantom Dancer",
-      "Navori Flickerblades"
-    ],
-    "vs_tanks": "Lord Dominik's Regards 5th — TF + Navori haste means more Q cycles which amplifies LDR value",
-    "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies — never run both",
-    "vs_burst": "Immortal Shieldbow replaces Phantom Dancer if 3+ assassins/divers — keep TF core always",
-    "full_build": [
-      "Berserker's Greaves",
-      "Trinity Force",
-      "Phantom Dancer",
-      "Navori Flickerblades",
+      "Essence Reaver",
       "The Collector",
+      "Navori Flickerblade"
+    ],
+    "vs_tanks": "Lord Dominik's Regards (50.8% WR) in core — Lucian needs %pen vs ARAM-tank meta",
+    "vs_healing": "Mortal Reminder (41.7% WR — bad) — Lucian struggles vs healing in general",
+    "vs_burst": "Blade of The Ruined King (50.7% WR) replaces The Collector — shield bonus + sustain",
+    "full_build": [
+      "Long Sword",
+      "Berserker's Greaves",
+      "Essence Reaver",
+      "Navori Flickerblade",
+      "Infinity Edge",
       "Lord Dominik's Regards"
     ],
-    "kit_notes": "Q procs Spellblade + Lightslinger: empowered auto + second auto in one cycle. E gaps close and procs Lightslinger again. Weave: Q→auto→auto→E→auto→auto. Phantom Dancer ghost + E = two repositioning tools per fight. Never auto without a Lightslinger proc queued.",
-    "aram_specific": "Short range forces aggressive positioning — ISB shield is important vs dive-heavy ARAM. Phantom Dancer ghost can escape engage or chase. TF haste reduces Q CD so you proc Lightslinger more frequently."
+    "kit_notes": "Passive Lightslinger: ability cast empowers next 2 AAs (double-shot). Q (Piercing Light) line damage, dash-able. E (Relentless Pursuit) dash — refunds CD on Lightslinger procs. R (The Culling) channeled barrage — 24 shots in 3s. Combo is Q-AA-AA-W-AA-AA-E for max DPS.",
+    "aram_specific": "ARAM neutral. R is hard-CC'd easily in ARAM density — only ult after enemy dashes/flashes used. Lightslinger procs are damage — always cast Q before AAs even at full mana.",
+    "tier": "D",
+    "wr": 47.1,
+    "pr": null,
+    "boots": "Berserker's Greaves",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Lucian",
+        "fetched": "2026-05-02",
+        "wr_seen": 47.1,
+        "games": 11251
+      }
+    ]
   },
   "Lulu": {
     "aram_tier": "S",
-    "build_note": "Whimsy (W): on ally = speed boost + Attack speed, on enemy = polymorph. Ult (R) on your carry entering a fight — NOT when they're already low HP. Shield (E) on the ally about to take damage. Pix follows allies when you W them — use this to attach Pix to the engage champion for bonus autoattack damage. Polymorph the enemy carry with W before they burst yours.",
+    "build_note": "Tier D — 46.2% WR. Lulu's enchanter kit struggles in ARAM teamfight density. Build is enchanter-canon (Ardent+Redemption+Locket) but the win condition is having a hyper-carry ally — solo-Lulu loses.",
     "core_items": [
-      "Moonstone Renewer",
+      "Whispering Circlet",
       "Ardent Censer",
-      "Staff of Flowing Water"
+      "Redemption"
     ],
-    "vs_tanks": "No anti-tank — peel and buff",
-    "vs_healing": "No anti-heal — utility focused",
-    "vs_burst": "Locket of the Iron Solari replaces Ardent Censer vs heavy burst",
+    "vs_tanks": "Mikael's Blessing (51.0% WR) replaces Locket — Lulu has no anti-tank tools, lean utility",
+    "vs_healing": "Morellonomicon (41.3% WR — worst) only if zero other anti-heal source on team",
+    "vs_burst": "Locket of the Iron Solari already core (53.6% WR) — best-WR situational item for her",
     "full_build": [
+      "Bandleglass Mirror",
       "Ionian Boots of Lucidity",
-      "Moonstone Renewer",
-      "Staff of Flowing Water",
+      "Whispering Circlet",
       "Ardent Censer",
       "Redemption",
-      "Zhonya's Hourglass"
+      "Locket of the Iron Solari"
+    ],
+    "tier": "D",
+    "wr": 46.2,
+    "pr": null,
+    "boots": "Ionian Boots of Lucidity",
+    "kit_notes": "W (Whimsy) polymorph enemy OR speed boost ally — top Lulu skill. R (Wild Growth) ally HP buff + AOE knockup around them — ult dive carry at low HP. E (Help, Pix!) damage enemy OR shield ally — peel tool.",
+    "aram_specific": "+10% damage taken in ARAM. Pair with hyper-carry ADC (Vayne/Twitch/Kog'Maw) — R+W on them is win-fight. Solo without carry = grief tier.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Lulu",
+        "fetched": "2026-05-02",
+        "wr_seen": 46.2,
+        "games": 6615
+      }
     ]
   },
   "Lux": {
     "aram_tier": "S",
-    "build_note": "Q root confirms every E+R combo. Lucent Singularity (E) proc at max range forces choice: take the damage or dodge and lose position. Final Spark (R) after Q root = guaranteed kill on squishy. CDR from Luden's lets you rotate Q-E-Q faster. Passive illumination applies free bonus magic damage on autos after abilities.",
+    "build_note": "Burst-mage canon: Luden's wave clear + first-spell amp, Stormsurge MS-on-takedown for kite, Shadowflame extra %pen below 40% HP. Highest-WR variant uses Blackfire Torch instead of Luden's at 56% WR (small sample 339).",
     "core_items": [
-      "Luden's Tempest",
+      "Luden's Echo",
+      "Stormsurge",
+      "Shadowflame"
+    ],
+    "vs_tanks": "Void Staff replaces Shadowflame 5th — % magic pen scales vs MR stackers",
+    "vs_healing": "Morellonomicon replaces Stormsurge vs Soraka/Sona — sacrifice burst for cut",
+    "vs_burst": "Zhonya's Hourglass replaces Rabadon's vs heavy assassin pressure (Zed/Talon poke)",
+    "full_build": [
+      "Lost Chapter",
+      "Sorcerer's Shoes",
+      "Luden's Echo",
+      "Stormsurge",
       "Shadowflame",
       "Rabadon's Deathcap"
     ],
-    "vs_tanks": "Void Staff — Magic pen for tanks buying MR vs Lux damage",
-    "vs_healing": "Morellonomicon — can apply via auto attacks",
-    "vs_burst": "Banshee's Veil replaces Void Staff if heavy poke burst",
-    "full_build": [
-      "Sorcerer's Shoes",
-      "Luden's Companion",
-      "Shadowflame",
-      "Rabadon's Deathcap",
-      "Void Staff",
-      "Morellonomicon"
+    "tier": "S",
+    "wr": 54.3,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "E (Lucent Singularity) AOE slow + delayed detonation — leads R for guaranteed hit. R (Final Spark) executes low HP across map; combo Q-root into E-detonate into R for full-damage one-shot. Passive procs every other auto on damaged target — weave AAs between abilities.",
+    "aram_specific": "+5% damage dealt in ARAM, -5% damage taken. Long-range R from base wall punishes recall-less enemies. Watch flash CDs — single Q-root sets up entire team kill window.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Lux",
+        "fetched": "2026-05-02",
+        "wr_seen": 54.3,
+        "games": 15865
+      }
+    ],
+    "variants": [
+      {
+        "trigger": "high-WR alt",
+        "build": [
+          "Lost Chapter",
+          "Sorcerer's Shoes",
+          "Blackfire Torch",
+          "Shadowflame",
+          "Rabadon's Deathcap",
+          "Void Staff"
+        ],
+        "note": "Dark Harvest + Blackfire 56.0% WR — niche but topples mage mirror"
+      }
     ]
   },
   "Malphite": {
     "aram_tier": "S",
-    "build_note": "Build armor = more R damage AND tankier. R (Unstoppable Force) damage scales with armor. Go: engage R → Q slow → autos with Thornmail grievous. In ARAM: perfect R setup = wait for enemies to group at health pack, then launch from behind. Never engage 1v5 — wait for ally initiation then R follow-up.",
+    "build_note": "AP-Malphite chassis: Malignance ult-CDR + Stormsurge proc; Grasp+Luden's hits 56.6% WR niche.",
     "core_items": [
-      "Sunfire Aegis",
-      "Iceborn Gauntlet",
-      "Gargoyle Stoneplate"
+      "Malignance",
+      "Heartsteel",
+      "Stormsurge"
     ],
-    "vs_tanks": "Thornmail applies Grievous on your autos — stack armor for maximum R launch power",
-    "vs_healing": "Thornmail in core — provides Grievous Wounds on auto",
+    "vs_tanks": "Void Staff",
+    "vs_healing": "Cryptbloom",
     "vs_burst": "Sterak's Gage replaces Gargoyle Stoneplate vs pure burst",
     "full_build": [
-      "Plated Steelcaps",
-      "Sunfire Aegis",
-      "Thornmail",
-      "Warmog's Armor",
-      "Frozen Heart",
-      "Gargoyle Stoneplate"
-    ]
+      "Malignance",
+      "Sorcerer's Shoes",
+      "Heartsteel",
+      "Stormsurge",
+      "Shadowflame",
+      "Rabadon's Deathcap"
+    ],
+    "tier": "D",
+    "wr": 48.7,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "AP-burst rock — passive shield + R unstoppable engage one-shots clumped ARAM teams."
   },
   "Malzahar": {
     "aram_tier": "A",
-    "build_note": "Void Swarm (W) spawns voidlings that attack Malefic Visions targets — E applies vision, W spawns swarm, swarm auto-attacks anything with vision. R (Nether Grasp) channels suppression on one target — use when ally can follow up. Passive gives spell shield every 14s — time it to block incoming CC before channeling R.",
+    "build_note": "Burn-mage chassis (Blackfire+Liandry+Rylai's) maximises E DoT spread across the ARAM clump.",
     "core_items": [
-      "Liandry's Anguish",
-      "Rylai's Crystal Scepter",
-      "Rabadon's Deathcap"
+      "Blackfire Torch",
+      "Liandry's Torment",
+      "Rylai's Crystal Scepter"
     ],
-    "vs_tanks": "Void Staff + Liandry's Anguish instead of Shadowflame — sustained % HP burn",
-    "vs_healing": "Morellonomicon via auto between Q and E",
+    "vs_tanks": "Void Staff",
+    "vs_healing": "Morellonomicon",
     "vs_burst": "Banshee's Veil replaces Morellonomicon (he already has passive void shield)",
     "full_build": [
+      "Blackfire Torch",
       "Sorcerer's Shoes",
-      "Luden's Companion",
+      "Liandry's Torment",
+      "Rylai's Crystal Scepter",
       "Shadowflame",
-      "Rabadon's Deathcap",
-      "Void Staff",
-      "Morellonomicon"
-    ]
+      "Rabadon's Deathcap"
+    ],
+    "tier": "B",
+    "wr": 52.1,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "Voidling mage with point-click suppress R — pick a carry, suppress, evaporate."
   },
   "Maokai": {
     "aram_tier": "A",
-    "build_note": "Sap Magic (passive) heals every 5 nearby ability hits — every ARAM ability hits Maokai = constant healing. Sapling Toss (E) saplings do % max HP magic damage when triggered by enemies — throw saplings into brush and health pack areas. Twisted Advance (W) tree grab root. Bramble Smash (Q) AOE knock-back. Nature's Grasp (R) root wave down the corridor — throw R down ARAM lane for full-corridor root.",
+    "build_note": "Tier B — 51.0% WR. Heartsteel + Winter's Approach mana stacking is the new tank meta — drops Sunfire/old-Bami for proc-on-Q damage. Unending Despair is the Maokai signature item (AOE heal/damage).",
     "core_items": [
-      "Warmog's Armor",
-      "Sunfire Aegis",
-      "Frozen Heart"
+      "Heartsteel",
+      "Winter's Approach",
+      "Unending Despair"
     ],
-    "vs_tanks": "Thornmail — Bramble Smash (Q) applies grievous on hit",
-    "vs_healing": "Thornmail in core",
-    "vs_burst": "Sterak's Gage replaces Force of Nature vs burst",
+    "vs_tanks": "Thornmail in core (52.4% WR) — Maokai sapling AAs apply Grievous Wounds",
+    "vs_healing": "Unending Despair (55.1% WR — best Maokai item) — already core, AOE dot applies Grievous",
+    "vs_burst": "Spirit Visage (54.3% WR) in core — boosts MR + %healing — anti-burst tank",
     "full_build": [
-      "Plated Steelcaps",
-      "Sunfire Aegis",
-      "Frozen Heart",
-      "Warmog's Armor",
+      "Heartsteel",
+      "Mercury's Treads",
+      "Winter's Approach",
+      "Spirit Visage",
       "Thornmail",
-      "Force of Nature"
+      "Unending Despair"
+    ],
+    "tier": "B",
+    "wr": 51.0,
+    "pr": null,
+    "boots": "Mercury's Treads",
+    "kit_notes": "Passive Sap Magic: every 4th AA against champ heals. Q (Bramble Smash) outer rim knocks back / inner rim knocks toward Maokai. W (Twisted Advance) targeted root-dash — engage tool. R (Nature's Grasp) global root wave — fire from base into teamfight choke.",
+    "aram_specific": "ARAM neutral. R global wave from spawn is poke + setup — every 60s free enemy displacement. W-engage is the kill button — root single carry, team follows.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Maokai",
+        "fetched": "2026-05-02",
+        "wr_seen": 51.0,
+        "games": 8434
+      }
     ]
   },
   "Master Yi": {
@@ -1620,22 +1967,56 @@
   },
   "Mordekaiser": {
     "aram_tier": "A",
-    "build_note": "R (Realm of Death) removes one enemy from the fight and steals their stats. Target: the enemy carry or the most dangerous threat. In Realm: full damage fight 1v1 — use E knockback → Q+auto rotation. Exit realm after winning. Riftmaker heals % of damage dealt in extended fights. Never R a tank — R the fed assassin or carry.",
+    "build_note": "26.9 ARAM build pivoted to Riftmaker core (replacing former Liandry-rush) — Riftmaker omnivamp converts his sustained-damage R into 1v1 unkillability. Rylai 2nd for kite-slow. Spirit Visage triples Riftmaker heal; Rabadon scales late.",
     "core_items": [
       "Riftmaker",
       "Rylai's Crystal Scepter",
-      "Rabadon's Deathcap"
+      "Spirit Visage"
     ],
-    "vs_tanks": "Void Staff — all sources magic, Realm of Death (R) negates tank items",
-    "vs_healing": "No anti-heal — sustained AP fight in death realm",
-    "vs_burst": "Banshee's Veil replaces Zhonya's vs burst poke",
+    "vs_tanks": "Liandry's Torment 4th — replaces Spirit Visage when 3+ tanks (%-HP burn through health stacking)",
+    "vs_healing": "Morellonomicon swaps Rylai's vs Soraka/Sona/Yuumi — keep Rylai if no major healer",
+    "vs_burst": "Banshee's Veil replaces Spirit Visage vs heavy AP poke (Lux/Xerath/Ziggs comp)",
     "full_build": [
-      "Plated Steelcaps",
+      "Haunting Guise",
+      "Mercury's Treads",
       "Riftmaker",
       "Rylai's Crystal Scepter",
-      "Rabadon's Deathcap",
-      "Void Staff",
-      "Zhonya's Hourglass"
+      "Spirit Visage",
+      "Rabadon's Deathcap"
+    ],
+    "tier": "S",
+    "wr": 55.5,
+    "pr": 7.04,
+    "boots": "Mercury's Treads",
+    "kit_notes": "Passive Darkness Rise: hitting 3 enemies with abilities or 2 autos grants AOE damage aura + MS. R Realm of Death isolates highest-HP enemy in 1v1 dimension for 7s, stealing 10% stats and dragging soul if killed. Drain target with E (Death's Grasp) pull then walk into them — Riftmaker burn carries the duel.",
+    "aram_specific": "100% damage taken in ARAM (no modifier). R isolation is the win condition — ult highest-priority carry every fight. No recall means Doran's start is wasted; Haunting Guise rush.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Mordekaiser",
+        "fetched": "2026-05-02",
+        "wr_seen": 55.5,
+        "games": 9211
+      },
+      {
+        "url": "https://aggregator-a.invalid/lol/modes/aram/mordekaiser/build",
+        "fetched": "2026-05-02",
+        "wr_seen": 54.78,
+        "pr_seen": 7.04
+      }
+    ],
+    "variants": [
+      {
+        "trigger": "highest WR alt",
+        "build": [
+          "Haunting Guise",
+          "Sorcerer's Shoes",
+          "Liandry's Torment",
+          "Rylai's Crystal Scepter",
+          "Spirit Visage",
+          "Thornmail"
+        ],
+        "note": "aggregator K surface — Liandry-instead-of-Riftmaker; viable when enemy is 3+ tanky"
+      }
     ]
   },
   "Morgana": {
@@ -1660,22 +2041,30 @@
   },
   "Naafiri": {
     "aram_tier": "B",
-    "build_note": "Packmates (passive) spawn on kills, revive when Naafiri takes damage. Q (Darkin Daggers) two daggers that apply bleed on overlap. W (Hounds' Pursuit) leaps with all packmates — massive burst on landing. E (Eviscerate) dash + reposition. R (We Are More) gives huge AD and packmate army — engage R first then W-dash onto carry.",
+    "build_note": "Electrocute lethality — Hubris stacking from minion executes scales fast in ARAM wave fights.",
     "core_items": [
-      "Night's Edge",
-      "Serylda's Grudge",
-      "Edge of Night"
+      "Hubris",
+      "The Collector",
+      "Eclipse"
     ],
-    "vs_tanks": "LDR + Serylda's — packmates attack alongside for physical DPS",
-    "vs_healing": "Mortal Reminder replaces LDR vs healing — never both",
+    "vs_tanks": "Serylda's Grudge (48.7% WR)",
+    "vs_healing": "Mortal Reminder (substitute swap if heavy heal comp)",
     "vs_burst": "Sterak's Gage replaces Serpent's Fang vs burst",
     "full_build": [
+      "Serrated Dirk",
       "Ionian Boots of Lucidity",
-      "Duskblade of Draktharr",
-      "Serylda's Grudge",
-      "Edge of Night",
-      "Lord Dominik's Regards",
-      "Serpent's Fang"
+      "Hubris",
+      "The Collector",
+      "Eclipse",
+      "Serylda's Grudge"
+    ],
+    "tier": "D",
+    "wr": 45.4,
+    "pr": null,
+    "boots": "Ionian Boots of Lucidity",
+    "kit_notes": "Pack-of-dogs assassin; W dash + R packlings = forced engage on the single ARAM lane.",
+    "_filtered_items": [
+      "Source did not list explicit anti-heal item; Mortal Reminder added per project guidance."
     ]
   },
   "Nami": {
@@ -1720,43 +2109,53 @@
   },
   "Nautilus": {
     "aram_tier": "S",
-    "build_note": "Dredge Line (Q) hooks far target — hit one, dash to them. Titan's Wrath (W) shield + empowered autos rooting targets. R (Depth Charge) launches seismic wave that bounces to up to 5 targets — throw at a group for chain knockup. ARAM: R is most valuable if enemy groups — wait for clump then R → Q hook to lock one out of position.",
+    "build_note": "Grasp Heartsteel/Winter's tank — mana-to-shield + 5k HP makes him uncrowdable.",
     "core_items": [
-      "Locket of the Iron Solari",
-      "Iceborn Gauntlet",
-      "Warmog's Armor"
+      "Heartsteel",
+      "Winter's Approach",
+      "Thornmail"
     ],
-    "vs_tanks": "Thornmail — passive auto root applies during shield activation",
-    "vs_healing": "Thornmail in core",
+    "vs_tanks": "Unending Despair",
+    "vs_healing": "Kaenic Rookern",
     "vs_burst": "Sterak's Gage replaces Gargoyle vs burst",
     "full_build": [
-      "Plated Steelcaps",
-      "Sunfire Aegis",
-      "Frozen Heart",
-      "Warmog's Armor",
+      "Heartsteel",
+      "Mercury's Treads",
+      "Winter's Approach",
       "Thornmail",
-      "Gargoyle Stoneplate"
-    ]
+      "Unending Despair",
+      "Spirit Visage"
+    ],
+    "tier": "B",
+    "wr": 52.0,
+    "pr": null,
+    "boots": "Mercury's Treads",
+    "kit_notes": "Q hook + passive AA root chain-CCs anyone he touches; R for the back-line."
   },
   "Neeko": {
     "aram_tier": "A",
-    "build_note": "Tangle-Barbs (E) — throw through minions to root entire enemy group. W clone confuses enemy targeting. R (Pop Blossom) leaps into air, becomes untargetable briefly, then AOE stun + damage — use mid-fight when enemies are grouped. Q (Blooming Burst) hits twice vs champions. Disguise as ally to bait enemies into engaging.",
+    "build_note": "Dark Harvest burst — Luden's into Malignance is highest WR alt; Shadowflame is the squishy execute.",
     "core_items": [
-      "Luden's Tempest",
-      "Shadowflame",
-      "Rabadon's Deathcap"
+      "Luden's Echo",
+      "Malignance",
+      "Shadowflame"
     ],
-    "vs_tanks": "Void Staff — Q root into full combo",
-    "vs_healing": "No anti-heal — burst oriented",
+    "vs_tanks": "Void Staff",
+    "vs_healing": "Morellonomicon",
     "vs_burst": "Banshee's Veil replaces Rylai's vs poke comps",
     "full_build": [
+      "Luden's Echo",
       "Sorcerer's Shoes",
-      "Luden's Companion",
       "Shadowflame",
+      "Stormsurge",
       "Rabadon's Deathcap",
-      "Void Staff",
-      "Rylai's Crystal Scepter"
-    ]
+      "Void Staff"
+    ],
+    "tier": "B",
+    "wr": 51.2,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "AoE mage with disguise-engage R; bushes + clone fakes win the Howling Abyss flanks."
   },
   "Nidalee": {
     "aram_tier": "B",
@@ -1900,23 +2299,28 @@
   },
   "Pantheon": {
     "aram_tier": "A",
-    "build_note": "Aegis Assault (E) directional block: stands with spear forward blocking damage from that direction for 1.5s — walk forward during E to advance while blocking. Comet Spear (Q) charged = stun. Shield Vault (W) dash + stun. Grand Starfall (R) global AOE rain — throw before team fight start for guaranteed hit on grouped ARAM enemies. Semi-passive playstyle: Q poke to wear down, then W+E combo on low target.",
+    "build_note": "Conqueror Sundered-Sky bruiser — survives long enough to spam W chains.",
     "core_items": [
-      "Black Cleaver",
-      "Sterak's Gage",
-      "Serylda's Grudge"
+      "Sundered Sky",
+      "Death's Dance",
+      "Black Cleaver"
     ],
-    "vs_tanks": "LDR + Serylda's — physical damage full armor pen",
-    "vs_healing": "Mortal Reminder replaces LDR vs healing — never both",
+    "vs_tanks": "Black Cleaver",
+    "vs_healing": "Maw of Malmortius",
     "vs_burst": "Sterak's Gage in core",
     "full_build": [
-      "Plated Steelcaps",
-      "Trinity Force",
+      "Sundered Sky",
+      "Mercury's Treads",
       "Death's Dance",
-      "Sterak's Gage",
-      "Lord Dominik's Regards",
-      "Serylda's Grudge"
-    ]
+      "Black Cleaver",
+      "Maw of Malmortius",
+      "Spear of Shojin"
+    ],
+    "tier": "C",
+    "wr": 50.7,
+    "pr": null,
+    "boots": "Mercury's Treads",
+    "kit_notes": "Spear-spam point-click stun; W is the early-game burst kill-button."
   },
   "Poppy": {
     "aram_tier": "A",
@@ -1940,22 +2344,30 @@
   },
   "Pyke": {
     "aram_tier": "B",
-    "build_note": "Death from Below (R) executes in X-zone AND resets — chain R kills through grouped team. Give gold/kill credit to nearest ally. Bone Skewer (Q) hook at range OR stab at close range. Ghostwater Dive (W) stealth + MS — use to reposition. Phantom Undertow (E) dash leaves phantom that stuns on return. ARAM: position R for maximum chain kills across grouped enemies.",
+    "build_note": "Hail of Blades lethality — Hubris+Axiom CDR loop allows R execute-spam in team fights.",
     "core_items": [
-      "Night's Edge",
-      "Serylda's Grudge",
-      "Edge of Night"
+      "Hubris",
+      "Axiom Arc",
+      "Youmuu's Ghostblade"
     ],
-    "vs_tanks": "LDR + Serylda's — execute mechanic only, physical damage",
-    "vs_healing": "Mortal Reminder replaces LDR vs healing — never both",
+    "vs_tanks": "Serylda's Grudge (47.8% WR)",
+    "vs_healing": "Mortal Reminder (substitute when squishies stack heal)",
     "vs_burst": "Sterak's Gage replaces Serpent's Fang vs burst",
     "full_build": [
+      "Hubris",
       "Ionian Boots of Lucidity",
-      "Duskblade of Draktharr",
+      "Axiom Arc",
       "Edge of Night",
-      "Serylda's Grudge",
-      "Lord Dominik's Regards",
-      "Serpent's Fang"
+      "Youmuu's Ghostblade",
+      "Serylda's Grudge"
+    ],
+    "tier": "D",
+    "wr": 44.9,
+    "pr": null,
+    "boots": "Ionian Boots of Lucidity",
+    "kit_notes": "Execute support played as DPS in ARAM; R gold-sharing rewards aggressive picks, not greedy hooks.",
+    "_filtered_items": [
+      "Source did not list anti-heal; added Mortal Reminder."
     ]
   },
   "Qiyana": {
@@ -1980,23 +2392,28 @@
   },
   "Quinn": {
     "aram_tier": "B",
-    "build_note": "Blinding Assault (Q) blinds target — use vs high-auto ADCs/fighters. Vault (E) kicks off the enemy and lands behind them — use to escape dives or reposition. Behind Enemy Lines (R) transforms to Valor then back: activate R to mount up, re-activate to re-engage for bonus damage. Valor tag (W passive): enemies tagged take more damage from Quinn's next auto.",
+    "build_note": "Press the Attack crit — Statikk wave-clear into Collector burst for the ARAM clump.",
     "core_items": [
+      "Statikk Shiv",
       "The Collector",
-      "Rapid Firecannon",
       "Infinity Edge"
     ],
-    "vs_tanks": "LDR — Phantom Dancer(20%)+Collector(25%)+Navori(25%)+IE(25%)=95% crit",
-    "vs_healing": "Mortal Reminder replaces LDR vs healing — never both",
+    "vs_tanks": "Lord Dominik's Regards",
+    "vs_healing": "Mortal Reminder",
     "vs_burst": "Immortal Shieldbow replaces Collector vs burst",
     "full_build": [
+      "Statikk Shiv",
       "Berserker's Greaves",
-      "Phantom Dancer",
       "The Collector",
-      "Navori Flickerblades",
       "Infinity Edge",
+      "Blade of The Ruined King",
       "Lord Dominik's Regards"
-    ]
+    ],
+    "tier": "D",
+    "wr": 47.3,
+    "pr": null,
+    "boots": "Berserker's Greaves",
+    "kit_notes": "Mobile marksman; passive vulnerable proc + E vault = burst-then-leave gameplay."
   },
   "Rakan": {
     "aram_tier": "A",
@@ -2060,22 +2477,36 @@
   },
   "Rell": {
     "aram_tier": "A",
-    "build_note": "Ferromancy (W form change): mounted = faster, dismounted = CC aura on nearby enemies. Break the Mold (passive) steals armor and MR from enemies hit — the more you hit, the tankier Rell gets. Attract and Repel (E) tether to ally — both of you gain shields; break tether to AOE stun. Magnet Storm (R) magnetic field pulls ALL nearby enemies continuously for 2s — activate in grouped ARAM fights for constant CC.",
+    "build_note": "Heartsteel + Mercury's the new tank meta replacement of old Sunfire build. Winter's Approach mana scaling lets her R-engage repeatedly; Thornmail + Unending Despair are the AD/AP punishment combo.",
     "core_items": [
-      "Sunfire Aegis",
-      "Iceborn Gauntlet",
-      "Warmog's Armor"
-    ],
-    "vs_tanks": "Thornmail — Magnet Storm (R) pulls all nearby enemies continuously",
-    "vs_healing": "Thornmail in core",
-    "vs_burst": "Locket of the Iron Solari in core",
-    "full_build": [
-      "Plated Steelcaps",
-      "Sunfire Aegis",
-      "Frozen Heart",
-      "Warmog's Armor",
+      "Heartsteel",
       "Thornmail",
-      "Locket of the Iron Solari"
+      "Unending Despair"
+    ],
+    "vs_tanks": "Thornmail already core; add Anathema's Chains 6th vs single bruiser threat",
+    "vs_healing": "Thornmail + Unending Despair both apply Grievous (60% reduction stacked)",
+    "vs_burst": "Kaenic Rookern in core — magic shield regen; swap to Force of Nature vs only-AP comp",
+    "full_build": [
+      "Heartsteel",
+      "Mercury's Treads",
+      "Winter's Approach",
+      "Thornmail",
+      "Unending Despair",
+      "Kaenic Rookern"
+    ],
+    "tier": "S",
+    "wr": 54.1,
+    "pr": null,
+    "boots": "Mercury's Treads",
+    "kit_notes": "W (Ferromancy) toggle: dismount = ranged poke, remount = melee dash that knocks up. R (Magnet Storm) AOE pull — group 3+ enemies into team's burst. E passive grants armor/MR per ally near her — frontline magnet.",
+    "aram_specific": "ARAM rewards engage-tanks heavily — single R into 3 enemies wins fights. Tear of the Goddess + Giant's Belt start (56.8% WR per aggregator K) mana-stacks for late game.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Rell",
+        "fetched": "2026-05-02",
+        "wr_seen": 54.1,
+        "games": 3754
+      }
     ]
   },
   "Renata Glasc": {
@@ -2240,42 +2671,82 @@
   },
   "Senna": {
     "aram_tier": "A",
-    "build_note": "Umbral Glaive first — can see and destroy enemy health packs from range. RFC (25%) + Collector (25%) + IE (25%) = 75% crit. Mist Wraith stacks every fight: more stacks = more range + damage. Dawning Shadow (R) globally shields allies and damages enemies — use every grouped fight.",
+    "build_note": "26.9 Statikk Shiv reworked (40 AD + 45 AP + on-hit chain) — Senna's auto-procs now apply on-hit to bounced targets, huge AOE upgrade. Black Cleaver synergizes with her armor-shred passive. Note: Aggregator K listed Hexoptics C44 as 6th — REMOVED (arena-only); Infinity Edge is the canonical sub.",
     "core_items": [
-      "Kraken Slayer",
+      "Statikk Shiv",
+      "Black Cleaver",
+      "Rapid Firecannon"
+    ],
+    "vs_tanks": "Lord Dominik's Regards (54.5% WR) replaces Infinity Edge 6th — Senna passive %HP scales with armor pen",
+    "vs_healing": "Kraken Slayer (63.5% WR per aggregator K) replaces Infinity Edge — true damage on 3rd AA = anti-heal effectively",
+    "vs_burst": "Mercury's Treads (61.8% WR per aggregator K) replaces Boots of Swiftness — tenacity vs CC chains",
+    "full_build": [
+      "Relic Shield",
+      "Boots of Swiftness",
+      "Statikk Shiv",
+      "Black Cleaver",
       "Rapid Firecannon",
       "Infinity Edge"
     ],
-    "vs_tanks": "LDR — Senna's long range lets her proc LDR safely from distance",
-    "vs_healing": "Mortal Reminder replaces LDR if 2+ sustain — never both",
-    "vs_burst": "Immortal Shieldbow replaces RFC vs burst",
-    "full_build": [
-      "Boots of Swiftness",
-      "Umbral Glaive",
-      "Rapid Firecannon",
-      "The Collector",
-      "Infinity Edge",
-      "Lord Dominik's Regards"
+    "tier": "B",
+    "wr": 51.2,
+    "pr": 8.5,
+    "boots": "Boots of Swiftness",
+    "kit_notes": "Passive Absolution: stacks souls from minion deaths and champion passives — souls grant permanent AD + range + crit chance. Q (Piercing Darkness) ranged AA-replacement + heal ally. W (Last Embrace) long-range root after 1.5s delay. R (Dawning Shadow) global cone — damage enemies, shield allies — fires from spawn.",
+    "aram_specific": "ARAM neutral. Soul stacking is faster in ARAM (no laning, constant minion deaths) — Senna scales infinitely. R global from spawn is poke + ally shield burst.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Senna",
+        "fetched": "2026-05-02",
+        "wr_seen": 51.2,
+        "games": 10257
+      },
+      {
+        "url": "https://aggregator-a.invalid/lol/modes/aram/senna/build",
+        "fetched": "2026-05-02",
+        "wr_seen": 51.35,
+        "pr_seen": 8.5
+      }
     ]
   },
   "Seraphine": {
     "aram_tier": "S",
-    "build_note": "Third Echo passive — every 2 ally/enemy spell casts, Seraphine's next spell echoes twice. High Note (Q) AOE poke: echoed Q hits entire group twice. Surround Sound (W) shields ALL allies — throw at start of grouped fights. Beat Drop (E) root: echoed E roots a wider area. R (Encore) charm is one of ARAM's best abilities — throw across entire map for grouped charm.",
+    "build_note": "Liandry+Rylai for sustained AOE — Sera's R is wide enough to hit 5 enemies in narrow ARAM lane. Luden waveclear + first-cast burst chains into Liandry burn that ticks through Rylai slow. Shadowflame for execute amp.",
     "core_items": [
-      "Moonstone Renewer",
-      "Staff of Flowing Water",
-      "Rabadon's Deathcap"
+      "Luden's Echo",
+      "Liandry's Torment",
+      "Rylai's Crystal Scepter"
     ],
-    "vs_tanks": "Void Staff — all sources magic",
-    "vs_healing": "No anti-heal — healing support hybrid",
-    "vs_burst": "Locket of the Iron Solari replaces Moonstone vs burst",
+    "vs_tanks": "Liandry's already core — Void Staff replaces Shadowflame 6th vs MR stackers",
+    "vs_healing": "Morellonomicon replaces Rylai's vs healing comp",
+    "vs_burst": "Stormsurge alt 4th (55.1% WR per aggregator K) — MS proc to escape after combo",
     "full_build": [
+      "Lost Chapter",
       "Sorcerer's Shoes",
-      "Moonstone Renewer",
-      "Staff of Flowing Water",
-      "Rabadon's Deathcap",
-      "Void Staff",
-      "Redemption"
+      "Luden's Echo",
+      "Liandry's Torment",
+      "Rylai's Crystal Scepter",
+      "Shadowflame"
+    ],
+    "tier": "S",
+    "wr": 54.1,
+    "pr": 10.36,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "Passive Stage Presence — every 3rd ability echoes for free (huge mana economy). R (Encore) AOE charm + AOE damage — chains through all hit. E (Beat Drop) long-range root sets up R. Stack notes via Q for empowered passive procs.",
+    "aram_specific": "+10% damage dealt, -10% damage taken in ARAM (Riot's mode-balance buff). Notes from ally CC/abilities feed into her R radius — pair with Sona/Lulu for 6-second R radius chains.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Seraphine",
+        "fetched": "2026-05-02",
+        "wr_seen": 54.1,
+        "games": 13350
+      },
+      {
+        "url": "https://aggregator-a.invalid/lol/modes/aram/seraphine/build",
+        "fetched": "2026-05-02",
+        "wr_seen": 54.65,
+        "pr_seen": 10.36
+      }
     ]
   },
   "Shaco": {
@@ -2360,22 +2831,42 @@
   },
   "Sion": {
     "aram_tier": "A",
-    "build_note": "W (Soul Furnace) charges as HP goes up — fully charge before fights for maximum shield. Detonate W at 3+ enemies for AOE. Q (Decimating Smash) full charge for maximum knockup — knock back entire ARAM corridor. R (Unstoppable Onslaught) infinite range — use to chase down fleeing enemies after fight or engage from distance. Passive: even in death, auto attacks for 8s.",
+    "build_note": "Heartsteel proc-on-charged-Q is Sion's S+ identity in ARAM. Hollow Radiance + Unending Despair stack passive damage every second in fights — 4-5 tanks worth of HP regen drained per teamfight.",
     "core_items": [
       "Heartsteel",
-      "Warmog's Armor",
-      "Sunfire Aegis"
+      "Hollow Radiance",
+      "Unending Despair"
     ],
-    "vs_tanks": "Thornmail — Soul Furnace (W) shield's bonus HP scales armor/MR mitigation",
-    "vs_healing": "Thornmail in core",
-    "vs_burst": "Sterak's Gage replaces Gargoyle vs burst",
+    "vs_tanks": "Hollow Radiance already in core — adds Anathema's Chains 5th vs single carry (tenacity reduction)",
+    "vs_healing": "Thornmail in core covers AD healing; Morellonomicon if AP healer",
+    "vs_burst": "Kaenic Rookern replaces Warmog's vs heavy AP poke (magic shield)",
     "full_build": [
-      "Plated Steelcaps",
-      "Sunfire Aegis",
-      "Frozen Heart",
-      "Warmog's Armor",
+      "Heartsteel",
+      "Mercury's Treads",
+      "Hollow Radiance",
+      "Unending Despair",
       "Thornmail",
-      "Gargoyle Stoneplate"
+      "Warmog's Armor"
+    ],
+    "tier": "S",
+    "wr": 55.5,
+    "pr": 4.78,
+    "boots": "Mercury's Treads",
+    "kit_notes": "Passive Glory in Death — on death, become uncontrollable revenant with 50% lifesteal for ~7s (huge ARAM tool: ult into fight, die mid-fight, keep dealing damage). Q (Decimating Smash) full charge = AOE knockup + huge damage. R (Unstoppable Onslaught) global gap-close that snowballs in ARAM's narrow lane.",
+    "aram_specific": "ARAM gives Sion +10% damage taken, 50% Glory in Death lifesteal (buffed). One R can win a fight from base. Stack Heartsteel HP via repeated Q charges on the front wave between fights.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Sion",
+        "fetched": "2026-05-02",
+        "wr_seen": 55.5,
+        "games": 6386
+      },
+      {
+        "url": "https://aggregator-a.invalid/lol/modes/aram/sion/build",
+        "fetched": "2026-05-02",
+        "wr_seen": 55.01,
+        "pr_seen": 4.78
+      }
     ]
   },
   "Sivir": {
@@ -2440,43 +2931,62 @@
   },
   "Sona": {
     "aram_tier": "S",
-    "build_note": "Power Chord (passive) every 3 abilities — choose chord based on situation: Q chord slows, W chord reduces damage, E chord pushes back. Crescendo (R) stuns entire corridor — wait for 3+ enemies grouped. Aria of Perseverance (W) shields the most injured ally automatically. Staff of Flowing Water + Ardent Censer: both buff AP and AS of everyone you heal.",
+    "build_note": "Note 26.9 Staff of Flowing Water nerfed (15->10 AH, lost MS-on-Rapids in inline AH refactor) — still in build because the AH is core, but expect WR drift if refactor is deeper than tooltip. Whispering Circlet (new component) is the support-AP value pickup.",
     "core_items": [
-      "Moonstone Renewer",
+      "Whispering Circlet",
       "Ardent Censer",
-      "Staff of Flowing Water"
+      "Archangel's Staff"
     ],
-    "vs_tanks": "No anti-tank — utility + AP",
-    "vs_healing": "No sustained anti-heal — poke then disengage",
-    "vs_burst": "Locket of the Iron Solari replaces Ardent Censer vs burst",
+    "vs_tanks": "Imperial Mandate replaces Ardent Censer — chain-mark tanks for ally execute",
+    "vs_healing": "Morellonomicon (56.6% WR) replaces Ardent vs healing — sacrifice ally amp for cut",
+    "vs_burst": "Mikael's Blessing (54.4% WR) replaces Redemption vs CC chains — cleanse stuns/silences",
     "full_build": [
+      "Bandleglass Mirror",
       "Ionian Boots of Lucidity",
-      "Moonstone Renewer",
-      "Staff of Flowing Water",
+      "Whispering Circlet",
       "Ardent Censer",
       "Redemption",
-      "Rabadon's Deathcap"
+      "Staff of Flowing Water"
+    ],
+    "tier": "A",
+    "wr": 52.4,
+    "pr": null,
+    "boots": "Ionian Boots of Lucidity",
+    "kit_notes": "Passive Power Chord: every 3rd ability empowers next AA with stance-based effect (Q=damage, W=HP cut, E=slow). R (Crescendo) wide AOE stun — game-winning teamfight ult. Aura-based: stay close to allies for W shield/regen and E MS sharing.",
+    "aram_specific": "+10% damage taken in ARAM (Sona is glass-cannon enchanter). E MS sharing wins reset chases. R into clumped 5-stack is auto-win — fire from off-angle to dodge counter-CC.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Sona",
+        "fetched": "2026-05-02",
+        "wr_seen": 52.4,
+        "games": 7375
+      }
     ]
   },
   "Soraka": {
     "aram_tier": "A",
-    "build_note": "Q (Starcall) heals Soraka when it hits — stay in range to poke and self-heal. Equinox (E) silences and roots if enemies stay in zone. R (Wish) global heal — use when ANY ally is at 20% HP, not just when someone is dying. Moonstone Renewer: healing increases during fights. Never save R for 'perfect moment' — throw it as soon as multiple allies are below 40%.",
+    "build_note": "Aery enchanter — Moonstone+Circlet stacks heal/shield power; Warmog+SV keeps her alive long enough.",
     "core_items": [
       "Moonstone Renewer",
-      "Redemption",
-      "Staff of Flowing Water"
+      "Whispering Circlet",
+      "Warmog's Armor"
     ],
-    "vs_tanks": "No anti-tank — pure heal/utility",
-    "vs_healing": "Thornmail counters her heals — build anti-heal consideration",
+    "vs_tanks": "Dawncore (scales heal/shield power for sustained team duration)",
+    "vs_healing": "Redemption (heal volume race — out-heal the opposing healer, plus team-wide Grievous via Morellonomicon if dropping a slot)",
     "vs_burst": "Locket of the Iron Solari replaces Mikael's vs heavy burst",
     "full_build": [
-      "Ionian Boots of Lucidity",
       "Moonstone Renewer",
-      "Staff of Flowing Water",
-      "Redemption",
-      "Ardent Censer",
-      "Mikael's Blessing"
-    ]
+      "Ionian Boots of Lucidity",
+      "Whispering Circlet",
+      "Warmog's Armor",
+      "Spirit Visage",
+      "Redemption"
+    ],
+    "tier": "B",
+    "wr": 52.0,
+    "pr": null,
+    "boots": "Ionian Boots of Lucidity",
+    "kit_notes": "Pure heal-bot; W heals at HP cost + R global = plus-one heal-stack that wins attrition wars."
   },
   "Swain": {
     "aram_tier": "S",
@@ -2580,22 +3090,30 @@
   },
   "Talon": {
     "aram_tier": "C",
-    "build_note": "W (Rake) bleed applies slow on return — W forward, let blades return for bleed + slow. E (Assassin's Path) wall-hop: vault over terrain for unexpected angles. Combo: E over terrain → Q reset → W → ignite. R (Shadow Assault) goes invisible briefly — use to reposition mid-fight or escape after burst. ARAM: wall-hop to flank from sides.",
+    "build_note": "Dark Harvest lethality — Axiom CDR + Hubris stacks chain R-resets through clustered fights.",
     "core_items": [
-      "Night's Edge",
-      "Serylda's Grudge",
-      "Edge of Night"
+      "Axiom Arc",
+      "The Collector",
+      "Serylda's Grudge"
     ],
-    "vs_tanks": "LDR + Serylda's — double armor pen for physical damage",
-    "vs_healing": "Mortal Reminder replaces LDR if 2+ sustain enemies — never both",
+    "vs_tanks": "Serylda's Grudge",
+    "vs_healing": "Mortal Reminder (substitute as final swap)",
     "vs_burst": "Sterak's Gage replaces Mortal Reminder vs burst",
     "full_build": [
+      "Hubris",
       "Ionian Boots of Lucidity",
-      "Duskblade of Draktharr",
-      "Edge of Night",
+      "Axiom Arc",
       "Serylda's Grudge",
-      "Lord Dominik's Regards",
-      "Serpent's Fang"
+      "The Collector",
+      "Eclipse"
+    ],
+    "tier": "D",
+    "wr": 45.8,
+    "pr": null,
+    "boots": "Ionian Boots of Lucidity",
+    "kit_notes": "Burst assassin; no walls to vault on the bridge — he's a pure W-Q-AA combo character here.",
+    "_filtered_items": [
+      "Source did not list anti-heal; Mortal Reminder added."
     ]
   },
   "Taric": {
@@ -2660,23 +3178,28 @@
   },
   "Tristana": {
     "aram_tier": "A",
-    "build_note": "Rush The Collector -> Stormrazor -> RFC. Jump in only when E is fully stacked + enemy CC is down. Rocket Jump resets on kill win teamfights. Save E blast for escape if needed.",
+    "build_note": "Lethal Tempo crit — Yun Tal+IE scaling, Navori CDR resets W/E for repeat dives.",
     "core_items": [
-      "The Collector",
-      "Stormrazor",
-      "Rapid Firecannon"
+      "Yun Tal Wildarrows",
+      "Infinity Edge",
+      "The Collector"
     ],
     "full_build": [
+      "Yun Tal Wildarrows",
       "Berserker's Greaves",
-      "The Collector",
-      "Stormrazor",
       "Infinity Edge",
       "Lord Dominik's Regards",
-      "Rapid Firecannon"
+      "Bloodthirster",
+      "Navori Flickerblade"
     ],
-    "vs_tanks": "Lord Dominik's Regards 4th",
-    "vs_healing": "Mortal Reminder 5th",
-    "vs_burst": "Immortal Shieldbow 3rd over RFC if dive-heavy"
+    "vs_tanks": "Lord Dominik's Regards (53.7% WR)",
+    "vs_healing": "Mortal Reminder",
+    "vs_burst": "Immortal Shieldbow 3rd over RFC if dive-heavy",
+    "tier": "D",
+    "wr": 49.3,
+    "pr": null,
+    "boots": "Berserker's Greaves",
+    "kit_notes": "Range-stacking burst ADC; W jump-reset on kill = self-peel and dive in one button."
   },
   "Trundle": {
     "aram_tier": "A",
@@ -2740,22 +3263,36 @@
   },
   "Twitch": {
     "aram_tier": "A",
-    "build_note": "On-hit build — Guinsoo's converts crits to double on-hit (Kraken procs twice per auto). Hurricane spreads BOTH on-hit procs + venom stacks to 3 targets at once. Stack 6 venom stacks on everyone during R, then venom explosions hit entire team. R (Spray and Pray) from max range through the whole group.",
+    "build_note": "Tier D — 49.7% WR. Twitch needs lane-stealth for stacks; ARAM no laning kills early game. Runaan+IE+BotRK is the high-WR hyper-carry build but requires 6 items to spike.",
     "core_items": [
-      "Kraken Slayer",
-      "Rapid Firecannon",
-      "Infinity Edge"
+      "Yun Tal Wildarrows",
+      "Blade of The Ruined King",
+      "The Collector"
     ],
-    "vs_tanks": "Kraken Slayer + LDR — Hurricane spreads both procs to 3 targets simultaneously",
-    "vs_healing": "Mortal Reminder replaces LDR if 2+ sustain enemies — never both",
-    "vs_burst": "Immortal Shieldbow replaces Bloodthirster",
+    "vs_tanks": "Lord Dominik's Regards (54.2% WR) in core — Twitch passive %max-HP DOT pairs with %pen",
+    "vs_healing": "Fiendhunter Bolts (57.8% WR) replaces Lord Dominik's — Twitch uniquely benefits, anti-heal-on-AAs",
+    "vs_burst": "Bloodthirster (55.0% WR) replaces Lord Dominik's — Twitch is fragile, lifesteal carries duration",
     "full_build": [
+      "Long Sword",
       "Berserker's Greaves",
-      "Kraken Slayer",
-      "Guinsoo's Rageblade",
       "Runaan's Hurricane",
-      "Lord Dominik's Regards",
-      "Bloodthirster"
+      "Infinity Edge",
+      "Blade of The Ruined King",
+      "Lord Dominik's Regards"
+    ],
+    "tier": "D",
+    "wr": 49.7,
+    "pr": null,
+    "boots": "Berserker's Greaves",
+    "kit_notes": "Passive Deadly Venom: AAs stack DOT, expended on E for burst. Q (Ambush) stealth + AS — open fights from invisible. W (Venom Cask) AOE slow + applies passive. E (Contaminate) %max-HP burst per stack — wait for 6 stacks. R (Spray and Pray) extra range + piercing AAs — Runaan's quadruples this.",
+    "aram_specific": "ARAM neutral. Q-stealth in ARAM bushes is the ONLY engage — pop Q from bush, R, fire 5-target piercing AAs. Stack Deadly Venom on tanks before fights — E for free 30%+ burst.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Twitch",
+        "fetched": "2026-05-02",
+        "wr_seen": 49.7,
+        "games": 12283
+      }
     ]
   },
   "Udyr": {
@@ -2800,82 +3337,143 @@
   },
   "Varus": {
     "aram_tier": "A",
-    "build_note": "Kraken Slayer first for % HP damage through W-marked targets. R+W combo: ult to immobilize group, W to blight-stack, Q for 3-stack proc. Blighted Quiver stacks multiply with Kraken true damage vs tanks.",
+    "build_note": "Manamune lethality — Q-poke chassis; Serylda's slow on Q chunk locks targets for the team.",
     "core_items": [
-      "Kraken Slayer",
-      "Rapid Firecannon",
-      "Infinity Edge"
+      "Manamune",
+      "The Collector",
+      "Serylda's Grudge"
     ],
-    "vs_tanks": "Kraken Slayer + LDR — W-marked enemies take extra damage from all sources",
-    "vs_healing": "Mortal Reminder replaces LDR if 2+ sustain — never both",
+    "vs_tanks": "Serylda's Grudge",
+    "vs_healing": "Edge of Night (spell-shield blocks initial heal-engage spells)",
     "vs_burst": "Immortal Shieldbow replaces Phantom Dancer vs heavy dive",
     "full_build": [
-      "Berserker's Greaves",
-      "Kraken Slayer",
-      "Phantom Dancer",
+      "Manamune",
+      "Ionian Boots of Lucidity",
       "The Collector",
-      "Infinity Edge",
-      "Lord Dominik's Regards"
-    ]
+      "Serylda's Grudge",
+      "Edge of Night",
+      "Serrated Dirk"
+    ],
+    "tier": "C",
+    "wr": 50.3,
+    "pr": null,
+    "boots": "Ionian Boots of Lucidity",
+    "kit_notes": "Lethality poke ADC on this map; Q charge from max range whittles before fights start."
   },
   "Vayne": {
     "aram_tier": "B",
-    "build_note": "Rush Kraken Slayer -> BotRK -> Guinsoo's Rageblade. Skip RFC (melee range). Condemn into walls only. Tumble is spacing not aggression. Needs peel allies to shine.",
+    "build_note": "26.9 Doran's Bow start (NEW item — 6 AD, 12-15% AS, 1.5% omnivamp, 400g) replaces old Doran's Blade. Vayne's primary on-hit champ, perfect new starter. BotRK + Rageblade + Wit's End is the on-hit holy trinity — Kraken Slayer 4th replaces traditional IE for true damage.",
     "core_items": [
-      "Kraken Slayer",
-      "Blade of the Ruined King",
-      "Guinsoo's Rageblade"
+      "Blade of The Ruined King",
+      "Guinsoo's Rageblade",
+      "Wit's End"
     ],
     "full_build": [
+      "Doran's Bow",
       "Berserker's Greaves",
-      "Kraken Slayer",
-      "Blade of the Ruined King",
+      "Blade of The Ruined King",
       "Guinsoo's Rageblade",
-      "Immortal Shieldbow",
-      "Mortal Reminder"
+      "Wit's End",
+      "Kraken Slayer"
     ],
-    "vs_tanks": "Kraken + Rageblade is the tank shred setup",
-    "vs_healing": "Mortal Reminder 5th",
-    "vs_burst": "Immortal Shieldbow 4th"
+    "vs_tanks": "Kraken Slayer (56.6% WR) + Fiendhunter Bolts (61.8% WR) — Vayne true damage stack, both proc-on-AA",
+    "vs_healing": "Terminus (54.6% WR) on-hit %pen ramp — Fiendhunter Bolts also doubles as anti-heal",
+    "vs_burst": "Jak'Sho, The Protean (53.6% WR) — gives Vayne survival vs magic-burst comps",
+    "tier": "D",
+    "wr": 47.9,
+    "pr": null,
+    "boots": "Berserker's Greaves",
+    "kit_notes": "Passive Final Hour (R active): bonus AD + invisibility on Q tumble + faster passive proc. W (Silver Bolts) every 3rd AA on same target = %max-HP true damage — Rageblade halves this. E (Condemn) knockback into wall = stun. Q (Tumble) repositioning + bonus damage.",
+    "aram_specific": "ARAM neutral. Vayne suffers without escape options — Q tumble through wall is the only safety. Q-invisibility in R lets her dodge skillshots — pop R for both damage AND positioning.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Vayne",
+        "fetched": "2026-05-02",
+        "wr_seen": 47.9,
+        "games": 12541
+      }
+    ]
   },
   "Veigar": {
     "aram_tier": "S",
-    "build_note": "Stack AP via Q (Baleful Strike) hits on champions. Event Horizon (E) cage corners entire ARAM corridor — place at walls to stun anyone who walks in. R (Primordial Burst) executes based on ENEMY'S missing HP — use on enemies below 50% for near-guaranteed kill. Farm stacks aggressively: every champ Q hit + kill = permanent AP.",
+    "build_note": "Note tier dropped to B — aggregator K shows 50.5% WR / 14913 games. Rod of Ages variant (52.6% WR, 2311 games) is the high-WR sub-build for sustain mage style. Luden burst remains baseline.",
     "core_items": [
-      "Luden's Tempest",
-      "Shadowflame",
-      "Rabadon's Deathcap"
+      "Luden's Echo",
+      "Rabadon's Deathcap",
+      "Rod of Ages"
     ],
-    "vs_tanks": "Void Staff — all damage scales with AP, not % HP",
-    "vs_healing": "No anti-heal — rely on one-shot potential",
-    "vs_burst": "Zhonya's already in core build — activate during dives",
+    "vs_tanks": "Void Staff in core — Veigar's flat AP scaling already shreds MR with %pen",
+    "vs_healing": "Shadowflame is execute amp not anti-heal — add Morellonomicon 6th vs Soraka",
+    "vs_burst": "Banshee's Veil (51.4% WR) replaces Shadowflame vs assassin dive — Zhonya's bad here (47.3% WR)",
     "full_build": [
+      "Lost Chapter",
       "Sorcerer's Shoes",
-      "Luden's Companion",
-      "Shadowflame",
+      "Luden's Echo",
       "Rabadon's Deathcap",
       "Void Staff",
-      "Zhonya's Hourglass"
+      "Shadowflame"
+    ],
+    "tier": "B",
+    "wr": 50.5,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "Passive Phenomenal Evil: stacks AP on ability hit + champion takedown — Veigar's win condition is stack accumulation. E (Event Horizon) ring stuns enemies who walk through perimeter (not center). R (Primordial Burst) executes — bonus damage % missing HP. Stack on minions early game.",
+    "aram_specific": "ARAM is Veigar's stack-paradise — every minion kill = passive stack. 200+ stacks by game-end is realistic. R one-shots squishies past 800 AP.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Veigar",
+        "fetched": "2026-05-02",
+        "wr_seen": 50.5,
+        "games": 14913
+      }
+    ],
+    "variants": [
+      {
+        "trigger": "scaling alt",
+        "build": [
+          "Tear of the Goddess",
+          "Sorcerer's Shoes",
+          "Rod of Ages",
+          "Luden's Echo",
+          "Rabadon's Deathcap",
+          "Void Staff"
+        ],
+        "note": "Rod of Ages 2nd (52.6% WR) — slower spike but max HP+AP scaling for late-game R one-shots"
+      }
     ]
   },
   "Vel'Koz": {
     "aram_tier": "S",
-    "build_note": "Organic Deconstruction (passive): 3 ability hits = true damage explosion on target. Q (Plasma Fission) splits into two: rotate after firing for optimal path to two targets. W (Void Rift) AOE line. E (Tectonic Disruption) knock-up and slow. R (Life Form Disintegration Ray) long channel that stacks Research stacks rapidly — use when target is CC'd or slowed. In ARAM: stand behind minion wall, spam Q/W poke.",
+    "build_note": "S-tier identity is true-damage R that burns through tanks. Standard mage-burst build (Luden+Shadowflame+Rabadon) — Vel'Koz scales hard with flat AP for both ability and R damage. AOE channel means 5-target ult in narrow lane.",
     "core_items": [
-      "Luden's Tempest",
+      "Luden's Echo",
       "Shadowflame",
       "Rabadon's Deathcap"
     ],
-    "vs_tanks": "Void Staff — Research stacks explode for true damage when full",
-    "vs_healing": "No anti-heal — range poke/burst",
-    "vs_burst": "Banshee's Veil replaces Zhonya's vs dive",
+    "vs_tanks": "Void Staff replaces Stormsurge 6th — Vel'Koz passive true damage already shreds",
+    "vs_healing": "Morellonomicon (49.4% WR) replaces Stormsurge vs Soraka/Sona",
+    "vs_burst": "Banshee's Veil (45.3% WR — bad) — keep Stormsurge MS escape instead vs dive",
     "full_build": [
+      "Lost Chapter",
       "Sorcerer's Shoes",
-      "Luden's Companion",
+      "Luden's Echo",
       "Shadowflame",
       "Rabadon's Deathcap",
-      "Void Staff",
-      "Zhonya's Hourglass"
+      "Stormsurge"
+    ],
+    "tier": "S",
+    "wr": 54.0,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "Passive Organic Deconstruction: 3 stacks of any ability detonate for true damage — Q-W-E or Q-Q-E full combo procs immediately. R (Lifeform Disintegration Ray) channeled wide cone + %max-HP true damage — fire after 3-stack proc for full burst.",
+    "aram_specific": "+5% damage dealt, neutral taken — minor ARAM buff. R is the highest single-cast damage in mode for AOE; cast from off-angle to avoid CC interrupt. Q splits on first impact = waveclear and harass simultaneously.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Velkoz",
+        "fetched": "2026-05-02",
+        "wr_seen": 54.0,
+        "games": 13678
+      }
     ]
   },
   "Vex": {
@@ -3022,22 +3620,36 @@
   },
   "Xerath": {
     "aram_tier": "S",
-    "build_note": "Horizon Focus: hits from beyond 750 range deal 10% bonus damage — Xerath is ALWAYS beyond 750 range. R (Rite of the Arcane) hits from anywhere on map — throw during any grouped fight for free damage. Never be within auto range of anyone. Q charges deal damage at max range every 6 stacks.",
+    "build_note": "Tier B — 51.5% WR. Pure-poke caster — no item innovation needed, classic Luden+Shadowflame+Rabadon AP stack is optimal. Stormsurge MS-on-takedown helps R-positioning.",
     "core_items": [
-      "Luden's Tempest",
+      "Luden's Echo",
       "Shadowflame",
       "Rabadon's Deathcap"
     ],
-    "vs_tanks": "Void Staff mandatory — all damage is magic",
-    "vs_healing": "No anti-heal (magic user) — rely on burst kill",
-    "vs_burst": "Banshee's Veil replaces Horizon Focus vs heavy poke",
+    "vs_tanks": "Void Staff replaces Stormsurge 6th — Xerath's flat-AP needs %pen vs MR",
+    "vs_healing": "Morellonomicon (39.6% WR — worst situational) only vs heavy healing",
+    "vs_burst": "Zhonya's Hourglass (48.9% WR) replaces Stormsurge vs assassin dive",
     "full_build": [
+      "Lost Chapter",
       "Sorcerer's Shoes",
-      "Luden's Companion",
-      "Horizon Focus",
+      "Luden's Echo",
       "Shadowflame",
       "Rabadon's Deathcap",
-      "Void Staff"
+      "Stormsurge"
+    ],
+    "tier": "B",
+    "wr": 51.5,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "Q (Arcanopulse) charge-up beam — hold for max damage range. W (Eye of Destruction) AOE skillshot center deals bonus damage. E (Shocking Orb) long-range stun — stun length scales with travel distance. R (Rite of the Arcane) global 3 charges; aim with reticule, fire from base.",
+    "aram_specific": "+10% damage taken — Xerath glass-cannon nerf in ARAM. Long-range R from base is the value play; reticle-aim at low-HP enemies. Q charge cancellable with E or W — fake Q to bait dodges.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Xerath",
+        "fetched": "2026-05-02",
+        "wr_seen": 51.5,
+        "games": 12967
+      }
     ]
   },
   "Xin Zhao": {
@@ -3062,22 +3674,36 @@
   },
   "Yasuo": {
     "aram_tier": "A",
-    "build_note": "Yasuo has double crit chance from passive — IE activates fully with ISB+Collector (50% stated = 100% effective crit). Steel Tempest (Q) three charges: Q3 is the tornado knock-up — save it for R combo. Sweeping Blade (E) dash through enemy — Q immediately after E for bonus damage. Last Breath (R) requires airborne target — use Q3 tornado or ally knock-up. Wind Wall (W) blocks ALL projectiles for 4s — block Jinx rocket, Lux beam, any projectile ult.",
+    "build_note": "26.9 Statikk Shiv reworked to AD/AP hybrid — NOT in current Yasuo build (he wants pure crit). BotRK 1st for %HP shred + lifesteal, Shieldbow safety, IE crit-amp.",
     "core_items": [
-      "Infinity Edge",
-      "Kraken Slayer",
-      "Phantom Dancer"
-    ],
-    "vs_tanks": "LDR — ISB(25%)+Collector(25%)+IE(25%)=75% crit; double crit passive",
-    "vs_healing": "Mortal Reminder replaces LDR vs healing — never both",
-    "vs_burst": "Immortal Shieldbow already in core",
-    "full_build": [
-      "Berserker's Greaves",
+      "Blade of The Ruined King",
       "Immortal Shieldbow",
-      "Trinity Force",
-      "The Collector",
+      "Infinity Edge"
+    ],
+    "vs_tanks": "Death's Dance core — adds Mortal Reminder 5th vs healing tanks; BotRK already %current-HP",
+    "vs_healing": "Mortal Reminder (58.2% WR) replaces Death's Dance — can't carry both anti-heal and lifesteal in same slot",
+    "vs_burst": "Bloodthirster (59.1% WR) replaces Infinity Edge vs heavy poke — shield + lifesteal over crit damage",
+    "full_build": [
+      "Long Sword",
+      "Berserker's Greaves",
+      "Blade of The Ruined King",
+      "Immortal Shieldbow",
       "Infinity Edge",
-      "Lord Dominik's Regards"
+      "Death's Dance"
+    ],
+    "tier": "A",
+    "wr": 52.4,
+    "pr": null,
+    "boots": "Berserker's Greaves",
+    "kit_notes": "Passive: crit chance doubled, shield on movement. Q (Steel Tempest): 3rd Q is a tornado — line knock-up. E (Sweeping Blade) dashes through enemies — chain through minions to engage. R (Last Breath) only off knocked-up targets — pair with own Q3 or ally CC.",
+    "aram_specific": "ARAM neutral. Q3-tornado from screen-edge knockup sets up R every fight; aim for back-line caster. Ally CC into R is the auto-pairing — call out Maokai/Annie/Jhin teams.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Yasuo",
+        "fetched": "2026-05-02",
+        "wr_seen": 52.4,
+        "games": 8198
+      }
     ]
   },
   "Yone": {
@@ -3122,43 +3748,56 @@
   },
   "Yuumi": {
     "aram_tier": "B",
-    "build_note": "Stay ATTACHED to your most mobile/aggressive ally. W attach gives Yuumi untargetability (except tower damage). Q (Prowling Projectile) fires slow missile that deals more damage if hitting non-Yuumi-attached enemy — use while attached. R (Final Chapter) channels 7 healing waves and roots enemies — activate during enemy engage for max healing + CC. Never detach mid-fight unless forced.",
+    "build_note": "Aery enchanter — Moonstone+Censer+Redemption is the standard heal/shield triple-stack.",
     "core_items": [
       "Moonstone Renewer",
-      "Ardent Censer",
-      "Staff of Flowing Water"
+      "Whispering Circlet",
+      "Ardent Censer"
     ],
-    "vs_tanks": "No anti-tank — pure attatchment support",
-    "vs_healing": "No anti-heal",
+    "vs_tanks": "Cosmic Drive (substitute when team needs movement speed and CDR over raw heal stack)",
+    "vs_healing": "Morellonomicon (substitute on Yuumi when enemy comp out-heals)",
     "vs_burst": "Locket of the Iron Solari replaces Zhonya's — but Zhonya's while attached does nothing",
     "full_build": [
-      "Ionian Boots of Lucidity",
       "Moonstone Renewer",
-      "Staff of Flowing Water",
+      "Ionian Boots of Lucidity",
+      "Whispering Circlet",
       "Ardent Censer",
       "Redemption",
-      "Zhonya's Hourglass"
+      "Mikael's Blessing"
+    ],
+    "tier": "D",
+    "wr": 47.6,
+    "pr": null,
+    "boots": "Ionian Boots of Lucidity",
+    "kit_notes": "Attached enchanter; W rides an ally and pumps shields/heals — no lane mobility issues here.",
+    "_filtered_items": [
+      "Source did not list anti-tank or anti-heal swaps; substituted Cosmic Drive (utility) and Morellonomicon (Grievous) per project schema."
     ]
   },
   "Zac": {
     "aram_tier": "A",
-    "build_note": "Cell Division (passive) chunks: collect your own chunks to heal — pick up chunks during/after fights. Stretching Strikes (Q) grabs and slams two targets together. Unstable Matter (W) AOE % max HP damage — use vs tanks. Elastic Slingshot (E) long range launch at target — can launch from behind terrain. Let's Bounce (R) bounce through enemies 4 times knock-upping the whole group each bounce. In ARAM: E into enemy group → R bounce through everyone.",
+    "build_note": "Grasp/Aftershock HP-tank — passive blob respawn loves Spirit Visage healing.",
     "core_items": [
-      "Sunfire Aegis",
-      "Warmog's Armor",
-      "Frozen Heart"
+      "Heartsteel",
+      "Spirit Visage",
+      "Thornmail"
     ],
-    "vs_tanks": "Thornmail — more HP = more Let's Bounce (R) damage and more chunks",
-    "vs_healing": "Thornmail in core",
+    "vs_tanks": "Unending Despair",
+    "vs_healing": "Thornmail",
     "vs_burst": "Sterak's Gage replaces Gargoyle vs burst",
     "full_build": [
-      "Plated Steelcaps",
-      "Sunfire Aegis",
-      "Warmog's Armor",
-      "Frozen Heart",
+      "Heartsteel",
+      "Mercury's Treads",
+      "Spirit Visage",
       "Thornmail",
-      "Gargoyle Stoneplate"
-    ]
+      "Warmog's Armor",
+      "Unending Despair"
+    ],
+    "tier": "D",
+    "wr": 46.3,
+    "pr": null,
+    "boots": "Mercury's Treads",
+    "kit_notes": "Elastic engage tank; E launch + R bounce is the back-line dive on this map."
   },
   "Zed": {
     "aram_tier": "B",
@@ -3182,62 +3821,95 @@
   },
   "Zeri": {
     "aram_tier": "A",
-    "build_note": "Q (Burst Fire) long-hold = charged shot through terrain. E (Spark Surge) wall-hop dash for repositioning. R (Lightning Crash) overcharges: every kill extends duration. Guinsoo's converts crits to double on-hit for Kraken synergy. W (Ultrashock Laser) slows and reveals — use before R engagement.",
+    "build_note": "Lethal Tempo crit — IE+Yun Tal+Runaan's gives the AoE chain her Q needs to actually scale.",
     "core_items": [
       "Yun Tal Wildarrows",
-      "Rapid Firecannon",
+      "Runaan's Hurricane",
       "Infinity Edge"
     ],
-    "vs_tanks": "Kraken + LDR + Guinsoo double on-hit — Q electric charges through walls",
-    "vs_healing": "Mortal Reminder replaces LDR vs healing — never both",
+    "vs_tanks": "Lord Dominik's Regards",
+    "vs_healing": "Mortal Reminder",
     "vs_burst": "Immortal Shieldbow replaces Guinsoo's vs heavy burst",
     "full_build": [
+      "Yun Tal Wildarrows",
       "Berserker's Greaves",
-      "Kraken Slayer",
-      "Navori Flickerblades",
       "Runaan's Hurricane",
+      "Infinity Edge",
       "Lord Dominik's Regards",
-      "Guinsoo's Rageblade"
-    ]
+      "Bloodthirster"
+    ],
+    "tier": "D",
+    "wr": 43.4,
+    "pr": null,
+    "boots": "Berserker's Greaves",
+    "kit_notes": "Movement-speed ADC; E wall-jump is the only escape on the single-lane map — use it carefully."
   },
   "Ziggs": {
     "aram_tier": "S",
-    "build_note": "Hexplosive Minefield (E) at health pack paths — slows and damages. Satchel Charge (W) under yourself = jump over terrain. R (Mega Inferno Bomb) global — always on cooldown. Short Fuse (passive) every 12s: deny enemy health pack collection with empowered auto.",
+    "build_note": "Pure poke build — Luden waveclear + Liandry burn through ARAM HP pools + Shadowflame execute amp. Horizon Focus variant trades durability for proc-amp on his own E-stuns.",
     "core_items": [
-      "Luden's Tempest",
+      "Luden's Echo",
+      "Liandry's Torment",
+      "Shadowflame"
+    ],
+    "vs_tanks": "Void Staff replaces Shadowflame 5th — Liandry already %HP burn",
+    "vs_healing": "Morellonomicon replaces Liandry vs heavy healing — only if 2+ healers",
+    "vs_burst": "Horizon Focus 2nd (57.1% WR) — bonus damage to immobilized + safety vs dive",
+    "full_build": [
+      "Lost Chapter",
+      "Sorcerer's Shoes",
+      "Luden's Echo",
+      "Liandry's Torment",
       "Shadowflame",
       "Rabadon's Deathcap"
     ],
-    "vs_tanks": "Void Staff — all magic; Short Fuse empowered auto denies health packs",
-    "vs_healing": "No anti-heal — sustained poke",
-    "vs_burst": "Banshee's Veil replaces Rylai's vs burst",
-    "full_build": [
-      "Sorcerer's Shoes",
-      "Luden's Companion",
-      "Horizon Focus",
-      "Shadowflame",
-      "Rabadon's Deathcap",
-      "Void Staff"
+    "tier": "A",
+    "wr": 53.1,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "W (Satchel Charge) launches enemies and self — both engage and disengage tool. R (Mega Inferno Bomb) global poke — fire from spawn at low-HP enemies for execute. Passive empowers AAs — weave between Q bounces for tower-clearing damage in regular lanes (less relevant ARAM).",
+    "aram_specific": "+5% damage taken, -5% damage dealt (Riot's Ziggs nerf in ARAM). Q has high-damage center hitbox — aim through choke. Global R is the highest free-damage in mode; fire continuously from base.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Ziggs",
+        "fetched": "2026-05-02",
+        "wr_seen": 53.1,
+        "games": 13626
+      }
     ]
   },
   "Zilean": {
     "aram_tier": "S",
-    "build_note": "Time Bomb (Q) two bombs on same target = AOE stun. Rewind (W) reduces your Q and E cooldowns — alternate Q → W → Q for double bombs. Time Warp (E) speeds ally or slows enemy. Chronoshift (R) puts target in stasis then revives them with HP at expiry — ult your carry when they start taking focus. Q→W→Q double bomb is the primary damage tool. R placement timing: cast on carry at 20% HP before they die.",
+    "build_note": "Tier D — 47.9% WR. Zilean's R-revive is huge utility but ARAM's poke meta pre-empts the value. Luden burst sub-build does best within Zilean's bad pool.",
     "core_items": [
-      "Moonstone Renewer",
-      "Redemption",
-      "Rabadon's Deathcap"
+      "Luden's Echo",
+      "Archangel's Staff",
+      "Malignance"
     ],
-    "vs_tanks": "Void Staff — all magic; bombs deal % max HP when double-stacked",
-    "vs_healing": "No anti-heal — utility + AP",
-    "vs_burst": "Banshee's Veil replaces Locket vs poke mages",
+    "vs_tanks": "Void Staff in core — flat-AP utility kit doesn't natively shred",
+    "vs_healing": "Morellonomicon (45.0% WR — worst situational) only vs Soraka stacks",
+    "vs_burst": "Cryptbloom (49.4% WR) replaces Void Staff — healing aura + %magic pen",
     "full_build": [
-      "Ionian Boots of Lucidity",
-      "Shadowflame",
+      "Lost Chapter",
+      "Sorcerer's Shoes",
+      "Luden's Echo",
+      "Stormsurge",
       "Rabadon's Deathcap",
-      "Void Staff",
-      "Cosmic Drive",
-      "Locket of the Iron Solari"
+      "Void Staff"
+    ],
+    "tier": "D",
+    "wr": 47.9,
+    "pr": null,
+    "boots": "Sorcerer's Shoes",
+    "kit_notes": "Q+E double-bomb stun: stack 2 Qs on target then E-cast for instant detonate-stun. R (Chronoshift) revives ally with HP after 5s — save for diving carry. W (Time Warp) AOE haste/slow — chase or peel.",
+    "aram_specific": "ARAM neutral. R-revive on ally Mordekaiser/Sion mid-fight wins games — call out R targets pre-fight. Bomb stun is the only damage source — 1.5s lockdown for team to follow up.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/Zilean",
+        "fetched": "2026-05-02",
+        "wr_seen": 47.9,
+        "games": 9000
+      }
     ]
   },
   "Zoe": {
@@ -3279,5 +3951,117 @@
       "Void Staff",
       "Shadowflame"
     ]
+  },
+  "MissFortune": {
+    "tier": "B",
+    "wr": 51.9,
+    "pr": null,
+    "full_build": [
+      "Serrated Dirk",
+      "Berserker's Greaves",
+      "The Collector",
+      "Axiom Arc",
+      "Infinity Edge",
+      "Serylda's Grudge"
+    ],
+    "core_items": [
+      "The Collector",
+      "Axiom Arc",
+      "Infinity Edge"
+    ],
+    "boots": "Berserker's Greaves",
+    "vs_tanks": "Serylda's Grudge (52.6% WR) in core — %armor pen scales with lethality stacked on her build",
+    "vs_healing": "Mortal Reminder (50.6% WR) replaces Serylda's — pick anti-heal vs anti-tank",
+    "vs_burst": "Edge of Night (54.1% WR) replaces Axiom Arc — spell shield blocks engage CC",
+    "kit_notes": "Passive Love Tap: bonus damage to new targets — switch AAs between enemies. Q (Double Up) bounces — kill minion to bounce to champ. E (Make It Rain) AOE slow zone — placed under enemy team. R (Bullet Time) channeled cone — center deals double damage; ARAM ult for full clumped enemy team.",
+    "build_note": "26.9 Axiom Arc note: ult-CD refund changed to 10% +0.25% per lethality (was 15% +0.15%). High-lethality MF builds gain refund scaling — this lethality-stack build benefits from the buff. Hubris was the old slot; aggregator K shows Axiom Arc as the new high-WR pick.",
+    "aram_specific": "+5% damage dealt in ARAM (small Riot buff). R from off-angle into clumped lane fight = highest-damage AOE in mode. Center cone is double — aim through center of enemy team.",
+    "_sources": [
+      {
+        "url": "https://aggregator-k.invalid/champion/MissFortune",
+        "fetched": "2026-05-02",
+        "wr_seen": 51.9,
+        "games": 16988
+      }
+    ]
+  },
+  "Leblanc": {
+    "tier": "D",
+    "wr": 43.3,
+    "pr": null,
+    "full_build": [
+      "Luden's Echo",
+      "Sorcerer's Shoes",
+      "Stormsurge",
+      "Shadowflame",
+      "Rabadon's Deathcap",
+      "Void Staff"
+    ],
+    "core_items": [
+      "Luden's Echo",
+      "Stormsurge",
+      "Shadowflame"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "vs_tanks": "Void Staff",
+    "vs_healing": "Morellonomicon",
+    "kit_notes": "Burst assassin with W gap+return and R clones — pick stragglers off the side of the lane.",
+    "build_note": "Electrocute proc burst chain — Luden+Stormsurge two-tap squishies before they kite."
+  },
+  "Mel": {
+    "tier": "D",
+    "wr": 46.5,
+    "pr": null,
+    "full_build": [
+      "Luden's Echo",
+      "Sorcerer's Shoes",
+      "Shadowflame",
+      "Rabadon's Deathcap",
+      "Cosmic Drive",
+      "Void Staff"
+    ],
+    "core_items": [
+      "Luden's Echo",
+      "Shadowflame",
+      "Rabadon's Deathcap"
+    ],
+    "boots": "Sorcerer's Shoes",
+    "vs_tanks": "Void Staff",
+    "vs_healing": "Morellonomicon",
+    "kit_notes": "Long-range area-control mage (newer roster); poke and zone, R is the close-out.",
+    "build_note": "Dark Harvest / Arcane Comet poke chassis — Luden+Shadowflame snowballs ARAM chip damage."
+  },
+  "Sett": {
+    "tier": "A",
+    "wr": 53.3,
+    "pr": null,
+    "full_build": [
+      "Heartsteel",
+      "Mercury's Treads",
+      "Overlord's Bloodmail",
+      "Warmog's Armor",
+      "Spirit Visage",
+      "Thornmail"
+    ],
+    "core_items": [
+      "Heartsteel",
+      "Overlord's Bloodmail",
+      "Warmog's Armor"
+    ],
+    "boots": "Mercury's Treads",
+    "vs_tanks": "Titanic Hydra",
+    "vs_healing": "Thornmail",
+    "kit_notes": "Brawler with W shield+true dmg and R fling — frontline initiator that doesn't die.",
+    "build_note": "Grasp HP-stacker — Heartsteel + Overlord's + Warmog's = uncatchable in the ARAM funnel."
+  },
+  "_refresh_metadata": {
+    "patch": "26.9",
+    "merged_at": "2026-05-03",
+    "phases_merged": [
+      "top30",
+      "next30"
+    ],
+    "updated": 66,
+    "new": 4
   }
 }
