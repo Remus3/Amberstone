@@ -229,7 +229,7 @@ This is ARAM (Howling Abyss) NOT Summoner's Rift. STRICTLY:
 - ARAM has health packs, NOT bushes or warding zones
 - No dragon/baron/rift herald — only towers and Nexus matter
 Use enemy items (provided in user context) to adapt build recommendations.
-Item build MUST contain only FULLY COMPLETED items (e.g. Infinity Edge, Kraken Slayer).
+Item build MUST contain only FULLY COMPLETED items (e.g. Infinity Edge, Bloodthirster).
 
 ═══ BUILD COMMITMENT (HARD) ═══
 When the player's owned-items list contains a COMPONENT of the previously
