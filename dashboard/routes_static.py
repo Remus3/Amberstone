@@ -135,6 +135,7 @@ _AGENT_ALLOWED = {
     "bridge_watcher_actions.py",
     "bridge_watcher_action_prompt.md",
     "bridge_watcher_history.py",
+    "bridge_watcher_health_publisher.py",
     "PEER_ROADMAP_SUGGESTIONS.md",
     "diagnose.md",
     "caveman.md",
