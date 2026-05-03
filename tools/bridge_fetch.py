@@ -66,16 +66,23 @@ def main() -> int:
         # Bridge unreachable — silently skip; don't block the user's prompt.
         return 0
     msgs = data.get("messages") or []
+    # Always advance last_seen so we don't re-fetch the same window each tick.
+    write_last_seen(data.get("now", time.time()))
     if not msgs:
         return 0
+    # Filter out self-authored entries — the user already sees those inline
+    # in chat; echoing them back via the hook is pure visual noise on every
+    # cron tick. Keep entries from peers (peer, gamepc, etc.) only.
+    peer_msgs = [m for m in msgs if str(m.get("source", "")).lower() != "legion"]
+    if not peer_msgs:
+        return 0
     lines = ["[Cross-Claude bridge — recent activity from the other machine]"]
-    for m in msgs:
+    for m in peer_msgs:
         ts = time.strftime("%H:%M:%S", time.localtime(m.get("ts", 0)))
         src = m.get("source", "?")
         sm  = m.get("summary", "")
         lines.append(f"  [{ts} · {src}] {sm}")
     print("\n".join(lines))
-    write_last_seen(data.get("now", time.time()))
     return 0
 
 
