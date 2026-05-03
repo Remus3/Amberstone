@@ -148,10 +148,10 @@
     "coaching_note": "Stack Conqueror in drain fights. E root into Q damage is the bread and butter."
   },
   "Kennen": {
-    "keystone": "Phase Rush",
+    "keystone": "Arcane Comet",
     "primary_tree": "Sorcery",
     "secondary_tree": "Domination",
-    "coaching_note": "Phase Rush lets you run through stuns after R. Stack marks with auto-Q-auto."
+    "coaching_note": "Arcane Comet procs on Q + R stuns. Stack marks with auto-Q-auto, comet hits the locked target."
   },
   "Ashe": {
     "keystone": "Glacial Augment",
@@ -274,10 +274,10 @@
     "coaching_note": "Revive passive needs survival — Fleet sustain keeps him alive for W revive."
   },
   "Taliyah": {
-    "keystone": "Phase Rush",
+    "keystone": "Arcane Comet",
     "primary_tree": "Sorcery",
     "secondary_tree": "Domination",
-    "coaching_note": "Phase Rush + Seismic Shove (W) repositions Taliyah after Q to avoid burst."
+    "coaching_note": "Arcane Comet locks on after Q empowered hit. Seismic Shove (W) repositions to dodge while comet lands."
   },
   "Vel'Koz": {
     "keystone": "Arcane Comet",
@@ -298,10 +298,10 @@
     "coaching_note": "E laser guarantees Comet. Death Ray + Comet on grouped = AOE burst."
   },
   "Ryze": {
-    "keystone": "Phase Rush",
+    "keystone": "Arcane Comet",
     "primary_tree": "Sorcery",
     "secondary_tree": "Domination",
-    "coaching_note": "Overload + Flux proc Phase Rush instantly. Phase Rush kiting in ARAM = unkillable mage."
+    "coaching_note": "Overload chain procs Arcane Comet on every Q-W-Q rotation. Reliable poke + burst from any range."
   },
   "Karma": {
     "keystone": "Arcane Comet",
@@ -886,10 +886,10 @@
     "coaching_note": "Q blind guarantees Comet. Mushrooms and poison proc Comet dots on every tick."
   },
   "Singed": {
-    "keystone": "Phase Rush",
+    "keystone": "Arcane Comet",
     "primary_tree": "Sorcery",
     "secondary_tree": "Resolve",
-    "coaching_note": "Fling (E) cast procs Phase Rush instantly. Run through enemies in poison = unstoppable."
+    "coaching_note": "Fling (E) cast procs Arcane Comet. Run through poison + flung target lights up the comet timing."
   },
   "Gangplank": {
     "keystone": "Lethal Tempo",
@@ -922,10 +922,10 @@
     "coaching_note": "Maiden + ghouls + Conqueror = 3 damage sources simultaneously. Q stacks extend it."
   },
   "Lillia": {
-    "keystone": "Phase Rush",
+    "keystone": "Arcane Comet",
     "primary_tree": "Sorcery",
     "secondary_tree": "Domination",
-    "coaching_note": "Blooming Blows (Q) procs Phase Rush — kite then Lullaby stack application at range."
+    "coaching_note": "Blooming Blows (Q) procs Arcane Comet on each swing. Kite + comet landing while applying Lullaby stacks."
   },
   "Yone": {
     "keystone": "Lethal Tempo",
