@@ -21,6 +21,7 @@ from coaches._base_coach import (
     BaseCoach,
     load_json,
     safe_write,
+    mirror_live_stats,
     parse_field,
     parse_fields,
     read_api_key,
@@ -748,6 +749,7 @@ class Coach(BaseCoach):
                 # (opts.reasons → tile.title in renderItemTiles).
                 "item_build_reasons": _parse_item_reasons(flds.get("item reasons", "")),
             })
+            mirror_live_stats(cur, state)
             safe_write(self._out, cur)
 
             # ── Live metric streaming (feature-flagged) ──────────────
