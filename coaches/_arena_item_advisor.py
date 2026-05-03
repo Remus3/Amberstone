@@ -46,6 +46,18 @@ _ANTI_HEAL = (
     "Oblivion Orb", "Bramble", "Thornmail",
 )
 
+# v2 substitution table — when a champion's full_build LACKS any
+# anti-heal item but contains the LHS, swap to the RHS to get
+# Grievous Wounds without losing the slot's role. Only items where
+# the swap is universally favorable (same damage type, similar power
+# curve) are listed here. Missing entries = no substitution attempted.
+_HEAL_SUBSTITUTIONS = {
+    # AD anti-armor → AD anti-armor + antiheal. Free upgrade for any
+    # champ whose build calls for LDR but is heading into a
+    # heal-dominant lobby (Caitlyn et al).
+    "Lord Dominik's Regards": "Mortal Reminder",
+}
+
 _builds_cache: dict | None = None
 _tags_cache: dict[str, list[str]] | None = None
 
@@ -119,6 +131,23 @@ def _push_to_front(build: list[str], predicate, max_pos: int = 2) -> None:
             return
 
 
+def _has_match(build: list[str], predicate) -> bool:
+    return any(predicate(i) for i in build)
+
+
+def _substitute_in_build(build: list[str], sub_map: dict[str, str]) -> bool:
+    """Replace the first item present in `sub_map` with its mapped value.
+    Returns True on substitution. No-op if no item matches or the
+    mapped value equals the original.
+    """
+    for i, item in enumerate(build):
+        replacement = sub_map.get(item)
+        if replacement and replacement != item:
+            build[i] = replacement
+            return True
+    return False
+
+
 def recompute_arena_build(
     champion: str,
     current_items: Iterable[str],
@@ -158,11 +187,14 @@ def recompute_arena_build(
         )
 
     # Anti-heal: 2+ heavy-heal opponents → push antiheal item to front.
+    # If the build lacks any antiheal entirely (e.g. Caitlyn's curated
+    # full_build has Lord Dominik's but no Mortal Reminder), try a
+    # one-for-one substitution from _HEAL_SUBSTITUTIONS first so the
+    # subsequent push-to-front has something to grab.
     if healer_count >= 2:
-        _push_to_front(
-            remaining,
-            lambda i: any(s in i for s in _ANTI_HEAL),
-            max_pos=2,
-        )
+        antiheal_pred = lambda i: any(s in i for s in _ANTI_HEAL)
+        if not _has_match(remaining, antiheal_pred):
+            _substitute_in_build(remaining, _HEAL_SUBSTITUTIONS)
+        _push_to_front(remaining, antiheal_pred, max_pos=2)
 
     return remaining[:6]
