@@ -490,4 +490,104 @@ None — knowledge captured in code (3 fixes + Phase 2 receiver) and in this han
 4. **Cert SAN doctrine helper** — s30 backlog; codify in tools/regen_rc_cert.ps1 if used again.
 5. **CLAUDE.md / WAKEUP_NOTES roll-up** — gradually decommission older s28-s30 hand-offs.
 
+---
+
+# s32 hand-off — 2026-05-02 21:33 (RC restart activates s31 fixes + s27 roll-up)
+
+> Brief between-games session. Arena run concluded (final tick: 1v6
+> CONCEDE/STALL → MATCH OVER). With `liveclient` empty and the user
+> back on client, the s31-late-followup gate opened. Two pieces shipped:
+> RC restart to activate the three uncommitted s31 fixes, and the s27
+> thread roll-up that had been queued since s31. Mid-session live-tutor
+> ticks (eight `/game-monitor` invocations) generated additional
+> evidence on top-bar mirror gap.
+
+## What shipped
+
+| Commit | Type | Summary |
+|---|---|---|
+| `86a3bca` | docs | Roll up s27 thread (sessions 27 → 27u, 21 sub-sessions) into one dense block: commit ledger (29 rows), final audit state, reusable patterns w/ file pointers. **−1530 lines / 76% reduction (2024 → 493 lines).** s28-s31 + s31-late preserved verbatim. Drops per-session restart PIDs, bootstrap sections, restart-verification batteries, and resolved "what's still tkinter-shaped" sub-sections. |
+
+## RC restart state
+
+- **Main PID 980 → 8868** via `restart_trigger.txt` (between-games window).
+- `last_reload_ok=true`, `ui_pulse_age_s=1.4`, `game_poll_worker_age_s=1.5`, all
+  6 dashboard endpoints 200 (`/api/state`, `/api/health/all`, `/api/decisions`,
+  `/api/decisions/log`, `/metrics`, `/api/vision-state`).
+- Mode: `client` (post-game, lobby).
+
+## s31 fixes activation status
+
+- ✅ `a4df4a4` deque maxlen 100→500 — **verified active**. `/api/bridge?limit=500`
+  returns 397 entries with all 7 kinds present (note 291, task 53, result 33,
+  ack 11, ask 5, ping 1, lesson 3). Pre-fix the deque would have capped at 100;
+  task/result/ack would have been flushed by the dominant note volume.
+- ✅ `dc73303` ally_comp force-overwrite — **loaded, latent**. Will fire on next
+  coach call in a real game; current mode is `client`.
+- ✅ `7d6483d` raw stats mirror — **loaded, latent**. Same — only writes to
+  `coaching_data.json` during an actual game.
+
+## Mid-session evidence collected (8 game-monitor ticks during arena run)
+
+The arena game preceding this restart produced fresh examples of the WS-push
+mirror gap that the s31 fixes target. Worth keeping in mind for the next
+in-game verification window:
+
+- **Top-bar pills (`CS`, `KDA`, `level`, `gold`, `game time`)** stayed at `--`
+  for entire match except for one tick where CS partially mirrored
+  (`CS 0 · 0.0/m`). Inconsistent, suggesting partial activation. Pre-fix raw
+  stats only land via /api/state polling, not WS push.
+- **`RIGHT NOW` pill vs `coach.action`** — diverged at least twice during the
+  run. Worst case: dashboard showed `FORFEIT / SURVIVE` ("DO NOT FIGHT") while
+  coach.action had moved to `CAMP PHASE` (mild conditional engage). User
+  reading the dashboard would have acted on a stale, more-urgent warning.
+- **OWNED panel** — populated and reflected build progress correctly during
+  active rounds (5-6 items including Phantom Dancer, Hexoptics C44 marked
+  "ready"). Item-build push channel is healthier than coach push channel.
+- **Final `CONCEDE / STALL` tick** — dashboard + state matched perfectly. The
+  push channel CAN sync; mismatch resolves on next coach call.
+
+Next game post-restart should confirm these gaps are closed (or not).
+
+## Audit completion (unchanged)
+
+Tier 1 ✅ 5/5 · Tier 2 ✅ #5/#6/#6/#7 + #8 C1-C5 ✅ + #9 (avoid) · Tier 3 ✅ 5/5 · Tier 4 ✅ 3/3.
+
+s32 was an ops/doc session, not an audit item.
+
+## Operational backlog
+
+- **1 unpushed commit** (`86a3bca` roll-up). Cloud routine deadline 2026-05-10
+  — 8 days away. Push at convenience.
+- **Game-PC `/loop /process-bridge-tasks`** — bridge gauge ~2h stale per
+  `rc_bridge_gamepc_result_age_seconds=7195`. Same Game-PC-side issue.
+  Watchdog correctly surfacing; fix is on Game-PC Claude.
+- `RC-PatchRefresh` residual error code clears on Wednesday 2026-05-06
+  (4 days away).
+
+## Next-session candidates
+
+1. **Push s32 commit** — `git push origin main` (one commit since last push).
+2. **Verify s31 fixes mid-game** — next game should show top-bar pills
+   populating live and coach.action / RIGHT NOW staying in sync. If gaps
+   persist, the fixes need re-investigation.
+3. **Coach action label decay** — s31 backlog item, unchanged.
+4. **Game-PC re-pull tooling** — s30 backlog, non-urgent.
+5. **Cert SAN doctrine helper** — s30 backlog.
+6. **CLAUDE.md sync** — topology section still names `192.168.8.230` /
+   `192.168.8.237` LAN IPs as canonical; tailnet hostnames could lead.
+   Low priority.
+
+## Bootstrap for next session
+
+1. Read `CLAUDE.md` (frozen list + restart workflow).
+2. Read this hand-off (s32) + s31 + s31-late.
+3. WAKEUP_NOTES is now 76% smaller; s27 thread is one block at top, then
+   s28-s32 chronologically.
+4. **In-game verification owed:** when the next real game starts, confirm
+   the top-bar pills populate (CS / KDA / level / gold / game time) and
+   that `coach.action` matches `RIGHT NOW` continuously, not just on
+   sporadic ticks. If still desynced, the WS push channel needs a
+   separate fix beyond `7d6483d`.
+
 
