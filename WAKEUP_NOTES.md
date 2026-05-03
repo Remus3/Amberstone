@@ -874,4 +874,81 @@ via bridge.
 - ⏳ Tiered vision calibration — needs in-game frame
 - ⏳ Push channel for bridge inbox — touches frozen `dashboard/_bridge_log.py`
 
+## s33 round 3 — 23:25 (Kraken anchor + arena v2 + Peer dispatches + GPC chatter discipline)
+
+**Kraken anchor — two surfaces audited:**
+
+User observed Kraken Slayer suggested on "nearly all AD champs". Two
+sources audited and fixed:
+
+| Commit | File | Change |
+|---|---|---|
+| `b400e42` | `coach_integration.py` | CHAMPION_PROFILES — replaced 2 over-cites: Nilah (`BotRK + Kraken+PD` → `BotRK + Bloodthirster + Phantom Dancer`); Miss Fortune (`Lethality + Kraken (anti-tank)` → `Lethality + Lord Dominik's (vs tanks)`). Kept Zeri/Varus/Kalista where Kraken is genuinely core (on-hit/AS scaling). |
+| `f978d76` | `aram_coach.py:232` | The bigger lever — every ARAM coach call reads "(e.g. Infinity Edge, Kraken Slayer)" as the example pair, biasing Haiku toward Kraken via recency anchoring. Swapped Kraken → Bloodthirster. Single-token change with broad effect. |
+
+Both gated on RC restart (arena_coach + aram_coach loaded once). Activated
+in this session's restart cycle.
+
+**Arena advisor v2 — substitution support (`bb3eb82`):**
+
+v1 (f05c4de) anti-heal pivot only re-ordered items already in
+`full_build`. Caitlyn's curated build has Lord Dominik's Regards but
+no Mortal Reminder, so vs 2+ healers the pivot was a no-op.
+
+v2 adds `_HEAL_SUBSTITUTIONS` map — when build LACKS any antiheal,
+swap a build item to its antiheal equivalent before pushing to front.
+Currently one entry: `Lord Dominik's Regards → Mortal Reminder`
+(universally favorable swap — same anti-armor role + adds Grievous
+Wounds). New helpers: `_has_match()`, `_substitute_in_build()`.
+
+Smoke pass:
+- Caitlyn vs 4 healers: Mortal Reminder #1 (was no-op)
+- Caitlyn vs 4 tanks: LDR #1 (no regression)
+- Mixed lobby: Mortal Reminder wins (heal pivot last; Mortal IS anti-armor)
+- Vayne vs healers: existing Mortal Reminder promoted (no sub needed)
+
+Scope intentionally narrow — AP substitutions deferred (typically
+inserts, not swaps); tank subs skipped (most builds already include
+anti-tank).
+
+**Peer dispatches:**
+- `kind=ask` sent: please post `kind=result`/`kind=ack` when finishing
+  tasks (with `in_reply_to` when applicable). Lets Legion see Peer's
+  task lifecycle.
+- `kind=note` sent: continue with current Peer-VIP work; the ack-request
+  applies going forward.
+- Both async; replies will surface in next prompt's bridge fetch.
+
+**Game-PC chatter discipline (`task-7bd22d1391e9` — applied):**
+
+Game-PC's `/loop` was posting intermediate thinking ("Let me report
+back to Legion", "Nothing on Game-PC is actively posting...") in
+addition to the actual result. Suggested they pull Legion's canonical
+`process-bridge-tasks.md` skill to mirror our "exit silently on empty"
+discipline. They confirmed at 23:22:19: "applied: canonical
+process-bridge-tasks.md fetched and installed". Watch for tighter
+behavior on subsequent ticks.
+
+**RC state:**
+- 3 restarts this session: 10452 → 12140 (s33-backlog-fixes) → 10028
+  (s33-arena-advisor) → 176 (s33-kraken-audit) → 8120 (s33-aram-anchor-and-arena-v2)
+- All clean, all `last_reload_ok=true`
+- Supervisor still 10796 (unchanged since s28)
+
+**Session commit ledger (chronological):**
+
+| Commit | Type | Summary |
+|---|---|---|
+| `0302fc7` | fix(coach) | SR action-clear when Haiku omits field |
+| `0fcf102` | feat(bridge) | `/api/bridge/messages` alias for Peer contract |
+| `ba4dabf` | docs | s33 boot stub + idle window |
+| `f05c4de` | feat(arena) | per-round item advisor v1 |
+| `6997bf0` | docs | s33 round 2 (restart, c58e689 verify, advisor, GPC re-pull) |
+| `b400e42` | fix(coach) | Kraken anchor — 2 CHAMPION_PROFILES audited |
+| `f978d76` | fix(coach) | ARAM Kraken example → Bloodthirster |
+| `bb3eb82` | feat(arena) | advisor v2 — substitution support |
+| (this) | docs | s33 round 3 |
+
+8 commits, all pushed to origin/main.
+
 
