@@ -84,9 +84,15 @@ def main() -> int:
         if m.get("kind") == "result" and m.get("in_reply_to"):
             answered.add(m["in_reply_to"])
     processed = read_processed()
+    # Peer uses "rc" per the cross-Claude bridge contract; this script's
+    # legacy label is "legion". Accept both when running on Legion so
+    # Peer-issued tasks surface alongside any legion-labelled ones. Same
+    # idea on Game-PC side: "gamepc" is the only label in use, no alias.
+    target_aliases = {"legion": {"legion", "rc"}, "gamepc": {"gamepc"}}
+    accepted = target_aliases.get(args.target, {args.target})
     tasks = [m for m in msgs
              if m.get("kind") == "task"
-             and m.get("target") == args.target
+             and m.get("target") in accepted
              and m.get("id")
              and m["id"] not in answered
              and m["id"] not in processed]
