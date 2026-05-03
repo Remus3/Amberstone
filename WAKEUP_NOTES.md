@@ -703,4 +703,94 @@ test window. If pills populate as expected, this thread closes; if
 still `--`, drop down to file_ingest mtime detection or WS push
 fanout.
 
+---
+
+# s33 boot — 2026-05-02 22:13 (session-start stub)
+
+> Fresh session ~9 min after the s32 c58e689 activation restart. RC
+> running PID 10452, supervisor 10796 (unchanged since s28). Nothing
+> shipped yet — this entry is the open-thread carry-forward.
+
+## Bridge polling armed
+
+- Set up session-only cron `02fb5bef`: `*/1 * * * *` → `/process-bridge-tasks`.
+  Auto-expires in 7 days; dies with this Claude session. Initial run
+  showed 0 pending tasks for legion. Game-PC bridge gauge ~2 min stale
+  per `rc_facts` (`Last gamepc bridge result: 130s ago`) — healthy.
+
+## Carried forward from s32
+
+1. **Mid-game verification owed for c58e689** — next arena/aram/brawl
+   run, capture `data/{arena,aram,brawl}_coaching_data.json` and confirm
+   `cs / kda / level / gold / game_time_s` populate live. Dashboard
+   top-bar pills should be real numbers, not `--`. If still `--`, drop
+   into `agents/agent2_backend/file_ingest.py:_check_one` mtime detection
+   or WS-push fanout.
+2. **Coach action label decay** — scoped in s32 (197a71b). Two fix
+   approaches drafted: always-clear (~3 LOC) vs HP-premise check
+   (~10 LOC). Same bug exists in per-mode coaches (arena/aram/brawl) —
+   could lift into a `_clear_stale_action()` companion to
+   `mirror_live_stats` in `coaches/_base_coach.py`.
+3. ~~**Push pending**~~ — false alarm; `git log origin/main..HEAD` empty
+   at session start. All s32 commits already on remote. Cloud routine
+   deadline 2026-05-10 (8 days) is covered.
+4. **dc73303 ally_comp force-overwrite verification** — still owed in a
+   real SR/ARAM game (arena run only had partner-name string, no array).
+5. **Dashboard ↔ coach action mismatch** — separate from the mirror
+   fix; may resolve naturally once mirror lifts everything onto a single
+   source-of-truth read path. Re-check after next game.
+
+## Bootstrap for next session
+
+1. Read `CLAUDE.md` (frozen list + restart workflow).
+2. Read s32 + s33 boot stub.
+3. `git status` — likely 6 unpushed commits unless this session pushes.
+4. **No restart needed** — c58e689 is already live (PID 10452,
+   `last_reload_ok=true`). Just wait for the next League/arena game.
+
+## s33 idle window — 22:13 → 22:22 (9 cron ticks, no inbound)
+
+- Bridge cron `02fb5bef` fired ~9 times, every result `count=0`. Game-PC
+  bridge gauge crept 130s → 692s (~11.5 min stale). Within normal range
+  for an idle window — Game-PC LCU still `phase=Lobby`, Liveclient relay
+  empty. No game queued.
+- Mid-game verification of c58e689 / dc73303 / coach-action mismatch
+  remain queued; nothing to test until operator drops a game.
+- No commits, no restarts, no memory writes this window. RC state
+  unchanged: PID 10452 alive, mode=client, supervisor 10776.
+
+## s33 backlog drain — 22:34 (2 fixes shipped, 4 already-done audit)
+
+Operator instruction "continue with all backlog". Six items inventoried;
+four discovered as already-shipped, two implemented:
+
+| Type | File | Summary |
+|---|---|---|
+| fix(coach) | `coach_integration.py:1115` | Action label decay — `if "action" not in fields: current["action"] = ""` after `current.update(fields)`. SR coach only; per-mode coaches already do `fields.get("action", "").upper()` which clears stale state on missing field. Closes the s31/s32 "BASE LOW HP persists 2+ minutes" bug. |
+| feat(bridge) | `dashboard/routes_bridge.py:211` | `/api/bridge/messages` route alias on `_serve_bridge`. Peer uses contract path; RC kept legacy `/api/bridge`. Now both resolve. Closes s28 path-name asymmetry item. |
+
+Already-done audit (no action required):
+- **Push pending** — false alarm; `git log origin/main..HEAD` empty at
+  session start. All s32 commits already on remote.
+- **`/process-bridge-tasks` auto-deploy in `gamepc_boot.ps1`** — already
+  shipped commit `0943827`; `process-bridge-tasks.md` in the SLASH_COMMANDS
+  pull array; allowlist in `dashboard/routes_static.py:126` covers it.
+- **Cert SAN doctrine helper** — `tools/regen_rc_cert.ps1` already
+  exists with the canonical 6-name SAN list; CLAUDE.md references it.
+- **CLAUDE.md topology refresh** — the doc already leads with tailnet
+  hostnames + has the explicit "Prefer tailnet hostnames in new code"
+  guidance; LAN IPs already parenthetical fallback.
+
+**Restart-required summary:** both new fixes need RC restart to activate
+(coach_integration loaded once; routes_bridge loaded once). Operator-driven
+between games via standard `restart_trigger.txt` workflow.
+
+**Mid-game verification owed (post-restart):**
+- Watch `coach.action` in `data/coaching_data.json` during SR play —
+  prior "stuck on BASE LOW HP" should now turn over to "" between calls
+  when Haiku omits the action line.
+- `curl -k https://127.0.0.1:8888/api/bridge/messages?limit=10` should
+  return 200 with the same payload as `/api/bridge?limit=10`. Peer can
+  drop the path-asymmetry workaround once they confirm.
+
 
