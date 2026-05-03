@@ -62,14 +62,14 @@ CHAMPION_PROFILES = {
         "Nilah. Mechanics: all-in ONLY on confirmed CC chain; E (flip) = engage AND escape — "
         "never burn without CC locked. W reduces healing — priority vs sustain enemies. "
         "Passive shares assists — value grouped play over split dueling. "
-        "Spikes: BotRK (1-item), Kraken+PD (anti-tank). "
+        "Spikes: BotRK (1-item), Bloodthirster (sustain), Phantom Dancer (crit + MS). "
         "Macro: force 2v2s, avoid extended poke. "
         "Exploit: E to a tagged enemy ignores terrain — use through walls."
     ),
     "Miss Fortune": (
         "Miss Fortune. Mechanics: E (rain) slows first, then ult for guaranteed full channel; "
         "ult angle = perpendicular to enemy team, from behind cover; Strut MS — don't take hits. "
-        "Spikes: Lethality first (poke dominance), Kraken (anti-tank). "
+        "Spikes: Lethality first (poke dominance), Lord Dominik's (vs tanks). "
         "Macro: group for objectives, punish in MF ult-angle windows. "
         "Exploit: Q bounce target = minion standing directly behind enemy ADC."
     ),
