@@ -1,0 +1,27 @@
+{
+  "engine": "daemon_slayer",
+  "phase": 1,
+  "extracted_at": "2026-05-03T18:04:55-0500",
+  "ddragon_version": "16.9.1",
+  "ddragon_champion_count": 172,
+  "ddragon_item_count": 705,
+  "sources": {
+    "ddragon_versions": "https://ddragon.leagueoflegends.com/api/versions.json",
+    "ddragon_champions": "https://ddragon.leagueoflegends.com/cdn/16.9.1/data/en_US/champion.json",
+    "ddragon_items": "https://ddragon.leagueoflegends.com/cdn/16.9.1/data/en_US/item.json",
+    "lolmath_chunk": "https://lolmath.net/_next/static/chunks/14.ejgq2van4b.js",
+    "lolmath_chunk_bytes": 730241
+  },
+  "lolmath_counts": {
+    "cooldowns": 172,
+    "roles": 172,
+    "ratings": 172,
+    "lane_positions": 5,
+    "scenarios": 172
+  },
+  "outputs": {
+    "champions": "data\\daemon_slayer\\16.9.1\\champions.json",
+    "items": "data\\daemon_slayer\\16.9.1\\items.json",
+    "scenarios": "data\\daemon_slayer\\16.9.1\\scenarios.json"
+  }
+}
