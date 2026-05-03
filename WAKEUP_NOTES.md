@@ -590,4 +590,52 @@ s32 was an ops/doc session, not an audit item.
    sporadic ticks. If still desynced, the WS push channel needs a
    separate fix beyond `7d6483d`.
 
+## s32 in-game verification result (2026-05-02 21:45) — `7d6483d` partial
+
+Live arena verification (Kai'Sa, 65% WIN, round 8 → death at round 24)
+surfaced that `7d6483d` only fixes the SR path:
+
+- ✅ `a4df4a4` deque maxlen 100→500: confirmed live (`/api/bridge?limit=500`
+  returns all 7 kinds, 397 entries)
+- 🟡 `7d6483d` raw stats mirror: **only patched `coach_integration.py:_write_fields`
+  (SR path)**. Per-mode coaches in `coaches/*.py` write their own coaching JSON
+  files without the mirror block. Disk inspection during live arena game:
+
+  | File | game_time_s | cs | kda | level | gold |
+  |---|---|---|---|---|---|
+  | `coaching_data.json` (SR) | – | – | – | – | – |
+  | `data/arena_coaching_data.json` | ✓ | – | – | – | – |
+  | `data/aram_coaching_data.json` | ✓ | – | ✓ | – | – |
+  | `data/brawl_coaching_data.json` | – | – | – | – | – |
+
+  Dashboard JS at `web/js/dashboard.js:2647-2675` reads `p.cs / p.kda /
+  p.gold / p.game_time_s` from the WS push payload (which is the
+  per-mode coaching JSON). When those fields are missing, the
+  `if (typeof p.cs === "number")` guards hide the pills → `--` symptom.
+  `/api/state` showed all values populating correctly because state-builder
+  overlays liveclient via a different code path; the WS push reads file
+  content directly.
+
+  **Fix scope for next session:** lift the mirror block out of
+  `coach_integration._write_fields:1076-1090` into a shared helper
+  (e.g. `core/coaching_data_lock` already imports here) or duplicate it
+  into each mode coach's write path. Verify per-mode by disk inspection
+  during a live game in each mode.
+
+- 🟡 `dc73303` ally_comp force-overwrite: not verified in this run
+  (arena's coach text strip showed correct partner names, but `ally_comp`
+  array on `/api/state` stayed `None` — likely arena uses the partner
+  name instead of an ally_comp array). SR/ARAM verification still owed.
+
+## Dashboard ↔ coach action mismatch (separate from 7d6483d)
+
+Mid-arena observed multiple times: `coach.action` field on `/api/state`
+diverged from `RIGHT NOW` pill on dashboard. Direction varied — sometimes
+dashboard ahead (next coach call refreshed it before /api/state caught up),
+sometimes API ahead (cached coaching JSON pre-empts the API overlay). Not
+addressed by any current commit. Probably the same root cause as the
+mirror gap: state-builder overlay path vs WS push path read different
+sources at different cadences. May resolve naturally if the mirror fix
+lifts everything onto a single source of truth.
+
 
