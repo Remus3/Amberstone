@@ -1068,4 +1068,60 @@ Goliath, Mystic Punch, Shardblade, etc.).
 - Arena `is_next_opponent` parser fix (advisor v3 enhancement)
 - Arena augment-aware reranking (advisor v3)
 
+---
+
+## s34 hand-off — 2026-05-03 (bridge-watcher Phase 4-5 + /done family)
+
+Single-day session, two arcs.
+
+**Arc 1 — Bridge-pending dashboard triage (Phase 4-5):**
+- `d499239` — `view-bridge-pending` sub-page lists watcher escalations
+  (task_id / from / kind / summary / reason / prompt). 20s poll,
+  idempotent sig-based renders. Menu badge shows pending depth.
+- `164c649` — `routes_bridge_pending_actions.py` (sibling of frozen
+  `routes_bridge_pending.py`) handles `POST /api/bridge/pending/<id>/
+  {accept,defer,dismiss}`. accept=stamp claimed_by; defer=ttl+24h;
+  dismiss=remove (watcher's processed_ids dedup prevents re-add).
+  Smoke-tested all paths + 400/401/404.
+
+**Arc 2 — Fleet health + /done ritual:**
+- `1557e8f` — `routes_health_peer.py` `POST /api/health/peer/<node>`
+  (Bearer auth, mirrors `/api/bridge/inbox`). `/api/health/all` rollup
+  gains `peers` section. `tools/bridge_watcher_health_publisher.py`
+  sidecar (60s poll → POST, exponential backoff). `/done` skill picks
+  up `/process-incoming-lessons` to drain inbound lessons.
+- `803a29f` — publisher script on /agent/ allowlist.
+- `080c10c` — `/done` skill: auto-commit + push + wrap checks +
+  ready-for-/clear banner. Sibling of `/wrap` with auto-commit guard.
+- `s34-final` — `done-gamepc.md` + `done-peer.md` peer variants. Game-PC
+  variant skips git (no repo, agents pull from Legion). Peer variant
+  mirrors Legion structure with `<peer-vip-root>` placeholder for
+  portability.
+
+**Doc syncs:** `8cc602d` adds `/api/bridge/pending` GET+POST to CLAUDE.md
+endpoint listing. `983e9f6` ROADMAP marks read-only panel shipped.
+
+**Bridge ops:**
+- Game-PC + Peer already had `--enable-auto-action-lanes read` — opt-in
+  dispatch was a no-op, both confirmed via bridge replies.
+- Publisher deploy dispatched to both peers; results pending session-end.
+
+**Things tomorrow-you should NOT redo:**
+- Lobby top-bar pill fix is in `bb4cff9` (already shipped earlier today,
+  before the WAKEUP ledger note about it). Don't re-investigate.
+- `--enable-auto-action-lanes read` is already enabled on Game-PC + Peer.
+  Don't re-dispatch.
+- `RC-BootVerify-2026-05-03` is a stale one-time task that already fired
+  its (failed) trigger. Operator can delete; no code action.
+
+**Open for next sessions:**
+- Mayhem coach routing (multi-day arc; research in
+  `docs/ARAM_MAYHEM_RESEARCH_2026-05-02.md`)
+- Bridge Watcher Phase 5+ (sliding-window counters, push notifications
+  — most need frozen-file edits)
+- Dashboard UI surface for `/api/health/all` peers section (currently
+  API-only)
+- Confirmation that peer publishers landed (deploy tasks dispatched
+  at end of session)
+
 
