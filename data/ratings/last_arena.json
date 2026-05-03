@@ -1,20 +1,19 @@
 {
-  "rating": "F",
-  "label": "REBUILD \u2014 fundamentals need serious work",
-  "champion": "Caitlyn",
+  "rating": "D",
+  "label": "BELOW \u2014 focus on one area at a time",
+  "champion": "Yunara",
   "game_mode": "CHERRY",
   "mode_category": "ARENA",
-  "game_time": "17:13",
+  "game_time": "9:54",
   "stats": {
     "cs_per_min": 0.0,
-    "kda": "3/7/4",
-    "deaths": 7,
-    "kill_participation": 16,
-    "gold_per_min": 27
+    "kda": "0/6/0",
+    "deaths": 6,
+    "kill_participation": 0,
+    "gold_per_min": 252
   },
   "notes": [
-    "Low KDA (1.0)",
-    "7 deaths"
+    "Low KDA (0.0)"
   ],
-  "timestamp": "2026-04-22 21:11"
+  "timestamp": "2026-05-03 00:45"
 }
