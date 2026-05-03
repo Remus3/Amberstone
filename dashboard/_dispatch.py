@@ -60,6 +60,7 @@ def _gather_post() -> list:
         from dashboard import (routes_static, routes_state, routes_history,
                                routes_diag, routes_coach, routes_bridge,
                                routes_bridge_pending,
+                               routes_bridge_pending_actions,
                                routes_loadout, routes_metrics)
         _POST_CACHE = (list(routes_static.POST_ROUTES)
                        + list(routes_state.POST_ROUTES)
@@ -68,6 +69,7 @@ def _gather_post() -> list:
                        + list(routes_coach.POST_ROUTES)
                        + list(routes_bridge.POST_ROUTES)
                        + list(routes_bridge_pending.POST_ROUTES)
+                       + list(routes_bridge_pending_actions.POST_ROUTES)
                        + list(routes_loadout.POST_ROUTES)
                        + list(routes_metrics.POST_ROUTES))
     return _POST_CACHE

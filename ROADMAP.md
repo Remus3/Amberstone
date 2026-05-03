@@ -229,7 +229,7 @@ tier removed per request.
 - **vision_token rotation policy**: token was rotated this session — establish a quarterly rotation reminder.
 - **Bridge Watcher acceptance-criteria measurement**: Plan §11 calls for ≥90% success on auto-read and ≥95% on auto-ops. Currently at 3 OK / 5 err on synthetic tests (errors all caught real bugs that are now fixed). Need 50+ real-traffic samples to validate — auto-accumulates as cross-Claude work happens. Watch `auto_ok_since_boot` vs `auto_err_since_boot` on RC heartbeat.
 - **Game-PC + Peer auto-action opt-in decision**: their watchers are installed but auto-action lanes are OFF. To enable: edit their `RC-BridgeWatcher-{Node}` XML, add `--enable-auto-action-lanes read[,ops]`, restart task. They also need to re-pull patched `bridge_watcher.py` + `bridge_watcher_actions.py` (3 parser bug fixes from 2026-05-03 live validation).
-- ~~**`/api/bridge/pending` dashboard panel** (read-only MVP)~~ ✅ shipped 2026-05-03 — Bridge Pending sub-page (`view-bridge-pending`) lists escalations with task_id / from / kind / summary / reason / prompt; menu badge shows pending depth; 20s poll, idempotent sig-based renders. Drain via `/process-bridge-tasks` (watcher prunes resolved task_ids on next cycle). **Accept/Defer/Dismiss POST handlers** still TODO — `routes_bridge_pending.py` MVP is read-only by design; add `POST /api/bridge/pending/<id>/{accept,defer,dismiss}` once operator workflow proves out.
+- ~~**`/api/bridge/pending` dashboard panel + accept/defer/dismiss POST handlers**~~ ✅ shipped 2026-05-03 — Bridge Pending sub-page (`view-bridge-pending`) lists escalations with task_id / from / kind / summary / reason / prompt; menu badge shows pending depth; 20s poll, idempotent sig-based renders. Per-row buttons POST `/api/bridge/pending/<id>/{accept,defer,dismiss}` to `routes_bridge_pending_actions.py` (new sibling, not frozen): accept stamps `claimed_by=operator`; defer extends ttl_at by 24h; dismiss removes from queue (watcher's `processed_ids` dedup prevents re-add).
 
 ### Medium priority
 - **Console-pipe localStorage flush is fire-and-forget**: queued errors replay on next successful post but don't have a failure-recovery loop. Adequate today; revisit if it bites.
@@ -273,7 +273,7 @@ Any change here needs explicit user sign-off.
 
 ### Operational polish (small, high-leverage)
 
-- **`/api/bridge/pending` POST handlers**: today only GET — read-only sub-page shipped 2026-05-03. Add `POST /api/bridge/pending/<id>/accept|defer|dismiss` for in-dashboard triage so operator doesn't need to drop into `/process-bridge-tasks` for every escalation.
+- ~~**`/api/bridge/pending` POST handlers**~~ ✅ shipped 2026-05-03 — accept/defer/dismiss in `routes_bridge_pending_actions.py` (sibling of the frozen GET module). Operator can now triage escalations directly in the dashboard sub-page.
 - **`bridge_watcher_install.ps1` self-update**: when Phase 4+ ships an updated watcher, the installer should detect a stale local copy and prompt to re-pull.
 - **Per-node `bridge_watcher_health.json` aggregation on Legion**: Game-PC + Peer heartbeats land on their own disks. Have them ping their state to Legion's `/api/health/all` so the dashboard shows fleet-wide watcher health, not just Legion's.
 - **Watcher dry-run mode**: `--dry-run` flag that classifies but never spawns claude --print or writes pending file. Useful for tuning patterns against real traffic without spend.
