@@ -440,12 +440,13 @@
   // localStorage and a body[data-view] attribute. Auto promotes to
   // ChampSelect/in-game on urgent game events; if a manual view is
   // active during a promote-worthy event, the banner appears instead.
-  const VIEW_IDS = ["home","lobby","last-match","session","history","replay","loadouts","settings","diagnostics","coach-calls","bridge-pending"];
+  const VIEW_IDS = ["home","lobby","last-match","session","history","replay","loadouts","settings","diagnostics","coach-calls","bridge-pending","fleet"];
   const VIEW_LABELS = {
     "home":"Home","lobby":"Lobby","last-match":"Last Match","session":"Session",
     "history":"History","replay":"Replay",
     "loadouts":"Loadouts","settings":"Settings","diagnostics":"Diagnostics",
     "coach-calls":"Coach Calls","bridge-pending":"Bridge Pending",
+    "fleet":"Fleet Health",
   };
   const _VIEW = {
     current: null,
@@ -6344,6 +6345,164 @@
   }
   setInterval(pollBridgePending, BRIDGE_PENDING.intervalMs);
   pollBridgePending();
+
+  // ── Fleet Health (cross-Claude peer bridge_watcher heartbeats) ────
+  // Reads /api/health/peer every 30s. Each peer's record contains:
+  //   { received_at, age_s, stale, heartbeat: { node, pid, alive,
+  //     queue_depth, *_since_boot, *_24h, tokens_used_today_usd } }
+  // Stale = heartbeat hasn't refreshed in >5 min (300s, set by the
+  // server). Idempotent render via sig change-detection. The menu
+  // badge counts stale peers so the operator notices a publisher
+  // outage from any sub-page.
+  const FLEET = {
+    list:    el("fleet-list"),
+    empty:   el("fleet-empty"),
+    count:   el("fleet-count"),
+    badge:   el("fleet-menu-badge"),
+    intervalMs: 30000,
+  };
+
+  function _fmtNum(n) {
+    if (n == null) return "—";
+    if (typeof n !== "number") return String(n);
+    if (n >= 1000) return (n / 1000).toFixed(1) + "k";
+    return String(n);
+  }
+
+  function renderFleet(payload) {
+    const F = FLEET;
+    if (!F.list) return;
+    const nodes = payload && typeof payload === "object" ? payload : {};
+    const entries = Object.keys(nodes).sort().map(k => [k, nodes[k] || {}]);
+
+    let staleCount = 0;
+    let liveCount = 0;
+    for (const [, rec] of entries) {
+      if (rec.status === "no_data" || rec.stale) staleCount++;
+      if (rec.status !== "no_data") liveCount++;
+    }
+    if (F.count) F.count.textContent = String(entries.length);
+    if (F.badge) {
+      F.badge.textContent = String(staleCount);
+      F.badge.hidden = staleCount === 0;
+    }
+
+    if (entries.length === 0) {
+      if (F.list.dataset.sig !== "empty") {
+        F.list.innerHTML = "";
+        F.list.dataset.sig = "empty";
+      }
+      if (F.empty) F.empty.hidden = false;
+      return;
+    }
+    if (F.empty) F.empty.hidden = liveCount > 0;
+
+    // Sig: node + received_at + alive + queue_depth + escalations_since_boot.
+    // Don't include age_s — it ticks every poll and would force rebuilds.
+    const sig = entries.map(([k, r]) => {
+      const hb = r.heartbeat || {};
+      return [k, r.received_at || 0, r.stale ? 1 : 0, hb.alive ? 1 : 0,
+              hb.queue_depth || 0, hb.escalations_since_boot || 0,
+              hb.errors_since_boot || 0].join(":");
+    }).join("|");
+    if (F.list.dataset.sig === sig) return;
+    F.list.dataset.sig = sig;
+    F.list.innerHTML = "";
+
+    for (const [node, rec] of entries) {
+      const li = document.createElement("li");
+      li.className = "fleet-card";
+      if (rec.status === "no_data") li.classList.add("fl-nodata");
+      else if (rec.stale) li.classList.add("fl-stale");
+      else if (rec.heartbeat && rec.heartbeat.alive === false) li.classList.add("fl-down");
+      else li.classList.add("fl-ok");
+
+      // Header row: NODE name + status badge + age + watcher pid.
+      const head = document.createElement("div");
+      head.className = "fl-head";
+      const name = document.createElement("span");
+      name.className = "fl-name";
+      name.textContent = node.toUpperCase();
+      const status = document.createElement("span");
+      status.className = "fl-status";
+      const hb = rec.heartbeat || {};
+      if (rec.status === "no_data") status.textContent = "NO DATA";
+      else if (rec.stale)           status.textContent = "STALE";
+      else if (hb.alive === false)  status.textContent = "DOWN";
+      else                          status.textContent = "OK";
+      const age = document.createElement("span");
+      age.className = "fl-age";
+      age.textContent = _formatRelativeAge(rec.received_at);
+      const pid = document.createElement("span");
+      pid.className = "fl-pid";
+      if (hb.pid) pid.textContent = `pid ${hb.pid}`;
+      head.append(name, status, age, pid);
+      li.append(head);
+
+      if (rec.status === "no_data") {
+        const sub = document.createElement("div");
+        sub.className = "fl-nodata-msg";
+        sub.textContent = "No heartbeat published yet.";
+        li.append(sub);
+        F.list.appendChild(li);
+        continue;
+      }
+
+      // Stat grid: queue depth, escalations, auto-actions, errors, tokens.
+      const stats = document.createElement("div");
+      stats.className = "fl-stats";
+      const cells = [
+        ["queue", _fmtNum(hb.queue_depth)],
+        ["escalations 24h", _fmtNum(hb.escalations_24h)],
+        ["auto-ok 24h", _fmtNum(hb.auto_ok_24h)],
+        ["auto-err 24h", _fmtNum(hb.auto_err_24h)],
+        ["errors 24h", _fmtNum(hb.errors_24h)],
+        ["spend today", hb.tokens_used_today_usd != null
+          ? "$" + Number(hb.tokens_used_today_usd).toFixed(2) : "—"],
+      ];
+      for (const [label, value] of cells) {
+        const cell = document.createElement("div");
+        cell.className = "fl-stat";
+        const lbl = document.createElement("span");
+        lbl.className = "fl-stat-label";
+        lbl.textContent = label;
+        const val = document.createElement("span");
+        val.className = "fl-stat-val";
+        val.textContent = value;
+        cell.append(val, lbl);
+        stats.append(cell);
+      }
+      li.append(stats);
+
+      // Footer: last poll, since-boot summary.
+      const foot = document.createElement("div");
+      foot.className = "fl-foot";
+      const since = document.createElement("span");
+      const bootEsc = hb.escalations_since_boot || 0;
+      const bootErr = hb.errors_since_boot || 0;
+      since.textContent = `since boot: ${_fmtNum(bootEsc)} esc, ${_fmtNum(bootErr)} err`;
+      const lastPoll = document.createElement("span");
+      lastPoll.className = "fl-lastpoll";
+      lastPoll.textContent = "last poll " + _formatRelativeAge(hb.last_poll_at);
+      if (hb.last_poll_ok === false) lastPoll.classList.add("fl-poll-bad");
+      foot.append(since, lastPoll);
+      li.append(foot);
+
+      F.list.appendChild(li);
+    }
+  }
+
+  async function pollFleet() {
+    if (document.hidden) return;
+    try {
+      const r = await fetch("/api/health/peer");
+      if (!r.ok) return;
+      const d = await r.json();
+      renderFleet(d);
+    } catch (_) {}
+  }
+  setInterval(pollFleet, FLEET.intervalMs);
+  pollFleet();
 
   // ── Input bar → /api/input (with chat history) ─────────────────────
   const INPUT = {

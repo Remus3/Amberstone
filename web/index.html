@@ -48,6 +48,7 @@
         <button type="button" class="view-menu-item" data-view="diagnostics" role="menuitem">Diagnostics</button>
         <button type="button" class="view-menu-item" data-view="coach-calls" role="menuitem">Coach Calls</button>
         <button type="button" class="view-menu-item" data-view="bridge-pending" role="menuitem">Bridge Pending<span class="menu-badge" id="bridge-pending-menu-badge" hidden>0</span></button>
+        <button type="button" class="view-menu-item" data-view="fleet" role="menuitem">Fleet Health<span class="menu-badge" id="fleet-menu-badge" hidden>0</span></button>
         <div class="view-menu-divider"></div>
         <button type="button" class="view-menu-item view-menu-dev" data-view="dev" role="menuitem">⚙ Dev / Sim Preview</button>
         <div class="view-menu-divider"></div>
@@ -1071,6 +1072,22 @@
       <div class="view-section-body">
         <ol id="bridge-pending-list" class="bridge-pending-list" aria-label="Pending bridge tasks"></ol>
         <p id="bridge-pending-empty" class="home-empty">No pending escalations — bridge auto-flow is clean. Tasks land here when the watcher classifies them as <code>escalate</code>.</p>
+      </div>
+    </section>
+
+    <!-- Fleet Health sub-page (2026-05-03): surfaces /api/health/peer
+         (cross-Claude bridge_watcher heartbeats published by Peer +
+         Game-PC every 60s). Read-only — peers' watchers run on their
+         own disks; the badge counts stale peers (heartbeat > 5 min). -->
+    <section id="view-fleet" class="view-section" hidden>
+      <div class="view-section-head">
+        <h2>FLEET HEALTH</h2>
+        <span class="view-section-sub">Cross-Claude bridge_watcher peers — published every 60s to <code>/api/health/peer/&lt;node&gt;</code></span>
+        <span id="fleet-count" class="view-section-count">0</span>
+      </div>
+      <div class="view-section-body">
+        <ul id="fleet-list" class="fleet-list" aria-label="Peer bridge watcher health"></ul>
+        <p id="fleet-empty" class="home-empty">No peer heartbeats yet. Peers run <code>tools/bridge_watcher_health_publisher.py</code> as a sidecar — if this is empty after a peer reboot, check the publisher service.</p>
       </div>
     </section>
   </div>
