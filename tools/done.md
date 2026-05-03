@@ -49,6 +49,13 @@ The user wants to end the session cleanly so the next one starts with a fresh co
 - List new/modified files under `C:/Users/Administrator/.claude/projects/C--Riot-Commander/memory/` since session start.
 - Confirm `MEMORY.md` indexes any new memories; add if missing.
 
+### 7b. Triage incoming lessons from peers
+
+- Invoke the `/process-incoming-lessons` skill — drains any `kind=lesson` envelopes from the cross-Claude bridge that landed during the session. Apply / queue / discard decisions ride on the skill's schema gate + `does_not_apply_when` filter; we just want them off the queue before /clear so nothing is lost between sessions.
+- If "no lessons": include "✅ no pending lessons" in the banner.
+- If it applies any: include "✅ applied N lessons" with one-line titles.
+- If it errors: surface the error ABOVE the banner and add "⚠️ resolve <X>" to the bottom line — but don't block /clear over a triage failure since a fresh session can re-pull from the bridge log.
+
 ### 8. Game state safety check
 
 - Hit `https://127.0.0.1:8888/api/state` (or `https://192.168.8.230:8888/api/state` if local fails) — note `lcu.phase` and `mode_key`.
@@ -67,7 +74,8 @@ Print a tight banner — exactly this format:
   • bridge gamepc loop   : ✅ alive | ⚠️ stale (<age>s) | ❌ dead
   • RC health            : pid=<pid> alive=<bool> reload_ok=<bool>
   • WAKEUP_NOTES         : updated (+<N> lines)
-  • mid-game            : no | YES — wait until safe to /clear
+  • lessons triaged      : <N applied | none pending | err: …>
+  • mid-game             : no | YES — wait until safe to /clear
 ══════════════════════════════════════════════════════════════════
   Type /clear to start a fresh session with reset token budget.
 ══════════════════════════════════════════════════════════════════
