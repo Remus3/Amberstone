@@ -51,17 +51,21 @@ ARENA_ONLY = {
 }
 
 MAYHEM_ONLY = {
-    "Atma's Reckoning", "Rite of Ruin",
-    "Sword of Blossoming Dawn",  # Mayhem upgrade variant
-    # Note: "Stat Bonus" is a stat-purchase mechanic, not a literal
-    # item name in build lists, so not included here.
+    # Per data/meta/ddragon_items.json maps field, items below have NO
+    # arena alias-id (only ARAM map 12 = True). Items like Atma's
+    # Reckoning (id 223039) and Sword of Blossoming Dawn (id 4011) have
+    # arena variants and are excluded from this set.
+    "Rite of Ruin",   # only id 123430, ARAM=True only
 }
 
-REMOVED_ITEMS = {
-    "Opportunity",        # removed in 26.9
+# Items removed from SR but still valid in other modes (Arena retained
+# Opportunity + Galeforce per DDragon dual-IDs). Used only for SR/ARAM
+# validation; arena and mayhem don't enforce this list.
+SR_REMOVED_ITEMS = {
+    "Opportunity",        # aggregator A SR builds confirm removed from SR meta in 26.9
     "Trailblazer",        # removed in 26.9
     "Trailblade",         # alt spelling
-    "Galeforce",          # removed pre-26.9 (per project memory)
+    "Galeforce",          # removed from SR pre-26.9 (per project memory + aggregator A)
 }
 
 
@@ -84,11 +88,13 @@ def detect_mode(data: dict, fallback_path: Path) -> str:
 
 def violations_for_mode(mode: str) -> dict[str, set[str]]:
     """Return {label: forbidden_items} for the given mode."""
-    out: dict[str, set[str]] = {"REMOVED": REMOVED_ITEMS}
+    out: dict[str, set[str]] = {}
     if mode == "sr":
+        out["SR-REMOVED"] = SR_REMOVED_ITEMS
         out["ARENA-ONLY"] = ARENA_ONLY
         out["MAYHEM-ONLY"] = MAYHEM_ONLY
     elif mode == "aram":
+        out["SR-REMOVED"] = SR_REMOVED_ITEMS
         out["ARENA-ONLY"] = ARENA_ONLY
         out["MAYHEM-ONLY"] = MAYHEM_ONLY
     elif mode == "mayhem":
@@ -96,6 +102,9 @@ def violations_for_mode(mode: str) -> dict[str, set[str]]:
         # Mayhem CAN use Mayhem-only items, so no MAYHEM-ONLY forbid.
     elif mode == "arena":
         out["MAYHEM-ONLY"] = MAYHEM_ONLY
+        # Arena retained Opportunity + Galeforce + many other "SR-removed"
+        # items per DDragon dual-IDs (e.g. Opportunity id 226701 has
+        # Arena=True). No SR-removed enforcement.
         # Arena CAN use arena-only items.
     return out
 
