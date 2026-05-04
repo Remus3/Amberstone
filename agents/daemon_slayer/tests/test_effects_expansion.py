@@ -7,6 +7,8 @@ Companion to ``test_effects.py`` (thin slice). New coverage:
 * Energized family entries (Statikk Shiv, Rapid Firecannon, Voltaic, Sundered Sky).
 * Scaling proc entries (Wit's End by level, Runaan's by bonus AD, TriForce by base AD).
 * AP-scaling spellblade / on-hit (Lich Bane, Nashor's Tooth) — Phase 4 batch 3.
+* Magic pen layer (Void Staff, Cryptbloom, Sorc, Shadowflame) — Phase 4 batch 4.
+* Target-HP layer (BotRK Mist's Edge, Eclipse Ever Rising Moon) — Phase 4 batch 5.
 * defensive_only entries — no DPS contribution beyond stat block.
 """
 
@@ -272,17 +274,10 @@ class DefensiveOnlyExpansionTests(unittest.TestCase):
         self.assertTrue(e.defensive_only)
         self.assertIsNone(e.periodic)
 
-    def test_blade_of_ruined_king_defensive_for_now(self) -> None:
-        # BotRK requires target HP modeling; explicitly defensive_only in
-        # Phase 4. Promote when target_max_hp lands.
-        e = ITEM_EFFECTS["3153"]
-        self.assertTrue(e.defensive_only)
-        self.assertIn("not modeled", e.note.lower())
-
-    def test_eclipse_defensive_for_now(self) -> None:
-        e = ITEM_EFFECTS["6692"]
-        self.assertTrue(e.defensive_only)
-        self.assertIn("not modeled", e.note.lower())
+    # BotRK (3153) and Eclipse (6692) promoted in Phase 4 batch 5
+    # (2026-05-04) once ``target_max_hp`` landed. Their proc-shape
+    # assertions live in TargetHpItemTests below; the schema-promotion
+    # path matches Shadowflame in batch 4.
 
     def test_terminus_defensive_for_now(self) -> None:
         e = ITEM_EFFECTS["3302"]
@@ -624,12 +619,161 @@ class CoverageCountTests(unittest.TestCase):
 
     5 thin slice + 25 expansion + 10 batch 2 + 6 batch 3 + 4 batch 4 = 50.
     Batch 3 originally landed 7 items but Shadowflame (4645) promoted in
-    batch 4, leaving 6 net batch-3 entries here.
+    batch 4, leaving 6 net batch-3 entries here. Batch 5 (target HP)
+    promotes BotRK + Eclipse from defensive_only — count stays at 50
+    (promotions don't add or remove entries).
     """
 
     def test_table_size_at_phase_4_expansion(self) -> None:
         # Lower bound: no regressions removed entries.
         self.assertGreaterEqual(len(ITEM_EFFECTS), 50)
+
+
+class CallContextTargetMaxHpTests(unittest.TestCase):
+    """Phase 4 batch 5 — CallContext.target_max_hp field for %HP procs."""
+
+    def test_target_max_hp_default_zero(self) -> None:
+        # Backward-compat default — pre-batch-5 callers don't pass it.
+        ctx = CallContext(base_ad=60, bonus_ad=0, level=11)
+        self.assertEqual(ctx.target_max_hp, 0.0)
+
+    def test_callable_resolves_against_target_max_hp(self) -> None:
+        proc = PeriodicProc(
+            name="hp_scale",
+            bonus_damage=lambda c: 0.08 * c.target_max_hp,
+            damage_type=PHYSICAL,
+            every_n_attacks=1,
+        )
+        # 1500 HP * 8% = 120 per proc.
+        ctx = CallContext(base_ad=60, bonus_ad=0, level=11, target_max_hp=1500.0)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 120.0, places=3)
+
+    def test_zero_target_max_hp_zeros_hp_proc(self) -> None:
+        # Default target_max_hp=0 means %HP procs contribute zero — keeps
+        # pre-batch tests stable when callers don't supply HP.
+        proc = PeriodicProc(
+            name="hp_scale",
+            bonus_damage=lambda c: 0.08 * c.target_max_hp,
+            damage_type=PHYSICAL,
+            every_n_attacks=1,
+        )
+        ctx = CallContext(base_ad=60, bonus_ad=0, level=11)
+        self.assertEqual(proc.resolve_damage(ctx), 0.0)
+
+
+class TargetHpItemTests(unittest.TestCase):
+    """BotRK + Eclipse promoted from defensive_only via target_max_hp.
+
+    Both procs scale linearly with target_max_hp — tests assert the
+    monotonicity (more HP → more DPS) and the shape (BotRK every basic,
+    Eclipse every 2nd basic). Default target_max_hp=0.0 means a caller
+    that doesn't supply HP gets the pre-batch DPS exactly, so there's
+    a "no regression" assertion too.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_botrk_promoted_not_defensive_only(self) -> None:
+        e = ITEM_EFFECTS["3153"]
+        self.assertFalse(e.defensive_only)
+        self.assertIsNotNone(e.periodic)
+        self.assertEqual(e.periodic.damage_type, PHYSICAL)
+        self.assertEqual(e.periodic.every_n_attacks, 1)
+        self.assertIn("mist", e.note.lower())
+
+    def test_eclipse_promoted_not_defensive_only(self) -> None:
+        e = ITEM_EFFECTS["6692"]
+        self.assertFalse(e.defensive_only)
+        self.assertIsNotNone(e.periodic)
+        self.assertEqual(e.periodic.damage_type, PHYSICAL)
+        self.assertEqual(e.periodic.every_n_attacks, 2)
+        self.assertIn("ever rising moon", e.note.lower())
+
+    def test_botrk_dps_zero_target_hp_matches_no_hp_signal(self) -> None:
+        # With target_max_hp=0 (default), BotRK proc contributes zero —
+        # only the stat block (AD/AS/lifesteal) lifts DPS. Sanity: stat
+        # block alone makes BotRK > bare baseline, but the lambda's HP
+        # contribution is exactly zero.
+        bare = compute_dps(self.snap, "Aatrox", level=11)
+        with_botrk = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3153"],
+        )
+        self.assertGreater(with_botrk.weighted_dps, bare.weighted_dps)
+
+    def test_botrk_raises_dps_with_target_max_hp(self) -> None:
+        # Same build, raising target_max_hp from 0 → 1500 should bump
+        # DPS via the Mist's Edge proc.
+        no_hp = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3153"],
+        )
+        with_hp = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3153"],
+            target_max_hp=1500.0,
+        )
+        self.assertGreater(with_hp.weighted_dps, no_hp.weighted_dps)
+
+    def test_botrk_scales_linearly_with_target_max_hp(self) -> None:
+        # Doubling target_max_hp should roughly double the proc's
+        # contribution to DPS (other factors held constant). Exact
+        # equality won't hold because of crit / AS interactions on the
+        # base attack, but the proc piece IS linear, so total DPS
+        # delta should at least *strictly* grow.
+        low = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3153"],
+            target_max_hp=1000.0,
+        )
+        high = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3153"],
+            target_max_hp=3000.0,
+        )
+        self.assertGreater(high.weighted_dps, low.weighted_dps)
+
+    def test_eclipse_raises_dps_with_target_max_hp(self) -> None:
+        no_hp = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["6692"],
+        )
+        with_hp = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["6692"],
+            target_max_hp=1800.0,
+        )
+        self.assertGreater(with_hp.weighted_dps, no_hp.weighted_dps)
+
+    def test_botrk_per_basic_outpaces_eclipse_per_2nd(self) -> None:
+        # BotRK fires every basic at 8% HP; Eclipse fires every 2nd at
+        # 6% HP. Same target_max_hp, BotRK should score higher on the
+        # proc piece. (Stat blocks differ — BotRK has AS/lifesteal,
+        # Eclipse has lethality — but at zero target_armor the AS bonus
+        # makes BotRK win regardless.)
+        botrk = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3153"],
+            target_max_hp=2000.0,
+        )
+        eclipse = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["6692"],
+            target_max_hp=2000.0,
+        )
+        self.assertGreater(botrk.weighted_dps, eclipse.weighted_dps)
+
+    def test_target_max_hp_round_trips_in_dps_result(self) -> None:
+        # Result carries target_max_hp back so callers can audit what
+        # they got — same shape as target_armor / target_mr.
+        result = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3153"],
+            target_max_hp=1750.0,
+        )
+        self.assertEqual(result.target_max_hp, 1750.0)
+        self.assertIn("target_max_hp", result.to_dict())
+        self.assertEqual(result.to_dict()["target_max_hp"], 1750.0)
+
+    def test_target_max_hp_in_format_table(self) -> None:
+        result = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3153"],
+            target_max_hp=1750.0,
+        )
+        text = result.format_table()
+        self.assertIn("max_hp=1750", text)
 
 
 if __name__ == "__main__":

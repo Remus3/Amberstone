@@ -12,6 +12,11 @@ crit-damage multiplier, Kraken Slayer adds an every-3rd-attack physical
 proc, Stormrazor adds an every-4-second magic proc. Magical procs use
 target MR (not armor); physical procs share the auto-attack armor curve.
 
+Phase 4 batch 5 (2026-05-04): ``target_max_hp`` is plumbed into
+``CallContext`` so %-target-HP procs (BotRK Mist's Edge, Eclipse Ever
+Rising Moon) resolve. Same caller-supplied shape as ``target_armor`` /
+``target_mr`` — defaults to 0.0, lolmath scenarios don't carry HP.
+
 Ability damage is **not** included — spell formulas aren't in the
 snapshot. Only the basic-attack portion of each rotation is scored;
 rotation duration includes the time spent casting abilities, so longer
@@ -55,6 +60,7 @@ class DpsResult:
     mode: str
     target_armor: float
     target_mr: float
+    target_max_hp: float           # caller-supplied; 0.0 zeros out %HP procs
     phase: str
     weighted_dps: float            # selected phase, weighted across rotations
     phase_dps: dict[str, float]    # all 3 phases for context
@@ -73,6 +79,7 @@ class DpsResult:
             "mode": self.mode,
             "target_armor": self.target_armor,
             "target_mr": self.target_mr,
+            "target_max_hp": self.target_max_hp,
             "phase": self.phase,
             "weighted_dps": self.weighted_dps,
             "phase_dps": dict(self.phase_dps),
@@ -95,6 +102,7 @@ class DpsResult:
             rows.append("items: (none)")
         rows.append(
             f"target: armor={self.target_armor:.0f}  mr={self.target_mr:.0f}"
+            f"  max_hp={self.target_max_hp:.0f}"
         )
         rows.append("")
         rows.append(f"  weighted_dps   {self.weighted_dps:.2f}")
@@ -270,6 +278,7 @@ def compute_dps(
     mode: str = "SR",
     target_armor: float = 0.0,
     target_mr: float = 0.0,
+    target_max_hp: float = 0.0,
     phase: Optional[str] = None,
     augments: Optional[Iterable] = None,
 ) -> DpsResult:
@@ -326,6 +335,7 @@ def compute_dps(
         target_armor=target_armor_eff,
         target_mr=target_mr_eff,
         ap=ap,
+        target_max_hp=target_max_hp,
     )
 
     rotations_by_phase = _phase_rotations(snapshot, resolved.champion_id)
@@ -373,6 +383,7 @@ def compute_dps(
         mode=mode,
         target_armor=target_armor,
         target_mr=target_mr,
+        target_max_hp=target_max_hp,
         phase=selected_phase,
         weighted_dps=weighted_dps,
         phase_dps=phase_dps,
