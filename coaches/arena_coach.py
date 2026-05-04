@@ -287,6 +287,36 @@ class Coach(BaseCoach):
             self._last_event_count  = new_count
         return f"~{max(self._event_round_count, 1)}"
 
+    # ── Target-bonus-HP estimator (Phase 4 batch 19 wire-in) ─────────────────
+
+    def _estimate_target_bonus_hp(self) -> float:
+        """Heuristic: enemy bonus HP from items as a function of round.
+
+        ``_parse_arena_state`` doesn't surface per-enemy items, so we
+        estimate from round count instead. Curve: 0 at round 1, linear
+        ramp to 1500 at round 10, capped thereafter. The cap matches
+        LDR Giant Slayer's saturation point — past round 10 the engine
+        amp is already at full 15% so estimator precision stops
+        mattering.
+
+        Worst-case mis-estimate is bounded: Giant Slayer caps at 15%
+        damage amp, so the maximum DPS-recommendation distortion from
+        a bad estimate is ~15% of the LDR-included DPS delta. Rounds
+        2-9 (where the estimate matters most) align with the typical
+        Arena 1-3-item progression — enemies usually have 200-1300 HP
+        from items in that span, our linear ramp gives 167-1333. Close
+        enough for ranking; future batches can refine using surfaced
+        per-enemy item lists.
+
+        Returns 0.0 when round_count is non-positive (pre-game / state
+        gap), which collapses to "no signal" in the engine.
+        """
+        round_count = max(0, int(self._event_round_count))
+        if round_count <= 1:
+            return 0.0
+        # Linear ramp: rounds 2..10 → 167..1500. Caps at 1500 thereafter.
+        return min(1500.0, max(0.0, (round_count - 1) * 1500.0 / 9.0))
+
     # ── Vision ────────────────────────────────────────────────────────────────
 
     def _run_vision(self) -> None:
@@ -461,12 +491,17 @@ class Coach(BaseCoach):
             # absent, no regression.
             try:
                 owned_ids = _ds_resolve_many(state.get("items", []))
+                # Phase 4 batch 19 wire-in (s72): estimate enemy bonus HP
+                # from round count and pass to engine. Activates LDR
+                # Giant Slayer's target-conditional amp in /rank scoring.
+                target_bonus_hp = self._estimate_target_bonus_hp()
                 ds_rows = _ds_client.rank_for(
                     champion=champ,
                     level=int(state.get("level", 1)) or 1,
                     item_ids=owned_ids,
                     mode="ARENA",
                     target_armor=80.0,
+                    target_bonus_hp=target_bonus_hp,
                     top=5,
                     augments=state.get("augments") or None,
                 )
