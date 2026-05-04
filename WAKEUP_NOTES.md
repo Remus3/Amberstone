@@ -4191,3 +4191,171 @@ runtime `data/ratings/last_*.json` mutations.
 6. **Activate arena augment v2 in production** (carried).
 7. **Riftmaker HP→AP cross-derivation** (carried).
 8. **Per-target-HP-pct field** (carried; defer until caller demands).
+
+---
+
+## s63 hand-off — 2026-05-04 (Phase 4 batch 10: unique-passive enforcement)
+
+Single-arc continuation of s62. Picked the s62 #1 candidate
+(unique-passive enforcement). Eighth Phase-4 batch in two days.
+Operator still idle (LCU phase=None, RC main pid=9488 unchanged).
+
+**Pattern decision worth pinning:** s62 surfaced this as a real
+correctness gap. Sunfire + Hollow Radiance both shipped in batch 9
+without unique-passive enforcement; building both double-counted
+Immolate (Riot enforces unique-passive in-game). The fix is a
+single-field addition + dedup in `collect_effects` — minimal scope,
+single-purpose change.
+
+**Scope discipline:** the schema lets us tag any future unique-passive
+group (Spellblade items, Lifeline shields, Energized variants, etc.)
+but I tagged ONLY "immolate" this batch. Tagging more would require
+verifying current-patch unique-passive status for each candidate, and
+a wrong tag would silently regress correctness for any user who builds
+into that combo. The schema is sufficient infrastructure; tagging is a
+follow-up that needs research per group.
+
+**Shipped (commit `aa76ae4`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - `ItemEffect.unique_passive_key: str = ""` field appended.
+    Default empty key means "no dedup" — every pre-batch-10 entry
+    passes through `collect_effects` unchanged.
+  - `collect_effects` rewritten to track `seen_keys: set[str]` and
+    skip later items whose `unique_passive_key` matches a seen one.
+    Stat blocks aren't affected (they aggregate via
+    `aggregate_item_stats` outside this function), so HP/AD/MR
+    contributions from a deduped item still land — only the proc /
+    armor-pen / etc. effects are dropped.
+  - Sunfire (3068) + Hollow Radiance (6664) both tagged
+    `unique_passive_key="immolate"`.
+
+- `agents/daemon_slayer/__init__.py`: docstring narrative refreshed
+  (unique-passive enforcement call-out + 28 defensive_only count
+  unchanged); `ENGINE_VERSION 0.16.0 → 0.17.0`.
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - **UniquePassiveTests** (8 tests) — schema default empty,
+    Sunfire/HR both tagged immolate, dedup behavior (Sunfire+HR →
+    1 effect), first-seen-wins on order swap (HR+Sunfire → HR kept),
+    unrelated items pass through (Sunfire+HR+IE+BC → 3 effects),
+    Sunfire-solo DPS unchanged from batch 9 (regression guard at
+    64.32 dps), Sunfire+HR no double-count (delta = 6.0 dps from
+    HR's HP raising the deduped Immolate, NOT 23+ dps from a second
+    proc), Black Cleaver passive still lands when paired with
+    keyed item (per-key dedup, not per-item).
+
+**Test state:** 320/320 daemon_slayer tests green (was 312 at end
+of s62; +8 from `UniquePassiveTests`). All 312 prior tests stayed
+green unchanged before the new tests were added — confirms default
+empty key keeps single-item / no-conflict behavior identical.
+py_compile pre-commit hook passed.
+
+**Live engine verify (post-restart `schtasks /End` + `/Run`):**
+```
+GET  /health                                              → 0.17.0
+POST /dps {Aatrox, lvl 11}                                → 47.07 (bare)
+POST /dps {Aatrox, lvl 11, items:[3068]}                  → 64.32 (+17.25; Sunfire alone)
+POST /dps {Aatrox, lvl 11, items:[6664]}                  → 65.07 (+18.00; HR alone)
+POST /dps {Aatrox, lvl 11, items:[3068,6664]}             → 70.32 (+23.25; ONE proc, deduped)
+POST /dps {Aatrox, lvl 11, items:[6664,3068]}             → 70.32 (order-swap → identical)
+POST /dps {Aatrox, lvl 11, items:[3068,6664,3083]}        → 85.32 (+38.25; +Warmog raises bonus HP)
+```
+
+Math sanity:
+- Sunfire+HR deduped: stats hp=2540 (vs bare 1790), bonus_hp=750
+  (350 from Sunfire + 400 from HR — both stat blocks aggregate).
+  Immolate per-second = 12 + 0.015*750 = 23.25. n=1 → 23.25 dps
+  uplift over bare. ✅ EXACT MATCH.
+- Order-swap: 70.32 (commutative — confirmed by
+  `test_collect_effects_dedup_first_seen_wins` + this E2E probe).
+- +Warmog: hp=3540 → bonus_hp=1750 → 12 + 0.015*1750 = 38.25 per
+  second. ✅ Stat aggregation across all 3 items, single Immolate.
+
+**Without dedup (batch 9 behavior):** Sunfire+HR would have been
+~94 dps (Sunfire's 23.25 dps + HR's separate proc at 24 dps =
+~47.25 dps uplift, vs 23.25 with dedup). Real ~24-dps swing on
+this build. Materially affects /rank ordering when both items are
+candidates.
+
+**Coverage delta:** ITEM_EFFECTS unchanged at 54 entries (no new
+items; only schema + tagging).
+
+**Decisions worth pinning:**
+- **Single-field, set-based dedup.** Considered a per-key counter
+  (so the engine could surface "you're stacking 2 immolates") but
+  that's UX, not engine math. The set-based check is 4 lines of
+  code; the counter would be 10+ lines for a feature no caller
+  asked for.
+- **Stat-block aggregation untouched.** `collect_effects` returns
+  the conditional-effect entries; `aggregate_item_stats` (in stats.py)
+  separately aggregates the DDragon stat blocks. By scoping dedup to
+  `collect_effects`, the deduped item's HP/AD/MR all still contribute
+  to the build, which is the correct in-game behavior — Riot's
+  unique-passive only stops the passive proc, not the item's stat
+  block.
+- **Tag ONLY "immolate" this batch.** Spellblade, Lifeline, Energized
+  are candidate keys but each needs current-patch verification before
+  tagging. Wrong-tagging would silently regress a correctness-feeling
+  feature. CLAUDE.md "don't introduce abstractions beyond what the
+  task requires" — the schema is the abstraction; tagging is the
+  per-group concrete usage and gets its own batch.
+- **Default empty key, not None.** Both work, but empty string is
+  a valid set member that's semantically meaningless. Using `""` as
+  "no dedup" sentinel matches the `note: str = ""` precedent in
+  the same dataclass. No `Optional` import needed.
+
+**Things tomorrow-you should NOT redo:**
+- Don't add a per-build "duplicate unique-passive detected" warning
+  to `DpsResult.notes` — engine math now handles it correctly; UX
+  surfacing is /rank's job, not /dps's.
+- Don't tag Spellblade items (TriForce / Lich Bane / Sundered Sky)
+  without verifying current patch's unique-passive list. Riot has
+  shifted Spellblade's unique status across patches.
+- Don't tag every Energized item — these are NOT unique-passive
+  in current League. Energized stacks consume on the next basic;
+  each item fires its own distinct proc (Energized Bolt vs
+  Electroshock vs Sharpshooter vs Firmament). They DO stack in-game.
+- Don't dedup BLACK CLEAVER stacking with Cleave-style debuffs.
+  Black Cleaver is the only armor-reduction item in the engine;
+  dedup would only kick in if the user manually built two BCs (not
+  possible — boots-uniqueness rule isn't enforced for non-boots
+  but item-uniqueness IS).
+- Don't bump CoverageCountTests floor past 54. No new items this
+  batch.
+
+**Activation:** Engine on :8893 already at 0.17.0 (this session
+restarted it). No further action needed.
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true (no Legion main-RC restart this session;
+RC-DaemonSlayer bounced for the 8th time today). Engine on :8893 =
+0.17.0 live. LCU phase=None (no game in progress). Working tree
+clean except runtime `data/ratings/last_*.json` mutations.
+
+**Operational backlog (carried + new):**
+- All s54-s62 backlog items unchanged.
+- **Tag Spellblade items** (NEW from s63). TriForce (3078), Lich Bane
+  (3100), Sundered Sky (6610) all have Spellblade-shape procs. If
+  current patch enforces unique-passive on Spellblade, tag with
+  `unique_passive_key="spellblade"`. Need to verify current-patch
+  status before tagging — Riot has flipped this.
+- **Tag Lifeline shields** (NEW from s63). Sterak's, Shieldbow,
+  Maw, Phantom Dancer all have Lifeline shields. If unique-passive
+  in current patch, tag. All 4 are currently `defensive_only` so
+  the engine impact is small (no DPS effect to dedup), but
+  important for future shield-modeling extensions.
+
+**Next-session candidates (ranked):**
+1. **Phase 4 batch 11: tag Spellblade unique-passive** (NEW from s63).
+   Quick batch IF current-patch Spellblade is unique. Verify via
+   Riot's item descriptions (DDragon snapshot) + cross-check known
+   League wikis. ~30-60 minute scope including verification.
+2. **Phase 4 batch 9-alt: aggregate-stat extension hook refactor**
+   (carried). Pure cleanup; defer until friction.
+3. **First draft visual verify of P8-5.5** (carried).
+4. **gamepc_boot.ps1 patch** (carried). 1-liner.
+5. **P8-7 E2E push-to-League integration test** (carried).
+6. **Activate arena augment v2 in production** (carried).
+7. **Riftmaker HP→AP cross-derivation** (carried).
+8. **Per-target-HP-pct field** (carried; defer until caller demands).
