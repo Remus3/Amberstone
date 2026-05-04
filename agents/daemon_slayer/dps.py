@@ -179,18 +179,16 @@ def _periodic_proc_dps(
         return 0.0
     total = 0.0
     for e in effects:
-        proc = e.periodic
-        if proc is None:
-            continue
-        if proc.every_n_attacks > 0:
-            if total_attacks <= 0:
-                continue
-            procs = total_attacks / proc.every_n_attacks
-        else:  # every_n_seconds > 0 enforced by PeriodicProc.__post_init__
-            procs = duration / proc.every_n_seconds
-        resist = target_armor_for_physical if proc.damage_type == PHYSICAL else target_mr
-        dmg = proc.resolve_damage(call_ctx)
-        total += procs * dmg * _armor_factor(resist) * mode_dmg_mult
+        for proc in e.periodics:
+            if proc.every_n_attacks > 0:
+                if total_attacks <= 0:
+                    continue
+                procs = total_attacks / proc.every_n_attacks
+            else:  # every_n_seconds > 0 enforced by PeriodicProc.__post_init__
+                procs = duration / proc.every_n_seconds
+            resist = target_armor_for_physical if proc.damage_type == PHYSICAL else target_mr
+            dmg = proc.resolve_damage(call_ctx)
+            total += procs * dmg * _armor_factor(resist) * mode_dmg_mult
     return total / duration
 
 
