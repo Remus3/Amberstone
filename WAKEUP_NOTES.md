@@ -5132,3 +5132,207 @@ clean except runtime `data/ratings/last_*.json` mutations.
 7. **Riftmaker HP→AP cross-derivation** (carried — will compound
    on top of batch 14's amp; not blocked by batch 15).
 8. **Per-target-HP-pct field** (carried; defer until caller demands).
+
+---
+
+## s68 hand-off — 2026-05-04 (Phase 4 batch 15: HP→AP cross-derivation + Riftmaker Void Infusion)
+
+Single-arc continuation of s67. Picked the s67 carried-backlog #7
+(Riftmaker HP→AP cross-derivation), bypassing the s67 #1 audit
+suggestion in favor of shipping. Thirteenth Phase-4 batch in two
+days. Operator still idle (LCU phase=None, RC main pid=9488
+unchanged).
+
+**Pattern decision worth pinning — DDragon snapshot first, mental
+model second.** s67's hand-off carried "convert 100% bonus HP into
+AP at full stacks" as the Riftmaker HP→AP framing. DDragon snapshot
+revealed the actual mechanic: **2%** of bonus Health, **always on**
+(not gated by Void Corruption ramp). My mental model was wrong by
+50× and gated by a combat condition that doesn't exist. Fixing the
+WAKEUP framing pre-implementation would have prevented a giant
+schema/coverage overshoot. Same lesson as batches 12-13 (PD note,
+Terminus alternating-on-hit) — DDragon descriptions are the source
+of truth, repo notes drift.
+
+**Pattern decision worth pinning — additive vs multiplicative
+selection per stat type.** Crit damage bonus is summed
+(`total_crit_damage_bonus`), damage amps are multiplicative
+(`total_damage_amp_multiplier`, batch 14), HP→AP is additive
+(`total_bonus_ap_from_hp`, batch 15). The selection rule: if the
+in-game effect is "additional stat" (bonus AP, bonus AD, bonus
+crit damage) → sum; if it's "amplifier on a base value" (Riftmaker
+amp, Conqueror amp) → multiply. Pinned in the helper docstrings.
+
+**Shipped (commit `a7f9c31`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - **ItemEffect schema**: `ap_per_bonus_hp_pct: float = 0.0` field
+    added after `damage_amp_pct`. Inline comment documents the
+    always-on (no ramp gate) semantic and the "engine-internal
+    cross-derivation, /stats unchanged" decision.
+  - **`total_bonus_ap_from_hp(effects, caster_bonus_hp)`** helper —
+    sums `e.ap_per_bonus_hp_pct * caster_bonus_hp` across the
+    build, returns 0.0 for non-positive HP (defensive paranoia +
+    pre-batch-15 backward compat).
+  - **Riftmaker (4633)**: `ap_per_bonus_hp_pct=0.02` added.
+    Inline comment explains: Void Infusion always-on, omnivamp
+    intentionally-not-modeled (DPS engine doesn't track healing).
+    Note rewritten to surface both Void Corruption + Void Infusion
+    pieces in DpsResult.notes.
+
+- `agents/daemon_slayer/dps.py`:
+  - Imports `total_bonus_ap_from_hp`.
+  - `compute_dps`: after computing `caster_bonus_hp`, calls
+    `ap_from_hp = total_bonus_ap_from_hp(item_effects, caster_bonus_hp)`,
+    adds to `ap` BEFORE building CallContext. AP-scaling procs
+    (Lich Bane, Nashor's Tooth) read the converted total via
+    `c.ap`. resolved.stats AP stays raw.
+  - Note surfaced: "caster AP cross-derived from bonus HP: +X.X AP
+    (total AP for procs: Y.Y)" — only when `ap_from_hp > 0`.
+
+- `agents/daemon_slayer/__init__.py`: docstring narrative refreshed
+  (HP→AP call-out); `ENGINE_VERSION 0.21.0 → 0.22.0`.
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - **`TotalBonusApFromHpTests`** (5 tests) — empty list returns
+    0.0, no-HP returns 0.0, negative-HP clamped, Riftmaker yields
+    2% of HP, no-amp items yield 0.0.
+  - **`RiftmakerHpToApTests`** (7 tests) — 2% value pinned, no
+    other item carries the field (regression catch for future
+    schema additions), HP→AP note surfaces with Riftmaker, no
+    note without Riftmaker, resolved.stats AP unchanged (raw stat
+    block), Heartsteel+Riftmaker compounds to 25 AP cross-derived,
+    Lich Bane proc lifts via the AP delta.
+  - **`RiftmakerPromotionTests` (batch 14)** — class docstring
+    updated to reference `RiftmakerHpToApTests` for the HP→AP
+    piece. `test_riftmaker_lifts_dps_via_amp` comment fixed
+    (80 → 70 AP per DDragon snapshot).
+
+**Test state:** 362/362 daemon_slayer tests green (was 350 at end
+of s67; +12 — 5 from `TotalBonusApFromHpTests` + 7 from
+`RiftmakerHpToApTests`). Batch 14's `RiftmakerPromotionTests`
+remained green unchanged (Aatrox AAs are physical, don't read AP,
+so the 1.08x ratio test still holds even with batch 15's HP→AP
+also wired). py_compile pre-commit hook passed.
+
+**Live engine verify (post-restart `schtasks /End` + `/Run`):**
+```
+GET  /health                                              → 0.22.0
+POST /dps {Aatrox, lvl 11}                                → 47.07 (bare; no notes)
+POST /dps {Aatrox, lvl 11, items:[4633]}                  → 50.83 (350 HP → +7 AP cross; total proc AP 77)
+POST /dps {Aatrox, lvl 11, items:[4633, 3084]}            → 145.05 (1250 HP → +25 AP cross; Heartsteel proc fires)
+POST /dps {Aatrox, lvl 11, items:[3100]}                  → 91.23 (Lich Bane only, stat AP 100)
+POST /dps {Aatrox, lvl 11, items:[3100, 4633]}            → 112.39 (total proc AP 177 = 100+70+7)
+POST /dps {Aatrox, lvl 11, items:[3115, 4633]}            → 80.91 (total proc AP 157 = 80+70+7)
+POST /dps {Aatrox, lvl 11, items:[3115, 4633, 3084]}      → 177.00 (total proc AP 175 = 80+70+25)
+```
+
+Math sanity:
+- Riftmaker alone: 350 HP × 2% = 7 AP cross-derived. Visible in
+  notes: "+7.0 AP (total AP for procs: 77.0)". Stat AP 70 + cross
+  7 = 77. ✓ EXACT
+- Riftmaker + Heartsteel: 350 + 900 = 1250 HP × 2% = 25 AP
+  cross-derived. ✓ EXACT (DDragon Heartsteel = 900 HP, NOT 800
+  as my initial test arithmetic guessed)
+- Lich Bane + Riftmaker procs: total proc AP = stat AP (100 Lich
+  + 70 Rift) + cross-derived (7) = 177. Lich spellblade scales
+  0.5 * AP per proc → 0.5*7 = 3.5 magic uplift per spellblade
+  vs amp-only baseline. Small per-proc but compounds across
+  rotations. ✓
+- Nashor + Rift + Heartsteel: total proc AP = stat (80+70+0) +
+  cross (25) = 175. ✓
+
+**Coverage delta:** ITEM_EFFECTS unchanged at 54 entries.
+Defensive_only count unchanged at 26. Riftmaker now uses 3 schema
+fields (damage_amp_pct, ap_per_bonus_hp_pct, note) — first item
+with multi-hook coverage spanning the batch 14 + batch 15 schema
+adds.
+
+**Decisions worth pinning:**
+- **Always-on cross-derivation, no combat gate.** DDragon: "Gain
+  2% of your bonus Health as Ability Power" — passive, not gated
+  on combat state. Engine matches. If a future item gates HP→AP
+  on combat (e.g. "while in combat, gain X% bonus HP as AP"),
+  the schema needs a separate combat-gated variant. Don't extend
+  ap_per_bonus_hp_pct to handle conditional gating without
+  surfacing the schema split.
+- **Cross-derivation lives in dps.py, not engine.py.** Resolved
+  stats output (`/stats`) reflects raw stat blocks; cross-derived
+  totals are a DPS-time concept. Two reasons: (a) callers asking
+  /stats want stat-block math (gold-efficiency, build comparison),
+  (b) cross-derived AP is only useful when AP-scaling procs are
+  in the build, so the engine-internal calculation stays scoped
+  to where it matters. If a future caller needs cross-derived
+  /stats (e.g. some UI wants "effective AP after Void Infusion"),
+  add a flag rather than changing the default behavior.
+- **Additive across cross-derivation items.** Each item's HP→AP
+  contribution is independent — summing is correct (no buff-system
+  multiplicative subtlety). If two items both convert HP→AP, the
+  total is `(0.02 + 0.03) * bonus_hp` for a 2% + 3% pair. This
+  matches League's "stat add" semantics.
+- **DDragon as snapshot truth, not mental model.** s67's "100%
+  HP→AP at full stacks" framing was wrong by 50×. The pre-coding
+  snapshot probe caught it before any wasted effort. Same pattern
+  as batches 11-13 (Spellblade label-match, PD vs Lifeline,
+  Terminus alternating) — read DDragon, then code.
+
+**Things tomorrow-you should NOT redo:**
+- Don't extend `ap_per_bonus_hp_pct` to handle ramping or combat-
+  gated HP→AP variants (Riftmaker's IS always-on; if a future
+  item is gated, add a separate schema field — don't overload).
+- Don't backfill resolved.stats with cross-derived AP. /stats
+  callers depend on raw-stat-block semantics; changing this is
+  a behavior break for non-DPS callers. Add a flag if needed.
+- Don't model Riftmaker's full-Void-Corruption omnivamp. DPS
+  engine doesn't track healing; omnivamp doesn't lift damage
+  output.
+- Don't switch HP→AP to multiplicative across items. League's
+  stat-add semantics are additive — 2% + 3% = 5% conversion total,
+  not 1.02 * 1.03. The unit test
+  `test_riftmaker_yields_2pct_of_hp` and the helper docstring
+  pin this.
+- Don't bump CoverageCountTests floor past 54. Schema additions
+  don't add table entries.
+
+**Activation:** Engine on :8893 already at 0.22.0 (this session
+restarted it). No further action needed.
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true (no Legion main-RC restart this session;
+RC-DaemonSlayer bounced for the 13th time today). Engine on :8893
+= 0.22.0 live. LCU phase=None (no game in progress). Working tree
+clean except runtime `data/ratings/last_*.json` mutations.
+
+**Operational backlog (carried + new):**
+- All s54-s67 backlog items unchanged.
+- **Riftmaker's omnivamp at full Void Corruption** (NEW from s68).
+  Intentionally-not-modeled. If RC ever grows healing/sustain
+  modeling (Death's Dance bleed storage, omnivamp uptime), revisit.
+  Document in the rune-layer / sustain-layer design when scoped.
+- **DDragon-first snapshot research as a hard precondition** (NEW
+  from s68). For any future `unique_passive_key` tag, item
+  promotion, or cross-derivation: probe `data/daemon_slayer/16.9.1/
+  items.json` BEFORE writing the schema/test math. This batch and
+  batches 11-13 all hit this — the carried-backlog framings drift
+  from snapshot truth.
+
+**Next-session candidates (ranked):**
+1. **Phase 4 batch 16: Heartsteel + HP-item doc audit** (NEW from
+   s68). Heartsteel's stat block is 900 HP per DDragon, not 800 as
+   carried mental model. Audit other HP-item entries (Sterak's,
+   Riftmaker, Hollow Radiance, Sunfire Aegis) against snapshot
+   for any HP-value drift in notes / inline comments / test
+   arithmetic. Quick batch (~30 min) — might surface other note
+   errors. NO schema bump; doc-only.
+2. **Phase 4 batch 9-alt: aggregate-stat extension hook refactor**
+   (carried). Pure cleanup; defer until friction.
+3. **Phase 4 batch 15-alt: Conqueror rune amp** (carried from s67).
+   Conqueror is a rune, not an item — needs a rune layer. The
+   `damage_amp_pct` wiring would compose with Riftmaker via
+   `total_damage_amp_multiplier`. Architectural batch — scope
+   the rune-effect schema first.
+4. **First draft visual verify of P8-5.5** (carried).
+5. **gamepc_boot.ps1 patch** (carried). 1-liner.
+6. **P8-7 E2E push-to-League integration test** (carried).
+7. **Activate arena augment v2 in production** (carried).
+8. **Per-target-HP-pct field** (carried; defer until caller demands).
