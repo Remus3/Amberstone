@@ -4723,5 +4723,194 @@ class Batch36ArenaAndRiteOfRuinTests(unittest.TestCase):
         self.assertGreaterEqual(count, 65)
 
 
+# ────────────────────────── Phase 4 batch 37 tests ──────────────────────────
+
+class Batch37TrueDamageTests(unittest.TestCase):
+    """Batch 37: TRUE damage type + Darksteel Talons / Fulmination / Reaper's Toll."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    # ── TRUE constant present ──
+
+    def test_true_constant_exported(self) -> None:
+        from agents.daemon_slayer.effects import TRUE
+        self.assertEqual(TRUE, "true")
+
+    def test_true_in_damage_types(self) -> None:
+        from agents.daemon_slayer.effects import _DAMAGE_TYPES, TRUE
+        self.assertIn(TRUE, _DAMAGE_TYPES)
+
+    # ── Darksteel Talons (443054) ──
+
+    def test_darksteel_talons_present(self) -> None:
+        eff = ITEM_EFFECTS.get("443054")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 1)
+
+    def test_darksteel_talons_true_type(self) -> None:
+        proc = ITEM_EFFECTS["443054"].periodics[0]
+        self.assertEqual(proc.damage_type, "true")
+        self.assertEqual(proc.every_n_attacks, 1)
+
+    def test_darksteel_talons_formula_level1(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["443054"].periodics[0]
+        ctx = CallContext(base_ad=0.0, bonus_ad=0.0, level=1)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 10.0, places=4)
+
+    def test_darksteel_talons_formula_level18(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["443054"].periodics[0]
+        ctx = CallContext(base_ad=0.0, bonus_ad=0.0, level=18)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 20.0, places=4)
+
+    def test_darksteel_talons_true_bypasses_armor(self) -> None:
+        # TRUE procs ignore armor — DPS with 200 armor should equal DPS with 0 armor
+        from agents.daemon_slayer.dps import compute_dps
+        dps_no_armor = compute_dps(
+            self.snap, "Jinx", level=11, item_ids=["443054"], target_armor=0.0
+        )
+        dps_high_armor = compute_dps(
+            self.snap, "Jinx", level=11, item_ids=["443054"], target_armor=200.0
+        )
+        # The TRUE proc portion should be identical; overall DPS drops but proc contribution is same
+        # We verify: with no other items, weighted_dps_high < weighted_dps_no_armor
+        # (AA portion drops with armor) BUT the difference should be less than a pure-physical
+        # item at same level
+        dps_kraken_no_armor = compute_dps(
+            self.snap, "Jinx", level=11, item_ids=["3076"], target_armor=0.0
+        )
+        dps_kraken_high_armor = compute_dps(
+            self.snap, "Jinx", level=11, item_ids=["3076"], target_armor=200.0
+        )
+        drop_true_item = dps_no_armor.weighted_dps - dps_high_armor.weighted_dps
+        drop_physical_item = dps_kraken_no_armor.weighted_dps - dps_kraken_high_armor.weighted_dps
+        # True item loses less to armor than a similar physical item
+        self.assertLessEqual(drop_true_item, drop_physical_item)
+
+    def test_darksteel_talons_dps_lift(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        dps_bare = compute_dps(self.snap, "Jinx", level=11, target_armor=50.0)
+        dps_with = compute_dps(self.snap, "Jinx", level=11, item_ids=["443054"],
+                               target_armor=50.0)
+        self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
+
+    # ── Fulmination (443055) ──
+
+    def test_fulmination_present(self) -> None:
+        eff = ITEM_EFFECTS.get("443055")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 1)
+
+    def test_fulmination_magical_type(self) -> None:
+        proc = ITEM_EFFECTS["443055"].periodics[0]
+        self.assertEqual(proc.damage_type, "magical")
+        self.assertEqual(proc.every_n_attacks, 100)
+
+    def test_fulmination_dynamo_formula(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["443055"].periodics[0]
+        ctx = CallContext(base_ad=0.0, bonus_ad=0.0, level=11, target_max_hp=3000.0)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 0.13 * 3000.0, places=4)
+
+    def test_fulmination_dps_lift_with_target_hp(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        dps_bare = compute_dps(self.snap, "Jinx", level=11, target_max_hp=3000.0)
+        dps_with = compute_dps(self.snap, "Jinx", level=11, item_ids=["443055"],
+                               target_max_hp=3000.0)
+        self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
+
+    def test_fulmination_zero_damage_at_zero_hp(self) -> None:
+        # Dynamo proc returns 0 when target_max_hp=0
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["443055"].periodics[0]
+        ctx = CallContext(base_ad=0.0, bonus_ad=0.0, level=11, target_max_hp=0.0)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 0.0, places=6)
+
+    # ── Reaper's Toll (443090) ──
+
+    def test_reapers_toll_present(self) -> None:
+        eff = ITEM_EFFECTS.get("443090")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 1)
+
+    def test_reapers_toll_true_type(self) -> None:
+        proc = ITEM_EFFECTS["443090"].periodics[0]
+        self.assertEqual(proc.damage_type, "true")
+        self.assertEqual(proc.every_n_attacks, 1)
+
+    def test_reapers_toll_formula(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["443090"].periodics[0]
+        ctx = CallContext(base_ad=0.0, bonus_ad=0.0, level=11, target_max_hp=4000.0)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 0.007 * 4000.0, places=4)
+
+    def test_reapers_toll_dps_lift_with_target_hp(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        dps_bare = compute_dps(self.snap, "Jinx", level=11, target_max_hp=3000.0)
+        dps_with = compute_dps(self.snap, "Jinx", level=11, item_ids=["443090"],
+                               target_max_hp=3000.0)
+        self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
+
+    def test_reapers_toll_true_bypasses_armor(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        # Same proc should fire regardless of armor
+        dps_low = compute_dps(self.snap, "Jinx", level=11, item_ids=["443090"],
+                              target_armor=0.0, target_max_hp=3000.0)
+        dps_high = compute_dps(self.snap, "Jinx", level=11, item_ids=["443090"],
+                               target_armor=300.0, target_max_hp=3000.0)
+        # AA DPS drops, but the 0.7% HP true proc doesn't — difference should be small
+        # compared to a physical item at same armor swing
+        dps_bork_low = compute_dps(self.snap, "Jinx", level=11, item_ids=["3153"],
+                                   target_armor=0.0, target_max_hp=3000.0)
+        dps_bork_high = compute_dps(self.snap, "Jinx", level=11, item_ids=["3153"],
+                                    target_armor=300.0, target_max_hp=3000.0)
+        drop_true = dps_low.weighted_dps - dps_high.weighted_dps
+        drop_bork = dps_bork_low.weighted_dps - dps_bork_high.weighted_dps
+        self.assertLessEqual(drop_true, drop_bork)
+
+    # ── Defensive_only count ──
+
+    def test_batch37_defensive_only_entries(self) -> None:
+        expected = {
+            "447101": "Gambler's Blade",
+            "447102": "Reality Fracture",
+            "447103": "Hemomancer's Helm",
+            "447104": "Innervating Locket",
+            "447105": "Empyrean Promise",
+            "447106": "Dragonheart",
+            "447109": "Cruelty",
+            "447110": "Moonflair Spellblade",
+            "447112": "Flesheater",
+            "447122": "Black Hole Gauntlet",
+            "447123": "Puppeteer",
+            "443056": "Demon King's Crown",
+            "443060": "Sword of the Divine",
+            "443069": "Hamstringer",
+        }
+        for iid, name in expected.items():
+            with self.subTest(item_id=iid):
+                eff = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(eff, f"{iid} missing from ITEM_EFFECTS")
+                self.assertTrue(eff.defensive_only,
+                                f"{iid} ({name}) should be defensive_only=True")
+                self.assertEqual(len(eff.periodics), 0)
+                self.assertTrue(len(eff.note) > 0)
+
+    def test_defensive_only_count_after_batch37(self) -> None:
+        count = sum(1 for e in ITEM_EFFECTS.values() if e.defensive_only)
+        # 65 after batch 36 + 14 new = 79
+        self.assertGreaterEqual(count, 79)
+
+    def test_total_entry_count_after_batch37(self) -> None:
+        # 139 after batch 36 + 17 new (3 active + 14 defensive) = 156
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 156)
+
+
 if __name__ == "__main__":
     unittest.main()
