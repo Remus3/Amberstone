@@ -1,9 +1,10 @@
-"""Daemon Slayer CLI — Phase 2 steps 1, 2, and 3.
+"""Daemon Slayer CLI — Phase 2 (stats/dps/rank) + Phase 3 (serve).
 
 Subcommands:
   stats   resolve a champion's stats at a level with items equipped
   dps     auto-attack DPS over lolmath rotation scenarios
   rank    score every legal purchasable item by DPS contribution
+  serve   start the local HTTP engine on :8893
 
 Usage:
   python -m agents.daemon_slayer stats Aatrox --level 11 --items 6692,3006
@@ -11,6 +12,7 @@ Usage:
   python -m agents.daemon_slayer dps Aatrox --level 11 --mode ARAM --target-armor 80
   python -m agents.daemon_slayer rank Aatrox --level 11 --target-armor 80
   python -m agents.daemon_slayer rank Aatrox --level 11 --items 3006 --budget 3500 --top 10
+  python -m agents.daemon_slayer serve --host 0.0.0.0 --port 8893
 """
 
 from __future__ import annotations
@@ -24,6 +26,7 @@ from .data_loader import DataSnapshot, SnapshotNotFound
 from .dps import compute_dps
 from .engine import build_champion
 from .rank import SORT_KEYS, rank_items
+from .server import DEFAULT_HOST, DEFAULT_PORT, serve_forever
 
 
 def _cmd_stats(args: argparse.Namespace) -> int:
@@ -132,6 +135,15 @@ def _cmd_rank(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_serve(args: argparse.Namespace) -> int:
+    return serve_forever(
+        host=args.host,
+        port=args.port,
+        patch=args.patch,
+        data_root=Path(args.data_root) if args.data_root else None,
+    )
+
+
 def _cmd_not_implemented(name: str, phase: str):
     def _run(_args: argparse.Namespace) -> int:
         print(f"{name}: not implemented yet — scheduled for {phase}", file=sys.stderr)
@@ -203,6 +215,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     rank.add_argument("--json", action="store_true", help="emit machine-readable JSON")
     rank.set_defaults(func=_cmd_rank)
+
+    serve = sub.add_parser("serve", help="start the local HTTP engine on :8893")
+    serve.add_argument("--host", default=DEFAULT_HOST,
+                       help=f"bind host (default {DEFAULT_HOST}; use 0.0.0.0 to expose on LAN)")
+    serve.add_argument("--port", type=int, default=DEFAULT_PORT,
+                       help=f"bind port (default {DEFAULT_PORT})")
+    serve.set_defaults(func=_cmd_serve)
 
     return p
 
