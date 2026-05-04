@@ -159,7 +159,22 @@ Lightning Rod (447119) Call Lightning 135→230+30% bonus AD+50% AP+10%
 target max HP magic every 16s; Regicide (447115) lethality=15; Rite of
 Ruin (3430) crit_chance_bonus_flat=0.20 [max Wrath+Ruin stacks]; plus 6
 defensive_only: Runecarver, Kinkou Jitte, Diamond-Tipped Spear,
-Twilight's Edge, Decapitator, Mirage Blade).
+Twilight's Edge, Decapitator, Mirage Blade). Phase 4 batch 37 TRUE
+damage type + Arena item sweep (2026-05-04 — new ``TRUE = "true"``
+constant + ``_DAMAGE_TYPES`` update; ``_periodic_proc_dps`` handles
+``damage_type == TRUE`` with ``resist=0.0`` bypassing both armor and
+MR; 3 active promotions: Darksteel Talons (443054) Gash every-attack
+10→20 true [ranged, level-scaled; bonus-armor component deferred],
+Fulmination (443055) Dynamo every-100th-attack 13% target max HP magic
+[upper-bound approx; Polarity Energized deferred], Reaper's Toll
+(443090) Reap every-attack 0.7% target max HP true [pinned at 0 stacks];
+plus 14 defensive_only entries completing the Arena 443xxx/447xxx pool:
+Gambler's Blade (447101), Reality Fracture (447102), Hemomancer's Helm
+(447103), Innervating Locket (447104), Empyrean Promise (447105),
+Dragonheart (447106), Cruelty (447109), Moonflair Spellblade (447110),
+Flesheater (447112), Black Hole Gauntlet (447122), Puppeteer (447123),
+Demon King's Crown (443056), Sword of the Divine (443060), Hamstringer
+(443069)).
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
 ``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation`` /
@@ -175,4 +190,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.40.0"
+ENGINE_VERSION = "0.41.0"
