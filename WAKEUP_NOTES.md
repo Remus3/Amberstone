@@ -4359,3 +4359,167 @@ clean except runtime `data/ratings/last_*.json` mutations.
 6. **Activate arena augment v2 in production** (carried).
 7. **Riftmaker HP→AP cross-derivation** (carried).
 8. **Per-target-HP-pct field** (carried; defer until caller demands).
+
+---
+
+## s64 hand-off — 2026-05-04 (Phase 4 batch 11: Spellblade unique-passive tagged)
+
+Single-arc continuation of s63. Picked the s63 #1 candidate (tag
+Spellblade unique-passive). Ninth Phase-4 batch in two days. Operator
+still idle (LCU phase=None, RC main pid=9488 unchanged).
+
+**Pattern decision worth pinning — research-then-tag:** the s63
+hand-off explicitly warned that wrong-tagging would silently regress
+correctness, so I led with snapshot research before any code. Found:
+- TF (3078), Lich Bane (3100), Essence Reaver (3508) all use the
+  literal "Spellblade" tooltip label in DDragon (Riot's naming
+  convention reliably signals shared mechanics)
+- Sundered Sky (6610) uses "Lightshield Strike" — distinct mechanic,
+  must NOT share the spellblade key (would silently dedup TF +
+  Sundered Sky if mistagged)
+- Phantom Dancer (3046) uses "Spectral Waltz" (a ghost effect, NOT
+  Lifeline — RC's existing note for PD is wrong, not in scope)
+
+**Scope discipline — exclude Essence Reaver:** ER has the Spellblade
+label but is currently `defensive_only` (proc not modeled). Tagging it
+with `unique_passive_key="spellblade"` would create order-dependence:
+[ER, TF] would silently dedup TF's spellblade (ER first-seen wins, but
+ER has no proc to fire). Outcome would be a real DPS regression on
+builds with both items. Conservative call: leave ER untagged until
+someone promotes its proc out of defensive_only.
+
+**Shipped (commit `fa17e94`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - Trinity Force (3078): `unique_passive_key="spellblade"` added.
+    Inline comment documents the dedup target (Lich Bane), the
+    distinct-mechanic exclusion (Sundered Sky), and the
+    intentional-untag of Essence Reaver.
+  - Lich Bane (3100): same key + cross-ref comment.
+
+- `agents/daemon_slayer/__init__.py`: docstring narrative refreshed
+  (spellblade unique-passive call-out + 28 defensive_only count
+  unchanged); `ENGINE_VERSION 0.17.0 → 0.18.0`.
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - **SpellbladeUniquePassiveTests** (9 tests) — both items tagged
+    spellblade, Sundered Sky NOT tagged spellblade, Essence Reaver
+    NOT tagged spellblade, dedup behavior on TF+LB → 1 effect, order
+    swap LB+TF → LB-first wins, TF-solo unchanged at 85.08
+    (regression guard), LB-solo unchanged at 58.17 (regression guard),
+    TF+LB no-double-count (delta < TF-solo + 5 dps tolerance), order-
+    swap TF,LB → 85.08 vs LB,TF → 67.17 produces different results
+    (order dependence is real and intentional).
+
+**Test state:** 329/329 daemon_slayer tests green (was 320 at end
+of s63; +9 from `SpellbladeUniquePassiveTests`). All 320 prior tests
+stayed green unchanged before the new tests were added — confirms the
+spellblade tag doesn't perturb non-spellblade builds. py_compile
+pre-commit hook passed.
+
+**Live engine verify (post-restart `schtasks /End` + `/Run`):**
+```
+GET  /health                                              → 0.18.0
+POST /dps {Ahri, lvl 11}                                  → 20.75 (bare)
+POST /dps {Ahri, lvl 11, items:[3078]}                    → 85.08 (TF-solo, regression guard)
+POST /dps {Ahri, lvl 11, items:[3100]}                    → 58.17 (LB-solo, regression guard)
+POST /dps {Ahri, lvl 11, items:[3078,3100]}               → 85.08 (was 122.50; -37.42 dedup)
+POST /dps {Ahri, lvl 11, items:[3100,3078]}               → 67.17 (LB-first wins)
+POST /dps {Sett, lvl 11, items:[3078,3100]}               → 100.25 (was 141.92; -41.67)
+```
+
+Math sanity:
+- Ahri+TF,LB: dedup removes LB-spellblade. LB-solo on Ahri = 58.17;
+  LB stat block (100 AP, 4% MS, 10 AH) contributes ~0 to AA-DPS for
+  Ahri; therefore the entire 58.17 - 20.75 = 37.42 was LB-spellblade.
+  Post-dedup TF,LB = TF-solo 85.08 + 0 from LB stats = 85.08. ✅
+- Sett+TF,LB: -41.67 vs Ahri's -37.42 because Sett has higher base
+  AD lvl 11 → LB-spellblade (75% base AD + 50% AP) hits harder per
+  proc. AP on Sett doesn't help LB-spellblade much (only LB's own
+  100 AP), so the higher base AD is the swing factor.
+- Order swap LB,TF on Ahri: LB-spellblade kept; TF stat block (36
+  AD, 30% AS, 333 HP, 15 AH) lifts AA dps. 67.17 - 58.17 (LB-solo)
+  = 9 dps from TF stats — mostly the AS+AD on auto-attacks. Different
+  from TF,LB → 85.08 (-17.91); the gap is the difference between
+  TF-spellblade (2.0 * base_ad) and LB-spellblade (0.75 * base_ad +
+  0.50 * 100 AP) on Ahri's stats.
+
+**Coverage delta:** ITEM_EFFECTS unchanged at 54 entries (no new
+items; only schema usage on existing entries).
+
+**Decisions worth pinning:**
+- **Snapshot label match is sufficient evidence.** DDragon strips
+  numbers but preserves named-effect labels. When 2+ items use the
+  literal same name (e.g. "Spellblade"), Riot's tooltip system signals
+  shared mechanics — strong enough signal to tag without external
+  documentation. When labels differ ("Spellblade" vs "Lightshield
+  Strike"), they're distinct mechanics — don't lump them.
+- **Untag defensive_only entries.** Tagging a defensive_only item
+  (no proc to fire) creates order-dependence: putting it first in
+  the build silently dedups a real proc on a later item. Wait until
+  the item is promoted before tagging.
+- **Order-dependence is documented, not fixed.** First-seen-wins
+  dedup means [TF, LB] gets TF-spellblade; [LB, TF] gets LB-spellblade.
+  Both are reasonable single-spellblade approximations (only one
+  fires in-game). A "best-fit" dedup that picks the higher-DPS proc
+  would be more correct but adds complexity (need to evaluate procs
+  before deduping). First-seen-wins is the canonical pattern from
+  batch 10.
+- **No /rank "stacked spellblade detected" warning.** Engine math now
+  handles it correctly; UX surfacing is /rank's job, and surfacing a
+  warning for what's now correct math would be noise.
+
+**Things tomorrow-you should NOT redo:**
+- Don't tag Essence Reaver (3508) until it's promoted out of
+  defensive_only. The order-dependence bug is real.
+- Don't tag Sundered Sky (6610) as spellblade — distinct mechanic
+  per DDragon labels. Its 8s cooldown also makes it functionally
+  different from TF/LB's 1.5s real CD.
+- Don't try to make dedup pick the higher-DPS proc. The complexity
+  doesn't pay back vs first-seen-wins approximation.
+- Don't tag Phantom Dancer (3046) as Lifeline — DDragon shows it
+  uses "Spectral Waltz" (a Ghost effect), not Lifeline. RC's
+  existing PD note is incorrect; fixing the note is its own
+  documentation chore.
+- Don't bump CoverageCountTests floor past 54. No new items.
+
+**Activation:** Engine on :8893 already at 0.18.0 (this session
+restarted it). No further action needed.
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true (no Legion main-RC restart this session;
+RC-DaemonSlayer bounced for the 9th time today). Engine on :8893 =
+0.18.0 live. LCU phase=None (no game in progress). Working tree
+clean except runtime `data/ratings/last_*.json` mutations.
+
+**Operational backlog (carried + new):**
+- All s54-s63 backlog items unchanged.
+- **Tag Lifeline shields** (carried from s63). Shieldbow (6673),
+  Sterak's (3053), Maw (3156) all use the literal "Lifeline" label
+  per snapshot probe — strong shared-mechanic signal. All 3 are
+  currently defensive_only so impact is notes-only (no DPS dedup).
+  Same gating concern as Essence Reaver: tagging defensive_only
+  entries creates order-dependence — but here all 3 are
+  defensive_only, so dedup never has a real proc to silently drop.
+  Safe to ship.
+- **Phantom Dancer note correction** (NEW from s64). RC's effects.py
+  describes PD as "Lifeline shield" but DDragon's actual label is
+  "Spectral Waltz" (a Ghost effect). 1-line note edit.
+- **Essence Reaver promotion** (carried — see s64 reasoning). When
+  ER's proc is modeled, also tag spellblade. Two-step change should
+  land together to avoid the order-dependence trap.
+
+**Next-session candidates (ranked):**
+1. **Phase 4 batch 12: tag Lifeline + fix PD note** (NEW from s64).
+   Quick combo: tag Shieldbow / Sterak's / Maw with
+   `unique_passive_key="lifeline"`, fix PD's note. ~20 min scope.
+   Lower priority than Spellblade because all 3 are defensive_only —
+   no DPS impact, only note dedup.
+2. **Phase 4 batch 9-alt: aggregate-stat extension hook refactor**
+   (carried). Pure cleanup; defer until friction.
+3. **First draft visual verify of P8-5.5** (carried).
+4. **gamepc_boot.ps1 patch** (carried). 1-liner.
+5. **P8-7 E2E push-to-League integration test** (carried).
+6. **Activate arena augment v2 in production** (carried).
+7. **Riftmaker HP→AP cross-derivation** (carried).
+8. **Per-target-HP-pct field** (carried; defer until caller demands).
