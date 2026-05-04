@@ -604,22 +604,20 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Heartsteel",
         periodics=(PeriodicProc(
             name="Colossal Consumption",
-            # 70-160 (linear by level) + 6% caster max HP physical, every
-            # 3.5s of in-combat-with-champion charge time. Approximation:
-            # in DPS rotations the champion is always near the target,
-            # so the 3.5s cadence is the binding constraint. The HP-on-
-            # damage permanent stack is not modeled — that's stat-side,
-            # not proc-side.
-            bonus_damage=lambda c: (
-                70.0 + 90.0 * (c.level - 1) / 17.0
-                + 0.06 * c.caster_max_hp
-            ),
+            # Flat 70 + 6% caster max HP physical, every 3.5s of in-
+            # combat-with-champion charge time. DDragon 16.9.1 description:
+            # "70 plus 6% of your max Health". The level-scaling lerp
+            # (70 + 90*(level-1)/17 = 70-160) carried here through batch 16
+            # was from a prior patch and was wrong on current data. The
+            # HP-on-damage permanent stack (8% of damage as max HP) is not
+            # modeled — that's stat-side, not proc-side.
+            bonus_damage=lambda c: 70.0 + 0.06 * c.caster_max_hp,
             damage_type=PHYSICAL,
             every_n_seconds=3.5,
         ),),
         note=(
-            "Heartsteel: Colossal Consumption ~70-160 (by level) + 6% caster "
-            "max HP physical every ~3.5s in combat"
+            "Heartsteel: Colossal Consumption flat 70 + 6% caster max HP "
+            "physical every ~3.5s in combat"
         ),
     ),
     "3083": ItemEffect(
