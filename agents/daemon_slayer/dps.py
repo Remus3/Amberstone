@@ -51,6 +51,7 @@ from .effects import (
     effective_target_armor,
     effective_target_mr,
     total_crit_damage_bonus,
+    total_damage_amp_multiplier,
 )
 from .engine import build_champion
 from .stats import clamp_level
@@ -201,6 +202,7 @@ def _rotation_attack_dps(
     crit_bonus: float,
     effects: list[ItemEffect],
     call_ctx: CallContext,
+    damage_amp: float = 1.0,
 ) -> float:
     """DPS contribution from basic attacks during a single rotation.
 
@@ -211,6 +213,12 @@ def _rotation_attack_dps(
     rotations). ``target_armor_for_physical`` already has reduction +
     pen applied at the caller. Conditional procs from items add on top
     via ``_periodic_proc_dps``.
+
+    Phase 4 batch 14 (2026-05-04): ``damage_amp`` is the build's
+    multiplicative damage-amp factor (Riftmaker Void Corruption,
+    future Conqueror-style amps). Applied to both base AA and proc
+    DPS — in-game amps don't discriminate damage type. Default 1.0
+    keeps pre-batch behavior unchanged.
     """
     duration = float(rotation.get("duration", 0) or 0)
     if duration <= 0:
@@ -235,7 +243,7 @@ def _rotation_attack_dps(
         effects, total_attacks, duration,
         target_armor_for_physical, target_mr, mode_dmg_mult, rotation_ctx,
     )
-    return base_dps + proc_dps
+    return (base_dps + proc_dps) * damage_amp
 
 
 def _phase_weighted_dps(
@@ -247,6 +255,7 @@ def _phase_weighted_dps(
     crit_bonus: float,
     effects: list[ItemEffect],
     call_ctx: CallContext,
+    damage_amp: float = 1.0,
 ) -> float:
     """Weighted average of rotation DPS within a phase (weights from lolmath)."""
     if not rotations:
@@ -259,7 +268,7 @@ def _phase_weighted_dps(
             continue
         weighted_sum += w * _rotation_attack_dps(
             stats, r, target_armor_for_physical, target_mr,
-            mode_dmg_mult, crit_bonus, effects, call_ctx,
+            mode_dmg_mult, crit_bonus, effects, call_ctx, damage_amp,
         )
         total_weight += w
     if total_weight <= 0:
@@ -332,6 +341,9 @@ def compute_dps(
 
     item_effects = collect_effects(resolved.item_ids)
     crit_bonus = DEFAULT_CRIT_BONUS + total_crit_damage_bonus(item_effects)
+    # Phase 4 batch 14 (2026-05-04): build-wide damage amp. 1.0 when no
+    # items carry an amp, so pre-batch builds pass through unchanged.
+    damage_amp = total_damage_amp_multiplier(item_effects)
 
     # Phase 4 expansion: armor reduction + pen pipeline. Phase 4 batch 4
     # (2026-05-04) added the symmetric magic pen pipeline (Void Staff,
@@ -368,7 +380,7 @@ def compute_dps(
     phase_dps = {
         p: _phase_weighted_dps(
             stats, rotations_by_phase[p], target_armor_eff, target_mr_eff,
-            mode_mult, crit_bonus, item_effects, call_ctx,
+            mode_mult, crit_bonus, item_effects, call_ctx, damage_amp,
         )
         for p in PHASES
     }
@@ -377,7 +389,9 @@ def compute_dps(
     crit = min(float(stats.get("crit", 0.0)), 1.0)
     ad = float(stats.get("ad", 0.0))
     eff_as = float(stats.get("as", 0.0))
-    avg_attack_dmg = ad * (1 + crit * crit_bonus) * _armor_factor(target_armor_eff) * mode_mult
+    # Phase 4 batch 14: per-hit display value reflects the same amp the
+    # rotation DPS uses, so /dps clients see consistent numbers.
+    avg_attack_dmg = ad * (1 + crit * crit_bonus) * _armor_factor(target_armor_eff) * mode_mult * damage_amp
     raw_attack_dps = ad * eff_as * (1 + crit * crit_bonus)
 
     notes = list(resolved.notes)
@@ -392,6 +406,11 @@ def compute_dps(
         notes.append(
             f"effective target MR {target_mr:.1f} → {target_mr_eff:.1f}"
             " after magic pen"
+        )
+    if damage_amp != 1.0:
+        notes.append(
+            f"build damage amp ×{damage_amp:.4f} "
+            f"(+{(damage_amp - 1.0) * 100:.2f}% to all damage)"
         )
     for e in item_effects:
         if e.note:
