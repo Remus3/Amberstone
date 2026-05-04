@@ -5265,5 +5265,112 @@ class Batch39MRReductionSchemaTests(unittest.TestCase):
         self.assertGreaterEqual(len(ITEM_EFFECTS), 188)
 
 
+class Batch40ComponentAndSweepTests(unittest.TestCase):
+    """Phase 4 batch 40 (2026-05-04) — component items + final SR/Arena sweep.
+
+    3 active promotions reusing existing schemas:
+      3035  Last Whisper          armor_pen_pct=0.18
+      2020  The Brutalizer        lethality=5.0
+      3147  Haunting Guise        damage_amp_pct=0.06 (Madness, pinned full stacks)
+
+    15 defensive_only entries completing the SR/Arena sweep.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    # ── active promotion field assertions ──────────────────────────────────
+
+    def test_last_whisper_armor_pen(self) -> None:
+        e = ITEM_EFFECTS.get("3035")
+        self.assertIsNotNone(e, "3035 Last Whisper missing")
+        self.assertAlmostEqual(e.armor_pen_pct, 0.18)
+        self.assertFalse(e.defensive_only)
+
+    def test_brutalizer_lethality(self) -> None:
+        e = ITEM_EFFECTS.get("2020")
+        self.assertIsNotNone(e, "2020 The Brutalizer missing")
+        self.assertAlmostEqual(e.lethality, 5.0)
+        self.assertFalse(e.defensive_only)
+
+    def test_haunting_guise_damage_amp(self) -> None:
+        e = ITEM_EFFECTS.get("3147")
+        self.assertIsNotNone(e, "3147 Haunting Guise missing")
+        self.assertAlmostEqual(e.damage_amp_pct, 0.06)
+        self.assertFalse(e.defensive_only)
+
+    def test_last_whisper_dps_lift_vs_no_pen(self) -> None:
+        """Last Whisper's 18% armor pen should lift DPS against an armored target."""
+        base = compute_dps(self.snap, "Caitlyn", level=12, item_ids=[])
+        lw = compute_dps(self.snap, "Caitlyn", level=12, item_ids=["3035"])
+        self.assertGreater(lw.weighted_dps, base.weighted_dps)
+
+    def test_brutalizer_dps_lift_vs_armored(self) -> None:
+        """The Brutalizer's lethality reduces effective armor at level 12."""
+        base = compute_dps(self.snap, "Caitlyn", level=12, item_ids=[])
+        brut = compute_dps(self.snap, "Caitlyn", level=12, item_ids=["2020"])
+        self.assertGreater(brut.weighted_dps, base.weighted_dps)
+
+    def test_haunting_guise_dps_lift(self) -> None:
+        """6% damage_amp_pct should lift DPS vs no-item baseline."""
+        base = compute_dps(self.snap, "Lux", level=10, item_ids=[])
+        guise = compute_dps(self.snap, "Lux", level=10, item_ids=["3147"])
+        self.assertGreater(guise.weighted_dps, base.weighted_dps)
+
+    def test_haunting_guise_same_coefficient_as_liandrys(self) -> None:
+        """3147 and 6653 (Liandry's Torment) share the same 6% damage_amp_pct."""
+        guise = ITEM_EFFECTS.get("3147")
+        liandrys = ITEM_EFFECTS.get("6653")
+        self.assertIsNotNone(guise, "3147 missing")
+        self.assertIsNotNone(liandrys, "6653 Liandry's Torment missing")
+        self.assertAlmostEqual(guise.damage_amp_pct, liandrys.damage_amp_pct)
+
+    # ── Hexdrinker lifeline dedup ──────────────────────────────────────────
+
+    def test_hexdrinker_lifeline_key(self) -> None:
+        e = ITEM_EFFECTS.get("3155")
+        self.assertIsNotNone(e, "3155 Hexdrinker missing")
+        self.assertEqual(e.unique_passive_key, "lifeline")
+        self.assertTrue(e.defensive_only)
+
+    # ── batch 40 defensive_only entries ───────────────────────────────────
+
+    def test_batch40_defensive_only_entries(self) -> None:
+        expected = {
+            "444644": "Crown of the Shattered Queen",
+            "446656": "Everfrost",
+            "446671": "Galeforce",
+            "664644": "Crown of the Shattered Queen",
+            "663058": "Shield of Molten Stone",
+            "663059": "Cloak of Starry Night",
+            "663172": "Zephyr",
+            "663193": "Gargoyle Stoneplate",
+            "664403": "The Golden Spatula",
+            "3075": "Thornmail",
+            "3041": "Mejai's Soulstealer",
+            "3140": "Quicksilver Sash",
+            "4632": "Verdant Barrier",
+            "3047": "Plated Steelcaps",
+        }
+        for iid, name in expected.items():
+            with self.subTest(item_id=iid):
+                eff = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(eff, f"{iid} ({name}) missing")
+                self.assertTrue(eff.defensive_only, f"{iid} ({name}) should be defensive_only")
+                self.assertEqual(len(eff.periodics), 0)
+
+    # ── running totals ─────────────────────────────────────────────────────
+
+    def test_defensive_only_count_after_batch40(self) -> None:
+        count = sum(1 for e in ITEM_EFFECTS.values() if e.defensive_only)
+        # 103 after batch 39 + 15 new = 118
+        self.assertGreaterEqual(count, 118)
+
+    def test_total_entry_count_after_batch40(self) -> None:
+        # 188 after batch 39 + 18 new = 206
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 206)
+
+
 if __name__ == "__main__":
     unittest.main()

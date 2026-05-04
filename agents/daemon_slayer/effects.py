@@ -2844,6 +2844,179 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "(teammate mechanic). Deferred — conditional AS schema gap"
         ),
     ),
+    # ── Phase 4 batch 40 (2026-05-04): component items + final SR/Arena sweep ──
+    # 3 active promotions using existing schemas; ~15 defensive_only entries.
+
+    # Last Whisper (3035): 18% armor pen. Component item for LDR / Mortal Reminder /
+    # Serylda's; builds that carry it without upgrade still benefit from the pen layer.
+    "3035": ItemEffect(
+        item_id="3035",
+        name="Last Whisper",
+        armor_pen_pct=0.18,
+        note="Last Whisper: 18% armor penetration (component of LDR, Mortal Reminder, Serylda's)",
+    ),
+    # The Brutalizer (2020): 5 lethality component. Upgrades into Youmuu's / Edge of Night /
+    # Serrated Dirk path. Adds small level-scaled flat pen contribution to mid-game builds.
+    "2020": ItemEffect(
+        item_id="2020",
+        name="The Brutalizer",
+        lethality=5.0,
+        note="The Brutalizer: 5 lethality (component; level-scaled flat pen via effective_target_armor)",
+    ),
+    # Haunting Guise (3147): Madness — 2% bonus damage per second in combat, up to 6%
+    # at 3 seconds. Pinned at full stacks per sustained-DPS convention (same approach
+    # as Liandry's Torment damage_amp_pct=0.06, which upgrades from this item).
+    "3147": ItemEffect(
+        item_id="3147",
+        name="Haunting Guise",
+        damage_amp_pct=0.06,
+        note=(
+            "Haunting Guise: Madness 2%/s bonus damage × 3s = 6% max amp "
+            "(pinned at full stacks; same coefficient as Liandry's Torment 3151)"
+        ),
+    ),
+    # ── defensive_only (15) ──
+    "444644": ItemEffect(
+        item_id="444644",
+        name="Crown of the Shattered Queen",
+        defensive_only=True,
+        note=(
+            "Crown of the Shattered Queen (Arena 444644): Safeguard — reduce incoming "
+            "champion damage by 90% until first champion damage taken. Damage reduction, "
+            "no DPS proc"
+        ),
+    ),
+    "446656": ItemEffect(
+        item_id="446656",
+        name="Everfrost",
+        defensive_only=True,
+        note=(
+            "Everfrost (Arena 446656): Glaciate active — deals damage in a cone and Roots "
+            "center target. Active-cast ability schema gap; deferred"
+        ),
+    ),
+    "446671": ItemEffect(
+        item_id="446671",
+        name="Galeforce",
+        defensive_only=True,
+        note=(
+            "Galeforce (Arena 446671): Cloudburst II — dash + execute. "
+            "Execute conditional + active-cast schema gap; utility mobility"
+        ),
+    ),
+    "664644": ItemEffect(
+        item_id="664644",
+        name="Crown of the Shattered Queen",
+        defensive_only=True,
+        note=(
+            "Crown of the Shattered Queen (SR 664644): Safeguard — reduce incoming "
+            "champion damage by 40% until first hit. Damage reduction, no DPS proc"
+        ),
+    ),
+    "663058": ItemEffect(
+        item_id="663058",
+        name="Shield of Molten Stone",
+        defensive_only=True,
+        note=(
+            "Shield of Molten Stone (SR 663058): same Immovable as the Earth passive "
+            "as Arena 443058 — armor % amp + block chance. Tank defensive, no DPS proc"
+        ),
+    ),
+    "663059": ItemEffect(
+        item_id="663059",
+        name="Cloak of Starry Night",
+        defensive_only=True,
+        note=(
+            "Cloak of Starry Night (SR 663059): same Limitless as the Stars passive "
+            "as Arena 443059 — MR % amp + damage reduction. Tank defensive, no DPS proc"
+        ),
+    ),
+    "663172": ItemEffect(
+        item_id="663172",
+        name="Zephyr",
+        defensive_only=True,
+        note=(
+            "Zephyr: Like the Wind — on-hit bonus Move Speed stacking for 6s + "
+            "20% Tenacity. Utility/movement passive, no DPS contribution"
+        ),
+    ),
+    "663193": ItemEffect(
+        item_id="663193",
+        name="Gargoyle Stoneplate",
+        defensive_only=True,
+        note=(
+            "Gargoyle Stoneplate (SR 663193): Unbreakable active — decaying shield + "
+            "size increase. Same mechanic as Arena 443193. Active-only, no DPS proc"
+        ),
+    ),
+    "664403": ItemEffect(
+        item_id="664403",
+        name="The Golden Spatula",
+        defensive_only=True,
+        note=(
+            "The Golden Spatula: massive stat stick (90 AD + 125 AP + 30% AS + 25% crit "
+            "+ 250 HP + AH + armor + MR + mana). No passive proc — stats contribute via "
+            "aggregate_item_stats; defensive_only per zero-proc policy"
+        ),
+    ),
+    "3075": ItemEffect(
+        item_id="3075",
+        name="Thornmail",
+        defensive_only=True,
+        note=(
+            "Thornmail: Thorns — when struck by an Attack, deal magic damage to attacker "
+            "and apply 40% Wounds. Counter-damage on being HIT, not outgoing DPS; "
+            "defensive-only"
+        ),
+    ),
+    "3041": ItemEffect(
+        item_id="3041",
+        name="Mejai's Soulstealer",
+        defensive_only=True,
+        note=(
+            "Mejai's Soulstealer: Glory — 5 AP per stack (up to 25 stacks = 125 AP). "
+            "Kill-stacking AP deferred — stack count is opponent-kill-dependent and "
+            "not fixed in sustained-DPS model"
+        ),
+    ),
+    "3140": ItemEffect(
+        item_id="3140",
+        name="Quicksilver Sash",
+        defensive_only=True,
+        note=(
+            "Quicksilver Sash: Quicksilver — removes all CC debuffs. "
+            "Active-only crowd-control cleanse; no DPS contribution"
+        ),
+    ),
+    "3155": ItemEffect(
+        item_id="3155",
+        name="Hexdrinker",
+        defensive_only=True,
+        unique_passive_key="lifeline",
+        note=(
+            "Hexdrinker: Lifeline — when magic damage would drop HP below 30%, "
+            "grants magic damage shield. Joins lifeline unique-passive family "
+            "(Immortal Shieldbow, Sterak's, Maw, Seraph's, Protoplasm Harness)"
+        ),
+    ),
+    "4632": ItemEffect(
+        item_id="4632",
+        name="Verdant Barrier",
+        defensive_only=True,
+        note=(
+            "Verdant Barrier: Annul — grants a Spell Shield blocking the next enemy "
+            "Ability. Active-like defensive mechanic, no DPS contribution"
+        ),
+    ),
+    "3047": ItemEffect(
+        item_id="3047",
+        name="Plated Steelcaps",
+        defensive_only=True,
+        note=(
+            "Plated Steelcaps: Plating — reduces incoming damage from Attacks by 10%. "
+            "Incoming damage reduction, no DPS proc"
+        ),
+    ),
 
 }
 
