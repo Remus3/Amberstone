@@ -14,13 +14,16 @@ POST + JSON body is the contract for production callers):
   GET  /snapshot          — patch + counts + manifest excerpt
   POST /stats             — body: {champion, level, items?, mode?}
   POST /dps               — body: {champion, level, items?, mode?,
-                                    target_armor?, target_mr?, phase?}
+                                    target_armor?, target_mr?,
+                                    target_max_hp?, phase?}
   POST /rank              — body: {champion, level, items?, mode?,
-                                    target_armor?, target_mr?, phase?,
+                                    target_armor?, target_mr?,
+                                    target_max_hp?, phase?,
                                     budget?, slots?, top?, sort?,
                                     include_components?, only?}
   POST /beam              — body: {champion, level, items?, mode?,
-                                    target_armor?, target_mr?, phase?,
+                                    target_armor?, target_mr?,
+                                    target_max_hp?, phase?,
                                     slots?, beam_width?, top?,
                                     total_budget?, include_components?,
                                     only?, boots_unique?}
@@ -238,6 +241,7 @@ def _route_dps(body: dict) -> dict:
     mode = _opt_str(body, "mode", "SR") or "SR"
     target_armor = _opt_float(body, "target_armor", 0.0)
     target_mr = _opt_float(body, "target_mr", 0.0)
+    target_max_hp = _opt_float(body, "target_max_hp", 0.0)
     phase = _opt_str(body, "phase")
     augments = _coerce_str_list(body.get("augments"), "augments")
     if phase is not None and phase not in ("early", "mid", "late"):
@@ -246,6 +250,7 @@ def _route_dps(body: dict) -> dict:
         result = compute_dps(snap, champion_id=champion, level=level,
                              item_ids=items, mode=mode,
                              target_armor=target_armor, target_mr=target_mr,
+                             target_max_hp=target_max_hp,
                              phase=phase, augments=augments)
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -262,6 +267,7 @@ def _route_rank(body: dict) -> dict:
     mode = _opt_str(body, "mode", "SR") or "SR"
     target_armor = _opt_float(body, "target_armor", 0.0)
     target_mr = _opt_float(body, "target_mr", 0.0)
+    target_max_hp = _opt_float(body, "target_max_hp", 0.0)
     phase = _opt_str(body, "phase")
     augments = _coerce_str_list(body.get("augments"), "augments")
     if phase is not None and phase not in ("early", "mid", "late"):
@@ -284,6 +290,7 @@ def _route_rank(body: dict) -> dict:
             champion_id=champion, level=level,
             current_item_ids=items, mode=mode,
             target_armor=target_armor, target_mr=target_mr,
+            target_max_hp=target_max_hp,
             phase=phase,
             budget=budget, slot_count=slot_count, top_n=top_n,
             include_components=include_components,
@@ -305,6 +312,7 @@ def _route_beam(body: dict) -> dict:
     mode = _opt_str(body, "mode", "SR") or "SR"
     target_armor = _opt_float(body, "target_armor", 0.0)
     target_mr = _opt_float(body, "target_mr", 0.0)
+    target_max_hp = _opt_float(body, "target_max_hp", 0.0)
     phase = _opt_str(body, "phase")
     if phase is not None and phase not in ("early", "mid", "late"):
         raise _ApiError(400, f"phase: must be early|mid|late, got {phase!r}")
@@ -323,6 +331,7 @@ def _route_beam(body: dict) -> dict:
             champion_id=champion, level=level,
             current_item_ids=items, mode=mode,
             target_armor=target_armor, target_mr=target_mr,
+            target_max_hp=target_max_hp,
             phase=phase,
             slot_count=slot_count, beam_width=beam_width, top_n=top_n,
             total_budget=total_budget,
