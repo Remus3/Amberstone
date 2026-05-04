@@ -43,7 +43,12 @@ promoted via the new CallContext.crit_chance schema (Phase 4 batch 21,
 other enemies in 350 radius; ER fires 1.25 * base_ad + 50 * crit_chance
 once per ~3s spellblade rotation, joins the Trinity Force / Lich Bane
 unique-passive dedup family, with the rewritten Trinity Force batch-11
-comment closing the order-dependence question), and 22 defensive_only
+comment closing the order-dependence question), Hextech Gunblade (3146)
+Lightning Bolt promoted from defensive_only as a long-CD periodic
+proc (Phase 4 batch 22, 2026-05-04 — 175→253 by level + 30% AP magic
+damage, 40s cooldown, modeled with ``every_n_seconds=40.0``; same shape
+as Sundered Sky's 8s Lightshield Strike with a far longer cadence;
+the 25%/1.5s slow stays utility-only, not modeled), and 21 defensive_only
 items spanning the Tier-1 SR / Arena pool plus high-pickrate
 batch 2 + AP batch 3 additions.
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
@@ -61,4 +66,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.25.0"
+ENGINE_VERSION = "0.26.0"
