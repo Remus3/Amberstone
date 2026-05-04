@@ -5577,3 +5577,106 @@ re-armed via `/loop /process-bridge-tasks`.
 **Next session top-of-queue:** Phase 4 batch 17 — Heartsteel
 lambda fix (70-160 by level → flat 70). Patch bump 0.22.0 → 0.22.1.
 ~30 min scope. See s69 #1 candidate.
+
+---
+
+## s70 hand-off — 2026-05-04 05:55 (Phase 4 batch 17: Heartsteel lambda fix shipped)
+
+Single-arc continuation of s69, exactly the queued top item. ~10 min
+scope (smaller than the s69 estimate). Engine 0.22.0 → 0.22.1.
+Operator still idle (LCU phase=None, RC main pid=9488 unchanged).
+
+**Shipped (commit `216f51e`, pushed `114b8e0..216f51e`):**
+
+- `agents/daemon_slayer/effects.py` — Heartsteel (3084) lambda
+  changed from `70 + 90*(level-1)/17 + 0.06*caster_max_hp` to
+  `flat 70 + 0.06*caster_max_hp`. Inline comment + note text
+  updated to call out the prior-patch lerp as the bug origin.
+- `agents/daemon_slayer/tests/test_effects_expansion.py` — comment
+  in `test_heartsteel_raises_dps_via_caster_max_hp` updated.
+  Assertion threshold (30 DPS) unchanged — new prediction is
+  ~66 DPS delta (was ~81), still well above noise.
+- `agents/daemon_slayer/__init__.py` — ENGINE_VERSION 0.22.0 →
+  0.22.1 (patch bump; math fix, schema unchanged).
+
+**Test state:** 362/362 daemon_slayer tests green. py_compile
+pre-commit hook passed.
+
+**Live engine verify (post `schtasks /End` + `/Run`):**
+```
+GET  /health                                         → 0.22.1
+POST /dps {Aatrox, lvl 11, items:["3084"]}.notes[0]  → "Heartsteel: Colossal Consumption flat 70 + 6% caster max HP physical every ~3.5s in combat"
+POST /dps {Aatrox, lvl 11, items:["3084"]} weighted  → 113.18
+POST /dps {Aatrox, lvl 11, items:[]} weighted        → 47.07
+```
+Delta = 66.11 DPS. Arithmetic: (70 + 0.06×2690 max_hp) / 3.5s
+= 231.4 / 3.5 = 66.1. Math matches exactly.
+
+**Decisions worth pinning:**
+- **Lambda math bugs hide behind plausible-looking notes.** The
+  pre-fix note (`~70-160 (by level)`) was internally consistent
+  with the lambda but disagreed with the DDragon snapshot. Batch
+  16's note audit caught it because we read every lambda's
+  reference description, not just stat values. **Pin: when
+  fixing/promoting an item, diff the lambda math against the
+  current DDragon description, not just the existing note.**
+- **Patch bumps are for math fixes; minor bumps are for schema /
+  new effect kinds.** This batch reaffirms s69's doc-only stay-
+  at-version pattern in reverse: behavior changed (DPS dropped
+  ~15 weighted units) but no caller-visible API changed, so
+  patch bump is the right granularity. Callers reading
+  `engine_version` see "something behavior-relevant changed,
+  but my parsing code still works".
+
+**Things tomorrow-you should NOT redo:**
+- Don't re-add the `90*(level-1)/17` lerp to Heartsteel. DDragon
+  16.9.1 description has flat 70 + 6% max HP, no level scaling.
+  The lerp was prior-patch art carried from batch 6's promotion.
+- Don't model Heartsteel's "8% of damage as max Health" stack
+  permanent HP gain. That's stat-side; the engine's HP scaling
+  is computed at build-resolve time, not per-proc.
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true (no Legion main-RC restart this session;
+RC-DaemonSlayer bounced for the 15th time today). Engine on :8893
+= 0.22.1 live. LCU phase=None (no game in progress). Bridge to
+Game-PC last result was 720s ago at session start — drift
+unchanged; Game-PC `/loop /process-bridge-tasks` likely still
+needs re-arming. Working tree clean except runtime
+`data/ratings/last_*.json` mutations.
+
+**Operational backlog (carried + new):**
+- All s54-s69 backlog items unchanged. **Heartsteel item removed**
+  from the open list (this batch).
+- **Hullbreaker Skipper promotion** (carried s69 #2) — every-5th-
+  attack bonus physical vs champions/epic monsters; pending
+  external verification of damage formula.
+- **LDR Giant Slayer schema** (carried s69 #3) — new
+  `target_bonus_hp` CallContext signal + `target_bonus_hp_amp_*`
+  ItemEffect fields. Architectural batch.
+- **Spear of Shojin Focused Will** (carried s69) — deferred until
+  ability-damage modeling lands.
+- **Essence Reaver Spellblade promotion** (carried) — pending
+  current-patch coefficient verification.
+
+**Next-session candidates (ranked):**
+1. **Phase 4 batch 18: Hullbreaker Skipper promotion** (was s69
+   #2). Pending external damage-formula verification (League
+   wiki / patch notes diff). If verified, simple
+   `every_n_attacks=5` PeriodicProc add — same shape as Kraken
+   Slayer's 3rd-attack proc. Engine bump 0.22.1 → 0.23.0 (new
+   periodic on a previously defensive_only item).
+2. **Phase 4 batch 19: target_bonus_hp signal + LDR Giant Slayer**
+   (was s69 #3). New CallContext field + new ItemEffect amp-cap-
+   plus-max fields. Architectural — bigger batch. Bumps minor.
+3. **First draft visual verify of P8-5.5** (carried).
+4. **gamepc_boot.ps1 patch** (carried). 1-liner.
+5. **P8-7 E2E push-to-League integration test** (carried).
+6. **Activate arena augment v2 in production** (carried).
+7. **Per-target-HP-pct field** (carried; defer until caller demands).
+
+**Audit-pattern reminder for next batch:** Before promoting
+Hullbreaker Skipper, do the same DDragon diff as this batch — if
+the wiki damage formula contradicts DDragon's stripped
+description, the wiki is the more recent source but the
+discrepancy itself should land in the inline comment.
