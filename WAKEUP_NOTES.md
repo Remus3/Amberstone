@@ -2509,3 +2509,102 @@ to a fresh session.
 - 4 commits pushed; only `data/ratings/last_*.json` runtime mutations dirty (auto-mutated, skipped).
 
 **/done close-out (2026-05-04):** auto-committed nothing (only runtime junk pending); pushed `1e17ee4..97f94e0 main -> main` (4 commits). **Game-PC bridge auto-flow loop is DEAD** — fresh 90s liveness probe (task-294ce6e18cff) returned 0 replies, task not queued on Game-PC side either. Re-run `/loop /process-bridge-tasks` on Game-PC at next session start.
+
+## s52 hand-off — 2026-05-04 (Phase 8 step 5: SR Draft Theatre chooser UI)
+
+Single-arc session. Closed P8-5 — the operator-facing chooser UI plus
+the apply route that translates a chosen profile into LCU commands.
+Committed + pushed `1d59425` on top of s51's backend.
+
+**Shipped (commit `1d59425`, pushed `8509533..1d59425 main -> main`):**
+- `dashboard/routes_sr_draft.py`: POST `/api/sr-draft/apply` route +
+  helpers `_build_page_name` (unique per `<Champ>+<key>`),
+  `_build_item_set` (apply_item_set wrap), `_build_rune_cmd`
+  (delegates to frozen `lcu_rune_writer.build_perk_ids`). Each variant
+  gets a distinct rune page so concurrent saves don't clobber via the
+  rune writer's RC: delete sweep.
+- `web/index.html`: `#cs-srdraft-block` sibling of `#cs-loadout-block`
+  with role chip selector (auto/top/jungle/middle/bottom/utility) +
+  status line + `#cs-srdraft-list`.
+- `web/js/dashboard.js` (~280L): `_srDraft` state + `_srDraftRenderRows`,
+  `_srDraftFetchProfile` (1.5s debounce on `(champ|role|allies|enemies|queue)`
+  signature), `_srDraftOnRowClick`, `_srDraftMaybeRender`. Hooks into
+  `applyChampSelectOverlay` alongside the existing loadout chooser.
+  Per-row engine stat line (dps + gold) for at-a-glance comparison;
+  `engine`/`user` kind tags differentiate the two profile sources.
+- `web/css/dashboard.css` (~34L): role chip wrapper, kind tag styling,
+  engine-stats line. Reuses existing `.cs-build-row` primitive.
+- `tests/phase8_smoke/test_sr_draft_apply.py` (12 new tests): 400 paths,
+  full happy-path enqueue, push_* flag suppression, unique page-name
+  builder, item-set shape, fallback notes when runes fail.
+
+**Test state:** 75/75 phase8_smoke green (was 75 before; 12 new tests
+exercise the new apply route — replacing the equivalent shape-only
+stub coverage). 75/75 phase2_smoke regression green.
+
+**Decisions worth pinning:**
+- **Sibling block, not replacement.** SR-draft chooser sits BELOW the
+  existing loadout chooser, so user-curated `champion_loadouts.json`
+  variants stay visible during draft. Both are valid pre-pick targets.
+- **Role chip in header, not auto-derived.** `gamepc_lcu_agent.py`
+  doesn't surface `assignedPosition`; rather than touch the LCU agent
+  this session, the chooser exposes a 6-option `<select>` (auto /
+  TOP/JUNGLE/MIDDLE/BOTTOM/UTILITY) saved to localStorage. Auto = role=null,
+  engine generator picks BOTTOM rune defaults. Plumbing role through
+  the LCU agent is a P8-5.5 follow-up.
+- **Shard3=5002 SR rune writer bug knowingly ridden.** Per s51 plan,
+  apply route routes through the frozen rune writer; the documented
+  shard issue (`project_rune_writer_shard3_not_applied`) is engine
+  scope, not Phase 8 scope. Unique page name dodges the variant-clobber
+  half of the dodge though.
+- **Apply route trusts pre-resolved item_ids.** Profiles arrive with
+  `item_ids` already resolved (engine output OR `_resolve_item_ids`
+  inside `sr_user_builds.format_for_display`). Apply route doesn't
+  re-resolve — keeps the UI-side push thin.
+
+**Things tomorrow-you should NOT redo:**
+- Don't replace the SR-draft block by overwriting `#cs-build-list` —
+  user-curated `champion_loadouts.json` variants stay visible by design.
+- Don't auto-derive role from `cs.my_team` heuristics; the role chip
+  is the operator's source of truth this session. If/when the LCU agent
+  surfaces `assignedPosition`, it can pre-populate the chip default.
+- Don't add `set_uid` per-champion conflict resolution — the existing
+  set_uid `RC-<champ>-sr-<key>` is uniquely keyed per (champion, profile)
+  and the LCU agent's apply_item_set replaces by uid.
+- Don't bump the engine version — Phase 8 step 5 is dashboard + route
+  layer; engine on :8893 remains 0.9.3.
+
+**Activation status:** Static assets (HTML/CSS/JS) are served
+per-request and live now (no Edge restart needed beyond Ctrl+F5). The
+new POST route requires RC reload to register. **DEFERRED — operator
+mid-Arena game** (`has_game=True`, `mode=arena`). Restart at next
+between-games window via `echo restart > restart_trigger.txt`. Visual
+verify post-restart: enter a draft queue (400/420/430/440), confirm
+`#cs-srdraft-block` appears below `#cs-loadout-block` with engine + user
+rows. Mid-Arena Game-PC dashboard capture confirmed no regression in
+existing chooser (block correctly hidden when sr_draft===false).
+
+**Next-session candidates (ranked):**
+1. **Activate P8-5 + first draft verify.** `echo restart > restart_trigger.txt`
+   when between games. Confirm new POST route reachable; confirm UI
+   renders + click→apply path round-trips end-to-end through gamepc_lcu_agent.
+2. **P8-5.5 — surface `assignedPosition` from gamepc_lcu_agent.py.**
+   Add `role` to `_team_picks` + champ_select payload so the role chip
+   pre-populates from LCU rather than localStorage default. Single-line
+   add to `tools/gamepc_lcu_agent.py`; deploy via `gamepc_boot.ps1`.
+3. **P8-6 — User-build CRUD UI sub-page.** Independent of P8-5;
+   `view-user-builds` via the established sub-page pattern.
+   Operator-facing add/edit/delete for `data/daemon_slayer/user_builds.json`.
+4. **P8-7 — E2E push-to-League integration test.** Now unblocked
+   (apply route shipped). Real arena/draft with all 3 engine variants
+   pushed back-to-back, verify rune pages have distinct names + items
+   apply correctly.
+5. **Activate arena augment v2 in production** — still relevant from
+   s50; reconciler ships with current RC, just needs an arena game to
+   verify `augments_source` flips to `vision_hud`.
+
+**Bridge state at session end:** RC main pid=8104 alive=true
+reload_ok=true. Engine on :8893 still 0.9.3 (no engine change this
+session). LCU phase=InProgress (mid-Arena). Working tree post-commit:
+- `1d59425` pushed; only `data/ratings/last_*.json` runtime mutations
+  dirty (auto-mutated each game tick, skipped from commit).
