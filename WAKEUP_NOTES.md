@@ -5336,3 +5336,201 @@ clean except runtime `data/ratings/last_*.json` mutations.
 6. **P8-7 E2E push-to-League integration test** (carried).
 7. **Activate arena augment v2 in production** (carried).
 8. **Per-target-HP-pct field** (carried; defer until caller demands).
+
+---
+
+## s69 hand-off — 2026-05-04 (Phase 4 batch 16: DDragon-truth note audit)
+
+Single-arc continuation of s68. Picked the s68 #1 candidate
+(HP-item doc audit). Fourteenth Phase-4 batch in two days.
+Doc-only — engine version unchanged at 0.22.0 (no schema, no math).
+Operator still idle (LCU phase=None, RC main pid=9488 unchanged).
+
+**Pattern decision worth pinning — doc audits surface real bugs.**
+The s68 framing scoped batch 16 as "verify HP-value drift in
+notes". The actual audit yielded:
+1. HP-value drift: NONE (all HP numbers in notes/comments matched
+   DDragon — Heartsteel 900, Riftmaker 350, Sunfire 350, Hollow
+   Radiance 400, Sterak's 400, Titanic 600 etc).
+2. **Note-CONTENT drift: FIVE items had wrong/incomplete notes** —
+   Spear of Shojin (wrong passive name), Essence Reaver (wrong
+   "no on-hit proc" claim), Hullbreaker (missed Skipper proc), LDR
+   (incomplete — missing Giant Slayer), Sterak's (wrong takedown
+   gating).
+3. **Math bug surfaced as side effect**: Heartsteel's lambda has
+   `70 + 90*(level-1)/17` (claims 70-160 by level), but DDragon
+   shows "70 plus 6%" — flat 70 in current patch. Real math bug,
+   carried to follow-up.
+4. **Three new promotion candidates surfaced**: Hullbreaker Skipper
+   (every-5th-attack on-hit), Essence Reaver Spellblade (already
+   carried but reaffirmed via DDragon), LDR Giant Slayer (target-
+   bonus-HP damage amp — needs new schema layer).
+
+The "HP-value drift" framing was wrong; the REAL drift was in
+note-content + at least one lambda. Lesson: doc audits should
+read every note + every lambda's reference description, not just
+the numeric stat values.
+
+**Pattern decision worth pinning — doc-only batches don't bump
+version.** Prior 12 Phase-4 batches all bumped minor version
+(0.10.x → 0.22.0). Batch 16 stayed at 0.22.0 because no
+behavior-relevant code changed (note text changed; engine math
+unchanged). Restart was still required to surface new notes via
+/dps responses (data is loaded once at startup), but the version
+pin signals "engine math/schema unchanged". Future doc-only
+batches should follow this pattern — bump only when callers might
+need to detect the change programmatically.
+
+**Shipped (commit `83ad526`):**
+
+- `agents/daemon_slayer/effects.py` — note rewrites for 5 entries:
+
+  - **Spear of Shojin (3161)**: prior note claimed "Veteran's
+    Resolve stacks reduce ability CDs". DDragon's current passives
+    are "Dragonforce" (25 basic AH stat-side) + "Focused Will" (3%
+    per stack damage amp on abilities/passives, max 4 stacks =
+    12%). Stays defensive_only — Focused Will is ABILITY-only, not
+    auto-attack, so generic damage_amp_pct (batch 14) is wrong
+    fit. Inline comment explains the schema-fit rejection.
+
+  - **Essence Reaver (3508)**: prior note claimed "no on-hit DPS
+    proc". WRONG — DDragon shows "Spellblade — After using an
+    Ability, your next Attack deals bonus physical damage and
+    grants Mana On-Hit". Stays defensive_only because DDragon
+    strips the numeric coefficient (engine can't model what isn't
+    quantified). When promoted later, also tag
+    `unique_passive_key="spellblade"` per batch 11 commentary.
+
+  - **Hullbreaker (3181)**: prior note "solo-lane bonus stats +
+    tower siege; situational" missed the real proc. DDragon shows
+    "Skipper" — every-5th-attack bonus physical against champions
+    and epic monsters. Same shape as Kraken (every_n_attacks=5).
+    Stays defensive_only because DDragon strips the damage value;
+    a clean promotion candidate when the formula is verified.
+
+  - **Lord Dominik's Regards (3036)**: prior note only mentioned
+    armor pen. DDragon shows TWO passives: 35% armor pen
+    (modeled ✓) AND "Giant Slayer" — up to 15% bonus damage vs
+    champions, scaling with target's bonus HP, capping at 1500
+    bonus HP. Note now flags Giant Slayer as not-modeled
+    (target_bonus_hp signal doesn't exist; engine has only
+    target_max_hp).
+
+  - **Sterak's Gage (3053)**: prior note "Lifeline + bonus AD on
+    takedown" had a wrong takedown-gating claim. DDragon shows
+    "The Claws that Catch — Gain bonus Attack Damage" with no
+    takedown gating in the description text. Numeric scaling not
+    exposed (likely scales with bonus HP per historical design,
+    but DDragon strips it).
+
+  Each entry now has an inline comment documenting why the prior
+  note was wrong + what's modeled vs unmodeled.
+
+**Test state:** 362/362 daemon_slayer tests green (no test asserts
+on the changed note strings; verified via grep before edits).
+py_compile pre-commit hook passed.
+
+**Live engine verify (post-restart `schtasks /End` + `/Run`):**
+```
+GET  /health                                              → 0.22.0 (unchanged)
+POST /dps {Aatrox, lvl 11, items:[3036]} note             → "...35% armor pen + Giant Slayer up to 15%..."
+POST /dps {Aatrox, lvl 11, items:[3053]} note             → "Sterak's Gage: Lifeline (deduped) + The Claws..."
+POST /dps {Aatrox, lvl 11, items:[3161]} note             → "Spear of Shojin: Dragonforce + Focused Will..."
+POST /dps {Aatrox, lvl 11, items:[3508]} note             → "Essence Reaver: Spellblade...Mana on-hit..."
+POST /dps {Aatrox, lvl 11, items:[3181]} note             → "Hullbreaker: Skipper every-5th + Boarding Party..."
+```
+
+**Coverage delta:** ITEM_EFFECTS unchanged at 54 entries.
+Defensive_only count unchanged at 26. Engine version unchanged
+(0.22.0).
+
+**Decisions worth pinning:**
+- **DDragon truth > repo notes.** This is the 4th batch in a row
+  to find note drift (PD batch 12, Terminus batch 13, Riftmaker
+  batch 15 mental model, batch 16 five entries). Repo notes
+  accumulate documentation drift over patches; DDragon snapshot
+  is the canonical source. Pin: any tagging / promotion / note
+  edit must lead with a DDragon probe.
+- **Note honesty over note completeness.** Two patterns from
+  this batch: (a) when DDragon strips numeric scaling, the note
+  should say "scaling not in DDragon" rather than guess; (b)
+  when an item has BOTH modeled and unmodeled effects, the note
+  should explicitly call out which is which. The prior LDR note
+  was "honest about armor pen" but silent on Giant Slayer —
+  silence implied "no other effect", which was wrong.
+- **Doc-only batches stay at the same engine version.** Bumping
+  version for note-only changes is noise. Behavior-detecting
+  callers shouldn't react to doc fixes.
+
+**Things tomorrow-you should NOT redo:**
+- Don't claim Sterak's bonus AD is "on takedown" — DDragon
+  description has no takedown gating. The actual scaling is on
+  bonus HP per historical design, but it isn't quantified in
+  the snapshot.
+- Don't promote Spear of Shojin via `damage_amp_pct` (batch 14
+  schema). Focused Will is ABILITY-only, not auto-attack;
+  damage_amp_pct currently amps both. Need a new
+  `ability_damage_amp_pct` schema add when ability damage gets
+  modeled.
+- Don't promote LDR's Giant Slayer with batch 14's
+  `damage_amp_pct`. Giant Slayer is target-conditional (scales
+  with target's bonus HP); the current `damage_amp_pct` is
+  unconditional. Need a new schema layer:
+  `target_bonus_hp_amp_*` or similar.
+- Don't change Heartsteel's lambda in this batch. Math change is
+  out of scope for doc audit; batch 17 candidate.
+
+**Activation:** Engine on :8893 already at 0.22.0 — restarted to
+surface new notes via /dps. No version-detection needed by callers.
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true (no Legion main-RC restart this session;
+RC-DaemonSlayer bounced for the 14th time today). Engine on :8893
+= 0.22.0 live with new notes. LCU phase=None (no game in progress).
+Working tree clean except runtime `data/ratings/last_*.json`
+mutations.
+
+**Operational backlog (carried + new):**
+- All s54-s68 backlog items unchanged.
+- **Heartsteel level-scaling lambda is wrong** (NEW from s69).
+  Current: `70 + 90*(c.level-1)/17` claims 70-160 base by level.
+  DDragon: "70 plus 6%" — flat 70 + 6% max HP. The level-scaling
+  piece is from a prior patch. Math bug; promote to next-session
+  candidate. Test: `CasterHpItemTests` likely needs revision.
+- **Hullbreaker Skipper promotion candidate** (NEW from s69).
+  every-5th-attack bonus physical vs champions/epic monsters.
+  DDragon strips damage formula — verify externally before
+  promotion (League wiki, patch notes diff).
+- **LDR Giant Slayer schema candidate** (NEW from s69). Up to
+  15% damage vs target with high bonus HP, capping at 1500
+  bonus HP. Needs a new ItemEffect field
+  (e.g. `target_bonus_hp_amp_max_pct: float, target_bonus_hp_amp_cap: float`)
+  plus a `target_bonus_hp` signal on CallContext (caller-supplied,
+  same shape as `target_max_hp`). Quote-on-quote conditional amp.
+- **Spear of Shojin Focused Will deferred** (NEW from s69).
+  Ability-only damage amp (12% at full stacks). Don't promote
+  until ability damage modeling lands; the current generic
+  `damage_amp_pct` would over-amp by including AAs.
+- **Essence Reaver Spellblade promotion** (carried, reaffirmed
+  s69). DDragon confirms Spellblade is real but strips the damage
+  formula. Promote when external verification of current-patch
+  coefficient lands.
+
+**Next-session candidates (ranked):**
+1. **Phase 4 batch 17: Heartsteel lambda fix** (NEW from s69).
+   Change `70 + 90*(c.level-1)/17` → flat `70`. Update tests
+   (CasterHpItemTests). Schema unchanged; engine bump 0.22.0 →
+   0.22.1 (patch — math bug fix). ~30 min scope.
+2. **Phase 4 batch 18: Hullbreaker Skipper promotion** (NEW from
+   s69). Pending external verification of damage formula. If
+   verified, simple every_n_attacks=5 PeriodicProc add. Same
+   shape as Kraken Slayer (3rd-attack proc). Engine bump 0.22.x
+   → 0.23.0.
+3. **Phase 4 batch 19: target_bonus_hp signal + LDR Giant Slayer**
+   (NEW from s69). New CallContext field + new ItemEffect
+   amp-cap-plus-max fields. Architectural — bigger batch.
+4. **First draft visual verify of P8-5.5** (carried).
+5. **gamepc_boot.ps1 patch** (carried). 1-liner.
+6. **P8-7 E2E push-to-League integration test** (carried).
+7. **Activate arena augment v2 in production** (carried).
+8. **Per-target-HP-pct field** (carried; defer until caller demands).
