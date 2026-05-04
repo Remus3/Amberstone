@@ -219,9 +219,10 @@ def _route_stats(body: dict) -> dict:
     level = _opt_int(body, "level", 1) or 1
     items = _coerce_str_list(body.get("items"), "items")
     mode = _opt_str(body, "mode", "SR") or "SR"
+    augments = _coerce_str_list(body.get("augments"), "augments")
     try:
         resolved = build_champion(snap, champion_id=champion, level=level,
-                                  item_ids=items, mode=mode)
+                                  item_ids=items, mode=mode, augments=augments)
     except KeyError as e:
         raise _ApiError(404, str(e))
     except ValueError as e:
