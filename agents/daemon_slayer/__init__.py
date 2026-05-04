@@ -13,12 +13,13 @@ Guinsoo's, Lich Bane, Nashor's Tooth), the armor pen / reduction layer
 batch 4, 2026-05-04), the target-HP layer (BotRK Mist's Edge,
 Eclipse Ever Rising Moon — Phase 4 batch 5, 2026-05-04), the
 caster-HP layer (Titanic Hydra Cleave, Heartsteel Colossal
-Consumption — Phase 4 batch 6, 2026-05-04), and 28 defensive_only
-items spanning the Tier-1 SR / Arena pool plus high-pickrate batch
-2 + AP batch 3 additions. CallContext + callable ``bonus_damage``
-lets stat-scaling procs bind to ``base_ad`` / ``bonus_ad`` /
-``level`` / ``ap`` / ``target_max_hp`` / ``caster_max_hp`` /
-``caster_bonus_hp``.
+Consumption — Phase 4 batch 6, 2026-05-04), the multi-target rotation
+layer (Ravenous Hydra Cleave — Phase 4 batch 7, 2026-05-04), and 28
+defensive_only items spanning the Tier-1 SR / Arena pool plus high-
+pickrate batch 2 + AP batch 3 additions. CallContext + callable
+``bonus_damage`` lets stat-scaling procs bind to ``base_ad`` /
+``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
+``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation``.
 
 Beam search (Phase 2 step 4) returns the top-N complete builds by final
 weighted DPS, finding multi-item synergies the single-slot ranker
@@ -30,4 +31,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.13.0"
+ENGINE_VERSION = "0.14.0"
