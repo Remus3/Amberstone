@@ -273,9 +273,17 @@ class DefensiveOnlyExpansionTests(unittest.TestCase):
         self.assertEqual(e.periodics, ())
 
     def test_sterak_no_periodic(self) -> None:
+        # Phase 4 batch 20 (2026-05-04): Sterak's Claws that Catch is a
+        # stat-layer passive (+45% base AD), not a periodic — promotion
+        # path differs from BotRK/Eclipse (which got periodics). The
+        # entry no longer carries defensive_only, but periodics stay
+        # empty because the AD bonus is folded into the build at stat
+        # resolution time, not as an on-hit proc. Schema-promotion
+        # assertions live in SteraksClawsThatCatchTests +
+        # SteraksEngineWireInTests at the bottom of this file.
         e = ITEM_EFFECTS["3053"]
-        self.assertTrue(e.defensive_only)
         self.assertEqual(e.periodics, ())
+        self.assertGreater(e.bonus_ad_pct_base_ad, 0.0)
 
     # BotRK (3153) and Eclipse (6692) promoted in Phase 4 batch 5
     # (2026-05-04) once ``target_max_hp`` landed. Their proc-shape
@@ -2096,6 +2104,201 @@ class LdrGiantSlayerTests(unittest.TestCase):
         ratio = both_amps / ldr_only
         self.assertAlmostEqual(ratio, 1.08, places=3,
             msg=f"Riftmaker × LDR amp stacking ratio {ratio:.4f} != 1.08")
+
+
+class HullbreakerSkipperTests(unittest.TestCase):
+    """Phase 4 batch 20 — Hullbreaker (3181) Skipper periodic.
+
+    Promoted from defensive_only using Meraki's bulk items snapshot,
+    which carries the numeric formula DDragon strips. Procs every 5th
+    basic attack for 120% base AD + 5% caster max HP physical. The
+    "maximum health" token in Meraki's wikitext is unqualified → caster
+    convention (League standard for item passives without a target
+    qualifier; matches Hullbreaker's design intent as an HP-stacker
+    side-laner item).
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_promoted_not_defensive_only(self) -> None:
+        e = ITEM_EFFECTS["3181"]
+        self.assertFalse(e.defensive_only)
+        self.assertNotEqual(e.periodics, ())
+        self.assertEqual(len(e.periodics), 1)
+
+    def test_periodic_shape(self) -> None:
+        proc = ITEM_EFFECTS["3181"].periodics[0]
+        self.assertEqual(proc.name, "Skipper")
+        self.assertEqual(proc.damage_type, PHYSICAL)
+        self.assertEqual(proc.every_n_attacks, 5)
+        self.assertEqual(proc.every_n_seconds, 0.0)
+
+    def test_bonus_damage_resolves_against_base_ad_and_caster_max_hp(self) -> None:
+        # 1.20 * base_ad + 0.05 * caster_max_hp.
+        proc = ITEM_EFFECTS["3181"].periodics[0]
+        ctx = CallContext(
+            base_ad=80.0, bonus_ad=0.0, level=11,
+            caster_max_hp=2400.0,
+        )
+        # 1.20*80 + 0.05*2400 = 96 + 120 = 216
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 216.0, places=3)
+
+    def test_bonus_damage_zero_when_unqualified(self) -> None:
+        # If caller can't supply caster_max_hp (default 0.0), the proc
+        # still pays out the base_ad piece — never crashes, never NaN.
+        proc = ITEM_EFFECTS["3181"].periodics[0]
+        ctx = CallContext(base_ad=70.0, bonus_ad=0.0, level=8)
+        # 1.20*70 + 0.05*0 = 84
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 84.0, places=3)
+
+    def test_note_calls_out_skipper_and_caster_hp(self) -> None:
+        note = ITEM_EFFECTS["3181"].note.lower()
+        self.assertIn("skipper", note)
+        self.assertIn("every-5th-attack", note)
+        self.assertIn("caster", note)
+
+    def test_hullbreaker_raises_dps(self) -> None:
+        # Hullbreaker is 5300g for AD + AS + HP + Skipper. Bare Aatrox
+        # vs Aatrox + Hullbreaker should clear the proc-floor delta
+        # easily even after the every-5th-attack denominator.
+        bare = compute_dps(self.snap, "Aatrox", level=11).weighted_dps
+        with_hb = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3181"],
+        ).weighted_dps
+        self.assertGreater(with_hb, bare)
+
+    def test_hullbreaker_scales_with_external_caster_hp(self) -> None:
+        # Adding Warmog's on top of Hullbreaker should keep raising the
+        # Skipper damage (5% of a bigger caster max HP).
+        hb_only = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3181"],
+        ).weighted_dps
+        warmog_only = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3083"],
+        ).weighted_dps
+        hb_plus_warmog = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3181", "3083"],
+        ).weighted_dps
+        # The combined build's DPS gain over Warmog-alone should beat
+        # the gain of Hullbreaker-alone over naked: bigger HP base
+        # means bigger Skipper damage per proc.
+        bare = compute_dps(self.snap, "Aatrox", level=11).weighted_dps
+        self.assertGreater(hb_plus_warmog - warmog_only, hb_only - bare)
+
+
+class SteraksClawsThatCatchTests(unittest.TestCase):
+    """Phase 4 batch 20 — Sterak's Gage (3053) "The Claws that Catch".
+
+    +45% base AD as bonus AD — a stat layer, not a proc. Promoted via the
+    new ``ItemEffect.bonus_ad_pct_base_ad`` field, resolved in
+    ``build_champion`` against the leveled raw base AD before
+    ``_combine_items`` folds totals into the final block. Lifeline shield
+    piece is non-DPS (still deduped via ``unique_passive_key="lifeline"``).
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_field_present_with_correct_value(self) -> None:
+        e = ITEM_EFFECTS["3053"]
+        self.assertAlmostEqual(e.bonus_ad_pct_base_ad, 0.45, places=4)
+
+    def test_promoted_not_defensive_only(self) -> None:
+        # The Claws piece IS DPS-positive — defensive_only would mask it.
+        e = ITEM_EFFECTS["3053"]
+        self.assertFalse(e.defensive_only)
+
+    def test_lifeline_dedup_preserved(self) -> None:
+        # Lifeline is still unique-passive — pin the key so future batches
+        # don't accidentally drop dedup when fiddling with this entry.
+        self.assertEqual(ITEM_EFFECTS["3053"].unique_passive_key, "lifeline")
+
+    def test_note_reflects_both_pieces(self) -> None:
+        note = ITEM_EFFECTS["3053"].note.lower()
+        self.assertIn("claws", note)
+        self.assertIn("base ad", note)
+        self.assertIn("lifeline", note)
+
+    def test_other_items_have_zero_pct(self) -> None:
+        # Backward-compat: every other ItemEffect defaults to 0.0. Pin a
+        # handful so a future batch breaking the default surfaces here.
+        for iid in ("3031", "6672", "3036", "3084", "3508"):
+            self.assertEqual(
+                ITEM_EFFECTS[iid].bonus_ad_pct_base_ad, 0.0,
+                f"{iid} unexpectedly has bonus_ad_pct_base_ad set",
+            )
+
+
+class SteraksEngineWireInTests(unittest.TestCase):
+    """Sterak's bonus_ad_pct_base_ad lifts AD in build_champion output."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_sterak_raises_total_ad(self) -> None:
+        # Sterak's stat block carries +400 HP only (no AD flat in DDragon)
+        # — all the AD comes from the Claws passive (Phase 4 batch 20):
+        # 0.45 * leveled_base_ad. For Aatrox at lvl 11, leveled base AD
+        # ≈ 60 + 17*(105-60)/17 * (10/17) ... measured at runtime via
+        # base_stats["ad"]; expect delta ≈ 0.45 * that, which clears
+        # 25 AD comfortably and stays under 60 (so a flat-50 stat block
+        # creep would surface here too).
+        from agents.daemon_slayer.engine import build_champion
+        bare = build_champion(self.snap, "Aatrox", level=11)
+        with_st = build_champion(
+            self.snap, "Aatrox", level=11, item_ids=["3053"],
+        )
+        delta = with_st.stats["ad"] - bare.stats["ad"]
+        leveled_base = bare.base_stats["ad"]
+        expected = 0.45 * leveled_base
+        # ±0.5 AD float-noise tolerance.
+        self.assertAlmostEqual(delta, expected, delta=0.5,
+            msg=f"Sterak's AD delta {delta:.2f} != expected {expected:.2f} "
+                f"(0.45 * leveled_base_ad={leveled_base:.2f})")
+
+    def test_sterak_passive_proportional_to_base_ad(self) -> None:
+        # Champion with bigger leveled base AD sees a bigger Sterak's
+        # passive contribution. Aatrox vs Sett (typically higher base AD).
+        from agents.daemon_slayer.engine import build_champion
+        for cid in ("Aatrox", "Sett"):
+            bare = build_champion(self.snap, cid, level=11)
+            with_st = build_champion(
+                self.snap, cid, level=11, item_ids=["3053"],
+            )
+            leveled_base = bare.base_stats["ad"]
+            # Sterak's stat block is HP-only (no AD flat). The full
+            # delta is the Phase 4 batch 20 passive: 0.45 * leveled_base.
+            delta = with_st.stats["ad"] - bare.stats["ad"]
+            expected = 0.45 * leveled_base
+            self.assertAlmostEqual(delta, expected, delta=0.5,
+                msg=f"{cid}: AD delta {delta:.2f} vs expected {expected:.2f}")
+
+    def test_sterak_zero_when_not_in_build(self) -> None:
+        # Defensive: items without bonus_ad_pct_base_ad contribute the
+        # raw DDragon stat block AD only. Bloodthirster has 80 AD flat
+        # and bonus_ad_pct_base_ad=0 — delta should match flat exactly.
+        from agents.daemon_slayer.engine import build_champion
+        bare = build_champion(self.snap, "Aatrox", level=11).stats["ad"]
+        bt = build_champion(
+            self.snap, "Aatrox", level=11, item_ids=["3072"],
+        ).stats["ad"]
+        bt_delta = bt - bare
+        self.assertAlmostEqual(bt_delta, 80.0, delta=1.0,
+            msg=f"Bloodthirster delta {bt_delta:.1f} drifted from 80 flat")
+
+    def test_sterak_lifts_dps(self) -> None:
+        # End-to-end: more bonus AD → more DPS. Sterak's adds AD + HP
+        # but no proc; the AD piece (flat + passive) should clearly lift
+        # weighted DPS over naked.
+        bare = compute_dps(self.snap, "Aatrox", level=11).weighted_dps
+        with_st = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3053"],
+        ).weighted_dps
+        self.assertGreater(with_st, bare)
 
 
 if __name__ == "__main__":

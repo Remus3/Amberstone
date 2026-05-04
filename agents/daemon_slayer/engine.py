@@ -12,6 +12,7 @@ from typing import Iterable, Optional
 
 from .augments import compute_augment_stats
 from .data_loader import DataSnapshot
+from .effects import ITEM_EFFECTS
 from .stats import (
     CHAMPION_SCALING_RULES,
     PASSTHROUGH_STAT_FIELDS,
@@ -219,6 +220,27 @@ def build_champion(
     augment_overlay = compute_augment_stats(aug_list, snapshot) if aug_list else {}
 
     scaled, raw_base = _scale_champion_base(champ_stats, level)
+
+    # Phase 4 batch 20 (2026-05-04): item-passive bonus AD as a percentage of
+    # leveled base AD (Sterak's "+45% base AD as bonus AD"). Walked here —
+    # AFTER _scale_champion_base resolves leveled base AD, BEFORE
+    # _combine_items folds item totals into the final block — so the
+    # passive AD lands in ad_flat just like any other item-side AD bonus.
+    # NOTE: ``scaled`` carries the LEVELED base AD (the value League's UI
+    # calls "base AD"). ``raw_base`` is the unscaled level-1 base used by
+    # _combine_items for AS rebuild math — the wrong source for "% of base
+    # AD" passives. dps.py uses the same convention via
+    # resolved.base_stats (= scaled).
+    leveled_base_ad = scaled.get("ad", 0.0)
+    if leveled_base_ad > 0:
+        passive_bonus_ad = 0.0
+        for iid in item_id_list:
+            eff = ITEM_EFFECTS.get(iid)
+            if eff and eff.bonus_ad_pct_base_ad > 0:
+                passive_bonus_ad += eff.bonus_ad_pct_base_ad * leveled_base_ad
+        if passive_bonus_ad > 0:
+            item_totals["ad_flat"] = item_totals.get("ad_flat", 0.0) + passive_bonus_ad
+
     final = _combine_items(scaled, raw_base, item_totals, level)
     if augment_overlay:
         for k, v in augment_overlay.items():
