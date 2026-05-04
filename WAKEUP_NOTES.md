@@ -6072,3 +6072,209 @@ mutations (auto-stashed during rebase, restored cleanly).
 8. **Activate arena augment v2 in production** (carried).
 9. **Per-target-HP-pct field** (carried; defer until caller demands).
 
+---
+
+## s73 hand-off — 2026-05-04 07:25 (Phase 4 batch 19 wire-in: heuristic → deterministic per-enemy item summation)
+
+Single-arc continuation. Started s73 with `continue Daemon Slayer`.
+Took s72's #1 next-session candidate — the per-enemy-item refinement
+that replaces s72's round-count heuristic with deterministic item-summed
+bonus HP. Engine version unchanged at 0.23.0 (coach-side refinement
+only). RC main pid 3224 → 7316 across one restart.
+
+**Pattern decision worth pinning — refining a heuristic into a
+deterministic estimator means keeping the heuristic as fallback,
+not removing it.** The engine wants a scalar `target_bonus_hp`. Item
+data is the deterministic primary signal, but it's not always
+available:
+- Pre-game (no game state yet) — teams[] empty.
+- Mid-round transitions — every alive opponent dead briefly.
+- Vision gaps — LCU sometimes returns no items field.
+- All-pen builds — items present but all return 0 HP from the lookup.
+
+In all those cases the round count is still meaningful coach context.
+Falling back to it (rather than emitting 0) preserves the s72 wire-in
+behavior as a floor. The estimator's primary path picks MAX across
+alive opponents because LDR Giant Slayer is target-specific (escalate
+recommendation when ANY enemy is tanky), not build-wide.
+
+**Pattern decision worth pinning — Arena alias item IDs are a
+feature, not a bug, in coach-mode-aware contexts.** Per
+`reference_items_index_alias_ids`, items_index.json picks alias
+IDs (e.g. `223084` Arena Heartsteel) over base IDs (`3084` SR
+Heartsteel) because of a `setdefault` first-seen-wins quirk. For
+SR consumers this would be wrong (Arena Heartsteel is a different
+item with 700 HP not 900). For arena_coach this is exactly correct:
+when parsing Arena items from LCU, we want Arena HP values.
+The wire-in benefits from the quirk silently — not by design, but
+worth pinning so a future "fix" of items_index doesn't accidentally
+break Arena bonus-HP estimation.
+
+**Pattern decision worth pinning — coach-side mtime-gated lazy
+loaders should keep separate caches per concern.** The HP cache
+(`_hp_cache`) is independent of the byName cache (`_cache`) in
+`daemon_slayer_resolver`. Both gate on their own source mtime.
+Sharing a single cache would couple their refresh cycles
+unnecessarily — items_index changes on patch refresh AND when the
+data pipeline rebuilds the byName mapping; DDragon items.json
+changes only on patch refresh. Splitting caches lets either
+update independently without invalidating the other.
+
+**Shipped (commit `0945968`, pushed `8d3e806..0945968`):**
+
+- `core/daemon_slayer_resolver.py`:
+  - New `bonus_hp_for_id(item_id) -> float` — lazy-loaded HP table
+    from `data/daemon_slayer/<patch>/items.json`. Reads `current.txt`
+    for patch dir, walks `data.<id>.stats.FlatHPPoolMod`, mtime-gated
+    refresh on patch bumps. Unknown id → 0.0 (no signal). Stable
+    on missing patch dir, missing stats block, malformed JSON.
+  - New `total_bonus_hp(item_ids) -> float` — convenience aggregator.
+    Stable on empty/None input; silently skips unknown ids.
+  - Module docstring updated to call out batch 19 wire-in scope.
+
+- `coaches/arena_coach.py`:
+  - `_parse_arena_state` populates `teams[i]["items"]: list[str]`
+    from `allPlayers[i].items[*].displayName` for ALL players (was
+    local-player only). Same shape as the existing top-level
+    `state["items"]` field.
+  - `_estimate_target_bonus_hp(state=None)` now takes optional state.
+    Primary path: walk `teams[]` for alive opponents (not is_you,
+    not is_partner, not is_dead), resolve display names via
+    `daemon_slayer_resolver.resolve_many`, sum HP via
+    `total_bonus_hp` per opponent, take **MAX** across opponents.
+    Fallback: round-count heuristic from s72 fires when no enemy
+    items visible OR when all summed HPs are 0 (all-pen builds).
+    Result clamped at 1500 to match Giant Slayer's engine cap.
+  - `_run_coach` daemon_slayer wire-in passes `state` to the
+    estimator. Updated comment marker `s72→s73`.
+
+- `tests/phase2_smoke/test_daemon_slayer_resolver_hp.py` (NEW):
+  - 10 tests. Unknown id → 0, empty string → 0, LDR (3036) → 0,
+    Heartsteel SR (3084) → 900, Heartsteel Arena (223084) → 700,
+    Riftmaker (4633) → 350. Aggregator: empty/None → 0, three
+    known ids → 1600, unknown silently skipped, pen-only build → 0.
+  - HP values pin against the patch-current snapshot — they'll
+    drift on patch bumps for items that get rebalanced; that's
+    desired because we WANT the test to fail if Heartsteel's HP
+    silently changes.
+
+- `tests/phase2_smoke/test_arena_coach_target_bonus_hp.py` (EXTENDED):
+  - +8 tests in new `EstimateTargetBonusHpItemAwareTests`:
+    no state → round fallback, empty teams → round fallback,
+    all opps dead → round fallback, single opp w/ items → 1050
+    (Arena alias HP for Heartsteel+Riftmaker), multi opp → MAX
+    (1050 over 0, NOT avg 525), all-pen-builds → round fallback,
+    over-cap → 1500 clamp, self+partner items skipped.
+
+**Test state:**
+- daemon_slayer engine suite: 379/379 unchanged (no engine changes).
+- `tests/phase2_smoke/`: 106/106 green (75 baseline + 31 new
+  across s72/s73 — 5 client transport, 8 estimator-curve, 8
+  estimator-item-aware, 10 resolver-hp).
+- Stale `0.9.3` engine_version pin in `test_sr_draft_profile_engine`
+  still failing — pre-existing, deferred.
+
+**Live verify (post `restart_trigger.txt`, pid 7316):**
+
+Resolver smoke check via direct invocation:
+```
+LDR (3036)            HP=0.0     ✓ (pure crit/AD/pen, no HP)
+Heartsteel (3084)     HP=900.0   ✓ (SR variant)
+Heartsteel (223084)   HP=700.0   ✓ (Arena variant — DDragon-truth pin)
+Riftmaker (4633)      HP=350.0   ✓
+total([3084,4633,3068]) = 1600   ✓ (Heart+Rift+Sunfire)
+unknown id            HP=0.0     ✓ (defensive guard)
+empty list            HP=0       ✓ (back-compat)
+```
+
+Parser smoke check via fabricated raw arena state:
+```
+Aatrox (you)    items=['Long Sword']
+Yasuo (partner) items=['Riftmaker']
+Sett (enemy 1)  items=['Heartsteel', 'Riftmaker']
+Yone (enemy 2)  items=[]  (dead)
+```
+
+End-to-end: with the parser surfacing items + the estimator picking
+MAX, an Arena state where Sett carries Heartsteel+Riftmaker now
+emits target_bonus_hp=1050 to /rank, escalating LDR's recommendation
+deterministically against that target.
+
+**Decisions worth pinning:**
+- **Per-enemy fields belong on teams[i] alongside name/hp_pct**,
+  not on a sibling list. teams[] is already the canonical "things
+  about other players" shape; adding `items` extends it instead of
+  introducing a parallel data path that could drift.
+- **Resolver helpers should follow the existing lazy-load pattern**.
+  `bonus_hp_for_id` mirrors `name_to_id` exactly: lock + cache +
+  mtime sentinel + silent-on-error. Future per-item attribute
+  lookups (target armor weighting, e.g.) should reuse this shape.
+- **`pre-existing baseline` tests don't block new wire-ins**. The
+  stale 0.9.3 pin in test_sr_draft_profile_engine is unrelated to
+  any current batch and should be cleaned up in a focused commit
+  rather than becoming a precondition for unrelated work.
+
+**Things tomorrow-you should NOT redo:**
+- Don't switch the multi-opp aggregator from MAX to avg or sum.
+  MAX matches the contract (Giant Slayer escalates against the
+  tanky enemy, not the team average).
+- Don't remove the round-count fallback. It's load-bearing for
+  pre-game / vision-gap states and nothing else replaces it.
+- Don't try to make the resolver eager-load the HP table at
+  module import. Coach hot-path performance favors lazy loading;
+  arena_coach only needs HP lookups when an Arena game is live,
+  and the cache pays for itself on first lookup.
+- Don't let arena alias IDs (223084 etc.) leak into SR-mode
+  callers. The wire-in is correct because arena_coach sees Arena
+  games; SR/ARAM coaches calling `total_bonus_hp` would get
+  Arena HP values which would be subtly wrong. Future SR wire-in
+  needs a mode-aware resolver path.
+
+**Activation:** RC main restarted via `restart_trigger.txt`
+(pid 3224 → 7316, reload_ok=true). arena_coach now sums enemy
+items deterministically when LCU surfaces them; falls back to
+the round-count heuristic in vision gaps. SR + ARAM coaches
+unchanged (still send target_bonus_hp=0 by default — no estimator
+on those coaches yet).
+
+**Bridge state at session end:** RC main pid=7316 alive=true
+reload_ok=true. Engine on :8893 = 0.23.0 unchanged. LCU
+phase=None (no game in progress). Bridge to Game-PC last result
+1718s+ ago at session start; no two-way traffic this session.
+Working tree clean except runtime `data/ratings/last_*.json`
+mutations.
+
+**Operational backlog (carried + new):**
+- All s54-s72 backlog items unchanged. **Per-enemy item surfacing**
+  removed from open list (this batch).
+- **Hullbreaker Skipper promotion** still blocked.
+- **SR / ARAM coach target_bonus_hp wiring** (carried). SR's
+  enemy bonus-HP signal could come from minute-mark-vs-item-HUD
+  parsing. ARAM has 5 enemies all on one team — the Arena MAX
+  shape could port directly.
+- **Stale `0.9.3` engine_version pin in test_sr_draft_profile_engine**
+  (carried).
+- **Mode-aware HP lookup** (NEW from s73). When SR coach picks up
+  the wire-in, it'll need SR HP values not Arena alias HP. Either
+  the resolver gains a `mode=` parameter, or the lookup falls back
+  to base IDs when alias IDs aren't relevant. Punt until SR coach
+  consumes.
+
+**Next-session candidates (ranked):**
+1. **Phase 4 batch 20: League wiki scraper** (carried s71 #2 →
+   s72 #2). Unblocks Hullbreaker / Essence Reaver / Sterak's
+   coefficient gaps. ~3-5 hour scope.
+2. **SR coach `target_bonus_hp` activation** (carried s72 #3).
+   Probably needs vision-side enemy item parsing first; bigger
+   scope than Arena's "LCU surfaces items directly".
+3. **Stale-version-pin cleanup in test_sr_draft_profile_engine**
+   (carried s72 #4). ~10 min scope; unrelated to batch progression
+   but improves the test signal.
+4. **First draft visual verify of P8-5.5** (carried).
+5. **gamepc_boot.ps1 patch** (carried). 1-liner.
+6. **P8-7 E2E push-to-League integration test** (carried).
+7. **Activate arena augment v2 in production** (carried).
+8. **Per-target-HP-pct field** (carried; defer until caller demands).
+9. **ARAM coach `target_bonus_hp` activation** (NEW from s73).
+   Easiest port from arena_coach since alias-ID path is identical.
+
