@@ -5267,6 +5267,40 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   color: #d6c4f3;
 }
 
+/* SR Draft Theatre chooser (Phase 8 step 5, 2026-05-04). Reuses the
+   .cs-build-row primitive; adds a role chip in the header and a per-row
+   `kind` tag (engine vs user) to distinguish the additive user builds
+   from the 3 engine-generated profiles. */
+.cs-srdraft-role-wrap {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--text-dim); cursor: pointer;
+  letter-spacing: 0.4px; user-select: none;
+  padding: 3px 8px; border-radius: 4px;
+  border: 1px solid var(--border);
+}
+.cs-srdraft-role-wrap > span {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--label);
+}
+.cs-srdraft-role {
+  background: var(--surface-alt); color: #e2e6ee;
+  border: 1px solid var(--border); border-radius: 3px;
+  font: inherit; font-size: 11px; padding: 1px 4px;
+  cursor: pointer;
+}
+.cs-srdraft-role:focus { outline: 1px solid var(--clock); outline-offset: 1px; }
+.cs-build-row .cs-build-kind {
+  display: inline-block; margin-left: 6px;
+  font-size: 9px; letter-spacing: 0.6px; text-transform: uppercase;
+  font-weight: 700; padding: 1px 5px; border-radius: 2px;
+}
+.cs-build-row .cs-build-kind.engine { color: var(--clock); border: 1px solid var(--clock); }
+.cs-build-row .cs-build-kind.user   { color: #d6c4f3; border: 1px solid #6a55a8; }
+.cs-build-row .cs-build-engine-stats {
+  font-size: 10px; color: var(--label); letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+
 /* ─────────────────────────────────────────────────────────────────────
  * AUDIT 2026-04-28 — proposals 3.2, 3.3, 3.4, 3.5, 3.6
  * Card primitive, sticky-header compression, contrast bump, win-pct

@@ -3805,6 +3805,282 @@
       });
   }
 
+  // ── SR Draft Theatre chooser (Phase 8 step 5, 2026-05-04) ──────────
+  // Gated on cs.sr_draft (true for queue ids 400/420/430/440 — Normal
+  // Draft, Ranked Solo/Duo, Normal Blind, Ranked Flex). Pulls 3 engine-
+  // generated profiles + N user-curated additive builds from
+  // /api/sr-draft/profile, renders them as .cs-build-row siblings, and
+  // pushes a chosen profile via /api/sr-draft/apply (which uses a unique
+  // RC: page name per variant so concurrent picks don't clobber each
+  // other through the rune writer's delete-all-RC-pages step).
+  //
+  // Operator-additive invariant: engine and user profiles are merged at
+  // the route layer (see dashboard/routes_sr_draft._serve_sr_draft_profile_post);
+  // the frontend just renders whatever order they arrive in.
+  const _srDraft = {
+    lastChamp:  0,        // championId — dedupe key
+    lastSig:    "",       // (champ|role|allies|enemies|queue) — dedupe key
+    profiles:   [],
+    chosen:     "",
+    inflight:   false,
+    debounceTimer: null,
+    lastAppliedKey: "",
+  };
+  const _SRDRAFT_DEBOUNCE_MS = 1500;  // bench/team churn during draft
+
+  function _srDraftSetStatus(text, cls) {
+    const el = document.getElementById("cs-srdraft-status");
+    if (!el) return;
+    el.className = "cs-loadout-status" + (cls ? " " + cls : "");
+    el.textContent = text || "";
+  }
+
+  function _srDraftRoleChoice() {
+    try {
+      const saved = localStorage.getItem("rc-srdraft-role") || "";
+      const sel = document.getElementById("cs-srdraft-role");
+      if (sel && sel.value !== saved) sel.value = saved;
+      return saved;
+    } catch (_) { return ""; }
+  }
+  function _srDraftSaveRoleChoice(v) {
+    try { localStorage.setItem("rc-srdraft-role", v || ""); }
+    catch (_) {}
+  }
+  function _srDraftWireRoleSelectOnce() {
+    const sel = document.getElementById("cs-srdraft-role");
+    if (!sel || sel._wired) return;
+    sel._wired = true;
+    sel.value = _srDraftRoleChoice();
+    sel.addEventListener("change", () => {
+      _srDraftSaveRoleChoice(sel.value);
+      // Force a re-fetch with the new role hint.
+      _srDraft.lastSig = "";
+      _srDraft.lastAppliedKey = "";
+    });
+  }
+
+  function _srDraftSig(championId, role, my_team, their_team, queue_id) {
+    const a = (my_team    || []).map((p) => p && p.championId | 0).join(",");
+    const e = (their_team || []).map((p) => p && p.championId | 0).join(",");
+    return `${championId}|${role || ""}|${a}|${e}|${queue_id | 0}`;
+  }
+
+  function _srDraftRenderRows(profiles, chosen) {
+    const wrap = document.getElementById("cs-srdraft-list");
+    if (!wrap) return;
+    wrap.innerHTML = "";
+    if (!profiles || !profiles.length) {
+      wrap.innerHTML =
+        '<div class="cs-loadout-empty">No engine profiles available — ' +
+        'is the Daemon Slayer engine running on :8893?</div>';
+      return;
+    }
+    const ver = CHAMPS.version || "latest";
+    const diffIds = _csDiffItemIds(profiles);
+    profiles.forEach((p) => {
+      const row = document.createElement("div");
+      const isExp = p.key === "experimental";
+      row.className = "cs-build-row" + (p.key === chosen ? " selected" : "")
+                    + (isExp ? " experimental" : "");
+      row.dataset.variant = p.key;
+
+      const cb = document.createElement("div");
+      cb.className = "cs-build-checkbox";
+      row.appendChild(cb);
+
+      const meta = document.createElement("div");
+      meta.className = "cs-build-meta";
+      const label = document.createElement("div");
+      label.className = "cs-build-label";
+      label.textContent = p.label || p.key;
+      // engine vs user tag — surface so the user knows which row is
+      // their own curated build vs the auto-generated profiles.
+      const tag = document.createElement("span");
+      tag.className = "cs-build-kind " + (p.kind === "user" ? "user" : "engine");
+      tag.textContent = p.kind === "user" ? "user" : "engine";
+      label.appendChild(tag);
+      meta.appendChild(label);
+
+      const runes = document.createElement("div");
+      runes.className = "cs-build-runes";
+      const ks = (p.runes && p.runes.keystone) || p.keystone || "—";
+      const tree = (p.runes && p.runes.primary)
+        ? ` · ${p.runes.primary}${p.runes.secondary ? "/" + p.runes.secondary : ""}`
+        : "";
+      runes.textContent = ks + tree;
+      meta.appendChild(runes);
+
+      // Engine stat line — quick "why this build" scan: dps + gold.
+      // Hidden for user profiles (no engine eval available).
+      if (p.kind !== "user" && p.engine) {
+        const stats = document.createElement("div");
+        stats.className = "cs-build-engine-stats";
+        const dps = p.engine.final_dps != null
+          ? Math.round(p.engine.final_dps).toLocaleString() : "—";
+        const gold = p.engine.total_gold != null
+          ? (p.engine.total_gold / 1000).toFixed(1) + "k" : "—";
+        stats.textContent = `${dps} dps · ${gold} gold`;
+        meta.appendChild(stats);
+      }
+      row.appendChild(meta);
+
+      const items = document.createElement("div");
+      items.className = "cs-build-items";
+      const ids = (p.item_ids || []).slice(0, 6);
+      if (!ids.length) {
+        for (let i = 0; i < 6; i++) {
+          const ph = document.createElement("div");
+          ph.className = "cs-build-item placeholder";
+          items.appendChild(ph);
+        }
+      } else {
+        ids.forEach((iid, idx) => {
+          const cell = document.createElement("div");
+          const isDiff = diffIds.has(String(iid));
+          cell.className = "cs-build-item" + (isDiff ? " cs-build-item--diff" : "");
+          const nm = (p.build_path || [])[idx] || ("item " + iid);
+          cell.title = isDiff ? `${nm} (differs across profiles)` : nm;
+          cell.innerHTML = `<img src="/data/ddragon/${ver}/img/item/${iid}.png" onerror="this.style.display='none'" alt="">`;
+          items.appendChild(cell);
+        });
+      }
+      row.appendChild(items);
+
+      row.addEventListener("click", () => _srDraftOnRowClick(p));
+      wrap.appendChild(row);
+    });
+  }
+
+  function _srDraftMarkSelectedRow(variantKey) {
+    const wrap = document.getElementById("cs-srdraft-list");
+    if (!wrap) return;
+    wrap.querySelectorAll(".cs-build-row").forEach((r) => {
+      if (r.dataset.variant === variantKey) r.classList.add("selected");
+      else r.classList.remove("selected");
+    });
+  }
+
+  function _srDraftOnRowClick(profile) {
+    if (!profile || !profile.champion || !profile.key) return;
+    _srDraft.chosen = profile.key;
+    _srDraftMarkSelectedRow(profile.key);
+    const key = profile.champion + "|" + profile.key;
+    if (key === _srDraft.lastAppliedKey) return;
+    if (_srDraft.inflight) return;
+    _srDraft.inflight = true;
+    _srDraftSetStatus("pushing…", "busy");
+    fetch("/api/sr-draft/apply", {
+      method: "POST", cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        champion: profile.champion,
+        key:      profile.key,
+        kind:     profile.kind,
+        label:    profile.label,
+        runes:    profile.runes || {},
+        summoner_spells: profile.summoner_spells || [],
+        item_ids: profile.item_ids || [],
+      }),
+    })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((data) => {
+        _srDraft.inflight = false;
+        if (!data || !data.ok) {
+          _srDraftSetStatus("push failed", "err");
+          return;
+        }
+        _srDraft.lastAppliedKey = key;
+        const queued = (data.queued || []).join(", ") || "nothing";
+        _srDraftSetStatus("✓ pushed: " + queued, "ok");
+      })
+      .catch(() => {
+        _srDraft.inflight = false;
+        _srDraftSetStatus("push failed", "err");
+      });
+  }
+
+  function _srDraftFetchProfile(championName, championId, role,
+                                 my_team, their_team, queue_id) {
+    const sig = _srDraftSig(championId, role, my_team, their_team, queue_id);
+    if (sig === _srDraft.lastSig) return;       // dedupe identical comp
+    if (_srDraft.debounceTimer) clearTimeout(_srDraft.debounceTimer);
+    _srDraft.debounceTimer = setTimeout(() => {
+      _srDraft.lastSig = sig;
+      _srDraftSetStatus("fetching…", "busy");
+      fetch("/api/sr-draft/profile", {
+        method: "POST", cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          champion:   championName,
+          role:       role || null,
+          my_team:    my_team || [],
+          their_team: their_team || [],
+          queue_id:   queue_id | 0,
+        }),
+      })
+        .then((r) => (r && r.ok ? r.json() : null))
+        .then((data) => {
+          if (!data) {
+            _srDraftSetStatus("fetch failed", "err");
+            return;
+          }
+          // Profiles arrive engine-first then user-additive — render in
+          // the order the route returns (operator-additive invariant).
+          const profiles = data.profiles || [];
+          _srDraft.profiles = profiles;
+          // Default selection: keep prior choice if still valid, else first row.
+          const stillValid = _srDraft.chosen
+            && profiles.some((p) => p.key === _srDraft.chosen);
+          _srDraft.chosen = stillValid ? _srDraft.chosen
+            : (profiles[0] && profiles[0].key) || "";
+          _srDraftRenderRows(profiles, _srDraft.chosen);
+          const eng = profiles.filter((p) => p.kind !== "user").length;
+          const usr = profiles.filter((p) => p.kind === "user").length;
+          if (data.notes && data.notes.length) {
+            _srDraftSetStatus("ready · " + eng + " engine + " + usr + " user (notes)", "");
+          } else if (!profiles.length) {
+            _srDraftSetStatus("no profiles", "err");
+          } else {
+            _srDraftSetStatus("ready · " + eng + " engine + " + usr + " user", "");
+          }
+        })
+        .catch(() => _srDraftSetStatus("fetch failed", "err"));
+    }, _SRDRAFT_DEBOUNCE_MS);
+  }
+
+  function _srDraftMaybeRender(cs, myCid, myName) {
+    const block = document.getElementById("cs-srdraft-block");
+    if (!block) return;
+    // Gate: sr_draft flag from _state_builder + champion picked.
+    if (!cs.sr_draft) {
+      block.hidden = true;
+      // Reset state so the next time we enter draft, the first render
+      // forces a fresh fetch (not blocked by stale lastSig).
+      _srDraft.lastChamp = 0;
+      _srDraft.lastSig   = "";
+      return;
+    }
+    _srDraftWireRoleSelectOnce();
+    if (!myCid || !myName || myName === "—") {
+      // Show the block with a placeholder so the user knows the chooser
+      // exists during early draft phases (banning, hovering).
+      block.hidden = false;
+      const list = document.getElementById("cs-srdraft-list");
+      if (list && !list.children.length) {
+        list.innerHTML =
+          '<div class="cs-loadout-empty">Pick a champion to see ' +
+          'engine + user builds for this draft.</div>';
+      }
+      _srDraftSetStatus("waiting for pick", "");
+      return;
+    }
+    block.hidden = false;
+    const role = _srDraftRoleChoice();
+    _srDraftFetchProfile(myName, myCid, role,
+                         cs.my_team, cs.their_team, cs.queue_id);
+  }
+
   // ── Team-comp analyzer (Phase 3, 2026-04-26) ────────────────────────
   // Debounced AI call that recommends swap / variant / stay based on
   // current team comp. Only runs in ARAM and only when bench has options
@@ -5424,6 +5700,10 @@
         (myCid !== _csLoadout.lastChamp || csMode !== _csLoadout.lastMode)) {
       _csOnChampionOrModeChange(myName, myCid, csMode);
     }
+    // SR Draft Theatre chooser — debounced fetch keyed on (champ, role,
+    // allies, enemies, queue). The block is always visible-or-hidden
+    // based on cs.sr_draft, so the call is idempotent on every poll.
+    _srDraftMaybeRender(cs, myCid, myName);
     // (2026-04-26) Always surface the loadout block while in champ-select
     // so the user knows the build chooser exists. Show a placeholder
     // row until they pick a champion. Without this, the block is hidden
