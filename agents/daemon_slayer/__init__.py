@@ -141,7 +141,16 @@ Blossoming Dawn, Actualizer, Cruelty). Phase 4 batch 34 magic-amp schema
 total_magic_amp_multiplier helper + per-proc application in
 _periodic_proc_dps; does NOT amplify physical auto-attack damage;
 Abyssal Mask (8020) promoted from defensive_only with magic_amp_pct=0.12
-[Unmake 12% more magic damage to nearby enemies]).
+[Unmake 12% more magic damage to nearby enemies]). Phase 4 batch 35
+missed-lethality + dual-pen + spellblade + on-hit sweep (2026-05-04 —
+5 active promotions: Duskblade of Draktharr (6691) lethality=18
+[missed from batch-30 lethality sweep]; Perplexity (4015) 22% armor pen
++ 30% magic pen dual-pen; Divine Sunderer (6632) Spellblade 125% base AD
++ 6% target max HP physical every 3s [joins spellblade dedup family];
+Navori Flickerblade (6672) Bring It Down every-3rd-attack 120→168
+physical [ranged scaling]; Hellfire Hatchet (4017) lethality=12 [Char
+proc deferred]; plus 6 defensive_only entries: Goredrinker, Galeforce,
+Zeke's Convergence, Wordless Promise, Frozen Mallet, Lightning Braid).
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
 ``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation`` /
@@ -157,4 +166,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.38.0"
+ENGINE_VERSION = "0.39.0"
