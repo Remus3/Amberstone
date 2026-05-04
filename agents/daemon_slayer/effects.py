@@ -72,6 +72,14 @@ class CallContext:
     ``target_max_hp``, these aren't caller-supplied — the engine knows
     the caster's exact HP from the build. Unlocks Titanic Hydra Cleave
     (1.5% bonus HP) + Heartsteel Colossal Consumption (6% max HP).
+
+    ``targets_in_rotation`` (added 2026-05-04, Phase 4 batch 7) is the
+    rotation's ``numberOfTargets`` (lolmath field). Default 1.0 means
+    "single-target rotation"; lambdas that don't reference it stay
+    single-target. AoE-incl-primary procs use ``c.targets_in_rotation``
+    directly; cleave-to-others procs use
+    ``max(0, c.targets_in_rotation - 1)``. Engine sets it per rotation
+    via ``dataclasses.replace`` in ``_rotation_attack_dps``.
     """
     base_ad: float
     bonus_ad: float
@@ -82,6 +90,7 @@ class CallContext:
     target_max_hp: float = 0.0
     caster_max_hp: float = 0.0
     caster_bonus_hp: float = 0.0
+    targets_in_rotation: float = 1.0
 
 
 # Scaling-damage callable type. Float still works as a constant.
@@ -638,6 +647,29 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             every_n_attacks=1,
         ),
         note="Titanic Hydra: Cleave ~5 + 1.5% bonus HP physical on-hit (melee values)",
+    ),
+
+    # ── Phase 4 batch 7 (2026-05-04): multi-target rotations ──
+    # CallContext.targets_in_rotation (engine-derived from each rotation's
+    # numberOfTargets) lets cleave-to-others procs land. ~6% of lolmath
+    # rotations carry n>1; the other 94% pass n=1.0 unchanged.
+
+    "3074": ItemEffect(
+        item_id="3074",
+        name="Ravenous Hydra",
+        periodic=PeriodicProc(
+            name="Cleave",
+            # Melee: 35% total AD physical to nearby enemies only (no
+            # damage to primary target — that already lands via the basic
+            # attack). With targets_in_rotation=1.0 the cleave hits 0 enemies
+            # and contributes zero, exactly the historic single-target shape.
+            # Ranged variant 21% under-counted — same call as Titanic.
+            bonus_damage=lambda c: max(0.0, c.targets_in_rotation - 1.0)
+                * 0.35 * (c.base_ad + c.bonus_ad),
+            damage_type=PHYSICAL,
+            every_n_attacks=1,
+        ),
+        note="Ravenous Hydra: Cleave ~35% AD physical to nearby enemies (melee, scales with rotation targets)",
     ),
 }
 
