@@ -1258,5 +1258,93 @@ class ImmolateItemTests(unittest.TestCase):
         self.assertAlmostEqual(dps, 13.5, places=3)
 
 
+class UniquePassiveTests(unittest.TestCase):
+    """Phase 4 batch 10 — unique-passive de-duplication.
+
+    ItemEffect.unique_passive_key + collect_effects dedup. Surfaced by
+    batch 9: building Sunfire + Hollow Radiance currently double-counted
+    Immolate (Riot enforces unique-passive in-game). Tests pin the
+    schema default, dedup behavior on the new field, single-item
+    DPS unchanged, and end-to-end no-double-count for Sunfire+HR.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_unique_passive_key_default_empty(self) -> None:
+        # Bloodthirster is a defensive_only entry pre-dating the schema;
+        # default empty key means "no dedup," everything pre-batch-10 stays.
+        e = ITEM_EFFECTS["3072"]
+        self.assertEqual(e.unique_passive_key, "")
+
+    def test_sunfire_and_hollow_radiance_share_immolate_key(self) -> None:
+        self.assertEqual(ITEM_EFFECTS["3068"].unique_passive_key, "immolate")
+        self.assertEqual(ITEM_EFFECTS["6664"].unique_passive_key, "immolate")
+
+    def test_collect_effects_dedups_same_key(self) -> None:
+        from agents.daemon_slayer.effects import collect_effects
+        # Sunfire (3068) + Hollow Radiance (6664): same immolate key.
+        # First seen (Sunfire) wins; Hollow Radiance is dropped from
+        # the effects list. Both stat blocks still aggregate elsewhere.
+        effects = collect_effects(["3068", "6664"])
+        self.assertEqual(len(effects), 1)
+        self.assertEqual(effects[0].item_id, "3068")
+
+    def test_collect_effects_dedup_first_seen_wins(self) -> None:
+        # Order matters: HR first, Sunfire dropped.
+        from agents.daemon_slayer.effects import collect_effects
+        effects = collect_effects(["6664", "3068"])
+        self.assertEqual(len(effects), 1)
+        self.assertEqual(effects[0].item_id, "6664")
+
+    def test_collect_effects_keeps_unrelated_items(self) -> None:
+        # Items without a key (or with different keys) all pass through.
+        from agents.daemon_slayer.effects import collect_effects
+        effects = collect_effects(["3068", "6664", "3031", "3071"])
+        # Sunfire kept, HR dropped, IE + Black Cleaver both kept (no key).
+        self.assertEqual(len(effects), 3)
+        self.assertEqual(effects[0].item_id, "3068")
+        self.assertEqual(effects[1].item_id, "3031")
+        self.assertEqual(effects[2].item_id, "3071")
+
+    def test_sunfire_solo_unchanged(self) -> None:
+        # Single-item Sunfire DPS must be unchanged from batch 9 — dedup
+        # only fires when the same key appears twice.
+        r = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3068"])
+        # Batch 9 verified 64.32 dps for this exact probe.
+        self.assertAlmostEqual(r.weighted_dps, 64.32, places=2)
+
+    def test_sunfire_plus_hollow_radiance_no_double_count(self) -> None:
+        # The whole point of this batch: building both should NOT add
+        # the immolate proc twice. Damage uplift over Sunfire-alone must
+        # come ONLY from Hollow Radiance's stat block (40 MR + 400 HP),
+        # not a second Immolate tick.
+        sunfire_only = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3068"])
+        both = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3068", "6664"])
+        # Bonus HP rises from 350 → 750 (Sunfire 350 + HR 400). Sunfire's
+        # Immolate proc damage = 12 + 0.015 * 750 = 23.25 per second per
+        # target (vs 17.25 with Sunfire alone). So delta should be
+        # 23.25 - 17.25 = 6.0 dps. NOT 23.25 + 18.0 (double-count) =
+        # 41.25 over solo, which would be the regression case.
+        delta = both.weighted_dps - sunfire_only.weighted_dps
+        # 6.0 dps from HR's HP raising Sunfire's proc; floor below the
+        # double-count signal at ~24 dps.
+        self.assertAlmostEqual(delta, 6.0, places=1)
+        self.assertLess(delta, 12.0,
+            "Double-count regression: HR added a second Immolate tick")
+
+    def test_dedup_drops_proc_but_other_items_get_their_passive(self) -> None:
+        # Sanity that dedup is per-key, not per-item: building Sunfire
+        # (immolate) + Black Cleaver (no key, has armor_reduction) keeps
+        # both effects active.
+        from agents.daemon_slayer.effects import collect_effects
+        effects = collect_effects(["3068", "3071"])
+        self.assertEqual(len(effects), 2)
+        # Black Cleaver passive still landed (its armor_reduction_pct).
+        bc = next(e for e in effects if e.item_id == "3071")
+        self.assertGreater(bc.armor_reduction_pct, 0.0)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -167,6 +167,17 @@ class ItemEffect:
     magic_pen_flat: float = 0.0        # Sorc's Shoes: 12; Shadowflame: 15
     defensive_only: bool = False     # documents "no DPS effect" entries
     note: str = ""                   # one-line summary surfaced in DpsResult.notes
+    # Phase 4 batch 10 (2026-05-04): unique-passive de-duplication.
+    # Items that share the same in-game unique passive (Sunfire's Immolate
+    # + Hollow Radiance's Immolate, hypothetically multiple Spellblades)
+    # don't stack their procs in League — Riot enforces "Unique Passive"
+    # explicitly. Engine respects this when ``collect_effects`` sees the
+    # same non-empty key twice — first-seen wins, later items contribute
+    # only their stat block (which is item-side, not effect-side).
+    # Default ``""`` means "no dedup" — every existing entry passes through
+    # unchanged. Add a key only when stacking the same effect across
+    # multiple items would over-count.
+    unique_passive_key: str = ""
 
 
 # Patch 16.9.1 — refresh on patch bump (extractor manifest is the trigger).
@@ -721,6 +732,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=MAGICAL,
             every_n_seconds=1.0,
         ),),
+        unique_passive_key="immolate",
         note="Sunfire Aegis: Immolate ~12 + 1.5% bonus HP magic per second to nearby (melee values)",
     ),
     "6664": ItemEffect(
@@ -733,6 +745,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=MAGICAL,
             every_n_seconds=1.0,
         ),),
+        unique_passive_key="immolate",
         note=(
             "Hollow Radiance: Immolate ~12 + 1.5% bonus HP magic per second "
             "to nearby (Desolate execute-on-kill not modeled — conditional)"
@@ -746,15 +759,29 @@ def collect_effects(item_ids: Iterable[str | int]) -> list[ItemEffect]:
 
     Items without an entry in ``ITEM_EFFECTS`` are silently skipped — they
     contribute their stat-block to the engine via ``stats.aggregate_item_stats``
-    but no conditional layer applies. Duplicates (e.g. two IEs) are kept
-    so the engine's existing item-stack semantics carry through; the engine
-    does not enforce per-item uniqueness.
+    but no conditional layer applies. Duplicate item IDs (e.g. two IEs)
+    are kept so the engine's existing item-stack semantics carry through;
+    the engine does not enforce per-item uniqueness.
+
+    Phase 4 batch 10 (2026-05-04): items that share a non-empty
+    ``unique_passive_key`` are de-duplicated first-seen-wins. The duplicate
+    item still contributes its stat block via ``aggregate_item_stats``
+    (which lives outside this function), so the AD/HP/etc. from the
+    duplicate item is unaffected — only the proc / armor-pen effects
+    are dropped. Default ``unique_passive_key=""`` skips dedup so every
+    pre-batch-10 entry passes through unchanged.
     """
     out: list[ItemEffect] = []
+    seen_keys: set[str] = set()
     for iid in item_ids:
         eff = ITEM_EFFECTS.get(str(iid))
-        if eff is not None:
-            out.append(eff)
+        if eff is None:
+            continue
+        if eff.unique_passive_key:
+            if eff.unique_passive_key in seen_keys:
+                continue
+            seen_keys.add(eff.unique_passive_key)
+        out.append(eff)
     return out
 
 
