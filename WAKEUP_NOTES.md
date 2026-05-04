@@ -2692,3 +2692,170 @@ runtime junk pending — `data/ratings/last_*.json` auto-mutated every
 game tick, skipped). 1 commit shipped this session, already pushed
 `cc58cf5..30ddf46`. No background tasks active. 0 pending lessons
 from peers.
+
+## s54 hand-off — 2026-05-04 (Phase 8 step 5.5: LCU assignedPosition → SR-draft role chip)
+
+Single-arc session. Closed P8-5.5 — the SR-draft chooser role chip
+now pre-populates from LCU's `assignedPosition` instead of localStorage,
+so an operator dropping into a draft queue sees the engine generator
+keyed to the lane LCU assigned them rather than their last-saved
+default. Touched `tools/gamepc_lcu_agent.py` + `web/js/dashboard.js`.
+
+**Shipped (commit `49008ab`, pushed `7c3f795..49008ab main -> main`):**
+- `tools/gamepc_lcu_agent.py`: `_team_picks()` now surfaces
+  `"assignedPosition": p.get("assignedPosition") or ""` for every
+  player in `myTeam` + `theirTeam`. One-line addition; LCU API field
+  is one of `top|jungle|middle|bottom|utility` (lowercase) or `""`
+  for blind/ARAM queues.
+- `web/js/dashboard.js`:
+  - `_srDraft.userEdited` flag (default `false`) tracks whether the
+    operator manually changed the role chip this session.
+  - `_srDraftRoleFromLcu(cs)` helper finds the local player in
+    `cs.my_team` (matched by `cs.local_cell`), upper-cases
+    `assignedPosition`, alias-coerces (MID→MIDDLE, BOT/ADC→BOTTOM,
+    SUP/SUPPORT→UTILITY, JG→JUNGLE), returns one of the 5 canonical
+    role keys or `""`.
+  - `_srDraftWireRoleSelectOnce` change handler sets
+    `_srDraft.userEdited = true` so explicit operator picks lock out
+    LCU pre-population for the rest of the session.
+  - `_srDraftMaybeRender`: if `!userEdited && lcuRole`, sets the
+    `<select>` value to `lcuRole` and uses it for the fetch; else
+    falls through to the chip's current value (which mirrors
+    `localStorage`).
+
+**Decisions worth pinning:**
+- **LCU wins on auto-fill, operator wins on explicit edit.** Once the
+  operator manually picks a role this session, LCU pre-population
+  stays out of their way until the page reloads. Reset semantic is
+  page-load (intentional — drafts are short).
+- **No backend change.** `sr_draft_profile._normalize_role` already
+  accepts lowercase + alias spellings via `.upper()` + alias map, so
+  the role string flows through unchanged. No engine bump.
+- **No JS test infra in this project; skipped.** The `_srDraftRoleFromLcu`
+  helper is small + unit-testable in shape, but adding a JS test runner
+  is out of scope for one helper. Visual smoke deferred (see below).
+- **assignedPosition is a no-op for blind/ARAM/Arena queues.** Returns
+  `""`; the dashboard fallback to localStorage preserves existing
+  behavior. No regression risk for non-draft queues.
+
+**Deploy notes (Game-PC redeploy required):**
+- The dashboard JS change is live immediately (web/* served per-request).
+- `gamepc_lcu_agent.py` had to be re-pulled on Game-PC + the long-lived
+  agent process restarted before the new field flows into `/api/state`.
+- **Direct-deploy path used** (bridge auto-action lane hijacked the
+  initial bridge task; see "Things tomorrow-you should NOT redo"):
+  1. Pulled `https://legion-rc:8888/agent/gamepc_lcu_agent.py` →
+     `C:\RC-Agent\gamepc_lcu_agent.py` via `curl.exe -sk` on Game-PC
+     (PowerShell's `Invoke-WebRequest` failed with "underlying
+     connection closed" — Game-PC's `Invoke-WebRequest` is broken on
+     this RC HTTPS endpoint despite same-cert mkcert install; curl
+     works fine).
+  2. `taskkill /F /PID` on the two existing agent processes (the
+     `schtasks /End /TN RC-LCU` did NOT kill them; per CLAUDE.md
+     hard rule).
+  3. `schtasks /Run /TN RC-LCU` returned `Last Result: -2147024894`
+     (= ERROR_FILE_NOT_FOUND) because the task command is `py
+     C:\RC-Agent\gamepc_lcu_agent.py` and `py` doesn't resolve in
+     scheduled-task context outside of boot — same root cause as
+     `project_rc_patchrefresh_fixed.md` on Legion. Fix is to swap
+     `py` for absolute python.exe path in `tools/gamepc_boot.ps1:192`
+     (NOT done this session; see backlog below).
+  4. Started agent directly via
+     `C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe
+     C:\RC-Agent\gamepc_lcu_agent.py` (Start-Process, hidden window).
+     Confirmed alive after 4s; confirmed `lcu.ts` advancing on
+     Legion's `/api/state`.
+
+**Verification status:**
+- Code change verified: served `/agent/gamepc_lcu_agent.py` contains
+  the new field; served `/js/dashboard.js` contains all three new
+  tokens (`userEdited`, `_srDraftRoleFromLcu`, `P8-5.5`).
+- Agent restart verified: fresh process running on Game-PC with the
+  new code; `lcu.ts` on `/api/state` is current.
+- End-to-end verification (assignedPosition flowing through) **NOT**
+  done this session — operator was mid-game (LCU phase=InProgress,
+  `champ_select.my_team` empty by definition mid-game). First draft
+  queue (400/420/430/440) after this session will validate.
+
+**Things tomorrow-you should NOT redo:**
+- Don't dispatch the deploy via `bridge_task.py --target gamepc` —
+  the Game-PC bridge_watcher classifier matched the prompt to an
+  `auto-read` lane (probably keyword like "verify" or "Select-String"),
+  spawned a Claude subprocess that died with `^C` (exit code
+  3221225786 = STATUS_CONTROL_C_EXIT, "claude subprocess output
+  unparseable"), and posted a result entry blocking `/loop /process-bridge-tasks`
+  from picking the task up. Bridge auto-action flow was hijacked.
+  Use direct `mcp__gamepc__run_powershell` instead OR craft prompts
+  that hit the frozen-intent gate to force escalation.
+- Don't try `Invoke-WebRequest` from Game-PC PowerShell against
+  RC's `:8888` HTTPS — fails with "underlying connection closed"
+  even with TLS12 + cert-validation override. Use `curl.exe -sk`
+  instead. Probably a schannel/SNI quirk; not investigated.
+- Don't restart RC-LCU via `schtasks /Run /TN RC-LCU` after a manual
+  kill — the `py` launcher fails ERROR_FILE_NOT_FOUND under
+  scheduled-task context. The task only works at boot when WindowsApps
+  PATH is rich. Until `tools/gamepc_boot.ps1:192` is patched to use
+  absolute `python.exe`, manual restarts must use `Start-Process` with
+  the absolute path.
+- Don't add a JS test runner just for `_srDraftRoleFromLcu` — the
+  helper is too small to justify infra. Visual smoke at next draft
+  is enough.
+- Don't reset `_srDraft.userEdited` between drafts — the page-load
+  reset semantic is intentional. Operator who explicitly chooses
+  SUP for one draft probably wants SUP for the next draft of the
+  session too.
+
+**Operational backlog (carried + new):**
+- **gamepc_boot.ps1 `py` → absolute python.exe** (NEW). Same fix
+  pattern as `project_rc_patchrefresh_fixed.md`. Affects all 5+
+  agent tasks on Game-PC (RC-LCU, RC-LiveClientRelay, RC-MCP-Server,
+  RC-HotkeyListener, RC-ScreenAgent-*). Low priority since they all
+  work at boot; only manual mid-session restarts hit the bug.
+  Operator-mutable, not frozen.
+- **Bridge auto-action lane vs. operator deploy tasks** (NEW). The
+  bridge_watcher classifier on Game-PC matched a deploy prompt to
+  `auto-read` and tried to execute it as a Claude subprocess. The
+  subprocess died with `^C`; result was posted to bridge log
+  blocking the `/loop /process-bridge-tasks` pickup. This is a
+  classifier false-positive that needs investigation, but
+  bridge_watcher_classify.py is **frozen** per CLAUDE.md — needs
+  explicit operator approval to touch. Workaround: use direct MCP
+  for cross-machine deploys.
+- All s53 backlog items unchanged (P8-5/P8-6 visual verify, P8-7
+  E2E push test, arena augment v2 activation).
+
+**Activation status:**
+- Legion-side: dashboard.js change live (Edge picks up via Ctrl+F5);
+  no RC restart needed (no Python code changed on Legion side, the
+  static asset is served per-request).
+- Game-PC-side: new agent running fresh PID under absolute python
+  path; will survive normal operation; if rebooted, the boot script's
+  `schtasks /Run RC-LCU` should succeed (boot-time PATH is rich).
+
+**Next-session candidates (ranked):**
+1. **First draft visual verify** — when operator next enters a draft
+   queue (400/420/430/440), confirm:
+   - `cs.my_team[i].assignedPosition` populated with one of
+     `top|jungle|middle|bottom|utility` for each picker (Edge devtools
+     console: `await fetch('/api/state').then(r=>r.json()).then(j=>console.table(j.lcu.champ_select.my_team))`).
+   - SR-draft role chip auto-selects the local player's role on initial
+     render.
+   - Manually changing the chip locks out further LCU auto-fill.
+2. **gamepc_boot.ps1 `py` → absolute python.exe** — 1-line patch
+   matching `project_rc_patchrefresh_fixed.md`. Tiny win; eliminates
+   manual-restart footgun.
+3. **P8-7 E2E push-to-League integration test** — now unblocked
+   (apply route + role pre-population both shipped). Real arena/draft
+   with all 3 engine variants pushed back-to-back, verify rune pages
+   have distinct names + items apply correctly.
+4. **Activate arena augment v2 in production** — still relevant from
+   s50; reconciler ships with current RC, just needs an arena game
+   to verify `augments_source` flips to `vision_hud`.
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true (no Legion restart this session). Engine on :8893
+still 0.9.3. LCU phase=InProgress (mid-arena). Game-PC LCU agent
+freshly restarted (pid=15696, started 02:40:07 via direct
+`Start-Process` not scheduled task). Working tree post-commit:
+- `49008ab` pushed; only `data/ratings/last_*.json` runtime mutations
+  dirty (auto-mutated each game tick, skipped from commit).
