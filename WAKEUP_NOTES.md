@@ -4019,3 +4019,175 @@ classes. Soft cross-item DPS test comparisons are data-fragile —
 prefer hand-built CallContext + direct `_periodic_proc_dps` calls.
 The schema rename in batch 8 was clean (no parallel field) per
 CLAUDE.md "no shims" rule — don't reintroduce `Optional[PeriodicProc]`.
+
+---
+
+## s62 hand-off — 2026-05-04 (Phase 4 batch 9: Immolate items, no schema change)
+
+Single-arc continuation of s61. Picked the s61 #1 candidate (Immolate
+items / in-combat duration model). Seventh Phase-4 batch in two days.
+Operator still idle (LCU phase=None, RC main pid=9488 unchanged).
+
+**Pattern decision worth pinning — and overriding s61's plan:** the
+s61 hand-off proposed adding a `combat_charge_seconds` field on
+PeriodicProc + per-rotation in-combat fraction estimation. After looking
+at the lolmath rotation data (median 6s, range 2-10s, all-by-definition
+in-combat DPS rotations), the combat-charge gate is **always satisfied**
+inside any rotation that has at least one auto-attack. The 1s charge
++ 3s active window are continuously refreshed by ongoing attacks. So
+the "in-combat fraction" is always ~1.0 for lolmath data.
+
+Per CLAUDE.md "don't design for hypothetical future requirements," I
+**dropped the schema bump** and modeled both Immolate items using
+existing infrastructure:
+- `every_n_seconds=1.0` (per-second tick over full rotation duration)
+- `c.targets_in_rotation` multiplier (AoE-incl-primary; from batch 7)
+- `c.caster_bonus_hp` scaling (from batch 6)
+
+This is the third batch in a row (7, 8, 9) where the lambda-side
+semantic pattern absorbed a "this needs new architecture" candidate
+without touching the schema. Worth pinning that the schema is
+genuinely sufficient for current item shapes.
+
+**Shipped (commit `20ff47c`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - **Sunfire Aegis (3068)** — NEW entry. Immolate proc:
+    `bonus_damage = lambda c: c.targets_in_rotation * (12.0 + 0.015 * c.caster_bonus_hp)`,
+    MAGICAL, `every_n_seconds=1.0`. Melee values (12 + 1.5% bonus HP);
+    ranged (~half) under-counted — Sunfire is a tank item, melee bias.
+  - **Hollow Radiance (6664)** — NEW entry. Same Immolate shape; the
+    Desolate execute-on-kill is conditional and not modeled.
+  - Both items get an inline NOTE that Riot enforces unique-passive on
+    Immolate (Sunfire + Hollow Radiance does NOT double the proc) but
+    the engine currently doesn't enforce unique-passives — building
+    both items will double-count the Immolate contribution. Documented
+    as the next architectural change, not an immediate fix.
+
+- `agents/daemon_slayer/dps.py`: NO change. Pure infrastructure reuse.
+
+- `agents/daemon_slayer/__init__.py`: docstring narrative refreshed
+  (Immolate items call-out + 28 defensive_only count unchanged from
+  batch 8); `ENGINE_VERSION 0.15.0 → 0.16.0`.
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - **ImmolateItemTests** (10 tests) — Sunfire periodic shape, Hollow
+    Radiance periodic shape, bonus-HP+n=1 resolution (27 dps for
+    1000 bonus HP), AoE-incl-primary multiplier (81 dps at n=3),
+    zero-bonus-HP floor (12 dps), Sunfire lifts DPS on Aatrox,
+    Hollow Radiance lifts DPS on Aatrox, end-to-end engine
+    per-second tick (27 dps), end-to-end engine AoE uplift
+    (81 dps at n=3), uses target_mr not armor (factor 0.5 at MR=100).
+  - `CoverageCountTests` floor 52 → 54 (+2, Sunfire + Hollow Radiance).
+
+**Test state:** 312/312 daemon_slayer tests green (was 302 at end of
+s61; +10 from `ImmolateItemTests`). All 302 prior tests stayed green
+unchanged before the new tests were added — confirms no regression in
+the existing periodic-proc path. py_compile pre-commit hook passed.
+
+**Live engine verify (post-restart `schtasks /End` + `/Run`):**
+```
+GET  /health                                              → 0.16.0
+POST /dps {Aatrox, lvl 11}                                → 47.07 (bare)
+POST /dps {Aatrox, lvl 11, items:[3068]}                  → 64.32 (+17.25; Sunfire +350 bonus HP)
+POST /dps {Aatrox, lvl 11, items:[6664]}                  → 65.07 (+18.00; Hollow Radiance +400 bonus HP)
+POST /dps {Aatrox, lvl 11, items:[3068,3083]}             → 79.32 (+32.25; Sunfire+Warmog: 1350 bonus HP)
+POST /dps {Anivia, lvl 11, phase:late}                    →  5.81 (bare; n=3 weighted rotations)
+POST /dps {Anivia, lvl 11, phase:late, items:[3068]}      → 42.04 (+36.23; AoE multiplier × n=3 piece)
+```
+
+Math sanity:
+- Aatrox+Sunfire: 12 + 0.015*350 = 17.25 per second. n=1 → 17.25 dps. ✅ EXACT MATCH.
+- Aatrox+Hollow Radiance: 12 + 0.015*400 = 18.0 per second. n=1 → 18.0 dps. ✅ EXACT MATCH.
+- Aatrox+Sunfire+Warmog: stat probe shows hp=3140 vs bare 1790, so
+  bonus HP = 1350 (not the 1150 I initially math'd — Warmog gives
+  1000 not 800 in current patch). 12 + 0.015*1350 = 32.25 per second.
+  n=1 → 32.25 dps. ✅ EXACT MATCH.
+- Anivia late: weighted across rotations including n=3 weight=70 piece.
+  Per-second damage scales with n directly: at n=3 → ~51.75/s; at n=1
+  → 17.25/s. Weighted average lands at +36.23 dps over bare.
+
+**Coverage delta:** ITEM_EFFECTS 52 → 54 entries (+2, Sunfire +
+Hollow Radiance).
+
+**Decisions worth pinning:**
+- **No combat_charge_seconds schema.** Immolate's literal Riot mechanic
+  has a 1s charge / 3s active window, but lolmath rotations are all
+  "in combat" by definition (any rotation with auto-attacks satisfies
+  the gate). Adding schema for a future-tense "tank-rotation" use case
+  that doesn't exist would be premature abstraction. Per CLAUDE.md.
+- **AoE-incl-primary, not cleave-to-others.** Immolate damages every
+  nearby enemy, including the primary target — so multiplier is `n`
+  directly (not `max(0, n-1)` like Ravenous/Titanic cleave-to-others).
+  This matches the idiom test pinned in batch 7
+  (`test_aoe_incl_primary_scales_with_n_directly`).
+- **Per-second tick, not per-attack.** Immolate is a per-second aura
+  damage — independent of the caster's attack speed. `every_n_seconds=1.0`
+  is the right shape, not `every_n_attacks=1`. This is the first item
+  in the engine to use a sub-3s `every_n_seconds` value.
+- **Both items use IDENTICAL lambda.** Sunfire and Hollow Radiance share
+  the same Riot Immolate passive verbatim. I considered factoring out
+  a `_immolate_dmg(c)` helper but it's a 1-line lambda — the duplication
+  is readable, and if Riot ever splits the values per-item, each item
+  becomes independent without rewiring.
+- **Unique-passive enforcement deferred.** Riot's unique-passive layer
+  is a real engine gap (Black Cleaver, Sterak's, all the Lifeline
+  shields, Sunfire/Hollow Radiance Immolate, etc.). Engine treats
+  every proc independently. Separate batch — needs a per-effect
+  `unique_passive_key: str` field + `collect_effects` dedup.
+- **Hollow Radiance Desolate not modeled.** Conditional execute on
+  champion kill — fires once per kill, not per rotation. Same
+  argument as The Collector / Eclipse-the-game-not-the-item: low-
+  frequency conditional procs don't fit the periodic shape.
+
+**Things tomorrow-you should NOT redo:**
+- Don't add `combat_charge_seconds` to PeriodicProc. The
+  `test_immolate_engine_per_second_tick` end-to-end test pins the
+  per-second behavior; if a future tank-only rotation needs gated
+  procs, add the field then with a real consumer.
+- Don't model Sunfire's old per-second damage values — use 12 + 1.5%
+  bonus HP. Patch 16.9.1 canonical melee value.
+- Don't model Hollow Radiance's Desolate execute. Conditional kill
+  procs don't fit the rotation shape.
+- Don't try to factor out the duplicate Immolate lambda. The 1-line
+  duplication is more honest than a helper indirection.
+- Don't bump CoverageCountTests floor past 54 until next batch lands.
+
+**Activation:** Engine on :8893 already at 0.16.0 (this session
+restarted it). No further action needed.
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true (no Legion main-RC restart this session; RC-DaemonSlayer
+bounced for the 7th time today). Engine on :8893 = 0.16.0 live.
+LCU phase=None (no game in progress). Working tree clean except
+runtime `data/ratings/last_*.json` mutations.
+
+**Operational backlog (carried + new):**
+- All s54-s61 backlog items unchanged.
+- **Unique-passive enforcement** (NEW from s62). Engine doesn't dedup
+  unique-passives — building Sunfire + Hollow Radiance currently
+  double-counts Immolate. Same with stacking IE crit-damage bonuses
+  (in practice not built but engine permits it). Architectural change:
+  `ItemEffect.unique_passive_key: str = ""` + `collect_effects` keeps
+  first-seen per key. ~1-2 hour scope; needs careful handling of items
+  that have multiple unique passives (most don't; Mythic items did
+  but the Mythic system was removed).
+- **Sunfire/Hollow Radiance unique-passive doc** (NEW from s62). The
+  inline NOTE in `effects.py` documents the gap; a future user-facing
+  warning could be added at /rank time when both items appear in the
+  same build.
+
+**Next-session candidates (ranked):**
+1. **Phase 4 batch 10: unique-passive enforcement** (NEW from s62).
+   First real engine gap that affects /rank correctness — Sunfire +
+   Hollow Radiance double-counts Immolate; Black Cleaver stacks shouldn't
+   either. ~1-2 hour scope.
+2. **Phase 4 batch 9-alt: aggregate-stat extension hook refactor**
+   (carried from s61). Still pure cleanup; defer until adding new
+   items hits a friction point.
+3. **First draft visual verify of P8-5.5** (carried).
+4. **gamepc_boot.ps1 patch** (carried). 1-liner.
+5. **P8-7 E2E push-to-League integration test** (carried).
+6. **Activate arena augment v2 in production** (carried).
+7. **Riftmaker HP→AP cross-derivation** (carried).
+8. **Per-target-HP-pct field** (carried; defer until caller demands).
