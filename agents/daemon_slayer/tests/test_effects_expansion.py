@@ -1880,5 +1880,223 @@ class RiftmakerHpToApTests(unittest.TestCase):
             "HP→AP wiring should add to amp_only variant via Lich Bane proc")
 
 
+class TotalTargetBonusHpAmpMultiplierTests(unittest.TestCase):
+    """Phase 4 batch 19 — target-conditional damage-amp helper.
+
+    Direct unit tests on ``total_target_bonus_hp_amp_multiplier``. LDR
+    end-to-end + multiplicative-stack-with-Riftmaker pinning lives in
+    ``LdrGiantSlayerTests`` below.
+    """
+
+    def test_no_effects_returns_unity(self) -> None:
+        from agents.daemon_slayer.effects import total_target_bonus_hp_amp_multiplier
+        self.assertEqual(total_target_bonus_hp_amp_multiplier([], 1500.0), 1.0)
+
+    def test_zero_target_bonus_hp_returns_unity(self) -> None:
+        # Pre-batch-19 callers don't supply target_bonus_hp — default 0.
+        # Result must short-circuit to 1.0 even when items carry the schema.
+        from agents.daemon_slayer.effects import total_target_bonus_hp_amp_multiplier
+        ldr = ITEM_EFFECTS["3036"]
+        self.assertEqual(total_target_bonus_hp_amp_multiplier([ldr], 0.0), 1.0)
+
+    def test_negative_target_bonus_hp_returns_unity(self) -> None:
+        # Defensive guard — caller-supplied negative values should not
+        # produce a damage REDUCTION; treat as "no signal".
+        from agents.daemon_slayer.effects import total_target_bonus_hp_amp_multiplier
+        ldr = ITEM_EFFECTS["3036"]
+        self.assertEqual(total_target_bonus_hp_amp_multiplier([ldr], -100.0), 1.0)
+
+    def test_no_amp_items_in_effects_returns_unity(self) -> None:
+        # IE / Kraken / Stormrazor — none carry target_bonus_hp_amp_max_pct.
+        from agents.daemon_slayer.effects import total_target_bonus_hp_amp_multiplier
+        effs = [ITEM_EFFECTS["3031"], ITEM_EFFECTS["6672"], ITEM_EFFECTS["3097"]]
+        self.assertEqual(total_target_bonus_hp_amp_multiplier(effs, 1500.0), 1.0)
+
+    def test_ldr_at_half_cap_yields_half_max_pct(self) -> None:
+        # 750 / 1500 = 0.5 → 0.5 * 0.15 = 7.5% amp → ×1.075 multiplier.
+        from agents.daemon_slayer.effects import total_target_bonus_hp_amp_multiplier
+        ldr = ITEM_EFFECTS["3036"]
+        self.assertAlmostEqual(
+            total_target_bonus_hp_amp_multiplier([ldr], 750.0), 1.075, places=4,
+        )
+
+    def test_ldr_at_full_cap_yields_max_pct(self) -> None:
+        # 1500 / 1500 = 1.0 → 0.15 amp → ×1.15 multiplier.
+        from agents.daemon_slayer.effects import total_target_bonus_hp_amp_multiplier
+        ldr = ITEM_EFFECTS["3036"]
+        self.assertAlmostEqual(
+            total_target_bonus_hp_amp_multiplier([ldr], 1500.0), 1.15, places=4,
+        )
+
+    def test_ldr_above_cap_clamps_to_max_pct(self) -> None:
+        # 3000 / 1500 = 2.0, but min(1.0, 2.0) = 1.0 — multiplier stays
+        # at ×1.15. Matches DDragon "maximum damage bonus reached at
+        # 1500 bonus Health".
+        from agents.daemon_slayer.effects import total_target_bonus_hp_amp_multiplier
+        ldr = ITEM_EFFECTS["3036"]
+        self.assertAlmostEqual(
+            total_target_bonus_hp_amp_multiplier([ldr], 3000.0), 1.15, places=4,
+        )
+
+    def test_two_target_amps_stack_multiplicatively(self) -> None:
+        # Engine ships only LDR with this schema today. Build two
+        # synthetic items inline to pin the multiplicative-stacking
+        # contract for future entries.
+        from agents.daemon_slayer.effects import (
+            ItemEffect,
+            total_target_bonus_hp_amp_multiplier,
+        )
+        a = ItemEffect(
+            item_id="X1", name="amp1",
+            target_bonus_hp_amp_max_pct=0.10, target_bonus_hp_amp_cap=1000.0,
+        )
+        b = ItemEffect(
+            item_id="X2", name="amp2",
+            target_bonus_hp_amp_max_pct=0.20, target_bonus_hp_amp_cap=1000.0,
+        )
+        # At cap: 1.10 * 1.20 = 1.32 (multiplicative), not 1.30 (additive).
+        self.assertAlmostEqual(
+            total_target_bonus_hp_amp_multiplier([a, b], 1000.0), 1.32, places=4,
+        )
+
+    def test_partial_schema_entry_is_ignored(self) -> None:
+        # Defensive: if a future item entry has max_pct set but cap=0
+        # (or vice versa), the helper must skip it rather than divide
+        # by zero or apply infinite ramp.
+        from agents.daemon_slayer.effects import (
+            ItemEffect,
+            total_target_bonus_hp_amp_multiplier,
+        )
+        broken = ItemEffect(
+            item_id="X3", name="broken",
+            target_bonus_hp_amp_max_pct=0.15, target_bonus_hp_amp_cap=0.0,
+        )
+        self.assertEqual(
+            total_target_bonus_hp_amp_multiplier([broken], 1500.0), 1.0,
+        )
+
+
+class LdrGiantSlayerTests(unittest.TestCase):
+    """Phase 4 batch 19 — LDR Giant Slayer end-to-end via /dps.
+
+    Mirrors RiftmakerPromotionTests' shape: stat-only baseline,
+    schema field present, DPS lifts when target_bonus_hp is supplied,
+    no behavior change when caller omits the signal (back-compat).
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_ldr_carries_giant_slayer_schema(self) -> None:
+        e = ITEM_EFFECTS["3036"]
+        self.assertAlmostEqual(e.target_bonus_hp_amp_max_pct, 0.15, places=4)
+        self.assertAlmostEqual(e.target_bonus_hp_amp_cap, 1500.0, places=2)
+        # Armor pen still wired (existing batch 4 / batch 16 behavior).
+        self.assertAlmostEqual(e.armor_pen_pct, 0.35, places=4)
+        # Note text mentions Giant Slayer + the cap value so /dps clients
+        # know what they're seeing.
+        self.assertIn("Giant Slayer", e.note)
+        self.assertIn("1500", e.note)
+
+    def test_no_amp_when_target_bonus_hp_unset(self) -> None:
+        # Pre-batch-19 caller shape — no target_bonus_hp kwarg. The
+        # /dps response must look identical to a build with no Giant
+        # Slayer item modulo the existing armor-pen wiring.
+        result = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3036"],
+                             target_armor=80.0)
+        self.assertFalse(
+            any("target-conditional amp" in n for n in result.notes),
+            "no target_bonus_hp signal — must not surface a target-amp note",
+        )
+
+    def test_amp_lifts_dps_at_full_cap(self) -> None:
+        # With LDR + target_bonus_hp=1500, weighted_dps must exceed the
+        # zero-bonus-hp baseline by approximately 15% (the full Giant
+        # Slayer ramp). Stat block is identical between the two runs;
+        # only the multiplier differs.
+        bare_target = compute_dps(self.snap, "Aatrox", level=11,
+                                  item_ids=["3036"], target_armor=80.0)
+        full_target = compute_dps(self.snap, "Aatrox", level=11,
+                                  item_ids=["3036"], target_armor=80.0,
+                                  target_bonus_hp=1500.0)
+        ratio = full_target.weighted_dps / bare_target.weighted_dps
+        self.assertAlmostEqual(ratio, 1.15, places=3,
+            msg=f"LDR full-cap amp ratio {ratio:.4f} != 1.15")
+
+    def test_amp_lifts_half_at_half_cap(self) -> None:
+        # 750 bonus HP → 7.5% amp → ratio 1.075.
+        bare_target = compute_dps(self.snap, "Aatrox", level=11,
+                                  item_ids=["3036"], target_armor=80.0)
+        half_target = compute_dps(self.snap, "Aatrox", level=11,
+                                  item_ids=["3036"], target_armor=80.0,
+                                  target_bonus_hp=750.0)
+        ratio = half_target.weighted_dps / bare_target.weighted_dps
+        self.assertAlmostEqual(ratio, 1.075, places=3,
+            msg=f"LDR half-cap amp ratio {ratio:.4f} != 1.075")
+
+    def test_amp_clamps_above_cap(self) -> None:
+        # 3000 bonus HP must yield same multiplier as 1500.
+        full_cap = compute_dps(self.snap, "Aatrox", level=11,
+                               item_ids=["3036"], target_armor=80.0,
+                               target_bonus_hp=1500.0).weighted_dps
+        above_cap = compute_dps(self.snap, "Aatrox", level=11,
+                                item_ids=["3036"], target_armor=80.0,
+                                target_bonus_hp=3000.0).weighted_dps
+        self.assertAlmostEqual(full_cap, above_cap, places=4,
+            msg=f"above-cap dps {above_cap} != full-cap dps {full_cap}")
+
+    def test_amp_surfaces_in_notes_when_active(self) -> None:
+        result = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3036"],
+                             target_armor=80.0, target_bonus_hp=1500.0)
+        self.assertTrue(
+            any("target-conditional amp" in n for n in result.notes),
+            f"missing target-amp note in result.notes: {result.notes!r}",
+        )
+
+    def test_dps_result_carries_target_bonus_hp(self) -> None:
+        # Field plumbed through compute_dps → DpsResult → to_dict so
+        # /dps clients can confirm what the engine used.
+        result = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3036"],
+                             target_armor=80.0, target_bonus_hp=1500.0)
+        self.assertAlmostEqual(result.target_bonus_hp, 1500.0, places=2)
+        self.assertAlmostEqual(result.to_dict()["target_bonus_hp"], 1500.0, places=2)
+
+    def test_ldr_plus_riftmaker_amps_stack_multiplicatively(self) -> None:
+        # Riftmaker carries 8% damage_amp_pct (batch 14), LDR carries
+        # 15% target-conditional amp (batch 19). Combined multiplier
+        # must be 1.08 * 1.15 = 1.242 — NOT 1.23 (additive). Pins the
+        # batch-14 doctrine ("League stacks amps multiplicatively").
+        from agents.daemon_slayer import effects as effects_mod
+        # Build a "no-amp Riftmaker" baseline so the 8% piece is the
+        # only difference between the runs.
+        original_rift = effects_mod.ITEM_EFFECTS["4633"]
+        no_amp_rift = ItemEffect(
+            item_id="4633", name="Riftmaker",
+            note=original_rift.note,
+            ap_per_bonus_hp_pct=original_rift.ap_per_bonus_hp_pct,
+        )
+        try:
+            effects_mod.ITEM_EFFECTS["4633"] = no_amp_rift
+            ldr_only = compute_dps(
+                self.snap, "Aatrox", level=11,
+                item_ids=["3036", "4633"], target_armor=80.0,
+                target_bonus_hp=1500.0,
+            ).weighted_dps
+            effects_mod.ITEM_EFFECTS["4633"] = original_rift
+            both_amps = compute_dps(
+                self.snap, "Aatrox", level=11,
+                item_ids=["3036", "4633"], target_armor=80.0,
+                target_bonus_hp=1500.0,
+            ).weighted_dps
+        finally:
+            effects_mod.ITEM_EFFECTS["4633"] = original_rift
+        # both_amps / ldr_only should be exactly 1.08 (the Riftmaker
+        # contribution on top of the already-amped LDR baseline).
+        ratio = both_amps / ldr_only
+        self.assertAlmostEqual(ratio, 1.08, places=3,
+            msg=f"Riftmaker × LDR amp stacking ratio {ratio:.4f} != 1.08")
+
+
 if __name__ == "__main__":
     unittest.main()

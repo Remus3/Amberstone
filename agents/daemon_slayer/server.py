@@ -242,6 +242,7 @@ def _route_dps(body: dict) -> dict:
     target_armor = _opt_float(body, "target_armor", 0.0)
     target_mr = _opt_float(body, "target_mr", 0.0)
     target_max_hp = _opt_float(body, "target_max_hp", 0.0)
+    target_bonus_hp = _opt_float(body, "target_bonus_hp", 0.0)
     phase = _opt_str(body, "phase")
     augments = _coerce_str_list(body.get("augments"), "augments")
     if phase is not None and phase not in ("early", "mid", "late"):
@@ -251,6 +252,7 @@ def _route_dps(body: dict) -> dict:
                              item_ids=items, mode=mode,
                              target_armor=target_armor, target_mr=target_mr,
                              target_max_hp=target_max_hp,
+                             target_bonus_hp=target_bonus_hp,
                              phase=phase, augments=augments)
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -268,6 +270,7 @@ def _route_rank(body: dict) -> dict:
     target_armor = _opt_float(body, "target_armor", 0.0)
     target_mr = _opt_float(body, "target_mr", 0.0)
     target_max_hp = _opt_float(body, "target_max_hp", 0.0)
+    target_bonus_hp = _opt_float(body, "target_bonus_hp", 0.0)
     phase = _opt_str(body, "phase")
     augments = _coerce_str_list(body.get("augments"), "augments")
     if phase is not None and phase not in ("early", "mid", "late"):
@@ -291,6 +294,7 @@ def _route_rank(body: dict) -> dict:
             current_item_ids=items, mode=mode,
             target_armor=target_armor, target_mr=target_mr,
             target_max_hp=target_max_hp,
+            target_bonus_hp=target_bonus_hp,
             phase=phase,
             budget=budget, slot_count=slot_count, top_n=top_n,
             include_components=include_components,
@@ -313,6 +317,7 @@ def _route_beam(body: dict) -> dict:
     target_armor = _opt_float(body, "target_armor", 0.0)
     target_mr = _opt_float(body, "target_mr", 0.0)
     target_max_hp = _opt_float(body, "target_max_hp", 0.0)
+    target_bonus_hp = _opt_float(body, "target_bonus_hp", 0.0)
     phase = _opt_str(body, "phase")
     if phase is not None and phase not in ("early", "mid", "late"):
         raise _ApiError(400, f"phase: must be early|mid|late, got {phase!r}")
@@ -332,6 +337,7 @@ def _route_beam(body: dict) -> dict:
             current_item_ids=items, mode=mode,
             target_armor=target_armor, target_mr=target_mr,
             target_max_hp=target_max_hp,
+            target_bonus_hp=target_bonus_hp,
             phase=phase,
             slot_count=slot_count, beam_width=beam_width, top_n=top_n,
             total_budget=total_budget,
