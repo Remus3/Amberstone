@@ -285,6 +285,16 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=PHYSICAL,
             every_n_seconds=3.0,
         ),),
+        # Phase 4 batch 11 (2026-05-04): Spellblade is unique-passive in
+        # current League — only one Spellblade proc fires per attack.
+        # Deduped against Lich Bane (3100). Sundered Sky (6610) uses its
+        # own "Lightshield Strike" label, not Spellblade — distinct
+        # mechanic, no dedup. Essence Reaver (3508) has the Spellblade
+        # label too but is currently defensive_only (proc not modeled);
+        # tagging it would create order-dependence (LB or TF would get
+        # deduped if Essence Reaver appeared first), so it stays untagged
+        # until promoted out of defensive_only.
+        unique_passive_key="spellblade",
         note="Trinity Force: Spellblade ~200% base AD on-hit, ~once per 3s in rotation",
     ),
     "6699": ItemEffect(
@@ -569,6 +579,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=MAGICAL,
             every_n_seconds=3.0,
         ),),
+        # Phase 4 batch 11 (2026-05-04): Spellblade unique-passive — see
+        # the note on Trinity Force (3078) for the full reasoning. First-
+        # seen-wins ordering: building [TF, LB] keeps TF's spellblade,
+        # building [LB, TF] keeps LB's. Both are reasonable approximations
+        # of a single in-game spellblade firing.
+        unique_passive_key="spellblade",
         note="Lich Bane: Spellblade ~75% base AD + 50% AP magic, ~once per 3s in rotation",
     ),
     "3115": ItemEffect(

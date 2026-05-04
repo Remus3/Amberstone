@@ -1346,5 +1346,101 @@ class UniquePassiveTests(unittest.TestCase):
         self.assertGreater(bc.armor_reduction_pct, 0.0)
 
 
+class SpellbladeUniquePassiveTests(unittest.TestCase):
+    """Phase 4 batch 11 — Spellblade unique-passive on TF + Lich Bane.
+
+    Trinity Force (3078) and Lich Bane (3100) both fire Spellblade procs
+    in current League. In-game, Spellblade is unique-passive — only one
+    spellblade fires per ability+attack. The engine now respects this
+    via the batch-10 unique_passive_key="spellblade" tag on both items.
+
+    Sundered Sky (6610) uses "Lightshield Strike" — a distinct mechanic
+    despite being ability-gated; not tagged. Essence Reaver (3508) has
+    the Spellblade label but is currently defensive_only (proc not
+    modeled); tagging it would dedup against TF/LB depending on order,
+    so it stays untagged until promoted out of defensive_only.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_triforce_and_lich_bane_share_spellblade_key(self) -> None:
+        self.assertEqual(ITEM_EFFECTS["3078"].unique_passive_key, "spellblade")
+        self.assertEqual(ITEM_EFFECTS["3100"].unique_passive_key, "spellblade")
+
+    def test_sundered_sky_not_tagged_spellblade(self) -> None:
+        # Distinct mechanic ("Lightshield Strike"). Different cooldown
+        # (8s vs 3s), different effect (guaranteed crit + heal vs
+        # bonus damage). Must not share the spellblade key or building
+        # TF + Sundered Sky would silently drop one of them.
+        self.assertNotEqual(ITEM_EFFECTS["6610"].unique_passive_key, "spellblade")
+
+    def test_essence_reaver_not_tagged_spellblade(self) -> None:
+        # Currently defensive_only — tagging would create order-
+        # dependence (Essence Reaver-first would dedup TF or LB).
+        # Promote it first (model the proc), then tag.
+        self.assertNotEqual(ITEM_EFFECTS["3508"].unique_passive_key, "spellblade")
+
+    def test_collect_effects_dedups_spellblade_pair(self) -> None:
+        from agents.daemon_slayer.effects import collect_effects
+        # First-seen-wins: TF kept, Lich Bane dropped.
+        effects = collect_effects(["3078", "3100"])
+        self.assertEqual(len(effects), 1)
+        self.assertEqual(effects[0].item_id, "3078")
+
+    def test_collect_effects_dedup_lich_bane_first_wins(self) -> None:
+        from agents.daemon_slayer.effects import collect_effects
+        effects = collect_effects(["3100", "3078"])
+        self.assertEqual(len(effects), 1)
+        self.assertEqual(effects[0].item_id, "3100")
+
+    def test_triforce_solo_unchanged(self) -> None:
+        # Single-item TF DPS must equal pre-batch-11 baseline (regression
+        # guard). Ahri lvl 11 + TF was 85.08 before tagging.
+        r = compute_dps(self.snap, "Ahri", level=11, item_ids=["3078"])
+        self.assertAlmostEqual(r.weighted_dps, 85.08, places=2)
+
+    def test_lich_bane_solo_unchanged(self) -> None:
+        # Lich Bane alone unchanged: 58.17 on Ahri lvl 11.
+        r = compute_dps(self.snap, "Ahri", level=11, item_ids=["3100"])
+        self.assertAlmostEqual(r.weighted_dps, 58.17, places=2)
+
+    def test_triforce_plus_lich_bane_no_double_count(self) -> None:
+        # Pre-fix this build was 122.50 dps (sum of solo deltas =
+        # double-count of spellblade). Post-fix should be ~85 dps —
+        # TF spellblade kept, LB spellblade dropped, LB stat block
+        # (100 AP, 4% MS, 10 AH) contributes ~0 to AA-DPS for Ahri.
+        # Floor below the double-count level is the key assertion.
+        bare = compute_dps(self.snap, "Ahri", level=11)
+        tf_only = compute_dps(self.snap, "Ahri", level=11, item_ids=["3078"])
+        both = compute_dps(self.snap, "Ahri", level=11, item_ids=["3078", "3100"])
+        # No double-count: both should be roughly TF-alone (LB stats
+        # don't lift Ahri's AA much).
+        delta_solo = tf_only.weighted_dps - bare.weighted_dps
+        delta_both = both.weighted_dps - bare.weighted_dps
+        # Without dedup, delta_both would be ~delta_solo + LB-spellblade
+        # contribution (~37 dps). With dedup, delta_both ≈ delta_solo.
+        # Tolerate small deviation from LB stat-block contributions.
+        self.assertLess(
+            delta_both, delta_solo + 5.0,
+            "Spellblade double-count regression: LB proc still firing",
+        )
+        # And both must be well above bare — TF's spellblade still fires.
+        self.assertGreater(delta_both, 50.0)
+
+    def test_triforce_plus_lich_bane_order_swap_yields_lich_bane_proc(self) -> None:
+        # Order swap → LB spellblade kept (first-seen-wins).
+        # LB spellblade scales with AP (50% AP bonus), so it's larger
+        # on AP champions. Ahri's base AD is moderate; LB-kept value
+        # should be different from TF-kept value (pin order semantics).
+        tf_first = compute_dps(self.snap, "Ahri", level=11, item_ids=["3078", "3100"])
+        lb_first = compute_dps(self.snap, "Ahri", level=11, item_ids=["3100", "3078"])
+        # Both are valid "single spellblade" approximations but produce
+        # different numerical results — order dependence is real and
+        # documented.
+        self.assertNotAlmostEqual(tf_first.weighted_dps, lb_first.weighted_dps, places=1)
+
+
 if __name__ == "__main__":
     unittest.main()
