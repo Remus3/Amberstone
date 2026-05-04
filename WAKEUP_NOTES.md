@@ -2466,3 +2466,46 @@ in-game state lost on /clear). **Game-PC bridge auto-flow loop is
 DEAD** — 90s liveness probe (task-1311d83782c3) timed out. Re-run
 `/loop /process-bridge-tasks` on Game-PC at next session start, or
 results will pile up unread.
+
+## s51 hand-off — 2026-05-04 (Daemon Slayer Phase 8 backend complete: P8-1..P8-4)
+
+Single-arc session. Phase 8 (SR Draft Theatre) backend is now fully
+shipped over four discrete commits — engine-backed profile generator,
+user-curated additive store, and LCU spells writer hardening, all on
+top of a route + state-flag thin slice. Frontend (P8-5/P8-6) deferred
+to a fresh session.
+
+**Shipped (4 commits, all pushed `1e17ee4..97f94e0 main -> main`):**
+- `8ff001e` P8-1: `coaches/sr_draft_profile.py` stub + `dashboard/routes_sr_draft.py` POST `/api/sr-draft/profile` + `lcu.champ_select.sr_draft` flag derivation in `_state_builder` for queue ids {400,420,430,440}.
+- `13c2e5e` P8-2: engine-backed body — 3 `/beam` calls per profile-pull (primary/alt/experimental), TTL cache by (champ, role, allies_sig, enemies_sig), mtime-aware `data/daemon_slayer/sr_draft_presets.json`, role normaliser with MID/BOT/ADC/SUP/JG aliases, graceful URLError/HTTPError handling.
+- `fd9fc4f` P8-3: `coaches/sr_user_builds.py` CRUD on `data/daemon_slayer/user_builds.json` (gitignored, 8-hex IDs, atomic write w/ WinError-5 retry, mtime cache, threading.Lock) + `dashboard/routes_sr_user_builds.py` (GET ?champion= + POST action-keyed for list/add/update/delete) + route-layer merge in `routes_sr_draft._serve_sr_draft_profile_post`. Operator-additive invariant preserved — sr_draft_profile.py never reads or writes user_builds.json; merging happens at the route, kind="engine"/kind="user" tags differentiate.
+- `97f94e0` P8-4: `lcu/lcu_pregame.py` SPELLS_BY_ROLE table + `spells_for_role()` helper + `set_summoner_spells(*, current_pair=None)` keyword-only kwarg for idempotent skip when target matches current. Backwards-compat preserved (one existing positional caller in lcu_rune_writer.py:468 unaffected).
+
+**Test state:** 63/63 phase8_smoke green (15 stub + 18 engine + 19 user-builds + 11 spells). 75/75 phase2_smoke regression green across all 4 RC restarts. Engine on :8893 still 0.9.3 (no engine change this session).
+
+**Decisions worth pinning:**
+- **Plan agent picked Phase 8 over Phase 5.** Phase 5 (Mayhem augments) still blocked on cdragon dump.
+- **Polling not WebSocket** for `/lol-champ-select/v1/session` — gamepc_lcu_agent already polls and surfaces via `/api/state`; no second WS subscriber.
+- **JSON not SQLite** for user_builds — operator-edit affordance, project convention (mirrors champion_loadouts.json/experimental_builds.json), atomic-write idiom already exists.
+- **Merge at route layer, not in build_profile()** — keeps the engine generator pure.
+- **Frozen-file edits avoided.** Plan flagged `lcu_rune_writer.py`'s shard3=5002 SR bug + `_write_page` rune-name collision; both deferred. SR-draft variants will route through `/api/loadout/apply` which calls `set_summoners` independently of the rune writer's poll loop, dodging the conflict.
+
+**Things tomorrow-you should NOT redo:**
+- Don't propose ARAM bench-swap auto-recommendation — already in `champ_select_coach.swap`.
+- Don't touch `lcu_rune_writer.py` for Phase 8 — architecture pivot routes around it.
+- Don't bump engine version for the UI commits — `/beam` shape is stable; no engine change needed for P8-5/P8-6/P8-7.
+- Don't merge user builds inside `sr_draft_profile.py` — operator-additive invariant requires merge at route layer only.
+- Don't add a second `_state_builder` import path for `sr_draft` flag — the single derivation in `build_state()` covers all callers.
+
+**Activation status:** All 4 commits live as of pid=8104 (last_reload_ok=true). `POST /api/sr-draft/profile` returns 3 engine + N user profiles end-to-end; `POST /api/sr-draft/user-builds` CRUD works; `lcu.champ_select.sr_draft` true on draft-queue states.
+
+**Next-session candidates (ranked):**
+1. **P8-5 — `cs-build-list` UI extension for SR draft.** Now unblocked (depended on P8-2 + P8-3, both done). ~300 LOC of `web/js/dashboard.js`. Gate the new chooser on `state.lcu.champ_select.sr_draft===true`; debounced fetch of `/api/sr-draft/profile`; render 3 engine rows + N user rows w/ keystone + start/core/final columns; click → new `/api/sr-draft/apply` (mirrors `_serve_loadout_apply_post` at routes_loadout.py:62). UI work — requires browser screenshot via `mcp__gamepc__capture_monitor` per `feedback_screenshot_after_ui_changes`.
+2. **P8-6 — User-build CRUD UI sub-page.** Independent of P8-5; only depends on P8-3. Add `view-user-builds` via the established sub-page pattern in `web/index.html` + VIEW_IDS in dashboard.js + 3 CSS rules.
+3. **P8-7 — E2E push-to-League integration test.** Blocked on P8-5 (apply route). Verify rune-page name uniqueness (`RC: <Champ> primary (SR)` etc) so concurrent variants don't clobber each other via `_write_page`'s delete-all-RC-pages step.
+4. **Activate v2 in production** for the *arena* augment vision flow (still relevant from s50; v2 reconciler ships with current RC so just needs an arena game to verify `augments_source` flips to `vision_hud`).
+
+**Bridge state at session end:** RC main pid=8104 alive=true reload_ok=true. Engine on :8893 still 0.9.3. LCU phase=Lobby (safe to /clear). Working tree post-commit:
+- 4 commits pushed; only `data/ratings/last_*.json` runtime mutations dirty (auto-mutated, skipped).
+
+**/done close-out (2026-05-04):** auto-committed nothing (only runtime junk pending); pushed `1e17ee4..97f94e0 main -> main` (4 commits). **Game-PC bridge auto-flow loop is DEAD** — fresh 90s liveness probe (task-294ce6e18cff) returned 0 replies, task not queued on Game-PC side either. Re-run `/loop /process-bridge-tasks` on Game-PC at next session start.
