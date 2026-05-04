@@ -4885,3 +4885,43 @@ clean except runtime `data/ratings/last_*.json` mutations.
 7. **Riftmaker HP→AP cross-derivation** (carried — still separate
    from #1; #1 unlocks Riftmaker partially).
 8. **Per-target-HP-pct field** (carried; defer until caller demands).
+
+---
+
+## s62-s66 session wrap — 2026-05-04 (5 Phase-4 batches in one session, engine 0.15.0 → 0.20.0)
+
+Single 5-arc session. Started s62 with `continue Daemon Slayer` and
+shipped five consecutive Phase-4 batches without leaving the chair:
+
+- **s62 Batch 9**  (`20ff47c`) — Immolate items (Sunfire + Hollow Radiance), no schema bump
+- **s63 Batch 10** (`aa76ae4`) — unique-passive enforcement (immolate key)
+- **s64 Batch 11** (`fa17e94`) — Spellblade unique-passive (TF + Lich Bane)
+- **s65 Batch 12** (`56d6934`) — Lifeline unique-passive + PD note fix
+- **s66 Batch 13** (`b817430`) — Terminus promoted from defensive_only
+
+Engine 0.15.0 → 0.20.0 (5 minor bumps). Tests 302 → 340 (+38).
+ITEM_EFFECTS 52 → 54 (+2 Immolate items in batch 9). Defensive_only
+count 28 → 27 (Terminus promoted in batch 13). RC main pid=9488
+unchanged across all 5 batches; only RC-DaemonSlayer scheduled task
+bounced (11× this session).
+
+**Carried theme:** "research-then-tag" pattern for unique-passives.
+DDragon snapshot label-match is the source-of-truth signal for shared
+mechanics (literal "Spellblade" / "Lifeline" labels → tag together;
+distinct labels → don't lump). Each tagging batch (10/11/12) led with
+snapshot probes before any code change. Batch 13 audit also surfaced
+the broader pattern: re-read DDragon BEFORE promoting, not RC's
+existing notes (which had drifted on PD + Terminus).
+
+**Defensive_only audit ledger:** 27 items remaining, categorized into
+10 buckets in s66 hand-off — prevents re-auditing in future batches.
+
+**Next session top-of-queue:** Phase 4 batch 14 — damage_amp_pct
+schema (unlocks Riftmaker). See s66 #1 candidate.
+
+**Don't redo:** the lambda-side semantic pattern + unique-passive
+dedup architecture are now load-bearing — don't propose alternatives.
+Don't promote Essence Reaver until current-patch Spellblade damage
+formula is verified externally. Don't tag PD as Lifeline (Spectral
+Waltz is distinct). Don't tag Sundered Sky as Spellblade (Lightshield
+Strike is distinct).
