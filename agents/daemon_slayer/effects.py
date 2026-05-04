@@ -785,6 +785,33 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         unique_passive_key="spellblade",
         note="Lich Bane: Spellblade ~75% base AD + 50% AP magic, ~once per 3s in rotation",
     ),
+    "6662": ItemEffect(
+        item_id="6662",
+        name="Iceborn Gauntlet",
+        # Phase 4 batch 23 (2026-05-04): added to ITEM_EFFECTS as a new
+        # entry (was not in the table at all — stats-only via item
+        # aggregation prior to this batch). Iceborn's Spellblade variant
+        # deals 150% base AD bonus physical on the next basic after an
+        # ability. Real CD is 1.5s post-empowered-attack; rotation
+        # cadence approx ~3s same as Trinity Force / Lich Bane / Essence
+        # Reaver (gated by ability cast frequency, not item CD). The
+        # frost field's 25% slow is utility, not damage — not modeled.
+        # Joins the spellblade unique-passive dedup family.
+        periodics=(PeriodicProc(
+            name="Spellblade",
+            bonus_damage=lambda c: 1.50 * c.base_ad,
+            damage_type=PHYSICAL,
+            every_n_seconds=3.0,
+        ),),
+        # Spellblade unique-passive — same key as Trinity Force (3078),
+        # Lich Bane (3100), and Essence Reaver (3508). First-seen-wins
+        # ordering: [TF, IBG] keeps TF (200% > 150%, but order rules);
+        # [IBG, TF] keeps IBG. Same caveat as the rest of the family —
+        # the engine doesn't pick "best", it picks "first" — and that
+        # behavior is documented and intentional.
+        unique_passive_key="spellblade",
+        note="Iceborn Gauntlet: Spellblade ~150% base AD on-hit, ~once per 3s in rotation",
+    ),
     "3115": ItemEffect(
         item_id="3115",
         name="Nashor's Tooth",
