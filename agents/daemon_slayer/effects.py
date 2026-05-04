@@ -688,6 +688,56 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),),
         note="Ravenous Hydra: Cleave ~35% AD physical to nearby enemies (melee, scales with rotation targets)",
     ),
+
+    # ── Phase 4 batch 9 (2026-05-04): Immolate items ──
+    # Sunfire Aegis (3068) and Hollow Radiance (6664) share the same
+    # Immolate aura passive: after taking or dealing damage, deal
+    # ~12 + 1.5% bonus HP magic damage per second to nearby enemies for 3s.
+    # In any DPS rotation (basic attacks every ~1s, all rotations >=2s),
+    # the 1s charge + 3s active window are continuously refreshed — modeled
+    # as a per-second tick over the full rotation duration. The
+    # AoE-incl-primary multiplier is c.targets_in_rotation (Sunfire's aura
+    # damages every nearby enemy, primary included). Caster bonus HP
+    # scaling reuses the batch-6 caster-HP layer.
+    #
+    # NOTE: Riot enforces unique-passive on Immolate (stacking Sunfire +
+    # Hollow Radiance does NOT double the proc). The engine currently
+    # treats all procs independently, so a build with both items will
+    # double-count this contribution. Unique-passive enforcement is its
+    # own architectural change — out of scope for this batch.
+    #
+    # Both items pass-through CallContext.targets_in_rotation: at n=1 the
+    # Immolate still ticks for 1× damage (the primary target IS counted).
+    # At n=3 it ticks for 3× damage. This is the AoE-incl-primary idiom
+    # pinned in batch 7's tests.
+
+    "3068": ItemEffect(
+        item_id="3068",
+        name="Sunfire Aegis",
+        periodics=(PeriodicProc(
+            name="Immolate",
+            bonus_damage=lambda c: c.targets_in_rotation
+                * (12.0 + 0.015 * c.caster_bonus_hp),
+            damage_type=MAGICAL,
+            every_n_seconds=1.0,
+        ),),
+        note="Sunfire Aegis: Immolate ~12 + 1.5% bonus HP magic per second to nearby (melee values)",
+    ),
+    "6664": ItemEffect(
+        item_id="6664",
+        name="Hollow Radiance",
+        periodics=(PeriodicProc(
+            name="Immolate",
+            bonus_damage=lambda c: c.targets_in_rotation
+                * (12.0 + 0.015 * c.caster_bonus_hp),
+            damage_type=MAGICAL,
+            every_n_seconds=1.0,
+        ),),
+        note=(
+            "Hollow Radiance: Immolate ~12 + 1.5% bonus HP magic per second "
+            "to nearby (Desolate execute-on-kill not modeled — conditional)"
+        ),
+    ),
 }
 
 
