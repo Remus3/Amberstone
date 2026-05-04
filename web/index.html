@@ -370,6 +370,30 @@
         </div>
         <div class="cs-build-list" id="cs-build-list"></div>
       </div>
+      <!-- SR Draft Theatre chooser (Phase 8 step 5). Gated on
+           cs.sr_draft (set by _state_builder for queue ids 400/420/430/440).
+           Renders 3 engine-generated profiles (primary/alt/experimental)
+           + N user-curated additive builds (data/daemon_slayer/user_builds.json).
+           Clicking a row pushes runes + items + summoners via
+           /api/sr-draft/apply with a unique RC: page name per variant. -->
+      <div class="cs-loadout-block" id="cs-srdraft-block" hidden>
+        <div class="cs-loadout-head">
+          <div class="cs-loadout-label">SR Draft Theatre — engine + user builds</div>
+          <label class="cs-srdraft-role-wrap" title="Lane assignment hint for engine rune defaults">
+            <span>Role</span>
+            <select class="cs-srdraft-role" id="cs-srdraft-role">
+              <option value="">auto</option>
+              <option value="TOP">top</option>
+              <option value="JUNGLE">jungle</option>
+              <option value="MIDDLE">middle</option>
+              <option value="BOTTOM">bottom</option>
+              <option value="UTILITY">utility</option>
+            </select>
+          </label>
+          <div class="cs-loadout-status" id="cs-srdraft-status"></div>
+        </div>
+        <div class="cs-build-list" id="cs-srdraft-list"></div>
+      </div>
       <div class="cs-teams">
         <div class="cs-team-block">
           <div class="cs-team-label">Allies</div>
