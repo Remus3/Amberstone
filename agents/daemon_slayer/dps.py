@@ -365,7 +365,7 @@ def compute_dps(
     # Phase 4 expansion: armor reduction + pen pipeline. Phase 4 batch 4
     # (2026-05-04) added the symmetric magic pen pipeline (Void Staff,
     # Cryptbloom, Sorcerer's Shoes, Shadowflame).
-    target_armor_eff = effective_target_armor(target_armor, item_effects)
+    target_armor_eff = effective_target_armor(target_armor, item_effects, level)
     target_mr_eff = effective_target_mr(target_mr, item_effects)
 
     # Build call context once per compute_dps. base_ad comes from the
