@@ -3671,3 +3671,156 @@ mutations.
 5. **Activate arena augment v2 in production** (carried).
 6. **Riftmaker HP→AP cross-derivation** (carried).
 7. **Per-target-HP-pct field** (carried; defer until caller demands).
+
+---
+
+## s60 hand-off — 2026-05-04 (Phase 4 batch 7: multi-target rotations + Ravenous Hydra)
+
+Single-arc continuation of s59. Picked the s59 #1 candidate
+(multi-target rotation modeling). Fifth Phase-4 batch in two days.
+Operator still idle (LCU phase=None, RC main pid=9488 unchanged).
+
+**Research-first finding:** lolmath scenarios already carry the
+data — no schema bump needed on the snapshot side. Of 1390 rotations
+across 172 champions × 3 phases × 2-4 rotations each, 1310 have
+`numberOfTargets=1.0` (94%) and 80 carry n>1 with values
+{1.5, 2, 2.25, 2.5, 2.75, 3, 5}. Champions with n>1 rotations
+include Ahri (n=1.5 in late DPS), Amumu (n=3 init), Anivia (n=3
+late DPS w=70), Annie (n=3 mid AOE init w=60). Fractional values
+are an "expected hit count" not a literal target count.
+
+**Pattern decision worth pinning:** instead of a per-proc enum
+(`single` / `aoe` / `cleave`) I went with a single
+`CallContext.targets_in_rotation: float = 1.0` field — each lambda
+expresses its own multi-target semantic inline:
+
+- single-target: don't reference the field (default; backward-compat)
+- AoE incl primary: `c.targets_in_rotation` directly (Sunfire-style)
+- cleave-to-others: `max(0, c.targets_in_rotation - 1)` (Ravenous-style)
+
+This pushes the multiplier choice into the lambda where the math
+already lives. No new schema field. Self-documenting in the proc
+definition. Adding a 4th semantic later (e.g. "AoE capped at N
+targets") is a 1-line lambda change. Pinned in the dps.py module
+docstring + the test class `CallContextTargetsInRotationTests`.
+
+**Shipped (commit `5ff148b`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - `CallContext.targets_in_rotation: float = 1.0` appended (default
+    keeps every existing callable backward-compatible).
+  - **Ravenous Hydra (3074)** — NEW entry. Cleave periodic, every
+    basic, `bonus_damage = lambda c: max(0, c.targets_in_rotation - 1)
+    * 0.35 * (c.base_ad + c.bonus_ad)`, physical. Melee values;
+    ranged (21%) under-counted (Ravenous is melee-build-typical).
+
+- `agents/daemon_slayer/dps.py`:
+  - Imports `replace` from `dataclasses`.
+  - `_rotation_attack_dps` rebinds the call context per rotation:
+    `rotation_targets = float(rotation.get("numberOfTargets", 1.0))`,
+    `rotation_ctx = replace(call_ctx, targets_in_rotation=rotation_targets)`.
+    Passed to `_periodic_proc_dps` instead of the static outer ctx.
+  - Module docstring refreshed to describe the per-rotation rebind.
+
+- `agents/daemon_slayer/__init__.py`: docstring narrative
+  refreshed (multi-target layer call-out + 28 defensive_only count
+  unchanged from batch 6); `ENGINE_VERSION 0.13.0 → 0.14.0`.
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - **CallContextTargetsInRotationTests** (4 tests) — default 1.0,
+    cleave-to-others zero at n=1, cleave scales with n (n=3, total
+    AD=100 → 70), AoE-incl-primary idiom pinned (n=2.5 × 30 = 75).
+  - **RavenousHydraMultiTargetTests** (4 tests) — periodic shape,
+    Aatrox-fixture sentinel (all rotations confirm n=1.0), Anivia
+    late n=3 lifts DPS, per-rotation isolation (Annie mid mixes
+    n=1 + n=3 — engine handles it).
+  - `CoverageCountTests` floor 51 → 52 (Ravenous added).
+
+**Test state:** 295/295 daemon_slayer tests green (was 287 at end
+of s59; +8 = 4 + 4 from the two new classes). py_compile pre-commit
+hook passed. **Importantly: all 287 prior tests stayed green
+unchanged before the new tests were added** — confirms the per-
+rotation rebind is invisible to single-target rotations.
+
+**Live engine verify (post-restart `schtasks /End` + `/Run`):**
+```
+GET  /health                                              → 0.14.0
+POST /dps {Aatrox, lvl 11}                                → 47.07
+POST /dps {Aatrox, lvl 11, items:[3074]}                  → 74.88 (+27.81; cleave=0)
+POST /dps {Anivia, lvl 11, phase:late}                    →  5.81
+POST /dps {Anivia, lvl 11, items:[3074], phase:late}      → 17.61 (+11.80)
+```
+Aatrox sanity: +27.81 dps is purely from Ravenous's 65 AD stat
+block — the cleave proc resolves to zero on every Aatrox rotation
+(all n=1). Anivia late: +11.80 dps includes both stat-block AD
+uplift AND cleave damage on the n=3 weight=70 DPS rotation.
+
+**Coverage delta:** ITEM_EFFECTS 51 → 52 entries (+1, Ravenous).
+
+**Decisions worth pinning:**
+- **Single CallContext field, lambda-side semantic.** The proc-level
+  enum was tempting (cleaner type-system signal of intent) but adds
+  schema to every PeriodicProc and forces dispatch logic in
+  `_periodic_proc_dps`. The lambda-side approach is invisible to
+  single-target procs and zero new infrastructure for future shapes.
+- **Per-rotation `replace`, not per-proc.** All procs in the same
+  rotation share the rotation's `numberOfTargets`. Building one
+  rotation_ctx per rotation amortizes the (cheap) frozen-dataclass
+  copy. Per-proc would be more flexible but redundant.
+- **Ravenous Hydra at melee values.** Same call as Titanic in batch
+  6. Ranged-Ravenous is Riot trolling; not a meta build.
+- **Titanic's cleave-to-others piece deferred.** Would need multi-
+  proc-per-item (current schema is `periodic: Optional[PeriodicProc]`).
+  That's a real schema change — `tuple[PeriodicProc, ...]` with
+  iteration in `collect_effects`. Worth its own batch.
+- **Sunfire / Frostfire Immolate deferred.** Periodic-AoE on damage-
+  dealt-or-taken is a different shape; needs an "in combat" duration
+  (3s post-damage). Adding a `combat_duration_pct` field would do it
+  but needs UX thought. Tank items, low DPS-build priority.
+
+**Things tomorrow-you should NOT redo:**
+- Don't add a per-proc `target_mode` enum. The lambda-side semantic
+  is the chosen pattern.
+- Don't model Ravenous at n=1 — the cleave hits ZERO enemies in
+  that case. The `max(0, n-1)` is the canonical formula.
+- Don't bump CoverageCountTests floor past 52 until next batch lands.
+- Don't try to model Titanic's cleave-to-others without first
+  changing the schema to `tuple[PeriodicProc, ...]` — would need
+  a 2nd proc on a single item.
+
+**Activation:** Engine on :8893 already at 0.14.0 (this session
+restarted it). No further action needed.
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true (no Legion main-RC restart this session; RC-DaemonSlayer
+bounced for the 5th time today). Engine on :8893 = 0.14.0 live.
+LCU phase=None (no game in progress). Working tree clean except
+runtime `data/ratings/last_*.json` mutations.
+
+**Operational backlog (carried + new):**
+- All s54-s59 backlog items unchanged.
+- **Multi-proc-per-item schema** (NEW from s60). `ItemEffect.periodic`
+  is currently `Optional[PeriodicProc]`. Promoting to `tuple[PeriodicProc, ...]`
+  with default `()` would unlock Titanic Hydra cleave-to-others (its
+  primary-target proc + cleave-to-others proc), and any future item
+  with multiple periodic effects (Goredrinker hypothetically). ~2-3
+  hour scope; touches `_periodic_proc_dps` iteration + every existing
+  ItemEffect with a single proc (~13 entries — straightforward
+  `(proc,)` wrap).
+- **Sunfire / Frostfire Immolate** (NEW from s60). Periodic AoE,
+  needs "in combat" duration model. Defer until tank-build DPS
+  becomes a priority.
+
+**Next-session candidates (ranked):**
+1. **Phase 4 batch 8: multi-proc-per-item schema + Titanic cleave-
+   to-others** (NEW). Schema bump (0.14.0 → 0.15.0). Mostly mechanical
+   — wrap existing `periodic` entries in tuples, switch loop in
+   `_periodic_proc_dps` from `if proc is None` to `for proc in
+   e.periodics`. Then add Titanic's secondary cleave-to-others proc.
+2. **First draft visual verify of P8-5.5** (carried).
+3. **gamepc_boot.ps1 patch** (carried).
+4. **P8-7 E2E push-to-League integration test** (carried).
+5. **Activate arena augment v2 in production** (carried).
+6. **Riftmaker HP→AP cross-derivation** (carried).
+7. **Sunfire / Frostfire Immolate** (NEW from s60).
+8. **Per-target-HP-pct field** (carried; defer until caller demands).
