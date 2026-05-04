@@ -381,6 +381,11 @@ def compute_dps(
     base_hp = float(resolved.base_stats.get("hp", 0.0)) if resolved.base_stats else 0.0
     caster_max_hp = float(stats.get("hp", 0.0))
     caster_bonus_hp = max(0.0, caster_max_hp - base_hp)
+    # Phase 4 batch 27 (2026-05-04): caster max mana — needed for Manamune /
+    # Muramana's Awe (already folded into ad_flat by build_champion) and
+    # Muramana's Shock proc (per-attack 1.2% max mana physical). Manaless
+    # champions and pre-batch-27 builds carry stats["mp"]=0 → 0 contribution.
+    caster_max_mp = float(stats.get("mp", 0.0))
     # Phase 4 batch 15 (2026-05-04): cross-derived AP from caster bonus
     # HP (Riftmaker's Void Infusion). Added to ap before CallContext
     # is built so AP-scaling procs (Lich Bane, Nashor's Tooth) see the
@@ -421,6 +426,7 @@ def compute_dps(
         caster_bonus_hp=caster_bonus_hp,
         target_bonus_hp=target_bonus_hp,
         crit_chance=crit_chance_ctx,
+        caster_max_mp=caster_max_mp,
     )
 
     rotations_by_phase = _phase_rotations(snapshot, resolved.champion_id)

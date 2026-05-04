@@ -241,6 +241,26 @@ def build_champion(
         if passive_bonus_ad > 0:
             item_totals["ad_flat"] = item_totals.get("ad_flat", 0.0) + passive_bonus_ad
 
+    # Phase 4 batch 27 (2026-05-04): item-passive bonus AD as a percentage of
+    # the wielder's total max mana (Manamune / Muramana's "Awe" — +2% max
+    # mana as bonus AD). Same wiring shape as the Sterak's walk above, but
+    # keyed off mana instead of base AD. Walked AFTER aggregate_item_stats
+    # produces ``item_totals["mp_flat"]`` so the items' own mana pools
+    # (Manamune 500, Muramana 1000) are included in the conversion base.
+    # Awe is mana → AD one-way — no feedback loop, no need to iterate to a
+    # fixed point. Manaless champions (energy users) have ``scaled["mp"]``
+    # = 0; if their build also has no item mp_flat the Awe contribution
+    # resolves to 0, so the walk is safe to run unconditionally.
+    total_max_mp = scaled.get("mp", 0.0) + item_totals.get("mp_flat", 0.0)
+    if total_max_mp > 0:
+        passive_ad_from_mp = 0.0
+        for iid in item_id_list:
+            eff = ITEM_EFFECTS.get(iid)
+            if eff and eff.bonus_ad_pct_max_mp > 0:
+                passive_ad_from_mp += eff.bonus_ad_pct_max_mp * total_max_mp
+        if passive_ad_from_mp > 0:
+            item_totals["ad_flat"] = item_totals.get("ad_flat", 0.0) + passive_ad_from_mp
+
     final = _combine_items(scaled, raw_base, item_totals, level)
     if augment_overlay:
         for k, v in augment_overlay.items():

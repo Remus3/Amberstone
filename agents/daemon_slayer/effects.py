@@ -109,6 +109,14 @@ class CallContext:
     # can't infer it without naming the target. Procs that key on this
     # field gracefully no-op when the caller leaves it at 0.
     target_bonus_hp: float = 0.0
+    # Phase 4 batch 27 (2026-05-04): caster max mana — engine-derived from
+    # ``stats["mp"]`` (champion base mp + per-level scaling + item flat mp
+    # contributions). Sibling of caster_max_hp from batch 6. Required for
+    # Manamune / Muramana's Awe (2% max mana → bonus AD) and Muramana's
+    # Shock (1.2% max mana per-attack proc). Default 0.0 means "build has
+    # no mana" — manaless champions (energy users like Lee Sin, Akali)
+    # and pre-batch-27 callers gracefully no-op any mana-scaling proc.
+    caster_max_mp: float = 0.0
 
 
 # Scaling-damage callable type. Float still works as a constant.
@@ -225,6 +233,22 @@ class ItemEffect:
     # could in principle stack), but currently only 3053 carries this — if
     # a second item appears, ``unique_passive_key`` is the right gate.
     bonus_ad_pct_base_ad: float = 0.0
+    # Phase 4 batch 27 (2026-05-04): item-passive bonus AD as a percentage of
+    # the wielder's total max mana. Manamune / Muramana's "Awe" grants
+    # bonus AD equal to 2% of maximum mana — a stat layer, not a proc.
+    # Same wiring shape as ``bonus_ad_pct_base_ad`` (batch 20): engine
+    # resolves this in ``build_champion`` AFTER ``_scale_champion_base``
+    # (which gives leveled base mana) and AFTER ``aggregate_item_stats``
+    # (which sums item flat mana), but BEFORE ``_combine_items`` folds
+    # totals into the final stat block. Self-referential check: Awe is
+    # mana → AD, one-way; the items' own mana is already in item_totals
+    # at the point of the walk, so total_max_mp reflects the build's
+    # finished mana pool. Default 0.0 → no contribution.
+    # NOT a unique passive at the effect-layer in the current engine
+    # (multiple Awe-shape items could in principle stack); in real
+    # League Manamune transforms INTO Muramana so you can't own both.
+    # Build-legality is ranker-owned per the s81/s82 pattern.
+    bonus_ad_pct_max_mp: float = 0.0
     # Phase 4 batch 26 (2026-05-04): item-effect-contributed crit chance.
     # Two flavors composing additively into a single per-build sum that
     # adds to ``stats["crit"]`` at compute_dps construction time:
@@ -1138,6 +1162,66 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         crit_chance_bonus_max_pct=0.30,
         crit_chance_bonus_per_bonus_hp_cap=3000.0,
         note="Atma's Reckoning: Big Hands +1% crit per 100 bonus HP, max 30% at 3000 bonus HP",
+    ),
+
+    # ── Phase 4 batch 27 (2026-05-04): Manamune / Muramana family ──
+    # Mana-scaling damage. Awe (2% max mana → bonus AD) is a stat layer
+    # mirroring batch 20's Sterak's bonus_ad_pct_base_ad wiring; Shock
+    # (Muramana only — 1.2% max mana per-attack physical) uses the
+    # existing periodic schema with a new caster_max_mp CallContext field.
+    # Manamune transforms into Muramana at +360 max-mana-stacks in real
+    # League — engine doesn't model the transformation, so the two items
+    # are independent ITEM_EFFECTS entries. Manaflow (the stacking
+    # mana-on-attack mechanism that drives the transformation) is
+    # intentionally not modeled; same call as Yun Tal's Practice Makes
+    # Lethal stack-up — pin the steady-state assumption (the item's own
+    # listed max-mana stat) and let build_champion handle the mana
+    # block. Muramana's ability damage piece (3-4% max mana on damaging
+    # abilities) stays not-modeled per the ability-bound rule.
+
+    "3004": ItemEffect(
+        item_id="3004",
+        name="Manamune",
+        # Awe: 2% max mana as bonus AD. Stat block: 35 AD / 500 mana / 15 AH
+        # (DDragon 16.9.1, mirrors Meraki bulk passive text). The 500 mana
+        # contribution lands via item aggregation; Awe converts the build's
+        # total max mana (champion base + items + Manamune's own 500) into
+        # +AD at engine resolution time.
+        # Manaflow stack-up not modeled — caller's build represents either
+        # "post-transformation Muramana" (use 3042) or "pre-transformation
+        # Manamune" (use 3004), not the in-flight stacking state. Engine's
+        # build is steady-state; Manaflow stays utility-adjacent.
+        bonus_ad_pct_max_mp=0.02,
+        note="Manamune: Awe +2% max mana as bonus AD (Manaflow stack-up not modeled — steady-state)",
+    ),
+
+    "3042": ItemEffect(
+        item_id="3042",
+        name="Muramana",
+        # Awe: 2% max mana as bonus AD (same coefficient as Manamune).
+        # Shock: 1.2% max mana bonus physical per-attack vs champions.
+        # Engine has no champion-only target gate (same trade-off as
+        # Kraken Slayer, Hullbreaker) — over-counts vs minion-only
+        # rotations; noise band <DPS error of every other approximation.
+        # Ability damage piece (3-4% max mana on damaging abilities)
+        # stays not-modeled per the ability-bound rule (same as Liandry).
+        # Stat block: 35 AD / 1000 mana / 15 AH (Muramana's mana pool is
+        # 2x Manamune's — the entire point of the transformation in real
+        # League). Awe + Shock both scale linearly with the larger mana
+        # pool, so Muramana's DPS uplift on the same caster is roughly
+        # 2x Manamune's at the same mana baseline.
+        bonus_ad_pct_max_mp=0.02,
+        periodics=(PeriodicProc(
+            name="Shock",
+            bonus_damage=lambda c: 0.012 * c.caster_max_mp,
+            damage_type=PHYSICAL,
+            every_n_attacks=1,
+        ),),
+        note=(
+            "Muramana: Awe +2% max mana as bonus AD + Shock 1.2% max mana "
+            "per-attack physical (champ-only gate not enforced; ability "
+            "damage piece not modeled)"
+        ),
     ),
 }
 
