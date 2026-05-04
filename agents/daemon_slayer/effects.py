@@ -225,6 +225,26 @@ class ItemEffect:
     # could in principle stack), but currently only 3053 carries this — if
     # a second item appears, ``unique_passive_key`` is the right gate.
     bonus_ad_pct_base_ad: float = 0.0
+    # Phase 4 batch 26 (2026-05-04): item-effect-contributed crit chance.
+    # Two flavors composing additively into a single per-build sum that
+    # adds to ``stats["crit"]`` at compute_dps construction time:
+    # - ``crit_chance_bonus_flat`` — a build-time constant (Yun Tal
+    #   Wildarrows "Practice Makes Lethal" pinned at full 25% stacks; same
+    #   pattern as a Sundered Sky lambda-as-constant).
+    # - ``crit_chance_bonus_max_pct`` + ``crit_chance_bonus_per_bonus_hp_cap``
+    #   — linear ramp with caster_bonus_hp, max at cap (Atma's Reckoning
+    #   "Big Hands" 0–30% over 0–3000 bonus HP). Same shape as
+    #   target_bonus_hp_amp from batch 19, just on the caster side.
+    # The summed contribution is added to the build's stats.crit and
+    # clamped at 1.0 in compute_dps; CallContext.crit_chance and the
+    # rotation auto-attack crit calc both see the boosted total. Display
+    # values (avg_attack_dmg / raw_attack_dps) reflect the same boosted
+    # crit. /stats endpoint output is unchanged — same separation as
+    # batch 15's ap_per_bonus_hp_pct (cross-derivation surfaces only via
+    # /dps + DpsResult.notes).
+    crit_chance_bonus_flat: float = 0.0
+    crit_chance_bonus_max_pct: float = 0.0
+    crit_chance_bonus_per_bonus_hp_cap: float = 0.0
     defensive_only: bool = False     # documents "no DPS effect" entries
     note: str = ""                   # one-line summary surfaced in DpsResult.notes
     # Phase 4 batch 10 (2026-05-04): unique-passive de-duplication.
@@ -1072,6 +1092,53 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "to nearby (Desolate execute-on-kill not modeled — conditional)"
         ),
     ),
+
+    # ── Phase 4 batch 26 (2026-05-04): item-effect-contributed crit chance ──
+    # CallContext.crit_chance was added in batch 21 for Essence Reaver. This
+    # batch adds the *production* path — items that themselves contribute to
+    # the build's crit chance (Yun Tal at full Wildarrows stacks; Atma's
+    # Big Hands scaling with caster bonus HP). Engine sums each effect's
+    # contribution into the resolved crit at compute_dps time and clamps at
+    # 1.0; auto-attack crit + ER spellblade scaling + future crit-readers
+    # all see the boosted total. /stats output is unchanged — same
+    # cross-derivation pattern as Riftmaker's HP→AP from batch 15.
+
+    "3032": ItemEffect(
+        item_id="3032",
+        name="Yun Tal Wildarrows",
+        # Practice Makes Lethal: gain crit on-attack permanently, capped at
+        # 25%. Pinned at full stacks (the steady-state assumption — same
+        # call as Black Cleaver's "30% reduction at 5 stacks sustained" and
+        # Riftmaker's "8% at full ramp"). DDragon stat block carries 0%
+        # base crit; Wildarrows is the entire crit story for this item.
+        # Flurry (30% AS for 6s on champion-attack, 30s CD with attack-driven
+        # CD reduction) is intentionally not modeled — it would need a
+        # conditional AS-bonus schema and the steady-state uptime is
+        # near-100% which over-counts in shorter rotations. Stays utility-
+        # adjacent (real DPS impact, but blocked on schema). The item's
+        # 50 AD + 40% AS land via item aggregation.
+        crit_chance_bonus_flat=0.25,
+        # No unique_passive_key — Practice Makes Lethal is one of one in
+        # the current item set. Adding a key now would be premature.
+        note="Yun Tal Wildarrows: Practice Makes Lethal +25% crit at full Wildarrows stacks (steady-state pin; Flurry AS bonus not modeled)",
+    ),
+
+    "3039": ItemEffect(
+        item_id="3039",
+        name="Atma's Reckoning",
+        # Big Hands: 1% crit per 100 bonus HP, capped at 30% at 3000 bonus
+        # HP (LoL wiki, V25.21 — Meraki bulk has the passive list null,
+        # external source pinned 2026-05-04). Linear ramp; same shape as
+        # batch 19's target_bonus_hp_amp (LDR Giant Slayer) on the caster
+        # side. The 700 HP / 20% crit / 10 AH stat block lands via item
+        # aggregation; Atma's stats alone don't reach the 3000 cap (700
+        # bonus HP from Atma itself ≈ 0.07 ramp = 7% Big Hands), so
+        # multi-HP-item builds (Heartsteel, Titanic Hydra, Warmog's,
+        # Sterak's HP) drive most of the contribution.
+        crit_chance_bonus_max_pct=0.30,
+        crit_chance_bonus_per_bonus_hp_cap=3000.0,
+        note="Atma's Reckoning: Big Hands +1% crit per 100 bonus HP, max 30% at 3000 bonus HP",
+    ),
 }
 
 
@@ -1128,6 +1195,43 @@ def total_bonus_ap_from_hp(effects: Iterable[ItemEffect], caster_bonus_hp: float
     if caster_bonus_hp <= 0:
         return 0.0
     return sum(e.ap_per_bonus_hp_pct * caster_bonus_hp for e in effects)
+
+
+def total_crit_chance_bonus(
+    effects: Iterable[ItemEffect],
+    caster_bonus_hp: float,
+) -> float:
+    """Sum item-effect-contributed crit chance (Phase 4 batch 26).
+
+    Two flavors compose additively, returning a single fraction (0.0–N)
+    intended to be added to the build's ``stats["crit"]`` and clamped at
+    1.0 by the caller (compute_dps). The clamp lives at the call site so
+    intermediate sums are exposed faithfully — a build with 60% Yun Tal
+    flat + 50% Atma scaled would *want* 1.10 here so the caller can
+    decide what to do with it (currently: cap at 100% — League's ceiling).
+
+    - ``crit_chance_bonus_flat`` contributes unconditionally.
+    - HP-scaled contributes only when both ``crit_chance_bonus_max_pct``
+      AND ``crit_chance_bonus_per_bonus_hp_cap`` are positive AND
+      ``caster_bonus_hp`` is positive. Otherwise the linear ramp would
+      either divide by zero or contribute negative values — defensive.
+      Atma's Reckoning is the canonical example: max=0.30, cap=3000 →
+      ramp = min(1.0, caster_bonus_hp / 3000) → 0.0 at 0 bonus HP, 0.15
+      at 1500, 0.30 at 3000+, capped past the threshold.
+
+    Returns 0.0 when no item carries either field (pre-batch-26 builds
+    pass through unchanged). Same return-zero-on-no-contribution shape
+    as ``total_bonus_ap_from_hp``.
+    """
+    total = 0.0
+    for e in effects:
+        total += e.crit_chance_bonus_flat
+        max_pct = e.crit_chance_bonus_max_pct
+        cap = e.crit_chance_bonus_per_bonus_hp_cap
+        if max_pct > 0 and cap > 0 and caster_bonus_hp > 0:
+            ramp = min(1.0, caster_bonus_hp / cap)
+            total += max_pct * ramp
+    return total
 
 
 def total_damage_amp_multiplier(effects: Iterable[ItemEffect]) -> float:
