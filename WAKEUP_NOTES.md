@@ -8429,4 +8429,206 @@ and can't find via grep.
 **Full coach activation matrix as of s83:** unchanged from s82 —
 this batch was engine-side only.
 
+## s84 hand-off — 2026-05-04 (Phase 4 batch 28: Archangel's Staff + Seraph's Embrace via bonus_ap_pct_bonus_mp)
+
+Single-arc continuation from s83. Took s83's #1 candidate
+(Archangel's Staff Awe-AP twin) and discovered it expanded into a
+two-item batch — Archangel (3003) + Seraph's Embrace (3040) both fit
+the new field, paired-promotion-style. Third consecutive
+paired-promotion batch (26 → 27 → 28). Notable wrinkle: the AP-side
+Awe is keyed off BONUS mana (item-contributed only), NOT max mana
+like the Manamune family. The asymmetry surfaced via DDragon + Meraki
+text and is pinned by the new field's name and a dedicated test.
+
+**Engine: 0.31.0 → 0.32.0.** Tests: 477 → 489 (+12, no inversions).
+Phase8 smoke 75/75 once `RC-DaemonSlayer` bounced.
+
+**Pattern decision worth pinning — the same `Awe` name carries
+different math on the AD side (Manamune family) vs the AP side
+(Archangel family).** Manamune/Muramana's Awe = % of MAX mana
+(champion base + items) into bonus AD. Archangel/Seraph's Awe = %
+of BONUS mana (items only) into AP. DDragon and Meraki's passive
+text both pin "max" vs "bonus" explicitly; the engine respects the
+distinction. Future "X% Y as Z" passives — read the source text
+carefully; "bonus" and "max" are different stats in League's
+formal spec, even when item names are similar.
+
+**Pattern decision worth pinning — `unique_passive_key="lifeline"`
+on a DPS-positive item is safe.** The lifeline dedup happens in
+`collect_effects` (proc/note layer); Awe walks live in `engine.py`
+(stat layer) and walk ITEM_EFFECTS directly. Stat contributions
+(bonus_ad_pct_*, bonus_ap_pct_*) survive any lifeline dedup. Same
+template as Sterak's batch 20 (lifeline + Claws AD) and now Seraph's
+(lifeline + Awe AP). Apply this template to any future item that
+carries both a Lifeline shield AND a separate stat-layer effect.
+
+**Pattern decision worth pinning — the AD-conversion-from-caster-stat
+pattern now has 3 walks in build_champion.** Each walks
+ITEM_EFFECTS directly, sums per-item contributions, and folds into
+a `*_flat` slot of `item_totals`. The walks live in this fixed order:
+1. `bonus_ad_pct_base_ad` (Sterak's, batch 20) → ad_flat
+2. `bonus_ad_pct_max_mp` (Manamune family, batch 27) → ad_flat
+3. `bonus_ap_pct_bonus_mp` (Archangel family, batch 28) → ap_flat
+
+Walk order matters because each subsequent walk consumes the
+totals built by previous walks (Manamune's Awe sees Archangel's
+contribution if both are in the same build). Adding a 4th walk —
+e.g. armor → AP, AD → MR — fits the same template.
+
+**Shipped (commit `67e8ec6`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - **ItemEffect.bonus_ap_pct_bonus_mp** new field (default 0.0).
+  - **Archangel's Staff (3003)** new entry: bonus_ap_pct_bonus_mp=0.01,
+    no proc, no unique_passive_key. Manaflow + transformation not
+    modeled.
+  - **Seraph's Embrace (3040)** new entry: bonus_ap_pct_bonus_mp=0.02,
+    unique_passive_key="lifeline" for the low-HP mana shield piece.
+
+- `agents/daemon_slayer/engine.py`:
+  - New walk in `build_champion` after the Manamune walk: compute
+    `bonus_max_mp = item_totals.get("mp_flat", 0.0)` (the build's
+    bonus mana sum), sum each item's `bonus_ap_pct_bonus_mp *
+    bonus_max_mp` into `item_totals["ap_flat"]`. Same shape as the
+    Sterak's / Manamune walks, asymmetry baked in via the
+    bonus-not-max source.
+
+- `agents/daemon_slayer/__init__.py`:
+  - `ENGINE_VERSION = "0.32.0"`. Docstring extends batch list with
+    batch 28 wording, calls out the AP-AD asymmetry. defensive_only
+    count UNCHANGED at 21.
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - **ArchangelsAweTests** (5 tests): present + field shape, no
+    unique_passive_key, AP lift on Ezreal in [74, 78] band (catches
+    "max-vs-bonus" bug — would be ~86 with max), walk uses
+    total-build-bonus-mana (Manamune's 500 lifts Archangel's
+    contribution), DPS lift on Lux.
+  - **SeraphsEmbraceTests** (4 tests): present + field shape, lifeline
+    key tagged, AP lift in [88, 92] band (Seraph's own 1000 mana →
+    20 Awe + 70 stat = 90), Awe survives lifeline dedup vs Sterak's.
+  - **ArchangelEngineWireInTests** (3 tests): walk safe with no
+    Archangel items (Lich Bane gives exactly 100 AP, no Awe), Manamune
+    doesn't fire Archangel walk (asymmetric field check), explicit
+    asymmetry assertion via the AP/AD ratio (~0.19 with bonus, would
+    be ~0.53 with max — bound at 0.30).
+
+**Test state:**
+- `agents/daemon_slayer/tests/`: **489/489** green (s83 baseline 477
+  + 12 new this batch).
+- `tests/phase8_smoke/`: 75/75 once live engine bounced.
+
+**Live verify (post `schtasks /End /Run RC-DaemonSlayer`):**
+
+```
+$ curl http://127.0.0.1:8893/health → engine_version=0.32.0 ✓
+$ /dps Lux lvl11 bare → AP=0, mp=675
+$ /dps Lux lvl11 + [3003] → AP=76 (70 stat + 6 Awe at 600 bonus mana)
+$ /dps Lux lvl11 + [3040] → AP=90 (70 stat + 20 Awe at 1000 bonus mana)
+$ /dps Lux lvl11 + [3003, 3004] (Archangel + Manamune) →
+    AP=81 (70 Archangel stat + 11 Awe at 1100 bonus mana — Manamune's
+    500 mana feeds Archangel's Awe via the shared bonus mana pool)
+$ /dps Lux lvl11 + [3003, 3040] →
+    AP=188 (140 stat + 48 Awe at 1600 bonus mana — both items walk
+    together additively, Archangel's 0.01 + Seraph's 0.02 both fire
+    on the same 1600 bonus mana = 16 + 32 = 48)
+```
+
+The shared-bonus-mana-pool semantic is confirmed: when multiple
+mana items are in the build, every Awe-AP item's walk sees the
+TOTAL bonus mana, not just the carrier's own pool. Same as the
+Manamune walk's total-max-mana semantic. Both behave consistently.
+
+**Coverage audit (delta from s83):**
+
+67 unmodeled legendaries remaining (s83's 69 minus Archangel +
+Seraph's). Top candidates for future batches:
+
+- **Defensive_only batch — Hubris, Spirit Visage, Kaenic Rookern,
+  Liandry's, Cosmic Drive, Stormsurge, Death's Dance**, etc.
+  Tag with one-line `note` and surface in `DpsResult.notes` for
+  coverage-completeness. Scope: 30-45 min for ~6-8 items. Same
+  template as the existing defensive_only entries.
+- **Stormsurge (4646)** — ability-bound burst proc. Carry blocker.
+- **Hubris (6697)** — takedown-event-bound. Defensive_only candidate.
+- **Liandry's Torment (6653)** — ability-bound burn.
+- **Hextech Rocketbelt (3152)** — active dash + AoE burn.
+- **Cosmic Drive (4629)** — stat-side AP/haste/MS, ability-cast-bound CDR.
+- **Trinket-side / situational items** — Galeforce, Goredrinker
+  (battle items, Arena re-skins).
+- **Ability-cast modeling family** (Liandry, Cosmic Drive, Luden's,
+  Stormsurge, Rocketbelt, Horizon Focus) — single schema bump
+  unlocks 6+ items. 2-3 hour scope.
+
+**Decisions worth pinning (this batch):**
+- **Field naming follows source-stat semantic exactly:**
+  `bonus_ap_pct_bonus_mp` vs `bonus_ad_pct_max_mp`. The "bonus"
+  vs "max" prefix on the source field captures the asymmetry that
+  exists in League's formal spec. Future Awe-shape items: read
+  the passive text carefully and pin the field name to the source
+  semantic.
+- **Walk-order discipline:** subsequent walks see the
+  contributions of prior walks. Document the order in
+  `engine.py` so a future addition slots in the right position.
+- **Lifeline-with-stat-layer pattern is established:** Sterak's
+  (Claws + lifeline) and Seraph's (Awe + lifeline) both work the
+  same way. Future lifeline items with DPS pieces follow this
+  template.
+
+**Things tomorrow-you should NOT redo:**
+- Don't merge `bonus_ad_pct_max_mp` and `bonus_ap_pct_bonus_mp`
+  into a single field. The asymmetry (max vs bonus) is real in
+  League and the engine's correctness depends on respecting it.
+- Don't try to tag Archangel/Seraph's `unique_passive_key="awe"`.
+  Awe is one-of-many in the broader item list (Manamune, Muramana,
+  Archangel, Seraph's all share the name) but the math diverges
+  per-item; the dedup would silently drop walks. Build-legality
+  (transformation gate) is ranker-owned.
+- Don't try to model Manaflow stack-up. Steady-state assumption is
+  the right call here for the same reasons as Yun Tal's Practice
+  Makes Lethal (batch 26) and Manamune's transformation (batch 27).
+
+**Activation:** RC-DaemonSlayer scheduled task bounced via
+`schtasks /End /TN RC-DaemonSlayer && schtasks /Run /TN RC-DaemonSlayer`.
+Engine on :8893 reports 0.32.0. Archangel + Seraph's notes appear in
+/dps `notes[]` field. Behavior dormant until next mana-AP-caster game
+in progress (Anivia, Cassiopeia, Karthus, Ryze, Lux, Orianna, etc.).
+
+**Bridge state at session end:** RC main pid=8084 (unchanged across
+s78–s84). `schtasks` bounced RC-DaemonSlayer once this session.
+
+**Operational backlog (delta from s83):**
+- ✅ ~~Phase 4 batch 28: Archangel + Seraph's~~ shipped (commit `67e8ec6`).
+- All other s83 backlog unchanged.
+- **NEW from s84**: AD-conversion-from-caster-stat pattern is now a
+  3-walk family (Sterak's base AD, Manamune max mana, Archangel
+  bonus mana). The walk order is documented in engine.py; future
+  additions slot in cleanly.
+
+**Memory entries written this session:** none. The "Awe-on-AD-side
+uses max mana, Awe-on-AP-side uses bonus mana" asymmetry pin is
+narrow enough to live in this hand-off + the field comment block.
+
+**Next-session candidates (ranked):**
+1. **Defensive_only coverage batch** — Hubris (6697), Spirit Visage
+   (3065), Kaenic Rookern (2504), Liandry's Torment (6653), Cosmic
+   Drive (4629), Stormsurge (4646), Death's Dance (6333 if not
+   already in — check). Tag each with one-line `note` + `defensive_only=True`.
+   Coverage-completeness, no new schema, no engine change. Scope:
+   30-45 min for ~6-7 items.
+2. **SR coach `target_bonus_hp` activation** (carried s73→s83).
+3. **First draft visual verify of P8-5.5** (carried).
+4. **gamepc_boot.ps1 patch** (carried). 1-liner.
+5. **P8-7 E2E push-to-League integration test** (carried).
+6. **Activate arena augment v2 in production** (carried).
+7. **Schema bumps** (bigger sessions):
+   a. Ability-cast modeling — unlocks 6+ items.
+   b. Conditional AS bonus (Flurry from Yun Tal, Phantom Hit
+      alternative shapes).
+   c. Champion-only target gate — would unblock Muramana's Shock
+      precision (currently over-counts vs minions).
+
+**Full coach activation matrix as of s84:** unchanged from s83 —
+this batch was engine-side only.
+
 
