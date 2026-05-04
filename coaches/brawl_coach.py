@@ -190,10 +190,12 @@ class Coach(BaseCoach):
     _MODE_NAME     = "brawl"
     _DATA_FILENAME = "brawl_coaching_data.json"
 
-    # Brawl is faster — tighter debounce, lower HP threshold
-    _VISION_INTERVAL   = 12.0
-    _DEBOUNCE_S        = 3.5
-    _FAST_PATH_MIN_S   = 1.5
+    # Brawl is faster — tighter debounce, lower HP threshold.
+    # Cost-tuned 2026-05-04 (post-audit): bumped from VISION 12→18 /
+    # DEBOUNCE 3.5→7 / FAST_PATH 1.5→3 to halve the API call rate.
+    _VISION_INTERVAL   = 18.0
+    _DEBOUNCE_S        = 7.0
+    _FAST_PATH_MIN_S   = 3.0
     _HP_DROP_THRESHOLD = 10.0
 
     # ── BaseCoach abstract implementations ────────────────────────────────────
