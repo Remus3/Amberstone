@@ -3493,3 +3493,181 @@ mutations.
 5. **Activate arena augment v2 in production** (carried).
 6. **Riftmaker HP→AP cross-derivation** (carried).
 7. **Per-target-HP-pct field** (NEW; defer until caller demands).
+
+---
+
+## s59 hand-off — 2026-05-04 (Phase 4 batch 6: caster HP layer + Titanic Hydra + Heartsteel)
+
+Single-arc continuation of s58. Picked the s58 #1 backlog candidate
+(caster max HP layer + Hydras) — fourth Phase-4 batch in two days.
+Operator still idle (LCU phase=None, RC main pid=9488 unchanged), so
+engine restart window stayed open.
+
+**Pattern decision worth pinning:** the s58 hand-off proposed "mirror
+of batch 5 but on the caster side" — but caster HP is a fundamentally
+different shape from target HP. The engine *always* knows the caster's
+exact HP from `resolved.stats["hp"]`, so making it caller-supplied
+(like `target_max_hp`) would be ceremony with no value. **Engine-derived
+is the right pattern**: zero new HTTP-API surface, automatic correctness
+when builds change. Wrote `feedback_engine_derived_vs_caller_supplied.md`
+mental note (no actual memory file — pattern is documented in the
+code comments + this hand-off).
+
+**Shipped (commit `1e7f338`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - `CallContext.caster_max_hp: float = 0.0` and
+    `caster_bonus_hp: float = 0.0` appended.
+  - **Titanic Hydra (3748)** — NEW entry. Cleave periodic, every basic,
+    `bonus_damage = lambda c: 5.0 + 0.015 * c.caster_bonus_hp`,
+    physical. Note: melee values; ranged is half. Cleave-to-others
+    portion (multi-target) not modeled.
+  - **Heartsteel (3084)** — promoted from defensive_only.
+    Colossal Consumption periodic, `every_n_seconds=3.5`,
+    `bonus_damage = lambda c: 70.0 + 90.0 * (c.level - 1) / 17.0
+    + 0.06 * c.caster_max_hp`, physical. The 70-160 level lerp lands
+    at 70 (lvl 1) → 160 (lvl 18) per current-patch behavior.
+  - Ravenous Hydra (3074) **not added** — current-patch Cleave is
+    nearby-enemies-only (zero primary-target bonus); a defensive_only
+    entry would be misleading because the item already gives zero
+    DPS contribution from the proc shape we model.
+
+- `agents/daemon_slayer/dps.py`:
+  - Inside `compute_dps`, after `bonus_ad` derivation:
+    `base_hp = resolved.base_stats.get("hp", 0.0)`,
+    `caster_max_hp = stats.get("hp", 0.0)`,
+    `caster_bonus_hp = max(0.0, caster_max_hp - base_hp)`.
+    Both passed into the `CallContext`. No new function parameter,
+    no HTTP-API change, no `DpsResult` field surfaced for them
+    (they're transparent to callers — the engine manages them).
+  - Module docstring refreshed to call out the engine-internal
+    derivation pattern.
+
+- `agents/daemon_slayer/__init__.py`: docstring narrative refreshed
+  (caster-HP layer call-out + 28 defensive_only count, down 1 from
+  Heartsteel promotion); `ENGINE_VERSION 0.12.0 → 0.13.0`.
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - `DefensiveOnlyBatch2Tests.EXPECTED` shrinks 10 → 9 (Heartsteel
+    out, with comment pointing to batch-6 promotion).
+  - **CallContextCasterHpTests** (3 tests) — default-zero, callable
+    resolves against caster_max_hp (Heartsteel formula sanity),
+    callable resolves against caster_bonus_hp (Titanic formula sanity).
+  - **CasterHpItemTests** (7 tests) — Titanic periodic shape,
+    Heartsteel promotion shape, Titanic raises DPS via own bonus HP,
+    Titanic scales (Warmog stacking lifts the proc piece more than
+    bare-Titanic), Heartsteel raises DPS by >30 over baseline (well
+    above noise), Heartsteel scales (same Warmog test on the magic
+    side), `caster_max_hp` / `caster_bonus_hp` are NOT in
+    `compute_dps` signature (engine-internal sentinel).
+  - `CoverageCountTests` floor 50 → 51 (Titanic added; Heartsteel
+    promotion doesn't change the count).
+
+**Test state:** 287/287 daemon_slayer tests green (was 277 at end of
+s58; +10 = 3 + 7 from the two new classes; net +10 with the docstring
+update on `DefensiveOnlyBatch2Tests` not adding tests). py_compile
+pre-commit hook passed.
+
+**Live engine verify (post-restart `schtasks /End` + `/Run`):**
+```
+GET  /health                                         → 0.13.0
+POST /dps {champion:Aatrox, level:11}                → 47.07
+POST /dps {champion:Aatrox, level:11, items:[3748]}  → 70.17 (+23.11)
+POST /dps {champion:Aatrox, level:11, items:[3084]}  → 128.31 (+81.24)
+POST /dps {champion:Aatrox, level:11, items:[3084,3083]} → 145.45
+```
+Math sanity: Aatrox lvl 11 base HP = 1790; with Heartsteel (+900) =
+2690; Colossal Consumption = 70 + 90×10/17 + 0.06×2690 = 70 + 52.94 +
+161.4 = 284.3 per ~3.5s = ~81.2 dps. Matches the +81.24 observation
+exactly.
+
+**`/rank` shape impact (Sett lvl 11, no target params):**
+1. **Heartsteel** 3000g  +81.58 dps
+2. Trinity Force         +80.58 dps
+3. Statikk Shiv          +51.57 dps
+4. Stormrazor            +51.33 dps
+...
+
+Before batch 6, Heartsteel ranked nowhere on Sett (defensive_only).
+Now it's #1 — exactly the unlock for HP-stacking bruisers. Titanic
+Hydra didn't make top 8 (no AS in its stat block; the 23 dps proc
+piece is real but Trinity / Stormrazor / Statikk all bring more raw
+auto-attack value).
+
+**Coverage delta:** ITEM_EFFECTS 50 → 51 entries (+1, Titanic). Stays
+at 51 even though Heartsteel promoted (it was already in the table).
+
+**Decisions worth pinning:**
+- **Engine-derived caster HP, not caller-supplied.** The engine knows
+  the caster's HP exactly. Making it a caller param would be ceremony
+  + risk of stale values when callers forget to recompute. Same
+  precedent as `base_ad` / `bonus_ad` / `ap`, which are also engine-
+  derived from `resolved.stats`. `target_max_hp` is caller-supplied
+  *only* because lolmath scenarios carry no target signal.
+- **Both `caster_max_hp` AND `caster_bonus_hp`.** Heartsteel scales
+  off max HP; Titanic Hydra scales off bonus HP. Adding only one
+  would force the other lambda to do its own subtraction or use the
+  wrong number. The cost of two fields is trivial (two derived floats);
+  the cost of doing it wrong is silent miscalculation.
+- **Heartsteel's level-lerp is per-patch.** 70 (lvl 1) → 160 (lvl 18)
+  matches current 16.9.1; revisit on patch bumps. The lerp is linear
+  per Riot's tooltip, not piecewise.
+- **Titanic at melee values.** Ranged Titanic (3 + 0.75%) under-counted.
+  This is honest because: (a) Riot doesn't ship Titanic as a meta-build
+  ranged item, (b) modeling melee/ranged duality would need a champion
+  attribute lookup, (c) the under-count is on a niche edge case anyway.
+  Note in the comment + the surfaced text says "melee values".
+- **Ravenous Hydra absent, not defensive_only.** Adding it as
+  defensive_only would be wrong-shape — Ravenous's stat block is
+  highly DPS-positive (65 AD + 12% lifesteal), so it'll already get
+  scored highly by the engine through the stat path. Marking it
+  defensive_only would suggest "no DPS contribution" which is false.
+  Better to leave it out entirely so future maintainers see the gap.
+
+**Things tomorrow-you should NOT redo:**
+- Don't make `caster_max_hp` a `compute_dps` parameter — it's engine-
+  derived. The `test_caster_hp_derivation_is_engine_internal` test
+  pins this.
+- Don't add Ravenous Hydra (3074) as defensive_only. If someone wants
+  to model its proc, they need to add multi-target rotation modeling
+  first (out of scope).
+- Don't try to model Titanic Crescent (active) — actives don't fit
+  the periodic shape. Same call as Youmuu's, Hextech Gunblade.
+- Don't bump CoverageCountTests floor past 51 until the next batch
+  lands.
+
+**Activation:** Engine on :8893 already at 0.13.0 (this session
+restarted it). No further action needed.
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true (no Legion main-RC restart this session; only the
+RC-DaemonSlayer scheduled task was bounced — 4th time today).
+Engine on :8893 = 0.13.0 live. LCU phase=None (no game in progress).
+Working tree clean except runtime `data/ratings/last_*.json`
+mutations.
+
+**Operational backlog (carried + new):**
+- All s54-s58 backlog items unchanged.
+- **Ravenous Hydra modeling** (NEW carry from s59) — needs multi-
+  target rotation modeling. lolmath scenarios already carry
+  `numberOfTargets` per rotation, so the data is there; engine just
+  doesn't read it yet. Same hook would unlock Titanic's cleave-to-
+  others damage too. Roughly batch 7 scope (~3-4 hour scope; touches
+  `_phase_weighted_dps` + a new `_multi_target_proc_dps` helper).
+- **Riftmaker HP→AP cross-derivation** (carried, batch 6 didn't
+  unblock — needs cross-item stat-derived stats, separate
+  architecture).
+
+**Next-session candidates (ranked):**
+1. **Phase 4 batch 7: multi-target rotation modeling** (NEW). Reads
+   `numberOfTargets` from each rotation, lets cleave / AoE procs
+   contribute against the count, unlocks Ravenous Hydra + Titanic
+   cleave-to-others + Sunfire / Frostfire passive damage. Schema
+   bump (0.13.0 → 0.14.0). ~3-4 hour scope.
+2. **First draft visual verify of P8-5.5** (carried). Still blocked
+   on operator draft queue.
+3. **gamepc_boot.ps1 patch** (carried). 1-liner.
+4. **P8-7 E2E push-to-League integration test** (carried).
+5. **Activate arena augment v2 in production** (carried).
+6. **Riftmaker HP→AP cross-derivation** (carried).
+7. **Per-target-HP-pct field** (carried; defer until caller demands).
