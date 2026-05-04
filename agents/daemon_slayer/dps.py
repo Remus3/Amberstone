@@ -25,9 +25,11 @@ from typing import Iterable, Optional
 
 from .data_loader import DataSnapshot
 from .effects import (
+    CallContext,
     ItemEffect,
     PHYSICAL,
     collect_effects,
+    effective_target_armor,
     total_crit_damage_bonus,
 )
 from .engine import build_champion
@@ -131,18 +133,24 @@ def _periodic_proc_dps(
     effects: list[ItemEffect],
     total_attacks: float,
     duration: float,
-    target_armor: float,
+    target_armor_for_physical: float,
     target_mr: float,
     mode_dmg_mult: float,
+    call_ctx: CallContext,
 ) -> float:
     """Sum DPS contribution from every conditional proc in the build.
 
     Each proc fires on either an attack count (``every_n_attacks``) or
     a time interval (``every_n_seconds``). Physical procs use the
-    target's armor; magical procs use MR. Mode damage multiplier
-    applies (ARAM ``aramDamageDealt`` reduces proc damage too).
-    Rotation duration divides the per-rotation proc total so the
-    contribution is in DPS units.
+    target's *effective* armor (post-reduction-and-pen); magical procs
+    use MR (no magic-pen modeling yet). Mode damage multiplier applies
+    (ARAM ``aramDamageDealt`` reduces proc damage too). Rotation
+    duration divides the per-rotation proc total so the contribution
+    is in DPS units.
+
+    Scaling procs (TriForce off ``base_ad``, Wit's End by ``level``,
+    Runaan's by ``bonus_ad``) resolve through ``proc.resolve_damage``
+    against ``call_ctx``; constants pass through unchanged.
     """
     if duration <= 0:
         return 0.0
@@ -157,19 +165,21 @@ def _periodic_proc_dps(
             procs = total_attacks / proc.every_n_attacks
         else:  # every_n_seconds > 0 enforced by PeriodicProc.__post_init__
             procs = duration / proc.every_n_seconds
-        resist = target_armor if proc.damage_type == PHYSICAL else target_mr
-        total += procs * proc.bonus_damage * _armor_factor(resist) * mode_dmg_mult
+        resist = target_armor_for_physical if proc.damage_type == PHYSICAL else target_mr
+        dmg = proc.resolve_damage(call_ctx)
+        total += procs * dmg * _armor_factor(resist) * mode_dmg_mult
     return total / duration
 
 
 def _rotation_attack_dps(
     stats: dict[str, float],
     rotation: dict,
-    target_armor: float,
+    target_armor_for_physical: float,
     target_mr: float,
     mode_dmg_mult: float,
     crit_bonus: float,
     effects: list[ItemEffect],
+    call_ctx: CallContext,
 ) -> float:
     """DPS contribution from basic attacks during a single rotation.
 
@@ -177,8 +187,9 @@ def _rotation_attack_dps(
     pre-resists, scaled by crit average and the mode damage multiplier,
     then divided by full rotation duration (which includes time spent
     casting abilities — auto DPS is naturally diluted in cast-heavy
-    rotations). Conditional procs from items add on top via
-    ``_periodic_proc_dps``.
+    rotations). ``target_armor_for_physical`` already has reduction +
+    pen applied at the caller. Conditional procs from items add on top
+    via ``_periodic_proc_dps``.
     """
     duration = float(rotation.get("duration", 0) or 0)
     if duration <= 0:
@@ -191,10 +202,12 @@ def _rotation_attack_dps(
         return 0.0
     ad = float(stats.get("ad", 0.0))
     crit = min(float(stats.get("crit", 0.0)), 1.0)
-    avg_dmg = ad * (1 + crit * crit_bonus) * _armor_factor(target_armor) * mode_dmg_mult
+    armor_factor = _armor_factor(target_armor_for_physical)
+    avg_dmg = ad * (1 + crit * crit_bonus) * armor_factor * mode_dmg_mult
     base_dps = total_attacks * avg_dmg / duration
     proc_dps = _periodic_proc_dps(
-        effects, total_attacks, duration, target_armor, target_mr, mode_dmg_mult,
+        effects, total_attacks, duration,
+        target_armor_for_physical, target_mr, mode_dmg_mult, call_ctx,
     )
     return base_dps + proc_dps
 
@@ -202,11 +215,12 @@ def _rotation_attack_dps(
 def _phase_weighted_dps(
     stats: dict[str, float],
     rotations: list[dict],
-    target_armor: float,
+    target_armor_for_physical: float,
     target_mr: float,
     mode_dmg_mult: float,
     crit_bonus: float,
     effects: list[ItemEffect],
+    call_ctx: CallContext,
 ) -> float:
     """Weighted average of rotation DPS within a phase (weights from lolmath)."""
     if not rotations:
@@ -218,7 +232,8 @@ def _phase_weighted_dps(
         if w <= 0:
             continue
         weighted_sum += w * _rotation_attack_dps(
-            stats, r, target_armor, target_mr, mode_dmg_mult, crit_bonus, effects,
+            stats, r, target_armor_for_physical, target_mr,
+            mode_dmg_mult, crit_bonus, effects, call_ctx,
         )
         total_weight += w
     if total_weight <= 0:
@@ -284,11 +299,29 @@ def compute_dps(
     item_effects = collect_effects(resolved.item_ids)
     crit_bonus = DEFAULT_CRIT_BONUS + total_crit_damage_bonus(item_effects)
 
+    # Phase 4 expansion: armor reduction + pen pipeline. Magic resist
+    # has no equivalent layer yet (no magic-pen items in ITEM_EFFECTS;
+    # none of the defensive_only entries carry one either).
+    target_armor_eff = effective_target_armor(target_armor, item_effects)
+
+    # Build call context once per compute_dps. base_ad comes from the
+    # leveled champion base (pre-items); bonus_ad is total - base.
+    base_ad = float(resolved.base_stats.get("ad", 0.0)) if resolved.base_stats else 0.0
+    total_ad = float(stats.get("ad", 0.0))
+    bonus_ad = max(0.0, total_ad - base_ad)
+    call_ctx = CallContext(
+        base_ad=base_ad,
+        bonus_ad=bonus_ad,
+        level=level,
+        target_armor=target_armor_eff,
+        target_mr=target_mr,
+    )
+
     rotations_by_phase = _phase_rotations(snapshot, resolved.champion_id)
     phase_dps = {
         p: _phase_weighted_dps(
-            stats, rotations_by_phase[p], target_armor, target_mr,
-            mode_mult, crit_bonus, item_effects,
+            stats, rotations_by_phase[p], target_armor_eff, target_mr,
+            mode_mult, crit_bonus, item_effects, call_ctx,
         )
         for p in PHASES
     }
@@ -297,12 +330,17 @@ def compute_dps(
     crit = min(float(stats.get("crit", 0.0)), 1.0)
     ad = float(stats.get("ad", 0.0))
     eff_as = float(stats.get("as", 0.0))
-    avg_attack_dmg = ad * (1 + crit * crit_bonus) * _armor_factor(target_armor) * mode_mult
+    avg_attack_dmg = ad * (1 + crit * crit_bonus) * _armor_factor(target_armor_eff) * mode_mult
     raw_attack_dps = ad * eff_as * (1 + crit * crit_bonus)
 
     notes = list(resolved.notes)
     if mode == "ARAM" and mode_mult != 1.0:
         notes.append(f"ARAM aramDamageDealt={mode_mult:.2f} on per-hit damage")
+    if target_armor_eff != target_armor:
+        notes.append(
+            f"effective target armor {target_armor:.1f} → {target_armor_eff:.1f}"
+            " after reduction + pen"
+        )
     for e in item_effects:
         if e.note:
             notes.append(e.note)
