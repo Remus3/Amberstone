@@ -4423,5 +4423,176 @@ class AbyssalMaskMagicAmpTests(unittest.TestCase):
         self.assertIn("12%", magic_amp_notes[0])
 
 
+class Batch35LethMissedAndDualPenTests(unittest.TestCase):
+    """Duskblade (6691) lethality + Perplexity (4015) dual-pen + Hellfire (4017) lethality."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_duskblade_lethality(self) -> None:
+        eff = ITEM_EFFECTS.get("6691")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertAlmostEqual(eff.lethality, 18.0, places=2)
+        self.assertEqual(len(eff.periodics), 0)
+
+    def test_duskblade_pen_pipeline(self) -> None:
+        from agents.daemon_slayer.effects import collect_effects, effective_target_armor
+        effects = collect_effects(["6691"])
+        # lvl 18: factor = 1.0 → flat pen = 18 * 1.0 = 18
+        eff_armor = effective_target_armor(50.0, effects, level=18)
+        self.assertAlmostEqual(eff_armor, 50.0 - 18.0, places=1)
+
+    def test_perplexity_dual_pen_fields(self) -> None:
+        eff = ITEM_EFFECTS.get("4015")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertAlmostEqual(eff.armor_pen_pct, 0.22, places=4)
+        self.assertAlmostEqual(eff.magic_pen_pct, 0.30, places=4)
+        self.assertEqual(len(eff.periodics), 0)
+
+    def test_perplexity_armor_pen_reduces_effective_armor(self) -> None:
+        from agents.daemon_slayer.effects import collect_effects, effective_target_armor
+        effects = collect_effects(["4015"])
+        eff_armor = effective_target_armor(100.0, effects, level=11)
+        # 22% armor pen: 100 * (1 - 0.22) = 78 (no lethality contribution)
+        self.assertAlmostEqual(eff_armor, 78.0, places=1)
+
+    def test_perplexity_magic_pen_reduces_effective_mr(self) -> None:
+        from agents.daemon_slayer.effects import collect_effects, effective_target_mr
+        effects = collect_effects(["4015"])
+        eff_mr = effective_target_mr(100.0, effects)
+        # 30% magic pen: 100 * (1 - 0.30) = 70
+        self.assertAlmostEqual(eff_mr, 70.0, places=1)
+
+    def test_hellfire_hatchet_lethality(self) -> None:
+        eff = ITEM_EFFECTS.get("4017")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertAlmostEqual(eff.lethality, 12.0, places=2)
+        self.assertEqual(len(eff.periodics), 0)
+
+
+class DivineSundererSpellbladeTests(unittest.TestCase):
+    """Divine Sunderer (6632) Spellblade physical proc joining the spellblade family."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_entry_present_and_shape(self) -> None:
+        eff = ITEM_EFFECTS.get("6632")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 1)
+        proc = eff.periodics[0]
+        self.assertEqual(proc.damage_type, "physical")
+        self.assertAlmostEqual(proc.every_n_seconds, 3.0, places=3)
+        self.assertEqual(eff.unique_passive_key, "spellblade")
+
+    def test_proc_formula_base_ad_component(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["6632"].periodics[0]
+        # 125% base AD + 6% target max HP; no max HP -> only base AD contribution
+        ctx = CallContext(base_ad=200.0, bonus_ad=50.0, level=11, target_max_hp=0.0)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 1.25 * 200.0, places=4)
+
+    def test_proc_formula_max_hp_component(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["6632"].periodics[0]
+        # 6% of 3000 target HP = 180, plus 125% base AD
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, target_max_hp=3000.0)
+        expected = 1.25 * 100.0 + 0.06 * 3000.0  # 125 + 180 = 305
+        self.assertAlmostEqual(proc.resolve_damage(ctx), expected, places=4)
+
+    def test_spellblade_dedup_with_trinity(self) -> None:
+        from agents.daemon_slayer.effects import collect_effects
+        # Divine Sunderer first → should win dedup
+        effects = collect_effects(["6632", "3078"])
+        sb_items = [e for e in effects if e.unique_passive_key == "spellblade"]
+        self.assertEqual(len(sb_items), 1)
+        self.assertEqual(sb_items[0].item_id, "6632")
+
+    def test_dps_lift_over_bare(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        dps_bare = compute_dps(self.snap, "Garen", level=11, target_max_hp=2000.0)
+        dps_with = compute_dps(self.snap, "Garen", level=11, item_ids=["6632"],
+                               target_max_hp=2000.0)
+        self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
+
+
+class NavoriFlickerbladeTests(unittest.TestCase):
+    """Navori Flickerblade (6672) Bring It Down every-3rd-attack level-scaling physical proc."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_entry_present_and_shape(self) -> None:
+        eff = ITEM_EFFECTS.get("6672")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 1)
+        proc = eff.periodics[0]
+        self.assertEqual(proc.damage_type, "physical")
+        self.assertEqual(proc.every_n_attacks, 3)
+
+    def test_proc_formula_at_level_1(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["6672"].periodics[0]
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=1)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 120.0, places=4)
+
+    def test_proc_formula_at_level_11(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["6672"].periodics[0]
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11)
+        expected = min(168.0, 120.0 + 4.0 * 10)  # 160
+        self.assertAlmostEqual(proc.resolve_damage(ctx), expected, places=4)
+
+    def test_proc_capped_at_level_18(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["6672"].periodics[0]
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=18)
+        # min(168, 120 + 4*17) = min(168, 188) = 168
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 168.0, places=4)
+
+    def test_dps_lift_over_bare(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        dps_bare = compute_dps(self.snap, "Jinx", level=11, target_armor=50.0)
+        dps_with = compute_dps(self.snap, "Jinx", level=11, item_ids=["6672"],
+                               target_armor=50.0)
+        self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
+
+
+class Batch35DefensiveOnlyTests(unittest.TestCase):
+    """6 new defensive_only entries in batch 35."""
+
+    EXPECTED: dict[str, str] = {
+        "6630": "Goredrinker",
+        "6671": "Galeforce",
+        "3050": "Zeke's Convergence",
+        "4016": "Wordless Promise",
+        "4014": "Frozen Mallet",
+        "4013": "Lightning Braid",
+    }
+
+    def test_all_entries_present_and_defensive(self) -> None:
+        for iid, expected_name in self.EXPECTED.items():
+            with self.subTest(item_id=iid):
+                eff = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(eff, f"{iid} must be in ITEM_EFFECTS")
+                self.assertTrue(eff.defensive_only,
+                                f"{iid} ({expected_name}) should be defensive_only=True")
+                self.assertEqual(len(eff.periodics), 0)
+                self.assertTrue(len(eff.note) > 0)
+
+    def test_defensive_only_count_after_batch35(self) -> None:
+        count = sum(1 for e in ITEM_EFFECTS.values() if e.defensive_only)
+        # 53 after batch 34 + 6 new = 59
+        self.assertGreaterEqual(count, 59)
+
+
 if __name__ == "__main__":
     unittest.main()
