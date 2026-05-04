@@ -2251,3 +2251,128 @@ commit):**
 Engine on :8893 STILL on 0.8.0 (deferred restart — see above).
 Working tree at write-time has Phase 6 changes uncommitted; will land in
 single commit. User in mid-Arena (lcu.phase=InProgress, mode_key=arena).
+
+## s48 hand-off — 2026-05-03 23:20 (DS engine activated 0.9.0 → 0.9.1; Phase 6 step 4 trinket filter)
+
+Short follow-on to s47. Restart of RC-DaemonSlayer activated Phase 6
+work; Arcane Sweeper trinket filter shipped on top.
+
+**Shipped (commit `5701664`, pushed `f82c180..5701664`):**
+- Restart of RC-DaemonSlayer task — engine 0.9.0 active on :8893 (was
+  0.8.0 / deferred restart from s47).
+- Phase 6 step 4: `ARENA_TRINKET_IDS = frozenset({"3348"})` in
+  `agents/daemon_slayer/rank.py` + `strip_arena_trinkets()` helper.
+  Both `rank_items` and `beam_search_build` strip trinket from
+  `current_item_ids` before the slot-count check; surface a note in
+  result.notes when stripped. Patch bump 0.9.0 → 0.9.1.
+- 215/215 tests green (was 207, +8 trinket cases).
+- Smoke verified: `/rank` with sweeper-padded inventory now returns
+  ranked picks instead of 422 ValueError.
+
+**Decisions worth pinning:**
+- Trinket strip happens in `rank.py` (not `engine.py`). Engine accepts
+  the id and gets zero stats, so build_champion is unaffected. The
+  bug was strictly in the slot-count guard — fix lives at the smallest
+  scope that catches it.
+- Patch bump (not minor). Behavior change is internal; server endpoints
+  + client signatures unchanged.
+
+**s47's #1 (arena_coach augment wire-up) reclassified as BLOCKED:**
+- `coaches/arena_coach.py:617` hard-codes `"augments": []` in the
+  lifecycle state builder. Vision detects augments on the select panel
+  but never persists into running state.
+- Engine/server/client plumbing for augments through `compute_dps` /
+  `rank_items` / `/dps` / `/rank` is forward-compatible but useless
+  without upstream persistence.
+- New memory: `project_arena_augments_not_persisted.md` describes the
+  blocker + what upstream fix needs (side-channel for picked augments
+  + name→apiName mapping).
+
+**Things tomorrow-you should NOT redo:**
+- Don't re-investigate `state["augments"]` source — it's hardcoded `[]`
+  by design, not a missing wire. See the new memory.
+- Don't try to add Arcane Sweeper to a candidate filter — it's already
+  excluded by `_is_purchasable` (gold.purchasable=False). The bug was
+  current_item_ids padding only.
+- Don't try to add `augments` param to `compute_dps`/`rank_items` until
+  the upstream persistence is in place — wasted plumbing otherwise.
+
+**Next-session candidates (ranked):**
+1. **Phase 6 step 5 — registry expansion.** Audit ~85 flat-stat
+   augment candidates; per-augment verification pass against cdragon
+   `dataValues`. Expand `agents/daemon_slayer/augments.py`'s tier-1
+   stat-overlay registry. Independent of upstream persistence work.
+2. **Augment persistence (the actual blocker for s47#1).** Side-channel
+   for `_handle_augment_select` to write picked augments + lifecycle
+   reads them; name→apiName mapping table. Then arena_coach wire-up
+   becomes a 5-line change. Probably 1-2 sessions.
+3. **Phase 5 (Mayhem augments)** — STILL DEFERRED. Same reason as
+   s47: no clean cdragon dump.
+4. **Galeforce stale entry in items.json** — the `/rank` smoke
+   surfaced "Galeforce" id 446671 in the top-3 picks; per
+   `reference_galeforce_removed`, Galeforce was banned. The DS items
+   snapshot (16.9.1) needs cleanup OR the engine needs a deny-list.
+   Possibly a Phase 1.5 follow-up to the extractor.
+
+**Bridge state at session end:** RC main pid=9328 alive=true reload_ok=true.
+Engine on :8893 NOW 0.9.1 (Phase 6 + step 4 active). User in Lobby
+(safe to /clear). Game-PC bridge auto-flow loop verified alive
+(reply latency ~40s on the §4 liveness probe).
+
+## s49 hand-off — 2026-05-04 (Phase 6 closed: step 5 activated + step 6 augment persistence shipped)
+
+Single-arc session — closed out the Phase 6 (Arena augments) arc through
+the upstream wire-up that s48 marked BLOCKED.
+
+**Shipped (commit `483a272`, not yet pushed):**
+- Restart of RC-DaemonSlayer activated 0.9.2 (Phase 6 step 5 — 7 new
+  augment overlays + crit cap from `d2bb840`). Verified in /stats: stacked
+  4× crit augments cap at 1.0 cleanly.
+- Phase 6 step 6 (0.9.2 → 0.9.3): augments now thread through `compute_dps`
+  + `rank_items` (engine), `_route_dps` + `_route_rank` (server),
+  `dps_for` + `rank_for` (client). Baseline AND per-candidate evaluations
+  both apply the overlay, so rank deltas remain coherent.
+- `coaches/arena_coach.py` — module-level `_augment_name_map()` lazy
+  display→apiName resolver (266 entries; tolerates apostrophes).
+  `self._picked_augments` list on the Coach instance, reset in
+  `_reset_extra`. `_handle_augment_select` now resolves Haiku's "Take:"
+  to apiName and appends; `_on_state_received` injects into
+  `state["augments"]`; `_run_coach` passes to `_ds_client.rank_for(...)`.
+  Artifact JSON now exposes `augments_picked` field.
+- Tests 226 → 232 (+4 augments-through-dps/rank, +2 server routes).
+- Memory: `reference_galeforce_removed` scope-narrowed (Arena re-skin
+  446671 is legitimate, not stale data); `project_arena_augments_not_persisted`
+  flipped to RESOLVED with v2 deferred (vision-confirmed augment slots).
+
+**Decisions worth pinning:**
+- v1 augment source = Haiku recommendation, not vision-confirmed click.
+  Player can deviate. v2 = HUD-overlay reading after the panel disappears.
+  Honest about confidence in the memory.
+- Augments stored as apiName list on the Coach instance, NOT a side-channel
+  JSON. Artifact JSON's `augments_picked` is the dashboard/postgame view.
+- Galeforce 446671 stays in the candidate pool — it's an Arena (map 30)
+  re-skin that survived the SR/ARAM scrub. The s48 cleanup item is
+  dismissed, not deferred.
+
+**Things tomorrow-you should NOT redo:**
+- Don't add a side-channel JSON for picked augments — instance state on
+  Coach is the storage. See updated `project_arena_augments_not_persisted`.
+- Don't deny-list Galeforce id 446671 — see updated `reference_galeforce_removed`.
+- Don't re-add `augments=` kwarg to engine/server/client surfaces — already
+  there in `compute_dps`, `rank_items`, `/dps`, `/rank`, `dps_for`, `rank_for`.
+- Don't rebuild the name map for every call — it's lazy + cached at
+  module level (`_AUG_NAME_MAP_CACHE`).
+
+**Next-session candidates (ranked):**
+1. **Augment vision v2** — read post-pick HUD augment slots so picks
+   reflect actual click. Real precision win for arena coaching. Probably
+   touches `ArenaVisionReader.PROMPT` + a new vision call cadence after
+   panel disappears.
+2. **Phase 8 (SR Draft Theatre kickoff)** — fresh arc, beam search
+   foundation already in place from s45.
+3. **Phase 5 (Mayhem augments)** — STILL DEFERRED (no clean cdragon dump).
+
+**Bridge state at session end:** RC main pid=9328 alive=true reload_ok=true.
+Engine on :8893 NOW 0.9.3 (Phase 6 fully active). LCU phase=EndOfGame
+(safe to /clear). Working tree has WAKEUP_NOTES.md (this update) +
+data/ratings/last_arena.json (runtime, untouched this session).
