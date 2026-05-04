@@ -387,6 +387,12 @@ def compute_dps(
     # raw stat blocks; /dps reflects converted totals.
     ap_from_hp = total_bonus_ap_from_hp(item_effects, caster_bonus_hp)
     ap += ap_from_hp
+    # Phase 4 batch 21 (2026-05-04): crit_chance plumbed into CallContext
+    # for ER Spellblade (+0.5 bonus physical per 1% crit). Same shape as
+    # the per-rotation-final crit at line ~413; clamped at 1.0 to match.
+    # Default 0.0 means "no crit", so pre-batch consumers that omit it
+    # see no behavior change.
+    crit_chance_ctx = min(float(stats.get("crit", 0.0)), 1.0)
     call_ctx = CallContext(
         base_ad=base_ad,
         bonus_ad=bonus_ad,
@@ -398,6 +404,7 @@ def compute_dps(
         caster_max_hp=caster_max_hp,
         caster_bonus_hp=caster_bonus_hp,
         target_bonus_hp=target_bonus_hp,
+        crit_chance=crit_chance_ctx,
     )
 
     rotations_by_phase = _phase_rotations(snapshot, resolved.champion_id)
