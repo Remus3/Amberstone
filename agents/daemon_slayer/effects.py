@@ -1290,6 +1290,112 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "the shield piece)"
         ),
     ),
+    # ── Phase 4 batch 29 (2026-05-04): coverage batch — defensive_only +
+    # 2 partial promotions (Liandry's Suffering damage amp, Stormsurge
+    # flat magic pen). Coverage-completeness; no new schema fields. The
+    # 4 defensive_only entries surface "we considered this and decided
+    # no DPS contribution applies" with one-line notes — same template
+    # as the existing high-pickrate defensive_only entries from batches
+    # 1-3. The 2 partial promotions reuse existing schema (damage_amp_pct
+    # from batch 14, magic_pen_flat from batch 4).
+
+    "6697": ItemEffect(
+        item_id="6697",
+        name="Hubris",
+        # 55 AD + 18 Lethality + 10 AH stat block (Lethality is in the
+        # description text, NOT in DDragon's FlatPhysicalDamageMod block,
+        # so it currently contributes nothing in aggregate_item_stats).
+        # Eminence is takedown-event-bound (15 base + 2 per stack bonus
+        # AD on champion-takedown within 3s of damaging) — defensive_only
+        # because it doesn't fire in basic auto rotation.
+        # NOT MODELED (separate batch scope):
+        # - 18 Lethality → would need level-scaled flat pen schema
+        #   (current armor_pen_flat doesn't level-scale; lethality in
+        #   real League is `flat × (0.6 + 0.4 × level/18)`). Multiple
+        #   lethality items (Youmuu's, Edge of Night, Opportunity,
+        #   Voltaic, Axiom Arc, Umbral Glaive) share this gap — defer
+        #   until a "lethality plumbing" batch.
+        # - Eminence post-kill stack — would need event-driven AD bonus
+        #   schema; same family as Stormsurge's takedown-bound passives.
+        defensive_only=True,
+        note=(
+            "Hubris: Eminence takedown-bound bonus AD stack (90s) — "
+            "defensive_only; 18 Lethality not currently in stats block "
+            "(level-scaled lethality plumbing deferred)"
+        ),
+    ),
+
+    "3065": ItemEffect(
+        item_id="3065",
+        name="Spirit Visage",
+        # 400 HP + 50 MR + 10 AH + 100% base regen. Boundless Vitality
+        # (heal/shield amp 25%) is non-DPS — engine doesn't model healing
+        # output. Pure defensive.
+        defensive_only=True,
+        note="Spirit Visage: Boundless Vitality (heal/shield +25%); no DPS contribution",
+    ),
+
+    "2504": ItemEffect(
+        item_id="2504",
+        name="Kaenic Rookern",
+        # 400 HP + 80 MR + 100% regen. Magebane: gain magic shield after
+        # 15s of not taking magic damage. Pure defensive — no DPS path.
+        defensive_only=True,
+        note="Kaenic Rookern: Magebane (low-MR-uptime magic shield); no DPS contribution",
+    ),
+
+    "6653": ItemEffect(
+        item_id="6653",
+        name="Liandry's Torment",
+        # 60 AP + 300 HP stat block. Two passives:
+        # - Torment: ability damage burn — ~6% target max HP magic over
+        #   3s. Ability-bound, NOT in basic auto rotation. Same rule as
+        #   Spear of Shojin (batch 16) — engine doesn't model ability
+        #   damage.
+        # - Suffering: 2% bonus damage per second in combat, max 3
+        #   stacks = 6%. Generic damage amp, not ability-restricted —
+        #   applies to autos + procs same as Riftmaker's Void Corruption
+        #   (batch 14). Steady-state DPS pin = 6% (full ramp after 3s
+        #   in combat). Promoted via the existing damage_amp_pct schema.
+        damage_amp_pct=0.06,
+        note=(
+            "Liandry's Torment: Suffering ~6% damage amp at full ramp "
+            "(3s in champ combat; sustained-DPS approximation) + "
+            "Torment burn (ability-bound, not modeled)"
+        ),
+    ),
+
+    "4629": ItemEffect(
+        item_id="4629",
+        name="Cosmic Drive",
+        # 70 AP + 350 HP + 25 AH + 4% MS stat block. Spelldance: 20 bonus
+        # MS for 4s on dealing magic/true damage to champions. Pure
+        # utility (movement speed); no DPS contribution.
+        defensive_only=True,
+        note="Cosmic Drive: Spelldance (MS bonus on magic/true damage); no DPS contribution",
+    ),
+
+    "4646": ItemEffect(
+        item_id="4646",
+        name="Stormsurge",
+        # 90 AP + 15 flat magic pen + 6% MS stat block (the 15 magic pen
+        # is in the description text, NOT in DDragon's stat block keys).
+        # Two ability-bound passives:
+        # - Stormraider: 25% max-HP-in-2.5s gate to apply Squall.
+        # - Squall: 2s after Stormraider, deal 125 + 10% AP magic.
+        # Both are ability-bound and conditional — NOT modeled (same
+        # rule as Hextech Rocketbelt, Luden's, etc.). The 15 flat magic
+        # pen IS modeled here via magic_pen_flat — joins Sorcerer's
+        # Shoes (12) and Shadowflame (15) in the magic pen layer.
+        # Magic-pen contribution alone is real DPS uplift, so this
+        # entry is NOT defensive_only.
+        magic_pen_flat=15.0,
+        note=(
+            "Stormsurge: 15 flat magic pen (magical) + Stormraider/Squall "
+            "ability-bound burst (not modeled; same rule as Rocketbelt)"
+        ),
+    ),
+
 }
 
 
