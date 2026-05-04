@@ -1653,3 +1653,9 @@ lobby phase. No game this session. DS server stopped after smoke
 test (PID 12180 killed); no scheduled task installed yet (Phase 7
 work).
 
+**/done close-out (s42):** Working tree clean. 2 commits this session
+both already on origin (`f067ce6..5029deb`). No background tasks. No
+pending lessons. Bridge gamepc loop alive (probe `task-824521a49ae8`
+round-tripped in 31s). RC pid 9740 alive, last_reload_ok=true,
+restart_trigger empty. Lobby — safe to /clear.
+
