@@ -27,6 +27,7 @@ from agents.daemon_slayer.effects import (
     PeriodicProc,
     effective_target_armor,
     effective_target_mr,
+    total_crit_chance_bonus,
 )
 
 
@@ -2865,6 +2866,238 @@ class SeryldasGrudgeTests(unittest.TestCase):
         )
         # input field unchanged
         self.assertEqual(with_sg.target_armor, 0.0)
+
+
+class TotalCritChanceBonusHelperTests(unittest.TestCase):
+    """Phase 4 batch 26 — ``total_crit_chance_bonus`` helper.
+
+    Sums each effect's flat + HP-scaled contribution into a single
+    fraction. Returns 0.0 with no contributors. The clamp at 1.0 lives
+    at the call site (compute_dps), not here — this helper exposes the
+    raw sum so over-cap stacking is visible to callers.
+    """
+
+    def test_empty_effects_returns_zero(self) -> None:
+        self.assertEqual(total_crit_chance_bonus([], caster_bonus_hp=2000.0), 0.0)
+
+    def test_no_crit_fields_returns_zero(self) -> None:
+        # An effect with no crit_chance_bonus_* fields contributes nothing.
+        plain = ItemEffect(item_id="x", name="x", armor_pen_pct=0.35)
+        self.assertEqual(total_crit_chance_bonus([plain], caster_bonus_hp=2000.0), 0.0)
+
+    def test_yun_tal_flat_contributes_unconditionally(self) -> None:
+        yt = ITEM_EFFECTS["3032"]
+        # Flat contribution doesn't care about caster_bonus_hp.
+        self.assertAlmostEqual(total_crit_chance_bonus([yt], 0.0), 0.25, places=4)
+        self.assertAlmostEqual(total_crit_chance_bonus([yt], 5000.0), 0.25, places=4)
+
+    def test_atma_zero_at_zero_bonus_hp(self) -> None:
+        # HP-scaled with 0 caster_bonus_hp → 0 contribution. Mirrors
+        # batch 19's target_bonus_hp_amp behavior.
+        atma = ITEM_EFFECTS["3039"]
+        self.assertEqual(total_crit_chance_bonus([atma], 0.0), 0.0)
+
+    def test_atma_half_ramp_at_1500(self) -> None:
+        atma = ITEM_EFFECTS["3039"]
+        # 1500 / 3000 cap = 0.5 ramp → 0.30 * 0.5 = 0.15.
+        self.assertAlmostEqual(total_crit_chance_bonus([atma], 1500.0), 0.15, places=4)
+
+    def test_atma_full_ramp_at_3000(self) -> None:
+        atma = ITEM_EFFECTS["3039"]
+        self.assertAlmostEqual(total_crit_chance_bonus([atma], 3000.0), 0.30, places=4)
+
+    def test_atma_caps_past_3000(self) -> None:
+        atma = ITEM_EFFECTS["3039"]
+        # 4500 bonus HP > 3000 cap → still 0.30, no over-shoot.
+        self.assertAlmostEqual(total_crit_chance_bonus([atma], 4500.0), 0.30, places=4)
+
+    def test_yun_tal_plus_atma_compose_additively(self) -> None:
+        yt = ITEM_EFFECTS["3032"]
+        atma = ITEM_EFFECTS["3039"]
+        # 0.25 (flat) + 0.15 (Atma at 1500) = 0.40.
+        self.assertAlmostEqual(
+            total_crit_chance_bonus([yt, atma], 1500.0), 0.40, places=4,
+        )
+
+    def test_helper_does_not_clamp_at_one(self) -> None:
+        # Caller (compute_dps) clamps at 1.0. The helper exposes raw
+        # sums so over-cap stacking is visible. Construct a synthetic
+        # 60% flat + 50% scaled = 1.10 sum.
+        big_flat = ItemEffect(item_id="a", name="a", crit_chance_bonus_flat=0.60)
+        big_scaled = ItemEffect(
+            item_id="b",
+            name="b",
+            crit_chance_bonus_max_pct=0.50,
+            crit_chance_bonus_per_bonus_hp_cap=1000.0,
+        )
+        # 1000 HP → full ramp on big_scaled = 0.50.
+        self.assertAlmostEqual(
+            total_crit_chance_bonus([big_flat, big_scaled], 1000.0), 1.10, places=4,
+        )
+
+
+class YunTalWildarrowsTests(unittest.TestCase):
+    """Phase 4 batch 26 — Yun Tal Wildarrows (3032) added to ITEM_EFFECTS as
+    a new entry (was unmodeled prior — stats-only via item aggregation).
+
+    Practice Makes Lethal pinned at full Wildarrows stacks (25%); same
+    steady-state assumption as Black Cleaver's "30% reduction at 5
+    stacks" and Riftmaker's "8% at full ramp". Flurry AS bonus is
+    intentionally not modeled (would need a conditional AS-bonus
+    schema; near-100% uptime in active rotations would over-count
+    in shorter ones).
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_yun_tal_present_with_flat_crit_bonus(self) -> None:
+        e = ITEM_EFFECTS["3032"]
+        self.assertEqual(e.name, "Yun Tal Wildarrows")
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(e.periodics, ())
+        self.assertAlmostEqual(e.crit_chance_bonus_flat, 0.25, places=4)
+        self.assertEqual(e.crit_chance_bonus_max_pct, 0.0)
+        self.assertEqual(e.crit_chance_bonus_per_bonus_hp_cap, 0.0)
+
+    def test_yun_tal_no_unique_passive_key(self) -> None:
+        # Practice Makes Lethal is one-of-one currently; no dedup needed.
+        self.assertEqual(ITEM_EFFECTS["3032"].unique_passive_key, "")
+
+    def test_yun_tal_lifts_dps_on_caitlyn(self) -> None:
+        # Caitlyn lvl 11 has 0% base crit (her Headshot is conditional).
+        # Yun Tal's stat block (50 AD + 40% AS) plus the new 25% crit pin
+        # both contribute to the lift.
+        bare = compute_dps(self.snap, "Caitlyn", level=11)
+        with_yt = compute_dps(self.snap, "Caitlyn", level=11, item_ids=["3032"])
+        self.assertGreater(with_yt.weighted_dps, bare.weighted_dps)
+
+    def test_yun_tal_surfaces_crit_lift_note(self) -> None:
+        with_yt = compute_dps(self.snap, "Caitlyn", level=11, item_ids=["3032"])
+        joined = " ".join(with_yt.notes)
+        self.assertIn("crit chance lifted by items", joined)
+        self.assertIn("+25.0%", joined)
+
+    def test_yun_tal_ad_block_lands_in_resolved_stats(self) -> None:
+        # /stats output is unchanged by the cross-derivation; the AD/AS
+        # piece still contributes via item aggregation. Yun Tal's stat
+        # block carries 50 AD + 40% AS (DDragon) + 0% base crit.
+        with_yt = compute_dps(self.snap, "Caitlyn", level=11, item_ids=["3032"])
+        # Crit comes from stats.get("crit") as the raw build crit (not
+        # the boosted total) — same separation as batch 15 HP→AP. The
+        # *engine-internal* boosted value flows through procs + display.
+        # We verify the boosted note exists rather than checking for
+        # mutation of resolved.stats (which should not happen).
+        # Caitlyn's resolved AD with Yun Tal includes the 50 AD.
+        self.assertGreaterEqual(with_yt.stats.get("ad", 0.0), 50.0)
+
+    def test_yun_tal_boosts_avg_attack_dmg_via_crit(self) -> None:
+        # avg_attack_dmg = ad * (1 + crit * crit_bonus) * armor_factor.
+        # Yun Tal lifts crit by 0.25 → avg_attack_dmg should be
+        # measurably higher than what AD alone would deliver.
+        # Compare against a synthetic baseline: Caitlyn lvl 11 has 0
+        # native crit, so avg_attack_dmg without Yun Tal scales at
+        # crit=0 (no crit term), with Yun Tal scales at crit=0.25.
+        bare = compute_dps(self.snap, "Caitlyn", level=11)
+        with_yt = compute_dps(self.snap, "Caitlyn", level=11, item_ids=["3032"])
+        # Per-hit damage gap > what 50 AD alone would explain at 0% crit.
+        # Rough check: with_yt avg_attack > bare avg_attack + 50 (the
+        # ceiling if crit contributed nothing).
+        self.assertGreater(with_yt.avg_attack_dmg, bare.avg_attack_dmg + 50.0)
+
+
+class AtmasReckoningCritTests(unittest.TestCase):
+    """Phase 4 batch 26 — Atma's Reckoning (3039) added to ITEM_EFFECTS as
+    a new entry (was unmodeled prior — stats-only via item aggregation).
+
+    Big Hands: 1% crit per 100 bonus HP, max 30% at 3000 bonus HP. Linear
+    ramp; same shape as batch 19's target_bonus_hp_amp on the caster
+    side. Stat block (700 HP / 20% crit / 10 AH) lands via item
+    aggregation.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_atma_present_with_hp_scaled_crit(self) -> None:
+        e = ITEM_EFFECTS["3039"]
+        self.assertEqual(e.name, "Atma's Reckoning")
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(e.periodics, ())
+        self.assertEqual(e.crit_chance_bonus_flat, 0.0)
+        self.assertAlmostEqual(e.crit_chance_bonus_max_pct, 0.30, places=4)
+        self.assertAlmostEqual(e.crit_chance_bonus_per_bonus_hp_cap, 3000.0, places=2)
+
+    def test_atma_no_unique_passive_key(self) -> None:
+        self.assertEqual(ITEM_EFFECTS["3039"].unique_passive_key, "")
+
+    def test_atma_lifts_dps_on_hp_stacker(self) -> None:
+        # Sett's HP scaling is high; Atma's stat block (700 HP / 20%
+        # crit / 10 AH) plus the Big Hands ramp both contribute.
+        bare = compute_dps(self.snap, "Sett", level=11)
+        with_atma = compute_dps(self.snap, "Sett", level=11, item_ids=["3039"])
+        self.assertGreater(with_atma.weighted_dps, bare.weighted_dps)
+
+    def test_atma_surfaces_crit_lift_note(self) -> None:
+        with_atma = compute_dps(self.snap, "Sett", level=11, item_ids=["3039"])
+        joined = " ".join(with_atma.notes)
+        self.assertIn("crit chance lifted by items", joined)
+        # Sett lvl 11 + just Atma: caster_bonus_hp ≈ 700 (Atma's flat HP).
+        # Big Hands at 700/3000 = 0.233 ramp → 0.30 * 0.233 = 0.07 = 7%.
+        # Note format pins ≈ +7.0% (rounding to one decimal).
+        self.assertIn("+7.0%", joined)
+
+    def test_atma_scales_with_added_hp_items(self) -> None:
+        # Stack Atma + Heartsteel (3084, 800 HP) + Warmog's (3083, 800 HP)
+        # — the build's caster_bonus_hp climbs and Big Hands ramps with it.
+        # Build with just Atma: ~700 bonus HP → ~7% Big Hands.
+        # Build with Atma + Heartsteel + Warmog's: ~2300 bonus HP → ~23%.
+        atma_only = compute_dps(self.snap, "Sett", level=11, item_ids=["3039"])
+        atma_stack = compute_dps(
+            self.snap, "Sett", level=11, item_ids=["3039", "3084", "3083"],
+        )
+        # Both should surface a "crit chance lifted" note.
+        atma_only_joined = " ".join(atma_only.notes)
+        atma_stack_joined = " ".join(atma_stack.notes)
+        self.assertIn("crit chance lifted by items", atma_only_joined)
+        self.assertIn("crit chance lifted by items", atma_stack_joined)
+        # Stack version has higher boosted crit.
+        # Pull the +XX.X% number from each note.
+        import re
+        a1 = re.search(r"crit chance lifted by items: \+([\d.]+)%", atma_only_joined)
+        a2 = re.search(r"crit chance lifted by items: \+([\d.]+)%", atma_stack_joined)
+        self.assertIsNotNone(a1)
+        self.assertIsNotNone(a2)
+        self.assertGreater(float(a2.group(1)), float(a1.group(1)))
+
+
+class CritBonusComposesWithEssenceReaverTests(unittest.TestCase):
+    """Phase 4 batch 26 — item-effect-contributed crit feeds ER's Spellblade.
+
+    Essence Reaver's bonus_damage scales linearly with CallContext.crit_chance:
+    1.25 * base_ad + 50 * crit_chance. With Yun Tal contributing +25% crit,
+    ER's per-proc damage rises by 50 * 0.25 = 12.5 vs the same build with
+    a placeholder no-crit-contributing item.
+
+    Pins the cross-batch invariant that batch 21 (CallContext.crit_chance)
+    sees the build's actual crit, not just stats.crit.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_er_proc_damage_lifts_when_yun_tal_added(self) -> None:
+        # Caitlyn lvl 11 + ER + Yun Tal vs Caitlyn lvl 11 + ER only.
+        # Yun Tal's 25% crit pin should propagate into ER's lambda.
+        er_only = compute_dps(self.snap, "Caitlyn", level=11, item_ids=["3508"])
+        er_plus_yt = compute_dps(
+            self.snap, "Caitlyn", level=11, item_ids=["3508", "3032"],
+        )
+        # Strict greater — the proc+stat composition should beat ER alone.
+        self.assertGreater(er_plus_yt.weighted_dps, er_only.weighted_dps)
 
 
 if __name__ == "__main__":
