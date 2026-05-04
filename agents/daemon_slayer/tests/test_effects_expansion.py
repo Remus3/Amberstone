@@ -264,17 +264,17 @@ class DefensiveOnlyExpansionTests(unittest.TestCase):
     def test_collector_no_periodic(self) -> None:
         e = ITEM_EFFECTS["6676"]
         self.assertTrue(e.defensive_only)
-        self.assertIsNone(e.periodic)
+        self.assertEqual(e.periodics, ())
 
     def test_phantom_dancer_no_periodic(self) -> None:
         e = ITEM_EFFECTS["3046"]
         self.assertTrue(e.defensive_only)
-        self.assertIsNone(e.periodic)
+        self.assertEqual(e.periodics, ())
 
     def test_sterak_no_periodic(self) -> None:
         e = ITEM_EFFECTS["3053"]
         self.assertTrue(e.defensive_only)
-        self.assertIsNone(e.periodic)
+        self.assertEqual(e.periodics, ())
 
     # BotRK (3153) and Eclipse (6692) promoted in Phase 4 batch 5
     # (2026-05-04) once ``target_max_hp`` landed. Their proc-shape
@@ -319,7 +319,7 @@ class DefensiveOnlyBatch2Tests(unittest.TestCase):
             e = ITEM_EFFECTS[iid]
             self.assertEqual(e.name, expected_name, iid)
             self.assertTrue(e.defensive_only, f"{iid} should be defensive_only")
-            self.assertIsNone(e.periodic, f"{iid} should have no periodic proc")
+            self.assertEqual(e.periodics, (), f"{iid} should have no periodic proc")
             self.assertEqual(e.crit_damage_bonus, 0.0, iid)
             self.assertEqual(e.armor_reduction_pct, 0.0, iid)
             self.assertEqual(e.armor_pen_pct, 0.0, iid)
@@ -379,9 +379,9 @@ class SpellbladeAndOnHitApTests(unittest.TestCase):
 
     def test_lich_bane_periodic_present(self) -> None:
         e = ITEM_EFFECTS["3100"]
-        self.assertIsNotNone(e.periodic)
+        self.assertNotEqual(e.periodics, ())
         self.assertFalse(e.defensive_only)
-        self.assertEqual(e.periodic.damage_type, MAGICAL)
+        self.assertEqual(e.periodics[0].damage_type, MAGICAL)
 
     def test_lich_bane_raises_dps(self) -> None:
         bare = compute_dps(self.snap, "Aatrox", level=11)
@@ -405,10 +405,10 @@ class SpellbladeAndOnHitApTests(unittest.TestCase):
 
     def test_nashors_tooth_periodic_present(self) -> None:
         e = ITEM_EFFECTS["3115"]
-        self.assertIsNotNone(e.periodic)
+        self.assertNotEqual(e.periodics, ())
         self.assertFalse(e.defensive_only)
-        self.assertEqual(e.periodic.damage_type, MAGICAL)
-        self.assertEqual(e.periodic.every_n_attacks, 1)
+        self.assertEqual(e.periodics[0].damage_type, MAGICAL)
+        self.assertEqual(e.periodics[0].every_n_attacks, 1)
 
     def test_nashors_tooth_raises_dps(self) -> None:
         bare = compute_dps(self.snap, "Aatrox", level=11)
@@ -469,7 +469,7 @@ class DefensiveOnlyBatch3Tests(unittest.TestCase):
             e = ITEM_EFFECTS[iid]
             self.assertEqual(e.name, expected_name, iid)
             self.assertTrue(e.defensive_only, f"{iid} should be defensive_only")
-            self.assertIsNone(e.periodic, f"{iid} should have no periodic proc")
+            self.assertEqual(e.periodics, (), f"{iid} should have no periodic proc")
             self.assertEqual(e.crit_damage_bonus, 0.0, iid)
             self.assertEqual(e.armor_reduction_pct, 0.0, iid)
             self.assertEqual(e.armor_pen_pct, 0.0, iid)
@@ -684,17 +684,17 @@ class TargetHpItemTests(unittest.TestCase):
     def test_botrk_promoted_not_defensive_only(self) -> None:
         e = ITEM_EFFECTS["3153"]
         self.assertFalse(e.defensive_only)
-        self.assertIsNotNone(e.periodic)
-        self.assertEqual(e.periodic.damage_type, PHYSICAL)
-        self.assertEqual(e.periodic.every_n_attacks, 1)
+        self.assertNotEqual(e.periodics, ())
+        self.assertEqual(e.periodics[0].damage_type, PHYSICAL)
+        self.assertEqual(e.periodics[0].every_n_attacks, 1)
         self.assertIn("mist", e.note.lower())
 
     def test_eclipse_promoted_not_defensive_only(self) -> None:
         e = ITEM_EFFECTS["6692"]
         self.assertFalse(e.defensive_only)
-        self.assertIsNotNone(e.periodic)
-        self.assertEqual(e.periodic.damage_type, PHYSICAL)
-        self.assertEqual(e.periodic.every_n_attacks, 2)
+        self.assertNotEqual(e.periodics, ())
+        self.assertEqual(e.periodics[0].damage_type, PHYSICAL)
+        self.assertEqual(e.periodics[0].every_n_attacks, 2)
         self.assertIn("ever rising moon", e.note.lower())
 
     def test_botrk_dps_zero_target_hp_matches_no_hp_signal(self) -> None:
@@ -832,9 +832,9 @@ class CasterHpItemTests(unittest.TestCase):
     def test_titanic_hydra_periodic_present(self) -> None:
         e = ITEM_EFFECTS["3748"]
         self.assertFalse(e.defensive_only)
-        self.assertIsNotNone(e.periodic)
-        self.assertEqual(e.periodic.damage_type, PHYSICAL)
-        self.assertEqual(e.periodic.every_n_attacks, 1)
+        self.assertNotEqual(e.periodics, ())
+        self.assertEqual(e.periodics[0].damage_type, PHYSICAL)
+        self.assertEqual(e.periodics[0].every_n_attacks, 1)
         self.assertIn("cleave", e.note.lower())
 
     def test_heartsteel_promoted_not_defensive_only(self) -> None:
@@ -842,9 +842,9 @@ class CasterHpItemTests(unittest.TestCase):
         # promotion path (mirrors Shadowflame in batch 4).
         e = ITEM_EFFECTS["3084"]
         self.assertFalse(e.defensive_only)
-        self.assertIsNotNone(e.periodic)
-        self.assertEqual(e.periodic.damage_type, PHYSICAL)
-        self.assertGreater(e.periodic.every_n_seconds, 0.0)
+        self.assertNotEqual(e.periodics, ())
+        self.assertEqual(e.periodics[0].damage_type, PHYSICAL)
+        self.assertGreater(e.periodics[0].every_n_seconds, 0.0)
         self.assertIn("colossal", e.note.lower())
 
     def test_titanic_hydra_raises_dps_via_own_bonus_hp(self) -> None:
@@ -974,9 +974,9 @@ class RavenousHydraMultiTargetTests(unittest.TestCase):
     def test_ravenous_hydra_periodic_present(self) -> None:
         e = ITEM_EFFECTS["3074"]
         self.assertFalse(e.defensive_only)
-        self.assertIsNotNone(e.periodic)
-        self.assertEqual(e.periodic.damage_type, PHYSICAL)
-        self.assertEqual(e.periodic.every_n_attacks, 1)
+        self.assertNotEqual(e.periodics, ())
+        self.assertEqual(e.periodics[0].damage_type, PHYSICAL)
+        self.assertEqual(e.periodics[0].every_n_attacks, 1)
         self.assertIn("cleave", e.note.lower())
 
     def test_ravenous_hydra_zero_proc_on_single_target_champion(self) -> None:
@@ -1020,6 +1020,102 @@ class RavenousHydraMultiTargetTests(unittest.TestCase):
         # And note from item shouldn't surface a "no rotations" warning.
         joined = " ".join(result.notes)
         self.assertNotIn("no rotations", joined)
+
+
+class MultiProcSchemaTests(unittest.TestCase):
+    """Phase 4 batch 8 — `ItemEffect.periodics: tuple[PeriodicProc, ...]`.
+
+    Schema rename from `Optional[PeriodicProc]` → `tuple[..., ...]` lets
+    a single item carry multiple periodic procs. Titanic Hydra is the
+    first multi-proc entry: primary on-hit + cleave-to-others.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_periodics_field_default_is_empty_tuple(self) -> None:
+        # Items without procs have `periodics=()` not `None`. Sanity
+        # check on a known defensive_only entry.
+        e = ITEM_EFFECTS["3072"]  # Bloodthirster, defensive_only
+        self.assertEqual(e.periodics, ())
+
+    def test_titanic_hydra_has_two_periodics(self) -> None:
+        # Multi-proc poster child: primary cleave on-hit (always) +
+        # cleave-to-others (only when targets_in_rotation > 1).
+        e = ITEM_EFFECTS["3748"]
+        self.assertEqual(len(e.periodics), 2)
+        primary, cleave_others = e.periodics
+        self.assertIn("primary", primary.name.lower())
+        self.assertIn("nearby", cleave_others.name.lower())
+        self.assertEqual(primary.damage_type, PHYSICAL)
+        self.assertEqual(cleave_others.damage_type, PHYSICAL)
+        self.assertEqual(primary.every_n_attacks, 1)
+        self.assertEqual(cleave_others.every_n_attacks, 1)
+
+    def test_titanic_cleave_to_others_zero_at_single_target(self) -> None:
+        cleave_others = ITEM_EFFECTS["3748"].periodics[1]
+        ctx = CallContext(
+            base_ad=80, bonus_ad=40, level=11, targets_in_rotation=1.0,
+        )
+        self.assertEqual(cleave_others.resolve_damage(ctx), 0.0)
+
+    def test_titanic_cleave_to_others_scales_with_n(self) -> None:
+        cleave_others = ITEM_EFFECTS["3748"].periodics[1]
+        # Total AD = 120, n=3 → max(0, 3-1) * 0.40 * 120 = 96
+        ctx = CallContext(
+            base_ad=80, bonus_ad=40, level=11, targets_in_rotation=3.0,
+        )
+        self.assertAlmostEqual(cleave_others.resolve_damage(ctx), 96.0, places=3)
+
+    def test_titanic_primary_proc_fires_on_single_target(self) -> None:
+        # On Aatrox (all-n=1 rotations), Titanic's primary proc fires
+        # every basic; cleave-to-others contributes zero. Net DPS still
+        # rises over baseline thanks to the primary proc + stat block.
+        bare = compute_dps(self.snap, "Aatrox", level=11)
+        with_th = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3748"])
+        self.assertGreater(with_th.weighted_dps, bare.weighted_dps)
+
+    def test_engine_iterates_both_titanic_procs(self) -> None:
+        # End-to-end test that the engine actually sums BOTH procs (not
+        # just the first). Construct two builds, identical except one
+        # uses an item-id that doesn't exist (engine ignores it), and
+        # compare. Easier path: directly compute proc DPS via the
+        # internal helper and assert magnitudes.
+        from agents.daemon_slayer.dps import _periodic_proc_dps
+        from agents.daemon_slayer.effects import collect_effects
+        ctx = CallContext(
+            base_ad=80, bonus_ad=40, level=11,
+            caster_bonus_hp=600, targets_in_rotation=3.0,
+        )
+        effects = collect_effects(["3748"])
+        # 1.0 attack, 1.0 second rotation (so DPS == per-attack damage).
+        dps = _periodic_proc_dps(
+            effects, total_attacks=1.0, duration=1.0,
+            target_armor_for_physical=0.0, target_mr=0.0,
+            mode_dmg_mult=1.0, call_ctx=ctx,
+        )
+        # Primary proc damage: 5 + 0.015*600 = 14
+        # Cleave-to-others damage: max(0, 3-1) * 0.40 * 120 = 96
+        # Sum: 110. With armor_factor=1.0 and mode_mult=1.0, dps = 110/1 = 110.
+        self.assertAlmostEqual(dps, 110.0, places=3)
+
+    def test_engine_titanic_single_target_only_primary_fires(self) -> None:
+        # Same harness as above but n=1.0 → cleave-to-others = 0.
+        # Result should be primary-only = 14 dps.
+        from agents.daemon_slayer.dps import _periodic_proc_dps
+        from agents.daemon_slayer.effects import collect_effects
+        ctx = CallContext(
+            base_ad=80, bonus_ad=40, level=11,
+            caster_bonus_hp=600, targets_in_rotation=1.0,
+        )
+        effects = collect_effects(["3748"])
+        dps = _periodic_proc_dps(
+            effects, total_attacks=1.0, duration=1.0,
+            target_armor_for_physical=0.0, target_mr=0.0,
+            mode_dmg_mult=1.0, call_ctx=ctx,
+        )
+        self.assertAlmostEqual(dps, 14.0, places=3)
 
 
 if __name__ == "__main__":
