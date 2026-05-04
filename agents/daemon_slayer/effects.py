@@ -175,6 +175,15 @@ class ItemEffect:
     # ``dps._rotation_attack_dps``: in-game amps don't discriminate
     # physical vs magical, just "damage to champions while in combat".
     damage_amp_pct: float = 0.0
+    # Phase 4 batch 15 (2026-05-04): stat cross-derivation — caster bonus
+    # HP converts into AP at this rate (Riftmaker's Void Infusion: 0.02
+    # per bonus HP). Always-on passive, no ramp gate. Applied dps-side
+    # via CallContext.ap so AP-scaling procs (Lich Bane spellblade,
+    # Nashor's Tooth on-hit) see the converted total. Engine-internal:
+    # the resolved stats output from /stats reflects raw stat blocks
+    # only; the cross-derivation is computed at DPS time and surfaced
+    # in DpsResult.notes when non-zero.
+    ap_per_bonus_hp_pct: float = 0.0
     defensive_only: bool = False     # documents "no DPS effect" entries
     note: str = ""                   # one-line summary surfaced in DpsResult.notes
     # Phase 4 batch 10 (2026-05-04): unique-passive de-duplication.
@@ -660,16 +669,19 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "4633": ItemEffect(
         item_id="4633",
         name="Riftmaker",
-        # Phase 4 batch 14 (2026-05-04): promoted via the damage_amp_pct
-        # schema. Void Corruption ramps to 8% bonus damage after 4s in
-        # combat — sustained-DPS approximation pins the full-ramp value
-        # (same shape as Black Cleaver's full-stacks pen). HP→AP
-        # cross-derivation (Riftmaker's "convert 100% bonus HP into AP"
-        # at full stacks) is a separate problem — engine has no AP-from-HP
-        # bridge yet. The 8% amp captures the bigger of the two effects
-        # in DPS terms; HP→AP can compound on top in a future batch.
+        # Phase 4 batch 14 (2026-05-04): promoted via damage_amp_pct.
+        # Void Corruption ramps to 8% bonus damage after 4s in combat
+        # (sustained-DPS approximation pins the full-ramp value).
+        # Phase 4 batch 15 (2026-05-04): Void Infusion HP→AP wired via
+        # ap_per_bonus_hp_pct = 0.02 (always-on passive, not gated by
+        # combat — DDragon: "Gain 2% of your bonus Health as Ability
+        # Power"). Compounds with Heartsteel / Titanic Hydra HP stacks
+        # to lift Lich Bane / Nashor's Tooth proc damage. The omnivamp
+        # at full Void Corruption stacks is intentionally not modeled
+        # (DPS engine doesn't track healing).
         damage_amp_pct=0.08,
-        note="Riftmaker: Void Corruption ~8% damage amp at full ramp (sustained DPS assumption); HP→AP not modeled",
+        ap_per_bonus_hp_pct=0.02,
+        note="Riftmaker: Void Corruption ~8% damage amp at full ramp + Void Infusion 2% bonus HP → AP (always on)",
     ),
     "3128": ItemEffect(
         item_id="3128",
@@ -857,6 +869,25 @@ def collect_effects(item_ids: Iterable[str | int]) -> list[ItemEffect]:
 def total_crit_damage_bonus(effects: Iterable[ItemEffect]) -> float:
     """Sum ``crit_damage_bonus`` across the build's effects."""
     return sum(e.crit_damage_bonus for e in effects)
+
+
+def total_bonus_ap_from_hp(effects: Iterable[ItemEffect], caster_bonus_hp: float) -> float:
+    """Cross-derived AP from caster bonus HP (Phase 4 batch 15).
+
+    Sums ``ap_per_bonus_hp_pct * caster_bonus_hp`` across the build.
+    Riftmaker's Void Infusion (2% bonus HP → AP) is the first user;
+    additive across multiple cross-derivation items if any land later
+    (sums commute, no buff-system multiplicative subtlety here — each
+    item's contribution is its own independent stat add).
+
+    Returns 0.0 when no item carries the field — pre-batch-15 callers
+    pass through unchanged. Negative ``caster_bonus_hp`` (defensive
+    paranoia: shouldn't happen — engine floors at zero) is clamped at
+    the call site, not here.
+    """
+    if caster_bonus_hp <= 0:
+        return 0.0
+    return sum(e.ap_per_bonus_hp_pct * caster_bonus_hp for e in effects)
 
 
 def total_damage_amp_multiplier(effects: Iterable[ItemEffect]) -> float:

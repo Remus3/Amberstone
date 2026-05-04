@@ -1643,9 +1643,10 @@ class RiftmakerPromotionTests(unittest.TestCase):
 
     Void Corruption ramps to 8% bonus damage after 4s in combat. The
     sustained-DPS approximation pins the full-ramp value (same shape
-    as Black Cleaver's 30%-at-5-stacks). HP→AP cross-derivation is
-    still separate — engine has no AP-from-HP bridge yet, and this
-    batch deliberately scopes that out.
+    as Black Cleaver's 30%-at-5-stacks). HP→AP cross-derivation
+    landed in batch 15 (RiftmakerHpToApTests below) — these tests
+    cover the amp piece in isolation and stay valid because Aatrox
+    auto-attacks don't read AP.
     """
 
     @classmethod
@@ -1669,9 +1670,9 @@ class RiftmakerPromotionTests(unittest.TestCase):
     def test_riftmaker_lifts_dps_via_amp(self) -> None:
         # Build with Riftmaker should beat the same build minus Riftmaker
         # by approximately the amp factor times the stat-only DPS.
-        # We use an AP carry (Aatrox is melee bruiser with hybrid scaling)
-        # — Riftmaker's 80 AP + 350 HP + 15 AH stat block lifts DPS too,
-        # so we compare Aatrox+Riftmaker vs bare Aatrox.
+        # Aatrox AAs are physical so the 70 AP / 350 HP / 15 AH stat
+        # block doesn't contribute directly — the entire delta is the
+        # 8% Void Corruption amp.
         bare = compute_dps(self.snap, "Aatrox", level=11)
         rift = compute_dps(self.snap, "Aatrox", level=11, item_ids=["4633"])
         self.assertGreater(rift.weighted_dps, bare.weighted_dps,
@@ -1716,6 +1717,165 @@ class RiftmakerPromotionTests(unittest.TestCase):
             any("damage amp" in n for n in result.notes),
             "build w/o amp items shouldn't surface a damage-amp note"
         )
+
+
+class TotalBonusApFromHpTests(unittest.TestCase):
+    """Phase 4 batch 15 — additive HP→AP cross-derivation helper."""
+
+    def test_no_effects_returns_zero(self) -> None:
+        from agents.daemon_slayer.effects import total_bonus_ap_from_hp
+        self.assertEqual(total_bonus_ap_from_hp([], 1000.0), 0.0)
+
+    def test_no_hp_returns_zero(self) -> None:
+        # Riftmaker present but caster has zero bonus HP (e.g. no HP-stat
+        # items beyond Riftmaker itself, but bonus_hp = 0 edge case).
+        from agents.daemon_slayer.effects import total_bonus_ap_from_hp
+        rift = ITEM_EFFECTS["4633"]
+        self.assertEqual(total_bonus_ap_from_hp([rift], 0.0), 0.0)
+
+    def test_negative_hp_clamped_to_zero(self) -> None:
+        # Defensive paranoia — engine floors caster_bonus_hp at zero
+        # before passing to the helper, but verify the helper itself
+        # is also defensive.
+        from agents.daemon_slayer.effects import total_bonus_ap_from_hp
+        rift = ITEM_EFFECTS["4633"]
+        self.assertEqual(total_bonus_ap_from_hp([rift], -500.0), 0.0)
+
+    def test_riftmaker_yields_2pct_of_hp(self) -> None:
+        from agents.daemon_slayer.effects import total_bonus_ap_from_hp
+        rift = ITEM_EFFECTS["4633"]
+        # 1000 bonus HP * 2% = 20 AP.
+        self.assertAlmostEqual(total_bonus_ap_from_hp([rift], 1000.0), 20.0, places=4)
+
+    def test_no_amp_items_yield_zero(self) -> None:
+        # Items without ap_per_bonus_hp_pct (IE / Kraken / Heartsteel
+        # itself) contribute nothing, even with HP in the build.
+        from agents.daemon_slayer.effects import total_bonus_ap_from_hp
+        ie = ITEM_EFFECTS["3031"]
+        heartsteel = ITEM_EFFECTS["3084"]
+        self.assertEqual(total_bonus_ap_from_hp([ie, heartsteel], 2000.0), 0.0)
+
+
+class RiftmakerHpToApTests(unittest.TestCase):
+    """Phase 4 batch 15 — Riftmaker Void Infusion HP→AP wiring.
+
+    Validates the cross-derivation appears in DpsResult.notes when
+    triggered, the converted AP isn't stored back into resolved.stats
+    (engine-internal — /stats reflects raw stat blocks only), and the
+    converted AP feeds AP-scaling procs (Lich Bane spellblade,
+    Nashor's Tooth on-hit) so HP-stack builds get the expected boost.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_riftmaker_carries_2pct_hp_to_ap(self) -> None:
+        e = ITEM_EFFECTS["4633"]
+        self.assertAlmostEqual(e.ap_per_bonus_hp_pct, 0.02, places=4)
+
+    def test_no_other_items_carry_hp_to_ap(self) -> None:
+        # Sanity: Riftmaker is currently the only item with this hook.
+        # If a future item also gets HP→AP, this test will need an
+        # explicit allow-list update — surfacing the schema add.
+        for iid, e in ITEM_EFFECTS.items():
+            if iid == "4633":
+                continue
+            self.assertEqual(
+                e.ap_per_bonus_hp_pct, 0.0,
+                f"unexpected ap_per_bonus_hp_pct on {iid} ({e.name})"
+            )
+
+    def test_hp_to_ap_note_surfaces_when_riftmaker_present(self) -> None:
+        result = compute_dps(self.snap, "Aatrox", level=11, item_ids=["4633"])
+        # Aatrox + Riftmaker: bonus_hp = 350 (Riftmaker's stat block).
+        # 2% * 350 = 7 AP added.
+        ap_note = next(
+            (n for n in result.notes if "AP cross-derived" in n),
+            None,
+        )
+        self.assertIsNotNone(ap_note,
+            f"missing HP→AP note in result.notes: {result.notes!r}")
+        # Note format: "...+7.0 AP (total AP for procs: ...)"
+        self.assertIn("+7.0 AP", ap_note,
+            f"expected +7 AP from Riftmaker's 350 HP, got {ap_note!r}")
+
+    def test_no_hp_to_ap_note_when_riftmaker_absent(self) -> None:
+        # Sanity: a build without Riftmaker shouldn't surface the
+        # cross-derivation note (avoid noise).
+        result = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3031"])
+        self.assertFalse(
+            any("AP cross-derived" in n for n in result.notes),
+            "build w/o Riftmaker shouldn't surface HP→AP note"
+        )
+
+    def test_resolved_stats_ap_unchanged_by_cross_derivation(self) -> None:
+        # /stats consumers see raw stat-block AP only — cross-derivation
+        # is dps-internal. Riftmaker's stat block is 70 AP per DDragon.
+        result = compute_dps(self.snap, "Aatrox", level=11, item_ids=["4633"])
+        self.assertAlmostEqual(
+            result.stats["ap"], 70.0, places=3,
+            msg="resolved.stats AP should reflect raw stat block, not cross-derived total",
+        )
+
+    def test_riftmaker_plus_heartsteel_compounds_ap(self) -> None:
+        # Heartsteel (3084) is 900 HP per DDragon. Riftmaker (350 HP)
+        # + Heartsteel (900 HP) = 1250 bonus HP → 2% = 25 AP cross-
+        # derived. Plus Riftmaker's 70 AP stat-block = 95 AP visible
+        # to AP procs.
+        result = compute_dps(self.snap, "Aatrox", level=11,
+                             item_ids=["4633", "3084"])
+        ap_note = next(
+            (n for n in result.notes if "AP cross-derived" in n),
+            None,
+        )
+        self.assertIsNotNone(ap_note)
+        self.assertIn("+25.0 AP", ap_note,
+            f"expected +25 AP from 1250 bonus HP, got {ap_note!r}")
+
+    def test_riftmaker_lifts_lich_bane_proc_via_ap(self) -> None:
+        # Lich Bane spellblade scales 0.50 * AP per proc. Aatrox + Lich
+        # Bane: stat AP from Lich Bane = 100, no HP→AP. Aatrox + Lich
+        # Bane + Riftmaker: stat AP = 100+70 = 170, plus 2% of (Lich
+        # Bane 0 HP + Riftmaker 350 HP) = 7 AP cross-derived → 177 AP
+        # visible to Lich Bane spellblade. The 7 AP delta lifts each
+        # spellblade by 0.50*7 = 3.5 magic dmg (ignoring MR factor).
+        # Synthetic test — strip Riftmaker's amp + cross-derivation
+        # to isolate the HP→AP contribution from the amp piece.
+        from agents.daemon_slayer import effects as effects_mod
+        original = effects_mod.ITEM_EFFECTS["4633"]
+        # No-amp, no-HP→AP variant — only stat block (70 AP, 350 HP, 15 AH).
+        no_xforms = ItemEffect(
+            item_id="4633",
+            name="Riftmaker",
+            note=original.note,
+        )
+        # Amp-only variant — reproduces batch 14 behavior.
+        amp_only = ItemEffect(
+            item_id="4633",
+            name="Riftmaker",
+            damage_amp_pct=0.08,
+            note=original.note,
+        )
+        try:
+            effects_mod.ITEM_EFFECTS["4633"] = no_xforms
+            base_dps = compute_dps(self.snap, "Aatrox", level=11,
+                                   item_ids=["4633", "3100"]).weighted_dps
+            effects_mod.ITEM_EFFECTS["4633"] = amp_only
+            amp_dps = compute_dps(self.snap, "Aatrox", level=11,
+                                  item_ids=["4633", "3100"]).weighted_dps
+            effects_mod.ITEM_EFFECTS["4633"] = original  # full batch 15
+            full_dps = compute_dps(self.snap, "Aatrox", level=11,
+                                   item_ids=["4633", "3100"]).weighted_dps
+        finally:
+            effects_mod.ITEM_EFFECTS["4633"] = original
+        # Ordering: full > amp_only > base. The delta full - amp_only
+        # is the HP→AP boost on Lich Bane's spellblade procs (after the
+        # 8% amp). Should be a small but positive number.
+        self.assertGreater(amp_dps, base_dps,
+            "amp-only variant should beat no-xforms baseline")
+        self.assertGreater(full_dps, amp_dps,
+            "HP→AP wiring should add to amp_only variant via Lich Bane proc")
 
 
 if __name__ == "__main__":
