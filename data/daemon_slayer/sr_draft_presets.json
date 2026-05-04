@@ -1,0 +1,73 @@
+{
+  "_comment": "Phase 8 step 2 (2026-05-04). 3-build profile presets for SR draft. Operator may hand-edit; sr_draft_profile.py mtime-checks on each call. Presets drive engine /beam queries; rune/spell tables are static defaults that user_builds.json (P8-3) can override.",
+  "engine_query": {
+    "primary": {
+      "label": "Primary",
+      "description": "Balanced enemy comp, mid-game power spike",
+      "level": 11,
+      "target_armor": 80,
+      "target_mr": 50,
+      "phase": null,
+      "beam_width": 10,
+      "slots": 6,
+      "top": 1
+    },
+    "alt": {
+      "label": "Alt-playstyle",
+      "description": "Tankier enemy comp, late-game scaling",
+      "level": 14,
+      "target_armor": 150,
+      "target_mr": 60,
+      "phase": "late",
+      "beam_width": 10,
+      "slots": 6,
+      "top": 1
+    },
+    "experimental": {
+      "label": "Experimental",
+      "description": "Squishy comp, early lethal pressure",
+      "level": 9,
+      "target_armor": 40,
+      "target_mr": 30,
+      "phase": "early",
+      "beam_width": 20,
+      "slots": 6,
+      "top": 1
+    }
+  },
+  "rune_defaults_by_role": {
+    "TOP":     {"primary": "Conqueror",        "alt": "Grasp of the Undying", "experimental": "Phase Rush"},
+    "JUNGLE":  {"primary": "Conqueror",        "alt": "Hail of Blades",       "experimental": "Press the Attack"},
+    "MIDDLE":  {"primary": "Electrocute",      "alt": "Arcane Comet",         "experimental": "Phase Rush"},
+    "BOTTOM":  {"primary": "Press the Attack", "alt": "Lethal Tempo",         "experimental": "Fleet Footwork"},
+    "UTILITY": {"primary": "Glacial Augment",  "alt": "Summon Aery",          "experimental": "Guardian"}
+  },
+  "tree_by_keystone": {
+    "Conqueror":            {"primary": "Precision",   "secondary": "Resolve"},
+    "Grasp of the Undying": {"primary": "Resolve",     "secondary": "Inspiration"},
+    "Phase Rush":           {"primary": "Sorcery",     "secondary": "Resolve"},
+    "Hail of Blades":       {"primary": "Domination",  "secondary": "Precision"},
+    "Press the Attack":     {"primary": "Precision",   "secondary": "Domination"},
+    "Lethal Tempo":         {"primary": "Precision",   "secondary": "Domination"},
+    "Fleet Footwork":       {"primary": "Precision",   "secondary": "Resolve"},
+    "Electrocute":          {"primary": "Domination",  "secondary": "Sorcery"},
+    "Arcane Comet":         {"primary": "Sorcery",     "secondary": "Inspiration"},
+    "Glacial Augment":      {"primary": "Inspiration", "secondary": "Sorcery"},
+    "Summon Aery":          {"primary": "Sorcery",     "secondary": "Inspiration"},
+    "Guardian":             {"primary": "Resolve",     "secondary": "Inspiration"}
+  },
+  "spells_by_role": {
+    "TOP":     [4, 12],
+    "JUNGLE":  [4, 11],
+    "MIDDLE":  [4, 14],
+    "BOTTOM":  [4, 7],
+    "UTILITY": [4, 14],
+    "_unknown": [4, 14]
+  },
+  "skeleton_split": {
+    "_comment": "Index ranges into beam ranked[0].item_names. Inclusive start, exclusive end.",
+    "start": [0, 2],
+    "core":  [2, 4],
+    "final": [4, 6]
+  }
+}
