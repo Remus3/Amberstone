@@ -1,7 +1,7 @@
 {
   "engine": "daemon_slayer",
-  "phase": 1,
-  "extracted_at": "2026-05-03T18:04:55-0500",
+  "phase": 1.5,
+  "extracted_at": "2026-05-03T19:46:23-0500",
   "ddragon_version": "16.9.1",
   "ddragon_champion_count": 172,
   "ddragon_item_count": 705,
@@ -9,15 +9,20 @@
     "ddragon_versions": "https://ddragon.leagueoflegends.com/api/versions.json",
     "ddragon_champions": "https://ddragon.leagueoflegends.com/cdn/16.9.1/data/en_US/champion.json",
     "ddragon_items": "https://ddragon.leagueoflegends.com/cdn/16.9.1/data/en_US/item.json",
-    "lolmath_chunk": "https://lolmath.net/_next/static/chunks/14.ejgq2van4b.js",
-    "lolmath_chunk_bytes": 730241
+    "lolmath_scenarios_chunk": "https://lolmath.net/_next/static/chunks/14.ejgq2van4b.js",
+    "lolmath_scenarios_chunk_bytes": 730241,
+    "lolmath_data_chunk": "https://lolmath.net/_next/static/chunks/0hjv4iwvdtcrm.js",
+    "lolmath_data_chunk_bytes": 1582908
   },
   "lolmath_counts": {
     "cooldowns": 172,
     "roles": 172,
     "ratings": 172,
     "lane_positions": 5,
-    "scenarios": 172
+    "scenarios": 172,
+    "aram_modifiers": 172,
+    "damage_distribution": 172,
+    "skill_orders": 172
   },
   "outputs": {
     "champions": "data\\daemon_slayer\\16.9.1\\champions.json",
