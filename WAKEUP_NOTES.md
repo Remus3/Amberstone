@@ -4675,3 +4675,213 @@ clean except runtime `data/ratings/last_*.json` mutations.
 6. **Activate arena augment v2 in production** (carried).
 7. **Riftmaker HP→AP cross-derivation** (carried).
 8. **Per-target-HP-pct field** (carried; defer until caller demands).
+
+---
+
+## s66 hand-off — 2026-05-04 (Phase 4 batch 13: Terminus promoted + defensive_only audit done)
+
+Single-arc continuation of s65. Picked the s65 #1 candidate
+(defensive_only audit + promotion pass). Eleventh Phase-4 batch in two
+days. Operator still idle (LCU phase=None, RC main pid=9488 unchanged).
+
+**Pattern decision worth pinning — re-read DDragon descriptions
+before promoting.** The audit found Terminus's prior note
+("alternating physical/magical on-hit") was wrong — DDragon shows
+Shadow is a constant on-hit (30 magic per basic), and Juxtaposition
+is the alternating piece (Light = caster resists, Dark = pen). Same
+class of bug as PD's "Lifeline" mis-note from batch 12. Lesson:
+when promoting from defensive_only, re-verify the item description
+against DDragon, not against the existing note. The notes accumulate
+documentation drift over time.
+
+**Audit yield: 1 promotion (Terminus) of 28 candidates.** Lower than
+the s65 hand-off projected (0-2) but in range. The honest finding is
+that 27 of 28 entries genuinely can't be modeled with current
+infrastructure.
+
+**Shipped (commit `b817430`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - **Terminus (3302)** — promoted out of defensive_only:
+    - `periodics=(PeriodicProc(name="Shadow", bonus_damage=30.0,
+      damage_type=MAGICAL, every_n_attacks=1),)`
+    - `armor_pen_pct=0.10` (Juxtaposition Dark sustained)
+    - `magic_pen_pct=0.10` (same)
+    - Updated note to reflect actual DDragon mechanics
+    - Inline comment documents the prior-note correction + the
+      sustained-DPS approximation for Juxtaposition uptime
+      (both Light + Dark buffs refresh every 2 attacks at AS=1.0,
+      both last 5s → both up most of the time in any sustained DPS
+      rotation)
+
+- `agents/daemon_slayer/__init__.py`: docstring narrative refreshed
+  (Terminus promotion + defensive_only count 28 → 27);
+  `ENGINE_VERSION 0.19.0 → 0.20.0`.
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - Removed obsolete `test_terminus_defensive_for_now` (1 test).
+  - Added `TerminusPromotionTests` class (5 tests) — no-longer-
+    defensive_only, has Shadow periodic with constant 30 magic
+    damage, has 10%+10% pen, lifts DPS past pre-promotion baseline
+    (was 64.92), pen partially offsets armored-target damage drop.
+  - Updated comment in `DefensiveOnlyExpansionTests` to point future
+    readers at `TerminusPromotionTests`.
+
+**Test state:** 340/340 daemon_slayer tests green (was 336 at end
+of s65; +5 - 1 = +4 net). All 336 prior tests stayed green unchanged
+before the new ones were added (and the obsolete one removed).
+py_compile pre-commit hook passed.
+
+**Live engine verify (post-restart `schtasks /End` + `/Run`):**
+```
+GET  /health                                              → 0.20.0
+POST /dps {Aatrox, lvl 11}                                → 47.07 (bare)
+POST /dps {Aatrox, lvl 11, items:[3302]}                  → 78.83 (was 64.92 stat-only; +13.91 Shadow proc)
+POST /dps {Aatrox, lvl 11, items:[3302], target_armor:100} → 48.08 (ratio 0.610 vs 0.500 no-pen — armor pen working)
+POST /dps {Aatrox, lvl 11, items:[3302], target_mr:100}    → 72.24 (Shadow magic dampened, pen partially offsets)
+```
+
+Math sanity:
+- Pre-promotion Aatrox+Terminus = 64.92 dps (stat block only,
+  +17.85 over bare from 30 AD + 35% AS).
+- Post-promotion = 78.83 dps (+13.91 from Shadow proc averaged
+  across mid-phase rotations at Aatrox's effective AS).
+- Armored ratio: 48.08/78.83 = 0.610. With no pen at 100 armor,
+  ratio would be 0.500 (armor factor 100/(100+100)). The 0.110
+  uplift from pen is the proc's magic damage (unaffected by
+  armor) plus the small AD-side benefit from 10% pen on 100 armor.
+- MR=100 ratio: 72.24/78.83 = 0.916. Only the magic Shadow proc
+  is dampened; AA physical untouched by MR. With 10% pen, effective
+  MR = 90, factor 100/190 = 0.526 vs no-pen 0.500. ✅
+
+**Coverage delta:** ITEM_EFFECTS unchanged at 54 entries, but
+defensive_only count drops 28 → 27 (Terminus promoted). Total
+modeled-with-effect entries grows by 1.
+
+**Defensive_only audit findings (27 remaining):**
+
+Categorized by why each stays defensive_only after this audit:
+
+1. **Active items** (button-press, not periodic — won't fit shape):
+   Youmuu's (3142), Mercurial Scimitar (3139), Zhonya's (3157),
+   Stridebreaker (6631), Hextech Gunblade (3146), Deathfire Grasp
+   (3128) — 6 items.
+
+2. **Lifeline shields / spellshields / revives** (defensive,
+   trigger-on-low-HP or trigger-on-cc):
+   Bloodthirster Ichorshield (3072), Immortal Shieldbow (6673),
+   Sterak's Gage (3053), Maw of Malmortius (3156), Phantom Dancer
+   Spectral Waltz (3046), Edge of Night Spellshield (3814),
+   Banshee's Veil (3102), Guardian Angel (3026) — 8 items.
+
+3. **Conditional / kill / takedown procs** (don't fire in steady
+   state):
+   The Collector execute (6676), Opportunity (6701) takedown,
+   Hullbreaker (3181) solo-lane bonus — 3 items.
+
+4. **CDR / mana** (not DPS):
+   Navori Flickerblade (6675), Spear of Shojin (3161),
+   Essence Reaver (3508 — has real Spellblade per DDragon, but
+   per-patch damage value isn't quantified in snapshot;
+   verification needed before promotion) — 3 items.
+
+5. **Heal-cut / anti-shield** (situational):
+   Chemtech Putrifier (3011), Serpent's Fang (6695) — 2 items.
+
+6. **Aura debuff needing target-stat modeling** (engine has no
+   target-AS field):
+   Frozen Heart (3110) — 1 item.
+
+7. **Out-of-combat utility**:
+   Warmog's Armor (3083) — 1 item.
+
+8. **Damage-storage / over-time** (zero net DPS uplift, just
+   spreads damage):
+   Death's Dance (6333) — 1 item.
+
+9. **Combat-state amp** (needs `damage_amp_pct` field on
+   ItemEffect — engine doesn't model damage amplifiers):
+   Riftmaker (4633) — 1 item. Adding the schema would unlock
+   this; HP→AP cross-derivation is a separate hard problem.
+
+10. **Ability-bound, not on-hit** (lolmath rotations are
+    auto-attack focused):
+    Luden's Echo (6655) — 1 item.
+
+**Decisions worth pinning:**
+- **Honest "stays defensive_only" categorization is documentation-
+  worthy.** The 10 categories above prevent re-auditing items in
+  future batches. When the engine grows a new layer (e.g.
+  damage_amp_pct), category 9 immediately surfaces Riftmaker as
+  the unlocker.
+- **DDragon labels can drift from RC's notes.** Both PD (batch 12
+  fix) and Terminus (this batch) had inaccurate notes. Each
+  defensive_only audit should re-verify against snapshot, not
+  against the existing note.
+- **Skip promotions where current-patch values are unverified.**
+  Essence Reaver's Spellblade is real per DDragon but the damage
+  formula isn't in the description. Promoting with a guessed value
+  would be worse than staying defensive_only (silent miscalculation
+  vs. honest "we don't model this").
+- **ITEM_EFFECTS table size doesn't capture coverage growth.**
+  Promoting Terminus didn't add a new entry — it changed an
+  existing entry from defensive_only to active. The
+  `CoverageCountTests` floor (54) measures table size, not modeled
+  items. A separate `defensive_only_count` test would measure the
+  promotion ratio if useful.
+
+**Things tomorrow-you should NOT redo:**
+- Don't promote Essence Reaver until the Spellblade damage formula
+  for current patch is verified externally (League wiki, patch
+  notes). Promoting with a guessed coefficient is a regression
+  risk.
+- Don't try to model active items as periodic procs. The active
+  fires once per long CD (60-120s typically) and isn't part of
+  any rotation. It's not zero DPS — it's just outside the engine's
+  rotation-based model.
+- Don't add a `damage_amp_pct` field for Riftmaker alone — it's
+  an architectural decision that needs to handle compounding
+  amps cleanly (multiplicative? additive? does Conqueror stack
+  with Riftmaker?). Worth its own batch.
+- Don't model Terminus's 35% AS as part of Juxtaposition — it's
+  in the stat block already and aggregates via stats.aggregate.
+- Don't bump CoverageCountTests floor past 54. Promotion doesn't
+  add table entries.
+
+**Activation:** Engine on :8893 already at 0.20.0 (this session
+restarted it). No further action needed.
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true (no Legion main-RC restart this session;
+RC-DaemonSlayer bounced for the 11th time today). Engine on :8893 =
+0.20.0 live. LCU phase=None (no game in progress). Working tree
+clean except runtime `data/ratings/last_*.json` mutations.
+
+**Operational backlog (carried + new):**
+- All s54-s65 backlog items unchanged.
+- **Essence Reaver Spellblade verification** (NEW from s66). Need
+  current-patch damage formula for ER's Spellblade. Once verified,
+  promote ER + tag with `unique_passive_key="spellblade"` (closes
+  the order-dependence concern from batch 11 simultaneously).
+- **Riftmaker damage_amp_pct schema** (NEW from s66). Adding
+  ItemEffect.damage_amp_pct: float = 0.0 + applying it in
+  `_rotation_attack_dps` as an output multiplier would unlock
+  Riftmaker's combat-state amp. Architectural question: how do
+  multiple amps stack? Multiplicative is closer to in-game
+  behavior (most amps in League stack multiplicatively). Riftmaker's
+  HP→AP cross-derivation is still separate and unsolved.
+
+**Next-session candidates (ranked):**
+1. **Phase 4 batch 14: damage_amp_pct schema + Riftmaker** (NEW
+   from s66). Schema bump (0.20.0 → 0.21.0). Add the field +
+   apply multiplicatively in rotation DPS. Unlocks Riftmaker
+   (without HP→AP — that's still separate). ~1-1.5 hr scope.
+2. **Phase 4 batch 9-alt: aggregate-stat extension hook refactor**
+   (carried). Pure cleanup; defer until friction.
+3. **First draft visual verify of P8-5.5** (carried).
+4. **gamepc_boot.ps1 patch** (carried). 1-liner.
+5. **P8-7 E2E push-to-League integration test** (carried).
+6. **Activate arena augment v2 in production** (carried).
+7. **Riftmaker HP→AP cross-derivation** (carried — still separate
+   from #1; #1 unlocks Riftmaker partially).
+8. **Per-target-HP-pct field** (carried; defer until caller demands).
