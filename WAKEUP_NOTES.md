@@ -7590,4 +7590,194 @@ grep.
 **Full coach activation matrix as of s79:** unchanged from s78 —
 this batch was engine-side only.
 
+## s80 hand-off — 2026-05-04 (Phase 4 batch 24: Profane Hydra Cleave joins hydra family)
+
+Single-arc continuation from s79. Took s79 #1 candidate (Profane
+Hydra Cleave, drop-in pattern matching Stridebreaker) end to end.
+Cleanest batch this session — zero schema bump, zero new test class
+inversions, just a new entry following the hydra-family template.
+
+**Engine: 0.27.0 → 0.28.0.** Tests: 426 → 433 (+7, no inversions).
+Live engine on :8893 activated via `schtasks /End /Run RC-DaemonSlayer`.
+
+**Pattern decision worth pinning — hydra family items reuse the
+same Cleave shape; coefficient lives in the lambda, not in schema.**
+All four hydras (Stridebreaker, Ravenous, Profane, Titanic-cleave-piece)
+use the identical lambda structure:
+``max(0, c.targets_in_rotation - 1) * COEFFICIENT * (c.base_ad + c.bonus_ad)``
+with PHYSICAL damage and ``every_n_attacks=1``. The only differences
+are the coefficient (40% for Stridebreaker / Profane, 35% for Ravenous;
+Titanic uses %max-HP not %AD) and the unique_passive flagging
+(none of the cleaves are tagged — Tiamat-tree exclusivity is
+ranker-owned). Adding the Nth hydra-family item is a 25-line edit
+with the lambda body trivially adapted.
+
+**Pattern decision worth pinning — Tiamat-tree exclusivity is
+ranker-owned, not unique-passive-owned.** Profane Hydra and
+Stridebreaker can both build from Tiamat (3077). In-game the shop
+prevents owning both; the engine doesn't enforce that — if a caller
+asks /dps with `[6698, 6631]`, both cleaves fire (32.40 DPS for
+Anivia late, vs ~17 for either alone). The build legality is the
+ranker / beam search's responsibility (Boots-uniqueness pattern).
+This is the *correct* default for a per-item proc layer — the layer
+shouldn't second-guess the caller's build.
+
+**Pattern decision worth pinning — coefficient choice between
+40% (Stridebreaker call) and 35% (Ravenous call) is ambiguity-driven
+and locked-in by precedent.** Meraki's wiki-template `{{rd|40% AD|20% AD}}`
+notation means "melee value | ranged value" (confirmed via Doran's
+Shield comparison: `{{rd|5|3.75}}` = melee 5 HP/s, ranged 3.75 HP/s
+regen). For melee-mostly items, the 40% melee value is the right
+pin — Stridebreaker took that call in batch 21 and Profane Hydra
+inherits it here. Ravenous Hydra's older 35% predates this
+disambiguation and isn't getting changed now (regression-guard tests
+pin the value). Future hydra additions: use 40% to match the modern
+call.
+
+**Shipped (commit `428d8df`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - **Profane Hydra (6698)** new entry, placed immediately after
+    Stridebreaker (6631) to keep the cleave family contiguous.
+    `PeriodicProc(every_n_attacks=1, bonus_damage=lambda c:
+    max(0.0, c.targets_in_rotation - 1.0) * 0.40 * (c.base_ad
+    + c.bonus_ad), PHYSICAL)`. Comment block flags the
+    Stridebreaker-coefficient choice + the Tiamat-tree exclusivity
+    being ranker-owned + the Heretical Cleave active being deferred
+    (no Meraki cooldown — same rule as the other null-CD actives).
+
+- `agents/daemon_slayer/__init__.py`:
+  - `ENGINE_VERSION = "0.28.0"`. Docstring extends the batch list
+    with batch 24 wording; defensive_only count UNCHANGED at 21
+    (Profane Hydra was never in defensive_only — see s79's
+    new-entry-vs-promotion pattern note).
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - **ProfaneHydraCleaveTests** (7 tests): present + periodic shape,
+    NOT tagged unique-passive (per Tiamat-tree pattern), Aatrox
+    single-target invariant, Anivia multi-target uplift, exact
+    coefficient match against Stridebreaker at fixed CallContext
+    (120.0 vs 120.0), outscoring Ravenous's 35% on cleave piece,
+    single-target zero invariant.
+
+**Test state:**
+- `agents/daemon_slayer/tests/`: **433/433** green (s79 baseline 426
+  + 7 new ProfaneHydraCleaveTests).
+- `tests/phase8_smoke/`: 18/18 unchanged.
+- All other phase smoke suites unchanged.
+
+**Live verify (post `schtasks /End /Run RC-DaemonSlayer`):**
+
+Engine version + smoke /dps:
+```
+$ curl http://127.0.0.1:8893/health → engine_version=0.28.0 ✓
+$ /dps Anivia lvl11 phase=late + [6698] →
+    weighted_dps=17.39
+    notes[Profane Hydra: Cleave ~40% AD physical to other enemies ...] ✓
+$ /dps Anivia lvl11 phase=late + [6631] →
+    weighted_dps=15.50  (Stridebreaker only)
+$ /dps Anivia lvl11 phase=late + [6698, 6631] →
+    weighted_dps=32.40  (both cleaves fire — 2 notes)
+```
+
+Cross-hydra build [Profane Hydra + Stridebreaker] = 32.40 weighted
+DPS with TWO cleave notes — confirms the family is independent at
+the proc layer (no spellblade-style dedup), build legality is
+ranker-owned. The 32.40 is roughly ph_only + sb_only ≈ 17.39 +
+15.50 = 32.89 minus a small amount from AS-pipeline interaction.
+
+**Coverage audit (delta from s79):**
+
+74 unmodeled legendaries remaining (s79's 75 minus Profane Hydra
+promoted). Top candidates for future batches by ease of schema fit:
+
+- **Yun Tal Wildarrows (3032)** — ~25% effective crit + AS-on-hit.
+  Two flavor options: (a) full stack-tracking (build-derived
+  stacked crit, schema bump), (b) flat +25% crit pin (assumes
+  full stacks, hand-wave). Option (b) is the cleanest batch-25
+  candidate — no schema work, just a new entry that lifts effective
+  crit_chance via stat aggregation OR via a flat constant in the
+  proc lambda. Carry from s79.
+- **Iceborn Gauntlet active is in-scope, but stacking-stat alternative
+  isn't.** The Yun Tal flat-pin doesn't actually fit any existing
+  schema — crit_chance is build-derived from stats.crit, not from
+  ItemEffect. Adding "+25% crit" as an item-effect contribution
+  needs new wiring at compute_dps construction. ~30 min if scoped
+  narrowly. **Reconsider before next session.**
+- **Manamune (3004) / Muramana (3042)** — Awe (mana → AD) +
+  Shock (per-attack mana damage). Needs `caster_max_mp` CallContext
+  field. Schema bump.
+- **Stormsurge (4646)** — ability-bound burst proc. Carry blocker.
+- **Hubris (6697)** — takedown-event-bound. Defensive_only with note.
+- **Ability-cast modeling family** (Liandry, Demonic Embrace,
+  Luden's, Stormsurge, Rocketbelt, Horizon Focus, Cosmic Drive)
+  — single schema bump unlocks 7+ items. 2-3 hour scope.
+
+**Decisions worth pinning (this batch):**
+- **Hydra family additions are 25-line edits.** New coefficient
+  → new lambda body, comment block flagging the coefficient choice,
+  no schema work, no dedup key. ~25 min scope.
+- **40% AD coefficient is the modern call** for hydra cleaves;
+  Ravenous Hydra's legacy 35% isn't getting changed now (regression
+  tests pin it).
+- **Tiamat-tree exclusivity is build-layer, not effect-layer.**
+  Adding `unique_passive_key="cleave"` would silently disable one
+  cleave when both are tested — wrong layer.
+
+**Things tomorrow-you should NOT redo:**
+- Don't add `unique_passive_key="cleave"` to the hydra family.
+  Build legality is ranker-owned and the 32.40 cross-hydra DPS
+  test verifies the engine doesn't second-guess the caller.
+- Don't try to retroactively bump Ravenous Hydra to 40%. The
+  35% is locked by `test_stridebreaker_cleave_outscores_ravenous_at_same_n`
+  (asserts 105.0 exactly) — would cascade test failures across
+  multiple classes.
+- Don't try to model Heretical Cleave active without sourcing the
+  cooldown externally. Same rule as Hextech Gunblade's batch-22
+  entry — pin the source, document the choice.
+
+**Activation:** RC-DaemonSlayer scheduled task bounced via
+`schtasks /End /TN RC-DaemonSlayer && schtasks /Run /TN RC-DaemonSlayer`.
+Engine on :8893 reports 0.28.0. Profane Hydra note appears in
+/dps `notes[]` field. Behavior dormant until next assassin-with-
+multi-target-rotation game in progress.
+
+**Bridge state at session end:** RC main pid=8084 (unchanged from s79).
+`schtasks` bounced RC-DaemonSlayer once. Bridge unchanged — no
+two-way traffic this session.
+
+**Operational backlog (delta from s79):**
+- ✅ ~~Phase 4 batch 24: Profane Hydra Cleave~~ shipped
+  (commit `428d8df`).
+- All other s79 backlog unchanged.
+- **NEW from s80**: hydra family complete at 4/4 (Strider, Ravenous,
+  Profane, Titanic). Future hydra additions blocked on Riot
+  releasing a new Tiamat upgrade.
+
+**Memory entries written this session:** none. The "hydra family
+additions are 25-line edits" pattern + the "40% modern call vs 35%
+legacy" disambiguation are narrow enough to live in this hand-off
++ the s79 coverage audit; will only promote to memory if a future
+session needs to recall them and can't find via grep.
+
+**Next-session candidates (ranked):**
+1. **Yun Tal Wildarrows (3032) flat +25% crit pin** — pragmatic
+   model, ~30-45 min scope IF willing to add a tiny amount of
+   schema (item-effect-contributed crit chance summed at compute_dps
+   construction). Otherwise carry to schema-bump session.
+2. **SR coach `target_bonus_hp` activation** (carried s73→s79).
+   Probably needs vision-side enemy item parsing first.
+3. **First draft visual verify of P8-5.5** (carried).
+4. **gamepc_boot.ps1 patch** (carried). 1-liner.
+5. **P8-7 E2E push-to-League integration test** (carried).
+6. **Activate arena augment v2 in production** (carried).
+7. **Per-target-HP-pct field** (carried; defer until caller demands).
+8. **Schema bumps** (bigger sessions):
+   a. Ability-cast modeling — unlocks 7+ items.
+   b. `caster_max_mp` CallContext field — unlocks Manamune family.
+   c. Stacking-stat pipeline — unlocks Yun Tal full stack-tracking.
+
+**Full coach activation matrix as of s80:** unchanged from s79 —
+this batch was engine-side only.
+
 
