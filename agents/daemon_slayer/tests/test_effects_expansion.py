@@ -21,6 +21,7 @@ from agents.daemon_slayer.dps import compute_dps
 from agents.daemon_slayer.effects import (
     ITEM_EFFECTS,
     CallContext,
+    ItemEffect,
     MAGICAL,
     PHYSICAL,
     PeriodicProc,
@@ -439,25 +440,28 @@ class SpellbladeAndOnHitApTests(unittest.TestCase):
 
 
 class DefensiveOnlyBatch3Tests(unittest.TestCase):
-    """Phase 4 batch 3 (2026-05-04) — 4 AP-stat siblings without DPS proc.
+    """Phase 4 batch 3 (2026-05-04) — AP-stat siblings without DPS proc.
 
-    Hextech Gunblade (3146) / Luden's Echo (6655) / Riftmaker (4633) /
-    Deathfire Grasp (3128). All carry AP stat blocks but their effects
-    don't fit the periodic/on-hit shape: active utilities, ability-bound
-    bolts, combat-state amps, and active %-target-max-HP. Pinned here
-    so future hooks (target HP, combat-state amp) can find them via
-    grep.
+    Hextech Gunblade (3146) / Luden's Echo (6655) / Deathfire Grasp
+    (3128). All carry AP stat blocks but their effects don't fit the
+    periodic/on-hit shape: active utilities, ability-bound bolts, and
+    active %-target-max-HP. Pinned here so future hooks can find them
+    via grep.
 
     Note: Shadowflame (4645) shipped batch 3 as defensive_only but
     promoted in batch 4 — its 15 flat magic pen IS modeled by the new
     pipeline (the unmodeled piece is the magic-crit-on-low-HP). So
     it now lives in MagicPenItemTests, not here.
+
+    Note: Riftmaker (4633) was here through batch 13; promoted in
+    batch 14 (damage_amp_pct schema, 2026-05-04) — its proc-shape
+    assertions live in RiftmakerPromotionTests at the bottom of this
+    file. HP→AP cross-derivation is still separate.
     """
 
     EXPECTED = {
         "3146": "Hextech Gunblade",
         "6655": "Luden's Echo",
-        "4633": "Riftmaker",
         "3128": "Deathfire Grasp",
     }
 
@@ -1596,6 +1600,122 @@ class TerminusPromotionTests(unittest.TestCase):
         # untouched (default mr=0), the magic proc isn't dampened.
         self.assertGreater(ratio, 0.55,
             "Terminus pen+magic-proc didn't partially offset armor")
+
+
+class TotalDamageAmpMultiplierTests(unittest.TestCase):
+    """Phase 4 batch 14 — multiplicative damage-amp helper.
+
+    Direct unit tests on ``total_damage_amp_multiplier``. Item-side and
+    DPS-pipeline assertions live in ``RiftmakerPromotionTests``.
+    """
+
+    def test_no_effects_returns_unity(self) -> None:
+        from agents.daemon_slayer.effects import total_damage_amp_multiplier
+        self.assertEqual(total_damage_amp_multiplier([]), 1.0)
+
+    def test_no_amps_in_effects_returns_unity(self) -> None:
+        # IE / Kraken / Stormrazor — none carry damage_amp_pct.
+        from agents.daemon_slayer.effects import total_damage_amp_multiplier
+        effs = [ITEM_EFFECTS["3031"], ITEM_EFFECTS["6672"], ITEM_EFFECTS["3097"]]
+        self.assertEqual(total_damage_amp_multiplier(effs), 1.0)
+
+    def test_riftmaker_alone_returns_1_08(self) -> None:
+        from agents.daemon_slayer.effects import total_damage_amp_multiplier
+        rift = ITEM_EFFECTS["4633"]
+        self.assertAlmostEqual(total_damage_amp_multiplier([rift]), 1.08, places=4)
+
+    def test_two_amps_stack_multiplicatively(self) -> None:
+        # Build two synthetic amp items inline — engine doesn't ship a
+        # second amp yet (Conqueror is a rune, not an item; future
+        # ItemEffect entries with damage_amp_pct will hit this path).
+        from agents.daemon_slayer.effects import (
+            ItemEffect,
+            total_damage_amp_multiplier,
+        )
+        a = ItemEffect(item_id="X1", name="amp1", damage_amp_pct=0.08)
+        b = ItemEffect(item_id="X2", name="amp2", damage_amp_pct=0.10)
+        # 1.08 * 1.10 = 1.188 (multiplicative), NOT 1.18 (additive).
+        self.assertAlmostEqual(total_damage_amp_multiplier([a, b]), 1.188, places=4)
+
+
+class RiftmakerPromotionTests(unittest.TestCase):
+    """Phase 4 batch 14 — Riftmaker promoted from defensive_only.
+
+    Void Corruption ramps to 8% bonus damage after 4s in combat. The
+    sustained-DPS approximation pins the full-ramp value (same shape
+    as Black Cleaver's 30%-at-5-stacks). HP→AP cross-derivation is
+    still separate — engine has no AP-from-HP bridge yet, and this
+    batch deliberately scopes that out.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_riftmaker_no_longer_defensive_only(self) -> None:
+        e = ITEM_EFFECTS["4633"]
+        self.assertFalse(e.defensive_only)
+
+    def test_riftmaker_carries_8pct_amp(self) -> None:
+        e = ITEM_EFFECTS["4633"]
+        self.assertAlmostEqual(e.damage_amp_pct, 0.08, places=4)
+        # Riftmaker has no periodic / pen / crit-bonus piece; the amp
+        # is the entire DPS contribution beyond stats.
+        self.assertEqual(e.periodics, ())
+        self.assertEqual(e.armor_pen_pct, 0.0)
+        self.assertEqual(e.magic_pen_pct, 0.0)
+        self.assertEqual(e.crit_damage_bonus, 0.0)
+
+    def test_riftmaker_lifts_dps_via_amp(self) -> None:
+        # Build with Riftmaker should beat the same build minus Riftmaker
+        # by approximately the amp factor times the stat-only DPS.
+        # We use an AP carry (Aatrox is melee bruiser with hybrid scaling)
+        # — Riftmaker's 80 AP + 350 HP + 15 AH stat block lifts DPS too,
+        # so we compare Aatrox+Riftmaker vs bare Aatrox.
+        bare = compute_dps(self.snap, "Aatrox", level=11)
+        rift = compute_dps(self.snap, "Aatrox", level=11, item_ids=["4633"])
+        self.assertGreater(rift.weighted_dps, bare.weighted_dps,
+            "Riftmaker should lift DPS over bare Aatrox (stat block + amp)")
+
+    def test_riftmaker_amp_applies_multiplicatively(self) -> None:
+        # Concrete check: compute Aatrox+Riftmaker DPS and Aatrox+
+        # synthetic-no-amp-Riftmaker DPS (mock by zeroing the amp and
+        # restoring), confirm the ratio is 1.08.
+        from agents.daemon_slayer import effects as effects_mod
+        original = effects_mod.ITEM_EFFECTS["4633"]
+        # Replace with a no-amp variant carrying the same identity.
+        no_amp = ItemEffect(
+            item_id="4633",
+            name="Riftmaker",
+            note=original.note,
+        )
+        try:
+            effects_mod.ITEM_EFFECTS["4633"] = no_amp
+            no_amp_dps = compute_dps(self.snap, "Aatrox", level=11, item_ids=["4633"])
+        finally:
+            effects_mod.ITEM_EFFECTS["4633"] = original
+        with_amp = compute_dps(self.snap, "Aatrox", level=11, item_ids=["4633"])
+        # Ratio should be exactly 1.08 (the amp multiplier) since stat
+        # block is identical between the two builds.
+        ratio = with_amp.weighted_dps / no_amp_dps.weighted_dps
+        self.assertAlmostEqual(ratio, 1.08, places=3,
+            msg=f"amp ratio {ratio:.4f} != 1.08 — multiplier wiring is broken")
+
+    def test_riftmaker_amp_surfaces_in_notes(self) -> None:
+        result = compute_dps(self.snap, "Aatrox", level=11, item_ids=["4633"])
+        self.assertTrue(
+            any("damage amp" in n for n in result.notes),
+            f"missing damage-amp note in result.notes: {result.notes!r}"
+        )
+
+    def test_no_amp_when_no_amp_items(self) -> None:
+        # Sanity: a build with no amp items should produce no
+        # "damage amp" note (avoid noise on the 99% pre-batch case).
+        result = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3031"])
+        self.assertFalse(
+            any("damage amp" in n for n in result.notes),
+            "build w/o amp items shouldn't surface a damage-amp note"
+        )
 
 
 if __name__ == "__main__":
