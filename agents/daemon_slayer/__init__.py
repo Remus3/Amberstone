@@ -70,12 +70,19 @@ crit_chance_bonus_max_pct + per_bonus_hp_cap fields (Phase 4 batch 26,
 Big Hands linear ramp 0–30% over 0–3000 caster bonus HP; summed and
 clamped at 1.0 in compute_dps so both auto-attack crit and ER's
 Spellblade scaling see the boosted total; Yun Tal's Flurry AS bonus
-intentionally not modeled), and 21 defensive_only items spanning the Tier-1
+intentionally not modeled), Manamune (3004) + Muramana (3042) paired
+promotion via the new CallContext.caster_max_mp field +
+ItemEffect.bonus_ad_pct_max_mp Awe wiring (Phase 4 batch 27, 2026-05-04
+— Awe converts 2% max mana into bonus AD via the same engine-resolved
+stat layer pattern as Sterak's bonus_ad_pct_base_ad from batch 20;
+Muramana additionally fires Shock — 1.2% max mana per-attack physical —
+via a periodic proc; Manaflow stack-up + Muramana's ability damage
+piece intentionally not modeled), and 21 defensive_only items spanning the Tier-1
 SR / Arena pool plus high-pickrate batch 2 + AP batch 3 additions.
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
 ``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation`` /
-``crit_chance``.
+``crit_chance`` / ``caster_max_mp``.
 
 Beam search (Phase 2 step 4) returns the top-N complete builds by final
 weighted DPS, finding multi-item synergies the single-slot ranker
@@ -87,4 +94,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.30.0"
+ENGINE_VERSION = "0.31.0"

@@ -3073,6 +3073,218 @@ class AtmasReckoningCritTests(unittest.TestCase):
         self.assertGreater(float(a2.group(1)), float(a1.group(1)))
 
 
+class CallContextCasterMaxMpTests(unittest.TestCase):
+    """Phase 4 batch 27 — CallContext.caster_max_mp default + plumbing."""
+
+    def test_default_caster_max_mp_zero(self) -> None:
+        # Pre-batch-27 callers + manaless champion builds carry 0 here.
+        ctx = CallContext(base_ad=60, bonus_ad=0, level=11)
+        self.assertEqual(ctx.caster_max_mp, 0.0)
+
+    def test_caster_max_mp_passes_through(self) -> None:
+        ctx = CallContext(base_ad=60, bonus_ad=0, level=11, caster_max_mp=2000.0)
+        self.assertEqual(ctx.caster_max_mp, 2000.0)
+
+    def test_proc_resolves_against_caster_max_mp(self) -> None:
+        # Mirrors batch 6's caster_max_hp resolution test. A proc keyed off
+        # caster_max_mp returns 0 with no signal and the expected damage
+        # with one.
+        proc = PeriodicProc(
+            name="mana_proc",
+            bonus_damage=lambda c: 0.012 * c.caster_max_mp,
+            damage_type=PHYSICAL,
+            every_n_attacks=1,
+        )
+        zero_mp_ctx = CallContext(base_ad=60, bonus_ad=0, level=11)
+        full_mp_ctx = CallContext(base_ad=60, bonus_ad=0, level=11, caster_max_mp=2000.0)
+        self.assertEqual(proc.resolve_damage(zero_mp_ctx), 0.0)
+        self.assertAlmostEqual(proc.resolve_damage(full_mp_ctx), 24.0, places=4)
+
+
+class ManamuneAweTests(unittest.TestCase):
+    """Phase 4 batch 27 — Manamune (3004) "Awe" stat layer.
+
+    Awe converts 2% max mana into bonus AD. Walked in build_champion
+    after aggregate_item_stats so the items' own mana pool is included
+    in the conversion base. Manaflow stack-up is intentionally not
+    modeled (steady-state assumption).
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_manamune_present_with_awe_field(self) -> None:
+        e = ITEM_EFFECTS["3004"]
+        self.assertEqual(e.name, "Manamune")
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(e.periodics, ())  # no Shock — that's Muramana
+        self.assertAlmostEqual(e.bonus_ad_pct_max_mp, 0.02, places=4)
+        self.assertEqual(e.crit_chance_bonus_flat, 0.0)
+        self.assertEqual(e.bonus_ad_pct_base_ad, 0.0)
+        self.assertIn("awe", e.note.lower())
+
+    def test_manamune_no_unique_passive_key(self) -> None:
+        # Awe is one-of-two in current League (Manamune transforms into
+        # Muramana — you can't own both); build legality is ranker-owned.
+        self.assertEqual(ITEM_EFFECTS["3004"].unique_passive_key, "")
+
+    def test_manamune_lifts_total_ad_on_ezreal(self) -> None:
+        # Ezreal lvl 11: base mp = 375 + 70*10 = 1075; with Manamune
+        # adds 500 mana → 1575 total; Awe = 0.02 * 1575 = 31.5 bonus AD
+        # (folded into ad_flat by build_champion).
+        from agents.daemon_slayer.engine import build_champion
+        bare = build_champion(self.snap, "Ezreal", level=11)
+        with_manamune = build_champion(self.snap, "Ezreal", level=11, item_ids=["3004"])
+        # Manamune's stat block adds 35 flat AD; Awe adds another ~31.5.
+        # Total AD lift should clear 60 (35 stat + ~25 from Awe at minimum).
+        ad_lift = with_manamune.stats["ad"] - bare.stats["ad"]
+        self.assertGreater(ad_lift, 60.0)
+        self.assertLess(ad_lift, 80.0)  # ceiling: 35 stat + 31.5 Awe ≈ 66.5
+
+    def test_manamune_lifts_dps_on_ezreal(self) -> None:
+        bare = compute_dps(self.snap, "Ezreal", level=11)
+        with_manamune = compute_dps(self.snap, "Ezreal", level=11, item_ids=["3004"])
+        self.assertGreater(with_manamune.weighted_dps, bare.weighted_dps)
+
+
+class MuramanaShockTests(unittest.TestCase):
+    """Phase 4 batch 27 — Muramana (3042) "Awe" + "Shock".
+
+    Muramana doubles Manamune's mana pool (1000 vs 500) and adds Shock,
+    a per-attack 1.2% max mana physical proc. Both Awe and Shock scale
+    linearly with the larger mana pool, so on the same caster Muramana
+    delivers substantially more DPS than Manamune.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_muramana_present_with_awe_and_shock(self) -> None:
+        e = ITEM_EFFECTS["3042"]
+        self.assertEqual(e.name, "Muramana")
+        self.assertFalse(e.defensive_only)
+        self.assertNotEqual(e.periodics, ())
+        proc = e.periodics[0]
+        self.assertEqual(proc.name, "Shock")
+        self.assertEqual(proc.damage_type, PHYSICAL)
+        self.assertEqual(proc.every_n_attacks, 1)
+        self.assertAlmostEqual(e.bonus_ad_pct_max_mp, 0.02, places=4)
+
+    def test_muramana_no_unique_passive_key(self) -> None:
+        self.assertEqual(ITEM_EFFECTS["3042"].unique_passive_key, "")
+
+    def test_muramana_shock_proc_scales_with_caster_max_mp(self) -> None:
+        # 2000 mana → Shock = 0.012 * 2000 = 24.0.
+        # 3000 mana → Shock = 36.0.
+        proc = ITEM_EFFECTS["3042"].periodics[0]
+        ctx_2k = CallContext(base_ad=60, bonus_ad=0, level=11, caster_max_mp=2000.0)
+        ctx_3k = CallContext(base_ad=60, bonus_ad=0, level=11, caster_max_mp=3000.0)
+        self.assertAlmostEqual(proc.resolve_damage(ctx_2k), 24.0, places=4)
+        self.assertAlmostEqual(proc.resolve_damage(ctx_3k), 36.0, places=4)
+
+    def test_muramana_shock_zero_with_no_mana(self) -> None:
+        # Manaless caster (or pre-batch-27 caller missing the field) →
+        # Shock contributes zero. Backward-compat invariant.
+        proc = ITEM_EFFECTS["3042"].periodics[0]
+        ctx = CallContext(base_ad=60, bonus_ad=0, level=11)
+        self.assertEqual(proc.resolve_damage(ctx), 0.0)
+
+    def test_muramana_lifts_dps_more_than_manamune_on_ezreal(self) -> None:
+        # Same gold, same AD/AH stats — Muramana's 1000 mana pool vs
+        # Manamune's 500 doubles the Awe contribution AND unlocks Shock.
+        # On a high-mana champ (Ezreal, 1075 mp at lvl 11) the Muramana
+        # build clears Manamune by a comfortable margin.
+        manamune_dps = compute_dps(
+            self.snap, "Ezreal", level=11, item_ids=["3004"],
+        ).weighted_dps
+        muramana_dps = compute_dps(
+            self.snap, "Ezreal", level=11, item_ids=["3042"],
+        ).weighted_dps
+        self.assertGreater(muramana_dps, manamune_dps)
+
+    def test_muramana_lifts_total_ad_on_ezreal_more_than_manamune(self) -> None:
+        # Awe contribution scales with total mana: Manamune brings 500
+        # mana, Muramana brings 1000. On the same Ezreal lvl 11 (base
+        # 1075 mana) the AD lift difference is purely from Awe scaling
+        # off the larger mana pool. Manamune Awe = 0.02 * 1575 ≈ 31.5;
+        # Muramana Awe = 0.02 * 2075 ≈ 41.5. Delta ≈ 10 AD.
+        from agents.daemon_slayer.engine import build_champion
+        manamune_ad = build_champion(
+            self.snap, "Ezreal", level=11, item_ids=["3004"],
+        ).stats["ad"]
+        muramana_ad = build_champion(
+            self.snap, "Ezreal", level=11, item_ids=["3042"],
+        ).stats["ad"]
+        delta = muramana_ad - manamune_ad
+        self.assertGreater(delta, 7.0)  # tolerance for engine rounding
+        self.assertLess(delta, 15.0)
+
+
+class AweEngineWireInTests(unittest.TestCase):
+    """Awe (bonus_ad_pct_max_mp) lifts AD in build_champion output.
+
+    Mirror of SteraksEngineWireInTests for the mana → AD path. Pins
+    the engine-side wiring: the walk in build_champion folds the
+    contribution into item_totals["ad_flat"] BEFORE _combine_items
+    applies item AD, so the lifted AD propagates through the rest of
+    the stat resolution pipeline.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_awe_zero_on_manaless_champion(self) -> None:
+        # Akali is energy-based (mp=200 per DDragon's spec, but no mana
+        # scaling applies); using a champion with mana but adding no
+        # mana items confirms the walk's safety. Better invariant: pick
+        # a small-mana caster + a Manamune build, validate non-zero AD.
+        # For the manaless invariant, use a build with NO mana items and
+        # confirm Awe contributes nothing (since no item carries the field).
+        from agents.daemon_slayer.engine import build_champion
+        bare = build_champion(self.snap, "Aatrox", level=11)
+        # No Manamune/Muramana → no Awe contribution. AD stays at base.
+        self.assertEqual(bare.stats["ad"], bare.base_stats["ad"])
+
+    def test_awe_walk_safe_when_no_awe_items(self) -> None:
+        # Build with mana items but NO Awe items: walk should not crash
+        # and should not contribute AD beyond the items' stat blocks.
+        # Tear of the Goddess is 980g but not legendary; use Archangel's
+        # Staff (3003) which has 600 mana and no bonus_ad_pct_max_mp.
+        from agents.daemon_slayer.engine import build_champion
+        # Archangel's Staff isn't in ITEM_EFFECTS so the walk should be
+        # a no-op for it.
+        archangel = build_champion(self.snap, "Ezreal", level=11, item_ids=["3003"])
+        # AD should match: champion base AD + 0 (Archangel has no AD
+        # stat block — it's an AP item). If the Awe walk wrongly fired
+        # this would surface as an AD bump.
+        bare_ad = build_champion(self.snap, "Ezreal", level=11).stats["ad"]
+        self.assertAlmostEqual(archangel.stats["ad"], bare_ad, places=2)
+
+    def test_awe_walk_includes_other_items_mana(self) -> None:
+        # Awe is mana → AD; the walk uses the build's TOTAL max mana
+        # (champion base + ALL items' mana, not just the Awe-carrying
+        # item's mana). So a build with [Manamune, Archangel] → Awe
+        # picks up 500 (Manamune) + 600 (Archangel) extra mana = +22 AD.
+        # Compare against [Manamune] alone where Awe sees 500 extra.
+        # The delta surfaces a mana-source-leak bug if the walk only
+        # counted the Awe item's own mana.
+        from agents.daemon_slayer.engine import build_champion
+        manamune_only = build_champion(
+            self.snap, "Ezreal", level=11, item_ids=["3004"],
+        )
+        manamune_plus_archangel = build_champion(
+            self.snap, "Ezreal", level=11, item_ids=["3004", "3003"],
+        )
+        ad_lift = manamune_plus_archangel.stats["ad"] - manamune_only.stats["ad"]
+        # Archangel's Staff: 600 mana flat. Awe = 0.02 * 600 = 12 AD.
+        # Some engine rounding allowed; expect 10-14.
+        self.assertGreater(ad_lift, 10.0)
+        self.assertLess(ad_lift, 14.0)
+
+
 class CritBonusComposesWithEssenceReaverTests(unittest.TestCase):
     """Phase 4 batch 26 — item-effect-contributed crit feeds ER's Spellblade.
 
