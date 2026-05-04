@@ -8209,4 +8209,224 @@ stats" pattern is implementation detail visible in dps.py.
 **Full coach activation matrix as of s82:** unchanged from s81 —
 this batch was engine-side only.
 
+## s83 hand-off — 2026-05-04 (Phase 4 batch 27: Manamune + Muramana paired via caster_max_mp + Awe schema)
+
+Single-arc continuation from s82. Took s82's #1 next-session candidate
+(Manamune / Muramana paired promotion via `caster_max_mp` +
+`bonus_ad_pct_max_mp`) end to end. Second consecutive schema-bump
+batch following batch 26's pattern — single schema unlocks two items
+simultaneously.
+
+**Engine: 0.30.0 → 0.31.0.** Tests: 461 → 477 (+16, no inversions).
+Phase8 smoke 75/75 once `RC-DaemonSlayer` bounced.
+
+**Pattern decision worth pinning — paired-promotion batches via a
+single new CallContext field + a single new ItemEffect field are
+the right scope for two-item families.** Same shape as batch 26
+(Yun Tal + Atma via crit_chance_bonus). The pattern: identify two
+items that share a mechanism (here, Awe's mana → AD), bump
+CallContext + ItemEffect together, wire one engine path, ship.
+~45-min scope is achievable when the two items reuse existing
+periodic / stat-layer wiring shapes. Future paired candidates worth
+scanning for (lethality items? armor-on-hit items? AS-on-ability
+items?) when the next session lands.
+
+**Pattern decision worth pinning — Awe's stat-layer wiring mirrors
+Sterak's batch 20 walk byte-for-byte.** Both convert "X% of caster
+stat into bonus AD". The walk lives in `build_champion` AFTER
+`aggregate_item_stats` AND `_scale_champion_base`, BEFORE
+`_combine_items`. The placement matters: putting it earlier misses
+items' own contribution to the conversion base; putting it later
+double-counts via `_combine_items`'s AD pipeline. Anchor on Sterak's
+walk for any future `bonus_ad_pct_*` shape.
+
+**Pattern decision worth pinning — manaless champions and
+pre-batch-27 builds carry `caster_max_mp=0` and Mana-scaling procs
+gracefully no-op.** Same backward-compat invariant as batch 6
+(`caster_max_hp=0` for manaless champions never matters, but the
+field exists). Energy users (Akali, Lee Sin) get a clean zero
+through the entire pipeline; Shock contributes 0 damage; Awe
+walks but adds 0 to ad_flat.
+
+**Shipped (commit `0348457`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - **CallContext.caster_max_mp** new field (default 0.0, sibling of
+    caster_max_hp from batch 6).
+  - **ItemEffect.bonus_ad_pct_max_mp** new field (default 0.0, same
+    shape as bonus_ad_pct_base_ad from batch 20).
+  - **Manamune (3004)** new entry: bonus_ad_pct_max_mp=0.02, no
+    proc. Manaflow stack-up + transformation into Muramana not
+    modeled.
+  - **Muramana (3042)** new entry: bonus_ad_pct_max_mp=0.02 +
+    Shock periodic proc (lambda c: 0.012 * c.caster_max_mp,
+    PHYSICAL, every_n_attacks=1). Ability damage piece not modeled.
+
+- `agents/daemon_slayer/engine.py`:
+  - New walk in `build_champion` after _scale_champion_base, mirror
+    of the Sterak's walk: compute `total_max_mp = scaled.get("mp")
+    + item_totals.get("mp_flat", 0.0)`, sum each item's
+    `bonus_ad_pct_max_mp * total_max_mp` into item_totals["ad_flat"].
+
+- `agents/daemon_slayer/dps.py`:
+  - Pull `caster_max_mp = stats.get("mp", 0.0)` after the existing
+    HP/AD/AP plumbing.
+  - Pass `caster_max_mp=caster_max_mp` to CallContext.
+
+- `agents/daemon_slayer/__init__.py`:
+  - `ENGINE_VERSION = "0.31.0"`. CallContext docstring lists the
+    new field. Batch 27 wording added to the prose. defensive_only
+    count UNCHANGED at 21.
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - **CallContextCasterMaxMpTests** (3 tests): default zero,
+    pass-through, proc resolves against the field.
+  - **ManamuneAweTests** (4 tests): present + Awe field shape, no
+    unique_passive_key, AD lift on Ezreal lvl 11 in expected band
+    (60-80 AD lift = 35 stat + ~31.5 Awe), DPS lift confirmed.
+  - **MuramanaShockTests** (6 tests): present + Awe + Shock shape,
+    no unique_passive_key, Shock scales linearly with caster_max_mp,
+    Shock zero on manaless caster, Muramana > Manamune DPS on Ezreal,
+    Muramana AD > Manamune AD by 7-15 (delta = 0.02 * 500 mana =
+    10 expected, with engine rounding).
+  - **AweEngineWireInTests** (3 tests): Aatrox bare → ad = base_ad
+    (no Awe items, no contribution); Ezreal + Archangel's Staff
+    (3003, 600 mana, no Awe) → AD unchanged from bare (walk safe);
+    Manamune + Archangel → AD lift includes Awe acting on Archangel's
+    600 mana (validates the walk uses TOTAL build mana, not just
+    Awe-item's mana).
+
+**Test state:**
+- `agents/daemon_slayer/tests/`: **477/477** green (s82 baseline 461
+  + 16 new this batch).
+- `tests/phase8_smoke/`: 75/75 once live engine bounced.
+- All other phase smoke suites unchanged.
+
+**Live verify (post `schtasks /End /Run RC-DaemonSlayer`):**
+
+```
+$ curl http://127.0.0.1:8893/health → engine_version=0.31.0 ✓
+$ /dps Ezreal lvl11 bare →
+    weighted_dps=44.43, AD=87.5, mp=1075
+$ /dps Ezreal lvl11 + [3004] →
+    weighted_dps=78.20, AD=154.0 (+66.5 = 35 stat + 31.5 Awe at 1575 mp),
+    notes[Manamune: Awe +2% max mana as bonus AD ...] ✓
+$ /dps Ezreal lvl11 + [3042] →
+    weighted_dps=95.93, AD=164.0 (+76.5 = 35 stat + 41.5 Awe at 2075 mp),
+    notes[Muramana: Awe ... + Shock 1.2% max mana per-attack ...] ✓
+$ /dps Ezreal lvl11 + [3004, 3003] (Manamune + Archangel) →
+    weighted_dps=84.30, AD=166.0 (+12 from the 600 mana Archangel
+    contributes to Awe's conversion base — confirms walk uses
+    total_max_mp, not just the carrier's own pool)
+```
+
+The Muramana > Manamune DPS gap (95.93 vs 78.20 = +17.7) on the same
+Ezreal at lvl 11 reflects: (a) larger mana pool → +10 AD via Awe,
+(b) Shock proc contributes another ~25 magic ... wait, physical 
+per-attack at 1.2% * 2075 ≈ 25, sustained at Ezreal's AS gives the
+full 7+ DPS gap. The transformation cost in real League is
+"don't lose Manamune", which the engine doesn't model — both items
+appear independently.
+
+**Coverage audit (delta from s82):**
+
+69 unmodeled legendaries remaining (s82's 71 minus Manamune + Muramana).
+Top candidates for future batches:
+
+- **Archangel's Staff (3003)** — Awe-shape sibling on the AP side
+  ("gain bonus AP equal to X% of max mana"). Would unlock via the
+  same caster_max_mp field that just landed + a new
+  `bonus_ap_pct_max_mp` ItemEffect field. Scope: ~25 min if
+  scoped narrow (clone of Awe wiring, AP-side). Ezreal builds
+  routinely path through Archangel pre-Manamune, so this is a
+  realistic next batch.
+- **Stormsurge (4646)** — ability-bound burst proc. Carry blocker.
+- **Hubris (6697)** — takedown-event-bound. Defensive_only with note.
+- **Liandry's Torment (6653)** — ability-bound burn.
+- **Hextech Rocketbelt (3152)** — active dash + AoE burn.
+- **Cosmic Drive (4629)** — stat-side AP/haste/MS, ability-cast-bound CDR.
+- **Defensive_only batch** — Hubris, Spirit Visage, Kaenic Rookern,
+  Liandry's, Cosmic Drive, Stormsurge — all unmodeled but
+  schema-blocked. Tag each with a one-line `note` and surface in
+  `DpsResult.notes`. Same coverage-completeness call as batch 25's
+  utility-without-damage rule. Scope: 30-45 min for ~6 items.
+
+**Decisions worth pinning (this batch):**
+- **Schema bump shape:** Single CallContext field + single
+  ItemEffect field unlocks a 2-item family. Same template as
+  batch 26 (Yun Tal + Atma via crit_chance_bonus_*).
+- **Engine wiring shape:** New `bonus_ad_pct_*` walk slots into
+  build_champion right after the Sterak's walk. AD-conversion-from-
+  caster-stat is now a recognized pattern with two members
+  (base_ad, max_mp); a third member (e.g. armor, AP) follows the
+  same template.
+- **Default-zero invariants:** Both new fields default 0.0 →
+  pre-batch-27 entries, manaless champions, and pre-batch-27
+  callers all pass through behaviorally identical.
+- **Manaflow / transformation:** out of scope. Caller's build is
+  steady-state; "in flight from Manamune to Muramana" isn't a
+  thing the engine represents.
+
+**Things tomorrow-you should NOT redo:**
+- Don't add `unique_passive_key="awe"` to either item. Awe is
+  one-of-two in current League but the build-legality
+  (transformation gate) lives in the ranker, not the effect-layer.
+  Same template as the LDR + Serylda Last Whisper pattern (batch 25).
+- Don't try to model Shock's ability damage piece (3-4% max mana on
+  damaging abilities) without the ability-cast schema. Same rule as
+  Liandry, Stormsurge, Luden's, Cosmic Drive, etc.
+- Don't try to compute Awe in dps.py instead of engine.py. The
+  walk has to land in `item_totals["ad_flat"]` BEFORE
+  `_combine_items` runs so the resulting AD propagates through the
+  rest of the stat resolution pipeline. dps.py only sees
+  `resolved.stats["ad"]` — too late to mutate.
+
+**Activation:** RC-DaemonSlayer scheduled task bounced via
+`schtasks /End /TN RC-DaemonSlayer && schtasks /Run /TN RC-DaemonSlayer`.
+Engine on :8893 reports 0.31.0. Manamune + Muramana notes appear in
+/dps `notes[]` field. Behavior dormant until next mana-AD-caster
+game in progress (Ezreal, Jhin, Caitlyn, Sivir).
+
+**Bridge state at session end:** RC main pid=8084 (unchanged across
+s78–s83). `schtasks` bounced RC-DaemonSlayer once this session.
+Bridge unchanged — no two-way traffic.
+
+**Operational backlog (delta from s82):**
+- ✅ ~~Phase 4 batch 27: Manamune + Muramana~~ shipped (commit `0348457`).
+- All other s82 backlog unchanged.
+- **NEW from s83**: caster_max_mp + bonus_ad_pct_max_mp schema is
+  open for additions. Archangel's Staff (3003) is the obvious AP-side
+  twin and a natural next batch.
+
+**Memory entries written this session:** none. The "paired-promotion
+batch via a single new CallContext field + a single new ItemEffect
+field" pattern is now visible in two consecutive batches (26 + 27);
+will only promote to memory if a future batch needs to reference it
+and can't find via grep.
+
+**Next-session candidates (ranked):**
+1. **Archangel's Staff (3003) Awe-shape AP twin.** Add
+   `bonus_ap_pct_max_mp` ItemEffect field; clone the Sterak's-style
+   walk in build_champion targeting `item_totals["ap_flat"]` instead
+   of `ad_flat`. Single new field + single walk. Scope: ~20-25 min.
+   Complements batch 27 cleanly — Ezreal builds regularly run
+   Archangel + Manamune, and the engine should model both
+   conversions consistently.
+2. **Defensive_only batch** — Hubris, Spirit Visage, Kaenic Rookern,
+   Liandry's, Cosmic Drive, Stormsurge tagged with one-line notes.
+   Coverage-completeness, 30-45 min scope.
+3. **SR coach `target_bonus_hp` activation** (carried s73→s82).
+4. **First draft visual verify of P8-5.5** (carried).
+5. **gamepc_boot.ps1 patch** (carried). 1-liner.
+6. **P8-7 E2E push-to-League integration test** (carried).
+7. **Activate arena augment v2 in production** (carried).
+8. **Schema bumps** (bigger sessions):
+   a. Ability-cast modeling — unlocks 6+ items (Liandry, Cosmic
+      Drive, Luden's, Stormsurge, Rocketbelt, Horizon Focus).
+   b. Conditional AS bonus (Flurry from Yun Tal, Phantom Hit
+      alternative shapes).
+
+**Full coach activation matrix as of s83:** unchanged from s82 —
+this batch was engine-side only.
+
 
