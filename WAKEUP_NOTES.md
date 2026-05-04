@@ -6278,3 +6278,45 @@ mutations.
 9. **ARAM coach `target_bonus_hp` activation** (NEW from s73).
    Easiest port from arena_coach since alias-ID path is identical.
 
+---
+
+## s70-s73 session wrap — 2026-05-04 07:30 (4 Daemon Slayer batches in one session, engine 0.22.0 → 0.23.0 + production wire-in)
+
+Continuous arc, 4 sub-sessions resumed via `continue Daemon Slayer`:
+
+- **s70** (`216f51e`) — Phase 4 batch 17: Heartsteel lambda fix
+  (70-160 by level → flat 70). Patch 0.22.0 → 0.22.1.
+- **s71** (`f90b751`) — Phase 4 batch 19: target_bonus_hp signal +
+  LDR Giant Slayer schema. Pivoted away from blocked batch 18
+  (Hullbreaker, no DDragon formula). Engine minor 0.22.1 → 0.23.0.
+- **s72** (`4af3111`) — production wire-in: arena_coach activates
+  target_bonus_hp via round-count heuristic. Engine unchanged.
+- **s73** (`0945968`) — refinement: heuristic → deterministic
+  per-enemy item summation via new `bonus_hp_for_id` resolver.
+  Engine unchanged.
+
+**Engine: 0.22.0 → 0.22.1 → 0.23.0.** Tests: 340 → 379 (+39).
+ITEM_EFFECTS unchanged at 54. New schema fields:
+`CallContext.target_bonus_hp` + `ItemEffect.target_bonus_hp_amp_*`.
+New helper: `total_target_bonus_hp_amp_multiplier`. Production
+wire: `arena_coach._estimate_target_bonus_hp(state)` → MAX over
+alive opponents' item-summed bonus HP, fallback to round count.
+
+Pushed: `c0fd43a..5709fca main -> main` (+ rebased onto auto
+weekly-ddragon-audit `50f76a0` mid-session).
+
+**Don't redo:** flat-70 Heartsteel; multiplicative target-amp
+stacking (1.08×1.15=1.242, NOT 1.23); MAX-not-avg across
+opponents; Arena alias HP IDs (223084=700) ARE the right values
+in arena_coach context; round-count heuristic stays as fallback.
+
+**Bridge state at session end:** RC main pid=7316 alive=True
+reload_ok=True. Engine on :8893 = 0.23.0 live. Game-PC bridge
+loop alive (probe round-trip ~47s, hostname=DESKTOP-3NT1UG3,
+loop=running 1m cron). LCU phase=None (no game in progress).
+
+**Next session top-of-queue:** Phase 4 batch 20 — League wiki
+scraper for item-passive coefficients (unblocks Hullbreaker
+Skipper / Essence Reaver Spellblade / Sterak's Gage scaling).
+~3-5 hour scope. See s73 #1 candidate.
+
