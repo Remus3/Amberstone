@@ -24,6 +24,13 @@ and ``stats["hp"] - base_stats["hp"]`` respectively) and fed into
 always knows the caster's exact HP. Unlocks Titanic Hydra Cleave
 (1.5% bonus HP) and Heartsteel Colossal Consumption (6% max HP).
 
+Phase 4 batch 7 (2026-05-04): multi-target rotations. Each rotation's
+``numberOfTargets`` (lolmath field, 94% of rotations = 1.0) feeds into
+``CallContext.targets_in_rotation`` per rotation via ``replace``.
+Cleave-to-others procs (Ravenous Hydra) read ``max(0, n-1)`` from it;
+single-target procs ignore the field. AoE-incl-primary procs (Sunfire
+Immolate, when added) would use ``n`` directly.
+
 Ability damage is **not** included — spell formulas aren't in the
 snapshot. Only the basic-attack portion of each rotation is scored;
 rotation duration includes the time spent casting abilities, so longer
@@ -32,7 +39,7 @@ rotations naturally dilute auto-attack DPS.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Iterable, Optional
 
 from .data_loader import DataSnapshot
@@ -221,9 +228,14 @@ def _rotation_attack_dps(
     armor_factor = _armor_factor(target_armor_for_physical)
     avg_dmg = ad * (1 + crit * crit_bonus) * armor_factor * mode_dmg_mult
     base_dps = total_attacks * avg_dmg / duration
+    # Phase 4 batch 7 (2026-05-04): rebind call_ctx with this rotation's
+    # numberOfTargets. Cleave-to-others procs (Ravenous Hydra) reference
+    # targets_in_rotation; default 1.0 keeps every other proc unchanged.
+    rotation_targets = float(rotation.get("numberOfTargets", 1.0) or 1.0)
+    rotation_ctx = replace(call_ctx, targets_in_rotation=rotation_targets)
     proc_dps = _periodic_proc_dps(
         effects, total_attacks, duration,
-        target_armor_for_physical, target_mr, mode_dmg_mult, call_ctx,
+        target_armor_for_physical, target_mr, mode_dmg_mult, rotation_ctx,
     )
     return base_dps + proc_dps
 
