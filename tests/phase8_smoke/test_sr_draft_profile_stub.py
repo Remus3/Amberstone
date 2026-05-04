@@ -1,11 +1,15 @@
-"""Phase 8 step 1 — SR draft profile stub + sr_draft flag derivation.
+"""Phase 8 step 1 — queue gate + sr_draft state-builder flag + route shape.
 
-Verifies the thin slice that ships before the engine-backed generator
-lands in P8-2:
-  - `coaches.sr_draft_profile.build_profile()` returns the locked envelope.
-  - `is_sr_draft_queue` matches {400, 420, 430, 440} and rejects ARAM/Arena.
+Originally shipped as the P8-1 thin-slice tests against an empty-profiles
+stub. P8-2 swapped the stub body for live engine /beam calls, so the
+build_profile shape tests moved to test_sr_draft_profile_engine.py
+(with urlopen mocked). What remains here:
+
+  - `is_sr_draft_queue` matches {400, 420, 430, 440}, rejects others.
   - `dashboard._state_builder.build_state()` injects `sr_draft` into
     `lcu.champ_select` based on `queue_id`.
+  - The HTTP route handler returns 200 with the locked envelope shape
+    (engine mocked away so the test is fast + deterministic).
 
 Avoids importing the dashboard HTTP server (no port binding in tests);
 the route handler itself is exercised by a stubbed `_send` capture so
@@ -14,15 +18,17 @@ we don't need a live ThreadingHTTPServer.
 import json
 import sys
 import unittest
+import urllib.error
 from pathlib import Path
 from unittest import mock
 
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
+from coaches import sr_draft_profile
 from coaches.sr_draft_profile import (
     SR_DRAFT_QUEUE_IDS,
-    build_profile,
+    clear_cache,
     is_sr_draft_queue,
 )
 
@@ -48,35 +54,6 @@ class TestQueueGate(unittest.TestCase):
 
     def test_canonical_set_locked(self):
         self.assertEqual(SR_DRAFT_QUEUE_IDS, frozenset({400, 420, 430, 440}))
-
-
-class TestBuildProfileStub(unittest.TestCase):
-    def test_envelope_shape(self):
-        out = build_profile(
-            champion="Tristana",
-            role="BOTTOM",
-            my_team=[{"cellId": 0, "championId": 18}],
-            their_team=[{"cellId": 5, "championId": 222}],
-            queue_id=420,
-        )
-        self.assertEqual(out["champion"], "Tristana")
-        self.assertEqual(out["role"], "BOTTOM")
-        self.assertEqual(out["queue_id"], 420)
-        self.assertTrue(out["sr_draft"])
-        self.assertIsNone(out["engine_version"])
-        self.assertEqual(out["profiles"], [])
-
-    def test_minimal_args(self):
-        out = build_profile(champion="Yuumi")
-        self.assertEqual(out["champion"], "Yuumi")
-        self.assertIsNone(out["role"])
-        self.assertIsNone(out["queue_id"])
-        self.assertFalse(out["sr_draft"])
-        self.assertEqual(out["profiles"], [])
-
-    def test_aram_queue_marks_not_sr_draft(self):
-        out = build_profile(champion="Ziggs", queue_id=450)
-        self.assertFalse(out["sr_draft"])
 
 
 class TestStateBuilderFlag(unittest.TestCase):
@@ -112,7 +89,25 @@ class TestStateBuilderFlag(unittest.TestCase):
 
 
 class TestRouteHandler(unittest.TestCase):
-    """Exercise routes_sr_draft._serve_sr_draft_profile_post via a fake handler."""
+    """Exercise routes_sr_draft._serve_sr_draft_profile_post via a fake handler.
+
+    Engine is mocked away (URLError) so profiles=[] and the test only
+    verifies the route layer's contract — type coercion, 400 path, and
+    the locked envelope keys. Engine integration is covered separately
+    in test_sr_draft_profile_engine.py."""
+
+    def setUp(self):
+        clear_cache()
+        # Force engine path to fail so the route returns the empty-profiles
+        # envelope deterministically.
+        self._patcher = mock.patch.object(
+            sr_draft_profile.urllib.request, "urlopen",
+            side_effect=urllib.error.URLError("test: engine off"),
+        )
+        self._patcher.start()
+
+    def tearDown(self):
+        self._patcher.stop()
 
     def _handler(self):
         captured = {}
@@ -132,8 +127,12 @@ class TestRouteHandler(unittest.TestCase):
         self.assertEqual(captured["code"], 200)
         body = json.loads(captured["body"])
         self.assertEqual(body["champion"], "Tristana")
+        self.assertEqual(body["role"], "BOTTOM")
         self.assertTrue(body["sr_draft"])
-        self.assertEqual(body["profiles"], [])
+        self.assertEqual(body["profiles"], [])  # engine mocked off
+        # Locked envelope keys present.
+        for k in ("champion", "role", "queue_id", "sr_draft", "engine_version", "profiles"):
+            self.assertIn(k, body, f"missing key {k}")
 
     def test_missing_champion(self):
         from dashboard.routes_sr_draft import _serve_sr_draft_profile_post
