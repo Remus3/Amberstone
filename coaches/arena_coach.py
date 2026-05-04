@@ -320,12 +320,14 @@ class Coach(BaseCoach):
         ]
         if any(opp_items):
             # Resolve names → ids → bonus HP per opponent; max wins.
+            # s74: pin mode='arena' so the alias-ID path is intentional,
+            # not riding on the byName setdefault first-seen-wins quirk.
             from core import daemon_slayer_resolver as _ds_res
             best = 0.0
             for items in opp_items:
                 if not items:
                     continue
-                ids = _ds_res.resolve_many(items)
+                ids = _ds_res.resolve_many(items, mode="arena")
                 hp = _ds_res.total_bonus_hp(ids)
                 if hp > best:
                     best = hp
@@ -512,7 +514,8 @@ class Coach(BaseCoach):
             # consume `daemon_slayer_picks` directly. Engine down → field
             # absent, no regression.
             try:
-                owned_ids = _ds_resolve_many(state.get("items", []))
+                # s74: pin mode='arena' on owned-items resolution too.
+                owned_ids = _ds_resolve_many(state.get("items", []), mode="arena")
                 # Phase 4 batch 19 wire-in (s72→s73): item-aware estimate
                 # of next opponent's bonus HP, falls back to round-count
                 # heuristic when no enemy items visible. Activates LDR

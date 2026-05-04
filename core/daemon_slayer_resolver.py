@@ -14,6 +14,26 @@ Phase 4 batch 19 wire-in (s73, 2026-05-04): also exposes
 patch-current DDragon ``items.json``. Coach-side estimators
 (arena_coach._estimate_target_bonus_hp) sum HP across the next
 opponent's items to feed the engine's Giant Slayer amp deterministically.
+
+s74 (2026-05-04) — mode-aware lookup. ``items_index.json``'s ``byName``
+picks the 22XXXX-prefixed Arena alias (e.g. ``Heartsteel`` → ``223084``)
+because of a ``setdefault`` first-seen-wins quirk during pipeline build
+(see ``reference_items_index_alias_ids``). For Arena coach this is
+silently correct; for SR / ARAM / Brawl coaches it would return Arena HP
+(700) instead of base HP (900). ``name_to_id(name, mode=...)`` uses the
+DDragon ``maps`` field as the canonical filter:
+
+==========  ===  ==========================
+mode str    map  notes
+==========  ===  ==========================
+"sr"         11  Summoner's Rift
+"aram"       12  Howling Abyss
+"arena"      30  Arena (uses 22XXXX aliases)
+"brawl"      35  Brawl / Swiftplay
+==========  ===  ==========================
+
+``mode=None`` preserves pre-s74 behavior (resolves via ``items_index.json``
+byName, hits the alias-ID quirk). Existing callers don't break.
 """
 from __future__ import annotations
 
@@ -42,6 +62,18 @@ _hp_cache: dict[str, float] = {}
 _hp_cache_mtime: float = 0.0
 _hp_cache_patch: str = ""
 
+# s74 — mode-aware byName cache. Keyed by mode short name → normalized-name
+# → item id. Populated in the same pass as ``_hp_cache`` (one load of the
+# patch-current DDragon items.json builds both). Map IDs from DDragon's
+# ``maps`` field per item.
+_MODE_TO_DDRAGON_MAP_ID: dict[str, str] = {
+    "sr":    "11",
+    "aram":  "12",
+    "arena": "30",
+    "brawl": "35",
+}
+_byname_by_mode: dict[str, dict[str, str]] = {}
+
 
 def _normalize(name: str) -> str:
     return "".join(c.lower() for c in name if c.isalnum())
@@ -69,19 +101,41 @@ def _load_if_stale() -> None:
     logger.debug("items_index refreshed: %d entries", len(new_cache))
 
 
-def name_to_id(name: str) -> Optional[str]:
-    """Resolve display name to item ID. None if unknown."""
+def name_to_id(name: str, mode: Optional[str] = None) -> Optional[str]:
+    """Resolve display name to item ID. None if unknown.
+
+    ``mode`` (optional, s74) selects a map-aware byName index built from
+    DDragon's ``maps`` field. Accepts ``"sr" | "aram" | "arena" | "brawl"``
+    (case-insensitive). When omitted, falls back to the legacy
+    ``items_index.json`` byName which leaks Arena alias IDs (22XXXX-prefixed)
+    to all callers — keep it that way unless you specifically want
+    mode-correct HP / cost values.
+    """
     if not name:
         return None
+    if mode:
+        key = mode.strip().lower()
+        if key in _MODE_TO_DDRAGON_MAP_ID:
+            _load_hp_if_stale()  # also populates _byname_by_mode
+            mode_idx = _byname_by_mode.get(key) or {}
+            hit = mode_idx.get(_normalize(name))
+            if hit:
+                return hit
+            # No mode hit — fall through to legacy index. Items missing a
+            # ``maps`` block in DDragon (rare) still resolve via the
+            # patch-build mapping; preserves prior coverage.
     _load_if_stale()
     return _cache.get(_normalize(name))
 
 
-def resolve_many(names: Iterable[str]) -> list[str]:
-    """Resolve a list of names; unknowns dropped silently. Order preserved."""
+def resolve_many(names: Iterable[str], mode: Optional[str] = None) -> list[str]:
+    """Resolve a list of names; unknowns dropped silently. Order preserved.
+
+    ``mode`` is forwarded to ``name_to_id``; see that docstring for semantics.
+    """
     out: list[str] = []
     for n in names or []:
-        iid = name_to_id(n)
+        iid = name_to_id(n, mode=mode)
         if iid:
             out.append(iid)
     return out
@@ -103,14 +157,16 @@ def _items_json_path() -> Optional[Path]:
 
 
 def _load_hp_if_stale() -> None:
-    """Populate ``_hp_cache`` from the patch-current DDragon items.json.
+    """Populate ``_hp_cache`` + ``_byname_by_mode`` from the patch-current
+    DDragon items.json.
 
-    Walks the ``data.<id>`` block, extracts ``stats.FlatHPPoolMod`` per
-    entry. Items without an HP stat get 0.0 implicitly (missing key on
-    .get). mtime-gated refresh, same shape as ``_load_if_stale`` for
-    items_index.
+    Single pass over the ``data.<id>`` block. Per entry: extract
+    ``stats.FlatHPPoolMod`` for the HP cache, ``maps`` for the per-mode
+    byName index. Items without an HP stat are skipped from ``_hp_cache``
+    but still indexed in ``_byname_by_mode``. mtime-gated refresh; same
+    shape as ``_load_if_stale``.
     """
-    global _hp_cache, _hp_cache_mtime, _hp_cache_patch
+    global _hp_cache, _hp_cache_mtime, _hp_cache_patch, _byname_by_mode
     path = _items_json_path()
     if path is None:
         logger.debug("items.json missing for current patch; HP cache empty")
@@ -132,25 +188,51 @@ def _load_hp_if_stale() -> None:
         logger.warning("DDragon items.json read failed: %s", e)
         return
     data = doc.get("data") or {}
-    new_cache: dict[str, float] = {}
+    new_hp: dict[str, float] = {}
+    new_byname: dict[str, dict[str, str]] = {m: {} for m in _MODE_TO_DDRAGON_MAP_ID}
     for iid, rec in data.items():
         if not isinstance(rec, dict):
             continue
         stats = rec.get("stats") or {}
         hp = stats.get("FlatHPPoolMod")
-        if hp is None:
+        if hp is not None:
+            try:
+                new_hp[str(iid)] = float(hp)
+            except (TypeError, ValueError):
+                pass
+        # Per-mode byName index. ``maps`` is ``{ "11": True, "12": False, ... }``.
+        # Skip purchasable=False; those are recipe-only / unbuyable shells
+        # (e.g. starter quests) and shouldn't shadow the real legendary.
+        if rec.get("purchasable") is False:
             continue
-        try:
-            new_cache[str(iid)] = float(hp)
-        except (TypeError, ValueError):
+        name = rec.get("name") or ""
+        if not name:
             continue
+        norm = _normalize(name)
+        if not norm:
+            continue
+        maps = rec.get("maps") or {}
+        for mode, ddragon_map_id in _MODE_TO_DDRAGON_MAP_ID.items():
+            if maps.get(ddragon_map_id) is True:
+                # First-write-wins per mode. DDragon should not have name+map
+                # collisions for real legendaries; if it ever does, the first
+                # entry alphabetically wins. Logged at debug if we hit one.
+                if norm not in new_byname[mode]:
+                    new_byname[mode][norm] = str(iid)
+                else:
+                    logger.debug(
+                        "byName mode collision: %s on %s already=%s, skipping %s",
+                        norm, mode, new_byname[mode][norm], iid,
+                    )
     with _hp_lock:
-        _hp_cache = new_cache
+        _hp_cache = new_hp
         _hp_cache_mtime = mtime
         _hp_cache_patch = patch
+        _byname_by_mode = new_byname
     logger.debug(
-        "DDragon HP cache refreshed: %d entries (patch %s)",
-        len(new_cache), patch,
+        "DDragon HP cache refreshed: %d entries (patch %s); per-mode byName: %s",
+        len(new_hp), patch,
+        {m: len(v) for m, v in new_byname.items()},
     )
 
 
