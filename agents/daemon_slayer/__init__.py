@@ -59,7 +59,11 @@ radius via the existing targets_in_rotation gate; matches
 Stridebreaker's coefficient choice from batch 21; Heretical Cleave
 active stays not-modeled per the s77/s78 actives-without-cooldown-pin
 rule; Tiamat-tree exclusivity vs the other hydras is build-legality,
-not unique-passive), and 21 defensive_only items spanning the Tier-1
+not unique-passive), Serylda's Grudge (6694) added to ITEM_EFFECTS as
+a new entry (Phase 4 batch 25, 2026-05-04 — 35% armor pen joins the
+LDR / Mortal Reminder family at the same coefficient as LDR; Bitter
+Cold ability slow stays utility-only per the slow-without-damage
+rule), and 21 defensive_only items spanning the Tier-1
 SR / Arena pool plus high-pickrate batch 2 + AP batch 3 additions.
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
@@ -76,4 +80,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.28.0"
+ENGINE_VERSION = "0.29.0"
