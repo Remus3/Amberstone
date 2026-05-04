@@ -65,6 +65,13 @@ class CallContext:
     /dps clients) decide a realistic value from game context. ``%-current-HP``
     procs use the steady-state assumption ``current = max``; explicit
     chunking simulation (e.g. "target at 30%") is a future field.
+
+    ``caster_max_hp`` / ``caster_bonus_hp`` (added 2026-05-04, Phase 4
+    batch 6) are engine-derived (``resolved.stats["hp"]`` and
+    ``stats["hp"] - base_stats["hp"]`` respectively). Unlike
+    ``target_max_hp``, these aren't caller-supplied — the engine knows
+    the caster's exact HP from the build. Unlocks Titanic Hydra Cleave
+    (1.5% bonus HP) + Heartsteel Colossal Consumption (6% max HP).
     """
     base_ad: float
     bonus_ad: float
@@ -73,6 +80,8 @@ class CallContext:
     target_mr: float = 0.0
     ap: float = 0.0
     target_max_hp: float = 0.0
+    caster_max_hp: float = 0.0
+    caster_bonus_hp: float = 0.0
 
 
 # Scaling-damage callable type. Float still works as a constant.
@@ -460,8 +469,25 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3084": ItemEffect(
         item_id="3084",
         name="Heartsteel",
-        defensive_only=True,
-        note="Heartsteel: charged-attack burst on champion melee (situational, not in DPS rotation)",
+        periodic=PeriodicProc(
+            name="Colossal Consumption",
+            # 70-160 (linear by level) + 6% caster max HP physical, every
+            # 3.5s of in-combat-with-champion charge time. Approximation:
+            # in DPS rotations the champion is always near the target,
+            # so the 3.5s cadence is the binding constraint. The HP-on-
+            # damage permanent stack is not modeled — that's stat-side,
+            # not proc-side.
+            bonus_damage=lambda c: (
+                70.0 + 90.0 * (c.level - 1) / 17.0
+                + 0.06 * c.caster_max_hp
+            ),
+            damage_type=PHYSICAL,
+            every_n_seconds=3.5,
+        ),
+        note=(
+            "Heartsteel: Colossal Consumption ~70-160 (by level) + 6% caster "
+            "max HP physical every ~3.5s in combat"
+        ),
     ),
     "3083": ItemEffect(
         item_id="3083",
@@ -589,6 +615,29 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Shadowflame",
         magic_pen_flat=15.0,
         note="Shadowflame: 15 flat magic pen + Cinderbloom magic crit <40% HP (low-HP gate not modeled)",
+    ),
+
+    # ── Phase 4 batch 6 (2026-05-04): caster HP layer ──
+    # CallContext.caster_max_hp / caster_bonus_hp (engine-derived from
+    # resolved stats) lets caster-HP-scaling procs land. Heartsteel
+    # promotes from defensive_only above. Titanic Hydra is a new add.
+    # Ravenous Hydra deferred — current-patch Cleave is nearby-enemies-
+    # only (no primary-target bonus); contributes 0 in single-target DPS.
+
+    "3748": ItemEffect(
+        item_id="3748",
+        name="Titanic Hydra",
+        periodic=PeriodicProc(
+            name="Cleave",
+            # Melee: 5 + 1.5% caster bonus HP physical to primary on every
+            # basic. Ranged variant (3 + 0.75%) under-counted — Titanic is
+            # almost exclusively a melee item. The cleave-to-others portion
+            # is multi-target only and not modeled here (single-target DPS).
+            bonus_damage=lambda c: 5.0 + 0.015 * c.caster_bonus_hp,
+            damage_type=PHYSICAL,
+            every_n_attacks=1,
+        ),
+        note="Titanic Hydra: Cleave ~5 + 1.5% bonus HP physical on-hit (melee values)",
     ),
 }
 

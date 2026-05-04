@@ -17,6 +17,13 @@ Phase 4 batch 5 (2026-05-04): ``target_max_hp`` is plumbed into
 Rising Moon) resolve. Same caller-supplied shape as ``target_armor`` /
 ``target_mr`` — defaults to 0.0, lolmath scenarios don't carry HP.
 
+Phase 4 batch 6 (2026-05-04): caster HP layer. ``caster_max_hp`` and
+``caster_bonus_hp`` are derived from the resolved build (``stats["hp"]``
+and ``stats["hp"] - base_stats["hp"]`` respectively) and fed into
+``CallContext``. Engine-internal — no caller param — since the engine
+always knows the caster's exact HP. Unlocks Titanic Hydra Cleave
+(1.5% bonus HP) and Heartsteel Colossal Consumption (6% max HP).
+
 Ability damage is **not** included — spell formulas aren't in the
 snapshot. Only the basic-attack portion of each rotation is scored;
 rotation duration includes the time spent casting abilities, so longer
@@ -323,11 +330,18 @@ def compute_dps(
     target_mr_eff = effective_target_mr(target_mr, item_effects)
 
     # Build call context once per compute_dps. base_ad comes from the
-    # leveled champion base (pre-items); bonus_ad is total - base.
+    # leveled champion base (pre-items); bonus_ad is total - base. Same
+    # base/bonus split for HP (Phase 4 batch 6, 2026-05-04) — Titanic
+    # Hydra scales off bonus HP, Heartsteel scales off max HP, so we
+    # surface both. Engine-derived (unlike target_max_hp): the engine
+    # always knows the caster's exact HP from the build.
     base_ad = float(resolved.base_stats.get("ad", 0.0)) if resolved.base_stats else 0.0
     total_ad = float(stats.get("ad", 0.0))
     bonus_ad = max(0.0, total_ad - base_ad)
     ap = float(stats.get("ap", 0.0))
+    base_hp = float(resolved.base_stats.get("hp", 0.0)) if resolved.base_stats else 0.0
+    caster_max_hp = float(stats.get("hp", 0.0))
+    caster_bonus_hp = max(0.0, caster_max_hp - base_hp)
     call_ctx = CallContext(
         base_ad=base_ad,
         bonus_ad=bonus_ad,
@@ -336,6 +350,8 @@ def compute_dps(
         target_mr=target_mr_eff,
         ap=ap,
         target_max_hp=target_max_hp,
+        caster_max_hp=caster_max_hp,
+        caster_bonus_hp=caster_bonus_hp,
     )
 
     rotations_by_phase = _phase_rotations(snapshot, resolved.champion_id)
