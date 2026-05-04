@@ -1950,3 +1950,106 @@ via RC-DaemonSlayer scheduled task. Main RC PID unchanged (no main
 restart needed — engine is its own process). Bridge gamepc loop alive.
 Working tree pre-commit: ~10 files changed, ~600 lines net new across
 DS engine + tests + ops.
+
+## s45 hand-off — 2026-05-03 22:14 (Daemon Slayer Phase 2 step 4 — beam search)
+
+Single-arc session. Phase 2 step 4 (top of s44's next-session queue)
+shipped: full-build beam-search ranker. Engine 0.7.0 → 0.8.0.
+
+**Commit:** `03346b6` — `feat(daemon-slayer): Phase 2 step 4 — full-build beam-search ranker`. Pushed `4f4e76d..03346b6 main -> main`.
+
+**What shipped:**
+- `agents/daemon_slayer/beam.py` (~290L) — `beam_search_build()` returns
+  `BeamResult` with top-N complete builds. Per generation: expand every
+  surviving beam by every candidate, dedupe by `frozenset(item_ids)`,
+  score via `compute_dps`, keep top `beam_width`. Defaults: width=10,
+  top_n=10, slot_count=6, boots_unique=True.
+- `agents/daemon_slayer/server.py` — `POST /beam` + `GET /beam` routes.
+- `agents/daemon_slayer/cli.py` — `python -m agents.daemon_slayer beam <champ>`.
+- `agents/daemon_slayer/tests/test_beam.py` — 29 new tests; 190/190 green
+  (was 161, +29).
+
+**Smoke results (Aatrox lvl 11, target_armor=80, SR):**
+- 6-slot, beam_width=10: **220 ms wall**, 8652 evaluations. Top build:
+  `Stormrazor + Statikk Shiv + IE + LDR + Mortal Reminder + Runaan's`
+  (+355.3 DPS over baseline). Beam finds the IE+Stormrazor+Statikk +
+  pen-layer synergy that single-slot greedy can't see in one pass.
+- `total_budget=12000g`: search exhausts at depth 4/6 cleanly (the budget
+  literally can't fit 6 full DPS items at this patch's prices).
+- `beam_width=1` ≈ greedy (single survivor each layer).
+
+**Design choices worth pinning:**
+- **Pre-filter the candidate pool ONCE** at the top of `beam_search_build`,
+  not per beam expansion. Boots-tag flag and total gold cached on each
+  pool entry. Per-beam check is then O(1) per candidate (set membership
+  for already-picked, plus boots-already-in-beam). 175 → 169 after
+  consumable filter; 8.6k evals at width=10 stays sub-second.
+- **`frozenset(item_ids)` dedup is the trick that makes this fast.** Two
+  beams reaching the same item set in different orders score once. With
+  width=10 and 6 slots, dedup hits run at ~50% by depth 5.
+- **Consumables filter (Health Potion, Control Ward, etc.) is required
+  for beam search but NOT for single-slot rank.** Greedy never picks
+  them (zero delta), but with a tight `total_budget` beam search would
+  otherwise stuff empty slots. Filter signal: `consumed: True` OR
+  `"Consumable" in tags`. Trinkets (3340/3363/3364) already excluded
+  upstream by `total=0` gate.
+- **Boots-uniqueness on by default.** Test `boots_unique=False` admits
+  multi-boot builds when whitelist forces it (verified with terminal
+  enchanted boots 3168-3175). `boots_unique=True` correctly caps every
+  returned build at ≤1 boot item.
+- **`current_item_ids` pinning works as expected** — every result
+  contains the seed; depth_reached == slot_count − len(seed).
+- **Search-exhausted note is informational, not an error.** When budget
+  or whitelist prunes everything, return whatever depth got reached;
+  the caller can branch on `depth_reached < slot_count`.
+
+**Things tomorrow-you should NOT redo:**
+- Don't re-debug "boots-double test failed" — boots have `into` paths
+  and were filtered as components by default. Use the terminal
+  enchanted boots IDs (3168-3175) when forcing multi-boot scenarios.
+- Don't change `clamp_level` to silently clamp — it raises
+  ValueError on out-of-range, matching the shape of the rest of the
+  engine. Test was wrong, not the function.
+- Don't add a `consumables_filter=False` parameter to expose the
+  consumable filter as toggleable. There's no real-world build that
+  contains a Health Potion as one of the 6 slots; if a caller really
+  wants one, they pass it via `current_item_ids`.
+
+**Engine version: 0.7.0 → 0.8.0.** The `RC-DaemonSlayer` scheduled task
+was restarted mid-session (taskkill on the 6188 → 9492 → 12176 → new
+PID; `/health` confirms 0.8.0 live with `/beam` routing).
+
+**Next-session candidates (ranked):**
+1. **Phase 5 (Mayhem augments)** — Mayhem mode is rotating SR with
+   augments. Augment table extraction + augment-aware engine hook +
+   beam-search awareness of augment effects. Beam search is now
+   strictly more useful with augments since combos shift the ranking.
+2. **Phase 6 (Arena augments)** — Same shape as Phase 5 but for Arena.
+   Once shipped, `_arena_item_advisor` retires and arena coach's
+   `item_build` defaults to DS picks (currently companion field).
+3. **Phase 1.5 (extractor fix)** — backfill `attackdamageperlevel` and
+   other per-level fields in champions.json (still all zero in 16.9.1
+   per s44 finding). Late-game AD currently under-estimated by ~50-90
+   for melee bruisers; beam search can't compensate without per-level data.
+4. **Phase 8 SR Draft Theatre kickoff** — LCU draft subscription +
+   3-build profile (primary, alt-playstyle, experimental). Beam search
+   is the foundation: for `top_n=3` it returns three distinct high-DPS
+   builds that can map to the 3-build profile slots. Pre-coach phase 8.
+
+**Things NOT to redo:**
+- s44's "should beam_width be high or low?" — settled at 10. Lower bound
+  beats greedy meaningfully; higher than 20 doesn't measurably change
+  the top-5 ranking on the test scenarios. Tune later if needed.
+- The "filter consumables in single-slot rank too" question — already
+  considered and rejected. Greedy ranks them at zero delta; they sort
+  to the bottom. Only beam search needs the filter.
+
+**Memory:** No new entries written. Beam is a straight extension of
+`reference_daemon_slayer_engine_arch.md`'s extension points (the engine
+module map already names `rank.py` as a sibling of `dps.py`/`engine.py`;
+`beam.py` slots in next to `rank.py`).
+
+**Bridge state at session end:** RC main pid=9328 alive=true reload_ok=true.
+Engine on :8893 0.8.0 / `/beam` live. Bridge gamepc loop alive
+(probe `task-876e96057406` round-tripped in <90s). Working tree clean
+post-commit.
