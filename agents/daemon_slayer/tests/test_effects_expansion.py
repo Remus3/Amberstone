@@ -883,8 +883,10 @@ class CasterHpItemTests(unittest.TestCase):
 
     def test_heartsteel_raises_dps_via_caster_max_hp(self) -> None:
         # Heartsteel grants 900 HP itself; with Aatrox base ~1790 lvl 11
-        # max_hp ≈ 2690, 6% = 161 + ~123 (level lerp) = 284 per ~3.5s ≈ 81 DPS.
-        # That's a meaningful jump over bare baseline.
+        # max_hp ≈ 2690. Per DDragon 16.9.1 "70 plus 6%": flat 70 +
+        # 0.06*2690 ≈ 231 per ~3.5s ≈ 66 DPS. (Pre-batch-17 the lambda
+        # added a wrong 90*(level-1)/17 lerp that came from an older
+        # patch.) Threshold left at 30 — still well above noise.
         bare = compute_dps(self.snap, "Aatrox", level=11).weighted_dps
         with_hs = compute_dps(
             self.snap, "Aatrox", level=11, item_ids=["3084"],
