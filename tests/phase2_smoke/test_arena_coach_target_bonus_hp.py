@@ -75,5 +75,119 @@ class EstimateTargetBonusHpCurveTests(unittest.TestCase):
         self.assertEqual(seq, sorted(seq))
 
 
+class EstimateTargetBonusHpItemAwareTests(unittest.TestCase):
+    """Phase 4 batch 19 wire-in (s73) — primary path: item-summed HP.
+
+    When teams[] carries enemy items, the estimator resolves names →
+    DDragon HP and uses MAX across alive opponents. Heuristic only
+    fires when no enemy items are visible. Verified against the live
+    DDragon snapshot via ``daemon_slayer_resolver``.
+    """
+
+    def _state_with_teams(self, teams: list[dict]) -> dict:
+        return {"teams": teams}
+
+    def test_no_state_uses_round_fallback(self) -> None:
+        # Back-compat: pre-s73 callers passed nothing. Round fallback
+        # path still fires.
+        c = _StubCoach(5)
+        self.assertAlmostEqual(c._estimate_target_bonus_hp(), 666.667, places=2)
+
+    def test_empty_teams_uses_round_fallback(self) -> None:
+        # Pre-game state — no enemies parsed yet.
+        c = _StubCoach(5)
+        result = c._estimate_target_bonus_hp(self._state_with_teams([]))
+        self.assertAlmostEqual(result, 666.667, places=2)
+
+    def test_all_opps_dead_uses_round_fallback(self) -> None:
+        # Mid-round-transition state — all enemies dead. Fall back to
+        # round count rather than emitting 0 (player still wants Giant
+        # Slayer recommendations for next round).
+        c = _StubCoach(5)
+        teams = [
+            {"name": "You", "is_you": True, "items": ["Long Sword"]},
+            {"name": "Partner", "is_partner": True, "items": []},
+            {"name": "Enemy1", "is_dead": True, "items": ["Heartsteel"]},
+            {"name": "Enemy2", "is_dead": True, "items": ["Riftmaker"]},
+        ]
+        result = c._estimate_target_bonus_hp(self._state_with_teams(teams))
+        # Round-5 heuristic value, not 0.
+        self.assertAlmostEqual(result, 666.667, places=2)
+
+    def test_single_opp_with_items_uses_item_sum(self) -> None:
+        # One alive enemy with Heartsteel (900 HP) + Riftmaker (350 HP)
+        # → expects 1250. Round count is 5 (heuristic would say 667),
+        # so item path winning proves the priority.
+        c = _StubCoach(5)
+        teams = [
+            {"name": "You", "is_you": True, "items": []},
+            {"name": "Enemy1", "items": ["Heartsteel", "Riftmaker"]},
+        ]
+        result = c._estimate_target_bonus_hp(self._state_with_teams(teams))
+        # Heartsteel (Arena alias 223084 = 700 HP) + Riftmaker (Arena
+        # alias 224633 = 350 HP) = 1050. items_index picks alias IDs
+        # for Arena items per reference_items_index_alias_ids.
+        self.assertAlmostEqual(result, 1050.0, places=1)
+
+    def test_multi_opps_uses_max_not_avg(self) -> None:
+        # Two alive enemies — one tanky (1050 HP from Heart+Rift),
+        # one squishy (0 HP from LDR alone). Estimator picks 1050,
+        # not the avg (525). LDR Giant Slayer recommendation should
+        # escalate against the tanky enemy specifically.
+        c = _StubCoach(5)
+        teams = [
+            {"name": "You", "is_you": True, "items": []},
+            {"name": "Tank", "items": ["Heartsteel", "Riftmaker"]},
+            {"name": "Squishy", "items": ["Lord Dominik's Regards"]},
+        ]
+        result = c._estimate_target_bonus_hp(self._state_with_teams(teams))
+        self.assertAlmostEqual(result, 1050.0, places=1)
+
+    def test_all_opps_have_no_hp_items_falls_back(self) -> None:
+        # Both alive enemies built pure-AD pen — total bonus HP is 0
+        # despite items being present. Estimator should fall back to
+        # round count rather than emit 0.
+        c = _StubCoach(5)
+        teams = [
+            {"name": "You", "is_you": True, "items": []},
+            {"name": "Enemy1", "items": ["Lord Dominik's Regards"]},
+            {"name": "Enemy2", "items": ["Mortal Reminder"]},
+        ]
+        result = c._estimate_target_bonus_hp(self._state_with_teams(teams))
+        # Round-5 heuristic, not 0.
+        self.assertAlmostEqual(result, 666.667, places=2)
+
+    def test_caps_at_engine_saturation_point(self) -> None:
+        # Hypothetical 5-HP-item build sums above 1500. Estimator must
+        # clamp to match Giant Slayer's 1500 saturation point — past
+        # that, the engine amp is at full 15% so precision stops
+        # mattering and we shouldn't pretend to know more.
+        c = _StubCoach(15)  # round count high — fallback also caps
+        teams = [
+            {"name": "You", "is_you": True, "items": []},
+            {"name": "BigTank", "items": [
+                "Heartsteel", "Riftmaker", "Sunfire Aegis",
+                "Warmog's Armor", "Spirit Visage",
+            ]},
+        ]
+        result = c._estimate_target_bonus_hp(self._state_with_teams(teams))
+        self.assertEqual(result, 1500.0)
+
+    def test_skips_self_and_partner(self) -> None:
+        # Tanky teammate + tanky partner — neither should count toward
+        # enemy bonus HP. Only the alive opponent's items matter.
+        c = _StubCoach(5)
+        teams = [
+            {"name": "You", "is_you": True,
+             "items": ["Heartsteel", "Riftmaker"]},
+            {"name": "Pal", "is_partner": True,
+             "items": ["Heartsteel", "Heartsteel"]},
+            {"name": "Enemy1", "items": ["Sunfire Aegis"]},  # 350 HP arena
+        ]
+        result = c._estimate_target_bonus_hp(self._state_with_teams(teams))
+        # Just Sunfire's 350 — neither self nor partner counts.
+        self.assertAlmostEqual(result, 350.0, places=1)
+
+
 if __name__ == "__main__":
     unittest.main()

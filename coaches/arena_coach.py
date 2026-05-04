@@ -289,32 +289,54 @@ class Coach(BaseCoach):
 
     # ── Target-bonus-HP estimator (Phase 4 batch 19 wire-in) ─────────────────
 
-    def _estimate_target_bonus_hp(self) -> float:
-        """Heuristic: enemy bonus HP from items as a function of round.
+    def _estimate_target_bonus_hp(self, state: dict | None = None) -> float:
+        """Estimate enemy bonus HP from items, falling back to round count.
 
-        ``_parse_arena_state`` doesn't surface per-enemy items, so we
-        estimate from round count instead. Curve: 0 at round 1, linear
-        ramp to 1500 at round 10, capped thereafter. The cap matches
-        LDR Giant Slayer's saturation point — past round 10 the engine
-        amp is already at full 15% so estimator precision stops
-        mattering.
+        Primary path (s73): sum bonus HP across the worst-case alive
+        opponent's items. ``_parse_arena_state.teams[i]["items"]`` carries
+        the LCU-supplied display names; ``daemon_slayer_resolver``
+        resolves them to IDs and looks up ``FlatHPPoolMod`` from the
+        patch-current DDragon snapshot. We pick MAX across alive
+        opponents (not avg) because LDR Giant Slayer is "vs high-bonus-HP
+        targets" — the engine should escalate the recommendation when
+        ANY enemy is tanky, not when the average is.
 
-        Worst-case mis-estimate is bounded: Giant Slayer caps at 15%
-        damage amp, so the maximum DPS-recommendation distortion from
-        a bad estimate is ~15% of the LDR-included DPS delta. Rounds
-        2-9 (where the estimate matters most) align with the typical
-        Arena 1-3-item progression — enemies usually have 200-1300 HP
-        from items in that span, our linear ramp gives 167-1333. Close
-        enough for ranking; future batches can refine using surfaced
-        per-enemy item lists.
+        Fallback path (s72): linear ramp 0→1500 across rounds 2..10
+        when no enemy items are visible (early game, vision gap, or
+        pre-game state). Curve saturates at LDR's 1500 HP cap so
+        precision stops mattering past round 10.
 
-        Returns 0.0 when round_count is non-positive (pre-game / state
-        gap), which collapses to "no signal" in the engine.
+        Returns 0.0 when neither signal is available (collapses to "no
+        signal" in the engine — procs no-op).
         """
+        state = state or {}
+        teams = state.get("teams") or []
+        # Worst-case alive opponent — not is_you, not is_partner, not dead.
+        opp_items: list[list[str]] = [
+            (t.get("items") or []) for t in teams
+            if not t.get("is_you")
+            and not t.get("is_partner")
+            and not t.get("is_dead")
+        ]
+        if any(opp_items):
+            # Resolve names → ids → bonus HP per opponent; max wins.
+            from core import daemon_slayer_resolver as _ds_res
+            best = 0.0
+            for items in opp_items:
+                if not items:
+                    continue
+                ids = _ds_res.resolve_many(items)
+                hp = _ds_res.total_bonus_hp(ids)
+                if hp > best:
+                    best = hp
+            if best > 0:
+                return min(1500.0, best)
+
+        # Fallback: round-based heuristic. Linear ramp rounds 2..10 →
+        # 167..1500, capped thereafter; 0 for round ≤ 1 (pre-game).
         round_count = max(0, int(self._event_round_count))
         if round_count <= 1:
             return 0.0
-        # Linear ramp: rounds 2..10 → 167..1500. Caps at 1500 thereafter.
         return min(1500.0, max(0.0, (round_count - 1) * 1500.0 / 9.0))
 
     # ── Vision ────────────────────────────────────────────────────────────────
@@ -491,10 +513,11 @@ class Coach(BaseCoach):
             # absent, no regression.
             try:
                 owned_ids = _ds_resolve_many(state.get("items", []))
-                # Phase 4 batch 19 wire-in (s72): estimate enemy bonus HP
-                # from round count and pass to engine. Activates LDR
+                # Phase 4 batch 19 wire-in (s72→s73): item-aware estimate
+                # of next opponent's bonus HP, falls back to round-count
+                # heuristic when no enemy items visible. Activates LDR
                 # Giant Slayer's target-conditional amp in /rank scoring.
-                target_bonus_hp = self._estimate_target_bonus_hp()
+                target_bonus_hp = self._estimate_target_bonus_hp(state)
                 ds_rows = _ds_client.rank_for(
                     champion=champ,
                     level=int(state.get("level", 1)) or 1,
@@ -731,6 +754,10 @@ def _parse_arena_state(raw: dict) -> dict:
 
     alive        = sum(1 for p in all_p if not p.get("isDead"))
     my_team_id   = (me or {}).get("team", "ORDER") if me else "ORDER"
+    # Phase 4 batch 19 wire-in (s73): surface per-player items so the
+    # coach-side estimator can sum enemy bonus HP deterministically
+    # instead of using the round-count heuristic. displayName list mirrors
+    # the local-player ``items`` field above.
     teams = [
         {
             "name":             p.get("championName", f"Player{i}"),
@@ -739,6 +766,11 @@ def _parse_arena_state(raw: dict) -> dict:
             "is_partner":       p.get("team") == my_team_id and p is not me,
             "is_dead":          p.get("isDead", False),
             "is_next_opponent": False,
+            "items":            [
+                it.get("displayName", "")
+                for it in (p.get("items") or [])
+                if isinstance(it, dict) and it.get("displayName")
+            ],
         }
         for i, p in enumerate(all_p)
     ]
