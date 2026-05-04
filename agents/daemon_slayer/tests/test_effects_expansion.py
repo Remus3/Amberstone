@@ -6,6 +6,7 @@ Companion to ``test_effects.py`` (thin slice). New coverage:
 * Black Cleaver, LDR, Mortal Reminder DPS impact.
 * Energized family entries (Statikk Shiv, Rapid Firecannon, Voltaic, Sundered Sky).
 * Scaling proc entries (Wit's End by level, Runaan's by bonus AD, TriForce by base AD).
+* AP-scaling spellblade / on-hit (Lich Bane, Nashor's Tooth) — Phase 4 batch 3.
 * defensive_only entries — no DPS contribution beyond stat block.
 """
 
@@ -16,6 +17,7 @@ from agents.daemon_slayer.dps import compute_dps
 from agents.daemon_slayer.effects import (
     ITEM_EFFECTS,
     CallContext,
+    MAGICAL,
     PHYSICAL,
     PeriodicProc,
     effective_target_armor,
@@ -331,12 +333,161 @@ class DefensiveOnlyBatch2Tests(unittest.TestCase):
             )
 
 
+class CallContextApTests(unittest.TestCase):
+    """Phase 4 batch 3 — CallContext.ap field for AP-scaling procs."""
+
+    def test_ap_default_zero(self) -> None:
+        # Backward-compatible default — pre-batch-3 callers don't pass ap.
+        ctx = CallContext(base_ad=60, bonus_ad=0, level=11)
+        self.assertEqual(ctx.ap, 0.0)
+
+    def test_callable_resolves_against_ap(self) -> None:
+        proc = PeriodicProc(
+            name="ap_scale",
+            bonus_damage=lambda c: 0.5 * c.ap,
+            damage_type=MAGICAL,
+            every_n_attacks=1,
+        )
+        self.assertEqual(
+            proc.resolve_damage(CallContext(base_ad=60, bonus_ad=0, level=11, ap=100.0)),
+            50.0,
+        )
+        self.assertEqual(
+            proc.resolve_damage(CallContext(base_ad=60, bonus_ad=0, level=11)),
+            0.0,
+        )
+
+    def test_combined_base_ad_and_ap(self) -> None:
+        # Mirrors Lich Bane: 75% base AD + 50% AP magic.
+        proc = PeriodicProc(
+            name="lich_bane_like",
+            bonus_damage=lambda c: 0.75 * c.base_ad + 0.50 * c.ap,
+            damage_type=MAGICAL,
+            every_n_seconds=3.0,
+        )
+        ctx = CallContext(base_ad=60, bonus_ad=0, level=11, ap=100.0)
+        # 0.75*60 + 0.5*100 = 45 + 50 = 95.
+        self.assertEqual(proc.resolve_damage(ctx), 95.0)
+
+
+class SpellbladeAndOnHitApTests(unittest.TestCase):
+    """Lich Bane (3100) + Nashor's Tooth (3115) — AP-scaling promotions."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_lich_bane_periodic_present(self) -> None:
+        e = ITEM_EFFECTS["3100"]
+        self.assertIsNotNone(e.periodic)
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(e.periodic.damage_type, MAGICAL)
+
+    def test_lich_bane_raises_dps(self) -> None:
+        bare = compute_dps(self.snap, "Aatrox", level=11)
+        with_lb = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3100"])
+        self.assertGreater(with_lb.weighted_dps, bare.weighted_dps)
+
+    def test_lich_bane_proc_uses_mr(self) -> None:
+        no_mr = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3100"])
+        with_mr = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3100"], target_mr=100.0,
+        )
+        self.assertGreater(no_mr.weighted_dps, with_mr.weighted_dps)
+
+    def test_lich_bane_scales_with_ap(self) -> None:
+        # One Lich Bane = 100 AP; two Lich Banes = 200 AP. The proc
+        # contribution scales 50% off AP, so the bigger AP pile wins.
+        # Stat-block AS / AH stack too, so just assert "more is more".
+        one_lb = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3100"])
+        two_lb = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3100", "3100"])
+        self.assertGreater(two_lb.weighted_dps, one_lb.weighted_dps)
+
+    def test_nashors_tooth_periodic_present(self) -> None:
+        e = ITEM_EFFECTS["3115"]
+        self.assertIsNotNone(e.periodic)
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(e.periodic.damage_type, MAGICAL)
+        self.assertEqual(e.periodic.every_n_attacks, 1)
+
+    def test_nashors_tooth_raises_dps(self) -> None:
+        bare = compute_dps(self.snap, "Aatrox", level=11)
+        with_nt = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3115"])
+        self.assertGreater(with_nt.weighted_dps, bare.weighted_dps)
+
+    def test_nashors_proc_uses_mr(self) -> None:
+        # On-hit magic → MR matters, armor doesn't.
+        no_mr = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3115"])
+        with_mr = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3115"], target_mr=100.0,
+        )
+        self.assertGreater(no_mr.weighted_dps, with_mr.weighted_dps)
+
+    def test_nashors_scales_with_ap(self) -> None:
+        # Stack a Lich Bane (+100 AP) on top of Nashor's (80 AP). Proc
+        # damage rises with the bigger AP pile; we already test Lich Bane
+        # raises DPS, so we need "Nashor + Lich beats Nashor + non-AP".
+        # Pair Nashor's with Bloodthirster (3072, +80 AD, no AP) as the
+        # control — same gold-ish, no AP. Lich Bane companion has AP.
+        nt_bt = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3115", "3072"])
+        nt_lb = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3115", "3100"])
+        # nt_lb has 100 extra AP in CallContext → Nashor's proc gains
+        # 0.20 * 100 = 20 extra magic per attack. Should beat the AD-only
+        # companion's auto-attack contribution.
+        self.assertGreater(nt_lb.weighted_dps, nt_bt.weighted_dps)
+
+
+class DefensiveOnlyBatch3Tests(unittest.TestCase):
+    """Phase 4 batch 3 (2026-05-04) — 5 AP-stat siblings without DPS proc.
+
+    Hextech Gunblade (3146) / Luden's Echo (6655) / Riftmaker (4633) /
+    Shadowflame (4645) / Deathfire Grasp (3128). All carry AP stat
+    blocks but their effects don't fit the periodic/on-hit shape:
+    active utilities, ability-bound bolts, combat-state amps, and
+    %-current-HP magic crits. Pinned here so future hooks (target HP,
+    combat-state amp) can find them via grep.
+    """
+
+    EXPECTED = {
+        "3146": "Hextech Gunblade",
+        "6655": "Luden's Echo",
+        "4633": "Riftmaker",
+        "4645": "Shadowflame",
+        "3128": "Deathfire Grasp",
+    }
+
+    def test_all_present(self) -> None:
+        for iid in self.EXPECTED:
+            self.assertIn(iid, ITEM_EFFECTS, f"missing {iid}")
+
+    def test_all_defensive_only(self) -> None:
+        for iid, expected_name in self.EXPECTED.items():
+            e = ITEM_EFFECTS[iid]
+            self.assertEqual(e.name, expected_name, iid)
+            self.assertTrue(e.defensive_only, f"{iid} should be defensive_only")
+            self.assertIsNone(e.periodic, f"{iid} should have no periodic proc")
+            self.assertEqual(e.crit_damage_bonus, 0.0, iid)
+            self.assertEqual(e.armor_reduction_pct, 0.0, iid)
+            self.assertEqual(e.armor_pen_pct, 0.0, iid)
+            self.assertEqual(e.armor_pen_flat, 0.0, iid)
+
+    def test_all_have_notes(self) -> None:
+        for iid in self.EXPECTED:
+            self.assertTrue(
+                ITEM_EFFECTS[iid].note.strip(),
+                f"{iid} missing note",
+            )
+
+
 class CoverageCountTests(unittest.TestCase):
-    """Sanity: ITEM_EFFECTS keeps growing (5 thin slice + 25 expansion + 10 batch 2 = 40)."""
+    """Sanity: ITEM_EFFECTS keeps growing.
+
+    5 thin slice + 25 expansion + 10 batch 2 + 7 batch 3 = 47.
+    """
 
     def test_table_size_at_phase_4_expansion(self) -> None:
         # Lower bound: no regressions removed entries.
-        self.assertGreaterEqual(len(ITEM_EFFECTS), 40)
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 47)
 
 
 if __name__ == "__main__":
