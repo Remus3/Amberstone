@@ -19,6 +19,11 @@ POST + JSON body is the contract for production callers):
                                     target_armor?, target_mr?, phase?,
                                     budget?, slots?, top?, sort?,
                                     include_components?, only?}
+  POST /beam              — body: {champion, level, items?, mode?,
+                                    target_armor?, target_mr?, phase?,
+                                    slots?, beam_width?, top?,
+                                    total_budget?, include_components?,
+                                    only?, boots_unique?}
 
 Errors map to:
   400 — body parse failure, missing required field, bad enum value
@@ -39,6 +44,11 @@ from typing import Any, Optional
 from urllib.parse import parse_qs, urlsplit
 
 from . import ENGINE_VERSION
+from .beam import (
+    DEFAULT_BEAM_WIDTH,
+    DEFAULT_TOP_N as BEAM_DEFAULT_TOP_N,
+    beam_search_build,
+)
 from .data_loader import DataSnapshot, SnapshotNotFound
 from .dps import compute_dps
 from .engine import build_champion
@@ -73,6 +83,7 @@ _INDEX_HTML = """<!doctype html>
 <tr><td>POST</td><td>/stats</td><td>resolve champion stats at level + items</td></tr>
 <tr><td>POST</td><td>/dps</td><td>auto-attack DPS over rotation scenarios</td></tr>
 <tr><td>POST</td><td>/rank</td><td>rank items by DPS delta</td></tr>
+<tr><td>POST</td><td>/beam</td><td>full-build beam search (top-N complete builds)</td></tr>
 </table>
 
 <h2>Example</h2>
@@ -282,6 +293,46 @@ def _route_rank(body: dict) -> dict:
     return result.to_dict()
 
 
+def _route_beam(body: dict) -> dict:
+    snap = _CACHE.get()
+    champion = _required_str(body, "champion")
+    level = _opt_int(body, "level", 1) or 1
+    items = _coerce_str_list(body.get("items"), "items")
+    mode = _opt_str(body, "mode", "SR") or "SR"
+    target_armor = _opt_float(body, "target_armor", 0.0)
+    target_mr = _opt_float(body, "target_mr", 0.0)
+    phase = _opt_str(body, "phase")
+    if phase is not None and phase not in ("early", "mid", "late"):
+        raise _ApiError(400, f"phase: must be early|mid|late, got {phase!r}")
+    slot_count = _opt_int(body, "slots", 6) or 6
+    beam_width = _opt_int(body, "beam_width", DEFAULT_BEAM_WIDTH) or DEFAULT_BEAM_WIDTH
+    top_n = _opt_int(body, "top", BEAM_DEFAULT_TOP_N) or BEAM_DEFAULT_TOP_N
+    total_budget = _opt_int(body, "total_budget", None)
+    include_components = _opt_bool(body, "include_components", False)
+    boots_unique = _opt_bool(body, "boots_unique", True)
+    only_ids: Optional[list[str]] = None
+    if "only" in body and body["only"] not in (None, ""):
+        only_ids = _coerce_str_list(body["only"], "only")
+    try:
+        result = beam_search_build(
+            snap,
+            champion_id=champion, level=level,
+            current_item_ids=items, mode=mode,
+            target_armor=target_armor, target_mr=target_mr,
+            phase=phase,
+            slot_count=slot_count, beam_width=beam_width, top_n=top_n,
+            total_budget=total_budget,
+            include_components=include_components,
+            only_item_ids=only_ids,
+            boots_unique=boots_unique,
+        )
+    except KeyError as e:
+        raise _ApiError(404, str(e))
+    except ValueError as e:
+        raise _ApiError(422, str(e))
+    return result.to_dict()
+
+
 def _route_health() -> dict:
     try:
         snap = _CACHE.get()
@@ -328,6 +379,7 @@ _POST_ROUTES = {
     "/stats": _route_stats,
     "/dps": _route_dps,
     "/rank": _route_rank,
+    "/beam": _route_beam,
 }
 
 # GET routes that need a body merge from query params for the same handler.
