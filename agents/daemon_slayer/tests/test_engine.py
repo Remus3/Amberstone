@@ -1,0 +1,112 @@
+import unittest
+
+from agents.daemon_slayer.data_loader import DataSnapshot
+from agents.daemon_slayer.engine import build_champion
+
+
+class BuildChampionTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_aatrox_naked_lvl_1(self) -> None:
+        r = build_champion(self.snap, "Aatrox", level=1)
+        self.assertEqual(r.stats["hp"], 650)
+        self.assertEqual(r.stats["ad"], 60)
+        self.assertEqual(r.stats["armor"], 38)
+        self.assertEqual(r.stats["mr"], 32)
+        self.assertAlmostEqual(r.stats["as"], 0.651, places=3)
+        self.assertEqual(r.stats["ms"], 345)
+        self.assertEqual(r.gold_spent, 0)
+
+    def test_aatrox_naked_lvl_18(self) -> None:
+        r = build_champion(self.snap, "Aatrox", level=18)
+        # hp = 650 + 114 * 17 = 2588
+        self.assertEqual(r.stats["hp"], 2588)
+        # armor = 38 + 4.8 * 17 = 119.6
+        self.assertAlmostEqual(r.stats["armor"], 119.6, places=2)
+        # AS at lvl 18 = 0.651 * 1.425
+        self.assertAlmostEqual(r.stats["as"], 0.651 * 1.425, places=3)
+
+    def test_bloodthirster_adds_ad_and_lifesteal(self) -> None:
+        # Aatrox lvl 1 + Bloodthirster (3072): AD 60 + 80 = 140; lifesteal 15%
+        # (DDragon 16.9.1: SR Bloodthirster is 15%; the 22-prefix arena variant is 18%)
+        r = build_champion(self.snap, "Aatrox", level=1, item_ids=["3072"])
+        self.assertEqual(r.stats["ad"], 140)
+        self.assertAlmostEqual(r.stats["lifesteal"], 0.15)
+        bt_gold = self.snap.item("3072")["gold"]["total"]
+        self.assertEqual(r.gold_spent, bt_gold)
+
+    def test_berserkers_stacks_attack_speed_pct_on_base(self) -> None:
+        # Berserker's (3006): +25% AS, +45 MS
+        # Aatrox lvl 1 base AS = 0.651 → +25% bonus → 0.651 * 1.25 = 0.81375
+        r = build_champion(self.snap, "Aatrox", level=1, item_ids=["3006"])
+        self.assertAlmostEqual(r.stats["as"], 0.651 * 1.25, places=3)
+        # MS = base 345 + flat 45 = 390 (no pct)
+        self.assertEqual(r.stats["ms"], 390)
+
+    def test_berserkers_at_lvl_18_combines_per_level_and_item_bonus(self) -> None:
+        # AS = base * (1 + bonus_levels + bonus_items) = 0.651 * (1 + 2.5/100*17 + 0.25)
+        r = build_champion(self.snap, "Aatrox", level=18, item_ids=["3006"])
+        expected = 0.651 * (1 + 0.025 * 17 + 0.25)
+        self.assertAlmostEqual(r.stats["as"], expected, places=3)
+
+    def test_infinity_edge_crit_caps_at_100pct(self) -> None:
+        # Two IEs would be 50% but you can't actually own two; the cap test
+        # simulates what happens if the engine is fed an absurd build.
+        r = build_champion(self.snap, "Aatrox", level=1, item_ids=["3031", "3031", "3031", "3031", "3031"])
+        # 5 * 25% = 125% → clamped to 100%
+        self.assertEqual(r.stats["crit"], 1.0)
+
+    def test_eclipse_ad_adds_to_aatrox(self) -> None:
+        r = build_champion(self.snap, "Aatrox", level=11, item_ids=["6692"])
+        # Aatrox AD perlevel = 0 — so lvl 11 AD = 60. + Eclipse 60 = 120.
+        self.assertEqual(r.stats["ad"], 120)
+
+    def test_unknown_champion_raises(self) -> None:
+        with self.assertRaises(KeyError):
+            build_champion(self.snap, "Notarealchamp", level=1)
+
+    def test_unknown_item_raises(self) -> None:
+        with self.assertRaises(KeyError):
+            build_champion(self.snap, "Aatrox", level=1, item_ids=["999999"])
+
+    def test_invalid_level_raises(self) -> None:
+        with self.assertRaises(ValueError):
+            build_champion(self.snap, "Aatrox", level=20)
+
+    def test_to_dict_roundtrip(self) -> None:
+        r = build_champion(self.snap, "Aatrox", level=11, item_ids=["6692", "3006"])
+        d = r.to_dict()
+        self.assertEqual(d["champion_id"], "Aatrox")
+        self.assertEqual(d["level"], 11)
+        self.assertEqual(d["item_ids"], ["6692", "3006"])
+        self.assertIn("ad", d["stats"])
+
+    def test_format_table_contains_basics(self) -> None:
+        r = build_champion(self.snap, "Aatrox", level=11, item_ids=["6692"])
+        table = r.format_table()
+        self.assertIn("Aatrox", table)
+        self.assertIn("lvl 11", table)
+        self.assertIn("6692", table)
+        self.assertIn("ad", table)
+
+
+class WukongAliasTest(unittest.TestCase):
+    """Sanity check the DDragon-id aliases from the extractor still resolve."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_wukong_resolves_as_monkeyking(self) -> None:
+        r = build_champion(self.snap, "MonkeyKing", level=1)
+        self.assertEqual(r.champion_name, "Wukong")
+
+    def test_renata_resolves(self) -> None:
+        r = build_champion(self.snap, "Renata", level=1)
+        self.assertEqual(r.champion_id, "Renata")
+
+
+if __name__ == "__main__":
+    unittest.main()
