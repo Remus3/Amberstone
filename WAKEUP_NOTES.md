@@ -1484,3 +1484,66 @@ distribution, skill orders`.
 **Bridge state at session end:** RC PID 9740 alive, mode=client,
 no game in progress. Bridge unused this session.
 
+## s40 hand-off — 2026-05-03 20:21 (Daemon Slayer Phase 2 step 2 shipped)
+
+One arc: Phase 2 step 2 — auto-attack DPS over lolmath rotation scenarios + ARAM mode hooks.
+
+**What shipped (commit `68d31de`):**
+- `agents/daemon_slayer/dps.py` — `compute_dps()` returns `DpsResult` with weighted DPS over early/mid/late phases. Per-rotation: `attacks = basic + basicTime * AS`, `avg_dmg = AD * (1 + crit*0.75) * armor_factor * mode_dmg_mult`, weighted by lolmath rotation `weight`. Phase auto-selected from level (≤6 early, 7-12 mid, 13+ late).
+- `engine.py` — added `_apply_mode_modifiers()` hook called after `_combine_items`. ARAM `aramAttackSpeed` multiplies bonus AS only (currently no champion has AS != 1 in 16.9.1 data).
+- `cli.py` — `dps` subcmd: `python -m agents.daemon_slayer dps Aatrox --level 11 --items 6692,3006,3072,3031 --mode ARAM --target-armor 80`. JSON output via `--json`.
+- `__init__.py` — `ENGINE_VERSION 0.2.1 -> 0.3.0`.
+- 60/60 unit tests green (27 new dps + 4 mode-hook tests).
+
+**Regression pins** in `tests/test_dps.py`:
+- Aatrox lvl 1 naked early-phase DPS = 26.10 (matches hand-calc to 0.01)
+- Yunara `aramDamageDealt=0` → DPS=0 in ARAM (hard-disable pin)
+- Aatrox `aramDamageDealt=1.05` exactly scales SR DPS in ARAM
+- 100 armor halves DPS, -100 armor amplifies 1.5x
+- 5x IE clamps crit at 100%, avg per-hit = AD * 1.75
+
+**Things tomorrow-you should NOT redo:**
+- Don't add ability damage to `compute_dps` — that's Phase 4 conditional effects (formulas not in snapshot yet).
+- Don't hardcode IE +40% crit damage. `DEFAULT_CRIT_BONUS=0.75` is the no-IE baseline; Phase 4 lands an effects registry that detects IE.
+- Don't add per-mode aramHealing/aramShielding/aramTenacity/aramDamageTaken/aramAbilityHaste at the stat layer — they belong in their respective consumers (sustain calc, EHP calc, AH lookup), not in build_champion.
+
+**Open for next sessions:**
+- **Daemon Slayer Phase 2 step 3**: item ranker. Filter `snapshot.items` by `maps` (mode validity), `gold.total`, `into` (upgrade path); score candidates by `compute_dps` delta. CLI `rank` is still a stub.
+- All s39 carryover items still apply.
+
+**Bridge state at session end:** RC PID 9740 alive, mode=client, lobby phase. Game-PC bridge loop confirmed alive (loop liveness probe round-tripped in ~117s).
+
+---
+
+## s41 hand-off — 2026-05-03 20:23 (Daemon Slayer Phase 2 step 3 shipped)
+
+One arc: Phase 2 step 3 — item ranker. CLI `rank` no longer a stub.
+
+**What shipped:**
+- `agents/daemon_slayer/rank.py` — `rank_items()` returning `RankResult` with sorted `RankedItem` rows. Filter chain: already-equipped → optional whitelist → `purchasable + gold.total>0` → mode validity (`maps[MODE_MAP_ID[mode]]`) → terminal-only (`into` empty, opt-out) → budget cap. For each survivor, `compute_dps(current+candidate)` and the delta vs. baseline is the score. `MODE_MAP_ID` = `{SR:11, ARAM:12, ARENA:30}`. Sort keys: `delta` (default) or `efficiency` (`delta_dps / (gold/1000)`).
+- `cli.py` — `rank` subcmd live: `python -m agents.daemon_slayer rank Aatrox --level 11 --target-armor 80 --top 8`. Flags: `--items` (current build), `--budget`, `--top`, `--sort delta|efficiency`, `--include-components`, `--only`, `--slots`, `--mode`, `--target-armor`, `--target-mr`, `--phase`, `--json`.
+- `__init__.py` — `ENGINE_VERSION 0.3.0 → 0.4.0`.
+- 86/86 unit tests green (26 new rank + 60 prior).
+
+**Regression pins** in `tests/test_rank.py`:
+- Aatrox lvl 11 SR vs. 80 armor: top-5 must contain at least one of `{IE 3031, BT 3072, Stormrazor 3097, Shieldbow 6673}` (stat-only DPS finishers in 16.9.1).
+- `delta = new_dps - baseline_dps` to 4 decimal places.
+- Sort-by-delta and sort-by-efficiency yield non-identical orderings on the same query.
+- Yunara ARAM mode_mult=0 → all deltas exactly 0; rank still produces rows with the warning note.
+- 6 already-equipped raises `ValueError` (no slot for candidate).
+- SR snapshot terminal candidate count in 100-300 range (175 in 16.9.1).
+- Negative-delta rows have efficiency exactly 0 (no "best regression" surfacing).
+
+**Things tomorrow-you should NOT redo:**
+- Don't add Riot's actual gold-efficiency-by-stat formula here — `dps_per_1k_gold` is the simple, stable proxy. Riot stat-weights belong in a separate optional rank mode if ever wanted.
+- Don't filter `into` for the *destination* item's components — DDragon's `into` field on a component points at its upgrades, which is what we use. Filtering "things components turn into" is the correct read of the design hint.
+- Don't paper over the duplicate `The Collector` (3000g) ids `6676` / `667666` — that's the snapshot-side `items_index.json byName picks 22-prefixed alias IDs` issue (memory `reference_items_index_alias_ids`). Pipeline fix scheduled separately; rank surfaces both because both are in the snapshot.
+- Don't add ability damage to delta math — same Phase 4 boundary as before.
+
+**Open for next sessions:**
+- **Daemon Slayer Phase 3**: HTTP server `:8893` — wrap stats/dps/rank in routes for the dashboard; coach-side consumers (item recommendation in champ-select brief / mid-game upgrade nudge).
+- **Phase 2 step 4 (optional)**: full-build ranker — instead of "next item", search the 6-item Cartesian product (or beam search) for the highest end-state DPS within a gold ceiling. N×DPS × 6 gets pricey; heuristics needed.
+- All s37/s38/s39/s40 carryover items still apply.
+
+**Bridge state at session end:** RC PID 9740 alive, mode=client, lobby phase. No game this session.
+
