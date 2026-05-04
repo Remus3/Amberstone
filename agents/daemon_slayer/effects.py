@@ -393,6 +393,73 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         defensive_only=True,
         note="Eclipse: 6% target max HP every 2nd attack (target HP not modeled in Phase 4)",
     ),
+
+    # ── Phase 4 expansion 2026-05-04: high-pickrate SR legendaries ──
+    # All defensive_only — passives are non-DPS (active utilities, lifeline
+    # shields, sustain, damage-storage, ability-CDR stacks). Promote to
+    # periodic / armor-pen / amp entries when the relevant Phase 4+ hooks
+    # land (target HP, magic pen layer, ability scaling).
+
+    "6333": ItemEffect(
+        item_id="6333",
+        name="Death's Dance",
+        defensive_only=True,
+        note="Death's Dance: bleed (stores damage to release over time); no DPS proc",
+    ),
+    "3161": ItemEffect(
+        item_id="3161",
+        name="Spear of Shojin",
+        defensive_only=True,
+        note="Spear of Shojin: Veteran's Resolve stacks reduce ability CDs (CDR not DPS-modeled)",
+    ),
+    "3508": ItemEffect(
+        item_id="3508",
+        name="Essence Reaver",
+        defensive_only=True,
+        note="Essence Reaver: mana refund + CDR after ability use; no on-hit DPS proc",
+    ),
+    "3084": ItemEffect(
+        item_id="3084",
+        name="Heartsteel",
+        defensive_only=True,
+        note="Heartsteel: charged-attack burst on champion melee (situational, not in DPS rotation)",
+    ),
+    "3083": ItemEffect(
+        item_id="3083",
+        name="Warmog's Armor",
+        defensive_only=True,
+        note="Warmog's Armor: out-of-combat HP regen; no DPS contribution",
+    ),
+    "3139": ItemEffect(
+        item_id="3139",
+        name="Mercurial Scimitar",
+        defensive_only=True,
+        note="Mercurial Scimitar: active cleanse + bonus MS; no DPS contribution",
+    ),
+    "3026": ItemEffect(
+        item_id="3026",
+        name="Guardian Angel",
+        defensive_only=True,
+        note="Guardian Angel: revive after lethal damage; no DPS contribution",
+    ),
+    "3102": ItemEffect(
+        item_id="3102",
+        name="Banshee's Veil",
+        defensive_only=True,
+        note="Banshee's Veil: spellshield blocks next ability; no DPS contribution",
+    ),
+    "3157": ItemEffect(
+        item_id="3157",
+        name="Zhonya's Hourglass",
+        defensive_only=True,
+        note="Zhonya's Hourglass: active stasis (untargetable for 2.5s); no DPS contribution",
+    ),
+    "6631": ItemEffect(
+        item_id="6631",
+        name="Stridebreaker",
+        defensive_only=True,
+        note="Stridebreaker: Halting Slash active dash + slow; no on-hit DPS proc",
+    ),
 }
 
 

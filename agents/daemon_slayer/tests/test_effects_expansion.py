@@ -286,12 +286,57 @@ class DefensiveOnlyExpansionTests(unittest.TestCase):
         self.assertTrue(e.defensive_only)
 
 
+class DefensiveOnlyBatch2Tests(unittest.TestCase):
+    """Phase 4 batch 2 (2026-05-04) — 10 high-pickrate SR legendaries.
+
+    All defensive_only — utilities/shields/storage with no DPS proc.
+    Pinning the table here so future schema-promotion work (target HP,
+    magic pen, ability scaling) can find these via grep when the
+    relevant hooks land.
+    """
+
+    EXPECTED = {
+        "6333": "Death's Dance",
+        "3161": "Spear of Shojin",
+        "3508": "Essence Reaver",
+        "3084": "Heartsteel",
+        "3083": "Warmog's Armor",
+        "3139": "Mercurial Scimitar",
+        "3026": "Guardian Angel",
+        "3102": "Banshee's Veil",
+        "3157": "Zhonya's Hourglass",
+        "6631": "Stridebreaker",
+    }
+
+    def test_all_present(self) -> None:
+        for iid in self.EXPECTED:
+            self.assertIn(iid, ITEM_EFFECTS, f"missing {iid}")
+
+    def test_all_defensive_only(self) -> None:
+        for iid, expected_name in self.EXPECTED.items():
+            e = ITEM_EFFECTS[iid]
+            self.assertEqual(e.name, expected_name, iid)
+            self.assertTrue(e.defensive_only, f"{iid} should be defensive_only")
+            self.assertIsNone(e.periodic, f"{iid} should have no periodic proc")
+            self.assertEqual(e.crit_damage_bonus, 0.0, iid)
+            self.assertEqual(e.armor_reduction_pct, 0.0, iid)
+            self.assertEqual(e.armor_pen_pct, 0.0, iid)
+            self.assertEqual(e.armor_pen_flat, 0.0, iid)
+
+    def test_all_have_notes(self) -> None:
+        for iid in self.EXPECTED:
+            self.assertTrue(
+                ITEM_EFFECTS[iid].note.strip(),
+                f"{iid} missing note",
+            )
+
+
 class CoverageCountTests(unittest.TestCase):
-    """Sanity: ITEM_EFFECTS now covers ~30 items (5 thin slice + 25 expansion)."""
+    """Sanity: ITEM_EFFECTS keeps growing (5 thin slice + 25 expansion + 10 batch 2 = 40)."""
 
     def test_table_size_at_phase_4_expansion(self) -> None:
         # Lower bound: no regressions removed entries.
-        self.assertGreaterEqual(len(ITEM_EFFECTS), 30)
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 40)
 
 
 if __name__ == "__main__":
