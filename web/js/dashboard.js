@@ -3827,6 +3827,7 @@
     inflight:   false,
     debounceTimer: null,
     lastAppliedKey: "",
+    userEdited: false,    // P8-5.5: chip seeded from LCU until user touches it
   };
   const _SRDRAFT_DEBOUNCE_MS = 1500;  // bench/team churn during draft
 
@@ -3856,10 +3857,35 @@
     sel.value = _srDraftRoleChoice();
     sel.addEventListener("change", () => {
       _srDraftSaveRoleChoice(sel.value);
+      // P8-5.5: explicit operator choice locks out LCU pre-population
+      // for the rest of this session.
+      _srDraft.userEdited = true;
       // Force a re-fetch with the new role hint.
       _srDraft.lastSig = "";
       _srDraft.lastAppliedKey = "";
     });
+  }
+
+  // P8-5.5: read assignedPosition for the local player from the LCU
+  // champ_select payload (surfaced via gamepc_lcu_agent.py _team_picks).
+  // Returns one of TOP/JUNGLE/MIDDLE/BOTTOM/UTILITY (uppercased to match
+  // the role chip <option value=…>) or "" when LCU didn't assign a position
+  // (blind pick, ARAM, etc).
+  function _srDraftRoleFromLcu(cs) {
+    if (!cs || !Array.isArray(cs.my_team)) return "";
+    const cell = cs.local_cell;
+    const me = cs.my_team.find((p) => p && p.cellId === cell);
+    const pos = (me && typeof me.assignedPosition === "string")
+      ? me.assignedPosition.trim().toUpperCase() : "";
+    if (!pos) return "";
+    // LCU emits TOP/JUNGLE/MIDDLE/BOTTOM/UTILITY directly; coerce
+    // common aliases just in case.
+    const aliases = { MID: "MIDDLE", BOT: "BOTTOM", ADC: "BOTTOM",
+                      SUPPORT: "UTILITY", SUP: "UTILITY", JG: "JUNGLE" };
+    const norm = aliases[pos] || pos;
+    if (norm === "TOP" || norm === "JUNGLE" || norm === "MIDDLE"
+        || norm === "BOTTOM" || norm === "UTILITY") return norm;
+    return "";
   }
 
   function _srDraftSig(championId, role, my_team, their_team, queue_id) {
@@ -4078,7 +4104,19 @@
       return;
     }
     block.hidden = false;
-    const role = _srDraftRoleChoice();
+    // P8-5.5: prefer LCU assignedPosition until the operator manually
+    // changes the chip. This makes the chooser pre-populate to the
+    // drafted role instead of the localStorage default for queues that
+    // surface assignedPosition (Ranked Solo/Flex, Draft Pick).
+    const lcuRole = _srDraftRoleFromLcu(cs);
+    let role;
+    const sel = document.getElementById("cs-srdraft-role");
+    if (!_srDraft.userEdited && lcuRole) {
+      if (sel && sel.value !== lcuRole) sel.value = lcuRole;
+      role = lcuRole;
+    } else {
+      role = sel ? sel.value : _srDraftRoleChoice();
+    }
     _srDraftFetchProfile(myName, myCid, role,
                          cs.my_team, cs.their_team, cs.queue_id);
   }
