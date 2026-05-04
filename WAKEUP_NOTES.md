@@ -2459,3 +2459,10 @@ phase=Lobby (safe to /clear). Working tree pre-commit:
 - `tests/phase2_smoke/test_arena_augment_hud.py` (new, 130 lines)
 - `WAKEUP_NOTES.md` (this s50 hand-off)
 - `data/ratings/last_arena.json` + `last_sr.json` (runtime, untouched)
+
+**/done close-out (2026-05-04):** committed + pushed `0894e5a..3c0fc8c
+main -> main`. LCU phase=Matchmaking at session-end (queueing, no
+in-game state lost on /clear). **Game-PC bridge auto-flow loop is
+DEAD** — 90s liveness probe (task-1311d83782c3) timed out. Re-run
+`/loop /process-bridge-tasks` on Game-PC at next session start, or
+results will pile up unread.
