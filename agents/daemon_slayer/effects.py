@@ -469,8 +469,29 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3302": ItemEffect(
         item_id="3302",
         name="Terminus",
-        defensive_only=True,
-        note="Terminus: alternating physical/magical on-hit + pen stacks (not yet modeled)",
+        # Phase 4 batch 13 (2026-05-04): promoted from defensive_only.
+        # The "alternating physical/magical" wording in the prior note
+        # was incorrect — DDragon shows Shadow is a constant on-hit
+        # (30 magic, every basic), and Juxtaposition is the alternating
+        # part (Light buff = caster resists, defensive; Dark buff = pen).
+        # In sustained DPS rotations both Light and Dark buffs are up
+        # most of the time (each refreshes every 2 attacks at AS=1.0,
+        # both last 5s). Light's resists are caster-side, ignored;
+        # Dark's pen is modeled at full uptime (10% armor pen + 10%
+        # magic pen) — same sustained-DPS approximation as Black
+        # Cleaver's stacking.
+        periodics=(PeriodicProc(
+            name="Shadow",
+            bonus_damage=30.0,
+            damage_type=MAGICAL,
+            every_n_attacks=1,
+        ),),
+        armor_pen_pct=0.10,
+        magic_pen_pct=0.10,
+        note=(
+            "Terminus: Shadow on-hit ~30 magic damage per attack + "
+            "Juxtaposition Dark sustained 10% armor pen + 10% magic pen"
+        ),
     ),
     "6692": ItemEffect(
         item_id="6692",
