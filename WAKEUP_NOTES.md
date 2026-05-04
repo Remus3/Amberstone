@@ -2608,3 +2608,87 @@ reload_ok=true. Engine on :8893 still 0.9.3 (no engine change this
 session). LCU phase=InProgress (mid-Arena). Working tree post-commit:
 - `1d59425` pushed; only `data/ratings/last_*.json` runtime mutations
   dirty (auto-mutated each game tick, skipped from commit).
+
+## s53 hand-off — 2026-05-04 (Phase 8 step 6: User Builds CRUD sub-page)
+
+Single-arc session. Closed P8-6 — operator-facing CRUD UI for the
+additive user-curated SR draft builds. Pure frontend (HTML/CSS/JS); no
+RC restart required since `/api/sr-draft/user-builds` shipped in P8-3.
+Committed + pushed `30ddf46` on top of s52.
+
+**Shipped (commit `30ddf46`, pushed `cc58cf5..30ddf46 main -> main`):**
+- `web/index.html`: `view-user-builds` section (~90L) with toolbar
+  (champion datalist + add btn + status hint) and two-pane layout —
+  left ub-build-list, right ub-form-pane (hidden until + Add or Edit).
+  Form fields cover label/role/keystone/primary/secondary/spell-d/
+  spell-f/items/notes to mirror `sr_user_builds._normalize_record`.
+- `web/js/dashboard.js` (~290L): `_UB` state object, `_userBuildsWireOnce`,
+  `_userBuildsFetchAndRender`, `_userBuildsOpenForm/Save/Delete/Close`,
+  `_ubChampionPicked` with localStorage sticky champ
+  (`rc-ub-last-champ`), datalist populated from `/api/champions` cache,
+  300ms debounce on champion input, items as one-per-line textarea.
+  VIEW_IDS gained "user-builds"; applyView dispatch added.
+- `web/css/dashboard.css` (~120L): `.ub-toolbar`, `.ub-layout` 2-pane
+  grid, `.ub-build-row`, `.ub-form-grid`, `.ub-btn-{primary,ghost,danger,tiny}`,
+  `.ub-form-status.{ok,error}`. 3 view-router rules added (main hide,
+  view-user-builds show, home-overlay hide).
+
+**Decisions worth pinning:**
+- **Items as free-text textarea** (one per line). Server's
+  `_resolve_item_ids` does ddragon lookup; UI doesn't need autocomplete.
+- **Champion picker as datalist, not select.** Cheaper than rendering
+  170+ option elements in DOM; lets operator type-narrow.
+- **localStorage sticky champion** (`rc-ub-last-champ`) — operator
+  almost always returns to the same champion they were curating.
+- **Form pane hidden by default** — list is the primary surface;
+  + Add / Edit buttons reveal the form. Keeps the layout calm when
+  the operator is just browsing.
+- **No new tests.** Backend already covered by 75/75 phase8_smoke;
+  this is pure UI. Visual smoke deferred (operator mid-Arena).
+
+**Things tomorrow-you should NOT redo:**
+- Don't add a new POST route for user-builds — `/api/sr-draft/user-builds`
+  already does CRUD via action-keyed payload (P8-3, `routes_sr_user_builds.py`).
+- Don't make the items field anything fancier than a textarea — server
+  resolves names; autocomplete adds no value to a power-user UI.
+- Don't pre-populate the champion picker from in-game state — operator
+  curates between games for upcoming champions, not for the current
+  picked one. Sticky last-edited via localStorage is the right default.
+- Don't bump the engine — Phase 8 step 6 is dashboard-only.
+
+**Activation status:** Static assets — Edge Ctrl+F5 picks up. New POST
+route already live (P8-3 work). Curl-confirmed all 3 served assets
+contain new code (3 HTML hits, 11 JS hits, 5 CSS hits). Visual verify
+deferred — operator mid-Arena (`mode=arena, has_game=true,
+liveclient.game_time=8:02 round`). Mid-Arena dashboard capture
+confirmed no regression (existing UI unchanged; Edge still on old JS).
+
+**Next-session candidates (ranked):**
+1. **P8-5 + P8-6 visual verify.** Post-game Ctrl+F5, navigate to
+   "User Builds" menu item, add a test build for a champion, then
+   enter a draft queue (400/420/430/440) to confirm it appears in
+   the SR-draft chooser as `kind=user`. Confirms both halves of the
+   end-to-end loop.
+2. **P8-5.5 — surface `assignedPosition`** from `gamepc_lcu_agent.py`
+   so the role chip pre-populates from LCU instead of localStorage
+   default. Single-line add to LCU agent's `_team_picks`; deploy via
+   `gamepc_boot.ps1`. Cross-machine task.
+3. **P8-7 — E2E push-to-League integration test.** Now unblocked
+   (apply route shipped P8-5). Real arena/draft with all 3 engine
+   variants pushed back-to-back, verify rune pages have distinct
+   names + items apply correctly.
+4. **Activate arena augment v2 in production** — still relevant from
+   s50; reconciler ships with current RC, just needs an arena game to
+   verify `augments_source` flips to `vision_hud`.
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true (no restart this session — pure frontend). Engine on
+:8893 still 0.9.3. LCU phase=N/A in /api/state but liveclient
+game_time=8:02 (mid-Arena). Game-PC bridge auto-flow loop ALIVE —
+fresh probe (task-94931d114aec) returned reply within ~28s.
+
+**/done close-out (2026-05-04):** auto-committed nothing new (only
+runtime junk pending — `data/ratings/last_*.json` auto-mutated every
+game tick, skipped). 1 commit shipped this session, already pushed
+`cc58cf5..30ddf46`. No background tasks active. 0 pending lessons
+from peers.
