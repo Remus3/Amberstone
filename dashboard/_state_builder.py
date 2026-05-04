@@ -25,6 +25,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from coaches.sr_draft_profile import is_sr_draft_queue
 from dashboard._context import APP_DIR, read_json
 from dashboard._liveclient import lcu_summary, liveclient_summary
 
@@ -63,6 +64,14 @@ def build_state() -> dict:
             if coach.get(k) in (None, "", 0):
                 coach[k] = v
 
+    # Phase 8 step 1: derive sr_draft flag from queue_id and stamp it
+    # alongside the existing is_aram sibling. Phase 8's UI gates the
+    # 3-build chooser on this flag.
+    lcu_snapshot = lcu_summary()
+    cs = lcu_snapshot.get("champ_select") if isinstance(lcu_snapshot, dict) else None
+    if isinstance(cs, dict):
+        cs["sr_draft"] = is_sr_draft_queue(cs.get("queue_id"))
+
     return {
         "mode_key": mode_key,
         "coach_source": coach_file,
@@ -76,7 +85,7 @@ def build_state() -> dict:
         },
         "coach": coach,
         "liveclient": lc,
-        "lcu": lcu_summary(),
+        "lcu": lcu_snapshot,
     }
 
 
