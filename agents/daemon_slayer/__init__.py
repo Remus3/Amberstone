@@ -48,9 +48,13 @@ Lightning Bolt promoted from defensive_only as a long-CD periodic
 proc (Phase 4 batch 22, 2026-05-04 — 175→253 by level + 30% AP magic
 damage, 40s cooldown, modeled with ``every_n_seconds=40.0``; same shape
 as Sundered Sky's 8s Lightshield Strike with a far longer cadence;
-the 25%/1.5s slow stays utility-only, not modeled), and 21 defensive_only
-items spanning the Tier-1 SR / Arena pool plus high-pickrate
-batch 2 + AP batch 3 additions.
+the 25%/1.5s slow stays utility-only, not modeled), Iceborn Gauntlet
+(6662) added to ITEM_EFFECTS as a new entry (Phase 4 batch 23,
+2026-05-04 — 150% base AD bonus physical Spellblade variant joining
+the Trinity Force / Lich Bane / Essence Reaver dedup family at the
+shared ~3s ability-cast cadence; frost-field slow stays utility-only),
+and 21 defensive_only items spanning the Tier-1 SR / Arena pool plus
+high-pickrate batch 2 + AP batch 3 additions.
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
 ``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation`` /
@@ -66,4 +70,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.26.0"
+ENGINE_VERSION = "0.27.0"
