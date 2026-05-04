@@ -186,10 +186,10 @@ class ItemEffect:
     armor_pen_pct: float = 0.0         # LDR: 0.35; MR: 0.30
     armor_pen_flat: float = 0.0        # lethality flat (rare standalone)
     # Magic-damage modifiers (Phase 4 batch 4, 2026-05-04) — applied to
-    # ``target_mr`` symmetrically. No MR-reduction layer in current
-    # League patch (no magic-side Black Cleaver), so % pen lands first
-    # and flat pen subtracts after. Add ``mr_reduction_pct`` here when
-    # the first item demands it — same layering rules.
+    # ``target_mr`` symmetrically. Phase 4 batch 39 (2026-05-04) adds the
+    # MR-reduction layer (magic-side Black Cleaver analogue): reduction
+    # first, then % pen, then flat pen — same layering order as armor side.
+    mr_reduction_pct: float = 0.0      # Bloodletter's Curse: 0.30 (4×7.5%)
     magic_pen_pct: float = 0.0         # Void Staff: 0.40; Cryptbloom: 0.30
     magic_pen_flat: float = 0.0        # Sorc's Shoes: 12; Shadowflame: 15
     # Phase 4 batch 14 (2026-05-04): combat-state damage amplifier.
@@ -2689,6 +2689,161 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "Damage mitigation passive, not DPS; active global targeting utility-only"
         ),
     ),
+    # ── Phase 4 batch 39 (2026-05-04): MR-reduction schema + Arena re-skin sweep ──
+    # New field mr_reduction_pct (magic-side Black Cleaver analogue) wired into
+    # effective_target_mr before % pen step. 5 active promotions; 7 defensive_only.
+
+    # Bloodletter's Curse (4010): Vile Decay — dealing magic damage reduces target's
+    # MR by 7.5% for 6s, stacking up to 4 times = 30% max MR reduction.
+    # Modeled at full stacks per sustained-DPS convention (same as Black Cleaver's
+    # armor_reduction_pct=0.30 at 5 stacks). Applies before % magic pen in
+    # effective_target_mr — mirrors the armor reduction → % pen → flat pen order.
+    "4010": ItemEffect(
+        item_id="4010",
+        name="Bloodletter's Curse",
+        mr_reduction_pct=0.30,
+        note=(
+            "Bloodletter's Curse: Vile Decay 7.5% MR reduction × 4 stacks = 30% max "
+            "(modeled at full stacks; same layer as armor_reduction_pct but for MR). "
+            "Applied before magic_pen_pct in effective_target_mr pipeline"
+        ),
+    ),
+    # Divine Sunderer (446632, Arena variant): Spellblade — 180% base AD + 2% target
+    # max HP (ranged value; Meraki shows rd|4%|2%) physical on ability-cast cadence ~3s.
+    # Higher base AD coefficient than SR version (180% vs 125%) but lower HP % (2% vs 6%).
+    # Joins the "spellblade" unique-passive family.
+    "446632": ItemEffect(
+        item_id="446632",
+        name="Divine Sunderer",
+        periodics=(
+            PeriodicProc(
+                name="Spellblade",
+                every_n_seconds=3.0,
+                bonus_damage=lambda c: 1.80 * c.base_ad + 0.02 * c.target_max_hp,
+                damage_type=PHYSICAL,
+            ),
+        ),
+        unique_passive_key="spellblade",
+        note=(
+            "Divine Sunderer (Arena 446632): Spellblade 180% base AD + 2% target max HP "
+            "physical ~every 3s (ranged value; Arena version has higher base-AD coefficient "
+            "than SR 6632's 125%). Joins spellblade unique-passive family. "
+            "Sandforce heal utility-only"
+        ),
+    ),
+    # Overlord's Bloodmail (447111, Arena variant): Tyranny — gain bonus AD equal to
+    # 3% of bonus HP. Same bonus_ad_pct_bonus_hp schema as SR 2501 (2.5%) but higher
+    # coefficient. Retribution (up to 17.5% AD increase based on % missing HP) is
+    # dynamic and not modelable in static sustained-DPS; deferred.
+    "447111": ItemEffect(
+        item_id="447111",
+        name="Overlord's Bloodmail",
+        bonus_ad_pct_bonus_hp=0.03,
+        note=(
+            "Overlord's Bloodmail (Arena 447111): Tyranny 3% bonus HP → bonus AD "
+            "(Arena variant; SR 2501 has 2.5%). "
+            "Retribution up-to-17.5% AD based on missing HP deferred (dynamic)"
+        ),
+    ),
+    # Atma's Reckoning (663039): Big Hands variant. Same passive as SR 3039 —
+    # 0-30% bonus crit chance scaling with bonus HP (cap at 3000 bonus HP).
+    # 663xxx prefix indicates an Arena re-skin of the base item.
+    "663039": ItemEffect(
+        item_id="663039",
+        name="Atma's Reckoning",
+        crit_chance_bonus_max_pct=0.30,
+        crit_chance_bonus_per_bonus_hp_cap=3000.0,
+        note=(
+            "Atma's Reckoning (663039 Arena variant): Big Hands 0–30% bonus crit chance "
+            "scaling with bonus HP (same coefficients as SR 3039, capped at 3000 bonus HP)"
+        ),
+    ),
+    # Hextech Gunblade (663146, Arena variant): same Lightning Bolt active as SR 3146
+    # (175→253 by level + 30% AP magic, 40s cooldown). 663xxx is an Arena re-skin.
+    "663146": ItemEffect(
+        item_id="663146",
+        name="Hextech Gunblade",
+        periodics=(
+            PeriodicProc(
+                name="Lightning Bolt",
+                bonus_damage=lambda c: 175.0 + (253.0 - 175.0) / 17.0 * (c.level - 1) + 0.30 * c.ap,
+                damage_type=MAGICAL,
+                every_n_seconds=40.0,
+            ),
+        ),
+        note=(
+            "Hextech Gunblade (663146 Arena variant): Lightning Bolt same formula as SR 3146 "
+            "(175→253 by level + 30% AP magic, 40s cooldown). 25%/1.5s slow utility-only"
+        ),
+    ),
+    # ── defensive_only (7) ──
+    "444636": ItemEffect(
+        item_id="444636",
+        name="Night Harvester",
+        defensive_only=True,
+        note=(
+            "Night Harvester (444636 Arena): Soulrend — ability damage triggers a periodic "
+            "burst; ability-cast schema gap; deferred (same reason as SR Night Harvester)"
+        ),
+    ),
+    "444637": ItemEffect(
+        item_id="444637",
+        name="Demonic Embrace",
+        defensive_only=True,
+        note=(
+            "Demonic Embrace (444637 Arena): Sinister Pact — gain +1.5% AP + MS per 100 "
+            "CURRENT health (up to 45%); dynamic in-combat HP scaling not modelable. "
+            "Different from SR 4637 which has static bonus-HP → AP and Azakana proc"
+        ),
+    ),
+    "446691": ItemEffect(
+        item_id="446691",
+        name="Duskblade of Draktharr",
+        defensive_only=True,
+        note=(
+            "Duskblade of Draktharr (446691 Arena): Nightstalker — ability damage amp "
+            "based on target missing HP; ability-cast schema gap; deferred. "
+            "Different mechanism from SR 6691 (which just carries lethality)"
+        ),
+    ),
+    "446667": ItemEffect(
+        item_id="446667",
+        name="Radiant Virtue",
+        defensive_only=True,
+        note=(
+            "Radiant Virtue: Judgment 30 ult haste + Guiding Light on-ult Transcend "
+            "(max HP increase + ally heal boost for 9s); ult-cast schema gap + support mechanic"
+        ),
+    ),
+    "443083": ItemEffect(
+        item_id="443083",
+        name="Warmog's Armor",
+        defensive_only=True,
+        note=(
+            "Warmog's Armor (Arena 443083): Warmog's Heart — HP regen per second, "
+            "enhanced out of combat. Requires 1350 bonus HP. Pure sustain, no DPS proc"
+        ),
+    ),
+    "663056": ItemEffect(
+        item_id="663056",
+        name="Demon King's Crown",
+        defensive_only=True,
+        note=(
+            "Demon King's Crown (663056): Supremacy — increases all stats by 20%, "
+            "modified per takedown/death. Kill/death-event scaling not modelable in "
+            "static sustained-DPS engine"
+        ),
+    ),
+    "4011": ItemEffect(
+        item_id="4011",
+        name="Sword of Blossoming Dawn",
+        defensive_only=True,
+        note=(
+            "Sword of Blossoming Dawn: Effervescence +1.2% AS per 1% H&S power "
+            "(conditional AS, H&S power not tracked in engine) + Peppermint ally heal "
+            "(teammate mechanic). Deferred — conditional AS schema gap"
+        ),
+    ),
 
 }
 
@@ -2956,27 +3111,29 @@ def effective_target_armor(
 
 
 def effective_target_mr(target_mr: float, effects: Iterable[ItemEffect]) -> float:
-    """Apply % magic pen → flat magic pen pipeline.
+    """Apply MR reduction → % magic pen → flat magic pen pipeline.
 
-    Mirrors League's order on the magic side: ``magic_pen_pct`` (Void
-    Staff, Cryptbloom) reduces MR first, then ``magic_pen_flat``
-    (Sorcerer's Shoes, Shadowflame) subtracts. No MR-reduction layer
-    in the current patch (no magic-side Black Cleaver); add when the
-    first item demands it. Result floors at zero — magic damage
-    against zero-MR uses the same ``armor=0`` factor (1.0) via
-    ``_armor_factor`` (which is shared between damage types).
+    Mirrors League's order on the magic side: ``mr_reduction_pct``
+    (Bloodletter's Curse Vile Decay — Phase 4 batch 39) reduces MR
+    first; then ``magic_pen_pct`` (Void Staff, Cryptbloom) reduces
+    what remains; then ``magic_pen_flat`` (Sorcerer's Shoes,
+    Shadowflame) subtracts. Result floors at zero — magic damage
+    against zero-MR uses the ``armor=0`` factor (1.0) via
+    ``_armor_factor`` (shared between damage types).
 
-    Effects without magic-pen modifiers contribute nothing here.
-    Negative MR (external shred, MR-curve tests) passes through —
-    pen items don't amplify beyond what the shred already gave.
+    Effects without magic-pen or MR-reduction modifiers contribute
+    nothing here. Negative MR passes through unchanged — pen and
+    reduction are no-ops on already-negative MR.
     """
     eff_list = list(effects)
+    red_pct = sum(e.mr_reduction_pct for e in eff_list)
     pen_pct = sum(e.magic_pen_pct for e in eff_list)
     pen_flat = sum(e.magic_pen_flat for e in eff_list)
-    if not (pen_pct or pen_flat):
+    if not (red_pct or pen_pct or pen_flat):
         return target_mr
     if target_mr < 0:
         return target_mr
-    mr = target_mr * (1.0 - pen_pct)
+    mr = target_mr * (1.0 - red_pct)
+    mr = mr * (1.0 - pen_pct)
     mr = mr - pen_flat
     return max(0.0, mr)
