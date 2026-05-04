@@ -801,8 +801,26 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3146": ItemEffect(
         item_id="3146",
         name="Hextech Gunblade",
-        defensive_only=True,
-        note="Hextech Gunblade: Lightning Bolt active (targeted nuke + slow); no on-hit DPS proc",
+        # Phase 4 batch 22 (2026-05-04): promoted from defensive_only.
+        # Lightning Bolt active deals 175→253 (level 1→18, linear) +
+        # 30% AP magic damage, 40s cooldown. Meraki text:
+        #   "175 + (253-175)/17*(x-1) for 20" + 30% AP magic damage.
+        # Cooldown sourced from in-game / wiki (Meraki bulk has the
+        # cooldown field null on this item); 40s pins the in-game value.
+        # Modeled as a long-CD periodic proc — same shape as Sundered
+        # Sky's Lightshield Strike (8s) just with a far longer cadence.
+        # Slow (25% / 1.5s) is utility, not damage — not modeled. Per the
+        # batch 21 stat-property pattern, c.ap is build-derived and lives
+        # on CallContext at compute_dps construction time; pre-batch
+        # callers that don't pass it get the 0.0 default and the lambda
+        # gracefully falls back to flat level-scaled damage.
+        periodics=(PeriodicProc(
+            name="Lightning Bolt",
+            bonus_damage=lambda c: 175.0 + (253.0 - 175.0) / 17.0 * (c.level - 1) + 0.30 * c.ap,
+            damage_type=MAGICAL,
+            every_n_seconds=40.0,
+        ),),
+        note="Hextech Gunblade: Lightning Bolt 175→253 + 30% AP magic, 40s CD (slow not modeled)",
     ),
     "6655": ItemEffect(
         item_id="6655",
