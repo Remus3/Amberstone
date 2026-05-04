@@ -1972,6 +1972,145 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "not modelable under sustained-DPS assumption)"
         ),
     ),
+    # ── Phase 4 batch 35 (2026-05-04): missed-lethality + dual-pen + spellblade + on-hit ──
+    # Duskblade of Draktharr (6691): missed from batch-30 lethality sweep.
+    # Nightstalker unique-proc (large burst on first attack after stealth) is
+    # conditional on vision/stealth mechanics — not sustained, not modeled.
+    "6691": ItemEffect(
+        item_id="6691",
+        name="Duskblade of Draktharr",
+        lethality=18.0,
+        note=(
+            "Duskblade of Draktharr: 18 lethality (missed from batch 30 sweep). "
+            "Nightstalker proc requires post-stealth first attack (stealth conditional, "
+            "not sustained-DPS modelable)"
+        ),
+    ),
+    # Perplexity (4015): 22% armor pen + 30% magic pen dual-pen item (Arena/special pool).
+    # Giant Slayer passive deals up to 15% more damage against targets with greater
+    # max HP than caster (0.6% per 100 HP difference, based on MAX HP difference NOT
+    # bonus HP) — requires new schema (target_max_hp vs caster_max_hp); deferred.
+    "4015": ItemEffect(
+        item_id="4015",
+        name="Perplexity",
+        armor_pen_pct=0.22,
+        magic_pen_pct=0.30,
+        note=(
+            "Perplexity: 22% armor pen + 30% magic pen (dual-pen; both pen fields "
+            "wire into existing effective_target_armor + effective_target_mr helpers). "
+            "Giant Slayer (0-15% based on target-vs-caster max HP difference) deferred "
+            "— needs separate max_hp_diff_amp schema distinct from bonus-HP-keyed LDR"
+        ),
+    ),
+    # Divine Sunderer (6632): Spellblade physical variant — 125% base AD + 6% target max
+    # HP bonus physical on next attack after ability cast, ~3s cadence. Joins the
+    # "spellblade" unique-passive family (Trinity Force / Lich Bane / ER / Iceborn /
+    # Dusk+Dawn). Heal component (Sandforce: same damage distributed across nearby
+    # allies as HP) is utility-only. Patch 16.9.1 values.
+    "6632": ItemEffect(
+        item_id="6632",
+        name="Divine Sunderer",
+        periodics=(
+            PeriodicProc(
+                name="Spellblade",
+                every_n_seconds=3.0,
+                bonus_damage=lambda c: 1.25 * c.base_ad + 0.06 * c.target_max_hp,
+                damage_type=PHYSICAL,
+            ),
+        ),
+        unique_passive_key="spellblade",
+        note=(
+            "Divine Sunderer: Spellblade 125% base AD + 6% target max HP physical "
+            "every ~3s (joins spellblade dedup family; Sandforce heal utility-only)"
+        ),
+    ),
+    # Navori Flickerblade (6672): Bring It Down — every 3rd basic attack deals bonus
+    # physical damage on-hit, scaling 120→168 (ranged) over levels 1→13.
+    # Quicken (CDR on crit) is utility-only.
+    "6672": ItemEffect(
+        item_id="6672",
+        name="Navori Flickerblade",
+        periodics=(
+            PeriodicProc(
+                name="Bring It Down",
+                every_n_attacks=3,
+                bonus_damage=lambda c: min(168.0, 120.0 + 4.0 * (c.level - 1)),
+                damage_type=PHYSICAL,
+            ),
+        ),
+        note=(
+            "Navori Flickerblade: Bring It Down 120→168 bonus physical every 3rd attack "
+            "(ranged scaling 120 + 4 × (level-1), capped at 168 at level 13+; "
+            "Quicken CDR-on-crit utility-only)"
+        ),
+    ),
+    # Hellfire Hatchet (4017): 12 lethality. Char proc is ability-triggered burn
+    # scaling off target max HP AND lethality — requires ability-cast + new
+    # lethality-in-formula schema; deferred.
+    "4017": ItemEffect(
+        item_id="4017",
+        name="Hellfire Hatchet",
+        lethality=12.0,
+        note=(
+            "Hellfire Hatchet: 12 lethality (pen contribution modeled). "
+            "Char ability-triggered burn scales target max HP × lethality "
+            "(ability-cast schema gap + lethality-in-formula gap; deferred)"
+        ),
+    ),
+    # ── defensive_only (6) ──
+    "6630": ItemEffect(
+        item_id="6630",
+        name="Goredrinker",
+        defensive_only=True,
+        note=(
+            "Goredrinker: Thirsting Slash is an active ability (no passive DPS proc); "
+            "Resolve 8% omnivamp is lifesteal (utility); no DPS contribution"
+        ),
+    ),
+    "6671": ItemEffect(
+        item_id="6671",
+        name="Galeforce",
+        defensive_only=True,
+        note=(
+            "Galeforce: Cloudburst is an active ability (no passive proc); "
+            "Courage speed-boost is utility; no DPS contribution"
+        ),
+    ),
+    "3050": ItemEffect(
+        item_id="3050",
+        name="Zeke's Convergence",
+        defensive_only=True,
+        note=(
+            "Zeke's Convergence: Frostfire Tempest + Cryocombustion require "
+            "tether-ally proximity (support aura; no caster-DPS contribution)"
+        ),
+    ),
+    "4016": ItemEffect(
+        item_id="4016",
+        name="Wordless Promise",
+        defensive_only=True,
+        note=(
+            "Wordless Promise: Promise heal/shield passive (utility); no DPS contribution"
+        ),
+    ),
+    "4014": ItemEffect(
+        item_id="4014",
+        name="Frozen Mallet",
+        defensive_only=True,
+        note=(
+            "Frozen Mallet: Icy slow on basic attacks (utility); no DPS contribution"
+        ),
+    ),
+    "4013": ItemEffect(
+        item_id="4013",
+        name="Lightning Braid",
+        defensive_only=True,
+        note=(
+            "Lightning Braid: Chain Lightning fires on ability hit (ability-cast schema gap); "
+            "also applies -20% ability damage reduction (DPS-negative) so net contribution "
+            "for casters is unclear; deferred"
+        ),
+    ),
 
 }
 
