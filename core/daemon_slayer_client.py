@@ -79,6 +79,8 @@ def rank_for(
     mode: str = "SR",
     target_armor: float = 0.0,
     target_mr: float = 0.0,
+    target_max_hp: float = 0.0,
+    target_bonus_hp: float = 0.0,
     top: int = 8,
     sort_by: str = "delta",
     augments: Optional[Iterable[str]] = None,
@@ -94,6 +96,12 @@ def rank_for(
     ``["TheBrutalizer", "ItsCritical"]``); engine applies registered stat
     overlays before computing DPS. Unknown apiNames are silently skipped
     server-side.
+
+    ``target_max_hp`` (Phase 4 batch 5) activates %-target-HP procs
+    (BotRK, Eclipse). ``target_bonus_hp`` (Phase 4 batch 19) activates
+    target-conditional damage amps (LDR Giant Slayer). Both default
+    0.0 — engine treats 0 as "no signal" and procs gracefully no-op,
+    so pre-batch callers see identical behavior.
     """
     body = {
         "champion": champion,
@@ -102,6 +110,8 @@ def rank_for(
         "mode": mode,
         "target_armor": float(target_armor),
         "target_mr": float(target_mr),
+        "target_max_hp": float(target_max_hp),
+        "target_bonus_hp": float(target_bonus_hp),
         "top": int(top),
         "sort": sort_by,
     }
@@ -122,10 +132,15 @@ def dps_for(
     mode: str = "SR",
     target_armor: float = 0.0,
     target_mr: float = 0.0,
+    target_max_hp: float = 0.0,
+    target_bonus_hp: float = 0.0,
     augments: Optional[Iterable[str]] = None,
     timeout: float = DEFAULT_TIMEOUT,
 ) -> Optional[dict]:
-    """Call POST /dps and return the raw result dict. None on failure."""
+    """Call POST /dps and return the raw result dict. None on failure.
+
+    See ``rank_for`` for ``target_max_hp`` / ``target_bonus_hp`` semantics.
+    """
     body = {
         "champion": champion,
         "level": int(level),
@@ -133,6 +148,8 @@ def dps_for(
         "mode": mode,
         "target_armor": float(target_armor),
         "target_mr": float(target_mr),
+        "target_max_hp": float(target_max_hp),
+        "target_bonus_hp": float(target_bonus_hp),
     }
     if augments:
         body["augments"] = [str(a) for a in augments if a]
