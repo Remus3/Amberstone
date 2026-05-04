@@ -1,7 +1,7 @@
 {
   "engine": "daemon_slayer",
   "phase": 1.5,
-  "extracted_at": "2026-05-03T22:32:13-0500",
+  "extracted_at": "2026-05-04T12:51:32-0500",
   "ddragon_version": "16.9.1",
   "ddragon_champion_count": 172,
   "ddragon_item_count": 705,
@@ -13,7 +13,8 @@
     "lolmath_scenarios_chunk_bytes": 730241,
     "lolmath_data_chunk": "https://lolmath.net/_next/static/chunks/0hjv4iwvdtcrm.js",
     "lolmath_data_chunk_bytes": 1582908,
-    "meraki_perlevel": "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions/<champion>.json"
+    "meraki_perlevel": "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions/<champion>.json",
+    "meraki_items": "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/items.json"
   },
   "lolmath_counts": {
     "cooldowns": 172,
@@ -34,13 +35,19 @@
   },
   "arena_augments": {
     "count": 219,
-    "fetched_at": "2026-05-03T22:32:13-0500",
+    "fetched_at": "2026-05-04T12:51:31-0500",
     "source": "https://raw.communitydragon.org/latest/cdragon/arena/en_us.json"
+  },
+  "meraki_items": {
+    "count": 320,
+    "fetched_at": "2026-05-04T12:51:32-0500",
+    "source": "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/items.json"
   },
   "outputs": {
     "champions": "data\\daemon_slayer\\16.9.1\\champions.json",
     "items": "data\\daemon_slayer\\16.9.1\\items.json",
     "scenarios": "data\\daemon_slayer\\16.9.1\\scenarios.json",
-    "arena_augments": "data\\daemon_slayer\\16.9.1\\arena_augments.json"
+    "arena_augments": "data\\daemon_slayer\\16.9.1\\arena_augments.json",
+    "items_meraki": "data\\daemon_slayer\\16.9.1\\items_meraki.json"
   }
 }

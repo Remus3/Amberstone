@@ -57,6 +57,11 @@ LOG_FILE = ROOT / "logs" / "daemon_slayer_extract.log"
 DDRAGON_BASE = "https://ddragon.leagueoflegends.com"
 LOLMATH_ROOT = "https://lolmath.net/"
 MERAKI_BASE = "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions"
+# Phase 4 batch 20 (2026-05-04): Meraki bulk items endpoint. Single 3.2 MB
+# request returns 320 items keyed by id; per-item endpoints (.../items/<id>.json)
+# observed stale on 2026-05-04 (e.g. ER showed only Essence Drain, missing
+# Spellblade). Always prefer bulk for the snapshot — atomic + current.
+MERAKI_ITEMS_URL = "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/items.json"
 CDRAGON_ARENA_URL = "https://raw.communitydragon.org/latest/cdragon/arena/en_us.json"
 USER_AGENT = "RiotCommander/DaemonSlayer-extract/1.0"
 
@@ -672,6 +677,59 @@ def fetch_meraki_perlevel_overlay(ddragon_ids: set[str]) -> dict[str, dict[str, 
     return overlay
 
 
+# ─── Meraki items (Phase 4 batch 20) ─────────────────────────────────────────
+
+# DDragon item ``description`` strips numeric coefficients from passive prose
+# (Hullbreaker Skipper "consumes all stacks to deal bonus physical damage" —
+# no number; Essence Reaver Spellblade "deals bonus physical damage" — no
+# number). Meraki Analytics scrapes the wiki + game data and exposes the
+# numeric formula text in ``passives[*].effects`` as wikitext (the {{as|…|ad}}
+# token format). The engine consumer (effects.py) doesn't parse the wikitext
+# at runtime — coefficients still get pinned by hand per patch — but having
+# the structured Meraki snapshot in the extracted bundle:
+#   1. Makes the manual pinning auditable ("here's the source text I read")
+#   2. Surfaces patch-to-patch text changes (next extract diff flags drift)
+#   3. Unblocks future automated coefficient-extractor passes (defer until
+#      we have >10 items demanding it)
+def fetch_meraki_items() -> dict:
+    """Fetch Meraki's bulk items endpoint and return a normalized payload.
+
+    Returns ``{"fetched_at": <iso>, "source": <url>, "count": N,
+               "items": {<id>: {name, passives, active, simpleDescription, ...}}}``
+
+    Failure raises — Meraki bulk items is small (~3.2MB) and stable.
+    """
+    log.info("fetching Meraki bulk items: %s", MERAKI_ITEMS_URL)
+    raw = _fetch_json(MERAKI_ITEMS_URL)
+    if not isinstance(raw, dict):
+        raise RuntimeError(f"Meraki items: expected dict, got {type(raw).__name__}")
+    items_out: dict[str, dict] = {}
+    for iid, entry in raw.items():
+        if not isinstance(entry, dict):
+            continue
+        # Trim to the fields the engine + audit need; drop the 30+ stat
+        # buckets DDragon already covers (we have items.json for that).
+        items_out[str(iid)] = {
+            "name": entry.get("name"),
+            "id": entry.get("id"),
+            "tier": entry.get("tier"),
+            "rank": entry.get("rank"),
+            "removed": entry.get("removed", False),
+            "simpleDescription": entry.get("simpleDescription") or "",
+            "passives": entry.get("passives") or [],
+            "active": entry.get("active") or [],
+            "shop": entry.get("shop") or {},
+            "noEffects": entry.get("noEffects", False),
+        }
+    log.info("Meraki items fetched: %d", len(items_out))
+    return {
+        "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%S%z") or time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "source": MERAKI_ITEMS_URL,
+        "count": len(items_out),
+        "items": items_out,
+    }
+
+
 # ─── Arena augments (Phase 6) ────────────────────────────────────────────────
 
 # cdragon's arena dump has 219 augments across 4 rarities:
@@ -830,9 +888,11 @@ def build_scenarios_payload(lolmath: LolmathExtract, dd: DDragonSnapshot) -> dic
 def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
                    patch_dir: Path,
                    perlevel_overlay: dict[str, dict[str, float]] | None = None,
-                   arena_augments: dict | None = None) -> dict:
+                   arena_augments: dict | None = None,
+                   meraki_items: dict | None = None) -> dict:
     overlay = perlevel_overlay or {}
     augs = arena_augments or {}
+    mer_items = meraki_items or {}
     return {
         "engine": "daemon_slayer",
         "phase": 1.5,
@@ -849,6 +909,7 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
             "lolmath_data_chunk": lolmath.data_chunk_url,
             "lolmath_data_chunk_bytes": lolmath.data_chunk_bytes,
             "meraki_perlevel": f"{MERAKI_BASE}/<champion>.json",
+            "meraki_items": MERAKI_ITEMS_URL,
         },
         "lolmath_counts": {
             "cooldowns": len(lolmath.cooldowns),
@@ -870,11 +931,17 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
             "fetched_at": augs.get("fetched_at"),
             "source": augs.get("source", CDRAGON_ARENA_URL),
         },
+        "meraki_items": {
+            "count": mer_items.get("count", 0),
+            "fetched_at": mer_items.get("fetched_at"),
+            "source": mer_items.get("source", MERAKI_ITEMS_URL),
+        },
         "outputs": {
             "champions": str((patch_dir / "champions.json").relative_to(ROOT)),
             "items": str((patch_dir / "items.json").relative_to(ROOT)),
             "scenarios": str((patch_dir / "scenarios.json").relative_to(ROOT)),
             "arena_augments": str((patch_dir / "arena_augments.json").relative_to(ROOT)),
+            "items_meraki": str((patch_dir / "items_meraki.json").relative_to(ROOT)),
         },
     }
 
@@ -922,20 +989,24 @@ def main() -> int:
 
     perlevel_overlay = fetch_meraki_perlevel_overlay(set(dd.champions.keys()))
     arena_augments = fetch_arena_augments()
+    meraki_items = fetch_meraki_items()
 
     champions_payload = build_champions_payload(lolmath, dd, perlevel_overlay)
     items_payload = build_items_payload(dd)
     scenarios_payload = build_scenarios_payload(lolmath, dd)
-    manifest = build_manifest(lolmath, dd, patch_dir, perlevel_overlay, arena_augments)
+    manifest = build_manifest(
+        lolmath, dd, patch_dir, perlevel_overlay, arena_augments, meraki_items,
+    )
 
     _atomic_write_json(patch_dir / "champions.json", champions_payload)
     _atomic_write_json(patch_dir / "items.json", items_payload)
     _atomic_write_json(patch_dir / "scenarios.json", scenarios_payload)
     _atomic_write_json(patch_dir / "arena_augments.json", arena_augments)
+    _atomic_write_json(patch_dir / "items_meraki.json", meraki_items)
     _atomic_write_json(patch_dir / "manifest.json", manifest)
     _atomic_write_text(DATA_ROOT / "current.txt", patch)
 
-    log.info("✓ wrote %s/{champions,items,scenarios,arena_augments,manifest}.json", patch_dir)
+    log.info("✓ wrote %s/{champions,items,scenarios,arena_augments,items_meraki,manifest}.json", patch_dir)
     log.info("✓ current.txt → %s", patch)
     return 0
 

@@ -205,6 +205,17 @@ class ItemEffect:
     # CallContext.target_bonus_hp at 0 → amp resolves to 0 (back-compat).
     target_bonus_hp_amp_max_pct: float = 0.0
     target_bonus_hp_amp_cap: float = 0.0
+    # Phase 4 batch 20 (2026-05-04): item-passive bonus AD as a percentage of
+    # the wielder's leveled base AD. Sterak's Gage "The Claws that Catch"
+    # grants "bonus attack damage equal to 45% base AD" — a stat layer, not
+    # a proc. Engine resolves this in ``build_champion`` by walking item ids
+    # after stat aggregation, summing ``effect.bonus_ad_pct_base_ad *
+    # raw_base["ad"]`` per item, and folding the total into ``ad_flat``
+    # before ``_combine_items`` runs. Default 0.0 → no contribution.
+    # NOT a unique passive in current League (multiple Sterak's-shape items
+    # could in principle stack), but currently only 3053 carries this — if
+    # a second item appears, ``unique_passive_key`` is the right gate.
+    bonus_ad_pct_base_ad: float = 0.0
     defensive_only: bool = False     # documents "no DPS effect" entries
     note: str = ""                   # one-line summary surfaced in DpsResult.notes
     # Phase 4 batch 10 (2026-05-04): unique-passive de-duplication.
@@ -470,17 +481,24 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3053": ItemEffect(
         item_id="3053",
         name="Sterak's Gage",
-        defensive_only=True,
         unique_passive_key="lifeline",
-        # Phase 4 batch 16 (2026-05-04): note corrected against DDragon
-        # snapshot. Prior note claimed "bonus AD on takedown" — wrong:
-        # DDragon shows "The Claws that Catch — Gain bonus Attack
-        # Damage" with no takedown gating in the description. Numeric
-        # scaling not exposed (likely scales with bonus HP per
-        # historical Sterak's design); engine can't model what isn't
-        # quantified. Note is honest about the modeled piece (Lifeline
-        # dedup) and the unmodeled piece (passive AD).
-        note="Sterak's Gage: Lifeline (low-HP shield, deduped — see unique_passive_key) + The Claws that Catch passive AD (numeric scaling not in DDragon)",
+        # Phase 4 batch 20 (2026-05-04): "The Claws that Catch" promoted
+        # from unmodeled. Meraki bulk items snapshot resolves the
+        # numeric scaling DDragon stripped: "Gain bonus attack damage
+        # equal to 45% base AD". This is a stat layer (not a proc) —
+        # always-on flat AD added at build time, scales with the
+        # leveled champion base AD (e.g. Sett base AD ~76 at lvl 11 →
+        # +34 bonus AD from Sterak's). Engine wires this in
+        # ``build_champion`` via the ``bonus_ad_pct_base_ad`` field.
+        # The Lifeline shield piece (unique_passive_key="lifeline")
+        # remains non-DPS — deduped against Shieldbow / Maw / Sterak.
+        # Engine still treats the item as having a non-DPS lifeline
+        # piece + a DPS-positive Claws piece, both modeled correctly.
+        bonus_ad_pct_base_ad=0.45,
+        note=(
+            "Sterak's Gage: The Claws that Catch +45% base AD as bonus AD "
+            "(stat layer) + Lifeline (low-HP shield, deduped)"
+        ),
     ),
     "3156": ItemEffect(
         item_id="3156",
@@ -492,18 +510,40 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3181": ItemEffect(
         item_id="3181",
         name="Hullbreaker",
-        defensive_only=True,
-        # Phase 4 batch 16 (2026-05-04): note corrected against DDragon
-        # snapshot. Prior note ("solo-lane bonus stats + tower siege")
-        # was wrong — DDragon shows two passives:
-        # (1) "Skipper" — every fifth Attack against champions and epic
-        #     monsters deals bonus physical damage. This IS an on-hit
-        #     proc shape (every_n_attacks=5, similar to Kraken's 3rd-
-        #     attack mechanic). Stays defensive_only because DDragon
-        #     strips the damage formula; promote when verified.
-        # (2) "Boarding Party" — nearby allied siege/super minions gain
-        #     armor + MR. Pure ally-buff, never a DPS contribution.
-        note="Hullbreaker: Skipper every-5th-attack bonus physical (proc not modeled — damage formula not in DDragon) + Boarding Party (minion-side ally buff)",
+        # Phase 4 batch 20 (2026-05-04): promoted from defensive_only.
+        # Meraki bulk items snapshot (items_meraki.json) carries the
+        # numeric formula DDragon strips:
+        #   "Basic attacks on-hit grant a stack for 10s, stacking up to
+        #    5 times. At maximum stacks, your next basic attack consumes
+        #    all stacks to deal 120% base AD + 5% maximum health bonus
+        #    physical damage."
+        # Engine modeling:
+        # - every_n_attacks=5 (4 build stacks + 5th attack consumes; same
+        #   shape as Kraken Slayer's 3rd-attack proc, just at 5).
+        # - bonus_damage = 1.20 * base_ad + 0.05 * caster_max_hp.
+        # - "maximum health" is unqualified in Meraki's text → caster's
+        #   max HP (League convention; Hullbreaker is a side-laner HP-
+        #   stacker item, design intent is wielder's HP). Same shape as
+        #   Heartsteel's `0.06 * c.caster_max_hp`.
+        # Approximations:
+        # - Real proc only fires vs champions/epic monsters/structures.
+        #   Engine has no champion-only target gate today (same trade-off
+        #   as Kraken Slayer); over-counts vs minion-only rotations,
+        #   noise band <DPS error of every other approximation.
+        # - Increased structure damage (300% base AD + 10% max HP) not
+        #   modeled — engine targets are champions, not structures.
+        # - Boarding Party (ally-side siege minion buff) is non-DPS.
+        periodics=(PeriodicProc(
+            name="Skipper",
+            bonus_damage=lambda c: 1.20 * c.base_ad + 0.05 * c.caster_max_hp,
+            damage_type=PHYSICAL,
+            every_n_attacks=5,
+        ),),
+        note=(
+            "Hullbreaker: Skipper every-5th-attack 120% base AD + 5% caster "
+            "max HP bonus physical (champ/epic/structure-gated; engine over-"
+            "counts vs minion rotations) + Boarding Party (ally-side, no DPS)"
+        ),
     ),
     "3110": ItemEffect(
         item_id="3110",
@@ -609,17 +649,26 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="3508",
         name="Essence Reaver",
         defensive_only=True,
-        # Phase 4 batch 16 (2026-05-04): note corrected against DDragon
-        # snapshot. Prior note ("mana refund + CDR after ability use; no
-        # on-hit DPS proc") was wrong — DDragon's current text is
-        # "Spellblade — After using an Ability, your next Attack deals
-        # bonus physical damage and grants Mana On-Hit". Stays
-        # defensive_only because DDragon strips the numeric damage
-        # formula (engine can't model what it can't quantify); promote
-        # when the current-patch coefficient is verified externally
-        # (League wiki, patch notes diff). When promoted, also tag with
-        # unique_passive_key="spellblade" — see batch 11 commentary.
-        note="Essence Reaver: Spellblade (bonus physical on next AA after ability) + Mana on-hit (proc not modeled — current-patch damage formula not in DDragon snapshot)",
+        # Phase 4 batch 20 (2026-05-04): note re-corrected against the
+        # Meraki bulk items snapshot (items_meraki.json). Earlier batch
+        # 16 commentary said "current-patch damage formula not in
+        # DDragon"; Meraki's bulk endpoint exposes the formula DDragon
+        # strips:
+        #   "Spellblade — After using an Ability, your next basic attack
+        #    within 10s deals 125% base AD (+ 0 to 50 based on critical
+        #    strike chance, scaling 0.5 damage per 1% crit) bonus
+        #    physical damage on-hit and restores mana equal to half
+        #    that amount."
+        # Coefficient IS verified now, but Spellblade scales with crit
+        # CHANCE — and CallContext currently has no crit_chance field.
+        # Modeling 125% base AD alone would systematically under-count
+        # ER's DPS on crit builds (its core use case at 60-100% crit).
+        # Promotion blocked on a CallContext.crit_chance schema bump
+        # (batch 21 candidate); when added, ER's lambda becomes
+        # ``1.25 * c.base_ad + 0.5 * c.crit_chance_pct`` and tag with
+        # unique_passive_key="spellblade" (deduped against TF/Lich Bane;
+        # see batch 11 commentary on order-dependence).
+        note="Essence Reaver: Spellblade 125% base AD + 0.5/crit% bonus physical on next AA after ability (Meraki-verified; engine blocked on CallContext.crit_chance — batch 21 candidate)",
     ),
     "3084": ItemEffect(
         item_id="3084",
