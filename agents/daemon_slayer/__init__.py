@@ -21,8 +21,12 @@ Phase 4 batch 9, 2026-05-04, reusing the caster-HP + multi-target
 layers with no new schema), unique-passive enforcement (Phase 4
 batch 10, 2026-05-04 — ItemEffect.unique_passive_key + dedup in
 collect_effects; first user is "immolate" tagging Sunfire + Hollow
-Radiance), and 28 defensive_only items spanning the Tier-1 SR / Arena
-pool plus high-pickrate batch 2 + AP batch 3 additions.
+Radiance), spellblade unique-passive (Phase 4 batch 11, 2026-05-04 —
+Trinity Force + Lich Bane share a "spellblade" key; Sundered Sky's
+distinct "Lightshield Strike" and Essence Reaver's defensive_only
+entry intentionally untagged), and 28 defensive_only items spanning
+the Tier-1 SR / Arena pool plus high-pickrate batch 2 + AP batch 3
+additions.
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
 ``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation``.
@@ -37,4 +41,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.17.0"
+ENGINE_VERSION = "0.18.0"
