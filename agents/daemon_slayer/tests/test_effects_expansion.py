@@ -9,6 +9,7 @@ Companion to ``test_effects.py`` (thin slice). New coverage:
 * AP-scaling spellblade / on-hit (Lich Bane, Nashor's Tooth) — Phase 4 batch 3.
 * Magic pen layer (Void Staff, Cryptbloom, Sorc, Shadowflame) — Phase 4 batch 4.
 * Target-HP layer (BotRK Mist's Edge, Eclipse Ever Rising Moon) — Phase 4 batch 5.
+* Caster-HP layer (Titanic Hydra Cleave, Heartsteel Colossal Consumption) — Phase 4 batch 6.
 * defensive_only entries — no DPS contribution beyond stat block.
 """
 
@@ -293,11 +294,13 @@ class DefensiveOnlyBatch2Tests(unittest.TestCase):
     relevant hooks land.
     """
 
+    # Heartsteel (3084) was here through batch 5; promoted in batch 6
+    # (caster-HP layer, 2026-05-04) — its proc-shape assertions live
+    # in CasterHpItemTests below.
     EXPECTED = {
         "6333": "Death's Dance",
         "3161": "Spear of Shojin",
         "3508": "Essence Reaver",
-        "3084": "Heartsteel",
         "3083": "Warmog's Armor",
         "3139": "Mercurial Scimitar",
         "3026": "Guardian Angel",
@@ -620,13 +623,15 @@ class CoverageCountTests(unittest.TestCase):
     5 thin slice + 25 expansion + 10 batch 2 + 6 batch 3 + 4 batch 4 = 50.
     Batch 3 originally landed 7 items but Shadowflame (4645) promoted in
     batch 4, leaving 6 net batch-3 entries here. Batch 5 (target HP)
-    promotes BotRK + Eclipse from defensive_only — count stays at 50
-    (promotions don't add or remove entries).
+    promoted BotRK + Eclipse from defensive_only — count stayed at 50
+    (promotions don't add or remove entries). Batch 6 (caster HP)
+    adds Titanic Hydra (new entry) + promotes Heartsteel — table grows
+    to 51.
     """
 
     def test_table_size_at_phase_4_expansion(self) -> None:
         # Lower bound: no regressions removed entries.
-        self.assertGreaterEqual(len(ITEM_EFFECTS), 50)
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 51)
 
 
 class CallContextTargetMaxHpTests(unittest.TestCase):
@@ -774,6 +779,136 @@ class TargetHpItemTests(unittest.TestCase):
         )
         text = result.format_table()
         self.assertIn("max_hp=1750", text)
+
+
+class CallContextCasterHpTests(unittest.TestCase):
+    """Phase 4 batch 6 — CallContext.caster_max_hp / caster_bonus_hp."""
+
+    def test_caster_hp_defaults_zero(self) -> None:
+        # Backward-compat: pre-batch-6 ctx construction omits both fields.
+        ctx = CallContext(base_ad=60, bonus_ad=0, level=11)
+        self.assertEqual(ctx.caster_max_hp, 0.0)
+        self.assertEqual(ctx.caster_bonus_hp, 0.0)
+
+    def test_callable_resolves_against_caster_max_hp(self) -> None:
+        # Heartsteel-style: 70 + 6% caster max HP.
+        proc = PeriodicProc(
+            name="ks_scale",
+            bonus_damage=lambda c: 70.0 + 0.06 * c.caster_max_hp,
+            damage_type=PHYSICAL,
+            every_n_seconds=3.5,
+        )
+        ctx = CallContext(base_ad=60, bonus_ad=0, level=11, caster_max_hp=2400)
+        # 70 + 0.06*2400 = 70 + 144 = 214
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 214.0, places=3)
+
+    def test_callable_resolves_against_caster_bonus_hp(self) -> None:
+        # Titanic-style: 5 + 1.5% caster bonus HP.
+        proc = PeriodicProc(
+            name="th_scale",
+            bonus_damage=lambda c: 5.0 + 0.015 * c.caster_bonus_hp,
+            damage_type=PHYSICAL,
+            every_n_attacks=1,
+        )
+        ctx = CallContext(base_ad=60, bonus_ad=0, level=11, caster_bonus_hp=600)
+        # 5 + 0.015*600 = 5 + 9 = 14
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 14.0, places=3)
+
+
+class CasterHpItemTests(unittest.TestCase):
+    """Titanic Hydra (new) + Heartsteel (promoted) scale with caster HP.
+
+    Caster HP is engine-derived (no caller param) — building with HP
+    items (Titanic itself, Heartsteel itself, Warmog's, Sterak's) lifts
+    caster_max_hp and thus the proc damage. Tests pin the engine-side
+    derivation by stacking HP items and asserting monotonic uplift.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_titanic_hydra_periodic_present(self) -> None:
+        e = ITEM_EFFECTS["3748"]
+        self.assertFalse(e.defensive_only)
+        self.assertIsNotNone(e.periodic)
+        self.assertEqual(e.periodic.damage_type, PHYSICAL)
+        self.assertEqual(e.periodic.every_n_attacks, 1)
+        self.assertIn("cleave", e.note.lower())
+
+    def test_heartsteel_promoted_not_defensive_only(self) -> None:
+        # Heartsteel left DefensiveOnlyBatch2Tests in batch 6 — pin the
+        # promotion path (mirrors Shadowflame in batch 4).
+        e = ITEM_EFFECTS["3084"]
+        self.assertFalse(e.defensive_only)
+        self.assertIsNotNone(e.periodic)
+        self.assertEqual(e.periodic.damage_type, PHYSICAL)
+        self.assertGreater(e.periodic.every_n_seconds, 0.0)
+        self.assertIn("colossal", e.note.lower())
+
+    def test_titanic_hydra_raises_dps_via_own_bonus_hp(self) -> None:
+        # Titanic gives 600 HP itself, so the proc references 1.5% of
+        # 600 = 9 + base 5 = 14 per basic. Bare Aatrox vs Aatrox+Titanic
+        # should clear the delta easily.
+        bare = compute_dps(self.snap, "Aatrox", level=11)
+        with_th = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3748"])
+        self.assertGreater(with_th.weighted_dps, bare.weighted_dps)
+
+    def test_titanic_hydra_scales_with_more_hp(self) -> None:
+        # Titanic alone (600 bonus HP) vs Titanic + Warmog's (600 + 800 = 1400
+        # bonus HP) — proc piece should rise. Stat block contributions
+        # differ but the DELTA between (Titanic+Warmog vs Warmog alone)
+        # should beat the DELTA from (Titanic alone vs naked) because
+        # bonus HP grew.
+        bare = compute_dps(self.snap, "Aatrox", level=11).weighted_dps
+        warmog = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3083"],
+        ).weighted_dps
+        titanic_only = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3748"],
+        ).weighted_dps
+        titanic_warmog = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3748", "3083"],
+        ).weighted_dps
+        delta_titanic_only = titanic_only - bare
+        delta_titanic_with_warmog = titanic_warmog - warmog
+        self.assertGreater(delta_titanic_with_warmog, delta_titanic_only)
+
+    def test_heartsteel_raises_dps_via_caster_max_hp(self) -> None:
+        # Heartsteel grants 900 HP itself; with Aatrox base ~1790 lvl 11
+        # max_hp ≈ 2690, 6% = 161 + ~123 (level lerp) = 284 per ~3.5s ≈ 81 DPS.
+        # That's a meaningful jump over bare baseline.
+        bare = compute_dps(self.snap, "Aatrox", level=11).weighted_dps
+        with_hs = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3084"],
+        ).weighted_dps
+        self.assertGreater(with_hs - bare, 30.0)  # well above noise
+
+    def test_heartsteel_scales_with_external_hp(self) -> None:
+        # Adding Warmog's on top of Heartsteel should keep raising the
+        # Colossal Consumption damage (6% of a bigger max HP).
+        hs_only = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3084"],
+        ).weighted_dps
+        warmog_only = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3083"],
+        ).weighted_dps
+        hs_warmog = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3084", "3083"],
+        ).weighted_dps
+        bare = compute_dps(self.snap, "Aatrox", level=11).weighted_dps
+        delta_hs_alone = hs_only - bare
+        delta_hs_with_warmog = hs_warmog - warmog_only
+        self.assertGreater(delta_hs_with_warmog, delta_hs_alone)
+
+    def test_caster_hp_derivation_is_engine_internal(self) -> None:
+        # The caster HP fields are derived inside compute_dps — there's
+        # no caller-supplied parameter (unlike target_max_hp). Sanity
+        # check: compute_dps signature has no caster_max_hp kwarg.
+        import inspect
+        sig = inspect.signature(compute_dps)
+        self.assertNotIn("caster_max_hp", sig.parameters)
+        self.assertNotIn("caster_bonus_hp", sig.parameters)
 
 
 if __name__ == "__main__":
