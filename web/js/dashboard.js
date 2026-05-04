@@ -440,11 +440,12 @@
   // localStorage and a body[data-view] attribute. Auto promotes to
   // ChampSelect/in-game on urgent game events; if a manual view is
   // active during a promote-worthy event, the banner appears instead.
-  const VIEW_IDS = ["home","lobby","last-match","session","history","replay","loadouts","settings","diagnostics","coach-calls","bridge-pending","fleet"];
+  const VIEW_IDS = ["home","lobby","last-match","session","history","replay","loadouts","user-builds","settings","diagnostics","coach-calls","bridge-pending","fleet"];
   const VIEW_LABELS = {
     "home":"Home","lobby":"Lobby","last-match":"Last Match","session":"Session",
     "history":"History","replay":"Replay",
-    "loadouts":"Loadouts","settings":"Settings","diagnostics":"Diagnostics",
+    "loadouts":"Loadouts","user-builds":"User Builds",
+    "settings":"Settings","diagnostics":"Diagnostics",
     "coach-calls":"Coach Calls","bridge-pending":"Bridge Pending",
     "fleet":"Fleet Health",
   };
@@ -499,6 +500,7 @@
     if (viewId === "history")     { _historyWireOnce(); _historyFetchAndRender(); }
     if (viewId === "replay")      { _replayViewWireOnce(); _replayViewRefresh(); }
     if (viewId === "loadouts")    { _loadoutsWireOnce(); _loadoutsFetchAndRender(); }
+    if (viewId === "user-builds") { _userBuildsWireOnce(); _userBuildsFetchAndRender(); }
     if (viewId === "diagnostics") { _diagWireOnce(); _diagFetchAndRender(); }
     if (viewId === "settings")    { _settingsRefresh(); }
   }
@@ -4418,6 +4420,293 @@
     const m = document.getElementById("loadouts-mode-filter");
     if (f) f.addEventListener("input", _loadoutsFetchAndRender);
     if (m) m.addEventListener("change", _loadoutsFetchAndRender);
+  }
+
+  // ── User Builds view (Phase 8 step 6 — 2026-05-04) ───────────────
+  // CRUD over data/daemon_slayer/user_builds.json via
+  // /api/sr-draft/user-builds (action-keyed POST: list/add/update/delete).
+  // Builds saved here APPEND to the engine-generated SR-draft profiles
+  // in the champ-select chooser; engine never reads or writes them.
+  const _UB = {
+    champion:  null,    // current picker value
+    builds:    [],      // builds for the current champion (raw shape)
+    editingId: null,    // build.id when editing, null when adding
+    saving:    false,
+  };
+  function _ubEl(id) { return document.getElementById(id); }
+  function _ubChampionsList() {
+    // Cache a flat list of {name} for the datalist; populated lazily
+    // from /api/champions on first wire.
+    if (window.__ubChampionsCache) return Promise.resolve(window.__ubChampionsCache);
+    return fetch("/api/champions", { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((d) => {
+        const names = d ? Object.values(d).map((c) => c.name).filter(Boolean).sort() : [];
+        window.__ubChampionsCache = names;
+        return names;
+      })
+      .catch(() => []);
+  }
+  function _ubPopulateDatalist() {
+    const dl = _ubEl("ub-champion-datalist");
+    if (!dl) return;
+    _ubChampionsList().then((names) => {
+      dl.innerHTML = "";
+      for (const n of names) {
+        const opt = document.createElement("option");
+        opt.value = n;
+        dl.appendChild(opt);
+      }
+    });
+  }
+  function _ubFormatSpells(pair) {
+    if (!Array.isArray(pair) || pair.length !== 2) return "—";
+    const NAMES = {
+      1: "Cleanse", 3: "Exhaust", 4: "Flash", 6: "Ghost", 7: "Heal",
+      11: "Smite", 12: "Teleport", 13: "Clarity", 14: "Ignite",
+      21: "Barrier", 32: "Snowball",
+    };
+    const a = NAMES[pair[0]] || pair[0];
+    const b = NAMES[pair[1]] || pair[1];
+    return `${a}/${b}`;
+  }
+  function _ubFormatSubLine(b) {
+    const parts = [];
+    if (b.role)                  parts.push(b.role);
+    if (b.runes && b.runes.keystone) parts.push(b.runes.keystone);
+    parts.push(_ubFormatSpells(b.summoner_spells));
+    parts.push(`${(b.items || []).length} item${(b.items || []).length === 1 ? "" : "s"}`);
+    return parts.join(" · ");
+  }
+  function _userBuildsFetchAndRender() {
+    const champ = _UB.champion;
+    const list  = _ubEl("ub-build-list");
+    const lbl   = _ubEl("ub-list-label");
+    const cnt   = _ubEl("ub-count");
+    const hint  = _ubEl("ub-hint");
+    if (!list) return;
+    if (!champ) {
+      list.innerHTML = '<li class="home-empty">pick a champion above ↑</li>';
+      if (lbl) lbl.textContent = "No champion selected";
+      if (cnt) cnt.textContent = "—";
+      if (hint) hint.textContent = "Pick a champion to view their saved builds.";
+      _UB.builds = [];
+      return;
+    }
+    if (lbl) lbl.textContent = champ.toUpperCase();
+    if (hint) hint.textContent = `Builds here append to the engine's 3 SR-draft profiles for ${champ}.`;
+    fetch(`/api/sr-draft/user-builds?champion=${encodeURIComponent(champ)}`,
+          { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((d) => {
+        const builds = (d && Array.isArray(d.builds)) ? d.builds : [];
+        _UB.builds = builds;
+        if (cnt) cnt.textContent = `${builds.length} build${builds.length === 1 ? "" : "s"}`;
+        list.innerHTML = "";
+        if (!builds.length) {
+          list.innerHTML = '<li class="home-empty">no builds yet — click + Add build above.</li>';
+          return;
+        }
+        for (const b of builds) {
+          const li = document.createElement("li");
+          li.className = "ub-build-row";
+          if (_UB.editingId === b.id) li.classList.add("editing");
+
+          const meta = document.createElement("div");
+          meta.className = "ub-build-meta";
+          const lab = document.createElement("span");
+          lab.className = "ub-build-label";
+          lab.textContent = b.label || "(unnamed)";
+          const sub = document.createElement("span");
+          sub.className = "ub-build-sub";
+          sub.textContent = _ubFormatSubLine(b);
+          meta.appendChild(lab);
+          meta.appendChild(sub);
+
+          const editBtn = document.createElement("button");
+          editBtn.type = "button";
+          editBtn.className = "ub-btn ub-btn-ghost ub-btn-tiny";
+          editBtn.textContent = "Edit";
+          editBtn.addEventListener("click", () => _userBuildsOpenForm(b));
+
+          const delBtn = document.createElement("button");
+          delBtn.type = "button";
+          delBtn.className = "ub-btn ub-btn-danger ub-btn-tiny";
+          delBtn.textContent = "Delete";
+          delBtn.addEventListener("click", () => _userBuildsDelete(b));
+
+          li.appendChild(meta);
+          li.appendChild(editBtn);
+          li.appendChild(delBtn);
+          list.appendChild(li);
+        }
+      })
+      .catch(() => {
+        list.innerHTML = '<li class="home-empty">failed to load builds.</li>';
+      });
+  }
+  function _userBuildsOpenForm(buildOrNull) {
+    const pane  = _ubEl("ub-form-pane");
+    const title = _ubEl("ub-form-title");
+    if (!pane) return;
+    if (!_UB.champion) {
+      _ubFormStatus("Pick a champion first.", "error");
+      return;
+    }
+    pane.hidden = false;
+    _UB.editingId = (buildOrNull && buildOrNull.id) || null;
+    if (title) title.textContent = _UB.editingId ? `Edit build (${_UB.editingId.slice(0,6)}…)` : "Add build";
+
+    const b = buildOrNull || {};
+    const r = b.runes || {};
+    const sp = b.summoner_spells || [4, 14];
+    _ubEl("ub-f-label").value     = b.label || "";
+    _ubEl("ub-f-role").value      = b.role || "";
+    _ubEl("ub-f-keystone").value  = r.keystone  || "";
+    _ubEl("ub-f-primary").value   = r.primary   || "";
+    _ubEl("ub-f-secondary").value = r.secondary || "";
+    _ubEl("ub-f-spell-d").value   = (sp[0] != null) ? sp[0] : "";
+    _ubEl("ub-f-spell-f").value   = (sp[1] != null) ? sp[1] : "";
+    _ubEl("ub-f-items").value     = (b.items || []).join("\n");
+    _ubEl("ub-f-notes").value     = b.notes || "";
+    _ubFormStatus("", null);
+    // Re-highlight rows so the editing one gets the active border.
+    _userBuildsFetchAndRender();
+    // Focus the label field for fast typing.
+    setTimeout(() => { const f = _ubEl("ub-f-label"); if (f) f.focus(); }, 50);
+  }
+  function _userBuildsCloseForm() {
+    const pane = _ubEl("ub-form-pane");
+    if (pane) pane.hidden = true;
+    _UB.editingId = null;
+    _userBuildsFetchAndRender();
+  }
+  function _ubFormStatus(msg, kind) {
+    const s = _ubEl("ub-form-status");
+    if (!s) return;
+    if (!msg) { s.hidden = true; s.textContent = ""; s.className = "ub-form-status"; return; }
+    s.hidden = false;
+    s.textContent = msg;
+    s.className = "ub-form-status" + (kind === "ok" ? " ok" : kind === "error" ? " error" : "");
+  }
+  function _ubReadForm() {
+    const items = (_ubEl("ub-f-items").value || "")
+      .split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+    const dRaw = parseInt(_ubEl("ub-f-spell-d").value, 10);
+    const fRaw = parseInt(_ubEl("ub-f-spell-f").value, 10);
+    const d = Number.isFinite(dRaw) ? dRaw : 4;
+    const f = Number.isFinite(fRaw) ? fRaw : 14;
+    return {
+      label:    (_ubEl("ub-f-label").value || "").trim(),
+      role:     (_ubEl("ub-f-role").value  || "").trim() || null,
+      runes: {
+        keystone:  (_ubEl("ub-f-keystone").value  || "").trim(),
+        primary:   (_ubEl("ub-f-primary").value   || "").trim(),
+        secondary: (_ubEl("ub-f-secondary").value || "").trim(),
+      },
+      summoner_spells: [d, f],
+      items:    items,
+      notes:    (_ubEl("ub-f-notes").value || "").trim(),
+    };
+  }
+  function _userBuildsSave() {
+    if (_UB.saving) return;
+    if (!_UB.champion) { _ubFormStatus("Pick a champion first.", "error"); return; }
+    const build = _ubReadForm();
+    if (!build.label) { _ubFormStatus("Label is required.", "error"); return; }
+    if (!build.items.length) { _ubFormStatus("At least one item required.", "error"); return; }
+    const action = _UB.editingId ? "update" : "add";
+    const body   = { action, champion: _UB.champion };
+    if (_UB.editingId) { body.id = _UB.editingId; body.patch = build; }
+    else               { body.build = build; }
+    _UB.saving = true;
+    _ubFormStatus(action === "add" ? "Saving…" : "Updating…", null);
+    fetch("/api/sr-draft/user-builds", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(body),
+    })
+      .then(async (r) => {
+        const txt = await r.text();
+        let json = null;
+        try { json = JSON.parse(txt); } catch (_) {}
+        if (!r.ok || !json || json.ok !== true) {
+          const msg = (json && json.error) || `HTTP ${r.status}`;
+          _ubFormStatus(`Save failed: ${msg}`, "error");
+          return;
+        }
+        _ubFormStatus("Saved ✓", "ok");
+        _UB.editingId = null;
+        const pane = _ubEl("ub-form-pane");
+        if (pane) pane.hidden = true;
+        _userBuildsFetchAndRender();
+      })
+      .catch((e) => _ubFormStatus(`Save failed: ${e}`, "error"))
+      .finally(() => { _UB.saving = false; });
+  }
+  function _userBuildsDelete(build) {
+    if (!build || !build.id) return;
+    if (!confirm(`Delete build "${build.label}" for ${_UB.champion}?`)) return;
+    fetch("/api/sr-draft/user-builds", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({
+        action:   "delete",
+        champion: _UB.champion,
+        id:       build.id,
+      }),
+    })
+      .then(async (r) => {
+        const json = await r.json().catch(() => null);
+        if (!r.ok || !json || json.ok !== true) {
+          alert(`Delete failed: ${(json && json.error) || ("HTTP " + r.status)}`);
+          return;
+        }
+        if (_UB.editingId === build.id) _userBuildsCloseForm();
+        else _userBuildsFetchAndRender();
+      })
+      .catch((e) => alert(`Delete failed: ${e}`));
+  }
+  function _ubChampionPicked(name) {
+    _UB.champion = (name || "").trim() || null;
+    if (_UB.champion) {
+      try { localStorage.setItem("rc-ub-last-champ", _UB.champion); } catch (_) {}
+    }
+    // Close any open form when the champion changes — editingId is
+    // scoped to the previous champion's builds.
+    const pane = _ubEl("ub-form-pane");
+    if (pane) pane.hidden = true;
+    _UB.editingId = null;
+    _userBuildsFetchAndRender();
+  }
+  function _userBuildsWireOnce() {
+    if (window.__userBuildsWired) return;
+    window.__userBuildsWired = true;
+    _ubPopulateDatalist();
+    const inp = _ubEl("ub-champion-input");
+    if (inp) {
+      try {
+        const last = localStorage.getItem("rc-ub-last-champ");
+        if (last) { inp.value = last; _UB.champion = last; }
+      } catch (_) {}
+      inp.addEventListener("change", () => _ubChampionPicked(inp.value));
+      inp.addEventListener("input",  () => {
+        // Datalist selections fire 'input' once chosen; debounce a bit
+        // so we don't flood the API while typing.
+        clearTimeout(window.__ubChampDebounce);
+        window.__ubChampDebounce = setTimeout(() => {
+          if (inp.value !== _UB.champion) _ubChampionPicked(inp.value);
+        }, 300);
+      });
+    }
+    const addBtn = _ubEl("ub-add-btn");
+    if (addBtn) addBtn.addEventListener("click", () => _userBuildsOpenForm(null));
+    const closeBtn = _ubEl("ub-form-close");
+    if (closeBtn) closeBtn.addEventListener("click", _userBuildsCloseForm);
+    const cancelBtn = _ubEl("ub-form-cancel");
+    if (cancelBtn) cancelBtn.addEventListener("click", _userBuildsCloseForm);
+    const saveBtn = _ubEl("ub-form-save");
+    if (saveBtn) saveBtn.addEventListener("click", _userBuildsSave);
   }
 
   // ── Settings view (2026-04-26) ───────────────────────────────────
