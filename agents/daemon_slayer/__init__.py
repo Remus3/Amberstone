@@ -99,9 +99,19 @@ effective_target_armor's flat-pen sum (lethality × (0.6 + 0.4 × level/18));
 Edge of Night (15), Youmuu's Ghostblade (18), Opportunity (18) all
 promoted from defensive_only-or-stats-only-prior, plus Axiom Arc (18)
 + Umbral Glaive (18) as new entries — all 7 current-patch lethality
-items now carry the level-scaled flat pen contribution), and 21
+items now carry the level-scaled flat pen contribution), Phase 4 batch
+31 support/ramp coverage sweep (2026-05-04 — 21 items: Dead Man's Plate
+(3742) Shipwrecker partial promotion via periodic proc every_n_attacks=4
+~109 physical at full Momentum stacks; Spectral Cutlass (4004) ARAM-only
+lethality=15 promotion joining the batch-30 family; 19 defensive_only
+entries for support/enchanter/tank items [Knight's Vow, Mikael's Blessing,
+Redemption, Locket, Ardent Censer, Staff of Flowing Water, Echoes of Helia,
+Moonstone Renewer, Dawncore, Imperial Mandate, Rod of Ages, Winter's Approach,
+Fimbulwinter, Force of Nature, Rylai's Crystal Scepter, Jak'Sho the Protean,
+Hextech Rocketbelt, Experimental Hexplate, Abyssal Mask]), and 40
 defensive_only items spanning the Tier-1
-SR / Arena pool plus high-pickrate batch 2 + AP batch 3 additions.
+SR / Arena pool plus high-pickrate batch 2 + AP batch 3 additions
+plus batch 31 support/ramp coverage.
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
 ``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation`` /
@@ -117,4 +127,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.34.0"
+ENGINE_VERSION = "0.35.0"
