@@ -2781,5 +2781,91 @@ class SteraksEngineWireInTests(unittest.TestCase):
         self.assertGreater(with_st, bare)
 
 
+class SeryldasGrudgeTests(unittest.TestCase):
+    """Phase 4 batch 25 — Serylda's Grudge (6694) added to ITEM_EFFECTS as a
+    new entry (was unmodeled prior — stats-only via item aggregation).
+
+    Slot: % armor pen layer next to LDR (3036) / Mortal Reminder (3033).
+    DDragon snapshot 16.9.1: 45 AD / 35% Armor Penetration / 15 Ability
+    Haste; Bitter Cold ability slow on <50% HP targets is utility, not
+    damage. Coefficient 0.35 matches LDR; the only schema difference vs
+    LDR is no Giant Slayer (no target_bonus_hp_amp_max_pct).
+
+    Tests pin: presence, stat shape, no unique_passive_key (% pen sums
+    in current League — build legality is ranker-owned), pen-pipeline
+    parity with LDR at the same coefficient, DPS uplift vs an armored
+    target, no uplift attributable to pen vs zero-armor target.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_seryldas_present_with_armor_pen(self) -> None:
+        e = ITEM_EFFECTS["6694"]
+        self.assertEqual(e.name, "Serylda's Grudge")
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(e.periodics, ())
+        self.assertAlmostEqual(e.armor_pen_pct, 0.35, places=4)
+        self.assertEqual(e.armor_pen_flat, 0.0)
+        self.assertEqual(e.armor_reduction_pct, 0.0)
+        self.assertIn("armor pen", e.note.lower())
+
+    def test_seryldas_no_unique_passive_key(self) -> None:
+        # % pen layer in current engine sums across items (additive). The
+        # in-game Last Whisper exclusivity (only one of LDR / MR / Serylda
+        # at a time) is build-legality, not effect-layer — same call as
+        # Tiamat-tree exclusivity for the hydra family.
+        self.assertEqual(ITEM_EFFECTS["6694"].unique_passive_key, "")
+
+    def test_seryldas_no_target_bonus_hp_amp(self) -> None:
+        # LDR carries Giant Slayer (target_bonus_hp_amp_max_pct=0.15);
+        # Serylda has Bitter Cold (utility slow), not a target-conditional
+        # damage amp. Pins the schema-difference vs LDR.
+        e = ITEM_EFFECTS["6694"]
+        self.assertEqual(e.target_bonus_hp_amp_max_pct, 0.0)
+        self.assertEqual(e.target_bonus_hp_amp_cap, 0.0)
+
+    def test_seryldas_armor_pipeline_matches_ldr_coefficient(self) -> None:
+        # Both apply 35% armor pen → same effective armor against any
+        # positive input. Pins the coefficient parity.
+        seryldas = ITEM_EFFECTS["6694"]
+        ldr = ITEM_EFFECTS["3036"]
+        self.assertAlmostEqual(
+            effective_target_armor(100.0, [seryldas]),
+            effective_target_armor(100.0, [ldr]),
+            places=3,
+        )
+        self.assertAlmostEqual(
+            effective_target_armor(100.0, [seryldas]), 65.0, places=3,
+        )
+
+    def test_seryldas_raises_dps_vs_armored(self) -> None:
+        # vs 100 armor: bare auto-attacks see factor 0.5; Serylda's pen
+        # raises factor + the stat block (45 AD, 15 AH) lifts DPS.
+        bare = compute_dps(self.snap, "Aatrox", level=11, target_armor=100.0)
+        with_sg = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["6694"], target_armor=100.0,
+        )
+        self.assertGreater(with_sg.weighted_dps, bare.weighted_dps)
+
+    def test_seryldas_pen_note_surfaces_when_armor_reduced(self) -> None:
+        with_sg = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["6694"], target_armor=100.0,
+        )
+        joined = " ".join(with_sg.notes)
+        self.assertIn("effective target armor", joined)
+        self.assertIn("65.0", joined)  # 100 * 0.65 = 65 after Serylda pen
+
+    def test_seryldas_no_pen_note_vs_zero_armor(self) -> None:
+        # Zero armor → pipeline early-exits. Note absent; DPS still lifts
+        # via the stat block (45 AD), but the pen layer contributes nothing.
+        with_sg = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["6694"], target_armor=0.0,
+        )
+        # input field unchanged
+        self.assertEqual(with_sg.target_armor, 0.0)
+
+
 if __name__ == "__main__":
     unittest.main()

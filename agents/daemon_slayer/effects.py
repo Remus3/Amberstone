@@ -427,6 +427,26 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         armor_pen_pct=0.30,
         note="Mortal Reminder: 30% armor pen + Grievous Wounds (heal-cut not modeled)",
     ),
+    # Phase 4 batch 25 (2026-05-04): Serylda's Grudge added to ITEM_EFFECTS
+    # as a new entry (was unmodeled — stats-only via item aggregation prior).
+    # DDragon snapshot 16.9.1: "+45 Attack Damage / 35% Armor Penetration /
+    # 15 Ability Haste". Same shape as LDR (3036) — % armor pen sits in the
+    # same pipeline layer (reduction → % pen → flat pen). Coefficient 0.35
+    # matches LDR; LDR additionally carries Giant Slayer (target_bonus_hp
+    # amp); Serylda has Bitter Cold instead, which is a 30% slow on
+    # damaging-ability hits to enemies below 50% HP — pure utility, not
+    # damage. Stays unmodeled per the s77/s78 utility-without-damage rule
+    # (same call as Stridebreaker's Halting Slash and Iceborn's frost field).
+    # No unique_passive_key — the % pen layer sums across items in current
+    # League (LDR + Serylda would stack to 70% pen if a build carried both;
+    # the build-legality "only one of these archetypes" decision is
+    # ranker-owned, not effect-layer).
+    "6694": ItemEffect(
+        item_id="6694",
+        name="Serylda's Grudge",
+        armor_pen_pct=0.35,
+        note="Serylda's Grudge: 35% armor pen (physical) + Bitter Cold ability slow on <50% HP targets (utility, not modeled)",
+    ),
     "3071": ItemEffect(
         item_id="3071",
         name="Black Cleaver",
