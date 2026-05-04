@@ -3142,3 +3142,161 @@ runtime `data/ratings/last_*.json` mutations.
 5. **Activate arena augment v2 in production** (carried from s50).
    Needs arena game.
 6. **Riftmaker HP→AP cross-derivation** (NEW; defer per above).
+
+---
+
+## s57 hand-off — 2026-05-04 (Phase 4 batch 4: magic pen layer + 4 AP items)
+
+Single-arc continuation of s56. Picked the s56 backlog candidate #1
+(magic pen layer) — closest unlock to s56's AP-aware CallContext, and
+the symmetric pipeline mirror to the existing armor pen work. LCU
+still idle (operator post-game), so engine restart window stayed open.
+
+**Shipped (commit `d4a9fdc`, pushed `7b00f9f..d4a9fdc main -> main`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - `ItemEffect` gains `magic_pen_pct: float = 0.0` and
+    `magic_pen_flat: float = 0.0` fields (defaults preserve every
+    existing entry's behavior).
+  - New `effective_target_mr(target_mr, effects)` function — exact
+    mirror of `effective_target_armor` minus the reduction layer (no
+    magic-side Black Cleaver in current patch). % pen lands first,
+    then flat pen, then floor at zero. Negative-MR passthrough kept
+    for armor-curve test-harness symmetry.
+  - 4 new entries:
+    - `3135` Void Staff — `magic_pen_pct=0.40`
+    - `3137` Cryptbloom — `magic_pen_pct=0.30` (Life from Death heal
+      on takedown noted as not-modeled)
+    - `3020` Sorcerer's Shoes — `magic_pen_flat=12.0`
+    - `4645` Shadowflame — `magic_pen_flat=15.0` (PROMOTED out of
+      batch-3 defensive_only; Cinderbloom magic-crit on <40% HP
+      still not modeled, but the pen stat IS now)
+
+- `agents/daemon_slayer/dps.py`:
+  - Imports `effective_target_mr`.
+  - Computes `target_mr_eff` once per `compute_dps` call alongside
+    the existing `target_armor_eff`.
+  - Plumbs `target_mr_eff` into `CallContext.target_mr` AND into the
+    per-phase weighted-DPS math (`_phase_weighted_dps` already takes
+    `target_mr` as `target_mr_for_magical`; just changed what we pass).
+  - New note line: `effective target MR X → Y after magic pen` —
+    surfaces only when MR was actually reduced.
+
+- `agents/daemon_slayer/__init__.py`: docstring narrative refreshed
+  (magic pen layer call-out + 27 defensive_only count, down 1 because
+  Shadowflame promoted); `ENGINE_VERSION 0.10.0 → 0.11.0`. Schema-bump
+  precedent matches s56 (CallContext.ap addition).
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - **DefensiveOnlyBatch3Tests** EXPECTED shrunk 5 → 4 (Shadowflame
+    out). Docstring updated to call out the schema-promotion path.
+  - **EffectiveTargetMrTests** (9 tests) — passthrough + negative
+    preserved + per-item % pen + per-item flat pen + composition
+    (Void → Sorc) + zero-floor. Mirrors `EffectiveTargetArmorTests`
+    structure exactly.
+  - **MagicPenItemTests** (9 tests) — DPS impact via Lich Bane proc
+    (Void), via Nashor's proc (Cryptbloom + Sorc + Shadowflame),
+    Shadowflame-promoted-not-defensive-only sentinel, MR note surfaces
+    when reduced + absent when not, armor pen stays independent of
+    magic pen.
+  - **CoverageCountTests** floor `>=47 → >=50`.
+
+**Test state:** 267/267 daemon_slayer tests green (was 249 at end of
+s56; +18 = 9 + 9 from the two new test classes). py_compile pre-commit
+hook passed; same standard CRLF lint warnings, no new ones.
+
+**Live engine verify (post-restart `schtasks /End` + `schtasks /Run`):**
+```
+GET  /health                                                       → 0.11.0 ok
+POST /dps {champion:Aatrox, items:[3100],         target_mr:100}   →  69.15
+POST /dps {champion:Aatrox, items:[3100, 3135],   target_mr:100}   →  84.57
+```
+Notes on the second response include both
+`effective target MR 100.0 → 60.0 after magic pen` and the Lich
+Bane / Void Staff entries. End-to-end pipeline confirmed.
+
+**Coverage delta:** ITEM_EFFECTS 47 → 50 entries. Three new items
+(Void Staff, Cryptbloom, Sorcerer's Shoes) plus Shadowflame's
+defensive_only → live promotion. The four are all common SR / Arena
+AP staples — Void Staff in particular is the gold standard "second
+or third item" pen pickup for any AP champ.
+
+**Decisions worth pinning:**
+- **No `mr_reduction_pct` field added.** Symmetry with the armor
+  pipeline tempted me, but no live patch-16.9 item populates it
+  (Malignance's MR reduction is ult-bound burn, not a passive item
+  modifier). Premature abstraction; add when the first item demands
+  it. Note in the function docstring + the `magic_pen_*` field comment
+  documents the extension point.
+- **Shadowflame's promotion path is the canonical example.** Items
+  that ship as `defensive_only` because their *primary* effect isn't
+  modeled can still get promoted to live entries when a *secondary*
+  stat (here: 15 flat magic pen) becomes plumbable. The note string
+  evolves from "magic crit on <40% HP (target HP not modeled)" to
+  "15 flat magic pen + Cinderbloom magic crit <40% HP (target HP
+  not modeled)" — the unmodeled piece is documented explicitly so
+  future schema work knows what's still missing.
+- **Negative-MR passthrough kept.** Tests of the armor curve itself
+  pass negative resists; a pen item shouldn't flip "target shredded
+  to -50 MR by external means" into something weaker. Same call as
+  `effective_target_armor`, same justification.
+- **`target_mr_eff` in CallContext (not raw `target_mr`).** Callable
+  `bonus_damage` lambdas inspecting `c.target_mr` get the
+  pen-adjusted value, matching what the proc actually deals against.
+  No live callable does this yet, but symmetric with how
+  `target_armor` is already pen-adjusted in the context.
+
+**Things tomorrow-you should NOT redo:**
+- Don't add Sorcerer's Shoes to a separate "boots" effect table —
+  the engine treats boots like any other item (no boots-uniqueness
+  inside the effects table; that's enforced separately by beam
+  search). Single-item pen entry is sufficient.
+- Don't try to model Shadowflame's Cinderbloom in this batch — it's
+  target-HP gated (<40%) which is the same Phase 4+ hook that
+  unblocks Eclipse, BotRK, The Collector, Hydras. When that lands,
+  promote them all together.
+- Don't bump `CoverageCountTests` floor past 50 until the next batch
+  lands.
+- Don't add Malignance (3118) magic pen entry — it has MR reduction
+  via ult-bound Hatefog, which is conceptually different from passive
+  pen and would need either a `mr_reduction_pct` field (not added
+  this batch) or a per-ult conditional layer.
+
+**Activation:** Engine on :8893 already at 0.11.0 (this session
+restarted it). No further action needed.
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true (no Legion main-RC restart this session; only the
+RC-DaemonSlayer scheduled task was bounced for the second time today).
+Engine on :8893 = 0.11.0 live. LCU phase=None (no game in progress).
+Working tree clean except runtime `data/ratings/last_*.json` mutations.
+
+**Operational backlog (carried + new):**
+- All s54/s55/s56 backlog items unchanged: gamepc_boot.ps1 `py →
+  python.exe` patch; bridge auto-action lane false-positive on
+  deploy prompts.
+- **Target HP modeling** (NEW + already implicit in s55/s56) — the
+  single biggest unlock left. A `target_max_hp` and / or
+  `target_current_hp_pct` field on `CallContext` would unblock
+  Eclipse (3092), BotRK (3153), The Collector (6676), Ravenous /
+  Titanic Hydra (3074 / 3748), Heartsteel (3084), Shadowflame
+  Cinderbloom (4645), Deathfire Grasp (3128). 7+ items in one schema
+  bump. Needs scenario data — does lolmath emit "target HP" in
+  scenarios, or does the engine make an assumption (e.g.
+  "1800 HP @ lvl 11")? Research before coding.
+- **MR reduction layer** (NEW) — `mr_reduction_pct` field if
+  Malignance gets reworked into a passive layer, or if a future
+  item ships with a Black-Cleaver-style MR shred. Currently empty
+  pipeline.
+- **Riftmaker HP→AP cross-derivation** (carried from s56).
+
+**Next-session candidates (ranked):**
+1. **Phase 4 batch 5: target HP modeling** (NEW). Schema bump
+   (0.11.0 → 0.12.0). Highest unlock yield of any single batch
+   left. Research scope on lolmath scenarios first.
+2. **First draft visual verify of P8-5.5** (carried). Still blocked
+   on operator draft queue.
+3. **gamepc_boot.ps1 patch** (carried). 1-liner.
+4. **P8-7 E2E push-to-League integration test** (carried).
+5. **Activate arena augment v2 in production** (carried).
+6. **Riftmaker HP→AP cross-derivation** (carried).
