@@ -6733,3 +6733,243 @@ phase=None. No two-way bridge traffic this session.
 | brawl_coach | ✅ s75 | 'brawl' / 'sr' | 'BRAWL' / 'SR' |
 | sr_coach | ⏳ blocked on vision-side enemy item parsing | 'sr' (when ready) | 'SR' |
 
+---
+
+## s76 hand-off — 2026-05-04 (Phase 4 batch 20: Meraki items + Hullbreaker / Sterak's promotions)
+
+Single-arc continuation from s75. Took s75 #1 candidate (League wiki
+scraper, carried 5 sessions: s71→s72→s73→s74→s75). The carry kept
+deferring because the framing was 3-5hr scraper-build scope. **Meraki
+Analytics's bulk items endpoint already has every formula DDragon
+strips** — single 3.2 MB request, JSON-structured, no HTML parsing,
+no anti-bot risk. Batch 20 became "plumb Meraki + promote what's
+unblocked" instead of "build a scraper."
+
+**Engine: 0.23.0 → 0.24.0.** Tests: 379 → 395 (+16). Live engine
+on :8893 activated via `schtasks /End /Run RC-DaemonSlayer`.
+
+**Pattern decision worth pinning — for DPS-relevant data DDragon
+strips, Meraki's bulk endpoint is the right source.** Three reasons:
+1. Atomic — one HTTP request, all 320 items at the same rev. Per-item
+   endpoint (`.../items/<id>.json`) was observed stale on 2026-05-04
+   (Essence Reaver per-item showed only "Essence Drain" — Spellblade
+   missing — bulk had Spellblade text intact). Always prefer bulk.
+2. Friendlier to Meraki — 1 request vs 320 (their CDN, their bandwidth).
+3. Structured — `passives[*].name` + `passives[*].effects` parses
+   without HTML/wikitext libraries. Engine-side coefficient pinning
+   stays manual (effects.py is by-design a hand-pinned constant
+   table) but the bundle becomes the audit trail.
+
+**Pattern decision worth pinning — `raw_base["ad"]` is unscaled
+level-1 base AD; "leveled base AD" lives in `scaled["ad"]`.** Hit this
+during Sterak's wire-in. `_scale_champion_base` returns `(scaled,
+raw_base)` where `raw_base` is the LEVEL-1 baseline used by
+`_combine_items` for AS rebuild math. League's "% of base AD"
+convention means LEVELED base — match `dps.py`'s
+`resolved.base_stats.get("ad")` pattern (which uses the scaled
+values). Engine-side comment now flags this in the new bonus AD
+pipeline.
+
+**Pattern decision worth pinning — stat-layer item passives don't
+need a periodic.** Sterak's "+45% base AD" is always-on flat AD,
+folded into `item_totals["ad_flat"]` at build time before
+`_combine_items`. Different shape from `PeriodicProc` (which is
+proc-time damage, not stat-time AD). New `ItemEffect.bonus_ad_pct_base_ad`
+field handles the case; future "% of bonus HP as armor" or "% of AP
+as MR" passives would follow the same shape (new field on ItemEffect
++ new fold-in step in `build_champion`).
+
+**Shipped (commit `a5cc9bc`, pushed `9533214..a5cc9bc`):**
+
+- `tools/daemon_slayer_extract.py`:
+  - `MERAKI_ITEMS_URL` constant + `fetch_meraki_items()` function.
+  - `main()` writes `data/daemon_slayer/<patch>/items_meraki.json`
+    (320 items, ~70 KB) alongside the rest.
+  - Manifest gains `meraki_items` provenance block (count, fetched_at,
+    source URL) + `meraki_items` line in `sources` and `outputs`.
+
+- `agents/daemon_slayer/__init__.py`: `ENGINE_VERSION = "0.24.0"`.
+
+- `agents/daemon_slayer/effects.py`:
+  - **Hullbreaker (3181) Skipper** promoted from defensive_only.
+    `PeriodicProc(every_n_attacks=5,
+    bonus_damage=lambda c: 1.20*c.base_ad + 0.05*c.caster_max_hp,
+    PHYSICAL)`. Per Meraki text "(+ 5% maximum health)" with no target
+    qualifier → caster's max HP (League convention; matches
+    Hullbreaker's HP-stacker side-laner design intent). Champion-only
+    target gating not modeled (same trade-off as Kraken's 3rd-attack);
+    over-counts vs minion rotations, noise band <DPS error of every
+    other approximation.
+  - **Sterak's (3053) Claws that Catch** promoted via new
+    `bonus_ad_pct_base_ad=0.45` field. Lifeline shield piece preserved
+    via `unique_passive_key="lifeline"` (deduped against Shieldbow/
+    Maw). Note rewritten to call out both pieces.
+  - **Essence Reaver (3508)** note re-corrected against Meraki bulk:
+    Spellblade EXISTS (`125% base AD + 0.5/crit% bonus physical`) but
+    promotion blocked on `CallContext.crit_chance` schema bump.
+    Surfaced as batch 21 candidate.
+  - New `ItemEffect.bonus_ad_pct_base_ad` field + extensive docstring
+    pinning the pattern for future stat-layer passives.
+
+- `agents/daemon_slayer/engine.py`:
+  - Imports `ITEM_EFFECTS`. After `_scale_champion_base`, walks item
+    IDs and folds `sum(effect.bonus_ad_pct_base_ad * scaled["ad"])`
+    into `item_totals["ad_flat"]` BEFORE `_combine_items`. Comment
+    explicitly distinguishes `scaled["ad"]` (leveled base — correct)
+    from `raw_base["ad"]` (unscaled — wrong).
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - **HullbreakerSkipperTests** (7 tests): promotion path, periodic
+    shape, ctx resolution (with + without caster_max_hp), note
+    contents, end-to-end DPS lift, HP-scaling.
+  - **SteraksClawsThatCatchTests** (5 tests): field present, not
+    defensive_only, Lifeline dedup preserved, note contents, other
+    items default to 0.0.
+  - **SteraksEngineWireInTests** (4 tests): AD lift matches
+    `0.45 * leveled_base_ad`, proportional across champions, Sterak-
+    less items unaffected, end-to-end DPS lift.
+  - Existing `test_sterak_no_periodic` updated — no longer asserts
+    defensive_only; instead asserts `bonus_ad_pct_base_ad > 0`.
+
+**Test state:**
+- `agents/daemon_slayer/tests/`: **395/395** green (s75 baseline 379
+  + 16 new, with 1 update).
+- `tests/phase2_smoke/`: 154/154 unchanged (no consumer-side wiring
+  this batch).
+- Pre-existing stale `0.9.3` engine_version pin in
+  `test_sr_draft_profile_engine` still failing (carried).
+
+**Live verify (post `schtasks /End /Run RC-DaemonSlayer`):**
+
+Engine version + smoke /dps:
+```
+$ curl http://127.0.0.1:8893/health → engine_version=0.24.0 ✓
+$ /dps Aatrox lvl11 + [3181, 3053] →
+    weighted_dps=60.1
+    AD=199.5 (= 110 leveled base + 50 HB flat + 49.5 Sterak passive) ✓
+    HP=2690 ✓
+    notes[Hullbreaker: Skipper every-5th-attack 120% base AD + 5%...] ✓
+    notes[Sterak's Gage: The Claws that Catch +45% base AD as bonus AD...] ✓
+```
+
+Bare baseline for delta verification: `Aatrox naked DPS=47.1, AD=110`.
+
+**Audit findings (defensive_only items vs Meraki):**
+
+Clean batch 21 candidates (engine schema fits, Meraki has formula):
+- **Stridebreaker (6631) Cleave** — `40% AD physical` on-hit cleave to
+  other enemies in 350 radius. Same shape as Ravenous Hydra cleave;
+  engine has `targets_in_rotation` in CallContext. Highest-value
+  promotion. ~30 min scope.
+- **Hextech Gunblade (3146) Lightning Bolt** — long-CD active dealing
+  175→253 + 30% AP magic. Active-item DPS contribution low; ~30 min
+  scope but only ~5-15 DPS bump at full uptime.
+
+Schema-blocked candidates:
+- **Essence Reaver Spellblade** (handled inline with note correction).
+  Needs `CallContext.crit_chance` field.
+- **The Collector "Death" execute** — needs target-low-HP gate.
+- **Luden's Echo** — needs ability-cast modeling.
+
+Genuinely defensive (no promotion possible/needed):
+Bloodthirster, Shieldbow, Phantom Dancer, EoN, Serpent's Fang,
+Opportunity, Maw, Frozen Heart, Death's Dance, Shojin, Warmog's,
+Mercurial, GA, Banshee's, Zhonya's, Navori Flickerblade.
+
+Removed-from-game (absent in Meraki bulk):
+Chemtech Putrifier (3011), Deathfire Grasp (3128). DDragon may still
+ship them but they're effectively retired this patch. Carried in
+defensive_only is harmless.
+
+**Decisions worth pinning:**
+- **Bulk Meraki, not per-item.** Per-item endpoint is stale — saw it
+  on Essence Reaver during this session. Atomic snapshot from bulk
+  matters when tracking cross-item pin-and-bump cycles.
+- **Wire stat-layer passives at build time, not DPS time.** Sterak's
+  AD is always-on; folding into `item_totals` keeps the engine's
+  separation of "stat resolution" and "DPS scoring" clean.
+- **Don't promote on partial info.** ER's Spellblade has the formula
+  but needs crit. Better to leave defensive_only with a precise note
+  than to ship a 50%-correct promotion that under-counts on crit
+  builds (ER's actual use case).
+- **`scaled["ad"]` not `raw_base["ad"]` for "% of base AD" passives.**
+  Mirror what `dps.py` does (`resolved.base_stats.get("ad")` =
+  scaled). Inline comment in engine.py pins this for the next dev.
+
+**Things tomorrow-you should NOT redo:**
+- Don't switch to per-item Meraki fetches even though they look
+  cleaner — the per-item endpoint is stale relative to bulk. Confirmed
+  on ER 2026-05-04. Bulk is the only correct source.
+- Don't add `unique_passive_key="spellblade"` to ER until promoted —
+  it would create order-dependent dedup against TF/Lich Bane while
+  the proc itself is still no-op. Batch 11 commentary on this still
+  applies.
+- Don't try to scrape Fandom or wiki.gg for item passives. Meraki has
+  everything needed. Wiki scrape is only justified if Meraki's bulk
+  ever omits a needed formula (no known case as of 2026-05-04).
+- Don't try to ship Hullbreaker as champion-only. Engine has no
+  target-type gate; same Kraken-Slayer trade-off applies. The note
+  honestly flags it.
+
+**Activation:** RC-DaemonSlayer scheduled task bounced via
+`schtasks /End /TN RC-DaemonSlayer && schtasks /Run /TN RC-DaemonSlayer`.
+Engine on :8893 reports 0.24.0. Hullbreaker + Sterak's notes appear in
+/dps `notes[]` field. Behavior dormant until next game in progress
+(arena_coach / aram_coach / brawl_coach call /dps + /rank with the
+relevant items).
+
+**Bridge state at session end:** RC main pid=8084 (unchanged from s75).
+`schtasks` bounced RC-DaemonSlayer once. Game-PC bridge result was
+5382s stale at session start (anomaly noted) — unchanged this session,
+no Game-PC traffic. Peer bridge unchanged; no two-way traffic.
+
+**Operational backlog (delta from s75):**
+- ✅ ~~Phase 4 batch 20: League wiki scraper~~ retired — Meraki
+  bulk endpoint replaces what the scraper was supposed to do.
+  Memory entry `reference_meraki_items_bulk` written.
+- All other s75 backlog unchanged.
+- **NEW from s76**: `CallContext.crit_chance` schema bump — needed to
+  unblock ER Spellblade promotion. Touches `effects.py` + `dps.py`
+  CallContext construction. Probably ~1 hour scope.
+- **NEW from s76**: Stridebreaker cleave promotion — probably ~30
+  min, slot into batch 21.
+
+**Memory entries written this session:**
+- `reference_meraki_items_bulk` — Meraki bulk items endpoint covers
+  DDragon-stripped formulas; per-item is stale; bulk is the only
+  correct source for batch 21+ work.
+
+**Next-session candidates (ranked):**
+1. **Phase 4 batch 21: Stridebreaker Cleave + ER Spellblade
+   (CallContext.crit_chance)** — both unblocked by Meraki audit.
+   Stridebreaker is clean (~30 min); ER needs the schema bump
+   (~1 hour). Combined ~1.5-2 hour scope; engine 0.24.0 → 0.25.0.
+2. **SR coach `target_bonus_hp` activation** (carried s73→s75).
+   Probably needs vision-side enemy item parsing first.
+3. **Stale 0.9.3 engine_version pin cleanup** in
+   `test_sr_draft_profile_engine` (carried). ~10 min scope.
+4. **First draft visual verify of P8-5.5** (carried).
+5. **gamepc_boot.ps1 patch** (carried). 1-liner.
+6. **P8-7 E2E push-to-League integration test** (carried).
+7. **Activate arena augment v2 in production** (carried).
+8. **Per-target-HP-pct field** (carried; defer until caller demands).
+
+**Full coach activation matrix as of s76:** unchanged from s75 —
+this batch was engine-side only.
+
+| Coach | target_bonus_hp wire-in | Resolver mode | Engine mode |
+|---|---|---|---|
+| arena_coach | ✅ s73 (heuristic) → s73 (item-aware) → s74 (mode-pin) | 'arena' | 'ARENA' |
+| aram_coach | ✅ s74 | 'aram' | 'ARAM' |
+| brawl_coach | ✅ s75 | 'brawl' / 'sr' | 'BRAWL' / 'SR' |
+| sr_coach | ⏳ blocked on vision-side enemy item parsing | 'sr' (when ready) | 'SR' |
+
+**Engine versioned promotion tally:**
+
+| Item | Promoted in | Mechanism |
+|---|---|---|
+| Heartsteel | s70 (batch 17) | `every_n_seconds=3.5`, `caster_max_hp` |
+| LDR Giant Slayer | s71 (batch 19) | `target_bonus_hp_amp_*` schema |
+| Hullbreaker Skipper | s76 (batch 20) | `every_n_attacks=5`, `caster_max_hp` |
+| Sterak's Claws | s76 (batch 20) | `bonus_ad_pct_base_ad=0.45` (NEW field) |
+
