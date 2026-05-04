@@ -1264,3 +1264,151 @@ Game-PC + Peer peer publishers OK (~10s heartbeat ages on Fleet UI).
 Bridge loop verified live on both peers via liveness probe
 (`task-3ff94f7dae59` round-tripped in <90s). No game in progress.
 
+---
+
+## s37 hand-off — 2026-05-03 (Daemon Slayer Phase 1 step 1 shipped)
+
+One arc: probed lolmath's `14.ejgq2van4b.js` chunk, validated regex+json5
+extraction is feasible (no JS parser needed), then wrote
+`tools/daemon_slayer_extract.py`. Verdict ledger:
+
+- 196/196 top-level bindings parse with substitution table + 2-pass
+  spread/wrapper resolver. 172/172 champions covered, including all
+  variant-bearing forms (Kayn Rhaast + Shadow Assassin, Aphelios,
+  Akali, Nasus, Shaco, Udyr, Varus, Veigar).
+- Live extraction shipped: `data/daemon_slayer/16.9.1/{champions,items,
+  scenarios,manifest}.json` + `current.txt`. 4.6MB total.
+- Three hardcoded DDragon-id aliases needed (`wukong`→`MonkeyKing`,
+  `nunuWillump`→`Nunu`, `renataGlasc`→`Renata`).
+
+**Commit:** `91f611a feat(daemon-slayer): Phase 1 data extractor`,
+pushed `904e65f..91f611a main -> main`.
+
+**Surprise findings (saved to memory):**
+- lolmath shipped a major chunk reorg since the operator's design
+  doc was written. The named `14.ejgq2van4b.js` is still served and
+  still has scenarios, but a NEW 1.58MB chunk `0hjv4iwvdtcrm.js`
+  carries 12 additional JSON.parse blocks (ARAM modifiers,
+  damage-type distribution per champ, skill orders, embedded
+  DDragon catalog). All pure JSON, trivially extractable. Listed
+  as Phase 1.5 candidates in `reference_lolmath_extract_topology.md`.
+- Chunk hashes rotate on every lolmath rebuild — discovery MUST
+  be content-based, not filename-based. `statPreference:` is the
+  uniquely strong anchor (175 hits in scenarios chunk, 0 elsewhere).
+
+**Memory writes (1):**
+- `reference_lolmath_extract_topology.md` — chunk topology, parser
+  strategy, alias map, Phase 1.5 candidates.
+
+**Things tomorrow-you should NOT redo:**
+- Don't re-probe whether scenarios are extractable — verdict is
+  proven, code is in `tools/daemon_slayer_extract.py`. 196/196
+  bindings, 172/172 champions.
+- Don't hardcode chunk filenames anywhere. `statPreference:` content
+  anchor is the contract.
+- Don't expand the alias map without proof — adding spurious
+  aliases silently breaks valid champions. Add only when a real
+  champion shows up in `byLolmathKey` but not `byDDragonId`.
+
+**Open for next sessions:**
+- **Daemon Slayer Phase 2**: stat-only naive Python ranker (3-5 days
+  per design). Reads `data/daemon_slayer/16.9.1/*.json`, no engine
+  server yet.
+- **Daemon Slayer Phase 1.5 (optional)**: harvest the 12 JSON.parse
+  blocks from the new lolmath chunk for ARAM modifiers + damage-type
+  distribution + skill orders. Pure JSON, ~30 minutes of work.
+- All s34/s35/s36 carryover items still apply.
+
+**Bridge state at session end:** RC PID 9740 alive, mode=client,
+no game in progress. Liveness probe `task-9b88bf5d18eb` dispatched
+to gamepc; result ridden in banner below.
+
+---
+
+## s38 hand-off — 2026-05-03 (Daemon Slayer Phase 2 step 1 shipped)
+
+One arc: Phase 2 step 1 — engine foundation. `agents/daemon_slayer/`
+package shipped with data loader, scaling math, item-stat aggregator,
+champion+items resolver, CLI, and 33 unit tests.
+
+**Module layout:**
+```
+agents/daemon_slayer/
+├── __init__.py            ENGINE_VERSION = "0.2.1"
+├── __main__.py            python -m agents.daemon_slayer entrypoint
+├── data_loader.py         DataSnapshot.load(patch=None) — reads current.txt
+├── stats.py               CHAMPION_SCALING_RULES + ITEM_STAT_KEY_MAP (data-driven)
+├── engine.py              build_champion(snap, id, level, items, mode) -> ResolvedStats
+├── cli.py                 stats subcmd; dps/rank subcmds stubbed exit 64
+└── tests/                 33 tests, 0.2s, all green
+```
+
+**CLI smoke:**
+```
+$ python -m agents.daemon_slayer stats Aatrox --level 11 --items 6692,3006
+Aatrox (Aatrox) — lvl 11 — mode SR — gold spent 4000
+items: 6692, 3006
+  hp 1790 | armor 86 | mr 52.5 | ad 120 | as 0.977 | ms 390 ...
+```
+Math hand-verified across hp/armor/mr/ad/as/ms/crit/lifesteal at lvl
+1, 11, 18 with diverse 1-6 item builds.
+
+**Key design choices (saved to memory):**
+- Data-table-driven extensions: add a stat = append to
+  `CHAMPION_SCALING_RULES`; add an item stat = append to
+  `ITEM_STAT_KEY_MAP`. Engine code never grows for new stats.
+- AS combine special-case: items pct stacks alongside per-level bonus
+  on base AS (not multiplicative on the leveled value).
+- MS combine: explicit (base + flat) × (1 + pct).
+- Mode hook present (`mode="SR"|"ARAM"|"ARENA"`) — emits a note for
+  non-SR; ARAM/ARENA modifier table plug-in deferred to Phase 1.5/2.2.
+- Lifesteal/spellvamp = additive pct; crit caps at 1.0 post-stack.
+- DPS + rank subcmds are stubs returning exit 64 to make the unfinished
+  state explicit.
+
+**Test surface:**
+- 8 data_loader tests — pointer resolves, counts match manifest, alias
+  IDs resolve (MonkeyKing/Renata), missing IDs raise.
+- 12 stats tests — linear scaling, AS scaling, level guards, item
+  aggregation including unknown-DDragon-key passthrough.
+- 13 engine tests — naked Aatrox lvl 1+18, Bloodthirster, Berserker's
+  AS stacking at lvl 1+18, Eclipse AD, IE crit cap, gold spend,
+  to_dict/format_table, error paths.
+
+**Surprise findings:**
+- Bloodthirster (id 3072) is +15% lifesteal in 16.9.1; the 22-prefix
+  arena variant (223072) is +18%. Don't assume the prefixed IDs are
+  canonical — they're augmented arena variants with stronger stats.
+- Plated Steelcaps (3047) is +25 armor, not +20. Eyeball math is
+  fragile; always cross-check against the actual stat block.
+
+**Commit:** `feat(daemon-slayer): Phase 2 step 1 — engine foundation`
+(pending — about to push).
+
+**Memory writes (1):**
+- `reference_daemon_slayer_engine_arch.md` — module map + extension
+  points + don't-redo list + cross-check protocol.
+
+**Things tomorrow-you should NOT redo:**
+- Don't add scaling math by editing `engine.py` — the extension is
+  appending a `ScalingRule` to `CHAMPION_SCALING_RULES`. Same for item
+  stats via `ITEM_STAT_KEY_MAP`.
+- Don't re-derive AS/MS combine math — pinned in `_combine_items` with
+  a regression set across lvl 1/11/18.
+- Don't re-litigate the package layout — locked at `agents/daemon_slayer/`
+  with the 6 modules above. CLI sub-cmd names (`stats`/`dps`/`rank`)
+  are part of the contract; renaming breaks future scripts.
+
+**Open for next sessions:**
+- **Daemon Slayer Phase 2 step 2**: ability-rotation DPS using
+  scenario weights (`snapshot.scenarios(champ_id)` returns the lolmath
+  early/mid/late blocks). 3-5 days per design.
+- **Daemon Slayer Phase 1.5 (optional)**: harvest the 12 JSON.parse
+  blocks from new lolmath chunk for ARAM modifiers + damage-type
+  distribution + skill orders. ~30 minutes; useful for Phase 2 step 2
+  mode-aware DPS.
+- All s34/s35/s36/s37 carryover items still apply.
+
+**Bridge state at session end:** RC PID 9740 alive, mode=client,
+no game in progress. No bridge activity needed this session.
+
