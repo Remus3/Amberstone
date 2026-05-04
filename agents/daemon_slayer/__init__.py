@@ -1,8 +1,8 @@
 """Daemon Slayer — local item-build engine.
 
-Phase 2 step 2: stat math + auto-attack DPS over lolmath rotation
-scenarios + ARAM mode hooks. HTTP server (:8893) lands in Phase 3;
-this package is import-only today.
+Phase 2 step 3: stat math + auto-attack DPS + item ranker (filter
++ score-by-delta over lolmath rotation scenarios). HTTP server
+(:8893) lands in Phase 3; this package is import-only today.
 """
 
-ENGINE_VERSION = "0.3.0"
+ENGINE_VERSION = "0.4.0"
