@@ -92,7 +92,15 @@ schema [Liandry's Torment via damage_amp_pct=0.06 for Suffering's
 sustained 6% amp, Stormsurge via magic_pen_flat=15 joining Sorcerer's
 Shoes / Shadowflame in the magic pen layer]; Hubris's 18 Lethality
 deferred to a future "lethality plumbing" batch — needs level-scaled
-flat pen schema), and 25 defensive_only items spanning the Tier-1
+flat pen schema), Phase 4 batch 30 lethality plumbing (2026-05-04 —
+new ItemEffect.lethality field + level-scaled fold into
+effective_target_armor's flat-pen sum (lethality × (0.6 + 0.4 × level/18));
+7 items unlock simultaneously: Hubris (18), Voltaic Cyclosword (10),
+Edge of Night (15), Youmuu's Ghostblade (18), Opportunity (18) all
+promoted from defensive_only-or-stats-only-prior, plus Axiom Arc (18)
++ Umbral Glaive (18) as new entries — all 7 current-patch lethality
+items now carry the level-scaled flat pen contribution), and 21
+defensive_only items spanning the Tier-1
 SR / Arena pool plus high-pickrate batch 2 + AP batch 3 additions.
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
@@ -109,4 +117,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.33.0"
+ENGINE_VERSION = "0.34.0"

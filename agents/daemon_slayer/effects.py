@@ -264,6 +264,20 @@ class ItemEffect:
     # at the effect-layer (Archangel transforms INTO Seraph's in real
     # League; build-legality is ranker-owned per the s81 pattern).
     bonus_ap_pct_bonus_mp: float = 0.0
+    # Phase 4 batch 30 (2026-05-04): lethality — level-scaled flat armor
+    # pen. Distinct from ``armor_pen_flat`` (a raw constant) because real
+    # League scales lethality by caster level: actual flat pen =
+    # ``lethality × (0.6 + 0.4 × level / 18)``. At lvl 1: 60% effective;
+    # at lvl 18: 100%. The pipeline-position is the same as
+    # ``armor_pen_flat`` (last in line: reduction → % pen → flat pen);
+    # the level scaling is the only difference. ``effective_target_armor``
+    # accepts an optional ``level`` parameter and folds the scaled
+    # lethality into the pen_flat sum when provided. Pre-batch-30 callers
+    # that omit level get the existing armor_pen_flat-only behavior.
+    # Default 0.0 → no contribution. NOT a unique passive at the
+    # effect-layer (multiple lethality items stack their flat pen
+    # additively in current League — same call as the % pen layer).
+    lethality: float = 0.0
     # Phase 4 batch 26 (2026-05-04): item-effect-contributed crit chance.
     # Two flavors composing additively into a single per-build sum that
     # adds to ``stats["crit"]`` at compute_dps construction time:
@@ -432,7 +446,13 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=PHYSICAL,
             every_n_seconds=4.0,
         ),),
-        note="Voltaic Cyclosword: Energized release ~100 + 25% bonus AD physical every ~4s",
+        # Phase 4 batch 30 (2026-05-04): 10 Lethality piece added via the
+        # lethality plumbing schema. Was unmodeled prior — Voltaic's stat
+        # block in DDragon doesn't carry the lethality value; description
+        # lists it. Pipeline now accounts for the level-scaled flat pen
+        # alongside the existing Energized periodic proc.
+        lethality=10.0,
+        note="Voltaic Cyclosword: Energized release ~100 + 25% bonus AD physical every ~4s + 10 Lethality (level-scaled flat pen)",
     ),
     "6610": ItemEffect(
         item_id="6610",
@@ -542,14 +562,24 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3142": ItemEffect(
         item_id="3142",
         name="Youmuu's Ghostblade",
-        defensive_only=True,
-        note="Youmuu's Ghostblade: active speed; no on-hit DPS",
+        # Phase 4 batch 30 (2026-05-04): promoted from defensive_only via
+        # the lethality plumbing schema. Stat block carries 18 Lethality
+        # in description (NOT in DDragon's stats keys); the active MS
+        # boost stays utility-only — not modeled (same rule as Stridebreaker's
+        # Halting Slash, Iceborn's frost field).
+        lethality=18.0,
+        note="Youmuu's Ghostblade: 18 Lethality (level-scaled flat pen) + active MS bonus (utility, not modeled)",
     ),
     "3814": ItemEffect(
         item_id="3814",
         name="Edge of Night",
-        defensive_only=True,
-        note="Edge of Night: Spellshield; no DPS contribution",
+        # Phase 4 batch 30 (2026-05-04): promoted from defensive_only via
+        # the lethality plumbing schema. 15 Lethality in description; the
+        # Spellshield piece stays non-DPS (deduped against Banshee's Veil
+        # could be a future call, but Spellshield is shield-style mechanic
+        # and Banshee's is also separate — different proc shapes).
+        lethality=15.0,
+        note="Edge of Night: 15 Lethality (level-scaled flat pen) + Spellshield (defensive, not modeled)",
     ),
     "6695": ItemEffect(
         item_id="6695",
@@ -560,8 +590,13 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "6701": ItemEffect(
         item_id="6701",
         name="Opportunity",
-        defensive_only=True,
-        note="Opportunity: bonus lethality on takedown (conditional, not modeled)",
+        # Phase 4 batch 30 (2026-05-04): promoted from defensive_only via
+        # the lethality plumbing schema. 18 base Lethality in description;
+        # the takedown-bonus-lethality piece is event-bound and stays
+        # not-modeled (same rule as Hubris's Eminence). The 18 base
+        # alone is a steady-state DPS contribution.
+        lethality=18.0,
+        note="Opportunity: 18 base Lethality (level-scaled flat pen) + takedown-bonus-lethality (conditional, not modeled)",
     ),
     "3053": ItemEffect(
         item_id="3053",
@@ -1302,26 +1337,17 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "6697": ItemEffect(
         item_id="6697",
         name="Hubris",
-        # 55 AD + 18 Lethality + 10 AH stat block (Lethality is in the
-        # description text, NOT in DDragon's FlatPhysicalDamageMod block,
-        # so it currently contributes nothing in aggregate_item_stats).
-        # Eminence is takedown-event-bound (15 base + 2 per stack bonus
-        # AD on champion-takedown within 3s of damaging) — defensive_only
-        # because it doesn't fire in basic auto rotation.
-        # NOT MODELED (separate batch scope):
-        # - 18 Lethality → would need level-scaled flat pen schema
-        #   (current armor_pen_flat doesn't level-scale; lethality in
-        #   real League is `flat × (0.6 + 0.4 × level/18)`). Multiple
-        #   lethality items (Youmuu's, Edge of Night, Opportunity,
-        #   Voltaic, Axiom Arc, Umbral Glaive) share this gap — defer
-        #   until a "lethality plumbing" batch.
-        # - Eminence post-kill stack — would need event-driven AD bonus
-        #   schema; same family as Stormsurge's takedown-bound passives.
-        defensive_only=True,
+        # Phase 4 batch 30 (2026-05-04): promoted from defensive_only via
+        # the lethality plumbing schema. 18 Lethality is now level-scaled
+        # via effective_target_armor's level parameter. Eminence remains
+        # defensive — takedown-bound bonus AD stack stays not-modeled
+        # (would need an event-driven AD-bonus schema; same family as
+        # Hubris-shape items: Opportunity's takedown lethality bonus,
+        # Stormsurge's Stormraider applies-on-burst, etc.).
+        lethality=18.0,
         note=(
-            "Hubris: Eminence takedown-bound bonus AD stack (90s) — "
-            "defensive_only; 18 Lethality not currently in stats block "
-            "(level-scaled lethality plumbing deferred)"
+            "Hubris: 18 Lethality (level-scaled flat pen) + Eminence "
+            "takedown-bound bonus AD stack (90s, not modeled)"
         ),
     ),
 
@@ -1393,6 +1419,45 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note=(
             "Stormsurge: 15 flat magic pen (magical) + Stormraider/Squall "
             "ability-bound burst (not modeled; same rule as Rocketbelt)"
+        ),
+    ),
+
+    # ── Phase 4 batch 30 (2026-05-04): lethality plumbing — new entries ──
+    # Axiom Arc and Umbral Glaive were unmodeled prior; now land via the
+    # lethality schema alongside the 5 in-place updates above (Hubris,
+    # Voltaic, Edge of Night, Youmuu's, Opportunity). All 7 lethality items
+    # in current League now carry the level-scaled flat pen contribution.
+
+    "6696": ItemEffect(
+        item_id="6696",
+        name="Axiom Arc",
+        # 55 AD + 18 Lethality + 20 AH stat block (lethality in description,
+        # NOT in DDragon's stats keys). Flux passive: takedown within 3s of
+        # damage refunds Ultimate Ability cooldown. Pure utility (CDR is
+        # not modeled; no DPS proc). Defensive_only=False because the 18
+        # Lethality alone is real DPS contribution.
+        lethality=18.0,
+        note=(
+            "Axiom Arc: 18 Lethality (level-scaled flat pen) + Flux ult-CDR "
+            "on takedown (utility, not modeled)"
+        ),
+    ),
+
+    "3179": ItemEffect(
+        item_id="3179",
+        name="Umbral Glaive",
+        # 60 AD + 18 Lethality + 15 AH stat block. Two passives:
+        # - Nightstalker: after-stealth next attack vs champion deals
+        #   bonus true damage. Stealth-conditional + after-event — same
+        #   "ability-bound burst" rule that defers Stormsurge's Squall.
+        # - Blackout: reveal stealth wards / bonus damage to wards. Pure
+        #   utility / target-type-restricted (engine targets champions).
+        # Lethality alone is the modeled DPS piece.
+        lethality=18.0,
+        note=(
+            "Umbral Glaive: 18 Lethality (level-scaled flat pen) + "
+            "Nightstalker after-stealth true damage (conditional, not "
+            "modeled) + Blackout ward damage (utility, not modeled)"
         ),
     ),
 
@@ -1544,14 +1609,27 @@ def total_target_bonus_hp_amp_multiplier(
     return factor
 
 
-def effective_target_armor(target_armor: float, effects: Iterable[ItemEffect]) -> float:
+def effective_target_armor(
+    target_armor: float,
+    effects: Iterable[ItemEffect],
+    level: int | None = None,
+) -> float:
     """Apply armor reduction → % pen → flat pen pipeline.
 
     Mirrors League's order: ``armor_reduction_pct`` (Black Cleaver
     stacks) reduces target armor first; then ``armor_pen_pct`` (LDR /
-    Mortal Reminder) reduces what's left; then ``armor_pen_flat``
-    (lethality) subtracts. Result floors at zero — physical damage
-    against zero-armor uses the ``armor=0`` factor (1.0).
+    Mortal Reminder / Serylda's) reduces what's left; then flat pen
+    (``armor_pen_flat`` raw + ``lethality`` level-scaled) subtracts.
+    Result floors at zero — physical damage against zero-armor uses
+    the ``armor=0`` factor (1.0).
+
+    Phase 4 batch 30 (2026-05-04): ``level`` is the caster's champion
+    level. When provided, lethality contributions are folded into the
+    flat-pen sum at their level-scaled value: ``lethality × (0.6 + 0.4
+    × level / 18)``. Pre-batch-30 callers (tests + any direct caller
+    that doesn't have a level) omit ``level`` and lethality contributes
+    nothing — preserves backward-compatibility for the non-DPS path.
+    Production caller (compute_dps) always passes the resolved level.
 
     Effects without armor modifiers contribute nothing here. Order
     among items in ``effects`` doesn't matter — sums commute, and
@@ -1561,6 +1639,12 @@ def effective_target_armor(target_armor: float, effects: Iterable[ItemEffect]) -
     red_pct = sum(e.armor_reduction_pct for e in eff_list)
     pen_pct = sum(e.armor_pen_pct for e in eff_list)
     pen_flat = sum(e.armor_pen_flat for e in eff_list)
+    if level is not None:
+        lethality_total = sum(e.lethality for e in eff_list)
+        if lethality_total > 0:
+            # 60% effective at lvl 1, 100% at lvl 18 (linear).
+            scale = 0.6 + 0.4 * level / 18.0
+            pen_flat += lethality_total * scale
     if not (red_pct or pen_pct or pen_flat):
         # Passthrough — preserves negative armor inputs (external shred,
         # tests of the armor curve itself).
