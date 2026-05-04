@@ -3985,3 +3985,37 @@ runtime `data/ratings/last_*.json` mutations.
 6. **Activate arena augment v2 in production** (carried).
 7. **Riftmaker HP→AP cross-derivation** (carried).
 8. **Per-target-HP-pct field** (carried; defer until caller demands).
+
+---
+
+## s58-s61 session wrap — 2026-05-04 (4 batches in one session, engine 0.10.0 → 0.15.0)
+
+Single 4-arc session. Started s58 with `continue Daemon Slayer` and
+shipped four consecutive Phase-4 batches without leaving the chair:
+
+- **s58 Batch 5** (`55000ce`) — target HP layer + BotRK + Eclipse
+- **s59 Batch 6** (`1e7f338`) — caster HP layer (engine-derived) + Titanic + Heartsteel
+- **s60 Batch 7** (`5ff148b`) — multi-target rotation layer + Ravenous Hydra
+- **s61 Batch 8** (`45c732b`) — multi-proc-per-item schema + Titanic cleave-to-others
+
+Engine 0.11.0 → 0.15.0 (4 minor bumps). Tests 267 → 302 (+35).
+ITEM_EFFECTS 50 → 52. RC main pid=9488 unchanged; only
+RC-DaemonSlayer scheduled task bounced (6× this session).
+
+**Carried theme:** the lambda-side semantic pattern. Each batch added
+either a CallContext field or a schema extension, then expressed the
+new behavior inline in the proc lambda — no per-proc enums, no
+schema flags. `target_max_hp` (caller-supplied), `caster_max_hp` /
+`caster_bonus_hp` (engine-derived), `targets_in_rotation`
+(per-rotation rebound), now `periodics: tuple` (multi-proc).
+
+**Next session top-of-queue:** Phase 4 batch 9 — Immolate items
+(Sunfire / Frostfire) needs an in-combat-duration model OR
+aggregate-stat pipeline cleanup. See s61 #1/#2 candidates.
+
+**Don't redo:** the lambda-side semantic pattern is the chosen
+architecture — don't propose per-proc enums or polymorphic proc
+classes. Soft cross-item DPS test comparisons are data-fragile —
+prefer hand-built CallContext + direct `_periodic_proc_dps` calls.
+The schema rename in batch 8 was clean (no parallel field) per
+CLAUDE.md "no shims" rule — don't reintroduce `Optional[PeriodicProc]`.
