@@ -307,6 +307,9 @@ class Coach(BaseCoach):
                 return
             if state.get("anvil_choices"):
                 self._handle_anvil(state)
+            # v2: panel is gone, so HUD slots are the canonical augment record.
+            # Only overrides when ALL slots resolve — partial reads keep Haiku's list.
+            self._reconcile_augment_hud(state)
         except Exception as exc:
             logger.debug("Arena vision run: %s", exc)
 
@@ -533,10 +536,61 @@ class Coach(BaseCoach):
                 # collector can see what the engine was given. Source is
                 # the Haiku recommendation — see project_arena_augments_not_persisted.
                 "augments_picked": list(self._picked_augments),
+                "augments_source": "haiku_rec",
             })
             safe_write(self._out, current)
         except Exception as exc:
             logger.error("Arena augment select: %s", exc)
+
+    def _reconcile_augment_hud(self, vision_state: dict) -> None:
+        """Override _picked_augments from vision-confirmed HUD slots.
+
+        v1 (s49) source = Haiku recommendation at augment-select panel time.
+        v2 = Sonnet reads the HUD augment tray after the panel disappears.
+        Vision is canonical because the player may have deviated from
+        Haiku's pick (or Haiku may have mis-resolved a name).
+
+        Conservative override: ALL slots must resolve via the apiName map.
+        Partial reads (one icon Sonnet can't ID) preserve Haiku's list to
+        avoid wiping a known-good record with unreliable vision.
+        """
+        slots = vision_state.get("augment_hud_slots") or []
+        if not slots:
+            return
+        resolved: list[str] = []
+        seen: set[str] = set()
+        for raw in slots:
+            api = _resolve_augment_apiname(str(raw or ""))
+            if not api:
+                logger.debug("HUD reconcile: skipping (unresolved %r in %s)", raw, slots)
+                return  # all-or-nothing guard
+            if api not in seen:
+                resolved.append(api)
+                seen.add(api)
+        if resolved == self._picked_augments:
+            # Vision confirmed Haiku's picks — still tag source so the
+            # artifact reflects the upgrade in confidence.
+            try:
+                current = load_json(self._out)
+                if current.get("augments_source") != "vision_hud":
+                    current["augments_source"] = "vision_hud"
+                    current["augments_picked"] = list(self._picked_augments)
+                    safe_write(self._out, current)
+            except Exception as exc:
+                logger.debug("HUD reconcile (confirm) write: %s", exc)
+            return
+        logger.info(
+            "HUD reconcile: overriding picks %s -> %s",
+            self._picked_augments, resolved,
+        )
+        self._picked_augments = resolved
+        try:
+            current = load_json(self._out)
+            current["augments_picked"] = list(self._picked_augments)
+            current["augments_source"] = "vision_hud"
+            safe_write(self._out, current)
+        except Exception as exc:
+            logger.debug("HUD reconcile write: %s", exc)
 
     def _handle_anvil(self, vision_state: dict) -> None:
         choices = vision_state.get("anvil_choices", [])
@@ -579,6 +633,7 @@ Return ONLY valid JSON:
   "augment_select": false,
   "augment_choices": [],
   "anvil_choices": [],
+  "augment_hud_slots": [],
   "camp_phase": false,
   "round_number": 1
 }
@@ -586,6 +641,10 @@ Rules:
 - augment_select: true if large augment card selection panel visible
 - augment_choices: list of augment names if selection visible
 - anvil_choices: list of item names if item anvil visible
+- augment_hud_slots: list of currently-equipped augment names visible in
+  the player's bottom HUD (small icons in the augment tray adjacent to
+  abilities/items). Empty list if none visible. Only include augments
+  you can confidently identify by icon.
 - camp_phase: true if in the between-round camp phase (not in combat arena)
 - Return ONLY the JSON
 """
