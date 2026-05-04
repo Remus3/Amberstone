@@ -3824,3 +3824,164 @@ runtime `data/ratings/last_*.json` mutations.
 6. **Riftmaker HP→AP cross-derivation** (carried).
 7. **Sunfire / Frostfire Immolate** (NEW from s60).
 8. **Per-target-HP-pct field** (carried; defer until caller demands).
+
+---
+
+## s61 hand-off — 2026-05-04 (Phase 4 batch 8: multi-proc-per-item schema + Titanic cleave-to-others)
+
+Single-arc continuation of s60. Picked the s60 #1 candidate
+(multi-proc-per-item). Sixth Phase-4 batch in two days. Operator
+still idle (LCU phase=None, RC main pid=9488 unchanged).
+
+**Pattern decision worth pinning:** the s60 hand-off's projected
+"~2-3 hour scope" was accurate. Sweep was mechanical thanks to
+homogeneous existing entries. Per CLAUDE.md "don't use feature flags
+or backwards-compatibility shims," I went with a clean rename
+(`periodic` → `periodics`) rather than a parallel `extra_periodics`
+field. Trade-off: 27 test refs swept vs. 0 if I'd kept the old field
+alive — but the resulting code has one obvious place to read procs
+(`for proc in e.periodics`) instead of two.
+
+**Sweep technique:** the rewrite was mechanical enough to do via a
+Python regex script (in-line, run from Bash) rather than 17 by-hand
+edits. The pattern
+```
+        periodic=PeriodicProc(
+            ...
+        ),
+```
+is uniform across every ItemEffect (8-space indent on the field, 8-
+space indent on the closing `),`). One `re.subn` rewrote all 17
+blocks in one shot. Pinning this for future schema renames.
+
+**Shipped (commit `45c732b`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - `ItemEffect.periodic: Optional[PeriodicProc]` →
+    `periodics: tuple[PeriodicProc, ...] = ()`. Default `()` semantics
+    matches the prior `None` semantics in every consumer.
+  - `Optional` import removed (no remaining usages).
+  - 17 single-proc entries swept from `periodic=PeriodicProc(...)` to
+    `periodics=(PeriodicProc(...),)` via Python regex (script in
+    commit message).
+  - **Titanic Hydra (3748)** gains a 2nd proc (cleave-to-others):
+    `max(0, n-1) * 40% total AD` physical, every basic. The primary
+    on-hit (5 + 1.5% bonus HP) is unchanged. Schema-extension proof:
+    a single item can now carry semantically-distinct periodic
+    contributions without subclassing.
+
+- `agents/daemon_slayer/dps.py`:
+  - `_periodic_proc_dps`: `proc = e.periodic; if proc is None: continue`
+    → `for proc in e.periodics:`. The inner loop body is otherwise
+    unchanged. Engine summing semantics: every proc on every item
+    contributes independently.
+
+- `agents/daemon_slayer/__init__.py`: docstring narrative refreshed
+  (multi-proc-per-item schema call-out + 28 defensive_only count
+  unchanged from batch 7); `ENGINE_VERSION 0.14.0 → 0.15.0`.
+
+- `agents/daemon_slayer/tests/test_effects.py`: 2 refs swept.
+- `agents/daemon_slayer/tests/test_effects_expansion.py`: 25 refs
+  swept; new `MultiProcSchemaTests` class (7 tests):
+  - empty `periodics=()` default on a defensive_only item (Bloodthirster).
+  - Titanic carries exactly 2 periodics with expected names + types.
+  - cleave-to-others lambda zero at n=1, 96 at n=3 with AD=120
+    (manual unit-test of `resolve_damage` against a hand-built ctx).
+  - primary proc still fires on Aatrox (single-target).
+  - end-to-end `_periodic_proc_dps` test: 110.0 dps from
+    Titanic-only build with n=3, AD=120, bonus_hp=600
+    (= 14 primary + 96 cleave-to-others, durations normalised).
+  - end-to-end same harness at n=1: 14.0 dps (primary only).
+
+**Test state:** 302/302 daemon_slayer tests green (was 295 at end
+of s60; +7 from `MultiProcSchemaTests`). The schema rename + 27 test
+sweeps had **all 295 prior tests passing unchanged before the new
+tests were added** — confirms the rename is mechanically correct
+and the iteration semantics match the prior single-proc behavior
+exactly when items have one proc.
+
+**Live engine verify (post-restart `schtasks /End` + `/Run`):**
+```
+GET  /health                                              → 0.15.0
+POST /dps {Aatrox, lvl 11, items:[3748]}                  → 70.17  (identical to batch 7; cleave-to-others=0 at n=1)
+POST /dps {Anivia, lvl 11, items:[3748], phase:late}      → 16.48  (n=3 DPS rotation; both procs fire)
+POST /dps {Anivia, lvl 11, items:[3074], phase:late}      → 17.61  (Ravenous wins on Anivia: 65 AD vs Titanic's 40)
+```
+
+Aatrox single-target verify confirms zero regression — Titanic's
+DPS contribution is identical to batch 7 because the cleave-to-others
+proc resolves to zero on n=1 rotations. Multi-proc schema is
+**purely additive** for multi-target rotations.
+
+**Decisions worth pinning:**
+- **Clean rename, not parallel field.** The dual-field approach
+  (`periodic` + `extra_periodics`) would have been smaller diff,
+  but two slots for the same concept is cruft. Single source of
+  truth (`periodics: tuple`) reads clearer.
+- **Titanic cleave-to-others at 40% AD.** Current-patch values
+  approximate. Same fallibility as Ravenous in batch 7 — if Riot
+  rebalances, the constant gets re-pinned. The note text + comment
+  document the assumption.
+- **Multi-proc test strategy.** Soft assertions like
+  "Titanic outpaces Ravenous on multi-target" failed because
+  Ravenous has +25 more AD in its stat block. Switched to:
+  (a) per-proc unit tests against hand-built contexts;
+  (b) end-to-end `_periodic_proc_dps` calls with normalized
+  duration so DPS == per-attack damage. These are sturdy and
+  data-stable across patch bumps.
+- **Multi-proc tests live in their own class.** Initially put them
+  in `RavenousHydraMultiTargetTests` (since both batches use
+  `targets_in_rotation`), then realized `MultiProcSchemaTests`
+  is the schema-level concern and pulled them out. Cleaner
+  organization for future readers.
+
+**Things tomorrow-you should NOT redo:**
+- Don't reintroduce `Optional[PeriodicProc]` — `tuple[..., ...]`
+  is the chosen schema shape.
+- Don't write soft cross-item DPS comparisons in tests (Titanic >
+  Ravenous etc.). Use the unit-test-against-hand-built-context
+  pattern instead — it's deterministic and patch-independent.
+- Don't model Sunfire/Frostfire Immolate yet — needs an "in-combat
+  duration" model (3s post-damage gate). Schema would need
+  `combat_charge_seconds` field + per-rotation in-combat estimation.
+  Defer.
+- Don't expect existing items' DPS to change — the rename is
+  semantics-preserving for every single-proc item.
+
+**Activation:** Engine on :8893 already at 0.15.0 (this session
+restarted it). No further action needed.
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true (no Legion main-RC restart this session; RC-DaemonSlayer
+bounced for the 6th time today). Engine on :8893 = 0.15.0 live.
+LCU phase=None (no game in progress). Working tree clean except
+runtime `data/ratings/last_*.json` mutations.
+
+**Operational backlog (carried + new):**
+- All s54-s60 backlog items unchanged.
+- **Sunfire / Frostfire / Hollow Radiance Immolate** (carried from
+  s60). Now unblocked by multi-proc schema if needed (immolate
+  could share a slot with another stat-side proc) — but the bigger
+  blocker is the in-combat duration model.
+- **Goredrinker / Stridebreaker actives** (NEW from s61). Halting
+  Slash / Spinning Slash on these items is an active dash + AoE
+  damage, distinct from passive periodics. Not in DPS rotation
+  (active items don't auto-fire); both stay defensive_only.
+
+**Next-session candidates (ranked):**
+1. **Phase 4 batch 9: in-combat duration / Immolate items** (NEW).
+   Schema bump (0.15.0 → 0.16.0). Add `combat_charge_seconds`
+   on PeriodicProc + per-rotation "in combat fraction" estimation.
+   Unlocks Sunfire (3068), Hollow Radiance / Frostfire (6664).
+   Tank-build DPS — moderate priority.
+2. **Phase 4 batch 9-alt: aggregate-stat extension hook** (NEW).
+   The HP / pen / amp pipelines are getting numerous. Refactor
+   `_periodic_proc_dps` to iterate a small list of "modifier
+   passes" (stat-modifiers, periodic procs, then-procs that
+   require modifier results, etc). Pure cleanup; no new items.
+3. **First draft visual verify of P8-5.5** (carried).
+4. **gamepc_boot.ps1 patch** (carried). 1-liner.
+5. **P8-7 E2E push-to-League integration test** (carried).
+6. **Activate arena augment v2 in production** (carried).
+7. **Riftmaker HP→AP cross-derivation** (carried).
+8. **Per-target-HP-pct field** (carried; defer until caller demands).
