@@ -80,6 +80,14 @@ class CallContext:
     directly; cleave-to-others procs use
     ``max(0, c.targets_in_rotation - 1)``. Engine sets it per rotation
     via ``dataclasses.replace`` in ``_rotation_attack_dps``.
+
+    ``crit_chance`` (added 2026-05-04, Phase 4 batch 21) is the build's
+    resolved crit chance as a fraction (0.0–1.0), engine-derived from
+    ``stats.get("crit")`` and clamped at 1.0. Required for crit-scaling
+    procs (Essence Reaver Spellblade scales linearly: +0.5 bonus
+    physical per 1% crit, capped at +50 at 100%). Default 0.0 means
+    "build has no crit" — pre-batch-21 callers don't pass it and procs
+    that reference it gracefully no-op.
     """
     base_ad: float
     bonus_ad: float
@@ -91,6 +99,7 @@ class CallContext:
     caster_max_hp: float = 0.0
     caster_bonus_hp: float = 0.0
     targets_in_rotation: float = 1.0
+    crit_chance: float = 0.0
     # Phase 4 batch 19 (2026-05-04): caller-supplied target bonus HP —
     # same shape as target_max_hp (default 0.0 = "caller didn't say").
     # Required for target-conditional amp items (LDR Giant Slayer scales
@@ -346,13 +355,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),),
         # Phase 4 batch 11 (2026-05-04): Spellblade is unique-passive in
         # current League — only one Spellblade proc fires per attack.
-        # Deduped against Lich Bane (3100). Sundered Sky (6610) uses its
-        # own "Lightshield Strike" label, not Spellblade — distinct
-        # mechanic, no dedup. Essence Reaver (3508) has the Spellblade
-        # label too but is currently defensive_only (proc not modeled);
-        # tagging it would create order-dependence (LB or TF would get
-        # deduped if Essence Reaver appeared first), so it stays untagged
-        # until promoted out of defensive_only.
+        # Deduped against Lich Bane (3100) and, as of Phase 4 batch 21
+        # (2026-05-04), Essence Reaver (3508). Sundered Sky (6610) uses
+        # its own "Lightshield Strike" label, not Spellblade — distinct
+        # mechanic, no dedup.
         unique_passive_key="spellblade",
         note="Trinity Force: Spellblade ~200% base AD on-hit, ~once per 3s in rotation",
     ),
@@ -645,30 +651,34 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # not used since it would amp AAs too.
         note="Spear of Shojin: Dragonforce (25 basic AH, stat) + Focused Will (3% per stack ability/passive amp, max 4 stacks; ability damage not DPS-modeled)",
     ),
+    # Phase 4 batch 21 (2026-05-04): ER promoted from defensive_only via
+    # the new CallContext.crit_chance schema. Per Meraki bulk text:
+    #   "Spellblade — After using an Ability, your next basic attack
+    #    within 10s deals 125% base AD (+ 0 to 50 based on critical
+    #    strike chance, scaling 0.5 damage per 1% crit) bonus physical
+    #    damage on-hit and restores mana equal to half that amount."
+    # Crit-chance scaling: 0.5 damage per 1% crit → 50 * crit_chance
+    # (where crit_chance is 0.0–1.0). At 0% crit ER procs for 1.25 *
+    # base_ad; at 100% crit, +50 flat on top. Cooldown 1.5s real, but
+    # rotation cadence is ability-cast-frequency-bound — match the
+    # ~3s assumption already pinned for Trinity Force / Lich Bane (see
+    # batch 11 commentary on Spellblade dedup).
     "3508": ItemEffect(
         item_id="3508",
         name="Essence Reaver",
-        defensive_only=True,
-        # Phase 4 batch 20 (2026-05-04): note re-corrected against the
-        # Meraki bulk items snapshot (items_meraki.json). Earlier batch
-        # 16 commentary said "current-patch damage formula not in
-        # DDragon"; Meraki's bulk endpoint exposes the formula DDragon
-        # strips:
-        #   "Spellblade — After using an Ability, your next basic attack
-        #    within 10s deals 125% base AD (+ 0 to 50 based on critical
-        #    strike chance, scaling 0.5 damage per 1% crit) bonus
-        #    physical damage on-hit and restores mana equal to half
-        #    that amount."
-        # Coefficient IS verified now, but Spellblade scales with crit
-        # CHANCE — and CallContext currently has no crit_chance field.
-        # Modeling 125% base AD alone would systematically under-count
-        # ER's DPS on crit builds (its core use case at 60-100% crit).
-        # Promotion blocked on a CallContext.crit_chance schema bump
-        # (batch 21 candidate); when added, ER's lambda becomes
-        # ``1.25 * c.base_ad + 0.5 * c.crit_chance_pct`` and tag with
-        # unique_passive_key="spellblade" (deduped against TF/Lich Bane;
-        # see batch 11 commentary on order-dependence).
-        note="Essence Reaver: Spellblade 125% base AD + 0.5/crit% bonus physical on next AA after ability (Meraki-verified; engine blocked on CallContext.crit_chance — batch 21 candidate)",
+        periodics=(PeriodicProc(
+            name="Spellblade",
+            bonus_damage=lambda c: 1.25 * c.base_ad + 50.0 * c.crit_chance,
+            damage_type=PHYSICAL,
+            every_n_seconds=3.0,
+        ),),
+        # Spellblade unique-passive — same key as Trinity Force (3078)
+        # and Lich Bane (3100). First-seen-wins ordering: a build with
+        # [TF, ER] keeps TF's spellblade; [ER, TF] keeps ER's. The pre-
+        # promotion comment on TF flagged this exact dedup question;
+        # batch 21 closes it by joining the family.
+        unique_passive_key="spellblade",
+        note="Essence Reaver: Spellblade 125% base AD + 0.5/crit% bonus physical on-hit, ~once per 3s in rotation",
     ),
     "3084": ItemEffect(
         item_id="3084",
@@ -721,11 +731,31 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         defensive_only=True,
         note="Zhonya's Hourglass: active stasis (untargetable for 2.5s); no DPS contribution",
     ),
+    # Phase 4 batch 21 (2026-05-04): Stridebreaker promoted from
+    # defensive_only via the same multi-target rotation layer Ravenous
+    # Hydra (3074) uses. Per Meraki bulk, Cleave deals "40% AD (melee) /
+    # 20% AD (ranged) physical damage to other enemies in a 350 radius
+    # centered around the target" on every basic on-hit. Same shape and
+    # per-rotation isolation as Ravenous; coefficient is 40% vs Ravenous's
+    # 35%. Halting Slash active (dash + slow) stays utility — not modeled.
+    # Melee values pinned; ranged variant under-counts (same trade-off as
+    # Ravenous and Titanic).
     "6631": ItemEffect(
         item_id="6631",
         name="Stridebreaker",
-        defensive_only=True,
-        note="Stridebreaker: Halting Slash active dash + slow; no on-hit DPS proc",
+        periodics=(PeriodicProc(
+            name="Cleave",
+            # Melee: 40% total AD physical to other enemies (primary
+            # already lands via the basic attack itself). At
+            # targets_in_rotation=1.0 the cleave hits 0 enemies and adds
+            # zero DPS — preserves the historic single-target shape for
+            # all-n=1 rotations.
+            bonus_damage=lambda c: max(0.0, c.targets_in_rotation - 1.0)
+                * 0.40 * (c.base_ad + c.bonus_ad),
+            damage_type=PHYSICAL,
+            every_n_attacks=1,
+        ),),
+        note="Stridebreaker: Cleave ~40% AD physical to other enemies in 350 radius (melee, scales with rotation targets)",
     ),
 
     # ── Phase 4 batch 3 (2026-05-04): AP-aware CallContext + spellblade ──
