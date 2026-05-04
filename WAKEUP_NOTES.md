@@ -5534,3 +5534,46 @@ mutations.
 6. **P8-7 E2E push-to-League integration test** (carried).
 7. **Activate arena augment v2 in production** (carried).
 8. **Per-target-HP-pct field** (carried; defer until caller demands).
+
+---
+
+## s67-s69 session wrap — 2026-05-04 (3 Phase-4 batches in one session, engine 0.20.0 → 0.22.0)
+
+Single 3-arc session. Started s67 with `continue Daemon Slayer` and
+shipped three consecutive Phase-4 batches without leaving the chair:
+
+- **s67 Batch 14** (`ca151e1`) — damage_amp_pct schema + Riftmaker
+  promotion (multiplicative stacking, 8% Void Corruption pin)
+- **s68 Batch 15** (`a7f9c31`) — ap_per_bonus_hp_pct schema +
+  Riftmaker Void Infusion (2% bonus HP → AP, additive across items)
+- **s69 Batch 16** (`83ad526`) — DDragon-truth note audit, 5 entries
+  (Spear of Shojin, Essence Reaver, Hullbreaker, LDR, Sterak's)
+
+Engine 0.20.0 → 0.22.0 (2 minor bumps + 1 doc-only at 0.22.0).
+Tests 340 → 362 (+22). ITEM_EFFECTS unchanged at 54. Defensive_only
+27 → 26 (Riftmaker promoted). Pushed: `f1e4c99..c0fd43a main -> main`.
+
+**Carried theme:** "DDragon snapshot first, mental model second."
+Each batch led with a snapshot probe of `data/daemon_slayer/16.9.1/
+items.json`. Batch 15 caught a 50× framing error (s67 said "100%
+HP→AP" but DDragon says 2%). Batch 16 surfaced a real lambda math
+bug (Heartsteel `70 + 90*(level-1)/17` claims 70-160 by level, but
+DDragon shows flat "70 plus 6%") — queued for batch 17.
+
+**Don't redo:** the multiplicative damage-amp stacking + additive
+HP→AP semantics are now load-bearing — don't propose alternatives.
+Don't promote Spear of Shojin via batch 14's `damage_amp_pct`
+(Focused Will is ABILITY-only). Don't tag Sterak's as "bonus AD on
+takedown" — DDragon shows no takedown gating. Don't claim Essence
+Reaver has no on-hit proc — it IS a Spellblade per DDragon.
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true. Engine on :8893 = 0.22.0 live. LCU phase=None (no
+game). RC-DaemonSlayer bounced 14× across the session. Bridge to
+Game-PC was already stale at session start (165s ago) — no
+two-way traffic this session; loop on Game-PC likely needs to be
+re-armed via `/loop /process-bridge-tasks`.
+
+**Next session top-of-queue:** Phase 4 batch 17 — Heartsteel
+lambda fix (70-160 by level → flat 70). Patch bump 0.22.0 → 0.22.1.
+~30 min scope. See s69 #1 candidate.
