@@ -1,8 +1,8 @@
 """Champion stat resolution — base + level scaling + items, mode-aware.
 
-Phase 2 step 1 deliverable. No DPS scoring, no ranking — pure stat math.
-The ``mode_modifiers`` parameter is a hook for ARAM/Arena multiplicative
-adjustments (Phase 1.5 / Phase 2 step 2 plug-in); SR passes ``None``.
+Phase 2 step 1 + step 2 deliverables. Pure stat math; ``dps.py`` layers
+DPS scoring on top. Mode hook applies ARAM stat multipliers (currently
+just ``aramAttackSpeed`` on bonus AS); damage multipliers stay in DPS.
 """
 
 from __future__ import annotations
@@ -144,6 +144,34 @@ def _combine_items(
     return out
 
 
+def _apply_mode_modifiers(
+    scaled: dict[str, float],
+    raw_base: dict[str, float],
+    mode: str,
+    champion: dict,
+) -> tuple[dict[str, float], list[str]]:
+    """Phase 2 step 2 hook — apply mode-specific stat multipliers.
+
+    Currently: ARAM ``aramAttackSpeed`` (multiplier on bonus AS). Damage
+    multipliers (``aramDamageDealt``) live in the DPS layer, not here —
+    they don't change AD/AP, only output. Other ARAM modifiers
+    (Tenacity / Healing / Shielding / DamageTaken / AbilityHaste) are
+    intentionally not applied at the stat layer; they belong in their
+    respective consumers (sustain calc, EHP calc, AH lookup).
+    """
+    notes: list[str] = []
+    if mode == "ARAM":
+        lolmath = champion.get("lolmath", {}) or {}
+        aram = lolmath.get("aram_modifiers", {}) or {}
+        aram_as = float(aram.get("aramAttackSpeed", 1.0))
+        if aram_as != 1.0:
+            base_as = raw_base.get("as", 0.0)
+            bonus_as = scaled.get("as", 0.0) - base_as
+            scaled["as"] = base_as + bonus_as * aram_as
+            notes.append(f"ARAM aramAttackSpeed={aram_as:.2f} on bonus AS")
+    return scaled, notes
+
+
 def build_champion(
     snapshot: DataSnapshot,
     champion_id: str,
@@ -168,10 +196,11 @@ def build_champion(
 
     scaled, raw_base = _scale_champion_base(champ_stats, level)
     final = _combine_items(scaled, raw_base, item_totals, level)
+    final, mode_notes = _apply_mode_modifiers(final, raw_base, mode, champ)
 
-    notes: list[str] = []
-    if mode != "SR":
-        notes.append(f"mode={mode} — modifier table not yet plugged in (Phase 1.5/2.2)")
+    notes: list[str] = list(mode_notes)
+    if mode not in ("SR", "ARAM"):
+        notes.append(f"mode={mode} — modifier table not plugged in for this mode")
 
     return ResolvedStats(
         champion_id=champion_id,
