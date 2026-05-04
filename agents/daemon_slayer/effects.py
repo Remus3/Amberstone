@@ -1461,6 +1461,224 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),
     ),
 
+
+    # ── Phase 4 batch 31 (2026-05-04): support / ramp item coverage sweep ──
+    # 21 items. 2 partial promotions (Dead Man's Plate Shipwrecker physical proc;
+    # Spectral Cutlass ARAM-only lethality — same schema as batch 30). 19
+    # defensive_only entries: support-role items, sustain amplifiers, conditional-
+    # or-ability-bound passives that don't fit the basic-auto DPS model.
+    # Defensive_only count: 21 → 40.
+
+    # ─── Dead Man's Plate — Shipwrecker partial promotion ───────────────────
+    # 350 HP + 55 armor + 4% MS stat block. Two passives:
+    # - Shipwrecker: while moving, build Momentum stacks (7/0.25s = 28/s,
+    #   cap 100 stacks in ~3.57s). Next attack consumes all stacks to deal
+    #   100 + 45% of built-up bonus MS (max 20 bonus MS at 100 stacks)
+    #   bonus physical damage. Damage at full Momentum = 100 + 0.45×20 = 109.
+    #   Approximated as every_n_attacks=4 (3.57s build-up at 1.0 AS melee
+    #   cadence; assumes continuous movement in combat).
+    # - Unsinkable: 15% slow resistance — utility, not modeled.
+    # Approximation caveats: ignores other sources of bonus MS (champions with
+    # high MS or MS-stacking builds get more damage); assumes full stacks on
+    # discharge (fair for standard melee rotations where movement is continuous).
+    "3742": ItemEffect(
+        item_id="3742",
+        name="Dead Man's Plate",
+        periodics=(PeriodicProc(
+            name="Shipwrecker",
+            bonus_damage=109.0,  # 100 + 0.45 × 20 bonus MS at full Momentum stacks
+            damage_type=PHYSICAL,
+            every_n_attacks=4,
+        ),),
+        note=(
+            "Dead Man's Plate: Shipwrecker ~109 physical (100 + 45% max Momentum "
+            "bonus MS) every ~4 attacks (assumes full stacks at discharge; "
+            "Unsinkable slow resist not modeled)"
+        ),
+    ),
+
+    # ─── Spectral Cutlass — ARAM-only lethality promotion ───────────────────
+    # 50 AD + 15 Lethality + 4% MS stat block (ARAM-only, map 12 only).
+    # Soul Anchor active (0s listed CD in DDragon): marks current location;
+    # returns you there after 4s or on recast. Pure repositioning utility —
+    # not modeled (same rule as all other utility actives in this batch).
+    # Lethality modeled via the batch-30 level-scaled schema (same 15 Lethality
+    # coefficient as Edge of Night). Item available on map 12 (ARAM) only;
+    # aram_coach's resolver uses mode='aram' and DDragon map 12 index.
+    "4004": ItemEffect(
+        item_id="4004",
+        name="Spectral Cutlass",
+        lethality=15.0,
+        note=(
+            "Spectral Cutlass: 15 Lethality (level-scaled flat pen, ARAM-only) "
+            "+ Soul Anchor repositioning active (utility, not modeled)"
+        ),
+    ),
+
+    # ─── Support / enchanter items — defensive_only ──────────────────────────
+    # All entries below have effects that are non-DPS (ally healing/shielding
+    # triggers, ally-proc-bound damage, enemy-on-champion-only burst gated by
+    # ability casts, MS/AS conditional on ally link, etc.). No direct
+    # basic-auto DPS contribution from any passive here.
+
+    "3109": ItemEffect(
+        item_id="3109",
+        name="Knight's Vow",
+        defensive_only=True,
+        note="Knight's Vow: Worthy tether (damage redirect + ally tankiness); no DPS contribution",
+    ),
+    "3222": ItemEffect(
+        item_id="3222",
+        name="Mikael's Blessing",
+        defensive_only=True,
+        note="Mikael's Blessing: active CC cleanse + heal; no DPS contribution",
+    ),
+    "3107": ItemEffect(
+        item_id="3107",
+        name="Redemption",
+        defensive_only=True,
+        # Active calls a heal beam after 2.5s — the healing dominates the
+        # use-case; the incidental magic damage to enemies is negligible
+        # (10% target max HP, CD null in Meraki, per-heal-not-per-auto).
+        note="Redemption: active AoE heal beam (incidental enemy damage; ability-bound); no sustained DPS contribution",
+    ),
+    "3190": ItemEffect(
+        item_id="3190",
+        name="Locket of the Iron Solari",
+        defensive_only=True,
+        note="Locket of the Iron Solari: active AoE shield; no DPS contribution",
+    ),
+    "3504": ItemEffect(
+        item_id="3504",
+        name="Ardent Censer",
+        defensive_only=True,
+        # Healer-triggered AS/on-hit buff to allies. Caster's own AS +
+        # on-hit magic buff applies only after healing/shielding an ally —
+        # not a sustained per-auto DPS proc.
+        note="Ardent Censer: Sanctified (heal/shield triggers AS + on-hit AP buff); no standalone DPS contribution",
+    ),
+    "6616": ItemEffect(
+        item_id="6616",
+        name="Staff of Flowing Water",
+        defensive_only=True,
+        note="Staff of Flowing Water: heal/shield grants Rapids (AP + AH) to allies; no DPS contribution",
+    ),
+    "6620": ItemEffect(
+        item_id="6620",
+        name="Echoes of Helia",
+        defensive_only=True,
+        # Soul Siphon: damage dealt generates Soul Charges used for target
+        # healing pulses. Converts DPS into sustain — not a damage amplifier.
+        note="Echoes of Helia: Soul Siphon (damage → Soul Charges → heal pulses); no DPS contribution",
+    ),
+    "6617": ItemEffect(
+        item_id="6617",
+        name="Moonstone Renewer",
+        defensive_only=True,
+        note="Moonstone Renewer: Starlit Grace (heal chains to nearby allies in combat); no DPS contribution",
+    ),
+    "6621": ItemEffect(
+        item_id="6621",
+        name="Dawncore",
+        defensive_only=True,
+        note="Dawncore: support scaling (AP scales with heal/shield power); no DPS contribution",
+    ),
+    "4005": ItemEffect(
+        item_id="4005",
+        name="Imperial Mandate",
+        defensive_only=True,
+        # Coordinated Fire: ability-CC marks target; ALLIED champion attack
+        # on marked target deals bonus damage. Requires ally proc — not a
+        # self-basic-auto DPS contribution.
+        note="Imperial Mandate: Coordinated Fire (ally proc on CC'd target); no solo DPS contribution",
+    ),
+    "6657": ItemEffect(
+        item_id="6657",
+        name="Rod of Ages",
+        defensive_only=True,
+        # Eternity converts damage taken → mana; mana used → HP. Stacked
+        # passive HP/MP/AP ramping (30 stacks over 6 min). Sustain and
+        # scaling, not a DPS proc.
+        note="Rod of Ages: Eternity (damage→mana, mana→HP sustain ramp); no DPS contribution",
+    ),
+    "3119": ItemEffect(
+        item_id="3119",
+        name="Winter's Approach",
+        defensive_only=True,
+        # 400 HP + 500 mana + 15 AH. Awe (same name as Manamune family):
+        # gain HP = 8% of max mana. HP-conversion, not AD or AP.
+        # Same transformation mechanic as the Manamune family (transforms
+        # into Fimbulwinter at +700 stacked mana); stays defensive_only
+        # because the HP contribution doesn't affect DPS.
+        note="Winter's Approach: Awe (8% max mana as bonus HP); no DPS contribution",
+    ),
+    "3121": ItemEffect(
+        item_id="3121",
+        name="Fimbulwinter",
+        defensive_only=True,
+        # 400 HP + 1000 mana + 15 AH. Post-transformation form of Winter's
+        # Approach. Everfrost passive: first ability hit in combat freezes
+        # target briefly. CC utility, ability-bound — not a per-auto DPS proc.
+        note="Fimbulwinter: Awe (8% max mana as HP) + Everfrost CC on first ability hit (ability-bound utility); no DPS contribution",
+    ),
+    "4401": ItemEffect(
+        item_id="4401",
+        name="Force of Nature",
+        defensive_only=True,
+        # Steadfast: taking magic damage generates stacks (up to 8, +6 MR
+        # each). Resistor: 30 bonus MR at 8 stacks. Pure defensive stacking.
+        note="Force of Nature: Steadfast (MR stacks on magic-damage-taken); no DPS contribution",
+    ),
+    "3116": ItemEffect(
+        item_id="3116",
+        name="Rylai's Crystal Scepter",
+        defensive_only=True,
+        # Rimefrost: ability damage slows by 30% for 1s. CC utility —
+        # not a damage proc (same rule as Stridebreaker's Halting Slash,
+        # Serylda's Bitter Cold).
+        note="Rylai's Crystal Scepter: Rimefrost (ability damage slow); no DPS contribution",
+    ),
+    "6665": ItemEffect(
+        item_id="6665",
+        name="Jak'Sho, The Protean",
+        defensive_only=True,
+        # Voidborn Resilience: gain stacks in combat each second, each granting
+        # 2 armor + 2 MR (up to 8 stacks = 16 armor + 16 MR). Pure defensive.
+        note="Jak'Sho, The Protean: Voidborn Resilience (stacking resists in combat); no DPS contribution",
+    ),
+    "3152": ItemEffect(
+        item_id="3152",
+        name="Hextech Rocketbelt",
+        defensive_only=True,
+        # Active: dash + arc of 7 rockets, each dealing magic damage.
+        # Cooldown null in Meraki bulk (same blocker as other null-CD actives).
+        # Multi-rocket formula doesn't fit the single-proc periodic model
+        # cleanly; the empowered-ability bonus is ability-cast-bound.
+        note="Hextech Rocketbelt: multi-rocket active (null CD in Meraki, multi-projectile formula; ability-cast empowerment not modeled)",
+    ),
+    "3073": ItemEffect(
+        item_id="3073",
+        name="Experimental Hexplate",
+        defensive_only=True,
+        # Overdrive: ult cast triggers 50% bonus AS + 20% bonus MS for 8s
+        # (30s CD). Conditional on ult usage — ability-cast schema blocker,
+        # same rule as Spear of Shojin (batch 16). 30 ult haste is stat-side
+        # only.
+        note="Experimental Hexplate: Overdrive (ult-cast-triggered AS + MS burst); ability-cast schema blocker; no sustained DPS contribution",
+    ),
+    "8020": ItemEffect(
+        item_id="8020",
+        name="Abyssal Mask",
+        defensive_only=True,
+        # Unmake: enemies within 700 units take 12% more magic damage from
+        # ALL sources. This is a team-wide magic-damage amp to the debuffed
+        # target, not a caster-side DPS proc. No magic_amp_pct field in the
+        # current schema (would amplify physical damage too if we reused
+        # damage_amp_pct). Schema bump needed for a magic-only target-debuff
+        # layer; deferred. 650 HP + 300% base MR regen + 25 MR stat block.
+        note="Abyssal Mask: Unmake (12% magic-damage amp to nearby enemies — team debuff, no magic_amp_pct field; deferred to schema bump)",
+    ),
+
 }
 
 

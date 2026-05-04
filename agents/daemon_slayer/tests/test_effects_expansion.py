@@ -3864,5 +3864,133 @@ class CritBonusComposesWithEssenceReaverTests(unittest.TestCase):
         self.assertGreater(er_plus_yt.weighted_dps, er_only.weighted_dps)
 
 
+class DeadMansPlateShipwreckerTests(unittest.TestCase):
+    """Phase 4 batch 31 — Dead Man's Plate Shipwrecker partial promotion.
+
+    Shipwrecker fires every ~4 attacks at full Momentum (100 stacks, 20 bonus MS,
+    damage = 100 + 0.45*20 = 109 physical). Approximation assumes continuous
+    movement in combat; capped Momentum is the sustained-DPS steady state.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_entry_present_and_proc_shape(self) -> None:
+        eff = ITEM_EFFECTS.get("3742")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 1)
+        proc = eff.periodics[0]
+        self.assertEqual(proc.every_n_attacks, 4)
+        self.assertEqual(proc.damage_type, "physical")
+
+    def test_shipwrecker_damage_value(self) -> None:
+        eff = ITEM_EFFECTS["3742"]
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11)
+        self.assertAlmostEqual(eff.periodics[0].resolve_damage(ctx), 109.0, places=1)
+
+    def test_no_unique_passive_key(self) -> None:
+        self.assertEqual(ITEM_EFFECTS["3742"].unique_passive_key, "")
+
+    def test_dps_lift_on_tank_champ(self) -> None:
+        # Sett lvl 11 with Dead Man's vs bare Sett — Shipwrecker should lift DPS.
+        bare = compute_dps(self.snap, "Sett", level=11, item_ids=[])
+        with_dmp = compute_dps(self.snap, "Sett", level=11, item_ids=["3742"])
+        self.assertGreater(with_dmp.weighted_dps, bare.weighted_dps)
+
+    def test_note_surfaces_with_shipwrecker(self) -> None:
+        result = compute_dps(self.snap, "Sett", level=11, item_ids=["3742"])
+        notes = " ".join(result.notes)
+        self.assertIn("Shipwrecker", notes)
+        self.assertIn("109", notes)
+
+
+class SpectralCutlassLethality(unittest.TestCase):
+    """Phase 4 batch 31 — Spectral Cutlass ARAM-only lethality entry.
+
+    15 Lethality (same coefficient as Edge of Night) via the batch-30 schema.
+    ARAM-only item; lethality pipeline applies identically to mode.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_entry_present_and_lethality_value(self) -> None:
+        eff = ITEM_EFFECTS.get("4004")
+        self.assertIsNotNone(eff)
+        self.assertAlmostEqual(eff.lethality, 15.0)
+        self.assertFalse(eff.defensive_only)
+
+    def test_no_proc_no_unique_passive(self) -> None:
+        eff = ITEM_EFFECTS["4004"]
+        self.assertEqual(len(eff.periodics), 0)
+        self.assertEqual(eff.unique_passive_key, "")
+
+    def test_lethality_matches_edge_of_night_coefficient(self) -> None:
+        # Both Spectral Cutlass (4004) and Edge of Night (3814) carry 15 Lethality.
+        self.assertAlmostEqual(
+            ITEM_EFFECTS["4004"].lethality, ITEM_EFFECTS["3814"].lethality
+        )
+
+    def test_pen_pipeline_at_lvl11(self) -> None:
+        # At lvl 11, factor = 0.6 + 0.4*11/18 = 0.844.
+        # 15 × 0.844 = 12.67 flat pen → effective_armor(100) = 87.3.
+        result = compute_dps(self.snap, "Aatrox", level=11, item_ids=["4004"],
+                             target_armor=100.0)
+        notes = " ".join(result.notes)
+        self.assertIn("87.3", notes)
+
+
+class Batch31DefensiveOnlyCoverageTests(unittest.TestCase):
+    """Phase 4 batch 31 — 19 defensive_only support/ramp items.
+
+    Each entry is present, tagged defensive_only=True, has no proc,
+    and carries a one-line note. Coverage-completeness verification only.
+    """
+
+    EXPECTED: dict[str, str] = {
+        "3109": "Knight's Vow",
+        "3222": "Mikael's Blessing",
+        "3107": "Redemption",
+        "3190": "Locket of the Iron Solari",
+        "3504": "Ardent Censer",
+        "6616": "Staff of Flowing Water",
+        "6620": "Echoes of Helia",
+        "6617": "Moonstone Renewer",
+        "6621": "Dawncore",
+        "4005": "Imperial Mandate",
+        "6657": "Rod of Ages",
+        "3119": "Winter's Approach",
+        "3121": "Fimbulwinter",
+        "4401": "Force of Nature",
+        "3116": "Rylai's Crystal Scepter",
+        "6665": "Jak'Sho, The Protean",
+        "3152": "Hextech Rocketbelt",
+        "3073": "Experimental Hexplate",
+        "8020": "Abyssal Mask",
+    }
+
+    def test_all_entries_present_and_defensive(self) -> None:
+        for iid, expected_name in self.EXPECTED.items():
+            with self.subTest(item_id=iid):
+                eff = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(eff, f"{iid} ({expected_name}) missing from ITEM_EFFECTS")
+                self.assertTrue(
+                    eff.defensive_only,
+                    f"{iid} ({expected_name}) should be defensive_only=True"
+                )
+                self.assertEqual(len(eff.periodics), 0,
+                                 f"{iid} ({expected_name}) should have no periodics")
+                self.assertTrue(len(eff.note) > 0,
+                                f"{iid} ({expected_name}) should have a non-empty note")
+
+    def test_defensive_only_count_increased(self) -> None:
+        # After batch 31, defensive_only count is 40 (was 21 pre-batch-29).
+        count = sum(1 for e in ITEM_EFFECTS.values() if e.defensive_only)
+        self.assertGreaterEqual(count, 40)
+
+
 if __name__ == "__main__":
     unittest.main()
