@@ -4925,3 +4925,210 @@ Don't promote Essence Reaver until current-patch Spellblade damage
 formula is verified externally. Don't tag PD as Lifeline (Spectral
 Waltz is distinct). Don't tag Sundered Sky as Spellblade (Lightshield
 Strike is distinct).
+
+---
+
+## s67 hand-off — 2026-05-04 (Phase 4 batch 14: damage_amp_pct schema + Riftmaker)
+
+Single-arc continuation of s66. Picked the s66 #1 candidate
+(damage_amp_pct schema + Riftmaker partial unlock). Twelfth Phase-4
+batch in two days. Operator still idle (LCU phase=None, RC main
+pid=9488 unchanged).
+
+**Pattern decision worth pinning — multiplicative stacking is the
+default for buff-system effects.** Crit damage bonus is summed
+(`total_crit_damage_bonus`); damage amps must NOT be summed. League's
+buff system stacks amps via product-of-(1+amp): two 8% amps yield
+1.08 × 1.08 = 1.1664x, not 1.16x. Pinned this in
+`total_damage_amp_multiplier`'s docstring + a unit test
+(`test_two_amps_stack_multiplicatively`). When the next amp item
+lands (Conqueror as a rune, not yet, but eventually), the wiring
+will already be correct.
+
+**Scope discipline — HP→AP cross-derivation deferred:** Riftmaker
+also has a "convert 100% bonus HP into AP at full stacks" piece.
+That's a separate architectural problem (engine has no AP-from-HP
+bridge) and confused with the damage amp would have ballooned
+this batch's scope. Promoted with the amp piece only; HP→AP carried
+in operational backlog.
+
+**Shipped (commit `ca151e1`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - **ItemEffect schema**: `damage_amp_pct: float = 0.0` field added
+    after `magic_pen_flat`, before `defensive_only`. Inline comment
+    documents multiplicative stacking + sustained-DPS approximation
+    pattern.
+  - **`total_damage_amp_multiplier(effects)`** helper: returns 1.0
+    when no items carry amps; else `∏(1 + amp_i)`. Floor of 1.0
+    matters even when items are present (stat-only / pen-only items
+    skip the multiplication entirely).
+  - **Riftmaker (4633)** promoted: `defensive_only=True` removed,
+    `damage_amp_pct=0.08` added, note rewritten. Inline comment
+    documents the HP→AP separation.
+
+- `agents/daemon_slayer/dps.py`:
+  - Imports `total_damage_amp_multiplier`.
+  - `_rotation_attack_dps` gains `damage_amp: float = 1.0` param;
+    applied to `(base_dps + proc_dps) * damage_amp` at the return
+    (single multiplication covers both AA and procs — in-game amps
+    don't discriminate damage type).
+  - `_phase_weighted_dps` threads `damage_amp` through to rotations.
+  - `compute_dps` computes `damage_amp = total_damage_amp_multiplier(item_effects)`
+    once per call, threads to phase resolver, applies to
+    `avg_attack_dmg` for per-hit display consistency.
+  - Note surfaced: "build damage amp ×1.0800 (+8.00% to all damage)"
+    appears only when `damage_amp != 1.0` — silent on the 99% pre-
+    batch case.
+
+- `agents/daemon_slayer/__init__.py`: docstring narrative refreshed
+  (damage_amp_pct call-out + Riftmaker promotion + 27 → 26
+  defensive_only count); `ENGINE_VERSION 0.20.0 → 0.21.0`.
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - `DefensiveOnlyBatch3Tests.EXPECTED` — Riftmaker (4633) removed
+    (3 entries remaining: Hextech Gunblade, Luden's Echo, Deathfire
+    Grasp). Class docstring updated to point future readers at
+    `RiftmakerPromotionTests`.
+  - `ItemEffect` added to top-level imports (referenced by new test
+    classes).
+  - **`TotalDamageAmpMultiplierTests`** (4 tests) — empty list returns
+    1.0, no-amp items return 1.0, Riftmaker alone returns 1.08, two
+    synthetic amps stack to 1.188 (multiplicative, not 1.18 additive).
+  - **`RiftmakerPromotionTests`** (6 tests) — no-longer-defensive_only,
+    8% amp value pinned, no other proc-shape (sanity: pure amp
+    item), DPS lifts over bare Aatrox, amp ratio is exactly 1.08
+    via synthetic-no-amp comparison, amp note surfaces in
+    DpsResult.notes when amp present, no amp note when amp absent.
+
+**Test state:** 350/350 daemon_slayer tests green (was 340 at end
+of s66; +10 — 6 from `RiftmakerPromotionTests` + 4 from
+`TotalDamageAmpMultiplierTests`). All 340 prior tests stayed green
+unchanged before the new tests were added. py_compile pre-commit
+hook passed.
+
+**Live engine verify (post-restart `schtasks /End` + `/Run`):**
+```
+GET  /health                                              → 0.21.0
+POST /dps {Aatrox, lvl 11}                                → 47.07 (bare; no amp note)
+POST /dps {Aatrox, lvl 11, items:[4633]}                  → 50.83 (was 47.07; ×1.0799 amp)
+POST /dps {Aatrox, lvl 11, items:[4633], target_armor:100}→ 25.42 (47.07/2 × 1.08 = 25.42)
+POST /dps {Aatrox, lvl 11, items:[3031]}                  → 99.94 (IE-only, no amp note)
+POST /dps {Aatrox, lvl 11, items:[3031, 4633]}            → 107.93 (was 99.94; ×1.080)
+```
+
+Math sanity:
+- Aatrox + Riftmaker = 47.07 × 1.08 = 50.84 ≈ 50.83. Riftmaker's
+  stat block is 80 AP + 350 HP + 15 AH — none of which lift
+  Aatrox's auto-attack physical DPS. So the entire 3.76 dps uplift
+  is the amp. ✓ EXACT
+- Per-hit 110.00 → 118.80 = 1.08 EXACT.
+- Aatrox + IE + Riftmaker = 99.94 × 1.08 = 107.94 ≈ 107.93. IE's
+  contribution stacks correctly with the amp; per-hit 233.56 ×
+  1.08 = 252.24 ≈ 252.25. ✓
+- Aatrox + Riftmaker armor=100: 25.42. Bare-Aatrox at armor=100
+  would be 47.07 × 0.5 (armor factor 100/(100+100)) = 23.54.
+  Then × 1.08 = 25.42. ✓ EXACT
+- Aatrox + IE only: weighted 99.94, no amp note. Aatrox bare:
+  weighted 47.07, no amp note. ✓ Note suppression works.
+
+**Coverage delta:** ITEM_EFFECTS unchanged at 54 entries (Riftmaker
+existed already as defensive_only). Defensive_only count drops
+27 → 26.
+
+**Decisions worth pinning:**
+- **Multiplicative > additive for damage amps.** League stacks
+  buff-system amps multiplicatively; the engine matches. Crit
+  damage stacks additively (different system — crit damage bonuses
+  ARE summed in-game), so don't conflate the two patterns.
+- **Single multiplication at the rotation return covers both AA
+  and procs.** Procs already feed into the rotation total via
+  `_periodic_proc_dps`; multiplying the combined `(base_dps +
+  proc_dps)` by `damage_amp` once is cleaner than threading the
+  amp into the proc helper. It matches in-game behavior — Riftmaker
+  amps "all damage to champions while in combat", not selectively.
+- **Per-hit display value reflects the amp.** Without this,
+  `avg_attack_dmg` would diverge from `weighted_dps / sustained_attacks`
+  arithmetic and confuse /dps clients. Same multiplier, applied
+  symmetrically.
+- **Floor-1.0 default keeps the helper safe.** Iterating over a
+  single empty list returns 1.0 (the multiplicative identity),
+  so callers can use the helper unconditionally without
+  branch-on-empty.
+- **8% is the sustained-DPS pin, not burst.** Riftmaker ramps over
+  4 seconds. In burst rotations <4s, the real amp is 0-7%. The
+  engine models sustained DPS, so steady-state full-stacks is
+  the right pin (mirrors Black Cleaver's "30% at 5 stacks
+  sustained" approximation).
+
+**Things tomorrow-you should NOT redo:**
+- Don't sum damage amps. Multiplicative stacking is wired correctly
+  and matches in-game; switching to additive would silently
+  miscalculate two-amp stacks. The unit test
+  `test_two_amps_stack_multiplicatively` will catch regressions.
+- Don't apply the amp to `raw_attack_dps`. That's the pre-resists
+  pre-mode AD * AS * crit reference value used by callers that
+  want the engine's "before everything else" baseline. Adding amps
+  there would break the contract.
+- Don't try to model Riftmaker's HP→AP at full stacks until the
+  engine grows an AP-from-HP bridge. The 8% amp captures the
+  bigger of the two effects in DPS terms; HP→AP can compound on
+  top in a future batch.
+- Don't bump CoverageCountTests floor past 54. Promotion didn't
+  add table entries.
+- Don't rename `damage_amp` to `dmg_amp_factor` or similar mid-
+  flight; keep the name short — every dps.py signature touches it.
+
+**Activation:** Engine on :8893 already at 0.21.0 (this session
+restarted it). No further action needed.
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true (no Legion main-RC restart this session;
+RC-DaemonSlayer bounced for the 12th time today). Engine on :8893 =
+0.21.0 live. LCU phase=None (no game in progress). Working tree
+clean except runtime `data/ratings/last_*.json` mutations.
+
+**Operational backlog (carried + new):**
+- All s54-s66 backlog items unchanged.
+- **Conqueror rune amp wiring** (NEW from s67). Conqueror is a rune,
+  not an item, so it's outside `ITEM_EFFECTS`. When the engine
+  grows a rune layer, Conqueror's stacked-amp would feed through
+  `total_damage_amp_multiplier` cleanly — multiplicative stacking
+  with Riftmaker is already correct. Document in the rune-layer
+  design when scoped.
+- **Riftmaker HP→AP cross-derivation** (carried from s66). Riftmaker's
+  passive at full stacks converts 100% bonus HP into AP. Engine has
+  no AP-from-HP bridge. Architectural decision: where does the
+  conversion live (stats.aggregate? a new effect-side hook?) and
+  how does it interact with caster_max_hp / caster_bonus_hp from
+  batch 6? Worth its own batch.
+- **Essence Reaver Spellblade verification** (carried from s66).
+- **defensive_only audit ledger** (from s66) still valid: 26
+  entries remaining post-Riftmaker, all 10 categories unchanged.
+
+**Next-session candidates (ranked):**
+1. **Phase 4 batch 15: scope decision** (NEW from s67). The
+   defensive_only pool is mostly architecturally-blocked (active
+   items, lifeline shields, executes). Promoting more requires
+   schema additions (target HP-pct chunking, damage-storage
+   modeling, ability-bound proc layer). Worth a one-session
+   architectural-audit hand-off before diving into batch 15 —
+   pick the highest-value schema add and scope it. Likely
+   candidates:
+   - **damage-storage modeling** (Death's Dance) — store damage
+     per second, release over 3s. Spread-not-amplify, so net DPS
+     is zero but encounter-shape changes; arguable whether worth
+     modeling.
+   - **active-item rotation** (Stridebreaker, Youmuu's, Hextech
+     Gunblade, Zhonya's, Mercurial Scimitar) — fire-once-per-CD
+     items. Different shape from periodic procs; needs an
+     "active" hook that fires once per rotation duration ≥ CD.
+2. **Phase 4 batch 9-alt: aggregate-stat extension hook refactor**
+   (carried). Pure cleanup; defer until friction.
+3. **First draft visual verify of P8-5.5** (carried).
+4. **gamepc_boot.ps1 patch** (carried). 1-liner.
+5. **P8-7 E2E push-to-League integration test** (carried).
+6. **Activate arena augment v2 in production** (carried).
+7. **Riftmaker HP→AP cross-derivation** (carried — will compound
+   on top of batch 14's amp; not blocked by batch 15).
+8. **Per-target-HP-pct field** (carried; defer until caller demands).
