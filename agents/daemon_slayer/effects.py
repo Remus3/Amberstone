@@ -91,6 +91,15 @@ class CallContext:
     caster_max_hp: float = 0.0
     caster_bonus_hp: float = 0.0
     targets_in_rotation: float = 1.0
+    # Phase 4 batch 19 (2026-05-04): caller-supplied target bonus HP —
+    # same shape as target_max_hp (default 0.0 = "caller didn't say").
+    # Required for target-conditional amp items (LDR Giant Slayer scales
+    # with the enemy's bonus HP only). Distinct from target_max_hp
+    # because base HP varies per-target (Aatrox lvl 11 base ≈ 1790, but
+    # an enemy Cho'Gath mid-game may have 1500 base HP); the engine
+    # can't infer it without naming the target. Procs that key on this
+    # field gracefully no-op when the caller leaves it at 0.
+    target_bonus_hp: float = 0.0
 
 
 # Scaling-damage callable type. Float still works as a constant.
@@ -184,6 +193,18 @@ class ItemEffect:
     # only; the cross-derivation is computed at DPS time and surfaced
     # in DpsResult.notes when non-zero.
     ap_per_bonus_hp_pct: float = 0.0
+    # Phase 4 batch 19 (2026-05-04): target-conditional damage amp —
+    # scales linearly from 0 to ``target_bonus_hp_amp_max_pct`` as the
+    # caller-supplied ``target_bonus_hp`` rises from 0 to
+    # ``target_bonus_hp_amp_cap``, then caps. LDR Giant Slayer:
+    # max_pct=0.15, cap=1500 (DDragon: "up to 15% bonus damage,
+    # maximum reached at 1500 bonus Health"). Stacks multiplicatively
+    # with damage_amp_pct (League's buff system pin from batch 14).
+    # Both fields default 0.0 — items without target-conditional amps
+    # contribute nothing to the multiplier. Caller leaves
+    # CallContext.target_bonus_hp at 0 → amp resolves to 0 (back-compat).
+    target_bonus_hp_amp_max_pct: float = 0.0
+    target_bonus_hp_amp_cap: float = 0.0
     defensive_only: bool = False     # documents "no DPS effect" entries
     note: str = ""                   # one-line summary surfaced in DpsResult.notes
     # Phase 4 batch 10 (2026-05-04): unique-passive de-duplication.
@@ -372,15 +393,16 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="3036",
         name="Lord Dominik's Regards",
         armor_pen_pct=0.35,
-        # Phase 4 batch 16 (2026-05-04): note expanded against DDragon
-        # snapshot. Armor pen is the modeled piece (engine pipeline ✓).
-        # The unmodeled piece is "Giant Slayer" — up to 15% bonus damage
-        # against champions, scaling with their bonus HP, maxing at
-        # 1500 bonus HP. This is a target-bonus-HP-conditioned damage
-        # amp; engine has target_max_hp but no target_BONUS_hp signal
-        # (caller would need to subtract champion-base HP at level).
-        # Schema add candidate when LDR builds become first-class.
-        note="Lord Dominik's Regards: 35% armor pen (physical) + Giant Slayer up to 15% damage vs high-bonus-HP targets (target-bonus-HP not modeled)",
+        # Phase 4 batch 19 (2026-05-04): Giant Slayer promoted via the
+        # target-conditional amp schema. DDragon: "Deal up to 15% bonus
+        # damage against champions based on their bonus Health. Maximum
+        # damage bonus reached at 1500 bonus Health." Caller supplies
+        # target_bonus_hp; engine scales linearly to 15% at 1500, then
+        # caps. Stacks multiplicatively with damage_amp_pct items
+        # (Riftmaker, future Conqueror-style amps).
+        target_bonus_hp_amp_max_pct=0.15,
+        target_bonus_hp_amp_cap=1500.0,
+        note="Lord Dominik's Regards: 35% armor pen (physical) + Giant Slayer up to 15% damage scaling with target_bonus_hp (capped at 1500)",
     ),
     "3033": ItemEffect(
         item_id="3033",
@@ -949,6 +971,40 @@ def total_damage_amp_multiplier(effects: Iterable[ItemEffect]) -> float:
     for e in effects:
         if e.damage_amp_pct:
             factor *= (1.0 + e.damage_amp_pct)
+    return factor
+
+
+def total_target_bonus_hp_amp_multiplier(
+    effects: Iterable[ItemEffect],
+    target_bonus_hp: float,
+) -> float:
+    """Target-conditional multiplicative amp factor (Phase 4 batch 19).
+
+    Each item with a non-zero ``target_bonus_hp_amp_max_pct`` contributes
+    ``min(max_pct, max_pct * target_bonus_hp / cap)``: a linear ramp from
+    0 to ``max_pct`` that caps once the target's bonus HP reaches
+    ``cap``. LDR Giant Slayer is the canonical example — 0% at 0 bonus
+    HP, 7.5% at 750, 15% at 1500, 15% past 1500.
+
+    Stacks multiplicatively with ``total_damage_amp_multiplier`` per
+    League's buff-system semantics (batch 14 doctrine). Returns 1.0
+    when ``target_bonus_hp <= 0`` OR when no item carries the field —
+    pre-batch-19 callers (no target_bonus_hp signal) and pre-batch-19
+    builds (no Giant Slayer) both pass through unchanged.
+
+    ``cap <= 0`` is treated as "no scaling defined" and contributes 0
+    (defensive guard against partial item entries).
+    """
+    if target_bonus_hp <= 0:
+        return 1.0
+    factor = 1.0
+    for e in effects:
+        max_pct = e.target_bonus_hp_amp_max_pct
+        cap = e.target_bonus_hp_amp_cap
+        if max_pct <= 0 or cap <= 0:
+            continue
+        ramp = min(1.0, target_bonus_hp / cap)
+        factor *= (1.0 + max_pct * ramp)
     return factor
 
 
