@@ -73,6 +73,42 @@ class AugmentStatOverlayTests(unittest.TestCase):
         totals = compute_augment_stats(["ApexInventor"], self.snap)
         self.assertEqual(totals, {})
 
+    def test_its_critical_grants_crit(self) -> None:
+        totals = compute_augment_stats(["ItsCritical"], self.snap)
+        self.assertEqual(totals.get("crit"), 0.5)
+
+    def test_jeweled_gauntlet_grants_crit(self) -> None:
+        totals = compute_augment_stats(["JeweledGauntlet"], self.snap)
+        self.assertEqual(totals.get("crit"), 0.25)
+
+    def test_critical_healing_grants_crit(self) -> None:
+        totals = compute_augment_stats(["CriticalHealing"], self.snap)
+        self.assertEqual(totals.get("crit"), 0.25)
+
+    def test_soul_siphon_grants_crit(self) -> None:
+        totals = compute_augment_stats(["SoulSiphon"], self.snap)
+        self.assertEqual(totals.get("crit"), 0.25)
+
+    def test_vulnerability_grants_crit(self) -> None:
+        totals = compute_augment_stats(["Vulnerability"], self.snap)
+        self.assertEqual(totals.get("crit"), 0.25)
+
+    def test_tank_it_or_leave_it_grants_crit(self) -> None:
+        totals = compute_augment_stats(["TankItOrLeaveIt"], self.snap)
+        self.assertEqual(totals.get("crit"), 0.25)
+
+    def test_leg_day_grants_flat_ms(self) -> None:
+        totals = compute_augment_stats(["LegDay"], self.snap)
+        self.assertEqual(totals.get("ms"), 10.0)
+
+    def test_stacked_crit_augments_sum_in_overlay(self) -> None:
+        # Overlay aggregator sums; engine caps at 1.0 separately.
+        totals = compute_augment_stats(
+            ["ItsCritical", "JeweledGauntlet", "Vulnerability", "SoulSiphon"],
+            self.snap,
+        )
+        self.assertAlmostEqual(totals["crit"], 0.5 + 0.25 + 0.25 + 0.25)
+
     def test_multiple_augments_sum(self) -> None:
         totals = compute_augment_stats(
             ["TheBrutalizer", "CelestialBody", "WitchfulThinking"],
@@ -152,6 +188,36 @@ class EngineIntegrationTests(unittest.TestCase):
         )
         d = r.to_dict()
         self.assertEqual(d["augments"], ["TheBrutalizer", "WitchfulThinking"])
+
+    def test_its_critical_adds_crit_to_resolved(self) -> None:
+        from agents.daemon_slayer.engine import build_champion
+        bare = build_champion(self.snap, "Jinx", level=11, mode="ARENA")
+        with_aug = build_champion(
+            self.snap, "Jinx", level=11, mode="ARENA",
+            augments=["ItsCritical"],
+        )
+        self.assertAlmostEqual(with_aug.stats["crit"] - bare.stats["crit"], 0.5)
+
+    def test_leg_day_adds_flat_ms_to_resolved(self) -> None:
+        from agents.daemon_slayer.engine import build_champion
+        bare = build_champion(self.snap, "Garen", level=11, mode="ARENA")
+        with_aug = build_champion(
+            self.snap, "Garen", level=11, mode="ARENA",
+            augments=["LegDay"],
+        )
+        self.assertAlmostEqual(with_aug.stats["ms"] - bare.stats["ms"], 10.0)
+
+    def test_stacked_crit_augments_cap_at_one(self) -> None:
+        # ItsCritical(0.5) + JeweledGauntlet(0.25) + Vulnerability(0.25) +
+        # SoulSiphon(0.25) = 1.25 in overlay, but engine must cap at 1.0
+        # to keep DPS calc honest.
+        from agents.daemon_slayer.engine import build_champion
+        r = build_champion(
+            self.snap, "Aatrox", level=11, mode="ARENA",
+            augments=["ItsCritical", "JeweledGauntlet",
+                      "Vulnerability", "SoulSiphon"],
+        )
+        self.assertEqual(r.stats["crit"], 1.0)
 
 
 if __name__ == "__main__":
