@@ -21,6 +21,7 @@ from agents.daemon_slayer.effects import (
     PHYSICAL,
     PeriodicProc,
     effective_target_armor,
+    effective_target_mr,
 )
 
 
@@ -438,21 +439,25 @@ class SpellbladeAndOnHitApTests(unittest.TestCase):
 
 
 class DefensiveOnlyBatch3Tests(unittest.TestCase):
-    """Phase 4 batch 3 (2026-05-04) — 5 AP-stat siblings without DPS proc.
+    """Phase 4 batch 3 (2026-05-04) — 4 AP-stat siblings without DPS proc.
 
     Hextech Gunblade (3146) / Luden's Echo (6655) / Riftmaker (4633) /
-    Shadowflame (4645) / Deathfire Grasp (3128). All carry AP stat
-    blocks but their effects don't fit the periodic/on-hit shape:
-    active utilities, ability-bound bolts, combat-state amps, and
-    %-current-HP magic crits. Pinned here so future hooks (target HP,
-    combat-state amp) can find them via grep.
+    Deathfire Grasp (3128). All carry AP stat blocks but their effects
+    don't fit the periodic/on-hit shape: active utilities, ability-bound
+    bolts, combat-state amps, and active %-target-max-HP. Pinned here
+    so future hooks (target HP, combat-state amp) can find them via
+    grep.
+
+    Note: Shadowflame (4645) shipped batch 3 as defensive_only but
+    promoted in batch 4 — its 15 flat magic pen IS modeled by the new
+    pipeline (the unmodeled piece is the magic-crit-on-low-HP). So
+    it now lives in MagicPenItemTests, not here.
     """
 
     EXPECTED = {
         "3146": "Hextech Gunblade",
         "6655": "Luden's Echo",
         "4633": "Riftmaker",
-        "4645": "Shadowflame",
         "3128": "Deathfire Grasp",
     }
 
@@ -479,15 +484,152 @@ class DefensiveOnlyBatch3Tests(unittest.TestCase):
             )
 
 
+class EffectiveTargetMrTests(unittest.TestCase):
+    """Phase 4 batch 4 — % magic pen → flat magic pen pipeline."""
+
+    def test_no_effects_passthrough(self) -> None:
+        self.assertEqual(effective_target_mr(60.0, []), 60.0)
+
+    def test_no_effects_preserves_negative(self) -> None:
+        # Negative MR (test harnesses, external shred) passes through.
+        self.assertEqual(effective_target_mr(-100.0, []), -100.0)
+
+    def test_negative_mr_no_op_with_pen(self) -> None:
+        void = ITEM_EFFECTS["3135"]
+        self.assertEqual(effective_target_mr(-50.0, [void]), -50.0)
+
+    def test_void_staff_applies_40pct_pen(self) -> None:
+        void = ITEM_EFFECTS["3135"]
+        self.assertAlmostEqual(effective_target_mr(100.0, [void]), 60.0, places=3)
+
+    def test_cryptbloom_applies_30pct_pen(self) -> None:
+        crypt = ITEM_EFFECTS["3137"]
+        self.assertAlmostEqual(effective_target_mr(100.0, [crypt]), 70.0, places=3)
+
+    def test_sorcerers_shoes_12_flat_pen(self) -> None:
+        sorc = ITEM_EFFECTS["3020"]
+        self.assertAlmostEqual(effective_target_mr(50.0, [sorc]), 38.0, places=3)
+
+    def test_shadowflame_15_flat_pen(self) -> None:
+        sf = ITEM_EFFECTS["4645"]
+        self.assertAlmostEqual(effective_target_mr(50.0, [sf]), 35.0, places=3)
+
+    def test_void_then_sorc_compose(self) -> None:
+        # 100 → 60 (Void 40%) → 48 (Sorc 12 flat).
+        void = ITEM_EFFECTS["3135"]
+        sorc = ITEM_EFFECTS["3020"]
+        self.assertAlmostEqual(effective_target_mr(100.0, [void, sorc]), 48.0, places=3)
+
+    def test_floors_at_zero(self) -> None:
+        # Stack flat pen big enough to push below zero → floored.
+        from agents.daemon_slayer.effects import ItemEffect
+        flat = ItemEffect(item_id="x", name="x", magic_pen_flat=200.0)
+        self.assertEqual(effective_target_mr(50.0, [flat]), 0.0)
+
+
+class MagicPenItemTests(unittest.TestCase):
+    """Magic-pen items raise DPS for magical procs against an MR'd target."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_void_staff_raises_dps_via_lich_bane(self) -> None:
+        # Lich Bane proc is magical → MR-sensitive. Vs 100 MR target,
+        # Void Staff's 40% pen should lift the proc damage.
+        no_void = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3100"], target_mr=100.0,
+        )
+        with_void = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3100", "3135"], target_mr=100.0,
+        )
+        self.assertGreater(with_void.weighted_dps, no_void.weighted_dps)
+
+    def test_void_staff_no_proc_effect_vs_zero_mr(self) -> None:
+        # Vs 0 MR, pen does nothing — only Void's stat block contributes.
+        bare = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3100"])
+        with_void = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3100", "3135"],
+        )
+        # Stat block alone (95 AP) lifts the Lich Bane proc — assert >.
+        self.assertGreater(with_void.weighted_dps, bare.weighted_dps)
+        # And note no MR-pen note surfaces when target_mr=0.
+        joined = " ".join(with_void.notes)
+        self.assertNotIn("effective target MR", joined)
+
+    def test_cryptbloom_raises_dps_via_nashors(self) -> None:
+        no_crypt = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3115"], target_mr=100.0,
+        )
+        with_crypt = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3115", "3137"], target_mr=100.0,
+        )
+        self.assertGreater(with_crypt.weighted_dps, no_crypt.weighted_dps)
+
+    def test_sorcerers_shoes_raises_dps(self) -> None:
+        bare_proc = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3115"], target_mr=50.0,
+        )
+        with_sorc = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3115", "3020"], target_mr=50.0,
+        )
+        self.assertGreater(with_sorc.weighted_dps, bare_proc.weighted_dps)
+
+    def test_shadowflame_promoted_not_defensive_only(self) -> None:
+        # Shadowflame shipped batch 3 as defensive_only; batch 4 promoted
+        # it to magic_pen_flat=15. Documents the schema-promotion path.
+        e = ITEM_EFFECTS["4645"]
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(e.magic_pen_flat, 15.0)
+        self.assertIn("magic pen", e.note.lower())
+
+    def test_shadowflame_raises_dps_via_nashors(self) -> None:
+        no_sf = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3115"], target_mr=50.0,
+        )
+        with_sf = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3115", "4645"], target_mr=50.0,
+        )
+        self.assertGreater(with_sf.weighted_dps, no_sf.weighted_dps)
+
+    def test_mr_pen_note_surfaces_when_mr_reduced(self) -> None:
+        with_void = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3115", "3135"], target_mr=100.0,
+        )
+        joined = " ".join(with_void.notes)
+        self.assertIn("effective target MR", joined)
+        self.assertIn("60.0", joined)  # 100 * (1 - 0.40) = 60
+
+    def test_mr_pen_note_absent_when_no_mr_modifier(self) -> None:
+        bare = compute_dps(self.snap, "Aatrox", level=11, target_mr=100.0)
+        joined = " ".join(bare.notes)
+        self.assertNotIn("effective target MR", joined)
+
+    def test_armor_pen_unaffected_by_magic_pen_layer(self) -> None:
+        # Sanity: physical pen pipeline is independent of magic pen.
+        ldr = ITEM_EFFECTS["3036"]
+        # Even when MR pen is present, armor pen still resolves correctly.
+        with_both = compute_dps(
+            self.snap, "Aatrox", level=11,
+            item_ids=["3036", "3135"],
+            target_armor=100.0, target_mr=100.0,
+        )
+        joined = " ".join(with_both.notes)
+        self.assertIn("effective target armor", joined)
+        self.assertIn("effective target MR", joined)
+
+
 class CoverageCountTests(unittest.TestCase):
     """Sanity: ITEM_EFFECTS keeps growing.
 
-    5 thin slice + 25 expansion + 10 batch 2 + 7 batch 3 = 47.
+    5 thin slice + 25 expansion + 10 batch 2 + 6 batch 3 + 4 batch 4 = 50.
+    Batch 3 originally landed 7 items but Shadowflame (4645) promoted in
+    batch 4, leaving 6 net batch-3 entries here.
     """
 
     def test_table_size_at_phase_4_expansion(self) -> None:
         # Lower bound: no regressions removed entries.
-        self.assertGreaterEqual(len(ITEM_EFFECTS), 47)
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 50)
 
 
 if __name__ == "__main__":

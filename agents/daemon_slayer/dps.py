@@ -30,6 +30,7 @@ from .effects import (
     PHYSICAL,
     collect_effects,
     effective_target_armor,
+    effective_target_mr,
     total_crit_damage_bonus,
 )
 from .engine import build_champion
@@ -306,10 +307,11 @@ def compute_dps(
     item_effects = collect_effects(resolved.item_ids)
     crit_bonus = DEFAULT_CRIT_BONUS + total_crit_damage_bonus(item_effects)
 
-    # Phase 4 expansion: armor reduction + pen pipeline. Magic resist
-    # has no equivalent layer yet (no magic-pen items in ITEM_EFFECTS;
-    # none of the defensive_only entries carry one either).
+    # Phase 4 expansion: armor reduction + pen pipeline. Phase 4 batch 4
+    # (2026-05-04) added the symmetric magic pen pipeline (Void Staff,
+    # Cryptbloom, Sorcerer's Shoes, Shadowflame).
     target_armor_eff = effective_target_armor(target_armor, item_effects)
+    target_mr_eff = effective_target_mr(target_mr, item_effects)
 
     # Build call context once per compute_dps. base_ad comes from the
     # leveled champion base (pre-items); bonus_ad is total - base.
@@ -322,14 +324,14 @@ def compute_dps(
         bonus_ad=bonus_ad,
         level=level,
         target_armor=target_armor_eff,
-        target_mr=target_mr,
+        target_mr=target_mr_eff,
         ap=ap,
     )
 
     rotations_by_phase = _phase_rotations(snapshot, resolved.champion_id)
     phase_dps = {
         p: _phase_weighted_dps(
-            stats, rotations_by_phase[p], target_armor_eff, target_mr,
+            stats, rotations_by_phase[p], target_armor_eff, target_mr_eff,
             mode_mult, crit_bonus, item_effects, call_ctx,
         )
         for p in PHASES
@@ -349,6 +351,11 @@ def compute_dps(
         notes.append(
             f"effective target armor {target_armor:.1f} → {target_armor_eff:.1f}"
             " after reduction + pen"
+        )
+    if target_mr_eff != target_mr:
+        notes.append(
+            f"effective target MR {target_mr:.1f} → {target_mr_eff:.1f}"
+            " after magic pen"
         )
     for e in item_effects:
         if e.note:

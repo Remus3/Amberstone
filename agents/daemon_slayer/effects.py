@@ -130,6 +130,13 @@ class ItemEffect:
     armor_reduction_pct: float = 0.0   # Black Cleaver: 0.30 sustained
     armor_pen_pct: float = 0.0         # LDR: 0.35; MR: 0.30
     armor_pen_flat: float = 0.0        # lethality flat (rare standalone)
+    # Magic-damage modifiers (Phase 4 batch 4, 2026-05-04) — applied to
+    # ``target_mr`` symmetrically. No MR-reduction layer in current
+    # League patch (no magic-side Black Cleaver), so % pen lands first
+    # and flat pen subtracts after. Add ``mr_reduction_pct`` here when
+    # the first item demands it — same layering rules.
+    magic_pen_pct: float = 0.0         # Void Staff: 0.40; Cryptbloom: 0.30
+    magic_pen_flat: float = 0.0        # Sorc's Shoes: 12; Shadowflame: 15
     defensive_only: bool = False     # documents "no DPS effect" entries
     note: str = ""                   # one-line summary surfaced in DpsResult.notes
 
@@ -518,17 +525,43 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         defensive_only=True,
         note="Riftmaker: combat-state damage amp (up to 8% bonus dmg after 4s); not modeled in Phase 4",
     ),
-    "4645": ItemEffect(
-        item_id="4645",
-        name="Shadowflame",
-        defensive_only=True,
-        note="Shadowflame: magic crit on targets <40% HP (target HP not modeled in Phase 4)",
-    ),
     "3128": ItemEffect(
         item_id="3128",
         name="Deathfire Grasp",
         defensive_only=True,
         note="Deathfire Grasp: active 15% target max HP (target HP not modeled in Phase 4)",
+    ),
+
+    # ── Phase 4 batch 4 (2026-05-04): magic pen layer ──
+    # Symmetric to the armor pen pipeline. Void Staff / Cryptbloom carry
+    # % pen; Sorcerer's Shoes / Shadowflame carry flat pen. Shadowflame
+    # also has a magic-crit-on-low-HP effect (target HP not modeled in
+    # Phase 4); the 15 flat pen IS modeled here, so it's no longer
+    # defensive_only — the pen contribution alone is real DPS uplift.
+
+    "3135": ItemEffect(
+        item_id="3135",
+        name="Void Staff",
+        magic_pen_pct=0.40,
+        note="Void Staff: 40% magic pen (magical)",
+    ),
+    "3137": ItemEffect(
+        item_id="3137",
+        name="Cryptbloom",
+        magic_pen_pct=0.30,
+        note="Cryptbloom: 30% magic pen + Life from Death heal-on-takedown (heal not DPS-modeled)",
+    ),
+    "3020": ItemEffect(
+        item_id="3020",
+        name="Sorcerer's Shoes",
+        magic_pen_flat=12.0,
+        note="Sorcerer's Shoes: 12 flat magic pen",
+    ),
+    "4645": ItemEffect(
+        item_id="4645",
+        name="Shadowflame",
+        magic_pen_flat=15.0,
+        note="Shadowflame: 15 flat magic pen + Cinderbloom magic crit <40% HP (target HP not modeled)",
     ),
 }
 
@@ -584,3 +617,30 @@ def effective_target_armor(target_armor: float, effects: Iterable[ItemEffect]) -
     armor = armor * (1.0 - pen_pct)
     armor = armor - pen_flat
     return max(0.0, armor)
+
+
+def effective_target_mr(target_mr: float, effects: Iterable[ItemEffect]) -> float:
+    """Apply % magic pen → flat magic pen pipeline.
+
+    Mirrors League's order on the magic side: ``magic_pen_pct`` (Void
+    Staff, Cryptbloom) reduces MR first, then ``magic_pen_flat``
+    (Sorcerer's Shoes, Shadowflame) subtracts. No MR-reduction layer
+    in the current patch (no magic-side Black Cleaver); add when the
+    first item demands it. Result floors at zero — magic damage
+    against zero-MR uses the same ``armor=0`` factor (1.0) via
+    ``_armor_factor`` (which is shared between damage types).
+
+    Effects without magic-pen modifiers contribute nothing here.
+    Negative MR (external shred, MR-curve tests) passes through —
+    pen items don't amplify beyond what the shred already gave.
+    """
+    eff_list = list(effects)
+    pen_pct = sum(e.magic_pen_pct for e in eff_list)
+    pen_flat = sum(e.magic_pen_flat for e in eff_list)
+    if not (pen_pct or pen_flat):
+        return target_mr
+    if target_mr < 0:
+        return target_mr
+    mr = target_mr * (1.0 - pen_pct)
+    mr = mr - pen_flat
+    return max(0.0, mr)
