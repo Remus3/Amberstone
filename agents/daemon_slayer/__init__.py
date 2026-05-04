@@ -188,7 +188,19 @@ Sanguine Blade (228006), Runeglaive (228008), Shield of Molten Stone (443058),
 Cloak of Starry Night (443059), Force of Entropy (443061), Sanguine Gift (443062),
 Eleisa's Miracle (443063), Talisman of Ascension (443064), Turbo Chemtank (443079),
 Twin Mask (443080), Hexbolt Companion (443081), Gargoyle Stoneplate (443193),
-Protoplasm Harness (2525, lifeline unique-passive), Randuin's Omen (3143)]).
+Protoplasm Harness (2525, lifeline unique-passive), Randuin's Omen (3143)]). Phase 4 batch 39 MR-reduction schema + Arena re-skin
+sweep (2026-05-04 — new ``ItemEffect.mr_reduction_pct`` field wired into
+``effective_target_mr`` before % pen step, mirroring the armor-side
+``armor_reduction_pct`` layer; 5 active promotions: Bloodletter's Curse (4010)
+mr_reduction_pct=0.30 [4×7.5% Vile Decay stacks], Divine Sunderer Arena (446632)
+Spellblade 180% base AD + 2% target max HP [higher base-AD coefficient than SR
+6632; unique_passive_key spellblade], Overlord's Bloodmail Arena (447111)
+bonus_ad_pct_bonus_hp=0.03 [Tyranny 3% vs SR's 2.5%], Atma's Reckoning (663039)
+crit_chance_bonus_max_pct=0.30 [same coefficients as SR 3039], Hextech Gunblade
+(663146) Lightning Bolt same formula as SR 3146; 7 defensive_only: Night Harvester
+(444636), Demonic Embrace Arena (444637), Duskblade Arena (446691), Radiant Virtue
+(446667), Warmog's Armor Arena (443083), Demon King's Crown (663056), Sword of
+Blossoming Dawn (4011)).
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
 ``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation`` /
@@ -204,4 +216,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.42.0"
+ENGINE_VERSION = "0.43.0"
