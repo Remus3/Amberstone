@@ -8631,4 +8631,243 @@ narrow enough to live in this hand-off + the field comment block.
 **Full coach activation matrix as of s84:** unchanged from s83 —
 this batch was engine-side only.
 
+## s85 hand-off — 2026-05-04 (Phase 4 batch 29: coverage batch — 4 defensive_only + 2 partial promotions)
+
+Single-arc continuation from s84. Took s84's #1 candidate (defensive_only
+coverage batch) and discovered 2 of the 6 candidates fit existing
+schema cleanly — partial-promoted them rather than tagging defensive_only.
+Mixed-shape batch: 4 defensive_only + 2 partial promotions, no new
+schema, just reuse of `damage_amp_pct` (batch 14) and `magic_pen_flat`
+(batch 4). First batch since 24 to NOT introduce a new schema field.
+
+**Engine: 0.32.0 → 0.33.0.** Tests: 489 → 502 (+13, no inversions).
+Phase8 smoke 75/75 once `RC-DaemonSlayer` bounced. defensive_only count
+21 → 25.
+
+**Pattern decision worth pinning — coverage batches surface "what's
+in the description but not in the stat block."** When DDragon's
+`stats` dict is sparse but the description text carries DPS-positive
+numbers (Hubris's 18 Lethality, Stormsurge's 15 magic pen), those
+contributions are missing from the engine until pinned via ItemEffect.
+The stats block is the wrong source of truth for coverage assertions —
+the description text is. This pattern surfaces in:
+- Lethality items: stats block has only AD/AH; lethality lives in
+  prose. ALL lethality items in current ITEM_EFFECTS share this gap.
+- Magic pen items: same. Sorcerer's Shoes / Shadowflame / Stormsurge
+  pin via `magic_pen_flat`.
+- Other "described-but-not-stated" stats: TBD. A future audit could
+  grep the descriptions for stat-keywords (Lethality, Magic Pen,
+  CDR, Tenacity, etc.) and surface unmodeled gaps.
+
+**Pattern decision worth pinning — Lethality plumbing is a separate
+batch concern.** 7 lethality items share one gap (level-scaled flat
+pen). Current `armor_pen_flat` is a constant; real League formula
+is `lethality × (0.6 + 0.4 × level/18)`. Fix would be either:
+(a) move `armor_pen_flat` to a callable taking `level`, or
+(b) add a separate `lethality` field that resolves to flat_pen at
+runtime via a helper. Affected items: Hubris (18), Voltaic
+Cyclosword (18), Edge of Night (10), Youmuu's (18), Opportunity
+(18), Axiom Arc (18), Umbral Glaive (18). When this batch lands,
+Hubris and 6 other items get accurate pen pipelines.
+
+**Pattern decision worth pinning — partial promotion is OK in a
+"defensive_only coverage" batch.** When the candidate carries both
+unmodeled-because-ability-bound pieces AND clean-fit schema pieces
+(Liandry's Torment burn vs Suffering, Stormsurge Stormraider vs
+flat magic pen), tag the unmodeled pieces in the note and promote
+the schema-fit pieces. Don't artificially constrain the batch to
+defensive_only-only — accuracy beats batch homogeneity.
+
+**Shipped (commit `6e890f0`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - **Hubris (6697)** new entry, defensive_only=True. Eminence
+    takedown-bound + 18 Lethality flagged for future plumbing batch.
+  - **Spirit Visage (3065)** new entry, defensive_only=True.
+    Boundless Vitality heal/shield amp.
+  - **Kaenic Rookern (2504)** new entry, defensive_only=True.
+    Magebane magic shield.
+  - **Cosmic Drive (4629)** new entry, defensive_only=True.
+    Spelldance MS proc.
+  - **Liandry's Torment (6653)** new entry, damage_amp_pct=0.06
+    (Suffering 6% at full ramp). Torment burn not-modeled.
+  - **Stormsurge (4646)** new entry, magic_pen_flat=15.0. Stormraider
+    / Squall ability-bound burst not-modeled.
+  - Reordered batch 29 entries to land AFTER Seraph's Embrace
+    (preserves batch 28 visual cohesion).
+
+- `agents/daemon_slayer/__init__.py`:
+  - `ENGINE_VERSION = "0.33.0"`. Docstring extends batch list with
+    batch 29 wording. defensive_only count updated 21 → 25.
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - **Batch29DefensiveOnlyCoverageTests** (4 tests): one per
+    defensive_only entry — present, defensive_only=True, no proc,
+    note format keyword check. Hubris's lethality-flag pinned in
+    the note for future plumbing batch grep.
+  - **LiandrysSufferingTests** (4 tests): present + damage_amp_pct=0.06,
+    no unique_passive_key, DPS lift on Lux, multiplicative stacking
+    with Riftmaker (1.06 × 1.08 = 1.1448x note check).
+  - **StormsurgeMagicPenTests** (5 tests): present + magic_pen_flat=15,
+    no unique_passive_key, MR pipeline parity with Shadowflame at
+    same coefficient, magic-proc DPS lift via Nashor's (Lux's bare
+    autos are physical so direct test of Stormsurge alone fails —
+    pinned the magic-rotation requirement explicitly), pen note
+    surfaces with 65.0.
+
+**Test state:**
+- `agents/daemon_slayer/tests/`: **502/502** green (s84 baseline 489
+  + 13 new this batch).
+- `tests/phase8_smoke/`: 75/75 once live engine bounced.
+
+**Live verify (post `schtasks /End /Run RC-DaemonSlayer`):**
+
+```
+$ curl http://127.0.0.1:8893/health → engine_version=0.33.0 ✓
+$ /dps Lux lvl11 + [6653] target_mr=80 →
+    weighted_dps=18.44  (vs bare 17.40)
+    notes[build damage amp ×1.0600 (+6.00% to all damage),
+          Liandry's Torment: Suffering ~6% ...] ✓
+$ /dps Lux lvl11 + [6653, 4633] target_mr=80 →
+    weighted_dps=19.92
+    notes[build damage amp ×1.1448 — confirms multiplicative
+          stacking from batch 14] ✓
+$ /dps Lux lvl11 + [3115, 4646] target_mr=80 →
+    weighted_dps=23.34  (vs Nashor's-only 20.84)
+    notes[effective target MR 80.0 → 65.0 after magic pen,
+          Stormsurge: 15 flat magic pen ...] ✓
+```
+
+The test_stormsurge_raises_dps_vs_mr_target initial failure surfaced
+a useful invariant: **magic pen only lifts magic-damage rotations.**
+Lux's bare auto attacks are physical (use target_armor), so
+Stormsurge alone provides 0 DPS uplift on a magic-pen-pipeline-only
+test. Adding a magic-damage-proc item (Nashor's) makes the pen
+contribution measurable. Pinned the requirement in the test docstring
+for future "magic pen items must surface in magic-damage rotations"
+test design.
+
+**Coverage audit (delta from s84):**
+
+61 unmodeled legendaries remaining (s84's 67 minus 6 added this batch).
+Top candidates for future batches:
+
+- **Lethality plumbing batch (one-shot)** — promotes Hubris's 18
+  Lethality + 6 other lethality items at once. Single schema fix
+  (level-scaled flat pen), 7 items get accurate pen pipelines.
+  Scope: 1-2 hours.
+- **Death's Dance review** — already in ITEM_EFFECTS as defensive_only
+  (batch 2), but has bleed mechanic and could possibly model the
+  partial-deferred-damage as something. Probably stays defensive_only
+  but worth re-reading post-patch.
+- **Jak'Sho, The Protean (6665)** — defensive HP/resists ramp
+  (Voidborn Resilience: +30% bonus armor/MR after 5s in champ combat).
+  Pure defensive; tag with note.
+- **Experimental Hexplate (3073)** — ult-cast bonus AS for 8s. AS bonus
+  IS DPS-positive but ability-cast-bound (same family as Yun Tal's
+  Flurry). Defensive_only with note pending conditional-AS schema.
+- **Dead Man's Plate (3742)** — defensive Shipwrecker stun on dash.
+- **Morellonomicon (3165)** — Grievous Wounds, defensive_only.
+- **Force of Nature (4401)** — defensive (max-MR ramp).
+- **Axiom Arc (6696)** — ult-CDR on takedown, lethality (gap-blocked).
+- **Umbral Glaive (3179)** — vision active, lethality (gap-blocked).
+- **Hextech Rocketbelt (3152)** — active dash + AoE burn, defensive_only.
+- **Rylai's Crystal Scepter (3116)** — slow on damage, defensive.
+- **Spectral Cutlass (4004)** — active stealth + reposition, defensive.
+- **Imperial Mandate (4005)** — support-only ability marker.
+- **Knight's Vow (3109)** — ally-share defensive support.
+- **Mikael's Blessing (3222)** — ally-cleanse support.
+- **Redemption (3107)** — ally-heal active support.
+- **Locket of the Iron Solari (3190)** — active AoE shield support.
+- **Ardent Censer (3504)** — ally AS-on-shield-or-heal support.
+- **Staff of Flowing Water (6616)** — ally AP-on-shield-or-heal support.
+- **Echoes of Helia (6620)** — proc on heal/shield support.
+- **Moonstone Renewer (6617)** — heal-amp support.
+- **Dawncore (6621)** — ally-AP-on-heal support.
+- **Rod of Ages (6657)** — stat ramp (defensive_only).
+- **Winter's Approach (3119)** — mana → HP ramp.
+- **Anathema's Chains (228001-prefixed Brawl variant)** — defensive.
+- **Abyssal Mask (8020 / 328020)** — magic damage amp aura (target debuff).
+
+A defensive_only sweep of the support items + ramp items + battle
+items would be a productive next batch. ~10-15 items, all clear-cut
+defensive_only with one-line notes. Scope: 60-90 min.
+
+**Decisions worth pinning (this batch):**
+- **Coverage-completeness vs schema-promotion is a per-item call.**
+  When stats-block has the listed numbers AND the described passive
+  has DPS-positive contribution AND existing schema fits → promote.
+  Otherwise → defensive_only. Liandry's Suffering and Stormsurge's
+  flat magic pen both meet the bar; Hubris's takedown-bound Eminence
+  doesn't.
+- **Multiplicative damage-amp stacking is verifiable per-batch.**
+  When adding a damage_amp_pct item, the test should pin the multi-
+  amp composition (League's buff system pin from batch 14). 1.06 ×
+  1.08 = 1.1448 surfaces in DpsResult.notes; if stacking ever silently
+  reverts to additive, the test catches it.
+- **Magic pen tests need a magic-damage rotation.** Bare AP champs
+  with physical autos see 0 uplift from magic pen alone — pair with
+  a magic-proc item (Nashor's, Lich Bane) to surface contribution.
+
+**Things tomorrow-you should NOT redo:**
+- Don't tag Liandry's as defensive_only just because Torment burn is
+  ability-bound. Suffering is a separate passive that fits the existing
+  damage_amp_pct schema cleanly.
+- Don't model Stormsurge's Stormraider/Squall as a periodic proc.
+  Both are ability-bound (target damage threshold + 2s delayed burst);
+  current periodic schema is for on-attack / on-timer procs.
+- Don't try to fix Hubris's lethality in this batch's scope. The fix
+  affects 7 items at once and needs a level-scaled flat pen schema —
+  separate batch.
+
+**Activation:** RC-DaemonSlayer scheduled task bounced via
+`schtasks /End /TN RC-DaemonSlayer && schtasks /Run /TN RC-DaemonSlayer`.
+Engine on :8893 reports 0.33.0. Liandry's + Stormsurge notes appear
+in /dps `notes[]` field. Behavior dormant until next AP-caster game
+in progress.
+
+**Bridge state at session end:** RC main pid=8084 (unchanged across
+s78–s85). `schtasks` bounced RC-DaemonSlayer once this session.
+
+**Operational backlog (delta from s84):**
+- ✅ ~~Phase 4 batch 29: defensive_only coverage~~ shipped (commit `6e890f0`).
+- All other s84 backlog unchanged.
+- **NEW from s85**: Lethality plumbing batch is the next obvious
+  schema-promotion. 7 items unlock at once; 1-2 hour scope.
+
+**Memory entries written this session:** none. The "stats block vs
+description text source-of-truth" pattern is narrow enough to live
+in this hand-off + the field comments; will only promote to memory
+if a future batch needs to recall it and can't find via grep.
+
+**Next-session candidates (ranked):**
+1. **Lethality plumbing batch** — fix the 7-item gap at once. New
+   `lethality` field on ItemEffect resolved to `flat_pen × (0.6 +
+   0.4 × level/18)` at compute_dps construction; updates Hubris,
+   Voltaic, Edge of Night, Youmuu's, Opportunity, Axiom Arc,
+   Umbral Glaive simultaneously. ~1-2 hour scope.
+2. **Defensive_only sweep — support / ramp / utility items** —
+   Knight's Vow, Mikael's, Redemption, Locket, Ardent Censer,
+   Staff of Flowing Water, Echoes of Helia, Moonstone, Dawncore,
+   Imperial Mandate, Rod of Ages, Winter's Approach, Force of Nature,
+   Dead Man's Plate, Morellonomicon, Spectral Cutlass, Rylai's,
+   Abyssal Mask, Hextech Rocketbelt, Jak'Sho, Experimental Hexplate.
+   ~15-20 items, all defensive_only with one-line notes. Scope:
+   60-90 min.
+3. **SR coach `target_bonus_hp` activation** (carried s73→s84).
+4. **First draft visual verify of P8-5.5** (carried).
+5. **gamepc_boot.ps1 patch** (carried). 1-liner.
+6. **P8-7 E2E push-to-League integration test** (carried).
+7. **Activate arena augment v2 in production** (carried).
+8. **Schema bumps** (bigger sessions):
+   a. Ability-cast modeling — unlocks Liandry's burn + Hextech
+      Rocketbelt + Luden's + others.
+   b. Conditional AS bonus — Yun Tal's Flurry, Experimental Hexplate's
+      Overdrive.
+   c. Champion-only target gate — would unblock Muramana's Shock
+      precision (currently over-counts vs minions).
+
+**Full coach activation matrix as of s85:** unchanged from s84 —
+this batch was engine-side only.
+
 
