@@ -5124,5 +5124,146 @@ class Batch38ActiveItemTests(unittest.TestCase):
         self.assertGreaterEqual(len(ITEM_EFFECTS), 176)
 
 
+# ────────────────────────── Phase 4 batch 39 tests ──────────────────────────
+
+class Batch39MRReductionSchemaTests(unittest.TestCase):
+    """Batch 39: mr_reduction_pct field + Bloodletter's Curse + Arena re-skins."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    # ── mr_reduction_pct field on ItemEffect ──
+
+    def test_bloodletters_curse_mr_reduction(self) -> None:
+        eff = ITEM_EFFECTS.get("4010")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertAlmostEqual(eff.mr_reduction_pct, 0.30, places=4)
+        self.assertEqual(len(eff.periodics), 0)
+
+    def test_effective_target_mr_with_mr_reduction(self) -> None:
+        from agents.daemon_slayer.effects import effective_target_mr
+        effs = [ITEM_EFFECTS["4010"]]
+        # 100 MR × (1 - 0.30) = 70 before % pen
+        result = effective_target_mr(100.0, effs)
+        self.assertAlmostEqual(result, 70.0, places=2)
+
+    def test_effective_target_mr_reduction_before_pen(self) -> None:
+        from agents.daemon_slayer.effects import effective_target_mr
+        # Bloodletter's 30% reduction + Void Staff 40% pen
+        effs = [ITEM_EFFECTS["4010"], ITEM_EFFECTS["3135"]]
+        # 100 × (1-0.30) = 70; then × (1-0.40) = 42.0
+        result = effective_target_mr(100.0, effs)
+        self.assertAlmostEqual(result, 42.0, places=2)
+
+    def test_bloodletters_dps_lift_vs_magic_proc_target(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        # Blackfire Torch (2503) has an AP-based magical proc — pair with Bloodletter's
+        dps_bare = compute_dps(self.snap, "Lux", level=11, target_mr=50.0,
+                               item_ids=["2503"])
+        dps_with = compute_dps(self.snap, "Lux", level=11, target_mr=50.0,
+                               item_ids=["2503", "4010"])
+        self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
+
+    # ── Divine Sunderer Arena (446632) ──
+
+    def test_divine_sunderer_arena_shape(self) -> None:
+        eff = ITEM_EFFECTS.get("446632")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 1)
+        proc = eff.periodics[0]
+        self.assertEqual(proc.damage_type, "physical")
+        self.assertAlmostEqual(proc.every_n_seconds, 3.0, places=3)
+
+    def test_divine_sunderer_arena_formula(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["446632"].periodics[0]
+        ctx = CallContext(base_ad=100.0, bonus_ad=50.0, level=11, target_max_hp=3000.0)
+        # 1.80 * 100 + 0.02 * 3000 = 180 + 60 = 240
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 240.0, places=4)
+
+    def test_divine_sunderer_arena_spellblade_key(self) -> None:
+        self.assertEqual(ITEM_EFFECTS["446632"].unique_passive_key, "spellblade")
+
+    def test_divine_sunderer_arena_dedup_with_sr(self) -> None:
+        from agents.daemon_slayer.effects import collect_effects
+        # Both Divine Sunderers share "spellblade" key — only one should fire
+        effects = collect_effects(["6632", "446632"])
+        self.assertEqual(sum(1 for e in effects if e.unique_passive_key == "spellblade"), 1)
+
+    # ── Overlord's Bloodmail Arena (447111) ──
+
+    def test_overlords_bloodmail_arena_bonus_ad_pct(self) -> None:
+        eff = ITEM_EFFECTS.get("447111")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertAlmostEqual(eff.bonus_ad_pct_bonus_hp, 0.03, places=4)
+        self.assertEqual(len(eff.periodics), 0)
+
+    def test_overlords_bloodmail_arena_higher_than_sr(self) -> None:
+        # Arena version has 3% vs SR's 2.5%
+        arena = ITEM_EFFECTS.get("447111")
+        sr = ITEM_EFFECTS.get("2501")
+        self.assertIsNotNone(arena)
+        self.assertIsNotNone(sr)
+        self.assertGreater(arena.bonus_ad_pct_bonus_hp, sr.bonus_ad_pct_bonus_hp)
+
+    # ── Atma's Reckoning variant (663039) ──
+
+    def test_atmas_663039_same_as_3039(self) -> None:
+        eff663 = ITEM_EFFECTS.get("663039")
+        eff3 = ITEM_EFFECTS.get("3039")
+        self.assertIsNotNone(eff663)
+        self.assertIsNotNone(eff3)
+        self.assertFalse(eff663.defensive_only)
+        self.assertAlmostEqual(eff663.crit_chance_bonus_max_pct,
+                               eff3.crit_chance_bonus_max_pct, places=4)
+        self.assertAlmostEqual(eff663.crit_chance_bonus_per_bonus_hp_cap,
+                               eff3.crit_chance_bonus_per_bonus_hp_cap, places=1)
+
+    # ── Hextech Gunblade Arena (663146) ──
+
+    def test_hextech_gunblade_663146_same_formula(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc663 = ITEM_EFFECTS["663146"].periodics[0]
+        proc3 = ITEM_EFFECTS["3146"].periodics[0]
+        ctx = CallContext(base_ad=100.0, bonus_ad=50.0, level=11, ap=200.0)
+        self.assertAlmostEqual(proc663.resolve_damage(ctx), proc3.resolve_damage(ctx), places=4)
+
+    def test_hextech_gunblade_663146_40s_cooldown(self) -> None:
+        proc = ITEM_EFFECTS["663146"].periodics[0]
+        self.assertAlmostEqual(proc.every_n_seconds, 40.0, places=3)
+
+    # ── Defensive_only sweep ──
+
+    def test_batch39_defensive_only_entries(self) -> None:
+        expected = {
+            "444636": "Night Harvester",
+            "444637": "Demonic Embrace",
+            "446691": "Duskblade of Draktharr",
+            "446667": "Radiant Virtue",
+            "443083": "Warmog's Armor",
+            "663056": "Demon King's Crown",
+            "4011": "Sword of Blossoming Dawn",
+        }
+        for iid, name in expected.items():
+            with self.subTest(item_id=iid):
+                eff = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(eff, f"{iid} missing")
+                self.assertTrue(eff.defensive_only, f"{iid} ({name}) should be defensive_only")
+                self.assertEqual(len(eff.periodics), 0)
+
+    def test_defensive_only_count_after_batch39(self) -> None:
+        count = sum(1 for e in ITEM_EFFECTS.values() if e.defensive_only)
+        # 96 after batch 38 + 7 new = 103
+        self.assertGreaterEqual(count, 103)
+
+    def test_total_entry_count_after_batch39(self) -> None:
+        # 176 after batch 38 + 12 new = 188
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 188)
+
+
 if __name__ == "__main__":
     unittest.main()
