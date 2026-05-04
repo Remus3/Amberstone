@@ -184,6 +184,18 @@ class DpsRouteTests(ServerLifecycleTests):
                                    "items": ["999999999"]})
         self.assertEqual(status, 404)
 
+    def test_dps_with_augments_raises_weighted_dps(self) -> None:
+        status_bare, bare = _post_json(self.base + "/dps",
+                                       {"champion": "Aatrox", "level": 11,
+                                        "mode": "ARENA"})
+        status_aug, aug = _post_json(self.base + "/dps",
+                                     {"champion": "Aatrox", "level": 11,
+                                      "mode": "ARENA",
+                                      "augments": ["TheBrutalizer"]})
+        self.assertEqual(status_bare, 200)
+        self.assertEqual(status_aug, 200)
+        self.assertGreater(aug["weighted_dps"], bare["weighted_dps"])
+
 
 class RankRouteTests(ServerLifecycleTests):
     def test_post_rank_default_top_n_and_sort(self) -> None:
@@ -237,6 +249,15 @@ class RankRouteTests(ServerLifecycleTests):
                                    "items": ["3006", "3072", "3031",
                                              "3094", "3036", "3046"]})
         self.assertEqual(status, 422)
+
+    def test_rank_accepts_augments_param(self) -> None:
+        status, body = _post_json(self.base + "/rank",
+                                  {"champion": "Aatrox", "level": 11,
+                                   "mode": "ARENA",
+                                   "augments": ["TheBrutalizer", "ItsCritical"],
+                                   "top": 3})
+        self.assertEqual(status, 200)
+        self.assertEqual(len(body["ranked"]), 3)
 
 
 class RoutingTests(ServerLifecycleTests):

@@ -270,6 +270,7 @@ def compute_dps(
     target_armor: float = 0.0,
     target_mr: float = 0.0,
     phase: Optional[str] = None,
+    augments: Optional[Iterable] = None,
 ) -> DpsResult:
     """Resolve auto-attack DPS for ``champion_id`` at ``level`` with items.
 
@@ -277,6 +278,11 @@ def compute_dps(
     ``build_champion``) and ``aramDamageDealt`` to per-hit damage (here).
     ``phase`` overrides level-based selection; valid values:
     ``"early"|"mid"|"late"``.
+
+    ``augments`` is an optional Arena augment list (apiName / id / record /
+    Augment instance); the registered overlays add to stats before DPS
+    resolution. Unknown augments are silently zero-overlay (see
+    ``compute_augment_stats``).
     """
     level = clamp_level(level)
     selected_phase = phase or _select_phase(level)
@@ -287,6 +293,7 @@ def compute_dps(
 
     resolved = build_champion(
         snapshot, champion_id, level, item_ids=item_ids, mode=mode,
+        augments=augments,
     )
     stats = resolved.stats
 

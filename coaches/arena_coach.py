@@ -124,6 +124,57 @@ _OUTPUT_KEYS = [
 ]
 
 
+_AUG_NAME_MAP_CACHE: dict[str, str] | None = None
+
+
+def _augment_name_map() -> dict[str, str]:
+    """Lazy display-name → apiName lookup built from arena_augments.json.
+
+    Keys are lowercased + whitespace-stripped display names; values are the
+    cdragon apiName (e.g. ``"the brutalizer"`` → ``"TheBrutalizer"``).
+    apiName→apiName self-mapping is also installed so a Haiku response that
+    happens to return the apiName resolves cleanly.
+
+    Returns ``{}`` if the snapshot is missing — caller treats that as
+    "no resolver available" and skips augment persistence on that tick.
+    """
+    global _AUG_NAME_MAP_CACHE
+    if _AUG_NAME_MAP_CACHE is not None:
+        return _AUG_NAME_MAP_CACHE
+    out: dict[str, str] = {}
+    try:
+        snap_dir = _APP_DIR / "data" / "daemon_slayer"
+        patches = sorted([p for p in snap_dir.iterdir() if p.is_dir()], reverse=True)
+        for patch_dir in patches:
+            f = patch_dir / "arena_augments.json"
+            if not f.exists():
+                continue
+            data = json.loads(f.read_text(encoding="utf-8"))
+            for aug in data.get("augments") or []:
+                api = str(aug.get("apiName") or "").strip()
+                name = str(aug.get("name") or "").strip()
+                if not api:
+                    continue
+                if name:
+                    out[name.lower().replace(" ", "")] = api
+                out[api.lower()] = api
+            break
+    except Exception as exc:
+        logger.debug("arena augment name map: %s", exc)
+    _AUG_NAME_MAP_CACHE = out
+    return out
+
+
+def _resolve_augment_apiname(display: str) -> str | None:
+    """Resolve a Haiku-returned display name to an apiName, or None."""
+    if not display:
+        return None
+    key = display.strip().lower().replace(" ", "")
+    if not key:
+        return None
+    return _augment_name_map().get(key)
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Coach class
 # ══════════════════════════════════════════════════════════════════════════════
@@ -177,19 +228,25 @@ class Coach(BaseCoach):
     # ── BaseCoach hooks ───────────────────────────────────────────────────────
 
     def _init_extra(self) -> None:
-        """Arena-specific state: stateful round counter."""
+        """Arena-specific state: stateful round counter + picked augments."""
         self._last_round         = 0
         self._event_round_count  = 0
         self._last_event_count   = 0
+        self._picked_augments: list[str] = []
 
     def _reset_extra(self) -> None:
         self._last_round        = 0
         self._event_round_count = 0
         self._last_event_count  = 0
+        self._picked_augments   = []
 
     def _on_state_received(self, state: dict) -> None:
-        """Inject approximate round number from stateful event-delta tracker."""
+        """Inject approximate round number + picked augments into state."""
         state["round"] = self._update_round_from_events(state)
+        # Hand the augment apiName list to downstream consumers (coach
+        # prompt + daemon_slayer rank call). The list is already apiName-
+        # mapped at persistence time.
+        state["augments"] = list(self._picked_augments)
 
     def _fast_path_trigger(self, state: dict, prev: dict) -> bool:
         new_round = (
@@ -408,6 +465,7 @@ class Coach(BaseCoach):
                     mode="ARENA",
                     target_armor=80.0,
                     top=5,
+                    augments=state.get("augments") or None,
                 )
                 if ds_rows:
                     current["daemon_slayer_picks"] = [
@@ -459,14 +517,22 @@ class Coach(BaseCoach):
                                     t0_perf=_t0b,
                                     model="claude-haiku-4-5-20251001",
                                     purpose="arena_aug_select")
-            raw     = resp.content[0].text
+            raw      = resp.content[0].text
+            take     = parse_field(raw, "Take")
+            api_name = _resolve_augment_apiname(take)
+            if api_name and api_name not in self._picked_augments:
+                self._picked_augments.append(api_name)
             current = load_json(self._out)
             current.update({
                 "augment_select":  True,
-                "aug_take":        parse_field(raw, "Take"),
+                "aug_take":        take,
                 "aug_why":         parse_field(raw, "Why"),
                 "aug_plan":        parse_field(raw, "Gameplan"),
                 "augment_choices": choices,
+                # Persist the apiName list so the dashboard / postgame
+                # collector can see what the engine was given. Source is
+                # the Haiku recommendation — see project_arena_augments_not_persisted.
+                "augments_picked": list(self._picked_augments),
             })
             safe_write(self._out, current)
         except Exception as exc:
