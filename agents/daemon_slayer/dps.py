@@ -316,12 +316,14 @@ def compute_dps(
     base_ad = float(resolved.base_stats.get("ad", 0.0)) if resolved.base_stats else 0.0
     total_ad = float(stats.get("ad", 0.0))
     bonus_ad = max(0.0, total_ad - base_ad)
+    ap = float(stats.get("ap", 0.0))
     call_ctx = CallContext(
         base_ad=base_ad,
         bonus_ad=bonus_ad,
         level=level,
         target_armor=target_armor_eff,
         target_mr=target_mr,
+        ap=ap,
     )
 
     rotations_by_phase = _phase_rotations(snapshot, resolved.champion_id)
