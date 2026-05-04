@@ -162,3 +162,7 @@ docs io RC peer/*KEY*
 # Per-host bridge secrets. Tracked: ops/local_paths.example.json (template).
 # Gitignored: ops/local_paths.json (real, contains the shared bearer token).
 ops/local_paths.json
+
+# Operator-curated SR draft builds (Phase 8). Not source — each
+# operator's builds are theirs alone.
+data/daemon_slayer/user_builds.json
