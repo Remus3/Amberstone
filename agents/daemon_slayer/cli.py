@@ -1,9 +1,10 @@
-"""Daemon Slayer CLI — Phase 2 (stats/dps/rank) + Phase 3 (serve).
+"""Daemon Slayer CLI — Phase 2 (stats/dps/rank/beam) + Phase 3 (serve).
 
 Subcommands:
   stats   resolve a champion's stats at a level with items equipped
   dps     auto-attack DPS over lolmath rotation scenarios
   rank    score every legal purchasable item by DPS contribution
+  beam    beam-search top-N complete builds (Phase 2 step 4)
   serve   start the local HTTP engine on :8893
 
 Usage:
@@ -12,6 +13,8 @@ Usage:
   python -m agents.daemon_slayer dps Aatrox --level 11 --mode ARAM --target-armor 80
   python -m agents.daemon_slayer rank Aatrox --level 11 --target-armor 80
   python -m agents.daemon_slayer rank Aatrox --level 11 --items 3006 --budget 3500 --top 10
+  python -m agents.daemon_slayer beam Aatrox --level 11 --target-armor 80 --beam-width 10 --top 5
+  python -m agents.daemon_slayer beam MissFortune --level 13 --mode ARAM --total-budget 14000
   python -m agents.daemon_slayer serve --host 0.0.0.0 --port 8893
 """
 
@@ -22,6 +25,11 @@ import json
 import sys
 from pathlib import Path
 
+from .beam import (
+    DEFAULT_BEAM_WIDTH as BEAM_DEFAULT_WIDTH,
+    DEFAULT_TOP_N as BEAM_DEFAULT_TOP_N,
+    beam_search_build,
+)
 from .data_loader import DataSnapshot, SnapshotNotFound
 from .dps import compute_dps
 from .engine import build_champion
@@ -135,6 +143,50 @@ def _cmd_rank(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_beam(args: argparse.Namespace) -> int:
+    try:
+        snap = DataSnapshot.load(patch=args.patch, data_root=Path(args.data_root) if args.data_root else None)
+    except SnapshotNotFound as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+
+    item_ids: list[str] = []
+    if args.items:
+        item_ids = [s.strip() for s in args.items.split(",") if s.strip()]
+
+    only_ids: list[str] | None = None
+    if args.only:
+        only_ids = [s.strip() for s in args.only.split(",") if s.strip()]
+
+    try:
+        result = beam_search_build(
+            snap,
+            champion_id=args.champion,
+            level=args.level,
+            current_item_ids=item_ids,
+            mode=args.mode,
+            target_armor=args.target_armor,
+            target_mr=args.target_mr,
+            phase=args.phase,
+            slot_count=args.slots,
+            beam_width=args.beam_width,
+            top_n=args.top,
+            total_budget=args.total_budget,
+            include_components=args.include_components,
+            only_item_ids=only_ids,
+            boots_unique=not args.no_boots_unique,
+        )
+    except (KeyError, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+
+    if args.json:
+        print(json.dumps(result.to_dict(), indent=2))
+    else:
+        print(result.format_table())
+    return 0
+
+
 def _cmd_serve(args: argparse.Namespace) -> int:
     return serve_forever(
         host=args.host,
@@ -215,6 +267,47 @@ def build_parser() -> argparse.ArgumentParser:
     )
     rank.add_argument("--json", action="store_true", help="emit machine-readable JSON")
     rank.set_defaults(func=_cmd_rank)
+
+    beam = sub.add_parser("beam", help="beam-search top-N complete builds")
+    beam.add_argument("champion", help="DDragon champion id (e.g. Aatrox, MonkeyKing)")
+    beam.add_argument("--level", type=int, default=1, help="champion level 1-18 (default 1)")
+    beam.add_argument("--items", default="", help="comma-separated current item IDs (pinned in every result)")
+    beam.add_argument("--mode", default="SR", help="game mode: SR | ARAM | ARENA (default SR)")
+    beam.add_argument("--target-armor", type=float, default=0.0, help="target armor (default 0)")
+    beam.add_argument("--target-mr", type=float, default=0.0, help="target MR (default 0)")
+    beam.add_argument(
+        "--phase",
+        choices=("early", "mid", "late"),
+        default=None,
+        help="rotation phase override (default: derived from --level)",
+    )
+    beam.add_argument("--slots", type=int, default=6, help="max items in a build (default 6)")
+    beam.add_argument(
+        "--beam-width", type=int, default=BEAM_DEFAULT_WIDTH,
+        help=f"survivors per generation (default {BEAM_DEFAULT_WIDTH})",
+    )
+    beam.add_argument(
+        "--top", type=int, default=BEAM_DEFAULT_TOP_N,
+        help=f"final builds returned (default {BEAM_DEFAULT_TOP_N})",
+    )
+    beam.add_argument(
+        "--total-budget", type=int, default=None,
+        help="max total gold per complete build (default unlimited)",
+    )
+    beam.add_argument(
+        "--include-components", action="store_true",
+        help="include items with an upgrade path (Long Sword etc.)",
+    )
+    beam.add_argument(
+        "--only", default="",
+        help="comma-separated item ID whitelist; restricts search to these",
+    )
+    beam.add_argument(
+        "--no-boots-unique", action="store_true",
+        help="allow multiple Boots-tagged items in a build",
+    )
+    beam.add_argument("--json", action="store_true", help="emit machine-readable JSON")
+    beam.set_defaults(func=_cmd_beam)
 
     serve = sub.add_parser("serve", help="start the local HTTP engine on :8893")
     serve.add_argument("--host", default=DEFAULT_HOST,
