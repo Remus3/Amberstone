@@ -7,6 +7,7 @@ from agents.daemon_slayer.dps import (
     _select_phase,
     compute_dps,
 )
+from agents.daemon_slayer.effects import ITEM_EFFECTS
 
 
 class PhaseSelectionTests(unittest.TestCase):
@@ -102,24 +103,28 @@ class ItemImpactTests(unittest.TestCase):
         self.assertGreater(zerks.weighted_dps, naked.weighted_dps)
 
     def test_infinity_edge_raises_dps_via_ad_and_crit(self) -> None:
-        # IE 16.9.1: +75 AD, +25% crit. Combines AD bump (60→135) with crit avg
-        # factor (1 + 0.25*0.75 = 1.1875). DPS should scale ≈ 135/60 * 1.1875.
+        # IE 16.9.1: +75 AD, +25% crit, +30% bonus crit damage (Phase 4 effect).
+        # Combines AD bump (60→135) with crit avg factor
+        # (1 + 0.25*(0.75+0.30) = 1.2625). DPS should scale ≈ 135/60 * 1.2625.
         naked = compute_dps(self.snap, "Aatrox", level=1)
         ie = compute_dps(self.snap, "Aatrox", level=1, item_ids=["3031"])
         self.assertGreater(ie.weighted_dps, naked.weighted_dps)
         self.assertAlmostEqual(ie.stats["crit"], 0.25)
-        expected_factor = (135 / 60) * (1 + 0.25 * 0.75)
+        ie_crit_bonus = DEFAULT_CRIT_BONUS + ITEM_EFFECTS["3031"].crit_damage_bonus
+        expected_factor = (135 / 60) * (1 + 0.25 * ie_crit_bonus)
         self.assertAlmostEqual(
             ie.weighted_dps, naked.weighted_dps * expected_factor, places=2
         )
 
     def test_crit_caps_at_one(self) -> None:
-        # 5x IE = 125% pre-clamp → clamped to 100% in engine
+        # 5x IE = 125% pre-clamp → clamped to 100% in engine. Each IE also
+        # stacks +30% bonus crit damage (effects.ITEM_EFFECTS), so total
+        # crit_bonus = 0.75 + 5*0.30 = 2.25.
         r = compute_dps(self.snap, "Aatrox", level=1, item_ids=["3031"] * 5)
         self.assertEqual(r.stats["crit"], 1.0)
-        # avg per-hit factor = 1 + 1.0 * 0.75 = 1.75
+        stacked_crit_bonus = DEFAULT_CRIT_BONUS + 5 * ITEM_EFFECTS["3031"].crit_damage_bonus
         self.assertAlmostEqual(
-            r.avg_attack_dmg, r.stats["ad"] * (1 + DEFAULT_CRIT_BONUS), places=2
+            r.avg_attack_dmg, r.stats["ad"] * (1 + stacked_crit_bonus), places=2
         )
 
 
