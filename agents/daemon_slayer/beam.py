@@ -76,6 +76,7 @@ class BeamResult:
     target_armor: float
     target_mr: float
     target_max_hp: float
+    target_bonus_hp: float
     phase: str
     baseline_dps: float
     slot_count: int
@@ -97,6 +98,7 @@ class BeamResult:
             "target_armor": self.target_armor,
             "target_mr": self.target_mr,
             "target_max_hp": self.target_max_hp,
+            "target_bonus_hp": self.target_bonus_hp,
             "phase": self.phase,
             "baseline_dps": self.baseline_dps,
             "slot_count": self.slot_count,
@@ -121,7 +123,7 @@ class BeamResult:
             rows.append("current items: (none)")
         rows.append(
             f"target: armor={self.target_armor:.0f}  mr={self.target_mr:.0f}"
-            f"  max_hp={self.target_max_hp:.0f}"
+            f"  max_hp={self.target_max_hp:.0f}  bonus_hp={self.target_bonus_hp:.0f}"
         )
         budget_label = "unlimited" if self.total_budget is None else f"{self.total_budget}"
         rows.append(
@@ -194,6 +196,7 @@ def beam_search_build(
     target_armor: float = 0.0,
     target_mr: float = 0.0,
     target_max_hp: float = 0.0,
+    target_bonus_hp: float = 0.0,
     phase: Optional[str] = None,
     slot_count: int = DEFAULT_SLOT_COUNT,
     beam_width: int = DEFAULT_BEAM_WIDTH,
@@ -246,6 +249,7 @@ def beam_search_build(
         target_armor=target_armor,
         target_mr=target_mr,
         target_max_hp=target_max_hp,
+        target_bonus_hp=target_bonus_hp,
         phase=phase,
     )
 
@@ -295,6 +299,7 @@ def beam_search_build(
             current_item_ids=current_ids,
             target_armor=target_armor, target_mr=target_mr,
             target_max_hp=target_max_hp,
+            target_bonus_hp=target_bonus_hp,
             phase=baseline.phase, baseline_dps=baseline.weighted_dps,
             slot_count=slot_count, beam_width=beam_width,
             total_budget=total_budget,
@@ -358,6 +363,7 @@ def beam_search_build(
                         target_armor=target_armor,
                         target_mr=target_mr,
                         target_max_hp=target_max_hp,
+                        target_bonus_hp=target_bonus_hp,
                         phase=phase,
                     )
                 except (KeyError, ValueError):
@@ -403,6 +409,7 @@ def beam_search_build(
         current_item_ids=current_ids,
         target_armor=target_armor, target_mr=target_mr,
         target_max_hp=target_max_hp,
+        target_bonus_hp=target_bonus_hp,
         phase=baseline.phase, baseline_dps=baseline.weighted_dps,
         slot_count=slot_count, beam_width=beam_width,
         total_budget=total_budget,

@@ -95,6 +95,7 @@ class RankResult:
     target_armor: float
     target_mr: float
     target_max_hp: float
+    target_bonus_hp: float
     phase: str
     budget: Optional[int]
     slot_count: int
@@ -115,6 +116,7 @@ class RankResult:
             "target_armor": self.target_armor,
             "target_mr": self.target_mr,
             "target_max_hp": self.target_max_hp,
+            "target_bonus_hp": self.target_bonus_hp,
             "phase": self.phase,
             "budget": self.budget,
             "slot_count": self.slot_count,
@@ -137,7 +139,7 @@ class RankResult:
             rows.append("current items: (none)")
         rows.append(
             f"target: armor={self.target_armor:.0f}  mr={self.target_mr:.0f}"
-            f"  max_hp={self.target_max_hp:.0f}"
+            f"  max_hp={self.target_max_hp:.0f}  bonus_hp={self.target_bonus_hp:.0f}"
         )
         budget_label = "unlimited" if self.budget is None else f"{self.budget}"
         rows.append(
@@ -233,6 +235,7 @@ def rank_items(
     target_armor: float = 0.0,
     target_mr: float = 0.0,
     target_max_hp: float = 0.0,
+    target_bonus_hp: float = 0.0,
     phase: Optional[str] = None,
     budget: Optional[int] = None,
     slot_count: int = DEFAULT_SLOT_COUNT,
@@ -284,6 +287,7 @@ def rank_items(
         target_armor=target_armor,
         target_mr=target_mr,
         target_max_hp=target_max_hp,
+        target_bonus_hp=target_bonus_hp,
         phase=phase,
         augments=augments,
     )
@@ -310,6 +314,7 @@ def rank_items(
                 target_armor=target_armor,
                 target_mr=target_mr,
                 target_max_hp=target_max_hp,
+                target_bonus_hp=target_bonus_hp,
                 phase=phase,
                 augments=augments,
             )
@@ -369,6 +374,7 @@ def rank_items(
         target_armor=target_armor,
         target_mr=target_mr,
         target_max_hp=target_max_hp,
+        target_bonus_hp=target_bonus_hp,
         phase=baseline.phase,
         budget=budget,
         slot_count=slot_count,
