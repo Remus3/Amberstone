@@ -5680,3 +5680,206 @@ Hullbreaker Skipper, do the same DDragon diff as this batch — if
 the wiki damage formula contradicts DDragon's stripped
 description, the wiki is the more recent source but the
 discrepancy itself should land in the inline comment.
+
+---
+
+## s71 hand-off — 2026-05-04 06:25 (Phase 4 batch 19: target_bonus_hp signal + LDR Giant Slayer)
+
+Single-arc continuation. Started s71 with `continue Daemon Slayer`.
+Batch 18 (Hullbreaker Skipper) was top-of-queue but **blocked**:
+DDragon strips Skipper's damage formula, no Meraki/lolmath data
+covers item passives, and per `reference_no_riot_api_key.md` we
+don't fabricate. Pivoted to batch 19 (LDR Giant Slayer) — fully
+spec'd from local DDragon snapshot, the architectural piece s69
+queued as #3. Engine 0.22.1 → 0.23.0 (minor — new schema fields).
+Operator still idle (LCU phase=None, RC main pid=9488 unchanged).
+
+**Pattern decision worth pinning — when blocked, pivot to
+architectural batches with full local spec, don't fabricate data.**
+The carried discipline ("DDragon snapshot first, mental model
+second") implies the contrapositive: when DDragon doesn't have
+the data and no other local source does, the right move is NOT
+to invent. Either ask the operator or pick a different batch.
+Batch 19 was bigger (~10× LOC of batch 17) but exec'd in roughly
+the same wall-clock time because the spec was unambiguous.
+
+**Pattern decision worth pinning — target-conditional amps belong
+on a separate factor that folds into damage_amp at compute_dps
+time.** Considered three designs:
+1. Roll into `damage_amp_pct` (build-side amp). REJECTED — meaning
+   of the field shifts from "build-side, target-independent" to
+   "context-dependent". Future devs reading the field name would
+   get the wrong intuition.
+2. Add a separate `target_amp` factor multiplied alongside in
+   `_rotation_attack_dps`. CONSIDERED — clean separation but
+   requires changing the rotation-DPS function signature.
+3. **CHOSEN**: compute target-amp at compute_dps time, multiply
+   into the existing `damage_amp` factor BEFORE passing to the
+   rotation calc. `_rotation_attack_dps` signature unchanged
+   (back-compat); the build-amp note + the target-amp note are
+   distinct so callers can tell them apart in `result.notes`.
+
+**Pattern decision worth pinning — `target_bonus_hp` is caller-
+supplied, NOT engine-derived (unlike `caster_max_hp` /
+`caster_bonus_hp` from batch 6).** The engine knows its own
+build, not the enemy's. Same shape as `target_max_hp` / `target_armor`
+/ `target_mr`: defaults 0.0 = "caller didn't say"; procs that
+key on the field gracefully no-op. Coach-side consumers
+(arena_coach, sr_draft) will eventually decide a realistic value
+from game context (e.g. mid-game Cho'Gath ≈ 1500 bonus HP from
+items + passive stacks).
+
+**Shipped (commit `f90b751`, pushed `ae9092d..f90b751`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - `CallContext.target_bonus_hp: float = 0.0` field added
+  - `ItemEffect.target_bonus_hp_amp_max_pct` + `target_bonus_hp_amp_cap`
+    fields added (both default 0.0 → no contribution)
+  - LDR (3036) wired with `0.15 / 1500.0` per DDragon
+  - LDR note rewritten to call out the active scaling formula
+  - New helper `total_target_bonus_hp_amp_multiplier(effects, target_bonus_hp)`
+    — short-circuits to 1.0 when `target_bonus_hp <= 0` OR no
+    items carry the schema. Multiplicative stacking per batch-14
+    doctrine (League buff system).
+
+- `agents/daemon_slayer/dps.py`:
+  - `compute_dps` accepts `target_bonus_hp: float = 0.0`
+  - Computed `target_amp` folded into `damage_amp` at compute time
+  - New note "target-conditional amp ×N (target_bonus_hp=H, +X% folded into build amp)"
+    when the factor != 1.0
+  - `DpsResult.target_bonus_hp` field + `to_dict()` + `format_table()` updated
+  - `CallContext` instantiation passes `target_bonus_hp=target_bonus_hp`
+
+- `agents/daemon_slayer/rank.py`: `target_bonus_hp` plumbed
+  through `rank_items` signature, both internal `compute_dps` calls
+  (baseline + per-candidate), and `RankResult.target_bonus_hp` +
+  `to_dict()` + `format_table()`.
+
+- `agents/daemon_slayer/beam.py`: same plumbing through
+  `beam_search_build` + `BeamResult` (both early-return and
+  main-return constructions; both inner `compute_dps` calls).
+
+- `agents/daemon_slayer/server.py`: reads `target_bonus_hp` from
+  request body in `/dps`, `/rank`, `/beam` (default 0.0 → exact
+  pre-batch behavior).
+
+- `agents/daemon_slayer/__init__.py`: ENGINE_VERSION 0.22.1 →
+  0.23.0 (minor — new fields on every result type).
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`: +17 tests
+  in two new classes:
+  - `TotalTargetBonusHpAmpMultiplierTests` (8 tests): empty input
+    unity, zero/negative target_bonus_hp unity, no-amp-items unity,
+    half-cap 1.075, full-cap 1.15, above-cap clamps to 1.15,
+    multiplicative stacking 1.10×1.20=1.32, partial-schema (cap=0)
+    ignored.
+  - `LdrGiantSlayerTests` (9 tests): schema field present, no amp
+    without signal (back-compat), DPS ratio 1.15 at full cap, 1.075
+    at half cap, clamps above cap, note surfaces when active,
+    `result.target_bonus_hp` populated, Riftmaker × LDR
+    multiplicative stacking pin (×1.08 ratio after LDR baseline).
+
+**Test state:** 362 → 379 daemon_slayer tests green. py_compile
+pre-commit hook passed for all 7 changed files.
+
+**Live engine verify (post `schtasks /End` + `/Run`):**
+```
+GET  /health                                              → 0.23.0
+POST /dps {Aatrox lvl11 [3036] arm=80 bonus_hp=0}    dps  → 48.47 (back-compat — no amp note)
+POST /dps {Aatrox lvl11 [3036] arm=80 bonus_hp=750}  dps  → 52.11 (ratio 1.075 — half-cap)
+POST /dps {Aatrox lvl11 [3036] arm=80 bonus_hp=1500} dps  → 55.74 (ratio 1.150 — full cap)
+POST /dps {Aatrox lvl11 [3036] arm=80 bonus_hp=3000} dps  → 55.74 (ratio 1.150 — clamped)
+notes(1500) include: "target-conditional amp ×1.1500 (target_bonus_hp=1500, +15.00% folded into build amp)"
+```
+Math is exact — no off-by-epsilon. Ratios match the 0.15 * min(1.0, target_bonus_hp / 1500) formula precisely.
+
+**Decisions worth pinning:**
+- **Caller-supplied target context fields belong on CallContext
+  (and DpsResult), not engine-derived state.** The `target_*`
+  family (armor/mr/max_hp/bonus_hp) all share the same shape:
+  default 0.0 = "caller didn't say", procs gracefully no-op.
+  Future per-target fields (`target_current_hp_pct`, `target_is_minion`,
+  etc.) should follow the same pattern — caller-supplied with a
+  zero/null sentinel that means "engine, don't apply this proc".
+- **Helper-name discipline matters.** `total_target_bonus_hp_amp_multiplier`
+  is verbose but unambiguous: "total" (across all effects),
+  "target_bonus_hp" (the input signal), "amp" (what it computes),
+  "multiplier" (the unit). Mirrors `total_damage_amp_multiplier`
+  word-for-word so the relationship is visually obvious.
+- **`replace_all=true` doesn't catch indentation variants.** When
+  the same line text appears at multiple indent levels (e.g.
+  `target_max_hp=target_max_hp,` at 8-space, 16-space, AND
+  24-space indent for the nested `compute_dps` call inside the
+  beam-search loop), `replace_all` only replaces one variant at
+  a time. Safer to grep first and patch each indent level by hand.
+
+**Things tomorrow-you should NOT redo:**
+- Don't try to make `target_bonus_hp` engine-derived. The engine
+  doesn't know what champion the user is targeting; this MUST be
+  caller-supplied.
+- Don't roll `target_bonus_hp_amp_*` into `damage_amp_pct`. The
+  fields encode different concepts (target-conditional vs
+  build-conditional); collapsing them would obscure the contract
+  for future readers.
+- Don't add `target_amp` as a separate factor in
+  `_rotation_attack_dps`. It's already folded into `damage_amp`
+  before that function sees it; adding a second factor would
+  double-count.
+- Don't write `1.08 + 0.15 = 1.23` in any reasoning about
+  Riftmaker × LDR stacking. League uses the buff system —
+  multiplicative `1.08 * 1.15 = 1.242`. The test
+  `test_ldr_plus_riftmaker_amps_stack_multiplicatively` pins
+  this contract.
+
+**Activation:** Engine on :8893 already at 0.23.0 — restarted to
+adopt new schema. No coach-side consumers wired yet (arena_coach,
+sr_draft, champ-select brief don't pass `target_bonus_hp` today —
+they all see ×1.0 amps until a future batch threads the signal
+in from in-game state).
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true (no Legion main-RC restart this session;
+RC-DaemonSlayer bounced for the 16th time today). Engine on :8893
+= 0.23.0 live with new schema. LCU phase=None (no game in progress).
+Bridge to Game-PC was 720s+ stale at session start — drift unchanged;
+no two-way traffic this session. Working tree clean except runtime
+`data/ratings/last_*.json` mutations.
+
+**Operational backlog (carried + new):**
+- All s54-s70 backlog items unchanged. **LDR Giant Slayer schema
+  removed** from the open list (this batch). **Heartsteel lambda
+  fix** still removed (s70).
+- **Hullbreaker Skipper promotion** (carried s69 #2 → s70 → now
+  upgraded to "blocked pending external damage formula"). Cannot
+  ship from local data alone. Options: (a) operator supplies
+  current-patch coefficient from League wiki / patch notes;
+  (b) build a tools/ scraper for the wiki; (c) defer indefinitely
+  if the operator never demands it.
+- **Spear of Shojin Focused Will** (carried s69) — still deferred
+  until ability-damage modeling lands.
+- **Essence Reaver Spellblade promotion** (carried) — still
+  pending current-patch coefficient.
+- **Coach-side `target_bonus_hp` wiring** (NEW from s71). The
+  engine schema is live but no caller (arena_coach, sr_draft,
+  champ-select brief) supplies the signal yet. Wiring it in
+  would activate Giant Slayer's contribution for everyone using
+  /rank or /beam. Probably belongs in arena_coach first (Arena's
+  fixed enemy pool makes target HP estimation easier than SR).
+
+**Next-session candidates (ranked):**
+1. **Coach-side `target_bonus_hp` activation in arena_coach** (NEW
+   from s71). Estimate enemy bonus HP from picked champion +
+   item snapshot in arena_state.json; pass into /rank calls.
+   ~1-2 hour scope. Engine-side is done — this is pure consumer
+   wiring. Bumps minor on coach side, not engine.
+2. **Phase 4 batch 20 candidate: scraper for League wiki** (NEW
+   from s71). One-time tool to harvest item-passive damage
+   coefficients DDragon strips. Unblocks Hullbreaker Skipper +
+   Essence Reaver Spellblade + Sterak's Gage scaling + others.
+   ~3-5 hour scope. Architectural — adds a third data source
+   alongside DDragon + Meraki.
+3. **First draft visual verify of P8-5.5** (carried).
+4. **gamepc_boot.ps1 patch** (carried). 1-liner.
+5. **P8-7 E2E push-to-League integration test** (carried).
+6. **Activate arena augment v2 in production** (carried).
+7. **Per-target-HP-pct field** (carried; defer until caller demands).
