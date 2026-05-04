@@ -2111,6 +2111,163 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "for casters is unclear; deferred"
         ),
     ),
+    # ── Phase 4 batch 36 (2026-05-04): Arena item sweep + Rite of Ruin crit ──
+    # Detonation Orb (447113): 12 flat magic pen (Detonation Orb stat block).
+    # The Bomb stored-damage passive requires ability damage tracking (deferred).
+    "447113": ItemEffect(
+        item_id="447113",
+        name="Detonation Orb",
+        magic_pen_flat=12.0,
+        note=(
+            "Detonation Orb: 12 flat magic pen (existing schema). "
+            "The Bomb stored 20% ability damage release deferred (ability-cast schema gap)"
+        ),
+    ),
+    # Reverberation (447114): Resonate on-hit — 10 + 2% caster bonus HP magic per attack.
+    # Reverberate HP-at-combat-start and Rumble immobilize-stacks are utility/conditional.
+    "447114": ItemEffect(
+        item_id="447114",
+        name="Reverberation",
+        periodics=(
+            PeriodicProc(
+                name="Resonate",
+                every_n_attacks=1,
+                bonus_damage=lambda c: 10.0 + 0.02 * c.caster_bonus_hp,
+                damage_type=MAGICAL,
+            ),
+        ),
+        note=(
+            "Reverberation: Resonate 10 + 2% caster bonus HP magic on-hit (same schema as "
+            "Titanic Hydra Cleave, keyed off caster_bonus_hp). "
+            "Reverberate HP-per-AS and Rumble stacks utility-only"
+        ),
+    ),
+    # Pyromancer's Cloak (447118): Spark (5s CD) — attack or ability hit burns target
+    # for 100→350 magic over 3s (total burn; Meraki melee value). Modeled as
+    # every_n_seconds=5.0 with total_damage as bonus_damage (same convention as
+    # Hextech Gunblade's Lightning Bolt). Cleansing Flame fireball AoE deferred.
+    "447118": ItemEffect(
+        item_id="447118",
+        name="Pyromancer's Cloak",
+        periodics=(
+            PeriodicProc(
+                name="Spark",
+                every_n_seconds=5.0,
+                bonus_damage=lambda c: 100.0 + 250.0 / 17.0 * (c.level - 1),
+                damage_type=MAGICAL,
+            ),
+        ),
+        note=(
+            "Pyromancer's Cloak: Spark 100→350 magic burn over 3s every 5s "
+            "(melee Meraki value; total burn modeled as single proc per event; "
+            "Cleansing Flame fireball AoE deferred)"
+        ),
+    ),
+    # Lightning Rod (447119): Call Lightning — autocast every 16s: 135→230 magic
+    # + 30% bonus AD + 50% AP + 10% target max HP. Fully Automated reduces CD via
+    # AH (not modeled; pins at 16s base). Uses level + bonus_ad + ap + target_max_hp —
+    # all existing CallContext fields.
+    "447119": ItemEffect(
+        item_id="447119",
+        name="Lightning Rod",
+        periodics=(
+            PeriodicProc(
+                name="Call Lightning",
+                every_n_seconds=16.0,
+                bonus_damage=lambda c: (
+                    (135.0 + 95.0 / 17.0 * (c.level - 1))
+                    + 0.30 * c.bonus_ad
+                    + 0.50 * c.ap
+                    + 0.10 * c.target_max_hp
+                ),
+                damage_type=MAGICAL,
+            ),
+        ),
+        note=(
+            "Lightning Rod: Call Lightning 135→230 + 30% bonus AD + 50% AP + 10% target max HP "
+            "magic every 16s (base CD; Fully Automated AH reduction not modeled, "
+            "pins at 16s conservative value)"
+        ),
+    ),
+    # Regicide (447115): 15 lethality. End the Line takedown-conditional bonus deferred.
+    "447115": ItemEffect(
+        item_id="447115",
+        name="Regicide",
+        lethality=15.0,
+        note=(
+            "Regicide: 15 lethality (existing schema). "
+            "End the Line takedown-vs-Regent bonus deferred (takedown conditional)"
+        ),
+    ),
+    # Rite of Ruin (3430): Wrath and Ruin — 2.5% crit per ability cast, up to 8 stacks
+    # = 20% crit. Pinned at max stacks per sustained-DPS convention (same as Yun Tal
+    # Wildarrows' flat-stacks pin). Salvage the Wreckage shield is utility-only.
+    "3430": ItemEffect(
+        item_id="3430",
+        name="Rite Of Ruin",
+        crit_chance_bonus_flat=0.20,
+        note=(
+            "Rite Of Ruin: Wrath and Ruin max 8 stacks = 20% bonus crit chance "
+            "(pinned at full stacks per sustained-DPS convention; same schema as Yun Tal). "
+            "Salvage the Wreckage ability-chance shield utility-only"
+        ),
+    ),
+    # ── defensive_only (6) ──
+    "447108": ItemEffect(
+        item_id="447108",
+        name="Runecarver",
+        defensive_only=True,
+        note=(
+            "Runecarver: Spiral Out fires missiles per Rune stack on Energized proc — "
+            "Rune-stack layer on top of Energized mechanic is too complex for sustained model; "
+            "deferred"
+        ),
+    ),
+    "447116": ItemEffect(
+        item_id="447116",
+        name="Kinkou Jitte",
+        defensive_only=True,
+        note=(
+            "Kinkou Jitte: Between the Ribs deals extra damage through positional weakpoint "
+            "(directional conditional not modelable without fight geometry)"
+        ),
+    ),
+    "447120": ItemEffect(
+        item_id="447120",
+        name="Diamond-Tipped Spear",
+        defensive_only=True,
+        note=(
+            "Diamond-Tipped Spear: Sweet Spot 0-30% damage amp scales with fight distance "
+            "(range conditional not modelable); Reach Weapon +75 range utility-only"
+        ),
+    ),
+    "447121": ItemEffect(
+        item_id="447121",
+        name="Twilight's Edge",
+        defensive_only=True,
+        note=(
+            "Twilight's Edge: The Path Between requires 130 bonus AD AND 180 AP threshold; "
+            "randomly assigns Material/Spirit World effect — threshold + RNG not modelable"
+        ),
+    ),
+    "447107": ItemEffect(
+        item_id="447107",
+        name="Decapitator",
+        defensive_only=True,
+        note=(
+            "Decapitator: Anticipation stacks boost ultimate damage "
+            "(ultimate-cast schema gap; no basic attack DPS proc)"
+        ),
+    ),
+    "447100": ItemEffect(
+        item_id="447100",
+        name="Mirage Blade",
+        defensive_only=True,
+        note=(
+            "Mirage Blade: Blur grants bonus MS and a brief untargetable dash illusion "
+            "(movement utility + dodge mechanic; no DPS contribution)"
+        ),
+    ),
 
 }
 
