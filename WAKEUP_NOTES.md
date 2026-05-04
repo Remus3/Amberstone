@@ -7200,3 +7200,179 @@ this batch was engine-side only.
 | brawl_coach | ✅ s75 | 'brawl' / 'sr' | 'BRAWL' / 'SR' |
 | sr_coach | ⏳ blocked on vision-side enemy item parsing | 'sr' (when ready) | 'SR' |
 
+## s78 hand-off — 2026-05-04 (Phase 4 batch 22: Hextech Gunblade Lightning Bolt)
+
+Single-arc continuation from s77. Took s77 #1 candidate (Hextech
+Gunblade Lightning Bolt active) end to end. Cleanest-possible batch
+this session — no schema bump, just a defensive_only → periodic-proc
+promotion using the existing `every_n_seconds` field at a long cadence
+(40s vs the prior longest of 8s on Sundered Sky).
+
+**Engine: 0.25.0 → 0.26.0.** Tests: 412 → 418 (+6, no updates).
+Live engine on :8893 activated via `schtasks /End /Run RC-DaemonSlayer`.
+
+**Pattern decision worth pinning — long-CD actives are valid
+PeriodicProc users; cadence is unbounded.** Sundered Sky at 8s set
+the precedent; Hextech Gunblade at 40s extends it. The
+`PeriodicProc.__post_init__` validator only rejects 0/0 and both-set
+cases — there's no upper bound on `every_n_seconds`. Future actives
+with longer CDs (Mikael's 90s, Locket 90s, etc.) would slot in the
+same shape if their effect is damage-shaped. Future-you doesn't need
+a new schema for "long active" — only for fundamentally different
+effect shapes (target-conditional gates, ability-cast modeling, etc.).
+
+**Pattern decision worth pinning — Meraki cooldown:null is fine when
+the value is recoverable from in-game / wiki.** Meraki bulk's
+`active[].cooldown` is null on Hextech Gunblade. The 40s CD pin was
+sourced externally (in-game / wiki) and inlined as a literal float.
+Comment block in effects.py flags the source so future patches that
+touch Gunblade's CD can find the discrepancy fast. If Meraki ever
+fills this field, the literal can swap to a Meraki-derived constant
+without changing engine shape.
+
+**Pattern decision worth pinning — promotion-only batches DON'T
+shrink CoverageCountTests bound.** `test_table_size_at_phase_4_expansion`
+asserts `len(ITEM_EFFECTS) >= 54` — a lower bound. Promotions don't
+remove entries (they flip `defensive_only` to False and add periodics);
+the 3146 entry stays in ITEM_EFFECTS, just with a richer shape. So
+the count test stays at 54 lower-bound forever (until a new entry
+is added via a future batch). No touch needed this batch.
+
+**Shipped (commit `2273c62`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - **Hextech Gunblade (3146) Lightning Bolt** promoted from
+    defensive_only. `PeriodicProc(every_n_seconds=40.0,
+    bonus_damage=lambda c: 175.0 + (253.0 - 175.0) / 17.0 * (c.level - 1)
+    + 0.30 * c.ap, MAGICAL)`. The `(253-175)/17` literal preserves
+    the level-scaling formula in source form (78/17 ≈ 4.588 per level,
+    175 at level 1, 253 at level 18). Slow (25%/1.5s) is utility-only,
+    not modeled. Comment block pins the Meraki text + the externally-
+    sourced 40s CD.
+
+- `agents/daemon_slayer/__init__.py`:
+  - `ENGINE_VERSION = "0.26.0"`. Docstring extends the batch list
+    with batch 22 wording; defensive_only count drops to 21 (was 22
+    pre-batch — Gunblade promoted, hence -1).
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - **HextechGunbladeTests** (6 tests): promotion shape, level 1
+    no-AP baseline (175.0), level 18 no-AP cap (253.0), AP-scaling
+    at level 11 + 200 AP, per-level linear delta (78/17), Akali DPS
+    lift smoke.
+  - **DefensiveOnlyBatch3Tests.EXPECTED** dict shrunk from 3 → 2
+    entries (3146 removed); retention comments point at the new
+    test class.
+
+**Test state:**
+- `agents/daemon_slayer/tests/`: **418/418** green (s77 baseline 412 +
+  6 new HextechGunblade tests, no inversions).
+- `tests/phase2_smoke/`: 154/154 unchanged (no consumer-side wiring
+  this batch — engine added a damage source, but the dashboard /api/dps
+  + ranker call paths already iterate notes / sum periodics generically).
+- Pre-existing stale `0.9.3` engine_version pin in
+  `test_sr_draft_profile_engine` still failing (carried — not in
+  scope this batch).
+
+**Live verify (post `schtasks /End /Run RC-DaemonSlayer`):**
+
+Engine version + smoke /dps:
+```
+$ curl http://127.0.0.1:8893/health → engine_version=0.26.0 ✓
+$ /dps Akali lvl11 + [3146] →
+    weighted_dps=114.85  AD=135  AP=80
+    notes[Hextech Gunblade: Lightning Bolt 175→253 + 30% AP magic, 40s CD ...] ✓
+```
+
+Live engine /dps proves the proc is wired: Akali bare baseline at lvl
+11 was 76.51 weighted DPS; with Gunblade (60 AP + 45 AD stat block +
+the Lightning Bolt proc) it jumps to 114.85. The note appears in the
+notes[] field — confirms collect_effects is pulling the periodics
+tuple through the rotation engine.
+
+**Audit findings (defensive_only items remaining after batch 22):**
+
+21 entries left. Hextech Gunblade promoted; the remaining table is
+largely genuinely defensive (utilities, shields, revives) plus
+schema-blocked promotion candidates. No clean batch-23 candidates
+left without schema work — the easy-promotion well is now dry.
+
+Schema-blocked candidates (carry from s77):
+- **The Collector "Death" execute** — needs target-low-HP gate.
+- **Luden's Echo** — needs ability-cast modeling.
+
+Genuinely defensive (no promotion possible/needed):
+Bloodthirster, Shieldbow, Phantom Dancer, EoN, Serpent's Fang,
+Opportunity, Maw, Frozen Heart, Death's Dance, Shojin, Warmog's,
+Mercurial, GA, Banshee's, Zhonya's, Navori Flickerblade.
+
+Removed-from-game (absent in Meraki bulk, kept for parity):
+Chemtech Putrifier (3011), Deathfire Grasp (3128).
+
+**Decisions worth pinning (this batch):**
+- **Long-CD actives use `every_n_seconds`, no new schema needed.**
+  Sundered Sky (8s) → Hextech Gunblade (40s) → future 90s+ actives
+  all share the same shape.
+- **External cooldown sources are OK when Meraki has the field null.**
+  Pin the source in a comment so future patch-bump audits can find
+  the value if Meraki ever fills it.
+- **Promotion comment in DefensiveOnly* test class is the master
+  ledger of "this used to be defensive, see X for new tests".**
+  Pattern carried from s76 (Heartsteel) and s77 (Stridebreaker, ER).
+
+**Things tomorrow-you should NOT redo:**
+- Don't try to model the slow. It's CC, not damage — out of DPS scope.
+  Future "engagement-quality" scoring might want it, but that's not
+  what /dps + /rank compute.
+- Don't model the omnivamp (10%). It's healing, not damage — out of
+  scope. (Same reasoning as Riftmaker's omnivamp at full Void
+  Corruption stacks, batch 14.)
+- Don't try to improve the AP-uptime model with cast-frequency
+  weighting. The 40s CD already implies low-uptime; multiplying the
+  proc by a 0.x uptime factor would double-count what the cadence
+  already encodes.
+
+**Activation:** RC-DaemonSlayer scheduled task bounced via
+`schtasks /End /TN RC-DaemonSlayer && schtasks /Run /TN RC-DaemonSlayer`.
+Engine on :8893 reports 0.26.0. Hextech Gunblade note appears in
+/dps `notes[]` field. Behavior dormant until next AP-user game in
+progress (any coach calling /dps + /rank with 3146 in the build).
+
+**Bridge state at session end:** RC main pid=8084 (unchanged from s77).
+`schtasks` bounced RC-DaemonSlayer once. Game-PC bridge result was
+141s old at session start (per rc_facts probe). Peer bridge unchanged;
+no two-way traffic this session.
+
+**Operational backlog (delta from s77):**
+- ✅ ~~Phase 4 batch 22: Hextech Gunblade Lightning Bolt~~ shipped
+  this session.
+- All other s77 backlog unchanged.
+- **NEW from s78**: easy-promotion well is dry. Next batches
+  require schema work (Collector low-HP gate, Luden's ability-cast
+  modeling) or are pure stat-block additions (no DPS proc).
+
+**Memory entries written this session:** none. The "long-CD active
+uses existing every_n_seconds field" pattern + the "Meraki null
+cooldown is fine when externally sourced" pattern are both narrow
+enough to live in the engine docstring + this hand-off; will only
+promote to memory if a future session needs to recall them and
+can't find via grep.
+
+**Next-session candidates (ranked):**
+1. **SR coach `target_bonus_hp` activation** (carried s73→s77).
+   Probably needs vision-side enemy item parsing first.
+2. **Stale 0.9.3 engine_version pin cleanup** in
+   `test_sr_draft_profile_engine` (carried). ~10 min scope.
+3. **First draft visual verify of P8-5.5** (carried).
+4. **gamepc_boot.ps1 patch** (carried). 1-liner.
+5. **P8-7 E2E push-to-League integration test** (carried).
+6. **Activate arena augment v2 in production** (carried).
+7. **Per-target-HP-pct field** (carried; defer until caller demands).
+8. **Schema bump candidates** — The Collector low-HP gate (would
+   unlock execute-style items broadly) or Luden's Echo ability-cast
+   modeling (would unlock Hextech Rocketbelt + similar). Both bigger
+   than a batch-22 / batch-21 sized session.
+
+**Full coach activation matrix as of s78:** unchanged from s77 —
+this batch was engine-side only. (Same shape; not duplicated.)
+
