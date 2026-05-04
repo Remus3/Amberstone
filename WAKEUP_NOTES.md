@@ -8985,3 +8985,61 @@ periodic procs, spellblade, mana-Awe) is exhausted. Future batches require schem
 - P8-7 E2E push-to-League integration test (carried)
 
 **Full coach activation matrix as of s87:** unchanged from s86 — batch 31 was engine-side only.
+
+---
+
+## s88 wrap — Phase 4 batch 32: AP amplification + lethality + new schema (engine 0.36.0)
+
+**Commit:** 28d2a93  
+**Date:** 2026-05-04  
+**Engine:** 0.35.0 -> 0.36.0  
+**Tests:** 530 -> 550 (+20 tests, +8 subtests, all green)
+
+### What shipped
+
+**Batch 32** — 15 items added, 2 new schema fields:
+
+**New schema fields:**
+1.  in ItemEffect +  helper in effects.py:
+   - Multiplies effective AP in  by  AFTER all cross-derivation
+   - Wired into  so Lich Bane, Nashor's Tooth, Void Staff pen all see amplified AP
+   - Note surfaces: "AP amplified x1.3000 by Rabadon's Deathcap (effective AP for procs: N)"
+
+2.  in ItemEffect + engine.py stat walk:
+   - Walk uses  as bonus HP proxy (correct: bonus HP = item HP only)
+   - Same wiring pattern as Sterak's  and Manamune 
+
+**7 active promotions:**
+1. Rabadon's Deathcap (3089):  (Meraki confirmed 30% at patch 16.9.1, NOT 35%)
+2. Dusk and Dawn (2510): Spellblade , MAGICAL, 1.5s CD — joins "spellblade" unique-passive dedup family
+3. The Collector (667666): 
+4. Prowler's Claw (6693): `lethality=22.0`
+5. Bastionbreaker (2520): `lethality=22.0` (Shaped Charge ability passive deferred)
+6. Overlord's Bloodmail (2501): `bonus_ad_pct_bonus_hp=0.025` (Tyranny passive; Retribution missing-HP ramp not modeled)
+7. Demonic Embrace (4637): `ap_per_bonus_hp_pct=0.02` (Dark Pact; Azakana's Gaze ability burn deferred)
+
+**8 defensive_only:** Morellonomicon (3165), Horizon Focus (4628), Malignance (3118), Blackfire Torch (2503), Endless Hunger (2517), Chempunk Chainsword (6609), Hexoptics C44 (2523), Bloodletter's Curse (8010).
+
+### Schema gaps surfaced
+
+- Ability-cast schema still the primary blocker: Shaped Charge (Bastionbreaker), Azakana's Gaze (Demonic Embrace), Baleful Blaze (Blackfire Torch), Hypershot (Horizon Focus), Hatefog (Malignance), Vile Decay (Bloodletter's Curse) all deferred.
+- Bloodletter's Curse 40% magic pen is ability-stacking — would need ability-cast schema to model properly.
+- Hexoptics C44 Magnification (range-conditional up to 10% attack damage) remains deferred — fight distance unknown.
+
+### Next batch candidates
+
+Remaining promotable SR items (from the audit, gold-sorted):
+- Items with lethality in DDragon description not yet covered — now mostly done
+- Items needing ability-cast schema (the big unlock for 6+ items)
+- Items needing `magic_amp_pct` target-debuff schema (Abyssal Mask Unmake)
+- Checking what else has simple lethality/pen stats at ~2500-3000g range
+
+### Carried from s85-s87
+
+- SR coach `target_bonus_hp` activation (blocked on vision-side enemy item parsing)
+- gamepc_boot.ps1 1-liner patch (carried)
+- Arena augment v2 activation in production (carried)
+- P8-5.5 visual verify first draft (carried)
+- P8-7 E2E push-to-League integration test (carried)
+
+**Full coach activation matrix as of s88:** unchanged from s87 — batch 32 was engine-side only.
