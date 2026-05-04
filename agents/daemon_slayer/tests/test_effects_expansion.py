@@ -1330,6 +1330,86 @@ class HextechGunbladeTests(unittest.TestCase):
         self.assertGreater(with_gb.weighted_dps, bare.weighted_dps)
 
 
+class IcebornGauntletSpellbladeTests(unittest.TestCase):
+    """Phase 4 batch 23 — Iceborn Gauntlet (6662) added to ITEM_EFFECTS
+    as a new entry (was stats-only via item aggregation prior).
+
+    Iceborn's Spellblade variant: 150% base AD bonus physical on the
+    next basic after an ability, 1.5s real CD post-empowered-attack.
+    Rotation cadence approx ~3s (matches Trinity / Lich Bane / Essence
+    Reaver — the family's shared ability-cast frequency assumption).
+    Joins the spellblade unique-passive dedup family. Frost field's
+    25% slow is utility, not damage — not modeled.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_ibg_present_with_periodic(self) -> None:
+        e = ITEM_EFFECTS["6662"]
+        self.assertEqual(e.name, "Iceborn Gauntlet")
+        self.assertFalse(e.defensive_only)
+        self.assertNotEqual(e.periodics, ())
+        proc = e.periodics[0]
+        self.assertEqual(proc.damage_type, PHYSICAL)
+        self.assertEqual(proc.every_n_seconds, 3.0)
+        self.assertEqual(proc.every_n_attacks, 0)
+        self.assertEqual(proc.name, "Spellblade")
+        self.assertIn("spellblade", e.note.lower())
+
+    def test_ibg_tagged_spellblade_unique_passive(self) -> None:
+        e = ITEM_EFFECTS["6662"]
+        self.assertEqual(e.unique_passive_key, "spellblade")
+
+    def test_ibg_proc_is_150_pct_base_ad(self) -> None:
+        # 100 base_ad → 150 bonus damage per proc (1.50 * c.base_ad).
+        proc = ITEM_EFFECTS["6662"].periodics[0]
+        ctx = CallContext(base_ad=100.0, bonus_ad=0, level=11)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 150.0, places=3)
+
+    def test_ibg_dedups_against_trinity_force(self) -> None:
+        # First-seen-wins: [TF, IBG] keeps TF; [IBG, TF] keeps IBG.
+        # Both orderings drop one spellblade proc — only one remains.
+        from agents.daemon_slayer.effects import collect_effects
+        effects_tf_first = collect_effects(["3078", "6662"])
+        effects_ibg_first = collect_effects(["6662", "3078"])
+        self.assertEqual(len(effects_tf_first), 1)
+        self.assertEqual(len(effects_ibg_first), 1)
+        self.assertEqual(effects_tf_first[0].item_id, "3078")
+        self.assertEqual(effects_ibg_first[0].item_id, "6662")
+
+    def test_ibg_dedups_against_lich_bane(self) -> None:
+        from agents.daemon_slayer.effects import collect_effects
+        effects_lb_first = collect_effects(["3100", "6662"])
+        effects_ibg_first = collect_effects(["6662", "3100"])
+        self.assertEqual(len(effects_lb_first), 1)
+        self.assertEqual(len(effects_ibg_first), 1)
+        self.assertEqual(effects_lb_first[0].item_id, "3100")
+        self.assertEqual(effects_ibg_first[0].item_id, "6662")
+
+    def test_ibg_dedups_against_essence_reaver(self) -> None:
+        from agents.daemon_slayer.effects import collect_effects
+        effects_er_first = collect_effects(["3508", "6662"])
+        effects_ibg_first = collect_effects(["6662", "3508"])
+        self.assertEqual(len(effects_er_first), 1)
+        self.assertEqual(len(effects_ibg_first), 1)
+        self.assertEqual(effects_er_first[0].item_id, "3508")
+        self.assertEqual(effects_ibg_first[0].item_id, "6662")
+
+    def test_ibg_dps_lifts_bruiser_baseline(self) -> None:
+        # Camille level 11 + Iceborn: 60 AD effective contribution from
+        # the Spellblade proc on top of the stat block (300 HP, 50
+        # armor, 15 AH, 5% MS). The full DPS lift comes mostly from the
+        # Spellblade proc — bare baseline must be below the with-IBG
+        # value. Asserts the engine ran clean post-promotion.
+        bare = compute_dps(self.snap, "Camille", level=11)
+        with_ibg = compute_dps(
+            self.snap, "Camille", level=11, item_ids=["6662"],
+        )
+        self.assertGreater(with_ibg.weighted_dps, bare.weighted_dps)
+
+
 class MultiProcSchemaTests(unittest.TestCase):
     """Phase 4 batch 8 — `ItemEffect.periodics: tuple[PeriodicProc, ...]`.
 
@@ -1691,6 +1771,13 @@ class SpellbladeUniquePassiveTests(unittest.TestCase):
         # EssenceReaverSpellbladeTests below covers the full dedup pair
         # against Lich Bane.
         self.assertEqual(ITEM_EFFECTS["3508"].unique_passive_key, "spellblade")
+
+    def test_iceborn_gauntlet_tagged_spellblade(self) -> None:
+        # Phase 4 batch 23 (2026-05-04) added Iceborn Gauntlet (6662) to
+        # ITEM_EFFECTS as a new entry (was stats-only prior). It joins
+        # the spellblade family — full dedup pair coverage against
+        # TF / LB / ER lives in IcebornGauntletSpellbladeTests above.
+        self.assertEqual(ITEM_EFFECTS["6662"].unique_passive_key, "spellblade")
 
     def test_collect_effects_dedups_spellblade_pair(self) -> None:
         from agents.daemon_slayer.effects import collect_effects
