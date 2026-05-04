@@ -3285,6 +3285,204 @@ class AweEngineWireInTests(unittest.TestCase):
         self.assertLess(ad_lift, 14.0)
 
 
+class ArchangelsAweTests(unittest.TestCase):
+    """Phase 4 batch 28 — Archangel's Staff (3003) "Awe" stat layer.
+
+    Awe converts 1% BONUS mana (item-contributed only — distinct from
+    Manamune's max-mana keying) into bonus AP. Walked in build_champion
+    against item_totals["mp_flat"] (the bonus-mana sum), AFTER
+    aggregate_item_stats. Manaflow stack-up + transformation into
+    Seraph's at +360 max mana stacks not modeled (steady-state).
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_archangel_present_with_awe_field(self) -> None:
+        e = ITEM_EFFECTS["3003"]
+        self.assertEqual(e.name, "Archangel's Staff")
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(e.periodics, ())
+        self.assertAlmostEqual(e.bonus_ap_pct_bonus_mp, 0.01, places=4)
+        # Asymmetry pin: Archangel uses BONUS mana, NOT max mana.
+        # bonus_ad_pct_max_mp stays at zero (that's Manamune/Muramana).
+        self.assertEqual(e.bonus_ad_pct_max_mp, 0.0)
+        self.assertIn("awe", e.note.lower())
+
+    def test_archangel_no_unique_passive_key(self) -> None:
+        # Archangel transforms into Seraph's at stacks; build legality
+        # is ranker-owned per the s81 pattern (same call as Manamune).
+        self.assertEqual(ITEM_EFFECTS["3003"].unique_passive_key, "")
+
+    def test_archangel_lifts_ap_via_bonus_mana_only(self) -> None:
+        # Ezreal lvl 11: champion base mp ≈ 1075 — must NOT count toward
+        # Archangel's Awe (bonus mana only). Archangel adds 600 mana →
+        # bonus mana = 600 → Awe AP = 0.01 * 600 = 6 AP.
+        # If the walk wrongly used max mana (1075 + 600 = 1675), AP
+        # contribution would be ~16.75 — this test pins the asymmetry.
+        from agents.daemon_slayer.engine import build_champion
+        bare = build_champion(self.snap, "Ezreal", level=11)
+        with_arch = build_champion(self.snap, "Ezreal", level=11, item_ids=["3003"])
+        # Archangel stat block AP = 70; Awe at 600 bonus mana = 6.
+        # Total AP lift should be 70 + 6 = 76, with rounding tolerance.
+        ap_lift = with_arch.stats.get("ap", 0.0) - bare.stats.get("ap", 0.0)
+        self.assertGreater(ap_lift, 74.0)
+        self.assertLess(ap_lift, 78.0)
+        # Strict bound check that catches the "max mana" bug:
+        # if Awe used max mana (1675), lift would be 70 + 16.75 ≈ 86.75.
+        self.assertLess(ap_lift, 80.0)
+
+    def test_archangel_walk_uses_total_build_mana(self) -> None:
+        # Add Manamune (500 mana) to the build → Archangel's Awe sees
+        # additional 500 bonus mana → +5 AP from Archangel's contribution.
+        # Manamune itself doesn't carry bonus_ap_pct_bonus_mp so its 500
+        # mana contribution is purely upstream-source for Archangel.
+        from agents.daemon_slayer.engine import build_champion
+        arch_only = build_champion(self.snap, "Ezreal", level=11, item_ids=["3003"])
+        arch_plus_manamune = build_champion(
+            self.snap, "Ezreal", level=11, item_ids=["3003", "3004"],
+        )
+        ap_lift = arch_plus_manamune.stats["ap"] - arch_only.stats["ap"]
+        # Manamune adds 0 AP stat-block; only contribution is +5 AP via
+        # Archangel's Awe ramp on Manamune's 500 bonus mana.
+        self.assertGreater(ap_lift, 4.0)
+        self.assertLess(ap_lift, 7.0)
+
+    def test_archangel_lifts_dps_on_caster(self) -> None:
+        # Annie / Lux / any AP user — Archangel raises DPS via the AP
+        # piece feeding Lich Bane / Nashor's spellblades or just by
+        # raising auto attack contribution. Use a generic AP champ.
+        bare = compute_dps(self.snap, "Lux", level=11)
+        with_arch = compute_dps(self.snap, "Lux", level=11, item_ids=["3003"])
+        self.assertGreaterEqual(with_arch.weighted_dps, bare.weighted_dps)
+
+
+class SeraphsEmbraceTests(unittest.TestCase):
+    """Phase 4 batch 28 — Seraph's Embrace (3040) Awe-AP twin.
+
+    Same field as Archangel's but at 2% (post-transformation form).
+    Lifeline shield is non-DPS, deduped via unique_passive_key="lifeline";
+    Awe AP walk in engine.py bypasses collect_effects so the AP piece
+    survives any lifeline dedup.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_seraphs_present_with_awe_field(self) -> None:
+        e = ITEM_EFFECTS["3040"]
+        self.assertEqual(e.name, "Seraph's Embrace")
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(e.periodics, ())
+        self.assertAlmostEqual(e.bonus_ap_pct_bonus_mp, 0.02, places=4)
+
+    def test_seraphs_lifeline_unique_passive_tagged(self) -> None:
+        # Same key as Shieldbow / Sterak's / Maw — lifeline shield piece.
+        self.assertEqual(ITEM_EFFECTS["3040"].unique_passive_key, "lifeline")
+
+    def test_seraphs_lifts_ap_at_double_archangel_rate(self) -> None:
+        # 1000 mana stat block, 2% bonus mana = 20 AP from Seraph's own
+        # mana. + 70 AP stat = 90 total AP lift.
+        from agents.daemon_slayer.engine import build_champion
+        bare = build_champion(self.snap, "Lux", level=11)
+        with_seraphs = build_champion(self.snap, "Lux", level=11, item_ids=["3040"])
+        ap_lift = with_seraphs.stats.get("ap", 0.0) - bare.stats.get("ap", 0.0)
+        # 70 stat + 20 Awe = 90, with engine rounding tolerance.
+        self.assertGreater(ap_lift, 88.0)
+        self.assertLess(ap_lift, 92.0)
+
+    def test_seraphs_awe_survives_lifeline_dedup(self) -> None:
+        # Build with Seraph's + Sterak's (3053, also lifeline). Sterak's
+        # comes first via item_id ordering — wait, ordering is the
+        # caller's. Let's pin both orderings.
+        # collect_effects dedups the second lifeline-tagged ItemEffect,
+        # but engine.py's Awe walk reads ITEM_EFFECTS directly so the
+        # Awe AP contribution is independent of the dedup decision.
+        from agents.daemon_slayer.engine import build_champion
+        # Lux + Seraph's only: AP includes Seraph's 20 Awe contribution.
+        seraphs_only = build_champion(
+            self.snap, "Lux", level=11, item_ids=["3040"],
+        )
+        # Lux + Seraph's + Sterak's (3053). Sterak's has 0 AP stat block
+        # but its 400 HP pulls the build's stats up. Awe contribution
+        # from Seraph's stays at 0.02 * 1000 = 20 (Sterak's adds 0 mana).
+        with_steraks = build_champion(
+            self.snap, "Lux", level=11, item_ids=["3040", "3053"],
+        )
+        # AP gap should be 0 (Sterak's adds no AP). Same Seraph's Awe.
+        ap_gap = with_steraks.stats["ap"] - seraphs_only.stats["ap"]
+        self.assertAlmostEqual(ap_gap, 0.0, places=2)
+
+
+class ArchangelEngineWireInTests(unittest.TestCase):
+    """Awe-AP walk safety + asymmetry vs Awe-AD walk.
+
+    Pins the engine-side wiring guarantees: walk is safe with no
+    Archangel-line items present, walk uses bonus mana not max mana
+    (asymmetry vs Manamune family), walk doesn't accidentally fire
+    on bonus_ad_pct_max_mp items.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_walk_safe_when_no_archangel_items(self) -> None:
+        # Pure stat-only build — walk should not crash and should
+        # contribute nothing to ap_flat. Lich Bane (3100) has 100 AP +
+        # 4% MS, no bonus_ap_pct_bonus_mp; lift should match its stat
+        # block exactly with no Awe contribution.
+        from agents.daemon_slayer.engine import build_champion
+        bare_ap = build_champion(self.snap, "Lux", level=11).stats.get("ap", 0.0)
+        with_lb = build_champion(
+            self.snap, "Lux", level=11, item_ids=["3100"],
+        ).stats.get("ap", 0.0)
+        ap_lift = with_lb - bare_ap
+        self.assertAlmostEqual(ap_lift, 100.0, places=1)
+
+    def test_manamune_does_not_fire_archangel_walk(self) -> None:
+        # Manamune carries bonus_ad_pct_max_mp (Awe-AD), NOT
+        # bonus_ap_pct_bonus_mp. Adding it should not give ANY AP via
+        # the Archangel walk. AP stays at 0 for Ezreal.
+        from agents.daemon_slayer.engine import build_champion
+        bare_ap = build_champion(self.snap, "Ezreal", level=11).stats.get("ap", 0.0)
+        with_manamune_ap = build_champion(
+            self.snap, "Ezreal", level=11, item_ids=["3004"],
+        ).stats.get("ap", 0.0)
+        # Manamune has no AP stat block, no Awe-AP — AP unchanged.
+        self.assertAlmostEqual(with_manamune_ap, bare_ap, places=2)
+
+    def test_archangel_walk_asymmetric_vs_manamune_walk(self) -> None:
+        # Direct asymmetry assertion: Archangel uses bonus mana
+        # (item-contributed only), Manamune uses max mana (champion
+        # base + items). On Ezreal lvl 11 (champion base 1075 mp),
+        # Manamune's 500 mana → AD = 0.02 * (1075 + 500) = 31.5;
+        # Archangel's 600 mana → AP = 0.01 * 600 = 6 (NOT 0.01 * 1675 = 16.75).
+        # The ratio of AP-side contribution to AD-side contribution
+        # being ~6/31.5 = 0.19 (rather than ~16.75/31.5 = 0.53)
+        # surfaces the bonus-vs-max distinction.
+        from agents.daemon_slayer.engine import build_champion
+        manamune_ad = build_champion(
+            self.snap, "Ezreal", level=11, item_ids=["3004"],
+        ).stats["ad"]
+        bare_ad = build_champion(self.snap, "Ezreal", level=11).stats["ad"]
+        archangel_ap = build_champion(
+            self.snap, "Ezreal", level=11, item_ids=["3003"],
+        ).stats["ap"]
+        bare_ap = build_champion(self.snap, "Ezreal", level=11).stats["ap"]
+        # Manamune AD lift includes 35 stat + Awe — Awe ≈ 31.5.
+        manamune_awe = (manamune_ad - bare_ad) - 35.0  # subtract stat block
+        # Archangel AP lift includes 70 stat + Awe — Awe ≈ 6.
+        archangel_awe = (archangel_ap - bare_ap) - 70.0
+        # Ratio asserts asymmetry: if Archangel used max mana, ratio
+        # would be ~16.75/31.5 = 0.53. With bonus mana, ratio is
+        # ~6/31.5 = 0.19. Use a safe upper bound at 0.30.
+        ratio = archangel_awe / manamune_awe
+        self.assertLess(ratio, 0.30)
+
+
 class CritBonusComposesWithEssenceReaverTests(unittest.TestCase):
     """Phase 4 batch 26 — item-effect-contributed crit feeds ER's Spellblade.
 

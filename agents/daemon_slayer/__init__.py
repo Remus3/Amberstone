@@ -77,7 +77,15 @@ ItemEffect.bonus_ad_pct_max_mp Awe wiring (Phase 4 batch 27, 2026-05-04
 stat layer pattern as Sterak's bonus_ad_pct_base_ad from batch 20;
 Muramana additionally fires Shock — 1.2% max mana per-attack physical —
 via a periodic proc; Manaflow stack-up + Muramana's ability damage
-piece intentionally not modeled), and 21 defensive_only items spanning the Tier-1
+piece intentionally not modeled), Archangel's Staff (3003) + Seraph's
+Embrace (3040) paired promotion via the new
+ItemEffect.bonus_ap_pct_bonus_mp field (Phase 4 batch 28, 2026-05-04 —
+AP-side Awe twin; Archangel +1% / Seraph's +2% BONUS mana as AP, keyed
+off item-contributed mana only — distinct from the Manamune family's
+max-mana keying; engine walks ap_flat the same way the Manamune walk
+targets ad_flat; Seraph's Lifeline shield piece tagged unique_passive_key
+"lifeline" — Awe walk in engine.py bypasses collect_effects so the AP
+contribution survives lifeline dedup), and 21 defensive_only items spanning the Tier-1
 SR / Arena pool plus high-pickrate batch 2 + AP batch 3 additions.
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
@@ -94,4 +102,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.31.0"
+ENGINE_VERSION = "0.32.0"
