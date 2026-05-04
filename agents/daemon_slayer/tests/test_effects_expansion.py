@@ -3493,14 +3493,18 @@ class Batch29DefensiveOnlyCoverageTests(unittest.TestCase):
     so future batches know what's there.
     """
 
-    def test_hubris_present_defensive_only(self) -> None:
+    def test_hubris_present_with_lethality(self) -> None:
+        # Batch 29 originally tagged Hubris defensive_only with the
+        # lethality flagged for a future plumbing batch. Batch 30
+        # (the lethality plumbing) promoted Hubris off defensive_only
+        # and pinned the 18 Lethality. This test now asserts the
+        # post-batch-30 state.
         e = ITEM_EFFECTS["6697"]
         self.assertEqual(e.name, "Hubris")
-        self.assertTrue(e.defensive_only)
+        self.assertFalse(e.defensive_only)
         self.assertEqual(e.periodics, ())
+        self.assertAlmostEqual(e.lethality, 18.0, places=2)
         self.assertIn("eminence", e.note.lower())
-        # Lethality gap is acknowledged in the note — pin so future
-        # "lethality plumbing" batch can find this comment via grep.
         self.assertIn("lethality", e.note.lower())
 
     def test_spirit_visage_present_defensive_only(self) -> None:
@@ -3648,6 +3652,189 @@ class StormsurgeMagicPenTests(unittest.TestCase):
         joined = " ".join(with_ss.notes)
         self.assertIn("effective target MR", joined)
         self.assertIn("65.0", joined)  # 80 - 15 = 65 after Stormsurge pen
+
+
+class LethalityScalingTests(unittest.TestCase):
+    """Phase 4 batch 30 — lethality × (0.6 + 0.4 × level/18) formula.
+
+    Pins the level-scaling math: 60% effective at lvl 1, 100% at lvl 18,
+    linear in between. Pre-batch callers that omit ``level`` see no
+    lethality contribution (backward-compat invariant).
+    """
+
+    def test_lethality_zero_when_level_omitted(self) -> None:
+        # Pre-batch-30 invariant: callers without a level get the raw
+        # armor_pen_flat-only behavior; lethality contributes nothing.
+        e = ItemEffect(item_id="x", name="x", lethality=18.0)
+        self.assertEqual(effective_target_armor(100.0, [e]), 100.0)
+
+    def test_lethality_at_level_1(self) -> None:
+        # Wiki formula: factor = 0.6 + 0.4 × level/18. At level=1 the
+        # factor is 0.6 + 0.4/18 = 0.6222 (NOT a flat 0.6 — the "60%
+        # at lvl 1" wiki shorthand rounds the lower bound). 18 × 0.6222
+        # = 11.2 effective flat pen; 100 - 11.2 = 88.8.
+        e = ItemEffect(item_id="x", name="x", lethality=18.0)
+        self.assertAlmostEqual(
+            effective_target_armor(100.0, [e], level=1), 88.8, places=1,
+        )
+
+    def test_lethality_full_at_level_18(self) -> None:
+        # 18 lethality at lvl 18 → full 18 effective flat pen.
+        e = ItemEffect(item_id="x", name="x", lethality=18.0)
+        self.assertAlmostEqual(
+            effective_target_armor(100.0, [e], level=18), 82.0, places=2,
+        )
+
+    def test_lethality_at_level_11_intermediate(self) -> None:
+        # Lvl 11 → factor = 0.6 + 0.4 × 11/18 = 0.844; 18 × 0.844 = 15.2.
+        e = ItemEffect(item_id="x", name="x", lethality=18.0)
+        self.assertAlmostEqual(
+            effective_target_armor(100.0, [e], level=11),
+            100.0 - 15.2,
+            places=2,
+        )
+
+    def test_multiple_lethality_items_sum_additively(self) -> None:
+        # Two lethality items at lvl 18 (full effective): 18 + 10 = 28
+        # total flat pen → armor 100 → 72.
+        e1 = ItemEffect(item_id="a", name="a", lethality=18.0)
+        e2 = ItemEffect(item_id="b", name="b", lethality=10.0)
+        self.assertAlmostEqual(
+            effective_target_armor(100.0, [e1, e2], level=18), 72.0, places=2,
+        )
+
+    def test_lethality_floors_at_zero(self) -> None:
+        # 100 lethality at full effective vs 30 armor → 30 - 100 = -70 floored to 0.
+        e = ItemEffect(item_id="x", name="x", lethality=100.0)
+        self.assertEqual(
+            effective_target_armor(30.0, [e], level=18), 0.0,
+        )
+
+    def test_lethality_lands_after_pct_pen(self) -> None:
+        # Pipeline: 100 armor × (1 - 0.35 LDR) = 65. Then -15.2 lethality
+        # (Hubris at lvl 11) = 49.8. Pin the order.
+        ldr = ITEM_EFFECTS["3036"]
+        hubris = ITEM_EFFECTS["6697"]
+        self.assertAlmostEqual(
+            effective_target_armor(100.0, [ldr, hubris], level=11),
+            49.8, places=2,
+        )
+
+
+class HubrisLethalityTests(unittest.TestCase):
+    """Phase 4 batch 30 — Hubris (6697) lethality lands."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_hubris_field_value(self) -> None:
+        e = ITEM_EFFECTS["6697"]
+        self.assertAlmostEqual(e.lethality, 18.0, places=2)
+        self.assertFalse(e.defensive_only)
+
+    def test_hubris_raises_dps_vs_armored(self) -> None:
+        bare = compute_dps(self.snap, "Aatrox", level=11, target_armor=100.0)
+        with_hubris = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["6697"], target_armor=100.0,
+        )
+        self.assertGreater(with_hubris.weighted_dps, bare.weighted_dps)
+
+
+class LethalityPromotionsTests(unittest.TestCase):
+    """Phase 4 batch 30 — 4 in-place promotions: Voltaic, Edge of Night,
+    Youmuu's, Opportunity."""
+
+    def test_voltaic_carries_10_lethality(self) -> None:
+        e = ITEM_EFFECTS["6699"]
+        self.assertAlmostEqual(e.lethality, 10.0, places=2)
+        # Energized periodic still present (didn't replace, added on top).
+        self.assertNotEqual(e.periodics, ())
+
+    def test_edge_of_night_carries_15_lethality(self) -> None:
+        e = ITEM_EFFECTS["3814"]
+        self.assertAlmostEqual(e.lethality, 15.0, places=2)
+        self.assertFalse(e.defensive_only)
+
+    def test_youmuus_carries_18_lethality(self) -> None:
+        e = ITEM_EFFECTS["3142"]
+        self.assertAlmostEqual(e.lethality, 18.0, places=2)
+        self.assertFalse(e.defensive_only)
+
+    def test_opportunity_carries_18_lethality(self) -> None:
+        e = ITEM_EFFECTS["6701"]
+        self.assertAlmostEqual(e.lethality, 18.0, places=2)
+        self.assertFalse(e.defensive_only)
+
+
+class LethalityNewEntriesTests(unittest.TestCase):
+    """Phase 4 batch 30 — Axiom Arc (6696) + Umbral Glaive (3179) new entries."""
+
+    def test_axiom_arc_new_entry(self) -> None:
+        e = ITEM_EFFECTS["6696"]
+        self.assertEqual(e.name, "Axiom Arc")
+        self.assertAlmostEqual(e.lethality, 18.0, places=2)
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(e.periodics, ())
+        self.assertEqual(e.unique_passive_key, "")
+
+    def test_umbral_glaive_new_entry(self) -> None:
+        e = ITEM_EFFECTS["3179"]
+        self.assertEqual(e.name, "Umbral Glaive")
+        self.assertAlmostEqual(e.lethality, 18.0, places=2)
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(e.periodics, ())
+
+
+class LethalityEngineWireInTests(unittest.TestCase):
+    """Phase 4 batch 30 — compute_dps passes level into effective_target_armor."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_higher_level_caster_gets_more_lethality(self) -> None:
+        # Same Hubris build, lvl 1 vs lvl 18 — the higher level caster
+        # gets more effective flat pen, so vs the same armored target
+        # the DPS is higher (controlling for stat scaling).
+        # Aatrox lvl 1 has lower base AD, so we can't use raw DPS; use
+        # the resolved target_armor_eff in DpsResult (engine-internal).
+        # Actually, target_armor is unchanged in the result — we need
+        # to inspect the notes for the effective armor pin.
+        with_lvl1 = compute_dps(
+            self.snap, "Aatrox", level=1, item_ids=["6697"], target_armor=100.0,
+        )
+        with_lvl18 = compute_dps(
+            self.snap, "Aatrox", level=18, item_ids=["6697"], target_armor=100.0,
+        )
+        # Pull effective armor from notes
+        import re
+        def eff_armor(r):
+            for n in r.notes:
+                m = re.search(r"effective target armor [\d.]+\s*→\s*([\d.]+)", n)
+                if m:
+                    return float(m.group(1))
+            return None
+        eff_lvl1 = eff_armor(with_lvl1)
+        eff_lvl18 = eff_armor(with_lvl18)
+        self.assertIsNotNone(eff_lvl1)
+        self.assertIsNotNone(eff_lvl18)
+        # Wiki formula 0.6 + 0.4 × level/18:
+        # Lvl 1 factor 0.6222 → 18 × 0.6222 = 11.2 → 100 - 11.2 = 88.8.
+        # Lvl 18 factor 1.0    → 18 × 1.0    = 18.0 → 100 - 18.0 = 82.0.
+        self.assertAlmostEqual(eff_lvl1, 88.8, places=1)
+        self.assertAlmostEqual(eff_lvl18, 82.0, places=1)
+
+    def test_pen_pipeline_composes_pct_then_lethality(self) -> None:
+        # LDR (35% pen) + Hubris (18 leth) at lvl 11:
+        # 100 × 0.65 = 65, then 65 - 18 × 0.844 = 49.8.
+        with_combo = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3036", "6697"],
+            target_armor=100.0,
+        )
+        joined = " ".join(with_combo.notes)
+        self.assertIn("effective target armor", joined)
+        self.assertIn("49.8", joined)
 
 
 class CritBonusComposesWithEssenceReaverTests(unittest.TestCase):
