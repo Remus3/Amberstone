@@ -50,6 +50,7 @@ from .effects import (
     collect_effects,
     effective_target_armor,
     effective_target_mr,
+    total_ap_amp_multiplier,
     total_bonus_ap_from_hp,
     total_crit_chance_bonus,
     total_crit_damage_bonus,
@@ -393,6 +394,15 @@ def compute_dps(
     # raw stat blocks; /dps reflects converted totals.
     ap_from_hp = total_bonus_ap_from_hp(item_effects, caster_bonus_hp)
     ap += ap_from_hp
+    # Phase 4 batch 32 (2026-05-04): multiplicative AP amplifier. Applied
+    # after ap_from_hp so HP→AP cross-derivation (Riftmaker/Demonic Embrace)
+    # is included in the amplified base — Rabadon's Magical Opus boosts ALL
+    # AP, including the HP-converted contribution. Same separation as
+    # batch 15: raw stat blocks (/stats) are unchanged; only CallContext.ap
+    # sees the amplified total.
+    ap_amp = total_ap_amp_multiplier(item_effects)
+    if ap_amp != 1.0:
+        ap *= ap_amp
     # Phase 4 batch 21 (2026-05-04): crit_chance plumbed into CallContext
     # for ER Spellblade (+0.5 bonus physical per 1% crit).
     # Phase 4 batch 26 (2026-05-04): item-effect-contributed crit
@@ -475,6 +485,11 @@ def compute_dps(
         notes.append(
             f"caster AP cross-derived from bonus HP: +{ap_from_hp:.1f} AP "
             f"(total AP for procs: {ap:.1f})"
+        )
+    if ap_amp != 1.0:
+        notes.append(
+            f"AP amplified ×{ap_amp:.4f} by Rabadon's Deathcap "
+            f"(effective AP for procs: {ap:.1f})"
         )
     if crit_from_effects > 0:
         # Phase 4 batch 26 (2026-05-04): surface item-effect-contributed

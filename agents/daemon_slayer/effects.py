@@ -298,6 +298,25 @@ class ItemEffect:
     crit_chance_bonus_flat: float = 0.0
     crit_chance_bonus_max_pct: float = 0.0
     crit_chance_bonus_per_bonus_hp_cap: float = 0.0
+    # Phase 4 batch 32 (2026-05-04): multiplicative AP amplifier.
+    # Rabadon's Deathcap "Magical Opus" multiplies the wielder's total AP
+    # by (1 + ap_amp_pct). Applied at DPS time — ``compute_dps`` multiplies
+    # the effective AP used by proc scaling and pen formulas by
+    # ``total_ap_amp_multiplier(effects)`` AFTER other AP cross-derivation
+    # (HP→AP, mana→AP). Raw stat block unchanged — same separation as
+    # ``ap_per_bonus_hp_pct`` (batch 15). Stacks multiplicatively per
+    # League's buff-system semantics; current patch has one item
+    # (Rabadon's 30%). Default 0.0 → no contribution.
+    ap_amp_pct: float = 0.0
+    # Phase 4 batch 32 (2026-05-04): bonus AD as a percentage of bonus HP.
+    # Overlord's Bloodmail "Tyranny" grants bonus AD = 2.5% bonus HP.
+    # Bonus HP = HP from items only (not base HP from leveling). Engine
+    # resolves this in ``build_champion`` using ``item_totals["hp_flat"]``
+    # as the bonus HP proxy — correct because champion leveling contributes
+    # base HP, not bonus HP. Walked AFTER ``aggregate_item_stats`` so
+    # items' own HP (Overlord's 550) is included. One-way, no feedback.
+    # Default 0.0 → no contribution.
+    bonus_ad_pct_bonus_hp: float = 0.0
     defensive_only: bool = False     # documents "no DPS effect" entries
     note: str = ""                   # one-line summary surfaced in DpsResult.notes
     # Phase 4 batch 10 (2026-05-04): unique-passive de-duplication.
@@ -1679,6 +1698,154 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Abyssal Mask: Unmake (12% magic-damage amp to nearby enemies — team debuff, no magic_amp_pct field; deferred to schema bump)",
     ),
 
+    # ── Phase 4 batch 32 (2026-05-04): AP amplification + lethality + new schema ──
+    # 7 active promotions (2 new schema fields + 5 reuse existing):
+    # Rabadon's Deathcap (ap_amp_pct=0.30), Dusk and Dawn (spellblade),
+    # The Collector + Prowler's Claw + Bastionbreaker (lethality),
+    # Overlord's Bloodmail (bonus_ad_pct_bonus_hp), Demonic Embrace
+    # (ap_per_bonus_hp_pct). 8 defensive_only entries.
+
+    "3089": ItemEffect(
+        item_id="3089",
+        name="Rabadon's Deathcap",
+        ap_amp_pct=0.30,
+        note=(
+            "Rabadon's Deathcap: Magical Opus +30% total AP (multiplicative; "
+            "amplifies all AP-scaling procs and pen formulas via CallContext.ap)"
+        ),
+    ),
+    "2510": ItemEffect(
+        item_id="2510",
+        name="Dusk and Dawn",
+        periodics=(PeriodicProc(
+            name="Spellblade",
+            bonus_damage=lambda c: 0.75 * c.base_ad + 0.10 * c.ap,
+            damage_type=MAGICAL,
+            every_n_seconds=1.5,
+        ),),
+        unique_passive_key="spellblade",
+        note=(
+            "Dusk and Dawn: Spellblade 75% base AD + 10% AP bonus magic "
+            "damage every ~1.5s; joins Trinity Force / Lich Bane / ER / "
+            "Iceborn Gauntlet spellblade dedup family; on-hit echo not modeled"
+        ),
+    ),
+    "667666": ItemEffect(
+        item_id="667666",
+        name="The Collector",
+        lethality=10.0,
+        note=(
+            "The Collector: 10 Lethality (level-scaled flat pen). "
+            "Death execute (<5% HP) is utility, not modeled"
+        ),
+    ),
+    "6693": ItemEffect(
+        item_id="6693",
+        name="Prowler's Claw",
+        lethality=22.0,
+        note=(
+            "Prowler's Claw: 22 Lethality (level-scaled flat pen). "
+            "Ambush Predator active is utility, not modeled"
+        ),
+    ),
+    "2520": ItemEffect(
+        item_id="2520",
+        name="Bastionbreaker",
+        lethality=22.0,
+        note=(
+            "Bastionbreaker: 22 Lethality (level-scaled flat pen). "
+            "Shaped Charge ability-damage passive deferred (ability-cast schema gap)"
+        ),
+    ),
+    "2501": ItemEffect(
+        item_id="2501",
+        name="Overlord's Bloodmail",
+        bonus_ad_pct_bonus_hp=0.025,
+        note=(
+            "Overlord's Bloodmail: Tyranny 2.5% bonus HP as bonus AD "
+            "(engine resolves at stat-build time via item_totals[hp_flat]). "
+            "Retribution missing-HP-scaled AD not modeled (combat ramp)"
+        ),
+    ),
+    "4637": ItemEffect(
+        item_id="4637",
+        name="Demonic Embrace",
+        ap_per_bonus_hp_pct=0.02,
+        note=(
+            "Demonic Embrace: Dark Pact 2% bonus HP as AP (same schema as "
+            "Riftmaker's Void Infusion, stacks additively). "
+            "Azakana's Gaze ability burn not modeled (ability-cast schema gap)"
+        ),
+    ),
+    # ── defensive_only (8) ──
+    "3165": ItemEffect(
+        item_id="3165",
+        name="Morellonomicon",
+        defensive_only=True,
+        note="Morellonomicon: Grievous Wounds (anti-heal utility); no DPS contribution",
+    ),
+    "4628": ItemEffect(
+        item_id="4628",
+        name="Horizon Focus",
+        defensive_only=True,
+        note=(
+            "Horizon Focus: Hypershot 15% damage amp requires range 600+ and ability "
+            "hit (range conditional + ability-cast schema gap); no sustained DPS contribution"
+        ),
+    ),
+    "3118": ItemEffect(
+        item_id="3118",
+        name="Malignance",
+        defensive_only=True,
+        note=(
+            "Malignance: Hatefog 15% damage amp requires ultimate hit "
+            "(ultimate-cast schema gap); Scorn 20 ult haste is utility"
+        ),
+    ),
+    "2503": ItemEffect(
+        item_id="2503",
+        name="Blackfire Torch",
+        defensive_only=True,
+        note=(
+            "Blackfire Torch: Baleful Blaze % AP burn requires ability hit "
+            "(ability-cast schema gap); Blackfire AP stacking ramp is utility"
+        ),
+    ),
+    "2517": ItemEffect(
+        item_id="2517",
+        name="Endless Hunger",
+        defensive_only=True,
+        note=(
+            "Endless Hunger: Famine (bonus AD ability haste scaling) and "
+            "Feast (takedown omnivamp) are utility; no DPS contribution"
+        ),
+    ),
+    "6609": ItemEffect(
+        item_id="6609",
+        name="Chempunk Chainsword",
+        defensive_only=True,
+        note="Chempunk Chainsword: Hackshorn (Grievous Wounds from physical damage); no DPS contribution",
+    ),
+    "2523": ItemEffect(
+        item_id="2523",
+        name="Hexoptics C44",
+        defensive_only=True,
+        note=(
+            "Hexoptics C44: Magnification up to 10% increased attack damage at 600 range "
+            "(range-conditional, fight distance unknown); Arcane Aim takedown bonus is utility"
+        ),
+    ),
+    "8010": ItemEffect(
+        item_id="8010",
+        name="Bloodletter's Curse",
+        defensive_only=True,
+        note=(
+            "Bloodletter's Curse: Vile Decay ability-stacking 40% magic pen "
+            "(ability-cast schema gap; sustained pen requires 3+ applications); "
+            "deferred pending ability-cast schema"
+        ),
+    ),
+
 }
 
 
@@ -1790,6 +1957,27 @@ def total_damage_amp_multiplier(effects: Iterable[ItemEffect]) -> float:
     for e in effects:
         if e.damage_amp_pct:
             factor *= (1.0 + e.damage_amp_pct)
+    return factor
+
+
+def total_ap_amp_multiplier(effects: Iterable[ItemEffect]) -> float:
+    """Multiplicative AP amplifier across the build (Phase 4 batch 32).
+
+    Rabadon's Deathcap "Magical Opus" multiplies total AP by 1.30.
+    Applied at DPS time: ``compute_dps`` multiplies the effective AP used
+    by proc scaling and pen formulas by this factor before building
+    ``CallContext``. Raw stat block is unchanged — same separation as
+    ``ap_per_bonus_hp_pct`` (batch 15).
+
+    Returns 1.0 when no item carries the field (pre-batch-32 builds pass
+    through unchanged). Stacks multiplicatively per League's buff-system
+    semantics — current patch has only Rabadon's, so the product is
+    either 1.0 or 1.30.
+    """
+    factor = 1.0
+    for e in effects:
+        if e.ap_amp_pct:
+            factor *= (1.0 + e.ap_amp_pct)
     return factor
 
 
