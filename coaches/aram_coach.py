@@ -438,8 +438,10 @@ class Coach(BaseCoach):
     _MODE_NAME     = "aram"
     _DATA_FILENAME = "aram_coaching_data.json"
 
-    _VISION_INTERVAL    = 15.0
-    _DEBOUNCE_S         = 8.0
+    # Cost-tuned 2026-05-04 (post-audit): bumped from VISION 15→25 /
+    # DEBOUNCE 8→12 to cut API call rate ~33%.
+    _VISION_INTERVAL    = 25.0
+    _DEBOUNCE_S         = 12.0
     _FAST_PATH_MIN_S    = 5.0
     _HP_DROP_THRESHOLD  = 20.0
 

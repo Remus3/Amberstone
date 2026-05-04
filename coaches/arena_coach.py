@@ -219,10 +219,13 @@ class Coach(BaseCoach):
     _MODE_NAME     = "arena"
     _DATA_FILENAME = "arena_coaching_data.json"
 
-    # Tunable overrides — Arena is faster-paced, shorter debounce
-    _VISION_INTERVAL   = 12.0
-    _DEBOUNCE_S        = 4.0
-    _FAST_PATH_MIN_S   = 1.5
+    # Tunable overrides — Arena is faster-paced, shorter debounce.
+    # Cost-tuned 2026-05-04 (post-audit): bumped from VISION 12→20 / DEBOUNCE
+    # 4→8 / FAST_PATH 1.5→3.0 to halve API call rate. Pre-bump rates were
+    # firing ~450 coach calls per 30-min arena game; new rates ~225 calls.
+    _VISION_INTERVAL   = 20.0
+    _DEBOUNCE_S        = 8.0
+    _FAST_PATH_MIN_S   = 3.0
     _HP_DROP_THRESHOLD = 10.0
 
     # ── BaseCoach hooks ───────────────────────────────────────────────────────
