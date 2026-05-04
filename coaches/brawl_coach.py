@@ -239,6 +239,59 @@ class Coach(BaseCoach):
         except Exception as exc:
             logger.debug("Brawl vision run: %s", exc)
 
+    # ── Daemon Slayer mode routing (s75) ────────────────────────────────────
+    #
+    # Brawl coach is the umbrella for several quick-play modes (BRAWL,
+    # NEXUSBLITZ, URF/ULTBOOK, ONEFORALL/GAMEMODEX). Only "BRAWL" is on
+    # DDragon map 35. The others ride on map 11 (SR) or map 21 (Nexus
+    # Blitz; not in the resolver). We route resolver mode='brawl' for
+    # actual Brawl, 'sr' otherwise — SR base IDs are valid for all those
+    # modes' item pools. Engine mode follows the same split: 'BRAWL'
+    # becomes engine identity-mode (no aram_modifiers) which is correct
+    # because Brawl doesn't have aramAttackSpeed-style tweaks.
+    @staticmethod
+    def _ds_resolver_mode(game_mode_upper: str) -> str:
+        return "brawl" if "BRAWL" in (game_mode_upper or "") else "sr"
+
+    @staticmethod
+    def _ds_engine_mode(game_mode_upper: str) -> str:
+        return "BRAWL" if "BRAWL" in (game_mode_upper or "") else "SR"
+
+    # ── Target-bonus-HP estimator (s75 — Phase 4 batch 19 wire-in) ──────────
+
+    def _estimate_target_bonus_hp(self, state: dict | None = None) -> float:
+        """Estimate enemy bonus HP from items. Brawl port of aram_coach's
+        s74 estimator. Same shape: walks ``state['enemies']``, filters
+        alive opponents, sums HP per opponent, returns MAX clamped at
+        1500 (LDR cap). No round-count fallback (Brawl modes don't have
+        rounds either) — vision gap returns 0.0 = "no signal".
+
+        Resolver mode routes via ``_ds_resolver_mode`` so BRAWL game mode
+        gets map-35 items and the SR-on-other-map modes (URF/OFA/Nexus
+        Blitz) get SR base items. Both paths give correct base HP
+        values, never the 22XXXX Arena alias HP.
+        """
+        state = state or {}
+        enemies = state.get("enemies") or []
+        opp_items: list[list[str]] = [
+            (e.get("items") or []) for e in enemies if not e.get("is_dead")
+        ]
+        if not any(opp_items):
+            return 0.0
+        from core import daemon_slayer_resolver as _ds_res
+        resolver_mode = self._ds_resolver_mode(
+            (state.get("game_mode") or "").upper()
+        )
+        best = 0.0
+        for items in opp_items:
+            if not items:
+                continue
+            ids = _ds_res.resolve_many(items, mode=resolver_mode)
+            hp = _ds_res.total_bonus_hp(ids)
+            if hp > best:
+                best = hp
+        return min(1500.0, best) if best > 0 else 0.0
+
     # ── Coach ─────────────────────────────────────────────────────────────────
 
     def _run_coach(self, state: dict) -> None:
@@ -354,6 +407,41 @@ class Coach(BaseCoach):
                                 if _champ and (state.get("summoner_d") or state.get("summoner_f")) else {},
             })
             mirror_live_stats(current, state)
+
+            # s75 — Daemon Slayer wire-in. Mirrors aram_coach's s74 pattern.
+            # BRAWL game_mode routes to engine mode='BRAWL' (identity, no
+            # mode-specific stat overlays); URF/OFA/NB route to 'SR'.
+            # target_bonus_hp estimator handles the per-mode resolver
+            # routing internally. Engine down → field absent.
+            try:
+                from core import daemon_slayer_client as _ds_client
+                from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
+                _gm_upper = mode  # already upper()'d at line 258
+                resolver_mode = self._ds_resolver_mode(_gm_upper)
+                engine_mode   = self._ds_engine_mode(_gm_upper)
+                owned_ids = _ds_resolve_many(state.get("items", []), mode=resolver_mode)
+                target_bonus_hp = self._estimate_target_bonus_hp(state)
+                ds_rows = _ds_client.rank_for(
+                    champion=champ,
+                    level=int(state.get("level", 1)) or 1,
+                    item_ids=owned_ids,
+                    mode=engine_mode,
+                    target_armor=80.0,
+                    target_bonus_hp=target_bonus_hp,
+                    top=5,
+                )
+                if ds_rows:
+                    current["daemon_slayer_picks"] = [
+                        {"id": r.item_id, "name": r.item_name,
+                         "delta_dps": round(r.delta_dps, 2), "gold": r.gold}
+                        for r in ds_rows
+                    ]
+                elif ds_rows == []:
+                    current["daemon_slayer_picks"] = []
+                # ds_rows is None → engine down; leave field untouched.
+            except Exception as exc:
+                logger.debug("Brawl daemon_slayer wire-in: %s", exc)
+
             safe_write(self._out, current)
             logger.debug("Brawl coaching written (%d fields)", len(fields))
             try:
@@ -452,6 +540,21 @@ def _parse_brawl_state(raw: dict) -> dict:
         if isinstance(it, dict) and it.get("displayName")
     ]
 
+    # s75 — structured per-enemy entries for daemon_slayer
+    # target_bonus_hp estimator (mirrors ARAM coach's s74 shape).
+    enemies_struct: list[dict] = []
+    for _e in enemies:
+        _ei = [
+            _it.get("displayName", "")
+            for _it in (_e.get("items") or [])
+            if isinstance(_it, dict) and _it.get("displayName")
+        ]
+        enemies_struct.append({
+            "name":    _e.get("championName", "?"),
+            "is_dead": bool(_e.get("isDead")),
+            "items":   _ei,
+        })
+
     event_name = ""
     for ev in events:
         if not isinstance(ev, dict):
@@ -478,6 +581,7 @@ def _parse_brawl_state(raw: dict) -> dict:
             if a.get("championName") != (me or {}).get("championName")
         ],
         "enemy_comp":    [e.get("championName", "?") for e in enemies],
+        "enemies":       enemies_struct,  # s75 — structured per-enemy {name,is_dead,items}
         "dead_enemies":     [e.get("championName", "?") for e in enemies if e.get("isDead")],
         "alive_enemies":    [e.get("championName", "?") for e in enemies if not e.get("isDead")],
         "dead_respawn_str": raw.get("dead_respawn_str", ""),
