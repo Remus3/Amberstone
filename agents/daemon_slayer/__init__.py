@@ -159,8 +159,8 @@ Lightning Rod (447119) Call Lightning 135→230+30% bonus AD+50% AP+10%
 target max HP magic every 16s; Regicide (447115) lethality=15; Rite of
 Ruin (3430) crit_chance_bonus_flat=0.20 [max Wrath+Ruin stacks]; plus 6
 defensive_only: Runecarver, Kinkou Jitte, Diamond-Tipped Spear,
-Twilight's Edge, Decapitator, Mirage Blade). Phase 4 batch 37 TRUE
-damage type + Arena item sweep (2026-05-04 — new ``TRUE = "true"``
+Twilight's Edge, Decapitator, Mirage Blade). Phase 4 batch 37 TRUE damage type + Arena item sweep
+(2026-05-04 — new ``TRUE = "true"``
 constant + ``_DAMAGE_TYPES`` update; ``_periodic_proc_dps`` handles
 ``damage_type == TRUE`` with ``resist=0.0`` bypassing both armor and
 MR; 3 active promotions: Darksteel Talons (443054) Gash every-attack
@@ -174,7 +174,21 @@ Gambler's Blade (447101), Reality Fracture (447102), Hemomancer's Helm
 Dragonheart (447106), Cruelty (447109), Moonflair Spellblade (447110),
 Flesheater (447112), Black Hole Gauntlet (447122), Puppeteer (447123),
 Demon King's Crown (443056), Sword of the Divine (443060), Hamstringer
-(443069)).
+(443069)). Phase 4 batch 38 Giant Slayer MAX HP diff schema + 228xxx/443xxx/SR
+sweep (2026-05-04 — new ``ItemEffect.giant_slayer_pct_per_100hp`` +
+``giant_slayer_max_pct`` fields + ``total_giant_slayer_multiplier`` helper wired
+into ``compute_dps`` after caster_max_hp is derived from build; distinct from
+LDR's bonus-HP-keyed ``target_bonus_hp_amp``; Perplexity (4015) updated with
+giant_slayer_pct_per_100hp=0.006 / max=0.15 completing its Giant Slayer component;
+3 active promotions: Wooglet's Witchcap (228002) ap_amp_pct=0.50, Deathblade (228003)
+lethality=20 + crit_damage_bonus=0.45, Obsidian Cleaver (228005) armor_reduction_pct=0.35
+[5 stacks × 7%]; 17 defensive_only entries completing the 228xxx + 443xxx + SR
+pool sweep [Anathema's Chains SR (8001)/Arena (228001), Adaptive Helm (228004),
+Sanguine Blade (228006), Runeglaive (228008), Shield of Molten Stone (443058),
+Cloak of Starry Night (443059), Force of Entropy (443061), Sanguine Gift (443062),
+Eleisa's Miracle (443063), Talisman of Ascension (443064), Turbo Chemtank (443079),
+Twin Mask (443080), Hexbolt Companion (443081), Gargoyle Stoneplate (443193),
+Protoplasm Harness (2525, lifeline unique-passive), Randuin's Omen (3143)]).
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
 ``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation`` /
@@ -190,4 +204,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.41.0"
+ENGINE_VERSION = "0.42.0"

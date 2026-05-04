@@ -56,6 +56,7 @@ from .effects import (
     total_crit_chance_bonus,
     total_crit_damage_bonus,
     total_damage_amp_multiplier,
+    total_giant_slayer_multiplier,
     total_magic_amp_multiplier,
     total_target_bonus_hp_amp_multiplier,
 )
@@ -400,6 +401,11 @@ def compute_dps(
     base_hp = float(resolved.base_stats.get("hp", 0.0)) if resolved.base_stats else 0.0
     caster_max_hp = float(stats.get("hp", 0.0))
     caster_bonus_hp = max(0.0, caster_max_hp - base_hp)
+    # Phase 4 batch 38 (2026-05-04): Giant Slayer target max HP advantage amp.
+    # Stacks multiplicatively with damage_amp (same buffer-system doctrine as
+    # target_amp from batch 19). Resolved here because caster_max_hp is needed.
+    giant_slayer_amp = total_giant_slayer_multiplier(item_effects, target_max_hp, caster_max_hp)
+    damage_amp *= giant_slayer_amp
     # Phase 4 batch 27 (2026-05-04): caster max mana — needed for Manamune /
     # Muramana's Awe (already folded into ad_flat by build_champion) and
     # Muramana's Shock proc (per-attack 1.2% max mana physical). Manaless
@@ -505,6 +511,13 @@ def compute_dps(
             f"target-conditional amp ×{target_amp:.4f} "
             f"(target_bonus_hp={target_bonus_hp:.0f}, "
             f"+{(target_amp - 1.0) * 100:.2f}% folded into build amp)"
+        )
+    if giant_slayer_amp != 1.0:
+        hp_diff = max(0.0, target_max_hp - caster_max_hp)
+        notes.append(
+            f"Giant Slayer HP-advantage amp ×{giant_slayer_amp:.4f} "
+            f"(target {target_max_hp:.0f} - caster {caster_max_hp:.0f} = {hp_diff:.0f} HP diff → "
+            f"+{(giant_slayer_amp - 1.0) * 100:.2f}% all damage)"
         )
     if ap_from_hp > 0:
         notes.append(
