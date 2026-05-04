@@ -57,6 +57,7 @@ LOG_FILE = ROOT / "logs" / "daemon_slayer_extract.log"
 DDRAGON_BASE = "https://ddragon.leagueoflegends.com"
 LOLMATH_ROOT = "https://lolmath.net/"
 MERAKI_BASE = "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions"
+CDRAGON_ARENA_URL = "https://raw.communitydragon.org/latest/cdragon/arena/en_us.json"
 USER_AGENT = "RiotCommander/DaemonSlayer-extract/1.0"
 
 # Markers used to identify the right chunk among lolmath's ~20 chunks.
@@ -671,6 +672,49 @@ def fetch_meraki_perlevel_overlay(ddragon_ids: set[str]) -> dict[str, dict[str, 
     return overlay
 
 
+# ─── Arena augments (Phase 6) ────────────────────────────────────────────────
+
+# cdragon's arena dump has 219 augments across 4 rarities:
+#   0 = Silver, 1 = Gold, 2 = Prismatic, 4 = Hero (GoH = Guardian of Heaven)
+# Source is "latest" — augment rotations don't fully align with DDragon patches,
+# so the arena_augments file carries its own `cdragon_fetched_at` timestamp.
+def fetch_arena_augments() -> dict:
+    """Fetch the cdragon Arena augment dump and return a normalized payload.
+
+    Returns ``{"version": <patch>, "fetched_at": <iso>, "count": N,
+               "augments": [{id, apiName, name, rarity, desc, tooltip,
+                             dataValues, calculations, iconLarge, iconSmall}, ...]}``
+
+    Failure raises — augment data is small (~400KB) and rarely flaky.
+    """
+    log.info("fetching cdragon arena augments: %s", CDRAGON_ARENA_URL)
+    raw = _fetch_json(CDRAGON_ARENA_URL)
+    augs_in = raw.get("augments", []) if isinstance(raw, dict) else []
+    augs_out: list[dict] = []
+    for a in augs_in:
+        if not isinstance(a, dict):
+            continue
+        augs_out.append({
+            "id": a.get("id"),
+            "apiName": a.get("apiName"),
+            "name": a.get("name"),
+            "rarity": a.get("rarity"),
+            "desc": a.get("desc", ""),
+            "tooltip": a.get("tooltip", ""),
+            "dataValues": a.get("dataValues") or {},
+            "calculations": a.get("calculations") or {},
+            "iconLarge": a.get("iconLarge"),
+            "iconSmall": a.get("iconSmall"),
+        })
+    log.info("arena augments fetched: %d", len(augs_out))
+    return {
+        "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%S%z") or time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "source": CDRAGON_ARENA_URL,
+        "count": len(augs_out),
+        "augments": augs_out,
+    }
+
+
 # ─── Emission ────────────────────────────────────────────────────────────────
 
 # Hard-coded aliases for champions whose DDragon id doesn't match their lolmath
@@ -785,8 +829,10 @@ def build_scenarios_payload(lolmath: LolmathExtract, dd: DDragonSnapshot) -> dic
 
 def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
                    patch_dir: Path,
-                   perlevel_overlay: dict[str, dict[str, float]] | None = None) -> dict:
+                   perlevel_overlay: dict[str, dict[str, float]] | None = None,
+                   arena_augments: dict | None = None) -> dict:
     overlay = perlevel_overlay or {}
+    augs = arena_augments or {}
     return {
         "engine": "daemon_slayer",
         "phase": 1.5,
@@ -819,10 +865,16 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
             "fields_filled": sum(len(v) for v in overlay.values()),
             "fields_targeted": sorted({k for v in overlay.values() for k in v}),
         },
+        "arena_augments": {
+            "count": augs.get("count", 0),
+            "fetched_at": augs.get("fetched_at"),
+            "source": augs.get("source", CDRAGON_ARENA_URL),
+        },
         "outputs": {
             "champions": str((patch_dir / "champions.json").relative_to(ROOT)),
             "items": str((patch_dir / "items.json").relative_to(ROOT)),
             "scenarios": str((patch_dir / "scenarios.json").relative_to(ROOT)),
+            "arena_augments": str((patch_dir / "arena_augments.json").relative_to(ROOT)),
         },
     }
 
@@ -869,19 +921,21 @@ def main() -> int:
     lolmath.data_chunk_bytes = data_extract["data_chunk_bytes"]
 
     perlevel_overlay = fetch_meraki_perlevel_overlay(set(dd.champions.keys()))
+    arena_augments = fetch_arena_augments()
 
     champions_payload = build_champions_payload(lolmath, dd, perlevel_overlay)
     items_payload = build_items_payload(dd)
     scenarios_payload = build_scenarios_payload(lolmath, dd)
-    manifest = build_manifest(lolmath, dd, patch_dir, perlevel_overlay)
+    manifest = build_manifest(lolmath, dd, patch_dir, perlevel_overlay, arena_augments)
 
     _atomic_write_json(patch_dir / "champions.json", champions_payload)
     _atomic_write_json(patch_dir / "items.json", items_payload)
     _atomic_write_json(patch_dir / "scenarios.json", scenarios_payload)
+    _atomic_write_json(patch_dir / "arena_augments.json", arena_augments)
     _atomic_write_json(patch_dir / "manifest.json", manifest)
     _atomic_write_text(DATA_ROOT / "current.txt", patch)
 
-    log.info("✓ wrote %s/{champions,items,scenarios,manifest}.json", patch_dir)
+    log.info("✓ wrote %s/{champions,items,scenarios,arena_augments,manifest}.json", patch_dir)
     log.info("✓ current.txt → %s", patch)
     return 0
 

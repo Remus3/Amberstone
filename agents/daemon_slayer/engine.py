@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
+from .augments import compute_augment_stats
 from .data_loader import DataSnapshot
 from .stats import (
     CHAMPION_SCALING_RULES,
@@ -34,6 +35,9 @@ class ResolvedStats:
     # callable bonus_damage entries (TriForce spellblade scales off
     # base_ad, not total_ad). Backward-compat default = empty dict.
     base_stats: dict[str, float] = field(default_factory=dict)
+    # Phase 6: arena augment apiNames applied (in input order). Empty for
+    # non-arena modes or when no augments were passed.
+    augments: tuple[str, ...] = field(default_factory=tuple)
 
     def get(self, key: str, default: float = 0.0) -> float:
         return self.stats.get(key, default)
@@ -49,6 +53,7 @@ class ResolvedStats:
             "stats": dict(self.stats),
             "base_stats": dict(self.base_stats),
             "notes": list(self.notes),
+            "augments": list(self.augments),
         }
 
     def format_table(self) -> str:
@@ -183,11 +188,22 @@ def build_champion(
     level: int,
     item_ids: Optional[Iterable[str | int]] = None,
     mode: str = "SR",
+    augments: Optional[Iterable[str | int]] = None,
 ) -> ResolvedStats:
     """Resolve a champion's stats at ``level`` with the given items equipped.
 
     Unknown item IDs raise ``KeyError`` from ``DataSnapshot.item``. Pass an
     explicit empty list (or omit) for naked stats.
+
+    ``augments`` (Phase 6) is an iterable of arena augment apiNames or ids;
+    each is resolved against ``snapshot.arena_augment(...)`` and stat overlays
+    from :func:`agents.daemon_slayer.augments.compute_augment_stats` are
+    applied additively after items, before mode modifiers. Augments outside
+    the registered overlay set are silently ignored — registry coverage
+    grows incrementally without breaking calls. Augments are honored
+    regardless of mode (arena coach is the only natural caller, but the
+    engine doesn't gate them — it's the caller's job to not pass arena
+    augments into an SR query).
     """
     level = clamp_level(level)
     champ = snapshot.champion(champion_id)
@@ -199,13 +215,21 @@ def build_champion(
     item_stat_blocks = [rec.get("stats", {}) for rec in item_records]
     item_totals = aggregate_item_stats(item_stat_blocks)
 
+    aug_list: tuple[str, ...] = tuple(str(x) for x in (augments or ()))
+    augment_overlay = compute_augment_stats(aug_list, snapshot) if aug_list else {}
+
     scaled, raw_base = _scale_champion_base(champ_stats, level)
     final = _combine_items(scaled, raw_base, item_totals, level)
+    if augment_overlay:
+        for k, v in augment_overlay.items():
+            final[k] = final.get(k, 0.0) + v
     final, mode_notes = _apply_mode_modifiers(final, raw_base, mode, champ)
 
     notes: list[str] = list(mode_notes)
     if mode not in ("SR", "ARAM"):
         notes.append(f"mode={mode} — modifier table not plugged in for this mode")
+    if aug_list and not augment_overlay:
+        notes.append(f"augments={list(aug_list)} — none in stat-overlay registry yet")
 
     return ResolvedStats(
         champion_id=champion_id,
@@ -217,4 +241,5 @@ def build_champion(
         gold_spent=gold_spent,
         notes=tuple(notes),
         base_stats=scaled,
+        augments=aug_list,
     )

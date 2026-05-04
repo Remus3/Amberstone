@@ -1,7 +1,7 @@
 {
   "engine": "daemon_slayer",
   "phase": 1.5,
-  "extracted_at": "2026-05-03T22:20:37-0500",
+  "extracted_at": "2026-05-03T22:32:13-0500",
   "ddragon_version": "16.9.1",
   "ddragon_champion_count": 172,
   "ddragon_item_count": 705,
@@ -32,9 +32,15 @@
       "attackdamageperlevel"
     ]
   },
+  "arena_augments": {
+    "count": 219,
+    "fetched_at": "2026-05-03T22:32:13-0500",
+    "source": "https://raw.communitydragon.org/latest/cdragon/arena/en_us.json"
+  },
   "outputs": {
     "champions": "data\\daemon_slayer\\16.9.1\\champions.json",
     "items": "data\\daemon_slayer\\16.9.1\\items.json",
-    "scenarios": "data\\daemon_slayer\\16.9.1\\scenarios.json"
+    "scenarios": "data\\daemon_slayer\\16.9.1\\scenarios.json",
+    "arena_augments": "data\\daemon_slayer\\16.9.1\\arena_augments.json"
   }
 }
