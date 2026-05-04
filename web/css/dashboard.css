@@ -736,6 +736,7 @@ body[data-view="lobby"] main,
 body[data-view="session"] main,
 body[data-view="history"] main,
 body[data-view="loadouts"] main,
+body[data-view="user-builds"] main,
 body[data-view="settings"] main,
 body[data-view="diagnostics"] main,
 body[data-view="coach-calls"] main,
@@ -746,6 +747,7 @@ body[data-view="lobby"]          #view-lobby,
 body[data-view="session"]        #view-session,
 body[data-view="history"]        #view-history,
 body[data-view="loadouts"]       #view-loadouts,
+body[data-view="user-builds"]    #view-user-builds,
 body[data-view="settings"]       #view-settings,
 body[data-view="diagnostics"]    #view-diagnostics,
 body[data-view="coach-calls"]    #view-coach-calls,
@@ -758,6 +760,7 @@ body[data-view="replay"]         #view-replay { display: block; }
 body[data-view="session"]        #home-overlay,
 body[data-view="history"]        #home-overlay,
 body[data-view="loadouts"]       #home-overlay,
+body[data-view="user-builds"]    #home-overlay,
 body[data-view="settings"]       #home-overlay,
 body[data-view="diagnostics"]    #home-overlay,
 body[data-view="coach-calls"]    #home-overlay,
@@ -930,6 +933,123 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .loadout-champ-name {
   font-size: 13px; font-weight: 800; letter-spacing: 0.06em;
   color: var(--text); margin-bottom: 6px;
+}
+
+/* User Builds view (Phase 8 step 6 — 2026-05-04). Operator CRUD over
+ * data/daemon_slayer/user_builds.json. Two-pane layout: list of saved
+ * builds for the picked champion on the left, add/edit form on the
+ * right (form pane hidden until + Add or Edit is clicked). */
+.ub-toolbar {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  padding: 6px 0 12px;
+}
+.ub-toolbar input[type="text"] {
+  flex: 0 1 260px; padding: 6px 10px; font-size: 13px;
+  background: var(--surface-alt); border: 1px solid var(--border);
+  border-radius: 4px; color: var(--text);
+}
+.ub-hint {
+  font-size: 11px; color: var(--text-faint); letter-spacing: 0.04em;
+}
+.ub-btn {
+  padding: 6px 14px; font-size: 12px; font-weight: 700;
+  letter-spacing: 0.04em; border-radius: 4px; cursor: pointer;
+  border: 1px solid var(--border); transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.ub-btn-primary {
+  background: var(--info-soft); color: var(--info); border-color: var(--info);
+}
+.ub-btn-primary:hover { background: var(--info); color: var(--bg); }
+.ub-btn-ghost {
+  background: var(--surface-alt); color: var(--text-dim);
+}
+.ub-btn-ghost:hover { background: #1c1c2a; color: var(--text); border-color: var(--clock); }
+.ub-btn-danger {
+  background: transparent; color: var(--danger, #d96868);
+  border-color: var(--danger, #d96868);
+}
+.ub-btn-danger:hover { background: var(--danger, #d96868); color: var(--bg); }
+.ub-btn-tiny { padding: 3px 9px; font-size: 11px; font-weight: 700; }
+.ub-layout {
+  display: grid; grid-template-columns: 1fr 1.3fr; gap: 14px;
+  align-items: start;
+}
+.ub-list-pane, .ub-form-pane {
+  background: var(--surface-head); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+}
+.ub-list-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--label);
+  margin-bottom: 8px; border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 5px;
+}
+.ub-count {
+  font-size: 10px; color: var(--clock); font-weight: 700;
+}
+.ub-build-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 6px;
+  max-height: 540px; overflow-y: auto;
+}
+.ub-build-row {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 8px;
+  align-items: center;
+  background: var(--surface-alt); border-radius: 4px;
+  padding: 8px 10px; border: 1px solid transparent;
+}
+.ub-build-row.editing { border-color: var(--info); background: var(--info-soft); }
+.ub-build-meta {
+  display: flex; flex-direction: column; gap: 2px; min-width: 0;
+}
+.ub-build-label {
+  font-size: 13px; font-weight: 800; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ub-build-sub {
+  font-size: 11px; color: var(--text-dim); letter-spacing: 0.02em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ub-form-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--label);
+  margin-bottom: 10px; border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 5px;
+}
+.ub-form-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px;
+}
+.ub-field {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 11px;
+}
+.ub-field-wide { grid-column: 1 / -1; }
+.ub-field > span {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text-faint);
+}
+.ub-field input, .ub-field select, .ub-field textarea {
+  background: var(--surface-alt); border: 1px solid var(--border);
+  color: var(--text); padding: 6px 9px; font-size: 13px;
+  border-radius: 4px; font-family: inherit;
+}
+.ub-field textarea {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  resize: vertical; min-height: 110px;
+}
+.ub-form-status {
+  margin-top: 10px; padding: 6px 10px; font-size: 12px; border-radius: 4px;
+  background: var(--surface-alt); color: var(--text);
+  border-left: 3px solid var(--clock);
+}
+.ub-form-status.ok    { border-left-color: var(--ok, #6cd97a); color: var(--ok, #6cd97a); }
+.ub-form-status.error { border-left-color: var(--danger, #d96868); color: var(--danger, #d96868); }
+.ub-form-actions {
+  display: flex; gap: 10px; justify-content: flex-end;
+  margin-top: 12px; padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
 }
 
 /* Settings view layout */

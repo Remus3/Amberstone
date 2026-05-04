@@ -44,6 +44,7 @@
         <button type="button" class="view-menu-item" data-view="replay"      role="menuitem">Replay</button>
         <div class="view-menu-divider"></div>
         <button type="button" class="view-menu-item" data-view="loadouts"    role="menuitem">Loadouts</button>
+        <button type="button" class="view-menu-item" data-view="user-builds" role="menuitem">User Builds</button>
         <button type="button" class="view-menu-item" data-view="settings"    role="menuitem">Settings</button>
         <button type="button" class="view-menu-item" data-view="diagnostics" role="menuitem">Diagnostics</button>
         <button type="button" class="view-menu-item" data-view="coach-calls" role="menuitem">Coach Calls</button>
@@ -909,6 +910,95 @@
           <span class="loadouts-count" id="loadouts-count">—</span>
         </div>
         <div class="loadouts-list" id="loadouts-list"><div class="home-empty">loading…</div></div>
+      </div>
+    </section>
+
+    <!-- Phase 8 step 6 (2026-05-04): operator-facing CRUD for the
+         additive user-curated SR draft builds (data/daemon_slayer/user_builds.json,
+         coaches/sr_user_builds.py, dashboard/routes_sr_user_builds.py).
+         Builds saved here APPEND to the 3 engine-generated profiles in the
+         SR-draft chooser. They are never auto-edited by the engine. -->
+    <section id="view-user-builds" class="view-section" hidden>
+      <div class="view-section-head">
+        <h2>USER BUILDS</h2>
+        <span class="view-section-sub">SR Draft Theatre — operator-curated additive builds (data/daemon_slayer/user_builds.json)</span>
+      </div>
+      <div class="view-section-body" id="user-builds-body">
+        <div class="ub-toolbar">
+          <input type="text" id="ub-champion-input" list="ub-champion-datalist"
+                 placeholder="Champion (e.g. Tristana)" autocomplete="off" />
+          <datalist id="ub-champion-datalist"></datalist>
+          <button type="button" id="ub-add-btn" class="ub-btn ub-btn-primary">+ Add build</button>
+          <span class="ub-hint" id="ub-hint">Pick a champion to view their saved builds.</span>
+        </div>
+        <div class="ub-layout">
+          <aside class="ub-list-pane">
+            <div class="ub-list-head">
+              <span id="ub-list-label">No champion selected</span>
+              <span class="ub-count" id="ub-count">—</span>
+            </div>
+            <ul class="ub-build-list" id="ub-build-list">
+              <li class="home-empty">pick a champion above ↑</li>
+            </ul>
+          </aside>
+          <section class="ub-form-pane" id="ub-form-pane" hidden>
+            <header class="ub-form-head">
+              <span id="ub-form-title">Add build</span>
+              <button type="button" id="ub-form-close" class="ub-btn ub-btn-ghost">✕</button>
+            </header>
+            <div class="ub-form-grid">
+              <label class="ub-field ub-field-wide">
+                <span>Label *</span>
+                <input type="text" id="ub-f-label" placeholder="e.g. lethality rush" maxlength="64" />
+              </label>
+              <label class="ub-field">
+                <span>Role</span>
+                <select id="ub-f-role">
+                  <option value="">(none)</option>
+                  <option value="TOP">TOP</option>
+                  <option value="JUNGLE">JUNGLE</option>
+                  <option value="MIDDLE">MIDDLE</option>
+                  <option value="BOTTOM">BOTTOM</option>
+                  <option value="UTILITY">UTILITY</option>
+                </select>
+              </label>
+              <label class="ub-field">
+                <span>Keystone</span>
+                <input type="text" id="ub-f-keystone" placeholder="Hail of Blades" />
+              </label>
+              <label class="ub-field">
+                <span>Primary tree</span>
+                <input type="text" id="ub-f-primary" placeholder="Domination" />
+              </label>
+              <label class="ub-field">
+                <span>Secondary tree</span>
+                <input type="text" id="ub-f-secondary" placeholder="Precision" />
+              </label>
+              <label class="ub-field">
+                <span>Spell D (id)</span>
+                <input type="number" id="ub-f-spell-d" placeholder="4 (Flash)" min="0" max="32" />
+              </label>
+              <label class="ub-field">
+                <span>Spell F (id)</span>
+                <input type="number" id="ub-f-spell-f" placeholder="14 (Ignite)" min="0" max="32" />
+              </label>
+              <label class="ub-field ub-field-wide">
+                <span>Items (one per line, in build order)</span>
+                <textarea id="ub-f-items" rows="6"
+                          placeholder="Opportunity&#10;Edge of Night&#10;Voltaic Cyclosword&#10;Serylda's Grudge&#10;Ravenous Hydra&#10;Boots of Swiftness"></textarea>
+              </label>
+              <label class="ub-field ub-field-wide">
+                <span>Notes</span>
+                <input type="text" id="ub-f-notes" placeholder="lethality 3-item rush" maxlength="200" />
+              </label>
+            </div>
+            <div class="ub-form-status" id="ub-form-status" hidden></div>
+            <div class="ub-form-actions">
+              <button type="button" id="ub-form-cancel" class="ub-btn ub-btn-ghost">Cancel</button>
+              <button type="button" id="ub-form-save"   class="ub-btn ub-btn-primary">Save</button>
+            </div>
+          </section>
+        </div>
       </div>
     </section>
 
