@@ -35,6 +35,30 @@ DEFAULT_SLOT_COUNT = 6
 DEFAULT_TOP_N = 20
 SORT_KEYS: tuple[str, ...] = ("delta", "efficiency")
 
+# Arena gives every player Arcane Sweeper as a trinket — it occupies the
+# trinket slot, not an item slot, but the live game's inventory polling
+# returns it alongside the 6 build slots. Strip these from current_item_ids
+# when mode=ARENA so the slot-count check passes and the baseline DPS
+# isn't padded with a zero-stat record. The candidate pool already
+# excludes them via _is_purchasable (gold.purchasable=False).
+ARENA_TRINKET_IDS: frozenset[str] = frozenset({"3348"})
+
+
+def strip_arena_trinkets(
+    current_ids: tuple[str, ...], mode: str
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Return (kept_ids, stripped_ids). No-op outside ARENA."""
+    if mode != "ARENA" or not current_ids:
+        return current_ids, ()
+    kept: list[str] = []
+    stripped: list[str] = []
+    for i in current_ids:
+        if i in ARENA_TRINKET_IDS:
+            stripped.append(i)
+        else:
+            kept.append(i)
+    return tuple(kept), tuple(stripped)
+
 
 @dataclass(frozen=True)
 class RankedItem:
@@ -234,6 +258,7 @@ def rank_items(
     level = clamp_level(level)
 
     current_ids: tuple[str, ...] = tuple(str(i) for i in (current_item_ids or ()))
+    current_ids, stripped_trinkets = strip_arena_trinkets(current_ids, mode)
     current_set = set(current_ids)
     if len(current_ids) >= slot_count:
         raise ValueError(
@@ -312,6 +337,10 @@ def rank_items(
         notes.append(f"mode={mode} → maps id {MODE_MAP_ID[mode]}")
     else:
         notes.append(f"mode={mode} not in MODE_MAP_ID — no per-mode item filter applied")
+    if stripped_trinkets:
+        notes.append(
+            f"mode=ARENA — stripped trinket(s) {list(stripped_trinkets)} from current_item_ids"
+        )
     if include_components:
         notes.append("include_components=True — non-terminal items in the ranking")
     if budget is not None:

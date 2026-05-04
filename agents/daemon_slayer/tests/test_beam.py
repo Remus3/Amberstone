@@ -365,5 +365,35 @@ class DefaultsTests(unittest.TestCase):
         self.assertGreaterEqual(DEFAULT_TOP_N, 5)
 
 
+class ArenaTrinketStripTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_beam_strips_arcane_sweeper_in_arena(self) -> None:
+        # 2 real items + Arcane Sweeper. Beam should treat seed as 2 items
+        # and search the remaining 4 slots; without strip the seed would
+        # be 3 items and the search depth would be wrong by one.
+        result = beam_search_build(
+            self.snap, "Aatrox", level=18,
+            current_item_ids=["3348", "3071", "3072"],
+            mode="ARENA", beam_width=4, top_n=2,
+        )
+        self.assertNotIn("3348", result.current_item_ids)
+        self.assertEqual(len(result.current_item_ids), 2)
+        self.assertTrue(any("trinket" in n.lower() for n in result.notes))
+
+    def test_beam_no_strip_outside_arena(self) -> None:
+        # Outside ARENA the trinket id pass-through is a normal item lookup.
+        # Aatrox baseline build with Arcane Sweeper as a "current item" in SR
+        # mode should not be stripped (mode mismatch).
+        result = beam_search_build(
+            self.snap, "Aatrox", level=11,
+            current_item_ids=["3348"], mode="SR",
+            beam_width=2, top_n=1,
+        )
+        self.assertIn("3348", result.current_item_ids)
+
+
 if __name__ == "__main__":
     unittest.main()
