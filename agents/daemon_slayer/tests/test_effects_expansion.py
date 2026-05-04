@@ -4148,7 +4148,11 @@ class OverlordsBloodmailStatWalkTests(unittest.TestCase):
 
 
 class DemonicEmbraceApFromHpTests(unittest.TestCase):
-    """Demonic Embrace (4637) Dark Pact: 2% bonus HP as AP (ap_per_bonus_hp_pct schema)."""
+    """Demonic Embrace (4637): Dark Pact 2% bonus HP as AP + Azakana's Gaze burn (batch 33)."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
 
     def test_entry_present_and_field(self) -> None:
         eff = ITEM_EFFECTS.get("4637")
@@ -4169,15 +4173,35 @@ class DemonicEmbraceApFromHpTests(unittest.TestCase):
         self.assertEqual(eff.unique_passive_key, "",
                          "Dark Pact and Void Infusion are different passives; they stack")
 
+    def test_azakana_proc_added(self) -> None:
+        eff = ITEM_EFFECTS.get("4637")
+        self.assertEqual(len(eff.periodics), 1, "Azakana's Gaze proc must be present")
+        proc = eff.periodics[0]
+        self.assertEqual(proc.damage_type, "magical")
+        self.assertAlmostEqual(proc.every_n_seconds, 1.0, places=3)
+
+    def test_azakana_proc_formula(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["4637"].periodics[0]
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, target_max_hp=2000.0)
+        # 1% * 2000 = 20
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 20.0, places=4)
+
+    def test_dps_lift_over_bare(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        dps_bare = compute_dps(self.snap, "Lux", level=11, target_max_hp=2000.0)
+        dps_with = compute_dps(self.snap, "Lux", level=11, item_ids=["4637"],
+                               target_max_hp=2000.0)
+        self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
+
 
 class Batch32DefensiveOnlyTests(unittest.TestCase):
-    """8 new defensive_only entries in batch 32."""
+    """7 remaining defensive_only entries from batch 32 (Blackfire Torch promoted in batch 33)."""
 
     EXPECTED: dict[str, str] = {
         "3165": "Morellonomicon",
         "4628": "Horizon Focus",
         "3118": "Malignance",
-        "2503": "Blackfire Torch",
         "2517": "Endless Hunger",
         "6609": "Chempunk Chainsword",
         "2523": "Hexoptics C44",
@@ -4195,9 +4219,149 @@ class Batch32DefensiveOnlyTests(unittest.TestCase):
                 self.assertTrue(len(eff.note) > 0)
 
     def test_defensive_only_count_increased(self) -> None:
-        # After batch 32: 40 pre-existing + 8 new = 48 defensive_only.
+        # After batch 33: 47 from pre-batch-33 pool + 7 batch-33 = 54 defensive_only.
         count = sum(1 for e in ITEM_EFFECTS.values() if e.defensive_only)
-        self.assertGreaterEqual(count, 48)
+        self.assertGreaterEqual(count, 54)
+
+
+class BlackfireTorchBurnTests(unittest.TestCase):
+    """Blackfire Torch (2503) Baleful Blaze promotion (batch 33)."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_entry_promoted_not_defensive_only(self) -> None:
+        eff = ITEM_EFFECTS.get("2503")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only,
+                         "Blackfire Torch must be promoted from defensive_only in batch 33")
+
+    def test_proc_shape(self) -> None:
+        eff = ITEM_EFFECTS.get("2503")
+        self.assertEqual(len(eff.periodics), 1)
+        proc = eff.periodics[0]
+        self.assertEqual(proc.damage_type, "magical")
+        self.assertAlmostEqual(proc.every_n_seconds, 0.5, places=3)
+
+    def test_proc_formula(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["2503"].periodics[0]
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, ap=300.0)
+        # 6 + 6% * 300 = 6 + 18 = 24
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 24.0, places=4)
+
+    def test_proc_formula_zero_ap(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["2503"].periodics[0]
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, ap=0.0)
+        # flat component only: 6
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 6.0, places=4)
+
+    def test_dps_lift_over_bare(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        dps_bare = compute_dps(self.snap, "Lux", level=11)
+        dps_with = compute_dps(self.snap, "Lux", level=11, item_ids=["2503"])
+        self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
+
+
+class GamblersBladeDualPenTests(unittest.TestCase):
+    """Gambler's Blade (667101) lethality + magic pen flat (batch 33)."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_entry_present_and_shape(self) -> None:
+        eff = ITEM_EFFECTS.get("667101")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertAlmostEqual(eff.lethality, 15.0, places=2)
+        self.assertAlmostEqual(eff.magic_pen_flat, 15.0, places=2)
+        self.assertEqual(len(eff.periodics), 0)
+
+    def test_lethality_applies_at_lvl18(self) -> None:
+        from agents.daemon_slayer.effects import collect_effects, effective_target_armor
+        effects = collect_effects(["667101"])
+        # lvl 18: factor = 0.6 + 0.4*(18/18) = 1.0 -> flat pen = 15 * 1.0 = 15
+        eff_armor = effective_target_armor(50.0, effects, level=18)
+        self.assertAlmostEqual(eff_armor, 35.0, places=1)
+
+    def test_lethality_dps_lift(self) -> None:
+        # Magic pen flat has no effect on an AA-only rotation (physical damage);
+        # lethality does — verify the pen pipeline fires on the physical side.
+        from agents.daemon_slayer.dps import compute_dps
+        dps_bare = compute_dps(self.snap, "Zed", level=11, target_armor=50.0)
+        dps_with = compute_dps(self.snap, "Zed", level=11, item_ids=["667101"],
+                               target_armor=50.0)
+        self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
+
+
+class UnendingDespairCasterHpBurnTests(unittest.TestCase):
+    """Unending Despair (2502) Agony: 3% caster bonus HP magic every 4s (batch 33)."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_entry_present_and_shape(self) -> None:
+        eff = ITEM_EFFECTS.get("2502")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 1)
+        proc = eff.periodics[0]
+        self.assertEqual(proc.damage_type, "magical")
+        self.assertAlmostEqual(proc.every_n_seconds, 4.0, places=3)
+
+    def test_proc_formula(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["2502"].periodics[0]
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, caster_bonus_hp=1200.0)
+        # 3% * 1200 = 36
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 36.0, places=4)
+
+    def test_proc_zero_bonus_hp(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["2502"].periodics[0]
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, caster_bonus_hp=0.0)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 0.0, places=4)
+
+    def test_dps_lift_over_bare(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        dps_bare = compute_dps(self.snap, "Malphite", level=11)
+        dps_with = compute_dps(self.snap, "Malphite", level=11, item_ids=["2502"])
+        self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
+
+
+class Batch33DefensiveOnlyTests(unittest.TestCase):
+    """7 new defensive_only entries in batch 33."""
+
+    EXPECTED: dict[str, str] = {
+        "4636": "Night Harvester",
+        "2512": "Fiendhunter Bolts",
+        "663060": "Sword of the Divine",
+        "667112": "Flesheater",
+        "664011": "Sword of Blossoming Dawn",
+        "2522": "Actualizer",
+        "667109": "Cruelty",
+    }
+
+    def test_all_entries_present_and_defensive(self) -> None:
+        for iid, expected_name in self.EXPECTED.items():
+            with self.subTest(item_id=iid):
+                eff = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(eff, f"{iid} must be in ITEM_EFFECTS")
+                self.assertTrue(eff.defensive_only,
+                                f"{iid} ({expected_name}) should be defensive_only=True")
+                self.assertEqual(len(eff.periodics), 0)
+                self.assertTrue(len(eff.note) > 0)
+
+    def test_blackfire_torch_no_longer_defensive(self) -> None:
+        # Blackfire Torch was defensive_only in batch 32; promoted in batch 33.
+        eff = ITEM_EFFECTS.get("2503")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only,
+                         "Blackfire Torch must be promoted (defensive_only=False) in batch 33")
 
 
 if __name__ == "__main__":
