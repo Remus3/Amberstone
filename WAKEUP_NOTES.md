@@ -6972,4 +6972,231 @@ this batch was engine-side only.
 | LDR Giant Slayer | s71 (batch 19) | `target_bonus_hp_amp_*` schema |
 | Hullbreaker Skipper | s76 (batch 20) | `every_n_attacks=5`, `caster_max_hp` |
 | Sterak's Claws | s76 (batch 20) | `bonus_ad_pct_base_ad=0.45` (NEW field) |
+| Stridebreaker Cleave | s77 (batch 21) | `targets_in_rotation - 1` * 40% AD (Ravenous shape) |
+| Essence Reaver Spellblade | s77 (batch 21) | `crit_chance` schema bump; `1.25*base_ad + 50*crit_chance` |
+
+---
+
+## s77 hand-off — 2026-05-04 (Phase 4 batch 21: Stridebreaker Cleave + ER Spellblade via crit_chance)
+
+Single-arc continuation from s76. Took s76 #1 candidate (Stridebreaker
+Cleave + ER Spellblade behind a `CallContext.crit_chance` bump) end
+to end. Both items were already on the s76 batch-21 audit list with
+clean Meraki text — Stridebreaker mirrors Ravenous Hydra's multi-target
+layer; ER needed the schema bump.
+
+**Engine: 0.24.0 → 0.25.0.** Tests: 395 → 412 (+17, with 2 updates).
+Live engine on :8893 activated via `schtasks /End /Run RC-DaemonSlayer`.
+
+**Pattern decision worth pinning — crit-chance plumbed at the
+CallContext level, not per-rotation.** `targets_in_rotation` lives
+on the rotation (each rotation has its own `numberOfTargets`), so
+the engine rebinds it per-rotation via `dataclasses.replace`. Crit
+is a build property — the build's `stats.crit` doesn't change between
+rotations. Wired once in `compute_dps` before phase iteration; the
+rotation rebind path stays unchanged. Future "stat" fields (lethality,
+armor pen, etc.) follow the same shape; future "rotation" fields
+(target type, range bucket) follow `targets_in_rotation`.
+
+**Pattern decision worth pinning — flat-base + crit-scaled split
+keeps a 0% crit build clean.** ER's lambda is `1.25 * c.base_ad +
+50.0 * c.crit_chance`, not a multiplicative crit modifier. At 0% crit,
+ER falls back to pure 125% base AD (the historic concern from batch
+16/20 commentary about under-counting). At 100% crit it adds +50 flat
+on top. Pre-batch-21 callers that don't pass `crit_chance` get the
+default 0.0 → fall back to flat 125% base AD automatically. Batch 11
+"order-dependent dedup" guard on ER no longer applies — promotion
+unblocks the spellblade dedup family addition.
+
+**Pattern decision worth pinning — when promoting an item that already
+sat in `DefensiveOnlyBatch2Tests.EXPECTED`, drop the entry (don't keep
+it as a "name-still-correct" sentinel).** The dict is the master list
+of "stuck-defensive" items; promoting Stridebreaker + ER means
+shrinking the dict from 9 → 7 entries, with retention comments
+pointing readers to the new proc-shape test classes. Same edit pattern
+as s76's Heartsteel migration. Future promotions repeat this pattern.
+
+**Shipped (commit `12af23a`, push pending operator decision):**
+
+- `agents/daemon_slayer/effects.py`:
+  - **CallContext.crit_chance** field (default 0.0). Docstring blocks
+    pinned for the new field; default semantics described as
+    "build has no crit — pre-batch-21 callers don't pass it and
+    procs that reference it gracefully no-op".
+  - **Stridebreaker (6631) Cleave** promoted from defensive_only.
+    `PeriodicProc(every_n_attacks=1, bonus_damage=lambda c:
+    max(0, c.targets_in_rotation - 1) * 0.40 * (c.base_ad + c.bonus_ad),
+    PHYSICAL)`. Same shape as Ravenous Hydra (3074); coefficient 40%
+    vs Ravenous's 35%. Halting Slash active stays utility — not
+    modeled (same as 3074 having no active modeled).
+  - **Essence Reaver (3508) Spellblade** promoted from defensive_only.
+    `PeriodicProc(every_n_seconds=3.0, bonus_damage=lambda c:
+    1.25 * c.base_ad + 50.0 * c.crit_chance, PHYSICAL)`.
+    `unique_passive_key="spellblade"` joins the Trinity Force /
+    Lich Bane dedup family. Trinity Force's batch-11 comment
+    rewritten to mention ER instead of "currently defensive_only".
+
+- `agents/daemon_slayer/dps.py`:
+  - `compute_dps` constructs `CallContext` with
+    `crit_chance=min(stats.crit, 1.0)` — the same clamp the
+    rotation-final crit display uses at line ~413. Comment block
+    explains the clamp matches the existing per-rotation calculation
+    so the two paths can't drift.
+
+- `agents/daemon_slayer/__init__.py`: `ENGINE_VERSION = "0.25.0"`.
+  Docstring extended with batch 21 wording; defensive_only count
+  noted at 22 (was 23 pre-batch — Stridebreaker + ER both promoted,
+  hence -2; previous count text was off by 1 for unrelated reasons,
+  corrected mid-batch). `targets_in_rotation` line in the
+  CallContext list grows to include `crit_chance`.
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - **CallContextCritChanceTests** (4 tests): default zero,
+    callable resolves against crit_chance, zero-crit zeros the
+    crit piece, full-crit caps at +50.
+  - **StridebreakerCleaveTests** (6 tests): promotion shape,
+    Aatrox single-target invariant, Anivia multi-target uplift,
+    Annie per-rotation isolation, direct coefficient comparison
+    against Ravenous Hydra at fixed CallContext, single-target zero.
+  - **EssenceReaverSpellbladeTests** (7 tests): promotion shape,
+    spellblade key, zero-crit fallback, crit-chance scaling,
+    Caitlyn DPS lift, ER+IE crit-stack synergy, ER↔LB dedup pair
+    (both orderings).
+  - **SpellbladeUniquePassiveTests.test_essence_reaver_not_tagged_spellblade**
+    flipped to `test_essence_reaver_tagged_spellblade` — pre-batch
+    invariant inverted by promotion. Comment preserves the historical
+    reason for the flip.
+  - **DefensiveOnlyBatch2Tests.EXPECTED** dict shrunk from 9 → 7
+    entries (Stridebreaker + ER both removed); retention comments
+    point at the new test classes.
+
+**Test state:**
+- `agents/daemon_slayer/tests/`: **412/412** green (s76 baseline 395 +
+  17 new, with 2 updates — batch-2 EXPECTED dict and batch-11 ER
+  spellblade tag invariant flip).
+- `tests/phase2_smoke/`: 154/154 unchanged (no consumer-side wiring
+  this batch).
+- Pre-existing stale `0.9.3` engine_version pin in
+  `test_sr_draft_profile_engine` still failing (carried — not in
+  scope this batch).
+
+**Live verify (post `schtasks /End /Run RC-DaemonSlayer`):**
+
+Engine version + smoke /dps:
+```
+$ curl http://127.0.0.1:8893/health → engine_version=0.25.0 ✓
+$ /dps Caitlyn lvl11 + [3508 (ER), 3031 (IE)] →
+    weighted_dps=231.45  AD=225  crit=0.50
+    notes[Essence Reaver: Spellblade 125% base AD + 0.5/crit%...] ✓
+    notes[Infinity Edge: +30% bonus crit damage] ✓
+$ /dps Anivia lvl11 + [6631] phase=late →
+    notes[Stridebreaker: Cleave ~40% AD physical to other enemies...] ✓
+```
+
+Live engine /dps proves the crit_chance plumb: ER's note appears
+on a 50%-crit build (IE 25 + ER 25), and the +25 crit_chance from
+each item flows through to ER's lambda. Stridebreaker's note appears
+on Anivia's late phase (n=3 rotation), confirming the multi-target
+layer fires.
+
+**Audit findings (defensive_only items remaining after batch 21):**
+
+22 entries left. Stridebreaker + ER promoted; the remaining table
+is largely genuinely defensive (utilities, shields, revives) plus
+schema-blocked promotion candidates. Clean batch 22+ candidates:
+
+- **Hextech Gunblade (3146) Lightning Bolt** — long-CD active dealing
+  175→253 + 30% AP magic. ~30 min scope but only ~5-15 DPS bump at
+  full uptime. Fits an `every_n_seconds=40.0` proc shape. Carried
+  from s76.
+
+Schema-blocked candidates (no change from s76 minus the now-shipped ER):
+- **The Collector "Death" execute** — needs target-low-HP gate.
+- **Luden's Echo** — needs ability-cast modeling.
+
+Genuinely defensive (no promotion possible/needed):
+Bloodthirster, Shieldbow, Phantom Dancer, EoN, Serpent's Fang,
+Opportunity, Maw, Frozen Heart, Death's Dance, Shojin, Warmog's,
+Mercurial, GA, Banshee's, Zhonya's, Navori Flickerblade.
+
+Removed-from-game (absent in Meraki bulk, kept for parity):
+Chemtech Putrifier (3011), Deathfire Grasp (3128).
+
+**Decisions worth pinning (this batch):**
+- **Stat-property fields (build-wide) live on CallContext at compute_dps
+  construction.** Crit, AP, AD, lethality. They're build-derived, not
+  rotation-derived.
+- **Rotation-property fields rebind via `dataclasses.replace`.**
+  `targets_in_rotation` is the canonical example; future "target type"
+  and "range bucket" fields would follow.
+- **Promote first, then tag for unique-passive.** ER stayed untagged
+  through batch 11 specifically because tagging an unpromoted item
+  could create order-dependence (LB or TF would silently dedup against
+  a defensive_only entry that contributed zero damage). Promoting in
+  the same commit closes the order-dependence cleanly.
+- **Don't enforce a hard cap inside the lambda.** ER's crit-scaled
+  piece could in principle exceed +50 if a caller passed crit_chance >
+  1.0; the lambda doesn't clamp. The clamp lives in `compute_dps`
+  before construction (`min(stats.crit, 1.0)`), which is the right
+  layer — same place the rotation-final crit display clamps.
+
+**Things tomorrow-you should NOT redo:**
+- Don't add per-rotation crit_chance rebind. Crit is a build property,
+  not a rotation property. Putting it on rotation_ctx would imply
+  rotation-varying crit (it doesn't vary).
+- Don't try to model ER's mana restore. It's economy, not damage —
+  out of DPS scope.
+- Don't try to model Stridebreaker's Halting Slash active. Same
+  out-of-scope reasoning as Ravenous's lack of an active.
+
+**Activation:** RC-DaemonSlayer scheduled task bounced via
+`schtasks /End /TN RC-DaemonSlayer && schtasks /Run /TN RC-DaemonSlayer`.
+Engine on :8893 reports 0.25.0. Stridebreaker + ER notes appear in
+/dps `notes[]` field. Behavior dormant until next game in progress
+(arena_coach / aram_coach / brawl_coach call /dps + /rank with the
+relevant items).
+
+**Bridge state at session end:** RC main pid=8084 (unchanged from s76).
+`schtasks` bounced RC-DaemonSlayer once. Game-PC bridge result was
+186s old at session start (per rc_facts probe). Peer bridge unchanged;
+no two-way traffic this session.
+
+**Operational backlog (delta from s76):**
+- ✅ ~~Phase 4 batch 21: Stridebreaker Cleave + ER Spellblade
+  (CallContext.crit_chance)~~ shipped this session.
+- All other s76 backlog unchanged.
+- **NEW from s77**: Hextech Gunblade Lightning Bolt active —
+  ~30 min scope when batch 22 lands. Low DPS bump (5–15 at full
+  uptime); deferrable.
+
+**Memory entries written this session:** none. The CallContext
+schema-bump pattern + the "promote-then-tag" pattern + the
+"stat-property vs rotation-property" split are durable enough to
+warrant memory entries, but they're already pinned in the engine
+docstrings and this hand-off; will only promote to memory if a
+future session needs to recall them and can't find via grep.
+
+**Next-session candidates (ranked):**
+1. **Hextech Gunblade (3146) Lightning Bolt** — clean Meraki text,
+   schema fits (`every_n_seconds=40.0`). ~30 min. Engine 0.25.0 →
+   0.26.0.
+2. **SR coach `target_bonus_hp` activation** (carried s73→s76).
+   Probably needs vision-side enemy item parsing first.
+3. **Stale 0.9.3 engine_version pin cleanup** in
+   `test_sr_draft_profile_engine` (carried). ~10 min scope.
+4. **First draft visual verify of P8-5.5** (carried).
+5. **gamepc_boot.ps1 patch** (carried). 1-liner.
+6. **P8-7 E2E push-to-League integration test** (carried).
+7. **Activate arena augment v2 in production** (carried).
+8. **Per-target-HP-pct field** (carried; defer until caller demands).
+
+**Full coach activation matrix as of s77:** unchanged from s76 —
+this batch was engine-side only.
+
+| Coach | target_bonus_hp wire-in | Resolver mode | Engine mode |
+|---|---|---|---|
+| arena_coach | ✅ s73 (heuristic) → s73 (item-aware) → s74 (mode-pin) | 'arena' | 'ARENA' |
+| aram_coach | ✅ s74 | 'aram' | 'ARAM' |
+| brawl_coach | ✅ s75 | 'brawl' / 'sr' | 'BRAWL' / 'SR' |
+| sr_coach | ⏳ blocked on vision-side enemy item parsing | 'sr' (when ready) | 'SR' |
 
