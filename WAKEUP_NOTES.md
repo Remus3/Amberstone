@@ -1772,3 +1772,181 @@ will graduate to memory if Phase 4 expansion surprises us.
 this session — engine work is offline). Bridge gamepc loop alive per
 s42 close-out. Working tree clean after `d71ffc3`. Lobby. Safe to /clear.
 
+## s44 hand-off — 2026-05-03 (Daemon Slayer Phase 7 narrow + Phase 4 expansion)
+
+Three-arc session, all DS work. **Arc 1**: Phase 7 narrow — supervisor
+entry on :8893 (RC-DaemonSlayer scheduled task) + arena coach
+companion-field wire-in. **Arc 2**: Phase 4 expansion — schema bump
+(CallContext + callable bonus_damage + armor pen layer) and 25 new
+items in `ITEM_EFFECTS`. **Arc 3**: User shared the Phase 8+ vision
+(SR Draft Theatre with 3-build profile, in-game panel replacement,
+Max Build toggle, dedicated DS sub-page) — captured as ordering plan
+for after Phase 5/6/7.
+
+**What shipped (commit `<TBD>`):**
+- `tools/start_daemon_slayer.py` + `ops/RC-DaemonSlayer.xml` +
+  `tools/install_daemon_slayer_task.ps1` — boot launcher, Windows
+  scheduled task (BootTrigger SYSTEM HighestAvailable), idempotent
+  install script. `:8893/health` returns 200 on boot now.
+- `core/daemon_slayer_client.py` — thin urllib wrapper for `/health`,
+  `/rank`, `/dps`. 250 ms connect / 500 ms read timeouts; engine-down
+  → returns None (callers branch on it).
+- `core/daemon_slayer_resolver.py` — items_index.json byName resolver
+  with mtime-based reload cache. `Infinity Edge` → `223031`,
+  `Berserker's Greaves` → `223006`. (22-prefix is the Arena alias;
+  see `reference_items_index_alias_ids.md`.)
+- `coaches/arena_coach.py` — adds `daemon_slayer_picks` companion
+  field next to existing `item_build`. Engine-down → field absent;
+  `_arena_item_advisor` stays the source of truth for `item_build`
+  until Phase 6 (Arena augments) lands. Phase 7 is the wire-in
+  pattern proof, not the retirement.
+- `agents/daemon_slayer/effects.py` — Schema bump:
+  - `CallContext(base_ad, bonus_ad, level, target_armor, target_mr)`.
+  - `PeriodicProc.bonus_damage` is now `float | Callable[[CallContext], float]`.
+    `resolve_damage(ctx)` is the consumer interface; constants pass
+    through, callables evaluate.
+  - New `ItemEffect` fields: `armor_reduction_pct` (Black Cleaver),
+    `armor_pen_pct` (LDR/MR), `armor_pen_flat` (lethality).
+  - `effective_target_armor(armor, effects)` applies reduction → %pen
+    → flat pen pipeline. Passthrough when no modifiers; no-op on
+    already-negative armor (preserves test cases of the armor curve).
+  - 25 new entries in `ITEM_EFFECTS`. Total 30.
+- `agents/daemon_slayer/dps.py` — Plumbed `CallContext` through
+  `_periodic_proc_dps` / `_rotation_attack_dps` / `_phase_weighted_dps`.
+  `compute_dps` builds CallContext once + applies `effective_target_armor`
+  before passing into the rotation loops. Surfaces a "effective target
+  armor X → Y after reduction + pen" note when a modifier fired.
+- `agents/daemon_slayer/engine.py` — `ResolvedStats.base_stats`
+  exposes the leveled pre-item stat dict (needed by spellblade-style
+  callables that scale off `base_ad`). Backward-compat default = `{}`.
+- `agents/daemon_slayer/__init__.py` — `ENGINE_VERSION 0.6.0 → 0.7.0`.
+- `agents/daemon_slayer/tests/test_effects_expansion.py` — 33 new tests.
+- 161/161 green (was 128).
+
+**Items pinned in this expansion (patch 16.9.1):**
+
+| ID | Name | Effect |
+|---|---|---|
+| 3087 | Statikk Shiv | Energized chain ~110 magic / 3s (constant) |
+| 3094 | Rapid Firecannon | Energized shot ~120 magic / 3s (constant) |
+| 3091 | Wit's End | Fray on-hit `15 + (lvl-1)*65/17` magic (callable) |
+| 3085 | Runaan's Hurricane | 2 bolts on-hit `0.6 * bonus_ad` physical (callable) |
+| 3078 | Trinity Force | Spellblade `2.0 * base_ad` physical / 3s (callable) |
+| 6699 | Voltaic Cyclosword | Energized `100 + 0.25 * bonus_ad` physical / 4s (callable) |
+| 6610 | Sundered Sky | Lightshield `20 + 2.0 * base_ad` physical / 8s (callable) |
+| 3124 | Guinsoo's Rageblade | Phantom Hit `0.5 * bonus_ad` physical / 3 attacks (callable) |
+| 3036 | Lord Dominik's | armor_pen_pct=0.35 |
+| 3033 | Mortal Reminder | armor_pen_pct=0.30 (+ GW heal-cut not modeled) |
+| 3071 | Black Cleaver | armor_reduction_pct=0.30 (5 stacks sustained) |
+| 13 defensive_only | Phantom Dancer, The Collector, Navori Flickerblade, Youmuu's, Edge of Night, Serpent's Fang, Opportunity, Sterak's Gage, Maw, Hullbreaker, Frozen Heart, Chemtech Putrifier, BotRK, Terminus, Eclipse | (BotRK/Eclipse/Terminus deferred to Phase 4+ when target HP modeling lands; The Collector deferred for execute math) |
+
+**SR rank smoke (Aatrox lvl 11 + Berserker's vs 80 armor, top 8):**
+1. Stormrazor +49.28 (magic vs MR=0)
+2. Statikk Shiv +48.45
+3. Rapid Firecannon +44.25
+4. Trinity Force +32.93
+5. Voltaic Cyclosword +29.65
+6. Wit's End +28.57
+7. Infinity Edge +27.82
+8. Kraken Slayer +22.88
+
+Magic procs dominate at MR=0 (expected — coach should pin realistic
+target_mr). Trinity rises fast on spellblade scaling.
+
+**Design choices worth pinning:**
+- **Schema is callable-friendly but not callable-required.** Existing
+  constants (IE +0.30 crit dmg, Stormrazor 120, Kraken 100) didn't
+  change shape. Only items that demanded scaling went callable. This
+  keeps the table easy to scan and the patch-bump diff small.
+- **`base_ad` exposed via `base_stats` dict, not a separate field.**
+  Future scaling stats (base_ap, base_hp) can flow through the same
+  channel without a schema bump.
+- **Armor pen pipeline order matches League:** reduction first
+  (BC stacks → multiplier on target_armor), then % pen (LDR/MR,
+  multiplicative on what remains), then flat (lethality, additive
+  subtraction). Floor at 0 — but only when a modifier fired.
+  Negative-armor inputs (test cases of the armor curve) pass through.
+- **Pen no-op on already-negative armor.** League rule: pen helps when
+  target has armor; if target is already shredded below zero, pen
+  doesn't amplify further. The test for this is in
+  `EffectiveTargetArmorTests.test_negative_armor_no_op_with_pen`.
+- **defensive_only entries still get notes.** Same reasoning as s43:
+  the note surfaces in `DpsResult.notes` so a user reading a rank
+  output SEES that BotRK / Eclipse were acknowledged but DPS-skipped
+  (target HP not modeled). One-grep check for "did we forget X?"
+- **Phase 6 (Arena augments) before retiring `_arena_item_advisor`.**
+  Arena prismatics + augments aren't in the engine yet, so a hard
+  retire would regress arena coaching. The wire-in writes a companion
+  field; replacement happens after Phase 6 puts the missing context
+  into the engine.
+
+**Things tomorrow-you should NOT redo:**
+- Don't re-extract the snapshot to fix `attackdamageperlevel=0`.
+  Surfaced this session: ALL champions in 16.9.1/champions.json have
+  `attackdamageperlevel=0`. Pre-existing extractor gap, not Phase 4.
+  Promote `tools/daemon_slayer_extract.py` to fill perlevel fields
+  in a Phase 1.5 session — meanwhile, base_ad scaling is correct
+  per the data we have (constant-by-level), under-estimating late
+  game AD by ~50-90 for melee bruisers.
+- Don't write tests that hand-calculate proc DPS expecting specific
+  numbers. Test directionally (with > without, scaling > non-scaling).
+  The rotation weights × phase × armor_factor × mode_mult chain has
+  too many moving pieces; specific numbers couple tests to engine
+  internals.
+- Don't add magic_pen analogues to the armor pen layer in Phase 4.
+  No magic-pen items in the marquee 25; defer the symmetric layer
+  until Void Staff / Sorcerer's Shoes / Cryptbloom land.
+- Don't touch `_arena_item_advisor` in this phase. Phase 6+ replaces
+  it; companion field is the proof point for now.
+
+**User vision capture for Phase 8+ (don't re-prompt — this is decided):**
+
+Map of user-asked features → planned phase:
+
+| Feature | Phase | Notes |
+|---|---|---|
+| Mode-aware engine (SR/ARAM/Arena) | Done (Phase 2-3) | TFT separate; Brawl pending |
+| Mayhem augments | 5 | currently treated as plain SR |
+| Arena augments | 6 | needed before `_arena_item_advisor` retire |
+| Coach wire-in pattern proof | 7 (done) | arena `daemon_slayer_picks` field |
+| **SR Draft Theatre** | 8 | LCU draft subscription + 3-build profile (primary, alt-playstyle, experimental) + runes/spells writer + push-to-League. **Operator-additive**: user-curated experimental builds APPEND, never overwrite — all shown pre-game + all pushed to League. |
+| In-game Item Build Panel replacement (rename → Daemon Slayer Builder) | 9 | replaces SR/ARAM "next items" output |
+| DS dedicated sub-page | 9 | mirrors Item Build Panel + "why" + flag-for-review |
+| Decision logging schema (DS picks → match outcome join) | 9 | extends existing `agents/decision_log/` |
+| Max Build toggle (sell-and-rebuy late-game) | 10 | needs late-game predicates: Baron up + 50min + nexus exposed + GA-CD + 6k excess gold |
+| Post-game outcome join + analysis sweep | 11 | leverages `lcu/lcu_postgame_collector.py` + rewind_history.db |
+
+User UX rule (hands-off default): all 3 builds auto-push to League
+without confirmation. Operator only touches Loadouts page to add an
+experimental build (additive) for a specific champion. Issues come
+to me for review via flag-for-review buttons on the DS sub-page.
+
+**Open for next sessions:**
+- **Phase 2 step 4 (top of next-session queue)**: full-build
+  beam-search ranker. Now strictly more useful with Phase 4 expansion
+  — beam search will find IE+Stormrazor / TriForce+Sundered Sky
+  synergies the single-slot ranker can't see. Foundation for Phase 8's
+  3-build profile (alt-playstyle + experimental need beam to enumerate)
+  and Phase 10's Max Build re-optimization (beam search with sell-back
+  cost function).
+- **Phase 5 (Mayhem augments)**: Mayhem mode is rotating SR with
+  augments. Augment table extraction + augment-aware engine hook +
+  modify rank to consider augment effects.
+- **Phase 6 (Arena augments)**: Same shape as Phase 5 but Arena
+  augments + prismatic items. Once shipped, `_arena_item_advisor`
+  gets retired and `item_build` defaults to DS.
+- **Phase 1.5 (extractor fix)**: backfill `attackdamageperlevel` and
+  other perlevel fields in champions.json. Currently all zero — late
+  game AD under-estimated.
+
+**Memory:** No new memory entries this session. Phase 4 expansion is
+straight extension of `reference_daemon_slayer_engine_arch.md`'s
+extension points. User vision for Phase 8+ captured in this hand-off
+table; promote to a memory entry once Phase 5/6/7 close and we're
+actively building Phase 8.
+
+**Bridge state at session end:** RC engine on :8893 is now boot-managed
+via RC-DaemonSlayer scheduled task. Main RC PID unchanged (no main
+restart needed — engine is its own process). Bridge gamepc loop alive.
+Working tree pre-commit: ~10 files changed, ~600 lines net new across
+DS engine + tests + ops.
