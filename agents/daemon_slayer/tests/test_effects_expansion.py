@@ -4912,5 +4912,217 @@ class Batch37TrueDamageTests(unittest.TestCase):
         self.assertGreaterEqual(len(ITEM_EFFECTS), 156)
 
 
+# ────────────────────────── Phase 4 batch 38 tests ──────────────────────────
+
+class Batch38GiantSlayerSchemaTests(unittest.TestCase):
+    """Batch 38: Giant Slayer MAX HP diff amp schema."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    # ── Helper function ──
+
+    def test_giant_slayer_multiplier_zero_when_caster_higher(self) -> None:
+        from agents.daemon_slayer.effects import total_giant_slayer_multiplier
+        eff = [ITEM_EFFECTS["4015"]]
+        # Caster has 3000 HP, target has 2000 HP — no amp
+        result = total_giant_slayer_multiplier(eff, target_max_hp=2000.0, caster_max_hp=3000.0)
+        self.assertAlmostEqual(result, 1.0, places=6)
+
+    def test_giant_slayer_multiplier_zero_when_equal(self) -> None:
+        from agents.daemon_slayer.effects import total_giant_slayer_multiplier
+        eff = [ITEM_EFFECTS["4015"]]
+        result = total_giant_slayer_multiplier(eff, target_max_hp=2500.0, caster_max_hp=2500.0)
+        self.assertAlmostEqual(result, 1.0, places=6)
+
+    def test_giant_slayer_partial_1000_hp_diff(self) -> None:
+        from agents.daemon_slayer.effects import total_giant_slayer_multiplier
+        eff = [ITEM_EFFECTS["4015"]]
+        # 1000 HP diff: 1000/100 * 0.006 = 0.06 → 6% amp → factor 1.06
+        result = total_giant_slayer_multiplier(eff, target_max_hp=3500.0, caster_max_hp=2500.0)
+        self.assertAlmostEqual(result, 1.06, places=4)
+
+    def test_giant_slayer_capped_at_max(self) -> None:
+        from agents.daemon_slayer.effects import total_giant_slayer_multiplier
+        eff = [ITEM_EFFECTS["4015"]]
+        # 3000 HP diff: 3000/100 * 0.006 = 0.18 but cap = 0.15 → 1.15
+        result = total_giant_slayer_multiplier(eff, target_max_hp=6000.0, caster_max_hp=3000.0)
+        self.assertAlmostEqual(result, 1.15, places=4)
+
+    def test_giant_slayer_at_cap_boundary(self) -> None:
+        from agents.daemon_slayer.effects import total_giant_slayer_multiplier
+        eff = [ITEM_EFFECTS["4015"]]
+        # 2500 HP diff: exactly at cap = 15%
+        result = total_giant_slayer_multiplier(eff, target_max_hp=5000.0, caster_max_hp=2500.0)
+        self.assertAlmostEqual(result, 1.15, places=4)
+
+    def test_giant_slayer_no_items(self) -> None:
+        from agents.daemon_slayer.effects import total_giant_slayer_multiplier
+        result = total_giant_slayer_multiplier([], target_max_hp=5000.0, caster_max_hp=1000.0)
+        self.assertAlmostEqual(result, 1.0, places=6)
+
+    # ── Perplexity field update ──
+
+    def test_perplexity_has_giant_slayer_fields(self) -> None:
+        eff = ITEM_EFFECTS.get("4015")
+        self.assertIsNotNone(eff)
+        self.assertAlmostEqual(eff.giant_slayer_pct_per_100hp, 0.006, places=6)
+        self.assertAlmostEqual(eff.giant_slayer_max_pct, 0.15, places=4)
+
+    def test_perplexity_still_has_pen_fields(self) -> None:
+        eff = ITEM_EFFECTS.get("4015")
+        self.assertIsNotNone(eff)
+        self.assertAlmostEqual(eff.armor_pen_pct, 0.22, places=4)
+        self.assertAlmostEqual(eff.magic_pen_pct, 0.30, places=4)
+
+    def test_perplexity_giant_slayer_lifts_dps_vs_tanky_target(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        # Against a very HP-heavy target (tank: 5000 HP) Perplexity should
+        # outperform no-item by more than against a squish (2000 HP)
+        dps_bare_tank = compute_dps(self.snap, "Zed", level=11, target_armor=50.0,
+                                    target_max_hp=5000.0)
+        dps_perp_tank = compute_dps(self.snap, "Zed", level=11, item_ids=["4015"],
+                                    target_armor=50.0, target_max_hp=5000.0)
+        dps_bare_squish = compute_dps(self.snap, "Zed", level=11, target_armor=50.0,
+                                      target_max_hp=2000.0)
+        dps_perp_squish = compute_dps(self.snap, "Zed", level=11, item_ids=["4015"],
+                                      target_armor=50.0, target_max_hp=2000.0)
+        gain_tank = dps_perp_tank.weighted_dps / dps_bare_tank.weighted_dps
+        gain_squish = dps_perp_squish.weighted_dps / dps_bare_squish.weighted_dps
+        self.assertGreater(gain_tank, gain_squish)
+
+
+class Batch38ActiveItemTests(unittest.TestCase):
+    """Batch 38: Wooglet's Witchcap, Deathblade, Obsidian Cleaver."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    # ── Wooglet's Witchcap (228002) ──
+
+    def test_wooglets_ap_amp_pct(self) -> None:
+        eff = ITEM_EFFECTS.get("228002")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertAlmostEqual(eff.ap_amp_pct, 0.50, places=4)
+        self.assertEqual(len(eff.periodics), 0)
+
+    def test_wooglets_stacks_with_rabadon(self) -> None:
+        from agents.daemon_slayer.effects import total_ap_amp_multiplier
+        effs_rabadon = [ITEM_EFFECTS["3089"]]       # Rabadon 0.30
+        effs_wooglet = [ITEM_EFFECTS["228002"]]     # Wooglet 0.50
+        effs_both = effs_rabadon + effs_wooglet
+        factor_rabadon = total_ap_amp_multiplier(effs_rabadon)
+        factor_wooglet = total_ap_amp_multiplier(effs_wooglet)
+        factor_both = total_ap_amp_multiplier(effs_both)
+        self.assertAlmostEqual(factor_rabadon, 1.30, places=4)
+        self.assertAlmostEqual(factor_wooglet, 1.50, places=4)
+        # Multiplicative: 1.30 × 1.50 = 1.95
+        self.assertAlmostEqual(factor_both, 1.95, places=4)
+
+    def test_wooglets_dps_lift_with_ap_proc_item(self) -> None:
+        # ap_amp_pct only boosts DPS when an AP-scaling proc item is present.
+        # Nashor's Tooth (3115) has a per-attack AP proc — Wooglet's 50% AP amp
+        # should meaningfully boost Nashor's contribution.
+        from agents.daemon_slayer.dps import compute_dps
+        dps_nashor = compute_dps(self.snap, "Lux", level=11, item_ids=["3115"])
+        dps_both = compute_dps(self.snap, "Lux", level=11, item_ids=["3115", "228002"])
+        self.assertGreater(dps_both.weighted_dps, dps_nashor.weighted_dps)
+
+    # ── Deathblade (228003) ──
+
+    def test_deathblade_lethality_and_crit_bonus(self) -> None:
+        eff = ITEM_EFFECTS.get("228003")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertAlmostEqual(eff.lethality, 20.0, places=2)
+        self.assertAlmostEqual(eff.crit_damage_bonus, 0.45, places=4)
+        self.assertEqual(len(eff.periodics), 0)
+
+    def test_deathblade_dps_lift(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        dps_bare = compute_dps(self.snap, "Jinx", level=11, target_armor=80.0)
+        dps_with = compute_dps(self.snap, "Jinx", level=11, item_ids=["228003"],
+                               target_armor=80.0)
+        self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
+
+    def test_deathblade_lethality_scales_with_level(self) -> None:
+        from agents.daemon_slayer.effects import effective_target_armor
+        effs = [ITEM_EFFECTS["228003"]]
+        armor_l1 = effective_target_armor(100.0, effs, level=1)
+        armor_l18 = effective_target_armor(100.0, effs, level=18)
+        # At level 18 lethality is fully effective → lower effective armor
+        self.assertLess(armor_l18, armor_l1)
+
+    # ── Obsidian Cleaver (228005) ──
+
+    def test_obsidian_cleaver_armor_reduction(self) -> None:
+        eff = ITEM_EFFECTS.get("228005")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertAlmostEqual(eff.armor_reduction_pct, 0.35, places=4)
+        self.assertEqual(len(eff.periodics), 0)
+
+    def test_obsidian_cleaver_reduces_effective_armor(self) -> None:
+        from agents.daemon_slayer.effects import effective_target_armor
+        effs = [ITEM_EFFECTS["228005"]]
+        # 100 armor × (1 - 0.35) = 65 effective armor
+        eff_armor = effective_target_armor(100.0, effs)
+        self.assertAlmostEqual(eff_armor, 65.0, places=2)
+
+    def test_obsidian_cleaver_dps_lift_high_armor(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        dps_bare = compute_dps(self.snap, "Jinx", level=11, target_armor=150.0)
+        dps_with = compute_dps(self.snap, "Jinx", level=11, item_ids=["228005"],
+                               target_armor=150.0)
+        self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
+
+    # ── Defensive_only sweep ──
+
+    def test_batch38_defensive_only_entries(self) -> None:
+        expected = {
+            "228001": "Anathema's Chains",
+            "228004": "Adaptive Helm",
+            "228006": "Sanguine Blade",
+            "228008": "Runeglaive",
+            "443058": "Shield of Molten Stone",
+            "443059": "Cloak of Starry Night",
+            "443061": "Force of Entropy",
+            "443062": "Sanguine Gift",
+            "443063": "Eleisa's Miracle",
+            "443064": "Talisman of Ascension",
+            "443079": "Turbo Chemtank",
+            "443080": "Twin Mask",
+            "443081": "Hexbolt Companion",
+            "443193": "Gargoyle Stoneplate",
+            "2525": "Protoplasm Harness",
+            "3143": "Randuin's Omen",
+            "8001": "Anathema's Chains",
+        }
+        for iid, name in expected.items():
+            with self.subTest(item_id=iid):
+                eff = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(eff, f"{iid} missing from ITEM_EFFECTS")
+                self.assertTrue(eff.defensive_only, f"{iid} ({name}) should be defensive_only")
+                self.assertEqual(len(eff.periodics), 0)
+                self.assertTrue(len(eff.note) > 0)
+
+    def test_protoplasm_harness_lifeline_key(self) -> None:
+        eff = ITEM_EFFECTS.get("2525")
+        self.assertIsNotNone(eff)
+        self.assertEqual(eff.unique_passive_key, "lifeline")
+
+    def test_defensive_only_count_after_batch38(self) -> None:
+        count = sum(1 for e in ITEM_EFFECTS.values() if e.defensive_only)
+        # 79 after batch 37 + 17 new = 96
+        self.assertGreaterEqual(count, 96)
+
+    def test_total_entry_count_after_batch38(self) -> None:
+        # 156 after batch 37 + 20 new (3 active + 17 defensive) = 176
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 176)
+
+
 if __name__ == "__main__":
     unittest.main()

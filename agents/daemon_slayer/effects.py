@@ -328,6 +328,19 @@ class ItemEffect:
     # ``_periodic_proc_dps`` per-proc when damage_type != PHYSICAL.
     # Default 0.0 → no contribution.
     magic_amp_pct: float = 0.0
+    # Phase 4 batch 38 (2026-05-04): Giant Slayer target max HP advantage amp.
+    # Distinct from ``target_bonus_hp_amp_max_pct`` (LDR — keyed off target
+    # BONUS HP) because Perplexity's Giant Slayer is keyed off the DIFFERENCE
+    # between target MAX HP and caster MAX HP (i.e. who's tankier). Formula:
+    #   amp = min(giant_slayer_max_pct,
+    #             max(0, (target_max_hp - caster_max_hp) / 100
+    #                    * giant_slayer_pct_per_100hp))
+    # Returns 0 when caster out-HPs the target. Stacks multiplicatively with
+    # other amp layers per League's buff-system semantics (batch 14 doctrine).
+    # ``total_giant_slayer_multiplier`` computes the factor and wires it into
+    # ``compute_dps`` AFTER ``caster_max_hp`` is derived from the build.
+    giant_slayer_pct_per_100hp: float = 0.0   # Perplexity: 0.006 (0.6% per 100 HP)
+    giant_slayer_max_pct: float = 0.0          # Perplexity: 0.15 (15% cap at 2500 HP diff)
     defensive_only: bool = False     # documents "no DPS effect" entries
     note: str = ""                   # one-line summary surfaced in DpsResult.notes
     # Phase 4 batch 10 (2026-05-04): unique-passive de-duplication.
@@ -1987,20 +2000,23 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "not sustained-DPS modelable)"
         ),
     ),
-    # Perplexity (4015): 22% armor pen + 30% magic pen dual-pen item (Arena/special pool).
-    # Giant Slayer passive deals up to 15% more damage against targets with greater
-    # max HP than caster (0.6% per 100 HP difference, based on MAX HP difference NOT
-    # bonus HP) — requires new schema (target_max_hp vs caster_max_hp); deferred.
+    # Perplexity (4015): 22% armor pen + 30% magic pen dual-pen + Giant Slayer
+    # target HP advantage amp (Phase 4 batch 38). Giant Slayer: 0.6% per 100 HP
+    # difference between target max HP and caster max HP, capped at 15%. Uses the
+    # new giant_slayer_pct_per_100hp + giant_slayer_max_pct schema (distinct from
+    # LDR's target_bonus_hp_amp which is keyed off bonus HP, not max HP difference).
     "4015": ItemEffect(
         item_id="4015",
         name="Perplexity",
         armor_pen_pct=0.22,
         magic_pen_pct=0.30,
+        giant_slayer_pct_per_100hp=0.006,
+        giant_slayer_max_pct=0.15,
         note=(
-            "Perplexity: 22% armor pen + 30% magic pen (dual-pen; both pen fields "
-            "wire into existing effective_target_armor + effective_target_mr helpers). "
-            "Giant Slayer (0-15% based on target-vs-caster max HP difference) deferred "
-            "— needs separate max_hp_diff_amp schema distinct from bonus-HP-keyed LDR"
+            "Perplexity: 22% armor pen + 30% magic pen (dual-pen). "
+            "Giant Slayer 0–15% damage amp based on (target_max_hp – caster_max_hp) "
+            "÷ 100 × 0.6%, capped at 15% (2500 HP diff = cap). "
+            "Key: MAX HP diff, not bonus HP — distinct from LDR Giant Slayer schema"
         ),
     ),
     # Divine Sunderer (6632): Spellblade physical variant — 125% base AD + 6% target max
@@ -2465,6 +2481,214 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "deferred pending schema for crit-gated procs"
         ),
     ),
+    # ── Phase 4 batch 38 (2026-05-04): Giant Slayer schema + 228xxx/443xxx/SR sweep ──
+    # New schema: giant_slayer_pct_per_100hp + giant_slayer_max_pct (MAX HP diff keyed,
+    # distinct from LDR's bonus-HP-keyed target_bonus_hp_amp). Perplexity updated in-place.
+    # 3 active promotions; 17 defensive_only entries.
+
+    # Wooglet's Witchcap (228002): Magical Opus — increase total AP by 50%.
+    # Uses existing ap_amp_pct schema (same as Rabadon's Deathcap 30%). Stacks
+    # multiplicatively via total_ap_amp_multiplier (1.50 × 1.30 if both in build).
+    # Time Stop active (Zhonya's invulnerability) is utility-only, not modeled.
+    "228002": ItemEffect(
+        item_id="228002",
+        name="Wooglet's Witchcap",
+        ap_amp_pct=0.50,
+        note=(
+            "Wooglet's Witchcap: Magical Opus +50% total AP (Arena legendary). "
+            "Stacks multiplicatively with Rabadon's via total_ap_amp_multiplier. "
+            "Time Stop active (Zhonya's invulnerability) utility-only"
+        ),
+    ),
+    # Deathblade (228003): Death and Taxes — execute below 7% HP (utility, not modeled).
+    # Stat line carries 45% crit damage bonus + 20 lethality — both promotable via
+    # existing schemas. crit_damage_bonus adds to DEFAULT_CRIT_BONUS (same as IE +0.30);
+    # lethality folds into level-scaled flat pen via effective_target_armor.
+    "228003": ItemEffect(
+        item_id="228003",
+        name="Deathblade",
+        lethality=20.0,
+        crit_damage_bonus=0.45,
+        note=(
+            "Deathblade: 20 lethality (level-scaled flat pen) + 45% bonus crit damage. "
+            "Death and Taxes execute-below-7% utility-only (execute conditional not modeled). "
+            "On-kill gold + heal utility-only"
+        ),
+    ),
+    # Obsidian Cleaver (228005): Carve — dealing physical damage reduces target armor
+    # by 7%, stacks 5 times = 35% max reduction. Same layer as Black Cleaver's
+    # armor_reduction_pct (applied before % pen). Modeled at full stacks per sustained-
+    # DPS convention. Fervor 20 MS utility-only.
+    "228005": ItemEffect(
+        item_id="228005",
+        name="Obsidian Cleaver",
+        armor_reduction_pct=0.35,
+        note=(
+            "Obsidian Cleaver: Carve 7% armor reduction per stack × 5 stacks = 35% max "
+            "(same armor_reduction_pct layer as Black Cleaver, modeled at full stacks). "
+            "Fervor 20 MS utility-only"
+        ),
+    ),
+    # ── defensive_only (17) ──
+    "228001": ItemEffect(
+        item_id="228001",
+        name="Anathema's Chains",
+        defensive_only=True,
+        note=(
+            "Anathema's Chains (Arena 228001): Vendetta — take reduced damage from "
+            "Nemesis + reduce their Tenacity while near. Damage mitigation, not DPS"
+        ),
+    ),
+    "228004": ItemEffect(
+        item_id="228004",
+        name="Adaptive Helm",
+        defensive_only=True,
+        note=(
+            "Adaptive Helm: Voidborn Resilience — gain 2 armor + 2 MR per second "
+            "in champion combat (combat-stacking tank passive, not a DPS proc)"
+        ),
+    ),
+    "228006": ItemEffect(
+        item_id="228006",
+        name="Sanguine Blade",
+        defensive_only=True,
+        note=(
+            "Sanguine Blade: Cleave attacks deal physical damage to nearby enemies — "
+            "cleave coefficient absent from Meraki + DDragon 16.9.1; deferred. "
+            "Ravenous Crescent AoE + life steal utility-only"
+        ),
+    ),
+    "228008": ItemEffect(
+        item_id="228008",
+        name="Runeglaive",
+        defensive_only=True,
+        note=(
+            "Runeglaive: no combat passive in DDragon 16.9.1 — stat block only "
+            "(65 AD + 85 AP + 30% AS + 20% crit + 600 HP; contributes via aggregate_item_stats). "
+            "defensive_only per zero-proc policy"
+        ),
+    ),
+    "443058": ItemEffect(
+        item_id="443058",
+        name="Shield of Molten Stone",
+        defensive_only=True,
+        note=(
+            "Shield of Molten Stone: Immovable as the Earth — increases total armor by 20% "
+            "+ block chance per 200 total armor (up to 50%); tank defensive passive, no DPS proc"
+        ),
+    ),
+    "443059": ItemEffect(
+        item_id="443059",
+        name="Cloak of Starry Night",
+        defensive_only=True,
+        note=(
+            "Cloak of Starry Night: Limitless as the Stars — increases total MR by 20% "
+            "+ reduces non-AA damage per 200 total MR (up to 50%); tank defensive, no DPS proc"
+        ),
+    ),
+    "443061": ItemEffect(
+        item_id="443061",
+        name="Force of Entropy",
+        defensive_only=True,
+        note=(
+            "Force of Entropy: Atrophy fires a crit-chance-weighted chance proc "
+            "on immobilizing effects — CC-conditional trigger, no sustained DPS contribution"
+        ),
+    ),
+    "443062": ItemEffect(
+        item_id="443062",
+        name="Sanguine Gift",
+        defensive_only=True,
+        note=(
+            "Sanguine Gift: Patronage — stores 15% post-mitigation damage dealt, "
+            "heals caster + nearest ally when stored exceeds 333. Sustain mechanic, no DPS"
+        ),
+    ),
+    "443063": ItemEffect(
+        item_id="443063",
+        name="Eleisa's Miracle",
+        defensive_only=True,
+        note=(
+            "Eleisa's Miracle: Enduring Vitality — heal/sustain mechanic; "
+            "no basic-attack DPS proc"
+        ),
+    ),
+    "443064": ItemEffect(
+        item_id="443064",
+        name="Talisman of Ascension",
+        defensive_only=True,
+        note=(
+            "Talisman of Ascension: adaptive stat item (adjusts to build); "
+            "no fixed passive proc modelable in static engine"
+        ),
+    ),
+    "443079": ItemEffect(
+        item_id="443079",
+        name="Turbo Chemtank",
+        defensive_only=True,
+        note=(
+            "Turbo Chemtank: CC-immunity canister mechanic — ignore next immobilize, "
+            "drop canister restoring 4% max HP. CC mitigation + heal, no DPS proc"
+        ),
+    ),
+    "443080": ItemEffect(
+        item_id="443080",
+        name="Twin Mask",
+        defensive_only=True,
+        note=(
+            "Twin Mask: Unanimity — gain 20% (or 35%) of teammate's AD/AP/AS/HP/armor/MR/AH. "
+            "Teammate-dependent scaling not modelable in solo-caster DPS engine"
+        ),
+    ),
+    "443081": ItemEffect(
+        item_id="443081",
+        name="Hexbolt Companion",
+        defensive_only=True,
+        note=(
+            "Hexbolt Companion: Covering Fire — on-hit stacks trigger teammate ally-bolt. "
+            "Teammate mechanic; ally contribution not modeled in single-caster engine"
+        ),
+    ),
+    "443193": ItemEffect(
+        item_id="443193",
+        name="Gargoyle Stoneplate",
+        defensive_only=True,
+        note=(
+            "Gargoyle Stoneplate: Unbreakable active — decaying shield + size increase. "
+            "Shield mechanic, active-only, no DPS contribution"
+        ),
+    ),
+    "2525": ItemEffect(
+        item_id="2525",
+        name="Protoplasm Harness",
+        defensive_only=True,
+        unique_passive_key="lifeline",
+        note=(
+            "Protoplasm Harness: Lifeline — triggered shield when dropping below 30% HP, "
+            "then heals max HP over 5s + size/MS/tenacity boost. "
+            "Joins lifeline unique-passive family (Immortal Shieldbow, Sterak's, Maw, Seraph's). "
+            "Shield/sustain mechanic, no DPS"
+        ),
+    ),
+    "3143": ItemEffect(
+        item_id="3143",
+        name="Randuin's Omen",
+        defensive_only=True,
+        note=(
+            "Randuin's Omen: Resilience 30% reduced crit damage taken + Humility "
+            "active 70% AoE slow — damage mitigation + CC active, no DPS contribution"
+        ),
+    ),
+    "8001": ItemEffect(
+        item_id="8001",
+        name="Anathema's Chains",
+        defensive_only=True,
+        note=(
+            "Anathema's Chains (SR 8001): Vendetta stacks — up to 1% reduced damage "
+            "per stack from Nemesis + Tenacity reduction at max stacks. "
+            "Damage mitigation passive, not DPS; active global targeting utility-only"
+        ),
+    ),
 
 }
 
@@ -2651,6 +2875,33 @@ def total_target_bonus_hp_amp_multiplier(
             continue
         ramp = min(1.0, target_bonus_hp / cap)
         factor *= (1.0 + max_pct * ramp)
+    return factor
+
+
+def total_giant_slayer_multiplier(
+    effects: Iterable[ItemEffect],
+    target_max_hp: float,
+    caster_max_hp: float,
+) -> float:
+    """Giant Slayer target HP advantage damage amp (Phase 4 batch 38).
+
+    Perplexity's Giant Slayer deals 0–15% increased damage based on how
+    much more max HP the target has vs the caster (0.6% per 100 HP diff,
+    capped at 15%). Keyed off MAX HP difference — distinct from LDR's
+    ``target_bonus_hp_amp`` which is keyed off target BONUS HP only.
+
+    Returns 1.0 when the caster out-HPs the target OR when no item
+    carries the schema. Stacks multiplicatively per League's buff-system
+    semantics (batch 14 doctrine).
+    """
+    hp_diff = max(0.0, target_max_hp - caster_max_hp)
+    if hp_diff == 0.0:
+        return 1.0
+    factor = 1.0
+    for e in effects:
+        if e.giant_slayer_pct_per_100hp:
+            amp = min(e.giant_slayer_max_pct, hp_diff / 100.0 * e.giant_slayer_pct_per_100hp)
+            factor *= (1.0 + amp)
     return factor
 
 
