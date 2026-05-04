@@ -1,7 +1,7 @@
 import unittest
 
 from agents.daemon_slayer.data_loader import DataSnapshot
-from agents.daemon_slayer.engine import build_champion
+from agents.daemon_slayer.engine import _apply_mode_modifiers, build_champion
 
 
 class BuildChampionTests(unittest.TestCase):
@@ -90,6 +90,46 @@ class BuildChampionTests(unittest.TestCase):
         self.assertIn("lvl 11", table)
         self.assertIn("6692", table)
         self.assertIn("ad", table)
+
+
+class ModeModifierHookTests(unittest.TestCase):
+    """Phase 2 step 2 — _apply_mode_modifiers covers ARAM aramAttackSpeed.
+
+    Live snapshot 16.9.1 has aramAttackSpeed=1 for every champion, so we
+    exercise the multiplier path with a synthetic champion record.
+    """
+
+    def test_aram_attack_speed_scales_bonus_as_only(self) -> None:
+        # base=0.6, scaled=0.9 → bonus=0.3. With aramAS=1.5 → bonus*1.5=0.45 → 1.05.
+        scaled = {"as": 0.9}
+        raw_base = {"as": 0.6}
+        champion = {"lolmath": {"aram_modifiers": {"aramAttackSpeed": 1.5}}}
+        out, notes = _apply_mode_modifiers(scaled, raw_base, "ARAM", champion)
+        self.assertAlmostEqual(out["as"], 1.05)
+        self.assertTrue(any("aramAttackSpeed" in n for n in notes))
+
+    def test_aram_attack_speed_one_is_noop(self) -> None:
+        scaled = {"as": 0.9}
+        raw_base = {"as": 0.6}
+        champion = {"lolmath": {"aram_modifiers": {"aramAttackSpeed": 1.0}}}
+        out, notes = _apply_mode_modifiers(scaled, raw_base, "ARAM", champion)
+        self.assertAlmostEqual(out["as"], 0.9)
+        self.assertEqual(notes, [])
+
+    def test_sr_mode_skips_modifiers(self) -> None:
+        scaled = {"as": 0.9}
+        raw_base = {"as": 0.6}
+        champion = {"lolmath": {"aram_modifiers": {"aramAttackSpeed": 99.0}}}
+        out, notes = _apply_mode_modifiers(scaled, raw_base, "SR", champion)
+        self.assertAlmostEqual(out["as"], 0.9)
+        self.assertEqual(notes, [])
+
+    def test_aram_mode_no_lolmath_block_does_not_crash(self) -> None:
+        scaled = {"as": 0.9}
+        raw_base = {"as": 0.6}
+        out, notes = _apply_mode_modifiers(scaled, raw_base, "ARAM", {})
+        self.assertAlmostEqual(out["as"], 0.9)
+        self.assertEqual(notes, [])
 
 
 class WukongAliasTest(unittest.TestCase):
