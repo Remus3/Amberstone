@@ -165,6 +165,16 @@ class ItemEffect:
     # the first item demands it — same layering rules.
     magic_pen_pct: float = 0.0         # Void Staff: 0.40; Cryptbloom: 0.30
     magic_pen_flat: float = 0.0        # Sorc's Shoes: 12; Shadowflame: 15
+    # Phase 4 batch 14 (2026-05-04): combat-state damage amplifier.
+    # League stacks damage amps multiplicatively via the buff system
+    # (two 8% amps = 1.08 * 1.08 = 1.1664x, not 1.16x), so the engine
+    # applies them as a product-of-(1+amp) factor, not a sum. Sustained-
+    # DPS approximation pins the full-ramp value (e.g. Riftmaker's 8%
+    # after 4s in combat — same shape as Black Cleaver's "30% at 5
+    # stacks sustained"). Applied to both base AA and proc damage in
+    # ``dps._rotation_attack_dps``: in-game amps don't discriminate
+    # physical vs magical, just "damage to champions while in combat".
+    damage_amp_pct: float = 0.0
     defensive_only: bool = False     # documents "no DPS effect" entries
     note: str = ""                   # one-line summary surfaced in DpsResult.notes
     # Phase 4 batch 10 (2026-05-04): unique-passive de-duplication.
@@ -650,8 +660,16 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "4633": ItemEffect(
         item_id="4633",
         name="Riftmaker",
-        defensive_only=True,
-        note="Riftmaker: combat-state damage amp (up to 8% bonus dmg after 4s); not modeled in Phase 4",
+        # Phase 4 batch 14 (2026-05-04): promoted via the damage_amp_pct
+        # schema. Void Corruption ramps to 8% bonus damage after 4s in
+        # combat — sustained-DPS approximation pins the full-ramp value
+        # (same shape as Black Cleaver's full-stacks pen). HP→AP
+        # cross-derivation (Riftmaker's "convert 100% bonus HP into AP"
+        # at full stacks) is a separate problem — engine has no AP-from-HP
+        # bridge yet. The 8% amp captures the bigger of the two effects
+        # in DPS terms; HP→AP can compound on top in a future batch.
+        damage_amp_pct=0.08,
+        note="Riftmaker: Void Corruption ~8% damage amp at full ramp (sustained DPS assumption); HP→AP not modeled",
     ),
     "3128": ItemEffect(
         item_id="3128",
@@ -839,6 +857,25 @@ def collect_effects(item_ids: Iterable[str | int]) -> list[ItemEffect]:
 def total_crit_damage_bonus(effects: Iterable[ItemEffect]) -> float:
     """Sum ``crit_damage_bonus`` across the build's effects."""
     return sum(e.crit_damage_bonus for e in effects)
+
+
+def total_damage_amp_multiplier(effects: Iterable[ItemEffect]) -> float:
+    """Multiplicative damage-amp factor across the build (Phase 4 batch 14).
+
+    League stacks combat-state damage amplifiers via the buff system —
+    Riftmaker's 8% × Conqueror's 8% = 1.08 * 1.08 = 1.1664x, not 1.16x.
+    Returns 1.0 when no item carries an amp (pre-batch-14 baseline) so
+    every existing rotation calculation passes through unchanged.
+
+    The 1.0 floor matters even when items are present — only items with
+    a non-zero ``damage_amp_pct`` contribute. Stat-only / pen-only /
+    proc-only items skip the multiplication entirely.
+    """
+    factor = 1.0
+    for e in effects:
+        if e.damage_amp_pct:
+            factor *= (1.0 + e.damage_amp_pct)
+    return factor
 
 
 def effective_target_armor(target_armor: float, effects: Iterable[ItemEffect]) -> float:
