@@ -1771,10 +1771,19 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="4637",
         name="Demonic Embrace",
         ap_per_bonus_hp_pct=0.02,
+        periodics=(
+            PeriodicProc(
+                name="Azakana's Gaze",
+                every_n_seconds=1.0,
+                bonus_damage=lambda c: 0.01 * c.target_max_hp,
+                damage_type=MAGICAL,
+            ),
+        ),
         note=(
-            "Demonic Embrace: Dark Pact 2% bonus HP as AP (same schema as "
-            "Riftmaker's Void Infusion, stacks additively). "
-            "Azakana's Gaze ability burn not modeled (ability-cast schema gap)"
+            "Demonic Embrace: Dark Pact 2% bonus HP as AP (stat walk). "
+            "Azakana's Gaze: 1% target max HP/s magic burn (ranged value; "
+            "melee is 2%/s — conservative under sustained-DPS assumption; "
+            "ability-trigger modeled as sustained per the always-active convention)"
         ),
     ),
     # ── defensive_only (8) ──
@@ -1805,10 +1814,19 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "2503": ItemEffect(
         item_id="2503",
         name="Blackfire Torch",
-        defensive_only=True,
+        periodics=(
+            PeriodicProc(
+                name="Baleful Blaze",
+                every_n_seconds=0.5,
+                bonus_damage=lambda c: 6.0 + 0.06 * c.ap,
+                damage_type=MAGICAL,
+            ),
+        ),
         note=(
-            "Blackfire Torch: Baleful Blaze % AP burn requires ability hit "
-            "(ability-cast schema gap); Blackfire AP stacking ramp is utility"
+            "Blackfire Torch: Baleful Blaze 6 + 6% AP magic damage every 0.5s "
+            "(ranged value per Meraki {{ap|60/6}} melee/ranged split at 1/s cadence; "
+            "ability-trigger modeled as sustained per the always-active convention; "
+            "Blackfire AP stacking ramp utility-only)"
         ),
     ),
     "2517": ItemEffect(
@@ -1843,6 +1861,107 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "Bloodletter's Curse: Vile Decay ability-stacking 40% magic pen "
             "(ability-cast schema gap; sustained pen requires 3+ applications); "
             "deferred pending ability-cast schema"
+        ),
+    ),
+    # ── Phase 4 batch 33 (2026-05-04): ability-burn promos + dual-pen + caster-HP burn ──
+    # Gambler's Blade (667101): 15 lethality + 15 magic pen flat (dual-pen item).
+    # Adaptive Force (55) has a DDragon stats-block gap — not carried as AD or AP in
+    # aggregate_item_stats. Contribution modeled via pen only.
+    "667101": ItemEffect(
+        item_id="667101",
+        name="Gambler's Blade",
+        lethality=15.0,
+        magic_pen_flat=15.0,
+        note=(
+            "Gambler's Blade: 15 lethality + 15 magic pen flat (dual-pen). "
+            "Adaptive Force 55 has DDragon stats-block gap — not in aggregate_item_stats; "
+            "pen contribution only"
+        ),
+    ),
+    # Unending Despair (2502): Agony — 3% caster bonus HP magic damage every 4s.
+    # Meraki: 3% bonus HP to self and nearest ally as magic. Using self-damage value only
+    # (the ally component is utility). Caster-bonus-HP-scaled proc via caster_bonus_hp.
+    "2502": ItemEffect(
+        item_id="2502",
+        name="Unending Despair",
+        periodics=(
+            PeriodicProc(
+                name="Agony",
+                every_n_seconds=4.0,
+                bonus_damage=lambda c: 0.03 * c.caster_bonus_hp,
+                damage_type=MAGICAL,
+            ),
+        ),
+        note=(
+            "Unending Despair: Agony 3% caster bonus HP magic damage every 4s "
+            "(proc AoE to enemy; ally self-heal component utility-only; "
+            "caster_bonus_hp = item_totals[hp_flat] proxy same as Titanic/Heartsteel)"
+        ),
+    ),
+    # ── defensive_only (7) ──
+    "4636": ItemEffect(
+        item_id="4636",
+        name="Night Harvester",
+        defensive_only=True,
+        note=(
+            "Night Harvester: Soulrend 30s CD mythic proc — damage value not in "
+            "DDragon/Meraki description and varies by level; deferred pending "
+            "periodic-with-level-scale schema or explicit formula lookup"
+        ),
+    ),
+    "2512": ItemEffect(
+        item_id="2512",
+        name="Fiendhunter Bolts",
+        defensive_only=True,
+        note=(
+            "Fiendhunter Bolts: Bolt Detonation periodic proc value not confirmed "
+            "from DDragon/Meraki; deferred pending formula verification"
+        ),
+    ),
+    "663060": ItemEffect(
+        item_id="663060",
+        name="Sword of the Divine",
+        defensive_only=True,
+        note=(
+            "Sword of the Divine: Pact of the Blade conditional 100% crit guarantee "
+            "on ability (ability-cast schema gap); stat block AS bonus only"
+        ),
+    ),
+    "667112": ItemEffect(
+        item_id="667112",
+        name="Flesheater",
+        defensive_only=True,
+        note=(
+            "Flesheater: Consume flat armor reduction requires ability hit "
+            "(armor_reduction_flat schema gap; flat shred not yet modeled); "
+            "Adaptive Force has DDragon stats-block gap"
+        ),
+    ),
+    "664011": ItemEffect(
+        item_id="664011",
+        name="Sword of Blossoming Dawn",
+        defensive_only=True,
+        note=(
+            "Sword of Blossoming Dawn: Bloom passive is heal/shield (utility); "
+            "no DPS contribution"
+        ),
+    ),
+    "2522": ItemEffect(
+        item_id="2522",
+        name="Actualizer",
+        defensive_only=True,
+        note=(
+            "Actualizer: Actualize damage amp requires ally within 1000 range "
+            "(ally-proximity conditional not modelable without fight geometry)"
+        ),
+    ),
+    "667109": ItemEffect(
+        item_id="667109",
+        name="Cruelty",
+        defensive_only=True,
+        note=(
+            "Cruelty: Execute damage amp below 50% HP (missing-HP conditional "
+            "not modelable under sustained-DPS assumption)"
         ),
     ),
 

@@ -127,6 +127,16 @@ Azakana's Gaze + Shaped Charge + Hypershot/Hatefog/Baleful Blaze all
 deferred pending ability-cast schema), and 48 defensive_only items
 spanning the Tier-1 SR / Arena pool plus high-pickrate batch 2 + AP
 batch 3 additions plus batch 31 support/ramp coverage plus batch 32.
+Phase 4 batch 33 ability-burn promos + dual-pen + caster-HP burn
+(2026-05-04 — 4 active promotions: Gambler's Blade (667101) 15 lethality
++ 15 magic pen flat dual-pen [DDragon Adaptive Force gap noted]; Unending
+Despair (2502) Agony 3% caster bonus HP magic every 4s via existing
+caster_bonus_hp schema; Blackfire Torch (2503) Baleful Blaze 6 + 6% AP
+magic every 0.5s promoted from defensive_only [ranged Meraki value];
+Demonic Embrace (4637) gains second proc Azakana's Gaze 1% target max
+HP/s magic burn [ranged value]; plus 7 defensive_only entries: Night
+Harvester, Fiendhunter Bolts, Sword of the Divine, Flesheater, Sword of
+Blossoming Dawn, Actualizer, Cruelty).
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
 ``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation`` /
@@ -142,4 +152,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.36.0"
+ENGINE_VERSION = "0.37.0"
