@@ -42,7 +42,8 @@ from typing import Callable, Iterable, Union
 
 PHYSICAL = "physical"
 MAGICAL = "magical"
-_DAMAGE_TYPES = frozenset({PHYSICAL, MAGICAL})
+TRUE = "true"
+_DAMAGE_TYPES = frozenset({PHYSICAL, MAGICAL, TRUE})
 
 
 @dataclass(frozen=True)
@@ -2266,6 +2267,202 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note=(
             "Mirage Blade: Blur grants bonus MS and a brief untargetable dash illusion "
             "(movement utility + dodge mechanic; no DPS contribution)"
+        ),
+    ),
+    # ── Phase 4 batch 37 (2026-05-04): TRUE damage type + Arena item sweep ──
+    # TRUE damage bypasses both armor and MR (resist=0.0 in _periodic_proc_dps).
+    # Three active promotions; 14 defensive_only entries completing the Arena pool sweep.
+
+    # Darksteel Talons (443054): Gash — every basic attack deals 10→20 true damage
+    # (level-scaled, ranged Meraki value). 25%/20% caster bonus armor scaling deferred
+    # (no caster_bonus_armor field in CallContext).
+    "443054": ItemEffect(
+        item_id="443054",
+        name="Darksteel Talons",
+        periodics=(
+            PeriodicProc(
+                name="Gash",
+                every_n_attacks=1,
+                bonus_damage=lambda c: 10.0 + 10.0 / 17.0 * (c.level - 1),
+                damage_type=TRUE,
+            ),
+        ),
+        note=(
+            "Darksteel Talons: Gash every basic attack 10→20 true damage (ranged value, level-scaled). "
+            "25%/20% caster bonus armor component deferred (caster_bonus_armor not in CallContext)"
+        ),
+    ),
+    # Fulmination (443055): Dynamo — every 100th attack 13% CURRENT target HP magic damage.
+    # target_max_hp used as upper-bound approximation (current HP unavailable in CallContext).
+    # Polarity Energized mechanic (stacks via movement + attacks) deferred — same complexity
+    # class as Stormrazor; not modeled at sustained-DPS level.
+    "443055": ItemEffect(
+        item_id="443055",
+        name="Fulmination",
+        periodics=(
+            PeriodicProc(
+                name="Dynamo",
+                every_n_attacks=100,
+                bonus_damage=lambda c: 0.13 * c.target_max_hp,
+                damage_type=MAGICAL,
+            ),
+        ),
+        note=(
+            "Fulmination: Dynamo every 100th attack 13% CURRENT target HP magic "
+            "(target_max_hp used as upper-bound; current HP unavailable). "
+            "Polarity Energized mechanic deferred (movement-stack complexity)"
+        ),
+    ),
+    # Reaper's Toll (443090): Reap — every basic attack 0.7% target max HP true damage
+    # at base 0 stacks. Stacks infinitely per target (no cap) — pinned at base (0 stacks)
+    # per conservative sustained-DPS convention. Sow on-kill heal utility-only.
+    "443090": ItemEffect(
+        item_id="443090",
+        name="Reaper's Toll",
+        periodics=(
+            PeriodicProc(
+                name="Reap",
+                every_n_attacks=1,
+                bonus_damage=lambda c: 0.007 * c.target_max_hp,
+                damage_type=TRUE,
+            ),
+        ),
+        note=(
+            "Reaper's Toll: Reap every basic attack 0.7% target max HP true damage "
+            "(pinned at 0 stacks — infinite per-target stacking deferred). "
+            "Sow on-kill heal utility-only"
+        ),
+    ),
+    # ── defensive_only (14) ──
+    "447101": ItemEffect(
+        item_id="447101",
+        name="Gambler's Blade",
+        defensive_only=True,
+        note=(
+            "Gambler's Blade (447101): Money In The Bank 12% chance to store 30–240g on attack/ability — "
+            "gold-economy mechanic, not a DPS proc; variable payout not modelable in sustained DPS"
+        ),
+    ),
+    "447102": ItemEffect(
+        item_id="447102",
+        name="Reality Fracture",
+        defensive_only=True,
+        note=(
+            "Reality Fracture: ZZ'Rot summons 8 Voidmites on attack/ability — "
+            "summoned-unit DPS requires AI/positioning modeling; deferred"
+        ),
+    ),
+    "447103": ItemEffect(
+        item_id="447103",
+        name="Hemomancer's Helm",
+        defensive_only=True,
+        note=(
+            "Hemomancer's Helm: Scarlet Allegiance conditional on lifesteal + omnivamp >= 30% "
+            "grants 500 bonus HP and healing — HP/sustain gain, no DPS proc"
+        ),
+    ),
+    "447104": ItemEffect(
+        item_id="447104",
+        name="Innervating Locket",
+        defensive_only=True,
+        note=(
+            "Innervating Locket: Fill the Soul charges from ability casts (up to 30), "
+            "triggers at max charge — ability-cast schema gap; deferred"
+        ),
+    ),
+    "447105": ItemEffect(
+        item_id="447105",
+        name="Empyrean Promise",
+        defensive_only=True,
+        note=(
+            "Empyrean Promise: no passive effects in Meraki 16.9.1 — stat block only; "
+            "defensive_only per zero-proc policy"
+        ),
+    ),
+    "447106": ItemEffect(
+        item_id="447106",
+        name="Dragonheart",
+        defensive_only=True,
+        note=(
+            "Dragonheart: Inner Flame grants random Dragon Soul every 2 Arena rounds + "
+            "total stat scaling — Arena-round mechanic, not a basic-attack DPS proc"
+        ),
+    ),
+    "447109": ItemEffect(
+        item_id="447109",
+        name="Cruelty",
+        defensive_only=True,
+        note=(
+            "Cruelty: Watch Them Fall summons comet on immobilize/ground — "
+            "CC-conditional proc, no sustained per-attack DPS contribution"
+        ),
+    ),
+    "447110": ItemEffect(
+        item_id="447110",
+        name="Moonflair Spellblade",
+        defensive_only=True,
+        note=(
+            "Moonflair Spellblade: Relentless resets basic attack timer and empowers "
+            "next 2 attacks after ability cast — attack-reset/haste mechanic, "
+            "not a simple damage proc (ability-cast schema gap)"
+        ),
+    ),
+    "447112": ItemEffect(
+        item_id="447112",
+        name="Flesheater",
+        defensive_only=True,
+        note=(
+            "Flesheater: Hack the Meat 3 armor/MR reduction per hit (10 stacks) — "
+            "flat shred needs armor_reduction_flat schema (not yet implemented); "
+            "Cannibalize on-kill heal utility-only"
+        ),
+    ),
+    "447122": ItemEffect(
+        item_id="447122",
+        name="Black Hole Gauntlet",
+        defensive_only=True,
+        note=(
+            "Black Hole Gauntlet: Accretion stacks from on-hit + immobilize effects — "
+            "stack-conditional with CC dependency; not a simple per-attack DPS proc"
+        ),
+    ),
+    "447123": ItemEffect(
+        item_id="447123",
+        name="Puppeteer",
+        defensive_only=True,
+        note=(
+            "Puppeteer: Pull Their Strings 4-stack on-hit conditional + ally buff utility passive — "
+            "stack ramp + conditional trigger not modelable in sustained flat DPS"
+        ),
+    ),
+    "443056": ItemEffect(
+        item_id="443056",
+        name="Demon King's Crown",
+        defensive_only=True,
+        note=(
+            "Demon King's Crown: Supremacy percentage increase to total AD/AP/AS/max HP — "
+            "Arena-round progression mechanic; not a simple stat add (multiplier interacts "
+            "with full stat build; deferred)"
+        ),
+    ),
+    "443060": ItemEffect(
+        item_id="443060",
+        name="Sword of the Divine",
+        defensive_only=True,
+        note=(
+            "Sword of the Divine: Excoriate grants random bonus crit damage up to 50% — "
+            "random distribution not pinnable to a single sustained value; "
+            "crit_damage_bonus promotion deferred pending design decision on RNG items"
+        ),
+    ),
+    "443069": ItemEffect(
+        item_id="443069",
+        name="Hamstringer",
+        defensive_only=True,
+        note=(
+            "Hamstringer: Scour critical strikes inflict 2s physical bleed — "
+            "crit-conditional proc rate + exact bleed formula unavailable in Meraki 16.9.1; "
+            "deferred pending schema for crit-gated procs"
         ),
     ),
 

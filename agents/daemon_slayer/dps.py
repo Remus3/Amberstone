@@ -47,6 +47,7 @@ from .effects import (
     CallContext,
     ItemEffect,
     PHYSICAL,
+    TRUE,
     collect_effects,
     effective_target_armor,
     effective_target_mr,
@@ -200,8 +201,9 @@ def _periodic_proc_dps(
             else:  # every_n_seconds > 0 enforced by PeriodicProc.__post_init__
                 procs = duration / proc.every_n_seconds
             is_physical = proc.damage_type == PHYSICAL
-            resist = target_armor_for_physical if is_physical else target_mr
-            type_amp = 1.0 if is_physical else magic_amp
+            is_true = proc.damage_type == TRUE
+            resist = 0.0 if is_true else (target_armor_for_physical if is_physical else target_mr)
+            type_amp = 1.0 if (is_physical or is_true) else magic_amp
             dmg = proc.resolve_damage(call_ctx)
             total += procs * dmg * _armor_factor(resist) * mode_dmg_mult * type_amp
     return total / duration
