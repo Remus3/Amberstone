@@ -200,7 +200,20 @@ crit_chance_bonus_max_pct=0.30 [same coefficients as SR 3039], Hextech Gunblade
 (663146) Lightning Bolt same formula as SR 3146; 7 defensive_only: Night Harvester
 (444636), Demonic Embrace Arena (444637), Duskblade Arena (446691), Radiant Virtue
 (446667), Warmog's Armor Arena (443083), Demon King's Crown (663056), Sword of
-Blossoming Dawn (4011)).
+Blossoming Dawn (4011)). Phase 4 batch 40 component items +
+final SR/Arena sweep (2026-05-04 — 3 active promotions: Last Whisper
+(3035) armor_pen_pct=0.18 [component of LDR/Mortal Reminder/Serylda's],
+The Brutalizer (2020) lethality=5 [historical component item], Haunting
+Guise (3147) damage_amp_pct=0.06 [Madness 2%/s × 3s, pinned at full
+stacks, same coefficient as Liandry's Torment 3151]; 15 defensive_only
+entries completing the final SR/Arena sweep: Crown of the Shattered Queen
+Arena (444644), Everfrost Arena (446656), Galeforce Arena (446671),
+Crown of the Shattered Queen SR (664644), Shield of Molten Stone SR
+(663058), Cloak of Starry Night SR (663059), Zephyr SR (663172),
+Gargoyle Stoneplate SR (663193), The Golden Spatula (664403), Thornmail
+(3075), Mejai's Soulstealer (3041), Quicksilver Sash (3140), Hexdrinker
+(3155, unique_passive_key lifeline), Verdant Barrier (4632), Plated
+Steelcaps (3047)).
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
 ``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation`` /
@@ -216,4 +229,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.43.0"
+ENGINE_VERSION = "0.44.0"
