@@ -1547,3 +1547,109 @@ One arc: Phase 2 step 3 — item ranker. CLI `rank` no longer a stub.
 
 **Bridge state at session end:** RC PID 9740 alive, mode=client, lobby phase. No game this session.
 
+---
+
+## s42 hand-off — 2026-05-03 20:45 (Daemon Slayer Phase 3 shipped)
+
+One arc: Phase 3 — local HTTP engine on `:8893`. Wraps stats/dps/rank
+in JSON routes; snapshot loaded once at startup; index page documents
+the API. Stdlib `ThreadingHTTPServer` (matches RC's `dashboard/server.py`
+pattern; no FastAPI/aiohttp dep despite design doc's earlier nod —
+zero new deps is the cleaner read).
+
+**What shipped (commit `3f67550`):**
+- `agents/daemon_slayer/server.py` (~390L) — `Handler`,
+  `start_server(...)`, `serve_forever(...)`, `_SnapshotCache` (process-
+  global single-snapshot holder; tests inject via `start_server(snapshot=)`).
+- `cli.py` — `serve` subcommand: `python -m agents.daemon_slayer serve
+  --host 0.0.0.0 --port 8893`. Defaults host=127.0.0.1, port=8893.
+- `__init__.py` — `ENGINE_VERSION 0.4.0 → 0.5.0`.
+- `tests/test_server.py` — 20 new tests (request/response over
+  `urllib.request` against an in-process server on port 0). 106/106
+  green total.
+
+**Routes:**
+- `GET  /`          — HTML index w/ live patch + curl example
+- `GET  /health`    — `{status, engine_version, patch, champions, items}`
+- `GET  /snapshot`  — patch + counts + manifest excerpt
+- `POST /stats`     — `{champion, level, items?, mode?}`
+- `POST /dps`       — `+ {target_armor?, target_mr?, phase?}`
+- `POST /rank`      — `+ {budget?, slots?, top?, sort?,
+                            include_components?, only?}`
+GET equivalents accept the same fields as query params (`items`
+comma-separated). All responses `Cache-Control: no-store`.
+
+**Error mapping:**
+- 400 — JSON parse failure, missing required field, bad enum value
+- 404 — unknown champion or item id (KeyError from engine)
+- 422 — engine ValueError (e.g. 6 items already equipped + slots=6)
+- 500 — anything unexpected
+
+**Smoke verified live (port 8893):**
+```
+GET /health → {"status":"ok","engine_version":"0.5.0","patch":"16.9.1",
+                "champions":172,"items":705}
+POST /stats Aatrox lvl 11 + Eclipse + Boots → hp 1790, ad 120, as 0.977, gold 4000
+POST /dps Aatrox lvl 11 ARAM + 4 items vs 80 armor → weighted_dps 86.38,
+          phase mid, mode_multiplier 1.05
+POST /rank Aatrox lvl 11 + Boots vs 80 armor top 5 →
+   3031 IE +25.27dps  /  3072 BT +20.15  /  2523 Hexoptics +19.29  /
+   6673 Shieldbow +19.29  /  3097 Stormrazor +19.28
+```
+
+**Design choices worth pinning:**
+- Bind **127.0.0.1 by default** (loopback only). Daemon Slayer doesn't
+  hold secrets but no need to expose it on LAN until something else
+  asks for it. CLI takes `--host 0.0.0.0` to opt in.
+- Snapshot loaded once at `start_server`. Hot-reload on patch change
+  is **Phase 7** (alongside the supervisor entry that runs DS as a
+  separate process under `RC-DaemonSlayer` scheduled task).
+- POST is the contract; GET is a developer/test convenience. Both
+  share the same `_route_*` handlers (query-string body merge).
+- All four `_opt_*` coercion helpers accept the JSON-native form
+  AND the query-string scalar form. `items` accepts list-of-strs,
+  list-of-ints, or comma-separated string.
+- Tests share one server instance across the suite (single 30 ms
+  snapshot load amortized over 20 tests, ~2.7s total).
+
+**Things tomorrow-you should NOT redo:**
+- Don't add FastAPI/aiohttp. The original design doc mentioned
+  "FastAPI/aiohttp" but RC's convention is stdlib `http.server` and
+  the routes are simple enough that the dep cost is unjustified.
+  20 tests pin the contract.
+- Don't wire DS into RC's main process as a daemon thread. The
+  design's Phase 7 has it as a **separate process** (analogous to
+  `moon_vision_server.py` under `RC-VisionServer`). Keep it
+  standalone; restart-isolated; the supervisor entry is its own task.
+- Don't add hot-reload here. Snapshot mtime polling lands cleanly
+  in Phase 7 once the supervisor wraps the lifecycle.
+- Don't bind to 0.0.0.0 by default. Loopback is the right default
+  until something cross-machine actually needs it.
+- The `_SnapshotCache` is a **process-global singleton**. Don't try
+  to make it per-request or per-thread — engine math is pure on
+  immutable data, no race.
+
+**Open for next sessions:**
+- **Phase 4**: per-item conditional effects (passives, on-hits) —
+  Top 30 by pickrate first, long-tail segmented. 15-30 days. This
+  is where Riot patch notes start mattering (effects change patch
+  to patch). DPS math will then reflect IE +40% crit damage,
+  Stormrazor energized, Shieldbow lifesteal, etc. Big phase.
+- **Phase 5/6/7**: Mayhem augments / Arena augments / coach wire-in
+  + supervisor entry + retire `_arena_item_advisor`.
+- **Phase 2 step 4 (optional)**: full-build ranker (Cartesian/beam
+  search to find the best 6-item end-state within a gold ceiling).
+  Skipped for now in favor of Phase 3 user-visibility milestone.
+- All s37/s38/s39/s40/s41 carryover items still apply.
+
+**Memory:** No memory write needed this session — Phase 3 is straight
+extension of `reference_daemon_slayer_engine_arch.md`'s extension
+points (CLI subcmd + new module). The "things not to redo" list
+above captures the design decisions; if any become surprising in
+Phase 4+, write them then.
+
+**Bridge state at session end:** RC PID 9740 alive, mode=client,
+lobby phase. No game this session. DS server stopped after smoke
+test (PID 12180 killed); no scheduled task installed yet (Phase 7
+work).
+
