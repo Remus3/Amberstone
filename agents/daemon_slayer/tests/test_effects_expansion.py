@@ -1179,6 +1179,104 @@ class StridebreakerCleaveTests(unittest.TestCase):
         self.assertEqual(sb.resolve_damage(ctx), 0.0)
 
 
+class ProfaneHydraCleaveTests(unittest.TestCase):
+    """Phase 4 batch 24 — Profane Hydra (6698) added to ITEM_EFFECTS as
+    a new entry (was stats-only via item aggregation prior — assassin-
+    tagged Tiamat upgrade).
+
+    Coefficient pinned at 40% (melee) to match Stridebreaker's call
+    from batch 21. Skips the Heretical Cleave active (no Meraki bulk
+    cooldown). Tiamat-tree exclusivity (only one of Strider/Ravenous/
+    Profane/Titanic at a time in-game) is enforced by the ranker, not
+    here — same pattern as the other hydras (no unique_passive_key).
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_profane_hydra_present_with_periodic(self) -> None:
+        e = ITEM_EFFECTS["6698"]
+        self.assertEqual(e.name, "Profane Hydra")
+        self.assertFalse(e.defensive_only)
+        self.assertNotEqual(e.periodics, ())
+        proc = e.periodics[0]
+        self.assertEqual(proc.damage_type, PHYSICAL)
+        self.assertEqual(proc.every_n_attacks, 1)
+        self.assertEqual(proc.name, "Cleave")
+        self.assertIn("cleave", e.note.lower())
+
+    def test_profane_hydra_not_tagged_unique_passive(self) -> None:
+        # Tiamat-tree exclusivity is build-legality, not unique-passive.
+        # The other hydras (Stridebreaker, Ravenous) carry no key either.
+        e = ITEM_EFFECTS["6698"]
+        self.assertEqual(e.unique_passive_key, "")
+
+    def test_profane_hydra_zero_proc_on_single_target_champion(self) -> None:
+        # Aatrox's rotations are all n=1 — cleave resolves to zero on
+        # every rotation. Same fixture invariant check as Stridebreaker
+        # / Ravenous; surfaces a fixture drift if Aatrox's rotations
+        # ever pick up an n>1 entry.
+        from agents.daemon_slayer.dps import _phase_rotations
+        rotations = _phase_rotations(self.snap, "Aatrox")
+        for phase_rot in rotations.values():
+            for r in phase_rot:
+                self.assertEqual(
+                    float(r.get("numberOfTargets", 1.0) or 1.0),
+                    1.0,
+                    f"Aatrox rotation {r.get('title','?')} has n>1 — fixture changed",
+                )
+
+    def test_profane_hydra_lifts_dps_on_multi_target_champion(self) -> None:
+        # Anivia's late "DPS" rotation has numberOfTargets=3 with weight 70.
+        # Profane Hydra adds real DPS via the cleave proc on top of the
+        # 55 AD + 18 lethality + 10 AH stat block.
+        bare = compute_dps(self.snap, "Anivia", level=11, phase="late")
+        with_ph = compute_dps(
+            self.snap, "Anivia", level=11, item_ids=["6698"], phase="late",
+        )
+        self.assertGreater(with_ph.weighted_dps, bare.weighted_dps)
+
+    def test_profane_hydra_matches_stridebreaker_cleave_at_same_ctx(self) -> None:
+        # Both use 40% coefficient and identical formula structure. At
+        # any fixed CallContext the resolve_damage calls must match
+        # exactly — pins the family-shape invariant. Stat blocks differ
+        # (PH: AD/lethality/AH; SB: AD/HP/AH/AS/MS) but the cleave
+        # proc itself is shape-identical.
+        ph = ITEM_EFFECTS["6698"].periodics[0]
+        sb = ITEM_EFFECTS["6631"].periodics[0]
+        # n=3, base_ad=100, bonus_ad=50 → 2 * 0.40 * 150 = 120 each.
+        ctx = CallContext(
+            base_ad=100.0, bonus_ad=50.0, level=11, targets_in_rotation=3.0,
+        )
+        ph_dmg = ph.resolve_damage(ctx)
+        sb_dmg = sb.resolve_damage(ctx)
+        self.assertAlmostEqual(ph_dmg, sb_dmg, places=3)
+        self.assertAlmostEqual(ph_dmg, 120.0, places=3)
+
+    def test_profane_hydra_outscores_ravenous_cleave(self) -> None:
+        # Direct coefficient check: 40% > 35% on the cleave piece, same
+        # structure as Stridebreaker vs Ravenous comparison. Pins the
+        # batch-24 coefficient choice ("matches Stridebreaker, not
+        # Ravenous"). Stat blocks aside.
+        ph = ITEM_EFFECTS["6698"].periodics[0]
+        rh = ITEM_EFFECTS["3074"].periodics[0]
+        ctx = CallContext(
+            base_ad=100.0, bonus_ad=50.0, level=11, targets_in_rotation=3.0,
+        )
+        self.assertGreater(ph.resolve_damage(ctx), rh.resolve_damage(ctx))
+        self.assertAlmostEqual(rh.resolve_damage(ctx), 105.0, places=3)
+
+    def test_profane_hydra_zero_at_targets_one(self) -> None:
+        # Single-target rotation → max(0, 1-1) * 0.40 * AD = 0. Pins
+        # the "preserves historic single-target shape" invariant.
+        ph = ITEM_EFFECTS["6698"].periodics[0]
+        ctx = CallContext(
+            base_ad=100.0, bonus_ad=50.0, level=11, targets_in_rotation=1.0,
+        )
+        self.assertEqual(ph.resolve_damage(ctx), 0.0)
+
+
 class EssenceReaverSpellbladeTests(unittest.TestCase):
     """Phase 4 batch 21 — Essence Reaver (3508) promoted via the new
     CallContext.crit_chance schema.

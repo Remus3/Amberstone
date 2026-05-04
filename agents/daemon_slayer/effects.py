@@ -757,6 +757,37 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),),
         note="Stridebreaker: Cleave ~40% AD physical to other enemies in 350 radius (melee, scales with rotation targets)",
     ),
+    # Phase 4 batch 24 (2026-05-04): Profane Hydra (6698) added to
+    # ITEM_EFFECTS as a new entry (was stats-only via item aggregation
+    # prior — assassin-tagged Tiamat upgrade). Per Meraki bulk, Cleave
+    # deals "40% AD (melee) / 20% AD (ranged) physical damage to other
+    # enemies in a 350 radius centered around the target" on every
+    # damaging basic on-hit. Same shape and per-rotation isolation as
+    # Stridebreaker / Ravenous; coefficient pinned at 40% (melee value)
+    # to match Stridebreaker's call. Heretical Cleave active (~80% AD
+    # AoE) stays not-modeled — Meraki bulk has its cooldown null and
+    # actives-without-CD-pin are deferred per the s77/s78 hand-off rule.
+    # Tiamat-tree exclusivity (only one of Strider/Ravenous/Profane/
+    # Titanic owned at once) is enforced by the ranker's build legality
+    # checks, not by unique_passive_key here — same pattern as the
+    # other hydras.
+    "6698": ItemEffect(
+        item_id="6698",
+        name="Profane Hydra",
+        periodics=(PeriodicProc(
+            name="Cleave",
+            # Melee: 40% total AD physical to other enemies (primary
+            # already lands via the basic attack itself). At
+            # targets_in_rotation=1.0 the cleave hits 0 enemies and adds
+            # zero DPS — preserves the historic single-target shape for
+            # all-n=1 rotations.
+            bonus_damage=lambda c: max(0.0, c.targets_in_rotation - 1.0)
+                * 0.40 * (c.base_ad + c.bonus_ad),
+            damage_type=PHYSICAL,
+            every_n_attacks=1,
+        ),),
+        note="Profane Hydra: Cleave ~40% AD physical to other enemies in 350 radius (melee, scales with rotation targets)",
+    ),
 
     # ── Phase 4 batch 3 (2026-05-04): AP-aware CallContext + spellblade ──
     # CallContext.ap (added this batch) lets spellblade and AP-on-hit procs
