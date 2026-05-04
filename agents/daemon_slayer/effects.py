@@ -372,7 +372,15 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="3036",
         name="Lord Dominik's Regards",
         armor_pen_pct=0.35,
-        note="Lord Dominik's Regards: 35% armor pen (physical)",
+        # Phase 4 batch 16 (2026-05-04): note expanded against DDragon
+        # snapshot. Armor pen is the modeled piece (engine pipeline ✓).
+        # The unmodeled piece is "Giant Slayer" — up to 15% bonus damage
+        # against champions, scaling with their bonus HP, maxing at
+        # 1500 bonus HP. This is a target-bonus-HP-conditioned damage
+        # amp; engine has target_max_hp but no target_BONUS_hp signal
+        # (caller would need to subtract champion-base HP at level).
+        # Schema add candidate when LDR builds become first-class.
+        note="Lord Dominik's Regards: 35% armor pen (physical) + Giant Slayer up to 15% damage vs high-bonus-HP targets (target-bonus-HP not modeled)",
     ),
     "3033": ItemEffect(
         item_id="3033",
@@ -442,7 +450,15 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Sterak's Gage",
         defensive_only=True,
         unique_passive_key="lifeline",
-        note="Sterak's Gage: Lifeline shield + bonus AD on takedown; no DPS contribution",
+        # Phase 4 batch 16 (2026-05-04): note corrected against DDragon
+        # snapshot. Prior note claimed "bonus AD on takedown" — wrong:
+        # DDragon shows "The Claws that Catch — Gain bonus Attack
+        # Damage" with no takedown gating in the description. Numeric
+        # scaling not exposed (likely scales with bonus HP per
+        # historical Sterak's design); engine can't model what isn't
+        # quantified. Note is honest about the modeled piece (Lifeline
+        # dedup) and the unmodeled piece (passive AD).
+        note="Sterak's Gage: Lifeline (low-HP shield, deduped — see unique_passive_key) + The Claws that Catch passive AD (numeric scaling not in DDragon)",
     ),
     "3156": ItemEffect(
         item_id="3156",
@@ -455,7 +471,17 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="3181",
         name="Hullbreaker",
         defensive_only=True,
-        note="Hullbreaker: solo-lane bonus stats + tower siege; situational",
+        # Phase 4 batch 16 (2026-05-04): note corrected against DDragon
+        # snapshot. Prior note ("solo-lane bonus stats + tower siege")
+        # was wrong — DDragon shows two passives:
+        # (1) "Skipper" — every fifth Attack against champions and epic
+        #     monsters deals bonus physical damage. This IS an on-hit
+        #     proc shape (every_n_attacks=5, similar to Kraken's 3rd-
+        #     attack mechanic). Stays defensive_only because DDragon
+        #     strips the damage formula; promote when verified.
+        # (2) "Boarding Party" — nearby allied siege/super minions gain
+        #     armor + MR. Pure ally-buff, never a DPS contribution.
+        note="Hullbreaker: Skipper every-5th-attack bonus physical (proc not modeled — damage formula not in DDragon) + Boarding Party (minion-side ally buff)",
     ),
     "3110": ItemEffect(
         item_id="3110",
@@ -546,13 +572,32 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="3161",
         name="Spear of Shojin",
         defensive_only=True,
-        note="Spear of Shojin: Veteran's Resolve stacks reduce ability CDs (CDR not DPS-modeled)",
+        # Phase 4 batch 16 (2026-05-04): note corrected against DDragon
+        # snapshot. Prior note named "Veteran's Resolve stacks reduce
+        # ability CDs" which is from an older patch — current passives
+        # are "Dragonforce" (25 basic ability haste, stat-side) and
+        # "Focused Will" (3% damage amp per stack to abilities/passives,
+        # max 4 stacks = 12%). The amp is ABILITY-only, not auto-attack
+        # — engine doesn't model ability damage, so this stays
+        # defensive_only. Generic damage_amp_pct (batch 14) intentionally
+        # not used since it would amp AAs too.
+        note="Spear of Shojin: Dragonforce (25 basic AH, stat) + Focused Will (3% per stack ability/passive amp, max 4 stacks; ability damage not DPS-modeled)",
     ),
     "3508": ItemEffect(
         item_id="3508",
         name="Essence Reaver",
         defensive_only=True,
-        note="Essence Reaver: mana refund + CDR after ability use; no on-hit DPS proc",
+        # Phase 4 batch 16 (2026-05-04): note corrected against DDragon
+        # snapshot. Prior note ("mana refund + CDR after ability use; no
+        # on-hit DPS proc") was wrong — DDragon's current text is
+        # "Spellblade — After using an Ability, your next Attack deals
+        # bonus physical damage and grants Mana On-Hit". Stays
+        # defensive_only because DDragon strips the numeric damage
+        # formula (engine can't model what it can't quantify); promote
+        # when the current-patch coefficient is verified externally
+        # (League wiki, patch notes diff). When promoted, also tag with
+        # unique_passive_key="spellblade" — see batch 11 commentary.
+        note="Essence Reaver: Spellblade (bonus physical on next AA after ability) + Mana on-hit (proc not modeled — current-patch damage formula not in DDragon snapshot)",
     ),
     "3084": ItemEffect(
         item_id="3084",
