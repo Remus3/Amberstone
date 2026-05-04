@@ -317,6 +317,16 @@ class ItemEffect:
     # items' own HP (Overlord's 550) is included. One-way, no feedback.
     # Default 0.0 → no contribution.
     bonus_ad_pct_bonus_hp: float = 0.0
+    # Phase 4 batch 34 (2026-05-04): target-debuff magic damage amplifier.
+    # Abyssal Mask's "Unmake" aura causes nearby enemies to take X% more
+    # magic damage from ALL sources. Modeled as a multiplier on magic-type
+    # proc DPS only — does NOT affect physical AA damage (unlike the
+    # general ``damage_amp_pct`` field which amplifies everything).
+    # ``total_magic_amp_multiplier`` returns the product of
+    # (1 + magic_amp_pct) across all effects; applied inside
+    # ``_periodic_proc_dps`` per-proc when damage_type != PHYSICAL.
+    # Default 0.0 → no contribution.
+    magic_amp_pct: float = 0.0
     defensive_only: bool = False     # documents "no DPS effect" entries
     note: str = ""                   # one-line summary surfaced in DpsResult.notes
     # Phase 4 batch 10 (2026-05-04): unique-passive de-duplication.
@@ -1688,14 +1698,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "8020": ItemEffect(
         item_id="8020",
         name="Abyssal Mask",
-        defensive_only=True,
-        # Unmake: enemies within 700 units take 12% more magic damage from
-        # ALL sources. This is a team-wide magic-damage amp to the debuffed
-        # target, not a caster-side DPS proc. No magic_amp_pct field in the
-        # current schema (would amplify physical damage too if we reused
-        # damage_amp_pct). Schema bump needed for a magic-only target-debuff
-        # layer; deferred. 650 HP + 300% base MR regen + 25 MR stat block.
-        note="Abyssal Mask: Unmake (12% magic-damage amp to nearby enemies — team debuff, no magic_amp_pct field; deferred to schema bump)",
+        magic_amp_pct=0.12,
+        note=(
+            "Abyssal Mask: Unmake 12% more magic damage taken by nearby enemies "
+            "(700-unit aura; sustained-DPS assumption = always active; "
+            "applies to magical proc DPS only via magic_amp_pct schema)"
+        ),
     ),
 
     # ── Phase 4 batch 32 (2026-05-04): AP amplification + lethality + new schema ──
@@ -2097,6 +2105,25 @@ def total_ap_amp_multiplier(effects: Iterable[ItemEffect]) -> float:
     for e in effects:
         if e.ap_amp_pct:
             factor *= (1.0 + e.ap_amp_pct)
+    return factor
+
+
+def total_magic_amp_multiplier(effects: Iterable[ItemEffect]) -> float:
+    """Magic-only damage multiplier from target-debuff auras (Phase 4 batch 34).
+
+    Abyssal Mask's "Unmake" causes nearby enemies to take 12% more magic
+    damage from ALL sources. Modeled as a caster-side multiplier on
+    magic-type proc DPS only — does NOT amplify physical auto-attack
+    damage (unlike the general ``damage_amp_pct`` path). Applied inside
+    ``_periodic_proc_dps`` per-proc when ``damage_type != PHYSICAL``.
+
+    Returns 1.0 when no item carries the field. Stacks multiplicatively
+    per League's buff-system semantics.
+    """
+    factor = 1.0
+    for e in effects:
+        if e.magic_amp_pct:
+            factor *= (1.0 + e.magic_amp_pct)
     return factor
 
 
