@@ -63,7 +63,14 @@ not unique-passive), Serylda's Grudge (6694) added to ITEM_EFFECTS as
 a new entry (Phase 4 batch 25, 2026-05-04 — 35% armor pen joins the
 LDR / Mortal Reminder family at the same coefficient as LDR; Bitter
 Cold ability slow stays utility-only per the slow-without-damage
-rule), and 21 defensive_only items spanning the Tier-1
+rule), Yun Tal Wildarrows (3032) + Atma's Reckoning (3039) paired
+promotion via the new ItemEffect crit_chance_bonus_flat /
+crit_chance_bonus_max_pct + per_bonus_hp_cap fields (Phase 4 batch 26,
+2026-05-04 — Yun Tal pinned at full Wildarrows stacks 25%, Atma's
+Big Hands linear ramp 0–30% over 0–3000 caster bonus HP; summed and
+clamped at 1.0 in compute_dps so both auto-attack crit and ER's
+Spellblade scaling see the boosted total; Yun Tal's Flurry AS bonus
+intentionally not modeled), and 21 defensive_only items spanning the Tier-1
 SR / Arena pool plus high-pickrate batch 2 + AP batch 3 additions.
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
@@ -80,4 +87,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.29.0"
+ENGINE_VERSION = "0.30.0"
