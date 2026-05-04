@@ -56,6 +56,7 @@ LOG_FILE = ROOT / "logs" / "daemon_slayer_extract.log"
 
 DDRAGON_BASE = "https://ddragon.leagueoflegends.com"
 LOLMATH_ROOT = "https://lolmath.net/"
+MERAKI_BASE = "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions"
 USER_AGENT = "RiotCommander/DaemonSlayer-extract/1.0"
 
 # Markers used to identify the right chunk among lolmath's ~20 chunks.
@@ -622,6 +623,54 @@ def fetch_ddragon() -> DDragonSnapshot:
     )
 
 
+# ─── Meraki perlevel backfill (Phase 1.5) ────────────────────────────────────
+
+# DDragon's bulk and per-champion endpoints both ship `attackdamageperlevel: 0`
+# for every champion as of patch 16.x — Riot stopped exporting AD growth even
+# though the in-game value is non-zero. Meraki Analytics scrapes the actual
+# game data and exposes it under `stats.attackDamage.perLevel`. We overlay
+# only this one field; the other zero perlevel fields in DDragon (Jhin AS,
+# Thresh armor, Briar HP-regen, every champion's crit growth) are correct.
+def fetch_meraki_perlevel_overlay(ddragon_ids: set[str]) -> dict[str, dict[str, float]]:
+    """Fetch attackdamageperlevel from Meraki Analytics for each champion.
+
+    Returns ``{ddragon_id: {ddragon_field_name: value}}`` only for champions
+    where Meraki has a non-zero value. Failures (HTTP errors, missing
+    champions) are logged and skipped — extraction continues with whatever
+    DDragon shipped for that champion.
+    """
+    overlay: dict[str, dict[str, float]] = {}
+    misses: list[str] = []
+    log.info("meraki perlevel backfill starting (%d champions)", len(ddragon_ids))
+    t0 = time.time()
+    for cid in sorted(ddragon_ids):
+        try:
+            req = urllib.request.Request(
+                f"{MERAKI_BASE}/{cid}.json",
+                headers={"User-Agent": USER_AGENT},
+            )
+            with urllib.request.urlopen(req, timeout=10) as r:
+                m = json.loads(r.read())
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
+            log.warning("meraki fetch failed for %s: %s", cid, e)
+            misses.append(cid)
+            continue
+        ad_growth = (
+            m.get("stats", {}).get("attackDamage", {}).get("perLevel")
+            if isinstance(m, dict) else None
+        )
+        if isinstance(ad_growth, (int, float)) and ad_growth > 0:
+            overlay[cid] = {"attackdamageperlevel": float(ad_growth)}
+    elapsed = time.time() - t0
+    log.info(
+        "meraki perlevel backfill: %d filled, %d skipped (%.1fs)",
+        len(overlay), len(misses), elapsed,
+    )
+    if misses:
+        log.warning("meraki misses: %s", misses)
+    return overlay
+
+
 # ─── Emission ────────────────────────────────────────────────────────────────
 
 # Hard-coded aliases for champions whose DDragon id doesn't match their lolmath
@@ -652,8 +701,18 @@ def _championkey_to_ddragon_id(key: str, ddragon_ids: set[str]) -> str | None:
     return None
 
 
-def build_champions_payload(lolmath: LolmathExtract, dd: DDragonSnapshot) -> dict:
-    """Merge DDragon champion data with lolmath cooldowns/roles/ratings + Phase 1.5 fields."""
+def build_champions_payload(
+    lolmath: LolmathExtract,
+    dd: DDragonSnapshot,
+    perlevel_overlay: dict[str, dict[str, float]] | None = None,
+) -> dict:
+    """Merge DDragon champion data with lolmath cooldowns/roles/ratings + Phase 1.5 fields.
+
+    ``perlevel_overlay`` (optional): per-champion ``{field: value}`` map from
+    :func:`fetch_meraki_perlevel_overlay`; values are written ONLY when DDragon
+    has zero in the same field, so legitimate zeros (Jhin AS, Thresh armor) stay
+    untouched.
+    """
     out: dict[str, Any] = {"version": dd.version, "data": {}}
     ddids = set(dd.champions.keys())
 
@@ -663,13 +722,18 @@ def build_champions_payload(lolmath: LolmathExtract, dd: DDragonSnapshot) -> dic
         cooldown = lolmath.cooldowns.get(champ_id)
         roles = lolmath.roles.get(champ_id)
         ratings = lolmath.ratings.get(champ_id, {}).get("ratings") if isinstance(lolmath.ratings.get(champ_id), dict) else None
+        stats = dict(dd_record.get("stats", {}))
+        if perlevel_overlay:
+            for field, value in perlevel_overlay.get(champ_id, {}).items():
+                if stats.get(field, 0) == 0:
+                    stats[field] = value
         out["data"][champ_id] = {
             "id": champ_id,
             "key": dd_record.get("key"),
             "name": dd_record.get("name"),
             "title": dd_record.get("title"),
             "tags": dd_record.get("tags", []),
-            "stats": dd_record.get("stats", {}),
+            "stats": stats,
             "info": dd_record.get("info", {}),
             "partype": dd_record.get("partype"),
             "lolmath": {
@@ -720,7 +784,9 @@ def build_scenarios_payload(lolmath: LolmathExtract, dd: DDragonSnapshot) -> dic
 
 
 def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
-                   patch_dir: Path) -> dict:
+                   patch_dir: Path,
+                   perlevel_overlay: dict[str, dict[str, float]] | None = None) -> dict:
+    overlay = perlevel_overlay or {}
     return {
         "engine": "daemon_slayer",
         "phase": 1.5,
@@ -736,6 +802,7 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
             "lolmath_scenarios_chunk_bytes": lolmath.chunk_bytes,
             "lolmath_data_chunk": lolmath.data_chunk_url,
             "lolmath_data_chunk_bytes": lolmath.data_chunk_bytes,
+            "meraki_perlevel": f"{MERAKI_BASE}/<champion>.json",
         },
         "lolmath_counts": {
             "cooldowns": len(lolmath.cooldowns),
@@ -746,6 +813,11 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
             "aram_modifiers": len(lolmath.aram_modifiers),
             "damage_distribution": len(lolmath.damage_distribution),
             "skill_orders": len(lolmath.skill_orders),
+        },
+        "meraki_perlevel_backfill": {
+            "champions_filled": len(overlay),
+            "fields_filled": sum(len(v) for v in overlay.values()),
+            "fields_targeted": sorted({k for v in overlay.values() for k in v}),
         },
         "outputs": {
             "champions": str((patch_dir / "champions.json").relative_to(ROOT)),
@@ -796,10 +868,12 @@ def main() -> int:
     lolmath.data_chunk_url = data_extract["data_chunk_url"]
     lolmath.data_chunk_bytes = data_extract["data_chunk_bytes"]
 
-    champions_payload = build_champions_payload(lolmath, dd)
+    perlevel_overlay = fetch_meraki_perlevel_overlay(set(dd.champions.keys()))
+
+    champions_payload = build_champions_payload(lolmath, dd, perlevel_overlay)
     items_payload = build_items_payload(dd)
     scenarios_payload = build_scenarios_payload(lolmath, dd)
-    manifest = build_manifest(lolmath, dd, patch_dir)
+    manifest = build_manifest(lolmath, dd, patch_dir, perlevel_overlay)
 
     _atomic_write_json(patch_dir / "champions.json", champions_payload)
     _atomic_write_json(patch_dir / "items.json", items_payload)
