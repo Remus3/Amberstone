@@ -51,6 +51,7 @@ from .effects import (
     effective_target_armor,
     effective_target_mr,
     total_bonus_ap_from_hp,
+    total_crit_chance_bonus,
     total_crit_damage_bonus,
     total_damage_amp_multiplier,
     total_target_bonus_hp_amp_multiplier,
@@ -388,11 +389,26 @@ def compute_dps(
     ap_from_hp = total_bonus_ap_from_hp(item_effects, caster_bonus_hp)
     ap += ap_from_hp
     # Phase 4 batch 21 (2026-05-04): crit_chance plumbed into CallContext
-    # for ER Spellblade (+0.5 bonus physical per 1% crit). Same shape as
-    # the per-rotation-final crit at line ~413; clamped at 1.0 to match.
-    # Default 0.0 means "no crit", so pre-batch consumers that omit it
-    # see no behavior change.
-    crit_chance_ctx = min(float(stats.get("crit", 0.0)), 1.0)
+    # for ER Spellblade (+0.5 bonus physical per 1% crit).
+    # Phase 4 batch 26 (2026-05-04): item-effect-contributed crit
+    # (Yun Tal Wildarrows flat 25% + Atma's Big Hands HP-scaled). Summed
+    # into the build's stats.crit and clamped at 1.0; the boosted total
+    # flows through both the rotation auto-attack crit calc (via
+    # ``stats_for_rotation``) and CallContext.crit_chance (read by ER
+    # Spellblade's lambda + future crit-scaling procs). /stats endpoint
+    # output is unchanged — same separation as batch 15's HP→AP cross-
+    # derivation. ``crit_from_effects`` is 0.0 when no item carries
+    # either crit_chance_bonus field, so pre-batch-26 builds pass
+    # through behaviorally identical.
+    crit_from_effects = total_crit_chance_bonus(item_effects, caster_bonus_hp)
+    raw_crit = float(stats.get("crit", 0.0))
+    crit_total = min(raw_crit + crit_from_effects, 1.0)
+    if crit_from_effects > 0:
+        stats_for_rotation: dict[str, float] = dict(stats)
+        stats_for_rotation["crit"] = crit_total
+    else:
+        stats_for_rotation = stats
+    crit_chance_ctx = crit_total
     call_ctx = CallContext(
         base_ad=base_ad,
         bonus_ad=bonus_ad,
@@ -410,14 +426,14 @@ def compute_dps(
     rotations_by_phase = _phase_rotations(snapshot, resolved.champion_id)
     phase_dps = {
         p: _phase_weighted_dps(
-            stats, rotations_by_phase[p], target_armor_eff, target_mr_eff,
+            stats_for_rotation, rotations_by_phase[p], target_armor_eff, target_mr_eff,
             mode_mult, crit_bonus, item_effects, call_ctx, damage_amp,
         )
         for p in PHASES
     }
     weighted_dps = phase_dps[selected_phase]
 
-    crit = min(float(stats.get("crit", 0.0)), 1.0)
+    crit = crit_total
     ad = float(stats.get("ad", 0.0))
     eff_as = float(stats.get("as", 0.0))
     # Phase 4 batch 14: per-hit display value reflects the same amp the
@@ -453,6 +469,16 @@ def compute_dps(
         notes.append(
             f"caster AP cross-derived from bonus HP: +{ap_from_hp:.1f} AP "
             f"(total AP for procs: {ap:.1f})"
+        )
+    if crit_from_effects > 0:
+        # Phase 4 batch 26 (2026-05-04): surface item-effect-contributed
+        # crit so /dps clients can see when crit was lifted off raw stats
+        # alone (Yun Tal pin / Atma HP-scaled). When raw + bonus > 1.0
+        # the effective value is clamped at 1.0 — surface both the raw
+        # contribution and the post-clamp final to make the cap visible.
+        notes.append(
+            f"crit chance lifted by items: +{crit_from_effects * 100:.1f}% "
+            f"(raw {raw_crit * 100:.1f}% + items → effective {crit_total * 100:.1f}%)"
         )
     for e in item_effects:
         if e.note:
