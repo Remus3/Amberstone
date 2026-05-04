@@ -2,6 +2,7 @@ import unittest
 
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.rank import (
+    ARENA_TRINKET_IDS,
     DEFAULT_SLOT_COUNT,
     MODE_MAP_ID,
     SORT_KEYS,
@@ -10,6 +11,7 @@ from agents.daemon_slayer.rank import (
     _is_purchasable,
     _is_terminal,
     rank_items,
+    strip_arena_trinkets,
 )
 
 
@@ -228,6 +230,53 @@ class SerializationTests(unittest.TestCase):
         self.assertIn("lvl 11", table)
         self.assertIn("baseline_dps", table)
         self.assertIn("dps/1k", table)
+
+
+class ArenaTrinketFilterTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_arcane_sweeper_id_in_constant(self) -> None:
+        self.assertIn("3348", ARENA_TRINKET_IDS)
+
+    def test_strip_noop_outside_arena(self) -> None:
+        kept, stripped = strip_arena_trinkets(("3348", "3071"), "SR")
+        self.assertEqual(kept, ("3348", "3071"))
+        self.assertEqual(stripped, ())
+
+    def test_strip_noop_on_empty(self) -> None:
+        self.assertEqual(strip_arena_trinkets((), "ARENA"), ((), ()))
+
+    def test_strip_removes_trinket_in_arena(self) -> None:
+        kept, stripped = strip_arena_trinkets(("3348", "3071", "3072"), "ARENA")
+        self.assertEqual(kept, ("3071", "3072"))
+        self.assertEqual(stripped, ("3348",))
+
+    def test_rank_with_full_arena_inventory_succeeds(self) -> None:
+        # 5 real items + Arcane Sweeper = 6 entries; without the strip,
+        # rank_items would raise "no room for a new item".
+        result = rank_items(
+            self.snap, "Aatrox", level=18,
+            current_item_ids=["3348", "3071", "3072", "3074", "3031", "3742"],
+            mode="ARENA", top_n=3,
+        )
+        self.assertGreater(len(result.ranked), 0)
+        self.assertNotIn("3348", result.current_item_ids)
+        self.assertTrue(any("trinket" in n.lower() for n in result.notes))
+
+    def test_rank_baseline_unaffected_by_trinket_inclusion(self) -> None:
+        with_trinket = rank_items(
+            self.snap, "Aatrox", level=11,
+            current_item_ids=["3348", "3071"], mode="ARENA", top_n=1,
+        )
+        without_trinket = rank_items(
+            self.snap, "Aatrox", level=11,
+            current_item_ids=["3071"], mode="ARENA", top_n=1,
+        )
+        self.assertAlmostEqual(
+            with_trinket.baseline_dps, without_trinket.baseline_dps, places=3,
+        )
 
 
 if __name__ == "__main__":

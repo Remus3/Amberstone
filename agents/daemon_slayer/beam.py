@@ -34,7 +34,7 @@ from typing import Iterable, Optional
 
 from .data_loader import DataSnapshot
 from .dps import compute_dps
-from .rank import MODE_MAP_ID, _filter_candidates, _is_terminal
+from .rank import MODE_MAP_ID, _filter_candidates, _is_terminal, strip_arena_trinkets
 from .stats import clamp_level
 
 DEFAULT_BEAM_WIDTH = 10
@@ -222,6 +222,7 @@ def beam_search_build(
     level = clamp_level(level)
 
     current_ids: tuple[str, ...] = tuple(str(i) for i in (current_item_ids or ()))
+    current_ids, stripped_trinkets = strip_arena_trinkets(current_ids, mode)
     if len(current_ids) > slot_count:
         raise ValueError(
             f"current_item_ids has {len(current_ids)} items; slot_count={slot_count} "
@@ -253,6 +254,10 @@ def beam_search_build(
         notes.append(f"mode={mode} → maps id {MODE_MAP_ID[mode]}")
     else:
         notes.append(f"mode={mode} not in MODE_MAP_ID — no per-mode item filter applied")
+    if stripped_trinkets:
+        notes.append(
+            f"mode=ARENA — stripped trinket(s) {list(stripped_trinkets)} from current_item_ids"
+        )
     if total_budget is not None:
         notes.append(f"total_budget={total_budget}g")
     if not boots_unique:
