@@ -53,6 +53,7 @@ from .effects import (
     total_bonus_ap_from_hp,
     total_crit_damage_bonus,
     total_damage_amp_multiplier,
+    total_target_bonus_hp_amp_multiplier,
 )
 from .engine import build_champion
 from .stats import clamp_level
@@ -77,6 +78,7 @@ class DpsResult:
     target_armor: float
     target_mr: float
     target_max_hp: float           # caller-supplied; 0.0 zeros out %HP procs
+    target_bonus_hp: float         # caller-supplied; 0.0 zeros out target-bonus-HP amps (Giant Slayer)
     phase: str
     weighted_dps: float            # selected phase, weighted across rotations
     phase_dps: dict[str, float]    # all 3 phases for context
@@ -96,6 +98,7 @@ class DpsResult:
             "target_armor": self.target_armor,
             "target_mr": self.target_mr,
             "target_max_hp": self.target_max_hp,
+            "target_bonus_hp": self.target_bonus_hp,
             "phase": self.phase,
             "weighted_dps": self.weighted_dps,
             "phase_dps": dict(self.phase_dps),
@@ -118,7 +121,7 @@ class DpsResult:
             rows.append("items: (none)")
         rows.append(
             f"target: armor={self.target_armor:.0f}  mr={self.target_mr:.0f}"
-            f"  max_hp={self.target_max_hp:.0f}"
+            f"  max_hp={self.target_max_hp:.0f}  bonus_hp={self.target_bonus_hp:.0f}"
         )
         rows.append("")
         rows.append(f"  weighted_dps   {self.weighted_dps:.2f}")
@@ -306,6 +309,7 @@ def compute_dps(
     target_armor: float = 0.0,
     target_mr: float = 0.0,
     target_max_hp: float = 0.0,
+    target_bonus_hp: float = 0.0,
     phase: Optional[str] = None,
     augments: Optional[Iterable] = None,
 ) -> DpsResult:
@@ -320,6 +324,11 @@ def compute_dps(
     Augment instance); the registered overlays add to stats before DPS
     resolution. Unknown augments are silently zero-overlay (see
     ``compute_augment_stats``).
+
+    ``target_bonus_hp`` (Phase 4 batch 19, 2026-05-04): caller-supplied
+    target bonus HP. Activates Giant Slayer-style target-conditional
+    amps (LDR id 3036). Default 0.0 keeps pre-batch-19 calls
+    behaviorally identical (the amp resolves to ×1.0 with no signal).
     """
     level = clamp_level(level)
     selected_phase = phase or _select_phase(level)
@@ -345,6 +354,12 @@ def compute_dps(
     # Phase 4 batch 14 (2026-05-04): build-wide damage amp. 1.0 when no
     # items carry an amp, so pre-batch builds pass through unchanged.
     damage_amp = total_damage_amp_multiplier(item_effects)
+    # Phase 4 batch 19 (2026-05-04): target-conditional amp (LDR Giant
+    # Slayer). Stacks multiplicatively with damage_amp_pct items per
+    # League's buff-system pin from batch 14. ×1.0 when caller leaves
+    # target_bonus_hp at 0 OR when no item carries the schema field.
+    target_amp = total_target_bonus_hp_amp_multiplier(item_effects, target_bonus_hp)
+    damage_amp *= target_amp
 
     # Phase 4 expansion: armor reduction + pen pipeline. Phase 4 batch 4
     # (2026-05-04) added the symmetric magic pen pipeline (Void Staff,
@@ -382,6 +397,7 @@ def compute_dps(
         target_max_hp=target_max_hp,
         caster_max_hp=caster_max_hp,
         caster_bonus_hp=caster_bonus_hp,
+        target_bonus_hp=target_bonus_hp,
     )
 
     rotations_by_phase = _phase_rotations(snapshot, resolved.champion_id)
@@ -420,6 +436,12 @@ def compute_dps(
             f"build damage amp ×{damage_amp:.4f} "
             f"(+{(damage_amp - 1.0) * 100:.2f}% to all damage)"
         )
+    if target_amp != 1.0:
+        notes.append(
+            f"target-conditional amp ×{target_amp:.4f} "
+            f"(target_bonus_hp={target_bonus_hp:.0f}, "
+            f"+{(target_amp - 1.0) * 100:.2f}% folded into build amp)"
+        )
     if ap_from_hp > 0:
         notes.append(
             f"caster AP cross-derived from bonus HP: +{ap_from_hp:.1f} AP "
@@ -442,6 +464,7 @@ def compute_dps(
         target_armor=target_armor,
         target_mr=target_mr,
         target_max_hp=target_max_hp,
+        target_bonus_hp=target_bonus_hp,
         phase=selected_phase,
         weighted_dps=weighted_dps,
         phase_dps=phase_dps,
