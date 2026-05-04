@@ -2053,3 +2053,201 @@ module map already names `rank.py` as a sibling of `dps.py`/`engine.py`;
 Engine on :8893 0.8.0 / `/beam` live. Bridge gamepc loop alive
 (probe `task-876e96057406` round-tripped in <90s). Working tree clean
 post-commit.
+
+## s46 hand-off — 2026-05-03 (Daemon Slayer Phase 1.5 — Meraki AD-perlevel backfill)
+
+Single-arc session, plus a Phase 6 prep note. Phase 1.5 (perlevel field
+backfill, item #3 on s45's queue) shipped.
+
+**Commit:** `9b85723` — `feat(daemon-slayer): Phase 1.5 — Meraki perlevel
+backfill for AD growth`. Pushed `329cb1c..9b85723 main -> main`.
+
+**Findings — DDragon data hole:**
+- 100% of champions (172/172) have `attackdamageperlevel: 0` in DDragon
+  16.9.1 (both bulk and per-champion endpoints). Riot stopped exporting
+  AD growth even though in-game value is non-zero.
+- Other zero perlevel fields are legitimate game state: Jhin AS=0
+  (passive converts items only), Thresh armor=0 (souls grow it),
+  Briar HP-regen=0 (passive only), every champion's crit growth=0
+  (Riot deprecated globally).
+- Net effect: late-game DPS modeling was massively wrong. Aatrox lvl 18
+  was reading AD=60 (should be 145). 50-85 AD missing for melee
+  bruisers across the board. Beam search rankings post-lvl 11 were
+  unreliable.
+
+**What shipped:**
+- `tools/daemon_slayer_extract.py` (+86L) — `fetch_meraki_perlevel_overlay()`
+  helper; sequential HTTP to `cdn.merakianalytics.com/.../champions/<id>.json`,
+  ~48s for 172 champions. Overlays only when DDragon has 0 (preserves
+  legitimate zeros). Manifest gets new `meraki_perlevel_backfill` block
+  with provenance.
+- `data/daemon_slayer/16.9.1/champions.json` — regenerated; 169/172
+  champions filled. Yunara + Zaahen too new for Meraki (404), retain
+  DDragon 0 — safe degradation.
+- `agents/daemon_slayer/tests/test_engine.py` — `test_eclipse_ad_adds_to_aatrox`
+  was asserting on the bug (lvl 11 + Eclipse = 120). Updated to assert
+  the correct value (170). Test comment even acknowledged the bug.
+- 190/190 tests green. Live engine on :8893 restarted (PID 1856 → new),
+  `/stats?champion=Aatrox&level=18` confirms ad=145.0.
+
+**Memory:** Added `reference_arena_arcane_sweeper_trinket.md` — Arena's
+Arcane Sweeper occupies the trinket slot, NOT a regular item. DS item
+ranker/beam search must exclude it from candidate pool when mode=ARENA.
+Same conceptual bucket as SR's `3340/3363/3364` trinkets (already
+excluded by `total=0` gate). Verify Arcane Sweeper has same `total=0`
+signal — if not, explicit id filter needed in Phase 6.
+
+**Phase 6 prep — augment data source recon:**
+- `https://raw.communitydragon.org/latest/cdragon/arena/en_us.json` is
+  clean: 219 Arena (cherry) augments with full `dataValues`/`calculations`
+  blocks. Suitable for direct extraction.
+- KIWI/Mayhem augments: NO clean cdragon dump exists. Only raw bin.json
+  UI config files (`game/gameplay.kiwiaugmentselection.bin.json` etc.).
+  Would need a custom parser for Riot game data format.
+- Decision queued: swap Phase 5 ↔ Phase 6 order. Arena augments first
+  (clean data + Arena coach already in production wanting DS as primary
+  driver). Mayhem augments deferred until clean data source found OR
+  bin.json parser justified.
+
+**Things tomorrow-you should NOT redo:**
+- Don't re-probe DDragon for `attackdamageperlevel` — confirmed 0 for all
+  172 champions in both bulk and per-champion endpoints. Meraki is the
+  source of truth for this field.
+- Don't try to backfill `critperlevel` from Meraki — it's 0 in-game (Riot
+  deprecated it), DDragon is correct. Backfill would silently wrong
+  the math.
+- Don't add other perlevel fields to the overlay — `armorperlevel: 1
+  zero`, `hpregenperlevel: 1 zero`, `attackspeedperlevel: 2 zero` are all
+  genuine game state. Verified in s46.
+- Don't try `cdragon/mayhem/en_us.json` or `cdragon/kiwi/en_us.json` —
+  both 404. Only `arena` and `tft` have clean dumps.
+- Don't reach for `cherryaugments.json`/`strawberryaugments.json`/
+  `swarmaugments.json` paths — all 404 in current cdragon. The arena
+  dump at `cdragon/arena/en_us.json` is the working path.
+
+**Engine version unchanged: 0.8.0.** Phase 1.5 is a data-only fix; engine
+code didn't change. Server picked up new champions.json on restart.
+
+**Next-session candidates (ranked):**
+1. **Phase 6 (Arena augments)** — extract from `cdragon/arena/en_us.json`,
+   add augment-aware engine hook (overlay augment stats on
+   `compute_stats`), filter Arcane Sweeper from item candidate pool, wire
+   beam search to consider augment combos. Once shipped,
+   `_arena_item_advisor` retires; arena coach `item_build` defaults to
+   DS picks (currently companion field).
+2. **Phase 5 (Mayhem augments)** — DEFERRED until either (a) clean cdragon
+   dump appears or (b) bin.json parser justified. Current path = no
+   clean source; engine treats Mayhem as plain SR (still useful).
+3. **Phase 8 (SR Draft Theatre kickoff)** — LCU draft subscription +
+   3-build profile. Beam search foundation already in place from s45.
+
+**Bridge state at session end:** RC main pid=9328 alive=true reload_ok=true.
+Engine on :8893 0.8.0 live. Working tree clean post-`9b85723`.
+
+## s47 hand-off — 2026-05-03 (Daemon Slayer Phase 6 step 2+3 — Arena augments wired into engine)
+
+Continuation of s46 (operator said "continue" after /done). Phase 6
+(Arena augments) shipped through engine integration. Engine 0.8.0 → 0.9.0.
+
+**What shipped (uncommitted at write-time, will land alongside in single
+commit):**
+- `tools/daemon_slayer_extract.py` — new `fetch_arena_augments()` helper;
+  pulls cdragon arena en_us.json (219 augments). Manifest gets
+  `arena_augments` provenance block.
+- `data/daemon_slayer/16.9.1/arena_augments.json` — first augment snapshot
+  (219 entries, rarity 0/1/2/4 = silver/gold/prismatic/hero).
+- `agents/daemon_slayer/augments.py` (new, ~140L) — `Augment` dataclass,
+  rarity constants (`RARITY_SILVER/GOLD/PRISMATIC/HERO`),
+  `compute_augment_stats()` overlay function. Tier-1 stat-overlay registry
+  has 3 verified entries: TheBrutalizer (+20 AD), CelestialBody (+1000 HP),
+  WitchfulThinking (+60 AP).
+- `agents/daemon_slayer/data_loader.py` — `DataSnapshot` now loads
+  `arena_augments.json` (tolerates absence for older snapshots);
+  `arena_augment(key)` accepts int id OR apiName string.
+- `agents/daemon_slayer/engine.py` — `build_champion(augments=[...])`
+  parameter; overlay applied additively after items, before mode modifiers.
+  `ResolvedStats.augments` field + `to_dict()` surfaces. Unknown registry
+  augments add an informational note.
+- `agents/daemon_slayer/cli.py` — `stats` subcmd has `--augments` flag.
+- `agents/daemon_slayer/server.py` — `/stats` POST accepts `augments` param.
+- `agents/daemon_slayer/__init__.py` — `ENGINE_VERSION 0.8.0 → 0.9.0`.
+- `agents/daemon_slayer/tests/test_augments.py` (new, ~120L) — 17 tests
+  covering data layer + overlay registry + engine integration.
+
+**Test count: 207/207 green** (was 190 → +17 augment tests).
+
+**Smoke:** `py -m agents.daemon_slayer stats Aatrox --level 11 --mode ARENA
+--augments TheBrutalizer,WitchfulThinking` → AD=130 (was 110), AP=60 (was 0).
+
+**Decisions worth pinning:**
+- **Overlay applied AFTER items, BEFORE mode modifiers.** Augments are
+  arena-only in practice; ARAM mode modifiers don't co-apply. Order is:
+  base+level → +items → +augments → mode mods.
+- **Unknown augments are silent zero-overlay, not errors.** Registry grows
+  incrementally; 3 entries today, more later. Caller passing an
+  unregistered apiName (e.g. ApexInventor) gets a note, not a failure.
+  This means the arena coach can pass the full augment list without
+  pre-filtering against the registry.
+- **Augment IDs come from cdragon "latest", not patch-pinned.** cdragon
+  doesn't version-pin per-patch dumps for arena. arena_augments.json
+  carries `fetched_at` timestamp; ids are stable across cdragon revs but
+  rotation contents change. Don't write tests asserting exact ID-to-name
+  mappings — the existence checks via apiName are stable.
+- **The 5 rarity-4 "meta" augments** (CraftingPrisStatAnvil,
+  CraftingSellAugment, ReplaceAugment, CraftingAugmentSlot,
+  GainStatAnvil) sit alongside the 11 GoH (Guardian of Heaven) hero
+  augments. Test was loosened to count GoH only.
+- **Lethality from TheBrutalizer is silently dropped.** Not a canonical
+  stat key in the engine yet. Add to `RESOLVED_STAT_ORDER` in
+  `stats.py` when the engine grows pen modeling.
+- **Arena restart deferred — user is mid-Arena game.** Live :8893 still
+  serves 0.8.0 / no augment awareness; arena coach companion field
+  unaffected. Restart `RC-DaemonSlayer` after game ends OR at the next
+  natural restart point. Activation is one command:
+  `taskkill /F /PID <:8893 listener>; schtasks /Run /TN RC-DaemonSlayer`.
+
+**Things tomorrow-you should NOT redo:**
+- Don't add Statikk/TankItUp/AllOfASudden to the registry — those
+  apiNames don't exist in the cdragon dump (I guessed wrong in s47).
+  Real flat-stat candidates discovered by audit: TheBrutalizer,
+  CelestialBody, WitchfulThinking are confirmed; BigBrain has AP=1
+  (ratio anchor, not real flat AP); Vulnerability/TankItOrLeaveIt grant
+  CritChance=0.25 but conditionally; Chauffeur grants AS+haste with a
+  movement-penalty tradeoff. To extend the registry safely: probe
+  `dataValues` index 0 and verify the augment description matches a
+  pure additive grant.
+- Don't try `cdragon/cherryaugments.json` or
+  `cdragon/cherry/en_us.json` paths — they're 404. The arena dump
+  lives at `cdragon/arena/en_us.json`.
+- Don't gate `augments=[...]` to `mode=ARENA` — engine takes them
+  regardless, by design (caller responsibility). This keeps the API
+  surface clean for future modes that might reuse arena augments.
+- Don't try beam-search-with-augments yet — that's Phase 7-ish work
+  (augment-aware beam scoring). Augments are operator-curated, not
+  optimized.
+
+**Engine version: 0.8.0 → 0.9.0.** Bump justified: new capability layer
+(augment-aware stat resolution) with public API surface change
+(ResolvedStats.augments field, /stats and CLI now accept augments).
+
+**Next-session candidates (ranked):**
+1. **Arena restart + arena_coach wire-up** — restart RC-DaemonSlayer to
+   activate 0.9.0 on :8893. Then update `coaches/arena_coach.py` to pass
+   detected augments into `daemon_slayer_picks` HTTP calls. The augment
+   apiName list comes from LCU postgame data or live game polling.
+   Operator will need to confirm where in arena flow we read picked augments.
+2. **Phase 6 step 4 — Arcane Sweeper trinket filter.** Per
+   `reference_arena_arcane_sweeper_trinket.md`, exclude Arcane Sweeper
+   from the item candidate pool when `mode=ARENA`. Confirm whether
+   `total=0` gate already catches it OR an explicit id filter is needed.
+3. **Phase 6 step 5 — registry expansion.** Audit the remaining ~85
+   flat-stat candidates I surveyed (`SlapAround` adaptive force,
+   `Dematerialize` adaptive, `Marksmage` AP-from-AD ratio, etc.). Each
+   needs a per-augment verification pass.
+4. **Phase 5 (Mayhem augments)** — STILL DEFERRED. No clean cdragon
+   dump; would need bin.json parser. Skip until either appears.
+
+**Bridge state at session end:** RC main pid=9328 alive=true reload_ok=true.
+Engine on :8893 STILL on 0.8.0 (deferred restart — see above).
+Working tree at write-time has Phase 6 changes uncommitted; will land in
+single commit. User in mid-Arena (lcu.phase=InProgress, mode_key=arena).

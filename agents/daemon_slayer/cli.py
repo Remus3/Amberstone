@@ -48,6 +48,10 @@ def _cmd_stats(args: argparse.Namespace) -> int:
     if args.items:
         item_ids = [s.strip() for s in args.items.split(",") if s.strip()]
 
+    augments: list[str] = []
+    if getattr(args, "augments", ""):
+        augments = [s.strip() for s in args.augments.split(",") if s.strip()]
+
     try:
         resolved = build_champion(
             snap,
@@ -55,6 +59,7 @@ def _cmd_stats(args: argparse.Namespace) -> int:
             level=args.level,
             item_ids=item_ids,
             mode=args.mode,
+            augments=augments,
         )
     except (KeyError, ValueError) as e:
         print(f"error: {e}", file=sys.stderr)
@@ -214,6 +219,7 @@ def build_parser() -> argparse.ArgumentParser:
     stats.add_argument("--level", type=int, default=1, help="champion level 1-18 (default 1)")
     stats.add_argument("--items", default="", help="comma-separated item IDs")
     stats.add_argument("--mode", default="SR", help="game mode: SR | ARAM | ARENA (default SR)")
+    stats.add_argument("--augments", default="", help="comma-separated arena augment apiNames (e.g. TheBrutalizer,WitchfulThinking)")
     stats.add_argument("--json", action="store_true", help="emit machine-readable JSON")
     stats.set_defaults(func=_cmd_stats)
 

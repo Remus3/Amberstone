@@ -28,6 +28,8 @@ class DataSnapshot:
     items: dict[str, dict]
     scenarios_by_id: dict[str, list]
     scenarios_by_lolmath: dict[str, list]
+    arena_augments_by_id: dict[int, dict]
+    arena_augments_by_api: dict[str, dict]
     data_root: Path = field(repr=False)
 
     @classmethod
@@ -51,10 +53,21 @@ class DataSnapshot:
                 raise SnapshotNotFound(f"Snapshot file missing: {p}")
             return json.loads(p.read_text(encoding="utf-8"))
 
+        def _read_optional(name: str) -> Any | None:
+            p = snap_dir / name
+            if not p.exists():
+                return None
+            return json.loads(p.read_text(encoding="utf-8"))
+
         manifest = _read("manifest.json")
         champions_doc = _read("champions.json")
         items_doc = _read("items.json")
         scenarios_doc = _read("scenarios.json")
+        # arena_augments.json is Phase 6 — older snapshots predate it; tolerate absence.
+        augments_doc = _read_optional("arena_augments.json") or {"augments": []}
+        augs = augments_doc.get("augments") or []
+        augs_by_id = {int(a["id"]): a for a in augs if isinstance(a.get("id"), int)}
+        augs_by_api = {a["apiName"]: a for a in augs if a.get("apiName")}
 
         return cls(
             patch=patch,
@@ -63,6 +76,8 @@ class DataSnapshot:
             items=items_doc.get("data", {}),
             scenarios_by_id=scenarios_doc.get("byDDragonId", {}),
             scenarios_by_lolmath=scenarios_doc.get("byLolmathKey", {}),
+            arena_augments_by_id=augs_by_id,
+            arena_augments_by_api=augs_by_api,
             data_root=root,
         )
 
@@ -81,3 +96,12 @@ class DataSnapshot:
 
     def scenarios(self, champ_id: str) -> list:
         return self.scenarios_by_id.get(champ_id, [])
+
+    def arena_augment(self, key: int | str) -> dict:
+        if isinstance(key, int):
+            rec = self.arena_augments_by_id.get(key)
+        else:
+            rec = self.arena_augments_by_api.get(key) or self.arena_augments_by_id.get(int(key)) if str(key).isdigit() else self.arena_augments_by_api.get(key)
+        if rec is None:
+            raise KeyError(f"Unknown arena augment: {key!r} (snapshot {self.patch})")
+        return rec
