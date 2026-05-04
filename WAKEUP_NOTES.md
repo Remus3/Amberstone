@@ -8631,6 +8631,61 @@ narrow enough to live in this hand-off + the field comment block.
 **Full coach activation matrix as of s84:** unchanged from s83 —
 this batch was engine-side only.
 
+## s85-s86 wrap — 2026-05-04 (DS batches 25-30 shipped + coach cost-tuning + API key migration)
+
+Marathon session. **6 Daemon Slayer batches shipped (25-30) + coach
+interval tuning + per-machine API key migration.** Engine 0.28.0 →
+0.34.0. Tests 433 → 519 (+86, no inversions).
+
+**DS commits this session (all on `main`, pushed):**
+- `5022964` batch 25 — Serylda's Grudge (35% armor pen)
+- `a30df18` batch 26 — Yun Tal + Atma (crit_chance_bonus_* schema)
+- `0348457` batch 27 — Manamune + Muramana (caster_max_mp + Awe)
+- `67e8ec6` batch 28 — Archangel + Seraph's (bonus_ap_pct_bonus_mp)
+- `6e890f0` batch 29 — coverage batch (4 defensive_only + 2 partial promotions)
+- `0dfe91a` batch 30 — lethality plumbing (7 items unlock at once)
+- `7de807a` chore — coach interval tuning (debounce/vision bumps, ~50% API rate cut)
+
+**Per-batch hand-offs are documented above (s81-s85)** — patterns,
+decisions, schema rationales all captured per-batch. Don't re-derive.
+
+**API key migration (operator-driven, mid-session):**
+- Per-machine keys generated for Legion / Game-PC / Peer. Old shared key
+  (`sk-ant-api03-B...VQAA`) is being phased out.
+- Keys now live in **system environment variables**, not in
+  `API-Key-Claude.txt` files. Game-PC + Peer confirmed flipped to new keys.
+- **Legion uses the new key after the next restart** — won't pick up
+  until then because the env var is set at logon, and existing
+  pythonw processes inherit the old (file-based) key.
+- **TODO next session: remove `C:\Riot Commander\API-Key-Claude.txt`
+  on Legion** (Game-PC + Peer equivalents already migrated). The file is
+  gitignored but still on disk; once env-var is the canonical source,
+  delete it to avoid future drift / leak. Update CLAUDE.md to reflect
+  env-var-not-file as the canonical key location.
+
+**Next-session candidates (Daemon Slayer thread):**
+1. **Daemon Slayer batch 31** — coverage sweep for support/ramp items
+   (Knight's Vow, Mikael's, Redemption, Locket, Ardent Censer, Staff of
+   Flowing Water, Echoes of Helia, Moonstone, Dawncore, Imperial Mandate,
+   Rod of Ages, Winter's Approach, Force of Nature, Dead Man's Plate,
+   Morellonomicon, Spectral Cutlass, Rylai's, Abyssal Mask, Hextech
+   Rocketbelt, Jak'Sho, Experimental Hexplate). ~15-20 items, mostly
+   defensive_only with one-line notes. Scope: 60-90 min.
+2. Or larger schema bump — ability-cast modeling (unlocks 6+ items at once).
+
+**Other carries** (not Daemon Slayer): SR coach `target_bonus_hp`
+activation, P8-5.5 first-draft visual verify, gamepc_boot.ps1 patch,
+P8-7 E2E push-to-League integration test, arena augment v2 production.
+
+**Bridge state:** Game-PC `/loop /process-bridge-tasks` confirmed alive
+this session (auto-loop-liveness probe initially failed at 90s but the
+hook later showed `15:43:11 · gamepc — hostname + status reported`).
+Game-PC + Peer both restarted and on new API keys.
+
+**RC state:** main pid=1620 (was 8084; restarted to activate coach
+interval changes, commit 7de807a). Supervisor pid=10796 unchanged across
+the entire session (s78-s86). Engine on :8893 reports 0.34.0.
+
 ## s85 hand-off — 2026-05-04 (Phase 4 batch 29: coverage batch — 4 defensive_only + 2 partial promotions)
 
 Single-arc continuation from s84. Took s84's #1 candidate (defensive_only
