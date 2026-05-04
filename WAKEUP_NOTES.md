@@ -1659,3 +1659,116 @@ pending lessons. Bridge gamepc loop alive (probe `task-824521a49ae8`
 round-tripped in 31s). RC pid 9740 alive, last_reload_ok=true,
 restart_trigger empty. Lobby — safe to /clear.
 
+## s43 hand-off — 2026-05-03 (Daemon Slayer Phase 4 thin slice shipped)
+
+One arc: Phase 4 thin slice — five marquee items now carry conditional
+effects on top of their stat blocks. Schema is the deliverable; the
+five-item table is the proof it threads end-to-end.
+
+**What shipped (commit `d71ffc3`):**
+- `agents/daemon_slayer/effects.py` (~140L) — `ItemEffect` +
+  `PeriodicProc` dataclasses, `ITEM_EFFECTS` dict, `collect_effects()`,
+  `total_crit_damage_bonus()`. Schema guards: `damage_type` must be
+  `physical|magical`; exactly one of `every_n_attacks` / `every_n_seconds`
+  set; both raise `ValueError` at construction.
+- `agents/daemon_slayer/dps.py` — new `_periodic_proc_dps()` helper;
+  `_rotation_attack_dps()` and `_phase_weighted_dps()` plumbed with
+  `crit_bonus` + `effects` + `target_mr`. `compute_dps()` builds
+  the effects list once, sums crit-damage bonuses into the per-rotation
+  crit_bonus, surfaces fired effects in `DpsResult.notes`.
+- `agents/daemon_slayer/__init__.py` — `ENGINE_VERSION 0.5.0 → 0.6.0`.
+- `tests/test_effects.py` — 22 new tests.
+- `tests/test_dps.py` — two pre-existing IE tests updated to reflect
+  now-correct +30% crit-damage math (schema-aware via `ITEM_EFFECTS["3031"]`).
+- 128/128 green.
+
+**Items pinned (patch 16.9.1):**
+| ID | Name | Effect |
+|---|---|---|
+| 3031 | Infinity Edge | `crit_damage_bonus=0.30` |
+| 3072 | Bloodthirster | `defensive_only=True` (Ichorshield — no DPS) |
+| 3097 | Stormrazor | Energized: 120 magic dmg every 4.0s |
+| 6672 | Kraken Slayer | Bring It Down: 100 physical dmg every 3rd attack |
+| 6673 | Immortal Shieldbow | `defensive_only=True` (Lifeline — no DPS) |
+
+**Smoke (Aatrox lvl 11 + Berserker's vs 80 armor):**
+| Item | s42 +dps | s43 +dps | Δ |
+|---|---|---|---|
+| 3031 IE | 25.27 | 27.82 | +30% crit damage adds 2.55 over rotation |
+| 3097 Stormrazor | 19.28 | 49.28 | magic proc vs 0 MR is huge — pin MR>0 in real coach calls |
+| 6672 Kraken | (off top-5) | 22.88 | now slots in front of BT |
+| 3072 BT | 20.15 | 20.15 | unchanged (no effect entry) |
+| 2523 Hexoptics | 19.29 | 19.29 | unchanged (no effect entry) |
+
+**Design choices worth pinning:**
+- **Constants over callables** at the thin-slice layer. `bonus_damage`
+  is a fixed float, not a `Callable[[stats, target], float]`. Future
+  Phase 4 expansion will need callable scaling for items like Kraken
+  (real formula: `60 + 65% bonusAD + missing-HP%`) — but constants are
+  honest about being patch-pinned approximations and keep the schema
+  easy to read for the next ~25 marquee items. Promote to callable
+  when the first item demands it.
+- **Magical procs use `target_mr`, not `target_armor`.** Routed via
+  `damage_type` enum on `PeriodicProc`. Mode damage multiplier
+  (`aramDamageDealt`) applies to procs too — they're still "Aatrox
+  damage."
+- **`defensive_only=True` items still get an entry.** Two reasons:
+  (1) the note surfaces in `DpsResult.notes` so a user reading a rank
+  output can SEE that BT's lifesteal-shield was acknowledged and not
+  silently DPS-counted; (2) future review ("did we forget to model
+  X?") becomes a one-grep check.
+- **Engine doesn't enforce per-item uniqueness.** Two IEs in a build
+  stack `crit_damage_bonus` to 0.60. Tested explicitly in
+  `test_two_ies_stack_crit_damage` so a future "one IE only" rule has
+  to be a deliberate change, not an accidental one.
+- **Existing IE tests in `test_dps.py` were factually wrong** under the
+  old engine — they encoded the assumption that IE adds no crit-damage
+  bonus. Updated in this commit to import `ITEM_EFFECTS["3031"]`
+  directly so the test description matches reality. Keep this pattern
+  for Phase 4 expansion: tests that hand-calculate item math should
+  reference the effect table, not duplicate constants.
+
+**Things tomorrow-you should NOT redo:**
+- Don't add `bonus_damage` as a callable yet. Wait for the first item
+  whose damage truly depends on champion stats or target HP (likely
+  Kraken's real formula or Voltaic Cyclosword's energized scaling).
+  Then expand the schema; backport the existing five.
+- Don't try to model on-hit lifesteal/sustain in this layer. Sustain
+  is a separate calculation (EHP-adjacent), not a DPS layer.
+- Don't bind effects to a per-mode toggle. Item legality is already
+  filtered by `rank.MODE_MAP_ID`; if an item is in the build, the
+  effect applies regardless of mode. ARAM damage multiplier already
+  attenuates proc damage via `mode_dmg_mult`.
+- Don't move `ITEM_EFFECTS` into `data/daemon_slayer/<patch>/`. The
+  table is hand-curated from patch notes / community wikis, NOT
+  extracted from DDragon. Keep it as Python constants under version
+  control with the engine — the patch-bump diff is the artifact.
+
+**Open for next sessions:**
+- **Phase 4 expansion**: next 25 items by pickrate. Likely candidates
+  to model first: Voltaic Cyclosword (energized + slow), Statikk Shiv
+  (energized chain lightning), Rapid Firecannon (energized range +
+  damage), Black Cleaver (% armor shred — interacts with target_armor
+  per stack), Lord Dominik's (% armor pen — same), Phantom Dancer
+  (lifeline + ghosting on low HP — defensive_only initially).
+  Promote `bonus_damage` to callable when the first stat-scaling
+  item lands.
+- **Phase 5/6/7**: Mayhem augments / Arena augments / coach wire-in
+  + supervisor entry + retire `_arena_item_advisor`. Phase 4 thin
+  slice is just enough conditional math to make Phase 7 coach calls
+  meaningfully better than the s42 baseline; further Phase 4 items
+  raise the ceiling.
+- **Phase 2 step 4 (still optional)**: full-build ranker. Now even more
+  worth deferring — beam search over Phase 4-aware DPS will find
+  builds the Phase 3 single-slot ranker can't see (e.g. IE+Stormrazor
+  synergy).
+
+**Memory:** No new memory write needed — Phase 4 thin slice is straight
+extension of `reference_daemon_slayer_engine_arch.md`'s extension
+points (new module + new dataclass). Schema decisions documented above
+will graduate to memory if Phase 4 expansion surprises us.
+
+**Bridge state at session end:** RC PID 9740 still alive (no restart
+this session — engine work is offline). Bridge gamepc loop alive per
+s42 close-out. Working tree clean after `d71ffc3`. Lobby. Safe to /clear.
+
