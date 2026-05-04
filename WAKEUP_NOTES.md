@@ -2859,3 +2859,143 @@ freshly restarted (pid=15696, started 02:40:07 via direct
 `Start-Process` not scheduled task). Working tree post-commit:
 - `49008ab` pushed; only `data/ratings/last_*.json` runtime mutations
   dirty (auto-mutated each game tick, skipped from commit).
+
+## s55 hand-off — 2026-05-04 (Phase 4 expansion batch 2: 10 defensive_only SR legendaries)
+
+Single-arc continuation of s54. Picked Phase 4 expansion as the next
+DS arc that's actionable without a live draft queue. Closes coverage
+gap on 10 high-pickrate SR legendaries that the s44 (b44ed02)
+"Phase 4 expansion 25 marquee items" batch left uncovered.
+
+**Shipped (commit `994ceb1`, pushed `4e6f20a..994ceb1 main -> main`):**
+- `agents/daemon_slayer/effects.py`: 10 new `defensive_only` entries
+  in `ITEM_EFFECTS` — `6333` Death's Dance, `3161` Spear of Shojin,
+  `3508` Essence Reaver, `3084` Heartsteel, `3083` Warmog's Armor,
+  `3139` Mercurial Scimitar, `3026` Guardian Angel, `3102` Banshee's
+  Veil, `3157` Zhonya's Hourglass, `6631` Stridebreaker.
+- `agents/daemon_slayer/tests/test_effects_expansion.py`: new
+  `DefensiveOnlyBatch2Tests` class (3 methods × 10 items table-driven
+  = covers presence + flag + zero-on-every-DPS-field + note
+  non-emptiness for all 10). `CoverageCountTests` lower bound bumped
+  `>=30` → `>=40`.
+- `agents/daemon_slayer/__init__.py`: docstring narrative refreshed
+  (13 → 23 defensive_only items); `ENGINE_VERSION 0.9.3 → 0.9.4`
+  (patch bump matching the convention from Phase 6 step 5 `d2bb840`
+  which bumped patch for the augment overlay registry expansion).
+
+**Test state:** 235/235 daemon_slayer tests green (was 232; +3
+DefensiveOnlyBatch2Tests methods). 75/75 phase8_smoke regression
+green. Phase4 expansion suite alone: 36/36 green.
+
+**Coverage delta (SR legendaries, purchasable, no upgrade, total>=2500):**
+29/122 (24%) → 39/122 (32%). 83 SR legendaries remain uncovered;
+top still-uncovered by gold cost include Rabadon's Deathcap (3089,
+needs an AP-amp layer the engine doesn't have yet), Ravenous/Titanic
+Hydra (3074/3748, AoE cleave not modeled), Dusk and Dawn (2510),
+Bastionbreaker (2520), Endless Hunger (2517), Overlord's Bloodmail
+(2501) — those four are the new ARENA-tier prismatic items, classify
+later.
+
+**Decisions worth pinning:**
+- **All 10 are defensive_only.** None of these items have a clean
+  per-attack DPS proc that fits the existing `PeriodicProc` shape
+  without schema bumps. Death's Dance bleed = damage storage (not
+  amplification); Spear of Shojin = CDR stacks; Essence Reaver =
+  mana refund + CDR; Heartsteel = single-target charged slam (not
+  in DPS rotation); Warmog's = out-of-combat regen; the rest are
+  pure utilities (cleanse/revive/spellshield/stasis/active dash).
+- **Patch bump (0.9.3 → 0.9.4), not minor.** No schema change, no
+  API change, no engine code change. Pure data-table addition.
+  Precedent: Phase 6 step 5 `d2bb840` (registry expansion = patch).
+  Minor-bump precedent (`0.6.0 → 0.7.0` on b44ed02) was justified
+  by schema bump (CallContext + callable bonus_damage); doesn't
+  apply here.
+- **Test pattern: table-driven not per-item.** s47/s49's expansion
+  tests are per-item assertions; 10 items × 4 fields = 40 lines of
+  near-identical asserts. New `DefensiveOnlyBatch2Tests.EXPECTED`
+  dict + 3 loop tests is tighter and surfaces missing items by name
+  in the assertion message.
+- **Notes are crisp + structured.** Every entry's note explains
+  WHY it's defensive_only with a model gap callout — "target HP not
+  modeled in Phase 4", "AoE cleave not modeled", "CDR not modeled".
+  This makes the table grep-friendly when future schema work lands
+  (e.g. "search for 'target HP not modeled' to find promotion
+  candidates when Phase 4+ adds target_hp to CallContext").
+
+**Things tomorrow-you should NOT redo:**
+- Don't try to add Rabadon's Deathcap as a defensive_only or via
+  ITEM_EFFECTS — its AP amp passive isn't a periodic proc; it's a
+  multiplicative stat layer. Engine would need a per-item
+  stat-multiplier mechanism (analogous to mode modifiers) to model
+  it. Skip until that hook lands.
+- Don't add Hydras (Ravenous 3074 / Titanic 3748) as periodic procs
+  — their cleave damage is real but only fires on AoE and against
+  multiple targets, neither of which DPS scoring models (single-target
+  by design). They'd need a ScenarioContext extension for "expected
+  enemies in cleave radius". Mark defensive_only only when the
+  scenario hook makes the model-gap explicit.
+- Don't bump CoverageCountTests' lower bound past `>=40` until the
+  next batch lands. Future expansion batches should keep the floor
+  fresh; lifting the floor here would mean a future regression
+  (someone removing entries) wouldn't trip the test.
+- Don't try to extend `CallContext` with `ap` for spellblade/Nashor's
+  variants this session — that's a schema bump that needs a minor
+  version, plus the engine's stats path doesn't surface AP as
+  cleanly as `bonus_ad`. Worth doing as a focused next session.
+
+**Activation:** `RC-DaemonSlayer` scheduled task restart required
+to load 0.9.4 on :8893. Operator currently mid-arena
+(`liveclient.game_time=18:24`, phase=InProgress). DEFERRED per s47
+precedent — restart at next between-games window via:
+```
+schtasks /End /TN RC-DaemonSlayer  &&  schtasks /Run /TN RC-DaemonSlayer
+```
+or via `Start-Process` with absolute python path if the scheduled
+task hits the same `py` launcher bug as RC-LCU did (s54 backlog).
+
+**Operational backlog (carried + new):**
+- All s54 backlog items unchanged: gamepc_boot.ps1 `py → python.exe`
+  patch; bridge auto-action lane false-positive on deploy prompts.
+- **AP-aware CallContext** (NEW) — add `ap: float` field to
+  `effects.CallContext` so spellblade variants (Lich Bane 3100,
+  Nashor's Tooth 3115) and AP-scaling on-hits can promote out of
+  defensive_only. Schema bump = minor version. ~6 items unlock per
+  session.
+- **Magic pen layer** (NEW) — add `magic_pen_pct` /
+  `magic_pen_flat` fields to `ItemEffect` and an
+  `effective_target_mr()` function mirroring `effective_target_armor`.
+  Unlocks Void Staff (3135), Cryptbloom (3137), Sorcerer's Shoes
+  (3020 boot), Haunting Guise components. Schema bump = minor
+  version. Symmetric to the existing armor pen pipeline.
+
+**Next-session candidates (ranked):**
+1. **First draft visual verify of P8-5.5** (carried from s54). Needs
+   operator in draft queue 400/420/430/440. Confirms:
+   - `cs.my_team[i].assignedPosition` populated.
+   - SR-draft chooser role chip auto-selects from LCU.
+   - Manual chip change locks out auto-fill.
+2. **Phase 4 batch 3: AP-aware CallContext + spellblade variants**.
+   Schema bump (0.9.4 → 0.10.0). Add `ap` to CallContext, then
+   promote Lich Bane / Nashor's Tooth / Hextech Gunblade out of
+   defensive_only into proper periodic entries. ~5-7 items unlocked.
+3. **Phase 4 batch 4: magic pen layer**. Schema bump (probably
+   alongside #2 if both ship same session). Unlocks Void Staff /
+   Cryptbloom / Sorcerer's Shoes / Haunting Guise. Symmetric to
+   armor pen — same `EffectiveTargetArmorTests` pattern reused.
+4. **gamepc_boot.ps1 `py → python.exe` patch** (carried from s54).
+   1-line patch matching `project_rc_patchrefresh_fixed.md`.
+5. **P8-7 E2E push-to-League integration test** (carried from s53).
+   Needs actual draft queue.
+6. **Activate arena augment v2 in production** (carried from s50).
+   Needs arena game.
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true (no Legion restart this session). Engine on :8893
+STILL on 0.9.3 — 0.9.4 will activate at next RC-DaemonSlayer
+restart. LCU phase=InProgress (mid-arena, game_time=18:24). Working
+tree post-commit:
+- `994ceb1` pushed; only `data/ratings/last_*.json` runtime mutations
+  dirty (auto-mutated each game tick, skipped from commit).
+- Game-PC LCU agent still running at PID 15696 (s54-spawned,
+  uptime ~7 min as of session end) — `assignedPosition` field will
+  flow when operator next enters a draft queue.
