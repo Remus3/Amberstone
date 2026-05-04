@@ -37,11 +37,19 @@ stacking via total_damage_amp_multiplier; first user is Riftmaker's
 batch 15, 2026-05-04 — ItemEffect.ap_per_bonus_hp_pct + additive
 helper total_bonus_ap_from_hp; Riftmaker's Void Infusion 2% bonus
 HP → AP wired so Lich Bane / Nashor's Tooth procs see the converted
-total), and 26 defensive_only items spanning the Tier-1 SR / Arena
-pool plus high-pickrate batch 2 + AP batch 3 additions.
+total), Stridebreaker (6631) Cleave + Essence Reaver (3508) Spellblade
+promoted via the new CallContext.crit_chance schema (Phase 4 batch 21,
+2026-05-04 — Stridebreaker mirrors Ravenous Hydra's 40% AD cleave to
+other enemies in 350 radius; ER fires 1.25 * base_ad + 50 * crit_chance
+once per ~3s spellblade rotation, joins the Trinity Force / Lich Bane
+unique-passive dedup family, with the rewritten Trinity Force batch-11
+comment closing the order-dependence question), and 22 defensive_only
+items spanning the Tier-1 SR / Arena pool plus high-pickrate
+batch 2 + AP batch 3 additions.
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
-``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation``.
+``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation`` /
+``crit_chance``.
 
 Beam search (Phase 2 step 4) returns the top-N complete builds by final
 weighted DPS, finding multi-item synergies the single-slot ranker
@@ -53,4 +61,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.24.0"
+ENGINE_VERSION = "0.25.0"
