@@ -6535,3 +6535,201 @@ phase=None (no game in progress). Bridge to Game-PC last result
    Brawl coach has a daemon_slayer wire-in already + whether
    LCU surfaces Brawl enemy items is the open question.
 
+---
+
+## s75 hand-off — 2026-05-04 (Brawl coach target_bonus_hp activation + DS mode routing)
+
+Single-arc continuation from s74. Took s74 #9 candidate (Brawl coach
+activation). Open questions answered:
+- **Brawl coach had no daemon_slayer wire-in yet** — same starting
+  state as aram_coach was pre-s74. Clean port.
+- **LCU surfaces Brawl enemy items** via the same
+  ``allPlayers[*].items[]`` Live Client API that ARAM uses. No
+  vision-side parsing required.
+- **Brawl coach is an umbrella** for BRAWL / NEXUSBLITZ / URF /
+  ULTBOOK / ONEFORALL / GAMEMODEX game modes. Routing splits BRAWL
+  (DDragon map 35) from the SR-pool modes (URF/OFA/NB ride on the
+  SR item pool with no map-specific tweaks).
+
+Skipped s74 #1 (wiki scraper, 3-5hr scope) and s74 #2 (SR coach,
+still needs vision-side enemy item parsing).
+
+**Pattern decision worth pinning — coaches that span multiple LCU
+game modes need a routing helper, not a single mode constant.**
+ARAM coach's wire-in (s74) hard-coded ``mode='aram'`` because
+``aram_coach`` only ever sees ARAM/Mayhem (both map 12). Brawl coach
+sees 5+ different game_mode strings, so the wire-in ships static
+``_ds_resolver_mode`` / ``_ds_engine_mode`` helpers that take
+``game_mode_upper`` and return the right strings. Substring-match on
+"BRAWL" so suffixed variants (e.g. ``"BRAWL_RANKED"`` if Riot ever
+adds them) route correctly without a code change. Future wire-ins
+on similar umbrella coaches (none currently planned) should follow
+this same pattern.
+
+**Pattern decision worth pinning — engine treats unknown modes as
+identity, which is correct for Brawl.** ``agents/daemon_slayer/engine.py``
+line 231-232: ``if mode not in ("SR", "ARAM"): notes.append("modifier
+table not plugged in")``. Engine then runs identity (no
+aramAttackSpeed-style overlays) — exactly what Brawl needs since
+Brawl doesn't have ARAM-style stat tweaks. The routing helper
+returns ``"BRAWL"`` for BRAWL game mode (engine adds the harmless
+note) and ``"SR"`` for URF/OFA/NB (engine treats them as SR).
+Don't try to add a Brawl modifier table to the engine until Brawl
+ships actual stat tweaks.
+
+**Pattern decision worth pinning — `@staticmethod` access via class
+returns the unwrapped function.** Test stubs that copy a class's
+``@staticmethod`` need to re-wrap with ``staticmethod()`` to avoid
+the function being treated as a regular method (which would pass
+``self``). Pinned in the stub docstring of
+``test_brawl_coach_target_bonus_hp.py``. Affects any future test
+that mirrors this pattern.
+
+**Shipped (commit `e64497c`, will push):**
+
+- `coaches/brawl_coach.py`:
+  - ``_to_state`` populates new ``enemies: list[{name,is_dead,items}]``
+    field. Sibling of existing flat fields (enemy_comp, dead_enemies,
+    alive_enemies) used by Haiku prompt formatting; no shift of
+    pre-existing fields, dashboard renderers + prompt unchanged.
+  - New ``_ds_resolver_mode`` / ``_ds_engine_mode`` static helpers.
+    BRAWL → ('brawl', 'BRAWL'); everything else → ('sr', 'SR').
+    Substring match on "BRAWL" for forward-compat with suffixed
+    variants. Empty/None defensively defaults to SR.
+  - New ``_estimate_target_bonus_hp(state)`` — port of aram_coach's
+    s74 estimator. Walks ``state['enemies']``, filters alive
+    opponents, resolves via dynamic mode (helper above), sums HP
+    per opponent, returns MAX clamped at 1500. No round-count
+    fallback (Brawl modes don't have rounds): vision gap → 0.0
+    = "no signal".
+  - New ``/rank`` wire-in in ``_run_coach``. Same shape as ARAM but
+    routes through ``_ds_resolver_mode`` / ``_ds_engine_mode``.
+    ``daemon_slayer_picks`` field absent on engine down (no
+    regression).
+
+- `tests/phase2_smoke/test_brawl_coach_target_bonus_hp.py` (NEW, 18 tests):
+  - ``DsModeRoutingTests`` (7): BRAWL→brawl, URF/ULTBOOK/ONEFORALL/
+    NEXUSBLITZ→sr, empty/None defaults to sr, BRAWL_RANKED suffix
+    still routes to brawl.
+  - ``EstimateTargetBonusHpTests`` (11): no state / empty / all
+    dead → 0, BRAWL Heartsteel → 900 (regression pin against
+    Arena alias HP leak), URF Heartsteel → 900, ONEFORALL
+    Heart+Rift → 1250, MAX-not-avg over 5 enemies, dead exclusion
+    (350 not 1250), pen-only build → 0, 4-stack tank → 1500 cap,
+    missing game_mode field defaults to SR fallback.
+
+**Test state:**
+- `agents/daemon_slayer/tests/`: 379/379 (unchanged from s74).
+- `tests/phase2_smoke/`: **154/154** green (s74 baseline 136 + 18
+  new from this batch).
+- Pre-existing stale `0.9.3` engine_version pin in
+  `test_sr_draft_profile_engine` still failing (carried; out of
+  scope).
+
+**Live verify (post `restart_trigger.txt`, pid 4864 → 8084):**
+
+Mode routing pin:
+```
+BRAWL → resolver=brawl, engine=BRAWL
+URF   → resolver=sr,    engine=SR
+ULTBOOK → sr/SR
+ONEFORALL → sr/SR
+NEXUSBLITZ → sr/SR
+'' / None → sr/SR (defensive)
+```
+
+Estimator end-to-end:
+```
+state={'game_mode':'BRAWL', 'enemies':[Sett w/ Heartsteel]}  → 900.0  ✓
+state={'game_mode':'URF',   'enemies':[Sett w/ Heartsteel]}  → 900.0  ✓
+```
+
+Engine /rank BRAWL smoke (Sett L11 owns Heartsteel,
+target_bonus_hp=1250, target_armor=80):
+```
+Trinity Force      d_dps=47.94 gold=3333
+Rapid Firecannon   d_dps=45.91 gold=2650
+Statikk Shiv       d_dps=44.94 gold=3000
+```
+Engine accepts ``mode="BRAWL"``. Wire-in dormant until Brawl game
+in progress.
+
+**Decisions worth pinning:**
+- **Static helpers, not instance methods** — ``_ds_resolver_mode``
+  and ``_ds_engine_mode`` are pure functions of game_mode_upper.
+  Static so they're callable without instance setup (matters in
+  the test stub). Static-method-via-class-attribute requires
+  ``staticmethod()`` wrap — pinned in stub docstring + this
+  hand-off as repeat-bait.
+- **Substring match on "BRAWL"** is intentional, not lazy. Riot
+  has historically added suffixed variants on existing modes
+  (e.g. URF vs ARURF). Substring-matching is forward-compat.
+  Exact match would force a code change for every variant.
+- **Routing helpers not added to a shared module** because s74
+  arena_coach + aram_coach didn't need them (single-mode
+  coaches), and the shape may yet differ for SR coach (which
+  will need ranged-vs-melee enemy filtering on top of mode
+  routing). Premature abstraction. Pull up to a shared module
+  if a 3rd umbrella coach appears.
+
+**Things tomorrow-you should NOT redo:**
+- Don't switch the BRAWL substring match to exact equality. Riot
+  may ship BRAWL_RANKED, BRAWL_FLEX, etc. — substring is by design.
+- Don't try to add aram_modifiers entries for Brawl in the engine.
+  Brawl doesn't have ARAM-style stat tweaks; identity is correct.
+  Only revisit if Brawl ships actual stat modifiers in future patch
+  notes.
+- Don't move ``_ds_resolver_mode`` / ``_ds_engine_mode`` to a
+  shared module yet. Not enough callers to justify it. The arena
+  coach hard-codes ``mode='arena'``; the ARAM coach hard-codes
+  ``mode='aram'``. Helpers exist on Brawl coach because Brawl is
+  the only umbrella. Extract when a 3rd umbrella appears.
+- Don't drop the ``staticmethod()`` re-wrap in the test stub
+  even though it looks redundant. Without it, tests fail with
+  "takes 1 positional argument but 2 were given" — class attribute
+  assignment unwraps the descriptor. Pinned in stub docstring.
+
+**Activation:** RC main restarted via ``restart_trigger.txt`` (pid
+4864 → 8084, last_reload_ok=true). brawl_coach now resolves enemy
+items per mode (BRAWL gets map-35 items, URF/OFA/NB get SR base
+items), estimates target_bonus_hp from MAX over alive opponents,
+and surfaces ``daemon_slayer_picks`` on engine response. Behavior
+dormant until next Brawl-class game starts.
+
+**Bridge state at session end:** RC main pid=8084 alive=true
+reload_ok=true. Engine on :8893 = 0.23.0 unchanged. LCU
+phase=None. No two-way bridge traffic this session.
+
+**Operational backlog (delta from s74):**
+- ✅ ~~Brawl coach target_bonus_hp activation~~ (was s74 #9).
+- All other s74 backlog unchanged.
+- **NEW from s75**: Map 21 (Nexus Blitz) and map 33 (probably
+  Swarm) aren't in the resolver. Currently NB rides on the SR
+  fallback which is correct enough since NB inherits the SR
+  item pool. Adding map 21 explicitly would buy nothing right
+  now. Defer.
+
+**Next-session candidates (ranked):**
+1. **Phase 4 batch 20: League wiki scraper** (carried s71 #2 →
+   s72 #2 → s73 #1 → s74 #1 → s75 #1). Unblocks Hullbreaker /
+   Essence Reaver / Sterak's coefficient gaps. ~3-5 hour scope.
+2. **SR coach `target_bonus_hp` activation** (carried). Probably
+   needs vision-side enemy item parsing first since LCU's enemy
+   item visibility on SR is filtered (vision-restricted).
+3. **Stale 0.9.3 engine_version pin cleanup** in
+   ``test_sr_draft_profile_engine`` (carried). ~10 min scope.
+4. **First draft visual verify of P8-5.5** (carried).
+5. **gamepc_boot.ps1 patch** (carried). 1-liner.
+6. **P8-7 E2E push-to-League integration test** (carried).
+7. **Activate arena augment v2 in production** (carried).
+8. **Per-target-HP-pct field** (carried; defer until caller demands).
+
+**Full coach activation matrix as of s75:**
+
+| Coach | target_bonus_hp wire-in | Resolver mode | Engine mode |
+|---|---|---|---|
+| arena_coach | ✅ s73 (heuristic) → s73 (item-aware) → s74 (mode-pin) | 'arena' | 'ARENA' |
+| aram_coach | ✅ s74 | 'aram' | 'ARAM' |
+| brawl_coach | ✅ s75 | 'brawl' / 'sr' | 'BRAWL' / 'SR' |
+| sr_coach | ⏳ blocked on vision-side enemy item parsing | 'sr' (when ready) | 'SR' |
+
