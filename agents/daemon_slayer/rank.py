@@ -94,6 +94,7 @@ class RankResult:
     baseline_dps: float
     target_armor: float
     target_mr: float
+    target_max_hp: float
     phase: str
     budget: Optional[int]
     slot_count: int
@@ -113,6 +114,7 @@ class RankResult:
             "baseline_dps": self.baseline_dps,
             "target_armor": self.target_armor,
             "target_mr": self.target_mr,
+            "target_max_hp": self.target_max_hp,
             "phase": self.phase,
             "budget": self.budget,
             "slot_count": self.slot_count,
@@ -135,6 +137,7 @@ class RankResult:
             rows.append("current items: (none)")
         rows.append(
             f"target: armor={self.target_armor:.0f}  mr={self.target_mr:.0f}"
+            f"  max_hp={self.target_max_hp:.0f}"
         )
         budget_label = "unlimited" if self.budget is None else f"{self.budget}"
         rows.append(
@@ -229,6 +232,7 @@ def rank_items(
     mode: str = "SR",
     target_armor: float = 0.0,
     target_mr: float = 0.0,
+    target_max_hp: float = 0.0,
     phase: Optional[str] = None,
     budget: Optional[int] = None,
     slot_count: int = DEFAULT_SLOT_COUNT,
@@ -279,6 +283,7 @@ def rank_items(
         mode=mode,
         target_armor=target_armor,
         target_mr=target_mr,
+        target_max_hp=target_max_hp,
         phase=phase,
         augments=augments,
     )
@@ -304,6 +309,7 @@ def rank_items(
                 mode=mode,
                 target_armor=target_armor,
                 target_mr=target_mr,
+                target_max_hp=target_max_hp,
                 phase=phase,
                 augments=augments,
             )
@@ -362,6 +368,7 @@ def rank_items(
         baseline_dps=baseline.weighted_dps,
         target_armor=target_armor,
         target_mr=target_mr,
+        target_max_hp=target_max_hp,
         phase=baseline.phase,
         budget=budget,
         slot_count=slot_count,

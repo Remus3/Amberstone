@@ -57,9 +57,14 @@ class CallContext:
     enables Lich Bane / Nashor's Tooth-style spellblade and AP-on-hit
     scaling.
 
-    Phase 4 doesn't model target HP, so callables that want
-    ``%-current-HP`` math should be marked ``defensive_only`` until
-    Phase 4+ adds the hook.
+    ``target_max_hp`` (added 2026-05-04, Phase 4 batch 5) is the
+    caller-supplied target max HP — same shape as ``target_armor`` /
+    ``target_mr``, default 0.0 means "caller didn't say so contributions
+    floor at zero". Unlocks BotRK / Eclipse %-target-HP procs. lolmath
+    scenarios carry no HP signal, so callers (arena_coach, sr_draft,
+    /dps clients) decide a realistic value from game context. ``%-current-HP``
+    procs use the steady-state assumption ``current = max``; explicit
+    chunking simulation (e.g. "target at 30%") is a future field.
     """
     base_ad: float
     bonus_ad: float
@@ -67,6 +72,7 @@ class CallContext:
     target_armor: float = 0.0
     target_mr: float = 0.0
     ap: float = 0.0
+    target_max_hp: float = 0.0
 
 
 # Scaling-damage callable type. Float still works as a constant.
@@ -325,7 +331,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="6676",
         name="The Collector",
         defensive_only=True,
-        note="The Collector: Execute below 5% HP (target HP not modeled in Phase 4)",
+        note="The Collector: Execute below 5% HP — fires once at low HP, not a per-rotation DPS proc",
     ),
     "6675": ItemEffect(
         item_id="6675",
@@ -390,8 +396,18 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3153": ItemEffect(
         item_id="3153",
         name="Blade of The Ruined King",
-        defensive_only=True,
-        note="Blade of the Ruined King: 8% target current HP on-hit (target HP not modeled in Phase 4)",
+        periodic=PeriodicProc(
+            name="Mist's Edge",
+            # 8% target current HP on-hit (melee value; ranged is 5%).
+            # Steady-state DPS approximation: current_hp ≈ max_hp at the
+            # start of a fight, so we model with target_max_hp. Slight
+            # over-count as the target gets chunked through the rotation;
+            # an explicit current_hp_pct field is a future batch.
+            bonus_damage=lambda c: 0.08 * c.target_max_hp,
+            damage_type=PHYSICAL,
+            every_n_attacks=1,
+        ),
+        note="Blade of the Ruined King: Mist's Edge ~8% target HP on-hit (melee, steady-state approx)",
     ),
     "3302": ItemEffect(
         item_id="3302",
@@ -402,8 +418,19 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "6692": ItemEffect(
         item_id="6692",
         name="Eclipse",
-        defensive_only=True,
-        note="Eclipse: 6% target max HP every 2nd attack (target HP not modeled in Phase 4)",
+        periodic=PeriodicProc(
+            name="Ever Rising Moon",
+            # 6% target max HP physical, gated on hitting the same target
+            # with two damage instances within 1.5s. In an active basic-
+            # attack rotation the 2-attack gate is the binding constraint,
+            # so every_n_attacks=2 is the right shape. Note: real proc
+            # has a 6s CD per target — under-counts when sustained, but
+            # most rotations don't fire 2 procs within 6s anyway.
+            bonus_damage=lambda c: 0.06 * c.target_max_hp,
+            damage_type=PHYSICAL,
+            every_n_attacks=2,
+        ),
+        note="Eclipse: Ever Rising Moon ~6% target max HP every 2 attacks (physical)",
     ),
 
     # ── Phase 4 expansion 2026-05-04: high-pickrate SR legendaries ──
@@ -529,7 +556,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="3128",
         name="Deathfire Grasp",
         defensive_only=True,
-        note="Deathfire Grasp: active 15% target max HP (target HP not modeled in Phase 4)",
+        note="Deathfire Grasp: active 15% target max HP — active item, not in auto rotation",
     ),
 
     # ── Phase 4 batch 4 (2026-05-04): magic pen layer ──
@@ -561,7 +588,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="4645",
         name="Shadowflame",
         magic_pen_flat=15.0,
-        note="Shadowflame: 15 flat magic pen + Cinderbloom magic crit <40% HP (target HP not modeled)",
+        note="Shadowflame: 15 flat magic pen + Cinderbloom magic crit <40% HP (low-HP gate not modeled)",
     ),
 }
 
