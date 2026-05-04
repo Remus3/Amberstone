@@ -628,11 +628,12 @@ class CoverageCountTests(unittest.TestCase):
     (promotions don't add or remove entries). Batch 6 (caster HP)
     adds Titanic Hydra (new entry) + promotes Heartsteel — table grows
     to 51. Batch 7 (multi-target rotations) adds Ravenous Hydra — 52.
+    Batch 9 (Immolate items) adds Sunfire Aegis + Hollow Radiance — 54.
     """
 
     def test_table_size_at_phase_4_expansion(self) -> None:
         # Lower bound: no regressions removed entries.
-        self.assertGreaterEqual(len(ITEM_EFFECTS), 52)
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 54)
 
 
 class CallContextTargetMaxHpTests(unittest.TestCase):
@@ -1116,6 +1117,145 @@ class MultiProcSchemaTests(unittest.TestCase):
             mode_dmg_mult=1.0, call_ctx=ctx,
         )
         self.assertAlmostEqual(dps, 14.0, places=3)
+
+
+class ImmolateItemTests(unittest.TestCase):
+    """Phase 4 batch 9 — Sunfire Aegis (3068) + Hollow Radiance (6664).
+
+    Both items share the same Immolate periodic shape: per-second magic
+    aura damage to nearby enemies, scaling with caster bonus HP and the
+    rotation's targets count. Reuses the batch-6 caster-HP layer + the
+    batch-7 multi-target layer — no new schema. Tests pin the per-second
+    shape, the AoE-incl-primary multiplier, the bonus-HP scaling, and
+    the end-to-end DPS uplift on a tank champion.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_sunfire_periodic_shape(self) -> None:
+        e = ITEM_EFFECTS["3068"]
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(len(e.periodics), 1)
+        proc = e.periodics[0]
+        self.assertEqual(proc.damage_type, MAGICAL)
+        self.assertEqual(proc.every_n_seconds, 1.0)
+        self.assertEqual(proc.every_n_attacks, 0)
+        self.assertIn("immolate", proc.name.lower())
+        self.assertIn("immolate", e.note.lower())
+
+    def test_hollow_radiance_periodic_shape(self) -> None:
+        e = ITEM_EFFECTS["6664"]
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(len(e.periodics), 1)
+        proc = e.periodics[0]
+        self.assertEqual(proc.damage_type, MAGICAL)
+        self.assertEqual(proc.every_n_seconds, 1.0)
+        self.assertEqual(proc.every_n_attacks, 0)
+        self.assertIn("immolate", proc.name.lower())
+
+    def test_immolate_resolves_with_bonus_hp_and_n_equals_1(self) -> None:
+        # Single-target rotation, 1000 bonus HP →
+        # 1.0 * (12 + 0.015 * 1000) = 27 per second.
+        proc = ITEM_EFFECTS["3068"].periodics[0]
+        ctx = CallContext(
+            base_ad=0, bonus_ad=0, level=11,
+            caster_bonus_hp=1000.0, targets_in_rotation=1.0,
+        )
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 27.0, places=3)
+
+    def test_immolate_aoe_incl_primary_multiplier(self) -> None:
+        # 3-target rotation, 1000 bonus HP →
+        # 3.0 * (12 + 0.015 * 1000) = 81 per second.
+        proc = ITEM_EFFECTS["3068"].periodics[0]
+        ctx = CallContext(
+            base_ad=0, bonus_ad=0, level=11,
+            caster_bonus_hp=1000.0, targets_in_rotation=3.0,
+        )
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 81.0, places=3)
+
+    def test_immolate_zero_bonus_hp_floor(self) -> None:
+        # No HP items in the build → flat 12 dps per second per target.
+        # Single target → 12 per second.
+        proc = ITEM_EFFECTS["3068"].periodics[0]
+        ctx = CallContext(
+            base_ad=0, bonus_ad=0, level=11,
+            caster_bonus_hp=0.0, targets_in_rotation=1.0,
+        )
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 12.0, places=3)
+
+    def test_sunfire_lifts_dps_on_tank_champion(self) -> None:
+        # Sunfire's stat block alone contributes zero DPS (350 HP, 50 armor —
+        # both defensive). Any uplift over baseline must come from the
+        # Immolate proc. Aatrox lvl 11 has all-n=1 rotations so n=1, and
+        # Sunfire's +350 HP is bonus HP (lifts the proc damage above the
+        # 12-flat floor).
+        bare = compute_dps(self.snap, "Aatrox", level=11)
+        with_sf = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3068"])
+        self.assertGreater(with_sf.weighted_dps, bare.weighted_dps)
+
+    def test_hollow_radiance_lifts_dps_on_tank_champion(self) -> None:
+        # Same story for Hollow Radiance: stat block is HP+MR, no DPS;
+        # uplift must come from the Immolate proc.
+        bare = compute_dps(self.snap, "Aatrox", level=11)
+        with_hr = compute_dps(self.snap, "Aatrox", level=11, item_ids=["6664"])
+        self.assertGreater(with_hr.weighted_dps, bare.weighted_dps)
+
+    def test_immolate_engine_per_second_tick(self) -> None:
+        # End-to-end test that the engine does the per-second math right.
+        # 1.0 second rotation duration with the Sunfire effect, 1000 bonus
+        # HP, n=1: should emit 27 dps (1 second × 27 damage/second).
+        from agents.daemon_slayer.dps import _periodic_proc_dps
+        from agents.daemon_slayer.effects import collect_effects
+        ctx = CallContext(
+            base_ad=0, bonus_ad=0, level=11,
+            caster_bonus_hp=1000.0, targets_in_rotation=1.0,
+        )
+        effects = collect_effects(["3068"])
+        # No basic attacks; the proc fires on the seconds-track (every_n_seconds=1.0).
+        # 1.0 second / 1.0 = 1 proc, damage 27 → 27 dps.
+        dps = _periodic_proc_dps(
+            effects, total_attacks=0.0, duration=1.0,
+            target_armor_for_physical=0.0, target_mr=0.0,
+            mode_dmg_mult=1.0, call_ctx=ctx,
+        )
+        self.assertAlmostEqual(dps, 27.0, places=3)
+
+    def test_immolate_engine_aoe_uplift_in_rotation(self) -> None:
+        # Same harness, n=3: 3 nearby enemies each take 27 dps → 81 dps total.
+        from agents.daemon_slayer.dps import _periodic_proc_dps
+        from agents.daemon_slayer.effects import collect_effects
+        ctx = CallContext(
+            base_ad=0, bonus_ad=0, level=11,
+            caster_bonus_hp=1000.0, targets_in_rotation=3.0,
+        )
+        effects = collect_effects(["3068"])
+        dps = _periodic_proc_dps(
+            effects, total_attacks=0.0, duration=1.0,
+            target_armor_for_physical=0.0, target_mr=0.0,
+            mode_dmg_mult=1.0, call_ctx=ctx,
+        )
+        self.assertAlmostEqual(dps, 81.0, places=3)
+
+    def test_immolate_uses_target_mr_not_armor(self) -> None:
+        # Magic-typed proc → MR resists, not armor. With target_mr=100,
+        # damage is halved (factor 100/(100+100) = 0.5). Bonus HP=1000,
+        # n=1 → 27 raw, 13.5 post-MR.
+        from agents.daemon_slayer.dps import _periodic_proc_dps
+        from agents.daemon_slayer.effects import collect_effects
+        ctx = CallContext(
+            base_ad=0, bonus_ad=0, level=11,
+            caster_bonus_hp=1000.0, targets_in_rotation=1.0,
+        )
+        effects = collect_effects(["3068"])
+        dps = _periodic_proc_dps(
+            effects, total_attacks=0.0, duration=1.0,
+            # If proc were physical, target_armor would gate it instead of MR.
+            target_armor_for_physical=0.0, target_mr=100.0,
+            mode_dmg_mult=1.0, call_ctx=ctx,
+        )
+        self.assertAlmostEqual(dps, 13.5, places=3)
 
 
 if __name__ == "__main__":
