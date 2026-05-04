@@ -3483,6 +3483,173 @@ class ArchangelEngineWireInTests(unittest.TestCase):
         self.assertLess(ratio, 0.30)
 
 
+class Batch29DefensiveOnlyCoverageTests(unittest.TestCase):
+    """Phase 4 batch 29 — 4 new defensive_only entries.
+
+    Coverage-completeness for Hubris, Spirit Visage, Kaenic Rookern,
+    Cosmic Drive. Each carries no current-engine DPS contribution
+    (takedown-event-bound, heal amp, magic shield, MS proc respectively).
+    Notes flag un-modeled-but-promotable pieces (Hubris's lethality)
+    so future batches know what's there.
+    """
+
+    def test_hubris_present_defensive_only(self) -> None:
+        e = ITEM_EFFECTS["6697"]
+        self.assertEqual(e.name, "Hubris")
+        self.assertTrue(e.defensive_only)
+        self.assertEqual(e.periodics, ())
+        self.assertIn("eminence", e.note.lower())
+        # Lethality gap is acknowledged in the note — pin so future
+        # "lethality plumbing" batch can find this comment via grep.
+        self.assertIn("lethality", e.note.lower())
+
+    def test_spirit_visage_present_defensive_only(self) -> None:
+        e = ITEM_EFFECTS["3065"]
+        self.assertEqual(e.name, "Spirit Visage")
+        self.assertTrue(e.defensive_only)
+        self.assertEqual(e.periodics, ())
+        self.assertIn("vitality", e.note.lower())
+
+    def test_kaenic_rookern_present_defensive_only(self) -> None:
+        e = ITEM_EFFECTS["2504"]
+        self.assertEqual(e.name, "Kaenic Rookern")
+        self.assertTrue(e.defensive_only)
+        self.assertEqual(e.periodics, ())
+        self.assertIn("magebane", e.note.lower())
+
+    def test_cosmic_drive_present_defensive_only(self) -> None:
+        e = ITEM_EFFECTS["4629"]
+        self.assertEqual(e.name, "Cosmic Drive")
+        self.assertTrue(e.defensive_only)
+        self.assertEqual(e.periodics, ())
+        self.assertIn("spelldance", e.note.lower())
+
+
+class LiandrysSufferingTests(unittest.TestCase):
+    """Phase 4 batch 29 — Liandry's Torment (6653) partial promotion via
+    damage_amp_pct.
+
+    Suffering: 2% bonus damage per second in champion combat, max 3
+    stacks = 6%. Steady-state DPS pin = 6%, same shape as Riftmaker's
+    8% Void Corruption (batch 14). Torment burn (ability damage burn)
+    stays not-modeled per the ability-bound rule.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_liandrys_present_with_damage_amp(self) -> None:
+        e = ITEM_EFFECTS["6653"]
+        self.assertEqual(e.name, "Liandry's Torment")
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(e.periodics, ())
+        self.assertAlmostEqual(e.damage_amp_pct, 0.06, places=4)
+        self.assertIn("suffering", e.note.lower())
+
+    def test_liandrys_no_unique_passive_key(self) -> None:
+        # Suffering is one-of-many damage amps but Riot doesn't tag
+        # them all under one unique key (Riftmaker, Liandry's, future
+        # Conqueror-style amps all stack via League's buff system per
+        # batch 14's pin). No dedup at the effect-layer.
+        self.assertEqual(ITEM_EFFECTS["6653"].unique_passive_key, "")
+
+    def test_liandrys_lifts_dps_via_amp(self) -> None:
+        # AP champ, AP rotation. Liandry's stat block (60 AP, 300 HP)
+        # plus the 6% amp should both lift weighted DPS.
+        bare = compute_dps(self.snap, "Lux", level=11)
+        with_liandrys = compute_dps(self.snap, "Lux", level=11, item_ids=["6653"])
+        self.assertGreater(with_liandrys.weighted_dps, bare.weighted_dps)
+
+    def test_liandrys_amp_stacks_with_riftmaker(self) -> None:
+        # Both Liandry's (0.06) and Riftmaker (0.08) carry damage_amp_pct.
+        # Per batch 14 pin: stacks multiplicatively via League's buff
+        # system. Combined: 1.06 × 1.08 = 1.1448x. Independent: each
+        # alone gives a smaller multiplier. Pin the multiplicative
+        # composition by checking notes.
+        with_both = compute_dps(
+            self.snap, "Lux", level=11, item_ids=["6653", "4633"],
+        )
+        joined = " ".join(with_both.notes)
+        self.assertIn("damage amp", joined.lower())
+        # 1.06 * 1.08 = 1.1448; note shows 4-decimal multiplier.
+        self.assertIn("1.14", joined)
+
+
+class StormsurgeMagicPenTests(unittest.TestCase):
+    """Phase 4 batch 29 — Stormsurge (4646) partial promotion via
+    magic_pen_flat.
+
+    Stormsurge carries 15 flat magic pen in its description (DDragon's
+    stat block doesn't surface magic pen as a stat key; the 90 AP +
+    6% MS pieces are in stats, the 15 magic pen is in prose). Joins
+    Sorcerer's Shoes (3020, 12) and Shadowflame (4645, 15) in the
+    magic_pen_flat layer. Stormraider/Squall ability-bound burst
+    stays not-modeled.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_stormsurge_present_with_magic_pen(self) -> None:
+        e = ITEM_EFFECTS["4646"]
+        self.assertEqual(e.name, "Stormsurge")
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(e.periodics, ())
+        self.assertAlmostEqual(e.magic_pen_flat, 15.0, places=2)
+        self.assertEqual(e.magic_pen_pct, 0.0)
+        self.assertIn("magic pen", e.note.lower())
+
+    def test_stormsurge_no_unique_passive_key(self) -> None:
+        # Magic pen sums in current League (no Last-Whisper-style
+        # magic-side dedup). Build legality (don't double-stack flat
+        # pen items) is ranker-owned.
+        self.assertEqual(ITEM_EFFECTS["4646"].unique_passive_key, "")
+
+    def test_stormsurge_pen_pipeline_matches_shadowflame(self) -> None:
+        # Same coefficient as Shadowflame (4645, 15 flat magic pen).
+        # Effective MR after pen should match.
+        stormsurge = ITEM_EFFECTS["4646"]
+        shadowflame = ITEM_EFFECTS["4645"]
+        self.assertAlmostEqual(
+            effective_target_mr(50.0, [stormsurge]),
+            effective_target_mr(50.0, [shadowflame]),
+            places=3,
+        )
+        # 50 - 15 = 35 effective MR.
+        self.assertAlmostEqual(
+            effective_target_mr(50.0, [stormsurge]), 35.0, places=3,
+        )
+
+    def test_stormsurge_raises_magic_proc_dps_vs_mr_target(self) -> None:
+        # Magic pen only lifts magic-damage rotations. Lux's bare auto
+        # attacks are physical (use target_armor), so Stormsurge's 15
+        # magic pen contributes 0 to a bare-auto rotation — adding
+        # Nashor's Tooth (3115, Icathian Bite per-attack magic proc)
+        # surfaces the pen contribution.
+        with_nashors = compute_dps(
+            self.snap, "Lux", level=11, item_ids=["3115"], target_mr=80.0,
+        )
+        with_nashors_ss = compute_dps(
+            self.snap, "Lux", level=11, item_ids=["3115", "4646"],
+            target_mr=80.0,
+        )
+        self.assertGreater(with_nashors_ss.weighted_dps, with_nashors.weighted_dps)
+
+    def test_stormsurge_pen_note_surfaces(self) -> None:
+        # Even without a magic-damage rotation, the effective-MR note
+        # surfaces whenever target_mr > 0 and a magic pen item is
+        # present — the engine reports the pipeline outcome regardless
+        # of rotation magic damage.
+        with_ss = compute_dps(
+            self.snap, "Lux", level=11, item_ids=["4646"], target_mr=80.0,
+        )
+        joined = " ".join(with_ss.notes)
+        self.assertIn("effective target MR", joined)
+        self.assertIn("65.0", joined)  # 80 - 15 = 65 after Stormsurge pen
+
+
 class CritBonusComposesWithEssenceReaverTests(unittest.TestCase):
     """Phase 4 batch 26 — item-effect-contributed crit feeds ER's Spellblade.
 

@@ -85,7 +85,14 @@ off item-contributed mana only — distinct from the Manamune family's
 max-mana keying; engine walks ap_flat the same way the Manamune walk
 targets ad_flat; Seraph's Lifeline shield piece tagged unique_passive_key
 "lifeline" — Awe walk in engine.py bypasses collect_effects so the AP
-contribution survives lifeline dedup), and 21 defensive_only items spanning the Tier-1
+contribution survives lifeline dedup), Phase 4 batch 29 coverage batch
+(2026-05-04 — 6 items: 4 defensive_only entries [Hubris, Spirit Visage,
+Kaenic Rookern, Cosmic Drive] + 2 partial promotions reusing existing
+schema [Liandry's Torment via damage_amp_pct=0.06 for Suffering's
+sustained 6% amp, Stormsurge via magic_pen_flat=15 joining Sorcerer's
+Shoes / Shadowflame in the magic pen layer]; Hubris's 18 Lethality
+deferred to a future "lethality plumbing" batch — needs level-scaled
+flat pen schema), and 25 defensive_only items spanning the Tier-1
 SR / Arena pool plus high-pickrate batch 2 + AP batch 3 additions.
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
@@ -102,4 +109,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.32.0"
+ENGINE_VERSION = "0.33.0"
