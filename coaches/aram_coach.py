@@ -533,6 +533,42 @@ class Coach(BaseCoach):
         except Exception as exc:
             logger.debug("ARAM vision run: %s", exc)
 
+    # ── Target-bonus-HP estimator (s74 — Phase 4 batch 19 wire-in) ──────────
+
+    def _estimate_target_bonus_hp(self, state: dict | None = None) -> float:
+        """Estimate enemy bonus HP from items. ARAM port of arena_coach's
+        s73 estimator, but with no round-count fallback (ARAM doesn't have
+        rounds — emit 0 = "no signal" when items unavailable).
+
+        Walks ``state["enemies"]`` (structured list, populated in
+        ``_to_state``), filters alive opponents, resolves their item
+        display names via ``daemon_slayer_resolver`` with ``mode="aram"``
+        (gets SR base IDs, NOT Arena 22XXXX aliases), sums bonus HP per
+        opponent, returns MAX. Capped at 1500 to match LDR Giant Slayer's
+        engine-side cap.
+
+        MAX (not avg/sum) for the same reason as arena_coach: Giant Slayer
+        is target-conditional; if ANY enemy is tanky, the recommendation
+        should escalate against THAT target.
+        """
+        state = state or {}
+        enemies = state.get("enemies") or []
+        opp_items: list[list[str]] = [
+            (e.get("items") or []) for e in enemies if not e.get("is_dead")
+        ]
+        if not any(opp_items):
+            return 0.0
+        from core import daemon_slayer_resolver as _ds_res
+        best = 0.0
+        for items in opp_items:
+            if not items:
+                continue
+            ids = _ds_res.resolve_many(items, mode="aram")
+            hp = _ds_res.total_bonus_hp(ids)
+            if hp > best:
+                best = hp
+        return min(1500.0, best) if best > 0 else 0.0
+
     def _run_coach(self, state: dict) -> None:
         try:
             from core.feature_policy import is_allowed as _fp_ok, write_disabled_placeholder as _fp_wr
@@ -756,6 +792,38 @@ class Coach(BaseCoach):
                 "item_build_reasons": _parse_item_reasons(flds.get("item reasons", "")),
             })
             mirror_live_stats(cur, state)
+
+            # s74 — Daemon Slayer wire-in. Mirrors arena_coach's Phase 7
+            # integration but with mode="ARAM" (engine applies aramAttackSpeed
+            # to bonus AS) and resolver mode='aram' (gets SR base IDs, not
+            # Arena alias IDs — Heartsteel→3084 not 223084, so HP=900 flows
+            # through correctly). Engine down → field absent, no regression.
+            try:
+                from core import daemon_slayer_client as _ds_client
+                from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
+                owned_ids = _ds_resolve_many(state.get("items", []), mode="aram")
+                target_bonus_hp = self._estimate_target_bonus_hp(state)
+                ds_rows = _ds_client.rank_for(
+                    champion=champ,
+                    level=int(state.get("level", 1)) or 1,
+                    item_ids=owned_ids,
+                    mode="ARAM",
+                    target_armor=80.0,
+                    target_bonus_hp=target_bonus_hp,
+                    top=5,
+                )
+                if ds_rows:
+                    cur["daemon_slayer_picks"] = [
+                        {"id": r.item_id, "name": r.item_name,
+                         "delta_dps": round(r.delta_dps, 2), "gold": r.gold}
+                        for r in ds_rows
+                    ]
+                elif ds_rows == []:
+                    cur["daemon_slayer_picks"] = []
+                # ds_rows is None → engine down; leave field untouched.
+            except Exception as exc:
+                logger.debug("ARAM daemon_slayer wire-in: %s", exc)
+
             safe_write(self._out, cur)
 
             # ── Live metric streaming (feature-flagged) ──────────────
@@ -872,6 +940,7 @@ def _parse_state(raw: dict) -> dict:
     ]
 
     enemy_items_map = {}
+    enemies_struct: list[dict] = []
     for _e in enemies:
         _en = _e.get("championName", "?")
         _ei = [
@@ -881,6 +950,16 @@ def _parse_state(raw: dict) -> dict:
         ]
         if _ei:
             enemy_items_map[_en] = _ei
+        # s74 — structured per-enemy entries for daemon_slayer
+        # target_bonus_hp estimator. Mirrors arena_coach's teams[] shape
+        # (name + is_dead + items) but stays on a separate key so the
+        # existing enemy_items / enemy_comp / dead_enemies flat fields
+        # used by Haiku prompt + dashboard renderers don't shift.
+        enemies_struct.append({
+            "name":    _en,
+            "is_dead": bool(_e.get("isDead")),
+            "items":   _ei,
+        })
     enemy_items_str = (
         "; ".join(f"{k}: {', '.join(v)}" for k, v in enemy_items_map.items())
         or "unknown"
@@ -907,6 +986,7 @@ def _parse_state(raw: dict) -> dict:
         ],
         "enemy_comp":    [e.get("championName", "?") for e in enemies],
         "enemy_items":   enemy_items_str,
+        "enemies":       enemies_struct,  # s74 — structured per-enemy {name,is_dead,items}
         "dead_enemies":     [e.get("championName", "?") for e in enemies if e.get("isDead")],
         "alive_enemies":    [e.get("championName", "?") for e in enemies if not e.get("isDead")],
         "dead_respawn_str": raw.get("dead_respawn_str", ""),  # from game_reader
