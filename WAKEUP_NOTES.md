@@ -2999,3 +2999,146 @@ tree post-commit:
 - Game-PC LCU agent still running at PID 15696 (s54-spawned,
   uptime ~7 min as of session end) — `assignedPosition` field will
   flow when operator next enters a draft queue.
+
+---
+
+## s56 hand-off — 2026-05-04 (Phase 4 batch 3: AP-aware CallContext + spellblade)
+
+Two-step session. Closed s55's deferred 0.9.4 activation, then shipped
+the s55 backlog candidate #2 (AP-aware CallContext + spellblade
+variants) end-to-end. Operator was idle (LCU phase=None, no liveclient)
+so the engine restart window was open.
+
+**Step 1 (cleanup):** RC-DaemonSlayer restart on a clean
+`schtasks /End` + `schtasks /Run` cycle — engine on :8893 jumped
+0.9.3 → 0.9.4 in ~4s. No PID coordination drama; the bare scheduled
+task adopted cleanly.
+
+**Step 2 — shipped (commit `12542c8`, pushed `479ea45..12542c8 main -> main`):**
+
+- `agents/daemon_slayer/effects.py`: `CallContext.ap: float = 0.0`
+  appended (default keeps every existing callable backward compatible).
+  Two new periodic entries:
+  - `3100` Lich Bane — Spellblade `0.75 * c.base_ad + 0.50 * c.ap`
+    magic, `every_n_seconds=3.0` (same cadence approximation as
+    TriForce — real CD 1.5s, gated by ability frequency in rotation).
+  - `3115` Nashor's Tooth — Icathian Bite `15.0 + 0.20 * c.ap` magic,
+    `every_n_attacks=1` (per-basic on-hit).
+  Five new defensive_only entries with explicit model-gap notes:
+  `3146` Hextech Gunblade (active), `6655` Luden's Echo (ability-bound),
+  `4633` Riftmaker (combat-state amp), `4645` Shadowflame (target HP),
+  `3128` Deathfire Grasp (active + target HP).
+- `agents/daemon_slayer/dps.py`: 2-line plumb — `ap = float(stats.get("ap", 0.0))`
+  + `ap=ap` kwarg into the per-`compute_dps` `CallContext` build.
+- `agents/daemon_slayer/__init__.py`: docstring narrative refreshed
+  (ap field call-out + 28 defensive_only count); `ENGINE_VERSION
+  0.9.4 → 0.10.0`. Minor bump precedent: batch 1's 0.6.0 → 0.7.0
+  (also CallContext schema change). Patch bump (s55) was data-only;
+  this is a schema bump.
+- `agents/daemon_slayer/tests/test_effects_expansion.py`: +14 tests
+  in 3 new classes —
+  - `CallContextApTests` (3) — default-zero, callable resolves against
+    ap, combined base_ad+ap (mirrors Lich Bane formula).
+  - `SpellbladeAndOnHitApTests` (8) — periodic-present + non-defensive,
+    raises DPS bare→item, MR matters, scales with stacked AP. For
+    Nashor's the AP-scaling test pairs Nashor + Lich Bane vs Nashor +
+    Bloodthirster (no AP, same gold-ish) and asserts the AP companion
+    wins.
+  - `DefensiveOnlyBatch3Tests` (3 × 5 items table-driven) — same
+    pattern as batch 2's `DefensiveOnlyBatch2Tests`. Fields zero,
+    notes non-empty, `defensive_only=True`.
+  - `CoverageCountTests` floor `>=40 → >=47`.
+
+**Test state:** 249/249 daemon_slayer tests green (was 235; +14 from
+this batch matches the math: 3+8+3=14). py_compile pre-commit hook
+passed; no new warnings beyond the standard CRLF lint.
+
+**Live engine verify (post-restart `schtasks /End` + `schtasks /Run`):**
+```
+GET  /health                          → 0.10.0 ok
+POST /dps {champion:Aatrox, items:[3100], level:11}  → 91.23 (bare 47.07; +94%)
+POST /dps {champion:Aatrox, items:[3115], level:11}  → 67.54 (+44%)
+```
+Notes surface on both responses ("Lich Bane: Spellblade ~75% base AD…",
+"Nashor's Tooth: Icathian Bite on-hit…").
+
+**Coverage delta:** ITEM_EFFECTS 40 → 47 entries (+7). Pickrate-weighted
+SR legendary coverage stable around 32% (the batch is mostly midrange
+AP items rather than top-pickrate marquee items). Real win is unlocking
+two AP DPS items the engine previously couldn't model at all — Lich
+Bane especially is mandatory on a number of AP bruisers and the
+defensive_only fallback was severely underestimating their build value.
+
+**Decisions worth pinning:**
+- **`ap` default 0.0 keeps all pre-batch callables backward-compatible.**
+  No call-site changes needed in any existing callable lambda — they
+  bind by name (`c.base_ad`, `c.bonus_ad`, `c.level`) so the new
+  optional field is invisible to them. Tests with `CallContext(...)`
+  positional + missing ap continue to pass. Matches Python dataclass
+  ergonomics.
+- **Real-CD vs rotation-cadence approximation.** Lich Bane's real
+  spellblade CD is 1.5s (haste-modified). In active League rotations
+  the cadence is closer to 3s because it's gated by how often the
+  champion casts an ability. Used the same approximation as TriForce
+  (`every_n_seconds=3.0`) — under-counts on high-cast champs (Cassio,
+  Anivia) and over-counts on low-cast (split-pushers). Fix would need
+  a per-rotation `ability_casts_per_second` from lolmath scenarios;
+  out of scope.
+- **Hextech Gunblade as defensive_only.** Its on-hit was removed from
+  the live game; current iteration is purely active-damage Lightning
+  Bolt + omnivamp stat. Not a DPS-rotation contributor.
+- **Riftmaker's HP→AP conversion is invisible to current stats.**
+  `Void Infusion` (2% bonus HP → AP) would feed back into Lich Bane /
+  Nashor's procs if modeled. Engine `aggregate_item_stats` doesn't do
+  cross-item stat-derived stats; would need a 2nd-pass in
+  `engine.build_champion`. Worth a follow-up if AP-bruiser builds
+  start showing up wrong in user feedback.
+
+**Things tomorrow-you should NOT redo:**
+- Don't add Luden's Echo as a periodic — its 6 echo bolts trigger on
+  ability cast, not basic attack, and don't fit the on-hit shape.
+  Marking defensive_only with the "ability-bound" note is correct.
+- Don't try to scale Wit's End or Trinity Force off `ap` — both are
+  AD on-hits, no AP scaling in the live patch. The new `ap` field is
+  for **AP-scaling** procs only.
+- Don't bump `CoverageCountTests` floor past 47 until the next batch
+  lands — same logic as s55. Future batches keep raising the floor.
+
+**Activation:** Engine on :8893 already at 0.10.0 (this session
+restarted it). No further action needed.
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true (no Legion main-RC restart this session; only the
+RC-DaemonSlayer scheduled task was bounced). Engine on :8893 = 0.10.0
+live. LCU phase=None (no game in progress). Working tree clean except
+runtime `data/ratings/last_*.json` mutations.
+
+**Operational backlog (carried + new):**
+- All s54/s55 backlog items unchanged: gamepc_boot.ps1 `py → python.exe`
+  patch; bridge auto-action lane false-positive on deploy prompts.
+- **Magic pen layer** (carried from s55) — symmetric to armor pen
+  pipeline. Add `magic_pen_pct` / `magic_pen_flat` fields to ItemEffect
+  + `effective_target_mr()` mirror. Unlocks Void Staff (3135),
+  Cryptbloom (3137), Sorcerer's Shoes (3020), Shadowflame's pen stat
+  (4645). Schema bump = minor version. Same `EffectiveTargetArmorTests`
+  pattern reused. **Top of next-session ranking — closest unlock to
+  this batch's AP items.**
+- **Riftmaker HP→AP cross-item derivation** (NEW) — would need a
+  2nd-pass in `engine.build_champion` so `bonus_hp * 0.02` lands in
+  `stats["ap"]`. Single-item effect but architecturally invasive.
+  Defer until user feedback flags AP-bruiser build mis-rankings.
+
+**Next-session candidates (ranked):**
+1. **Phase 4 batch 4: magic pen layer** (carried from s55 — moved up
+   from #3 to #1 because it directly extends this session's AP work
+   and unlocks 4 well-known AP items). Schema bump (0.10.0 → 0.11.0).
+   ~2-4 hour scope; mirrors `effective_target_armor` exactly.
+2. **First draft visual verify of P8-5.5** (carried from s54+s55).
+   Still blocked on operator entering a draft queue (400/420/430/440).
+3. **gamepc_boot.ps1 `py → python.exe` patch** (carried). 1-line
+   matching `project_rc_patchrefresh_fixed.md`.
+4. **P8-7 E2E push-to-League integration test** (carried from s53).
+   Needs actual draft queue.
+5. **Activate arena augment v2 in production** (carried from s50).
+   Needs arena game.
+6. **Riftmaker HP→AP cross-derivation** (NEW; defer per above).
