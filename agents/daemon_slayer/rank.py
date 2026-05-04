@@ -236,6 +236,7 @@ def rank_items(
     include_components: bool = False,
     only_item_ids: Optional[Iterable[str | int]] = None,
     sort_by: str = "delta",
+    augments: Optional[Iterable] = None,
 ) -> RankResult:
     """Rank items by DPS contribution when added to ``current_item_ids``.
 
@@ -279,6 +280,7 @@ def rank_items(
         target_armor=target_armor,
         target_mr=target_mr,
         phase=phase,
+        augments=augments,
     )
 
     candidates = _filter_candidates(
@@ -303,6 +305,7 @@ def rank_items(
                 target_armor=target_armor,
                 target_mr=target_mr,
                 phase=phase,
+                augments=augments,
             )
         except (KeyError, ValueError):
             continue

@@ -239,13 +239,14 @@ def _route_dps(body: dict) -> dict:
     target_armor = _opt_float(body, "target_armor", 0.0)
     target_mr = _opt_float(body, "target_mr", 0.0)
     phase = _opt_str(body, "phase")
+    augments = _coerce_str_list(body.get("augments"), "augments")
     if phase is not None and phase not in ("early", "mid", "late"):
         raise _ApiError(400, f"phase: must be early|mid|late, got {phase!r}")
     try:
         result = compute_dps(snap, champion_id=champion, level=level,
                              item_ids=items, mode=mode,
                              target_armor=target_armor, target_mr=target_mr,
-                             phase=phase)
+                             phase=phase, augments=augments)
     except KeyError as e:
         raise _ApiError(404, str(e))
     except ValueError as e:
@@ -262,6 +263,7 @@ def _route_rank(body: dict) -> dict:
     target_armor = _opt_float(body, "target_armor", 0.0)
     target_mr = _opt_float(body, "target_mr", 0.0)
     phase = _opt_str(body, "phase")
+    augments = _coerce_str_list(body.get("augments"), "augments")
     if phase is not None and phase not in ("early", "mid", "late"):
         raise _ApiError(400, f"phase: must be early|mid|late, got {phase!r}")
     budget = _opt_int(body, "budget", None)
@@ -286,6 +288,7 @@ def _route_rank(body: dict) -> dict:
             budget=budget, slot_count=slot_count, top_n=top_n,
             include_components=include_components,
             only_item_ids=only_ids, sort_by=sort_by,
+            augments=augments,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
