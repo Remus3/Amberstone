@@ -59,12 +59,21 @@ LOLMATH_ROOT = "https://lolmath.net/"
 USER_AGENT = "RiotCommander/DaemonSlayer-extract/1.0"
 
 # Markers used to identify the right chunk among lolmath's ~20 chunks.
-# `statPreference:` is the strongest signal — it appears 170+ times in the
-# scenarios chunk and zero times anywhere else. Several other chunks contain
-# the cooldown table or champion-name-keyed JSON, but only the scenarios chunk
-# defines per-champion playstyle priors.
+# `statPreference:` is the strongest signal for the scenarios chunk — appears
+# 170+ times there, zero anywhere else. The data chunk (Phase 1.5) is a
+# separate ~1.5MB chunk holding 12 JSON.parse blocks; `aramDamageTaken` is
+# its strongest anchor (172 hits, one per champion).
 SCENARIO_CHUNK_ANCHOR = "statPreference:"
+DATA_CHUNK_ANCHOR = "aramDamageTaken"
 COOLDOWN_PAYLOAD_ANCHOR = '{"Aatrox":{"Q":'
+
+# Anchors for the three Phase 1.5 JSON.parse payloads inside the data chunk.
+# Each must appear inside the first 80 chars of its block's payload (the
+# `_extract_json_parse_string` window), and must NOT collide with any earlier
+# block's first 80 chars — verified 2026-05-03.
+ARAM_MODIFIERS_ANCHOR = "aramDamageTaken"
+DAMAGE_DISTRIBUTION_ANCHOR = '"trued":'
+SKILL_ORDER_ANCHOR = '["Q","E","W"'
 
 LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 logging.basicConfig(
@@ -106,58 +115,88 @@ def _atomic_write_text(path: Path, content: str) -> None:
 
 # ─── Chunk discovery ─────────────────────────────────────────────────────────
 
-def discover_chunk_url(override: str | None = None) -> str:
-    """Locate the lolmath JS chunk containing champion/scenario data.
+_CHUNK_BODIES: dict[str, str] = {}  # url → body (populated by discover_chunks)
 
-    lolmath.net is a Next.js SPA whose chunk filenames are content-hashed
-    (currently ``14.ejgq2van4b.js``). The hash rotates on rebuild, so we
-    enumerate every script tag in the root HTML and probe each chunk's
-    head for the cooldown-table anchor.
+
+def fetch_chunk(url: str) -> str:
+    if url in _CHUNK_BODIES:
+        return _CHUNK_BODIES[url]
+    body = _fetch_text(url)
+    _CHUNK_BODIES[url] = body
+    return body
+
+
+def discover_chunks(scenario_override: str | None = None,
+                    data_override: str | None = None) -> tuple[str, str]:
+    """Locate the lolmath scenarios + data chunks in a single enumeration pass.
+
+    lolmath.net is a Next.js SPA whose chunk filenames are content-hashed; the
+    hash rotates on rebuild. We enumerate every script tag in the root HTML,
+    fetch each chunk once, and pick the highest-scoring chunk per anchor:
+
+      * scenarios chunk: ``statPreference:`` (175 hits in scenarios chunk, 0 elsewhere)
+      * data chunk:      ``aramDamageTaken`` (172 hits in data chunk, 0 elsewhere)
+
+    Bodies are cached in ``_CHUNK_BODIES`` keyed by URL so subsequent
+    ``fetch_chunk`` calls don't refetch.
+
+    Returns ``(scenarios_url, data_url)``. Raises if either chunk is missing.
     """
-    if override:
-        log.info("chunk URL override: %s", override)
-        return override
+    # Honor full override pair without enumerating.
+    if scenario_override and data_override:
+        fetch_chunk(scenario_override)
+        fetch_chunk(data_override)
+        log.info("chunk URL overrides: scenarios=%s data=%s",
+                 scenario_override, data_override)
+        return scenario_override, data_override
 
     html = _fetch_text(LOLMATH_ROOT)
-    # Find every /_next/static/chunks/<id>.<hash>.js reference.
     chunks = sorted(set(re.findall(r"/_next/static/chunks/([^\"'\s>]+\.js)", html)))
     log.info("found %d chunk references on lolmath.net root", len(chunks))
 
-    candidates = []  # (score, url, body)
+    scenarios_best: tuple[int, str, str] | None = None  # (score, url, relpath)
+    data_best: tuple[int, str, str] | None = None
     for relpath in chunks:
         url = "https://lolmath.net/_next/static/chunks/" + relpath
         try:
-            body = _fetch_text(url)
+            body = fetch_chunk(url)
         except Exception as e:
             log.warning("  chunk fetch failed %s: %s", relpath, e)
             continue
-        score = body.count(SCENARIO_CHUNK_ANCHOR)
-        if score > 0:
-            candidates.append((score, url, body, relpath))
+        s_score = body.count(SCENARIO_CHUNK_ANCHOR)
+        d_score = body.count(DATA_CHUNK_ANCHOR)
+        if s_score > 0 and (scenarios_best is None or s_score > scenarios_best[0]):
+            scenarios_best = (s_score, url, relpath)
+        if d_score > 0 and (data_best is None or d_score > data_best[0]):
+            data_best = (d_score, url, relpath)
 
-    if not candidates:
+    if scenario_override:
+        s_url = scenario_override
+        fetch_chunk(s_url)
+    elif scenarios_best is None:
         raise RuntimeError(
             f"no chunk on lolmath.net contains {SCENARIO_CHUNK_ANCHOR!r}; "
             "lolmath may have changed structure"
         )
+    else:
+        score, s_url, relpath = scenarios_best
+        log.info("scenarios chunk found: %s (%d bytes, %d %s hits)",
+                 relpath, len(_CHUNK_BODIES[s_url]), score, SCENARIO_CHUNK_ANCHOR)
 
-    # Highest score wins — the "real" scenarios chunk has 170+ hits while
-    # spurious matches (a Redux handler param named championKey, etc.) are 0.
-    candidates.sort(key=lambda t: t[0], reverse=True)
-    score, url, body, relpath = candidates[0]
-    log.info("scenarios chunk found: %s (%d bytes, %d %s hits)",
-             relpath, len(body), score, SCENARIO_CHUNK_ANCHOR)
-    _CHUNK_CACHE["text"] = body
-    return url
+    if data_override:
+        d_url = data_override
+        fetch_chunk(d_url)
+    elif data_best is None:
+        raise RuntimeError(
+            f"no chunk on lolmath.net contains {DATA_CHUNK_ANCHOR!r}; "
+            "lolmath may have changed structure"
+        )
+    else:
+        score, d_url, relpath = data_best
+        log.info("data chunk found: %s (%d bytes, %d %s hits)",
+                 relpath, len(_CHUNK_BODIES[d_url]), score, DATA_CHUNK_ANCHOR)
 
-
-_CHUNK_CACHE: dict[str, str] = {}
-
-
-def fetch_chunk(url: str) -> str:
-    if "text" in _CHUNK_CACHE:
-        return _CHUNK_CACHE["text"]
-    return _fetch_text(url)
+    return s_url, d_url
 
 
 # ─── Module slicing within the Turbopack chunk ────────────────────────────────
@@ -433,6 +472,7 @@ def _parse_top_level(bindings: list[TopLevelBinding]) -> dict[str, Any]:
 
 @dataclass
 class LolmathExtract:
+    # Sourced from the scenarios chunk:
     cooldowns: dict[str, dict[str, list[float | None]]]
     roles: dict[str, list[str]]
     ratings: dict[str, dict[str, Any]]
@@ -440,6 +480,12 @@ class LolmathExtract:
     scenarios: dict[str, list[dict]]   # championKey → list of scenario records
     chunk_url: str
     chunk_bytes: int
+    # Sourced from the data chunk (Phase 1.5):
+    aram_modifiers: dict[str, dict[str, float]]      # DDragon-id → modifier dict
+    damage_distribution: dict[str, dict[str, float]]  # DDragon-id → {physical, magical, trued}
+    skill_orders: dict[str, list[str]]                # DDragon-id → ["Q","E","W",...]
+    data_chunk_url: str
+    data_chunk_bytes: int
 
 
 def extract_from_chunk(chunk: str, chunk_url: str) -> LolmathExtract:
@@ -511,7 +557,47 @@ def extract_from_chunk(chunk: str, chunk_url: str) -> LolmathExtract:
         scenarios=scenarios,
         chunk_url=chunk_url,
         chunk_bytes=len(chunk),
+        aram_modifiers={},
+        damage_distribution={},
+        skill_orders={},
+        data_chunk_url="",
+        data_chunk_bytes=0,
     )
+
+
+# ─── Phase 1.5: data chunk extraction ────────────────────────────────────────
+
+def extract_data_chunk(chunk: str, chunk_url: str) -> dict[str, Any]:
+    """Pull the three Phase 1.5 datasets from the data chunk.
+
+    The data chunk ships 12 ``JSON.parse('...')`` blocks. We only need three:
+      * ARAM per-champion modifier table (block 0)
+      * physical/magical/trued damage distribution (block 5)
+      * canonical skill-up order (block 9)
+
+    All three are keyed by DDragon id (``Aatrox``, ``MonkeyKing``, etc.) — no
+    lolmath alias dance needed. Returned dict has keys ``aram_modifiers``,
+    ``damage_distribution``, ``skill_orders``, ``data_chunk_url``,
+    ``data_chunk_bytes``.
+    """
+    aram = _extract_json_parse_string(chunk, ARAM_MODIFIERS_ANCHOR)
+    damage = _extract_json_parse_string(chunk, DAMAGE_DISTRIBUTION_ANCHOR)
+    skills = _extract_json_parse_string(chunk, SKILL_ORDER_ANCHOR)
+
+    if not isinstance(aram, dict) or not isinstance(damage, dict) or not isinstance(skills, dict):
+        raise RuntimeError("data chunk anchors did not yield dict payloads")
+
+    log.info(
+        "data chunk extract: aram=%d damage=%d skills=%d",
+        len(aram), len(damage), len(skills),
+    )
+    return {
+        "aram_modifiers": aram,
+        "damage_distribution": damage,
+        "skill_orders": skills,
+        "data_chunk_url": chunk_url,
+        "data_chunk_bytes": len(chunk),
+    }
 
 
 # ─── DDragon ─────────────────────────────────────────────────────────────────
@@ -567,7 +653,7 @@ def _championkey_to_ddragon_id(key: str, ddragon_ids: set[str]) -> str | None:
 
 
 def build_champions_payload(lolmath: LolmathExtract, dd: DDragonSnapshot) -> dict:
-    """Merge DDragon champion data with lolmath cooldowns/roles/ratings."""
+    """Merge DDragon champion data with lolmath cooldowns/roles/ratings + Phase 1.5 fields."""
     out: dict[str, Any] = {"version": dd.version, "data": {}}
     ddids = set(dd.champions.keys())
 
@@ -587,9 +673,12 @@ def build_champions_payload(lolmath: LolmathExtract, dd: DDragonSnapshot) -> dic
             "info": dd_record.get("info", {}),
             "partype": dd_record.get("partype"),
             "lolmath": {
-                "cooldowns": cooldown,                  # {Q: [...], W: [...], E: [...], R: [...]}
-                "roles": roles,                          # ["FIGHTER", "TANK"]
-                "ratings": ratings,                      # {healing, shielding}
+                "cooldowns": cooldown,                                       # {Q: [...], W: [...], E: [...], R: [...]}
+                "roles": roles,                                               # ["FIGHTER", "TANK"]
+                "ratings": ratings,                                           # {healing, shielding}
+                "aram_modifiers": lolmath.aram_modifiers.get(champ_id),       # {aramDamageTaken, aramDamageDealt, ...}
+                "damage_distribution": lolmath.damage_distribution.get(champ_id),  # {physical, magical, trued}
+                "skill_order": lolmath.skill_orders.get(champ_id),            # ["Q","E","W",...]  (length 18)
             },
         }
 
@@ -634,7 +723,7 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
                    patch_dir: Path) -> dict:
     return {
         "engine": "daemon_slayer",
-        "phase": 1,
+        "phase": 1.5,
         "extracted_at": time.strftime("%Y-%m-%dT%H:%M:%S%z") or time.strftime("%Y-%m-%dT%H:%M:%S"),
         "ddragon_version": dd.version,
         "ddragon_champion_count": len(dd.champions),
@@ -643,8 +732,10 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
             "ddragon_versions": f"{DDRAGON_BASE}/api/versions.json",
             "ddragon_champions": f"{DDRAGON_BASE}/cdn/{dd.version}/data/en_US/champion.json",
             "ddragon_items": f"{DDRAGON_BASE}/cdn/{dd.version}/data/en_US/item.json",
-            "lolmath_chunk": lolmath.chunk_url,
-            "lolmath_chunk_bytes": lolmath.chunk_bytes,
+            "lolmath_scenarios_chunk": lolmath.chunk_url,
+            "lolmath_scenarios_chunk_bytes": lolmath.chunk_bytes,
+            "lolmath_data_chunk": lolmath.data_chunk_url,
+            "lolmath_data_chunk_bytes": lolmath.data_chunk_bytes,
         },
         "lolmath_counts": {
             "cooldowns": len(lolmath.cooldowns),
@@ -652,6 +743,9 @@ def build_manifest(lolmath: LolmathExtract, dd: DDragonSnapshot,
             "ratings": len(lolmath.ratings),
             "lane_positions": len(lolmath.lane_positions),
             "scenarios": len(lolmath.scenarios),
+            "aram_modifiers": len(lolmath.aram_modifiers),
+            "damage_distribution": len(lolmath.damage_distribution),
+            "skill_orders": len(lolmath.skill_orders),
         },
         "outputs": {
             "champions": str((patch_dir / "champions.json").relative_to(ROOT)),
@@ -668,7 +762,9 @@ def main() -> int:
     ap.add_argument("--force", action="store_true",
                     help="re-extract even if the patch directory already exists")
     ap.add_argument("--chunk-url", default=None,
-                    help="bypass autodiscovery and fetch this URL for the data chunk")
+                    help="bypass autodiscovery and fetch this URL for the scenarios chunk")
+    ap.add_argument("--data-chunk-url", default=None,
+                    help="bypass autodiscovery and fetch this URL for the data chunk (Phase 1.5)")
     ap.add_argument("--patch", default=None,
                     help="override patch label for the output directory (default: DDragon current)")
     args = ap.parse_args()
@@ -689,9 +785,16 @@ def main() -> int:
             return 0
         log.info("patch dir %s exists but no manifest — re-extracting", patch_dir)
 
-    chunk_url = discover_chunk_url(args.chunk_url)
-    chunk = fetch_chunk(chunk_url)
-    lolmath = extract_from_chunk(chunk, chunk_url)
+    scen_url, data_url = discover_chunks(args.chunk_url, args.data_chunk_url)
+    scen_chunk = fetch_chunk(scen_url)
+    data_chunk = fetch_chunk(data_url)
+    lolmath = extract_from_chunk(scen_chunk, scen_url)
+    data_extract = extract_data_chunk(data_chunk, data_url)
+    lolmath.aram_modifiers = data_extract["aram_modifiers"]
+    lolmath.damage_distribution = data_extract["damage_distribution"]
+    lolmath.skill_orders = data_extract["skill_orders"]
+    lolmath.data_chunk_url = data_extract["data_chunk_url"]
+    lolmath.data_chunk_bytes = data_extract["data_chunk_bytes"]
 
     champions_payload = build_champions_payload(lolmath, dd)
     items_payload = build_items_payload(dd)

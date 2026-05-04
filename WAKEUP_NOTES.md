@@ -1412,3 +1412,75 @@ Math hand-verified across hp/armor/mr/ad/as/ms/crit/lifesteal at lvl
 **Bridge state at session end:** RC PID 9740 alive, mode=client,
 no game in progress. No bridge activity needed this session.
 
+---
+
+## s39 hand-off — 2026-05-03 (Daemon Slayer Phase 1.5 shipped)
+
+One arc: harvested the three Phase 1.5 datasets from lolmath's data chunk
+(`0hjv4iwvdtcrm.js`, 1.58MB) and merged them into the per-champion
+`lolmath` block in `champions.json`. 172/172 coverage across all three
+new fields.
+
+**What's new per champion (under `lolmath`):**
+- `aram_modifiers` — `{aramDamageTaken, aramDamageDealt, aramHealing,
+  aramShielding, aramTenacity, aramAbilityHaste, aramAttackSpeed}`
+- `damage_distribution` — `{physical, magical, trued}` (sums to ~1.0)
+- `skill_order` — 18-entry list of `Q`/`W`/`E`/`R` strings
+
+**Extractor changes (`tools/daemon_slayer_extract.py`):**
+- `discover_chunk_url` → `discover_chunks(scen_override, data_override)`
+  returns both URLs in a single enumeration pass; URL-keyed body cache
+  (`_CHUNK_BODIES`) avoids refetching during dual-anchor scoring.
+- New `extract_data_chunk(chunk, url)` reuses `_extract_json_parse_string`
+  with anchors `aramDamageTaken` / `"trued":` / `["Q","E","W"` (verified
+  unique in payload[:80] across all 12 JSON.parse blocks).
+- `LolmathExtract` extended with 5 new fields; `build_champions_payload`
+  emits the three sub-fields under each `lolmath` block.
+- Manifest bumped to `phase: 1.5`, sources split into
+  `lolmath_scenarios_chunk` + `lolmath_data_chunk`, counts include the
+  three new datasets.
+- New CLI flag `--data-chunk-url` for autodiscovery override.
+
+**Validation:**
+- All 33 engine tests still green (data_loader passthroughs new fields).
+- Spot-check Aatrox/Yunara/Wukong/Renata/Nunu/KSante — values match
+  lolmath's live UI (Yunara `aramDamageDealt: 0` reflects current launch
+  nerf, Renata `aramDamageTaken: 1.05` reflects current nerf, etc.).
+- Coverage: 0 missing across 172 champions for all three fields.
+
+**Surprise findings:**
+- Block 5 (damage distribution) keys are DDragon ids (`Aatrox`,
+  `MonkeyKing`, `KSante`) — no lolmath alias dance needed for the data
+  chunk. The alias map (`wukong → MonkeyKing`, `nunuWillump → Nunu`,
+  `renataGlasc → Renata`) only applies to the scenarios chunk.
+- Pre-existing `scenarios.json` churns on re-extract because the
+  two-pass resolver's parse order is non-deterministic across runs.
+  Functionally identical content; cosmetic diff. Not Phase 1.5's bug.
+
+**Commit:** `feat(daemon-slayer): Phase 1.5 — ARAM modifiers, damage
+distribution, skill orders`.
+
+**Things tomorrow-you should NOT redo:**
+- Don't re-probe the data chunk's JSON.parse blocks. The 12-block
+  topology + the 3 anchors are pinned in
+  `reference_lolmath_extract_topology.md` and the extractor constants
+  (`ARAM_MODIFIERS_ANCHOR`, `DAMAGE_DISTRIBUTION_ANCHOR`,
+  `SKILL_ORDER_ANCHOR`).
+- Don't add new champion sub-fields by editing
+  `build_champions_payload` ad-hoc — extend `LolmathExtract` + the
+  data-chunk extractor cleanly, mirroring the Phase 1.5 pattern.
+- The scenarios.json churn on re-extract is cosmetic. Don't chase it
+  as a bug; if determinism matters, sort `byDDragonId` keys at emit
+  time. Not currently load-bearing.
+
+**Open for next sessions:**
+- **Daemon Slayer Phase 2 step 2**: mode-aware DPS using
+  `snapshot.scenarios(champ_id)` weights × Phase 1.5
+  `aram_modifiers` for ARAM. Skill order can drive realistic
+  ability-rotation simulation. Damage distribution informs
+  armor-vs-MR build prioritization. 3-5 days per design.
+- All s34/s35/s36/s37/s38 carryover items still apply.
+
+**Bridge state at session end:** RC PID 9740 alive, mode=client,
+no game in progress. Bridge unused this session.
+

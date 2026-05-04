@@ -79,7 +79,41 @@
         "ratings": {
           "healing": 10,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.86289,
+          "magical": 0.0816,
+          "trued": 0.04551
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Ahri": {
@@ -162,7 +196,41 @@
         "ratings": {
           "healing": 4,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 0.9,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.06787,
+          "magical": 0.71379,
+          "trued": 0.20834
+        },
+        "skill_order": [
+          "W",
+          "Q",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Akali": {
@@ -243,7 +311,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1.2,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.06115,
+          "magical": 0.85494,
+          "trued": 0.07391
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Akshan": {
@@ -326,7 +428,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 2
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.8000700000000001,
+          "magical": 0.13308,
+          "trued": 0.05685
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "Q",
+          "W",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Alistar": {
@@ -409,7 +545,41 @@
         "ratings": {
           "healing": 1,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 0.8,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.14228,
+          "magical": 0.76393,
+          "trued": 0.08378999999999999
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Ambessa": {
@@ -492,7 +662,41 @@
         "ratings": {
           "healing": 8,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.92216,
+          "magical": 0.01233,
+          "trued": 0.0555
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Amumu": {
@@ -575,7 +779,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.08471000000000001,
+          "magical": 0.7729,
+          "trued": 0.13239
+        },
+        "skill_order": [
+          "W",
+          "E",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Anivia": {
@@ -656,7 +894,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.07124,
+          "magical": 0.8621899999999999,
+          "trued": 0.05657
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "E",
+          "W",
+          "E",
+          "R",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Annie": {
@@ -739,7 +1011,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 2
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 0.9,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.03689,
+          "magical": 0.90201,
+          "trued": 0.05109
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Aphelios": {
@@ -820,7 +1126,41 @@
         "ratings": {
           "healing": 4,
           "shielding": 3
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.92861,
+          "magical": 0.04672,
+          "trued": 0.01466
+        },
+        "skill_order": [
+          "E",
+          "R",
+          "E",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          null,
+          null,
+          "E",
+          null,
+          "Q",
+          "E",
+          null,
+          "E",
+          null,
+          "E",
+          "E"
+        ]
       }
     },
     "Ashe": {
@@ -903,7 +1243,41 @@
         "ratings": {
           "healing": 4,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.87196,
+          "magical": 0.10293,
+          "trued": 0.015109999999999998
+        },
+        "skill_order": [
+          "W",
+          "Q",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "Q",
+          "W",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "AurelionSol": {
@@ -984,7 +1358,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.01072,
+          "magical": 0.94812,
+          "trued": 0.03116
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Aurora": {
@@ -1067,7 +1475,41 @@
         "ratings": {
           "healing": 1,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 10,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.05924,
+          "magical": 0.8892,
+          "trued": 0.04157
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Azir": {
@@ -1150,7 +1592,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 2
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 20,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.03036,
+          "magical": 0.94632,
+          "trued": 0.01331
+        },
+        "skill_order": [
+          "W",
+          "Q",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "Q",
+          "W",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Bard": {
@@ -1233,7 +1709,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.85,
+          "aramDamageDealt": 1.15,
+          "aramHealing": 1.2,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.27353,
+          "magical": 0.6234000000000001,
+          "trued": 0.09307
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Belveth": {
@@ -1314,7 +1824,41 @@
         "ratings": {
           "healing": 5,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1.2,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.69824,
+          "magical": 0.11513,
+          "trued": 0.17663
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Blitzcrank": {
@@ -1397,7 +1941,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 2
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.28794000000000003,
+          "magical": 0.61413,
+          "trued": 0.08794
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Brand": {
@@ -1480,7 +2058,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.1,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": -10,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.03555,
+          "magical": 0.92022,
+          "trued": 0.03424
+        },
+        "skill_order": [
+          "W",
+          "E",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "E",
+          "W",
+          "E",
+          "R",
+          "E",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "Q"
+        ]
       }
     },
     "Braum": {
@@ -1563,7 +2175,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.18163,
+          "magical": 0.7537600000000001,
+          "trued": 0.054619999999999995
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Briar": {
@@ -1646,7 +2292,41 @@
         "ratings": {
           "healing": 7,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1.15,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.8236,
+          "magical": 0.09285,
+          "trued": 0.07355
+        },
+        "skill_order": [
+          "W",
+          "E",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "Q",
+          "W",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Caitlyn": {
@@ -1727,7 +2407,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.94003,
+          "magical": 0.03157,
+          "trued": 0.01841
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Camille": {
@@ -1810,7 +2524,41 @@
         "ratings": {
           "healing": 5,
           "shielding": 4
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1.2,
+          "aramShielding": 1.1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 10,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.61336,
+          "magical": 0.053,
+          "trued": 0.32364
+        },
+        "skill_order": [
+          "W",
+          "Q",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Cassiopeia": {
@@ -1891,7 +2639,41 @@
         "ratings": {
           "healing": 4,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.02055,
+          "magical": 0.95427,
+          "trued": 0.01518
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Chogath": {
@@ -1974,7 +2756,41 @@
         "ratings": {
           "healing": 1,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.16249,
+          "magical": 0.61175,
+          "trued": 0.21576
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Corki": {
@@ -2057,7 +2873,41 @@
         "ratings": {
           "healing": 3,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.9,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": -20,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.64539,
+          "magical": 0.2042,
+          "trued": 0.14042
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "W",
+          "W",
+          "W",
+          "R",
+          "W"
+        ]
       }
     },
     "Darius": {
@@ -2140,7 +2990,41 @@
         "ratings": {
           "healing": 6,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.7639100000000001,
+          "magical": 0.00428,
+          "trued": 0.22181
+        },
+        "skill_order": [
+          "W",
+          "Q",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Diana": {
@@ -2223,7 +3107,41 @@
         "ratings": {
           "healing": 3,
           "shielding": 6
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.10174,
+          "magical": 0.81733,
+          "trued": 0.07094
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Draven": {
@@ -2304,7 +3222,41 @@
         "ratings": {
           "healing": 3,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.97052,
+          "magical": 0.00502,
+          "trued": 0.01446
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "DrMundo": {
@@ -2387,7 +3339,41 @@
         "ratings": {
           "healing": 10,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.9,
+          "aramHealing": 0.9,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.45311,
+          "magical": 0.51086,
+          "trued": 0.02602
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Ekko": {
@@ -2470,7 +3456,41 @@
         "ratings": {
           "healing": 3,
           "shielding": 2
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1.1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1.2,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.11158,
+          "magical": 0.78579,
+          "trued": 0.09264
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Elise": {
@@ -2553,7 +3573,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.9,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1.1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.07192,
+          "magical": 0.83489,
+          "trued": 0.08319000000000001
+        },
+        "skill_order": [
+          "W",
+          "Q",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Evelynn": {
@@ -2636,7 +3690,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.9,
+          "aramDamageDealt": 1.1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1.2,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.02898,
+          "magical": 0.89846,
+          "trued": 0.06256
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Ezreal": {
@@ -2719,7 +3807,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.6818899999999999,
+          "magical": 0.29170999999999997,
+          "trued": 0.016399999999999998
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Fiddlesticks": {
@@ -2802,7 +3924,41 @@
         "ratings": {
           "healing": 7,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.01385,
+          "magical": 0.91702,
+          "trued": 0.05912
+        },
+        "skill_order": [
+          "W",
+          "E",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "Q",
+          "W",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Fiora": {
@@ -2885,7 +4041,41 @@
         "ratings": {
           "healing": 8,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.60645,
+          "magical": 0.04991,
+          "trued": 0.33364
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Fizz": {
@@ -2968,7 +4158,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1.1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.12358,
+          "magical": 0.7747799999999999,
+          "trued": 0.09165
+        },
+        "skill_order": [
+          "E",
+          "W",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "W",
+          "E",
+          "W",
+          "R",
+          "W",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "Q"
+        ]
       }
     },
     "Galio": {
@@ -3051,7 +4275,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.9,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.02565,
+          "magical": 0.93169,
+          "trued": 0.03266
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Gangplank": {
@@ -3132,7 +4390,41 @@
         "ratings": {
           "healing": 3,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.68293,
+          "magical": 0.14403,
+          "trued": 0.16304
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Garen": {
@@ -3215,7 +4507,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 2
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.7502800000000001,
+          "magical": 0.00315,
+          "trued": 0.23658
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Gnar": {
@@ -3298,7 +4624,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.8007500000000001,
+          "magical": 0.17042000000000002,
+          "trued": 0.01883
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Gragas": {
@@ -3381,7 +4741,41 @@
         "ratings": {
           "healing": 7,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.07629,
+          "magical": 0.87005,
+          "trued": 0.04366
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Graves": {
@@ -3462,7 +4856,41 @@
         "ratings": {
           "healing": 4,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.85319,
+          "magical": 0.03541,
+          "trued": 0.1014
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Gwen": {
@@ -3543,7 +4971,41 @@
         "ratings": {
           "healing": 7,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1.02,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.12561,
+          "magical": 0.70298,
+          "trued": 0.16140999999999997
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Hecarim": {
@@ -3626,7 +5088,41 @@
         "ratings": {
           "healing": 5,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.9,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1.2,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 10,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.8050799999999999,
+          "magical": 0.15144,
+          "trued": 0.033479999999999996
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Heimerdinger": {
@@ -3709,7 +5205,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.1,
+          "aramDamageDealt": 0.9,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.03948,
+          "magical": 0.92815,
+          "trued": 0.02237
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Hwei": {
@@ -3792,7 +5322,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 1
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.03709,
+          "magical": 0.93995,
+          "trued": 0.01296
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Illaoi": {
@@ -3875,7 +5439,41 @@
         "ratings": {
           "healing": 8,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 0.8,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.94271,
+          "magical": 0.03179,
+          "trued": 0.01549
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "E",
+          "E",
+          "R",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Irelia": {
@@ -3958,7 +5556,41 @@
         "ratings": {
           "healing": 9,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 20,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.70542,
+          "magical": 0.24075,
+          "trued": 0.04384
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Ivern": {
@@ -4041,7 +5673,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 8
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 0.9,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.26748,
+          "magical": 0.6336200000000001,
+          "trued": 0.08891
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Janna": {
@@ -4124,7 +5790,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 8
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 0.9,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.13683,
+          "magical": 0.79597,
+          "trued": 0.057190000000000005
+        },
+        "skill_order": [
+          "W",
+          "Q",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "E",
+          "W",
+          "E",
+          "R",
+          "E",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "Q"
+        ]
       }
     },
     "JarvanIV": {
@@ -4207,7 +5907,41 @@
         "ratings": {
           "healing": 5,
           "shielding": 5
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.83355,
+          "magical": 0.07699,
+          "trued": 0.07946
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Jax": {
@@ -4288,7 +6022,41 @@
         "ratings": {
           "healing": 4,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.97,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.50873,
+          "magical": 0.43323,
+          "trued": 0.04804
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "W",
+          "W",
+          "R",
+          "W",
+          "E",
+          "W",
+          "E",
+          "R",
+          "E",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "Q"
+        ]
       }
     },
     "Jayce": {
@@ -4371,7 +6139,41 @@
         "ratings": {
           "healing": 3,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.75944,
+          "magical": 0.19075,
+          "trued": 0.03981
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "W",
+          "E",
+          "E",
+          "E",
+          "E",
+          "E"
+        ]
       }
     },
     "Jhin": {
@@ -4454,7 +6256,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.91897,
+          "magical": 0.0555,
+          "trued": 0.01553
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Jinx": {
@@ -4535,7 +6371,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.9,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.94258,
+          "magical": 0.033769999999999994,
+          "trued": 0.01365
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Kaisa": {
@@ -4618,7 +6488,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 2
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.9,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.56412,
+          "magical": 0.41123,
+          "trued": 0.014650000000000002
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Kalista": {
@@ -4699,7 +6603,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.9,
+          "aramDamageDealt": 1.1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.82856,
+          "magical": 0.10406,
+          "trued": 0.05738000000000001
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Karma": {
@@ -4782,7 +6720,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 10
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.08247,
+          "magical": 0.87601,
+          "trued": 0.03152
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Karthus": {
@@ -4863,7 +6835,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.93,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.006860000000000001,
+          "magical": 0.9152,
+          "trued": 0.06794
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "Q",
+          "W",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Kassadin": {
@@ -4946,7 +6952,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.13577,
+          "magical": 0.78833,
+          "trued": 0.0659
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "E",
+          "E",
+          "R",
+          "E",
+          "W",
+          "E",
+          "W",
+          "R",
+          "W",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "Q"
+        ]
       }
     },
     "Katarina": {
@@ -5029,7 +7069,41 @@
         "ratings": {
           "healing": 4,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1.2,
+          "aramAbilityHaste": 10,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.19515,
+          "magical": 0.7216899999999999,
+          "trued": 0.07316
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Kayle": {
@@ -5112,7 +7186,41 @@
         "ratings": {
           "healing": 4,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.1,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.24,
+          "magical": 0.73262,
+          "trued": 0.01738
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Kayn": {
@@ -5195,7 +7303,41 @@
         "ratings": {
           "healing": 6,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 0.8,
+          "aramShielding": 1,
+          "aramTenacity": 1.2,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.88259,
+          "magical": 0.042649999999999993,
+          "trued": 0.06477000000000001
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Kennen": {
@@ -5276,7 +7418,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.11252,
+          "magical": 0.8394799999999999,
+          "trued": 0.038
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Khazix": {
@@ -5357,7 +7533,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.9,
+          "aramDamageDealt": 1.1,
+          "aramHealing": 1.2,
+          "aramShielding": 1,
+          "aramTenacity": 1.2,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.8211700000000001,
+          "magical": 0.0572,
+          "trued": 0.11163
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "E",
+          "E",
+          "E",
+          "R",
+          "E"
+        ]
       }
     },
     "Kindred": {
@@ -5438,7 +7648,41 @@
         "ratings": {
           "healing": 3,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.9,
+          "aramDamageDealt": 1.1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.75064,
+          "magical": 0.13814,
+          "trued": 0.10122
+        },
+        "skill_order": [
+          "W",
+          "Q",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Kled": {
@@ -5511,7 +7755,41 @@
         "ratings": {
           "healing": 4,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.8692700000000001,
+          "magical": 0.06787,
+          "trued": 0.05286
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "KogMaw": {
@@ -5594,7 +7872,41 @@
         "ratings": {
           "healing": 4,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.1,
+          "aramDamageDealt": 0.92,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.31518999999999997,
+          "magical": 0.57951,
+          "trued": 0.09529
+        },
+        "skill_order": [
+          "W",
+          "Q",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "Q",
+          "W",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "KSante": {
@@ -5677,7 +7989,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 5
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.8268099999999999,
+          "magical": 0.09845,
+          "trued": 0.06474
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Leblanc": {
@@ -5760,7 +8106,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.9,
+          "aramDamageDealt": 1.1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 20,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.05222,
+          "magical": 0.84906,
+          "trued": 0.08872
+        },
+        "skill_order": [
+          "W",
+          "Q",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "Q",
+          "W",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "LeeSin": {
@@ -5843,7 +8223,41 @@
         "ratings": {
           "healing": 6,
           "shielding": 6
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1.1,
+          "aramShielding": 1.2,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.75593,
+          "magical": 0.15397,
+          "trued": 0.0801
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Leona": {
@@ -5926,7 +8340,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.27179,
+          "magical": 0.63944,
+          "trued": 0.07876999999999999
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "W",
+          "W",
+          "R",
+          "W",
+          "E",
+          "W",
+          "E",
+          "R",
+          "E",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "Q"
+        ]
       }
     },
     "Lillia": {
@@ -6009,7 +8457,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.03527,
+          "magical": 0.75752,
+          "trued": 0.19721
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Lissandra": {
@@ -6090,7 +8572,41 @@
         "ratings": {
           "healing": 1,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.04938,
+          "magical": 0.9000900000000001,
+          "trued": 0.04053
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Lucian": {
@@ -6173,7 +8689,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1.2,
+          "aramAbilityHaste": 10,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.85741,
+          "magical": 0.11323,
+          "trued": 0.01936
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Lulu": {
@@ -6256,7 +8806,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 8
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.14672000000000002,
+          "magical": 0.8066500000000001,
+          "trued": 0.03662
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "W",
+          "E",
+          "W",
+          "R",
+          "W",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "Q"
+        ]
       }
     },
     "Lux": {
@@ -6339,7 +8923,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 6
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.1,
+          "aramDamageDealt": 0.9,
+          "aramHealing": 1,
+          "aramShielding": 0.9,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.05143,
+          "magical": 0.8931999999999999,
+          "trued": 0.04537
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Malphite": {
@@ -6422,7 +9040,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.2553,
+          "magical": 0.70203,
+          "trued": 0.03266
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Malzahar": {
@@ -6503,7 +9155,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.1,
+          "aramDamageDealt": 0.9,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.02328,
+          "magical": 0.95097,
+          "trued": 0.01575
+        },
+        "skill_order": [
+          "E",
+          "W",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Maokai": {
@@ -6586,7 +9272,41 @@
         "ratings": {
           "healing": 1,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.1,
+          "aramDamageDealt": 0.85,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.11981,
+          "magical": 0.81485,
+          "trued": 0.05534
+        },
+        "skill_order": [
+          "W",
+          "Q",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "MasterYi": {
@@ -6669,7 +9389,41 @@
         "ratings": {
           "healing": 7,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.6654399999999999,
+          "magical": 0.03903,
+          "trued": 0.28553
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Mel": {
@@ -6752,7 +9506,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": -10,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.056769999999999994,
+          "magical": 0.91634,
+          "trued": 0.016890000000000002
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Milio": {
@@ -6835,7 +9623,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 8
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 0.95,
+          "aramShielding": 0.9,
+          "aramTenacity": 1,
+          "aramAbilityHaste": -10,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.16142,
+          "magical": 0.79338,
+          "trued": 0.0352
+        },
+        "skill_order": [
+          "E",
+          "W",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "W",
+          "E",
+          "W",
+          "R",
+          "W",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "Q"
+        ]
       }
     },
     "MissFortune": {
@@ -6918,7 +9740,41 @@
         "ratings": {
           "healing": 3,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.90071,
+          "magical": 0.05409,
+          "trued": 0.0352
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "MonkeyKing": {
@@ -7001,7 +9857,41 @@
         "ratings": {
           "healing": 3,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.78279,
+          "magical": 0.13956,
+          "trued": 0.06764
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Mordekaiser": {
@@ -7084,7 +9974,41 @@
         "ratings": {
           "healing": 6,
           "shielding": 1
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.02,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.11774,
+          "magical": 0.82393,
+          "trued": 0.048330000000000005
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Morgana": {
@@ -7167,7 +10091,41 @@
         "ratings": {
           "healing": 1,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.1,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.05102,
+          "magical": 0.87751,
+          "trued": 0.06147
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Naafiri": {
@@ -7250,7 +10208,41 @@
         "ratings": {
           "healing": 3,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1.1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 10,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.90241,
+          "magical": 0.00523,
+          "trued": 0.08236
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Nami": {
@@ -7333,7 +10325,41 @@
         "ratings": {
           "healing": 7,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.10781,
+          "magical": 0.85476,
+          "trued": 0.02743
+        },
+        "skill_order": [
+          "W",
+          "E",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "E",
+          "W",
+          "E",
+          "R",
+          "E",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "Q"
+        ]
       }
     },
     "Nasus": {
@@ -7416,7 +10442,41 @@
         "ratings": {
           "healing": 6,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.9,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.73521,
+          "magical": 0.23415,
+          "trued": 0.02065
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Nautilus": {
@@ -7499,7 +10559,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 6
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.1,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.27559,
+          "magical": 0.63744,
+          "trued": 0.07698
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Neeko": {
@@ -7582,7 +10676,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 1
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.06812,
+          "magical": 0.87984,
+          "trued": 0.042039999999999994
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Nidalee": {
@@ -7665,7 +10793,41 @@
         "ratings": {
           "healing": 1,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1.1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.07518,
+          "magical": 0.8137399999999999,
+          "trued": 0.10108
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Nilah": {
@@ -7748,7 +10910,41 @@
         "ratings": {
           "healing": 6,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.95351,
+          "magical": 0.0068200000000000005,
+          "trued": 0.02966
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Nocturne": {
@@ -7831,7 +11027,41 @@
         "ratings": {
           "healing": 4,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.9,
+          "aramDamageDealt": 1.1,
+          "aramHealing": 1.2,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.8410299999999999,
+          "magical": 0.06183,
+          "trued": 0.08714000000000001
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Nunu": {
@@ -7914,7 +11144,41 @@
         "ratings": {
           "healing": 4,
           "shielding": 1
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.9,
+          "aramDamageDealt": 1.1,
+          "aramHealing": 1.1,
+          "aramShielding": 1.2,
+          "aramTenacity": 1.2,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.06346,
+          "magical": 0.87555,
+          "trued": 0.05099
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Olaf": {
@@ -7997,7 +11261,41 @@
         "ratings": {
           "healing": 8,
           "shielding": 6
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.70274,
+          "magical": 0.0032,
+          "trued": 0.28406
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Orianna": {
@@ -8080,7 +11378,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 5
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.052000000000000005,
+          "magical": 0.92754,
+          "trued": 0.01046
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Ornn": {
@@ -8161,7 +11493,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.9,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.33348999999999995,
+          "magical": 0.6391100000000001,
+          "trued": 0.0174
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "Q",
+          "W",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Pantheon": {
@@ -8244,7 +11610,41 @@
         "ratings": {
           "healing": 3,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.88645,
+          "magical": 0.03314,
+          "trued": 0.07041
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Poppy": {
@@ -8327,7 +11727,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 1
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.7962699999999999,
+          "magical": 0.13845000000000002,
+          "trued": 0.05528
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Pyke": {
@@ -8410,7 +11844,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.9,
+          "aramDamageDealt": 1.1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1.2,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.76253,
+          "magical": 0.00145,
+          "trued": 0.22602
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Qiyana": {
@@ -8491,7 +11959,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.9,
+          "aramDamageDealt": 1.15,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1.2,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.81623,
+          "magical": 0.07959,
+          "trued": 0.09417
+        },
+        "skill_order": [
+          "W",
+          "Q",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Quinn": {
@@ -8574,7 +12076,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.9,
+          "aramDamageDealt": 1.1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1.2,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.8781,
+          "magical": 0.02943,
+          "trued": 0.08247
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "W",
+          "W",
+          "R",
+          "W",
+          "Q",
+          "W",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Rakan": {
@@ -8655,7 +12191,41 @@
         "ratings": {
           "healing": 1,
           "shielding": 3
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 10,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.18706,
+          "magical": 0.71899,
+          "trued": 0.08396
+        },
+        "skill_order": [
+          "W",
+          "E",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "E",
+          "W",
+          "E",
+          "R",
+          "E",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "Q"
+        ]
       }
     },
     "Rammus": {
@@ -8736,7 +12306,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.30784,
+          "magical": 0.6413899999999999,
+          "trued": 0.04077
+        },
+        "skill_order": [
+          "W",
+          "Q",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "RekSai": {
@@ -8819,7 +12423,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.9,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.61084,
+          "magical": 0.1369,
+          "trued": 0.24226
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Rell": {
@@ -8902,7 +12540,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 0.9,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.21279,
+          "magical": 0.7045999999999999,
+          "trued": 0.07261000000000001
+        },
+        "skill_order": [
+          "W",
+          "Q",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "E",
+          "W",
+          "E",
+          "R",
+          "E",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "Q"
+        ]
       }
     },
     "Renata": {
@@ -8985,7 +12657,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 4
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.14892,
+          "magical": 0.6114200000000001,
+          "trued": 0.22967
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "W",
+          "E",
+          "W",
+          "R",
+          "W",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "Q"
+        ]
       }
     },
     "Renekton": {
@@ -9068,7 +12774,41 @@
         "ratings": {
           "healing": 4,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1.1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.75859,
+          "magical": 0.18022,
+          "trued": 0.05119
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Rengar": {
@@ -9151,7 +12891,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.92,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1.2,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.8382999999999999,
+          "magical": 0.05107999999999999,
+          "trued": 0.10062
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Riven": {
@@ -9234,7 +13008,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 8
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.92,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.927,
+          "magical": 0.0025900000000000003,
+          "trued": 0.060410000000000005
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Rumble": {
@@ -9317,7 +13125,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 5
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.04012,
+          "magical": 0.90539,
+          "trued": 0.04449
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Ryze": {
@@ -9398,7 +13240,41 @@
         "ratings": {
           "healing": 4,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.044059999999999995,
+          "magical": 0.93582,
+          "trued": 0.01012
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Samira": {
@@ -9481,7 +13357,41 @@
         "ratings": {
           "healing": 7,
           "shielding": 4
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.8606900000000001,
+          "magical": 0.10332,
+          "trued": 0.025990000000000003
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Sejuani": {
@@ -9562,7 +13472,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.55372,
+          "magical": 0.38549,
+          "trued": 0.050789999999999995
+        },
+        "skill_order": [
+          "E",
+          "W",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "Q",
+          "W",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Senna": {
@@ -9645,7 +13589,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 1
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.92,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.92342,
+          "magical": 0.05033000000000001,
+          "trued": 0.01624
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Seraphine": {
@@ -9728,7 +13706,41 @@
         "ratings": {
           "healing": 3,
           "shielding": 2
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.2,
+          "aramDamageDealt": 1,
+          "aramHealing": 0.8,
+          "aramShielding": 0.8,
+          "aramTenacity": 1,
+          "aramAbilityHaste": -20,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.10547,
+          "magical": 0.8660800000000001,
+          "trued": 0.01845
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Sett": {
@@ -9811,7 +13823,41 @@
         "ratings": {
           "healing": 3,
           "shielding": 5
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.7364499999999999,
+          "magical": 0.00592,
+          "trued": 0.24763
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Shaco": {
@@ -9892,7 +13938,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.34664,
+          "magical": 0.52111,
+          "trued": 0.12225
+        },
+        "skill_order": [
+          "W",
+          "Q",
+          "E",
+          "E",
+          "E",
+          "R",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Shen": {
@@ -9973,7 +14053,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 3
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.50432,
+          "magical": 0.41829,
+          "trued": 0.06739
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Shyvana": {
@@ -10056,7 +14170,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.4093500000000001,
+          "magical": 0.42616,
+          "trued": 0.15448
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Singed": {
@@ -10139,7 +14287,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.08,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.052320000000000005,
+          "magical": 0.90799,
+          "trued": 0.02968
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Sion": {
@@ -10222,7 +14404,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 6
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.1,
+          "aramDamageDealt": 0.9,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": -10,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.60301,
+          "magical": 0.36297,
+          "trued": 0.02403
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Sivir": {
@@ -10303,7 +14519,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.93,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.96791,
+          "magical": 0.00919,
+          "trued": 0.0129
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Skarner": {
@@ -10386,7 +14636,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 6
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.62622,
+          "magical": 0.32649,
+          "trued": 0.03729
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Smolder": {
@@ -10469,7 +14753,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.02,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": -10,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.72125,
+          "magical": 0.16132000000000002,
+          "trued": 0.10743
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Sona": {
@@ -10552,7 +14870,41 @@
         "ratings": {
           "healing": 5,
           "shielding": 4
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.19564,
+          "magical": 0.77669,
+          "trued": 0.017669999999999998
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "Q",
+          "W",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Soraka": {
@@ -10635,7 +14987,41 @@
         "ratings": {
           "healing": 10,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 10,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.11419,
+          "magical": 0.81029,
+          "trued": 0.06553
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "Q",
+          "W",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Swain": {
@@ -10718,7 +15104,41 @@
         "ratings": {
           "healing": 9,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.15,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 0.8,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.06505,
+          "magical": 0.8875799999999999,
+          "trued": 0.03737
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Sylas": {
@@ -10801,7 +15221,41 @@
         "ratings": {
           "healing": 7,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.03052,
+          "magical": 0.8935599999999999,
+          "trued": 0.06591999999999999
+        },
+        "skill_order": [
+          "E",
+          "W",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "E",
+          "W",
+          "E",
+          "R",
+          "E",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "Q"
+        ]
       }
     },
     "Syndra": {
@@ -10882,7 +15336,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 5,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.03326,
+          "magical": 0.88383,
+          "trued": 0.07291
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "TahmKench": {
@@ -10965,7 +15453,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 6
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.19062,
+          "magical": 0.7540600000000001,
+          "trued": 0.04532
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Taliyah": {
@@ -11048,7 +15570,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.03739,
+          "magical": 0.91306,
+          "trued": 0.03954
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Talon": {
@@ -11129,7 +15685,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1.2,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.89492,
+          "magical": 0.00666,
+          "trued": 0.08843
+        },
+        "skill_order": [
+          "W",
+          "Q",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "Q",
+          "W",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Taric": {
@@ -11212,7 +15802,41 @@
         "ratings": {
           "healing": 3,
           "shielding": 1
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.30735,
+          "magical": 0.6114,
+          "trued": 0.07125
+        },
+        "skill_order": [
+          "E",
+          "W",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Teemo": {
@@ -11295,7 +15919,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.1,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": -15,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.11129,
+          "magical": 0.81477,
+          "trued": 0.06394
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Thresh": {
@@ -11378,7 +16036,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 1
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.13676,
+          "magical": 0.7761,
+          "trued": 0.07713
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Tristana": {
@@ -11461,7 +16153,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.88351,
+          "magical": 0.08657999999999999,
+          "trued": 0.01991
+        },
+        "skill_order": [
+          "E",
+          "W",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Trundle": {
@@ -11544,7 +16270,41 @@
         "ratings": {
           "healing": 1,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.81021,
+          "magical": 0.13097,
+          "trued": 0.048819999999999995
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Tryndamere": {
@@ -11627,7 +16387,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.9,
+          "aramDamageDealt": 1.1,
+          "aramHealing": 1.2,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.91075,
+          "magical": 0.00712,
+          "trued": 0.07213
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "Q",
+          "W",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "TwistedFate": {
@@ -11710,7 +16504,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.14307999999999998,
+          "magical": 0.82195,
+          "trued": 0.02497
+        },
+        "skill_order": [
+          "W",
+          "Q",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Twitch": {
@@ -11793,7 +16621,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.7931100000000001,
+          "magical": 0.043550000000000005,
+          "trued": 0.15334
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Udyr": {
@@ -11876,7 +16738,41 @@
         "ratings": {
           "healing": 4,
           "shielding": 4
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.37968,
+          "magical": 0.56467,
+          "trued": 0.04565
+        },
+        "skill_order": [
+          "Q",
+          "R",
+          "W",
+          "E",
+          "R",
+          "R",
+          "R",
+          "W",
+          "R",
+          "W",
+          "R",
+          "W",
+          "W",
+          "W",
+          "E",
+          "E",
+          "E",
+          "E"
+        ]
       }
     },
     "Urgot": {
@@ -11959,7 +16855,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 4
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.87952,
+          "magical": 0.009000000000000001,
+          "trued": 0.10148
+        },
+        "skill_order": [
+          "E",
+          "W",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "E",
+          "W",
+          "E",
+          "R",
+          "E",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "Q"
+        ]
       }
     },
     "Varus": {
@@ -12042,7 +16972,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.58934,
+          "magical": 0.38933,
+          "trued": 0.01134
+        },
+        "skill_order": [
+          "W",
+          "Q",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "Q",
+          "W",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Vayne": {
@@ -12125,7 +17089,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.7305800000000001,
+          "magical": 0.037919999999999995,
+          "trued": 0.22149999999999995
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Veigar": {
@@ -12206,7 +17204,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.1,
+          "aramDamageDealt": 0.93,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.02751,
+          "magical": 0.93947,
+          "trued": 0.02302
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Velkoz": {
@@ -12289,7 +17321,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.02024,
+          "magical": 0.71357,
+          "trued": 0.25619
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Vex": {
@@ -12370,7 +17436,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 2
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.05841,
+          "magical": 0.90365,
+          "trued": 0.02794
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Vi": {
@@ -12453,7 +17553,41 @@
         "ratings": {
           "healing": 3,
           "shielding": 2
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.91333,
+          "magical": 0.00372,
+          "trued": 0.07293999999999999
+        },
+        "skill_order": [
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Viego": {
@@ -12536,7 +17670,41 @@
         "ratings": {
           "healing": 8,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.84395,
+          "magical": 0.08932999999999999,
+          "trued": 0.05671
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Viktor": {
@@ -12617,7 +17785,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 3
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.0254,
+          "magical": 0.95019,
+          "trued": 0.01441
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Vladimir": {
@@ -12700,7 +17902,41 @@
         "ratings": {
           "healing": 9,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 1,
+          "aramHealing": 0.9,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.03703,
+          "magical": 0.93327,
+          "trued": 0.01969
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Volibear": {
@@ -12783,7 +18019,41 @@
         "ratings": {
           "healing": 1,
           "shielding": 1
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.4797999999999999,
+          "magical": 0.46741999999999995,
+          "trued": 0.04279
+        },
+        "skill_order": [
+          "E",
+          "Q",
+          "W",
+          "W",
+          "W",
+          "R",
+          "W",
+          "Q",
+          "W",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Warwick": {
@@ -12866,7 +18136,41 @@
         "ratings": {
           "healing": 6,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.49653,
+          "magical": 0.45724,
+          "trued": 0.03624
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "Q",
+          "W",
+          "Q",
+          "R",
+          "Q",
+          "Q",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "Xayah": {
@@ -12947,7 +18251,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.96896,
+          "magical": 0.00788,
+          "trued": 0.01316
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "W",
+          "E",
+          "W",
+          "R",
+          "W",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "Q"
+        ]
       }
     },
     "Xerath": {
@@ -13030,7 +18368,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.93,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.02467,
+          "magical": 0.94645,
+          "trued": 0.018879999999999997
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "W",
+          "Q",
+          "W",
+          "R",
+          "W",
+          "W",
+          "E",
+          "E",
+          "R",
+          "E",
+          "E"
+        ]
       }
     },
     "XinZhao": {
@@ -13113,7 +18485,41 @@
         "ratings": {
           "healing": 4,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 0.95,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.86725,
+          "magical": 0.06895,
+          "trued": 0.0538
+        },
+        "skill_order": [
+          "E",
+          "W",
+          "Q",
+          "W",
+          "W",
+          "R",
+          "W",
+          "E",
+          "W",
+          "E",
+          "R",
+          "E",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "Q"
+        ]
       }
     },
     "Yasuo": {
@@ -13196,7 +18602,41 @@
         "ratings": {
           "healing": 7,
           "shielding": 4
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.8617100000000001,
+          "magical": 0.08836000000000001,
+          "trued": 0.03994
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Yone": {
@@ -13279,7 +18719,41 @@
         "ratings": {
           "healing": 7,
           "shielding": 4
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.97,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.7080200000000001,
+          "magical": 0.15375,
+          "trued": 0.12822
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Yorick": {
@@ -13362,7 +18836,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.65277,
+          "magical": 0.30997,
+          "trued": 0.02727
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Yunara": {
@@ -13443,7 +18951,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 0,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.63127,
+          "magical": 0.33015,
+          "trued": 0.02857
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Yuumi": {
@@ -13526,7 +19068,41 @@
         "ratings": {
           "healing": 10,
           "shielding": 1
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.03863,
+          "magical": 0.91488,
+          "trued": 0.03649
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "Q",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Zaahen": {
@@ -13609,7 +19185,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1,
+          "aramDamageDealt": 1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.89775,
+          "magical": 0.04762,
+          "trued": 0.04463
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Zac": {
@@ -13692,7 +19302,41 @@
         "ratings": {
           "healing": 7,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.96,
+          "aramDamageDealt": 1,
+          "aramHealing": 1.1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.07024,
+          "magical": 0.8413299999999999,
+          "trued": 0.07843
+        },
+        "skill_order": [
+          "W",
+          "Q",
+          "E",
+          "E",
+          "E",
+          "R",
+          "E",
+          "W",
+          "E",
+          "W",
+          "R",
+          "W",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "Q"
+        ]
       }
     },
     "Zed": {
@@ -13773,7 +19417,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1.2,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.8708199999999999,
+          "magical": 0.047060000000000005,
+          "trued": 0.07212
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Zeri": {
@@ -13854,7 +19532,41 @@
         "ratings": {
           "healing": 2,
           "shielding": 1
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1.1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.7314,
+          "magical": 0.22407,
+          "trued": 0.03453
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Ziggs": {
@@ -13935,7 +19647,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.2,
+          "aramDamageDealt": 0.87,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": -20,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.030059999999999996,
+          "magical": 0.94454,
+          "trued": 0.0154
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Zilean": {
@@ -14018,7 +19764,41 @@
         "ratings": {
           "healing": 1,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1.05,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.11171,
+          "magical": 0.83577,
+          "trued": 0.04253
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Zoe": {
@@ -14099,7 +19879,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 0.95,
+          "aramDamageDealt": 1.1,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": 0,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.07519999999999999,
+          "magical": 0.7503799999999999,
+          "trued": 0.16442
+        },
+        "skill_order": [
+          "Q",
+          "E",
+          "W",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     },
     "Zyra": {
@@ -14182,7 +19996,41 @@
         "ratings": {
           "healing": 0,
           "shielding": 0
-        }
+        },
+        "aram_modifiers": {
+          "aramDamageTaken": 1.05,
+          "aramDamageDealt": 0.9,
+          "aramHealing": 1,
+          "aramShielding": 1,
+          "aramTenacity": 1,
+          "aramAbilityHaste": -10,
+          "aramAttackSpeed": 1
+        },
+        "damage_distribution": {
+          "physical": 0.04752,
+          "magical": 0.88457,
+          "trued": 0.05791
+        },
+        "skill_order": [
+          "Q",
+          "W",
+          "E",
+          "Q",
+          "Q",
+          "R",
+          "Q",
+          "E",
+          "Q",
+          "E",
+          "R",
+          "E",
+          "E",
+          "W",
+          "W",
+          "R",
+          "W",
+          "W"
+        ]
       }
     }
   }
