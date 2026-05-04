@@ -198,6 +198,7 @@ def capture_state():
                         "summonerId":  p.get("summonerId"),
                         "summonerName": p.get("summonerInternalName") or p.get("displayName") or "",
                         "completed":   p.get("completed", False),
+                        "assignedPosition": p.get("assignedPosition") or "",
                     })
                 return out
             state["champ_select"] = {
