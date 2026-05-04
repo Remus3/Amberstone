@@ -108,10 +108,25 @@ entries for support/enchanter/tank items [Knight's Vow, Mikael's Blessing,
 Redemption, Locket, Ardent Censer, Staff of Flowing Water, Echoes of Helia,
 Moonstone Renewer, Dawncore, Imperial Mandate, Rod of Ages, Winter's Approach,
 Fimbulwinter, Force of Nature, Rylai's Crystal Scepter, Jak'Sho the Protean,
-Hextech Rocketbelt, Experimental Hexplate, Abyssal Mask]), and 40
-defensive_only items spanning the Tier-1
-SR / Arena pool plus high-pickrate batch 2 + AP batch 3 additions
-plus batch 31 support/ramp coverage.
+Hextech Rocketbelt, Experimental Hexplate, Abyssal Mask]), Phase 4 batch 32 AP amplification + lethality + new schema
+(2026-05-04 — 15 items: Rabadon's Deathcap (3089) via new
+``ap_amp_pct=0.30`` field + ``total_ap_amp_multiplier`` helper wired
+into compute_dps so every AP-scaling proc (Lich Bane, Nashor's Tooth,
+Void Staff pen) sees the ×1.30 effective AP; Dusk and Dawn (2510)
+Spellblade 75% base AD + 10% AP magical every ~1.5s joining the
+"spellblade" unique-passive dedup family; The Collector (667666) 10
+lethality + Prowler's Claw (6693) 22 lethality + Bastionbreaker (2520)
+22 lethality all via the batch-30 level-scaled flat pen schema; Overlord's
+Bloodmail (2501) via new ``bonus_ad_pct_bonus_hp=0.025`` field + engine.py
+stat-walk using item_totals[hp_flat] as bonus HP proxy; Demonic Embrace
+(4637) Dark Pact 2% bonus HP as AP via existing ``ap_per_bonus_hp_pct``
+schema (stacks additively with Riftmaker); 8 defensive_only entries
+[Morellonomicon, Horizon Focus, Malignance, Blackfire Torch, Endless
+Hunger, Chempunk Chainsword, Hexoptics C44, Bloodletter's Curse];
+Azakana's Gaze + Shaped Charge + Hypershot/Hatefog/Baleful Blaze all
+deferred pending ability-cast schema), and 48 defensive_only items
+spanning the Tier-1 SR / Arena pool plus high-pickrate batch 2 + AP
+batch 3 additions plus batch 31 support/ramp coverage plus batch 32.
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
 ``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation`` /
@@ -127,4 +142,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.35.0"
+ENGINE_VERSION = "0.36.0"
