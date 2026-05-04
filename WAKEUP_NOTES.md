@@ -8926,3 +8926,62 @@ if a future batch needs to recall it and can't find via grep.
 this batch was engine-side only.
 
 
+
+---
+
+## s87 wrap — Phase 4 batch 31: support/ramp coverage sweep (engine 0.35.0)
+
+**Commit:** e4df193  
+**Date:** 2026-05-04  
+**Engine:** 0.34.0 → 0.35.0  
+**Tests:** 519 → 530 (+11 tests, +19 subtests, all green)
+
+### What shipped
+
+**Batch 31** — 21 items added to ITEM_EFFECTS:
+
+1. **Dead Man's Plate (3742)** — partial promotion:
+   - Shipwrecker proc modeled as , damage=109 physical
+   - Math: 100 base + 0.45 × 20 bonus MS at full Momentum stacks = 109
+   - Rebuild time ~3.57s at 1.0 AS → every_n_attacks=4 is the conservative bucket
+   - No unique_passive_key (item-unique, but no other Momentum item to dedup with)
+
+2. **Spectral Cutlass (4004)** — lethality promotion (ARAM-only):
+   - lethality=15.0 joins the batch-30 family (same schema as Edge of Night)
+   - DDragon map 12 (ARAM) only item — no new engine code needed
+   - Soul Anchor active is utility-only, not modeled
+
+3. **19 defensive_only entries**: Knight's Vow (3109), Mikael's Blessing (3222),
+   Redemption (3107), Locket (3190), Ardent Censer (3504), Staff of Flowing Water (6616),
+   Echoes of Helia (6620), Moonstone Renewer (6617), Dawncore (6621),
+   Imperial Mandate (4005), Rod of Ages (6657), Winter's Approach (3119),
+   Fimbulwinter (3121), Force of Nature (4401), Rylai's Crystal Scepter (3116),
+   Jak'Sho the Protean (6665), Hextech Rocketbelt (3152), Experimental Hexplate (3073),
+   Abyssal Mask (8020).
+
+**Schema gaps surfaced by audit:**
+- Abyssal Mask's Unmake = 12% **magic-only** target debuff. `damage_amp_pct` amplifies
+  all damage types → would incorrectly buff physical. Deferred to future `magic_amp_pct` bump.
+- Hextech Rocketbelt: null CD in Meraki, 7-rocket arc formula too complex → defensive_only
+  per null-CD-actives rule.
+- Experimental Hexplate: ult-cast-triggered AS bonus needs ability-cast schema → deferred.
+
+### Next batch candidates
+
+No obvious clean next item batch — the low-hanging fruit (lethality, armor pen,
+periodic procs, spellblade, mana-Awe) is exhausted. Future batches require schema work:
+
+- **`magic_amp_pct` target-debuff schema** → unlocks Abyssal Mask (Unmake 12% magic)
+- **Ability-cast schema** → unlocks Hextech Rocketbelt (active 7-rocket arc),
+  Luden's (Tempest), Stormsurge (Squall), possibly others
+- **Conditional AS schema** → unlocks Yun Tal Flurry bonus, Experimental Hexplate Overdrive
+
+### Carried from s85-s86
+
+- SR coach `target_bonus_hp` activation (blocked on vision-side enemy item parsing)
+- gamepc_boot.ps1 1-liner patch (carried)
+- Arena augment v2 activation in production (carried)
+- P8-5.5 visual verify first draft (carried)
+- P8-7 E2E push-to-League integration test (carried)
+
+**Full coach activation matrix as of s87:** unchanged from s86 — batch 31 was engine-side only.
