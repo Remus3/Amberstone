@@ -4594,5 +4594,134 @@ class Batch35DefensiveOnlyTests(unittest.TestCase):
         self.assertGreaterEqual(count, 59)
 
 
+# ────────────────────────── Phase 4 batch 36 tests ──────────────────────────
+
+class Batch36ArenaAndRiteOfRuinTests(unittest.TestCase):
+    """Batch 36: Arena item sweep + Rite of Ruin crit."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_detonation_orb_magic_pen(self) -> None:
+        eff = ITEM_EFFECTS.get("447113")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertAlmostEqual(eff.magic_pen_flat, 12.0, places=2)
+        self.assertEqual(len(eff.periodics), 0)
+
+    def test_reverberation_resonate_shape(self) -> None:
+        eff = ITEM_EFFECTS.get("447114")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 1)
+        proc = eff.periodics[0]
+        self.assertEqual(proc.damage_type, "magical")
+        self.assertEqual(proc.every_n_attacks, 1)
+
+    def test_reverberation_proc_formula(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["447114"].periodics[0]
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, caster_bonus_hp=1000.0)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 10.0 + 0.02 * 1000.0, places=4)
+
+    def test_reverberation_zero_bonus_hp(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["447114"].periodics[0]
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, caster_bonus_hp=0.0)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 10.0, places=4)
+
+    def test_pyromancer_spark_shape(self) -> None:
+        eff = ITEM_EFFECTS.get("447118")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 1)
+        proc = eff.periodics[0]
+        self.assertEqual(proc.damage_type, "magical")
+        self.assertAlmostEqual(proc.every_n_seconds, 5.0, places=3)
+
+    def test_pyromancer_spark_formula(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["447118"].periodics[0]
+        ctx_l1 = CallContext(base_ad=100.0, bonus_ad=0.0, level=1)
+        ctx_l18 = CallContext(base_ad=100.0, bonus_ad=0.0, level=18)
+        self.assertAlmostEqual(proc.resolve_damage(ctx_l1), 100.0, places=1)
+        self.assertAlmostEqual(proc.resolve_damage(ctx_l18), 350.0, places=1)
+
+    def test_lightning_rod_shape(self) -> None:
+        eff = ITEM_EFFECTS.get("447119")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 1)
+        proc = eff.periodics[0]
+        self.assertEqual(proc.damage_type, "magical")
+        self.assertAlmostEqual(proc.every_n_seconds, 16.0, places=3)
+
+    def test_lightning_rod_formula_components(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["447119"].periodics[0]
+        # base only at level 1: 135
+        ctx_base = CallContext(base_ad=0.0, bonus_ad=0.0, level=1, ap=0.0, target_max_hp=0.0)
+        self.assertAlmostEqual(proc.resolve_damage(ctx_base), 135.0, places=1)
+        # bonus_ad component: 30% * 100 = 30
+        ctx_ad = CallContext(base_ad=0.0, bonus_ad=100.0, level=1, ap=0.0, target_max_hp=0.0)
+        self.assertAlmostEqual(proc.resolve_damage(ctx_ad), 135.0 + 30.0, places=1)
+        # ap component: 50% * 200 = 100
+        ctx_ap = CallContext(base_ad=0.0, bonus_ad=0.0, level=1, ap=200.0, target_max_hp=0.0)
+        self.assertAlmostEqual(proc.resolve_damage(ctx_ap), 135.0 + 100.0, places=1)
+        # target_max_hp: 10% * 3000 = 300
+        ctx_hp = CallContext(base_ad=0.0, bonus_ad=0.0, level=1, ap=0.0, target_max_hp=3000.0)
+        self.assertAlmostEqual(proc.resolve_damage(ctx_hp), 135.0 + 300.0, places=1)
+
+    def test_regicide_lethality(self) -> None:
+        eff = ITEM_EFFECTS.get("447115")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertAlmostEqual(eff.lethality, 15.0, places=2)
+        self.assertEqual(len(eff.periodics), 0)
+
+    def test_rite_of_ruin_crit_bonus(self) -> None:
+        eff = ITEM_EFFECTS.get("3430")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertAlmostEqual(eff.crit_chance_bonus_flat, 0.20, places=4)
+        self.assertEqual(len(eff.periodics), 0)
+
+    def test_rite_of_ruin_crit_lifts_dps(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        # Rite of Ruin + some crit baseline should outperform bare Rite
+        dps_bare = compute_dps(self.snap, "Jinx", level=11)
+        dps_with = compute_dps(self.snap, "Jinx", level=11, item_ids=["3430"])
+        self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
+
+    def test_lightning_rod_dps_lift_with_ap(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        dps_bare = compute_dps(self.snap, "Lux", level=11, target_max_hp=2000.0)
+        dps_with = compute_dps(self.snap, "Lux", level=11, item_ids=["447119"],
+                               target_max_hp=2000.0)
+        self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
+
+    def test_batch36_defensive_only_entries(self) -> None:
+        expected = {
+            "447108": "Runecarver",
+            "447116": "Kinkou Jitte",
+            "447120": "Diamond-Tipped Spear",
+            "447121": "Twilight's Edge",
+            "447107": "Decapitator",
+            "447100": "Mirage Blade",
+        }
+        for iid, name in expected.items():
+            with self.subTest(item_id=iid):
+                eff = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(eff, f"{iid} missing")
+                self.assertTrue(eff.defensive_only, f"{iid} ({name}) should be defensive_only")
+                self.assertEqual(len(eff.periodics), 0)
+
+    def test_defensive_only_count_after_batch36(self) -> None:
+        count = sum(1 for e in ITEM_EFFECTS.values() if e.defensive_only)
+        # 59 after batch 35 + 6 new = 65
+        self.assertGreaterEqual(count, 65)
+
+
 if __name__ == "__main__":
     unittest.main()

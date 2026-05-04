@@ -151,6 +151,15 @@ Navori Flickerblade (6672) Bring It Down every-3rd-attack 120→168
 physical [ranged scaling]; Hellfire Hatchet (4017) lethality=12 [Char
 proc deferred]; plus 6 defensive_only entries: Goredrinker, Galeforce,
 Zeke's Convergence, Wordless Promise, Frozen Mallet, Lightning Braid).
+Phase 4 batch 36 Arena item sweep + Rite of Ruin crit (2026-05-04 —
+6 active promotions: Detonation Orb (447113) magic_pen_flat=12;
+Reverberation (447114) Resonate 10+2% caster bonus HP magic on-hit;
+Pyromancer's Cloak (447118) Spark 100→350 magic burn every 5s;
+Lightning Rod (447119) Call Lightning 135→230+30% bonus AD+50% AP+10%
+target max HP magic every 16s; Regicide (447115) lethality=15; Rite of
+Ruin (3430) crit_chance_bonus_flat=0.20 [max Wrath+Ruin stacks]; plus 6
+defensive_only: Runecarver, Kinkou Jitte, Diamond-Tipped Spear,
+Twilight's Edge, Decapitator, Mirage Blade).
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
 ``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation`` /
@@ -166,4 +175,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.39.0"
+ENGINE_VERSION = "0.40.0"
