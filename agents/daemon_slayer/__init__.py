@@ -53,8 +53,14 @@ the 25%/1.5s slow stays utility-only, not modeled), Iceborn Gauntlet
 2026-05-04 — 150% base AD bonus physical Spellblade variant joining
 the Trinity Force / Lich Bane / Essence Reaver dedup family at the
 shared ~3s ability-cast cadence; frost-field slow stays utility-only),
-and 21 defensive_only items spanning the Tier-1 SR / Arena pool plus
-high-pickrate batch 2 + AP batch 3 additions.
+Profane Hydra (6698) added to ITEM_EFFECTS as a new entry (Phase 4
+batch 24, 2026-05-04 — 40% AD melee Cleave to other enemies in 350
+radius via the existing targets_in_rotation gate; matches
+Stridebreaker's coefficient choice from batch 21; Heretical Cleave
+active stays not-modeled per the s77/s78 actives-without-cooldown-pin
+rule; Tiamat-tree exclusivity vs the other hydras is build-legality,
+not unique-passive), and 21 defensive_only items spanning the Tier-1
+SR / Arena pool plus high-pickrate batch 2 + AP batch 3 additions.
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
 ``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation`` /
@@ -70,4 +76,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.27.0"
+ENGINE_VERSION = "0.28.0"
