@@ -3970,7 +3970,7 @@ class Batch31DefensiveOnlyCoverageTests(unittest.TestCase):
         "6665": "Jak'Sho, The Protean",
         "3152": "Hextech Rocketbelt",
         "3073": "Experimental Hexplate",
-        "8020": "Abyssal Mask",
+        # 8020 Abyssal Mask was defensive_only in batch 31; promoted in batch 34.
     }
 
     def test_all_entries_present_and_defensive(self) -> None:
@@ -4219,9 +4219,9 @@ class Batch32DefensiveOnlyTests(unittest.TestCase):
                 self.assertTrue(len(eff.note) > 0)
 
     def test_defensive_only_count_increased(self) -> None:
-        # After batch 33: 47 from pre-batch-33 pool + 7 batch-33 = 54 defensive_only.
+        # After batch 34: 54 from batch 33 - 1 (Abyssal Mask promoted) = 53 defensive_only.
         count = sum(1 for e in ITEM_EFFECTS.values() if e.defensive_only)
-        self.assertGreaterEqual(count, 54)
+        self.assertGreaterEqual(count, 53)
 
 
 class BlackfireTorchBurnTests(unittest.TestCase):
@@ -4362,6 +4362,65 @@ class Batch33DefensiveOnlyTests(unittest.TestCase):
         self.assertIsNotNone(eff)
         self.assertFalse(eff.defensive_only,
                          "Blackfire Torch must be promoted (defensive_only=False) in batch 33")
+
+
+class AbyssalMaskMagicAmpTests(unittest.TestCase):
+    """Abyssal Mask (8020) magic_amp_pct=0.12 promotion (batch 34)."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_entry_promoted_not_defensive_only(self) -> None:
+        eff = ITEM_EFFECTS.get("8020")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only,
+                         "Abyssal Mask must be promoted from defensive_only in batch 34")
+
+    def test_magic_amp_pct_field(self) -> None:
+        eff = ITEM_EFFECTS.get("8020")
+        self.assertAlmostEqual(eff.magic_amp_pct, 0.12, places=4)
+        self.assertEqual(len(eff.periodics), 0)
+
+    def test_total_magic_amp_multiplier_helper(self) -> None:
+        from agents.daemon_slayer.effects import total_magic_amp_multiplier, collect_effects
+        effects_with = collect_effects(["8020"])
+        self.assertAlmostEqual(total_magic_amp_multiplier(effects_with), 1.12, places=4)
+
+    def test_multiplier_is_1_without_abyssal(self) -> None:
+        from agents.daemon_slayer.effects import total_magic_amp_multiplier, collect_effects
+        effects_bare = collect_effects(["3031"])  # IE — no magic_amp_pct
+        self.assertAlmostEqual(total_magic_amp_multiplier(effects_bare), 1.0, places=4)
+
+    def test_multiplier_stacks_with_second_abyssal(self) -> None:
+        # Two Abyssal Masks stack multiplicatively: 1.12 * 1.12 = 1.2544
+        from agents.daemon_slayer.effects import total_magic_amp_multiplier, collect_effects
+        effects = collect_effects(["8020", "8020"])
+        self.assertAlmostEqual(total_magic_amp_multiplier(effects), 1.12 * 1.12, places=4)
+
+    def test_magic_amp_boosts_magical_proc_dps(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        # Nashor's Tooth (3115) adds a per-attack magical proc; Abyssal Mask should amplify it.
+        dps_nashor = compute_dps(self.snap, "Lux", level=11, item_ids=["3115"],
+                                 target_mr=50.0)
+        dps_nashor_abyssal = compute_dps(self.snap, "Lux", level=11,
+                                         item_ids=["3115", "8020"], target_mr=50.0)
+        self.assertGreater(dps_nashor_abyssal.weighted_dps, dps_nashor.weighted_dps)
+
+    def test_magic_amp_does_not_help_physical_only_build(self) -> None:
+        # Abyssal Mask has no proc of its own — it only amplifies other items'
+        # magical procs. Verify it carries no periodics (the amp fires externally).
+        eff = ITEM_EFFECTS.get("8020")
+        self.assertEqual(len(eff.periodics), 0,
+                         "Abyssal Mask has no periodic proc — amp fires on other items' magic procs")
+
+    def test_note_in_dps_output(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        result = compute_dps(self.snap, "Lux", level=11, item_ids=["3115", "8020"],
+                             target_mr=50.0)
+        magic_amp_notes = [n for n in result.notes if "magic damage amp" in n]
+        self.assertEqual(len(magic_amp_notes), 1)
+        self.assertIn("12%", magic_amp_notes[0])
 
 
 if __name__ == "__main__":

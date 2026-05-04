@@ -55,6 +55,7 @@ from .effects import (
     total_crit_chance_bonus,
     total_crit_damage_bonus,
     total_damage_amp_multiplier,
+    total_magic_amp_multiplier,
     total_target_bonus_hp_amp_multiplier,
 )
 from .engine import build_champion
@@ -167,20 +168,25 @@ def _periodic_proc_dps(
     target_mr: float,
     mode_dmg_mult: float,
     call_ctx: CallContext,
+    magic_amp: float = 1.0,
 ) -> float:
     """Sum DPS contribution from every conditional proc in the build.
 
     Each proc fires on either an attack count (``every_n_attacks``) or
     a time interval (``every_n_seconds``). Physical procs use the
     target's *effective* armor (post-reduction-and-pen); magical procs
-    use MR (no magic-pen modeling yet). Mode damage multiplier applies
-    (ARAM ``aramDamageDealt`` reduces proc damage too). Rotation
-    duration divides the per-rotation proc total so the contribution
-    is in DPS units.
+    use MR. Mode damage multiplier applies (ARAM ``aramDamageDealt``
+    reduces proc damage too). Rotation duration divides the per-rotation
+    proc total so the contribution is in DPS units.
 
     Scaling procs (TriForce off ``base_ad``, Wit's End by ``level``,
     Runaan's by ``bonus_ad``) resolve through ``proc.resolve_damage``
     against ``call_ctx``; constants pass through unchanged.
+
+    Phase 4 batch 34 (2026-05-04): ``magic_amp`` (from
+    ``total_magic_amp_multiplier``) is applied only to magical procs —
+    models target-debuff auras (Abyssal Mask Unmake) that increase magic
+    damage taken without affecting physical auto-attack damage.
     """
     if duration <= 0:
         return 0.0
@@ -193,9 +199,11 @@ def _periodic_proc_dps(
                 procs = total_attacks / proc.every_n_attacks
             else:  # every_n_seconds > 0 enforced by PeriodicProc.__post_init__
                 procs = duration / proc.every_n_seconds
-            resist = target_armor_for_physical if proc.damage_type == PHYSICAL else target_mr
+            is_physical = proc.damage_type == PHYSICAL
+            resist = target_armor_for_physical if is_physical else target_mr
+            type_amp = 1.0 if is_physical else magic_amp
             dmg = proc.resolve_damage(call_ctx)
-            total += procs * dmg * _armor_factor(resist) * mode_dmg_mult
+            total += procs * dmg * _armor_factor(resist) * mode_dmg_mult * type_amp
     return total / duration
 
 
@@ -209,6 +217,7 @@ def _rotation_attack_dps(
     effects: list[ItemEffect],
     call_ctx: CallContext,
     damage_amp: float = 1.0,
+    magic_amp: float = 1.0,
 ) -> float:
     """DPS contribution from basic attacks during a single rotation.
 
@@ -225,6 +234,10 @@ def _rotation_attack_dps(
     future Conqueror-style amps). Applied to both base AA and proc
     DPS — in-game amps don't discriminate damage type. Default 1.0
     keeps pre-batch behavior unchanged.
+
+    Phase 4 batch 34 (2026-05-04): ``magic_amp`` applies only to magical
+    proc DPS inside ``_periodic_proc_dps`` — does NOT touch base AA
+    (physical). Default 1.0 keeps pre-batch behavior unchanged.
     """
     duration = float(rotation.get("duration", 0) or 0)
     if duration <= 0:
@@ -248,6 +261,7 @@ def _rotation_attack_dps(
     proc_dps = _periodic_proc_dps(
         effects, total_attacks, duration,
         target_armor_for_physical, target_mr, mode_dmg_mult, rotation_ctx,
+        magic_amp=magic_amp,
     )
     return (base_dps + proc_dps) * damage_amp
 
@@ -262,6 +276,7 @@ def _phase_weighted_dps(
     effects: list[ItemEffect],
     call_ctx: CallContext,
     damage_amp: float = 1.0,
+    magic_amp: float = 1.0,
 ) -> float:
     """Weighted average of rotation DPS within a phase (weights from lolmath)."""
     if not rotations:
@@ -275,6 +290,7 @@ def _phase_weighted_dps(
         weighted_sum += w * _rotation_attack_dps(
             stats, r, target_armor_for_physical, target_mr,
             mode_dmg_mult, crit_bonus, effects, call_ctx, damage_amp,
+            magic_amp=magic_amp,
         )
         total_weight += w
     if total_weight <= 0:
@@ -439,11 +455,18 @@ def compute_dps(
         caster_max_mp=caster_max_mp,
     )
 
+    # Phase 4 batch 34 (2026-05-04): magic-only target-debuff amp.
+    # Abyssal Mask Unmake: 12% more magic damage taken by nearby enemies.
+    # Applied inside _periodic_proc_dps per-proc (magical only), not to
+    # physical auto-attack damage. 1.0 when no item carries magic_amp_pct.
+    magic_amp = total_magic_amp_multiplier(item_effects)
+
     rotations_by_phase = _phase_rotations(snapshot, resolved.champion_id)
     phase_dps = {
         p: _phase_weighted_dps(
             stats_for_rotation, rotations_by_phase[p], target_armor_eff, target_mr_eff,
             mode_mult, crit_bonus, item_effects, call_ctx, damage_amp,
+            magic_amp=magic_amp,
         )
         for p in PHASES
     }
@@ -490,6 +513,11 @@ def compute_dps(
         notes.append(
             f"AP amplified ×{ap_amp:.4f} by Rabadon's Deathcap "
             f"(effective AP for procs: {ap:.1f})"
+        )
+    if magic_amp != 1.0:
+        notes.append(
+            f"magic damage amp ×{magic_amp:.4f} (Abyssal Mask Unmake "
+            f"+{(magic_amp - 1.0) * 100:.0f}% magic damage to target)"
         )
     if crit_from_effects > 0:
         # Phase 4 batch 26 (2026-05-04): surface item-effect-contributed
