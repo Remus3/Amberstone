@@ -7376,3 +7376,218 @@ can't find via grep.
 **Full coach activation matrix as of s78:** unchanged from s77 —
 this batch was engine-side only. (Same shape; not duplicated.)
 
+## s79 hand-off — 2026-05-04 (Phase 4 batch 23: Iceborn Gauntlet Spellblade + #2 carry resolved)
+
+Two-arc continuation from s78. **Arc 1**: knocked out the s78 #2
+carry (stale `0.9.3` engine_version pin in `test_sr_draft_profile_engine`)
+in one ~3-line edit. **Arc 2**: pivoted from s78's "Collector schema
+bump" plan after auditing — the execute is genuinely not modelable in
+sustained-DPS without overstating contribution OR adding unconsumed
+schema (premature abstraction). Pivoted to a coverage audit, found 76
+unmodeled legendaries, picked Iceborn Gauntlet (6662) as the cleanest
+candidate — direct shape match with existing Spellblade family, drops
+straight into the dedup pool.
+
+**Engine: 0.26.0 → 0.27.0.** Tests: 418 → 426 (+8, no inversions).
+**Plus**: phase8_smoke `test_live_three_profiles` now green (was the
+1 known carry-failing test through s70-s78). Live engine on :8893
+activated via `schtasks /End /Run RC-DaemonSlayer`.
+
+**Pattern decision worth pinning — pin live integration tests against
+the live source-of-truth, not a stale constant.** The s77 hand-off
+flagged `test_sr_draft_profile_engine` as "stale 0.9.3 pin still
+failing — carried". Resolution: import `ENGINE_VERSION` from
+`agents.daemon_slayer` at test-time, assert equality. Future engine
+bumps now self-correct this test. Hermetic stub tests
+(`_FAKE_BEAM`-driven, line 190) stay constant — they own their own
+version string.
+
+**Pattern decision worth pinning — easy-promotion well dry ≠ DS
+work dry. Coverage audit reveals new entries.** s78 declared the
+defensive_only well dry. That was true for *defensive_only entries*
+specifically. The unmodeled-legendary audit (76 items) shows there's
+a separate path: items not in ITEM_EFFECTS at all that have effects
+worth modeling. Iceborn Gauntlet was the easiest of those — exact
+shape match with an existing dedup family. Profane Hydra (Cleave
++ active), Yun Tal Wildarrows (stacking crit), and Manamune (mana
+→ AD conversion) are next-tier candidates with progressively more
+schema work.
+
+**Pattern decision worth pinning — adding a new entry vs promoting
+an existing one is an important distinction in commit messages.**
+This commit message reads "added to ITEM_EFFECTS as a new entry
+(was stats-only via item aggregation prior — not a promotion since
+it wasn't in the table at all)". Future-you searching for "promotion"
+won't find this batch unless the term is explicitly negated, and the
+defensive_only counts in __init__.py docstring stay accurate (21,
+unchanged — Iceborn was never in defensive_only, just absent).
+
+**Shipped (commits `114192f` + `0d53e79`):**
+
+- `tests/phase8_smoke/test_sr_draft_profile_engine.py` (`114192f`):
+  - **Live integration test pin** — replaced hardcoded `"0.9.3"`
+    with dynamic `ENGINE_VERSION` import. Stub test at line 190
+    untouched (hermetic).
+
+- `agents/daemon_slayer/effects.py` (`0d53e79`):
+  - **Iceborn Gauntlet (6662) Spellblade** new entry, placed after
+    Lich Bane (3100) to keep the spellblade family contiguous in
+    source. `PeriodicProc(every_n_seconds=3.0,
+    bonus_damage=lambda c: 1.50 * c.base_ad, PHYSICAL)`.
+    `unique_passive_key="spellblade"` joins the TF/LB/ER dedup
+    family. Frost field's 25% slow stays utility-only, not modeled.
+    Comment block pins the family-cadence assumption and the
+    new-entry-vs-promotion distinction.
+
+- `agents/daemon_slayer/__init__.py` (`0d53e79`):
+  - `ENGINE_VERSION = "0.27.0"`. Docstring extends the batch list
+    with batch 23 wording; defensive_only count UNCHANGED at 21
+    (Iceborn was never in defensive_only — see pattern note above).
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py` (`0d53e79`):
+  - **IcebornGauntletSpellbladeTests** (7 tests): present + periodic
+    shape, spellblade tag, lambda value (150% base AD), three
+    dedup-pair tests against TF / LB / ER (both orderings each),
+    Camille DPS lift smoke.
+  - **SpellbladeUniquePassiveTests.test_iceborn_gauntlet_tagged_spellblade**
+    added — 1 test extending the family-key class.
+
+**Test state:**
+- `agents/daemon_slayer/tests/`: **426/426** green (s78 baseline 418
+  + 7 new IBG tests + 1 unique-passive extension).
+- `tests/phase8_smoke/`: **18/18** green (was 17/18 carry-failing
+  through s70-s78; the live integration test now self-tracks).
+- All other phase smoke suites unchanged.
+
+**Live verify (post `schtasks /End /Run RC-DaemonSlayer`):**
+
+Engine version + smoke /dps:
+```
+$ curl http://127.0.0.1:8893/health → engine_version=0.27.0 ✓
+$ /dps Camille lvl11 + [6662] →
+    weighted_dps=95.38  AD=106
+    notes[Iceborn Gauntlet: Spellblade ~150% base AD on-hit, ~once per 3s ...] ✓
+
+Multi-spellblade dedup (Camille lvl 11):
+    bare:               42.38
+    IBG only:           95.38
+    TF only:           131.49
+    [TF, IBG] dedup:   131.49  (1 note: TF kept, IBG dropped — first-seen-wins)
+    [IBG, TF] dedup:   113.82  (1 note: IBG kept, TF dropped — first-seen-wins)
+```
+
+Order-dependent dedup matches the documented family pattern from
+batches 11/21 — TF's 200% > IBG's 150%, so TF-first wins by 17.67
+DPS, IBG-first wins by underbidding the second proc. No double-count.
+
+**Coverage audit (NEW — added this session):**
+
+Unmodeled legendaries from Meraki bulk after batch 23: 75 (was 76,
+Iceborn promoted). Top candidates for future batches by ease of
+schema fit:
+
+- **Profane Hydra (6698)** — Cleave on basic + active. Cleave fits
+  `targets_in_rotation` (same as Stridebreaker / Ravenous). Active
+  is `every_n_seconds`-modelable but no Meraki cooldown in bulk
+  (~30s estimate from in-game). Multi-proc schema applies (batch 8
+  pattern — Titanic Hydra precedent). ~1-1.5 hour scope.
+- **Yun Tal Wildarrows (3032)** — Stacking crit (caps +25% at 63
+  stacks) + AS-on-hit. Stat-pipeline modification (would need
+  build-derived stacked crit added before compute_dps). Schema-bump
+  scope. ~1.5-2 hour scope.
+- **Manamune (3004) / Muramana (3042)** — AP→AD conversion (Awe)
+  + per-attack Shock damage (5% mana). Needs `caster_max_mp`
+  CallContext field. Schema bump.
+- **Stormsurge (4646)** — Storm passive: ability damage adds bonus
+  + bonus damage on a 30s CD. Ability-bound (same blocker as
+  Liandry / Luden's Echo). Carry — schema bump.
+- **Hubris (6697)** — lethality + Eminence stacking AD on takedowns.
+  Takedown-event-bound (no clean sustained-DPS model). Probably
+  defensive_only with explanatory note.
+- **Yun Tal Wildarrows alternative** — model as flat +25% crit
+  stat layer (assumes full stacks at 12+ minutes, hand-wave). Less
+  honest than full stack-tracking but no schema work.
+- **Profane Hydra cleave-only** (skip the active) — 1 hour scope,
+  same shape as Stridebreaker / Ravenous, no schema work needed.
+  **Probably the cleanest batch-24 candidate.**
+
+Ability-bound items (Liandry, Demonic Embrace, Luden's, Stormsurge,
+Hextech Rocketbelt, Horizon Focus, Cosmic Drive) all share the
+"ability-cast modeling" schema blocker — would unlock 7+ items in
+one schema bump.
+
+**Decisions worth pinning (this batch):**
+- **New entry ≠ promotion** — distinct concepts in commit messages
+  and __init__.py docstring counts.
+- **Live integration tests should track source-of-truth dynamically.**
+  Future test writers should import `ENGINE_VERSION` rather than
+  hardcoding constants.
+- **Coverage-audit pivot is a valid DS continuation.** When the
+  defensive_only well is dry, `audit unmodeled legendaries` is the
+  next-step play. Yields 50+ candidates with mixed schema fit.
+
+**Things tomorrow-you should NOT redo:**
+- Don't try to model The Collector's execute. The current
+  defensive_only entry is correct — execute semantics don't fit
+  sustained-DPS without overstating contribution OR adding dead
+  schema. Keep as-is until the engine grows kill-securing scoring
+  (which is a separate engine, not a /dps extension).
+- Don't add more spellblade variants without considering dedup
+  coefficient ordering. The first-seen-wins behavior creates
+  order-dependent ranking — adding a 5th spellblade with a
+  different coefficient amplifies the order-dependence.
+- Don't try to "fix" the order-dependent first-seen-wins dedup by
+  picking the highest-damage proc. That's a separate design
+  conversation; the current behavior is documented and intentional.
+
+**Activation:** RC-DaemonSlayer scheduled task bounced via
+`schtasks /End /TN RC-DaemonSlayer && schtasks /Run /TN RC-DaemonSlayer`.
+Engine on :8893 reports 0.27.0. Iceborn Gauntlet note appears in
+/dps `notes[]` field. Behavior dormant until next bruiser-with-
+ability-rotation game in progress (any coach calling /dps + /rank
+with 6662 in the build).
+
+**Bridge state at session end:** RC main pid=8084 (unchanged from s78).
+`schtasks` bounced RC-DaemonSlayer once. Bridge unchanged — no
+two-way traffic this session.
+
+**Operational backlog (delta from s78):**
+- ✅ ~~#2 Stale `0.9.3` engine_version pin~~ resolved (commit
+  `114192f`).
+- ✅ ~~Phase 4 batch 23: Iceborn Gauntlet Spellblade~~ shipped
+  (commit `0d53e79`).
+- All other s78 backlog unchanged.
+- **NEW from s79**: full coverage audit (75 unmodeled legendaries)
+  — top candidates ranked by schema fit. Profane Hydra cleave is
+  the cleanest next batch.
+
+**Memory entries written this session:** none. The "new entry ≠
+promotion" distinction + the "coverage-audit pivot" pattern are
+both narrow enough to live in this hand-off; will only promote to
+memory if a future session needs to recall them and can't find via
+grep.
+
+**Next-session candidates (ranked):**
+1. **Phase 4 batch 24: Profane Hydra (6698) Cleave** — cleave-only,
+   skip the active. Same shape as Stridebreaker (s77) — drop-in
+   pattern, no schema bump. ~1 hour scope. Engine 0.27.0 → 0.28.0.
+2. **SR coach `target_bonus_hp` activation** (carried s73→s78).
+   Probably needs vision-side enemy item parsing first.
+3. **First draft visual verify of P8-5.5** (carried).
+4. **gamepc_boot.ps1 patch** (carried). 1-liner.
+5. **P8-7 E2E push-to-League integration test** (carried).
+6. **Activate arena augment v2 in production** (carried).
+7. **Per-target-HP-pct field** (carried; defer until caller demands).
+8. **Schema bumps** (bigger sessions):
+   a. Ability-cast modeling — unlocks 7+ items (Liandry,
+      Demonic Embrace, Luden's, Stormsurge, Hextech Rocketbelt,
+      Horizon Focus, Cosmic Drive).
+   b. `caster_max_mp` CallContext field — unlocks Manamune /
+      Muramana family.
+   c. Stacking-stat pipeline — unlocks Yun Tal full crit stacks,
+      Mejai's Soulstealer, Bounty of Worlds.
+
+**Full coach activation matrix as of s79:** unchanged from s78 —
+this batch was engine-side only.
+
+
