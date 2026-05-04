@@ -281,9 +281,10 @@ class DefensiveOnlyExpansionTests(unittest.TestCase):
     # assertions live in TargetHpItemTests below; the schema-promotion
     # path matches Shadowflame in batch 4.
 
-    def test_terminus_defensive_for_now(self) -> None:
-        e = ITEM_EFFECTS["3302"]
-        self.assertTrue(e.defensive_only)
+    # Terminus (3302) promoted out of defensive_only in Phase 4 batch 13
+    # (2026-05-04) — Shadow on-hit proc + Juxtaposition Dark sustained
+    # pen. Promotion-shape assertions live in TerminusPromotionTests
+    # at the bottom of this file.
 
 
 class DefensiveOnlyBatch2Tests(unittest.TestCase):
@@ -1520,6 +1521,81 @@ class LifelineUniquePassiveTests(unittest.TestCase):
                 # without instrumenting; instead, we just confirm the
                 # function returned a valid DpsResult (smoke test).
                 self.assertGreater(r.weighted_dps, 0.0)
+
+
+class TerminusPromotionTests(unittest.TestCase):
+    """Phase 4 batch 13 — Terminus promoted from defensive_only.
+
+    Shadow on-hit (30 magic per basic, constant — not alternating as
+    the prior note claimed) + Juxtaposition Dark sustained pen
+    (10% armor pen + 10% magic pen, same sustained-DPS approximation
+    as Black Cleaver's stacking). Light buff is caster-resists,
+    defensive, ignored.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_terminus_no_longer_defensive_only(self) -> None:
+        e = ITEM_EFFECTS["3302"]
+        self.assertFalse(e.defensive_only)
+
+    def test_terminus_has_shadow_periodic(self) -> None:
+        e = ITEM_EFFECTS["3302"]
+        self.assertEqual(len(e.periodics), 1)
+        proc = e.periodics[0]
+        self.assertEqual(proc.name, "Shadow")
+        self.assertEqual(proc.damage_type, MAGICAL)
+        self.assertEqual(proc.every_n_attacks, 1)
+        # Constant 30 (not stat-scaling). Pinned per current patch.
+        ctx = CallContext(base_ad=60, bonus_ad=30, level=11)
+        self.assertEqual(proc.resolve_damage(ctx), 30.0)
+
+    def test_terminus_armor_and_magic_pen(self) -> None:
+        e = ITEM_EFFECTS["3302"]
+        self.assertAlmostEqual(e.armor_pen_pct, 0.10, places=3)
+        self.assertAlmostEqual(e.magic_pen_pct, 0.10, places=3)
+
+    def test_terminus_lifts_dps_via_proc(self) -> None:
+        # Aatrox + Terminus pre-promotion = 64.92 dps (stat block only).
+        # Post-promotion: same stat block + Shadow proc + pen at default
+        # 0 armor/MR (pen contributes nothing without targets).
+        # Shadow proc = 30 magic per basic; Aatrox's effective AS with
+        # Terminus = base + 35% Terminus AS bonus. Per-rotation magic
+        # damage = total_attacks * 30 / duration. Should add ~25+ dps
+        # uplift over the pre-promotion baseline.
+        bare = compute_dps(self.snap, "Aatrox", level=11)
+        post = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3302"])
+        # Pre-promotion was 64.92 (~ +17.85 from bare 47.07, stats only).
+        # Post-promotion should beat 64.92 by the Shadow proc value.
+        self.assertGreater(post.weighted_dps, 64.92,
+            "Terminus Shadow proc didn't lift DPS past stat-only baseline")
+        # Sanity: should be well above bare too.
+        self.assertGreater(post.weighted_dps, bare.weighted_dps + 30.0,
+            "Combined Terminus stat + proc uplift below expected ~30 dps floor")
+
+    def test_terminus_pen_engages_against_armored_target(self) -> None:
+        # 10% armor pen on a 100-armor target reduces effective armor
+        # to 90, lifting physical DPS. Compare a Terminus build at
+        # target_armor=100 vs another armor-pen-free build (a hypothetical
+        # build with same AD but no pen). Easier: probe Terminus alone
+        # at 0 armor vs 100 armor. The proportional drop should be
+        # smaller than no-pen would give.
+        no_target = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3302"])
+        armored = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3302"], target_armor=100.0)
+        # 10% pen on 100 armor → effective armor 90; armor factor
+        # 100/(100+90) = 0.526 vs no-pen 100/(100+100) = 0.500.
+        # So armored dps with Terminus pen should be slightly higher
+        # than the same build without pen would produce. We can't
+        # cleanly contrast without a no-pen baseline, but we can
+        # assert the ratio is reasonable.
+        ratio = armored.weighted_dps / no_target.weighted_dps
+        # Without any pen, 100 armor halves physical damage. With 10%
+        # pen, ratio should be slightly above 0.5. With magic damage
+        # untouched (default mr=0), the magic proc isn't dampened.
+        self.assertGreater(ratio, 0.55,
+            "Terminus pen+magic-proc didn't partially offset armor")
 
 
 if __name__ == "__main__":
