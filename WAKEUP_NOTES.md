@@ -5883,3 +5883,192 @@ no two-way traffic this session. Working tree clean except runtime
 5. **P8-7 E2E push-to-League integration test** (carried).
 6. **Activate arena augment v2 in production** (carried).
 7. **Per-target-HP-pct field** (carried; defer until caller demands).
+
+---
+
+## s72 hand-off — 2026-05-04 06:55 (Phase 4 batch 19 wire-in: arena_coach activates target_bonus_hp)
+
+Single-arc continuation. Started s72 with `continue Daemon Slayer`,
+took s71's #1 next-session candidate (coach-side activation). Shipped
+the consumer wiring that makes the engine schema actually do
+something for the user. Engine version unchanged at 0.23.0 —
+this is pure consumer-side activation. RC main pid bumped (9488 →
+3224 across one restart).
+
+**Pattern decision worth pinning — bounded heuristics are fine
+when the engine itself caps the impact.** Considered three signal
+sources for `target_bonus_hp` estimation:
+1. Per-enemy item snapshot. CLEANEST but `_parse_arena_state`
+   doesn't surface enemy items today; would require expanding
+   teams[] entries with `items: list[str]` and resolving via
+   ddragon at coach time. ~3-5× the LOC of the heuristic path.
+2. Champion-base HP at level. REJECTED — that's `target_max_hp`,
+   not bonus HP. Doesn't tell us anything about items.
+3. **CHOSEN**: linear ramp 0→1500 across rounds 2..10. The
+   estimator's worst-case error is bounded by Giant Slayer's own
+   15% saturation amp, so misestimating by 50% only misranks
+   items by ~7.5% DPS — within the noise band of every other
+   /rank approximation. Future batch can refine to per-enemy
+   item-aware once teams[] carries item lists.
+
+**Pattern decision worth pinning — production wire-ins must
+preserve back-compat at the request body level, not just the
+function signature level.** `daemon_slayer_client.rank_for` /
+`dps_for` always send `target_max_hp` + `target_bonus_hp` in the
+body (defaulting to 0.0) regardless of caller. The engine
+guarantees 0 → "no signal" (procs no-op), so a stable body shape
+is safer than conditional inclusion — easier to reason about
+(every request looks the same), easier to grep for (one schema
+rather than N call-site variants), and prevents future bugs
+where forgetting to thread a field through accidentally falls
+back to engine defaults that don't match coach defaults.
+
+**Shipped (commit `4af3111`, pushed `50f76a0..a346bc5` after
+rebasing onto the auto weekly-ddragon-audit commit `50f76a0`):**
+
+- `core/daemon_slayer_client.py`:
+  - `rank_for(target_max_hp=0.0, target_bonus_hp=0.0)` — both new
+    kwargs, both threaded into `body` unconditionally
+  - `dps_for(target_max_hp=0.0, target_bonus_hp=0.0)` — same
+    treatment (parity)
+  - Docstring on `rank_for` updated to call out batch 5 / batch
+    19 semantics (target_max_hp activates BotRK / Eclipse,
+    target_bonus_hp activates LDR Giant Slayer)
+
+- `coaches/arena_coach.py`:
+  - New `_estimate_target_bonus_hp()` method on the Coach class.
+    Pure function of `self._event_round_count`. Linear ramp
+    `(round - 1) * 1500.0 / 9.0`, clamped to [0, 1500].
+  - `_run_coach`'s daemon_slayer wire-in (Phase 7) now calls
+    `_estimate_target_bonus_hp()` and passes it into
+    `_ds_client.rank_for(target_bonus_hp=...)`.
+  - One-line "s72" comment at the call site documenting the
+    activation.
+
+- `tests/phase2_smoke/test_daemon_slayer_client_target_bonus_hp.py` (NEW):
+  - 5 tests on the client's transport contract. `mock.patch` of
+    `_post_json` captures the body; assertions on field presence +
+    pass-through.
+
+- `tests/phase2_smoke/test_arena_coach_target_bonus_hp.py` (NEW):
+  - 8 tests on the estimator curve. Stub class binds the real
+    method (mirrors `test_arena_augment_hud`'s pattern — avoids
+    pulling Anthropic SDK at test time). Pins:
+    round 0/1 → 0, round 2 → 167, round 5 → 667, round 10 → 1500
+    (exact), round 15 → 1500 (clamped), round -3 → 0 (defensive),
+    monotonic curve.
+
+**Test state:**
+- daemon_slayer engine suite: 379/379 green (unchanged from s71).
+- New `tests/phase2_smoke/` tests: 13/13 green.
+- Full `tests/` tree: 269 tests, 1 failure + 52 errors —
+  **pre-existing baseline** (262 tests, 1 failure + 58 errors
+  before my changes; my changes added 7 net tests and resolved
+  6 errors, regression-free). The one failure is a stale version
+  pin in `tests/phase8_smoke/test_sr_draft_profile_engine.py`
+  asserting `engine_version == "0.9.3"` — that test was authored
+  in commit `13c2e5e` (Phase 8 step 2) and has been failing
+  every minor bump since. Deferred (separate clean-up batch).
+
+**Live engine verify (post `restart_trigger.txt`, pid 3224):**
+```
+GET  /rank Aatrox lvl 18 [3031,3006,3046] arm=150 (no bonus_hp signal)
+  → top picks: Stormrazor 65.60, Rapid Firecannon 58.06, Trinity Force 55.27 ...
+GET  /rank same body + target_bonus_hp=1500
+  → top picks: Lord Dominik's Regards 70.57 * (was missing from top-5),
+              Stormrazor 65.60 (UNCHANGED — no Giant Slayer on it),
+              Rapid Firecannon 58.06 ...
+```
+LDR ranks #1 once Giant Slayer activates; Stormrazor's 65.60 is
+identical across both runs, confirming the amp is item-scoped not
+build-wide. Coach-driven /rank with the heuristic estimator now
+produces this LDR-aware ranking when round_count >= 10.
+
+**Decisions worth pinning:**
+- **Round-driven estimators land at coach-class methods, not
+  module functions.** `_estimate_target_bonus_hp` reads
+  `self._event_round_count` directly — putting it on the class
+  binds it to the round-tracker state cleanly. Module-level
+  functions would need round_count threaded as a parameter,
+  which is just indirection.
+- **Heuristic curves should saturate at the engine's own
+  saturation point.** Giant Slayer caps at 1500 bonus HP; the
+  estimator caps at 1500. Going past that adds zero signal value
+  and creates calibration drift if the engine cap ever changes.
+- **Production wire-ins should be visibly testable via /rank.**
+  The recommendation flip (LDR not in top-5 → LDR #1) is the
+  best kind of evidence: a side-by-side diff that any future
+  reader can reproduce in seconds.
+
+**Things tomorrow-you should NOT redo:**
+- Don't refactor `_estimate_target_bonus_hp` to take round_count
+  as a parameter. The round count is coach-state owned; passing
+  it would invite calibration drift between the round tracker
+  and the estimator.
+- Don't expand teams[] with per-enemy items as part of this
+  batch's footprint. That's a separate refinement that
+  touches the live-client parser; doing it here would balloon
+  the scope and obscure the wire-in's intent.
+- Don't fix the stale `0.9.3` engine_version pin in
+  `test_sr_draft_profile_engine.py` here. It's pre-existing tech
+  debt orthogonal to this batch — separate cleanup commit.
+
+**Activation:** RC main restarted via `restart_trigger.txt`
+(pid 9488 → 3224, reload_ok=true). arena_coach now sends
+`target_bonus_hp` on every /rank call. SR coach + ARAM coach
+still call /rank with the field at default 0.0 (back-compat;
+they'd need their own estimators since SR has 5 enemies and
+ARAM has 5 enemies all on the same team — different shape from
+Arena's 1-of-3 next-opponent model).
+
+**Bridge state at session end:** RC main pid=3224 alive=true
+reload_ok=true. Engine on :8893 = 0.23.0 unchanged. LCU
+phase=None (no game in progress). Bridge to Game-PC last result
+1078s+ ago at session start; no two-way traffic this session.
+Working tree clean except runtime `data/ratings/last_*.json`
+mutations (auto-stashed during rebase, restored cleanly).
+
+**Operational backlog (carried + new):**
+- All s54-s71 backlog items unchanged. **Coach-side
+  `target_bonus_hp` wiring (arena)** removed from open list
+  (this batch).
+- **Hullbreaker Skipper promotion** still blocked pending
+  external damage formula (carried).
+- **SR / ARAM coach `target_bonus_hp` wiring** (NEW from s72).
+  arena_coach is wired but sr_coach and aram_coach still send
+  the field at 0.0. Different signal-source needed (Arena's
+  round count is unique to Arena; SR uses minute marks +
+  enemy item HUD; ARAM uses minute marks). Probably 1 batch
+  per coach.
+- **Per-enemy item surfacing in `_parse_arena_state`** (NEW
+  from s72). Would unblock item-aware `target_bonus_hp` (and
+  other per-target signals — `target_max_hp`, target armor
+  rationally). Refinement of s72's heuristic.
+- **Stale `0.9.3` engine_version pin in test_sr_draft_profile_engine**
+  (NEW from s72). Pre-existing failure since Phase 8 step 2;
+  worth one PR to update the snapshot pin.
+
+**Next-session candidates (ranked):**
+1. **Per-enemy item surfacing** (NEW from s72). Expand
+   `_parse_arena_state` to populate `teams[i]["items"]: list[str]`
+   from `allPlayers[i].items`, then refactor
+   `_estimate_target_bonus_hp` to sum HP from the next-opponent's
+   items via DDragon lookup. Architecturally clean — replaces a
+   heuristic with deterministic data. ~1-2 hour scope.
+2. **Phase 4 batch 20: League wiki scraper for item-passive
+   coefficients** (carried s71 #2). Unblocks Hullbreaker /
+   Essence Reaver / Sterak's. ~3-5 hour scope.
+3. **SR coach `target_bonus_hp` activation** (NEW from s72).
+   Different shape than Arena — would need a per-enemy estimator
+   keyed on summoner_d items + level. Skip until SR coach picks
+   up the schema.
+4. **Stale-version-pin cleanup** (NEW from s72). Drop the
+   `0.9.3` literal in `test_sr_draft_profile_engine`; either
+   compare against `agents.daemon_slayer.ENGINE_VERSION` or
+   remove the assertion entirely. ~10 min scope.
+5. **First draft visual verify of P8-5.5** (carried).
+6. **gamepc_boot.ps1 patch** (carried). 1-liner.
+7. **P8-7 E2E push-to-League integration test** (carried).
+8. **Activate arena augment v2 in production** (carried).
+9. **Per-target-HP-pct field** (carried; defer until caller demands).
+
