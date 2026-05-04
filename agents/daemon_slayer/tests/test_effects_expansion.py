@@ -454,11 +454,12 @@ class SpellbladeAndOnHitApTests(unittest.TestCase):
 class DefensiveOnlyBatch3Tests(unittest.TestCase):
     """Phase 4 batch 3 (2026-05-04) — AP-stat siblings without DPS proc.
 
-    Hextech Gunblade (3146) / Luden's Echo (6655) / Deathfire Grasp
-    (3128). All carry AP stat blocks but their effects don't fit the
-    periodic/on-hit shape: active utilities, ability-bound bolts, and
-    active %-target-max-HP. Pinned here so future hooks can find them
-    via grep.
+    Luden's Echo (6655) / Deathfire Grasp (3128). Both carry AP stat
+    blocks but their effects don't fit the periodic/on-hit shape:
+    ability-bound bolts (schema-blocked, needs ability-cast modeling)
+    and active %-target-max-HP (removed-from-game in current League,
+    kept for parity). Pinned here so future hooks can find them via
+    grep.
 
     Note: Shadowflame (4645) shipped batch 3 as defensive_only but
     promoted in batch 4 — its 15 flat magic pen IS modeled by the new
@@ -469,10 +470,13 @@ class DefensiveOnlyBatch3Tests(unittest.TestCase):
     batch 14 (damage_amp_pct schema, 2026-05-04) — its proc-shape
     assertions live in RiftmakerPromotionTests at the bottom of this
     file. HP→AP cross-derivation is still separate.
+
+    Note: Hextech Gunblade (3146) was here through batch 21; promoted
+    in batch 22 (long-CD active modeled as periodic proc, 2026-05-04)
+    — its proc-shape assertions live in HextechGunbladeTests below.
     """
 
     EXPECTED = {
-        "3146": "Hextech Gunblade",
         "6655": "Luden's Echo",
         "3128": "Deathfire Grasp",
     }
@@ -1256,6 +1260,74 @@ class EssenceReaverSpellbladeTests(unittest.TestCase):
         # First-seen-wins ordering: ER first keeps ER; LB first keeps LB.
         self.assertEqual(effects_er_first[0].item_id, "3508")
         self.assertEqual(effects_lb_first[0].item_id, "3100")
+
+
+class HextechGunbladeTests(unittest.TestCase):
+    """Phase 4 batch 22 — Hextech Gunblade (3146) promoted from
+    defensive_only.
+
+    Lightning Bolt active is a long-CD targeted nuke: 175→253 (level
+    1→18, linear) + 30% AP magic damage, 40s cooldown. Modeled as a
+    PeriodicProc with ``every_n_seconds=40.0`` — same shape as Sundered
+    Sky's 8s Lightshield Strike, just a far longer cadence. The 25%/1.5s
+    slow is utility, not damage, and is not modeled. AP scales via
+    ``c.ap`` (build-derived stat-property, plumbed at compute_dps
+    construction per the batch 21 pattern).
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_gunblade_promoted_not_defensive_only(self) -> None:
+        e = ITEM_EFFECTS["3146"]
+        self.assertFalse(e.defensive_only)
+        self.assertNotEqual(e.periodics, ())
+        proc = e.periodics[0]
+        self.assertEqual(proc.damage_type, MAGICAL)
+        self.assertEqual(proc.every_n_seconds, 40.0)
+        self.assertEqual(proc.every_n_attacks, 0)
+        self.assertEqual(proc.name, "Lightning Bolt")
+        self.assertIn("lightning bolt", e.note.lower())
+
+    def test_gunblade_proc_level_1_no_ap(self) -> None:
+        # Level 1, 0 AP → 175 flat magic damage per active.
+        proc = ITEM_EFFECTS["3146"].periodics[0]
+        ctx = CallContext(base_ad=60.0, bonus_ad=0, level=1)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 175.0, places=3)
+
+    def test_gunblade_proc_level_18_no_ap(self) -> None:
+        # Level 18, 0 AP → 253 flat magic damage per active.
+        proc = ITEM_EFFECTS["3146"].periodics[0]
+        ctx = CallContext(base_ad=60.0, bonus_ad=0, level=18)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 253.0, places=3)
+
+    def test_gunblade_proc_scales_with_ap(self) -> None:
+        # Level 11, 200 AP → 175 + 78/17*10 + 0.30 * 200
+        #                = 175 + 45.882... + 60 = 280.882...
+        proc = ITEM_EFFECTS["3146"].periodics[0]
+        ctx = CallContext(base_ad=60.0, bonus_ad=0, level=11, ap=200.0)
+        expected = 175.0 + (253.0 - 175.0) / 17.0 * 10 + 0.30 * 200.0
+        self.assertAlmostEqual(proc.resolve_damage(ctx), expected, places=3)
+
+    def test_gunblade_level_scaling_is_linear(self) -> None:
+        # Per-level uplift = (253 - 175) / 17 ≈ 4.588 magic damage.
+        proc = ITEM_EFFECTS["3146"].periodics[0]
+        ctx10 = CallContext(base_ad=60.0, bonus_ad=0, level=10)
+        ctx11 = CallContext(base_ad=60.0, bonus_ad=0, level=11)
+        delta = proc.resolve_damage(ctx11) - proc.resolve_damage(ctx10)
+        self.assertAlmostEqual(delta, 78.0 / 17.0, places=3)
+
+    def test_gunblade_dps_lifts_ap_user(self) -> None:
+        # Akali level 11 + Gunblade: stat block alone (60 AP, 45 AD,
+        # 12% omnivamp) lifts DPS; the now-active Lightning Bolt proc
+        # adds a small additional contribution. We assert the engine
+        # ran clean post-promotion — bare baseline < with-gunblade.
+        bare = compute_dps(self.snap, "Akali", level=11)
+        with_gb = compute_dps(
+            self.snap, "Akali", level=11, item_ids=["3146"],
+        )
+        self.assertGreater(with_gb.weighted_dps, bare.weighted_dps)
 
 
 class MultiProcSchemaTests(unittest.TestCase):
