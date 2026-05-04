@@ -5,7 +5,8 @@ Covers:
   - Champion icon loading from LCU local asset server
   - Champion pick (action complete)
   - Bench swap (no cooldown — direct API bypasses client 5s delay)
-  - Summoner spell writing
+  - Summoner spell writing (idempotent when caller provides current_pair)
+  - Per-role spell defaults (Phase 8 step 4 — SR draft)
   - Champ select session parsing for ARAM
 """
 from __future__ import annotations
@@ -37,6 +38,45 @@ SPELL = {
 # Preset spell combos
 SPELL_FLASH_SNOWBALL = (SPELL["flash"], SPELL["snowball"])
 SPELL_FLASH_EXHAUST  = (SPELL["flash"], SPELL["exhaust"])
+
+
+# ── Role-keyed defaults for SR (Phase 8 step 4) ──────────────────────────────
+# Conservative pairs that match the most common build for each role. The
+# engine generator in `coaches/sr_draft_profile.py` has its own (tunable)
+# table in sr_draft_presets.json; this one is the LCU-layer fallback used
+# when no profile is being applied (e.g. operator clicks "default spells"
+# in the dashboard before any beam result arrives).
+SPELLS_BY_ROLE: dict[str, tuple[int, int]] = {
+    "TOP":     (SPELL["flash"], SPELL["teleport"]),
+    "JUNGLE":  (SPELL["flash"], SPELL["smite"]),
+    "MIDDLE":  (SPELL["flash"], SPELL["ignite"]),
+    "BOTTOM":  (SPELL["flash"], SPELL["heal"]),
+    "UTILITY": (SPELL["flash"], SPELL["ignite"]),
+}
+
+# Aliases the LCU + champ-select session sometimes emit.
+_ROLE_ALIASES: dict[str, str] = {
+    "MID":     "MIDDLE",
+    "BOT":     "BOTTOM",
+    "ADC":     "BOTTOM",
+    "SUPPORT": "UTILITY",
+    "SUP":     "UTILITY",
+    "JG":      "JUNGLE",
+}
+
+
+def spells_for_role(role: Optional[str]) -> tuple[int, int]:
+    """Return (d_spell_id, f_spell_id) for the given lane.
+
+    Coerces aliases (MID/BOT/ADC/SUP/JG) to canonical names. Falls back
+    to BOTTOM Flash+Heal when role is unknown — safest default since
+    Heal can't grief teammates the way Smite or TP would.
+    """
+    if not isinstance(role, str):
+        return SPELLS_BY_ROLE["BOTTOM"]
+    r = role.strip().upper()
+    r = _ROLE_ALIASES.get(r, r)
+    return SPELLS_BY_ROLE.get(r, SPELLS_BY_ROLE["BOTTOM"])
 
 
 def _aram_mode(mode: str) -> bool:
@@ -161,11 +201,44 @@ class LcuPregame:
         _log.warning("bench_swap_fast: failed champ=%d", champion_id)
         return False
 
-    def set_summoner_spells(self, spell1_id: int, spell2_id: int) -> bool:
+    def set_summoner_spells(
+        self,
+        spell1_id: int,
+        spell2_id: int,
+        *,
+        current_pair: Optional[tuple[int, int]] = None,
+    ) -> bool:
+        """Set summoner spells in champ select.
+
+        PATCH /lol-champ-select/v1/session/my-selection — but only when
+        the target pair differs from what's already selected. Phase 8
+        step 4 made this idempotent so a profile-apply round-trip
+        doesn't hammer the LCU when the operator already has the right
+        spells (e.g. their default lobby spells happen to match the
+        primary profile's pair).
+
+        Args:
+          spell1_id: target d-spell LCU id.
+          spell2_id: target f-spell LCU id.
+          current_pair: optional (s1, s2) the caller already knows
+            (typical: parsed from a champ-select session via
+            ``get_my_summoner_spells``). If provided AND it matches
+            the target, no PATCH fires and the call returns True.
+            If None, PATCH is sent unconditionally — preserves the
+            pre-Phase-8 contract for callers that haven't been
+            updated yet.
         """
-        Set summoner spells in champ select.
-        PATCH /lol-champ-select/v1/session/my-selection
-        """
+        if current_pair is not None:
+            try:
+                cur = (int(current_pair[0]), int(current_pair[1]))
+            except (ValueError, IndexError, TypeError):
+                cur = (0, 0)
+            if cur == (int(spell1_id), int(spell2_id)):
+                _log.debug(
+                    "set_summoner_spells: idempotent skip (%d + %d already set)",
+                    spell1_id, spell2_id,
+                )
+                return True
         result = self._request(
             "PATCH",
             "/lol-champ-select/v1/session/my-selection",
