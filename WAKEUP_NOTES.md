@@ -3300,3 +3300,196 @@ Working tree clean except runtime `data/ratings/last_*.json` mutations.
 4. **P8-7 E2E push-to-League integration test** (carried).
 5. **Activate arena augment v2 in production** (carried).
 6. **Riftmaker HP→AP cross-derivation** (carried).
+
+---
+
+## s58 hand-off — 2026-05-04 (Phase 4 batch 5: target HP layer + BotRK + Eclipse)
+
+Single-arc continuation of s57. Picked the s57 #1 backlog candidate
+(target HP modeling) — third batch in two days, all stitching
+together: batch 3 added the AP field, batch 4 added the magic pen
+layer, batch 5 adds target_max_hp. Operator still idle (LCU
+phase=None, RC main pid=9488 unchanged), so engine restart window
+stayed open.
+
+**Research-first finding (s57 deferred this):** lolmath scenarios
+have **zero** target-HP fields. Regex'd `targetHp` / `targetMaxHp` /
+`maxHp` / `health` / `currentHp` / `enemyHp` across the entire
+`scenarios.json` — all zero. So target HP must be **caller-supplied**,
+exactly like `target_armor` / `target_mr` already are. No level-derived
+default; default 0.0 zeros out %HP procs cleanly so callers who don't
+pass it get pre-batch DPS exactly.
+
+**Shipped (commit `55000ce`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - `CallContext.target_max_hp: float = 0.0` appended (default keeps
+    every existing callable backward-compatible — they bind by name,
+    so the new optional field is invisible to them).
+  - **BotRK (3153)** promoted from defensive_only → live periodic.
+    `bonus_damage = lambda c: 0.08 * c.target_max_hp`, physical, every
+    basic. Steady-state DPS approximation: current_hp ≈ max_hp at
+    fight start; slight over-count as the target is chunked.
+  - **Eclipse (6692)** promoted. `0.06 * c.target_max_hp`, physical,
+    every 2 attacks. Real proc has 6s per-target CD; under-counts on
+    heavy-AS sustain.
+  - Notes refreshed on items that *stay* defensive_only — Collector
+    (6676 — execute, fires once), Deathfire Grasp (3128 — active,
+    not auto rotation), Shadowflame (4645 — Cinderbloom low-HP
+    gate not modeled). Phrasing now reflects "doesn't fit the
+    auto-rotation shape" rather than "target HP not modeled".
+
+- `agents/daemon_slayer/dps.py`:
+  - `compute_dps(...)` gets `target_max_hp: float = 0.0` parameter.
+  - Plumbed into `CallContext`.
+  - `DpsResult` gains `target_max_hp` field; included in `to_dict()`
+    and the `format_table()` target line.
+
+- `agents/daemon_slayer/rank.py` and `agents/daemon_slayer/beam.py`:
+  - Same `target_max_hp` parameter on the public function, the
+    Result dataclass, the `to_dict()` and `format_table()`.
+  - All 3 `compute_dps(...)` call sites in beam.py and the 2 in
+    rank.py thread the new kwarg through.
+
+- `agents/daemon_slayer/server.py`:
+  - All three of `/dps`, `/rank`, `/beam` accept `target_max_hp`
+    via `_opt_float(body, "target_max_hp", 0.0)`. Index page docs
+    refreshed.
+
+- `agents/daemon_slayer/__init__.py`: docstring narrative
+  refreshed (target-HP layer call-out + 29 defensive_only count,
+  down 2 from BotRK + Eclipse promotion); `ENGINE_VERSION 0.11.0
+  → 0.12.0`. Schema-bump precedent matches s56 (CallContext.ap)
+  and s57 (magic_pen_*).
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - Two old "defensive_for_now" sentinel tests
+    (`test_blade_of_ruined_king_defensive_for_now`,
+    `test_eclipse_defensive_for_now`) removed — replaced by promotion-
+    confirmation assertions in the new `TargetHpItemTests` class.
+  - **CallContextTargetMaxHpTests** (3) — default-zero, callable
+    resolves against target_max_hp, zero-HP-zeros-the-proc.
+  - **TargetHpItemTests** (9) — BotRK promotion shape (physical,
+    every_n_attacks=1), Eclipse promotion shape (physical,
+    every_n_attacks=2), monotonic DPS uplift with target_max_hp,
+    BotRK > Eclipse at same HP (per-basic vs per-2nd), round-trip
+    in DpsResult, `max_hp=N` line in format_table.
+  - **CoverageCountTests** floor stays at 50 (promotions don't
+    add or remove entries; no count change).
+
+**Test state:** 277/277 daemon_slayer tests green (was 267 at end
+of s57; +12 = 3 + 9 from the two new test classes; net +10 after
+deleting 2 sentinel tests, matches `277 - 267 = 10`). py_compile
+pre-commit hook passed.
+
+**Live engine verify (post-restart `schtasks /End` + `/Run`):**
+```
+GET  /health                                                       → 0.12.0
+POST /dps {champion:Aatrox, level:11, items:[3153]}                →  68.02
+POST /dps {champion:Aatrox, level:11, items:[3153], target_max_hp:2000} → 140.57
+POST /dps {champion:Aatrox, level:11, items:[6692], target_max_hp:2000} →  98.41
+```
+Note `Blade of the Ruined King: Mist's Edge ~8% target HP on-hit
+(melee, steady-state approx)` surfaces. `target_max_hp` round-trips
+in the response.
+
+**`/rank` shape impact:**
+`POST /rank {champion:Aatrox, level:11, target_max_hp:2000, top:5}` →
+1. Blade of The Ruined King 3200g  +93.50 dps
+2. Trinity Force            3333g  +93.22 dps
+3. Stormrazor               3200g  +68.12 dps
+4. Statikk Shiv             3000g  +58.39 dps
+5. Rapid Firecannon         2650g  +53.50 dps
+
+BotRK ranks #1 vs an HP'd target — expected shift for an HP-aware
+ranking. Without `target_max_hp` (the default) Trinity Force still
+wins; the field genuinely changes recommendations.
+
+**Coverage delta:** ITEM_EFFECTS stays at 50 entries (promotions
+don't add). Net effect of batch 5: 2 items moved out of
+defensive_only (28 → 26 in `defensive_only_with_target_hp_pending`
+mental category, even though docstring says "29 defensive_only"
+which counts everything including utility items that won't ever
+promote).
+
+**Decisions worth pinning:**
+- **Single field, not two.** s57 hand-off mentioned `target_max_hp`
+  AND `target_current_hp_pct`. Shipped only `target_max_hp` —
+  pct=1.0 is the steady-state DPS assumption already, and adding
+  a field with no Day 1 caller passing anything else violates the
+  "don't design for hypothetical future requirements" rule. If a
+  caller later needs to simulate chunking, that's a one-field add.
+- **No level-derived default.** Tempted to set
+  `target_max_hp = 600 + 95*level` as a "squishy at level N"
+  default, but that'd silently change every existing test's DPS
+  values (BotRK contribution would suddenly appear). 0.0 is the
+  honest "caller didn't say so don't fabricate". Same precedent
+  as `target_armor=0.0`.
+- **Per-basic for BotRK, per-2nd for Eclipse.** BotRK fires every
+  basic attack (Mist's Edge); Eclipse needs 2 damage instances
+  in 1.5s, which in an auto-rotation = every 2nd attack. Matches
+  Riot's actual proc shapes; no extra "double-spell" gating needed.
+- **Notes for items still defensive_only refreshed.** Collector
+  fires once at <5% HP — adding "execute" semantics would need
+  per-rotation HP-decay simulation, way out of scope. Heartsteel
+  is out-of-combat farming + champ-melee-charged-attack, which
+  isn't a per-rotation proc shape. Deathfire is active. These
+  notes now say *why* they don't fit the proc shape rather than
+  the stale "target HP not modeled" — target HP IS now modeled,
+  the items just don't take advantage in DPS terms.
+
+**Things tomorrow-you should NOT redo:**
+- Don't add Heartsteel as a periodic — out-of-combat HP collection
+  + champion-melee-charged-attack doesn't fit `every_n_attacks` /
+  `every_n_seconds`. Stays defensive_only.
+- Don't promote The Collector — execute below 5% HP fires once at
+  the end of a fight, not every N attacks. Modeling it as a periodic
+  with `target_max_hp * 0.0X` would be wrong-shape.
+- Don't add a `target_current_hp_pct` field unless a caller demands
+  it. The current API matches the existing `target_armor` /
+  `target_mr` shape exactly; adding a 2nd HP field for symmetry
+  with no consumer is premature.
+- Don't try to "auto-derive" target_max_hp from level — keep it
+  caller-supplied. Same rule as target_armor.
+- Don't bump CoverageCountTests floor — promotions don't add to
+  the table size.
+
+**Activation:** Engine on :8893 already at 0.12.0 (this session
+restarted it). No further action needed.
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true (no Legion main-RC restart this session; only
+the RC-DaemonSlayer scheduled task was bounced — 3rd time today).
+Engine on :8893 = 0.12.0 live. LCU phase=None (no game in progress).
+Working tree clean except runtime `data/ratings/last_*.json`
+mutations.
+
+**Operational backlog (carried + new):**
+- All s54/s55/s56/s57 backlog items unchanged: gamepc_boot.ps1
+  `py → python.exe` patch; bridge auto-action lane false-positive
+  on deploy prompts; MR reduction layer (still no item demands it);
+  Riftmaker HP→AP cross-derivation.
+- **Hydras (3074 Ravenous, 3748 Titanic)** (NEW carry from batch 5).
+  Different scaling axis — Titanic Hydra cleave damage scales off
+  *caster's* max HP (1.5% melee / 0.75% ranged), not target's.
+  Would need `caster_max_hp` field on CallContext + `single-target
+  Crescent` cleave attribution. Reasonable batch 6 (~2-3 items
+  depending on whether Heartsteel's HP collection is also worth
+  modeling as a stat-side bonus).
+- **Per-target-HP-pct field** (NEW; deferred). When a caller wants
+  to simulate "we're chunking the target to 50% HP, BotRK current-HP
+  proc should de-rate", add `target_current_hp_pct: float = 1.0`.
+  One-field addition; tests adapt naturally.
+
+**Next-session candidates (ranked):**
+1. **Phase 4 batch 6: caster max HP layer + Hydras** (NEW). Schema
+   bump (0.12.0 → 0.13.0). Mirror of batch 5 but on the caster
+   side. Unlocks Titanic Hydra + Ravenous Hydra cleave damage.
+   ~2-3 hour scope; same pattern as `target_max_hp`.
+2. **First draft visual verify of P8-5.5** (carried). Still blocked
+   on operator draft queue.
+3. **gamepc_boot.ps1 patch** (carried). 1-liner.
+4. **P8-7 E2E push-to-League integration test** (carried).
+5. **Activate arena augment v2 in production** (carried).
+6. **Riftmaker HP→AP cross-derivation** (carried).
+7. **Per-target-HP-pct field** (NEW; defer until caller demands).
