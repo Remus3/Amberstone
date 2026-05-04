@@ -269,13 +269,14 @@ class TestLiveEngineIntegration(unittest.TestCase):
             self.skipTest("engine on :8893 unreachable — skipping live integration")
 
     def test_live_three_profiles(self):
+        from agents.daemon_slayer import ENGINE_VERSION
         out = build_profile(
             champion="Tristana", role="BOTTOM",
             my_team=[], their_team=[], queue_id=420,
         )
         self.assertEqual(len(out["profiles"]), 3,
                          f"expected 3 profiles, got notes={out.get('notes')}")
-        self.assertEqual(out["engine_version"], "0.9.3")
+        self.assertEqual(out["engine_version"], ENGINE_VERSION)
         for p in out["profiles"]:
             self.assertGreater(len(p["build_path"]), 0)
             self.assertGreater(len(p["item_ids"]), 0)
