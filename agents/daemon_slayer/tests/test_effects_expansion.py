@@ -308,16 +308,20 @@ class DefensiveOnlyBatch2Tests(unittest.TestCase):
     # Heartsteel (3084) was here through batch 5; promoted in batch 6
     # (caster-HP layer, 2026-05-04) — its proc-shape assertions live
     # in CasterHpItemTests below.
+    # Stridebreaker (6631) was here through batch 20; promoted in
+    # batch 21 (multi-target rotation layer, 2026-05-04) — its
+    # proc-shape assertions live in StridebreakerCleaveTests below.
+    # Essence Reaver (3508) was here through batch 20; promoted in
+    # batch 21 (CallContext.crit_chance schema, 2026-05-04) — its
+    # proc-shape assertions live in EssenceReaverSpellbladeTests below.
     EXPECTED = {
         "6333": "Death's Dance",
         "3161": "Spear of Shojin",
-        "3508": "Essence Reaver",
         "3083": "Warmog's Armor",
         "3139": "Mercurial Scimitar",
         "3026": "Guardian Angel",
         "3102": "Banshee's Veil",
         "3157": "Zhonya's Hourglass",
-        "6631": "Stridebreaker",
     }
 
     def test_all_present(self) -> None:
@@ -974,6 +978,54 @@ class CallContextTargetsInRotationTests(unittest.TestCase):
         self.assertAlmostEqual(proc.resolve_damage(ctx), 75.0, places=3)
 
 
+class CallContextCritChanceTests(unittest.TestCase):
+    """Phase 4 batch 21 — CallContext.crit_chance field."""
+
+    def test_default_zero(self) -> None:
+        # Backward-compat default — pre-batch-21 callers don't pass it.
+        ctx = CallContext(base_ad=60, bonus_ad=0, level=11)
+        self.assertEqual(ctx.crit_chance, 0.0)
+
+    def test_callable_resolves_against_crit_chance(self) -> None:
+        # ER-shape proc: 1.25 * base_ad + 50 * crit_chance bonus physical.
+        proc = PeriodicProc(
+            name="spellblade_er",
+            bonus_damage=lambda c: 1.25 * c.base_ad + 50.0 * c.crit_chance,
+            damage_type=PHYSICAL,
+            every_n_seconds=3.0,
+        )
+        # 100 base_ad, 60% crit → 125 + 30 = 155.
+        ctx = CallContext(base_ad=100.0, bonus_ad=0, level=11, crit_chance=0.60)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 155.0, places=3)
+
+    def test_zero_crit_chance_zeros_crit_piece(self) -> None:
+        # No crit → ER falls back to flat 1.25 * base_ad. Pins the
+        # "pre-batch consumers see no behavior change" invariant.
+        proc = PeriodicProc(
+            name="spellblade_er",
+            bonus_damage=lambda c: 1.25 * c.base_ad + 50.0 * c.crit_chance,
+            damage_type=PHYSICAL,
+            every_n_seconds=3.0,
+        )
+        ctx = CallContext(base_ad=100.0, bonus_ad=0, level=11)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 125.0, places=3)
+
+    def test_full_crit_caps_at_50_bonus(self) -> None:
+        # Meraki text "0 to 50 based on critical strike chance" — at
+        # 100% crit, crit piece = 50 flat. Engine doesn't enforce a cap
+        # on the lambda; it relies on the caller clamping crit_chance to
+        # 1.0 (compute_dps does this via min(stats.crit, 1.0)).
+        proc = PeriodicProc(
+            name="spellblade_er",
+            bonus_damage=lambda c: 1.25 * c.base_ad + 50.0 * c.crit_chance,
+            damage_type=PHYSICAL,
+            every_n_seconds=3.0,
+        )
+        ctx = CallContext(base_ad=80.0, bonus_ad=0, level=11, crit_chance=1.0)
+        # 1.25 * 80 + 50 * 1.0 = 100 + 50 = 150.
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 150.0, places=3)
+
+
 class RavenousHydraMultiTargetTests(unittest.TestCase):
     """Ravenous Hydra (3074) — cleave-to-others scales with rotation targets.
 
@@ -1036,6 +1088,174 @@ class RavenousHydraMultiTargetTests(unittest.TestCase):
         # And note from item shouldn't surface a "no rotations" warning.
         joined = " ".join(result.notes)
         self.assertNotIn("no rotations", joined)
+
+
+class StridebreakerCleaveTests(unittest.TestCase):
+    """Phase 4 batch 21 — Stridebreaker (6631) promoted via the same
+    multi-target rotation layer as Ravenous Hydra (3074).
+
+    Coefficient is 40% AD (Ravenous is 35%), so on a champion whose
+    rotations include n>1 targets, Stridebreaker should outscore
+    Ravenous on the cleave piece. Stat blocks differ — Ravenous brings
+    omnivamp + 5% MS; Stridebreaker brings AS + Halting Slash active —
+    so we test the cleave-piece signal, not the absolute total.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_stridebreaker_promoted_not_defensive_only(self) -> None:
+        e = ITEM_EFFECTS["6631"]
+        self.assertFalse(e.defensive_only)
+        self.assertNotEqual(e.periodics, ())
+        self.assertEqual(e.periodics[0].damage_type, PHYSICAL)
+        self.assertEqual(e.periodics[0].every_n_attacks, 1)
+        self.assertIn("cleave", e.note.lower())
+
+    def test_stridebreaker_zero_proc_on_single_target_champion(self) -> None:
+        # Same shape check as Ravenous Hydra: Aatrox's rotations are all
+        # n=1, so the cleave proc resolves to zero. We assert the fixture
+        # invariant here so a future scenarios.json change with n>1 on
+        # Aatrox surfaces in this test, not silently in DPS deltas.
+        from agents.daemon_slayer.dps import _phase_rotations
+        rotations = _phase_rotations(self.snap, "Aatrox")
+        for phase_rot in rotations.values():
+            for r in phase_rot:
+                self.assertEqual(
+                    float(r.get("numberOfTargets", 1.0) or 1.0),
+                    1.0,
+                    f"Aatrox rotation {r.get('title','?')} has n>1 — fixture changed",
+                )
+
+    def test_stridebreaker_lifts_dps_on_multi_target_champion(self) -> None:
+        # Anivia's late "DPS" rotation has numberOfTargets=3 with weight 70.
+        # Stridebreaker should add real DPS via the cleave proc.
+        bare = compute_dps(self.snap, "Anivia", level=11, phase="late")
+        with_sb = compute_dps(
+            self.snap, "Anivia", level=11, item_ids=["6631"], phase="late",
+        )
+        self.assertGreater(with_sb.weighted_dps, bare.weighted_dps)
+
+    def test_stridebreaker_per_rotation_isolation(self) -> None:
+        # Annie's mid phase mixes n=1 and n>1 rotations. The proc must
+        # resolve per-rotation, not against a global fallback. Assert it
+        # ran clean and produced finite-positive DPS.
+        result = compute_dps(
+            self.snap, "Annie", level=11, item_ids=["6631"], phase="mid",
+        )
+        self.assertGreater(result.weighted_dps, 0.0)
+        joined = " ".join(result.notes)
+        self.assertNotIn("no rotations", joined)
+
+    def test_stridebreaker_cleave_outscores_ravenous_at_same_n(self) -> None:
+        # Direct coefficient check: 40% > 35% on the cleave piece. Stat
+        # blocks differ between the two items, so we can't compare total
+        # DPS — we compare proc resolution at a fixed CallContext.
+        sb = ITEM_EFFECTS["6631"].periodics[0]
+        rh = ITEM_EFFECTS["3074"].periodics[0]
+        # n=3, base_ad=100, bonus_ad=50 → cleave hits 2 enemies.
+        # SB: 2 * 0.40 * 150 = 120; RH: 2 * 0.35 * 150 = 105.
+        ctx = CallContext(
+            base_ad=100.0, bonus_ad=50.0, level=11, targets_in_rotation=3.0,
+        )
+        sb_dmg = sb.resolve_damage(ctx)
+        rh_dmg = rh.resolve_damage(ctx)
+        self.assertGreater(sb_dmg, rh_dmg)
+        self.assertAlmostEqual(sb_dmg, 120.0, places=3)
+        self.assertAlmostEqual(rh_dmg, 105.0, places=3)
+
+    def test_stridebreaker_zero_at_targets_one(self) -> None:
+        # Single-target rotation → max(0, 1-1) * coef * AD = 0. Pins the
+        # "preserves historic single-target shape" invariant.
+        sb = ITEM_EFFECTS["6631"].periodics[0]
+        ctx = CallContext(
+            base_ad=100.0, bonus_ad=50.0, level=11, targets_in_rotation=1.0,
+        )
+        self.assertEqual(sb.resolve_damage(ctx), 0.0)
+
+
+class EssenceReaverSpellbladeTests(unittest.TestCase):
+    """Phase 4 batch 21 — Essence Reaver (3508) promoted via the new
+    CallContext.crit_chance schema.
+
+    ER fires Spellblade once per ~3s rotation cadence (same shape as
+    Trinity Force / Lich Bane), dealing 125% base AD + 0.5/crit% bonus
+    physical. Joins the spellblade unique-passive dedup family. Tests
+    pin the proc shape, the crit-scaling behavior, and the dedup
+    against TF/LB.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_er_promoted_not_defensive_only(self) -> None:
+        e = ITEM_EFFECTS["3508"]
+        self.assertFalse(e.defensive_only)
+        self.assertNotEqual(e.periodics, ())
+        self.assertEqual(e.periodics[0].damage_type, PHYSICAL)
+        self.assertEqual(e.periodics[0].every_n_seconds, 3.0)
+        self.assertEqual(e.periodics[0].name, "Spellblade")
+        self.assertIn("spellblade", e.note.lower())
+
+    def test_er_tagged_spellblade_unique_passive(self) -> None:
+        e = ITEM_EFFECTS["3508"]
+        self.assertEqual(e.unique_passive_key, "spellblade")
+
+    def test_er_proc_zero_crit_is_125_pct_base_ad(self) -> None:
+        # No crit signal → ER falls back to 1.25 * base_ad bonus physical
+        # (the historic "modeling 125% base AD alone" path). 100 base_ad
+        # → 125 bonus damage per proc.
+        proc = ITEM_EFFECTS["3508"].periodics[0]
+        ctx = CallContext(base_ad=100.0, bonus_ad=0, level=11)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 125.0, places=3)
+
+    def test_er_proc_scales_with_crit_chance(self) -> None:
+        # 80% crit → 1.25 * 100 + 50 * 0.80 = 125 + 40 = 165.
+        proc = ITEM_EFFECTS["3508"].periodics[0]
+        ctx = CallContext(base_ad=100.0, bonus_ad=0, level=11, crit_chance=0.80)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 165.0, places=3)
+
+    def test_er_dps_outscores_baseline_on_crit_user(self) -> None:
+        # Caitlyn level 11 + ER: ER's stat block (60 AD, 25% crit, 25 AH,
+        # +25 mana) plus the now-active Spellblade proc should beat the
+        # bare baseline. Stat-block-only would already lift DPS; this
+        # asserts the engine ran clean post-promotion.
+        bare = compute_dps(self.snap, "Caitlyn", level=11)
+        with_er = compute_dps(
+            self.snap, "Caitlyn", level=11, item_ids=["3508"],
+        )
+        self.assertGreater(with_er.weighted_dps, bare.weighted_dps)
+
+    def test_er_dps_higher_with_crit_stack(self) -> None:
+        # ER + IE (3031, 60 AD, 25% crit) on Caitlyn — the crit_chance
+        # passed into ER's lambda is the BUILD's crit, not 0. So adding
+        # IE on top of ER should lift DPS more than two stat-equivalent
+        # items would in isolation, because ER's crit-piece scales with
+        # the higher crit chance.
+        er_only = compute_dps(
+            self.snap, "Caitlyn", level=11, item_ids=["3508"],
+        )
+        er_plus_ie = compute_dps(
+            self.snap, "Caitlyn", level=11, item_ids=["3508", "3031"],
+        )
+        self.assertGreater(er_plus_ie.weighted_dps, er_only.weighted_dps)
+
+    def test_er_spellblade_dedups_against_lich_bane(self) -> None:
+        # Both [ER, LB] and [LB, ER] should keep ONE spellblade proc
+        # via the unique-passive key. We can't directly inspect the
+        # filtered effects list from compute_dps (it's internal), so we
+        # check the dedup helper used by the engine.
+        from agents.daemon_slayer.effects import collect_effects
+        effects_er_first = collect_effects(["3508", "3100"])
+        effects_lb_first = collect_effects(["3100", "3508"])
+        # Both orderings drop one spellblade proc — only one remains.
+        self.assertEqual(len(effects_er_first), 1)
+        self.assertEqual(len(effects_lb_first), 1)
+        # First-seen-wins ordering: ER first keeps ER; LB first keeps LB.
+        self.assertEqual(effects_er_first[0].item_id, "3508")
+        self.assertEqual(effects_lb_first[0].item_id, "3100")
 
 
 class MultiProcSchemaTests(unittest.TestCase):
@@ -1391,11 +1611,14 @@ class SpellbladeUniquePassiveTests(unittest.TestCase):
         # TF + Sundered Sky would silently drop one of them.
         self.assertNotEqual(ITEM_EFFECTS["6610"].unique_passive_key, "spellblade")
 
-    def test_essence_reaver_not_tagged_spellblade(self) -> None:
-        # Currently defensive_only — tagging would create order-
-        # dependence (Essence Reaver-first would dedup TF or LB).
-        # Promote it first (model the proc), then tag.
-        self.assertNotEqual(ITEM_EFFECTS["3508"].unique_passive_key, "spellblade")
+    def test_essence_reaver_tagged_spellblade(self) -> None:
+        # Phase 4 batch 21 (2026-05-04) promoted ER out of defensive_only
+        # and joined the spellblade family. Pre-promotion this test
+        # asserted the *opposite* (untagged) — preserving the dedup
+        # order-dependence guard until the proc itself was modeled.
+        # EssenceReaverSpellbladeTests below covers the full dedup pair
+        # against Lich Bane.
+        self.assertEqual(ITEM_EFFECTS["3508"].unique_passive_key, "spellblade")
 
     def test_collect_effects_dedups_spellblade_pair(self) -> None:
         from agents.daemon_slayer.effects import collect_effects
