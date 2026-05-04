@@ -4523,3 +4523,155 @@ clean except runtime `data/ratings/last_*.json` mutations.
 6. **Activate arena augment v2 in production** (carried).
 7. **Riftmaker HP→AP cross-derivation** (carried).
 8. **Per-target-HP-pct field** (carried; defer until caller demands).
+
+---
+
+## s65 hand-off — 2026-05-04 (Phase 4 batch 12: Lifeline unique-passive + PD note fix)
+
+Single-arc continuation of s64. Picked the s64 #1 candidate (Lifeline
+tag + PD note correction). Tenth Phase-4 batch in two days. Operator
+still idle (LCU phase=None, RC main pid=9488 unchanged).
+
+**Pattern decision worth pinning — small batches still earn version
+bumps.** This batch is purely defensive_only — no DPS proc impact, only
+notes dedup. I considered a patch-bump (0.18.0 → 0.18.1) instead of a
+minor bump but stayed with the established pattern (every batch =
+minor bump). The version reflects "what changed in engine behavior
+that callers might want to know about" — DpsResult.notes returning
+fewer entries on Lifeline-stacked builds is a behavior change, even if
+not a math change.
+
+**Shipped (commit `56d6934`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - **Immortal Shieldbow (6673)**: `unique_passive_key="lifeline"` +
+    inline comment documenting the gating concern (when/if any
+    Lifeline item gets a real DPS proc, re-evaluate).
+  - **Sterak's Gage (3053)**: `unique_passive_key="lifeline"`.
+  - **Maw of Malmortius (3156)**: `unique_passive_key="lifeline"`.
+  - **Phantom Dancer (3046)**: NOT tagged. Note corrected from
+    "Lifeline shield + ghosting on low HP" → "Spectral Waltz (Ghost
+    on low HP)". RC's prior note was wrong (DDragon labels it
+    "Spectral Waltz", a Ghost effect, distinct from Lifeline).
+
+- `agents/daemon_slayer/__init__.py`: docstring narrative refreshed
+  (lifeline unique-passive call-out + 28 defensive_only count
+  unchanged); `ENGINE_VERSION 0.18.0 → 0.19.0`.
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - **LifelineUniquePassiveTests** (7 tests) — three items share
+    lifeline key, PD NOT tagged lifeline, PD note no longer claims
+    "Lifeline" + does claim "Spectral Waltz", dedup behavior
+    Shieldbow+Sterak's → 1 effect, triple-stack
+    Shieldbow+Sterak's+Maw → 1 effect, PD survives alongside
+    Lifeline (no shared key), all 3 Lifeline solo builds return
+    valid DpsResult (smoke test for tagging not breaking anything).
+
+**Test state:** 336/336 daemon_slayer tests green (was 329 at end
+of s64; +7 from `LifelineUniquePassiveTests`). All 329 prior tests
+stayed green unchanged before the new tests were added — confirms
+defensive_only tagging doesn't perturb DPS math anywhere. py_compile
+pre-commit hook passed.
+
+**Live engine verify (post-restart `schtasks /End` + `/Run`):**
+```
+GET  /health                                              → 0.19.0
+POST /dps {Aatrox, lvl 11}                                → 47.07 (bare; 0 notes)
+POST /dps {Aatrox, lvl 11, items:[6673]}                  → 83.84 (1 note: Shieldbow)
+POST /dps {Aatrox, lvl 11, items:[6673,3053]}             → 83.84 (1 note; Sterak's deduped)
+POST /dps {Aatrox, lvl 11, items:[6673,3053,3156]}        → 114.32 (1 note; Maw's 60 AD lifts dps via stat block)
+POST /dps {Aatrox, lvl 11, items:[6673,3046]}             → 112.16 (2 notes; PD untouched)
+```
+
+Math sanity:
+- Shieldbow+Sterak's IDENTICAL to Shieldbow alone: Sterak's stat
+  block is 400 HP + 20% Tenacity, neither helps AA dps. The fact
+  that DPS didn't change = stat aggregation untouched + dedup
+  removed Sterak's effect entry. ✅
+- Shieldbow+Sterak's+Maw lifted to 114.32: Maw adds 60 AD + 40 MR
+  + 15 AH; the 60 AD compounds with Aatrox's AS for ~30 dps uplift
+  on top of Shieldbow's 55 AD contribution. Stat aggregation
+  confirmed. ✅
+- Notes count = 1 across all Lifeline-only builds: dedup keeps the
+  first-seen item's note in DpsResult.notes; later Lifeline items'
+  notes never surface. UX cleanup. ✅
+- PD + Shieldbow → 2 notes: PD untagged means it doesn't dedup
+  against Shieldbow's lifeline key. ✅
+
+**Coverage delta:** ITEM_EFFECTS unchanged at 54 entries (no new
+items; only schema usage on existing entries + 1 note correction).
+
+**Decisions worth pinning:**
+- **Defensive_only tagging is safe when ALL items in the group are
+  defensive_only.** No proc to silently drop, only notes affected.
+  When a single defensive_only item exists in a group otherwise full
+  of DPS-positive items (e.g. Essence Reaver among Spellblade items),
+  tagging the defensive_only item creates the order-dependence bug
+  from batch 11 — DON'T tag in that case.
+- **Note correction is part of the tagging discipline.** PD's "Lifeline"
+  claim was wrong even before the unique-passive system existed. The
+  process of investigating what to tag surfaced the documentation
+  bug. Each tagging batch should re-read the items it touches.
+- **DDragon label is the source of truth for shared mechanics.** For
+  the 3rd batch in a row this snapshot-evidence pattern has held:
+  literal label match → tag together; different labels → distinct
+  mechanics → don't lump. Pin this pattern in future tagging.
+- **Shieldbow chosen as first-seen by accident, not design.** The
+  iteration order in user-supplied build lists determines who keeps
+  the note. There's no "canonical Lifeline item" in the engine; the
+  user's build order wins. If some Lifeline item later picks up a
+  DPS proc, this needs revisiting.
+
+**Things tomorrow-you should NOT redo:**
+- Don't tag Phantom Dancer with `unique_passive_key="lifeline"` —
+  Spectral Waltz is a separate mechanic. The note now reflects this.
+- Don't try to dedup defensive_only items by their stat blocks
+  (e.g. "you're stacking 3 HP-only items"). Stat aggregation is
+  correct in-game (HP stat from multiple items DOES stack); only
+  the unique passive procs don't.
+- Don't bump CoverageCountTests floor past 54. No new items.
+- Don't extend the unique-passive system to cover stat-block dedup
+  (Mythic-system-style passive overrides). The Mythic system was
+  removed by Riot; the current per-item unique-passive model is
+  what matches in-game behavior.
+
+**Activation:** Engine on :8893 already at 0.19.0 (this session
+restarted it). No further action needed.
+
+**Bridge state at session end:** RC main pid=9488 alive=true
+reload_ok=true (no Legion main-RC restart this session;
+RC-DaemonSlayer bounced for the 10th time today). Engine on :8893 =
+0.19.0 live. LCU phase=None (no game in progress). Working tree
+clean except runtime `data/ratings/last_*.json` mutations.
+
+**Operational backlog (carried + new):**
+- All s54-s64 backlog items unchanged.
+- **Re-audit defensive_only items for promotion candidates** (NEW
+  from s65). Each Phase 4 batch since #5 has promoted 1-2 items
+  out of defensive_only with new schema unlocks (target HP, caster
+  HP, multi-target, multi-proc, AP scaling). Worth a one-time
+  audit pass: which defensive_only items could now be modeled
+  with existing infrastructure? Candidates from quick scan:
+  - **Death's Dance (6333)** — bleed (stores damage, releases over
+    time) — could be approximated as a per-second proc if storage
+    budget assumptions are made.
+  - **Mercurial Scimitar (3139)** — active cleanse + MS. Active
+    item; not periodic. Skip.
+  - **Banshee's Veil (3102)** — spellshield. Pure defensive. Skip.
+  - **Frozen Heart (3110)** — AS-slow aura. Could model as target-
+    AS-debuff if engine had target-AS modeling (it doesn't).
+
+**Next-session candidates (ranked):**
+1. **Phase 4 batch 13: defensive_only audit + promotion pass** (NEW
+   from s65). 1-hour scope: review the 28 defensive_only entries
+   against current schema capabilities, promote whatever fits. Likely
+   yields 0-2 promotions; mostly confirms the audit gap and
+   documents why each remaining item stays defensive_only.
+2. **Phase 4 batch 9-alt: aggregate-stat extension hook refactor**
+   (carried). Pure cleanup; defer until friction.
+3. **First draft visual verify of P8-5.5** (carried).
+4. **gamepc_boot.ps1 patch** (carried). 1-liner.
+5. **P8-7 E2E push-to-League integration test** (carried).
+6. **Activate arena augment v2 in production** (carried).
+7. **Riftmaker HP→AP cross-derivation** (carried).
+8. **Per-target-HP-pct field** (carried; defer until caller demands).
