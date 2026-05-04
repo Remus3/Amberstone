@@ -221,6 +221,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="6673",
         name="Immortal Shieldbow",
         defensive_only=True,
+        # Phase 4 batch 12 (2026-05-04): Lifeline is unique-passive in
+        # current League — only one Lifeline shield triggers per low-HP
+        # threshold. Deduped against Sterak's Gage (3053) + Maw of
+        # Malmortius (3156). All 3 are defensive_only so dedup only
+        # affects DpsResult.notes (no proc to drop). When/if any
+        # Lifeline item gets a DPS proc later, the order-dependence
+        # gating from batch 11 (Essence Reaver) applies — re-evaluate.
+        unique_passive_key="lifeline",
         note="Immortal Shieldbow: Lifeline (low-HP shield); no DPS contribution",
     ),
 
@@ -368,7 +376,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="3046",
         name="Phantom Dancer",
         defensive_only=True,
-        note="Phantom Dancer: Lifeline shield + ghosting on low HP; no DPS contribution",
+        # NOT tagged "lifeline" — DDragon's actual passive label is
+        # "Spectral Waltz" (Ghost effect, not a shield). Older RC notes
+        # called this Lifeline by mistake. Different mechanic, no shared
+        # unique-passive with Shieldbow / Sterak's / Maw.
+        note="Phantom Dancer: Spectral Waltz (Ghost on low HP); no DPS contribution",
     ),
     "6676": ItemEffect(
         item_id="6676",
@@ -410,12 +422,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="3053",
         name="Sterak's Gage",
         defensive_only=True,
+        unique_passive_key="lifeline",
         note="Sterak's Gage: Lifeline shield + bonus AD on takedown; no DPS contribution",
     ),
     "3156": ItemEffect(
         item_id="3156",
         name="Maw of Malmortius",
         defensive_only=True,
+        unique_passive_key="lifeline",
         note="Maw of Malmortius: Lifeline magic shield; no DPS contribution",
     ),
     "3181": ItemEffect(
