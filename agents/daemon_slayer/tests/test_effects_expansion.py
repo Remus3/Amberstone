@@ -2266,11 +2266,12 @@ class RiftmakerHpToApTests(unittest.TestCase):
         self.assertAlmostEqual(e.ap_per_bonus_hp_pct, 0.02, places=4)
 
     def test_no_other_items_carry_hp_to_ap(self) -> None:
-        # Sanity: Riftmaker is currently the only item with this hook.
-        # If a future item also gets HP→AP, this test will need an
-        # explicit allow-list update — surfacing the schema add.
+        # Sanity: only Riftmaker (4633) and Demonic Embrace (4637) carry
+        # ap_per_bonus_hp_pct. Batch 32 added Demonic Embrace — allow-list
+        # updated. Surfacing any new additions as a schema-add signal.
+        ALLOWLIST = {"4633", "4637"}
         for iid, e in ITEM_EFFECTS.items():
-            if iid == "4633":
+            if iid in ALLOWLIST:
                 continue
             self.assertEqual(
                 e.ap_per_bonus_hp_pct, 0.0,
@@ -3990,6 +3991,213 @@ class Batch31DefensiveOnlyCoverageTests(unittest.TestCase):
         # After batch 31, defensive_only count is 40 (was 21 pre-batch-29).
         count = sum(1 for e in ITEM_EFFECTS.values() if e.defensive_only)
         self.assertGreaterEqual(count, 40)
+
+
+# ────────────────────────── Phase 4 batch 32 tests ──────────────────────────
+
+class RabadonsApAmpTests(unittest.TestCase):
+    """Rabadon's Deathcap ap_amp_pct=0.30 + total_ap_amp_multiplier helper."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_entry_present_and_ap_amp_pct(self) -> None:
+        eff = ITEM_EFFECTS.get("3089")
+        self.assertIsNotNone(eff, "Rabadon's Deathcap (3089) must be in ITEM_EFFECTS")
+        self.assertAlmostEqual(eff.ap_amp_pct, 0.30, places=4)
+        self.assertFalse(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 0)
+
+    def test_total_ap_amp_multiplier_single(self) -> None:
+        from agents.daemon_slayer.effects import collect_effects, total_ap_amp_multiplier
+        effects = collect_effects(["3089"])
+        self.assertAlmostEqual(total_ap_amp_multiplier(effects), 1.30, places=4)
+
+    def test_total_ap_amp_multiplier_no_items(self) -> None:
+        from agents.daemon_slayer.effects import collect_effects, total_ap_amp_multiplier
+        self.assertAlmostEqual(total_ap_amp_multiplier([]), 1.0, places=4)
+        effects = collect_effects(["3031"])  # IE has no ap_amp_pct
+        self.assertAlmostEqual(total_ap_amp_multiplier(effects), 1.0, places=4)
+
+    def test_dps_lift_with_nashor_plus_rabadon(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        dps_nashor_only = compute_dps(
+            self.snap, "Lissandra", level=11, item_ids=["3115"]
+        )
+        dps_with_rabadon = compute_dps(
+            self.snap, "Lissandra", level=11, item_ids=["3115", "3089"]
+        )
+        self.assertGreater(
+            dps_with_rabadon.weighted_dps, dps_nashor_only.weighted_dps,
+            "Adding Rabadon's should boost DPS when Nashor's AP proc is active"
+        )
+
+    def test_note_surfaces_rabadon_amp(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        result = compute_dps(
+            self.snap, "Lissandra", level=11, item_ids=["3115", "3089"]
+        )
+        combined_notes = " ".join(result.notes)
+        self.assertIn("AP amplified", combined_notes)
+        self.assertIn("1.3000", combined_notes)
+
+
+class DuskAndDawnSpellbladeTests(unittest.TestCase):
+    """Dusk and Dawn (2510) Spellblade 75% base AD + 10% AP magical, 1.5s, dedup."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_entry_present_and_shape(self) -> None:
+        eff = ITEM_EFFECTS.get("2510")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 1)
+        proc = eff.periodics[0]
+        self.assertEqual(proc.damage_type, "magical")
+        self.assertAlmostEqual(proc.every_n_seconds, 1.5, places=3)
+        self.assertEqual(eff.unique_passive_key, "spellblade")
+
+    def test_proc_damage_formula(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        proc = ITEM_EFFECTS["2510"].periodics[0]
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, ap=200.0)
+        expected = 0.75 * 100.0 + 0.10 * 200.0  # 75 + 20 = 95
+        self.assertAlmostEqual(proc.resolve_damage(ctx), expected, places=4)
+
+    def test_spellblade_dedup_with_trinity(self) -> None:
+        from agents.daemon_slayer.effects import collect_effects
+        effects = collect_effects(["2510", "3078"])  # Dusk first -> wins
+        spellblade_items = [e for e in effects if e.unique_passive_key == "spellblade"]
+        self.assertEqual(len(spellblade_items), 1)
+        self.assertEqual(spellblade_items[0].item_id, "2510")
+
+    def test_dps_lift_over_bare(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        dps_bare = compute_dps(self.snap, "Jayce", level=11)
+        dps_with = compute_dps(self.snap, "Jayce", level=11, item_ids=["2510"])
+        self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
+
+
+class Batch32LethAllyPromotionsTests(unittest.TestCase):
+    """The Collector (667666), Prowler's Claw (6693), Bastionbreaker (2520) lethality."""
+
+    EXPECTED_LETH: dict[str, float] = {
+        "667666": 10.0,
+        "6693": 22.0,
+        "2520": 22.0,
+    }
+    EXPECTED_NAMES: dict[str, str] = {
+        "667666": "The Collector",
+        "6693": "Prowler's Claw",
+        "2520": "Bastionbreaker",
+    }
+
+    def test_entries_present_and_lethality(self) -> None:
+        for iid, leth in self.EXPECTED_LETH.items():
+            with self.subTest(item_id=iid):
+                eff = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(eff, f"{iid} must be in ITEM_EFFECTS")
+                self.assertFalse(eff.defensive_only)
+                self.assertAlmostEqual(
+                    eff.lethality, leth, places=2,
+                    msg=f"{iid} lethality expected {leth}"
+                )
+                self.assertEqual(eff.name, self.EXPECTED_NAMES[iid])
+
+    def test_pen_pipeline_applied_at_lvl11(self) -> None:
+        # lvl 11: factor = 0.6 + 0.4*(11/18) = 0.844
+        # Prowler's 22 * 0.844 = 18.58 flat pen -> effective_armor(50) = 50 - 18.58 = 31.4
+        from agents.daemon_slayer.effects import collect_effects, effective_target_armor
+        effects = collect_effects(["6693"])
+        eff_armor = effective_target_armor(50.0, effects, level=11)
+        self.assertAlmostEqual(eff_armor, 50.0 - 22.0 * (0.6 + 0.4 * 11 / 18), places=1)
+
+
+class OverlordsBloodmailStatWalkTests(unittest.TestCase):
+    """Overlord's Bloodmail (2501) bonus_ad_pct_bonus_hp=0.025 engine stat walk."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_entry_present_and_field(self) -> None:
+        eff = ITEM_EFFECTS.get("2501")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertAlmostEqual(eff.bonus_ad_pct_bonus_hp, 0.025, places=4)
+
+    def test_stat_walk_adds_bonus_ad(self) -> None:
+        from agents.daemon_slayer.engine import build_champion
+        # Overlord's has 550 hp_flat -> Tyranny adds 2.5% * 550 = 13.75 bonus AD
+        # Total AD increase should exceed item's 30 flat AD alone.
+        resolved_with = build_champion(self.snap, "Garen", level=11, item_ids=["2501"])
+        resolved_bare = build_champion(self.snap, "Garen", level=11)
+        ad_diff = resolved_with.stats["ad"] - resolved_bare.stats["ad"]
+        self.assertGreater(ad_diff, 43.0,
+                           "AD delta must exceed item AD (30) + Tyranny (~13.75)")
+
+    def test_dps_lift_over_bare(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        dps_bare = compute_dps(self.snap, "Garen", level=11, target_armor=80.0)
+        dps_with = compute_dps(self.snap, "Garen", level=11, item_ids=["2501"],
+                               target_armor=80.0)
+        self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
+
+
+class DemonicEmbraceApFromHpTests(unittest.TestCase):
+    """Demonic Embrace (4637) Dark Pact: 2% bonus HP as AP (ap_per_bonus_hp_pct schema)."""
+
+    def test_entry_present_and_field(self) -> None:
+        eff = ITEM_EFFECTS.get("4637")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertAlmostEqual(eff.ap_per_bonus_hp_pct, 0.02, places=4)
+
+    def test_same_coefficient_as_riftmaker(self) -> None:
+        eff_rift = ITEM_EFFECTS.get("4633")
+        eff_demonic = ITEM_EFFECTS.get("4637")
+        self.assertAlmostEqual(
+            eff_rift.ap_per_bonus_hp_pct, eff_demonic.ap_per_bonus_hp_pct, places=4,
+            msg="Riftmaker and Demonic Embrace both use 2% bonus HP as AP"
+        )
+
+    def test_no_unique_passive_key(self) -> None:
+        eff = ITEM_EFFECTS.get("4637")
+        self.assertEqual(eff.unique_passive_key, "",
+                         "Dark Pact and Void Infusion are different passives; they stack")
+
+
+class Batch32DefensiveOnlyTests(unittest.TestCase):
+    """8 new defensive_only entries in batch 32."""
+
+    EXPECTED: dict[str, str] = {
+        "3165": "Morellonomicon",
+        "4628": "Horizon Focus",
+        "3118": "Malignance",
+        "2503": "Blackfire Torch",
+        "2517": "Endless Hunger",
+        "6609": "Chempunk Chainsword",
+        "2523": "Hexoptics C44",
+        "8010": "Bloodletter's Curse",
+    }
+
+    def test_all_entries_present_and_defensive(self) -> None:
+        for iid, expected_name in self.EXPECTED.items():
+            with self.subTest(item_id=iid):
+                eff = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(eff, f"{iid} must be in ITEM_EFFECTS")
+                self.assertTrue(eff.defensive_only,
+                                f"{iid} ({expected_name}) should be defensive_only=True")
+                self.assertEqual(len(eff.periodics), 0)
+                self.assertTrue(len(eff.note) > 0)
+
+    def test_defensive_only_count_increased(self) -> None:
+        # After batch 32: 40 pre-existing + 8 new = 48 defensive_only.
+        count = sum(1 for e in ITEM_EFFECTS.values() if e.defensive_only)
+        self.assertGreaterEqual(count, 48)
 
 
 if __name__ == "__main__":

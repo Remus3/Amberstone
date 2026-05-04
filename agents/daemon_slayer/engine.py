@@ -282,6 +282,26 @@ def build_champion(
         if passive_ap_from_bonus_mp > 0:
             item_totals["ap_flat"] = item_totals.get("ap_flat", 0.0) + passive_ap_from_bonus_mp
 
+    # Phase 4 batch 32 (2026-05-04): item-passive bonus AD as a percentage of
+    # the wielder's bonus HP. Overlord's Bloodmail "Tyranny" grants bonus AD
+    # = 2.5% bonus HP. Bonus HP in League = HP from items only (not base HP
+    # from leveling). Approximation: item_totals["hp_flat"] = item-contributed
+    # HP, the correct value — champion per-level HP is BASE HP, not bonus HP.
+    # Walked AFTER aggregate_item_stats produces item_totals["hp_flat"] so
+    # Overlord's own 550 HP is included in the conversion base.
+    # One-way, no feedback loop (HP → AD only). Same wiring pattern as the
+    # Sterak's (bonus_ad_pct_base_ad, batch 20) and Manamune (bonus_ad_pct_max_mp,
+    # batch 27) walks above.
+    bonus_hp_from_items = item_totals.get("hp_flat", 0.0)
+    if bonus_hp_from_items > 0:
+        passive_ad_from_bonus_hp = 0.0
+        for iid in item_id_list:
+            eff = ITEM_EFFECTS.get(iid)
+            if eff and eff.bonus_ad_pct_bonus_hp > 0:
+                passive_ad_from_bonus_hp += eff.bonus_ad_pct_bonus_hp * bonus_hp_from_items
+        if passive_ad_from_bonus_hp > 0:
+            item_totals["ad_flat"] = item_totals.get("ad_flat", 0.0) + passive_ad_from_bonus_hp
+
     final = _combine_items(scaled, raw_base, item_totals, level)
     if augment_overlay:
         for k, v in augment_overlay.items():
