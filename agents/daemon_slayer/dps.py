@@ -50,6 +50,7 @@ from .effects import (
     collect_effects,
     effective_target_armor,
     effective_target_mr,
+    total_bonus_ap_from_hp,
     total_crit_damage_bonus,
     total_damage_amp_multiplier,
 )
@@ -364,6 +365,13 @@ def compute_dps(
     base_hp = float(resolved.base_stats.get("hp", 0.0)) if resolved.base_stats else 0.0
     caster_max_hp = float(stats.get("hp", 0.0))
     caster_bonus_hp = max(0.0, caster_max_hp - base_hp)
+    # Phase 4 batch 15 (2026-05-04): cross-derived AP from caster bonus
+    # HP (Riftmaker's Void Infusion). Added to ap before CallContext
+    # is built so AP-scaling procs (Lich Bane, Nashor's Tooth) see the
+    # converted total. Stays out of resolved.stats — /stats reflects
+    # raw stat blocks; /dps reflects converted totals.
+    ap_from_hp = total_bonus_ap_from_hp(item_effects, caster_bonus_hp)
+    ap += ap_from_hp
     call_ctx = CallContext(
         base_ad=base_ad,
         bonus_ad=bonus_ad,
@@ -411,6 +419,11 @@ def compute_dps(
         notes.append(
             f"build damage amp ×{damage_amp:.4f} "
             f"(+{(damage_amp - 1.0) * 100:.2f}% to all damage)"
+        )
+    if ap_from_hp > 0:
+        notes.append(
+            f"caster AP cross-derived from bonus HP: +{ap_from_hp:.1f} AP "
+            f"(total AP for procs: {ap:.1f})"
         )
     for e in item_effects:
         if e.note:
