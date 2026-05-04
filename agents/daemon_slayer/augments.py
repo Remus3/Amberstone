@@ -85,10 +85,26 @@ def _v(aug: Augment, key: str, idx: int = 0, default: float = 0.0) -> float:
 # Tier-1 registry: verified against the cdragon dataValues field at index 0
 # (the base value Riot ships for the augment's first acquisition).
 #
-# Conservative: only purely-additive flat-stat augments are listed. Anything
-# conditional, ratio-based, or with mechanic tradeoffs (Chauffeur movement
-# penalty, BigBrain's AP=1 ratio anchor, Vulnerability's crit-from-items
-# rule) is left for post-step-3 work once the engine grows hooks for those.
+# Conservative: only purely-additive flat-stat augments where the engine's
+# post-combine merge is faithful. Skipped categories (and why):
+#
+# * **AS-bearing augments** (Deft, Chauffeur, DualWield, Quest_AngelofRetribution,
+#   MadScientist) — engine treats item AS as multiplicative on base via
+#   ``_combine_items`` (``base_as × (1 + bonus_pct)``). The augment overlay
+#   merges AFTER ``_combine_items`` as a flat add, which is wrong by the
+#   factor of base_as for AS. Needs an ``as_pct``-style overlay channel
+#   before these can land. Tracked for a follow-up pass.
+# * **AbilityHaste-only augments** (Recursion, BacktoBasics, BreadSandwich,
+#   Dashing) — ``ah`` is not a canonical stat key in stats.py.
+# * **Omnivamp augments** (Goredrink, Vengeance) — not modeled.
+# * **AdaptiveForce augments** (SlapAround, Dematerialize, MagicalGirl) —
+#   AF resolves to AD or AP via game-side rules; needs caller context.
+#   Most are also stack/conditional grants.
+# * **Conditional / active-mechanic** augments (Firefox autocast, Homeguard
+#   speed-burst, Quest_*, MadScientist random per-round, BigBrain's AP=1.0
+#   ratio anchor) — overlay can't honestly capture uptime/triggered grants.
+# * **Ratio / tradeoff** augments (Chauffeur immobility, DrawYourSword
+#   melee-conversion) — mechanic cost not modeled.
 _AUGMENT_STAT_OVERLAYS: dict[str, callable] = {
     # Silver: +20 AD, +10 ability haste, +10 lethality. (Lethality not yet a
     # canonical stat key — silently dropped; AD overlay is what matters.)
@@ -103,6 +119,43 @@ _AUGMENT_STAT_OVERLAYS: dict[str, callable] = {
     # Silver: +60 AP, no tradeoff.
     "WitchfulThinking": lambda a: {
         "ap": _v(a, "AP"),
+    },
+    # Gold: +50% crit chance. Pure flat grant, no condition.
+    "ItsCritical": lambda a: {
+        "crit": _v(a, "CritChance"),
+    },
+    # Prismatic: +25% crit chance. The "Your Abilities can Critically
+    # Strike" clause is a separate mechanic; the crit-chance grant itself
+    # is unconditional.
+    "JeweledGauntlet": lambda a: {
+        "crit": _v(a, "CritChance"),
+    },
+    # Gold: +25% crit chance. Heal/shield-crit clause is a parallel
+    # mechanic; the +25% crit grant lands unconditionally.
+    "CriticalHealing": lambda a: {
+        "crit": _v(a, "CritChance"),
+    },
+    # Gold: +25% crit chance. The lifesteal-on-crit clause is parallel;
+    # the crit grant is unconditional.
+    "SoulSiphon": lambda a: {
+        "crit": _v(a, "CritChance"),
+    },
+    # Gold: +25% crit chance. The "items + DoT can crit" clause expands
+    # what crit applies to; the crit grant itself is flat.
+    "Vulnerability": lambda a: {
+        "crit": _v(a, "CritChance"),
+    },
+    # Silver: +25% crit chance. Defensive-crit mechanic (Critically Defend)
+    # uses the same crit pool but doesn't consume the offensive grant.
+    "TankItOrLeaveIt": lambda a: {
+        "crit": _v(a, "CritChance"),
+    },
+    # Silver: +10 flat MS. SlowResist also granted but not a canonical
+    # stat key. Engine merges flat MS additively after item flat+pct
+    # combine, which slightly underweights the augment when the player
+    # also has %MS items (e.g. boot enchants); acceptable for a coach.
+    "LegDay": lambda a: {
+        "ms": _v(a, "MovementSpeed"),
     },
 }
 
