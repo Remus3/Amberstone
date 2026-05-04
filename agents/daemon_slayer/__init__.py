@@ -136,7 +136,12 @@ magic every 0.5s promoted from defensive_only [ranged Meraki value];
 Demonic Embrace (4637) gains second proc Azakana's Gaze 1% target max
 HP/s magic burn [ranged value]; plus 7 defensive_only entries: Night
 Harvester, Fiendhunter Bolts, Sword of the Divine, Flesheater, Sword of
-Blossoming Dawn, Actualizer, Cruelty).
+Blossoming Dawn, Actualizer, Cruelty). Phase 4 batch 34 magic-amp schema
+(2026-05-04 — new ItemEffect.magic_amp_pct field +
+total_magic_amp_multiplier helper + per-proc application in
+_periodic_proc_dps; does NOT amplify physical auto-attack damage;
+Abyssal Mask (8020) promoted from defensive_only with magic_amp_pct=0.12
+[Unmake 12% more magic damage to nearby enemies]).
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
 ``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation`` /
@@ -152,4 +157,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.37.0"
+ENGINE_VERSION = "0.38.0"
