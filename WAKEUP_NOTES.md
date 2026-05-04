@@ -7992,4 +7992,221 @@ recall them and can't find via grep.
 **Full coach activation matrix as of s81:** unchanged from s80 —
 this batch was engine-side only.
 
+## s82 hand-off — 2026-05-04 (Phase 4 batch 26: Yun Tal + Atma paired promotion via crit_chance_bonus schema)
+
+Single-arc continuation from s81. Took s81's #1 next-session candidate
+(Yun Tal + Atma's Reckoning paired promotion) end to end. Schema bump
+batch — first since batch 19 (target_bonus_hp_amp). Both items shared a
+single schema gap; one wiring change in compute_dps unlocked both. The
+hard part was sourcing Atma's Big Hands HP-to-crit cap, which is null
+in Meraki bulk — pulled from the LoL wiki via `WebFetch` (V25.21:
+1% crit per 100 bonus HP, max 30% at 3000 bonus HP).
+
+**Engine: 0.29.0 → 0.30.0.** Tests: 440 → 461 (+21, no inversions).
+Phase8 smoke 75/75 once `RC-DaemonSlayer` bounced.
+
+**Pattern decision worth pinning — when Meraki bulk has a passive
+list null, the LoL wiki is the authoritative-enough fallback for
+numeric pins.** Atma's "Big Hands" formula was missing from
+`items_meraki.json` (passives: null). The DDragon description
+("0–30% crit chance scaling with bonus health") is too imprecise
+to pin. Standard wiki text gave the exact formula. Same call as
+the s78 Hextech Gunblade cooldown precedent — when the primary
+source has the field null, name the secondary source in the entry
+comment so future-you knows why a number is what it is.
+
+**Pattern decision worth pinning — item-effect-contributed crit
+chance flows through compute_dps via a shallow stats-copy, not a
+mutation of resolved.stats.** The /stats endpoint reflects raw
+stat blocks; /dps reflects converted totals. Same separation as
+batch 15's HP→AP cross-derivation. The shallow-copy idiom
+(`stats_for_rotation = dict(stats); stats_for_rotation["crit"] =
+crit_total`) is conditional — only allocated when items actually
+contribute, so pre-batch-26 builds skip the allocation entirely.
+
+**Pattern decision worth pinning — the new transparency note format
+makes the cap visible.** When raw + items > 1.0 the effective is
+clamped at 1.0 (League's crit ceiling). The note format
+`crit chance lifted by items: +X.X% (raw Y.Y% + items → effective Z.Z%)`
+shows both the raw contribution and post-clamp final, so a build
+where Yun Tal pushes a 90%-crit user past 100% surfaces the cap
+explicitly rather than silently swallowing the excess.
+
+**Shipped (commit `a30df18`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - **3 new ItemEffect fields**: `crit_chance_bonus_flat` (Yun Tal),
+    `crit_chance_bonus_max_pct` + `crit_chance_bonus_per_bonus_hp_cap`
+    (Atma). All default 0.0 → pre-batch-26 entries pass through
+    unchanged.
+  - **New helper** `total_crit_chance_bonus(effects, caster_bonus_hp)`
+    — sums flat + linearly-ramped contributions. No clamping
+    (caller decides what to do with the sum).
+  - **Yun Tal Wildarrows (3032)** new entry with full-stacks 25% pin.
+    Flurry AS bonus deferred (would need conditional AS schema).
+  - **Atma's Reckoning (3039)** new entry: max=0.30, cap=3000.
+    Wiki-sourced cap pinned 2026-05-04.
+
+- `agents/daemon_slayer/dps.py`:
+  - Imports `total_crit_chance_bonus`.
+  - In compute_dps, after `caster_bonus_hp` is computed:
+    - `crit_from_effects = total_crit_chance_bonus(item_effects, caster_bonus_hp)`
+    - `raw_crit = stats.get("crit", 0.0)`; `crit_total = min(raw_crit + crit_from_effects, 1.0)`
+    - Conditional shallow-copy `stats_for_rotation` only when
+      `crit_from_effects > 0` (skip allocation otherwise).
+    - `crit_chance_ctx = crit_total` (was `min(stats.crit, 1.0)`).
+  - Pass `stats_for_rotation` (not `stats`) to `_phase_weighted_dps`.
+  - Display values: `crit = crit_total` (was re-reading `stats.crit`).
+  - New transparency note when `crit_from_effects > 0`.
+
+- `agents/daemon_slayer/__init__.py`:
+  - `ENGINE_VERSION = "0.30.0"`. Docstring extends batch list with
+    batch 26 wording; defensive_only count UNCHANGED at 21.
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - **TotalCritChanceBonusHelperTests** (9 tests): empty, no-fields,
+    Yun Tal flat unconditional, Atma 0/half/full/over ramp, additive
+    composition, no-clamping (helper exposes raw sums).
+  - **YunTalWildarrowsTests** (6 tests): present + flat=0.25 + no
+    HP-scale fields, no unique_passive_key, DPS lift on Caitlyn,
+    note surfaces with "+25.0%", AD block lands in resolved stats,
+    avg_attack_dmg gap > 50 AD ceiling (proves crit term lifted).
+  - **AtmasReckoningCritTests** (5 tests): present + max=0.30 +
+    cap=3000, no unique_passive_key, DPS lift on Sett, note surfaces
+    with "+7.0%" (Atma alone with own 700 HP → 700/3000 ramp = 0.233
+    → 0.30*0.233 = 0.07), HP-stacking lifts the ramp.
+  - **CritBonusComposesWithEssenceReaverTests** (1 test): adding
+    Yun Tal to a Caitlyn build that has ER lifts ER's per-proc
+    damage via the boosted CallContext.crit_chance.
+
+**Test state:**
+- `agents/daemon_slayer/tests/`: **461/461** green (s81 baseline 440
+  + 21 new this batch).
+- `tests/phase8_smoke/`: 75/75 once live engine bounced.
+- All other phase smoke suites unchanged.
+
+**Live verify (post `schtasks /End /Run RC-DaemonSlayer`):**
+
+```
+$ curl http://127.0.0.1:8893/health → engine_version=0.30.0 ✓
+$ /dps Sett lvl11 + [3032] →
+    weighted_dps=46.97
+    notes[crit chance lifted by items: +25.0% (raw 0.0% + items → effective 25.0%),
+          Yun Tal Wildarrows: Practice Makes Lethal +25% crit ...] ✓
+$ /dps Sett lvl11 + [3039] →
+    weighted_dps=23.65
+    notes[crit chance lifted by items: +7.0% (raw 20.0% + items → effective 27.0%)] ✓
+$ /dps Sett lvl11 + [3032, 3039] →
+    weighted_dps=54.98  +32.0% lift, 52% effective crit
+$ /dps Sett lvl11 + [3032, 3039, 3084, 3083] (+ Heartsteel + Warmog's) →
+    weighted_dps=156.21  +51.0% items, 71% effective crit
+```
+
+The Sett+Yun Tal alone result (46.97) vs Sett+Atma alone (23.65) is
+a useful asymmetry pin: Yun Tal's 50 AD + 40% AS + 25% crit lift dwarfs
+Atma's 700 HP + 20% stat crit + 7% Big Hands at low HP-stacking depth.
+Atma scales harder once the build commits to HP — at 4 HP items
+combined, the lift jumps from 7% → 26% (+19 percentage points).
+
+**Coverage audit (delta from s81):**
+
+71 unmodeled legendaries remaining (s81's 73 minus Yun Tal + Atma).
+Top candidates for future batches:
+
+- **Manamune (3004) / Muramana (3042)** — Awe (mana → AD) +
+  Shock (per-attack mana damage). Still needs `caster_max_mp`
+  CallContext field + a fold-mp-into-ad helper at compute_dps
+  construction. Schema bump scope similar to batch 26. Carry from s80.
+- **Stormsurge (4646)** — ability-bound burst. Carry blocker.
+- **Hubris (6697)** — takedown-event-bound. Defensive_only with note
+  candidate.
+- **Liandry's Torment (6653)** — ability-bound burn. Defensive_only
+  candidate.
+- **Hextech Rocketbelt (3152)** — active dash + AoE burn. Active-
+  without-CD-pin rule defers it.
+- **Cosmic Drive (4629)** — stat-side AP/haste/MS, ability-cast-bound
+  CDR.
+- **Kaenic Rookern (2504)** — defensive magic shield (defensive_only).
+- **Spirit Visage (3065)** — defensive heal amp (defensive_only).
+- **Ability-cast modeling family** (Liandry, Cosmic Drive, Luden's,
+  Stormsurge, Rocketbelt, Horizon Focus) — single schema bump
+  unlocks 6+ items. 2-3 hour scope.
+
+**Decisions worth pinning (this batch):**
+- **Schema bump shape:** flat + linear-ramp pair on the caster side
+  mirrors batch 19's pair on the target side. The naming
+  `*_max_pct` / `*_per_bonus_hp_cap` is parallel.
+- **Engine wiring shape:** for cross-derived stats that affect both
+  procs AND base damage (crit, AS, AD), the shallow-stats-copy idiom
+  is the right pattern. /stats stays raw; /dps shows boosted totals.
+- **Wiki-as-fallback:** Meraki bulk null on a passive list → wiki
+  WebFetch with formula extracted to comment block. Same shape as
+  Hextech Gunblade's cooldown source pinning.
+- **Flurry-style conditional AS** stays out of scope. The pattern
+  "AS bonus on champion-attack with attack-driven CD reduction"
+  appears in multiple items (e.g. Statikk Shiv's Energized
+  approximation) and would be a separate schema bump.
+
+**Things tomorrow-you should NOT redo:**
+- Don't try to model Yun Tal's Flurry without a conditional-AS
+  schema. Near-100% uptime in long rotations would over-count in
+  shorter ones; the baseline assumption "always on" is wrong for
+  burst windows.
+- Don't add `unique_passive_key` to Yun Tal or Atma. Practice Makes
+  Lethal and Big Hands are unique-of-one currently. Adding a key
+  would silently drop one if a second similar-passive item lands.
+- Don't try to compress the helper return shape into the call site
+  (i.e. no inlining). The helper-as-pure-function pattern is what
+  makes the caller's clamp visible and testable.
+
+**Activation:** RC-DaemonSlayer scheduled task bounced via
+`schtasks /End /TN RC-DaemonSlayer && schtasks /Run /TN RC-DaemonSlayer`.
+Engine on :8893 reports 0.30.0. Yun Tal + Atma notes appear in /dps
+`notes[]` field. Behavior dormant until next crit-user game in
+progress.
+
+**Bridge state at session end:** RC main pid=8084 (unchanged across
+s78–s82). `schtasks` bounced RC-DaemonSlayer once this session.
+Bridge unchanged — no two-way traffic.
+
+**Operational backlog (delta from s81):**
+- ✅ ~~Phase 4 batch 26: Yun Tal + Atma paired~~ shipped (commit `a30df18`).
+- All other s81 backlog unchanged.
+- **NEW from s82**: crit_chance_bonus schema is open for additions.
+  Future crit-positive items follow the flat-or-HP-scaled pattern
+  cleanly; an item that scales with something else (e.g. mana, AD,
+  level) would need a third flavor field — defer until the first
+  such item demands it.
+
+**Memory entries written this session:** none. The "Meraki bulk null
+→ wiki fallback" pattern is narrow enough to live in this hand-off
++ the Atma comment block; the "shallow-stats-copy for cross-derived
+stats" pattern is implementation detail visible in dps.py.
+
+**Next-session candidates (ranked):**
+1. **Manamune (3004) / Muramana (3042) — Awe + Shock paired
+   promotion.** Same shape as batch 26 (single schema bump unlocks
+   two items). Needs `caster_max_mp` CallContext field +
+   `bonus_ad_pct_max_mp` ItemEffect field (Awe converts mana → AD)
+   + per-attack mana-fraction proc (Shock). Scope: 45-60 min.
+2. **Defensive_only batch** — Hubris, Spirit Visage, Kaenic Rookern,
+   Liandry's, Cosmic Drive, Stormsurge — all unmodeled but
+   schema-blocked. Tag each with a one-line `note` and surface in
+   `DpsResult.notes`. Same coverage-completeness call as batch 25's
+   utility-without-damage rule. Scope: 30-45 min for ~6 items.
+3. **SR coach `target_bonus_hp` activation** (carried s73→s81).
+   Probably needs vision-side enemy item parsing first.
+4. **First draft visual verify of P8-5.5** (carried).
+5. **gamepc_boot.ps1 patch** (carried). 1-liner.
+6. **P8-7 E2E push-to-League integration test** (carried).
+7. **Activate arena augment v2 in production** (carried).
+8. **Schema bumps** (bigger sessions):
+   a. Ability-cast modeling — unlocks 6+ items.
+   b. Conditional AS bonus (Flurry, Phantom Hit alternative shapes).
+   c. `caster_max_mp` CallContext field — unlocks Manamune family
+      (now reclassed as candidate #1, scope shrunk).
+
+**Full coach activation matrix as of s82:** unchanged from s81 —
+this batch was engine-side only.
+
 
