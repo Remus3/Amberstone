@@ -7809,4 +7809,187 @@ now exhaustive; The Collector + Luden's stay schema-blocked.
 of RC-DaemonSlayer. Peer bridge unchanged. Game-PC bridge watchdog green
 (age <30s) at /done.
 
+## s81 hand-off — 2026-05-04 (Phase 4 batch 25: Serylda's Grudge joins LDR/MR pen family)
+
+Single-arc continuation from s80. s80 marked the hydra family complete
+at 4/4 and noted "easy-promotion well dry"; s81 took the *next* easy
+slot — % armor pen — and added Serylda's Grudge (6694) as a clean new
+entry, no schema bump, no test class inversions. Serylda was unmodeled
+prior (stats-only via item aggregation) — same path as batches 23
+(Iceborn) and 24 (Profane Hydra) where the item carried real DPS-
+positive numbers but no ItemEffect record yet.
+
+**Engine: 0.28.0 → 0.29.0.** Tests: 433 → 440 (+7 SeryldasGrudgeTests,
+no inversions). Phase8 smoke 75/75 once `RC-DaemonSlayer` bounced.
+
+**Pattern decision worth pinning — armor pen layer additions are
+~25-line edits when the coefficient already lives in the schema.**
+LDR (3036) and Mortal Reminder (3033) both expose `armor_pen_pct`;
+Serylda's 35% slots in identically. The only schema delta worth
+noting is *what LDR has that Serylda doesn't*: Giant Slayer's
+`target_bonus_hp_amp_max_pct=0.15` / `target_bonus_hp_amp_cap=1500`
+(batch 19). Future pen items follow this template: pin the coefficient,
+document any utility passives as not-modeled, and decide whether the
+item also carries a target-conditional amp.
+
+**Pattern decision worth pinning — Last Whisper exclusivity is
+ranker-owned, not unique_passive_key-owned.** LDR / MR / Serylda are
+the modern Last Whisper line; in-game you can only own one. The
+engine's `% pen` layer sums them additively (LDR + Serylda = 70% pen
+sum in current implementation), which is wrong for stacking but
+moot — the build legality lives in the ranker / beam search. Same
+call as the hydra family's Tiamat-tree exclusivity (batch 24).
+**No unique_passive_key on Serylda.**
+
+**Pattern decision worth pinning — utility-without-damage rule
+applies to `Bitter Cold` slow.** Bitter Cold is a 30% slow on
+damaging-ability hits to <50% HP enemies. Same family as
+Stridebreaker's Halting Slash and Iceborn's frost-field slow —
+not modeled. The pattern at this point: any utility CC/slow/MS
+piece on an item with separate DPS-positive numbers stays
+utility-only; only the DPS-positive piece (here, the 35% pen)
+gets pinned.
+
+**Shipped (commit `5022964`):**
+
+- `agents/daemon_slayer/effects.py`:
+  - **Serylda's Grudge (6694)** new entry placed immediately after
+    Mortal Reminder (3033) in the armor-pen / reduction block.
+    `armor_pen_pct=0.35`, no periodics, no unique_passive_key,
+    no target_bonus_hp_amp_*. Comment block flags coefficient
+    parity with LDR, the Last-Whisper-stacking-is-ranker-owned
+    decision, and the Bitter Cold utility-only rule.
+
+- `agents/daemon_slayer/__init__.py`:
+  - `ENGINE_VERSION = "0.29.0"`. Docstring extends batch list with
+    batch 25 wording; defensive_only count UNCHANGED at 21
+    (Serylda was never in defensive_only — stats-only-via-item-
+    aggregation, same as batches 23 + 24).
+
+- `agents/daemon_slayer/tests/test_effects_expansion.py`:
+  - **SeryldasGrudgeTests** (7 tests): present + armor_pen_pct=0.35
+    + no periodics, no unique_passive_key (Last Whisper exclusivity
+    is ranker-owned), no target_bonus_hp_amp (the LDR-vs-Serylda
+    schema diff), pen pipeline parity with LDR at 100 armor (both
+    → 65.0), DPS uplift on Aatrox lvl 11 vs 100 armor, pen note
+    surfaces with "65.0", no pen note vs zero-armor target.
+
+**Test state:**
+- `agents/daemon_slayer/tests/`: **440/440** green (s80 baseline 433
+  + 7 new SeryldasGrudgeTests).
+- `tests/phase8_smoke/`: 75/75 once live engine bounced (test pinned
+  via dynamic ENGINE_VERSION import per s78 #2 carry resolution).
+- All other phase smoke suites unchanged.
+
+**Live verify (post `schtasks /End /Run RC-DaemonSlayer`):**
+
+```
+$ curl http://127.0.0.1:8893/health → engine_version=0.29.0 ✓
+$ /dps Aatrox lvl11 + [6694] target_armor=100 →
+    weighted_dps=40.19
+    notes[effective target armor 100.0 → 65.0 after reduction + pen,
+          Serylda's Grudge: 35% armor pen ...] ✓
+$ /dps Aatrox lvl11 + [3036] target_armor=100 →
+    weighted_dps=44.65 (LDR's stat block — 35 AD + 25% crit — beats
+    Serylda's 45 AD + 15 AH on Aatrox; pen contribution identical)
+$ /dps Aatrox lvl11 + [3036, 6694] target_armor=100 →
+    weighted_dps=74.26  effective_armor 100→30 (additive 70% pen)
+```
+
+The double-Last-Whisper case (LDR + Serylda) is impossible in real
+League (build-legality bars it), but the engine handles it without
+crashing — pen sums to 70%, both notes surface. Build legality
+sits in the ranker, not here.
+
+**Coverage audit (delta from s80):**
+
+73 unmodeled legendaries remaining (s80's 74 minus Serylda promoted).
+Top candidates for future batches by ease of schema fit:
+
+- **Yun Tal Wildarrows (3032)** — same blocker as s80: "+25% crit
+  pin" doesn't fit existing ItemEffect schema (crit_chance is
+  build-derived from stats.crit, not from ItemEffect). ~30 min if
+  scoped narrowly (item-effect-contributed crit summed at compute_dps
+  construction). Carry from s80.
+- **Atma's Reckoning (3039)** — 700 HP / 20% crit / 10 AH stat
+  block + "Big Hands" (0–30% crit scaling with bonus HP). Schema-
+  blocked same as Yun Tal — needs the same crit-from-effects
+  wiring. Once that lands, both items unlock together.
+- **Manamune (3004) / Muramana (3042)** — Awe (mana → AD) +
+  Shock (per-attack mana damage). Needs `caster_max_mp`
+  CallContext field. Schema bump.
+- **Stormsurge (4646)** — ability-bound burst proc. Carry blocker.
+- **Hubris (6697)** — takedown-event-bound. Defensive_only with note.
+- **Liandry's Torment (6653)** — ability-bound burn. Defensive_only
+  candidate; could promote if/when an ability-cast schema lands.
+- **Ability-cast modeling family** (Liandry, Cosmic Drive, Luden's,
+  Stormsurge, Rocketbelt, Horizon Focus) — single schema bump
+  unlocks 6+ items. 2-3 hour scope. Same call as s80.
+
+**Decisions worth pinning (this batch):**
+- **Armor pen items are ~25-line edits when the coefficient is the
+  whole story.** Serylda's only DPS-positive number is the 35% pen;
+  the AD/AH stats land via item aggregation; Bitter Cold is utility.
+- **Last Whisper unique-passive is build-legality, not effect-layer.**
+  Same template as the hydra family — let the ranker handle it.
+- **No `unique_passive_key="last_whisper"`.** Adding it would silently
+  drop one item's pen + one item's stat-side amp piece (LDR's Giant
+  Slayer). The right layer is the ranker's build composition rules.
+
+**Things tomorrow-you should NOT redo:**
+- Don't add `unique_passive_key="last_whisper"` to LDR / MR / Serylda.
+  Build legality belongs in the ranker; the effect-layer should
+  faithfully report what the engine sees.
+- Don't try to model Bitter Cold's slow as DPS. Same call as the
+  other slows — utility, not modeled. The 50%-HP gate on it is
+  also impossible to evaluate in current rotation math.
+- Don't promote Atma's Reckoning at the same time as Yun Tal in a
+  future batch unless the crit-from-effects wiring is done. Same
+  schema gap, both blocked.
+
+**Activation:** RC-DaemonSlayer scheduled task bounced via
+`schtasks /End /TN RC-DaemonSlayer && schtasks /Run /TN RC-DaemonSlayer`.
+Engine on :8893 reports 0.29.0. Serylda note appears in /dps `notes[]`
+field. Behavior dormant until next physical-DPS-with-armored-target
+game in progress.
+
+**Bridge state at session end:** RC main pid=8084 (unchanged across
+s78–s81). `schtasks` bounced RC-DaemonSlayer once this session.
+Bridge unchanged — no two-way traffic.
+
+**Operational backlog (delta from s80):**
+- ✅ ~~Phase 4 batch 25: Serylda's Grudge~~ shipped (commit `5022964`).
+- All other s80 backlog unchanged.
+- **NEW from s81**: % pen layer is now 4/4 of the modern items (LDR,
+  Mortal Reminder, Black Cleaver reduction, Serylda's Grudge). The
+  Last Whisper line is exhaustive; future pen items would need a new
+  archetype (lethality-flat, MR reduction, etc.).
+
+**Memory entries written this session:** none. The "armor pen
+additions are ~25-line edits" pattern + the "Last Whisper exclusivity
+is ranker-owned" disambiguation are narrow enough to live in this
+hand-off; will only promote to memory if a future session needs to
+recall them and can't find via grep.
+
+**Next-session candidates (ranked):**
+1. **Yun Tal + Atma's Reckoning paired promotion** (now coupled by
+   shared schema gap — item-effect-contributed crit chance summed at
+   compute_dps construction; ~30-45 min schema scope unlocks both).
+2. **SR coach `target_bonus_hp` activation** (carried s73→s80).
+   Probably needs vision-side enemy item parsing first.
+3. **First draft visual verify of P8-5.5** (carried).
+4. **gamepc_boot.ps1 patch** (carried). 1-liner.
+5. **P8-7 E2E push-to-League integration test** (carried).
+6. **Activate arena augment v2 in production** (carried).
+7. **Per-target-HP-pct field** (carried; defer until caller demands).
+8. **Schema bumps** (bigger sessions):
+   a. Ability-cast modeling — unlocks 6+ items (Liandry, Cosmic Drive,
+      Luden's, Stormsurge, Rocketbelt, Horizon Focus).
+   b. `caster_max_mp` CallContext field — unlocks Manamune family.
+   c. Stacking-stat / item-effect-contributed crit pipeline — unlocks
+      Yun Tal + Atma paired.
+
+**Full coach activation matrix as of s81:** unchanged from s80 —
+this batch was engine-side only.
+
 
