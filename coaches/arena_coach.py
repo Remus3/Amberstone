@@ -28,6 +28,8 @@ from coaches._base_coach import (
     fmt_abilities,
 )
 from coaches._arena_item_advisor import recompute_arena_build
+from core import daemon_slayer_client as _ds_client
+from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
 
 logger = logging.getLogger("rc.coaches.arena")
 
@@ -389,6 +391,36 @@ class Coach(BaseCoach):
                     current["item_build"] = ", ".join(new_build)
             except Exception as exc:
                 logger.debug("arena item advisor: %s", exc)
+
+            # Phase 7 wire-in: also surface daemon_slayer's pure-DPS rank
+            # as a companion field. _arena_item_advisor stays the source
+            # of truth for `item_build` (it knows arena augments + curated
+            # paths that DS doesn't model yet — Phase 6). DS contributes
+            # cold-math validation; the dashboard / future panels will
+            # consume `daemon_slayer_picks` directly. Engine down → field
+            # absent, no regression.
+            try:
+                owned_ids = _ds_resolve_many(state.get("items", []))
+                ds_rows = _ds_client.rank_for(
+                    champion=champ,
+                    level=int(state.get("level", 1)) or 1,
+                    item_ids=owned_ids,
+                    mode="ARENA",
+                    target_armor=80.0,
+                    top=5,
+                )
+                if ds_rows:
+                    current["daemon_slayer_picks"] = [
+                        {"id": r.item_id, "name": r.item_name,
+                         "delta_dps": round(r.delta_dps, 2), "gold": r.gold}
+                        for r in ds_rows
+                    ]
+                elif ds_rows == []:
+                    # Engine responded but had nothing to rank (e.g. 6-item build).
+                    current["daemon_slayer_picks"] = []
+                # ds_rows is None → engine down; leave field untouched.
+            except Exception as exc:
+                logger.debug("daemon_slayer wire-in: %s", exc)
 
             safe_write(self._out, current)
             logger.debug("Arena coaching written (%d fields)", len(fields))
