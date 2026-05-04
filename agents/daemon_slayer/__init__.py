@@ -33,9 +33,12 @@ on-hit 30 magic per basic + Juxtaposition Dark sustained 10% armor
 pen + 10% magic pen), build-wide damage amplifier schema (Phase 4
 batch 14, 2026-05-04 — ItemEffect.damage_amp_pct + multiplicative
 stacking via total_damage_amp_multiplier; first user is Riftmaker's
-8% Void Corruption at full ramp, HP→AP cross-derivation still
-separate), and 26 defensive_only items spanning the Tier-1 SR /
-Arena pool plus high-pickrate batch 2 + AP batch 3 additions.
+8% Void Corruption at full ramp), HP→AP cross-derivation (Phase 4
+batch 15, 2026-05-04 — ItemEffect.ap_per_bonus_hp_pct + additive
+helper total_bonus_ap_from_hp; Riftmaker's Void Infusion 2% bonus
+HP → AP wired so Lich Bane / Nashor's Tooth procs see the converted
+total), and 26 defensive_only items spanning the Tier-1 SR / Arena
+pool plus high-pickrate batch 2 + AP batch 3 additions.
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
 ``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation``.
@@ -50,4 +53,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.21.0"
+ENGINE_VERSION = "0.22.0"
