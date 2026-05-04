@@ -220,5 +220,65 @@ class EngineIntegrationTests(unittest.TestCase):
         self.assertEqual(r.stats["crit"], 1.0)
 
 
+class AugmentsThroughDpsAndRankTests(unittest.TestCase):
+    """Phase 6 step 6 — augments thread through compute_dps + rank_items."""
+
+    def setUp(self) -> None:
+        self.snap = DataSnapshot.load()
+
+    def test_compute_dps_accepts_augments(self) -> None:
+        from agents.daemon_slayer.dps import compute_dps
+        bare = compute_dps(self.snap, "Aatrox", level=11, mode="ARENA")
+        with_aug = compute_dps(
+            self.snap, "Aatrox", level=11, mode="ARENA",
+            augments=["TheBrutalizer"],
+        )
+        # +20 AD must produce strictly higher weighted DPS.
+        self.assertGreater(with_aug.weighted_dps, bare.weighted_dps)
+
+    def test_rank_items_accepts_augments(self) -> None:
+        from agents.daemon_slayer.rank import rank_items
+        result = rank_items(
+            self.snap, "Aatrox", level=11, mode="ARENA",
+            augments=["TheBrutalizer"], top_n=5,
+        )
+        self.assertGreater(len(result.ranked), 0)
+
+    def test_rank_baseline_shifts_with_augments(self) -> None:
+        # The baseline DPS that delta is measured against MUST include
+        # augment overlay — otherwise rank deltas would double-count the
+        # augment contribution into every candidate's score.
+        from agents.daemon_slayer.rank import rank_items
+        from agents.daemon_slayer.dps import compute_dps
+        bare = compute_dps(self.snap, "Aatrox", level=11, mode="ARENA")
+        aug_baseline = compute_dps(
+            self.snap, "Aatrox", level=11, mode="ARENA",
+            augments=["TheBrutalizer"],
+        )
+        # Sanity: TheBrutalizer raises baseline DPS.
+        self.assertGreater(aug_baseline.weighted_dps, bare.weighted_dps)
+        result = rank_items(
+            self.snap, "Aatrox", level=11, mode="ARENA",
+            augments=["TheBrutalizer"], top_n=3,
+        )
+        # First-rank delta should be measured off the augmented baseline,
+        # not the bare one — i.e. delta + aug_baseline ≈ first pick's
+        # absolute new_dps. (Allow small float wobble from candidate filter.)
+        top = result.ranked[0]
+        self.assertAlmostEqual(top.new_dps, aug_baseline.weighted_dps + top.delta_dps,
+                               places=2)
+
+    def test_unknown_augment_is_zero_overlay_in_dps(self) -> None:
+        # Unknown augments are silent zero-overlay (matches engine policy).
+        # compute_dps should not crash on a fictional apiName.
+        from agents.daemon_slayer.dps import compute_dps
+        bare = compute_dps(self.snap, "Aatrox", level=11, mode="ARENA")
+        unknown = compute_dps(
+            self.snap, "Aatrox", level=11, mode="ARENA",
+            augments=["TotallyMadeUp"],
+        )
+        self.assertAlmostEqual(unknown.weighted_dps, bare.weighted_dps)
+
+
 if __name__ == "__main__":
     unittest.main()

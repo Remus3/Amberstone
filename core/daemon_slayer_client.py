@@ -81,6 +81,7 @@ def rank_for(
     target_mr: float = 0.0,
     top: int = 8,
     sort_by: str = "delta",
+    augments: Optional[Iterable[str]] = None,
     timeout: float = DEFAULT_TIMEOUT,
 ) -> Optional[list[RankedItem]]:
     """Call POST /rank and return the parsed top-N rows. None on engine failure.
@@ -88,6 +89,11 @@ def rank_for(
     Empty list (vs. None) means the engine responded but had no candidates
     — e.g. champion already has 6 mode-legal items. Callers should treat
     None and [] differently (engine down vs. nothing to recommend).
+
+    ``augments`` is an optional list of Arena augment apiName strings (e.g.
+    ``["TheBrutalizer", "ItsCritical"]``); engine applies registered stat
+    overlays before computing DPS. Unknown apiNames are silently skipped
+    server-side.
     """
     body = {
         "champion": champion,
@@ -99,6 +105,8 @@ def rank_for(
         "top": int(top),
         "sort": sort_by,
     }
+    if augments:
+        body["augments"] = [str(a) for a in augments if a]
     data = _post_json("/rank", body, timeout=timeout)
     if data is None:
         return None
@@ -114,6 +122,7 @@ def dps_for(
     mode: str = "SR",
     target_armor: float = 0.0,
     target_mr: float = 0.0,
+    augments: Optional[Iterable[str]] = None,
     timeout: float = DEFAULT_TIMEOUT,
 ) -> Optional[dict]:
     """Call POST /dps and return the raw result dict. None on failure."""
@@ -125,4 +134,6 @@ def dps_for(
         "target_armor": float(target_armor),
         "target_mr": float(target_mr),
     }
+    if augments:
+        body["augments"] = [str(a) for a in augments if a]
     return _post_json("/dps", body, timeout=timeout)
