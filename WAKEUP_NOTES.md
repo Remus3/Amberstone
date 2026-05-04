@@ -2376,3 +2376,86 @@ the upstream wire-up that s48 marked BLOCKED.
 Engine on :8893 NOW 0.9.3 (Phase 6 fully active). LCU phase=EndOfGame
 (safe to /clear). Working tree has WAKEUP_NOTES.md (this update) +
 data/ratings/last_arena.json (runtime, untouched this session).
+
+## s50 hand-off — 2026-05-04 (Augment Vision v2 — HUD reconciliation shipped)
+
+Single-arc session. Closed s49's #1 next-session candidate: the v1
+"Haiku-recommendation" augment list now has a vision-confirmed override
+that fires within 12s of any pick.
+
+**Shipped (single commit, not yet pushed; engine version unchanged):**
+- `coaches/arena_coach.py`:
+  - `ArenaVisionReader.PROMPT` extended with `augment_hud_slots: []` —
+    Sonnet returns currently-equipped augment names from the HUD tray.
+  - `Coach._reconcile_augment_hud(vision_state)` — new method, fires from
+    `_run_vision` after augment_select / anvil branches. All-or-nothing
+    override semantics: every slot must resolve via `_resolve_augment_apiname`,
+    else no-op (preserves Haiku list to avoid wiping a known-good record on
+    a partial Sonnet read). On override: `_picked_augments = resolved`,
+    artifact `augments_picked` rewritten, `augments_source = "vision_hud"`.
+  - `_handle_augment_select` now stamps `augments_source = "haiku_rec"` so
+    the artifact carries provenance from the moment of the first pick.
+  - "Vision agrees with Haiku" path: list unchanged, source still flips to
+    `vision_hud` (confidence upgrade reflected without a no-op write).
+- `tests/phase2_smoke/test_arena_augment_hud.py` — 7 new unit tests bound
+  to the real `Coach._reconcile_augment_hud` via a `_StubCoach` shim that
+  avoids pulling Anthropic + the BaseCoach lifecycle. Covers: override
+  when all resolve, confirm path, partial-resolve preservation, empty/missing
+  HUD no-op, dedup within vision slots, full player-deviation override.
+- Memory `project_arena_augments_not_persisted.md` — bumped from "RESOLVED
+  via Haiku" to "RESOLVED with vision-confirmed v2" with the two-tier
+  confidence model documented + the all-or-nothing rationale.
+
+**Test state:** 307/307 green (`agents/daemon_slayer/tests/` 226 + 7 new
+arena augment HUD + 74 phase2_smoke from prior). No engine bump — engine
+unchanged; behavior change is upstream of the engine's augments= kwarg.
+
+**Decisions worth pinning:**
+- Override is all-or-nothing on slot resolution. A single unresolved slot
+  preserves Haiku's list. Picking "max-length wins" or "merge" was
+  considered + rejected — too easy for a misread to corrupt a confirmed
+  pick list.
+- Vision source flips to `vision_hud` even when it agrees with Haiku,
+  because the dashboard / postgame should know the picks were
+  vision-confirmed (tier-2 confidence) not just Haiku-predicted.
+- Cadence: no second vision poll. Reuses the existing 12s
+  `_VISION_INTERVAL` tick. Worst-case staleness between pick + override = 12s.
+- Tests stub the resolver via `mock.patch.object(arena_coach,
+  "_resolve_augment_apiname", ...)` — independent of cdragon snapshot
+  rotation. Faster + reproducible across patch refreshes.
+
+**Things tomorrow-you should NOT redo:**
+- Don't replace the all-or-nothing guard with "merge" or "max-length
+  wins" — see updated memory rationale.
+- Don't add a separate vision-call cadence for HUD slots — the prompt
+  field rides the existing 12s tick.
+- Don't gate `_reconcile_augment_hud` on `_picked_augments` being
+  non-empty — the reconciler is idempotent + always-on by design (a
+  player's first pick happens mid-game; reconciler must catch it).
+- Don't import the full Coach class in tests — the `_StubCoach` shim
+  pattern keeps the test independent of Anthropic + BaseCoach lifecycle.
+
+**Activation:** Change is in `coaches/arena_coach.py` — RC main loads it
+on next restart. Live activation requires `echo restart > restart_trigger.txt`.
+DEFERRED to next user request (no live arena game in progress, LCU=Lobby).
+
+**Next-session candidates (ranked):**
+1. **Phase 8 — SR Draft Theatre kickoff.** Fresh arc, beam search
+   foundation already in place from s45. LCU draft subscription +
+   3-build profile (primary, alt-playstyle, experimental) + runes/spells
+   writer + push-to-League. Operator-additive: user-curated experimental
+   builds APPEND, never overwrite. Multi-session arc — start with `/clear`
+   and a planning pass.
+2. **Phase 5 (Mayhem augments)** — STILL DEFERRED (no clean cdragon dump).
+3. **Activate v2 in production** — `echo restart > restart_trigger.txt`
+   when RC is between games. Verify next arena run that
+   `data/arena_coaching_data.json` shows `augments_source` flipping to
+   `vision_hud` after the post-pick HUD vision tick.
+
+**Bridge state at session end:** RC main pid=9328 alive=true reload_ok=true.
+Engine on :8893 still 0.9.3 (no engine change this session). LCU
+phase=Lobby (safe to /clear). Working tree pre-commit:
+- `coaches/arena_coach.py` (~50 lines added)
+- `tests/phase2_smoke/test_arena_augment_hud.py` (new, 130 lines)
+- `WAKEUP_NOTES.md` (this s50 hand-off)
+- `data/ratings/last_arena.json` + `last_sr.json` (runtime, untouched)
