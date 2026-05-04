@@ -7780,4 +7780,33 @@ session needs to recall them and can't find via grep.
 **Full coach activation matrix as of s80:** unchanged from s79 —
 this batch was engine-side only.
 
+## s78-s80 session roll-up — 2026-05-04 13:52 → ~14:35 (Daemon Slayer batches 22-24)
+
+**3 batches in one session, engine 0.24.0 → 0.28.0, tests 395 → 433
+(+38, no inversions). Plus #2 carry resolved.**
+
+| Batch | Item | Commits | Engine | Tests |
+|---|---|---|---|---|
+| 22 | Hextech Gunblade (3146) Lightning Bolt — promoted from defensive_only, every_n_seconds=40 | `2273c62` + `a32f5cc` | 0.25.0 → 0.26.0 | 412 → 418 |
+| 23 | Iceborn Gauntlet (6662) Spellblade — new entry, joins TF/LB/ER dedup family | `0d53e79` + `4482fe0` | 0.26.0 → 0.27.0 | 418 → 426 |
+| 24 | Profane Hydra (6698) Cleave — new entry, hydra family complete at 4/4 | `428d8df` + `b3d943a` | 0.27.0 → 0.28.0 | 426 → 433 |
+| #2 | `test_sr_draft_profile_engine` 0.9.3 pin — replaced with dynamic ENGINE_VERSION import | `114192f` | n/a | phase8_smoke 17/18 → 18/18 |
+
+**Pivot worth pinning**: s78 declared "easy-promotion well dry"; s79
+discovered the coverage audit is a separate path with 76 unmodeled
+legendaries (75 after batch 23). Batches 23 + 24 are NEW entries, not
+promotions — items were stats-only via item aggregation prior. Future
+"continue Daemon Slayer" sessions should audit unmodeled legendaries
+when defensive_only is exhausted.
+
+**Tomorrow-you don't redo**: Yun Tal (#1 next-session candidate from s80)
+needs item-effect-contributed-crit-chance schema (~30-45 min if scoped
+narrow; the simple `defensive_only=False + new entry` path doesn't
+work — crit_chance is build-derived from stats.crit). Hydra family is
+now exhaustive; The Collector + Luden's stay schema-blocked.
+
+**Bridge state**: legion-rc PID 8084 unchanged across 3 schtasks-bounces
+of RC-DaemonSlayer. Peer bridge unchanged. Game-PC bridge watchdog green
+(age <30s) at /done.
+
 
