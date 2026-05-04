@@ -37,7 +37,7 @@ and a patch-notes diff re-pins the values.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Iterable, Optional, Union
+from typing import Callable, Iterable, Union
 
 
 PHYSICAL = "physical"
@@ -147,7 +147,11 @@ class ItemEffect:
     item_id: str
     name: str
     crit_damage_bonus: float = 0.0   # added to dps.DEFAULT_CRIT_BONUS
-    periodic: Optional[PeriodicProc] = None
+    # Phase 4 batch 8 (2026-05-04): tuple instead of single Optional —
+    # an item can carry multiple periodic procs (Titanic Hydra has both
+    # a primary on-hit AND a cleave-to-others piece). ``()`` means "no
+    # periodic procs"; single-proc entries write ``(PeriodicProc(...),)``.
+    periodics: tuple[PeriodicProc, ...] = ()
     # Physical-damage modifiers — applied to ``target_armor`` in dps.py
     # before the armor curve. Reduction (Black Cleaver) lands first,
     # then % pen (LDR / MR), then flat pen (lethality items).
@@ -183,23 +187,23 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3097": ItemEffect(
         item_id="3097",
         name="Stormrazor",
-        periodic=PeriodicProc(
+        periodics=(PeriodicProc(
             name="Energized Bolt",
             bonus_damage=120.0,
             damage_type=MAGICAL,
             every_n_seconds=4.0,
-        ),
+        ),),
         note="Stormrazor: Energized ~120 magic dmg every ~4s",
     ),
     "6672": ItemEffect(
         item_id="6672",
         name="Kraken Slayer",
-        periodic=PeriodicProc(
+        periodics=(PeriodicProc(
             name="Bring It Down",
             bonus_damage=100.0,
             damage_type=PHYSICAL,
             every_n_attacks=3,
-        ),
+        ),),
         note="Kraken Slayer: Bring It Down ~100 physical dmg every 3rd attack",
     ),
     "6673": ItemEffect(
@@ -214,54 +218,54 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3087": ItemEffect(
         item_id="3087",
         name="Statikk Shiv",
-        periodic=PeriodicProc(
+        periodics=(PeriodicProc(
             name="Electroshock",
             bonus_damage=110.0,
             damage_type=MAGICAL,
             every_n_seconds=3.0,
-        ),
+        ),),
         note="Statikk Shiv: Energized chain lightning ~110 magic dmg every ~3s",
     ),
     "3094": ItemEffect(
         item_id="3094",
         name="Rapid Firecannon",
-        periodic=PeriodicProc(
+        periodics=(PeriodicProc(
             name="Sharpshooter",
             bonus_damage=120.0,
             damage_type=MAGICAL,
             every_n_seconds=3.0,
-        ),
+        ),),
         note="Rapid Firecannon: Energized critical strike ~120 magic dmg every ~3s",
     ),
     "3091": ItemEffect(
         item_id="3091",
         name="Wit's End",
-        periodic=PeriodicProc(
+        periodics=(PeriodicProc(
             name="Fray",
             # 15 magic at lvl 1 → 80 at lvl 18, linear by level.
             bonus_damage=lambda c: 15.0 + (c.level - 1) * (65.0 / 17.0),
             damage_type=MAGICAL,
             every_n_attacks=1,
-        ),
+        ),),
         note="Wit's End: Fray on-hit magic dmg scales 15→80 by level",
     ),
     "3085": ItemEffect(
         item_id="3085",
         name="Runaan's Hurricane",
-        periodic=PeriodicProc(
+        periodics=(PeriodicProc(
             name="Wind's Fury",
             # Two extra bolts at 30% bonus AD each = 60% bonus AD per shot.
             # Approximation: assumes both bolts find a target.
             bonus_damage=lambda c: 0.60 * c.bonus_ad,
             damage_type=PHYSICAL,
             every_n_attacks=1,
-        ),
+        ),),
         note="Runaan's Hurricane: 2 extra bolts on-hit, ~60% bonus AD per shot",
     ),
     "3078": ItemEffect(
         item_id="3078",
         name="Trinity Force",
-        periodic=PeriodicProc(
+        periodics=(PeriodicProc(
             name="Spellblade",
             # Spellblade: next basic after spell deals 200% base AD bonus
             # physical. Approximation: fires ~once per 3s in active rotations
@@ -269,39 +273,39 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             bonus_damage=lambda c: 2.0 * c.base_ad,
             damage_type=PHYSICAL,
             every_n_seconds=3.0,
-        ),
+        ),),
         note="Trinity Force: Spellblade ~200% base AD on-hit, ~once per 3s in rotation",
     ),
     "6699": ItemEffect(
         item_id="6699",
         name="Voltaic Cyclosword",
-        periodic=PeriodicProc(
+        periodics=(PeriodicProc(
             name="Firmament",
             # Energized release: 100 + 25% bonus AD physical (slow utility
             # not modeled). Charges over 4s of moving / attacking.
             bonus_damage=lambda c: 100.0 + 0.25 * c.bonus_ad,
             damage_type=PHYSICAL,
             every_n_seconds=4.0,
-        ),
+        ),),
         note="Voltaic Cyclosword: Energized release ~100 + 25% bonus AD physical every ~4s",
     ),
     "6610": ItemEffect(
         item_id="6610",
         name="Sundered Sky",
-        periodic=PeriodicProc(
+        periodics=(PeriodicProc(
             name="Lightshield Strike",
             # Every 8s, next basic deals (20 + 200% base AD) bonus physical.
             # Long CD makes this rare in DPS terms but a big single hit.
             bonus_damage=lambda c: 20.0 + 2.0 * c.base_ad,
             damage_type=PHYSICAL,
             every_n_seconds=8.0,
-        ),
+        ),),
         note="Sundered Sky: Lightshield Strike ~200% base AD bonus on guaranteed crit, every ~8s",
     ),
     "3124": ItemEffect(
         item_id="3124",
         name="Guinsoo's Rageblade",
-        periodic=PeriodicProc(
+        periodics=(PeriodicProc(
             name="Phantom Hit",
             # Every 3rd attack triggers an extra on-hit. Approximated as
             # 50% bonus AD physical — under-counts on-hit stacking with
@@ -310,7 +314,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             bonus_damage=lambda c: 0.50 * c.bonus_ad,
             damage_type=PHYSICAL,
             every_n_attacks=3,
-        ),
+        ),),
         note="Guinsoo's Rageblade: Phantom Hit every 3rd attack, ~50% bonus AD physical",
     ),
 
@@ -414,7 +418,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3153": ItemEffect(
         item_id="3153",
         name="Blade of The Ruined King",
-        periodic=PeriodicProc(
+        periodics=(PeriodicProc(
             name="Mist's Edge",
             # 8% target current HP on-hit (melee value; ranged is 5%).
             # Steady-state DPS approximation: current_hp ≈ max_hp at the
@@ -424,7 +428,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             bonus_damage=lambda c: 0.08 * c.target_max_hp,
             damage_type=PHYSICAL,
             every_n_attacks=1,
-        ),
+        ),),
         note="Blade of the Ruined King: Mist's Edge ~8% target HP on-hit (melee, steady-state approx)",
     ),
     "3302": ItemEffect(
@@ -436,7 +440,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "6692": ItemEffect(
         item_id="6692",
         name="Eclipse",
-        periodic=PeriodicProc(
+        periodics=(PeriodicProc(
             name="Ever Rising Moon",
             # 6% target max HP physical, gated on hitting the same target
             # with two damage instances within 1.5s. In an active basic-
@@ -447,7 +451,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             bonus_damage=lambda c: 0.06 * c.target_max_hp,
             damage_type=PHYSICAL,
             every_n_attacks=2,
-        ),
+        ),),
         note="Eclipse: Ever Rising Moon ~6% target max HP every 2 attacks (physical)",
     ),
 
@@ -478,7 +482,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3084": ItemEffect(
         item_id="3084",
         name="Heartsteel",
-        periodic=PeriodicProc(
+        periodics=(PeriodicProc(
             name="Colossal Consumption",
             # 70-160 (linear by level) + 6% caster max HP physical, every
             # 3.5s of in-combat-with-champion charge time. Approximation:
@@ -492,7 +496,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             ),
             damage_type=PHYSICAL,
             every_n_seconds=3.5,
-        ),
+        ),),
         note=(
             "Heartsteel: Colossal Consumption ~70-160 (by level) + 6% caster "
             "max HP physical every ~3.5s in combat"
@@ -545,7 +549,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3100": ItemEffect(
         item_id="3100",
         name="Lich Bane",
-        periodic=PeriodicProc(
+        periodics=(PeriodicProc(
             name="Spellblade",
             # 75% base AD + 50% AP bonus magic on next basic after ability.
             # Real CD 1.5s; rotation cadence approx ~3s same as Trinity Force
@@ -553,19 +557,19 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             bonus_damage=lambda c: 0.75 * c.base_ad + 0.50 * c.ap,
             damage_type=MAGICAL,
             every_n_seconds=3.0,
-        ),
+        ),),
         note="Lich Bane: Spellblade ~75% base AD + 50% AP magic, ~once per 3s in rotation",
     ),
     "3115": ItemEffect(
         item_id="3115",
         name="Nashor's Tooth",
-        periodic=PeriodicProc(
+        periodics=(PeriodicProc(
             name="Icathian Bite",
             # 15 + 20% AP bonus magic per basic. Per-attack proc (every_n=1).
             bonus_damage=lambda c: 15.0 + 0.20 * c.ap,
             damage_type=MAGICAL,
             every_n_attacks=1,
-        ),
+        ),),
         note="Nashor's Tooth: Icathian Bite on-hit ~15 + 20% AP magic per attack",
     ),
 
@@ -636,17 +640,30 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3748": ItemEffect(
         item_id="3748",
         name="Titanic Hydra",
-        periodic=PeriodicProc(
-            name="Cleave",
-            # Melee: 5 + 1.5% caster bonus HP physical to primary on every
-            # basic. Ranged variant (3 + 0.75%) under-counted — Titanic is
-            # almost exclusively a melee item. The cleave-to-others portion
-            # is multi-target only and not modeled here (single-target DPS).
-            bonus_damage=lambda c: 5.0 + 0.015 * c.caster_bonus_hp,
-            damage_type=PHYSICAL,
-            every_n_attacks=1,
+        periodics=(
+            PeriodicProc(
+                name="Cleave (primary)",
+                # Melee: 5 + 1.5% caster bonus HP physical to primary on
+                # every basic. Ranged variant (3 + 0.75%) under-counted —
+                # Titanic is almost exclusively a melee item.
+                bonus_damage=lambda c: 5.0 + 0.015 * c.caster_bonus_hp,
+                damage_type=PHYSICAL,
+                every_n_attacks=1,
+            ),
+            # Phase 4 batch 8 (2026-05-04): cleave-to-others piece —
+            # 40% of total AD physical to enemies behind the target. The
+            # multi-proc-per-item schema lets this co-exist with the
+            # primary on-hit proc. Multiplier max(0, n-1) — same shape
+            # as Ravenous Hydra in batch 7.
+            PeriodicProc(
+                name="Cleave (to nearby)",
+                bonus_damage=lambda c: max(0.0, c.targets_in_rotation - 1.0)
+                    * 0.40 * (c.base_ad + c.bonus_ad),
+                damage_type=PHYSICAL,
+                every_n_attacks=1,
+            ),
         ),
-        note="Titanic Hydra: Cleave ~5 + 1.5% bonus HP physical on-hit (melee values)",
+        note="Titanic Hydra: Cleave ~5 + 1.5% bonus HP on-hit primary + ~40% AD to nearby (melee values)",
     ),
 
     # ── Phase 4 batch 7 (2026-05-04): multi-target rotations ──
@@ -657,7 +674,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3074": ItemEffect(
         item_id="3074",
         name="Ravenous Hydra",
-        periodic=PeriodicProc(
+        periodics=(PeriodicProc(
             name="Cleave",
             # Melee: 35% total AD physical to nearby enemies only (no
             # damage to primary target — that already lands via the basic
@@ -668,7 +685,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
                 * 0.35 * (c.base_ad + c.bonus_ad),
             damage_type=PHYSICAL,
             every_n_attacks=1,
-        ),
+        ),),
         note="Ravenous Hydra: Cleave ~35% AD physical to nearby enemies (melee, scales with rotation targets)",
     ),
 }

@@ -177,12 +177,12 @@ class DefensiveOnlyItemTests(unittest.TestCase):
 
     def test_bt_defensive_only_flag(self) -> None:
         self.assertTrue(ITEM_EFFECTS["3072"].defensive_only)
-        self.assertIsNone(ITEM_EFFECTS["3072"].periodic)
+        self.assertEqual(ITEM_EFFECTS["3072"].periodics, ())
         self.assertEqual(ITEM_EFFECTS["3072"].crit_damage_bonus, 0.0)
 
     def test_shieldbow_defensive_only_flag(self) -> None:
         self.assertTrue(ITEM_EFFECTS["6673"].defensive_only)
-        self.assertIsNone(ITEM_EFFECTS["6673"].periodic)
+        self.assertEqual(ITEM_EFFECTS["6673"].periodics, ())
         self.assertEqual(ITEM_EFFECTS["6673"].crit_damage_bonus, 0.0)
 
     def test_bt_dps_matches_stat_block_only(self) -> None:
