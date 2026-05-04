@@ -223,6 +223,8 @@ def build_champion(
     if augment_overlay:
         for k, v in augment_overlay.items():
             final[k] = final.get(k, 0.0) + v
+        if final.get("crit", 0.0) > 1.0:
+            final["crit"] = 1.0
     final, mode_notes = _apply_mode_modifiers(final, raw_base, mode, champ)
 
     notes: list[str] = list(mode_notes)
