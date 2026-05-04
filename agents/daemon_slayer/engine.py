@@ -30,6 +30,10 @@ class ResolvedStats:
     stats: dict[str, float]
     gold_spent: int = 0
     notes: tuple[str, ...] = field(default_factory=tuple)
+    # Pre-item, post-level base stats. Exposed for Phase 4 expansion's
+    # callable bonus_damage entries (TriForce spellblade scales off
+    # base_ad, not total_ad). Backward-compat default = empty dict.
+    base_stats: dict[str, float] = field(default_factory=dict)
 
     def get(self, key: str, default: float = 0.0) -> float:
         return self.stats.get(key, default)
@@ -43,6 +47,7 @@ class ResolvedStats:
             "mode": self.mode,
             "gold_spent": self.gold_spent,
             "stats": dict(self.stats),
+            "base_stats": dict(self.base_stats),
             "notes": list(self.notes),
         }
 
@@ -211,4 +216,5 @@ def build_champion(
         stats=final,
         gold_spent=gold_spent,
         notes=tuple(notes),
+        base_stats=scaled,
     )
