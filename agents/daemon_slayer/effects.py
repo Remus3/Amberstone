@@ -249,6 +249,21 @@ class ItemEffect:
     # League Manamune transforms INTO Muramana so you can't own both.
     # Build-legality is ranker-owned per the s81/s82 pattern.
     bonus_ad_pct_max_mp: float = 0.0
+    # Phase 4 batch 28 (2026-05-04): item-passive bonus AP as a percentage of
+    # the wielder's BONUS mana (item-contributed only — NOT champion base).
+    # Archangel's Staff (3003) "Awe" grants 1% bonus mana → AP; Seraph's
+    # Embrace (3040) "Awe" grants 2%. Note the divergence from
+    # ``bonus_ad_pct_max_mp`` (Manamune/Muramana) — Manamune's Awe is keyed
+    # off MAX mana (champion base + items), Archangel/Seraph's Awe is
+    # keyed off BONUS mana (items only). Different math even though both
+    # carry the "Awe" name; pinning the asymmetry here so the engine
+    # walks the right value. Walked in ``build_champion`` AFTER
+    # ``aggregate_item_stats`` produces ``item_totals["mp_flat"]`` (which
+    # IS the bonus mana sum). Walks ``item_totals["ap_flat"]`` rather
+    # than ad_flat. Default 0.0 → no contribution. NOT a unique passive
+    # at the effect-layer (Archangel transforms INTO Seraph's in real
+    # League; build-legality is ranker-owned per the s81 pattern).
+    bonus_ap_pct_bonus_mp: float = 0.0
     # Phase 4 batch 26 (2026-05-04): item-effect-contributed crit chance.
     # Two flavors composing additively into a single per-build sum that
     # adds to ``stats["crit"]`` at compute_dps construction time:
@@ -1221,6 +1236,58 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "Muramana: Awe +2% max mana as bonus AD + Shock 1.2% max mana "
             "per-attack physical (champ-only gate not enforced; ability "
             "damage piece not modeled)"
+        ),
+    ),
+
+    # ── Phase 4 batch 28 (2026-05-04): Archangel's Staff / Seraph's Embrace ──
+    # AP-side Awe twins of the Manamune family (batch 27). Same "Awe" name,
+    # but different math — Archangel/Seraph's are keyed off BONUS mana
+    # (item-contributed only), while Manamune/Muramana are keyed off MAX
+    # mana (champion base + items). The new
+    # ``bonus_ap_pct_bonus_mp`` field captures the AP-side variant; engine.py
+    # walks it after the existing Awe-AD walk, targeting ap_flat instead of
+    # ad_flat, sourced from ``item_totals.get("mp_flat", 0.0)`` (which is
+    # the build's bonus mana sum). Manaflow stack-up + Archangel's
+    # transformation into Seraph's at +360 max mana stacks intentionally
+    # not modeled — same call as Manamune (steady-state assumption).
+
+    "3003": ItemEffect(
+        item_id="3003",
+        name="Archangel's Staff",
+        # Awe: 1% bonus mana as Ability Power. Stat block: 70 AP / 600 mana
+        # / 25 AH (DDragon 16.9.1; Meraki passive text confirms 1% bonus
+        # mana). Ezreal lvl 11 + Archangel: champion base mp ≈ 1075 not
+        # counted; bonus mana = 600 → Awe AP = 0.01 * 600 = 6 AP. Stack
+        # mana items to lift further (Manamune adds 500 bonus mana → +5
+        # AP from Archangel's Awe; Tear of the Goddess builds from this
+        # baseline).
+        bonus_ap_pct_bonus_mp=0.01,
+        # No unique_passive_key — Archangel/Seraph's are one-of-two, but
+        # build-legality (transformation gate prevents owning both) is
+        # ranker-owned per the s81 pattern.
+        note="Archangel's Staff: Awe +1% bonus mana as AP (Manaflow stack-up not modeled — steady-state)",
+    ),
+
+    "3040": ItemEffect(
+        item_id="3040",
+        name="Seraph's Embrace",
+        # Awe: 2% bonus mana as AP (post-transformation form, double the
+        # Archangel coefficient). Stat block: 70 AP / 1000 mana / 25 AH
+        # — Seraph's adds 1000 bonus mana baseline, so its Awe alone
+        # contributes 0.02 * 1000 = 20 AP from the item's own mana, lifting
+        # further with each additional mana item in the build.
+        # Lifeline shield (350 + max-mana% shield at <30% HP) is non-DPS;
+        # tagged ``unique_passive_key="lifeline"`` so collect_effects
+        # dedups against Shieldbow / Sterak's / Maw / Phantom Dancer
+        # (which uses Spectral Waltz, NOT lifeline — see batch 12). The
+        # Awe walk lives in engine.py and bypasses collect_effects, so
+        # the AP contribution survives any lifeline dedup.
+        bonus_ap_pct_bonus_mp=0.02,
+        unique_passive_key="lifeline",
+        note=(
+            "Seraph's Embrace: Awe +2% bonus mana as AP + Lifeline "
+            "(low-HP mana shield, deduped — no DPS contribution from "
+            "the shield piece)"
         ),
     ),
 }

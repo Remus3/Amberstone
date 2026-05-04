@@ -261,6 +261,27 @@ def build_champion(
         if passive_ad_from_mp > 0:
             item_totals["ad_flat"] = item_totals.get("ad_flat", 0.0) + passive_ad_from_mp
 
+    # Phase 4 batch 28 (2026-05-04): item-passive bonus AP as a percentage of
+    # the wielder's BONUS mana (Archangel's Staff / Seraph's Embrace
+    # "Awe" — +1% / +2% bonus mana as AP). Mirror of the Awe-AD walk
+    # above, with two key differences: (1) targets ``ap_flat`` instead
+    # of ``ad_flat``, (2) keyed off BONUS mana (item-contributed only —
+    # ``item_totals.get("mp_flat", 0.0)``) NOT max mana. The asymmetry
+    # vs the Manamune family is by design — DDragon + Meraki both pin
+    # the AP-side Awe to "bonus mana" specifically. Archangel-line items
+    # have no AP stat in the resolved block until this walk fires
+    # (their listed AP is in the DDragon stat block, item-aggregated
+    # via ``ap_flat``); the Awe contribution adds to that.
+    bonus_max_mp = item_totals.get("mp_flat", 0.0)
+    if bonus_max_mp > 0:
+        passive_ap_from_bonus_mp = 0.0
+        for iid in item_id_list:
+            eff = ITEM_EFFECTS.get(iid)
+            if eff and eff.bonus_ap_pct_bonus_mp > 0:
+                passive_ap_from_bonus_mp += eff.bonus_ap_pct_bonus_mp * bonus_max_mp
+        if passive_ap_from_bonus_mp > 0:
+            item_totals["ap_flat"] = item_totals.get("ap_flat", 0.0) + passive_ap_from_bonus_mp
+
     final = _combine_items(scaled, raw_base, item_totals, level)
     if augment_overlay:
         for k, v in augment_overlay.items():
