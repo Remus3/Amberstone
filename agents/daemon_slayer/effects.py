@@ -51,7 +51,11 @@ class CallContext:
 
     ``base_ad`` is the leveled champion-base AD (pre-items), needed for
     spellblade-style scaling. ``bonus_ad`` is the item-contributed AD.
-    ``level`` enables Wit's End-style level scaling.
+    ``level`` enables Wit's End-style level scaling. ``ap`` (added
+    2026-05-04, Phase 4 batch 3) is total Ability Power — pure
+    item-contributed, since champion records carry no base AP — and
+    enables Lich Bane / Nashor's Tooth-style spellblade and AP-on-hit
+    scaling.
 
     Phase 4 doesn't model target HP, so callables that want
     ``%-current-HP`` math should be marked ``defensive_only`` until
@@ -62,6 +66,7 @@ class CallContext:
     level: int
     target_armor: float = 0.0
     target_mr: float = 0.0
+    ap: float = 0.0
 
 
 # Scaling-damage callable type. Float still works as a constant.
@@ -459,6 +464,71 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Stridebreaker",
         defensive_only=True,
         note="Stridebreaker: Halting Slash active dash + slow; no on-hit DPS proc",
+    ),
+
+    # ── Phase 4 batch 3 (2026-05-04): AP-aware CallContext + spellblade ──
+    # CallContext.ap (added this batch) lets spellblade and AP-on-hit procs
+    # promote out of defensive_only. Two items unlock; five AP-stat siblings
+    # land here as documented defensive_only because their effects don't
+    # fit the periodic / on-hit shape (active utility, ability-bound,
+    # combat-state amp, %-current-HP magic crit).
+
+    "3100": ItemEffect(
+        item_id="3100",
+        name="Lich Bane",
+        periodic=PeriodicProc(
+            name="Spellblade",
+            # 75% base AD + 50% AP bonus magic on next basic after ability.
+            # Real CD 1.5s; rotation cadence approx ~3s same as Trinity Force
+            # spellblade (gated by ability cast frequency, not item CD).
+            bonus_damage=lambda c: 0.75 * c.base_ad + 0.50 * c.ap,
+            damage_type=MAGICAL,
+            every_n_seconds=3.0,
+        ),
+        note="Lich Bane: Spellblade ~75% base AD + 50% AP magic, ~once per 3s in rotation",
+    ),
+    "3115": ItemEffect(
+        item_id="3115",
+        name="Nashor's Tooth",
+        periodic=PeriodicProc(
+            name="Icathian Bite",
+            # 15 + 20% AP bonus magic per basic. Per-attack proc (every_n=1).
+            bonus_damage=lambda c: 15.0 + 0.20 * c.ap,
+            damage_type=MAGICAL,
+            every_n_attacks=1,
+        ),
+        note="Nashor's Tooth: Icathian Bite on-hit ~15 + 20% AP magic per attack",
+    ),
+
+    "3146": ItemEffect(
+        item_id="3146",
+        name="Hextech Gunblade",
+        defensive_only=True,
+        note="Hextech Gunblade: Lightning Bolt active (targeted nuke + slow); no on-hit DPS proc",
+    ),
+    "6655": ItemEffect(
+        item_id="6655",
+        name="Luden's Echo",
+        defensive_only=True,
+        note="Luden's Echo: ability-bound echo bolts (not on-hit / not in auto rotation)",
+    ),
+    "4633": ItemEffect(
+        item_id="4633",
+        name="Riftmaker",
+        defensive_only=True,
+        note="Riftmaker: combat-state damage amp (up to 8% bonus dmg after 4s); not modeled in Phase 4",
+    ),
+    "4645": ItemEffect(
+        item_id="4645",
+        name="Shadowflame",
+        defensive_only=True,
+        note="Shadowflame: magic crit on targets <40% HP (target HP not modeled in Phase 4)",
+    ),
+    "3128": ItemEffect(
+        item_id="3128",
+        name="Deathfire Grasp",
+        defensive_only=True,
+        note="Deathfire Grasp: active 15% target max HP (target HP not modeled in Phase 4)",
     ),
 }
 

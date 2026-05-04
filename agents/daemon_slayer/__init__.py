@@ -7,13 +7,12 @@ ranking (``rank.py``), and full-build beam search (``beam.py``).
 Effects coverage: IE / Kraken / Stormrazor / BT / Shieldbow (thin slice)
 plus the energized family (Statikk Shiv, Rapid Firecannon, Voltaic),
 scaling procs (Wit's End, Runaan's, Trinity Force, Sundered Sky,
-Guinsoo's), the armor pen / reduction layer (LDR, Mortal Reminder,
-Black Cleaver), and 23 defensive_only items spanning the Tier-1 SR /
-Arena pool plus high-pickrate batch 2 additions (Death's Dance,
-Spear of Shojin, Essence Reaver, Heartsteel, Warmog's, Mercurial
-Scimitar, Guardian Angel, Banshee's Veil, Zhonya's, Stridebreaker).
-CallContext + callable ``bonus_damage`` lets stat-scaling procs
-bind to ``base_ad`` / ``bonus_ad`` / ``level``.
+Guinsoo's, Lich Bane, Nashor's Tooth), the armor pen / reduction layer
+(LDR, Mortal Reminder, Black Cleaver), and 28 defensive_only items
+spanning the Tier-1 SR / Arena pool plus high-pickrate batch 2 + AP
+batch 3 additions. CallContext + callable ``bonus_damage`` lets
+stat-scaling procs bind to ``base_ad`` / ``bonus_ad`` / ``level`` /
+``ap`` (added 2026-05-04 in Phase 4 batch 3 for spellblade variants).
 
 Beam search (Phase 2 step 4) returns the top-N complete builds by final
 weighted DPS, finding multi-item synergies the single-slot ranker
@@ -25,4 +24,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.9.4"
+ENGINE_VERSION = "0.10.0"
