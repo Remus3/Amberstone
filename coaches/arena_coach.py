@@ -719,6 +719,21 @@ Rules:
 - Return ONLY the JSON
 """
 
+    TIERED_FIELDS = [
+        "timer",               # OCR canary (validates in-game frame)
+        "round_number",
+        "augment_select", "augment_choices", "anvil_choices",
+        "augment_hud_slots", "camp_phase",
+    ]
+    TIERED_VALIDATORS = {
+        "round_number":      lambda v: isinstance(v, int) and 1 <= v <= 30,
+        "augment_select":    lambda v: isinstance(v, bool),
+        "augment_choices":   lambda v: isinstance(v, list),
+        "anvil_choices":     lambda v: isinstance(v, list),
+        "augment_hud_slots": lambda v: isinstance(v, list),
+        "camp_phase":        lambda v: isinstance(v, bool),
+    }
+
     def __init__(self, api_key: str):
         import anthropic
         from modes.shared_vision import GameVisionReader
@@ -727,10 +742,12 @@ Rules:
         r._model  = "claude-sonnet-4-6"
         r._last   = {}
         r.PROMPT  = self.PROMPT
+        r.TIERED_FIELDS = self.TIERED_FIELDS
+        r.TIERED_VALIDATORS = self.TIERED_VALIDATORS
         self._reader = r
 
     def read(self):
-        return self._reader.read()
+        return self._reader.read_tiered()
 
 
 # ── Arena game state parser ───────────────────────────────────────────────────
