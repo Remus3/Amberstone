@@ -1704,11 +1704,8 @@
         content = "Mode does not have augments";
       }
       IB.augments.textContent = content;
-      IB.augments.classList.remove("hidden");
+      IB.augments.classList.toggle("hidden", !modeSupportsAugments);
       IB.augments.classList.toggle("no-support", !modeSupportsAugments);
-      // No tooltip when the pill carries real augment content — hover
-      // produces tiny unreadable text. Tooltip only helps on the muted
-      // "not supported" placeholder.
       IB.augments.title = modeSupportsAugments ? "" : content;
     }
     // DS Engine picks — daemon_slayer_picks: [{id, name, delta_dps, gold}, ...]
