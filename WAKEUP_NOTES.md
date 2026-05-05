@@ -6,6 +6,30 @@
 
 ---
 
+# s103 wrap — 2026-05-05 (DS champ-select panel + dashboard bug fixes + done §6b)
+
+## What shipped
+
+- **DS Engine champ-select build preview** `112350a` — `#cs-ds-block` panel + `/api/ds-preview` endpoint. Fires once per (champion, mode) pair. Item tiles with +Ndps tooltips. `_CS_DS` tracker debounces independently of Haiku `_CS_LIVE`.
+- **SR SSE mode fix** `5ee58b6` — `_state_builder.py` was returning `mode_key="game"`; JS `driveNow` silently dropped all SR SSE state. Corrected to `"sr"`.
+- **Item icon cache race fixed** `f5ce231` — `_itemResolveCache` cached null for items resolved before `items_index.json` loaded; idempotency sig then blocked re-render. Fix: clear cache + tile sigs on ITEMS load.
+- **Augments pill fix** `5ee58b6` — CSS static-pill rule overrode `.hidden`; now `display:none !important`.
+- **`/done` §6b living-doc sync** `d6fbce0` — ROADMAP/CLAUDE.md/README now updated as part of the done ritual. Pushed to Peer + Game-PC bridge for pickup.
+
+## Do NOT redo
+- DS champ-select panel is fully wired (backend + HTML + CSS + JS). Next validation is in champ select.
+- Icon "?" fix is in — next in-game session should show all icons on first load.
+- SSE mode key is correct — if RECOMMENDED shows "—" again, check `liveclient_summary()` for `sr_items`.
+
+## Open work (priority order)
+1. **Validate DS champ-select panel** — next champ select, confirm `#cs-ds-block` shows item tiles
+2. **Validate icon fix** — next in-game, confirm item icons render on first load without "?"
+3. **Bridge auto-loop dead** — restart on Game-PC: `/loop 1m /process-bridge-tasks`
+4. **DS calibration**: 50+ games needed; auto-collects into `data/ds_calibration.jsonl`
+5. **Vision regions calibration**: tune `data/vision_regions.json` bboxes
+
+---
+
 # s102 wrap — 2026-05-05 (SR coach signature hash fix + RECOMMENDED panel fallback)
 
 ## What shipped (this session)
