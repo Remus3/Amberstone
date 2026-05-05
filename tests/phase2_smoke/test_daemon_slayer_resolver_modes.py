@@ -54,18 +54,19 @@ class NameToIdModeAwareTests(unittest.TestCase):
         self.assertEqual(ds_res.name_to_id("Heartsteel", mode="ARAM"), "3084")
         self.assertEqual(ds_res.name_to_id("Heartsteel", mode="ARENA"), "223084")
 
-    def test_mode_none_preserves_legacy_quirk(self) -> None:
-        # Legacy callers (mode=None) get the items_index byName output,
-        # which picks the alias due to setdefault first-seen-wins. This
-        # is the documented pre-s74 behavior — must NOT change.
-        self.assertEqual(ds_res.name_to_id("Heartsteel"), "223084")
-        self.assertEqual(ds_res.name_to_id("Heartsteel", mode=None), "223084")
+    def test_mode_none_resolves_canonical_id(self) -> None:
+        # items_index.json was fixed (commit 41c87bc) to sort by ID length
+        # so 4-digit canonical IDs win over 6-digit 22XXXX aliases. The
+        # old "setdefault first-seen-wins alias quirk" is gone — mode=None
+        # now returns the canonical base ID, same as mode='aram'/'sr'.
+        self.assertEqual(ds_res.name_to_id("Heartsteel"), "3084")
+        self.assertEqual(ds_res.name_to_id("Heartsteel", mode=None), "3084")
 
     def test_unknown_mode_falls_through_to_legacy(self) -> None:
         # Unknown modes (e.g. 'tft') fall through to legacy lookup
         # rather than raising. Defensive — bad mode strings shouldn't
-        # break coach loops.
-        self.assertEqual(ds_res.name_to_id("Heartsteel", mode="tft"), "223084")
+        # break coach loops. Post-41c87bc the legacy path returns 3084.
+        self.assertEqual(ds_res.name_to_id("Heartsteel", mode="tft"), "3084")
 
     def test_unknown_name_returns_none_in_any_mode(self) -> None:
         for m in (None, "aram", "arena", "sr", "brawl"):
