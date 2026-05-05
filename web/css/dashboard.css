@@ -3315,6 +3315,31 @@ body:not([data-mode="client"])[data-phase="late"]  .stats-group:not([data-stage~
   border-bottom: 1px solid var(--border-soft);
 }
 .build-section:last-child { border-bottom: none; }
+/* DS Engine ranked picks row */
+.ds-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+.ds-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  cursor: default;
+}
+.ds-chip em {
+  font-style: normal;
+  color: #44ff88;
+  font-size: 10px;
+}
 /* In-game build chooser block: tighter row spacing than the cs panel
  * since this lives in the small ITEM BUILD column. */
 .ib-builds-block .cs-build-list { gap: 4px; margin-top: 6px; }
