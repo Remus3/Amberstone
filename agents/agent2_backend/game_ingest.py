@@ -158,16 +158,37 @@ def _parse_kda(value: Any) -> tuple[int | None, int | None, int | None]:
     return (None, None, None)
 
 
-def _already_ingested(conn: sqlite3.Connection, started_at: str, champion: str) -> bool:
+def _already_ingested(
+    conn: sqlite3.Connection,
+    started_at: str,
+    champion: str,
+    duration_sec: int = 0,
+) -> bool:
+    # Exact-match dedup (original behaviour).
     row = conn.execute(
-        """
-        SELECT match_id FROM matches
-        WHERE source = ? AND started_at = ? AND champion = ?
-        LIMIT 1
-        """,
+        "SELECT match_id FROM matches WHERE source=? AND started_at=? AND champion=? LIMIT 1",
         (SOURCE_TAG, started_at, champion),
     ).fetchone()
-    return row is not None
+    if row:
+        return True
+    # Window dedup: short summaries (< 120s) created by disconnect/reconnect
+    # polling look like a new game but are phantom entries for an ongoing one.
+    # If a match for the same champion already exists within the past 90 minutes,
+    # treat the short entry as a duplicate.
+    if duration_sec < 120:
+        try:
+            dt = datetime.fromisoformat(started_at)
+            window_start = (dt - timedelta(minutes=90)).isoformat()
+            row = conn.execute(
+                """SELECT match_id FROM matches
+                   WHERE source=? AND champion=? AND started_at >= ? LIMIT 1""",
+                (SOURCE_TAG, champion, window_start),
+            ).fetchone()
+            if row:
+                return True
+        except Exception:
+            pass
+    return False
 
 
 def ingest_game_summary(task_payload: dict[str, Any]) -> dict[str, Any]:
@@ -203,6 +224,12 @@ def ingest_game_summary(task_payload: dict[str, Any]) -> dict[str, Any]:
 
     finished_at_dt = _parse_iso_or_now(task_payload.get("finished_at"))
     duration_sec = int(task_payload.get("game_time_s") or 0)
+    if duration_sec == 0:
+        return {
+            "inserted": False,
+            "reason": "zero-duration — phantom reconnect event",
+            "champion": champion,
+        }
     started_at_dt = finished_at_dt - timedelta(seconds=duration_sec)
     started_iso = started_at_dt.isoformat()
     ended_iso = finished_at_dt.isoformat()
@@ -229,7 +256,7 @@ def ingest_game_summary(task_payload: dict[str, Any]) -> dict[str, Any]:
     try:
         with sqlite3.connect(db_path) as conn:
             conn.execute("PRAGMA foreign_keys = ON")
-            if _already_ingested(conn, started_iso, champion):
+            if _already_ingested(conn, started_iso, champion, duration_sec=duration_sec):
                 return {
                     "inserted": False,
                     "reason": "duplicate — already ingested",
