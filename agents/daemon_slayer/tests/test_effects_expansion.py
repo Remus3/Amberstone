@@ -478,7 +478,7 @@ class DefensiveOnlyBatch3Tests(unittest.TestCase):
     """
 
     EXPECTED = {
-        "6655": "Luden's Echo",
+        # 6655 Luden's Echo promoted to active periodic in batch 52
         "3128": "Deathfire Grasp",
     }
 
@@ -4206,7 +4206,7 @@ class Batch32DefensiveOnlyTests(unittest.TestCase):
         "2517": "Endless Hunger",
         "6609": "Chempunk Chainsword",
         "2523": "Hexoptics C44",
-        "8010": "Bloodletter's Curse",
+        # 8010 Bloodletter's Curse promoted to active mr_reduction_pct in batch 52
     }
 
     def test_all_entries_present_and_defensive(self) -> None:
@@ -4338,7 +4338,7 @@ class Batch33DefensiveOnlyTests(unittest.TestCase):
     """7 new defensive_only entries in batch 33."""
 
     EXPECTED: dict[str, str] = {
-        "4636": "Night Harvester",
+        # 4636 Night Harvester promoted to active periodic in batch 52
         "2512": "Fiendhunter Bolts",
         "663060": "Sword of the Divine",
         # 667112 Flesheater promoted to active in batch 50 (armor_reduction_flat)
@@ -5245,7 +5245,7 @@ class Batch39MRReductionSchemaTests(unittest.TestCase):
 
     def test_batch39_defensive_only_entries(self) -> None:
         expected = {
-            "444636": "Night Harvester",
+            # 444636 Night Harvester promoted to active periodic in batch 52
             "444637": "Demonic Embrace",
             "446691": "Duskblade of Draktharr",
             "446667": "Radiant Virtue",
@@ -5497,7 +5497,7 @@ class Batch41Arena226MirrorTests(unittest.TestCase):
             "226620": "Echoes of Helia",
             "226621": "Dawncore",
             "226630": "Goredrinker",
-            "226655": "Luden's Echo",
+            # 226655 Luden's Echo promoted to active periodic in batch 52
             "226657": "Rod of Ages",
             "226665": "Jak'Sho, The Protean",
             "226675": "Navori Flickerblades",
@@ -6334,7 +6334,8 @@ class Batch49Remaining3xxx2xxxArenaTests(unittest.TestCase):
 
     def test_batch49_defensive_count(self) -> None:
         defo = [e for e in ITEM_EFFECTS.values() if e.defensive_only]
-        self.assertGreaterEqual(len(defo), 280)
+        # batch 50-52 promoted 5 items from defensive_only; floor lowered
+        self.assertGreaterEqual(len(defo), 275)
 
     def test_batch49_total_count(self) -> None:
         self.assertGreaterEqual(len(ITEM_EFFECTS), 496)
@@ -6422,6 +6423,72 @@ class Batch51FatedAshesTests(unittest.TestCase):
 
     def test_batch51_total_count(self) -> None:
         self.assertGreaterEqual(len(ITEM_EFFECTS), 501)
+
+
+# ──────────────────────────── batch 52: Night Harvester + Luden's + BL Curse SR
+
+
+class Batch52AbilityProcTests(unittest.TestCase):
+    """Batch 52: Night Harvester, Luden's Echo, SR Bloodletter's Curse promoted."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def _check_soulrend(self, iid: str) -> None:
+        e = ITEM_EFFECTS[iid]
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(len(e.periodics), 1)
+        p = e.periodics[0]
+        self.assertEqual(p.name, "Soulrend")
+        self.assertEqual(p.damage_type, MAGICAL)
+        self.assertAlmostEqual(p.every_n_seconds, 10.0)
+        # AP-scaling: at 100 AP, damage = 125 + 0.15*100 = 140
+        ctx = CallContext(base_ad=60, bonus_ad=0, level=11, ap=100.0)
+        self.assertAlmostEqual(p.resolve_damage(ctx), 140.0)
+
+    def test_night_harvester_sr_soulrend(self) -> None:
+        self._check_soulrend("4636")
+
+    def test_night_harvester_arena_soulrend(self) -> None:
+        self._check_soulrend("444636")
+
+    def _check_echo(self, iid: str) -> None:
+        e = ITEM_EFFECTS[iid]
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(len(e.periodics), 1)
+        p = e.periodics[0]
+        self.assertEqual(p.name, "Echo")
+        self.assertEqual(p.damage_type, MAGICAL)
+        self.assertAlmostEqual(p.every_n_seconds, 12.0)
+        ctx = CallContext(base_ad=60, bonus_ad=0, level=11, ap=200.0)
+        self.assertAlmostEqual(p.resolve_damage(ctx), 85.0)  # 75 + 0.05*200
+
+    def test_ludens_echo_sr_echo(self) -> None:
+        self._check_echo("6655")
+
+    def test_ludens_echo_arena_echo(self) -> None:
+        self._check_echo("226655")
+
+    def test_bloodletters_curse_sr_mr_reduction(self) -> None:
+        e = ITEM_EFFECTS["8010"]
+        self.assertFalse(e.defensive_only)
+        self.assertAlmostEqual(e.mr_reduction_pct, 0.30)
+        # Pair with a magic-proc item so MR reduction actually shifts DPS.
+        # Nashor's Tooth (3115) contributes magic on-hits; vs 100 MR target,
+        # adding BL's 30% MR shred reduces effective MR and raises proc damage.
+        base = compute_dps(
+            self.snap, "Ahri", level=11, item_ids=["3115"], target_mr=100.0
+        )
+        with_bl = compute_dps(
+            self.snap, "Ahri", level=11, item_ids=["3115", "8010"], target_mr=100.0
+        )
+        self.assertGreater(with_bl.weighted_dps, base.weighted_dps)
+
+    def test_night_harvester_raises_dps(self) -> None:
+        bare = compute_dps(self.snap, "Ahri", level=11)
+        with_nh = compute_dps(self.snap, "Ahri", level=11, item_ids=["4636"])
+        self.assertGreater(with_nh.weighted_dps, bare.weighted_dps)
 
 
 if __name__ == "__main__":
