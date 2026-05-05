@@ -334,7 +334,7 @@ python data_pipeline.py aram_builds                  # ARAM tier refresh
 python data_pipeline.py all                          # full refresh
 ```
 
-## Active priorities (as of 2026-05-05, s105)
+## Active priorities (as of 2026-05-05, s106)
 
 1. ✅ Web dashboard `:8888` (Edge fullscreen on Game-PC's secondary display)
 2. ✅ Tkinter-free (T2 #6/#8 complete; asyncio-native)
@@ -348,6 +348,8 @@ python data_pipeline.py all                          # full refresh
 10. ✅ DS Engine champ-select build preview — `#cs-ds-block` panel + `/api/ds-preview` endpoint; fires once per (champion, mode) pair; item tiles with +Ndps tooltips (commit 112350a)
 11. ✅ SR RECOMMENDED panel + SSE mode fix — `mode_key` corrected game→sr in `_state_builder.py`; `sr_items` fallback populates NEXT TO BUY; icon cache/sig race fixed (commits 5ee58b6, f5ce231)
 12. ✅ Zero-cost bridge daemons — `RC-BridgeDaemon` scheduled task on Game-PC (confirmed working); `peer_bridge_daemon.py` canonical on Legion, deploy task sent to Peer (ddaec17)
-13. 🟡 Peer bridge daemon install — Peer should receive + install `peer_bridge_daemon.py`; confirm health file at `~/peer_bridge_daemon_health.json`
-14. 🟡 Bridge Watcher acceptance-criteria measurement — accumulate 50+ real-traffic samples for ≥90%/≥95% auto-action validation
-15. 🟡 Vision regions calibration — capture in-game frame, tune `data/vision_regions.json` bboxes for tower HP%, nexus HP%, event fields so they drop out of Sonnet tier
+13. ✅ RC-DaemonSlayer console flash fixed — `python.exe` → `pythonw.exe` in task XML; `start_claude.ps1` expanded with DS/:8893, Phase3/:8890, BridgeWatcher checks (commit 0d1b545)
+14. 🟡 Peer bridge daemon install — Peer should receive + install `peer_bridge_daemon.py`; confirm health file at `~/peer_bridge_daemon_health.json`
+15. 🟡 RC-VisionServer failing (last_result=267014) — investigate why task fails at startup
+16. 🟡 Bridge Watcher acceptance-criteria measurement — accumulate 50+ real-traffic samples for ≥90%/≥95% auto-action validation
+17. 🟡 Vision regions calibration — capture in-game frame, tune `data/vision_regions.json` bboxes for tower HP%, nexus HP%, event fields so they drop out of Sonnet tier
