@@ -6,6 +6,30 @@
 
 ---
 
+# s93 wrap — 2026-05-04 (Daemon Slayer batches 50–53)
+
+## What shipped (this session)
+
+- **Batch 50** — `armor_reduction_flat` + `mr_reduction_flat` schema; Flesheater (667112, 447112) promoted
+- **Batch 51** — Fated Ashes (2508) Inflame proc + 5 defensive-only components (2019/2021/2022/2420/2421)
+- **Batch 52** — Night Harvester (4636, 444636) Soulrend; Luden's Echo (6655, 226655) Echo; Bloodletter's Curse SR (8010) mr_reduction_pct; ability-cast schema resolved via every_n_seconds
+- **Batch 53** `255dd22` — Hamstringer (443069) Scour crit-bleed + Stormsurge (4646, 224646) Squall proc
+  - ENGINE_VERSION 0.54.0 · **829 tests passing** · ITEM_EFFECTS = 496 entries
+
+## Coverage status
+
+- ITEM_EFFECTS: **496 entries — essentially complete**
+- 829 tests passing (242+ defensive_only, 254+ active, mixed Arena/ARAM mirrors)
+- Bridge auto-loop: **NOT running on Game-PC** — start manually: `/loop 1m /process-bridge-tasks`
+
+## Schema gaps still open (priority order)
+
+1. **Conditional AS** → Yun Tal Flurry, Experimental Hexplate (complex schema needed)
+2. **Mejai's kill-stack AP** → separate schema needed
+3. Most remaining unmodeled passives are ability-use-gated (e.g. further burst items) or non-combat
+
+---
+
 # s92 wrap — 2026-05-04 (Daemon Slayer batches 38–49)
 
 ## What shipped (this session)
