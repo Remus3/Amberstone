@@ -6705,5 +6705,72 @@ class Batch54SwordOfDivineEvTests(unittest.TestCase):
         self.assertGreaterEqual(len(ITEM_EFFECTS), 501)
 
 
+class Batch55DDragonCoverageTests(unittest.TestCase):
+    """Batch 55: remaining DDragon purchasable items added as defensive_only.
+
+    Completes DDragon purchasable coverage — every purchasable item with a
+    gold price > 0 (excluding 9xxx Quickplay and 550xxx cosmetics) now has
+    an ITEM_EFFECTS entry.
+    """
+
+    def test_doran_helm_present(self) -> None:
+        eff = ITEM_EFFECTS.get("1120")
+        self.assertIsNotNone(eff)
+        self.assertTrue(eff.defensive_only)
+
+    def test_jungle_companions_present(self) -> None:
+        for iid in ["1101", "1102", "1103", "1105", "1106", "1107"]:
+            with self.subTest(item_id=iid):
+                eff = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(eff)
+                self.assertTrue(eff.defensive_only)
+
+    def test_bandle_juice_present(self) -> None:
+        for iid in ["2161", "2162", "2163"]:
+            with self.subTest(item_id=iid):
+                eff = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(eff)
+                self.assertTrue(eff.defensive_only)
+
+    def test_arena_consumables_present(self) -> None:
+        for iid in ["2141", "2142", "2143", "2144", "2147"]:
+            with self.subTest(item_id=iid):
+                eff = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(eff)
+                self.assertTrue(eff.defensive_only)
+
+    def test_legendary_prismatic_selectors_present(self) -> None:
+        for iid in ["220001", "220002", "220003", "220004", "220005", "220006", "220007"]:
+            with self.subTest(item_id=iid):
+                eff = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(eff)
+                self.assertTrue(eff.defensive_only)
+
+    def test_ddragon_purchasable_coverage_complete(self) -> None:
+        """Every DDragon purchasable item (gold>0, not 9xxx/55xxx) has an entry."""
+        import json, os
+        items_path = os.path.join(
+            os.path.dirname(__file__), "..", "..", "..", "data",
+            "daemon_slayer", "16.9.1", "items.json"
+        )
+        items = json.load(open(items_path))["data"]
+        covered = set(ITEM_EFFECTS.keys())
+        missing = []
+        for k, v in items.items():
+            if k.startswith("9") or k.startswith("55"):
+                continue
+            if not v.get("gold", {}).get("purchasable", False):
+                continue
+            if v.get("gold", {}).get("total", 0) <= 0:
+                continue
+            if k not in covered:
+                missing.append(f"{k}:{v['name']}")
+        self.assertEqual(missing, [], f"Uncovered purchasable items: {missing}")
+
+    def test_batch55_total_count(self) -> None:
+        # 501 + 46 new defensive_only entries = 547
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 547)
+
+
 if __name__ == "__main__":
     unittest.main()
