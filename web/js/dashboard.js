@@ -6016,6 +6016,9 @@
     if (!lcu || lcu.phase !== "ChampSelect") {
       overlay.classList.add("hidden");
       overlay.setAttribute("aria-hidden", "true");
+      // Reset DS preview key so next champ-select session fires fresh.
+      // _CS_DS is defined later in the same scope; safe at poll-time.
+      _CS_DS.lastKey = "";
       return;
     }
     overlay.classList.remove("hidden");
@@ -6273,6 +6276,37 @@
   // the user's historical adaptation data BEFORE the game starts.
   // Resolves championId integers to names via the CHAMPS byId index.
   const _CS_LIVE = { lastKey: "", inflight: false, lastFetch: 0, lastResult: null };
+
+  // DS Engine preview — fires once per (champion, dsMode) pair during
+  // champ-select. Keyed separately from _CS_LIVE so drafting ally/enemy
+  // changes don't re-hit DS (build order doesn't change mid-draft).
+  const _CS_DS = { lastKey: "", inflight: false };
+  function _fetchDsPreview(champion, dsMode) {
+    const key = champion + "/" + dsMode;
+    if (key === _CS_DS.lastKey || _CS_DS.inflight) return;
+    _CS_DS.lastKey = key;
+    _CS_DS.inflight = true;
+    const dsEl = document.getElementById("cs-ds-block");
+    const subEl = document.getElementById("cs-ds-sub");
+    const tilesEl = document.getElementById("cs-ds-tiles");
+    fetch("/api/ds-preview", {
+      method: "POST", cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ champion, mode: dsMode, level: 6, items: [] }),
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        _CS_DS.inflight = false;
+        if (!data || !data.ok || !Array.isArray(data.ranked)) return;
+        const names = data.ranked.map((r) => r.item_name);
+        const reasons = {};
+        data.ranked.forEach((r) => { reasons[r.item_name] = "+" + Math.round(r.delta_dps) + " dps"; });
+        if (subEl) subEl.textContent = champion + " · " + dsMode;
+        if (tilesEl) renderItemTiles(tilesEl, names, { cap: 8, reasons });
+        if (dsEl) dsEl.removeAttribute("hidden");
+      })
+      .catch(() => { _CS_DS.inflight = false; });
+  }
   function handleChampSelect(lcu) {
     // Render the interactive overlay first (drives visibility on every poll).
     renderChampSelectPanel(lcu);
@@ -6308,6 +6342,13 @@
     };
     const adaptMode = modeMap[cs.queue_id] || "aram";
     fetchAdaptation(myName, adaptMode === "sr_draft" ? "sr" : adaptMode, enemies);
+
+    // DS Engine pre-game build preview — fires once per (champion, mode)
+    // pair; keyed separately from Haiku so draft changes don't re-hit DS.
+    const dsMode = (adaptMode === "aram") ? "ARAM"
+                 : (adaptMode === "arena") ? "ARENA"
+                 : "SR";
+    _fetchDsPreview(myName, dsMode);
 
     // Live Haiku coaching — debounced + key-deduped so we only fire when
     // the actual pick state changes (champion or team comp), not on every

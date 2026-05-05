@@ -5291,6 +5291,21 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 
 /* Loadout block (Phase 2) — variant picker + auto-applied runes/items/spells */
+.cs-ds-block {
+  background: var(--surface); border-radius: var(--radius);
+  padding: 12px 14px; border: 1px solid var(--border-soft);
+}
+.cs-ds-head {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+}
+.cs-ds-label {
+  font-size: 11px; color: var(--label);
+  text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;
+}
+.cs-ds-sub {
+  font-size: 11px; color: var(--text-dim); flex: 1; text-align: right;
+}
+.cs-ds-tiles { flex-wrap: wrap; gap: 8px; min-height: 72px; }
 .cs-loadout-block {
   background: var(--surface); border-radius: var(--radius);
   padding: 12px 14px; border: 1px solid var(--border-soft);
