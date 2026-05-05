@@ -99,6 +99,7 @@ Team health rankings:
 
 Active augments: {augments}
 My abilities: {my_abilities}
+DS top items (DPS ranked, own-items-accounted): {ds_picks}
 {vision_context}
 """
 
@@ -416,6 +417,31 @@ class Coach(BaseCoach):
             elif vs.get("anvil_choices"):
                 vision_ctx = f"ITEM ANVIL available: {', '.join(vs.get('anvil_choices', []))}"
 
+            _ds_rows = None
+            _ds_picks_str = "unavailable"
+            try:
+                owned_ids = _ds_resolve_many(state.get("items", []), mode="arena")
+                target_bonus_hp = self._estimate_target_bonus_hp(state)
+                _ds_rows = _ds_client.rank_for(
+                    champion=champ,
+                    level=int(state.get("level", 1)) or 1,
+                    item_ids=owned_ids,
+                    mode="ARENA",
+                    target_armor=80.0,
+                    target_bonus_hp=target_bonus_hp,
+                    top=5,
+                    augments=state.get("augments") or None,
+                )
+                if _ds_rows:
+                    _ds_picks_str = " > ".join(
+                        f"{r.item_name}(+{r.delta_dps:.0f}dps,{r.gold}g)"
+                        for r in _ds_rows
+                    )
+                elif _ds_rows == []:
+                    _ds_picks_str = "none"
+            except Exception as _ds_exc:
+                logger.debug("Arena daemon_slayer pre-call: %s", _ds_exc)
+
             user = _USER_TEMPLATE.format(
                 round         = state.get("round", 0),
                 champion      = champ,
@@ -431,6 +457,7 @@ class Coach(BaseCoach):
                 team_rankings = rankings,
                 augments      = augments,
                 my_abilities  = fmt_abilities(state.get("my_abilities", {})),
+                ds_picks      = _ds_picks_str,
                 vision_context = vision_ctx,
             )
 
@@ -509,43 +536,12 @@ class Coach(BaseCoach):
             except Exception as exc:
                 logger.debug("arena item advisor: %s", exc)
 
-            # Phase 7 wire-in: also surface daemon_slayer's pure-DPS rank
-            # as a companion field. _arena_item_advisor stays the source
-            # of truth for `item_build` (it knows arena augments + curated
-            # paths that DS doesn't model yet — Phase 6). DS contributes
-            # cold-math validation; the dashboard / future panels will
-            # consume `daemon_slayer_picks` directly. Engine down → field
-            # absent, no regression.
-            try:
-                # s74: pin mode='arena' on owned-items resolution too.
-                owned_ids = _ds_resolve_many(state.get("items", []), mode="arena")
-                # Phase 4 batch 19 wire-in (s72→s73): item-aware estimate
-                # of next opponent's bonus HP, falls back to round-count
-                # heuristic when no enemy items visible. Activates LDR
-                # Giant Slayer's target-conditional amp in /rank scoring.
-                target_bonus_hp = self._estimate_target_bonus_hp(state)
-                ds_rows = _ds_client.rank_for(
-                    champion=champ,
-                    level=int(state.get("level", 1)) or 1,
-                    item_ids=owned_ids,
-                    mode="ARENA",
-                    target_armor=80.0,
-                    target_bonus_hp=target_bonus_hp,
-                    top=5,
-                    augments=state.get("augments") or None,
-                )
-                if ds_rows:
-                    current["daemon_slayer_picks"] = [
-                        {"id": r.item_id, "name": r.item_name,
-                         "delta_dps": round(r.delta_dps, 2), "gold": r.gold}
-                        for r in ds_rows
-                    ]
-                elif ds_rows == []:
-                    # Engine responded but had nothing to rank (e.g. 6-item build).
-                    current["daemon_slayer_picks"] = []
-                # ds_rows is None → engine down; leave field untouched.
-            except Exception as exc:
-                logger.debug("daemon_slayer wire-in: %s", exc)
+            if _ds_rows is not None:
+                current["daemon_slayer_picks"] = [
+                    {"id": r.item_id, "name": r.item_name,
+                     "delta_dps": round(r.delta_dps, 2), "gold": r.gold}
+                    for r in _ds_rows
+                ] if _ds_rows else []
 
             safe_write(self._out, current)
             logger.debug("Arena coaching written (%d fields)", len(fields))
