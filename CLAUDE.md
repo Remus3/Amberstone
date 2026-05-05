@@ -206,6 +206,37 @@ All 547 DDragon purchasable items are in the registry. These 8 remain `defensive
 3. Kinkou Jitte — directional weakpoint; positional geometry unmodelable
 4. Mejai's Arena mirror — no Arena ID in DDragon (3041 SR only)
 
+## Phase 3 agent framework (`agents/`)
+
+A separate long-running process stack started by `agents/supervisor.py` (distinct from `ops/rc_supervisor.py` which owns the main RC process). Two supervisor processes coexist — see `reference_two_supervisors` memory.
+
+### `supervisor.py`
+The Phase 3 orchestrator process. Runs the HTTP API at `:8890` (proxied by RC dashboard via `/api/analyze`), the WebSocket relay at `:8891`, and the async event loop for the agent roster. Maintains a PID lock via `agents/state/lockfile` — duplicate launches abort cleanly. Heartbeats every 5s. Spawns Agents 2/4/5/6 as ephemeral Claude sub-sessions; keeps Agent 7 as a warm session. Graceful shutdown on SIGTERM/SIGBREAK.
+
+### Agent roster
+
+| Agent | Name | Module | Role |
+|---|---|---|---|
+| **0** | Gatekeeper | `agent0_gatekeeper/evaluator.py` | Evaluates cross-machine tasks against 6 criteria (§7 policy). Returns accept/reject Decision. Rejection dispositions: reasons 1,2,3,6 → dead_letter immediately; 4,5 → auto_retry_once_then_dead_letter. Not a security boundary against the user — Agent 1 applies user-override before invoking. Allowed ops defined in `allowed_ops.json`; target machines in `target_allowlist.json`. |
+| **1** | Lead Scheduler | `agent1_lead/scheduler.py` | Single writer of `agents/state/task_queue.jsonl`. Maintains in-memory priority queue of `QueueTask` with append-only JSONL persistence. Recovers on startup by replaying the JSONL. Gate policy: hard gates (kinds 1,7,8) → `needs_explicit_approval`; soft gate via Agent 0 (kind 5, cross-machine) → `agent0_review`; ungated (2,3,4,6) → `ready`. Dispatcher calls `next_ready()` to feed supervisor. |
+| **2** | Backend Ingest | `agent2_backend/game_ingest.py` (+ `db_schema`, `file_ingest`, `smb_push`, `ws_server`, `win_reconcile`, migration files) | Consumes `game-summary` tasks and inserts rows into mode DB. WebSocket server for real-time updates. SMB push for cross-machine data sync. Win/loss detection wires to live coaching JSON. |
+| **3** | Testing | `agent3_testing/suite/` | Comprehensive pytest suite covering all agents and modules (19 test files). Covers Agent 0 policy, Agent 1 scheduling, Agent 4 analysis, Agent 7 parsing, audit probes, game ingest, auto-analyze, and 10 rounds of regression tests. |
+| **4** | Coach Mentor | `agent4_coach_mentor/analyzer.py` (+ `advisory_sweeper`, `cold_streak_detector`, `insight_detector`, `ui_applier`) | Replays matches in mode DB, rolls per-champion aggregates into `adaptation_buckets`, bumps `matchup_modifiers` sample counts. Per-champion × per-mode axis. Activates matchup modifiers at `MATCHUP_ACTIVATE_THRESHOLD` samples. Autonomous writes for aggregates; propose-and-queue only for coach prompts, Python, decision heuristics, panel templates. |
+| **5** | UI Agent | `agent5_ui/champion_fallback.py` | Champion fallback when Live Client API (`:2999`) is down. Three-signal fallback: (1) LCU champ-select session, (2) most recent `match_history.db` row, (3) most recent user-input task mentioning a champion. Served at `/api/locked-champion` with brief caching. |
+| **6** | Auditor | `agent6_auditor/_audit_probes.py` | Security audit probes — verifies suspected weaknesses empirically (path traversal via `..`, subdir substring matching, dotfiles). Source quality ratings in `source_quality.json`. |
+| **7** | Context / NL Parser | `agent7_context/input_parser.py` (+ `warm_session`, `ui_feedback`) | Takes user strings (dashboard or CLI) and translates them into tasks via Agent 1's scheduler. Two-stage: (1) rule-based fast path (regex + keywords, ~80% coverage), (2) LLM fallback (Haiku session with Agent 7 charter). Never dispatches other agents directly — only files tasks. User overrides flow through as direct orders. Maintained as a warm session by the supervisor during play windows. |
+
+### `agents/state/`
+
+Runtime coordination files (not source code):
+
+| File | Contents |
+|---|---|
+| `lockfile` | PID lock — supervisor heartbeats every 5s; duplicate launches abort on stale check |
+| `lockfile.sentinel` | Sentinel marker for lockfile init |
+| `task_queue.jsonl` | Append-only JSONL of every task status transition (~828 KB); Agent 1 replays on startup to recover in-memory state |
+| `resolved_decisions.json` | Locked topology decisions (phase3-1.1, Apr 22): Legion-PC 192.168.8.230, Game-PC 192.168.8.237, Moon-PC decommissioned, install root `C:\Riot Commander\` |
+
 ## Architecture map
 
 ```
@@ -231,7 +262,17 @@ core/                     game_snapshot, sr_aram_worker, tft_worker, theme, hotk
                           moon_proxy (vision client), metrics_cache, lcu integration helpers,
                           prom_metrics (T3 #12 — Prometheus exposition, zero-dep),
                           daemon_slayer_client (HTTP client to :8893), daemon_slayer_resolver
-agents/                   Phase 3 supervisor (:8890/:8891) + Daemon Slayer engine
+agents/                   Phase 3 agent framework + Daemon Slayer DPS engine
+  supervisor.py           Phase 3 orchestrator — :8890 HTTP + :8891 WS; owns Agent 0-7 lifecycle
+  agent0_gatekeeper/      Cross-machine task policy gate (6-criteria evaluator)
+  agent1_lead/            Task queue (scheduler.py) — single JSONL writer, priority queue, gate dispatch
+  agent2_backend/         Live-match DB ingest, file ingest, SMB push, WS server
+  agent3_testing/         Pytest suite (19 files) for all agents + core modules
+  agent4_coach_mentor/    Per-champion analyzer: adaptation_buckets, matchup_modifiers, insight detector
+  agent5_ui/              Champion fallback (/api/locked-champion) when LCU (:2999) is down
+  agent6_auditor/         Security audit probes (path traversal, dotfiles, source quality)
+  agent7_context/         NL input parser (rule-based fast-path + Haiku fallback) → files tasks to Agent 1
+  state/                  task_queue.jsonl (append-only, ~828 KB), lockfile, resolved_decisions.json
   daemon_slayer/          DPS build engine — effects.py (547 items), dps.py, beam_search.py,
                           stat_walk.py, data_loader.py, server.py; 911 tests, ENGINE_VERSION 0.58.0
 tft/                      TFT engine (tft_state_reader, tft_live_analysis, tft_coach_engine, tft_data, tft_pbe_*)
