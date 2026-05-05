@@ -500,6 +500,33 @@ Analyze this URF League of Legends screenshot. Return ONLY valid JSON:
 Return ONLY JSON.
 """
 
+    _NB_TIERED_FIELDS = [
+        "timer",               # OCR canary (validates in-game frame)
+        "event_timer",
+        "nexus_hp_my", "nexus_hp_enemy",
+        "turret_count_my", "turret_count_enemy",
+        "current_event", "event_location",
+    ]
+    _NB_TIERED_VALIDATORS = {
+        "event_timer":        lambda v: isinstance(v, (int, float)) and v >= 0,
+        "nexus_hp_my":        lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
+        "nexus_hp_enemy":     lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
+        "turret_count_my":    lambda v: isinstance(v, int) and v >= 0,
+        "turret_count_enemy": lambda v: isinstance(v, int) and v >= 0,
+        "current_event":      lambda v: isinstance(v, str),
+        "event_location":     lambda v: isinstance(v, str),
+    }
+    _URF_TIERED_FIELDS = [
+        "timer",               # OCR canary
+        "deaths_visible",
+        "heal_enemies", "poke_phase",
+    ]
+    _URF_TIERED_VALIDATORS = {
+        "deaths_visible": lambda v: isinstance(v, int) and v >= 0,
+        "heal_enemies":   lambda v: isinstance(v, bool),
+        "poke_phase":     lambda v: isinstance(v, bool),
+    }
+
     def __init__(self, api_key: str, mode: str):
         import anthropic
         from modes.shared_vision import GameVisionReader
@@ -509,12 +536,16 @@ Return ONLY JSON.
         r._last   = {}
         if "ULTBOOK" in mode.upper() or "URF" in mode.upper():
             r.PROMPT = self._URF_PROMPT
+            r.TIERED_FIELDS = self._URF_TIERED_FIELDS
+            r.TIERED_VALIDATORS = self._URF_TIERED_VALIDATORS
         else:
             r.PROMPT = self._NB_PROMPT
+            r.TIERED_FIELDS = self._NB_TIERED_FIELDS
+            r.TIERED_VALIDATORS = self._NB_TIERED_VALIDATORS
         self._reader = r
 
     def read(self):
-        return self._reader.read()
+        return self._reader.read_tiered()
 
 
 # ── Brawl game state parser ───────────────────────────────────────────────────
