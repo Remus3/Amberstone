@@ -404,6 +404,11 @@ def compute_dps(
     base_hp = float(resolved.base_stats.get("hp", 0.0)) if resolved.base_stats else 0.0
     caster_max_hp = float(stats.get("hp", 0.0))
     caster_bonus_hp = max(0.0, caster_max_hp - base_hp)
+    # Phase 4 batch 58 (2026-05-04): caster bonus armor — item-contributed
+    # armor above the champion's leveled base. Same base/bonus split as
+    # caster_bonus_hp. Required for Darksteel Talons' Gash (+ 20% bonus armor).
+    base_armor = float(resolved.base_stats.get("armor", 0.0)) if resolved.base_stats else 0.0
+    caster_bonus_armor = max(0.0, float(stats.get("armor", 0.0)) - base_armor)
     # Phase 4 batch 38 (2026-05-04): Giant Slayer target max HP advantage amp.
     # Stacks multiplicatively with damage_amp (same buffer-system doctrine as
     # target_amp from batch 19). Resolved here because caster_max_hp is needed.
@@ -485,6 +490,7 @@ def compute_dps(
         target_bonus_hp=target_bonus_hp,
         crit_chance=crit_chance_ctx,
         caster_max_mp=caster_max_mp,
+        caster_bonus_armor=caster_bonus_armor,
     )
 
     # Phase 4 batch 34 (2026-05-04): magic-only target-debuff amp.

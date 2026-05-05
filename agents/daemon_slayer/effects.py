@@ -118,6 +118,12 @@ class CallContext:
     # no mana" — manaless champions (energy users like Lee Sin, Akali)
     # and pre-batch-27 callers gracefully no-op any mana-scaling proc.
     caster_max_mp: float = 0.0
+    # Phase 4 batch 58 (2026-05-04): caster bonus armor — engine-derived as
+    # ``stats["armor"] - base_armor`` (item-contributed armor only). Same
+    # base/bonus split pattern as caster_bonus_hp from batch 6. Required for
+    # Darksteel Talons' Gash (+ 20% bonus armor ranged) scaling. Default
+    # 0.0 → pre-batch-58 builds no-op gracefully.
+    caster_bonus_armor: float = 0.0
 
 
 # Scaling-damage callable type. Float still works as a constant.
@@ -2357,9 +2363,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     # TRUE damage bypasses both armor and MR (resist=0.0 in _periodic_proc_dps).
     # Three active promotions; 14 defensive_only entries completing the Arena pool sweep.
 
-    # Darksteel Talons (443054): Gash — every basic attack deals 10→20 true damage
-    # (level-scaled, ranged Meraki value). 25%/20% caster bonus armor scaling deferred
-    # (no caster_bonus_armor field in CallContext).
+    # Darksteel Talons (443054): Gash — every basic attack deals
+    # (10→20 pp) + 20% bonus armor true damage (ranged Meraki values;
+    # batch 58 adds caster_bonus_armor scaling). Melee would be 20→40
+    # base + 25% bonus armor; ranged = 10→20 + 20% armor.
     "443054": ItemEffect(
         item_id="443054",
         name="Darksteel Talons",
@@ -2367,13 +2374,16 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             PeriodicProc(
                 name="Gash",
                 every_n_attacks=1,
-                bonus_damage=lambda c: 10.0 + 10.0 / 17.0 * (c.level - 1),
+                bonus_damage=lambda c: (
+                    (10.0 + 10.0 / 17.0 * (c.level - 1))
+                    + 0.20 * c.caster_bonus_armor
+                ),
                 damage_type=TRUE,
             ),
         ),
         note=(
-            "Darksteel Talons: Gash every basic attack 10→20 true damage (ranged value, level-scaled). "
-            "25%/20% caster bonus armor component deferred (caster_bonus_armor not in CallContext)"
+            "Darksteel Talons: Gash every basic attack (10→20 level-scaled) + 20% bonus armor "
+            "true damage (ranged Meraki values; Batch 58 — caster_bonus_armor fully wired)"
         ),
     ),
     # Fulmination (443055): Dynamo — every 100th attack 13% CURRENT target HP magic damage.
