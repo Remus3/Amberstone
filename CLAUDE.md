@@ -156,14 +156,14 @@ Local DPS-math service on `:8893`. Computes actual damage-per-second for any cha
 
 | File | Purpose |
 |---|---|
-| `__init__.py` | `ENGINE_VERSION` constant (currently **0.58.0**); `start_server()` entry point |
+| `__init__.py` | `ENGINE_VERSION` constant (currently **0.59.0**); `start_server()` entry point |
 | `server.py` | Flask HTTP; `/rank`, `/dps`, `/health` endpoints |
 | `effects.py` | `ItemEffect` registry — **547 entries, DDragon purchasable coverage COMPLETE** |
 | `dps.py` | `CallContext` dataclass + `compute_dps()` — stat walk, armor/MR pen, on-hit, periodic procs, damage amps |
 | `stat_walk.py` | Champion base-stat + per-level growth interpolation |
 | `beam_search.py` | `rank_for()` — beam search over item combinations; returns ranked `DpsRow` list with `delta_dps` + `gold` |
 | `data_loader.py` | Versioned `DataSnapshot` loader; reads `data/daemon_slayer/<patch>/` |
-| `tests/` | **911 tests passing** |
+| `tests/` | **922 tests passing** |
 
 ### Key data types
 
@@ -198,13 +198,18 @@ except Exception as e:
 | `coach_integration.py` (SR) | ✅ | **Before Haiku** | — (no item rules existed; `sr_build_note` static JSON remains) |
 | TFT | N/A | N/A | N/A |
 
-### Deferred items (8 — genuinely blocked)
+### Deferred items (4 — permanently blocked)
 
-All 547 DDragon purchasable items are in the registry. These 8 remain `defensive_only` or unmodeled due to schema limits:
-1. Ability/ult-cast triggers (Lightning Braid, Malignance, Night Harvester SR, Innervating Locket, Fiendhunter Bolts) — blocked on ability-frequency data
-2. Hellfire Hatchet Char — 3-way scaling `level × hp_diff × lethality`
+All 547 DDragon purchasable items are in the registry. Batch 63 promoted Hellfire
+Hatchet Char, Fiendhunter Bolts Opening Barrage, and Innervating Locket Fill the Soul
+via binding-constraint CDs (Meraki `passives[].cooldown` field). 4 remain:
+1. Lightning Braid — no formula in Meraki; also DPS-negative (−20% ability damage reduction)
+2. Malignance — ult-zone Hatefog, no item CD; needs per-champion ult frequency data
 3. Kinkou Jitte — directional weakpoint; positional geometry unmodelable
 4. Mejai's Arena mirror — no Arena ID in DDragon (3041 SR only)
+
+**Key insight**: check Meraki `passives[].cooldown` before deferring any "ability-triggered" item.
+If an item CD exists, use `every_n_seconds=CD` — no ability-frequency data needed.
 
 ## Phase 3 agent framework (`agents/`)
 
@@ -274,7 +279,7 @@ agents/                   Phase 3 agent framework + Daemon Slayer DPS engine
   agent7_context/         NL input parser (rule-based fast-path + Haiku fallback) → files tasks to Agent 1
   state/                  task_queue.jsonl (append-only, ~828 KB), lockfile, resolved_decisions.json
   daemon_slayer/          DPS build engine — effects.py (547 items), dps.py, beam_search.py,
-                          stat_walk.py, data_loader.py, server.py; 911 tests, ENGINE_VERSION 0.58.0
+                          stat_walk.py, data_loader.py, server.py; 922 tests, ENGINE_VERSION 0.59.0
 tft/                      TFT engine (tft_state_reader, tft_live_analysis, tft_coach_engine, tft_data, tft_pbe_*)
                           [tft_overlay + comp_control archived in T2 #8 C2]
 ui/                       (empty — entire package archived in T2 #8 C2; see _archive/2026-05-01-audit/ui/)
@@ -328,13 +333,14 @@ python data_pipeline.py aram_builds                  # ARAM tier refresh
 python data_pipeline.py all                          # full refresh
 ```
 
-## Active priorities (as of 2026-05-04, s95)
+## Active priorities (as of 2026-05-05, s98)
 
 1. ✅ Web dashboard `:8888` (Edge fullscreen on Game-PC's secondary display)
 2. ✅ Tkinter-free (T2 #6/#8 complete; asyncio-native)
-3. ✅ Daemon Slayer item coverage complete — 547/547 DDragon purchasable items, ENGINE_VERSION 0.58.0, 911 tests
+3. ✅ Daemon Slayer item coverage complete — 547/547 DDragon purchasable items, ENGINE_VERSION 0.59.0, 922 tests
 4. ✅ ARAM coach DS-before-Haiku — DS picks injected in user turn; pre-DS hardcoded item rules removed (−37% system prompt)
-5. ✅ **Arena + Brawl coaches** — DS-before-Haiku done (commit b4609b4)
-6. ✅ **SR coach** (`coach_integration.py`) — DS wired pre-Haiku; `daemon_slayer_picks` written to coaching_data.json (commit b4609b4)
-7. 🟡 Tiered vision — relay live, Tesseract installed; needs calibration against in-game 1920×1080 frame and coach-side routing (cheap OCR → Sonnet escalate)
-8. 🟡 Bridge Watcher acceptance-criteria measurement — accumulate 50+ real-traffic samples for ≥90%/≥95% auto-action validation
+5. ✅ Arena + Brawl coaches — DS-before-Haiku done (commit b4609b4)
+6. ✅ SR coach (`coach_integration.py`) — DS wired pre-Haiku; `daemon_slayer_picks` written to coaching_data.json (commit b4609b4)
+7. ✅ Daemon Slayer batch 63 — Hellfire Hatchet Char + Fiendhunter Bolts + Innervating Locket promoted (commit e56e878); 4 items permanently deferred
+8. 🟡 Tiered vision — relay live, Tesseract installed; needs calibration against in-game 1920×1080 frame and coach-side routing (cheap OCR → Sonnet escalate)
+9. 🟡 Bridge Watcher acceptance-criteria measurement — accumulate 50+ real-traffic samples for ≥90%/≥95% auto-action validation

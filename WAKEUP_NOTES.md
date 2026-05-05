@@ -6,6 +6,42 @@
 
 ---
 
+# s98 wrap — 2026-05-05 (Daemon Slayer batch 63 — blocked items resolved)
+
+## What shipped (this session)
+
+- **Batch 63** `e56e878` — 3 previously-blocked items promoted (ENGINE_VERSION 0.59.0, 922 tests)
+  - **Hellfire Hatchet (4017)**: Char proc — Meraki CD=15s confirmed; not truly ability-frequency-blocked.
+    Formula: `(5%+5%*hp_diff/2000 + lethality*(0.2%+0.2%*hp_diff/2000)) * target_max_hp physical/15s`
+    `hp_diff = clamp(caster_max_hp - target_max_hp, 0, 2000)`; all in CallContext.
+  - **Fiendhunter Bolts (2512)**: Opening Barrage — Meraki CD=45s confirmed.
+    `3 × (base_ad + bonus_ad) × 0.70 physical/45s` (70% = midpoint of 60–80% crit template).
+  - **Innervating Locket (447104)**: Fill the Soul `bonus_ap_stacked=175`.
+    `pp|100–250 AP` at 30 charges; 175 midpoint; Arena-only; ally casts count.
+    Wired via existing `total_stacked_ap()` path in dps.py.
+  - Updated notes on 4 permanently deferred items:
+    Lightning Braid (no Meraki formula, DPS-negative), Malignance (ult-zone, no CD),
+    Kinkou Jitte (directional geometry), Mejai's Arena mirror (no Arena DDragon ID)
+
+- **Key insight documented**: Items labelled "ability-triggered" may have an item-level CD
+  in Meraki's `passives[].cooldown` field. Check Meraki FIRST before deferring.
+  Hellfire Hatchet and Fiendhunter Bolts both had item CDs that made them promotable.
+
+## Coverage status
+
+- ITEM_EFFECTS: **547 entries — DDragon purchasable coverage COMPLETE**
+- **922 tests passing** (ENGINE_VERSION 0.59.0)
+- 4 items permanently deferred: Lightning Braid, Malignance, Kinkou Jitte, Mejai's Arena
+
+## Open work (priority order)
+
+1. **Ability-cast schema**: Lightning Braid + Malignance still need per-champion ability
+   frequency data (not item CDs). Kinkou Jitte needs positional geometry. All deferred.
+2. **Stage 5 calibration**: needs 50+ games with DS active. Long-term.
+3. Bridge auto-loop: **NOT running on Game-PC** — start manually: `/loop 1m /process-bridge-tasks`
+
+---
+
 # s96 wrap — 2026-05-04 (documentation + ARAM DS-before-Haiku refactor)
 
 ## What shipped (this session)
