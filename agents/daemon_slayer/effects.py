@@ -1048,8 +1048,18 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "6655": ItemEffect(
         item_id="6655",
         name="Luden's Echo",
-        defensive_only=True,
-        note="Luden's Echo: ability-bound echo bolts (not on-hit / not in auto rotation)",
+        # Phase 4 batch 52 (2026-05-04): promoted. Meraki confirms:
+        # "75 (+ 5% AP) bonus magic damage, 12s CD." Primary-target DPS only —
+        # multi-target splash (one additional enemy per Echo stack beyond first)
+        # not modeled (requires target-count context). every_n_seconds=12.0
+        # represents per-champion cooldown; in solo target fight this is exact.
+        periodics=(PeriodicProc(
+            name="Echo",
+            bonus_damage=lambda c: 75.0 + 0.05 * c.ap,
+            damage_type=MAGICAL,
+            every_n_seconds=12.0,
+        ),),
+        note="Luden's Echo: Echo 75 (+5% AP) magic / 12s primary target (Meraki confirmed; AoE splash not modeled)",
     ),
     "4633": ItemEffect(
         item_id="4633",
@@ -1886,11 +1896,17 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "8010": ItemEffect(
         item_id="8010",
         name="Bloodletter's Curse",
-        defensive_only=True,
+        # Phase 4 batch 52 (2026-05-04): promoted. Meraki confirms: "Each stack
+        # inflicts 7.5% magic resistance reduction, stacking up to 4 times → 30%
+        # MR reduction at full stacks." Same mechanism as Arena version 4010
+        # (both are MR reduction, not magic penetration — note was wrong on "40%
+        # magic pen"). Sustained-DPS pins full stacks (4 ability applications;
+        # same doctrine as Black Cleaver's 30% at 5 stacks). Ability-triggered
+        # application is the only difference vs Arena version which is any-hit.
+        mr_reduction_pct=0.30,
         note=(
-            "Bloodletter's Curse: Vile Decay ability-stacking 40% magic pen "
-            "(ability-cast schema gap; sustained pen requires 3+ applications); "
-            "deferred pending ability-cast schema"
+            "Bloodletter's Curse (SR 8010): Vile Decay 7.5% MR reduction × 4 "
+            "ability-hit stacks = 30% at full stacks (same as Arena 4010; Meraki confirmed)"
         ),
     ),
     # ── Phase 4 batch 33 (2026-05-04): ability-burn promos + dual-pen + caster-HP burn ──
@@ -1932,12 +1948,20 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "4636": ItemEffect(
         item_id="4636",
         name="Night Harvester",
-        defensive_only=True,
-        note=(
-            "Night Harvester: Soulrend 30s CD mythic proc — damage value not in "
-            "DDragon/Meraki description and varies by level; deferred pending "
-            "periodic-with-level-scale schema or explicit formula lookup"
-        ),
+        # Phase 4 batch 52 (2026-05-04): promoted. SR DDragon strips the value
+        # but Arena Meraki (444636) confirms: "125 (+ 15% AP) bonus magic damage,
+        # 10s CD per champion." Used for SR, ARAM, and Arena SR-mirrors since
+        # all Night Harvester variants share the Soulrend passive with the same
+        # numbers. "Per champion" CD → model as every_n_seconds=10 (worst-case:
+        # single-target fight at this cadence; multi-target fights proc more often
+        # but every_n_seconds is the minimum floor for any one target).
+        periodics=(PeriodicProc(
+            name="Soulrend",
+            bonus_damage=lambda c: 125.0 + 0.15 * c.ap,
+            damage_type=MAGICAL,
+            every_n_seconds=10.0,
+        ),),
+        note="Night Harvester: Soulrend 125 (+15% AP) magic / 10s per champion (Meraki 444636 ref)",
     ),
     "2512": ItemEffect(
         item_id="2512",
@@ -2799,11 +2823,15 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "444636": ItemEffect(
         item_id="444636",
         name="Night Harvester",
-        defensive_only=True,
-        note=(
-            "Night Harvester (444636 Arena): Soulrend — ability damage triggers a periodic "
-            "burst; ability-cast schema gap; deferred (same reason as SR Night Harvester)"
-        ),
+        # Phase 4 batch 52 (2026-05-04): promoted. Meraki confirms: "125 (+ 15%
+        # AP) bonus magic damage, 10s CD per champion." Same values as SR 4636.
+        periodics=(PeriodicProc(
+            name="Soulrend",
+            bonus_damage=lambda c: 125.0 + 0.15 * c.ap,
+            damage_type=MAGICAL,
+            every_n_seconds=10.0,
+        ),),
+        note="Night Harvester (Arena 444636): Soulrend 125 (+15% AP) magic / 10s (Meraki confirmed)",
     ),
     "444637": ItemEffect(
         item_id="444637",
@@ -3223,8 +3251,16 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "226655": ItemEffect(
         item_id="226655",
         name="Luden's Echo",
-        defensive_only=True,
-        note="Luden's Echo (Arena 226655): Haste bolt on ability — ability-cast schema gap; deferred",
+        # Phase 4 batch 52 (2026-05-04): promoted. Same Echo passive as SR 6655.
+        # DDragon strips numbers but Arena mirrors SR; using Meraki SR values:
+        # 75 (+5% AP) magic / 12s per champion.
+        periodics=(PeriodicProc(
+            name="Echo",
+            bonus_damage=lambda c: 75.0 + 0.05 * c.ap,
+            damage_type=MAGICAL,
+            every_n_seconds=12.0,
+        ),),
+        note="Luden's Echo (Arena 226655): Echo 75 (+5% AP) magic / 12s (SR Meraki values; AoE splash not modeled)",
     ),
     "226657": ItemEffect(
         item_id="226657",
