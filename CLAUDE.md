@@ -193,9 +193,9 @@ except Exception as e:
 | Coach | DS call | Position | Pre-DS rules pruned |
 |---|---|---|---|
 | `coaches/aram_coach.py` | ✅ | **Before Haiku** | ✅ BUILD COMMITMENT + DAMAGE-TYPE + MUTUAL EXCLUSIONS removed; −37% system prompt |
-| `coaches/arena_coach.py` | ✅ post-Haiku | ⚠️ needs move to pre-Haiku | (no hardcoded item lists to prune) |
-| `coaches/brawl_coach.py` | ✅ post-Haiku | ⚠️ needs move to pre-Haiku | (no hardcoded item lists to prune) |
-| `core/coach_integration.py` (SR) | ❌ **not wired** | — | (no DS feedback to Haiku at all) |
+| `coaches/arena_coach.py` | ✅ | **Before Haiku** | ✅ (no hardcoded item lists; prompt was already lean) |
+| `coaches/brawl_coach.py` | ✅ | **Before Haiku** | ✅ (no hardcoded item lists; prompt was already lean) |
+| `coach_integration.py` (SR) | ✅ | **Before Haiku** | — (no item rules existed; `sr_build_note` static JSON remains) |
 | TFT | N/A | N/A | N/A |
 
 ### Deferred items (8 — genuinely blocked)
@@ -334,7 +334,7 @@ python data_pipeline.py all                          # full refresh
 2. ✅ Tkinter-free (T2 #6/#8 complete; asyncio-native)
 3. ✅ Daemon Slayer item coverage complete — 547/547 DDragon purchasable items, ENGINE_VERSION 0.58.0, 911 tests
 4. ✅ ARAM coach DS-before-Haiku — DS picks injected in user turn; pre-DS hardcoded item rules removed (−37% system prompt)
-5. 🔴 **Arena + Brawl coaches** — move DS call from post-Haiku to pre-Haiku (same code pattern as ARAM; ~30 min each)
-6. 🔴 **SR coach** (`core/coach_integration.py`) — DS not wired at all; `sr_build_note` is static JSON; highest-value remaining DS integration
+5. ✅ **Arena + Brawl coaches** — DS-before-Haiku done (commit b4609b4)
+6. ✅ **SR coach** (`coach_integration.py`) — DS wired pre-Haiku; `daemon_slayer_picks` written to coaching_data.json (commit b4609b4)
 7. 🟡 Tiered vision — relay live, Tesseract installed; needs calibration against in-game 1920×1080 frame and coach-side routing (cheap OCR → Sonnet escalate)
 8. 🟡 Bridge Watcher acceptance-criteria measurement — accumulate 50+ real-traffic samples for ≥90%/≥95% auto-action validation

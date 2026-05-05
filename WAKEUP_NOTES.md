@@ -40,9 +40,8 @@
 
 ## Open work (priority order)
 
-1. **Arena + Brawl coaches**: move DS call from post-Haiku to pre-Haiku (same 30-min pattern as ARAM, no system prompt sections to prune). Best prompt: `"Wire DS into arena and brawl coaches — same DS-before-Haiku pattern as ARAM refactor (commit 3b84949)."`
-2. **SR coach** (`core/coach_integration.py`): DS not wired at all — `sr_build_note` is static JSON. Highest-value remaining gap. Best prompt: `"Wire DS into SR coach. No DS wiring exists. Add rank_for() pre-Haiku, inject {ds_picks} in user turn, write daemon_slayer_picks to SR output JSON. mode='SR'."`
-3. **Ability-cast schema**: blocked on ability-frequency data; see ROADMAP Stage 3
+1. ✅ **Arena + Brawl + SR coaches DS-before-Haiku** — commit b4609b4 (this session)
+2. **Ability-cast schema**: blocked on ability-frequency data; see ROADMAP Stage 3
 4. Bridge auto-loop: **NOT running on Game-PC** — start manually: `/loop 1m /process-bridge-tasks`
 
 ---
