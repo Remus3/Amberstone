@@ -32,8 +32,9 @@ mode str    map  notes
 "brawl"      35  Brawl / Swiftplay
 ==========  ===  ==========================
 
-``mode=None`` preserves pre-s74 behavior (resolves via ``items_index.json``
-byName, hits the alias-ID quirk). Existing callers don't break.
+``mode=None`` resolves via ``items_index.json`` byName. As of commit 41c87bc
+that index sorts by ID length so canonical 4-digit IDs win over 22XXXX Arena
+aliases — the legacy alias quirk is gone; mode=None now returns base IDs.
 """
 from __future__ import annotations
 
@@ -107,9 +108,8 @@ def name_to_id(name: str, mode: Optional[str] = None) -> Optional[str]:
     ``mode`` (optional, s74) selects a map-aware byName index built from
     DDragon's ``maps`` field. Accepts ``"sr" | "aram" | "arena" | "brawl"``
     (case-insensitive). When omitted, falls back to the legacy
-    ``items_index.json`` byName which leaks Arena alias IDs (22XXXX-prefixed)
-    to all callers — keep it that way unless you specifically want
-    mode-correct HP / cost values.
+    ``items_index.json`` byName. Post-commit 41c87bc that index returns
+    canonical 4-digit IDs (the old Arena-alias leakage quirk is fixed).
     """
     if not name:
         return None
