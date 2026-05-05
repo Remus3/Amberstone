@@ -153,13 +153,15 @@ def cmd_items_index(force: bool = False) -> bool:
 
     by_name: dict[str, str] = {}
     by_id:   dict[str, str] = {}
-    for item_id, info in items.items():
+    # Sort shorter IDs first so canonical IDs (e.g. "2502") win over 6-digit
+    # alias mirrors (e.g. "222502") when DDragon 16.9+ includes both under
+    # the same display name. setdefault then picks the canonical on first-seen.
+    for item_id, info in sorted(items.items(), key=lambda kv: len(kv[0])):
         name = info.get("name") or ""
         if not name:
             continue
         # byName key matches dashboard.js _normItemName: lowercase, strip non-alnum.
         norm = "".join(c for c in name.lower() if c.isalnum())
-        # First-seen wins for byName collisions (DDragon sometimes reuses display names).
         by_name.setdefault(norm, str(item_id))
         by_id[str(item_id)] = name
 
