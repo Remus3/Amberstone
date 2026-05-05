@@ -53,11 +53,13 @@ from .effects import (
     effective_target_mr,
     total_ap_amp_multiplier,
     total_bonus_ap_from_hp,
+    total_conditional_as,
     total_crit_chance_bonus,
     total_crit_damage_bonus,
     total_damage_amp_multiplier,
     total_giant_slayer_multiplier,
     total_magic_amp_multiplier,
+    total_stacked_ap,
     total_target_bonus_hp_amp_multiplier,
 )
 from .engine import build_champion
@@ -418,12 +420,16 @@ def compute_dps(
     # raw stat blocks; /dps reflects converted totals.
     ap_from_hp = total_bonus_ap_from_hp(item_effects, caster_bonus_hp)
     ap += ap_from_hp
+    # Phase 4 batch 54 (2026-05-04): stacked AP from kill-stack passives
+    # (Mejai's Glory). Inserted BEFORE ap_amp so Rabadon's Magical Opus
+    # amplifies the full AP total including stacked AP — Glory AP is real
+    # AP. Raw stat blocks (/stats) unchanged; only CallContext.ap sees it.
+    stacked_ap = total_stacked_ap(item_effects)
+    ap += stacked_ap
     # Phase 4 batch 32 (2026-05-04): multiplicative AP amplifier. Applied
-    # after ap_from_hp so HP→AP cross-derivation (Riftmaker/Demonic Embrace)
-    # is included in the amplified base — Rabadon's Magical Opus boosts ALL
-    # AP, including the HP-converted contribution. Same separation as
-    # batch 15: raw stat blocks (/stats) are unchanged; only CallContext.ap
-    # sees the amplified total.
+    # after ap_from_hp + stacked_ap so Rabadon's Magical Opus boosts ALL
+    # AP, including the HP-converted and kill-stacked contributions.
+    # Raw stat blocks (/stats) unchanged; only CallContext.ap sees it.
     ap_amp = total_ap_amp_multiplier(item_effects)
     if ap_amp != 1.0:
         ap *= ap_amp
@@ -448,6 +454,15 @@ def compute_dps(
     else:
         stats_for_rotation = stats
     crit_chance_ctx = crit_total
+    # Phase 4 batch 54 (2026-05-04): conditional bonus AS (Yun Tal Flurry).
+    # Added to stats_for_rotation["as"] alongside crit_from_effects — both
+    # are DPS-time cross-derivations that don't appear in /stats. The AS
+    # value is uptime-weighted (0.08 for Yun Tal at ~27% uptime).
+    cond_as = total_conditional_as(item_effects)
+    if cond_as > 0:
+        if stats_for_rotation is stats:
+            stats_for_rotation = dict(stats)
+        stats_for_rotation["as"] = stats_for_rotation.get("as", 0.0) + cond_as
     call_ctx = CallContext(
         base_ad=base_ad,
         bonus_ad=bonus_ad,
@@ -523,6 +538,15 @@ def compute_dps(
         notes.append(
             f"caster AP cross-derived from bonus HP: +{ap_from_hp:.1f} AP "
             f"(total AP for procs: {ap:.1f})"
+        )
+    if stacked_ap > 0:
+        notes.append(
+            f"Mejai's stacked AP: +{stacked_ap:.0f} AP (full-stacks pin; "
+            f"total AP for procs: {ap:.1f})"
+        )
+    if cond_as > 0:
+        notes.append(
+            f"conditional AS bonus: +{cond_as:.3f} (Yun Tal Flurry ~27% uptime)"
         )
     if ap_amp != 1.0:
         notes.append(

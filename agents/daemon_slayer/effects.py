@@ -355,6 +355,24 @@ class ItemEffect:
     # (League makes armor-strip DPS a hard floor, not a bonus multiplier).
     armor_reduction_flat: float = 0.0   # Flesheater Hack the Meat: 30 at full stacks
     mr_reduction_flat: float = 0.0      # Flesheater Hack the Meat: 30 at full stacks
+    # Phase 4 batch 54 (2026-05-04): kill-stacking AP not captured in DDragon.
+    # Mejai's Soulstealer "Glory" grants 5 AP per stack (max 25 stacks = 125 AP);
+    # DDragon's FlatMagicDamageMod only carries the base 20 AP. Engine pins at
+    # full stacks (same sustained-peak convention as Black Cleaver full-stack
+    # armor reduction). Added to effective AP before CallContext — AP-scaling
+    # procs (Lich Bane, Nashor's) see the stacked total, and Rabadon's
+    # ap_amp multiplies it. Default 0.0 → no contribution.
+    bonus_ap_stacked: float = 0.0
+    # Phase 4 batch 54 (2026-05-04): conditional bonus AS not modeled as a stat.
+    # Yun Tal Wildarrows "Flurry": on-attacking an enemy champion, gain 30%
+    # bonus AS for 6s (30s CD; attacks reduce CD by 1s, crits by 2s).
+    # Sustained uptime at ~1.3 attacks/s with 25% crit: cycle = 6s active +
+    # 16.2s cooldown (20.25s remaining after active, 1.25s/s reduction rate
+    # from attack CD drain) = 22.2s. Uptime = 6/22.2 ≈ 27%.
+    # Effective sustained AS bonus = 0.30 × 0.27 ≈ 0.08. Added to
+    # stats_for_rotation["as"] in compute_dps alongside crit_from_effects.
+    # Default 0.0 → no contribution.
+    bonus_as_conditional: float = 0.0
     defensive_only: bool = False     # documents "no DPS effect" entries
     note: str = ""                   # one-line summary surfaced in DpsResult.notes
     # Phase 4 batch 10 (2026-05-04): unique-passive de-duplication.
@@ -1246,16 +1264,18 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # call as Black Cleaver's "30% reduction at 5 stacks sustained" and
         # Riftmaker's "8% at full ramp"). DDragon stat block carries 0%
         # base crit; Wildarrows is the entire crit story for this item.
-        # Flurry (30% AS for 6s on champion-attack, 30s CD with attack-driven
-        # CD reduction) is intentionally not modeled — it would need a
-        # conditional AS-bonus schema and the steady-state uptime is
-        # near-100% which over-counts in shorter rotations. Stays utility-
-        # adjacent (real DPS impact, but blocked on schema). The item's
-        # 50 AD + 40% AS land via item aggregation.
         crit_chance_bonus_flat=0.25,
-        # No unique_passive_key — Practice Makes Lethal is one of one in
-        # the current item set. Adding a key now would be premature.
-        note="Yun Tal Wildarrows: Practice Makes Lethal +25% crit at full Wildarrows stacks (steady-state pin; Flurry AS bonus not modeled)",
+        # Flurry: on-attacking an enemy champion, +30% AS for 6s (30s CD;
+        # attacks reduce CD by 1s, crits by 2s). Phase 4 batch 54
+        # (2026-05-04): uptime model: at 1.3 attacks/s with 25% crit →
+        # CD drains 1.625s/s. Cycle = 6s active + 16.2s inactive = 22.2s;
+        # uptime = 6/22.2 ≈ 27%. Effective sustained AS = 0.30 × 0.27 ≈ 0.08.
+        bonus_as_conditional=0.08,
+        note=(
+            "Yun Tal Wildarrows: Practice Makes Lethal +25% crit (full stacks); "
+            "Flurry +30% AS for 6s on-champion-attack (30s CD); "
+            "sustained ~8% effective bonus AS (27% uptime model)"
+        ),
     ),
 
     "3039": ItemEffect(
@@ -2506,11 +2526,16 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "443060": ItemEffect(
         item_id="443060",
         name="Sword of the Divine",
-        defensive_only=True,
+        # Phase 4 batch 54 (2026-05-04): promoted. Excoriate grants random bonus
+        # crit damage in [0%, 50%]; expected value of a uniform distribution =
+        # 25%. Same expected-value approximation used by Hamstringer (batch 53)
+        # for its crit-scaling bleed. Full 50% is never sustained; 0% is also
+        # never sustained — EV is the right DPS model for a random-in-range
+        # effect evaluated over many attacks.
+        crit_damage_bonus=0.25,
         note=(
-            "Sword of the Divine: Excoriate grants random bonus crit damage up to 50% — "
-            "random distribution not pinnable to a single sustained value; "
-            "crit_damage_bonus promotion deferred pending design decision on RNG items"
+            "Sword of the Divine (Arena 443060): Excoriate +25% crit damage bonus "
+            "(EV of uniform 0–50% range)"
         ),
     ),
     "443069": ItemEffect(
@@ -3034,11 +3059,16 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3041": ItemEffect(
         item_id="3041",
         name="Mejai's Soulstealer",
-        defensive_only=True,
+        # Phase 4 batch 54 (2026-05-04): promoted. Glory grants 5 AP per kill
+        # stack (max 25 stacks = 125 AP); DDragon's FlatMagicDamageMod only
+        # carries the base 20 AP. Engine pins at full 25 stacks (same
+        # sustained-peak convention as BC armor-reduction at full stacks /
+        # Riftmaker at full ramp). AP-scaling procs (Lich Bane, Nashor's) and
+        # Rabadon's amplification both see the stacked total via compute_dps.
+        bonus_ap_stacked=125.0,
         note=(
-            "Mejai's Soulstealer: Glory — 5 AP per stack (up to 25 stacks = 125 AP). "
-            "Kill-stacking AP deferred — stack count is opponent-kill-dependent and "
-            "not fixed in sustained-DPS model"
+            "Mejai's Soulstealer: Glory +125 stacked AP (25 stacks × 5 AP; "
+            "full-stacks pin — same sustained-peak convention as Black Cleaver)"
         ),
     ),
     "3140": ItemEffect(
@@ -3598,7 +3628,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="223032",
         name="Yun Tal Wildarrows",
         crit_chance_bonus_flat=0.25,
-        note="Yun Tal Wildarrows (Arena 223032): same as SR 3032 — Wildarrows 25% crit at full stacks",
+        bonus_as_conditional=0.08,
+        note=(
+            "Yun Tal Wildarrows (Arena 223032): same as SR 3032 — "
+            "25% crit (full stacks) + ~8% effective Flurry AS (27% uptime)"
+        ),
     ),
     "223033": ItemEffect(
         item_id="223033",
@@ -5213,6 +5247,30 @@ def total_giant_slayer_multiplier(
             amp = min(e.giant_slayer_max_pct, hp_diff / 100.0 * e.giant_slayer_pct_per_100hp)
             factor *= (1.0 + amp)
     return factor
+
+
+def total_stacked_ap(effects: Iterable[ItemEffect]) -> float:
+    """Sum kill-stacking AP not captured in DDragon item stat blocks (batch 54).
+
+    Mejai's Soulstealer Glory grants 5 AP per stack (max 25 = 125 AP).
+    Engine pins at full stacks — same sustained-peak convention as Black
+    Cleaver's full-stack armor reduction. Returns 0.0 when no item carries
+    the field — pre-batch-54 builds pass through unchanged.
+    """
+    return sum(e.bonus_ap_stacked for e in effects)
+
+
+def total_conditional_as(effects: Iterable[ItemEffect]) -> float:
+    """Sum conditional bonus AS from uptime-weighted passives (batch 54).
+
+    Yun Tal Wildarrows Flurry: 30% AS for 6s on-champion-attack (30s CD,
+    attack-driven CD reduction). Sustained uptime ≈ 27% at typical ADC AS
+    with 25% crit → effective contribution = 0.30 × 0.27 ≈ 0.08 bonus AS.
+    Added to stats_for_rotation["as"] in compute_dps so attack counts in
+    each rotation reflect the conditional boost. Returns 0.0 when no item
+    carries the field.
+    """
+    return sum(e.bonus_as_conditional for e in effects)
 
 
 def effective_target_armor(
