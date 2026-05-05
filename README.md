@@ -9,7 +9,7 @@ Personal project. Private repo. Not packaged for general use. Codebase has been 
 ## What it does
 
 - **Real-time coaching** — Claude Haiku for fast in-game tips, Claude Sonnet for screenshot-based vision reasoning, Tesseract OCR for cheap region reads, fast-path heuristics from the Live Client snapshot when an LLM call would be redundant
-- **Daemon Slayer build engine** — local HTTP service on `:8893`; no runtime API cost. Computes real damage-per-second for any champion×item×target combination. **DDragon purchasable coverage complete: 547 items** (SR, ARAM, Arena, Brawl) with **911 passing tests** (ENGINE_VERSION 0.58.0). Models armor/MR penetration, on-hit effects, spellblade procs, true damage, Giant Slayer scaling, AP amps, damage amps, armor/MR shred, caster-HP-scaled amps, and full Arena item mirror pool. The ARAM coach feeds DS-ranked picks directly into the Haiku user turn (DS-before-Haiku pattern) — Arena/Brawl/SR integration in progress
+- **Daemon Slayer build engine** — local HTTP service on `:8893`; no runtime API cost. Computes real damage-per-second for any champion×item×target combination. **DDragon purchasable coverage complete: 547 items** (SR, ARAM, Arena, Brawl) with **929 passing tests** (ENGINE_VERSION 0.60.0). Models armor/MR penetration, on-hit effects, spellblade procs, true damage, Giant Slayer scaling, AP amps, damage amps, armor/MR shred, caster-HP-scaled amps, and full Arena item mirror pool. All 4 coaches (ARAM, Arena, Brawl, SR) use DS-before-Haiku — picks injected in user turn before LLM call
 - **Decision detector** — `core/decision_detector.py` watches game state and surfaces "decision moments" (dragon up with N enemies missing, baron contest, item spike) with a contest / give / skip choice tag; Recent Coach Calls history is on a dedicated `#coach-calls` sub-page
 - **Web dashboard** (`:8888`, HTTPS, mkcert-signed) — home / lobby / last-match / session / history / replay / loadouts / settings / diagnostics / coach-calls views, viewed in Edge fullscreen on Game-PC's secondary 1920×1280 display. Server-Sent Events on `/api/state-stream` for idle efficiency
 - **Champion-select build chooser** — surfaces preferred keystone + items per matchup from local match data; writes runes via the LCU. DS Engine build preview panel (`#cs-ds-block`, `/api/ds-preview`) shows DPS-ranked item tiles with +Ndps tooltips before the game starts
@@ -18,7 +18,7 @@ Personal project. Private repo. Not packaged for general use. Codebase has been 
 - **Prometheus instrumentation** — `/metrics` (text/plain exposition, zero-dep) for coach calls/tokens/USD by model+purpose, vision token allocation, latency histograms, scrape-time gauges for liveness and bridge freshness
 - **OBS publisher** (opt-in) — daemon thread pushes a one-line state summary to an OBS Text source via OBS-WS v5; resilient to OBS being down
 - **PyInstaller spec** (opt-in) — frozen-bundle starter for a self-contained dist/ build
-- **Cross-Claude infrastructure** — three Claude Code instances on three machines (Legion, Game-PC, Peer) coordinate over a Tailscale-secured HTTPS bridge with a shared bearer token; `/loop /process-bridge-tasks` makes round-trips hands-off
+- **Cross-Claude infrastructure** — three Claude Code instances on three machines (Legion, Game-PC, Peer) coordinate over a Tailscale-secured HTTPS bridge with a shared bearer token; zero-cost bridge daemons (`RC-BridgeDaemon` on Game-PC, `peer_bridge_daemon.py` on Peer) poll every 30 s and only invoke Claude when tasks are pending — no idle API cost
 
 ---
 
@@ -233,11 +233,12 @@ Tesseract regions in `data/vision_regions.json` use 1920×1080 defaults — need
 
 ### Daemon Slayer engine — current state and remaining work
 
-**Coverage complete**: 547/547 DDragon purchasable items, ENGINE_VERSION 0.58.0, 911 tests. All phases of item modeling shipped through s95 (2026-05-04). 8 items remain `defensive_only` due to genuine schema limits (ability-cast triggers, 3-way scaling, positional geometry, missing DDragon Arena IDs).
+**Coverage complete**: 547/547 DDragon purchasable items, ENGINE_VERSION 0.60.0, 929 tests. All phases of item modeling complete. 3 items permanently deferred (Lightning Braid, Kinkou Jitte, Mejai's Arena mirror — schema limits).
 
-**Coach wire-in (in progress):**
-- ✅ ARAM — DS-before-Haiku; picks in user turn; pre-DS hardcoded item rules removed
-- ⚠️ Arena + Brawl — DS wired but runs post-Haiku; needs move to pre-Haiku (same 30-min pattern)
+**Coach wire-in (complete):**
+- ✅ ARAM — DS-before-Haiku; picks in user turn; pre-DS hardcoded item rules removed (−37% system prompt)
+- ✅ Arena + Brawl — DS-before-Haiku (commit b4609b4)
+- ✅ SR (`coach_integration.py`) — DS-before-Haiku (commit b4609b4)
 - ❌ SR (`core/coach_integration.py`) — DS not wired at all; highest-value remaining gap
 
 **Phase 7 — calibration**: validate engine output against `rewind_history.db` outcomes; tune model constants. Not started; blocked on having enough live DS-guided games logged.
@@ -295,7 +296,7 @@ RC is the engineering foundation. **RC Tutor** is the eventual packaged product:
 |---|---|
 | LLM coaching (all modes) | ✅ live |
 | Second-screen web dashboard | ✅ live (Edge fullscreen on secondary display) |
-| Daemon Slayer DPS engine | ✅ 547 items, 911 tests, ENGINE 0.58.0; `:8893` service; ARAM coach wired |
+| Daemon Slayer DPS engine | ✅ 547 items, 929 tests, ENGINE 0.60.0; `:8893` service; all 4 coaches wired (DS-before-Haiku) |
 | Vision relay (screen → Sonnet) | ✅ live; OCR calibration in progress |
 | Rune auto-writer | ✅ live (LCU integration) |
 | Champ-select live coaching | ✅ live |
