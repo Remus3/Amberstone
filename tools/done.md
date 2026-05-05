@@ -44,6 +44,26 @@ The user wants to end the session cleanly so the next one starts with a fresh co
 - Append a short entry (≤20 lines) describing this session's work: commits shipped, key decisions, what's next. Don't rewrite history; just append.
 - Note explicitly any blockers or things tomorrow-you should NOT redo (e.g. "lobby pill fix already shipped in bb4cff9 — don't re-investigate").
 
+### 6b. Living-doc sync (ROADMAP / CLAUDE.md / README)
+
+Update the three living docs based on what shipped this session. These are surgical edits — never full rewrites.
+
+**ROADMAP.md**
+- Find any item that shipped this session: flip its marker from `🟡` to `✅` and append the commit short-SHA in parentheses.
+- Add new `🟡` entries for anything that's now next or in-flight.
+- Do NOT touch items that are already ✅ or haven't been worked on.
+
+**CLAUDE.md — "Active priorities" section only**
+- Mark completed priorities ✅ (with brief note if useful).
+- Update or add `🟡` lines for work that is in-flight or next.
+- Touch ONLY the "Active priorities" block — leave the rest of CLAUDE.md alone.
+
+**README.md**
+- Update only if something structural changed (new endpoint, new panel, new agent). Light-touch: one bullet or badge line at most.
+- If nothing structural changed: skip entirely — don't update the README just to say you ran /done.
+
+Commit all three with a message like `docs: sync living docs — <session-topic>`. If none needed editing, skip the commit.
+
 ### 7. Memory updates
 
 - List new/modified files under `C:/Users/Administrator/.claude/projects/C--Riot-Commander/memory/` since session start.
@@ -74,6 +94,7 @@ Print a tight banner — exactly this format:
   • bridge gamepc loop   : ✅ alive | ⚠️ stale (<age>s) | ❌ dead
   • RC health            : pid=<pid> alive=<bool> reload_ok=<bool>
   • WAKEUP_NOTES         : updated (+<N> lines)
+  • living docs          : roadmap/claude.md/readme — <N items updated | skipped>
   • lessons triaged      : <N applied | none pending | err: …>
   • mid-game             : no | YES — wait until safe to /clear
 ══════════════════════════════════════════════════════════════════
