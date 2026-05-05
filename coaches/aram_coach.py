@@ -232,56 +232,6 @@ This is ARAM (Howling Abyss) NOT Summoner's Rift. STRICTLY:
 Use enemy items (provided in user context) to adapt build recommendations.
 Item build MUST contain only FULLY COMPLETED items (e.g. Infinity Edge, Bloodthirster).
 
-═══ BUILD COMMITMENT (HARD) ═══
-When the player's owned-items list contains a COMPONENT of the previously
-recommended NEXT item, COMPLETE that item before pivoting to a new path.
-Switching mid-build wastes 500-1500g of half-built components and is
-almost never worth it. Common component → final mappings to recognize:
-  Recurve Bow / Noonquiver / Cloak of Agility / Pickaxe → Kraken Slayer or IE (whichever was being built; Galeforce is REMOVED, never recommend it)
-  B.F. Sword / Pickaxe / Cloak of Agility → Infinity Edge
-  Long Sword / Serrated Dirk → Youmuu's / Profane Hydra / Opportunity
-  Vampiric Scepter / Long Sword / Cloak of Agility → Bloodthirster
-  Hearthbound Axe / Pickaxe → Stridebreaker / Trinity Force
-  Caulfield's Warhammer / Pickaxe → Black Cleaver / Eclipse / Sundered Sky
-  Amp Tome / Blasting Wand → Luden's Echo / Lich Bane / Shadowflame / Liandry's
-  Needlessly Large Rod → Rabadon's Deathcap
-  Fiendish Codex → Cosmic Drive / Morellonomicon / Malignance
-  Ruby Crystal / Giant's Belt → Heartsteel / Sunfire / Warmog's
-  Cloth Armor / Chain Vest → Plated Steelcaps / Frozen Heart / Thornmail
-Rule: pick the FIRST recommended item to be the FINAL FORM of whatever
-the owned components most-progress toward. Only swap the path's first
-item if the player has ZERO components for the previously-recommended
-slot AND the new slot fits enemy comp better.
-
-DAMAGE-TYPE ALIGNMENT (HARD) — match items to the champion's primary damage type:
-- AD-only items: Mortal Reminder, Lord Dominik's Regards, Last Whisper, Serylda's Grudge,
-  Bloodthirster, Infinity Edge, The Collector, Kraken Slayer, Phantom Dancer, Navori,
-  Yun Tal, Hexoptics C44, Statikk Shiv, Rapid Firecannon, Runaan's Hurricane,
-  Youmuu's Ghostblade, Profane Hydra, Opportunity, Eclipse, Black Cleaver,
-  Stridebreaker, Trinity Force (hybrid lean AD), Sundered Sky, Hubris, Manamune.
-- AP-only items: Rabadon's Deathcap, Luden's Companion, Shadowflame, Liandry's Torment,
-  Lich Bane, Nashor's Tooth, Cosmic Drive, Morellonomicon, Malignance, Void Staff,
-  Rylai's Crystal Scepter, Riftmaker, Banshee's Veil (AP), Zhonya's Hourglass,
-  Cryptbloom, Stormsurge, Horizon Focus.
-- Anti-heal: AD champions use **Mortal Reminder** OR Executioner's Calling (Mortal completes
-  it). AP champions use **Morellonomicon** (Oblivion Orb completes it). NEVER recommend
-  Mortal Reminder for an AP champion or Morellonomicon for an AD champion.
-
-ITEM MUTUAL EXCLUSIONS — never recommend both in the same build:
-- Lord Dominik's Regards vs Mortal Reminder (AD only): choose ONE armor-pen slot.
-  → Default: Lord Dominik's Regards (vs tanks / high armor)
-  → Swap to: Mortal Reminder (if enemy has 2+ healing sources — Soraka, Sona, Lifesteal stackers)
-- Kraken Slayer vs Lord Dominik's Regards: choose ONE anti-tank item if already have the other
-
-NEVER include components (unfinished items that build into complete items).
-Banned components -- these must NEVER appear in item_build:
-Dagger, Long Sword, Pickaxe, B.F. Sword, Amp Tome, Brawler's Gloves,
-Cloak of Agility, Blasting Wand, Null-Magic Mantle, Chain Vest, Cloth Armor,
-Ruby Crystal, Sapphire Crystal, Needlessly Large Rod, Fiendish Codex,
-Vampiric Scepter, Aether Wisp, Recurve Bow, Noonquiver, Caulfield's Warhammer.
-If the player currently has a component, replace it with its completed form (e.g. B.F. Sword + Cloak of Agility -> Infinity Edge) -- show the completed item, not the component.
-All 4-6 items in the build must be purchasable final items on Howling Abyss.
-
 OUTPUT FORMAT ═══
 Exactly 7 fields, NO markdown, NO filler:
 Action: <1-3 WORDS ALL-CAPS — single decision>
@@ -310,6 +260,7 @@ HP packs available: {packs}
 My abilities (Q/W/E/R): {my_abilities}
 My runes: {my_runes}
 Enemy keystones: {enemy_runes}
+DS top items (DPS ranked, own-items-accounted): {ds_picks}
 {event_line}
 """
 
@@ -608,8 +559,8 @@ class Coach(BaseCoach):
                         _exp_line = (
                             f"\n\nUSER EXPERIMENTAL INTENT (HARD OVERRIDE) — label: {_exp_label}. "
                             f"Items pool: {', '.join(_exp_items)}. "
-                            "Recommend ONLY items from this pool (or their direct components when "
-                            "owned, per the BUILD COMMITMENT rule). Do NOT pivot to the default "
+                            "Recommend ONLY items from this pool (complete the most-progressed "
+                            "component first; do not pivot to the default "
                             "meta build for this champion this match."
                         )
                         aram_meta = (aram_meta or "unknown") + _exp_line
@@ -644,6 +595,35 @@ class Coach(BaseCoach):
                 packs_str = "unknown"
             event_line = "AUGMENT SELECTION ACTIVE" if vs.get("augment_select") else ""
 
+            # Run DS before Haiku so picks appear in the user turn.
+            # Moved from post-Haiku (s74 wire-in) — ds_rows reused below
+            # to write daemon_slayer_picks to the output JSON for the UI.
+            _ds_rows = None
+            _ds_picks_str = "unavailable"
+            try:
+                from core import daemon_slayer_client as _ds_client
+                from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
+                _owned_ids = _ds_resolve_many(state.get("items", []), mode="aram")
+                _target_bhp = self._estimate_target_bonus_hp(state)
+                _ds_rows = _ds_client.rank_for(
+                    champion=champ,
+                    level=int(state.get("level", 1)) or 1,
+                    item_ids=_owned_ids,
+                    mode="ARAM",
+                    target_armor=80.0,
+                    target_bonus_hp=_target_bhp,
+                    top=5,
+                )
+                if _ds_rows:
+                    _ds_picks_str = " > ".join(
+                        f"{r.item_name}(+{r.delta_dps:.0f}dps,{r.gold}g)"
+                        for r in _ds_rows
+                    )
+                elif _ds_rows == []:
+                    _ds_picks_str = "none"
+            except Exception as _ds_exc:
+                logger.debug("ARAM daemon_slayer pre-call: %s", _ds_exc)
+
             user = _USER_TMPL.format(
                 game_time   = state.get("game_time",  "0:00"),
                 mayhem_tag  = mayhem,
@@ -671,6 +651,7 @@ class Coach(BaseCoach):
                     f"{ch}: {ks}" for ch, ks in
                     (state.get("enemy_runes") or {}).items()
                 ) or "unknown",
+                ds_picks    = _ds_picks_str,
                 event_line  = event_line,
             )
 
@@ -795,36 +776,15 @@ class Coach(BaseCoach):
             })
             mirror_live_stats(cur, state)
 
-            # s74 — Daemon Slayer wire-in. Mirrors arena_coach's Phase 7
-            # integration but with mode="ARAM" (engine applies aramAttackSpeed
-            # to bonus AS) and resolver mode='aram' (gets SR base IDs, not
-            # Arena alias IDs — Heartsteel→3084 not 223084, so HP=900 flows
-            # through correctly). Engine down → field absent, no regression.
-            try:
-                from core import daemon_slayer_client as _ds_client
-                from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
-                owned_ids = _ds_resolve_many(state.get("items", []), mode="aram")
-                target_bonus_hp = self._estimate_target_bonus_hp(state)
-                ds_rows = _ds_client.rank_for(
-                    champion=champ,
-                    level=int(state.get("level", 1)) or 1,
-                    item_ids=owned_ids,
-                    mode="ARAM",
-                    target_armor=80.0,
-                    target_bonus_hp=target_bonus_hp,
-                    top=5,
-                )
-                if ds_rows:
-                    cur["daemon_slayer_picks"] = [
-                        {"id": r.item_id, "name": r.item_name,
-                         "delta_dps": round(r.delta_dps, 2), "gold": r.gold}
-                        for r in ds_rows
-                    ]
-                elif ds_rows == []:
-                    cur["daemon_slayer_picks"] = []
-                # ds_rows is None → engine down; leave field untouched.
-            except Exception as exc:
-                logger.debug("ARAM daemon_slayer wire-in: %s", exc)
+            # DS was already called before the Haiku call; reuse _ds_rows
+            # to update the UI JSON (daemon_slayer_picks) without a second
+            # round-trip to the engine.
+            if _ds_rows is not None:
+                cur["daemon_slayer_picks"] = [
+                    {"id": r.item_id, "name": r.item_name,
+                     "delta_dps": round(r.delta_dps, 2), "gold": r.gold}
+                    for r in _ds_rows
+                ] if _ds_rows else []
 
             safe_write(self._out, cur)
 
