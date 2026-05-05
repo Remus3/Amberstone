@@ -156,14 +156,15 @@ Local DPS-math service on `:8893`. Computes actual damage-per-second for any cha
 
 | File | Purpose |
 |---|---|
-| `__init__.py` | `ENGINE_VERSION` constant (currently **0.59.0**); `start_server()` entry point |
+| `__init__.py` | `ENGINE_VERSION` constant (currently **0.60.0**); `start_server()` entry point |
 | `server.py` | Flask HTTP; `/rank`, `/dps`, `/health` endpoints |
 | `effects.py` | `ItemEffect` registry — **547 entries, DDragon purchasable coverage COMPLETE** |
-| `dps.py` | `CallContext` dataclass + `compute_dps()` — stat walk, armor/MR pen, on-hit, periodic procs, damage amps |
+| `dps.py` | `CallContext` dataclass + `compute_dps()` — stat walk, armor/MR pen, on-hit, periodic procs, damage amps; `ult_casts_per_sec` field (batch 64) |
 | `stat_walk.py` | Champion base-stat + per-level growth interpolation |
 | `beam_search.py` | `rank_for()` — beam search over item combinations; returns ranked `DpsRow` list with `delta_dps` + `gold` |
 | `data_loader.py` | Versioned `DataSnapshot` loader; reads `data/daemon_slayer/<patch>/` |
-| `tests/` | **922 tests passing** |
+| `ult_rates.py` | Per-champion ult cast rate lookup (casts/sec) from `data/daemon_slayer/ult_cast_rates.json`; 172 champions, per-mode + global fallback |
+| `tests/` | **929 tests passing** |
 
 ### Key data types
 
@@ -333,14 +334,16 @@ python data_pipeline.py aram_builds                  # ARAM tier refresh
 python data_pipeline.py all                          # full refresh
 ```
 
-## Active priorities (as of 2026-05-05, s98)
+## Active priorities (as of 2026-05-05, s98–s99)
 
 1. ✅ Web dashboard `:8888` (Edge fullscreen on Game-PC's secondary display)
 2. ✅ Tkinter-free (T2 #6/#8 complete; asyncio-native)
-3. ✅ Daemon Slayer item coverage complete — 547/547 DDragon purchasable items, ENGINE_VERSION 0.59.0, 922 tests
+3. ✅ Daemon Slayer item coverage complete — 547/547 DDragon purchasable items, ENGINE_VERSION 0.60.0, 929 tests
 4. ✅ ARAM coach DS-before-Haiku — DS picks injected in user turn; pre-DS hardcoded item rules removed (−37% system prompt)
 5. ✅ Arena + Brawl coaches — DS-before-Haiku done (commit b4609b4)
 6. ✅ SR coach (`coach_integration.py`) — DS wired pre-Haiku; `daemon_slayer_picks` written to coaching_data.json (commit b4609b4)
-7. ✅ Daemon Slayer batch 63 — Hellfire Hatchet Char + Fiendhunter Bolts + Innervating Locket promoted (commit e56e878); 4 items permanently deferred
-8. 🟡 Tiered vision — relay live, Tesseract installed; needs calibration against in-game 1920×1080 frame and coach-side routing (cheap OCR → Sonnet escalate)
-9. 🟡 Bridge Watcher acceptance-criteria measurement — accumulate 50+ real-traffic samples for ≥90%/≥95% auto-action validation
+7. ✅ Daemon Slayer batch 63/64 — Hellfire Hatchet + Fiendhunter Bolts + Innervating Locket + Malignance (ult-cast schema, `ult_rates.py`); 3 items permanently deferred; ENGINE_VERSION 0.60.0
+8. ✅ DS calibration pipeline — `core/ds_calibration.py` wired into all 4 coaches; append-only `data/ds_calibration.jsonl` accumulates picks per game tick
+9. ✅ Tiered vision — `GameVisionReader.read_tiered()` + `read_or_escalate()` wired into ARAM/Arena/Brawl coaches (commit 46e9fb8); OCR canary (`timer`) gates Sonnet; calibrate `data/vision_regions.json` to expand OCR coverage to mode-specific fields
+10. 🟡 Bridge Watcher acceptance-criteria measurement — accumulate 50+ real-traffic samples for ≥90%/≥95% auto-action validation
+11. 🟡 Vision regions calibration — capture in-game frame, tune `data/vision_regions.json` bboxes for tower HP%, nexus HP%, event fields so they drop out of Sonnet tier
