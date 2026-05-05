@@ -21,7 +21,7 @@ class PeriodicProcGuardTests(unittest.TestCase):
     def test_invalid_damage_type_raises(self) -> None:
         with self.assertRaises(ValueError):
             PeriodicProc(
-                name="bad", bonus_damage=10, damage_type="true", every_n_attacks=3
+                name="bad", bonus_damage=10, damage_type="hybrid", every_n_attacks=3
             )
 
     def test_neither_interval_set_raises(self) -> None:
@@ -41,8 +41,8 @@ class PeriodicProcGuardTests(unittest.TestCase):
 
 class CollectorTests(unittest.TestCase):
     def test_collect_effects_in_order(self) -> None:
-        # 3031 IE has an effect, 3006 Berserker's does not (no entry).
-        out = collect_effects(["3006", "3031", "3072"])
+        # 3031 IE has an effect, 3101 Crystal Scepter fragment has no entry.
+        out = collect_effects(["3101", "3031", "3072"])
         names = [e.name for e in out]
         self.assertEqual(names, ["Infinity Edge", "Bloodthirster"])
 

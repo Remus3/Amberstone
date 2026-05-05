@@ -341,6 +341,20 @@ class ItemEffect:
     # ``compute_dps`` AFTER ``caster_max_hp`` is derived from the build.
     giant_slayer_pct_per_100hp: float = 0.0   # Perplexity: 0.006 (0.6% per 100 HP)
     giant_slayer_max_pct: float = 0.0          # Perplexity: 0.15 (15% cap at 2500 HP diff)
+    # Phase 4 batch 50 (2026-05-04): flat armor / MR shred — applied to the
+    # target's raw stat BEFORE % reduction, % pen, and flat pen. Mirrors
+    # League's pipeline order: flat shred → % shred (BC) → % pen (LDR) →
+    # flat pen (lethality). Flesheater "Hack the Meat" reduces target armor
+    # AND MR by 3 per damage application, stacking 10× → 30 flat at full
+    # stacks. Sustained-DPS approximation pins full-stack value (same
+    # doctrine as Black Cleaver's armor_reduction_pct at full stacks).
+    # Distinct from armor_reduction_pct: flat shred can push armor below
+    # zero (uncommon in practice but the pipeline allows it for consistency
+    # with very low-armor targets). Result is clamped at 0 by
+    # effective_target_armor; negative armor → factor > 1 is NOT modeled
+    # (League makes armor-strip DPS a hard floor, not a bonus multiplier).
+    armor_reduction_flat: float = 0.0   # Flesheater Hack the Meat: 30 at full stacks
+    mr_reduction_flat: float = 0.0      # Flesheater Hack the Meat: 30 at full stacks
     defensive_only: bool = False     # documents "no DPS effect" entries
     note: str = ""                   # one-line summary surfaced in DpsResult.notes
     # Phase 4 batch 10 (2026-05-04): unique-passive de-duplication.
@@ -1946,11 +1960,19 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "667112": ItemEffect(
         item_id="667112",
         name="Flesheater",
-        defensive_only=True,
+        # Phase 4 batch 50 (2026-05-04): promoted via armor_reduction_flat +
+        # mr_reduction_flat. "Hack the Meat": dealing damage shreds 3 Armor and
+        # MR for 5s, stacking up to 10 times. Sustained-DPS pins full stacks
+        # (same doctrine as BC's armor_reduction_pct). 1s CD per-ability stack
+        # application is not modeled — pins optimistically at full 10 stacks.
+        # Adaptive Force DDragon gap: stats block omits the 55 AF; stat
+        # aggregation is DDragon-driven so engine sees 0 physical/magic — fine
+        # for DPS model since AF is a conditional-class stat anyway.
+        armor_reduction_flat=30.0,
+        mr_reduction_flat=30.0,
         note=(
-            "Flesheater: Consume flat armor reduction requires ability hit "
-            "(armor_reduction_flat schema gap; flat shred not yet modeled); "
-            "Adaptive Force has DDragon stats-block gap"
+            "Flesheater: Hack the Meat 30 flat armor+MR shred at 10 stacks "
+            "(sustained-DPS approx); Cannibalize on-kill heal utility-only"
         ),
     ),
     "664011": ItemEffect(
@@ -2420,11 +2442,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "447112": ItemEffect(
         item_id="447112",
         name="Flesheater",
-        defensive_only=True,
+        # Phase 4 batch 50 (2026-05-04): Arena version. Same "Hack the Meat"
+        # passive as 667112 — 3 armor+MR per hit, 10 stacks → 30 flat each.
+        # Arena version adds 20 Ability Haste and 70 AF (vs 55 AF SR).
+        armor_reduction_flat=30.0,
+        mr_reduction_flat=30.0,
         note=(
-            "Flesheater: Hack the Meat 3 armor/MR reduction per hit (10 stacks) — "
-            "flat shred needs armor_reduction_flat schema (not yet implemented); "
-            "Cannibalize on-kill heal utility-only"
+            "Flesheater (Arena 447112): Hack the Meat 30 flat armor+MR shred "
+            "at 10 stacks; Cannibalize on-kill heal utility-only"
         ),
     ),
     "447122": ItemEffect(
@@ -4776,7 +4801,19 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "2508": ItemEffect(
         item_id="2508",
         name="Fated Ashes",
-        note="Fated Ashes (2508): 30 AP; Inflame 15 bonus magic on ability damage — ability-cast proc not modeled",
+        # Phase 4 batch 51 (2026-05-04): promoted. DDragon confirms:
+        # "Inflame: Damaging Abilities deal 15 bonus magic damage over 3s."
+        # Modeled as every_n_seconds=3.0 (sustained approximation: 1 ability
+        # hit per 3s → 5 magic/s). Fated Ashes is a caster component so the
+        # 3s assumption is realistic for mage rotations. Monster bonus (45 vs
+        # champions' 15) not modeled — champion-target numbers pinned.
+        periodics=(PeriodicProc(
+            name="Inflame",
+            bonus_damage=15.0,
+            damage_type=MAGICAL,
+            every_n_seconds=3.0,
+        ),),
+        note="Fated Ashes: Inflame 15 magic over 3s (5 magic/s sustained); modeled as 3s periodic proc",
     ),
     "123430": ItemEffect(
         item_id="123430",
@@ -4864,6 +4901,46 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         defensive_only=True, note="Boots of Swiftness (Arena 223009): same as SR 3009 — MS boots, no DPS"),
     "223011": ItemEffect(item_id="223011", name="Chemtech Putrifier",
         defensive_only=True, note="Chemtech Putrifier (Arena 223011): support Grievous Wounds item — no self DPS"),
+
+    # ─── batch 51: missing purchasable components (defensive_only) ───────────
+    # Phase 4 batch 51 (2026-05-04): pure-stat components with no DPS passive.
+    # All DDragon descriptions are stat-only (no proc, no passive text).
+    "2019": ItemEffect(
+        item_id="2019",
+        name="Steel Sigil",
+        defensive_only=True,
+        note="Steel Sigil (2019): 15 AD + 30 Armor component — no passive",
+    ),
+    "2021": ItemEffect(
+        item_id="2021",
+        name="Tunneler",
+        defensive_only=True,
+        note="Tunneler (2021): 15 AD + 250 HP component — no passive",
+    ),
+    "2022": ItemEffect(
+        item_id="2022",
+        name="Glowing Mote",
+        defensive_only=True,
+        note="Glowing Mote (2022): 5 Ability Haste component — no passive",
+    ),
+    "2420": ItemEffect(
+        item_id="2420",
+        name="Seeker's Armguard",
+        defensive_only=True,
+        note=(
+            "Seeker's Armguard (2420): 40 AP + 25 Armor; "
+            "Time Stop (single-use Stasis active) is self-protective — no DPS"
+        ),
+    ),
+    "2421": ItemEffect(
+        item_id="2421",
+        name="Shattered Armguard",
+        defensive_only=True,
+        note=(
+            "Shattered Armguard (2421): 40 AP + 25 Armor post-use form; "
+            "upgrades to Zhonya's — no DPS passive"
+        ),
+    ),
 
 }
 
@@ -5107,6 +5184,7 @@ def effective_target_armor(
     the multiplicative layers are applied in fixed order.
     """
     eff_list = list(effects)
+    red_flat = sum(e.armor_reduction_flat for e in eff_list)
     red_pct = sum(e.armor_reduction_pct for e in eff_list)
     pen_pct = sum(e.armor_pen_pct for e in eff_list)
     pen_flat = sum(e.armor_pen_flat for e in eff_list)
@@ -5116,7 +5194,7 @@ def effective_target_armor(
             # 60% effective at lvl 1, 100% at lvl 18 (linear).
             scale = 0.6 + 0.4 * level / 18.0
             pen_flat += lethality_total * scale
-    if not (red_pct or pen_pct or pen_flat):
+    if not (red_flat or red_pct or pen_pct or pen_flat):
         # Passthrough — preserves negative armor inputs (external shred,
         # tests of the armor curve itself).
         return target_armor
@@ -5124,9 +5202,10 @@ def effective_target_armor(
         # Pen / reduction is a no-op on already-negative armor — items
         # don't amplify beyond what the shred already gave.
         return target_armor
-    armor = target_armor * (1.0 - red_pct)
-    armor = armor * (1.0 - pen_pct)
-    armor = armor - pen_flat
+    armor = target_armor - red_flat       # flat shred first (League order)
+    armor = armor * (1.0 - red_pct)      # % reduction (Black Cleaver)
+    armor = armor * (1.0 - pen_pct)      # % penetration (LDR / Serylda's)
+    armor = armor - pen_flat             # flat penetration (lethality)
     return max(0.0, armor)
 
 
@@ -5146,14 +5225,16 @@ def effective_target_mr(target_mr: float, effects: Iterable[ItemEffect]) -> floa
     reduction are no-ops on already-negative MR.
     """
     eff_list = list(effects)
+    red_flat = sum(e.mr_reduction_flat for e in eff_list)
     red_pct = sum(e.mr_reduction_pct for e in eff_list)
     pen_pct = sum(e.magic_pen_pct for e in eff_list)
     pen_flat = sum(e.magic_pen_flat for e in eff_list)
-    if not (red_pct or pen_pct or pen_flat):
+    if not (red_flat or red_pct or pen_pct or pen_flat):
         return target_mr
     if target_mr < 0:
         return target_mr
-    mr = target_mr * (1.0 - red_pct)
-    mr = mr * (1.0 - pen_pct)
-    mr = mr - pen_flat
+    mr = target_mr - red_flat            # flat shred first (League order)
+    mr = mr * (1.0 - red_pct)           # % reduction (Bloodletter's Curse)
+    mr = mr * (1.0 - pen_pct)           # % penetration (Void Staff)
+    mr = mr - pen_flat                   # flat penetration (Sorcerer's Shoes)
     return max(0.0, mr)
