@@ -293,12 +293,14 @@ header .mp-group.hidden,
 header .hp-group.hidden,
 header .win-pill.hidden,
 header .trend-pill.hidden,
-header .augments-pill.hidden,
 header .advisory-badge.hidden,
 header .self-spells.hidden {
   display: inline-flex !important;
   opacity: 0.55;   /* faded rather than gone — still readable at a glance */
 }
+/* Augments pill is a mode-indicator, not a data anchor — truly hide it
+ * in modes that don't have augments so it doesn't add visual noise. */
+header .augments-pill.hidden { display: none !important; }
 /* (2026-04-25) HP / MP / gold / 30d-trend pills hidden in-game per
  * user — "wasn't looking at them while playing". Visible during
  * client mode (lobby + aftergame) where they help frame post-match
