@@ -6969,5 +6969,51 @@ class Batch58DarksteelTalonsArmorScalingTests(unittest.TestCase):
         self.assertNotIn("deferred", eff.note)
 
 
+class Batch59BastionbreakerLethScalingTests(unittest.TestCase):
+    """Phase 4 batch 59 — caster_lethality + Bastionbreaker Shaped Charge."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_call_context_has_caster_lethality(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11)
+        self.assertAlmostEqual(ctx.caster_lethality, 0.0)
+
+    def test_2520_has_shaped_charge_proc(self) -> None:
+        eff = ITEM_EFFECTS["2520"]
+        self.assertFalse(eff.defensive_only)
+        procs = eff.periodics
+        self.assertEqual(len(procs), 1)
+        self.assertEqual(procs[0].name, "Shaped Charge")
+        self.assertEqual(procs[0].damage_type, "true")
+        self.assertAlmostEqual(procs[0].every_n_seconds, 45.0)
+
+    def test_2520_formula_at_lethality_22(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, caster_lethality=22.0)
+        eff = ITEM_EFFECTS["2520"]
+        dmg = eff.periodics[0].bonus_damage(ctx)
+        # 15 + 0.75 * 22 = 15 + 16.5 = 31.5
+        self.assertAlmostEqual(dmg, 31.5, places=2)
+
+    def test_2520_formula_at_zero_lethality(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, caster_lethality=0.0)
+        eff = ITEM_EFFECTS["2520"]
+        dmg = eff.periodics[0].bonus_damage(ctx)
+        self.assertAlmostEqual(dmg, 15.0, places=2)
+
+    def test_2520_raises_dps(self) -> None:
+        bare = compute_dps(self.snap, "Jayce", level=11, item_ids=["3179"])
+        with_bb = compute_dps(self.snap, "Jayce", level=11, item_ids=["2520", "3179"])
+        self.assertGreater(with_bb.weighted_dps, bare.weighted_dps)
+
+    def test_2520_lethality_still_contributes(self) -> None:
+        eff = ITEM_EFFECTS["2520"]
+        self.assertAlmostEqual(eff.lethality, 22.0)
+
+
 if __name__ == "__main__":
     unittest.main()

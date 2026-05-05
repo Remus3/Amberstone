@@ -124,6 +124,13 @@ class CallContext:
     # Darksteel Talons' Gash (+ 20% bonus armor ranged) scaling. Default
     # 0.0 → pre-batch-58 builds no-op gracefully.
     caster_bonus_armor: float = 0.0
+    # Phase 4 batch 59 (2026-05-04): caster raw lethality — engine-derived
+    # as ``sum(e.lethality for e in item_effects)`` (raw, before level-
+    # scaling to flat pen). Required for Bastionbreaker Shaped Charge
+    # (15 + 0.75 × lethality ranged). Distinct from flat pen: the formula
+    # uses the un-scaled lethality value, not the effective flat armor pen.
+    # Default 0.0 → builds without lethality no-op gracefully.
+    caster_lethality: float = 0.0
 
 
 # Scaling-damage callable type. Float still works as a constant.
@@ -1825,10 +1832,21 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "2520": ItemEffect(
         item_id="2520",
         name="Bastionbreaker",
+        # Phase 4 batch 59 (2026-05-04): promoted. Meraki confirms Shaped Charge:
+        # 45s CD — "your next ability hit deals 15 (+ 0.75 per lethality) bonus
+        # true damage" (ranged values; melee = 30 + 1.5/leth). Item CD = 45s is
+        # the binding rate constraint (same CD-as-timer approach as HG active 40s).
+        # Sabotage (takedown-conditional turret bonus) is utility-only.
         lethality=22.0,
+        periodics=(PeriodicProc(
+            name="Shaped Charge",
+            bonus_damage=lambda c: 15.0 + 0.75 * c.caster_lethality,
+            damage_type=TRUE,
+            every_n_seconds=45.0,
+        ),),
         note=(
-            "Bastionbreaker: 22 Lethality (level-scaled flat pen). "
-            "Shaped Charge ability-damage passive deferred (ability-cast schema gap)"
+            "Bastionbreaker: 22 Lethality + Shaped Charge 15 + 0.75 × lethality "
+            "true damage every 45s (Meraki CD; ranged values; Sabotage takedown utility-only)"
         ),
     ),
     "2501": ItemEffect(
