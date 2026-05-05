@@ -2069,13 +2069,27 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "(ally-proximity conditional not modelable without fight geometry)"
         ),
     ),
+    # Phase 4 batch 62 (2026-05-04): Cruelty SR (667109) — promoted. Same Watch Them
+    # Fall passive as Arena variant 447109: comet on CC, 6s CD, 50→150+40%AP+4%maxHP.
+    # Meraki only has the Arena entry; DDragon description confirms identical passive.
     "667109": ItemEffect(
         item_id="667109",
         name="Cruelty",
-        defensive_only=True,
+        periodics=(PeriodicProc(
+            name="Watch Them Fall",
+            bonus_damage=lambda c: c.targets_in_rotation * (
+                50.0 + (100.0 / 17.0) * (c.level - 1)
+                + 0.40 * c.ap
+                + 0.04 * c.caster_max_hp
+            ),
+            damage_type=MAGICAL,
+            every_n_seconds=6.0,
+        ),),
         note=(
-            "Cruelty: Execute damage amp below 50% HP (missing-HP conditional "
-            "not modelable under sustained-DPS assumption)"
+            "Cruelty (SR 667109): Watch Them Fall — comet on immobilize/ground, "
+            "50→150 + 40% AP + 4% caster max HP magic, 6s CD (Meraki 447109 confirms "
+            "identical passive; DDragon 667109 description matches). "
+            "CC-triggered; 6s CD is the binding constraint."
         ),
     ),
     # ── Phase 4 batch 35 (2026-05-04): missed-lethality + dual-pen + spellblade + on-hit ──
@@ -2511,13 +2525,25 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "total stat scaling — Arena-round mechanic, not a basic-attack DPS proc"
         ),
     ),
+    # Phase 4 batch 62 (2026-05-04): Cruelty Arena (447109) — promoted. Meraki confirms
+    # Watch Them Fall: comet on CC, pp|50-150 + 40% AP + 4% caster max HP magic, 6s CD.
     "447109": ItemEffect(
         item_id="447109",
         name="Cruelty",
-        defensive_only=True,
+        periodics=(PeriodicProc(
+            name="Watch Them Fall",
+            bonus_damage=lambda c: c.targets_in_rotation * (
+                50.0 + (100.0 / 17.0) * (c.level - 1)
+                + 0.40 * c.ap
+                + 0.04 * c.caster_max_hp
+            ),
+            damage_type=MAGICAL,
+            every_n_seconds=6.0,
+        ),),
         note=(
-            "Cruelty: Watch Them Fall summons comet on immobilize/ground — "
-            "CC-conditional proc, no sustained per-attack DPS contribution"
+            "Cruelty (Arena 447109): Watch Them Fall — comet on immobilize/ground, "
+            "50→150 + 40% AP + 4% caster max HP magic, 6s CD (Meraki confirmed). "
+            "AoE via targets_in_rotation; CC-triggered proc at item-CD floor."
         ),
     ),
     "447110": ItemEffect(
