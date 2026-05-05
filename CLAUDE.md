@@ -1,8 +1,9 @@
 # Riot Commander — Agent Context
 
-Live League / TFT coaching overlay + dashboard. Reads Riot Live Client API,
+Live League / TFT coaching dashboard. Reads Riot Live Client API,
 calls Claude Haiku for fast coaching and Sonnet for vision, writes JSON to
-`data/`, and serves a tkinter overlay + a `:8888` web dashboard viewed in Edge fullscreen on Game-PC's secondary display.
+`data/`, and serves a `:8888` HTTPS dashboard viewed in Edge fullscreen on Game-PC's secondary display.
+RC is tkinter-free (T2 #6/#8, 2026-05-01); the Daemon Slayer build engine (`:8893`) computes real DPS math per champion to back Haiku's item advice.
 
 ## Topology (post-2026-04-19 migration; tailnet primary since s29-s30, 2026-05-02)
 
@@ -132,6 +133,79 @@ and crop client-side. The only remaining `ImageGrab` callers in the production t
 are Game-PC-side tools (`tools/gamepc_screen_agent.py`, `tools/gamepc_mcp_server.py`,
 `ops/rc_file_bridge.py` — all expected, since Game-PC has the screen).
 
+## Game-PC agents (5 processes)
+
+All deployed via one-line `iex (iwr https://legion-rc:8888/agent/gamepc_boot.ps1).Content`.
+At-logon scheduled tasks: `RC-LCU`, `RC-LiveClientRelay`, `RC-MCP-Server`, `RC-HotkeyListener`, `RC-ScreenAgent-*`.
+
+| Agent | Port | What it does | Sends to Legion |
+|---|---|---|---|
+| `gamepc_screen_agent.py` | — | PIL `ImageGrab` every 2s | POST `:8889/upload-frame` (X-RC-Token) |
+| `gamepc_lcu_agent.py` | — | Polls Riot LCU `:2999`; full `myTeam`/`theirTeam` during ChampSelect | POST Legion `/api/lcu-state`; also receives `/api/lcu-cmd` (rune writes, accept) |
+| `gamepc_liveclient_relay.py` | — | Polls Live Client API `:2999` during game | POST Legion `/api/liveclient` (full game JSON) |
+| `gamepc_mcp_server.py` | **:8892** | MCP server — exposes filesystem + PowerShell to Legion Claude for cross-machine ops | Inbound from Legion; responses via MCP protocol |
+| `gamepc_hotkey_listener.py` | — | Win32 hotkey hook | POST Legion `/api/hotkey` on trigger |
+
+Legion's Claude session uses the Game-PC MCP server tools (`mcp__gamepc__*`) for all cross-machine file/command operations. When the MCP server is down post-reboot, start it manually before attempting any remote commands.
+
+## Daemon Slayer build engine
+
+Local DPS-math service on `:8893`. Computes actual damage-per-second for any champion × item × target combination using real stat math — no API cost per query.
+
+### Module map (`agents/daemon_slayer/`)
+
+| File | Purpose |
+|---|---|
+| `__init__.py` | `ENGINE_VERSION` constant (currently **0.58.0**); `start_server()` entry point |
+| `server.py` | Flask HTTP; `/rank`, `/dps`, `/health` endpoints |
+| `effects.py` | `ItemEffect` registry — **547 entries, DDragon purchasable coverage COMPLETE** |
+| `dps.py` | `CallContext` dataclass + `compute_dps()` — stat walk, armor/MR pen, on-hit, periodic procs, damage amps |
+| `stat_walk.py` | Champion base-stat + per-level growth interpolation |
+| `beam_search.py` | `rank_for()` — beam search over item combinations; returns ranked `DpsRow` list with `delta_dps` + `gold` |
+| `data_loader.py` | Versioned `DataSnapshot` loader; reads `data/daemon_slayer/<patch>/` |
+| `tests/` | **911 tests passing** |
+
+### Key data types
+
+- **`ItemEffect`** — frozen dataclass: `periodics`, `damage_amp_pct`, `armor_reduction_pct`, `mr_reduction_pct`, `giant_slayer_*`, `unique_passive_key`, `defensive_only` flag
+- **`PeriodicProc`** — `every_n_attacks` or `every_n_seconds`; `bonus_damage` is `(CallContext) -> float`
+- **`CallContext`** — `base_ad, bonus_ad, level, ap, target_max_hp, caster_max_hp, caster_bonus_hp, targets_in_rotation, caster_max_mp, caster_bonus_armor, caster_lethality`
+- **`unique_passive_key`** — prevents double-counting when multiple items share named passives (e.g. `"spellblade"`, `"immolate"`)
+
+### DS-before-Haiku pattern
+
+DS `rank_for()` must run **before** `messages.create()` so Haiku sees per-champion DPS-ranked picks in the user turn rather than generic hardcoded rules. Reuse `_ds_rows` for the post-Haiku UI write — don't call `rank_for()` twice.
+
+```python
+_ds_rows = None
+_ds_picks_str = "unavailable"
+try:
+    _ds_rows = _ds_client.rank_for(champion=champ, level=level, item_ids=owned_ids, mode="ARAM", top=5)
+    _ds_picks_str = " > ".join(f"{r.item_name}(+{r.delta_dps:.0f}dps,{r.gold}g)" for r in _ds_rows) if _ds_rows else "none"
+except Exception as e:
+    logger.debug("daemon_slayer pre-call: %s", e)
+# ... user turn includes DS top items line ...
+# post-Haiku: reuse _ds_rows for cur["daemon_slayer_picks"] — no second engine call
+```
+
+### Coach integration status
+
+| Coach | DS call | Position | Pre-DS rules pruned |
+|---|---|---|---|
+| `coaches/aram_coach.py` | ✅ | **Before Haiku** | ✅ BUILD COMMITMENT + DAMAGE-TYPE + MUTUAL EXCLUSIONS removed; −37% system prompt |
+| `coaches/arena_coach.py` | ✅ post-Haiku | ⚠️ needs move to pre-Haiku | (no hardcoded item lists to prune) |
+| `coaches/brawl_coach.py` | ✅ post-Haiku | ⚠️ needs move to pre-Haiku | (no hardcoded item lists to prune) |
+| `core/coach_integration.py` (SR) | ❌ **not wired** | — | (no DS feedback to Haiku at all) |
+| TFT | N/A | N/A | N/A |
+
+### Deferred items (8 — genuinely blocked)
+
+All 547 DDragon purchasable items are in the registry. These 8 remain `defensive_only` or unmodeled due to schema limits:
+1. Ability/ult-cast triggers (Lightning Braid, Malignance, Night Harvester SR, Innervating Locket, Fiendhunter Bolts) — blocked on ability-frequency data
+2. Hellfire Hatchet Char — 3-way scaling `level × hp_diff × lethality`
+3. Kinkou Jitte — directional weakpoint; positional geometry unmodelable
+4. Mejai's Arena mirror — no Arena ID in DDragon (3041 SR only)
+
 ## Architecture map
 
 ```
@@ -147,17 +221,26 @@ app/                      OverlayApp + decomposed managers (ARCH-001 complete)
   _game_lifecycle.py      game start/end, worker dispatch
 coaches/                  BaseCoach (ARCH-002) + aram/arena/brawl/sr/tft variants
   _base_coach.py          shared poll/vision loops, debounce, hotkey reg
+  aram_coach.py           ARAM coach — DS-before-Haiku ✅, pre-DS rules pruned ✅
+  arena_coach.py          Arena coach — DS wired post-Haiku (move pending)
+  brawl_coach.py          Brawl coach — DS wired post-Haiku (move pending)
+  coach_integration.py    SR coach — DS not wired (highest-value remaining gap)
 modes/                    shared_vision (relay screen-grab client used by coaches)
                           [aram/arena/brawl_overlay archived in T2 #8 C2 — _archive/2026-05-01-audit/modes/]
 core/                     game_snapshot, sr_aram_worker, tft_worker, theme, hotkeys, log_setup,
                           moon_proxy (vision client), metrics_cache, lcu integration helpers,
-                          prom_metrics (T3 #12 — Prometheus exposition, zero-dep)
+                          prom_metrics (T3 #12 — Prometheus exposition, zero-dep),
+                          daemon_slayer_client (HTTP client to :8893), daemon_slayer_resolver
+agents/                   Phase 3 supervisor (:8890/:8891) + Daemon Slayer engine
+  daemon_slayer/          DPS build engine — effects.py (547 items), dps.py, beam_search.py,
+                          stat_walk.py, data_loader.py, server.py; 911 tests, ENGINE_VERSION 0.58.0
 tft/                      TFT engine (tft_state_reader, tft_live_analysis, tft_coach_engine, tft_data, tft_pbe_*)
                           [tft_overlay + comp_control archived in T2 #8 C2]
 ui/                       (empty — entire package archived in T2 #8 C2; see _archive/2026-05-01-audit/ui/)
 ops/                      rc_supervisor, rc_self_monitor, rc_dev_runtime, runtime/health.json
 lcu/                      LCU client, auto-accept, rune writer, postgame collector
 data/                     coaching artifacts (atomic-written, polled by overlays + dashboard)
+  daemon_slayer/          versioned patch snapshots (champions.json, items.json, scenarios.json)
 web_dashboard.py          :8888 HTTPS dashboard (Edge fullscreen on Game-PC's secondary display)
 moon_vision_server.py     :8889 local vision server (Sonnet screenshots)
 ```
@@ -204,9 +287,13 @@ python data_pipeline.py aram_builds                  # ARAM tier refresh
 python data_pipeline.py all                          # full refresh
 ```
 
-## Active priorities (2026-04-19)
+## Active priorities (as of 2026-05-04, s95)
 
 1. ✅ Web dashboard `:8888` (Edge fullscreen on Game-PC's secondary display)
-2. ✅ Tkinter overlays disabled; dashboard is the UI (no overlay-geometry work needed)
-3. 🟡 Tiered vision — relay live, Game-PC agent running (RC-ScreenAgent task), Tesseract installed, `core/vision_tesseract.py` module with default 1920×1080 regions in `data/vision_regions.json`. Dashboard exposes `/api/ocr` (run all fields) and `/api/ocr-crop?field=NAME` (PNG preview). Needs: (a) calibration against an in-game frame, (b) coach-side routing that calls Tesseract for cheap fields and only escalates to Sonnet when needed.
-4. ✅ This file
+2. ✅ Tkinter-free (T2 #6/#8 complete; asyncio-native)
+3. ✅ Daemon Slayer item coverage complete — 547/547 DDragon purchasable items, ENGINE_VERSION 0.58.0, 911 tests
+4. ✅ ARAM coach DS-before-Haiku — DS picks injected in user turn; pre-DS hardcoded item rules removed (−37% system prompt)
+5. 🔴 **Arena + Brawl coaches** — move DS call from post-Haiku to pre-Haiku (same code pattern as ARAM; ~30 min each)
+6. 🔴 **SR coach** (`core/coach_integration.py`) — DS not wired at all; `sr_build_note` is static JSON; highest-value remaining DS integration
+7. 🟡 Tiered vision — relay live, Tesseract installed; needs calibration against in-game 1920×1080 frame and coach-side routing (cheap OCR → Sonnet escalate)
+8. 🟡 Bridge Watcher acceptance-criteria measurement — accumulate 50+ real-traffic samples for ≥90%/≥95% auto-action validation

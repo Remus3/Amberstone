@@ -6,6 +6,47 @@
 
 ---
 
+# s96 wrap — 2026-05-04 (documentation + ARAM DS-before-Haiku refactor)
+
+## What shipped (this session)
+
+- **ARAM coach DS-before-Haiku** `3b84949` — highest-value architectural fix
+  - DS `rank_for()` moved before `messages.create()` in `coaches/aram_coach.py`
+  - `{ds_picks}` injected into user turn: `InfinityEdge(+142dps,3400g) > ...`
+  - Pre-DS hardcoded item rules removed: BUILD COMMITMENT, DAMAGE-TYPE ALIGNMENT,
+    ITEM MUTUAL EXCLUSIONS, Banned components block (−37% system prompt, ~1,849→~1,170 tokens)
+  - Post-Haiku block reuses `_ds_rows` — no second engine call
+  - Fixed stale experimental override text referencing the now-removed "BUILD COMMITMENT rule"
+
+- **Documentation sweep**
+  - `CLAUDE.md`: added Game-PC agents table (5 agents with roles), DS engine section
+    (module map, key data types, DS-before-Haiku pattern, coach integration status table,
+    deferred items list), updated architecture map, updated active priorities
+  - `README.md`: DS bullet updated (547/911/0.58.0), coaching pipeline step 4 added
+    (DS-before-Haiku), DS roadmap section updated, RC Tutor table updated
+  - `ROADMAP.md`: s92-s95 section added documenting all batches 38-62 + ARAM refactor;
+    status table updated
+  - `C:\Users\Administrator\Desktop\DS_COMPLETION_ROADMAP.txt` created — full guide:
+    remaining stages (Stage 1: Arena+Brawl, Stage 2: SR, Stage 3: ability-cast, Stage 4: calibration),
+    best prompts per stage, "complete" definition, session management guide, quick health checks
+  - Memory: `project_daemon_slayer_engine.md` updated to reflect coverage complete status;
+    `reference_daemon_slayer_engine_arch.md` header updated
+
+## Coverage status
+
+- ITEM_EFFECTS: **547 entries — DDragon purchasable coverage COMPLETE**
+- **911 tests passing** (ENGINE_VERSION 0.58.0)
+- ARAM coach: DS-before-Haiku ✅, pre-DS rules pruned ✅
+
+## Open work (priority order)
+
+1. **Arena + Brawl coaches**: move DS call from post-Haiku to pre-Haiku (same 30-min pattern as ARAM, no system prompt sections to prune). Best prompt: `"Wire DS into arena and brawl coaches — same DS-before-Haiku pattern as ARAM refactor (commit 3b84949)."`
+2. **SR coach** (`core/coach_integration.py`): DS not wired at all — `sr_build_note` is static JSON. Highest-value remaining gap. Best prompt: `"Wire DS into SR coach. No DS wiring exists. Add rank_for() pre-Haiku, inject {ds_picks} in user turn, write daemon_slayer_picks to SR output JSON. mode='SR'."`
+3. **Ability-cast schema**: blocked on ability-frequency data; see ROADMAP Stage 3
+4. Bridge auto-loop: **NOT running on Game-PC** — start manually: `/loop 1m /process-bridge-tasks`
+
+---
+
 # s95 wrap — 2026-05-04 (Daemon Slayer batches 57–62)
 
 ## What shipped (this session)

@@ -9,7 +9,7 @@ Personal project. Private repo. Not packaged for general use. Codebase has been 
 ## What it does
 
 - **Real-time coaching** — Claude Haiku for fast in-game tips, Claude Sonnet for screenshot-based vision reasoning, Tesseract OCR for cheap region reads, fast-path heuristics from the Live Client snapshot when an LLM call would be redundant
-- **Daemon Slayer build engine** — local HTTP service on `:8893`; no runtime API cost. Computes real damage-per-second for any champion×item×target combination, covering 496 unique purchasable items (SR, ARAM, Arena) with 603 passing tests. Engine models armor/MR penetration, on-hit effects, spellblade procs, true damage, Giant Slayer scaling, and full Arena item mirror pool. Powers the build-ranker beam search with per-item DPS contribution — not tier-list guesses, actual math
+- **Daemon Slayer build engine** — local HTTP service on `:8893`; no runtime API cost. Computes real damage-per-second for any champion×item×target combination. **DDragon purchasable coverage complete: 547 items** (SR, ARAM, Arena, Brawl) with **911 passing tests** (ENGINE_VERSION 0.58.0). Models armor/MR penetration, on-hit effects, spellblade procs, true damage, Giant Slayer scaling, AP amps, damage amps, armor/MR shred, caster-HP-scaled amps, and full Arena item mirror pool. The ARAM coach feeds DS-ranked picks directly into the Haiku user turn (DS-before-Haiku pattern) — Arena/Brawl/SR integration in progress
 - **Decision detector** — `core/decision_detector.py` watches game state and surfaces "decision moments" (dragon up with N enemies missing, baron contest, item spike) with a contest / give / skip choice tag; Recent Coach Calls history is on a dedicated `#coach-calls` sub-page
 - **Web dashboard** (`:8888`, HTTPS, mkcert-signed) — home / lobby / last-match / session / history / replay / loadouts / settings / diagnostics / coach-calls views, viewed in Edge fullscreen on Game-PC's secondary 1920×1280 display. Server-Sent Events on `/api/state-stream` for idle efficiency
 - **Champion-select build chooser** — surfaces preferred keystone + items per matchup from local match data; writes runes via the LCU
@@ -82,7 +82,8 @@ Frames are captured on Game-PC (`tools/gamepc_screen_agent.py`, PIL `ImageGrab` 
 1. **Live Client snapshot** — fast-path. Many fields (gold, KDA, level) come from `:2999/liveclientdata/allgamedata` on Game-PC and travel as JSON; no vision call needed.
 2. **Tesseract OCR** — region-bound, deterministic. Default regions in `data/vision_regions.json`; runtime crop preview at `/api/ocr-crop?field=NAME`.
 3. **Claude Sonnet** — full-frame visual reasoning when a region read isn't enough (wave state, fog-of-war inference, item-spike timing, end-screen reads).
-4. **Claude Haiku** — final-mile coaching tips. Streamed onto the dashboard with `kind=task` decision tags when the detector flagged a moment.
+4. **Daemon Slayer** — runs before Haiku on ARAM (and in-progress for other modes): `rank_for(champion, level, owned_items, mode)` returns DPS-ranked next-item candidates (`delta_dps`, `gold`). These are injected into the user turn so Haiku reasons about real math, not static tier lists. ARAM system prompt was trimmed 37% after removing pre-DS hardcoded item rules that DS now covers.
+5. **Claude Haiku** — final-mile coaching tips. Streamed onto the dashboard with `kind=task` decision tags when the detector flagged a moment.
 
 `vision_tracker` derives fog-of-war from Live Client position freshness on SR-style maps and stamps `last_seen_zone="on_bridge"` for shared-vision modes (ARAM/KIWI) where Riot's API doesn't expose positions.
 
@@ -207,14 +208,16 @@ Operator goal: lessons learned on one machine apply to the others overnight, wit
 
 Tesseract regions in `data/vision_regions.json` use 1920×1080 defaults — needs calibration against actual in-game frames + coach-side routing logic that calls Tesseract for cheap fields and only escalates to Sonnet when the region read is missing or low-confidence. The endpoints exist (`/api/ocr`, `/api/ocr-crop`); the gating logic doesn't yet.
 
-### Daemon Slayer engine — remaining phases
+### Daemon Slayer engine — current state and remaining work
 
-The local build engine launched as 7-phase work. Current state: Phase 1 (data extractor), Phase 2 (engine scaffolding), Phase 3 (on-hit/proc framework), Phase 4 (Arena mirror pool) — all complete. 496 items, ENGINE_VERSION 0.53.0, 603 tests.
+**Coverage complete**: 547/547 DDragon purchasable items, ENGINE_VERSION 0.58.0, 911 tests. All phases of item modeling shipped through s95 (2026-05-04). 8 items remain `defensive_only` due to genuine schema limits (ability-cast triggers, 3-way scaling, positional geometry, missing DDragon Arena IDs).
 
-Open phases:
-- **Phase 5 — ability-cast schema**: Night Harvester, Luden's, Stormsurge, Rocketbelt, Hellfire Hatchet Char, Fated Ashes — ~6 items unlock at once once the schema exists.
-- **Phase 6 — coach wire-in**: Route the build ranker output into live SR, ARAM, and Arena coaches so in-game item advice is backed by DPS math, not static tier lists.
-- **Phase 7 — calibration + feedback loop**: Validate engine output against observed game outcomes in `rewind_history.db`; tune model constants.
+**Coach wire-in (in progress):**
+- ✅ ARAM — DS-before-Haiku; picks in user turn; pre-DS hardcoded item rules removed
+- ⚠️ Arena + Brawl — DS wired but runs post-Haiku; needs move to pre-Haiku (same 30-min pattern)
+- ❌ SR (`core/coach_integration.py`) — DS not wired at all; highest-value remaining gap
+
+**Phase 7 — calibration**: validate engine output against `rewind_history.db` outcomes; tune model constants. Not started; blocked on having enough live DS-guided games logged.
 
 ### Possible follow-ups
 
@@ -269,7 +272,7 @@ RC is the engineering foundation. **RC Tutor** is the eventual packaged product:
 |---|---|
 | LLM coaching (all modes) | ✅ live |
 | Second-screen web dashboard | ✅ live (Edge fullscreen on secondary display) |
-| Daemon Slayer DPS engine | ✅ 496 items, 603 tests; `:8893` service |
+| Daemon Slayer DPS engine | ✅ 547 items, 911 tests, ENGINE 0.58.0; `:8893` service; ARAM coach wired |
 | Vision relay (screen → Sonnet) | ✅ live; OCR calibration in progress |
 | Rune auto-writer | ✅ live (LCU integration) |
 | Champ-select live coaching | ✅ live |
