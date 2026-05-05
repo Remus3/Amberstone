@@ -5202,12 +5202,53 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         defensive_only=True, note="Celestial Opposition (3869): support quest milestone — no DPS proc"),
     "3870": ItemEffect(item_id="3870", name="Dream Maker",
         defensive_only=True, note="Dream Maker (3870): support quest milestone — no DPS proc"),
-    "3871": ItemEffect(item_id="3871", name="Zaz'Zak's Realmspike",
-        defensive_only=True, note="Zaz'Zak's Realmspike (3871): support quest milestone — no DPS proc"),
+    # Phase 4 batch 61 (2026-05-04): Zaz'Zak's Realmspike — promoted. Meraki confirms
+    # Void Explosion: 10 + 15% AP + 3% each target's max HP magic damage per 10s.
+    # Ability-triggered proc with 10s item-side CD; modeled via every_n_seconds=10.0
+    # (binding-constraint: the item CD is the floor, not the ability cast rate).
+    "3871": ItemEffect(
+        item_id="3871",
+        name="Zaz'Zak's Realmspike",
+        periodics=(PeriodicProc(
+            name="Void Explosion",
+            bonus_damage=lambda c: c.targets_in_rotation * (
+                10.0 + 0.15 * c.ap + 0.03 * c.target_max_hp
+            ),
+            damage_type=MAGICAL,
+            every_n_seconds=10.0,
+        ),),
+        note=(
+            "Zaz'Zak's Realmspike: Void Explosion — 10 + 15% AP + 3% each "
+            "target's max HP magic damage, 10s CD (Meraki confirmed). AoE burst "
+            "scaled by targets_in_rotation; ability-cast gated, modeled at item CD."
+        ),
+    ),
     "3876": ItemEffect(item_id="3876", name="Solstice Sleigh",
         defensive_only=True, note="Solstice Sleigh (3876): support quest milestone — no DPS proc"),
-    "3877": ItemEffect(item_id="3877", name="Bloodsong",
-        defensive_only=True, note="Bloodsong (3877): support quest milestone — no DPS proc"),
+    # Phase 4 batch 61 (2026-05-04): Bloodsong — promoted. Meraki confirms Spellblade
+    # 100% base AD physical (same ratio as Sheen; 1.5s ability-use cadence) + Expose
+    # Weakness +5% (ranged) / +8% (melee) increased damage from all sources on champion
+    # hit. damage_amp_pct=0.05 models ranged Expose Weakness at ~100% combat uptime
+    # (support builds without competing spellblade items). Note: if a higher-priority
+    # spellblade (unique_passive_key) overrides this item's proc, the engine still
+    # applies the damage_amp — accurate only for solo-Bloodsong builds.
+    "3877": ItemEffect(
+        item_id="3877",
+        name="Bloodsong",
+        damage_amp_pct=0.05,
+        periodics=(PeriodicProc(
+            name="Spellblade",
+            bonus_damage=lambda c: 1.00 * c.base_ad,
+            damage_type=PHYSICAL,
+            every_n_seconds=1.5,
+        ),),
+        unique_passive_key="spellblade",
+        note=(
+            "Bloodsong: Spellblade 100% base AD physical every ~1.5s + Expose Weakness "
+            "+5% all-source damage (ranged; +8% melee) at ~100% combat uptime. "
+            "damage_amp_pct modeled at ranged value; joins spellblade unique-passive family."
+        ),
+    ),
 
     # Arena placeholder / selector items
     "6032": ItemEffect(item_id="6032", name="Stat Bonus",
