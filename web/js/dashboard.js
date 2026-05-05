@@ -77,6 +77,8 @@
     root: el("item-build"),
     owned: el("ib-owned"),
     recommended: el("ib-recommended"),
+    dsBlock: el("ib-ds-block"),
+    dsPicks: el("ib-ds-picks"),
     // Augments element lives in the header now (#augments-pill), not in the
     // Item Build panel, to keep info-panel layout stable across modes.
     augments: el("augments-pill"),
@@ -1701,6 +1703,20 @@
       // produces tiny unreadable text. Tooltip only helps on the muted
       // "not supported" placeholder.
       IB.augments.title = modeSupportsAugments ? "" : content;
+    }
+    // DS Engine picks — daemon_slayer_picks: [{id, name, delta_dps, gold}, ...]
+    const dsPicks = Array.isArray(p.daemon_slayer_picks) ? p.daemon_slayer_picks : [];
+    if (IB.dsBlock) {
+      if (dsPicks.length) {
+        IB.dsPicks.innerHTML = dsPicks.map(r => {
+          const delta = `+${Math.round(r.delta_dps)}dps`;
+          return `<span class="ds-chip" title="${r.name} · ${delta} · ${r.gold}g">`
+               + `${r.name}<em>${delta}</em></span>`;
+        }).join('');
+        IB.dsBlock.hidden = false;
+      } else {
+        IB.dsBlock.hidden = true;
+      }
     }
     state.lastTouch.item_build = Date.now() / 1000;
   }
@@ -8283,11 +8299,16 @@
                             : "dead";
                 bridgeLine = `bridge ${label} · last ${ago} ago`;
               }
+              const ds = j.daemon_slayer || {};
+              const dsLine = ds.alive
+                ? `DS engine up · v${ds.engine_version || "?"} · ${ds.items ?? "?"}i/${ds.champions ?? "?"}c`
+                : "DS engine DOWN";
               const lines = [
                 `RC ${rcVer} (pid ${j.rc?.pid ?? "?"})`,
                 `supervisor pid ${sup.pid ?? "?"} · run_id ${runId} · ${oslock}`,
                 `vision ${j.vision?.alive ? "up" : "down"}` +
                   (j.vision?.uptime_s ? ` · uptime ${Math.round(j.vision.uptime_s/60)}m` : ""),
+                dsLine,
                 `cost $${(cost.today_usd || 0).toFixed(2)} · ${banner}`,
                 bridgeLine,
               ];
