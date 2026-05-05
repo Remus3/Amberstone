@@ -6,6 +6,65 @@
 
 ---
 
+# s102 wrap — 2026-05-05 (SR coach signature hash fix + RECOMMENDED panel fallback)
+
+## What shipped (this session)
+
+- **SR coach signature hash bug fixed** — `coach_integration.py` (frozen, user-approved)
+  - `_state_signature` fallbacks had wrong key names vs `_convert` output
+  - `hp_bucket`: `hp_pct // 10` → `my_hp_pct * 10` (was using unprefixed key + wrong scale)
+  - `mana_bucket`: added fallback from `my_mana_pct * 10` (was always None)
+  - `gold_bucket`: `gold // 300` → `my_gold // 300`
+  - `level`: added fallback from `my_level` (was always None)
+  - `_convert` now passthroughs `kda`, `dead_count`, `kill_window` from game_state
+  - **Effect**: coach now re-fires on HP changes, gold/item thresholds, level-ups, deaths, kills — not just wave_state transitions
+
+- **RECOMMENDED · NEXT TO BUY panel fixed** — `web/js/dashboard.js`
+  - SR coach never writes `item_build`; added `sr_items` fallback (liveclient-derived via `_state_builder` overlay)
+  - `sr_items` items with `next: true` populate RECOMMENDED when `item_build` is empty
+  - Requires Edge page refresh to pick up (JS was cached from session start)
+
+- **SR coach API key** — `API-Key-Claude.txt` written from CLI env to unblock SR coaching mid-game
+  - File is gitignored; if missing, re-write from env and restart RC
+
+## Do NOT redo
+- `_state_signature` bug is fixed — coach was firing at 4:36 then not again until ~16:48 (only wave_state changed). Now fixed.
+- `API-Key-Claude.txt` was missing; was written this session. If RC shows `api_key=MISSING` again, re-write the file.
+- dashboard.js RECOMMENDED fix is deployed; needs Edge Ctrl+Shift+R to activate.
+
+## Open work (priority order)
+
+1. **Stage 5 calibration**: 50+ games needed; data auto-collects into `data/ds_calibration.jsonl`
+2. **Vision regions calibration**: tune `data/vision_regions.json` bboxes for `timer`, tower HP%, nexus HP%
+3. **Bridge auto-loop**: dead as of this session end — restart on Game-PC with `/loop 1m /process-bridge-tasks`
+
+---
+
+# s101 wrap — 2026-05-05 (DS health indicator + item build DS picks panel)
+
+## What shipped (this session)
+
+- **DS health in /api/health/all** `50248a7` — `dashboard/routes_state.py` now probes `:8893/health`
+  - DS down → overall status flips to **yellow** (not red; RC + coaching still work)
+  - `rollup["daemon_slayer"]` returns `{alive, engine_version, patch, items, champions}`
+- **Health dot tooltip** — DS engine status added: `DS engine up · v0.60.0 · 547i/168c`
+- **Item Build panel DS section** — new `#ib-ds-block` renders `daemon_slayer_picks` as compact chips
+  - Format: `ItemName +202dps` (hidden when no picks present; shows during InProgress only)
+  - `daemon_slayer_picks` was already written to all coaching JSONs but was never consumed by the UI — now wired
+  - CSS: `.ds-chip` dark rounded tags, green delta-dps text
+
+## Do NOT redo
+- DS picks were already written to all coaching JSONs (ARAM/Arena/Brawl/SR) — they just weren't rendered. Don't reinvestigate the data pipeline, only the UI was missing.
+- Bridge auto-loop is **NOT running on Game-PC** — start manually: `/loop 1m /process-bridge-tasks`
+
+## Open work (priority order)
+
+1. **Stage 5 calibration**: 50+ games needed; data auto-collects into `data/ds_calibration.jsonl`
+2. **Vision regions calibration**: tune `data/vision_regions.json` bboxes for `timer`, tower HP%, nexus HP%
+3. **Bridge auto-loop**: dead as of this session end — restart on Game-PC with `/loop 1m /process-bridge-tasks`
+
+---
+
 # s100 wrap — 2026-05-05 (Tiered vision + open-items cleanup)
 
 ## What shipped (this session)
