@@ -6920,5 +6920,54 @@ class Batch57VoidImmolationGoldenSpatulaTests(unittest.TestCase):
         self.assertGreaterEqual(len(ITEM_EFFECTS), 547)
 
 
+class Batch58DarksteelTalonsArmorScalingTests(unittest.TestCase):
+    """Phase 4 batch 58 — caster_bonus_armor field + Darksteel Talons full formula."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_call_context_has_caster_bonus_armor(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11)
+        self.assertAlmostEqual(ctx.caster_bonus_armor, 0.0)
+
+    def test_call_context_caster_bonus_armor_explicit(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, caster_bonus_armor=80.0)
+        self.assertAlmostEqual(ctx.caster_bonus_armor, 80.0)
+
+    def test_443054_formula_includes_armor_scaling(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        eff = ITEM_EFFECTS["443054"]
+        # At level 11, base Gash = 10 + 10/17*10 = 15.88; with 100 bonus armor: + 20 = 35.88
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, caster_bonus_armor=100.0, targets_in_rotation=1.0)
+        dmg = eff.periodics[0].bonus_damage(ctx)
+        base_gash = 10.0 + 10.0 / 17.0 * 10
+        expected = base_gash + 0.20 * 100.0
+        self.assertAlmostEqual(dmg, expected, places=2)
+
+    def test_443054_zero_armor_matches_old_formula(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        eff = ITEM_EFFECTS["443054"]
+        ctx0 = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, caster_bonus_armor=0.0)
+        dmg0 = eff.periodics[0].bonus_damage(ctx0)
+        self.assertAlmostEqual(dmg0, 10.0 + 10.0 / 17.0 * 10, places=2)
+
+    def test_443054_more_dps_with_more_bonus_armor(self) -> None:
+        # Build with Darksteel Talons + armor items → more bonus armor → higher Gash
+        bare = compute_dps(self.snap, "Malphite", level=11, item_ids=["443054"])
+        with_armor = compute_dps(
+            self.snap, "Malphite", level=11,
+            item_ids=["443054", "3068"]  # Sunfire adds 50 armor
+        )
+        self.assertGreater(with_armor.weighted_dps, bare.weighted_dps)
+
+    def test_443054_note_updated(self) -> None:
+        eff = ITEM_EFFECTS["443054"]
+        self.assertIn("bonus armor", eff.note)
+        self.assertNotIn("deferred", eff.note)
+
+
 if __name__ == "__main__":
     unittest.main()
