@@ -112,10 +112,25 @@ class GameVisionReader:
     When that summary equals the previous successful read's, the cached
     result is returned without firing Sonnet. This is the cheap
     state-key dedupe sister to 5.5 (image-key dedupe).
+
+    Tiered routing: set TIERED_FIELDS + TIERED_VALIDATORS on an instance
+    (or subclass) and call read_tiered() instead of read().  OCR runs
+    first via core.vision_routing.read_or_escalate; Sonnet fires only for
+    fields OCR couldn't validate.  Fields with no region entry in
+    vision_regions.json will always miss OCR → escalate to Sonnet, so the
+    system degrades gracefully when calibration is incomplete.
     """
 
     # Subclasses MUST override
     PROMPT: str = ""
+
+    # Tiered-routing configuration — set per-instance or per-subclass.
+    # TIERED_FIELDS: all fields the mode needs (OCR-able + semantic).
+    # TIERED_VALIDATORS: {field: callable(value) -> bool} overrides on top
+    #   of vision_routing.DEFAULT_VALIDATORS.  Semantic fields should use
+    #   permissive validators (any non-None / correct type is OK).
+    TIERED_FIELDS: list = []
+    TIERED_VALIDATORS: dict = {}
 
     def __init__(self, api_key: str):
         import anthropic
@@ -140,6 +155,52 @@ class GameVisionReader:
         if not img:
             return None
         raw = self._extract(img)
+        if raw:
+            raw = self._postprocess(raw)
+            self._last = raw
+            if state_summary:
+                self._last_state_summary = state_summary
+                self._last_result = raw
+        return raw
+
+    def read_tiered(self, state_summary: Optional[str] = None) -> Optional[dict]:
+        """Tiered read: OCR first, Sonnet escalation for semantic misses.
+
+        Routes through core.vision_routing.read_or_escalate using
+        self.TIERED_FIELDS and self.TIERED_VALIDATORS.  Sonnet is the
+        escalate_fn — it runs in bulk for all fields OCR couldn't validate,
+        using self.PROMPT unchanged.  Results are merged (OCR wins for
+        numeric fields it validates; Sonnet fills the rest).
+
+        Falls back to full read() if TIERED_FIELDS is empty.
+        """
+        _last_summary = getattr(self, "_last_state_summary", None)
+        _last_result  = getattr(self, "_last_result", None)
+        if state_summary and state_summary == _last_summary and _last_result:
+            logger.debug("Vision pre-screen skip (tiered): state_summary unchanged")
+            return _last_result
+
+        if not self.TIERED_FIELDS:
+            return self.read(state_summary=state_summary)
+
+        img = _capture_screen()
+        if not img:
+            return None
+
+        from core.vision_routing import read_or_escalate, DEFAULT_VALIDATORS
+
+        validators = {**DEFAULT_VALIDATORS, **(self.TIERED_VALIDATORS or {})}
+        reader_self = self  # closure capture
+
+        def _escalate(img_b64: str, _missing: list) -> Optional[dict]:
+            return reader_self._extract(img_b64)
+
+        raw = read_or_escalate(
+            img,
+            fields=self.TIERED_FIELDS,
+            escalate_fn=_escalate,
+            validators=validators,
+        )
         if raw:
             raw = self._postprocess(raw)
             self._last = raw
