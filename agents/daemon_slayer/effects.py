@@ -4663,8 +4663,24 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "223069": ItemEffect(
         item_id="223069",
         name="Void Immolation",
-        defensive_only=True,
-        note="Void Immolation (Arena 223069): 6000g mega-tank (1000 HP + 100 Armor + 80 MR); Immolate proc deferred pending schema review",
+        # Phase 4 batch 57 (2026-05-04): promoted. Meraki confirms: "20 (+ 1.5%
+        # of your maximum health) true damage every second to enemies within 325
+        # units." Distinct from SR Immolate items (3068/6664) which deal MAGICAL
+        # damage off bonus HP; Void Immolation deals TRUE damage off max HP.
+        # unique_passive_key="immolate" prevents double-ticking if a build
+        # includes multiple Immolate items (Riot enforces unique-passive).
+        periodics=(PeriodicProc(
+            name="Immolate",
+            bonus_damage=lambda c: c.targets_in_rotation * (20.0 + 0.015 * c.caster_max_hp),
+            damage_type=TRUE,
+            every_n_seconds=1.0,
+        ),),
+        unique_passive_key="immolate",
+        note=(
+            "Void Immolation (Arena 223069): Immolate 20 + 1.5% max HP true damage/s "
+            "to nearby enemies (Meraki confirmed; TRUE damage off max HP — distinct "
+            "from SR 3068/6664 which deal magical off bonus HP)"
+        ),
     ),
     "223105": ItemEffect(
         item_id="223105",
@@ -4753,8 +4769,20 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "224403": ItemEffect(
         item_id="224403",
         name="The Golden Spatula",
-        defensive_only=True,
-        note="The Golden Spatula (Arena 224403): all-stat joke item — no DPS proc",
+        # Phase 4 batch 57 (2026-05-04): promoted. Meraki confirms "Doing Something"
+        # passive: permanently burns enemies within 400 units every second for
+        # pp|26 to 43 magic damage (power-progression levels 1→18, slope 1.0/level).
+        # Uses targets_in_rotation (AoE-incl-primary idiom).
+        periodics=(PeriodicProc(
+            name="Doing Something",
+            bonus_damage=lambda c: c.targets_in_rotation * (26.0 + 1.0 * (c.level - 1)),
+            damage_type=MAGICAL,
+            every_n_seconds=1.0,
+        ),),
+        note=(
+            "The Golden Spatula (Arena 224403): Doing Something — burn 26→43 "
+            "magic damage/s to nearby enemies (level-scaled pp; Meraki confirmed)"
+        ),
     ),
     "322065": ItemEffect(
         item_id="322065",
