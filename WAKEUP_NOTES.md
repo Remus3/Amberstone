@@ -6,6 +6,23 @@
 
 ---
 
+# s104 wrap — 2026-05-05 (clean/admin session — no code changes)
+
+## What shipped
+- Nothing — this session was a clean context reset immediately followed by `/done`.
+
+## Do NOT redo
+- All s103 work already committed and pushed. No action needed.
+
+## Open work (priority order, carried from s103)
+1. **Validate DS champ-select panel** — next champ select, confirm `#cs-ds-block` shows item tiles
+2. **Validate icon fix** — next in-game, confirm item icons render on first load without "?"
+3. **Bridge auto-loop dead** — restart on Game-PC: `/loop 1m /process-bridge-tasks` (confirmed dead: probe task-4208dd6a75e7 got no result)
+4. **DS calibration**: 50+ games needed; auto-collects into `data/ds_calibration.jsonl`
+5. **Vision regions calibration**: tune `data/vision_regions.json` bboxes
+
+---
+
 # s103 wrap — 2026-05-05 (DS champ-select panel + dashboard bug fixes + done §6b)
 
 ## What shipped
