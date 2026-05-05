@@ -13,7 +13,10 @@ from __future__ import annotations
 import json
 import logging
 import socket
+import subprocess
+import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Iterable, Optional
 from urllib.error import URLError, HTTPError
 from urllib.request import Request, urlopen
@@ -69,6 +72,32 @@ def is_engine_up(timeout: float = 0.25) -> bool:
             return resp.status == 200
     except Exception:  # noqa: BLE001
         return False
+
+
+def ensure_running() -> None:
+    """Start the Daemon Slayer server if it is not already responding.
+
+    Called once at RC dashboard startup. No-op if :8893 is healthy.
+    Spawns tools/start_daemon_slayer.py as a detached background process
+    using the same interpreter as the current process.
+    """
+    if is_engine_up(timeout=1.0):
+        return
+    launcher = Path(__file__).resolve().parent.parent / "tools" / "start_daemon_slayer.py"
+    if not launcher.exists():
+        logger.warning("daemon_slayer launcher not found at %s", launcher)
+        return
+    try:
+        subprocess.Popen(
+            [sys.executable, str(launcher)],
+            cwd=str(launcher.parent.parent),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+        )
+        logger.info("daemon_slayer not running — spawned %s", launcher.name)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("daemon_slayer auto-start failed: %s", exc)
 
 
 def rank_for(
