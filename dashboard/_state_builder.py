@@ -49,7 +49,7 @@ def build_state() -> dict:
     if health.get("aram_mode"):    mode_key = "aram"
     elif health.get("arena_mode"): mode_key = "arena"
     elif health.get("tft_mode"):   mode_key = "tft"
-    elif health.get("has_game"):   mode_key = "game"
+    elif health.get("has_game"):   mode_key = "sr"
     else:                          mode_key = health.get("mode", "client")
 
     coach_file = MODE_TO_FILE.get(mode_key, "coaching_data.json")
