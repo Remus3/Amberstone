@@ -3602,7 +3602,7 @@ class StormsurgeMagicPenTests(unittest.TestCase):
         e = ITEM_EFFECTS["4646"]
         self.assertEqual(e.name, "Stormsurge")
         self.assertFalse(e.defensive_only)
-        self.assertEqual(e.periodics, ())
+        # batch 53: Squall proc added — periodics no longer empty
         self.assertAlmostEqual(e.magic_pen_flat, 15.0, places=2)
         self.assertEqual(e.magic_pen_pct, 0.0)
         self.assertIn("magic pen", e.note.lower())
@@ -4896,7 +4896,7 @@ class Batch37TrueDamageTests(unittest.TestCase):
             "447123": "Puppeteer",
             "443056": "Demon King's Crown",
             "443060": "Sword of the Divine",
-            "443069": "Hamstringer",
+            # 443069 Hamstringer promoted to active in batch 53 (Scour crit-bleed)
         }
         for iid, name in expected.items():
             with self.subTest(item_id=iid):
@@ -6489,6 +6489,96 @@ class Batch52AbilityProcTests(unittest.TestCase):
         bare = compute_dps(self.snap, "Ahri", level=11)
         with_nh = compute_dps(self.snap, "Ahri", level=11, item_ids=["4636"])
         self.assertGreater(with_nh.weighted_dps, bare.weighted_dps)
+
+
+# ─────────────────── batch 53: Hamstringer Scour + Stormsurge Squall proc
+
+
+class Batch53CritBleedAndSquallTests(unittest.TestCase):
+    """Batch 53: Hamstringer Scour crit-bleed + Stormsurge Squall proc."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    # ── Hamstringer (443069) ────────────────────────────────────────────────
+
+    def test_hamstringer_not_defensive_only(self) -> None:
+        e = ITEM_EFFECTS["443069"]
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(len(e.periodics), 1)
+
+    def test_hamstringer_scour_proc_schema(self) -> None:
+        p = ITEM_EFFECTS["443069"].periodics[0]
+        self.assertEqual(p.name, "Scour")
+        self.assertEqual(p.damage_type, PHYSICAL)
+        self.assertEqual(p.every_n_attacks, 1)
+
+    def test_hamstringer_scour_zero_without_crit(self) -> None:
+        # crit_chance=0 → expected bleed = 0 regardless of AD/level
+        p = ITEM_EFFECTS["443069"].periodics[0]
+        ctx = CallContext(base_ad=100, bonus_ad=50, level=11, crit_chance=0.0)
+        self.assertAlmostEqual(p.resolve_damage(ctx), 0.0)
+
+    def test_hamstringer_scour_scales_with_crit_and_ad(self) -> None:
+        p = ITEM_EFFECTS["443069"].periodics[0]
+        # 100% crit: damage = (20 + 60/17*10) + 0.1875*150 ≈ 55.3 + 28.1 = 83.4
+        ctx = CallContext(base_ad=100, bonus_ad=50, level=11, crit_chance=1.0)
+        expected = (20.0 + (60.0 / 17.0) * 10) + 0.1875 * 150.0
+        self.assertAlmostEqual(p.resolve_damage(ctx), expected, places=2)
+
+    def test_hamstringer_scour_50pct_crit_halves_damage(self) -> None:
+        p = ITEM_EFFECTS["443069"].periodics[0]
+        full = p.resolve_damage(
+            CallContext(base_ad=80, bonus_ad=40, level=1, crit_chance=1.0)
+        )
+        half = p.resolve_damage(
+            CallContext(base_ad=80, bonus_ad=40, level=1, crit_chance=0.5)
+        )
+        self.assertAlmostEqual(half, full * 0.5, places=4)
+
+    def test_hamstringer_raises_dps_with_crit(self) -> None:
+        # Need crit on the build — pair with IE (3031, adds 25% crit).
+        bare = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3031"])
+        with_hs = compute_dps(
+            self.snap, "Aatrox", level=11, item_ids=["3031", "443069"]
+        )
+        self.assertGreater(with_hs.weighted_dps, bare.weighted_dps)
+
+    # ── Stormsurge (4646 SR + 224646 Arena) ────────────────────────────────
+
+    def _check_squall(self, iid: str) -> None:
+        e = ITEM_EFFECTS[iid]
+        self.assertFalse(e.defensive_only)
+        self.assertAlmostEqual(e.magic_pen_flat, 15.0, places=2)
+        self.assertEqual(len(e.periodics), 1)
+        p = e.periodics[0]
+        self.assertEqual(p.name, "Squall")
+        self.assertEqual(p.damage_type, MAGICAL)
+        self.assertAlmostEqual(p.every_n_seconds, 30.0)
+        # AP-scaling: 100 AP → 125 + 10 = 135
+        ctx = CallContext(base_ad=60, bonus_ad=0, level=11, ap=100.0)
+        self.assertAlmostEqual(p.resolve_damage(ctx), 135.0)
+
+    def test_stormsurge_sr_squall(self) -> None:
+        self._check_squall("4646")
+
+    def test_stormsurge_arena_squall(self) -> None:
+        self._check_squall("224646")
+
+    def test_stormsurge_squall_raises_dps_with_ap(self) -> None:
+        # Pair with Rabadon's (3089) for meaningful AP → Squall fires.
+        bare = compute_dps(self.snap, "Lux", level=11, item_ids=["3089"])
+        with_ss = compute_dps(
+            self.snap, "Lux", level=11, item_ids=["3089", "4646"]
+        )
+        self.assertGreater(with_ss.weighted_dps, bare.weighted_dps)
+
+    def test_batch53_total_count(self) -> None:
+        # 3 promotions from prior batches + 2 Squall adds + 1 Scour add
+        # (443069 was defensive_only, now active; 4646/224646 gained a proc
+        # but were already active). Count floor unchanged vs batch 52.
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 501)
 
 
 if __name__ == "__main__":
