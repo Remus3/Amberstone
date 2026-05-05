@@ -870,6 +870,33 @@ class CoachIntegration:
         game_state["_lane_matchup_note"] = _load_lane_matchup_note(_enemy_adc)
         user = _build_user_prompt(game_state, coach_state.get("wave_state", "unknown"))
 
+        _ds_rows = None
+        _ds_picks_str = "unavailable"
+        try:
+            from core import daemon_slayer_client as _ds_client
+            from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
+            _owned_ids = _ds_resolve_many(game_state.get("items", []), mode="sr")
+            _ds_rows = _ds_client.rank_for(
+                champion=champion,
+                level=int(game_state.get("level", 1)) or 1,
+                item_ids=_owned_ids,
+                mode="SR",
+                target_armor=80.0,
+                top=5,
+            )
+            if _ds_rows:
+                _ds_picks_str = " > ".join(
+                    f"{r.item_name}(+{r.delta_dps:.0f}dps,{r.gold}g)"
+                    for r in _ds_rows
+                )
+            elif _ds_rows == []:
+                _ds_picks_str = "none"
+        except Exception as _ds_exc:
+            logger.debug("SR daemon_slayer pre-call: %s", _ds_exc)
+        self._last_ds_rows = _ds_rows
+        if _ds_picks_str != "unavailable":
+            user += f"\nDS top items (DPS ranked, own-items-accounted): {_ds_picks_str}"
+
         if self.debug:
             logger.debug("User prompt:\n%s", user)
 
@@ -1115,6 +1142,14 @@ class CoachIntegration:
                     if "action" not in fields:
                         current["action"] = ""
                     current["mode"] = "game"
+
+                    _pending_ds = getattr(self, "_last_ds_rows", None)
+                    if _pending_ds is not None:
+                        current["daemon_slayer_picks"] = [
+                            {"id": r.item_id, "name": r.item_name,
+                             "delta_dps": round(r.delta_dps, 2), "gold": r.gold}
+                            for r in _pending_ds
+                        ] if _pending_ds else []
 
                     imm = fields.get("immediate", "")
                     if imm:
