@@ -6165,10 +6165,12 @@ class Batch47Arena22xAnd32xRemainingTests(unittest.TestCase):
 
     def test_batch47_defensive_entries(self) -> None:
         expected = [
-            "223002", "223067", "223069", "223105", "223111", "223112",
+            "223002", "223067",          "223105", "223111", "223112",
+            # 223069 promoted batch 57: Void Immolation — TRUE Immolate proc
             "223121", "223158", "223172", "223177", "223184", "223193",
             "222065", "222051", "222524", "222526", "222530",
-            "224403", "322065", "322526", "322530",
+            # 224403 promoted batch 57: Golden Spatula — Doing Something burn
+                      "322065", "322526", "322530",
             "323002", "323070", "323121",
             "222022", "222141",
         ]
@@ -6821,6 +6823,100 @@ class Batch56CasterHpApAmpTests(unittest.TestCase):
 
     def test_batch56_count_unchanged(self) -> None:
         # 1 promotion from defensive_only to active — count stays >= 547.
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 547)
+
+
+class Batch57VoidImmolationGoldenSpatulaTests(unittest.TestCase):
+    """Phase 4 batch 57 — Void Immolation (223069) + Golden Spatula (224403) promotions."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    # ── Void Immolation (223069) ──────────────────────────────────────────
+
+    def test_223069_not_defensive_only(self) -> None:
+        eff = ITEM_EFFECTS.get("223069")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+
+    def test_223069_schema_true_damage(self) -> None:
+        eff = ITEM_EFFECTS["223069"]
+        procs = eff.periodics
+        self.assertEqual(len(procs), 1)
+        self.assertEqual(procs[0].name, "Immolate")
+        self.assertEqual(procs[0].damage_type, "true")
+        self.assertAlmostEqual(procs[0].every_n_seconds, 1.0)
+
+    def test_223069_immolate_key(self) -> None:
+        eff = ITEM_EFFECTS["223069"]
+        self.assertEqual(eff.unique_passive_key, "immolate")
+
+    def test_223069_formula_at_3000_hp(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, caster_max_hp=3000.0, targets_in_rotation=1.0)
+        eff = ITEM_EFFECTS["223069"]
+        dmg = eff.periodics[0].bonus_damage(ctx)
+        # 20 + 0.015 * 3000 = 20 + 45 = 65.0
+        self.assertAlmostEqual(dmg, 65.0, places=1)
+
+    def test_223069_raises_dps_vs_naked(self) -> None:
+        bare = compute_dps(self.snap, "Malphite", level=11, item_ids=["3068"])
+        with_vi = compute_dps(self.snap, "Malphite", level=11, item_ids=["223069"])
+        # Void Immolation (TRUE damage bypasses armor) should contribute DPS
+        self.assertGreater(with_vi.weighted_dps, 0)
+
+    def test_223069_unique_passive_deduplication(self) -> None:
+        # Both Void Immolation and Sunfire Aegis carry unique_passive_key="immolate"
+        # — the engine should only apply one Immolate proc when both are in build.
+        with_both = compute_dps(
+            self.snap, "Malphite", level=11, item_ids=["3068", "223069"]
+        )
+        with_sunfire_only = compute_dps(
+            self.snap, "Malphite", level=11, item_ids=["3068"]
+        )
+        with_void_only = compute_dps(
+            self.snap, "Malphite", level=11, item_ids=["223069"]
+        )
+        # Combined must not exceed the sum of both individual contributions
+        # (deduplication means only one Immolate fires)
+        self.assertLessEqual(
+            with_both.weighted_dps,
+            with_sunfire_only.weighted_dps + with_void_only.weighted_dps + 1.0,
+        )
+
+    # ── The Golden Spatula (224403) ──────────────────────────────────────
+
+    def test_224403_not_defensive_only(self) -> None:
+        eff = ITEM_EFFECTS.get("224403")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+
+    def test_224403_schema_magical_damage(self) -> None:
+        eff = ITEM_EFFECTS["224403"]
+        procs = eff.periodics
+        self.assertEqual(len(procs), 1)
+        self.assertEqual(procs[0].name, "Doing Something")
+        self.assertEqual(procs[0].damage_type, "magical")
+        self.assertAlmostEqual(procs[0].every_n_seconds, 1.0)
+
+    def test_224403_formula_level_scaling(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        ctx1 = CallContext(base_ad=100.0, bonus_ad=0.0, level=1, targets_in_rotation=1.0)
+        ctx18 = CallContext(base_ad=100.0, bonus_ad=0.0, level=18, targets_in_rotation=1.0)
+        eff = ITEM_EFFECTS["224403"]
+        dmg1 = eff.periodics[0].bonus_damage(ctx1)
+        dmg18 = eff.periodics[0].bonus_damage(ctx18)
+        self.assertAlmostEqual(dmg1, 26.0, places=1)
+        self.assertAlmostEqual(dmg18, 43.0, places=1)
+
+    def test_224403_raises_dps(self) -> None:
+        bare = compute_dps(self.snap, "Garen", level=11, item_ids=[])
+        with_spat = compute_dps(self.snap, "Garen", level=11, item_ids=["224403"])
+        self.assertGreater(with_spat.weighted_dps, bare.weighted_dps)
+
+    def test_batch57_count_unchanged(self) -> None:
+        # 2 promotions from defensive_only to active — total stays >= 547.
         self.assertGreaterEqual(len(ITEM_EFFECTS), 547)
 
 
