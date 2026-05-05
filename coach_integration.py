@@ -745,10 +745,16 @@ class CoachIntegration:
             for k in keys:
                 v = coach_state.get(k)
                 # Bucket continuous values to absorb noise.
-                if k in ("hp_bucket",) and v is None:
-                    v = int(coach_state.get("hp_pct", 0) // 10)
+                # _convert outputs my_hp_pct (0.0-1.0), my_gold, my_level —
+                # fix key names to match; hp_pct was the old wrong fallback.
+                if k == "hp_bucket" and v is None:
+                    v = int(coach_state.get("my_hp_pct", 0) * 10)
+                if k == "mana_bucket" and v is None:
+                    v = int(coach_state.get("my_mana_pct", 0) * 10)
                 if k == "gold_bucket" and v is None:
-                    v = int(coach_state.get("gold", 0) // 300)
+                    v = int(coach_state.get("my_gold", 0) // 300)
+                if k == "level" and v is None:
+                    v = coach_state.get("my_level")
                 parts.append(f"{k}={v}")
             return hashlib.sha1("|".join(parts).encode("utf-8")).hexdigest()
         except Exception:
@@ -1028,6 +1034,9 @@ class CoachIntegration:
             "nearby_enemies":   [],
             "objective_timers": gs.get("obj_timers_dict", {}),
             "patch_version":    self._patch,
+            "kda":              gs.get("kda", ""),
+            "dead_count":       gs.get("dead_count", 0),
+            "kill_window":      gs.get("kill_window", False),
         }
 
     def _parse_response(self, text: str) -> dict:

@@ -1652,7 +1652,14 @@
     // only push items; the LCU agent updates the recommended shop order.
     _ibMaybeRenderBuilds(p);
     const owned = _splitItemList(p.items_display || p.items || p.owned_items, false);
-    const path = _splitItemList(p.item_build, true);
+    // SR coach doesn't emit item_build — fall back to sr_items (liveclient-derived
+    // build path overlaid by _state_builder) when available.
+    const _srItemPath = Array.isArray(p.sr_items)
+      ? p.sr_items.filter(i => i && i.next).map(i => i.name)
+      : [];
+    const path = _splitItemList(p.item_build, true).length
+      ? _splitItemList(p.item_build, true)
+      : _srItemPath;
     // Defensive dedup: a coach payload occasionally leaves an already-owned
     // item at the front of the build-path array (e.g. Zhonya's appears in
     // both Owned and Recommended → "next to buy" highlights a completed
