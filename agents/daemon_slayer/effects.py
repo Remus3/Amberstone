@@ -2015,14 +2015,21 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),),
         note="Night Harvester: Soulrend 125 (+15% AP) magic / 10s per champion (Meraki 444636 ref)",
     ),
+    # Fiendhunter Bolts (2512): Opening Barrage CD=45s (Meraki confirmed).
+    # After ult: next 3 attacks in 8s gain guaranteed crit bonus (60–80% total AD);
+    # using 70% of total_AD as midpoint. Base AD from auto DPS already in rotation;
+    # this models the additional crit bonus damage per proc window.
     "2512": ItemEffect(
         item_id="2512",
         name="Fiendhunter Bolts",
-        defensive_only=True,
-        note=(
-            "Fiendhunter Bolts: Bolt Detonation periodic proc value not confirmed "
-            "from DDragon/Meraki; deferred pending formula verification"
-        ),
+        unique_passive_key="fiendhunter_barrage",
+        periodics=(PeriodicProc(
+            name="Opening Barrage",
+            damage_type=PHYSICAL,
+            every_n_seconds=45.0,
+            bonus_damage=lambda c: 3.0 * (c.base_ad + c.bonus_ad) * 0.70,
+        ),),
+        note="Fiendhunter Bolts: Opening Barrage 45s CD; 3 guaranteed crits = 3×(base_ad+bonus_ad)×0.70 physical/45s",
     ),
     "663060": ItemEffect(
         item_id="663060",
@@ -2167,18 +2174,27 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "Quicken CDR-on-crit utility-only)"
         ),
     ),
-    # Hellfire Hatchet (4017): 12 lethality. Char proc is ability-triggered burn
-    # scaling off target max HP AND lethality — requires ability-cast + new
-    # lethality-in-formula schema; deferred.
+    # Hellfire Hatchet (4017): Char has a 15s CD (Meraki confirmed).
+    # Burn formula: (5% + 5%*hp_diff/2000 + lethality*(0.2%+0.2%*hp_diff/2000))
+    # of target current HP physical over 4s, where hp_diff=caster_max_hp-target_max_hp
+    # clamped [0,2000]. Using target_max_hp as current-HP proxy (standard DPS model).
     "4017": ItemEffect(
         item_id="4017",
         name="Hellfire Hatchet",
         lethality=12.0,
-        note=(
-            "Hellfire Hatchet: 12 lethality (pen contribution modeled). "
-            "Char ability-triggered burn scales target max HP × lethality "
-            "(ability-cast schema gap + lethality-in-formula gap; deferred)"
-        ),
+        unique_passive_key="hellfire_char",
+        periodics=(PeriodicProc(
+            name="Char",
+            damage_type=PHYSICAL,
+            every_n_seconds=15.0,
+            bonus_damage=lambda c: (
+                lambda hd: c.target_max_hp * (
+                    (0.05 + 0.05 * hd / 2000.0)
+                    + c.caster_lethality * (0.002 + 0.002 * hd / 2000.0)
+                )
+            )(min(2000.0, max(0.0, c.caster_max_hp - c.target_max_hp))),
+        ),),
+        note="Hellfire Hatchet: Char 15s CD; (5+5*hp_diff/2k)% + lethality*(0.2+0.2*hp_diff/2k)% target maxHP physical/15s",
     ),
     # ── defensive_only (6) ──
     "6630": ItemEffect(
@@ -2498,14 +2514,17 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "grants 500 bonus HP and healing — HP/sustain gain, no DPS proc"
         ),
     ),
+    # Innervating Locket (447104): Fill the Soul — 30 ability charges (self + allies
+    # within 800 units) → grants pp|100 to 250 AP at max charge for rest of round.
+    # No CD; fires once per Arena round. Models as bonus_ap_stacked=175 (midpoint of
+    # 100–250 AP across levels 1–18). In Arena, 30 stacks are reliably reached early
+    # each round given ally casts; AP applies for most of the round.
     "447104": ItemEffect(
         item_id="447104",
         name="Innervating Locket",
-        defensive_only=True,
-        note=(
-            "Innervating Locket: Fill the Soul charges from ability casts (up to 30), "
-            "triggers at max charge — ability-cast schema gap; deferred"
-        ),
+        bonus_ap_stacked=175.0,
+        unique_passive_key="innervating_fill",
+        note="Innervating Locket: Fill the Soul 30-charge AP burst; pp|100–250 AP at max charge; 175 AP midpoint (Arena-only; ally casts count)",
     ),
     "447105": ItemEffect(
         item_id="447105",
