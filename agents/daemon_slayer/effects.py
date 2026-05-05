@@ -1465,21 +1465,20 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "4646": ItemEffect(
         item_id="4646",
         name="Stormsurge",
-        # 90 AP + 15 flat magic pen + 6% MS stat block (the 15 magic pen
-        # is in the description text, NOT in DDragon's stat block keys).
-        # Two ability-bound passives:
-        # - Stormraider: 25% max-HP-in-2.5s gate to apply Squall.
-        # - Squall: 2s after Stormraider, deal 125 + 10% AP magic.
-        # Both are ability-bound and conditional — NOT modeled (same
-        # rule as Hextech Rocketbelt, Luden's, etc.). The 15 flat magic
-        # pen IS modeled here via magic_pen_flat — joins Sorcerer's
-        # Shoes (12) and Shadowflame (15) in the magic pen layer.
-        # Magic-pen contribution alone is real DPS uplift, so this
-        # entry is NOT defensive_only.
+        # 90 AP + 15 flat magic pen + 6% MS. Squall (125 + 10% AP magic)
+        # fires 2s after Stormraider triggers. Modeled via every_n_seconds=30
+        # (the passive recharge CD), same sustained-DPS doctrine as Luden's
+        # (12s) and Night Harvester (10s). Phase 4 batch 53 (2026-05-04).
         magic_pen_flat=15.0,
+        periodics=(PeriodicProc(
+            name="Squall",
+            bonus_damage=lambda c: 125.0 + 0.10 * c.ap,
+            damage_type=MAGICAL,
+            every_n_seconds=30.0,
+        ),),
         note=(
-            "Stormsurge: 15 flat magic pen (magical) + Stormraider/Squall "
-            "ability-bound burst (not modeled; same rule as Rocketbelt)"
+            "Stormsurge: 15 flat magic pen + Squall 125 (+10% AP) magic / 30s "
+            "(Stormraider gate modeled at minimum-CD sustained rate; Meraki confirmed)"
         ),
     ),
 
@@ -2517,11 +2516,27 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "443069": ItemEffect(
         item_id="443069",
         name="Hamstringer",
-        defensive_only=True,
+        # Phase 4 batch 53 (2026-05-04): promoted. Meraki formula:
+        # "Critical strikes inflict a bleed: (20-80 by level) + 25% of the
+        # crit instance." Crit-gated rate modeled as expected-value weighting:
+        # bonus_damage per attack = crit_chance * (level_scale + 25% of
+        # crit-bonus AD). Crit bonus assumed DEFAULT_CRIT_BONUS = 0.75
+        # (175% crit); 25% × 0.75 = 0.1875 AD. Level scale: 20 at lvl 1,
+        # 80 at lvl 18 → slope = 60/17 per level.
+        periodics=(PeriodicProc(
+            name="Scour",
+            bonus_damage=lambda c: c.crit_chance * (
+                (20.0 + (60.0 / 17.0) * (c.level - 1))
+                + 0.1875 * (c.base_ad + c.bonus_ad)
+            ),
+            damage_type=PHYSICAL,
+            every_n_attacks=1,
+        ),),
         note=(
-            "Hamstringer: Scour critical strikes inflict 2s physical bleed — "
-            "crit-conditional proc rate + exact bleed formula unavailable in Meraki 16.9.1; "
-            "deferred pending schema for crit-gated procs"
+            "Hamstringer: Scour — crit strikes inflict 2s physical bleed "
+            "(20-80 by level) + 25% of crit-bonus AD; modeled as "
+            "expected-value × crit_chance per attack (DEFAULT_CRIT_BONUS=0.75). "
+            "Meraki 443069 confirmed."
         ),
     ),
     # ── Phase 4 batch 38 (2026-05-04): Giant Slayer schema + 228xxx/443xxx/SR sweep ──
@@ -3427,8 +3442,15 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "224646": ItemEffect(
         item_id="224646",
         name="Stormsurge",
+        # Phase 4 batch 53 (2026-05-04): Squall proc added; mirrors SR 4646.
         magic_pen_flat=15.0,
-        note="Stormsurge (Arena 224646): same as SR 4646 — Static 15 flat magic pen (Stormraider proc ability-bound)",
+        periodics=(PeriodicProc(
+            name="Squall",
+            bonus_damage=lambda c: 125.0 + 0.10 * c.ap,
+            damage_type=MAGICAL,
+            every_n_seconds=30.0,
+        ),),
+        note="Stormsurge (Arena 224646): same as SR 4646 — 15 flat magic pen + Squall 125 (+10% AP) magic / 30s",
     ),
 
     # ── 32xxxx ARAM mirrors ────────────────────────────────────────────────
