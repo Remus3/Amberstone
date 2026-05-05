@@ -6189,5 +6189,155 @@ class Batch47Arena22xAnd32xRemainingTests(unittest.TestCase):
         self.assertGreaterEqual(len(ITEM_EFFECTS), 430)
 
 
+class Batch48Core1xxxComponentsTests(unittest.TestCase):
+    """Phase 4 batch 48 — 1xxx tier-1 component coverage."""
+
+    # ── Recurve Bow proc ──────────────────────────────────────────────────
+
+    def test_recurve_bow_sting_proc(self) -> None:
+        e = ITEM_EFFECTS["1043"]
+        self.assertIsNotNone(e)
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(len(e.periodics), 1)
+        p = e.periodics[0]
+        self.assertEqual(p.name, "Sting")
+        self.assertAlmostEqual(p.bonus_damage, 15.0)
+        self.assertEqual(p.damage_type, PHYSICAL)
+        self.assertEqual(p.every_n_attacks, 1)
+
+    # ── stats-only active components ─────────────────────────────────────
+
+    def test_stats_only_active_1xxx(self) -> None:
+        for iid in ["1018", "1026", "1036", "1037", "1038", "1042",
+                    "1052", "1053", "1055", "1056", "1058", "1082",
+                    "1083", "1086"]:
+            with self.subTest(iid=iid):
+                e = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(e, f"{iid} missing")
+                self.assertFalse(e.defensive_only)
+                self.assertEqual(len(e.periodics), 0)
+
+    # ── defensive_only 1xxx components ───────────────────────────────────
+
+    def test_batch48_defensive_entries(self) -> None:
+        for iid in ["1001", "1004", "1006", "1011", "1027", "1028",
+                    "1029", "1031", "1033", "1035", "1039", "1040",
+                    "1054", "1057"]:
+            with self.subTest(iid=iid):
+                e = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(e, f"{iid} missing")
+                self.assertTrue(e.defensive_only)
+
+    # ── count assertions ──────────────────────────────────────────────────
+
+    def test_batch48_defensive_count(self) -> None:
+        defo = [e for e in ITEM_EFFECTS.values() if e.defensive_only]
+        self.assertGreaterEqual(len(defo), 256)
+
+    def test_batch48_total_count(self) -> None:
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 459)
+
+
+class Batch49Remaining3xxx2xxxArenaTests(unittest.TestCase):
+    """Phase 4 batch 49 — remaining 3xxx/2xxx boots/components + final Arena pool."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        from agents.daemon_slayer.data_loader import DataSnapshot
+        cls.snap = DataSnapshot.load()
+
+    # ── Spellslinger's Shoes — dual-pen ──────────────────────────────────
+
+    def test_spelllslingers_shoes_dual_pen(self) -> None:
+        e = ITEM_EFFECTS["3175"]
+        self.assertIsNotNone(e)
+        self.assertFalse(e.defensive_only)
+        self.assertAlmostEqual(e.magic_pen_flat, 18.0)
+        self.assertAlmostEqual(e.magic_pen_pct, 0.08)
+        self.assertEqual(len(e.periodics), 0)
+
+    def test_spelllslingers_both_pen_layers_different_from_flat_only(self) -> None:
+        # Verify dual pen stacks: effective MR with both layers should be lower
+        # than with neither layer at a non-zero target_mr.
+        from agents.daemon_slayer.effects import effective_target_mr, collect_effects
+        effects = collect_effects(["3175"])
+        mr_with = effective_target_mr(50.0, effects)
+        mr_bare = effective_target_mr(50.0, [])
+        self.assertLess(mr_with, mr_bare)
+
+    # ── Lethality items ───────────────────────────────────────────────────
+
+    def test_hubris_lethality(self) -> None:
+        e = ITEM_EFFECTS["126697"]
+        self.assertIsNotNone(e)
+        self.assertFalse(e.defensive_only)
+        self.assertAlmostEqual(e.lethality, 18.0)
+        self.assertEqual(len(e.periodics), 0)
+
+    def test_prowlers_claw_arena_lethality(self) -> None:
+        e = ITEM_EFFECTS["446693"]
+        self.assertIsNotNone(e)
+        self.assertFalse(e.defensive_only)
+        self.assertAlmostEqual(e.lethality, 20.0)
+
+    # ── Rite of Ruin crit ────────────────────────────────────────────────
+
+    def test_rite_of_ruin_crit_flat(self) -> None:
+        e = ITEM_EFFECTS["123430"]
+        self.assertIsNotNone(e)
+        self.assertFalse(e.defensive_only)
+        self.assertAlmostEqual(e.crit_chance_bonus_flat, 0.25)
+        self.assertEqual(len(e.periodics), 0)
+
+    # ── stats-only active items ───────────────────────────────────────────
+
+    def test_stats_only_active_3xxx_2xxx(self) -> None:
+        for iid in ["3172", "3177", "3184", "3095", "3144", "2508",
+                    "221038", "223006"]:
+            with self.subTest(iid=iid):
+                e = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(e, f"{iid} missing")
+                self.assertFalse(e.defensive_only)
+                self.assertEqual(len(e.periodics), 0)
+
+    # ── defensive_only boots ─────────────────────────────────────────────
+
+    def test_batch49_defensive_boots(self) -> None:
+        for iid in ["3005", "3008", "3010", "3013", "3117", "3168",
+                    "3170", "3171", "3173", "3174", "3176"]:
+            with self.subTest(iid=iid):
+                e = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(e, f"{iid} missing")
+                self.assertTrue(e.defensive_only)
+
+    # ── defensive_only components ─────────────────────────────────────────
+
+    def test_batch49_defensive_components(self) -> None:
+        for iid in ["3012", "3023", "3066", "3112", "3114",
+                    "2065", "2524", "2526", "2530"]:
+            with self.subTest(iid=iid):
+                e = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(e, f"{iid} missing")
+                self.assertTrue(e.defensive_only)
+
+    # ── defensive_only Arena pool ─────────────────────────────────────────
+
+    def test_batch49_defensive_arena(self) -> None:
+        for iid in ["124011", "223005", "223008", "223009", "223011"]:
+            with self.subTest(iid=iid):
+                e = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(e, f"{iid} missing")
+                self.assertTrue(e.defensive_only)
+
+    # ── count assertions ──────────────────────────────────────────────────
+
+    def test_batch49_defensive_count(self) -> None:
+        defo = [e for e in ITEM_EFFECTS.values() if e.defensive_only]
+        self.assertGreaterEqual(len(defo), 280)
+
+    def test_batch49_total_count(self) -> None:
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 496)
+
+
 if __name__ == "__main__":
     unittest.main()

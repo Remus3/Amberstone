@@ -308,6 +308,39 @@ Guardian's Dirk Arena (223185) lethality=11]; 7 221xxx Arena components
 mini-consumables [222022/222141 — defensive_only]; 26 defensive_only
 Arena mirrors [223002/067/069/105/111/112/121/158/172/177/184/193,
 222051/065/524/526/530, 224403, 322065/526/530, 323002/070/121]).
+Phase 4 batch 48 core 1xxx tier-1 components (2026-05-04 — 29 entries:
+1 proc-bearing component [Recurve Bow (1043) Sting — 15 bonus physical
+on every attack]; 14 stats-only active [Cloak of Agility (1018), Blasting
+Wand (1026), Long Sword (1036), Pickaxe (1037), B. F. Sword (1038),
+Dagger (1042), Amplifying Tome (1052), Vampiric Scepter (1053), Doran's
+Blade (1055), Doran's Ring (1056), Needlessly Large Rod (1058), Dark Seal
+(1082), Cull (1083), Doran's Bow (1086)]; 14 defensive_only [Boots (1001),
+Faerie Charm (1004), Rejuvenation Bead (1006), Giant's Belt (1011),
+Sapphire Crystal (1027), Ruby Crystal (1028), Cloth Armor (1029),
+Chain Vest (1031), Null-Magic Mantle (1033), Emberknife (1035),
+Hailblade (1039), Obsidian Edge (1040), Doran's Shield (1054),
+Negatron Cloak (1057)]).
+Phase 4 batch 49 remaining 3xxx/2xxx + final Arena pool (2026-05-04 —
+~49 entries: 12 active [Spellslinger's Shoes (3175) magic_pen_flat=18 +
+magic_pen_pct=0.08 — both pen layers; Gunmetal Greaves (3172) AS boots
+stats-only; Guardian's Blade (3177) + Guardian's Hammer (3184) mixed-stat
+components; Stormrazor (3095) legacy deprecated stats-only; Scout's
+Slingshot (3144) stats-only; Fated Ashes (2508) 30 AP stats-only (Inflame
+ability-cast deferred); Rite of Ruin (123430) crit_chance_bonus_flat=0.25;
+Hubris (126697) lethality=18; Prowler's Claw Arena (446693) lethality=20;
+B. F. Sword Arena (221038) stats-only; Berserker's Greaves Arena (223006)
+AS boots stats-only]; 11 defensive_only boots [Ghostcrawlers (3005),
+Gluttonous Greaves (3008), Symbiotic Soles (3010), Synchronized Souls
+(3013), Mobility Boots (3117), Immortal Path (3168), Swiftmarch (3170),
+Crimson Lucidity (3171), Chainlaced Crushers (3173), Armored Advance
+(3174), Forever Forward (3176)]; 5 defensive_only components [Chalice of
+Blessing (3012), Lifewell Pendant (3023), Winged Moonplate (3066),
+Guardian's Orb (3112), Forbidden Idol (3114)]; 4 defensive_only 2xxx
+[Shurelya's (2065), Bandlepipes (2524), Whispering Circlet (2526),
+Diadem of Songs (2530)]; 5 defensive_only Arena [Sword of Blossoming
+Dawn (124011), Ghostcrawlers Arena (223005), Gluttonous Greaves Arena
+(223008), Boots of Swiftness Arena (223009), Chemtech Putrifier Arena
+(223011)]).
 
 Beam search (Phase 2 step 4) returns the top-N complete builds by final
 weighted DPS, finding multi-item synergies the single-slot ranker
@@ -319,4 +352,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.51.0"
+ENGINE_VERSION = "0.53.0"
