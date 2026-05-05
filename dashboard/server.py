@@ -177,6 +177,14 @@ def start_dashboard(app_dir: Path) -> None:
     else:
         _log.info("Web dashboard on http://%s:%d/  (no TLS cert)", HOST, PORT)
 
+    # Daemon Slayer: ensure the local DPS engine on :8893 is running.
+    # No-op if already up; spawns tools/start_daemon_slayer.py otherwise.
+    try:
+        from core.daemon_slayer_client import ensure_running as _ds_ensure
+        _ds_ensure()
+    except Exception as exc:
+        _log.warning("daemon_slayer startup check failed: %s", exc)
+
     # Vision tracker: derives fog-of-war state from Live Client position
     # freshness, writes data/vision_state.json. Consumed by the minimap
     # overlay layer and (later) by coach prompt builders.
