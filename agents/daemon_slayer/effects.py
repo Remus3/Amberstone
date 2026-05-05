@@ -131,6 +131,15 @@ class CallContext:
     # uses the un-scaled lethality value, not the effective flat armor pen.
     # Default 0.0 → builds without lethality no-op gracefully.
     caster_lethality: float = 0.0
+    # Phase 4 batch 63 (2026-05-05): per-champion ult cast rate in casts/sec,
+    # looked up from ``data/daemon_slayer/ult_cast_rates.json`` (derived from
+    # rewind_history.db spell4_casts / game_duration_s). Engine-supplied via
+    # ``ult_rates.get_ult_casts_per_sec(champion_name, mode)`` in compute_dps.
+    # Required for Malignance Hatefog: the PeriodicProc uses every_n_seconds=1.0
+    # and bonus_damage = (180 + 0.15 * ap) * ult_casts_per_sec so the proc
+    # rate is champion-aware without changing the PeriodicProc schema. Default
+    # 0.0 → Malignance contributes 0 DPS when champion data is absent (safe).
+    ult_casts_per_sec: float = 0.0
 
 
 # Scaling-damage callable type. Float still works as a constant.
@@ -1897,11 +1906,18 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3118": ItemEffect(
         item_id="3118",
         name="Malignance",
-        defensive_only=True,
-        note=(
-            "Malignance: Hatefog 15% damage amp requires ultimate hit "
-            "(ultimate-cast schema gap); Scorn 20 ult haste is utility"
+        periodics=(
+            PeriodicProc(
+                name="Hatefog",
+                # Zone under target deals (60+5%AP)/0.25s for 3s = 180+15%AP total per ult hit.
+                # every_n_seconds=1.0 is a normalization anchor; multiplying by ult_casts_per_sec
+                # makes this champion-aware without changing the PeriodicProc schema.
+                bonus_damage=lambda c: (180.0 + 0.15 * c.ap) * c.ult_casts_per_sec,
+                damage_type=MAGICAL,
+                every_n_seconds=1.0,
+            ),
         ),
+        note="Malignance Hatefog: (180+15%AP) magic per ult zone hit; rate from rewind_history spell4_casts",
     ),
     "2503": ItemEffect(
         item_id="2503",
@@ -4096,8 +4112,15 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "223118": ItemEffect(
         item_id="223118",
         name="Malignance",
-        defensive_only=True,
-        note="Malignance (Arena 223118): Haunt ult-haste + ult empowerment — ability-trigger, no DPS proc",
+        periodics=(
+            PeriodicProc(
+                name="Hatefog",
+                bonus_damage=lambda c: (180.0 + 0.15 * c.ap) * c.ult_casts_per_sec,
+                damage_type=MAGICAL,
+                every_n_seconds=1.0,
+            ),
+        ),
+        note="Malignance ARAM mirror (223118) Hatefog: (180+15%AP) magic per ult zone hit",
     ),
     "223119": ItemEffect(
         item_id="223119",
