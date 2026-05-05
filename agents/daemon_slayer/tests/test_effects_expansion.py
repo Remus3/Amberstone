@@ -5781,5 +5781,205 @@ class Batch43Arena223MirrorTests(unittest.TestCase):
         self.assertGreaterEqual(len(ITEM_EFFECTS), 327)
 
 
+class Batch44DPSComponentsAndFullItemsTests(unittest.TestCase):
+    """Batch 44: 19 DPS-contributing items — proc components + full items."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    # ── proc-bearing components ────────────────────────────────────────────
+
+    def test_3057_sheen_spellblade_key(self) -> None:
+        e = ITEM_EFFECTS["3057"]
+        self.assertEqual(e.unique_passive_key, "spellblade")
+        self.assertEqual(len(e.periodics), 1)
+        self.assertEqual(e.periodics[0].name, "Spellblade")
+
+    def test_3057_sheen_proc_formula_matches_trinity_base(self) -> None:
+        """Sheen base-AD coefficient is 1.00x; Trinity Force (3078) is 2.00x."""
+        ctx = CallContext(base_ad=80.0, bonus_ad=0.0, level=10)
+        sheen_dmg = ITEM_EFFECTS["3057"].periodics[0].resolve_damage(ctx)
+        tf_dmg = ITEM_EFFECTS["3078"].periodics[0].resolve_damage(ctx)
+        self.assertAlmostEqual(sheen_dmg, 80.0, places=2)
+        self.assertAlmostEqual(tf_dmg, 160.0, places=2)
+
+    def test_3057_sheen_dps_lift(self) -> None:
+        base = compute_dps(self.snap, "Orianna", level=9, item_ids=[])
+        with_sheen = compute_dps(self.snap, "Orianna", level=9, item_ids=["3057"])
+        self.assertGreater(with_sheen.weighted_dps, base.weighted_dps)
+
+    def test_3077_tiamat_cleave_proc_exists(self) -> None:
+        e = ITEM_EFFECTS["3077"]
+        self.assertEqual(len(e.periodics), 1)
+        self.assertEqual(e.periodics[0].name, "Cleave")
+
+    def test_3077_tiamat_cleave_zero_single_target(self) -> None:
+        ctx = CallContext(base_ad=70.0, bonus_ad=50.0, level=10, targets_in_rotation=1.0)
+        dmg = ITEM_EFFECTS["3077"].periodics[0].resolve_damage(ctx)
+        self.assertAlmostEqual(dmg, 0.0, places=6)
+
+    def test_3077_tiamat_cleave_scales_multi_target(self) -> None:
+        ctx_multi = CallContext(base_ad=70.0, bonus_ad=50.0, level=10, targets_in_rotation=3.0)
+        dmg = ITEM_EFFECTS["3077"].periodics[0].resolve_damage(ctx_multi)
+        self.assertAlmostEqual(dmg, 2.0 * 0.50 * 120.0, places=2)
+
+    def test_3145_hextech_alternator_revved_proc(self) -> None:
+        e = ITEM_EFFECTS["3145"]
+        self.assertEqual(len(e.periodics), 1)
+        self.assertEqual(e.periodics[0].name, "Revved")
+        ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=8)
+        dmg = e.periodics[0].resolve_damage(ctx)
+        self.assertAlmostEqual(dmg, 75.0, places=2)
+
+    def test_3145_hextech_alternator_dps_lift(self) -> None:
+        base = compute_dps(self.snap, "Lux", level=8, item_ids=[])
+        with_alt = compute_dps(self.snap, "Lux", level=8, item_ids=["3145"])
+        self.assertGreater(with_alt.weighted_dps, base.weighted_dps)
+
+    def test_6660_bamis_cinder_immolate_key(self) -> None:
+        e = ITEM_EFFECTS["6660"]
+        self.assertEqual(e.unique_passive_key, "immolate")
+        self.assertEqual(len(e.periodics), 1)
+
+    def test_6660_bamis_cinder_immolate_formula(self) -> None:
+        """Immolate component: 12 + 1% bonus HP (full items upgrade to 1.5%)."""
+        ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=10, caster_bonus_hp=2000.0)
+        dmg = ITEM_EFFECTS["6660"].periodics[0].resolve_damage(ctx)
+        self.assertAlmostEqual(dmg, 1.0 * (12.0 + 0.010 * 2000.0), places=2)
+        sunfire = ITEM_EFFECTS["3068"].periodics[0].resolve_damage(ctx)
+        self.assertLess(dmg, sunfire)
+
+    def test_6677_rageknife_wrath_proc(self) -> None:
+        e = ITEM_EFFECTS["6677"]
+        self.assertEqual(len(e.periodics), 1)
+        ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=10)
+        self.assertAlmostEqual(e.periodics[0].resolve_damage(ctx), 20.0, places=2)
+
+    def test_6677_rageknife_dps_lift(self) -> None:
+        base = compute_dps(self.snap, "Caitlyn", level=10, item_ids=[])
+        with_rk = compute_dps(self.snap, "Caitlyn", level=10, item_ids=["6677"])
+        self.assertGreater(with_rk.weighted_dps, base.weighted_dps)
+
+    # ── full items with DPS passive ────────────────────────────────────────
+
+    def test_3131_sword_of_divine_lethality(self) -> None:
+        e = ITEM_EFFECTS["3131"]
+        self.assertAlmostEqual(e.lethality, 18.0, places=2)
+
+    def test_3131_sword_of_divine_proc_exists(self) -> None:
+        e = ITEM_EFFECTS["3131"]
+        self.assertEqual(len(e.periodics), 1)
+        self.assertEqual(e.periodics[0].name, "Divine Judgment")
+
+    def test_3131_sword_of_divine_dps_lift(self) -> None:
+        base = compute_dps(self.snap, "Jinx", level=12, item_ids=[])
+        with_sotd = compute_dps(self.snap, "Jinx", level=12, item_ids=["3131"])
+        self.assertGreater(with_sotd.weighted_dps, base.weighted_dps)
+
+    def test_3134_serrated_dirk_lethality(self) -> None:
+        e = ITEM_EFFECTS["3134"]
+        self.assertAlmostEqual(e.lethality, 10.0, places=2)
+        self.assertEqual(len(e.periodics), 0)
+
+    def test_3001_evenshroud_damage_amp(self) -> None:
+        e = ITEM_EFFECTS["3001"]
+        self.assertAlmostEqual(e.damage_amp_pct, 0.06, places=4)
+
+    def test_6700_shield_rakkor_present(self) -> None:
+        e = ITEM_EFFECTS.get("6700")
+        self.assertIsNotNone(e)
+        self.assertFalse(e.defensive_only)
+
+    # ── stats-only items exist and are not defensive_only ─────────────────
+
+    def test_stats_only_items_not_defensive(self) -> None:
+        for iid, name in [
+            ("3086", "Zeal"), ("3133", "Caulfield's Warhammer"),
+            ("3123", "Executioner's Calling"), ("3802", "Lost Chapter"),
+            ("3916", "Oblivion Orb"), ("3108", "Fiendish Codex"),
+            ("3113", "Aether Wisp"), ("3051", "Hearthbound Axe"),
+            ("3044", "Phage"), ("6029", "Ironspike Whip"),
+        ]:
+            with self.subTest(iid=iid, name=name):
+                e = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(e, f"{iid} missing")
+                self.assertFalse(e.defensive_only, f"{iid} should not be defensive_only")
+
+    # ── count assertions ───────────────────────────────────────────────────
+
+    def test_batch44_active_count(self) -> None:
+        active = [e for e in ITEM_EFFECTS.values() if not e.defensive_only]
+        self.assertGreaterEqual(len(active), 165)
+
+    def test_batch44_total_count(self) -> None:
+        # 327 after batch 43 + 19 new = 346
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 346)
+
+
+class Batch45DefensiveItemsAndBootsTests(unittest.TestCase):
+    """Batch 45: 21 items — defensive full items, defensive components, boots."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    # ── defensive full items ───────────────────────────────────────────────
+
+    def test_defensive_full_items(self) -> None:
+        expected_defensive = [
+            "6656", "6035", "6667", "4644", "4012", "4402",
+            "3193", "3002",
+        ]
+        for iid in expected_defensive:
+            with self.subTest(iid=iid):
+                e = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(e, f"{iid} missing")
+                self.assertTrue(e.defensive_only, f"{iid} should be defensive_only")
+                self.assertEqual(len(e.periodics), 0)
+
+    # ── defensive components ───────────────────────────────────────────────
+
+    def test_defensive_components(self) -> None:
+        expected = [
+            "3067", "3070", "3211", "3024", "3076",
+            "3082", "3105", "3801", "3803",
+        ]
+        for iid in expected:
+            with self.subTest(iid=iid):
+                e = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(e, f"{iid} missing")
+                self.assertTrue(e.defensive_only, f"{iid} should be defensive_only")
+
+    # ── boots ─────────────────────────────────────────────────────────────
+
+    def test_berserkers_greaves_not_defensive(self) -> None:
+        e = ITEM_EFFECTS["3006"]
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(e.name, "Berserker's Greaves")
+
+    def test_defensive_boots(self) -> None:
+        for iid in ["3009", "3111", "3158"]:
+            with self.subTest(iid=iid):
+                e = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(e, f"{iid} missing")
+                self.assertTrue(e.defensive_only)
+
+    def test_berserkers_greaves_has_no_procs(self) -> None:
+        e = ITEM_EFFECTS["3006"]
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(len(e.periodics), 0)
+
+    # ── count assertions ───────────────────────────────────────────────────
+
+    def test_batch45_defensive_only_count(self) -> None:
+        defo = [e for e in ITEM_EFFECTS.values() if e.defensive_only]
+        self.assertGreaterEqual(len(defo), 201)
+
+    def test_batch45_total_count(self) -> None:
+        # 346 after batch 44 + 21 new = 367
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 367)
+
+
 if __name__ == "__main__":
     unittest.main()

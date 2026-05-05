@@ -255,7 +255,31 @@ Hullbreaker (223181), Terminus (223302) dual-pen, ER (223508)
 spellblade-key, DMP (223742), Titanic Hydra (223748) dual-Cleave, Edge
 of Night (223814)]; 25 defensive_only [223026/046/047/050/065/072/073/
 075/102/107/109/110/116/118/119/139/143/152/156-lifeline/157/161/165/
-190/222/504]).
+190/222/504]). Phase 4 batch 44 DPS components + full items (2026-05-04
+— 19 entries: 5 proc-bearing components [Sheen (3057) Spellblade 100%
+base AD every 1.5s spellblade-key, Tiamat (3077) Cleave 50% AD to nearby
+via targets_in_rotation gate (zero single-target), Hextech Alternator
+(3145) Revved 75 magic every 5s, Bami's Cinder (6660) Immolate
+12+0.5% max HP magic/s immolate-key, Rageknife (6677) Wrath 20 magic
+on-hit]; 3 full items with DPS contribution [Sword of the Divine (3131)
+18 lethality + Divine Judgment 75% AD guaranteed-crit bonus every 15s,
+Shield of the Rakkor (6700) stats-only (Rakkor Strike armor pen
+conditional on active — not modeled), Evenshroud (3001) damage_amp_pct=0.06
+(Coruscation 6% more damage — legacy removed-item entry)]; 11 stats-only
+items [Zeal (3086), Serrated Dirk (3134) lethality=10, Caulfield's
+Warhammer (3133), Executioner's Calling (3123), Lost Chapter (3802),
+Oblivion Orb (3916), Fiendish Codex (3108), Aether Wisp (3113),
+Hearthbound Axe (3051), Phage (3044), Ironspike Whip (6029)]).
+Phase 4 batch 45 defensive full items + components + boots (2026-05-04
+— 21 entries: 1 active [Berserker's Greaves (3006) 25% AS contribution];
+20 defensive_only [Everfrost (6656), Silvermere Dawn (6035), Radiant
+Virtue (6667), Crown of the Shattered Queen (4644), Sin Eater (4012),
+Innervating Locket (4402), Gargoyle Stoneplate (3193), Trailblazer
+(3002), Kindlegem (3067), Tear of the Goddess (3070), Spectre's Cowl
+(3211), Glacial Buckler (3024), Bramble Vest (3076), Warden's Mail
+(3082), Aegis of the Legion (3105), Crystalline Bracer (3801), Catalyst
+of Aeons (3803), Boots of Swiftness (3009), Mercury's Treads (3111),
+Ionian Boots of Lucidity (3158)]).
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
 ``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation`` /
@@ -271,4 +295,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.47.0"
+ENGINE_VERSION = "0.49.0"
