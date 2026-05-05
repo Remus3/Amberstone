@@ -107,7 +107,7 @@ _SECONDARY_PICKS: dict[str, list[int]] = {
 }
 
 # Stat shards: [row1, row2, row3]
-_SHARDS_SR   = [5005, 5008, 5002]  # Attack Speed | Adaptive Force | Armor
+_SHARDS_SR   = [5005, 5008, 5001]  # Attack Speed | Adaptive Force | Health Scaling
 _SHARDS_ARAM = [5005, 5008, 5001]  # Attack Speed | Adaptive Force | Health Scaling
 
 
