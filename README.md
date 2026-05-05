@@ -9,6 +9,7 @@ Personal project. Private repo. Not packaged for general use. Codebase has been 
 ## What it does
 
 - **Real-time coaching** — Claude Haiku for fast in-game tips, Claude Sonnet for screenshot-based vision reasoning, Tesseract OCR for cheap region reads, fast-path heuristics from the Live Client snapshot when an LLM call would be redundant
+- **Daemon Slayer build engine** — local HTTP service on `:8893`; no runtime API cost. Computes real damage-per-second for any champion×item×target combination, covering 496 unique purchasable items (SR, ARAM, Arena) with 603 passing tests. Engine models armor/MR penetration, on-hit effects, spellblade procs, true damage, Giant Slayer scaling, and full Arena item mirror pool. Powers the build-ranker beam search with per-item DPS contribution — not tier-list guesses, actual math
 - **Decision detector** — `core/decision_detector.py` watches game state and surfaces "decision moments" (dragon up with N enemies missing, baron contest, item spike) with a contest / give / skip choice tag; Recent Coach Calls history is on a dedicated `#coach-calls` sub-page
 - **Web dashboard** (`:8888`, HTTPS, mkcert-signed) — home / lobby / last-match / session / history / replay / loadouts / settings / diagnostics / coach-calls views, viewed in Edge fullscreen on Game-PC's secondary 1920×1280 display. Server-Sent Events on `/api/state-stream` for idle efficiency
 - **Champion-select build chooser** — surfaces preferred keystone + items per matchup from local match data; writes runes via the LCU
@@ -206,6 +207,15 @@ Operator goal: lessons learned on one machine apply to the others overnight, wit
 
 Tesseract regions in `data/vision_regions.json` use 1920×1080 defaults — needs calibration against actual in-game frames + coach-side routing logic that calls Tesseract for cheap fields and only escalates to Sonnet when the region read is missing or low-confidence. The endpoints exist (`/api/ocr`, `/api/ocr-crop`); the gating logic doesn't yet.
 
+### Daemon Slayer engine — remaining phases
+
+The local build engine launched as 7-phase work. Current state: Phase 1 (data extractor), Phase 2 (engine scaffolding), Phase 3 (on-hit/proc framework), Phase 4 (Arena mirror pool) — all complete. 496 items, ENGINE_VERSION 0.53.0, 603 tests.
+
+Open phases:
+- **Phase 5 — ability-cast schema**: Night Harvester, Luden's, Stormsurge, Rocketbelt, Hellfire Hatchet Char, Fated Ashes — ~6 items unlock at once once the schema exists.
+- **Phase 6 — coach wire-in**: Route the build ranker output into live SR, ARAM, and Arena coaches so in-game item advice is backed by DPS math, not static tier lists.
+- **Phase 7 — calibration + feedback loop**: Validate engine output against observed game outcomes in `rewind_history.db`; tune model constants.
+
 ### Possible follow-ups
 
 Not committed — stack-of-ideas for sessions where audit work is exhausted.
@@ -227,6 +237,49 @@ Not committed — stack-of-ideas for sessions where audit work is exhausted.
 - Frozen files (listed in `CLAUDE.md`) require explicit user approval to modify; they're load-bearing and regression-prone
 - The supervisor is now hardened against a Windows venv pythonw stub bug: it latches the observed PID on first valid heartbeat instead of trusting the Popen pid
 - Session workflow: scoped sessions, not long-lived ones. End each task with a commit + `WAKEUP_NOTES.md` hand-off + memory save for non-obvious learning. `/clear` between focus areas
+
+---
+
+## RC Tutor — Future Direction
+
+RC is the engineering foundation. **RC Tutor** is the eventual packaged product: a second-screen AI coaching companion for League of Legends (and potentially other Riot games) that any player can install and run, not just someone willing to wire up a two-machine tailnet.
+
+### What RC Tutor would be
+
+- **Standalone install** — single-machine mode; the "Legion brain / Game-PC eyes" split compresses to one box. Vision relay runs locally; Daemon Slayer engine ships bundled.
+- **Always-on second screen** — dashboard on a secondary monitor, tablet, or as a windowed overlay alongside the game. Not an Overlay Platform M inject — no ToS ambiguity.
+- **Patch-day auto-update** — item data and builds refresh automatically on patch. The `data_pipeline.py` infrastructure and DDragon integration already exist; the scheduled trigger is a config toggle away.
+- **LLM coaching with real math** — most coaching tools show you tier lists. RC Tutor shows you *why* an item wins: Daemon Slayer computes actual DPS curves for your champion vs. the enemy comp you're facing, then Haiku explains the decision in plain language.
+- **Live vision** — screen capture feeds into Tesseract OCR for cheap reads (gold, health, timer) and Sonnet for reasoning (wave state, fog inference, item spike detection). Vision calibration is in progress.
+- **Multi-mode** — SR, ARAM, Arena, TFT, Brawl. All modes are already implemented in the coaching layer.
+
+### Decisions needed before a general release
+
+1. **Distribution channel** — Overlay Platform M SDK (largest existing user base, but sandboxed and privacy-opaque) vs. standalone installer (full control, but no discovery) vs. a companion web app (no install, limited capabilities).
+2. **Riot ToS compliance** — second-screen approach (reading the API, not injecting into the game) is the safe path. The overlay/inject approach has historically been grey-area for Overlay App E and others.
+3. **Pricing model** — freemium (free tier without LLM backend, paid for AI coaching) vs. subscription vs. one-time license. The Anthropic API cost is real at scale — the Daemon Slayer engine offloads cheap queries to local math, reserving LLM budget for reasoning calls.
+4. **Onboarding** — current setup requires per-machine config. A wizard-style install flow (API key + machine type selection) is needed before any public release.
+5. **Privacy / data model** — RC is fully local; no telemetry. That's a selling point vs. cloud-first competitors, but requires clear communication.
+6. **Scalable update pipeline** — the patch-day refresh works manually; needs a background auto-update service (similar to how Overlay App E patches its databases) with version pinning and rollback.
+7. **Multi-account support** — scaffold exists (`RC_ACCOUNT_ID` env var, per-account ratings dirs); needs a UI switcher and clean onboarding for secondary accounts.
+
+### Where RC is on that path
+
+| Capability | Status |
+|---|---|
+| LLM coaching (all modes) | ✅ live |
+| Second-screen web dashboard | ✅ live (Edge fullscreen on secondary display) |
+| Daemon Slayer DPS engine | ✅ 496 items, 603 tests; `:8893` service |
+| Vision relay (screen → Sonnet) | ✅ live; OCR calibration in progress |
+| Rune auto-writer | ✅ live (LCU integration) |
+| Champ-select live coaching | ✅ live |
+| Replay analysis | ✅ live (rewind_history.db, 2,846 matches) |
+| Match history + adaptation | ✅ live |
+| Standalone PyInstaller bundle | 🟡 spec exists; not polished |
+| Patch auto-update pipeline | 🟡 manual trigger; scheduling wired |
+| Single-machine mode (no split) | 🔴 requires vision relay refactor |
+| Public install wizard | 🔴 not started |
+| Paid billing / licensing | 🔴 not started |
 
 ---
 
