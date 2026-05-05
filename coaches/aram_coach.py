@@ -441,7 +441,23 @@ class Coach(BaseCoach):
             r._model  = "claude-sonnet-4-6"
             r._last   = {}
             r.PROMPT  = _VISION_PROMPT
-            state = r.read()
+            r.TIERED_FIELDS = [
+                "timer",               # OCR canary (validates in-game frame)
+                "my_tower_hp", "enemy_tower_hp",
+                "wave_pct", "hp_packs", "fight_state",
+                "augments", "augment_select", "augment_choices",
+            ]
+            r.TIERED_VALIDATORS = {
+                "my_tower_hp":     lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
+                "enemy_tower_hp":  lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
+                "wave_pct":        lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
+                "hp_packs":        lambda v: isinstance(v, list),
+                "fight_state":     lambda v: isinstance(v, str) and bool(v),
+                "augments":        lambda v: isinstance(v, list),
+                "augment_select":  lambda v: isinstance(v, bool),
+                "augment_choices": lambda v: isinstance(v, list),
+            }
+            state = r.read_tiered()
             if not state:
                 return
             self._vision_state = state
