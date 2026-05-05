@@ -409,6 +409,10 @@ def compute_dps(
     # caster_bonus_hp. Required for Darksteel Talons' Gash (+ 20% bonus armor).
     base_armor = float(resolved.base_stats.get("armor", 0.0)) if resolved.base_stats else 0.0
     caster_bonus_armor = max(0.0, float(stats.get("armor", 0.0)) - base_armor)
+    # Phase 4 batch 59 (2026-05-04): caster raw lethality — sum of all items'
+    # lethality values (un-scaled, before level conversion). Required for
+    # Bastionbreaker's Shaped Charge (15 + 0.75 × lethality true damage / 45s).
+    caster_lethality = sum(e.lethality for e in item_effects)
     # Phase 4 batch 38 (2026-05-04): Giant Slayer target max HP advantage amp.
     # Stacks multiplicatively with damage_amp (same buffer-system doctrine as
     # target_amp from batch 19). Resolved here because caster_max_hp is needed.
@@ -491,6 +495,7 @@ def compute_dps(
         crit_chance=crit_chance_ctx,
         caster_max_mp=caster_max_mp,
         caster_bonus_armor=caster_bonus_armor,
+        caster_lethality=caster_lethality,
     )
 
     # Phase 4 batch 34 (2026-05-04): magic-only target-debuff amp.
