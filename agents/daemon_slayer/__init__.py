@@ -234,7 +234,28 @@ Moonstone Renewer (226617), Echoes of Helia (226620), Dawncore (226621),
 Goredrinker (226630), Luden's Echo (226655), Rod of Ages (226657),
 Jak'Sho (226665), Immortal Shieldbow (226673, lifeline-key), Navori
 Flickerblades (226675), The Collector (226676), Serpent's Fang
-(226695)]).
+(226695)]). Phase 4 batch 42 222xxx/224xxx Arena + 32xxxx ARAM mirrors
+(2026-05-04 — 35 entries: 10 active [Unending Despair (222502), Blackfire
+Torch (222503), Dusk and Dawn (222510) spellblade-key, Spectral Cutlass
+(224004) lethality=15, Riftmaker (224633) damage_amp_pct=0.08, Shadowflame
+(224645) magic_pen_flat=15, Stormsurge (224646) magic_pen_flat=15,
+Archangel's ARAM (323003), Manamune ARAM (323004), Abyssal Mask ARAM
+(328020) magic_amp_pct=0.12]; 25 defensive_only). Phase 4 batch 43
+223xxx Arena mirrors (2026-05-04 — 58 entries: 33 active with same
+schema as SR 3xxx counterparts [Archangel's (223003), Manamune (223004),
+Sorcerer's Shoes (223020), IE (223031), Yun Tal (223032), Mortal Reminder
+(223033), LDR (223036), Atma's (223039), Sterak's (223053) lifeline-key,
+Sunfire Aegis (223068) immolate-key, Black Cleaver (223071), Ravenous
+Hydra (223074), Trinity Force (223078) spellblade-key, Heartsteel
+(223084), Runaan's (223085), Statikk Shiv (223087), Rabadon's (223089),
+Wit's End (223091), RFC (223094), Lich Bane (223100) spellblade-key,
+Nashor's (223115), Guinsoo's (223124), Void Staff (223135), Cryptbloom
+(223137), Youmuu's (223142), Gunblade (223146), BotRK (223153),
+Hullbreaker (223181), Terminus (223302) dual-pen, ER (223508)
+spellblade-key, DMP (223742), Titanic Hydra (223748) dual-Cleave, Edge
+of Night (223814)]; 25 defensive_only [223026/046/047/050/065/072/073/
+075/102/107/109/110/116/118/119/139/143/152/156-lifeline/157/161/165/
+190/222/504]).
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
 ``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation`` /
@@ -250,4 +271,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.45.0"
+ENGINE_VERSION = "0.47.0"

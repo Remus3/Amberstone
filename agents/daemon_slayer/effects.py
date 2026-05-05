@@ -3239,6 +3239,718 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Serpent's Fang (Arena 226695): Shield Reaver anti-shield — utility, no DPS contribution",
     ),
 
+    # ── Phase 4 batch 42 (2026-05-04): 222xxx/224xxx Arena + 32xxxx ARAM mirrors ──
+    # 35 entries: 10 active + 25 defensive_only.
+    # All share the same passive coefficients as their SR counterparts
+    # (ID - 220000 for 22xxxx; ID - 320000 for 32xxxx).
+
+    # ── 222xxx Arena mirrors (base 2xxx) ──────────────────────────────────
+
+    "222502": ItemEffect(
+        item_id="222502",
+        name="Unending Despair",
+        periodics=(PeriodicProc(
+            name="Agony",
+            every_n_seconds=4.0,
+            bonus_damage=lambda c: 0.03 * c.caster_bonus_hp,
+            damage_type=MAGICAL,
+        ),),
+        note="Unending Despair (Arena 222502): same as SR 2502 — Agony 3% caster bonus HP magic every 4s",
+    ),
+    "222503": ItemEffect(
+        item_id="222503",
+        name="Blackfire Torch",
+        periodics=(PeriodicProc(
+            name="Baleful Blaze",
+            every_n_seconds=0.5,
+            bonus_damage=lambda c: 6.0 + 0.06 * c.ap,
+            damage_type=MAGICAL,
+        ),),
+        note="Blackfire Torch (Arena 222503): same as SR 2503 — Baleful Blaze 6+6% AP magic every 0.5s",
+    ),
+    "222504": ItemEffect(
+        item_id="222504",
+        name="Kaenic Rookern",
+        defensive_only=True,
+        note="Kaenic Rookern (Arena 222504): Nullmagic Mantle magic-damage shield; no DPS contribution",
+    ),
+    "222510": ItemEffect(
+        item_id="222510",
+        name="Dusk and Dawn",
+        periodics=(PeriodicProc(
+            name="Spellblade",
+            bonus_damage=lambda c: 0.75 * c.base_ad + 0.10 * c.ap,
+            damage_type=MAGICAL,
+            every_n_seconds=1.5,
+        ),),
+        unique_passive_key="spellblade",
+        note="Dusk and Dawn (Arena 222510): same as SR 2510 — Spellblade 75% base AD + 10% AP magical every 1.5s",
+    ),
+    "222512": ItemEffect(
+        item_id="222512",
+        name="Fiendhunter Bolts",
+        defensive_only=True,
+        note="Fiendhunter Bolts (Arena 222512): anti-shield utility; no DPS contribution",
+    ),
+    "222517": ItemEffect(
+        item_id="222517",
+        name="Endless Hunger",
+        defensive_only=True,
+        note="Endless Hunger (Arena 222517): Famine haste + Feast omnivamp; no DPS contribution",
+    ),
+    "222522": ItemEffect(
+        item_id="222522",
+        name="Actualizer",
+        defensive_only=True,
+        note="Actualizer (Arena 222522): utility-focused stat stick; no DPS proc",
+    ),
+    "222523": ItemEffect(
+        item_id="222523",
+        name="Hexoptics C44",
+        defensive_only=True,
+        note="Hexoptics C44 (Arena 222523): vision/utility passive; no DPS contribution",
+    ),
+    "222525": ItemEffect(
+        item_id="222525",
+        name="Protoplasm Harness",
+        defensive_only=True,
+        unique_passive_key="lifeline",
+        note="Protoplasm Harness (Arena 222525): Lifeline shield; joins lifeline unique-passive family",
+    ),
+
+    # ── 224xxx Arena mirrors (base 4xxx) ──────────────────────────────────
+
+    "224004": ItemEffect(
+        item_id="224004",
+        name="Spectral Cutlass",
+        lethality=15.0,
+        note="Spectral Cutlass (Arena 224004): same as SR 4004 — 15 lethality (level-scaled flat pen)",
+    ),
+    "224005": ItemEffect(
+        item_id="224005",
+        name="Imperial Mandate",
+        defensive_only=True,
+        note="Imperial Mandate (Arena 224005): Coordinated Fire mark — support proc, no self DPS",
+    ),
+    "224401": ItemEffect(
+        item_id="224401",
+        name="Force of Nature",
+        defensive_only=True,
+        note="Force of Nature (Arena 224401): Absorb MR-stack ramp — tank defensive; no DPS proc",
+    ),
+    "224628": ItemEffect(
+        item_id="224628",
+        name="Horizon Focus",
+        defensive_only=True,
+        note="Horizon Focus (Arena 224628): Hypershot slowed/immobilized amp — ability-trigger; deferred",
+    ),
+    "224629": ItemEffect(
+        item_id="224629",
+        name="Cosmic Drive",
+        defensive_only=True,
+        note="Cosmic Drive (Arena 224629): Spelldance movement speed amp — utility, no DPS proc",
+    ),
+    "224633": ItemEffect(
+        item_id="224633",
+        name="Riftmaker",
+        damage_amp_pct=0.08,
+        ap_per_bonus_hp_pct=0.02,
+        note="Riftmaker (Arena 224633): same as SR 4633 — Void Corruption 8% damage amp + 2% bonus HP → AP",
+    ),
+    "224645": ItemEffect(
+        item_id="224645",
+        name="Shadowflame",
+        magic_pen_flat=15.0,
+        note="Shadowflame (Arena 224645): same as SR 4645 — Cinderbloom 15 flat magic pen",
+    ),
+    "224646": ItemEffect(
+        item_id="224646",
+        name="Stormsurge",
+        magic_pen_flat=15.0,
+        note="Stormsurge (Arena 224646): same as SR 4646 — Static 15 flat magic pen (Stormraider proc ability-bound)",
+    ),
+
+    # ── 32xxxx ARAM mirrors ────────────────────────────────────────────────
+
+    "323003": ItemEffect(
+        item_id="323003",
+        name="Archangel's Staff",
+        bonus_ap_pct_bonus_mp=0.01,
+        note="Archangel's Staff (ARAM 323003): same as SR 3003 — Awe +1% bonus mana as AP",
+    ),
+    "323004": ItemEffect(
+        item_id="323004",
+        name="Manamune",
+        bonus_ad_pct_max_mp=0.02,
+        note="Manamune (ARAM 323004): same as SR 3004 — Awe +2% max mana as bonus AD",
+    ),
+    "323050": ItemEffect(
+        item_id="323050",
+        name="Zeke's Convergence",
+        defensive_only=True,
+        note="Zeke's Convergence (ARAM 323050): Conduit ally aura — support, no self DPS",
+    ),
+    "323075": ItemEffect(
+        item_id="323075",
+        name="Thornmail",
+        defensive_only=True,
+        note="Thornmail (ARAM 323075): Thorns reflected damage — counter-damage on being hit; no self proc",
+    ),
+    "323107": ItemEffect(
+        item_id="323107",
+        name="Redemption",
+        defensive_only=True,
+        note="Redemption (ARAM 323107): Sanctify active AoE heal — support, no self DPS",
+    ),
+    "323109": ItemEffect(
+        item_id="323109",
+        name="Knight's Vow",
+        defensive_only=True,
+        note="Knight's Vow (ARAM 323109): Pledge ally bond — support, no self DPS",
+    ),
+    "323110": ItemEffect(
+        item_id="323110",
+        name="Frozen Heart",
+        defensive_only=True,
+        note="Frozen Heart (ARAM 323110): Winter's Caress AS-slow aura — defensive, no DPS proc",
+    ),
+    "323119": ItemEffect(
+        item_id="323119",
+        name="Winter's Approach",
+        defensive_only=True,
+        note="Winter's Approach (ARAM 323119): stat-stack ramp to Fimbulwinter — no DPS proc",
+    ),
+    "323190": ItemEffect(
+        item_id="323190",
+        name="Locket of the Iron Solari",
+        defensive_only=True,
+        note="Locket (ARAM 323190): Consecrate/Devotion shield aura — support, no self DPS",
+    ),
+    "323222": ItemEffect(
+        item_id="323222",
+        name="Mikael's Blessing",
+        defensive_only=True,
+        note="Mikael's Blessing (ARAM 323222): Purify active CC cleanse — support, no self DPS",
+    ),
+    "323504": ItemEffect(
+        item_id="323504",
+        name="Ardent Censer",
+        defensive_only=True,
+        note="Ardent Censer (ARAM 323504): Sanctify heal/shield buff — support aura, no self DPS",
+    ),
+    "324005": ItemEffect(
+        item_id="324005",
+        name="Imperial Mandate",
+        defensive_only=True,
+        note="Imperial Mandate (ARAM 324005): Coordinated Fire — support proc, no self DPS",
+    ),
+    "326616": ItemEffect(
+        item_id="326616",
+        name="Staff of Flowing Water",
+        defensive_only=True,
+        note="Staff of Flowing Water (32xxxx 326616): Rapids aura — support enchanter, no self DPS",
+    ),
+    "326617": ItemEffect(
+        item_id="326617",
+        name="Moonstone Renewer",
+        defensive_only=True,
+        note="Moonstone Renewer (32xxxx 326617): Starlit Grace heal aura — support, no self DPS",
+    ),
+    "326620": ItemEffect(
+        item_id="326620",
+        name="Echoes of Helia",
+        defensive_only=True,
+        note="Echoes of Helia (32xxxx 326620): Soul Siphon soul charge — support, no self DPS",
+    ),
+    "326621": ItemEffect(
+        item_id="326621",
+        name="Dawncore",
+        defensive_only=True,
+        note="Dawncore (32xxxx 326621): empowers other enchanter items — support, no self DPS",
+    ),
+    "326657": ItemEffect(
+        item_id="326657",
+        name="Rod of Ages",
+        defensive_only=True,
+        note="Rod of Ages (32xxxx 326657): stat-stack ramp — no DPS proc",
+    ),
+    "328020": ItemEffect(
+        item_id="328020",
+        name="Abyssal Mask",
+        magic_amp_pct=0.12,
+        note="Abyssal Mask (ARAM 328020): same as SR 8020 — Unmake 12% more magic damage to nearby enemies",
+    ),
+
+    # ── Phase 4 batch 43 (2026-05-04): 223xxx Arena mirrors (base 3xxx) ──
+    # 58 entries: 33 active + 25 defensive_only.
+    # Arena pool 223xxx items (ID - 220000 = SR counterpart 3xxx).
+
+    # ── 33 active 223xxx promotions ───────────────────────────────────────
+
+    "223003": ItemEffect(
+        item_id="223003",
+        name="Archangel's Staff",
+        bonus_ap_pct_bonus_mp=0.01,
+        note="Archangel's Staff (Arena 223003): same as SR 3003 — Awe +1% bonus mana as AP",
+    ),
+    "223004": ItemEffect(
+        item_id="223004",
+        name="Manamune",
+        bonus_ad_pct_max_mp=0.02,
+        note="Manamune (Arena 223004): same as SR 3004 — Awe +2% max mana as bonus AD",
+    ),
+    "223020": ItemEffect(
+        item_id="223020",
+        name="Sorcerer's Shoes",
+        magic_pen_flat=12.0,
+        note="Sorcerer's Shoes (Arena 223020): same as SR 3020 — 12 flat magic pen",
+    ),
+    "223031": ItemEffect(
+        item_id="223031",
+        name="Infinity Edge",
+        crit_damage_bonus=0.30,
+        note="Infinity Edge (Arena 223031): same as SR 3031 — Perfection +30% crit damage bonus",
+    ),
+    "223032": ItemEffect(
+        item_id="223032",
+        name="Yun Tal Wildarrows",
+        crit_chance_bonus_flat=0.25,
+        note="Yun Tal Wildarrows (Arena 223032): same as SR 3032 — Wildarrows 25% crit at full stacks",
+    ),
+    "223033": ItemEffect(
+        item_id="223033",
+        name="Mortal Reminder",
+        armor_pen_pct=0.30,
+        note="Mortal Reminder (Arena 223033): same as SR 3033 — Last Whisper 30% armor pen",
+    ),
+    "223036": ItemEffect(
+        item_id="223036",
+        name="Lord Dominik's Regards",
+        armor_pen_pct=0.35,
+        target_bonus_hp_amp_max_pct=0.15,
+        target_bonus_hp_amp_cap=1500.0,
+        note="Lord Dominik's (Arena 223036): same as SR 3036 — 35% armor pen + Giant Slayer up to 15% at 1500 bonus HP",
+    ),
+    "223039": ItemEffect(
+        item_id="223039",
+        name="Atma's Reckoning",
+        crit_chance_bonus_max_pct=0.30,
+        crit_chance_bonus_per_bonus_hp_cap=3000.0,
+        note="Atma's Reckoning (Arena 223039): same as SR 3039 — Big Hands 0–30% crit over 0–3000 caster bonus HP",
+    ),
+    "223053": ItemEffect(
+        item_id="223053",
+        name="Sterak's Gage",
+        bonus_ad_pct_base_ad=0.45,
+        unique_passive_key="lifeline",
+        note="Sterak's Gage (Arena 223053): same as SR 3053 — Lifeline + Primal Strength +45% base AD as bonus AD",
+    ),
+    "223068": ItemEffect(
+        item_id="223068",
+        name="Sunfire Aegis",
+        periodics=(PeriodicProc(
+            name="Immolate",
+            bonus_damage=lambda c: c.targets_in_rotation
+                * (12.0 + 0.015 * c.caster_bonus_hp),
+            damage_type=MAGICAL,
+            every_n_seconds=1.0,
+        ),),
+        unique_passive_key="immolate",
+        note="Sunfire Aegis (Arena 223068): same as SR 3068 — Immolate 12+1.5% bonus HP magic/s, immolate-key",
+    ),
+    "223071": ItemEffect(
+        item_id="223071",
+        name="Black Cleaver",
+        armor_reduction_pct=0.30,
+        note="Black Cleaver (Arena 223071): same as SR 3071 — Carve 30% armor reduction (6×5%, pinned full stacks)",
+    ),
+    "223074": ItemEffect(
+        item_id="223074",
+        name="Ravenous Hydra",
+        periodics=(PeriodicProc(
+            name="Cleave",
+            bonus_damage=lambda c: max(0.0, c.targets_in_rotation - 1.0)
+                * 0.35 * (c.base_ad + c.bonus_ad),
+            damage_type=PHYSICAL,
+            every_n_attacks=1,
+        ),),
+        note="Ravenous Hydra (Arena 223074): same as SR 3074 — Cleave 35% AD to other enemies",
+    ),
+    "223078": ItemEffect(
+        item_id="223078",
+        name="Trinity Force",
+        periodics=(PeriodicProc(
+            name="Spellblade",
+            bonus_damage=lambda c: 2.0 * c.base_ad,
+            damage_type=PHYSICAL,
+            every_n_seconds=3.0,
+        ),),
+        unique_passive_key="spellblade",
+        note="Trinity Force (Arena 223078): same as SR 3078 — Spellblade 200% base AD every ~3s, spellblade-key",
+    ),
+    "223084": ItemEffect(
+        item_id="223084",
+        name="Heartsteel",
+        periodics=(PeriodicProc(
+            name="Colossal Consumption",
+            bonus_damage=lambda c: 70.0 + 0.06 * c.caster_max_hp,
+            damage_type=PHYSICAL,
+            every_n_seconds=3.5,
+        ),),
+        note="Heartsteel (Arena 223084): same as SR 3084 — Colossal Consumption 70+6% caster max HP every 3.5s",
+    ),
+    "223085": ItemEffect(
+        item_id="223085",
+        name="Runaan's Hurricane",
+        periodics=(PeriodicProc(
+            name="Wind's Fury",
+            bonus_damage=lambda c: 0.60 * c.bonus_ad,
+            damage_type=PHYSICAL,
+            every_n_attacks=1,
+        ),),
+        note="Runaan's Hurricane (Arena 223085): same as SR 3085 — Wind's Fury 60% bonus AD on-hit (2 bolts)",
+    ),
+    "223087": ItemEffect(
+        item_id="223087",
+        name="Statikk Shiv",
+        periodics=(PeriodicProc(
+            name="Electroshock",
+            bonus_damage=110.0,
+            damage_type=MAGICAL,
+            every_n_seconds=3.0,
+        ),),
+        note="Statikk Shiv (Arena 223087): same as SR 3087 — Electroshock 110 magic every ~3s Energized",
+    ),
+    "223089": ItemEffect(
+        item_id="223089",
+        name="Rabadon's Deathcap",
+        ap_amp_pct=0.30,
+        note="Rabadon's Deathcap (Arena 223089): same as SR 3089 — Gorilla's Rage 30% AP amplifier",
+    ),
+    "223091": ItemEffect(
+        item_id="223091",
+        name="Wit's End",
+        periodics=(PeriodicProc(
+            name="Fray",
+            bonus_damage=lambda c: 15.0 + (c.level - 1) * (65.0 / 17.0),
+            damage_type=MAGICAL,
+            every_n_attacks=1,
+        ),),
+        note="Wit's End (Arena 223091): same as SR 3091 — Fray on-hit magic 15→80 by level",
+    ),
+    "223094": ItemEffect(
+        item_id="223094",
+        name="Rapid Firecannon",
+        periodics=(PeriodicProc(
+            name="Sharpshooter",
+            bonus_damage=120.0,
+            damage_type=MAGICAL,
+            every_n_seconds=3.0,
+        ),),
+        note="Rapid Firecannon (Arena 223094): same as SR 3094 — Sharpshooter Energized 120 magic every ~3s",
+    ),
+    "223100": ItemEffect(
+        item_id="223100",
+        name="Lich Bane",
+        periodics=(PeriodicProc(
+            name="Spellblade",
+            bonus_damage=lambda c: 0.75 * c.base_ad + 0.50 * c.ap,
+            damage_type=MAGICAL,
+            every_n_seconds=3.0,
+        ),),
+        unique_passive_key="spellblade",
+        note="Lich Bane (Arena 223100): same as SR 3100 — Spellblade 75% base AD + 50% AP magical every ~3s, spellblade-key",
+    ),
+    "223115": ItemEffect(
+        item_id="223115",
+        name="Nashor's Tooth",
+        periodics=(PeriodicProc(
+            name="Icathian Bite",
+            bonus_damage=lambda c: 15.0 + 0.20 * c.ap,
+            damage_type=MAGICAL,
+            every_n_attacks=1,
+        ),),
+        note="Nashor's Tooth (Arena 223115): same as SR 3115 — Icathian Bite 15+20% AP magic on-hit",
+    ),
+    "223124": ItemEffect(
+        item_id="223124",
+        name="Guinsoo's Rageblade",
+        periodics=(PeriodicProc(
+            name="Phantom Hit",
+            bonus_damage=lambda c: 0.50 * c.bonus_ad,
+            damage_type=PHYSICAL,
+            every_n_attacks=3,
+        ),),
+        note="Guinsoo's Rageblade (Arena 223124): same as SR 3124 — Phantom Hit 50% bonus AD every 3rd attack",
+    ),
+    "223135": ItemEffect(
+        item_id="223135",
+        name="Void Staff",
+        magic_pen_pct=0.40,
+        note="Void Staff (Arena 223135): same as SR 3135 — Void Leech 40% magic pen",
+    ),
+    "223137": ItemEffect(
+        item_id="223137",
+        name="Cryptbloom",
+        magic_pen_pct=0.30,
+        note="Cryptbloom (Arena 223137): same as SR 3137 — Draining Venom 30% magic pen",
+    ),
+    "223142": ItemEffect(
+        item_id="223142",
+        name="Youmuu's Ghostblade",
+        lethality=18.0,
+        note="Youmuu's Ghostblade (Arena 223142): same as SR 3142 — 18 lethality",
+    ),
+    "223146": ItemEffect(
+        item_id="223146",
+        name="Hextech Gunblade",
+        periodics=(PeriodicProc(
+            name="Lightning Bolt",
+            bonus_damage=lambda c: 175.0 + (253.0 - 175.0) / 17.0 * (c.level - 1) + 0.30 * c.ap,
+            damage_type=MAGICAL,
+            every_n_seconds=40.0,
+        ),),
+        note="Hextech Gunblade (Arena 223146): same as SR 3146 — Lightning Bolt 175→253+30% AP magic, 40s CD",
+    ),
+    "223153": ItemEffect(
+        item_id="223153",
+        name="Blade of The Ruined King",
+        periodics=(PeriodicProc(
+            name="Mist's Edge",
+            bonus_damage=lambda c: 0.08 * c.target_max_hp,
+            damage_type=PHYSICAL,
+            every_n_attacks=1,
+        ),),
+        note="Blade of the Ruined King (Arena 223153): same as SR 3153 — Mist's Edge 8% target max HP on-hit",
+    ),
+    "223181": ItemEffect(
+        item_id="223181",
+        name="Hullbreaker",
+        periodics=(PeriodicProc(
+            name="Skipper",
+            bonus_damage=lambda c: 1.20 * c.base_ad + 0.05 * c.caster_max_hp,
+            damage_type=PHYSICAL,
+            every_n_attacks=5,
+        ),),
+        note="Hullbreaker (Arena 223181): same as SR 3181 — Skipper every-5th-attack 120% base AD + 5% caster max HP",
+    ),
+    "223302": ItemEffect(
+        item_id="223302",
+        name="Terminus",
+        periodics=(PeriodicProc(
+            name="Shadow",
+            bonus_damage=30.0,
+            damage_type=MAGICAL,
+            every_n_attacks=1,
+        ),),
+        armor_pen_pct=0.10,
+        magic_pen_pct=0.10,
+        note="Terminus (Arena 223302): same as SR 3302 — Shadow 30 magic on-hit + Juxtaposition Dark 10% armor+magic pen",
+    ),
+    "223508": ItemEffect(
+        item_id="223508",
+        name="Essence Reaver",
+        periodics=(PeriodicProc(
+            name="Spellblade",
+            bonus_damage=lambda c: 1.25 * c.base_ad + 50.0 * c.crit_chance,
+            damage_type=PHYSICAL,
+            every_n_seconds=3.0,
+        ),),
+        unique_passive_key="spellblade",
+        note="Essence Reaver (Arena 223508): same as SR 3508 — Spellblade 125% base AD + 50/crit% every ~3s, spellblade-key",
+    ),
+    "223742": ItemEffect(
+        item_id="223742",
+        name="Dead Man's Plate",
+        periodics=(PeriodicProc(
+            name="Shipwrecker",
+            bonus_damage=109.0,
+            damage_type=PHYSICAL,
+            every_n_attacks=4,
+        ),),
+        note="Dead Man's Plate (Arena 223742): same as SR 3742 — Shipwrecker ~109 physical every ~4 attacks at full Momentum",
+    ),
+    "223748": ItemEffect(
+        item_id="223748",
+        name="Titanic Hydra",
+        periodics=(
+            PeriodicProc(
+                name="Cleave (primary)",
+                bonus_damage=lambda c: 5.0 + 0.015 * c.caster_bonus_hp,
+                damage_type=PHYSICAL,
+                every_n_attacks=1,
+            ),
+            PeriodicProc(
+                name="Cleave (to nearby)",
+                bonus_damage=lambda c: max(0.0, c.targets_in_rotation - 1.0)
+                    * 0.40 * (c.base_ad + c.bonus_ad),
+                damage_type=PHYSICAL,
+                every_n_attacks=1,
+            ),
+        ),
+        note="Titanic Hydra (Arena 223748): same as SR 3748 — Cleave 5+1.5% bonus HP primary + 40% AD to nearby",
+    ),
+    "223814": ItemEffect(
+        item_id="223814",
+        name="Edge of Night",
+        lethality=15.0,
+        note="Edge of Night (Arena 223814): same as SR 3814 — 15 lethality",
+    ),
+
+    # ── 25 defensive_only 223xxx mirrors ─────────────────────────────────
+
+    "223026": ItemEffect(
+        item_id="223026",
+        name="Guardian Angel",
+        defensive_only=True,
+        note="Guardian Angel (Arena 223026): Rebirth passive revive — no DPS contribution",
+    ),
+    "223046": ItemEffect(
+        item_id="223046",
+        name="Phantom Dancer",
+        defensive_only=True,
+        note="Phantom Dancer (Arena 223046): Spectral Waltz dodge + lifeline-like shield; no DPS proc",
+    ),
+    "223047": ItemEffect(
+        item_id="223047",
+        name="Plated Steelcaps",
+        defensive_only=True,
+        note="Plated Steelcaps (Arena 223047): Plating 10% incoming attack damage reduction; no DPS proc",
+    ),
+    "223050": ItemEffect(
+        item_id="223050",
+        name="Zeke's Convergence",
+        defensive_only=True,
+        note="Zeke's Convergence (Arena 223050): Conduit ally aura — support, no self DPS",
+    ),
+    "223065": ItemEffect(
+        item_id="223065",
+        name="Spirit Visage",
+        defensive_only=True,
+        note="Spirit Visage (Arena 223065): Boundless Vitality healing amp — defensive, no DPS proc",
+    ),
+    "223072": ItemEffect(
+        item_id="223072",
+        name="Bloodthirster",
+        defensive_only=True,
+        note="Bloodthirster (Arena 223072): Sanguine Shield overheal bubble — sustain, no DPS proc",
+    ),
+    "223073": ItemEffect(
+        item_id="223073",
+        name="Experimental Hexplate",
+        defensive_only=True,
+        note="Experimental Hexplate (Arena 223073): Overdrive AS/MS burst on ult — conditional; no DPS proc",
+    ),
+    "223075": ItemEffect(
+        item_id="223075",
+        name="Thornmail",
+        defensive_only=True,
+        note="Thornmail (Arena 223075): Thorns reflected damage on being hit — no self attack DPS proc",
+    ),
+    "223102": ItemEffect(
+        item_id="223102",
+        name="Banshee's Veil",
+        defensive_only=True,
+        note="Banshee's Veil (Arena 223102): Annul spell shield — defensive utility, no DPS proc",
+    ),
+    "223107": ItemEffect(
+        item_id="223107",
+        name="Redemption",
+        defensive_only=True,
+        note="Redemption (Arena 223107): Sanctify active AoE heal — support, no self DPS",
+    ),
+    "223109": ItemEffect(
+        item_id="223109",
+        name="Knight's Vow",
+        defensive_only=True,
+        note="Knight's Vow (Arena 223109): Pledge ally bond — support, no self DPS",
+    ),
+    "223110": ItemEffect(
+        item_id="223110",
+        name="Frozen Heart",
+        defensive_only=True,
+        note="Frozen Heart (Arena 223110): Winter's Caress AS-slow aura — defensive, no DPS proc",
+    ),
+    "223116": ItemEffect(
+        item_id="223116",
+        name="Rylai's Crystal Scepter",
+        defensive_only=True,
+        note="Rylai's Crystal Scepter (Arena 223116): Rimefrost ability slow — utility, no DPS proc",
+    ),
+    "223118": ItemEffect(
+        item_id="223118",
+        name="Malignance",
+        defensive_only=True,
+        note="Malignance (Arena 223118): Haunt ult-haste + ult empowerment — ability-trigger, no DPS proc",
+    ),
+    "223119": ItemEffect(
+        item_id="223119",
+        name="Winter's Approach",
+        defensive_only=True,
+        note="Winter's Approach (Arena 223119): stat-stack ramp to Fimbulwinter — no DPS proc",
+    ),
+    "223139": ItemEffect(
+        item_id="223139",
+        name="Mercurial Scimitar",
+        defensive_only=True,
+        note="Mercurial Scimitar (Arena 223139): Quicksilver CC cleanse active — utility, no DPS proc",
+    ),
+    "223143": ItemEffect(
+        item_id="223143",
+        name="Randuin's Omen",
+        defensive_only=True,
+        note="Randuin's Omen (Arena 223143): Humility crit-damage reduction + active slow — defensive, no DPS",
+    ),
+    "223152": ItemEffect(
+        item_id="223152",
+        name="Hextech Rocketbelt",
+        defensive_only=True,
+        note="Hextech Rocketbelt (Arena 223152): Supersonic active dash — ability-trigger, no DPS proc",
+    ),
+    "223156": ItemEffect(
+        item_id="223156",
+        name="Maw of Malmortius",
+        defensive_only=True,
+        unique_passive_key="lifeline",
+        note="Maw of Malmortius (Arena 223156): Lifeline magic shield; joins lifeline unique-passive family",
+    ),
+    "223157": ItemEffect(
+        item_id="223157",
+        name="Zhonya's Hourglass",
+        defensive_only=True,
+        note="Zhonya's Hourglass (Arena 223157): Stasis active invulnerability — defensive utility, no DPS",
+    ),
+    "223161": ItemEffect(
+        item_id="223161",
+        name="Spear of Shojin",
+        defensive_only=True,
+        note="Spear of Shojin (Arena 223161): Dragonforce ability-CDR-on-hit — ability-bound, no DPS proc",
+    ),
+    "223165": ItemEffect(
+        item_id="223165",
+        name="Morellonomicon",
+        defensive_only=True,
+        note="Morellonomicon (Arena 223165): Affliction Grievous Wounds on ability — no DPS proc",
+    ),
+    "223190": ItemEffect(
+        item_id="223190",
+        name="Locket of the Iron Solari",
+        defensive_only=True,
+        note="Locket of the Iron Solari (Arena 223190): Devotion shield aura — support, no self DPS",
+    ),
+    "223222": ItemEffect(
+        item_id="223222",
+        name="Mikael's Blessing",
+        defensive_only=True,
+        note="Mikael's Blessing (Arena 223222): Purify active CC cleanse — support, no self DPS",
+    ),
+    "223504": ItemEffect(
+        item_id="223504",
+        name="Ardent Censer",
+        defensive_only=True,
+        note="Ardent Censer (Arena 223504): Sanctify heal/shield buff — support aura, no self DPS",
+    ),
+
 }
 
 
