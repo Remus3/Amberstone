@@ -6,6 +6,26 @@
 
 ---
 
+# s106 wrap — 2026-05-05 (DaemonSlayer flash fix + preflight expansion)
+
+## What shipped
+- **`ops/RC-DaemonSlayer.xml`** — `python.exe` → `pythonw.exe`; task reinstalled via `install_daemon_slayer_task.ps1`. No more console flash on boot/restart. DS still live at `:8893` engine=0.60.0 patch=16.9.1.
+- **`start_claude.ps1`** — added RC-DaemonSlayer + RC-Phase3-Supervisor + RC-BridgeWatcher preflight checks; added `:8893` + `:8890` HTTP probes; fixed final `claude` launch to `--name "Legion"`. commit `0d1b545`.
+- **`/loop 1m /process-bridge-tasks`** — shortcut loop stopped (bridge daemon on Game-PC handles that side; Legion Claude processes Legion-targeted tasks via session loop).
+
+## Do NOT redo
+- RC-DaemonSlayer XML is already pythonw.exe — don't revert.
+- The flashing terminal is fixed; no further investigation needed.
+
+## Open work (priority order)
+1. **RC-VisionServer failing** (last_result=267014) — task starts SYSTEM context at boot; `267014` = process failed to start. Check if pythonw path is correct in the task, and whether it can find moon_vision_server.py.
+2. **Peer daemon install** — confirm `~/peer_bridge_daemon_health.json` exists on Peer.
+3. **Game-PC bridge loop** — liveness probe sent s106; if loop is dead, start `/loop /process-bridge-tasks` on Game-PC Claude (or RC-BridgeDaemon handles it).
+4. **DS calibration**: 50+ games needed; auto-collects into `data/ds_calibration.jsonl`
+5. **Vision regions calibration**: tune `data/vision_regions.json` bboxes
+
+---
+
 # s105 wrap — 2026-05-05 (zero-cost bridge daemons for Game-PC + Peer)
 
 ## What shipped
