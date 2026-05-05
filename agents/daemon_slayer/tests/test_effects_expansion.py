@@ -2270,7 +2270,7 @@ class RiftmakerHpToApTests(unittest.TestCase):
         # ap_per_bonus_hp_pct. Batch 32 added Demonic Embrace; batch 42 added
         # Arena mirror 224633 — allow-list updated. Surfacing any new additions
         # as a schema-add signal.
-        ALLOWLIST = {"4633", "4637", "224633"}
+        ALLOWLIST = {"4633", "4637", "224633", "224637"}
         for iid, e in ITEM_EFFECTS.items():
             if iid in ALLOWLIST:
                 continue
@@ -5979,6 +5979,214 @@ class Batch45DefensiveItemsAndBootsTests(unittest.TestCase):
     def test_batch45_total_count(self) -> None:
         # 346 after batch 44 + 21 new = 367
         self.assertGreaterEqual(len(ITEM_EFFECTS), 367)
+
+
+class Batch46Arena226x228x224xAndSRTests(unittest.TestCase):
+    """Batch 46: 226xxx/228xxx/224xxx Arena mirrors + remaining SR 4xxx/6xxx."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    # ── active proc items ─────────────────────────────────────────────────
+
+    def test_226632_divine_sunderer_spellblade_key(self) -> None:
+        e = ITEM_EFFECTS["226632"]
+        self.assertEqual(e.unique_passive_key, "spellblade")
+        self.assertEqual(len(e.periodics), 1)
+
+    def test_226632_proc_formula_matches_sr(self) -> None:
+        ctx = CallContext(base_ad=80.0, bonus_ad=0.0, level=12, target_max_hp=2000.0)
+        arena_dmg = ITEM_EFFECTS["226632"].periodics[0].resolve_damage(ctx)
+        sr_dmg = ITEM_EFFECTS["6632"].periodics[0].resolve_damage(ctx)
+        self.assertAlmostEqual(arena_dmg, sr_dmg, places=2)
+
+    def test_226660_bamis_immolate_key(self) -> None:
+        e = ITEM_EFFECTS["226660"]
+        self.assertEqual(e.unique_passive_key, "immolate")
+        self.assertEqual(len(e.periodics), 1)
+
+    def test_226660_proc_formula_matches_sr_6660(self) -> None:
+        ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=10, caster_bonus_hp=1500.0)
+        arena_dmg = ITEM_EFFECTS["226660"].periodics[0].resolve_damage(ctx)
+        sr_dmg = ITEM_EFFECTS["6660"].periodics[0].resolve_damage(ctx)
+        self.assertAlmostEqual(arena_dmg, sr_dmg, places=2)
+
+    def test_226691_duskblade_lethality(self) -> None:
+        e = ITEM_EFFECTS["226691"]
+        self.assertAlmostEqual(e.lethality, 18.0, places=2)
+        self.assertFalse(e.defensive_only)
+
+    def test_228020_abyssal_mask_magic_amp(self) -> None:
+        e = ITEM_EFFECTS["228020"]
+        self.assertAlmostEqual(e.magic_amp_pct, 0.12, places=4)
+        self.assertFalse(e.defensive_only)
+
+    def test_224637_demonic_embrace_fields(self) -> None:
+        e = ITEM_EFFECTS["224637"]
+        self.assertAlmostEqual(e.ap_per_bonus_hp_pct, 0.02, places=4)
+        self.assertEqual(len(e.periodics), 1)
+        self.assertEqual(e.periodics[0].name, "Azakana's Gaze")
+
+    def test_224637_proc_formula_matches_sr(self) -> None:
+        ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=12, target_max_hp=3000.0)
+        arena_dmg = ITEM_EFFECTS["224637"].periodics[0].resolve_damage(ctx)
+        sr_dmg = ITEM_EFFECTS["4637"].periodics[0].resolve_damage(ctx)
+        self.assertAlmostEqual(arena_dmg, sr_dmg, places=2)
+
+    def test_224637_dps_lift(self) -> None:
+        base = compute_dps(self.snap, "Vladimir", level=11, item_ids=[], target_max_hp=2500.0)
+        with_de = compute_dps(self.snap, "Vladimir", level=11, item_ids=["224637"], target_max_hp=2500.0)
+        self.assertGreater(with_de.weighted_dps, base.weighted_dps)
+
+    def test_4003_lifeline_lethality(self) -> None:
+        e = ITEM_EFFECTS["4003"]
+        self.assertAlmostEqual(e.lethality, 5.0, places=2)
+        self.assertFalse(e.defensive_only)
+
+    def test_4630_blighting_jewel_magic_pen(self) -> None:
+        e = ITEM_EFFECTS["4630"]
+        self.assertAlmostEqual(e.magic_pen_pct, 0.13, places=4)
+        self.assertFalse(e.defensive_only)
+
+    def test_stats_only_sr_items(self) -> None:
+        for iid in ["6670", "6690"]:
+            with self.subTest(iid=iid):
+                e = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(e, f"{iid} missing")
+                self.assertFalse(e.defensive_only)
+                self.assertEqual(len(e.periodics), 0)
+
+    # ── defensive_only items ──────────────────────────────────────────────
+
+    def test_batch46_defensive_entries(self) -> None:
+        expected = [
+            "226656", "226667", "226671", "226035", "224636",
+            "224644", "228009", "4635", "4403", "4638",
+            "4641", "4642", "4643",
+        ]
+        for iid in expected:
+            with self.subTest(iid=iid):
+                e = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(e, f"{iid} missing")
+                self.assertTrue(e.defensive_only)
+
+    # ── count assertions ──────────────────────────────────────────────────
+
+    def test_batch46_total_count(self) -> None:
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 389)
+
+
+class Batch47Arena22xAnd32xRemainingTests(unittest.TestCase):
+    """Batch 47: Arena 22xxxx/32xxxx pool + 221xxx components."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    # ── active items ──────────────────────────────────────────────────────
+
+    def test_223001_evenshroud_damage_amp(self) -> None:
+        e = ITEM_EFFECTS["223001"]
+        self.assertAlmostEqual(e.damage_amp_pct, 0.06, places=4)
+        self.assertFalse(e.defensive_only)
+
+    def test_223040_serapis_fields(self) -> None:
+        e = ITEM_EFFECTS["223040"]
+        self.assertAlmostEqual(e.bonus_ap_pct_bonus_mp, 0.02, places=4)
+        self.assertEqual(e.unique_passive_key, "lifeline")
+
+    def test_223040_matches_sr_3040(self) -> None:
+        e_arena = ITEM_EFFECTS["223040"]
+        e_sr = ITEM_EFFECTS["3040"]
+        self.assertAlmostEqual(e_arena.bonus_ap_pct_bonus_mp, e_sr.bonus_ap_pct_bonus_mp, places=4)
+        self.assertEqual(e_arena.unique_passive_key, e_sr.unique_passive_key)
+
+    def test_223042_muramana_fields(self) -> None:
+        e = ITEM_EFFECTS["223042"]
+        self.assertAlmostEqual(e.bonus_ad_pct_max_mp, 0.02, places=4)
+        self.assertEqual(len(e.periodics), 1)
+        self.assertEqual(e.periodics[0].name, "Shock")
+
+    def test_223042_shock_formula_matches_sr(self) -> None:
+        ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=10, caster_max_mp=2000.0)
+        arena_dmg = ITEM_EFFECTS["223042"].periodics[0].resolve_damage(ctx)
+        sr_dmg = ITEM_EFFECTS["3042"].periodics[0].resolve_damage(ctx)
+        self.assertAlmostEqual(arena_dmg, sr_dmg, places=2)
+
+    def test_223057_sheen_spellblade_key(self) -> None:
+        e = ITEM_EFFECTS["223057"]
+        self.assertEqual(e.unique_passive_key, "spellblade")
+        ctx = CallContext(base_ad=80.0, bonus_ad=0.0, level=10)
+        dmg = e.periodics[0].resolve_damage(ctx)
+        self.assertAlmostEqual(dmg, 80.0, places=2)
+
+    def test_223095_stormrazor_proc_exists(self) -> None:
+        e = ITEM_EFFECTS["223095"]
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(len(e.periodics), 1)
+        self.assertEqual(e.periodics[0].name, "Stormraider")
+
+    def test_223185_guardians_dirk_lethality(self) -> None:
+        e = ITEM_EFFECTS["223185"]
+        self.assertAlmostEqual(e.lethality, 11.0, places=2)
+        self.assertFalse(e.defensive_only)
+
+    def test_323040_serapis_matches_arena_223040(self) -> None:
+        e1 = ITEM_EFFECTS["323040"]
+        e2 = ITEM_EFFECTS["223040"]
+        self.assertAlmostEqual(e1.bonus_ap_pct_bonus_mp, e2.bonus_ap_pct_bonus_mp, places=4)
+        self.assertEqual(e1.unique_passive_key, e2.unique_passive_key)
+
+    def test_323042_muramana_shock_matches_sr(self) -> None:
+        ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=10, caster_max_mp=1500.0)
+        aram_dmg = ITEM_EFFECTS["323042"].periodics[0].resolve_damage(ctx)
+        sr_dmg = ITEM_EFFECTS["3042"].periodics[0].resolve_damage(ctx)
+        self.assertAlmostEqual(aram_dmg, sr_dmg, places=2)
+
+    # ── 221xxx Arena components not defensive_only ────────────────────────
+
+    def test_221xxx_components_not_defensive(self) -> None:
+        for iid in ["221011", "221026", "221043", "221053", "221058"]:
+            with self.subTest(iid=iid):
+                e = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(e, f"{iid} missing")
+                self.assertFalse(e.defensive_only)
+                self.assertEqual(len(e.periodics), 0)
+
+    def test_221031_221057_defensive(self) -> None:
+        for iid in ["221031", "221057"]:
+            with self.subTest(iid=iid):
+                e = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(e)
+                self.assertTrue(e.defensive_only)
+
+    # ── defensive_only Arena pool ─────────────────────────────────────────
+
+    def test_batch47_defensive_entries(self) -> None:
+        expected = [
+            "223002", "223067", "223069", "223105", "223111", "223112",
+            "223121", "223158", "223172", "223177", "223184", "223193",
+            "222065", "222051", "222524", "222526", "222530",
+            "224403", "322065", "322526", "322530",
+            "323002", "323070", "323121",
+            "222022", "222141",
+        ]
+        for iid in expected:
+            with self.subTest(iid=iid):
+                e = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(e, f"{iid} missing")
+                self.assertTrue(e.defensive_only)
+
+    # ── count assertions ──────────────────────────────────────────────────
+
+    def test_batch47_defensive_count(self) -> None:
+        defo = [e for e in ITEM_EFFECTS.values() if e.defensive_only]
+        self.assertGreaterEqual(len(defo), 242)
+
+    def test_batch47_total_count(self) -> None:
+        # 367 + 22 + ~42 = ~430
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 430)
 
 
 if __name__ == "__main__":

@@ -4231,6 +4231,436 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Ionian Boots of Lucidity (3158): 45 MS + AH — no direct DPS contribution",
     ),
 
+    # ── Phase 4 batch 46 (2026-05-04): 226xxx/228xxx/224xxx Arena mirrors + remaining SR ──
+    # 22 items: 9 active + 13 defensive_only
+
+    # ─── active items ───
+    "226632": ItemEffect(
+        item_id="226632",
+        name="Divine Sunderer",
+        periodics=(PeriodicProc(
+            name="Spellblade",
+            bonus_damage=lambda c: 1.25 * c.base_ad + 0.06 * c.target_max_hp,
+            damage_type=PHYSICAL,
+            every_n_seconds=3.0,
+        ),),
+        unique_passive_key="spellblade",
+        note="Divine Sunderer (Arena 226632): same as SR 6632 — Spellblade 125% base AD + 6% target max HP physical every ~3s",
+    ),
+    "226660": ItemEffect(
+        item_id="226660",
+        name="Bami's Cinder",
+        periodics=(PeriodicProc(
+            name="Immolate",
+            bonus_damage=lambda c: c.targets_in_rotation * (12.0 + 0.010 * c.caster_bonus_hp),
+            damage_type=MAGICAL,
+            every_n_seconds=1.0,
+        ),),
+        unique_passive_key="immolate",
+        note="Bami's Cinder (Arena 226660): same as SR 6660 — Immolate 12+1% bonus HP/s; shares immolate-key",
+    ),
+    "226691": ItemEffect(
+        item_id="226691",
+        name="Duskblade of Draktharr",
+        lethality=18.0,
+        note="Duskblade of Draktharr (Arena 226691): same as SR 6691 — 18 lethality",
+    ),
+    "228020": ItemEffect(
+        item_id="228020",
+        name="Abyssal Mask",
+        magic_amp_pct=0.12,
+        note="Abyssal Mask (Arena 228020): same as SR 8020 — Unmake 12% more magic damage to nearby enemies",
+    ),
+    "224637": ItemEffect(
+        item_id="224637",
+        name="Demonic Embrace",
+        ap_per_bonus_hp_pct=0.02,
+        periodics=(PeriodicProc(
+            name="Azakana's Gaze",
+            bonus_damage=lambda c: 0.010 * c.target_max_hp,
+            damage_type=MAGICAL,
+            every_n_seconds=1.0,
+        ),),
+        note="Demonic Embrace (Arena 224637): same as SR 4637 — Dark Pact 2% bonus HP as AP + Azakana's Gaze 1% target max HP/s magic",
+    ),
+    "6670": ItemEffect(
+        item_id="6670",
+        name="Noonquiver",
+        note="Noonquiver (6670): 15 AD + 20% crit — stats only; no passive proc",
+    ),
+    "6690": ItemEffect(
+        item_id="6690",
+        name="Rectrix",
+        note="Rectrix (6690): 15 AD + 4% MS — stats only; no passive proc",
+    ),
+    "4003": ItemEffect(
+        item_id="4003",
+        name="Lifeline",
+        lethality=5.0,
+        note="Lifeline (4003): 25 AD + 5 lethality + 4% MS — component item",
+    ),
+    "4630": ItemEffect(
+        item_id="4630",
+        name="Blighting Jewel",
+        magic_pen_pct=0.13,
+        note="Blighting Jewel (4630): 25 AP + 13% magic pen — component for Void Staff family",
+    ),
+
+    # ─── defensive_only items ───
+    "226656": ItemEffect(
+        item_id="226656",
+        name="Everfrost",
+        defensive_only=True,
+        note="Everfrost (Arena 226656): same as SR 6656 — Glaciate active not modeled",
+    ),
+    "226667": ItemEffect(
+        item_id="226667",
+        name="Radiant Virtue",
+        defensive_only=True,
+        note="Radiant Virtue (Arena 226667): same as SR 6667 — Noblesse aura, no self DPS",
+    ),
+    "226671": ItemEffect(
+        item_id="226671",
+        name="Galeforce",
+        defensive_only=True,
+        note="Galeforce (Arena 226671): same as SR 6671 — Cloudburst dash active, no passive DPS proc",
+    ),
+    "226035": ItemEffect(
+        item_id="226035",
+        name="Silvermere Dawn",
+        defensive_only=True,
+        note="Silvermere Dawn (Arena 226035): same as SR 6035 — QSS active not modeled",
+    ),
+    "224636": ItemEffect(
+        item_id="224636",
+        name="Night Harvester",
+        defensive_only=True,
+        note="Night Harvester (Arena 224636): Soul Flare proc requires ability-cast schema — not modeled",
+    ),
+    "224644": ItemEffect(
+        item_id="224644",
+        name="Crown of the Shattered Queen",
+        defensive_only=True,
+        note="Crown of the Shattered Queen (Arena 224644): same as SR 4644 — Poise conditional not modeled",
+    ),
+    "228009": ItemEffect(
+        item_id="228009",
+        name="Multitool",
+        defensive_only=True,
+        note="Multitool (Arena 228009): morphs into a random item each shopping phase — no static passive to model",
+    ),
+    "4635": ItemEffect(
+        item_id="4635",
+        name="Leeching Leer",
+        defensive_only=True,
+        note="Leeching Leer (4635): 20 AP + 250 HP + 5% omnivamp — sustain component, no DPS proc",
+    ),
+    "4403": ItemEffect(
+        item_id="4403",
+        name="The Golden Spatula",
+        defensive_only=True,
+        note="The Golden Spatula (4403): all-stat joke item — no DPS proc",
+    ),
+    "4638": ItemEffect(
+        item_id="4638",
+        name="Watchful Wardstone",
+        defensive_only=True,
+        note="Watchful Wardstone (4638): support vision item — no DPS contribution",
+    ),
+    "4641": ItemEffect(
+        item_id="4641",
+        name="Stirring Wardstone",
+        defensive_only=True,
+        note="Stirring Wardstone (4641): support/vision — no DPS contribution",
+    ),
+    "4642": ItemEffect(
+        item_id="4642",
+        name="Bandleglass Mirror",
+        defensive_only=True,
+        note="Bandleglass Mirror (4642): AP + mana regen support — no DPS proc",
+    ),
+    "4643": ItemEffect(
+        item_id="4643",
+        name="Vigilant Wardstone",
+        defensive_only=True,
+        note="Vigilant Wardstone (4643): support/vision — no DPS contribution",
+    ),
+
+    # ── Phase 4 batch 47 (2026-05-04): Arena 22xxxx/32xxxx remaining + 221xxx components ──
+    # ~42 items: 16 active, 26 defensive_only
+
+    # ─── active: 22xxxx/32xxxx mirrors with DPS procs ───
+    "223001": ItemEffect(
+        item_id="223001",
+        name="Evenshroud",
+        damage_amp_pct=0.06,
+        note="Evenshroud (Arena 223001): same as SR 3001 — Coruscation 6% more damage (legacy removed item)",
+    ),
+    "223040": ItemEffect(
+        item_id="223040",
+        name="Seraph's Embrace",
+        bonus_ap_pct_bonus_mp=0.02,
+        unique_passive_key="lifeline",
+        note="Seraph's Embrace (Arena 223040): same as SR 3040 — Awe 2% bonus mana as AP + Shurelya lifeline shield",
+    ),
+    "223042": ItemEffect(
+        item_id="223042",
+        name="Muramana",
+        bonus_ad_pct_max_mp=0.02,
+        periodics=(PeriodicProc(
+            name="Shock",
+            bonus_damage=lambda c: 0.012 * c.caster_max_mp,
+            damage_type=PHYSICAL,
+            every_n_attacks=1,
+        ),),
+        note="Muramana (Arena 223042): same as SR 3042 — Awe 2% max mana as AD + Shock 1.2% max mana physical on-hit",
+    ),
+    "223057": ItemEffect(
+        item_id="223057",
+        name="Sheen",
+        periodics=(PeriodicProc(
+            name="Spellblade",
+            bonus_damage=lambda c: 1.00 * c.base_ad,
+            damage_type=PHYSICAL,
+            every_n_seconds=1.5,
+        ),),
+        unique_passive_key="spellblade",
+        note="Sheen (Arena 223057): same as SR 3057 — Spellblade 100% base AD physical every 1.5s; spellblade-key",
+    ),
+    "223095": ItemEffect(
+        item_id="223095",
+        name="Stormrazor",
+        periodics=(PeriodicProc(
+            name="Stormraider",
+            bonus_damage=lambda c: 0.75 * c.bonus_ad,
+            damage_type=PHYSICAL,
+            every_n_seconds=30.0,
+        ),),
+        note="Stormrazor (Arena 223095): Stormraider guaranteed-crit bonus (~75% bonus AD extra) every 30s; 25% crit + 50 AD + 20% AS",
+    ),
+    "223185": ItemEffect(
+        item_id="223185",
+        name="Guardian's Dirk",
+        lethality=11.0,
+        note="Guardian's Dirk (Arena 223185): 25 AD + 11 lethality — Arena component",
+    ),
+    "323040": ItemEffect(
+        item_id="323040",
+        name="Seraph's Embrace",
+        bonus_ap_pct_bonus_mp=0.02,
+        unique_passive_key="lifeline",
+        note="Seraph's Embrace (ARAM 323040): same as SR 3040 — Awe 2% bonus mana as AP + lifeline shield",
+    ),
+    "323042": ItemEffect(
+        item_id="323042",
+        name="Muramana",
+        bonus_ad_pct_max_mp=0.02,
+        periodics=(PeriodicProc(
+            name="Shock",
+            bonus_damage=lambda c: 0.012 * c.caster_max_mp,
+            damage_type=PHYSICAL,
+            every_n_attacks=1,
+        ),),
+        note="Muramana (ARAM 323042): same as SR 3042 — Awe 2% max mana as AD + Shock 1.2% max mana physical on-hit",
+    ),
+
+    # ─── active: 221xxx Arena components (stats-only, no proc) ───
+    "221011": ItemEffect(
+        item_id="221011",
+        name="Giant's Belt",
+        note="Giant's Belt (Arena 221011): reduced-cost HP component — no DPS proc",
+    ),
+    "221026": ItemEffect(
+        item_id="221026",
+        name="Blasting Wand",
+        note="Blasting Wand (Arena 221026): reduced-cost AP component — no DPS proc",
+    ),
+    "221031": ItemEffect(
+        item_id="221031",
+        name="Chain Vest",
+        defensive_only=True,
+        note="Chain Vest (Arena 221031): reduced-cost Armor component — no DPS proc",
+    ),
+    "221043": ItemEffect(
+        item_id="221043",
+        name="Recurve Bow",
+        note="Recurve Bow (Arena 221043): reduced-cost AS + on-hit component — no passive proc",
+    ),
+    "221053": ItemEffect(
+        item_id="221053",
+        name="Vampiric Scepter",
+        note="Vampiric Scepter (Arena 221053): reduced-cost AD + lifesteal component — no DPS proc",
+    ),
+    "221057": ItemEffect(
+        item_id="221057",
+        name="Negatron Cloak",
+        defensive_only=True,
+        note="Negatron Cloak (Arena 221057): reduced-cost MR component — no DPS proc",
+    ),
+    "221058": ItemEffect(
+        item_id="221058",
+        name="Needlessly Large Rod",
+        note="Needlessly Large Rod (Arena 221058): reduced-cost AP component — no DPS proc",
+    ),
+    "222022": ItemEffect(
+        item_id="222022",
+        name="Glowing Mote",
+        defensive_only=True,
+        note="Glowing Mote (222022): 250g Arena consumable mote — no DPS contribution",
+    ),
+    "222141": ItemEffect(
+        item_id="222141",
+        name="Cappa Juice",
+        defensive_only=True,
+        note="Cappa Juice (222141): 500g Arena consumable — no DPS contribution",
+    ),
+
+    # ─── defensive_only: 22xxxx/32xxxx Arena pool ───
+    "223002": ItemEffect(
+        item_id="223002",
+        name="Trailblazer",
+        defensive_only=True,
+        note="Trailblazer (Arena 223002): same as SR 3002 — Pathfinder proc conditional on dash, not modeled",
+    ),
+    "223067": ItemEffect(
+        item_id="223067",
+        name="Kindlegem",
+        defensive_only=True,
+        note="Kindlegem (Arena 223067): same as SR 3067 — HP + AH component, no DPS contribution",
+    ),
+    "223069": ItemEffect(
+        item_id="223069",
+        name="Void Immolation",
+        defensive_only=True,
+        note="Void Immolation (Arena 223069): 6000g mega-tank (1000 HP + 100 Armor + 80 MR); Immolate proc deferred pending schema review",
+    ),
+    "223105": ItemEffect(
+        item_id="223105",
+        name="Aegis of the Legion",
+        defensive_only=True,
+        note="Aegis of the Legion (Arena 223105): same as SR 3105 — defensive aura, no self DPS",
+    ),
+    "223111": ItemEffect(
+        item_id="223111",
+        name="Mercury's Treads",
+        defensive_only=True,
+        note="Mercury's Treads (Arena 223111): same as SR 3111 — MR + MS + tenacity, no DPS",
+    ),
+    "223112": ItemEffect(
+        item_id="223112",
+        name="Guardian's Orb",
+        defensive_only=True,
+        note="Guardian's Orb (Arena 223112): same as SR 3112 — lane support component, no DPS proc",
+    ),
+    "223121": ItemEffect(
+        item_id="223121",
+        name="Fimbulwinter",
+        defensive_only=True,
+        note="Fimbulwinter (Arena 223121): same as SR 3121 — shield passive on ability near enemies, no DPS proc",
+    ),
+    "223158": ItemEffect(
+        item_id="223158",
+        name="Ionian Boots of Lucidity",
+        defensive_only=True,
+        note="Ionian Boots of Lucidity (Arena 223158): same as SR 3158 — MS + AH boots, no DPS",
+    ),
+    "223172": ItemEffect(
+        item_id="223172",
+        name="Zephyr",
+        defensive_only=True,
+        note="Zephyr (Arena 223172): 50% AS + 10% MS + 30 AH; Headwind slow active not modeled as DPS",
+    ),
+    "223177": ItemEffect(
+        item_id="223177",
+        name="Guardian's Blade",
+        defensive_only=True,
+        note="Guardian's Blade (Arena 223177): lane support component — no DPS proc",
+    ),
+    "223184": ItemEffect(
+        item_id="223184",
+        name="Guardian's Hammer",
+        defensive_only=True,
+        note="Guardian's Hammer (Arena 223184): lane support component — no DPS proc",
+    ),
+    "223193": ItemEffect(
+        item_id="223193",
+        name="Gargoyle Stoneplate",
+        defensive_only=True,
+        note="Gargoyle Stoneplate (Arena 223193): same as SR 3193 — Metallicize active shield, no DPS",
+    ),
+    "222065": ItemEffect(
+        item_id="222065",
+        name="Shurelya's Battlesong",
+        defensive_only=True,
+        note="Shurelya's Battlesong (ARAM 222065): same as SR 2065 — Inspire MS burst aura, no self DPS",
+    ),
+    "222051": ItemEffect(
+        item_id="222051",
+        name="Guardian's Horn",
+        defensive_only=True,
+        note="Guardian's Horn (ARAM 222051): HP + defensive stats component — no DPS proc",
+    ),
+    "222524": ItemEffect(
+        item_id="222524",
+        name="Bandlepipes",
+        defensive_only=True,
+        note="Bandlepipes (222524): support enchanter item (HP + AH + Armor/MR) — no self DPS",
+    ),
+    "222526": ItemEffect(
+        item_id="222526",
+        name="Whispering Circlet",
+        defensive_only=True,
+        note="Whispering Circlet (222526): HP + mana regen + heal/shield power — support, no DPS proc",
+    ),
+    "222530": ItemEffect(
+        item_id="222530",
+        name="Diadem of Songs",
+        defensive_only=True,
+        note="Diadem of Songs (222530): HP + mana (1000) — support/mana item, no DPS proc",
+    ),
+    "224403": ItemEffect(
+        item_id="224403",
+        name="The Golden Spatula",
+        defensive_only=True,
+        note="The Golden Spatula (Arena 224403): all-stat joke item — no DPS proc",
+    ),
+    "322065": ItemEffect(
+        item_id="322065",
+        name="Shurelya's Battlesong",
+        defensive_only=True,
+        note="Shurelya's Battlesong (ARAM 322065): same as SR 2065 — Inspire MS burst aura, no self DPS",
+    ),
+    "322526": ItemEffect(
+        item_id="322526",
+        name="Whispering Circlet",
+        defensive_only=True,
+        note="Whispering Circlet (ARAM 322526): HP + mana regen + heal/shield power — support, no DPS proc",
+    ),
+    "322530": ItemEffect(
+        item_id="322530",
+        name="Diadem of Songs",
+        defensive_only=True,
+        note="Diadem of Songs (ARAM 322530): HP + mana — support/mana item, no DPS proc",
+    ),
+    "323002": ItemEffect(
+        item_id="323002",
+        name="Trailblazer",
+        defensive_only=True,
+        note="Trailblazer (ARAM 323002): same as SR 3002 — Pathfinder proc conditional on dash, not modeled",
+    ),
+    "323070": ItemEffect(
+        item_id="323070",
+        name="Tear of the Goddess",
+        defensive_only=True,
+        note="Tear of the Goddess (ARAM 323070): same as SR 3070 — mana component, no DPS; upgrades to Muramana/Archangel's",
+    ),
+    "323121": ItemEffect(
+        item_id="323121",
+        name="Fimbulwinter",
+        defensive_only=True,
+        note="Fimbulwinter (ARAM 323121): same as SR 3121 — shield passive, no DPS proc",
+    ),
+
 }
 
 
