@@ -177,6 +177,28 @@ def start_dashboard(app_dir: Path) -> None:
     else:
         _log.info("Web dashboard on http://%s:%d/  (no TLS cert)", HOST, PORT)
 
+    # Vision server: ensure moon_vision_server.py is listening on :8889.
+    # No-op if already up; spawns it as a detached background process otherwise.
+    try:
+        import socket as _sock
+        _p = _sock.socket(_sock.AF_INET, _sock.SOCK_STREAM)
+        _p.settimeout(1)
+        _vision_up = _p.connect_ex(("127.0.0.1", 8889)) == 0
+        _p.close()
+        if not _vision_up:
+            import subprocess, sys as _sys
+            _vis = app_dir / "moon_vision_server.py"
+            subprocess.Popen(
+                [_sys.executable, str(_vis)],
+                cwd=str(app_dir),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                close_fds=True,
+            )
+            _log.info("vision server not running — spawned %s", _vis.name)
+    except Exception as exc:
+        _log.warning("vision server startup check failed: %s", exc)
+
     # Daemon Slayer: ensure the local DPS engine on :8893 is running.
     # No-op if already up; spawns tools/start_daemon_slayer.py otherwise.
     try:
