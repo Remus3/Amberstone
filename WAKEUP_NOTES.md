@@ -1,3 +1,167 @@
+# s92 wrap — 2026-05-04 (Daemon Slayer batches 38–49)
+
+## What shipped (this session)
+
+- **Batch 38** `0369403` — Giant Slayer schema + 228xxx/443xxx/SR sweep
+  - New `ItemEffect.giant_slayer_pct_per_100hp` + `giant_slayer_max_pct` + `total_giant_slayer_multiplier` wired into compute_dps
+  - Wooglet's Witchcap (228002) ap_amp_pct=0.50; Deathblade (228003) lethality=20+crit_damage_bonus; Obsidian Cleaver (228005) armor_reduction_pct=0.35
+  - 17 defensive_only completing 228xxx/443xxx pool; 453 → 477 tests
+
+- **Batch 39** `97ddecb` — MR-reduction schema + Arena re-skin sweep
+  - New `ItemEffect.mr_reduction_pct` wired into effective_target_mr
+  - Bloodletter's Curse (4010) mr_reduction_pct=0.30; Divine Sunderer Arena (446632); Overlord's Bloodmail Arena (447111); Atma's Arena (663039); Hextech Gunblade Arena (663146)
+  - 7 defensive_only; ENGINE_VERSION 0.43.0
+
+- **Batch 40** `51e6787` — component items + final SR/Arena sweep
+  - Last Whisper (3035) armor_pen_pct=0.18; Brutalizer (2020) lethality=5; Haunting Guise (3147) damage_amp_pct=0.06
+  - 15 defensive_only completing final SR/Arena pool; 477 tests
+
+- **Batch 41** `bc61b4c` — Arena 226xxx mirrors + Navori key collision fix
+  - Fixed Navori Flickerblade (was keyed 6672 overwriting Kraken Slayer); moved to correct 6675
+  - 14 active 226xxx mirrors + 14 defensive_only; 494 tests
+
+- **Batches 42+43** `b92301f` — Arena 222xxx/224xxx/32xxxx + 223xxx complete
+  - 10 active 222xxx/224xxx/32xxxx + 33 active 223xxx SR-exact mirrors; 83 defensive_only total; 530 tests
+
+- **Batches 44+45** `6eaccae` — DPS components + defensive full items + boots
+  - Sheen (3057) spellblade-key; Tiamat (3077) Cleave; Bami's Cinder (6660) Immolate immolate-key; Rageknife (6677) Wrath; SotD (3131) lethality+proc
+  - 21 defensive_only entries; Berserker's Greaves (3006) active; 558 tests
+
+- **Batches 46+47** `8795097` — Arena 226xxx/228xxx/224xxx + 22xxxx/32xxxx pool
+  - Divine Sunderer (226632) spellblade; Demonic Embrace (224637) ap_per_bonus_hp+Azakana's; Blighting Jewel (4630) magic_pen_pct=0.13
+  - 587 tests
+
+- **Batches 48+49** `1230dca` — 1xxx components + remaining 3xxx/2xxx/Arena
+  - Recurve Bow (1043) Sting 15 phys/attack; all 29 1xxx components covered
+  - Spellslinger's Shoes (3175) dual-pen: magic_pen_flat=18 + magic_pen_pct=0.08
+  - Rite of Ruin (123430) crit_chance_bonus_flat=0.25; Hubris Arena (126697) lethality=18; Prowler's Claw Arena (446693) lethality=20
+  - 11 defensive boots (Ghostcrawlers, Mobility, etc.); 5 defensive components; 4 2xxx; 5 Arena
+  - ENGINE_VERSION 0.53.0 · **603 tests passing** · ITEM_EFFECTS = 496 entries
+
+## Schema gaps still open (priority order)
+1. **Ability-cast schema** → Night Harvester, Luden's, Stormsurge, Hellfire Hatchet Char, Fated Ashes Inflame (6+ items unlock at once)
+2. **armor_reduction_flat flat shred** → Flesheater (447112)
+3. **Crit-gated proc rate** → Hamstringer (443069) Scour bleed on crit
+4. **Conditional AS** → Yun Tal Flurry, Experimental Hexplate
+5. **Mejai's kill-stack AP** → separate schema needed
+
+## Coverage status
+- ITEM_EFFECTS: 496 entries / ~496 unique DDragon purchasable IDs → essentially complete
+- 603 tests passing (242 defensive_only, 254 active, mixed Arena/ARAM mirrors)
+- Bridge auto-loop: NOT running on Game-PC — start with `/loop 1m /process-bridge-tasks`
+
+---
+
+# s91 hand-off — 2026-05-04 (Daemon Slayer batches 36-37)
+
+## What shipped
+- **Batch 36** `8f7811b` — Arena item sweep + Rite of Ruin crit
+  - Detonation Orb (447113) `magic_pen_flat=12`
+  - Reverberation (447114) Resonate 10+2% caster bonus HP magic on-hit
+  - Pyromancer's Cloak (447118) Spark 100→350 magic burn every 5s
+  - Lightning Rod (447119) Call Lightning 135→230+30% bonus AD+50% AP+10% target max HP magic every 16s
+  - Regicide (447115) `lethality=15`
+  - Rite of Ruin (3430) `crit_chance_bonus_flat=0.20`
+  - 6 defensive_only: Runecarver, Kinkou Jitte, Diamond-Tipped Spear, Twilight's Edge, Decapitator, Mirage Blade
+  - 139 entries (74 active, 65 defensive_only) · 407 tests pass
+
+- **Batch 37** `8d208c3` — TRUE damage type + Arena 443xxx/447xxx item sweep
+  - New `TRUE = "true"` constant + `_DAMAGE_TYPES` updated; `_periodic_proc_dps` handles TRUE with `resist=0.0`
+  - Darksteel Talons (443054) Gash per-attack 10→20 true (ranged, level-scaled; bonus armor deferred)
+  - Fulmination (443055) Dynamo every-100th-attack 13% target max HP magic (upper-bound; Polarity deferred)
+  - Reaper's Toll (443090) Reap per-attack 0.7% target max HP true (pinned 0 stacks)
+  - 14 defensive_only: 447101-06,09-10,12,22-23 + 443056,060,069 completing Arena pool
+  - 156 entries (77 active, 79 defensive_only) · 428 tests pass
+
+## Bridge auto-loop
+User asked to disable — confirmed no cron jobs active. Start manually: `/loop 1m /process-bridge-tasks`
+
+## Schema gaps still open (priority order)
+1. **`max_hp_diff_amp_pct` schema** → unlocks Perplexity Giant Slayer (0-15% based on target/caster HP delta)
+2. **`armor_reduction_flat` flat shred** → unlocks Flesheater (447112)
+3. **Ability-cast schema** → Night Harvester, Luden's, Stormsurge, Rocketbelt, Hellfire Hatchet Char
+4. **`caster_bonus_armor` in CallContext** → Darksteel Talons bonus armor scaling
+5. **Crit-gated proc rate** → Hamstringer (443069) Scour bleed on crit
+6. **Conditional AS** → Yun Tal Flurry, Experimental Hexplate
+
+## Next batch candidates
+- Sword of the Divine (443060): Excoriate random crit damage up to +50% — RNG design decision needed
+- Perplexity (4015): Giant Slayer partial (needs max_hp_diff_amp_pct schema)
+- Remaining SR items: Death's Dance Cauterize, Spear of Shojin ability stacks
+- Check Meraki for any new 16.9.1 Arena items not yet covered (447xxx/443xxx gaps)
+
+---
+
+# s90 hand-off — 2026-05-04 (Daemon Slayer batches 34-35)
+
+## What shipped
+- **Batch 34** `1bd105d` — `magic_amp_pct` schema + Abyssal Mask (8020) `magic_amp_pct=0.12`
+  - New `ItemEffect.magic_amp_pct` field + `total_magic_amp_multiplier` helper
+  - Applied per-magical-proc in `_periodic_proc_dps` (NOT to physical AA)
+  - Threaded through `_rotation_attack_dps` → `_phase_weighted_dps` → `compute_dps`
+  - 117 entries (64 active, 53 defensive_only)
+
+- **Batch 35** `6b04992` — missed-lethality + dual-pen + spellblade + on-hit sweep
+  - Duskblade (6691) `lethality=18` [missed from batch 30]
+  - Perplexity (4015) `armor_pen_pct=0.22 + magic_pen_pct=0.30` dual-pen
+  - Divine Sunderer (6632) Spellblade 125% base AD + 6% target max HP, PHYSICAL, 3s, `unique_passive_key="spellblade"`
+  - Navori Flickerblade (6672) Bring It Down every-3rd-attack 120→168 PHYSICAL (ranged)
+  - Hellfire Hatchet (4017) `lethality=12` [Char deferred]
+  - 6 defensive_only: Goredrinker, Galeforce, Zeke's Convergence, Wordless Promise, Frozen Mallet, Lightning Braid
+  - 127 entries (68 active, 59 defensive_only) · 393 tests pass
+
+## Bridge auto-loop
+User asked to disable — confirmed no cron jobs active. Start manually: `/loop 1m /process-bridge-tasks`
+
+## Schema gaps still open (priority order)
+1. **`max_hp_diff_amp_pct` schema** → unlocks Perplexity Giant Slayer (0-15% based on target max HP vs caster max HP, 0.6%/100 HP)
+2. **`magic_amp_pct` further** → Malignance (requires ult hit, deferred), Bloodletter's Curse (ability-stacking, deferred)
+3. **`armor_reduction_flat` flat shred** → unlocks Flesheater
+4. **Ability-cast schema** → Night Harvester, Luden's, Stormsurge, Rocketbelt, Hellfire Hatchet Char
+5. **Conditional AS** → Yun Tal Flurry, Experimental Hexplate
+
+## Remaining uncovered SR items worth checking (next batch candidates)
+- Goredrinker's heal (active, defensive_only — done), Galeforce (done)
+- Death's Dance (6333) — currently defensive_only; Cauterize is complex
+- Spear of Shojin (3161) — currently defensive_only; ability-cast stacks
+- Navori alternatives / Phantom Dancer / Kraken variant checks
+- Arena-specific items with spellblade-like procs not yet covered
+
+---
+
+# s89 hand-off — 2026-05-04 (Daemon Slayer batch 33)
+
+## What shipped
+- **Batch 33** commit `0cecfa3` — ability-burn promos + dual-pen + caster-HP burn
+- **4 active promotions:**
+  - Gambler's Blade (667101): `lethality=15, magic_pen_flat=15` (dual-pen; note DDragon Adaptive Force gap)
+  - Unending Despair (2502): Agony 3% caster bonus HP magic every 4s (`caster_bonus_hp` schema)
+  - Blackfire Torch (2503): Baleful Blaze `6 + 6% AP` magic every 0.5s (ranged Meraki value; promoted from defensive_only)
+  - Demonic Embrace (4637): added Azakana's Gaze 1% target max HP/s magic burn as second proc
+- **7 new defensive_only:** Night Harvester, Fiendhunter Bolts, Sword of the Divine, Flesheater, Sword of Blossoming Dawn, Actualizer, Cruelty
+- ENGINE_VERSION 0.36.0 → 0.37.0 · 117 total entries (63 active, 54 defensive_only) · 367 tests pass
+
+## Schema gaps still open (deferred)
+- `magic_amp_pct` target-debuff → unlocks Abyssal Mask (12% magic), Bloodletter's Curse, Malignance
+- `armor_reduction_flat` flat shred → unlocks Flesheater
+- Ability-cast schema → unlocks Night Harvester (Soulrend), Luden's, Stormsurge, Rocketbelt
+- Conditional AS (stacks/time) → unlocks Yun Tal Flurry, Experimental Hexplate
+- Horizon Focus range conditional (600+ range amplifier)
+
+## Next batch candidates
+- Explore remaining un-covered non-defensive items in DDragon pool that have:
+  - on-hit effects not yet modeled (e.g. Wit's End second instance if any)
+  - Target-debuff procs pairable with new schema
+- `magic_amp_pct` schema is the highest-unlock-count gap (3+ items)
+
+## Carry-over operational items (unchanged)
+- SR coach `target_bonus_hp` activation (blocked on vision-side enemy item parsing)
+- Arena augment v2 production activation
+- gamepc_boot.ps1 1-liner patch
+- P8-5.5 visual verify first draft; P8-7 E2E push-to-League test
+
+---
+
 # s27 thread roll-up — 2026-05-01 (sessions 27 → 27u, condensed)
 
 > 21 sub-sessions over a single day. **Outcome:** every Tier 1-3 audit
