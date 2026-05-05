@@ -355,6 +355,15 @@ class ItemEffect:
     # (League makes armor-strip DPS a hard floor, not a bonus multiplier).
     armor_reduction_flat: float = 0.0   # Flesheater Hack the Meat: 30 at full stacks
     mr_reduction_flat: float = 0.0      # Flesheater Hack the Meat: 30 at full stacks
+    # Phase 4 batch 56 (2026-05-04): caster max-HP-scaled multiplicative AP amplifier.
+    # Demonic Embrace (444637 Arena) "Sinister Pact": +1.5% AP per 100 current HP,
+    # capped at 45% (reaches cap at 3000 HP). Modeled using caster max HP as a
+    # sustained-combat approximation (same convention as BotRK current-HP procs).
+    # Applied as a multiplicative amp AFTER ap_per_bonus_hp_pct and ap_amp_pct:
+    # Rabadon's boosts everything first, then this HP-scaling amp stacks on top.
+    # Default 0.0 → no contribution.
+    ap_amp_pct_per_100_caster_hp: float = 0.0     # 0.015 for 444637 (1.5% per 100 HP)
+    ap_amp_pct_per_100_caster_hp_cap: float = 0.0 # 0.45 for 444637 (45% cap at 3000 HP)
     # Phase 4 batch 54 (2026-05-04): kill-stacking AP not captured in DDragon.
     # Mejai's Soulstealer "Glory" grants 5 AP per stack (max 25 stacks = 125 AP);
     # DDragon's FlatMagicDamageMod only carries the base 20 AP. Engine pins at
@@ -2876,11 +2885,17 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "444637": ItemEffect(
         item_id="444637",
         name="Demonic Embrace",
-        defensive_only=True,
+        # Phase 4 batch 56 (2026-05-04): promoted. Sinister Pact: +1.5% AP per 100
+        # current HP, capped at 45% (3000 HP). Modeled using caster max HP as a
+        # sustained-combat approximation (same convention as BotRK current-HP proc).
+        # A build with 3000 HP reaches the full 45% AP amplification; 2000 HP → 30%.
+        # Distinct from SR 4637 which gives static bonus-HP → bonus AP (additive);
+        # this is multiplicative (same layer as Rabadon's), so it stacks with ap_amp_pct.
+        ap_amp_pct_per_100_caster_hp=0.015,
+        ap_amp_pct_per_100_caster_hp_cap=0.45,
         note=(
-            "Demonic Embrace (444637 Arena): Sinister Pact — gain +1.5% AP + MS per 100 "
-            "CURRENT health (up to 45%); dynamic in-combat HP scaling not modelable. "
-            "Different from SR 4637 which has static bonus-HP → AP and Azakana proc"
+            "Demonic Embrace (444637 Arena): Sinister Pact +1.5% AP per 100 HP "
+            "(cap 45% at 3000 HP; modeled at max HP as sustained approximation)"
         ),
     ),
     "446691": ItemEffect(
@@ -5365,6 +5380,32 @@ def total_giant_slayer_multiplier(
         if e.giant_slayer_pct_per_100hp:
             amp = min(e.giant_slayer_max_pct, hp_diff / 100.0 * e.giant_slayer_pct_per_100hp)
             factor *= (1.0 + amp)
+    return factor
+
+
+def total_caster_hp_scaled_ap_amp(
+    effects: Iterable[ItemEffect],
+    caster_max_hp: float,
+) -> float:
+    """Caster max-HP-scaled multiplicative AP amplifier (batch 56).
+
+    Demonic Embrace (444637 Arena) Sinister Pact: +1.5% AP per 100 current HP,
+    capped at 45% (3000 HP threshold). Modeled with caster max HP as a sustained
+    approximation. Applied multiplicatively and stacks with Rabadon's ap_amp_pct.
+
+    Returns 1.0 when caster_max_hp <= 0 or no item carries the field (pre-batch-56
+    builds pass through unchanged). ``cap <= 0`` items are skipped defensively.
+    """
+    if caster_max_hp <= 0:
+        return 1.0
+    factor = 1.0
+    for e in effects:
+        rate = e.ap_amp_pct_per_100_caster_hp
+        cap = e.ap_amp_pct_per_100_caster_hp_cap
+        if rate <= 0 or cap <= 0:
+            continue
+        amp = min(cap, caster_max_hp / 100.0 * rate)
+        factor *= (1.0 + amp)
     return factor
 
 
