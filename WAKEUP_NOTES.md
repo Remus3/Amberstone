@@ -6,6 +6,77 @@
 
 ---
 
+# s95 wrap — 2026-05-04 (Daemon Slayer batches 57–62)
+
+## What shipped (this session)
+
+- **Batches 57–60** `9f128c4..864e65d` — 4 promotions + 2 new CallContext fields (ENGINE_VERSION 0.57.0, 899 tests)
+  - `caster_bonus_armor` + `caster_lethality` added to CallContext and computed in dps.py
+  - Void Immolation (223069): 20 + 1.5% max HP TRUE/s, unique_passive_key="immolate"
+  - The Golden Spatula (224403): Doing Something pp|26-43 magic/s
+  - Darksteel Talons (443054): Gash TRUE on-hit, now +20% bonus armor scaling
+  - Bastionbreaker (2520): Shaped Charge 15 + 0.75×lethality TRUE/45s
+  - Reality Fracture (447102): ZZ'Rot 8 Voidmites × (6+4%AD+8%AP) magic/12s
+
+- **Batch 61** `2148ed2` — Zaz'Zak's + Bloodsong (899 tests)
+  - Zaz'Zak's Realmspike (3871): Void Explosion 10+15%AP+3%target maxHP magic/10s
+  - Bloodsong (3877): Spellblade 100% base AD physical/1.5s + Expose Weakness damage_amp_pct=0.05
+
+- **Batch 62** `dcfeb63` — Cruelty dual-variant (911 tests, ENGINE_VERSION 0.58.0)
+  - Cruelty Arena (447109) + SR (667109): Watch Them Fall comet on CC, pp|50-150+40%AP+4%caster maxHP magic/6s
+  - Fixed stale 667109 note (was wrongly labeled "Execute damage amp")
+
+## Coverage status
+
+- ITEM_EFFECTS: **547 entries — DDragon purchasable coverage COMPLETE**
+- **911 tests passing** (ENGINE_VERSION 0.58.0)
+- Promotion sweep complete — remaining unmodeled items are all ability-cast/ult-cast/positional-conditional blocked
+
+## Schema gaps still open (priority order)
+
+1. **Ability-cast schema** → Lightning Braid, Malignance Hatefog, Night Harvester SR, Innervating Locket, Fiendhunter Bolts — blocked on ability-frequency data
+2. **Hellfire Hatchet Char** — 3-way scaling (level × hp_diff × lethality); formula too complex
+3. **Kinkou Jitte** — directional weakpoint mechanic; positional conditional not modelable
+4. **Fiendhunter Bolts** — ult-triggered crit-guarantee formula (complex template)
+5. **Mejai's Arena mirror** — no Arena ID found in DDragon (3041 SR only)
+6. Bridge auto-loop: **NOT running on Game-PC** — start manually: `/loop 1m /process-bridge-tasks`
+
+---
+
+# s94 wrap — 2026-05-04 (Daemon Slayer batches 54–56)
+
+## What shipped (this session)
+
+- **Batch 54** `ded3d01` — 2 new schema fields + 3 promotions (ENGINE_VERSION 0.55.0, 843 tests)
+  - `bonus_ap_stacked`: Mejai's (3041) full-stacks 125 AP; added before Rabadon's amp so Magical Opus multiplies all AP
+  - `bonus_as_conditional`: Yun Tal Flurry (3032, 223032) 30% AS / 27% uptime → 0.08 effective sustained AS; wired to stats_for_rotation["as"]
+  - Sword of the Divine (443060): EV model for Excoriate uniform 0–50% crit damage → crit_damage_bonus=0.25
+
+- **Batch 55** `e054c1c` — 46 new defensive_only entries; DDragon purchasable coverage complete (547 entries, 850 tests)
+  - Doran's Helm, jungle companions, consumables, elixirs, Bandle Juice (2161-2163), Arena consumables (2141-2147), ward trinkets, support milestone quests, Arena Legendary/Prismatic selectors, Golden Spatula
+  - Added coverage gate test: `test_ddragon_purchasable_coverage_complete()` asserts zero uncovered items
+
+- **Batch 56** `ede9c89` — caster HP-scaled AP amp (ENGINE_VERSION 0.56.0, 856 tests)
+  - `ap_amp_pct_per_100_caster_hp` + `ap_amp_pct_per_100_caster_hp_cap`: multiplicative AP amp keyed on caster max HP
+  - 444637 Demonic Embrace (Arena): Sinister Pact +1.5% per 100 HP, cap 45% at 3000 HP
+  - Applied AFTER Rabadon's ap_amp (multiplicative stacking per League buff system)
+
+## Coverage status
+
+- ITEM_EFFECTS: **547 entries — DDragon purchasable coverage COMPLETE** (all gold>0 purchasable items covered)
+- 856 tests passing (276 defensive_only, 226 active, mixed Arena/ARAM mirrors)
+- ENGINE_VERSION 0.56.0
+
+## Schema gaps still open (priority order)
+
+1. **Conditional AS** → Experimental Hexplate (ult-triggered, too low EV); Yun Tal Flurry now modeled at 27% uptime
+2. **Ability-cast schema** → 8+ items (Lightning Braid, Night Harvester SR, Innervating Locket, Fiendhunter Bolts, etc.) — blocked on ability-frequency data
+3. **Void Immolation (223069)** — Immolate proc formula unconfirmed from Meraki/DDragon
+4. **Mejai's Arena mirror** — no Arena ID found in DDragon (3041 SR only)
+5. Bridge auto-loop: **NOT running on Game-PC** — start manually: `/loop 1m /process-bridge-tasks`
+
+---
+
 # s93 wrap — 2026-05-04 (Daemon Slayer batches 50–53)
 
 ## What shipped (this session)
