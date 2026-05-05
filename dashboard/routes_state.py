@@ -354,6 +354,35 @@ _CE_LAST_TS: float = 0.0
 _CE_DROPPED: int   = 0
 
 
+def _serve_ds_preview_post(h, payload) -> None:
+    """POST {champion, mode, level?, items?} → DS rank_for() top picks.
+    Used by the champ-select overlay to show DS-computed build recommendations
+    with item icons before the game starts."""
+    try:
+        from core.daemon_slayer_client import rank_for
+        champion = str(payload.get("champion") or "").strip()
+        if not champion:
+            h._send(400, json.dumps({"error": "champion required"}).encode(), "application/json")
+            return
+        mode = str(payload.get("mode") or "SR").upper()
+        level = int(payload.get("level") or 6)
+        level = max(1, min(18, level))
+        items = [str(i) for i in (payload.get("items") or []) if i]
+        rows = rank_for(champion=champion, level=level, item_ids=items,
+                        mode=mode, top=8, sort_by="delta", timeout=2.0)
+        if rows is None:
+            h._send(503, json.dumps({"ok": False, "error": "DS engine unavailable"}).encode(),
+                    "application/json")
+            return
+        result = [{"item_id": r.item_id, "item_name": r.item_name,
+                   "delta_dps": round(r.delta_dps, 1), "gold": r.gold}
+                  for r in rows]
+        h._send(200, json.dumps({"ok": True, "ranked": result}).encode(), "application/json")
+    except Exception as exc:
+        log.warning("ds-preview: %s", exc)
+        h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+
+
 def _serve_analyze_post(h, payload) -> None:
     # Dashboard's "Analyze Now" button — forward POST to the supervisor
     # at :8890. Synchronous: returns supervisor's response. timeout=30
@@ -437,4 +466,5 @@ POST_ROUTES = [
     (equals("/api/command"),        _serve_command_post),
     (equals("/api/console-error"),  _serve_console_error_post),
     (equals("/api/analyze"),        _serve_analyze_post),
+    (equals("/api/ds-preview"),     _serve_ds_preview_post),
 ]

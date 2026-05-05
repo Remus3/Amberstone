@@ -1,20 +1,21 @@
 {
-  "rating": "C",
-  "label": "AVERAGE \u2014 clear gaps to address",
+  "rating": "D",
+  "label": "BELOW \u2014 focus on one area at a time",
   "champion": "Jinx",
   "game_mode": "CLASSIC",
   "mode_category": "SR",
-  "game_time": "20:19",
+  "game_time": "21:13",
   "stats": {
-    "cs_per_min": 8.4,
-    "kda": "11/4/8",
-    "deaths": 4,
-    "kill_participation": 50,
-    "gold_per_min": 170
+    "cs_per_min": 6.6,
+    "kda": "1/7/1",
+    "deaths": 7,
+    "kill_participation": 20,
+    "gold_per_min": 32
   },
   "notes": [
-    "Too many deaths (4)",
-    "GPM (170) low"
+    "CS/min (6.6) below target",
+    "Too many deaths (7)",
+    "KP (20%) too low"
   ],
-  "timestamp": "2026-05-02 20:24"
+  "timestamp": "2026-05-05 02:50"
 }
