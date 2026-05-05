@@ -1427,6 +1427,14 @@
       ITEMS.byName = j.byName || {};
       ITEMS.byId = j.byId || {};
       ITEMS.ready = true;
+      // Clear the resolve cache so items that were resolved before byName
+      // loaded (returning null → .no-icon) get a fresh lookup on re-render.
+      _itemResolveCache.clear();
+      // Also clear tile sigs so the idempotency guard doesn't skip re-render.
+      ["ib-owned", "ib-recommended", "cs-ds-tiles"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) delete el.dataset.tilesSig;
+      });
       if (_lastItemBuildState) {
         try { renderItemBuild(_lastItemBuildState); } catch (_) {}
       }
