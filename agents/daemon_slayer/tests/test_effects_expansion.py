@@ -4341,7 +4341,7 @@ class Batch33DefensiveOnlyTests(unittest.TestCase):
         "4636": "Night Harvester",
         "2512": "Fiendhunter Bolts",
         "663060": "Sword of the Divine",
-        "667112": "Flesheater",
+        # 667112 Flesheater promoted to active in batch 50 (armor_reduction_flat)
         "664011": "Sword of Blossoming Dawn",
         "2522": "Actualizer",
         "667109": "Cruelty",
@@ -4891,7 +4891,7 @@ class Batch37TrueDamageTests(unittest.TestCase):
             "447106": "Dragonheart",
             "447109": "Cruelty",
             "447110": "Moonflair Spellblade",
-            "447112": "Flesheater",
+            # 447112 Flesheater promoted to active in batch 50 (armor_reduction_flat)
             "447122": "Black Hole Gauntlet",
             "447123": "Puppeteer",
             "443056": "Demon King's Crown",
@@ -6292,7 +6292,8 @@ class Batch49Remaining3xxx2xxxArenaTests(unittest.TestCase):
     # ── stats-only active items ───────────────────────────────────────────
 
     def test_stats_only_active_3xxx_2xxx(self) -> None:
-        for iid in ["3172", "3177", "3184", "3095", "3144", "2508",
+        # 2508 Fated Ashes promoted to active periodic in batch 51
+        for iid in ["3172", "3177", "3184", "3095", "3144",
                     "221038", "223006"]:
             with self.subTest(iid=iid):
                 e = ITEM_EFFECTS.get(iid)
@@ -6337,6 +6338,90 @@ class Batch49Remaining3xxx2xxxArenaTests(unittest.TestCase):
 
     def test_batch49_total_count(self) -> None:
         self.assertGreaterEqual(len(ITEM_EFFECTS), 496)
+
+
+# ─────────────────────────────────── batch 50: armor_reduction_flat / mr_reduction_flat
+
+
+class FlatArmorShredTests(unittest.TestCase):
+    """Batch 50: armor_reduction_flat + mr_reduction_flat pipeline."""
+
+    def test_flat_shred_reduces_before_pct_reduction(self) -> None:
+        # 100 armor, 30 flat shred → 70, then 30% BC pct reduction → 49.
+        flat_shred = ItemEffect(
+            item_id="x", name="x", armor_reduction_flat=30.0
+        )
+        bc = ITEM_EFFECTS["3071"]  # armor_reduction_pct=0.30
+        result = effective_target_armor(100.0, [flat_shred, bc])
+        self.assertAlmostEqual(result, 49.0, places=3)
+
+    def test_flat_shred_floors_at_zero(self) -> None:
+        flat_shred = ItemEffect(item_id="x", name="x", armor_reduction_flat=200.0)
+        self.assertEqual(effective_target_armor(80.0, [flat_shred]), 0.0)
+
+    def test_flat_shred_no_op_on_zero_armor(self) -> None:
+        flat_shred = ItemEffect(item_id="x", name="x", armor_reduction_flat=30.0)
+        self.assertEqual(effective_target_armor(0.0, [flat_shred]), 0.0)
+
+    def test_mr_flat_shred_reduces_before_pct(self) -> None:
+        # 80 MR, 30 flat shred → 50, then 30% Bloodletter's pct → 35.
+        mr_flat = ItemEffect(item_id="x", name="x", mr_reduction_flat=30.0)
+        bl = ITEM_EFFECTS["4010"]  # mr_reduction_pct=0.30
+        result = effective_target_mr(80.0, [mr_flat, bl])
+        self.assertAlmostEqual(result, 35.0, places=3)
+
+    def test_flesheater_sr_has_flat_shred(self) -> None:
+        e = ITEM_EFFECTS["667112"]
+        self.assertAlmostEqual(e.armor_reduction_flat, 30.0)
+        self.assertAlmostEqual(e.mr_reduction_flat, 30.0)
+        self.assertFalse(e.defensive_only)
+
+    def test_flesheater_arena_has_flat_shred(self) -> None:
+        e = ITEM_EFFECTS["447112"]
+        self.assertAlmostEqual(e.armor_reduction_flat, 30.0)
+        self.assertAlmostEqual(e.mr_reduction_flat, 30.0)
+        self.assertFalse(e.defensive_only)
+
+    def test_flesheater_raises_dps_vs_armored(self) -> None:
+        snap = DataSnapshot.load()
+        bare = compute_dps(snap, "Aatrox", level=11, target_armor=100.0)
+        with_fe = compute_dps(
+            snap, "Aatrox", level=11, item_ids=["667112"], target_armor=100.0
+        )
+        self.assertGreater(with_fe.weighted_dps, bare.weighted_dps)
+
+
+# ─────────────────────────────── batch 51: Fated Ashes + missing components
+
+
+class Batch51FatedAshesTests(unittest.TestCase):
+    """Fated Ashes Inflame proc + 5 defensive-only components."""
+
+    def test_fated_ashes_has_inflame_proc(self) -> None:
+        e = ITEM_EFFECTS["2508"]
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(len(e.periodics), 1)
+        p = e.periodics[0]
+        self.assertEqual(p.name, "Inflame")
+        self.assertAlmostEqual(p.bonus_damage, 15.0)
+        self.assertEqual(p.damage_type, MAGICAL)
+        self.assertAlmostEqual(p.every_n_seconds, 3.0)
+
+    def test_fated_ashes_raises_magic_dps(self) -> None:
+        snap = DataSnapshot.load()
+        bare = compute_dps(snap, "Ahri", level=10, target_mr=50.0)
+        with_fa = compute_dps(snap, "Ahri", level=10, item_ids=["2508"], target_mr=50.0)
+        self.assertGreater(with_fa.weighted_dps, bare.weighted_dps)
+
+    def test_batch51_defensive_components(self) -> None:
+        for iid in ["2019", "2021", "2022", "2420", "2421"]:
+            with self.subTest(iid=iid):
+                e = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(e, f"{iid} missing")
+                self.assertTrue(e.defensive_only)
+
+    def test_batch51_total_count(self) -> None:
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 501)
 
 
 if __name__ == "__main__":
