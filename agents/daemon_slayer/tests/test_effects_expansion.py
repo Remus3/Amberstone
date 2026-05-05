@@ -7060,5 +7060,105 @@ class Batch60RealityFractureVoidmitesTests(unittest.TestCase):
         self.assertGreaterEqual(len(ITEM_EFFECTS), 547)
 
 
+class Batch61ZazzakBloodsongTests(unittest.TestCase):
+    """Phase 4 batch 61 — Zaz'Zak's Realmspike (3871) + Bloodsong (3877) promotion."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    # ── Zaz'Zak's Realmspike 3871 ──
+
+    def test_3871_not_defensive_only(self) -> None:
+        eff = ITEM_EFFECTS.get("3871")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+
+    def test_3871_proc_schema(self) -> None:
+        eff = ITEM_EFFECTS["3871"]
+        self.assertEqual(len(eff.periodics), 1)
+        p = eff.periodics[0]
+        self.assertEqual(p.name, "Void Explosion")
+        self.assertEqual(p.damage_type, "magical")
+        self.assertAlmostEqual(p.every_n_seconds, 10.0)
+
+    def test_3871_formula_baseline(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        # ap=0, target_max_hp=0 -> 1 * (10 + 0 + 0) = 10
+        ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=11, ap=0.0, target_max_hp=0.0)
+        eff = ITEM_EFFECTS["3871"]
+        dmg = eff.periodics[0].bonus_damage(ctx)
+        self.assertAlmostEqual(dmg, 10.0, places=2)
+
+    def test_3871_formula_with_ap_and_hp(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        # ap=200, target_max_hp=2000, targets=1 -> 10 + 30 + 60 = 100
+        ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=11, ap=200.0,
+                         target_max_hp=2000.0, targets_in_rotation=1.0)
+        eff = ITEM_EFFECTS["3871"]
+        dmg = eff.periodics[0].bonus_damage(ctx)
+        self.assertAlmostEqual(dmg, 10.0 + 0.15 * 200.0 + 0.03 * 2000.0, places=2)
+
+    def test_3871_aoe_scales_with_targets(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        ctx_single = CallContext(base_ad=60.0, bonus_ad=0.0, level=11, ap=100.0,
+                                 target_max_hp=1000.0, targets_in_rotation=1.0)
+        ctx_two = CallContext(base_ad=60.0, bonus_ad=0.0, level=11, ap=100.0,
+                              target_max_hp=1000.0, targets_in_rotation=2.0)
+        eff = ITEM_EFFECTS["3871"]
+        dmg1 = eff.periodics[0].bonus_damage(ctx_single)
+        dmg2 = eff.periodics[0].bonus_damage(ctx_two)
+        self.assertAlmostEqual(dmg2, 2.0 * dmg1, places=2)
+
+    def test_3871_raises_dps(self) -> None:
+        bare = compute_dps(self.snap, "Lux", level=11, item_ids=[])
+        with_zz = compute_dps(self.snap, "Lux", level=11, item_ids=["3871"])
+        self.assertGreater(with_zz.weighted_dps, bare.weighted_dps)
+
+    # ── Bloodsong 3877 ──
+
+    def test_3877_not_defensive_only(self) -> None:
+        eff = ITEM_EFFECTS.get("3877")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+
+    def test_3877_spellblade_schema(self) -> None:
+        eff = ITEM_EFFECTS["3877"]
+        self.assertEqual(len(eff.periodics), 1)
+        p = eff.periodics[0]
+        self.assertEqual(p.name, "Spellblade")
+        self.assertEqual(p.damage_type, "physical")
+        self.assertAlmostEqual(p.every_n_seconds, 1.5)
+
+    def test_3877_spellblade_is_100pct_base_ad(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        ctx = CallContext(base_ad=80.0, bonus_ad=40.0, level=11)
+        eff = ITEM_EFFECTS["3877"]
+        dmg = eff.periodics[0].bonus_damage(ctx)
+        self.assertAlmostEqual(dmg, 80.0, places=2)
+
+    def test_3877_expose_weakness_damage_amp(self) -> None:
+        eff = ITEM_EFFECTS["3877"]
+        self.assertAlmostEqual(eff.damage_amp_pct, 0.05, places=4)
+
+    def test_3877_unique_passive_key(self) -> None:
+        self.assertEqual(ITEM_EFFECTS["3877"].unique_passive_key, "spellblade")
+
+    def test_3877_spellblade_same_ratio_as_sheen(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        ctx = CallContext(base_ad=80.0, bonus_ad=0.0, level=11)
+        sheen_dmg = ITEM_EFFECTS["3057"].periodics[0].bonus_damage(ctx)
+        blood_dmg = ITEM_EFFECTS["3877"].periodics[0].bonus_damage(ctx)
+        self.assertAlmostEqual(sheen_dmg, blood_dmg, places=2)
+
+    def test_3877_raises_dps(self) -> None:
+        bare = compute_dps(self.snap, "Senna", level=11, item_ids=[])
+        with_bs = compute_dps(self.snap, "Senna", level=11, item_ids=["3877"])
+        self.assertGreater(with_bs.weighted_dps, bare.weighted_dps)
+
+    def test_batch61_count_unchanged(self) -> None:
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 547)
+
+
 if __name__ == "__main__":
     unittest.main()
