@@ -6,20 +6,26 @@
 
 ---
 
-# s104 wrap — 2026-05-05 (clean/admin session — no code changes)
+# s105 wrap — 2026-05-05 (zero-cost bridge daemons for Game-PC + Peer)
 
 ## What shipped
-- Nothing — this session was a clean context reset immediately followed by `/done`.
+- **`tools/gamepc_bridge_daemon.py`** — zero-cost sentinel for Game-PC bridge. Polls Legion bridge via `bridge_pull_tasks.py --target gamepc` every 30s; invokes `claude --dangerously-skip-permissions -p /process-bridge-tasks` only when count > 0. Deployed to `C:\RC-Agent\gamepc_bridge_daemon.py`, installed as `RC-BridgeDaemon` scheduled task (pythonw.exe, AtLogon, restart 3×/1min). **Game-PC confirmed working** — queue drained 3 tasks, health→idle.
+- **`tools/peer_bridge_daemon.py`** — self-contained Peer variant. Inline urllib fetch to `127.0.0.1:8888/api/bridge/messages`; handles Peer bare-list format + RC dict; reads `rc-bridge-tasks-processed.txt`. Deployment task sent to Peer via bridge.
+- **`tools/gamepc_boot.ps1`** — section 6 now installs RC-BridgeDaemon instead of terminal `/loop`; pulls fresh daemon on each boot from `/agent/` allowlist.
+- **`dashboard/routes_static.py`** — added `gamepc_bridge_daemon.py` + `peer_bridge_daemon.py` to `_AGENT_ALLOWED`.
+- **Auth fix** — `ANTHROPIC_API_KEY` stored in `C:\Users\Administrator\.claude\settings.local.json` env block on Game-PC for headless `--print` auth. Also in `C:\RC-Agent\.claude\settings.local.json`.
 
 ## Do NOT redo
-- All s103 work already committed and pushed. No action needed.
+- `/loop 1m /process-bridge-tasks` on Game-PC is REPLACED by RC-BridgeDaemon scheduled task. Do not restart the old loop.
+- `--dangerously-skip-permissions` is kebab-case (not camelCase). The daemon uses the correct form.
 
-## Open work (priority order, carried from s103)
-1. **Validate DS champ-select panel** — next champ select, confirm `#cs-ds-block` shows item tiles
-2. **Validate icon fix** — next in-game, confirm item icons render on first load without "?"
-3. **Bridge auto-loop dead** — restart on Game-PC: `/loop 1m /process-bridge-tasks` (confirmed dead: probe task-4208dd6a75e7 got no result)
+## Open work (priority order)
+1. **Peer daemon install** — Peer should have received a bridge task with steps. Confirm Peer installs and starts `peer_bridge_daemon.py`; watch for health file at `~/peer_bridge_daemon_health.json`.
+2. **Validate DS champ-select panel** — next champ select, confirm `#cs-ds-block` shows item tiles
+3. **Validate icon fix** — next in-game, confirm item icons render on first load without "?"
 4. **DS calibration**: 50+ games needed; auto-collects into `data/ds_calibration.jsonl`
 5. **Vision regions calibration**: tune `data/vision_regions.json` bboxes
+6. **Investigate failing scheduled tasks**: RC-DaemonSlayer (last_result=1), RC-VisionServer (last_result=267014)
 
 ---
 
