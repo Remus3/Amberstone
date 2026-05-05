@@ -5246,7 +5246,7 @@ class Batch39MRReductionSchemaTests(unittest.TestCase):
     def test_batch39_defensive_only_entries(self) -> None:
         expected = {
             # 444636 Night Harvester promoted to active periodic in batch 52
-            "444637": "Demonic Embrace",
+            # 444637 Demonic Embrace promoted to active in batch 56 (hp_scaled_ap_amp)
             "446691": "Duskblade of Draktharr",
             "446667": "Radiant Virtue",
             "443083": "Warmog's Armor",
@@ -6769,6 +6769,58 @@ class Batch55DDragonCoverageTests(unittest.TestCase):
 
     def test_batch55_total_count(self) -> None:
         # 501 + 46 new defensive_only entries = 547
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 547)
+
+
+# ──────────────────────────── Batch 56: caster HP-scaled multiplicative AP amp
+
+
+class Batch56CasterHpApAmpTests(unittest.TestCase):
+    """Demonic Embrace (444637 Arena) Sinister Pact HP-scaled AP amp (batch 56).
+
+    +1.5% AP per 100 current HP, capped at 45% at 3000 HP. Modeled with caster
+    max HP. Applied multiplicatively after Rabadon's ap_amp_pct.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_444637_not_defensive_only(self) -> None:
+        eff = ITEM_EFFECTS.get("444637")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+
+    def test_444637_schema_values(self) -> None:
+        eff = ITEM_EFFECTS["444637"]
+        self.assertAlmostEqual(eff.ap_amp_pct_per_100_caster_hp, 0.015)
+        self.assertAlmostEqual(eff.ap_amp_pct_per_100_caster_hp_cap, 0.45)
+
+    def test_444637_raises_dps_vs_naked(self) -> None:
+        # Lux with Nashor's Tooth (AP-scaling proc) + Demonic Embrace: at typical
+        # HP (1200+), the amp is 18%+ → meaningful proc DPS gain.
+        bare = compute_dps(self.snap, "Lux", level=11, item_ids=["3115"])
+        with_dem = compute_dps(
+            self.snap, "Lux", level=11, item_ids=["3115", "444637"]
+        )
+        self.assertGreater(with_dem.weighted_dps, bare.weighted_dps)
+
+    def test_444637_note_surfaces(self) -> None:
+        r = compute_dps(self.snap, "Lux", level=11, item_ids=["444637", "3115"])
+        self.assertTrue(any("HP-scaled AP amp" in n for n in r.notes))
+
+    def test_caster_hp_amp_stacks_with_rabadons(self) -> None:
+        # Rabadon's + Demonic Embrace should stack multiplicatively.
+        rab = compute_dps(
+            self.snap, "Lux", level=11, item_ids=["3115", "3089"]
+        )
+        rab_dem = compute_dps(
+            self.snap, "Lux", level=11, item_ids=["3115", "3089", "444637"]
+        )
+        self.assertGreater(rab_dem.weighted_dps, rab.weighted_dps)
+
+    def test_batch56_count_unchanged(self) -> None:
+        # 1 promotion from defensive_only to active — count stays >= 547.
         self.assertGreaterEqual(len(ITEM_EFFECTS), 547)
 
 
