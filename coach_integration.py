@@ -894,6 +894,16 @@ class CoachIntegration:
         except Exception as _ds_exc:
             logger.debug("SR daemon_slayer pre-call: %s", _ds_exc)
         self._last_ds_rows = _ds_rows
+        if _ds_rows:
+            try:
+                from core.ds_calibration import log_ds_run as _ds_log
+                _ds_log(champion=champion, mode="SR", level=int(game_state.get("level", 1)) or 1,
+                        owned_items=list(_owned_ids),
+                        ds_picks=[{"item_id": r.item_id, "item_name": r.item_name,
+                                   "delta_dps": round(r.delta_dps, 2), "gold": r.gold}
+                                  for r in _ds_rows])
+            except Exception:
+                pass
         if _ds_picks_str != "unavailable":
             user += f"\nDS top items (DPS ranked, own-items-accounted): {_ds_picks_str}"
 

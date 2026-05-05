@@ -65,6 +65,7 @@ from .effects import (
 )
 from .engine import build_champion
 from .stats import clamp_level
+from .ult_rates import get_ult_casts_per_sec
 
 # Base bonus crit damage on auto-attacks. ``effects.ITEM_EFFECTS`` adds
 # per-item bumps (e.g. Infinity Edge = +0.30) on top.
@@ -481,6 +482,10 @@ def compute_dps(
         if stats_for_rotation is stats:
             stats_for_rotation = dict(stats)
         stats_for_rotation["as"] = stats_for_rotation.get("as", 0.0) + cond_as
+    # Phase 4 batch 63 (2026-05-05): per-champion ult cast rate for
+    # ability-triggered items (Malignance Hatefog). Looked up from
+    # ult_cast_rates.json derived from rewind_history.db spell4_casts.
+    ult_casts_per_sec = get_ult_casts_per_sec(resolved.champion_name, mode)
     call_ctx = CallContext(
         base_ad=base_ad,
         bonus_ad=bonus_ad,
@@ -496,6 +501,7 @@ def compute_dps(
         caster_max_mp=caster_max_mp,
         caster_bonus_armor=caster_bonus_armor,
         caster_lethality=caster_lethality,
+        ult_casts_per_sec=ult_casts_per_sec,
     )
 
     # Phase 4 batch 34 (2026-05-04): magic-only target-debuff amp.

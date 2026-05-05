@@ -4202,7 +4202,7 @@ class Batch32DefensiveOnlyTests(unittest.TestCase):
     EXPECTED: dict[str, str] = {
         "3165": "Morellonomicon",
         "4628": "Horizon Focus",
-        "3118": "Malignance",
+        # 3118 Malignance promoted to active Hatefog proc in batch 64
         "2517": "Endless Hunger",
         "6609": "Chempunk Chainsword",
         "2523": "Hexoptics C44",
@@ -5761,7 +5761,9 @@ class Batch43Arena223MirrorTests(unittest.TestCase):
         expected = [
             "223026", "223046", "223047", "223050", "223065",
             "223072", "223073", "223075", "223102", "223107",
-            "223109", "223110", "223116", "223118", "223119",
+            "223109", "223110", "223116",
+            # 223118 Malignance promoted to active Hatefog proc in batch 64
+            "223119",
             "223139", "223143", "223152", "223157", "223161",
             "223165", "223190", "223222", "223504",
         ]
@@ -7354,7 +7356,69 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
 
     def test_batch63_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.59.0")
+        # Batch 64 (Malignance) superseded batch 63 — version is now 0.60.0
+        self.assertEqual(ENGINE_VERSION, "0.60.0")
+
+
+class Batch64MalignanceTests(unittest.TestCase):
+    """Batch 64 (2026-05-05) — Malignance Hatefog promotion via ult-cast schema."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        from agents.daemon_slayer.data_loader import DataSnapshot
+        cls.snap = DataSnapshot.load()
+
+    def test_malignance_sr_has_hatefog_proc(self) -> None:
+        eff = ITEM_EFFECTS.get("3118")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 1)
+        proc = eff.periodics[0]
+        self.assertEqual(proc.name, "Hatefog")
+        self.assertEqual(proc.damage_type, "magical")
+        self.assertAlmostEqual(proc.every_n_seconds, 1.0)
+
+    def test_malignance_aram_mirror_has_hatefog_proc(self) -> None:
+        eff = ITEM_EFFECTS.get("223118")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 1)
+        self.assertEqual(eff.periodics[0].name, "Hatefog")
+
+    def test_hatefog_damage_scales_with_ap_and_ult_rate(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        eff = ITEM_EFFECTS["3118"]
+        proc = eff.periodics[0]
+        # With 300 AP and 0.02/s ult rate: (180 + 0.15*300) * 0.02 = 4.95
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=13, ap=300.0, ult_casts_per_sec=0.02)
+        dmg = proc.resolve_damage(ctx)
+        self.assertAlmostEqual(dmg, (180.0 + 0.15 * 300.0) * 0.02, places=4)
+
+    def test_hatefog_zero_when_no_ult_data(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        eff = ITEM_EFFECTS["3118"]
+        proc = eff.periodics[0]
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=13, ap=400.0, ult_casts_per_sec=0.0)
+        self.assertEqual(proc.resolve_damage(ctx), 0.0)
+
+    def test_malignance_raises_dps_for_ap_mage(self) -> None:
+        # Ahri (AP mage) + Luden's Echo should get a small but positive delta from Malignance
+        base = compute_dps(self.snap, "Ahri", level=13, item_ids=["6655"], mode="ARAM")
+        with_mal = compute_dps(self.snap, "Ahri", level=13, item_ids=["6655", "3118"], mode="ARAM")
+        self.assertGreater(with_mal.weighted_dps, base.weighted_dps)
+
+    def test_ult_rates_lookup(self) -> None:
+        from agents.daemon_slayer.ult_rates import get_ult_casts_per_sec
+        # Ahri ARAM should have a real rate
+        rate = get_ult_casts_per_sec("Ahri", "ARAM")
+        self.assertGreater(rate, 0.0)
+        # Unknown champion falls back to global median
+        fallback = get_ult_casts_per_sec("UnknownChamp999", "SR")
+        self.assertGreater(fallback, 0.0)
+
+    def test_batch64_version(self) -> None:
+        from agents.daemon_slayer import ENGINE_VERSION
+        self.assertEqual(ENGINE_VERSION, "0.60.0")
 
 
 if __name__ == "__main__":

@@ -350,6 +350,18 @@ build gold; ``current_item_ids`` pins the user's current build.
 The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 ``/rank``, and ``/beam`` on :8893; the package stays importable for
 direct use without spinning the engine.
+
+Batch 64 (2026-05-05 — Stage 4: ult-cast schema, ENGINE_VERSION 0.60.0):
+  Promoted Malignance (3118, 223118) via per-champion ult cast rate data from
+  rewind_history.db (spell4_casts / game_duration_s → ult_cast_rates.json,
+  172 champions). Hatefog formula: (180 + 15% AP) magic per ult zone hit.
+  Schema addition: CallContext.ult_casts_per_sec (float, engine-derived from
+  ult_rates.py; default 0.0 → safe no-op). PeriodicProc trick: every_n_seconds=1.0
+  as normalization anchor; bonus_damage = (180+0.15*ap)*ult_casts_per_sec so
+  rate is champion-aware without a per-champion ItemEffect split.
+  Permanently deferred (3 items remain): Lightning Braid (no Meraki formula,
+  DPS-negative), Kinkou Jitte (directional geometry), Mejai's Arena mirror
+  (no Arena DDragon ID).
 """
 
-ENGINE_VERSION = "0.59.0"
+ENGINE_VERSION = "0.60.0"
