@@ -46,7 +46,7 @@ $AGENTS = @(
 
 # Non-agent support scripts (launchers, helpers) pulled fresh on each boot
 # so updates ship via the same /agent/ allowlist.
-$SUPPORT_SCRIPTS = @('start_gamepc_claude.ps1')
+$SUPPORT_SCRIPTS = @('start_gamepc_claude.ps1', 'gamepc_bridge_daemon.py')
 foreach ($s in $SUPPORT_SCRIPTS) {
     $url = "https://legion-rc:8888/agent/$s"
     $out = Join-Path $dest $s
@@ -215,16 +215,40 @@ if (-not $bootTask) {
     Write-Host "  scheduled task $bootTaskName already present" -ForegroundColor Green
 }
 
-# 6. Bridge-loop Claude session — idempotent launcher. Spawns a visible
-#    Windows Terminal window running `claude --name "Game-PC bridge"
-#    "/loop 1m /process-bridge-tasks"` if no such window already exists.
-#    Closes the operator-attention loop: the only way the bridge-task
-#    processor was previously alive was a hand-typed slash command.
-$claudeLauncher = Join-Path $dest 'start_gamepc_claude.ps1'
-if (Test-Path $claudeLauncher) {
-    & powershell.exe -ExecutionPolicy Bypass -File $claudeLauncher
+# 6. Bridge daemon — zero-cost sentinel that only invokes Claude when there
+#    are pending bridge tasks. Replaces the old "/loop 1m /process-bridge-tasks"
+#    terminal window. Registered as a proper scheduled task (pythonw.exe, no
+#    console window); self-restarts on failure.
+$pyW = "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe"
+$daemonScript = Join-Path $dest 'gamepc_bridge_daemon.py'
+$daemonTask = Get-ScheduledTask -TaskName 'RC-BridgeDaemon' -ErrorAction SilentlyContinue
+if (-not $daemonTask) {
+    if (Test-Path $daemonScript) {
+        $action   = New-ScheduledTaskAction -Execute $pyW -Argument $daemonScript
+        $trigger  = New-ScheduledTaskTrigger -AtLogOn -User 'Administrator'
+        $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew `
+                        -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) `
+                        -ExecutionTimeLimit ([TimeSpan]::Zero)
+        $principal = New-ScheduledTaskPrincipal -UserId 'Administrator' `
+                        -LogonType Interactive -RunLevel Highest
+        Register-ScheduledTask -TaskName 'RC-BridgeDaemon' -Action $action `
+            -Trigger $trigger -Settings $settings -Principal $principal `
+            -Description 'Zero-cost bridge sentinel: polls Legion /api/bridge every 30s; invokes claude --print /process-bridge-tasks only when tasks are pending.' `
+            -Force | Out-Null
+        Write-Host '  RC-BridgeDaemon task installed' -ForegroundColor Green
+    } else {
+        Write-Host '  gamepc_bridge_daemon.py missing; skipping daemon install' -ForegroundColor Yellow
+    }
 } else {
-    Write-Host "  start_gamepc_claude.ps1 missing; skipping Claude launch" -ForegroundColor Yellow
+    Write-Host '  RC-BridgeDaemon task already present' -ForegroundColor Green
+}
+# Ensure it's running right now (idempotent — IgnoreNew if already active)
+$daemonTask = Get-ScheduledTask -TaskName 'RC-BridgeDaemon' -ErrorAction SilentlyContinue
+if ($daemonTask -and $daemonTask.State -ne 'Running') {
+    Start-ScheduledTask -TaskName 'RC-BridgeDaemon'
+    Write-Host '  RC-BridgeDaemon started' -ForegroundColor Green
+} elseif ($daemonTask) {
+    Write-Host '  RC-BridgeDaemon already running' -ForegroundColor Green
 }
 
 Write-Host ''

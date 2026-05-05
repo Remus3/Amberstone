@@ -141,6 +141,8 @@ _AGENT_ALLOWED = {
     "caveman.md",
     "done-gamepc.md",
     "done-peer.md",
+    "gamepc_bridge_daemon.py",
+    "peer_bridge_daemon.py",
 }
 
 
