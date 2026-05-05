@@ -5034,6 +5034,125 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),
     ),
 
+    # ── Phase 4 batch 55 (2026-05-04): remaining DDragon purchasable items ──
+    # Completes DDragon purchasable coverage. All entries are defensive_only —
+    # no DPS-relevant passives confirmed from DDragon or Meraki bulk.
+
+    # Doran's Helm — defensive starter (HP + Armor + MR)
+    "1120": ItemEffect(item_id="1120", name="Doran's Helm",
+        defensive_only=True,
+        note="Doran's Helm (1120): 110 HP + 10 Armor + 10 MR — defensive starter, no DPS proc"),
+
+    # Jungle companions — companion procs are PvE/objective-only, not champion DPS
+    "1101": ItemEffect(item_id="1101", name="Scorchclaw Pup",
+        defensive_only=True, note="Scorchclaw Pup (1101): jungle companion — no champion DPS contribution"),
+    "1102": ItemEffect(item_id="1102", name="Gustwalker Hatchling",
+        defensive_only=True, note="Gustwalker Hatchling (1102): jungle companion — no champion DPS contribution"),
+    "1103": ItemEffect(item_id="1103", name="Mosstomper Seedling",
+        defensive_only=True, note="Mosstomper Seedling (1103): jungle companion — no champion DPS contribution"),
+    "1105": ItemEffect(item_id="1105", name="Mosstomper Seedling",
+        defensive_only=True, note="Mosstomper Seedling (1105): jungle companion — no champion DPS contribution"),
+    "1106": ItemEffect(item_id="1106", name="Gustwalker Hatchling",
+        defensive_only=True, note="Gustwalker Hatchling (1106): jungle companion — no champion DPS contribution"),
+    "1107": ItemEffect(item_id="1107", name="Scorchclaw Pup",
+        defensive_only=True, note="Scorchclaw Pup (1107): jungle companion — no champion DPS contribution"),
+
+    # Consumables and utility
+    "2003": ItemEffect(item_id="2003", name="Health Potion",
+        defensive_only=True, note="Health Potion (2003): consumed heal — no sustained DPS contribution"),
+    "2031": ItemEffect(item_id="2031", name="Refillable Potion",
+        defensive_only=True, note="Refillable Potion (2031): consumed heal — no sustained DPS contribution"),
+    "2055": ItemEffect(item_id="2055", name="Control Ward",
+        defensive_only=True, note="Control Ward (2055): vision utility — no DPS contribution"),
+
+    # Guardian starter items (Support)
+    "2049": ItemEffect(item_id="2049", name="Guardian's Amulet",
+        defensive_only=True, note="Guardian's Amulet (2049): support starter — no DPS proc"),
+    "2050": ItemEffect(item_id="2050", name="Guardian's Shroud",
+        defensive_only=True, note="Guardian's Shroud (2050): support starter — no DPS proc"),
+    "2051": ItemEffect(item_id="2051", name="Guardian's Horn",
+        defensive_only=True, note="Guardian's Horn (2051): support starter — no DPS proc"),
+
+    # Elixirs (consumed, temporary buffs)
+    "2138": ItemEffect(item_id="2138", name="Elixir of Iron",
+        defensive_only=True, note="Elixir of Iron (2138): consumed temporary HP — no sustained DPS"),
+    "2139": ItemEffect(item_id="2139", name="Elixir of Sorcery",
+        defensive_only=True, note="Elixir of Sorcery (2139): consumed AP + mana regen — no sustained DPS"),
+    "2140": ItemEffect(item_id="2140", name="Elixir of Wrath",
+        defensive_only=True, note="Elixir of Wrath (2140): consumed AD + lifesteal — no sustained DPS"),
+
+    # Arena / special mode consumables
+    "2141": ItemEffect(item_id="2141", name="Cappa Juice",
+        defensive_only=True, note="Cappa Juice (2141): Arena consumable — no DPS contribution"),
+    "2142": ItemEffect(item_id="2142", name="Juice of Power",
+        defensive_only=True, note="Juice of Power (2142): Arena consumable — no DPS contribution"),
+    "2143": ItemEffect(item_id="2143", name="Juice of Vitality",
+        defensive_only=True, note="Juice of Vitality (2143): Arena consumable — no DPS contribution"),
+    "2144": ItemEffect(item_id="2144", name="Juice of Haste",
+        defensive_only=True, note="Juice of Haste (2144): Arena consumable — no DPS contribution"),
+    "2147": ItemEffect(item_id="2147", name="Augment Level",
+        defensive_only=True, note="Augment Level (2147): Arena augment upgrade — no DPS contribution"),
+
+    # Bandle Juice (Bandle City ARAM map) — consumed items giving dynamic stat boosts
+    "2161": ItemEffect(item_id="2161", name="Bandle Juice of Power",
+        defensive_only=True, note="Bandle Juice of Power (2161): Bandle City ARAM consumed item — no modeled DPS"),
+    "2162": ItemEffect(item_id="2162", name="Bandle Juice of Vitality",
+        defensive_only=True, note="Bandle Juice of Vitality (2162): Bandle City ARAM consumed item — no modeled DPS"),
+    "2163": ItemEffect(item_id="2163", name="Bandle Juice of Haste",
+        defensive_only=True, note="Bandle Juice of Haste (2163): Bandle City ARAM consumed item — no modeled DPS"),
+
+    # Trinkets and ward items (0g)
+    "3340": ItemEffect(item_id="3340", name="Stealth Ward",
+        defensive_only=True, note="Stealth Ward (3340): vision trinket — no DPS contribution"),
+    "3363": ItemEffect(item_id="3363", name="Farsight Alteration",
+        defensive_only=True, note="Farsight Alteration (3363): vision trinket — no DPS contribution"),
+    "3364": ItemEffect(item_id="3364", name="Oracle Lens",
+        defensive_only=True, note="Oracle Lens (3364): vision trinket — no DPS contribution"),
+    "3599": ItemEffect(item_id="3599", name="Kalista's Black Spear",
+        defensive_only=True, note="Kalista's Black Spear (3599): Kalista ally bond — no DPS contribution"),
+    "3600": ItemEffect(item_id="3600", name="Kalista's Black Spear",
+        defensive_only=True, note="Kalista's Black Spear (3600): Kalista ally bond variant — no DPS contribution"),
+
+    # Support milestone quest items
+    "3865": ItemEffect(item_id="3865", name="World Atlas",
+        defensive_only=True, note="World Atlas (3865): support quest milestone — no DPS proc"),
+    "3869": ItemEffect(item_id="3869", name="Celestial Opposition",
+        defensive_only=True, note="Celestial Opposition (3869): support quest milestone — no DPS proc"),
+    "3870": ItemEffect(item_id="3870", name="Dream Maker",
+        defensive_only=True, note="Dream Maker (3870): support quest milestone — no DPS proc"),
+    "3871": ItemEffect(item_id="3871", name="Zaz'Zak's Realmspike",
+        defensive_only=True, note="Zaz'Zak's Realmspike (3871): support quest milestone — no DPS proc"),
+    "3876": ItemEffect(item_id="3876", name="Solstice Sleigh",
+        defensive_only=True, note="Solstice Sleigh (3876): support quest milestone — no DPS proc"),
+    "3877": ItemEffect(item_id="3877", name="Bloodsong",
+        defensive_only=True, note="Bloodsong (3877): support quest milestone — no DPS proc"),
+
+    # Arena placeholder / selector items
+    "6032": ItemEffect(item_id="6032", name="Stat Bonus",
+        defensive_only=True, note="Stat Bonus (6032): Arena generic stat purchase — no specific DPS proc"),
+    "220000": ItemEffect(item_id="220000", name="Stat Bonus",
+        defensive_only=True, note="Stat Bonus (220000): Arena generic stat purchase — no specific DPS proc"),
+    "220001": ItemEffect(item_id="220001", name="Legendary Fighter Item",
+        defensive_only=True, note="Legendary Fighter Item (220001): Arena random Legendary selector — no fixed DPS effect"),
+    "220002": ItemEffect(item_id="220002", name="Legendary Marksman Item",
+        defensive_only=True, note="Legendary Marksman Item (220002): Arena random Legendary selector — no fixed DPS effect"),
+    "220003": ItemEffect(item_id="220003", name="Legendary Assassin Item",
+        defensive_only=True, note="Legendary Assassin Item (220003): Arena random Legendary selector — no fixed DPS effect"),
+    "220004": ItemEffect(item_id="220004", name="Legendary Mage Item",
+        defensive_only=True, note="Legendary Mage Item (220004): Arena random Legendary selector — no fixed DPS effect"),
+    "220005": ItemEffect(item_id="220005", name="Legendary Tank Item",
+        defensive_only=True, note="Legendary Tank Item (220005): Arena random Legendary selector — no fixed DPS effect"),
+    "220006": ItemEffect(item_id="220006", name="Legendary Support Item",
+        defensive_only=True, note="Legendary Support Item (220006): Arena random Legendary selector — no fixed DPS effect"),
+    "220007": ItemEffect(item_id="220007", name="Prismatic Item",
+        defensive_only=True, note="Prismatic Item (220007): Arena random Prismatic selector — no fixed DPS effect"),
+
+    # Special items
+    "663064": ItemEffect(item_id="663064", name="Veigar's Talisman of Ascension",
+        defensive_only=True, note="Veigar's Talisman of Ascension (663064): +100% XP bonus; no DPS contribution"),
+    "994403": ItemEffect(item_id="994403", name="Golden Spatula",
+        defensive_only=True, note="Golden Spatula (994403): cross-mode item; no DPS contribution in SR/ARAM/Arena model"),
+
 }
 
 
