@@ -53,6 +53,7 @@ from .effects import (
     effective_target_mr,
     total_ap_amp_multiplier,
     total_bonus_ap_from_hp,
+    total_caster_hp_scaled_ap_amp,
     total_conditional_as,
     total_crit_chance_bonus,
     total_crit_damage_bonus,
@@ -433,6 +434,14 @@ def compute_dps(
     ap_amp = total_ap_amp_multiplier(item_effects)
     if ap_amp != 1.0:
         ap *= ap_amp
+    # Phase 4 batch 56 (2026-05-04): caster HP-scaled multiplicative AP amp.
+    # Demonic Embrace (444637 Arena) Sinister Pact: +1.5% AP per 100 HP,
+    # capped at 45%. Applied AFTER Rabadon's (ap_amp) so the amplified AP
+    # feeds into this second multiplicative layer — consistent with League's
+    # buff-system stacking: each multiplier applies to the running total.
+    hp_ap_amp = total_caster_hp_scaled_ap_amp(item_effects, caster_max_hp)
+    if hp_ap_amp != 1.0:
+        ap *= hp_ap_amp
     # Phase 4 batch 21 (2026-05-04): crit_chance plumbed into CallContext
     # for ER Spellblade (+0.5 bonus physical per 1% crit).
     # Phase 4 batch 26 (2026-05-04): item-effect-contributed crit
@@ -542,6 +551,12 @@ def compute_dps(
     if stacked_ap > 0:
         notes.append(
             f"Mejai's stacked AP: +{stacked_ap:.0f} AP (full-stacks pin; "
+            f"total AP for procs: {ap:.1f})"
+        )
+    if hp_ap_amp != 1.0:
+        notes.append(
+            f"caster HP-scaled AP amp ×{hp_ap_amp:.4f} "
+            f"(Demonic Embrace Sinister Pact at {caster_max_hp:.0f} HP; "
             f"total AP for procs: {ap:.1f})"
         )
     if cond_as > 0:

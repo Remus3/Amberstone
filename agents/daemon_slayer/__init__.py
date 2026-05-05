@@ -352,4 +352,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.55.0"
+ENGINE_VERSION = "0.56.0"
