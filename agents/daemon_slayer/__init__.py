@@ -213,7 +213,28 @@ Crown of the Shattered Queen SR (664644), Shield of Molten Stone SR
 Gargoyle Stoneplate SR (663193), The Golden Spatula (664403), Thornmail
 (3075), Mejai's Soulstealer (3041), Quicksilver Sash (3140), Hexdrinker
 (3155, unique_passive_key lifeline), Verdant Barrier (4632), Plated
-Steelcaps (3047)).
+Steelcaps (3047)). Phase 4 batch 41 Arena 226xxx mirrors (2026-05-04
+— fixes a batch-35 key collision where Navori Flickerblade was mistakenly
+keyed to "6672" (Kraken Slayer's DDragon ID), silently overwriting it;
+Navori moved to correct key "6675", old defensive_only "6675" stub
+removed; covers all 28 missing 226xxx Arena pool items (DDragon IDs
+226xxx = SR counterpart at 226xxx − 220000): 14 active promotions
+sharing the same schema as their SR counterparts [Sundered Sky (226610)
+Lightshield Strike, Stridebreaker (226631) Cleave, Liandry's Anguish
+(226653) damage_amp_pct=0.06, Iceborn Gauntlet (226662) Spellblade
+spellblade-key, Hollow Radiance (226664) Immolate immolate-key,
+Navori Flickerblade (226672) Bring It Down 120→168, Eclipse (226692)
+Ever Rising Moon 6% target HP, Prowler's Claw (226693) lethality=22,
+Serylda's Grudge (226694) armor_pen_pct=0.35, Axiom Arc (226696)
+lethality=18, Hubris (226697) lethality=18, Profane Hydra (226698)
+Cleave, Voltaic Cyclosword (226699) Firmament+lethality=10, Opportunity
+(226701) lethality=18]; 14 defensive_only mirrors [Death's Dance
+(226333), Chempunk Chainsword (226609), Staff of Flowing Water (226616),
+Moonstone Renewer (226617), Echoes of Helia (226620), Dawncore (226621),
+Goredrinker (226630), Luden's Echo (226655), Rod of Ages (226657),
+Jak'Sho (226665), Immortal Shieldbow (226673, lifeline-key), Navori
+Flickerblades (226675), The Collector (226676), Serpent's Fang
+(226695)]).
 CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
 ``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation`` /
@@ -229,4 +250,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.44.0"
+ENGINE_VERSION = "0.45.0"
