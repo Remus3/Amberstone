@@ -4339,7 +4339,7 @@ class Batch33DefensiveOnlyTests(unittest.TestCase):
 
     EXPECTED: dict[str, str] = {
         # 4636 Night Harvester promoted to active periodic in batch 52
-        "2512": "Fiendhunter Bolts",
+        # 2512 Fiendhunter Bolts promoted to active periodic (Opening Barrage 45s CD)
         "663060": "Sword of the Divine",
         # 667112 Flesheater promoted to active in batch 50 (armor_reduction_flat)
         "664011": "Sword of Blossoming Dawn",
@@ -4472,7 +4472,10 @@ class Batch35LethMissedAndDualPenTests(unittest.TestCase):
         self.assertIsNotNone(eff)
         self.assertFalse(eff.defensive_only)
         self.assertAlmostEqual(eff.lethality, 12.0, places=2)
-        self.assertEqual(len(eff.periodics), 0)
+        # Char proc promoted: 15s CD hp_diff burn
+        self.assertEqual(len(eff.periodics), 1)
+        self.assertEqual(eff.periodics[0].name, "Char")
+        self.assertAlmostEqual(eff.periodics[0].every_n_seconds, 15.0, places=1)
 
 
 class DivineSundererSpellbladeTests(unittest.TestCase):
@@ -4886,7 +4889,7 @@ class Batch37TrueDamageTests(unittest.TestCase):
             "447101": "Gambler's Blade",
             # 447102 Reality Fracture promoted batch 60 (ZZ'Rot Voidmites proc)
             "447103": "Hemomancer's Helm",
-            "447104": "Innervating Locket",
+            # 447104 Innervating Locket promoted (Fill the Soul bonus_ap_stacked)
             "447105": "Empyrean Promise",
             "447106": "Dragonheart",
             # 447109 Cruelty promoted batch 62 (Watch Them Fall comet proc)
@@ -7243,6 +7246,115 @@ class Batch62CrueltyWatchThemFallTests(unittest.TestCase):
 
     def test_batch62_count_unchanged(self) -> None:
         self.assertGreaterEqual(len(ITEM_EFFECTS), 547)
+
+
+class Batch63BlockedItemPromotionsTests(unittest.TestCase):
+    """Batch 63 — 3 previously-blocked items promoted using binding-constraint CDs.
+
+    * Hellfire Hatchet (4017): Char 15s CD — hp_diff + lethality scaling
+    * Fiendhunter Bolts (2512): Opening Barrage 45s CD — 3×crit-bonus attacks
+    * Innervating Locket (447104): Fill the Soul bonus_ap_stacked midpoint
+    """
+
+    snap: DataSnapshot
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        from agents.daemon_slayer.data_loader import DataSnapshot
+        cls.snap = DataSnapshot.load()
+
+    # ── Hellfire Hatchet ──────────────────────────────────────────────────────
+
+    def test_hellfire_hatchet_has_char_proc(self) -> None:
+        eff = ITEM_EFFECTS.get("4017")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 1)
+        self.assertEqual(eff.periodics[0].name, "Char")
+        self.assertEqual(eff.periodics[0].damage_type, PHYSICAL)
+        self.assertAlmostEqual(eff.periodics[0].every_n_seconds, 15.0, places=1)
+        self.assertEqual(eff.unique_passive_key, "hellfire_char")
+
+    def test_hellfire_char_formula_zero_hpdiff(self) -> None:
+        # Caster and target same HP → hp_diff=0 → base 5% target_max_hp
+        ctx = CallContext(base_ad=80.0, bonus_ad=20.0, level=12, ap=0.0,
+                          caster_max_hp=2000.0, target_max_hp=2000.0,
+                          caster_lethality=0.0)
+        dmg = ITEM_EFFECTS["4017"].periodics[0].bonus_damage(ctx)
+        self.assertAlmostEqual(dmg, 2000.0 * 0.05, places=2)
+
+    def test_hellfire_char_formula_max_hpdiff(self) -> None:
+        # hp_diff=2000 → 10% target_max_hp + lethality bonus
+        leth = 30.0
+        ctx = CallContext(base_ad=80.0, bonus_ad=20.0, level=12, ap=0.0,
+                          caster_max_hp=4000.0, target_max_hp=2000.0,
+                          caster_lethality=leth)
+        dmg = ITEM_EFFECTS["4017"].periodics[0].bonus_damage(ctx)
+        expected = 2000.0 * (0.10 + leth * 0.004)
+        self.assertAlmostEqual(dmg, expected, places=2)
+
+    def test_hellfire_char_hpdiff_clamped(self) -> None:
+        # hp_diff > 2000 → clamped to 2000
+        ctx_big = CallContext(base_ad=80.0, bonus_ad=0.0, level=12, ap=0.0,
+                              caster_max_hp=9000.0, target_max_hp=2000.0,
+                              caster_lethality=0.0)
+        ctx_cap = CallContext(base_ad=80.0, bonus_ad=0.0, level=12, ap=0.0,
+                              caster_max_hp=4000.0, target_max_hp=2000.0,
+                              caster_lethality=0.0)
+        dmg_big = ITEM_EFFECTS["4017"].periodics[0].bonus_damage(ctx_big)
+        dmg_cap = ITEM_EFFECTS["4017"].periodics[0].bonus_damage(ctx_cap)
+        self.assertAlmostEqual(dmg_big, dmg_cap, places=2)
+
+    def test_hellfire_hatchet_raises_dps(self) -> None:
+        bare = compute_dps(self.snap, "Zed", level=12, item_ids=[])
+        with_hh = compute_dps(self.snap, "Zed", level=12, item_ids=["4017"])
+        self.assertGreater(with_hh.weighted_dps, bare.weighted_dps)
+
+    # ── Fiendhunter Bolts ────────────────────────────────────────────────────
+
+    def test_fiendhunter_bolts_has_opening_barrage(self) -> None:
+        eff = ITEM_EFFECTS.get("2512")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 1)
+        self.assertEqual(eff.periodics[0].name, "Opening Barrage")
+        self.assertEqual(eff.periodics[0].damage_type, PHYSICAL)
+        self.assertAlmostEqual(eff.periodics[0].every_n_seconds, 45.0, places=1)
+        self.assertEqual(eff.unique_passive_key, "fiendhunter_barrage")
+
+    def test_fiendhunter_barrage_scales_with_ad(self) -> None:
+        ctx_low = CallContext(base_ad=50.0, bonus_ad=20.0, level=10, ap=0.0)
+        ctx_high = CallContext(base_ad=100.0, bonus_ad=40.0, level=10, ap=0.0)
+        dmg_low = ITEM_EFFECTS["2512"].periodics[0].bonus_damage(ctx_low)
+        dmg_high = ITEM_EFFECTS["2512"].periodics[0].bonus_damage(ctx_high)
+        self.assertAlmostEqual(dmg_low, 3.0 * 70.0 * 0.70, places=2)
+        self.assertAlmostEqual(dmg_high, 3.0 * 140.0 * 0.70, places=2)
+
+    def test_fiendhunter_bolts_raises_dps(self) -> None:
+        bare = compute_dps(self.snap, "Jinx", level=10, item_ids=[])
+        with_fb = compute_dps(self.snap, "Jinx", level=10, item_ids=["2512"])
+        self.assertGreater(with_fb.weighted_dps, bare.weighted_dps)
+
+    # ── Innervating Locket ───────────────────────────────────────────────────
+
+    def test_innervating_locket_bonus_ap_stacked(self) -> None:
+        eff = ITEM_EFFECTS.get("447104")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+        self.assertAlmostEqual(eff.bonus_ap_stacked, 175.0, places=1)
+        self.assertEqual(eff.unique_passive_key, "innervating_fill")
+        self.assertEqual(len(eff.periodics), 0)
+
+    def test_innervating_locket_raises_dps_with_ap_proc(self) -> None:
+        # bonus_ap_stacked only contributes when paired with an AP-scaling proc item.
+        # Use Lich Bane (3100) which has an AP-scaling spellblade proc.
+        base = compute_dps(self.snap, "Lissandra", level=10, item_ids=["3100"])
+        with_il = compute_dps(self.snap, "Lissandra", level=10, item_ids=["3100", "447104"])
+        self.assertGreater(with_il.weighted_dps, base.weighted_dps)
+
+    def test_batch63_version(self) -> None:
+        from agents.daemon_slayer import ENGINE_VERSION
+        self.assertEqual(ENGINE_VERSION, "0.59.0")
 
 
 if __name__ == "__main__":
