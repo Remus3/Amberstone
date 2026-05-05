@@ -60,7 +60,7 @@ tft/                      TFT engine (state_reader, live_analysis, coach_engine,
 ops/                      rc_supervisor, rc_self_monitor, rc_dev_runtime, runtime/health.json,
                           tls/ (mkcert leaf + key), local_paths.json (gitignored bridge config)
 lcu/                      LCU client, auto-accept, rune writer, postgame collector (all async)
-agents/                   Phase 3 supervisor (separate process; isolates DecisionLoop)
+agents/                   Phase 3 framework: supervisor.py (:8890/:8891) + Agents 0-7 + Daemon Slayer
 data/                     coaching artifacts (atomic-written, polled by dashboard)
 web_dashboard.py          145L barrel → dashboard/ package
 dashboard/                _state_builder, _champ_select, _liveclient, _writers, _diagnostics,
@@ -86,6 +86,29 @@ Frames are captured on Game-PC (`tools/gamepc_screen_agent.py`, PIL `ImageGrab` 
 5. **Claude Haiku** — final-mile coaching tips. Streamed onto the dashboard with `kind=task` decision tags when the detector flagged a moment.
 
 `vision_tracker` derives fog-of-war from Live Client position freshness on SR-style maps and stamps `last_seen_zone="on_bridge"` for shared-vision modes (ARAM/KIWI) where Riot's API doesn't expose positions.
+
+---
+
+## Phase 3 agent framework
+
+A second long-running process stack (`agents/supervisor.py`) runs alongside the main RC process on Legion. It owns a roster of 8 specialized agents, exposes an HTTP API at `:8890` (proxied as `/api/analyze` on the dashboard), and a WebSocket relay at `:8891`. A PID lock in `agents/state/lockfile` prevents duplicate launches.
+
+| Agent | Name | Role |
+|---|---|---|
+| **0 — Gatekeeper** | `agent0_gatekeeper/evaluator.py` | Policy gate for cross-machine tasks. Evaluates against 6 criteria; returns accept/reject. Rejection reasons 1/2/3/6 → dead-letter immediately; 4/5 → auto-retry-once. Permitted ops in `allowed_ops.json`; target machines in `target_allowlist.json`. |
+| **1 — Lead Scheduler** | `agent1_lead/scheduler.py` | Single writer of `agents/state/task_queue.jsonl`. In-memory priority queue with append-only JSONL persistence; replays on startup to recover state. Hard gates (kinds 1,7,8) → needs explicit approval; soft gate via Agent 0 (kind 5, cross-machine); ungated kinds → ready immediately. |
+| **2 — Backend Ingest** | `agent2_backend/` | Consumes `game-summary` tasks → inserts rows into mode DB. WebSocket server for real-time updates. SMB push for cross-machine sync. Win/loss wired to live coaching JSON. |
+| **3 — Testing** | `agent3_testing/suite/` | Comprehensive pytest suite (19 test files) covering all agents, core modules, game ingest, audit probes, and 10 regression rounds. |
+| **4 — Coach Mentor** | `agent4_coach_mentor/analyzer.py` | Replays matches in mode DB. Rolls per-champion aggregates into `adaptation_buckets`; bumps `matchup_modifiers` sample counts per-champion × per-mode. Activates matchup modifiers once sample threshold is reached. Autonomous writes for aggregates; propose-and-queue only for coach prompts or UI changes. |
+| **5 — UI Agent** | `agent5_ui/champion_fallback.py` | Champion fallback when Riot's Live Client API (`:2999`) is unreachable. Three-signal chain: LCU champ-select → most recent match history row → most recent user input mentioning a champion. Served at `/api/locked-champion` with brief caching. |
+| **6 — Auditor** | `agent6_auditor/_audit_probes.py` | Security audit probes — verifies weaknesses empirically (path traversal, subdir substring matching, dotfiles). Source quality ratings in `source_quality.json`. |
+| **7 — Context / NL Parser** | `agent7_context/input_parser.py` | Translates user free-text (dashboard or CLI) into tasks via Agent 1's scheduler. Rule-based fast path (regex + keywords, ~80% coverage) with Haiku LLM fallback. Never dispatches agents directly — only files tasks. Runs as a warm session maintained by the supervisor during play windows. |
+
+### `agents/state/` — coordination layer
+
+- `task_queue.jsonl` — append-only log of every task status transition (~828 KB); Agent 1's source of truth on restart
+- `lockfile` — PID lock, heartbeated every 5s; duplicate supervisor launches abort on stale check
+- `resolved_decisions.json` — locked topology decisions (phase3-1.1): machine IPs, install root, Moon-PC decommission record
 
 ---
 
