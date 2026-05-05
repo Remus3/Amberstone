@@ -236,6 +236,14 @@ awesome-lists), shipped fleet-wide:
 `fleet-applicability.md`) ranking all 32 reviewed repos 5★ → 1★, with trash
 tier removed per request.
 
+### 2026-05-05 — s105 (zero-cost bridge daemons — Game-PC + Peer)
+
+- **`tools/gamepc_bridge_daemon.py`** `ddaec17` — Game-PC zero-cost bridge sentinel. Polls Legion bridge via `bridge_pull_tasks.py --target gamepc` every 30s; only invokes `claude --dangerously-skip-permissions -p /process-bridge-tasks` when count > 0. Installed as `RC-BridgeDaemon` scheduled task (pythonw.exe, AtLogon, restart 3×/1min). Replaces `/loop 1m /process-bridge-tasks` terminal pattern. Confirmed working on Game-PC.
+- **`tools/peer_bridge_daemon.py`** `ddaec17` — Peer variant; self-contained inline urllib fetch to `127.0.0.1:8888/api/bridge/messages`; handles bare-list + RC dict formats; reads processed IDs from `rc-bridge-tasks-processed.txt`. Deployment task sent to Peer via bridge.
+- **`tools/gamepc_boot.ps1`** `ddaec17` — section 6 now installs/starts RC-BridgeDaemon instead of terminal /loop; fetches `gamepc_bridge_daemon.py` fresh from `/agent/` on each boot.
+- **`dashboard/routes_static.py`** — `gamepc_bridge_daemon.py` + `peer_bridge_daemon.py` added to `_AGENT_ALLOWED`.
+- **Auth** — `ANTHROPIC_API_KEY` stored in `~/.claude/settings.local.json` env block on Game-PC for headless `--print` sessions; key is available to all claude invocations including scheduled-task context.
+
 ### 2026-05-05 — s103 (DS champ-select panel + dashboard bug fixes)
 
 - **DS Engine champ-select build preview** `112350a` — `#cs-ds-block` panel in `#cs-overlay` shows DS-ranked item tiles with +Ndps tooltips before the game starts. Fires once per (champion, mode) pair via new `/api/ds-preview` POST endpoint. `_CS_DS` tracker prevents re-hitting DS on every 2s ally/enemy draft change.
