@@ -170,6 +170,12 @@ def _serve_health_all(h) -> None:
         except Exception as e:
             rollup["vision"] = {"alive": False, "error": str(e)[:120]}
         try:
+            with urllib.request.urlopen("http://127.0.0.1:8893/health", timeout=2) as r:
+                ds_data = json.loads(r.read())
+                rollup["daemon_slayer"] = {**ds_data, "alive": ds_data.get("status") == "ok"}
+        except Exception as e:
+            rollup["daemon_slayer"] = {"alive": False, "error": str(e)[:120]}
+        try:
             sup = read_json("ops/runtime/supervisor.pid")
             # AUDIT 2026-04-29: also surface oslock state — when the
             # .oslock sidecar exists, the OS-level msvcrt byte-range
@@ -243,6 +249,7 @@ def _serve_health_all(h) -> None:
             rollup["peers"] = {"error": str(e)[:120]}
         rc_ok = bool(rollup.get("rc", {}).get("alive"))
         vis_ok = bool(rollup.get("vision", {}).get("alive"))
+        ds_ok = bool(rollup.get("daemon_slayer", {}).get("alive"))
         cost_ok = rollup.get("cost", {}).get("banner") != "over"
         # Bridge silence does not flip overall to red — RC + coaching keep
         # working without it. Cap the bridge contribution at yellow so a
@@ -253,6 +260,7 @@ def _serve_health_all(h) -> None:
         if not rc_ok or not vis_ok:
             rollup["status"] = "red"
         elif (not cost_ok
+              or not ds_ok
               or rollup.get("cost", {}).get("banner") == "warn"
               or bridge_degraded):
             rollup["status"] = "yellow"
