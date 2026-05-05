@@ -284,6 +284,30 @@ CallContext + callable ``bonus_damage`` lets stat-scaling procs bind
 to ``base_ad`` / ``bonus_ad`` / ``level`` / ``ap`` / ``target_max_hp`` /
 ``caster_max_hp`` / ``caster_bonus_hp`` / ``targets_in_rotation`` /
 ``crit_chance`` / ``caster_max_mp``.
+Phase 4 batch 46 226xxx/228xxx/224xxx Arena mirrors + remaining SR
+(2026-05-04 — 22 entries: 9 active [Divine Sunderer (226632) Spellblade
+spellblade-key, Bami's Cinder (226660) Immolate immolate-key, Duskblade
+(226691) lethality=18, Abyssal Mask (228020) magic_amp_pct=0.12, Demonic
+Embrace (224637) ap_per_bonus_hp_pct=0.02 + Azakana's Gaze 1% target max
+HP/s, Noonquiver (6670) stats-only, Rectrix (6690) stats-only, Lifeline
+(4003) lethality=5, Blighting Jewel (4630) magic_pen_pct=0.13]; 13
+defensive_only [Everfrost Arena (226656), Radiant Virtue Arena (226667),
+Galeforce Arena (226671), Silvermere Dawn Arena (226035), Night Harvester
+Arena (224636), CotSQ Arena (224644), Multitool (228009), Leeching Leer
+(4635), Golden Spatula SR (4403), Watchful/Stirring/Vigilant Wardstones
+(4638/4641/4642/4643), Bandleglass Mirror (4642)]). Phase 4 batch 47
+Arena 22xxxx/32xxxx remaining pool + 221xxx components (2026-05-04 —
+~42 entries: 8 active DPS procs [Evenshroud Arena (223001)
+damage_amp_pct=0.06, Seraph's Embrace Arena (223040/323040)
+bonus_ap_pct_bonus_mp=0.02 lifeline-key, Muramana Arena (223042/323042)
+Shock 1.2% max mana physical on-hit + bonus_ad_pct_max_mp=0.02, Sheen
+Arena (223057) Spellblade 100% base AD every 1.5s spellblade-key,
+Stormrazor Arena (223095) Stormraider guaranteed-crit bonus every 30s,
+Guardian's Dirk Arena (223185) lethality=11]; 7 221xxx Arena components
+[221011/221026/221031/221043/221053/221057/221058 — stats-only]; 2
+mini-consumables [222022/222141 — defensive_only]; 26 defensive_only
+Arena mirrors [223002/067/069/105/111/112/121/158/172/177/184/193,
+222051/065/524/526/530, 224403, 322065/526/530, 323002/070/121]).
 
 Beam search (Phase 2 step 4) returns the top-N complete builds by final
 weighted DPS, finding multi-item synergies the single-slot ranker
@@ -295,4 +319,4 @@ The local HTTP server (``server.py``) exposes ``/stats``, ``/dps``,
 direct use without spinning the engine.
 """
 
-ENGINE_VERSION = "0.49.0"
+ENGINE_VERSION = "0.51.0"
