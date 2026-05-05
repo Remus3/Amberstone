@@ -6,6 +6,56 @@
 
 ---
 
+# s100 wrap — 2026-05-05 (Tiered vision + open-items cleanup)
+
+## What shipped (this session)
+
+- **Tiered vision** `46e9fb8` — `GameVisionReader.read_tiered()` + `read_or_escalate()` wired into ARAM/Arena/Brawl coaches
+  - OCR runs first via `core.vision_routing.read_or_escalate` with mode-specific `TIERED_FIELDS` + `TIERED_VALIDATORS`
+  - `timer` field is the in-game canary — OCR validates frame is a live HUD before Sonnet fires
+  - Sonnet always escalates for semantic fields (tower HP%, augments, wave_pct, etc.) — no calibrated OCR regions yet
+  - **Expand coverage by tuning `data/vision_regions.json` bboxes** for tower HP%, nexus HP%, event name, etc.
+  - Arena: `round_number` + augment/anvil in TIERED_FIELDS; Brawl NB: nexus HP + event timer; URF: deaths_visible
+
+- **Open items** `41c87bc` — all resolved in previous sub-session:
+  - Rune writer SR shard3: 5002 (invalid) → 5001 (Health Scaling, valid Row 3)
+  - items_index.json alias ID collision: sort by ID length so 4-digit canonical wins over 6-digit 22xxxx alias
+  - Yunara phantom dups: zero-duration early exit + 90-min window dedup in game_ingest.py
+
+## Open work (priority order)
+
+1. **Stage 5 calibration**: 50+ games needed; data auto-collects into `data/ds_calibration.jsonl`. Then analyze vs rewind_history.db.
+2. **Vision regions calibration**: tune `data/vision_regions.json` bboxes for `timer`, ARAM tower HP%, Brawl nexus HP% — once calibrated those fields drop out of Sonnet tier automatically.
+3. **Permanently deferred (3)**: Lightning Braid, Kinkou Jitte, Mejai's Arena mirror — all genuinely unmodelable
+4. Bridge auto-loop: **NOT running on Game-PC** — start manually: `/loop 1m /process-bridge-tasks`
+
+---
+
+# s99 wrap — 2026-05-05 (Daemon Slayer batch 64 — Malignance + Stage 5 pipeline)
+
+## What shipped (this session)
+
+- **Batch 64** `e7c4cd9` — Malignance Hatefog promoted (ENGINE_VERSION 0.60.0, 929 tests)
+  - New `CallContext.ult_casts_per_sec` field — engine-derived from `ult_rates.py`
+  - New `data/daemon_slayer/ult_cast_rates.json` — per-champion ult cast rate (casts/sec)
+    from rewind_history.db (spell4_casts / game_duration_s), 172 champions
+  - 3118 (SR) + 223118 (ARAM mirror) promoted: Hatefog `(180+15%AP) magic per ult zone hit`
+  - Permanently deferred reduced from 4 to 3 (Lightning Braid, Kinkou Jitte, Mejai's Arena mirror remain)
+
+- **Stage 5 calibration pipeline** (same commit)
+  - New `core/ds_calibration.py` — append-only `data/ds_calibration.jsonl` log
+  - All 4 coaches (ARAM, Arena, Brawl, SR) log DS picks after each tick
+  - Calibration analysis: join log vs rewind_history.db on (champion, mode, ~ts)
+  - Start collecting: queue up 50+ games, then run calibration analysis script
+
+## Open work (priority order)
+
+1. **Stage 5 calibration**: needs 50+ games with DS active. Play draft normals, data will collect automatically into `data/ds_calibration.jsonl`. Then analyze.
+2. **Permanently deferred (3)**: Lightning Braid, Kinkou Jitte, Mejai's Arena mirror — all genuinely unmodelable
+3. Bridge auto-loop: **NOT running on Game-PC** — start manually: `/loop 1m /process-bridge-tasks`
+
+---
+
 # s98 wrap — 2026-05-05 (Daemon Slayer batch 63 — blocked items resolved)
 
 ## What shipped (this session)
