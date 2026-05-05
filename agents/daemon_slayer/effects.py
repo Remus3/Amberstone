@@ -3951,6 +3951,286 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Ardent Censer (Arena 223504): Sanctify heal/shield buff — support aura, no self DPS",
     ),
 
+    # ── Phase 4 batch 44 (2026-05-04): DPS components + full items with procs ──
+    # 19 items: 5 proc components, 3 full items with DPS passive, 11 stats-only
+
+    # ─── proc-bearing components ───
+    "3057": ItemEffect(
+        item_id="3057",
+        name="Sheen",
+        periodics=(PeriodicProc(
+            name="Spellblade",
+            bonus_damage=lambda c: 1.00 * c.base_ad,
+            damage_type=PHYSICAL,
+            every_n_seconds=1.5,
+        ),),
+        unique_passive_key="spellblade",
+        note="Sheen (3057): Spellblade 100% base AD physical bonus, 1.5s sustained cadence; shares spellblade-key",
+    ),
+    "3077": ItemEffect(
+        item_id="3077",
+        name="Tiamat",
+        periodics=(PeriodicProc(
+            name="Cleave",
+            bonus_damage=lambda c: max(0.0, c.targets_in_rotation - 1.0)
+                * 0.50 * (c.base_ad + c.bonus_ad),
+            damage_type=PHYSICAL,
+            every_n_attacks=1,
+        ),),
+        note="Tiamat (3077): Cleave 50% total AD to nearby — zero in single-target, scales with targets_in_rotation",
+    ),
+    "3145": ItemEffect(
+        item_id="3145",
+        name="Hextech Alternator",
+        periodics=(PeriodicProc(
+            name="Revved",
+            bonus_damage=75.0,
+            damage_type=MAGICAL,
+            every_n_seconds=5.0,
+        ),),
+        note="Hextech Alternator (3145): Revved 75 bonus magic damage, 5s ICD",
+    ),
+    "6660": ItemEffect(
+        item_id="6660",
+        name="Bami's Cinder",
+        periodics=(PeriodicProc(
+            name="Immolate",
+            bonus_damage=lambda c: c.targets_in_rotation * (12.0 + 0.010 * c.caster_bonus_hp),
+            damage_type=MAGICAL,
+            every_n_seconds=1.0,
+        ),),
+        unique_passive_key="immolate",
+        note="Bami's Cinder (6660): Immolate 12+1% bonus HP magic/s (component; Sunfire/Hollow upgrade to 1.5%); immolate-key",
+    ),
+    "6677": ItemEffect(
+        item_id="6677",
+        name="Rageknife",
+        periodics=(PeriodicProc(
+            name="Wrath",
+            bonus_damage=20.0,
+            damage_type=MAGICAL,
+            every_n_attacks=1,
+        ),),
+        note="Rageknife (6677): Wrath 20 magic on-hit (150% on crit — base value modeled)",
+    ),
+
+    # ─── full items with DPS passive ───
+    "3131": ItemEffect(
+        item_id="3131",
+        name="Sword of the Divine",
+        lethality=18.0,
+        periodics=(PeriodicProc(
+            name="Divine Judgment",
+            bonus_damage=lambda c: 0.75 * (c.base_ad + c.bonus_ad),
+            damage_type=PHYSICAL,
+            every_n_seconds=15.0,
+        ),),
+        note="Sword of the Divine (3131): 18 leth + Divine Judgment guaranteed-crit bonus (~75% AD extra) every 15s",
+    ),
+    "6700": ItemEffect(
+        item_id="6700",
+        name="Shield of the Rakkor",
+        note="Shield of the Rakkor (6700): 50 AD + 30 Armor + 5% MS; Rakkor Strike armor pen conditional on active — not modeled",
+    ),
+    "3001": ItemEffect(
+        item_id="3001",
+        name="Evenshroud",
+        damage_amp_pct=0.06,
+        note="Evenshroud (3001): Coruscation — nearby enemies take 6% more damage; removed patch 13.3 (legacy DDragon entry)",
+    ),
+
+    # ─── stats-only active items ───
+    "3086": ItemEffect(
+        item_id="3086",
+        name="Zeal",
+        note="Zeal (3086): 15% crit + 15% AS + 4% MS — stats only; no passive proc",
+    ),
+    "3134": ItemEffect(
+        item_id="3134",
+        name="Serrated Dirk",
+        lethality=10.0,
+        note="Serrated Dirk (3134): 20 AD + 10 lethality",
+    ),
+    "3133": ItemEffect(
+        item_id="3133",
+        name="Caulfield's Warhammer",
+        note="Caulfield's Warhammer (3133): 20 AD + AH — no proc",
+    ),
+    "3123": ItemEffect(
+        item_id="3123",
+        name="Executioner's Calling",
+        note="Executioner's Calling (3123): 15 AD + Grievous Wounds on-attack (no DPS proc modeled)",
+    ),
+    "3802": ItemEffect(
+        item_id="3802",
+        name="Lost Chapter",
+        note="Lost Chapter (3802): 40 AP + 300 MP + AH — no proc",
+    ),
+    "3916": ItemEffect(
+        item_id="3916",
+        name="Oblivion Orb",
+        note="Oblivion Orb (3916): 25 AP + Grievous Wounds on ability (no DPS proc modeled)",
+    ),
+    "3108": ItemEffect(
+        item_id="3108",
+        name="Fiendish Codex",
+        note="Fiendish Codex (3108): 25 AP + AH — no proc",
+    ),
+    "3113": ItemEffect(
+        item_id="3113",
+        name="Aether Wisp",
+        note="Aether Wisp (3113): 30 AP + 4% MS — no proc",
+    ),
+    "3051": ItemEffect(
+        item_id="3051",
+        name="Hearthbound Axe",
+        note="Hearthbound Axe (3051): 20 AD + 20% AS — Flurry conditional on movement, not modeled",
+    ),
+    "3044": ItemEffect(
+        item_id="3044",
+        name="Phage",
+        note="Phage (3044): 200 HP + 15 AD — Threaten slow passive, no DPS proc",
+    ),
+    "6029": ItemEffect(
+        item_id="6029",
+        name="Ironspike Whip",
+        note="Ironspike Whip (6029): 30 AD + Crescent active only — no passive proc",
+    ),
+
+    # ── Phase 4 batch 45 (2026-05-04): Defensive full items + components + boots ──
+    # 21 items: 1 active (Berserker's Greaves AS), 20 defensive_only
+
+    # ─── defensive full items ───
+    "6656": ItemEffect(
+        item_id="6656",
+        name="Everfrost",
+        defensive_only=True,
+        note="Everfrost (6656): 70 AP + 250 HP + 600 MP; Glaciate active and Rime passive not modeled",
+    ),
+    "6035": ItemEffect(
+        item_id="6035",
+        name="Silvermere Dawn",
+        defensive_only=True,
+        note="Silvermere Dawn (6035): 40 AD + 300 HP + 40 MR; QSS-like active not modeled",
+    ),
+    "6667": ItemEffect(
+        item_id="6667",
+        name="Radiant Virtue",
+        defensive_only=True,
+        note="Radiant Virtue (6667): 350 HP + 30 Armor + 30 MR; Noblesse post-ult aura — no self DPS",
+    ),
+    "4644": ItemEffect(
+        item_id="4644",
+        name="Crown of the Shattered Queen",
+        defensive_only=True,
+        note="Crown of the Shattered Queen (4644): 85 AP + 250 HP + 600 MP; Poise damage amp conditional — not modeled",
+    ),
+    "4012": ItemEffect(
+        item_id="4012",
+        name="Sin Eater",
+        defensive_only=True,
+        note="Sin Eater (4012): 300 HP + 45 Armor + 45 MR; healing passive — no DPS contribution",
+    ),
+    "4402": ItemEffect(
+        item_id="4402",
+        name="Innervating Locket",
+        defensive_only=True,
+        note="Innervating Locket (4402): 30 AD + 400 HP + 300 MP; support healing passive — no self DPS",
+    ),
+    "3193": ItemEffect(
+        item_id="3193",
+        name="Gargoyle Stoneplate",
+        defensive_only=True,
+        note="Gargoyle Stoneplate (3193): 60 Armor + 60 MR; Metallicize active shield — defensive, no DPS",
+    ),
+    "3002": ItemEffect(
+        item_id="3002",
+        name="Trailblazer",
+        defensive_only=True,
+        note="Trailblazer (3002): 250 HP + 40 Armor + 4% MS; Pathfinder proc conditional on dash — not modeled",
+    ),
+
+    # ─── defensive components ───
+    "3067": ItemEffect(
+        item_id="3067",
+        name="Kindlegem",
+        defensive_only=True,
+        note="Kindlegem (3067): 200 HP + AH — no DPS contribution",
+    ),
+    "3070": ItemEffect(
+        item_id="3070",
+        name="Tear of the Goddess",
+        defensive_only=True,
+        note="Tear of the Goddess (3070): 240 mana — no DPS; upgrades to Manamune / Archangel's Staff",
+    ),
+    "3211": ItemEffect(
+        item_id="3211",
+        name="Spectre's Cowl",
+        defensive_only=True,
+        note="Spectre's Cowl (3211): 35 MR + 200 HP — defensive, no DPS proc",
+    ),
+    "3024": ItemEffect(
+        item_id="3024",
+        name="Glacial Buckler",
+        defensive_only=True,
+        note="Glacial Buckler (3024): 300 MP + 25 Armor — defensive, no DPS contribution",
+    ),
+    "3076": ItemEffect(
+        item_id="3076",
+        name="Bramble Vest",
+        defensive_only=True,
+        note="Bramble Vest (3076): 50 Armor; Thorns reflects damage on being hit — not outgoing DPS",
+    ),
+    "3082": ItemEffect(
+        item_id="3082",
+        name="Warden's Mail",
+        defensive_only=True,
+        note="Warden's Mail (3082): 45 Armor; Cold Steel reduces attacker AS — defensive, no DPS proc",
+    ),
+    "3105": ItemEffect(
+        item_id="3105",
+        name="Aegis of the Legion",
+        defensive_only=True,
+        note="Aegis of the Legion (3105): 30 MR + 30 Armor + AH; Legion aura — defensive support, no self DPS",
+    ),
+    "3801": ItemEffect(
+        item_id="3801",
+        name="Crystalline Bracer",
+        defensive_only=True,
+        note="Crystalline Bracer (3801): 200 HP + HP regen — no DPS contribution",
+    ),
+    "3803": ItemEffect(
+        item_id="3803",
+        name="Catalyst of Aeons",
+        defensive_only=True,
+        note="Catalyst of Aeons (3803): 300 HP + 300 mana — no DPS; upgrades to Everfrost / Rod of Ages",
+    ),
+
+    # ─── boots ───
+    "3006": ItemEffect(
+        item_id="3006",
+        name="Berserker's Greaves",
+        note="Berserker's Greaves (3006): 25% AS + 45 MS — AS contributes to on-attack DPS builds",
+    ),
+    "3009": ItemEffect(
+        item_id="3009",
+        name="Boots of Swiftness",
+        defensive_only=True,
+        note="Boots of Swiftness (3009): 55 flat MS — no DPS contribution",
+    ),
+    "3111": ItemEffect(
+        item_id="3111",
+        name="Mercury's Treads",
+        defensive_only=True,
+        note="Mercury's Treads (3111): 20 MR + 45 MS + tenacity — defensive utility, no DPS",
+    ),
+    "3158": ItemEffect(
+        item_id="3158",
+        name="Ionian Boots of Lucidity",
+        defensive_only=True,
+        note="Ionian Boots of Lucidity (3158): 45 MS + AH — no direct DPS contribution",
+    ),
+
 }
 
 
