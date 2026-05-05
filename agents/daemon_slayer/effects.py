@@ -596,12 +596,6 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         defensive_only=True,
         note="The Collector: Execute below 5% HP — fires once at low HP, not a per-rotation DPS proc",
     ),
-    "6675": ItemEffect(
-        item_id="6675",
-        name="Navori Flickerblade",
-        defensive_only=True,
-        note="Navori Flickerblade: Crits CDR basic abilities (CDR not DPS-modeled)",
-    ),
     "3142": ItemEffect(
         item_id="3142",
         name="Youmuu's Ghostblade",
@@ -2044,8 +2038,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     # Navori Flickerblade (6672): Bring It Down — every 3rd basic attack deals bonus
     # physical damage on-hit, scaling 120→168 (ranged) over levels 1→13.
     # Quicken (CDR on crit) is utility-only.
-    "6672": ItemEffect(
-        item_id="6672",
+    "6675": ItemEffect(
+        item_id="6675",
         name="Navori Flickerblade",
         periodics=(
             PeriodicProc(
@@ -3016,6 +3010,233 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "Plated Steelcaps: Plating — reduces incoming damage from Attacks by 10%. "
             "Incoming damage reduction, no DPS proc"
         ),
+    ),
+
+    # ── Phase 4 batch 41 (2026-05-04): Arena 226xxx mirrors ──────────────
+    # All 28 missing 226xxx Arena pool items. DDragon maps 226xxx → SR
+    # counterpart via ID - 220000. Arena pool versions share the same
+    # passive-effect coefficients as their SR counterparts unless otherwise
+    # noted. 14 active + 14 defensive_only.
+
+    # ── 14 active promotions (same schema as SR counterpart) ──────────────
+
+    "226610": ItemEffect(
+        item_id="226610",
+        name="Sundered Sky",
+        periodics=(PeriodicProc(
+            name="Lightshield Strike",
+            bonus_damage=lambda c: 20.0 + 2.0 * c.base_ad,
+            damage_type=PHYSICAL,
+            every_n_seconds=8.0,
+        ),),
+        note="Sundered Sky (Arena 226610): same as SR 6610 — Lightshield Strike 200% base AD, every 8s",
+    ),
+    "226631": ItemEffect(
+        item_id="226631",
+        name="Stridebreaker",
+        periodics=(PeriodicProc(
+            name="Cleave",
+            bonus_damage=lambda c: max(0.0, c.targets_in_rotation - 1.0)
+                * 0.40 * (c.base_ad + c.bonus_ad),
+            damage_type=PHYSICAL,
+            every_n_attacks=1,
+        ),),
+        note="Stridebreaker (Arena 226631): same as SR 6631 — Cleave 40% AD to other enemies",
+    ),
+    "226653": ItemEffect(
+        item_id="226653",
+        name="Liandry's Anguish",
+        damage_amp_pct=0.06,
+        note="Liandry's Anguish (Arena 226653): same as SR 6653 — Suffering 6% damage amp at full stacks",
+    ),
+    "226662": ItemEffect(
+        item_id="226662",
+        name="Iceborn Gauntlet",
+        periodics=(PeriodicProc(
+            name="Spellblade",
+            bonus_damage=lambda c: 1.50 * c.base_ad,
+            damage_type=PHYSICAL,
+            every_n_seconds=3.0,
+        ),),
+        unique_passive_key="spellblade",
+        note="Iceborn Gauntlet (Arena 226662): same as SR 6662 — Spellblade 150% base AD, every ~3s",
+    ),
+    "226664": ItemEffect(
+        item_id="226664",
+        name="Hollow Radiance",
+        periodics=(PeriodicProc(
+            name="Immolate",
+            bonus_damage=lambda c: c.targets_in_rotation
+                * (12.0 + 0.015 * c.caster_bonus_hp),
+            damage_type=MAGICAL,
+            every_n_seconds=1.0,
+        ),),
+        unique_passive_key="immolate",
+        note="Hollow Radiance (Arena 226664): same as SR 6664 — Immolate 12+1.5% bonus HP per second",
+    ),
+    "226672": ItemEffect(
+        item_id="226672",
+        name="Navori Flickerblade",
+        periodics=(PeriodicProc(
+            name="Bring It Down",
+            every_n_attacks=3,
+            bonus_damage=lambda c: min(168.0, 120.0 + 4.0 * (c.level - 1)),
+            damage_type=PHYSICAL,
+        ),),
+        note="Navori Flickerblade (Arena 226672): same as SR 6675 — Bring It Down 120→168 every 3rd attack",
+    ),
+    "226692": ItemEffect(
+        item_id="226692",
+        name="Eclipse",
+        periodics=(PeriodicProc(
+            name="Ever Rising Moon",
+            bonus_damage=lambda c: 0.06 * c.target_max_hp,
+            damage_type=PHYSICAL,
+            every_n_attacks=2,
+        ),),
+        note="Eclipse (Arena 226692): same as SR 6692 — Ever Rising Moon 6% target max HP every 2 attacks",
+    ),
+    "226693": ItemEffect(
+        item_id="226693",
+        name="Prowler's Claw",
+        lethality=22.0,
+        note="Prowler's Claw (Arena 226693): same as SR 6693 — 22 lethality",
+    ),
+    "226694": ItemEffect(
+        item_id="226694",
+        name="Serylda's Grudge",
+        armor_pen_pct=0.35,
+        note="Serylda's Grudge (Arena 226694): same as SR 6694 — 35% armor penetration",
+    ),
+    "226696": ItemEffect(
+        item_id="226696",
+        name="Axiom Arc",
+        lethality=18.0,
+        note="Axiom Arc (Arena 226696): same as SR 6696 — 18 lethality",
+    ),
+    "226697": ItemEffect(
+        item_id="226697",
+        name="Hubris",
+        lethality=18.0,
+        note="Hubris (Arena 226697): same as SR 6697 — 18 lethality",
+    ),
+    "226698": ItemEffect(
+        item_id="226698",
+        name="Profane Hydra",
+        periodics=(PeriodicProc(
+            name="Cleave",
+            bonus_damage=lambda c: max(0.0, c.targets_in_rotation - 1.0)
+                * 0.40 * (c.base_ad + c.bonus_ad),
+            damage_type=PHYSICAL,
+            every_n_attacks=1,
+        ),),
+        note="Profane Hydra (Arena 226698): same as SR 6698 — Cleave 40% AD to other enemies",
+    ),
+    "226699": ItemEffect(
+        item_id="226699",
+        name="Voltaic Cyclosword",
+        periodics=(PeriodicProc(
+            name="Firmament",
+            bonus_damage=lambda c: 100.0 + 0.25 * c.bonus_ad,
+            damage_type=PHYSICAL,
+            every_n_seconds=4.0,
+        ),),
+        lethality=10.0,
+        note="Voltaic Cyclosword (Arena 226699): same as SR 6699 — Energized 100+25% bonus AD, 10 lethality",
+    ),
+    "226701": ItemEffect(
+        item_id="226701",
+        name="Opportunity",
+        lethality=18.0,
+        note="Opportunity (Arena 226701): same as SR 6701 — 18 lethality",
+    ),
+
+    # ── 14 defensive_only Arena mirrors ───────────────────────────────────
+
+    "226333": ItemEffect(
+        item_id="226333",
+        name="Death's Dance",
+        defensive_only=True,
+        note="Death's Dance (Arena 226333): damage-storing Ignore Pain + Defy heal; no DPS contribution",
+    ),
+    "226609": ItemEffect(
+        item_id="226609",
+        name="Chempunk Chainsword",
+        defensive_only=True,
+        note="Chempunk Chainsword (Arena 226609): Grievous Wounds on damage — anti-heal utility, no DPS proc",
+    ),
+    "226616": ItemEffect(
+        item_id="226616",
+        name="Staff of Flowing Water",
+        defensive_only=True,
+        note="Staff of Flowing Water (Arena 226616): Rapids AP/AS aura — support enchant, no self DPS",
+    ),
+    "226617": ItemEffect(
+        item_id="226617",
+        name="Moonstone Renewer",
+        defensive_only=True,
+        note="Moonstone Renewer (Arena 226617): Starlit Grace heal aura — support enchant, no DPS",
+    ),
+    "226620": ItemEffect(
+        item_id="226620",
+        name="Echoes of Helia",
+        defensive_only=True,
+        note="Echoes of Helia (Arena 226620): Soul Siphon soul charge heal — support, no DPS",
+    ),
+    "226621": ItemEffect(
+        item_id="226621",
+        name="Dawncore",
+        defensive_only=True,
+        note="Dawncore (Arena 226621): empowers other enchanter items — support, no DPS proc",
+    ),
+    "226630": ItemEffect(
+        item_id="226630",
+        name="Goredrinker",
+        defensive_only=True,
+        note="Goredrinker (Arena 226630): Thirsting Slash active heal — sustain only, no DPS contribution",
+    ),
+    "226655": ItemEffect(
+        item_id="226655",
+        name="Luden's Echo",
+        defensive_only=True,
+        note="Luden's Echo (Arena 226655): Haste bolt on ability — ability-cast schema gap; deferred",
+    ),
+    "226657": ItemEffect(
+        item_id="226657",
+        name="Rod of Ages",
+        defensive_only=True,
+        note="Rod of Ages (Arena 226657): stat-stack ramp — no DPS proc; same as SR 6657",
+    ),
+    "226665": ItemEffect(
+        item_id="226665",
+        name="Jak'Sho, The Protean",
+        defensive_only=True,
+        note="Jak'Sho (Arena 226665): Voidborn Resilience stacking resist ramp — tank, no DPS",
+    ),
+    "226673": ItemEffect(
+        item_id="226673",
+        name="Immortal Shieldbow",
+        defensive_only=True,
+        unique_passive_key="lifeline",
+        note="Immortal Shieldbow (Arena 226673): Lifeline shield; joins lifeline unique-passive family",
+    ),
+    "226675": ItemEffect(
+        item_id="226675",
+        name="Navori Flickerblades",
+        defensive_only=True,
+        note="Navori Flickerblades (Arena 226675): Quicken CDR-on-crit — utility, no DPS proc",
+    ),
+    "226676": ItemEffect(
+        item_id="226676",
+        name="The Collector",
+        defensive_only=True,
+        note="The Collector (Arena 226676): Execute below 5% HP — single-proc, not per-rotation DPS",
+    ),
+    "226695": ItemEffect(
+        item_id="226695",
+        name="Serpent's Fang",
+        defensive_only=True,
+        note="Serpent's Fang (Arena 226695): Shield Reaver anti-shield — utility, no DPS contribution",
     ),
 
 }
