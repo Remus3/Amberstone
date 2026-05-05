@@ -4344,7 +4344,7 @@ class Batch33DefensiveOnlyTests(unittest.TestCase):
         # 667112 Flesheater promoted to active in batch 50 (armor_reduction_flat)
         "664011": "Sword of Blossoming Dawn",
         "2522": "Actualizer",
-        "667109": "Cruelty",
+        # 667109 Cruelty promoted batch 62 (Watch Them Fall comet proc)
     }
 
     def test_all_entries_present_and_defensive(self) -> None:
@@ -4889,7 +4889,7 @@ class Batch37TrueDamageTests(unittest.TestCase):
             "447104": "Innervating Locket",
             "447105": "Empyrean Promise",
             "447106": "Dragonheart",
-            "447109": "Cruelty",
+            # 447109 Cruelty promoted batch 62 (Watch Them Fall comet proc)
             "447110": "Moonflair Spellblade",
             # 447112 Flesheater promoted to active in batch 50 (armor_reduction_flat)
             "447122": "Black Hole Gauntlet",
@@ -7157,6 +7157,91 @@ class Batch61ZazzakBloodsongTests(unittest.TestCase):
         self.assertGreater(with_bs.weighted_dps, bare.weighted_dps)
 
     def test_batch61_count_unchanged(self) -> None:
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 547)
+
+
+class Batch62CrueltyWatchThemFallTests(unittest.TestCase):
+    """Phase 4 batch 62 — Cruelty Arena (447109) + SR (667109) promotion."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def _check_proc_schema(self, iid: str) -> None:
+        eff = ITEM_EFFECTS[iid]
+        self.assertFalse(eff.defensive_only)
+        self.assertEqual(len(eff.periodics), 1)
+        p = eff.periodics[0]
+        self.assertEqual(p.name, "Watch Them Fall")
+        self.assertEqual(p.damage_type, "magical")
+        self.assertAlmostEqual(p.every_n_seconds, 6.0)
+
+    def test_447109_not_defensive_only(self) -> None:
+        self.assertFalse(ITEM_EFFECTS["447109"].defensive_only)
+
+    def test_667109_not_defensive_only(self) -> None:
+        self.assertFalse(ITEM_EFFECTS["667109"].defensive_only)
+
+    def test_447109_proc_schema(self) -> None:
+        self._check_proc_schema("447109")
+
+    def test_667109_proc_schema(self) -> None:
+        self._check_proc_schema("667109")
+
+    def test_formula_baseline_level1(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        # level=1, ap=0, caster_max_hp=0 -> 50 + 0 + 0 + 0 = 50
+        ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=1, ap=0.0, caster_max_hp=0.0)
+        for iid in ["447109", "667109"]:
+            dmg = ITEM_EFFECTS[iid].periodics[0].bonus_damage(ctx)
+            self.assertAlmostEqual(dmg, 50.0, places=2, msg=f"item {iid}")
+
+    def test_formula_level_scaling(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        # level=18, ap=0, hp=0 -> 50 + 100 = 150
+        ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=18, ap=0.0, caster_max_hp=0.0)
+        dmg = ITEM_EFFECTS["447109"].periodics[0].bonus_damage(ctx)
+        self.assertAlmostEqual(dmg, 150.0, places=1)
+
+    def test_formula_with_ap_and_hp(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        # level=11, ap=200, caster_max_hp=3000, targets=1
+        # 50 + (100/17)*10 + 40 + 120 = 50 + 58.82 + 40 + 120 = 268.82
+        ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=11, ap=200.0,
+                         caster_max_hp=3000.0, targets_in_rotation=1.0)
+        eff = ITEM_EFFECTS["447109"]
+        expected = 50.0 + (100.0 / 17.0) * 10 + 0.40 * 200.0 + 0.04 * 3000.0
+        dmg = eff.periodics[0].bonus_damage(ctx)
+        self.assertAlmostEqual(dmg, expected, places=1)
+
+    def test_aoe_scales_with_targets(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        ctx1 = CallContext(base_ad=60.0, bonus_ad=0.0, level=11, ap=100.0,
+                           caster_max_hp=2000.0, targets_in_rotation=1.0)
+        ctx3 = CallContext(base_ad=60.0, bonus_ad=0.0, level=11, ap=100.0,
+                           caster_max_hp=2000.0, targets_in_rotation=3.0)
+        eff = ITEM_EFFECTS["447109"]
+        self.assertAlmostEqual(eff.periodics[0].bonus_damage(ctx3),
+                               3.0 * eff.periodics[0].bonus_damage(ctx1), places=2)
+
+    def test_both_versions_same_formula(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=11, ap=150.0, caster_max_hp=2500.0)
+        d447 = ITEM_EFFECTS["447109"].periodics[0].bonus_damage(ctx)
+        d667 = ITEM_EFFECTS["667109"].periodics[0].bonus_damage(ctx)
+        self.assertAlmostEqual(d447, d667, places=4)
+
+    def test_447109_raises_dps(self) -> None:
+        bare = compute_dps(self.snap, "Lissandra", level=11, item_ids=[])
+        with_cr = compute_dps(self.snap, "Lissandra", level=11, item_ids=["447109"])
+        self.assertGreater(with_cr.weighted_dps, bare.weighted_dps)
+
+    def test_667109_raises_dps(self) -> None:
+        bare = compute_dps(self.snap, "Lissandra", level=11, item_ids=[])
+        with_cr = compute_dps(self.snap, "Lissandra", level=11, item_ids=["667109"])
+        self.assertGreater(with_cr.weighted_dps, bare.weighted_dps)
+
+    def test_batch62_count_unchanged(self) -> None:
         self.assertGreaterEqual(len(ITEM_EFFECTS), 547)
 
 
