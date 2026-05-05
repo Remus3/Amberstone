@@ -236,6 +236,14 @@ awesome-lists), shipped fleet-wide:
 `fleet-applicability.md`) ranking all 32 reviewed repos 5★ → 1★, with trash
 tier removed per request.
 
+### 2026-05-05 — s103 (DS champ-select panel + dashboard bug fixes)
+
+- **DS Engine champ-select build preview** `112350a` — `#cs-ds-block` panel in `#cs-overlay` shows DS-ranked item tiles with +Ndps tooltips before the game starts. Fires once per (champion, mode) pair via new `/api/ds-preview` POST endpoint. `_CS_DS` tracker prevents re-hitting DS on every 2s ally/enemy draft change.
+- **SR RECOMMENDED panel fix** `5ee58b6` — `_state_builder.py` returned `mode_key="game"` for SR; JS `driveNow` check failed so all SSE SR state was silently ignored. Corrected to `mode_key="sr"`. `sr_items` fallback (liveclient-derived) now populates NEXT TO BUY when `item_build` is null.
+- **Augments pill SR/non-augment modes** `5ee58b6` — CSS static-pill rule was overriding `.hidden` class with `display:inline-flex`. Fixed to `display:none !important` for augments-pill.hidden.
+- **Item icon cache race** `f5ce231` — items resolved before `items_index.json` loads were cached as `null` in `_itemResolveCache`; idempotency sig guard then prevented re-render after ITEMS loaded. Fix: clear cache + tile sigs on ITEMS load.
+- **`/done` §6b living-doc sync** `d6fbce0` — done command now surgically updates ROADMAP/CLAUDE.md/README as part of exit ritual.
+
 ---
 
 ## 2. Now — open items

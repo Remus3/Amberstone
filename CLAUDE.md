@@ -334,7 +334,7 @@ python data_pipeline.py aram_builds                  # ARAM tier refresh
 python data_pipeline.py all                          # full refresh
 ```
 
-## Active priorities (as of 2026-05-05, s98–s99)
+## Active priorities (as of 2026-05-05, s103)
 
 1. ✅ Web dashboard `:8888` (Edge fullscreen on Game-PC's secondary display)
 2. ✅ Tkinter-free (T2 #6/#8 complete; asyncio-native)
@@ -345,5 +345,7 @@ python data_pipeline.py all                          # full refresh
 7. ✅ Daemon Slayer batch 63/64 — Hellfire Hatchet + Fiendhunter Bolts + Innervating Locket + Malignance (ult-cast schema, `ult_rates.py`); 3 items permanently deferred; ENGINE_VERSION 0.60.0
 8. ✅ DS calibration pipeline — `core/ds_calibration.py` wired into all 4 coaches; append-only `data/ds_calibration.jsonl` accumulates picks per game tick
 9. ✅ Tiered vision — `GameVisionReader.read_tiered()` + `read_or_escalate()` wired into ARAM/Arena/Brawl coaches (commit 46e9fb8); OCR canary (`timer`) gates Sonnet; calibrate `data/vision_regions.json` to expand OCR coverage to mode-specific fields
-10. 🟡 Bridge Watcher acceptance-criteria measurement — accumulate 50+ real-traffic samples for ≥90%/≥95% auto-action validation
-11. 🟡 Vision regions calibration — capture in-game frame, tune `data/vision_regions.json` bboxes for tower HP%, nexus HP%, event fields so they drop out of Sonnet tier
+10. ✅ DS Engine champ-select build preview — `#cs-ds-block` panel + `/api/ds-preview` endpoint; fires once per (champion, mode) pair; item tiles with +Ndps tooltips (commit 112350a)
+11. ✅ SR RECOMMENDED panel + SSE mode fix — `mode_key` corrected game→sr in `_state_builder.py`; `sr_items` fallback populates NEXT TO BUY; icon cache/sig race fixed (commits 5ee58b6, f5ce231)
+12. 🟡 Bridge Watcher acceptance-criteria measurement — accumulate 50+ real-traffic samples for ≥90%/≥95% auto-action validation
+13. 🟡 Vision regions calibration — capture in-game frame, tune `data/vision_regions.json` bboxes for tower HP%, nexus HP%, event fields so they drop out of Sonnet tier
