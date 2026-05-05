@@ -4523,14 +4523,18 @@ class DivineSundererSpellbladeTests(unittest.TestCase):
 
 
 class NavoriFlickerbladeTests(unittest.TestCase):
-    """Navori Flickerblade (6672) Bring It Down every-3rd-attack level-scaling physical proc."""
+    """Navori Flickerblade (6675) Bring It Down every-3rd-attack level-scaling physical proc.
+
+    Note: batch 35 mistakenly keyed this as "6672" (Kraken Slayer's DDragon ID),
+    silently overwriting Kraken Slayer. Fixed in batch 41 — now correctly at "6675".
+    """
 
     @classmethod
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
     def test_entry_present_and_shape(self) -> None:
-        eff = ITEM_EFFECTS.get("6672")
+        eff = ITEM_EFFECTS.get("6675")
         self.assertIsNotNone(eff)
         self.assertFalse(eff.defensive_only)
         self.assertEqual(len(eff.periodics), 1)
@@ -4540,20 +4544,20 @@ class NavoriFlickerbladeTests(unittest.TestCase):
 
     def test_proc_formula_at_level_1(self) -> None:
         from agents.daemon_slayer.effects import CallContext
-        proc = ITEM_EFFECTS["6672"].periodics[0]
+        proc = ITEM_EFFECTS["6675"].periodics[0]
         ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=1)
         self.assertAlmostEqual(proc.resolve_damage(ctx), 120.0, places=4)
 
     def test_proc_formula_at_level_11(self) -> None:
         from agents.daemon_slayer.effects import CallContext
-        proc = ITEM_EFFECTS["6672"].periodics[0]
+        proc = ITEM_EFFECTS["6675"].periodics[0]
         ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11)
         expected = min(168.0, 120.0 + 4.0 * 10)  # 160
         self.assertAlmostEqual(proc.resolve_damage(ctx), expected, places=4)
 
     def test_proc_capped_at_level_18(self) -> None:
         from agents.daemon_slayer.effects import CallContext
-        proc = ITEM_EFFECTS["6672"].periodics[0]
+        proc = ITEM_EFFECTS["6675"].periodics[0]
         ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=18)
         # min(168, 120 + 4*17) = min(168, 188) = 168
         self.assertAlmostEqual(proc.resolve_damage(ctx), 168.0, places=4)
@@ -4561,7 +4565,7 @@ class NavoriFlickerbladeTests(unittest.TestCase):
     def test_dps_lift_over_bare(self) -> None:
         from agents.daemon_slayer.dps import compute_dps
         dps_bare = compute_dps(self.snap, "Jinx", level=11, target_armor=50.0)
-        dps_with = compute_dps(self.snap, "Jinx", level=11, item_ids=["6672"],
+        dps_with = compute_dps(self.snap, "Jinx", level=11, item_ids=["6675"],
                                target_armor=50.0)
         self.assertGreater(dps_with.weighted_dps, dps_bare.weighted_dps)
 
@@ -5370,6 +5374,152 @@ class Batch40ComponentAndSweepTests(unittest.TestCase):
     def test_total_entry_count_after_batch40(self) -> None:
         # 188 after batch 39 + 18 new = 206
         self.assertGreaterEqual(len(ITEM_EFFECTS), 206)
+
+
+class Batch41Arena226MirrorTests(unittest.TestCase):
+    """Phase 4 batch 41 (2026-05-04) — Arena 226xxx mirrors + Kraken/Navori fix.
+
+    Key-collision fix: Navori Flickerblade was incorrectly keyed to "6672"
+    (Kraken Slayer's DDragon ID) in batch 35, silently overwriting Kraken Slayer.
+    Fixed in this batch: 6672 → Kraken Slayer, 6675 → Navori Flickerblade.
+
+    28 Arena 226xxx items covering the full pool:
+      14 active with same schema as SR counterpart.
+      14 defensive_only mirrors.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    # ── Kraken Slayer / Navori key-collision fix ───────────────────────────
+
+    def test_kraken_slayer_restored_at_6672(self) -> None:
+        e = ITEM_EFFECTS.get("6672")
+        self.assertIsNotNone(e, "6672 Kraken Slayer missing")
+        self.assertEqual(e.name, "Kraken Slayer")
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(len(e.periodics), 1)
+
+    def test_navori_at_correct_key_6675(self) -> None:
+        e = ITEM_EFFECTS.get("6675")
+        self.assertIsNotNone(e, "6675 Navori Flickerblade missing")
+        self.assertEqual(e.name, "Navori Flickerblade")
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(len(e.periodics), 1)
+
+    def test_no_key_collision_kraken_navori(self) -> None:
+        """6672 and 6675 are now distinct items."""
+        k = ITEM_EFFECTS.get("6672")
+        n = ITEM_EFFECTS.get("6675")
+        self.assertNotEqual(k.name, n.name)
+
+    # ── active Arena mirror field assertions ──────────────────────────────
+
+    def test_arena_sundered_sky_proc(self) -> None:
+        e = ITEM_EFFECTS.get("226610")
+        self.assertIsNotNone(e, "226610 missing")
+        self.assertFalse(e.defensive_only)
+        self.assertEqual(len(e.periodics), 1)
+        p = e.periodics[0]
+        self.assertAlmostEqual(p.every_n_seconds, 8.0)
+
+    def test_arena_iceborn_spellblade_key(self) -> None:
+        e = ITEM_EFFECTS.get("226662")
+        self.assertIsNotNone(e, "226662 missing")
+        self.assertEqual(e.unique_passive_key, "spellblade")
+
+    def test_arena_hollow_radiance_immolate_key(self) -> None:
+        e = ITEM_EFFECTS.get("226664")
+        self.assertIsNotNone(e, "226664 missing")
+        self.assertEqual(e.unique_passive_key, "immolate")
+
+    def test_arena_prowlers_lethality(self) -> None:
+        e = ITEM_EFFECTS.get("226693")
+        self.assertIsNotNone(e, "226693 missing")
+        self.assertAlmostEqual(e.lethality, 22.0)
+
+    def test_arena_seryldas_armor_pen(self) -> None:
+        e = ITEM_EFFECTS.get("226694")
+        self.assertIsNotNone(e, "226694 missing")
+        self.assertAlmostEqual(e.armor_pen_pct, 0.35)
+
+    def test_arena_voltaic_lethality_and_proc(self) -> None:
+        e = ITEM_EFFECTS.get("226699")
+        self.assertIsNotNone(e, "226699 missing")
+        self.assertAlmostEqual(e.lethality, 10.0)
+        self.assertEqual(len(e.periodics), 1)
+
+    def test_arena_immortal_shieldbow_lifeline(self) -> None:
+        e = ITEM_EFFECTS.get("226673")
+        self.assertIsNotNone(e, "226673 missing")
+        self.assertTrue(e.defensive_only)
+        self.assertEqual(e.unique_passive_key, "lifeline")
+
+    # ── Arena active items share proc formula with SR counterpart ─────────
+
+    def test_arena_eclipse_proc_matches_sr(self) -> None:
+        """226692 Eclipse Arena proc formula identical to SR 6692."""
+        from agents.daemon_slayer.effects import CallContext
+        ctx = CallContext(base_ad=120.0, bonus_ad=80.0, level=12, target_max_hp=2500.0)
+        sr_p = ITEM_EFFECTS["6692"].periodics[0]
+        arena_p = ITEM_EFFECTS["226692"].periodics[0]
+        self.assertAlmostEqual(sr_p.resolve_damage(ctx), arena_p.resolve_damage(ctx))
+        self.assertEqual(sr_p.every_n_attacks, arena_p.every_n_attacks)
+
+    def test_arena_eclipse_dps_lift(self) -> None:
+        """226692 Arena Eclipse lifts DPS over bare."""
+        base = compute_dps(self.snap, "Caitlyn", level=12, item_ids=[])
+        arena = compute_dps(self.snap, "Caitlyn", level=12, item_ids=["226692"])
+        self.assertGreater(arena.weighted_dps, base.weighted_dps)
+
+    def test_arena_prowlers_lethality_same_as_sr(self) -> None:
+        """226693 and 6693 share the same lethality=22."""
+        sr = ITEM_EFFECTS["6693"]
+        arena = ITEM_EFFECTS["226693"]
+        self.assertAlmostEqual(sr.lethality, arena.lethality)
+
+    def test_arena_serylda_armor_pen_same_as_sr(self) -> None:
+        """226694 and 6694 share the same armor_pen_pct=0.35."""
+        sr = ITEM_EFFECTS["6694"]
+        arena = ITEM_EFFECTS["226694"]
+        self.assertAlmostEqual(sr.armor_pen_pct, arena.armor_pen_pct)
+
+    # ── defensive_only Arena mirrors ──────────────────────────────────────
+
+    def test_batch41_defensive_only_entries(self) -> None:
+        expected = {
+            "226333": "Death's Dance",
+            "226609": "Chempunk Chainsword",
+            "226616": "Staff of Flowing Water",
+            "226617": "Moonstone Renewer",
+            "226620": "Echoes of Helia",
+            "226621": "Dawncore",
+            "226630": "Goredrinker",
+            "226655": "Luden's Echo",
+            "226657": "Rod of Ages",
+            "226665": "Jak'Sho, The Protean",
+            "226675": "Navori Flickerblades",
+            "226676": "The Collector",
+            "226695": "Serpent's Fang",
+        }
+        for iid, name in expected.items():
+            with self.subTest(item_id=iid):
+                eff = ITEM_EFFECTS.get(iid)
+                self.assertIsNotNone(eff, f"{iid} ({name}) missing")
+                self.assertTrue(eff.defensive_only, f"{iid} ({name}) should be defensive_only")
+                self.assertEqual(len(eff.periodics), 0)
+
+    # ── running totals ─────────────────────────────────────────────────────
+
+    def test_defensive_only_count_after_batch41(self) -> None:
+        count = sum(1 for e in ITEM_EFFECTS.values() if e.defensive_only)
+        # 118 after batch 40 + 14 new − 1 removed stub = 131
+        self.assertGreaterEqual(count, 131)
+
+    def test_total_entry_count_after_batch41(self) -> None:
+        # 206 after batch 40 + 28 new − 1 removed stub = 233
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 233)
 
 
 if __name__ == "__main__":
