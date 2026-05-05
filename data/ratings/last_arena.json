@@ -1,19 +1,19 @@
 {
-  "rating": "D",
-  "label": "BELOW \u2014 focus on one area at a time",
-  "champion": "Yunara",
+  "rating": "C",
+  "label": "AVERAGE \u2014 clear gaps to address",
+  "champion": "Kindred",
   "game_mode": "CHERRY",
   "mode_category": "ARENA",
-  "game_time": "9:54",
+  "game_time": "20:26",
   "stats": {
     "cs_per_min": 0.0,
-    "kda": "0/6/0",
+    "kda": "7/6/3",
     "deaths": 6,
-    "kill_participation": 0,
-    "gold_per_min": 252
+    "kill_participation": 28,
+    "gold_per_min": 17
   },
   "notes": [
-    "Low KDA (0.0)"
+    "Low KDA (1.7)"
   ],
-  "timestamp": "2026-05-03 00:45"
+  "timestamp": "2026-05-04 02:29"
 }
