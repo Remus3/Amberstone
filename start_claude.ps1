@@ -42,10 +42,50 @@ if ($vs) {
     Write-Host "  RC-VisionServer: TASK NOT FOUND -- check Task Scheduler" -ForegroundColor Red
 }
 
-# 3. Wait briefly for HTTP endpoints to come up if just started
+# 3. RC-DaemonSlayer (Daemon Slayer build engine :8893)
+$ds = Get-ScheduledTask -TaskName "RC-DaemonSlayer" -ErrorAction SilentlyContinue
+if ($ds) {
+    if ($ds.State -ne "Running") {
+        Write-Host "  RC-DaemonSlayer: starting..." -ForegroundColor Yellow
+        Start-ScheduledTask -TaskName "RC-DaemonSlayer"
+        Start-Sleep -Seconds 2
+    } else {
+        Write-Host "  RC-DaemonSlayer: running" -ForegroundColor Green
+    }
+} else {
+    Write-Host "  RC-DaemonSlayer: TASK NOT FOUND -- run tools\install_daemon_slayer_task.ps1" -ForegroundColor Red
+}
+
+# 4. RC-Phase3-Supervisor (agents framework :8890/:8891)
+$p3 = Get-ScheduledTask -TaskName "RC-Phase3-Supervisor" -ErrorAction SilentlyContinue
+if ($p3) {
+    if ($p3.State -ne "Running") {
+        Write-Host "  RC-Phase3-Supervisor: starting..." -ForegroundColor Yellow
+        Start-ScheduledTask -TaskName "RC-Phase3-Supervisor"
+        Start-Sleep -Seconds 2
+    } else {
+        Write-Host "  RC-Phase3-Supervisor: running" -ForegroundColor Green
+    }
+} else {
+    Write-Host "  RC-Phase3-Supervisor: TASK NOT FOUND -- run ops\phase3_install.ps1" -ForegroundColor Red
+}
+
+# 5. RC-BridgeWatcher (bridge escalation monitor — should always be Running)
+$bw = Get-ScheduledTask -TaskName "RC-BridgeWatcher" -ErrorAction SilentlyContinue
+if ($bw) {
+    if ($bw.State -ne "Running") {
+        Write-Host "  RC-BridgeWatcher: NOT running (state=$($bw.State))" -ForegroundColor Yellow
+    } else {
+        Write-Host "  RC-BridgeWatcher: running" -ForegroundColor Green
+    }
+} else {
+    Write-Host "  RC-BridgeWatcher: TASK NOT FOUND" -ForegroundColor Red
+}
+
+# 6. Wait briefly for HTTP endpoints to come up if just started
 Start-Sleep -Seconds 3
 
-# 4. Probe vision server :8889
+# 7. Probe vision server :8889
 try {
     $r = Invoke-WebRequest -Uri "http://127.0.0.1:8889/health" -TimeoutSec 3 -UseBasicParsing
     Write-Host "  Vision server :8889 alive" -ForegroundColor Green
@@ -53,7 +93,7 @@ try {
     Write-Host "  Vision server :8889 NOT responding" -ForegroundColor Red
 }
 
-# 5. Probe RC dashboard :8888 (HTTPS, self-signed cert)
+# 8. Probe RC dashboard :8888 (HTTPS, self-signed cert)
 try {
     $r = Invoke-WebRequest -Uri "https://127.0.0.1:8888/api/health" -TimeoutSec 3 -UseBasicParsing
     Write-Host "  RC dashboard :8888 alive" -ForegroundColor Green
@@ -61,7 +101,24 @@ try {
     Write-Host "  RC dashboard :8888 not yet responding (may still be booting)" -ForegroundColor Yellow
 }
 
-# 6. Check Game-PC screen agent via vision server's latest-frame age
+# 9. Probe Daemon Slayer :8893
+try {
+    $r = Invoke-WebRequest -Uri "http://127.0.0.1:8893/health" -TimeoutSec 3 -UseBasicParsing
+    $ds_info = ($r.Content | ConvertFrom-Json)
+    Write-Host ("  Daemon Slayer :8893 alive  engine={0}  patch={1}" -f $ds_info.engine_version, $ds_info.patch) -ForegroundColor Green
+} catch {
+    Write-Host "  Daemon Slayer :8893 NOT responding" -ForegroundColor Red
+}
+
+# 10. Probe Phase 3 supervisor :8890
+try {
+    $r = Invoke-WebRequest -Uri "http://127.0.0.1:8890/" -TimeoutSec 3 -UseBasicParsing
+    Write-Host "  Phase 3 supervisor :8890 alive" -ForegroundColor Green
+} catch {
+    Write-Host "  Phase 3 supervisor :8890 NOT responding" -ForegroundColor Yellow
+}
+
+# 11. Check Game-PC screen agent via vision server's latest-frame age
 try {
     $r = Invoke-WebRequest -Uri "http://127.0.0.1:8889/latest-frame" -TimeoutSec 3 -UseBasicParsing
     if ($r.StatusCode -eq 200) {
@@ -71,8 +128,7 @@ try {
     Write-Host "  Game-PC screen agent: no frames -- start gamepc_screen_agent.py on Game-PC" -ForegroundColor Yellow
 }
 
-# 7. Check Game-PC MCP server :8892 (inbound listener — Bearer auth, /health endpoint).
-#    Process-not-listening + missing firewall rule are the two failure modes.
+# 12. Check Game-PC MCP server :8892
 try {
     $h = @{ 'Authorization' = 'Bearer 8e8f131e212b329438218eca27372dde' }
     $r = Invoke-WebRequest -Uri "http://192.168.8.237:8892/health" -Headers $h -TimeoutSec 3 -UseBasicParsing
@@ -83,7 +139,7 @@ try {
     Write-Host "  Game-PC MCP server :8892 NOT reachable -- run C:\RC-Agent\gamepc_boot.ps1 on Game-PC" -ForegroundColor Yellow
 }
 
-# 7. Echo health.json snapshot
+# 13. Echo health.json snapshot
 $healthPath = "C:\Riot Commander\ops\runtime\health.json"
 if (Test-Path $healthPath) {
     try {
@@ -95,4 +151,4 @@ if (Test-Path $healthPath) {
 Write-Host ""
 Write-Host "=== Launching Claude ===" -ForegroundColor Cyan
 Write-Host ""
-claude --dangerously-skip-permissions
+claude --name "Legion" --dangerously-skip-permissions
