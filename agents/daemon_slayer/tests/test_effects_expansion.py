@@ -4884,7 +4884,7 @@ class Batch37TrueDamageTests(unittest.TestCase):
     def test_batch37_defensive_only_entries(self) -> None:
         expected = {
             "447101": "Gambler's Blade",
-            "447102": "Reality Fracture",
+            # 447102 Reality Fracture promoted batch 60 (ZZ'Rot Voidmites proc)
             "447103": "Hemomancer's Helm",
             "447104": "Innervating Locket",
             "447105": "Empyrean Promise",
@@ -7013,6 +7013,51 @@ class Batch59BastionbreakerLethScalingTests(unittest.TestCase):
     def test_2520_lethality_still_contributes(self) -> None:
         eff = ITEM_EFFECTS["2520"]
         self.assertAlmostEqual(eff.lethality, 22.0)
+
+
+class Batch60RealityFractureVoidmitesTests(unittest.TestCase):
+    """Phase 4 batch 60 — Reality Fracture (447102) ZZ'Rot Voidmites promotion."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_447102_not_defensive_only(self) -> None:
+        eff = ITEM_EFFECTS.get("447102")
+        self.assertIsNotNone(eff)
+        self.assertFalse(eff.defensive_only)
+
+    def test_447102_proc_schema(self) -> None:
+        eff = ITEM_EFFECTS["447102"]
+        procs = eff.periodics
+        self.assertEqual(len(procs), 1)
+        self.assertEqual(procs[0].name, "ZZ'Rot")
+        self.assertEqual(procs[0].damage_type, "magical")
+        self.assertAlmostEqual(procs[0].every_n_seconds, 12.0)
+
+    def test_447102_formula_baseline(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        # base_ad=100, bonus_ad=0, ap=0 → 8*(6+4+0) = 8*10 = 80
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, ap=0.0)
+        eff = ITEM_EFFECTS["447102"]
+        dmg = eff.periodics[0].bonus_damage(ctx)
+        self.assertAlmostEqual(dmg, 8.0 * (6.0 + 0.04 * 100.0), places=2)
+
+    def test_447102_formula_with_ap(self) -> None:
+        from agents.daemon_slayer.effects import CallContext
+        # 100 total AD, 200 AP → 8*(6+4+16) = 8*26 = 208
+        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, ap=200.0)
+        eff = ITEM_EFFECTS["447102"]
+        dmg = eff.periodics[0].bonus_damage(ctx)
+        self.assertAlmostEqual(dmg, 8.0 * (6.0 + 4.0 + 16.0), places=2)
+
+    def test_447102_raises_dps(self) -> None:
+        bare = compute_dps(self.snap, "Ezreal", level=11, item_ids=[])
+        with_rf = compute_dps(self.snap, "Ezreal", level=11, item_ids=["447102"])
+        self.assertGreater(with_rf.weighted_dps, bare.weighted_dps)
+
+    def test_batch60_count_unchanged(self) -> None:
+        self.assertGreaterEqual(len(ITEM_EFFECTS), 547)
 
 
 if __name__ == "__main__":

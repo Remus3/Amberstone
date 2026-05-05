@@ -2458,10 +2458,21 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "447102": ItemEffect(
         item_id="447102",
         name="Reality Fracture",
-        defensive_only=True,
+        # Phase 4 batch 60 (2026-05-04): promoted. Meraki confirms ZZ'Rot passive:
+        # "on attack/ability, summon 8 Voidmites (12s CD) that attack the target,
+        # each dealing 6 (+ 4% AD) (+ 8% AP) magic damage." 'The target' singular
+        # → all 8 voidmites hit the same target (no targets_in_rotation spread).
+        # 'your AD' in Meraki = total AD (base + bonus). '12s CD' is the rate
+        # limiter; modeled as every_n_seconds=12.0.
+        periodics=(PeriodicProc(
+            name="ZZ'Rot",
+            bonus_damage=lambda c: 8.0 * (6.0 + 0.04 * (c.base_ad + c.bonus_ad) + 0.08 * c.ap),
+            damage_type=MAGICAL,
+            every_n_seconds=12.0,
+        ),),
         note=(
-            "Reality Fracture: ZZ'Rot summons 8 Voidmites on attack/ability — "
-            "summoned-unit DPS requires AI/positioning modeling; deferred"
+            "Reality Fracture: ZZ'Rot — 8 Voidmites every 12s each dealing "
+            "6 + 4% total AD + 8% AP magic (Meraki confirmed; all 8 target same enemy)"
         ),
     ),
     "447103": ItemEffect(
