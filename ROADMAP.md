@@ -1,6 +1,6 @@
 # Riot Commander — Roadmap
 
-_Last updated: 2026-05-03 (later session — overnight implementations)_
+_Last updated: 2026-05-04 (s95 — DS item coverage complete, ARAM DS-before-Haiku)_
 
 A consolidated view of where RC has been, where it is, and where it could go.
 Living document — update as work lands.
@@ -177,6 +177,22 @@ TTL; §11 installer handles "cron already dead" gracefully.
 **Counter naming clarity**: heartbeat now emits `*_since_boot` (accurate semantics)
 + `*_24h` aliases (deprecated, one release window) per Peer feedback.
 
+### 2026-05-04 — Daemon Slayer item coverage complete (s92–s95, batches 38–62)
+
+Sessions s92–s95 completed the full item modeling sweep for the Daemon Slayer engine. All DDragon purchasable items are now in the `ItemEffect` registry; 8 items remain blocked by genuine schema limits (see CLAUDE.md DS section for details).
+
+**s92 (batches 38–49):** Giant Slayer schema, MR-reduction schema, Arena 226xxx/228xxx/22xxxx mirror pool, component items, boots, 1xxx component sweep. ENGINE_VERSION 0.53.0 → 603 tests.
+**s93 (batches 50–53):** `armor_reduction_flat`/`mr_reduction_flat`; Fated Ashes Inflame; Night Harvester + Luden's Echo (ability-cast via `every_n_seconds` binding-constraint); Stormsurge Squall; Hamstringer Scour crit-bleed. ENGINE_VERSION 0.54.0 → 829 tests.
+**s94 (batches 54–56):** `bonus_ap_stacked` (Mejai's), `bonus_as_conditional` (Yun Tal); `ap_amp_pct_per_100_caster_hp` (Demonic Embrace); coverage gate test; 46 defensive-only entries completing DDragon coverage (547 entries). ENGINE_VERSION 0.56.0 → 856 tests.
+**s95 (batches 57–62):** `caster_bonus_armor`/`caster_lethality` CallContext fields; Void Immolation, Golden Spatula, Darksteel Talons, Bastionbreaker, Reality Fracture; Zaz'Zak's Realmspike (Void Explosion); Bloodsong (Spellblade + Expose Weakness damage amp); Cruelty dual-variant (Arena 447109 + SR 667109, Watch Them Fall). ENGINE_VERSION 0.58.0 → **911 tests**.
+
+**ARAM coach DS-before-Haiku refactor** (s95, commit `3b84949`):
+- DS `rank_for()` moved from post-Haiku to pre-Haiku in `coaches/aram_coach.py`
+- DS picks injected into the user turn as: `DS top items (DPS ranked): InfinityEdge(+142dps,3400g) > ...`
+- Pre-DS hardcoded item rules removed from system prompt (BUILD COMMITMENT, DAMAGE-TYPE ALIGNMENT, ITEM MUTUAL EXCLUSIONS, Banned components — all replaced by DS per-champion math)
+- System prompt shrank from ~1,849 → ~1,170 tokens (37% reduction)
+- Post-Haiku DS block now reuses `_ds_rows` for UI write (no second engine call)
+
 ### 2026-05-03 — assorted hardening
 
 - `c58e689` — restart-RC verb intent-gate hardened
@@ -339,7 +355,7 @@ Any change here needs explicit user sign-off.
 | Vision relay `:8889` | Stale-frame rejection in place; auth via rotated token |
 | MCP server `:8892` (Game-PC) | Resolver-based auth, timeout-bounded tools, image-content for inline screenshots |
 | Game-PC agents (4) | All 4 with backoff + capture-skip during Legion outages |
-| Coaches | All 4 live-game variants writing consistent payloads to dashboard |
+| Coaches | All 4 live-game variants writing consistent payloads; ARAM DS-before-Haiku ✅; Arena/Brawl DS needs pre-Haiku move; SR DS not wired |
 | Cache engine | Sub-millisecond hits, lock-protected |
 | Match data | rewind_history.db (2846 matches), match_metrics streaming live |
 
