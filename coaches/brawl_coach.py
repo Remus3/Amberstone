@@ -25,6 +25,8 @@ from coaches._base_coach import (
     read_api_key,
     fmt_abilities,
 )
+from core import daemon_slayer_client as _ds_client
+from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
 
 logger = logging.getLogger("rc.coaches.brawl")
 
@@ -342,6 +344,33 @@ class Coach(BaseCoach):
                 if t:   event_ctx += f" ({t}s remaining)"
                 if loc: event_ctx += f" at {loc.upper()}"
 
+            _ds_rows = None
+            _ds_picks_str = "unavailable"
+            try:
+                _gm_upper = mode
+                resolver_mode = self._ds_resolver_mode(_gm_upper)
+                engine_mode   = self._ds_engine_mode(_gm_upper)
+                owned_ids = _ds_resolve_many(state.get("items", []), mode=resolver_mode)
+                target_bonus_hp = self._estimate_target_bonus_hp(state)
+                _ds_rows = _ds_client.rank_for(
+                    champion=champ,
+                    level=int(state.get("level", 1)) or 1,
+                    item_ids=owned_ids,
+                    mode=engine_mode,
+                    target_armor=80.0,
+                    target_bonus_hp=target_bonus_hp,
+                    top=5,
+                )
+                if _ds_rows:
+                    _ds_picks_str = " > ".join(
+                        f"{r.item_name}(+{r.delta_dps:.0f}dps,{r.gold}g)"
+                        for r in _ds_rows
+                    )
+                elif _ds_rows == []:
+                    _ds_picks_str = "none"
+            except Exception as _ds_exc:
+                logger.debug("Brawl daemon_slayer pre-call: %s", _ds_exc)
+
             _resp = state.get("dead_respawn_str", "")
             user = (
                 f"=== {state.get('game_time','0:00')} | {mode} ===\n"
@@ -359,6 +388,7 @@ class Coach(BaseCoach):
                     f"Enemy Nexus HP: {vs.get('nexus_hp_enemy', 100)}%"
                     if "NEXUSBLITZ" in mode else ""
                 )
+                + f"\nDS top items (DPS ranked, own-items-accounted): {_ds_picks_str}"
             )
 
             import time as _time_a
@@ -410,39 +440,12 @@ class Coach(BaseCoach):
             })
             mirror_live_stats(current, state)
 
-            # s75 — Daemon Slayer wire-in. Mirrors aram_coach's s74 pattern.
-            # BRAWL game_mode routes to engine mode='BRAWL' (identity, no
-            # mode-specific stat overlays); URF/OFA/NB route to 'SR'.
-            # target_bonus_hp estimator handles the per-mode resolver
-            # routing internally. Engine down → field absent.
-            try:
-                from core import daemon_slayer_client as _ds_client
-                from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
-                _gm_upper = mode  # already upper()'d at line 258
-                resolver_mode = self._ds_resolver_mode(_gm_upper)
-                engine_mode   = self._ds_engine_mode(_gm_upper)
-                owned_ids = _ds_resolve_many(state.get("items", []), mode=resolver_mode)
-                target_bonus_hp = self._estimate_target_bonus_hp(state)
-                ds_rows = _ds_client.rank_for(
-                    champion=champ,
-                    level=int(state.get("level", 1)) or 1,
-                    item_ids=owned_ids,
-                    mode=engine_mode,
-                    target_armor=80.0,
-                    target_bonus_hp=target_bonus_hp,
-                    top=5,
-                )
-                if ds_rows:
-                    current["daemon_slayer_picks"] = [
-                        {"id": r.item_id, "name": r.item_name,
-                         "delta_dps": round(r.delta_dps, 2), "gold": r.gold}
-                        for r in ds_rows
-                    ]
-                elif ds_rows == []:
-                    current["daemon_slayer_picks"] = []
-                # ds_rows is None → engine down; leave field untouched.
-            except Exception as exc:
-                logger.debug("Brawl daemon_slayer wire-in: %s", exc)
+            if _ds_rows is not None:
+                current["daemon_slayer_picks"] = [
+                    {"id": r.item_id, "name": r.item_name,
+                     "delta_dps": round(r.delta_dps, 2), "gold": r.gold}
+                    for r in _ds_rows
+                ] if _ds_rows else []
 
             safe_write(self._out, current)
             logger.debug("Brawl coaching written (%d fields)", len(fields))
