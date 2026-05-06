@@ -1,11 +1,10 @@
-"""Phase 2 sender skeleton — scans the memory dir for cross_project: true
-memories, builds kind=lesson envelopes per the Phase 1 schema, and dry-
-runs them to ops/runtime/would_send_lessons.jsonl.
+"""Phase 2 sender — scans the memory dir for cross_project: true memories,
+builds kind=lesson envelopes per the Phase 1 schema, dedupes against
+ops/runtime/lessons_sent.jsonl, and POSTs each via core.bridge.send().
 
-Skeleton-only: this module DOES NOT call core.bridge.send() yet. The
-real send wires in once the dry-run output is operator-reviewed and
-Peer has acked the reconciled Phase 1 schema. Wire path will be:
-`bridge.send(**envelope)` per built record, append to lessons_sent.jsonl.
+Entry points (thin CLI wrappers in tools/):
+  dry_run()   — scan + categorise without sending; writes would_send.jsonl
+  send_now()  — fire new eligible lessons; appends to lessons_sent.jsonl
 
 Schema reference: docs io RC peer/RC_PHASE1_LESSON_SCHEMA_2026-05-02.md
 """

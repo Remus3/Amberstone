@@ -210,14 +210,18 @@ Test surface: `tests/phase2_smoke/` (TFT worker, SR/ARAM worker) + `tests/snapsh
 See [`ROADMAP.md`](./ROADMAP.md) for the full milestone ledger.
 Highlights of what's open after the 2026-05-03 Bridge Watcher ship:
 
-### Cross-Claude learning sync (2026-05+, in flight) ← next target
+### Cross-Claude learning sync (2026-05+) ← Phase 4 remains
 
 Operator goal: lessons learned on one machine apply to the others overnight, with provenance memories and a SessionStart wake-up summary. Vision doc: [`docs io RC peer/CROSS_CLAUDE_LEARNING_SYNC_VISION_2026-05-02.md`](./docs%20io%20RC%20atx/CROSS_CLAUDE_LEARNING_SYNC_VISION_2026-05-02.md).
 
-- **Phase 1 — schema + filter contract.** ✅ Both sides agreed on the `cross_project: true` + `applies_when` memory frontmatter, the `kind=lesson` envelope, and the sender/receiver filter tables. RC's commitment doc: [`RC_PHASE1_LESSON_SCHEMA_2026-05-02.md`](./docs%20io%20RC%20atx/RC_PHASE1_LESSON_SCHEMA_2026-05-02.md).
-- **Phase 2 — sender + receiver.** File-watcher over each side's memory dir; `bridge.send(kind="lesson", ...)` on new `cross_project: true` memories. `process-incoming-lessons` skill auto-invoked by `/loop` decides per-lesson: apply / queue / discard / reject, writes provenance memory, acks the peer.
-- **Phase 3 — wake-up surface.** Each machine's SessionStart probe extends with a `lessons_summary` block ("N synced overnight: M applied, K queued, L discarded").
-- **Phase 4 — polish.** Auto-revert if applied lessons cause test failures; lesson confidence scoring; symmetry check ("did the lesson take?"). followed up by: - **Push channel for bridge inbox** — replace 2s polling on the bridge monitor with an in-process notify in `bridge_post()` so the monitor sees inbound in <10ms. Touches frozen `dashboard/_bridge_log.py`.
+- **Phase 1 — schema + filter contract.** ✅ Both sides agreed on the `cross_project: true` + `applies_when` memory frontmatter, the `kind=lesson` envelope, and the sender/receiver filter tables.
+- **Phase 2 — sender + receiver.** ✅ `core/lessons_sender.py` + `tools/lessons_send.py` (scan memory dir, send `kind=lesson` via bridge, dedupe via `lessons_sent.jsonl`). `core/lessons_receiver.py` + `tools/lessons_pull.py` + `tools/lessons_post.py` + `.claude/commands/process-incoming-lessons.md` (schema gate, `does_not_apply_when` pre-triage, apply/queue/discard, provenance memory + MEMORY.md pointer, ack to peer).
+- **Phase 3 — wake-up surface.** ✅ `tools/rc_facts.py` `_lessons_summary()` probe added — SessionStart now surfaces "N lessons synced from peer in last 24h: M applied, K queued, L discarded" when the ledger is non-empty.
+- **Phase 4 — polish (open).** Auto-revert if applied lessons cause test failures; lesson confidence scoring; symmetry check ("did the lesson take?").
+
+The remaining Polish items below are tracked separately:
+
+- **Push channel for bridge inbox** — replace 2s polling on the bridge monitor with an in-process notify in `bridge_post()` so the monitor sees inbound in <10ms. Touches frozen `dashboard/_bridge_log.py`.
 - **PowerShell 7 migration** — bundle with a future "ops day"; PS 5.1 quirks haven't blocked anything.
 - **Bridge Watcher artifact rotation** — `ops/runtime/bridge_action_artifacts/` grows monotonically. Add a daily cleanup (delete artifacts older than 7 days, or whose task_id is in the processed-ids ledger).
 - **Auto-ops verb expansion** — current Legion `auto_ops_verbs` are conservative (4 entries). Once Phase 3 success rate clears 95%, add: `tail .* log` → `Bash(type tail-N)`, `restart agent .*` → `schtasks /Run /TN`, `verify .*` → `curl health`.

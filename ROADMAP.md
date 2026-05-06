@@ -298,8 +298,8 @@ Any change here needs explicit user sign-off.
 
 ### Cross-Claude infrastructure expansion
 
-- **Shared lessons sync (Phase 2-4)**: per the vision doc — file-watcher over each side's memory dir, `bridge.send(kind="lesson", ...)` on new `cross_project: true` memories, `process-incoming-lessons` skill auto-invoked. Provenance memory tracks which lessons applied / queued / discarded.
-- **SessionStart enrichment**: each machine's session bootstrap probe shows a `lessons_summary` block ("N synced overnight: M applied"), recent bridge activity, watcher health. Reduces operator catch-up time.
+- ~~**Shared lessons sync (Phase 2+3)**~~ ✅ shipped 2026-05-06 — `core/lessons_sender.py` + `core/lessons_receiver.py` + CLI wrappers + `.claude/commands/process-incoming-lessons.md`. Phase 3 `_lessons_summary()` in `rc_facts.py` emits a lessons block in the SessionStart hook when the ledger is non-empty. Operator-driven send (`tools/lessons_send.py`); auto-triage on receive. Phase 4 polish (confidence scoring, symmetry check, auto-revert) remains.
+- **SessionStart enrichment (Phase 4)**: `_lessons_summary()` is now live; could be extended with watcher health and recent bridge activity for richer context.
 - **Bridge contract v1**: today's spec is v0; bump after the auto-action lane proves stable. Add: `body_path` field formal definition, `claimed_by`/`claimed_at` standardization, `ttl_at` semantics.
 - **Bridge introspection MCP tool**: a `bridge.search` MCP tool the user can query in any Claude session ("show me all results from gamepc in last 24h") without leaving the REPL.
 
@@ -371,7 +371,7 @@ Any change here needs explicit user sign-off.
 | Vision relay `:8889` | Stale-frame rejection in place; auth via rotated token |
 | MCP server `:8892` (Game-PC) | Resolver-based auth, timeout-bounded tools, image-content for inline screenshots |
 | Game-PC agents (4) | All 4 with backoff + capture-skip during Legion outages |
-| Coaches | All 4 live-game variants writing consistent payloads; ARAM DS-before-Haiku ✅; Arena/Brawl DS needs pre-Haiku move; SR DS not wired |
+| Coaches | All 4 live-game variants writing consistent payloads; all 4 DS-before-Haiku ✅ (ARAM, Arena, Brawl, SR — commit b4609b4) |
 | Cache engine | Sub-millisecond hits, lock-protected |
 | Match data | rewind_history.db (2846 matches), match_metrics streaming live |
 
