@@ -4,6 +4,31 @@
 
 ---
 
+# s111 wrap — 2026-05-06 (Infrastructure fixes + roadmap audit)
+
+## What shipped
+- **RC-BridgeWatcher restarted** — was dead since 2026-05-05 14:15 (4 days after boot). All 3 RestartOnFailure retries also failed (root cause: unknown; watcher started fine when manually triggered via `schtasks /Run`). Now at pid=4652, alive, last_poll_ok=True.
+- **RC-Phase3-Supervisor restarted** — was down (connection refused on :8890). State=Running after `schtasks /Run`.
+- **`tools/claude-rc.ps1`** — removed `/loop 1m /process-bridge-tasks` from Legion terminal helper. Bridge watcher auto-action lanes now handle this; the /loop was redundant and costly.
+- **ROADMAP/CLAUDE.md doc cleanup**: fleet health aggregation marked ✅ done; Peer bridge daemon + RC-VisionServer anomalies explained and marked done; DS calibration status updated with DB-staleness note.
+
+## Key findings (no code change needed)
+- **Fleet health aggregation** (`routes_health_peer.py` + `bridge_watcher_health_publisher.py`) was already fully deployed and live on both gamepc and peer. The ROADMAP item was done before this session; just not marked.
+- **Peer bridge daemon**: confirmed alive via `/api/health/all` peers block (watcher_alive=True, fresh heartbeat). task-d0905eaf7636 was processed/dismissed; pending queue is empty.
+- **RC-VisionServer last_result=267014** = `SCHED_S_TASK_TERMINATED` (shutdown-terminated), not a crash. Vision server runs via RC supervisor's in-process popen (vision=True on :8889). Scheduled task is redundant; no fix needed.
+
+## Do NOT redo
+- Fleet health aggregation — already done, both peers reporting.
+- Peer bridge daemon investigation — confirmed working; task-d0905eaf7636 is gone.
+
+## Open work (priority order)
+1. **Bridge Watcher hardening** — sliding 24h counters + push notifications require unfreezing `tools/bridge_watcher.py`. Ask operator before starting. Watcher restart root cause is TBD — suspect a transient RC unavailability caused code-1 exit, then retry window expired before RC recovered.
+2. **DS calibration analysis** — 120 records in `data/ds_calibration.jsonl` (SR, 3 champs, no game_ids). **Blocked**: `rewind_history.db` last entry is Dec 2025; can't correlate. Need DB refresh or a live-game game_id to unlatch (game_id not currently captured in `coach_integration.py:905` call to `log_ds_run`).
+3. **Vision regions calibration** — needs in-game session for a calibration frame.
+4. **Cross-Claude Phase 4** — low urgency.
+
+---
+
 # s110 wrap — 2026-05-06 (Cross-Claude sync Phase 3 + DS/roadmap doc cleanup)
 
 ## What shipped
@@ -56,26 +81,4 @@
 5. **DS calibration** — accumulate 50+ games in `data/ds_calibration.jsonl`
 6. **Vision regions calibration** — tune `data/vision_regions.json` bboxes
 
----
-
-# s108 wrap — 2026-05-06 (WT flash fixes — Legion + Game-PC)
-
-## What shipped
-- **`dashboard/server.py`** — added `creationflags=0x08000000` to vision server auto-start `Popen` (commit `cab0ce4`). Companion to `fb1b984` (DS auto-start fix from s107).
-- **`C:\RC-Agent\gamepc_bridge_daemon.py`** (Game-PC only, not in Legion git) — two fixes:
-  1. `--dangerouslySkipPermissions` (camelCase, not a real flag) → `--dangerously-skip-permissions`. This had caused 807+ crash-loop invocations today, each spawning a visible WT window every ~10s.
-  2. Added `creationflags=0x08000000` + `stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL` to `subprocess.run` claude invocation.
-- Game-PC daemon queue cleared; daemon idle at boot (0 invocations).
-
-## Do NOT redo
-- Legion `dashboard/server.py` flash fix: committed `cab0ce4`, pushed.
-- Game-PC daemon fix: already live at `C:\RC-Agent\gamepc_bridge_daemon.py` on Game-PC.
-- Do NOT revert `--dangerously-skip-permissions` — camelCase is wrong for claude 2.1.129+.
-
-## Open work (priority order)
-1. **Peer config audit** — `task-d0905eaf7636` from Peer sitting in bridge queue; process next session
-2. **RC-VisionServer failing** (last_result=267014) — investigate pythonw path in scheduled task XML
-3. **Peer bridge daemon** — confirm `~/peer_bridge_daemon_health.json` exists on Peer
-4. **DS calibration** — accumulate 50+ games in `data/ds_calibration.jsonl`
-5. **Vision regions calibration** — tune `data/vision_regions.json` bboxes
 

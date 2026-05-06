@@ -134,9 +134,10 @@ When invoked with `/done` or asked to wrap a session: (1) audit pending changes,
 
 ## Active priorities
 
-1. 🟡 Peer bridge daemon install — confirm `~/peer_bridge_daemon_health.json` on Peer
-2. 🟡 RC-VisionServer failing (last_result=267014) — investigate pythonw path in scheduled task
-3. 🟡 Bridge Watcher hardening — acceptance-criteria measurement (≥90%/≥95%), sliding 24h counters, push notifications, dashboard panel for `/api/bridge/pending`
-4. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes; OCR canary gates Sonnet
-5. 🟡 DS calibration pipeline — 50+ games into `data/ds_calibration.jsonl`; analyse vs `rewind_history.db`
-6. ✅ Cross-Claude learning sync Phases 1–3 — shipped 2026-05-06; Phase 4 polish deferred
+1. 🟡 Bridge Watcher hardening — sliding 24h counters, push notifications; needs bridge_watcher.py unfreeze. Watcher died 2026-05-05 14:15, auto-restarts failed (root cause unknown), manually restarted 2026-05-06 via schtasks
+2. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes; OCR canary gates Sonnet
+3. 🟡 DS calibration pipeline — 120 records in `data/ds_calibration.jsonl` (SR only, no game_ids); blocked on rewind_history.db freshness (last entry Dec 2025)
+4. ✅ Peer bridge daemon — peer health live and fresh (watcher_alive=True, confirmed 2026-05-06)
+5. ✅ RC-VisionServer — running via RC supervisor in-process popen; result=267014 = shutdown-terminated (expected), not an error
+6. ✅ Fleet health aggregation — `/api/health/peer` + `/api/health/all` peers block fully live; both gamepc+peer reporting
+7. ✅ Cross-Claude learning sync Phases 1–3 — shipped 2026-05-06; Phase 4 polish deferred

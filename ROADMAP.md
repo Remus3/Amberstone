@@ -307,7 +307,7 @@ Any change here needs explicit user sign-off.
 
 - ~~**`/api/bridge/pending` POST handlers**~~ ✅ shipped 2026-05-03 — accept/defer/dismiss in `routes_bridge_pending_actions.py` (sibling of the frozen GET module). Operator can now triage escalations directly in the dashboard sub-page.
 - **`bridge_watcher_install.ps1` self-update**: when Phase 4+ ships an updated watcher, the installer should detect a stale local copy and prompt to re-pull.
-- **Per-node `bridge_watcher_health.json` aggregation on Legion**: Game-PC + Peer heartbeats land on their own disks. Have them ping their state to Legion's `/api/health/all` so the dashboard shows fleet-wide watcher health, not just Legion's.
+- ~~**Per-node `bridge_watcher_health.json` aggregation on Legion**~~ ✅ shipped 2026-05-06 — `routes_health_peer.py` endpoint + `tools/bridge_watcher_health_publisher.py` sidecar deployed on Game-PC + Peer. Both nodes publish every 60s; `/api/health/all` `peers` block shows watcher_alive, queue_depth, auto_ok/err, escalations, tokens_today for each peer. Confirmed live and fresh.
 - **Watcher dry-run mode**: `--dry-run` flag that classifies but never spawns claude --print or writes pending file. Useful for tuning patterns against real traffic without spend.
 - **Frozen-file auto-detector**: today the frozen list is hand-maintained in CLAUDE.md + config. Generate it from a `# frozen` doc-comment in the file headers; check in CI.
 
