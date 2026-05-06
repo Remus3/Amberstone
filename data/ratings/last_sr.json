@@ -1,21 +1,20 @@
 {
-  "rating": "D",
-  "label": "BELOW \u2014 focus on one area at a time",
-  "champion": "Jinx",
+  "rating": "B",
+  "label": "SOLID \u2014 on track, tighten fundamentals",
+  "champion": "Vayne",
   "game_mode": "CLASSIC",
   "mode_category": "SR",
-  "game_time": "21:13",
+  "game_time": "21:44",
   "stats": {
-    "cs_per_min": 6.6,
-    "kda": "1/7/1",
-    "deaths": 7,
-    "kill_participation": 20,
-    "gold_per_min": 32
+    "cs_per_min": 7.4,
+    "kda": "6/2/7",
+    "deaths": 2,
+    "kill_participation": 48,
+    "gold_per_min": 37
   },
   "notes": [
-    "CS/min (6.6) below target",
-    "Too many deaths (7)",
-    "KP (20%) too low"
+    "CS/min (7.4) below target",
+    "GPM (37) low"
   ],
-  "timestamp": "2026-05-05 02:50"
+  "timestamp": "2026-05-05 03:18"
 }

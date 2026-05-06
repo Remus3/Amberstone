@@ -6,6 +6,12 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s108 wrap — 2026-05-06 (WT flash fixes — Legion + Game-PC)
+
+- `dashboard/server.py`: `creationflags=0x08000000` on vision server Popen (commit `cab0ce4`). Game-PC `gamepc_bridge_daemon.py`: `--dangerously-skip-permissions` fix + DEVNULL suppression — stopped 807+ crash-loop invocations per day.
+
+---
+
 # s107 wrap — 2026-05-06 (API cost audit + dynamic debounce + CLAUDE.md slim)
 
 ## What shipped
