@@ -94,6 +94,7 @@ def ensure_running() -> None:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             close_fds=True,
+            creationflags=0x08000000,  # CREATE_NO_WINDOW
         )
         logger.info("daemon_slayer not running — spawned %s", launcher.name)
     except Exception as exc:  # noqa: BLE001
