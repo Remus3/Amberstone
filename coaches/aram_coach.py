@@ -391,8 +391,11 @@ class Coach(BaseCoach):
 
     # Cost-tuned 2026-05-04 (post-audit): bumped from VISION 15→25 /
     # DEBOUNCE 8→12 to cut API call rate ~33%.
+    # Dynamic debounce: _DEBOUNCE_S is reactive (state change detected);
+    # _STABLE_DEBOUNCE_S applies when no kill/item/level/hp change detected.
     _VISION_INTERVAL    = 25.0
     _DEBOUNCE_S         = 12.0
+    _STABLE_DEBOUNCE_S  = 25.0
     _FAST_PATH_MIN_S    = 5.0
     _HP_DROP_THRESHOLD  = 20.0
 
@@ -418,8 +421,22 @@ class Coach(BaseCoach):
                     safe_write(self._out, cur)
         except Exception:
             pass
+        # Dynamic debounce: relax polling rate when game state is stable
+        prev = self._last_state
+        if prev:
+            changed = (
+                len(state.get("dead_enemies", [])) != len(prev.get("dead_enemies", [])) or
+                state.get("items") != prev.get("items") or
+                state.get("level") != prev.get("level") or
+                (prev.get("hp_pct", 100) - state.get("hp_pct", 100)) >= 10
+            )
+            self._DEBOUNCE_S = (
+                type(self)._DEBOUNCE_S if changed else self._STABLE_DEBOUNCE_S
+            )
 
     def _run_vision(self) -> None:
+        if self._fetch_game_data() is None:
+            return
         try:
             from core.feature_policy import is_allowed as _fp_ok
             if not _fp_ok("aram", "live_coaching"):
