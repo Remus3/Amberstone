@@ -100,10 +100,27 @@ curl -k https://127.0.0.1:8888/metrics
 cd scripts && python data_pipeline.py all
 ```
 
+## Testing Discipline
+
+Always run the full test suite after schema changes, engine version bumps, or item-effect additions. Avoid data-fragile cross-item comparison assertions; prefer assertions on computed quantities. When stubbing methods accessed via class, wrap with `@staticmethod` correctly.
+
+## Windows Environment Notes
+
+Claude Desktop on Windows may be installed via the Microsoft Store (check `%LOCALAPPDATA%\Packages`) in addition to standard install paths. Use `pythonw.exe` (not `python.exe`) for background daemons to avoid flashing console windows.
+
+## Daemon Slayer Batch Workflow
+
+When continuing Daemon Slayer work: pick the next batch from ROADMAP, implement schema/engine changes, add tests (target green before commit), bump engine version, commit + push, verify live, update hand-off notes.
+
+## Session Wrap-up
+
+When invoked with `/done` or asked to wrap a session: (1) audit pending changes, (2) commit and push, (3) update ROADMAP/CLAUDE/README if relevant, (4) process lessons/WAKEUP_NOTES, (5) run bridge probe, (6) print final banner. Run independent steps in parallel.
+
 ## Active priorities
 
 1. 🟡 Peer bridge daemon install — confirm `~/peer_bridge_daemon_health.json` on Peer
 2. 🟡 RC-VisionServer failing (last_result=267014) — investigate pythonw path in scheduled task
-3. 🟡 Bridge Watcher acceptance-criteria — 50+ real-traffic samples for ≥90%/≥95% auto-action
-4. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes; OCR canary gates Sonnet
-5. 🟡 DS calibration pipeline — 50+ games into `data/ds_calibration.jsonl`; analyse vs `rewind_history.db`
+3. 🟡 **Cross-Claude learning sync** — Phase 2 sender+receiver (file-watcher + bridge.send kind=lesson); Phase 3 wake-up surface; see `docs io RC peer/CROSS_CLAUDE_LEARNING_SYNC_VISION_2026-05-02.md`
+4. 🟡 Bridge Watcher hardening — acceptance-criteria measurement (≥90%/≥95%), sliding 24h counters, push notifications, dashboard panel for `/api/bridge/pending`
+5. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes; OCR canary gates Sonnet
+6. 🟡 DS calibration pipeline — 50+ games into `data/ds_calibration.jsonl`; analyse vs `rewind_history.db`
