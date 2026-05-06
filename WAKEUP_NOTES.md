@@ -1,6 +1,29 @@
 # WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s103 archived to `docs/history_notes.md`. Only the last 2 sessions kept here.
+> Sessions s27–s103 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+
+---
+
+# s108 wrap — 2026-05-06 (WT flash fixes — Legion + Game-PC)
+
+## What shipped
+- **`dashboard/server.py`** — added `creationflags=0x08000000` to vision server auto-start `Popen` (commit `cab0ce4`). Companion to `fb1b984` (DS auto-start fix from s107).
+- **`C:\RC-Agent\gamepc_bridge_daemon.py`** (Game-PC only, not in Legion git) — two fixes:
+  1. `--dangerouslySkipPermissions` (camelCase, not a real flag) → `--dangerously-skip-permissions`. This had caused 807+ crash-loop invocations today, each spawning a visible WT window every ~10s.
+  2. Added `creationflags=0x08000000` + `stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL` to `subprocess.run` claude invocation.
+- Game-PC daemon queue cleared; daemon idle at boot (0 invocations).
+
+## Do NOT redo
+- Legion `dashboard/server.py` flash fix: committed `cab0ce4`, pushed.
+- Game-PC daemon fix: already live at `C:\RC-Agent\gamepc_bridge_daemon.py` on Game-PC.
+- Do NOT revert `--dangerously-skip-permissions` — camelCase is wrong for claude 2.1.129+.
+
+## Open work (priority order)
+1. **Peer config audit** — `task-d0905eaf7636` from Peer sitting in bridge queue; process next session
+2. **RC-VisionServer failing** (last_result=267014) — investigate pythonw path in scheduled task XML
+3. **Peer bridge daemon** — confirm `~/peer_bridge_daemon_health.json` exists on Peer
+4. **DS calibration** — accumulate 50+ games in `data/ds_calibration.jsonl`
+5. **Vision regions calibration** — tune `data/vision_regions.json` bboxes
 
 ---
 
