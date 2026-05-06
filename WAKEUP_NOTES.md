@@ -1,6 +1,60 @@
 # WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s103 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+> Sessions s27–s107 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+
+---
+
+# s110 wrap — 2026-05-06 (Cross-Claude sync Phase 3 + DS/roadmap doc cleanup)
+
+## What shipped
+- **Cross-Claude Phase 3 — SessionStart lessons summary** (`4c4ce1a`) — `tools/rc_facts.py` gains `_lessons_summary()` which reads `ops/runtime/lessons_received.jsonl` and emits a markdown block in the SessionStart hook when lessons were synced in the last 24h ("from peer: N — M applied, K queued…"). No output when ledger empty.
+- **`core/lessons_sender.py` stale comment fixed** — header was "skeleton-only / DOES NOT call bridge.send()" but send_now() has called bridge.send() since implementation.
+- **README/ROADMAP/CLAUDE.md doc cleanup** (`b6d02ae`, `4c4ce1a`):
+  - DS SR stale ❌ removed (coach_integration.py at root is already wired, core/coach_integration.py never existed)
+  - Roadmap reprioritized: Cross-Claude learning sync first → Bridge Watcher hardening second
+  - ROADMAP status table coaches row: was "Arena/Brawl needs pre-Haiku move; SR DS not wired" → "all 4 DS-before-Haiku ✅"
+  - CLAUDE.md: memory frontmatter section added (cross_project / applies_when / does_not_apply_when docs); active priorities updated
+  - README Cross-Claude sync: Phases 1–3 marked ✅; Phase 4 polish remains
+- **`continue the roadmap` workflow established** — advisor-guided plan→parallel edits→verify→docs→wrap pattern.
+
+## Do NOT redo
+- `_lessons_summary()` correctly emits nothing when `lessons_received.jsonl` is empty — do not add fake/test entries.
+- DS SR wire-in is confirmed done (commit b4609b4). Do not reinvestigate `core/coach_integration.py` — that path was never created.
+- Phase 2 sender/receiver code (lessons_sender.py, lessons_receiver.py, tools/lessons_*.py) was already complete before this session; do not re-implement.
+
+## Open work (priority order)
+1. **Peer bridge daemon** — confirm `~/peer_bridge_daemon_health.json` exists on Peer; `task-d0905eaf7636` still in queue
+2. **RC-VisionServer failing** (last_result=267014) — pythonw path in scheduled task XML
+3. **Bridge Watcher hardening** — acceptance-criteria (≥90%/≥95%), sliding 24h counters, push notifications, `/api/bridge/pending` dashboard panel
+4. **Cross-Claude Phase 4** — confidence scoring, symmetry check, auto-revert on test failure; low urgency
+5. **DS calibration** — 50+ games into `data/ds_calibration.jsonl`
+6. **Vision regions calibration** — tune `data/vision_regions.json` bboxes
+
+---
+
+# s109 wrap — 2026-05-06 (Memory library — agent patterns + workflow rules)
+
+## What shipped
+- **6 new memory entries** saved to `C:\Users\Administrator\.claude\projects\C--Riot-Commander\memory\`:
+  1. `feedback_preflight_cron_loop.md` — read WAKEUP_NOTES + session_summaries before any cron/loop scheduling
+  2. `feedback_investigate_command.md` — Task agent + 2 conditions + table + "don't propose fixes yet" pattern
+  3. `feedback_parallel_dispatch.md` — reads in parallel, edits in one batch; applies to engine+tests+docs
+  4. `feedback_parallel_batch_agents.md` — 4–6 worktree subagents + supervisor merge; one version bump after all green
+  5. `reference_cost_watchdog_agent.md` — hourly cron cost-regression agent; mcp__anthropic-usage__query_usage → bisect → draft PR; 15% gate; never auto-merge
+  6. `reference_tdd_ui_agent.md` — spec-to-green Playwright loop; tests commit first; 10-iteration cap; live smoke run
+- **MEMORY.md** indexed all 6.
+- No code changes to RC repo this session.
+
+## Do NOT redo
+- These memory entries are already indexed. Do not re-save on next session start.
+
+## Open work (priority order — unchanged from s108)
+1. **Peer config audit** — `task-d0905eaf7636` from Peer sitting in bridge queue; process next session
+2. **RC-VisionServer failing** (last_result=267014) — investigate pythonw path in scheduled task XML
+3. **Peer bridge daemon** — confirm `~/peer_bridge_daemon_health.json` exists on Peer
+4. **Game-PC bridge auto-flow loop** — dead at /done (last result >8300s ago); re-run `/loop /process-bridge-tasks` on Game-PC at next session start
+5. **DS calibration** — accumulate 50+ games in `data/ds_calibration.jsonl`
+6. **Vision regions calibration** — tune `data/vision_regions.json` bboxes
 
 ---
 
@@ -25,44 +79,3 @@
 4. **DS calibration** — accumulate 50+ games in `data/ds_calibration.jsonl`
 5. **Vision regions calibration** — tune `data/vision_regions.json` bboxes
 
----
-
-# s107 wrap — 2026-05-06 (API cost audit + dynamic debounce + CLAUDE.md slim)
-
-## What shipped
-- **Vision loop gate** — `_run_vision()` guards in ARAM/Arena/Brawl coaches: `if self._fetch_game_data() is None: return`. Kills 24/7 Sonnet burn when no game is active (was 84% of LoLOverlay key spend on May 4).
-- **Dynamic debounce** — all 3 coaches: `_STABLE_DEBOUNCE_S` class attr (ARAM 25s / Arena 22s / Brawl 20s). `_on_state_received` sets `self._DEBOUNCE_S` to stable rate when no meaningful state change; snaps back to fast rate on dead_enemies / items / level / hp_pct drop ≥10.
-- **CLAUDE.md slimmed** from 355→109 lines. Deep docs moved to `docs/AGENTS.md` (new) + `docs/DAEMON_SLAYER.md` (new). Bridge spawn cost note added.
-- **Settings cleanup** — both `.claude/settings.json` files: removed `typescript-lsp` plugin; `additionalDirectories` `C:/` → `C:/Riot Commander`.
-- **Per-machine API key note** added to CLAUDE.md (LoLOverlay retired shared key → riot-commander-legion/gamepc/peer).
-- **WAKEUP_NOTES archiving** — s92–s103 + ledger table moved to `docs/history_notes.md`; WAKEUP_NOTES trimmed to last 2 sessions.
-
-## Do NOT redo
-- Vision gate is in all 3 coaches. Do not add it to `_base_coach.py` (frozen).
-- Dynamic debounce uses `type(self)._DEBOUNCE_S` (class-level default), not a hardcoded constant — correct intentionally.
-- CLAUDE.md is now intentionally short (~109 lines). Do not pad it back.
-
-## Open work (priority order)
-1. **Game-PC settings** ✅ done — typescript-lsp removed, additionalDirectories narrowed (confirmed via bridge)
-2. **Peer config audit** — pending task `task-d0905eaf7636` from Peer asking for Claude Desktop + Code plugin config; process next session
-3. **RC-VisionServer failing** (last_result=267014) — investigate pythonw path in task XML
-4. **Peer bridge daemon** — confirm `~/peer_bridge_daemon_health.json` exists on Peer
-5. **DS calibration** — accumulate 50+ games in `data/ds_calibration.jsonl`
-6. **Vision regions calibration** — tune `data/vision_regions.json` bboxes
-
----
-
-# s106 wrap — 2026-05-05 (DaemonSlayer flash fix + preflight expansion)
-
-## What shipped
-- **`ops/RC-DaemonSlayer.xml`** — `python.exe` → `pythonw.exe`; task reinstalled. No more console flash on boot/restart. DS live at `:8893` engine=0.60.0 patch=16.9.1.
-- **`start_claude.ps1`** — added RC-DaemonSlayer + RC-Phase3-Supervisor + RC-BridgeWatcher preflight checks; `:8893` + `:8890` HTTP probes; final `claude` launch fixed to `--name "Legion"`. commit `0d1b545`.
-
-## Do NOT redo
-- RC-DaemonSlayer XML is already pythonw.exe.
-
-## Open work (carry-forward from s106)
-1. **RC-VisionServer failing** (last_result=267014) — check pythonw path + whether SYSTEM context can find moon_vision_server.py.
-2. **Peer daemon install** — confirm `~/peer_bridge_daemon_health.json` exists on Peer.
-3. **DS calibration**: 50+ games needed; auto-collects into `data/ds_calibration.jsonl`.
-4. **Vision regions calibration**: tune `data/vision_regions.json` bboxes.
