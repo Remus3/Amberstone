@@ -115,6 +115,43 @@ def _last_boot_iso() -> str | None:
     return None
 
 
+def _lessons_summary() -> str | None:
+    """Return a markdown block summarising lessons synced in the last 24h.
+    Returns None when the ledger is empty or absent (normal at first boot)."""
+    ledger_path = _APP / "ops" / "runtime" / "lessons_received.jsonl"
+    if not ledger_path.exists():
+        return None
+    cutoff = time.time() - 86400
+    counts: dict[str, dict[str, int]] = {}
+    try:
+        for raw in ledger_path.read_text(encoding="utf-8").splitlines():
+            raw = raw.strip()
+            if not raw:
+                continue
+            entry = json.loads(raw)
+            if float(entry.get("ts") or 0) < cutoff:
+                continue
+            peer = entry.get("from") or "?"
+            decision = entry.get("decision") or "?"
+            counts.setdefault(peer, {})
+            counts[peer][decision] = counts[peer].get(decision, 0) + 1
+    except Exception:
+        return None
+    if not counts:
+        return None
+    lines = ["## Lessons synced (last 24h)\n"]
+    for peer, dc in sorted(counts.items()):
+        total = sum(dc.values())
+        detail = []
+        for label in ("applied", "queued", "discarded", "rejected",
+                      "skipped_neg_match"):
+            n = dc.get(label, 0)
+            if n:
+                detail.append(f"{n} {label}")
+        lines.append(f"- from {peer}: {total} — " + ", ".join(detail))
+    return "\n".join(lines)
+
+
 def main() -> int:
     out = []
     out.append("# RC live state (rc_facts.py)\n")
@@ -231,6 +268,12 @@ def main() -> int:
                 )
         else:
             out.append("- No recent gamepc bridge results in tail")
+
+    # ── Lessons summary (last 24h) ──────────────────────────────────────
+    lessons_block = _lessons_summary()
+    if lessons_block:
+        out.append("")
+        out.append(lessons_block)
 
     # ── Anomaly summary first if any ────────────────────────────────────
     if anomalies:

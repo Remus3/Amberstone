@@ -100,6 +100,22 @@ curl -k https://127.0.0.1:8888/metrics
 cd scripts && python data_pipeline.py all
 ```
 
+## Memory frontmatter — cross-project sync fields
+
+Standard memory files carry `name`, `description`, `type`. Two optional fields
+are valid for memories that should ride the RC↔Peer bridge (Phase 1 schema,
+`docs io RC peer/RC_PHASE1_LESSON_SCHEMA_2026-05-02.md`):
+
+```yaml
+cross_project: true          # opt-in; default false. Only feedback/reference/project eligible.
+applies_when: "<trigger>"    # required when cross_project=true; free-form grep-able phrase
+does_not_apply_when:         # optional list; receiver skips if any entry matches local context
+  - "<neg-trigger>"
+```
+
+`type: user` memories are never eligible. Default is OFF — author decides at write-time.
+False-negatives are recoverable (edit frontmatter later); false-positives are bridge spam.
+
 ## Testing Discipline
 
 Always run the full test suite after schema changes, engine version bumps, or item-effect additions. Avoid data-fragile cross-item comparison assertions; prefer assertions on computed quantities. When stubbing methods accessed via class, wrap with `@staticmethod` correctly.
@@ -120,7 +136,7 @@ When invoked with `/done` or asked to wrap a session: (1) audit pending changes,
 
 1. 🟡 Peer bridge daemon install — confirm `~/peer_bridge_daemon_health.json` on Peer
 2. 🟡 RC-VisionServer failing (last_result=267014) — investigate pythonw path in scheduled task
-3. 🟡 **Cross-Claude learning sync** — Phase 2 sender+receiver (file-watcher + bridge.send kind=lesson); Phase 3 wake-up surface; see `docs io RC peer/CROSS_CLAUDE_LEARNING_SYNC_VISION_2026-05-02.md`
-4. 🟡 Bridge Watcher hardening — acceptance-criteria measurement (≥90%/≥95%), sliding 24h counters, push notifications, dashboard panel for `/api/bridge/pending`
-5. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes; OCR canary gates Sonnet
-6. 🟡 DS calibration pipeline — 50+ games into `data/ds_calibration.jsonl`; analyse vs `rewind_history.db`
+3. 🟡 Bridge Watcher hardening — acceptance-criteria measurement (≥90%/≥95%), sliding 24h counters, push notifications, dashboard panel for `/api/bridge/pending`
+4. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes; OCR canary gates Sonnet
+5. 🟡 DS calibration pipeline — 50+ games into `data/ds_calibration.jsonl`; analyse vs `rewind_history.db`
+6. ✅ Cross-Claude learning sync Phases 1–3 — shipped 2026-05-06; Phase 4 polish deferred
