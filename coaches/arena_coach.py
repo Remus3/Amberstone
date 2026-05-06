@@ -226,6 +226,7 @@ class Coach(BaseCoach):
     # firing ~450 coach calls per 30-min arena game; new rates ~225 calls.
     _VISION_INTERVAL   = 20.0
     _DEBOUNCE_S        = 8.0
+    _STABLE_DEBOUNCE_S = 22.0
     _FAST_PATH_MIN_S   = 3.0
     _HP_DROP_THRESHOLD = 10.0
 
@@ -251,6 +252,19 @@ class Coach(BaseCoach):
         # prompt + daemon_slayer rank call). The list is already apiName-
         # mapped at persistence time.
         state["augments"] = list(self._picked_augments)
+        # Dynamic debounce: relax polling rate when game state is stable
+        prev = self._last_state
+        if prev:
+            changed = (
+                state.get("round") != prev.get("round") or
+                state.get("items") != prev.get("items") or
+                (prev.get("hp_pct", 100) - state.get("hp_pct", 100)) >= 10 or
+                sum(1 for t in state.get("teams", []) if t.get("is_dead")) !=
+                sum(1 for t in prev.get("teams", []) if t.get("is_dead"))
+            )
+            self._DEBOUNCE_S = (
+                type(self)._DEBOUNCE_S if changed else self._STABLE_DEBOUNCE_S
+            )
 
     def _fast_path_trigger(self, state: dict, prev: dict) -> bool:
         new_round = (
@@ -348,6 +362,8 @@ class Coach(BaseCoach):
     # ── Vision ────────────────────────────────────────────────────────────────
 
     def _run_vision(self) -> None:
+        if self._fetch_game_data() is None:
+            return
         try:
             from core.feature_policy import is_allowed as _fp_ok
             if not _fp_ok("arena", "live_coaching"):

@@ -197,8 +197,25 @@ class Coach(BaseCoach):
     # DEBOUNCE 3.5→7 / FAST_PATH 1.5→3 to halve the API call rate.
     _VISION_INTERVAL   = 18.0
     _DEBOUNCE_S        = 7.0
+    _STABLE_DEBOUNCE_S = 20.0
     _FAST_PATH_MIN_S   = 3.0
     _HP_DROP_THRESHOLD = 10.0
+
+    # ── BaseCoach hooks ───────────────────────────────────────────────────────
+
+    def _on_state_received(self, state: dict) -> None:
+        """Dynamic debounce: relax polling rate when game state is stable."""
+        prev = self._last_state
+        if prev:
+            changed = (
+                len(state.get("dead_enemies", [])) != len(prev.get("dead_enemies", [])) or
+                state.get("items") != prev.get("items") or
+                state.get("level") != prev.get("level") or
+                (prev.get("hp_pct", 100) - state.get("hp_pct", 100)) >= 10
+            )
+            self._DEBOUNCE_S = (
+                type(self)._DEBOUNCE_S if changed else self._STABLE_DEBOUNCE_S
+            )
 
     # ── BaseCoach abstract implementations ────────────────────────────────────
 
@@ -217,6 +234,8 @@ class Coach(BaseCoach):
     # ── Vision ────────────────────────────────────────────────────────────────
 
     def _run_vision(self) -> None:
+        if self._fetch_game_data() is None:
+            return
         try:
             from core.feature_policy import is_allowed as _fp_ok
             if not _fp_ok("brawl", "live_coaching"):
