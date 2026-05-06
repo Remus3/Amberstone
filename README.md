@@ -210,6 +210,18 @@ Test surface: `tests/phase2_smoke/` (TFT worker, SR/ARAM worker) + `tests/snapsh
 See [`ROADMAP.md`](./ROADMAP.md) for the full milestone ledger.
 Highlights of what's open after the 2026-05-03 Bridge Watcher ship:
 
+### Cross-Claude learning sync (2026-05+, in flight) ← next target
+
+Operator goal: lessons learned on one machine apply to the others overnight, with provenance memories and a SessionStart wake-up summary. Vision doc: [`docs io RC peer/CROSS_CLAUDE_LEARNING_SYNC_VISION_2026-05-02.md`](./docs%20io%20RC%20atx/CROSS_CLAUDE_LEARNING_SYNC_VISION_2026-05-02.md).
+
+- **Phase 1 — schema + filter contract.** ✅ Both sides agreed on the `cross_project: true` + `applies_when` memory frontmatter, the `kind=lesson` envelope, and the sender/receiver filter tables. RC's commitment doc: [`RC_PHASE1_LESSON_SCHEMA_2026-05-02.md`](./docs%20io%20RC%20atx/RC_PHASE1_LESSON_SCHEMA_2026-05-02.md).
+- **Phase 2 — sender + receiver.** File-watcher over each side's memory dir; `bridge.send(kind="lesson", ...)` on new `cross_project: true` memories. `process-incoming-lessons` skill auto-invoked by `/loop` decides per-lesson: apply / queue / discard / reject, writes provenance memory, acks the peer.
+- **Phase 3 — wake-up surface.** Each machine's SessionStart probe extends with a `lessons_summary` block ("N synced overnight: M applied, K queued, L discarded").
+- **Phase 4 — polish.** Auto-revert if applied lessons cause test failures; lesson confidence scoring; symmetry check ("did the lesson take?"). followed up by: - **Push channel for bridge inbox** — replace 2s polling on the bridge monitor with an in-process notify in `bridge_post()` so the monitor sees inbound in <10ms. Touches frozen `dashboard/_bridge_log.py`.
+- **PowerShell 7 migration** — bundle with a future "ops day"; PS 5.1 quirks haven't blocked anything.
+- **Bridge Watcher artifact rotation** — `ops/runtime/bridge_action_artifacts/` grows monotonically. Add a daily cleanup (delete artifacts older than 7 days, or whose task_id is in the processed-ids ledger).
+- **Auto-ops verb expansion** — current Legion `auto_ops_verbs` are conservative (4 entries). Once Phase 3 success rate clears 95%, add: `tail .* log` → `Bash(type tail-N)`, `restart agent .*` → `schtasks /Run /TN`, `verify .*` → `curl health`.
+
 ### Bridge Watcher hardening (2026-05+)
 
 - **Acceptance-criteria measurement.** Plan §11 calls for ≥90% success on auto-read and ≥95% on auto-ops. Need to accumulate ~50+ real-traffic samples and graph success rate per-pattern; downgrade specific patterns to escalate-only if they drag the rate down.
@@ -217,15 +229,6 @@ Highlights of what's open after the 2026-05-03 Bridge Watcher ship:
 - **Push notifications for escalations.** Plan §8 specifies one PushNotification per new escalation with a 3/hr/node throttle. Not implemented; today escalations only surface via the operator's UserPromptSubmit hook on next prompt.
 - **Dashboard panel for `/api/bridge/pending`.** Endpoint serves the queue; no UI consumes it yet. Add a "Pending Bridge Tasks" card on the home dashboard with Accept/Defer/Dismiss actions.
 - **Auto-action restraint by node load.** When RC-Supervisor or RC main process is degraded, suppress auto-action (escalate everything) so the watcher doesn't compete for resources.
-
-### Cross-Claude learning sync (2026-05+, in flight)
-
-Operator goal: lessons learned on one machine apply to the others overnight, with provenance memories and a SessionStart wake-up summary. Vision doc: [`docs io RC peer/CROSS_CLAUDE_LEARNING_SYNC_VISION_2026-05-02.md`](./docs%20io%20RC%20atx/CROSS_CLAUDE_LEARNING_SYNC_VISION_2026-05-02.md).
-
-- **Phase 1 — schema + filter contract.** ✅ Both sides agreed on the `cross_project: true` + `applies_when` memory frontmatter, the `kind=lesson` envelope, and the sender/receiver filter tables. RC's commitment doc: [`RC_PHASE1_LESSON_SCHEMA_2026-05-02.md`](./docs%20io%20RC%20atx/RC_PHASE1_LESSON_SCHEMA_2026-05-02.md).
-- **Phase 2 — sender + receiver.** File-watcher over each side's memory dir; `bridge.send(kind="lesson", ...)` on new `cross_project: true` memories. `process-incoming-lessons` skill auto-invoked by `/loop` decides per-lesson: apply / queue / discard / reject, writes provenance memory, acks the peer.
-- **Phase 3 — wake-up surface.** Each machine's SessionStart probe extends with a `lessons_summary` block ("N synced overnight: M applied, K queued, L discarded").
-- **Phase 4 — polish.** Auto-revert if applied lessons cause test failures; lesson confidence scoring; symmetry check ("did the lesson take?").
 
 ### Tiered vision calibration (🟡 in progress)
 
@@ -238,8 +241,7 @@ Tesseract regions in `data/vision_regions.json` use 1920×1080 defaults — need
 **Coach wire-in (complete):**
 - ✅ ARAM — DS-before-Haiku; picks in user turn; pre-DS hardcoded item rules removed (−37% system prompt)
 - ✅ Arena + Brawl — DS-before-Haiku (commit b4609b4)
-- ✅ SR (`coach_integration.py`) — DS-before-Haiku (commit b4609b4)
-- ❌ SR (`core/coach_integration.py`) — DS not wired at all; highest-value remaining gap
+- ✅ SR (`coach_integration.py`) — DS-before-Haiku (commit b4609b4); calibration logging + `daemon_slayer_picks` JSON output wired
 
 **Phase 7 — calibration**: validate engine output against `rewind_history.db` outcomes; tune model constants. Not started; blocked on having enough live DS-guided games logged.
 
@@ -248,10 +250,6 @@ Tesseract regions in `data/vision_regions.json` use 1920×1080 defaults — need
 Not committed — stack-of-ideas for sessions where audit work is exhausted.
 
 - **Per-enemy alive/dead tiles** on the home dashboard — orphan render functions exist (`renderEnemyStrip`) but the DOM was deliberately removed 2026-04-23 for minimap space + the data pipeline emits `enemy_team` while the JS reads `enemy_comp`. Reviving needs UI approval AND a server-side rename (~3 commits across 3 files). See memory `reference_orphan_team_strips`.
-- **Push channel for bridge inbox** — replace 2s polling on the bridge monitor with an in-process notify in `bridge_post()` so the monitor sees inbound in <10ms. Touches frozen `dashboard/_bridge_log.py`.
-- **PowerShell 7 migration** — bundle with a future "ops day"; PS 5.1 quirks haven't blocked anything.
-- **Bridge Watcher artifact rotation** — `ops/runtime/bridge_action_artifacts/` grows monotonically. Add a daily cleanup (delete artifacts older than 7 days, or whose task_id is in the processed-ids ledger).
-- **Auto-ops verb expansion** — current Legion `auto_ops_verbs` are conservative (4 entries). Once Phase 3 success rate clears 95%, add: `tail .* log` → `Bash(type tail-N)`, `restart agent .*` → `schtasks /Run /TN`, `verify .*` → `curl health`.
 
 ---
 
