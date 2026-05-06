@@ -194,6 +194,7 @@ def start_dashboard(app_dir: Path) -> None:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 close_fds=True,
+                creationflags=0x08000000,  # CREATE_NO_WINDOW
             )
             _log.info("vision server not running — spawned %s", _vis.name)
     except Exception as exc:
