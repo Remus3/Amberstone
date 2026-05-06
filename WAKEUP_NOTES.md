@@ -20,14 +20,12 @@
 - CLAUDE.md is now intentionally short (~109 lines). Do not pad it back.
 
 ## Open work (priority order)
-1. **Bridge tasks** — update Game-PC + Peer `.claude/settings.json` (remove typescript-lsp, narrow additionalDirectories); propagate WAKEUP_NOTES archiving convention
-2. **`~/.claude/commands/wrap.md`** — add session-size check step (warn if current `.jsonl` > 10MB)
-3. **`~/.claude/commands/done.md`** — add §6c WAKEUP_NOTES archiving step
-4. **UNIVERSAL_FILES review** — `C:\Users\Administrator\Desktop\UNIVERSAL_FILES\` files 2–5 accuracy updates; create file 6 (step-by-step usage guide)
-5. **RC-VisionServer failing** (last_result=267014) — investigate pythonw path in task XML
-6. **Peer daemon install** — confirm `~/peer_bridge_daemon_health.json` on Peer
-7. **DS calibration** — accumulate 50+ games in `data/ds_calibration.jsonl`
-8. **Vision regions calibration** — tune `data/vision_regions.json` bboxes
+1. **Game-PC settings** ✅ done — typescript-lsp removed, additionalDirectories narrowed (confirmed via bridge)
+2. **Peer config audit** — pending task `task-d0905eaf7636` from Peer asking for Claude Desktop + Code plugin config; process next session
+3. **RC-VisionServer failing** (last_result=267014) — investigate pythonw path in task XML
+4. **Peer bridge daemon** — confirm `~/peer_bridge_daemon_health.json` exists on Peer
+5. **DS calibration** — accumulate 50+ games in `data/ds_calibration.jsonl`
+6. **Vision regions calibration** — tune `data/vision_regions.json` bboxes
 
 ---
 
