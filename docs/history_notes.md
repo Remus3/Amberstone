@@ -6,6 +6,28 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s107 wrap — 2026-05-06 (API cost audit + dynamic debounce + CLAUDE.md slim)
+
+## What shipped
+- **Vision loop gate** — `_run_vision()` guards in ARAM/Arena/Brawl coaches: `if self._fetch_game_data() is None: return`. Kills 24/7 Sonnet burn when no game is active (was 84% of LoLOverlay key spend on May 4).
+- **Dynamic debounce** — all 3 coaches: `_STABLE_DEBOUNCE_S` class attr (ARAM 25s / Arena 22s / Brawl 20s). `_on_state_received` sets `self._DEBOUNCE_S` to stable rate when no meaningful state change; snaps back to fast rate on dead_enemies / items / level / hp_pct drop ≥10.
+- **CLAUDE.md slimmed** from 355→109 lines. Deep docs moved to `docs/AGENTS.md` (new) + `docs/DAEMON_SLAYER.md` (new). Bridge spawn cost note added.
+- **Settings cleanup** — both `.claude/settings.json` files: removed `typescript-lsp` plugin; `additionalDirectories` `C:/` → `C:/Riot Commander`.
+- Commits: `5658b1f` (vision gate + debounce + CLAUDE.md slim)
+
+---
+
+## s106 wrap — 2026-05-05 (DaemonSlayer flash fix + preflight expansion)
+
+### What shipped
+- **`ops/RC-DaemonSlayer.xml`** — `python.exe` → `pythonw.exe`; task reinstalled. No more console flash on boot/restart. DS live at `:8893` engine=0.60.0 patch=16.9.1.
+- **`start_claude.ps1`** — added RC-DaemonSlayer + RC-Phase3-Supervisor + RC-BridgeWatcher preflight checks; `:8893` + `:8890` HTTP probes; final `claude` launch fixed to `--name "Legion"`. commit `0d1b545`.
+
+### Do NOT redo
+- RC-DaemonSlayer XML is already pythonw.exe.
+
+---
+
 ## s92–s103 detailed notes (2026-05-04 – 2026-05-05)
 
 ### s103 — 2026-05-05 (DS champ-select panel + dashboard bug fixes)
