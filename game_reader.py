@@ -1059,6 +1059,9 @@ class GameReader:
         return suggestions[0] if suggestions else ""
 
     # AUDIT-PHASE-2-GR-002: refreshed jungle champion set
+    # Used as a last-resort fallback only — Smite detection (_has_smite) is
+    # checked first and is authoritative for any champion. This list only
+    # fires when summoner-spell data is absent (relay warm-up frames, etc.).
     _JUNGLE_CHAMPS = {
         # Dedicated junglers
         "Hecarim","Lee Sin","Vi","Warwick","Amumu","Jarvan IV","Nocturne",
@@ -1073,6 +1076,19 @@ class GameReader:
         "Fizz","Maokai","Nautilus","Leona","Swain","Zyra","Brand",
         "Neeko","Aurora","Naafiri","Lux",
     }
+
+    @staticmethod
+    def _has_smite(player: dict) -> bool:
+        """Return True if the player has Smite as a summoner spell."""
+        ss = player.get("summonerSpells")
+        if not isinstance(ss, dict):
+            return False
+        for key in ("summonerSpellOne", "summonerSpellTwo"):
+            entry = ss.get(key)
+            if isinstance(entry, dict):
+                if "Smite" in (entry.get("displayName") or ""):
+                    return True
+        return False
 
     def _gank_threat(self, enemies: list, allies: list, my_pos: dict,
                      game_time: float, my_team: str) -> tuple:
@@ -1091,6 +1107,14 @@ class GameReader:
                 break
 
         if not enemy_jg_name:
+            # Tier 2: Smite detection — accurate for any champion, no list to maintain.
+            for e in enemies:
+                if self._has_smite(e):
+                    enemy_jg_name = e.get("championName", "?")
+                    enemy_jg_data = self._enemy_last_seen.get(enemy_jg_name, {})
+                    break
+        if not enemy_jg_name:
+            # Tier 3: champion-name heuristic — last resort when Smite data absent.
             for e in enemies:
                 name = e.get("championName", "?")
                 if name in self._JUNGLE_CHAMPS:
@@ -1127,10 +1151,14 @@ class GameReader:
 
         ally_jg = None
         for a in allies:
-            aname = a.get("championName", "?")
-            if aname in self._JUNGLE_CHAMPS:
+            if self._has_smite(a):
                 ally_jg = a
                 break
+        if not ally_jg:
+            for a in allies:
+                if a.get("championName", "?") in self._JUNGLE_CHAMPS:
+                    ally_jg = a
+                    break
 
         if ally_jg:
             adead = ally_jg.get("isDead", False)
