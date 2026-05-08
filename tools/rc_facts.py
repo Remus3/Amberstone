@@ -115,6 +115,30 @@ def _last_boot_iso() -> str | None:
     return None
 
 
+def _watcher_summary() -> str | None:
+    """Return a compact watcher health line for the SessionStart block."""
+    state_path = _APP / "ops" / "runtime" / "bridge_watcher_health.json"
+    if not state_path.exists():
+        return None
+    try:
+        s = json.loads(state_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    pid = s.get("pid") or "?"
+    cadence = s.get("cadence_mode") or "?"
+    queue = s.get("queue_depth", "?")
+    ok_b = s.get("auto_ok_since_boot", 0)
+    err_b = s.get("auto_err_since_boot", 0)
+    sup_b = s.get("auto_suppressed_since_boot", 0)
+    esc_24 = s.get("escalations_24h", 0)
+    alive = bool(s.get("alive") if "alive" in s else True)
+    prefix = "" if alive else "⚠ DEAD "
+    return (
+        f"- {prefix}Watcher: pid={pid} cadence={cadence} queue={queue} "
+        f"auto_ok={ok_b}/err={err_b}/suppressed={sup_b} (since boot) · esc_24h={esc_24}"
+    )
+
+
 def _lessons_summary() -> str | None:
     """Return a markdown block summarising lessons synced in the last 24h.
     Returns None when the ledger is empty or absent (normal at first boot)."""
@@ -198,9 +222,10 @@ def main() -> int:
             n = t.get("name")
             s = t.get("state")
             r = t.get("last_result")
-            mark = "" if r in (0, 267009, 267011) else f"  ⚠ result={r}"
+            # 267014 = shutdown-terminated (VisionServer in-process popen exit) — expected
+            mark = "" if r in (0, 267009, 267011, 267014) else f"  ⚠ result={r}"
             out.append(f"  - {n}: state={s}{mark}")
-            if r not in (0, 267009, 267011, None):
+            if r not in (0, 267009, 267011, 267014, None):
                 anomalies.append(
                     f"Legion: scheduled task {n} last_result={r} (probably failing)"
                 )
@@ -209,6 +234,11 @@ def main() -> int:
     lb = _last_boot_iso()
     if lb:
         out.append(f"- Last boot: {lb}")
+
+    # Bridge watcher (Legion's daemon)
+    watcher_line = _watcher_summary()
+    if watcher_line:
+        out.append(watcher_line)
 
     # ── Game-PC ─────────────────────────────────────────────────────────
     out.append("\n## Game-PC (gamepc-rc · 100.95.66.128 · 192.168.8.237)\n")
@@ -244,20 +274,26 @@ def main() -> int:
     if mcp_status != 200:
         anomalies.append(f"Game-PC: MCP /health returned {mcp_status}")
 
-    # ── Bridge auto-flow loop liveness (best-effort) ────────────────────
+    # ── Bridge auto-flow loop liveness + 24h activity ───────────────────
     out.append("\n## Cross-Claude bridge\n")
     bridge_log = _APP / "ops" / "runtime" / "bridge_log.jsonl"
     if bridge_log.exists():
         last_result_age = None
+        activity: dict[str, int] = {}
+        now = time.time()
+        cutoff_24h = now - 86400
         try:
-            for line in reversed(bridge_log.read_text(encoding="utf-8").splitlines()[-50:]):
+            lines_raw = bridge_log.read_text(encoding="utf-8").splitlines()
+            for line in reversed(lines_raw[-200:]):
                 try:
                     j = json.loads(line)
                 except Exception:
                     continue
-                if j.get("kind") == "result" and j.get("source") == "gamepc":
-                    last_result_age = int(time.time() - float(j.get("ts") or 0))
-                    break
+                if last_result_age is None and j.get("kind") == "result" and j.get("source") == "gamepc":
+                    last_result_age = int(now - float(j.get("ts") or 0))
+                if float(j.get("ts") or 0) >= cutoff_24h:
+                    k = j.get("kind") or "?"
+                    activity[k] = activity.get(k, 0) + 1
         except Exception:
             pass
         if last_result_age is not None:
@@ -268,6 +304,9 @@ def main() -> int:
                 )
         else:
             out.append("- No recent gamepc bridge results in tail")
+        if activity:
+            parts = ", ".join(f"{v} {k}s" for k, v in sorted(activity.items()))
+            out.append(f"- Activity 24h: {parts}")
 
     # ── Lessons summary (last 24h) ──────────────────────────────────────
     lessons_block = _lessons_summary()
