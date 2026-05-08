@@ -12,7 +12,7 @@
 - **`docs/adr/`** — 30-line template + 5 historical ADRs: ADR-001 tkinter removal, ADR-002 DS-before-Haiku, ADR-003 in-process vision server, ADR-004 bridge watcher daemon, ADR-005 Tailscale MagicDNS.
 - **CLAUDE.md** — ADR pointer added; active priorities updated.
 - **ROADMAP.md** — Phase 1 flipped ✅.
-- Commit **fc1361b** pushed → `claude/brave-curran-2597b1` (43 files changed). PR: https://github.com/Remus3/riot-commander/pull/new/claude/brave-curran-2597b1
+- Commits **fc1361b + 2be87a8** merged to main.
 
 ## Key decisions
 - Frozen-file list in CLAUDE.md stays manually maintained — it includes non-Python files (.ps1, .json, .xml, .md) that can't carry `# arch:` headers.
@@ -24,9 +24,8 @@
 - `gen_archmap.py` is idempotent — second run says "archmap up to date."
 
 ## What's next
-1. **Merge `claude/brave-curran-2597b1` to main** (or merge via PR on GitHub).
-2. **Phase 2.1** — `champion_profiles.py` (902 LOC) split: audit dict literals, build extractor script, emit `data/champion_profiles/*.json`, replace with ≤80 LOC thin loader. Lowest-risk decomp.
-3. **TFT 17.3** — due ~2026-05-12. May take priority if patch drops.
+1. **Phase 2.1** — `champion_profiles.py` (902 LOC) split: audit dict literals, build extractor script, emit `data/champion_profiles/*.json`, replace with ≤80 LOC thin loader. Lowest-risk decomp.
+2. **TFT 17.3** — due ~2026-05-12. May take priority if patch drops.
 
 ---
 
