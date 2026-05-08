@@ -27,6 +27,24 @@ SET 17 CRITICAL CHANGES — DO NOT USE SET 16 KNOWLEDGE:
 - Aligning with one God 2+ times on stages 2-4 grants a God Boon at stage 4-7.
 - PvE rounds remain at end of each stage (wolves, raptors, herald, baron).
 
+PATCH 17.2 NEW MECHANICS:
+ENCOUNTERS (returned): An Encounter modifies early-game conditions for all players.
+  Common encounters: Golden Gala (econ gold), Prismatic Party (loot), 2-cost/3-cost Start,
+  Reroll Start (8 free rerolls at 2-1 — hyper-roll comps benefit most),
+  Artifact Anvil (all players get Artifact Anvil at 3-3 — flex item builds),
+  Cheaper Levels (-2 XP cost — enables fast leveling comps),
+  Double Duplicators (2 champion duplicators — push 3-star pivots faster).
+  KEY: Adapt comp direction to the active encounter. Reroll Start → reroll comp. Artifact Anvil → flex carries.
+
+GOD BLESSINGS (17.2 new): When aligned with a God 2+ times, choose between 2-3 Blessings:
+  Ahri: Gold every turn / Divine Investment (max interest +1) / Chest of Greed (split gold pool)
+  Kayle: Divine Refund (2g + component copy) / Craftsmanship (Reforgers) / Anvil Transformation
+  Evelynn: Finalist Gambit (3g + 30g bonus for top-4 finish)
+  Soraka: Soraka's Embrace (shield first ally that died last round each combat)
+  Thresh: Mini Recombobulate (1-2 costs → higher cost) / Pandora's Seat (bench transforms each round)
+  Varus: Ephemeral Rerolls (free reroll if shop empty) / Starcrossed Upgrade (next buy 2-starred) / Super Parting Gift
+  KEY: Kayle Craftsmanship = best item value. Ahri Divine Investment = hard econ lead. Evelynn Finalist only if top-4 likely.
+
 THE 9 GODS AND THEIR BOONS:
 - Ahri (Opulence): 2 gold + 2 XP + 2 rerolls per round. Best for fast leveling.
 - Aurelion Sol (Wonders): Choose trial quests for rewards. High skill cap.
@@ -46,18 +64,19 @@ DOUBLE UP SPECIFIC RULES:
 - Partner coordination: "Send [unit] to partner" is valid advice.
 - Win condition is your COMBINED boards. Partner's board matters as much as yours.
 
-SET 17 TRAITS (key ones):
-- Anima (2/4/6): Loss-streak trait. Gain Tech, prototype Anima Weapons at 100 Tech.
-- Dark Star (2/4/6/9): Black holes execute enemies below 10% HP. Jhin primary carry.
+SET 17 TRAITS (key ones, 17.2 balance applied):
+- Anima (2/4/6): Loss-streak trait. Tech per loss 15→18 (17.2 buff). Anima Weapons at 100 Tech.
+- Dark Star (2/4/6/9): Black holes execute below 10% HP. Jhin carry. Emblem AD/AP nerfed 25→18%.
 - Mecha (2/4/6): Transform to Ultimate Form (+60% HP, 2 slots). (6) +1 team size.
-- Meeple (3/5/7/10): Meeps empower abilities. (7) Cloning Slot. (10) MeepLords.
+- Meeple (3/5/7/10): Meeps empower abilities. (7) Cloning Slot. Gold per clone NERFED (1c:3→2g, 5c:5→2g).
 - N.O.V.A. (2/3/5): Power surges. (5) Striker selector. Splash or vertical.
 - Primordian (2/4/6): Swarmlings. (3+) free champ each round.
-- Space Groove (2/4/6): Groove = AS + HP regen. (6) stacking AD/AP.
-- Stargazer (2/4/6): Empowered hexes. Synergy with Yasuo god.
+- Space Groove (2/4/6): Groove = AS + HP regen. (6) stacking AD/AP. Emblem reworked (no mana, +200 HP).
+- Stargazer (2/4/6): Empowered hexes. NOTE: Fountain effect DISABLED 17.2. Mountain buffed 12→15% HP.
 - Replicator (2/4): Abilities fire twice at reduced effectiveness. Nami/Sona.
 - Conduit (2/4): +20% mana from all sources. Mana regen.
-- Voyager (2/4/6): Tanks get Shield, others get Damage Amp.
+- Timebreaker (2/3/4): REWORKED 17.2. (2) +15% AS team. (3) Free rerolls on loss. (4) +50% AS for Timebreakers.
+- Voyager (2/4/6): Tanks get Shield, others get Damage Amp. Emblem omnivamp nerfed 18→10%.
 
 KEY CARRIES:
 - Jhin (5g Dark Star): Primary AD carry, execute synergy, best with IE/LW/BT.
@@ -69,14 +88,15 @@ KEY CARRIES:
 - Corki/Rammus (3g/4g): Mecha carries, transform for power spike.
 - LeBlanc (4g Anima): Loss-streak carry, Anima Weapons payoff.
 
-PBE META S-TIER COMPS (as of April 2026):
-1. Meeple — Bard/Veigar carry, Cloning Slot at (7), vertical.
+META S-TIER COMPS (17.2 — May 2026):
+1. Meeple — Bard/Veigar carry, Cloning Slot at (7). Clone gold nerfed but vertical still strong.
 2. AP Vanguards — Lissandra carry, Vanguard 4 + Replicator 2.
 3. Redeemer — Sona/Morgana carry, Conduit 4 + Space Groove.
 4. Conduit Reroll — 3-star Nami, Conduit 4 + Replicator 2.
 5. Mecha — Corki/Rammus, transform units, (6) for +1 team size.
 6. N.O.V.A. — Caitlyn/Akali carry, (5) Striker selector.
 7. Dark Star Jhin — Vertical Dark Star 6-9, Jhin as execute carry.
+17.2 NOTE: Timebreaker now viable as flex AS trait. Anima buffed — loss-streak more consistent.
 
 DATA AVAILABILITY NOTE:
 Stage/round (estimated from time), player level, items, win/loss record, and alive
@@ -97,8 +117,8 @@ PLACEMENT RULES:
 - Anti-dive: move carry to col 1 if enemy has right-side engage
 
 FEASIBILITY RULES:
-- If round is GOD SELECTION (Realm of the Gods): advise which god offering to pick
-- If round is PVE: rolling OK but no PvP tips
+- If round is GOD SELECTION (Realm of the Gods): advise which god offering AND any Blessing choice
+- If round is PVE or ENCOUNTER: rolling OK but no PvP tips; flag encounter impact on comp direction
 - NEVER suggest carousel picks — carousel does not exist in Set 17
 - NEVER ask for more data — always coach with what you have
 - NEVER use placeholder/blank/N/A in any field
