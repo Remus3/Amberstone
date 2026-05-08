@@ -4,6 +4,28 @@
 
 ---
 
+# s112 wrap — 2026-05-07 (Bridge Watcher hardening Phase 1)
+
+## What shipped
+- **Sliding 24h event ring** (`tools/bridge_watcher.py`, commit f6095a0) — `event_ring_24h` persisted in `bridge_watcher_state.json`; `_ring_add` / `_ring_age` / `_ring_count` helpers. `*_24h` heartbeat fields now reflect true 24h windows, not aliases for `*_since_boot`. Ring survives watcher restarts.
+- **Push notifications** — `_send_push_notification()` spawns headless `claude --print --allowed-tools PushNotification` when a new escalation lands; throttled to 3/hr via `push_notif_times` list in state. Silently no-ops if no active Claude session.
+- **9-test inline selftest** (`py tools/bridge_watcher.py --selftest`) — covers ring aging, size cap, and throttle logic. All 9 pass.
+- **RC-DaemonSlayer result=1 fix** (`start_daemon_slayer.py`) — pre-bind port check exits 0 when 8893 already bound, clearing the scheduled-task anomaly.
+- **`bridge_watcher.py` removed from frozen list** in CLAUDE.md. Remaining hardening items (adaptive polling, artifact rotation, dry-run) still need it unfrozen.
+- Watcher restarted at pid=12300, alive, last_poll_ok=True. Heartbeat now shows real `*_24h` fields.
+
+## Do NOT redo
+- Sliding ring is in `_STATE_PATH` (bridge_watcher_state.json). Do not add a separate SQLite or file — ring lives alongside processed_ids.
+- Push notifications use `claude --print --allowed-tools PushNotification`. Do not use `subprocess.run(["notify-send"])` or Windows Toast — bridge_watcher_actions.py already uses this pattern.
+
+## Open work (priority order)
+1. **Bridge Watcher hardening (remaining)** — adaptive idle/active polling cadence + `/sleep` `/wake` slash commands (ROADMAP "Future" §1). Needs bridge_watcher.py (already unfrozen). Ask before starting.
+2. **DS calibration** — 120 records in `data/ds_calibration.jsonl` (SR, 3 champs, no game_ids). **Blocked**: rewind_history.db last entry Dec 2025. game_id not captured in `coach_integration.py`. Fix would need `coach_integration.py` edit (not frozen).
+3. **Vision regions calibration** — needs in-game session for a calibration frame.
+4. **Cross-Claude Phase 4** — confidence scoring, symmetry check, auto-revert. Low urgency.
+
+---
+
 # s111 wrap — 2026-05-06 (Infrastructure fixes + roadmap audit)
 
 ## What shipped
