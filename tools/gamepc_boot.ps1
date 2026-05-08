@@ -60,11 +60,11 @@ foreach ($s in $SUPPORT_SCRIPTS) {
     }
 }
 
-# Slash-command files for the auto-launched Claude session. The bridge
-# Claude runs `/loop 1m /process-bridge-tasks`, which requires the
-# matching .md to live in ~/.claude/commands/ (user-global) before the
-# loop fires. Pulled fresh on each boot so RC-side edits to the skill
-# propagate without a manual copy.
+# Slash-command files for Claude on Game-PC. RC-BridgeDaemon (step 6)
+# invokes `claude --print /process-bridge-tasks` when tasks are pending,
+# so process-bridge-tasks.md must live in ~/.claude/commands/ even though
+# there's no always-running /loop. Pulled fresh on each boot so RC-side
+# edits propagate without a manual copy.
 $cmdsDir = Join-Path $env:USERPROFILE '.claude\commands'
 if (-not (Test-Path $cmdsDir)) {
     New-Item -ItemType Directory -Path $cmdsDir | Out-Null
@@ -183,13 +183,23 @@ foreach ($a in $AGENTS) {
 #    alongside an existing variant set (e.g. RC-ScreenAgent-League,
 #    RC-ScreenAgent-Minimap, RC-ScreenAgent-UI). Same protection covers
 #    any future agent that grows variant tasks.
+# Use absolute python.exe path — 'py' launcher is not resolvable in
+# task-scheduler's restricted PATH (same fix as RC-PatchRefresh on Legion).
+$pyExe = "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe"
+if (-not (Test-Path $pyExe)) {
+    # Fallback: find any python.exe in standard AppData install locations
+    $found = Get-ChildItem "$env:LOCALAPPDATA\Programs\Python\*\python.exe" -ErrorAction SilentlyContinue |
+             Sort-Object FullName -Descending | Select-Object -First 1
+    if ($found) { $pyExe = $found.FullName }
+}
+
 foreach ($a in $AGENTS) {
     $existing = Get-ScheduledTask -TaskName "$($a.task)*" -ErrorAction SilentlyContinue
     if ($existing) {
         # Already covered (exact or variant). Nothing to do.
         continue
     }
-    $tr = "py C:\RC-Agent\$($a.name)"
+    $tr = "`"$pyExe`" C:\RC-Agent\$($a.name)"
     schtasks /Create /TN $a.task /SC ONLOGON /RL HIGHEST /F /TR $tr 2>&1 | Out-Null
     if ($LASTEXITCODE -eq 0) {
         Write-Host "  scheduled task $($a.task) installed" -ForegroundColor Green

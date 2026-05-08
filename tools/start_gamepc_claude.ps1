@@ -1,4 +1,4 @@
-# start_gamepc_claude.ps1 — idempotent launcher for Game-PC's bridge-loop
+# start_gamepc_claude.ps1 — idempotent launcher for Game-PC's interactive
 # Claude session.
 #
 # Behavior:
@@ -6,12 +6,12 @@
 #      exits silently (idempotent — safe to run from boot script + scheduled
 #      task + manual shortcut click).
 #   2. Otherwise spawns a visible Windows Terminal window in C:\RC-Agent\
-#      running:
-#         claude --name "Game-PC bridge" "/loop 1m /process-bridge-tasks"
-#      The argv prompt lands as the session's first user message — Claude
-#      Code interprets the leading slash as a command and runs /loop
-#      immediately, so the bridge-task processor is on a 1-min cadence
-#      without operator input.
+#      running a plain interactive Claude session:
+#         claude --name "Game-PC bridge" --dangerously-skip-permissions
+#      Bridge-task processing is handled automatically by RC-BridgeDaemon
+#      (gamepc_boot.ps1 step 6), which polls Legion every 30s and invokes
+#      claude --print /process-bridge-tasks only when tasks are pending.
+#      No /loop needed here — that would burn idle cycles for nothing.
 #
 # Called from gamepc_boot.ps1 at the end of the boot sequence. Can also be
 # run standalone:
@@ -40,7 +40,7 @@ $helper = Join-Path $Cwd '_bridge_loop_helper.cmd'
 @echo off
 cd /d C:\RC-Agent
 title Game-PC bridge
-claude --name "Game-PC bridge" --dangerously-skip-permissions "/loop 1m /process-bridge-tasks"
+claude --name "Game-PC bridge" --dangerously-skip-permissions
 '@ | Set-Content -Path $helper -Encoding ASCII
 
 $wt = Get-Command wt.exe -ErrorAction SilentlyContinue
