@@ -6,6 +6,8 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+- **s122 2026-05-08** — Game-PC socket exhaustion (STATUP.GG/Overlay Platform M 17,463 kernel handles → WSAENOBUFS). `taskkill /F /PID 3340`; restarted RC-WatcherHealthPublisher-GamePC + RC-BridgeWatcher-GamePC tasks. TDD skill installed fleet-wide.
+- **s121 2026-05-08** — Fleet model downgrade → `claude-sonnet-4-6` 200k. 5 plugins disabled on Legion (nimble, ralph-loop, playwright, chrome-devtools-mcp, firecrawl); Peer mirrored via bridge task. MEMORY.md pruned 6 stale entries.
 - **s120 2026-05-08** — RC dev panel shipped (7424e24): `⚙ Dev / Sim Preview` view with SIM FIXTURES, VISION STATUS, RC LOG TAIL cards; `dashboard/routes_dev.py` + CSS view-switch.
 - **s119 2026-05-08** — Roadmap: 5 items shipped — Phase 4 SessionStart enrichment (d069e4d), DS startup diagnostics (04e63d4), SR coach objective_window fix (e8d976b), bridge introspection `?source=` param (5a790d2), ROADMAP closures (items_index rotation, vision_token policy).
 - **s118 2026-05-08** — Bridge Watcher node-load restraint (f3ae4cb): `_check_rc_health()` downgrades auto-action to escalate when RC degraded; push notifications suppressed during degraded cycles; 30/30 selftests pass; watcher pid=15004.
