@@ -134,7 +134,7 @@ When invoked with `/done` or asked to wrap a session: (1) audit pending changes,
 
 ## Active priorities
 
-1. ✅ Bridge Watcher hardening (Phase 1) — sliding 24h counters + push notifications shipped (commit f6095a0); bridge_watcher.py unfrozen. Remaining: adaptive polling cadence, artifact rotation, dry-run mode.
+1. ✅ Bridge Watcher hardening (Phases 1+2) — sliding 24h counters + push notifications (f6095a0) + adaptive cadence `/sleep`/`/wake` (05983a4). Remaining: artifact rotation, dry-run mode, watcher self-healing.
 2. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes; OCR canary gates Sonnet
 3. 🟡 DS calibration pipeline — 120 records in `data/ds_calibration.jsonl` (SR only, no game_ids); blocked on rewind_history.db freshness (last entry Dec 2025)
 4. ✅ Peer bridge daemon — peer health live and fresh (watcher_alive=True, confirmed 2026-05-06)
