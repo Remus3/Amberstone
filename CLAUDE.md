@@ -35,7 +35,7 @@ All three in tailnet `tailc150de.ts.net`. Prefer tailnet hostnames. Vision runs 
   `core/game_snapshot.py`, `ops/rc_dev_runtime.py`, `ops/rc_supervisor.py`,
   `app/__init__.py`, `app/_loop.py`, `app/_health_monitor.py`, `app/_remediation.py`,
   `app/_state_authority.py`, `app/_overlay_manager.py`, `app/_game_lifecycle.py`,
-  `tools/bridge_watcher.py`, `tools/bridge_watcher_classify.py`,
+  `tools/bridge_watcher_classify.py`,
   `tools/bridge_watcher_actions.py`, `tools/bridge_watcher_action_prompt.md`,
   `tools/bridge_watcher_history.py`, `tools/bridge_watcher_install.ps1`,
   `tools/bridge_watcher_hook.ps1`, `tools/bridge_watcher_config.json`,
@@ -134,7 +134,7 @@ When invoked with `/done` or asked to wrap a session: (1) audit pending changes,
 
 ## Active priorities
 
-1. 🟡 Bridge Watcher hardening — sliding 24h counters, push notifications; needs bridge_watcher.py unfreeze. Watcher died 2026-05-05 14:15, auto-restarts failed (root cause unknown), manually restarted 2026-05-06 via schtasks
+1. ✅ Bridge Watcher hardening (Phase 1) — sliding 24h counters + push notifications shipped (commit f6095a0); bridge_watcher.py unfrozen. Remaining: adaptive polling cadence, artifact rotation, dry-run mode.
 2. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes; OCR canary gates Sonnet
 3. 🟡 DS calibration pipeline — 120 records in `data/ds_calibration.jsonl` (SR only, no game_ids); blocked on rewind_history.db freshness (last entry Dec 2025)
 4. ✅ Peer bridge daemon — peer health live and fresh (watcher_alive=True, confirmed 2026-05-06)
