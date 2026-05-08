@@ -143,13 +143,16 @@ def bridge_post(source: str, summary: str, *,
 
 def bridge_since(since_ts: float, limit: int = 20, *,
                  kind: str | None = None,
-                 target: str | None = None) -> list:
+                 target: str | None = None,
+                 source: str | None = None) -> list:
     with _bridge_lock:
         items = [e for e in _bridge_log if e["ts"] > since_ts]
     if kind:
         items = [e for e in items if e.get("kind", "note") == kind]
     if target:
         items = [e for e in items if e.get("target") == target]
+    if source:
+        items = [e for e in items if e.get("source") == source]
     return items[-limit:]
 
 
