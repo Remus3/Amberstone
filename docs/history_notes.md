@@ -6,6 +6,11 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+- **s110 2026-05-06** — Cross-Claude sync Phase 3 + DS/roadmap doc cleanup. `_lessons_summary()` in `rc_facts.py` for SessionStart hook (4c4ce1a); ROADMAP/CLAUDE/README doc cleanup (b6d02ae).
+- **s109 2026-05-06** — Memory library: 6 new memory entries (feedback + reference patterns). No code changes to RC repo.
+
+---
+
 # s108 wrap — 2026-05-06 (WT flash fixes — Legion + Game-PC)
 
 - `dashboard/server.py`: `creationflags=0x08000000` on vision server Popen (commit `cab0ce4`). Game-PC `gamepc_bridge_daemon.py`: `--dangerously-skip-permissions` fix + DEVNULL suppression — stopped 807+ crash-loop invocations per day.
