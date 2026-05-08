@@ -43,7 +43,8 @@ def _gather_get() -> list:
                                routes_bridge_pending, routes_bridge_cadence,
                                routes_health_peer,
                                routes_loadout, routes_metrics,
-                               routes_sr_draft, routes_sr_user_builds)
+                               routes_sr_draft, routes_sr_user_builds,
+                               routes_dev)
         _GET_CACHE = (list(routes_static.GET_ROUTES)
                       + list(routes_state.GET_ROUTES)
                       + list(routes_history.GET_ROUTES)
@@ -56,7 +57,8 @@ def _gather_get() -> list:
                       + list(routes_loadout.GET_ROUTES)
                       + list(routes_metrics.GET_ROUTES)
                       + list(routes_sr_draft.GET_ROUTES)
-                      + list(routes_sr_user_builds.GET_ROUTES))
+                      + list(routes_sr_user_builds.GET_ROUTES)
+                      + list(routes_dev.GET_ROUTES))
     return _GET_CACHE
 
 

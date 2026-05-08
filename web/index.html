@@ -1219,6 +1219,29 @@
         <p id="fleet-empty" class="home-empty">No peer heartbeats yet. Peers run <code>tools/bridge_watcher_health_publisher.py</code> as a sidecar — if this is empty after a peer reboot, check the publisher service.</p>
       </div>
     </section>
+
+    <section id="view-dev" class="view-section" hidden>
+      <div class="view-section-head">
+        <h2>DEV / SIM PREVIEW</h2>
+        <button type="button" class="view-section-btn" id="dev-refresh">Refresh</button>
+      </div>
+      <div class="view-section-body">
+        <div class="diag-grid">
+          <div class="diag-card">
+            <div class="diag-card-head">SIM FIXTURES <span class="diag-sub" id="dev-fixture-count"></span></div>
+            <div id="dev-fixtures-body"><div class="home-empty">loading…</div></div>
+          </div>
+          <div class="diag-card">
+            <div class="diag-card-head">VISION STATUS <span class="diag-sub" id="dev-vision-sub"></span></div>
+            <div id="dev-vision-body"><div class="home-empty">loading…</div></div>
+          </div>
+          <div class="diag-card diag-card-wide">
+            <div class="diag-card-head">RC LOG TAIL <span class="diag-sub">last 60 lines</span></div>
+            <pre class="diag-log" id="dev-log">loading…</pre>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 
   <div id="activity-strip" class="activity-strip">
