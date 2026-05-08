@@ -4,6 +4,25 @@
 
 ---
 
+# s118 wrap — 2026-05-08 (Bridge Watcher node-load restraint)
+
+## What shipped
+- **Bridge Watcher node-load restraint** (`bridge_watcher.py`, commit f3ae4cb): `_check_rc_health(health, now)` pure function checks RC alive/last_reload_ok/booting/heartbeat age/restart grace. When RC is degraded, auto-action lanes downgrade to escalate for that poll cycle. Push notifications suppressed during RC-degraded cycles. New heartbeat fields: `auto_suppressed_since_boot` + `auto_suppressed_24h`. 9 new selftests at boundary inputs; 30/30 pass. Watcher restarted at pid=15004.
+- **DDragon "16.9.1" is correct** — Riot uses year-based marketing versions (26.9) but DDragon API version string stays "16.9.1". Data pipeline is current, not stale.
+
+## Do NOT redo
+- Bridge watcher node-load restraint is preventive hardening, not a fix for observed harm. The feature is intentionally conservative (120s grace, 60s staleness threshold).
+- DDragon version issue was a false alarm — no pipeline change needed.
+
+## Open work (priority order)
+1. **rewind_history.db staleness** — blocked on live SR game.
+2. **Vision regions calibration** — blocked on live game.
+3. **TFT 17.3** — next patch due ~2026-05-12. Same update process as 17.2.
+4. **Bridge Watcher acceptance-criteria** — watch `auto_ok_since_boot` vs `auto_err_since_boot`; target ≥90% read / ≥95% ops.
+5. **Auto-ops verb expansion** — needs 95% success rate first; check heartbeat before enabling.
+
+---
+
 # s117 wrap — 2026-05-08 (TFT patch 17.2 — Encounters + God Blessings)
 
 ## What shipped
