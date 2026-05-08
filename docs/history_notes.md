@@ -6,6 +6,11 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+- **s115 2026-05-07** — DS calibration game_id wiring (d66d14b): `gamepc_lcu_agent.py` fetches `gameData.gameId` in-game; `game_reader.py` reads `/latest-lcu` relay; `coach_integration.py` passes game_id to `log_ds_run()`.
+- **s114 2026-05-07** — Bridge Watcher Phase 3 (6dd91ff): `--dry-run` mode, artifact rotation, self-healing watchdog thread; 21/21 selftests.
+- **s113 2026-05-07** — Bridge Watcher Phase 2 (05983a4): adaptive cadence (`_read_mode()`), active/sleep/auto modes, `/api/bridge/cadence`, `/sleep`+`/wake` slash commands.
+- **s112 2026-05-07** — Bridge Watcher Phase 1 (f6095a0): sliding 24h event ring, push notifications, RC-DaemonSlayer result=1 fix.
+- **s111 2026-05-06** — Infrastructure fixes: RC-BridgeWatcher + RC-Phase3-Supervisor restarted; `claude-rc.ps1` `/loop` removed; ROADMAP fleet-health items marked ✅.
 - **s110 2026-05-06** — Cross-Claude sync Phase 3 + DS/roadmap doc cleanup. `_lessons_summary()` in `rc_facts.py` for SessionStart hook (4c4ce1a); ROADMAP/CLAUDE/README doc cleanup (b6d02ae).
 - **s109 2026-05-06** — Memory library: 6 new memory entries (feedback + reference patterns). No code changes to RC repo.
 
