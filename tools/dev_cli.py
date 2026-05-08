@@ -107,7 +107,7 @@ def cmd_status():
     print("=" * 60)
 
     # Project root
-    print(f"\n[Project]")
+    print("\n[Project]")
     _ok(f"project root: {_PROJECT_ROOT}")
     _ok(f"python:       {_PYTHON}")
     _info(f"python version: {sys.version.split()[0]}")
@@ -118,7 +118,7 @@ def cmd_status():
         _warn(f"cwd: {cwd}  (differs from project root -- use project root as cwd for scripts)")
 
     # Git
-    print(f"\n[Git]")
+    print("\n[Git]")
     git = shutil.which("git")
     if git:
         _ok(f"git: {git}")
@@ -132,7 +132,7 @@ def cmd_status():
         _miss("git not found in PATH")
 
     # Key scripts
-    print(f"\n[Tools/Scripts]")
+    print("\n[Tools/Scripts]")
     scripts = [
         "tools/run_phase2_smoke.py",
         "tools/run_phase2_perf.py",
@@ -150,7 +150,7 @@ def cmd_status():
             _miss(s)
 
     # Launch targets (the actual paths used by start / start-clean)
-    print(f"\n[Launch Targets]")
+    print("\n[Launch Targets]")
     launch_targets = [
         ("start",       "start.bat",         "start.bat -> pythonw main.py"),
         ("start-clean", "restart_clean.bat",  "restart_clean.bat -> kills pythonw, clears cache, relaunches"),
@@ -165,7 +165,7 @@ def cmd_status():
     # GUI launcher Python (pythonw.exe) — separate from tooling Python
     # start.bat and restart_clean.bat call pythonw.exe directly.
     # This is NOT the same as the tooling Python (_PYTHON above).
-    print(f"\n[Launch Python / GUI Launcher]")
+    print("\n[Launch Python / GUI Launcher]")
     _info(f"Tooling Python (dev_cli wrappers): {_PYTHON}")
     pythonw = shutil.which("pythonw") or shutil.which("pythonw.exe")
     if pythonw:
@@ -174,7 +174,7 @@ def cmd_status():
         _miss("pythonw.exe NOT found in PATH -- start.bat and restart_clean.bat will fail")
 
     # Key config files
-    print(f"\n[Config Files]")
+    print("\n[Config Files]")
     configs = [
         "config/feature_flags.json",
         "config/FEATURE_POLICY.md",
@@ -188,7 +188,7 @@ def cmd_status():
             _miss(c)
 
     # Audit/proof dirs writability
-    print(f"\n[Audit Directories]")
+    print("\n[Audit Directories]")
     audit_dir = _PROJECT_ROOT / "audit"
     if audit_dir.exists():
         try:
@@ -204,9 +204,9 @@ def cmd_status():
     # Runtime artifacts dir
     rt_dir = _PROJECT_ROOT / "ops" / "runtime"
     if rt_dir.exists():
-        _ok(f"ops/runtime/ exists")
+        _ok("ops/runtime/ exists")
     else:
-        _miss(f"ops/runtime/ does not exist (first run?)")
+        _miss("ops/runtime/ does not exist (first run?)")
 
     print()
     return 0
@@ -252,7 +252,7 @@ def cmd_preflight():
 def cmd_smoke():
     """Run the Phase 2 smoke test harness."""
     _require_tool("tools/run_phase2_smoke.py")
-    print(f"Running smoke harness: python tools/run_phase2_smoke.py")
+    print("Running smoke harness: python tools/run_phase2_smoke.py")
     r = _run([_PYTHON, "tools/run_phase2_smoke.py"])
     return r.returncode
 

@@ -99,7 +99,7 @@ for item_id, info in sorted(aram_items.items()):
         print(f"  FAIL [{item_id}] {name}: {e}")
         failed += 1
 
-print(f"\nDone.")
+print("\nDone.")
 print(f"  New downloads:  {downloaded}")
 print(f"  Already cached: {skipped}")
 print(f"  Failed:         {failed}")

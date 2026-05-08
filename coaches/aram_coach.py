@@ -39,7 +39,7 @@ _APP_DIR = Path(__file__).parent.parent
 # live metric capture is a deliberate act after verifying the coach
 # doesn't regress — flip to True here (or set RC_LIVE_METRICS=1 in env)
 # once you want to start building the live dataset.
-import os
+
 _RC_LIVE_METRICS_ENABLED = os.environ.get("RC_LIVE_METRICS", "0") == "1"
 if _RC_LIVE_METRICS_ENABLED:
     try:

@@ -334,7 +334,7 @@ def build(output_dir: Path, dry: bool, archive_override: Path | None) -> int:
         (output_dir / "INSTALL_MANIFEST.json").write_text(
             json.dumps(manifest, indent=2), encoding="utf-8"
         )
-    _ok(f"INSTALL_MANIFEST.json written")
+    _ok("INSTALL_MANIFEST.json written")
 
     # ── Summary ───────────────────────────────────────────────────────────────
     print("\n" + "=" * 64)
@@ -344,7 +344,7 @@ def build(output_dir: Path, dry: bool, archive_override: Path | None) -> int:
     size_mb = sum(f.stat().st_size for f in output_dir.rglob("*") if f.is_file()) / (1024*1024)
     print(f"Installer staging complete: {output_dir}")
     print(f"  {len(list(output_dir.iterdir()))} files  ({size_mb:.1f} MB total)")
-    print(f"  Run setup.bat to install")
+    print("  Run setup.bat to install")
     return 0
 
 

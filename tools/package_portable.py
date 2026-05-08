@@ -80,7 +80,7 @@ def _run_build(rebuild: bool, python_exe: str) -> bool:
         _info("Use --rebuild-staging to force a fresh build")
         return True
 
-    _info(f"Running build_portable.py ...")
+    _info("Running build_portable.py ...")
     result = subprocess.run(
         [python_exe, str(build_script)],
         cwd=str(_PROJECT_ROOT),
@@ -188,7 +188,7 @@ def package(
                 violations.append(f"ops/runtime/{f.name} (live runtime artifact)")
                 _err(f"Live runtime artifact in staged bundle: {f.name}")
         else:
-            _ok(f"ops/runtime/ contains only placeholder (.gitkeep or empty)")
+            _ok("ops/runtime/ contains only placeholder (.gitkeep or empty)")
 
     if violations:
         _err(f"Cannot package: {len(violations)} exclusion violation(s). Re-run build_portable.py.")
@@ -300,7 +300,7 @@ def package(
 
     print(f"Package complete: {archive_path}")
     print(f"  ZIP root: {_ZIP_ROOT_NAME}/")
-    print(f"  Unzip to any folder, then run install.bat and start.bat.")
+    print("  Unzip to any folder, then run install.bat and start.bat.")
     return 0
 
 

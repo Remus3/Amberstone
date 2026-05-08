@@ -57,6 +57,54 @@ ARAM_STATE = {
 }
 ARAM_STATE["raw_state"] = ARAM_STATE.copy()
 
+ARENA_STATE = {
+    "game_mode": "CHERRY",
+    "game_time": "12:45",
+    "game_seconds": 765,
+    "champion": "Garen",
+    "hp": 1800, "hp_max": 2200, "hp_pct": 82,
+    "mana": 0, "mana_max": 0,
+    "level": 12,
+    "gold": 3100,
+    "cs": 0,
+    "cs_per_min": 0,
+    "gold_per_min": 240,
+    "kills": 5, "deaths": 2, "assists": 3,
+    "kda": "5/2/3",
+    "items": ["Sunfire Aegis", "Thornmail"],
+    "ally_comp": ["Lux"],
+    "enemy_comp": ["Jinx", "Thresh"],
+    "dead_enemies": [],
+    "ally_kills_total": 8,
+    "enemy_kills_total": 5,
+    "raw_state": None,
+}
+ARENA_STATE["raw_state"] = ARENA_STATE.copy()
+
+BRAWL_STATE = {
+    "game_mode": "NEXUSBLITZ",
+    "game_time": "06:00",
+    "game_seconds": 360,
+    "champion": "Ahri",
+    "hp": 1000, "hp_max": 1400, "hp_pct": 71,
+    "mana": 350, "mana_max": 500,
+    "level": 9,
+    "gold": 2500,
+    "cs": 55,
+    "cs_per_min": 9.2,
+    "gold_per_min": 410,
+    "kills": 3, "deaths": 1, "assists": 4,
+    "kda": "3/1/4",
+    "items": ["Luden's Tempest", "Shadowflame"],
+    "ally_comp": ["Nasus", "Leona", "Jhin"],
+    "enemy_comp": ["Yasuo", "Zed", "Blitzcrank", "Caitlyn", "Lux"],
+    "dead_enemies": [],
+    "ally_kills_total": 7,
+    "enemy_kills_total": 3,
+    "raw_state": None,
+}
+BRAWL_STATE["raw_state"] = BRAWL_STATE.copy()
+
 # Minimal TFT state dict (output of TftStateReader.read())
 # traits must be a dict {name: count} for TftSnapshot.from_state_dict()
 TFT_STATE = {

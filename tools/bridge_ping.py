@@ -111,7 +111,7 @@ def main() -> int:
         return 3
 
     total = (time.time() - t0) * 1000  # last leg only; sum approximate
-    print(f"== bridge healthy  (post+read+vision all ok)")
+    print("== bridge healthy  (post+read+vision all ok)")
     return 0
 
 

@@ -27,6 +27,8 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 # ── Import app symbols (no Tk mainloop started) ───────────────────────────────
 import app as _app_module
 from app import OverlayApp
+from app._game_lifecycle import GameLifecycleManager
+from app._state_authority import StateAuthority
 from core.game_snapshot import (
     GameEnvelope, ClientSnapshot, RiftSnapshot, AramSnapshot, TftSnapshot,
     MODE_CLIENT, MODE_SR, MODE_ARAM, MODE_TFT, MODE_ARENA, MODE_BRAWL,
@@ -34,6 +36,21 @@ from core.game_snapshot import (
 from core.sr_aram_worker import WorkerResult
 from core.tft_worker import TftWorkerResult
 from tests.fixtures.state_dicts import SR_STATE, ARAM_STATE, TFT_STATE
+
+
+# ── Headless OverlayApp subclass ─────────────────────────────────────────────
+
+class _HeadlessApp(OverlayApp):
+    """Subclass that proxies _current_envelope ↔ state.envelope for test compatibility."""
+
+    @property
+    def _current_envelope(self):
+        return self.state.envelope
+
+    @_current_envelope.setter
+    def _current_envelope(self, env):
+        if hasattr(self, "state"):
+            self.state.set_envelope(env.mode, env.payload)
 
 
 # ── Headless OverlayApp factory ───────────────────────────────────────────────
@@ -44,7 +61,7 @@ def _make_headless_app() -> OverlayApp:
     Only the fields required for the targeted authority tests are initialised.
     No Tk window is created. No workers are started.
     """
-    app = object.__new__(OverlayApp)
+    app = object.__new__(_HeadlessApp)
 
     # Core state fields
     app._was_in_game  = False
@@ -64,7 +81,13 @@ def _make_headless_app() -> OverlayApp:
     app._tft_q        = queue.Queue(maxsize=4)
     app._sr_aram_q    = queue.Queue(maxsize=2)
 
-    # Initialise authoritative envelope
+    # State authority — owns the authoritative GameEnvelope
+    app.state = StateAuthority()
+
+    # Lifecycle manager — owns process_game_state, drain_tft_q, etc.
+    app.lifecycle = GameLifecycleManager(app)
+
+    # Initialise envelope via property (delegates to app.state.set_envelope)
     app._current_envelope = GameEnvelope.client()
 
     return app

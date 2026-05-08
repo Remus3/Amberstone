@@ -97,7 +97,8 @@ def _trigger_force_scan() -> None:
     # Write force-scan marker file (coaches poll this)
     try:
         ts_file = _APP_DIR / "data" / "force_scan.json"
-        import json, time as _t
+        import json
+        import time as _t
         ts_file.write_text(json.dumps({"force": _t.time()}), encoding="utf-8")
     except Exception:
         pass
