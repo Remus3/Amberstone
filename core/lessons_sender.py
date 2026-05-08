@@ -102,7 +102,7 @@ def lesson_id(origin: str, mem_type: str, title: str, bhash: str,
     """Per §2: lesson-<sha256[:12]>-<unix_ts>. Prefix is deterministic on
     body; ts suffix lets receiver tell re-send (same prefix) from update
     (different prefix)."""
-    seed = f"{origin}|{mem_type}|{title}|{bhash}".encode("utf-8")
+    seed = f"{origin}|{mem_type}|{title}|{bhash}".encode()
     prefix = hashlib.sha256(seed).hexdigest()[:12]
     suffix = int(ts if ts is not None else time.time())
     return f"lesson-{prefix}-{suffix}"

@@ -6,7 +6,15 @@ Post-2026-04-19: runs locally on Legion (RC host) at 127.0.0.1:8889.
 Game-PC pushes screenshots via POST /upload-frame; coaches on Legion
 read from GET /latest-frame and submit them to /vision, /ocr, /coach.
 """
-import base64, collections, json, logging, os, re, sys, time, threading
+import base64
+import collections
+import json
+import logging
+import os
+import re
+import sys
+import time
+import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from io import BytesIO
 from pathlib import Path

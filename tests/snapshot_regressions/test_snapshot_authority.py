@@ -29,7 +29,7 @@ from core.game_snapshot import (
 )
 from game_reader import GameReader
 from tft.tft_state_reader import TftStateReader
-from tests.fixtures.state_dicts import SR_STATE, ARAM_STATE, TFT_STATE
+from tests.fixtures.state_dicts import SR_STATE, ARAM_STATE, TFT_STATE, ARENA_STATE, BRAWL_STATE
 
 _GOLDEN_DIR = _PROJECT_ROOT / "tests" / "fixtures" / "snapshots"
 
@@ -147,6 +147,56 @@ class TestSnapshotTranslationGoldens(unittest.TestCase):
 
     def test_tft_none_input_returns_none(self):
         self.assertIsNone(TftStateReader.to_tft_snapshot(None))
+
+    # -- A5. Arena / RiftSnapshot (CHERRY mode) --------------------------------
+
+    def test_arena_translation_type(self):
+        s = GameReader.to_rift_snapshot(ARENA_STATE)
+        self.assertIsInstance(s, RiftSnapshot)
+
+    def test_arena_golden_fields(self):
+        g = _load_golden("arena_golden.json")
+        s = GameReader.to_rift_snapshot(ARENA_STATE)
+        d = s.to_dict()
+        self.assertEqual(d["snapshot_type"], g["snapshot_type"])
+        self.assertEqual(d["game_mode"],     g["game_mode"])
+        self.assertEqual(d["champion"],      g["champion"])
+        self.assertEqual(d["level"],         g["level"])
+        self.assertEqual(d["gold"],          g["gold"])
+        self.assertEqual(d["hp_pct"],        g["hp_pct"])
+        self.assertEqual(d["items"],         g["items"])
+        self.assertEqual(d["ally_comp"],     g["ally_comp"])
+        self.assertEqual(d["enemy_comp"],    g["enemy_comp"])
+
+    def test_arena_raw_state_stored(self):
+        s = GameReader.to_rift_snapshot(ARENA_STATE)
+        self.assertIsNotNone(s.raw_state)
+        self.assertIsInstance(s.raw_state, dict)
+
+    # -- A6. Brawl / RiftSnapshot (NEXUSBLITZ mode) ----------------------------
+
+    def test_brawl_translation_type(self):
+        s = GameReader.to_rift_snapshot(BRAWL_STATE)
+        self.assertIsInstance(s, RiftSnapshot)
+
+    def test_brawl_golden_fields(self):
+        g = _load_golden("brawl_golden.json")
+        s = GameReader.to_rift_snapshot(BRAWL_STATE)
+        d = s.to_dict()
+        self.assertEqual(d["snapshot_type"], g["snapshot_type"])
+        self.assertEqual(d["game_mode"],     g["game_mode"])
+        self.assertEqual(d["champion"],      g["champion"])
+        self.assertEqual(d["level"],         g["level"])
+        self.assertEqual(d["gold"],          g["gold"])
+        self.assertEqual(d["hp_pct"],        g["hp_pct"])
+        self.assertEqual(d["items"],         g["items"])
+        self.assertEqual(d["ally_comp"],     g["ally_comp"])
+        self.assertEqual(d["enemy_comp"],    g["enemy_comp"])
+
+    def test_brawl_raw_state_stored(self):
+        s = GameReader.to_rift_snapshot(BRAWL_STATE)
+        self.assertIsNotNone(s.raw_state)
+        self.assertIsInstance(s.raw_state, dict)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

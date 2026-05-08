@@ -4,7 +4,11 @@ Saves raw HTML into data/meta_build/refresh_2026-05-02/_phase3_html/<slug>.html
 so the parsing step is a separate cheap pass.
 """
 from __future__ import annotations
-import json, ssl, sys, time, urllib.request
+import json
+import ssl
+import sys
+import time
+import urllib.request
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 

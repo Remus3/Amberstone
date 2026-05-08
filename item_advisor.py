@@ -386,8 +386,6 @@ def resolve_build(champion, enemy_champs, current_items=None):
 # EXCLUSIONS / REDUNDANCY  (data/item_exclusions.json)
 # =========================================================================
 
-import json as _json
-from pathlib import Path as _Path
 
 _EXCLUSIONS_PATH = _Path(__file__).parent / "data" / "item_exclusions.json"
 _EXCLUSIONS_CACHE = None

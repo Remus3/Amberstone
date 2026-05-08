@@ -18,7 +18,8 @@ import pytest
 def test_head_on_api_env_returns_200(tmp_path: Path) -> None:
     """HEAD /api/env should route through do_GET (real status, no body).
     Uses a spawned supervisor — exercises the full HTTP stack."""
-    import os, sys
+    import os
+    import sys
     _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
     # Pick an unused port to avoid clashing with the live supervisor.

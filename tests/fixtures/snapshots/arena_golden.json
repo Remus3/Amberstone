@@ -1,0 +1,23 @@
+{
+  "_comment": "Golden snapshot for ARENA translation. Generated from ARENA_STATE fixture.",
+  "snapshot_type": "rift",
+  "game_mode": "CHERRY",
+  "champion": "Garen",
+  "level": 12,
+  "gold": 3100,
+  "cs": 0,
+  "hp_pct": 82,
+  "kda": "5/2/3",
+  "items": [
+    "Sunfire Aegis",
+    "Thornmail"
+  ],
+  "ally_comp": [
+    "Lux"
+  ],
+  "enemy_comp": [
+    "Jinx",
+    "Thresh"
+  ],
+  "raw_state_present": true
+}

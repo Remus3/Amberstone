@@ -186,7 +186,8 @@ def start_dashboard(app_dir: Path) -> None:
         _vision_up = _p.connect_ex(("127.0.0.1", 8889)) == 0
         _p.close()
         if not _vision_up:
-            import subprocess, sys as _sys
+            import subprocess
+            import sys as _sys
             _vis = app_dir / "moon_vision_server.py"
             subprocess.Popen(
                 [_sys.executable, str(_vis)],

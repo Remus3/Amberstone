@@ -1,6 +1,8 @@
 """Inspect the streamed RSC data in aggregator J pages to learn parse strategy."""
 from pathlib import Path
-import re, json, codecs
+import re
+import json
+import codecs
 
 p = Path(r"C:/Riot Commander/data/meta_build/refresh_2026-05-02/_phase3_html/Akali.html")
 b = p.read_text(encoding="utf-8", errors="replace")

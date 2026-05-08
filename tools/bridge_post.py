@@ -35,7 +35,7 @@ def extract_summary(payload: dict) -> str:
     if not transcript_path:
         return ""
     try:
-        with open(transcript_path, "r", encoding="utf-8") as f:
+        with open(transcript_path, encoding="utf-8") as f:
             lines = [l for l in f.read().splitlines() if l.strip()]
     except Exception:
         return ""

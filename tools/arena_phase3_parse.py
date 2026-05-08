@@ -17,7 +17,10 @@ Each page yields:
                 champion class tags + build outcome.)
 """
 from __future__ import annotations
-import json, re, codecs, sys
+import json
+import re
+import codecs
+import sys
 from pathlib import Path
 
 ROOT = Path(r"C:/Riot Commander")
