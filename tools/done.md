@@ -29,12 +29,7 @@ The user wants to end the session cleanly so the next one starts with a fresh co
 - TaskList — show anything still running.
 - Each one: TaskStop. DO NOT leave monitors armed; they're useless after /clear.
 
-### 4. Game-PC bridge auto-flow loop liveness
-
-- Dispatch a quick probe via `tools/bridge_task.py --target gamepc --summary "loop liveness check" --prompt "Reply with hostname + brief status via bridge_post_result.py. Plain JSON body."`
-- If no result lands within 90s: the loop is dead. Flag it in the banner so next session knows to re-run `/loop /process-bridge-tasks` on Game-PC.
-
-### 5. RC restart pending
+### 4. RC restart pending
 
 - Check `C:/Riot Commander/restart_trigger.txt` — if non-empty, RC may still be reloading. Confirm `ops/runtime/health.json` shows `alive=true` AND `last_reload_ok=true` before declaring done.
 
@@ -91,7 +86,6 @@ Print a tight banner — exactly this format:
 ══════════════════════════════════════════════════════════════════
   • commits this session : <count> (pushed: <push range>)
   • background tasks     : stopped <count>
-  • bridge gamepc loop   : ✅ alive | ⚠️ stale (<age>s) | ❌ dead
   • RC health            : pid=<pid> alive=<bool> reload_ok=<bool>
   • WAKEUP_NOTES         : updated (+<N> lines)
   • living docs          : roadmap/claude.md/readme — <N items updated | skipped>
