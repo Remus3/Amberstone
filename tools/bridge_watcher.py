@@ -75,6 +75,13 @@ _SLEEP_POLL_S  = 300         # poll interval when mode=sleep or auto-idle
 _AUTO_IDLE_S   = 900         # seconds without kind=task before auto drops to sleep
 _ARTIFACT_RETENTION_S = 7 * 86400  # delete artifacts older than 7 days
 
+# RC health checks (node-load restraint for auto-action lanes).
+# Only relevant on nodes where RC runs (legion). On game-pc/peer the file
+# won't exist and _check_rc_health returns (False, "") — no suppression.
+_RC_HEALTH_PATH     = _PROJECT_ROOT / "ops" / "runtime" / "health.json"
+_RC_HEALTH_STALE_S  = 60    # suppress if RC heartbeat is older than this
+_RC_RESTART_GRACE_S = 120   # suppress for this many seconds after RC PID started
+
 # Default bridge URL per node. Phase 1 nodes can override via --bridge-url.
 #   legion : own loopback (RC dashboard hosts the bridge log)
 #   gamepc : Legion's bridge (Game-PC has no local dashboard; bridge_pull_tasks.py
@@ -96,6 +103,53 @@ _log = logging.getLogger("rc.bridge_watcher")
 def _watchdog_threshold(eff_poll_s: float) -> float:
     """Min seconds of main-loop silence before watchdog calls os._exit(1)."""
     return max(120.0, eff_poll_s * 3)
+
+
+def _check_rc_health(health: dict, now: float) -> tuple:
+    """Return (degraded: bool, reason: str) from a parsed RC health.json dict.
+
+    degraded=True suppresses auto-action lanes for one poll cycle so the
+    watcher doesn't compete for resources during RC incidents.
+
+    Returns (False, '') when health is empty (no RC on this node — game-pc/peer)
+    so those nodes are never suppressed by this check.
+    """
+    if not health:
+        return False, ""
+    if not health.get("alive"):
+        return True, "RC alive=False"
+    if not health.get("last_reload_ok"):
+        err = (health.get("last_reload_error") or "?")
+        return True, f"RC last_reload_ok=False (error={err!r})"
+    if health.get("booting"):
+        return True, "RC booting=True"
+    # Stale heartbeat — RC may be hung.
+    updated_str = health.get("updated_at") or ""
+    if updated_str:
+        try:
+            import datetime as _dt
+            ts = _dt.datetime.fromisoformat(
+                updated_str.replace("Z", "+00:00")).timestamp()
+            age = now - ts
+            if age > _RC_HEALTH_STALE_S:
+                return True, (f"RC heartbeat stale {age:.0f}s "
+                              f"(threshold={_RC_HEALTH_STALE_S}s)")
+        except Exception:
+            pass
+    # Recent restart — give RC time to stabilize.
+    started_str = health.get("started_at") or ""
+    if started_str:
+        try:
+            import datetime as _dt
+            ts = _dt.datetime.fromisoformat(
+                started_str.replace("Z", "+00:00")).timestamp()
+            age = now - ts
+            if age < _RC_RESTART_GRACE_S:
+                return True, (f"RC restarted {age:.0f}s ago "
+                              f"(grace={_RC_RESTART_GRACE_S}s)")
+        except Exception:
+            pass
+    return False, ""
 
 _SSL_CTX = ssl.create_default_context()
 _SSL_CTX.check_hostname = False
@@ -410,19 +464,21 @@ def _write_heartbeat(stats: dict) -> None:
         "queue_depth":    stats["queue_depth"],
 
         # Preferred names — accurate semantics
-        "auto_actions_since_boot": auto_actions,
-        "auto_ok_since_boot":      auto_ok,
-        "auto_err_since_boot":     auto_err,
-        "escalations_since_boot":  escalations,
-        "errors_since_boot":       errors,
+        "auto_actions_since_boot":    auto_actions,
+        "auto_ok_since_boot":         auto_ok,
+        "auto_err_since_boot":        auto_err,
+        "escalations_since_boot":     escalations,
+        "errors_since_boot":          errors,
+        "auto_suppressed_since_boot": int(stats.get("auto_suppressed_since_boot", 0)),
 
         # Sliding 24h-window counts (accurate — backed by persisted timestamp
         # ring in state; no longer aliases for *_since_boot).
-        "escalations_24h":  int(stats.get("escalations_24h",  escalations)),
-        "auto_ok_24h":      int(stats.get("auto_ok_24h",      auto_ok)),
-        "auto_err_24h":     int(stats.get("auto_err_24h",     auto_err)),
-        "errors_24h":       int(stats.get("errors_24h",       errors)),
-        "auto_actions_24h": int(stats.get("auto_actions_24h", auto_actions)),
+        "escalations_24h":     int(stats.get("escalations_24h",     escalations)),
+        "auto_ok_24h":         int(stats.get("auto_ok_24h",         auto_ok)),
+        "auto_err_24h":        int(stats.get("auto_err_24h",         auto_err)),
+        "errors_24h":          int(stats.get("errors_24h",           errors)),
+        "auto_actions_24h":    int(stats.get("auto_actions_24h",    auto_actions)),
+        "auto_suppressed_24h": int(stats.get("auto_suppressed_24h", 0)),
 
         "tokens_used_today_usd": stats.get("tokens_used_today_usd", 0.0),
 
@@ -562,10 +618,11 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
         "queue_depth":             0,
         "escalations_since_boot":  0,
         "errors_since_boot":       0,
-        "auto_actions_since_boot": 0,
-        "auto_ok_since_boot":      0,
-        "auto_err_since_boot":     0,
-        "dry_run":                 dry_run,
+        "auto_actions_since_boot":    0,
+        "auto_ok_since_boot":         0,
+        "auto_err_since_boot":        0,
+        "auto_suppressed_since_boot": 0,
+        "dry_run":                    dry_run,
     }
 
     # Self-healing watchdog: if the main loop stalls > threshold seconds,
@@ -601,6 +658,17 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
             _activity_ts[0] = time.time()  # watchdog heartbeat
             _actions.reset_daily_spend_if_new_day(state)
             _ring_age(state, time.time())
+
+            # Node-load restraint: read RC health once per cycle and suppress
+            # auto-action lanes if RC is degraded. Only checked when lanes are
+            # enabled; on non-RC nodes the health file won't exist (returns False).
+            _rc_degraded, _rc_reason = False, ""
+            if enabled_lanes:
+                _rc_degraded, _rc_reason = _check_rc_health(
+                    _read_json(_RC_HEALTH_PATH, {}), time.time()
+                )
+                if _rc_degraded:
+                    _log.warning("auto-action SUPPRESSED this cycle: %s", _rc_reason)
             since = state.get("last_seen_ts", 0.0)
             envelopes = _fetch_since(since, bridge_url)
             new_max_ts = since
@@ -650,6 +718,19 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
                                env.get("id"), env.get("source"),
                                env.get("kind"), reason)
                 elif cls in ("auto-read", "auto-ops"):
+                    # Node-load restraint: demote to escalate if RC is degraded.
+                    if _rc_degraded:
+                        stats["auto_suppressed_since_boot"] += 1
+                        _ring_add(state, "auto_suppressed", time.time())
+                        if not dry_run and _add_to_pending(
+                                env, f"auto-action suppressed: {_rc_reason}"):
+                            new_escalations += 1
+                            if first_new_esc is None:
+                                first_new_esc = {"source": env.get("source", "?"),
+                                                 "summary": (env.get("summary") or "")[:120]}
+                        _log.info("auto-action SUPPRESSED lane=%s id=%s — %s",
+                                  cls, env.get("id"), _rc_reason)
+                        continue
                     # Phase 2: invoke claude --print for auto-action lanes.
                     new_auto += 1
                     stats["auto_actions_since_boot"] += 1
@@ -776,14 +857,16 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
 
             # Compute real 24h sliding counts from persisted ring.
             _now = time.time()
-            stats["escalations_24h"]  = _ring_count(state, "escalation", _now)
-            stats["auto_ok_24h"]      = _ring_count(state, "auto_ok",    _now)
-            stats["auto_err_24h"]     = _ring_count(state, "auto_err",   _now)
-            stats["errors_24h"]       = _ring_count(state, "error",      _now)
-            stats["auto_actions_24h"] = stats["auto_ok_24h"] + stats["auto_err_24h"]
+            stats["escalations_24h"]     = _ring_count(state, "escalation",     _now)
+            stats["auto_ok_24h"]         = _ring_count(state, "auto_ok",        _now)
+            stats["auto_err_24h"]        = _ring_count(state, "auto_err",        _now)
+            stats["errors_24h"]          = _ring_count(state, "error",           _now)
+            stats["auto_actions_24h"]    = stats["auto_ok_24h"] + stats["auto_err_24h"]
+            stats["auto_suppressed_24h"] = _ring_count(state, "auto_suppressed", _now)
 
-            # Push notification for new escalations (throttled 3/hr; no-op in dry-run).
-            if new_escalations and first_new_esc and not dry_run:
+            # Push notification for new escalations (throttled 3/hr; no-op in
+            # dry-run or when escalations were caused by RC node-load suppression).
+            if new_escalations and first_new_esc and not dry_run and not _rc_degraded:
                 notif_n    = new_escalations
                 notif_src  = first_new_esc["source"]
                 notif_summ = first_new_esc["summary"]
@@ -918,6 +1001,35 @@ def _selftest() -> int:
         _SLEEP_POLL_S == 300)
     chk("cadence: _AUTO_IDLE_S is 15 min",
         _AUTO_IDLE_S == 900)
+
+    # ── RC health check ──
+    import datetime as _dt
+    def _iso(offset_s: float) -> str:
+        ts = _dt.datetime.fromtimestamp(now - offset_s, tz=_dt.timezone.utc)
+        return ts.isoformat()
+
+    _healthy = {
+        "alive": True, "last_reload_ok": True, "booting": False,
+        "updated_at": _iso(5), "started_at": _iso(_RC_RESTART_GRACE_S + 10),
+    }
+    chk("rc_health: healthy RC → not degraded",
+        _check_rc_health(_healthy, now) == (False, ""))
+    chk("rc_health: empty dict → not degraded (non-RC node)",
+        _check_rc_health({}, now) == (False, ""))
+    chk("rc_health: alive=False → degraded",
+        _check_rc_health({**_healthy, "alive": False}, now)[0])
+    chk("rc_health: last_reload_ok=False → degraded",
+        _check_rc_health({**_healthy, "last_reload_ok": False}, now)[0])
+    chk("rc_health: booting=True → degraded",
+        _check_rc_health({**_healthy, "booting": True}, now)[0])
+    chk("rc_health: stale heartbeat (>threshold) → degraded",
+        _check_rc_health({**_healthy, "updated_at": _iso(_RC_HEALTH_STALE_S + 1)}, now)[0])
+    chk("rc_health: fresh heartbeat (at threshold-1) → not degraded",
+        not _check_rc_health({**_healthy, "updated_at": _iso(_RC_HEALTH_STALE_S - 1)}, now)[0])
+    chk("rc_health: just restarted (grace-1 s ago) → degraded",
+        _check_rc_health({**_healthy, "started_at": _iso(_RC_RESTART_GRACE_S - 1)}, now)[0])
+    chk("rc_health: restarted just after grace (grace+1 s ago) → not degraded",
+        not _check_rc_health({**_healthy, "started_at": _iso(_RC_RESTART_GRACE_S + 1)}, now)[0])
 
     # ── watchdog threshold ──
     chk("watchdog: threshold = max(120, poll*3) for active mode (15s)",
