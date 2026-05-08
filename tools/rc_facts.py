@@ -139,6 +139,10 @@ def _watcher_summary() -> str | None:
     )
 
 
+def _health_all() -> dict | None:
+    return _http_get_json(f"{_LEGION_BASE}/api/health/all")
+
+
 def _lessons_summary() -> str | None:
     """Return a markdown block summarising lessons synced in the last 24h.
     Returns None when the ledger is empty or absent (normal at first boot)."""
@@ -213,6 +217,13 @@ def main() -> int:
     if not p_vis:
         anomalies.append("Legion: vision server :8889 not listening")
 
+    # Fetch /api/health/all once — used for DS health + bridge peer probes
+    health_all = _health_all() or {}
+
+    # DS alive check used to suppress RC-DaemonSlayer task false-positive
+    ds_health = health_all.get("daemon_slayer") or {}
+    ds_alive = bool(ds_health.get("alive"))
+
     # Scheduled tasks
     tasks = _legion_tasks()
     if tasks:
@@ -223,9 +234,11 @@ def main() -> int:
             s = t.get("state")
             r = t.get("last_result")
             # 267014 = shutdown-terminated (VisionServer in-process popen exit) — expected
-            mark = "" if r in (0, 267009, 267011, 267014) else f"  ⚠ result={r}"
+            # RC-DaemonSlayer result=1: suppress if /api/health/all confirms ds alive
+            suppress = n == "RC-DaemonSlayer" and r == 1 and ds_alive
+            mark = "" if r in (0, 267009, 267011, 267014) or suppress else f"  ⚠ result={r}"
             out.append(f"  - {n}: state={s}{mark}")
-            if r not in (0, 267009, 267011, 267014, None):
+            if r not in (0, 267009, 267011, 267014, None) and not suppress:
                 anomalies.append(
                     f"Legion: scheduled task {n} last_result={r} (probably failing)"
                 )
@@ -239,6 +252,14 @@ def main() -> int:
     watcher_line = _watcher_summary()
     if watcher_line:
         out.append(watcher_line)
+
+    # DS server health line (after tasks so it groups with the port listeners block)
+    if ds_health:
+        ds_status = ds_health.get("status", "?")
+        ds_patch = ds_health.get("patch", "?")
+        out.append(f"- DS server :8893: {ds_status} patch={ds_patch} alive={ds_alive}")
+        if not ds_alive or ds_status != "ok":
+            anomalies.append(f"Legion: DS server not healthy (status={ds_status})")
 
     # ── Game-PC ─────────────────────────────────────────────────────────
     out.append("\n## Game-PC (gamepc-rc · 100.95.66.128 · 192.168.8.237)\n")
@@ -274,36 +295,50 @@ def main() -> int:
     if mcp_status != 200:
         anomalies.append(f"Game-PC: MCP /health returned {mcp_status}")
 
-    # ── Bridge auto-flow loop liveness + 24h activity ───────────────────
+    # ── Cross-Claude bridge ──────────────────────────────────────────────
     out.append("\n## Cross-Claude bridge\n")
+
+    # Peer daemon health probed via /api/health/all peers block
+    peers = health_all.get("peers") or {}
+    for peer_name in ("gamepc", "peer"):
+        p = peers.get(peer_name) or {}
+        if not p:
+            continue
+        w_alive = bool(p.get("watcher_alive"))
+        queue = p.get("queue_depth", 0)
+        age_s = p.get("age_s")
+        stale = bool(p.get("stale"))
+        age_str = f"{int(age_s)}s" if age_s is not None else "?"
+        stale_str = " ⚠ STALE" if stale else ""
+        out.append(
+            f"- {peer_name} bridge daemon: watcher={'alive' if w_alive else '⚠ DEAD'}"
+            f" queue={queue} age={age_str}{stale_str}"
+        )
+        if not w_alive:
+            anomalies.append(f"Bridge: {peer_name} watcher dead")
+        elif stale:
+            anomalies.append(f"Bridge: {peer_name} health publisher stale ({age_str})")
+        if queue > 10:
+            anomalies.append(f"Bridge: {peer_name} task queue backed up ({queue} tasks)")
+
+    # 24h activity from bridge_log (informational only)
     bridge_log = _APP / "ops" / "runtime" / "bridge_log.jsonl"
     if bridge_log.exists():
-        last_result_age = None
         activity: dict[str, int] = {}
         now = time.time()
         cutoff_24h = now - 86400
         try:
             lines_raw = bridge_log.read_text(encoding="utf-8").splitlines()
-            for line in reversed(lines_raw[-200:]):
+            for line in lines_raw[-200:]:
                 try:
                     j = json.loads(line)
                 except Exception:
                     continue
-                if last_result_age is None and j.get("kind") == "result" and j.get("source") == "gamepc":
-                    last_result_age = int(now - float(j.get("ts") or 0))
                 if float(j.get("ts") or 0) >= cutoff_24h:
                     k = j.get("kind") or "?"
                     activity[k] = activity.get(k, 0) + 1
         except Exception:
             pass
-        if last_result_age is not None:
-            out.append(f"- Last gamepc bridge result: {last_result_age}s ago")
-            if last_result_age > 3600:
-                anomalies.append(
-                    f"Bridge: last gamepc result {last_result_age}s ago — auto-flow loop may be dead"
-                )
-        else:
-            out.append("- No recent gamepc bridge results in tail")
         if activity:
             parts = ", ".join(f"{v} {k}s" for k, v in sorted(activity.items()))
             out.append(f"- Activity 24h: {parts}")
