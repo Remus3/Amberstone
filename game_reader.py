@@ -35,6 +35,8 @@ except ImportError:
     RELAY_TOKEN = "8e8f131e212b329438218eca27372dde"
 RELAY_MAX_AGE_S = 12.0  # treat older snapshots as stale → fall through to direct
                         # 2026-04-26: bumped from 5.0 → 12.0. Relay polls every 1s
+LCU_RELAY_URL     = "http://127.0.0.1:8889/latest-lcu"
+LCU_RELAY_MAX_AGE = 20.0  # LCU agent posts every 1s; 20s is a generous staleness guard
                         # but network jitter + Game-PC contention during teamfights
                         # pushes ages over 5s often, causing wasteful direct-API
                         # timeout cycles. 12s gives generous margin while still
@@ -115,6 +117,26 @@ class GameReader:
             return None
         except Exception:
             return None
+
+    def _try_lcu_game_id(self) -> str:
+        """Read game_id from the LCU relay on the vision server.
+
+        Returns '' if the relay is stale, unavailable, or game_id not yet
+        set (e.g. phase != InProgress). No caching — the vision server
+        already caches the last upload-lcu payload.
+        """
+        try:
+            import time as _t
+            req = urllib.request.Request(
+                LCU_RELAY_URL, headers={"X-RC-Token": RELAY_TOKEN}
+            )
+            with urllib.request.urlopen(req, timeout=1.0) as r:
+                wrap = json.loads(r.read())
+            if _t.time() - wrap.get("ts", 0) > LCU_RELAY_MAX_AGE:
+                return ""
+            return str((wrap.get("data") or {}).get("game_id") or "")
+        except Exception:
+            return ""
 
     def check_in_game(self):
         """Quick check: is the in-game API responding?"""
@@ -694,6 +716,8 @@ class GameReader:
             "enemy_runes":        self._read_enemy_runes(enemies),
             # API-002: ability cooldowns
             "my_abilities":       self._read_my_abilities(),
+            # DS calibration: Riot game_id from LCU relay ('' when no game or agent stale)
+            "game_id":            self._try_lcu_game_id(),
         }
 
     # ------------------------------------------------------------------
