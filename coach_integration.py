@@ -755,6 +755,12 @@ class CoachIntegration:
                     v = int(coach_state.get("my_gold", 0) // 300)
                 if k == "level" and v is None:
                     v = coach_state.get("my_level")
+                if k == "objective_window" and v is None:
+                    ot = coach_state.get("objective_timers") or {}
+                    v = 1 if any(
+                        isinstance(t, (int, float)) and 0 <= float(t) < 90
+                        for obj, t in ot.items() if obj in ("dragon", "baron")
+                    ) else 0
                 parts.append(f"{k}={v}")
             return hashlib.sha1("|".join(parts).encode("utf-8")).hexdigest()
         except Exception:
