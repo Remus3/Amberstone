@@ -1,6 +1,31 @@
 # WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s117 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+> Sessions s27–s118 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+
+---
+
+# s121 wrap — 2026-05-08 (token cost reduction)
+
+## What shipped
+- **Fleet model downgrade**: all 3 machines switched from `sonnet[1m]` → `claude-sonnet-4-6` standard 200k via `/config`. Legion=default effort (removed `effortLevel: "high"`), Game-PC=medium, Peer=default.
+- **Legion plugin cull** (`~/.claude/settings.json`): disabled 5 unused plugins — `nimble`, `ralph-loop`, `playwright`, `chrome-devtools-mcp`, `firecrawl`. Kept `github` + `pyright-lsp`. Saves ~15-20k tokens of skill descriptions per turn.
+- **MEMORY.md pruned**: removed 6 stale FIXED/RESOLVED entries (dashboard queue, rune shard3, game_ingest dups, arena augments, SR coach hash bug, SR RECOMMENDED panel).
+- **Peer applied same changes** via bridge task (confirmed via hook): disabled playwright, ralph-loop, chrome-devtools-mcp, firecrawl; model already sonnet; no stale memories.
+- **Game-PC**: no `enabledPlugins` section — already clean; already on sonnet/medium.
+- **Cost diagnosis**: Opus usage in billing = `advisor()` calls only (both machines on Sonnet already). Primary levers: plugin cull (done), shorter sessions, advisor() discipline.
+
+## Do NOT redo
+- Game-PC has no plugins installed — no `enabledPlugins` key needed. Don't add one.
+- Peer already confirmed their changes — don't re-dispatch the plugin cull task.
+- The Opus in usage dashboard is advisor() tool calls, NOT a model misconfiguration.
+
+## Open work (priority order)
+1. **rewind_history.db staleness** — blocked on live SR game.
+2. **Vision regions calibration** — blocked on live game.
+3. **TFT 17.3** — due ~2026-05-12.
+4. **Bridge Watcher acceptance-criteria** — need 50+ auto-action samples; currently 0.
+5. **Auto-ops verb expansion** — after 95% success rate.
+6. **Investigate RC-DaemonSlayer exit 1** — check `logs/daemon_slayer_startup.log`.
 
 ---
 
@@ -45,25 +70,6 @@
 5. **Auto-ops verb expansion** — after 95% success rate.
 6. **RC dev mode toggle** — next unblocked Future item: dev panel with fixture switcher, force-vision, log tail.
 7. **Investigate RC-DaemonSlayer exit 1** — check `logs/daemon_slayer_startup.log` after next reboot.
-
----
-
-# s118 wrap — 2026-05-08 (Bridge Watcher node-load restraint)
-
-## What shipped
-- **Bridge Watcher node-load restraint** (`bridge_watcher.py`, commit f3ae4cb): `_check_rc_health(health, now)` pure function checks RC alive/last_reload_ok/booting/heartbeat age/restart grace. When RC is degraded, auto-action lanes downgrade to escalate for that poll cycle. Push notifications suppressed during RC-degraded cycles. New heartbeat fields: `auto_suppressed_since_boot` + `auto_suppressed_24h`. 9 new selftests at boundary inputs; 30/30 pass. Watcher restarted at pid=15004.
-- **DDragon "16.9.1" is correct** — Riot uses year-based marketing versions (26.9) but DDragon API version string stays "16.9.1". Data pipeline is current, not stale.
-
-## Do NOT redo
-- Bridge watcher node-load restraint is preventive hardening, not a fix for observed harm. The feature is intentionally conservative (120s grace, 60s staleness threshold).
-- DDragon version issue was a false alarm — no pipeline change needed.
-
-## Open work (priority order)
-1. **rewind_history.db staleness** — blocked on live SR game.
-2. **Vision regions calibration** — blocked on live game.
-3. **TFT 17.3** — next patch due ~2026-05-12. Same update process as 17.2.
-4. **Bridge Watcher acceptance-criteria** — watch `auto_ok_since_boot` vs `auto_err_since_boot`; target ≥90% read / ≥95% ops.
-5. **Auto-ops verb expansion** — needs 95% success rate first; check heartbeat before enabling.
 
 ---
 
