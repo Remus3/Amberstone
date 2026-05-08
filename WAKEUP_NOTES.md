@@ -4,6 +4,28 @@
 
 ---
 
+# s117 wrap — 2026-05-08 (TFT patch 17.2 — Encounters + God Blessings)
+
+## What shipped
+- **TFT patch 17.2 update** (commit be3d168): Current League patch is 26.9 (year-based numbering) = TFT patch 17.2 (April 28, 2026).
+  - `tft_pbe_engine.py` system prompt: Encounters section (16 returning + 5 new), God Blessings section (24 choices across 6 gods), trait balance changes (Timebreaker rework, Meeple nerf, Stargazer Fountain disabled, Anima buff).
+  - `tft_pbe_data.py`: new `ENCOUNTERS` dict (21 entries), new `GOD_BLESSINGS` dict (24 choices), Timebreaker breakpoints corrected [2,3,4], trait notes updated.
+  - `data/meta/tft_set17_meta.json`: `_patch` bumped to `17.2`, `_patch_notes_17.2` key added.
+- RC restarted clean (pid=11716).
+
+## Do NOT redo
+- DDragon still reports version "16.9.1" (stale cache). Actual current League patch is 26.9 (year-based numbering). TFT patch follows TFT set versioning (17.2), not League patch numbers.
+- `tft_data.py` (legacy Set 14 file) is fine as-is — only used for TIER_ODDS/XP tables by the old coach engine; active TFT coaching runs through `tft_pbe_engine.py`.
+
+## Open work (priority order)
+1. **rewind_history.db staleness** — blocked on live SR game.
+2. **Vision regions calibration** — blocked on live game.
+3. **DDragon version cache** — `data/meta/ddragon_version.json` shows 16.9.1; actual patch is 26.9. `data_pipeline.py ddragon` won't re-download since it thinks it's current. Low urgency — coaching data is functional.
+4. **TFT 17.3** — next patch due ~2026-05-12; repeat this process when it drops.
+5. **Bridge Watcher acceptance-criteria** — accumulates naturally.
+
+---
+
 # s116 wrap — 2026-05-08 (Game-PC boot fix + Smite jungler detection)
 
 ## What shipped
