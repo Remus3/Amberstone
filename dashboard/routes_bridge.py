@@ -34,14 +34,18 @@ log = logging.getLogger("rc.web_dashboard")
 
 def _serve_bridge(h) -> None:
     # Cross-Claude message log read.
-    # GET ?since=<ts>&limit=N&kind=<>&target=<>
+    # GET ?since=<ts>&hours=N&limit=N&kind=<>&target=<>&source=<>
+    # `hours` is a convenience alternative to `since`; since wins if both given.
     try:
         qs = parse_qs(urlparse(h.path).query)
-        since  = float((qs.get("since") or ["0"])[0])
-        limit  = int((qs.get("limit") or ["20"])[0])
+        hours_raw = (qs.get("hours") or [None])[0]
+        default_since = (time.time() - float(hours_raw) * 3600) if hours_raw else 0.0
+        since  = float((qs.get("since") or [str(default_since)])[0])
+        limit  = int((qs.get("limit") or ["100"])[0])
         kind   = (qs.get("kind")   or [None])[0]
         target = (qs.get("target") or [None])[0]
-        items = bridge_since(since, limit, kind=kind, target=target)
+        source = (qs.get("source") or [None])[0]
+        items = bridge_since(since, limit, kind=kind, target=target, source=source)
         payload = {"now": time.time(), "messages": items}
         h._send(200, json.dumps(payload).encode(), "application/json")
     except Exception as exc:
