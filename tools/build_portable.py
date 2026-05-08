@@ -541,9 +541,9 @@ def build(output_dir: Path, dry: bool = False) -> int:
 
     print(f"Build complete: {output_dir}")
     print(f"  {len(included_files)} files/dirs staged")
-    print(f"  Run: python tools/bootstrap_env_check.py  (from staged root)")
-    print(f"  Run: install.bat  (first time setup)")
-    print(f"  Run: start.bat  (launch)")
+    print("  Run: python tools/bootstrap_env_check.py  (from staged root)")
+    print("  Run: install.bat  (first time setup)")
+    print("  Run: start.bat  (launch)")
     return 0
 
 

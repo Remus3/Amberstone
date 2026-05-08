@@ -143,7 +143,7 @@ def main() -> int:
 
     if changed:
         if args.check:
-            print(f"archmap out of sync — run `python tools/gen_archmap.py` to update: docs/ARCHITECTURE.md", file=sys.stderr)
+            print("archmap out of sync — run `python tools/gen_archmap.py` to update: docs/ARCHITECTURE.md", file=sys.stderr)
             return 1
         print("Updated: docs/ARCHITECTURE.md")
     else:

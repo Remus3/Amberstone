@@ -128,7 +128,8 @@ class TestSrAramWorkerContract(unittest.TestCase):
 
     def test_worker_sr_coaching_gate_disabled(self):
         """When sr.live_coaching is disabled, submit_state is not called."""
-        import tempfile, json
+        import tempfile
+        import json
         with tempfile.TemporaryDirectory() as td:
             cfg = Path(td) / "feature_flags.json"
             cfg.write_text(json.dumps({"sr": {"live_coaching": "disabled"}}))

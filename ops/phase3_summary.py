@@ -258,7 +258,7 @@ def main() -> int:
 
     # --- SMB share ---
     print("## Cross-machine (SMB)")
-    print(f"  share_unc: \\\\192.0.2.237\\RCClient")
+    print("  share_unc: \\\\192.0.2.237\\RCClient")
     print(f"  reachable: {_smb_reachable()}")
     try:
         out = subprocess.check_output(
