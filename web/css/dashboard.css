@@ -1,4 +1,4 @@
-/* Riot Commander — Phase 3 dashboard.
+﻿/* Riot Commander — Phase 3 dashboard.
  * Round 46: Neo-fintech palette (inspired by dribbble #2590277).
  * Deep blue-black canvas, tonal card separation, coral-pink primary
  * accent, lavender secondary accent, generous corner radius, soft
@@ -744,6 +744,7 @@ body[data-view="diagnostics"] main,
 body[data-view="coach-calls"] main,
 body[data-view="bridge-pending"] main,
 body[data-view="fleet"] main,
+body[data-view="dev"] main,
 body[data-view="replay"] main { display: none; }
 body[data-view="lobby"]          #view-lobby,
 body[data-view="session"]        #view-session,
@@ -755,6 +756,7 @@ body[data-view="diagnostics"]    #view-diagnostics,
 body[data-view="coach-calls"]    #view-coach-calls,
 body[data-view="bridge-pending"] #view-bridge-pending,
 body[data-view="fleet"]          #view-fleet,
+body[data-view="dev"]            #view-dev,
 body[data-view="replay"]         #view-replay { display: block; }
 /* Hide home + lobby overlays when a non-default view is active.
  * In lobby view specifically, the inline #lobby-overlay strip is
@@ -768,6 +770,7 @@ body[data-view="diagnostics"]    #home-overlay,
 body[data-view="coach-calls"]    #home-overlay,
 body[data-view="bridge-pending"] #home-overlay,
 body[data-view="fleet"]          #home-overlay,
+body[data-view="dev"]            #home-overlay,
 body[data-view="replay"]         #home-overlay,
 body[data-view="last-match"]     #home-overlay,
 body[data-view="lobby"]          #home-overlay,
@@ -5752,3 +5755,58 @@ header { transition: height 180ms ease; }
   border: 1px solid var(--border);
 }
 
+
+/* -- Dev / Sim Preview panel ---------------------------------------- */
+.dev-fixture-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.dev-fixture-table th {
+  text-align: left;
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 4px 6px 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+.dev-fixture-table td { padding: 4px 6px 4px 0; vertical-align: middle; }
+.dev-fixture-active td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.dev-fixture-label { color: var(--text); font-size: 12px; }
+.dev-fixture-link {
+  color: var(--advisory);
+  font-size: 11px;
+  text-decoration: none;
+  padding: 2px 6px;
+  border: 1px solid var(--advisory-soft);
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.dev-fixture-link:hover { background: color-mix(in srgb, var(--advisory) 12%, transparent); }
+.dev-exit-sim {
+  display: inline-block;
+  margin-top: 10px;
+  color: var(--text-dim);
+  font-size: 11px;
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+}
+.mode-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--surface-alt);
+  color: var(--text-dim);
+}
+.mode-tag-sr    { background: #1A3A5C; color: #7EC8FF; }
+.mode-tag-aram  { background: #2A1A5C; color: #B07EFF; }
+.mode-tag-arena { background: #5C1A1A; color: #FF7E7E; }
+.mode-tag-brawl { background: #1A5C2A; color: #7EFF9E; }
+.mode-tag-tft   { background: #5C3A1A; color: #FFB47E; }
+.dev-kv-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.dev-kv-table tr + tr td { border-top: 1px solid var(--border); }
+.dev-kv-key { color: var(--text-dim); padding: 4px 10px 4px 0; width: 100px; }
+.dev-kv-val { color: var(--text); padding: 4px 0; }
