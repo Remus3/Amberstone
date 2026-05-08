@@ -291,10 +291,11 @@ Any change here needs explicit user sign-off.
 - ~~**Sliding 24h-window counters**~~ ✅ shipped 2026-05-07 (commit f6095a0) — `event_ring_24h` persisted in state; `*_24h` heartbeat fields now reflect true 24h windows. Ring survives restarts.
 - ~~**Push notifications for escalations**~~ ✅ shipped 2026-05-07 (commit f6095a0) — `_send_push_notification()` spawns headless `claude --print --allowed-tools PushNotification`; throttled 3/hr.
 - **Auto-action restraint by node load**: when RC-Supervisor or RC main process is degraded (high CPU, recent restart), watcher should suppress auto-action and escalate everything. Avoid competing for resources during incidents.
-- **Bridge Watcher artifact rotation**: `ops/runtime/bridge_action_artifacts/` grows monotonically. Add a daily cleanup (delete artifacts older than 7 days, or whose `task_id` is in the processed-ids ledger).
+- ~~**Bridge Watcher artifact rotation**~~ ✅ shipped 2026-05-07 (commit 6dd91ff) — `_rotate_artifacts()` runs once per day; deletes `bridge_action_artifacts/` files older than 7 days OR in processed_ids. Defensive per-file error handling.
 - **Auto-ops verb expansion**: current Legion `auto_ops_verbs` are conservative (4 entries). Once Phase 3 success rate clears 95%, add: `tail .* log` → `Bash(type tail-N)`, `restart agent .*` → `schtasks /Run /TN`, `verify .*` → `curl health`.
 - **Per-call cost histogram**: track median/p95 cost per lane in Prometheus; alert if p95 doubles week-over-week (model regression or prompt drift).
-- **Watcher self-healing**: today the supervisor restart_on_failure handles crashes. Add a heartbeat-staleness check (kill + restart if `updated_at` >120s old) to catch hangs that don't crash.
+- ~~**Watcher self-healing**~~ ✅ shipped 2026-05-07 (commit 6dd91ff) — daemon watchdog thread wakes every 30s; calls `os._exit(1)` if main loop stalled > `max(120s, eff_poll*3)`. Threshold scales with cadence so sleep-mode doesn't false-fire.
+- ~~**Watcher dry-run mode**~~ ✅ shipped 2026-05-07 (commit 6dd91ff) — `--dry-run` flag classifies but never writes pending queue or spawns claude --print; heartbeat emits `dry_run=true`. Useful for tuning classifier patterns against real traffic without spend.
 
 ### Cross-Claude infrastructure expansion
 
