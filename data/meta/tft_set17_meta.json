@@ -1,6 +1,6 @@
 {
   "_source": "aggregator C Apr 9 2026 + TFT guide author X + TFT guide site W Ã¢ÂÂ Set 17 PBE Patch 17.1",
-  "_updated": "2026-04-10",
+  "_updated": "2026-05-08",
   "_set": 17,
   "_set_name": "Space Gods",
   "_pbe_launch": "2026-04-01",
@@ -10983,7 +10983,7 @@
   ],
   "_data_type": "live",
   "_note": "Live server data path -- used when comp_state.json pbe=false",
-  "_patch": "17.1",
+  "_patch": "17.2",
   "_patch_notes_17.1": {
     "carousel": "REMOVED — replaced by Realm of the Gods",
     "realm_of_gods": "Stage X-4 = God offering. Stage 4-7 = God Boon armory.",
@@ -11010,5 +11010,15 @@
     "encounters": "NOT in 17.1 — returning in 17.2",
     "targeting": "Carries stay on target better (1-hex follow cap)"
   },
-  "_bm_source": "TFT guide author X/meta/ patch 17.1"
+  "_bm_source": "TFT guide author X/meta/ patch 17.1",
+  "_patch_notes_17.2": {
+    "encounters": "Returned: 16 original + 5 new (Double Duplicators, Artifact Anvil, Stage Three Augments, Reroll Start, Cheaper Levels)",
+    "god_blessings": "New mechanic: choose between 2-3 Blessing options when aligned with Ahri/Kayle/Evelynn/Soraka/Thresh/Varus 2+ times",
+    "timebreaker_rework": "(2)+15% AS, (3) free rerolls on loss, (4)+50% AS for Timebreakers",
+    "meeple_nerf": "Clone gold nerfed: 1c 3g->2g, 5c 5g->2g",
+    "stargazer": "Fountain temporarily disabled. Mountain 12->15% HP buff.",
+    "anima_buff": "Tech per loss 15->18, Squad Armory time 35s->28s",
+    "augment_econ_nerfs": "AFK Gold 20->17, Expedition 27->20, Hedge Fund 25->22 and others",
+    "god_armory_gold": "12->10 gold"
+  }
 }
