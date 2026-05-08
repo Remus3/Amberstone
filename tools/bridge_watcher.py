@@ -34,6 +34,7 @@ import os
 import signal
 import ssl
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -72,6 +73,7 @@ _DEFAULT_LOOKBACK_S = 86400  # 24h
 _PENDING_TTL_S = 86400       # 24h before a pending entry auto-expires
 _SLEEP_POLL_S  = 300         # poll interval when mode=sleep or auto-idle
 _AUTO_IDLE_S   = 900         # seconds without kind=task before auto drops to sleep
+_ARTIFACT_RETENTION_S = 7 * 86400  # delete artifacts older than 7 days
 
 # Default bridge URL per node. Phase 1 nodes can override via --bridge-url.
 #   legion : own loopback (RC dashboard hosts the bridge log)
@@ -89,6 +91,11 @@ _DEFAULT_BRIDGE_URL = {
 _MAX_PROMPT_LEN = 32 * 1024  # 32 KiB cap on prompt body before truncation
 
 _log = logging.getLogger("rc.bridge_watcher")
+
+
+def _watchdog_threshold(eff_poll_s: float) -> float:
+    """Min seconds of main-loop silence before watchdog calls os._exit(1)."""
+    return max(120.0, eff_poll_s * 3)
 
 _SSL_CTX = ssl.create_default_context()
 _SSL_CTX.check_hostname = False
@@ -422,11 +429,52 @@ def _write_heartbeat(stats: dict) -> None:
         # Cadence mode (read from sentinel file each poll cycle)
         "cadence_mode":      stats.get("cadence_mode", "active"),
         "effective_poll_s":  stats.get("effective_poll_s", _DEFAULT_POLL_S),
+
+        "dry_run": bool(stats.get("dry_run", False)),
     }
     try:
         _atomic_write_json(_HEALTH_PATH, payload)
     except OSError as exc:
         _log.warning("heartbeat write failed: %s", exc)
+
+
+# ── Artifact rotation ─────────────────────────────────────────────────
+
+
+def _should_remove_artifact(age_s: float, task_id: str, processed_ids: set) -> bool:
+    """Pure predicate: True when an artifact file should be deleted."""
+    return age_s > _ARTIFACT_RETENTION_S or task_id in processed_ids
+
+
+def _rotate_artifacts(state: dict, processed_ids: set, now: float) -> int:
+    """Delete stale artifacts from bridge_action_artifacts/.
+
+    Runs once per day (gated by last_rotate_at in state).
+    Returns count of files removed.
+    """
+    last = float(state.get("last_rotate_at") or 0)
+    if now - last < 86400:
+        return 0
+    state["last_rotate_at"] = now
+    if not _ARTIFACTS_DIR.exists():
+        return 0
+    removed = 0
+    try:
+        for p in _ARTIFACTS_DIR.iterdir():
+            if not p.is_file():
+                continue
+            try:
+                age = now - p.stat().st_mtime
+                if _should_remove_artifact(age, p.stem, processed_ids):
+                    p.unlink(missing_ok=True)
+                    removed += 1
+            except (OSError, PermissionError):
+                pass
+    except OSError:
+        pass
+    if removed:
+        _log.info("artifact rotation: removed %d stale file(s) from %s", removed, _ARTIFACTS_DIR)
+    return removed
 
 
 # ── Result posting (Phase 2 auto-action result → bridge_post_result.py) ──
@@ -489,6 +537,7 @@ def _handle_signal(signum, _frame) -> None:
 
 def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
          once: bool = False,
+         dry_run: bool = False,
          enabled_lanes: Optional[set] = None,
          node_config: Optional[dict] = None,
          tools_dir: Optional[Path] = None) -> int:
@@ -516,10 +565,40 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
         "auto_actions_since_boot": 0,
         "auto_ok_since_boot":      0,
         "auto_err_since_boot":     0,
+        "dry_run":                 dry_run,
     }
+
+    # Self-healing watchdog: if the main loop stalls > threshold seconds,
+    # call os._exit(1) so the scheduled-task restart-on-failure fires.
+    # _activity_ts is a single-element list so the daemon thread can read it
+    # without a Lock (CPython list-element read/write is atomic enough here).
+    # _current_eff_poll is updated after each cadence calculation.
+    _activity_ts     = [time.time()]
+    _current_eff_poll = [poll_s]
+
+    if not once:
+        def _watchdog_thread() -> None:
+            while not _STOP:
+                time.sleep(30)
+                age = time.time() - _activity_ts[0]
+                threshold = _watchdog_threshold(_current_eff_poll[0])
+                if age > threshold:
+                    _log.error(
+                        "watchdog: main loop stalled %.0fs (threshold=%.0fs eff_poll=%.0fs) "
+                        "— forcing exit so scheduled-task restart fires",
+                        age, threshold, _current_eff_poll[0],
+                    )
+                    os._exit(1)
+
+        _wd = threading.Thread(target=_watchdog_thread, daemon=True, name="bridge-watchdog")
+        _wd.start()
+
+    if dry_run:
+        _log.info("bridge_watcher starting in DRY-RUN mode — no pending writes, no auto-actions, no notifications")
 
     while not _STOP:
         try:
+            _activity_ts[0] = time.time()  # watchdog heartbeat
             _actions.reset_daily_spend_if_new_day(state)
             _ring_age(state, time.time())
             since = state.get("last_seen_ts", 0.0)
@@ -553,14 +632,17 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
                         reason = (f"{original_cls!r} matched but lane disabled "
                                   f"(enabled_lanes={sorted(enabled_lanes)}); downgraded to escalate")
                 if cls == "escalate":
-                    if _add_to_pending(env, reason):
+                    newly_added = True if dry_run else _add_to_pending(env, reason)
+                    if newly_added:
                         new_escalations += 1
-                        _ring_add(state, "escalation", time.time())
+                        if not dry_run:
+                            _ring_add(state, "escalation", time.time())
                         if first_new_esc is None:
                             first_new_esc = {"source": env.get("source", "?"),
                                              "summary": (env.get("summary") or "")[:120]}
-                        _log.info("escalate id=%s src=%s kind=%s — %s",
-                                  env.get("id"), env.get("source"),
+                        _pfx = "DRY-RUN would-escalate" if dry_run else "escalate"
+                        _log.info("%s id=%s src=%s kind=%s — %s",
+                                  _pfx, env.get("id"), env.get("source"),
                                   env.get("kind"), reason)
                 elif cls == "ack-only":
                     new_acks += 1
@@ -594,40 +676,54 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
                                 "note": "auto-action result reused from past-task memory",
                             }
                             stats["auto_ok_since_boot"] += 1
-                            _ring_add(state, "auto_ok", time.time())
-                            _post_result_back(env, res_status="ok",
-                                              body=cached_body, node=node, tools_dir=tools_dir)
-                            _log.info("auto-action CACHE-HIT lane=%s id=%s sim=%.2f orig=%s ($0.00)",
-                                      cls, env.get("id"), cached["similarity"], cached["original_task_id"])
-                            _history.record_outcome(
-                                db_path=_HISTORY_DB, envelope=env, lane=cls,
-                                pattern_matched=reason, status="ok",
-                                cost_usd=0.0, latency_s=0.0,
-                                summary=f"cached from {cached['original_task_id']}",
-                                body=cached_body)
+                            _log.info(
+                                "%sauto-action CACHE-HIT lane=%s id=%s sim=%.2f orig=%s ($0.00)",
+                                "DRY-RUN " if dry_run else "",
+                                cls, env.get("id"), cached["similarity"], cached["original_task_id"])
+                            if not dry_run:
+                                _ring_add(state, "auto_ok", time.time())
+                                _post_result_back(env, res_status="ok",
+                                                  body=cached_body, node=node, tools_dir=tools_dir)
+                                _history.record_outcome(
+                                    db_path=_HISTORY_DB, envelope=env, lane=cls,
+                                    pattern_matched=reason, status="ok",
+                                    cost_usd=0.0, latency_s=0.0,
+                                    summary=f"cached from {cached['original_task_id']}",
+                                    body=cached_body)
                             continue
                         if cached["status"] == "error":
                             esc_reason = (f"recent failure on near-identical prompt "
                                           f"(sim={cached['similarity']:.2f}, "
                                           f"orig={cached['original_task_id']}, "
                                           f"{cached['hours_ago']}h ago) — escalating without retry")
-                            if _add_to_pending(env, esc_reason):
+                            newly_sc = True if dry_run else _add_to_pending(env, esc_reason)
+                            if newly_sc:
                                 new_escalations += 1
-                                _ring_add(state, "escalation", time.time())
+                                if not dry_run:
+                                    _ring_add(state, "escalation", time.time())
                                 if first_new_esc is None:
                                     first_new_esc = {"source": env.get("source", "?"),
                                                      "summary": (env.get("summary") or "")[:120]}
-                            _log.info("auto-action SHORT-CIRCUIT-ESCALATE lane=%s id=%s reason=%s",
-                                      cls, env.get("id"), esc_reason)
-                            _history.record_outcome(
-                                db_path=_HISTORY_DB, envelope=env, lane=cls,
-                                pattern_matched=reason, status="escalate",
-                                cost_usd=0.0, latency_s=0.0,
-                                summary="short-circuit: cached recent failure",
-                                body={}, error_brief=esc_reason)
+                            _log.info(
+                                "%sauto-action SHORT-CIRCUIT-ESCALATE lane=%s id=%s reason=%s",
+                                "DRY-RUN " if dry_run else "",
+                                cls, env.get("id"), esc_reason)
+                            if not dry_run:
+                                _history.record_outcome(
+                                    db_path=_HISTORY_DB, envelope=env, lane=cls,
+                                    pattern_matched=reason, status="escalate",
+                                    cost_usd=0.0, latency_s=0.0,
+                                    summary="short-circuit: cached recent failure",
+                                    body={}, error_brief=esc_reason)
                             continue
 
-                    # No high-sim cache hit — actually spawn claude --print.
+                    # No high-sim cache hit.
+                    if dry_run:
+                        _log.info("DRY-RUN would-auto-action lane=%s id=%s prompt_len=%d",
+                                  cls, env.get("id"), len(prompt_text))
+                        continue
+
+                    # Actually spawn claude --print.
                     t0 = time.time()
                     res_status, res_body, cost = _actions.run_action(
                         envelope=env, lane=cls, node_config=node_config or {},
@@ -686,8 +782,8 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
             stats["errors_24h"]       = _ring_count(state, "error",      _now)
             stats["auto_actions_24h"] = stats["auto_ok_24h"] + stats["auto_err_24h"]
 
-            # Push notification for new escalations (throttled 3/hr).
-            if new_escalations and first_new_esc:
+            # Push notification for new escalations (throttled 3/hr; no-op in dry-run).
+            if new_escalations and first_new_esc and not dry_run:
                 notif_n    = new_escalations
                 notif_src  = first_new_esc["source"]
                 notif_summ = first_new_esc["summary"]
@@ -704,6 +800,7 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
             # State persists tokens_used_today_usd (daily reset) but NOT the
             # since-boot counters — those reset every restart by design.
             _save_state(state)
+            _rotate_artifacts(state, processed_ids, time.time())
 
             # Refresh queue_depth from disk (operator may have drained).
             pending = _read_json(_PENDING_PATH, {"tasks": []})
@@ -739,6 +836,7 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
             _eff_poll = poll_s
         stats["cadence_mode"]     = _cmode
         stats["effective_poll_s"] = _eff_poll
+        _current_eff_poll[0]      = _eff_poll
         _write_heartbeat(stats)
 
         if once:
@@ -821,6 +919,27 @@ def _selftest() -> int:
     chk("cadence: _AUTO_IDLE_S is 15 min",
         _AUTO_IDLE_S == 900)
 
+    # ── watchdog threshold ──
+    chk("watchdog: threshold = max(120, poll*3) for active mode (15s)",
+        _watchdog_threshold(15.0) == 120.0)
+    chk("watchdog: threshold = 900 for sleep mode (300s)",
+        _watchdog_threshold(300.0) == 900.0)
+    chk("watchdog: threshold = max(120, 60*3) = 180 for mid poll",
+        _watchdog_threshold(60.0) == 180.0)
+
+    # ── artifact rotation predicate ──
+    proc_set = {"task-abc123", "task-def456"}
+    chk("rotation: remove old artifact (>7 days)",
+        _should_remove_artifact(_ARTIFACT_RETENTION_S + 1, "task-xyz", set()))
+    chk("rotation: keep recent artifact (<7 days)",
+        not _should_remove_artifact(_ARTIFACT_RETENTION_S - 1, "task-xyz", set()))
+    chk("rotation: remove artifact in processed_ids regardless of age",
+        _should_remove_artifact(0, "task-abc123", proc_set))
+    chk("rotation: keep artifact not in processed_ids and young",
+        not _should_remove_artifact(60, "task-other", proc_set))
+    chk("rotation: exact boundary (== retention) not removed",
+        not _should_remove_artifact(_ARTIFACT_RETENTION_S, "task-xyz", set()))
+
     result = "PASS" if errs == 0 else "FAIL"
     print(f"\nselftest: {result} ({errs} failure(s))")
     return errs
@@ -851,6 +970,10 @@ def main() -> int:
     p.add_argument("--enable-auto-action-lanes", default="",
                    help="Comma-separated list of auto-action lanes to enable: 'read', 'ops', or 'read,ops'. "
                         "Empty (default) = no auto-action; classifier never returns auto-* lanes.")
+    p.add_argument("--dry-run", action="store_true",
+                   help="classify envelopes but never write to pending queue, spawn auto-actions, "
+                        "or send push notifications. Heartbeat still written with dry_run=true. "
+                        "Useful for tuning classifier patterns against real traffic without spend.")
     p.add_argument("--config", default=None,
                    help="path to bridge_watcher_config.json (default: alongside watcher script)")
     p.add_argument("--tools-dir", default=None,
@@ -922,6 +1045,7 @@ def main() -> int:
               sorted(enabled_lanes) or "[]", node_config is not None)
 
     run_kwargs = {
+        "dry_run":       args.dry_run,
         "enabled_lanes": enabled_lanes,
         "node_config":   node_config,
         "tools_dir":     tools_dir,
