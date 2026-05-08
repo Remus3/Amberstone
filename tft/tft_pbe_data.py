@@ -2,6 +2,7 @@
 tft/tft_pbe_data.py
 TFT Set 17: Space Gods data — traits, tier probabilities, god offerings,
 round structure (Realm of the Gods replaces carousel).
+Last updated: patch 17.2 (2026-04-28) — Encounters returned, God Blessings added.
 """
 
 # ── Tier probability tables (standard Set 17) ───────────────────────────────
@@ -84,11 +85,11 @@ ORIGINS = {
     "Anima":       {"breakpoints": [2, 4, 6], "type": "loss-streak", "note": "Gain Tech on loss, prototype Anima Weapons at 100 Tech"},
     "Arbiter":     {"breakpoints": [2, 4], "type": "utility", "note": "Subscribe to divine law, choose effect for Arbiters"},
     "Dark Star":   {"breakpoints": [2, 4, 6, 9], "type": "execute", "note": "Black holes consume enemies below 10% HP. Vertical carry with Jhin."},
-    "Meeple":      {"breakpoints": [3, 5, 7, 10], "type": "scaling", "note": "Meeps empower abilities. (7) Cloning Slot, (10) Four MeepLords"},
+    "Meeple":      {"breakpoints": [3, 5, 7, 10], "type": "scaling", "note": "Meeps empower abilities. (7) Cloning Slot. 17.2: Clone gold nerfed (1c:3→2g, 5c:5→2g)."},
     "Mecha":       {"breakpoints": [2, 4, 6], "type": "transform", "note": "Transform to Ultimate Form: +60% HP, 2 slots, counts twice. (6) +1 team size"},
     "N.O.V.A.":    {"breakpoints": [2, 3, 5], "type": "burst", "note": "Power surges in combat. (5) Striker selector."},
     "Primordian":  {"breakpoints": [2, 4, 6], "type": "swarm", "note": "Spawn Swarmlings. (3+) free 1-2 cost champ each round."},
-    "Stargazer":   {"breakpoints": [2, 4, 6], "type": "hex", "note": "Empowered hexes with constellation effects. Synergy with Yasuo god."},
+    "Stargazer":   {"breakpoints": [2, 4, 6], "type": "hex", "note": "Empowered hexes. Yasuo synergy. NOTE 17.2: Fountain DISABLED (finding better fit for Lulu/Xayah). Mountain buffed 12→15% HP."},
     "Space Groove": {"breakpoints": [2, 4, 6], "type": "sustain", "note": "Groove: AS + HP regen. (6) stacking AD/AP in Groove."},
     "Shepherd":    {"breakpoints": [2, 4, 6], "type": "summon", "note": "Summon Bia and Bayin. Star levels increase their power."},
     "Voyager":     {"breakpoints": [2, 4, 6], "type": "generic", "note": "Tanks/Fighters get Shield, others get Damage Amp."},
@@ -98,7 +99,8 @@ ORIGINS = {
     "Marauder":    {"breakpoints": [2, 4, 6], "type": "sustain", "note": "Omnivamp + AD. Overhealing converts to Shield."},
     "Rogue":       {"breakpoints": [2, 4], "type": "ad/ap", "note": "AD and AP scaling."},
     "Factory New":  {"breakpoints": [2, 4], "type": "items", "note": "Item-related bonuses."},
-    "Timebreaker": {"breakpoints": [2, 4], "type": "utility", "note": "Time-manipulation effects."},
+    "Timebreaker": {"breakpoints": [2, 3, 4], "type": "as/econ/reroll",
+                    "note": "REWORKED 17.2: (2)+15% AS team; (3) free rerolls on loss; (4)+50% AS for Timebreakers."},
 }
 
 CLASSES = {
@@ -149,6 +151,63 @@ META_COMPS = {
         {"name": "Psionic",          "carry": "Master Yi",    "core": "Psionic 4, Fateweaver 2"},
         {"name": "Dark Star Jhin",   "carry": "Jhin",         "core": "Dark Star 6-9, execute + sustain"},
         {"name": "Contract Killer",  "carry": "Fiora",        "core": "Fateweaver + Slayer, 1v1 duel win"},
+    ],
+}
+
+# ── Encounters (returned in patch 17.2) ──────────────────────────────────────
+# Opening Encounters appear at early-game stages and modify conditions for all players.
+ENCOUNTERS = {
+    # Returning from Set 16 (16 total)
+    "Golden Gala":         {"type": "econ",      "note": "Strong gold start; enables econ lead"},
+    "Prismatic Party":     {"type": "loot",      "note": "Prismatic items early; flex carry direction"},
+    "Prismatic Finale":    {"type": "loot",      "note": "Late loot boost"},
+    "Prismatic Opener":    {"type": "loot",      "note": "Early Prismatic; adapt items to carry"},
+    "3-cost Start":        {"type": "units",     "note": "Early 3-costs; skip slow-roll, push 3-cost carries"},
+    "2-cost Start":        {"type": "units",     "note": "Early 2-costs; enables 2-cost reroll comps"},
+    "Upgraded Start":      {"type": "units",     "note": "Units pre-upgraded; stronger early boards"},
+    "Component Anvils":    {"type": "items",     "note": "Extra components; flex item paths"},
+    "Loot Subscription":   {"type": "econ",      "note": "Periodic loot drops per stage"},
+    "Gold Subscription":   {"type": "econ",      "note": "Periodic gold income"},
+    "No Encounter":        {"type": "none",      "note": "Standard game, no modifier"},
+    "Howling Abyss":       {"type": "combat",    "note": "Bonus HP on kills; aggressive boards rewarded"},
+    "Silver Scrapes":      {"type": "items",     "note": "Silver items on loss"},
+    "Scouting Party":      {"type": "scouting",  "note": "Reveal all boards early"},
+    # New in 17.2 (5 total)
+    "Double Duplicators":  {"type": "units",     "note": "2 champion duplicators — push 3-stars faster"},
+    "Artifact Anvil":      {"type": "items",     "note": "All players get Artifact Anvil at 3-3; flex carries"},
+    "Stage Three Augments":{"type": "augments",  "note": "Augments shift to 3-1/3-2/3-3; delay comp pivot"},
+    "Reroll Start":        {"type": "rolls",     "note": "8 free rerolls at 2-1; hyper-roll comps benefit most"},
+    "Cheaper Levels":      {"type": "leveling",  "note": "-2 XP per level; enables fast-9 comps"},
+}
+
+# ── God Blessings (new mechanic in patch 17.2) ────────────────────────────────
+# When aligned with a god 2+ times, choose between 2-3 Blessing options instead
+# of a fixed boon. Blessings provide powerful, character-specific bonuses.
+GOD_BLESSINGS = {
+    "Ahri": [
+        {"name": "Gold Every Turn",     "effect": "+1 gold per turn for rest of game"},
+        {"name": "Divine Investment",   "effect": "Max interest cap +1; 4/6 gold now"},
+        {"name": "Chest of Greed",      "effect": "2/3/4 gold + shared wealth pool (12/16/25 split)"},
+    ],
+    "Kayle": [
+        {"name": "Divine Refund",       "effect": "2 gold + component copy on next item crafted"},
+        {"name": "Craftsmanship",       "effect": "2 Reforgers now + 1 each stage; 2g per Reforger use"},
+        {"name": "Anvil Transformation","effect": "All component drops → Component Anvils; +2 gold"},
+    ],
+    "Evelynn": [
+        {"name": "Finalist Gambit",     "effect": "3 gold now; +30 gold bonus for finishing top 4"},
+    ],
+    "Soraka": [
+        {"name": "Soraka's Embrace",    "effect": "Each combat: grant 450-800 shield to first ally that died last fight"},
+    ],
+    "Thresh": [
+        {"name": "Mini Recombobulate",  "effect": "Transform all 1-2 cost champs into random higher-cost units"},
+        {"name": "Pandora's Seat",      "effect": "Each round: 2 rightmost bench slots transform to same-cost random"},
+    ],
+    "Varus": [
+        {"name": "Ephemeral Rerolls",   "effect": "Free reroll each round if shop has no available units"},
+        {"name": "Starcrossed Upgrade", "effect": "Next 2/3/4-cost shop unit appears 2-starred"},
+        {"name": "Super Parting Gift",  "effect": "Next God Pengu selection: extra champion copy + 2 gold"},
     ],
 }
 
