@@ -6,6 +6,12 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+**s125 — 2026-05-08** (9234d0f) Phase 1.1 knowledge architecture: docs/_archive/ created, 23 dated artifacts moved, 4 living docs authored (ARCHITECTURE.md 136 lines, OPERATIONS.md 153, BRIDGE.md 136, ROADMAP.md 64). Bootstrap reduced from 2000+ → 492 lines.
+
+**s124 — 2026-05-08** (no commit) RC_FUTUREPROOFING_PLAN.md authored on Desktop by Opus 4.7 1M context — 7-phase leverage-ordered refactor plan. No code changes.
+
+---
+
 - **s123 2026-05-08** — rc_facts bridge probe rewrite (04a305b): `/api/health/all` peer probe replaces stale log-age heuristic. DS server health line added. RC-DaemonSlayer false exit-1 anomaly suppressed (server healthy; task runs as SYSTEM, can't write logs).
 - **s122 2026-05-08** — Game-PC socket exhaustion (STATUP.GG/Overlay Platform M 17,463 kernel handles → WSAENOBUFS). `taskkill /F /PID 3340`; restarted RC-WatcherHealthPublisher-GamePC + RC-BridgeWatcher-GamePC tasks. TDD skill installed fleet-wide.
 - **s121 2026-05-08** — Fleet model downgrade → `claude-sonnet-4-6` 200k. 5 plugins disabled on Legion (nimble, ralph-loop, playwright, chrome-devtools-mcp, firecrawl); Peer mirrored via bridge task. MEMORY.md pruned 6 stale entries.
