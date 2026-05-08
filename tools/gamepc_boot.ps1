@@ -253,15 +253,25 @@ if ($daemonTask -and $daemonTask.State -ne 'Running') {
 
 Write-Host ''
 Write-Host '=== ready ===' -ForegroundColor Cyan
-Write-Host '(this window auto-closes in 60s; Game-PC bridge Claude is in its own terminal)' -ForegroundColor DarkGray
 Write-Host ''
 
-# Auto-close: once the boot is green, the operator just wanted visual
-# confirmation. Holding the launcher window open indefinitely clutters
-# the desktop with an idle PS prompt. 60s gives a beat to read the
-# output, then the process exits — Game-PC bridge Claude stays in its
-# own visible terminal. [Environment]::Exit kills the host process
-# (covers the iex case where -NoExit is set on the shortcut and a bare
-# `exit` would only return from the script).
-Start-Sleep -Seconds 60
+# 7. Launch the visible Game-PC Claude session (idempotent — script
+#    checks for an existing "Game-PC bridge" window and no-ops if found).
+$claudeLauncher = Join-Path $dest 'start_gamepc_claude.ps1'
+if (Test-Path $claudeLauncher) {
+    Write-Host 'Launching Game-PC bridge Claude...' -ForegroundColor Cyan
+    try {
+        & $claudeLauncher
+    } catch {
+        Write-Host "  Claude launch warning: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host '  start_gamepc_claude.ps1 missing — skipping Claude launch' -ForegroundColor Yellow
+}
+
+Write-Host ''
+Write-Host '(this window auto-closes in 15s)' -ForegroundColor DarkGray
+
+# Auto-close: 15s is enough to read the output; Claude window stays open.
+Start-Sleep -Seconds 15
 [Environment]::Exit(0)
