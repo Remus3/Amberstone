@@ -1,97 +1,66 @@
 # WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s120 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+> Sessions s27–s123 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+
+---
+
+# s126 wrap — 2026-05-08 (Phase 1.2 + 1.3 — archmap + ADRs — Phase 1 COMPLETE)
+
+## What shipped
+- **`tools/gen_archmap.py`** — walks package tree, reads `# arch: <role> | section=<section> | frozen=yes|no` headers from `.py` files, regenerates module-map section of `docs/ARCHITECTURE.md` between `<!-- archmap:start/end -->` sentinels. `--check` mode wired to `.githooks/pre-commit`.
+- **`# arch:` headers backfilled** in 33 key Python files (all files in the ARCHITECTURE.md module map). BOM stripped from `game_reader.py` + `coaches/aram_coach.py`. Frozen file changes = comment-only additions at line 1.
+- **`docs/adr/`** — 30-line template + 5 historical ADRs: ADR-001 tkinter removal, ADR-002 DS-before-Haiku, ADR-003 in-process vision server, ADR-004 bridge watcher daemon, ADR-005 Tailscale MagicDNS.
+- **CLAUDE.md** — ADR pointer added; active priorities updated.
+- **ROADMAP.md** — Phase 1 flipped ✅.
+- Commit **fc1361b** pushed → `claude/brave-curran-2597b1` (43 files changed). PR: https://github.com/Remus3/riot-commander/pull/new/claude/brave-curran-2597b1
+
+## Key decisions
+- Frozen-file list in CLAUDE.md stays manually maintained — it includes non-Python files (.ps1, .json, .xml, .md) that can't carry `# arch:` headers.
+- Bootstrap reading: **500 lines total** (CLAUDE.md 140 + ARCHITECTURE.md 143 + OPERATIONS.md 153 + ROADMAP.md 64). Phase 1 exit criteria fully met.
+
+## Do NOT redo
+- Don't re-backfill `# arch:` headers — already in all 33 key files.
+- `tools/_backfill_arch_headers.py` was deleted (one-shot helper, served its purpose).
+- `gen_archmap.py` is idempotent — second run says "archmap up to date."
+
+## What's next
+1. **Merge `claude/brave-curran-2597b1` to main** (or merge via PR on GitHub).
+2. **Phase 2.1** — `champion_profiles.py` (902 LOC) split: audit dict literals, build extractor script, emit `data/champion_profiles/*.json`, replace with ≤80 LOC thin loader. Lowest-risk decomp.
+3. **TFT 17.3** — due ~2026-05-12. May take priority if patch drops.
+
+---
+
+# s125 wrap — 2026-05-08 (Phase 1.1 — knowledge architecture)
+
+## What shipped
+- **docs/_archive/** created (gitignored); 23 dated artifacts moved there — all `AUDIT_*`, `PHASE_*`, `HANDOFF_*`, `SESSION_HANDOFF_*`, `*_RESEARCH_2026-*`, `BUILD_REFRESH_STRATEGY_*`, `RC_ARCHITECTURE_INFOGRAPH.*`, `OPS_QUICK_REFERENCE.md`, `ARCH-001-decomposition-plan.md`, `ARCHITECTURE_REVIEW.md`, `tft_overhaul_design.md`, `PROJECT_STATE.md`, handoff TXTs.
+- **docs/ARCHITECTURE.md** (136 lines) — machine topology + data flows table + module map (orchestration/vision/coaching/dashboard/frontend) + god-module table + 7 key gotchas.
+- **docs/OPERATIONS.md** (153 lines) — health check commands + restart workflow + all RC-* scheduled tasks + bridge ops + file location map.
+- **docs/BRIDGE.md** (136 lines) — wire format + Legion endpoints table + watcher daemon architecture + lessons sync + per-node config files.
+- **BACKLOG.md** (51 lines) — aspirational/future items extracted from ROADMAP.md.
+- **ROADMAP.md** trimmed to 64 lines (Now+Next only); past history in `docs/_archive/CHANGELOG.md`.
+- **CLAUDE.md** trimmed from ~150 → 139 lines; pointers to living docs; active priorities pruned to open items only.
+- Commit **9234d0f** pushed → origin/main (29 files: 537 insertions, 5050 deletions).
+
+## Key decisions
+- `_archive/` is already in `.gitignore` — archived files preserved on disk only (not in git). Intentional; keeps repo clean while allowing local reference.
+- Bootstrap reading: **492 lines total** (CLAUDE.md 139 + ARCHITECTURE.md 136 + OPERATIONS.md 153 + ROADMAP.md 64). Phase 1 exit criteria met (was 2000+).
+
+## Do NOT redo
+- Don't re-archive docs/ — 23 files already in `_archive/`, gitignored, intentional.
+- `docs/ui_audit/` left in place (already isolated). `docs io RC peer/` left in place.
+- `docs/_archive/CHANGELOG.md` exists on disk but not in git (expected, gitignored).
 
 ---
 
 # s124 wrap — 2026-05-08 (RC future-proofing plan — Opus 4.7 1M deep analysis)
 
 ## What shipped
-- **`C:\Users\Administrator\Desktop\RC_FUTUREPROOFING_PLAN.md`** — robust phased plan to make RC easier to document/build. 7 phases ordered by leverage: (1) knowledge architecture (doc split + auto-archmap + ADRs), (2) god-module decomp (champion_profiles → game_reader → coach_integration → moon_vision_server), (3) frontend ESM modularity, (4) pydantic schemas (HTTP + bridge envelope + coaching payload), (5) CI + smoke harness, (6) bridge consolidation [needs frozen-file approval], (7) ergonomics.
-- Plan includes §0 session-budget cheat sheet (`/done` vs `/wrap` vs `/clear` vs continue decision matrix) so future sessions know when to checkpoint vs continue.
-- Plan is Desktop-resident on purpose: checkboxable, append findings, move closed phases to §5 DONE archive.
-
-## What's next
-- **Switch to Sonnet 4.6 high effort.** Pick up Phase 1.1 (living-vs-dated docs split) in next session.
-- Bootstrap pattern for next session: `/clear` → read plan on Desktop → say "Pick up Phase 1.1".
-- Phase 1 alone is highest leverage (zero runtime code change, makes every future session start from ground truth).
+- **`C:\Users\Administrator\Desktop\RC_FUTUREPROOFING_PLAN.md`** — robust phased plan to make RC easier to document/build. 7 phases ordered by leverage.
+- Plan includes §0 session-budget cheat sheet (`/done` vs `/wrap` vs `/clear` vs continue decision matrix).
 
 ## No code changes this session
-- No commits, no push. Plan artifact lives outside the repo on purpose (operator-facing checklist, not project deliverable).
+- No commits, no push. Plan artifact lives outside the repo on purpose.
 
 ---
-
-# s123 wrap — 2026-05-08 (rc_facts bridge probe + DS exit 1 investigation)
-
-## What shipped
-- **rc_facts.py bridge probe rewrite** (commit 04a305b): replaced stale `bridge_log.jsonl` age-based anomaly ("auto-flow loop may be dead") with `/api/health/all` peer probe. Now shows `gamepc bridge daemon: watcher=alive queue=0 age=Xs` and `peer bridge daemon: ...` — fires real anomaly only if `watcher_alive=false`, peer stale, or queue > 10.
-- **DS server health line** added to Legion section in rc_facts: `DS server :8893: ok patch=16.9.1 alive=True`.
-- **RC-DaemonSlayer false anomaly suppressed**: result=1 is silenced in the task list when `daemon_slayer.alive=True` from health/all (the server IS running; the task's stale exit code was a red herring).
-
-## Findings (no code change needed)
-- **Bridge auto-flow `/loop` is obsolete**: `RC-BridgeDaemon` + `RC-BridgeWatcher-GamePC` on Game-PC handle it as scheduled tasks. Confirmed both Running. Memory `reference_bridge_autoflow.md` was already accurate.
-- **RC-DaemonSlayer exit 1 root cause**: DS server alive and healthy (PID 19268 pythonw.exe, `/health` returns OK). The exit 1 on 5/5 was a one-off manual `schtasks /Run` that failed — task runs as SYSTEM which silently can't write to `logs/` (`_log_startup` swallows the OSError). BootTrigger run at 5/1 boot started the server successfully and it's been running ever since.
-
-## Do NOT redo
-- Don't re-investigate the bridge auto-flow loop — it's daemon-managed, not `/loop`-managed. The old `/loop` is dead and gone.
-- Don't re-investigate DS exit 1 as a live failure — it's resolved (false alarm). If DS ever goes down, rc_facts will flag it via the `DS server :8893:` line, not the task result.
-
-## Open work (priority order)
-1. **rewind_history.db staleness** — blocked on live SR game.
-2. **Vision regions calibration** — blocked on live game.
-3. **TFT 17.3** — due ~2026-05-12 (4 days). Same process as 17.2.
-4. **Bridge Watcher acceptance-criteria** — need 50+ auto-action samples; currently 0.
-5. **Auto-ops verb expansion** — after 95% success rate.
-6. **gamepc_boot.ps1 hardening** — add `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC` to idempotent start sequence.
-7. **RC-DaemonSlayer task context** — runs as SYSTEM; `_log_startup` writes silently fail. Low-risk (server alive), but consider changing to LogonTrigger + Administrator context if traceability matters after next boot.
-
----
-
-# s122 wrap — 2026-05-08 (Game-PC socket recovery + TDD skill)
-
-## What shipped
-- **Game-PC socket exhaustion diagnosed & fixed**: STATUP.GG (Overlay Platform M overlay) leaked 17,463 kernel handles, exhausting the socket buffer pool (`WSAENOBUFS`). All Game-PC outbound TCP was silently broken — agents were running but unable to POST to Legion. Fixed with `taskkill /F /PID 3340`. Diagnostic: `Get-Process | Sort-Object HandleCount -Descending`.
-- **Game-PC watcher tasks restarted**: `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC` were in `Ready` (stopped) state after 2h of socket failures. Started via `Start-ScheduledTask`. Legion peer health restored: `age_s=27.7, stale=False`.
-- **TDD skill installed**: `test-driven-development.md` → `.claude/commands/` (from addyosmani/agent-skills). Red-Green-Refactor cycle + Prove-It bug pattern + test pyramid. Auto-invokes on code changes. Python examples adapted for RC.
-
-## Do NOT redo
-- STATUP.GG socket exhaustion is transient — Overlay Platform M relaunches with League. If Game-PC goes stale again, always check handle counts first before investigating network/firewall.
-- `gamepc_boot.ps1` does NOT restart `RC-WatcherHealthPublisher-GamePC` or `RC-BridgeWatcher-GamePC` — they need `Start-ScheduledTask` if they stop. This is a known gap.
-
-## Open work (priority order)
-1. **rewind_history.db staleness** — blocked on live SR game.
-2. **Vision regions calibration** — blocked on live game.
-3. **TFT 17.3** — due ~2026-05-12.
-4. **Bridge Watcher acceptance-criteria** — need 50+ auto-action samples; currently 0.
-5. **Auto-ops verb expansion** — after 95% success rate.
-6. **Investigate RC-DaemonSlayer exit 1** — check `logs/daemon_slayer_startup.log`.
-7. **gamepc_boot.ps1 hardening** — add `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC` to idempotent start sequence.
-
----
-
-# s121 wrap — 2026-05-08 (token cost reduction)
-
-## What shipped
-- **Fleet model downgrade**: all 3 machines switched from `sonnet[1m]` → `claude-sonnet-4-6` standard 200k via `/config`. Legion=default effort (removed `effortLevel: "high"`), Game-PC=medium, Peer=default.
-- **Legion plugin cull** (`~/.claude/settings.json`): disabled 5 unused plugins — `nimble`, `ralph-loop`, `playwright`, `chrome-devtools-mcp`, `firecrawl`. Kept `github` + `pyright-lsp`. Saves ~15-20k tokens of skill descriptions per turn.
-- **MEMORY.md pruned**: removed 6 stale FIXED/RESOLVED entries (dashboard queue, rune shard3, game_ingest dups, arena augments, SR coach hash bug, SR RECOMMENDED panel).
-- **Peer applied same changes** via bridge task (confirmed via hook): disabled playwright, ralph-loop, chrome-devtools-mcp, firecrawl; model already sonnet; no stale memories.
-- **Game-PC**: no `enabledPlugins` section — already clean; already on sonnet/medium.
-- **Cost diagnosis**: Opus usage in billing = `advisor()` calls only (both machines on Sonnet already). Primary levers: plugin cull (done), shorter sessions, advisor() discipline.
-
-## Do NOT redo
-- Game-PC has no plugins installed — no `enabledPlugins` key needed. Don't add one.
-- Peer already confirmed their changes — don't re-dispatch the plugin cull task.
-- The Opus in usage dashboard is advisor() tool calls, NOT a model misconfiguration.
-
-## Open work (priority order)
-1. **rewind_history.db staleness** — blocked on live SR game.
-2. **Vision regions calibration** — blocked on live game.
-3. **TFT 17.3** — due ~2026-05-12.
-4. **Bridge Watcher acceptance-criteria** — need 50+ auto-action samples; currently 0.
-5. **Auto-ops verb expansion** — after 95% success rate.
-6. **Investigate RC-DaemonSlayer exit 1** — check `logs/daemon_slayer_startup.log`.
-
----
-
 
