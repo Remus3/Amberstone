@@ -134,10 +134,12 @@ When invoked with `/done` or asked to wrap a session: (1) audit pending changes,
 
 ## Active priorities
 
-1. ✅ Bridge Watcher hardening (Phases 1+2) — sliding 24h counters + push notifications (f6095a0) + adaptive cadence `/sleep`/`/wake` (05983a4). Remaining: artifact rotation, dry-run mode, watcher self-healing.
-2. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes; OCR canary gates Sonnet
-3. 🟡 DS calibration pipeline — 120 records in `data/ds_calibration.jsonl` (SR only, no game_ids); blocked on rewind_history.db freshness (last entry Dec 2025)
+1. ✅ Bridge Watcher hardening — ALL phases complete (f6095a0/05983a4/6dd91ff/f3ae4cb): 24h ring, push notifs, adaptive cadence, dry-run, artifact rotation, self-healing watchdog, node-load restraint. pid=15004, 30/30 selftests.
+2. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes; OCR canary gates Sonnet. Blocked on live game.
+3. 🟡 DS calibration pipeline — game_id wired (d66d14b); future SR records carry game_id. Blocked on rewind_history.db staleness (last entry Dec 2025).
 4. ✅ Peer bridge daemon — peer health live and fresh (watcher_alive=True, confirmed 2026-05-06)
 5. ✅ RC-VisionServer — running via RC supervisor in-process popen; result=267014 = shutdown-terminated (expected), not an error
 6. ✅ Fleet health aggregation — `/api/health/peer` + `/api/health/all` peers block fully live; both gamepc+peer reporting
 7. ✅ Cross-Claude learning sync Phases 1–3 — shipped 2026-05-06; Phase 4 polish deferred
+8. ✅ TFT coaching — Set 17 patch 17.2 live (be3d168): Encounters + God Blessings + trait balance. Next: 17.3 due ~2026-05-12.
+9. ✅ SR jungler detection — Smite-based 3-tier cascade (6bec3ce): zone → Smite → _JUNGLE_CHAMPS fallback.
