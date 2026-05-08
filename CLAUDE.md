@@ -2,7 +2,10 @@
 
 Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude Haiku for coaching and Sonnet for vision, writes JSON to `data/`, serves `:8888` HTTPS dashboard on Game-PC's secondary display. RC is tkinter-free; Daemon Slayer (`:8893`) computes real DPS math per champion.
 
-> Deep references: `docs/AGENTS.md` (Phase 3 framework + bridge) · `docs/DAEMON_SLAYER.md` (DS engine · 547 items · ENGINE_VERSION 0.60.0)
+> **Living docs (read at session start):** `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `docs/BRIDGE.md` · `ROADMAP.md`
+> **Deep references:** `docs/DAEMON_SLAYER.md` (DS engine · 547 items · ENGINE_VERSION 0.60.0) · `docs/AGENTS.md` (Phase 3 framework) · `BACKLOG.md` (aspirational)
+> **Architectural decisions:** `docs/adr/` — before re-litigating a past choice, check here first.
+> **Dated artifacts** in `docs/_archive/` (excluded from ripgrep searches).
 
 ## Topology
 
@@ -55,7 +58,7 @@ Hard fallback: `taskkill /F /PID <pid>` then `restart.bat`.
 
 Scoped sessions — each focused task is one session.
 - **End:** commit + update `WAKEUP_NOTES.md` (keep last 2–3 sessions at full fidelity; archive older to `docs/history_notes.md`) + push.
-- **Start:** `/clear`, bootstrap from CLAUDE.md + MEMORY.md + git log + WAKEUP_NOTES.
+- **Start:** `/clear`, bootstrap from CLAUDE.md + MEMORY.md + git log + WAKEUP_NOTES + `docs/ARCHITECTURE.md` + `ROADMAP.md` (all 4 under 800 lines total).
 - `/clear` between Tier items, between coding/reviewing modes, between focus-area switches.
 
 ## Web dashboard
@@ -64,8 +67,7 @@ Scoped sessions — each focused task is one session.
 
 ## Scheduled tasks (Legion)
 
-- `RC-Supervisor` — at logon, Administrator, HIGHEST. Runs `pythonw.exe ops/rc_supervisor.py`.
-- `RC-VisionServer` — at system startup, SYSTEM, HIGHEST. Runs `python.exe moon_vision_server.py`.
+Key: `RC-Supervisor` (logon, Administrator, HIGHEST) · `RC-VisionServer` (startup, SYSTEM, HIGHEST) · `RC-BridgeWatcher` (logon, daemon). Full list + Game-PC tasks: `docs/OPERATIONS.md`.
 
 ## Vision pipeline
 
@@ -80,24 +82,18 @@ Game-PC `gamepc_screen_agent.py` POSTs frames every 2s to `:8889/upload-frame`. 
 - Live PID + mode + health: `ops/runtime/health.json`
 - Current game state: `data/{aram,arena,brawl,tft}_coaching_data.json`
 - Recent activity: `logs/YYYY-MM-DD.log`
-- Status ledger: `AUDIT_PHASE_2_STATUS.md`
-- `docs/PROJECT_STATE.md` is stale — see above sources instead.
+- Architecture / module map: `docs/ARCHITECTURE.md`
+- Ops commands + restart: `docs/OPERATIONS.md`
+- Bridge wire format + watcher: `docs/BRIDGE.md`
+- Open work: `ROADMAP.md` · Aspirational: `BACKLOG.md` · History: `docs/_archive/CHANGELOG.md`
 
 ## Useful commands
 
-```bash
-# Health
+Full reference: `docs/OPERATIONS.md`. Quick-start:
+```
 python -c "import json; print(json.dumps(json.loads(open(r'ops/runtime/health.json').read()), indent=2))"
-# Log tail
-python -c "import time; from pathlib import Path; print(Path('logs/'+time.strftime('%Y-%m-%d')+'.log').read_text(encoding='utf-8',errors='replace')[-4000:])"
-# Restart
-echo manual > restart_trigger.txt
-# Probes
-curl http://127.0.0.1:8889/health
-curl -k https://127.0.0.1:8888/api/state
-curl -k https://127.0.0.1:8888/metrics
-# Data pipeline (patch day)
-cd scripts && python data_pipeline.py all
+echo restart > restart_trigger.txt
+curl -k https://127.0.0.1:8888/api/health/all
 ```
 
 ## Memory frontmatter — cross-project sync fields
@@ -134,15 +130,12 @@ When invoked with `/done` or asked to wrap a session: (1) audit pending changes,
 
 ## Active priorities
 
-1. ✅ Bridge Watcher hardening — ALL phases complete (f6095a0/05983a4/6dd91ff/f3ae4cb): 24h ring, push notifs, adaptive cadence, dry-run, artifact rotation, self-healing watchdog, node-load restraint. pid=15004, 30/30 selftests.
+1. ✅ Phase 1 — Knowledge architecture complete (fc1361b, s125+s126): living docs + archmap + 5 ADRs. Bootstrap = 500 lines.
+   ➡️ Next: Phase 2.1 — champion_profiles.py split (902 LOC → data/champion_profiles/*.json).
 2. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes; OCR canary gates Sonnet. Blocked on live game.
 3. 🟡 DS calibration pipeline — game_id wired (d66d14b); future SR records carry game_id. Blocked on rewind_history.db staleness (last entry Dec 2025).
-4. ✅ Peer bridge daemon — peer health live and fresh (watcher_alive=True, confirmed 2026-05-06)
-5. ✅ RC-VisionServer — running via RC supervisor in-process popen; result=267014 = shutdown-terminated (expected), not an error
-6. ✅ Fleet health aggregation — `/api/health/peer` + `/api/health/all` peers block fully live; both gamepc+peer reporting
-7. ✅ Cross-Claude learning sync Phases 1–3 — shipped 2026-05-06; Phase 4 polish deferred
-8. ✅ TFT coaching — Set 17 patch 17.2 live (be3d168): Encounters + God Blessings + trait balance. Next: 17.3 due ~2026-05-12.
-9. ✅ SR jungler detection — Smite-based 3-tier cascade (6bec3ce): zone → Smite → _JUNGLE_CHAMPS fallback.
-10. ✅ RC dev panel — `⚙ Dev / Sim Preview` view (7424e24): sim fixtures + vision status + log tail. `dashboard/routes_dev.py` + CSS view-switch rules.
-11. 🟡 gamepc_boot.ps1 hardening — add `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC` to idempotent start sequence (currently missing; must be `Start-ScheduledTask`'d manually after socket exhaustion events).
-12. ✅ rc_facts bridge probe — replaced stale log-age anomaly with `/api/health/all` peers probe (04a305b); DS health line added; RC-DaemonSlayer false alarm suppressed.
+4. 🟡 TFT 17.3 — due ~2026-05-12. Same process as 17.2.
+5. 🟡 gamepc_boot.ps1 hardening — add `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC` to idempotent start sequence.
+6. 🟡 Bridge Watcher acceptance-criteria — need 50+ real-traffic samples (watch `auto_ok_since_boot` vs `auto_err_since_boot`).
+
+Full open work + future: `ROADMAP.md` + `BACKLOG.md`. Completed work: `docs/_archive/CHANGELOG.md`.
