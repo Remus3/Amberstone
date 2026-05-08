@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "support",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Passive Bailout: ally lives if kill while under effect. R Hostile Takeover makes enemies attack each other.",
+  "aram": "R into grouped enemies makes them AoE each other — game-winning ability in ARAM."
+}

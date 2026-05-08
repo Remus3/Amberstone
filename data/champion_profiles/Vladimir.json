@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": false,
+  "sustain": true,
+  "mechanic": "Q sustain + poke. No mana — never buy mana items. R marks, bonus damage on expiry.",
+  "aram": "Free sustain with Q poke. R before team bursts for bonus damage multiplier."
+}

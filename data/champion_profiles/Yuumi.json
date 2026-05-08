@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "support",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Attach to ally, untargetable while attached. Q slows. R stuns multiple enemies.",
+  "aram": "Attach to your highest-damage champion. R stuns whole enemy team for your ADC to clean up."
+}

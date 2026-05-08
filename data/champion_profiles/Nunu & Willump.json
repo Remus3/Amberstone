@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "tank",
+  "mana": true,
+  "sustain": true,
+  "mechanic": "Q consume heals. W snowball momentum + engage. R channels for AoE root.",
+  "aram": "W roll full-speed into grouped enemies for knockup. R then snowball again."
+}

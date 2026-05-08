@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "tank",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "W taunt charges for AoE attack. R global, taunts all nearby on landing.",
+  "aram": "W into grouped enemies for mass taunt. Build Abyssal for bonus MR aura vs AP teams."
+}

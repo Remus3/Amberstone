@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Passive disguise as ally. R stasis then AoE root if nearby — use from surprise.",
+  "aram": "R from fog of war. Disguise as ally until in range then detonate."
+}

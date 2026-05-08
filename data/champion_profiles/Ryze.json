@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Flux (E) interacts with Q/W. Q reset on R-level. Build Seraph's first for mana scaling.",
+  "aram": "Mana scales damage — max mana items. E+Q+W burst combo on a single target."
+}

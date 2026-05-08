@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "assassin",
+  "mana": false,
+  "sustain": false,
+  "mechanic": "Daggers on ground reset E. Shunpo to champion = reduced damage taken. R channels on nearby enemies.",
+  "aram": "Throw daggers, Shunpo to them for burst resets. E to a champion to reduce damage taken mid-combo."
+}

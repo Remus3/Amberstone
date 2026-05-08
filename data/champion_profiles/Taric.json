@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "support",
+  "mana": true,
+  "sustain": true,
+  "mechanic": "All abilities chain to nearby linked ally. R Cosmic Radiance: invulnerability on self+linked ally.",
+  "aram": "Link to highest-damage ally. R timed perfectly makes your carry unkillable."
+}

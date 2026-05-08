@@ -1,0 +1,8 @@
+{
+  "dmg": "hybrid",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Void passive stacks; 5 stacks deals bonus magic damage. W marks target; R gap closes to marked.",
+  "aram": "W mark → R gap close on isolated target. Stack passive with Q for burst combo."
+}

@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "marksman",
+  "mana": true,
+  "sustain": true,
+  "mechanic": "Passive stacks on kills/mists give AD/range/crit. R global shield + damage beam.",
+  "aram": "Stack souls from kills. R global to save allies or pick low HP targets."
+}

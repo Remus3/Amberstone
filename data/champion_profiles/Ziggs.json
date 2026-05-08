@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Q bounces. W Satchel Charge repositions self or enemies. R Mega Inferno Bomb from far.",
+  "aram": "W self-reposition over walls. Q + W AoE demolishes grouped enemies. R from off-screen."
+}

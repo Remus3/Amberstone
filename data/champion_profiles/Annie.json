@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "4-stack stun on next spell. Pre-stack with Q/W, release on R or flash-bear.",
+  "aram": "Flash-Tibbers into backline. Molten Shield (E) reflects on-hit; cast before trading."
+}

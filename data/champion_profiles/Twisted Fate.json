@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Pick a Card: gold card stuns. R gate reveal + teleport globally.",
+  "aram": "Gold Card W stun enables big combo. R for cross-map pressure even in ARAM."
+}

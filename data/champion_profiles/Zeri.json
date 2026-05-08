@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Passive charges from shields. Q lightning reloads. E dash through walls. R Lighting Crash.",
+  "aram": "E through terrain to reposition. R empowers whole team briefly."
+}

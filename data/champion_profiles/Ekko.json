@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "assassin",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "W time zone stuns if you stay. R rewinds 3s and heals — use R to survive burst.",
+  "aram": "W in the enemy cluster for teamfight stun. R after taking burst to reset position."
+}

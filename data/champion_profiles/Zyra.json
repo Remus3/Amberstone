@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Passive seeds spawned by abilities. Seed hit by Q/E grows plants.",
+  "aram": "Seed entire corridor for plant wall. E+R = mass root+knockup for team cleanup."
+}

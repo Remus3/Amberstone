@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Cannon form for ranged poke; hammer form for melee CC and dash. No mana threshold issues.",
+  "aram": "Poke with cannon, trade with hammer. Gate→Mercury Hammer combo is your engage."
+}

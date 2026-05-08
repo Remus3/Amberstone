@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": true,
+  "sustain": true,
+  "mechanic": "Q stacks on last-hits — need 300+ to be relevant. W slows movement+attack speed.",
+  "aram": "Stack Q on minions. 400+ stacks = delete anything. W slows whole team."
+}

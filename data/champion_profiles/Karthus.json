@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Passive death-timer = last burst window. R global damage to all enemies.",
+  "aram": "Spam Q constantly on grouped enemies. R cleans up after any big fight regardless of your position."
+}

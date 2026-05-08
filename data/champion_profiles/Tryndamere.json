@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": false,
+  "sustain": true,
+  "mechanic": "Fury gives crit at max. R Undying Rage: cannot die for 5s. Play to full rage before trading.",
+  "aram": "R when you would die — use those 5s to deal maximum damage. Build pure crit."
+}

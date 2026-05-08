@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Stacks AP from kills and CS. E Event Horizon cage stuns edges.",
+  "aram": "Place cage ON enemies to stun. R execute scales with your AP stacks."
+}

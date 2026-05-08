@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Ball is all hitboxes. Q move to location, W AoE from ball, R Shockwave from ball.",
+  "aram": "Maneuver ball to grouped enemies then R. Shield your carry with W."
+}

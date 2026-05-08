@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": false,
+  "sustain": true,
+  "mechanic": "E stacks attacks speed stacks. R True Form gives bonus attacks.",
+  "aram": "Build attack speed; heal sustains you in extended ARAM fights."
+}

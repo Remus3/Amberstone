@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "tank",
+  "mana": false,
+  "sustain": true,
+  "mechanic": "Passive blobs revive him at low HP. W slam. R Elastic Slingshot AoE bounces.",
+  "aram": "R bounce through enemies for AoE knockups. Collect blobs or die permanently."
+}

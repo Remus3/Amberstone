@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": false,
+  "sustain": true,
+  "mechanic": "No mana. R launches at target, then AoE fear. Pillory (W) gives extended healing.",
+  "aram": "Build AD+sustain. R on grouped enemies terrifies the whole team."
+}

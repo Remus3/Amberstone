@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "E (Make It Rain) slows; ult channels perpendicular to enemy team from behind cover.",
+  "aram": "E→R in the cramped ARAM corridor deletes everyone. Build crit for max Bullet Time."
+}

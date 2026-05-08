@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Empowered E blocks attacks from front. W stun. Mortal Will passively stacks.",
+  "aram": "E block key burst then all-in. Build lethality for burst; shield blocks autos in fights."
+}

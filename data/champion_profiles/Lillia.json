@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "fighter",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Q and W apply dream dust. R puts all dust-affected enemies to sleep.",
+  "aram": "Q around grouped enemies endlessly. R when multiple enemies are dusted for mass sleep."
+}

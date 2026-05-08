@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "support",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "W tornado stuns at max range. R heals all nearby allies instantly. E shield grants AD bonus.",
+  "aram": "R in a losing fight to heal everyone and reposition. W to interrupt engages."
+}

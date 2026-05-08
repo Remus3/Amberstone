@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": false,
+  "sustain": true,
+  "mechanic": "Two forms: Darkin (AD sustain) vs SA (AP assassin). Form choice based on enemy comp.",
+  "aram": "Darkin form vs tanky teams; SA form vs squishy teams. W sustain is extremely strong."
+}

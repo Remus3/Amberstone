@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "support",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Double bomb detonates. E speeds ally. R Chronoshift revives ally on death.",
+  "aram": "R on your carry saves them from death. E speed to outrun or chase. Bombs slow + AoE."
+}

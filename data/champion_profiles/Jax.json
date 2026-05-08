@@ -1,0 +1,8 @@
+{
+  "dmg": "hybrid",
+  "role": "fighter",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "E Counter Strike dodges autos then stuns. Power spike: Titanic Hydra + Trinity.",
+  "aram": "E dodge a key auto-attack burst, then stun. Build Trinity for fast dueling."
+}

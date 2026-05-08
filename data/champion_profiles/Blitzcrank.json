@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "tank",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Q hook separates targets. EQ combo = grab→knockup for full CC chain.",
+  "aram": "Hook the fed carry or key target. W boosts your hook speed — use it before hooking."
+}

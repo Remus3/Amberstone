@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "tank",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Q hook pulls self to wall or pulls target to you. Passive root on first hit each target.",
+  "aram": "Q + passive root chain CC. R single-target hard CC that goes through whole team."
+}

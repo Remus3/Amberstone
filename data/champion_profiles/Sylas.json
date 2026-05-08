@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "fighter",
+  "mana": true,
+  "sustain": true,
+  "mechanic": "Heals on Q double-hit. R Hijack steals enemy R. Best steal: Malphite, Orianna, Fiddle R.",
+  "aram": "Steal the most impactful enemy R. Leash chained targets together with E."
+}

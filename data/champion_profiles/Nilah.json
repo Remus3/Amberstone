@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": false,
+  "sustain": false,
+  "mechanic": "Passive shares assists. E to enemy on CC = engage+escape. W reduces healing on target.",
+  "aram": "Melee in ARAM requires ally CC first. Exceptional with hook/CC support."
+}
