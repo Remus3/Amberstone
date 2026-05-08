@@ -25,4 +25,14 @@ from agents.daemon_slayer.server import serve_forever  # noqa: E402
 
 
 if __name__ == "__main__":
+    import socket
+    # If port is already bound (e.g. task re-triggered while still running),
+    # exit 0 so the scheduled task doesn't record a failure.
+    s = socket.socket()
+    try:
+        s.bind(("127.0.0.1", 8893))
+        s.close()
+    except OSError:
+        s.close()
+        sys.exit(0)
     sys.exit(serve_forever())

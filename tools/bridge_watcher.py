@@ -128,6 +128,93 @@ def _read_json(path: Path, default: dict) -> dict:
         return dict(default)
 
 
+# ── Sliding 24h event ring ────────────────────────────────────────────
+# Persisted in _STATE_PATH under "event_ring_24h" so counts survive
+# watcher restarts (unlike *_since_boot which reset on restart).
+
+_MAX_RING_SIZE  = 5000   # cap to prevent unbounded growth on high-traffic nodes
+_RING_WINDOW_S  = 86400  # 24h sliding window
+_PUSH_THROTTLE_S  = 3600  # 1-hour window for push-notif throttle
+_PUSH_MAX_PER_HR  = 3     # max push notifications per hour per node
+
+
+def _ring_add(state: dict, kind: str, now: float) -> None:
+    """Append a timestamped event; keep ring bounded."""
+    ring = state.setdefault("event_ring_24h", [])
+    ring.append({"k": kind, "t": now})
+    if len(ring) > _MAX_RING_SIZE:
+        state["event_ring_24h"] = ring[-_MAX_RING_SIZE:]
+
+
+def _ring_age(state: dict, now: float) -> None:
+    """Drop entries older than 24h (call once per poll cycle)."""
+    ring = state.get("event_ring_24h")
+    if ring:
+        cutoff = now - _RING_WINDOW_S
+        state["event_ring_24h"] = [e for e in ring if e.get("t", 0) >= cutoff]
+
+
+def _ring_count(state: dict, kind: str, now: float) -> int:
+    """Count events of *kind* within the last 24h."""
+    cutoff = now - _RING_WINDOW_S
+    return sum(1 for e in (state.get("event_ring_24h") or [])
+               if e.get("k") == kind and e.get("t", 0) >= cutoff)
+
+
+def _push_eligible(state: dict, now: float) -> bool:
+    """Return True if throttle allows another push notification."""
+    times = state.get("push_notif_times") or []
+    recent = [t for t in times if now - t < _PUSH_THROTTLE_S]
+    return len(recent) < _PUSH_MAX_PER_HR
+
+
+def _send_push_notification(summary: str, source: str, node: str,
+                              state: dict, now: float,
+                              api_key_path: Optional[Path] = None) -> bool:
+    """Spawn headless claude --print to deliver a PushNotification.
+
+    Throttled to 3/hr.  Returns True if dispatched.  Silently no-ops if
+    no interactive Claude Code session is listening or claude not in PATH.
+    """
+    if not _push_eligible(state, now):
+        _log.debug("push notif throttled (>=%d in last hour)", _PUSH_MAX_PER_HR)
+        return False
+    msg = f"[bridge-watcher/{node}] new escalation from {source}: {summary}"
+    argv = [
+        "claude", "--print",
+        "--dangerously-skip-permissions",
+        "--allowed-tools", "PushNotification",
+        "-p", msg,
+    ]
+    env_vars = dict(os.environ)
+    if api_key_path and api_key_path.exists():
+        try:
+            env_vars["ANTHROPIC_API_KEY"] = api_key_path.read_text(encoding="utf-8").strip()
+        except OSError:
+            pass
+    import subprocess
+    try:
+        proc = subprocess.run(
+            argv, capture_output=True, text=True, timeout=20,
+            check=False, env=env_vars,
+        )
+        if proc.returncode != 0:
+            _log.warning("push notif failed rc=%d stderr=%s",
+                         proc.returncode, (proc.stderr or "")[:200])
+            return False
+    except (OSError, FileNotFoundError) as exc:
+        _log.warning("push notif spawn failed (claude not in PATH?): %s", exc)
+        return False
+    except Exception as exc:  # subprocess.TimeoutExpired or other
+        _log.warning("push notif error: %s", exc)
+        return False
+    times = [t for t in (state.get("push_notif_times") or []) if now - t < _PUSH_THROTTLE_S]
+    times.append(now)
+    state["push_notif_times"] = times
+    _log.info("push notif sent node=%s src=%s: %s", node, source, msg[:120])
+    return True
+
+
 # ── PID lock ──────────────────────────────────────────────────────────
 
 
@@ -312,13 +399,13 @@ def _write_heartbeat(stats: dict) -> None:
         "escalations_since_boot":  escalations,
         "errors_since_boot":       errors,
 
-        # Legacy aliases — DEPRECATED; will be removed after one release window.
-        # Same values as *_since_boot above. They were misleadingly named.
-        "auto_actions_24h": auto_actions,
-        "auto_ok_24h":      auto_ok,
-        "auto_err_24h":     auto_err,
-        "escalations_24h":  escalations,
-        "errors_24h":       errors,
+        # Sliding 24h-window counts (accurate — backed by persisted timestamp
+        # ring in state; no longer aliases for *_since_boot).
+        "escalations_24h":  int(stats.get("escalations_24h",  escalations)),
+        "auto_ok_24h":      int(stats.get("auto_ok_24h",      auto_ok)),
+        "auto_err_24h":     int(stats.get("auto_err_24h",     auto_err)),
+        "errors_24h":       int(stats.get("errors_24h",       errors)),
+        "auto_actions_24h": int(stats.get("auto_actions_24h", auto_actions)),
 
         "tokens_used_today_usd": stats.get("tokens_used_today_usd", 0.0),
     }
@@ -417,12 +504,14 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
     while not _STOP:
         try:
             _actions.reset_daily_spend_if_new_day(state)
+            _ring_age(state, time.time())
             since = state.get("last_seen_ts", 0.0)
             envelopes = _fetch_since(since, bridge_url)
             new_max_ts = since
             new_escalations = 0
             new_acks = 0
             new_auto = 0
+            first_new_esc: Optional[dict] = None
             for env in envelopes:
                 ts = float(env.get("ts") or 0)
                 if ts > new_max_ts:
@@ -447,6 +536,10 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
                 if cls == "escalate":
                     if _add_to_pending(env, reason):
                         new_escalations += 1
+                        _ring_add(state, "escalation", time.time())
+                        if first_new_esc is None:
+                            first_new_esc = {"source": env.get("source", "?"),
+                                             "summary": (env.get("summary") or "")[:120]}
                         _log.info("escalate id=%s src=%s kind=%s — %s",
                                   env.get("id"), env.get("source"),
                                   env.get("kind"), reason)
@@ -482,6 +575,7 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
                                 "note": "auto-action result reused from past-task memory",
                             }
                             stats["auto_ok_since_boot"] += 1
+                            _ring_add(state, "auto_ok", time.time())
                             _post_result_back(env, res_status="ok",
                                               body=cached_body, node=node, tools_dir=tools_dir)
                             _log.info("auto-action CACHE-HIT lane=%s id=%s sim=%.2f orig=%s ($0.00)",
@@ -500,6 +594,10 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
                                           f"{cached['hours_ago']}h ago) — escalating without retry")
                             if _add_to_pending(env, esc_reason):
                                 new_escalations += 1
+                                _ring_add(state, "escalation", time.time())
+                                if first_new_esc is None:
+                                    first_new_esc = {"source": env.get("source", "?"),
+                                                     "summary": (env.get("summary") or "")[:120]}
                             _log.info("auto-action SHORT-CIRCUIT-ESCALATE lane=%s id=%s reason=%s",
                                       cls, env.get("id"), esc_reason)
                             _history.record_outcome(
@@ -537,23 +635,50 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
 
                     if res_status == "ok":
                         stats["auto_ok_since_boot"] += 1
+                        _ring_add(state, "auto_ok", time.time())
                         _post_result_back(env, res_status="ok", body=res_body, node=node, tools_dir=tools_dir)
                         _log.info("auto-action OK lane=%s id=%s cost=$%.4f lat=%.1fs",
                                   cls, env.get("id"), cost, latency_s)
                     elif res_status == "error":
                         stats["auto_err_since_boot"] += 1
+                        _ring_add(state, "auto_err", time.time())
                         _post_result_back(env, res_status="error", body=res_body, node=node, tools_dir=tools_dir)
                         _log.warning("auto-action ERROR lane=%s id=%s cost=$%.4f reason=%s",
                                      cls, env.get("id"), cost, res_body.get("error", ""))
                     else:  # escalate
                         if _add_to_pending(env, f"auto-action escalated: {res_body.get('reason','')}"):
                             new_escalations += 1
+                            _ring_add(state, "escalation", time.time())
+                            if first_new_esc is None:
+                                first_new_esc = {"source": env.get("source", "?"),
+                                                 "summary": (env.get("summary") or "")[:120]}
                         _log.info("auto-action ESCALATE lane=%s id=%s reason=%s",
                                   cls, env.get("id"), res_body.get("reason", ""))
                 else:  # reject or unknown
                     _log.warning("reject id=%s src=%s kind=%s — %s",
                                  env.get("id"), env.get("source"),
                                  env.get("kind"), reason)
+
+            # Compute real 24h sliding counts from persisted ring.
+            _now = time.time()
+            stats["escalations_24h"]  = _ring_count(state, "escalation", _now)
+            stats["auto_ok_24h"]      = _ring_count(state, "auto_ok",    _now)
+            stats["auto_err_24h"]     = _ring_count(state, "auto_err",   _now)
+            stats["errors_24h"]       = _ring_count(state, "error",      _now)
+            stats["auto_actions_24h"] = stats["auto_ok_24h"] + stats["auto_err_24h"]
+
+            # Push notification for new escalations (throttled 3/hr).
+            if new_escalations and first_new_esc:
+                notif_n    = new_escalations
+                notif_src  = first_new_esc["source"]
+                notif_summ = first_new_esc["summary"]
+                if notif_n > 1:
+                    notif_summ = f"{notif_summ} (+{notif_n - 1} more)"
+                _send_push_notification(
+                    summary=notif_summ, source=notif_src, node=node,
+                    state=state, now=_now,
+                    api_key_path=_DEFAULT_API_KEY_PATH,
+                )
 
             state["last_seen_ts"] = new_max_ts
             state["processed_ids"] = list(processed_ids)
@@ -575,10 +700,12 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
         except (urllib.error.URLError, urllib.error.HTTPError, OSError, json.JSONDecodeError) as exc:
             stats["last_poll_ok"] = False
             stats["errors_since_boot"]  += 1
+            _ring_add(state, "error", time.time())
             _log.warning("poll failed: %s", exc)
         except Exception as exc:  # pragma: no cover — defensive
             stats["last_poll_ok"] = False
             stats["errors_since_boot"]  += 1
+            _ring_add(state, "error", time.time())
             _log.exception("unexpected error: %s", exc)
 
         _write_heartbeat(stats)
@@ -597,7 +724,69 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
     return 0
 
 
+def _selftest() -> int:
+    """Inline smoke-tests for sliding ring + push throttle.
+
+    Run with: py tools/bridge_watcher.py --selftest
+    """
+    errs = 0
+
+    def chk(label: str, ok: bool) -> None:
+        nonlocal errs
+        if ok:
+            print(f"ok  : {label}")
+        else:
+            print(f"FAIL: {label}")
+            errs += 1
+
+    now = 2_000_000.0
+
+    # ── ring: aging ──
+    s: dict = {}
+    _ring_add(s, "escalation", now - _RING_WINDOW_S - 1)  # just outside window
+    _ring_add(s, "escalation", now - _RING_WINDOW_S + 1)  # just inside window
+    _ring_add(s, "auto_ok",    now - 3_600)
+    _ring_add(s, "auto_ok",    now - 100)
+    _ring_age(s, now)
+    chk("ring: 1 escalation in 24h (stale entry aged)",
+        _ring_count(s, "escalation", now) == 1)
+    chk("ring: 2 auto_ok in 24h",
+        _ring_count(s, "auto_ok", now) == 2)
+    chk("ring: 0 error in 24h",
+        _ring_count(s, "error", now) == 0)
+    chk("ring: no entry older than window remains",
+        all(e.get("t", 0) >= now - _RING_WINDOW_S
+            for e in s.get("event_ring_24h", [])))
+
+    # ── ring: size cap ──
+    s2: dict = {}
+    for i in range(_MAX_RING_SIZE + 10):
+        _ring_add(s2, "escalation", now + i)
+    chk(f"ring: capped at {_MAX_RING_SIZE}",
+        len(s2.get("event_ring_24h", [])) == _MAX_RING_SIZE)
+
+    # ── push throttle ──
+    s3: dict = {}
+    chk("push: eligible with empty state",
+        _push_eligible(s3, now))
+    s3["push_notif_times"] = [now - 100, now - 200]
+    chk("push: eligible with 2 recent sends",
+        _push_eligible(s3, now))
+    s3["push_notif_times"] = [now - 100, now - 200, now - 300]
+    chk("push: blocked with 3 recent sends",
+        not _push_eligible(s3, now))
+    s3["push_notif_times"] = [now - 100, now - 200, now - _PUSH_THROTTLE_S - 1]
+    chk("push: eligible when one send expired",
+        _push_eligible(s3, now))
+
+    result = "PASS" if errs == 0 else "FAIL"
+    print(f"\nselftest: {result} ({errs} failure(s))")
+    return errs
+
+
 def main() -> int:
+    if "--selftest" in sys.argv:
+        return _selftest()
     p = argparse.ArgumentParser()
     p.add_argument("--node", required=True, choices=["legion", "gamepc", "peer"],
                    help="this machine's bridge label")
