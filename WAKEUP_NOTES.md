@@ -4,6 +4,23 @@
 
 ---
 
+# s124 wrap — 2026-05-08 (RC future-proofing plan — Opus 4.7 1M deep analysis)
+
+## What shipped
+- **`C:\Users\Administrator\Desktop\RC_FUTUREPROOFING_PLAN.md`** — robust phased plan to make RC easier to document/build. 7 phases ordered by leverage: (1) knowledge architecture (doc split + auto-archmap + ADRs), (2) god-module decomp (champion_profiles → game_reader → coach_integration → moon_vision_server), (3) frontend ESM modularity, (4) pydantic schemas (HTTP + bridge envelope + coaching payload), (5) CI + smoke harness, (6) bridge consolidation [needs frozen-file approval], (7) ergonomics.
+- Plan includes §0 session-budget cheat sheet (`/done` vs `/wrap` vs `/clear` vs continue decision matrix) so future sessions know when to checkpoint vs continue.
+- Plan is Desktop-resident on purpose: checkboxable, append findings, move closed phases to §5 DONE archive.
+
+## What's next
+- **Switch to Sonnet 4.6 high effort.** Pick up Phase 1.1 (living-vs-dated docs split) in next session.
+- Bootstrap pattern for next session: `/clear` → read plan on Desktop → say "Pick up Phase 1.1".
+- Phase 1 alone is highest leverage (zero runtime code change, makes every future session start from ground truth).
+
+## No code changes this session
+- No commits, no push. Plan artifact lives outside the repo on purpose (operator-facing checklist, not project deliverable).
+
+---
+
 # s123 wrap — 2026-05-08 (rc_facts bridge probe + DS exit 1 investigation)
 
 ## What shipped
