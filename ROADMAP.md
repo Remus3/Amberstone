@@ -25,7 +25,7 @@ Phased refactor plan (doc architecture → god module decomp → frontend ESM �
 
 | Phase | Status |
 |---|---|
-| 1 — Knowledge architecture | 🟠 In progress (this session = Phase 1.1) |
+| 1 — Knowledge architecture | ✅ Done (fc1361b — s125+s126) |
 | 2.1 — champion_profiles split | 🟡 Not started |
 | 5 — CI + smoke harness | 🟡 Not started |
 | 4 — Contracts/schemas | 🟡 Not started |
