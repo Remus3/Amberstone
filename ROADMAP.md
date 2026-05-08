@@ -258,7 +258,7 @@ tier removed per request.
 
 ### High priority (do soon)
 - **NOTE-025 — TFT OCR region recalibration**: bbox tuples in `tft/tft_ocr_reader.py` target 1600×900 but Game-PC streams 1920×1080. OCR will return garbage in TFT until re-calibrated against an in-TFT 1920×1080 frame. Blocked on user playing TFT to capture a calibration frame.
-- **vision_token rotation policy**: token was rotated this session — establish a quarterly rotation reminder.
+- ~~**vision_token rotation policy**~~ ✅ done — rotation procedure is fully documented in `core/vision_token.py` (6-step process + `debug()` helper). Token was last rotated 2026-04-28. Next rotation target: **~2026-08-01** (quarterly). Rotate via: generate `secrets.token_hex(16)` → write to `config/vision_token.txt` on Legion + `tools/vision_token.txt` on Game-PC → restart both sides → verify `get_vision_token_source()` returns `"config"` on both.
 - **Bridge Watcher acceptance-criteria measurement**: Plan §11 calls for ≥90% success on auto-read and ≥95% on auto-ops. Currently at 3 OK / 5 err on synthetic tests (errors all caught real bugs that are now fixed). Need 50+ real-traffic samples to validate — auto-accumulates as cross-Claude work happens. Watch `auto_ok_since_boot` vs `auto_err_since_boot` on RC heartbeat.
 - **Game-PC + Peer auto-action opt-in decision**: their watchers are installed but auto-action lanes are OFF. To enable: edit their `RC-BridgeWatcher-{Node}` XML, add `--enable-auto-action-lanes read[,ops]`, restart task. They also need to re-pull patched `bridge_watcher.py` + `bridge_watcher_actions.py` (3 parser bug fixes from 2026-05-03 live validation).
 - ~~**`/api/bridge/pending` dashboard panel + accept/defer/dismiss POST handlers**~~ ✅ shipped 2026-05-03 — Bridge Pending sub-page (`view-bridge-pending`) lists escalations with task_id / from / kind / summary / reason / prompt; menu badge shows pending depth; 20s poll, idempotent sig-based renders. Per-row buttons POST `/api/bridge/pending/<id>/{accept,defer,dismiss}` to `routes_bridge_pending_actions.py` (new sibling, not frozen): accept stamps `claimed_by=operator`; defer extends ttl_at by 24h; dismiss removes from queue (watcher's `processed_ids` dedup prevents re-add).
@@ -329,7 +329,7 @@ Any change here needs explicit user sign-off.
 - **Streaming vision** — instead of 2-second screen captures, push delta-encoded frames. Drops bandwidth ~5×.
 
 ### Data pipeline / patch automation
-- **Auto-rotate `items_index.json` on patch** — `data_pipeline.py items_index` was added this session. Schedule it via the cron skill alongside `cmd_aram_builds` so patch days are zero-touch.
+- ~~**Auto-rotate `items_index.json` on patch**~~ ✅ already covered — `cmd_all()` in `data_pipeline.py` calls `cmd_items_index()` and RC-PatchRefresh runs `all` weekly on Wednesdays.
 - ~~**Champion meta refresh**~~ ✅ shipped 2026-05-08 (commit 6bec3ce) — `_has_smite()` static method replaces the champion-name heuristic as tier-2 fallback; `_JUNGLE_CHAMPS` kept as tier-3 last resort. Smite detection works for any champion including off-meta picks and new releases. 8 new tests.
 - ~~**TFT Set data**~~ ✅ patched to 17.2 (2026-05-08, commit be3d168) — `tft_pbe_engine.py` system prompt updated: Encounters (21 total), God Blessings (24 choices across 6 gods), trait balance (Timebreaker rework, Meeple nerf, Stargazer Fountain disabled). `ENCOUNTERS` + `GOD_BLESSINGS` dicts added to `tft_pbe_data.py`. `tft_set17_meta.json` bumped to patch 17.2. Next: 17.3 due ~2026-05-12.
 
