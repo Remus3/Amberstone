@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "assassin",
+  "mana": false,
+  "sustain": true,
+  "mechanic": "Possess dead enemies. Passive heals on possession. Abilities reset on possessing.",
+  "aram": "Possess the most impactful enemy on death. Chain possessions in teamfights."
+}

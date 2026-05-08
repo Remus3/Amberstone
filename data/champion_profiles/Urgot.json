@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Kneel passive shreds armor. W Purge minigun. R Fear Beyond Death hooks low HP target.",
+  "aram": "W minigun mode in fights. R grab low HP targets for execute. Build Sunderer."
+}

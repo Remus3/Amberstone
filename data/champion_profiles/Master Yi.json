@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "assassin",
+  "mana": true,
+  "sustain": true,
+  "mechanic": "Q dodge autos; W heals and blocks damage. R Highlander resets on kills.",
+  "aram": "Q through burst spells. R reset chain with kills; build on-hit for AoE Q damage."
+}

@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "tank",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Ntofos (Q) stack for empowered slam. R removes tank stats but enables assassin burst.",
+  "aram": "Q stun into E displacement. R only when you want to burst someone — you lose tank stats."
+}

@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Everything is skillshots. Max Q range. R infinite range artillery.",
+  "aram": "R infinite-range from base. Q poke across bridge at max range. W AoE stun."
+}

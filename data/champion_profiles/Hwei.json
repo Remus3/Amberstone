@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Three ability books: QQ poke, WW despair zone, EE chain. Combo books for max damage.",
+  "aram": "EE chain pull bunches enemies for QQ poke or WW despair. Mana-hungry — Lost Chapter first."
+}

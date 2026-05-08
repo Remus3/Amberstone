@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "tank",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "W→Q combo = knockup into headbutt displacement. R reduces incoming damage 75%.",
+  "aram": "Headbutt enemies away from your carry; R makes you nearly unkillable."
+}

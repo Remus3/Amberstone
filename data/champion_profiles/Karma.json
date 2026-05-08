@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "support",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Mantra charges abilities. R+Q: AoE slow. R+W: root. R+E: AoE shield. Use Mantra wisely.",
+  "aram": "R+E AoE shield your whole team. R+Q poke for waveclear and slow."
+}

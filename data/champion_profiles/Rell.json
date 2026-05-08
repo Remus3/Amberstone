@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "tank",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Mount/dismount changes CC. W mounted = knockup, dismounted = stun lock.",
+  "aram": "R Ferromancy pull grouped enemies. Dismount W for stun in extended fights."
+}

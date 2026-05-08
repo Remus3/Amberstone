@@ -1,0 +1,8 @@
+{
+  "dmg": "hybrid",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "W Bio-Arcane gives long range + %HP damage. Passive death pew-pew. R global slow.",
+  "aram": "W range makes you a turret. Stay back, spam R as zoning tool."
+}

@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "fighter",
+  "mana": false,
+  "sustain": false,
+  "mechanic": "Overheat at 100 heat deals bonus magic damage. R Equalizer flame carpet is best AoE poke.",
+  "aram": "R across the ARAM corridor for constant DoT. Stay at 80 heat for empowered abilities."
+}

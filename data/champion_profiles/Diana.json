@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "assassin",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Q moonlight then R gap closes. Q+R→E AoE combo in grouped fights. Passive charges on 3-hit.",
+  "aram": "R resets on shielded (Q-marked) kills. Chain dive for resets across grouped enemies."
+}

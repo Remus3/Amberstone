@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "W picks up dropped summoner spells. Q arc amplifies on sleeping targets. E sleeps.",
+  "aram": "Hit E sleep for guaranteed Q follow-up. Pick up summ spells for double Flash/Ignite."
+}

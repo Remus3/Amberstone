@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": true,
+  "sustain": true,
+  "mechanic": "Q third hit knockup. R knocks back everyone but target. E airborne.",
+  "aram": "R to knock back the whole enemy team except your chosen target. Build Shojin."
+}

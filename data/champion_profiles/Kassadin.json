@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "assassin",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Passive 15% reduced magic damage. R Riftwalk blinks + scales with use.",
+  "aram": "Good vs AP-heavy ARAM. Riftwalk through enemy lines for disruptive positioning."
+}

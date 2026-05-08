@@ -59,7 +59,7 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 ### Coaching
 | File | Role |
 |---|---|
-| `champion_profiles.py` | static champion data (god module — extraction pending) |
+| `champion_profiles.py` | static champion data thin loader |
 | `coach_integration.py` | Haiku coaching dispatch + budget + cache (god module) |
 | `coaches/aram_coach.py` | ARAM + Mayhem mode coach — DS-before-Haiku |
 | `coaches/arena_coach.py` | Arena mode coach — DS-before-Haiku |
@@ -125,7 +125,7 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 | `web/js/dashboard.js` | 8507 | Phase 3 — ESM split |
 | `game_reader.py` | 1473 | Phase 2.2 — split to `core/game_reader/` |
 | `coach_integration.py` | 1217 | Phase 2.3 — split to `coach_integration/` |
-| `champion_profiles.py` | 902 | Phase 2.1 — extract to `data/champion_profiles/*.json` |
+| ~~`champion_profiles.py`~~ | ~~902~~ | ✅ Phase 2.1 done — 29 LOC thin loader + `data/champion_profiles/*.json` |
 | `moon_vision_server.py` | 701 | Phase 2.4 — split to `vision/` |
 
 Full decomposition plan: `C:\Users\Administrator\Desktop\RC_FUTUREPROOFING_PLAN.md`.

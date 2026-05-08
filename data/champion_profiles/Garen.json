@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": false,
+  "sustain": true,
+  "mechanic": "Passive regenerates HP out of combat. Q silences; E spins deal true damage on 6th tick.",
+  "aram": "Spin into grouped enemies for consistent AoE. Q silence key casters before their combo."
+}

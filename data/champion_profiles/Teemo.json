@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "W run fast. Passive camouflage while still. Shrooms invisible AoE slow/damage.",
+  "aram": "Shrooms at key chokepoints punish face-walking. Q blind disables ADCs. Build AP."
+}

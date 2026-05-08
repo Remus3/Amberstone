@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "tank",
+  "mana": true,
+  "sustain": true,
+  "mechanic": "W Devour: eat ally to protect or enemy to neutralize. Passive stacks on Q.",
+  "aram": "W eat a carry who is about to die, then spit them out safe. W enemy carry neutralizes them."
+}

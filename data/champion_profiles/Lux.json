@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "E snare on two targets if aimed through. Passive Luminescence auto for bonus burst.",
+  "aram": "E snare perpendicular to enemy line for double-snare. R global range cleanup."
+}

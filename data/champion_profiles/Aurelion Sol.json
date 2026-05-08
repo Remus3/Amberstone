@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Stardust stacks → bigger spells. Roam to stack mid-game; breached nexus = massive power spike.",
+  "aram": "Stack fast with Q poke. Breathe (E) across the ARAM bridge for free stacks."
+}

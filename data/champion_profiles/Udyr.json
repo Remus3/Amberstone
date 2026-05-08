@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": true,
+  "sustain": true,
+  "mechanic": "Phoenix stance AoE. Bear stance stun. Build tank+Sunfire for sustained fighter.",
+  "aram": "Phoenix AoE is constant damage in ARAM. Bear stance stun to chain with teammates."
+}

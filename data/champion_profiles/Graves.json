@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Short-range shotgun pellets. Reload (passive) after 2 shots. E dodge ability. True Grit armor stacks.",
+  "aram": "Stay point-blank for max shotgun damage. Build armor items — True Grit makes you a pseudo-tank."
+}

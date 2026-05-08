@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "W throw orb or enemy minion. E stun. R Unleashed Power: max orbs → execute.",
+  "aram": "Q spam to place orbs. E stun combo. R execute when 7 orbs are nearby."
+}

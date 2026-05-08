@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "support",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "W bounces three times for heal/damage. Q bubble — aim carefully. E empowers ally autos.",
+  "aram": "E your ADC for consistent bounce poke. Q bubble at choke for easy landing."
+}

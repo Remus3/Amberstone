@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "assassin",
+  "mana": false,
+  "sustain": false,
+  "mechanic": "Element-imbued Q: river = slow, wall = stun, grass = invisible. R sends elemental wave.",
+  "aram": "Imbue river/wall for CC. R stun entire grouped team by bouncing off terrain."
+}

@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "support",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Power Chord passive: 3 spell casts stacks for bonus auto effect. R Crescendo mass stun.",
+  "aram": "R Crescendo stuns everyone in ARAM corridor. Spam Q poke; auto for Power Chord procs."
+}

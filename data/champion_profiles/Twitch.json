@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Q go invisible, re-emerge with attack speed. E AoE expunge on stacked targets. R extended range + bonus AD.",
+  "aram": "Q then R for extended range mowing through grouped enemies. Stack poison passively in corridor."
+}
