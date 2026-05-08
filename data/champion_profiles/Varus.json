@@ -1,0 +1,8 @@
+{
+  "dmg": "hybrid",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Q channel longer = more damage. E stacks blight for W detonation. R chains enemies together.",
+  "aram": "R group root chains in ARAM. Stack blight with E+W burst. Q poke across bridge."
+}

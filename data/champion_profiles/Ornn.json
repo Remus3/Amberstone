@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "tank",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "W forge zone, E ram. R Living Forge upgrades your items, then others' items.",
+  "aram": "R upgrades give huge stats — use on carries first. CC chain with Q+E."
+}

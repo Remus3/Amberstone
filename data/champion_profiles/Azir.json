@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "W soldiers attack together with Q. R Emperor's Divide wall changes positions.",
+  "aram": "Soldiers do AoE poke across the lane. R wall blocks entire bridge path."
+}

@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Q charge-knockback. R Assault and Battery: locked-onto target gets knocked up + team KU.",
+  "aram": "R on carry then Q knockback anyone who touches you. Build Black Cleaver."
+}

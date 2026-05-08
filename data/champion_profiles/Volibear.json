@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "tank",
+  "mana": true,
+  "sustain": true,
+  "mechanic": "R lightning strike disables turrets briefly. W bite stun. Passive massive HP regen at low HP.",
+  "aram": "Passive regen at low HP makes you incredibly hard to kill. W bite frontliners."
+}

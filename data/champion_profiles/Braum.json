@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "support",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Passive 4-stack stun from ally procs. W Unbreakable blocks projectiles from the front.",
+  "aram": "Walk in front of your ADC. W blocks the whole team's poke from one direction."
+}

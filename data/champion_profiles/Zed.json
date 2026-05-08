@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "assassin",
+  "mana": false,
+  "sustain": false,
+  "mechanic": "W shadow teleport, E slows. R Death Mark creates shadow; return to it after burst.",
+  "aram": "W+R combo to burst a carry then escape with R shadow. Q in shadow clones hits all."
+}

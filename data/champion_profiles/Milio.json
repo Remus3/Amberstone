@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "support",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "W extend ally range. R AoE heal + cleanse. E shield.",
+  "aram": "R is the best teamfight reset. W your carry to extend their poke range."
+}

@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Evolve Q→E→W in order for most damage. W gravity field stuns after 1.5s.",
+  "aram": "W in corridor entrance for guaranteed stun. Fully evolved E+R deletes grouped enemies."
+}

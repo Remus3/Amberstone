@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Passive revives slain allies via villain kills. W grapple loop for sustained poke.",
+  "aram": "W around terrain for infinite poke; revive allies to instantly swing team fights."
+}

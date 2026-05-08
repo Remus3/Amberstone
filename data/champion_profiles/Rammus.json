@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "tank",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Thornmail passive + W Defensive Ball Curl reflects damage. Q accelerate then stop.",
+  "aram": "W+Thornmail kills auto-attackers. Taunt (E) your biggest AD threat."
+}

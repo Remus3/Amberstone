@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "assassin",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Passive mimic creates decoy. W returns you to origin. Sigil+W detonation is core burst.",
+  "aram": "W→W-return is your escape. Land E chain before full burst combo."
+}

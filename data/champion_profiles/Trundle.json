@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": true,
+  "sustain": true,
+  "mechanic": "Q enhances next auto. W Frozen Domain. R Subjugate steals target's resistances.",
+  "aram": "R on the enemy tank steals all their armor/MR. Build Sunfire for AoE damage."
+}

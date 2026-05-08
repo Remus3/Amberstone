@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Stack E on tower/enemy. W jump = escape. E reset on kill. Range grows with level.",
+  "aram": "Stack E on a target then all-in. W over enemy team for surprise burst."
+}

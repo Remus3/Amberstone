@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "E blink through terrain. R freezes self or target. Q+W chains, then R. True Ice passive reduces CD.",
+  "aram": "R on yourself inside enemy team + Zhonya's = frozen AoE bomb."
+}

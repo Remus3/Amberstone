@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Passive sidestep on every auto. Stack spears, E rend for slow. Oathsworn R launches support.",
+  "aram": "Rend (E) pokes permanently. R launch support for surprise engage/CC."
+}

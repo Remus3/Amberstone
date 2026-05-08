@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Q applies silver serpents. Eat oranges (W) to cleanse CC. R global slow from barrels.",
+  "aram": "Barrel chain explosions across the corridor. W cleanses every CC in game."
+}

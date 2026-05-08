@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": false,
+  "sustain": false,
+  "mechanic": "Windwall blocks all projectiles. E dash through minions/champions. R requires knockup.",
+  "aram": "Windwall blocks entire poke in ARAM corridor. Coordinate R with any knockup ally."
+}

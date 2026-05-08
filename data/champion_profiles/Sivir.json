@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Q Boomerang Blade bounces back for double hit. W ricochets on multiple targets. R gives team MS.",
+  "aram": "Spam Q for waveclear and poke. R gives your whole team MS for chase/escape."
+}

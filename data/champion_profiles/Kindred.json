@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Mark hunted targets for bonus stacks (AD/AS). R Lamb's Respite prevents killing blow for all.",
+  "aram": "R saves your whole team from executes. Time R just before anyone dies."
+}

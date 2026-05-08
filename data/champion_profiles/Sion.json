@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "tank",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Q channels for bigger shield+knockup. W shield explodes for AoE. R unstoppable charge.",
+  "aram": "R from behind for max speed. Q channel for full knockup combo. Build pure HP."
+}

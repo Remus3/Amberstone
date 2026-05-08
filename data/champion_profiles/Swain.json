@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": true,
+  "mechanic": "E roots then detonates for pull. R Demonic Ascension drains nearby enemies + heals.",
+  "aram": "E root into team for pull onto grouped enemies. R in the middle of a fight heals you massively."
+}

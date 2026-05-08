@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Turrets focus nearest target. E stun. R empowers any ability — R+E is best CC.",
+  "aram": "Place three turrets at the front. R+E for guaranteed stun setup into your turrets."
+}

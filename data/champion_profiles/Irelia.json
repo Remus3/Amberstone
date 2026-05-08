@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Q resets on low-HP targets. Passive mark stacks; 4-stack Q slows. E disarm.",
+  "aram": "Farm low-HP minions for Q resets, then dive into resets on kills."
+}

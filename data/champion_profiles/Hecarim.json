@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "W heals on damage dealt nearby. R fear on landing — use from off-screen for full terror.",
+  "aram": "Run at them. W sustains through sustained fights. R from flanks."
+}

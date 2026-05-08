@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": false,
+  "sustain": false,
+  "mechanic": "W outer ring true damage, inner ring heals. E hook grapple, second click launches. R isolates a target.",
+  "aram": "Gap close with E, isolate with R. Build Goredrinker for sustain fights."
+}

@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Q stacks empowerment. Empowered abilities at 25/125/225 stacks.",
+  "aram": "Stack Q aggressively. At 225+ stacks your AoE Q deletes grouped enemies."
+}

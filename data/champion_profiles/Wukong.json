@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "W clone decoy + invisibility. R Cyclone knock-up spins into crowd then resets.",
+  "aram": "R twice into grouped enemies for two knockup waves. W to dodge key burst."
+}

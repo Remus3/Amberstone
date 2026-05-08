@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": false,
+  "sustain": false,
+  "mechanic": "Skaarl mount = extra HP bar. Scarlett Q hooks then dismounts → remount on Q2 hit.",
+  "aram": "Stay mounted for max HP. Q hook + remount combo is your trade pattern."
+}

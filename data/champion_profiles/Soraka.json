@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "support",
+  "mana": true,
+  "sustain": true,
+  "mechanic": "Q Starcall gives healing if hits enemy. R Wish global healing. Silence (E).",
+  "aram": "E silence stops channeled ults. R global heal saves allies across the map."
+}

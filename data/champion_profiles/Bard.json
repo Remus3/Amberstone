@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "support",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Meeps deal bonus magic damage; collect chimes for AP. R Cosmic Binding freezes all targets hit.",
+  "aram": "R stasis on whole enemy team is a teamfight reset. Poke with Q+W between fights."
+}

@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": true,
+  "sustain": true,
+  "mechanic": "Q outer ring deals max damage and heals. 5-stack Hemorrhage enables Noxian Guillotine resets.",
+  "aram": "Build Black Cleaver for shred + armor. Q outer edge is priority — never stand in center of your own Q."
+}

@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": false,
+  "sustain": true,
+  "mechanic": "W Haymaker uses Grit HP for massive true damage. R Facebreaker slams grabbed target.",
+  "aram": "Tank damage to build Grit, release W for burst. R grabs isolated carry into your team."
+}

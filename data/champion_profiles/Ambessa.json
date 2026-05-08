@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": false,
+  "sustain": false,
+  "mechanic": "Passive dash resets on ability casts. High mobility frontline fighter.",
+  "aram": "Dash aggressively through enemies; chain resets for maximum damage uptime."
+}

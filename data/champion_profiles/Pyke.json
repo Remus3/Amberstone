@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "support",
+  "mana": true,
+  "sustain": true,
+  "mechanic": "W invisibility+speed. Passive HP over health turns excess to AD. R kills share gold.",
+  "aram": "W to stalk then hook. E+Q combo. R execute shares gold with whole team."
+}

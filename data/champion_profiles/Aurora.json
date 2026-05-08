@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Spirit mechanic reduces incoming damage. R repositions enemies.",
+  "aram": "Use terrain to your advantage; R displacement in tight ARAM corridor is high value."
+}

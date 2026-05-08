@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "E Twin Fang resets on poisoned targets — spam only when Q/W poisoned. R stun if facing you.",
+  "aram": "Q W poison then spam E resets. Position to turn your R toward enemies at engage."
+}

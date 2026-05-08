@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "fighter",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Human E cocoon stun, then spider form rappel. Cocoon hit enables free W spider bite.",
+  "aram": "Land E stun for your team. Spider form W for sustained damage on a stunned target."
+}

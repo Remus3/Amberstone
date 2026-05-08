@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "assassin",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Pack leader spawns packmates. R empowered dash with dog pack.",
+  "aram": "R through enemies; dogs add damage. Straightforward burst assassin."
+}

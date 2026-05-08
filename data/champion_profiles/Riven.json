@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": false,
+  "sustain": false,
+  "mechanic": "3-Q animation cancels with autos for CDR. W stun. R empowers then executes at low HP.",
+  "aram": "Q3→auto animation cancel for max damage. R execute when below 50% HP."
+}

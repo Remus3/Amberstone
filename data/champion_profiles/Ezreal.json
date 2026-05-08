@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Q reduces all CDs by 1.5s — spam Q every wave. E blink is your only escape.",
+  "aram": "Spam Q for CD reduction; never waste E offensively without a second escape plan."
+}

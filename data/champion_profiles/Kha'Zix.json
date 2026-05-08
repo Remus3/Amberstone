@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "assassin",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Isolation bonus damage on Q. Evolutions in order: Q→E→W for most lanes.",
+  "aram": "Isolation is hard in ARAM but Q still bursts. Evolved E for engage/escape."
+}

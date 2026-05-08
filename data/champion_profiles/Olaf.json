@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": true,
+  "sustain": true,
+  "mechanic": "E true damage. R becomes CC-immune. Low HP = faster attack speed via passive.",
+  "aram": "R makes you unkillable vs CC comps. Run straight at them at 30% HP."
+}

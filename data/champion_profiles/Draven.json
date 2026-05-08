@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Catch spinning axes (Q) for bonus damage stacking. League of Draven passive converts kills to gold.",
+  "aram": "Axes bounce predictably in ARAM lane. Stack early; R for shutdown gold if ahead."
+}

@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Q blind. E vault marks, auto to proc. R Skystrike in/out for burst repositioning.",
+  "aram": "Vault a target, auto-proc for burst. Q blind disables auto-attack heavy enemies."
+}
