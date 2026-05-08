@@ -223,6 +223,15 @@ def capture_state():
                 ],
                 "local_cell": local_cell,
             }
+    # Capture Riot game_id from gameflow session when a game is live.
+    # Used by Legion's DS calibration pipeline for post-game correlation.
+    if state["phase"] in ("GameStart", "InProgress"):
+        gflow, _ = lcu_request("GET", "/lol-gameflow/v1/session")
+        if isinstance(gflow, dict):
+            gid = str(gflow.get("gameData", {}).get("gameId") or "")
+            if gid and gid != "0":
+                state["game_id"] = gid
+
     state["ts"] = time.time()
     return state
 

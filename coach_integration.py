@@ -905,6 +905,7 @@ class CoachIntegration:
                 from core.ds_calibration import log_ds_run as _ds_log
                 _ds_log(champion=champion, mode="SR", level=int(game_state.get("level", 1)) or 1,
                         owned_items=list(_owned_ids),
+                        game_id=str(game_state.get("game_id") or ""),
                         ds_picks=[{"item_id": r.item_id, "item_name": r.item_name,
                                    "delta_dps": round(r.delta_dps, 2), "gold": r.gold}
                                   for r in _ds_rows])
