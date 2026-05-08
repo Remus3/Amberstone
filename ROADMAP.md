@@ -290,7 +290,7 @@ Any change here needs explicit user sign-off.
 - ~~**Adaptive idle/active polling cadence + `/sleep` `/wake` slash commands**~~ ✅ shipped 2026-05-07 (commit 05983a4) — `_read_mode()` reads `ops/runtime/bridge_watcher_mode.json`; active=15s, sleep=300s, auto=self-managing. `GET/POST /api/bridge/cadence` endpoint. Cross-node control deferred (classifier frozen).
 - ~~**Sliding 24h-window counters**~~ ✅ shipped 2026-05-07 (commit f6095a0) — `event_ring_24h` persisted in state; `*_24h` heartbeat fields now reflect true 24h windows. Ring survives restarts.
 - ~~**Push notifications for escalations**~~ ✅ shipped 2026-05-07 (commit f6095a0) — `_send_push_notification()` spawns headless `claude --print --allowed-tools PushNotification`; throttled 3/hr.
-- **Auto-action restraint by node load**: when RC-Supervisor or RC main process is degraded (high CPU, recent restart), watcher should suppress auto-action and escalate everything. Avoid competing for resources during incidents.
+- ~~**Auto-action restraint by node load**~~ ✅ shipped 2026-05-08 (commit f3ae4cb) — `_check_rc_health()` pure function; suppresses auto-lanes when RC is dead/booting/stale-heartbeat/grace-restart. `auto_suppressed_since_boot` + `_24h` counters in heartbeat. 9 new selftests; 30/30 pass.
 - ~~**Bridge Watcher artifact rotation**~~ ✅ shipped 2026-05-07 (commit 6dd91ff) — `_rotate_artifacts()` runs once per day; deletes `bridge_action_artifacts/` files older than 7 days OR in processed_ids. Defensive per-file error handling.
 - **Auto-ops verb expansion**: current Legion `auto_ops_verbs` are conservative (4 entries). Once Phase 3 success rate clears 95%, add: `tail .* log` → `Bash(type tail-N)`, `restart agent .*` → `schtasks /Run /TN`, `verify .*` → `curl health`.
 - **Per-call cost histogram**: track median/p95 cost per lane in Prometheus; alert if p95 doubles week-over-week (model regression or prompt drift).
@@ -330,8 +330,8 @@ Any change here needs explicit user sign-off.
 
 ### Data pipeline / patch automation
 - **Auto-rotate `items_index.json` on patch** — `data_pipeline.py items_index` was added this session. Schedule it via the cron skill alongside `cmd_aram_builds` so patch days are zero-touch.
-- **Champion meta refresh** — `_JUNGLE_CHAMPS` set is currently maintained manually. DDragon's `tags` field has `Tank`/`Mage`/`Assassin` etc. — derive the set programmatically.
-- **TFT Set data** — `tft/tft_data.py` is seeded for Set 14 / patch 15.x; current is 16.8.1. Build a Set-aware loader from cdragon TFT data.
+- ~~**Champion meta refresh**~~ ✅ shipped 2026-05-08 (commit 6bec3ce) — `_has_smite()` static method replaces the champion-name heuristic as tier-2 fallback; `_JUNGLE_CHAMPS` kept as tier-3 last resort. Smite detection works for any champion including off-meta picks and new releases. 8 new tests.
+- ~~**TFT Set data**~~ ✅ patched to 17.2 (2026-05-08, commit be3d168) — `tft_pbe_engine.py` system prompt updated: Encounters (21 total), God Blessings (24 choices across 6 gods), trait balance (Timebreaker rework, Meeple nerf, Stargazer Fountain disabled). `ENCOUNTERS` + `GOD_BLESSINGS` dicts added to `tft_pbe_data.py`. `tft_set17_meta.json` bumped to patch 17.2. Next: 17.3 due ~2026-05-12.
 
 ### Reliability / hardening
 - **MCP server timeout** — `run_powershell` already has subprocess timeout; the broader concern is hung tool dispatch. Consider `concurrent.futures` watchdog at the server tier.
