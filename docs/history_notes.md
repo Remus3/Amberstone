@@ -6,6 +6,7 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+- **s116 2026-05-08** — Game-PC boot fix + Smite jungler detection (1ef54e3/2229d89/6bec3ce): `gamepc_boot.ps1` now calls `start_gamepc_claude.ps1`; Smite-based 3-tier jungler cascade in `game_reader.py`; 8 new tests.
 - **s115 2026-05-07** — DS calibration game_id wiring (d66d14b): `gamepc_lcu_agent.py` fetches `gameData.gameId` in-game; `game_reader.py` reads `/latest-lcu` relay; `coach_integration.py` passes game_id to `log_ds_run()`.
 - **s114 2026-05-07** — Bridge Watcher Phase 3 (6dd91ff): `--dry-run` mode, artifact rotation, self-healing watchdog thread; 21/21 selftests.
 - **s113 2026-05-07** — Bridge Watcher Phase 2 (05983a4): adaptive cadence (`_read_mode()`), active/sleep/auto modes, `/api/bridge/cadence`, `/sleep`+`/wake` slash commands.
