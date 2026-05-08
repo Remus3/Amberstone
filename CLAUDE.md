@@ -145,3 +145,4 @@ When invoked with `/done` or asked to wrap a session: (1) audit pending changes,
 9. ✅ SR jungler detection — Smite-based 3-tier cascade (6bec3ce): zone → Smite → _JUNGLE_CHAMPS fallback.
 10. ✅ RC dev panel — `⚙ Dev / Sim Preview` view (7424e24): sim fixtures + vision status + log tail. `dashboard/routes_dev.py` + CSS view-switch rules.
 11. 🟡 gamepc_boot.ps1 hardening — add `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC` to idempotent start sequence (currently missing; must be `Start-ScheduledTask`'d manually after socket exhaustion events).
+12. ✅ rc_facts bridge probe — replaced stale log-age anomaly with `/api/health/all` peers probe (04a305b); DS health line added; RC-DaemonSlayer false alarm suppressed.

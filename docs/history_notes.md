@@ -6,6 +6,7 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+- **s120 2026-05-08** — RC dev panel shipped (7424e24): `⚙ Dev / Sim Preview` view with SIM FIXTURES, VISION STATUS, RC LOG TAIL cards; `dashboard/routes_dev.py` + CSS view-switch.
 - **s119 2026-05-08** — Roadmap: 5 items shipped — Phase 4 SessionStart enrichment (d069e4d), DS startup diagnostics (04e63d4), SR coach objective_window fix (e8d976b), bridge introspection `?source=` param (5a790d2), ROADMAP closures (items_index rotation, vision_token policy).
 - **s118 2026-05-08** — Bridge Watcher node-load restraint (f3ae4cb): `_check_rc_health()` downgrades auto-action to escalate when RC degraded; push notifications suppressed during degraded cycles; 30/30 selftests pass; watcher pid=15004.
 - **s116 2026-05-08** — Game-PC boot fix + Smite jungler detection (1ef54e3/2229d89/6bec3ce): `gamepc_boot.ps1` now calls `start_gamepc_claude.ps1`; Smite-based 3-tier jungler cascade in `game_reader.py`; 8 new tests.
