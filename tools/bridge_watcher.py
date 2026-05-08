@@ -65,10 +65,13 @@ _ARTIFACTS_DIR: Path = _DEFAULT_DATA_DIR / "bridge_action_artifacts"
 _ACTION_PROMPT: Path = _DEFAULT_TOOLS_DIR / "bridge_watcher_action_prompt.md"
 _CONFIG_PATH:   Path = _DEFAULT_TOOLS_DIR / "bridge_watcher_config.json"
 _HISTORY_DB:    Path = _DEFAULT_DATA_DIR / "bridge_action_history.db"
+_MODE_PATH:     Path = _DEFAULT_DATA_DIR / "bridge_watcher_mode.json"
 
 _DEFAULT_POLL_S = 15.0
 _DEFAULT_LOOKBACK_S = 86400  # 24h
 _PENDING_TTL_S = 86400       # 24h before a pending entry auto-expires
+_SLEEP_POLL_S  = 300         # poll interval when mode=sleep or auto-idle
+_AUTO_IDLE_S   = 900         # seconds without kind=task before auto drops to sleep
 
 # Default bridge URL per node. Phase 1 nodes can override via --bridge-url.
 #   legion : own loopback (RC dashboard hosts the bridge log)
@@ -159,6 +162,13 @@ def _ring_count(state: dict, kind: str, now: float) -> int:
     cutoff = now - _RING_WINDOW_S
     return sum(1 for e in (state.get("event_ring_24h") or [])
                if e.get("k") == kind and e.get("t", 0) >= cutoff)
+
+
+def _read_mode() -> str:
+    """Read cadence sentinel; return mode or 'active' on missing/invalid file."""
+    raw = _read_json(_MODE_PATH, {})
+    mode = str(raw.get("mode", "active")).strip().lower()
+    return mode if mode in ("active", "sleep", "auto") else "active"
 
 
 def _push_eligible(state: dict, now: float) -> bool:
@@ -408,6 +418,10 @@ def _write_heartbeat(stats: dict) -> None:
         "auto_actions_24h": int(stats.get("auto_actions_24h", auto_actions)),
 
         "tokens_used_today_usd": stats.get("tokens_used_today_usd", 0.0),
+
+        # Cadence mode (read from sentinel file each poll cycle)
+        "cadence_mode":      stats.get("cadence_mode", "active"),
+        "effective_poll_s":  stats.get("effective_poll_s", _DEFAULT_POLL_S),
     }
     try:
         _atomic_write_json(_HEALTH_PATH, payload)
@@ -486,6 +500,9 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
     _actions.reset_daily_spend_if_new_day(state)
 
     started_at = time.time()
+    # last_task_ts — epoch of last kind=task envelope; determines auto-mode sleep.
+    # Default to started_at so a fresh restart begins in active cadence.
+    state.setdefault("last_task_ts", started_at)
     processed_ids: set = set(state.get("processed_ids") or [])
     # Counters reset on each watcher process restart (truly *_since_boot).
     stats = {
@@ -520,6 +537,8 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
                 if key in processed_ids:
                     continue
                 processed_ids.add(key)
+                if env.get("kind") == "task":
+                    state["last_task_ts"] = time.time()
                 # Pass any-lane-enabled to classifier; per-lane gate runs below
                 cls, reason = classify(env, node=node,
                                        node_config=node_config,
@@ -708,6 +727,18 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
             _ring_add(state, "error", time.time())
             _log.exception("unexpected error: %s", exc)
 
+        # Determine effective poll interval from cadence sentinel (read once
+        # per poll cycle — not during sleep — to avoid excess FS reads).
+        _cmode = _read_mode()
+        if _cmode == "sleep":
+            _eff_poll = _SLEEP_POLL_S
+        elif _cmode == "auto":
+            _idle_s = time.time() - state.get("last_task_ts", started_at)
+            _eff_poll = _SLEEP_POLL_S if _idle_s > _AUTO_IDLE_S else poll_s
+        else:
+            _eff_poll = poll_s
+        stats["cadence_mode"]     = _cmode
+        stats["effective_poll_s"] = _eff_poll
         _write_heartbeat(stats)
 
         if once:
@@ -716,8 +747,8 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
 
         # Sleep in 0.5 s chunks so SIGTERM lands fast.
         slept = 0.0
-        while slept < poll_s and not _STOP:
-            time.sleep(min(0.5, poll_s - slept))
+        while slept < _eff_poll and not _STOP:
+            time.sleep(min(0.5, _eff_poll - slept))
             slept += 0.5
 
     _log.info("bridge_watcher exiting cleanly")
@@ -779,6 +810,17 @@ def _selftest() -> int:
     chk("push: eligible when one send expired",
         _push_eligible(s3, now))
 
+    # ── cadence mode logic ──
+    base = 15.0
+    chk("cadence: auto idle<threshold → base poll",
+        (base if 100 <= _AUTO_IDLE_S else _SLEEP_POLL_S) == base)
+    chk("cadence: auto idle>threshold → sleep poll",
+        (_SLEEP_POLL_S if 1000 > _AUTO_IDLE_S else base) == _SLEEP_POLL_S)
+    chk("cadence: sleep mode → _SLEEP_POLL_S",
+        _SLEEP_POLL_S == 300)
+    chk("cadence: _AUTO_IDLE_S is 15 min",
+        _AUTO_IDLE_S == 900)
+
     result = "PASS" if errs == 0 else "FAIL"
     print(f"\nselftest: {result} ({errs} failure(s))")
     return errs
@@ -820,7 +862,7 @@ def main() -> int:
         return 2
 
     # Re-bind path globals if operator passed --data-dir / --log-dir.
-    global _HEALTH_PATH, _PENDING_PATH, _STATE_PATH, _PID_PATH, _LOG_DIR, _ARTIFACTS_DIR, _ACTION_PROMPT, _CONFIG_PATH, _HISTORY_DB
+    global _HEALTH_PATH, _PENDING_PATH, _STATE_PATH, _PID_PATH, _LOG_DIR, _ARTIFACTS_DIR, _ACTION_PROMPT, _CONFIG_PATH, _HISTORY_DB, _MODE_PATH
     if args.data_dir:
         d = Path(args.data_dir).expanduser().resolve()
         _HEALTH_PATH    = d / "bridge_watcher_health.json"
@@ -829,6 +871,7 @@ def main() -> int:
         _PID_PATH       = d / "bridge_watcher.pid"
         _ARTIFACTS_DIR  = d / "bridge_action_artifacts"
         _HISTORY_DB     = d / "bridge_action_history.db"
+        _MODE_PATH      = d / "bridge_watcher_mode.json"
     if args.log_dir:
         _LOG_DIR = Path(args.log_dir).expanduser().resolve()
 
