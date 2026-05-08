@@ -22,12 +22,17 @@ ignore = [
     "B006",   # mutable default args — known pattern in project
     "UP007",  # X | Y union syntax — requires py310, project targets py39
     "UP035",  # deprecated typing imports — keep for py39 compat
+    "UP037",  # remove quoted annotations — frozen files carry quoted forward-refs
     "F401",   # imported but unused — too noisy, especially in __init__.py
     "F841",   # local variable assigned but never used — noisy in callbacks
     "I001",   # import block unsorted — defer to a dedicated cleanup pass
     "UP006",  # Dict/List → dict/list — py39 supports both, cosmetic only
     "UP045",  # Optional[X] → X | None — requires py310, project targets py39
     "E402",   # module import not at top — unavoidable in ops/ sys.path scripts
+    "B904",   # raise without from inside except — existing RC style
+    "B007",   # unused loop variable — intentional in callbacks
+    "B027",   # empty method without abstract — BaseCoach stub pattern
+    "E731",   # lambda assignment — intentional one-liners in RC
 ]
 
 # Don't lint generated/runtime/cache dirs
@@ -45,6 +50,16 @@ exclude = [
 "ops/*.py" = ["B"]          # ops scripts are procedural, bugbear too strict
 "scripts/*.py" = ["B", "I"] # one-off scripts, ignore import order
 "*/__init__.py" = ["F401"]  # __init__.py re-exports are expected
+# Frozen app/ submodules use quoted forward-refs to OverlayApp/GameEnvelope
+# (circular-import prevention) — ruff can't resolve them as F821
+"app/_game_lifecycle.py" = ["F821"]
+"app/_health_monitor.py" = ["F821"]
+"app/_overlay_manager.py" = ["F821"]
+"app/_remediation.py"    = ["F821"]
+"app/_state_authority.py" = ["F821"]
+# Frozen bridge tools — exclude all lint upgrades to prevent auto-fix drift
+"tools/bridge_pull_tasks.py"   = ["UP", "E", "B"]
+"tools/bridge_post_result.py"  = ["UP", "E", "B"]
 
 [lint.isort]
 known-first-party = [

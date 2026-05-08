@@ -140,7 +140,8 @@ class TestTftWorkerContract(unittest.TestCase):
 
     def test_coaching_gate_disabled_skips_engine(self):
         """When tft.live_coaching is disabled, engine.submit() is not called."""
-        import json, tempfile
+        import json
+        import tempfile
         import core.feature_policy as fp
         with tempfile.TemporaryDirectory() as td:
             cfg = Path(td) / "feature_flags.json"

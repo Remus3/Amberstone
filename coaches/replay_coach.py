@@ -107,7 +107,7 @@ def _format_for_prompt(blob: dict[str, Any]) -> str:
         ev_lines.append(f"  {ts//60}:{ts%60:02d} {et}")
     return (
         f"{header}\n\nParticipants:\n" + "\n".join(team_lines) +
-        f"\n\nTimeline samples:\n" + "\n".join(ev_lines[:80])
+        "\n\nTimeline samples:\n" + "\n".join(ev_lines[:80])
     )
 
 

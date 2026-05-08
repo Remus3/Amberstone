@@ -64,7 +64,7 @@ class CallContextTests(unittest.TestCase):
     def test_callable_returning_int_coerces_to_float(self) -> None:
         proc = PeriodicProc(
             name="int_returner",
-            bonus_damage=lambda c: int(50),
+            bonus_damage=lambda c: 50,
             damage_type=PHYSICAL,
             every_n_attacks=1,
         )
@@ -6755,7 +6755,8 @@ class Batch55DDragonCoverageTests(unittest.TestCase):
 
     def test_ddragon_purchasable_coverage_complete(self) -> None:
         """Every DDragon purchasable item (gold>0, not 9xxx/55xxx) has an entry."""
-        import json, os
+        import json
+        import os
         items_path = os.path.join(
             os.path.dirname(__file__), "..", "..", "..", "data",
             "daemon_slayer", "16.9.1", "items.json"

@@ -110,12 +110,12 @@ def _validate_config(
         if is_optional_file:
             return ValidationResult(
                 file=rel_path, status="SKIP",
-                message=f"Not present (optional/future file — expected for later Phase 1 step)",
+                message="Not present (optional/future file — expected for later Phase 1 step)",
                 issues=[],
             )
         return ValidationResult(
             file=rel_path, status="ERROR",
-            message=f"Required config file not found",
+            message="Required config file not found",
             issues=[f"File missing: {rel_path}"],
         )
 

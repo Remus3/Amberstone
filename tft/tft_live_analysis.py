@@ -54,11 +54,11 @@ _NOT_UNIT_LABELS={
     "chemtech","enforcer","hextech","innovator","transformer","socialite","syndicate",
     "mercenary","scholar","scrap","bruiser","colossus","mutant","yordle","yordle-tech",
     # Set 17 trait names that OCR misreads as unit names
-    "forgefire","nova","n.o.v.a","timebreaker","space","groove","eternal","harvester",
+    "forgefire","n.o.v.a","eternal","harvester",
     "chronokeeper","automata","conqueror","divinity","celestial","divine","radiant",
     "contract","killer","god","boon","prismatic","silver","gold","stellar",
     # Generic trait/descriptor words not valid as unit names
-    "2-star","3-star","1-star","star","tier","cost","unit","champion","unknown",
+    "2-star","3-star","1-star","tier","cost","unit","champion","unknown",
     "empty","front","back","mid","row","col","tank","carry","support","dps",
     "trait","origin","class","active","inactive","breakpoint",
 }
@@ -271,7 +271,7 @@ class TftLiveAnalysis:
         except Exception: pass
         _ml = _pd.get("manual_level") if _bc or _ep else None
         if not _ml:
-            try: _ml = _j.loads(_pf.read_text(encoding="utf-8")).get("manual_level") if _pf.exists() else None
+            try: _ml = _pj.loads(_pf.read_text(encoding="utf-8")).get("manual_level") if _pf.exists() else None
             except Exception: pass
         if _bc: ac=(ac+"\nCONFIRMED ON BOARD: "+", ".join(_bc)+".").strip()
         if _ep: ac=(ac+"\nALSO PRESENT (not in comp): "+", ".join(_ep)+".").strip()

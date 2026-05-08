@@ -552,7 +552,7 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
         "",
         f"YOUR ALLIES (same team — use [A] tags): {ally_status}",
         f"ENEMY TEAM (opponents — use [E] tags): {enemies}",
-        f"REMINDER: [A]=ally (green), [E]=enemy (red) — do NOT swap.",
+        "REMINDER: [A]=ally (green), [E]=enemy (red) — do NOT swap.",
         f"Enemy locations: {enemy_locs}",
     ]
     if dead_info:  # enemy respawn timers — critical for macro decisions

@@ -1,0 +1,28 @@
+{
+  "_comment": "Golden snapshot for BRAWL translation. Generated from BRAWL_STATE fixture.",
+  "snapshot_type": "rift",
+  "game_mode": "NEXUSBLITZ",
+  "champion": "Ahri",
+  "level": 9,
+  "gold": 2500,
+  "cs": 55,
+  "hp_pct": 71,
+  "kda": "3/1/4",
+  "items": [
+    "Luden's Tempest",
+    "Shadowflame"
+  ],
+  "ally_comp": [
+    "Nasus",
+    "Leona",
+    "Jhin"
+  ],
+  "enemy_comp": [
+    "Yasuo",
+    "Zed",
+    "Blitzcrank",
+    "Caitlyn",
+    "Lux"
+  ],
+  "raw_state_present": true
+}

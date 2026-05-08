@@ -42,7 +42,7 @@ LAST_SEEN_FILE = os.path.join(_local, "rc-bridge-last-seen.txt")
 
 def read_last_seen() -> float:
     try:
-        return float(open(LAST_SEEN_FILE, "r", encoding="utf-8").read().strip())
+        return float(open(LAST_SEEN_FILE, encoding="utf-8").read().strip())
     except Exception:
         # First run: only show messages from the last 30 minutes
         return time.time() - 1800
