@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Headshot procs from trap hits and net. E (net) = primary escape, never burn offensively if dive risk.",
+  "aram": "Lay traps on choke points. R finishes fleeing targets; use Q+passive combos for sustained poke."
+}

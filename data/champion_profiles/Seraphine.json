@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "support",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Note passive repeats ability near ally. R extends range from hitting allies.",
+  "aram": "Chain R through allies for maximum range. Stage Presence notes amplify all abilities."
+}

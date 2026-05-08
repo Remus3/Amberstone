@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "assassin",
+  "mana": false,
+  "sustain": false,
+  "mechanic": "Passive ring proc maximises damage. W smoke shroud breaks targeting.",
+  "aram": "Dive squishy backline through frontline. W vs targeted spells, not AoE."
+}

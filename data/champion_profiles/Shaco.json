@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "assassin",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Q blink and invisible for 3.5s. Boxes fear. R clone explodes on death.",
+  "aram": "Boxes at chokepoints fear everything. Q from fog then burst. Clone baits abilities."
+}

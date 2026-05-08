@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": false,
+  "sustain": true,
+  "mechanic": "Riposte (W) parries any CC into stun. Vital system: hit 4 vitals on a champion for massive heal.",
+  "aram": "Vital locations are fixed — memorize them. W parry high-impact CC for game-changing stun."
+}

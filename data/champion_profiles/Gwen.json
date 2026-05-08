@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "fighter",
+  "mana": false,
+  "sustain": true,
+  "mechanic": "W Hallowed Mist blocks enemy abilities from outside. Q hits count as true damage in center.",
+  "aram": "W to negate poke in fights. Sustain makes her hard to kill. Build Riftmaker+BORK."
+}

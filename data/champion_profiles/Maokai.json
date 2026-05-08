@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "tank",
+  "mana": true,
+  "sustain": true,
+  "mechanic": "Passive heals on nearby spells. Saplings deal bonus damage in brush.",
+  "aram": "Stack brambleback (W root). Saplings in bushes do massive bonus damage."
+}

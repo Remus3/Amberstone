@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "tank",
+  "mana": true,
+  "sustain": true,
+  "mechanic": "Poison Trail: run through enemies. Fling throws target behind. R Insanity Potion.",
+  "aram": "Run around in the corridor with poison on. Fling carries into your team."
+}

@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Q+E feathers; W haste. Recall (R) is untargetable + recalls feathers for mass root.",
+  "aram": "Scatter feathers in corridor then E pull through all of them for mass root."
+}

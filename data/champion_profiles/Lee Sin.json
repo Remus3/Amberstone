@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "fighter",
+  "mana": false,
+  "sustain": true,
+  "mechanic": "W shield on ally/ward. R Insec: kick→ward jump→kick back into team.",
+  "aram": "Insec kick carries into your team. W to wards or allies for mobility."
+}

@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Q splitter: two projectiles at right angle. Research stacks = true damage passive.",
+  "aram": "Spam Q/W across the corridor. True damage passive punishes beefy ARAM teamcomps."
+}

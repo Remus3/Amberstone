@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "marksman",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Flip rockets/minigun for AoE/DPS. Passive reset on kill. R global execute at 20%+ HP.",
+  "aram": "Rockets hit everyone in the ARAM corridor. Passive reset = chain kill machine."
+}

@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Passive blaze + abilities trigger Sear stun. R bounces harder on full-blaze targets.",
+  "aram": "R bounces endlessly in grouped ARAM. Always blaze a target first for bonus R bounces."
+}

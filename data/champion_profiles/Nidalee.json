@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "mage",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Hit spear = move to Cougar form with bonus. Pounce resets on marked targets.",
+  "aram": "Throw spears then leap onto marked target. Cougar form at 35% HP for burst+heal."
+}

@@ -1,0 +1,8 @@
+{
+  "dmg": "ap",
+  "role": "support",
+  "mana": true,
+  "sustain": false,
+  "mechanic": "Q root — longest range skillshot root in game. E spellshield blocks all CC.",
+  "aram": "Q root shuts down one engage. E your carry vs everything. R tether into mass stun."
+}

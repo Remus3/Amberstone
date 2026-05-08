@@ -1,0 +1,8 @@
+{
+  "dmg": "ad",
+  "role": "tank",
+  "mana": false,
+  "sustain": false,
+  "mechanic": "Spirit Blade follows and empowers Q. W blocks all projectiles. R global shield.",
+  "aram": "W blocks entire poke phase if aimed correctly. R to save a dying ally instantly."
+}
