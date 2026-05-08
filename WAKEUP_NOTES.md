@@ -1,6 +1,32 @@
 # WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s119 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+> Sessions s27–s120 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+
+---
+
+# s123 wrap — 2026-05-08 (rc_facts bridge probe + DS exit 1 investigation)
+
+## What shipped
+- **rc_facts.py bridge probe rewrite** (commit 04a305b): replaced stale `bridge_log.jsonl` age-based anomaly ("auto-flow loop may be dead") with `/api/health/all` peer probe. Now shows `gamepc bridge daemon: watcher=alive queue=0 age=Xs` and `peer bridge daemon: ...` — fires real anomaly only if `watcher_alive=false`, peer stale, or queue > 10.
+- **DS server health line** added to Legion section in rc_facts: `DS server :8893: ok patch=16.9.1 alive=True`.
+- **RC-DaemonSlayer false anomaly suppressed**: result=1 is silenced in the task list when `daemon_slayer.alive=True` from health/all (the server IS running; the task's stale exit code was a red herring).
+
+## Findings (no code change needed)
+- **Bridge auto-flow `/loop` is obsolete**: `RC-BridgeDaemon` + `RC-BridgeWatcher-GamePC` on Game-PC handle it as scheduled tasks. Confirmed both Running. Memory `reference_bridge_autoflow.md` was already accurate.
+- **RC-DaemonSlayer exit 1 root cause**: DS server alive and healthy (PID 19268 pythonw.exe, `/health` returns OK). The exit 1 on 5/5 was a one-off manual `schtasks /Run` that failed — task runs as SYSTEM which silently can't write to `logs/` (`_log_startup` swallows the OSError). BootTrigger run at 5/1 boot started the server successfully and it's been running ever since.
+
+## Do NOT redo
+- Don't re-investigate the bridge auto-flow loop — it's daemon-managed, not `/loop`-managed. The old `/loop` is dead and gone.
+- Don't re-investigate DS exit 1 as a live failure — it's resolved (false alarm). If DS ever goes down, rc_facts will flag it via the `DS server :8893:` line, not the task result.
+
+## Open work (priority order)
+1. **rewind_history.db staleness** — blocked on live SR game.
+2. **Vision regions calibration** — blocked on live game.
+3. **TFT 17.3** — due ~2026-05-12 (4 days). Same process as 17.2.
+4. **Bridge Watcher acceptance-criteria** — need 50+ auto-action samples; currently 0.
+5. **Auto-ops verb expansion** — after 95% success rate.
+6. **gamepc_boot.ps1 hardening** — add `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC` to idempotent start sequence.
+7. **RC-DaemonSlayer task context** — runs as SYSTEM; `_log_startup` writes silently fail. Low-risk (server alive), but consider changing to LogonTrigger + Administrator context if traceability matters after next boot.
 
 ---
 
@@ -48,25 +74,6 @@
 4. **Bridge Watcher acceptance-criteria** — need 50+ auto-action samples; currently 0.
 5. **Auto-ops verb expansion** — after 95% success rate.
 6. **Investigate RC-DaemonSlayer exit 1** — check `logs/daemon_slayer_startup.log`.
-
----
-
-# s120 wrap — 2026-05-08 (RC dev panel shipped)
-
-## What shipped
-- **RC dev panel** (`dashboard/routes_dev.py`, `web/index.html`, `web/js/dashboard.js`, `web/css/dashboard.css`, commit 7424e24): `⚙ Dev / Sim Preview` nav item now opens a proper `#view-dev` view with three cards: SIM FIXTURES (26 fixtures, color-coded mode tags, Per-fixture Preview links, Exit Sim link when in sim mode), VISION STATUS (new `GET /api/dev/vision-status` backend proxying `:8889/health` + `/latest-frame/meta` via `X-RC-Token`), RC LOG TAIL (last 60 lines from `/api/logs?n=60`, auto-scrolls to bottom). CSS view-switching rules wired for `data-view="dev"`. Previously the menu item did a URL redirect to `?sim=default`; now it navigates to `#dev` view without reloading.
-
-## Do NOT redo
-- The dev panel CSS required two separate edits to dashboard.css (main-hide rule + section-show rule). Both are in place. Don't add a third.
-- Vision status uses `X-RC-Token` header (not `Authorization: Bearer`) — that's how `:8889` authenticates.
-
-## Open work (priority order)
-1. **rewind_history.db staleness** — blocked on live SR game.
-2. **Vision regions calibration** — blocked on live game.
-3. **TFT 17.3** — due ~2026-05-12. Same process as 17.2.
-4. **Bridge Watcher acceptance-criteria** — need 50+ auto-action samples; currently 0.
-5. **Auto-ops verb expansion** — after 95% success rate.
-6. **Investigate RC-DaemonSlayer exit 1** — check `logs/daemon_slayer_startup.log` after next reboot/restart of the DS task.
 
 ---
 
