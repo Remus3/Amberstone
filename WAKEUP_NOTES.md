@@ -4,6 +4,28 @@
 
 ---
 
+# s114 wrap — 2026-05-07 (Bridge Watcher hardening Phase 3 — dry-run + artifact rotation + self-healing)
+
+## What shipped
+- **Dry-run mode** (`--dry-run` flag, commit 6dd91ff): classifies all envelopes but never writes to pending queue, spawns auto-actions, or sends push notifications. Heartbeat emits `dry_run=true`. Use `py tools/bridge_watcher.py --node legion --dry-run` to tune classifier patterns against real traffic at zero cost.
+- **Artifact rotation** (`_rotate_artifacts()`, commit 6dd91ff): runs once per day (gated by `last_rotate_at` in state); deletes files in `ops/runtime/bridge_action_artifacts/` that are older than 7 days OR whose `task_id` is in `processed_ids`. Defensive per-file error handling.
+- **Self-healing watchdog** (daemon thread, commit 6dd91ff): wakes every 30s; calls `os._exit(1)` if main loop has stalled > `max(120s, eff_poll*3)`. Threshold scales with cadence mode so sleep-mode (300s polls) doesn't false-fire. Lets scheduled-task `restart-on-failure` handle recovery rather than a hung-but-alive process.
+- **21/21 selftests pass** (8 new: watchdog threshold ×3, rotation predicate ×5).
+- Watcher restarted at pid=11656, `cadence_mode=active dry_run=False`.
+
+## Do NOT redo
+- `.claude/commands/` is gitignored — slash commands live there locally.
+- Cross-node cadence control (`bridge_task.py --target <node>`) is deferred — `bridge_watcher_classify.py` is frozen.
+- The three remaining Bridge Watcher hardening items are now ALL shipped (see ROADMAP for the ✅ markers).
+
+## Open work (priority order)
+1. **DS calibration** — 120 records, blocked on rewind_history.db (last entry Dec 2025). game_id not captured in `coach_integration.py` (not frozen — fixable).
+2. **Vision regions calibration** — needs in-game session.
+3. **Bridge Watcher acceptance-criteria** — watch `auto_ok_since_boot` vs `auto_err_since_boot` as real traffic accumulates; target ≥90% read / ≥95% ops before expanding `auto_ops_verbs`.
+4. **Cross-Claude Phase 4** — low urgency.
+
+---
+
 # s113 wrap — 2026-05-07 (Bridge Watcher hardening Phase 2 — adaptive cadence)
 
 ## What shipped
