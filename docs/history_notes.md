@@ -128,3 +128,9 @@ All narrative detail in `ROADMAP.md §1` and `git log`.
 | s89 | 2026-05-04 | 0cecfa3 | DS batch 33: ability-burn promos, caster_bonus_hp, 367 tests |
 | s90 | 2026-05-04 | 1bd105d, 6b04992 | DS batches 34–35: magic_amp_pct schema, dual-pen, spellblade |
 | s91 | 2026-05-04 | 8f7811b, 8d208c3 | DS batches 36–37: TRUE damage type, Arena 443/447 sweeps, 428 tests |
+
+
+---
+
+# s117 wrap — 2026-05-08 (TFT patch 17.2)
+TFT patch 17.2: tft_pbe_engine.py system prompt + tft_pbe_data.py ENCOUNTERS (21) + GOD_BLESSINGS (24) + trait balance. tft_set17_meta.json -> 17.2. commit be3d168. DDragon still shows "16.9.1" (stale cache) — actual patch 26.9; coaching functional.

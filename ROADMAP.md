@@ -340,7 +340,7 @@ Any change here needs explicit user sign-off.
 - **TFT vision relay frame dimensions** — pair with NOTE-025: once relayed frames are validated 1920×1080, lock the OCR pipeline to that resolution.
 
 ### Developer experience
-- **RC dev mode toggle** — `body[data-dev-banner]` already drives a banner toggle. Extend to a side panel that exposes sim fixture switching, force-vision triggers, log tail, all in one place.
+- ~~**RC dev mode toggle**~~ ✅ shipped 2026-05-08 (commit 7424e24) — `⚙ Dev / Sim Preview` nav item now opens a proper `#view-dev` section with three cards: SIM FIXTURES (26 fixtures, color-coded mode tags, Preview links), VISION STATUS (`/api/dev/vision-status` backend route proxying :8889 health + latest-frame/meta), RC LOG TAIL (last 60 lines, auto-scrolls). CSS view-switching rules added for `data-view="dev"`.
 - **Test fixtures** — 26 sim fixtures cover happy paths. Add adversarial fixtures (corrupted JSON, partial state, mode transitions) to harden the dashboard renderer.
 - **Type hints + ruff** — codebase mixes annotated and unannotated. A one-time `ruff --fix` pass + adding annotations to public coach API would help LSPs.
 

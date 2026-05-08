@@ -1,6 +1,25 @@
 # WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s116 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+> Sessions s27–s117 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+
+---
+
+# s120 wrap — 2026-05-08 (RC dev panel shipped)
+
+## What shipped
+- **RC dev panel** (`dashboard/routes_dev.py`, `web/index.html`, `web/js/dashboard.js`, `web/css/dashboard.css`, commit 7424e24): `⚙ Dev / Sim Preview` nav item now opens a proper `#view-dev` view with three cards: SIM FIXTURES (26 fixtures, color-coded mode tags, Per-fixture Preview links, Exit Sim link when in sim mode), VISION STATUS (new `GET /api/dev/vision-status` backend proxying `:8889/health` + `/latest-frame/meta` via `X-RC-Token`), RC LOG TAIL (last 60 lines from `/api/logs?n=60`, auto-scrolls to bottom). CSS view-switching rules wired for `data-view="dev"`. Previously the menu item did a URL redirect to `?sim=default`; now it navigates to `#dev` view without reloading.
+
+## Do NOT redo
+- The dev panel CSS required two separate edits to dashboard.css (main-hide rule + section-show rule). Both are in place. Don't add a third.
+- Vision status uses `X-RC-Token` header (not `Authorization: Bearer`) — that's how `:8889` authenticates.
+
+## Open work (priority order)
+1. **rewind_history.db staleness** — blocked on live SR game.
+2. **Vision regions calibration** — blocked on live game.
+3. **TFT 17.3** — due ~2026-05-12. Same process as 17.2.
+4. **Bridge Watcher acceptance-criteria** — need 50+ auto-action samples; currently 0.
+5. **Auto-ops verb expansion** — after 95% success rate.
+6. **Investigate RC-DaemonSlayer exit 1** — check `logs/daemon_slayer_startup.log` after next reboot/restart of the DS task.
 
 ---
 
@@ -47,25 +66,4 @@
 5. **Auto-ops verb expansion** — needs 95% success rate first; check heartbeat before enabling.
 
 ---
-
-# s117 wrap — 2026-05-08 (TFT patch 17.2 — Encounters + God Blessings)
-
-## What shipped
-- **TFT patch 17.2 update** (commit be3d168): Current League patch is 26.9 (year-based numbering) = TFT patch 17.2 (April 28, 2026).
-  - `tft_pbe_engine.py` system prompt: Encounters section (16 returning + 5 new), God Blessings section (24 choices across 6 gods), trait balance changes (Timebreaker rework, Meeple nerf, Stargazer Fountain disabled, Anima buff).
-  - `tft_pbe_data.py`: new `ENCOUNTERS` dict (21 entries), new `GOD_BLESSINGS` dict (24 choices), Timebreaker breakpoints corrected [2,3,4], trait notes updated.
-  - `data/meta/tft_set17_meta.json`: `_patch` bumped to `17.2`, `_patch_notes_17.2` key added.
-- RC restarted clean (pid=11716).
-
-## Do NOT redo
-- DDragon still reports version "16.9.1" (stale cache). Actual current League patch is 26.9 (year-based numbering). TFT patch follows TFT set versioning (17.2), not League patch numbers.
-- `tft_data.py` (legacy Set 14 file) is fine as-is — only used for TIER_ODDS/XP tables by the old coach engine; active TFT coaching runs through `tft_pbe_engine.py`.
-
-## Open work (priority order)
-1. **rewind_history.db staleness** — blocked on live SR game.
-2. **Vision regions calibration** — blocked on live game.
-3. **DDragon version cache** — `data/meta/ddragon_version.json` shows 16.9.1; actual patch is 26.9. `data_pipeline.py ddragon` won't re-download since it thinks it's current. Low urgency — coaching data is functional.
-4. **TFT 17.3** — next patch due ~2026-05-12; repeat this process when it drops.
-5. **Bridge Watcher acceptance-criteria** — accumulates naturally.
-
 
