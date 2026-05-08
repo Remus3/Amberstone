@@ -4,6 +4,31 @@
 
 ---
 
+# s113 wrap — 2026-05-07 (Bridge Watcher hardening Phase 2 — adaptive cadence)
+
+## What shipped
+- **Adaptive polling cadence** (`bridge_watcher.py` + `dashboard/routes_bridge_cadence.py`, commit 05983a4):
+  - `_read_mode()` reads `ops/runtime/bridge_watcher_mode.json` once per poll cycle
+  - Modes: `active`=15s (default), `sleep`=300s, `auto`=self-managing (15s while tasks arrive, 300s after 15 min without `kind=task`)
+  - `last_task_ts` persisted in state; cold-boot defaults to `started_at` so restart always begins active
+  - Heartbeat now includes `cadence_mode` + `effective_poll_s`
+  - `GET/POST /api/bridge/cadence` endpoint wired into `_dispatch.py`
+  - `/sleep` + `/wake` slash commands in `.claude/commands/` (gitignored, local only)
+  - 13 selftests pass (`--selftest`)
+- Watcher live at pid=14040, `cadence_mode=active effective_poll_s=15.0`
+
+## Do NOT redo
+- `.claude/commands/` is gitignored — slash commands live there locally; don't re-create if they already exist.
+- Cross-node cadence control (`bridge_task.py --target <node>`) is deferred — `bridge_watcher_classify.py` is frozen.
+
+## Open work (priority order)
+1. **Bridge Watcher remaining** — artifact rotation (daily cleanup of `ops/runtime/bridge_action_artifacts/`), dry-run mode, watcher self-healing. All still need bridge_watcher.py (unfrozen).
+2. **DS calibration** — 120 records, blocked on rewind_history.db (last entry Dec 2025). game_id not captured in `coach_integration.py` (not frozen — fixable).
+3. **Vision regions calibration** — needs in-game session.
+4. **Cross-Claude Phase 4** — low urgency.
+
+---
+
 # s112 wrap — 2026-05-07 (Bridge Watcher hardening Phase 1)
 
 ## What shipped
