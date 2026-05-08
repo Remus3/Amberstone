@@ -17,4 +17,10 @@ if ! command -v "$PY" >/dev/null 2>&1; then
     PY=python
 fi
 
-exec "$PY" "$ROOT/scripts/precommit_pycompile.py"
+"$PY" "$ROOT/scripts/precommit_pycompile.py" || exit 1
+
+# Ensure ARCHITECTURE.md module map is in sync with # arch: headers.
+"$PY" "$ROOT/tools/gen_archmap.py" --check || {
+    echo "Run: python tools/gen_archmap.py"
+    exit 1
+}
