@@ -130,12 +130,14 @@ When invoked with `/done` or asked to wrap a session: (1) audit pending changes,
 
 ## Active priorities
 
-1. ✅ Phase 1 — Knowledge architecture complete (fc1361b, s125+s126): living docs + archmap + 5 ADRs. Bootstrap = 500 lines.
-   ➡️ Next: Phase 2.1 — champion_profiles.py split (902 LOC → data/champion_profiles/*.json).
-2. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes; OCR canary gates Sonnet. Blocked on live game.
-3. 🟡 DS calibration pipeline — game_id wired (d66d14b); future SR records carry game_id. Blocked on rewind_history.db staleness (last entry Dec 2025).
-4. 🟡 TFT 17.3 — due ~2026-05-12. Same process as 17.2.
-5. 🟡 gamepc_boot.ps1 hardening — add `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC` to idempotent start sequence.
-6. 🟡 Bridge Watcher acceptance-criteria — need 50+ real-traffic samples (watch `auto_ok_since_boot` vs `auto_err_since_boot`).
+1. ✅ Phase 1 — Knowledge architecture complete (fc1361b, s125+s126): living docs + archmap + 5 ADRs.
+2. ✅ Phase 2.1 — champion_profiles.py split complete (8fa11f4): 902→29 LOC + 168 JSONs.
+3. ✅ Phase 5 — CI gate + smoke harness complete (d21f533, s128): 380 tests pass, ruff 0 violations.
+   ➡️ Next: Phase 4 — Contracts/schemas (pydantic api_schema.py + coaching payload).
+4. 🟡 TFT 17.3 — due ~2026-05-12. Same process as 17.2. (higher time priority)
+5. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes. Blocked on live game.
+6. 🟡 DS calibration pipeline — blocked on rewind_history.db staleness (last entry Dec 2025).
+7. 🟡 gamepc_boot.ps1 hardening — add `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC`.
+8. 🟡 Bridge Watcher acceptance-criteria — need 50+ real-traffic samples.
 
 Full open work + future: `ROADMAP.md` + `BACKLOG.md`. Completed work: `docs/_archive/CHANGELOG.md`.

@@ -4,6 +4,35 @@
 
 ---
 
+# s128 wrap — 2026-05-08 (Phase 5 — CI gate + smoke harness COMPLETE)
+
+## What shipped
+- **`tests/snapshot_regressions/test_app_authority.py`** fixed: 52 → 0 failures. Root cause: `app` was refactored to use `StateAuthority` + `GameLifecycleManager`; headless stub didn't initialize them. Fix: `_HeadlessApp` subclass with `_current_envelope` property proxying `app.state.envelope`. Test count: 289 → 343 passing.
+- **Arena/Brawl golden fixtures** added: `ARENA_STATE` + `BRAWL_STATE` in `state_dicts.py`, two golden JSON files, 10 new snapshot tests.
+- **`tests/phase2_smoke/test_coach_state_parsing.py`** (new, 31 tests): smoke harness for all 5 coach modes — SR (`_build_user_prompt`), ARAM/Arena/Brawl (`_parse_state`), TFT (`_coach_board_to_placement`). No API calls.
+- **CI** (`.github/workflows/ci.yml`): added `ruff` install + `ruff check .` step; added `phase8_smoke`; removed `--ignore=test_app_authority.py`. 380 tests pass in CI shape.
+- **`ruff.toml`**: 101 → 0 violations. Added ignores for RC patterns (B904/B007/B027/E731/UP037); frozen-file per-file ignores (app/ F821, bridge tools UP/E/B); auto-fixed 51 mechanical issues.
+- **Bug fix**: `tft/tft_live_analysis.py:274` — `_j.loads` → `_pj.loads` (would NameError if manual_level path hit).
+- **Commit `d21f533`** pushed → origin/main.
+
+## Key decisions
+- `_HeadlessApp` subclass pattern (not monkey-patching OverlayApp) keeps production code clean.
+- Coach smoke tests test the state-parsing layer (raw Riot API format), not the processed game_reader output. Phase 4.3 schema validation deferred.
+- ruff frozen-file per-file-ignores prevent accidental `--fix` to `bridge_pull_tasks.py` etc.
+- Branch protection on GitHub (`require CI "check" green`) left as manual UI action — chip created for next session.
+
+## Do NOT redo
+- Don't re-fix test_app_authority.py — all 54 tests now pass.
+- Don't re-run ruff --fix — 0 violations, nothing to fix.
+- Don't re-add arena/brawl golden files — already checked in.
+
+## What's next
+1. **TFT 17.3** — due ~2026-05-12 (highest time priority). Same process as 17.2.
+2. **Phase 4** — Contracts/schemas: pydantic `api_schema.py` + coaching payload. Next in futureproofing order.
+3. **Branch protection** — enable in GitHub UI: Settings → Branches → require status check "check".
+
+---
+
 # s127 wrap — 2026-05-08 (Phase 2.1 — champion_profiles.py split COMPLETE)
 
 ## What shipped
@@ -53,39 +82,4 @@
 1. **Phase 2.1** — `champion_profiles.py` (902 LOC) split: audit dict literals, build extractor script, emit `data/champion_profiles/*.json`, replace with ≤80 LOC thin loader. Lowest-risk decomp.
 2. **TFT 17.3** — due ~2026-05-12. May take priority if patch drops.
 
----
-
-# s125 wrap — 2026-05-08 (Phase 1.1 — knowledge architecture)
-
-## What shipped
-- **docs/_archive/** created (gitignored); 23 dated artifacts moved there — all `AUDIT_*`, `PHASE_*`, `HANDOFF_*`, `SESSION_HANDOFF_*`, `*_RESEARCH_2026-*`, `BUILD_REFRESH_STRATEGY_*`, `RC_ARCHITECTURE_INFOGRAPH.*`, `OPS_QUICK_REFERENCE.md`, `ARCH-001-decomposition-plan.md`, `ARCHITECTURE_REVIEW.md`, `tft_overhaul_design.md`, `PROJECT_STATE.md`, handoff TXTs.
-- **docs/ARCHITECTURE.md** (136 lines) — machine topology + data flows table + module map (orchestration/vision/coaching/dashboard/frontend) + god-module table + 7 key gotchas.
-- **docs/OPERATIONS.md** (153 lines) — health check commands + restart workflow + all RC-* scheduled tasks + bridge ops + file location map.
-- **docs/BRIDGE.md** (136 lines) — wire format + Legion endpoints table + watcher daemon architecture + lessons sync + per-node config files.
-- **BACKLOG.md** (51 lines) — aspirational/future items extracted from ROADMAP.md.
-- **ROADMAP.md** trimmed to 64 lines (Now+Next only); past history in `docs/_archive/CHANGELOG.md`.
-- **CLAUDE.md** trimmed from ~150 → 139 lines; pointers to living docs; active priorities pruned to open items only.
-- Commit **9234d0f** pushed → origin/main (29 files: 537 insertions, 5050 deletions).
-
-## Key decisions
-- `_archive/` is already in `.gitignore` — archived files preserved on disk only (not in git). Intentional; keeps repo clean while allowing local reference.
-- Bootstrap reading: **492 lines total** (CLAUDE.md 139 + ARCHITECTURE.md 136 + OPERATIONS.md 153 + ROADMAP.md 64). Phase 1 exit criteria met (was 2000+).
-
-## Do NOT redo
-- Don't re-archive docs/ — 23 files already in `_archive/`, gitignored, intentional.
-- `docs/ui_audit/` left in place (already isolated). `docs io RC peer/` left in place.
-- `docs/_archive/CHANGELOG.md` exists on disk but not in git (expected, gitignored).
-
----
-
-# s124 wrap — 2026-05-08 (RC future-proofing plan — Opus 4.7 1M deep analysis)
-
-## What shipped
-- **`C:\Users\Administrator\Desktop\RC_FUTUREPROOFING_PLAN.md`** — robust phased plan to make RC easier to document/build. 7 phases ordered by leverage.
-- Plan includes §0 session-budget cheat sheet (`/done` vs `/wrap` vs `/clear` vs continue decision matrix).
-
-## No code changes this session
-- No commits, no push. Plan artifact lives outside the repo on purpose.
-
----
 
