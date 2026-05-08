@@ -1,6 +1,35 @@
 # WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s120 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+> Sessions s27–s122 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+
+---
+
+# s125 wrap — 2026-05-08 (Phase 1.1 — knowledge architecture)
+
+## What shipped
+- **docs/_archive/** created (gitignored); 23 dated artifacts moved there — all `AUDIT_*`, `PHASE_*`, `HANDOFF_*`, `SESSION_HANDOFF_*`, `*_RESEARCH_2026-*`, `BUILD_REFRESH_STRATEGY_*`, `RC_ARCHITECTURE_INFOGRAPH.*`, `OPS_QUICK_REFERENCE.md`, `ARCH-001-decomposition-plan.md`, `ARCHITECTURE_REVIEW.md`, `tft_overhaul_design.md`, `PROJECT_STATE.md`, handoff TXTs.
+- **docs/ARCHITECTURE.md** (136 lines) — machine topology + data flows table + module map (orchestration/vision/coaching/dashboard/frontend) + god-module table + 7 key gotchas.
+- **docs/OPERATIONS.md** (153 lines) — health check commands + restart workflow + all RC-* scheduled tasks + bridge ops + file location map.
+- **docs/BRIDGE.md** (136 lines) — wire format + Legion endpoints table + watcher daemon architecture + lessons sync + per-node config files.
+- **BACKLOG.md** (51 lines) — aspirational/future items extracted from ROADMAP.md.
+- **ROADMAP.md** trimmed to 64 lines (Now+Next only); past history in `docs/_archive/CHANGELOG.md`.
+- **CLAUDE.md** trimmed from ~150 → 139 lines; pointers to living docs; active priorities pruned to open items only.
+- Commit **9234d0f** pushed → origin/main (29 files: 537 insertions, 5050 deletions).
+
+## Key decisions
+- `_archive/` is already in `.gitignore` — archived files preserved on disk only (not in git). Intentional; keeps repo clean while allowing local reference.
+- Bootstrap reading: **492 lines total** (CLAUDE.md 139 + ARCHITECTURE.md 136 + OPERATIONS.md 153 + ROADMAP.md 64). Phase 1 exit criteria met (was 2000+).
+
+## Do NOT redo
+- Don't re-archive docs/ — 23 files already in `_archive/`, gitignored, intentional.
+- `docs/ui_audit/` left in place (already isolated). `docs io RC peer/` left in place.
+- `docs/_archive/CHANGELOG.md` exists on disk but not in git (expected, gitignored).
+
+## What's next
+1. **Phase 1.2** — `tools/gen_archmap.py`: walk package tree, read `# arch: <role> | <tier> | <frozen?>` headers, regenerate module-map section of ARCHITECTURE.md + frozen-file list in CLAUDE.md between sentinel comments. Wire to pre-commit hook.
+2. **Phase 1.3** — `docs/adr/` + 5 historical ADRs (tkinter removal, DS-before-Haiku, in-process vision, bridge watcher daemon, MagicDNS migration).
+3. TFT 17.3 due ~2026-05-12 — may take priority over Phase 1.2 if patch drops first.
+4. Recommend `/done` → `/clear` → fresh session for Phase 1.2+1.3.
 
 ---
 
@@ -42,56 +71,7 @@
 3. **TFT 17.3** — due ~2026-05-12 (4 days). Same process as 17.2.
 4. **Bridge Watcher acceptance-criteria** — need 50+ auto-action samples; currently 0.
 5. **Auto-ops verb expansion** — after 95% success rate.
-6. **gamepc_boot.ps1 hardening** — add `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC` to idempotent start sequence.
-7. **RC-DaemonSlayer task context** — runs as SYSTEM; `_log_startup` writes silently fail. Low-risk (server alive), but consider changing to LogonTrigger + Administrator context if traceability matters after next boot.
+6. **RC-DaemonSlayer task context** — runs as SYSTEM; `_log_startup` writes silently fail. Low-risk (server alive), but consider changing to LogonTrigger + Administrator context if traceability matters after next boot.
 
 ---
-
-# s122 wrap — 2026-05-08 (Game-PC socket recovery + TDD skill)
-
-## What shipped
-- **Game-PC socket exhaustion diagnosed & fixed**: STATUP.GG (Overlay Platform M overlay) leaked 17,463 kernel handles, exhausting the socket buffer pool (`WSAENOBUFS`). All Game-PC outbound TCP was silently broken — agents were running but unable to POST to Legion. Fixed with `taskkill /F /PID 3340`. Diagnostic: `Get-Process | Sort-Object HandleCount -Descending`.
-- **Game-PC watcher tasks restarted**: `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC` were in `Ready` (stopped) state after 2h of socket failures. Started via `Start-ScheduledTask`. Legion peer health restored: `age_s=27.7, stale=False`.
-- **TDD skill installed**: `test-driven-development.md` → `.claude/commands/` (from addyosmani/agent-skills). Red-Green-Refactor cycle + Prove-It bug pattern + test pyramid. Auto-invokes on code changes. Python examples adapted for RC.
-
-## Do NOT redo
-- STATUP.GG socket exhaustion is transient — Overlay Platform M relaunches with League. If Game-PC goes stale again, always check handle counts first before investigating network/firewall.
-- `gamepc_boot.ps1` does NOT restart `RC-WatcherHealthPublisher-GamePC` or `RC-BridgeWatcher-GamePC` — they need `Start-ScheduledTask` if they stop. This is a known gap.
-
-## Open work (priority order)
-1. **rewind_history.db staleness** — blocked on live SR game.
-2. **Vision regions calibration** — blocked on live game.
-3. **TFT 17.3** — due ~2026-05-12.
-4. **Bridge Watcher acceptance-criteria** — need 50+ auto-action samples; currently 0.
-5. **Auto-ops verb expansion** — after 95% success rate.
-6. **Investigate RC-DaemonSlayer exit 1** — check `logs/daemon_slayer_startup.log`.
-7. **gamepc_boot.ps1 hardening** — add `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC` to idempotent start sequence.
-
----
-
-# s121 wrap — 2026-05-08 (token cost reduction)
-
-## What shipped
-- **Fleet model downgrade**: all 3 machines switched from `sonnet[1m]` → `claude-sonnet-4-6` standard 200k via `/config`. Legion=default effort (removed `effortLevel: "high"`), Game-PC=medium, Peer=default.
-- **Legion plugin cull** (`~/.claude/settings.json`): disabled 5 unused plugins — `nimble`, `ralph-loop`, `playwright`, `chrome-devtools-mcp`, `firecrawl`. Kept `github` + `pyright-lsp`. Saves ~15-20k tokens of skill descriptions per turn.
-- **MEMORY.md pruned**: removed 6 stale FIXED/RESOLVED entries (dashboard queue, rune shard3, game_ingest dups, arena augments, SR coach hash bug, SR RECOMMENDED panel).
-- **Peer applied same changes** via bridge task (confirmed via hook): disabled playwright, ralph-loop, chrome-devtools-mcp, firecrawl; model already sonnet; no stale memories.
-- **Game-PC**: no `enabledPlugins` section — already clean; already on sonnet/medium.
-- **Cost diagnosis**: Opus usage in billing = `advisor()` calls only (both machines on Sonnet already). Primary levers: plugin cull (done), shorter sessions, advisor() discipline.
-
-## Do NOT redo
-- Game-PC has no plugins installed — no `enabledPlugins` key needed. Don't add one.
-- Peer already confirmed their changes — don't re-dispatch the plugin cull task.
-- The Opus in usage dashboard is advisor() tool calls, NOT a model misconfiguration.
-
-## Open work (priority order)
-1. **rewind_history.db staleness** — blocked on live SR game.
-2. **Vision regions calibration** — blocked on live game.
-3. **TFT 17.3** — due ~2026-05-12.
-4. **Bridge Watcher acceptance-criteria** — need 50+ auto-action samples; currently 0.
-5. **Auto-ops verb expansion** — after 95% success rate.
-6. **Investigate RC-DaemonSlayer exit 1** — check `logs/daemon_slayer_startup.log`.
-
----
-
 
