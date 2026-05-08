@@ -4,6 +4,7 @@ Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude H
 
 > **Living docs (read at session start):** `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `docs/BRIDGE.md` · `ROADMAP.md`
 > **Deep references:** `docs/DAEMON_SLAYER.md` (DS engine · 547 items · ENGINE_VERSION 0.60.0) · `docs/AGENTS.md` (Phase 3 framework) · `BACKLOG.md` (aspirational)
+> **Architectural decisions:** `docs/adr/` — before re-litigating a past choice, check here first.
 > **Dated artifacts** in `docs/_archive/` (excluded from ripgrep searches).
 
 ## Topology
