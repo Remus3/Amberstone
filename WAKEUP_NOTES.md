@@ -4,6 +4,28 @@
 
 ---
 
+# s115 wrap — 2026-05-07 (DS calibration — game_id wiring)
+
+## What shipped
+- **`gamepc_lcu_agent.py`** (commit d66d14b): when `phase=InProgress` or `GameStart`, fetches `/lol-gameflow/v1/session` → `gameData.gameId` and adds top-level `state["game_id"]` to the upload-lcu payload.
+- **`game_reader.py`** (commit d66d14b): new `_try_lcu_game_id()` reads `/latest-lcu` relay (20s freshness gate) and injects `"game_id"` into `_process_game()` SR return dict.
+- **`coach_integration.py`** (commit d66d14b): `log_ds_run()` call now passes `game_id=str(game_state.get("game_id") or "")`. Future SR calibration records will carry the Riot game_id.
+- RC restarted clean (pid=19064). Bridge task dispatched to Game-PC (`task-c80582dc5c45`) to re-pull `gamepc_lcu_agent.py` and restart `RC-LCU` scheduled task.
+
+## Do NOT redo
+- LCU lockfile is on Game-PC's local filesystem — `GameReader._ensure_lcu()` always returns False from Legion. The relay path (Game-PC → `:8889/upload-lcu` → `/latest-lcu`) is the correct source.
+- The 120 existing calibration records already have `game_id=""` — the fix only helps future records.
+- Pre-existing test failure in `tests/snapshot_regressions/test_app_authority.py` (frozen `app/__init__.py` missing `state` attr) — unrelated to this change, 229 other tests pass.
+
+## Open work (priority order)
+1. **DS calibration source side** — confirm Game-PC bridge task processed: `gamepc_lcu_agent.py` re-pulled + `RC-LCU` restarted. Verify `game_id` appears in `/latest-lcu` response during next live SR game.
+2. **rewind_history.db staleness** — last entry Dec 2025; need a live game to populate fresh rows and unlock correlation analysis.
+3. **Vision regions calibration** — needs in-game session.
+4. **Bridge Watcher acceptance-criteria** — watch `auto_ok_since_boot` vs `auto_err_since_boot`; target ≥90% read / ≥95% ops before expanding `auto_ops_verbs`.
+5. **Cross-Claude Phase 4** — low urgency.
+
+---
+
 # s114 wrap — 2026-05-07 (Bridge Watcher hardening Phase 3 — dry-run + artifact rotation + self-healing)
 
 ## What shipped
