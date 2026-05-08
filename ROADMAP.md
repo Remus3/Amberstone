@@ -302,7 +302,7 @@ Any change here needs explicit user sign-off.
 - ~~**Shared lessons sync (Phase 2+3)**~~ ✅ shipped 2026-05-06 — `core/lessons_sender.py` + `core/lessons_receiver.py` + CLI wrappers + `.claude/commands/process-incoming-lessons.md`. Phase 3 `_lessons_summary()` in `rc_facts.py` emits a lessons block in the SessionStart hook when the ledger is non-empty. Operator-driven send (`tools/lessons_send.py`); auto-triage on receive. Phase 4 polish (confidence scoring, symmetry check, auto-revert) remains.
 - ~~**SessionStart enrichment (Phase 4)**~~ ✅ shipped 2026-05-08 — `_watcher_summary()` added to `tools/rc_facts.py`: watcher pid/cadence/queue/auto_ok/err/suppressed (since boot) + esc_24h rendered as a single Legion line. Bridge section gains 24h activity counts (tasks/results/notes). Also fixed: `267014` added to allow-list so RC-VisionServer no longer fires as a false anomaly.
 - **Bridge contract v1**: today's spec is v0; bump after the auto-action lane proves stable. Add: `body_path` field formal definition, `claimed_by`/`claimed_at` standardization, `ttl_at` semantics.
-- **Bridge introspection MCP tool**: a `bridge.search` MCP tool the user can query in any Claude session ("show me all results from gamepc in last 24h") without leaving the REPL.
+- ~~**Bridge introspection MCP tool**~~ ✅ endpoint shipped 2026-05-08 — `/api/bridge` now accepts `source=<node>`, `kind=<kind>`, `hours=N` params. Example: `?source=gamepc&kind=result&hours=24`. Default limit bumped to 100. MCP tool wrapper (for cross-session REPL access) remains as optional polish.
 
 ### Operational polish (small, high-leverage)
 
