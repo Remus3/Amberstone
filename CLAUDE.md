@@ -130,7 +130,8 @@ When invoked with `/done` or asked to wrap a session: (1) audit pending changes,
 
 ## Active priorities
 
-1. 🟠 Phase 1.1 doc architecture — in progress (this session): _archive + ARCHITECTURE.md + OPERATIONS.md + BRIDGE.md + ROADMAP split.
+1. ✅ Phase 1 — Knowledge architecture complete (fc1361b, s125+s126): living docs + archmap + 5 ADRs. Bootstrap = 500 lines.
+   ➡️ Next: Phase 2.1 — champion_profiles.py split (902 LOC → data/champion_profiles/*.json).
 2. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes; OCR canary gates Sonnet. Blocked on live game.
 3. 🟡 DS calibration pipeline — game_id wired (d66d14b); future SR records carry game_id. Blocked on rewind_history.db staleness (last entry Dec 2025).
 4. 🟡 TFT 17.3 — due ~2026-05-12. Same process as 17.2.
