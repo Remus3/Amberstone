@@ -143,3 +143,4 @@ When invoked with `/done` or asked to wrap a session: (1) audit pending changes,
 7. ✅ Cross-Claude learning sync Phases 1–3 — shipped 2026-05-06; Phase 4 polish deferred
 8. ✅ TFT coaching — Set 17 patch 17.2 live (be3d168): Encounters + God Blessings + trait balance. Next: 17.3 due ~2026-05-12.
 9. ✅ SR jungler detection — Smite-based 3-tier cascade (6bec3ce): zone → Smite → _JUNGLE_CHAMPS fallback.
+10. ✅ RC dev panel — `⚙ Dev / Sim Preview` view (7424e24): sim fixtures + vision status + log tail. `dashboard/routes_dev.py` + CSS view-switch rules.
