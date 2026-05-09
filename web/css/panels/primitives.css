@@ -1,0 +1,290 @@
+/* ─────────────────────────────────────────────────────────────────────
+ * AUDIT 2026-04-28 — proposals 3.2, 3.3, 3.4, 3.5, 3.6
+ * Card primitive, sticky-header compression, contrast bump, win-pct
+ * 5-band gradient, loading skeletons.
+ * ───────────────────────────────────────────────────────────────────── */
+
+/* 3.4 — bump dead-state placeholder contrast (#666 reads as background
+ * at iPad viewing distance). Apply to "—" inside .home-empty + value
+ * cells that currently render as text-faint. */
+.home-empty,
+.home-card .home-today-val,
+.home-card .home-recent-grade,
+[data-placeholder="dim"] {
+  color: #989aaa !important;  /* ≈ #888 on the cool palette */
+}
+
+/* 3.5 — five-band win-pct gradient. Existing four bands kept for back-
+ * compat; the new .win-pill.win-lead sits between strong and even. */
+.win-pill.win-lead {
+  background: #2A4035;
+  color:      #B5DC8E;
+  box-shadow: 0 0 12px rgba(181,220,142,0.20);
+}
+/* Re-tune .win-even to amber so it visually differs from .win-lead. */
+.win-pill.win-even {
+  background: var(--gold-soft);
+  color:      var(--gold);
+}
+
+/* 3.2 — .rc-card design primitive in three sizes. Use this for any new
+ * panel rather than re-implementing padding/radius/shadow per feature.
+ * Migration target: home/lobby/cs cards adopt over time; existing
+ * declarations are NOT mass-replaced (avoiding visual churn).
+ *
+ *   <div class="rc-card rc-card-m">
+ *     <div class="rc-card-head">TITLE</div>
+ *     <div class="rc-card-body">…</div>
+ *   </div>
+ */
+.rc-card {
+  background:    var(--surface);
+  border-radius: var(--radius);
+  box-shadow:    var(--shadow-card);
+  display:       flex;
+  flex-direction: column;
+  overflow:      hidden;
+}
+.rc-card-s { padding: 12px 14px; gap: 6px; }
+.rc-card-m { padding: 18px 20px; gap: 10px; }
+.rc-card-l { padding: 24px 28px; gap: 14px; }
+.rc-card-head {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.rc-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* 3.3 — sticky header that compresses on scroll. JS toggles
+ * <header data-compressed="1"> at scroll-Y > 200 (see dashboard.js). */
+header[data-compressed="1"] {
+  height: 44px !important;
+  min-height: 44px;
+  transition: height 180ms ease;
+}
+header[data-compressed="1"] .header-row.header-row-2 { display: none; }
+header[data-compressed="1"] .header-row.header-row-1 {
+  align-items: center;
+}
+header { transition: height 180ms ease; }
+
+/* 3.6 — loading skeletons. Drop .rc-skel on any block during the first
+ * 500 ms after game-start to replace the "—" placeholder with a subtle
+ * shimmer. JS adds + removes the class. */
+.rc-skel {
+  position: relative;
+  background: linear-gradient(
+    90deg,
+    var(--surface) 0%,
+    var(--surface-head) 40%,
+    var(--surface) 80%
+  );
+  background-size: 220% 100%;
+  animation: rc-skel-shimmer 1.4s ease-in-out infinite;
+  color: transparent !important;       /* hide the underlying "—" */
+  border-radius: var(--radius-sm);
+}
+@keyframes rc-skel-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* AUDIT 2026-04-28 — proposal 2.1 cost tile + 2.2 coach toggles +
+ * 2.5 trace tab. These pieces live in the ops/diagnostics view and
+ * are therefore wrapped in their own selector prefix to avoid colliding
+ * with the existing diagnostics-card styles. */
+.cost-tile { display: grid; gap: 6px; min-width: 220px; }
+.cost-tile .cost-tile-row { display: flex; justify-content: space-between; gap: 16px; }
+.cost-tile .cost-tile-key { color: var(--text-dim); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+.cost-tile .cost-tile-val { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.cost-tile .cost-tile-banner { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; }
+.cost-tile .cost-tile-banner.ok    { background: var(--good-soft);  color: var(--good); }
+.cost-tile .cost-tile-banner.warn  { background: var(--gold-soft);  color: var(--gold); }
+.cost-tile .cost-tile-banner.over  { background: var(--bad-soft);   color: var(--bad);  }
+
+.coach-toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.coach-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; background: var(--surface-alt); border-radius: var(--radius-sm); }
+.coach-toggle-row .coach-toggle-label { font-size: 13px; font-weight: 700; letter-spacing: 0.05em; color: var(--text); text-transform: uppercase; }
+.coach-toggle-row .coach-toggle-pill { font-size: 11px; padding: 2px 10px; border-radius: 999px; font-weight: 800; letter-spacing: 0.1em; cursor: pointer; user-select: none; }
+.coach-toggle-row .coach-toggle-pill.on  { background: var(--good-soft); color: var(--good); }
+.coach-toggle-row .coach-toggle-pill.off { background: var(--bad-soft);  color: var(--bad);  }
+
+.trace-list { display: flex; flex-direction: column; gap: 6px; max-height: 70vh; overflow-y: auto; }
+.trace-item { padding: 10px 12px; background: var(--surface-alt); border-radius: var(--radius-sm); font-size: 12px; }
+.trace-item .trace-meta { display: flex; gap: 12px; color: var(--text-dim); font-size: 11px; letter-spacing: 0.05em; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.trace-item pre { white-space: pre-wrap; word-break: break-word; color: var(--text); margin-top: 4px; font-size: 11px; line-height: 1.4; }
+
+/* Health rollup dot (proposal 4.4). Anchored to row 2 of the header at
+ * the far right via margin-left:auto so it shares the row with the
+ * existing pills instead of getting a 3rd row of its own. */
+.health-dot {
+  display: inline-block;
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  margin-left: auto;       /* push to far right of row 2 */
+  align-self: center;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+.health-dot.green  { background: var(--good); box-shadow: 0 0 6px rgba(127,209,154,0.55); }
+.health-dot.yellow { background: var(--gold); box-shadow: 0 0 6px rgba(245,184,124,0.55); }
+.health-dot.red    { background: var(--bad);  box-shadow: 0 0 6px rgba(240,126,139,0.65); }
+
+/* ─────────────────────────────────────────────────────────────────────
+ * AUDIT 2026-04-28 — suggestion 2.3 replay scrubber.
+ * Layout: 2-column (match list left, scrubber+grid right).
+ * ───────────────────────────────────────────────────────────────────── */
+
+#view-replay { display: none; padding: 14px 22px 22px; }
+.replay-body {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 18px;
+  align-items: start;
+  height: calc(100vh - 200px);
+}
+.replay-list-pane {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+.replay-list-head {
+  padding: 12px 16px;
+  background: var(--surface-head);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.replay-match-list {
+  list-style: none;
+  margin: 0; padding: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+.replay-match-row {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-soft);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.replay-match-row:hover  { background: var(--surface-alt); }
+.replay-match-row.active { background: var(--surface-head); }
+.replay-match-row.won    { box-shadow: inset 3px 0 0 var(--good); }
+.replay-match-row.lost   { box-shadow: inset 3px 0 0 var(--bad); }
+.replay-match-top {
+  display: flex; align-items: baseline; gap: 8px;
+  font-size: 13px; font-weight: 700;
+}
+.replay-match-verdict {
+  display: inline-block; min-width: 16px; text-align: center;
+  font-weight: 900; letter-spacing: 0.05em;
+}
+.replay-match-verdict.won  { color: var(--good); }
+.replay-match-verdict.lost { color: var(--bad);  }
+.replay-match-champ {
+  color: var(--text); font-weight: 700;
+}
+.replay-match-queue {
+  margin-left: auto; font-size: 10px;
+  color: var(--text-faint); letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.replay-match-bot {
+  margin-top: 2px;
+  font-size: 11px; color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.replay-main-pane {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  overflow: hidden;
+}
+.replay-meta-row {
+  display: flex; align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.replay-meta {
+  font-size: 13px; color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  flex: 1;
+}
+.replay-clock {
+  font-size: 18px; font-weight: 900;
+  color: var(--text);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.replay-slider {
+  width: 100%; margin: 4px 0;
+  accent-color: var(--good);
+}
+.replay-slider:disabled { opacity: 0.3; }
+
+.replay-grid-wrap {
+  flex: 1; overflow: auto;
+  border-radius: var(--radius-sm);
+}
+.replay-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.replay-grid th {
+  text-align: left;
+  padding: 8px 10px;
+  background: var(--surface-head);
+  position: sticky; top: 0;
+  font-size: 10px; letter-spacing: 0.1em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.replay-grid td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.replay-grid tr.won  td.replay-col-team { color: var(--good); font-weight: 800; }
+.replay-grid tr.lost td.replay-col-team { color: var(--bad);  font-weight: 800; }
+.replay-grid tr.won  { background: rgba(127,209,154,0.04); }
+.replay-grid tr.lost { background: rgba(240,126,139,0.04); }
+.replay-col-team   { width: 24px; }
+.replay-col-champ  { display: flex; align-items: center; gap: 8px; }
+.replay-col-num    { text-align: right; width: 70px; }
+.replay-col-items  { padding: 4px 6px; }
+.replay-champ-icon {
+  width: 28px; height: 28px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--surface-alt);
+}
+.replay-item-icon {
+  display: inline-block;
+  width: 22px; height: 22px;
+  border-radius: 3px;
+  margin-right: 2px;
+  background: var(--surface-alt);
+  vertical-align: middle;
+  border: 1px solid var(--border);
+}
+
+

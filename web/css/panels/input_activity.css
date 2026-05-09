@@ -1,0 +1,506 @@
+/* ───── Adaptation panel — round 44: no-scroll, glanceable ────── */
+.adapt-section-head {
+  margin-top: 10px;
+  font-size: 14px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-weight: 700;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--border-soft);
+}
+#adapt-counters {
+  margin-top: 5px;
+  font-size: 16px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+#adapt-items { font-size: 16px; line-height: 1.35; }
+/* Cap visible counter-line rows in each section so long lists
+ * don't push the KDA streaks + footer out of the panel. Top-N
+ * carry the most signal; extras are clipped. */
+#adapt-counters .counter-line:nth-of-type(n+4),
+#adapt-items    .counter-line:nth-of-type(n+4) { display: none; }
+.counter-line {
+  padding: 3px 10px;
+  margin-bottom: 3px;
+  border-left: 3px solid var(--border);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--surface-alt);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.counter-line.positive { border-left-color: var(--good); color: var(--good); background: var(--good-soft); }
+
+/* Adaptation recent-WR trend arrow tint. */
+#adapt-recent.trend-up   { color: var(--good); font-weight: 900; }
+#adapt-recent.trend-down { color: var(--bad);  font-weight: 900; }
+#adapt-recent.trend-flat { color: var(--text-dim); }
+.counter-line.negative { border-left-color: var(--bad);  color: var(--bad);  background: var(--bad-soft); }
+#adapt-streaks {
+  display: flex; flex-direction: column; gap: 2px;
+  margin-bottom: 5px;
+  font-size: 16px;
+  letter-spacing: 0.01em;
+}
+.streak-row {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 1px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.streak-row.hot  .streak-label { color: var(--good); font-weight: 900; width: 14px; }
+.streak-row.cold .streak-label { color: var(--bad);  font-weight: 900; width: 14px; }
+.streak-row.hot  { color: var(--good); }
+.streak-row.cold { color: var(--bad); }
+.streak-row .dim { color: var(--text-faint); }
+.adapt-footer {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 13px;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.adapt-footer b       { color: var(--gold); }
+.adapt-footer b.on    { color: var(--good); }
+
+/* ───── Input bar — round 44: compact for glanceable layout ─────
+ * (2026-04-25) Hidden globally per user request — "Ask Agent 7" wasn't
+ * working as intended. Per the static-layout / visual-only-remove rule,
+ * the form, input element, send button, and all JS event handlers stay
+ * wired (Stop/UserPromptSubmit hooks still query the bridge, history
+ * popout still listens for keys); only the visual display is dropped.
+ * Flip back to display:flex (or remove this override) to restore. */
+#input-bar { display: none; }
+.input-bar {
+  background: var(--canvas);
+  padding: 8px 14px 10px 14px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+#input-form {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 4px 4px 4px 18px;
+  box-shadow: var(--shadow-card-soft);
+}
+.input-prompt {
+  font-size: 20px;
+  color: var(--info);
+  font-weight: 900;
+}
+#input-text {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 12px 6px;
+  font-family: inherit;
+  font-size: 19px; font-weight: 400;
+  outline: none;
+}
+#input-text::placeholder     { color: var(--text-faint); }
+.input-clear {
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  font-size: 22px;
+  line-height: 1;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  margin-right: 4px;
+  font-family: inherit;
+}
+.input-clear:hover { background: var(--surface-alt); color: var(--text); }
+.input-clear.hidden { display: none; }
+
+#input-send {
+  background: var(--bad);
+  color: var(--canvas);
+  border: none;
+  border-radius: 999px;
+  padding: 11px 26px;
+  font-family: inherit;
+  font-size: 15px; font-weight: 900; letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+#input-send:hover    { filter: brightness(1.1); }
+#input-send:disabled { opacity: 0.4; cursor: wait; }
+
+.warm-indicator {
+  font-size: 23px;
+  line-height: 1;
+  color: var(--bad);
+  width: 20px;
+  text-align: center;
+}
+.warm-indicator.warm    { color: var(--good); }
+.warm-indicator.pending { color: var(--gold); }
+
+.input-reply {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card-soft);
+  padding: 12px 18px;
+}
+.input-reply.hidden { display: none; }
+.reply-head {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 12px; letter-spacing: 0.08em;
+  font-weight: 700;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 8px;
+}
+.reply-intent { color: var(--info); }
+.reply-path   { color: var(--text-faint); }
+.reply-dismiss {
+  margin-left: auto;
+  background: var(--surface-alt);
+  border: none;
+  border-radius: 999px;
+  color: var(--text-dim);
+  width: 30px; height: 30px;
+  font-family: inherit;
+  font-size: 16px; cursor: pointer;
+}
+.reply-dismiss:hover { background: var(--bad-soft); color: var(--bad); }
+.reply-body {
+  font-size: 17px;
+  color: var(--text);
+  line-height: 1.4;
+  white-space: pre-wrap; word-break: break-word;
+}
+.reply-filed { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+.filed-chip {
+  font-size: 11px;
+  color: var(--gold);
+  background: var(--gold-soft);
+  border-radius: 999px;
+  padding: 3px 10px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+/* Chat history */
+.input-history {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card-soft);
+  padding: 10px 14px 12px 14px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.input-history.hidden { display: none; }
+.history-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; letter-spacing: 0.14em;
+  color: var(--text-dim);
+  padding-bottom: 5px;
+  border-bottom: 1px dashed var(--border-soft);
+  margin-bottom: 5px;
+}
+.history-title { letter-spacing: 0.16em; }
+.history-turn {
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border-soft);
+}
+.history-turn:last-child { border-bottom: none; }
+.turn-user {
+  font-size: 15px;
+  color: var(--info);
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+.turn-user::before { content: "› "; opacity: 0.6; }
+.turn-reply {
+  font-size: 15px;
+  color: var(--text);
+  white-space: pre-wrap; word-break: break-word;
+  line-height: 1.35;
+}
+.turn-meta {
+  margin-top: 4px;
+  font-size: 11px; letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+.turn-meta .turn-chip {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  color: var(--text-dim);
+}
+.turn-error .turn-reply { color: var(--bad); }
+.turn-sim { border-left: 3px solid var(--advisory); padding-left: 8px; }
+.turn-refused .turn-reply { color: var(--advisory); }
+
+/* Inline proposed-changes preview (round 42 ui_feedback replies). */
+.ui-proposal-diff {
+  margin-top: 8px;
+  border: 1px dashed var(--info-soft);
+  background: var(--surface-alt);
+  padding: 8px 12px;
+  max-height: 260px;
+  overflow: auto;
+}
+.ui-proposal-head {
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  color: var(--info);
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+.ui-proposal-snippet {
+  font-family: "SF Mono", Consolas, "Courier New", monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+}
+.ui-proposal-status {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--info);
+  letter-spacing: 0.04em;
+}
+.ui-proposal-status.ui-proposal-failed { color: var(--bad); }
+
+/* Round 44: grid reserves enough for header (70) + activity (36) +
+ * compact input bar w/ history hidden (~110) + footer (36). When
+ * the history opens it's scrollable in-place and doesn't push the
+ * grid — so the grid doesn't need to reserve for it. */
+/* Round 44 height calc removed — main is flex-grow now. See top of file. */
+
+/* ───── Task detail modal ──────────────────────────────────────── */
+.task-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+}
+.task-modal.hidden { display: none; }
+.task-modal-body {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 22px 26px 26px 26px;
+  min-width: 640px;
+  max-width: 880px;
+  max-height: 80vh;
+  overflow-y: auto;
+  color: var(--text);
+}
+.task-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 15px; letter-spacing: 0.14em;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--border);
+  margin-bottom: 16px;
+}
+#task-modal-close {
+  background: var(--surface-alt);
+  border: none;
+  border-radius: 999px;
+  color: var(--text-dim);
+  width: 36px; height: 36px;
+  font-family: inherit;
+  font-size: 16px; cursor: pointer;
+}
+#task-modal-close:hover { background: var(--bad-soft); color: var(--bad); }
+.task-modal-kv .kv { grid-template-columns: 140px 1fr; }
+.task-modal-kv .kv span:first-child { color: var(--text-faint); }
+.task-modal-kv .kv span:last-child  {
+  font-family: "SF Mono", Consolas, "Courier New", monospace;
+  font-size: 13px;
+  color: var(--text);
+}
+.task-modal-section {
+  margin-top: 16px; padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+.task-section-head {
+  font-size: 13px; letter-spacing: 0.14em;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+}
+.tm-event-row {
+  padding: 5px 10px;
+  margin-bottom: 3px;
+  border-left: 3px solid var(--border);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--surface-alt);
+  font-size: 12px;
+  font-family: "SF Mono", Consolas, "Courier New", monospace;
+}
+.tm-event-row.ev-completed   { border-left-color: var(--good); }
+.tm-event-row.ev-failed      { border-left-color: var(--bad); color: var(--bad); }
+.tm-event-row.ev-dead_letter { border-left-color: var(--bad); color: var(--bad); }
+.tm-event-row.ev-filed       { border-left-color: var(--gold); }
+.tm-event-row.ev-dispatched  { border-left-color: var(--info); }
+.tm-event-row .tm-ts   { color: var(--text-faint); margin-right: 10px; }
+.tm-event-row .tm-kind { margin-right: 10px; color: var(--info); }
+
+.activity-event { cursor: pointer; }
+.activity-event:hover { filter: brightness(1.2); }
+
+/* ───── Activity ticker strip ──────────────────────────────────── */
+/* User request 2026-04-29: visually hidden — supervisor task tracking
+ * (refreshActivity / activity-line / activity-count = "165/193") still
+ * runs server-side and the JS still polls; only the strip is hidden so
+ * the row doesn't take screen real estate. Set display:flex to restore. */
+.activity-strip {
+  display: none;
+  align-items: center;
+  gap: 18px;
+  padding: 8px 22px;
+  background: var(--canvas);
+  font-family: "SF Mono", Consolas, "Courier New", monospace;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  height: 44px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.activity-label {
+  color: var(--text-dim);
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  font-size: 13px;
+  font-family: "Lato", -apple-system, sans-serif;
+}
+.activity-line {
+  flex: 1;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activity-count {
+  color: var(--text-dim);
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  font-family: "Lato", -apple-system, sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+}
+.activity-event {
+  display: inline-block;
+  margin-right: 18px;
+}
+.activity-event .ev-glyph {
+  display: inline-block;
+  width: 16px;
+  text-align: center;
+  margin-right: 4px;
+  color: var(--text-faint);
+  font-weight: 900;
+  font-family: "Lato", -apple-system, sans-serif;
+}
+.activity-event.op-advisory .ev-glyph { color: var(--advisory); }
+.activity-event.event-completed   .ev-glyph { color: var(--good); }
+.activity-event.event-failed      .ev-glyph { color: var(--bad); }
+.activity-event.event-filed       .ev-glyph { color: var(--gold); }
+.activity-event.event-dispatched  .ev-glyph { color: var(--info); }
+.activity-event .ev-ts   { color: var(--text-faint); margin-right: 8px; }
+.activity-event .ev-op   { color: var(--info); margin-right: 8px; }
+.activity-event .ev-kind { color: var(--text-dim); }
+.activity-event.event-completed   .ev-kind { color: var(--good); }
+.activity-event.event-failed      .ev-kind { color: var(--bad); }
+.activity-event.event-dead_letter .ev-kind { color: var(--bad); }
+.activity-event.event-filed       .ev-kind { color: var(--gold); }
+.activity-event.event-dispatched  .ev-kind { color: var(--info); }
+
+/* Pink advisory treatment — overrides the per-event-color above so
+ * cold-streak / coaching-insight advisories pop visually. */
+.activity-event.op-advisory .ev-op { color: var(--advisory); }
+.activity-event.op-advisory .ev-kind { color: var(--advisory); }
+.tm-event-row[data-op*="advisory"] { border-left-color: var(--advisory); }
+
+/* ───── Footer ─────────────────────────────────────────────────── */
+footer {
+  height: 44px;
+  padding: 0 22px;
+  display: flex; align-items: center; gap: 18px;
+  font-size: 14px;
+  color: var(--text-faint);
+  background: var(--canvas);
+}
+footer code { color: var(--text-dim); font-family: "SF Mono", Consolas, "Courier New", monospace; font-size: 13px; }
+footer .spacer { flex: 1; }
+footer .ui-version {
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 10px;
+  color: var(--text-faint);
+  opacity: 0.6;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--surface);
+  letter-spacing: 0.02em;
+}
+footer .prefs-chip {
+  font-size: 10px;
+  color: var(--gold);
+  background: var(--gold-soft);
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+footer .prefs-chip:hover { background: var(--bad-soft); color: var(--bad); }
+
+/* ───── Reduced motion — respect OS preference ─────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  /* Keep essential transitions for interactive states, just instant. */
+}
+
+/* ───── iPad narrow viewport fallback ──────────────────────────── */
+@media (max-width: 1600px) {
+  .action     { font-size: 29px; }
+  .action-mid { font-size: 21px; }
+  header       { gap: 10px; padding: 6px 16px; }
+  main         { gap: 14px; padding: 4px 14px 12px 14px; }
+  .panel       { border-radius: 12px; }
+  .panel-head  { padding: 8px 14px 4px 14px; }
+  .panel-body  { padding: 4px 14px 10px 14px; }
+  .team-tile   { width: 38px; height: 38px; }
+  .tile-spell  { width: 16px; height: 16px; }
+  .item-tile   { width: 68px; }
+  .item-icon   { width: 56px; height: 56px; }
+  /* Narrow viewport: icon 56 → tag sits at 46px pinned to icon bottom. */
+  .item-tile.next-up .item-cost { top: 46px; }
+}
+
+/* Very narrow (half-screen / portrait iPad) — drop the 3-col main grid to 2. */
+@media (max-width: 1280px) {
+  main {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+  }
+  .panel-minimap    { grid-row: 1 / span 3; grid-column: 1; }
+  .panel-right-now  { grid-column: 2; grid-row: 1; }
+  .panel-next       { grid-column: 2; grid-row: 2; }
+  .panel-item-build { grid-column: 2; grid-row: 3; }
+  .panel-adaptation { display: none; }
+}
+
