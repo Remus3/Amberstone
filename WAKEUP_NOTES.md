@@ -1,6 +1,35 @@
 # WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s136 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+> Sessions s27–s137 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+
+---
+
+# s141 wrap — 2026-05-09 (Phase 7 — phase-marker comment normalization)
+
+## What shipped
+- **12 RC orchestration phase-markers** converted to `# arch: phase <id> [(YYYY-MM-DD)] — <one-line note>` form across 10 files: `core/bridge_envelope.py`, `core/metrics_cache.py`, `ops/rc_self_monitor.py` (×4), `tools/build_portable.py`, `tft/tft_state_reader.py`, `game_reader/snapshot_normalizer.py`, `agents/agent2_backend/migration_rewind.py`, `tft/tft_live_analysis.py`, `tft/tft_coach_engine.py`.
+- **`tools/gen_archmap.py`** extended: new `PHASE_RE` regex + `_collect_phase_markers()` + `_render_phase_journal()`; new sentinel block `<!-- phasejournal:start/end -->` rendered between archmap and god-modules sections of `docs/ARCHITECTURE.md`. Self-skip via `PHASE_SCAN_SKIP_FILES = {"tools/gen_archmap.py"}` to avoid the docstring's example markers polluting output.
+- **`docs/ARCHITECTURE.md`**: new "Phase journal" section auto-populated with 11 entries, sorted dated-first by date desc, then undated by phase id.
+- **`RC_FUTUREPROOFING_PLAN.md`** (Desktop): Phase 7 phase-marker checkbox + `.rgignore` checkbox flipped; status table updated to 🟠 in-progress (s141).
+- 386 tests pass, ruff 0 violations, archmap `--check` clean, py_compile clean. Commit: **48d11be** pushed → origin/main.
+
+## Key decisions
+- **Plan estimate vs reality**: plan said "27 phase-markers"; actual universe is ~200+ across 4 numbering systems (RC orchestration Phase 0.X, RC futureproofing 1–7, RC Tier 1–4 milestones, DS engine internal Phase 4 batches in `agents/daemon_slayer/`). Narrowed to RC orchestration/architecture markers only.
+- **Excluded**: DS engine batch tags (~100+, own batch system, all dated 2026-05-04, self-document via DS roadmap) and Tier markers (mostly inside frozen files like `web_dashboard.py`, `main.py`, `app/__init__.py`).
+- **Skipped frozen file**: `ops/rc_supervisor.py:1188` (FROZEN per CLAUDE.md). Phase 0.13 marker at `ops/rc_self_monitor.py:197` covers same phase; journal not impoverished.
+- **Format edge case**: `phase 0.3 (fix 3)` collides with optional `(YYYY-MM-DD)` group; convention is to put qualifiers in the note (`phase 0.3 — note (fix 3)`).
+- **Format edge case**: marker line MUST be a complete one-line sentence; the regex is line-based and truncates multi-line continuations. Continuations stay on subsequent comment lines as regular text, not part of the journal note.
+
+## Do NOT redo
+- Don't try to mass-convert DS engine `# Phase 4 batch N (2026-05-04):` tags — explicitly out of scope; DS has its own batching system.
+- Don't try to convert Tier markers (`Tier 2 #6`, `T2 #8`, `Tier 3 #15`, `Tier 4 #16`) — most live in frozen files; separate convention.
+- Don't add phase markers without dates going forward — new markers should include `(YYYY-MM-DD)`. The legacy undated markers were converted as-is to avoid speculative dating.
+- Don't edit the `<!-- phasejournal:start/end -->` block manually — pre-commit hook will reject.
+
+## What's next
+1. **Phase 7 remaining** — `/wrap` auto-prune of WAKEUP_NOTES, Conventional Commits commit-msg hook. Each warrants its own scoped session.
+2. **Phase 6 — Bridge consolidation** — still blocked on operator approval for frozen files (`bridge_post_result.py`, `bridge_pull_tasks.py`, `process-bridge-tasks.md`).
+3. **Game-PC LCU agent not posting** — flagged at session start (SessionStart anomaly); separate task, surface for diagnosis if it persists.
 
 ---
 
@@ -52,31 +81,6 @@
 
 ## What's next
 1. **Phase 2.2** — `game_reader.py` (1473 LOC) split into `core/game_reader/` package.
-2. **Phase 4 remaining** — dispatch-level POST validation in `_dispatch.py` (low priority).
-3. **Vision regions calibration** — blocked on live game.
-
----
-
-# s137 wrap — 2026-05-08 (Phase 3.3 — Playwright panel snapshot tests)
-
-## What shipped
-- **`tests/snapshot_panels/`** (new): 6-fixture Playwright harness — lobby/sr/aram/arena/brawl/tft × 4 panels = 24 screenshots per run.
-- **`tests/snapshot_panels/conftest.py`**: `_MockServer` (ThreadingHTTPServer serving `web/` + fixture-driven `/api/*`), `pw_browser` session-scoped fixture, `_WS_STUB` JS snippet.
-- **`tests/snapshot_panels/test_panel_snapshots.py`**: parametrized `test_panels[fixture]` — loads fixture, waits for `#rn-action` coaching text (or 800ms for lobby), asserts all 4 panels visible, screenshots each.
-- **`.github/workflows/ci.yml`**: added `playwright install --with-deps chromium` step + `panel snapshot tests` step.
-- Commit: **02ed835** pushed → origin/main.
-
-## Key decisions
-- Root cause of flaky failures: the dashboard's WebSocket connects to the **real supervisor on :8891** (not just the mock HTTP server). The real supervisor sends live `mode="client"` health/state, overriding the fixture and hiding `#item-build`. Fix: `_WS_STUB` injected via `page.add_init_script()` makes `window.WebSocket` immediately fire `onclose` without connecting.
-- SSE format: the mock sends `store["data"]` (raw `StateResponse` JSON with `mode_key`) directly. The JS `setupStateStream()` reads `st.mode_key`, not a WS-style envelope wrapper.
-- Arena/TFT: both pass cleanly once WS is stubbed. TFT doesn't use `#item-build` for build paths but the panel IS visible (CSS only hides it for `data-mode="client"`).
-
-## Do NOT redo
-- Don't re-investigate the `#item-build` visibility issue — it was the WS (:8891) overriding fixture. Stubbing WS fixed it in 02ed835.
-- Don't try to remove the WS stub; it's intentional isolation for test determinism.
-
-## What's next
-1. **Phase 2.3** — `coach_integration.py` (1217 LOC) split into `coach_integration/` package.
 2. **Phase 4 remaining** — dispatch-level POST validation in `_dispatch.py` (low priority).
 3. **Vision regions calibration** — blocked on live game.
 
