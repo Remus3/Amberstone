@@ -140,6 +140,7 @@ When invoked with `/done` or asked to wrap a session: (1) audit pending changes,
 5c. ✅ Phase 2.3 — coach_integration split complete (s138): 1225 LOC → `coach_integration/` pkg (_profiles 181 + _sr_prompt 455 + _coach 607 + __init__ 6). 386 tests, ruff clean.
 5d. ✅ Phase 2.2 — game_reader split complete (s139): 1474 LOC → `game_reader/` root pkg via `_PollerMixin` + `_NormalizerMixin` (poller 281 + snapshot_normalizer ~700 + mode_router 74 + __init__ 92). 386 tests, ruff clean, RC restarted clean.
 5e. ✅ Phase 2.4 — moon_vision_server split complete (s140): 710 LOC → 21-LOC entrypoint shim + `vision_server/` pkg (_config 75 + _stats 65 + _frame 117 + _relay 118 + _inference 264 + _http 245 + __init__ 79). 386 tests, ruff clean, :8889/health verified, build_portable.py patched.
+5f. 🟠 Phase 7 — Process polish (s141, 48d11be): 12 RC orchestration phase-markers normalized to `# arch: phase <id> [(YYYY-MM-DD)] — <note>`; `tools/gen_archmap.py` extended with phasejournal indexer; `docs/ARCHITECTURE.md` gained auto-populated Phase journal. `/wrap` auto-prune + commit-msg hook pending.
 6. 🟡 Phase 6 — Bridge consolidation. Blocked on frozen-file approval (`bridge_post_result.py`, `bridge_pull_tasks.py`, `process-bridge-tasks.md`).
 7. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes. Blocked on live game.
 8. 🟡 DS calibration pipeline — blocked on rewind_history.db staleness (last entry Dec 2025).
