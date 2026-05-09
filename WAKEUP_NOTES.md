@@ -1,6 +1,6 @@
 # WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s128 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+> Sessions s27–s129 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
 
 ---
 
@@ -81,31 +81,3 @@
 2. **Phase 4 remaining** — dispatch-level POST validation in `dashboard/_dispatch.py` (low-priority; read-path is already covered).
 3. **Phase 3** — frontend ESM split (`dashboard.js` 8507 LOC). After that, JS typedef codegen from `api_schema.py` becomes viable.
 
----
-
-# s128 wrap — 2026-05-08 (Phase 5 — CI gate + smoke harness COMPLETE)
-
-## What shipped
-- **`tests/snapshot_regressions/test_app_authority.py`** fixed: 52 → 0 failures. Root cause: `app` was refactored to use `StateAuthority` + `GameLifecycleManager`; headless stub didn't initialize them. Fix: `_HeadlessApp` subclass with `_current_envelope` property proxying `app.state.envelope`. Test count: 289 → 343 passing.
-- **Arena/Brawl golden fixtures** added: `ARENA_STATE` + `BRAWL_STATE` in `state_dicts.py`, two golden JSON files, 10 new snapshot tests.
-- **`tests/phase2_smoke/test_coach_state_parsing.py`** (new, 31 tests): smoke harness for all 5 coach modes — SR (`_build_user_prompt`), ARAM/Arena/Brawl (`_parse_state`), TFT (`_coach_board_to_placement`). No API calls.
-- **CI** (`.github/workflows/ci.yml`): added `ruff` install + `ruff check .` step; added `phase8_smoke`; removed `--ignore=test_app_authority.py`. 380 tests pass in CI shape.
-- **`ruff.toml`**: 101 → 0 violations. Added ignores for RC patterns (B904/B007/B027/E731/UP037); frozen-file per-file ignores (app/ F821, bridge tools UP/E/B); auto-fixed 51 mechanical issues.
-- **Bug fix**: `tft/tft_live_analysis.py:274` — `_j.loads` → `_pj.loads` (would NameError if manual_level path hit).
-- **Commit `d21f533`** pushed → origin/main.
-
-## Key decisions
-- `_HeadlessApp` subclass pattern (not monkey-patching OverlayApp) keeps production code clean.
-- Coach smoke tests test the state-parsing layer (raw Riot API format), not the processed game_reader output. Phase 4.3 schema validation deferred.
-- ruff frozen-file per-file-ignores prevent accidental `--fix` to `bridge_pull_tasks.py` etc.
-- Branch protection on GitHub (`require CI "check" green`) left as manual UI action — chip created for next session.
-
-## Do NOT redo
-- Don't re-fix test_app_authority.py — all 54 tests now pass.
-- Don't re-run ruff --fix — 0 violations, nothing to fix.
-- Don't re-add arena/brawl golden files — already checked in.
-
-## What's next
-1. **TFT 17.3** — due ~2026-05-12 (highest time priority). Same process as 17.2.
-2. **Phase 4** — Contracts/schemas: pydantic `api_schema.py` + coaching payload. Next in futureproofing order.
-3. **Branch protection** — enable in GitHub UI: Settings → Branches → require status check "check".

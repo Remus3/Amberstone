@@ -6,6 +6,12 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s128 wrap — 2026-05-08 (Phase 5 — CI gate + smoke harness COMPLETE)
+
+- Commit `d21f533`. Fixed test_app_authority.py (52→0 failures, _HeadlessApp subclass). Arena/Brawl golden fixtures added (343→380 tests). phase2_smoke suite (31 tests, all 5 coach modes). CI: ruff + phase8_smoke wired. ruff.toml 101→0 violations. Bug fix: tft_live_analysis.py:274 `_j.loads`→`_pj.loads`.
+
+---
+
 # s127 wrap — 2026-05-08 (Phase 2.1 — champion_profiles.py split COMPLETE)
 
 ## What shipped
