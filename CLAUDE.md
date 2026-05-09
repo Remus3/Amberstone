@@ -133,8 +133,7 @@ When invoked with `/done` or asked to wrap a session: (1) audit pending changes,
 1. ✅ Phase 1 — Knowledge architecture complete (fc1361b, s125+s126): living docs + archmap + 5 ADRs.
 2. ✅ Phase 2.1 — champion_profiles.py split complete (8fa11f4): 902→29 LOC + 168 JSONs.
 3. ✅ Phase 5 — CI gate + smoke harness complete (d21f533, s128): 380 tests pass, ruff 0 violations.
-4. 🟠 Phase 4 — Contracts/schemas in progress (s129): `core/coaching_payload.py` (5 pydantic models, soft-validate in state-builder) + `dashboard/api_schema.py` (HTTP shapes) + `core/bridge_envelope.py` + `docs/API.md` (40 routes). 4.2 tool-rewrite deferred (frozen-file approval needed). JS typedef codegen deferred to Phase 3.
-   ➡️ Next: Phase 4 remaining — dispatch-level validation (low priority).
+4. ✅ Phase 4 — Contracts/schemas complete (s129 + s143): `core/coaching_payload.py` (5 pydantic models, soft-validate in state-builder) + `dashboard/api_schema.py` (HTTP shapes) + `core/bridge_envelope.py` + `docs/API.md` (40 routes); s143 added soft-warn dispatch-level validator in `dashboard/_dispatch.py` (5 paths, 26 tests). 4.2 tool-rewrite still blocked on frozen-file approval (rolls into Phase 6).
 5. ✅ TFT 17.3 — shipped 0e9617b (s131): Morgana 4g, Anima/Stargazer reworks, Primordian AVOID, AP comps buffed.
 5b. ✅ Phase 3 complete (s133+s135+s136+s137): ESM panels, CSS panels, JSDoc typedefs, Playwright snapshots. 6-fixture harness in `tests/snapshot_panels/`; WS stub prevents live-supervisor interference; CI gate live.
 5c. ✅ Phase 2.3 — coach_integration split complete (s138): 1225 LOC → `coach_integration/` pkg (_profiles 181 + _sr_prompt 455 + _coach 607 + __init__ 6). 386 tests, ruff clean.

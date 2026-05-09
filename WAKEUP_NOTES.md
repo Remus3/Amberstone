@@ -4,6 +4,35 @@
 
 ---
 
+# s143 wrap — 2026-05-09 (Phase 4.1 — dispatch-level soft-warn validator)
+
+## What shipped
+- **`dashboard/_dispatch.py`** gained `_validate_request_body(path, body)` called at the top of `dispatch_post` before route lookup. Path-keyed against `_REQUEST_MODELS` (5 paths today: `/api/input`, `/api/command`, `/api/ds-preview`, `/api/bridge/inbox`, `/api/speak`). Soft-warn — never raises, never blocks dispatch; route handlers still run their own existing validation.
+- **`tests/phase4_dispatch_validate/`** (new) — 26 tests: registry shape, valid bodies (5 routes × minimal + ds-preview full), invalid bodies (missing required, wrong type, extras-on-`_ForbidExtra`, allow-extra-on-`_AllowExtra`), non-dict bodies (None/list/str/int parametrized), query-string handling, and a `dispatch_post` integration test that monkeypatches `_gather_post` to confirm validator fires before route dispatch.
+- **Live verified**: POSTed `{}` to `https://127.0.0.1:8888/api/input` → route returned `400 empty_text` AND log emitted `WARNING rc.dispatch request_body[/api/input] text: Field required` (validator fired). POSTed `{"text":"phase4 smoke"}` → `200 ok`, no warnings.
+- **Plan + CLAUDE.md updated**: `RC_FUTUREPROOFING_PLAN.md` Phase 4 closed (4.1 codegen target + 4.3 dashboard JS sub-checkbox flipped — Phase 3.2 had already shipped them; dispatch checkbox flipped + s143 Findings appended; status table 🟠→🟢 2/2 sessions). CLAUDE.md priority #4 ✅. 440 tests pass (was 412, +26 new + 2 drift). Ruff clean. archmap clean. Commit: **791e2db**.
+
+## Key decisions
+- **Soft-warn, opt-in by path** (not central hard-validate). Adding a route to `_REQUEST_MODELS` is one line; missing routes pass through silently. Mirrors the operator-approved Phase 4.3 `validate_coaching_payload` pattern. Hard-gating per-route is a future tightening once we trust the contract is stable.
+- **5 paths covered, 16 unmodeled paths pass through silently**: loadout/sr-draft/replay-coach/coach-toggle/experimental-*/aram-analyze/decisions-*/health-peer-* don't have Request models in `api_schema.py` yet. No false-warning noise on routes without a model.
+- **`_dispatch.py` had `\r\r\n` (double-CR) endings** — same Phase 2.3 gotcha as `coach_integration.py`. Normalized to LF on this edit; commit diff shows `+394/-113` because of the EOL normalization, NOT because the rewrite was extensive.
+- **caplog gotcha noted**: `LogRecord.message` is unset until `getMessage()` is called. First-cut test helper used `r.message % r.args`; switched to `r.getMessage()` (canonical). Worth remembering for any future caplog-based test.
+- **Phase 4 fully closes** even though 4.3 still has unchecked boxes — those (`bridge_log.py` mirror, OBS publisher) were explicitly marked "out of scope" / "non-existent in tree" in the s129 Findings.
+
+## Do NOT redo
+- Don't add hard-rejection (HTTP 400) for invalid bodies in `_dispatch.py` without operator buy-in — soft-warn was the explicitly approved pattern. Silently dropping requests that previously worked would be a regression.
+- Don't add the unmodeled 16 POST routes to `_REQUEST_MODELS` without first authoring their pydantic Request models in `api_schema.py` — the lookup will crash if a path maps to None or to something not a `BaseModel` subclass.
+- Don't try to hard-rewrite `dashboard/_dispatch.py` to use `_AllowExtra` everywhere "to silence warnings" — `_ForbidExtra` on `InputRequest`/`CommandRequest` is intentional (these have a finite-keyword API surface and any extra field IS a contract drift signal).
+- Don't reintroduce CRLF or `\r\r\n` to `_dispatch.py` — file is now LF, archmap header still recognized, all hooks pass.
+
+## What's next
+1. **Phase 6 — Bridge consolidation** — still blocked on operator approval for frozen files (`bridge_post_result.py`, `bridge_pull_tasks.py`, `process-bridge-tasks.md`). Only un-shipped phase from the futureproofing plan.
+2. **Game-PC LCU agent — phase=Offline persistent** — flagged at session start (probe showed phase=Offline age=-27s); separate diagnosis task if it persists into next session.
+3. **Vision regions calibration** — blocked on live game.
+4. **Optional follow-on for Phase 4**: extend `_REQUEST_MODELS` coverage to the 16 unmodeled POST routes once their schemas are authored in `api_schema.py`. Low-priority polish; not blocking.
+
+---
+
 # s142 wrap — 2026-05-09 (Phase 7 — WAKEUP_NOTES auto-prune + Conventional Commits hook)
 
 ## What shipped
@@ -63,30 +92,3 @@
 1. **Phase 7 remaining** — `/wrap` auto-prune of WAKEUP_NOTES, Conventional Commits commit-msg hook. Each warrants its own scoped session.
 2. **Phase 6 — Bridge consolidation** — still blocked on operator approval for frozen files (`bridge_post_result.py`, `bridge_pull_tasks.py`, `process-bridge-tasks.md`).
 3. **Game-PC LCU agent not posting** — flagged at session start (SessionStart anomaly); separate task, surface for diagnosis if it persists.
-
----
-
-# s140 wrap — 2026-05-09 (Phase 2.4 — moon_vision_server split)
-
-## What shipped
-- **`vision_server/` package** (new): split `moon_vision_server.py` (710 LOC) into 7 internal modules — `_config.py` (75), `_stats.py` (65), `_frame.py` (117), `_relay.py` (118), `_inference.py` (264), `_http.py` (245), `__init__.py` (79). Real code lives here.
-- **`moon_vision_server.py`** (kept): reduced to 21-LOC entrypoint shim — `from vision_server import main; sys.exit(main())`. Preserves the file path that `RC-VisionServer` scheduled task and `dashboard/server.py:191` spawn-by-path.
-- **`tools/build_portable.py`**: added `moon_vision_server.py` to `_ROOT_PY_FILES` (closed pre-existing bundle gap) + `vision_server` to `_SOURCE_PACKAGES`.
-- **`docs/ARCHITECTURE.md`**: god-module table updated, archmap auto-regenerated.
-- 386 tests pass, ruff clean, `:8889/health` verified post-restart (PID 17508→10476). Commit: **9cf262a** pushed → origin/main.
-
-## Key decisions
-- **Shim pattern, not package replacement**: `moon_vision_server.py` is spawned by file path from two callers (scheduled task XML + dashboard subprocess). Editing those would require touching frozen-adjacent task XML; keeping a 21-LOC shim is cheaper and preserves the contract.
-- **Sub-file deviation from plan**: plan listed 4 files (frame_upload, frame_cache, tier_routes, sonnet_escalation). Actual = 6 internal because plan missed LCU relay, liveclient relay, stats, HTTP handler, config. Combined frame_upload+frame_cache (share state) and combined tier_routes+sonnet_escalation into `_inference.py` (both inference handlers feeding same stats).
-- **Cross-module state**: `_frame` and `_relay` directly mutate `_stats._stats[k]["bytes"]` under `_stats._stats_lock`. Kept the direct mutation — wrapping it in setters would just create indirection.
-- **Pre-existing bundle gap**: `moon_vision_server.py` was NEVER in `_ROOT_PY_FILES` — portable builds have been shipping without the vision server. Fix bundled with this change.
-
-## Do NOT redo
-- Don't try to import from `moon_vision_server` (Python module) — the file is path-spawned, not import-consumed. Use `from vision_server import …` instead.
-- Don't delete `moon_vision_server.py` thinking it's dead code — RC-VisionServer scheduled task XML hardcodes that path.
-- Don't switch `python.exe` → `pythonw.exe` in the task XML without operator approval; that's a console-window cosmetic, not a Phase 2.4 scope item.
-
-## What's next
-1. **Phase 6 — Bridge consolidation** — blocked on operator approval for frozen files (`bridge_post_result.py`, `bridge_pull_tasks.py`, `process-bridge-tasks.md`).
-2. **Game-PC LCU agent not posting** — SessionStart anomaly flagged at session start; separate task, surface for diagnosis.
-3. **Vision regions calibration** — blocked on live game.
