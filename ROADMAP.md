@@ -31,7 +31,7 @@ Phased refactor plan (doc architecture → god module decomp → frontend ESM �
 | 4 — Contracts/schemas | ✅ Done (791e2db — s143 dispatch soft-warn validator + 26 tests; closes s129 4.1+4.3 partial) |
 | 3 — Frontend modules | ✅ Done (s137 — 3.1+3.2+3.3; 6-fixture Playwright snapshots, WS-stub isolation) |
 | 2.3 — coach_integration split | ✅ Done (s138 — 1225 LOC → _profiles/\_sr\_prompt/\_coach pkg, 386 tests) |
-| 6 — Bridge consolidation | 🔴 Blocked (frozen-file approval needed) |
+| 6 — Bridge consolidation | ✅ Done (s144 — `tools/bridge_cli.py` + 7 shims, BridgeMetrics namespace in `core/prom_metrics.py`, 42 tests; state consolidation + 5 watcher daemons explicitly out of scope) |
 | 2.2 — game_reader split | ✅ Done (ea7589e — s139, 1474 LOC → mixin pkg, 386 tests) |
 | 2.4 — vision server split | ✅ Done (9cf262a — s140, 710 LOC → shim + vision_server/ pkg, 386 tests) |
 | 7 — Process polish | ✅ Done (s141 48d11be + s142, phase-marker normalization + archmap journal + WAKEUP_NOTES auto-prune + Conventional Commits commit-msg hook, 412 tests) |
