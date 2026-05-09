@@ -6,7 +6,7 @@ _Now + Next only. Full history in `docs/_archive/CHANGELOG.md`. Aspirational in 
 
 ## Open items — High priority
 
-- **TFT 17.3 patch** — due ~2026-05-12. Same process as 17.2 (`tft_pbe_engine.py` + `tft_pbe_data.py` + meta JSON bump).
+- ✅ **TFT 17.3 patch** — shipped 0e9617b (2026-05-08). Morgana 4g, Anima/Stargazer reworks, Primordian AVOID, AP comps buffed.
 - **rewind_history.db staleness** — blocked on live SR game (last entry Dec 2025; needs game_id wired to new session records).
 - **Vision regions calibration** — tune `data/vision_regions.json` bboxes. Blocked on live game for calibration frame.
 - **Bridge Watcher acceptance-criteria** — need 50+ real-traffic auto-action samples (currently synthetic only). Watch `auto_ok_since_boot` vs `auto_err_since_boot` on RC heartbeat.
@@ -50,7 +50,7 @@ Phased refactor plan (doc architecture → god module decomp → frontend ESM �
 | Peer bridge daemon | watcher=alive queue=0 |
 | Coaches | All 4 modes DS-before-Haiku ✅ |
 | Daemon Slayer `:8893` | ENGINE 0.60.0 · 547 items · 911 tests |
-| TFT | Set 17 patch 17.2 live; 17.3 due ~2026-05-12 |
+| TFT | Set 17 patch 17.3 live (0e9617b) |
 
 ---
 
