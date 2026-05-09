@@ -1,5 +1,6 @@
 # Secrets — NEVER commit
 API-Key-Claude.txt
+API-Key-Riot.txt
 *.key
 *.pem
 .env
