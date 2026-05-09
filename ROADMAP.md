@@ -7,6 +7,11 @@ _Now + Next only. Full history in `docs/_archive/CHANGELOG.md`. Aspirational in 
 ## Open items — High priority
 
 - ✅ **TFT 17.3 patch** — shipped 0e9617b (2026-05-08). Morgana 4g, Anima/Stargazer reworks, Primordian AVOID, AP comps buffed.
+- ✅ **Riot API key policy reversal** — ADR-006 shipped (s145, 2026-05-09). Personal-tier key permitted for full-team champ-select context + post-game review. Live in-game advisory stays LCU/LiveClient-only per Riot ToS. Implementation tickets: FU02 + FU04 (next).
+- **FU02 — `core/riot_api.py` + champ-select team-context** — rate limiter + cache + progressive reveal + ranked-queue obfuscation gate. Ticket at `Desktop/Tickets/RC_TICKET_FU02_riot_api_module.md`. Recommended panel-stub-first to enable FU04 screenshots.
+- **FU04 — Riot Personal-tier API key application** (operator action) — `Desktop/Tickets/RC_TICKET_FU04_riot_personal_key_application.md`. 2–6 week approval window. Web form on developer.riotgames.com (NOT email).
+- **FU01 — minimap-locate** — 3-path resolver (override → PersistedSettings → hardcoded). Independent. `Desktop/Tickets/RC_TICKET_FU01_minimap_locate.md`.
+- **FU03 — `scripts/stage_riot_key.py` clipboard helper** — bridge for daily dev-key staging during Personal-tier wait. `Desktop/Tickets/RC_TICKET_FU03_stage_riot_key.md`.
 - **rewind_history.db staleness** — blocked on live SR game (last entry Dec 2025; needs game_id wired to new session records).
 - **Vision regions calibration** — tune `data/vision_regions.json` bboxes. Blocked on live game for calibration frame.
 - **Bridge Watcher acceptance-criteria** — need 50+ real-traffic auto-action samples (currently synthetic only). Watch `auto_ok_since_boot` vs `auto_err_since_boot` on RC heartbeat.
@@ -18,10 +23,9 @@ _Now + Next only. Full history in `docs/_archive/CHANGELOG.md`. Aspirational in 
 - **Game-PC + Peer auto-action lanes** — watchers installed but `--enable-auto-action-lanes` is OFF. Enable when success rate is proven.
 - **RC-DaemonSlayer task context** — runs as SYSTEM; `_log_startup` writes silently fail. Change to LogonTrigger + Administrator context if traceability matters after next boot.
 
-## Future-Proofing Plan (separate doc)
+## Future-Proofing Plan (retired 2026-05-09 — all 7 phases ✅)
 
-Phased refactor plan (doc architecture → god module decomp → frontend ESM → schemas → CI):
-`C:\Users\Administrator\Desktop\RC_FUTUREPROOFING_PLAN.md`
+Retired to `docs/_archive/RC_FUTUREPROOFING_PLAN_retired_2026-05-09.md` after all phases shipped.
 
 | Phase | Status |
 |---|---|

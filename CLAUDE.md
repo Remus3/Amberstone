@@ -141,9 +141,14 @@ When invoked with `/done` or asked to wrap a session: (1) audit pending changes,
 5e. ✅ Phase 2.4 — moon_vision_server split complete (s140): 710 LOC → 21-LOC entrypoint shim + `vision_server/` pkg (_config 75 + _stats 65 + _frame 117 + _relay 118 + _inference 264 + _http 245 + __init__ 79). 386 tests, ruff clean, :8889/health verified, build_portable.py patched.
 5f. ✅ Phase 7 — Process polish complete (s141 48d11be + s142): phase-markers normalized + archmap phase journal; `scripts/wakeup_prune.py` auto-prunes WAKEUP_NOTES (last 3 sessions, atomic, idempotent); `.githooks/commit-msg` enforces Conventional Commits subject lines (`<type>(<scope>)?!?: <description>`); 412 tests pass.
 6. ✅ Phase 6 — Bridge consolidation complete (s144): `tools/bridge_cli.py` (574 LOC) + 7 thin shims (139 LOC) replacing 7 originals (772 LOC); `BridgeMetrics` namespace in `core/prom_metrics.py`; 42 tests pass. State-file consolidation + 5 watcher daemons (`bridge_watcher*.py`) explicitly out of scope. Cron contracts preserved — `process-bridge-tasks.md` skill spec untouched.
-7. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes. Blocked on live game.
-8. 🟡 DS calibration pipeline — blocked on rewind_history.db staleness (last entry Dec 2025).
-9. 🟡 gamepc_boot.ps1 hardening — add `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC`.
-10. 🟡 Bridge Watcher acceptance-criteria — need 50+ real-traffic samples.
+7. ✅ Riot API key policy — ADR-006 (s145, 2026-05-09) reverses the "no key" rule for full-team champ-select context. Personal-tier; Web API limited to champ-select + post-game; live in-game advisory stays LCU/LiveClient-only. Implementation tickets are FU02 (`core/riot_api.py`) + FU04 (Personal-tier application).
+8. 🟡 **FU02** `core/riot_api.py` + champ-select team-context — rate limiter (20/s + 100/2min) + SQLite cache + progressive reveal + ranked-queue obfuscation gate. Ticket at `Desktop/Tickets/RC_TICKET_FU02_riot_api_module.md`. **Recommended next session:** ship the panel stub first (route + ESM panel + payload schema) so FU04 has honest screenshots.
+9. 🟡 **FU04** Riot Personal-tier API key application (operator action) — `Desktop/Tickets/RC_TICKET_FU04_riot_personal_key_application.md`. Form-field walkthrough + ready-to-paste description + screenshot checklist. 2–6 week approval window dominates downstream timeline.
+10. 🟡 **FU01** minimap-locate — replace hardcoded bbox in `agents/supervisor.py:597` with 3-path resolver (override → PersistedSettings → hardcoded fallback). Ticket at `Desktop/Tickets/RC_TICKET_FU01_minimap_locate.md`. Independent of FU02–FU04; can ship anytime.
+11. 🟡 **FU03** `scripts/stage_riot_key.py` clipboard helper — daily dev-key staging during the Personal-tier wait. Throwaway after approval. Ticket at `Desktop/Tickets/RC_TICKET_FU03_stage_riot_key.md`.
+12. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes. Blocked on live game.
+13. 🟡 DS calibration pipeline — blocked on rewind_history.db staleness (last entry Dec 2025).
+14. 🟡 gamepc_boot.ps1 hardening — add `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC`.
+15. 🟡 Bridge Watcher acceptance-criteria — need 50+ real-traffic samples.
 
 Full open work + future: `ROADMAP.md` + `BACKLOG.md`. Completed work: `docs/_archive/CHANGELOG.md`.
