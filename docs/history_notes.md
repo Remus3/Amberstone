@@ -4,6 +4,50 @@ Sessions older than the last 2–3 full sessions are progressively compacted her
 Current WAKEUP_NOTES.md keeps only the most recent 2–3 sessions.
 Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
+---
+
+# s135 wrap — 2026-05-08 (Phase 3.1 — CSS panel split)
+
+## What shipped
+- **`scripts/extract_css_panels.py`** (new): one-shot extractor — 13 sections by line-range, writes `web/css/panels/*.css`, rewrites `dashboard.css` as 25-line `@import` router.
+- **`web/css/panels/`** (new): 13 panel CSS files — `base.css` (106 lines), `header.css` (1637), `grid.css` (463), `bridge_pending.css` (375), `map_state.css` (580), `right_now.css` (97), `next.css` (47), `item_build.css` (441), `input_activity.css` (506), `champ_select.css` (364), `home.css` (841), `primitives.css` (290), `dev.css` (54).
+- **`web/css/dashboard.css`** (modified): 5812 → 25 lines (Google Fonts @import + 13 panel @imports).
+
+## Key decisions
+- `champ_select.css` merges two non-contiguous source ranges (lines 4264–4276 + 5118–5468); the home overlay CSS between them goes into `home.css`. Cascade order is safe — distinct class namespaces (`cs-*` vs `home-*`).
+- Static handler `prefix("/css/")` already covers subdirs — no server change needed.
+
+## Verification
+- All 13 panel files + dashboard.css: HTTP 200 from RC.
+- Game-PC dashboard screenshot: all panels render correctly, no layout regressions.
+
+## Do NOT redo
+- Don't re-run `extract_css_panels.py` — dashboard.css is now the @import router; re-running would split an already-split file.
+
+## What's next
+1. **Phase 3.2** — `tools/gen_state_schema.py` introspects `dashboard/_state_builder.py` → `web/js/lib/state_schema.js` JSDoc `@typedef` blocks + pre-commit hook sync.
+2. **Phase 3.3** — Playwright snapshot tests (5 panels × 26 sim fixtures = 130 PNGs), wire to CI.
+3. **Phase 4 remaining** — dispatch-level POST validation in `_dispatch.py` (low priority).
+4. **Vision regions calibration** — blocked on live game.
+
+---
+
+# s134 wrap — 2026-05-08 (null session — no work done)
+
+## What shipped
+- Nothing. Session opened with `/done` immediately.
+
+## RC state at close
+- pid=1108, alive=True, last_reload_ok=True
+- mode_key=client, lcu_phase=Unknown (not in game)
+- No unpushed commits. No pending lessons.
+
+## What's next
+1. **Phase 3.2** — CSS split: `web/css/panels/*.css` with `@import` in main CSS
+2. **Phase 3.3** — JS typedef codegen from `api_schema.py` (deferred until Phase 3 panels proven stable)
+3. **Phase 4 remaining** — dispatch-level POST validation (low priority)
+4. **Vision regions calibration** — blocked on live game
+
 - **s135 (2026-05-08)** Phase 3.1 CSS split — `scripts/extract_css_panels.py` one-shot extractor; 13 CSS panel files in `web/css/panels/`; `dashboard.css` → 25-line @import router (5812→25 LOC). Dashboard screenshot verified.
 - **s133 (2026-05-08)** Phase 3.1 ESM panels — `tools/extract_panels.py`; 7 panel JS modules extracted from main.js (8225→4189 lines). Commit `38ac760`.
 - **s132 (2026-05-08)** Phase 3.1 ESM lib/ — `web/js/main.js` + 4 lib modules (helpers/state/items_index/idempotent_render); ESM module type on index.html. Commit `7bbf032`.
