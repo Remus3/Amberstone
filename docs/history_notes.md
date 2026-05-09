@@ -6,6 +6,31 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s137 wrap — 2026-05-08 (Phase 3.3 — Playwright panel snapshot tests)
+
+## What shipped
+- **`tests/snapshot_panels/`** (new): 6-fixture Playwright harness — lobby/sr/aram/arena/brawl/tft × 4 panels = 24 screenshots per run.
+- **`tests/snapshot_panels/conftest.py`**: `_MockServer` (ThreadingHTTPServer serving `web/` + fixture-driven `/api/*`), `pw_browser` session-scoped fixture, `_WS_STUB` JS snippet.
+- **`tests/snapshot_panels/test_panel_snapshots.py`**: parametrized `test_panels[fixture]` — loads fixture, waits for `#rn-action` coaching text (or 800ms for lobby), asserts all 4 panels visible, screenshots each.
+- **`.github/workflows/ci.yml`**: added `playwright install --with-deps chromium` step + `panel snapshot tests` step.
+- Commit: **02ed835** pushed → origin/main.
+
+## Key decisions
+- Root cause of flaky failures: the dashboard's WebSocket connects to the **real supervisor on :8891** (not just the mock HTTP server). The real supervisor sends live `mode="client"` health/state, overriding the fixture and hiding `#item-build`. Fix: `_WS_STUB` injected via `page.add_init_script()` makes `window.WebSocket` immediately fire `onclose` without connecting.
+- SSE format: the mock sends `store["data"]` (raw `StateResponse` JSON with `mode_key`) directly. The JS `setupStateStream()` reads `st.mode_key`, not a WS-style envelope wrapper.
+- Arena/TFT: both pass cleanly once WS is stubbed. TFT doesn't use `#item-build` for build paths but the panel IS visible (CSS only hides it for `data-mode="client"`).
+
+## Do NOT redo
+- Don't re-investigate the `#item-build` visibility issue — it was the WS (:8891) overriding fixture. Stubbing WS fixed it in 02ed835.
+- Don't try to remove the WS stub; it's intentional isolation for test determinism.
+
+## What's next
+1. **Phase 2.3** — `coach_integration.py` (1217 LOC) split into `coach_integration/` package.
+2. **Phase 4 remaining** — dispatch-level POST validation in `_dispatch.py` (low priority).
+3. **Vision regions calibration** — blocked on live game.
+
+---
+
 # s136 wrap — 2026-05-08 (Phase 3.2 — JSDoc typedef codegen)
 
 ## What shipped
