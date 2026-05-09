@@ -1,6 +1,50 @@
 # WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s130 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+> Sessions s27–s131 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+
+---
+
+# s135 wrap — 2026-05-08 (Phase 3.1 — CSS panel split)
+
+## What shipped
+- **`scripts/extract_css_panels.py`** (new): one-shot extractor — 13 sections by line-range, writes `web/css/panels/*.css`, rewrites `dashboard.css` as 25-line `@import` router.
+- **`web/css/panels/`** (new): 13 panel CSS files — `base.css` (106 lines), `header.css` (1637), `grid.css` (463), `bridge_pending.css` (375), `map_state.css` (580), `right_now.css` (97), `next.css` (47), `item_build.css` (441), `input_activity.css` (506), `champ_select.css` (364), `home.css` (841), `primitives.css` (290), `dev.css` (54).
+- **`web/css/dashboard.css`** (modified): 5812 → 25 lines (Google Fonts @import + 13 panel @imports).
+
+## Key decisions
+- `champ_select.css` merges two non-contiguous source ranges (lines 4264–4276 + 5118–5468); the home overlay CSS between them goes into `home.css`. Cascade order is safe — distinct class namespaces (`cs-*` vs `home-*`).
+- Static handler `prefix("/css/")` already covers subdirs — no server change needed.
+
+## Verification
+- All 13 panel files + dashboard.css: HTTP 200 from RC.
+- Game-PC dashboard screenshot: all panels render correctly, no layout regressions.
+
+## Do NOT redo
+- Don't re-run `extract_css_panels.py` — dashboard.css is now the @import router; re-running would split an already-split file.
+
+## What's next
+1. **Phase 3.2** — `tools/gen_state_schema.py` introspects `dashboard/_state_builder.py` → `web/js/lib/state_schema.js` JSDoc `@typedef` blocks + pre-commit hook sync.
+2. **Phase 3.3** — Playwright snapshot tests (5 panels × 26 sim fixtures = 130 PNGs), wire to CI.
+3. **Phase 4 remaining** — dispatch-level POST validation in `_dispatch.py` (low priority).
+4. **Vision regions calibration** — blocked on live game.
+
+---
+
+# s134 wrap — 2026-05-08 (null session — no work done)
+
+## What shipped
+- Nothing. Session opened with `/done` immediately.
+
+## RC state at close
+- pid=1108, alive=True, last_reload_ok=True
+- mode_key=client, lcu_phase=Unknown (not in game)
+- No unpushed commits. No pending lessons.
+
+## What's next
+1. **Phase 3.2** — CSS split: `web/css/panels/*.css` with `@import` in main CSS
+2. **Phase 3.3** — JS typedef codegen from `api_schema.py` (deferred until Phase 3 panels proven stable)
+3. **Phase 4 remaining** — dispatch-level POST validation (low priority)
+4. **Vision regions calibration** — blocked on live game
 
 ---
 
@@ -37,67 +81,3 @@
 2. **Phase 3.3** — `web/js/lib/state_schema.js` JSDoc typedef codegen from `api_schema.py` (deferred until Phase 3 panels proven stable)
 3. **Phase 4 remaining** — dispatch-level POST validation in `dashboard/_dispatch.py` (low priority)
 4. **Vision regions calibration** — blocked on live game
-
----
-
-# s132 wrap — 2026-05-08 (Phase 3.1 — ESM module split, lib/ extraction)
-
-## What shipped
-- **`web/index.html`**: `<script type="module" src="/js/main.js">` (sim.js stays regular script to patch fetch/WS before module eval)
-- **`web/js/main.js`** (new, 8225 lines): `dashboard.js` IIFE unwrapped; import block at top; all lib/ duplicates removed
-- **`web/js/lib/helpers.js`** (new): `_to12`, `el`, `safe`, `fmtList`, `fitText`, `logLine`, `isArenaPayload`, `classifyAction`, `_opGlyph`, `_formatRelativeAge`
-- **`web/js/lib/state.js`** (new): `state`, `CADENCE`, `VIEW_IDS`, `VIEW_LABELS`, `_VIEW`
-- **`web/js/lib/items_index.js`** (new): `ITEMS`, `ITEM_COSTS`, `CHAMPS`, `SPELLS` + all resolver fns + async loaders; dispatches `rc:items-ready` event
-- **`web/js/lib/idempotent_render.js`** (new): `idempotentRender`, `makeSig`
-- **Commit `7bbf032`** pushed → origin/main.
-
-## Key decisions
-- No bundler — native ESM, Edge 89+ compatible (Game-PC is current Edge).
-- `sim.js` as regular script before the module: guarantees fetch/WS patches visible to module at eval time.
-- Race fix (`_lastItemBuildState` re-drive) preserved via `rc:items-ready` custom event listener — avoids circular dep (items_index can't import `renderItemBuild`).
-- `dashboard.js` kept in place (unmodified) as the prior-art reference.
-
-## Verification
-- `node --check web/js/main.js` → SYNTAX OK
-- All 4 lib/ modules + main.js: HTTP 200 from RC
-- No error entries in RC log after serving the new module
-
-## Do NOT redo
-- Don't re-extract lib/ helpers — all 4 modules are committed and verified.
-- Don't modify `dashboard.js` — it's the reference; only `main.js` is the active file.
-
-## What's next
-1. **Phase 3.1 continuation** — extract individual panels into `web/js/panels/*.js` (right_now, next, item_build, map_state, champ_select, bridge_pending, dev). Each is a 300–600 line block.
-2. **CSS split** — `web/css/panels/*.css` with `@import` in main CSS (can be a separate short session).
-3. **JS typedef codegen** — `web/js/lib/state_schema.js` from `api_schema.py` (deferred until Phase 3 panels done).
-4. **Phase 4 remaining** — dispatch-level POST validation (low priority).
-
----
-
-# s131 wrap — 2026-05-08 (TFT 17.3 patch update)
-
-## What shipped
-- **`tft/tft_pbe_data.py`**: header bumped to 17.3. Morgana moved from 5-cost → 4-cost. Anima (6) note updated (loot every combat). Stargazer note updated (HP regen rework). Marauder note updated (omnivamp nerfed all tiers). Encounters: Double Duplicators (Tiny/3-5), Reroll Start (8→5 rerolls). META_COMPS updated: AP Vanguards/Redeemer/Anima rise; Primordian moved to B ("AVOID").
-- **`tft/tft_pbe_engine.py`**: System prompt updated to 17.3. PATCH 17.3 CHANGES block added. KEY CARRIES updated (Morgana 4g, AP carries noted as buffed). META S-TIER COMPS updated. NEVER list: added Horizon Focus (removed from game) + Primordian vertical. Trait notes updated (Anima, Stargazer, Marauder).
-- **Commit `0e9617b`** pushed → origin/main. 380 tests pass, py_compile clean.
-
-## Key 17.3 changes captured
-- Morgana: 5→4 cost (Magic Tank) — Redeemer comp more accessible
-- Anima (6): loot every combat (was: wins only)
-- Stargazer: reworked to HP regen + stacking stats; Fountain removed
-- Marauder: omnivamp nerfed (20→18%, 40→35%, 60→55%)
-- Apex Primordian gutted (AS/armor/MR/grid damage all slashed) — comp is dead
-- AP carries buffed: Aurelion Sol, Karma, LeBlanc, Sona
-- Horizon Focus removed from game
-- Encounters: Double Duplicators (Tiny, 3-5), Reroll Start (8→5 rerolls)
-
-## Do NOT redo
-- Don't re-update TFT files — 17.3 is current as of commit 0e9617b.
-- Don't re-run tests — 380 pass clean.
-
-## What's next
-1. **Phase 4 remaining** — dispatch-level POST validation in `dashboard/_dispatch.py` (low-priority; read-path covered).
-2. **Phase 3** — frontend ESM split (`dashboard.js` 8507 LOC). Next major futureproofing phase.
-3. **Vision regions calibration** — blocked on live game.
-
-
