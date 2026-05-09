@@ -72,6 +72,10 @@ _ROOT_PY_FILES = [
     "champion_profiles.py",
     "role_profiles.py",
     "coaching_timestamps.py",
+    # Phase 2.4 (2026-05-09): vision server entrypoint shim. Real code lives
+    # in vision_server/. Listed here because RC-VisionServer scheduled task
+    # and dashboard/server.py spawn this file by path.
+    "moon_vision_server.py",
 ]
 
 # Top-level launcher / setup scripts
@@ -92,6 +96,7 @@ _SOURCE_PACKAGES = [
     "coaches",
     "coach_integration",
     "game_reader",
+    "vision_server",
     "tft",
     "ui",
     "lcu",
