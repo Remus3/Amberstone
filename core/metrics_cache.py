@@ -327,7 +327,7 @@ class MetricsCache:
         data = self._load_json("status.json")
         if data is None:
             return
-        # supervisor_state was added in Phase 0.7; may be absent in older files
+        # arch: phase 0.7 — supervisor_state added to status.json; tolerate absence in older files
         raw_state = data.get("supervisor_state")
         s.supervisor_state = str(raw_state) if raw_state is not None else None
         # process_running always present
