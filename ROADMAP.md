@@ -29,7 +29,7 @@ Phased refactor plan (doc architecture → god module decomp → frontend ESM �
 | 2.1 — champion_profiles split | ✅ Done (s127 — 902→29 LOC + 168 JSONs) |
 | 5 — CI + smoke harness | ✅ Done (d21f533 — 343→380 tests, ruff 0 violations, CI gate live) |
 | 4 — Contracts/schemas | 🟠 In progress (s129 — 4.1+4.2+4.3 partial) |
-| 3 — Frontend modules | 🟠 In progress (s132 — lib/ extraction done: helpers/state/items_index/idempotent_render; panels next) |
+| 3 — Frontend modules | 🟠 In progress (s133 — Phase 3.1 done: lib/ + 7 panels extracted; Phase 3.2 CSS split next) |
 | 2.3 — coach_integration split | 🟡 Not started |
 | 6 — Bridge consolidation | 🔴 Blocked (frozen-file approval needed) |
 | 2.2 — game_reader split | 🟡 Not started |

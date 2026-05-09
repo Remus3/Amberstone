@@ -1,0 +1,458 @@
+// Dev panel — settings, diagnostics, dev/sim fixture viewer, replay scrubber.
+import { el, safe, fmtList, _to12, logLine } from '../lib/helpers.js';
+import { state } from '../lib/state.js';
+import { ITEMS, CHAMPS } from '../lib/items_index.js';
+
+// ── Settings view (2026-04-26) ───────────────────────────────────
+function _settingsRefresh() {
+  if (window.__settingsWired) return;
+  window.__settingsWired = true;
+  const get = (k) => { try { return localStorage.getItem(k); } catch (_) { return null; }};
+  const setLS = (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} };
+  const cb = (id, key, onSet) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.checked = get(key) === "1";
+    el.addEventListener("change", () => {
+      setLS(key, el.checked ? "1" : "0");
+      if (onSet) onSet(el.checked);
+    });
+  };
+  cb("set-voice-on", "rc-voice-on");
+  cb("set-force-flash-snowball", "rc-force-flash-snowball");
+  cb("set-zen", "rc-zen", (v) => { document.body.dataset.zen = v ? "1" : ""; });
+  const zoom = document.getElementById("set-zoom");
+  const zoomVal = document.getElementById("set-zoom-val");
+  if (zoom) {
+    zoom.value = parseFloat(get("rc-zoom") || "1.0");
+    if (zoomVal) zoomVal.textContent = parseFloat(zoom.value).toFixed(2) + "×";
+    zoom.addEventListener("input", () => {
+      setLS("rc-zoom", zoom.value);
+      if (zoomVal) zoomVal.textContent = parseFloat(zoom.value).toFixed(2) + "×";
+      document.body.style.zoom = zoom.value;
+    });
+  }
+  // Live metrics status (read-only — env var)
+  fetch("/api/diagnostics", { cache: "no-store" })
+    .then((r) => (r && r.ok ? r.json() : null))
+    .then((d) => {
+      const el = document.getElementById("set-live-metrics-status");
+      if (el && d) el.textContent = d.live_metrics_enabled ? "ON" : "OFF";
+    }).catch(() => {});
+}
+
+// ── Diagnostics view (2026-04-26) ────────────────────────────────
+function _diagFetchAndRender() {
+  fetch("/api/diagnostics", { cache: "no-store" })
+    .then((r) => (r && r.ok ? r.json() : null))
+    .then((d) => {
+      if (!d) return;
+      const ul = document.getElementById("diag-conn-list");
+      if (ul) {
+        ul.innerHTML = "";
+        (d.connections || []).forEach((c) => {
+          const li = document.createElement("li");
+          li.className = "diag-conn-row";
+          const dot = document.createElement("span");
+          dot.className = "diag-conn-dot " + (c.ok ? "ok" : "err");
+          const nm = document.createElement("span");
+          nm.style.cssText = "flex:1; color:var(--text); font-weight:700";
+          nm.textContent = c.name;
+          const det = document.createElement("span");
+          det.className = "dim";
+          det.style.fontSize = "10px";
+          det.textContent = c.detail || "";
+          li.append(dot, nm, det);
+          ul.appendChild(li);
+        });
+        if (!ul.children.length) ul.innerHTML = '<li class="home-empty">no connections reporting</li>';
+      }
+      const log = document.getElementById("diag-log");
+      if (log) log.textContent = (d.log_tail || []).join("\n") || "(no log lines)";
+      const health = document.getElementById("diag-health");
+      if (health) health.textContent = JSON.stringify(d.health || {}, null, 2);
+    })
+    .catch(() => {});
+  // 2026-04-28: also refresh the cost tile, coach toggles, and trace
+  // list. Each is independent; one failure doesn't block the others.
+  _diagFetchCost();
+  _diagFetchCoachState();
+  _diagFetchTrace();
+}
+function _diagFetchCost() {
+  fetch("/api/cost", { cache: "no-store" })
+    .then(r => r.ok ? r.json() : null)
+    .then(j => {
+      if (!j) return;
+      const sp = j.spend || {};
+      const v = document.getElementById("cost-val");
+      if (v) v.textContent = "$" + (sp.total_usd || 0).toFixed(4);
+      const c = document.getElementById("cost-calls");
+      if (c) c.textContent = String(sp.calls || 0);
+      const t = document.getElementById("cost-tokens");
+      if (t) t.textContent = `${(sp.tokens_in||0).toLocaleString()} / ${(sp.tokens_out||0).toLocaleString()}`;
+      const cc = document.getElementById("cost-cache");
+      if (cc) cc.textContent = `${(sp.cache_in||0).toLocaleString()} / ${(sp.cache_write||0).toLocaleString()}`;
+      const b = document.getElementById("cost-banner");
+      if (b) {
+        b.classList.remove("ok","warn","over");
+        b.classList.add(j.banner || "ok");
+        b.textContent = (j.banner || "ok").toUpperCase();
+      }
+    })
+    .catch(()=>{});
+}
+function _diagFetchCoachState() {
+  fetch("/api/coach/state", { cache: "no-store" })
+    .then(r => r.ok ? r.json() : null)
+    .then(j => {
+      if (!j || !j.enabled) return;
+      for (const mode of Object.keys(j.enabled)) {
+        const pill = document.querySelector(`.coach-toggle-pill[data-mode="${mode}"]`);
+        if (!pill) continue;
+        if (pill.dataset.disabled === "1") continue;   // tft on hold
+        const on = j.enabled[mode];
+        pill.classList.remove("on","off");
+        pill.classList.add(on ? "on" : "off");
+        pill.textContent = on ? "ON" : "OFF";
+      }
+    })
+    .catch(()=>{});
+}
+function _diagFetchTrace() {
+  fetch("/api/coach/trace?limit=20", { cache: "no-store" })
+    .then(r => r.ok ? r.json() : null)
+    .then(j => {
+      const host = document.getElementById("trace-list");
+      if (!host) return;
+      host.innerHTML = "";
+      const rows = (j && j.records) || [];
+      if (!rows.length) {
+        host.innerHTML = '<div class="home-empty">no coach calls yet today</div>';
+        return;
+      }
+      for (const rec of rows.slice().reverse()) {  // newest first
+        const item = document.createElement("div");
+        item.className = "trace-item";
+        const meta = document.createElement("div");
+        meta.className = "trace-meta";
+        const tsStr = _to12(new Date((rec.ts || 0) * 1000));
+        meta.textContent = `${tsStr} · ${rec.mode || "?"} · ${rec.model || ""} · ${rec.latency_ms || 0}ms · in ${rec.tokens_in || 0} / out ${rec.tokens_out || 0}` +
+          ((rec.cache_read || rec.cache_write) ? ` · cache r ${rec.cache_read || 0} w ${rec.cache_write || 0}` : "");
+        const resp = document.createElement("pre");
+        resp.textContent = (rec.response || "").slice(0, 600);
+        item.append(meta, resp);
+        host.appendChild(item);
+      }
+    })
+    .catch(()=>{});
+}
+function _diagToggleCoach(mode, currentlyOn) {
+  fetch("/api/coach/toggle", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Requested-With": "rc-dashboard" },
+    body: JSON.stringify({ mode: mode, disabled: currentlyOn })
+  })
+    .then(r => r.ok ? r.json() : null)
+    .then(_ => _diagFetchCoachState())
+    .catch(()=>{});
+}
+function _diagWireOnce() {
+  if (window.__diagWired) return;
+  window.__diagWired = true;
+  const r = document.getElementById("diag-refresh");
+  if (r) r.addEventListener("click", _diagFetchAndRender);
+  // Coach-toggle clicks
+  document.querySelectorAll(".coach-toggle-pill").forEach(p => {
+    if (p.dataset.disabled === "1") return;
+    p.addEventListener("click", () => {
+      const mode = p.dataset.mode;
+      const currentlyOn = p.classList.contains("on");
+      _diagToggleCoach(mode, currentlyOn);
+    });
+  });
+}
+
+// ── Dev / Sim Preview panel ──────────────────────────────────────
+function _devViewWireOnce() {
+  if (window.__devWired) return;
+  window.__devWired = true;
+  const r = document.getElementById("dev-refresh");
+  if (r) r.addEventListener("click", _devViewFetch);
+}
+
+function _devViewFetch() {
+  // Parallel: fixtures + vision status + log tail
+  fetch("/api/sim/_manifest").then(r => r.ok ? r.json() : null).then(d => {
+    _devRenderFixtures(d);
+  }).catch(() => _devRenderFixtures(null));
+
+  fetch("/api/dev/vision-status").then(r => r.ok ? r.json() : null).then(d => {
+    _devRenderVision(d);
+  }).catch(() => _devRenderVision(null));
+
+  fetch("/api/logs?n=60").then(r => r.ok ? r.json() : null).then(d => {
+    _devRenderLog(d);
+  }).catch(() => _devRenderLog(null));
+}
+
+function _devRenderFixtures(manifest) {
+  const body = document.getElementById("dev-fixtures-body");
+  const sub  = document.getElementById("dev-fixture-count");
+  if (!body) return;
+  const fixtures = (manifest && manifest.fixtures) || [];
+  if (sub) sub.textContent = fixtures.length ? `${fixtures.length} fixtures` : "";
+  if (!fixtures.length) {
+    body.innerHTML = '<div class="home-empty">no fixtures (is agents/supervisor running on :8890?)</div>';
+    return;
+  }
+  const inSim = /[?&]sim=/.test(location.search);
+  let html = '<table class="dev-fixture-table">';
+  html += '<thead><tr><th>Mode</th><th>Label</th><th></th></tr></thead><tbody>';
+  for (const f of fixtures) {
+    const url = new URL(location.href);
+    url.searchParams.set("sim", f.name);
+    const active = inSim && new URLSearchParams(location.search).get("sim") === f.name;
+    html += `<tr class="${active ? "dev-fixture-active" : ""}">`;
+    html += `<td><span class="mode-tag mode-tag-${f.mode || "??"}">${(f.mode || "?").toUpperCase()}</span></td>`;
+    html += `<td class="dev-fixture-label">${f.label || f.name}</td>`;
+    html += `<td><a class="dev-fixture-link" href="${url.toString()}">Preview</a></td>`;
+    html += "</tr>";
+  }
+  html += "</tbody></table>";
+  if (inSim) {
+    const exitUrl = new URL(location.href);
+    exitUrl.searchParams.delete("sim");
+    exitUrl.searchParams.delete("dbg");
+    html += `<a class="dev-exit-sim" href="${exitUrl.toString()}">Exit Sim Mode</a>`;
+  }
+  body.innerHTML = html;
+}
+
+function _devRenderVision(d) {
+  const body = document.getElementById("dev-vision-body");
+  const sub  = document.getElementById("dev-vision-sub");
+  if (!body) return;
+  if (!d) {
+    if (sub) sub.textContent = "";
+    body.innerHTML = '<div class="home-empty">vision-status unavailable</div>';
+    return;
+  }
+  const h = d.vision_health || {};
+  const m = d.latest_frame || {};
+  const age = d.frame_age_s;
+  const ageStr = age == null ? "no frame" : (age < 10 ? `${age}s ago ✓` : `${age}s ago ⚠`);
+  if (sub) sub.textContent = ageStr;
+  const rows = [
+    ["Server alive", h.alive ? "yes" : "NO"],
+    ["Uptime",  h.uptime_s != null ? `${Math.round(h.uptime_s / 60)} min` : "?"],
+    ["Frame age", ageStr],
+    ["Source",  m.source || "none"],
+    ["Dimensions", (m.width && m.height) ? `${m.width}×${m.height}` : "?"],
+    ["Size",    m.size ? `${(m.size / 1024).toFixed(0)} KB b64` : "?"],
+  ];
+  let html = '<table class="dev-kv-table">';
+  for (const [k, v] of rows) {
+    html += `<tr><td class="dev-kv-key">${k}</td><td class="dev-kv-val">${v}</td></tr>`;
+  }
+  html += "</table>";
+  body.innerHTML = html;
+}
+
+function _devRenderLog(d) {
+  const el = document.getElementById("dev-log");
+  if (!el) return;
+  el.textContent = (d && d.lines) ? d.lines.join("\n") || "(no log lines)" : "(log unavailable)";
+  // Scroll to bottom so the latest lines are visible.
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── Replay scrubber (audit suggestion 2.3, 2026-04-28) ────────────
+// Loads recent matches from /api/replay/matches; clicking one fetches
+// /api/replay/match/<id> and lets the user scrub through per-minute
+// snapshots. Items, level, gold, CS reflect the slider position.
+const _REPLAY = { match: null, snapshotIdx: 0, itemsIndex: null };
+function _replayQueueLabel(q) {
+  return ({
+    400:"Normal Draft",420:"Ranked Solo",430:"Normal Blind",
+    440:"Ranked Flex",450:"ARAM",700:"Clash",900:"ARURF",
+    920:"ARAM Mayhem",1700:"Arena",1900:"URF",
+  })[q] || ("queue " + q);
+}
+function _replayDurStr(s) {
+  const m = Math.floor(s / 60), ss = s % 60;
+  return `${m}:${String(ss).padStart(2,"0")}`;
+}
+function _replayDateStr(ts) {
+  if (!ts) return "?";
+  const d = new Date(ts);
+  return d.toLocaleString("en-US", { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
+}
+function _replayChampIconUrl(name) {
+  if (!name) return "";
+  return "/icons/champions/" + encodeURIComponent(String(name).replace(/[^A-Za-z]/g, "")) + ".png";
+}
+function _replayItemIconUrl(id) {
+  return "/icons/items/" + id + ".png";
+}
+function _replayLoadItemsIndex() {
+  if (_REPLAY.itemsIndex) return Promise.resolve(_REPLAY.itemsIndex);
+  return fetch("/data/items_index.json")
+    .then(r => r.ok ? r.json() : null)
+    .then(j => { _REPLAY.itemsIndex = j; return j; })
+    .catch(() => null);
+}
+function _replayViewRefresh() {
+  fetch("/api/replay/matches?limit=30")
+    .then(r => r.ok ? r.json() : null)
+    .then(j => {
+      const ul = document.getElementById("replay-match-list");
+      if (!ul) return;
+      ul.innerHTML = "";
+      const items = (j && j.matches) || [];
+      if (!items.length) {
+        ul.innerHTML = '<li class="home-empty">no matches in rewind_history.db</li>';
+        return;
+      }
+      for (const m of items) {
+        const li = document.createElement("li");
+        li.className = "replay-match-row";
+        if (m.tracked && m.tracked.win === true)  li.classList.add("won");
+        if (m.tracked && m.tracked.win === false) li.classList.add("lost");
+        li.dataset.matchId = m.match_id;
+        const champ = (m.tracked && m.tracked.champion_name) || "?";
+        const verdict = m.tracked && m.tracked.win === true ? "W" :
+                        m.tracked && m.tracked.win === false ? "L" : "—";
+        const top = document.createElement("div");
+        top.className = "replay-match-top";
+        const span1 = document.createElement("span");
+        span1.className = "replay-match-verdict " + (verdict === "W" ? "won" : verdict === "L" ? "lost" : "");
+        span1.textContent = verdict;
+        const span2 = document.createElement("span");
+        span2.className = "replay-match-champ";
+        span2.textContent = champ;
+        const span3 = document.createElement("span");
+        span3.className = "replay-match-queue";
+        span3.textContent = _replayQueueLabel(m.queue_id);
+        top.append(span1, span2, span3);
+        const bot = document.createElement("div");
+        bot.className = "replay-match-bot";
+        bot.textContent = `${_replayDateStr(m.game_creation_ts)} · ${_replayDurStr(m.duration_s)} · patch ${m.patch || "?"}`;
+        li.append(top, bot);
+        li.addEventListener("click", () => _replayLoadMatch(m.match_id, li));
+        ul.appendChild(li);
+      }
+    })
+    .catch(e => console.warn("replay matches:", e));
+  _replayLoadItemsIndex();
+}
+function _replayLoadMatch(matchId, rowEl) {
+  document.querySelectorAll(".replay-match-row.active").forEach(r => r.classList.remove("active"));
+  if (rowEl) rowEl.classList.add("active");
+  const meta = document.getElementById("replay-meta");
+  if (meta) meta.textContent = "loading " + matchId + "…";
+  fetch("/api/replay/match/" + encodeURIComponent(matchId))
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+      if (!d) return;
+      _REPLAY.match = d;
+      _REPLAY.snapshotIdx = 0;
+      const slider = document.getElementById("replay-slider");
+      if (slider) {
+        slider.max = String(Math.max(0, (d.snapshots || []).length - 1));
+        slider.value = "0";
+        slider.disabled = !((d.snapshots || []).length);
+      }
+      const m = document.getElementById("replay-meta");
+      if (m) {
+        const verdict = (d.participants || []).find(p =>
+          p.champion_id === (d.tracked && d.tracked.champion_id));
+        const v = verdict ? (verdict.team_won ? " (W)" : " (L)") : "";
+        m.textContent = `${d.match_id} · ${_replayQueueLabel(d.queue_id)} · ${_replayDurStr(d.duration_s)} · patch ${d.patch || "?"}${v}`;
+      }
+      _replayRenderSnapshot(0);
+    })
+    .catch(e => console.warn("replay match:", e));
+}
+function _replayRenderSnapshot(idx) {
+  const d = _REPLAY.match;
+  if (!d || !d.snapshots || !d.snapshots.length) return;
+  const snap = d.snapshots[Math.max(0, Math.min(idx, d.snapshots.length - 1))];
+  const clock = document.getElementById("replay-clock");
+  if (clock) clock.textContent = `t = ${snap.minute.toFixed(1)}min`;
+  const tbody = document.getElementById("replay-grid-body");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  const partsByPid = new Map();
+  for (const p of d.participants || []) partsByPid.set(p.participant_id, p);
+  // Sort: team 100 first, then team 200; preserve participant_id order.
+  const entries = (snap.entries || []).slice().sort((a, b) => {
+    const pa = partsByPid.get(a.participant_id);
+    const pb = partsByPid.get(b.participant_id);
+    const ta = (pa && pa.team_id) || 0, tb = (pb && pb.team_id) || 0;
+    if (ta !== tb) return ta - tb;
+    return a.participant_id - b.participant_id;
+  });
+  for (const e of entries) {
+    const p = partsByPid.get(e.participant_id) || {};
+    const tr = document.createElement("tr");
+    if (p.team_won === true) tr.classList.add("won");
+    if (p.team_won === false) tr.classList.add("lost");
+    const cells = [
+      ["replay-col-team",   p.team_id === 200 ? "R" : "B"],
+      ["replay-col-champ",  null, _replayChampIconUrl(p.champion_name), p.champion_name],
+      ["replay-col-name",   p.summoner_name || ""],
+      ["replay-col-num",    e.level != null ? String(e.level) : "—"],
+      ["replay-col-num",    e.total_gold != null ? e.total_gold.toLocaleString() : "—"],
+      ["replay-col-num",    e.cs != null ? String(e.cs) : "—"],
+    ];
+    for (const c of cells) {
+      const td = document.createElement("td");
+      td.className = c[0];
+      if (c[2]) {
+        const img = document.createElement("img");
+        img.className = "replay-champ-icon";
+        img.src = c[2]; img.alt = c[3] || "";
+        img.title = c[3] || "";
+        const sp = document.createElement("span");
+        sp.textContent = c[3] || "";
+        td.append(img, sp);
+      } else {
+        td.textContent = c[1];
+      }
+      tr.appendChild(td);
+    }
+    const itemsCell = document.createElement("td");
+    itemsCell.className = "replay-col-items";
+    for (const itemId of (e.items || []).slice(0, 7)) {
+      const img = document.createElement("img");
+      img.className = "replay-item-icon";
+      img.src = _replayItemIconUrl(itemId);
+      img.alt = String(itemId);
+      const lookup = _REPLAY.itemsIndex && _REPLAY.itemsIndex.byId;
+      img.title = (lookup && lookup[String(itemId)]) || ("item " + itemId);
+      img.onerror = () => { img.style.display = "none"; };
+      itemsCell.appendChild(img);
+    }
+    tr.appendChild(itemsCell);
+    tbody.appendChild(tr);
+  }
+}
+function _replayViewWireOnce() {
+  if (window.__replayWired) return;
+  window.__replayWired = true;
+  const slider = document.getElementById("replay-slider");
+  if (slider) {
+    slider.addEventListener("input", () => {
+      _REPLAY.snapshotIdx = parseInt(slider.value, 10) || 0;
+      _replayRenderSnapshot(_REPLAY.snapshotIdx);
+    });
+  }
+}
+
+export {
+  _settingsRefresh,
+  _diagFetchAndRender, _diagWireOnce,
+  _devViewWireOnce, _devViewFetch,
+  _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch,
+};
