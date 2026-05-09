@@ -34,6 +34,7 @@ Phased refactor plan (doc architecture → god module decomp → frontend ESM �
 | 6 — Bridge consolidation | 🔴 Blocked (frozen-file approval needed) |
 | 2.2 — game_reader split | ✅ Done (ea7589e — s139, 1474 LOC → mixin pkg, 386 tests) |
 | 2.4 — vision server split | ✅ Done (9cf262a — s140, 710 LOC → shim + vision_server/ pkg, 386 tests) |
+| 7 — Process polish | 🟠 In progress (48d11be — s141, phase-marker normalization + archmap journal; /wrap auto-prune + commit-msg hook pending) |
 
 ---
 
