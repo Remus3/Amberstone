@@ -29,7 +29,7 @@ jobs:
           # is intentionally not installed; tests that import it must guard
           # for ImportError or be marked phase2_smoke / snapshot_regressions
           # which are pure-Python.
-          pip install pytest pytest-asyncio pytest-timeout ruff
+          pip install pytest pytest-asyncio pytest-timeout ruff pydantic>=2.0
 
       - name: py_compile sweep
         run: |
