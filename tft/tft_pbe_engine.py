@@ -4,6 +4,7 @@ tft/tft_pbe_engine.py
 Challenger-level TFT Set 17: Space Gods coaching engine — Double Up focus.
 Analyses live game state and produces structured advice for all coaching panels.
 Writes structured JSON to data/tft_pbe_coaching_data.json for the overlay.
+Last updated: patch 17.3 (2026-05-13).
 """
 
 import json
@@ -27,14 +28,27 @@ SET 17 CRITICAL CHANGES — DO NOT USE SET 16 KNOWLEDGE:
 - Aligning with one God 2+ times on stages 2-4 grants a God Boon at stage 4-7.
 - PvE rounds remain at end of each stage (wolves, raptors, herald, baron).
 
-PATCH 17.2 NEW MECHANICS:
-ENCOUNTERS (returned): An Encounter modifies early-game conditions for all players.
+PATCH 17.3 CHANGES (2026-05-13):
+- MORGANA is now 4-cost (Magic Tank). Redeemer (Conduit + Space Groove) is EASIER to execute.
+- ANIMA (6): loot now after EVERY combat, not just wins. Anima is more consistent — loss-streak not required to cash out.
+- STARGAZER REWORKED: now grants HP regeneration + stacking stats. Fountain mechanic removed. Yasuo hex synergy retained.
+- MARAUDER NERFED: Omnivamp reduced all tiers (20→18%, 40→35%, 60→55%). No longer a top tank trait.
+- APEX PRIMORDIAN GUTTED: AS 0.9→0.6, armor/MR 150→60, grid damage 400→100. Primordian comps are DEAD.
+- AP LATE GAME BUFFED: Aurelion Sol, Karma, LeBlanc, Sona all received damage buffs. AP carries stronger.
+- EDGE OF NIGHT: healing 30%→20%. Less sustain for carry items.
+- SPACE GROOVE EMBLEM: 4-second cooldown added. Less spammable.
+- HORIZON FOCUS: removed from game entirely. Don't suggest it.
+- ENCOUNTERS (17.3): Double Duplicators now gives Tiny (not Lesser); appears at 3-5 not 3-3.
+  Reroll Start NERFED: 5 free rerolls at 2-1 (was 8). Hyper-roll openers less explosive.
+- New augments available: Concentration, Loot Singularity, New Recruit, Timestream, Tour of the Galaxy.
+- Cosmic Restart rerolls cut (11→8). Jeweled Lotus, May the Fours Be With You nerfed.
+
+PATCH 17.2 MECHANICS (STILL ACTIVE):
+ENCOUNTERS: An Encounter modifies early-game conditions for all players.
   Common encounters: Golden Gala (econ gold), Prismatic Party (loot), 2-cost/3-cost Start,
-  Reroll Start (8 free rerolls at 2-1 — hyper-roll comps benefit most),
   Artifact Anvil (all players get Artifact Anvil at 3-3 — flex item builds),
-  Cheaper Levels (-2 XP cost — enables fast leveling comps),
-  Double Duplicators (2 champion duplicators — push 3-star pivots faster).
-  KEY: Adapt comp direction to the active encounter. Reroll Start → reroll comp. Artifact Anvil → flex carries.
+  Cheaper Levels (-2 XP cost — enables fast leveling comps).
+  KEY: Adapt comp direction to the active encounter. Artifact Anvil → flex carries.
 
 GOD BLESSINGS (17.2 new): When aligned with a God 2+ times, choose between 2-3 Blessings:
   Ahri: Gold every turn / Divine Investment (max interest +1) / Chest of Greed (split gold pool)
@@ -65,38 +79,45 @@ DOUBLE UP SPECIFIC RULES:
 - Win condition is your COMBINED boards. Partner's board matters as much as yours.
 
 SET 17 TRAITS (key ones, 17.2 balance applied):
-- Anima (2/4/6): Loss-streak trait. Tech per loss 15→18 (17.2 buff). Anima Weapons at 100 Tech.
+- Anima (2/4/6): Loss-streak trait. Tech per loss buffed (17.2). Anima Weapons at 100 Tech. 17.3: (6) gives loot after EVERY combat (was wins only) — significantly more consistent.
 - Dark Star (2/4/6/9): Black holes execute below 10% HP. Jhin carry. Emblem AD/AP nerfed 25→18%.
 - Mecha (2/4/6): Transform to Ultimate Form (+60% HP, 2 slots). (6) +1 team size.
 - Meeple (3/5/7/10): Meeps empower abilities. (7) Cloning Slot. Gold per clone NERFED (1c:3→2g, 5c:5→2g).
 - N.O.V.A. (2/3/5): Power surges. (5) Striker selector. Splash or vertical.
 - Primordian (2/4/6): Swarmlings. (3+) free champ each round.
 - Space Groove (2/4/6): Groove = AS + HP regen. (6) stacking AD/AP. Emblem reworked (no mana, +200 HP).
-- Stargazer (2/4/6): Empowered hexes. NOTE: Fountain effect DISABLED 17.2. Mountain buffed 12→15% HP.
+- Stargazer (2/4/6): REWORKED 17.3: HP regen + stacking stats per combat. Fountain removed. Yasuo hex synergy retained. Mountain HP buff kept.
 - Replicator (2/4): Abilities fire twice at reduced effectiveness. Nami/Sona.
 - Conduit (2/4): +20% mana from all sources. Mana regen.
 - Timebreaker (2/3/4): REWORKED 17.2. (2) +15% AS team. (3) Free rerolls on loss. (4) +50% AS for Timebreakers.
 - Voyager (2/4/6): Tanks get Shield, others get Damage Amp. Emblem omnivamp nerfed 18→10%.
+- Marauder (2/4/6): Omnivamp + AD. NERFED 17.3: 20→18%, 40→35%, 60→55%. No longer top tank trait.
 
 KEY CARRIES:
 - Jhin (5g Dark Star): Primary AD carry, execute synergy, best with IE/LW/BT.
 - Bard (5g Meeple): AP carry, UFO ability, abduction mechanic.
 - Fiora (5g): Wins every 1v1 duel, heals 15% player damage. Stack AD.
+- Sona (5g): AP carry, BUFFED 17.3. Conduit + Space Groove payoff.
 - Lissandra (4g): AP carry, Frozen Tomb AoE, Replicator double-cast.
+- Morgana (4g Magic Tank): Reclassed 17.3 from 5g. More accessible frontline for Redeemer/Conduit comps.
+- Aurelion Sol (4g): AP damage carry, BUFFED 17.3. Wonders quest god synergy.
+- Karma (4g): AP carry, BUFFED 17.3. Stargazer + Invoker.
+- LeBlanc (3g Anima): Loss-streak carry, Anima Weapons payoff. Buffed 17.3.
 - Jinx (3g): Switcheroo rockets, Space Groove + Gunslinger.
 - Nami (2g): Replicator double-heal, sustain carry for Conduit comps.
 - Corki/Rammus (3g/4g): Mecha carries, transform for power spike.
-- LeBlanc (4g Anima): Loss-streak carry, Anima Weapons payoff.
 
-META S-TIER COMPS (17.2 — May 2026):
-1. Meeple — Bard/Veigar carry, Cloning Slot at (7). Clone gold nerfed but vertical still strong.
-2. AP Vanguards — Lissandra carry, Vanguard 4 + Replicator 2.
-3. Redeemer — Sona/Morgana carry, Conduit 4 + Space Groove.
-4. Conduit Reroll — 3-star Nami, Conduit 4 + Replicator 2.
-5. Mecha — Corki/Rammus, transform units, (6) for +1 team size.
-6. N.O.V.A. — Caitlyn/Akali carry, (5) Striker selector.
-7. Dark Star Jhin — Vertical Dark Star 6-9, Jhin as execute carry.
-17.2 NOTE: Timebreaker now viable as flex AS trait. Anima buffed — loss-streak more consistent.
+META S-TIER COMPS (17.3 — May 2026):
+1. Meeple — Bard/Veigar carry, Cloning Slot at (7). Vertical still strong.
+2. AP Vanguards — Lissandra carry, Vanguard 4 + Replicator 2. STRONGER in 17.3 (AP buffs).
+3. Dark Star Jhin — Vertical Dark Star 6-9, execute carry. Consistent S tier.
+4. Redeemer — Sona/Morgana carry, Conduit 4 + Space Groove. Morgana now 4g = more accessible.
+5. Conduit Reroll — 3-star Nami, Conduit 4 + Replicator 2.
+6. N.O.V.A. — Caitlyn/Akali carry, (5) Striker selector. Akali buffed.
+7. Mecha — Corki/Rammus, transform units, (6) for +1 team size.
+A TIER: Anima (LeBlanc, buffed 17.3 — every-combat loot) · Stargazer (Karma, reworked HP regen) · Rogue Reroll (Akali) · Space Opera (Jinx).
+AVOID 17.3: Primordian comps (Apex Primordian gutted). Master Yi (omnivamp 15→10%). Marauder vertical (omnivamp nerfed).
+17.3 NOTE: Timebreaker still viable flex AS trait. Anima now S-tier candidate with loot-every-combat buff.
 
 DATA AVAILABILITY NOTE:
 Stage/round (estimated from time), player level, items, win/loss record, and alive
@@ -120,6 +141,8 @@ FEASIBILITY RULES:
 - If round is GOD SELECTION (Realm of the Gods): advise which god offering AND any Blessing choice
 - If round is PVE or ENCOUNTER: rolling OK but no PvP tips; flag encounter impact on comp direction
 - NEVER suggest carousel picks — carousel does not exist in Set 17
+- NEVER suggest Horizon Focus — removed from game in 17.3
+- NEVER recommend Primordian vertical as a comp — Apex Primordian gutted in 17.3
 - NEVER ask for more data — always coach with what you have
 - NEVER use placeholder/blank/N/A in any field
 
