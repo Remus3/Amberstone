@@ -9,7 +9,14 @@ import json
 import time
 import logging
 import threading
-import anthropic
+try:
+    import anthropic
+    _APITimeoutError = anthropic.APITimeoutError
+    _APIConnectionError = anthropic.APIConnectionError
+except ImportError:
+    anthropic = None  # type: ignore[assignment]
+    _APITimeoutError = Exception
+    _APIConnectionError = Exception
 from collections import deque
 from datetime import datetime
 from pathlib import Path
@@ -661,7 +668,7 @@ class CoachIntegration:
         api_key = os.environ.get("ANTHROPIC_API_KEY", "")
         if not api_key:
             logger.warning("ANTHROPIC_API_KEY not set — auto-coaching disabled")
-        self._client = anthropic.Anthropic(api_key=api_key) if api_key else None
+        self._client = anthropic.Anthropic(api_key=api_key) if (api_key and anthropic) else None
 
         db_path = Path(__file__).parent / "data" / "decisions.db"
         from modules.cache_engine import CacheEngine
@@ -996,12 +1003,12 @@ class CoachIntegration:
             except Exception as _exc:
                 logger.debug("coach_trace append: %s", _exc)
             self._last_sig = sig
-        except anthropic.APITimeoutError:
+        except _APITimeoutError:
             logger.warning("Claude API timeout after %ds — will retry at next trigger", self._timeout_s)
             self._last_coach_time = time.time() - self._debounce_s + 2.0
             self._write_status_field("Timeout — retrying next trigger")
             return
-        except anthropic.APIConnectionError:
+        except _APIConnectionError:
             logger.error("Claude API unreachable")
             self._write_status_field("API unreachable")
             return
