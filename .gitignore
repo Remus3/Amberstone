@@ -76,6 +76,7 @@ data/debug_*.json
 data/sim/cache/
 data/screenshots/
 data/ocr_cache/
+tests/snapshot_panels/screenshots/
 moon_vision_server.log
 moon_vision_server.log.*
 
