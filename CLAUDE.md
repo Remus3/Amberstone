@@ -138,7 +138,8 @@ When invoked with `/done` or asked to wrap a session: (1) audit pending changes,
 5. ✅ TFT 17.3 — shipped 0e9617b (s131): Morgana 4g, Anima/Stargazer reworks, Primordian AVOID, AP comps buffed.
 5b. ✅ Phase 3 complete (s133+s135+s136+s137): ESM panels, CSS panels, JSDoc typedefs, Playwright snapshots. 6-fixture harness in `tests/snapshot_panels/`; WS stub prevents live-supervisor interference; CI gate live.
 5c. ✅ Phase 2.3 — coach_integration split complete (s138): 1225 LOC → `coach_integration/` pkg (_profiles 181 + _sr_prompt 455 + _coach 607 + __init__ 6). 386 tests, ruff clean.
-6. 🟡 Phase 2.2 — game_reader.py split (1473 LOC). Next god-module target.
+5d. ✅ Phase 2.2 — game_reader split complete (s139): 1474 LOC → `game_reader/` root pkg via `_PollerMixin` + `_NormalizerMixin` (poller 281 + snapshot_normalizer ~700 + mode_router 74 + __init__ 92). 386 tests, ruff clean, RC restarted clean.
+6. 🟡 Phase 2.4 — moon_vision_server.py split (701 LOC). Next god-module target.
 6b. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes. Blocked on live game.
 6. 🟡 DS calibration pipeline — blocked on rewind_history.db staleness (last entry Dec 2025).
 7. 🟡 gamepc_boot.ps1 hardening — add `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC`.
