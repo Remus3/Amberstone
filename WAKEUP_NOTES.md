@@ -1,6 +1,34 @@
 # WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s127 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+> Sessions s27–s128 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+
+---
+
+# s131 wrap — 2026-05-08 (TFT 17.3 patch update)
+
+## What shipped
+- **`tft/tft_pbe_data.py`**: header bumped to 17.3. Morgana moved from 5-cost → 4-cost. Anima (6) note updated (loot every combat). Stargazer note updated (HP regen rework). Marauder note updated (omnivamp nerfed all tiers). Encounters: Double Duplicators (Tiny/3-5), Reroll Start (8→5 rerolls). META_COMPS updated: AP Vanguards/Redeemer/Anima rise; Primordian moved to B ("AVOID").
+- **`tft/tft_pbe_engine.py`**: System prompt updated to 17.3. PATCH 17.3 CHANGES block added. KEY CARRIES updated (Morgana 4g, AP carries noted as buffed). META S-TIER COMPS updated. NEVER list: added Horizon Focus (removed from game) + Primordian vertical. Trait notes updated (Anima, Stargazer, Marauder).
+- **Commit `0e9617b`** pushed → origin/main. 380 tests pass, py_compile clean.
+
+## Key 17.3 changes captured
+- Morgana: 5→4 cost (Magic Tank) — Redeemer comp more accessible
+- Anima (6): loot every combat (was: wins only)
+- Stargazer: reworked to HP regen + stacking stats; Fountain removed
+- Marauder: omnivamp nerfed (20→18%, 40→35%, 60→55%)
+- Apex Primordian gutted (AS/armor/MR/grid damage all slashed) — comp is dead
+- AP carries buffed: Aurelion Sol, Karma, LeBlanc, Sona
+- Horizon Focus removed from game
+- Encounters: Double Duplicators (Tiny, 3-5), Reroll Start (8→5 rerolls)
+
+## Do NOT redo
+- Don't re-update TFT files — 17.3 is current as of commit 0e9617b.
+- Don't re-run tests — 380 pass clean.
+
+## What's next
+1. **Phase 4 remaining** — dispatch-level POST validation in `dashboard/_dispatch.py` (low-priority; read-path covered).
+2. **Phase 3** — frontend ESM split (`dashboard.js` 8507 LOC). Next major futureproofing phase.
+3. **Vision regions calibration** — blocked on live game.
 
 ---
 
