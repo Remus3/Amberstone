@@ -1,6 +1,29 @@
 # WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s123 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+> Sessions s27–s127 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+
+---
+
+# s130 wrap — 2026-05-08 (CI fix — anthropic guard + pydantic dep)
+
+## What shipped
+- **`coach_integration.py`**: wrapped bare `import anthropic` in try/except ImportError; aliased `_APITimeoutError`/`_APIConnectionError` for except clauses; guarded `anthropic.Anthropic()` instantiation. Keeps `_build_user_prompt` (pure string-builder) importable in CI without the anthropic SDK.
+- **`requirements.txt`**: added `pydantic>=2.0` (Phase 4's `core/coaching_payload.py` introduced a hard dep never wired into CI).
+- **`.github/workflows/ci.yml`**: added `pydantic>=2.0` to pip install step.
+- **Commit `808afea`** pushed → origin/main. CI now green (10 previously failing tests now pass).
+
+## Root cause
+- Phase 4 (s129) shipped `core/coaching_payload.py` with bare `from pydantic import ...` — pydantic never added to CI.
+- Phase 5 (s128) added `TestSrCoachPromptBuilder` to phase2_smoke but `coach_integration.py` had a bare `import anthropic` — anthropic intentionally excluded from CI runtime.
+
+## Do NOT redo
+- Don't re-investigate CI failures — fixed in 808afea. `gh run list` confirms green.
+- Don't add `anthropic` to CI requirements — intentionally excluded; try/except guard is the correct fix.
+
+## What's next
+1. **TFT 17.3** — due ~2026-05-12 (highest priority). Update `tft_pbe_engine.py` + `tft_pbe_data.py` + meta JSON bump.
+2. **Phase 4 remaining** — dispatch-level POST validation in `dashboard/_dispatch.py`.
+3. **Phase 3** — frontend ESM split (`dashboard.js` 8507 LOC).
 
 ---
 
@@ -58,31 +81,3 @@
 1. **TFT 17.3** — due ~2026-05-12 (highest time priority). Same process as 17.2.
 2. **Phase 4** — Contracts/schemas: pydantic `api_schema.py` + coaching payload. Next in futureproofing order.
 3. **Branch protection** — enable in GitHub UI: Settings → Branches → require status check "check".
-
----
-
-# s127 wrap — 2026-05-08 (Phase 2.1 — champion_profiles.py split COMPLETE)
-
-## What shipped
-- **`champion_profiles.py`** shrunk from 902 → 29 LOC. Now a thin JSON loader.
-- **`data/champion_profiles/*.json`** — 168 champion files, each a flat dict with `dmg/role/mana/sustain/mechanic/aram` fields. All checked in.
-- **`scripts/extract_champion_profiles.py`** — one-shot migration helper left in tree as migration doc.
-- **`docs/ARCHITECTURE.md`** — god-module table updated; archmap regenerated via pre-commit.
-- **`ROADMAP.md`** — Phase 2.1 ✅ Done.
-- Commit **8fa11f4** pushed → origin/main (172 files changed: 1399 insertions, 906 deletions).
-
-## Key decisions
-- Thin loader stays at **root `champion_profiles.py`** (not `core/`). `ops/rc_dev_runtime.py` (frozen) watches `"champion_profiles"` as a module-name string — moving it would require a frozen-file edit. Zero caller changes.
-- Import surface preserved exactly: 12 module-level exports (`CHAMPIONS, TANKS, FIGHTERS, MAGES, ASSASSINS, MARKSMEN, SUPPORTS, AD_CHAMPS, AP_CHAMPS, HYBRID_CHAMPS, SUSTAIN_CHAMPS, MANA_CHAMPS`).
-- Pre-existing test failure in `tests/snapshot_regressions/test_app_authority.py` is unrelated — confirmed via git stash; 289 other tests all pass.
-
-## Do NOT redo
-- Don't re-run the extractor — 168 JSONs already committed. It's idempotent but unnecessary.
-- Don't re-backfill `# arch:` header on `champion_profiles.py` — already updated to "thin loader".
-
-## What's next
-1. **Phase 5** — CI + smoke harness (cheapest regression insurance; recommended before Phase 2.2+).
-2. **TFT 17.3** — due ~2026-05-12 (higher time priority).
-3. **Phase 4** — Contracts/schemas (pydantic `api_schema.py` + coaching payload).
-
-
