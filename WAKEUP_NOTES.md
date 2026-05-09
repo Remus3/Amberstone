@@ -4,6 +4,40 @@
 
 ---
 
+# s132 wrap — 2026-05-08 (Phase 3.1 — ESM module split, lib/ extraction)
+
+## What shipped
+- **`web/index.html`**: `<script type="module" src="/js/main.js">` (sim.js stays regular script to patch fetch/WS before module eval)
+- **`web/js/main.js`** (new, 8225 lines): `dashboard.js` IIFE unwrapped; import block at top; all lib/ duplicates removed
+- **`web/js/lib/helpers.js`** (new): `_to12`, `el`, `safe`, `fmtList`, `fitText`, `logLine`, `isArenaPayload`, `classifyAction`, `_opGlyph`, `_formatRelativeAge`
+- **`web/js/lib/state.js`** (new): `state`, `CADENCE`, `VIEW_IDS`, `VIEW_LABELS`, `_VIEW`
+- **`web/js/lib/items_index.js`** (new): `ITEMS`, `ITEM_COSTS`, `CHAMPS`, `SPELLS` + all resolver fns + async loaders; dispatches `rc:items-ready` event
+- **`web/js/lib/idempotent_render.js`** (new): `idempotentRender`, `makeSig`
+- **Commit `7bbf032`** pushed → origin/main.
+
+## Key decisions
+- No bundler — native ESM, Edge 89+ compatible (Game-PC is current Edge).
+- `sim.js` as regular script before the module: guarantees fetch/WS patches visible to module at eval time.
+- Race fix (`_lastItemBuildState` re-drive) preserved via `rc:items-ready` custom event listener — avoids circular dep (items_index can't import `renderItemBuild`).
+- `dashboard.js` kept in place (unmodified) as the prior-art reference.
+
+## Verification
+- `node --check web/js/main.js` → SYNTAX OK
+- All 4 lib/ modules + main.js: HTTP 200 from RC
+- No error entries in RC log after serving the new module
+
+## Do NOT redo
+- Don't re-extract lib/ helpers — all 4 modules are committed and verified.
+- Don't modify `dashboard.js` — it's the reference; only `main.js` is the active file.
+
+## What's next
+1. **Phase 3.1 continuation** — extract individual panels into `web/js/panels/*.js` (right_now, next, item_build, map_state, champ_select, bridge_pending, dev). Each is a 300–600 line block.
+2. **CSS split** — `web/css/panels/*.css` with `@import` in main CSS (can be a separate short session).
+3. **JS typedef codegen** — `web/js/lib/state_schema.js` from `api_schema.py` (deferred until Phase 3 panels done).
+4. **Phase 4 remaining** — dispatch-level POST validation (low priority).
+
+---
+
 # s131 wrap — 2026-05-08 (TFT 17.3 patch update)
 
 ## What shipped
@@ -53,31 +87,5 @@
 2. **Phase 4 remaining** — dispatch-level POST validation in `dashboard/_dispatch.py`.
 3. **Phase 3** — frontend ESM split (`dashboard.js` 8507 LOC).
 
----
 
-# s129 wrap — 2026-05-08 (Phase 4 — Contracts/schemas partial DONE)
-
-## What shipped
-- **`core/coaching_payload.py`** (new): pydantic v2 models for all 5 coach modes — `AramPayload`, `ArenaPayload`, `BrawlPayload`, `SrPayload`, `TftPayload`. All use `extra="allow"`. `validate_coaching_payload(data)` dispatches by mode, logs per-field warnings, never raises. Called in `dashboard/_state_builder.build_state()` on every `/api/state` read.
-- **`dashboard/api_schema.py`** (new): outer HTTP API shape models — `StateResponse`, `HealthAllResponse`, `InputRequest`, `CommandRequest`, `DsPreviewRequest/Response`, `BridgeInboxRequest`, `SpeakRequest`, `OkResponse`, `ErrorResponse`.
-- **`core/bridge_envelope.py`** (new): `BridgeEnvelope` pydantic v2 model with `suggestions`, `body_path`, `claimed_by`, `ttl_at` fields; `is_expired()`, `to_wire()`, `parse_envelope()` helpers.
-- **`docs/API.md`** (new): 40 routes across 15 route files (GET + POST), body schemas, descriptions.
-- **Futureproofing plan** updated: Phase 5 archived (was unchecked), Phase 4 checkboxes filled + findings added.
-- **Commit `31bbe4f`** pushed → origin/main.
-
-## Key decisions
-- `extra="allow"` on all coaching models — coaches add LLM-derived fields freely; schema only enforces declared types.
-- Soft-validate on read in `_state_builder.py` (never raise, log warning) — keeps dashboard alive even if coach output drifts.
-- 4.2 tool rewrites (12 bridge CLIs) **blocked** — `bridge_post_result.py` and `bridge_pull_tasks.py` are frozen. Needs same frozen-file approval as Phase 6.
-- JS typedef codegen (`web/js/lib/state_schema.js`) deferred to Phase 3 (requires ESM split first).
-
-## Do NOT redo
-- Don't re-add coaching models — `core/coaching_payload.py` is complete with all 5 modes.
-- Don't re-generate API.md — it's committed and up to date with all 15 route files.
-- Don't re-run archmap — pre-commit hook ran it cleanly; archmap is in sync.
-
-## What's next
-1. **TFT 17.3** — due ~2026-05-12 (highest time priority). Same process as 17.2: update `tft_pbe_engine.py` + `tft_pbe_data.py` + meta JSON bump.
-2. **Phase 4 remaining** — dispatch-level POST validation in `dashboard/_dispatch.py` (low-priority; read-path is already covered).
-3. **Phase 3** — frontend ESM split (`dashboard.js` 8507 LOC). After that, JS typedef codegen from `api_schema.py` becomes viable.
 

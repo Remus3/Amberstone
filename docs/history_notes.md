@@ -4,6 +4,8 @@ Sessions older than the last 2–3 full sessions are progressively compacted her
 Current WAKEUP_NOTES.md keeps only the most recent 2–3 sessions.
 Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
+- **s129 (2026-05-08)** Phase 4 contracts/schemas — `core/coaching_payload.py` (5 pydantic models, soft-validate), `dashboard/api_schema.py`, `core/bridge_envelope.py`, `docs/API.md` (40 routes). Commit `31bbe4f`. 4.2 tool rewrites blocked (frozen files). JS typedef codegen deferred to Phase 3.
+
 ---
 
 # s128 wrap — 2026-05-08 (Phase 5 — CI gate + smoke harness COMPLETE)
