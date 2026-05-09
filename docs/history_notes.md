@@ -6,6 +6,32 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s138 wrap — 2026-05-09 (Phase 2.3 — coach_integration split)
+
+## What shipped
+- **`coach_integration/` package** (new): split `coach_integration.py` (1225 LOC, `\r\r\n` line-ending artifact) into `_profiles.py` (181 LOC), `_sr_prompt.py` (455 LOC), `_coach.py` (607 LOC), `__init__.py` (6 LOC facade). All frozen-file callers (`app/__init__.py`, `main.py`) unchanged.
+- **`tools/build_portable.py`**: removed `"coach_integration.py"` from `_ROOT_PY_FILES`, added `"coach_integration"` to `_SOURCE_PACKAGES`.
+- **`docs/ARCHITECTURE.md`**: archmap regenerated for new package sub-modules.
+- **FUTUREPROOFING_PLAN.md** (`Desktop`): Phase 3.3 and Phase 2.3 marked done; status table updated.
+- 386 tests pass, ruff 0 violations.
+
+## Key decisions
+- Actual structure was SR-only (not multi-mode dispatch) — planned `dispatch.py/budget.py/cache_keys.py/writers.py` split didn't match reality; used `_profiles/_sr_prompt/_coach` instead.
+- File had `\r\r\n` double-CR endings making Python splitlines() double-count lines (2449 apparent, 1225 real). Stripped on extraction.
+- Path fix: `Path(__file__).parent` → `.parent.parent` in `_sr_prompt.py` and `_coach.py` since files are now one level deeper.
+- `main.py` (frozen) sets `_ci._APP_DIR = APP_DIR` — attribute injection onto package `__init__`; never READ, harmless.
+
+## Do NOT redo
+- Don't re-investigate the line-count discrepancy — it was `\r\r\n` endings, stripped at extraction.
+- Don't try to put `CoachIntegration` in a smaller file — the class is naturally 578 lines.
+
+## What's next
+1. **Phase 2.2** — `game_reader.py` (1473 LOC) split into `core/game_reader/` package.
+2. **Phase 4 remaining** — dispatch-level POST validation in `_dispatch.py` (low priority).
+3. **Vision regions calibration** — blocked on live game.
+
+---
+
 # s137 wrap — 2026-05-08 (Phase 3.3 — Playwright panel snapshot tests)
 
 ## What shipped
@@ -135,6 +161,28 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s108 wrap — 2026-05-06 (WT flash fixes — Legion + Game-PC)
+
+- `dashboard/server.py`: `creationflags=0x08000000` on vision server Popen (commit `cab0ce4`). Game-PC `gamepc_bridge_daemon.py`: `--dangerously-skip-permissions` fix + DEVNULL suppression — stopped 807+ crash-loop invocations per day.
+
+---
+
+# s107 wrap — 2026-05-06 (API cost audit + dynamic debounce + CLAUDE.md slim)
+
+## What shipped
+- **Vision loop gate** — `_run_vision()` guards in ARAM/Arena/Brawl coaches: `if self._fetch_game_data() is None: return`. Kills 24/7 Sonnet burn when no game is active (was 84% of LoLOverlay key spend on May 4).
+- **Dynamic debounce** — all 3 coaches: `_STABLE_DEBOUNCE_S` class attr (ARAM 25s / Arena 22s / Brawl 20s). `_on_state_received` sets `self._DEBOUNCE_S` to stable rate when no meaningful state change; snaps back to fast rate on dead_enemies / items / level / hp_pct drop ≥10.
+- **CLAUDE.md slimmed** from 355→109 lines. Deep docs moved to `docs/AGENTS.md` (new) + `docs/DAEMON_SLAYER.md` (new). Bridge spawn cost note added.
+- **Settings cleanup** — both `.claude/settings.json` files: removed `typescript-lsp` plugin; `additionalDirectories` `C:/` → `C:/Riot Commander`.
+- Commits: `5658b1f` (vision gate + debounce + CLAUDE.md slim)
+
+---
+
+# s117 wrap — 2026-05-08 (TFT patch 17.2)
+TFT patch 17.2: tft_pbe_engine.py system prompt + tft_pbe_data.py ENCOUNTERS (21) + GOD_BLESSINGS (24) + trait balance. tft_set17_meta.json -> 17.2. commit be3d168. DDragon still shows "16.9.1" (stale cache) — actual patch 26.9; coaching functional.
+
+---
+
 **s125 — 2026-05-08** (9234d0f) Phase 1.1 knowledge architecture: docs/_archive/ created, 23 dated artifacts moved, 4 living docs authored (ARCHITECTURE.md 136 lines, OPERATIONS.md 153, BRIDGE.md 136, ROADMAP.md 64). Bootstrap reduced from 2000+ → 492 lines.
 
 **s124 — 2026-05-08** (no commit) RC_FUTUREPROOFING_PLAN.md authored on Desktop by Opus 4.7 1M context — 7-phase leverage-ordered refactor plan. No code changes.
@@ -155,23 +203,6 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 - **s111 2026-05-06** — Infrastructure fixes: RC-BridgeWatcher + RC-Phase3-Supervisor restarted; `claude-rc.ps1` `/loop` removed; ROADMAP fleet-health items marked ✅.
 - **s110 2026-05-06** — Cross-Claude sync Phase 3 + DS/roadmap doc cleanup. `_lessons_summary()` in `rc_facts.py` for SessionStart hook (4c4ce1a); ROADMAP/CLAUDE/README doc cleanup (b6d02ae).
 - **s109 2026-05-06** — Memory library: 6 new memory entries (feedback + reference patterns). No code changes to RC repo.
-
----
-
-# s108 wrap — 2026-05-06 (WT flash fixes — Legion + Game-PC)
-
-- `dashboard/server.py`: `creationflags=0x08000000` on vision server Popen (commit `cab0ce4`). Game-PC `gamepc_bridge_daemon.py`: `--dangerously-skip-permissions` fix + DEVNULL suppression — stopped 807+ crash-loop invocations per day.
-
----
-
-# s107 wrap — 2026-05-06 (API cost audit + dynamic debounce + CLAUDE.md slim)
-
-## What shipped
-- **Vision loop gate** — `_run_vision()` guards in ARAM/Arena/Brawl coaches: `if self._fetch_game_data() is None: return`. Kills 24/7 Sonnet burn when no game is active (was 84% of LoLOverlay key spend on May 4).
-- **Dynamic debounce** — all 3 coaches: `_STABLE_DEBOUNCE_S` class attr (ARAM 25s / Arena 22s / Brawl 20s). `_on_state_received` sets `self._DEBOUNCE_S` to stable rate when no meaningful state change; snaps back to fast rate on dead_enemies / items / level / hp_pct drop ≥10.
-- **CLAUDE.md slimmed** from 355→109 lines. Deep docs moved to `docs/AGENTS.md` (new) + `docs/DAEMON_SLAYER.md` (new). Bridge spawn cost note added.
-- **Settings cleanup** — both `.claude/settings.json` files: removed `typescript-lsp` plugin; `additionalDirectories` `C:/` → `C:/Riot Commander`.
-- Commits: `5658b1f` (vision gate + debounce + CLAUDE.md slim)
 
 ---
 
@@ -269,9 +300,3 @@ All narrative detail in `ROADMAP.md §1` and `git log`.
 | s89 | 2026-05-04 | 0cecfa3 | DS batch 33: ability-burn promos, caster_bonus_hp, 367 tests |
 | s90 | 2026-05-04 | 1bd105d, 6b04992 | DS batches 34–35: magic_amp_pct schema, dual-pen, spellblade |
 | s91 | 2026-05-04 | 8f7811b, 8d208c3 | DS batches 36–37: TRUE damage type, Arena 443/447 sweeps, 428 tests |
-
-
----
-
-# s117 wrap — 2026-05-08 (TFT patch 17.2)
-TFT patch 17.2: tft_pbe_engine.py system prompt + tft_pbe_data.py ENCOUNTERS (21) + GOD_BLESSINGS (24) + trait balance. tft_set17_meta.json -> 17.2. commit be3d168. DDragon still shows "16.9.1" (stale cache) — actual patch 26.9; coaching functional.

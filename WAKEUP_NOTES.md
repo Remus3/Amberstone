@@ -4,6 +4,39 @@
 
 ---
 
+# s142 wrap — 2026-05-09 (Phase 7 — WAKEUP_NOTES auto-prune + Conventional Commits hook)
+
+## What shipped
+- **`scripts/wakeup_prune.py`** (new, 130 LOC): pure-Python helper that splits WAKEUP_NOTES.md by `\n---\n\n`, identifies sessions via `^# s\d+ wrap` regex, keeps the first N (default 3), and atomically moves the remainder to `docs/history_notes.md` newest-first. Modes: default (prune), `--dry-run`, `--check` (exits 1 if over limit). Idempotent — re-running is a no-op. Self-heals legacy buggy files missing the blank-line-before-rule (28 unit tests cover the round-trip).
+- **`.githooks/commit-msg`** (new) + **`scripts/precommit_msg_check.py`** (new, 110 LOC): commit-msg hook validating Conventional Commits subject lines. Pattern: `^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([\w./\- ]+\))?!?:\s+\S`. Skips Merge/Revert/Reapply/fixup!/squash!/amend! auto-subjects; soft-warns over 100 chars; bypassable via `--no-verify`. Activates the moment `git config core.hooksPath .githooks` is set (already required for pre-commit).
+- **`tests/phase7_polish/`** (new): 28 unit tests covering split/render round-trip + blank-line preservation + buggy-input self-heal + 4 prune scenarios + check mode + every recent commit shape from `git log` + all canonical types + scopes with `./-/` chars + breaking-change `!` + all skip-prefixes + 9 reject cases.
+- **`/done` skill section 6c rewritten** in both project-local (`.claude/commands/done.md`) and user-level (`~/.claude/commands/done.md`) — replaced the 5-step manual archive workflow with a single `py scripts/wakeup_prune.py --keep 3` invocation.
+- **Living docs synced**: ROADMAP.md + CLAUDE.md priorities + RC_FUTUREPROOFING_PLAN.md (Desktop) all reflect Phase 7 → ✅ Done. Archmap regenerated to index 2 new phase-7 markers (`scripts/wakeup_prune.py:4`, `scripts/precommit_msg_check.py:4`).
+- 414 tests pass (was 386, +28 new), ruff 0 violations, archmap `--check` clean.
+
+## Key decisions
+- **Archive target = `docs/history_notes.md`, NOT `docs/_archive/CHANGELOG.md`** as plan said. The existing /done skill already pointed at history_notes.md and 27+ sessions are already archived there. Switching now would either invalidate the existing archive or require a one-shot migration with no upside.
+- **`--check` mode but NOT wired into pre-commit (yet)**. Pre-commit-hook enforcement of "WAKEUP_NOTES has ≤3 sessions" would block commits whenever the operator forgot to prune. That's annoying and recoverable. The helper is idempotent and the /done skill calls it; trust the skill, don't bolt on a forcing function.
+- **Hook validates SUBJECT line only**. Body and trailers are unrestricted (so `Co-Authored-By:` trailers, multi-paragraph bodies, etc. all pass through). Standard Conventional Commits behavior.
+- **Render bug found via dogfood**: first-cut helper stripped trailing `\n` per block + joined with `\n---\n\n`, producing `bullet\n---\n\n# next` (missing blank line above rule). Fixed by `rstrip + add \n` per block, joined with `\n---\n\n`. Round-trip on a buggy legacy file now self-heals to canonical form. Tests for both directions added.
+- **Period normalization on phase-marker notes**: docstring lines ending in `.` were stripped to match the existing convention (other markers in the journal don't end in periods). Pre-commit `gen_archmap.py --check` enforces drift.
+- **Two done.md copies**: project-local (`C:/Riot Commander/.claude/commands/done.md`) is committed source-of-truth; user-level (`~/.claude/commands/done.md`) is a personal mirror. Edited both for consistency.
+
+## Do NOT redo
+- Don't try to switch the WAKEUP_NOTES archive to `docs/_archive/CHANGELOG.md` — `docs/history_notes.md` is the established archive and 27+ sessions are already there.
+- Don't add `wakeup_prune.py --check` to pre-commit hook without operator buy-in — it would block commits during normal in-progress work.
+- Don't tighten the commit-msg regex to disallow scopes with spaces or `/` — multiple recent commits (e.g. `feat(scripts/wakeup): …`) intentionally use those.
+- Don't strip the `Reapply ` skip-prefix — it's emitted by `git revert <revert-commit>` and is a legitimate auto-subject.
+- Don't reintroduce `b.strip("\n")` in `render()` — it was the cause of the lost-blank-line bug; test `test_render_preserves_blank_line_before_separator` is the regression.
+
+## What's next
+1. **Phase 6 — Bridge consolidation** — still blocked on operator approval for frozen files (`bridge_post_result.py`, `bridge_pull_tasks.py`, `process-bridge-tasks.md`).
+2. **Phase 4 remaining** — dispatch-level POST validation in `_dispatch.py` (low priority).
+3. **Game-PC LCU agent not posting** — flagged at session start (SessionStart anomaly); separate task, surface for diagnosis if it persists.
+4. **Vision regions calibration** — blocked on live game.
+
+---
+
 # s141 wrap — 2026-05-09 (Phase 7 — phase-marker comment normalization)
 
 ## What shipped
@@ -57,30 +90,3 @@
 1. **Phase 6 — Bridge consolidation** — blocked on operator approval for frozen files (`bridge_post_result.py`, `bridge_pull_tasks.py`, `process-bridge-tasks.md`).
 2. **Game-PC LCU agent not posting** — SessionStart anomaly flagged at session start; separate task, surface for diagnosis.
 3. **Vision regions calibration** — blocked on live game.
-
----
-
-# s138 wrap — 2026-05-09 (Phase 2.3 — coach_integration split)
-
-## What shipped
-- **`coach_integration/` package** (new): split `coach_integration.py` (1225 LOC, `\r\r\n` line-ending artifact) into `_profiles.py` (181 LOC), `_sr_prompt.py` (455 LOC), `_coach.py` (607 LOC), `__init__.py` (6 LOC facade). All frozen-file callers (`app/__init__.py`, `main.py`) unchanged.
-- **`tools/build_portable.py`**: removed `"coach_integration.py"` from `_ROOT_PY_FILES`, added `"coach_integration"` to `_SOURCE_PACKAGES`.
-- **`docs/ARCHITECTURE.md`**: archmap regenerated for new package sub-modules.
-- **FUTUREPROOFING_PLAN.md** (`Desktop`): Phase 3.3 and Phase 2.3 marked done; status table updated.
-- 386 tests pass, ruff 0 violations.
-
-## Key decisions
-- Actual structure was SR-only (not multi-mode dispatch) — planned `dispatch.py/budget.py/cache_keys.py/writers.py` split didn't match reality; used `_profiles/_sr_prompt/_coach` instead.
-- File had `\r\r\n` double-CR endings making Python splitlines() double-count lines (2449 apparent, 1225 real). Stripped on extraction.
-- Path fix: `Path(__file__).parent` → `.parent.parent` in `_sr_prompt.py` and `_coach.py` since files are now one level deeper.
-- `main.py` (frozen) sets `_ci._APP_DIR = APP_DIR` — attribute injection onto package `__init__`; never READ, harmless.
-
-## Do NOT redo
-- Don't re-investigate the line-count discrepancy — it was `\r\r\n` endings, stripped at extraction.
-- Don't try to put `CoachIntegration` in a smaller file — the class is naturally 578 lines.
-
-## What's next
-1. **Phase 2.2** — `game_reader.py` (1473 LOC) split into `core/game_reader/` package.
-2. **Phase 4 remaining** — dispatch-level POST validation in `_dispatch.py` (low priority).
-3. **Vision regions calibration** — blocked on live game.
-
