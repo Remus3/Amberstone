@@ -1,0 +1,23 @@
+{
+  "mode_key": "tft",
+  "coach_source": "tft_coaching_data.json",
+  "health": {"alive": true, "pid": 9999, "mode": "tft", "has_game": true},
+  "coach": {
+    "mode": "tft",
+    "action": "Roll down to 0 gold at 7 — hit 3-star Jinx before carousel.",
+    "board": "Jinx (2★), Caitlyn (1★), Lulu (1★) | Sniper 2",
+    "econ": "Lose-streak to 8 gold, then roll at 7-1.",
+    "rolldown": "Roll at 7-1 to stabilize board before dragon.",
+    "items": "Build Guinsoo's on Jinx. RFC over IE if you miss Jinx.",
+    "god_pick": "Jinx 3★ — you have 5 copies in shop this round.",
+    "placement": "4th of 8 · HP 45",
+    "upgrade": "Caitlyn needs 2 more copies for 2★.",
+    "risk": "Player 2 has Snipers + a stronger Jinx. Contest carefully.",
+    "game_time_s": 487,
+    "stage": "3-6",
+    "round": "Round 6",
+    "level": 7,
+    "gold": 6,
+    "health": 45
+  }
+}
