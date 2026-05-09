@@ -27,6 +27,7 @@ import json
 from pathlib import Path
 
 from coaches.sr_draft_profile import is_sr_draft_queue
+from core.coaching_payload import validate_coaching_payload
 from dashboard._context import APP_DIR, read_json
 from dashboard._liveclient import lcu_summary, liveclient_summary
 
@@ -55,6 +56,7 @@ def build_state() -> dict:
 
     coach_file = MODE_TO_FILE.get(mode_key, "coaching_data.json")
     coach = read_json(coach_file)
+    validate_coaching_payload(coach)
 
     # Overlay live API fields onto coach data so the dashboard placeholders
     # (game_time, kda, level, gold, hp, mana, cs) populate immediately.

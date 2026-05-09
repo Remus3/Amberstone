@@ -28,7 +28,7 @@ Phased refactor plan (doc architecture → god module decomp → frontend ESM �
 | 1 — Knowledge architecture | ✅ Done (fc1361b — s125+s126) |
 | 2.1 — champion_profiles split | ✅ Done (s127 — 902→29 LOC + 168 JSONs) |
 | 5 — CI + smoke harness | ✅ Done (d21f533 — 343→380 tests, ruff 0 violations, CI gate live) |
-| 4 — Contracts/schemas | 🟡 Not started |
+| 4 — Contracts/schemas | 🟠 In progress (s129 — 4.1+4.2+4.3 partial) |
 | 3 — Frontend modules | 🟡 Not started |
 | 2.3 — coach_integration split | 🟡 Not started |
 | 6 — Bridge consolidation | 🔴 Blocked (frozen-file approval needed) |
