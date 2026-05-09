@@ -24,6 +24,7 @@ import { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine } f
 import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
 import { MM, renderMinimap, renderTeamTile, renderAllyStrip, renderEnemyStrip, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS, _renderMmStateLine } from './panels/map_state.js';
 import { handleChampSelect, renderChampSelectPanel, renderChampSelectCoach } from './panels/champ_select.js';
+import { renderTeamContext } from './panels/team_context.js';
 import { renderBridgePending, renderCoachDecisions, renderRecentCoachCalls } from './panels/bridge_pending.js';
 import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce, _devViewFetch, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
 
@@ -3551,6 +3552,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
           // 2026-04-25: cold-start champ-select prep — surface adaptation
           // history during champ-select via the LCU snapshot.
           handleChampSelect(st.lcu);
+          renderTeamContext(st);
         }
       } catch (_) { /* ignore — WS may come back */ }
     }
@@ -3583,6 +3585,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
           onState({ type: "state", source: "state-sse",
                     mode: fileMode, payload: coachPayload });
           if (st.lcu) handleChampSelect(st.lcu);
+          renderTeamContext(st);
         } catch (_) { /* malformed event — skip */ }
       };
       es.onerror = () => {
@@ -3614,6 +3617,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
         if (r.ok) {
           const st = await r.json();
           if (st && st.lcu) handleChampSelect(st.lcu);
+          if (st) renderTeamContext(st);
         }
       } catch (_) { /* silent */ }
       finally { inflight = false; }

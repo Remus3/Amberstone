@@ -22,6 +22,7 @@ _EXPECTED_KNOWN_PATHS = {
     "/api/ds-preview",
     "/api/bridge/inbox",
     "/api/speak",
+    "/api/team-context/refresh",
 }
 
 

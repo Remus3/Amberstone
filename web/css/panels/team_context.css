@@ -1,0 +1,173 @@
+/* ── Team Context block (FU02 panel stub, 2026-05-09) ──────────────────
+ * Sits inside the cs-overlay, between the existing team rows and the
+ * bench grid. 5+5 row of player cards with progressive-reveal fields:
+ * locked-champ icon + name (or champion when name-blanked) + rank chip
+ * + mastery + mains + recent winrate + last-7-games streak.
+ *
+ * Skeleton-state styling: empty fields render with .skel for a muted
+ * dashed look so the user can tell the data hasn't landed yet rather
+ * than confusing it with "no data" (e.g. unranked or hidden). Once
+ * core/riot_api.py ships, partial=False trims the skeletons by
+ * filling them in over the priority-2 fan-out window. */
+.cs-team-context-block {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(245, 184, 124, 0.04);
+  border: 1px solid rgba(245, 184, 124, 0.22);
+}
+.cs-team-context-block[hidden] { display: none; }
+
+.tc-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.tc-label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #F5B87C;
+}
+.tc-status {
+  font-size: 12px;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.tc-teams {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.tc-team-block {
+  min-width: 0;
+}
+.tc-team-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 4px;
+}
+.tc-team-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Single 1-row card per player. Icon-left, three text rows on right. */
+.tc-slot {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  min-height: 56px;
+}
+.tc-slot-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  color: var(--text-faint);
+}
+.tc-slot-icon.skel {
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+}
+.tc-slot-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.tc-slot-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tc-slot-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.tc-slot-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.tc-slot-rank {
+  font-size: 11px;
+  font-weight: 700;
+  color: #F5B87C;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.tc-slot-sub {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.tc-slot-champ {
+  color: var(--text);
+}
+.tc-slot-mastery {
+  font-weight: 700;
+  color: rgba(245, 184, 124, 0.85);
+}
+.tc-slot-tail {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.tc-slot-mains {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tc-slot-wr,
+.tc-slot-streak {
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+/* Skeleton — values not yet populated by FU02 fan-out. Dashed underline
+ * so it reads "data pending" rather than "no data". Visually-quiet
+ * enough that a fully-populated card doesn't look like a downgrade. */
+.skel {
+  color: rgba(255, 255, 255, 0.28) !important;
+  text-decoration: underline dashed rgba(255, 255, 255, 0.18);
+  text-underline-offset: 2px;
+}
+
+/* Narrow-screen fallback — stack the two team blocks vertically when
+ * the cs-overlay shrinks (Game-PC secondary at 100% scale ≈ 1920×1280
+ * is fine, but iPad portrait or zoom-in cuts it close). */
+@media (max-width: 1100px) {
+  .tc-teams {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}

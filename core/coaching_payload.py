@@ -104,6 +104,32 @@ class BrawlPayload(_Base):
     daemon_slayer_picks: list[Any] = []
 
 
+class TeamContextEntry(_Base):
+    """One slot in the 5+5 champ-select roster enrichment.
+
+    Populated progressively by `core/riot_api.py` fan-out (FU02).
+    Empty/zero values are the soft-fail signal — the dashboard renders
+    skeleton rows until each field arrives.
+    """
+    puuid: str = ""
+    summoner_name: str = ""        # blanked for ranked-pre-loading
+    team_id: int = 0               # 100=blue, 200=red
+    locked_champion: str = ""
+    rank: str = ""                 # e.g. "PLATINUM IV 47 LP" or ""
+    mastery_on_locked: int = 0
+    w_l_streak_7: list[int] = [0, 0]   # [wins, losses] last 7 games
+    mains: list[str] = []          # top-3 champion names
+    win_rate_recent: float = 0.0
+
+
+class TeamContext(_Base):
+    allies: list[TeamContextEntry] = []
+    enemies: list[TeamContextEntry] = []
+    refreshed_at: str = ""         # ISO-8601 timestamp
+    partial: bool = True           # False once priority-2 fan-out completes
+    queue_id: int = 0              # 420 ranked solo, 440 flex, 400 normal draft, etc.
+
+
 class SrPayload(_Base):
     """SR + client idle mode. Live fields are overlaid by state-builder."""
     immediate: str = ""
@@ -127,6 +153,7 @@ class SrPayload(_Base):
     ally_spells: dict[str, Any] = {}
     ally_comp: list[Any] = []
     enemy_comp: list[Any] = []
+    team_context: Optional[TeamContext] = None
 
 
 class TftPayload(_Base):
