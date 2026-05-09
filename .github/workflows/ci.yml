@@ -29,7 +29,10 @@ jobs:
           # is intentionally not installed; tests that import it must guard
           # for ImportError or be marked phase2_smoke / snapshot_regressions
           # which are pure-Python.
-          pip install pytest pytest-asyncio pytest-timeout ruff pydantic>=2.0
+          pip install pytest pytest-asyncio pytest-timeout ruff pydantic>=2.0 playwright
+
+      - name: Install Playwright Chromium
+        run: playwright install --with-deps chromium
 
       - name: py_compile sweep
         run: |
@@ -60,3 +63,7 @@ jobs:
         run: |
           pytest tests/phase2_smoke tests/snapshot_regressions tests/phase8_smoke \
             -q --tb=line --timeout=60
+
+      - name: panel snapshot tests
+        run: |
+          pytest tests/snapshot_panels/ -q --tb=short --timeout=60

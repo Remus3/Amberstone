@@ -1,0 +1,37 @@
+{
+  "mode_key": "arena",
+  "coach_source": "arena_coaching_data.json",
+  "health": {"alive": true, "pid": 9999, "mode": "arena", "has_game": true},
+  "coach": {
+    "mode": "arena",
+    "action": "Engage at Round 5 — pick Sunfire Aegis on anvil.",
+    "champion": "Garen",
+    "fight_rule": "All-in when your W is active. Silence the carry first.",
+    "round_strategy": "Prioritize survivability — 2 teams left with fed Jinx.",
+    "augment_advice": "Take Celestial Body — you need the HP more than damage.",
+    "anvil_advice": "Sunfire Aegis over Warmog. Warmog is only good vs poke.",
+    "target_priority": "Focus Jinx — she's 1-shotting teams.",
+    "risk": "Thresh hook sets up their burst combo. Bait it before engaging.",
+    "immediate": "Hold W for their CC chain. Pop it after Thresh hook.",
+    "teams": [
+      {"rank": 1, "names": "Jinx, Thresh", "hp": 92},
+      {"rank": 3, "names": "Garen, Lux", "hp": 78}
+    ],
+    "round": "Round 4",
+    "rank": "3rd of 4",
+    "alive_teams": 4,
+    "hp_pct": 78,
+    "wins": 2,
+    "losses": 1,
+    "game_time_s": 765,
+    "camp_phase": false,
+    "item_build": "Sunfire Aegis, Thornmail, Gargoyle Stoneplate",
+    "ally_spells": {},
+    "pregame": "Garen vs Jinx — you survive; they delete.",
+    "win_pct": 42,
+    "kda": "5/2/3",
+    "level": 12,
+    "gold": 3100,
+    "daemon_slayer_picks": []
+  }
+}
