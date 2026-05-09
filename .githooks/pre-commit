@@ -24,3 +24,6 @@ fi
     echo "Run: python tools/gen_archmap.py"
     exit 1
 }
+
+# Ensure state_schema.js JSDoc typedefs are in sync with pydantic models.
+"$PY" "$ROOT/tools/gen_state_schema.py" --check || exit 1
