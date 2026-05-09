@@ -1,0 +1,6 @@
+{
+  "mode_key": "client",
+  "coach_source": "",
+  "health": {"alive": true, "pid": 9999, "mode": "client", "has_game": false},
+  "coach": {"mode": "client", "action": "", "champion": ""}
+}

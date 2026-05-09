@@ -1,0 +1,27 @@
+{
+  "mode_key": "brawl",
+  "coach_source": "brawl_coaching_data.json",
+  "health": {"alive": true, "pid": 9999, "mode": "brawl", "has_game": true},
+  "coach": {
+    "mode": "brawl",
+    "action": "Shove mid then rotate to the incoming Brawl event.",
+    "champion": "Ahri",
+    "immediate": "Land E on Yasuo before he dashes — he has no escape.",
+    "fight_rule": "Never commit without R available. Poke with Q.",
+    "wave": "Fast-push bot lane before Brawl activates at 6:30.",
+    "reset_item": "Shadowflame 800g — back after this wave.",
+    "objective": "Brawl event in 0:30 — be in position.",
+    "risk": "Zed is building AD lethality — one-shot threat after 6.",
+    "game_time_s": 360,
+    "hp_pct": 71,
+    "kda": "3/1/4",
+    "gold": 2500,
+    "game_mode": "NEXUSBLITZ",
+    "ally_spells": {},
+    "my_nexus_hp": 100,
+    "enemy_nexus_hp": 85,
+    "log": ["First Blood at 1:23"],
+    "win_pct": 61,
+    "daemon_slayer_picks": []
+  }
+}
