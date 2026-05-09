@@ -1,0 +1,580 @@
+/* Vector overlay (vision_tracker dots + ghost markers) layered on top of
+ * the live minimap image. Sized in JS to match the rendered <img> bounds
+ * exactly; pointer-events:none so clicks pass through. */
+.mm-vt-overlay {
+  position: absolute;
+  pointer-events: none;
+  z-index: 4;
+  image-rendering: auto;
+}
+.latency-stat {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+.latency-stat.slow   { color: var(--gold); }
+.latency-stat.severe { color: var(--bad); }
+.analyze-stat {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+.analyze-stat.pending { color: var(--gold); }
+.analyze-stat.running { color: var(--good); }
+
+/* User request 2026-04-29: visually hidden — JS still updates these
+ * elements (latency stat ticks per /api/input round-trip; ANALYZE NOW
+ * still wired to /api/command analyze; analyze-footer status text and
+ * frame-count WS counter still update via JS). Restore by removing rules. */
+#input-latency-footer { display: none; }
+#analyze-now          { display: none; }
+#analyze-footer       { display: none; }
+#frame-count          { display: none; }
+
+/* User request 2026-04-29: visually hide row-1 header pills. JS still
+ * populates these elements so values stay queryable for tooltips and a
+ * one-line CSS un-hide if priorities change. Same pattern as the
+ * already-hidden .self-spells and .kda pills. */
+.champion-pill { display: none; }
+.cs-pill       { display: none; }
+.vis-pill      { display: none; }
+
+/* Mode-scoped hides. Augments are an in-game concept (ARAM Mayhem /
+ * Arena / Brawl) — not relevant in the lobby. Hide while body[data-mode]
+ * is "client" OR while data-mode hasn't been set yet (initial page load
+ * before setMode fires — JS sets dataset.mode lazily on first state
+ * tick, so without :not([data-mode]) the pill flashes visible until a
+ * mode arrives). JS still populates #augments-pill so the pill restores
+ * automatically when a game starts. */
+body[data-mode="client"] .augments-pill,
+body:not([data-mode])   .augments-pill { display: none; }
+
+/* Home-view-scoped hides. The home card is a session-summary surface;
+ * the live in-game zone (ZOI) + clock pills add no signal there. JS
+ * still updates them so they're correct the moment the user switches
+ * to a game-mode view. */
+body[data-view="home"] .zone-pill,
+body[data-view="home"] .game-time { display: none; }
+
+/* (2026-04-30) Same reasoning for CS / vision / gold pills — they're
+ * in-game telemetry with no bearing on a session-summary home card. JS
+ * still populates the elements (and the in-game/lobby views still show
+ * them per their existing rules); only the home-view visual is dropped.
+ * Both bare and `.hidden` forms are listed so the static-pill un-hide
+ * rule (`header .X.hidden { display: inline-flex !important }`, 0,2,1)
+ * loses to this 0,3,2 + !important. */
+body[data-view="home"] header .cs-pill,
+body[data-view="home"] header .cs-pill.hidden,
+body[data-view="home"] header .vis-pill,
+body[data-view="home"] header .vis-pill.hidden,
+body[data-view="home"] header .gold-pill,
+body[data-view="home"] header .gold-pill.hidden {
+  display: none !important;
+}
+
+.footer-btn {
+  background: var(--surface);
+  color: var(--text-dim);
+  border: none;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  cursor: pointer;
+}
+.footer-btn:hover    { background: var(--info-soft); color: var(--info); }
+.footer-btn:disabled { opacity: 0.4; cursor: wait; }
+
+.adapt-notice {
+  padding: 8px 14px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  background: var(--surface-alt);
+}
+.adapt-notice.hidden  { display: none; }
+.adapt-notice.pending { color: var(--gold); border-left-color: var(--gold); background: var(--gold-soft); }
+.adapt-notice.running { color: var(--good); border-left-color: var(--good); background: var(--good-soft); }
+
+.trend-pill {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.trend-pill.hidden  { display: none; }
+/* Trend pill content like "30d 45% ↑" must stay on one line — in narrow
+ * pill widths, it was wrapping to two visual rows. */
+.trend-pill { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trend-pill.up      { color: var(--good); background: var(--good-soft); }
+.trend-pill.down    { color: var(--bad);  background: var(--bad-soft); }
+.trend-pill.neutral { color: var(--text-dim); }
+
+/* Augments pill — lives on header row 2, right of the trend pill. Row 2
+ * has more horizontal room than row 1, so the pill reads larger + wider
+ * without increasing the top-bar height. Hard 1-line cap still enforced:
+ * overflow ellipsizes so the pill can never wrap onto a 3rd row. */
+.augments-pill {
+  /* (2026-04-26) Auto-expand to text content per user — was clipping
+   * "Goredrink, Ice Cold" + 3rd augment with ellipsis. Removed fixed
+   * width and ellipsis; pill now grows to fit. Soft cap via max-width
+   * keeps it from pushing the heartbeat off the row at 4+ long names. */
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 1.4;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--gold-soft);
+  color: var(--gold);
+  font-size: 20px;
+  font-weight: 700;
+  max-width: 100%;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+}
+.augments-pill::before {
+  content: "⬢ ";
+  margin-right: 4px;
+  opacity: 0.8;
+}
+.augments-pill.hidden { display: none; }
+/* Not-supported variant: muted colors so it reads as a placeholder rather
+ * than "here is your augment advice". */
+.augments-pill.no-support {
+  background: var(--surface-alt);
+  color: var(--text-faint);
+  font-weight: 600;
+}
+
+.panel {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  transition: box-shadow 250ms ease, transform 250ms ease;
+  contain: layout paint;
+}
+/* Right Now is the hierarchy winner — slightly brighter, stronger shadow,
+ * bigger radius. Eye sorts to it first even without reading. */
+.panel-right-now {
+  background: linear-gradient(180deg, var(--surface-head) 0%, var(--surface) 45%);
+  border-radius: calc(var(--radius) + 2px);
+  box-shadow: 0 10px 36px -12px rgba(0,0,0,0.7),
+              0 3px 10px rgba(0,0,0,0.4),
+              inset 0 0 0 1px rgba(255,255,255,0.02);
+}
+/* Brief flash when the action text updates — gold inset ring only (no
+ * scale) so the panel stays dimensionally stable. */
+.panel-right-now.rn-fresh {
+  box-shadow: 0 10px 36px -12px rgba(0,0,0,0.7),
+              0 3px 10px rgba(0,0,0,0.4),
+              inset 0 0 0 2px var(--gold);
+}
+
+/* Zen mode — Z keybind (default-off 2026-04-24) hides Next + Adaptation
+ * and re-composes the grid so Minimap (col 1, both rows), Right Now
+ * (col 2 row 1), and Item Build (col 2 row 2) own the full real estate.
+ * Also hides the below-grid QUEUE strip and the Ask-Agent input bar —
+ * zen is a focus-only reading mode, input + queue are noise there.
+ * `display: none` (rather than visibility: hidden) so the freed ~110 px
+ * propagates upward through the body flex column into `main` (flex: 1 1
+ * auto), which lets the Map State panel actually expand vertically to
+ * the footer rather than just leaving dead space. The footer itself
+ * stays pinned at viewport bottom because body is `height: 100%` with
+ * footer as the last flex child — its Y position doesn't move when
+ * its predecessors disappear. */
+body[data-zen="1"] main {
+  grid-template-columns: 1fr 1.2fr;
+}
+body[data-zen="1"] .panel-next,
+body[data-zen="1"] .panel-adaptation,
+body[data-zen="1"] #activity-strip,
+body[data-zen="1"] #input-bar {
+  display: none;
+}
+/* Re-pin the three surviving panels so the 2-col zen grid actually places
+ * them. The non-zen layout puts NEXT+ADAPT in col 1, RIGHT NOW+ITEM BUILD
+ * in col 2, MAP in col 3 — but in zen we only have 2 columns, so MAP at
+ * col 3 fell into an auto-created narrow third column and the freed col 1
+ * sat empty. (2026-04-26 user-flipped layout regression.) */
+body[data-zen="1"] .panel-right-now  { grid-column: 1; grid-row: 1; }
+body[data-zen="1"] .panel-item-build { grid-column: 1; grid-row: 2; }
+body[data-zen="1"] .panel-minimap    { grid-column: 2; grid-row: 1 / span 2; }
+/* In zen mode the Map State panel inherits the freed-up height from the
+ * dropped Next + Adaptation + activity-strip + input-bar siblings. Lift
+ * the minimap cap (zen only) so the canvas (aspect-ratio: 1) grows and
+ * the panel reads as filled. Cap history (2026-04-24): 720 pushed all
+ * objectives off-screen, 600 clipped Baron + Herald, 540 clipped only
+ * Herald, 510 left Herald partially clipped at the panel's bottom edge.
+ * 480 gives Herald comfortable clearance while still ~4 % bigger than
+ * the non-zen 460 cap. The non-zen cap stays at 460 so the 3-col grid
+ * layout doesn't get a too-tall left column. */
+body[data-zen="1"] .mm-canvas-stack,
+body[data-zen="1"] #mm-img {
+  max-width: 480px;
+}
+/* Zen headline can go to 90px; 2 lines at 90 × 1.1 ≈ 198. */
+body[data-zen="1"] .panel-right-now .action { max-height: 210px; }
+/* (2026-04-24) DEV PREVIEW banner keeps identical dimensions across zen
+ * on/off so Z-spamming doesn't introduce layout shifts that complicate
+ * visual diffs while iterating. */
+/* Small "ZEN" tag in the corner of the Right Now header so the user
+ * knows they're in focus-only mode. Press Z again to exit. */
+body[data-zen="1"] .panel-right-now .panel-head::after {
+  content: "ZEN ⟨Z⟩";
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--gold-soft);
+  color: var(--gold);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+/* Spatial danger mode — when user's dot sits in enemy-colored ZOI, the
+ * Right Now panel and the canvas-stack get a subtle coral outline so
+ * the warning is peripheral-readable, not just a pill in the header. */
+body[data-zone="enemy"] .panel-right-now {
+  box-shadow: 0 10px 36px -12px rgba(0,0,0,0.7),
+              0 3px 10px rgba(0,0,0,0.4),
+              inset 0 0 0 2px var(--bad);
+}
+body[data-zone="enemy"] .mm-canvas-stack {
+  box-shadow: 0 0 0 2px var(--bad), 0 0 16px rgba(240,126,139,0.3);
+}
+/* Deep-enemy — pulsing thicker ring for the existential-threat case. */
+body[data-zone="deep"] .panel-right-now {
+  box-shadow: 0 10px 36px -12px rgba(0,0,0,0.7),
+              0 3px 10px rgba(0,0,0,0.4),
+              inset 0 0 0 3px var(--bad);
+  animation: deepZoneWarn 1.6s ease-in-out infinite;
+}
+body[data-zone="deep"] .mm-canvas-stack {
+  box-shadow: 0 0 0 3px var(--bad), 0 0 24px rgba(240,126,139,0.55);
+}
+.zone-pill.zone-deep {
+  animation: zoneWarn 0.9s ease-in-out infinite;
+  background: var(--bad);
+  color: var(--canvas);
+}
+@keyframes deepZoneWarn {
+  0%,100% { box-shadow: 0 10px 36px -12px rgba(0,0,0,0.7), 0 3px 10px rgba(0,0,0,0.4), inset 0 0 0 3px var(--bad); }
+  50%     { box-shadow: 0 10px 36px -12px rgba(0,0,0,0.7), 0 3px 10px rgba(0,0,0,0.4), inset 0 0 0 3px var(--bad), 0 0 28px rgba(240,126,139,0.55); }
+}
+.panel-head {
+  padding: 10px 18px 6px 18px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: transparent;
+  flex-shrink: 0;
+}
+.panel-title {
+  font-size: 15px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-weight: 700;
+}
+.panel-right-now  .panel-title { color: var(--gold); font-size: 16px; letter-spacing: 0.22em; }
+.panel-next       .panel-title { color: var(--info); }
+.panel-minimap    .panel-title { color: var(--text-dim); }
+.panel-item-build .panel-title { color: var(--text-dim); }
+.panel-adaptation .panel-title { color: var(--text-faint); }
+/* Compact empty state — don't eat vertical space for placeholder em-dashes. */
+.panel-adaptation.adapt-empty .adapt-section-head,
+.panel-adaptation.adapt-empty #adapt-counters,
+.panel-adaptation.adapt-empty #adapt-items,
+.panel-adaptation.adapt-empty #adapt-streaks,
+.panel-adaptation.adapt-empty .adapt-footer { display: none; }
+/* Round 44: no-scroll glanceable panels — content is clipped, not
+ * scrolled. Shrink type/padding here before re-enabling overflow. */
+.panel-body {
+  padding: 6px 18px 14px 18px;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
+/* Item-build + Adaptation panels can exceed cell height with dense data;
+ * allow scroll so nothing clips off-panel. */
+.panel-item-build .panel-body,
+.panel-adaptation .panel-body {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.panel-item-build .panel-body::-webkit-scrollbar,
+.panel-adaptation .panel-body::-webkit-scrollbar { width: 6px; }
+.panel-item-build .panel-body::-webkit-scrollbar-thumb,
+.panel-adaptation .panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* (2026-04-24) Item Build horizontal padding trimmed so 4-icon OWNED +
+ * 3-icon RECOMMENDED rows fit without horizontal scroll at the typical
+ * panel width. Reduces left/right buffer from 18px to 10px; tile gap
+ * shrunk below. Vertical padding unchanged so the panel title + build
+ * section rhythm stays intact. */
+.panel-item-build .panel-body {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+/* (2026-04-24) In-game STATS panel now fills the full grid cell — same
+ * height as Item Build — and scrolls when the 23-field list exceeds the
+ * cell. Previously capped to 240px; the user wants the full real estate. */
+
+/* Aftergame / client-mode (queue #3) — hide Item Build so SESSION SUMMARY
+ * (Right Now) absorbs the vertical space. The design says: no "next item
+ * to buy" outside live gameplay; Item Build is a live-game panel only. */
+body[data-mode="client"] .panel-item-build {
+  display: none;
+}
+body[data-mode="client"] .panel-right-now {
+  grid-row: 1 / span 2;
+}
+
+/* MAP STATE panel body swap (queue #3 aftergame reassignment).
+ * In-game shows the objectives grid; client/aftergame shows WHAT WENT. */
+#mm-whatwent-view { display: none; }
+body[data-mode="client"] #mm-objectives-view { display: none; }
+body[data-mode="client"] #mm-whatwent-view   { display: block; }
+
+.what-went-view {
+  padding: 10px 12px 6px 12px;
+}
+.what-went-section { margin-bottom: 14px; }
+.what-went-section:last-child { margin-bottom: 0; }
+.what-went-title {
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.what-went-good .what-went-title { color: var(--good); border-bottom-color: var(--good-soft); }
+.what-went-bad  .what-went-title { color: var(--bad);  border-bottom-color: var(--bad-soft); }
+.what-went-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.what-went-list li {
+  padding: 5px 0 5px 18px;
+  position: relative;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text);
+}
+.what-went-good .what-went-list li::before {
+  content: "+";
+  position: absolute;
+  left: 2px;
+  top: 5px;
+  color: var(--good);
+  font-weight: 900;
+}
+.what-went-bad .what-went-list li::before {
+  content: "−";
+  position: absolute;
+  left: 2px;
+  top: 5px;
+  color: var(--bad);
+  font-weight: 900;
+}
+.what-went-list li.ww-empty {
+  color: var(--text-faint);
+  font-style: italic;
+}
+.what-went-list li.ww-empty::before { content: ""; }
+/* STATS view (in-game) vs ADAPTATION view (client/aftergame).
+ * Mode-toggled visibility — in-game shows STATS, other modes keep the
+ * legacy ADAPTATION markup. */
+#stats-view { display: none; }
+#adapt-view { display: block; }
+body[data-mode="sr"] #stats-view,
+body[data-mode="aram"] #stats-view,
+body[data-mode="arena"] #stats-view,
+body[data-mode="brawl"] #stats-view,
+body[data-mode="tft"] #stats-view  { display: block; }
+body[data-mode="sr"] #adapt-view,
+body[data-mode="aram"] #adapt-view,
+body[data-mode="arena"] #adapt-view,
+body[data-mode="brawl"] #adapt-view,
+body[data-mode="tft"] #adapt-view   { display: none; }
+
+/* ARAM/Brawl/Mayhem: no dragons/barons/heralds on the Howling Abyss.
+ * The mm-objectives-view block contains only those three rows, so hide
+ * the whole block in those modes. (2026-04-26 user request mid-game.) */
+body[data-mode="aram"]  #mm-objectives-view,
+body[data-mode="brawl"] #mm-objectives-view { display: none; }
+/* Reclaim the freed-up vertical space: bump the minimap canvas/img cap
+ * in ARAM/Brawl since the objectives row is gone. Non-zen 460→580,
+ * zen 480→640. The canvas keeps aspect-ratio: 1 so width drives height
+ * — the panel-minimap container already provides the column space. */
+body[data-mode="aram"]  .mm-canvas-stack,
+body[data-mode="aram"]  #mm-img,
+body[data-mode="brawl"] .mm-canvas-stack,
+body[data-mode="brawl"] #mm-img { max-width: 580px; }
+body[data-zen="1"][data-mode="aram"]  .mm-canvas-stack,
+body[data-zen="1"][data-mode="aram"]  #mm-img,
+body[data-zen="1"][data-mode="brawl"] .mm-canvas-stack,
+body[data-zen="1"][data-mode="brawl"] #mm-img { max-width: 640px; }
+
+/* STATS field groups — a title row + stacked label/value rows per group.
+ * Tabular-nums keep numbers from jittering as values update. Font sizes
+ * bumped for readability from ~4ft viewing distance. */
+.stats-view {
+  font-variant-numeric: tabular-nums;
+}
+.stats-group {
+  padding: 8px 0 10px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.stats-group:last-child { border-bottom: none; }
+/* (2026-04-25) Stage-gated visibility for STATS groups. body[data-phase]
+ * is set live by `_applyGamePhase(gtS)` in dashboard.js (early < 15min,
+ * mid 15-25min, late 25min+). Each .stats-group carries data-stage:
+ *   "early"     — LANING PHASE (only relevant in laning)
+ *   "mid late"  — COMBAT/TEAMFIGHT, MAP PRESENCE
+ *   "all"       — IDENTITY, RANK / SESSION (always visible)
+ * Out-of-game (client/aftergame mode) shows ALL groups for review —
+ * the body:not([data-mode="client"]) gate skips filtering there. */
+body:not([data-mode="client"])[data-phase="early"] .stats-group:not([data-stage~="early"]):not([data-stage="all"]) { display: none; }
+body:not([data-mode="client"])[data-phase="mid"]   .stats-group:not([data-stage~="mid"]):not([data-stage="all"])   { display: none; }
+body:not([data-mode="client"])[data-phase="late"]  .stats-group:not([data-stage~="late"]):not([data-stage="all"])  { display: none; }
+.stats-group-title {
+  font-size: 15px;
+  letter-spacing: 0.16em;
+  /* Distinct accent (info cyan) so group headers read visibly separate
+   * from the text-faint field labels. Keeps the 5 section boundaries
+   * glance-parseable in a dense scroll. */
+  color: var(--info);
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.stats-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 16px;
+  align-items: baseline;
+  line-height: 1.35;
+}
+.stats-row .stats-label {
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  font-size: 13px;
+}
+.stats-row .stats-val {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 16px;
+  word-break: break-word;
+}
+
+/* GAME SENSE block — shown at the top of adapt-view in client/aftergame
+ * modes. Three phase rows (Early / Mid / Late) each carry one descriptor
+ * word from the approved 12-word vocabulary (Chaotic, Tilted, Drowning,
+ * Scattered, Hesitant, Reactive, Steady, Composed, Patient, Opportunistic,
+ * Dominant, On Point) plus a short blurb. Below them: a trend line
+ * aggregating the last N matches' phase ratings. */
+.game-sense-block {
+  padding: 10px 0 14px 0;
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 10px;
+}
+.game-sense-title {
+  font-size: 15px;
+  letter-spacing: 0.16em;
+  color: var(--info);
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.game-sense-row {
+  display: grid;
+  grid-template-columns: 72px 140px 1fr;
+  gap: 12px;
+  align-items: baseline;
+  padding: 6px 0;
+  font-size: 16px;
+}
+.game-sense-phase {
+  color: var(--text-faint);
+  letter-spacing: 0.14em;
+  font-weight: 900;
+  font-size: 13px;
+}
+.game-sense-word {
+  color: var(--gold);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  font-size: 18px;
+  text-transform: uppercase;
+}
+/* Tone-tinted words map to the 12-word vocabulary's rough valence. */
+.game-sense-word.v-bad  { color: var(--bad); }
+.game-sense-word.v-warn { color: var(--gold); }
+.game-sense-word.v-ok   { color: var(--text); }
+.game-sense-word.v-good { color: var(--good); }
+.game-sense-blurb {
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.game-sense-trend {
+  margin-top: 12px;
+  padding: 8px 10px;
+  background: var(--surface-alt);
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Staleness indicator — empty/fresh/stale/severe */
+.staleness {
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  color: var(--text-faint);
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+}
+.staleness.fresh  { color: var(--good); background: var(--good-soft); }
+.staleness.stale  { color: var(--gold); background: var(--gold-soft); }
+.staleness.severe { color: var(--bad);  background: var(--bad-soft); }
+.panel.stale  .panel-body { opacity: 0.6; }
+.panel.severe .panel-body { opacity: 0.45; filter: grayscale(0.4); }
+
+.counter {
+  font-size: 15px;
+  color: var(--text-dim);
+}
+
