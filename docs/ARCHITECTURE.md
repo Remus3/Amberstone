@@ -71,6 +71,7 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 |---|---|
 | `dashboard/_dispatch.py` | route registration |
 | `dashboard/_state_builder.py` | builds /api/state payload |
+| `dashboard/api_schema.py` | pydantic v2 schemas for RC dashboard HTTP API shapes |
 | `dashboard/routes_bridge_pending.py` | GET /api/bridge/pending — escalation queue [FROZEN] |
 | `dashboard/routes_dev.py` | dev/sim panel endpoints |
 | `dashboard/routes_health_peer.py` | GET /api/health/peer + /api/health/all |
@@ -80,6 +81,8 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 ### Core utilities
 | File | Role |
 |---|---|
+| `core/bridge_envelope.py` | pydantic v2 schema for the cross-Claude bridge wire envelope |
+| `core/coaching_payload.py` | pydantic v2 schemas for per-mode coaching JSON payloads |
 | `core/log_setup.py` | log init [FROZEN] |
 | `core/moon_proxy.py` | vision server proxy [FROZEN] |
 | `core/prom_metrics.py` | zero-dep Counter/Gauge/Histogram |
