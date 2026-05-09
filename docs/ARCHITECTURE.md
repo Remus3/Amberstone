@@ -144,6 +144,8 @@ _Inline `# arch: phase <id> [(YYYY-MM-DD)] — <note>` markers across the tree, 
 | Phase | Date | Location | Note |
 |---|---|---|---|
 | 2.4 | 2026-05-09 | `tools/build_portable.py:75` | vision server entrypoint shim (real code in vision_server/) |
+| 7 | 2026-05-09 | `scripts/precommit_msg_check.py:4` | make Conventional Commits subject lines mechanical |
+| 7 | 2026-05-09 | `scripts/wakeup_prune.py:4` | automate /done section 6c WAKEUP_NOTES archival |
 | 4.2 | 2026-05-08 | `core/bridge_envelope.py:38` | bridge envelope schema additions (suggestions, body_path, claimed_by, ttl_at) |
 | 0.13 | — | `ops/rc_self_monitor.py:197` | bounded bootstrap window. |
 | 0.3 | — | `ops/rc_self_monitor.py:236` | monotonic timestamp when worker first seen dead (fix 3) |

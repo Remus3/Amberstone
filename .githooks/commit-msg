@@ -1,0 +1,17 @@
+#!/bin/sh
+# Riot Commander commit-msg hook (Phase 7).
+#
+# Validates the commit subject line against Conventional Commits.
+# Install per-clone with:
+#   git config core.hooksPath .githooks
+
+set -e
+
+ROOT="$(git rev-parse --show-toplevel)"
+PY="${PYTHON:-py}"
+
+if ! command -v "$PY" >/dev/null 2>&1; then
+    PY=python
+fi
+
+"$PY" "$ROOT/scripts/precommit_msg_check.py" "$1" || exit 1
