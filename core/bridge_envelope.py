@@ -35,7 +35,7 @@ class BridgeEnvelope(BaseModel):
     body: Optional[dict[str, Any]] = None
     in_reply_to: Optional[str] = None
 
-    # Extended (Phase 4.2 schema additions)
+    # arch: phase 4.2 (2026-05-08) — bridge envelope schema additions (suggestions, body_path, claimed_by, ttl_at)
     suggestions: list[str] = []
     body_path: Optional[str] = None     # path to a local file carrying body content
     claimed_by: Optional[str] = None    # node that has taken ownership (tasks)
