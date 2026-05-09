@@ -4,6 +4,7 @@ Sessions older than the last 2–3 full sessions are progressively compacted her
 Current WAKEUP_NOTES.md keeps only the most recent 2–3 sessions.
 Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
+- **s130 (2026-05-08)** CI fix — anthropic try/except guard in `coach_integration.py`; pydantic added to `requirements.txt` + CI. Commit `808afea`. 380 tests green.
 - **s129 (2026-05-08)** Phase 4 contracts/schemas — `core/coaching_payload.py` (5 pydantic models, soft-validate), `dashboard/api_schema.py`, `core/bridge_envelope.py`, `docs/API.md` (40 routes). Commit `31bbe4f`. 4.2 tool rewrites blocked (frozen files). JS typedef codegen deferred to Phase 3.
 
 ---
