@@ -53,7 +53,10 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 |---|---|
 | `core/game_snapshot.py` | raw JSON → snapshot dataclass [FROZEN] |
 | `core/vision_tesseract.py` | OCR pipeline (Tesseract) |
-| `game_reader.py` | reads cached liveclient + frames; produces coaching snapshots (god module) |
+| `game_reader/__init__.py` | GameReader facade — composes poller + normalizer mixins |
+| `game_reader/mode_router.py` | queue/map → mode-key routing + TFT early-exit |
+| `game_reader/poller.py` | Live Client + LCU + relay IO for game state polling |
+| `game_reader/snapshot_normalizer.py` | raw liveclient JSON → coaching state dict + derived fields |
 | `moon_vision_server.py` | :8889 HTTP server — frame cache + Sonnet vision (god module) |
 
 ### Coaching
