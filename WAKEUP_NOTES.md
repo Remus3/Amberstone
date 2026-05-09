@@ -4,6 +4,34 @@
 
 ---
 
+# s129 wrap — 2026-05-08 (Phase 4 — Contracts/schemas partial DONE)
+
+## What shipped
+- **`core/coaching_payload.py`** (new): pydantic v2 models for all 5 coach modes — `AramPayload`, `ArenaPayload`, `BrawlPayload`, `SrPayload`, `TftPayload`. All use `extra="allow"`. `validate_coaching_payload(data)` dispatches by mode, logs per-field warnings, never raises. Called in `dashboard/_state_builder.build_state()` on every `/api/state` read.
+- **`dashboard/api_schema.py`** (new): outer HTTP API shape models — `StateResponse`, `HealthAllResponse`, `InputRequest`, `CommandRequest`, `DsPreviewRequest/Response`, `BridgeInboxRequest`, `SpeakRequest`, `OkResponse`, `ErrorResponse`.
+- **`core/bridge_envelope.py`** (new): `BridgeEnvelope` pydantic v2 model with `suggestions`, `body_path`, `claimed_by`, `ttl_at` fields; `is_expired()`, `to_wire()`, `parse_envelope()` helpers.
+- **`docs/API.md`** (new): 40 routes across 15 route files (GET + POST), body schemas, descriptions.
+- **Futureproofing plan** updated: Phase 5 archived (was unchecked), Phase 4 checkboxes filled + findings added.
+- **Commit `31bbe4f`** pushed → origin/main.
+
+## Key decisions
+- `extra="allow"` on all coaching models — coaches add LLM-derived fields freely; schema only enforces declared types.
+- Soft-validate on read in `_state_builder.py` (never raise, log warning) — keeps dashboard alive even if coach output drifts.
+- 4.2 tool rewrites (12 bridge CLIs) **blocked** — `bridge_post_result.py` and `bridge_pull_tasks.py` are frozen. Needs same frozen-file approval as Phase 6.
+- JS typedef codegen (`web/js/lib/state_schema.js`) deferred to Phase 3 (requires ESM split first).
+
+## Do NOT redo
+- Don't re-add coaching models — `core/coaching_payload.py` is complete with all 5 modes.
+- Don't re-generate API.md — it's committed and up to date with all 15 route files.
+- Don't re-run archmap — pre-commit hook ran it cleanly; archmap is in sync.
+
+## What's next
+1. **TFT 17.3** — due ~2026-05-12 (highest time priority). Same process as 17.2: update `tft_pbe_engine.py` + `tft_pbe_data.py` + meta JSON bump.
+2. **Phase 4 remaining** — dispatch-level POST validation in `dashboard/_dispatch.py` (low-priority; read-path is already covered).
+3. **Phase 3** — frontend ESM split (`dashboard.js` 8507 LOC). After that, JS typedef codegen from `api_schema.py` becomes viable.
+
+---
+
 # s128 wrap — 2026-05-08 (Phase 5 — CI gate + smoke harness COMPLETE)
 
 ## What shipped
@@ -56,30 +84,5 @@
 1. **Phase 5** — CI + smoke harness (cheapest regression insurance; recommended before Phase 2.2+).
 2. **TFT 17.3** — due ~2026-05-12 (higher time priority).
 3. **Phase 4** — Contracts/schemas (pydantic `api_schema.py` + coaching payload).
-
----
-
-# s126 wrap — 2026-05-08 (Phase 1.2 + 1.3 — archmap + ADRs — Phase 1 COMPLETE)
-
-## What shipped
-- **`tools/gen_archmap.py`** — walks package tree, reads `# arch: <role> | section=<section> | frozen=yes|no` headers from `.py` files, regenerates module-map section of `docs/ARCHITECTURE.md` between `<!-- archmap:start/end -->` sentinels. `--check` mode wired to `.githooks/pre-commit`.
-- **`# arch:` headers backfilled** in 33 key Python files (all files in the ARCHITECTURE.md module map). BOM stripped from `game_reader.py` + `coaches/aram_coach.py`. Frozen file changes = comment-only additions at line 1.
-- **`docs/adr/`** — 30-line template + 5 historical ADRs: ADR-001 tkinter removal, ADR-002 DS-before-Haiku, ADR-003 in-process vision server, ADR-004 bridge watcher daemon, ADR-005 Tailscale MagicDNS.
-- **CLAUDE.md** — ADR pointer added; active priorities updated.
-- **ROADMAP.md** — Phase 1 flipped ✅.
-- Commits **fc1361b + 2be87a8** merged to main.
-
-## Key decisions
-- Frozen-file list in CLAUDE.md stays manually maintained — it includes non-Python files (.ps1, .json, .xml, .md) that can't carry `# arch:` headers.
-- Bootstrap reading: **500 lines total** (CLAUDE.md 140 + ARCHITECTURE.md 143 + OPERATIONS.md 153 + ROADMAP.md 64). Phase 1 exit criteria fully met.
-
-## Do NOT redo
-- Don't re-backfill `# arch:` headers — already in all 33 key files.
-- `tools/_backfill_arch_headers.py` was deleted (one-shot helper, served its purpose).
-- `gen_archmap.py` is idempotent — second run says "archmap up to date."
-
-## What's next
-1. **Phase 2.1** — `champion_profiles.py` (902 LOC) split: audit dict literals, build extractor script, emit `data/champion_profiles/*.json`, replace with ≤80 LOC thin loader. Lowest-risk decomp.
-2. **TFT 17.3** — due ~2026-05-12. May take priority if patch drops.
 
 
