@@ -9,7 +9,7 @@ _When an item moves to active work, migrate it to ROADMAP.md "Open items"._
 
 - **Per-call cost histogram**: track median/p95 cost per lane in Prometheus; alert if p95 doubles week-over-week.
 - **`bridge_watcher_install.ps1` self-update**: detect stale local copy and prompt to re-pull when a new watcher ships.
-- **Bridge contract v1**: formal `body_path` definition, `claimed_by`/`claimed_at` standardization, `ttl_at` semantics. Bump after auto-action lane proves stable.
+- ~~**Bridge contract v1**~~: shipped — `core/bridge_envelope.py` (Phase 4.2, s129) defines `body_path` / `claimed_by` / `ttl_at` / `suggestions`; `tools/bridge_cli.py` (Phase 6, s144) consolidates the 7 small CLIs over it. Watcher daemon refactor (bigger envelope-aware rewrite) deferred separately.
 
 ## Cross-Claude infrastructure
 

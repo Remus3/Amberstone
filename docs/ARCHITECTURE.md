@@ -104,8 +104,14 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 ### Bridge tools
 | File | Role |
 |---|---|
+| `tools/bridge_cli.py` | consolidated bridge CLI entrypoint (Phase 6) |
+| `tools/bridge_fetch.py` | UserPromptSubmit hook — print recent peer activity |
+| `tools/bridge_heartbeat.py` | long-running alive heartbeat to the bridge |
+| `tools/bridge_ping.py` | end-to-end bridge + vision health validator |
+| `tools/bridge_post.py` | Stop-hook poster — extract last assistant message and post |
 | `tools/bridge_post_result.py` | post task result back to issuing machine [FROZEN] |
 | `tools/bridge_pull_tasks.py` | fetch pending bridge tasks targeted at this machine [FROZEN] |
+| `tools/bridge_task.py` | dispatch a task to the other Claude via the bridge |
 | `tools/bridge_watcher.py` | bridge watcher daemon — classify → action loop |
 
 ### Tools / ops
