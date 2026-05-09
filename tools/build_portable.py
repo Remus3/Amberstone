@@ -67,7 +67,6 @@ _ROOT_PY_FILES = [
     "app.py",
     "overlay.py",
     "game_reader.py",
-    "coach_integration.py",
     "item_advisor.py",
     "performance_tracker.py",
     "composition_advisor.py",
@@ -92,6 +91,7 @@ _ROOT_BAT_FILES = [
 _SOURCE_PACKAGES = [
     "core",
     "coaches",
+    "coach_integration",
     "tft",
     "ui",
     "lcu",
