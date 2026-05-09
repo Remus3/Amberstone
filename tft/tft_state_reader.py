@@ -86,8 +86,7 @@ class TftStateReader:
         self._ocr_running = False
 
     # ------------------------------------------------------------------
-    # Phase 1 Step 3 — snapshot factory helper
-    # This is the ONLY path that may produce TftSnapshot.
+    # arch: phase 1 step 3 — snapshot factory helper (only path that may produce TftSnapshot)
     # ------------------------------------------------------------------
 
     @staticmethod

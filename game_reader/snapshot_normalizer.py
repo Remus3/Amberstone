@@ -1049,7 +1049,7 @@ class _NormalizerMixin:
             return {}
 
     # ------------------------------------------------------------------
-    # Phase 1 Step 3 — snapshot factory helpers
+    # arch: phase 1 step 3 — snapshot factory helpers (to_rift_snapshot, to_aram_snapshot)
     # ------------------------------------------------------------------
 
     @staticmethod
