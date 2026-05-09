@@ -1,0 +1,121 @@
+// Async data-index loaders for items, champions, and summoner spells.
+// Each exported object is mutable — loaders populate it in-place once ready.
+// Callers that need to re-render after load should listen to the custom
+// events: "rc:items-ready", "rc:champs-ready", "rc:spells-ready".
+
+export const ITEMS = { ready: false, version: "16.8.1", byName: {}, byId: {} };
+export const ITEM_COSTS = { ready: false, byId: {} };
+export const CHAMPS = { ready: false, version: "16.8.1", byName: {}, byId: {} };
+export const SPELLS = { ready: false, byName: {} };
+
+export const _itemResolveCache = new Map();
+
+export function _normItemName(s) {
+  return String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+// Tiered resolver: (1) exact, (2) prefix match (shortest wins), (3) 6-char stem.
+// Handles casual names like "Rabadon's" → Rabadon's Deathcap.
+export function _resolveItemId(name) {
+  const n = _normItemName(name);
+  if (!n) return null;
+  if (_itemResolveCache.has(n)) return _itemResolveCache.get(n);
+  let id = ITEMS.byName[n] || null;
+  if (!id) {
+    let best = null;
+    for (const k in ITEMS.byName) {
+      if (k === n) { best = k; break; }
+      if (k.startsWith(n) || n.startsWith(k)) {
+        if (!best || k.length < best.length) best = k;
+      }
+    }
+    if (!best && n.length >= 5) {
+      const stem = n.slice(0, Math.min(n.length, 6));
+      for (const k in ITEMS.byName) {
+        if (k.startsWith(stem)) {
+          if (!best || k.length < best.length) best = k;
+        }
+      }
+    }
+    if (best) id = ITEMS.byName[best];
+  }
+  _itemResolveCache.set(n, id);
+  return id;
+}
+
+// Split a comma-separated or arrow-separated item list string.
+export function _splitItemList(str, splitArrow) {
+  if (!str) return [];
+  const sep = splitArrow ? /\s*(?:,|→|->)\s*/ : /\s*,\s*/;
+  return String(str).split(sep).map(s => s.trim()).filter(Boolean);
+}
+
+// Resolve a champion name to its numeric ID string.
+export function _resolveChampId(name) {
+  const n = String(name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!n) return null;
+  return CHAMPS.byName[n] || null;
+}
+
+// Resolve a summoner spell name to its DDragon key.
+export function _resolveSpell(name) {
+  const k = String(name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  return SPELLS.byName[k] || null;
+}
+
+// ── Async loaders ────────────────────────────────────────────────────────────
+// Populate in-place; dispatch custom events so consumers can re-render.
+
+(async () => {
+  try {
+    const r = await fetch("/data/items_index.json");
+    if (!r.ok) return;
+    const j = await r.json();
+    ITEMS.version = j.version || ITEMS.version;
+    ITEMS.byName = j.byName || {};
+    ITEMS.byId = j.byId || {};
+    ITEMS.ready = true;
+    _itemResolveCache.clear();
+    // Clear tile-sig caches so idempotency guards don't skip re-renders.
+    ["ib-owned", "ib-recommended", "cs-ds-tiles"].forEach((id) => {
+      const e = document.getElementById(id);
+      if (e) delete e.dataset.tilesSig;
+    });
+    document.dispatchEvent(new CustomEvent("rc:items-ready"));
+  } catch (_) {}
+})();
+
+(async () => {
+  try {
+    const r = await fetch("/data/items_costs.json");
+    if (!r.ok) return;
+    const j = await r.json();
+    ITEM_COSTS.byId = j.byId || {};
+    ITEM_COSTS.ready = true;
+  } catch (_) {}
+})();
+
+// Cache-bust query defeats aggressive PWA/SW caching (2026-04-26 rebuild).
+(async () => {
+  try {
+    const r = await fetch("/data/champions_index.json?v=2026-04-26");
+    if (!r.ok) return;
+    const j = await r.json();
+    CHAMPS.version = j.version || CHAMPS.version;
+    CHAMPS.byName = j.byName || {};
+    CHAMPS.byId = j.byId || {};
+    CHAMPS.ready = true;
+    document.dispatchEvent(new CustomEvent("rc:champs-ready"));
+  } catch (_) {}
+})();
+
+(async () => {
+  try {
+    const r = await fetch("/data/spells_index.json");
+    if (!r.ok) return;
+    const j = await r.json();
+    SPELLS.byName = j.byName || {};
+    SPELLS.ready = true;
+    document.dispatchEvent(new CustomEvent("rc:spells-ready"));
+  } catch (_) {}
+})();
