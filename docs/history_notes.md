@@ -6,6 +6,27 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s127 wrap — 2026-05-08 (Phase 2.1 — champion_profiles.py split COMPLETE)
+
+## What shipped
+- **`champion_profiles.py`** shrunk from 902 → 29 LOC. Now a thin JSON loader.
+- **`data/champion_profiles/*.json`** — 168 champion files, each a flat dict with `dmg/role/mana/sustain/mechanic/aram` fields. All checked in.
+- **`scripts/extract_champion_profiles.py`** — one-shot migration helper left in tree as migration doc.
+- **`docs/ARCHITECTURE.md`** — god-module table updated; archmap regenerated via pre-commit.
+- **`ROADMAP.md`** — Phase 2.1 ✅ Done.
+- Commit **8fa11f4** pushed → origin/main (172 files changed: 1399 insertions, 906 deletions).
+
+## Key decisions
+- Thin loader stays at **root `champion_profiles.py`** (not `core/`). `ops/rc_dev_runtime.py` (frozen) watches `"champion_profiles"` as a module-name string — moving it would require a frozen-file edit. Zero caller changes.
+- Import surface preserved exactly: 12 module-level exports (`CHAMPIONS, TANKS, FIGHTERS, MAGES, ASSASSINS, MARKSMEN, SUPPORTS, AD_CHAMPS, AP_CHAMPS, HYBRID_CHAMPS, SUSTAIN_CHAMPS, MANA_CHAMPS`).
+- Pre-existing test failure in `tests/snapshot_regressions/test_app_authority.py` is unrelated — confirmed via git stash; 289 other tests all pass.
+
+## Do NOT redo
+- Don't re-run the extractor — 168 JSONs already committed. It's idempotent but unnecessary.
+- Don't re-backfill `# arch:` header on `champion_profiles.py` — already updated to "thin loader".
+
+---
+
 **s125 — 2026-05-08** (9234d0f) Phase 1.1 knowledge architecture: docs/_archive/ created, 23 dated artifacts moved, 4 living docs authored (ARCHITECTURE.md 136 lines, OPERATIONS.md 153, BRIDGE.md 136, ROADMAP.md 64). Bootstrap reduced from 2000+ → 492 lines.
 
 **s124 — 2026-05-08** (no commit) RC_FUTUREPROOFING_PLAN.md authored on Desktop by Opus 4.7 1M context — 7-phase leverage-ordered refactor plan. No code changes.
