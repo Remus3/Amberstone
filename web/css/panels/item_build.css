@@ -1,0 +1,441 @@
+/* ───── Item Build panel ───────────────────────────────────────── */
+.build-section {
+  padding: 6px 0 10px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.build-section:last-child { border-bottom: none; }
+/* DS Engine ranked picks row */
+.ds-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+.ds-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  cursor: default;
+}
+.ds-chip em {
+  font-style: normal;
+  color: #44ff88;
+  font-size: 10px;
+}
+/* In-game build chooser block: tighter row spacing than the cs panel
+ * since this lives in the small ITEM BUILD column. */
+.ib-builds-block .cs-build-list { gap: 4px; margin-top: 6px; }
+.ib-builds-block .cs-build-row { padding: 5px 7px; }
+.ib-builds-block .cs-build-row .cs-build-meta { min-width: 90px; }
+.ib-builds-block .cs-build-row .cs-build-label { font-size: 11px; }
+.ib-builds-block .cs-build-row .cs-build-runes { font-size: 9px; }
+.ib-builds-block .cs-build-row .cs-build-items .cs-build-item {
+  width: 22px; height: 22px;
+}
+.ib-builds-block .build-label { display: flex; align-items: center; gap: 8px; }
+.ib-builds-status {
+  margin-left: auto; font-size: 10px; color: var(--label);
+  letter-spacing: 0.5px; text-transform: none;
+}
+.ib-builds-status.ok    { color: #44ff88; }
+.ib-builds-status.err   { color: var(--bad); }
+.ib-builds-status.busy  { color: var(--clock); }
+.build-label {
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.build-value {
+  font-size: 18px;
+  color: var(--text);
+  font-weight: 400;
+  line-height: 1.3;
+  word-break: break-word;
+}
+.build-value.highlight { color: var(--gold); font-weight: 700; }
+
+/* Icon tile row: icon on top, 2-line centered name below. Horizontal
+ * scroll on overflow — keeps OWNED and RECOMMENDED on one row each so
+ * the panel doesn't clip downstream sections. Gaps tightened 2026-04-24
+ * so more tiles fit before the row clips + horizontal scroll appears. */
+.item-tiles {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 6px 7px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  padding-bottom: 4px;
+  /* 64 icon + 6 gap + ~22 2-line label — preserves row; the "need 3444"
+   * cost pill sits as a tag on the icon so it doesn't add tile height. */
+  min-height: 92px;
+}
+.item-tiles.is-path { gap: 4px 5px; }
+.item-tiles::-webkit-scrollbar { height: 6px; }
+.item-tiles::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.item-tile {
+  /* 2026-04-25: 76 → 70 so 6 owned tiles + 5 gaps fit inside the
+   * Item Build panel's column-2 width (~483 CSS px inner at 1920×1080
+   * non-zen with body-zoom 1.33). Was clipping the 6th tile at 76. */
+  width: 70px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.item-arrow { flex-shrink: 0; }
+.item-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  background: var(--surface-alt);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+.item-icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+.item-icon.no-icon::before {
+  content: "?";
+  color: var(--text-faint);
+  font-size: 22px;
+  font-weight: 900;
+}
+.item-name {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.18;
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  /* Clamp to 2 lines with ellipsis — tight but readable at 3ft.
+   * `word-break: normal` + `overflow-wrap: break-word` so multi-word
+   * names break at the space first; only single tokens longer than
+   * the tile width fall through to a mid-word break.
+   * (2026-04-25) Font 12 → 13 + no artificial max-width cap. The
+   * 13px bump alone is enough to push "Doran's Ring", "Mortal
+   * Reminder", "Refillable Potion" etc. to natural 2-line wraps
+   * within the 70px tile width — earlier 56px cap was too narrow
+   * and forced mid-word breaks like "Refillabl / e Potion". */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: normal;
+  overflow-wrap: break-word;
+  hyphens: none;
+  text-align: center;
+  min-height: 2.4em;   /* reserve 2 lines so rows align */
+  /* (2026-04-26) Honor explicit `\n` from per-item display overrides
+   * (e.g. "Morello\nnomicon"). pre-line preserves newlines but still
+   * collapses other whitespace, so existing names render unchanged. */
+  white-space: pre-line;
+}
+.item-tiles.is-path .item-name { color: var(--gold); }
+
+/* "Next to buy" highlight on the first tile of the recommended path. */
+.item-tile.next-up {
+  position: relative;
+}
+.item-tile.next-up .item-icon {
+  box-shadow: 0 0 0 2px var(--gold), 0 0 14px rgba(245,184,124,0.45);
+  animation: nextUpPulse 2.4s ease-in-out infinite;
+}
+.item-tile.next-up.can-afford .item-icon {
+  box-shadow: 0 0 0 2px var(--good), 0 0 14px rgba(127,209,154,0.55);
+  animation: canAffordPulse 1.5s ease-in-out infinite;
+}
+.item-tile.next-up .item-cost {
+  position: absolute;
+  left: 50%;
+  /* (2026-04-25) Moved ABOVE the icon (was overlaying its bottom-edge).
+   * The user couldn't read "need 1240" cleanly when it was sat on top
+   * of the icon art. `.item-tiles:has(.next-up) { padding-top: 22px }`
+   * rule below reserves space so the pill doesn't clip. Font 10 → 13
+   * for legibility (one bump up after the user moved it above-icon). */
+  top: -22px;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--canvas);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  z-index: 2;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+}
+/* Reserve space at the top of any tile-row that contains a next-up
+ * tile so the relocated cost-pill (top: -20) doesn't clip against the
+ * Item Build panel-body's overflow:hidden. Owned tile rows (no next-up)
+ * stay flush — :has scopes the padding to recommended only. */
+.item-tiles:has(.item-tile.next-up) {
+  padding-top: 22px;
+}
+.item-tile.next-up.can-afford .item-cost {
+  color: var(--good);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.6), 0 0 8px rgba(127,209,154,0.4);
+}
+@keyframes nextUpPulse {
+  0%,100% { box-shadow: 0 0 0 2px var(--gold), 0 0 10px rgba(245,184,124,0.3); }
+  50%     { box-shadow: 0 0 0 2px var(--gold), 0 0 20px rgba(245,184,124,0.65); }
+}
+@keyframes canAffordPulse {
+  0%,100% { box-shadow: 0 0 0 2px var(--good), 0 0 12px rgba(127,209,154,0.4); }
+  50%     { box-shadow: 0 0 0 3px var(--good), 0 0 24px rgba(127,209,154,0.75); }
+}
+/* (2026-04-25) Arrows between recommended-path tiles hidden per user —
+ * tile order communicates sequence on its own. JS still inserts them so
+ * a CSS un-hide is one-line if we want them back. */
+.item-arrow { display: none; }
+.item-arrow {
+  align-self: center;
+  margin-top: -14px;    /* align vertically with icon center */
+  color: var(--text-faint);
+  font-size: 22px;
+  font-weight: 900;
+}
+
+/* ───── KV pairs ───────────────────────────────────────────────── */
+.kv {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 14px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 19px;
+  align-items: flex-start;
+  line-height: 1.3;
+}
+.kv:last-child { border-bottom: none; }
+.kv span:first-child { color: var(--text-faint); letter-spacing: 0.1em; font-size: 13px; text-transform: uppercase; font-weight: 700; padding-top: 5px; }
+.kv span:last-child  { color: var(--text); white-space: pre-wrap; word-break: break-word; font-weight: 700; }
+
+/* (2026-04-25) Right Now + Next panel kv rows — tighter label-to-value
+ * spacing per user feedback: 170 px fixed label column wasted ~120 px
+ * of dead space after short labels like "RISK" or "RESET". Switching
+ * to a max-content label column with a 10 px gap puts the value
+ * roughly 10 px after the label text, ending the dead-space drift.
+ * Other panels (minimap-grid, stats-view, etc.) keep their existing
+ * grid since they need cross-row column alignment for scanning. */
+.panel-right-now .kv {
+  grid-template-columns: 56px 1fr;
+  gap: 10px;
+}
+/* (2026-04-25) Next panel — fixed label column so OBJECTIVE / POSITION /
+ * WAVE STATE values all start at the same X. Width = "WAVE STATE" at
+ * 13 px caps + 0.1em letter-spacing ≈ 90 px. Trade-off vs Right Now:
+ * here vertical alignment beats max-tightness because the eye scans
+ * Objective → Position → Wave state down a single column. */
+.panel-next .kv {
+  grid-template-columns: 92px 1fr;
+  gap: 10px;
+}
+
+/* (2026-04-25) Wave-state percentage colors — match coach-prompt
+ * trigger thresholds so the visual reads the same as the advice the
+ * coach would emit at that wave position. Used by `_renderWaveState`
+ * in the Next panel for SR (per-lane TOP/MID/BOT lines) and ARAM/
+ * Brawl (single percentage). The ▶ marker on the player's own lane
+ * is plain text (no color class), keeping the eye on the value. */
+/* Wave-line blocks (one lane per line, no wrap, no extra rows). The
+ * marker is a fixed-width slot so TOP/MID/BOT labels align by column
+ * whether or not the ▶ is shown. Font + weight inherit from .kv body
+ * so all three lines (and the colored .wave-pct value) render at the
+ * exact same size — earlier some lines looked smaller because the
+ * inline rendering allowed sub-pixel rendering quirks.
+ * #nx-wave override below disables the parent .panel-next .kv
+ * span:last-child's `-webkit-box-orient: vertical` because that flex-
+ * box-style stacking was forcing the value text inside each .wave-line
+ * to wrap (TOP: → newline → 28%) instead of honoring white-space:
+ * nowrap. With normal block layout each wave-line stays one tight row. */
+/* `all: unset` to escape the parent .kv span:last-child rules
+ * (display: -webkit-box, white-space: pre-wrap, word-break: break-word,
+ * -webkit-line-clamp: 3) which combined to wrap each lane row's "TOP:"
+ * and "28%" onto separate lines no matter what white-space rule we
+ * tried on the children. Redeclare only what's needed. */
+/* Wave-state tree: every element pinned to the same explicit font-size
+ * and weight so no inherited rule can scale individual lines. Only the
+ * .wave-pct value carries the threshold color; .wave-label is locked to
+ * --text so the label never inherits the threshold hue from a sibling. */
+#nx-wave,
+#nx-wave .wave-line,
+#nx-wave .wave-marker,
+#nx-wave .wave-label,
+#nx-wave .wave-pct,
+#nx-wave .wave-arrow,
+#nx-wave .wave-verb {
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+#nx-wave {
+  all: unset;
+  display: block;
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 400;
+}
+.wave-line {
+  display: block;
+  white-space: nowrap;
+  position: relative;       /* anchor for absolute .wave-marker */
+}
+/* Marker is taken out of flow so lane labels start at the same X as
+ * Objective / Position values. Sits in the column gap to the left of
+ * the value cell, only present for the player's own lane.
+ * Sized smaller than body text and vertically centered so it can NEVER
+ * extend the line height and shift adjacent rows. */
+#nx-wave .wave-marker {
+  position: absolute;
+  right: calc(100% + 4px);            /* just left of the lane label */
+  top: 50%;
+  transform: translateY(-50%);        /* vertically centered on text */
+  color: #F5FF00;                     /* fluorescent yellow — your-lane pip */
+  font-size: 13px !important;         /* shrunk vs 19px body text */
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 0 6px rgba(245, 255, 0, 0.85);
+  pointer-events: none;
+}
+/* Lock identical row heights so the marker presence on MID can't
+ * visually nudge spacing relative to TOP/BOT. Padding/letter-spacing/
+ * text-transform reset because the global `.kv span:first-child` label
+ * rule unintentionally matches the FIRST .wave-line (which is also a
+ * span first-child of its #nx-wave parent), pushing TOP down 5px and
+ * making the TOP→MID gap shorter than MID→BOT. */
+#nx-wave .wave-line {
+  min-height: calc(19px * 1.4);
+  padding: 0;
+  letter-spacing: normal;
+  text-transform: none;
+  color: inherit;
+}
+/* Four fixed-width column slots — label / pct / arrow / verb — so each
+ * column lands at the same X across all rows regardless of value
+ * length. Sized so the worst-case "100%" fills the pct slot without
+ * pushing the arrow. */
+#nx-wave .wave-label {
+  color: var(--text);
+  display: inline-block;
+  width: 5ch;          /* TOP:/MID:/BOT: + ~1.2ch of breathing space */
+  text-align: left;
+}
+#nx-wave .wave-pct {
+  display: inline-block;
+  width: 4.5ch;        /* fits "100%" exactly; right-aligned so short
+                          values pad on the left and 100% fills toward
+                          the lane label rather than the arrow */
+  text-align: right;
+}
+#nx-wave .wave-arrow {
+  display: inline-block;
+  width: 2ch;
+  margin: 0 1ch;       /* even gap on both sides — locks verb column */
+  text-align: center;
+}
+#nx-wave .wave-verb {
+  display: inline-block;
+}
+/* Threshold colors apply to pct, arrow, and verb so the value-and-
+ * action read as one continuous-color block while the lane label
+ * stays white. */
+#nx-wave .wave-pct.wave-our,
+#nx-wave .wave-arrow.wave-our,
+#nx-wave .wave-verb.wave-our  { color: #5BC0F8 !important; }   /* <= 30 %  icy blue       → FREEZE    */
+#nx-wave .wave-pct.wave-mid,
+#nx-wave .wave-arrow.wave-mid,
+#nx-wave .wave-verb.wave-mid  { color: #4DD0A8 !important; }   /* 30 - 65 %  potion green → TRADE     */
+#nx-wave .wave-pct.wave-warn,
+#nx-wave .wave-arrow.wave-warn,
+#nx-wave .wave-verb.wave-warn { color: var(--gold) !important; } /* 65 - 80 %  gold       → CRASH     */
+#nx-wave .wave-pct.wave-bad,
+#nx-wave .wave-arrow.wave-bad,
+#nx-wave .wave-verb.wave-bad  { color: #FF4646 !important; }   /* >= 80 %  vibrant red    → DISENGAGE */
+#nx-wave .wave-pct.wave-dim,
+#nx-wave .wave-arrow.wave-dim,
+#nx-wave .wave-verb.wave-dim  { color: var(--text-faint); }
+
+.kv-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.obj-ico {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--info);
+  fill: currentColor;
+}
+/* Per-objective accent tint so the icons read at a glance. */
+#mm-dragon + span, .kv:has(#mm-dragon) .obj-ico  { color: var(--bad); }
+.kv:has(#mm-dragon)  .obj-ico { color: var(--bad); }
+.kv:has(#mm-baron)   .obj-ico { color: var(--advisory); }
+.kv:has(#mm-herald)  .obj-ico { color: var(--gold); }
+.kv:has(#mm-atakhan) .obj-ico { color: var(--info); }
+/* Countdown state cues. */
+#mm-dragon.obj-soon, #mm-baron.obj-soon, #mm-herald.obj-soon, #mm-atakhan.obj-soon {
+  color: var(--gold);
+  text-shadow: 0 0 8px rgba(245, 184, 124, 0.35);
+}
+#mm-dragon.obj-up, #mm-baron.obj-up, #mm-herald.obj-up, #mm-atakhan.obj-up {
+  color: var(--good);
+  font-weight: 900;
+  text-shadow: 0 0 10px rgba(127, 209, 154, 0.45);
+}
+
+/* Objective progress bar — slim fill under each .kv row, colored per
+ * objective type. Width comes from --pct custom property set by JS. */
+.minimap-grid .kv {
+  position: relative;
+  /* Labels here are short (Dragon/Baron/Herald/Atakhan) — reclaim the slack
+   * from the default 170px column so "1-0 (Cloud taken 12:04) · in 1:44
+   * Infernal" lays out on two lines instead of spilling to a clipped third. */
+  grid-template-columns: 110px 1fr;
+  gap: 10px;
+}
+.minimap-grid .kv .obj-bar {
+  position: absolute;
+  left: 0; bottom: 0;
+  height: 3px;
+  width: var(--pct, 0%);
+  background: var(--border-soft);
+  border-radius: 0 2px 2px 0;
+  transition: width 500ms linear, background-color 300ms ease;
+  pointer-events: none;
+}
+.minimap-grid .kv:has(#mm-dragon)   .obj-bar { background: color-mix(in srgb, var(--bad)      70%, transparent); }
+.minimap-grid .kv:has(#mm-baron)    .obj-bar { background: color-mix(in srgb, var(--advisory) 70%, transparent); }
+.minimap-grid .kv:has(#mm-herald)   .obj-bar { background: color-mix(in srgb, var(--gold)     70%, transparent); }
+.minimap-grid .kv:has(#mm-atakhan)  .obj-bar { background: color-mix(in srgb, var(--info)     70%, transparent); }
+.minimap-grid .kv .obj-bar.full {
+  background: var(--good);
+  box-shadow: 0 0 8px rgba(127,209,154,0.7);
+}
+.kv:has(#mm-towers)  .obj-ico { color: var(--good); }
+.kv:has(#mm-score)   .obj-ico { color: var(--text-dim); }
+.kv:has(#mm-gametime) .obj-ico { color: var(--text-dim); }
+

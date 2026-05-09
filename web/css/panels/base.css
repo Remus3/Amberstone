@@ -1,0 +1,106 @@
+:root {
+  /* ───── Neo-fintech palette ──────────────────────────────────── */
+  --canvas:        #171821;   /* deep blue-black — page bg */
+  --surface:       #21222D;   /* panel bg — one step lighter */
+  --surface-head:  #272836;   /* panel header bg */
+  --surface-alt:   #1C1D27;   /* subtle alt / input bg */
+  --text:          #F5F5F7;   /* primary text */
+  --text-dim:      #9DA0B3;   /* secondary text / labels */
+  --text-faint:    #6B6D7C;   /* ternary / captions */
+  --border:        #2E3040;   /* de-emphasized — panels rely on tone */
+  --border-soft:   #262734;   /* dashed dividers */
+
+  /* Accent pairs. Primary live-data accent is coral pink; secondary
+   * comparative accent is lavender. Greens / warm alerts kept for
+   * positive / destructive semantics but retuned to the palette. */
+  --good:          #7FD19A;   /* cool mint — up / success / positive */
+  --good-soft:     #2E4A3A;
+  --bad:           #F07E8B;   /* coral pink — down / error / hot live data */
+  --bad-soft:      #4A2A31;
+  --gold:          #F5B87C;   /* soft coral-amber — action / KDA / emphasis */
+  --gold-soft:     #4A3723;
+
+  --info:          #8A8CF0;   /* lavender — info / intents / passive series */
+  --info-soft:     #2E2E4A;
+  --advisory:      #F07E8B;   /* coral pink — cold-streak advisories */
+  --advisory-soft: #4A2A31;
+
+  /* Shape language */
+  --radius:        16px;      /* card corner radius */
+  --radius-sm:     8px;       /* chips/pills radius */
+  --shadow-card:   0 6px 24px -8px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35);
+  --shadow-card-soft: 0 2px 10px -4px rgba(0,0,0,0.5);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ───── App-wide custom tooltip ──────────────────────────────────
+ * Replaces browser-native `title` tooltips across the dashboard. Larger
+ * readable font, muted aesthetic that matches the "Mode does not support
+ * Augments" placeholder. Positioned by JS (tooltip-system.js) so it flips
+ * left/right/up to stay inside the viewport no matter where the anchor
+ * sits. Native `title` is moved to `data-tt` on hover to suppress the
+ * browser's own popup. */
+.app-tooltip {
+  position: fixed;
+  /* Width is content-driven since JS wraps at 6 words per line. max-width
+   * is just a safety ceiling for very long words (no break-word — a long
+   * item name should never split mid-word). */
+  max-width: 400px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--surface-alt);
+  color: var(--text-faint);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  border: 1px solid rgba(255,255,255,0.7);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.55);
+  z-index: 10000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  /* pre-wrap renders JS-inserted \n line breaks without further wrapping
+   * inside a line (since each line is already ≤ 6 words). */
+  white-space: pre-wrap;
+}
+.app-tooltip.show { opacity: 1; }
+
+html { height: 100%; }
+
+body {
+  /* Flex column — header, main, activity, input-bar, footer stack and
+   * main flex-grows to fill remaining height. Zoom-safe: no vh math. */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  transition: cursor 150ms;
+  font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 26px; font-weight: 400;
+  background: var(--canvas);
+  color: var(--text);
+  user-select: none;
+  overflow: hidden;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  letter-spacing: 0.01em;
+}
+
+/* Global +33% scale for at-a-glance viewing from ~4 feet. Applied to
+ * body via CSS zoom (Chromium + WebKit/iPad Safari support this).
+ * Overrides are via --ui-scale; bump to 1.0 for reference size. */
+body { zoom: 1.33; }
+body.cursor-hidden, body.cursor-hidden * { cursor: none !important; }
+
+/* Game-phase theming — JS sets body[data-phase] from game_time_s:
+ * early  <15:00  calm blue tint
+ * mid    15–25   engaged gold tint
+ * late   25+     urgent coral tint
+ * The tint is a single-pixel-thick top border + title-accent shift. */
+/* (2026-04-23) Phase-tinted title-left border removed — user wanted the
+ * title position identical across client and in-game states; the border
+ * was shifting "RIOT COMMANDER" 16px right whenever data-phase was set. */
+body[data-phase="mid"]   header { background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 6%, var(--canvas)) 0%, var(--canvas) 100%); }
+body[data-phase="late"]  header { background: linear-gradient(180deg, color-mix(in srgb, var(--bad)  7%, var(--canvas)) 0%, var(--canvas) 100%); }
+

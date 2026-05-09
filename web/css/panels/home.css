@@ -1,0 +1,841 @@
+/* Home / lobby landing view (2026-04-26). Shown when the user is sat
+ * in the lobby/idle with no game or champ-select active. Replaces the
+ * empty client-mode panel labels with actually-useful at-a-glance
+ * data: today's session, last 5 matches, this week's champ summary,
+ * service health. Reads from /api/home/summary which queries
+ * data/match_history.db (fresh per-game capture). */
+.home-overlay {
+  margin: 12px 18px 0; padding: 14px 18px;
+  background: var(--surface); border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  display: flex; flex-direction: column; gap: 14px;
+  /* Match the view-section flex behavior so the footer stays pinned to
+   * the viewport bottom regardless of which view is active. Without
+   * this, home-overlay was content-sized and the footer floated up to
+   * sit just below the services strip, then dropped when switching to
+   * a view-section view (lobby/history/etc., which all flex: 1).
+   * The trailing min-height: 0 lets the overlay shrink below its
+   * intrinsic content if the viewport is short.
+   * 2026-04-30: gaps + padding tightened (14→10) to recover the
+   * vertical space the alerts/services were overflowing into. */
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.home-overlay.hidden { display: none; }
+/* User request 2026-04-29: when the user manually navigates to the home
+ * view, force the overlay visible regardless of _homeShouldShow's
+ * mode/lcu-phase gating. Specificity (0,2,1) beats .home-overlay.hidden
+ * (0,2,0); !important keeps that win even if a later rule drops in. */
+body[data-view="home"] .home-overlay { display: flex !important; }
+
+/* Legacy 4-card grid kept for any consumer outside home-overlay that
+ * might still depend on it. New home V1 layout below uses
+ * .home-hero / .home-body / .home-services-strip. */
+.home-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1.1fr 0.9fr;
+  gap: 14px;
+}
+
+/* ── V1 hero banner ───────────────────────────────────────────────── */
+.home-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 2fr auto;
+  gap: 24px;
+  align-items: center;
+  padding: 16px 20px;
+  background: linear-gradient(135deg,
+              rgba(138, 140, 240, 0.06),
+              rgba(245, 184, 124, 0.04));
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  min-height: 110px;
+  overflow: hidden;
+}
+/* Champion motif background. JS sets background-image inline based on
+ * this-week's top champion (or a fallback). Positioned to bleed out
+ * the right edge so it reads as a motif, not a portrait. Large + faded
+ * + monochromed so it's visual texture, not foreground content. */
+.home-hero-bg {
+  position: absolute;
+  top: 50%; right: -40px;
+  transform: translateY(-50%);
+  width: 360px; height: 360px;
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: 0.18;
+  filter: grayscale(0.4) blur(0.5px);
+  pointer-events: none;
+  mask-image: linear-gradient(to left, black 30%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to left, black 30%, transparent 100%);
+}
+/* Make the foreground content sit above the motif. */
+.home-hero-greet,
+.home-hero-headline,
+.home-hero-chips { position: relative; z-index: 1; }
+.home-hero-greet { min-width: 0; }
+.home-hero-time {
+  font-size: 22px; font-weight: 800; color: var(--text);
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+.home-hero-sub {
+  font-size: 12px; color: var(--text-faint);
+  letter-spacing: 0.06em; text-transform: uppercase;
+  margin-top: 4px;
+}
+.home-hero-headline {
+  font-size: 26px; font-weight: 800; color: var(--text);
+  letter-spacing: 0.01em;
+  text-align: center;
+  line-height: 1.2;
+}
+.home-hero-headline.up    { color: var(--good); }
+.home-hero-headline.down  { color: var(--bad); }
+.home-hero-headline.flat  { color: var(--text-dim); }
+.home-hero-chips {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.home-hero-chip {
+  display: inline-flex; flex-direction: column; align-items: flex-start;
+  padding: 6px 12px; min-width: 110px;
+  background: var(--surface-head);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.home-hero-chip-lbl {
+  font-size: 12px; letter-spacing: 0.18em; font-weight: 700;
+  color: var(--label); text-transform: uppercase;
+}
+.home-hero-chip-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 3px;
+}
+.home-hero-chip-val {
+  font-size: 19px; font-weight: 800; color: var(--text);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Inline sparkline inside hero chip — small, sits next to the value */
+.home-hero-spark {
+  width: 60px; height: 18px;
+  flex: none;
+}
+.home-hero-spark .spark-line {
+  fill: none; stroke: var(--info);
+  stroke-width: 1.5; vector-effect: non-scaling-stroke;
+}
+.home-hero-spark .spark-area {
+  fill: var(--info); opacity: 0.18;
+}
+.home-hero-spark .spark-dot { fill: var(--gold); }
+
+/* ── V1 body: 2-column row (recent cards | week list) ─────────────── */
+.home-body {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 14px;
+}
+
+/* ── V1 recent matches as visual cards ────────────────────────────── */
+#home-recent-list.home-recent-list {
+  display: flex; flex-direction: column; gap: 8px;
+  list-style: none; margin: 0; padding: 0;
+}
+.home-recent-card {
+  display: grid;
+  grid-template-columns: 6px 44px 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px 10px 0;
+  background: var(--surface-head);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.12s, transform 0.12s;
+}
+.home-recent-img {
+  width: 44px; height: 44px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+}
+.home-recent-card:hover {
+  border-color: var(--info);
+  transform: translateX(2px);
+}
+.home-recent-stripe {
+  width: 6px; height: 100%; min-height: 44px;
+  background: var(--text-dim);
+}
+.home-recent-stripe.tier-good { background: var(--good); }
+.home-recent-stripe.tier-mid  { background: var(--info); }
+.home-recent-stripe.tier-bad  { background: var(--bad); }
+.home-recent-main { min-width: 0; padding-left: 4px; }
+.home-recent-champ {
+  font-size: 18px; font-weight: 800; color: var(--text);
+  letter-spacing: 0.02em;
+  display: block;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.home-recent-meta {
+  font-size: 13px; color: var(--text-faint);
+  letter-spacing: 0.04em; text-transform: uppercase;
+  margin-top: 3px;
+  display: block;
+}
+.home-recent-kda {
+  font-size: 16px; font-weight: 700; color: var(--text);
+  font-variant-numeric: tabular-nums;
+  padding: 5px 12px;
+  background: var(--surface);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.home-recent-grade-badge {
+  width: 36px; height: 36px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 900;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  margin-right: 12px;
+}
+.home-recent-grade-badge.S { color: var(--good);     border-color: var(--good); }
+.home-recent-grade-badge.A { color: var(--good);     border-color: var(--good-soft); }
+.home-recent-grade-badge.B { color: var(--info);     border-color: var(--info-soft); }
+.home-recent-grade-badge.C { color: var(--text-dim); }
+.home-recent-grade-badge.D { color: var(--advisory); border-color: var(--advisory-soft); }
+.home-recent-grade-badge.F { color: var(--bad);      border-color: var(--bad-soft); }
+
+/* ── V3 combo row (2026-04-30 v2): only Tonight's Pick now (sparklines
+ * moved into hero chips). Single column = full-width Tonight's Pick. */
+.home-combo {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.home-combo[hidden] { display: none; }
+
+/* ── V3 trends row (suggestion #5): 14-day sparklines ─────────────── */
+.home-trends {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.home-trends[hidden] { display: none; }
+.home-trend-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 12px;
+  align-items: center;
+  padding: 8px 14px;
+  background: var(--surface-head);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.home-trend-lbl {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
+  color: var(--label); text-transform: uppercase;
+  grid-column: 1; grid-row: 1;
+}
+.home-trend-val {
+  font-size: 20px; font-weight: 800; color: var(--text);
+  font-variant-numeric: tabular-nums;
+  grid-column: 1; grid-row: 2;
+  white-space: nowrap;
+}
+.home-trend-spark {
+  grid-column: 2; grid-row: 1 / span 2;
+  width: 100%; height: 36px;
+}
+.home-trend-spark .spark-line {
+  fill: none;
+  stroke: var(--info);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.home-trend-spark .spark-area {
+  fill: var(--info);
+  opacity: 0.15;
+}
+.home-trend-spark .spark-dot {
+  fill: var(--gold);
+}
+
+/* ── V3 coach row (suggestions #1 + #4) — Tonight's Pick now lives
+ * inside .home-combo (with sparklines). Last Build is its own row
+ * below, hidden until postgame_stats data exists. ────────────────── */
+.home-coach-pick,
+.home-coach-build {
+  background: var(--surface-head);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+.home-coach-pick[hidden],
+.home-coach-build[hidden] { display: none; }
+/* Tonight's pick → border accent + slight glow to read as primary */
+.home-coach-pick {
+  border-color: var(--info-soft);
+  box-shadow: 0 0 8px rgba(138, 140, 240, 0.12);
+}
+.home-coach-pick-head,
+.home-coach-build-head {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
+  color: var(--label); text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.home-coach-build-sub {
+  font-size: 10px; font-weight: 700; color: var(--text-faint);
+  margin-left: 8px; letter-spacing: 0.06em;
+}
+.home-coach-pick-body {
+  display: flex; align-items: center; gap: 14px;
+}
+/* Stacked icon buttons on the right side of Tonight's Pick (V3 redesign
+ * 2026-04-30). Replaces the standalone .home-alerts panel — same
+ * advisory + digest popouts, much smaller footprint. */
+.home-coach-pick-actions {
+  display: flex; flex-direction: column; gap: 6px;
+  margin-left: auto;
+  flex: none;
+}
+.home-pick-btn {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text-faint);
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+.home-pick-btn:hover {
+  background: var(--surface-head);
+  border-color: var(--info);
+  color: var(--info);
+}
+.home-pick-btn-icon {
+  font-size: 18px; font-weight: 900;
+  line-height: 1;
+}
+/* Notification badge in the bottom-right corner — only visible when the
+ * underlying value is non-zero / non-default. JS toggles `.has-data`
+ * via _homeMirrorAlerts. Default empty state is muted. */
+.home-pick-btn-badge {
+  position: absolute;
+  bottom: -4px; right: -4px;
+  min-width: 16px; height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--surface-alt);
+  color: var(--text-faint);
+  font-size: 10px; font-weight: 800;
+  letter-spacing: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border);
+}
+.home-pick-btn.has-data .home-pick-btn-badge {
+  background: var(--bad-soft);
+  color: var(--bad);
+  border-color: var(--bad-soft);
+}
+.home-pick-btn.has-data { color: var(--bad); border-color: var(--bad-soft); }
+#home-alerts-digest.has-data { color: var(--info); border-color: var(--info-soft); }
+#home-alerts-digest.has-data .home-pick-btn-badge {
+  background: var(--info-soft);
+  color: var(--info);
+  border-color: var(--info-soft);
+}
+.home-coach-pick-img {
+  width: 56px; height: 56px;
+  border-radius: 8px;
+  border: 1px solid var(--info-soft);
+  background: var(--surface);
+  object-fit: cover;
+  flex: none;
+}
+.home-coach-pick-meta {
+  display: flex; flex-direction: column; min-width: 0; gap: 4px;
+}
+.home-coach-pick-champ {
+  font-size: 22px; font-weight: 800; color: var(--info);
+  letter-spacing: 0.02em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.home-coach-pick-reason {
+  font-size: 13px; color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
+.home-coach-build-items {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.home-coach-build-item {
+  width: 44px; height: 44px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  object-fit: cover;
+}
+.home-coach-build-item.empty {
+  background: repeating-linear-gradient(45deg,
+              var(--surface), var(--surface) 4px,
+              var(--surface-alt) 4px, var(--surface-alt) 8px);
+  opacity: 0.5;
+}
+
+/* ── V2 quick-action tiles row (suggestion #3) ────────────────────── */
+.home-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.home-action-tile {
+  display: flex; flex-direction: column; align-items: flex-start;
+  padding: 14px 16px;
+  background: var(--surface-head);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: border-color 0.12s, transform 0.12s, background 0.12s;
+}
+.home-action-tile:hover {
+  border-color: var(--info);
+  background: var(--surface);
+  transform: translateY(-2px);
+}
+.home-action-tile:active { transform: translateY(0); }
+.home-action-icon {
+  width: 28px; height: 28px;
+  margin-bottom: 8px;
+  color: var(--info);
+  transition: color 0.12s, transform 0.12s;
+}
+.home-action-tile:hover .home-action-icon {
+  color: var(--gold);
+  transform: scale(1.08);
+}
+.home-action-label {
+  font-size: 17px; font-weight: 800; color: var(--text);
+  letter-spacing: 0.02em;
+}
+.home-action-sub {
+  font-size: 13px; color: var(--text-faint);
+  letter-spacing: 0.06em; text-transform: uppercase;
+  margin-top: 3px;
+}
+
+/* ── V2 this-week mini-chart (suggestion #5) ──────────────────────── */
+.home-week-chart {
+  display: flex; flex-direction: column; gap: 6px;
+  list-style: none; margin: 0; padding: 0;
+}
+.home-week-bar-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) auto auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: var(--surface-head);
+  border: 1px solid var(--border-soft);
+}
+/* Grade badge sits inline at the right of the bar row (not below it),
+ * so each week-row is a single visual line. Slightly smaller than the
+ * RECENT-card badge since the row height target is tighter. */
+.home-week-bar-row .home-recent-grade-badge {
+  width: 28px; height: 28px;
+  font-size: 13px;
+  margin-right: 0;
+}
+.home-week-bar-name {
+  position: relative;
+  font-size: 15px; font-weight: 700; color: var(--text);
+  letter-spacing: 0.02em;
+  padding: 6px 10px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  border-radius: 3px;
+  background: linear-gradient(to right,
+              var(--info-soft) 0%, var(--info-soft) var(--bar-pct, 50%),
+              transparent var(--bar-pct, 50%), transparent 100%);
+}
+.home-week-bar-games {
+  font-size: 13px; color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.home-week-bar-kda {
+  font-size: 15px; font-weight: 700; color: var(--text);
+  font-variant-numeric: tabular-nums;
+  padding: 3px 10px;
+  background: var(--surface);
+  border-radius: 999px;
+  min-width: 44px;
+  text-align: center;
+}
+
+/* ── V2 alerts panel (advisory + digest moved out of footer) ──────── */
+.home-alerts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.home-alerts-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 12px;
+  background: var(--surface-head);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.12s, transform 0.12s;
+}
+.home-alerts-row:hover {
+  border-color: var(--info);
+  transform: translateX(2px);
+}
+.home-alerts-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  font-weight: 900; font-size: 16px;
+  font-family: inherit;
+}
+.home-alerts-icon.advisory { background: var(--bad-soft);  color: var(--bad); }
+.home-alerts-icon.digest   { background: var(--info-soft); color: var(--info); }
+.home-alerts-row.empty .home-alerts-icon { opacity: 0.5; }
+.home-alerts-text {
+  display: flex; flex-direction: column; min-width: 0;
+}
+.home-alerts-lbl {
+  font-size: 13px; font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--label);
+}
+.home-alerts-val {
+  font-size: 15px; color: var(--text);
+  margin-top: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.home-alerts-cta {
+  font-size: 13px; color: var(--text-faint);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  white-space: nowrap;
+}
+.home-alerts-row:hover .home-alerts-cta { color: var(--info); }
+
+/* ── V1 services strip (replaces the SERVICES card) ───────────────── */
+.home-services-strip {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 8px 10px;
+  background: var(--surface-head);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  list-style: none; margin: 0;
+}
+.home-services-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-weight: 700;
+  cursor: default;
+}
+.home-services-pill .home-services-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text-dim);
+  flex: none;
+}
+.home-services-pill.ok  .home-services-dot  { background: var(--good); }
+.home-services-pill.err .home-services-dot  { background: var(--bad); }
+.home-services-pill.err { color: var(--bad); border-color: var(--bad-soft); }
+.home-card {
+  background: var(--surface-head);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  min-height: 140px;
+  display: flex; flex-direction: column;
+}
+.home-card-head {
+  font-size: 13px; font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--label);
+  margin-bottom: 8px;
+  display: flex; align-items: baseline; gap: 8px;
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 6px;
+}
+.home-card-sub {
+  font-size: 11px; color: var(--clock); font-weight: 700;
+  letter-spacing: 0.06em; margin-left: auto;
+}
+.home-empty {
+  padding: 6px 0; font-size: 11px; color: var(--text-faint);
+  font-style: italic; list-style: none;
+}
+.home-today-stats { display: flex; flex-direction: column; gap: 4px; }
+.home-today-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 12px;
+}
+.home-today-lbl { color: var(--text-dim); letter-spacing: 0.04em; }
+.home-today-val {
+  color: var(--text); font-variant-numeric: tabular-nums; font-weight: 700;
+}
+.home-recent-list, .home-week-list, .home-services-list {
+  list-style: none; padding: 0; margin: 0;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.home-recent-row {
+  display: grid;
+  grid-template-columns: 36px 1fr 70px 24px;
+  align-items: center; gap: 8px;
+  padding: 4px 6px;
+  background: var(--surface-alt);
+  border-radius: 4px;
+  font-size: 11px;
+}
+.home-recent-grade {
+  font-weight: 900; font-size: 13px; text-align: center;
+  padding: 1px 0; border-radius: 3px;
+  letter-spacing: 0.04em;
+}
+.home-recent-grade.S { color: #ffd166; background: rgba(245,184,124,0.18); }
+.home-recent-grade.A { color: var(--good); background: var(--good-soft); }
+.home-recent-grade.B { color: #b6e8c4; background: rgba(127,209,154,0.12); }
+.home-recent-grade.C { color: var(--text); background: var(--surface-head); }
+.home-recent-grade.D { color: #f5c1c8; background: rgba(240,126,139,0.12); }
+.home-recent-grade.F { color: var(--bad); background: var(--bad-soft); }
+.home-recent-champ { color: var(--text); font-weight: 700; }
+.home-recent-meta  { color: var(--text-faint); font-size: 10px; }
+.home-recent-kda   { color: var(--text-dim); font-variant-numeric: tabular-nums; text-align: right; }
+.home-recent-mode  {
+  color: var(--info); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.08em; text-align: right;
+}
+.home-week-row {
+  display: grid;
+  grid-template-columns: 1fr 50px 30px 30px;
+  align-items: center; gap: 6px;
+  padding: 4px 6px;
+  background: var(--surface-alt);
+  border-radius: 4px;
+  font-size: 11px;
+}
+.home-week-champ { color: var(--text); font-weight: 600; }
+.home-week-games { color: var(--text-dim); text-align: right; font-size: 10px; }
+.home-week-kda   { color: var(--text); font-variant-numeric: tabular-nums; text-align: right; font-weight: 700; }
+.home-week-grade {
+  text-align: center; font-weight: 800; font-size: 11px;
+  padding: 1px 0; border-radius: 3px;
+}
+.home-services-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 6px; font-size: 11px;
+}
+.home-services-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text-faint); flex-shrink: 0;
+}
+.home-services-dot.ok { background: var(--good); box-shadow: 0 0 4px rgba(127,209,154,0.5); }
+.home-services-dot.err { background: var(--bad); }
+.home-services-name { color: var(--text); font-weight: 700; }
+.home-services-detail { color: var(--text-faint); font-size: 10px; margin-left: auto; }
+
+@media (max-width: 1100px) {
+  .home-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* Pre-queue lobby card (2026-04-26). Sits inline above the main grid
+ * (NOT a fullscreen overlay like cs-overlay) so the dashboard panels
+ * remain visible. Hides when not in lobby phase. Find Match button
+ * fires start_matchmaking via /api/lcu-cmd; only enabled when the
+ * current user is the lobby leader and the lobby reports can_search. */
+.lobby-overlay {
+  margin: 12px 18px 0; padding: 14px 18px;
+  background: var(--surface); border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  display: flex; align-items: center; gap: 16px;
+  flex-wrap: wrap;
+}
+.lobby-overlay.hidden { display: none; }
+.lobby-card {
+  display: flex; align-items: center; gap: 16px;
+  width: 100%; flex-wrap: wrap;
+}
+.lobby-head {
+  display: flex; align-items: center; gap: 12px; flex: 1; min-width: 240px;
+}
+.lobby-queue {
+  font-size: 18px; font-weight: 900; letter-spacing: 0.12em;
+  color: var(--info); text-transform: uppercase;
+}
+.lobby-party {
+  font-size: 12px; color: var(--text-dim); letter-spacing: 0.4px;
+  padding: 3px 8px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface-alt);
+}
+.lobby-leader-tag {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.18em;
+  color: var(--clock); padding: 2px 8px;
+  background: var(--gold-soft); border-radius: 999px;
+}
+.lobby-actions { display: flex; gap: 8px; align-items: center; }
+.lobby-find-match, .lobby-cancel-match {
+  font-size: 14px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; padding: 9px 22px;
+  border: none; border-radius: var(--radius-sm);
+  cursor: pointer; transition: background 0.12s, transform 0.06s;
+}
+.lobby-find-match {
+  background: var(--good); color: var(--canvas);
+}
+.lobby-find-match:hover:not(:disabled) { background: #94e0ad; transform: scale(1.02); }
+.lobby-find-match:active:not(:disabled) { transform: scale(0.98); }
+.lobby-find-match:disabled {
+  background: var(--surface-head); color: var(--text-faint);
+  cursor: not-allowed; opacity: 0.7;
+}
+.lobby-cancel-match {
+  background: var(--bad); color: var(--canvas);
+}
+.lobby-cancel-match:hover { background: #f49aa4; }
+.lobby-status {
+  font-size: 12px; color: var(--text-dim); letter-spacing: 0.4px;
+  margin-left: auto; min-width: 140px; text-align: right;
+}
+.lobby-status.searching { color: var(--clock); animation: lobbyPulse 1.2s infinite alternate; }
+.lobby-status.found     { color: var(--good); font-weight: 700; }
+.lobby-status.err       { color: var(--bad); }
+@keyframes lobbyPulse { from { opacity: 0.55; } to { opacity: 1; } }
+
+/* Change-queue dropdown (leader only). Theme-matched select. */
+.lobby-queue-select {
+  appearance: none; -webkit-appearance: none;
+  background: var(--surface-alt); color: var(--text);
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 5px 14px; font-size: 13px; cursor: pointer;
+  font-family: inherit; font-weight: 600;
+}
+.lobby-queue-select:hover { border-color: var(--clock); }
+
+/* Lobby member list — full-width row of party-member cards under the
+ * action row. Scaffolded; data feed is a follow-up (Game-PC LCU
+ * agent forwarding lcu.lobby.members[]). */
+.lobby-members {
+  width: 100%;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+}
+.lobby-members-head {
+  font-size: 12px; font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--label);
+  margin-bottom: 8px;
+  display: flex; align-items: baseline; gap: 8px;
+}
+.lobby-members-count {
+  font-size: 12px; color: var(--clock); font-weight: 700;
+  margin-left: 6px;
+}
+.lobby-members-list {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+.lobby-member-row {
+  background: var(--surface-head); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.lobby-member-row.is-self { border-color: var(--info); }
+.lobby-member-row.is-leader { border-color: var(--clock); }
+.lobby-member-name {
+  font-size: 14px; font-weight: 700; color: var(--text);
+  display: flex; align-items: center; gap: 6px;
+}
+.lobby-member-tag {
+  font-size: 9px; padding: 2px 6px; border-radius: 999px;
+  letter-spacing: 0.1em; font-weight: 800; text-transform: uppercase;
+}
+.lobby-member-tag.you    { background: var(--info-soft); color: var(--info); }
+.lobby-member-tag.leader { background: var(--gold-soft); color: var(--clock); }
+.lobby-member-meta {
+  font-size: 11px; color: var(--text-faint); letter-spacing: 0.04em;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.lobby-member-stat {
+  font-size: 11px; color: var(--text-dim);
+  background: var(--surface-alt); padding: 2px 7px; border-radius: 4px;
+}
+.lobby-member-link {
+  font-size: 11px; color: var(--info); text-decoration: none;
+  margin-left: auto;
+}
+.lobby-member-link:hover { text-decoration: underline; color: var(--clock); }
+.cs-card {
+  width: min(1400px, 96vw);
+  display: flex; flex-direction: column; gap: 18px;
+}
+.cs-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  border-bottom: 1px solid var(--border-soft); padding-bottom: 10px;
+}
+.cs-phase-label {
+  font-size: 22px; font-weight: 900; letter-spacing: 0.18em;
+  color: var(--info); text-transform: uppercase;
+}
+.cs-phase-sub { font-size: 13px; color: var(--label); letter-spacing: 0.5px; }
+.cs-my-block {
+  display: flex; gap: 20px; align-items: center; padding: 16px;
+  background: var(--surface); border-radius: var(--radius);
+  border: 1px solid var(--border-soft);
+}
+.cs-my-icon {
+  width: 96px; height: 96px; border-radius: 8px;
+  border: 3px solid var(--border); background: var(--surface-head);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-faint); font-size: 30px; overflow: hidden; flex-shrink: 0;
+}
+.cs-my-icon img { width: 100%; height: 100%; object-fit: cover; }
+.cs-my-icon.locked   { border-color: #44ff88; }
+.cs-my-icon.hovering { border-color: var(--clock); border-style: dashed; }
+.cs-my-meta { flex: 1; }
+.cs-my-name { font-size: 24px; font-weight: 700; color: #e8ecf2; }
+.cs-my-state {
+  font-size: 12px; color: var(--label); margin-top: 4px;
+  letter-spacing: 0.6px; text-transform: uppercase;
+}
+.cs-actions { display: flex; gap: 10px; }
+.cs-btn {
+  padding: 12px 20px; font-size: 14px; font-weight: 700;
+  background: var(--surface-head); color: var(--text-faint);
+  border: 1px solid var(--border); border-radius: 6px;
+  cursor: pointer; transition: 0.15s; letter-spacing: 0.4px;
+}
+.cs-btn:hover { background: #1c1c2a; border-color: var(--clock); color: var(--clock); }
+.cs-lock-btn:hover { border-color: #44ff88; color: #44ff88; background: #0a2014; }
+.cs-btn[disabled] { opacity: 0.4; cursor: not-allowed; }
+
+.cs-teams { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
