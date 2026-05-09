@@ -6,6 +6,33 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s140 wrap — 2026-05-09 (Phase 2.4 — moon_vision_server split)
+
+## What shipped
+- **`vision_server/` package** (new): split `moon_vision_server.py` (710 LOC) into 7 internal modules — `_config.py` (75), `_stats.py` (65), `_frame.py` (117), `_relay.py` (118), `_inference.py` (264), `_http.py` (245), `__init__.py` (79). Real code lives here.
+- **`moon_vision_server.py`** (kept): reduced to 21-LOC entrypoint shim — `from vision_server import main; sys.exit(main())`. Preserves the file path that `RC-VisionServer` scheduled task and `dashboard/server.py:191` spawn-by-path.
+- **`tools/build_portable.py`**: added `moon_vision_server.py` to `_ROOT_PY_FILES` (closed pre-existing bundle gap) + `vision_server` to `_SOURCE_PACKAGES`.
+- **`docs/ARCHITECTURE.md`**: god-module table updated, archmap auto-regenerated.
+- 386 tests pass, ruff clean, `:8889/health` verified post-restart (PID 17508→10476). Commit: **9cf262a** pushed → origin/main.
+
+## Key decisions
+- **Shim pattern, not package replacement**: `moon_vision_server.py` is spawned by file path from two callers (scheduled task XML + dashboard subprocess). Editing those would require touching frozen-adjacent task XML; keeping a 21-LOC shim is cheaper and preserves the contract.
+- **Sub-file deviation from plan**: plan listed 4 files (frame_upload, frame_cache, tier_routes, sonnet_escalation). Actual = 6 internal because plan missed LCU relay, liveclient relay, stats, HTTP handler, config. Combined frame_upload+frame_cache (share state) and combined tier_routes+sonnet_escalation into `_inference.py` (both inference handlers feeding same stats).
+- **Cross-module state**: `_frame` and `_relay` directly mutate `_stats._stats[k]["bytes"]` under `_stats._stats_lock`. Kept the direct mutation — wrapping it in setters would just create indirection.
+- **Pre-existing bundle gap**: `moon_vision_server.py` was NEVER in `_ROOT_PY_FILES` — portable builds have been shipping without the vision server. Fix bundled with this change.
+
+## Do NOT redo
+- Don't try to import from `moon_vision_server` (Python module) — the file is path-spawned, not import-consumed. Use `from vision_server import …` instead.
+- Don't delete `moon_vision_server.py` thinking it's dead code — RC-VisionServer scheduled task XML hardcodes that path.
+- Don't switch `python.exe` → `pythonw.exe` in the task XML without operator approval; that's a console-window cosmetic, not a Phase 2.4 scope item.
+
+## What's next
+1. **Phase 6 — Bridge consolidation** — blocked on operator approval for frozen files (`bridge_post_result.py`, `bridge_pull_tasks.py`, `process-bridge-tasks.md`).
+2. **Game-PC LCU agent not posting** — SessionStart anomaly flagged at session start; separate task, surface for diagnosis.
+3. **Vision regions calibration** — blocked on live game.
+
+---
+
 # s138 wrap — 2026-05-09 (Phase 2.3 — coach_integration split)
 
 ## What shipped
