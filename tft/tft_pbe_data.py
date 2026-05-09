@@ -2,7 +2,7 @@
 tft/tft_pbe_data.py
 TFT Set 17: Space Gods data — traits, tier probabilities, god offerings,
 round structure (Realm of the Gods replaces carousel).
-Last updated: patch 17.2 (2026-04-28) — Encounters returned, God Blessings added.
+Last updated: patch 17.3 (2026-05-13) — Morgana cost drop, Anima/Stargazer reworks, Primordian nerfed.
 """
 
 # ── Tier probability tables (standard Set 17) ───────────────────────────────
@@ -82,21 +82,21 @@ TEMPO_MILESTONES = {
 
 # ── Set 17 traits ─────────────────────────────────────────────────────────────
 ORIGINS = {
-    "Anima":       {"breakpoints": [2, 4, 6], "type": "loss-streak", "note": "Gain Tech on loss, prototype Anima Weapons at 100 Tech"},
+    "Anima":       {"breakpoints": [2, 4, 6], "type": "loss-streak", "note": "Gain Tech on loss, prototype Anima Weapons at 100 Tech. 17.3: (6) loot after EVERY combat (was: wins only)."},
     "Arbiter":     {"breakpoints": [2, 4], "type": "utility", "note": "Subscribe to divine law, choose effect for Arbiters"},
     "Dark Star":   {"breakpoints": [2, 4, 6, 9], "type": "execute", "note": "Black holes consume enemies below 10% HP. Vertical carry with Jhin."},
     "Meeple":      {"breakpoints": [3, 5, 7, 10], "type": "scaling", "note": "Meeps empower abilities. (7) Cloning Slot. 17.2: Clone gold nerfed (1c:3→2g, 5c:5→2g)."},
     "Mecha":       {"breakpoints": [2, 4, 6], "type": "transform", "note": "Transform to Ultimate Form: +60% HP, 2 slots, counts twice. (6) +1 team size"},
     "N.O.V.A.":    {"breakpoints": [2, 3, 5], "type": "burst", "note": "Power surges in combat. (5) Striker selector."},
     "Primordian":  {"breakpoints": [2, 4, 6], "type": "swarm", "note": "Spawn Swarmlings. (3+) free 1-2 cost champ each round."},
-    "Stargazer":   {"breakpoints": [2, 4, 6], "type": "hex", "note": "Empowered hexes. Yasuo synergy. NOTE 17.2: Fountain DISABLED (finding better fit for Lulu/Xayah). Mountain buffed 12→15% HP."},
+    "Stargazer":   {"breakpoints": [2, 4, 6], "type": "hex", "note": "REWORKED 17.3: HP regen + stacking stats (was mana/Fountain). Yasuo hex synergy. Fountain mechanic removed. Mountain HP buff retained."},
     "Space Groove": {"breakpoints": [2, 4, 6], "type": "sustain", "note": "Groove: AS + HP regen. (6) stacking AD/AP in Groove."},
     "Shepherd":    {"breakpoints": [2, 4, 6], "type": "summon", "note": "Summon Bia and Bayin. Star levels increase their power."},
     "Voyager":     {"breakpoints": [2, 4, 6], "type": "generic", "note": "Tanks/Fighters get Shield, others get Damage Amp."},
     "Replicator":  {"breakpoints": [2, 4], "type": "echo", "note": "Abilities fire a second time at reduced effectiveness."},
     "Conduit":     {"breakpoints": [2, 4], "type": "mana", "note": "Innate: +20% mana from all sources. Team mana regen."},
     "Fateweaver":  {"breakpoints": [2, 4], "type": "crit", "note": "Innate: Precision (abilities can crit). Lucky chance effects."},
-    "Marauder":    {"breakpoints": [2, 4, 6], "type": "sustain", "note": "Omnivamp + AD. Overhealing converts to Shield."},
+    "Marauder":    {"breakpoints": [2, 4, 6], "type": "sustain", "note": "Omnivamp + AD. Overhealing converts to Shield. 17.3 NERF: omnivamp reduced all tiers (20→18%, 40→35%, 60→55%)."},
     "Rogue":       {"breakpoints": [2, 4], "type": "ad/ap", "note": "AD and AP scaling."},
     "Factory New":  {"breakpoints": [2, 4], "type": "items", "note": "Item-related bonuses."},
     "Timebreaker": {"breakpoints": [2, 3, 4], "type": "as/econ/reroll",
@@ -128,29 +128,33 @@ CHAMPIONS = {
     2: ["Cho'Gath", "Rek'Sai", "Teemo", "Twisted Fate", "Gnar", "Meepsie", "Nami", "Zoe"],
     3: ["Diana", "Fizz", "Gwen", "Jinx", "Milio", "Urgot", "LeBlanc", "Corki", "Rammus"],
     4: ["Aurelion Sol", "The Mighty Mech", "Bel'Veth", "Lissandra", "Kai'Sa",
-        "Karma", "Mordekaiser", "Akali", "Kindred", "Maokai"],
-    5: ["Jhin", "Fiora", "Shen", "Graves", "Blitzcrank", "Bard", "Morgana", "Sona"],
+        "Karma", "Mordekaiser", "Akali", "Kindred", "Maokai", "Morgana"],  # Morgana moved 5→4 in 17.3
+    5: ["Jhin", "Fiora", "Shen", "Graves", "Blitzcrank", "Bard", "Sona"],
 }
 
 # ── PBE meta comps (updated 2026-04-07) ──────────────────────────────────────
 META_COMPS = {
+    # 17.3 meta: AP late-game stronger (Sol/Karma/LeBlanc/Sona buffed). Primordian dead. Morgana now 4-cost.
     "S": [
         {"name": "Meeple",           "carry": "Bard/Veigar",  "core": "Meeple 7+, Cloning Slot for 5-cost"},
-        {"name": "AP Vanguards",     "carry": "Lissandra",    "core": "Vanguard 4, Replicator 2, Dark Star splash"},
-        {"name": "Redeemer",         "carry": "Sona/Morgana", "core": "Conduit 4, Space Groove, sustain"},
+        {"name": "AP Vanguards",     "carry": "Lissandra",    "core": "Vanguard 4, Replicator 2, Dark Star splash — buffed 17.3"},
+        {"name": "Redeemer",         "carry": "Sona/Morgana", "core": "Conduit 4, Space Groove; Morgana now 4g (easier to hit)"},
+        {"name": "Dark Star Jhin",   "carry": "Jhin",         "core": "Dark Star 6-9, execute carry — stable S tier"},
         {"name": "Conduit Reroll",   "carry": "Nami",         "core": "Conduit 4, Replicator 2, 3-star Nami"},
-        {"name": "Space Opera",      "carry": "Jinx",         "core": "Space Groove 4, Gunslinger 2"},
+        {"name": "N.O.V.A.",         "carry": "Caitlyn/Akali","core": "N.O.V.A. 5 for Striker selector; Akali buffed"},
         {"name": "Mecha",            "carry": "Corki/Rammus", "core": "Mecha 4-6, transformed units fill slots"},
-        {"name": "N.O.V.A.",         "carry": "Caitlyn/Akali","core": "N.O.V.A. 5 for Striker selector"},
     ],
     "A": [
-        {"name": "Anima",            "carry": "LeBlanc",      "core": "Anima 4, loss-streak into Weapons"},
+        {"name": "Anima",            "carry": "LeBlanc",      "core": "Anima 4+, loss-streak; (6) loot every combat now (17.3 buff)"},
+        {"name": "Stargazer",        "carry": "Karma/Yasuo",  "core": "Stargazer 4, HP regen rework 17.3; Karma buffed"},
+        {"name": "Space Opera",      "carry": "Jinx",         "core": "Space Groove 4, Gunslinger 2"},
         {"name": "Rogue Reroll",     "carry": "Akali",        "core": "Rogue 4, 3-star Akali"},
-        {"name": "Primordian NOVA",  "carry": "Kindred",      "core": "Primordian 4, N.O.V.A. 3"},
-        {"name": "Stargazer",        "carry": "Karma",        "core": "Stargazer 4, Yasuo hex synergy"},
-        {"name": "Psionic",          "carry": "Master Yi",    "core": "Psionic 4, Fateweaver 2"},
-        {"name": "Dark Star Jhin",   "carry": "Jhin",         "core": "Dark Star 6-9, execute + sustain"},
         {"name": "Contract Killer",  "carry": "Fiora",        "core": "Fateweaver + Slayer, 1v1 duel win"},
+        {"name": "Psionic",          "carry": "Master Yi",    "core": "Psionic 4, Fateweaver 2; Yi omnivamp nerfed 17.3"},
+    ],
+    "B": [
+        # Primordian NOVA: Apex Primordian gutted 17.3 (AS 0.9→0.6, armor/MR 150→60). Avoid.
+        {"name": "Primordian NOVA",  "carry": "Kindred",      "core": "AVOID 17.3: Apex Primordian nerfed to the ground"},
     ],
 }
 
@@ -173,10 +177,10 @@ ENCOUNTERS = {
     "Silver Scrapes":      {"type": "items",     "note": "Silver items on loss"},
     "Scouting Party":      {"type": "scouting",  "note": "Reveal all boards early"},
     # New in 17.2 (5 total)
-    "Double Duplicators":  {"type": "units",     "note": "2 champion duplicators — push 3-stars faster"},
+    "Double Duplicators":  {"type": "units",     "note": "17.3: Tiny duplicators (not Lesser); appears 3-5 not 3-3. Still speeds up 3-star pivots."},
     "Artifact Anvil":      {"type": "items",     "note": "All players get Artifact Anvil at 3-3; flex carries"},
     "Stage Three Augments":{"type": "augments",  "note": "Augments shift to 3-1/3-2/3-3; delay comp pivot"},
-    "Reroll Start":        {"type": "rolls",     "note": "8 free rerolls at 2-1; hyper-roll comps benefit most"},
+    "Reroll Start":        {"type": "rolls",     "note": "17.3 NERF: 5 free rerolls at 2-1 (was 8). Hyper-roll comps less explosive than before."},
     "Cheaper Levels":      {"type": "leveling",  "note": "-2 XP per level; enables fast-9 comps"},
 }
 
