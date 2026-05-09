@@ -57,8 +57,7 @@ QUEUE_TO_MODE: dict[int, str] = {
     1900: "sr_draft",  # URF pick
 }
 
-# Events from rewind's timeline_events table worth materialising into
-# Phase 3 match_events. Per §9, match_events rows are coach-decision moments.
+# arch: phase 3 — rewind timeline_events → match_events migration (coach-decision moments per §9)
 TRACKED_EVENT_TYPES = (
     "CHAMPION_KILL",
     "ITEM_PURCHASED",

@@ -160,8 +160,8 @@ class TftLiveAnalysis:
             if self._ai_bar: self._ai_bar.notify_scan_scheduled(at_mono)
         except Exception: pass
     def force_scan(self):
-        # Phase 7 P2-C: on force scan during augment select, clear
-        # stale choices so the fresh vision read produces new advice
+        # arch: phase 7 P2-C — clear stale choices on augment-select force scan
+        # so the fresh vision read produces new advice
         try:
             import json as _j
             _f = self._data_file

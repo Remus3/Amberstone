@@ -194,7 +194,7 @@ class SelfMonitor:
         # status is established. Empty string means no binding (legacy/test mode).
         self._supervisor_run_id: str = supervisor_run_id
 
-        # Phase 0.13: bounded bootstrap window.
+        # arch: phase 0.13 — bounded bootstrap window.
         # _seen_current_supervisor_status: flips True the first time _check_health()
         #   reads a status.json whose supervisor_run_id matches self._supervisor_run_id.
         #   After that, missing/invalid/stale status is no longer tolerated.
@@ -233,7 +233,7 @@ class SelfMonitor:
         self._stop_event     = threading.Event()
         self._threads:       List[threading.Thread] = []
 
-        # Phase 0.3 fix 3: monotonic timestamp when worker was first seen dead.
+        # arch: phase 0.3 — monotonic timestamp when worker first seen dead (fix 3)
         # Used for client-mode grace-period detection in _check_health().
         self._worker_dead_since: Optional[float] = None
 
@@ -335,8 +335,8 @@ class SelfMonitor:
         self._maybe_write_summary(profile)
 
         # -- Health check -------------------------------------------------------
-        # Phase 0.9: _check_health() returns (state, detail) where state is
-        # "healthy", "tolerated", or "unhealthy".
+        # arch: phase 0.9 — _check_health() returns a (state, detail) tuple
+        # state is "healthy", "tolerated", or "unhealthy".
         #   healthy   - verified good, reset ladder
         #   tolerated - startup grace / pid mismatch within grace;
         #               do NOT escalate, do NOT reset ladder
@@ -543,8 +543,8 @@ class SelfMonitor:
 
     # ── Health check ──────────────────────────────────────────────────────────
     #
-    # Phase 0.9: _check_health() now returns a 3-value state string rather than
-    # a plain bool, so _tick() can distinguish:
+    # arch: phase 0.9 — _check_health() returns 3-value state string instead of plain bool
+    # so _tick() can distinguish:
     #   "healthy"  — verified healthy; resets ladder
     #   "tolerated" — startup grace / identity mismatch within grace; NO ladder reset
     #   "unhealthy" — genuine failure; escalate ladder
