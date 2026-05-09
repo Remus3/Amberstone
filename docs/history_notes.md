@@ -6,6 +6,32 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s136 wrap — 2026-05-08 (Phase 3.2 — JSDoc typedef codegen)
+
+## What shipped
+- **`tools/gen_state_schema.py`** (new): introspects `dashboard/api_schema.py` + `core/coaching_payload.py` pydantic models; emits `web/js/lib/state_schema.js`. `--check` mode exits 1 if out of sync.
+- **`web/js/lib/state_schema.js`** (new, generated): 12 `@typedef` blocks — `CoachPayload` union + 5 per-mode payloads (Aram/Arena/Brawl/Sr/Tft) + 6 HTTP shapes (StateResponse/HealthBlock/etc). `StateResponse.coach` overridden to `CoachPayload` type.
+- **`web/jsconfig.json`** (new): `checkJs: false`, `include: js/**/*.js` — VS Code resolves imports without TypeScript compilation.
+- **`.githooks/pre-commit`** (modified): schema sync check added after archmap check.
+- **`docs/ARCHITECTURE.md`** (auto-updated): archmap regenerated for new `gen_state_schema.py` entry.
+- Commit: **e65135c** pushed → origin/main.
+
+## Key decisions
+- Script introspects `model_fields[name].annotation` directly (pydantic v2 resolves string annotations from `from __future__ import annotations` at class creation time — always actual type objects).
+- `StateResponse.coach` is `dict[str,Any]` in Python but overridden to `CoachPayload` in `_OVERRIDES` — this is the whole point of the typedef file.
+- `export {}` at end of `state_schema.js` makes it an ES module (required for `@import` to work from other ESM files).
+
+## Do NOT redo
+- Don't re-run `gen_state_schema.py` manually if you just changed a pydantic model — the pre-commit hook will catch it and print the hint. Just run it once and commit.
+
+## What's next
+1. **Phase 3.3** — Playwright snapshot tests: 5 panels × 26 sim fixtures = 130 PNG snapshots, wire to CI.
+2. **Phase 2.3** — `coach_integration.py` (1217 LOC) split into `coach_integration/` package.
+3. **Phase 4 remaining** — dispatch-level POST validation in `_dispatch.py` (low priority).
+4. **Vision regions calibration** — blocked on live game.
+
+---
+
 # s135 wrap — 2026-05-08 (Phase 3.1 — CSS panel split)
 
 ## What shipped

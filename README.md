@@ -65,7 +65,8 @@ data/                     coaching artifacts (atomic-written, polled by dashboar
 web_dashboard.py          145L barrel → dashboard/ package
 dashboard/                _state_builder, _champ_select, _liveclient, _writers, _diagnostics,
                           _bridge_log, _dispatch, _handler, server, routes_*, _static
-moon_vision_server.py     :8889 in-process vision server (Sonnet screenshots + Tesseract OCR)
+moon_vision_server.py     21-LOC entrypoint shim — delegates to vision_server.main
+vision_server/            :8889 vision server pkg (frame cache + Sonnet vision + Tesseract OCR)
 tools/                    Game-PC agents, cross-Claude bridge tooling, boot scripts, cert regen
 scripts/                  data pipeline (patch-day refreshes)
 _archive/                 dated quarantine of removed code (e.g. ui/ package, modes overlays)
