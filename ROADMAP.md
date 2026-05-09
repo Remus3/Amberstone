@@ -32,8 +32,8 @@ Phased refactor plan (doc architecture → god module decomp → frontend ESM �
 | 3 — Frontend modules | ✅ Done (s137 — 3.1+3.2+3.3; 6-fixture Playwright snapshots, WS-stub isolation) |
 | 2.3 — coach_integration split | ✅ Done (s138 — 1225 LOC → _profiles/\_sr\_prompt/\_coach pkg, 386 tests) |
 | 6 — Bridge consolidation | 🔴 Blocked (frozen-file approval needed) |
-| 2.2 — game_reader split | 🟡 Not started |
-| 2.4 — vision server split | 🟡 Not started |
+| 2.2 — game_reader split | ✅ Done (ea7589e — s139, 1474 LOC → mixin pkg, 386 tests) |
+| 2.4 — vision server split | ✅ Done (9cf262a — s140, 710 LOC → shim + vision_server/ pkg, 386 tests) |
 
 ---
 
