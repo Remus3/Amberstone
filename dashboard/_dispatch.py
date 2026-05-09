@@ -32,6 +32,7 @@ from dashboard.api_schema import (
     DsPreviewRequest,
     InputRequest,
     SpeakRequest,
+    TeamContextRefreshRequest,
 )
 
 log = logging.getLogger("rc.dispatch")
@@ -63,6 +64,7 @@ def _gather_get() -> list:
                                routes_health_peer,
                                routes_loadout, routes_metrics,
                                routes_sr_draft, routes_sr_user_builds,
+                               routes_team_context,
                                routes_dev)
         _GET_CACHE = (list(routes_static.GET_ROUTES)
                       + list(routes_state.GET_ROUTES)
@@ -77,6 +79,7 @@ def _gather_get() -> list:
                       + list(routes_metrics.GET_ROUTES)
                       + list(routes_sr_draft.GET_ROUTES)
                       + list(routes_sr_user_builds.GET_ROUTES)
+                      + list(routes_team_context.GET_ROUTES)
                       + list(routes_dev.GET_ROUTES))
     return _GET_CACHE
 
@@ -90,7 +93,8 @@ def _gather_post() -> list:
                                routes_bridge_pending_actions,
                                routes_health_peer,
                                routes_loadout, routes_metrics,
-                               routes_sr_draft, routes_sr_user_builds)
+                               routes_sr_draft, routes_sr_user_builds,
+                               routes_team_context)
         _POST_CACHE = (list(routes_static.POST_ROUTES)
                        + list(routes_state.POST_ROUTES)
                        + list(routes_history.POST_ROUTES)
@@ -104,7 +108,8 @@ def _gather_post() -> list:
                        + list(routes_loadout.POST_ROUTES)
                        + list(routes_metrics.POST_ROUTES)
                        + list(routes_sr_draft.POST_ROUTES)
-                       + list(routes_sr_user_builds.POST_ROUTES))
+                       + list(routes_sr_user_builds.POST_ROUTES)
+                       + list(routes_team_context.POST_ROUTES))
     return _POST_CACHE
 
 
@@ -128,11 +133,12 @@ def dispatch_get(handler) -> bool:
 # equals()-style routes — strip query string before lookup so
 # `/api/input?foo=1` still validates.
 _REQUEST_MODELS = {
-    "/api/input":         InputRequest,
-    "/api/command":       CommandRequest,
-    "/api/ds-preview":    DsPreviewRequest,
-    "/api/bridge/inbox":  BridgeInboxRequest,
-    "/api/speak":         SpeakRequest,
+    "/api/input":                   InputRequest,
+    "/api/command":                 CommandRequest,
+    "/api/ds-preview":              DsPreviewRequest,
+    "/api/bridge/inbox":            BridgeInboxRequest,
+    "/api/speak":                   SpeakRequest,
+    "/api/team-context/refresh":    TeamContextRefreshRequest,
 }
 
 

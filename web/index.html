@@ -418,6 +418,29 @@
           <div class="cs-team-row" id="cs-enemies"></div>
         </div>
       </div>
+      <!-- Team Context block (FU02 panel stub). Populates from the
+           coach.team_context payload spliced by _state_builder. Until
+           core/riot_api.py ships the actual fan-out, every row renders
+           skeleton fields (rank/mastery/mains/winrate dashed). The
+           shape and IDs are stable across that transition — the same
+           rows fill in field-by-field as priority-1 then priority-2
+           Riot-API responses land. -->
+      <div class="cs-team-context-block" id="cs-team-context-block" hidden>
+        <div class="tc-head">
+          <span class="tc-label">TEAM CONTEXT</span>
+          <span class="tc-status" id="tc-status">waiting for enrichment…</span>
+        </div>
+        <div class="tc-teams">
+          <div class="tc-team-block">
+            <div class="tc-team-label">Allies</div>
+            <div class="tc-team-row" id="tc-allies"></div>
+          </div>
+          <div class="tc-team-block">
+            <div class="tc-team-label">Enemies</div>
+            <div class="tc-team-row" id="tc-enemies"></div>
+          </div>
+        </div>
+      </div>
       <!-- ARAM team-comp analyzer (Phase 3, 2026-04-26). Hidden when no
            analysis available. Displays AI recommendation: stay, swap to
            a specific bench champ (highlighted in the bench grid below),
