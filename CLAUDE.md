@@ -134,8 +134,9 @@ When invoked with `/done` or asked to wrap a session: (1) audit pending changes,
 2. ✅ Phase 2.1 — champion_profiles.py split complete (8fa11f4): 902→29 LOC + 168 JSONs.
 3. ✅ Phase 5 — CI gate + smoke harness complete (d21f533, s128): 380 tests pass, ruff 0 violations.
 4. 🟠 Phase 4 — Contracts/schemas in progress (s129): `core/coaching_payload.py` (5 pydantic models, soft-validate in state-builder) + `dashboard/api_schema.py` (HTTP shapes) + `core/bridge_envelope.py` + `docs/API.md` (40 routes). 4.2 tool-rewrite deferred (frozen-file approval needed). JS typedef codegen deferred to Phase 3.
-   ➡️ Next: Phase 4 remaining — dispatch-level validation OR move to Phase 3 (frontend ESM).
+   ➡️ Next: Phase 4 remaining — dispatch-level validation (low priority).
 5. ✅ TFT 17.3 — shipped 0e9617b (s131): Morgana 4g, Anima/Stargazer reworks, Primordian AVOID, AP comps buffed.
+5b. 🟠 Phase 3 — Frontend ESM in progress (s132, 7bbf032): lib/ extraction done (helpers/state/items_index/idempotent_render + main.js). Next: extract panels into `web/js/panels/*.js`.
 6. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes. Blocked on live game.
 6. 🟡 DS calibration pipeline — blocked on rewind_history.db staleness (last entry Dec 2025).
 7. 🟡 gamepc_boot.ps1 hardening — add `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC`.
