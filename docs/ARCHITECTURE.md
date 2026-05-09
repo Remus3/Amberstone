@@ -57,7 +57,14 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 | `game_reader/mode_router.py` | queue/map → mode-key routing + TFT early-exit |
 | `game_reader/poller.py` | Live Client + LCU + relay IO for game state polling |
 | `game_reader/snapshot_normalizer.py` | raw liveclient JSON → coaching state dict + derived fields |
-| `moon_vision_server.py` | :8889 HTTP server — frame cache + Sonnet vision (god module) |
+| `moon_vision_server.py` | vision server entrypoint shim — delegates to vision_server.main |
+| `vision_server/__init__.py` | vision_server package facade + entrypoint |
+| `vision_server/_config.py` | vision server config + Anthropic client |
+| `vision_server/_frame.py` | latest-frame cache + upload handler |
+| `vision_server/_http.py` | BaseHTTPRequestHandler routing for :8889 |
+| `vision_server/_inference.py` | Anthropic vision/coach + Tesseract OCR handlers |
+| `vision_server/_relay.py` | LCU + Live Client relays |
+| `vision_server/_stats.py` | vision server stats + log ring |
 
 ### Coaching
 | File | Role |
@@ -133,10 +140,10 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 | File | LOC | Plan |
 |---|---|---|
 | `web/js/dashboard.js` | 8507 | Phase 3 — ESM split |
-| `game_reader.py` | 1473 | Phase 2.2 — split to `core/game_reader/` |
-| `coach_integration.py` | 1217 | Phase 2.3 — split to `coach_integration/` |
+| ~~`game_reader.py`~~ | ~~1473~~ | ✅ Phase 2.2 done — root pkg via mixins (poller + normalizer + mode_router) |
+| ~~`coach_integration.py`~~ | ~~1217~~ | ✅ Phase 2.3 done — `_profiles` + `_sr_prompt` + `_coach` |
 | ~~`champion_profiles.py`~~ | ~~902~~ | ✅ Phase 2.1 done — 29 LOC thin loader + `data/champion_profiles/*.json` |
-| `moon_vision_server.py` | 701 | Phase 2.4 — split to `vision/` |
+| ~~`moon_vision_server.py`~~ | ~~710~~ | ✅ Phase 2.4 done — shim + `vision_server/` (6 internal modules) |
 
 Full decomposition plan: `C:\Users\Administrator\Desktop\RC_FUTUREPROOFING_PLAN.md`.
 
