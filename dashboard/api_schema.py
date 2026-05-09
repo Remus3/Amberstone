@@ -130,6 +130,28 @@ class SpeakRequest(_AllowExtra):
     voice: str = ""
 
 
+# ── POST /api/team-context/refresh ────────────────────────────────────────
+
+class TeamContextRosterSlot(_AllowExtra):
+    """One row of the 10-player champ-select roster posted by the
+    Game-PC LCU agent on `ChampSelect` transition."""
+    puuid: str = ""
+    summoner_name: str = ""
+    team_id: int = 0               # 100 = ally side, 200 = enemy side
+    locked_champion: str = ""
+
+
+class TeamContextRefreshRequest(_AllowExtra):
+    """Body for POST /api/team-context/refresh.
+
+    The roster is the LCU agent's transcription of myTeam + theirTeam
+    at champ-select. queue_id drives the ranked-name-blanking gate
+    once FU02's enrichment fan-out lands.
+    """
+    queue_id: int = 0
+    roster: list[TeamContextRosterSlot] = []
+
+
 # ── Common ───────────────────────────────────────────────────────────────
 
 class OkResponse(_ForbidExtra):

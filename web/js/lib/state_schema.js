@@ -118,6 +118,7 @@
  * @property {Object} ally_spells
  * @property {Array} ally_comp
  * @property {Array} enemy_comp
+ * @property {TeamContext|null} team_context
  */
 
 /**

@@ -62,6 +62,7 @@ jobs:
       - name: smoke + regression tests
         run: |
           pytest tests/phase2_smoke tests/snapshot_regressions tests/phase8_smoke \
+            tests/fu02_team_context \
             -q --tb=line --timeout=60
 
       - name: panel snapshot tests
