@@ -98,6 +98,7 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 ### Tools / ops
 | File | Role |
 |---|---|
+| `tools/gen_state_schema.py` | generates web/js/lib/state_schema.js JSDoc typedefs from pydantic models |
 | `tools/rc_facts.py` | live RC health + topology probe |
 
 <!-- archmap:end -->
