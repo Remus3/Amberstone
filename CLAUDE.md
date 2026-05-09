@@ -2,7 +2,7 @@
 
 Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude Haiku for coaching and Sonnet for vision, writes JSON to `data/`, serves `:8888` HTTPS dashboard on Game-PC's secondary display. RC is tkinter-free; Daemon Slayer (`:8893`) computes real DPS math per champion.
 
-> **Living docs (read at session start):** `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `docs/BRIDGE.md` · `ROADMAP.md`
+> **Living docs (read at session start):** `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `docs/BRIDGE.md` · `ROADMAP.md` · `docs/API.md`
 > **Deep references:** `docs/DAEMON_SLAYER.md` (DS engine · 547 items · ENGINE_VERSION 0.60.0) · `docs/AGENTS.md` (Phase 3 framework) · `BACKLOG.md` (aspirational)
 > **Architectural decisions:** `docs/adr/` — before re-litigating a past choice, check here first.
 > **Dated artifacts** in `docs/_archive/` (excluded from ripgrep searches).
@@ -133,8 +133,9 @@ When invoked with `/done` or asked to wrap a session: (1) audit pending changes,
 1. ✅ Phase 1 — Knowledge architecture complete (fc1361b, s125+s126): living docs + archmap + 5 ADRs.
 2. ✅ Phase 2.1 — champion_profiles.py split complete (8fa11f4): 902→29 LOC + 168 JSONs.
 3. ✅ Phase 5 — CI gate + smoke harness complete (d21f533, s128): 380 tests pass, ruff 0 violations.
-   ➡️ Next: Phase 4 — Contracts/schemas (pydantic api_schema.py + coaching payload).
-4. 🟡 TFT 17.3 — due ~2026-05-12. Same process as 17.2. (higher time priority)
+4. 🟠 Phase 4 — Contracts/schemas in progress (s129): `core/coaching_payload.py` (5 pydantic models, soft-validate in state-builder) + `dashboard/api_schema.py` (HTTP shapes) + `core/bridge_envelope.py` + `docs/API.md` (40 routes). 4.2 tool-rewrite deferred (frozen-file approval needed). JS typedef codegen deferred to Phase 3.
+   ➡️ Next: Phase 4 remaining — dispatch-level validation OR move to Phase 3 (frontend ESM). TFT 17.3 first.
+5. 🟡 TFT 17.3 — due ~2026-05-12. Same process as 17.2. (higher time priority)
 5. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes. Blocked on live game.
 6. 🟡 DS calibration pipeline — blocked on rewind_history.db staleness (last entry Dec 2025).
 7. 🟡 gamepc_boot.ps1 hardening — add `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC`.
