@@ -43,6 +43,43 @@ def _get_db(sd):
             from core.match_db import MatchDB; _match_db = MatchDB(Path(sd) / "data" / "match_history.db")
         except Exception as e: _log.warning("MatchDB init failed: %s", e)
     return _match_db
+
+
+# Maps the rating category back to the coaching-state JSON each coach
+# writes per tick. Used by save_rating to attach the engine's last DS
+# pick set to matches.raw_data so the historical row carries the
+# recommendation alongside the actual outcome — calibration analysis no
+# longer needs to JOIN against ds_calibration.jsonl on (champion, mode,
+# approximate timestamp).
+_DS_COACH_FILE_BY_CATEGORY = {
+    "SR":    "coaching_data.json",
+    "ARAM":  "aram_coaching_data.json",
+    "ARENA": "arena_coaching_data.json",
+    "BRAWL": "brawl_coaching_data.json",
+}
+
+
+def _ds_picks_snapshot(sd, category):
+    """Return the most recent DS pick list the coach wrote for this mode.
+
+    Soft-fails to [] — DS persistence is observability, never gates the
+    match save. Caller passes the result into raw_data so the persisted
+    row carries the engine's recommendation at game-end."""
+    fname = _DS_COACH_FILE_BY_CATEGORY.get((category or "").upper())
+    if not fname:
+        return []
+    p = Path(sd) / "data" / fname
+    if not p.exists():
+        return []
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+    except Exception as exc:
+        _log.debug("ds picks snapshot read failed (%s): %s", fname, exc)
+        return []
+    if not isinstance(d, dict):
+        return []
+    picks = d.get("daemon_slayer_picks")
+    return picks if isinstance(picks, list) else []
 def mode_category(gm):
     gm = (gm or "").upper().strip()
     if gm in _EXCLUDED_MODES: return ""
@@ -299,7 +336,18 @@ def save_rating(script_dir,champion,game_state,ally_kills_total):
         _log.warning("Rating save failed (%s): %s", category, _e)  # QUAL-002
     db=_get_db(script_dir)
     if db:
-        try:db.save_match({"mode":category,"champion":champion,"grade":grade,"game_time_s":game_secs,"kills":stats["kills"],"deaths":stats["deaths"],"assists":stats["assists"],"cs":game_state.get("cs",0),"cs_per_min":stats["cs_per_min"],"gold":game_state.get("gold",0),"gold_per_min":gpm,"kda_str":kda_str,"kp_pct":kp,"arena_rounds_won":game_state.get("arena_rounds_won",0),"arena_placement":game_state.get("arena_rank",0),"notes":notes,"label":GRADE_LABEL.get(grade,""),"raw_data":json.dumps({"coach_action":game_state.get("coach_action",""),"coach_analysis":game_state.get("coach_analysis",""),"game_mode":raw_mode},default=str)})
+        # 2026-05-09: snapshot the engine's last DS pick set into raw_data
+        # so the persisted row carries the engine recommendation alongside
+        # the actual outcome. Cuts the calibration analysis from a JSONL
+        # join (ds_calibration.jsonl ⨝ matches on champion/mode/~ts) down
+        # to a single SELECT.
+        _ds_picks = _ds_picks_snapshot(script_dir, category)
+        _raw = {"coach_action":game_state.get("coach_action",""),
+                "coach_analysis":game_state.get("coach_analysis",""),
+                "game_mode":raw_mode}
+        if _ds_picks:
+            _raw["daemon_slayer_picks"] = _ds_picks
+        try:db.save_match({"mode":category,"champion":champion,"grade":grade,"game_time_s":game_secs,"kills":stats["kills"],"deaths":stats["deaths"],"assists":stats["assists"],"cs":game_state.get("cs",0),"cs_per_min":stats["cs_per_min"],"gold":game_state.get("gold",0),"gold_per_min":gpm,"kda_str":kda_str,"kp_pct":kp,"arena_rounds_won":game_state.get("arena_rounds_won",0),"arena_placement":game_state.get("arena_rank",0),"notes":notes,"label":GRADE_LABEL.get(grade,""),"raw_data":json.dumps(_raw,default=str)})
         except Exception as e:_log.warning("Match DB save failed: %s",e)
     # 2026-04-25: adaptation feedback loop. Translate the user's grade
     # (S/A/B/C/D/F) into a confidence multiplier on the cache entry for
