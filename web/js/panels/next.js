@@ -122,7 +122,24 @@ function renderNext(p) {
     NX.next.textContent = _head || "—";
     // Objective row → item rationale (item_extra) — long-form per-item
     // build context. Truncated by CSS line-clamp.
-    NX.objective.textContent = safe(p.item_extra) || safe(p.objective) || "—";
+    // (2026-05-09) DS top pick fallback: when the coach hasn't emitted
+    // item_extra/objective yet, surface the engine's top recommendation
+    // as a one-liner so the row carries useful build content from tick 1
+    // instead of a "—". Coach text wins when present; DS only fills the
+    // gap because the engine fires on every coaching cycle.
+    const _objCoach = safe(p.item_extra) || safe(p.objective);
+    if (_objCoach) {
+      NX.objective.textContent = _objCoach;
+    } else {
+      const _dsTop = Array.isArray(p.daemon_slayer_picks) && p.daemon_slayer_picks[0];
+      if (_dsTop && _dsTop.name) {
+        const _d = `+${Math.round(_dsTop.delta_dps)}dps`;
+        NX.objective.textContent = `DS: ${_dsTop.name} ${_d}`
+          + (_dsTop.gold ? ` (${_dsTop.gold}g)` : "");
+      } else {
+        NX.objective.textContent = "—";
+      }
+    }
     // Positioning row → HP pack status (TOP / BOT availability). Coach
     // emits hp_packs as [top:bool, bot:bool].
     const hpPacks = Array.isArray(p.hp_packs) ? p.hp_packs : null;
