@@ -6,6 +6,34 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s145 wrap — 2026-05-09 (ticket review + Riot API key policy reversal)
+
+## What shipped
+- **Reviewed 12 RC_TICKET_*.md from `Desktop/Tickets/`** (a "transfer plan" pack adapted from another project). All rejected for premise mismatches against RC's architecture (no flat-string coach state, no WebSocket LCU, no YOLO, no numpy, no async runtime, hardcoded minimap bbox, etc.). Per-ticket rationale lives in the session transcript.
+- **Two real concerns surfaced** during review and were addressed via follow-up tickets:
+  1. Hardcoded minimap bbox in `agents/supervisor.py:597` is brittle to HUD-scale changes / left-side toggle / non-1080p. → FU01.
+  2. Full-team context enrichment (loss streak, mains, rank, mastery on locked champ) requires Riot Web API — LCU/scrapers can't reach it. → ADR-006 + FU02–FU04.
+- **ADR-006 — Riot API key policy reversal** (`docs/adr/ADR-006-riot-api-key-policy.md`): Personal-tier key permitted for champ-select + post-game enrichment only. Single-user shape. Live in-game advisory remains LCU/LiveClient-only per Riot ToS. Memory `reference_no_riot_api_key.md` rewritten as superseded; MEMORY.md index updated.
+- **4 follow-up tickets drafted** to `C:/Users/Administrator/Desktop/Tickets/`:
+  - **FU01** minimap-locate — 3-path resolver (override → PersistedSettings → hardcoded fallback).
+  - **FU02** `core/riot_api.py` + champ-select team-context — rate limiter + SQLite cache + progressive reveal + ranked-queue name obfuscation gate.
+  - **FU03** `scripts/stage_riot_key.py` — clipboard helper for daily dev-key staging during the Personal-tier approval wait. Throwaway after approval.
+  - **FU04** Riot Personal-tier API key application — research-grounded form-field walkthrough + ready-to-paste description + screenshot checklist + post-submit playbook.
+- **Retired** `RC_FUTUREPROOFING_PLAN.md` from Desktop → `docs/_archive/RC_FUTUREPROOFING_PLAN_retired_2026-05-09.md` (with `.rgignore` restored). All 7 phases ✅.
+
+## Key decisions
+- **Personal tier, not Production.** Personal = non-expiring, no domain verification, same 20/s + 100/2min throughput as Dev. Production requires verified domain + ToS + Privacy Policy + hosted site — overkill for single-user.
+- **Channel is a web form, not email.** developer.riotgames.com → Register Product → Personal. Reviews via portal Project Discussion tab. Realistic approval window: 2–6 weeks.
+- **Web API key MUST NOT power live in-game advisory** per Riot policy. RC's live coaching loop runs on LCU + LiveClient + local vision and is unaffected by this ADR.
+- **Cold all-10-player champ-select fan-out is ~80–150 calls** vs the 100/2min ceiling. Cache-immutable (Match-V5, Account-V1) + TTL (League-V4, Mastery) + progressive reveal over 90s window + priority queue (locked-champ mastery + rank fire first; mains + streak as bandwidth allows).
+
+## What's next
+- **Recommended:** FU02 panel stub (route + ESM panel + CSS scaffolding + `TeamContext` payload schema) → captures honest screenshots → submit FU04 application. The 2–6 week Riot clock dominates downstream timeline.
+- **Alternate:** FU01 minimap-locate (S, fully independent, removes a silent-failure mode you've already hit).
+- FU03 only useful during the dev-key bridge period — not yet needed.
+
+---
+
 # s144 wrap — 2026-05-09 (Phase 6 — bridge CLI consolidation)
 
 ## What shipped
