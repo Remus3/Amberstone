@@ -182,18 +182,11 @@ function _devViewWireOnce() {
 }
 
 function _devViewFetch() {
-  // Parallel: fixtures + vision status + log tail
+  // Fixtures only — log tail + vision status removed s162 per operator
+  // request (they were blocking the actual fixture list).
   fetch("/api/sim/_manifest").then(r => r.ok ? r.json() : null).then(d => {
     _devRenderFixtures(d);
   }).catch(() => _devRenderFixtures(null));
-
-  fetch("/api/dev/vision-status").then(r => r.ok ? r.json() : null).then(d => {
-    _devRenderVision(d);
-  }).catch(() => _devRenderVision(null));
-
-  fetch("/api/logs?n=60").then(r => r.ok ? r.json() : null).then(d => {
-    _devRenderLog(d);
-  }).catch(() => _devRenderLog(null));
 }
 
 function _devRenderFixtures(manifest) {
@@ -203,7 +196,7 @@ function _devRenderFixtures(manifest) {
   const fixtures = (manifest && manifest.fixtures) || [];
   if (sub) sub.textContent = fixtures.length ? `${fixtures.length} fixtures` : "";
   if (!fixtures.length) {
-    body.innerHTML = '<div class="home-empty">no fixtures (is agents/supervisor running on :8890?)</div>';
+    body.innerHTML = '<div class="home-empty">No fixtures yet — Phase 3 game-flow fixtures (lobby_solo → last_match) will land here as they\'re built. Existing fixtures are archived under <code>data/sim/_archive/</code>.</div>';
     return;
   }
   const inSim = /[?&]sim=/.test(location.search);
@@ -212,6 +205,13 @@ function _devRenderFixtures(manifest) {
   for (const f of fixtures) {
     const url = new URL(location.href);
     url.searchParams.set("sim", f.name);
+    // s162: clear the URL hash so the view-router auto-derives based on
+    // the fixture's lcu.phase (Lobby → lobby, ChampSelect → lobby/cs,
+    // InProgress → active-match). Without this the Preview link inherits
+    // the operator's current hash (e.g. "#dev") which pins them on the
+    // dev view and shows just an auto-promote banner instead of the
+    // fixture's natural surface.
+    url.hash = "";
     const active = inSim && new URLSearchParams(location.search).get("sim") === f.name;
     html += `<tr class="${active ? "dev-fixture-active" : ""}">`;
     html += `<td><span class="mode-tag mode-tag-${f.mode || "??"}">${(f.mode || "?").toUpperCase()}</span></td>`;

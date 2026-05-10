@@ -1179,16 +1179,20 @@ function _fetchDsPreview(champion, dsMode) {
     .catch(() => { _CS_DS.inflight = false; });
 }
 function handleChampSelect(lcu) {
-  // Render the interactive overlay first (drives visibility on every poll).
+  // s162: cache the LCU snapshot on state.latest so view-lobby's
+  // _lobbyViewRefresh (which reads state.latest.lcu) sees the same data
+  // as the overlay. Pre-fix the lobby sub-page rendered empty in
+  // production because no upstream path ever assigned state.latest.lcu.
+  state.latest.lcu = lcu || null;
+  // Render the interactive overlay (champ-select-specific surface).
   renderChampSelectPanel(lcu);
-  renderLobbyPanel(lcu);
-  renderHomePanel(lcu);
-  // View router: re-resolve view based on current lcu.phase + state.mode.
-  // Fires the auto-promote banner if manual blocks an urgent target.
-  _viewResolveAndApply(lcu);
-  // If view-lobby is active, refresh its content from the new envelope
-  // so members / queue / Find Match state update without a manual nav.
-  _maybeRefreshLobbyView();
+  // s162 bug fix (2026-05-10): renderLobbyPanel / renderHomePanel /
+  // _viewResolveAndApply / _maybeRefreshLobbyView USED to be called
+  // here, but they're defined in main.js's module scope and were never
+  // imported into champ_select.js — every call threw ReferenceError
+  // silently caught by the SSE try/catch, so post-refresh the lobby
+  // view never re-rendered with newly-arrived lcu data. Orchestration
+  // now lives in main.js's handleLcuEnvelope wrapper.
   if (!lcu || lcu.phase !== "ChampSelect") return;
   const cs = lcu.champ_select || {};
   if (!cs.my_champion || cs.my_champion <= 0) return;

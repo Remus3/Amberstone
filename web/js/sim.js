@@ -158,6 +158,13 @@
       const queue = [];
       if (FIXTURE.health) queue.push(FIXTURE.health);
       if (FIXTURE.state)  queue.push(FIXTURE.state);
+      // s162: if the fixture defines an lcu envelope, replay it so the
+      // lobby view + champ-select overlay light up with synthesized
+      // phase/lobby/champ_select data. Live operation pushes lcu via
+      // /api/state.lcu through the SSE handler; the fixture path uses
+      // a dedicated WS envelope so lobby/champ-select fixtures work
+      // without depending on the SSE intercept.
+      if (FIXTURE.lcu)    queue.push(FIXTURE.lcu);
       queue.push({ type: "heartbeat", t: Date.now() / 1000 });
       for (const env of queue) {
         if (this.onmessage) {
@@ -187,31 +194,45 @@
   FakeSocket.CLOSING    = 2; FakeSocket.CLOSED = 3;
   window.WebSocket = FakeSocket;
 
+  // ---- EventSource stub (s162) -------------------------------------
+  // The dashboard subscribes to /api/state-stream via EventSource for
+  // SSE state pushes. In sim mode that real stream would race the
+  // FakeSocket and overwrite fixture data with whatever the live LCU
+  // agent is currently forwarding (typically empty or stale during dev
+  // testing). Replace EventSource with an inert stub so the fixture
+  // path is the only source of truth while ?sim=… is active.
+  if (typeof EventSource !== "undefined") {
+    class FakeEventSource {
+      constructor(_url) {
+        this.url = _url;
+        this.readyState = 1;     // OPEN — pretend we're live
+        this.onopen = null;
+        this.onmessage = null;
+        this.onerror = null;
+        this.withCredentials = false;
+      }
+      addEventListener() {}
+      removeEventListener() {}
+      close() { this.readyState = 2; }
+    }
+    FakeEventSource.CONNECTING = 0;
+    FakeEventSource.OPEN = 1;
+    FakeEventSource.CLOSED = 2;
+    window.EventSource = FakeEventSource;
+  }
+
   // ---- Banner + dropdown wiring -------------------------------------
   async function _loadManifestAndBanner() {
     const banner = document.getElementById("sim-banner");
     const label = document.getElementById("sim-label");
     const select = document.getElementById("sim-select");
     if (!banner || !select) return;
-    // ?banner=0 keeps the banner hidden for clean screenshot captures.
+    // ?banner=0 keeps the corner pill hidden for clean screenshot
+    // captures. (s162: the banner is now a top-right corner pill that
+    // doesn't push layout, but ?banner=0 still hides it entirely for
+    // pixel-perfect "what does live look like" snapshots.)
     if (/[?&]banner=0/.test(location.search)) return;
     banner.classList.remove("hidden");
-    // Footer toggle (2026-04-25) — only shown in sim mode. Persists the
-    // user's banner-collapse choice in localStorage so refreshes don't
-    // re-pop the banner if they wanted it hidden for a clean snapshot.
-    const toggle = document.getElementById("dev-banner-toggle");
-    if (toggle) {
-      toggle.classList.remove("hidden");
-      const saved = localStorage.getItem("rc-dev-banner");
-      const initial = saved === "off" ? "off" : "on";
-      document.body.dataset.devBanner = initial;
-      toggle.addEventListener("click", () => {
-        const cur = document.body.dataset.devBanner === "off" ? "off" : "on";
-        const next = cur === "off" ? "on" : "off";
-        document.body.dataset.devBanner = next;
-        try { localStorage.setItem("rc-dev-banner", next); } catch (_) {}
-      });
-    }
     // Fetch manifest → populate dropdown.
     let manifest = null;
     try {
