@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=1920, initial-scale=1, user-scalable=no" />
   <title>Riot Commander — Phase 3</title>
-  <link rel="stylesheet" href="/css/dashboard.css?v=2026051000" />
+  <link rel="stylesheet" href="/css/dashboard.css?v=2026051001" />
 </head>
 <body>
   <div id="sim-banner" class="sim-banner hidden">
@@ -1339,7 +1339,10 @@
          sits in the footer regardless. Lets the user collapse/restore
          the top banner so a snapshot shows pure live-UI chrome
          (2026-04-25 user request). State persisted via localStorage. -->
-    <button id="dev-banner-toggle" class="footer-btn dev-banner-toggle hidden" type="button" title="Toggle DEV PREVIEW banner">DEV ⌃</button>
+    <!-- s161: dev-banner-toggle hidden permanently per user request.
+         Element preserved (not deleted) so the JS hooks that toggle
+         the DEV PREVIEW banner via this button keep their target. -->
+    <button id="dev-banner-toggle" class="footer-btn dev-banner-toggle hidden" type="button" title="Toggle DEV PREVIEW banner" style="display:none !important">DEV ⌃</button>
     <!-- Voice TTS toggle — when on, every change to the Right Now action
          text gets spoken via the browser's Web Speech API on whatever
          device is viewing the dashboard. State lives in localStorage
