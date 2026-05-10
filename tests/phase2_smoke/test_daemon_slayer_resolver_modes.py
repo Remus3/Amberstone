@@ -135,5 +135,59 @@ class HpFlowThroughModeAwarePathTests(unittest.TestCase):
         self.assertAlmostEqual(ds_res.total_bonus_hp(ids), 1400.0, places=1)
 
 
+class ResolveInventoryFiltersTrinketsAndConsumablesTests(unittest.TestCase):
+    """s156 regression — DS engine /rank refuses calls when
+    current_item_ids fills slot_count. Live-Client serializes trinkets +
+    consumables alongside shop items, so the resolver was returning a
+    ``len(items) == 6`` list once the user bought 5 components +
+    Farsight. resolve_inventory drops those non-shop items so the SR
+    coach passes a 5-item list with 1 slot free for DS to recommend."""
+
+    def test_drops_farsight_alteration(self) -> None:
+        # Replicates the Kai'Sa-mid-game payload that surfaced the bug.
+        items = ["Doran's Bow", "Infinity Edge", "Amplifying Tome",
+                 "Kraken Slayer", "Recurve Bow", "Farsight Alteration"]
+        ids = ds_res.resolve_inventory(items, mode="sr")
+        # Farsight (3363) dropped → 5 inventory items remain.
+        self.assertNotIn("3363", ids)
+        self.assertEqual(len(ids), 5)
+
+    def test_drops_stealth_ward_default_trinket(self) -> None:
+        ids = ds_res.resolve_inventory(["Stealth Ward", "Infinity Edge"], mode="sr")
+        self.assertNotIn("3340", ids)
+        self.assertEqual(ids, ["3031"])
+
+    def test_drops_oracle_lens(self) -> None:
+        ids = ds_res.resolve_inventory(["Oracle Lens", "Infinity Edge"], mode="sr")
+        self.assertNotIn("3364", ids)
+        self.assertEqual(ids, ["3031"])
+
+    def test_drops_consumables(self) -> None:
+        items = ["Health Potion", "Refillable Potion", "Control Ward",
+                 "Infinity Edge"]
+        ids = ds_res.resolve_inventory(items, mode="sr")
+        # Only IE survives.
+        self.assertEqual(ids, ["3031"])
+
+    def test_drops_elixirs(self) -> None:
+        items = ["Elixir of Iron", "Elixir of Sorcery", "Elixir of Wrath",
+                 "Infinity Edge"]
+        ids = ds_res.resolve_inventory(items, mode="sr")
+        self.assertEqual(ids, ["3031"])
+
+    def test_resolve_many_unaffected(self) -> None:
+        # Sanity — resolve_many keeps trinkets so calibration / mirror
+        # callers see the full live-client item set.
+        items = ["Farsight Alteration", "Infinity Edge"]
+        self.assertEqual(ds_res.resolve_many(items, mode="sr"),
+                         ["3363", "3031"])
+
+    def test_resolve_inventory_preserves_order(self) -> None:
+        items = ["Health Potion", "Infinity Edge", "Stealth Ward",
+                 "Kraken Slayer"]
+        ids = ds_res.resolve_inventory(items, mode="sr")
+        self.assertEqual(ids, ["3031", "6672"])
+
+
 if __name__ == "__main__":
     unittest.main()
