@@ -191,6 +191,8 @@ GET_ROUTES = [
     (prefix("/icons/spells/"),         _make_icon_handler("spells")),
     (prefix("/icons/runes/"),          _make_icon_handler("runes")),
     (prefix("/icons/items/"),          _serve_icon_items_route),
+    (prefix("/icons/positions/"),      _serve_web_asset),
+    (prefix("/icons/lobby/"),          _serve_web_asset),
     (prefix("/agent/"),                _serve_agent_file),
 ]
 
