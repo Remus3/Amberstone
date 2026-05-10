@@ -214,6 +214,24 @@ def capture_state():
                 "playerResponse": rc.get("playerResponse"),
                 "timer":          rc.get("timer"),
             }
+        # 2026-05-09 (FU02 follow-up): capture the lobby queueId so the
+        # dashboard can pre-flip mode_key (Arena / ARAM / SR / TFT) before
+        # the LiveClient mode flag goes live. Without this, sitting in an
+        # Arena party lobby leaves the dashboard on the generic client view.
+        lob, _ = lcu_request("GET", "/lol-lobby/v2/lobby")
+        if isinstance(lob, dict):
+            gconf = lob.get("gameConfig") or {}
+            qid = gconf.get("queueId")
+            try:
+                qid_int = int(qid) if qid is not None else 0
+            except (TypeError, ValueError):
+                qid_int = 0
+            state["lobby"] = {
+                "queue_id":  qid_int,
+                "is_custom": bool(gconf.get("isCustom")),
+                "game_mode": gconf.get("gameMode") or "",
+                "map_id":    gconf.get("mapId") or 0,
+            }
 
     if state["phase"] in ("ChampSelect", "GameStart", "InProgress"):
         sess, _ = lcu_request("GET", "/lol-champ-select/v1/session")
