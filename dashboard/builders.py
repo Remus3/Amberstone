@@ -37,11 +37,16 @@ def _build_home_summary() -> dict:
         out["error"] = "match_history.db missing"
         return out
     try:
-        # Recent 5 games (any mode)
+        # Recent 5 games. TFT is excluded — those rows store the comp
+        # name (e.g. "Dark Star Vertical") in the champion column, which
+        # renders as a fake "champion" on the home view. Hidden at the
+        # read layer; the rows still exist in match_history.db for any
+        # downstream consumer that wants TFT-aware aggregation.
         cur = conn.execute(
             "SELECT timestamp, mode, champion, grade, kda_str, "
             "       game_time_s, kills, deaths, assists, label "
-            "FROM matches ORDER BY timestamp DESC LIMIT 5"
+            "FROM matches WHERE mode != 'TFT' "
+            "ORDER BY timestamp DESC LIMIT 5"
         )
         for ts, mode, champ, grade, kda, dur, k, d, a, label in cur:
             out["recent"].append({
@@ -50,10 +55,14 @@ def _build_home_summary() -> dict:
                 "duration_s": int(dur or 0), "label": label or "",
             })
         # Today's session — group all rows whose timestamp date == today.
+        # TFT excluded for the same reason as Recent 5: keeps the "N
+        # games today" header consistent with the row list below it.
         today = datetime.now().strftime("%Y-%m-%d")
         rows = conn.execute(
             "SELECT mode, champion, grade, kills, deaths, assists "
-            "FROM matches WHERE timestamp LIKE ? || '%'", (today,)
+            "FROM matches WHERE timestamp LIKE ? || '%' "
+            "  AND mode != 'TFT'",
+            (today,)
         ).fetchall()
         grades: dict[str, int] = {}
         modes:  dict[str, int] = {}
@@ -69,11 +78,14 @@ def _build_home_summary() -> dict:
             "total_kda": f"{tk}/{td}/{ta}",
             "avg_kda": round((tk + ta) / max(td, 1), 2) if rows else 0.0,
         }
-        # This week (last 7 days) — top 5 most-played champions.
+        # This week (last 7 days) — top 5 most-played champions. TFT
+        # rows excluded for the same reason as Recent 5: the "champion"
+        # column carries a comp name, not a champion.
         week_cutoff = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
         cur = conn.execute(
             "SELECT champion, mode, grade, kills, deaths, assists "
-            "FROM matches WHERE timestamp >= ? AND champion != ''",
+            "FROM matches WHERE timestamp >= ? AND champion != '' "
+            "  AND mode != 'TFT'",
             (week_cutoff,)
         )
         champ_agg: dict[str, dict] = {}
@@ -288,9 +300,16 @@ def _load_match_rows(limit: int | None = None) -> list[dict]:
     conn = _ro_conn(db)
     if conn is None:
         return []
+    # TFT rows store the comp name in the champion column ("Dark Star
+    # Vertical" etc.), which is meaningless on champion-centric views
+    # (Recent 5, History sessions, session summary). Filter at the
+    # loader so every consumer (`_build_home_summary`, `_build_history`,
+    # `_build_session_summary`) inherits the same exclusion. Underlying
+    # rows stay in match_history.db for any TFT-aware consumer.
     sql = ("SELECT timestamp, mode, champion, grade, kda_str, "
            "       game_time_s, kills, deaths, assists, label "
-           "FROM matches ORDER BY timestamp DESC")
+           "FROM matches WHERE mode != 'TFT' "
+           "ORDER BY timestamp DESC")
     if limit:
         sql += f" LIMIT {int(limit)}"
     try:
