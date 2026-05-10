@@ -272,5 +272,79 @@ class RoutingTests(ServerLifecycleTests):
         self.assertEqual(status, 404)
 
 
+class ChampionIdResolutionTests(ServerLifecycleTests):
+    """s156: server-side display-name → DDragon-id fallback.
+    Regression target — RC's coaches feed champion as the display name
+    ('Kai'Sa', 'Wukong', 'Renata Glasc') from coaching_data.json. Before
+    this fix, /rank returned 404 → daemon_slayer_picks never written →
+    dashboard #ds-pill stayed hidden mid-game ('ds not loaded at all')."""
+
+    def test_apostrophe_display_name_resolves(self) -> None:
+        # Kai'Sa → DDragon ID 'Kaisa'. Apostrophe family covers
+        # K'Sante, Rek'Sai, Cho'Gath, Kha'Zix, Vel'Koz, Kog'Maw, Bel'Veth.
+        status, body = _post_json(self.base + "/rank",
+                                  {"champion": "Kai'Sa", "level": 11,
+                                   "mode": "SR", "top": 3})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["champion_id"], "Kaisa")
+        self.assertEqual(body["champion_name"], "Kai'Sa")
+
+    def test_renamed_id_resolves_via_display(self) -> None:
+        # Wukong → MonkeyKing (DDragon-side rename).
+        status, body = _post_json(self.base + "/rank",
+                                  {"champion": "Wukong", "level": 11,
+                                   "mode": "SR", "top": 1})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["champion_id"], "MonkeyKing")
+
+    def test_space_display_name_resolves(self) -> None:
+        # 'Renata Glasc' → 'Renata'.
+        status, body = _post_json(self.base + "/rank",
+                                  {"champion": "Renata Glasc", "level": 11,
+                                   "mode": "SR", "top": 1})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["champion_id"], "Renata")
+
+    def test_lowercase_apostrophe_resolves(self) -> None:
+        # Case-insensitive lookup.
+        status, body = _post_json(self.base + "/rank",
+                                  {"champion": "kai'sa", "level": 11,
+                                   "mode": "SR", "top": 1})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["champion_id"], "Kaisa")
+
+    def test_alnum_stripped_resolves(self) -> None:
+        # Strip-and-lowercase fallback for "kaisa" / "twistedfate" / etc.
+        status, body = _post_json(self.base + "/rank",
+                                  {"champion": "twistedfate", "level": 11,
+                                   "mode": "SR", "top": 1})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["champion_id"], "TwistedFate")
+
+    def test_ddragon_id_passthrough_unchanged(self) -> None:
+        # Direct ID match is the fast path; no behavior change for
+        # callers that already pass DDragon IDs.
+        status, body = _post_json(self.base + "/rank",
+                                  {"champion": "Kaisa", "level": 11,
+                                   "mode": "SR", "top": 1})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["champion_id"], "Kaisa")
+
+    def test_unknown_still_404s(self) -> None:
+        # Resolver returns the input unchanged when no match — engine
+        # then raises the canonical KeyError → 404. No silent successes.
+        status, body = _post_json(self.base + "/rank",
+                                  {"champion": "Notarealchamp", "level": 1,
+                                   "mode": "SR", "top": 1})
+        self.assertEqual(status, 404)
+
+    def test_resolution_applies_to_dps_route(self) -> None:
+        status, body = _post_json(self.base + "/dps",
+                                  {"champion": "Kai'Sa", "level": 11,
+                                   "mode": "SR"})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["champion_id"], "Kaisa")
+
+
 if __name__ == "__main__":
     unittest.main()
