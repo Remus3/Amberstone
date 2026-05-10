@@ -315,8 +315,69 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     statusPill.classList.add("pill-pulse");
   }
 
+  // ── Transition log (s158) ─────────────────────────────────────────
+  // Capture every mode/view change so flicker is debuggable from the
+  // dashboard itself without opening DevTools. Three sinks:
+  //   1. console.log (always) — visible in F12.
+  //   2. window.__rcDebugLog ring buffer (last 50) — inspectable.
+  //   3. Floating overlay #rc-dbg (when location.search includes dbg=1
+  //      or localStorage.rcDebug==='1') — always-on screen tail of
+  //      the last 8 lines, monospace, mode pill bottom right corner.
+  // The overlay is wired once on first call.
+  if (!window.__rcDebugLog) window.__rcDebugLog = [];
+  const _RC_DEBUG_ON = (() => {
+    try {
+      if (location.search.includes("dbg=1")) return true;
+      return localStorage.getItem("rcDebug") === "1";
+    } catch (_) { return false; }
+  })();
+  function _rcDbgEnsureOverlay() {
+    if (!_RC_DEBUG_ON) return null;
+    let ov = document.getElementById("rc-dbg");
+    if (ov) return ov;
+    ov = document.createElement("div");
+    ov.id = "rc-dbg";
+    ov.style.cssText = [
+      "position:fixed", "right:8px", "bottom:32px",
+      "max-width:520px", "max-height:160px", "overflow:hidden",
+      "padding:6px 8px", "z-index:9999",
+      "background:rgba(0,0,0,0.78)", "color:#cfd8dc",
+      "border:1px solid #455a64", "border-radius:6px",
+      "font:11px/1.35 ui-monospace,Consolas,monospace",
+      "white-space:pre", "pointer-events:none",
+    ].join(";");
+    document.body.appendChild(ov);
+    return ov;
+  }
+  function _rcDbgPaint() {
+    const ov = _rcDbgEnsureOverlay();
+    if (!ov) return;
+    const tail = window.__rcDebugLog.slice(-8);
+    ov.textContent = tail.map((e) => {
+      const t = new Date(e.t).toISOString().slice(11, 23);
+      const meta = e.meta
+        ? " " + Object.entries(e.meta).map(([k, v]) => `${k}=${v}`).join(" ")
+        : "";
+      return `${t} ${e.kind}: ${e.from || "—"} → ${e.to}${meta}`;
+    }).join("\n");
+  }
+  function _rcLogTransition(kind, from, to, meta) {
+    const entry = { t: Date.now(), kind, from: from || null, to, meta: meta || null };
+    window.__rcDebugLog.push(entry);
+    if (window.__rcDebugLog.length > 50) window.__rcDebugLog.shift();
+    const metaStr = meta
+      ? " " + Object.entries(meta).map(([k, v]) => `${k}=${v}`).join(" ")
+      : "";
+    console.log(`[rc-${kind}] ${from || "—"} → ${to}${metaStr}`);
+    _rcDbgPaint();
+  }
+
   function setMode(tag) {
     if (!tag || tag === state.mode) return;
+    // s158: transition log so flicker is observable without DevTools tracing.
+    // Stamps every actual mode change (early-return-guarded above) into a
+    // ring buffer + console.log + (when ?dbg=1) the floating overlay.
+    _rcLogTransition("mode", state.mode, tag);
     state.mode = tag;
     modePill.textContent = (tag || "client").toUpperCase();
     modePill.className = `mode-pill ${tag}`;
@@ -379,6 +440,8 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       _viewUpdateMenuActive(viewId);
       return;
     }
+    _rcLogTransition("view", _VIEW.current, viewId,
+      { manual: !!_VIEW.manual, mode: state.mode });
     _VIEW.current = viewId;
     document.body.dataset.view = viewId;
     _viewUpdateTitleLabel(viewId);
