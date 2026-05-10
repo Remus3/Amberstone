@@ -275,8 +275,8 @@ class CoachIntegration:
         _ds_picks_str = "unavailable"
         try:
             from core import daemon_slayer_client as _ds_client
-            from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
-            _owned_ids = _ds_resolve_many(game_state.get("items", []), mode="sr")
+            from core.daemon_slayer_resolver import resolve_inventory as _ds_resolve_inventory
+            _owned_ids = _ds_resolve_inventory(game_state.get("items", []), mode="sr")
             _ds_rows = _ds_client.rank_for(
                 champion=champion,
                 level=int(game_state.get("level", 1)) or 1,
