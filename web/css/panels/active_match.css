@@ -9,10 +9,23 @@
 
 #view-active-match .am-grid {
   display: grid;
-  /* CALL : BUILD : MAP weight ratio. CALL gets a hair more room
-   * because folded RIGHT NOW + NEXT advice is the densest read.
-   * Adjust freely as content fills in. */
-  grid-template-columns: 1.1fr 1fr 1fr;
+  /* s160 layout: left column stacks CALL on top of BUILD; right
+   * column is the MAP, full-height (spans both rows). Right column
+   * is now ~2× the left so the map gets dominant real estate. The
+   * 1.1fr / 2fr split preserves the *left* column width from s159
+   * (when it was the CALL-only column) and folds BUILD into the
+   * vertical stack underneath.
+   *
+   * Row split is 1fr / 1fr while content is still scaffold. Once
+   * BUILD's filled-in item-row layout fixes its max height, we'll
+   * pin BUILD to that height and let CALL take the remainder
+   * (per user note s160 "give the call panel a solid permanent
+   * panel size"). */
+  grid-template-columns: 1.1fr 2fr;
+  grid-template-rows: 1fr 1fr;
+  grid-template-areas:
+    "call  map"
+    "build map";
   gap: 14px;
   align-items: stretch;
   /* Match the height behavior of the rest of view-section so the
@@ -20,6 +33,10 @@
   flex: 1 1 auto;
   min-height: 0;
 }
+
+#view-active-match .am-pane-call  { grid-area: call; }
+#view-active-match .am-pane-build { grid-area: build; }
+#view-active-match .am-pane-map   { grid-area: map; }
 
 #view-active-match .am-pane {
   display: flex;
