@@ -241,6 +241,17 @@ def capture_state():
                             if p.get("cellId") == local_cell), None)
             queue_id = (sess.get("gameData", {}).get("queue", {}).get("id", 0)
                         if "gameData" in sess else 0)
+            # 2026-05-09 (s154): /lol-champ-select/v1/session frequently omits
+            # gameData during BAN_PICK, leaving queue_id=0. The dashboard's
+            # sr_draft gate (is_sr_draft_queue) then evaluates False and the
+            # entire DS engine-profile chooser block stays hidden — no champion
+            # hints during draft. Fall back to /lol-gameflow/v1/session, which
+            # carries gameData.queue.id reliably from queue-pop onward.
+            if not queue_id:
+                gf, _ = lcu_request("GET", "/lol-gameflow/v1/session")
+                if isinstance(gf, dict):
+                    queue_id = (gf.get("gameData", {}).get("queue", {})
+                                .get("id", 0) or 0)
             # 2026-04-25: include full myTeam + theirTeam arrays so the
             # dashboard can run cold-start adaptation lookups during
             # champ-select (champion + matchup history) without waiting
