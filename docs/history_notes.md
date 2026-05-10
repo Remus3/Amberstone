@@ -6,6 +6,30 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s151 wrap — 2026-05-09 (augment-pill flicker fix + ESM-split _ibBuilds orphan)
+
+## What shipped (commit `8db992b`)
+- **Augment-pill flicker root-cause fix.** `dashboard/_state_builder.py:117` now passes `aram_mode/arena_mode/brawl_mode/tft_mode` through the trimmed health envelope. Without them, JS `onHealth` fell through to `tag="sr"` whenever `has_game=True` and no specific flag was set, racing `onState`'s `mode_key="arena"` from the same `/api/state` payload — `body[data-mode]` flapped every cadence cycle, flashing every mode-gated CSS rule (augments-pill the most visible casualty).
+- **`_ibBuilds` orphan const fixed.** Const declaration moved from `web/js/panels/champ_select.js:207` (referenced nowhere in that module post-split) into `web/js/panels/item_build.js:264` next to its 17 callers. Phase 3 ESM split moved the references but left the data behind. Every `renderItemBuild` call with `state.mode in {sr,aram,brawl}` + champion known had been throwing `ReferenceError`, silently aborting the rest of `onState` (Minimap/Stats/GameSense/WhatWent/Digest/Adaptation never reached). Arena/TFT/client hit the early-return so the regression hid behind recent Arena play.
+- **Verified end-to-end via Playwright.** `renderItemBuild` confirmed throw-free on sr/aram/brawl/arena. `champ_select.js` exports still callable. Synthetic arena payload renders 2 Recommended + 3 Owned tiles + 3 DS chips, in that order — DS does NOT replace Item Build, it's a sibling section. API smoke 6/7 200 (`/api/ds-preview` correctly POST-only).
+
+## Key decisions
+- **Patched at the data-pass-through layer, not the JS dispatcher.** `_state_builder.py` is the canonical health-envelope assembler; surfacing the four mode flags fixes the flicker for both `/api/state` REST polls and the `/api/state-stream` SSE channel in one edit. JS `onHealth` left as-is.
+- **Moved `_ibBuilds`, didn't duplicate it.** `champ_select.js` had no remaining call sites; declaring it in two modules would just invite the next forgotten edit.
+
+## Follow-up still open (NOT shipped)
+- **`map_state.js:720` `ReferenceError: gameTime is not defined`** — same Phase 3 ESM split miss. Bare `gameTime.textContent = str` at line 720, while line 721 is the working `MM.gameTime.textContent = str`. Fires once per second on every page load. Suggested fix: delete line 720 (line 721 covers it). Reported but left for separate session — out of scope after the user approved the `_ibBuilds` fix.
+
+## What's next
+- `gameTime` cleanup at `map_state.js:720` — 1-line delete, 30-second job.
+- **FU01 minimap-locate** — independent + ready anytime. Ticket at `Desktop/Tickets/RC_TICKET_FU01_minimap_locate.md`.
+- **Don't redo:** augment-pill flicker is fixed at the source (state-builder); don't go patching `onHealth` in main.js. `_ibBuilds` is now in `panels/item_build.js` — don't re-add it to `champ_select.js`.
+
+## Blockers
+- None.
+
+---
+
 # s149 wrap — 2026-05-09 (LCU agent → /api/team-context/refresh wiring)
 
 ## What shipped
