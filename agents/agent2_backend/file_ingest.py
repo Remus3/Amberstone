@@ -33,6 +33,29 @@ from typing import Any
 
 logger = logging.getLogger("agent2.file_ingest")
 
+# 2026-05-10 (s157): mirror the s150 LCU lobby/CS pre-flip into the
+# WS health envelope here too. ``dashboard/_state_builder.build_state``
+# already does this for the HTTP /api/state route (s153), but the
+# supervisor's WS /push path reads health.json directly and broadcasts
+# the raw payload — bypassing the mirror. Result: dashboard onHealth
+# saw aram_mode/arena_mode/tft_mode/has_game all False during lobby
+# and computed tag="client" every cadence cycle, racing onState's
+# in-game env.mode for the just-completed game ("sr"). Mode pill
+# flapped CLIENT ↔ SR; the last-match panels flickered between in-game
+# and aftergame title sets.
+try:
+    from dashboard._liveclient import lcu_summary as _lcu_summary
+    from dashboard._state_builder import (
+        apply_preflip_mirror as _apply_preflip_mirror,
+        resolve_mode_key as _resolve_mode_key,
+    )
+    _PREFLIP_AVAILABLE = True
+except Exception as _imp_exc:  # noqa: BLE001
+    # Tests / dev runs without the dashboard package — fall back to
+    # raw passthrough rather than failing the supervisor's startup.
+    logger.warning("preflip mirror unavailable: %s", _imp_exc)
+    _PREFLIP_AVAILABLE = False
+
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # (source-label, path, mode-tag) tuples. The mode-tag is what the UI
@@ -121,6 +144,22 @@ class FileIngest:
             logger.warning("parse %s: %s", source, e)
             return
         self._mtimes[source] = mtime
+
+        # s157: mirror the LCU lobby/CS pre-flip into health envelopes so
+        # the dashboard's onHealth tag resolution agrees with onState. Run
+        # the (sync, sub-100ms-local) HTTP fetch in the default executor so
+        # we don't block the supervisor's event loop.
+        if (envelope_type == "health"
+                and _PREFLIP_AVAILABLE
+                and isinstance(data, dict)):
+            try:
+                loop = asyncio.get_running_loop()
+                lcu = await loop.run_in_executor(None, _lcu_summary)
+                mode_key, preflip_active = _resolve_mode_key(data, lcu)
+                if preflip_active:
+                    data = _apply_preflip_mirror(data, mode_key, preflip_active)
+            except Exception as e:  # noqa: BLE001
+                logger.debug("preflip mirror skipped: %s", e)
 
         envelope: dict[str, Any] = {
             "type": envelope_type,
