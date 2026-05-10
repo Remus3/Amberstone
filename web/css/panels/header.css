@@ -618,6 +618,7 @@ footer .prefs-chip:hover { color: var(--text); }
  * via their own logic. */
 body[data-view="home"] main,
 body[data-view="lobby"] main,
+body[data-view="active-match"] main,
 body[data-view="session"] main,
 body[data-view="history"] main,
 body[data-view="loadouts"] main,
@@ -630,6 +631,7 @@ body[data-view="fleet"] main,
 body[data-view="dev"] main,
 body[data-view="replay"] main { display: none; }
 body[data-view="lobby"]          #view-lobby,
+body[data-view="active-match"]   #view-active-match,
 body[data-view="session"]        #view-session,
 body[data-view="history"]        #view-history,
 body[data-view="loadouts"]       #view-loadouts,
@@ -656,6 +658,7 @@ body[data-view="fleet"]          #home-overlay,
 body[data-view="dev"]            #home-overlay,
 body[data-view="replay"]         #home-overlay,
 body[data-view="last-match"]     #home-overlay,
+body[data-view="active-match"]   #home-overlay,
 body[data-view="lobby"]          #home-overlay,
 body[data-view="lobby"]          #lobby-overlay { display: none; }
 
