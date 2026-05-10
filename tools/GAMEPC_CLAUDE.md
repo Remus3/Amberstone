@@ -37,12 +37,24 @@ accepts inbound from Legion on `:8892`.
 |---|---|---|---|
 | `gamepc_screen_agent.py` | → Legion | `POST :8889/upload-frame` (1920×1080 JPEG every 2s) | `RC-ScreenAgent-League`, `RC-ScreenAgent-Minimap`, `RC-ScreenAgent-UI` (variants) |
 | `gamepc_liveclient_relay.py` | → Legion | `POST :8889/upload-liveclient` (Riot Live Client JSON every 1s) | `RC-LiveClientRelay` |
-| `gamepc_lcu_agent.py` | → Legion | `POST :8889/upload-lcu`, `GET :8889/lcu-cmd-pending`, `POST :8889/lcu-cmd-done` | `RC-LCU` |
+| `gamepc_lcu_agent.py` | → Legion | `POST :8889/upload-lcu`, `GET :8889/lcu-cmd-pending`, `POST :8889/lcu-cmd-done`, `POST :8888/api/team-context/refresh` (FU02; ChampSelect entry + lock/swap) | `RC-LCU` |
 | `gamepc_mcp_server.py` | ← Legion | listens on `:8892/mcp` (JSON-RPC) + `:8892/health` | `RC-MCP-Server` |
 | `gamepc_hotkey_listener.py` | local-only | Win32 RegisterHotKey: `Ctrl+Shift+1` posts choice option[0], `Ctrl+Shift+2` posts option[1] for the topmost pending coach decision. Lets the player answer without alt-tabbing | `RC-HotkeyListener` |
 
 The push agents use `X-RC-Token: 8e8f131e212b329438218eca27372dde`. The
 MCP server uses `Authorization: Bearer <same token>`.
+
+The LCU agent's FU02 team-context POST (to `:8888/api/team-context/refresh`)
+uses a separate `Authorization: Bearer <bridge_shared_secret>` — same
+secret the cross-Claude bridge uses. Resolution order on Game-PC:
+
+1. `RC_BRIDGE_SECRET` env var
+2. `C:\RC-Agent\bridge_secret.txt` (single line, no quotes)
+3. `C:\RC-Agent\local_paths.json` with `{"bridge_shared_secret": "..."}`
+
+If none are configured the LCU agent logs `bridge secret unset — skipping
+refresh POST` once and continues — `/upload-lcu` and the command queue
+keep working, but the team-context panel stays empty.
 
 The MCP server also requires a Windows Firewall inbound allow rule on
 TCP 8892 — `gamepc_boot.ps1` provisions it as `RC-MCP`. Without the

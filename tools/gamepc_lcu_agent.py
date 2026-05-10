@@ -44,6 +44,9 @@ import urllib.error
 from pathlib import Path
 
 LEGION = "http://192.168.8.230:8889"
+# Legion's HTTPS dashboard. Distinct from LEGION (vision relay :8889);
+# carries the FU02 team-context refresh route + bearer-auth peer surfaces.
+LEGION_DASHBOARD = "https://192.168.8.230:8888"
 # AUDIT (cycle-restore 2026-04-25): token resolver - env -> config file -> fallback.
 import os as _os_tok
 from pathlib import Path as _Path_tok
@@ -58,10 +61,46 @@ def _resolve_auth_token() -> str:
     except OSError: pass
     return "8e8f131e212b329438218eca27372dde"
 
+def _resolve_bridge_secret() -> str:
+    """Resolve the cross-Claude bridge bearer secret used to auth to
+    Legion's :8888/api/team-context/refresh route. Lookup order:
+
+      1. RC_BRIDGE_SECRET env var
+      2. bridge_secret.txt sibling file (single line)
+      3. local_paths.json sibling file ({"bridge_shared_secret": "..."})
+
+    Returns "" when nothing is configured. Callers MUST treat empty as
+    "skip the POST" — there is no historical default to fall back to,
+    and an unauthenticated POST would 401 anyway.
+    """
+    env = _os_tok.environ.get("RC_BRIDGE_SECRET")
+    if env: return env.strip()
+    here = _Path_tok(__file__).resolve().parent
+    txt = here / "bridge_secret.txt"
+    try:
+        if txt.exists():
+            line = txt.read_text(encoding="utf-8").splitlines()[0].strip()
+            if line: return line
+    except OSError: pass
+    cfg = here / "local_paths.json"
+    try:
+        if cfg.exists():
+            data = json.loads(cfg.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                secret = data.get("bridge_shared_secret") or ""
+                return str(secret).strip()
+    except (OSError, ValueError): pass
+    return ""
+
 TOKEN  = _resolve_auth_token()
+BRIDGE_SECRET = _resolve_bridge_secret()    # "" → team-context POST skipped
 INTERVAL      = 1.0   # state-push cadence (slow during in-game; OK)
 AUTO_INTERVAL = 0.5   # ready-check / summoner-override poll cadence
 CMD_INTERVAL  = 0.5   # Legion command-queue drain cadence
+# Min seconds between team-context POSTs while still in champ-select.
+# The route is idempotent — re-posting just refreshes the cache, but no
+# point hammering it on every 1s state-push cycle.
+TEAM_CONTEXT_REPOST_S = 3.0
 
 LOCKFILE_PATHS = [
     Path(r"C:\Riot Games\League of Legends\lockfile"),
@@ -197,6 +236,11 @@ def capture_state():
                         "championId":  p.get("championId", 0),
                         "summonerId":  p.get("summonerId"),
                         "summonerName": p.get("summonerInternalName") or p.get("displayName") or "",
+                        # FU02 team-context refresh needs PUUIDs to fan out
+                        # to Riot Web API. theirTeam may carry empty puuid
+                        # before reveal in some queue types — that's fine,
+                        # the route's worker skips entries with no puuid.
+                        "puuid":       p.get("puuid") or "",
                         "completed":   p.get("completed", False),
                         "assignedPosition": p.get("assignedPosition") or "",
                     })
@@ -493,6 +537,192 @@ def get(path):
         return json.loads(r.read())
 
 
+# -- Team-context refresh (FU02) ---------------------------------------------
+
+# SSL ctx for Legion's HTTPS dashboard (mkcert self-signed). Bearer auth
+# is the actual identity gate; TLS here is just transport confidentiality.
+_dash_ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+_dash_ssl_ctx.check_hostname = False
+_dash_ssl_ctx.verify_mode = ssl.CERT_NONE
+
+# Lazy cache of championId → display name, sourced from LCU's
+# /lol-game-data/assets/v1/champion-summary.json. Populated once per
+# agent boot. The route's _champ_name_to_id() reverses the lookup via
+# ddragon, so we send Riot's canonical English name here and let the
+# server side handle alt-name quirks.
+_CHAMP_NAME_CACHE: dict = {}
+_CHAMP_NAME_CACHE_LOADED = False
+
+
+def _maybe_load_champion_names():
+    """Populate _CHAMP_NAME_CACHE from LCU static data. Single-shot —
+    once a non-empty mapping lands, never re-fetches. Soft-fails on
+    network/parse errors; caller may retry next cycle."""
+    global _CHAMP_NAME_CACHE_LOADED
+    if _CHAMP_NAME_CACHE_LOADED:
+        return
+    if not _lcu["port"]:
+        return
+    data, err = lcu_request(
+        "GET", "/lol-game-data/assets/v1/champion-summary.json")
+    if err is not None or not isinstance(data, list):
+        return
+    for entry in data:
+        if not isinstance(entry, dict):
+            continue
+        cid = entry.get("id")
+        name = entry.get("name") or ""
+        if isinstance(cid, int) and cid > 0 and name:
+            _CHAMP_NAME_CACHE[cid] = str(name)
+    if _CHAMP_NAME_CACHE:
+        _CHAMP_NAME_CACHE_LOADED = True
+        print(f"[lcu] loaded {len(_CHAMP_NAME_CACHE)} champion names",
+              flush=True)
+
+
+def _champion_name_for(cid) -> str:
+    """Display name for a champion id, or "" when unknown. Empty is
+    correct for the route — better a blank cell than a numeric id."""
+    try:
+        cid = int(cid or 0)
+    except (TypeError, ValueError):
+        return ""
+    if cid <= 0:
+        return ""
+    return _CHAMP_NAME_CACHE.get(cid, "")
+
+
+# Edge-detection state for the POST. Lives at module scope so all worker
+# threads share the same view (only state-push thread writes it).
+_team_context_state = {
+    "last_phase":           None,    # phase from prior cycle
+    "last_picks_signature": None,    # sorted (cellId, championId) tuples
+    "last_post_at":         0.0,     # monotonic ts of last successful POST
+    "warned_no_secret":     False,   # one-shot log gate
+}
+
+
+def _picks_signature(cs: dict) -> tuple:
+    """Stable signature over (cellId, championId) for both teams. The
+    edge-trigger refires the POST whenever someone locks/swaps so the
+    server-side mastery enrichment picks up the new champion id."""
+    def _flat(team_arr):
+        out = []
+        for s in team_arr or []:
+            if isinstance(s, dict):
+                out.append((s.get("cellId"), s.get("championId", 0)))
+        return tuple(sorted(out, key=lambda x: (x[0] is None, x[0])))
+    return (_flat(cs.get("my_team")), _flat(cs.get("their_team")))
+
+
+def _build_team_context_body(cs: dict) -> dict:
+    """Translate champ_select snapshot → /api/team-context/refresh body.
+    Stamps team_id (100=ally side via myTeam, 200=enemy via theirTeam)
+    and resolves locked-champion display name via _CHAMP_NAME_CACHE."""
+    roster = []
+    for slot in cs.get("my_team") or []:
+        if not isinstance(slot, dict):
+            continue
+        roster.append({
+            "puuid":           slot.get("puuid") or "",
+            "summoner_name":   slot.get("summonerName") or "",
+            "team_id":         100,
+            "locked_champion": _champion_name_for(slot.get("championId")),
+        })
+    for slot in cs.get("their_team") or []:
+        if not isinstance(slot, dict):
+            continue
+        roster.append({
+            "puuid":           slot.get("puuid") or "",
+            "summoner_name":   slot.get("summonerName") or "",
+            "team_id":         200,
+            "locked_champion": _champion_name_for(slot.get("championId")),
+        })
+    return {"queue_id": int(cs.get("queue_id") or 0), "roster": roster}
+
+
+def post_team_context_refresh(body: dict):
+    """POST roster snapshot to Legion's team-context endpoint. Returns
+    (ok, detail). Never raises — bridge auth missing or dashboard
+    offline both surface as (False, "<reason>")."""
+    if not BRIDGE_SECRET:
+        return (False, "no_bridge_secret")
+    url = f"{LEGION_DASHBOARD}/api/team-context/refresh"
+    data = json.dumps(body).encode()
+    req = urllib.request.Request(
+        url, data=data, method="POST",
+        headers={
+            "Content-Type":  "application/json",
+            "Authorization": f"Bearer {BRIDGE_SECRET}",
+            "User-Agent":    "rc-lcu-agent/0",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=4.0,
+                                     context=_dash_ssl_ctx) as r:
+            r.read()
+        return (True, "ok")
+    except urllib.error.HTTPError as exc:
+        return (False, f"http_{exc.code}")
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        return (False, f"network: {type(exc).__name__}")
+
+
+def _maybe_refresh_team_context(state: dict) -> None:
+    """Edge-triggered POST to /api/team-context/refresh. Called once per
+    state-push cycle by `_state_push_loop`; no-op when not in
+    champ-select or when nothing has changed since the last successful
+    POST. Rate-limited to TEAM_CONTEXT_REPOST_S between re-fires."""
+    phase = state.get("phase") or ""
+    cs = state.get("champ_select") or {}
+    prev_phase = _team_context_state["last_phase"]
+    _team_context_state["last_phase"] = phase
+
+    if phase != "ChampSelect" or not cs:
+        # Reset edge-detect signatures when leaving CS so the next entry
+        # always re-fires the initial POST.
+        if prev_phase == "ChampSelect":
+            _team_context_state["last_picks_signature"] = None
+            _team_context_state["last_post_at"] = 0.0
+        return
+
+    # Bridge secret missing — warn once, never spam the log.
+    if not BRIDGE_SECRET:
+        if not _team_context_state["warned_no_secret"]:
+            print("[team-context] bridge secret unset — skipping refresh "
+                  "POST. Set RC_BRIDGE_SECRET env or drop bridge_secret.txt.",
+                  flush=True)
+            _team_context_state["warned_no_secret"] = True
+        return
+
+    # Champion-name cache may not be loaded yet on the first cycles
+    # post-boot; retry until LCU returns the static data.
+    _maybe_load_champion_names()
+
+    sig = _picks_signature(cs)
+    is_entry = (prev_phase != "ChampSelect")
+    sig_changed = (sig != _team_context_state["last_picks_signature"])
+
+    if not (is_entry or sig_changed):
+        return
+    if not is_entry:
+        age = time.monotonic() - _team_context_state["last_post_at"]
+        if age < TEAM_CONTEXT_REPOST_S:
+            return  # rate-limit during locking flurry
+
+    body = _build_team_context_body(cs)
+    ok, detail = post_team_context_refresh(body)
+    if ok:
+        _team_context_state["last_picks_signature"] = sig
+        _team_context_state["last_post_at"] = time.monotonic()
+        print(f"[team-context] refresh OK queue={body['queue_id']} "
+              f"roster={len(body['roster'])} entry={is_entry}",
+              flush=True)
+    else:
+        # Don't latch sig on failure — next cycle will retry.
+        print(f"[team-context] refresh failed: {detail}", flush=True)
+
+
 # -- Worker loops (one per concern) ------------------------------------------
 
 def _state_push_loop():
@@ -509,6 +739,14 @@ def _state_push_loop():
             except Exception as e:
                 consecutive_fail += 1
                 print(f"  [push err {consecutive_fail}x] {e}", flush=True)
+            # FU02 last-mile: edge-fire team-context refresh on
+            # ChampSelect entry + on lock/swap. Independent of the
+            # vision-relay push above — failure here MUST NOT bump
+            # consecutive_fail or affect the upload-lcu cadence.
+            try:
+                _maybe_refresh_team_context(state)
+            except Exception as e:
+                print(f"  [team-context err] {e}", flush=True)
         except Exception as e:
             print(f"[state loop err] {e}", flush=True)
         if consecutive_fail >= 3:
