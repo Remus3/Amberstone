@@ -1766,13 +1766,17 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       const stripe = document.createElement("div");
       stripe.className = `home-recent-stripe ${tier}`;
       // Champion portrait (DDragon icon, locally mirrored). Falls back
-      // to a "?" placeholder if the file is missing.
+      // to a "?" placeholder if the file is missing. Use _resolveChampId
+      // so display names like "Kai'Sa" / "Wukong" / "Renata Glasc" map to
+      // their DDragon file ids ("Kaisa" / "MonkeyKing" / "Renata") instead
+      // of trying to load a 404'ing URL-encoded version of the raw name.
       const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : "16.8.1";
       const img = document.createElement("img");
       img.className = "home-recent-img";
       img.alt = "";
       img.loading = "lazy";
-      img.src = `/data/ddragon/${ver}/img/champion/${encodeURIComponent(m.champion || "")}.png`;
+      const cid = _resolveChampId(m.champion) || encodeURIComponent(m.champion || "");
+      img.src = `/data/ddragon/${ver}/img/champion/${cid}.png`;
       img.onerror = () => { img.style.visibility = "hidden"; };
       const main = document.createElement("div");
       main.className = "home-recent-main";
@@ -2058,7 +2062,8 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       const champ = document.getElementById("home-coach-pick-champ");
       const reason = document.getElementById("home-coach-pick-reason");
       if (img) {
-        img.src = `/data/ddragon/${ver}/img/champion/${encodeURIComponent(pick.champion)}.png`;
+        const pickCid = _resolveChampId(pick.champion) || encodeURIComponent(pick.champion);
+        img.src = `/data/ddragon/${ver}/img/champion/${pickCid}.png`;
         img.alt = pick.champion;
         img.onerror = () => { img.style.visibility = "hidden"; };
       }
@@ -2123,8 +2128,9 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     }
     if (!champ) return;
     const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : "16.8.1";
+    const motifCid = _resolveChampId(champ) || encodeURIComponent(champ);
     bg.style.backgroundImage =
-      `url("/data/ddragon/${ver}/img/champion/${encodeURIComponent(champ)}.png")`;
+      `url("/data/ddragon/${ver}/img/champion/${motifCid}.png")`;
   }
   // Mirror advisory + digest into the icon-button badges on Tonight's
   // Pick (V3 redesign 2026-04-30). Sets the badge text + toggles
