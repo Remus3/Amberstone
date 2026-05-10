@@ -46,14 +46,17 @@
   /* Width is content-driven since JS wraps at 6 words per line. max-width
    * is just a safety ceiling for very long words (no break-word — a long
    * item name should never split mid-word). */
-  max-width: 400px;
-  padding: 8px 14px;
+  max-width: 480px;
+  padding: 10px 16px;
   border-radius: 8px;
   background: var(--surface-alt);
   color: var(--text-faint);
-  font-size: 14px;
+  /* s161: 14px was unreadable at the operator's viewing distance on
+   * the secondary monitor. Bumped to 17px / 1.45 line-height; max-width
+   * widened to 480px so the bigger glyphs don't wrap awkwardly. */
+  font-size: 17px;
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.45;
   letter-spacing: 0.02em;
   border: 1px solid rgba(255,255,255,0.7);
   box-shadow: 0 6px 20px rgba(0,0,0,0.55);
