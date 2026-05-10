@@ -2891,10 +2891,20 @@
       CHAMPS.ready = true;
     } catch (_) { /* pill-text fallback still works */ }
   })();
+  // DDragon-rename overrides: champions whose live display name doesn't
+  // normalize cleanly to their DDragon file. Mirrors the override map in
+  // web/js/lib/items_index.js.
+  const _CHAMP_RENAME_OVERRIDES = {
+    "wukong": "MonkeyKing",
+    "renataglasc": "Renata",
+    "nunuwillump": "Nunu",
+  };
   function _resolveChampId(name) {
     const n = String(name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
     if (!n) return null;
-    return CHAMPS.byName[n] || null;
+    if (CHAMPS.byName[n]) return CHAMPS.byName[n];
+    if (_CHAMP_RENAME_OVERRIDES[n]) return _CHAMP_RENAME_OVERRIDES[n];
+    return null;
   }
 
   // Summoner spell icon resolver — loaded async from /data/spells_index.json.
@@ -5055,7 +5065,11 @@
   }
   function _replayChampIconUrl(name) {
     if (!name) return "";
-    return "/icons/champions/" + encodeURIComponent(String(name).replace(/[^A-Za-z]/g, "")) + ".png";
+    // Use _resolveChampId so display names like "Kai'Sa" / "Wukong" / "Renata
+    // Glasc" map to on-disk DDragon ids. The bare strip preserved capitals
+    // (Kai'Sa → KaiSa) which never matched the file (Kaisa.png).
+    const cid = _resolveChampId(name) || String(name).replace(/[^A-Za-z]/g, "");
+    return "/icons/champions/" + encodeURIComponent(cid) + ".png";
   }
   function _replayItemIconUrl(id) {
     return "/icons/items/" + id + ".png";
@@ -5257,13 +5271,16 @@
       const stripe = document.createElement("div");
       stripe.className = `home-recent-stripe ${tier}`;
       // Champion portrait (DDragon icon, locally mirrored). Falls back
-      // to a "?" placeholder if the file is missing.
+      // to a "?" placeholder if the file is missing. Use _resolveChampId
+      // so display names like "Kai'Sa" / "Wukong" / "Renata Glasc" map to
+      // their DDragon file ids ("Kaisa" / "MonkeyKing" / "Renata").
       const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : "16.8.1";
       const img = document.createElement("img");
       img.className = "home-recent-img";
       img.alt = "";
       img.loading = "lazy";
-      img.src = `/data/ddragon/${ver}/img/champion/${encodeURIComponent(m.champion || "")}.png`;
+      const cid = _resolveChampId(m.champion) || encodeURIComponent(m.champion || "");
+      img.src = `/data/ddragon/${ver}/img/champion/${cid}.png`;
       img.onerror = () => { img.style.visibility = "hidden"; };
       const main = document.createElement("div");
       main.className = "home-recent-main";
@@ -5549,7 +5566,8 @@
       const champ = document.getElementById("home-coach-pick-champ");
       const reason = document.getElementById("home-coach-pick-reason");
       if (img) {
-        img.src = `/data/ddragon/${ver}/img/champion/${encodeURIComponent(pick.champion)}.png`;
+        const pickCid = _resolveChampId(pick.champion) || encodeURIComponent(pick.champion);
+        img.src = `/data/ddragon/${ver}/img/champion/${pickCid}.png`;
         img.alt = pick.champion;
         img.onerror = () => { img.style.visibility = "hidden"; };
       }
@@ -5614,8 +5632,9 @@
     }
     if (!champ) return;
     const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : "16.8.1";
+    const motifCid = _resolveChampId(champ) || encodeURIComponent(champ);
     bg.style.backgroundImage =
-      `url("/data/ddragon/${ver}/img/champion/${encodeURIComponent(champ)}.png")`;
+      `url("/data/ddragon/${ver}/img/champion/${motifCid}.png")`;
   }
   // Mirror advisory + digest into the icon-button badges on Tonight's
   // Pick (V3 redesign 2026-04-30). Sets the badge text + toggles

@@ -50,11 +50,25 @@ export function _splitItemList(str, splitArrow) {
   return String(str).split(sep).map(s => s.trim()).filter(Boolean);
 }
 
+// DDragon name-rename overrides: champions whose live display name doesn't
+// normalize cleanly to their DDragon file. The champions_index.json byName
+// map handles apostrophes/spaces (Kai'Sa → kaisa → 'Kaisa'), but a handful
+// of champs were renamed by Riot post-release and the display name no
+// longer matches the on-disk filename. Keys are lowercase-alphanumeric of
+// the display name; values are the DDragon canonical id.
+const _CHAMP_RENAME_OVERRIDES = {
+  "wukong": "MonkeyKing",
+  "renataglasc": "Renata",
+  "nunuwillump": "Nunu",      // "Nunu & Willump" → strip non-alnum → "nunuwillump"
+};
+
 // Resolve a champion name to its numeric ID string.
 export function _resolveChampId(name) {
   const n = String(name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   if (!n) return null;
-  return CHAMPS.byName[n] || null;
+  if (CHAMPS.byName[n]) return CHAMPS.byName[n];
+  if (_CHAMP_RENAME_OVERRIDES[n]) return _CHAMP_RENAME_OVERRIDES[n];
+  return null;
 }
 
 // Resolve a summoner spell name to its DDragon key.

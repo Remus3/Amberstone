@@ -1,7 +1,7 @@
 // Dev panel — settings, diagnostics, dev/sim fixture viewer, replay scrubber.
 import { el, safe, fmtList, _to12, logLine } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
-import { ITEMS, CHAMPS } from '../lib/items_index.js';
+import { ITEMS, CHAMPS, _resolveChampId } from '../lib/items_index.js';
 
 // ── Settings view (2026-04-26) ───────────────────────────────────
 function _settingsRefresh() {
@@ -290,7 +290,12 @@ function _replayDateStr(ts) {
 }
 function _replayChampIconUrl(name) {
   if (!name) return "";
-  return "/icons/champions/" + encodeURIComponent(String(name).replace(/[^A-Za-z]/g, "")) + ".png";
+  // Use _resolveChampId so display names like "Kai'Sa" / "Wukong" / "Renata
+  // Glasc" map to their on-disk DDragon ids ("Kaisa" / "MonkeyKing" /
+  // "Renata"). The bare /[^A-Za-z]/ strip preserved capital letters
+  // (Kai'Sa → KaiSa) which never matched the lower-cased file (Kaisa.png).
+  const cid = _resolveChampId(name) || String(name).replace(/[^A-Za-z]/g, "");
+  return "/icons/champions/" + encodeURIComponent(cid) + ".png";
 }
 function _replayItemIconUrl(id) {
   return "/icons/items/" + id + ".png";
