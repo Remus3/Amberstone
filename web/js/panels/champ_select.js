@@ -199,19 +199,10 @@ function _csMarkSelectedRow(variantKey) {
   });
 }
 
-// ── In-game build chooser (2026-04-26) ───────────────────────────
-// Lives inside #item-build, NOT the champ-select overlay. Pre-game
-// selection is persisted in localStorage so this chooser highlights
-// the same row by default. Mid-game pushes items only (runes +
-// summoners are locked at game start).
-const _ibBuilds = {
-  lastChamp:  "",
-  lastMode:   "",
-  variants:   [],
-  chosen:     "",
-  inflight:   false,
-  lastAppliedKey: "",
-};
+// In-game build chooser state (`_ibBuilds`) used to live here but the
+// references all moved to panels/item_build.js during the Phase 3 ESM
+// split — the orphaned const lingered. Now declared next to its callers
+// in item_build.js so the symbol is reachable.
 function _csOnBuildRowClick(variant) {
   if (!variant) return;
   _csLoadout.chosen = variant;
