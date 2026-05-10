@@ -100,6 +100,7 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 | `core/log_setup.py` | log init [FROZEN] |
 | `core/moon_proxy.py` | vision server proxy [FROZEN] |
 | `core/prom_metrics.py` | zero-dep Counter/Gauge/Histogram |
+| `core/queue_modes.py` | queue_id -> dashboard mode_key |
 | `core/riot_api.py` | Riot Web API client + rate limiter + endpoint wrappers |
 | `core/riot_api_cache.py` | SQLite cache for core/riot_api.py |
 | `lcu/lcu_client.py` | LCU auth + command client [FROZEN] |
