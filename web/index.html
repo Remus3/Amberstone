@@ -108,6 +108,11 @@
            min-height: 27px keeps the row visually present in client mode
            so the header doesn't shift when a game starts. -->
       <span class="augments-pill" id="augments-pill">—</span>
+      <!-- DS pill (2026-05-09): glanceable top DS pick + delta-dps so the
+           operator can read the engine's call without scanning the
+           Item Build panel. Hidden in client/tft modes; populated from
+           coach.daemon_slayer_picks[0] by panels/ds_pill.js. -->
+      <span class="ds-pill" id="ds-pill" hidden title="">—</span>
       <!-- 30d trend-pill removed 2026-04-24, advisory + digest moved
            to the footer 2026-04-25. -->
     </div>

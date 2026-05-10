@@ -163,6 +163,43 @@ body[data-view="home"] header .gold-pill.hidden {
   font-weight: 600;
 }
 
+/* DS pill (2026-05-09): glanceable top DS engine pick. Same shape grammar
+ * as the augments pill so the row reads as one unit, but distinct color
+ * (info / blue) so the operator can tell at a glance which slot is
+ * showing engine math vs which is showing build augments. The em inside
+ * carries the +Ndps delta in a smaller weight so the item name dominates.
+ * Hidden in client/tft modes (mode-scoped rule mirrors augments). */
+.ds-pill {
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 1.4;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--info-soft);
+  color: var(--info);
+  font-size: 20px;
+  font-weight: 700;
+  max-width: 100%;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+}
+.ds-pill::before {
+  content: "◆ ";
+  margin-right: 4px;
+  opacity: 0.8;
+}
+.ds-pill em {
+  font-style: normal;
+  font-weight: 600;
+  font-size: 0.78em;
+  margin-left: 6px;
+  opacity: 0.85;
+}
+.ds-pill[hidden] { display: none !important; }
+body[data-mode="client"] .ds-pill,
+body[data-mode="tft"]    .ds-pill,
+body:not([data-mode])    .ds-pill { display: none; }
+
 .panel {
   background: var(--surface);
   border-radius: var(--radius);
