@@ -77,13 +77,35 @@ def build_state() -> dict:
     # select queue_id so the dashboard switches to the right mode panel
     # before the in-game match starts.
     mode_key = "client"
+    preflip_active = False
     if health.get("aram_mode"):    mode_key = "aram"
     elif health.get("arena_mode"): mode_key = "arena"
     elif health.get("tft_mode"):   mode_key = "tft"
     elif health.get("has_game"):   mode_key = "sr"
     else:
         pre = _preflip_mode_from_lcu(lcu_snapshot)
-        mode_key = pre or health.get("mode", "client")
+        if pre:
+            mode_key = pre
+            preflip_active = True
+        else:
+            mode_key = health.get("mode", "client")
+
+    # Mirror the s150 LCU pre-flip into the per-mode flag the WS envelope
+    # carries, so the dashboard's `onHealth` resolver computes the same
+    # mode tag as `onState` during the lobby/champ-select window. Without
+    # this, onHealth recomputes tag="client" every health tick from the
+    # still-False health.json flags and races onState's pre-flipped
+    # mode_key — flapping the mode pill, augments pill, and win% pill in
+    # lockstep. Closes the s151 fix's lobby gap (s151 plumbed the flags
+    # through the envelope but they're still False until a real game).
+    if preflip_active:
+        flag = {"aram":  "aram_mode",
+                "arena": "arena_mode",
+                "brawl": "brawl_mode",
+                "tft":   "tft_mode",
+                "sr":    "has_game"}.get(mode_key)
+        if flag:
+            health = {**health, flag: True}
 
     coach_file = MODE_TO_FILE.get(mode_key, "coaching_data.json")
     coach = read_json(coach_file)
