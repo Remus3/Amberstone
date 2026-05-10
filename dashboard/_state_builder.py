@@ -28,6 +28,7 @@ from pathlib import Path
 
 from coaches.sr_draft_profile import is_sr_draft_queue
 from core.coaching_payload import validate_coaching_payload
+from core.queue_modes import mode_key_from_queue_id
 from dashboard._context import APP_DIR, read_json
 from dashboard._liveclient import lcu_summary, liveclient_summary
 from dashboard.routes_team_context import get_team_context
@@ -45,15 +46,44 @@ MODE_TO_FILE = {
 }
 
 
+def _preflip_mode_from_lcu(lcu_snapshot: dict | None) -> str | None:
+    """Derive a dashboard mode_key from LCU lobby/champ-select queue_id.
+
+    Champ-select wins over lobby (more specific). Returns ``None`` when
+    no recognised queue_id is available, so the caller falls back to the
+    health.mode default ("client").
+    """
+    if not isinstance(lcu_snapshot, dict):
+        return None
+    cs = lcu_snapshot.get("champ_select")
+    if isinstance(cs, dict):
+        m = mode_key_from_queue_id(cs.get("queue_id"))
+        if m:
+            return m
+    lobby = lcu_snapshot.get("lobby")
+    if isinstance(lobby, dict) and not lobby.get("is_custom"):
+        m = mode_key_from_queue_id(lobby.get("queue_id"))
+        if m:
+            return m
+    return None
+
+
 def build_state() -> dict:
     health = read_json("ops/runtime/health.json")
-    # mode resolution: prefer specific mode flag from health, fall back to .mode
+    lcu_snapshot = lcu_summary()
+    # mode resolution: prefer specific mode flag from health (LiveClient is
+    # authoritative once the game is running). When LiveClient is dark
+    # (lobby/champ-select pre-game), pre-flip from the LCU lobby/champ-
+    # select queue_id so the dashboard switches to the right mode panel
+    # before the in-game match starts.
     mode_key = "client"
     if health.get("aram_mode"):    mode_key = "aram"
     elif health.get("arena_mode"): mode_key = "arena"
     elif health.get("tft_mode"):   mode_key = "tft"
     elif health.get("has_game"):   mode_key = "sr"
-    else:                          mode_key = health.get("mode", "client")
+    else:
+        pre = _preflip_mode_from_lcu(lcu_snapshot)
+        mode_key = pre or health.get("mode", "client")
 
     coach_file = MODE_TO_FILE.get(mode_key, "coaching_data.json")
     coach = read_json(coach_file)
@@ -71,7 +101,6 @@ def build_state() -> dict:
     # Phase 8 step 1: derive sr_draft flag from queue_id and stamp it
     # alongside the existing is_aram sibling. Phase 8's UI gates the
     # 3-build chooser on this flag.
-    lcu_snapshot = lcu_summary()
     cs = lcu_snapshot.get("champ_select") if isinstance(lcu_snapshot, dict) else None
     if isinstance(cs, dict):
         cs["sr_draft"] = is_sr_draft_queue(cs.get("queue_id"))
