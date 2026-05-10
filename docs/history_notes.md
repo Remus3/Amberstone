@@ -6,6 +6,33 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s149 wrap — 2026-05-09 (LCU agent → /api/team-context/refresh wiring)
+
+## What shipped
+- **FU02 last mile** (commit `e7b5af1`): Game-PC `tools/gamepc_lcu_agent.py` now POSTs the 10-player roster (with PUUIDs) to Legion `:8888/api/team-context/refresh` on ChampSelect entry + on lock/swap. Bearer auth via `bridge_shared_secret`. +238 LOC, no removals.
+- **Bridge-secret resolver**: `RC_BRIDGE_SECRET` env → `bridge_secret.txt` → `local_paths.json{bridge_shared_secret}` → `""`. Empty = warn-once + skip POST (no historical default).
+- **Champion-id → name cache**: lazy-loaded once per agent boot from LCU's `/lol-game-data/assets/v1/champion-summary.json`. Unknown ids translate to `""` so the dashboard renders blank rather than numeric garbage.
+- **Edge-trigger semantics**: POSTs on (a) entering ChampSelect, (b) `(cellId, championId)` signature change. Rate-limited to `TEAM_CONTEXT_REPOST_S=3.0s` between re-fires; resets state on leave so next CS always re-fires the initial POST. Failure isolated from `/upload-lcu` cadence.
+- **30 new tests** in `tests/fu02_team_context/test_lcu_agent_refresh.py`: resolver priority, pick-signature stability, body translation, POST helper, edge-trigger rate-limit + leave-reset + failure-doesn't-latch. **Total suite: 595 pass** (was 565). Ruff clean.
+- **Game-PC deployed live**: `bridge_secret.txt` written via gamepc MCP, agent fetched from `:8888/agent/`, RC-LCU restarted (PID 16080). Resolver self-test confirmed `secret_len=43 first4=at_Y last2=WQ`. `/api/team-context` returns `null` cold, ready to fill.
+- **Docs sync**: `tools/GAMEPC_CLAUDE.md` now documents the new POST + the bridge-secret deploy steps.
+
+## Key decisions
+- **Stdlib-only on Game-PC.** No `from core import bridge` — agent runs from `C:\RC-Agent\` where the project tree isn't importable. File-based resolver mirrors the pattern in `bridge_watcher_health_publisher.py:_resolve_token`.
+- **Send display-name strings, not numeric ids.** Route's `_skeleton_entry` stores `locked_champion: str` for direct dashboard render; route's `_champ_name_to_id()` reverses via DDragon for mastery. Sticking with the FU02-shipped contract avoided a server-side schema change.
+- **Edge-fire from `_state_push_loop`, not a new thread.** POST is fire-and-forget over Tailnet (~200ms) and only runs once per change. Spawning a fourth thread for one-shot POSTs was overkill.
+- **`puuid` added to `_team_picks()` snapshot** — also makes /upload-lcu consumers richer with no new endpoint shape needed.
+
+## What's next
+- **Live verification** — waiting on next CS pop. Watch for `[team-context] refresh OK queue=… roster=…` in agent stdout (hidden — easier probe: `curl -k https://127.0.0.1:8888/api/team-context | py -m json.tool`).
+- **FU01 minimap-locate** — still independent. 3-path resolver for `agents/supervisor.py:597`. Ticket at `Desktop/Tickets/RC_TICKET_FU01_minimap_locate.md`.
+- **Don't redo:** FU02 wiring is shipped end-to-end (panel + fan-out + LCU agent). Bridge secret is on Game-PC (`C:\RC-Agent\bridge_secret.txt`). Agent (PID 16080) is healthy and heartbeating.
+
+## Blockers
+- None. Verification is observational — picks itself up on the next champ-select.
+
+---
+
 # s148 wrap — 2026-05-09 (FU02 fan-out shipped + TFT match-history filter)
 
 ## What shipped
