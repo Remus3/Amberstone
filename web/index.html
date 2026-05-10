@@ -38,6 +38,7 @@
       <div id="view-menu" class="view-menu hidden" role="menu" aria-hidden="true">
         <button type="button" class="view-menu-item" data-view="home"        role="menuitem">Home</button>
         <button type="button" class="view-menu-item" data-view="lobby"       role="menuitem">Lobby</button>
+        <button type="button" class="view-menu-item" data-view="active-match" role="menuitem">Active Match</button>
         <button type="button" class="view-menu-item" data-view="last-match"  role="menuitem">Last Match</button>
         <button type="button" class="view-menu-item" data-view="session"     role="menuitem">Session</button>
         <button type="button" class="view-menu-item" data-view="history"     role="menuitem">History</button>
@@ -1245,6 +1246,42 @@
       <div class="view-section-body">
         <ul id="fleet-list" class="fleet-list" aria-label="Peer bridge watcher health"></ul>
         <p id="fleet-empty" class="home-empty">No peer heartbeats yet. Peers run <code>tools/bridge_watcher_health_publisher.py</code> as a sidecar — if this is empty after a peer reboot, check the publisher service.</p>
+      </div>
+    </section>
+
+    <!-- s159: Active Match — curated mid-game view that replaces the
+         5-panel grid for in-game modes (sr / aram / arena / brawl).
+         Three-pane layout:
+           CALL  - folded RIGHT NOW + NEXT advice as a continuous block.
+           BUILD - DS engine top-N with item icons; owned items as text.
+           MAP   - static mode map with ZOI/threat/gank/MIA overlay.
+         Auto-promote gated on ?am=1 (or localStorage.activeMatch='1')
+         while we A/B against the existing layout. Step 1 ships the
+         empty scaffold; panels populate in subsequent steps. -->
+    <section id="view-active-match" class="view-section" hidden>
+      <div class="view-section-head">
+        <h2>ACTIVE MATCH</h2>
+        <span class="view-section-sub" id="am-sub">scaffold · waiting for in-game data</span>
+      </div>
+      <div class="view-section-body am-grid">
+        <div class="am-pane am-pane-call">
+          <div class="am-pane-head">CALL</div>
+          <div class="am-pane-body" id="am-call-body">
+            <div class="am-empty">Awaiting coach. Folded RIGHT NOW + NEXT will render here mid-game.</div>
+          </div>
+        </div>
+        <div class="am-pane am-pane-build">
+          <div class="am-pane-head">BUILD</div>
+          <div class="am-pane-body" id="am-build-body">
+            <div class="am-empty">DS engine ranks + owned items list will render here mid-game.</div>
+          </div>
+        </div>
+        <div class="am-pane am-pane-map">
+          <div class="am-pane-head">MAP</div>
+          <div class="am-pane-body" id="am-map-body">
+            <div class="am-empty">Static mode map + ZOI/threat overlay will render here mid-game.</div>
+          </div>
+        </div>
       </div>
     </section>
 

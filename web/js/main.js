@@ -25,6 +25,7 @@ import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushIt
 import { MM, renderMinimap, renderTeamTile, renderAllyStrip, renderEnemyStrip, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS, _renderMmStateLine } from './panels/map_state.js';
 import { handleChampSelect, renderChampSelectPanel, renderChampSelectCoach } from './panels/champ_select.js';
 import { renderTeamContext } from './panels/team_context.js';
+import { renderActiveMatch, activeMatchEnabled } from './panels/active_match.js';
 import { renderBridgePending, renderCoachDecisions, renderRecentCoachCalls } from './panels/bridge_pending.js';
 import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce, _devViewFetch, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
 
@@ -422,6 +423,15 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
   // Auto-derive view from observed state. Returns one of VIEW_IDS.
   function _viewAutoDerive(lcu, mode) {
     const phase = lcu && lcu.phase;
+    // s159: when the operator has opted into Active Match (?am=1 or
+    // localStorage.activeMatch='1'), auto-promote to it whenever the
+    // game is actually running. Lobby/CS still hits the lobby view —
+    // Active Match is mid-game-only by design.
+    const inGame = ["sr", "aram", "arena", "brawl", "tft"].includes(mode);
+    if (activeMatchEnabled()
+        && (phase === "InProgress" || phase === "GameStart" || inGame)) {
+      return "active-match";
+    }
     if (phase === "ChampSelect")            return "lobby";   // cs-overlay still wins visually
     if (phase === "InProgress" || phase === "GameStart") return "last-match";  // panels are in-game in game mode
     if (phase === "Lobby" || phase === "Matchmaking" || phase === "ReadyCheck") return "lobby";
@@ -960,6 +970,12 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     renderNext(p);
     renderItemBuild(p);
     renderMinimap(p);
+    // s159: feed the Active Match scaffold on every state envelope so
+    // the pane stays current when the view is active. Cheap pass — the
+    // module's render is null-safe when DOM nodes are missing. lcuPhase
+    // is left out of ctx for step 1; the state envelope carries the
+    // per-mode coach payload only, not the full /api/state lcu block.
+    renderActiveMatch(p, { mode: state.mode });
     renderStats(p);
     renderGameSense(p);
     renderWhatWent(p);
