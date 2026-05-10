@@ -1,0 +1,71 @@
+/* Active Match view (s159) — curated mid-game layout that replaces
+ * the 5-panel main grid for in-game modes. Three-pane horizontal
+ * grid with even widths at the canonical 1920×1280 / 100% scale.
+ *
+ * Step 1 (this commit): scaffold-only styling. Pane heads + empty
+ * placeholder bodies. Subsequent steps fill in CALL / BUILD / MAP
+ * content + per-pane internal layouts.
+ */
+
+#view-active-match .am-grid {
+  display: grid;
+  /* CALL : BUILD : MAP weight ratio. CALL gets a hair more room
+   * because folded RIGHT NOW + NEXT advice is the densest read.
+   * Adjust freely as content fills in. */
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: 14px;
+  align-items: stretch;
+  /* Match the height behavior of the rest of view-section so the
+   * three panes flex to fill the viewport below the header. */
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+#view-active-match .am-pane {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-head);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  min-height: 0;
+  overflow: hidden;
+}
+
+#view-active-match .am-pane-head {
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: var(--info);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+#view-active-match .am-pane-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px;
+}
+
+#view-active-match .am-empty {
+  color: var(--text-faint);
+  font-size: 13px;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  padding: 8px 4px;
+  text-align: center;
+}
+
+/* MAP pane will host an <img> (static mode map) + an absolutely-
+ * positioned overlay layer for ZOI/threat coloring. The img-bound
+ * box keeps the overlay aligned regardless of pane resize. Empty
+ * shell here — overlay layer wires in step 4. */
+#view-active-match .am-map-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
