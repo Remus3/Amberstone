@@ -194,12 +194,26 @@ class TestRoutes(unittest.TestCase):
             RTC._bridge, "is_configured", return_value=True)
         self._secret = mock.patch.object(
             RTC._bridge, "shared_secret", return_value="test-secret")
+        # Replace the fan-out dispatcher with a recording no-op so the
+        # POST handler doesn't kick off a real Riot-API worker thread
+        # when the test machine has API-Key-Riot.txt staged.
+        self._dispatch_calls: list = []
+        self._orig_dispatcher = RTC._FANOUT_DISPATCHER
+        RTC._FANOUT_DISPATCHER = self._record_dispatch
         self._is_cfg.start()
         self._secret.start()
+
+    def _record_dispatch(self, allies, enemies, queue_id):
+        self._dispatch_calls.append({
+            "allies": list(allies),
+            "enemies": list(enemies),
+            "queue_id": int(queue_id),
+        })
 
     def tearDown(self):
         self._is_cfg.stop()
         self._secret.stop()
+        RTC._FANOUT_DISPATCHER = self._orig_dispatcher
         RTC._clear()
 
     def test_get_team_context_cold_returns_null(self):
