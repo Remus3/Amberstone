@@ -494,18 +494,46 @@ def execute_command(cmd):
         # Need to know action ID - fetch session first
         sess, _ = lcu_request("GET", "/lol-champ-select/v1/session")
         if not isinstance(sess, dict): return {"ok": False, "err": "no session"}
-        local_cell = sess.get("localPlayerCellId", -1)
+        # 2026-05-09 (s155): cast to int explicitly — some LCU builds emit
+        # actorCellId / localPlayerCellId as JSON strings depending on the
+        # patch, which made the equality check silently miss.
+        try:
+            local_cell = int(sess.get("localPlayerCellId", -1))
+        except (TypeError, ValueError):
+            local_cell = -1
+        # Walk every pick action for the local cell. Track BOTH the pending
+        # action id (the one we'd PATCH) AND whether the user is already
+        # locked on the requested champion — the dashboard lock button can
+        # race the in-game lock button (user clicks one then the other; or
+        # apply_runes/apply_item_set serialize ahead of lock_pick and push
+        # us past the active-pick window). If the LCU already shows the
+        # pick completed on the same champion, return success so the UI
+        # doesn't surface a phantom failure.
+        pending_aid = None
+        already_locked = False
         for group in sess.get("actions", []):
             for action in group:
-                if (action.get("actorCellId") == local_cell
-                        and action.get("type") == "pick"
-                        and not action.get("completed", False)):
-                    aid = action.get("id")
-                    body = {"championId": cid, "completed": True}
-                    r, err = lcu_request("PATCH",
-                        f"/lol-champ-select/v1/session/actions/{aid}", body)
-                    return {"ok": err is None, "err": err}
-        return {"ok": False, "err": "no pending pick action"}
+                try:
+                    actor_cell = int(action.get("actorCellId", -2))
+                except (TypeError, ValueError):
+                    continue
+                if actor_cell != local_cell:
+                    continue
+                if action.get("type") != "pick":
+                    continue
+                if action.get("completed", False):
+                    if int(action.get("championId", 0)) == cid:
+                        already_locked = True
+                elif pending_aid is None:
+                    pending_aid = action.get("id")
+        if already_locked:
+            return {"ok": True, "err": None, "note": "already locked"}
+        if pending_aid is None:
+            return {"ok": False, "err": "no pending pick action"}
+        body = {"championId": cid, "completed": True}
+        r, err = lcu_request("PATCH",
+            f"/lol-champ-select/v1/session/actions/{pending_aid}", body)
+        return {"ok": err is None, "err": err}
     return {"ok": False, "err": f"unknown cmd: {name}"}
 
 

@@ -830,7 +830,32 @@ function _csWireButtonsOnce() {
       l.disabled = true;
       // Pull current pick from cached state (cs.my_champion).
       const cid = (l._currentCid | 0);
-      if (cid > 0) lcuCmd({ cmd: "lock_pick", championId: cid });
+      if (cid > 0) {
+        // 2026-05-09 (s155): surface the agent's reply so failures aren't
+        // silent. Common cases user can't otherwise diagnose:
+        //   - "no pending pick action" → clicked before pick slot active
+        //   - "no session" → LCU agent disconnected
+        //   - http 4xx/5xx from LCU PATCH
+        // Briefly stamps the cs-my-state line ("⌛ HOVERING — lock to confirm")
+        // with a status, then restores the live state on next render tick.
+        lcuCmd({ cmd: "lock_pick", championId: cid }).then((resp) => {
+          const id = resp && resp.id;
+          if (!id) return;
+          lcuPollResult(id, (result) => {
+            const stateEl = document.getElementById("cs-my-state");
+            if (!stateEl) return;
+            if (result && result.ok) {
+              stateEl.textContent = result.note === "already locked"
+                ? "✓ ALREADY LOCKED"
+                : "✓ LOCK SENT";
+            } else {
+              const err = (result && result.err) || "no response";
+              stateEl.textContent = "✗ Lock failed: " + err;
+            }
+            // Live render restores the canonical state ~1s later.
+          });
+        });
+      }
       setTimeout(() => { l.disabled = false; }, 1500);
     });
   }
