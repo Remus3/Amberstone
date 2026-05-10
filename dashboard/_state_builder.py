@@ -68,44 +68,60 @@ def _preflip_mode_from_lcu(lcu_snapshot: dict | None) -> str | None:
     return None
 
 
+_PREFLIP_FLAG_MAP = {
+    "aram":  "aram_mode",
+    "arena": "arena_mode",
+    "brawl": "brawl_mode",
+    "tft":   "tft_mode",
+    "sr":    "has_game",
+}
+
+
+def resolve_mode_key(health: dict, lcu_snapshot: dict | None) -> tuple[str, bool]:
+    """Return (mode_key, preflip_active).
+
+    Same priority order as ``build_state``:
+      1. LiveClient flags (aram/arena/tft/has_game) — authoritative once
+         the game is actually running.
+      2. LCU lobby/champ-select queue_id pre-flip — so the dashboard
+         switches to the right mode panel before the in-game match.
+      3. ``health.mode`` fallback (legacy code paths).
+      4. ``"client"`` default.
+    """
+    if health.get("aram_mode"):  return ("aram",  False)
+    if health.get("arena_mode"): return ("arena", False)
+    if health.get("tft_mode"):   return ("tft",   False)
+    if health.get("has_game"):   return ("sr",    False)
+    pre = _preflip_mode_from_lcu(lcu_snapshot)
+    if pre:
+        return (pre, True)
+    return (health.get("mode", "client"), False)
+
+
+def apply_preflip_mirror(health: dict, mode_key: str, preflip_active: bool) -> dict:
+    """Return a copy of ``health`` with the per-mode flag set when the
+    s150 LCU pre-flip is the source of ``mode_key``.
+
+    Without this, the dashboard's ``onHealth`` resolver recomputes
+    ``tag="client"`` every health tick from the still-False health.json
+    flags and races ``onState``'s pre-flipped mode — flapping the mode
+    pill, augments pill, and win% pill in lockstep on every cadence cycle.
+    Used by both ``build_state`` (HTTP /api/state) and
+    ``agents.agent2_backend.file_ingest`` (WS /push) so both paths agree.
+    """
+    if not preflip_active:
+        return health
+    flag = _PREFLIP_FLAG_MAP.get(mode_key)
+    if not flag:
+        return health
+    return {**health, flag: True}
+
+
 def build_state() -> dict:
     health = read_json("ops/runtime/health.json")
     lcu_snapshot = lcu_summary()
-    # mode resolution: prefer specific mode flag from health (LiveClient is
-    # authoritative once the game is running). When LiveClient is dark
-    # (lobby/champ-select pre-game), pre-flip from the LCU lobby/champ-
-    # select queue_id so the dashboard switches to the right mode panel
-    # before the in-game match starts.
-    mode_key = "client"
-    preflip_active = False
-    if health.get("aram_mode"):    mode_key = "aram"
-    elif health.get("arena_mode"): mode_key = "arena"
-    elif health.get("tft_mode"):   mode_key = "tft"
-    elif health.get("has_game"):   mode_key = "sr"
-    else:
-        pre = _preflip_mode_from_lcu(lcu_snapshot)
-        if pre:
-            mode_key = pre
-            preflip_active = True
-        else:
-            mode_key = health.get("mode", "client")
-
-    # Mirror the s150 LCU pre-flip into the per-mode flag the WS envelope
-    # carries, so the dashboard's `onHealth` resolver computes the same
-    # mode tag as `onState` during the lobby/champ-select window. Without
-    # this, onHealth recomputes tag="client" every health tick from the
-    # still-False health.json flags and races onState's pre-flipped
-    # mode_key — flapping the mode pill, augments pill, and win% pill in
-    # lockstep. Closes the s151 fix's lobby gap (s151 plumbed the flags
-    # through the envelope but they're still False until a real game).
-    if preflip_active:
-        flag = {"aram":  "aram_mode",
-                "arena": "arena_mode",
-                "brawl": "brawl_mode",
-                "tft":   "tft_mode",
-                "sr":    "has_game"}.get(mode_key)
-        if flag:
-            health = {**health, flag: True}
+    mode_key, preflip_active = resolve_mode_key(health, lcu_snapshot)
+    health = apply_preflip_mirror(health, mode_key, preflip_active)
 
     coach_file = MODE_TO_FILE.get(mode_key, "coaching_data.json")
     coach = read_json(coach_file)
