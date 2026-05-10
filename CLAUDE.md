@@ -143,12 +143,13 @@ When invoked with `/done` or asked to wrap a session: (1) audit pending changes,
 6. ✅ Phase 6 — Bridge consolidation complete (s144): `tools/bridge_cli.py` (574 LOC) + 7 thin shims (139 LOC) replacing 7 originals (772 LOC); `BridgeMetrics` namespace in `core/prom_metrics.py`; 42 tests pass. State-file consolidation + 5 watcher daemons (`bridge_watcher*.py`) explicitly out of scope. Cron contracts preserved — `process-bridge-tasks.md` skill spec untouched.
 7. ✅ Riot API key policy — ADR-006 (s145, 2026-05-09) reverses the "no key" rule for full-team champ-select context. Personal-tier; Web API limited to champ-select + post-game; live in-game advisory stays LCU/LiveClient-only. Implementation tickets are FU02 (`core/riot_api.py`) + FU04 (Personal-tier application).
 8. ✅ **FU04** Riot Personal-tier API key — applied + **approved same-day 2026-05-09** (App ID 834837, well inside the documented 2–6 week window). Bundle preserved at `Desktop/FU04-Application-Evidence/`. Key staged into `API-Key-Riot.txt` (gitignored).
-9. 🟡 **FU02** `core/riot_api.py` + champ-select team-context fan-out — **UNBLOCKED** by FU04 approval. Panel stub already shipped (s146, 28af3bd); next: rate limiter (20/s + 100/2min) + SQLite cache + progressive reveal + ranked-queue obfuscation gate + the actual Match-V5/League-V4/Account-V1/Champion-Mastery-V4 fan-out wired into the panel. Ticket at `Desktop/Tickets/RC_TICKET_FU02_riot_api_module.md`.
-10. 🟡 **FU01** minimap-locate — replace hardcoded bbox in `agents/supervisor.py:597` with 3-path resolver (override → PersistedSettings → hardcoded fallback). Ticket at `Desktop/Tickets/RC_TICKET_FU01_minimap_locate.md`. Independent of FU02; can ship anytime.
-11. 🚫 **FU03** clipboard helper — superseded by FU04 same-day approval (Personal keys don't expire; daily-renewal helper no longer needed).
-12. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes. Blocked on live game.
-13. 🟡 DS calibration pipeline — blocked on rewind_history.db staleness (last entry Dec 2025).
-14. 🟡 gamepc_boot.ps1 hardening — add `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC`.
-15. 🟡 Bridge Watcher acceptance-criteria — need 50+ real-traffic samples.
+9. ✅ **FU02** `core/riot_api.py` + champ-select team-context fan-out — shipped s148 (`dfa13f0`). Personal-tier key resolver + dual token bucket (20/s + 100/120s + 429 cooldown) + SQLite cache (immutable for match data + Account, 5-min TTL for ranks + mastery) + 6 endpoint wrappers + priority-1/priority-2 fan-out via daemon thread + progressive reveal + backend ranked-name-blanking (queue 420/440). 63 new tests, 565 total. `/metrics` exposes `rc_riot_api_calls_total{endpoint,outcome}` + bucket gauges.
+10. 🟡 **LCU agent → team-context refresh wiring** — last mile of FU02. Game-PC `tools/gamepc_lcu_agent.py` already collects myTeam/theirTeam in champ-select; needs to forward roster (with PUUIDs) to `https://192.168.8.230:8888/api/team-context/refresh` on transition into ChampSelect. Bearer auth via the bridge shared secret.
+11. 🟡 **FU01** minimap-locate — replace hardcoded bbox in `agents/supervisor.py:597` with 3-path resolver (override → PersistedSettings → hardcoded fallback). Ticket at `Desktop/Tickets/RC_TICKET_FU01_minimap_locate.md`. Independent.
+12. 🚫 **FU03** clipboard helper — superseded by FU04 same-day approval (Personal keys don't expire; daily-renewal helper no longer needed).
+13. 🟡 Vision regions calibration — tune `data/vision_regions.json` bboxes. Blocked on live game.
+14. 🟡 DS calibration pipeline — blocked on rewind_history.db staleness (last entry Dec 2025).
+15. 🟡 gamepc_boot.ps1 hardening — add `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC`.
+16. 🟡 Bridge Watcher acceptance-criteria — need 50+ real-traffic samples.
 
 Full open work + future: `ROADMAP.md` + `BACKLOG.md`. Completed work: `docs/_archive/CHANGELOG.md`.

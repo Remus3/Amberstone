@@ -6,6 +6,35 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s144 wrap — 2026-05-09 (Phase 6 — bridge CLI consolidation)
+
+## What shipped
+- **`tools/bridge_cli.py`** (574 LOC) — single argparse-subparser entrypoint with subcommands `task | post-result | pull | fetch | ping | heartbeat | post`. SSL ctx, urllib helpers, processed-tasks file, last-seen file, vision-health probe, and Stop-hook transcript parsing — each previously duplicated 2–7× across the originals — now live exactly once.
+- **7 thin shims** (16–26 LOC each, 139 LOC total) replace the 7 originals (772 LOC total). Each shim imports `bridge_cli.main` and prepends its subcommand to argv. Cron contracts preserved exactly — `bridge_pull_tasks.py --target legion` still emits `{now, target, count, tasks}`; the `/process-bridge-tasks` skill spec was untouched.
+- **`BridgeMetrics` namespace** in `core/prom_metrics.py` — counters `posts_total{kind,target}`, `fetches_total{status}`, `pulls_total{target,status}`; gauge `pull_pending{target}`. Class-level Counter/Gauge so registration happens on import.
+- **`tests/phase6_bridge_cli/test_bridge_cli.py`** (new) — 42 tests: argparse contracts, envelope shapes (task with/without prompt, post-result with --suggestions/--exit-code/--from-stdin/--reply-to=peer routing via core.bridge.send), pull filtering (target match, rc alias on legion, answered/processed exclusion, sort-oldest-first, fetch-error path), fetch hook (last-seen file write, peer filtering case-insensitive), Stop-hook transcript extraction, heartbeat `--once` mode, BridgeMetrics class registration, parametrized subprocess --help dispatch over each shim.
+- **Live verified**: `py tools/bridge_pull_tasks.py --target legion` → exact pre-shim JSON shape; `py tools/bridge_ping.py` → POST + GET read-back + vision health all OK, exit 0. RC supervisor untouched (RC-BridgeWatcher daemon excluded from rewrite scope).
+- **Plan + living docs synced**: `RC_FUTUREPROOFING_PLAN.md` Phase 6 → 🟢 done (1/1 session); Phase 4.2 tool-rewrite checkbox flipped (s144 Findings); BACKLOG's "Bridge contract v1" item closed; CLAUDE.md priority #6 ✅; ROADMAP table updated; ARCHITECTURE.md auto-regenerated. 476 CI-scoped tests pass (was 440 + 42 mine + drift). Ruff clean. archmap clean.
+- **Cleaned leftovers**: deleted `web/js/main.js.bak` (Phase 3.1), 3 `dev-panel*.jpeg` screenshots, `_audit5_tasks.tmp.jsonl`, 0-byte `agentsstatetask_queue.jsonl`. Kept `.playwright-mcp/` cache (used by snapshot tests).
+
+## Key decisions
+- **Scope**: plan said "12 scripts → shims"; actual CLI surface is 7 small scripts. The 5 `bridge_watcher*.py` daemons (2486 LOC combined) are long-lived processes, not CLI commands — out of rewrite scope.
+- **Argparse over Click**: zero new dep, equivalent readability via `add_subparsers(dest="cmd", required=True)`.
+- **State consolidation deferred**: per-process `%LOCALAPPDATA%` files (`rc-bridge-tasks-processed.txt`, `rc-bridge-last-seen.txt`) stay where they are — the watcher daemons own the `bridge_*` files in `ops/runtime/`, and refactoring those touches frozen daemon internals.
+- **`heartbeat --once`** added for testability — original was an unkillable `while True:`. Default behaviour unchanged.
+- **Frozen-list unchanged**: `bridge_post_result.py` and `bridge_pull_tasks.py` keep `frozen=yes` headers. Future contract changes still require operator approval — but the implication now extends to `bridge_cli.py` since the shims delegate to it.
+
+## Commits
+- **75603fe** — `feat(bridge): Phase 6 — consolidate 7 small bridge CLIs into bridge_cli.py (s144)`
+- **f764e35** — `docs: sync living docs — Phase 6 complete (s144)`
+- Pushed: `87eacc2..f764e35  main -> main`
+
+## What's next
+- Futureproofing plan now has every actionable phase ✅. Open RC work is operational, not refactor: vision regions calibration (blocked on live game), gamepc_boot.ps1 hardening, Bridge Watcher acceptance-criteria (need 50+ real-traffic samples), DS calibration pipeline (rewind_history.db staleness).
+- Watcher-daemon refactor (`bridge_watcher*.py` → envelope-aware, shared state, BridgeMetrics-instrumented) remains a future Phase if the watcher lifecycle ever opens up.
+
+---
+
 # s143 wrap — 2026-05-09 (Phase 4.1 — dispatch-level soft-warn validator)
 
 ## What shipped
