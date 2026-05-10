@@ -119,6 +119,15 @@ def build_state() -> dict:
             "pid":            health.get("pid"),
             "mode":           health.get("mode"),
             "has_game":       health.get("has_game"),
+            # Per-mode flags drive `onHealth` mode resolution in the
+            # dashboard. Without them, has_game=True would always fall
+            # through to `tag="sr"` and flap against onState's mode_key
+            # ("arena"/"aram"/"brawl"/"tft"), flashing mode-gated UI like
+            # the augments pill on every health tick.
+            "aram_mode":      health.get("aram_mode"),
+            "arena_mode":     health.get("arena_mode"),
+            "brawl_mode":     health.get("brawl_mode"),
+            "tft_mode":       health.get("tft_mode"),
             "ui_pulse_age_s": health.get("ui_pulse_age_s"),
             "game_poll_age_s": health.get("game_poll_worker_age_s"),
         },
