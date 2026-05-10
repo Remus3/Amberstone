@@ -3370,10 +3370,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
   // so a Z-toggle (or zoom hotkey) updates the chip immediately rather
   // than reflecting the value at page-load time only.
   function _refreshPrefsChip() {
-    const zenOn = document.body.dataset.zen === "1";
+    // s161: zen flag dropped from the prefs chip — operator wanted
+    // the "ZEN:OFF" pill removed from the footer. Zoom flag stays
+    // since zoom drift is still useful diagnostic info.
     const z = localStorage.getItem("rc-body-zoom");
     const flags = [];
-    if (!zenOn) flags.push("zen:off");
     if (z && parseFloat(z) < 1.1) flags.push("zoom:1×");
     let chip = document.querySelector("footer .prefs-chip");
     if (!flags.length) {
