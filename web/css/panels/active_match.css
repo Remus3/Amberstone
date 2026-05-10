@@ -1,6 +1,6 @@
 /* Active Match view (s159) — curated mid-game layout that replaces
  * the 5-panel main grid for in-game modes. Three-pane horizontal
- * grid with even widths at the canonical 1920×1280 / 100% scale.
+ * grid with even widths at the canonical 1920×1080 / 100% scale.
  *
  * Step 1 (this commit): scaffold-only styling. Pane heads + empty
  * placeholder bodies. Subsequent steps fill in CALL / BUILD / MAP

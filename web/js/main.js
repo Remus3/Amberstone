@@ -461,18 +461,15 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     if (viewId === "session")     { _sessionFetchAndRender(); }
     if (viewId === "history")     { _historyWireOnce(); _historyFetchAndRender(); }
     if (viewId === "replay")      { _replayViewWireOnce(); _replayViewRefresh(); }
-    if (viewId === "loadouts")    { _loadoutsWireOnce(); _loadoutsFetchAndRender(); }
     if (viewId === "user-builds") { _userBuildsWireOnce(); _userBuildsFetchAndRender(); }
-    if (viewId === "diagnostics") { _diagWireOnce(); _diagFetchAndRender(); }
     if (viewId === "settings")    { _settingsRefresh(); }
     if (viewId === "dev")         { _devViewWireOnce(); _devViewFetch(); }
   }
   function _viewUpdateTitleLabel(viewId) {
     const el = document.getElementById("view-current-label");
     if (el) el.textContent = (_VIEW.manual ? "" : "AUTO · ") + (VIEW_LABELS[viewId] || viewId).toUpperCase();
-    // Show the prominent ↻ AUTO pill only when manual is sticky.
-    const pill = document.getElementById("view-auto-pill");
-    if (pill) pill.classList.toggle("hidden", !_VIEW.manual);
+    // s162: ↻ AUTO header pill removed. Operator clears manual via the
+    // "↻ Auto (clear manual)" entry in the title dropdown menu.
   }
   function _viewUpdateMenuActive(viewId) {
     document.querySelectorAll(".view-menu-item").forEach((b) => {
@@ -540,13 +537,9 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
         _viewResolveAndApply();
       });
     });
-    // Prominent ↻ AUTO pill — clears the manual override in one click.
-    const autoPill = document.getElementById("view-auto-pill");
-    if (autoPill) autoPill.addEventListener("click", () => {
-      _viewSaveManual(null);
-      location.hash = "";
-      _viewResolveAndApply();
-    });
+    // s162: prominent ↻ AUTO pill removed. The dropdown's "↻ Auto
+     // (clear manual)" item already triggers the same path through the
+    // view-menu-item click handler above (data-view="auto" branch).
     window.addEventListener("hashchange", _viewResolveAndApply);
     // Initial manual state from localStorage
     _VIEW.manual = _viewFromStorage();
@@ -630,13 +623,25 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     // would just show stale values from the prior game. Hide the lot and return.
     // Exception: keep KDA visible in aftergame so the operator can review the
     // just-finished match — but blank the in-game-only pills.
-    if (state.mode === "client") {
-      const inGamePills = ["lvl-pill", "vis-pill", "ult-pill", "cs-pill", "gold-pill"];
+    // Hide in-game pills whenever the operator-facing surface isn't an
+    // in-game view. The active view is the most reliable signal —
+    // state.mode can be "sr" with empty lcu (live LCU not forwarding
+    // lobby data), and lcu.phase can be undefined for the same reason,
+    // but if the operator is on the lobby/home/session/etc view they
+    // never want WIN% / ZOI / CS / vision / game-time pills cluttering
+    // the header.
+    const _activeView = (_VIEW && _VIEW.current) || null;
+    const _isInGameView = (_activeView === "active-match" || _activeView === "last-match");
+    if (state.mode === "client" || !_isInGameView) {
+      const inGamePills = [
+        "lvl-pill", "vis-pill", "ult-pill", "cs-pill", "gold-pill",
+        // s162: hide WIN% + ZOI + game-time in pre-game per operator.
+        "win-pill", "zone-pill", "game-time",
+      ];
       for (const id of inGamePills) {
         const e = el(id);
         if (e) e.classList.add("hidden");
       }
-      // Blank the game-time display (no clock pre-game)
       if (gameTime) gameTime.textContent = "";
       return;
     }
@@ -2161,11 +2166,19 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
   function renderHomePanel(lcu) {
     const overlay = document.getElementById("home-overlay");
     if (!overlay) return;
-    // V2 visibility: also un-hide whenever the user is explicitly on
-    // the Home view (manual nav). Was previously gated only on
-    // state.mode === "client" via _homeShouldShow.
+    // s162 (2026-05-10): hard-gate on view. Pre-fix the home-overlay
+    // un-hid based on phase regardless of active view, which caused it
+    // to leak into Lobby / Dev / etc when handleLcuEnvelope started
+    // actually firing renderHomePanel after the champ_select.js
+    // ReferenceError fix. Home-overlay is the home-view surface — only
+    // show when the home view is active.
     const onHomeView = document.body.dataset.view === "home";
-    if (!onHomeView && !_homeShouldShow(lcu)) {
+    if (!onHomeView) {
+      overlay.classList.add("hidden");
+      overlay.setAttribute("aria-hidden", "true");
+      return;
+    }
+    if (!_homeShouldShow(lcu)) {
       overlay.classList.add("hidden");
       overlay.setAttribute("aria-hidden", "true");
       return;
@@ -2229,7 +2242,612 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
   // same lcu.lobby data feed as the inline #lobby-overlay; this view
   // is the richer presentation when the user explicitly navigates
   // here OR auto-mode resolves to lobby.
-  const _LV = { wired: false };
+  const _LV = {
+    wired: false,
+    activeSlot: null,    // "primary" | "secondary" | null — which lane-pref slot the popup is anchored to
+    prefPrimary:   "UNSELECTED",
+    prefSecondary: "UNSELECTED",
+    needsPick:     false,    // true when primary just changed FROM fill → role; secondary needs re-pick
+    partyOpen:     true,     // operator default per s162 spec
+    autoAccept:    false,    // s162 v2: Auto Accept default off
+    mainsTab:      null,     // s162 v4: "you" | "party" | null (auto from party_size)
+  };
+  // s162 v2: full uppercase per operator spec ("TOP | JUNGLE | MIDDLE
+  // | BOTTOM | SUPPORT | FILL"). UTILITY is the LCU's enum value for
+  // the support role; "SUPPORT" is the operator-facing label.
+  const LANE_LABELS = {
+    TOP: "TOP", JUNGLE: "JUNGLE", MIDDLE: "MIDDLE",
+    BOTTOM: "BOTTOM", UTILITY: "SUPPORT", FILL: "FILL",
+    UNSELECTED: "—",
+  };
+  const LANE_ICONS = {
+    TOP: "/icons/positions/top.png",
+    JUNGLE: "/icons/positions/jungle.png",
+    MIDDLE: "/icons/positions/middle.png",
+    BOTTOM: "/icons/positions/bottom.png",
+    UTILITY: "/icons/positions/utility.png",
+    FILL: "/icons/positions/fill.png",
+  };
+  // SR map queue ids — controls strip is SR-only. ARAM (450/920),
+  // Arena (1700), Brawl (1300/900/1900/1400) hide the strip entirely.
+  // s162 (2026-05-10): SR map queue ids — controls strip is SR-only.
+  // Includes Swiftplay (480) — added 2026-05-10 from operator's live
+  // mode list. Brawl modes (NEXUSBLITZ/etc) removed since Brawl is no
+  // longer a selectable queue per Riot. ARAM (450/920), Arena (1700)
+  // hide the strip entirely.
+  const SR_QUEUE_IDS = new Set([
+    400, 420, 430, 440, 480, 700,    // Normal Draft, Ranked Solo, Normal Blind, Ranked Flex, Swiftplay, Clash
+    830, 840, 850, 870, 880, 890,    // Co-op vs AI variants (Intro/Beginner/Intermediate)
+  ]);
+
+  function _fmtMasteryPoints(pts) {
+    const n = pts | 0;
+    if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, "") + " M points";
+    if (n >= 1000)    return Math.round(n / 1000) + " K points";
+    return n + " points";
+  }
+  function _fmtK(n) {
+    const v = n | 0;
+    if (v >= 1000) return (v / 1000).toFixed(v >= 10000 ? 0 : 1).replace(/\.0$/, "") + "K";
+    return String(v);
+  }
+  function _fmtPct(num, den) {
+    if (!den) return "—";
+    return Math.round((num / den) * 100) + "%";
+  }
+  function _mainsTabState() {
+    // Default tab driven by party composition. Solo → YOUR. Party → PARTY.
+    const lcu = (state.latest && state.latest.lcu) || {};
+    const lobby = lcu.lobby || null;
+    const partySize = (lobby && lobby.party_size) | 0;
+    if (_LV.mainsTab) return _LV.mainsTab;          // operator-toggled wins
+    return partySize > 1 ? "party" : "you";
+  }
+  function _renderMains() {
+    const lcu = (state.latest && state.latest.lcu) || {};
+    const tab = _mainsTabState();
+    // Tab visual state
+    const tabYou   = document.getElementById("lv-mc-tab-you");
+    const tabParty = document.getElementById("lv-mc-tab-party");
+    if (tabYou && tabParty) {
+      tabYou.classList.toggle("is-selected",   tab === "you");
+      tabYou.classList.toggle("is-deselected", tab !== "you");
+      tabYou.setAttribute("aria-selected",     tab === "you" ? "true" : "false");
+      tabParty.classList.toggle("is-selected",   tab === "party");
+      tabParty.classList.toggle("is-deselected", tab !== "party");
+      tabParty.setAttribute("aria-selected",     tab === "party" ? "true" : "false");
+    }
+    if (tab === "you") {
+      _renderMainChamps(lcu.main_champs || null);
+    } else {
+      _renderPartyMains(lcu.lobby || null);
+    }
+  }
+  function _renderMainChamps(mc) {
+    const list = document.getElementById("lv-mainchamps-list");
+    if (!list) return;
+    if (!mc || !Array.isArray(mc.champions) || !mc.champions.length) {
+      list.innerHTML = '<li class="home-empty">main champions populate when LCU mastery data is wired</li>';
+      return;
+    }
+    const champs = mc.champions.slice(0, 4);
+    const selfName = _selfShortName() || "";
+    list.innerHTML = "";
+    champs.forEach((c, i) => {
+      const rank = i + 1;
+      const champKey = _resolveChampId(c.name) || c.name || "";
+      const iconUrl = c.icon || ("/icons/champions/" + champKey + ".png");
+      const lm = c.last_match || {};
+      const result = (lm.result || "").trim();
+      const resultLow = result.toLowerCase();
+      const ov = c.overall || {};
+      const games = ov.games | 0;
+      const wins  = ov.wins  | 0;
+      const losses = ov.losses | 0;
+      const wr = (games > 0) ? Math.round((wins / games) * 100) : null;
+      const totalKda = ov.total_kda || (ov.k != null ? `${ov.k}/${ov.d}/${ov.a}` : "—");
+      const av = c.averaged || {};
+      const li = document.createElement("li");
+      li.className = "lv-mc-row";
+      li.dataset.rank = String(rank);
+      li.dataset.colorIdx = "0";   // s162 v5: YOUR MAINS always uses self (lavender)
+      li.innerHTML = (
+        '<span class="lv-mc-champ">' +
+          '<span class="lv-mc-icon">' +
+            '<img src="' + iconUrl + '" alt="' + (c.name || "") + '" ' +
+              'onerror="this.style.display=\'none\'" />' +
+          '</span>' +
+          '<button type="button" class="lv-mc-copy" data-copy-rank="' + rank + '" ' +
+                  'title="Copy summary for League chat" aria-label="Copy">📋</button>' +
+        '</span>' +
+        '<span class="lv-mc-mastery">' +
+          '<span class="lv-mc-summoner-name">' + (selfName || "—") + '</span>' +
+          '<b class="lv-mc-mastery-level">Mastery ' + (c.mastery_level != null ? c.mastery_level : "—") + '</b>' +
+          '<span class="lv-mc-mastery-points">' + _fmtMasteryPoints(c.mastery_points) + '</span>' +
+        '</span>' +
+        '<span class="lv-mc-recent">' +
+          '<span class="lv-mc-result lv-mc-result-' + resultLow + '">' + (result || "—") + '</span>' +
+          '<span class="lv-mc-kda">' + (lm.kda || "—") + '</span>' +
+        '</span>' +
+        '<span class="lv-mc-overall">' +
+          '<span class="lv-mc-games">' + (games || "—") + (games ? ' Games' : '') + '</span>' +
+          '<span class="lv-mc-wl">' +
+            '<span class="lv-mc-w">' + wins + '</span>' +
+            ' - ' +
+            '<span class="lv-mc-l">' + losses + '</span>' +
+          '</span>' +
+          '<span class="lv-mc-wr">' + (wr != null ? wr + "%" : "—") + '</span>' +
+          '<span class="lv-mc-total-kda">' + totalKda + '</span>' +
+        '</span>' +
+        '<span class="lv-mc-averaged">' +
+          '<span class="lv-mc-avg-cell">' +
+            '<span class="lv-mc-avg-val">' + _fmtK(av.gold) + '</span>' +
+            '<span class="lv-mc-avg-lbl">Gold</span>' +
+          '</span>' +
+          '<span class="lv-mc-avg-cell">' +
+            '<span class="lv-mc-avg-val">' + (av.cs != null ? av.cs : "—") + '</span>' +
+            '<span class="lv-mc-avg-lbl">CS</span>' +
+          '</span>' +
+          '<span class="lv-mc-avg-cell">' +
+            '<span class="lv-mc-avg-val">' + (av.vision != null ? av.vision : "—") + '</span>' +
+            '<span class="lv-mc-avg-lbl">Vis</span>' +
+          '</span>' +
+          '<span class="lv-mc-avg-bot-row">' +
+            '<span class="lv-mc-avg-cell">' +
+              '<span class="lv-mc-avg-val">' + _fmtK(av.heal_shield) + '</span>' +
+              '<span class="lv-mc-avg-lbl">H/S</span>' +
+            '</span>' +
+            '<span class="lv-mc-avg-cell">' +
+              '<span class="lv-mc-avg-val">' + _fmtK(av.tanked) + '</span>' +
+              '<span class="lv-mc-avg-lbl">Tnk</span>' +
+            '</span>' +
+          '</span>' +
+        '</span>'
+      );
+      list.appendChild(li);
+    });
+    // Wire copy buttons (lazy — re-attached on every render)
+    list.querySelectorAll(".lv-mc-copy").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const rank = parseInt(btn.dataset.copyRank, 10);
+        const c = champs[rank - 1];
+        if (!c) return;
+        const ov = c.overall || {};
+        const games = ov.games | 0;
+        const wins  = ov.wins  | 0;
+        const wr = (games > 0) ? Math.round((wins / games) * 100) : null;
+        const points = _fmtMasteryPoints(c.mastery_points);
+        // s162 v5 format: "Summoner - Champion - Mastery N : ## K points · ## Games All-Time · ##% WR"
+        const txt = `${selfName || "—"} - ${c.name} - Mastery ${c.mastery_level || "?"} : ${points} · ${games} Games All-Time${wr != null ? " · " + wr + "% WR" : ""}`;
+        try {
+          navigator.clipboard.writeText(txt);
+          btn.classList.add("is-copied");
+          setTimeout(() => btn.classList.remove("is-copied"), 1200);
+        } catch (_) { /* ignore — older browsers without clipboard API */ }
+      });
+    });
+  }
+  function _rankClass(tier) {
+    return "lv-rank-" + String(tier || "unranked").toLowerCase().replace(/\s+/g, "");
+  }
+  function _fullPartyMember(m) {
+    return m.riot_id || (m.game_name && m.tag_line ? `${m.game_name}#${m.tag_line}` : (m.summoner_name || "Unknown"));
+  }
+  function _resolvePartyMember(m) {
+    // s162 v4: party panel display drops the #tag — operator wants just
+    // the game name. Copy actions still write the full riot_id via
+    // _fullPartyMember.
+    return _fullPartyMember(m).split("#")[0];
+  }
+  function _selfShortName() {
+    const lcu = (state.latest && state.latest.lcu) || {};
+    const members = (lcu.lobby && lcu.lobby.members) || [];
+    const self = members.find((m) => m.is_self);
+    if (!self) return "";
+    return _fullPartyMember(self).split("#")[0];
+  }
+  function _partyOtherShortName(idx) {
+    // idx 0 = first non-self member, etc.
+    const lcu = (state.latest && state.latest.lcu) || {};
+    const members = (lcu.lobby && lcu.lobby.members) || [];
+    const others = members.filter((m) => !m.is_self);
+    const m = others[idx];
+    if (!m) return "";
+    return _fullPartyMember(m).split("#")[0];
+  }
+  // s162 v4: position the relocated NORMAL DRAFT + PARTY titles in the
+  // section-head row so they sit EXACTLY above the centers of their
+  // respective panels. CSS calc() math drifts when the section-head's
+  // measured width differs from the lobby-view-grid's measured width
+  // (browser rounding, scrollbar reservations, etc.) — so anchor to
+  // the actual rendered DOMRects.
+  // s162 v4: cross-panel selection sync — clicking a Party row OR a
+  // PARTY MAINS card highlights both with white border. Document click
+  // outside clears.
+  function _selectPartyMember(idx) {
+    document.querySelectorAll(".lobby-member-row.is-selected, .lv-mc-row.is-selected")
+      .forEach((el) => el.classList.remove("is-selected"));
+    if (idx == null) return;
+    document.querySelectorAll(`.lobby-member-row[data-member-idx="${idx}"]`)
+      .forEach((el) => el.classList.add("is-selected"));
+    document.querySelectorAll(`.lv-mc-row[data-member-idx="${idx}"]`)
+      .forEach((el) => el.classList.add("is-selected"));
+  }
+  if (typeof document !== "undefined") {
+    document.addEventListener("click", () => _selectPartyMember(null));
+  }
+  function _positionLobbyTitles() {
+    const head = document.querySelector(".lv-section-head-lobby");
+    const queue = document.querySelector(".lobby-view-card-queue");
+    const party = document.querySelector(".lobby-view-card-party");
+    const queueT = document.getElementById("lv-queue-name");
+    const partyT = document.querySelector(".lv-section-party-title");
+    if (!head || !queue || !party || !queueT || !partyT) return;
+    const headRect = head.getBoundingClientRect();
+    if (headRect.width <= 0) return;  // not rendered yet
+    const queueRect = queue.getBoundingClientRect();
+    const partyRect = party.getBoundingClientRect();
+    queueT.style.left  = (queueRect.left - headRect.left) + "px";
+    queueT.style.right = "auto";
+    queueT.style.width = queueRect.width + "px";
+    partyT.style.left  = (partyRect.left - headRect.left) + "px";
+    partyT.style.right = "auto";
+    partyT.style.width = partyRect.width + "px";
+  }
+  if (typeof window !== "undefined") {
+    window.addEventListener("resize", _positionLobbyTitles);
+  }
+
+  function _renderPartyMembers(lobby) {
+    const ul  = document.getElementById("lv-members-list");
+    const members = (lobby && lobby.members) || [];
+    const iAmLeader = !!(lobby && lobby.is_leader);
+    if (!ul) return;
+    if (!members.length) {
+      ul.innerHTML = '<li class="home-empty">no members visible — Game-PC LCU agent needs to forward lcu.lobby.members[]</li>';
+      return;
+    }
+    const isSolo = members.length === 1;
+    ul.innerHTML = "";
+    let otherIdx = 0;  // index among non-self members; cross-refs PARTY MAINS card idx
+    members.forEach((m) => {
+      const li = document.createElement("li");
+      li.className = "lobby-member-row" + (m.is_self ? " is-self" : "");
+      if (!m.is_self) {
+        li.dataset.memberIdx = String(otherIdx);
+        // s162 v5: color palette per non-self member (good/gold/teal/coral)
+        li.dataset.colorIdx = String(otherIdx + 1);
+        otherIdx++;
+      } else {
+        li.dataset.colorIdx = "0";  // self → lavender
+      }
+      const ign = _resolvePartyMember(m);
+      // s162 v4: Section 1 is just the name. YOU pip removed; the
+      // is-self row already gets a border accent. LEADER pip moved to
+      // the right-side action group as a crown button.
+      const section1 =
+        '<span class="lv-party-section-name">' +
+          `<span class="lobby-member-name">${ign}</span>` +
+        '</span>' +
+        '<span class="lv-party-spacer-icon"></span>';   // col 2 — kept for visual rhythm
+      // Section 2: current rank / div / LP — shown in BOTH solo and
+      // party 2+. Falls back to "Account Level NNN : Unranked" when
+      // member has no ranked tier.
+      let section2;
+      if (m.rank && m.rank.tier) {
+        const rankCls = _rankClass(m.rank.tier);
+        const div = m.rank.division ? " " + m.rank.division : "";
+        const lp = (m.rank.lp != null) ? ` ${m.rank.lp} LP` : "";
+        section2 =
+          '<span class="lv-party-section-rank">' +
+            `<span class="lobby-member-pip lobby-member-pip-rank ${rankCls}">${m.rank.tier}${div}${lp}</span>` +
+          '</span>';
+      } else {
+        const lvl = (m.summoner_level != null) ? m.summoner_level : (m.level != null ? m.level : "—");
+        section2 = `<span class="lv-party-section-rank"><span class="lv-party-empty">Level ${lvl} : Unranked</span></span>`;
+      }
+      // s162 v4: Section 3 — preferred role pip (was peak rank). Based
+      // on match history; LCU agent + rewind_history.db will populate
+      // m.preferred_role in Phase B. Party 2+ only.
+      let section3 = '<span class="lv-party-section-peak"></span>';
+      if (!isSolo && m.preferred_role) {
+        section3 =
+          '<span class="lv-party-section-peak">' +
+            `<span class="lobby-member-pip lobby-member-pip-role">${m.preferred_role}</span>` +
+          '</span>';
+      } else if (!isSolo) {
+        section3 = '<span class="lv-party-section-peak"><span class="lv-party-empty">—</span></span>';
+      }
+      // s162 v6: 4 always-present action slots per row so widths line
+      // up across all party rows regardless of role permissions.
+      // Slots: [crown OR spacer] [copy] [promote OR spacer] [kick OR spacer].
+      const fullIgn = _fullPartyMember(m);
+      const actions = [];
+      // Slot 1 — leader crown / spacer
+      if (m.is_leader) {
+        actions.push(`<span class="lv-member-action lv-member-leader-crown" title="Party leader" aria-label="Party leader">👑</span>`);
+      } else {
+        actions.push('<span class="lv-member-action-spacer" aria-hidden="true"></span>');
+      }
+      // Slot 2 — copy (always present)
+      actions.push(`<button type="button" class="lv-member-action" data-action="copy" data-ign="${fullIgn}" title="Copy username" aria-label="Copy username">📋</button>`);
+      // Slot 3 — promote / spacer
+      if (!isSolo && iAmLeader && !m.is_self && !m.is_leader) {
+        actions.push(`<button type="button" class="lv-member-action" data-action="promote" data-ign="${fullIgn}" title="Promote to leader" aria-label="Promote to leader">⬆</button>`);
+      } else {
+        actions.push('<span class="lv-member-action-spacer" aria-hidden="true"></span>');
+      }
+      // Slot 4 — kick / spacer
+      if (!isSolo && iAmLeader && !m.is_self) {
+        actions.push(`<button type="button" class="lv-member-action" data-action="kick" data-ign="${fullIgn}" title="Kick from party" aria-label="Kick">✕</button>`);
+      } else {
+        actions.push('<span class="lv-member-action-spacer" aria-hidden="true"></span>');
+      }
+      const section4 = `<span class="lobby-member-actions">${actions.join("")}</span>`;
+      // s162 v5: 6-col layout — name (1) | icon-spacer (2) | role (3)
+      // | rank (4) | top-3-champs-for-role (5) | actions (6).
+      const champs = Array.isArray(m.top_role_champs) ? m.top_role_champs : [];
+      const shortChamps = champs.slice(0, 3)
+        .map((n) => String(n || "").split(/[ '&]/)[0].slice(0, 4))
+        .filter(Boolean);
+      const sectionTopChamps = '<span class="lv-party-section-topchamps">' +
+        (shortChamps.length ? shortChamps.join(" | ") : "—") +
+        '</span>';
+      li.innerHTML = section1 + section3 + section2 + sectionTopChamps + section4;
+      ul.appendChild(li);
+    });
+    // s162 v4: click party row → highlight matching PARTY MAINS card
+    // (and the row itself). Clicks on action buttons are ignored.
+    ul.querySelectorAll(".lobby-member-row[data-member-idx]").forEach((row) => {
+      row.addEventListener("click", (e) => {
+        if (e.target.closest(".lv-member-action")) return;
+        e.stopPropagation();
+        _selectPartyMember(row.dataset.memberIdx);
+      });
+    });
+    // Wire action clicks
+    ul.querySelectorAll(".lv-member-action").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const action = btn.dataset.action;
+        const ign = btn.dataset.ign;
+        if (action === "copy") {
+          try {
+            navigator.clipboard.writeText(ign);
+            btn.classList.add("is-copied");
+            setTimeout(() => btn.classList.remove("is-copied"), 1200);
+          } catch (_) { /* ignore */ }
+          return;
+        }
+        if (action === "promote") {
+          if (!window.confirm(`Promote ${ign} to leader?`)) return;
+          // Phase B: lcuCmd({ cmd: "lobby.promote_leader", riot_id: ign });
+          return;
+        }
+        if (action === "kick") {
+          if (!window.confirm(`Kick ${ign} from party?`)) return;
+          // Phase B: lcuCmd({ cmd: "lobby.kick_member", riot_id: ign });
+          return;
+        }
+      });
+    });
+  }
+  function _renderPartyMains(lobby) {
+    const list = document.getElementById("lv-mainchamps-list");
+    if (!list) return;
+    list.innerHTML = "";
+    // s162 v4: PARTY MAINS shows up to 4 party-member cards (NOT
+    // including self). When solo (party_size === 1) all 4 render as
+    // 50%-opacity dashed placeholders. Phase B wires real data from
+    // each member's top-1 mastery via lcu.party_mains.
+    const lcu = (state.latest && state.latest.lcu) || {};
+    const partyMains = Array.isArray(lcu.party_mains) ? lcu.party_mains : [];
+    const partySize = (lobby && lobby.party_size) | 0;
+    const useData = partySize > 1;
+    for (let i = 0; i < 4; i++) {
+      const c = useData ? partyMains[i] : null;
+      const rank = i + 1;
+      const li = document.createElement("li");
+      if (c) {
+        const champKey = _resolveChampId(c.name) || c.name || "";
+        const iconUrl = c.icon || ("/icons/champions/" + champKey + ".png");
+        const lm = c.last_match || {};
+        const result = (lm.result || "").trim();
+        const resultLow = result.toLowerCase();
+        const ov = c.overall || {};
+        const games = ov.games | 0;
+        const wins  = ov.wins  | 0;
+        const losses = ov.losses | 0;
+        const wr = (games > 0) ? Math.round((wins / games) * 100) : null;
+        const totalKda = ov.total_kda || "—";
+        const av = c.averaged || {};
+        li.className = "lv-mc-row";
+        li.dataset.rank = String(rank);
+        li.dataset.memberIdx = String(i);  // for click-to-select sync with party panel
+        li.dataset.colorIdx  = String(i + 1);  // matches the party-panel non-self color
+        const playerName = c.player || _partyOtherShortName(i) || "—";
+        li.innerHTML = (
+          '<span class="lv-mc-champ">' +
+            '<span class="lv-mc-icon">' +
+              `<img src="${iconUrl}" alt="${c.name || ""}" onerror="this.style.display='none'" />` +
+            '</span>' +
+            `<button type="button" class="lv-mc-copy" data-copy-rank="${rank}" ` +
+                    'title="Copy summary for League chat" aria-label="Copy">📋</button>' +
+          '</span>' +
+          '<span class="lv-mc-mastery">' +
+            `<span class="lv-mc-summoner-name">${playerName}</span>` +
+            `<b class="lv-mc-mastery-level">Mastery ${c.mastery_level != null ? c.mastery_level : "—"}</b>` +
+            `<span class="lv-mc-mastery-points">${_fmtMasteryPoints(c.mastery_points)}</span>` +
+          '</span>' +
+          '<span class="lv-mc-recent">' +
+            `<span class="lv-mc-result lv-mc-result-${resultLow}">${result || "—"}</span>` +
+            `<span class="lv-mc-kda">${lm.kda || "—"}</span>` +
+          '</span>' +
+          '<span class="lv-mc-overall">' +
+            `<span class="lv-mc-games">${games || "—"}${games ? " Games" : ""}</span>` +
+            '<span class="lv-mc-wl">' +
+              `<span class="lv-mc-w">${wins}</span> - <span class="lv-mc-l">${losses}</span>` +
+            '</span>' +
+            `<span class="lv-mc-wr">${wr != null ? wr + "%" : "—"}</span>` +
+            `<span class="lv-mc-total-kda">${totalKda}</span>` +
+          '</span>' +
+          '<span class="lv-mc-averaged">' +
+            `<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">${_fmtK(av.gold)}</span><span class="lv-mc-avg-lbl">Gold</span></span>` +
+            `<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">${av.cs != null ? av.cs : "—"}</span><span class="lv-mc-avg-lbl">CS</span></span>` +
+            `<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">${av.vision != null ? av.vision : "—"}</span><span class="lv-mc-avg-lbl">Vis</span></span>` +
+            '<span class="lv-mc-avg-bot-row">' +
+              `<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">${_fmtK(av.heal_shield)}</span><span class="lv-mc-avg-lbl">H/S</span></span>` +
+              `<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">${_fmtK(av.tanked)}</span><span class="lv-mc-avg-lbl">Tnk</span></span>` +
+            '</span>' +
+          '</span>'
+        );
+        // Wire copy for this party member — same format as YOUR MAINS:
+        // "Summoner - Champion - Mastery N : ## K points · ## Games All-Time · ##% WR"
+        const copyBtn = li.querySelector(".lv-mc-copy");
+        if (copyBtn) copyBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const points = _fmtMasteryPoints(c.mastery_points);
+          const txt = `${playerName || "—"} - ${c.name} - Mastery ${c.mastery_level || "?"} : ${points} · ${games} Games All-Time${wr != null ? " · " + wr + "% WR" : ""}`;
+          try {
+            navigator.clipboard.writeText(txt);
+            copyBtn.classList.add("is-copied");
+            setTimeout(() => copyBtn.classList.remove("is-copied"), 1200);
+          } catch (_) { /* ignore */ }
+        });
+      } else {
+        // No data → dashed placeholder
+        li.className = "lv-mc-row is-placeholder";
+        li.dataset.rank = String(rank);
+        li.innerHTML = (
+          '<span class="lv-mc-champ">' +
+            '<span class="lv-mc-icon"></span>' +
+            `<button type="button" class="lv-mc-copy" data-copy-rank="${rank}" ` +
+                    'title="Copy summary for League chat" aria-label="Copy" disabled>📋</button>' +
+          '</span>' +
+          '<span class="lv-mc-mastery">' +
+            '<span class="lv-mc-summoner-name">—</span>' +
+            '<b class="lv-mc-mastery-level">—</b>' +
+            '<span class="lv-mc-mastery-points">— points</span>' +
+          '</span>' +
+          '<span class="lv-mc-recent">' +
+            '<span class="lv-mc-result">—</span>' +
+            '<span class="lv-mc-kda">—</span>' +
+          '</span>' +
+          '<span class="lv-mc-overall">' +
+            '<span class="lv-mc-games">—</span>' +
+            '<span class="lv-mc-wl">—</span>' +
+            '<span class="lv-mc-wr">—</span>' +
+            '<span class="lv-mc-total-kda">—</span>' +
+          '</span>' +
+          '<span class="lv-mc-averaged">' +
+            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">Gold</span></span>' +
+            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">CS</span></span>' +
+            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">Vis</span></span>' +
+            '<span class="lv-mc-avg-bot-row">' +
+              '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">H/S</span></span>' +
+              '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">Tnk</span></span>' +
+            '</span>' +
+          '</span>'
+        );
+      }
+      list.appendChild(li);
+    }
+    // s162 v4: PARTY MAINS card click → cross-highlight matching party
+    // row. Clicks on the copy button (if not disabled) bubble through
+    // before this; we ignore action-button targets.
+    list.querySelectorAll(".lv-mc-row[data-member-idx]").forEach((card) => {
+      card.addEventListener("click", (e) => {
+        if (e.target.closest(".lv-mc-copy")) return;
+        e.stopPropagation();
+        _selectPartyMember(card.dataset.memberIdx);
+      });
+    });
+  }
+  function _renderLanePref(slot, pref, noLcuData) {
+    const btn = document.getElementById(slot === "primary" ? "lv-lane-primary" : "lv-lane-secondary");
+    if (!btn) return;
+    // s162 v2: new HTML uses .lq-lane-icon / .lq-lane-empty inside the
+    // shared .lq-btn-line2-icon wrapper.
+    const img = btn.querySelector(".lq-lane-icon");
+    const empty = btn.querySelector(".lq-lane-empty");
+    btn.classList.remove("is-disabled", "is-fill-locked", "needs-pick");
+    btn.dataset.pref = pref || "UNSELECTED";
+    const isFillLocked = (slot === "secondary" && _LV.prefPrimary === "FILL");
+    const needsPick = (slot === "secondary" && _LV.needsPick && _LV.prefPrimary !== "FILL"
+                       && (!pref || pref === "UNSELECTED"));
+    if (noLcuData) {
+      btn.classList.add("is-disabled");
+      btn.disabled = true;
+    } else {
+      btn.disabled = false;
+    }
+    if (isFillLocked) {
+      btn.classList.add("is-fill-locked");
+      if (img) { img.src = LANE_ICONS.FILL; img.hidden = false; }
+      if (empty) empty.hidden = true;
+      return;
+    }
+    if (needsPick) {
+      btn.classList.add("needs-pick");
+      if (img) img.hidden = true;
+      if (empty) { empty.textContent = ""; empty.hidden = false; }
+      return;
+    }
+    if (pref && pref !== "UNSELECTED" && LANE_ICONS[pref]) {
+      if (img) { img.src = LANE_ICONS[pref]; img.alt = LANE_LABELS[pref]; img.hidden = false; }
+      if (empty) empty.hidden = true;
+    } else {
+      if (img) img.hidden = true;
+      if (empty) { empty.textContent = "—"; empty.hidden = false; }
+    }
+  }
+  function _openLanePopup(slot) {
+    const popup = document.getElementById("lv-lane-popup");
+    if (!popup) return;
+    _LV.activeSlot = slot;
+    const cur = (slot === "primary") ? _LV.prefPrimary : _LV.prefSecondary;
+    popup.querySelectorAll(".lobby-lane-popup-cell").forEach((c) => {
+      c.classList.toggle("is-current", c.dataset.pref === cur);
+    });
+    const lbl = document.getElementById("lv-lane-popup-label");
+    if (lbl) lbl.innerHTML = "&nbsp;";
+    popup.classList.remove("hidden");
+    popup.setAttribute("aria-hidden", "false");
+  }
+  function _closeLanePopup() {
+    const popup = document.getElementById("lv-lane-popup");
+    if (!popup) return;
+    popup.classList.add("hidden");
+    popup.setAttribute("aria-hidden", "true");
+    _LV.activeSlot = null;
+  }
+  function _setLanePref(slot, pref) {
+    if (slot === "primary") {
+      const wasFill = (_LV.prefPrimary === "FILL");
+      _LV.prefPrimary = pref;
+      if (wasFill && pref !== "FILL") {
+        // FILL → specific role: secondary becomes "needs-pick" until operator picks
+        _LV.prefSecondary = "UNSELECTED";
+        _LV.needsPick = true;
+      } else if (pref === "FILL") {
+        // Primary FILL → secondary auto-pinned to FILL (display mirror)
+        _LV.prefSecondary = "FILL";
+        _LV.needsPick = false;
+      } else {
+        _LV.needsPick = false;
+      }
+    } else {
+      _LV.prefSecondary = pref;
+      _LV.needsPick = false;
+    }
+    // Phase A: visual-only. Phase B will queue an /lcu-cmd here:
+    //   lcuCmd({ cmd: "lobby.set_position_prefs",
+    //            first: _LV.prefPrimary, second: _LV.prefSecondary });
+    _renderLanePref("primary",   _LV.prefPrimary,   false);
+    _renderLanePref("secondary", _LV.prefSecondary, false);
+    _closeLanePopup();
+  }
   // Static queue-tip table — per queue_id, a list of short tips.
   // Hardcoded since they don't change per-game; feel free to extend.
   const LV_QUEUE_TIPS = {
@@ -2247,47 +2865,156 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     1700: ["Arena 2v2v2v2 — pick a synergy duo.",
            "Anvil decisions matter more than build path. Read the augment."],
   };
-  function _lvSetStatus(text, cls) {
-    const el = document.getElementById("lv-status");
-    if (!el) return;
-    el.className = "lobby-status" + (cls ? " " + cls : "");
-    el.textContent = text || "";
-  }
+  // s162 v2: status text removed from the lobby card per operator. Stub
+  // kept so existing callers no-op cleanly; lobby-status element is
+  // display:none in markup.
+  function _lvSetStatus(_text, _cls) { /* noop */ }
   function _lobbyViewWireOnce() {
     if (_LV.wired) return;
     _LV.wired = true;
+    // ---- Find Match ----
     const find = document.getElementById("lv-find-match");
     if (find) find.addEventListener("click", () => {
       if (find.disabled) return;
       find.disabled = true;
-      _lvSetStatus("starting…", "searching");
       lcuCmd({ cmd: "start_matchmaking" }).then((res) => {
-        lcuPollResult(res && res.id, (r) => {
-          if (r && r.ok === false) _lvSetStatus("LCU: " + (r.err || "failed"), "err");
-        });
+        lcuPollResult(res && res.id, (_r) => {});
       });
       setTimeout(() => { find.disabled = false; }, 1500);
     });
+    // ---- Cancel Queue ----
     const cancel = document.getElementById("lv-cancel-match");
     if (cancel) cancel.addEventListener("click", () => {
-      _lvSetStatus("cancelling…", "");
+      if (cancel.disabled) return;
       lcuCmd({ cmd: "cancel_matchmaking" }).then((res) => {
-        lcuPollResult(res && res.id, (r) => {
-          if (r && r.ok === false) _lvSetStatus("LCU: " + (r.err || "failed"), "err");
-        });
+        lcuPollResult(res && res.id, (_r) => {});
       });
     });
+    // ---- Legacy hidden queue switcher (preserved; new dropdown is
+    // .lq-mode-trigger / .lq-mode-menu below). ----
     const qsel = document.getElementById("lv-queue-select");
     if (qsel) qsel.addEventListener("change", () => {
       const qid = parseInt(qsel.value, 10);
       if (!qid) return;
-      _lvSetStatus("changing queue…", "searching");
-      lcuCmd({ cmd: "change_queue_type", queue_id: qid }).then((res) => {
-        lcuPollResult(res && res.id, (r) => {
-          if (r && r.ok === false) _lvSetStatus("LCU: " + (r.err || "failed"), "err");
+      lcuCmd({ cmd: "change_queue_type", queue_id: qid });
+      qsel.value = "";
+    });
+    // ---- Party Open/Closed toggle (Phase A: visual-only) ----
+    // Phase B pushes:
+    //   lcuCmd({ cmd: "lobby.set_party_type", party_type: "closed"|"open" });
+    const partyToggle = document.getElementById("lv-party-toggle");
+    if (partyToggle) partyToggle.addEventListener("click", () => {
+      if (partyToggle.disabled) return;
+      _LV.partyOpen = !_LV.partyOpen;
+      const stateEl = document.getElementById("lv-party-toggle-state");
+      partyToggle.classList.remove("is-open", "is-closed");
+      partyToggle.classList.add(_LV.partyOpen ? "is-open" : "is-closed");
+      if (stateEl) stateEl.textContent = _LV.partyOpen ? "Open" : "Closed";
+    });
+    // ---- Auto Accept toggle (Phase A: visual-only) ----
+    // Phase B pushes:
+    //   lcuCmd({ cmd: "lobby.set_auto_accept", enabled: bool });
+    const autoAccept = document.getElementById("lv-auto-accept");
+    if (autoAccept) autoAccept.addEventListener("click", () => {
+      if (autoAccept.disabled) return;
+      _LV.autoAccept = !_LV.autoAccept;
+      const stateEl = document.getElementById("lv-auto-accept-state");
+      autoAccept.classList.remove("is-on", "is-off");
+      autoAccept.classList.add(_LV.autoAccept ? "is-on" : "is-off");
+      if (stateEl) stateEl.textContent = _LV.autoAccept ? "On" : "Off";
+    });
+    // ---- Lane pref slot clicks → open popup ----
+    const primary   = document.getElementById("lv-lane-primary");
+    const secondary = document.getElementById("lv-lane-secondary");
+    if (primary) primary.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (primary.disabled) return;
+      _openLanePopup("primary");
+    });
+    if (secondary) secondary.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (secondary.disabled) return;
+      if (_LV.prefPrimary === "FILL") return;
+      _openLanePopup("secondary");
+    });
+    const popup = document.getElementById("lv-lane-popup");
+    if (popup) {
+      const lbl = document.getElementById("lv-lane-popup-label");
+      popup.querySelectorAll(".lobby-lane-popup-cell").forEach((cell) => {
+        cell.addEventListener("mouseenter", () => {
+          if (lbl) lbl.textContent = LANE_LABELS[cell.dataset.pref] || "—";
+        });
+        cell.addEventListener("mouseleave", () => {
+          if (lbl) lbl.innerHTML = "&nbsp;";
+        });
+        cell.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (!_LV.activeSlot) return;
+          _setLanePref(_LV.activeSlot, cell.dataset.pref);
         });
       });
-      qsel.value = "";
+      popup.addEventListener("click", (e) => e.stopPropagation());
+    }
+    // ---- Change Lobby Mode dropdown (Row 4) ----
+    const modeTrigger = document.getElementById("lv-mode-trigger");
+    const modeMenu    = document.getElementById("lv-mode-menu");
+    if (modeTrigger && modeMenu) {
+      modeTrigger.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isOpen = !modeMenu.classList.contains("hidden");
+        if (isOpen) {
+          modeMenu.classList.add("hidden");
+          modeMenu.setAttribute("aria-hidden", "true");
+          modeTrigger.setAttribute("aria-expanded", "false");
+        } else {
+          // Highlight the current queue
+          const lcu = (state.latest && state.latest.lcu) || {};
+          const lobby = lcu.lobby || null;
+          const curQid = (lobby && lobby.queue_id) | 0;
+          modeMenu.querySelectorAll(".lq-mode-item").forEach((it) => {
+            it.classList.toggle("is-current", parseInt(it.dataset.qid, 10) === curQid);
+          });
+          modeMenu.classList.remove("hidden");
+          modeMenu.setAttribute("aria-hidden", "false");
+          modeTrigger.setAttribute("aria-expanded", "true");
+        }
+      });
+      modeMenu.querySelectorAll(".lq-mode-item").forEach((item) => {
+        item.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const qid = parseInt(item.dataset.qid, 10);
+          const special = item.dataset.special;
+          if (special === "practice") {
+            // Practice Tool: needs a different LCU command. Phase B.
+            lcuCmd({ cmd: "lobby.create_practice_tool" });
+          } else if (qid > 0) {
+            lcuCmd({ cmd: "change_queue_type", queue_id: qid });
+          }
+          modeMenu.classList.add("hidden");
+          modeMenu.setAttribute("aria-hidden", "true");
+          modeTrigger.setAttribute("aria-expanded", "false");
+        });
+      });
+    }
+    // ---- Mains tab toggle (YOUR MAINS / PARTY MAINS) ----
+    const tabYou   = document.getElementById("lv-mc-tab-you");
+    const tabParty = document.getElementById("lv-mc-tab-party");
+    if (tabYou) tabYou.addEventListener("click", () => {
+      _LV.mainsTab = "you";
+      _renderMains();
+    });
+    if (tabParty) tabParty.addEventListener("click", () => {
+      _LV.mainsTab = "party";
+      _renderMains();
+    });
+    // ---- Document click closes any open popup/dropdown ----
+    document.addEventListener("click", () => {
+      if (_LV.activeSlot) _closeLanePopup();
+      if (modeMenu && !modeMenu.classList.contains("hidden")) {
+        modeMenu.classList.add("hidden");
+        modeMenu.setAttribute("aria-hidden", "true");
+        if (modeTrigger) modeTrigger.setAttribute("aria-expanded", "false");
+      }
     });
   }
   function _lobbyViewRefresh() {
@@ -2301,132 +3028,412 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       ? (lobby.queue_name || ("queue " + (lobby.queue_id || "?"))).toUpperCase()
       : "—";
 
-    const party = document.getElementById("lv-party-pill");
-    if (party) {
-      if (lobby) {
-        const size = lobby.party_size | 0;
-        const max  = lobby.max_party_size | 0;
-        party.textContent = max > 0 ? `Party ${size || 1}/${max}` : "Party —";
-      } else party.textContent = "Party —";
+    // s162 controls strip — hide on non-SR queues; populate from LCU
+    // when forwarded; fall back to defaults (party Open, prefs greyed)
+    // when no data.
+    const controls = document.getElementById("lv-queue-controls");
+    if (controls) {
+      const qid = (lobby && lobby.queue_id) | 0;
+      const showStrip = qid === 0 || SR_QUEUE_IDS.has(qid);
+      controls.classList.toggle("hidden", !showStrip);
     }
+    // Party Open / Closed — LCU exposes lobby.party_type ("open" | "closed")
+    const partyType = (lobby && (lobby.party_type || "").toLowerCase()) || "open";
+    _LV.partyOpen = (partyType !== "closed");
+    const partyToggle = document.getElementById("lv-party-toggle");
+    const partyStateEl = document.getElementById("lv-party-toggle-state");
+    if (partyToggle && partyStateEl) {
+      partyToggle.classList.remove("is-open", "is-closed", "is-disabled");
+      partyToggle.classList.add(_LV.partyOpen ? "is-open" : "is-closed");
+      partyStateEl.textContent = _LV.partyOpen ? "Open" : "Closed";
+      partyToggle.disabled = false;
+    }
+    // s162 v2: Auto Accept toggle — LCU exposes auto-accept on
+    // lobby.local_member.auto_fill_protected_for_promos / etc., or via
+    // /lol-matchmaking/v1/ready-check/auto-accept. Phase A: read from
+    // _LV.autoAccept (operator-toggled). Phase B: read live state.
+    const autoAccept = document.getElementById("lv-auto-accept");
+    const autoAcceptStateEl = document.getElementById("lv-auto-accept-state");
+    if (autoAccept && autoAcceptStateEl) {
+      autoAccept.classList.remove("is-on", "is-off", "is-disabled");
+      autoAccept.classList.add(_LV.autoAccept ? "is-on" : "is-off");
+      autoAcceptStateEl.textContent = _LV.autoAccept ? "On" : "Off";
+      autoAccept.disabled = false;
+    }
+    // Lane prefs from LCU (when forwarded). Shape:
+    //   lobby.local_member.position_preferences = {
+    //     first_preference, second_preference  // "TOP"|...|"FILL"|"UNSELECTED"
+    //   }
+    const lm = (lobby && (lobby.local_member || lobby.localMember)) || null;
+    const prefs = lm && (lm.position_preferences || lm.positionPreferences) || null;
+    if (prefs) {
+      _LV.prefPrimary   = (prefs.first_preference  || prefs.firstPreference  || "UNSELECTED").toUpperCase();
+      _LV.prefSecondary = (prefs.second_preference || prefs.secondPreference || "UNSELECTED").toUpperCase();
+      _LV.needsPick = false;
+    }
+    _renderLanePref("primary",   _LV.prefPrimary,   !lobby);
+    _renderLanePref("secondary", _LV.prefSecondary, !lobby);
+
     const leaderTag = document.getElementById("lv-leader-tag");
     if (leaderTag) leaderTag.hidden = !(lobby && lobby.is_leader);
     const qsel = document.getElementById("lv-queue-select");
     if (qsel) qsel.hidden = !(lobby && lobby.is_leader);
 
+    // s162 v2: Find Match always visible (2-line "Find" / "Match"),
+    // gold pulse via .is-searching class when LCU reports searching.
+    // Cancel Queue always visible too, disabled until searching. Both
+    // buttons keep their static labels — visual state communicates
+    // status (no inline status text).
     const find = document.getElementById("lv-find-match");
-    const findLabel = document.getElementById("lv-find-match-label");
     const cancel = document.getElementById("lv-cancel-match");
     const searching = lobby && lobby.search_state === "Searching";
     const found = lobby && (lobby.search_state === "MatchFound" || lcu.phase === "ReadyCheck");
-    if (cancel) cancel.hidden = !searching;
     if (find) {
-      // Enable the button as long as we're not currently searching/
-      // matched. LCU enforces leader check + lobby readiness on the
-      // server side, so even without forwarded lobby data the click
-      // is safe (it'll just no-op for non-leaders). User asked
-      // 2026-04-26: "include the find match button into the UI".
       const enabled = !searching && !found;
       find.disabled = !enabled;
-      if (findLabel) {
-        findLabel.textContent = searching ? "Searching…"
-          : found ? "Match Found"
-          : (lobby && lobby.is_leader === false ? "Leader-only (LCU enforces)" : "Find Match");
-      }
+      find.classList.toggle("is-searching", !!searching);
     }
-    if (searching)               _lvSetStatus("Searching…", "searching");
-    else if (found)              _lvSetStatus("Match Found · accept in client", "found");
-    else if (!lobby)             _lvSetStatus("Click Find Match — LCU enforces leader check (no lobby feed yet)", "");
-    else if (!lobby.is_leader)   _lvSetStatus("Awaiting party leader", "");
-    else if (!lobby.can_search)  _lvSetStatus("Lobby not ready", "err");
-    else                         _lvSetStatus("Ready to queue", "");
+    if (cancel) {
+      cancel.disabled = !searching;
+    }
 
-    // Members
-    const ul = document.getElementById("lv-members-list");
-    const cnt = document.getElementById("lv-members-count");
-    const members = (lobby && lobby.members) || [];
-    if (cnt) cnt.textContent = members.length + (members.length === 1 ? " member" : " members");
-    if (ul) {
-      if (!members.length) {
-        ul.innerHTML = '<li class="home-empty">no members visible — Game-PC LCU agent needs to forward lcu.lobby.members[]</li>';
+    // s162 v4: Party panel render. Solo (1 member) collapses YOU/LEADER
+    // pips and shows just the IGN + copy. Party 2+ shows full IGN +
+    // YOU/LEADER pips + rank / peak / most-played role + per-row
+    // action pips (copy / promote / kick) right-aligned.
+    _renderPartyMembers(lobby);
+
+    // s162 v4: Your Mains / Party Mains panel — tab-switched.
+    _renderMains();
+
+    // s162 v5: panel repurposed to "My Top 8" (operator-curated short
+    // list with localStorage persistence). The Recently-Played render
+    // logic (_renderFriendsRecent) is preserved below for reuse on a
+    // future panel — just no longer invoked here.
+    _renderTop8();
+    _top8WireSearchOnce();
+    // s162 v4: re-center NORMAL DRAFT + PARTY titles after layout settles.
+    requestAnimationFrame(_positionLobbyTitles);
+  }
+  // ---- s162 v5: My Top 8 panel ----
+  const TOP8_KEY = "rc-top8-list";
+  const TOP8_MAX = 8;
+  function _top8Load() {
+    // s162 v5: sim fixtures can pre-populate via lcu.top8 — fixture
+    // wins so dev preview renders without polluting the operator's
+    // localStorage. Live mode (no fixture) uses localStorage as the
+    // persistent source of truth.
+    const lcu = (state.latest && state.latest.lcu) || {};
+    if (Array.isArray(lcu.top8)) return lcu.top8;
+    try {
+      const raw = localStorage.getItem(TOP8_KEY);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch (_) { return []; }
+  }
+  function _top8Save(list) {
+    try { localStorage.setItem(TOP8_KEY, JSON.stringify(list)); } catch (_) {}
+  }
+  function _top8FormatRank(rank) {
+    if (!rank || !rank.tier) return "Unranked";
+    const div = rank.division ? " " + rank.division : "";
+    const lp  = rank.lp != null ? ` ${rank.lp} LP` : "";
+    return `${rank.tier}${div}${lp}`;
+  }
+  function _renderTop8() {
+    const list = _top8Load();
+    const ul = document.getElementById("lv-top8-list");
+    if (!ul) return;
+    // s162 v5: which Top 8 entries are currently in the party?
+    const lcuOuter = (state.latest && state.latest.lcu) || {};
+    const partyMembers = (lcuOuter.lobby && Array.isArray(lcuOuter.lobby.members))
+      ? lcuOuter.lobby.members : [];
+    const partyKeys = new Set();
+    partyMembers.forEach((m) => {
+      if (m.riot_id) partyKeys.add(m.riot_id);
+      if (m.summoner_name) partyKeys.add(m.summoner_name);
+    });
+    ul.innerHTML = "";
+    for (let i = 0; i < TOP8_MAX; i++) {
+      const entry = list[i];
+      const li = document.createElement("li");
+      if (entry) {
+        const inParty = partyKeys.has(entry.riot_id) || partyKeys.has(entry.summoner_name);
+        li.className = "lv-top8-row" + (inParty ? " is-in-party" : "");
+        li.dataset.idx = String(i);
+        const fullId = entry.riot_id || entry.summoner_name || "—";
+        const name = String(fullId).split("#")[0];
+        const games = entry.games_with_me != null ? `${entry.games_with_me} G` : "—";
+        const role  = entry.preferred_role || "—";
+        const rankTxt = _top8FormatRank(entry.rank);
+        const tag   = entry.user_tag || "+ tag";
+        const isOnline = !!entry.is_online;
+        const dotCls   = isOnline ? "lv-top8-dot-on" : "lv-top8-dot-off";
+        const dotTitle = isOnline ? "Online" : "Offline";
+        li.innerHTML = (
+          `<span class="lv-top8-cell lv-top8-name" title="${fullId}">${name}</span>` +
+          `<span class="lv-top8-cell lv-top8-games">${games}</span>` +
+          `<span class="lv-top8-cell lv-top8-role">${role}</span>` +
+          `<span class="lv-top8-cell lv-top8-rank">${rankTxt}</span>` +
+          `<span class="lv-top8-cell lv-top8-tag" data-action="edit-tag" data-idx="${i}" title="Click to edit tag">${tag}</span>` +
+          `<span class="lv-top8-dot ${dotCls}" title="${dotTitle}"></span>` +
+          `<button type="button" class="lv-member-action" data-action="invite" data-idx="${i}" title="Invite to lobby" aria-label="Invite">➕</button>` +
+          '<span class="lv-top8-reorder">' +
+            `<button type="button" class="lv-top8-reorder-btn" data-action="up"   data-idx="${i}" ${i === 0 ? "disabled" : ""} title="Move up" aria-label="Move up">▲</button>` +
+            `<button type="button" class="lv-top8-reorder-btn" data-action="down" data-idx="${i}" ${i >= list.length - 1 ? "disabled" : ""} title="Move down" aria-label="Move down">▼</button>` +
+          '</span>' +
+          `<button type="button" class="lv-member-action" data-action="remove" data-idx="${i}" title="Remove from Top 8" aria-label="Remove">✕</button>`
+        );
       } else {
-        ul.innerHTML = "";
-        members.forEach((m) => {
-          const li = document.createElement("li");
-          li.className = "lobby-member-row" +
-            (m.is_self ? " is-self" : "") +
-            (m.is_leader ? " is-leader" : "");
-          const tags = [];
-          if (m.is_self)   tags.push('<span class="lobby-member-tag you">YOU</span>');
-          if (m.is_leader) tags.push('<span class="lobby-member-tag leader">★ LEADER</span>');
-          const stats = [];
-          if (m.played_with_me_count > 0) {
-            stats.push(`<span class="lobby-member-stat">${m.played_with_me_count}g together</span>`);
-            if (m.played_with_me_record) stats.push(`<span class="lobby-member-stat">${m.played_with_me_record}</span>`);
-          } else if (!m.is_self) {
-            stats.push(`<span class="lobby-member-stat" style="color:var(--text-faint)">no shared games</span>`);
-          }
-          const lookup = (m.summoner_name && !m.is_self)
-            ? `<a class="lobby-member-link" href="https://aggregator-b.invalid/lol/profile/na1/${encodeURIComponent(m.summoner_name)}" target="_blank" rel="noopener">aggregator-b ↗</a>`
-            : "";
-          li.innerHTML = `<div class="lobby-member-name">${m.summoner_name || "Unknown"}${tags.join("")}</div>` +
-                         `<div class="lobby-member-meta">${stats.join("")}${lookup}</div>`;
-          ul.appendChild(li);
-        });
+        li.className = "lv-top8-row is-placeholder";
+        li.innerHTML = (
+          '<span class="lv-top8-cell">—</span>' +
+          '<span class="lv-top8-cell">—</span>' +
+          '<span class="lv-top8-cell">—</span>' +
+          '<span class="lv-top8-cell">—</span>' +
+          '<span class="lv-top8-cell">—</span>' +
+          '<span class="lv-top8-dot lv-top8-dot-off" title="Empty slot"></span>' +
+          '<span class="lv-top8-spacer-reorder"></span>' +
+          '<span class="lv-top8-spacer-reorder"></span>' +
+          '<span class="lv-top8-spacer-remove"></span>'
+        );
       }
+      ul.appendChild(li);
     }
-
-    // Tips per queue
-    const tipsEl = document.getElementById("lv-tips");
-    if (tipsEl) {
-      const tips = lobby && LV_QUEUE_TIPS[lobby.queue_id];
-      if (tips && tips.length) {
-        tipsEl.innerHTML = tips.map((t) => `<div class="tip-row">${t}</div>`).join("");
-      } else if (lobby) {
-        tipsEl.innerHTML = `<div class="home-empty">no tips defined for queue ${lobby.queue_id} — extend LV_QUEUE_TIPS in dashboard.js</div>`;
+    _wireTop8Actions();
+  }
+  function _wireTop8Actions() {
+    const ul = document.getElementById("lv-top8-list");
+    if (!ul) return;
+    ul.querySelectorAll("[data-action]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const action = btn.dataset.action;
+        const idx = parseInt(btn.dataset.idx, 10);
+        const list = _top8Load();
+        if (action === "edit-tag") {
+          const cur = (list[idx] && list[idx].user_tag) || "";
+          const next = window.prompt(`User tag for ${list[idx]?.riot_id || "this entry"}:`, cur);
+          if (next == null) return;
+          list[idx].user_tag = next.trim();
+          _top8Save(list);
+          _renderTop8();
+          return;
+        }
+        if (action === "remove") {
+          const target = list[idx];
+          if (!target) return;
+          if (!window.confirm(`Remove ${target.riot_id || target.summoner_name} from your Top 8?`)) return;
+          list.splice(idx, 1);
+          _top8Save(list);
+          _renderTop8();
+          return;
+        }
+        if (action === "up" && idx > 0) {
+          [list[idx - 1], list[idx]] = [list[idx], list[idx - 1]];
+          _top8Save(list);
+          _renderTop8();
+          return;
+        }
+        if (action === "down" && idx < list.length - 1) {
+          [list[idx + 1], list[idx]] = [list[idx], list[idx + 1]];
+          _top8Save(list);
+          _renderTop8();
+          return;
+        }
+        if (action === "invite") {
+          const target = list[idx];
+          if (!target) return;
+          if (!window.confirm(`Invite ${target.riot_id || target.summoner_name} to lobby?`)) return;
+          // Phase B: lcuCmd({ cmd: "lobby.invite_player", riot_id: target.riot_id });
+          return;
+        }
+      });
+    });
+  }
+  function _top8WireSearchOnce() {
+    if (window.__top8SearchWired) return;
+    window.__top8SearchWired = true;
+    const input = document.getElementById("lv-top8-search-input");
+    const addBtn = document.getElementById("lv-top8-search-add");
+    if (!input || !addBtn) return;
+    function tryAdd() {
+      const raw = (input.value || "").trim();
+      if (!raw) return;
+      const list = _top8Load();
+      // Reject duplicates by riot_id / summoner_name
+      const exists = list.some((e) => (e.riot_id || e.summoner_name) === raw);
+      if (exists) {
+        window.alert(`${raw} is already in your Top 8.`);
+        return;
+      }
+      // 9th-add gate
+      if (list.length >= TOP8_MAX) {
+        const names = list.map((e, i) => `${i + 1}. ${e.riot_id || e.summoner_name}`).join("\n");
+        const choice = window.prompt(
+          `You need to remove someone from your Top 8, who will it be?\n\n${names}\n\nEnter the number 1-${TOP8_MAX} to remove, or cancel.`,
+          ""
+        );
+        if (choice == null) return;
+        const n = parseInt(choice, 10);
+        if (!(n >= 1 && n <= TOP8_MAX)) {
+          window.alert("Invalid selection. Add cancelled.");
+          return;
+        }
+        list.splice(n - 1, 1);
+      }
+      // Append (oldest stays at top per add-time sort)
+      list.push({
+        riot_id: raw,
+        summoner_name: raw.split("#")[0],
+        added_at: Date.now(),
+        user_tag: "",
+        is_online: false,        // Phase B: pull from LCU
+        games_with_me: null,
+        preferred_role: null,
+        rank: null,
+      });
+      _top8Save(list);
+      input.value = "";
+      _renderTop8();
+    }
+    addBtn.addEventListener("click", (e) => { e.stopPropagation(); tryAdd(); });
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") tryAdd(); });
+  }
+  function _renderFriendsRecent(friends) {
+    const ul = document.getElementById("lv-friends-list");
+    if (!ul) return;
+    // s162 v4: ALWAYS render 8 slots — real entries fill from top,
+    // remaining slots are 50%-opacity placeholders. Filters out anyone
+    // currently in the party (by riot_id / summoner_name match) — they
+    // re-appear here once they leave.
+    const TARGET_SLOTS = 8;
+    const lcuOuter = (state.latest && state.latest.lcu) || {};
+    const partyMembers = (lcuOuter.lobby && Array.isArray(lcuOuter.lobby.members))
+      ? lcuOuter.lobby.members : [];
+    const partyKeys = new Set();
+    partyMembers.forEach((m) => {
+      if (m.riot_id) partyKeys.add(m.riot_id);
+      if (m.summoner_name) partyKeys.add(m.summoner_name);
+    });
+    const safeFriends = Array.isArray(friends) ? friends : [];
+    const online = safeFriends.filter((f) => f.is_online !== false);
+    const notInParty = online.filter((f) =>
+      !(f.riot_id && partyKeys.has(f.riot_id)) &&
+      !(f.summoner_name && partyKeys.has(f.summoner_name))
+    );
+    notInParty.sort((a, b) => (b.games_with_me | 0) - (a.games_with_me | 0));
+    const list = notInParty.slice(0, TARGET_SLOTS);
+    ul.innerHTML = "";
+    list.forEach((f) => {
+      const ign  = f.riot_id || f.summoner_name || "Unknown";
+      const champ = (f.last_match && f.last_match.champion) || "";
+      const champKey = champ ? (_resolveChampId(champ) || champ) : "";
+      const champIcon = champKey ? `/icons/champions/${champKey}.png` : "";
+      const games = f.games_with_me | 0;
+      const gamesLbl = games + (games === 1 ? " Game" : " Games");
+      const role = (f.preferred_role || "").toUpperCase();
+      // Section 5 — rank or "Level NNN : Unranked"
+      let rankHtml;
+      if (f.rank && f.rank.tier) {
+        const rankCls = _rankClass(f.rank.tier);
+        const div = f.rank.division ? " " + f.rank.division : "";
+        const lp = (f.rank.lp != null) ? ` ${f.rank.lp} LP` : "";
+        rankHtml = `<span class="lobby-member-pip lobby-member-pip-rank ${rankCls}">${f.rank.tier}${div}${lp}</span>`;
       } else {
-        tipsEl.innerHTML = '<div class="home-empty">queue-specific tips populate when lobby data is available</div>';
+        const lvl = (f.summoner_level != null) ? f.summoner_level : "—";
+        rankHtml = `<span class="lv-party-empty">Level ${lvl} : Unranked</span>`;
       }
+      // Section 6 — team marker [E]/[A] + KDA, with hover tooltip
+      const lm = f.last_match || {};
+      const team = (lm.team || "").toUpperCase();    // "ENEMY" | "ALLY"
+      const result = (lm.result || "").toUpperCase(); // "WON" | "LOST"
+      const teamMark = team === "ENEMY" ? "E" : (team === "ALLY" ? "A" : "—");
+      const teamCls = team === "ENEMY" ? "lv-fr-team-enemy"
+                    : team === "ALLY"  ? "lv-fr-team-ally" : "";
+      // s162 v4: descriptive tooltip per operator spec.
+      let tt = "Unknown team / unknown result";
+      if (team === "ENEMY" && result === "WON")  tt = "This player was on the Enemy Team, You Won against them";
+      else if (team === "ENEMY" && result === "LOST") tt = "This player was on the Enemy Team, You Lost against them";
+      else if (team === "ALLY"  && result === "WON")  tt = "This player was on the Ally Team, You Won with them";
+      else if (team === "ALLY"  && result === "LOST") tt = "This player was on the Ally Team, You Lost with them";
+      const li = document.createElement("li");
+      li.className = "lv-fr-row";
+      li.innerHTML = (
+        `<span class="lv-fr-name">${ign}</span>` +
+        `<span class="lv-fr-icon">${champIcon ? `<img src="${champIcon}" alt="${champ}" onerror="this.style.display='none'" />` : ""}</span>` +
+        `<span class="lv-fr-games">${gamesLbl}</span>` +
+        `<span class="lv-fr-role">${role || "—"}</span>` +
+        `<span class="lv-fr-rank">${rankHtml}</span>` +
+        `<span class="lv-fr-team ${teamCls}" data-tt="${tt}">` +
+          `<span class="lv-fr-team-mark">[${teamMark}]</span>` +
+          `<span class="lv-fr-team-kda">${lm.kda || "—"}</span>` +
+        `</span>` +
+        `<button type="button" class="lv-fr-copy lv-member-action" data-action="copy" data-ign="${ign}" title="Copy summoner name" aria-label="Copy">📋</button>` +
+        `<button type="button" class="lv-fr-invite lv-member-action" data-action="invite" data-ign="${ign}" title="Invite to lobby" aria-label="Invite">➕</button>`
+      );
+      ul.appendChild(li);
+    });
+    // Pad to TARGET_SLOTS with 50%-opacity empty placeholders.
+    const placeholders = TARGET_SLOTS - list.length;
+    for (let i = 0; i < placeholders; i++) {
+      const li = document.createElement("li");
+      li.className = "lv-fr-row is-placeholder";
+      li.innerHTML = (
+        '<span class="lv-fr-name">—</span>' +
+        '<span class="lv-fr-icon"></span>' +
+        '<span class="lv-fr-games">—</span>' +
+        '<span class="lv-fr-role">—</span>' +
+        '<span class="lv-fr-rank"><span class="lv-party-empty">—</span></span>' +
+        '<span class="lv-fr-team"><span class="lv-fr-team-mark">—</span></span>' +
+        '<button type="button" class="lv-fr-copy lv-member-action" disabled aria-label="Copy">📋</button>'
+      );
+      ul.appendChild(li);
     }
-
-    // Recent in this queue (filter match_history client-side via /api/home/summary)
-    fetch("/api/home/summary", { cache: "no-store" })
-      .then((r) => (r && r.ok ? r.json() : null))
-      .then((d) => {
-        const ul2 = document.getElementById("lv-recent-list");
-        const cnt2 = document.getElementById("lv-recent-count");
-        if (!ul2) return;
-        const all = (d && d.recent) || [];
-        // Map queue_id → mode-string for filtering. Best-effort.
-        const qid = (lobby && lobby.queue_id) | 0;
-        const wantMode = (qid === 450 || qid === 920) ? "ARAM"
-                       : (qid === 1700) ? "ARENA"
-                       : (qid === 400 || qid === 420 || qid === 430 || qid === 440) ? "SR"
-                       : "";
-        const filtered = wantMode ? all.filter((m) => (m.mode || "").toUpperCase() === wantMode) : all;
-        if (cnt2) cnt2.textContent = filtered.length + (wantMode ? " in " + wantMode : " recent");
-        ul2.innerHTML = "";
-        filtered.slice(0, 5).forEach((m) => {
-          const li = document.createElement("li");
-          li.className = "lv-recent-row";
-          const grade = String(m.grade || "—")[0];
-          const dur = m.duration_s
-            ? `${Math.floor(m.duration_s / 60)}:${String(m.duration_s % 60).padStart(2, "0")}` : "";
-          li.innerHTML =
-            `<span class="lv-recent-grade home-recent-grade ${grade}">${grade}</span>` +
-            `<span><strong>${m.champion}</strong> <span class="dim">${_to12((m.timestamp||"").split(" ")[1]?.slice(0,5) || "")}</span></span>` +
-            `<span class="dim">${m.kda || "—"}</span>` +
-            `<span class="dim">${dur}</span>`;
-          ul2.appendChild(li);
-        });
-        if (!ul2.children.length) ul2.innerHTML = '<li class="home-empty">no recent matches in this queue</li>';
-      })
-      .catch(() => {});
+    // Wire copy buttons (only on real entries — placeholders are disabled)
+    ul.querySelectorAll(".lv-fr-row:not(.is-placeholder) .lv-fr-copy").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const ign = btn.dataset.ign;
+        try {
+          navigator.clipboard.writeText(ign);
+          btn.classList.add("is-copied");
+          setTimeout(() => btn.classList.remove("is-copied"), 1200);
+        } catch (_) { /* ignore */ }
+      });
+    });
+    // Wire invite buttons. Phase A: confirm + log. Phase B will push
+    // an LCU command: lcuCmd({ cmd: "lobby.invite_player", riot_id });
+    ul.querySelectorAll(".lv-fr-row:not(.is-placeholder) .lv-fr-invite").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const ign = btn.dataset.ign;
+        if (!window.confirm(`Invite ${ign} to lobby?`)) return;
+        // Phase B: lcuCmd({ cmd: "lobby.invite_player", riot_id: ign });
+      });
+    });
   }
   // Trigger a refresh of view-lobby on every state envelope when it's
   // the active view (so members/queue update without a manual nav).
   function _maybeRefreshLobbyView() {
     if (_VIEW.current === "lobby") _lobbyViewRefresh();
+  }
+  // s162 (2026-05-10): orchestration wrapper for LCU envelopes. Every
+  // path that receives an lcu snapshot (SSE /api/state-stream, HTTP
+  // /api/state fallback, FakeSocket lcu replay in sim mode) calls this
+  // instead of handleChampSelect directly. Reason: handleChampSelect
+  // lives in panels/champ_select.js where renderLobbyPanel / etc. are
+  // out of scope. Calling them from there throws ReferenceError →
+  // silently caught by upstream try/catch → lobby view never refreshes.
+  // This wrapper runs in main.js's module scope where all the cross-
+  // cutting renders ARE defined.
+  function handleLcuEnvelope(lcu) {
+    handleChampSelect(lcu);     // champ-select overlay + state.latest.lcu cache
+    renderLobbyPanel(lcu);      // inline lobby overlay (home view)
+    renderHomePanel(lcu);       // home-view phase chip
+    _viewResolveAndApply(lcu);  // re-derive view based on new phase
+    _maybeRefreshLobbyView();   // re-render view-lobby if it's the active surface
   }
 
   // ── Lobby overlay (2026-04-26) ──────────────────────────────────────
@@ -2539,6 +3546,18 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     const overlay = document.getElementById("lobby-overlay");
     if (!overlay) return;
     _wireLobbyButtonsOnce();
+    // s162 (2026-05-10): hard-gate on view. lobby-overlay is the inline
+    // "current lobby" card anchored to the home view. After the
+    // handleChampSelect fix it started firing on every lcu envelope
+    // regardless of active view, leaking the overlay onto Lobby / Dev /
+    // etc. (DOM placement is BEFORE view-content, so it appeared above
+    // every view-section.) Restrict to home view only.
+    const onHomeView = document.body.dataset.view === "home";
+    if (!onHomeView) {
+      overlay.classList.add("hidden");
+      overlay.setAttribute("aria-hidden", "true");
+      return;
+    }
     const lobby = lcu && lcu.lobby;
     const phase = lcu && lcu.phase;
     // Hide whenever we're past the lobby (ChampSelect / loading / in-game)
@@ -3267,6 +4286,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       }
       if (env.type === "health") { _pulseStatus(); return onHealth(env); }
       if (env.type === "state")  { _pulseStatus(); return onState(env); }
+      // s162: lcu envelope — drives the lobby view + champ-select overlay.
+      // Live operation gets lcu via the SSE/HTTP /api/state.lcu path
+      // (handleChampSelect is called there). Sim mode delivers it through
+      // the WS path so a fixture can preview the lobby/champ-select flow.
+      if (env.type === "lcu")    { _pulseStatus(); return handleLcuEnvelope(env.payload); }
       // Unknown envelope — log raw.
       logLine("ws", JSON.stringify(env).slice(0, 200));
     };
@@ -3637,7 +4661,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
                     mode: fileMode, payload: coachPayload });
           // 2026-04-25: cold-start champ-select prep — surface adaptation
           // history during champ-select via the LCU snapshot.
-          handleChampSelect(st.lcu);
+          handleLcuEnvelope(st.lcu);
           renderTeamContext(st);
         }
       } catch (_) { /* ignore — WS may come back */ }
@@ -3670,7 +4694,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
           const coachPayload = st.coach || st;
           onState({ type: "state", source: "state-sse",
                     mode: fileMode, payload: coachPayload });
-          if (st.lcu) handleChampSelect(st.lcu);
+          if (st.lcu) handleLcuEnvelope(st.lcu);
           renderTeamContext(st);
         } catch (_) { /* malformed event — skip */ }
       };
@@ -3702,7 +4726,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
         const r = await fetch("/api/state", { cache: "no-store" });
         if (r.ok) {
           const st = await r.json();
-          if (st && st.lcu) handleChampSelect(st.lcu);
+          if (st && st.lcu) handleLcuEnvelope(st.lcu);
           if (st) renderTeamContext(st);
         }
       } catch (_) { /* silent */ }

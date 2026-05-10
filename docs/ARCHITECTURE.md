@@ -9,7 +9,7 @@ _Living document. Update after topology or module changes. See `docs/_archive/` 
 | Machine | Tailnet hostname | Tailnet IP | LAN IP | Role |
 |---|---|---|---|---|
 | **Legion** | `rc-host` | `100.64.0.1` | `192.0.2.230` | RC main process, vision server `:8889`, web dashboard `:8888` |
-| **Game-PC** | `peer-host` | `100.64.0.2` | `192.0.2.237` | Runs League; Edge fullscreen on secondary display (1920×1280, 100% scale) |
+| **Game-PC** | `peer-host` | `100.64.0.2` | `192.0.2.237` | Runs League; Chrome on secondary display (panel is 1920×1280 native @ 100% scale) shows the dashboard |
 | **Peer** | `peer-host` | `<peer-tailnet-ip>` | — | Cross-Claude peer; RC↔Peer bridge |
 
 All three in tailnet `example-tailnet.ts.net`. Prefer tailnet hostnames for all cross-machine HTTP.
@@ -27,7 +27,7 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 | `gamepc_lcu_agent` | `:8889/upload-lcu` | HTTP POST (JSON) | Champ-select, queue, lobby state | every 1s |
 | Game-PC `lcu_agent` | `:8889/lcu-cmd-pending` | HTTP GET | Drain queued commands | every 0.5s |
 | Dashboard | `:8889/lcu-cmd` | HTTP POST | Queue a command for LCU (accept, bench, runes) | on user action |
-| Browser (Edge) | `:8888/` | HTTP GET | Dashboard HTML + state polling | every 500ms |
+| Browser (Chrome) | `:8888/` | HTTP GET | Dashboard HTML + state polling | every 500ms |
 | Claude sessions | `:8888/api/bridge` | HTTP POST + GET | Cross-Claude activity log | per prompt / daemon poll |
 
 ---

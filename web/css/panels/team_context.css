@@ -163,8 +163,8 @@
 }
 
 /* Narrow-screen fallback — stack the two team blocks vertically when
- * the cs-overlay shrinks (Game-PC secondary at 100% scale ≈ 1920×1280
- * is fine, but iPad portrait or zoom-in cuts it close). */
+ * the cs-overlay shrinks (1920×1080 in Chrome windowed is fine; zoom-in
+ * or half-screen layouts cut it close). */
 @media (max-width: 1100px) {
   .tc-teams {
     grid-template-columns: 1fr;
