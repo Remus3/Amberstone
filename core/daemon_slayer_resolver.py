@@ -141,6 +141,46 @@ def resolve_many(names: Iterable[str], mode: Optional[str] = None) -> list[str]:
     return out
 
 
+# 2026-05-09 (s156): items that occupy non-inventory slots (trinket/consumable
+# row) and therefore must NOT count against the 6-slot DS engine budget.
+# Live-Client API serializes them inline with shop items, so resolvers see
+# all 7+ together. Without this filter, /rank rejects the call once the
+# user buys their 5th component+trinket combo with
+#   "current_item_ids has 6 items; slot_count=6 leaves no room for a new item"
+# and the SR coach silently drops daemon_slayer_picks → dashboard #ds-pill
+# stays hidden mid-game.
+NON_INVENTORY_IDS = frozenset({
+    # Trinkets (yellow/blue/red row, 1 slot reserved separately by client)
+    "3340",  # Stealth Ward (default)
+    "3363",  # Farsight Alteration (blue)
+    "3364",  # Oracle Lens (red)
+    # Consumables (potion/biscuit/refillable rows; not equipped)
+    "2003",  # Health Potion
+    "2031",  # Refillable Potion
+    "2055",  # Control Ward
+    "2138",  # Elixir of Iron
+    "2139",  # Elixir of Sorcery
+    "2140",  # Elixir of Wrath
+})
+
+
+def resolve_inventory(names: Iterable[str], mode: Optional[str] = None) -> list[str]:
+    """Like ``resolve_many`` but drops trinkets and consumables — items
+    that don't compete for the 6 inventory slots the DS engine ranks.
+
+    Use this from coach loops that feed ``current_item_ids`` to
+    ``daemon_slayer_client.rank_for`` / ``dps_for``. ``resolve_many``
+    stays untouched for callers that need the full set (calibration
+    snapshots, raw-id mirrors, etc).
+    """
+    out: list[str] = []
+    for n in names or []:
+        iid = name_to_id(n, mode=mode)
+        if iid and iid not in NON_INVENTORY_IDS:
+            out.append(iid)
+    return out
+
+
 def _current_patch() -> Optional[str]:
     try:
         return _PATCH_FILE.read_text(encoding="utf-8").strip() or None

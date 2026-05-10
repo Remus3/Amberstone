@@ -213,12 +213,67 @@ def _opt_str(body: dict, key: str, default: Optional[str] = None) -> Optional[st
     return s if s else default
 
 
+# ---------------------------------------------------------------- champion id resolution
+#
+# 2026-05-09 (s156): RC's coaches feed `champion` from coaching_data.json
+# as the *display name* ("Kai'Sa", "Twisted Fate", "Wukong"), but DDragon
+# / DS keys the snapshot by ID ("Kaisa", "TwistedFate", "MonkeyKing").
+# Direct lookup raised 404 → coaches caught + dropped DS rows silently
+# → daemon_slayer_picks never written → dashboard #ds-pill stayed hidden
+# → user saw "ds not loaded at all" mid-game on Kai'Sa.
+#
+# Fix at the server: try the input as a DDragon ID first (no behavior
+# change for callers that already pass IDs), then fall back to a lazy
+# reverse map keyed off the display name (case-insensitive + alnum-
+# stripped). Covers MonkeyKing/Wukong, Nunu/Nunu & Willump,
+# Renata/Renata Glasc and the apostrophe family (Kai'Sa, K'Sante,
+# Rek'Sai, Cho'Gath, Kha'Zix, Vel'Koz, Kog'Maw, Bel'Veth).
+
+_DISPLAY_REVMAP_CACHE: dict[int, dict[str, str]] = {}
+
+
+def _build_display_revmap(snap: DataSnapshot) -> dict[str, str]:
+    rev: dict[str, str] = {}
+    for cid, rec in snap.champions.items():
+        display = (rec.get("name") or "").strip()
+        if not display:
+            continue
+        # Three keys per champion so we tolerate punctuation drift:
+        #   exact display ("Kai'Sa") · lowercase display ("kai'sa")
+        #   alnum-stripped lower ("kaisa", "monkeyking", "twistedfate")
+        rev[display] = cid
+        rev[display.lower()] = cid
+        stripped = "".join(c for c in display if c.isalnum()).lower()
+        if stripped:
+            rev[stripped] = cid
+    return rev
+
+
+def _resolve_champion_id(snap: DataSnapshot, name: str) -> str:
+    if name in snap.champions:
+        return name
+    cache_key = id(snap)
+    rev = _DISPLAY_REVMAP_CACHE.get(cache_key)
+    if rev is None:
+        rev = _build_display_revmap(snap)
+        _DISPLAY_REVMAP_CACHE[cache_key] = rev
+    if name in rev:
+        return rev[name]
+    lo = name.lower()
+    if lo in rev:
+        return rev[lo]
+    stripped = "".join(c for c in name if c.isalnum()).lower()
+    if stripped in rev:
+        return rev[stripped]
+    return name  # let the engine raise the canonical KeyError → 404
+
+
 # ---------------------------------------------------------------- route handlers
 
 
 def _route_stats(body: dict) -> dict:
     snap = _CACHE.get()
-    champion = _required_str(body, "champion")
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
     level = _opt_int(body, "level", 1) or 1
     items = _coerce_str_list(body.get("items"), "items")
     mode = _opt_str(body, "mode", "SR") or "SR"
@@ -235,7 +290,7 @@ def _route_stats(body: dict) -> dict:
 
 def _route_dps(body: dict) -> dict:
     snap = _CACHE.get()
-    champion = _required_str(body, "champion")
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
     level = _opt_int(body, "level", 1) or 1
     items = _coerce_str_list(body.get("items"), "items")
     mode = _opt_str(body, "mode", "SR") or "SR"
@@ -263,7 +318,7 @@ def _route_dps(body: dict) -> dict:
 
 def _route_rank(body: dict) -> dict:
     snap = _CACHE.get()
-    champion = _required_str(body, "champion")
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
     level = _opt_int(body, "level", 1) or 1
     items = _coerce_str_list(body.get("items"), "items")
     mode = _opt_str(body, "mode", "SR") or "SR"
@@ -310,7 +365,7 @@ def _route_rank(body: dict) -> dict:
 
 def _route_beam(body: dict) -> dict:
     snap = _CACHE.get()
-    champion = _required_str(body, "champion")
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
     level = _opt_int(body, "level", 1) or 1
     items = _coerce_str_list(body.get("items"), "items")
     mode = _opt_str(body, "mode", "SR") or "SR"
