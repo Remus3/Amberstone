@@ -134,5 +134,74 @@ class TestBuildStateModeResolution(unittest.TestCase):
         self.assertEqual(out["mode_key"], "tft")
 
 
+class TestBuildStatePreflipFlagMirror(unittest.TestCase):
+    """Pin that an active pre-flip mirrors into the WS envelope's
+    per-mode health flag, so dashboard onHealth and onState agree on
+    the mode tag during the lobby/champ-select window. Without this
+    mirror, onHealth resolves tag="client" every health tick and flaps
+    the mode/augments/win% pills against onState's pre-flipped mode."""
+
+    def setUp(self):
+        self._patches = [
+            mock.patch.object(_state_builder, "validate_coaching_payload",
+                              lambda x: None),
+            mock.patch.object(_state_builder, "liveclient_summary",
+                              return_value={}),
+            mock.patch.object(_state_builder, "get_team_context",
+                              return_value=None),
+        ]
+        for p in self._patches:
+            p.start()
+
+    def tearDown(self):
+        for p in reversed(self._patches):
+            p.stop()
+
+    def _run(self, health: dict, lcu: dict) -> dict:
+        def _read_json(path: str) -> dict:
+            if path.endswith("health.json"):
+                return health
+            return {}
+
+        with mock.patch.object(_state_builder, "read_json",
+                               side_effect=_read_json), \
+             mock.patch.object(_state_builder, "lcu_summary",
+                               return_value=lcu):
+            return _state_builder.build_state()
+
+    def test_arena_lobby_preflip_sets_arena_mode_flag(self):
+        health = _empty_health()  # arena_mode=False here
+        lcu = {"lobby": {"queue_id": 1700, "is_custom": False}}
+        out = self._run(health, lcu)
+        self.assertEqual(out["mode_key"], "arena")
+        self.assertTrue(out["health"]["arena_mode"])
+
+    def test_aram_champ_select_preflip_sets_aram_mode_flag(self):
+        health = _empty_health()
+        lcu = {"champ_select": {"queue_id": 450}}
+        out = self._run(health, lcu)
+        self.assertEqual(out["mode_key"], "aram")
+        self.assertTrue(out["health"]["aram_mode"])
+
+    def test_no_preflip_leaves_flags_false(self):
+        # Sanity: when there's no pre-flip, the envelope flags pass
+        # through health.json unchanged (still False).
+        health = _empty_health()
+        out = self._run(health, {})
+        self.assertEqual(out["mode_key"], "client")
+        self.assertFalse(out["health"].get("arena_mode"))
+        self.assertFalse(out["health"].get("aram_mode"))
+
+    def test_liveclient_arena_does_not_force_mirror(self):
+        # When LiveClient is authoritative (arena_mode=True from
+        # health.json itself), the existing flag passes through and
+        # no preflip override fires.
+        health = _empty_health() | {"arena_mode": True}
+        lcu = {"lobby": {"queue_id": 1700, "is_custom": False}}
+        out = self._run(health, lcu)
+        self.assertEqual(out["mode_key"], "arena")
+        self.assertTrue(out["health"]["arena_mode"])
+
+
 if __name__ == "__main__":
     unittest.main()
