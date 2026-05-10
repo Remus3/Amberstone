@@ -6,6 +6,34 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s152 wrap — 2026-05-09 (DS pill in header + ARAM Build-row fallback + match-record wire)
+
+## What shipped (commits `091d18c` + `0bed0cc`)
+- **`#ds-pill` in header row 2.** New glanceable surface for the engine's top pick — `◆ <Item> +Ndps`, info-blue (distinct from gold augments-pill). [web/index.html:113](web/index.html:113), [web/css/panels/map_state.css:166](web/css/panels/map_state.css:166), [web/js/panels/item_build.js:265](web/js/panels/item_build.js:265). Sig-keyed paint so cadence churn doesn't flicker; mode-gated to in-game (CSS hides client/tft).
+- **Next/ARAM `Build` row DS fallback.** [web/js/panels/next.js:130](web/js/panels/next.js:130) — when the coach hasn't emitted `item_extra` or `objective`, the row falls back to `DS: <name> +Ndps (Ng)` from `daemon_slayer_picks[0]`. Coach copy still wins when present (precedence preserved). Both branches verified live via Playwright direct-import eval.
+- **Match-record DS wire.** `performance_tracker._ds_picks_snapshot(sd, category)` reads the per-mode coaching JSON and folds the engine's last DS pick set into `matches.raw_data["daemon_slayer_picks"]` at game-end save. Calibration analysis loses the JSONL ⨝ on (champion, mode, ~ts) — single SELECT now covers it. [performance_tracker.py:48](performance_tracker.py:48) + [performance_tracker.py:340](performance_tracker.py:340).
+- **8 new tests** in `tests/phase2_smoke/test_perf_tracker_ds_snapshot.py` — category mapping pin (SR/ARAM/ARENA/BRAWL only; TFT explicitly excluded) + soft-fail paths (missing file, unparseable JSON, wrong field type, non-dict top-level). **Total suite: 624 pass** (was 616).
+- **Smoketested live**. Header pill rendered `Stormrazor +54dps` from real coach state. RC reload (PID 2388) clean.
+
+## Key decisions
+- **Co-locate DS pill render with item-build panel.** `IB.dsPill` ref + paint live in [panels/item_build.js](web/js/panels/item_build.js); no separate panel module. Single source of truth for any DS-related render — chips + pill update in lock-step from one `dsPicks` array.
+- **Build row uses fallback, not replacement.** Coach copy ALWAYS wins when present. The DS surface is a "fill the gap" path — the engine fires every coaching cycle so the row is never empty.
+- **DB wire reads from coaching JSON, not in-flight rank_for() call.** Decoupled from coach lifecycle; if save_rating fires after coach has stopped writing, picks are still readable from the on-disk file. Soft-fails to `[]` so DS persistence is observability, never gates the match save.
+- **TFT explicitly excluded from `_DS_COACH_FILE_BY_CATEGORY`.** TFT has no DPS framework — pinning the mapping in tests so a future "wire TFT" change is deliberate.
+
+## Follow-up still open (NOT shipped)
+- **`map_state.js:720` `gameTime is not defined`** — STILL pending from s151. Bare `gameTime.textContent` at line 720; line 721 is the working `MM.gameTime.textContent`. Fires once per second on every page load; visible in console as ~200 errors per session. Suggested fix: delete line 720.
+
+## What's next
+- `map_state.js:720` cleanup — 1-line delete, 30-second job, has been pending since s151.
+- **FU01 minimap-locate** — independent + ready anytime. Ticket at `Desktop/Tickets/RC_TICKET_FU01_minimap_locate.md`.
+- **Don't redo:** DS pill + Build-row fallback + raw_data wire are shipped end-to-end. Tests pass. Don't re-add the pill to a different header row, and don't move the DS render out of `panels/item_build.js`.
+
+## Blockers
+- None.
+
+---
+
 # s151 wrap — 2026-05-09 (augment-pill flicker fix + ESM-split _ibBuilds orphan)
 
 ## What shipped (commit `8db992b`)
