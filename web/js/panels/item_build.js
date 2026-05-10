@@ -12,6 +12,10 @@ const IB = {
   // Augments element lives in the header now (#augments-pill), not in the
   // Item Build panel, to keep info-panel layout stable across modes.
   augments: el("augments-pill"),
+  // DS pill (header) — peripheral-vision surface for the engine's top
+  // pick. Populated alongside the in-panel #ib-ds-picks chips so the
+  // operator can read the call without scanning down to Item Build.
+  dsPill: el("ds-pill"),
   staleness: document.querySelector('.staleness[data-for="item-build"]'),
 };
 
@@ -256,6 +260,25 @@ function renderItemBuild(p) {
       IB.dsBlock.hidden = false;
     } else {
       IB.dsBlock.hidden = true;
+    }
+  }
+  // Header DS pill — top pick + delta-dps for glanceable read. Mode-gated
+  // to in-game modes only (CSS hides client/tft); JS additionally hides
+  // when the picks list is empty so we don't render a stale "—" pill.
+  if (IB.dsPill) {
+    const top = dsPicks[0];
+    if (top && top.name) {
+      const delta = `+${Math.round(top.delta_dps)}dps`;
+      const sig = `${top.name}|${delta}`;
+      if (IB.dsPill.dataset.dsSig !== sig) {
+        IB.dsPill.dataset.dsSig = sig;
+        IB.dsPill.innerHTML = `${top.name}<em>${delta}</em>`;
+        IB.dsPill.title = `${top.name} · ${delta}` + (top.gold ? ` · ${top.gold}g` : '');
+      }
+      IB.dsPill.hidden = false;
+    } else {
+      IB.dsPill.hidden = true;
+      IB.dsPill.dataset.dsSig = "";
     }
   }
   state.lastTouch.item_build = Date.now() / 1000;
