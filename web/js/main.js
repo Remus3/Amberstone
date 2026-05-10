@@ -2252,6 +2252,18 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     autoAccept:    false,    // s162 v2: Auto Accept default off
     mainsTab:      null,     // s162 v4: "you" | "party" | null (auto from party_size)
   };
+  // s162 v15: action-button glyph constants. Crown swapped to the
+  // actual League captain-icon (CommunityDragon mirror, downloaded
+  // to /icons/lobby/captain-icon-crown.png) so the Party panel
+  // matches the in-client lobby treatment exactly. Copy swapped to
+  // Phosphor `copy-simple` SVG — thin stroke matches the action
+  // button border-soft treatment, currentColor inherits hover.
+  const _LV_ICON_CROWN = '<img class="lv-crown-img" src="/icons/lobby/captain-icon-crown.png" alt="Party leader" />';
+  const _LV_ICON_COPY = (
+    '<svg class="lv-copy-svg" viewBox="0 0 256 256" aria-hidden="true">' +
+      '<path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8ZM160 208H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/>' +
+    '</svg>'
+  );
   // s162 v2: full uppercase per operator spec ("TOP | JUNGLE | MIDDLE
   // | BOTTOM | SUPPORT | FILL"). UTILITY is the LCU's enum value for
   // the support role; "SUPPORT" is the operator-facing label.
@@ -2323,6 +2335,173 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       _renderPartyMains(lcu.lobby || null);
     }
   }
+  // s162 v9: shared helpers for the YOUR MAINS + PARTY MAINS rows so
+  // both panels render the same Overall + Averaged structure.
+  function _kdaScore(totalKda) {
+    // total_kda string is "K/D/A" — return (K + A) / D as 2-decimal
+    // string. D=0 returns "Perfect"; missing/malformed returns "—".
+    if (!totalKda || typeof totalKda !== "string") return "—";
+    const parts = totalKda.split("/").map((s) => parseFloat(s));
+    if (parts.length !== 3 || parts.some((n) => isNaN(n))) return "—";
+    const [k, d, a] = parts;
+    if (d === 0) return "Perfect";
+    return ((k + a) / d).toFixed(2);
+  }
+  function _splitKdaForRender(totalKda) {
+    // Returns { k, d, a, raw } so the deaths can be wrapped in red.
+    if (!totalKda || typeof totalKda !== "string") return null;
+    const parts = totalKda.split("/");
+    if (parts.length !== 3) return null;
+    return { k: parts[0], d: parts[1], a: parts[2], raw: totalKda };
+  }
+  function _mcOverallHtml(ov) {
+    const wins = ov.wins | 0;
+    const losses = ov.losses | 0;
+    const totalKda = ov.total_kda || "—";
+    const split = _splitKdaForRender(totalKda);
+    const kdaLine = split
+      ? `${split.k}/<span class="lv-mc-deaths">${split.d}</span>/${split.a}`
+      : (totalKda || "—");
+    const kdaScore = _kdaScore(totalKda);
+    // s162 v10: 2-col × 2-row grid layout per operator:
+    //   [N Games]   [K/D/A — D in red]
+    //   [W - L]     [N.NN KDA]
+    return (
+      '<span class="lv-mc-overall">' +
+        _mcGamesCellHtml(ov) +
+        '<span class="lv-mc-total-kda">' + kdaLine + '</span>' +
+        '<span class="lv-mc-wl">' +
+          '<span class="lv-mc-w">' + wins + 'W</span>' +
+          ' - ' +
+          '<span class="lv-mc-l">' + losses + 'L</span>' +
+        '</span>' +
+        '<span class="lv-mc-kda-score">' + kdaScore + ' KDA</span>' +
+      '</span>'
+    );
+  }
+  function _mcGamesCellHtml(ov) {
+    // s162 v9: games count = sum of all PVP modes (rift + aram + arena).
+    // Falls back to ov.games when no per-mode breakdown is wired yet.
+    // Tooltip shows a 3×3 mode breakdown (titles / counts / WR%).
+    const modes = ov.modes || null;
+    let total = ov.games | 0;
+    if (modes) {
+      total = ((modes.rift && modes.rift.games | 0) || 0) +
+              ((modes.aram && modes.aram.games | 0) || 0) +
+              ((modes.arena && modes.arena.games | 0) || 0);
+    }
+    if (!total) {
+      return '<span class="lv-mc-games">—</span>';
+    }
+    if (!modes) {
+      return '<span class="lv-mc-games">' + total + ' Games</span>';
+    }
+    const cell = (g, w) => {
+      const games = g | 0;
+      const wins = w | 0;
+      const wr = games > 0 ? Math.round((wins / games) * 100) + "%" : "—";
+      return { games, wr };
+    };
+    const r = cell((modes.rift && modes.rift.games)  || 0, (modes.rift && modes.rift.wins)  || 0);
+    const a = cell((modes.aram && modes.aram.games)  || 0, (modes.aram && modes.aram.wins)  || 0);
+    const x = cell((modes.arena && modes.arena.games)|| 0, (modes.arena && modes.arena.wins)|| 0);
+    const tip =
+      '<div class="lv-mc-games-tip">' +
+        '<div class="lv-mc-games-tip-row lv-mc-games-tip-head">' +
+          '<span>RIFT</span><span>ARAM</span><span>ARENA</span>' +
+        '</div>' +
+        '<div class="lv-mc-games-tip-row">' +
+          '<span>' + r.games + '</span>' +
+          '<span>' + a.games + '</span>' +
+          '<span>' + x.games + '</span>' +
+        '</div>' +
+        '<div class="lv-mc-games-tip-row lv-mc-games-tip-wr">' +
+          '<span>' + r.wr + '</span>' +
+          '<span>' + a.wr + '</span>' +
+          '<span>' + x.wr + '</span>' +
+        '</div>' +
+      '</div>';
+    // Encode HTML for the data-tt-html attribute. The tooltip renderer
+    // uses innerHTML when this attr is set; keep the markup self-contained.
+    const safeTip = tip.replace(/"/g, "&quot;");
+    return '<span class="lv-mc-games" data-tt-html="' + safeTip + '">' + total + ' Games</span>';
+  }
+  // s162 v10: 5-tier KP% color bands. Numbers reflect what aggregator B /
+  // aggregator A / aggregator D consensus on what's a "carry-engaged" vs
+  // "passive" kill-participation rate at solo-queue ranked play.
+  //   ≥70%  S — elite; almost always a carry/jungler stat
+  //   60-69 A — strong; reliable on objectives + skirmishes
+  //   50-59 B — average for laners
+  //   40-49 C — fades; missing skirmishes / over-farm
+  //   <40   D — passive; rarely shows up to fights
+  function _kpTierClass(kp) {
+    if (kp == null || isNaN(kp)) return "";
+    if (kp >= 70) return "lv-mc-kp-s";
+    if (kp >= 60) return "lv-mc-kp-a";
+    if (kp >= 50) return "lv-mc-kp-b";
+    if (kp >= 40) return "lv-mc-kp-c";
+    return "lv-mc-kp-d";
+  }
+  // s162 v17: AVG 5 grade tier classes — letter color coding for the
+  // 5-match rating average. Same neo-fintech palette as the KP bands
+  // but tighter: S = gold (top), A = good (great), B = info (good),
+  // C = clock (average), D = bad (poor). Drives a single .lv-mc-avg5-{cls}
+  // class on the bold letter so the label "AVG 5" stays neutral.
+  function _avg5RankClass(grade) {
+    const g = String(grade || "").trim().toUpperCase();
+    if (g === "S") return "lv-mc-avg5-s";
+    if (g === "A") return "lv-mc-avg5-a";
+    if (g === "B") return "lv-mc-avg5-b";
+    if (g === "C") return "lv-mc-avg5-c";
+    if (g === "D") return "lv-mc-avg5-d";
+    return "";
+  }
+  function _mcAveragedHtml(av) {
+    const kp     = (av.kp     != null) ? Math.round(Number(av.kp)) : null;
+    const cs     = (av.cs     != null) ? av.cs : "—";
+    const vis    = (av.vision != null) ? av.vision : "—";
+    const dmg    = (av.dmg    != null) ? _fmtK(av.dmg) : "—";
+    const cspm   = (av.cs_per_min != null) ? Number(av.cs_per_min).toFixed(1) : "—";
+    const kpVal  = kp != null ? kp + "%" : "—";
+    const kpCls  = _kpTierClass(kp);
+    const avg5   = av.avg5 || "—";
+    const avg5Cls = _avg5RankClass(avg5);
+    // s162 v17: 3-col × 2-row grid (Gold dropped, Vision moved up):
+    //   [KP%]    [Vision]  [CS]
+    //   [AVG 5]  [Dmg]     [CS/m]
+    // AVG 5 is the operator's last-5-match performance grade (S→D)
+    // for that champion, derived from rewind_history.db. Letter is
+    // bold + color-coded; "AVG 5" label sits below in the standard
+    // sub-label treatment.
+    return (
+      '<span class="lv-mc-averaged">' +
+        '<span class="lv-mc-avg-cell">' +
+          '<span class="lv-mc-avg-val ' + kpCls + '">' + kpVal + '</span>' +
+          '<span class="lv-mc-avg-lbl">KP%</span>' +
+        '</span>' +
+        '<span class="lv-mc-avg-cell">' +
+          '<span class="lv-mc-avg-val">' + vis + '</span>' +
+          '<span class="lv-mc-avg-lbl">Vision</span>' +
+        '</span>' +
+        '<span class="lv-mc-avg-cell">' +
+          '<span class="lv-mc-avg-val">' + cs + '</span>' +
+          '<span class="lv-mc-avg-lbl">CS</span>' +
+        '</span>' +
+        '<span class="lv-mc-avg-cell">' +
+          '<span class="lv-mc-avg-val lv-mc-avg5-letter ' + avg5Cls + '">' + avg5 + '</span>' +
+          '<span class="lv-mc-avg-lbl">AVG 5</span>' +
+        '</span>' +
+        '<span class="lv-mc-avg-cell">' +
+          '<span class="lv-mc-avg-val">' + dmg + '</span>' +
+          '<span class="lv-mc-avg-lbl">Dmg</span>' +
+        '</span>' +
+        '<span class="lv-mc-avg-cell">' +
+          '<span class="lv-mc-avg-val">' + cspm + '</span>' +
+          '<span class="lv-mc-avg-lbl">CS/m</span>' +
+        '</span>' +
+      '</span>'
+    );
+  }
   function _renderMainChamps(mc) {
     const list = document.getElementById("lv-mainchamps-list");
     if (!list) return;
@@ -2341,12 +2520,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       const result = (lm.result || "").trim();
       const resultLow = result.toLowerCase();
       const ov = c.overall || {};
-      const games = ov.games | 0;
       const wins  = ov.wins  | 0;
       const losses = ov.losses | 0;
-      const wr = (games > 0) ? Math.round((wins / games) * 100) : null;
-      const totalKda = ov.total_kda || (ov.k != null ? `${ov.k}/${ov.d}/${ov.a}` : "—");
       const av = c.averaged || {};
+      const overallHtml  = _mcOverallHtml(ov);
+      const averagedHtml = _mcAveragedHtml(av);
       const li = document.createElement("li");
       li.className = "lv-mc-row";
       li.dataset.rank = String(rank);
@@ -2358,7 +2536,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
               'onerror="this.style.display=\'none\'" />' +
           '</span>' +
           '<button type="button" class="lv-mc-copy" data-copy-rank="' + rank + '" ' +
-                  'title="Copy summary for League chat" aria-label="Copy">📋</button>' +
+                  'title="Copy summary for League chat" aria-label="Copy">' + _LV_ICON_COPY + '</button>' +
         '</span>' +
         '<span class="lv-mc-mastery">' +
           '<span class="lv-mc-summoner-name">' + (selfName || "—") + '</span>' +
@@ -2369,40 +2547,8 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
           '<span class="lv-mc-result lv-mc-result-' + resultLow + '">' + (result || "—") + '</span>' +
           '<span class="lv-mc-kda">' + (lm.kda || "—") + '</span>' +
         '</span>' +
-        '<span class="lv-mc-overall">' +
-          '<span class="lv-mc-games">' + (games || "—") + (games ? ' Games' : '') + '</span>' +
-          '<span class="lv-mc-wl">' +
-            '<span class="lv-mc-w">' + wins + '</span>' +
-            ' - ' +
-            '<span class="lv-mc-l">' + losses + '</span>' +
-          '</span>' +
-          '<span class="lv-mc-wr">' + (wr != null ? wr + "%" : "—") + '</span>' +
-          '<span class="lv-mc-total-kda">' + totalKda + '</span>' +
-        '</span>' +
-        '<span class="lv-mc-averaged">' +
-          '<span class="lv-mc-avg-cell">' +
-            '<span class="lv-mc-avg-val">' + _fmtK(av.gold) + '</span>' +
-            '<span class="lv-mc-avg-lbl">Gold</span>' +
-          '</span>' +
-          '<span class="lv-mc-avg-cell">' +
-            '<span class="lv-mc-avg-val">' + (av.cs != null ? av.cs : "—") + '</span>' +
-            '<span class="lv-mc-avg-lbl">CS</span>' +
-          '</span>' +
-          '<span class="lv-mc-avg-cell">' +
-            '<span class="lv-mc-avg-val">' + (av.vision != null ? av.vision : "—") + '</span>' +
-            '<span class="lv-mc-avg-lbl">Vis</span>' +
-          '</span>' +
-          '<span class="lv-mc-avg-bot-row">' +
-            '<span class="lv-mc-avg-cell">' +
-              '<span class="lv-mc-avg-val">' + _fmtK(av.heal_shield) + '</span>' +
-              '<span class="lv-mc-avg-lbl">H/S</span>' +
-            '</span>' +
-            '<span class="lv-mc-avg-cell">' +
-              '<span class="lv-mc-avg-val">' + _fmtK(av.tanked) + '</span>' +
-              '<span class="lv-mc-avg-lbl">Tnk</span>' +
-            '</span>' +
-          '</span>' +
-        '</span>'
+        overallHtml +
+        averagedHtml
       );
       list.appendChild(li);
     });
@@ -2430,6 +2576,20 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
   }
   function _rankClass(tier) {
     return "lv-rank-" + String(tier || "unranked").toLowerCase().replace(/\s+/g, "");
+  }
+  // s162 v12: role shorthand normalizer. Operator standard:
+  //   TOP / MID / BOT / JNG / SUP / FILL
+  // Real LCU data uses TOP/MIDDLE/BOTTOM/JUNGLE/UTILITY/FILL; older
+  // fixtures used JGL / SUPP. This collapses every variant to the
+  // 3-letter operator label.
+  function _roleShort(role) {
+    if (!role) return "—";
+    const r = String(role).toUpperCase();
+    if (r === "JUNGLE" || r === "JGL" || r === "JG" || r === "JUNGLER" || r === "JNG") return "JNG";
+    if (r === "UTILITY" || r === "SUPPORT" || r === "SUPP" || r === "SUP") return "SUP";
+    if (r === "MIDDLE" || r === "MID") return "MID";
+    if (r === "BOTTOM" || r === "ADC" || r === "BOT") return "BOT";
+    return r;
   }
   function _fullPartyMember(m) {
     return m.riot_id || (m.game_name && m.tag_line ? `${m.game_name}#${m.tag_line}` : (m.summoner_name || "Unknown"));
@@ -2499,6 +2659,12 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     window.addEventListener("resize", _positionLobbyTitles);
   }
 
+  // s162 v13: SR draft party caps at 5 members. The PARTY panel
+  // always renders 5 row slots — filled slots show real members,
+  // unfilled slots show dashed placeholder rows. When a member
+  // joins or leaves the party, the LCU agent re-pushes the lobby
+  // envelope; this renderer auto-populates / depopulates accordingly.
+  const PARTY_MAX_SLOTS = 5;
   function _renderPartyMembers(lobby) {
     const ul  = document.getElementById("lv-members-list");
     const members = (lobby && lobby.members) || [];
@@ -2509,11 +2675,90 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       return;
     }
     const isSolo = members.length === 1;
+    // s162 v10: which party members are in the operator's curated
+    // Top 8? Those rows get .is-top8-mate so their green hue mirrors
+    // the matching Top 8 row.
+    const top8List = _top8Load();
+    const top8Keys = new Set();
+    top8List.forEach((e) => {
+      if (e.riot_id) top8Keys.add(e.riot_id);
+      if (e.summoner_name) top8Keys.add(e.summoner_name);
+    });
+    // s162 v15: Primary-lane conflict detection — pre-pass before the
+    // render loop. For each pair of members (incl. self) where their
+    // resolved Primary == another's Primary AND it's not FILL/UNSELECTED,
+    // mark BOTH as conflicting. Self-involvement → 'self' (red); two
+    // other members conflicting (no self) → 'other' (orange).
+    const conflictMap = new Map();
+    let selfHasConflict = false;
+    {
+      // Build a list of {key, primary, isSelf} for every party member.
+      const probe = [];
+      members.forEach((m) => {
+        const key = m.riot_id || m.summoner_name || ("idx-" + probe.length);
+        const primary = m.is_self
+          ? _LV.prefPrimary
+          : ((m.position_preferences || m.positionPreferences || {}).first ||
+             (m.position_preferences || m.positionPreferences || {}).primary || null);
+        probe.push({ key, primary, isSelf: !!m.is_self });
+      });
+      for (let i = 0; i < probe.length; i++) {
+        for (let j = i + 1; j < probe.length; j++) {
+          const a = probe[i], b = probe[j];
+          if (!a.primary || !b.primary) continue;
+          if (a.primary === "FILL" || a.primary === "UNSELECTED") continue;
+          if (a.primary !== b.primary) continue;
+          const involvesSelf = a.isSelf || b.isSelf;
+          const kind = involvesSelf ? "self" : "other";
+          // Self always wins over other for the same key.
+          const upgrade = (cur, next) => (cur === "self" || next === "self") ? "self" : (cur || next);
+          conflictMap.set(a.key, upgrade(conflictMap.get(a.key), kind));
+          conflictMap.set(b.key, upgrade(conflictMap.get(b.key), kind));
+          if (involvesSelf) selfHasConflict = true;
+        }
+      }
+    }
+    // Surface the self-conflict state on the QUEUE Primary button so
+    // the operator sees both ends of the conflict in one glance.
+    const primaryBtn = document.getElementById("lv-lane-primary");
+    if (primaryBtn) {
+      primaryBtn.classList.toggle("is-conflict", selfHasConflict);
+    }
     ul.innerHTML = "";
     let otherIdx = 0;  // index among non-self members; cross-refs PARTY MAINS card idx
-    members.forEach((m) => {
+    // s162 v13: iterate up to PARTY_MAX_SLOTS, rendering placeholders
+    // for slots beyond members.length. Real-member branch unchanged.
+    for (let slot = 0; slot < PARTY_MAX_SLOTS; slot++) {
+      const m = members[slot];
+      if (!m) {
+        const phLi = document.createElement("li");
+        phLi.className = "lobby-member-row is-placeholder";
+        phLi.innerHTML = (
+          '<span class="lv-party-section-name"><span class="lv-party-empty">—</span></span>' +
+          '<span class="lv-party-section-prefs"></span>' +
+          '<span class="lv-party-section-peak"></span>' +
+          '<span class="lv-party-section-rank"></span>' +
+          '<span class="lv-party-section-topchamps"></span>' +
+          '<span class="lobby-member-actions">' +
+            '<span class="lv-member-action-spacer" aria-hidden="true"></span>' +
+            '<span class="lv-member-action-spacer" aria-hidden="true"></span>' +
+            '<span class="lv-member-action-spacer" aria-hidden="true"></span>' +
+            '<span class="lv-member-action-spacer" aria-hidden="true"></span>' +
+          '</span>'
+        );
+        ul.appendChild(phLi);
+        continue;
+      }
+      // Real-member branch — same logic that used to live inside the
+      // members.forEach((m) => { ... }) callback below.
+      ((m) => {
       const li = document.createElement("li");
-      li.className = "lobby-member-row" + (m.is_self ? " is-self" : "");
+      const memberKey = m.riot_id || m.summoner_name;
+      const isTop8Mate = !!memberKey && top8Keys.has(memberKey);
+      let cls = "lobby-member-row";
+      if (m.is_self) cls += " is-self";
+      if (isTop8Mate)  cls += " is-top8-mate";
+      li.className = cls;
       if (!m.is_self) {
         li.dataset.memberIdx = String(otherIdx);
         // s162 v5: color palette per non-self member (good/gold/teal/coral)
@@ -2526,14 +2771,48 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       // s162 v4: Section 1 is just the name. YOU pip removed; the
       // is-self row already gets a border accent. LEADER pip moved to
       // the right-side action group as a crown button.
+      // s162 v10: col 2 renders the member's LCU-pulled Primary +
+      // Secondary lane preferences. Updates on state push.
+      // s162 v15: self row now mirrors col 2 from the QUEUE panel's
+      // lane picker (_LV.prefPrimary / _LV.prefSecondary) so the self
+      // row visually matches the other party rows. Updates whenever
+      // _setLanePref re-renders the party panel.
+      let pPrimary, pSecondary;
+      if (m.is_self) {
+        pPrimary   = _LV.prefPrimary;
+        pSecondary = _LV.prefSecondary;
+      } else {
+        const prefs = m.position_preferences || m.positionPreferences || null;
+        pPrimary   = prefs ? (prefs.first  || prefs.primary  || null) : null;
+        pSecondary = prefs ? (prefs.second || prefs.secondary || null) : null;
+      }
+      // s162 v15: conflict check populated by the outer-loop pre-pass
+      // (computed once per render, not per row). conflictMap keys are
+      // member-keys (riot_id || summoner_name); values are 'self' (red)
+      // or 'other' (orange) or null.
+      const memberKeyForConflict = m.riot_id || m.summoner_name || ("idx-" + slot);
+      const conflictKind = (typeof conflictMap !== "undefined") ? conflictMap.get(memberKeyForConflict) : null;
+      const prefIcon = (slot, lane, isPrimary) => {
+        const conflictCls = (isPrimary && conflictKind)
+          ? (conflictKind === "self" ? " is-conflict-self" : " is-conflict-other")
+          : "";
+        if (!lane || lane === "UNSELECTED") {
+          return `<span class="lv-party-pref-empty${conflictCls}" title="${slot} pref — none set" data-tt="${slot} pref — none set">—</span>`;
+        }
+        const url  = LANE_ICONS[lane] || "";
+        const lbl  = LANE_LABELS[lane] || lane;
+        return `<img class="lv-party-pref-icon${conflictCls}" src="${url}" alt="${lbl}" title="${slot}: ${lbl}" data-tt="${slot}: ${lbl}" />`;
+      };
       const section1 =
         '<span class="lv-party-section-name">' +
           `<span class="lobby-member-name">${ign}</span>` +
         '</span>' +
-        '<span class="lv-party-spacer-icon"></span>';   // col 2 — kept for visual rhythm
+        '<span class="lv-party-section-prefs">' +
+          prefIcon("Primary", pPrimary, true) + prefIcon("Secondary", pSecondary, false) +
+        '</span>';
       // Section 2: current rank / div / LP — shown in BOTH solo and
-      // party 2+. Falls back to "Account Level NNN : Unranked" when
-      // member has no ranked tier.
+      // party 2+. Falls back to "LVL NNN : Unranked" when the member
+      // has no ranked tier (s162 v10: was "Level NNN").
       let section2;
       if (m.rank && m.rank.tier) {
         const rankCls = _rankClass(m.rank.tier);
@@ -2545,58 +2824,67 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
           '</span>';
       } else {
         const lvl = (m.summoner_level != null) ? m.summoner_level : (m.level != null ? m.level : "—");
-        section2 = `<span class="lv-party-section-rank"><span class="lv-party-empty">Level ${lvl} : Unranked</span></span>`;
+        section2 = `<span class="lv-party-section-rank"><span class="lv-party-empty">LVL ${lvl} : Unranked</span></span>`;
       }
       // s162 v4: Section 3 — preferred role pip (was peak rank). Based
       // on match history; LCU agent + rewind_history.db will populate
-      // m.preferred_role in Phase B. Party 2+ only.
-      let section3 = '<span class="lv-party-section-peak"></span>';
-      if (!isSolo && m.preferred_role) {
+      // m.preferred_role in Phase B.
+      // s162 v15: self row also renders its DB/history-assessed role
+      // pip (m.assessed_role || m.preferred_role for self). When the
+      // user is solo we still render the pip — empty becomes "—".
+      const roleVal = m.is_self
+        ? (m.assessed_role || m.preferred_role || null)
+        : (m.preferred_role || null);
+      let section3;
+      if (roleVal) {
         section3 =
           '<span class="lv-party-section-peak">' +
-            `<span class="lobby-member-pip lobby-member-pip-role">${m.preferred_role}</span>` +
+            `<span class="lobby-member-pip lobby-member-pip-role">${_roleShort(roleVal)}</span>` +
           '</span>';
-      } else if (!isSolo) {
+      } else {
         section3 = '<span class="lv-party-section-peak"><span class="lv-party-empty">—</span></span>';
       }
       // s162 v6: 4 always-present action slots per row so widths line
       // up across all party rows regardless of role permissions.
-      // Slots: [crown OR spacer] [copy] [promote OR spacer] [kick OR spacer].
+      // Slots: [spacer] [copy] [promote OR crown OR spacer] [kick OR spacer].
+      // Crown shares slot 3 with promote so the leader's crown sits in
+      // the same column as the promote icon on every other row.
       const fullIgn = _fullPartyMember(m);
       const actions = [];
-      // Slot 1 — leader crown / spacer
-      if (m.is_leader) {
-        actions.push(`<span class="lv-member-action lv-member-leader-crown" title="Party leader" aria-label="Party leader">👑</span>`);
-      } else {
-        actions.push('<span class="lv-member-action-spacer" aria-hidden="true"></span>');
-      }
+      // Slot 1 — spacer (reserved column for future left-side action)
+      actions.push('<span class="lv-member-action-spacer" aria-hidden="true"></span>');
       // Slot 2 — copy (always present)
-      actions.push(`<button type="button" class="lv-member-action" data-action="copy" data-ign="${fullIgn}" title="Copy username" aria-label="Copy username">📋</button>`);
-      // Slot 3 — promote / spacer
-      if (!isSolo && iAmLeader && !m.is_self && !m.is_leader) {
+      actions.push(`<button type="button" class="lv-member-action" data-action="copy" data-ign="${fullIgn}" title="Copy username" aria-label="Copy username">${_LV_ICON_COPY}</button>`);
+      // Slot 3 — leader crown OR promote OR spacer
+      if (m.is_leader) {
+        actions.push(`<span class="lv-member-action lv-member-leader-crown" title="Party leader" aria-label="Party leader">${_LV_ICON_CROWN}</span>`);
+      } else if (!isSolo && iAmLeader && !m.is_self) {
         actions.push(`<button type="button" class="lv-member-action" data-action="promote" data-ign="${fullIgn}" title="Promote to leader" aria-label="Promote to leader">⬆</button>`);
       } else {
         actions.push('<span class="lv-member-action-spacer" aria-hidden="true"></span>');
       }
       // Slot 4 — kick / spacer
-      if (!isSolo && iAmLeader && !m.is_self) {
+      if (!isSolo && iAmLeader && !m.is_self && !m.is_leader) {
         actions.push(`<button type="button" class="lv-member-action" data-action="kick" data-ign="${fullIgn}" title="Kick from party" aria-label="Kick">✕</button>`);
       } else {
         actions.push('<span class="lv-member-action-spacer" aria-hidden="true"></span>');
       }
       const section4 = `<span class="lobby-member-actions">${actions.join("")}</span>`;
       // s162 v5: 6-col layout — name (1) | icon-spacer (2) | role (3)
-      // | rank (4) | top-3-champs-for-role (5) | actions (6).
+      // | rank (4) | top-2-champs-for-role (5) | actions (6).
+      // s162 v7: 3 → 2 champs so the topchamps cell narrows and Role
+      // + Rank columns line up vertically with the Top 8 panel.
       const champs = Array.isArray(m.top_role_champs) ? m.top_role_champs : [];
-      const shortChamps = champs.slice(0, 3)
-        .map((n) => String(n || "").split(/[ '&]/)[0].slice(0, 4))
+      const shortChamps = champs.slice(0, 2)
+        .map((n) => String(n || "").split(/[ '&]/)[0].slice(0, 5))
         .filter(Boolean);
       const sectionTopChamps = '<span class="lv-party-section-topchamps">' +
         (shortChamps.length ? shortChamps.join(" | ") : "—") +
         '</span>';
       li.innerHTML = section1 + section3 + section2 + sectionTopChamps + section4;
       ul.appendChild(li);
-    });
+      })(m);   // close v13 real-member IIFE — invokes with current m
+    }
     // s162 v4: click party row → highlight matching PARTY MAINS card
     // (and the row itself). Clicks on action buttons are ignored.
     ul.querySelectorAll(".lobby-member-row[data-member-idx]").forEach((row) => {
@@ -2673,7 +2961,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
               `<img src="${iconUrl}" alt="${c.name || ""}" onerror="this.style.display='none'" />` +
             '</span>' +
             `<button type="button" class="lv-mc-copy" data-copy-rank="${rank}" ` +
-                    'title="Copy summary for League chat" aria-label="Copy">📋</button>' +
+                    'title="Copy summary for League chat" aria-label="Copy">' + _LV_ICON_COPY + '</button>' +
           '</span>' +
           '<span class="lv-mc-mastery">' +
             `<span class="lv-mc-summoner-name">${playerName}</span>` +
@@ -2684,23 +2972,8 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
             `<span class="lv-mc-result lv-mc-result-${resultLow}">${result || "—"}</span>` +
             `<span class="lv-mc-kda">${lm.kda || "—"}</span>` +
           '</span>' +
-          '<span class="lv-mc-overall">' +
-            `<span class="lv-mc-games">${games || "—"}${games ? " Games" : ""}</span>` +
-            '<span class="lv-mc-wl">' +
-              `<span class="lv-mc-w">${wins}</span> - <span class="lv-mc-l">${losses}</span>` +
-            '</span>' +
-            `<span class="lv-mc-wr">${wr != null ? wr + "%" : "—"}</span>` +
-            `<span class="lv-mc-total-kda">${totalKda}</span>` +
-          '</span>' +
-          '<span class="lv-mc-averaged">' +
-            `<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">${_fmtK(av.gold)}</span><span class="lv-mc-avg-lbl">Gold</span></span>` +
-            `<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">${av.cs != null ? av.cs : "—"}</span><span class="lv-mc-avg-lbl">CS</span></span>` +
-            `<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">${av.vision != null ? av.vision : "—"}</span><span class="lv-mc-avg-lbl">Vis</span></span>` +
-            '<span class="lv-mc-avg-bot-row">' +
-              `<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">${_fmtK(av.heal_shield)}</span><span class="lv-mc-avg-lbl">H/S</span></span>` +
-              `<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">${_fmtK(av.tanked)}</span><span class="lv-mc-avg-lbl">Tnk</span></span>` +
-            '</span>' +
-          '</span>'
+          _mcOverallHtml(ov) +
+          _mcAveragedHtml(av)
         );
         // Wire copy for this party member — same format as YOUR MAINS:
         // "Summoner - Champion - Mastery N : ## K points · ## Games All-Time · ##% WR"
@@ -2723,7 +2996,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
           '<span class="lv-mc-champ">' +
             '<span class="lv-mc-icon"></span>' +
             `<button type="button" class="lv-mc-copy" data-copy-rank="${rank}" ` +
-                    'title="Copy summary for League chat" aria-label="Copy" disabled>📋</button>' +
+                    'title="Copy summary for League chat" aria-label="Copy" disabled>' + _LV_ICON_COPY + '</button>' +
           '</span>' +
           '<span class="lv-mc-mastery">' +
             '<span class="lv-mc-summoner-name">—</span>' +
@@ -2736,18 +3009,17 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
           '</span>' +
           '<span class="lv-mc-overall">' +
             '<span class="lv-mc-games">—</span>' +
-            '<span class="lv-mc-wl">—</span>' +
-            '<span class="lv-mc-wr">—</span>' +
             '<span class="lv-mc-total-kda">—</span>' +
+            '<span class="lv-mc-wl">—</span>' +
+            '<span class="lv-mc-kda-score">—</span>' +
           '</span>' +
           '<span class="lv-mc-averaged">' +
-            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">Gold</span></span>' +
+            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">KP%</span></span>' +
+            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">Vision</span></span>' +
             '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">CS</span></span>' +
-            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">Vis</span></span>' +
-            '<span class="lv-mc-avg-bot-row">' +
-              '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">H/S</span></span>' +
-              '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">Tnk</span></span>' +
-            '</span>' +
+            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">AVG 5</span></span>' +
+            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">Dmg</span></span>' +
+            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">CS/m</span></span>' +
           '</span>'
         );
       }
@@ -2823,22 +3095,45 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     _LV.activeSlot = null;
   }
   function _setLanePref(slot, pref) {
+    // s162 v8: Primary and Secondary cannot share the same role. If
+    // the operator picks a role for one slot that already lives in
+    // the OTHER slot, swap: the other slot inherits whatever the
+    // edited slot used to hold. Only applies to specific roles —
+    // FILL has its own auto-mirror semantics below.
+    const isSpecific = (pref && pref !== "UNSELECTED" && pref !== "FILL");
     if (slot === "primary") {
       const wasFill = (_LV.prefPrimary === "FILL");
-      _LV.prefPrimary = pref;
-      if (wasFill && pref !== "FILL") {
-        // FILL → specific role: secondary becomes "needs-pick" until operator picks
-        _LV.prefSecondary = "UNSELECTED";
-        _LV.needsPick = true;
-      } else if (pref === "FILL") {
-        // Primary FILL → secondary auto-pinned to FILL (display mirror)
-        _LV.prefSecondary = "FILL";
+      const oldPrimary = _LV.prefPrimary;
+      if (isSpecific && _LV.prefSecondary === pref) {
+        // Conflict: secondary holds the same role we're picking for
+        // primary. Swap — secondary inherits the old primary value.
+        _LV.prefSecondary = oldPrimary;
+        _LV.prefPrimary = pref;
         _LV.needsPick = false;
       } else {
-        _LV.needsPick = false;
+        _LV.prefPrimary = pref;
+        if (wasFill && pref !== "FILL") {
+          // FILL → specific role: secondary becomes "needs-pick"
+          _LV.prefSecondary = "UNSELECTED";
+          _LV.needsPick = true;
+        } else if (pref === "FILL") {
+          // Primary FILL → secondary auto-pinned to FILL
+          _LV.prefSecondary = "FILL";
+          _LV.needsPick = false;
+        } else {
+          _LV.needsPick = false;
+        }
       }
     } else {
-      _LV.prefSecondary = pref;
+      const oldSecondary = _LV.prefSecondary;
+      if (isSpecific && _LV.prefPrimary === pref) {
+        // Conflict: primary holds the same role we're picking for
+        // secondary. Swap — primary inherits the old secondary value.
+        _LV.prefPrimary = oldSecondary;
+        _LV.prefSecondary = pref;
+      } else {
+        _LV.prefSecondary = pref;
+      }
       _LV.needsPick = false;
     }
     // Phase A: visual-only. Phase B will queue an /lcu-cmd here:
@@ -2847,6 +3142,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     _renderLanePref("primary",   _LV.prefPrimary,   false);
     _renderLanePref("secondary", _LV.prefSecondary, false);
     _closeLanePopup();
+    // s162 v15: re-render the PARTY panel so the self-row mirror
+    // updates AND the conflict-detection pre-pass re-runs against
+    // the new self primary.
+    const _lcu = (state.latest && state.latest.lcu) || {};
+    if (_lcu.lobby) _renderPartyMembers(_lcu.lobby);
   }
   // Static queue-tip table — per queue_id, a list of short tips.
   // Hardcoded since they don't change per-game; feel free to extend.
@@ -3021,7 +3321,20 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     const lcu = (state.latest && state.latest.lcu) || {};
     const lobby = lcu.lobby || null;
     const wn = document.getElementById("lv-window");
-    if (wn) wn.textContent = lobby ? "live" : "awaiting LCU lobby data feed";
+    // s162 v14: hide the sub-label entirely when the panel is healthy
+    // ("live" was redundant noise next to "Pre-Game Lobby"). Show it
+    // only on error/empty states so it always means something.
+    if (wn) {
+      if (lobby) {
+        wn.textContent = "";
+        wn.hidden = true;
+        wn.classList.remove("is-error");
+      } else {
+        wn.textContent = "awaiting LCU lobby data feed";
+        wn.hidden = false;
+        wn.classList.add("is-error");
+      }
+    }
 
     const qName = document.getElementById("lv-queue-name");
     if (qName) qName.textContent = lobby
@@ -3160,22 +3473,47 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       const li = document.createElement("li");
       if (entry) {
         const inParty = partyKeys.has(entry.riot_id) || partyKeys.has(entry.summoner_name);
-        li.className = "lv-top8-row" + (inParty ? " is-in-party" : "");
+        const isOnline = !!entry.is_online;
+        // s162 v7: offline rows get a soft red tint via .is-offline.
+        // is-in-party tint takes precedence — being in your party
+        // implies online.
+        let cls = "lv-top8-row";
+        if (inParty) cls += " is-in-party";
+        else if (!isOnline) cls += " is-offline";
+        li.className = cls;
         li.dataset.idx = String(i);
+        // s162 v10: per-member color-idx removed — single green hue
+        // mirrors PARTY panel's .is-top8-mate.
         const fullId = entry.riot_id || entry.summoner_name || "—";
         const name = String(fullId).split("#")[0];
         const games = entry.games_with_me != null ? `${entry.games_with_me} G` : "—";
-        const role  = entry.preferred_role || "—";
+        const role  = _roleShort(entry.preferred_role);
         const rankTxt = _top8FormatRank(entry.rank);
+        // s162 v9: extend Party-panel rank tier color coding (.lv-rank-*)
+        // to the Top 8 rank cell. _rankClass() returns "lv-rank-iron"
+        // etc., or "lv-rank-unranked" when no tier.
+        const rankCls = _rankClass(entry.rank ? entry.rank.tier : null);
+        // s162 v16: when an entry is unranked, mirror the PARTY panel's
+        // empty fallback ("LVL ### : Unranked") rather than a plain
+        // "Unranked" pill — gives a consistent treatment across the
+        // two panels and surfaces summoner_level when LCU forwards it.
+        const isUnranked = !entry.rank || !entry.rank.tier;
+        let rankCellHtml;
+        if (isUnranked) {
+          const lvl = (entry.summoner_level != null) ? entry.summoner_level
+                    : (entry.level != null ? entry.level : "—");
+          rankCellHtml = `<span class="lv-top8-rank-empty">LVL ${lvl} : Unranked</span>`;
+        } else {
+          rankCellHtml = `<span class="lv-top8-rank-pip ${rankCls}">${rankTxt}</span>`;
+        }
         const tag   = entry.user_tag || "+ tag";
-        const isOnline = !!entry.is_online;
         const dotCls   = isOnline ? "lv-top8-dot-on" : "lv-top8-dot-off";
         const dotTitle = isOnline ? "Online" : "Offline";
         li.innerHTML = (
           `<span class="lv-top8-cell lv-top8-name" title="${fullId}">${name}</span>` +
           `<span class="lv-top8-cell lv-top8-games">${games}</span>` +
           `<span class="lv-top8-cell lv-top8-role">${role}</span>` +
-          `<span class="lv-top8-cell lv-top8-rank">${rankTxt}</span>` +
+          `<span class="lv-top8-cell lv-top8-rank">${rankCellHtml}</span>` +
           `<span class="lv-top8-cell lv-top8-tag" data-action="edit-tag" data-idx="${i}" title="Click to edit tag">${tag}</span>` +
           `<span class="lv-top8-dot ${dotCls}" title="${dotTitle}"></span>` +
           `<button type="button" class="lv-member-action" data-action="invite" data-idx="${i}" title="Invite to lobby" aria-label="Invite">➕</button>` +
@@ -3370,7 +3708,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
           `<span class="lv-fr-team-mark">[${teamMark}]</span>` +
           `<span class="lv-fr-team-kda">${lm.kda || "—"}</span>` +
         `</span>` +
-        `<button type="button" class="lv-fr-copy lv-member-action" data-action="copy" data-ign="${ign}" title="Copy summoner name" aria-label="Copy">📋</button>` +
+        `<button type="button" class="lv-fr-copy lv-member-action" data-action="copy" data-ign="${ign}" title="Copy summoner name" aria-label="Copy">${_LV_ICON_COPY}</button>` +
         `<button type="button" class="lv-fr-invite lv-member-action" data-action="invite" data-ign="${ign}" title="Invite to lobby" aria-label="Invite">➕</button>`
       );
       ul.appendChild(li);
@@ -3387,7 +3725,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
         '<span class="lv-fr-role">—</span>' +
         '<span class="lv-fr-rank"><span class="lv-party-empty">—</span></span>' +
         '<span class="lv-fr-team"><span class="lv-fr-team-mark">—</span></span>' +
-        '<button type="button" class="lv-fr-copy lv-member-action" disabled aria-label="Copy">📋</button>'
+        '<button type="button" class="lv-fr-copy lv-member-action" disabled aria-label="Copy">' + _LV_ICON_COPY + '</button>'
       );
       ul.appendChild(li);
     }
@@ -5130,10 +5468,19 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       tip.style.top  = top  + "px";
     }
     function show(el) {
+      // s162 v9: rich tooltips. If `data-tt-html` is set, render the
+      // attribute value as innerHTML (the page is the only source of
+      // these strings — operator-authored, not user input). Falls
+      // back to plain `data-tt`/`title` text-only path otherwise.
+      const html = el.getAttribute("data-tt-html");
       const text = capture(el);
-      if (!text) return;
+      if (!html && !text) return;
       activeEl = el;
-      tip.textContent = wrapSixWords(text);
+      if (html) {
+        tip.innerHTML = html;
+      } else {
+        tip.textContent = wrapSixWords(text);
+      }
       tip.classList.add("show");
       requestAnimationFrame(place);
     }
@@ -5149,13 +5496,13 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     });
     document.body.addEventListener("mouseover", e => {
       cursorX = e.clientX; cursorY = e.clientY;
-      const el = e.target.closest && e.target.closest("[title], [data-tt]");
+      const el = e.target.closest && e.target.closest("[title], [data-tt], [data-tt-html]");
       if (!el || el === activeEl) return;
       clearTimeout(hideTimer);
       show(el);
     });
     document.body.addEventListener("mouseout", e => {
-      const el = e.target.closest && e.target.closest("[title], [data-tt]");
+      const el = e.target.closest && e.target.closest("[title], [data-tt], [data-tt-html]");
       if (!el) return;
       clearTimeout(hideTimer);
       hideTimer = setTimeout(hide, 80);

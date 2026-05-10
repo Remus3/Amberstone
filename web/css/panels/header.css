@@ -603,8 +603,11 @@ footer .prefs-chip:hover { color: var(--text); }
   /* s162 v4: top margin/padding tightened so the LOBBY · live header
    * sits closer to the top panel border. Was 12/16, now 4/8.
    * s162 v6: bottom padding 16→4 to eliminate the last bit of overflow
-   * causing the page to scroll. */
-  margin: 4px 18px 0; padding: 8px 18px 4px;
+   * causing the page to scroll.
+   * s162 v11: tightened further — top padding 8→4 + bottom 4→2 +
+   * top margin 4→2 to claw back ~10px of vertical so lobby fits in
+   * 1080-viewport without the auto-scrollbar. */
+  margin: 2px 18px 0; padding: 4px 18px 2px;
   background: var(--surface); border: 1px solid var(--border-soft);
   border-radius: var(--radius);
   flex: 1 1 auto; min-height: 0;
@@ -614,9 +617,11 @@ footer .prefs-chip:hover { color: var(--text); }
 .view-section-head {
   display: flex; align-items: baseline; gap: 12px;
   /* s162 v4: tightened vertical buffer per operator — was 14/10, now
-   * 8/6 to make room for 5 party-mains cards in the lobby grid. */
-  margin-bottom: 8px;
-  border-bottom: 1px solid var(--border-soft); padding-bottom: 6px;
+   * 8/6 to make room for 5 party-mains cards in the lobby grid.
+   * s162 v11: 8/6 → 4/4 to recover another 6px of vertical for the
+   * lobby grid without losing the divider line. */
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border-soft); padding-bottom: 4px;
 }
 /* s162 v5: panel title sits at the top of each panel, centered.
  * Same scale as My Top 8 / Recently Played title (15px white). */
@@ -625,6 +630,23 @@ footer .prefs-chip:hover { color: var(--text); }
   color: var(--text); text-transform: uppercase;
   text-align: center;
   padding: 0 0 4px;
+}
+/* s162 v8: ONLY the PARTY card's title becomes a grid container with
+ * the same column template as its rows so the title text can be
+ * placed in the rank column (col 4), making it horizontally centered
+ * with the row's Rank pip. The queue card's #lv-queue-name also uses
+ * .lv-panel-title — leaving the generic rule above (text-align:
+ * center) unscoped keeps that one centered as before. */
+.lobby-view-card-party > .lv-panel-title {
+  display: grid;
+  grid-template-columns: 1.4fr 0.6fr 0.5fr 1.2fr 0.9fr 120px;
+  gap: 6px;
+  padding: 0 8px 4px;
+  text-align: initial;
+}
+.lv-panel-title-text {
+  grid-column: 4;
+  text-align: center;
 }
 
 /* s162 v5: per-member username color palette. Self = lavender (--info).
@@ -641,11 +663,17 @@ footer .prefs-chip:hover { color: var(--text); }
 [data-color-idx="4"] .lobby-member-name,
 [data-color-idx="4"] .lv-mc-summoner-name { color: var(--bad); }
 
-/* s162 v5: My Top 8 row gets a light green tint when the entry is
- * currently in the party. When they leave, the tint clears. */
-.lv-top8-row.is-in-party {
-  background: color-mix(in srgb, var(--good-soft) 70%, var(--surface-alt));
-  border: 1px solid var(--good-soft);
+/* s162 v5: My Top 8 row gets a light tint when the entry is currently
+ * in the party. When they leave, the tint clears.
+ * s162 v10: reverted v9's per-member color matrix — operator wants a
+ * single green hue for ALL in-party Top 8 rows (the FrenLuvr tint),
+ * mirrored onto the matching PARTY-panel row via .is-top8-mate. Both
+ * use the same 8% mix + 25% border so the two panels read as a pair
+ * for any party member who's also in the operator's curated Top 8. */
+.lv-top8-row.is-in-party,
+.lobby-members-list .lobby-member-row.is-top8-mate {
+  background: color-mix(in srgb, var(--good) 8%, var(--surface-alt));
+  border: 1px solid color-mix(in srgb, var(--good) 25%, transparent);
 }
 .view-section-head h2 {
   margin: 0; font-size: 16px; letter-spacing: 0.18em;
@@ -653,6 +681,16 @@ footer .prefs-chip:hover { color: var(--text); }
 }
 .view-section-sub {
   font-size: 11px; color: var(--text-faint); letter-spacing: 0.04em;
+}
+/* s162 v14: bumped + recolored error variant. The "live" idle text is
+ * suppressed in JS; this rule only fires when the panel falls into
+ * an error/empty state (e.g. "awaiting LCU lobby data feed") and
+ * needs to actually be read. */
+.view-section-sub.is-error {
+  font-size: 14px;
+  color: var(--bad);
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 .view-section-tabs { display: flex; gap: 4px; margin-left: auto; }
 .view-section-btn, .view-tab {
@@ -738,6 +776,23 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   padding: 8px 16px;
   min-height: 160px;
   display: flex; flex-direction: column;
+}
+/* s162 v8: row 1 panels shrink to natural content (was stretching to
+ * row 2 height and leaving dead space below the 5th party row).
+ * s162 v11: queue panel reverted to default stretch so it matches
+ * the PARTY panel's height — its inner queue-block uses
+ * justify-content: space-evenly to spread NORMAL DRAFT title +
+ * buttons row + CHANGE LOBBY MODE evenly with equal vertical buffer
+ * above and below the Change-Lobby-Mode button. The PARTY panel
+ * keeps align-self:start so the row collapses to party content
+ * height, which the queue panel then mirrors. */
+.lobby-view-card-party {
+  align-self: start;
+  min-height: 0;
+}
+.lobby-view-card-queue {
+  /* default align-self: stretch — fills row 1 height */
+  min-height: 0;
 }
 .lobby-view-card-head {
   font-size: 10px; font-weight: 800; letter-spacing: 0.18em;
@@ -832,6 +887,33 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .lq-lane-pref.needs-pick {
   border-color: var(--bad); border-style: dashed;
+}
+/* s162 v15: when the operator's selected Primary clashes with another
+ * party member's Primary (non-FILL), the QUEUE Primary button gets a
+ * red outline + a subtle diagonal "CONFLICT" overlay angled from
+ * bottom-left to top-right. Cleared the moment they pick a non-
+ * conflicting role. */
+.lq-lane-pref.is-conflict {
+  border-color: var(--bad);
+  outline: 1px solid var(--bad);
+  position: relative;
+  overflow: hidden;
+}
+.lq-lane-pref.is-conflict::after {
+  content: "CONFLICT";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bad);
+  opacity: 0.55;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  transform: rotate(-30deg);
+  pointer-events: none;
 }
 .lq-btn-line2-icon {
   width: 28px; height: 28px;
@@ -973,7 +1055,12 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px;
-  box-shadow: var(--shadow-card);
+  /* s162 v14: stronger layered drop shadow so the popover reads
+   * separated from the content it overlaps (was --shadow-card; the
+   * panel was visually merging with the Mains panel underneath). */
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.55),
+    0 12px 32px rgba(0,0,0,0.65);
   /* s162 v2: 4-column grid — SR / ARAM / Rotating / TFT. */
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1023,13 +1110,23 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 
 /* ---- s162 v4: Friends / Recently Played panel ---- */
+/* s162 v8: title becomes a grid container mirroring .lv-top8-row's
+ * 9-col template so the title text can be placed in the rank
+ * column (col 4), making it horizontally centered with the Rank
+ * pips below. Inner span gets the styled placement. */
 .lv-friends-title {
   font-size: 15px; font-weight: 900; letter-spacing: 0.12em;
   color: var(--text); text-transform: uppercase;
-  text-align: center;
-  padding: 0 0 4px;
+  display: grid;
+  grid-template-columns: 1.4fr 0.6fr 0.5fr 1.2fr 0.9fr 14px 26px 26px 26px;
+  gap: 6px;
+  padding: 0 8px 4px;
   border-bottom: 1px solid var(--border-soft);
   margin-bottom: 4px;
+}
+.lv-friends-title-text {
+  grid-column: 4;
+  text-align: center;
 }
 .lv-friends-list {
   list-style: none; margin: 0; padding: 0;
@@ -1061,6 +1158,17 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lv-top8-row.is-placeholder { opacity: 0.5; border: 1px dashed var(--border-soft); }
 .lv-top8-row { cursor: pointer; }
 .lv-top8-row:hover { border: 1px solid var(--info-soft); }
+/* s162 v7: offline rows — light red tint at reduced opacity so the
+ * "this person isn't around right now" signal reads at a glance
+ * without overpowering. is-in-party (green) wins if both apply. */
+.lv-top8-row.is-offline {
+  background: color-mix(in srgb, var(--bad) 12%, var(--surface-alt));
+  opacity: 0.72;
+}
+.lv-top8-row.is-offline:hover {
+  opacity: 0.92;
+  border-color: var(--bad);
+}
 .lv-top8-search {
   margin-top: 6px;
   border: 1px solid var(--info-soft);
@@ -1087,11 +1195,47 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   font-size: 11px; color: var(--text); text-align: center;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.lv-top8-games  { font-weight: 700; }
-.lv-top8-role   { font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
+.lv-top8-games  { font-weight: 700; font-size: 13px; }
+.lv-top8-role   { font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); font-size: 13px; }
 .lv-top8-rank   { font-weight: 700; }
+/* s162 v9: rank pill mirrors Party panel's tier color coding via the
+ * shared .lv-rank-* color classes (defined further down). The pill
+ * sits inside the .lv-top8-rank cell as a nested span so the cell's
+ * text-align:center keeps the pill horizontally centered under the
+ * "My Top 8" title.
+ * s162 v14: 10px → 13px to clear the 13px tertiary floor. Padding
+ * tightened (2/6 → 1/4) and letter-spacing dropped to 0 so the
+ * widest rank ("Diamond IV 30 LP") still fits the col-4 1.2fr
+ * width without ellipsis truncation. */
+.lv-top8-rank-pip {
+  display: inline-block;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+/* s162 v16: unranked Top 8 entries fall back to "LVL ### : Unranked"
+ * — same italic dim treatment as PARTY's .lv-party-empty so the two
+ * panels read consistently when a friend hasn't placed yet. */
+.lv-top8-rank-empty {
+  font-size: 13px;
+  color: var(--text-faint);
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
 .lv-top8-tag    { color: var(--text-dim); font-style: italic; cursor: pointer; }
 .lv-top8-tag:hover { color: var(--info); }
+/* s162 v8: name cell left-aligns so it reads at the leading edge of
+ * the row, mirroring native client friends list.
+ * s162 v9: tag (Notes) cell flipped to right-align — it's the last
+ * data column before the action buttons, and right-aligning gives
+ * the trailing edge a clean stop before the dot/invite/reorder. */
+.lv-top8-name   { text-align: left; }
+.lv-top8-tag    { text-align: right; }
 .lv-top8-dot {
   width: 10px; height: 10px; border-radius: 50%;
   display: inline-block;
@@ -1118,6 +1262,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lv-top8-reorder-btn:disabled { opacity: 0.3; cursor: default; }
 .lv-top8-spacer-reorder { width: 26px; }
 .lv-top8-spacer-remove  { width: 26px; }
+.lv-top8-spacer-dot     { width: 14px; }   /* s162 v10: replaces removed online dot in search row */
 .lv-fr-row {
   display: grid;
   /* 8 sections: name | icon | games | role | rank | team+kda | copy | invite */
@@ -1193,19 +1338,48 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   gap: 1px;
 }
 /* s162 v4: leader crown pip — non-interactive but sized like the
- * kick/promote/copy action buttons so they line up consistently. */
+ * kick/promote/copy action buttons so they line up consistently.
+ * s162 v15: crown is now the actual League captain-icon-crown PNG
+ * (CommunityDragon mirror). The button background/border drop so
+ * the gold crown reads as itself, not as a pill. */
 .lv-member-leader-crown {
   cursor: default;
-  color: var(--clock);
-  background: var(--gold-soft);
-  border-color: var(--gold-soft);
+  background: transparent;
+  border-color: transparent;
+  padding: 0;
 }
-.lv-member-leader-crown:hover { color: var(--clock); border-color: var(--gold-soft); }
+.lv-member-leader-crown:hover { border-color: transparent; background: transparent; }
+.lv-crown-img {
+  width: 22px; height: 22px;
+  display: block;
+  object-fit: contain;
+}
+/* s162 v15: Phosphor copy-simple SVG — sized to fit inside the
+ * 26×26 .lv-member-action button. currentColor inherits the button's
+ * text color so hover/focus transitions still work via the existing
+ * `.lv-member-action:hover` color rule. */
+.lv-copy-svg {
+  width: 16px; height: 16px;
+  fill: currentColor;
+  display: block;
+}
+.lv-mc-copy .lv-copy-svg {
+  /* MAINS panel copy button is wider than the row action buttons —
+   * scale the icon up slightly to match. */
+  width: 18px; height: 18px;
+}
 .lobby-members-list .lobby-member-row {
   display: grid;
-  /* s162 v5: 6 cols — name | icon-spacer | role (shifted L) | rank
-   * (shifted L) | top-3-champs-for-role (NEW) | actions. */
-  grid-template-columns: 1.2fr 32px 0.5fr 1.3fr 1fr auto;
+  /* s162 v7: 6 cols — name | icon-spacer | role | rank | top-2-champs
+   * | actions. Cols 1–4 mirror Top 8 panel's name/games/role/rank fr
+   * ratios so the Role + Rank columns line up vertically across both
+   * panels. (Top 8: 1.4fr 0.6fr 0.5fr 1.2fr ... ; col 2 here is the
+   * empty icon-spacer that aligns with Top 8's games cell.)
+   * s162 v8: actions col fixed at 120px (4×26 buttons + 3×4 gaps =
+   * 116, padded to 120) so the .lv-panel-title grid template can
+   * mirror this row template exactly and place the PARTY title in
+   * the rank column. */
+  grid-template-columns: 1.4fr 0.6fr 0.5fr 1.2fr 0.9fr 120px;
   gap: 6px;
   align-items: center;
   padding: 4px 8px;
@@ -1215,14 +1389,74 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   font-size: 13px;
   cursor: pointer;
 }
+/* s162 v10: party row col 2 now hosts the member's LCU-pulled Primary
+ * + Secondary lane preferences as small icons. Self row leaves col 2
+ * empty (operator's own prefs live in the QUEUE panel's lane picker).
+ * s162 v14: padding-right 6px adds breathing room between the
+ * lane-prefs col 2 and the role pip col 3 — the icons + role pip
+ * were reading as one chunk at the operator's viewing distance. */
+.lv-party-section-prefs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding-right: 6px;
+}
+.lv-party-pref-icon {
+  width: 16px; height: 16px;
+  object-fit: contain;
+  display: block;
+}
+.lv-party-pref-empty {
+  width: 16px; height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+/* s162 v15: Primary-lane conflict outlines.
+ *   .is-conflict-self  — red (operator's primary clashes with someone else's)
+ *   .is-conflict-other — orange (two NON-self members clash, no self involved)
+ * Outline (not border) keeps the icon's own dimensions intact so the
+ * lane-icon glyph doesn't shift when a conflict appears/clears. */
+.lv-party-pref-icon.is-conflict-self,
+.lv-party-pref-empty.is-conflict-self {
+  outline: 2px solid var(--bad);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.lv-party-pref-icon.is-conflict-other,
+.lv-party-pref-empty.is-conflict-other {
+  outline: 2px solid var(--clock);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
 .lv-party-section-topchamps {
   font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
   color: var(--text-dim);
-  text-align: center;
+  /* s162 v8: right-align so the 2 short champ names hug the right
+   * edge of the topchamps cell, leaving extra space adjacent to the
+   * rank pip on the left for visual breathing room. */
+  text-align: right;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .lobby-members-list .lobby-member-row.is-selected {
   border-color: var(--text);
+}
+/* s162 v13: empty PARTY slots — dashed border + 50% opacity, mirroring
+ * the Top 8 placeholder treatment. The renderer always emits 5 row
+ * slots; unfilled slots show this style and auto-populate when a
+ * member joins (LCU push) or depopulate when they leave. */
+.lobby-members-list .lobby-member-row.is-placeholder {
+  opacity: 0.5;
+  border: 1px dashed var(--border-soft);
+  background: transparent;
+  cursor: default;
+}
+.lobby-members-list .lobby-member-row.is-placeholder:hover {
+  border-color: var(--border-soft);
 }
 /* Section 1 — name + (YOU/LEADER) pips inline */
 .lv-party-section-name {
@@ -1253,7 +1487,10 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   font-size: 14px;
 }
 .lobby-member-pip {
-  font-size: 9px; font-weight: 800; letter-spacing: 0.12em;
+  /* s162 v14: was 9px (~12px effective at zoom:1.33), below the 13px
+   * tertiary floor in feedback_font_size_viewing_distance.md. Bumped
+   * to 13px source so the rank/leader/role pills meet the floor. */
+  font-size: 13px; font-weight: 800; letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 2px 6px;
   border-radius: 4px;
@@ -1263,7 +1500,20 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lobby-member-pip-leader { background: var(--gold-soft); color: var(--clock); }
 .lobby-member-pip-rank   { font-weight: 700; }
 .lobby-member-pip-peak   { background: var(--surface-head); color: var(--text-dim); }
-.lobby-member-pip-role   { background: var(--surface-head); color: var(--text-dim); }
+/* s162 v7: role pip in PARTY panel mirrors Top 8 .lv-top8-role typography
+ * — plain dim uppercase text, no pill background. Drops padding +
+ * background + border-radius from the .lobby-member-pip base so the
+ * value sits at the same visual weight as the Top 8 role column.
+ * s162 v14: 11px → 13px for the 13px floor. */
+.lobby-member-pip-role {
+  background: transparent;
+  color: var(--text-dim);
+  padding: 0;
+  border-radius: 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
 /* Rank tier colors */
 .lv-rank-iron        { background: #4a4a52; color: #c8c8d0; }
 .lv-rank-bronze      { background: #4a3220; color: #d49968; }
@@ -1356,7 +1606,10 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-bottom: 1px solid var(--border-soft);
 }
 .lv-mc-cat {
-  font-size: 10px; font-weight: 800; letter-spacing: 0.16em;
+  /* s162 v14: 10px → 13px so column-header labels sit at the 13px
+   * tertiary floor. Letter-spacing tightened slightly so the wider
+   * type doesn't crowd narrow columns. */
+  font-size: 13px; font-weight: 800; letter-spacing: 0.10em;
   text-transform: uppercase; color: var(--text-dim);
   text-align: center;
 }
@@ -1448,19 +1701,21 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   font-family: "SF Mono", Consolas, monospace;
 }
 
-/* Overall = 2x2 sub-grid:
- *   [games]  [wins-losses]
- *   [W%]     [total KDA]
+/* s162 v10: Overall = 2-col × 2-row grid:
+ *   [N Games (with mode tooltip)]   [K/D/A — D in red]
+ *   [W - L]                          [N.NN KDA]
  */
 .lv-mc-overall {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2px 6px;
+  gap: 2px 8px;
   text-align: center;
   min-width: 0;
+  align-items: center;
 }
 .lv-mc-games {
   font-size: 13px; font-weight: 700; color: var(--text);
+  cursor: help;
 }
 .lv-mc-wl {
   font-size: 13px; font-weight: 700;
@@ -1468,17 +1723,25 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .lv-mc-wl .lv-mc-w { color: var(--good); }
 .lv-mc-wl .lv-mc-l { color: var(--bad); }
-.lv-mc-wr {
-  font-size: 12px; color: var(--text-dim); font-weight: 700;
-}
 .lv-mc-total-kda {
   font-size: 12px; color: var(--text-dim);
   font-family: "SF Mono", Consolas, monospace;
 }
+/* s162 v9: deaths in K/D/A flagged red so the eye lands on it. */
+.lv-mc-deaths {
+  color: var(--bad);
+  font-weight: 800;
+}
+.lv-mc-kda-score {
+  font-size: 13px; font-weight: 800;
+  color: var(--text);
+  text-align: center;
+  letter-spacing: 0.04em;
+}
 
-/* Averaged = 2-row sub-grid:
- *   [Gold] [CS] [Vis]    (3 cells)
- *   [H/S] [Tnk]          (2 cells, each spans 1.5 of 3-col grid)
+/* s162 v10: Averaged → "AVG / Match". 3-col × 2-row grid:
+ *   [KP%]    [Gold]  [CS]
+ *   [Vision] [Dmg]   [CS/m]
  */
 .lv-mc-averaged {
   display: grid;
@@ -1495,22 +1758,71 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   font-size: 13px; font-weight: 700; color: var(--text);
 }
 .lv-mc-avg-lbl {
-  font-size: 9px; color: var(--text-faint);
+  /* s162 v14: 9px → 11px (zoom:1.33 → ~14.6px effective). Sub-labels
+   * inside an info-dense data cell don't need to clear the 13px
+   * tertiary floor exactly — the value above them carries the
+   * primary signal — but 9px was hard to read at distance. */
+  font-size: 11px; color: var(--text-faint);
   letter-spacing: 0.1em; text-transform: uppercase;
 }
-/* Bottom row spans wider cells (1.5/3 of grid each). */
-.lv-mc-averaged .lv-mc-avg-cell.lv-mc-avg-bot-1 {
-  grid-column: 1 / span 2; /* spans cols 1-2 */
+/* s162 v10: KP% color bands — established 5-tier convention from
+ * aggregator B / aggregator A / aggregator D.
+ *   ≥70 S — gold   60-69 A — info/lavender   50-59 B — good/green
+ *   40-49 C — clock/amber   <40 D — bad/red
+ * Applied to .lv-mc-avg-val so the number itself is colored. */
+.lv-mc-kp-s { color: var(--gold); }
+.lv-mc-kp-a { color: var(--info); }
+.lv-mc-kp-b { color: var(--good); }
+.lv-mc-kp-c { color: var(--clock); }
+.lv-mc-kp-d { color: var(--bad); }
+
+/* s162 v17: AVG 5 grade letter — operator's last-5-match performance
+ * grade for the listed champion. Bigger + heavier than the standard
+ * .lv-mc-avg-val so the letter reads as the primary signal in the
+ * cell, with "AVG 5" sitting below in the standard sub-label
+ * treatment. Color bands match the KP convention. */
+.lv-mc-avg5-letter {
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1;
 }
-.lv-mc-averaged .lv-mc-avg-cell.lv-mc-avg-bot-2 {
-  grid-column: 2 / span 2; /* spans cols 2-3 — wait, this overlaps. Use 3-col layout below */
+.lv-mc-avg5-s { color: var(--gold); }
+.lv-mc-avg5-a { color: var(--good); }
+.lv-mc-avg5-b { color: var(--info); }
+.lv-mc-avg5-c { color: var(--clock); }
+.lv-mc-avg5-d { color: var(--bad); }
+
+/* s162 v9: games-cell tooltip — 3-col table (RIFT / ARAM / ARENA)
+ * with mode counts and WR%. Renders inside .app-tooltip via
+ * data-tt-html. Inherits the tooltip's font (17px) but tightens
+ * line-height and uses monospace for numerals. */
+.lv-mc-games-tip {
+  display: flex; flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
 }
-/* Override: bottom row uses a separate 2-col sub-grid via `.lv-mc-avg-bot` */
-.lv-mc-averaged .lv-mc-avg-bot-row {
-  grid-column: 1 / span 3;
+.lv-mc-games-tip-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2px 6px;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  text-align: center;
+}
+.lv-mc-games-tip-head > span {
+  font-size: 11px; font-weight: 900; letter-spacing: 0.14em;
+  color: var(--text);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: 2px;
+}
+.lv-mc-games-tip-row:not(.lv-mc-games-tip-head) > span {
+  font-size: 14px; font-weight: 700;
+  font-family: "SF Mono", Consolas, monospace;
+  color: var(--text);
+}
+.lv-mc-games-tip-wr > span {
+  color: var(--info);
+  font-weight: 800;
 }
 .lobby-view-actions {
   display: flex; gap: 10px; align-items: center;

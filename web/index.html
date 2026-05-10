@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=1920, initial-scale=1, user-scalable=no" />
   <title>Riot Commander — Phase 3</title>
-  <link rel="stylesheet" href="/css/dashboard.css?v=2026051038" />
+  <link rel="stylesheet" href="/css/dashboard.css?v=2026051050" />
 </head>
 <body>
   <div id="sim-banner" class="sim-banner hidden">
@@ -933,7 +933,7 @@
             </div>
           </div>
           <div class="lobby-view-card lobby-view-card-party">
-            <div class="lv-panel-title">PARTY</div>
+            <div class="lv-panel-title"><span class="lv-panel-title-text">PARTY</span></div>
             <ul class="lobby-members-list" id="lv-members-list">
               <li class="home-empty">no members visible — Game-PC LCU agent needs to forward lcu.lobby.members[]</li>
             </ul>
@@ -960,7 +960,7 @@
                 <div class="lv-mc-cat">Mastery</div>
                 <div class="lv-mc-cat">Recent</div>
                 <div class="lv-mc-cat">Overall</div>
-                <div class="lv-mc-cat">Averaged</div>
+                <div class="lv-mc-cat">AVG / Match</div>
               </div>
               <ul class="lv-mainchamps-list" id="lv-mainchamps-list">
                 <li class="home-empty">main champions populate when LCU mastery data is wired</li>
@@ -975,7 +975,7 @@
                  The previous Recently Played render logic
                  (_renderFriendsRecent) is preserved in main.js for
                  future reuse on a different panel. -->
-            <div class="lv-friends-title">My Top 8</div>
+            <div class="lv-friends-title"><span class="lv-friends-title-text">My Top 8</span></div>
             <ul class="lv-top8-list" id="lv-top8-list">
               <li class="home-empty">Top 8 populates from search row below</li>
             </ul>
@@ -987,7 +987,11 @@
               <input type="text" class="lv-top8-search-input"
                      id="lv-top8-search-input" placeholder="Search summoner profile…"
                      autocomplete="off" />
-              <span class="lv-top8-dot lv-top8-dot-off" id="lv-top8-search-dot" title="Online status"></span>
+              <!-- s162 v10: online/offline dot removed from the search row
+                   (it never represented a real signal — search has no
+                   target until the operator types). Spacer keeps the
+                   add/reorder/remove buttons aligned with rows above. -->
+              <span class="lv-top8-spacer-dot"></span>
               <button type="button" class="lv-member-action" id="lv-top8-search-add"
                       title="Add to Top 8" aria-label="Add to Top 8">➕</button>
               <span class="lv-top8-spacer-reorder"></span>
@@ -1409,6 +1413,6 @@
       .then(t => { if (t) document.getElementById("svg-sprite-host").innerHTML = t; });
   </script>
   <script src="/js/sim.js"></script>
-  <script type="module" src="/js/main.js"></script>
+  <script type="module" src="/js/main.js?v=2026051041"></script>
 </body>
 </html>
