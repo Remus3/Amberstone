@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=1920, initial-scale=1, user-scalable=no" />
   <title>Riot Commander — Phase 3</title>
-  <link rel="stylesheet" href="/css/dashboard.css?v=2026051001" />
+  <link rel="stylesheet" href="/css/dashboard.css?v=2026051038" />
 </head>
 <body>
   <div id="sim-banner" class="sim-banner hidden">
@@ -37,30 +37,23 @@
       </button>
       <div id="view-menu" class="view-menu hidden" role="menu" aria-hidden="true">
         <button type="button" class="view-menu-item" data-view="home"        role="menuitem">Home</button>
-        <button type="button" class="view-menu-item" data-view="lobby"       role="menuitem">Lobby</button>
+        <button type="button" class="view-menu-item" data-view="lobby"       role="menuitem">Pre-Game Lobby</button>
         <button type="button" class="view-menu-item" data-view="active-match" role="menuitem">Active Match</button>
         <button type="button" class="view-menu-item" data-view="last-match"  role="menuitem">Last Match</button>
         <button type="button" class="view-menu-item" data-view="session"     role="menuitem">Session</button>
         <button type="button" class="view-menu-item" data-view="history"     role="menuitem">History</button>
         <button type="button" class="view-menu-item" data-view="replay"      role="menuitem">Replay</button>
         <div class="view-menu-divider"></div>
-        <button type="button" class="view-menu-item" data-view="loadouts"    role="menuitem">Loadouts</button>
         <button type="button" class="view-menu-item" data-view="user-builds" role="menuitem">User Builds</button>
         <button type="button" class="view-menu-item" data-view="settings"    role="menuitem">Settings</button>
-        <button type="button" class="view-menu-item" data-view="diagnostics" role="menuitem">Diagnostics</button>
-        <button type="button" class="view-menu-item" data-view="coach-calls" role="menuitem">Coach Calls</button>
-        <button type="button" class="view-menu-item" data-view="bridge-pending" role="menuitem">Bridge Pending<span class="menu-badge" id="bridge-pending-menu-badge" hidden>0</span></button>
-        <button type="button" class="view-menu-item" data-view="fleet" role="menuitem">Fleet Health<span class="menu-badge" id="fleet-menu-badge" hidden>0</span></button>
         <div class="view-menu-divider"></div>
         <button type="button" class="view-menu-item view-menu-dev" data-view="dev" role="menuitem">⚙ Dev / Sim Preview</button>
         <div class="view-menu-divider"></div>
         <button type="button" class="view-menu-item view-menu-clear" data-view="auto" role="menuitem">↻ Auto (clear manual)</button>
       </div>
-      <!-- Prominent Auto pill: appears next to the title only when a
-           manual view is sticky. One-click clears the manual override
-           so the user doesn't have to dig through the dropdown. -->
-      <button type="button" class="title-auto-pill hidden" id="view-auto-pill"
-              title="Currently in MANUAL mode — click to restore AUTO">↻ AUTO</button>
+      <!-- s162: prominent ↻ AUTO pill removed. Use the "↻ Auto (clear
+           manual)" item in the title dropdown to clear a sticky manual
+           view instead. -->
       <!-- Auto-promotion banner: appears when manual view is active but
            an urgent game-state event (ChampSelect / InProgress) wants to
            switch. Click to accept, X to dismiss. -->
@@ -211,11 +204,6 @@
         <svg class="home-action-icon" aria-hidden="true"><use href="#hi-hex-play"/></svg>
         <span class="home-action-label">Find Match</span>
         <span class="home-action-sub">queue + party</span>
-      </button>
-      <button type="button" class="home-action-tile" data-target="loadouts">
-        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-crystal"/></svg>
-        <span class="home-action-label">Loadouts</span>
-        <span class="home-action-sub">runes + builds</span>
       </button>
       <button type="button" class="home-action-tile" data-target="settings">
         <svg class="home-action-icon" aria-hidden="true"><use href="#hi-gear-clean"/></svg>
@@ -819,56 +807,192 @@
          overlay is hidden when this view is active (its content lives
          here instead). -->
     <section id="view-lobby" class="view-section" hidden>
+      <!-- s162 v5: NORMAL DRAFT + PARTY titles relocated back into
+           their respective panels (anchored centering — no JS math). -->
       <div class="view-section-head">
-        <h2>LOBBY</h2>
+        <h2>Pre-Game Lobby</h2>
         <span class="view-section-sub" id="lv-window">awaiting LCU lobby data…</span>
       </div>
       <div class="view-section-body">
         <div class="lobby-view-grid">
           <div class="lobby-view-card lobby-view-card-queue">
-            <div class="lobby-view-card-head">QUEUE</div>
+            <div class="lv-panel-title" id="lv-queue-name">—</div>
             <div class="lobby-view-queue-block">
-              <div class="lobby-view-queue-name" id="lv-queue-name">—</div>
-              <div class="lobby-view-queue-meta">
-                <span class="lobby-view-party-pill" id="lv-party-pill">Party —</span>
-                <span class="lobby-view-leader-tag" id="lv-leader-tag" hidden>★ LEADER</span>
-                <select class="lobby-queue-select" id="lv-queue-select" hidden>
-                  <option value="">Change queue…</option>
-                  <option value="450">ARAM (450)</option>
-                  <option value="920">ARAM Mayhem (920)</option>
-                  <option value="430">Normal Blind (430)</option>
-                  <option value="400">Normal Draft (400)</option>
-                  <option value="420">Ranked Solo (420)</option>
-                  <option value="440">Ranked Flex (440)</option>
-                  <option value="1700">Arena (1700)</option>
-                </select>
-              </div>
-              <div class="lobby-view-actions">
-                <button type="button" class="lobby-find-match" id="lv-find-match" disabled>
-                  <span id="lv-find-match-label">Find Match</span>
+              <!-- s162 v4: queue name moved up to the section header
+                   row (centered above the queue panel column). -->
+              <div class="lobby-view-queue-controls" id="lv-queue-controls">
+                <button type="button" class="lq-btn lq-auto-accept is-off" id="lv-auto-accept"
+                        data-tt="Auto-accept ready check when match found">
+                  <span class="lq-btn-line1">Accept</span>
+                  <span class="lq-btn-line2" id="lv-auto-accept-state">Off</span>
                 </button>
-                <button type="button" class="lobby-cancel-match" id="lv-cancel-match" hidden>Cancel Search</button>
+                <button type="button" class="lq-btn lq-party-toggle is-open" id="lv-party-toggle"
+                        data-tt="Party visibility — Open lets randoms join via invite link">
+                  <span class="lq-btn-line1">Party</span>
+                  <span class="lq-btn-line2" id="lv-party-toggle-state">Open</span>
+                </button>
+                <div class="lq-lane-pair">
+                  <!-- Lane popup anchored INSIDE the pair so it positions
+                       just above + centered on the (primary + gap + secondary)
+                       midpoint via translateX(-50%) on left:50%. -->
+                  <div class="lobby-lane-popup hidden" id="lv-lane-popup" role="menu" aria-hidden="true">
+                    <div class="lobby-lane-popup-hover-label" id="lv-lane-popup-label">&nbsp;</div>
+                    <div class="lobby-lane-popup-grid">
+                      <button type="button" class="lobby-lane-popup-cell" data-pref="TOP">
+                        <img src="/icons/positions/top.png" alt="Top" />
+                      </button>
+                      <button type="button" class="lobby-lane-popup-cell" data-pref="JUNGLE">
+                        <img src="/icons/positions/jungle.png" alt="Jungle" />
+                      </button>
+                      <button type="button" class="lobby-lane-popup-cell" data-pref="MIDDLE">
+                        <img src="/icons/positions/middle.png" alt="Middle" />
+                      </button>
+                      <button type="button" class="lobby-lane-popup-cell" data-pref="BOTTOM">
+                        <img src="/icons/positions/bottom.png" alt="Bottom" />
+                      </button>
+                      <button type="button" class="lobby-lane-popup-cell" data-pref="UTILITY">
+                        <img src="/icons/positions/utility.png" alt="Support" />
+                      </button>
+                      <button type="button" class="lobby-lane-popup-cell" data-pref="FILL">
+                        <img src="/icons/positions/fill.png" alt="Fill" />
+                      </button>
+                    </div>
+                  </div>
+                  <button type="button" class="lq-btn lq-lane-pref" id="lv-lane-primary"
+                          data-slot="primary" data-pref="UNSELECTED" data-tt="Primary lane preference">
+                    <span class="lq-btn-line1">Primary</span>
+                    <span class="lq-btn-line2-icon">
+                      <img class="lq-lane-icon" alt="" src="" hidden />
+                      <span class="lq-lane-empty">—</span>
+                    </span>
+                  </button>
+                  <button type="button" class="lq-btn lq-lane-pref" id="lv-lane-secondary"
+                          data-slot="secondary" data-pref="UNSELECTED" data-tt="Secondary lane preference">
+                    <span class="lq-btn-line1">Secondary</span>
+                    <span class="lq-btn-line2-icon">
+                      <img class="lq-lane-icon" alt="" src="" hidden />
+                      <span class="lq-lane-empty">—</span>
+                    </span>
+                  </button>
+                </div>
+                <button type="button" class="lq-btn lq-cancel" id="lv-cancel-match"
+                        data-tt="Cancel matchmaking search">
+                  <span class="lq-btn-line1">Cancel</span>
+                  <span class="lq-btn-line2">Queue</span>
+                </button>
+                <button type="button" class="lq-btn lq-find" id="lv-find-match" disabled
+                        data-tt="Start matchmaking">
+                  <span class="lq-btn-line1">Find</span>
+                  <span class="lq-btn-line2" id="lv-find-match-label">Match</span>
+                </button>
               </div>
-              <div class="lobby-status" id="lv-status">awaiting lobby data feed…</div>
+              <!-- ROW 4 — Change Lobby Mode dropdown (full-width). The
+                   queue-block uses justify-content: space-evenly so
+                   buttons-row + CLM share equal top/middle/bottom
+                   spacing — mirrors the CLM's centering above and the
+                   buttons-row's centering below symmetrically. -->
+              <div class="lobby-view-mode-switcher">
+                <button type="button" class="lq-mode-trigger" id="lv-mode-trigger"
+                        aria-haspopup="menu" aria-expanded="false">
+                  Change Lobby Mode
+                </button>
+                <div class="lq-mode-menu hidden" id="lv-mode-menu" role="menu" aria-hidden="true">
+                  <div class="lq-mode-column">
+                    <div class="lq-mode-section">SR</div>
+                    <button type="button" class="lq-mode-item" data-qid="0" data-special="practice">Practice Tool</button>
+                    <button type="button" class="lq-mode-item" data-qid="480">Swiftplay</button>
+                    <button type="button" class="lq-mode-item" data-qid="400">Normal Draft</button>
+                    <button type="button" class="lq-mode-item" data-qid="420">Ranked Solo/Duo</button>
+                    <button type="button" class="lq-mode-item" data-qid="440">Ranked Flex</button>
+                  </div>
+                  <div class="lq-mode-column">
+                    <div class="lq-mode-section">ARAM</div>
+                    <button type="button" class="lq-mode-item" data-qid="920">ARAM Mayhem</button>
+                    <button type="button" class="lq-mode-item" data-qid="450">ARAM Classic</button>
+                  </div>
+                  <div class="lq-mode-column">
+                    <div class="lq-mode-section">Rotating</div>
+                    <button type="button" class="lq-mode-item" data-qid="1700">Arena</button>
+                  </div>
+                  <div class="lq-mode-column">
+                    <div class="lq-mode-section">TFT</div>
+                    <button type="button" class="lq-mode-item" data-qid="1090">Normal</button>
+                    <button type="button" class="lq-mode-item" data-qid="1100">Ranked</button>
+                    <button type="button" class="lq-mode-item" data-qid="1160">Double-Up</button>
+                  </div>
+                </div>
+              </div>
+              <!-- s162: status text removed per operator (visual noise).
+                   Hidden but preserved: leader tag + legacy queue switcher
+                   so JS-side wiring keeps its targets. -->
+              <span class="lobby-status" id="lv-status" hidden style="display:none !important"></span>
+              <span class="lobby-view-leader-tag" id="lv-leader-tag" style="display:none !important" hidden>★ LEADER</span>
+              <select class="lobby-queue-select" id="lv-queue-select" style="display:none !important" hidden>
+                <option value="">Change queue…</option>
+              </select>
             </div>
           </div>
           <div class="lobby-view-card lobby-view-card-party">
-            <div class="lobby-view-card-head">PARTY <span class="lobby-members-count" id="lv-members-count">0 members</span></div>
+            <div class="lv-panel-title">PARTY</div>
             <ul class="lobby-members-list" id="lv-members-list">
               <li class="home-empty">no members visible — Game-PC LCU agent needs to forward lcu.lobby.members[]</li>
             </ul>
           </div>
-          <div class="lobby-view-card lobby-view-card-tips">
-            <div class="lobby-view-card-head">QUEUE TIPS</div>
-            <div class="lobby-view-tips" id="lv-tips">
-              <div class="home-empty">queue-specific tips populate when lobby data is available</div>
+          <div class="lobby-view-card lobby-view-card-mainchamps">
+            <!-- s162 v4 (2026-05-10): Mains panel with two tabs. YOUR
+                 MAINS = top 3 champs by mastery, current map only, with
+                 a per-card copy button. PARTY MAINS = top 1 per party
+                 member (designed in next dev fixture; placeholder cards
+                 here). Default tab = solo→YOUR / party→PARTY. -->
+            <div class="lv-mainchamps-block">
+              <div class="lv-mainchamps-tabs" role="tablist">
+                <button type="button" class="lv-mc-tab is-selected"
+                        id="lv-mc-tab-you" role="tab" data-tab="you" aria-selected="true">
+                  YOUR MAINS
+                </button>
+                <button type="button" class="lv-mc-tab is-deselected"
+                        id="lv-mc-tab-party" role="tab" data-tab="party" aria-selected="false">
+                  PARTY MAINS
+                </button>
+              </div>
+              <div class="lv-mainchamps-categories">
+                <div class="lv-mc-cat">Champion</div>
+                <div class="lv-mc-cat">Mastery</div>
+                <div class="lv-mc-cat">Recent</div>
+                <div class="lv-mc-cat">Overall</div>
+                <div class="lv-mc-cat">Averaged</div>
+              </div>
+              <ul class="lv-mainchamps-list" id="lv-mainchamps-list">
+                <li class="home-empty">main champions populate when LCU mastery data is wired</li>
+              </ul>
             </div>
           </div>
-          <div class="lobby-view-card lobby-view-card-recent">
-            <div class="lobby-view-card-head">RECENT IN THIS QUEUE <span class="history-count" id="lv-recent-count">—</span></div>
-            <ul class="lobby-view-recent-list" id="lv-recent-list">
-              <li class="home-empty">loading…</li>
+          <div class="lobby-view-card lobby-view-card-friends">
+            <!-- s162 v5 (2026-05-10): repurposed to "My Top 8" —
+                 operator-curated short list of favorites. 8 shell rows
+                 (sorted by added date, oldest top; manual reorder
+                 persists) + a search row below for adding new entries.
+                 The previous Recently Played render logic
+                 (_renderFriendsRecent) is preserved in main.js for
+                 future reuse on a different panel. -->
+            <div class="lv-friends-title">My Top 8</div>
+            <ul class="lv-top8-list" id="lv-top8-list">
+              <li class="home-empty">Top 8 populates from search row below</li>
             </ul>
+            <!-- Search / add row. Input spans the first 5 cols of the
+                 9-col row grid (name + games + role + rank + tag) so
+                 the search has plenty of typing space; dot + add +
+                 reorder/remove spacers stay aligned with the row above. -->
+            <div class="lv-top8-search" id="lv-top8-search">
+              <input type="text" class="lv-top8-search-input"
+                     id="lv-top8-search-input" placeholder="Search summoner profile…"
+                     autocomplete="off" />
+              <span class="lv-top8-dot lv-top8-dot-off" id="lv-top8-search-dot" title="Online status"></span>
+              <button type="button" class="lv-member-action" id="lv-top8-search-add"
+                      title="Add to Top 8" aria-label="Add to Top 8">➕</button>
+              <span class="lv-top8-spacer-reorder"></span>
+              <span class="lv-top8-spacer-remove"></span>
+            </div>
           </div>
         </div>
       </div>
@@ -935,25 +1059,6 @@
             <div class="session-row"><span>Win-rate</span><span id="history-season-wr">— <span class="dim">(needs Riot key)</span></span></div>
           </div>
         </div>
-      </div>
-    </section>
-
-    <section id="view-loadouts" class="view-section" hidden>
-      <div class="view-section-head">
-        <h2>LOADOUTS</h2>
-        <span class="view-section-sub">View champion build variants (champion_loadouts.json)</span>
-      </div>
-      <div class="view-section-body" id="loadouts-body">
-        <div class="loadouts-toolbar">
-          <input type="text" id="loadouts-filter" placeholder="Filter champion…" autocomplete="off" />
-          <select id="loadouts-mode-filter">
-            <option value="aram">ARAM</option>
-            <option value="sr">SR</option>
-            <option value="arena">Arena</option>
-          </select>
-          <span class="loadouts-count" id="loadouts-count">—</span>
-        </div>
-        <div class="loadouts-list" id="loadouts-list"><div class="home-empty">loading…</div></div>
       </div>
     </section>
 
@@ -1092,59 +1197,6 @@
       </div>
     </section>
 
-    <section id="view-diagnostics" class="view-section" hidden>
-      <div class="view-section-head">
-        <h2>DIAGNOSTICS</h2>
-        <button type="button" class="view-section-btn" id="diag-refresh">Refresh</button>
-      </div>
-      <div class="view-section-body" id="diag-body">
-        <div class="diag-grid">
-          <div class="diag-card">
-            <div class="diag-card-head">CONNECTIONS</div>
-            <ul class="diag-conn-list" id="diag-conn-list"><li class="home-empty">loading…</li></ul>
-          </div>
-          <!-- AUDIT 2026-04-28: cost tile (proposal 2.1) live-wired.
-               Reads /api/cost. -->
-          <div class="diag-card">
-            <div class="diag-card-head">API COST <span class="diag-sub">today</span></div>
-            <div class="cost-tile" id="cost-tile">
-              <div class="cost-tile-row"><span class="cost-tile-key">SPEND</span><span class="cost-tile-val" id="cost-val">$0.0000</span></div>
-              <div class="cost-tile-row"><span class="cost-tile-key">CALLS</span><span class="cost-tile-val" id="cost-calls">0</span></div>
-              <div class="cost-tile-row"><span class="cost-tile-key">TOK IN/OUT</span><span class="cost-tile-val" id="cost-tokens">0 / 0</span></div>
-              <div class="cost-tile-row"><span class="cost-tile-key">CACHE</span><span class="cost-tile-val" id="cost-cache">0 / 0</span></div>
-              <div class="cost-tile-row"><span class="cost-tile-key">STATUS</span><span class="cost-tile-banner ok" id="cost-banner">ok</span></div>
-            </div>
-          </div>
-          <!-- AUDIT 2026-04-28: per-mode coach kill-switches (proposal
-               2.2). Click a pill to toggle. POSTs /api/coach/toggle. -->
-          <div class="diag-card">
-            <div class="diag-card-head">COACH TOGGLES</div>
-            <div class="coach-toggle-grid" id="coach-toggle-grid">
-              <div class="coach-toggle-row" data-mode="sr"><span class="coach-toggle-label">SR</span><span class="coach-toggle-pill on" data-mode="sr">ON</span></div>
-              <div class="coach-toggle-row" data-mode="aram"><span class="coach-toggle-label">ARAM</span><span class="coach-toggle-pill on" data-mode="aram">ON</span></div>
-              <div class="coach-toggle-row" data-mode="arena"><span class="coach-toggle-label">ARENA</span><span class="coach-toggle-pill on" data-mode="arena">ON</span></div>
-              <div class="coach-toggle-row" data-mode="brawl"><span class="coach-toggle-label">BRAWL</span><span class="coach-toggle-pill on" data-mode="brawl">ON</span></div>
-              <div class="coach-toggle-row" data-mode="tft" title="TFT vision broken post-2026-04-19 migration; toggle disabled until relay refactor lands"><span class="coach-toggle-label">TFT</span><span class="coach-toggle-pill off" data-mode="tft" data-disabled="1">HOLD</span></div>
-            </div>
-          </div>
-          <!-- AUDIT 2026-04-28: coach trace tab (proposal 2.5).
-               Reads /api/coach/trace. -->
-          <div class="diag-card diag-card-wide">
-            <div class="diag-card-head">COACH TRACE <span class="diag-sub">last 20 calls</span></div>
-            <div class="trace-list" id="trace-list"><div class="home-empty">loading…</div></div>
-          </div>
-          <div class="diag-card diag-card-wide">
-            <div class="diag-card-head">RC LOG TAIL <span class="diag-sub">last 40 lines</span></div>
-            <pre class="diag-log" id="diag-log">loading…</pre>
-          </div>
-          <div class="diag-card">
-            <div class="diag-card-head">HEALTH JSON</div>
-            <pre class="diag-health" id="diag-health">loading…</pre>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- AUDIT 2026-04-28 (suggestion 2.3): Replay scrubber. Reads
          data/rewind_history.db (2846 matches as of writing) via
          /api/replay/matches and /api/replay/match/<id>. Slider scrubs
@@ -1192,63 +1244,6 @@
       </div>
     </section>
 
-    <!-- Tier 4 #18 (2026-05-01) → moved off the home page (s27l follow-up):
-         resolved coach decisions log. Self-review surface — "did I contest
-         the right Barons?" The inner #recent-coach-calls section toggles
-         hidden when the log is empty (set by dashboard.js
-         renderRecentCoachCalls). Polled every 30s globally so the data is
-         fresh whenever the user navigates here. -->
-    <section id="view-coach-calls" class="view-section" hidden>
-      <div class="view-section-head">
-        <h2>COACH CALLS</h2>
-        <span class="view-section-sub">Resolved decisions — flag → choice review</span>
-      </div>
-      <div class="view-section-body">
-        <section id="recent-coach-calls" class="recent-coach-calls" hidden aria-label="Recent coach calls">
-          <header class="recent-coach-calls-head">
-            <span class="recent-coach-calls-label">Recent Coach Calls</span>
-            <span class="recent-coach-calls-hint">— flag → choice review</span>
-          </header>
-          <ol id="recent-coach-calls-list" class="recent-coach-calls-list"></ol>
-        </section>
-        <p id="recent-coach-calls-empty" class="home-empty">No resolved coach calls yet — they'll appear here after the detector flags a moment and you make a choice.</p>
-      </div>
-    </section>
-
-    <!-- Bridge Pending sub-page (2026-05-03): surfaces the bridge_watcher
-         escalation queue (ops/runtime/bridge_inbox_pending.json) so the
-         operator sees what cross-Claude work landed but wasn't auto-handled.
-         Read-only at MVP per routes_bridge_pending.py — drain via
-         /process-bridge-tasks (the watcher prunes resolved task_ids on its
-         next cycle so this list naturally empties). -->
-    <section id="view-bridge-pending" class="view-section" hidden>
-      <div class="view-section-head">
-        <h2>BRIDGE PENDING</h2>
-        <span class="view-section-sub">Watcher escalations — drain via <code>/process-bridge-tasks</code></span>
-        <span id="bridge-pending-count" class="view-section-count">0</span>
-      </div>
-      <div class="view-section-body">
-        <ol id="bridge-pending-list" class="bridge-pending-list" aria-label="Pending bridge tasks"></ol>
-        <p id="bridge-pending-empty" class="home-empty">No pending escalations — bridge auto-flow is clean. Tasks land here when the watcher classifies them as <code>escalate</code>.</p>
-      </div>
-    </section>
-
-    <!-- Fleet Health sub-page (2026-05-03): surfaces /api/health/peer
-         (cross-Claude bridge_watcher heartbeats published by Peer +
-         Game-PC every 60s). Read-only — peers' watchers run on their
-         own disks; the badge counts stale peers (heartbeat > 5 min). -->
-    <section id="view-fleet" class="view-section" hidden>
-      <div class="view-section-head">
-        <h2>FLEET HEALTH</h2>
-        <span class="view-section-sub">Cross-Claude bridge_watcher peers — published every 60s to <code>/api/health/peer/&lt;node&gt;</code></span>
-        <span id="fleet-count" class="view-section-count">0</span>
-      </div>
-      <div class="view-section-body">
-        <ul id="fleet-list" class="fleet-list" aria-label="Peer bridge watcher health"></ul>
-        <p id="fleet-empty" class="home-empty">No peer heartbeats yet. Peers run <code>tools/bridge_watcher_health_publisher.py</code> as a sidecar — if this is empty after a peer reboot, check the publisher service.</p>
-      </div>
-    </section>
-
     <!-- s159: Active Match — curated mid-game view that replaces the
          5-panel grid for in-game modes (sr / aram / arena / brawl).
          Three-pane layout:
@@ -1292,17 +1287,9 @@
       </div>
       <div class="view-section-body">
         <div class="diag-grid">
-          <div class="diag-card">
+          <div class="diag-card diag-card-wide">
             <div class="diag-card-head">SIM FIXTURES <span class="diag-sub" id="dev-fixture-count"></span></div>
             <div id="dev-fixtures-body"><div class="home-empty">loading…</div></div>
-          </div>
-          <div class="diag-card">
-            <div class="diag-card-head">VISION STATUS <span class="diag-sub" id="dev-vision-sub"></span></div>
-            <div id="dev-vision-body"><div class="home-empty">loading…</div></div>
-          </div>
-          <div class="diag-card diag-card-wide">
-            <div class="diag-card-head">RC LOG TAIL <span class="diag-sub">last 60 lines</span></div>
-            <pre class="diag-log" id="dev-log">loading…</pre>
           </div>
         </div>
       </div>
@@ -1335,14 +1322,11 @@
   <footer>
     <span>Legion-PC · <code id="ws-url">—</code></span>
     <span class="spacer"></span>
-    <!-- Dev-preview banner toggle — only fires when ?sim=… in URL, but
-         sits in the footer regardless. Lets the user collapse/restore
-         the top banner so a snapshot shows pure live-UI chrome
-         (2026-04-25 user request). State persisted via localStorage. -->
-    <!-- s161: dev-banner-toggle hidden permanently per user request.
-         Element preserved (not deleted) so the JS hooks that toggle
-         the DEV PREVIEW banner via this button keep their target. -->
-    <button id="dev-banner-toggle" class="footer-btn dev-banner-toggle hidden" type="button" title="Toggle DEV PREVIEW banner" style="display:none !important">DEV ⌃</button>
+    <!-- s162: dev-banner footer toggle removed. Sim mode now renders as
+         a top-right corner pill that never pushes layout, so there's
+         nothing to toggle off. ?banner=0 in URL still suppresses the
+         pill for pixel-perfect screenshots. -->
+
     <!-- Voice TTS toggle — when on, every change to the Right Now action
          text gets spoken via the browser's Web Speech API on whatever
          device is viewing the dashboard. State lives in localStorage

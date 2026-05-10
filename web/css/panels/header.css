@@ -1,46 +1,63 @@
-/* ───── Dev-preview banner ─────────────────────────────────────── */
+/* ───── Dev-preview corner pill (s162) ─────────────────────────────
+ * Replaces the s27-era horizontal banner that pushed all dashboard
+ * content down. Fixed-position pill in the top-right; never affects
+ * layout. Operator picks fixtures via the dropdown or ←/→ arrows;
+ * "exit preview" returns to live. Hidden in production (sim.js only
+ * un-hides it when ?sim=… is in the URL). */
 .sim-banner {
+  position: fixed;
+  top: 8px;
+  right: 8px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   white-space: nowrap;
-  padding: 8px 18px;
-  background: var(--advisory-soft);
-  color: var(--advisory);
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  z-index: 100;
-  transition: background-color 200ms ease, color 200ms ease;
-}
-.sim-banner[data-mode="sr"]     { background: var(--info-soft); color: var(--info); }
-.sim-banner[data-mode="sr"] .sim-tag  { background: var(--info); }
-.sim-banner[data-mode="aram"]   { background: var(--gold-soft); color: var(--gold); }
-.sim-banner[data-mode="aram"] .sim-tag { background: var(--gold); }
-.sim-banner[data-mode="tft"]    { background: var(--bad-soft); color: var(--bad); }
-.sim-banner[data-mode="tft"] .sim-tag  { background: var(--bad); }
-.sim-banner[data-mode="arena"]  { background: var(--advisory-soft); color: var(--advisory); }
-.sim-banner[data-mode="client"] { background: var(--surface); color: var(--text-dim); }
-.sim-banner[data-mode="client"] .sim-tag { background: var(--text-dim); color: var(--canvas); }
-.sim-banner.hidden { display: none; }
-/* (2026-04-25) When the user collapses the dev banner from the footer
- * toggle, body[data-dev-banner="off"] is set → banner hides + the
- * footer toggle restyles to show the "▾" arrow. Persisted via
- * localStorage("rc-dev-banner") so the choice survives auto-reload.
- * The toggle only renders when sim.js has been activated (?sim=… in
- * URL) — production users never see it. */
-body[data-dev-banner="off"] .sim-banner { display: none; }
-.dev-banner-toggle {
-  font-family: "SF Mono", Consolas, monospace;
+  padding: 4px 10px;
+  background: rgba(33, 34, 45, 0.92);
+  color: var(--text-dim);
+  font-size: 11px;
   letter-spacing: 0.06em;
-  padding: 3px 10px !important;
-  font-size: 11px !important;
-  background: var(--advisory-soft) !important;
-  color: var(--advisory) !important;
-  border: 1px solid var(--advisory-soft) !important;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-card-soft);
+  z-index: 1000;
+  pointer-events: auto;
 }
-body[data-dev-banner="off"] .dev-banner-toggle::after { content: " ▾"; }
-body[data-dev-banner="on"]  .dev-banner-toggle::after,
-body:not([data-dev-banner]) .dev-banner-toggle::after { content: " ⌃"; }
+.sim-banner .sim-hints { display: none; }       /* keyboard shortcuts still work; hint chrome dropped */
+.sim-banner .sim-switcher > span { display: none; } /* "fixture:" label dropped to save width */
+.sim-banner .sim-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--info);
+  color: var(--canvas);
+}
+.sim-banner[data-mode="sr"]     .sim-tag { background: var(--info); }
+.sim-banner[data-mode="aram"]   .sim-tag { background: var(--gold); color: var(--canvas); }
+.sim-banner[data-mode="arena"]  .sim-tag { background: var(--advisory); color: var(--canvas); }
+.sim-banner[data-mode="brawl"]  .sim-tag { background: var(--good); color: var(--canvas); }
+.sim-banner[data-mode="client"] .sim-tag { background: var(--text-dim); color: var(--canvas); }
+.sim-banner .sim-label { font-size: 11px; color: var(--text); }
+.sim-banner .sim-exit  {
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border-soft);
+}
+.sim-banner .sim-exit:hover { color: var(--text); border-color: var(--text-dim); }
+.sim-banner.hidden { display: none; }
+.sim-banner select {
+  background: var(--surface-alt);
+  color: var(--text);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  padding: 2px 4px;
+  font-size: 11px;
+}
 
 /* Voice TTS toggle — same chrome as the dev-banner toggle but with an
  * "active" state so the user can see at a glance whether speech is on. */
@@ -222,6 +239,25 @@ body[data-mode="client"] header .vis-pill,
 body[data-mode="client"] header .gold-pill,
 body[data-mode="client"] header .lvl-pill,
 body[data-mode="client"] header .ult-pill {
+  display: none !important;
+}
+
+/* (s162 2026-05-10) View-scoped hide. data-mode can be "sr" / "aram"
+ * etc. while the operator is on a pre-game view (lobby — LCU detected
+ * a queue but the game hasn't started; or home/session/history/etc.).
+ * In any view that isn't active-match or last-match, hide all in-game
+ * telemetry pills regardless of data-mode. Specificity 0,2,2 beats
+ * the static-pill rule (0,2,1) and matches `!important`. JS still
+ * populates the elements so values are queryable. */
+body:not([data-view="active-match"]):not([data-view="last-match"]) header .champion-pill,
+body:not([data-view="active-match"]):not([data-view="last-match"]) header .zone-pill,
+body:not([data-view="active-match"]):not([data-view="last-match"]) header .game-time,
+body:not([data-view="active-match"]):not([data-view="last-match"]) header .cs-pill,
+body:not([data-view="active-match"]):not([data-view="last-match"]) header .vis-pill,
+body:not([data-view="active-match"]):not([data-view="last-match"]) header .gold-pill,
+body:not([data-view="active-match"]):not([data-view="last-match"]) header .lvl-pill,
+body:not([data-view="active-match"]):not([data-view="last-match"]) header .ult-pill,
+body:not([data-view="active-match"]):not([data-view="last-match"]) header .win-pill {
   display: none !important;
 }
 /* (2026-04-26) Win% pill is in-game-only — outcome is known by the
@@ -432,23 +468,9 @@ footer .prefs-chip:hover { color: var(--text); }
   transform: rotate(180deg); color: var(--info);
 }
 
-/* Auto-restore pill (2026-04-26): a more prominent way to clear a
- * sticky manual view than digging through the menu. Sits next to the
- * title-dropdown when manual is active; hides in auto mode. */
-.title-auto-pill {
-  appearance: none; -webkit-appearance: none;
-  background: var(--gold-soft); color: var(--clock);
-  border: 1px solid var(--clock);
-  border-radius: 999px;
-  padding: 5px 14px;
-  font-size: 13px; font-weight: 800; letter-spacing: 0.12em;
-  text-transform: uppercase; cursor: pointer;
-  display: inline-flex; align-items: center; gap: 6px;
-  transition: background 0.12s, transform 0.06s;
-}
-.title-auto-pill.hidden { display: none; }
-.title-auto-pill:hover { background: rgba(245,184,124,0.28); }
-.title-auto-pill:active { transform: scale(0.97); }
+/* s162: .title-auto-pill rules removed. The header pill was deleted in
+ * favor of the dropdown's "↻ Auto (clear manual)" item — single source
+ * of truth for clearing manual mode. */
 
 .view-menu {
   /* (2026-04-26 v7) The menu is moved to be a direct child of <body>
@@ -578,7 +600,11 @@ footer .prefs-chip:hover { color: var(--text); }
  * current-match in game mode) keep main visible. */
 .view-content { display: contents; }
 .view-section {
-  margin: 12px 18px 0; padding: 16px 18px;
+  /* s162 v4: top margin/padding tightened so the LOBBY · live header
+   * sits closer to the top panel border. Was 12/16, now 4/8.
+   * s162 v6: bottom padding 16→4 to eliminate the last bit of overflow
+   * causing the page to scroll. */
+  margin: 4px 18px 0; padding: 8px 18px 4px;
   background: var(--surface); border: 1px solid var(--border-soft);
   border-radius: var(--radius);
   flex: 1 1 auto; min-height: 0;
@@ -587,8 +613,39 @@ footer .prefs-chip:hover { color: var(--text); }
 .view-section[hidden] { display: none; }
 .view-section-head {
   display: flex; align-items: baseline; gap: 12px;
-  margin-bottom: 14px;
-  border-bottom: 1px solid var(--border-soft); padding-bottom: 10px;
+  /* s162 v4: tightened vertical buffer per operator — was 14/10, now
+   * 8/6 to make room for 5 party-mains cards in the lobby grid. */
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border-soft); padding-bottom: 6px;
+}
+/* s162 v5: panel title sits at the top of each panel, centered.
+ * Same scale as My Top 8 / Recently Played title (15px white). */
+.lv-panel-title {
+  font-size: 15px; font-weight: 900; letter-spacing: 0.12em;
+  color: var(--text); text-transform: uppercase;
+  text-align: center;
+  padding: 0 0 4px;
+}
+
+/* s162 v5: per-member username color palette. Self = lavender (--info).
+ * Party members 1-4 cycle through good / gold / teal / coral so each
+ * party-panel row matches its PARTY MAINS card's username color. */
+[data-color-idx="0"] .lobby-member-name,
+[data-color-idx="0"] .lv-mc-summoner-name { color: var(--info); }
+[data-color-idx="1"] .lobby-member-name,
+[data-color-idx="1"] .lv-mc-summoner-name { color: var(--good); }
+[data-color-idx="2"] .lobby-member-name,
+[data-color-idx="2"] .lv-mc-summoner-name { color: var(--gold); }
+[data-color-idx="3"] .lobby-member-name,
+[data-color-idx="3"] .lv-mc-summoner-name { color: #6cd4d0; }
+[data-color-idx="4"] .lobby-member-name,
+[data-color-idx="4"] .lv-mc-summoner-name { color: var(--bad); }
+
+/* s162 v5: My Top 8 row gets a light green tint when the entry is
+ * currently in the party. When they leave, the tint clears. */
+.lv-top8-row.is-in-party {
+  background: color-mix(in srgb, var(--good-soft) 70%, var(--surface-alt));
+  border: 1px solid var(--good-soft);
 }
 .view-section-head h2 {
   margin: 0; font-size: 16px; letter-spacing: 0.18em;
@@ -667,12 +724,18 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
  * party card 1 col, tips + recent below. Wraps to 1-col at smaller
  * widths. */
 .lobby-view-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  /* s162 v4: row gap reduced 14→4 (−75%) per operator to claw back
+   * vertical space between top-row (Queue+Party) and bottom-row
+   * (Mains+Recently Played) so the lobby fits without scroll.
+   * Column gap stays at 14px. */
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px;
 }
 .lobby-view-card {
   background: var(--surface-head); border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 14px 16px;
+  /* s162 v4: top + bottom padding tightened to 8 for tighter card
+   * rhythm in the lobby grid. Was 14/14, now 8/8. */
+  padding: 8px 16px;
   min-height: 160px;
   display: flex; flex-direction: column;
 }
@@ -684,24 +747,770 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: flex; align-items: baseline; gap: 8px;
 }
 .lobby-view-queue-block {
-  display: flex; flex-direction: column; gap: 12px; flex: 1;
+  /* s162 v4: justify-content space-evenly distributes equal vertical
+   * space between top→buttons, buttons→CLM, CLM→bottom. Buttons end
+   * up centered in the upper half, CLM in the lower half, mirroring
+   * each other. */
+  display: flex; flex-direction: column; gap: 0; flex: 1;
+  justify-content: space-evenly;
+  position: relative;
 }
+/* s162 v2 — Row 1 queue name. Static neutral color across all modes
+ * (was --info / lavender, which felt mode-themed). White matches the
+ * panel's brand tone without leaning into accent territory. */
 .lobby-view-queue-name {
-  font-size: 22px; font-weight: 900; letter-spacing: 0.1em;
-  color: var(--info); text-transform: uppercase;
+  /* s162 v4: 22→15 to match the YOUR/PARTY MAINS tab + PARTY title
+   * size, helps fit the whole lobby view without scroll. */
+  font-size: 15px; font-weight: 900; letter-spacing: 0.12em;
+  color: var(--text); text-transform: uppercase;
+  text-align: center; padding: 0;
 }
-.lobby-view-queue-meta {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+/* Row 2 controls strip — 6 buttons, equal static sizing. */
+.lobby-view-queue-controls {
+  display: flex; align-items: stretch; gap: 8px;
+  justify-content: center; flex-wrap: nowrap;
 }
-.lobby-view-party-pill {
-  font-size: 13px; color: var(--text-dim); letter-spacing: 0.04em;
-  padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px;
+.lobby-view-queue-controls.hidden { display: none; }
+
+/* ---- Common button class for the action strip ----
+ * Static size — secondary lane button is the guide; everything
+ * matches that footprint (110px × 64px). Two-line content centered
+ * vertically + horizontally. Font size +2pts above the previous
+ * 10/11px treatment so labels are readable at a glance. */
+.lq-btn {
+  appearance: none; -webkit-appearance: none;
+  width: 110px; height: 64px;
+  flex: 0 0 auto;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 2px;
+  padding: 4px 6px;
   background: var(--surface-alt);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-family: inherit; cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, transform 0.06s, box-shadow 0.2s;
 }
+.lq-btn:hover:not(:disabled) { border-color: var(--info); }
+.lq-btn:active:not(:disabled) { transform: scale(0.97); }
+.lq-btn:disabled,
+.lq-btn.is-disabled { opacity: 0.55; cursor: default; }
+.lq-btn .lq-btn-line1 {
+  font-size: 12px; font-weight: 800; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--label);
+  line-height: 1;
+}
+.lq-btn .lq-btn-line2 {
+  font-size: 13px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; line-height: 1;
+}
+
+/* ---- Auto Accept toggle ---- */
+.lq-auto-accept.is-on  { border-color: var(--good); }
+.lq-auto-accept.is-on  .lq-btn-line2 { color: var(--good); }
+.lq-auto-accept.is-off { border-color: var(--bad); }
+.lq-auto-accept.is-off .lq-btn-line2 { color: var(--bad); }
+
+/* ---- Party Open/Closed toggle ---- */
+.lq-party-toggle.is-open    { border-color: var(--good); }
+.lq-party-toggle.is-open    .lq-btn-line2 { color: var(--good); }
+.lq-party-toggle.is-closed  { border-color: var(--bad); }
+.lq-party-toggle.is-closed  .lq-btn-line2 { color: var(--bad); }
+
+/* ---- Primary / Secondary lane pair ---- */
+.lq-lane-pair {
+  position: relative;            /* anchor for the lane popup */
+  display: flex; align-items: stretch; gap: 8px;
+}
+.lq-lane-pref {
+  /* Inherits .lq-btn sizing; line2 is the icon swap. */
+}
+.lq-lane-pref:hover:not(:disabled) { border-color: var(--info); }
+.lq-lane-pref.is-fill-locked {
+  cursor: default; border-color: var(--border-soft);
+}
+.lq-lane-pref.needs-pick {
+  border-color: var(--bad); border-style: dashed;
+}
+.lq-btn-line2-icon {
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 2px;
+}
+.lq-lane-icon { width: 100%; height: 100%; object-fit: contain; }
+.lq-lane-empty {
+  font-size: 18px; color: var(--text-faint); font-weight: 700; line-height: 1;
+}
+.lq-lane-pref.needs-pick .lq-lane-empty::before { content: "✕"; color: var(--bad); }
+.lq-lane-pref.needs-pick .lq-lane-empty { font-size: 16px; }
+
+/* ---- Cancel Queue (red filled, akin to Find Match green filled) ---- */
+.lq-cancel {
+  background: var(--bad);
+  border-color: var(--bad);
+  color: var(--canvas);
+}
+.lq-cancel .lq-btn-line1,
+.lq-cancel .lq-btn-line2 { color: var(--canvas); }
+.lq-cancel:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--bad) 80%, var(--canvas));
+  border-color: var(--bad);
+}
+
+/* ---- Find Match (green filled, gold pulse when searching) ---- */
+.lq-find {
+  background: var(--good);
+  border-color: var(--good);
+  color: var(--canvas);
+}
+.lq-find:disabled {
+  background: color-mix(in srgb, var(--good) 60%, var(--canvas));
+  opacity: 1;
+}
+.lq-find .lq-btn-line1,
+.lq-find .lq-btn-line2 { color: var(--canvas); }
+.lq-find:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--good) 85%, var(--text));
+}
+@keyframes lq-find-pulse {
+  0%   { box-shadow: 0 0 0 0 var(--gold), 0 0 8px 2px var(--gold); }
+  50%  { box-shadow: 0 0 0 3px var(--gold), 0 0 18px 6px var(--gold); }
+  100% { box-shadow: 0 0 0 0 var(--gold), 0 0 8px 2px var(--gold); }
+}
+.lq-find.is-searching {
+  animation: lq-find-pulse 1.8s ease-in-out infinite;
+}
+
+/* ---- Lane picker popup — anchored above the lane pair, centered ----
+ * Position absolute, bottom edge offset above the lane-pair, left:50%
+ * centers on the wrapper's midpoint (which equals primary + gap +
+ * secondary midpoint per operator spec). */
+.lobby-lane-popup {
+  position: absolute;
+  z-index: 100;
+  bottom: calc(100% + 8px);
+  left: 50%; transform: translateX(-50%);
+  background: var(--surface-head);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px 12px;
+  box-shadow: var(--shadow-card);
+  min-width: 320px;
+}
+.lobby-lane-popup.hidden { display: none; }
+.lobby-lane-popup-hover-label {
+  font-size: 12px; font-weight: 800; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--text);
+  text-align: center;
+  min-height: 16px;
+  margin-bottom: 8px;
+}
+.lobby-lane-popup-grid {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.lobby-lane-popup-cell {
+  appearance: none; -webkit-appearance: none;
+  background: transparent; border: 1px solid transparent; border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, transform 0.06s;
+}
+.lobby-lane-popup-cell:hover {
+  border-color: var(--info);
+  background: var(--info-soft);
+  transform: scale(1.10);
+}
+.lobby-lane-popup-cell img {
+  width: 32px; height: 32px; display: block; object-fit: contain;
+}
+.lobby-lane-popup-cell.is-current {
+  border-color: var(--clock);
+  background: var(--gold-soft);
+}
+
+/* ---- Row 4: Change Lobby Mode dropdown ---- */
+.lobby-view-mode-switcher {
+  /* s162 v4: zero top margin — gap from queue-block already provides
+   * 6px between buttons row and the mode switcher. */
+  position: relative;
+  width: 100%;
+  margin-top: 0;
+}
+/* s162 v4: .lv-mode-spacer removed — queue-block now uses
+ * justify-content: space-evenly to distribute spacing across all flex
+ * children, mirroring CLM's centering with the buttons-row's
+ * centering. */
+.lq-mode-trigger {
+  appearance: none; -webkit-appearance: none;
+  width: 100%;
+  height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface-head);
+  color: var(--info);
+  border: 1px solid var(--info-soft);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 14px; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.lq-mode-trigger:hover {
+  background: var(--info-soft);
+  border-color: var(--info);
+}
+.lq-mode-trigger[aria-expanded="true"] {
+  border-color: var(--info);
+  background: var(--info-soft);
+}
+.lq-mode-menu {
+  position: absolute;
+  z-index: 100;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: var(--surface-head);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: var(--shadow-card);
+  /* s162 v2: 4-column grid — SR / ARAM / Rotating / TFT. */
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.lq-mode-menu.hidden { display: none; }
+.lq-mode-column {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.lq-mode-section {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--text-dim);
+  padding: 4px 4px 6px;
+  border-bottom: 1px solid var(--border-soft);
+  text-align: center;
+  margin-bottom: 4px;
+}
+.lq-mode-item {
+  appearance: none; -webkit-appearance: none;
+  display: block; width: 100%;
+  text-align: center;
+  padding: 10px 6px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px; font-weight: 700; letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.08s, border-color 0.08s;
+}
+.lq-mode-item:hover {
+  background: var(--info-soft);
+  border-color: var(--info);
+}
+.lq-mode-item.is-current {
+  background: var(--gold-soft);
+  border-color: var(--clock);
+  color: var(--clock);
+}
+
 .lobby-view-leader-tag {
   font-size: 11px; font-weight: 800; letter-spacing: 0.16em;
   color: var(--clock); padding: 3px 9px;
   background: var(--gold-soft); border-radius: 999px;
+}
+
+/* ---- s162 v4: Friends / Recently Played panel ---- */
+.lv-friends-title {
+  font-size: 15px; font-weight: 900; letter-spacing: 0.12em;
+  color: var(--text); text-transform: uppercase;
+  text-align: center;
+  padding: 0 0 4px;
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 4px;
+}
+.lv-friends-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.lv-fr-row.is-placeholder { opacity: 0.5; }
+
+/* ---- s162 v5: My Top 8 panel ---- */
+.lv-top8-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.lv-top8-row,
+.lv-top8-search {
+  display: grid;
+  /* 9 cells: name | games | role | rank | tag | online-dot | invite | reorder | remove */
+  grid-template-columns: 1.4fr 0.6fr 0.5fr 1.2fr 0.9fr 14px 26px 26px 26px;
+  gap: 6px;
+  align-items: center;
+  /* s162 v5: row padding bumped to match Party row's 4px 8px so the
+   * two list panels read at the same visual rhythm. */
+  padding: 4px 8px;
+  background: var(--surface-alt);
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  min-height: 30px;
+}
+.lv-top8-row.is-placeholder { opacity: 0.5; border: 1px dashed var(--border-soft); }
+.lv-top8-row { cursor: pointer; }
+.lv-top8-row:hover { border: 1px solid var(--info-soft); }
+.lv-top8-search {
+  margin-top: 6px;
+  border: 1px solid var(--info-soft);
+  background: var(--surface-head);
+}
+.lv-top8-search-input {
+  appearance: none; -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px; font-weight: 700;
+  padding: 4px 6px;
+  outline: none;
+  width: 100%;
+  /* s162 v5: span the first 5 cols of the inherited 9-col grid
+   * (replacing name + games + role + rank + tag) so the input has
+   * room to write. dot + add + reorder/remove spacers stay in cols
+   * 6-9 where they line up with the row above. */
+  grid-column: 1 / 6;
+}
+.lv-top8-search-input::placeholder { color: var(--text-faint); }
+.lv-top8-cell {
+  font-size: 11px; color: var(--text); text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lv-top8-games  { font-weight: 700; }
+.lv-top8-role   { font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
+.lv-top8-rank   { font-weight: 700; }
+.lv-top8-tag    { color: var(--text-dim); font-style: italic; cursor: pointer; }
+.lv-top8-tag:hover { color: var(--info); }
+.lv-top8-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  display: inline-block;
+  justify-self: center;
+}
+.lv-top8-dot-on  { background: var(--good); box-shadow: 0 0 4px var(--good); }
+.lv-top8-dot-off { background: var(--bad);  opacity: 0.7; }
+.lv-top8-reorder {
+  display: flex; flex-direction: column; gap: 1px;
+  width: 26px;
+}
+.lv-top8-reorder-btn {
+  width: 26px; height: 12px;
+  font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface-head);
+  color: var(--text-dim);
+  border: 1px solid var(--border-soft);
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0;
+}
+.lv-top8-reorder-btn:hover { color: var(--info); border-color: var(--info); }
+.lv-top8-reorder-btn:disabled { opacity: 0.3; cursor: default; }
+.lv-top8-spacer-reorder { width: 26px; }
+.lv-top8-spacer-remove  { width: 26px; }
+.lv-fr-row {
+  display: grid;
+  /* 8 sections: name | icon | games | role | rank | team+kda | copy | invite */
+  grid-template-columns: 1.2fr 32px 0.8fr 0.5fr 1.3fr 1fr 28px 28px;
+  gap: 6px;
+  align-items: center;
+  padding: 3px 6px;
+  background: var(--surface-alt);
+  border-radius: 6px;
+  font-size: 12px;
+}
+.lv-fr-name {
+  font-weight: 800; color: var(--text); font-size: 13px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lv-fr-icon {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--canvas);
+  display: flex; align-items: center; justify-content: center;
+}
+.lv-fr-icon img { width: 100%; height: 100%; object-fit: cover; }
+.lv-fr-games {
+  font-size: 11px; color: var(--text); text-align: right;
+  font-weight: 700;
+}
+.lv-fr-role {
+  font-size: 10px; color: var(--text-dim); text-align: center;
+  font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.lv-fr-rank {
+  display: flex; align-items: center; justify-content: flex-start;
+}
+.lv-fr-team {
+  display: flex; align-items: center; justify-content: flex-start;
+  gap: 4px; cursor: help;
+}
+.lv-fr-team-mark {
+  font-size: 12px; font-weight: 900; letter-spacing: 0.08em;
+}
+.lv-fr-team-enemy .lv-fr-team-mark { color: var(--bad); }
+.lv-fr-team-ally  .lv-fr-team-mark { color: var(--good); }
+.lv-fr-team-kda {
+  font-size: 11px; color: var(--text-dim);
+  font-family: "SF Mono", Consolas, monospace;
+}
+.lv-fr-copy,
+.lv-fr-invite {
+  width: 24px; height: 24px;
+  font-size: 11px;
+}
+.lv-fr-invite:hover { color: var(--good); border-color: var(--good); }
+
+/* ---- s162 v4: Party panel ---- */
+.lv-party-title {
+  /* s162 v4: 22→15 to match QUEUE name + MAINS tabs. */
+  font-size: 15px; font-weight: 900; letter-spacing: 0.12em;
+  color: var(--text); text-transform: uppercase;
+  text-align: center;
+}
+/* s162 v4: party row split into 4 sections — name | current rank |
+ * peak rank | actions. Section 4 (actions) is auto-sized; the three
+ * data columns share the remaining width equally. */
+/* s162 v4: override the home.css "auto-fit" grid rule that stacks
+ * member rows into 2 columns when the panel is wide. In the party
+ * panel we always want a single vertical stack (5 rows max). Higher
+ * specificity (0,2,0) wins over home.css's (0,1,0). */
+.lobby-view-card-party .lobby-members-list {
+  display: flex;
+  flex-direction: column;
+  /* s162 v4: tightened 3→1 to fit 5 stacked party rows comfortably. */
+  gap: 1px;
+}
+/* s162 v4: leader crown pip — non-interactive but sized like the
+ * kick/promote/copy action buttons so they line up consistently. */
+.lv-member-leader-crown {
+  cursor: default;
+  color: var(--clock);
+  background: var(--gold-soft);
+  border-color: var(--gold-soft);
+}
+.lv-member-leader-crown:hover { color: var(--clock); border-color: var(--gold-soft); }
+.lobby-members-list .lobby-member-row {
+  display: grid;
+  /* s162 v5: 6 cols — name | icon-spacer | role (shifted L) | rank
+   * (shifted L) | top-3-champs-for-role (NEW) | actions. */
+  grid-template-columns: 1.2fr 32px 0.5fr 1.3fr 1fr auto;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 8px;
+  background: var(--surface-alt);
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  cursor: pointer;
+}
+.lv-party-section-topchamps {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+  color: var(--text-dim);
+  text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lobby-members-list .lobby-member-row.is-selected {
+  border-color: var(--text);
+}
+/* Section 1 — name + (YOU/LEADER) pips inline */
+.lv-party-section-name {
+  display: flex; align-items: center; gap: 6px;
+  min-width: 0;
+}
+/* Section 2/3 — rank info */
+.lv-party-section-rank,
+.lv-party-section-peak {
+  display: flex; align-items: center; gap: 4px;
+  min-width: 0;
+  justify-content: center;
+}
+.lv-party-empty {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+.lobby-members-list .lobby-member-row.is-self {
+  border: 1px solid var(--info-soft);
+}
+.lobby-members-list .lobby-member-row + .lobby-member-row { margin-top: 4px; }
+.lobby-member-name {
+  font-weight: 800;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+}
+.lobby-member-pip {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.lobby-member-pip-you    { background: var(--info-soft); color: var(--info); }
+.lobby-member-pip-leader { background: var(--gold-soft); color: var(--clock); }
+.lobby-member-pip-rank   { font-weight: 700; }
+.lobby-member-pip-peak   { background: var(--surface-head); color: var(--text-dim); }
+.lobby-member-pip-role   { background: var(--surface-head); color: var(--text-dim); }
+/* Rank tier colors */
+.lv-rank-iron        { background: #4a4a52; color: #c8c8d0; }
+.lv-rank-bronze      { background: #4a3220; color: #d49968; }
+.lv-rank-silver      { background: #3a4250; color: #c8d2e0; }
+.lv-rank-gold        { background: #4a3818; color: #f5b87c; }
+.lv-rank-platinum    { background: #1a3a3a; color: #6cd4d0; }
+.lv-rank-emerald     { background: #1a3a2a; color: #6cd49e; }
+.lv-rank-diamond     { background: #1a2a4a; color: #7ea8f0; }
+.lv-rank-master      { background: #3a1a4a; color: #b078f0; }
+.lv-rank-grandmaster { background: #4a1a1a; color: #f07e7e; }
+.lv-rank-challenger  { background: #1a3a4a; color: #c8e8ff; }
+.lv-rank-unranked    { background: var(--surface-head); color: var(--text-faint); }
+/* Action pips (right-aligned: copy / promote / kick) */
+.lobby-member-actions {
+  margin-left: auto;
+  display: flex; gap: 4px;
+}
+.lv-member-action {
+  appearance: none; -webkit-appearance: none;
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface-head);
+  color: var(--text-dim);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px; padding: 0;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.lv-member-action:hover     { color: var(--info); border-color: var(--info); }
+.lv-member-action.is-copied { color: var(--good); border-color: var(--good); background: var(--good-soft); }
+.lv-member-action[data-action="kick"]:hover    { color: var(--bad); border-color: var(--bad); }
+.lv-member-action[data-action="promote"]:hover { color: var(--clock); border-color: var(--clock); }
+.lv-member-action:disabled { opacity: 0.35; cursor: default; }
+/* s162 v6: invisible placeholder slot so all party rows have the
+ * same actions-column width regardless of which buttons apply. */
+.lv-member-action-spacer {
+  width: 26px; height: 26px;
+  display: inline-block;
+  flex: 0 0 26px;
+}
+
+/* ---- s162 v4: Your Mains / Party Mains panel ---- */
+.lv-mainchamps-block {
+  display: flex; flex-direction: column; gap: 6px; flex: 1;
+}
+.lv-mainchamps-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 2px 0 4px;
+}
+.lv-mc-tab {
+  appearance: none; -webkit-appearance: none;
+  padding: 4px 6px;
+  background: transparent;
+  font-family: inherit;
+  /* s162 v4: 15→14 to fit lobby on screen without scroll. */
+  font-size: 14px; font-weight: 900; letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 2px solid var(--bad);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+.lv-mc-tab.is-selected {
+  border-color: var(--good);
+  color: var(--text);
+  background: color-mix(in srgb, var(--good-soft) 50%, transparent);
+}
+.lv-mc-tab.is-deselected {
+  border-color: var(--bad);
+  color: var(--text-dim);
+}
+.lv-mc-tab.is-deselected:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--bad-soft) 30%, transparent);
+}
+/* 5-column grid: Champion (icon+copy) | Mastery | Recent | Overall | Averaged.
+ * Champion column has a copy button next to the icon — shifts content
+ * left across the row by giving 76px to that column. */
+.lv-mc-grid-cols {
+  grid-template-columns: 76px 1.0fr 1.0fr 1.6fr 1.8fr;
+}
+.lv-mainchamps-categories {
+  display: grid;
+  grid-template-columns: 76px 1.0fr 1.0fr 1.6fr 1.8fr;
+  gap: 8px;
+  padding: 4px 4px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.lv-mc-cat {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--text-dim);
+  text-align: center;
+}
+.lv-mc-cat:first-child { text-align: left; padding-left: 4px; }
+.lv-mainchamps-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.lv-mc-row {
+  display: grid;
+  grid-template-columns: 76px 1.0fr 1.0fr 1.6fr 1.8fr;
+  gap: 8px;
+  align-items: center;
+  /* Reduced top/bottom buffer per operator. */
+  padding: 4px 6px;
+  background: var(--surface-alt);
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+/* s162 v4: rank=1 gold border removed per operator. Selection-state
+ * highlight (PARTY MAINS only) uses .is-selected instead. */
+.lv-mc-row.is-selected {
+  border-color: var(--text);
+}
+.lv-mc-row.is-placeholder {
+  border-style: dashed;
+  border-color: var(--border-soft);
+  opacity: 0.65;
+}
+.lv-mc-summoner-name {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
+  color: var(--text); text-transform: uppercase;
+  text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Champion column = icon + copy button stacked horizontally. */
+.lv-mc-champ {
+  display: flex; align-items: center; gap: 6px;
+}
+.lv-mc-icon {
+  width: 50px; height: 50px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--canvas);
+  flex-shrink: 0;
+}
+.lv-mc-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lv-mc-copy {
+  appearance: none; -webkit-appearance: none;
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface-head);
+  color: var(--text-dim);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.lv-mc-copy:hover { color: var(--info); border-color: var(--info); }
+.lv-mc-copy.is-copied {
+  color: var(--good); border-color: var(--good);
+  background: var(--good-soft);
+}
+
+.lv-mc-mastery, .lv-mc-recent {
+  display: flex; flex-direction: column; gap: 2px;
+  text-align: center;
+  min-width: 0;
+}
+.lv-mc-mastery-level {
+  font-size: 13px; font-weight: 400; color: var(--text);
+  letter-spacing: 0.04em;
+}
+.lv-mc-mastery-points {
+  font-size: 12px; color: var(--text-dim);
+}
+.lv-mc-result {
+  font-size: 13px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+.lv-mc-result-won  { color: var(--good); }
+.lv-mc-result-lost { color: var(--bad); }
+.lv-mc-kda {
+  font-size: 12px; color: var(--text-dim);
+  font-family: "SF Mono", Consolas, monospace;
+}
+
+/* Overall = 2x2 sub-grid:
+ *   [games]  [wins-losses]
+ *   [W%]     [total KDA]
+ */
+.lv-mc-overall {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 6px;
+  text-align: center;
+  min-width: 0;
+}
+.lv-mc-games {
+  font-size: 13px; font-weight: 700; color: var(--text);
+}
+.lv-mc-wl {
+  font-size: 13px; font-weight: 700;
+  font-family: "SF Mono", Consolas, monospace;
+}
+.lv-mc-wl .lv-mc-w { color: var(--good); }
+.lv-mc-wl .lv-mc-l { color: var(--bad); }
+.lv-mc-wr {
+  font-size: 12px; color: var(--text-dim); font-weight: 700;
+}
+.lv-mc-total-kda {
+  font-size: 12px; color: var(--text-dim);
+  font-family: "SF Mono", Consolas, monospace;
+}
+
+/* Averaged = 2-row sub-grid:
+ *   [Gold] [CS] [Vis]    (3 cells)
+ *   [H/S] [Tnk]          (2 cells, each spans 1.5 of 3-col grid)
+ */
+.lv-mc-averaged {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 2px 4px;
+  text-align: center;
+  min-width: 0;
+}
+.lv-mc-avg-cell {
+  display: flex; flex-direction: column; gap: 1px;
+  align-items: center;
+}
+.lv-mc-avg-val {
+  font-size: 13px; font-weight: 700; color: var(--text);
+}
+.lv-mc-avg-lbl {
+  font-size: 9px; color: var(--text-faint);
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+/* Bottom row spans wider cells (1.5/3 of grid each). */
+.lv-mc-averaged .lv-mc-avg-cell.lv-mc-avg-bot-1 {
+  grid-column: 1 / span 2; /* spans cols 1-2 */
+}
+.lv-mc-averaged .lv-mc-avg-cell.lv-mc-avg-bot-2 {
+  grid-column: 2 / span 2; /* spans cols 2-3 — wait, this overlaps. Use 3-col layout below */
+}
+/* Override: bottom row uses a separate 2-col sub-grid via `.lv-mc-avg-bot` */
+.lv-mc-averaged .lv-mc-avg-bot-row {
+  grid-column: 1 / span 3;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 6px;
 }
 .lobby-view-actions {
   display: flex; gap: 10px; align-items: center;

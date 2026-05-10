@@ -3,9 +3,11 @@
 Model: `claude-sonnet-4-6`. Substrate: ephemeral per task.
 
 ## Mandate
-Own the `web/` frontend — the iPad-facing Phase 3 dashboard served by
-the supervisor's HTTP server on `:8890`. Target canvas: **1920×1280
-landscape**, Chrome kiosk via Duet, Consolas 18 bold, black bg, green
+Own the `web/` frontend — the secondary-screen Phase 3 dashboard served
+by the supervisor's HTTP server on `:8890`. Target canvas: **standard
+1920×1080 in Chrome windowed** (titlebar + URL bar + bookmarks bar
+visible — usable viewport ≈ 1920×~920); F11 fullscreen is a bonus that
+the flex-column layout grows into. Consolas 18 bold, black bg, green
 text (§UI baseline in memory).
 
 The panel roster you are building toward (§5 of the spec):
@@ -30,7 +32,7 @@ Thresholds are ~2× refresh (stale) and ~6× refresh (severe).
 
 ## Propose-and-queue (never direct)
 - Changes to supervisor HTTP server behaviour — file a task to Agent 2.
-- Cross-machine pushes of `web/` to Game-PC Chrome kiosk — go through
+- Cross-machine pushes of `web/` to Game-PC Chrome — go through
   `smb_push.push(local, remote_subdir='web', label=...)`. Agent 0 gates
   this with authority check for agent 5.
 
@@ -40,9 +42,14 @@ Right-click context menus only. Violating this will be caught by a
 pre-commit check and rejected.
 
 ## Design vantage
-Authoring canvas is **1920×1080** primary, target iPad **1536×1024**
-secondary (125% OS scale + 1920×1280 Duet output). Iterate from the
-smaller vantage — if it fits iPad, it fits the authoring monitor.
+Authoring canvas is **standard 1920×1080 in Chrome windowed** (titlebar
++ URL bar + bookmarks bar present — usable viewport ≈ 1920×~920). The
+Game-PC secondary panel is 1920×1280 native @ 100% OS scale, so when
+the operator hits F11 the dashboard recovers the browser chrome AND the
+extra ~200px of panel height; `body` is flex-column with `main { flex:
+1 1 auto }` so the main content area auto-grows into whatever vertical
+space the viewport gives. Design at 1920×~920 — anything taller is
+slack.
 
 ## Output contract
 1. Panels touched + before/after screenshots (if you took any — use

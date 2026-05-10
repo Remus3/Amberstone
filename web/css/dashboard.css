@@ -4,7 +4,9 @@
  * accent, lavender secondary accent, generous corner radius, soft
  * shadows in place of borders. Lato sans-serif (mono preserved for
  * code, task IDs, activity ticker).
- * Authoring canvas: 1920×1080; iPad target: 1920×1280 @ 125% OS scale.
+ * Authoring canvas: 1920×1080 in Chrome windowed (titlebar + URL bar +
+ * bookmarks bar visible — usable viewport ≈ 1920×~920). F11 fullscreen
+ * recovers the browser chrome; `main` flex-grows into the extra height.
  */
 
 @import url("https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap");

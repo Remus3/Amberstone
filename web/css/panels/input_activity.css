@@ -491,7 +491,7 @@ footer .prefs-chip:hover { background: var(--bad-soft); color: var(--bad); }
   .item-tile.next-up .item-cost { top: 46px; }
 }
 
-/* Very narrow (half-screen / portrait iPad) — drop the 3-col main grid to 2. */
+/* Very narrow (half-screen window) — drop the 3-col main grid to 2. */
 @media (max-width: 1280px) {
   main {
     grid-template-columns: 1fr 1fr;

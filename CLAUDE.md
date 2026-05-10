@@ -12,7 +12,7 @@ Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude H
 | Machine | Tailnet / IP | LAN IP | Role |
 |---|---|---|---|
 | **Legion** | `rc-host` / `100.64.0.1` | `192.0.2.230` | Runs RC, supervisor, vision server, web dashboard |
-| **Game-PC** | `peer-host` / `100.64.0.2` | `192.0.2.237` | Runs League; Edge fullscreen on secondary display (1920×1280, 100% scale) |
+| **Game-PC** | `peer-host` / `100.64.0.2` | `192.0.2.237` | Runs League; Chrome on secondary display (panel is 1920×1280 native @ 100% scale) shows the dashboard |
 | **Peer** | `peer-host` / `<peer-tailnet-ip>` | — | Cross-Claude peer; RC↔Peer bridge |
 
 All three in tailnet `example-tailnet.ts.net`. Prefer tailnet hostnames. Vision runs in-process at `127.0.0.1:8889`.
@@ -63,7 +63,7 @@ Scoped sessions — each focused task is one session.
 
 ## Web dashboard
 
-`web_dashboard.py` at `:8888` HTTPS. Key endpoints: `/`, `/api/state`, `/api/health/all`, `/api/bridge/pending`, `/api/input`, `/api/command`, `/api/ds-preview`, `/metrics`. Viewed in Edge fullscreen on Game-PC secondary (1920×1280, 100% scale). Cert via `tools/regen_rc_cert.ps1`. Each machine has its own Anthropic API key (`riot-commander-legion`, `riot-commander-gamepc`, `riot-commander-peer`).
+`web_dashboard.py` at `:8888` HTTPS. Key endpoints: `/`, `/api/state`, `/api/health/all`, `/api/bridge/pending`, `/api/input`, `/api/command`, `/api/ds-preview`, `/metrics`. Viewed in Chrome on Game-PC secondary at `https://rc-host:8888/` — design baseline is **standard 1920×1080 with Chrome chrome present** (titlebar + URL bar + bookmarks bar visible, usable viewport ≈ 1920×~920). F11 fullscreen is optional and recovers the chrome chrome — `main` flex-grows into the extra height (no layout pinned to 1280). Cert via `tools/regen_rc_cert.ps1`. Each machine has its own Anthropic API key (`riot-commander-legion`, `riot-commander-gamepc`, `riot-commander-peer`).
 
 ## Scheduled tasks (Legion)
 
