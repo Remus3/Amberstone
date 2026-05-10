@@ -1,6 +1,6 @@
 # Riot Commander
 
-Live coaching overlay + second-screen dashboard for League of Legends and Teamfight Tactics. Reads Riot's local Live Client API, runs tiered vision (Tesseract OCR + Claude Sonnet) and LLM coaching (Claude Haiku), and serves an HTTPS dashboard viewed in Edge fullscreen on Game-PC's secondary display.
+Live coaching overlay + second-screen dashboard for League of Legends and Teamfight Tactics. Reads Riot's local Live Client API, runs tiered vision (Tesseract OCR + Claude Sonnet) and LLM coaching (Claude Haiku), and serves an HTTPS dashboard viewed in Chrome on Game-PC's secondary display.
 
 Personal project. Private repo. Not packaged for general use. Codebase has been through a multi-tier engineering audit (Tier 1–3 complete, Tier 4 polish complete, Tier 2 #9 deliberately deferred); see [Engineering](#engineering) for the audit ledger.
 
@@ -11,7 +11,7 @@ Personal project. Private repo. Not packaged for general use. Codebase has been 
 - **Real-time coaching** — Claude Haiku for fast in-game tips, Claude Sonnet for screenshot-based vision reasoning, Tesseract OCR for cheap region reads, fast-path heuristics from the Live Client snapshot when an LLM call would be redundant
 - **Daemon Slayer build engine** — local HTTP service on `:8893`; no runtime API cost. Computes real damage-per-second for any champion×item×target combination. **DDragon purchasable coverage complete: 547 items** (SR, ARAM, Arena, Brawl) with **929 passing tests** (ENGINE_VERSION 0.60.0). Models armor/MR penetration, on-hit effects, spellblade procs, true damage, Giant Slayer scaling, AP amps, damage amps, armor/MR shred, caster-HP-scaled amps, and full Arena item mirror pool. All 4 coaches (ARAM, Arena, Brawl, SR) use DS-before-Haiku — picks injected in user turn before LLM call
 - **Decision detector** — `core/decision_detector.py` watches game state and surfaces "decision moments" (dragon up with N enemies missing, baron contest, item spike) with a contest / give / skip choice tag; Recent Coach Calls history is on a dedicated `#coach-calls` sub-page
-- **Web dashboard** (`:8888`, HTTPS, mkcert-signed) — home / lobby / last-match / session / history / replay / loadouts / settings / diagnostics / coach-calls views, viewed in Edge fullscreen on Game-PC's secondary 1920×1280 display. Server-Sent Events on `/api/state-stream` for idle efficiency
+- **Web dashboard** (`:8888`, HTTPS, mkcert-signed) — home / lobby / last-match / session / history / replay / loadouts / settings / diagnostics / coach-calls views, viewed in Chrome on Game-PC's secondary display. Design baseline is standard 1920×1080 with Chrome chrome present (titlebar + URL bar + bookmarks bar); the layout flex-grows into any extra vertical space when F11 fullscreen is used. Server-Sent Events on `/api/state-stream` for idle efficiency
 - **Champion-select build chooser** — surfaces preferred keystone + items per matchup from local match data; writes runes via the LCU. DS Engine build preview panel (`#cs-ds-block`, `/api/ds-preview`) shows DPS-ranked item tiles with +Ndps tooltips before the game starts
 - **Match history** — local SQLite (`data/rewind_history.db`, 2,846 matches / 29,064 participants / 645,982 timeline frames) is the primary data source; no Riot API key required, no rate limits
 - **TFT coaching** — separate worker for autobattler mode; vision migrated to the same screen-relay path as League coaches in 2026-04
@@ -29,7 +29,7 @@ Three machines on tailnet `tailc150de.ts.net` under `<operator-email>`. **Tailne
 | Machine | Tailnet | LAN | Display | Role |
 |---|---|---|---|---|
 | **Legion** | `legion-rc` / `100.70.22.55` | `192.168.8.230` | 1 monitor | RC main process, web dashboard `:8888`, vision server `:8889`, supervisor, MCP client to Game-PC |
-| **Game-PC** | `gamepc-rc` / `100.95.66.128` | `192.168.8.237` | 2 — primary TV (the game) + secondary iPad-as-monitor over Duet (1920×1280 native, 100% OS scale, no touch, no apps) | League client + Live Client API on `:2999`; runs five relay agents (screen, LCU, Live-Client, MCP server, hotkey listener) that feed Legion. Edge fullscreen on the secondary display showing the dashboard |
+| **Game-PC** | `gamepc-rc` / `100.95.66.128` | `192.168.8.237` | 2 — primary TV (the game) + secondary iPad-as-monitor over Duet (1920×1280 native panel, 100% OS scale, no touch, no apps) | League client + Live Client API on `:2999`; runs five relay agents (screen, LCU, Live-Client, MCP server, hotkey listener) that feed Legion. Chrome on the secondary display showing the dashboard at `https://legion-rc:8888/` |
 | **Peer** | `peer-host` / `<peer-tailnet-ip>` | — | — | Separate Peer-VIP project on a different machine and network. Cross-Claude peer; reachable via `core.bridge.send()` |
 
 mkcert-signed cert SAN covers all of `legion-rc`, `100.70.22.55`, `legion-rc.tailc150de.ts.net`, `192.168.8.230`, `localhost`, `127.0.0.1` — no `-SkipCertificateCheck` workarounds needed from any tailnet node. Refresh with `tools/regen_rc_cert.ps1`.
@@ -185,7 +185,7 @@ This fetches all five agents + the `start_gamepc_claude.ps1` launcher + the `pro
 
 ### Dashboard surface
 
-Edge on Game-PC, fullscreened (F11) on the secondary display, pointed at `https://legion-rc:8888/`. The mkcert root CA is already trusted on Game-PC, so the cert validates cleanly with no flags.
+Chrome on Game-PC's secondary display, pointed at `https://legion-rc:8888/`. Design baseline: **standard 1920×1080 with Chrome chrome present** (titlebar + URL bar + bookmarks bar visible — usable viewport ≈ 1920×~920). F11 fullscreen is optional; the layout is a flex-column with `main { flex: 1 1 auto }` so the main content area auto-grows into whatever vertical space is recovered. The mkcert root CA is already trusted on Game-PC, so the cert validates cleanly with no flags.
 
 ---
 
@@ -298,7 +298,7 @@ RC is the engineering foundation. **RC Tutor** is the eventual packaged product:
 | Capability | Status |
 |---|---|
 | LLM coaching (all modes) | ✅ live |
-| Second-screen web dashboard | ✅ live (Edge fullscreen on secondary display) |
+| Second-screen web dashboard | ✅ live (Chrome on secondary display, 1920×1080 baseline) |
 | Daemon Slayer DPS engine | ✅ 547 items, 929 tests, ENGINE 0.60.0; `:8893` service; all 4 coaches wired (DS-before-Haiku) |
 | Vision relay (screen → Sonnet) | ✅ live; OCR calibration in progress |
 | Rune auto-writer | ✅ live (LCU integration) |
