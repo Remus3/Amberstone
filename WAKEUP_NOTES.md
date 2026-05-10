@@ -4,6 +4,82 @@
 
 ---
 
+# s163 wrap — 2026-05-10 (Pre-Game Lobby v3 polish + conflict UI + AVG/Match grade)
+
+Long UI iteration session on `flow_01_lobby_solo`. Operator-driven incremental polish per the Phase 3 fixture ritual; visual-hierarchy audit subagent ran mid-session and surfaced 5 must-fix items, all addressed. **Page locked for both solo + multi-member states** (placeholder-driven; no separate flow_02 fixture pass needed). Single commit shipped: `e316291` (913 ins / 181 del across 7 files).
+
+## What shipped (s163)
+
+### Layout / visual polish
+- **PARTY title true-centered with rank pip** (col 4 grid placement on the title with same template as rows).
+- **Top-2 champs in PARTY** (was top-3) so role/rank columns vertically line up with MY TOP 8.
+- **Fonts above 13px floor** per `feedback_font_size_viewing_distance.md`: rank pips 9→13px, role pip 11→13px, lv-mc-cat 10→13px, lv-mc-avg-lbl 9→11px, lv-top8-rank-pip 10→13px (with 2/6→1/4 padding tighten + letter-spacing 0 to fit "Diamond IV 30 LP" without truncation).
+- **6px gap** between PARTY col 2 (lane prefs) and col 3 (role pip).
+- **"live" sub-label hidden** when healthy; only renders on error with bumped 14px red `.is-error` styling.
+- **Drop shadow** on `.app-tooltip` and `.lq-mode-menu` (2-layer rgba black) — popovers visually float above content they overlap.
+- **Page fits 1080-viewport without scrollbar** — trimmed `.view-section` (margin 4→2, padding 8/4 → 4/2) and `.view-section-head` (margin/padding 8/6 → 4/4).
+- **QUEUE panel stretches** to match PARTY height; CHANGE LOBBY MODE button gets even space-evenly buffer.
+
+### MY TOP 8
+- **Names left-aligned, tag (notes) right-aligned**.
+- **Rank tier color coding** extended from PARTY via shared `.lv-rank-*` (Iron→Challenger).
+- **Single green hue for in-party rows** (reverted s162's per-member color matrix); same hue mirrored onto matching PARTY rows via new `.is-top8-mate` class.
+- **Unranked entries → "LVL ### : Unranked"** with italic dim treatment, matching PARTY's `.lv-party-empty`.
+- Online/offline dot removed from search row.
+
+### PARTY panel
+- **Self-row mirror**: col 2 renders operator's `_LV.prefPrimary`/`_LV.prefSecondary` lane icons (mirrors QUEUE picker); col 3 renders DB-assessed role pip (`m.assessed_role` field, fallback `m.preferred_role`).
+- **5-slot renderer** with dashed `.is-placeholder` rows for empty seats — auto-populates/depopulates on LCU push.
+- **Leader crown swapped** to real League captain-icon-crown PNG (CommunityDragon mirror, downloaded to `web/icons/lobby/captain-icon-crown.png`, served via new `/icons/lobby/` static route in `routes_static.py`).
+- **Copy SVG**: 📋 → Phosphor copy-simple (currentColor inheritance via `.lv-copy-svg`).
+- **Level → LVL** abbreviation in unranked fallback.
+- **Role shorthand normalizer** `_roleShort()`: JGL/JG/JUNGLE → JNG, SUPP/UTILITY/SUPPORT → SUP.
+
+### Primary-lane CONFLICT detection (s162 v15)
+- Pre-pass in `_renderPartyMembers` builds a `conflictMap` over (self, members) Primary lane prefs. Non-FILL collisions get classed `is-conflict-self` (red, when self involved) or `is-conflict-other` (orange, no self). Re-runs on every `_setLanePref` change.
+- **Self-side**: red 2px outline on Primary lane icon (PARTY) + matching member's; QUEUE Primary button gets red border + diagonal "CONFLICT" pseudo-element overlay (rotate -30deg, 55% opacity bad-color).
+- **Non-self pair**: both icons get orange outline; QUEUE button stays clean.
+
+### MAINS panel
+- **Overall now 2x2 grid**: `[Games] [K/D/A — D in red]` over `[W - L] [N.NN KDA]`.
+- **AVG/Match grid** (renamed from "Averaged"): row 1 `KP% / Vision / CS`, row 2 `AVG 5 / Dmg / CS-per-min`. **Gold dropped**, Vision moved up.
+- **AVG 5 grade letter** (S/A/B/C/D, 17px / 900 weight, color-coded — gold/green/info/clock/bad). New `_avg5RankClass()`.
+- **KP% 5-tier color bands** (s162 v10) — ≥70 S gold, 60-69 A info, 50-59 B good, 40-49 C clock, <40 D bad.
+- **Total games sums per-mode** (RIFT + ARAM + ARENA from `overall.modes`); hover tooltip is a 3-col table via new `data-tt-html` attr on the games span (tooltip system patched to honor it via mouseover selector + innerHTML render path).
+
+### Lane picker
+- **Primary/Secondary swap** when picking same role for both — operator-side conflict resolution.
+- **Lane popup icons fixed** — root cause was missing `/icons/positions/` static route (was 404'ing); added to `routes_static.py` + `/icons/lobby/`.
+
+## Files touched (s163)
+
+- `dashboard/routes_static.py` — `/icons/positions/` + `/icons/lobby/` routes (+2 lines).
+- `data/sim/flow_01_lobby_solo.json` — new fields: `position_preferences`, `assessed_role`, `kp`, `avg5`, `dmg`, `cs_per_min`, `modes` (rift/aram/arena breakdown).
+- `web/css/panels/base.css` — tooltip drop shadow (8 lines).
+- `web/css/panels/header.css` — extensive (+408 lines).
+- `web/index.html` — title spans for grid placement, AVG/Match label, search-row dot removed, cache busters bumped 2026051037 → 2026051050.
+- `web/js/main.js` — extensive (+571 lines): `_LV_ICON_CROWN` + `_LV_ICON_COPY` constants, `_roleShort` helper, `_kpTierClass` + `_avg5RankClass` band helpers, `_mcOverallHtml` + `_mcAveragedHtml` + `_mcGamesCellHtml` extracted helpers, `_top8FormatRank` unranked path, conflict pre-pass, IIFE refactor for placeholder slots, `data-tt-html` tooltip path.
+- `web/icons/lobby/captain-icon-crown.png` — new asset (2995 bytes, CommunityDragon).
+
+## Phase B follow-ups (LCU agent on Game-PC)
+
+LCU agent (`tools/gamepc_lcu_agent.py`) needs to forward into `state.latest.lcu`:
+- `lobby.local_member.assessed_role` — most-played role from rewind_history.db (drives self-row PARTY col 3 pip).
+- `lobby.local_member.position_preferences.first/.second` — read direction (current code is write-only via `_setLanePref`).
+- `main_champs.champions[].averaged.kp` — kill-participation %, computed per champion.
+- `main_champs.champions[].averaged.avg5` — last-5-match performance grade (S/A/B/C/D), rubric: KDA + KP% + DMG share + CS @10/20 + win/loss → percentile bucket.
+- `main_champs.champions[].averaged.dmg` + `.cs_per_min` — already wired in fixture.
+- `main_champs.champions[].overall.modes` — `{rift, aram, arena}` per-mode game counts + wins (drives total games + tooltip breakdown).
+- `party_mains[*].averaged.*` + `overall.modes` — same as above for non-self members.
+- `party.members[*].position_preferences` — already wired in fixture; needs LCU read path.
+
+## Next session
+
+Per operator: page is **locked**, ready to apply for live Lobby/Pre-Game.
+Next session opens with **flow_02_lobby_with_others** — per s162 ritual, this is mostly a renaming pass since flow_01 already exercises 5-member layout. Then move to **flow_03 Champ-Select**.
+
+---
+
 # s162 wrap — 2026-05-10 (Pre-Game Lobby page redesign — flow_01 ready for review)
 
 Long UI session. Operator-driven incremental redesign of the entire Lobby view as Phase 3 step 1 of the 14-fixture game-flow build per `feedback_phase3_fixture_ritual.md`. Operator signaled end-of-page with **"Page done — ready for review"** + plans `/done` + `/clear`. Next session **opens with the visual-hierarchy audit** before moving to step 2.
