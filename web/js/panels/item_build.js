@@ -261,6 +261,23 @@ function renderItemBuild(p) {
   state.lastTouch.item_build = Date.now() / 1000;
 }
 
+// In-game build chooser state. Lives inside #item-build (NOT the
+// champ-select overlay). Pre-game variant selection persists in
+// localStorage so this chooser highlights the same row by default.
+// Mid-game pushes items only (runes + summoners are locked at game
+// start). Declared here so the helpers below can reach it — moved out
+// of panels/champ_select.js where the const was orphaned post-split
+// (referenced only from this module, throwing ReferenceError on every
+// SR/ARAM/Brawl state push).
+const _ibBuilds = {
+  lastChamp:  "",
+  lastMode:   "",
+  variants:   [],
+  chosen:     "",
+  inflight:   false,
+  lastAppliedKey: "",
+};
+
 function _ibSetStatus(text, cls) {
   const el = document.getElementById("ib-builds-status");
   if (!el) return;
