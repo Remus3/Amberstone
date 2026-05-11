@@ -1,8 +1,8 @@
 """Priority 8 (2026-05-10) — LCU mastery cache + capture_state plumbing.
 
 Validates the new gamepc_lcu_agent path:
-  /lol-summoner/v1/current-summoner → summonerId (cached once)
-  /lol-collections/v1/inventories/<sid>/champion-mastery → mastery map
+  /lol-summoner/v1/current-summoner → summonerId (cached once, surfaced for downstream)
+  /lol-champion-mastery/v1/local-player/champion-mastery → mastery map
 
 The transformed payload lives at ``state["lcu"]["mastery"]`` once the agent
 sees a session-relevant phase (Lobby / ChampSelect / GameStart / InProgress
@@ -102,7 +102,7 @@ class TestMasteryFetch(unittest.TestCase):
         ]
         responses = {
             ("GET", "/lol-summoner/v1/current-summoner"): {"summonerId": 42},
-            ("GET", "/lol-collections/v1/inventories/42/champion-mastery"): sample,
+            ("GET", "/lol-champion-mastery/v1/local-player/champion-mastery"): sample,
         }
         with mock.patch.object(agent, "lcu_request",
                                side_effect=_patch_lcu(responses)):
@@ -121,7 +121,7 @@ class TestMasteryFetch(unittest.TestCase):
     def test_ttl_cache_skips_second_lcu_hit(self) -> None:
         responses = {
             ("GET", "/lol-summoner/v1/current-summoner"): {"summonerId": 7},
-            ("GET", "/lol-collections/v1/inventories/7/champion-mastery"): [
+            ("GET", "/lol-champion-mastery/v1/local-player/champion-mastery"): [
                 {"championId": 1, "championLevel": 3, "championPoints": 1000},
             ],
         }
@@ -135,7 +135,7 @@ class TestMasteryFetch(unittest.TestCase):
     def test_ttl_expiry_triggers_re_fetch(self) -> None:
         responses = {
             ("GET", "/lol-summoner/v1/current-summoner"): {"summonerId": 7},
-            ("GET", "/lol-collections/v1/inventories/7/champion-mastery"): [
+            ("GET", "/lol-champion-mastery/v1/local-player/champion-mastery"): [
                 {"championId": 1, "championLevel": 3, "championPoints": 1000},
             ],
         }
@@ -150,7 +150,7 @@ class TestMasteryFetch(unittest.TestCase):
     def test_returns_none_on_unexpected_payload_shape(self) -> None:
         responses = {
             ("GET", "/lol-summoner/v1/current-summoner"): {"summonerId": 42},
-            ("GET", "/lol-collections/v1/inventories/42/champion-mastery"):
+            ("GET", "/lol-champion-mastery/v1/local-player/champion-mastery"):
                 {"error": "not a list"},
         }
         with mock.patch.object(agent, "lcu_request",
@@ -185,7 +185,7 @@ class TestCaptureStatePlumbing(unittest.TestCase):
         rs: dict = {
             ("GET", "/lol-gameflow/v1/gameflow-phase"): (f'"{phase}"', None),
             ("GET", "/lol-summoner/v1/current-summoner"): {"summonerId": 99},
-            ("GET", "/lol-collections/v1/inventories/99/champion-mastery"): [
+            ("GET", "/lol-champion-mastery/v1/local-player/champion-mastery"): [
                 {"championId": 51, "championLevel": 7, "championPoints": 999999,
                  "lastPlayTime": 1700000000000, "chestGranted": True},
             ],
@@ -202,11 +202,13 @@ class TestCaptureStatePlumbing(unittest.TestCase):
         with mock.patch.object(agent, "lcu_request",
                                side_effect=_patch_lcu(rs)):
             state = agent.capture_state()
+        # 2026-05-11 live-fix: mastery + summoner_id live at the TOP level of
+        # the agent's state (Legion's bridge wraps the whole agent state as
+        # ``legion_state["lcu"]`` on the dashboard side).
         self.assertEqual(state["phase"], "Lobby")
-        self.assertIn("lcu", state)
-        self.assertIn("mastery", state["lcu"])
-        self.assertEqual(state["lcu"]["summoner_id"], 99)
-        self.assertEqual(state["lcu"]["mastery"][51]["level"], 7)
+        self.assertIn("mastery", state)
+        self.assertEqual(state["summoner_id"], 99)
+        self.assertEqual(state["mastery"][51]["level"], 7)
 
     def test_champ_select_phase_publishes_mastery(self) -> None:
         rs = self._stub_capture_for_phase("ChampSelect", {
@@ -224,7 +226,7 @@ class TestCaptureStatePlumbing(unittest.TestCase):
                                side_effect=_patch_lcu(rs)):
             state = agent.capture_state()
         self.assertEqual(state["phase"], "ChampSelect")
-        self.assertEqual(state["lcu"]["mastery"][51]["points"], 999999)
+        self.assertEqual(state["mastery"][51]["points"], 999999)
 
     def test_idle_phase_does_not_call_mastery(self) -> None:
         rs = self._stub_capture_for_phase("None")
@@ -232,11 +234,12 @@ class TestCaptureStatePlumbing(unittest.TestCase):
         with mock.patch.object(agent, "lcu_request",
                                side_effect=_patch_lcu(rs)) as m:
             state = agent.capture_state()
-        self.assertNotIn("lcu", state)
+        self.assertNotIn("mastery", state)
+        self.assertNotIn("summoner_id", state)
         # The phase GET fires; mastery GET does not.
         # Tolerate however many lookups gameflow does, as long as no mastery call.
         paths = [c.args[1] for c in m.call_args_list if len(c.args) >= 2]
-        self.assertNotIn("/lol-collections/v1/inventories/99/champion-mastery",
+        self.assertNotIn("/lol-champion-mastery/v1/local-player/champion-mastery",
                          paths)
 
 
