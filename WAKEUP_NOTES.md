@@ -4,6 +4,81 @@
 
 ---
 
+# s165 wrap — 2026-05-10 (flow_03 mode-conditional Champ Select — central + enemies for all 4 modes)
+
+Phase 3 step 3 follow-up from s164. Champ-select view's central panel (My Pick + Build Chooser) and enemies panel now branch per mode (SR / ARAM / Arena / Brawl). Allies + Pick&Ban panels LOCKED per operator — untouched. Single commit shipped: `91a42e1` (1112 ins / 34 del across 7 files, 3 new).
+
+## What shipped (s165)
+
+### Mode-detection plumbing
+- New `_csvDetectMode(cs)` helper → `sr|aram|arena|brawl` from `queue_id` + `is_aram`/`is_brawl` flags (450/920 → ARAM, 1700/1710 → Arena, 480 or `is_brawl` → Brawl, default SR).
+- `renderChampSelectView()` stamps `section.dataset.csMode = mode`; CSS branches via `#view-champ-select[data-cs-mode="..."]` selectors.
+- Sub-line now shows mode label (SR DRAFT / ARAM / ARENA / BRAWL) instead of just queue id.
+
+### `_csvRenderTeam()` — opts arg
+- 6th positional `opts` arg added: `{ cellCount, showGuess, allowRolePip }`. Backward-compat with the previous 5-arg call sites (defaults: cellCount=5, showGuess=true, allowRolePip=true).
+- ARAM/Brawl ally + enemy lists pass `showGuess: false, allowRolePip: false` — drops the (guess) annotation and role pip since those modes have no role assignment.
+
+### Central pane variants (`_csvRenderCentralPane`)
+- SR: existing My Pick + 3-variant SR Build Chooser (Lethal Tempo default / Press the Attack / Hail of Blades). Was empty placeholder.
+- ARAM: My Pick + 5-cell horizontal Bench (`csv-bench`) under My Pick + ARAM Build Chooser. Click bench cell → fires `bench_swap` LCU command + visual pulse feedback.
+- Arena: card header text swaps to "My Duo + Augments". Duo header (me + duo, 2 cells side-by-side), 3 augment slots (silver/gold/prismatic with active-round highlight), augment options list. Click option → fires `set_augment_intent`.
+- Brawl: My Pick + Brawl Build Chooser (same 3-variant template as ARAM since builds are nearly identical).
+
+### Enemies panel
+- SR: unchanged (5 cells with role pips + (guess)).
+- ARAM/Brawl: 5 cells, no role/guess. **Bug fix**: enemy summ block was `position:absolute; left:50%` from SR layout, which clipped champion names ("/eigar" / "12irand" overlap). CSS override resets to `position:static; justify-self:end` on `[data-cs-mode="aram"]`/`[="brawl"]` so the lock/timer flows naturally to the right edge.
+- Arena: dedicated `_csvRenderEnemiesArena()` renders 3 sub-team cards stacked (TEAM 2 / TEAM 3 / TEAM 4, each with 2 champion cells).
+
+### Grid relayout for non-SR modes
+- `[data-cs-mode="aram"]` / `[="arena"]` / `[="brawl"]` hide the Pick&Ban panel and change grid-template-areas to `"allies mypick enemies"` (single row) so allies fills the freed row-2 space. SR keeps the 2-row layout.
+
+### Fixtures (3 new)
+- `data/sim/flow_03b_aram_select.json` — qid 450, is_aram=true, 5v5 (Garen/Malphite/Vayne/Taric/Volibear vs Veigar/Lux/Brand/Karthus/Soraka), bench=[MasterYi, Amumu, Irelia, Jinx, Pyke], Vayne mid-pick (37s timer).
+- `data/sim/flow_03c_arena_select.json` — qid 1700, 4 arena_teams (me=Vayne+Taric, then Sett+Veigar / Garen+Lux / Annie+Mordekaiser), augments.options has 3 silver candidates, my_slots all empty (PICKING silver).
+- `data/sim/flow_03d_brawl_select.json` — qid 480, is_brawl=true, 5v5 no roles.
+
+### CSS additions (~450 lines)
+- `.csv-bench` / `.csv-bench-cell` (horizontal strip with hover + is-pending pulse)
+- `.csv-build-row` (radio-style variants, 14px checkbox + label + runes + 6 item icons; 24px item cells)
+- `.csv-duo-row` / `.csv-duo-cell` (Arena allies, ME = indigo, DUO = green when locked, hourglass colors for hovering)
+- `.csv-augment-slot` (silver/gold/prismatic borders, active-round inset shadow, filled-state bg)
+- `.csv-augment-option` (clickable rows with tier-colored left border)
+- `.csv-arena-team` (sub-team card with TEAM N head + 2-cell grid row)
+
+## Files touched (s165)
+
+- `web/js/panels/champ_select.js` — `_csvDetectMode`, `_csvRenderCentralPane`, `_csvBenchHtml/Wire`, `_csvBuildVariantsFor/RowsHtml/Wire`, `_csvArenaPaneHtml`, `_csvWireArenaAugments`, `_csvRenderEnemiesArena` added; `_csvRenderTeam` gained opts arg; `renderChampSelectView` rewritten for mode branching.
+- `web/css/panels/champ_select_view.css` — appended ~450 lines of mode-conditional + new-block styles.
+- `web/index.html` — 2 cache-buster bumps (CSS 2026051100 → 2026051111; JS 2026051041 → 2026051110).
+- `data/sim/manifest.json` — 3 new entries.
+- `data/sim/flow_03b/c/d_*.json` — 3 new fixtures.
+
+## Phase B follow-ups (LCU agent on Game-PC)
+
+The dashboard fires these but `tools/gamepc_lcu_agent.py` hasn't been updated yet:
+- `bench_swap` — already supported (was used by legacy ARAM bench in `#cs-overlay`). Verify it still works from the new view.
+- `set_augment_intent` — NEW. Needs LCU endpoint discovery (Cherry/Arena augment-pick verb). Currently no-ops.
+
+Plus the agent needs to populate:
+- `cs.bench` (already done for ARAM)
+- `cs.arena_teams` + `cs.augments.{my_slots, options, current_round}` — entirely new for Arena. Fixture-only today.
+- `cs.is_brawl` — set when LCU queue_id is 480.
+
+Real build-chooser variants (currently static placeholders) come from `/api/loadout/list` — wire-up is also Phase B.
+
+## What's deferred
+
+Operator did NOT ask for an audit pass on this work — just the mode-conditional layout. Visual-hierarchy audit subagent ritual from `feedback_phase3_fixture_ritual.md` applies if operator declares the page done; this session is more of a step-3 follow-up than a fresh page. Defer until operator signals.
+
+## Next session opener
+
+- Tomorrow-you: if operator wants the visual audit on the 4 modes, run subagent per ritual.
+- If operator wants Phase B wiring instead, target `tools/gamepc_lcu_agent.py` — add `set_augment_intent` handler + populate `cs.arena_teams` + `cs.augments` from LCU `/lol-cherry/v1/*` endpoints (need to discover the exact path).
+- Either path is fine — both unblock real-fire testing of the new view.
+
+---
+
 # s164 wrap — 2026-05-10 (Champ Select view scaffold — flow_03 + Pick/Ban panel + trade popup)
 
 Long UI iteration session. Phase 3 step 3 — built the new top-level `view-champ-select` page from scratch and iterated heavily on every panel. Single commit shipped: `c0e6043` (1986 ins / 4 del across 10 files, 3 new files).
@@ -157,110 +232,3 @@ LCU agent (`tools/gamepc_lcu_agent.py`) needs to forward into `state.latest.lcu`
 
 Per operator: page is **locked**, ready to apply for live Lobby/Pre-Game.
 Next session opens with **flow_02_lobby_with_others** — per s162 ritual, this is mostly a renaming pass since flow_01 already exercises 5-member layout. Then move to **flow_03 Champ-Select**.
-
----
-
-# s162 wrap — 2026-05-10 (Pre-Game Lobby page redesign — flow_01 ready for review)
-
-Long UI session. Operator-driven incremental redesign of the entire Lobby view as Phase 3 step 1 of the 14-fixture game-flow build per `feedback_phase3_fixture_ritual.md`. Operator signaled end-of-page with **"Page done — ready for review"** + plans `/done` + `/clear`. Next session **opens with the visual-hierarchy audit** before moving to step 2.
-
-## What shipped (Phase 1 + 2 prep work)
-
-- **Phase 1 — live menu cleanup:** removed Loadouts, Diagnostics, Coach Calls, Bridge Pending, Fleet view sections + dropdown entries. Backend routes preserved (ops tools depend). VIEW_IDS pruned in `web/js/lib/state.js`.
-- **Phase 2a — dev panel slim:** dropped RC log tail + Vision Status cards from `view-dev`; only Sim Fixtures list remains.
-- **Phase 2b — sim banner de-banner:** layout-pushing DEV PREVIEW banner replaced with a fixed-position corner pill (top-right). `?banner=0` URL param suppresses the pill entirely for clean screenshots.
-- **Phase 2c — fixture archive:** 46 prior fixtures moved to `data/sim/_archive/`; manifest reset to `version: 3` with empty `fixtures: []`.
-- **Sim mode EventSource stub:** when `?sim=…` is active, `window.EventSource` is replaced with an inert FakeEventSource so the live `/api/state-stream` SSE doesn't race the FakeSocket fixture replay (was causing fixture data to be overwritten by live LCU during dev preview).
-
-## What shipped (Phase 3 step 1 — flow_01_lobby_solo)
-
-### Layout / typography
-- All panel titles unified at 15px white centered uppercase (`.lv-panel-title` / `.lv-friends-title`). Section header is `Pre-Game Lobby · live`; per-panel titles render INSIDE each card (NORMAL DRAFT, PARTY, YOUR MAINS / PARTY MAINS tabs, My Top 8).
-- View dropdown menu entry renamed `Lobby` → `Pre-Game Lobby` (also `VIEW_LABELS` updated).
-- Vertical buffer trimmed across the whole view: `.view-section` margin-top 12→4, padding-top 16→8; `.lobby-view-card` padding 14→8; lobby grid row-gap 14→4 (col-gap kept 14); `.view-section-head` margin/padding-bottom 14/10→8/6.
-- `data-view`-based hide rule for in-game pills (champion/zone/cs/vis/gold/lvl/ult/win/game-time): visible only on `view="active-match"` or `view="last-match"`. Replaces the brittle `data-mode="client"` gate that didn't fire in the LCU-says-SR-but-LCU-phase=Lobby state.
-
-### QUEUE panel
-- 6-button action strip: `[Accept On/Off] [Party Open/Closed] [Primary Lane] [Secondary Lane] [Cancel Queue] [Find Match]`. Static 110×64px buttons, 2-line content centered. Cancel = red filled, Find Match = green filled with gold pulse animation when `search_state === "Searching"`.
-- Lane picker popup repositioned ABOVE the lane-pair wrapper, centered on Primary+gap+Secondary midpoint. Hover shows full UPPERCASE lane name (TOP/JUNGLE/MIDDLE/BOTTOM/SUPPORT/FILL) above icons.
-- FILL primary → secondary auto-pinned to FILL; primary FILL→specific role → secondary becomes "needs-pick" (X marker dashed border).
-- Change Lobby Mode dropdown: 4-column grid (SR / ARAM / Rotating / TFT). 16 queue choices. Co-op vs AI + Tutorial removed per operator. Click-outside closes.
-- queue-block uses `justify-content: space-evenly` so buttons-row + Change Lobby Mode are mirrored vertically (equal space top/middle/bottom).
-
-### Mains panel (YOUR MAINS / PARTY MAINS tabs)
-- Tab toggle: green border = selected / red border = deselected. Default tab driven by `lobby.party_size` (1 → YOUR, ≥2 → PARTY); operator-toggle wins once clicked.
-- 5-section card layout per row: `Champion (icon + 📋 copy) · Mastery · Recent · Overall (2x2: games / W-L / WR% / total KDA) · Averaged (Gold/CS/Vis on top, H/S/Tnk on bottom)`.
-- Summoner name centered above Mastery # (operator's name on YOUR MAINS, party member's name on PARTY MAINS — pulled from fixture or `lobby.members[non-self][i]`).
-- Username color palette via `data-color-idx` (self → lavender, members 1–4 → mint/amber/teal/coral). Same idx links Party panel rows to PARTY MAINS cards.
-- YOUR MAINS shows 4 cards (operator's top mastery champs). PARTY MAINS shows 4 party-member cards (placeholder when solo).
-- Click PARTY MAINS card OR Party row → cross-highlight both with white border (`.is-selected`). Doc click clears.
-- Copy clipboard format: `Moonbeam - Vayne - Mastery 8 : 388 K points · 47 Games All-Time · 60% WR`.
-
-### Party panel (top-right)
-- Title `PARTY` centered above member rows. Member-count subtitle dropped.
-- Per-row 6-col grid: `name | icon-spacer | role | rank | top-3-champs-for-role | actions`. Role + rank shifted LEFT one col vs prior layout to make room for the new top-3-champs col.
-- Top-3 champs render as truncated 4-char-max names joined with ` | ` (e.g., `Vayn | Jinx | Kai`). Operator flagged truncation review for next session (4 vs 5 chars).
-- Names display short (no `#tag`); copy actions still write the full Riot ID.
-- YOU pip removed (border accent on self row signals it). LEADER pip moved RIGHT into actions group, changed ★ → 👑 crown, sized like kick/promote (26×26).
-- Right-side actions: `[👑 if leader] [📋 copy] [⬆ promote — leader only] [✕ kick — leader only]`. Promote/Kick fire `window.confirm()`.
-- Unranked rendering: `Level NNN : Unranked` (in solo too).
-- Peak rank shows season label (e.g., `Peak: S 15 Master 142 LP`) — best of this season vs last season.
-- 5 members fit comfortably (gap 1px). Override scoped to party panel only — home.css's auto-fit grid no longer wraps the rows into 2 columns.
-
-### My Top 8 panel (was Recently Played With)
-- Repurposed entirely. Existing `_renderFriendsRecent` + Recently Played CSS preserved IN main.js for reuse on a future panel.
-- Title: `My Top 8`. Always renders 8 shells (filled or 50%-opacity dashed placeholders).
-- Each filled row: `name | games | role | rank | tag | online dot | ➕ invite | ▲▼ reorder | ✕ remove`.
-- Add via search input at bottom (Enter or ➕). Rejects duplicates. 9th-attempt prompts to remove someone first ("You need to remove someone from your Top 8, who will it be?" with numbered list).
-- User tag click → `prompt()` to edit. Remove → `confirm()`. Reorder via ▲▼ swap with neighbor. Invite → `confirm()` then Phase B pushes LCU.
-- Persistence: `localStorage.rc-top8-list`. Sim mode reads `lcu.top8` from fixture first (fixture wins, doesn't pollute operator's localStorage).
-- Top 8 rows whose riot_id matches a current party member get `is-in-party` class with light green tint + green border. Tint clears when they leave.
-- Search row drops the games/role/rank/tag/dot preview cells (`grid-column: 1/6` on the input) so the operator has 5× wider typing area.
-
-## Bug fixes landed (cross-cutting)
-
-- **handleChampSelect ReferenceError chain** (`b...c5...`): `panels/champ_select.js` was calling `renderLobbyPanel`, `renderHomePanel`, `_viewResolveAndApply`, `_maybeRefreshLobbyView` — all defined in main.js's module scope, none imported. Every call threw `ReferenceError`, silently swallowed by SSE try/catch → lobby view never re-rendered after `state.latest.lcu` was set, even when the operator was in a real lobby. Fix: orchestration moved to a new `handleLcuEnvelope(lcu)` wrapper in main.js that calls handleChampSelect for the champ-select-specific bits and the cross-cutting renders directly. All 4 call sites updated (WS onmessage, SSE handler, HTTP fallback x2). Eliminated the "refresh loses lobby data" behavior the operator hit repeatedly.
-- **home-overlay + lobby-overlay leakage:** `renderHomePanel` and `renderLobbyPanel` now hard-gate on `body.dataset.view === "home"` so the overlays don't leak onto Lobby/Dev/etc. views (was previously firing because `_homeShouldShow(lcu)` returned true based on phase alone).
-- **Background agent (separate session):** `67e50d2 fix(icons): resolve Kai'Sa + DDragon-rename champion icons on home view` — `_resolveChampId` made authoritative across home-view recent-5 / Tonight's Pick / hero motif / dev replay panel.
-
-## Phase B follow-ups (DO NOT START until operator OKs)
-
-LCU agent on Game-PC (`tools/gamepc_lcu_agent.py`) needs to forward into `state.latest.lcu`:
-- `lobby.members[].summoner_level` (for Unranked fallback display)
-- `lobby.members[].rank` + `peak_rank` (with `season` label) — Riot Personal-tier API key already approved (FU04, ADR-006, see `core/riot_api.py` from s148)
-- `lobby.members[].position_preferences` + `lobby.party_type` (for new lane picker + party-toggle write-back)
-- `lobby.members[].top_role_champs` (top 3 champs per role from rewind_history.db)
-- `lobby.local_member.auto_accept` (LCU `/lol-matchmaking/v1/ready-check/auto-accept`)
-- `main_champs` + `party_mains` (top-1 champ per non-self member, joined w/ champion-mastery)
-- `top8` enrichment (online status from `/lol-chat/v1/friends`, games count + role from rewind_history.db) — Phase A reads operator-curated localStorage list
-
-LCU push commands needed (`/lcu-cmd` queue):
-- `lobby.set_party_type` · `lobby.set_position_prefs` · `lobby.set_auto_accept` · `lobby.invite_player` · `lobby.kick_member` · `lobby.promote_leader` · `lobby.create_practice_tool`
-
-Other follow-ups:
-- **Truncation review** for Party panel top-3-champs col (currently 4-char max — operator flagged 4 vs 5 char review).
-- **Settings page hex palette** for editable per-member username colors (linked to the existing `[data-color-idx]` system).
-- **Brawl removal sweep** — chip already spawned (Riot deprecated Brawl).
-- The relocated `_positionLobbyTitles` JS helper is now a no-op stub — kept for any orphan callers; safe to delete in a cleanup pass.
-
-## Files touched (s162)
-
-- `web/index.html` — heavy rewrite of view-lobby section markup; cache buster `?v=2026051001` → `2026051037`.
-- `web/css/panels/header.css` — extensive (view-section + lobby card + queue-block + mains + party + Top 8 + Recently Played styles).
-- `web/css/panels/active_match.css`, `panels/team_context.css`, `panels/input_activity.css`, `dashboard.css` — comment updates only (Edge → Chrome, baseline 1920×1080).
-- `web/js/main.js` — handleLcuEnvelope wrapper, lobby view render rewrites, Top 8 CRUD, Mains tabbed panel, party row 6-col grid, click-to-select, copy-to-clipboard format, JS-based title positioning (later removed), color palette via data-color-idx, friends-recent code preserved as `_renderFriendsRecent`.
-- `web/js/panels/champ_select.js` — handleChampSelect cleaned (orchestration moved out).
-- `web/js/lib/state.js` — VIEW_IDS pruned + label rename.
-- `web/js/sim.js` — corner pill replaces banner, EventSource stub, fixture-driven `lcu` envelope replay.
-- `web/js/panels/dev.js` — render simplified (log tail + vision dropped); preview link clears `#hash`.
-- `data/sim/flow_01_lobby_solo.json` — new fixture: solo (sort of — 5 members for layout testing) with `lcu.lobby.members`, `main_champs`, `party_mains`, `friends_recent`, `top8`, position prefs, ranks, peak ranks, top role champs.
-- `data/sim/manifest.json` — reset, lists `flow_01_lobby_solo` only.
-- `data/sim/_archive/` — 46 prior fixtures moved here.
-
-## Next session — review-first per ritual
-
-Per `feedback_phase3_fixture_ritual.md`, when operator declares fixture done:
-1. **Run visual-hierarchy audit subagent** on the rendered Pre-Game Lobby view (sim fixture `flow_01_lobby_solo`). Capture monitor 0 first; brief the agent with the screenshot + relevant CSS files + the spec lineage (operator wants tight density, viewing-distance fonts per `feedback_font_size_viewing_distance.md`, neo-fintech palette). Format: prioritized must-fix / consider / looks-good. ≤250 words.
-2. **Review with operator** — they decide per-item.
-3. **Iterate fixes** inline. Re-screenshot.
-4. After alignment, **start Phase 3 step 2 (`flow_02_lobby_with_others`)** — the spec there is mostly identical to step 1 but explicitly multi-member from the start. Likely a renaming pass since the current `flow_01_lobby_solo` is already showing 5 members for layout dev.
