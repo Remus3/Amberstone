@@ -36,6 +36,14 @@ Continuation per `NEXT_SESSION_PLAN_2026-05-10.md`. After s167 closed P1a/P2/P7/
 
 ## Open items handed off (unchanged from s167 plus FU01)
 
+- 🟡 **Triage uncommitted working tree** (operator-flagged at end of s168). After `git commit 0c876ef + 5715004` shipped this session, the working tree still carries pre-session changes I deliberately did NOT bundle. Next-session-you: ask the operator whether each set is **commit / retire / in-progress** so the tree doesn't accumulate orphans.
+  - **Audit-5 source code** (uncommitted modifications): `agents/supervisor.py` (h01 `_warm_agent7_alive` init at line 1540 + h02 null-guard in `_warm_agent7_handle` at line 1809) + `agents/agent7_context/warm_session.py` (m01 `stats()` lock-guard). Small, additive, thread-safety + warm-session-init fixes. Apparently applied by an audit sub-agent at some point; never landed.
+  - **Audit-5 proposal artifacts** (untracked): `agents/agent6_auditor/proposals/20260506-070234-fifth-audit/P-audit5-h01-warm-agent7-alive-init.result.md` + `…-h02-warm-agent7-actually-warm.result.md` + `…-m01-warm-stats-lock.result.md`. These document the audit's findings; likely belong with the source-code changes above.
+  - **Runtime state churn** (uncommitted, normal): `data/ds_calibration.jsonl`, `data/placement_heatmap.json`, `data/ratings/last_{arena,sr,tft}.json`, `data/tft_live_data.json`. These mutate every game; not session-authored. Probably should be `.gitignore`'d if not already (verify).
+  - **DB backups + script state** (untracked): `data/match_history.db.bak-2026-05-09-pre-darkstar-purge`, `data/match_history.db.bak-2026-05-10-prune-synthetic`, `data/rewind_history.db.bak-pre-catchup-2026-05-10`, `data/rewind_catchup.state.json`. The `.bak`s are insurance for s167's DB ops; `rewind_catchup.state.json` is the resumable sentinel for the catchup script. Almost certainly should be `.gitignore`'d.
+  - **Screenshots** (untracked): `dashboard-full.jpeg`, `ds-pill-{after,live}.jpeg`, `item-build-full.jpeg`, `last-match-arena-ds.jpeg`. Ad-hoc UI captures. Move to `docs/_archive/screenshots/` or delete?
+  - **Exploration doc** (untracked): `rc-tutor-decision-matrix.md` — looks like operator's design notes. Operator should decide whether to commit, move to `docs/`, or retire.
+  - **MCP cache** (untracked): `.playwright-mcp/` — ephemeral; `.gitignore` it.
 - 🟡 RC-LCU scheduled-task action path: change `Execute: py` → absolute python path (matches the running command-line of other Game-PC python agents).
 - 🟡 Phase 3 supervisor restart to pick up FU01 live.
 - 🟡 P6 (Sonnet/Haiku key routing) — needs operator clarification.
