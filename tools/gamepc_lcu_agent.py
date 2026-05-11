@@ -185,6 +185,100 @@ def lcu_request(method, path, body=None):
         return None, f"{type(e).__name__}"
 
 
+# -- LCU mastery cache -------------------------------------------------------
+#
+# Priority 8 (2026-05-10): pull the operator's full champion-mastery list
+# directly from LCU at /lol-collections/v1/inventories/<sid>/champion-mastery.
+# Free + instant, no Riot Web API rate limit, no PUUID lookup needed.
+# Refreshed lazily — first capture_state() after ChampSelect entry, then
+# at most once every MASTERY_TTL_S to avoid spamming LCU.
+
+MASTERY_TTL_S = 300.0  # 5 min — mastery doesn't shift faster than that
+
+_mastery_cache: dict = {
+    "summoner_id": None,
+    "data": None,
+    "fetched_at": 0.0,
+}
+
+
+def _resolve_local_summoner_id() -> int | None:
+    """Get the local player's summonerId from /lol-summoner/v1/current-summoner.
+
+    Cached in ``_mastery_cache["summoner_id"]`` after the first successful
+    resolve — League's current-summoner doesn't change between client
+    sessions, so a single hit per agent boot is enough.
+    """
+    cached = _mastery_cache.get("summoner_id")
+    if cached:
+        return cached
+    me, err = lcu_request("GET", "/lol-summoner/v1/current-summoner")
+    if not isinstance(me, dict):
+        return None
+    sid = me.get("summonerId")
+    if not sid:
+        return None
+    _mastery_cache["summoner_id"] = int(sid)
+    return int(sid)
+
+
+def _maybe_refresh_mastery() -> dict | None:
+    """Fetch + cache mastery once per MASTERY_TTL_S.
+
+    Returns ``{championId: {level, points, last_play_time}}`` or None when
+    LCU isn't reachable or the response shape is unexpected. Quiet failure
+    is fine — callers degrade to Riot Web fan-out for teammates anyway.
+    """
+    now = time.time()
+    if (
+        _mastery_cache.get("data") is not None
+        and now - _mastery_cache.get("fetched_at", 0.0) < MASTERY_TTL_S
+    ):
+        return _mastery_cache["data"]
+    sid = _resolve_local_summoner_id()
+    if not sid:
+        return None
+    payload, err = lcu_request(
+        "GET",
+        f"/lol-collections/v1/inventories/{sid}/champion-mastery",
+    )
+    if not isinstance(payload, list):
+        return None
+    out: dict = {}
+    for entry in payload:
+        if not isinstance(entry, dict):
+            continue
+        cid = entry.get("championId")
+        if cid is None:
+            continue
+        try:
+            cid = int(cid)
+        except (TypeError, ValueError):
+            continue
+        out[cid] = {
+            "level":          int(entry.get("championLevel", 0) or 0),
+            "points":         int(entry.get("championPoints", 0) or 0),
+            "last_play_time": int(entry.get("lastPlayTime", 0) or 0),
+            "points_since_last_level": int(
+                entry.get("championPointsSinceLastLevel", 0) or 0
+            ),
+            "points_until_next_level": int(
+                entry.get("championPointsUntilNextLevel", 0) or 0
+            ),
+            "chest_granted": bool(entry.get("chestGranted", False)),
+            "tokens_earned": int(entry.get("tokensEarned", 0) or 0),
+        }
+    _mastery_cache["data"] = out
+    _mastery_cache["fetched_at"] = now
+    return out
+
+
+def _reset_mastery_cache_for_tests() -> None:
+    _mastery_cache["summoner_id"] = None
+    _mastery_cache["data"] = None
+    _mastery_cache["fetched_at"] = 0.0
+
+
 # -- State capture -----------------------------------------------------------
 
 def _active_round(sess: dict) -> dict | None:
@@ -472,6 +566,22 @@ def capture_state():
             gid = str(gflow.get("gameData", {}).get("gameId") or "")
             if gid and gid != "0":
                 state["game_id"] = gid
+
+    # Priority 8 (2026-05-10): include LCU mastery for the local player as
+    # soon as we're in a session-relevant phase. Cached at MASTERY_TTL_S so
+    # the lobby + champ-select loops don't hammer LCU. Legion's
+    # team-context route can prefer this number for the operator and fall
+    # back to Riot Web mastery for teammates/enemies.
+    if state["phase"] in (
+        "Lobby", "Matchmaking", "ReadyCheck",
+        "ChampSelect", "GameStart", "InProgress", "WaitingForStats",
+    ):
+        mastery = _maybe_refresh_mastery()
+        if mastery is not None:
+            state.setdefault("lcu", {})["mastery"] = mastery
+            sid = _mastery_cache.get("summoner_id")
+            if sid:
+                state["lcu"]["summoner_id"] = sid
 
     state["ts"] = time.time()
     return state
