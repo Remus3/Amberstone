@@ -19,6 +19,24 @@
       "label": "03 · Champ Select · SR Ranked draft",
       "mode": "client",
       "summary": "Mid-draft · my pick locked · 4 ally picks, 3 enemy picks"
+    },
+    {
+      "name": "flow_03b_aram_select",
+      "label": "03b · Champ Select · ARAM (bench + no roles)",
+      "mode": "client",
+      "summary": "ARAM Howling Abyss · rolled into Vayne · 5 bench options"
+    },
+    {
+      "name": "flow_03c_arena_select",
+      "label": "03c · Champ Select · Arena (2v2v2v2 + augments)",
+      "mode": "client",
+      "summary": "Arena 2v2v2v2 · me + duo locked · silver augment round"
+    },
+    {
+      "name": "flow_03d_brawl_select",
+      "label": "03d · Champ Select · Brawl (random 5v5 no bans)",
+      "mode": "client",
+      "summary": "Brawl 5v5 random · no roles · no bans · short timer"
     }
   ]
 }
