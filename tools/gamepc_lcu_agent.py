@@ -187,6 +187,143 @@ def lcu_request(method, path, body=None):
 
 # -- State capture -----------------------------------------------------------
 
+def _active_round(sess: dict) -> dict | None:
+    """Distil session.actions[] into ``{type, cell_ids}`` for the round
+    currently on the clock, or None when no action is in progress.
+
+    LCU `session.actions` is array-of-arrays: each inner array is a "round"
+    (one ban round, one pick round, etc.). Within a round an action has
+    fields including ``actorCellId``, ``type`` (pick|ban), ``championId``,
+    ``completed`` (bool), ``isInProgress`` (bool). The cells currently on
+    the clock are the in-progress entries; the round's type is the action
+    type they share (ban or pick). Used by the dashboard to highlight the
+    active border on ally + enemy slots.
+    """
+    actions = sess.get("actions") or []
+    for group in actions:
+        if not isinstance(group, list):
+            continue
+        in_progress = [a for a in group
+                       if isinstance(a, dict) and a.get("isInProgress")]
+        if not in_progress:
+            continue
+        # Group should be homogeneous (all bans or all picks). Pick the
+        # type from the first in-progress entry and collect its cells.
+        kind = "ban" if str(in_progress[0].get("type", "")) == "ban" else "pick"
+        cell_ids = [a.get("actorCellId") for a in in_progress
+                    if str(a.get("type", "")) == kind
+                    and a.get("actorCellId") is not None]
+        return {"type": kind, "cell_ids": cell_ids}
+    return None
+
+
+def _swap_entries(arr) -> list[dict]:
+    """Slim ``positionSwaps`` / ``pickOrderSwaps`` for the agent push.
+
+    Each LCU entry carries id + cellId + state (AVAILABLE / SENT / RECEIVED /
+    ACCEPTED / DECLINED / BUSY / INVALID). The dashboard only needs those
+    three fields to render and the handlers below look them up by cell_id
+    on swap requests.
+    """
+    out = []
+    for e in arr or []:
+        if not isinstance(e, dict):
+            continue
+        out.append({
+            "id":     e.get("id"),
+            "cellId": e.get("cellId"),
+            "state":  e.get("state"),
+        })
+    return out
+
+
+def _arena_teams(sess: dict) -> list[dict]:
+    """Distil ``additionalSubteamData`` for the dashboard's Arena enemies
+    pane (TEAM 2 / TEAM 3 / TEAM 4 stacked cards).
+
+    LCU emits one entry per sub-team in 2v2v2v2; we forward id, name, an
+    ``is_me`` flag (subteam id matches the local cell's subteam id), and
+    a slim members list (cellId + championId only — the dashboard already
+    has summoner names in ``my_team``/``their_team``).
+
+    Returns an empty list when the session is not in a subteamed queue
+    or when LCU has not yet populated the field (pre-reveal).
+    """
+    raw = sess.get("additionalSubteamData") or []
+    if not isinstance(raw, list) or not raw:
+        return []
+    my_subteam = None
+    try:
+        local_cell = int(sess.get("localPlayerCellId", -1))
+    except (TypeError, ValueError):
+        local_cell = -1
+    if local_cell >= 0:
+        for tm in raw:
+            if not isinstance(tm, dict):
+                continue
+            members = tm.get("members") or []
+            if any(isinstance(m, dict) and int(m.get("cellId", -2)) == local_cell
+                   for m in members):
+                my_subteam = tm.get("subteamId") or tm.get("id")
+                break
+    out = []
+    for tm in raw:
+        if not isinstance(tm, dict):
+            continue
+        sid = tm.get("subteamId") or tm.get("id")
+        cells = []
+        for m in tm.get("members") or []:
+            if not isinstance(m, dict):
+                continue
+            cells.append({
+                "cellId":     m.get("cellId"),
+                "championId": m.get("championId", 0),
+            })
+        out.append({
+            "id":    sid,
+            "name":  tm.get("name") or f"Team {sid}",
+            "is_me": (my_subteam is not None and sid == my_subteam),
+            "cells": cells,
+        })
+    return out
+
+
+def _local_in_progress_action(sess: dict, action_type: str) -> dict | None:
+    """Find the local cell's in-progress action of the given type (pick|ban)
+    in ``session.actions``. Returns the raw action dict or None.
+
+    Mirrors the walk done by the ``lock_pick`` handler. The intent setters
+    PATCH this same action with ``completed: false`` so the in-game UI
+    reflects the dashboard pick/ban hover (no actual lock).
+    """
+    try:
+        local_cell = int(sess.get("localPlayerCellId", -1))
+    except (TypeError, ValueError):
+        return None
+    if local_cell < 0:
+        return None
+    for group in sess.get("actions") or []:
+        if not isinstance(group, list):
+            continue
+        for action in group:
+            if not isinstance(action, dict):
+                continue
+            try:
+                actor_cell = int(action.get("actorCellId", -2))
+            except (TypeError, ValueError):
+                continue
+            if actor_cell != local_cell:
+                continue
+            if action.get("type") != action_type:
+                continue
+            if action.get("completed"):
+                continue
+            if not action.get("isInProgress"):
+                continue
+            return action
+    return None
+
+
 def capture_state():
     """Snapshot LCU state for the dashboard. ts is set at the END so
     consumers see when capture finished (post lands ~immediately after),
@@ -272,11 +409,17 @@ def capture_state():
                         "puuid":       p.get("puuid") or "",
                         "completed":   p.get("completed", False),
                         "assignedPosition": p.get("assignedPosition") or "",
+                        # s166 Phase 3 step 4: per-player summoner-spell ids
+                        # so the Loading view can render the D/F icons next
+                        # to each summoner. 0/0 when not yet picked.
+                        "summoners":   [p.get("spell1Id", 0),
+                                        p.get("spell2Id", 0)],
                     })
                 return out
             state["champ_select"] = {
                 "queue_id":     queue_id,
                 "is_aram":      queue_id in (450, 920),
+                "is_brawl":     queue_id == 480,
                 "my_champion":  (my_pick or {}).get("championId", 0),
                 "my_completed": (my_pick or {}).get("completed", False),
                 "my_summoners": [
@@ -294,8 +437,33 @@ def capture_state():
                     for t in (sess.get("trades") or [])
                     if isinstance(t, dict)
                 ],
-                "local_cell": local_cell,
+                # Swap candidate lists. Mirror trades — slim id/cellId/state
+                # so the dashboard can render the SWAP popup and the
+                # request_position_swap / request_pick_order_swap handlers
+                # below resolve cell_id → swap id without a 2nd LCU GET.
+                "position_swaps":   _swap_entries(sess.get("positionSwaps")),
+                "pick_order_swaps": _swap_entries(sess.get("pickOrderSwaps")),
+                # Active round (cells on the clock + pick|ban). Drives the
+                # ally/enemy gold (pick) / red (ban) active border in the
+                # Champ Select view.
+                "active_round": _active_round(sess),
+                "local_cell":   local_cell,
             }
+            # Arena (2v2v2v2 / Cherry) extras. LCU surfaces sub-team
+            # rosters via ``additionalSubteamData`` (id, name, intro
+            # animation, members[cellId, championId]); the dashboard
+            # consumes ``arena_teams`` as a flat list. Augment intent +
+            # options need /lol-cherry/v1/* discovery against a live
+            # Arena game — until then we only forward the subteam roster
+            # so allies + enemies render correctly; augments stays an
+            # empty scaffold and ``set_augment_intent`` no-ops.
+            if queue_id in (1700, 1710):
+                state["champ_select"]["arena_teams"] = _arena_teams(sess)
+                state["champ_select"]["augments"] = {
+                    "my_slots":      ["", "", ""],
+                    "options":       [],
+                    "current_round": 0,
+                }
     # Capture Riot game_id from gameflow session when a game is live.
     # Used by Legion's DS calibration pipeline for post-game correlation.
     if state["phase"] in ("GameStart", "InProgress"):
@@ -404,6 +572,102 @@ def execute_command(cmd):
         body = {"spell1Id": d, "spell2Id": f}
         r, err = lcu_request("PATCH", "/lol-champ-select/v1/session/my-selection", body)
         return {"ok": err is None, "err": err}
+    if name in ("set_ban_intent", "set_pick_intent"):
+        # PATCH the local cell's in-progress ban|pick action with the
+        # requested champion id but ``completed: false`` so the in-game
+        # client UI mirrors the dashboard's hover state without locking.
+        # The lock itself stays a separate ``lock_pick`` flow.
+        cid = int(cmd.get("championId", 0))
+        if cid <= 0:
+            return {"ok": False, "err": "no championId"}
+        action_type = "ban" if name == "set_ban_intent" else "pick"
+        sess, _ = lcu_request("GET", "/lol-champ-select/v1/session")
+        if not isinstance(sess, dict):
+            return {"ok": False, "err": "no session"}
+        action = _local_in_progress_action(sess, action_type)
+        if action is None:
+            return {"ok": False, "err": f"no in-progress {action_type} for local cell"}
+        aid = action.get("id")
+        if aid is None:
+            return {"ok": False, "err": "no action id"}
+        body = {"championId": cid, "completed": False}
+        _, err = lcu_request("PATCH",
+            f"/lol-champ-select/v1/session/actions/{aid}", body)
+        if err is not None:
+            return {"ok": False, "err": err}
+        return {"ok": True, "action_id": aid, "championId": cid}
+    if name == "request_position_swap":
+        # Send a lane-swap offer to the cell. Mirror of trade_request —
+        # resolve cell_id → swap id via session.positionSwaps[]. LCU
+        # returns 204 on success; any other state means the offer is
+        # busy / invalid / already-sent on the receiving side.
+        cell_id = int(cmd.get("cell_id", -1))
+        if cell_id < 0:
+            return {"ok": False, "err": "no cell_id"}
+        sess, _ = lcu_request("GET", "/lol-champ-select/v1/session")
+        if not isinstance(sess, dict):
+            return {"ok": False, "err": "no session"}
+        target = next((e for e in (sess.get("positionSwaps") or [])
+                       if isinstance(e, dict) and e.get("cellId") == cell_id),
+                      None)
+        if not target:
+            return {"ok": False, "err": "no position-swap slot for that cell"}
+        st = str(target.get("state") or "").upper()
+        if st == "BUSY":
+            return {"ok": False, "err": "swap busy"}
+        if st == "INVALID":
+            return {"ok": False, "err": "swap invalid"}
+        swap_id = target.get("id")
+        if swap_id is None:
+            return {"ok": False, "err": "no swap id"}
+        _, err = lcu_request("POST",
+            f"/lol-champ-select/v1/session/position-swaps/{swap_id}/request")
+        if err is not None:
+            return {"ok": False, "err": err}
+        return {"ok": True, "swap_id": swap_id, "cell_id": cell_id}
+    if name == "request_pick_order_swap":
+        # Pick-order swap (Nth-pick reorder). Same shape as position-swap
+        # but a different LCU collection + endpoint.
+        cell_id = int(cmd.get("cell_id", -1))
+        if cell_id < 0:
+            return {"ok": False, "err": "no cell_id"}
+        sess, _ = lcu_request("GET", "/lol-champ-select/v1/session")
+        if not isinstance(sess, dict):
+            return {"ok": False, "err": "no session"}
+        target = next((e for e in (sess.get("pickOrderSwaps") or [])
+                       if isinstance(e, dict) and e.get("cellId") == cell_id),
+                      None)
+        if not target:
+            return {"ok": False, "err": "no pick-order-swap slot for that cell"}
+        st = str(target.get("state") or "").upper()
+        if st == "BUSY":
+            return {"ok": False, "err": "swap busy"}
+        if st == "INVALID":
+            return {"ok": False, "err": "swap invalid"}
+        swap_id = target.get("id")
+        if swap_id is None:
+            return {"ok": False, "err": "no swap id"}
+        _, err = lcu_request("POST",
+            f"/lol-champ-select/v1/session/pick-order-swaps/{swap_id}/request")
+        if err is not None:
+            return {"ok": False, "err": err}
+        return {"ok": True, "swap_id": swap_id, "cell_id": cell_id}
+    if name == "set_augment_intent":
+        # Arena/Cherry augment selection. The dashboard's augment chooser
+        # fires this with ``augment_id`` for the active round slot. The
+        # exact LCU endpoint (under /lol-cherry/v1/*) needs to be confirmed
+        # against a live Arena lobby — Cherry's REST surface isn't well
+        # documented. Until then, queue it as a no-op so the agent doesn't
+        # crash on unknown-cmd and the dashboard surfaces "not yet wired"
+        # rather than a phantom error.
+        aug_id = int(cmd.get("augment_id", 0))
+        if aug_id <= 0:
+            return {"ok": False, "err": "no augment_id"}
+        print(f"[cmd] set_augment_intent augment={aug_id} (no-op — "
+              "LCU /lol-cherry/v1/* endpoint TBD)", flush=True)
+        return {"ok": False, "err": "augment_intent_unsupported",
+                "note": "needs /lol-cherry/v1/* discovery vs. live Arena",
+                "augment_id": aug_id}
     if name == "trade_request":
         cell_id = int(cmd.get("cell_id", -1))
         if cell_id < 0:
