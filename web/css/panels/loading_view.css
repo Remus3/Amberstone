@@ -1,0 +1,188 @@
+/* Loading Screen VIEW (s166 — Phase 3 step 4 scaffold).
+ *
+ * Top-level <section id="view-loading"> renders the locked champ-select
+ * roster during the GameStart phase. Strategic briefing, not pickers.
+ * Layout: 2-col grid for the team panels on the top row, full-width
+ * briefing card below.
+ *
+ * Mode-conditional via section.dataset.lvwMode (sr | aram | arena |
+ * brawl) — Arena replaces the enemy list with stacked sub-team cards.
+ */
+
+.lvw-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+  grid-template-areas: "allies enemies";
+  gap: 12px;
+  min-height: 0;
+}
+.lvw-card-allies   { grid-area: allies; }
+.lvw-card-enemies  { grid-area: enemies; }
+
+.lvw-card {
+  background: var(--card-bg, #14171c);
+  border: 1px solid var(--card-border, #2a2f37);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.lvw-card-head {
+  font-size: 17px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--card-head-fg, #cbd2dc);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--card-border, #2a2f37);
+  margin-bottom: 8px;
+  text-align: center;
+}
+/* Allies head: indigo accent (we're on this side). Enemies: muted neutral. */
+.lvw-card-allies  .lvw-card-head { color: #8aa8ff; }
+.lvw-card-enemies .lvw-card-head { color: #cbd2dc; }
+
+/* Team list (5 cells on SR / ARAM / Brawl, 2 on Arena ally side). */
+.lvw-team-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.lvw-empty {
+  color: var(--text-dim, #8a8f97);
+  font-style: italic;
+  font-size: 14px;
+  text-align: center;
+  padding: 16px 0;
+}
+
+/* Cell row template: portrait | text col | role pip | summs */
+.lvw-cell {
+  display: grid;
+  grid-template-columns: 56px 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  border: 1px solid transparent;
+  min-height: 56px;
+}
+.lvw-cell.is-me {
+  background: rgba(138, 168, 255, 0.10);
+  border-color: rgba(138, 168, 255, 0.40);
+}
+.lvw-cell-portrait {
+  width: 56px;
+  height: 56px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #0e1116;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lvw-cell-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.lvw-cell-placeholder {
+  color: var(--text-dim, #8a8f97);
+  font-size: 24px;
+  font-weight: 700;
+}
+.lvw-cell-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.lvw-cell-champ {
+  font-size: 16px;
+  font-weight: 700;
+  color: #e6e8eb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lvw-cell.is-me .lvw-cell-champ { color: #b9c8ff; }
+.lvw-cell-summ {
+  font-size: 13px;
+  color: var(--text-dim, #8a8f97);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lvw-cell-role {
+  background: rgba(255, 255, 255, 0.06);
+  color: #cbd2dc;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.lvw-cell.is-me .lvw-cell-role {
+  background: rgba(255, 209, 102, 0.14);
+  color: #ffd166;
+  border-color: rgba(255, 209, 102, 0.35);
+}
+.lvw-cell-sums {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lvw-sum {
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+  display: block;
+  background: #0e1116;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Arena sub-team cards (stacked inside the enemies card on right). */
+.lvw-arena-team {
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--card-border, #2a2f37);
+  border-radius: 4px;
+}
+.lvw-arena-team.is-me { border-color: rgba(138, 168, 255, 0.40); }
+.lvw-arena-team-head {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #cbd2dc;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--card-border, #2a2f37);
+}
+.lvw-arena-team.is-me .lvw-arena-team-head { color: #8aa8ff; }
+.lvw-arena-team-cells {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+/* Mode-conditional tweaks: Arena ally pane uses 2-cell layout. */
+#view-loading[data-lvw-mode="arena"] .lvw-card-allies .lvw-team-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}

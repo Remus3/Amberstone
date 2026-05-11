@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=1920, initial-scale=1, user-scalable=no" />
   <title>Riot Commander — Phase 3</title>
-  <link rel="stylesheet" href="/css/dashboard.css?v=2026051111" />
+  <link rel="stylesheet" href="/css/dashboard.css?v=2026051121" />
 </head>
 <body>
   <div id="sim-banner" class="sim-banner hidden">
@@ -1061,6 +1061,34 @@
       </div>
     </section>
 
+    <!-- Loading Screen view (s166 — Phase 3 step 4 scaffold).
+         Renders the locked CS state during phase=GameStart. Opt-in via
+         ?ld=1 (localStorage.loadingView='1' makes it sticky). Layout:
+         2-col grid (Allies | Enemies) on top, full-width briefing below.
+         Mode-conditional via section.dataset.lvwMode. -->
+    <section id="view-loading" class="view-section" hidden>
+      <div class="view-section-head">
+        <h2>Game Loading</h2>
+        <span class="view-section-sub" id="lvw-sub">scaffold · waiting for loading data</span>
+      </div>
+      <div class="view-section-body">
+        <div class="lvw-grid">
+          <div class="lvw-card lvw-card-allies">
+            <div class="lvw-card-head">Allies</div>
+            <ul class="lvw-team-list" id="lvw-allies-list">
+              <li class="lvw-empty">waiting for my_team data…</li>
+            </ul>
+          </div>
+          <div class="lvw-card lvw-card-enemies">
+            <div class="lvw-card-head">Enemies</div>
+            <ul class="lvw-team-list" id="lvw-enemies-list">
+              <li class="lvw-empty">waiting for their_team data…</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="view-session" class="view-section" hidden>
       <div class="view-section-head">
         <h2>SESSION</h2>
@@ -1472,6 +1500,6 @@
       .then(t => { if (t) document.getElementById("svg-sprite-host").innerHTML = t; });
   </script>
   <script src="/js/sim.js"></script>
-  <script type="module" src="/js/main.js?v=2026051110"></script>
+  <script type="module" src="/js/main.js?v=2026051121"></script>
 </body>
 </html>
