@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=1920, initial-scale=1, user-scalable=no" />
   <title>Riot Commander — Phase 3</title>
-  <link rel="stylesheet" href="/css/dashboard.css?v=2026051050" />
+  <link rel="stylesheet" href="/css/dashboard.css?v=2026051100" />
 </head>
 <body>
   <div id="sim-banner" class="sim-banner hidden">
@@ -38,6 +38,7 @@
       <div id="view-menu" class="view-menu hidden" role="menu" aria-hidden="true">
         <button type="button" class="view-menu-item" data-view="home"        role="menuitem">Home</button>
         <button type="button" class="view-menu-item" data-view="lobby"       role="menuitem">Pre-Game Lobby</button>
+        <button type="button" class="view-menu-item" data-view="champ-select" role="menuitem">Champ Select</button>
         <button type="button" class="view-menu-item" data-view="active-match" role="menuitem">Active Match</button>
         <button type="button" class="view-menu-item" data-view="last-match"  role="menuitem">Last Match</button>
         <button type="button" class="view-menu-item" data-view="session"     role="menuitem">Session</button>
@@ -996,6 +997,64 @@
                       title="Add to Top 8" aria-label="Add to Top 8">➕</button>
               <span class="lv-top8-spacer-reorder"></span>
               <span class="lv-top8-spacer-remove"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Champ Select view (s164 — Phase 3 step 3 scaffold).
+         New top-level page that replaces the legacy floating
+         #cs-overlay during ChampSelect when ?cs=1 is opted in
+         (localStorage.csView='1' makes it sticky).
+         Layout: 3-col grid — ALLIES | MY PICK + BUILDS | ENEMIES.
+         Auto-promote on phase=ChampSelect when opted in. -->
+    <section id="view-champ-select" class="view-section" hidden>
+      <div class="view-section-head">
+        <h2>Champ Select</h2>
+        <span class="view-section-sub" id="csv-sub">scaffold · waiting for champ-select data</span>
+      </div>
+      <div class="view-section-body">
+        <div class="csv-grid">
+          <div class="csv-card csv-card-allies">
+            <div class="csv-card-head">Allies</div>
+            <div class="csv-card-body">
+              <ul class="csv-team-list" id="csv-allies-list">
+                <li class="csv-empty">waiting for my_team data…</li>
+              </ul>
+            </div>
+          </div>
+          <!-- Pick & Ban Recommendations panel — sits below Allies in
+               the same column. JS populates rows: role chip / 3 pick
+               rows (performance / mastery / meta) / mood toggle. Real
+               data wiring (perf scoring, counter matrix, 500ms blocker
+               poll) is Phase B; this is the visual scaffold. -->
+          <div class="csv-card csv-card-pickban">
+            <div class="csv-card-head">Pick &amp; Ban Recommendations</div>
+            <div class="csv-card-body csv-pickban-body" id="csv-pickban-body">
+              <div class="csv-empty">waiting for champ-select data…</div>
+            </div>
+          </div>
+          <div class="csv-card csv-card-mypick">
+            <div class="csv-card-head">My Pick</div>
+            <div class="csv-card-body csv-mypick">
+              <div class="csv-mypick-icon empty" id="csv-mypick-icon">?</div>
+              <div class="csv-mypick-name" id="csv-mypick-name">—</div>
+              <div class="csv-mypick-state" id="csv-mypick-state">no pick yet</div>
+              <div class="csv-builds">
+                <div class="csv-builds-title">Build chooser</div>
+                <div id="csv-builds-body">
+                  <div class="csv-empty">SR draft profiles / ARAM builds will render here</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="csv-card csv-card-enemies">
+            <div class="csv-card-head">Enemies</div>
+            <div class="csv-card-body">
+              <ul class="csv-team-list" id="csv-enemies-list">
+                <li class="csv-empty">waiting for their_team data…</li>
+              </ul>
             </div>
           </div>
         </div>
