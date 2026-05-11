@@ -163,12 +163,101 @@ Copied from `ROADMAP.md` as of 2026-05-10. Status notes reflect what s166 left i
 
 ---
 
+## Priority 7 — Prune My Top 8 dummies + fake test games
+
+Per operator (mid-session amendment 2026-05-10):
+> _"prune out the my top 8 list of the dummy profiles and any fake games we ran for testing etc."_
+
+### Where the data lives
+
+- **Live UI storage:** `localStorage` key `rc-top8-list` on the operator's browser. Each entry is `{ riot_id, tag, rank: {tier, division, lp} }`. Source: [web/js/main.js:3455](web/js/main.js:3455) (`TOP8_KEY = "rc-top8-list"`; `_top8Load` / `_top8Save`).
+- **Fixture sources** (sim-only, NOT live data):
+  - [data/sim/flow_01_lobby_solo.json](data/sim/flow_01_lobby_solo.json) — `lcu.top8` array
+  - [data/sim/flow_02_lobby_with_others.json](data/sim/flow_02_lobby_with_others.json) — `lcu.top8` array
+  - Fixture entries WIN the load (`_top8Load()` checks `lcu.top8` before localStorage) so sim preview doesn't pollute live storage — but the operator may have manually added dummies during testing that did land in `rc-top8-list`.
+- **Fake test games:** `data/match_history.db` + `data/rewind_history.db` may have synthetic rows from earlier development. `data/ds_calibration.jsonl` is also a candidate.
+
+### Cleanup steps
+
+1. **localStorage `rc-top8-list`** — operator-driven via the existing UI delete buttons (each row has `data-action="delete"`); or one-shot clear via DevTools `localStorage.removeItem("rc-top8-list")`. No code change required if operator wants to keep some entries; otherwise add a "Clear all" button in the Top 8 management UI.
+2. **Synthetic match rows** — query `match_history.db` and `rewind_history.db` for matches with `match_id` starting with `SIM_` / `TEST_` / `FAKE_` (or whatever convention was used). If no convention, look for matches with implausible `game_duration_s` (< 30 s) or fabricated `game_creation_ts` (future-dated or before launch). Delete with a one-shot script; archive the deletes to a `.bak` first.
+3. **`ds_calibration.jsonl`** — read each line, drop any with `champion: "TestChamp"` / mode markers like `"sim"` / clearly synthetic `chosen_items` arrays. Rewrite atomically.
+4. **Document the pruning convention** going forward so future test rows are tagged at write-time (e.g. `is_synthetic: true` column) and the cleanup is one SQL query.
+
+Independent + headless. Can fold in alongside DB catchup (Priority 2).
+
+---
+
+## Priority 8 — Connect LCU mastery data
+
+Per operator:
+> _"connec the LCU mastery data"_
+
+### Current state
+
+- `core/riot_api.py` exposes Mastery-V4 wrappers that hit the **Riot Web API** (rate-limited, requires PUUID). Used by `dashboard/routes_team_context.py` for the team-context enrichment fan-out.
+- The **LCU side** has a complementary endpoint that returns the locked-in user's full mastery list instantly + cost-free (no Riot key, no rate limit): `/lol-collections/v1/inventories/<summonerId>/champion-mastery` (full list) and `/lol-collections/v1/inventories/<summonerId>/champion-mastery/<championId>` (single champ).
+- `tools/gamepc_lcu_agent.py` does NOT currently pull this. The only reference to "mastery" in the agent is a comment about server-side Riot Web enrichment.
+
+### Wire plan
+
+1. Add a one-shot LCU GET in `capture_state()` when phase transitions into `ChampSelect` (or earlier — on agent boot once summonerId is known):
+   ```python
+   me, _ = lcu_request("GET", "/lol-summoner/v1/current-summoner")
+   sid = me.get("summonerId")
+   masteries, _ = lcu_request("GET",
+       f"/lol-collections/v1/inventories/{sid}/champion-mastery")
+   # cache module-level: { championId: {level, points, last_play_time} }
+   ```
+2. Forward into `state["lcu"]["mastery"]` so Legion's dashboard can read instantly without waiting on the Riot Web fan-out.
+3. Legion side: `dashboard/routes_team_context.py` already merges Riot Web mastery; teach it to prefer the LCU-sourced number for the local player (instantly accurate) and fall back to Riot Web for teammates/enemies.
+4. **UI surfacing** (deferred — UI is paused): once data is flowing, the Champ Select view's My-Pick card + Lobby Mains tab can show mastery level + chest status. Mark the wire-up complete now; UI consumes when unblocked.
+
+Tests: mock `lcu_request` for two cases (current-summoner returns summonerId / fails) + mastery payload shape.
+
+---
+
+## Priority 9 — API surface audit: map every endpoint we can hit
+
+Per operator:
+> _"connect and map every single API we can hit"_
+
+### Why now
+
+RC currently consumes a partial subset of LCU + Riot Web + LiveClient APIs. A full inventory is needed to:
+- Spot endpoints we should be using but aren't (mastery is one example — Priority 8).
+- Catalog what's already wired so future work doesn't reinvent.
+- Form the basis for the "Default DS build #4" (Priority 5) which needs more per-champion data than we currently fetch.
+
+### Deliverables
+
+1. **`docs/API_SURFACE_AUDIT.md`** — single living doc, 4 sections:
+   - **LCU** — every `/lol-*` endpoint we touch, file:line where, what state field it populates. Plus a "candidates" list of LCU endpoints we don't touch yet (mastery, perks, runes, item-sets, eog stats, hovercards, etc.).
+   - **Riot Web API** — every `/lol/*` v4/v5 endpoint we call from `core/riot_api.py`, with per-endpoint rate-limit notes. Plus candidates (League-V4 division ladders, Spectator-V5 active games, Tournament-V5 if applicable).
+   - **LiveClient API (`127.0.0.1:2999`)** — every endpoint we poll (game_data, player_list, active_player, events). Plus the full LiveClient surface (most is already consumed).
+   - **Cross-Claude bridge + RC internal HTTPS** — every `/api/*` route on `:8888` (we have `docs/API.md` already; cross-reference).
+2. **Audit scripts** — `scripts/audit_api_surface.py` greps the codebase for HTTP calls and emits a CSV of (caller_file, caller_line, endpoint, method). Idempotent + re-runnable.
+3. **Backlog tagging** — for each "candidate but unused" endpoint, file a one-line entry in `BACKLOG.md` (Aspirational tier) so we don't lose them.
+
+### Execution sketch
+
+- Day 1: grep audit + draft the LCU section (largest surface).
+- Day 2: Riot Web section + LiveClient section.
+- Day 3: cross-reference with existing `docs/API.md` + sweep BACKLOG.md.
+
+Headless-friendly. Pure analysis + doc work. Foundational for the Default DS build #4 + Priority 8 wiring.
+
+---
+
 ## Execution order recommendation
 
 1. **Start with Priority 1** — pick 1–2 of the DS headless candidates (per-level DPS curves + Arena augment overlay are the highest-leverage). Implement + ship tests, no UI surface.
 2. **If DS testing stalls** — drop to **Priority 2** (rewind_history.db catchup script). Kick off the overnight run before EOD.
-3. **Priority 3 + 4** (History + Replay wiring) can fold in as small wins once Priority 1/2 are queued.
-4. **Priority 5** (Default DS build #4) waits on Priority 2's DB freshness.
-5. **Priority 6** (Claude Desktop key) needs operator clarification first — file an ask before touching.
+3. **Priority 9** (API surface audit) is a foundational doc pass — slot in early to surface Priority 8's mastery wiring + Priority 5's per-champion data needs. Pure-text + grep work; cheap on token budget.
+4. **Priority 8** (LCU mastery) is a small concrete win once the audit is done — single LCU endpoint, single capture-state extension, ~10 tests.
+5. **Priority 7** (Top 8 + fake-game pruning) folds in as a one-shot cleanup script — can ride along with Priority 2's overnight job.
+6. **Priority 3 + 4** (History + Replay wiring) can fold in as small wins once Priority 1/2 are queued.
+7. **Priority 5** (Default DS build #4) waits on Priority 2's DB freshness.
+8. **Priority 6** (Claude Desktop key) needs operator clarification first — file an ask before touching.
 
 Do not touch UI files (`web/**`) unless the operator explicitly unblocks. Tests + backend Python + scripts only.
