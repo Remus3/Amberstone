@@ -4,6 +4,86 @@
 
 ---
 
+# s164 wrap — 2026-05-10 (Champ Select view scaffold — flow_03 + Pick/Ban panel + trade popup)
+
+Long UI iteration session. Phase 3 step 3 — built the new top-level `view-champ-select` page from scratch and iterated heavily on every panel. Single commit shipped: `c0e6043` (1986 ins / 4 del across 10 files, 3 new files).
+
+## What shipped (s164)
+
+### View scaffold + routing
+- New `champ-select` view added to `VIEW_IDS` / `VIEW_LABELS` (between `lobby` and `active-match`).
+- `<section id="view-champ-select">` in `web/index.html` with 3-col grid: Allies + Pick&Ban Recommendations (col 1), My Pick + Build Chooser (col 2), Enemies (col 3).
+- Auto-promotes on `phase=ChampSelect` when `?cs=1` / `localStorage.csView='1'`. Legacy `#cs-overlay` hidden when on the new view.
+- `header.css` `body[data-view="champ-select"]` rules for showing the section + hiding the main panels + home-overlay.
+- New CSS file `web/css/panels/champ_select_view.css` (742 lines) — all `.csv-*` styles for the new view.
+
+### Ally team panel
+- 5 rows with champion icon (32px) | champion name | username | role pip layout.
+- Username column hardcoded at `--csv-champname-col: 90px` (after iterations: 88→110→100→90 nudges). The hardcoded value aligns the lock/timer column near "A" of "Allies" header on the 1920-wide viewport. JS-based alignment was attempted multiple times (Range API, span wrap, clone, canvas measureText) — all returned wrong values due to body's `zoom: 1.33` and Chromium quirks; final solution is the hardcoded var.
+- Self-row gets the gold "BOT" pip styling matching the pick/ban panel's role chip.
+- Lock 🔒 / live countdown (cyan blue + 1px black outline, no "s" suffix per operator) at the start of the summoner col. Both share an 18px right-aligned slot so the timer's right edge never exceeds the lock's right edge.
+- Click on username opens the SWAP/TRADE popup. Champion-icon and role-pip clicks were wired then explicitly removed per operator — only username triggers trades now.
+
+### Enemy team panel
+- Same row template + 2px gold/red active-round border via inset box-shadow.
+- Lock/timer absolutely positioned at `left: 50%` (centered vertically under the "ENEMIES" title); role pip placed in grid col 4 explicitly so it doesn't auto-flow into the now-empty 1fr summ col.
+- "(guess)" italic gray tag added between centered lock/timer and the role pip — vertically aligned across all rows.
+
+### Pick & Ban Recommendations panel
+- Lives in left column below the Allies card. Panel header removed (operator preferred PICK/BAN labels in the role row as the column markers).
+- Header row: PICK label (col 1) + role chip removed + BAN slot (col 3, BAN sits in a 70px sub-slot right-aligned so the distance from BAN-right to panel-right mirrors PICK-left to panel-left).
+- 3 pick rows (Performance / Mastery / Meta) — each is a 3-col grid: champ-col (icon + name, source label moved into the reason col header) | reason col (PERFORMANCE/MASTERY/META label + 1-line WHY text) | bans col (3 ban suggestions w/ icon + pct + name).
+- Mood toggle row: PICK ONE label + 4 two-line buttons (Comfort Pick / Limit Test / Something New / Comp Synergy). Default Comfort; persists in `sessionStorage.csv-mood`.
+- Quick-select clicks: ban icon → `set_ban_intent`, pick icon → `set_pick_intent`. Pick clicks gated on `cs.phase === "FINALIZATION"` OR `cs.my_completed` (operator: "no accidentally banning my own champion"). Once selected: red border on selected, others get `.is-disabled` (pointer-events: none + dimmed) so the operator can't switch their committed choice.
+- Border colors: pick = green, ban = red, both selected and on hover.
+
+### Trade popup (SWAP / TRADE)
+- Singleton appended to `<html>` (NOT `<body>`) to bypass body's `zoom: 1.33` — `transform: scale(1.33)` with `transform-origin: 0 0` provides matching visual size without scaling its own position values.
+- Structure: SWAP/TRADE header row above 3 equal-width buttons (`flex: 1 1 0; min-width: 88px;`). Buttons: champion name (uppercase) / Nth Pick / role (TOP/JUNGLE/MID/BOTTOM/SUPPORT). Pick-order button hides on non-SR-draft modes (`cs.sr_draft === false`).
+- Render-then-measure positioning: park off-screen → measure with `visibility: hidden` → compute final left+top → reveal. Horizontally centered on the ALLIES panel; vertically attached just below the clicked username (originally tried username-center but operator's iterations on zoom revealed the offset issue).
+- Buttons fire: CHAMPION → `trade_request`, Nth PICK → `request_pick_order_swap`, ROLE → `request_position_swap`.
+- LED-dot animation explored (clockwise pseudo-element traveling around cell perimeter every 3s) but removed — wasn't rendering reliably due to body zoom + the cell's containing-block constraints.
+
+### Sim fixtures
+- `data/sim/flow_02_lobby_with_others.json` — clone of flow_01 with reframed meta + caption for the canonical 14-step fixture series (Phase 3 step 2).
+- `data/sim/flow_03_champ_select.json` — SR Ranked draft mid-pick, Vayne locked BOT, 4 ally + 3 enemy picks done, 6 bans in, 22s on timer, `active_round: { type: "pick", cell_ids: [3, 6] }` so Lulu + enemy LeeSin show the gold border.
+
+## Phase B follow-ups (LCU agent on Game-PC)
+
+The dashboard fires these LCU commands but `tools/gamepc_lcu_agent.py` doesn't yet handle them. Each currently no-ops:
+- `set_ban_intent` — set the user's current ban-action champion intent
+- `set_pick_intent` — set the user's current pick-action champion intent
+- `request_position_swap` — initiate lane swap with target cell
+- `request_pick_order_swap` — initiate pick-order swap with target cell
+- `trade_request` already supported (used by legacy ARAM bench swap) — verify it works for SR champion trades too
+
+Plus the dashboard expects `cs.active_round` to be populated by the LCU agent based on the LCU's `actions[]` array — currently fixture-only.
+
+## What's deferred (next session per operator)
+
+> "do /done /clear and continue in another session the central panel and the enemies panel redesign for ALL Game modes. *these changes are not going to be just for SR -> I am taking the extra time to do the needed changes for compensating what i can for all the other games modes.*"
+
+Central panel (My Pick + Build Chooser) and enemies panel redesign for ALL game modes (SR draft, ARAM, Arena, Brawl) — explicit operator request. The current scaffold uses SR draft assumptions throughout; ARAM/Arena need mode-specific layouts (no bans, different team sizes, bench swaps, etc.).
+
+## Files touched (s164)
+
+- `data/sim/manifest.json` — added flow_02 + flow_03 entries.
+- `data/sim/flow_02_lobby_with_others.json` (new) — 436 lines.
+- `data/sim/flow_03_champ_select.json` (new) — 88 lines.
+- `web/css/dashboard.css` — added `@import './panels/champ_select_view.css';`.
+- `web/css/panels/champ_select_view.css` (new) — 742 lines, all `.csv-*` styles.
+- `web/css/panels/header.css` — 3 lines (data-view rules for showing the new section + hiding main + home-overlay).
+- `web/index.html` — 61 lines (menu entry + section markup + cache buster bump).
+- `web/js/lib/state.js` — 4 lines (VIEW_IDS + VIEW_LABELS).
+- `web/js/main.js` — 16 lines (_viewAutoDerive + applyView + handleLcuEnvelope hooks + onState re-fire).
+- `web/js/panels/champ_select.js` — 627 lines (renderChampSelectView + _csvRenderTeam + _csvRenderPickBan + _csvShowTradeChoice + helpers).
+
+## Next session opener
+
+Start with flow_03 loaded (`?sim=flow_03_champ_select&cs=1`). Per operator: "the central panel and the enemies panel redesign for ALL Game modes". Central panel = My Pick + Build Chooser pane in the middle column. Enemies panel = right column. Both need mode-conditional layouts that handle SR draft (current scaffold) + ARAM (no bans, bench swaps available) + Arena (2v2v2v2, augments) + Brawl (random 5v5). The Pick & Ban panel and Allies panel are LOCKED — don't re-iterate.
+
+---
+
 # s163 wrap — 2026-05-10 (Pre-Game Lobby v3 polish + conflict UI + AVG/Match grade)
 
 Long UI iteration session on `flow_01_lobby_solo`. Operator-driven incremental polish per the Phase 3 fixture ritual; visual-hierarchy audit subagent ran mid-session and surfaced 5 must-fix items, all addressed. **Page locked for both solo + multi-member states** (placeholder-driven; no separate flow_02 fixture pass needed). Single commit shipped: `e316291` (913 ins / 181 del across 7 files).
