@@ -24,6 +24,7 @@ import { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine } f
 import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
 import { MM, renderMinimap, renderTeamTile, renderAllyStrip, renderEnemyStrip, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS, _renderMmStateLine } from './panels/map_state.js';
 import { handleChampSelect, renderChampSelectPanel, renderChampSelectCoach, renderChampSelectView, champSelectViewEnabled } from './panels/champ_select.js';
+import { renderLoadingView, loadingViewEnabled } from './panels/loading.js';
 import { renderTeamContext } from './panels/team_context.js';
 import { renderActiveMatch, activeMatchEnabled } from './panels/active_match.js';
 import { renderBridgePending, renderCoachDecisions, renderRecentCoachCalls } from './panels/bridge_pending.js';
@@ -423,6 +424,12 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
   // Auto-derive view from observed state. Returns one of VIEW_IDS.
   function _viewAutoDerive(lcu, mode) {
     const phase = lcu && lcu.phase;
+    // s166: opt-in Loading screen (?ld=1 / localStorage.loadingView='1').
+    // Loading is the brief GameStart window between champ-select lock-in
+    // and InProgress; only auto-promote during that exact phase, and only
+    // when the operator opted in. Wins ahead of activeMatchEnabled below
+    // so the loading view actually gets to render during its window.
+    if (phase === "GameStart" && loadingViewEnabled()) return "loading";
     // s159: when the operator has opted into Active Match (?am=1 or
     // localStorage.activeMatch='1'), auto-promote to it whenever the
     // game is actually running. Lobby/CS still hits the lobby view —
@@ -447,6 +454,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
   function _viewIsUrgent(targetView) {
     return targetView === "lobby"   // ChampSelect-driven (cs-overlay)
         || targetView === "champ-select"  // s164: new full-page CS
+        || targetView === "loading"  // s166: GameStart loading screen
         || targetView === "last-match";  // game InProgress
   }
   function applyView(viewId) {
@@ -464,6 +472,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     // Lazy-fetch view content (wire-once + fetch on first activate)
     if (viewId === "lobby")       { _lobbyViewWireOnce(); _lobbyViewRefresh(); }
     if (viewId === "champ-select") { renderChampSelectView(state.latest.lcu); }
+    if (viewId === "loading")     { renderLoadingView(state.latest.lcu); }
     if (viewId === "session")     { _sessionFetchAndRender(); }
     if (viewId === "history")     { _historyWireOnce(); _historyFetchAndRender(); }
     if (viewId === "replay")      { _replayViewWireOnce(); _replayViewRefresh(); }
@@ -592,9 +601,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       applyView(manual);
       // Banner if auto wants to promote to an urgent target we're not on
       if (_viewIsUrgent(auto) && auto !== manual && auto !== _VIEW.bannerDismissed) {
+        let urgentLead = "Game in progress";
+        if (auto === "lobby" || auto === "champ-select") urgentLead = "Champ Select active";
+        else if (auto === "loading") urgentLead = "Game loading";
         _viewBannerShow(auto,
-          ((auto === "lobby" || auto === "champ-select") ? "Champ Select active" : "Game in progress")
-          + " — switch to " + (VIEW_LABELS[auto] || auto) + "?");
+          urgentLead + " — switch to " + (VIEW_LABELS[auto] || auto) + "?");
       } else {
         _viewBannerHide();
       }
@@ -992,6 +1003,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     // that bailed on !CHAMPS.ready (champion-name index loads async)
     // would never re-run otherwise. State ticks every 2s — fine.
     if (_VIEW.current === "champ-select") renderChampSelectView(state.latest.lcu);
+    if (_VIEW.current === "loading")      renderLoadingView(state.latest.lcu);
     renderStats(p);
     renderGameSense(p);
     renderWhatWent(p);
@@ -3784,6 +3796,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     _viewResolveAndApply(lcu);  // re-derive view based on new phase
     _maybeRefreshLobbyView();   // re-render view-lobby if it's the active surface
     if (_VIEW.current === "champ-select") renderChampSelectView(lcu);  // s164
+    if (_VIEW.current === "loading")      renderLoadingView(lcu);      // s166
   }
 
   // ── Lobby overlay (2026-04-26) ──────────────────────────────────────

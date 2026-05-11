@@ -23,6 +23,7 @@
 @import './panels/input_activity.css';
 @import './panels/champ_select.css';
 @import './panels/champ_select_view.css';
+@import './panels/loading_view.css';
 @import './panels/team_context.css';
 @import './panels/home.css';
 @import './panels/primitives.css';
