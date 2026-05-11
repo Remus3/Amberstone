@@ -3,9 +3,12 @@ import unittest
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.dps import (
     DEFAULT_CRIT_BONUS,
+    DPS_CURVE_LEVELS,
+    DpsCurvePoint,
     _armor_factor,
     _select_phase,
     compute_dps,
+    compute_dps_curve,
 )
 from agents.daemon_slayer.effects import ITEM_EFFECTS
 
@@ -197,6 +200,103 @@ class SerializationTests(unittest.TestCase):
         self.assertIn("3006", table)
         self.assertIn("weighted_dps", table)
         self.assertIn("mid", table)
+
+
+class DpsCurveTests(unittest.TestCase):
+    """Phase 6 step 7 — per-level DPS curve helper."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_default_levels_returns_five_points(self) -> None:
+        curve = compute_dps_curve(self.snap, "Aatrox")
+        self.assertEqual(len(curve), 5)
+        self.assertEqual(tuple(p.level for p in curve), DPS_CURVE_LEVELS)
+
+    def test_each_point_is_dataclass(self) -> None:
+        curve = compute_dps_curve(self.snap, "Aatrox")
+        for p in curve:
+            self.assertIsInstance(p, DpsCurvePoint)
+            self.assertIn("ad", p.stats)
+            self.assertIn("as", p.stats)
+            self.assertIn("crit", p.stats)
+            self.assertIn("ap", p.stats)
+
+    def test_phase_progression_across_default_levels(self) -> None:
+        # Phase auto-derive: 1=early, 6=early, 11=mid, 16=late, 18=late.
+        curve = compute_dps_curve(self.snap, "Aatrox")
+        phases = [p.phase for p in curve]
+        self.assertEqual(phases, ["early", "early", "mid", "late", "late"])
+
+    def test_naked_ad_grows_monotonically(self) -> None:
+        # AD per-level is positive for Aatrox; bare build → AD strictly
+        # increases at each sampled level.
+        curve = compute_dps_curve(self.snap, "Aatrox")
+        ads = [p.stats["ad"] for p in curve]
+        for prev, cur in zip(ads, ads[1:]):
+            self.assertGreater(cur, prev)
+
+    def test_dps_at_18_with_ie_exceeds_naked_lvl_1(self) -> None:
+        # Sanity: lvl 18 + Infinity Edge is strictly higher DPS than
+        # lvl 1 naked. (Not testing the whole curve is monotonic — late-
+        # phase rotations weight differently, so weighted DPS can dip on
+        # phase transitions; this is the safe inequality.)
+        curve = compute_dps_curve(self.snap, "Aatrox", item_ids=["3031"])
+        self.assertGreater(curve[-1].weighted_dps, curve[0].weighted_dps)
+
+    def test_custom_levels_subset(self) -> None:
+        curve = compute_dps_curve(self.snap, "Aatrox", levels=(3, 9))
+        self.assertEqual(len(curve), 2)
+        self.assertEqual(curve[0].level, 3)
+        self.assertEqual(curve[1].level, 9)
+        self.assertEqual(curve[0].phase, "early")
+        self.assertEqual(curve[1].phase, "mid")
+
+    def test_invalid_level_raises(self) -> None:
+        with self.assertRaises(ValueError):
+            compute_dps_curve(self.snap, "Aatrox", levels=(0,))
+        with self.assertRaises(ValueError):
+            compute_dps_curve(self.snap, "Aatrox", levels=(19,))
+
+    def test_items_thread_through(self) -> None:
+        bare = compute_dps_curve(self.snap, "Aatrox")
+        with_bt = compute_dps_curve(self.snap, "Aatrox", item_ids=["3072"])
+        # Bloodthirster (+80 AD) lifts AD at every sample level.
+        for b, w in zip(bare, with_bt):
+            self.assertGreater(w.stats["ad"], b.stats["ad"])
+            self.assertGreater(w.weighted_dps, b.weighted_dps)
+
+    def test_aram_mode_threads_through(self) -> None:
+        sr = compute_dps_curve(self.snap, "Aatrox", mode="SR")
+        aram = compute_dps_curve(self.snap, "Aatrox", mode="ARAM")
+        # Aatrox aramDamageDealt = 1.05 → each level's DPS is 1.05x of SR.
+        for s, a in zip(sr, aram):
+            self.assertAlmostEqual(a.weighted_dps, s.weighted_dps * 1.05, places=1)
+
+    def test_arena_augment_threads_through(self) -> None:
+        bare = compute_dps_curve(self.snap, "Aatrox", mode="ARENA")
+        with_aug = compute_dps_curve(
+            self.snap, "Aatrox", mode="ARENA",
+            augments=["TheBrutalizer"],
+        )
+        # +20 AD from TheBrutalizer must lift every sample's AD by 20 flat.
+        for b, w in zip(bare, with_aug):
+            self.assertAlmostEqual(w.stats["ad"] - b.stats["ad"], 20.0, places=1)
+            self.assertGreater(w.weighted_dps, b.weighted_dps)
+
+    def test_to_dict_round_trip(self) -> None:
+        curve = compute_dps_curve(self.snap, "Aatrox", levels=(11,))
+        d = curve[0].to_dict()
+        self.assertEqual(d["level"], 11)
+        self.assertEqual(d["phase"], "mid")
+        self.assertIn("ad", d["stats"])
+
+    def test_duplicate_levels_honored(self) -> None:
+        # No dedup — caller controls sample density.
+        curve = compute_dps_curve(self.snap, "Aatrox", levels=(6, 6, 11))
+        self.assertEqual(len(curve), 3)
+        self.assertAlmostEqual(curve[0].weighted_dps, curve[1].weighted_dps)
 
 
 if __name__ == "__main__":

@@ -362,6 +362,13 @@ Batch 64 (2026-05-05 — Stage 4: ult-cast schema, ENGINE_VERSION 0.60.0):
   Permanently deferred (3 items remain): Lightning Braid (no Meraki formula,
   DPS-negative), Kinkou Jitte (directional geometry), Mejai's Arena mirror
   (no Arena DDragon ID).
+
+Phase 6 step 7 (2026-05-10 — per-level DPS curve helper, ENGINE_VERSION 0.61.0):
+  Added ``compute_dps_curve()`` + ``DpsCurvePoint`` dataclass + ``DPS_CURVE_LEVELS``
+  (1/6/11/16/18) to dps.py. Pure additive helper — calls ``compute_dps()`` at each
+  level, returns a list of points with weighted DPS + phase + compact stat subset.
+  No engine math change; no schema breakage. Unlocks coach hints like "Lulu peaks
+  at lvl 6, falls off at 11". 12 new tests (35 total in test_dps).
 """
 
-ENGINE_VERSION = "0.60.0"
+ENGINE_VERSION = "0.61.0"

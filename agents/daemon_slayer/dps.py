@@ -627,3 +627,84 @@ def compute_dps(
         stats=dict(stats),
         notes=tuple(notes),
     )
+
+
+# Phase 6 step 7 (2026-05-10): per-level DPS curve helper. Coaches read this
+# to hint power-spike levels — "Lulu peaks at lvl 6, falls off at 11" style.
+# Default sample levels chosen for power-spike granularity: level 1 (lane
+# start), 6 (ult unlock), 11 (mid-game spike), 16 (full kit), 18 (cap).
+DPS_CURVE_LEVELS: tuple[int, ...] = (1, 6, 11, 16, 18)
+
+
+@dataclass(frozen=True)
+class DpsCurvePoint:
+    """One sample on a champion's level-DPS curve.
+
+    ``weighted_dps`` is the same number ``compute_dps()`` returns at that
+    level; ``phase`` is the auto-selected rotation phase; ``stats`` is a
+    compact subset of the resolved block (the four numbers a coach is
+    most likely to surface). Full stat block is still available via the
+    per-level ``compute_dps`` call if a caller needs it.
+    """
+    level: int
+    weighted_dps: float
+    phase: str
+    stats: dict[str, float] = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        return {
+            "level": self.level,
+            "weighted_dps": self.weighted_dps,
+            "phase": self.phase,
+            "stats": dict(self.stats),
+        }
+
+
+def compute_dps_curve(
+    snapshot: DataSnapshot,
+    champion_id: str,
+    item_ids: Optional[Iterable[str | int]] = None,
+    mode: str = "SR",
+    target_armor: float = 0.0,
+    target_mr: float = 0.0,
+    target_max_hp: float = 0.0,
+    target_bonus_hp: float = 0.0,
+    levels: Optional[Iterable[int]] = None,
+    augments: Optional[Iterable] = None,
+) -> list[DpsCurvePoint]:
+    """Return a per-level DPS curve for ``champion_id`` with the given build.
+
+    Calls :func:`compute_dps` at each level in ``levels`` (default
+    :data:`DPS_CURVE_LEVELS` = 1/6/11/16/18) and returns the points in
+    input order. All build parameters (items, mode, target resists,
+    augments) are threaded through unchanged so the curve reflects the
+    SAME build at each level — useful for "when does this build come
+    online" coaching prompts.
+
+    Levels outside ``[1, 18]`` raise via the underlying ``clamp_level``
+    in ``compute_dps``. Duplicate levels in the input list are honored
+    (no dedup) — caller can request a denser sample around a phase
+    boundary by repeating a level.
+    """
+    target_levels = tuple(levels) if levels is not None else DPS_CURVE_LEVELS
+    pts: list[DpsCurvePoint] = []
+    for lv in target_levels:
+        r = compute_dps(
+            snapshot, champion_id, level=lv,
+            item_ids=item_ids, mode=mode,
+            target_armor=target_armor, target_mr=target_mr,
+            target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
+            augments=augments,
+        )
+        pts.append(DpsCurvePoint(
+            level=lv,
+            weighted_dps=r.weighted_dps,
+            phase=r.phase,
+            stats={
+                "ad": r.stats.get("ad", 0.0),
+                "ap": r.stats.get("ap", 0.0),
+                "as": r.stats.get("as", 0.0),
+                "crit": r.stats.get("crit", 0.0),
+            },
+        ))
+    return pts
