@@ -27,12 +27,14 @@ export const CADENCE = {
 
 // All navigable view IDs (matches data-view attribute and URL hash).
 export const VIEW_IDS = [
-  "home", "lobby", "active-match", "last-match", "session", "history", "replay",
+  "home", "lobby", "champ-select", "active-match", "last-match",
+  "session", "history", "replay",
   "user-builds", "settings", "dev",
 ];
 
 export const VIEW_LABELS = {
   "home": "Home", "lobby": "Pre-Game Lobby",
+  "champ-select": "Champ Select",
   "active-match": "Active Match",
   "last-match": "Last Match",
   "session": "Session", "history": "History", "replay": "Replay",
