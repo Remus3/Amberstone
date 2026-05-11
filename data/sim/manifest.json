@@ -7,6 +7,18 @@
       "label": "01 · Lobby · solo (no party)",
       "mode": "client",
       "summary": "Solo in lobby · Normal Draft · queue idle"
+    },
+    {
+      "name": "flow_02_lobby_with_others",
+      "label": "02 · Lobby · with others",
+      "mode": "client",
+      "summary": "Party of 5 · Normal Draft · ready to find match"
+    },
+    {
+      "name": "flow_03_champ_select",
+      "label": "03 · Champ Select · SR Ranked draft",
+      "mode": "client",
+      "summary": "Mid-draft · my pick locked · 4 ally picks, 3 enemy picks"
     }
   ]
 }

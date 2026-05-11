@@ -23,7 +23,7 @@ import { RN, renderRightNow, renderWhatWent, renderDigest, renderGameSense, rend
 import { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine } from './panels/next.js';
 import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
 import { MM, renderMinimap, renderTeamTile, renderAllyStrip, renderEnemyStrip, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS, _renderMmStateLine } from './panels/map_state.js';
-import { handleChampSelect, renderChampSelectPanel, renderChampSelectCoach } from './panels/champ_select.js';
+import { handleChampSelect, renderChampSelectPanel, renderChampSelectCoach, renderChampSelectView, champSelectViewEnabled } from './panels/champ_select.js';
 import { renderTeamContext } from './panels/team_context.js';
 import { renderActiveMatch, activeMatchEnabled } from './panels/active_match.js';
 import { renderBridgePending, renderCoachDecisions, renderRecentCoachCalls } from './panels/bridge_pending.js';
@@ -432,6 +432,10 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
         && (phase === "InProgress" || phase === "GameStart" || inGame)) {
       return "active-match";
     }
+    // s164: opt-in champ-select page (?cs=1 / localStorage.csView='1').
+    // When set, promote to the new view; otherwise legacy cs-overlay
+    // still wins visually on top of view-lobby.
+    if (phase === "ChampSelect" && champSelectViewEnabled()) return "champ-select";
     if (phase === "ChampSelect")            return "lobby";   // cs-overlay still wins visually
     if (phase === "InProgress" || phase === "GameStart") return "last-match";  // panels are in-game in game mode
     if (phase === "Lobby" || phase === "Matchmaking" || phase === "ReadyCheck") return "lobby";
@@ -442,6 +446,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
   // game-state events where missing the actual view is harmful.
   function _viewIsUrgent(targetView) {
     return targetView === "lobby"   // ChampSelect-driven (cs-overlay)
+        || targetView === "champ-select"  // s164: new full-page CS
         || targetView === "last-match";  // game InProgress
   }
   function applyView(viewId) {
@@ -458,6 +463,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     _viewUpdateMenuActive(viewId);
     // Lazy-fetch view content (wire-once + fetch on first activate)
     if (viewId === "lobby")       { _lobbyViewWireOnce(); _lobbyViewRefresh(); }
+    if (viewId === "champ-select") { renderChampSelectView(state.latest.lcu); }
     if (viewId === "session")     { _sessionFetchAndRender(); }
     if (viewId === "history")     { _historyWireOnce(); _historyFetchAndRender(); }
     if (viewId === "replay")      { _replayViewWireOnce(); _replayViewRefresh(); }
@@ -587,7 +593,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       // Banner if auto wants to promote to an urgent target we're not on
       if (_viewIsUrgent(auto) && auto !== manual && auto !== _VIEW.bannerDismissed) {
         _viewBannerShow(auto,
-          (auto === "lobby" ? "Champ Select active" : "Game in progress")
+          ((auto === "lobby" || auto === "champ-select") ? "Champ Select active" : "Game in progress")
           + " — switch to " + (VIEW_LABELS[auto] || auto) + "?");
       } else {
         _viewBannerHide();
@@ -981,6 +987,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     // is left out of ctx for step 1; the state envelope carries the
     // per-mode coach payload only, not the full /api/state lcu block.
     renderActiveMatch(p, { mode: state.mode });
+    // s164: re-fire champ-select view on every state envelope when it's
+    // active. lcu envelopes are one-shot from FakeSocket, so a render
+    // that bailed on !CHAMPS.ready (champion-name index loads async)
+    // would never re-run otherwise. State ticks every 2s — fine.
+    if (_VIEW.current === "champ-select") renderChampSelectView(state.latest.lcu);
     renderStats(p);
     renderGameSense(p);
     renderWhatWent(p);
@@ -3772,6 +3783,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     renderHomePanel(lcu);       // home-view phase chip
     _viewResolveAndApply(lcu);  // re-derive view based on new phase
     _maybeRefreshLobbyView();   // re-render view-lobby if it's the active surface
+    if (_VIEW.current === "champ-select") renderChampSelectView(lcu);  // s164
   }
 
   // ── Lobby overlay (2026-04-26) ──────────────────────────────────────
