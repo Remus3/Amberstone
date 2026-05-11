@@ -4,6 +4,73 @@
 
 ---
 
+# s166 wrap — 2026-05-10 (Phase B LCU agent handlers + Loading view scaffold — UI work paused)
+
+Two-track session. First half: Phase B backend work — the dashboard commands that s164+s165 shipped on the UI side were no-ops because the Game-PC LCU agent didn't handle them. Second half: Phase 3 step 4 (Loading Screen view) scaffold + flow_04 fixture. End of session: operator paused UI work and directed the next session to focus on backend per `NEXT_SESSION_PLAN_2026-05-10.md`.
+
+## What shipped (s166)
+
+### Phase B — LCU agent (`tools/gamepc_lcu_agent.py`)
+
+- **5 new command handlers** in `execute_command`:
+  - `set_ban_intent` / `set_pick_intent` — find the local cell's in-progress ban|pick action via the new `_local_in_progress_action(sess, type)` helper, PATCH it with `{championId, completed: false}` so the in-game UI mirrors dashboard hover without actually locking.
+  - `request_position_swap` / `request_pick_order_swap` — resolve `cell_id → swap id` via `session.positionSwaps[]` / `pickOrderSwaps[]`, POST to `/lol-champ-select/v1/session/{position|pick-order}-swaps/{id}/request`. BUSY / INVALID states return distinct errors.
+  - `set_augment_intent` — explicit "unsupported" stub returning `{ok: false, err: "augment_intent_unsupported"}` + a note. The actual LCU `/lol-cherry/v1/*` endpoint needs a live Arena lobby for discovery; documented as deferred.
+- **Champ-select state population** — new fields on `state["champ_select"]`:
+  - `active_round` — `{type: "pick"|"ban", cell_ids: [...]}` from `_active_round(sess)` which walks `session.actions[]` for in-progress entries.
+  - `is_brawl` — `queue_id == 480`.
+  - `position_swaps` / `pick_order_swaps` — slim `{id, cellId, state}` lists via `_swap_entries(arr)`.
+  - `arena_teams` (queues 1700/1710 only) — distilled from `additionalSubteamData` via `_arena_teams(sess)` with `is_me` detection from local cell.
+  - `augments` scaffold (queues 1700/1710 only) — `{my_slots: ["","",""], options: [], current_round: 0}` placeholder.
+  - Per-player `summoners` array on `_team_picks` (`[spell1Id, spell2Id]`) so the Loading view's D/F icons work in live mode.
+- **30 new tests** under `tests/phase_b_champ_select/test_lcu_agent_phase_b.py` covering all four pure helpers + the 5 command handlers (mocking `lcu_request`). Full suite **665 passes** (up from 624).
+
+### Phase 3 step 4 — Loading Screen view (`flow_04`)
+
+- New top-level `<section id="view-loading">` in `web/index.html` — 2-col grid (Allies | Enemies), no briefing card (initially present, removed before commit per operator).
+- `web/js/panels/loading.js` (new) — `renderLoadingView(lcu)` + `loadingViewEnabled()` opt-in (`?ld=1` or `localStorage.loadingView='1'`). Mode-conditional via `section.dataset.lvwMode` (sr/aram/arena/brawl). Arena renders 4 sub-team cards stacked in the enemies pane.
+- `web/css/panels/loading_view.css` (new) — `.lvw-*` styles. Briefing classes (`.lvw-card-briefing`, `.lvw-brief-*`) removed pre-commit.
+- View routing in `web/js/main.js`: `_viewAutoDerive` promotes to `loading` when `phase === "GameStart" && loadingViewEnabled()` — wins ahead of `activeMatchEnabled()`'s same-phase claim. Marked urgent in `_viewIsUrgent`. Re-fires `renderLoadingView` on every state envelope (HTTP + WS + lcu envelope wrapper).
+- `web/js/lib/state.js` — `loading` added to `VIEW_IDS` / `VIEW_LABELS`.
+- `web/css/dashboard.css` — `@import './panels/loading_view.css'`.
+- `web/css/panels/header.css` — `body[data-view="loading"]` rules (hide main + home overlay, show `#view-loading`).
+- `data/sim/flow_04_loading_screen.json` (new) — SR ranked draft, all 10 picks locked, `phase: "GameStart"`, FINALIZATION timer 9s.
+- `data/sim/manifest.json` — flow_04 entry added.
+- Cache busters bumped CSS 2026051111 → 2026051121, JS 2026051110 → 2026051121.
+
+## Files touched (s166)
+
+- `tools/gamepc_lcu_agent.py` — +~280 LOC across 4 helpers + 5 handlers + state extensions
+- `tests/phase_b_champ_select/__init__.py` (new, empty)
+- `tests/phase_b_champ_select/test_lcu_agent_phase_b.py` (new, ~330 LOC)
+- `web/js/panels/loading.js` (new, ~200 LOC)
+- `web/css/panels/loading_view.css` (new, ~150 LOC after briefing removal)
+- `data/sim/flow_04_loading_screen.json` (new, ~55 LOC)
+- `web/index.html` — Loading section + 2 cache busters
+- `web/js/main.js` — import + auto-derive + applyView + urgent flag + 2 re-fire hooks
+- `web/js/lib/state.js` — VIEW_IDS + VIEW_LABELS
+- `web/css/dashboard.css` — 1-line @import
+- `web/css/panels/header.css` — 3 view-routing rules
+- `data/sim/manifest.json` — flow_04 entry
+- `ROADMAP.md` — Phase B + Loading marked ✅; Phase 3 fixture-flow updated to steps 5–14 + PAUSED tag
+- `CLAUDE.md` — priorities 23+24 marked ✅; 25 added (operator post-s166 directive)
+- `NEXT_SESSION_PLAN_2026-05-10.md` (new) — 6-priority backend backlog the operator asked for
+
+## Operator directive at end of session
+
+> _"ill wait on the ui stuff for the moment, lets just finish the back end work for now and any pending backlog items that are not checked off and any roadmap items not checked off yet … priority task to check first will be the Daemon Slayer headless testing if nothing substantive — then connect to the rewind database: and run that headless overnight."_
+
+UI work is **paused**. Next session reads `NEXT_SESSION_PLAN_2026-05-10.md` as the bootstrap and tackles backend priorities 1–6 in order.
+
+## Next session opener
+
+- Start from `NEXT_SESSION_PLAN_2026-05-10.md` — 6 priorities ranked.
+- **P1** Daemon Slayer headless testing (per-level DPS curves + Arena augment overlay are the highest-leverage candidates).
+- **P2** if P1 stalls: rewind_history.db catchup (newest entry is 2025-12-15; FU04 key now available; aim to run an idempotent `scripts/rewind_catchup.py` overnight).
+- **Do not touch UI** (`web/**`) unless operator explicitly unblocks.
+
+---
+
 # s165 wrap — 2026-05-10 (flow_03 mode-conditional Champ Select — central + enemies for all 4 modes)
 
 Phase 3 step 3 follow-up from s164. Champ-select view's central panel (My Pick + Build Chooser) and enemies panel now branch per mode (SR / ARAM / Arena / Brawl). Allies + Pick&Ban panels LOCKED per operator — untouched. Single commit shipped: `91a42e1` (1112 ins / 34 del across 7 files, 3 new).
@@ -156,79 +223,3 @@ Central panel (My Pick + Build Chooser) and enemies panel redesign for ALL game 
 ## Next session opener
 
 Start with flow_03 loaded (`?sim=flow_03_champ_select&cs=1`). Per operator: "the central panel and the enemies panel redesign for ALL Game modes". Central panel = My Pick + Build Chooser pane in the middle column. Enemies panel = right column. Both need mode-conditional layouts that handle SR draft (current scaffold) + ARAM (no bans, bench swaps available) + Arena (2v2v2v2, augments) + Brawl (random 5v5). The Pick & Ban panel and Allies panel are LOCKED — don't re-iterate.
-
----
-
-# s163 wrap — 2026-05-10 (Pre-Game Lobby v3 polish + conflict UI + AVG/Match grade)
-
-Long UI iteration session on `flow_01_lobby_solo`. Operator-driven incremental polish per the Phase 3 fixture ritual; visual-hierarchy audit subagent ran mid-session and surfaced 5 must-fix items, all addressed. **Page locked for both solo + multi-member states** (placeholder-driven; no separate flow_02 fixture pass needed). Single commit shipped: `e316291` (913 ins / 181 del across 7 files).
-
-## What shipped (s163)
-
-### Layout / visual polish
-- **PARTY title true-centered with rank pip** (col 4 grid placement on the title with same template as rows).
-- **Top-2 champs in PARTY** (was top-3) so role/rank columns vertically line up with MY TOP 8.
-- **Fonts above 13px floor** per `feedback_font_size_viewing_distance.md`: rank pips 9→13px, role pip 11→13px, lv-mc-cat 10→13px, lv-mc-avg-lbl 9→11px, lv-top8-rank-pip 10→13px (with 2/6→1/4 padding tighten + letter-spacing 0 to fit "Diamond IV 30 LP" without truncation).
-- **6px gap** between PARTY col 2 (lane prefs) and col 3 (role pip).
-- **"live" sub-label hidden** when healthy; only renders on error with bumped 14px red `.is-error` styling.
-- **Drop shadow** on `.app-tooltip` and `.lq-mode-menu` (2-layer rgba black) — popovers visually float above content they overlap.
-- **Page fits 1080-viewport without scrollbar** — trimmed `.view-section` (margin 4→2, padding 8/4 → 4/2) and `.view-section-head` (margin/padding 8/6 → 4/4).
-- **QUEUE panel stretches** to match PARTY height; CHANGE LOBBY MODE button gets even space-evenly buffer.
-
-### MY TOP 8
-- **Names left-aligned, tag (notes) right-aligned**.
-- **Rank tier color coding** extended from PARTY via shared `.lv-rank-*` (Iron→Challenger).
-- **Single green hue for in-party rows** (reverted s162's per-member color matrix); same hue mirrored onto matching PARTY rows via new `.is-top8-mate` class.
-- **Unranked entries → "LVL ### : Unranked"** with italic dim treatment, matching PARTY's `.lv-party-empty`.
-- Online/offline dot removed from search row.
-
-### PARTY panel
-- **Self-row mirror**: col 2 renders operator's `_LV.prefPrimary`/`_LV.prefSecondary` lane icons (mirrors QUEUE picker); col 3 renders DB-assessed role pip (`m.assessed_role` field, fallback `m.preferred_role`).
-- **5-slot renderer** with dashed `.is-placeholder` rows for empty seats — auto-populates/depopulates on LCU push.
-- **Leader crown swapped** to real League captain-icon-crown PNG (CommunityDragon mirror, downloaded to `web/icons/lobby/captain-icon-crown.png`, served via new `/icons/lobby/` static route in `routes_static.py`).
-- **Copy SVG**: 📋 → Phosphor copy-simple (currentColor inheritance via `.lv-copy-svg`).
-- **Level → LVL** abbreviation in unranked fallback.
-- **Role shorthand normalizer** `_roleShort()`: JGL/JG/JUNGLE → JNG, SUPP/UTILITY/SUPPORT → SUP.
-
-### Primary-lane CONFLICT detection (s162 v15)
-- Pre-pass in `_renderPartyMembers` builds a `conflictMap` over (self, members) Primary lane prefs. Non-FILL collisions get classed `is-conflict-self` (red, when self involved) or `is-conflict-other` (orange, no self). Re-runs on every `_setLanePref` change.
-- **Self-side**: red 2px outline on Primary lane icon (PARTY) + matching member's; QUEUE Primary button gets red border + diagonal "CONFLICT" pseudo-element overlay (rotate -30deg, 55% opacity bad-color).
-- **Non-self pair**: both icons get orange outline; QUEUE button stays clean.
-
-### MAINS panel
-- **Overall now 2x2 grid**: `[Games] [K/D/A — D in red]` over `[W - L] [N.NN KDA]`.
-- **AVG/Match grid** (renamed from "Averaged"): row 1 `KP% / Vision / CS`, row 2 `AVG 5 / Dmg / CS-per-min`. **Gold dropped**, Vision moved up.
-- **AVG 5 grade letter** (S/A/B/C/D, 17px / 900 weight, color-coded — gold/green/info/clock/bad). New `_avg5RankClass()`.
-- **KP% 5-tier color bands** (s162 v10) — ≥70 S gold, 60-69 A info, 50-59 B good, 40-49 C clock, <40 D bad.
-- **Total games sums per-mode** (RIFT + ARAM + ARENA from `overall.modes`); hover tooltip is a 3-col table via new `data-tt-html` attr on the games span (tooltip system patched to honor it via mouseover selector + innerHTML render path).
-
-### Lane picker
-- **Primary/Secondary swap** when picking same role for both — operator-side conflict resolution.
-- **Lane popup icons fixed** — root cause was missing `/icons/positions/` static route (was 404'ing); added to `routes_static.py` + `/icons/lobby/`.
-
-## Files touched (s163)
-
-- `dashboard/routes_static.py` — `/icons/positions/` + `/icons/lobby/` routes (+2 lines).
-- `data/sim/flow_01_lobby_solo.json` — new fields: `position_preferences`, `assessed_role`, `kp`, `avg5`, `dmg`, `cs_per_min`, `modes` (rift/aram/arena breakdown).
-- `web/css/panels/base.css` — tooltip drop shadow (8 lines).
-- `web/css/panels/header.css` — extensive (+408 lines).
-- `web/index.html` — title spans for grid placement, AVG/Match label, search-row dot removed, cache busters bumped 2026051037 → 2026051050.
-- `web/js/main.js` — extensive (+571 lines): `_LV_ICON_CROWN` + `_LV_ICON_COPY` constants, `_roleShort` helper, `_kpTierClass` + `_avg5RankClass` band helpers, `_mcOverallHtml` + `_mcAveragedHtml` + `_mcGamesCellHtml` extracted helpers, `_top8FormatRank` unranked path, conflict pre-pass, IIFE refactor for placeholder slots, `data-tt-html` tooltip path.
-- `web/icons/lobby/captain-icon-crown.png` — new asset (2995 bytes, CommunityDragon).
-
-## Phase B follow-ups (LCU agent on Game-PC)
-
-LCU agent (`tools/gamepc_lcu_agent.py`) needs to forward into `state.latest.lcu`:
-- `lobby.local_member.assessed_role` — most-played role from rewind_history.db (drives self-row PARTY col 3 pip).
-- `lobby.local_member.position_preferences.first/.second` — read direction (current code is write-only via `_setLanePref`).
-- `main_champs.champions[].averaged.kp` — kill-participation %, computed per champion.
-- `main_champs.champions[].averaged.avg5` — last-5-match performance grade (S/A/B/C/D), rubric: KDA + KP% + DMG share + CS @10/20 + win/loss → percentile bucket.
-- `main_champs.champions[].averaged.dmg` + `.cs_per_min` — already wired in fixture.
-- `main_champs.champions[].overall.modes` — `{rift, aram, arena}` per-mode game counts + wins (drives total games + tooltip breakdown).
-- `party_mains[*].averaged.*` + `overall.modes` — same as above for non-self members.
-- `party.members[*].position_preferences` — already wired in fixture; needs LCU read path.
-
-## Next session
-
-Per operator: page is **locked**, ready to apply for live Lobby/Pre-Game.
-Next session opens with **flow_02_lobby_with_others** — per s162 ritual, this is mostly a renaming pass since flow_01 already exercises 5-member layout. Then move to **flow_03 Champ-Select**.
