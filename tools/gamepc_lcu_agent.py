@@ -238,9 +238,15 @@ def _maybe_refresh_mastery() -> dict | None:
     sid = _resolve_local_summoner_id()
     if not sid:
         return None
+    # 2026-05-11: the legacy /lol-collections/v1/inventories/<sid>/champion-mastery
+    # path returns 404 on current LCU builds. The replacement endpoint is
+    # /lol-champion-mastery/v1/local-player/champion-mastery, which serves the
+    # local player's mastery without needing a sid/puuid path param. summonerId
+    # is still resolved above so we can surface it on state["lcu"]["summoner_id"]
+    # for downstream consumers.
     payload, err = lcu_request(
         "GET",
-        f"/lol-collections/v1/inventories/{sid}/champion-mastery",
+        "/lol-champion-mastery/v1/local-player/champion-mastery",
     )
     if not isinstance(payload, list):
         return None
@@ -576,12 +582,18 @@ def capture_state():
         "Lobby", "Matchmaking", "ReadyCheck",
         "ChampSelect", "GameStart", "InProgress", "WaitingForStats",
     ):
+        # 2026-05-11 live-fix: write mastery + summoner_id at the TOP level of
+        # the agent's state. Legion's bridge handler wraps the entire agent
+        # state as ``legion_state["lcu"]`` on POST, so the desired dashboard
+        # path ``state["lcu"]["mastery"]`` resolves correctly. The previous
+        # ``state.setdefault("lcu", {})["mastery"] = ...`` pattern produced
+        # ``state["lcu"]["lcu"]["mastery"]`` (double-nested).
         mastery = _maybe_refresh_mastery()
         if mastery is not None:
-            state.setdefault("lcu", {})["mastery"] = mastery
+            state["mastery"] = mastery
             sid = _mastery_cache.get("summoner_id")
             if sid:
-                state["lcu"]["summoner_id"] = sid
+                state["summoner_id"] = sid
 
     state["ts"] = time.time()
     return state

@@ -590,15 +590,9 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         mode = (qs.get("mode") or ["sr"])[0].lower()
         bbox_raw = (qs.get("bbox") or [""])[0]
 
-        # Mode → (x1, y1, x2, y2) at 1920×1080. SR/ARAM/Brawl minimap
-        # is bottom-right, similar bounds. Arena has no minimap —
-        # return 404. Calibrations are approximate; refine in
-        # data/vision_regions.json later.
-        MINIMAP_BBOXES = {
-            "sr": (1565, 735, 1905, 1075),
-            "aram": (1565, 735, 1905, 1075),
-            "brawl": (1565, 735, 1905, 1075),
-        }
+        # Bbox resolution order: ?bbox= override → persisted calibration in
+        # data/vision_regions.json (`_minimap_<mode>` key) → hardcoded
+        # 1920×1080 fallback. Arena has no minimap — falls through to 404.
         if bbox_raw:
             try:
                 parts = [int(x) for x in bbox_raw.split(",")]
@@ -610,7 +604,8 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
                 self._send_json(400, {"error": "bbox must be x1,y1,x2,y2"})
                 return
         else:
-            bbox = MINIMAP_BBOXES.get(mode)
+            from agents._minimap_bbox import resolve as _resolve_minimap_bbox
+            bbox = _resolve_minimap_bbox(mode)
             if bbox is None:
                 self._send_json(404, {"error": f"no minimap for mode {mode!r}"})
                 return

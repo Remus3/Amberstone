@@ -4,6 +4,86 @@
 
 ---
 
+# s168 wrap — 2026-05-11 (FU01 minimap-locate + LCU mastery endpoint live-fix + Game-PC redeploy)
+
+Continuation per `NEXT_SESSION_PLAN_2026-05-10.md`. After s167 closed P1a/P2/P7/P8/P9, the remaining 🟡 backend items were either UI-blocked, data-blocked (sparse rewind), or operator-clarification-blocked (P6 Claude Desktop key). **FU01 minimap-locate** was the highest-leverage open item. Operator opened League mid-session, unblocking the s167 LCU mastery Game-PC redeploy — which surfaced a stale-endpoint bug, fixed and re-deployed in the same session.
+
+## Ships
+
+- **FU01 — minimap-locate 3-path resolver.** New module `agents/_minimap_bbox.py`; `agents/supervisor.py:597` rewired. Resolution order: HTTP `?bbox=` override (untouched) → `data/vision_regions.json` `_minimap_<mode>` key → hardcoded 1920×1080 fallback. The persisted key uses `_*` prefix so `core/vision_tesseract._regions()`'s metadata filter ignores it — no collision with OCR region namespace.
+- **LCU mastery endpoint fix + Game-PC redeploy.** The s167 mastery hook called `/lol-collections/v1/inventories/<sid>/champion-mastery` — a path that returns HTTP 404 on current LCU builds (Riot migrated the API namespace). First live LCU contact during the Game-PC redeploy revealed this. Correct endpoint discovered via path-enumeration probe: `/lol-champion-mastery/v1/local-player/champion-mastery` (no sid in path; returns local player's mastery directly). Patched in `tools/gamepc_lcu_agent.py:241-251` + 6 mock-path occurrences in `tests/phase_b_champ_select/test_lcu_mastery.py` updated; full 10/10 mastery tests + 694/694 project sweep still green. Game-PC's `C:\RC-Agent\gamepc_lcu_agent.py` redeployed to fixed version via one-shot Legion `:8765` `http.server` + Game-PC `Invoke-WebRequest` (SMB blocked, no peer creds cached).
+- **LCU mastery state-shape flatten fix.** First Lobby-phase live probe (after the endpoint patch) revealed the s167 code-path placed mastery at `state["lcu"]["lcu"]["mastery"]` — double-nested — because Legion's bridge handler already wraps the entire agent state as `legion_state["lcu"]`, and the agent was additionally doing `state.setdefault("lcu", {})["mastery"] = mastery`. Flattened to write at `state["mastery"]` and `state["summoner_id"]` at the top level of the agent's state, so Legion's wrap produces the intended `state["lcu"]["mastery"]` path. Tests updated (assertion paths + `idle` test now checks `state["mastery"]` is absent rather than `state["lcu"]`). Live-verified: `phase=Lobby` immediately produced `state["lcu"]["mastery"]` with 40 entries — top 5 ADCs (Jinx 33507 pts, Kai'Sa, Vayne, Caitlyn, Tristana) matching operator's `SamplePlayer#Vayne` main. Game-PC redeployed for a 3rd time this session via the same `http.server` mechanism.
+
+## Tests
+
+- `tests/fu01_minimap/test_minimap_bbox.py` — 19 tests: no-file → fallback; partial entries; wrong arity (3-tuple); wrong type (string); non-numeric (`"twenty"`); degenerate bbox (`l>=r`, `t>=b`); corrupted JSON; top-level non-object; case-insensitive mode lookup; `load_persisted` direct API; file-read exception swallowed via `mock.patch.object(Path, "read_text", side_effect=OSError)`.
+- `tests/phase_b_champ_select/test_lcu_mastery.py` — 10 mock-path-updated tests still green after the endpoint patch (`/lol-collections/v1/inventories/<sid>/...` → `/lol-champion-mastery/v1/local-player/...`).
+
+## Test posture at wrap
+
+- DS suite: **949/949** (unchanged from s167).
+- Project sweep: **694/694** (+19 fu01; +0 net from mastery patch — same 10 tests pass against the new path). Note: s167 wrap reported "601/601 (+10 LCU mastery)" — the 694 reflects the full `tests/` tree including snapshot/fixture suites that aren't separately tallied in session notes.
+
+## Decisions / non-obvious notes for next-session-you
+
+- **Behavior is byte-identical until calibration entries are added.** No `_minimap_<mode>` keys exist in `data/vision_regions.json` today — `resolve()` falls back to the same hardcoded bbox the inline dict had. Live `curl https://127.0.0.1:8888/api/minimap-crop?mode=sr` against the still-running pre-FU01 phase3 supervisor returns 200 with the cached vision frame (verified at session start). After phase3 restart, response will be identical.
+- **Phase 3 supervisor was NOT restarted.** `agents/supervisor.py` is the `RC-Phase3-Supervisor` scheduled task (pid 16436 at session start; listens :8890/:8891 — separate from main RC's :8888). It doesn't watch `restart_trigger.txt`. To force pick-up: `taskkill /F /PID <pid>` + `schtasks /Run /TN "RC-Phase3-Supervisor"`. Skipped here because the change is additive — no observable difference until calibration is written. Next natural reboot / supervisor cycle picks it up.
+- **Calibration recipe** (for the operator when needed): edit `data/vision_regions.json`, add `"_minimap_sr": [l, t, r, b]` (likewise for `aram`/`brawl`), then `curl -k -o /tmp/m.png "https://127.0.0.1:8888/api/minimap-crop?mode=sr"` and tweak until centered. Bbox is validated for shape (4 ints, `r>l`, `b>t`) — bad entries silently fall back to hardcoded.
+- **Pending Desktop/Tickets/ paperwork.** Original ticket file `RC_TICKET_FU01_minimap_locate.md` no longer exists on disk (Desktop/Tickets/ is gone — was the "transfer plan" pack reviewed in s144). Spec inferred from ROADMAP + `docs/history_notes.md:509-513`.
+- **LCU endpoint discovery method.** When an LCU path returns 404, enumerate candidates against the live client. The probe pattern used here: read the lockfile (`C:\Riot Games\League of Legends\lockfile`) → build basic auth header (`riot:<pw>`) → try a list of plausible paths and print HTTP code per path. Faster than reading Riot docs (which lag behind client builds). Both `/lol-champion-mastery/v1/local-player/champion-mastery` and `/lol-champion-mastery/v1/{puuid}/champion-mastery` work; chose `local-player` since it doesn't require a path-param resolve.
+- **Game-PC deploy mechanism — one-shot http.server.** SMB pull (`\\192.168.8.230\C$\...`) failed (no peer creds cached on Game-PC). Workaround: `cd <staging-dir> && py -m http.server 8765` on Legion (run_in_background=true) + `Invoke-WebRequest` on Game-PC + `taskkill` the listener afterward. Routine pattern; document in OPERATIONS.md if it recurs. Backup of pre-fix file at `C:\RC-Agent\gamepc_lcu_agent.py.bak-s168-pre-endpoint-fix`; s149 vintage at `C:\RC-Agent\gamepc_lcu_agent.py.bak-s149-2026-05-11`.
+- **RC-LCU scheduled task is broken.** `(Get-ScheduledTask -TaskName 'RC-LCU').Actions` uses `Execute: py` (the Windows Python launcher) which fails ERROR_FILE_NOT_FOUND under scheduled-task context (memory `project_rc_patchrefresh_fixed.md` predates this discovery for RC-PatchRefresh; same root cause). Live workaround: `Start-Process -FilePath 'C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe' -ArgumentList 'C:\RC-Agent\gamepc_lcu_agent.py' -WindowStyle Hidden`. Fix the task action to use the absolute path when the operator next reboots; otherwise auto-relaunch on reboot will silently fail.
+
+## Open items handed off (unchanged from s167 plus FU01)
+
+- 🟡 RC-LCU scheduled-task action path: change `Execute: py` → absolute python path (matches the running command-line of other Game-PC python agents).
+- 🟡 Phase 3 supervisor restart to pick up FU01 live.
+- 🟡 P6 (Sonnet/Haiku key routing) — needs operator clarification.
+- 🟡 P1b augment registry — architectural; needs `as_pct` channel design pass.
+- 🟡 P5 Default DS build #4 — waits on richer rewind data.
+- 🟡 P3/P4 (History season-WR + Replay tab) — UI work, deferred per s166 directive.
+- 🟡 UI Phase 3 steps 5–14 — UI work, deferred per s166 directive.
+
+---
+
+# s167 wrap — 2026-05-11 (backend sweep per NEXT_SESSION_PLAN_2026-05-10.md)
+
+UI paused per s166 operator directive. Five backend ships in one commit (`1522b90`). Doc sync follow-up (`be86469`).
+
+## Ships
+
+1. **DS per-level DPS curve helper** (P1a) — `compute_dps_curve()` + `DpsCurvePoint` + `DPS_CURVE_LEVELS=(1,6,11,16,18)` in `agents/daemon_slayer/dps.py`. Pure additive; reuses `compute_dps()` per level. ENGINE_VERSION 0.60.0 → 0.61.0. 12 new tests (35 total in test_dps; 949 in DS suite). DS server restarted via `pythonw tools/start_daemon_slayer.py` after `taskkill /F /PID 13320` — `/health` confirms 0.61.0.
+2. **rewind_history.db catchup** (P2) — `scripts/rewind_catchup.py` paginates Match-V5 → 5-table schema. **PUUID gotcha:** DB had stale `v8HzkOaP3OKe…`; current is `jVoxvNpcLTzD…` (Riot rotated). Script auto-resolves via Account-V1 from DB Riot ID (`SamplePlayer#Vayne`); state stores both stale + fresh for tracked-player detection. **`core/riot_api.get_recent_matches` extended** with `start`/`startTime`/`endTime`/`queue`/`type`. Idempotent + resumable via `data/rewind_catchup.state.json`. **2846 → 2851 matches** (only 5 games since 2025-12-15). DB was `-r--`; `attrib -r` cleared it.
+3. **LCU mastery wired** (P8) — `tools/gamepc_lcu_agent.py` adds `_resolve_local_summoner_id` (cached) + `_maybe_refresh_mastery` (5-min TTL). Hits `/lol-summoner/v1/current-summoner` → `/lol-collections/v1/inventories/<sid>/champion-mastery`. Surfaced at `state["lcu"]["mastery"]` + `state["lcu"]["summoner_id"]` on Lobby / Matchmaking / ReadyCheck / ChampSelect / GameStart / InProgress / WaitingForStats. 10 tests under `tests/phase_b_champ_select/test_lcu_mastery.py`. **Last mile:** Game-PC redeploy needed before mastery appears live — Legion edit only.
+4. **API surface audit** (P9) — `scripts/audit_api_surface.py` greps 4 surface regex sets. Writes `docs/API_SURFACE_AUDIT.md` (1363 lines, dedup'd by endpoint) + `data/api_surface.csv` (557 callsites). Counts: 89 internal `/api/*` / 70 LCU `/lol-*` / 6 web / 2 LiveClient. Foundation for future endpoint plumbing.
+5. **Synthetic match pruning** (P7) — `scripts/prune_synthetic_matches.py`. Conservative heuristic: `champion = 'Dark Star Vertical'` OR `champion = '' AND game_time_s = 0`. Backup: `data/match_history.db.bak-2026-05-10-prune-synthetic`. **Deleted 56 rows (200 → 144).** `ds_calibration.jsonl` clean.
+
+## Decisions / non-obvious notes for next-session-you
+
+- **DPS curve scope was small.** Augment registry expansion (P1b) needs `as_pct` overlay channel architectural work; existing 10-entry registry stays.
+- **rewind catchup is not "overnight" anymore.** Operator played 5 games in 5 months. Catchup runs in <30s. Schedule hourly via `schtasks` once operator resumes regular play; not needed right now.
+- **PUUID rotation is silent.** Match-V5 returned HTTP 400 `"Exception decrypting <puuid>"` for the stale value. 78-char shape was fine; Riot's internal mapping was invalid. Account-V1 by Riot ID is the recovery path. **Do not assume stored PUUIDs survive long-term.**
+- **DS server is NOT supervisor-restarted.** When you bump ENGINE_VERSION you must `taskkill /F /PID <pid>` + `pythonw tools/start_daemon_slayer.py`. Otherwise `/health` keeps reporting the old version and `tests/phase8_smoke/test_sr_draft_profile_engine.py::test_live_three_profiles` fails.
+- **P6 (Sonnet/Haiku → Claude Desktop key) blocked on operator clarification.** Current path: `coaches/_base_coach.py:read_api_key()` reads `API-Key-Claude.txt` then `$ANTHROPIC_API_KEY`. CLI's `~/.claude/` is separate from this file — coaches already do NOT route through CLI's key. Operator needs to specify intent (replace file? billing visibility?).
+- **NEXT_SESSION_PLAN_2026-05-10.md fully addressed for backend.** Remaining items are explicitly UI (deferred) or operator-clarification (P6).
+
+## Test posture at wrap
+
+- DS suite: **949/949** (+12 curve + version-pin updates)
+- Project sweep: **601/601** (+10 LCU mastery)
+- Phase_b suite: **40/40** (was 30; +10 mastery)
+
+## Open items handed off
+
+- 🟡 Game-PC redeploy of `tools/gamepc_lcu_agent.py` (LCU mastery hook).
+- 🟡 P6 (Sonnet/Haiku key routing) — needs operator clarification.
+- 🟡 P1b augment registry — architectural; needs `as_pct` channel design pass.
+- 🟡 P5 Default DS build #4 — waits on richer rewind data.
+- 🟡 P3/P4 (History season-WR + Replay tab) — UI work, deferred.
+- 🟡 UI Phase 3 steps 5–14 — UI work, deferred per s166 directive.
+
+---
+
 # s166 wrap — 2026-05-10 (Phase B LCU agent handlers + Loading view scaffold — UI work paused)
 
 Two-track session. First half: Phase B backend work — the dashboard commands that s164+s165 shipped on the UI side were no-ops because the Game-PC LCU agent didn't handle them. Second half: Phase 3 step 4 (Loading Screen view) scaffold + flow_04 fixture. End of session: operator paused UI work and directed the next session to focus on backend per `NEXT_SESSION_PLAN_2026-05-10.md`.
@@ -143,83 +223,3 @@ Operator did NOT ask for an audit pass on this work — just the mode-conditiona
 - Tomorrow-you: if operator wants the visual audit on the 4 modes, run subagent per ritual.
 - If operator wants Phase B wiring instead, target `tools/gamepc_lcu_agent.py` — add `set_augment_intent` handler + populate `cs.arena_teams` + `cs.augments` from LCU `/lol-cherry/v1/*` endpoints (need to discover the exact path).
 - Either path is fine — both unblock real-fire testing of the new view.
-
----
-
-# s164 wrap — 2026-05-10 (Champ Select view scaffold — flow_03 + Pick/Ban panel + trade popup)
-
-Long UI iteration session. Phase 3 step 3 — built the new top-level `view-champ-select` page from scratch and iterated heavily on every panel. Single commit shipped: `c0e6043` (1986 ins / 4 del across 10 files, 3 new files).
-
-## What shipped (s164)
-
-### View scaffold + routing
-- New `champ-select` view added to `VIEW_IDS` / `VIEW_LABELS` (between `lobby` and `active-match`).
-- `<section id="view-champ-select">` in `web/index.html` with 3-col grid: Allies + Pick&Ban Recommendations (col 1), My Pick + Build Chooser (col 2), Enemies (col 3).
-- Auto-promotes on `phase=ChampSelect` when `?cs=1` / `localStorage.csView='1'`. Legacy `#cs-overlay` hidden when on the new view.
-- `header.css` `body[data-view="champ-select"]` rules for showing the section + hiding the main panels + home-overlay.
-- New CSS file `web/css/panels/champ_select_view.css` (742 lines) — all `.csv-*` styles for the new view.
-
-### Ally team panel
-- 5 rows with champion icon (32px) | champion name | username | role pip layout.
-- Username column hardcoded at `--csv-champname-col: 90px` (after iterations: 88→110→100→90 nudges). The hardcoded value aligns the lock/timer column near "A" of "Allies" header on the 1920-wide viewport. JS-based alignment was attempted multiple times (Range API, span wrap, clone, canvas measureText) — all returned wrong values due to body's `zoom: 1.33` and Chromium quirks; final solution is the hardcoded var.
-- Self-row gets the gold "BOT" pip styling matching the pick/ban panel's role chip.
-- Lock 🔒 / live countdown (cyan blue + 1px black outline, no "s" suffix per operator) at the start of the summoner col. Both share an 18px right-aligned slot so the timer's right edge never exceeds the lock's right edge.
-- Click on username opens the SWAP/TRADE popup. Champion-icon and role-pip clicks were wired then explicitly removed per operator — only username triggers trades now.
-
-### Enemy team panel
-- Same row template + 2px gold/red active-round border via inset box-shadow.
-- Lock/timer absolutely positioned at `left: 50%` (centered vertically under the "ENEMIES" title); role pip placed in grid col 4 explicitly so it doesn't auto-flow into the now-empty 1fr summ col.
-- "(guess)" italic gray tag added between centered lock/timer and the role pip — vertically aligned across all rows.
-
-### Pick & Ban Recommendations panel
-- Lives in left column below the Allies card. Panel header removed (operator preferred PICK/BAN labels in the role row as the column markers).
-- Header row: PICK label (col 1) + role chip removed + BAN slot (col 3, BAN sits in a 70px sub-slot right-aligned so the distance from BAN-right to panel-right mirrors PICK-left to panel-left).
-- 3 pick rows (Performance / Mastery / Meta) — each is a 3-col grid: champ-col (icon + name, source label moved into the reason col header) | reason col (PERFORMANCE/MASTERY/META label + 1-line WHY text) | bans col (3 ban suggestions w/ icon + pct + name).
-- Mood toggle row: PICK ONE label + 4 two-line buttons (Comfort Pick / Limit Test / Something New / Comp Synergy). Default Comfort; persists in `sessionStorage.csv-mood`.
-- Quick-select clicks: ban icon → `set_ban_intent`, pick icon → `set_pick_intent`. Pick clicks gated on `cs.phase === "FINALIZATION"` OR `cs.my_completed` (operator: "no accidentally banning my own champion"). Once selected: red border on selected, others get `.is-disabled` (pointer-events: none + dimmed) so the operator can't switch their committed choice.
-- Border colors: pick = green, ban = red, both selected and on hover.
-
-### Trade popup (SWAP / TRADE)
-- Singleton appended to `<html>` (NOT `<body>`) to bypass body's `zoom: 1.33` — `transform: scale(1.33)` with `transform-origin: 0 0` provides matching visual size without scaling its own position values.
-- Structure: SWAP/TRADE header row above 3 equal-width buttons (`flex: 1 1 0; min-width: 88px;`). Buttons: champion name (uppercase) / Nth Pick / role (TOP/JUNGLE/MID/BOTTOM/SUPPORT). Pick-order button hides on non-SR-draft modes (`cs.sr_draft === false`).
-- Render-then-measure positioning: park off-screen → measure with `visibility: hidden` → compute final left+top → reveal. Horizontally centered on the ALLIES panel; vertically attached just below the clicked username (originally tried username-center but operator's iterations on zoom revealed the offset issue).
-- Buttons fire: CHAMPION → `trade_request`, Nth PICK → `request_pick_order_swap`, ROLE → `request_position_swap`.
-- LED-dot animation explored (clockwise pseudo-element traveling around cell perimeter every 3s) but removed — wasn't rendering reliably due to body zoom + the cell's containing-block constraints.
-
-### Sim fixtures
-- `data/sim/flow_02_lobby_with_others.json` — clone of flow_01 with reframed meta + caption for the canonical 14-step fixture series (Phase 3 step 2).
-- `data/sim/flow_03_champ_select.json` — SR Ranked draft mid-pick, Vayne locked BOT, 4 ally + 3 enemy picks done, 6 bans in, 22s on timer, `active_round: { type: "pick", cell_ids: [3, 6] }` so Lulu + enemy LeeSin show the gold border.
-
-## Phase B follow-ups (LCU agent on Game-PC)
-
-The dashboard fires these LCU commands but `tools/gamepc_lcu_agent.py` doesn't yet handle them. Each currently no-ops:
-- `set_ban_intent` — set the user's current ban-action champion intent
-- `set_pick_intent` — set the user's current pick-action champion intent
-- `request_position_swap` — initiate lane swap with target cell
-- `request_pick_order_swap` — initiate pick-order swap with target cell
-- `trade_request` already supported (used by legacy ARAM bench swap) — verify it works for SR champion trades too
-
-Plus the dashboard expects `cs.active_round` to be populated by the LCU agent based on the LCU's `actions[]` array — currently fixture-only.
-
-## What's deferred (next session per operator)
-
-> "do /done /clear and continue in another session the central panel and the enemies panel redesign for ALL Game modes. *these changes are not going to be just for SR -> I am taking the extra time to do the needed changes for compensating what i can for all the other games modes.*"
-
-Central panel (My Pick + Build Chooser) and enemies panel redesign for ALL game modes (SR draft, ARAM, Arena, Brawl) — explicit operator request. The current scaffold uses SR draft assumptions throughout; ARAM/Arena need mode-specific layouts (no bans, different team sizes, bench swaps, etc.).
-
-## Files touched (s164)
-
-- `data/sim/manifest.json` — added flow_02 + flow_03 entries.
-- `data/sim/flow_02_lobby_with_others.json` (new) — 436 lines.
-- `data/sim/flow_03_champ_select.json` (new) — 88 lines.
-- `web/css/dashboard.css` — added `@import './panels/champ_select_view.css';`.
-- `web/css/panels/champ_select_view.css` (new) — 742 lines, all `.csv-*` styles.
-- `web/css/panels/header.css` — 3 lines (data-view rules for showing the new section + hiding main + home-overlay).
-- `web/index.html` — 61 lines (menu entry + section markup + cache buster bump).
-- `web/js/lib/state.js` — 4 lines (VIEW_IDS + VIEW_LABELS).
-- `web/js/main.js` — 16 lines (_viewAutoDerive + applyView + handleLcuEnvelope hooks + onState re-fire).
-- `web/js/panels/champ_select.js` — 627 lines (renderChampSelectView + _csvRenderTeam + _csvRenderPickBan + _csvShowTradeChoice + helpers).
-
-## Next session opener
-
-Start with flow_03 loaded (`?sim=flow_03_champ_select&cs=1`). Per operator: "the central panel and the enemies panel redesign for ALL Game modes". Central panel = My Pick + Build Chooser pane in the middle column. Enemies panel = right column. Both need mode-conditional layouts that handle SR draft (current scaffold) + ARAM (no bans, bench swaps available) + Arena (2v2v2v2, augments) + Brawl (random 5v5). The Pick & Ban panel and Allies panel are LOCKED — don't re-iterate.
