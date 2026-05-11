@@ -361,18 +361,42 @@ def get_recent_matches(
     puuid: str,
     count: int = 20,
     region: str = "americas",
+    start: int = 0,
+    start_time_unix_s: Optional[int] = None,
+    end_time_unix_s: Optional[int] = None,
+    queue: Optional[int] = None,
+    match_type: Optional[str] = None,
 ) -> Optional[list]:
     """Match-V5: list of recent match IDs for a PUUID.
 
     Not cached — the list mutates every game. Caller decides cadence.
+
+    ``start`` (0-based) + ``count`` (1..100) drive Riot's pagination.
+    ``start_time_unix_s`` / ``end_time_unix_s`` filter the window; both
+    are epoch SECONDS, not milliseconds. ``queue`` filters by queue id
+    (420 ranked solo, 440 flex, 900 URF, etc.). ``match_type`` filters
+    by Riot's enum (``ranked``, ``normal``, ``tourney``, ``tutorial``).
+    All optional params are appended only when set so the URL stays
+    minimal in the common case.
     """
     if not puuid:
         return None
     count = max(1, min(100, int(count)))
+    start = max(0, int(start))
+    params: list[tuple[str, Any]] = [("start", start), ("count", count)]
+    if start_time_unix_s is not None:
+        params.append(("startTime", int(start_time_unix_s)))
+    if end_time_unix_s is not None:
+        params.append(("endTime", int(end_time_unix_s)))
+    if queue is not None:
+        params.append(("queue", int(queue)))
+    if match_type:
+        params.append(("type", str(match_type)))
+    qs = "&".join(f"{k}={urllib.parse.quote(str(v), safe='')}" for k, v in params)
     url = (
         f"https://{region}.api.riotgames.com"
         f"/lol/match/v5/matches/by-puuid/{urllib.parse.quote(puuid, safe='')}"
-        f"/ids?count={count}"
+        f"/ids?{qs}"
     )
     data = _call("match_v5_ids", url)
     if data is None:

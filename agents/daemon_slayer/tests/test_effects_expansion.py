@@ -7357,8 +7357,9 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
 
     def test_batch63_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        # Batch 64 (Malignance) superseded batch 63 — version is now 0.60.0
-        self.assertEqual(ENGINE_VERSION, "0.60.0")
+        # Latest engine version stamp. Bumped on each milestone:
+        # 0.60.0 = Batch 64 Malignance; 0.61.0 = Phase 6 step 7 DPS curve helper.
+        self.assertEqual(ENGINE_VERSION, "0.61.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7419,7 +7420,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.60.0")
+        self.assertEqual(ENGINE_VERSION, "0.61.0")
 
 
 if __name__ == "__main__":
