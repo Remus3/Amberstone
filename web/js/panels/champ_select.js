@@ -1439,12 +1439,38 @@ function _csvShowTradeChoice(cellId, anchorEl, opts) {
 // apply the pulsating border class to cells whose cellId is in the
 // active round. Reset on each renderChampSelectView call.
 let _csvActiveRound = null;
-function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder) {
+
+// Mode classifier for the champ-select view. SR draft is the historical
+// default; ARAM (450/920), Arena (1700/1710), and Brawl (480 + the
+// `is_brawl` LCU flag where available) get distinct central + enemies
+// layouts because the LCU surface they expose differs structurally —
+// ARAM has a bench but no roles/bans, Arena has 2v2v2v2 + augments and
+// no enemy-team field, Brawl is 5v5 random with no roles/bans.
+function _csvDetectMode(cs) {
+  if (!cs) return "sr";
+  const q = (cs.queue_id | 0);
+  if (cs.is_brawl || q === 480) return "brawl";
+  if (q === 1700 || q === 1710) return "arena";
+  if (cs.is_aram || q === 450 || q === 920) return "aram";
+  return "sr";
+}
+
+// Renders a team cell list. Backward-compatible 5-positional signature
+// — the 6th `opts` arg adds mode-aware behavior: `cellCount` (default
+// 5), `showGuess` (default true for enemy lists), and `allowRolePip`
+// (default true). ARAM/Brawl pass `showGuess: false` since roles are
+// random and the (guess) annotation is meaningless; Arena uses a
+// dedicated 2-cell ally renderer instead.
+function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder, opts) {
   const list = document.getElementById(listId);
   if (!list) return;
   list.innerHTML = "";
-  const arr = (team || []).slice(0, 5);
-  while (arr.length < 5) arr.push(null);
+  const cellCount   = (opts && opts.cellCount) || 5;
+  const isEnemyList = (listId === "csv-enemies-list");
+  const showGuess   = !opts || opts.showGuess !== false;
+  const allowRole   = !opts || opts.allowRolePip !== false;
+  const arr = (team || []).slice(0, cellCount);
+  while (arr.length < cellCount) arr.push(null);
   arr.forEach((p, idx) => {
     const cid = (p && p.championId) | 0;
     const isMe = !!(myCid && cid === myCid);
@@ -1524,7 +1550,7 @@ function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder) {
     }
     li.appendChild(sm);
 
-    if (pos) {
+    if (pos && allowRole) {
       const posEl = document.createElement("span");
       posEl.className = "csv-team-cell-pos";
       posEl.textContent = _csvShortRole(pos);
@@ -1534,7 +1560,8 @@ function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder) {
     // Enemy cells get a small "(guess)" tag between the centered
     // lock/timer and the role pip — reminds the operator that the
     // role assignment for enemies is inferred, not confirmed by LCU.
-    if (listId === "csv-enemies-list" && cid) {
+    // Suppressed in ARAM/Brawl where there are no roles to guess at.
+    if (isEnemyList && cid && showGuess) {
       const guessEl = document.createElement("span");
       guessEl.className = "csv-team-cell-guess";
       guessEl.textContent = "(guess)";
@@ -1546,7 +1573,8 @@ function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder) {
 
 export function renderChampSelectView(lcu) {
   // Section may not exist yet on older cached HTML — bail out cleanly.
-  const grid = document.querySelector("#view-champ-select .csv-grid");
+  const section = document.getElementById("view-champ-select");
+  const grid = section && section.querySelector(".csv-grid");
   if (!grid) return;
   if (!lcu || lcu.phase !== "ChampSelect") {
     _csvSetText("csv-sub", "waiting for champ-select…");
@@ -1555,38 +1583,26 @@ export function renderChampSelectView(lcu) {
   if (!CHAMPS.ready) return;  // names not loaded yet — wait next tick
 
   const cs = lcu.champ_select || {};
+  const mode = _csvDetectMode(cs);
   const myCid = (cs.my_champion | 0);
   const myName = _csChampName(myCid) || "—";
   const locked = !!cs.my_completed;
 
-  // Sub-line: queue + inner phase + timer if present
+  // Stamp the section with data-cs-mode so CSS can branch (hide
+  // pickban panel for non-SR, swap enemies/allies layout for Arena,
+  // adjust grid template, etc).
+  section.dataset.csMode = mode;
+
+  // Sub-line: mode + queue + inner phase + timer
   const bits = [];
-  if (cs.is_aram) bits.push("ARAM");
+  const modeLabel = { sr: "SR DRAFT", aram: "ARAM", arena: "ARENA", brawl: "BRAWL" }[mode] || "";
+  if (modeLabel) bits.push(modeLabel);
   if (cs.queue_id) bits.push("queue " + cs.queue_id);
   if (cs.phase) bits.push(String(cs.phase).toUpperCase());
   if (cs.timer && cs.timer.remaining_ms != null) {
     bits.push(Math.max(0, Math.round(cs.timer.remaining_ms / 1000)) + "s");
   }
   _csvSetText("csv-sub", bits.join(" · ") || "—");
-
-  // MY PICK
-  const iconEl = document.getElementById("csv-mypick-icon");
-  if (iconEl) {
-    const cls = myCid ? (locked ? "locked" : "hovering") : "empty";
-    iconEl.className = "csv-mypick-icon " + cls;
-    const url = _csChampImg(myCid);
-    iconEl.innerHTML = (myCid && url)
-      ? `<img src="${url}" alt="${myName}" onerror="this.style.display='none'">`
-      : "?";
-  }
-  _csvSetText("csv-mypick-name", myName);
-  const stateEl = document.getElementById("csv-mypick-state");
-  if (stateEl) {
-    stateEl.className = "csv-mypick-state "
-      + (myCid ? (locked ? "locked" : "hovering") : "");
-    stateEl.textContent = locked ? "✓ LOCKED"
-      : (myCid ? "⌛ HOVERING" : "no pick yet");
-  }
 
   // Cache absolute timer end timestamp on the cs object so re-renders
   // (every 2s state envelope) don't reset the countdown — important
@@ -1597,8 +1613,8 @@ export function renderChampSelectView(lcu) {
     timerEndMs = cs.timer._end;
   }
   // Pick-order swap button shows only on modes where pick order is
-  // structural (SR draft queues). ARAM/Arena don't have a meaningful
-  // pick order — operator wanted the middle button hidden there.
+  // structural (SR draft queues). ARAM/Arena/Brawl don't have a
+  // meaningful pick order — operator wanted the middle button hidden.
   const showPickOrder = !!cs.sr_draft;
   // Compute active-round set (cells currently banning or picking) so
   // _csvRenderTeam can stamp the pulsing border class on them.
@@ -1610,12 +1626,335 @@ export function renderChampSelectView(lcu) {
   } else {
     _csvActiveRound = null;
   }
-  _csvRenderTeam("csv-allies-list",  cs.my_team,    myCid, timerEndMs, showPickOrder);
-  _csvRenderTeam("csv-enemies-list", cs.their_team, myCid, timerEndMs, showPickOrder);
+
+  // Allies render — Arena renders only 2 cells (me + duo); SR/ARAM/Brawl
+  // render 5. ARAM/Brawl also suppress the (guess) tag and role pip
+  // since there are no role assignments to display.
+  const allyOpts = (mode === "arena")
+    ? { cellCount: 2, showGuess: false, allowRolePip: false }
+    : (mode === "aram" || mode === "brawl")
+      ? { cellCount: 5, showGuess: false, allowRolePip: false }
+      : { cellCount: 5, showGuess: true,  allowRolePip: true };
+  _csvRenderTeam("csv-allies-list", cs.my_team, myCid, timerEndMs, showPickOrder, allyOpts);
+
+  // Enemies render — Arena uses a dedicated 3-team layout (3 enemy
+  // duos stacked vertically). SR keeps the 5-cell list with (guess);
+  // ARAM/Brawl render 5 cells but suppress (guess) + role pip.
+  if (mode === "arena") {
+    _csvRenderEnemiesArena(cs, timerEndMs);
+  } else {
+    const enemyOpts = (mode === "sr")
+      ? { cellCount: 5, showGuess: true,  allowRolePip: true }
+      : { cellCount: 5, showGuess: false, allowRolePip: false };
+    _csvRenderTeam("csv-enemies-list", cs.their_team, myCid, timerEndMs, showPickOrder, enemyOpts);
+  }
+
   _csvSetupTimerTick();
-  _csvRenderPickBan(cs, myCid);
+  _csvRenderCentralPane(cs, mode, myCid, myName, locked);
+
+  // Pick & Ban panel — SR-only. Other modes hide it via CSS rule
+  // [data-cs-mode] but we skip the render entirely to save work and
+  // keep the body empty (it's display:none anyway).
+  if (mode === "sr") {
+    _csvRenderPickBan(cs, myCid);
+  } else {
+    const body = document.getElementById("csv-pickban-body");
+    if (body) body.innerHTML = "";
+  }
   // _csvAlignAllies() disabled — JS measurement kept returning wrong
   // values; champname col width is hardcoded in CSS instead.
+}
+
+// Renders the center column (My Pick + mode-specific extras). Rebuilds
+// the .csv-card-mypick body each call so we can vary header + content
+// per mode without leaving stale elements behind. SR/ARAM/Brawl get a
+// build chooser variant list; Arena gets the duo header + augments.
+function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
+  const card = document.querySelector("#view-champ-select .csv-card-mypick");
+  if (!card) return;
+  const head = card.querySelector(".csv-card-head");
+  const body = card.querySelector(".csv-card-body");
+  if (!head || !body) return;
+
+  if (mode === "arena") {
+    head.textContent = "My Duo + Augments";
+    body.innerHTML = _csvArenaPaneHtml(cs, myCid, myName);
+    _csvWireArenaAugments(body, cs);
+    return;
+  }
+
+  head.textContent = "My Pick";
+  const iconCls = myCid ? (locked ? "locked" : "hovering") : "empty";
+  const iconUrl = _csChampImg(myCid);
+  const iconHtml = (myCid && iconUrl)
+    ? `<img src="${iconUrl}" alt="${myName}" onerror="this.style.display='none'">`
+    : "?";
+  const stateCls = myCid ? (locked ? "locked" : "hovering") : "";
+  const stateTxt = locked ? "✓ LOCKED" : (myCid ? "⌛ HOVERING" : "no pick yet");
+
+  let extraHtml = "";
+  if (mode === "aram") {
+    extraHtml = _csvBenchHtml(cs);
+  }
+  const variants = _csvBuildVariantsFor(myCid, myName, mode);
+  const buildsTitle = mode === "aram" ? "ARAM build chooser"
+                    : mode === "brawl" ? "Brawl build chooser"
+                    : "SR build chooser";
+  const buildsHtml = `
+    <div class="csv-builds">
+      <div class="csv-builds-title">${buildsTitle}</div>
+      <div class="csv-builds-body" id="csv-builds-body">
+        ${_csvBuildVariantRowsHtml(variants)}
+      </div>
+    </div>`;
+
+  body.className = "csv-card-body csv-mypick";
+  body.innerHTML = `
+    <div class="csv-mypick-icon ${iconCls}" id="csv-mypick-icon">${iconHtml}</div>
+    <div class="csv-mypick-name" id="csv-mypick-name">${myName}</div>
+    <div class="csv-mypick-state ${stateCls}" id="csv-mypick-state">${stateTxt}</div>
+    ${extraHtml}
+    ${buildsHtml}`;
+
+  // Wire bench cells to fire bench_swap on click. Only ARAM renders
+  // the bench block; the wiring is idempotent under re-render since
+  // we replace innerHTML and re-attach each tick.
+  if (mode === "aram") _csvWireBench(body);
+  _csvWireBuildVariants(body);
+}
+
+// HTML for the ARAM bench strip (5 horizontal champion cells). Click
+// fires lcu bench_swap which bypasses the 5s client-side cooldown.
+function _csvBenchHtml(cs) {
+  const bench = (cs && Array.isArray(cs.bench)) ? cs.bench.slice(0, 5) : [];
+  if (!bench.length) {
+    return `
+      <div class="csv-bench">
+        <div class="csv-bench-title">Bench</div>
+        <div class="csv-bench-empty">no bench champs yet — wait for a teammate to reroll</div>
+      </div>`;
+  }
+  const ver = CHAMPS.version || "latest";
+  const cells = bench.map((cid) => {
+    const nm = _csChampName(cid) || ("cid:" + cid);
+    const img = (cid && CHAMPS.byId[String(cid)])
+      ? `<img src="/data/ddragon/${ver}/img/champion/${CHAMPS.byId[String(cid)]}.png" alt="${nm}" onerror="this.style.display='none'">`
+      : "?";
+    return `
+      <div class="csv-bench-cell is-clickable" data-bench-id="${cid}" data-bench-name="${nm}" title="Swap to ${nm}">
+        <div class="csv-bench-cell-icon">${img}</div>
+        <div class="csv-bench-cell-name">${nm}</div>
+      </div>`;
+  }).join("");
+  return `
+    <div class="csv-bench">
+      <div class="csv-bench-title">Bench · click to swap</div>
+      <div class="csv-bench-row">${cells}</div>
+    </div>`;
+}
+
+function _csvWireBench(scope) {
+  scope.querySelectorAll(".csv-bench-cell.is-clickable").forEach((cell) => {
+    cell.addEventListener("click", () => {
+      const cid = parseInt(cell.dataset.benchId, 10);
+      if (!cid) return;
+      lcuCmd({ cmd: "bench_swap", champion_id: cid });
+      // Visual feedback — pulse the cell so the operator sees the click
+      // registered before the LCU agent confirms via state push.
+      cell.classList.add("is-pending");
+      setTimeout(() => cell.classList.remove("is-pending"), 500);
+    });
+  });
+}
+
+// Placeholder build variants. Phase B replaces this with real loadout
+// data from /api/loadout/list keyed on champion + mode.
+function _csvBuildVariantsFor(cid, name, mode) {
+  // Static reasonable defaults — varies per mode so the labels make
+  // sense visually. Real variants will come from champion_loadouts.json
+  // once Phase B wires through /api/loadout/list.
+  if (mode === "aram" || mode === "brawl") {
+    return [
+      { key: "standard", label: "Standard", keystone: "Lethal Tempo",
+        item_ids: [1055, 3006, 6672, 3085, 3031, 3036] },
+      { key: "lifesteal", label: "Lifesteal Skirmisher", keystone: "Conqueror",
+        item_ids: [1055, 3006, 6630, 3072, 3031, 3026] },
+      { key: "ap-burst", label: "Glass Cannon", keystone: "Press the Attack",
+        item_ids: [1055, 3006, 6672, 3094, 3031, 3036] },
+    ];
+  }
+  // SR draft — 3 variants tuned for the locked pick.
+  return [
+    { key: "lethal-tempo", label: "Lethal Tempo · default", keystone: "Lethal Tempo", is_default: true,
+      item_ids: [1055, 3006, 6672, 3085, 3031, 3036] },
+    { key: "press-the-attack", label: "Press the Attack", keystone: "Press the Attack",
+      item_ids: [1055, 3006, 3153, 3031, 3046, 3036] },
+    { key: "hail-of-blades", label: "Hail of Blades · burst", keystone: "Hail of Blades",
+      item_ids: [1055, 3006, 3153, 3033, 3031, 3046] },
+  ];
+}
+
+function _csvBuildVariantRowsHtml(variants) {
+  if (!variants || !variants.length) {
+    return '<div class="csv-empty">no build variants for this champion / mode yet</div>';
+  }
+  const ver = CHAMPS.version || "latest";
+  return variants.map((v, idx) => {
+    const items = (v.item_ids || []).slice(0, 6).map((iid) => `
+      <div class="csv-build-item">
+        <img src="/data/ddragon/${ver}/img/item/${iid}.png" onerror="this.style.display='none'" alt="">
+      </div>`).join("");
+    const cb = `<div class="csv-build-checkbox"></div>`;
+    const tag = v.is_default
+      ? ' <span class="csv-build-default-tag">default</span>' : "";
+    return `
+      <div class="csv-build-row${idx === 0 ? " selected" : ""}" data-variant="${v.key}">
+        ${cb}
+        <div class="csv-build-meta">
+          <div class="csv-build-label">${v.label}${tag}</div>
+          <div class="csv-build-runes">${v.keystone || "—"}</div>
+        </div>
+        <div class="csv-build-items">${items}</div>
+      </div>`;
+  }).join("");
+}
+
+function _csvWireBuildVariants(scope) {
+  const rows = scope.querySelectorAll(".csv-build-row");
+  rows.forEach((row) => {
+    row.addEventListener("click", () => {
+      rows.forEach((r) => r.classList.toggle("selected", r === row));
+    });
+  });
+}
+
+// Arena central pane: duo header (me + partner) + 3 augment slots
+// (silver/gold/prismatic) + the current-round augment options.
+function _csvArenaPaneHtml(cs, myCid, myName) {
+  const teams = (cs && Array.isArray(cs.arena_teams)) ? cs.arena_teams : [];
+  const myTeam = teams.find((t) => t && t.is_me) || (cs.my_team ? { cells: cs.my_team } : null);
+  const cells = (myTeam && Array.isArray(myTeam.cells)) ? myTeam.cells : (cs.my_team || []);
+  const me = cells.find((c) => (c && c.championId) === myCid) || cells[0] || null;
+  const partner = cells.find((c) => c && c.championId && c.championId !== myCid) || null;
+  const ver = CHAMPS.version || "latest";
+  const cellHtml = (c, isMe) => {
+    if (!c || !c.championId) {
+      return `<div class="csv-duo-cell is-empty">
+        <div class="csv-duo-cell-icon">?</div>
+        <div class="csv-duo-cell-tag">${isMe ? "ME" : "DUO"}</div>
+        <div class="csv-duo-cell-name">waiting…</div>
+      </div>`;
+    }
+    const nm = _csChampName(c.championId) || ("cid:" + c.championId);
+    const img = CHAMPS.byId[String(c.championId)]
+      ? `<img src="/data/ddragon/${ver}/img/champion/${CHAMPS.byId[String(c.championId)]}.png" alt="${nm}" onerror="this.style.display='none'">`
+      : "?";
+    const lockCls = c.completed ? "locked" : "hovering";
+    return `<div class="csv-duo-cell ${lockCls}${isMe ? " is-me" : ""}">
+      <div class="csv-duo-cell-icon">${img}</div>
+      <div class="csv-duo-cell-tag">${isMe ? "ME" : "DUO"}</div>
+      <div class="csv-duo-cell-name">${nm}</div>
+      <div class="csv-duo-cell-summ">${(c.summonerName || "").slice(0, 22) || "—"}</div>
+    </div>`;
+  };
+
+  const aug = cs.augments || {};
+  const slots = Array.isArray(aug.my_slots) ? aug.my_slots : [];
+  const curTier = aug.current_round || "silver";
+  const slotHtml = ["silver", "gold", "prismatic"].map((tier) => {
+    const s = slots.find((x) => x && x.tier === tier);
+    const filled = !!(s && s.id);
+    const isActive = tier === curTier;
+    return `<div class="csv-augment-slot ${tier}${filled ? " filled" : ""}${isActive ? " is-active" : ""}">
+      <div class="csv-augment-slot-grade">${tier.toUpperCase()}</div>
+      <div class="csv-augment-slot-name">${filled ? s.name : (isActive ? "PICKING…" : "—")}</div>
+    </div>`;
+  }).join("");
+
+  const options = Array.isArray(aug.options) ? aug.options : [];
+  const optionsHtml = options.length
+    ? options.map((o) => `
+        <div class="csv-augment-option is-clickable ${o.tier || ""}" data-augment-id="${o.id}" data-augment-name="${o.name}">
+          <div class="csv-augment-option-name">${o.name}</div>
+          <div class="csv-augment-option-blurb">${o.blurb || ""}</div>
+        </div>`).join("")
+    : '<div class="csv-empty">no augment options yet</div>';
+
+  return `
+    <div class="csv-duo-row">
+      ${cellHtml(me, true)}
+      ${cellHtml(partner, false)}
+    </div>
+    <div class="csv-augments">
+      <div class="csv-augments-title">My augments</div>
+      <div class="csv-augment-slots">${slotHtml}</div>
+    </div>
+    <div class="csv-augment-options">
+      <div class="csv-augments-title">${curTier.toUpperCase()} round · pick one</div>
+      ${optionsHtml}
+    </div>`;
+}
+
+function _csvWireArenaAugments(scope, cs) {
+  scope.querySelectorAll(".csv-augment-option.is-clickable").forEach((cell) => {
+    cell.addEventListener("click", () => {
+      const id = parseInt(cell.dataset.augmentId, 10);
+      if (!id) return;
+      // Mark selected (visual only — LCU push is Phase B once we have
+      // the right LCU verb / payload schema for arena augments).
+      scope.querySelectorAll(".csv-augment-option").forEach((c) =>
+        c.classList.toggle("is-selected", c === cell));
+      lcuCmd({ cmd: "set_augment_intent", augment_id: id });
+    });
+  });
+}
+
+// Arena enemies: 3 sub-team cards stacked vertically inside the enemies
+// column. Each sub-team shows its 2 champion cells side-by-side.
+function _csvRenderEnemiesArena(cs, timerEndMs) {
+  const list = document.getElementById("csv-enemies-list");
+  if (!list) return;
+  list.innerHTML = "";
+  const teams = (cs && Array.isArray(cs.arena_teams)) ? cs.arena_teams : [];
+  const others = teams.filter((t) => t && !t.is_me).slice(0, 3);
+  while (others.length < 3) others.push(null);
+  const ver = CHAMPS.version || "latest";
+  others.forEach((t, idx) => {
+    const li = document.createElement("li");
+    li.className = "csv-arena-team";
+    const label = (t && t.label) || `TEAM ${idx + 2}`;
+    const cells = (t && Array.isArray(t.cells)) ? t.cells.slice(0, 2) : [];
+    while (cells.length < 2) cells.push(null);
+    const cellsHtml = cells.map((c) => {
+      if (!c || !c.championId) {
+        return `<div class="csv-arena-cell is-empty">
+          <div class="csv-arena-cell-icon">?</div>
+          <div class="csv-arena-cell-name">—</div>
+        </div>`;
+      }
+      const nm = _csChampName(c.championId) || ("cid:" + c.championId);
+      const img = CHAMPS.byId[String(c.championId)]
+        ? `<img src="/data/ddragon/${ver}/img/champion/${CHAMPS.byId[String(c.championId)]}.png" alt="${nm}" onerror="this.style.display='none'">`
+        : "?";
+      let lockHtml = "";
+      if (c.completed) {
+        lockHtml = '<span class="csv-arena-cell-lock">🔒</span>';
+      } else if (timerEndMs) {
+        const secs = Math.max(0, Math.ceil((timerEndMs - Date.now()) / 1000));
+        lockHtml = `<span class="csv-arena-cell-timer" data-end="${timerEndMs}">${secs}</span>`;
+      }
+      const stateCls = c.completed ? "locked" : "hovering";
+      return `<div class="csv-arena-cell ${stateCls}">
+        <div class="csv-arena-cell-icon">${img}</div>
+        <div class="csv-arena-cell-mark">${lockHtml}</div>
+        <div class="csv-arena-cell-name">${nm}</div>
+      </div>`;
+    }).join("");
+    li.innerHTML = `
+      <div class="csv-arena-team-head">${label}</div>
+      <div class="csv-arena-team-row">${cellsHtml}</div>`;
+    list.appendChild(li);
+  });
 }
 
 // Live countdown tick — updates the red ".csv-team-cell-timer" text

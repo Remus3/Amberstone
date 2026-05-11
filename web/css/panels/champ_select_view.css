@@ -740,3 +740,435 @@ body[data-view="champ-select"] #cs-overlay { display: none !important; }
   color: #e8eaf0;
   border-color: #3a3f4a;
 }
+
+/* ─── Mode-conditional layouts (s165) ─────────────────────────────────
+ * Champ-select renders different content per game mode. Stamped onto
+ * #view-champ-select via section.dataset.csMode = "sr|aram|arena|brawl"
+ * from renderChampSelectView(). SR is the historical default; the
+ * other 3 modes adjust grid template, hide pickban, and route the
+ * central pane / enemies pane to mode-specific renderers.
+ *
+ * Pick&Ban panel is SR-only — ARAM/Arena/Brawl have no bans. We hide
+ * the entire pickban card and collapse the grid so allies grows to
+ * fill row 2. Allies panel itself stays untouched per operator
+ * (LOCKED — don't re-iterate).
+ */
+#view-champ-select[data-cs-mode="aram"]  .csv-card-pickban,
+#view-champ-select[data-cs-mode="arena"] .csv-card-pickban,
+#view-champ-select[data-cs-mode="brawl"] .csv-card-pickban {
+  display: none;
+}
+/* Reflow grid: with pickban hidden, allies takes the full left column
+ * height. mypick + enemies still flank it. */
+#view-champ-select[data-cs-mode="aram"]  .csv-grid,
+#view-champ-select[data-cs-mode="arena"] .csv-grid,
+#view-champ-select[data-cs-mode="brawl"] .csv-grid {
+  grid-template-rows: 1fr;
+  grid-template-areas: "allies mypick enemies";
+}
+
+/* In ARAM/Brawl the allies cell layout drops the role pip — collapse
+ * the 4th column so the summoner name flexes into the freed space.
+ * (allowRolePip:false in the JS render path prevents the pip element
+ * from being emitted, but the grid-template-columns rule keeps the
+ * slot reserved otherwise.) */
+#view-champ-select[data-cs-mode="aram"]  .csv-card-allies .csv-team-cell,
+#view-champ-select[data-cs-mode="brawl"] .csv-card-allies .csv-team-cell {
+  grid-template-columns: 36px var(--csv-champname-col) 1fr;
+}
+
+/* ARAM/Brawl enemies: drop the (guess) tag and role pip. Move the
+ * lock/timer summ block out of the SR absolute-at-50% position (where
+ * it clips the champion name) and into a normal grid column on the
+ * right edge of the row. 3-col grid: icon | name | lock/timer. */
+#view-champ-select[data-cs-mode="aram"]  .csv-card-enemies .csv-team-cell,
+#view-champ-select[data-cs-mode="brawl"] .csv-card-enemies .csv-team-cell {
+  grid-template-columns: 36px 1fr auto;
+}
+#view-champ-select[data-cs-mode="aram"]  .csv-card-enemies .csv-team-cell-summ,
+#view-champ-select[data-cs-mode="brawl"] .csv-card-enemies .csv-team-cell-summ {
+  position: static;
+  left: auto;
+  top: auto;
+  transform: none;
+  pointer-events: auto;
+  justify-self: end;
+  gap: 4px;
+}
+/* Enemy summ text is empty in non-SR modes (LCU never reveals names),
+ * but keep the span so the lock/timer's flex sibling alignment holds. */
+#view-champ-select[data-cs-mode="aram"]  .csv-card-enemies .csv-team-cell-summ-text,
+#view-champ-select[data-cs-mode="brawl"] .csv-card-enemies .csv-team-cell-summ-text {
+  display: none;
+}
+/* Ensure the champ name on the LEFT col gets the full available width
+ * — without this override the var(--csv-champname-col) cap leaves the
+ * 1fr col empty + the name col fixed-narrow. */
+#view-champ-select[data-cs-mode="aram"]  .csv-card-enemies .csv-team-cell-nm,
+#view-champ-select[data-cs-mode="brawl"] .csv-card-enemies .csv-team-cell-nm {
+  text-align: left;
+}
+
+/* ── ARAM bench (under MY PICK) ─────────────────────────────────────
+ * Horizontal strip of 5 bench champions. Click → fires bench_swap
+ * via the LCU agent (instant — bypasses the 5s client cooldown). */
+.csv-bench {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #232830;
+  width: 100%;
+}
+.csv-bench-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+  text-align: center;
+}
+.csv-bench-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.csv-bench-cell {
+  background: #1a1d23;
+  border: 1px solid #2a2f37;
+  border-radius: 4px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: border-color 0.12s, transform 0.12s, box-shadow 0.12s;
+}
+.csv-bench-cell:hover {
+  border-color: #60a5fa;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(96, 165, 250, 0.25);
+}
+.csv-bench-cell.is-pending {
+  border-color: #4ade80;
+  box-shadow: 0 0 0 2px #4ade80;
+}
+.csv-bench-cell-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+  background: #14171c;
+  overflow: hidden;
+  border: 1px solid #2a2f37;
+}
+.csv-bench-cell-icon img { width: 100%; height: 100%; object-fit: cover; }
+.csv-bench-cell-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e8eaf0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+}
+.csv-bench-empty {
+  font-size: 12px;
+  font-style: italic;
+  color: #6a7280;
+  text-align: center;
+  padding: 12px 0;
+}
+
+/* ── Build chooser rows (SR / ARAM / Brawl) ───────────────────────── */
+.csv-builds-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.csv-build-row {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 6px;
+  background: #1a1d23;
+  border: 1px solid #2a2f37;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.csv-build-row:hover { border-color: #60a5fa; }
+.csv-build-row.selected {
+  border-color: #4ade80;
+  background: #1a2a20;
+}
+.csv-build-checkbox {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 2px solid #6a7280;
+  background: transparent;
+}
+.csv-build-row.selected .csv-build-checkbox {
+  border-color: #4ade80;
+  background: #4ade80;
+}
+.csv-build-meta { min-width: 0; }
+.csv-build-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: #e8eaf0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.csv-build-default-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fbbf24;
+  background: #2a1f10;
+  border: 1px solid #b88410;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 4px;
+  letter-spacing: 0.06em;
+}
+.csv-build-runes {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+}
+.csv-build-items {
+  display: flex;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+.csv-build-item {
+  width: 24px; height: 24px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #14171c;
+  border: 1px solid #2a2f37;
+}
+.csv-build-item img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ── Arena duo + augments (replaces MY PICK central pane) ─────────── */
+.csv-duo-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 6px 0 12px;
+}
+.csv-duo-cell {
+  background: #1a1d23;
+  border: 2px solid #2a2f37;
+  border-radius: 6px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.csv-duo-cell.is-me { border-color: #6366f1; background: #1d1e2d; }
+.csv-duo-cell.locked { border-color: #4ade80; }
+.csv-duo-cell.locked.is-me { border-color: #818cf8; }
+.csv-duo-cell.hovering { border-color: #fbbf24; }
+.csv-duo-cell.is-empty { border-style: dashed; opacity: 0.55; }
+.csv-duo-cell-icon {
+  width: 64px; height: 64px;
+  border-radius: 6px;
+  background: #14171c;
+  border: 1px solid #2a2f37;
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  color: #6a7280;
+  font-size: 28px;
+}
+.csv-duo-cell-icon img { width: 100%; height: 100%; object-fit: cover; }
+.csv-duo-cell-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: #6a7280;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+}
+.csv-duo-cell.is-me .csv-duo-cell-tag { color: #818cf8; }
+.csv-duo-cell-name {
+  font-size: 16px;
+  font-weight: 900;
+  color: #fff;
+}
+.csv-duo-cell-summ {
+  font-size: 11px;
+  color: #9ca3af;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+}
+
+.csv-augments,
+.csv-augment-options {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #232830;
+  width: 100%;
+}
+.csv-augments-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+  text-align: center;
+}
+.csv-augment-slots {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.csv-augment-slot {
+  background: #1a1d23;
+  border: 1px solid #2a2f37;
+  border-radius: 4px;
+  padding: 6px 4px;
+  text-align: center;
+  position: relative;
+}
+.csv-augment-slot.silver    { border-color: #6b7280; }
+.csv-augment-slot.gold      { border-color: #b88410; }
+.csv-augment-slot.prismatic { border-color: #a855f7; }
+.csv-augment-slot.is-active {
+  box-shadow: 0 0 0 2px #fbbf24;
+  background: #1a1f2a;
+}
+.csv-augment-slot.filled { background: #1a2a20; }
+.csv-augment-slot-grade {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+.csv-augment-slot.silver    .csv-augment-slot-grade { color: #c1c5cc; }
+.csv-augment-slot.gold      .csv-augment-slot-grade { color: #fbbf24; }
+.csv-augment-slot.prismatic .csv-augment-slot-grade { color: #c084fc; }
+.csv-augment-slot-name {
+  font-size: 12px;
+  font-weight: 800;
+  color: #e8eaf0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.csv-augment-option {
+  background: #1a1d23;
+  border: 1px solid #2a2f37;
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.csv-augment-option:last-child { margin-bottom: 0; }
+.csv-augment-option:hover { border-color: #60a5fa; }
+.csv-augment-option.is-selected {
+  border-color: #4ade80;
+  background: #1a2a20;
+}
+.csv-augment-option.silver    { border-left: 3px solid #6b7280; }
+.csv-augment-option.gold      { border-left: 3px solid #b88410; }
+.csv-augment-option.prismatic { border-left: 3px solid #a855f7; }
+.csv-augment-option-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #e8eaf0;
+}
+.csv-augment-option-blurb {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+/* ── Arena enemies (3 sub-team cards stacked) ─────────────────────── */
+#view-champ-select[data-cs-mode="arena"] .csv-card-enemies .csv-team-list {
+  gap: 8px;
+}
+.csv-arena-team {
+  background: #1a1d23;
+  border: 1px solid #2a2f37;
+  border-radius: 6px;
+  padding: 6px 8px;
+  list-style: none;
+}
+.csv-arena-team-head {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+  text-align: center;
+}
+.csv-arena-team-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.csv-arena-cell {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 6px;
+  align-items: center;
+  background: #14171c;
+  border: 1px solid #232830;
+  border-radius: 4px;
+  padding: 4px 6px;
+  min-height: 38px;
+}
+.csv-arena-cell.locked { border-color: #2a3f30; }
+.csv-arena-cell.locked .csv-arena-cell-icon { border-color: #4ade80; }
+.csv-arena-cell.hovering .csv-arena-cell-icon { border-color: #fbbf24; }
+.csv-arena-cell.is-empty { border-style: dashed; opacity: 0.55; }
+.csv-arena-cell-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  background: #14171c;
+  border: 1px solid #2a2f37;
+  overflow: hidden;
+}
+.csv-arena-cell-icon img { width: 100%; height: 100%; object-fit: cover; }
+.csv-arena-cell-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e8eaf0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.csv-arena-cell-mark {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 18px;
+}
+.csv-arena-cell-lock { color: #4ade80; font-size: 13px; font-weight: 800; }
+.csv-arena-cell-timer {
+  color: #22d3ee;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000;
+}
