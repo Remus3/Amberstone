@@ -1274,4 +1274,631 @@ function renderChampSelectCoach(data) {
   _rnImmediate.textContent = lines.join("  •  ");
 }
 
+// ── Champ Select VIEW (s164 — Phase 3 step 3 scaffold) ─────────────
+// New top-level <section id="view-champ-select"> page (distinct from
+// the legacy #cs-overlay). Auto-promotes on phase=ChampSelect when
+// champSelectViewEnabled() — same flag pattern as activeMatchEnabled.
+
+export function champSelectViewEnabled() {
+  try {
+    if (typeof location !== "undefined"
+        && location.search
+        && location.search.includes("cs=1")) {
+      try { localStorage.setItem("csView", "1"); } catch (_) {}
+      return true;
+    }
+    return localStorage.getItem("csView") === "1";
+  } catch (_) {
+    return false;
+  }
+}
+
+function _csvSetText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text || "";
+}
+
+// LCU command helper for the trade/swap clicks below.
+function _csvFireCmd(cmd) {
+  return fetch("/api/lcu-cmd", {
+    method: "POST", cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(cmd),
+  }).then((r) => (r && r.ok ? r.json() : null)).catch(() => null);
+}
+function _csvOnLaneSwap(cellId) {
+  if (cellId == null) return;
+  _csvFireCmd({ cmd: "request_position_swap", cell_id: cellId });
+}
+function _csvOnChampTrade(cellId) {
+  if (cellId == null) return;
+  _csvFireCmd({ cmd: "trade_request", cell_id: cellId });
+}
+function _csvOnPickOrderSwap(cellId) {
+  if (cellId == null) return;
+  _csvFireCmd({ cmd: "request_pick_order_swap", cell_id: cellId });
+}
+// Quick-select handlers for Pick & Ban panel icons. Tracks the active
+// selection client-side so the colored border stays on the picked
+// icon across re-renders, and a "locked" flag so subsequent clicks
+// can't re-target a different ban/pick once the first has been sent.
+const _csvSelection = { ban: 0, pick: 0, banLocked: false, pickLocked: false };
+function _csvOnBanSelect(championId) {
+  if (!championId) return;
+  if (_csvSelection.banLocked) return;  // ban already committed
+  _csvSelection.ban = championId;
+  _csvSelection.banLocked = true;
+  _csvFireCmd({ cmd: "set_ban_intent", championId: championId });
+}
+function _csvOnPickSelect(championId) {
+  if (!championId) return;
+  if (_csvSelection.pickLocked) return;  // pick already committed
+  _csvSelection.pick = championId;
+  _csvSelection.pickLocked = true;
+  _csvFireCmd({ cmd: "set_pick_intent", championId: championId });
+}
+// 1 → "1st", 2 → "2nd", 3 → "3rd", 4 → "4th", etc.
+function _csvOrdinal(n) {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+// Full role names used in the trade popup AND in the ally/enemy
+// position pip. Operator wanted them spelled out rather than the
+// 3-letter abbreviations the panel previously showed.
+const _CSV_SHORT_ROLE = {
+  TOP: "TOP", JUNGLE: "JUNGLE", MIDDLE: "MID",
+  BOTTOM: "BOTTOM", UTILITY: "SUPPORT",
+};
+function _csvShortRole(pos) {
+  return _CSV_SHORT_ROLE[pos] || pos || "—";
+}
+// Singleton popup that appears when the operator clicks an ally's
+// summoner name. Structure: a SWAP / TRADE header row above three
+// equal-width choice buttons:
+//   1) <CHAMPION NAME>  → champion trade
+//   2) <Nth Pick>       → pick-order swap (only when showPickOrder)
+//   3) <ROLE LABEL>     → lane swap (uses ally's actual short role)
+// Positioned so the MIDDLE button's center sits on the username's
+// center (when middle is hidden, falls back to the champion button).
+function _csvShowTradeChoice(cellId, anchorEl, opts) {
+  const champName    = (opts && opts.champName)    || "Champion";
+  const pickOrderLbl = (opts && opts.pickOrderLbl) || "";
+  const roleLbl      = (opts && opts.roleLbl)      || "—";
+  const showPickOrd  = !!(opts && opts.showPickOrder);
+
+  let popup = document.getElementById("csv-trade-popup");
+  if (!popup) {
+    popup = document.createElement("div");
+    popup.id = "csv-trade-popup";
+    popup.className = "csv-trade-popup";
+    popup.innerHTML =
+      '<div class="csv-trade-header">SWAP / TRADE</div>' +
+      '<div class="csv-trade-buttons">' +
+        '<button type="button" class="csv-trade-choice" data-action="champion"></button>' +
+        '<button type="button" class="csv-trade-choice" data-action="pick-order"></button>' +
+        '<button type="button" class="csv-trade-choice" data-action="role"></button>' +
+      '</div>';
+    // Append to <html> instead of <body> — body has zoom:1.33 (see
+    // base.css), and any position:fixed descendant of a zoomed element
+    // has its top/left values scaled by that zoom, which was offsetting
+    // the popup ~33% below where the click landed. The popup gets a
+    // matching zoom in CSS so its visual size still matches the rest
+    // of the dashboard.
+    document.documentElement.appendChild(popup);
+    document.addEventListener("click", (ev) => {
+      if (!popup.classList.contains("is-open")) return;
+      if (popup.contains(ev.target)) return;
+      popup.classList.remove("is-open");
+    });
+    popup.addEventListener("click", (ev) => {
+      const btn = ev.target.closest(".csv-trade-choice");
+      if (!btn) return;
+      const cid = parseInt(popup.dataset.cellId, 10);
+      const action = btn.dataset.action;
+      popup.classList.remove("is-open");
+      if (action === "role")       _csvOnLaneSwap(cid);
+      else if (action === "champion") _csvOnChampTrade(cid);
+      else if (action === "pick-order") _csvOnPickOrderSwap(cid);
+    });
+  }
+  const champBtn = popup.querySelector('[data-action="champion"]');
+  if (champBtn) champBtn.textContent = champName.toUpperCase();
+  const pickBtn  = popup.querySelector('[data-action="pick-order"]');
+  if (pickBtn) {
+    pickBtn.textContent = pickOrderLbl;
+    pickBtn.style.display = showPickOrd ? "" : "none";
+  }
+  const roleBtn  = popup.querySelector('[data-action="role"]');
+  if (roleBtn) roleBtn.textContent = roleLbl.toUpperCase();
+  popup.dataset.cellId = String(cellId);
+  // Render-then-measure: show the popup with visibility:hidden so we
+  // can read its actual rendered width via getBoundingClientRect, then
+  // compute final left so the popup is horizontally centered on the
+  // ALLIES panel and its top edge sits just under the clicked username.
+  // Avoids the transform-based positioning that was producing the
+  // wrong offset on lower rows.
+  popup.style.visibility = "hidden";
+  popup.style.left = "0px";
+  popup.style.top  = "0px";
+  popup.style.transform = "";
+  popup.classList.add("is-open");
+  const popupRect = popup.getBoundingClientRect();
+  const userRect  = anchorEl.getBoundingClientRect();
+  const panel = anchorEl.closest(".csv-card-allies");
+  const panelRect = panel ? panel.getBoundingClientRect() : userRect;
+  const targetLeft = panelRect.left + panelRect.width / 2 - popupRect.width / 2;
+  const targetTop  = userRect.bottom + 2;  // 2px breathing room
+  popup.style.left = Math.round(targetLeft) + "px";
+  popup.style.top  = Math.round(targetTop) + "px";
+  popup.style.visibility = "visible";
+}
+
+// Module-level cache: { type: "ban"|"pick", cellSet: Set<cellId> } —
+// derived from cs.active_round and consulted by _csvRenderTeam to
+// apply the pulsating border class to cells whose cellId is in the
+// active round. Reset on each renderChampSelectView call.
+let _csvActiveRound = null;
+function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder) {
+  const list = document.getElementById(listId);
+  if (!list) return;
+  list.innerHTML = "";
+  const arr = (team || []).slice(0, 5);
+  while (arr.length < 5) arr.push(null);
+  arr.forEach((p, idx) => {
+    const cid = (p && p.championId) | 0;
+    const isMe = !!(myCid && cid === myCid);
+    const champNm = _csChampName(cid) || (cid ? "cid:" + cid : "—");
+    const summ = (p && p.summonerName) || "";
+    const pos = (p && p.assignedPosition) || "";
+    const stateCls = !cid ? "empty" : ((p && p.completed) ? "locked" : "hovering");
+    const url = _csChampImg(cid);
+
+    // Lock/timer marker for the champ-name col (right-aligned within
+    // that col so the marker sits at the end of the champ name, just
+    // before the summoner-name col). Locked → green padlock; still
+    // picking → red live countdown using cs.timer.remaining_ms.
+    let lockHtml = "";
+    if (cid) {
+      if (p && p.completed) {
+        lockHtml = '<span class="csv-team-cell-lock">🔒</span>';
+      } else if (timerEndMs) {
+        const secs = Math.max(0, Math.ceil((timerEndMs - Date.now()) / 1000));
+        // "s" suffix dropped — double-digit times like "22s" were
+        // overflowing the lock-aligned slot. Display the bare number.
+        lockHtml = `<span class="csv-team-cell-timer" data-end="${timerEndMs}">${secs}</span>`;
+      }
+    }
+
+    // Hoist peer-cell identity ABOVE the li.className use — referencing
+    // peerCellId before its const declaration would throw a TDZ
+    // ReferenceError and crash the whole forEach (no cells rendered).
+    const isAllyOther = (listId === "csv-allies-list") && !isMe && cid;
+    const peerCellId = (p && typeof p.cellId === "number") ? p.cellId : null;
+
+    const li = document.createElement("li");
+    let activeCls = "";
+    if (_csvActiveRound && _csvActiveRound.cellSet
+        && peerCellId != null && _csvActiveRound.cellSet.has(peerCellId)) {
+      activeCls = (_csvActiveRound.type === "ban") ? " is-banning" : " is-picking";
+    }
+    li.className = "csv-team-cell " + stateCls + (isMe ? " me" : "") + activeCls;
+
+    const icon = document.createElement("div");
+    icon.className = "csv-team-cell-icon";
+    icon.innerHTML = url
+      ? `<img src="${url}" alt="" onerror="this.style.display='none'">`
+      : "";
+    // Per operator: champion-icon and pos-pip no longer initiate
+    // trades directly — the only click target for trades is the
+    // summoner name (which opens the SWAP / TRADE popup).
+    li.appendChild(icon);
+
+    // Champ name col is plain text again — lock/timer moved out.
+    const nm = document.createElement("div");
+    nm.className = "csv-team-cell-nm";
+    nm.textContent = champNm;
+    li.appendChild(nm);
+
+    // Summoner col leads with the lock/timer (left-aligned at the col
+    // start, which the JS aligner positions at "A of Allies"), then
+    // the summoner name sits immediately to its right.
+    const sm = document.createElement("div");
+    sm.className = "csv-team-cell-summ";
+    sm.innerHTML = lockHtml +
+      `<span class="csv-team-cell-summ-text">${summ ? summ.slice(0, 22) : ""}</span>`;
+    if (isAllyOther && peerCellId != null) {
+      const summText = sm.querySelector(".csv-team-cell-summ-text");
+      if (summText) {
+        summText.classList.add("is-clickable");
+        summText.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          _csvShowTradeChoice(peerCellId, summText, {
+            champName: champNm,
+            pickOrderLbl: _csvOrdinal(idx + 1) + " Pick",
+            roleLbl: _csvShortRole(pos),
+            showPickOrder: !!showPickOrder,
+          });
+        });
+      }
+    }
+    li.appendChild(sm);
+
+    if (pos) {
+      const posEl = document.createElement("span");
+      posEl.className = "csv-team-cell-pos";
+      posEl.textContent = _csvShortRole(pos);
+      // Pos pip is now display-only — trades go through the popup.
+      li.appendChild(posEl);
+    }
+    // Enemy cells get a small "(guess)" tag between the centered
+    // lock/timer and the role pip — reminds the operator that the
+    // role assignment for enemies is inferred, not confirmed by LCU.
+    if (listId === "csv-enemies-list" && cid) {
+      const guessEl = document.createElement("span");
+      guessEl.className = "csv-team-cell-guess";
+      guessEl.textContent = "(guess)";
+      li.appendChild(guessEl);
+    }
+    list.appendChild(li);
+  });
+}
+
+export function renderChampSelectView(lcu) {
+  // Section may not exist yet on older cached HTML — bail out cleanly.
+  const grid = document.querySelector("#view-champ-select .csv-grid");
+  if (!grid) return;
+  if (!lcu || lcu.phase !== "ChampSelect") {
+    _csvSetText("csv-sub", "waiting for champ-select…");
+    return;
+  }
+  if (!CHAMPS.ready) return;  // names not loaded yet — wait next tick
+
+  const cs = lcu.champ_select || {};
+  const myCid = (cs.my_champion | 0);
+  const myName = _csChampName(myCid) || "—";
+  const locked = !!cs.my_completed;
+
+  // Sub-line: queue + inner phase + timer if present
+  const bits = [];
+  if (cs.is_aram) bits.push("ARAM");
+  if (cs.queue_id) bits.push("queue " + cs.queue_id);
+  if (cs.phase) bits.push(String(cs.phase).toUpperCase());
+  if (cs.timer && cs.timer.remaining_ms != null) {
+    bits.push(Math.max(0, Math.round(cs.timer.remaining_ms / 1000)) + "s");
+  }
+  _csvSetText("csv-sub", bits.join(" · ") || "—");
+
+  // MY PICK
+  const iconEl = document.getElementById("csv-mypick-icon");
+  if (iconEl) {
+    const cls = myCid ? (locked ? "locked" : "hovering") : "empty";
+    iconEl.className = "csv-mypick-icon " + cls;
+    const url = _csChampImg(myCid);
+    iconEl.innerHTML = (myCid && url)
+      ? `<img src="${url}" alt="${myName}" onerror="this.style.display='none'">`
+      : "?";
+  }
+  _csvSetText("csv-mypick-name", myName);
+  const stateEl = document.getElementById("csv-mypick-state");
+  if (stateEl) {
+    stateEl.className = "csv-mypick-state "
+      + (myCid ? (locked ? "locked" : "hovering") : "");
+    stateEl.textContent = locked ? "✓ LOCKED"
+      : (myCid ? "⌛ HOVERING" : "no pick yet");
+  }
+
+  // Cache absolute timer end timestamp on the cs object so re-renders
+  // (every 2s state envelope) don't reset the countdown — important
+  // for sim mode where the lcu envelope only fires once.
+  let timerEndMs = 0;
+  if (cs.timer && typeof cs.timer.remaining_ms === "number") {
+    if (!cs.timer._end) cs.timer._end = Date.now() + cs.timer.remaining_ms;
+    timerEndMs = cs.timer._end;
+  }
+  // Pick-order swap button shows only on modes where pick order is
+  // structural (SR draft queues). ARAM/Arena don't have a meaningful
+  // pick order — operator wanted the middle button hidden there.
+  const showPickOrder = !!cs.sr_draft;
+  // Compute active-round set (cells currently banning or picking) so
+  // _csvRenderTeam can stamp the pulsing border class on them.
+  if (cs.active_round && Array.isArray(cs.active_round.cell_ids)) {
+    _csvActiveRound = {
+      type: cs.active_round.type === "ban" ? "ban" : "pick",
+      cellSet: new Set(cs.active_round.cell_ids),
+    };
+  } else {
+    _csvActiveRound = null;
+  }
+  _csvRenderTeam("csv-allies-list",  cs.my_team,    myCid, timerEndMs, showPickOrder);
+  _csvRenderTeam("csv-enemies-list", cs.their_team, myCid, timerEndMs, showPickOrder);
+  _csvSetupTimerTick();
+  _csvRenderPickBan(cs, myCid);
+  // _csvAlignAllies() disabled — JS measurement kept returning wrong
+  // values; champname col width is hardcoded in CSS instead.
+}
+
+// Live countdown tick — updates the red ".csv-team-cell-timer" text
+// every 250ms based on each element's data-end timestamp. Locked
+// cells (green padlock) have no data-end so they're skipped.
+let _csvTimerIntervalActive = false;
+function _csvSetupTimerTick() {
+  if (_csvTimerIntervalActive) return;
+  _csvTimerIntervalActive = true;
+  setInterval(() => {
+    document.querySelectorAll(".csv-team-cell-timer[data-end]").forEach((el) => {
+      const end = parseInt(el.dataset.end, 10);
+      if (!end) return;
+      const remaining = Math.max(0, end - Date.now());
+      el.textContent = String(Math.ceil(remaining / 1000));
+    });
+  }, 250);
+}
+
+// Align summoner-name column with the "A" of the centered "Allies"
+// header.
+//
+// Strategy: canvas measureText() — DOM-based measurement (Range API,
+// inline span, cloned head off-screen) all gave wrong values across
+// attempts (returning end-of-text or end-of-line positions, likely
+// browser-specific quirks). Canvas is text-only, no layout quirks.
+// We manually apply text-transform and letter-spacing since canvas
+// doesn't honor those CSS properties on its own.
+const _csvCanvas =
+  (typeof document !== "undefined") ? document.createElement("canvas") : null;
+function _csvMeasureText(text, cs) {
+  if (!_csvCanvas) return 0;
+  const ctx = _csvCanvas.getContext("2d");
+  // Apply CSS text-transform manually (canvas ignores it).
+  const tt = cs.textTransform;
+  let s = text;
+  if (tt === "uppercase") s = s.toUpperCase();
+  else if (tt === "lowercase") s = s.toLowerCase();
+  else if (tt === "capitalize") {
+    s = s.replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  ctx.font = (cs.fontStyle || "") + " " + (cs.fontWeight || "400") + " " +
+             cs.fontSize + " " + cs.fontFamily;
+  let w = ctx.measureText(s).width;
+  // Letter-spacing adds (n-1) gaps; canvas doesn't apply it.
+  const ls = parseFloat(cs.letterSpacing) || 0;
+  if (ls && s.length > 1) w += ls * (s.length - 1);
+  return w;
+}
+
+function _csvAlignAllies() {
+  const card = document.querySelector(".csv-card-allies");
+  const head = card && card.querySelector(".csv-card-head");
+  if (!card || !head) return;
+  const headRect = head.getBoundingClientRect();
+  if (!headRect.width) return;
+  const text = (head.textContent || "").trim();
+  if (!text) return;
+  const cs = getComputedStyle(head);
+  const textWidth = _csvMeasureText(text, cs);
+  if (!textWidth) return;
+  const padL = parseFloat(cs.paddingLeft) || 0;
+  const padR = parseFloat(cs.paddingRight) || 0;
+  const innerW = headRect.width - padL - padR;
+  const aLeftAbs = headRect.left + padL + (innerW - textWidth) / 2;
+  const cardRect = card.getBoundingClientRect();
+  const aFromCardLeft = aLeftAbs - cardRect.left;
+  // Summ col left from card outer edge:
+  //   card border (1) + card padding-left (10) + cell border (1)
+  //   + cell padding-left (6) + icon-col (36) + gap (8)
+  //   + champname-col + gap (8) = 70 + col
+  const champnameCol = Math.max(60, Math.round(aFromCardLeft - 70));
+  card.style.setProperty("--csv-champname-col", champnameCol + "px");
+}
+
+// ── Pick & Ban Recommendations (s164 scaffold) ─────────────────────
+// Layout: role chip + 3 pick-rows (performance / mastery / meta) each
+// with [icon+name | reason | 3 ban suggestions] + mood toggle.
+// Real data wiring (perf scoring from rewind_history.db, mastery from
+// LCU, counter matrix, 500ms blocker poll, mode-conditional behavior)
+// is Phase B. This stub uses hardcoded placeholders so the operator
+// can review the visual scaffold before backend integration.
+
+const _ROLE_FROM_LCU = {
+  TOP: "TOP", JUNGLE: "JNG", MIDDLE: "MID",
+  BOTTOM: "BOT", UTILITY: "SUP",
+};
+
+function _csvResolveRole(cs) {
+  // Mode-specific labels for non-SR queues.
+  if (cs.queue_id === 1700 || cs.queue_id === 1710) return "ARENA";
+  if (cs.queue_id === 450) return "ARAM";
+  if (cs.queue_id === 920) return "MAYHEM";
+  // SR: read assignedPosition from my local cell.
+  const myCell = cs.local_cell;
+  const me = (cs.my_team || []).find((p) => p && p.cellId === myCell);
+  const pos = (me && me.assignedPosition) || "";
+  return _ROLE_FROM_LCU[pos.toUpperCase()] || "—";
+}
+
+// Placeholder pick/ban data per role. Phase B replaces this with
+// computed values from rewind_history.db + counter matrix + LCU mastery.
+const _PB_PLACEHOLDERS = {
+  BOT: {
+    performance: {
+      champId: 51, champName: "Caitlyn",
+      reason: "62% WR · 14 BOT games · early lane-bully matchups favor you",
+      bans: [
+        { champId: 119, name: "Draven",  pct: 78 },
+        { champId: 236, name: "Lucian",  pct: 64 },
+        { champId: 555, name: "Pyke",    pct: 71 },
+      ],
+    },
+    mastery: {
+      champId: 67, champName: "Vayne",
+      reason: "M8 · 388k pts · 47 ranked games · highest mastery on role",
+      bans: [
+        { champId: 51,  name: "Caitlyn", pct: 81 },
+        { champId: 81,  name: "Ezreal",  pct: 58 },
+        { champId: 53,  name: "Overlay App E",   pct: 76 },
+      ],
+    },
+    meta: {
+      champId: 145, champName: "Kai'Sa",
+      reason: "S+ tier ADC this patch · 53% global WR · scales well vs comp",
+      bans: [
+        { champId: 15,  name: "Sivir",   pct: 72 },
+        { champId: 222, name: "Jinx",    pct: 61 },
+        { champId: 89,  name: "Leona",   pct: 69 },
+      ],
+    },
+  },
+  // Other roles inherit BOT placeholders until backend lands.
+};
+
+function _pbPlaceholdersFor(role) {
+  return _PB_PLACEHOLDERS[role] || _PB_PLACEHOLDERS.BOT;
+}
+
+function _csvMoodGet() {
+  try { return sessionStorage.getItem("csv-mood") || "comfort"; }
+  catch (_) { return "comfort"; }
+}
+function _csvMoodSet(v) {
+  try { sessionStorage.setItem("csv-mood", v); } catch (_) {}
+}
+
+function _csvRenderPickBan(cs, myCid) {
+  const body = document.getElementById("csv-pickban-body");
+  if (!body) return;
+  if (!cs) {
+    body.innerHTML = '<div class="csv-empty">waiting for champ-select data…</div>';
+    return;
+  }
+  const role = _csvResolveRole(cs);
+  const ver = CHAMPS.version || "latest";
+  const ph = _pbPlaceholdersFor(role);
+  const sources = [
+    { key: "performance", label: "Performance", data: ph.performance },
+    { key: "mastery",     label: "Mastery",     data: ph.mastery },
+    { key: "meta",        label: "Meta",        data: ph.meta },
+  ];
+  // Pick clicks are safe whenever we're past the ban phase (phase
+  // FINALIZATION) or the user has already locked their pick. Disabling
+  // during active BAN_PICK avoids the "accidentally banned my own
+  // champ" trap the operator flagged.
+  const pickClickEnabled = cs.phase === "FINALIZATION" || cs.my_completed === true;
+
+  const champImg = (cid) =>
+    cid && CHAMPS.byId[String(cid)]
+      ? `<img src="/data/ddragon/${ver}/img/champion/${CHAMPS.byId[String(cid)]}.png" onerror="this.style.display='none'" alt="">`
+      : "?";
+
+  // Role row column-header strip: PICK on the left and BAN on the
+  // right. Operator removed the centered ROLE chip — the user's role
+  // is already shown on their ally row (gold "BOT" pip), so the
+  // duplicate chip here was redundant.
+  let html = `
+    <div class="csv-pb-role-row">
+      <div class="csv-pb-pick-header">PICK</div>
+      <div class="csv-pb-bans-header-slot">
+        <div class="csv-pb-bans-header">BAN</div>
+      </div>
+    </div>`;
+
+  sources.forEach((src) => {
+    const d = src.data;
+    const banCells = d.bans.map((b, i) => {
+      const role3 = ["counter", "struggle", "terror"][i] || "";
+      const isSelected = (_csvSelection.ban === b.champId);
+      // Once a ban is locked, every OTHER ban becomes disabled so the
+      // operator can't switch their committed ban.
+      const isDisabled = _csvSelection.banLocked && !isSelected;
+      const banCls = "csv-pb-ban is-clickable"
+                   + (isSelected ? " is-selected" : "")
+                   + (isDisabled ? " is-disabled" : "");
+      return `
+        <div class="${banCls}" data-ban-id="${b.champId}" data-ban-name="${b.name}" title="${role3} ban candidate">
+          <span class="csv-pb-ban-pct">${b.pct}%</span>
+          <div class="csv-pb-ban-icon">${champImg(b.champId)}</div>
+          <div class="csv-pb-ban-name">${b.name}</div>
+        </div>`;
+    }).join("");
+    const isPickSelected = pickClickEnabled && _csvSelection.pick === d.champId;
+    const isPickDisabled = pickClickEnabled && _csvSelection.pickLocked && !isPickSelected;
+    const pickIconCls = pickClickEnabled
+      ? "csv-pb-pick-icon is-clickable"
+        + (isPickSelected ? " is-selected" : "")
+        + (isPickDisabled ? " is-disabled" : "")
+      : "csv-pb-pick-icon";
+    const pickDataAttr = pickClickEnabled ? ` data-pick-id="${d.champId}" data-pick-name="${d.champName}"` : "";
+    html += `
+      <div class="csv-pb-pick-row" data-source="${src.key}">
+        <div class="csv-pb-pick-col">
+          <div class="${pickIconCls}"${pickDataAttr}>${champImg(d.champId)}</div>
+          <div class="csv-pb-pick-name">${d.champName}</div>
+        </div>
+        <div class="csv-pb-reason-col">
+          <div class="csv-pb-source-label">${src.label.toUpperCase()}</div>
+          <div class="csv-pb-reason-text">${d.reason}</div>
+        </div>
+        <div class="csv-pb-bans-col">${banCells}</div>
+      </div>`;
+  });
+
+  const mood = _csvMoodGet();
+  // Each button now stacks two spans for the 2-line layout the
+  // operator asked for (frees horizontal space for the 4th button).
+  const moodBtn = (k, l1, l2) =>
+    `<button class="csv-pb-mood-btn${mood === k ? " is-active" : ""}" data-mood="${k}">` +
+    `<span>${l1}</span><span>${l2}</span></button>`;
+  html += `
+    <div class="csv-pb-mood-row">
+      <span class="csv-pb-mood-label"><span>PICK</span><span>ONE</span></span>
+      ${moodBtn("comfort", "Comfort", "Pick")}
+      ${moodBtn("limit",   "Limit",   "Test")}
+      ${moodBtn("new",     "Something", "New")}
+      ${moodBtn("synergy", "Comp",    "Synergy")}
+    </div>`;
+
+  body.innerHTML = html;
+
+  // Wire mood toggle (event delegation; idempotent on re-render since
+  // we replace innerHTML each time and re-attach).
+  body.querySelectorAll(".csv-pb-mood-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const m = btn.dataset.mood;
+      if (!m) return;
+      _csvMoodSet(m);
+      body.querySelectorAll(".csv-pb-mood-btn").forEach((b) =>
+        b.classList.toggle("is-active", b.dataset.mood === m));
+    });
+  });
+  // Ban quick-select: click any non-disabled ban icon → set ban intent.
+  // Once one is clicked, the others become disabled (lock); the chosen
+  // one keeps its red border via .is-selected.
+  body.querySelectorAll(".csv-pb-ban.is-clickable").forEach((cell) => {
+    cell.addEventListener("click", () => {
+      if (cell.classList.contains("is-disabled")) return;
+      if (_csvSelection.banLocked) return;
+      const cid = parseInt(cell.dataset.banId, 10);
+      body.querySelectorAll(".csv-pb-ban").forEach((el) => {
+        el.classList.toggle("is-selected", el === cell);
+        el.classList.toggle("is-disabled", el !== cell);
+      });
+      _csvOnBanSelect(cid);
+    });
+  });
+  // Pick quick-select: click the recommended pick icon → set pick
+  // intent. Locks subsequent pick changes (operator: "once locked
+  // don't allow the border to be changed to another champion").
+  body.querySelectorAll(".csv-pb-pick-icon.is-clickable").forEach((cell) => {
+    cell.addEventListener("click", () => {
+      if (cell.classList.contains("is-disabled")) return;
+      if (_csvSelection.pickLocked) return;
+      const cid = parseInt(cell.dataset.pickId, 10);
+      body.querySelectorAll(".csv-pb-pick-icon").forEach((el) => {
+        el.classList.toggle("is-selected", el === cell);
+        el.classList.toggle("is-disabled", el !== cell);
+      });
+      _csvOnPickSelect(cid);
+    });
+  });
+}
+
 export { handleChampSelect, renderChampSelectPanel, renderChampSelectCoach };

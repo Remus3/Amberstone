@@ -1,0 +1,88 @@
+{
+  "meta": {
+    "name": "flow_03_champ_select",
+    "label": "03 · Champ Select · SR Ranked draft",
+    "mode": "client",
+    "summary": "Phase 3 step 3 — SR Ranked Solo/Duo draft mid-pick · I'm locked on Vayne BOT · 4 ally picks + 3 enemy picks · 6 bans in"
+  },
+  "health": {
+    "type": "health",
+    "source": "sim",
+    "payload": {
+      "pid": 99999,
+      "alive": true,
+      "has_game": false,
+      "mode": "client",
+      "last_reload_ok": true
+    }
+  },
+  "state": {
+    "type": "state",
+    "mode": "client",
+    "source": "coaching_data.json",
+    "payload": {
+      "game_time": "",
+      "kda": "",
+      "champion": "Vayne",
+      "action": "Vayne BOT · vs Kai'Sa + Thresh",
+      "immediate": "Start Doran's Blade. Avoid hook range from Thresh — stand behind minions until lvl 3 W stealth power spike.",
+      "risk": "Thresh hook + Kai'Sa Q poke; lane is bully phase pre-lv 3",
+      "fight_rule": "Q reset auto-attacks; W procs every 3rd hit; respect Thresh flay",
+      "reset_item": "B.F. Sword + boots",
+      "next": "Level 6 R powerspike → invisible repositioning; force fights",
+      "objective": "First Drake at 5:00 — set up vision side by 4:20",
+      "items_display": "",
+      "item_build": "Doran's Blade → Berserker's Greaves → Kraken Slayer → Runaan's Hurricane → Infinity Edge",
+      "augments": "",
+      "enemy_comp": ["Kai'Sa", "Thresh", "Yasuo", "Lee Sin", "Garen"],
+      "ally_comp": ["Vayne", "Lulu", "Ahri", "Lee Sin", "Sett"],
+      "win_pct": 52
+    }
+  },
+  "lcu": {
+    "type": "lcu",
+    "source": "sim",
+    "payload": {
+      "phase": "ChampSelect",
+      "champ_select": {
+        "queue_id": 420,
+        "is_aram": false,
+        "sr_draft": true,
+        "phase": "BAN_PICK",
+        "my_champion": 67,
+        "my_completed": true,
+        "my_summoners": [4, 7],
+        "local_cell": 4,
+        "bench": [],
+        "trades": [],
+        "my_team": [
+          { "cellId": 0, "championId": 875, "summonerName": "TopMonster", "puuid": "", "completed": true,  "assignedPosition": "TOP" },
+          { "cellId": 1, "championId": 64,  "summonerName": "BlindMonk",  "puuid": "", "completed": true,  "assignedPosition": "JUNGLE" },
+          { "cellId": 2, "championId": 103, "summonerName": "FoxFrenzy",  "puuid": "", "completed": true,  "assignedPosition": "MIDDLE" },
+          { "cellId": 3, "championId": 117, "summonerName": "LuluSupport","puuid": "", "completed": false, "assignedPosition": "UTILITY" },
+          { "cellId": 4, "championId": 67,  "summonerName": "Moonbeam",   "puuid": "", "completed": true,  "assignedPosition": "BOTTOM" }
+        ],
+        "their_team": [
+          { "cellId": 5, "championId": 86,  "summonerName": "",  "puuid": "", "completed": true,  "assignedPosition": "TOP" },
+          { "cellId": 6, "championId": 64,  "summonerName": "",  "puuid": "", "completed": false, "assignedPosition": "JUNGLE" },
+          { "cellId": 7, "championId": 157, "summonerName": "",  "puuid": "", "completed": true,  "assignedPosition": "MIDDLE" },
+          { "cellId": 8, "championId": 145, "summonerName": "",  "puuid": "", "completed": true,  "assignedPosition": "BOTTOM" },
+          { "cellId": 9, "championId": 412, "summonerName": "",  "puuid": "", "completed": false, "assignedPosition": "UTILITY" }
+        ],
+        "bans": {
+          "my_team": [238, 222, 84],
+          "their_team": [266, 99, 51]
+        },
+        "timer": {
+          "phase_name": "BAN_PICK",
+          "remaining_ms": 22000,
+          "total_ms": 27000
+        },
+        "active_round": {
+          "type": "pick",
+          "cell_ids": [3, 6]
+        }
+      }
+    }
+  }
+}

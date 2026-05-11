@@ -1,0 +1,742 @@
+/* Champ Select VIEW (s164 — Phase 3 step 3 scaffold).
+ *
+ * Distinct from panels/champ_select.css, which styles the floating
+ * #cs-overlay used during legacy ChampSelect render. This file styles
+ * the new top-level <section id="view-champ-select"> page that flow_03
+ * targets — full-page redesign in the same series as view-lobby /
+ * view-active-match.
+ *
+ * Hide the legacy overlay while the new view is active so they don't
+ * stack visually.
+ */
+body[data-view="champ-select"] #cs-overlay { display: none !important; }
+
+.csv-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  /* Row 2 has an explicit floor so pickban content (role + 3 picks +
+   * mood + gaps + header chrome ≈ 354px) always fits — independent of
+   * the live viewport height. No more section-level scrollbar. */
+  grid-template-rows: auto minmax(354px, 1fr);
+  grid-template-areas:
+    "allies mypick enemies"
+    "pickban mypick enemies";
+  gap: 12px;
+  min-height: 0;
+}
+.csv-card-allies   { grid-area: allies; }
+/* Allies header stays panel-centered (default). Summoner-name column
+ * below is aligned to wherever the "A" lands via a CSS var driven by
+ * JS measurement on each render — see _csvAlignAllies(). */
+/* Hardcoded width chosen so the summoner col (and the lock/timer at
+ * its left edge) lands near the "A" of the centered "Allies" title
+ * on the 1920-wide viewport. Adjust this number to shift the locks
+ * left/right. Operator nudges so far: 110→100 (−10), 100→90 (−10
+ * more) — net 20px left of the centered "A". */
+.csv-card-allies { --csv-champname-col: 90px; }
+.csv-card-allies .csv-team-cell {
+  grid-template-columns: 36px var(--csv-champname-col) 1fr auto;
+}
+/* Hide the PICK & BAN RECOMMENDATIONS panel title — the PICK / BAN
+ * labels inside Row 2 act as the column headers instead. */
+.csv-card-pickban > .csv-card-head { display: none; }
+.csv-card-pickban  { grid-area: pickban; min-height: 0; overflow: hidden; }
+.csv-card-mypick   { grid-area: mypick; }
+.csv-card-enemies  { grid-area: enemies; }
+
+.csv-card {
+  background: var(--card-bg, #14171c);
+  border: 1px solid var(--card-border, #2a2f37);
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.csv-card-head {
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #e8eaf0;
+  text-align: center;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #232830;
+  margin-bottom: 8px;
+}
+
+.csv-card-body {
+  flex: 1 1 auto;
+  overflow: auto;
+  min-height: 0;
+}
+
+/* MY PICK center card — big champion icon, name, lock state. */
+.csv-mypick {
+  align-items: center;
+  text-align: center;
+}
+.csv-mypick-icon {
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  background: #1c2026;
+  border: 2px solid #2a2f37;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 12px auto 8px;
+  overflow: hidden;
+}
+.csv-mypick-icon img { width: 100%; height: 100%; object-fit: cover; }
+.csv-mypick-icon.empty { color: #6a7280; font-size: 48px; }
+.csv-mypick-icon.locked { border-color: #4ade80; }
+.csv-mypick-icon.hovering { border-color: #fbbf24; }
+
+.csv-mypick-name {
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff;
+  margin-bottom: 4px;
+}
+.csv-mypick-state {
+  font-size: 14px;
+  color: #9ca3af;
+  margin-bottom: 12px;
+}
+.csv-mypick-state.locked { color: #4ade80; }
+.csv-mypick-state.hovering { color: #fbbf24; }
+
+/* Team panels — vertical stack of 5 cells. */
+.csv-team-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* Reset browser <ul> defaults so cells start at card-content-left
+   * — otherwise the 40px default padding pushes usernames out of sync
+   * with the ALLIES header alignment math. */
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.csv-team-cell {
+  display: grid;
+  /* icon | champ-name (JS-sized so usernames in next col left-align
+   * vertically with the centered "Allies" title) | summoner-name
+   * (fills) | position pip. champ-name col width comes from
+   * --csv-champname-col defined on .csv-card-allies. */
+  grid-template-columns: 36px 88px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 6px;
+  background: #1a1d23;
+  border: 1px solid #232830;
+  border-radius: 4px;
+  min-height: 38px;
+}
+.csv-team-cell.me { border-color: #6366f1; background: #1d1e2d; }
+.csv-team-cell.locked .csv-team-cell-icon { border-color: #4ade80; }
+.csv-team-cell.hovering .csv-team-cell-icon { border-color: #fbbf24; }
+.csv-team-cell.empty .csv-team-cell-icon { background: #14171c; }
+
+.csv-team-cell-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  background: #14171c;
+  border: 1px solid #2a2f37;
+  overflow: hidden;
+}
+.csv-team-cell-icon img { width: 100%; height: 100%; object-fit: cover; }
+
+.csv-team-cell-nm {
+  /* Reduced 14→13 per operator — frees up a few pixels to the right
+   * for the lock/timer column in narrow panels. */
+  font-size: 13px;
+  font-weight: 700;
+  color: #e8eaf0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+.csv-team-cell-summ {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+/* Enemy cells: enemy summoner names are never revealed in champ-select,
+ * so the summ col is just the lock/timer marker. Float the marker
+ * absolutely at panel-center (+20px right per operator) so it lines
+ * up vertically with the centered "ENEMIES" panel title above. The
+ * role pip is explicitly placed in grid col 4 (otherwise it auto-
+ * flows into the 1fr col since summ is absolutely positioned and
+ * removed from grid flow) — then nudged 20px right via translateX. */
+.csv-card-enemies .csv-team-cell {
+  position: relative;
+}
+.csv-card-enemies .csv-team-cell-icon { grid-column: 1; }
+.csv-card-enemies .csv-team-cell-nm   { grid-column: 2; }
+/* Role pip + lock/timer offsets — operator's last nudge: pos pip
+ * back to natural position (translateX(20px)→0, i.e. −20px from
+ * previous), lock/timer to calc(50%+10px) (−10px from previous +20). */
+.csv-card-enemies .csv-team-cell-pos  { grid-column: 4; }
+.csv-card-enemies .csv-team-cell-summ {
+  position: absolute;
+  /* Net offset history: +20 → +10 → 0 (operator nudged left in 10px
+   * increments). At 50% the lock/timer sits exactly at the cell
+   * horizontal center, matching the centered ENEMIES title above. */
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  gap: 0;
+  pointer-events: none;
+}
+/* Enemy-only "(guess)" tag — sits between the centered lock/timer
+ * (at 50%) and the right-aligned role pip (~85% area). Positioned
+ * at 70% so it's vertically aligned across every row regardless of
+ * what's in the lock slot or how wide the pip text is. */
+.csv-card-enemies .csv-team-cell-guess {
+  position: absolute;
+  left: 70%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 10px;
+  font-style: italic;
+  color: #6a7280;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.csv-team-cell-summ-text {
+  flex: 0 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  font-size: 13px;
+  color: #9ca3af;
+  text-align: left;
+}
+/* Lock/timer markers — left-aligned at the summ col start, so the
+ * padlock's left edge sits on the same vertical line as the "A" of
+ * "Allies" in the panel title (the JS aligner positions the summ col
+ * left edge to match that x). Summoner name sits to the right. */
+.csv-team-cell-lock,
+.csv-team-cell-timer {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+.csv-team-cell-lock  { color: #4ade80; }
+/* Allies-only: nudge the lock/timer LEFT visually without affecting
+ * layout (position:relative shifts rendering only, so the username's
+ * flex position is unchanged). Both elements share an identical
+ * 14px-wide slot with right-aligned content so the TIMER text
+ * (variable width like "12s") never extends past the LOCK icon's
+ * right edge — wider timer text overflows LEFT, not right. Buffer
+ * reduced from −12 to −6 so the icons don't get cut off on the left. */
+/* Allies-only: lock/timer share an 18px right-aligned slot (wider
+ * than the 16px attempt so neither the 🔒 emoji nor the timer
+ * digits get visually clipped). Negative-position shift removed —
+ * the buffer between the lock right edge and the username comes
+ * entirely from the parent flex gap below (reduced 4→2 per op). */
+.csv-card-allies .csv-team-cell-summ {
+  gap: 2px;
+}
+.csv-card-allies .csv-team-cell-lock,
+.csv-card-allies .csv-team-cell-timer {
+  display: inline-block;
+  width: 18px;
+  text-align: right;
+}
+/* Countdown timer: cyan blue text with a 1px black outline (via
+ * text-shadow as a 1px offset on all 4 sides — simulates an outline
+ * without -webkit-text-stroke's anti-aliasing quirks). */
+.csv-team-cell-timer {
+  color: #22d3ee;
+  letter-spacing: 0.02em;
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000;
+}
+
+/* Clickable affordances on non-self ally cells: icon = champion trade,
+ * pos pip = lane swap, summoner name = role/champion choice popup. */
+.csv-team-cell-icon.is-clickable,
+.csv-team-cell-pos.is-clickable,
+.csv-team-cell-summ-text.is-clickable {
+  cursor: pointer;
+  transition: filter 0.12s, box-shadow 0.12s, border-color 0.12s;
+}
+.csv-team-cell-icon.is-clickable:hover {
+  box-shadow: 0 0 0 2px #60a5fa;
+}
+.csv-team-cell-pos.is-clickable:hover {
+  border-color: #60a5fa;
+  color: #e8eaf0;
+}
+.csv-team-cell-summ-text.is-clickable:hover {
+  color: #e8eaf0;
+  text-decoration: underline;
+  text-decoration-color: #60a5fa;
+  text-underline-offset: 2px;
+}
+
+/* Pick & Ban panel quick-select affordances. Ban icons always clickable;
+ * pick icons only clickable when not in active BAN_PICK phase. */
+.csv-pb-pick-icon.is-clickable,
+.csv-pb-ban.is-clickable {
+  cursor: pointer;
+  transition: box-shadow 0.12s, transform 0.12s;
+}
+/* Pick → green border (positive, "use this"); ban → red border
+ * (negative, "deny this"). Selection persists across re-renders via
+ * _csvSelection state. Once locked (operator clicked once), the
+ * is-disabled class is added to the OTHER cells to lock the choice. */
+.csv-pb-pick-icon.is-clickable:hover:not(.is-disabled),
+.csv-pb-pick-icon.is-selected {
+  box-shadow: 0 0 0 2px #4ade80;
+}
+.csv-pb-ban.is-clickable:hover:not(.is-disabled) .csv-pb-ban-icon,
+.csv-pb-ban.is-selected .csv-pb-ban-icon {
+  box-shadow: 0 0 0 2px #ef4444;
+}
+.csv-pb-ban.is-disabled,
+.csv-pb-pick-icon.is-disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+/* Trade choice popup — singleton element appended to body. Layout:
+ *   [ SWAP / TRADE  (full-width header row) ]
+ *   [ CHAMPION ][ Nth PICK ][ ROLE ]   (equal-width buttons row)
+ * Buttons share the same width via flex:1; the header spans the same
+ * total width since the popup itself is flex-column. 1px gap both
+ * between the header & buttons and between adjacent buttons. */
+.csv-trade-popup {
+  position: fixed;
+  z-index: 1000;
+  display: none;
+  flex-direction: column;
+  gap: 1px;
+  background: transparent;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.45));
+  /* Popup is appended to <html> to bypass body's zoom:1.33. Use
+   * transform: scale (not zoom) to visually match the dashboard's
+   * 1.33x scale — transform with origin 0 0 doesn't shift position
+   * values, so our JS calc using getBoundingClientRect coords lines
+   * up cleanly with no compensation math. */
+  transform: scale(1.33);
+  transform-origin: 0 0;
+}
+.csv-trade-popup.is-open { display: flex; }
+.csv-trade-header {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 12px;
+  background: #14171c;
+  border: 1px solid #ef4444;
+  border-radius: 3px;
+  color: #e8eaf0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+.csv-trade-buttons {
+  display: flex;
+  gap: 1px;
+}
+.csv-trade-choice {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 12px;
+  background: #14171c;
+  border: 1px solid #ef4444;
+  border-radius: 3px;
+  color: #e8eaf0;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  /* Equal widths with a min-width floor so short labels (e.g. "BOT")
+   * don't shrink the popup awkwardly. */
+  flex: 1 1 0;
+  min-width: 88px;
+}
+.csv-trade-choice:hover {
+  background: #1a1d23;
+  color: #ef4444;
+}
+.csv-team-cell-summ {
+  font-size: 13px;
+  color: #9ca3af;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  min-width: 0;
+}
+
+.csv-team-cell-pos {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  background: #14171c;
+  border: 1px solid #2a2f37;
+  border-radius: 3px;
+}
+/* The user's own row: position pip mirrors the pick/ban ROLE chip
+ * typography (gold + bold) since both display the same role and the
+ * operator wants visual continuity between the two indicators. */
+.csv-team-cell.me .csv-team-cell-pos {
+  font-size: 14px;
+  font-weight: 900;
+  color: #fbbf24;
+  letter-spacing: 0.08em;
+  padding: 1px 8px;
+  background: #14171c;
+  border: 1px solid #b88410;
+  border-radius: 3px;
+}
+
+/* Active-round indicator: a 2px solid colored border around the
+ * cell. Red for ban rounds, gold for picks. Drawn via inset
+ * box-shadow so it doesn't shift the cell layout. Earlier LED-dot
+ * animation removed per operator — wasn't rendering reliably. */
+.csv-team-cell.is-banning,
+.csv-team-cell.is-picking {
+  position: relative;
+}
+.csv-team-cell.is-banning {
+  box-shadow: inset 0 0 0 2px #ef4444;
+}
+.csv-team-cell.is-picking {
+  box-shadow: inset 0 0 0 2px #fbbf24;
+}
+
+/* Build chooser sub-block under MY PICK. */
+.csv-builds {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #232830;
+}
+.csv-builds-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+
+/* Phase / timer sub-line in section head. */
+.csv-phase-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  background: #1a1d23;
+  border: 1px solid #2a2f37;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #e8eaf0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.csv-phase-pill.ban_pick { color: #fbbf24; border-color: #b88410; }
+.csv-phase-pill.finalization { color: #4ade80; border-color: #15803d; }
+.csv-phase-pill.planning { color: #60a5fa; border-color: #2563eb; }
+
+.csv-empty {
+  color: #6a7280;
+  font-size: 13px;
+  text-align: center;
+  padding: 16px 8px;
+  font-style: italic;
+}
+
+/* ── Pick & Ban Recommendations panel ───────────────────────────── */
+.csv-pickban-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.csv-pb-role-row {
+  /* Same column template as the pick rows below — col 1 gets PICK,
+   * col 2 gets CURRENT ROLE chip, col 3 gets BAN slot (with internal
+   * 3-col sub-grid so BAN centers over the middle ban icon). */
+  display: grid;
+  grid-template-columns: 70px 1fr 138px;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 6px;
+  background: #1a1d23;
+  border: 1px solid #232830;
+  border-radius: 4px;
+  flex: 0 0 auto;
+}
+/* Explicit grid placement on all role-row children so role-mid can
+ * span the whole row (panel-centered) WITHOUT pushing pick-header /
+ * bans-header-slot into a second row via grid auto-flow. */
+.csv-pb-role-row > .csv-pb-pick-header {
+  grid-column: 1;
+  grid-row: 1;
+}
+.csv-pb-role-mid {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.csv-pb-bans-header-slot {
+  grid-column: 3;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+/* BAN sits in a 70px slot right-aligned within col 3 so the distance
+ * from BAN's right edge to the panel right edge mirrors the distance
+ * from PICK's left edge to the panel left edge (both 20px gaps from
+ * their respective panel edges, since PICK is centered in a 70px col 1). */
+.csv-pb-bans-header-slot > .csv-pb-bans-header {
+  width: 70px;
+  text-align: center;
+}
+.csv-pb-role-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #6a7280;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.csv-pb-role-chip {
+  font-size: 14px;
+  font-weight: 900;
+  color: #fbbf24;
+  letter-spacing: 0.08em;
+  padding: 1px 8px;
+  background: #14171c;
+  border: 1px solid #b88410;
+  border-radius: 3px;
+}
+
+.csv-pb-pick-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 138px;
+  gap: 6px;
+  padding: 3px 6px;
+  background: #1a1d23;
+  border: 1px solid #232830;
+  border-radius: 4px;
+  flex: 1 1 auto;
+  min-height: 50px;
+  align-items: center;
+}
+.csv-pb-pick-row[data-source="performance"] { border-left: 3px solid #4ade80; }
+.csv-pb-pick-row[data-source="mastery"]     { border-left: 3px solid #a78bfa; }
+.csv-pb-pick-row[data-source="meta"]        { border-left: 3px solid #60a5fa; }
+
+.csv-pb-pick-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+/* Source label (PERFORMANCE / MASTERY / META) now lives in reason col
+ * as a header above the explanation text — see .csv-pb-source-label
+ * and .csv-pb-reason-text below. */
+.csv-pb-source-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+.csv-pb-pick-row[data-source="performance"] .csv-pb-source-label { color: #4ade80; }
+.csv-pb-pick-row[data-source="mastery"]     .csv-pb-source-label { color: #a78bfa; }
+.csv-pb-pick-row[data-source="meta"]        .csv-pb-source-label { color: #60a5fa; }
+
+.csv-pb-pick-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 4px;
+  background: #14171c;
+  border: 1px solid #2a2f37;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6a7280;
+  font-size: 18px;
+}
+.csv-pb-pick-icon img { width: 100%; height: 100%; object-fit: cover; }
+.csv-pb-pick-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e8eaf0;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 78px;
+}
+
+.csv-pb-reason-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 2px 4px 0;
+  align-self: stretch;
+  justify-content: flex-start;
+}
+.csv-pb-reason-text {
+  font-size: 12px;
+  color: #b0b6c0;
+  line-height: 1.3;
+}
+
+.csv-pb-bans-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+}
+.csv-pb-bans-col.with-header {
+  grid-template-rows: auto auto;
+}
+.csv-pb-bans-header {
+  grid-column: 2 / 3;
+  grid-row: 1;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: #ef4444;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.csv-pb-bans-col.with-header > .csv-pb-ban {
+  grid-row: 2;
+}
+.csv-pb-pick-header {
+  font-size: 11px;
+  font-weight: 800;
+  color: #4ade80;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 2px;
+}
+.csv-pb-ban {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.csv-pb-ban-pct {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fbbf24;
+  line-height: 1;
+}
+.csv-pb-ban-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 3px;
+  background: #14171c;
+  border: 1px solid #2a2f37;
+  overflow: hidden;
+}
+.csv-pb-ban-icon img { width: 100%; height: 100%; object-fit: cover; }
+.csv-pb-ban-name {
+  font-size: 10px;
+  color: #9ca3af;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 42px;
+}
+.csv-pb-ban.is-placeholder .csv-pb-ban-icon {
+  background: #1c2026;
+  border-style: dashed;
+}
+
+.csv-pb-mood-row {
+  /* 2-line content lets us pack 4 mood buttons across after operator's
+   * Comp Synergy addition; previously 3 single-line buttons fit. Each
+   * cell stacks two spans (e.g., "Comfort" / "Pick"). */
+  display: grid;
+  grid-template-columns: auto 1fr 1fr 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  background: #1a1d23;
+  border: 1px solid #232830;
+  border-radius: 4px;
+  align-items: stretch;
+  flex: 0 0 auto;
+}
+.csv-pb-mood-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  line-height: 1.1;
+}
+.csv-pb-mood-label > span {
+  font-size: 10px;
+  font-weight: 700;
+  color: #6a7280;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.csv-pb-mood-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 4px;
+  background: #14171c;
+  border: 1px solid #2a2f37;
+  border-radius: 3px;
+  color: #9ca3af;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.1;
+  min-height: 36px;
+}
+.csv-pb-mood-btn > span { display: block; }
+.csv-pb-mood-btn.is-active {
+  color: #4ade80;
+  border-color: #15803d;
+  background: #1a2a20;
+}
+.csv-pb-mood-btn:hover:not(.is-active) {
+  color: #e8eaf0;
+  border-color: #3a3f4a;
+}
