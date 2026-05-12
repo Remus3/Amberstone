@@ -31,7 +31,7 @@ WAKEUP = ROOT / "WAKEUP_NOTES.md"
 ARCHIVE = ROOT / "docs" / "history_notes.md"
 
 SEP = "\n---\n\n"
-SESSION_RE = re.compile(r"^# s\d+ wrap\b", re.M)
+SESSION_RE = re.compile(r"^# s\d+(?:\.\d+)* wrap\b", re.M)
 
 ARCHIVE_HEADER = (
     "# RC session history archive\n"
