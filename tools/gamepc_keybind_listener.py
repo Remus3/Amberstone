@@ -1,18 +1,22 @@
 """
-gamepc_keybind_listener.py — Numpad A/B/dismiss keybinds for decision_detector.
+gamepc_keybind_listener.py — Left Alt + 1/2/3 keybinds for decision_detector.
 
-Run on Game-PC. Hooks global keypresses (numpad1 / numpad2 / numpad0) and
-POSTs to Legion's /api/decisions/respond_active so the operator can answer
-mid-game without alt-tabbing to the dashboard.
+Run on Game-PC. Hooks global keypresses (left alt+1 / left alt+2 /
+left alt+3) and POSTs to Legion's /api/decisions/respond_active so the
+operator can answer mid-game without alt-tabbing to the dashboard.
+
+Left Alt + number row was chosen for tenkeyless keyboards (no numpad)
+and because Alt+1..6 are NOT bound in League's default keymap — unlike
+Ctrl+1..6 which would item-cast slots 1/2/3 alongside the listener fire.
 
 ADR-007 (s169) — phase-1 ship. Optional install; the dashboard banner
 buttons keep working without this. The point of the keybinds is to
 preserve game focus.
 
 Default keymap:
-    Numpad 1   → choice_index = 0  (decision.options[0])
-    Numpad 2   → choice_index = 1  (decision.options[1])
-    Numpad 0   → dismiss           ("skip")
+    Left Alt + 1   → choice_index = 0  (decision.options[0])
+    Left Alt + 2   → choice_index = 1  (decision.options[1])
+    Left Alt + 3   → dismiss           ("skip")
 
 Override via env vars RC_KEY_A / RC_KEY_B / RC_KEY_DISMISS (use `keyboard`
 names — see https://github.com/boppreh/keyboard).
@@ -55,11 +59,12 @@ LEGION_HOST = os.environ.get("RC_LEGION_HOST", "192.168.8.230")
 LEGION_PORT = int(os.environ.get("RC_LEGION_PORT", "8888"))
 RESPOND_URL = f"https://{LEGION_HOST}:{LEGION_PORT}/api/decisions/respond_active"
 
-# Default keybinds — use `keyboard` library names. Numpad layout:
-#   1 → A, 2 → B, 0 → dismiss.
-KEY_A = os.environ.get("RC_KEY_A", "num 1")
-KEY_B = os.environ.get("RC_KEY_B", "num 2")
-KEY_DISMISS = os.environ.get("RC_KEY_DISMISS", "num 0")
+# Default keybinds — use `keyboard` library names. Left Alt + number row
+# above QWERTY (tenkeyless-friendly; collision-free with League which
+# only binds Ctrl+1..6 to items, not Alt+1..6).
+KEY_A = os.environ.get("RC_KEY_A", "left alt+1")
+KEY_B = os.environ.get("RC_KEY_B", "left alt+2")
+KEY_DISMISS = os.environ.get("RC_KEY_DISMISS", "left alt+3")
 
 # Per-key debounce so a long press doesn't double-fire.
 _DEBOUNCE_S = 0.25
