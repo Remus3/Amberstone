@@ -505,6 +505,23 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
               || phase === "Lobby")) {
         _VIEW.gameStarted = null;
       }
+      // s171.8: dodge handling — ChampSelect → Lobby/Matchmaking/etc.
+      // means user backed out before game start. Clear the sticky guard
+      // so the auto-derive doesn't keep them on the now-stale CS view.
+      else if (_VIEW.gameStarted === "champ-select"
+               && (phase === "Lobby" || phase === "Matchmaking"
+                   || phase === "ReadyCheck" || phase === "None")) {
+        _VIEW.gameStarted = null;
+      }
+    }
+    // s171.8: ChampSelect ended but phase isn't a stable state — must
+    // be the loading-screen window (LCU drops phase to null/empty for
+    // a few hundred ms between ChampSelect ending and GameStart firing,
+    // and GameStart itself can be missed by the 2s poll). Advance the
+    // sticky guard so the auto-derive returns "loading" instead of
+    // staying on champ-select view through the whole loading window.
+    else if (_VIEW.gameStarted === "champ-select" && !phase) {
+      _VIEW.gameStarted = "game-start";
     }
     // s171: Loading view is the right surface during GameStart
     // (loading screen). Removed the opt-in gate that left this on

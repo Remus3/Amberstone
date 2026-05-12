@@ -31,8 +31,11 @@ def compute_asset_hash() -> str:
         return _ASSET_HASH_CACHE["hash"]
     web_root = APP_DIR / "web"
     parts = []
+    # s171.8: include js/main.js so edits to the s133 ESM entrypoint
+    # also bust browser caches. Without this, view-router / handler
+    # changes are invisible until a hard-reload.
     for rel in ("index.html", "css/dashboard.css", "js/dashboard.js",
-                "js/sim.js", "js/ws_client.js"):
+                "js/main.js", "js/sim.js", "js/ws_client.js"):
         p = web_root / rel
         try:
             parts.append(f"{rel}:{int(p.stat().st_mtime)}")
