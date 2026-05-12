@@ -1,0 +1,24 @@
+{
+  "mode_key": "aram",
+  "coach_source": "aram_coaching_data.json",
+  "health": {"alive": true, "pid": 9999, "mode": "aram", "has_game": true, "aram_mode": true},
+  "coach": {
+    "mode": "aram",
+    "action": "",
+    "immediate": "",
+    "next": "",
+    "fight_rule": "",
+    "wave": "",
+    "objective": "",
+    "reset_item": "",
+    "risk": "",
+    "map": "",
+    "log": [],
+    "pregame": "",
+    "champion": "",
+    "kda": "",
+    "ally_comp": [],
+    "enemy_comp": [],
+    "ally_spells": {}
+  }
+}
