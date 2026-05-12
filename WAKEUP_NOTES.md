@@ -4,6 +4,60 @@
 
 ---
 
+# s173.1 wrap — 2026-05-12 (audit thread continuation — 5 commits)
+
+**operator slot complete** — `/what's-next` daytime run. Closes s173 audit findings #2 + #3, plus 3 bonus items spotted while in the area. All 5 commits CI-green on first push.
+
+Operator brief: "1 then any other items listed in roadmap, readme, or other files for tasks to do, 2 will be later today in about 5 hours." Item 1 = s173 finding #2 (ENGINE_VERSION doc-sync). Item 2 = Active Match step 5 (deferred 5 hours per operator). Slot scope: anything well-scoped, no operator-approval-blocked, no live-game-blocked.
+
+## Ships
+
+| Commit | Theme |
+|---|---|
+| [5c8b53e](https://github.com/Remus3/riot-commander/commit/5c8b53e) | `docs:` sync ENGINE_VERSION 0.60.0 → 0.61.0 across 6 living docs (8 lines) — closes s173 finding #2. Historical references in archived notes + batch comments intentionally untouched. |
+| [802ad90](https://github.com/Remus3/riot-commander/commit/802ad90) | `docs:` sync DS test count 929/911 → 949 across living docs — spotted drift while doing #2. Canonical 949 from `py -m pytest agents/daemon_slayer/`. Dated planning docs left at 929 (write-time accurate). |
+| [38ca915](https://github.com/Remus3/riot-commander/commit/38ca915) | `test(snapshot_panels):` adversarial fixtures + mode-transition coverage; fix s151 `gameTime` ref-error. 4 new fixtures (no_coach / null_fields / empty_strings / out_of_range) + 2 new tests + closes the CLAUDE.md item-10 s151 follow-up (`panels/map_state.js:720` referenced bare `gameTime` outside the IIFE scope; only fired when `game_time_s` was numeric — adv_out_of_range surfaced it via -42). 11 of 11 tests green (was 6). |
+| [16334b2](https://github.com/Remus3/riot-commander/commit/16334b2) | `refactor(champion-aliases):` unify three drift-prone maps via canonical JSON — closes s173 finding #3. New `web/data/champion_aliases.json` as source of truth; `web/js/lib/items_index.js` + `web/js/dashboard.js` fetch async; `tools/daemon_slayer_extract.py` reads at import-time. New `tests/test_champion_aliases.py` (4 regression guards). `agents/daemon_slayer/server.py:_resolve_champion_id` is a different pattern (builds revmap from DDragon data dynamically) — explicitly not a drift candidate. |
+| [51e0da7](https://github.com/Remus3/riot-commander/commit/51e0da7) | `fix(console-pipe):` per-entry queue removal preserves entries on replay failure — closes BACKLOG item "Console-pipe localStorage flush failure-recovery loop". The original `flushQueueAfterSuccess` called `localStorage.removeItem(QUEUE_KEY)` BEFORE issuing replay fetches with `.catch(() => {})`; mid-flush endpoint outage lost every queued entry. Now each entry stays queued until its own 2xx; failures retry on next pipe-success (QUEUE_MAX=50 bounds growth). |
+
+## Findings
+
+- **The adversarial harness paid for itself on first run** — `test_adversarial[adv_out_of_range]` surfaced the s151 `gameTime` ref-error that had been pending as a "follow-up" deferral for ~10 days. The bug was previously invisible because no real game state has `game_time_s: -42`; only an adversarial fixture exercised the path. Closing the loop: BACKLOG-driven test design caught a CLAUDE.md item-10 known-unfixed bug. Worth keeping in mind for future test-coverage decisions — adversarial fixtures aren't just defense, they're discovery.
+- **Champion alias unification was 5 files not 3** — the s173 wrap listed three sites (items_index.js, daemon_slayer_extract.py, dashboard.js). While implementing I checked one more candidate the audit brief had flagged (`core/champion_aliases.py` doesn't exist) and audited `agents/daemon_slayer/server.py:_resolve_champion_id` — which is a different pattern (dynamic revmap from DDragon `champions[].name`) and NOT a drift candidate. Test guard at `tests/test_champion_aliases.py:test_js_consumers_reference_canonical_file` greps both JS files to catch future regressions where someone re-hardcodes the map.
+- **Console-pipe identity match by (ts, message-prefix)** — object identity doesn't survive the JSON round-trip through localStorage, so `_dropQueuedEntry` matches on (ts, message[:100]). Collisions are benign — at worst we drop a near-duplicate that retries on next flush. Heuristic chosen over assigning UUIDs at enqueue time to keep the fix surgical.
+
+## Files touched this slot
+
+**Doc-sync (2 commits, 9 line edits):**
+- `CLAUDE.md` · `README.md` (×3 lines) · `docs/DAEMON_SLAYER.md` · `docs/ARCHITECTURE.md` · `BRIEF.md` · `NEXT_SESSION_PLAN_2026-05-10.md`
+
+**Code + tests (3 commits, 8 files changed, 5 new):**
+- `web/data/champion_aliases.json` (NEW)
+- `web/js/lib/items_index.js` · `web/js/dashboard.js` · `web/js/main.js` · `web/js/panels/map_state.js`
+- `tools/daemon_slayer_extract.py`
+- `tests/test_champion_aliases.py` (NEW)
+- `tests/snapshot_panels/test_panel_snapshots.py`
+- `tests/snapshot_panels/fixtures/adv_no_coach.json` · `adv_null_fields.json` · `adv_empty_strings.json` · `adv_out_of_range.json` (4 NEW)
+
+## Open items carried forward
+
+- 🟡 **Active Match view step 5** — deferred per operator to ~5 hours after slot start. Sub-items: zen-lock in-game + RIGHT NOW fold + bridge-pending → dev-panel button + fleet view removal. CLAUDE.md item 18.
+- 🟡 **s173 finding #1 — frozen-file list drift** between `CLAUDE.md` (27 entries) and `tools/process-bridge-tasks.md` (14 entries in the in-prompt skill spec). The skill spec file is itself frozen, so unification needs operator approval. Logged in s173 wrap; carried forward.
+- 🟡 **Live champ-select verification** — the Hunt 5 substitution from s173 (`907543f`) and the s171.8 cache-bust unification both await a real ChampSelect pop to reconfirm `_fetchDsPreview` fires with the correct mode label and the unified asset-hash propagates `champ_select.js` updates.
+- 🟡 **dashboard.js console-pipe mirror** — same pre-emptive-remove bug at line 8109 left unfixed since the wrap noted dashboard.js is dead code (web/index.html only loads main.js). Sync deferred to land alongside any future dashboard.js removal.
+- 🟡 **BACKLOG `MatchDB` thread-safety validation** entry is stale — `core/match_db.py` was refactored 2026-04-28 (audit proposal 1.2) from RLock to WAL + per-thread connections. The FIX-021 lock referenced in BACKLOG no longer exists. Worth a one-line BACKLOG edit when next in the area.
+
+## Pending verification
+
+🟢 All snapshot_panels tests + full pytest suite green throughout slot:
+- After 38ca915: 821 (full) + 11 (snapshot_panels) = 832 passing
+- After 16334b2: 836 passing (snapshot_panels rolled into full run + 4 new alias tests)
+- After 51e0da7: snapshot_panels 11/11 — happy path unchanged for console pipe
+
+🟡 Live verification of the s151 fix awaits next real game (current liveclient empty per startup probe). The `gameTime` ref-error in `_tickObjectiveCountdowns` fires only when `_currentGameTimeS()` returns a number, which means an active game with `game_time_s` populated. Adversarial fixture verified it; live confirm is bonus.
+
+---
+
 # s173 wrap — 2026-05-12 (anti-drift audit run — 2 commits)
 
 **audit run complete** — 2 pairs unified, ~30 min elapsed. Both green on first CI run.
