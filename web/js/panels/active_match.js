@@ -75,24 +75,28 @@ function _maybeRefreshDsPicks(champion, mode, level, items) {
   return _DS_RERANK.lastRows;
 }
 
-// Flag check used by main.js view-router. Two opt-in paths so the
-// preference survives a refresh:
-//   1. ?am=1 in the URL — one-shot for testing.
-//   2. localStorage.activeMatch === '1' — sticky for daily use.
+// s171: opt-OUT (was opt-in). Active Match is the default in-game
+// surface — it renders coach action/immediate/objective/next + DS
+// live rerank + the static map with enemy dots. Operator opts OUT via
+// ``?am=0`` or ``localStorage.activeMatch === '0'`` to fall back to
+// the legacy MAP STATE / RIGHT NOW / NEXT / STATS panels in last-match.
 export function activeMatchEnabled() {
   try {
-    if (typeof location !== "undefined"
-        && location.search
-        && location.search.includes("am=1")) {
-      // Sticky-promote when the URL flag fires so the next load
-      // doesn't need the query string. Operator can clear via
-      // localStorage.removeItem('activeMatch').
-      try { localStorage.setItem("activeMatch", "1"); } catch (_) {}
-      return true;
+    if (typeof location !== "undefined" && location.search) {
+      if (location.search.includes("am=0")) {
+        try { localStorage.setItem("activeMatch", "0"); } catch (_) {}
+        return false;
+      }
+      if (location.search.includes("am=1")) {
+        try { localStorage.setItem("activeMatch", "1"); } catch (_) {}
+        return true;
+      }
     }
-    return localStorage.getItem("activeMatch") === "1";
+    const stored = localStorage.getItem("activeMatch");
+    if (stored === "0") return false;   // explicit opt-out
+    return true;                         // default ON
   } catch (_) {
-    return false;
+    return true;
   }
 }
 
@@ -118,13 +122,28 @@ export function renderActiveMatch(payload, ctx) {
   const call = _AM.callBody();
   if (call) {
     const action = p.action || "";
+    const immediate = p.immediate || "";
     const next = p.next || "";
     const objective = p.objective || "";
-    if (action || next || objective) {
-      call.innerHTML = ""; // clear placeholder
+    // s171: ``immediate`` is the most actionable field — the coach's
+    // RIGHT NOW prompt (e.g. "Recall now — Ryze + Yi respawn ~47s").
+    // It was being dropped from the active-match render even though
+    // every coach tick populates it. Now leads the panel above
+    // ACTION/OBJECTIVE/NEXT so the operator sees the imminent call
+    // first when they glance at the dashboard.
+    if (action || immediate || next || objective) {
+      call.innerHTML = "";
+      if (immediate) call.appendChild(_line("RIGHT NOW", immediate));
       if (action)    call.appendChild(_line("ACTION",    action));
       if (objective) call.appendChild(_line("OBJECTIVE", objective));
       if (next)      call.appendChild(_line("NEXT",      next));
+    } else {
+      // Empty coach payload → surface that we're waiting rather than
+      // leave the panel blank. Operator's complaint "no coach prompts
+      // because it doesn't know I'm in game" was partly this — the
+      // panel rendered nothing while coach tick was lagging.
+      call.innerHTML = "";
+      call.appendChild(_line("RIGHT NOW", "waiting for coach tick…"));
     }
   }
 
