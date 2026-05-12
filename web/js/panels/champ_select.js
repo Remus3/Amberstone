@@ -1220,10 +1220,12 @@ function handleChampSelect(lcu) {
 
   // DS Engine pre-game build preview — fires once per (champion, mode)
   // pair; keyed separately from Haiku so draft changes don't re-hit DS.
-  const dsMode = (adaptMode === "aram") ? "ARAM"
-               : (adaptMode === "arena") ? "ARENA"
-               : "SR";
-  _fetchDsPreview(myName, dsMode);
+  // _csvDsModeFor is hoisted from below; using the same helper here
+  // and at line 1924 keeps the mode→DS-name mapping single-sourced
+  // (ADR-008 pattern). The original inline ternary lacked a "brawl"
+  // branch — _csvDsModeFor adds it, and current adaptMode resolution
+  // (modeMap fallback to "aram") preserves the prior brawl behavior.
+  _fetchDsPreview(myName, _csvDsModeFor(adaptMode));
 
   // Live Haiku coaching — debounced + key-deduped so we only fire when
   // the actual pick state changes (champion or team comp), not on every
