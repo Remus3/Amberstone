@@ -185,6 +185,190 @@ def lcu_request(method, path, body=None):
         return None, f"{type(e).__name__}"
 
 
+# -- Lobby members forwarding ------------------------------------------------
+#
+# s170 (2026-05-11): the dashboard's view-lobby panel (_lobbyViewRefresh +
+# _renderTop8 in web/js/main.js) expects state["lobby"].members[] with a
+# rich shape (riot_id, is_leader, position_preferences, etc.). The agent
+# was only forwarding queueId + game_mode + map_id; everything member-shaped
+# in the panel was running on placeholders. This block extracts what LCU
+# already publishes on /lol-lobby/v2/lobby + the local matchmaking search
+# endpoint. Legion enriches with rank / games-with-me / online status —
+# the agent is forwarder-only.
+
+# queue_id → human-readable name. Dashboard falls back to ("queue " + id)
+# when queue_name is missing, so this map is best-effort. Common queues
+# the operator sees; extend as needed.
+_LOBBY_QUEUE_NAMES = {
+    400: "Normal Draft",
+    420: "Ranked Solo/Duo",
+    430: "Normal Blind",
+    440: "Ranked Flex",
+    450: "ARAM",
+    480: "Swiftplay",
+    490: "Quickplay",
+    700: "Clash",
+    720: "Clash ARAM",
+    830: "Co-op vs AI Intro",
+    840: "Co-op vs AI Beginner",
+    850: "Co-op vs AI Intermediate",
+    900: "URF",
+    920: "ARAM Mayhem",
+    1020: "One for All",
+    1090: "TFT Normal",
+    1100: "TFT Ranked",
+    1110: "TFT Tutorial",
+    1130: "TFT Hyper Roll",
+    1160: "TFT Double Up",
+    1300: "Nexus Blitz",
+    1400: "Ultimate Spellbook",
+    1700: "Arena",
+    1710: "Arena (no AFK)",
+    1810: "Swarm",
+    1820: "Swarm (Solo)",
+    1830: "Swarm (Duo)",
+    1840: "Swarm (Trio)",
+    1850: "Swarm (Quad)",
+    1900: "URF",
+    2300: "Brawl",
+}
+
+
+# Per-summoner-id cache for `/lol-summoner/v1/summoners/{id}` lookups.
+# Current LCU builds frequently return empty gameName/tagLine on
+# `/lol-lobby/v2/lobby` members, so we enrich by summoner-id. TTL is
+# 10 min because riot-id changes are rare (and would re-fire on next
+# capture cycle anyway since cache is per-process).
+_SUMMONER_LOOKUP_TTL_S = 600.0
+_summoner_lookup_cache: dict = {}  # {sid: {"data": {...}, "fetched_at": float}}
+
+
+def _lookup_summoner_by_id(sid: int):
+    """Fetch summoner profile by summonerId; cached with TTL.
+
+    Returns the LCU summoner dict (with gameName/tagLine/summonerName/
+    summonerLevel/puuid) or None when unreachable. Quiet failure —
+    callers must tolerate missing data and emit empty strings.
+    """
+    if not sid:
+        return None
+    cached = _summoner_lookup_cache.get(sid)
+    now = time.time()
+    if cached and (now - cached.get("fetched_at", 0)) < _SUMMONER_LOOKUP_TTL_S:
+        return cached.get("data")
+    payload, err = lcu_request("GET", f"/lol-summoner/v1/summoners/{sid}")
+    if not isinstance(payload, dict):
+        return None
+    _summoner_lookup_cache[sid] = {"data": payload, "fetched_at": now}
+    return payload
+
+
+def _reset_summoner_lookup_cache_for_tests() -> None:
+    _summoner_lookup_cache.clear()
+
+
+def _slim_lobby_member(m, *, local_summoner_id: int | None = None,
+                      enrich: bool = False) -> dict | None:
+    """Distil one LCU lobby-member entry into the dashboard's wire shape.
+
+    LCU fields vary by client version — older builds emit ``summonerName``
+    only; newer builds emit ``gameName`` + ``tagLine``. We forward both so
+    Legion's panel can pick whichever it prefers and so the riot_id
+    composition (``GameName#TagLine``) is available when possible.
+
+    When ``local_summoner_id`` is supplied, ``is_self`` is computed by
+    matching ``summonerId``. This is more reliable than LCU's
+    ``isLocalMember`` flag which is unset on current client builds.
+
+    When ``enrich=True`` and names are missing, fetch them via
+    ``/lol-summoner/v1/summoners/{summonerId}``. Off by default to keep
+    the function pure for unit tests; capture_state passes True.
+
+    Returns None when ``m`` isn't a dict so the caller can drop garbage
+    without a try/except.
+    """
+    if not isinstance(m, dict):
+        return None
+    game_name = str(m.get("gameName") or "")
+    tag_line  = str(m.get("tagLine") or "")
+    summ_name = str(m.get("summonerName") or "")
+    try:
+        sid = int(m.get("summonerId") or 0)
+    except (TypeError, ValueError):
+        sid = 0
+    try:
+        lvl = int(m.get("summonerLevel") or 0)
+    except (TypeError, ValueError):
+        lvl = 0
+
+    # s170.1: enrich missing names via per-summoner lookup. Current LCU
+    # builds frequently leave gameName/tagLine empty on lobby members.
+    if enrich and sid and not (game_name and tag_line):
+        prof = _lookup_summoner_by_id(sid)
+        if isinstance(prof, dict):
+            game_name = game_name or str(prof.get("gameName") or "")
+            tag_line  = tag_line  or str(prof.get("tagLine") or "")
+            summ_name = summ_name or str(prof.get("displayName") or prof.get("internalName") or "")
+            if not lvl:
+                try:
+                    lvl = int(prof.get("summonerLevel") or 0)
+                except (TypeError, ValueError):
+                    pass
+
+    if game_name and tag_line:
+        riot_id = f"{game_name}#{tag_line}"
+    else:
+        riot_id = summ_name
+
+    # is_self: prefer summoner-id match (reliable on current LCU builds);
+    # fall back to the LCU ``isLocalMember`` flag (works on older builds).
+    if local_summoner_id is not None and sid:
+        is_self = (sid == int(local_summoner_id))
+    else:
+        is_self = bool(m.get("isLocalMember"))
+
+    return {
+        "puuid":          str(m.get("puuid") or ""),
+        "summoner_id":    sid,
+        "summoner_name":  summ_name or game_name,
+        "game_name":      game_name,
+        "tag_line":       tag_line,
+        "riot_id":        riot_id,
+        "is_leader":      bool(m.get("isLeader")),
+        "is_self":        is_self,
+        "is_owner":       bool(m.get("isOwner")),
+        "summoner_level": lvl,
+        "ready":          bool(m.get("ready")),
+        "position_preferences": {
+            "first_preference":  str(m.get("firstPositionPreference") or "UNSELECTED").upper(),
+            "second_preference": str(m.get("secondPositionPreference") or "UNSELECTED").upper(),
+        },
+    }
+
+
+def _derive_search_state(phase: str, search_payload) -> str:
+    """Map LCU phase + matchmaking-search response into the three states the
+    dashboard understands: ``Idle`` / ``Searching`` / ``MatchFound``.
+
+    The matchmaking-search endpoint (/lol-matchmaking/v1/search) returns
+    ``{searchState: "Invalid"|"Searching"|"AwaitingMatch"|"Found"}`` when
+    reachable; we prefer it when available because phase=Lobby can still
+    mean "queueing" on the LCU side between the dodge-recovery and the
+    actual ChampSelect dispatch. Fall back to phase mapping otherwise.
+    """
+    if isinstance(search_payload, dict):
+        ss = str(search_payload.get("searchState") or "").lower()
+        if ss in ("searching", "awaitingmatch"):
+            return "Searching"
+        if ss in ("found", "matchfound"):
+            return "MatchFound"
+    if phase == "Matchmaking":
+        return "Searching"
+    if phase == "ReadyCheck":
+        return "MatchFound"
+    return "Idle"
+
+
 # -- LCU mastery cache -------------------------------------------------------
 #
 # Priority 8 (2026-05-10): pull the operator's full champion-mastery list
@@ -455,6 +639,10 @@ def capture_state():
         # dashboard can pre-flip mode_key (Arena / ARAM / SR / TFT) before
         # the LiveClient mode flag goes live. Without this, sitting in an
         # Arena party lobby leaves the dashboard on the generic client view.
+        # s170 (2026-05-11): also forward members[] + local_member +
+        # is_leader + party_type + search_state so view-lobby panel
+        # (_lobbyViewRefresh + _renderTop8) can render real data instead
+        # of running on placeholders.
         lob, _ = lcu_request("GET", "/lol-lobby/v2/lobby")
         if isinstance(lob, dict):
             gconf = lob.get("gameConfig") or {}
@@ -463,11 +651,34 @@ def capture_state():
                 qid_int = int(qid) if qid is not None else 0
             except (TypeError, ValueError):
                 qid_int = 0
+            raw_members = lob.get("members") or []
+            # s170.1: resolve local summoner-id so is_self can be computed
+            # by id-match (current LCU's ``isLocalMember`` is unreliable).
+            # The resolver is cached after first call.
+            _local_sid = _resolve_local_summoner_id()
+            members = [m for m in
+                       (_slim_lobby_member(rm,
+                                           local_summoner_id=_local_sid,
+                                           enrich=True)
+                        for rm in raw_members)
+                       if m is not None]
+            local_member = next((m for m in members if m.get("is_self")), None)
+            # /lol-matchmaking/v1/search may 404 when not actively queueing —
+            # that's fine, _derive_search_state falls back to phase mapping.
+            search, _ = lcu_request("GET", "/lol-matchmaking/v1/search")
             state["lobby"] = {
-                "queue_id":  qid_int,
-                "is_custom": bool(gconf.get("isCustom")),
-                "game_mode": gconf.get("gameMode") or "",
-                "map_id":    gconf.get("mapId") or 0,
+                "queue_id":     qid_int,
+                "queue_name":   _LOBBY_QUEUE_NAMES.get(qid_int, ""),
+                "is_custom":    bool(gconf.get("isCustom")),
+                "game_mode":    gconf.get("gameMode") or "",
+                "map_id":       gconf.get("mapId") or 0,
+                "party_id":     str(lob.get("partyId") or ""),
+                "party_type":   str(lob.get("partyType") or "open").lower(),
+                "can_search":   bool(lob.get("canStartActivity")),
+                "is_leader":    bool(local_member and local_member.get("is_leader")),
+                "search_state": _derive_search_state(state["phase"], search),
+                "members":      members,
+                "local_member": local_member,
             }
 
     if state["phase"] in ("ChampSelect", "GameStart", "InProgress"):

@@ -276,13 +276,29 @@ class CoachIntegration:
         try:
             from core import daemon_slayer_client as _ds_client
             from core.daemon_slayer_resolver import resolve_inventory as _ds_resolve_inventory
+            from coach_integration.enemy_stats import compute_enemy_stats as _ds_enemy_stats
             _owned_ids = _ds_resolve_inventory(game_state.get("items", []), mode="sr")
+            _lvl = int(game_state.get("level", 1)) or 1
+            # s170: replaces hardcoded target_armor=80.0 — DS now sees a
+            # level-scaled armor/MR/hp target instead of the SR-mid-game
+            # anchor regardless of game time. ``bonus_hp_override`` not
+            # supplied here because SR coach didn't have an item-aware
+            # bonus_hp estimator pre-s170 (unlike ARAM/Arena/Brawl); the
+            # heuristic curve drives all four fields.
+            _es = _ds_enemy_stats(
+                mode="sr",
+                game_seconds=int(game_state.get("game_seconds", 0) or 0),
+                level=_lvl,
+            )
             _ds_rows = _ds_client.rank_for(
                 champion=champion,
-                level=int(game_state.get("level", 1)) or 1,
+                level=_lvl,
                 item_ids=_owned_ids,
                 mode="SR",
-                target_armor=80.0,
+                target_armor=_es.armor,
+                target_mr=_es.mr,
+                target_max_hp=_es.max_hp,
+                target_bonus_hp=_es.bonus_hp,
                 top=5,
             )
             if _ds_rows:
