@@ -29,7 +29,7 @@ Operator-initiated discussion → architectural pivot doc + phase-1 ship in one 
   - `web/js/panels/trigger_pill.js` polls both `/api/decisions/heartbeat` and `/api/decisions` at 2 Hz; displays `● N` counter (asterisked when pending). Tooltip carries diagnostic: counter / last-eval age / game_time / detector count / pending count.
   - `web/js/main.js` adds the side-effect import (panel self-starts on import).
   - Cache buster 2026051121 → 2026051122.
-- **Game-PC keybind listener** (`tools/gamepc_keybind_listener.py`) — install-only; not auto-deployed. Hooks Numpad 1/2/0 via `keyboard` lib, POSTs to `/api/decisions/respond_active`. 250ms debounce. ENV overrides for keybinds (`RC_KEY_A` / `_B` / `_DISMISS`). Self-contained — own ssl context + urllib post, no RC imports. Documented schtasks install pattern in the docstring.
+- **Game-PC keybind listener** (`tools/gamepc_keybind_listener.py`) — install-only; not auto-deployed. Hooks Left Alt + 1/2/3 via `keyboard` lib, POSTs to `/api/decisions/respond_active`. 250ms debounce. ENV overrides for keybinds (`RC_KEY_A` / `_B` / `_DISMISS`). Self-contained — own ssl context + urllib post, no RC imports. Documented schtasks install pattern in the docstring. **Left Alt chosen over Ctrl** because Ctrl+1..6 are League's item-cast binds — Alt+1..6 are unbound by default (operator request 2026-05-11: tenkeyless keyboard, wants number-row above QWERTY).
 - **25 new tests** under `tests/test_decision_detector_adr007.py` — pure-function tests for all 3 detector changes + DecisionLoop heartbeat + file-backed read roundtrip. Full suite **719 passes** (was 694).
 
 ## Live verification

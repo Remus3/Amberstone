@@ -140,8 +140,9 @@ calls (higher quality at the moment when it matters).
 - Add `#trigger-pill` to the dashboard header (glanceable counter +
   green/amber/red alive indicator).
 - Add `tools/gamepc_keybind_listener.py` (install-only; not
-  auto-deployed) so the operator can A/B respond via Numpad 1/2/0
-  while in-game without alt-tabbing.
+  auto-deployed) so the operator can A/B respond via Left Alt + 1/2/3
+  while in-game without alt-tabbing. (Left Alt chosen because Ctrl+1..6
+  are League's item-cast binds — Alt+1..6 are unbound by default.)
 
 Postmortem pipeline (`scripts/postmortem_analyze.py`) + prose-coach
 deprecation pass are deferred to s170+.
