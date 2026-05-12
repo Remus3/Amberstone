@@ -33,7 +33,11 @@ def compute_asset_hash() -> str:
     parts = []
     # s171.8: include js/main.js so edits to the s133 ESM entrypoint
     # also bust browser caches. Without this, view-router / handler
-    # changes are invisible until a hard-reload.
+    # changes are invisible until a hard-reload. Also walk the panels/
+    # subdirs so edits to per-panel ESM modules and per-panel CSS bust
+    # the cache too — they're loaded through main.js / dashboard.css
+    # imports, so without this any edit to a panel went unnoticed by
+    # browsers until manual cache-clear.
     for rel in ("index.html", "css/dashboard.css", "js/dashboard.js",
                 "js/main.js", "js/sim.js", "js/ws_client.js"):
         p = web_root / rel
@@ -41,6 +45,16 @@ def compute_asset_hash() -> str:
             parts.append(f"{rel}:{int(p.stat().st_mtime)}")
         except OSError:
             parts.append(f"{rel}:0")
+    for subdir, exts in (("css/panels", (".css",)),
+                         ("js/panels", (".js",)),
+                         ("js/lib", (".js",))):
+        d = web_root / subdir
+        try:
+            for f in sorted(d.iterdir()):
+                if f.is_file() and f.suffix in exts:
+                    parts.append(f"{subdir}/{f.name}:{int(f.stat().st_mtime)}")
+        except OSError:
+            pass
     h = _hashlib.sha1("|".join(parts).encode("utf-8")).hexdigest()[:10]
     _ASSET_HASH_CACHE["hash"] = h
     _ASSET_HASH_CACHE["mtime"] = now
