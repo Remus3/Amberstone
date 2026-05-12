@@ -1279,17 +1279,29 @@ function renderChampSelectCoach(data) {
 // the legacy #cs-overlay). Auto-promotes on phase=ChampSelect when
 // champSelectViewEnabled() — same flag pattern as activeMatchEnabled.
 
+// s171.7: flipped opt-in → opt-out. The new champ-select view is the
+// canonical surface — it ships the lock button, DS build chooser,
+// P&B Recommendations panel, ARAM bench, Arena duo+augments, and
+// Brawl 5v5 layouts. Operator opts OUT via ``?cs=0`` /
+// ``localStorage.csView === '0'`` to fall back to the legacy
+// floating #cs-overlay on top of view-lobby.
 export function champSelectViewEnabled() {
   try {
-    if (typeof location !== "undefined"
-        && location.search
-        && location.search.includes("cs=1")) {
-      try { localStorage.setItem("csView", "1"); } catch (_) {}
-      return true;
+    if (typeof location !== "undefined" && location.search) {
+      if (location.search.includes("cs=0")) {
+        try { localStorage.setItem("csView", "0"); } catch (_) {}
+        return false;
+      }
+      if (location.search.includes("cs=1")) {
+        try { localStorage.setItem("csView", "1"); } catch (_) {}
+        return true;
+      }
     }
-    return localStorage.getItem("csView") === "1";
+    const stored = localStorage.getItem("csView");
+    if (stored === "0") return false;
+    return true;
   } catch (_) {
-    return false;
+    return true;
   }
 }
 
