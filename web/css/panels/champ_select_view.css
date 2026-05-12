@@ -960,6 +960,20 @@ body[data-view="champ-select"] #cs-overlay { display: none !important; }
   margin-left: 4px;
   letter-spacing: 0.06em;
 }
+/* s171.8: user-saved variant tag — sibling to default-tag. Cyan/blue
+ * accent distinguishes operator-curated rows from DS engine output. */
+.csv-build-user-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  color: #67e8f9;
+  background: #082f3a;
+  border: 1px solid #1e6b80;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 4px;
+  letter-spacing: 0.06em;
+}
 .csv-build-runes {
   font-size: 11px;
   color: #9ca3af;
