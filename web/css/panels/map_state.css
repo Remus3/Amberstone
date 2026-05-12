@@ -200,6 +200,48 @@ body[data-mode="client"] .ds-pill,
 body[data-mode="tft"]    .ds-pill,
 body:not([data-mode])    .ds-pill { display: none; }
 
+/* Trigger pill (ADR-007 s169) — decision_detector heartbeat surface.
+ * Small, monochrome, glanceable. Green dot indicates loop is evaluating
+ * (last eval <5s); amber 5-15s (slow); grey >15s or no eval ever.
+ * Counter = eval cycles in current match (resets on new game). Click
+ * shows pending count in title. */
+.trigger-pill {
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 1.4;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--bg-soft, rgba(80, 80, 80, 0.18));
+  color: var(--fg-muted, #9aa);
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: color 240ms ease, background-color 240ms ease;
+}
+.trigger-pill.alive {
+  color: var(--success, #4ade80);
+  background: var(--success-soft, rgba(74, 222, 128, 0.12));
+}
+.trigger-pill.stale {
+  color: var(--warn, #fbbf24);
+  background: var(--warn-soft, rgba(251, 191, 36, 0.12));
+}
+.trigger-pill.dead {
+  color: var(--fg-muted, #6b7280);
+  background: var(--bg-soft, rgba(107, 114, 128, 0.10));
+}
+.trigger-pill.pending {
+  /* When at least one decision is pending — slight emphasis so the
+   * operator notices without the pill becoming jarring. No animation:
+   * the popup banner is the action surface, this is just status. */
+  outline: 1px solid var(--info, #60a5fa);
+}
+body[data-mode="client"] .trigger-pill,
+body[data-mode="tft"]    .trigger-pill,
+body:not([data-mode])    .trigger-pill { display: none; }
+
 .panel {
   background: var(--surface);
   border-radius: var(--radius);
