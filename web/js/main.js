@@ -696,12 +696,19 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     // boundary — the banner asks them to switch but doesn't, and during
     // a real game they're not staring at the dashboard to click "yes".
     // hashView (?#lobby etc) wins over auto-clear since it's URL-level.
+    //
+    // Sticky-allowed during in-game: session / history / replay /
+    // user-builds / settings / dev. The operator may intentionally
+    // pull these up mid-game to check past stats or tweak settings;
+    // we don't want auto-clear to fight them.
     const _midFlight = (auto === "loading"
                       || auto === "active-match"
                       || auto === "last-match");
     const _staleManual = (manual === "home" || manual === "lobby"
                        || manual === "champ-select"
-                       || manual === "loading");
+                       || manual === "loading"
+                       || manual === "active-match"
+                       || manual === "last-match");
     if (_midFlight && _staleManual && !hashView) {
       _viewSaveManual(null);
       _VIEW.bannerDismissed = null;
