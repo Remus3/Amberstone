@@ -276,15 +276,17 @@ def _serve_health_all(h) -> None:
 def _serve_ui_version(h) -> None:
     # Auto-reload signal: hash the mtimes of the css/js/html we serve
     # from web/. Dashboard polls and reloads when the hash changes.
+    #
+    # s171.8: defer to dashboard._static.compute_asset_hash so the
+    # auto-reload poller agrees with inject_asset_hash on what counts
+    # as a watched asset. The previous 4-file allow-list silently
+    # excluded js/main.js + js/panels/* + css/panels/*, which meant
+    # edits to ESM panel modules and per-panel CSS never triggered
+    # the auto-reload — operator's browser served stale champ_select.js
+    # through the entire s164 → s171.7 window.
     try:
-        web_root = APP_DIR / "web"
-        files = [web_root / "index.html",
-                 web_root / "css" / "dashboard.css",
-                 web_root / "js" / "dashboard.js",
-                 web_root / "js" / "sim.js"]
-        sig = ":".join(f"{f.name}={int(f.stat().st_mtime_ns)}"
-                       for f in files if f.exists())
-        digest = hashlib.sha1(sig.encode()).hexdigest()[:12]
+        from dashboard._static import compute_asset_hash
+        digest = compute_asset_hash()
         h._send(200, json.dumps({"v": digest}).encode(), "application/json")
     except Exception as exc:
         h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
