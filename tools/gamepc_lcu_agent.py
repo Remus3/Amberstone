@@ -806,7 +806,6 @@ def capture_state():
                 # ally/enemy gold (pick) / red (ban) active border in the
                 # Champ Select view.
                 "active_round": _active_round(sess),
-                "local_cell":   local_cell,
             }
             # Arena (2v2v2v2 / Cherry) extras. LCU surfaces sub-team
             # rosters via ``additionalSubteamData`` (id, name, intro
