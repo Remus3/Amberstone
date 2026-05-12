@@ -45,8 +45,15 @@ export const VIEW_LABELS = {
 };
 
 // View-router mutable state (current + manual override + banner tracking).
+//
+// s171 added ``gameStarted`` — a sticky "highest game-state we've seen
+// this session" flag (champ-select | game-start | in-progress | null).
+// Used by _viewAutoDerive to ride through transient LCU phase=null /
+// phase=Lobby blips during the CS→loading→game flip without flushing
+// the view back to home/lobby. Cleared on stable post-game phases.
 export const _VIEW = {
   current: null,
   manual: null,
   bannerDismissed: null,
+  gameStarted: null,
 };

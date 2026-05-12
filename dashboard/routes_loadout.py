@@ -35,6 +35,23 @@ _LCU_ALLOWED_CMDS = {
     # gates the controls on lobby.is_leader before sending.
     "start_matchmaking", "cancel_matchmaking",
     "change_queue_type",
+    # Phase B champ-select commands (s166): hover intents + lane / pick
+    # order swaps + Arena augment selection. Wired in
+    # ``tools/gamepc_lcu_agent.py`` (set_*_intent at L908, *_swap at
+    # L932/L961, set_augment_intent at L988) but historically missing
+    # here, so every click on a P&B recommendation card or swap chip in
+    # the new champ-select view was rejected with 400 at the dashboard
+    # edge and never reached the LCU.
+    "set_pick_intent", "set_ban_intent",
+    "request_position_swap", "request_pick_order_swap",
+    "set_augment_intent",
+    # s171: pre-game lobby controls — lane prefs, party visibility,
+    # invitations, Practice Tool. Mirrors the Phase A "visual-only"
+    # toggles in the lobby view that previously never propagated to
+    # the League client.
+    "lobby.set_position_prefs", "lobby.set_party_type",
+    "lobby.invite_player", "lobby.create_practice_tool",
+    "lobby.promote_leader", "lobby.kick_member",
 }
 
 

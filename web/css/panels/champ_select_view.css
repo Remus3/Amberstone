@@ -108,6 +108,32 @@ body[data-view="champ-select"] #cs-overlay { display: none !important; }
 .csv-mypick-state.locked { color: #4ade80; }
 .csv-mypick-state.hovering { color: #fbbf24; }
 
+/* s171: LOCK IN button — only rendered while a champion is hovered.
+ * Sits between the state line and the build chooser. Green-on-click
+ * mirrors the legacy overlay's cs-lock-btn. */
+.csv-lock-btn {
+  display: block;
+  width: 100%;
+  margin: 4px 0 14px;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  color: #d4f8de;
+  background: #0a2014;
+  border: 2px solid #2c6a3c;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.15s;
+  text-transform: uppercase;
+}
+.csv-lock-btn:hover {
+  border-color: #44ff88;
+  color: #44ff88;
+  background: #0d2c1a;
+}
+.csv-lock-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+
 /* Team panels — vertical stack of 5 cells. */
 .csv-team-list {
   display: flex;
