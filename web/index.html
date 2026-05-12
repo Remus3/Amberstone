@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=1920, initial-scale=1, user-scalable=no" />
   <title>Riot Commander — Phase 3</title>
-  <link rel="stylesheet" href="/css/dashboard.css?v=2026051121" />
+  <link rel="stylesheet" href="/css/dashboard.css?v=2026051122" />
 </head>
 <body>
   <div id="sim-banner" class="sim-banner hidden">
@@ -108,6 +108,12 @@
            Item Build panel. Hidden in client/tft modes; populated from
            coach.daemon_slayer_picks[0] by panels/ds_pill.js. -->
       <span class="ds-pill" id="ds-pill" hidden title="">—</span>
+      <!-- Trigger pill (ADR-007 s169): glanceable decision_detector
+           heartbeat. ● + match-eval counter. Polled by
+           panels/trigger_pill.js from /api/decisions/heartbeat at ~2 Hz.
+           Green when last eval <5s, amber 5-15s, red/grey when stale.
+           Hidden in client/tft modes. -->
+      <span class="trigger-pill" id="trigger-pill" title="decision_detector heartbeat">● 0</span>
       <!-- 30d trend-pill removed 2026-04-24, advisory + digest moved
            to the footer 2026-04-25. -->
     </div>
@@ -1500,6 +1506,6 @@
       .then(t => { if (t) document.getElementById("svg-sprite-host").innerHTML = t; });
   </script>
   <script src="/js/sim.js"></script>
-  <script type="module" src="/js/main.js?v=2026051121"></script>
+  <script type="module" src="/js/main.js?v=2026051122"></script>
 </body>
 </html>
