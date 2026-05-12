@@ -34,6 +34,11 @@ class RankedItem:
     item_name: str
     delta_dps: float
     gold: int
+    # Phase 6 step 8 (2026-05-12): mirrored from server-side RankedItem so
+    # consumers (coaches, dashboard) can suppress or annotate dead-unique
+    # candidates without a second engine call.
+    shares_dead_unique: bool = False
+    dead_unique_key: str = ""
 
     @classmethod
     def from_dict(cls, d: dict) -> "RankedItem":
@@ -42,6 +47,8 @@ class RankedItem:
             item_name=str(d.get("item_name", "")),
             delta_dps=float(d.get("delta_dps", 0.0)),
             gold=int(d.get("gold", 0)),
+            shares_dead_unique=bool(d.get("shares_dead_unique", False)),
+            dead_unique_key=str(d.get("dead_unique_key", "")),
         )
 
 
@@ -114,6 +121,7 @@ def rank_for(
     top: int = 8,
     sort_by: str = "delta",
     augments: Optional[Iterable[str]] = None,
+    filter_shared_uniques: bool = True,
     timeout: float = DEFAULT_TIMEOUT,
 ) -> Optional[list[RankedItem]]:
     """Call POST /rank and return the parsed top-N rows. None on engine failure.
@@ -144,6 +152,7 @@ def rank_for(
         "target_bonus_hp": float(target_bonus_hp),
         "top": int(top),
         "sort": sort_by,
+        "filter_shared_uniques": bool(filter_shared_uniques),
     }
     if augments:
         body["augments"] = [str(a) for a in augments if a]

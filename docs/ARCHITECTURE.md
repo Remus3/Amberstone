@@ -144,7 +144,7 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 
 ## Daemon Slayer (`:8893`)
 
-`agents/daemon_slayer/` — 547 item effects, ENGINE_VERSION 0.61.0, 949 tests. All 4 coach modes DS-before-Haiku. Ranks items by DPS math per champion before Haiku sees the prompt. See `docs/DAEMON_SLAYER.md`.
+`agents/daemon_slayer/` — 547 item effects, ENGINE_VERSION 0.62.0, 955 tests. All 4 coach modes DS-before-Haiku. Ranks items by DPS math per champion before Haiku sees the prompt; dead-unique candidates (Trinity→ER etc.) filtered by default. See `docs/DAEMON_SLAYER.md`.
 
 ---
 
