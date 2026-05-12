@@ -32,6 +32,7 @@ const _DS_RERANK = {
   lastKey:   "",
   lastFired: 0,
   lastRows:  null,
+  lastTargetStats: null,   // s171.4: live target_armor/_mr/_hp from /api/ds-preview
   inFlight:  false,
 };
 const _DS_RERANK_COOLDOWN_MS = 4000;
@@ -69,10 +70,28 @@ function _maybeRefreshDsPicks(champion, mode, level, items) {
       _DS_RERANK.inFlight = false;
       if (j && j.ok && Array.isArray(j.ranked)) {
         _DS_RERANK.lastRows = j.ranked;
+        _DS_RERANK.lastTargetStats = j.target_stats || null;
       }
     })
     .catch(() => { _DS_RERANK.inFlight = false; });
   return _DS_RERANK.lastRows;
+}
+
+// s171.4: build a "vs N armor / M mr / K hp" caption so operator can
+// see WHY the DS engine ranked items the way it did. Sourced from the
+// /api/ds-preview response's target_stats field. Hidden when no live
+// data (target_stats.source === "default-zero" or null).
+function _dsTargetStatsCaption() {
+  const t = _DS_RERANK.lastTargetStats;
+  if (!t || t.source === "default-zero") return "";
+  const a = Math.round(t.target_armor || 0);
+  const m = Math.round(t.target_mr || 0);
+  const hp = Math.round(t.target_max_hp || 0);
+  const n = t.n_enemies | 0;
+  const tag = t.source === "live-items" ? `live · ${n} enemies`
+            : t.source === "explicit-override" ? "synthetic"
+            : t.source === "mode-level-curve" ? "mode curve" : t.source;
+  return `vs ${a} armor · ${m} mr · ${hp} hp · ${tag}`;
 }
 
 // s171: opt-OUT (was opt-in). Active Match is the default in-game
@@ -197,7 +216,12 @@ export function renderActiveMatch(payload, ctx) {
       picks.slice(0, 5).forEach((r) => {
         strip.appendChild(_dsIcon(r, ownedSet));
       });
-      build.appendChild(_line("DS ENGINE", ""));
+      // s171.4: live target-stats caption — shows the operator what
+      // armor/MR/HP profile the DS ranker is computing against, so
+      // they can see when the rankings shift due to enemy itemization.
+      const tgtCaption = _dsTargetStatsCaption();
+      const label = tgtCaption ? `DS ENGINE · ${tgtCaption}` : "DS ENGINE";
+      build.appendChild(_line(label, ""));
       build.appendChild(strip);
     }
     if (owned.length) {
