@@ -6,6 +6,8 @@
 
 # s171.8 wrap — 2026-05-12 (overnight docs+tests backfill — 5 commits)
 
+**headless run complete** — 5 commits, ~10 min elapsed. Operator: run morning audit brief (`HEADLESS_BRIEF_2026-05-12_AUDIT.md`) when ready.
+
 Headless `/loop`-driven execution of `HEADLESS_BRIEF_2026-05-12_DOCS_TESTS.md`. Closes the documentation and test gaps left by the s172 wrap session (the substantive view-router / cache-bust work which committed under the "s171.8" commit scope). Risk profile LOW: docs + tests only, zero behavior changes. All 5 commits landed green on the first CI run.
 
 ## Ships
