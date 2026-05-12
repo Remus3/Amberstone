@@ -185,7 +185,8 @@ def _ddragon_version() -> str:
     from /api/health/all (daemon_slayer.patch) when available; falls
     back to the last-known patch."""
     try:
-        import urllib.request as _ur, ssl as _ssl
+        import ssl as _ssl
+        import urllib.request as _ur
         ctx = _ssl.create_default_context()
         ctx.check_hostname = False
         ctx.verify_mode = _ssl.CERT_NONE
@@ -318,7 +319,8 @@ def _read_live_mastery() -> dict:
     needing the client to pass them in. The /api/state response chain
     already enriches lcu.mastery via the Game-PC LCU agent (s168)."""
     try:
-        import urllib.request as _ur, ssl as _ssl
+        import ssl as _ssl
+        import urllib.request as _ur
         ctx = _ssl.create_default_context()
         ctx.check_hostname = False
         ctx.verify_mode = _ssl.CERT_NONE
