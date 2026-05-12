@@ -19,7 +19,10 @@ Endpoints used on Legion:
 
 The agent maintains a local config (auto_accept on/off, summoner override,
 etc.) that's mirrored from dashboard via 'set_config' command. Default is
-auto_accept=on so existing behaviour is preserved without explicit setup.
+auto_accept=off (s171, 2026-05-12) — previously True, which meant the
+dashboard's Auto Accept toggle was visual-only and the agent silently
+accepted every queue pop regardless of the UI state. The toggle now
+pushes set_config + auto_accept on click.
 
 # Threading (2026-04-25)
 
@@ -110,7 +113,7 @@ LOCKFILE_PATHS = [
 
 # In-memory config; mutated by 'set_config' commands from dashboard.
 CONFIG = {
-    "auto_accept":     True,
+    "auto_accept":     False,
     "summoner_override": False,
     "summoner_d":      4,    # default Flash
     "summoner_f":      32,   # default Snowball (ARAM)
@@ -708,9 +711,20 @@ def capture_state():
                 out = []
                 for p in team_arr or []:
                     if not isinstance(p, dict): continue
+                    # s171 hover fix: championId is 0 until lock; the
+                    # hovered champ lives in championPickIntent. Surface
+                    # both so the dashboard can render hover state and
+                    # locked state distinctly, and ``championId`` falls
+                    # back to the intent so legacy renderers that read
+                    # only championId still see the hover.
+                    cid_locked = p.get("championId", 0) or 0
+                    cid_intent = p.get("championPickIntent", 0) or 0
+                    cid_effective = cid_locked or cid_intent
                     out.append({
                         "cellId":      p.get("cellId"),
-                        "championId":  p.get("championId", 0),
+                        "championId":  cid_effective,
+                        "champion_pick_intent": cid_intent,
+                        "champion_locked": cid_locked,
                         "summonerId":  p.get("summonerId"),
                         "summonerName": p.get("summonerInternalName") or p.get("displayName") or "",
                         # FU02 team-context refresh needs PUUIDs to fan out
@@ -727,11 +741,19 @@ def capture_state():
                                         p.get("spell2Id", 0)],
                     })
                 return out
+            # s171 hover fix: my_champion = locked OR hovered. The lock
+            # button visibility on the dashboard depends on this — if
+            # the operator is hovering Vayne, my_champion should be 67
+            # so the lock button activates.
+            _my_locked = (my_pick or {}).get("championId", 0) or 0
+            _my_intent = (my_pick or {}).get("championPickIntent", 0) or 0
             state["champ_select"] = {
                 "queue_id":     queue_id,
                 "is_aram":      queue_id in (450, 920),
                 "is_brawl":     queue_id == 480,
-                "my_champion":  (my_pick or {}).get("championId", 0),
+                "my_champion":  _my_locked or _my_intent,
+                "my_champion_locked":  _my_locked,
+                "my_champion_intent":  _my_intent,
                 "my_completed": (my_pick or {}).get("completed", False),
                 "my_summoners": [
                     (my_pick or {}).get("spell1Id", 0),
@@ -1130,6 +1152,147 @@ def execute_command(cmd):
         body = {"championId": cid, "completed": True}
         r, err = lcu_request("PATCH",
             f"/lol-champ-select/v1/session/actions/{pending_aid}", body)
+        return {"ok": err is None, "err": err}
+    # ── Phase B lobby controls (s171) ─────────────────────────────────
+    if name == "lobby.set_position_prefs":
+        # PATCH the local member's role preferences. LCU body shape:
+        #   {"firstPreference": "TOP|JUNGLE|MIDDLE|BOTTOM|UTILITY|FILL",
+        #    "secondPreference": same set or "UNSELECTED"}
+        # Dashboard sends snake_case primary/secondary; map to LCU's
+        # camelCase + UPPERCASE positions.
+        _MAP = {
+            "TOP": "TOP", "JG": "JUNGLE", "JUNGLE": "JUNGLE",
+            "MID": "MIDDLE", "MIDDLE": "MIDDLE",
+            "BOT": "BOTTOM", "ADC": "BOTTOM", "BOTTOM": "BOTTOM",
+            "SUP": "UTILITY", "SUPP": "UTILITY", "UTILITY": "UTILITY",
+            "FILL": "FILL", "UNSELECTED": "UNSELECTED", "": "UNSELECTED",
+        }
+        prim = _MAP.get(str(cmd.get("primary") or cmd.get("first") or "").upper())
+        sec  = _MAP.get(str(cmd.get("secondary") or cmd.get("second") or "").upper())
+        if prim is None: prim = "FILL"
+        if sec  is None: sec  = "UNSELECTED"
+        body = {"firstPreference": prim, "secondPreference": sec}
+        _, err = lcu_request("PUT", "/lol-lobby/v2/lobby/members/localMember/position-preferences", body)
+        return {"ok": err is None, "err": err,
+                "primary": prim, "secondary": sec}
+    if name == "lobby.set_party_type":
+        # Toggle lobby visibility between "open" (joinable by friends)
+        # and "closed" (invite-only).
+        pt = str(cmd.get("party_type") or "closed").lower()
+        if pt not in ("open", "closed"):
+            return {"ok": False, "err": "party_type must be open|closed"}
+        _, err = lcu_request("PUT", "/lol-lobby/v2/lobby/partyType",
+                             {"partyType": pt})
+        return {"ok": err is None, "err": err, "party_type": pt}
+    if name == "lobby.invite_player":
+        # POST a lobby invitation. LCU accepts an array of invitee
+        # descriptors — we send one. The dashboard provides riot_id
+        # ("Name#TAG") which is converted to summoner_id via lookup.
+        rid = str(cmd.get("riot_id") or "").strip()
+        sid = cmd.get("summoner_id")
+        if not rid and not sid:
+            return {"ok": False, "err": "riot_id or summoner_id required"}
+        if not sid and rid and "#" in rid:
+            name_, _, tag = rid.partition("#")
+            # /lol-summoner/v1/summoners/by-name/<name>#<tag> on newer
+            # builds; older builds use /lol-summoner/v1/summoners/by-name/<name>
+            # without the tag. Try both, prefer the by-name+tag path.
+            looked, _ = lcu_request("GET",
+                f"/lol-summoner/v1/summoners/by-name/{name_}-{tag}")
+            if not isinstance(looked, dict):
+                looked, _ = lcu_request("GET",
+                    f"/lol-summoner/v1/summoners/by-name/{name_}")
+            if isinstance(looked, dict):
+                sid = looked.get("summonerId")
+        if not sid:
+            return {"ok": False, "err": f"could not resolve summoner: {rid}"}
+        body = [{"toSummonerId": int(sid)}]
+        _, err = lcu_request("POST", "/lol-lobby/v2/lobby/invitations", body)
+        return {"ok": err is None, "err": err,
+                "riot_id": rid, "summoner_id": sid}
+    if name == "lobby.promote_leader":
+        # Hand party leadership to another member. Resolve riot_id (or
+        # summoner_id) → member_id by walking the current lobby members
+        # list. LCU rejects if caller isn't the current leader (400).
+        rid = str(cmd.get("riot_id") or "").strip()
+        sid = cmd.get("summoner_id")
+        if not rid and not sid:
+            return {"ok": False, "err": "riot_id or summoner_id required"}
+        lob, _ = lcu_request("GET", "/lol-lobby/v2/lobby")
+        if not isinstance(lob, dict):
+            return {"ok": False, "err": "no lobby session"}
+        target_sid = sid
+        if not target_sid and rid:
+            want_name, _, want_tag = rid.partition("#")
+            for m in (lob.get("members") or []):
+                if not isinstance(m, dict): continue
+                gn = (m.get("gameName") or "").strip()
+                tag = (m.get("tagLine") or "").strip()
+                # Match by riot_id (Name#TAG) or summoner-internal-name.
+                if (gn.lower() == want_name.lower()
+                        and (not want_tag or tag.lower() == want_tag.lower())):
+                    target_sid = m.get("summonerId")
+                    break
+                if (m.get("summonerInternalName") or "").lower() == rid.lower():
+                    target_sid = m.get("summonerId")
+                    break
+        if not target_sid:
+            return {"ok": False, "err": f"member not found: {rid}"}
+        # LCU endpoint promotes via POST to .../members/{sid}/promote.
+        _, err = lcu_request("POST",
+            f"/lol-lobby/v2/lobby/members/{target_sid}/promote")
+        return {"ok": err is None, "err": err,
+                "riot_id": rid, "summoner_id": target_sid}
+    if name == "lobby.kick_member":
+        # Kick a party member. Same resolver pattern as promote_leader.
+        # Leader-only on LCU; non-leader callers get 400.
+        rid = str(cmd.get("riot_id") or "").strip()
+        sid = cmd.get("summoner_id")
+        if not rid and not sid:
+            return {"ok": False, "err": "riot_id or summoner_id required"}
+        lob, _ = lcu_request("GET", "/lol-lobby/v2/lobby")
+        if not isinstance(lob, dict):
+            return {"ok": False, "err": "no lobby session"}
+        target_sid = sid
+        if not target_sid and rid:
+            want_name, _, want_tag = rid.partition("#")
+            for m in (lob.get("members") or []):
+                if not isinstance(m, dict): continue
+                gn = (m.get("gameName") or "").strip()
+                tag = (m.get("tagLine") or "").strip()
+                if (gn.lower() == want_name.lower()
+                        and (not want_tag or tag.lower() == want_tag.lower())):
+                    target_sid = m.get("summonerId")
+                    break
+                if (m.get("summonerInternalName") or "").lower() == rid.lower():
+                    target_sid = m.get("summonerId")
+                    break
+        if not target_sid:
+            return {"ok": False, "err": f"member not found: {rid}"}
+        _, err = lcu_request("POST",
+            f"/lol-lobby/v2/lobby/members/{target_sid}/kick")
+        return {"ok": err is None, "err": err,
+                "riot_id": rid, "summoner_id": target_sid}
+    if name == "lobby.create_practice_tool":
+        # Practice Tool uses queue_id 0 + customGameLobby config.
+        # The minimal create payload — Riot does most of the work.
+        body = {
+            "customGameLobby": {
+                "configuration": {
+                    "gameMode": "PRACTICETOOL",
+                    "gameMutator": "",
+                    "gameServerRegion": "",
+                    "mapId": 11,
+                    "mutators": {"id": 1},
+                    "spectatorPolicy": "AllAllowed",
+                    "teamSize": 1,
+                },
+                "lobbyName": "RC Practice Tool",
+                "lobbyPassword": "",
+            },
+            "isCustom": True,
+        }
+        _, err = lcu_request("POST", "/lol-lobby/v2/lobby", body)
         return {"ok": err is None, "err": err}
     return {"ok": False, "err": f"unknown cmd: {name}"}
 

@@ -1,16 +1,20 @@
-// Active Match panel module (s159 — step 1 scaffold, s170 — step 2/3 wiring).
+// Active Match panel module (s159 — step 1 scaffold, s170 — step 2/3 wiring,
+//   s171 — step 4 map overlay).
 //
 // Step 1 (s159) shipped the empty render shell wired into the main dispatcher.
-// Step 2/3 (s170) adds per-tick DS rerank by POSTing to /api/ds-preview
-// with the live champion + level + items + mode. The endpoint is locally
-// hosted (same Legion box, same process), so round-trip is sub-100ms and
-// the DS engine call lives behind the existing supervisor on :8893.
+// Step 2/3 (s170) adds per-tick DS rerank by POSTing to /api/ds-preview.
+// Step 4 (s171) ships the in-game map pane: static SR/ARAM/Arena/Brawl
+//   base image + champion-dot overlay from /api/vision-state (enemies'
+//   last_seen_pos / visible / missing_for_s / is_dead) + MIA badge for
+//   enemies missing > 12s + gank warning band for enemy JG MIA > 20s.
 //
 // Auto-promote behavior (gating in main.js _viewAutoDerive):
 //   activeMatchEnabled() AND mode in {sr, aram, arena, brawl}
 //     → "active-match"
 // Otherwise the existing in-game default ("last-match") wins, so
 // nothing changes for users who haven't opted in.
+
+import { ITEMS } from '../lib/items_index.js';
 
 const _AM = {
   sub:        () => document.getElementById("am-sub"),
@@ -161,12 +165,233 @@ export function renderActiveMatch(payload, ctx) {
 
   const map = _AM.mapBody();
   if (map) {
-    // Step 1 placeholder — step 4 swaps in the static SR/ARAM/Arena
-    // map image + ZOI/threat overlay layer.
-    const enemyComp = Array.isArray(p.enemy_comp) ? p.enemy_comp : [];
-    if (enemyComp.length) {
-      map.innerHTML = "";
-      map.appendChild(_line("ENEMY", enemyComp.join(" / ")));
+    // Step 4: render the mode's static base image + champion-dot
+    // overlay from /api/vision-state. _renderAmMap is idempotent —
+    // re-attaches the shell only on mode change, redraws the canvas
+    // every tick.
+    const modeLow = String((ctx && ctx.mode) || "sr").toLowerCase();
+    _renderAmMap(map, modeLow, p);
+  }
+}
+
+// ── s171 step 4: map pane ────────────────────────────────────────────
+
+// Static base image per mode. Falls back to /api/minimap-crop?mode=<x>
+// when the static asset 404s (Arena/Brawl on builds without local
+// asset prefetch).
+const _AM_MAP_IMG = {
+  sr:    "/data/ddragon/16.8.1/img/map/map11.png",
+  aram:  "/data/ddragon/16.8.1/img/map/map12.png",
+  arena: "/api/minimap-crop?mode=arena",
+  brawl: "/api/minimap-crop?mode=brawl",
+};
+// World-coordinate map sizes. Mirror of main.js's VT_MAP_SIZE so the
+// canvas projection matches the home-view overlay.
+const _AM_MAP_WORLD = {
+  CLASSIC:    14800,
+  ARAM:       13800,
+  KIWI:       13800,
+  URF:        14800,
+  NEXUSBLITZ: 14800,
+  ULTBOOK:    14800,
+};
+// Shared-vision modes: Live Client emits no positions because the
+// whole map is visible to both teams. Suppress the dot overlay but
+// still surface the summary line (N visible / N dead).
+const _AM_SHARED_VISION = new Set(["ARAM", "KIWI"]);
+// MIA threshold (s) — render the badge when missing_for_s exceeds this.
+const _AM_MIA_THRESHOLD = 12;
+// Gank-warning threshold (s) for enemy JG missing outside their jungle.
+const _AM_GANK_THRESHOLD = 20;
+// Cadence: how often we re-poll /api/vision-state. 500ms matches the
+// home-view's VT_INTERVAL_MS so dot positions don't lag.
+const _AM_TICK_MS = 500;
+
+const _AM_MAP = {
+  attachedMode: null,    // last mode we rendered the shell for
+  pollHandle:   null,    // setInterval handle
+  vsCache:      null,    // last successful /api/vision-state response
+};
+
+function _renderAmMap(host, mode, payload) {
+  // Allowed-mode gate. Arena/Brawl supported but rely on the live
+  // minimap-crop endpoint since DDragon doesn't ship 30/33 statically.
+  const knownMode = (mode in _AM_MAP_IMG) ? mode : "sr";
+  if (_AM_MAP.attachedMode !== knownMode) {
+    _AM_MAP.attachedMode = knownMode;
+    host.innerHTML = "";
+    const shell = document.createElement("div");
+    shell.className = "am-map-shell";
+    shell.style.cssText = "position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;";
+    const img = document.createElement("img");
+    img.id = "am-map-img";
+    img.src = _AM_MAP_IMG[knownMode];
+    img.alt = knownMode + " map";
+    img.style.cssText = "max-width:100%;max-height:100%;object-fit:contain;display:block;";
+    img.onerror = () => {
+      // Fallback to live minimap-crop on local asset miss
+      if (!img.dataset.fallback) {
+        img.dataset.fallback = "1";
+        img.src = "/api/minimap-crop?mode=" + encodeURIComponent(knownMode);
+      } else {
+        img.style.display = "none";
+      }
+    };
+    shell.appendChild(img);
+    const canvas = document.createElement("canvas");
+    canvas.id = "am-map-overlay";
+    canvas.style.cssText = "position:absolute;left:0;top:0;pointer-events:none;";
+    shell.appendChild(canvas);
+    const status = document.createElement("div");
+    status.id = "am-map-status";
+    status.style.cssText = "position:absolute;left:8px;top:8px;font-size:11px;color:#9ca3af;background:rgba(0,0,0,0.55);padding:3px 8px;border-radius:4px;letter-spacing:0.4px;text-transform:uppercase;font-weight:700;";
+    status.textContent = "loading vision…";
+    shell.appendChild(status);
+    const ganker = document.createElement("div");
+    ganker.id = "am-map-gank";
+    ganker.style.cssText = "position:absolute;left:0;right:0;bottom:0;padding:6px 10px;font-size:12px;color:#fff;background:rgba(220,38,38,0.85);font-weight:700;letter-spacing:0.4px;text-transform:uppercase;display:none;text-align:center;";
+    shell.appendChild(ganker);
+    host.appendChild(shell);
+    // Kick off the polling loop if not already running.
+    _amStartMapPolling();
+  }
+  // Re-draw with cached vision state immediately so the user sees
+  // something on the tick that triggered the render call.
+  if (_AM_MAP.vsCache) _amDrawOverlay(_AM_MAP.vsCache);
+}
+
+function _amStartMapPolling() {
+  if (_AM_MAP.pollHandle != null) return;
+  const tick = () => {
+    // Only poll while the active-match view is current — otherwise we
+    // burn CPU + bandwidth on hidden surfaces.
+    const view = document.body.dataset.view;
+    if (view !== "active-match") return;
+    fetch("/api/vision-state", { cache: "no-store" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((vs) => {
+        if (vs) {
+          _AM_MAP.vsCache = vs;
+          _amDrawOverlay(vs);
+        }
+      })
+      .catch(() => { /* swallow — next tick retries */ });
+  };
+  tick();   // fire immediately so the first draw isn't 500ms late
+  _AM_MAP.pollHandle = setInterval(tick, _AM_TICK_MS);
+}
+
+function _amDrawOverlay(vs) {
+  const img    = document.getElementById("am-map-img");
+  const canvas = document.getElementById("am-map-overlay");
+  const status = document.getElementById("am-map-status");
+  const ganker = document.getElementById("am-map-gank");
+  if (!img || !canvas) return;
+  if (!img.complete || !img.naturalWidth) return;
+  const rect = img.getBoundingClientRect();
+  const hostRect = img.parentElement.getBoundingClientRect();
+  const w = Math.round(rect.width);
+  const h = Math.round(rect.height);
+  if (w < 4 || h < 4) return;
+  canvas.style.left   = (rect.left - hostRect.left) + "px";
+  canvas.style.top    = (rect.top  - hostRect.top)  + "px";
+  canvas.style.width  = w + "px";
+  canvas.style.height = h + "px";
+  if (canvas.width  !== w) canvas.width  = w;
+  if (canvas.height !== h) canvas.height = h;
+
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, w, h);
+
+  const enemies = (vs && vs.enemies) || {};
+  const enemyList = Object.entries(enemies);
+  const summary = (vs && vs.summary) || {};
+  const gameModeUp = String((vs && vs.game_mode) || "").toUpperCase();
+  const shared = _AM_SHARED_VISION.has(gameModeUp);
+
+  // Status line — visible/missing/dead summary.
+  if (status) {
+    const visible = summary.visible_count | 0;
+    const missing = summary.missing_count | 0;
+    const dead    = summary.dead_count | 0;
+    status.textContent = shared
+      ? `${visible} on bridge · ${dead} dead`
+      : `${visible} visible · ${missing} MIA · ${dead} dead`;
+  }
+
+  // Shared-vision (ARAM/Brawl-on-bridge): no position data, skip dots.
+  if (shared) {
+    if (ganker) ganker.style.display = "none";
+    return;
+  }
+
+  const mapSize = _AM_MAP_WORLD[gameModeUp] || 14800;
+  function project(x, z) {
+    // Game origin = bottom-left, z grows up. Canvas y grows down → flip.
+    return [(x / mapSize) * w, h - (z / mapSize) * h];
+  }
+
+  // Gank warning: enemy with role-hint "JUNGLE" missing > _AM_GANK_THRESHOLD.
+  // The vision_state schema doesn't carry role directly, so detect by
+  // smite or by champion category. For now, surface ANY enemy missing
+  // over the threshold whose last_seen_zone is "ENEMY_JUNGLE" or null
+  // and whose missing_for_s exceeds the threshold.
+  let gankAlert = null;
+
+  for (const [name, e] of enemyList) {
+    if (e.is_dead) continue;
+    const pos = e.last_seen_pos;
+    if (!pos || typeof pos.x !== "number") continue;
+    const [px, py] = project(pos.x, pos.z);
+    const missing = e.missing_for_s || 0;
+
+    if (e.visible) {
+      // Bright current-position dot
+      ctx.beginPath();
+      ctx.arc(px, py, 6, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(240, 126, 139, 0.95)";
+      ctx.fill();
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    } else {
+      // Ghost dot fading with missing time
+      const alpha = Math.max(0.25, 1.0 - missing / 30);
+      ctx.beginPath();
+      ctx.arc(px, py, 6, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(240, 126, 139, ${alpha})`;
+      ctx.fill();
+      ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.7})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // MIA badge
+      if (missing > _AM_MIA_THRESHOLD) {
+        const tag = `${name.slice(0, 6)} ${Math.round(missing)}s`;
+        ctx.font = "bold 10px sans-serif";
+        const txtW = ctx.measureText(tag).width;
+        const bx = Math.min(w - txtW - 8, Math.max(4, px + 8));
+        const by = Math.min(h - 14, Math.max(12, py - 4));
+        ctx.fillStyle = "rgba(220, 38, 38, 0.85)";
+        ctx.fillRect(bx - 3, by - 10, txtW + 6, 14);
+        ctx.fillStyle = "#fff";
+        ctx.fillText(tag, bx, by);
+      }
+      // Gank-watch: jungler-shaped missing pattern
+      if (missing > _AM_GANK_THRESHOLD
+          && (e.last_seen_zone === "ENEMY_JUNGLE"
+              || e.last_seen_zone === "RIVER"
+              || e.last_seen_zone === null)) {
+        gankAlert = `${name} missing ${Math.round(missing)}s — ward / back off`;
+      }
+    }
+  }
+
+  if (ganker) {
+    if (gankAlert) {
+      ganker.textContent = "⚠ " + gankAlert;
+      ganker.style.display = "block";
+    } else {
+      ganker.style.display = "none";
     }
   }
 }
@@ -185,15 +410,19 @@ function _line(label, value) {
   return row;
 }
 
-// s170 step 2: render a single DS pick as an icon-with-overlay.
-// CommunityDragon CDN hosts the per-patch item icon at a stable path;
+// s170 step 2 + s171 fix: render a single DS pick as an icon-with-overlay.
+// Item icons live at /data/ddragon/<ver>/img/item/<id>.png on the dashboard
+// (local DDragon cache) with the DDragon CDN as fallback when the local
+// asset hasn't been pre-fetched. The s170 URL path
+// (`perk-images/item-icons/`) was the runes/perks namespace and 404s for
+// every item id, so every icon was falling through to the text tile.
 // /api/state's `items` field uses item names so we match the OWNED
 // overlay by lowercased name. The "+Ndps" overlay is the rerank delta
 // from the current inventory baseline.
 //
 // Icon falls back to a labeled grey tile when the item_id isn't known
 // (DS server occasionally returns names without ids during ARAM/Arena
-// re-skin resolution).
+// re-skin resolution) or both DDragon paths 404.
 function _dsIcon(r, ownedSet) {
   const wrap = document.createElement("div");
   wrap.style.cssText = "position:relative;width:48px;text-align:center;";
@@ -202,14 +431,19 @@ function _dsIcon(r, ownedSet) {
   const delta = (r.delta_dps != null ? r.delta_dps : (r.deltaDps || 0));
   const owned = ownedSet && ownedSet.has(String(name).toLowerCase());
   if (id) {
+    const ver = (ITEMS && ITEMS.version) || "latest";
     const img = document.createElement("img");
-    img.src = `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perk-images/item-icons/${id}.png`;
+    img.src = `/data/ddragon/${ver}/img/item/${id}.png`;
     img.alt = name;
     img.title = `${name} (+${(delta || 0).toFixed(0)}dps)`;
     img.style.cssText = "width:44px;height:44px;border-radius:6px;border:1px solid var(--border, #303040);display:block;margin:0 auto;";
     img.onerror = () => {
-      // Fallback for items missing on the CDN (Arena re-skins occasionally).
-      img.replaceWith(_dsIconFallback(name, id, delta));
+      if (!img.dataset.cdnRetry) {
+        img.dataset.cdnRetry = "1";
+        img.src = `https://ddragon.leagueoflegends.com/cdn/${ver}/img/item/${id}.png`;
+      } else {
+        img.replaceWith(_dsIconFallback(name, id, delta));
+      }
     };
     wrap.appendChild(img);
   } else {

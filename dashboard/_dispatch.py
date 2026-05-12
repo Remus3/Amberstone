@@ -62,7 +62,7 @@ def _gather_get() -> list:
                                routes_diag, routes_coach, routes_bridge,
                                routes_bridge_pending, routes_bridge_cadence,
                                routes_health_peer,
-                               routes_loadout, routes_metrics,
+                               routes_loadout, routes_lobby_aux, routes_metrics,
                                routes_pickban,
                                routes_sr_draft, routes_sr_user_builds,
                                routes_team_context,
@@ -77,6 +77,7 @@ def _gather_get() -> list:
                       + list(routes_bridge_cadence.GET_ROUTES)
                       + list(routes_health_peer.GET_ROUTES)
                       + list(routes_loadout.GET_ROUTES)
+                      + list(routes_lobby_aux.GET_ROUTES)
                       + list(routes_metrics.GET_ROUTES)
                       + list(routes_pickban.GET_ROUTES)
                       + list(routes_sr_draft.GET_ROUTES)
@@ -94,7 +95,7 @@ def _gather_post() -> list:
                                routes_bridge_pending, routes_bridge_cadence,
                                routes_bridge_pending_actions,
                                routes_health_peer,
-                               routes_loadout, routes_metrics,
+                               routes_loadout, routes_lobby_aux, routes_metrics,
                                routes_sr_draft, routes_sr_user_builds,
                                routes_team_context)
         _POST_CACHE = (list(routes_static.POST_ROUTES)
@@ -108,6 +109,7 @@ def _gather_post() -> list:
                        + list(routes_bridge_pending_actions.POST_ROUTES)
                        + list(routes_health_peer.POST_ROUTES)
                        + list(routes_loadout.POST_ROUTES)
+                       + list(routes_lobby_aux.POST_ROUTES)
                        + list(routes_metrics.POST_ROUTES)
                        + list(routes_sr_draft.POST_ROUTES)
                        + list(routes_sr_user_builds.POST_ROUTES)

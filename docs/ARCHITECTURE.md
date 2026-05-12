@@ -88,6 +88,7 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 | `dashboard/routes_bridge_pending.py` | GET /api/bridge/pending — escalation queue [FROZEN] |
 | `dashboard/routes_dev.py` | dev/sim panel endpoints |
 | `dashboard/routes_health_peer.py` | GET /api/health/peer + /api/health/all |
+| `dashboard/routes_lobby_aux.py` | top8 + mains backend |
 | `dashboard/routes_metrics.py` | /metrics Prometheus endpoint |
 | `dashboard/routes_team_context.py` | GET /api/team-context + POST /api/team-context/refresh |
 | `web_dashboard.py` | :8888 HTTPS dashboard server entry |
