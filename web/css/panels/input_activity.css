@@ -483,8 +483,6 @@ footer .prefs-chip:hover { background: var(--bad-soft); color: var(--bad); }
   .panel       { border-radius: 12px; }
   .panel-head  { padding: 8px 14px 4px 14px; }
   .panel-body  { padding: 4px 14px 10px 14px; }
-  .team-tile   { width: 38px; height: 38px; }
-  .tile-spell  { width: 16px; height: 16px; }
   .item-tile   { width: 68px; }
   .item-icon   { width: 56px; height: 56px; }
   /* Narrow viewport: icon 56 → tag sits at 46px pinned to icon bottom. */
