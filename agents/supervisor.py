@@ -1535,6 +1535,7 @@ class Supervisor:
         self._agent0: Evaluator | None = None
         self._file_ingest: FileIngest | None = None
         self._warm_agent7: WarmAgent7Session | None = None
+        self._warm_agent7_alive: bool = False
         self.cross_machine_enabled: bool = True
         # Rolling ring buffer of /api/input latencies (ms). Cap at 20.
         self._input_latencies: list[float] = []
@@ -1804,10 +1805,17 @@ class Supervisor:
         )
 
     def _warm_agent7_handle(self, task) -> dict:
+        if self._warm_agent7 is None:
+            return spawn_ephemeral_llm("7", task.id, task.op, task.payload)
         if not self._warm_agent7_alive:
             log.info("warming agent7 session for task %s", task.id)
             self._warm_agent7_alive = True
-        return spawn_ephemeral_llm("7", task.id, task.op, task.payload)
+        spawn = warm_spawn_factory(self._warm_agent7)
+        try:
+            return spawn("7", task.id, task.op, task.payload)
+        except WarmSessionError as e:
+            log.warning("warm send failed, fallback ephemeral: %s", e)
+            return spawn_ephemeral_llm("7", task.id, task.op, task.payload)
 
     def _on_mode_transition(self, prev: str, new: str) -> None:
         """File-ingest callback — fires when ``ops/runtime/health.json.mode``

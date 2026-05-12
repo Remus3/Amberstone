@@ -192,19 +192,20 @@ class WarmAgent7Session:
 
     # ---- introspection ------------------------------------------------
     def stats(self) -> dict[str, Any]:
-        return {
-            "warm": self._client is not None and self._last_activity > 0.0,
-            "model": self._model,
-            "history_len": len(self._messages),
-            "turns": self._total_sent,
-            "total_input_tokens": self._total_input_tokens,
-            "total_output_tokens": self._total_output_tokens,
-            "idle_sec": (
-                round(time.monotonic() - self._last_activity, 1)
-                if self._last_activity > 0 else None
-            ),
-            "idle_timeout_sec": self._idle_timeout,
-        }
+        with self._lock:
+            return {
+                "warm": self._client is not None and self._last_activity > 0.0,
+                "model": self._model,
+                "history_len": len(self._messages),
+                "turns": self._total_sent,
+                "total_input_tokens": self._total_input_tokens,
+                "total_output_tokens": self._total_output_tokens,
+                "idle_sec": (
+                    round(time.monotonic() - self._last_activity, 1)
+                    if self._last_activity > 0 else None
+                ),
+                "idle_timeout_sec": self._idle_timeout,
+            }
 
 
 def warm_spawn_factory(session: WarmAgent7Session):
