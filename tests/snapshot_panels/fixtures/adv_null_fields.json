@@ -1,0 +1,30 @@
+{
+  "mode_key": "sr",
+  "coach_source": "sr_coaching_data.json",
+  "health": {"alive": true, "pid": 9999, "mode": "sr", "has_game": true},
+  "coach": {
+    "mode": "sr",
+    "action": null,
+    "immediate": null,
+    "next": null,
+    "fight_rule": null,
+    "wave": null,
+    "objective": null,
+    "reset_item": null,
+    "risk": null,
+    "map": null,
+    "win_pct": null,
+    "log": null,
+    "pregame": null,
+    "champion": null,
+    "game_time_s": null,
+    "hp_pct": null,
+    "kda": null,
+    "gold": null,
+    "level": null,
+    "cs": null,
+    "ally_spells": null,
+    "ally_comp": null,
+    "enemy_comp": null
+  }
+}
