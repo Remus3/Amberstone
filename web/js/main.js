@@ -3456,6 +3456,20 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
   // ---- s162 v5: My Top 8 panel ----
   const TOP8_KEY = "rc-top8-list";
   const TOP8_MAX = 8;
+  // s170 wipe: riot_ids that came from sim fixtures
+  // (data/sim/flow_0{1,2}_*.json) and may have leaked into the operator's
+  // live localStorage during dev. _top8Load filters these on read and
+  // writes the cleaned list back so the wipe is idempotent.
+  const _TOP8_FAKE_RIOT_IDS = new Set([
+    "FrenLuvr#NA1",
+    "Brawler#NA1",
+    "SmurfLord#PRO",
+    "WardBot#SUP",
+    "CarryHarder#NA1",
+    "SkillIssue#TT",
+    "NoobieMcGee#NEW",
+    "SamplePlayer Sock#NA1",
+  ]);
   function _top8Load() {
     // s162 v5: sim fixtures can pre-populate via lcu.top8 — fixture
     // wins so dev preview renders without polluting the operator's
@@ -3467,7 +3481,15 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       const raw = localStorage.getItem(TOP8_KEY);
       if (!raw) return [];
       const arr = JSON.parse(raw);
-      return Array.isArray(arr) ? arr : [];
+      if (!Array.isArray(arr)) return [];
+      const cleaned = arr.filter((e) => {
+        const rid = e && (e.riot_id || e.summoner_name);
+        return !(rid && _TOP8_FAKE_RIOT_IDS.has(rid));
+      });
+      if (cleaned.length !== arr.length) {
+        try { localStorage.setItem(TOP8_KEY, JSON.stringify(cleaned)); } catch (_) {}
+      }
+      return cleaned;
     } catch (_) { return []; }
   }
   function _top8Save(list) {

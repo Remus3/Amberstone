@@ -63,6 +63,7 @@ def _gather_get() -> list:
                                routes_bridge_pending, routes_bridge_cadence,
                                routes_health_peer,
                                routes_loadout, routes_metrics,
+                               routes_pickban,
                                routes_sr_draft, routes_sr_user_builds,
                                routes_team_context,
                                routes_dev)
@@ -77,6 +78,7 @@ def _gather_get() -> list:
                       + list(routes_health_peer.GET_ROUTES)
                       + list(routes_loadout.GET_ROUTES)
                       + list(routes_metrics.GET_ROUTES)
+                      + list(routes_pickban.GET_ROUTES)
                       + list(routes_sr_draft.GET_ROUTES)
                       + list(routes_sr_user_builds.GET_ROUTES)
                       + list(routes_team_context.GET_ROUTES)
