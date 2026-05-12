@@ -4,6 +4,53 @@
 
 ---
 
+# s173 wrap — 2026-05-12 (anti-drift audit run — 2 commits)
+
+**audit run complete** — 2 pairs unified, ~30 min elapsed. Both green on first CI run.
+
+Daytime execution of `HEADLESS_BRIEF_2026-05-12_AUDIT.md` (anti-drift hunt across 10 candidate pairs in the spirit of ADR-008). Risk profile LOW-MEDIUM: structural unification of independently-maintained lists/maps. Two pairs closed; six skipped (intentional difference, dead code, or already-unified); two deferred (frozen-touching or multi-language).
+
+## Ships
+
+| Commit | Theme |
+|---|---|
+| [3096e8c](https://github.com/Remus3/riot-commander/commit/3096e8c) | `refactor(supervisor):` defer post-game candidates to `_state_builder.MODE_FILES`. New `MODE_FILES: tuple[str, ...]` derived from `MODE_TO_FILE.values()` via `dict.fromkeys()` (deduped, insertion-order). `agents/supervisor._file_post_game_summary` now consumes it via local import (avoids module-load-order coupling) with a hardcoded fallback for dev runs that lack the dashboard package. Behavior byte-identical — same 5 paths in the same order. |
+| [907543f](https://github.com/Remus3/riot-commander/commit/907543f) | `refactor(champ_select):` defer legacy dsMode ternary to `_csvDsModeFor`. The s164 view's `_csvDsModeFor` (4 branches inc. brawl) and the legacy cs-overlay's inline ternary (3 branches) both mapped mode → DS engine name. ESM hoisting cross-references the helper fine; substitution is byte-identical for all current `modeMap` outputs (which never produce "brawl" since modeMap covers SR queue_ids only and falls back to "aram"). |
+
+## Hunt outcomes (10 of 10 examined)
+
+| # | Pair | Outcome |
+|---|---|---|
+| 1 | `resolve_mode_key` (dashboard vs file_ingest) | **Already unified** — `agents/agent2_backend/file_ingest.py:50` imports from `dashboard._state_builder`. Single source of truth. Not a finding. |
+| 2 | `WATCHED` + `MODE_TO_FILE` + supervisor candidates | **Unified — 3096e8c.** Three enumerations of the per-mode coaching JSON path set. WATCHED has different intent (WS broadcast labels, includes auxiliary tft_live_data + comp_state), `MODE_TO_FILE` is canonical mode→path, supervisor candidates was a third independent list now derived from MODE_FILES. |
+| 3 | Frozen file list (CLAUDE.md vs `tools/process-bridge-tasks.md`) | **Skip — touches frozen.** Real drift (CLAUDE.md has 27 entries; the in-prompt skill spec has 14), but `tools/process-bridge-tasks.md` is itself frozen per CLAUDE.md. Operator approval required to unify. Logged as open audit finding below. |
+| 4 | `VIEW_IDS` (state.js vs HTML sections vs CSS body[data-view] vs dashboard.js) | **No actionable drift.** `web/js/dashboard.js:445` carries a stale legacy list incl. "diagnostics/coach-calls/bridge-pending/fleet/loadouts" — but `web/index.html` only loads `js/main.js` (the ESM entrypoint that imports from `state.js`). dashboard.js is dead code in production; removing it requires updating multiple `agent3_testing` tests that read it as text. `dashboard/view_router_state.py:VIEW_IDS` is an explicit Python mirror with a docstring-flagged sync obligation. No clean single-commit unification. |
+| 5 | `_csvDsModeFor` vs inline ternary | **Unified — 907543f.** |
+| 6 | LCU phase "in-game-ish" checks (`_viewAutoDerive` vs `handleLcuEnvelope` vs `gamepc_lcu_agent.py`) | **Different intents.** `main.js:491-497` is a state machine for `_VIEW.gameStarted` sticky-tracking; `main.js:1908-1910` gates a button on "past lobby"; `main.js:4265` gates "lobby-ish" pre-match flow; `file_ingest._compute_effective_mode` overlays LCU phase onto health.mode. Each check selects a different phase set; no two are duplicating the same intent. Skip. |
+| 7 | DS `ENGINE_VERSION` (code vs docs vs response) | **Skip — doc maintenance, not structural drift.** Code at 0.61.0 since s167; CLAUDE.md/DAEMON_SLAYER.md/ARCHITECTURE.md/README.md still say 0.60.0. The structural shape (one source in `__init__.py`, exposed via `/health`) is fine — docs just lag. Worth a one-line doc-sync commit but doesn't match the audit's "two implementations diverging" pattern. Logged as open finding. |
+| 8 | LiveClient relay max-age (8.0/12.0/20.0) | **Intentional.** `poller.RELAY_MAX_AGE_S=12.0` has a fall-through-to-direct path; `decision_detector._RELAY_MAX_AGE_S=8.0` and `vision_tracker._RELAY_MAX_AGE_S=8.0` simply skip the tick. Different fall-through semantics — not the same intent. Skip. |
+| 9 | Cache-buster URL format | **Already unified — s171.8 (ADR-008).** Both `inject_asset_hash` and `_serve_ui_version` defer to `compute_asset_hash`. No remaining drift. |
+| 10 | Champion alias maps (`items_index.js` vs `daemon_slayer_extract.py` vs `dashboard.js`) | **Defer — multi-language unification.** Real drift across 3 hand-maintained tables (`wukong→MonkeyKing`, `renataglasc→Renata`, `nunuwillump→Nunu`), but unifying requires a new JSON source-of-truth + edits to one Python build tool + one JS runtime module + a key-normalization decision. Larger than one-commit scope. Logged as open finding. |
+
+## Open audit findings (for next session)
+
+1. **Frozen-file list drift** (Hunt 3) — CLAUDE.md frozen list (27 entries) vs in-prompt skill spec (14 entries) for `process-bridge-tasks`. The skill spec is in `tools/process-bridge-tasks.md` (frozen), or in a `.claude/` skill file (need to locate). Fix would either inline CLAUDE.md grep at skill execution time, or sync the static list. Operator decision required.
+2. **DS `ENGINE_VERSION` doc-sync** (Hunt 7) — Bump CLAUDE.md:6, docs/DAEMON_SLAYER.md:5, docs/ARCHITECTURE.md:147, README.md:244 + :302, NEXT_SESSION_PLAN_2026-05-10.md:12 from `0.60.0` to `0.61.0`. One-line edits each, but they should be batch-updated when the next ENGINE bump lands (better: auto-inject via a doc-prelude step).
+3. **Champion alias unification** (Hunt 10) — 3 hand-maintained tables. Proposal: add `web/data/champion_aliases.json` with `{"wukong":"MonkeyKing","nunuwillump":"Nunu","renataglasc":"Renata"}` keyed on lowercase-alphanumeric of the source name. `web/js/lib/items_index.js:_CHAMP_RENAME_OVERRIDES` reads it (fetch on first import or hardcode same constant). `tools/daemon_slayer_extract.py:_LOLMATH_TO_DDRAGON_ALIAS` reads it (apply lowercase normalization to lolmath camelCase keys before lookup). Bigger than one-commit scope; warrants its own session.
+
+## Files touched this session
+
+- `dashboard/_state_builder.py` (+7 lines: `MODE_FILES` tuple)
+- `agents/supervisor.py` (+16 / −9 lines: candidates list deferred)
+- `web/js/panels/champ_select.js` (+6 / −4 lines: ternary → helper call)
+- `WAKEUP_NOTES.md` (this entry)
+
+## Pending verification
+
+🟡 **Live champ-select** — the Hunt 5 substitution is byte-identical at runtime for all current `modeMap` outputs, but a live SR draft / ARAM / Arena CS would reconfirm `_fetchDsPreview` fires with the correct mode label. The previous s171.7 cache-staleness already cleared so dashboard auto-reload should pick up `907543f` within one 4s poll cycle (footer hash should change).
+
+---
+
 # s171.8 wrap — 2026-05-12 (overnight docs+tests backfill — 5 commits)
 
 **headless run complete** — 5 commits, ~10 min elapsed. Operator: run morning audit brief (`HEADLESS_BRIEF_2026-05-12_AUDIT.md`) when ready.
