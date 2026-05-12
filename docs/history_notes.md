@@ -6,6 +6,70 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s171 wrap — 2026-05-12 (LCU + DS + UX bug crawl — 8 commits)
+
+Operator surfaced ~15 distinct issues across two duo-queue games, mostly LCU push gaps + in-game UX. Single biggest find: `lcuCmd`/`lcuPollResult` were referenced 22 times in `main.js` but never declared at module scope (regression from s133 38ac760 Phase 3.1 ESM split) — every Find Match / Cancel / queue-change click silently threw ReferenceError. Restored as module-local helpers. 8 commits shipped end-to-end with live verification at each stage.
+
+## Ships
+
+| Commit | Theme |
+|---|---|
+| [73b66ec](https://github.com/Remus3/riot-commander/commit/73b66ec) | s171 — `lcuCmd`/`lcuPollResult` restore + 6 new lobby LCU handlers (set_party_type/set_position_prefs/invite_player/create_practice_tool/promote_leader/kick_member) + 5 P&B commands to allowlist (set_pick_intent/set_ban_intent/request_position_swap/request_pick_order_swap/set_augment_intent) + new champ-select view lock button + DS-driven build chooser + post-CS view-routing sticky guard + Top 8 server-side persistence (`/api/top8`) + `/api/mains` backend (rewind_history.db join) + auto_accept default flipped True→False + championPickIntent hover fallback + Active Match step 4 map overlay (static SR/ARAM base + champion-dot canvas overlay + MIA badges + JG-gank warning) + DS icon URL fix (perk-images→item-icons) |
+| [a4f81a9](https://github.com/Remus3/riot-commander/commit/a4f81a9) | s171.1 — active-match opt-in→opt-out (`?am=0` to opt out), render `coach.immediate` as RIGHT NOW (was being dropped), expand auto-clear stale-manual list |
+| [8f78199](https://github.com/Remus3/riot-commander/commit/8f78199) | s171.2 — tighten active-match gate to phase=InProgress (was falling through to stale `state.mode` during champ-select), freshness guard in `renderActiveMatch` (clears stale Kai'Sa "Recall now…" between games) |
+| [94cee62](https://github.com/Remus3/riot-commander/commit/94cee62) | s171.3 — `my_completed` from `sess.actions[][]` (was reading non-existent `myTeam[i].completed`, always False), surface `local_cell` (P&B fetch needed it for role resolution) |
+| [8bae267](https://github.com/Remus3/riot-commander/commit/8bae267) | s171.4 — enemy-aware DS ranking. New `core/enemy_aware_stats.py` computes target_armor/_mr/_max_hp from liveclient `allPlayers[i].items[]` via ddragon_items.json stat lookup → passes to `rank_for()`. Verified live: vs early-game enemies → Stormrazor/IE top; vs synthetic 150 armor/2500 HP → Blade of Ruined King +101 dps top |
+| [f00a8d7](https://github.com/Remus3/riot-commander/commit/f00a8d7) | s171.5 — target_stats caption in DS strip (`DS ENGINE · vs 95 armor · 63 mr · 2210 hp · live · 5 enemies`) |
+| [8a90b73](https://github.com/Remus3/riot-commander/commit/8a90b73) | s171.6 — defensive-pick ranker. New `core/defensive_picks.py` classifies enemy team's threat profile (AD/AP/burst/tank, `_KNOWN_BURSTERS` set) → recommends from 22-item curated catalog (Plated/Randuin/Frozen Heart/Maw/Sterak/GA/Zhonya/etc.). DEFENSE row renders in BUILD pane when `burst_threat≥5 OR ad_threat≥7 OR ap_threat≥7` |
+| [d12a330](https://github.com/Remus3/riot-commander/commit/d12a330) | s171.7 — champ-select view opt-in→opt-out so ARAM Mayhem operator sees the new view (lock button + ARAM bench + DS picks) without `?cs=1` |
+
+## Game-PC redeploys this session
+
+LCU agent redeployed 3 times via http.server :8765 dance (`reference_gamepc_http_server_redeploy.md`):
+- pid 4636 → 7940 (s171 — 5 new commands + championPickIntent + auto_accept=False)
+- pid 7940 → 6672 (s171.6 hop — promote_leader/kick_member added)
+- pid 6672 → 1976 (s171.3 — `my_completed` from actions[] + local_cell)
+
+Live pid 1976 confirmed running.
+
+## Diagnosis-only finds (not bugs in our code)
+
+- **Phase 3 supervisor mode-detector stale-lock**: after a game ended at 00:25:21, the supervisor stayed in `mode=client` for the entire next game's champ-select + loading because LCU lockfile check fails (Phase 3 runs on Legion, lockfile is on Game-PC). Decision detector + game poller both correctly gated their loops on the relay's `RELAY_MAX_AGE_S` (8s/12s). Recovery happens when the next game starts and `gamepc_liveclient_relay.py` pushes fresh data. **Not a regression** — but worth a next-session look if it recurs.
+- **`gamepc_liveclient_relay.py` standby for :2999 — correct behavior.** League's :2999 LiveClient API only listens once `League of Legends.exe` is running (not `LeagueClient.exe`). Relay agent's SYN_SENT socket waits.
+
+## Decisions / notes for next-session-you
+
+- **`lcuCmd`/`lcuPollResult` are now at module scope in `main.js`** (line 39+). Don't add duplicates inside `_lobbyViewWireOnce` or similar — they'd shadow.
+- **`activeMatchEnabled` / `loadingViewEnabled` / `champSelectViewEnabled` all default-on now.** All three accept `?<flag>=0` for opt-out + `localStorage.<key>='0'` for sticky. The view-router's auto-derive expects this — don't revert to opt-in without updating the derive chain.
+- **`_VIEW.gameStarted` sticky guard** (`web/js/lib/state.js`) latches to `champ-select → game-start → in-progress`, only clears on stable post-game phases. Rides through transient phase=null/Lobby during CS→loading→game flip. Don't add a manual "reset on game start" — would re-introduce the flip-back-to-pregame-lobby bug.
+- **`my_completed` derivation** in `gamepc_lcu_agent.py:_team_picks` walks `sess.actions[][]` for the local cell's pick action. **LCU's `myTeam[i]` has NO `completed` field** — historical reads were always False. Same gotcha applies if you ever need per-ally lock state.
+- **`target_stats.source`** field in `/api/ds-preview` response distinguishes `live-items` / `explicit-override` / `mode-level-curve` / `default-zero`. UI hides caption when source=default-zero.
+- **Defensive-pick threshold tuning**: currently `burst≥5 OR ad≥7 OR ap≥7`. If operator complains about DEFENSE row spam, raise burst threshold; if it under-fires, lower to 4.
+- **Build-variant persistence is the last deferred item** (operator's "kaisa experimental" complaint). Currently the build chooser shows a single DS variant — no choice to persist. Requires re-introducing multi-variant + sessionStorage save + active-match read path. Substantial.
+
+## Open items handed off
+
+- 🟡 **Live ARAM Mayhem verification** — operator was entering CS at wrap. New champ-select view should auto-promote; ARAM bench + build chooser + lock button should be functional.
+- 🟡 **Build-variant persistence** (champ-select → in-game) — deferred per above.
+- 🟡 **Working-tree triage** (still unresolved from s168): `agents/_minimap_bbox.py` + `agents/supervisor.py` + `tests/fu01_minimap/test_http_override.py` carry pre-session FU01 refinement (extracted `parse_http_override` helper). Audit reports under `agents/agent6_auditor/proposals/20260511-200200-sixth-audit/` document the proposed changes. Operator should decide: commit / retire / in-progress.
+- 🟡 `data/top8_list.json` carries the operator's actual Top 8 entry now (`xChunjae#Mage`). Probably should be `.gitignore`'d — it's user data, not source.
+
+## Files touched this session
+
+- `core/enemy_aware_stats.py` (new) · `core/defensive_picks.py` (new)
+- `dashboard/routes_state.py` (ds-preview enriched 2x) · `dashboard/routes_loadout.py` (allowlist) · `dashboard/routes_lobby_aux.py` (new — /api/top8 + /api/mains) · `dashboard/_dispatch.py` (registered new routes)
+- `tools/gamepc_lcu_agent.py` (championPickIntent + my_completed + local_cell + 6 new handlers + auto_accept default flip)
+- `web/index.html` (cache buster 2026051125 → 2026051210)
+- `web/js/main.js` (restored lcuCmd/lcuPollResult + frontend toggle wiring + auto-clear expansion + sticky guard)
+- `web/js/lib/state.js` (added `_VIEW.gameStarted`)
+- `web/js/panels/champ_select.js` (lock button, DS-driven build chooser, opt-in→opt-out)
+- `web/js/panels/active_match.js` (default-on, render `immediate`, step 4 map overlay, target_stats caption, DEFENSE row, freshness guard)
+- `web/css/panels/champ_select_view.css` (lock-button styles)
+- `data/top8_list.json` (new — server-side Top 8 persistence)
+- `docs/ARCHITECTURE.md` (auto-synced by archmap)
+
+---
+
 # s170 wrap — 2026-05-11 (LCU wiring punch list — items #1 #2 #3 #4 #5 #7 shipped, #6 parking-lot)
 
 Operator opened by asking "what is needed to finish the LCU wiring to the UI output for things like pre-game lobby and, champion select, and DS output to active match" — informational query that produced a 7-item punch list. Then operator said "continue" repeatedly, working through items 1–4 + 7 in one continuation. Items 5 and 6 ended the session as bridge-dispatched (waiting on Game-PC Claude) and parking-lot (requires live Arena lobby) respectively.
