@@ -108,11 +108,28 @@ export function renderActiveMatch(payload, ctx) {
   const mode = (ctx && ctx.mode) || "—";
   const phase = (ctx && ctx.lcuPhase) || "—";
 
+  // s171.2: freshness gate. The coach payload (state.coach.*) lives in
+  // memory across games — when a game ends, the previous game's
+  // immediate/action/objective/next stay populated until the next
+  // game's coach tick overwrites them. Without a gate, the active-
+  // match view shows stale "Recall now—Ryze respawn 47s" prompts from
+  // the previous game while the operator is in champ-select for a new
+  // one. Treat anything other than phase=InProgress as "between games"
+  // and clear the coach panes so the operator isn't misled.
+  const isLive = (phase === "InProgress");
+
   const sub = _AM.sub();
   if (sub) {
-    const champ = p.champion || "—";
-    const time = p.game_time || "—";
-    sub.textContent = `${mode.toUpperCase()} · ${champ} · ${time} · phase ${phase}`;
+    if (isLive) {
+      const champ = p.champion || "—";
+      const time = p.game_time || "—";
+      sub.textContent = `${mode.toUpperCase()} · ${champ} · ${time} · phase ${phase}`;
+    } else {
+      // Champ-select / loading / between games: no live coach yet.
+      sub.textContent = phase
+        ? `${mode.toUpperCase()} · phase ${phase} · waiting for in-game data`
+        : `${mode.toUpperCase()} · waiting for in-game data`;
+    }
   }
 
   // Step 1 placeholders — surface a few raw fields so the user can
@@ -121,6 +138,16 @@ export function renderActiveMatch(payload, ctx) {
   // the final design (CALL fold, DS icons, static map) yet.
   const call = _AM.callBody();
   if (call) {
+    if (!isLive) {
+      // Stale-data guard: don't show previous-game prompts during
+      // champ-select / loading / aftergame.
+      call.innerHTML = "";
+      call.appendChild(_line("RIGHT NOW",
+        phase === "ChampSelect" ? "champ select — no in-game prompts yet"
+        : phase === "GameStart" ? "loading screen — game starts soon"
+        : "no in-game session — waiting for next game"));
+      return;
+    }
     const action = p.action || "";
     const immediate = p.immediate || "";
     const next = p.next || "";
