@@ -36,6 +36,61 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
   const WS_PORT = 8891;
   const WS_URL = `ws://${WS_HOST}:${WS_PORT}/push`;
 
+  // ── LCU helper (s171 restore) ──────────────────────────────────────
+  // ``lcuCmd`` / ``lcuPollResult`` were referenced 22 times in main.js
+  // (Find Match / Cancel / Change Lobby Mode / queue switcher / etc.)
+  // but never declared in this module — the function existed only in
+  // champ_select.js's module scope where main.js's callsites can't
+  // reach it. Result: every operator click on a lobby button threw
+  // ReferenceError silently. Restored here as plain module-local
+  // helpers so the existing call sites work without import churn.
+  function lcuCmd(cmdObj) {
+    return fetch("/api/lcu-cmd", {
+      method: "POST", cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(cmdObj),
+    }).then((r) => (r && r.ok ? r.json() : null)).catch(() => null);
+  }
+  function lcuPollResult(id, onResult) {
+    if (!id) { onResult && onResult({ ok: false, err: "no_queue_id" }); return; }
+    let tries = 0;
+    const tick = () => {
+      tries += 1;
+      fetch("/api/lcu-cmd-result?id=" + id, { cache: "no-store" })
+        .then((r) => r.json().then((j) => ({ status: r.status, body: j })))
+        .then(({ status, body }) => {
+          if (status === 200 && body && body.result) {
+            onResult && onResult(body.result);
+          } else if (tries < 6) {
+            setTimeout(tick, 500);
+          } else {
+            onResult && onResult({ ok: false, err: "timeout" });
+          }
+        })
+        .catch(() => {
+          if (tries < 6) setTimeout(tick, 500);
+          else onResult && onResult({ ok: false, err: "fetch_failed" });
+        });
+    };
+    setTimeout(tick, 300);
+  }
+  // ``_lvQueueChangeError`` is the surface used when change_queue_type
+  // returns ok:false. Falls back to _setLobbyStatus if it's wired (the
+  // legacy lobby panel uses it); otherwise drops a console.warn so the
+  // failure is at least diagnosable.
+  function _lvQueueChangeError(err) {
+    const msg = "Queue change failed: " + (err || "unknown");
+    try {
+      if (typeof _setLobbyStatus === "function") {
+        _setLobbyStatus(msg, "err");
+        return;
+      }
+    } catch (_) {}
+    const sub = document.getElementById("lv-queue-sub");
+    if (sub) sub.textContent = msg;
+    console.warn("[lobby]", msg);
+  }
+
   // ── DOM refs ────────────────────────────────────────────────────────
   // el() imported from lib/helpers.js; _to12 likewise.
   const statusPill = el("status-pill");
@@ -426,12 +481,36 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
   // Auto-derive view from observed state. Returns one of VIEW_IDS.
   function _viewAutoDerive(lcu, mode) {
     const phase = lcu && lcu.phase;
-    // s166: opt-in Loading screen (?ld=1 / localStorage.loadingView='1').
-    // Loading is the brief GameStart window between champ-select lock-in
-    // and InProgress; only auto-promote during that exact phase, and only
-    // when the operator opted in. Wins ahead of activeMatchEnabled below
-    // so the loading view actually gets to render during its window.
-    if (phase === "GameStart" && loadingViewEnabled()) return "loading";
+    // s171 post-CS sticky guard: once we've entered ChampSelect, the
+    // dashboard should never drop back to home/lobby until the game has
+    // cleanly resolved (EndOfGame / PreEndOfGame / WaitingForStats /
+    // TerminatedInError). LCU briefly emits phase=null or stale
+    // phase=Lobby during the CS→GameStart→InProgress flip, which used
+    // to flush the view back to "pregame lobby" mid-loading-screen.
+    // Track the highest game-state we've observed this session.
+    if (phase === "ChampSelect")                _VIEW.gameStarted = "champ-select";
+    else if (phase === "GameStart")             _VIEW.gameStarted = "game-start";
+    else if (phase === "InProgress")            _VIEW.gameStarted = "in-progress";
+    else if (phase === "EndOfGame" || phase === "PreEndOfGame"
+            || phase === "WaitingForStats" || phase === "TerminatedInError"
+            || phase === "Lobby" || phase === "Matchmaking"
+            || phase === "ReadyCheck" || phase === "None") {
+      // Only clear the sticky guard on a STABLE post-game phase. Treat
+      // Lobby/Matchmaking/ReadyCheck/None as "post-game" when the prior
+      // session-state was in-progress/game-start (the loading-screen
+      // window is over, the user is back to a real lobby).
+      if (_VIEW.gameStarted === "in-progress"
+          && (phase === "EndOfGame" || phase === "PreEndOfGame"
+              || phase === "WaitingForStats" || phase === "TerminatedInError"
+              || phase === "Lobby")) {
+        _VIEW.gameStarted = null;
+      }
+    }
+    // s171: Loading view is the right surface during GameStart
+    // (loading screen). Removed the opt-in gate that left this on
+    // home/lobby by default — loading is non-destructive, just a
+    // strategic-briefing render of the locked champ-select state.
+    if (phase === "GameStart") return "loading";
     // s159: when the operator has opted into Active Match (?am=1 or
     // localStorage.activeMatch='1'), auto-promote to it whenever the
     // game is actually running. Lobby/CS still hits the lobby view —
@@ -446,7 +525,19 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     // still wins visually on top of view-lobby.
     if (phase === "ChampSelect" && champSelectViewEnabled()) return "champ-select";
     if (phase === "ChampSelect")            return "lobby";   // cs-overlay still wins visually
-    if (phase === "InProgress" || phase === "GameStart") return "last-match";  // panels are in-game in game mode
+    if (phase === "InProgress") return "last-match";  // panels are in-game in game mode
+    // s171 sticky guard: if a transient null/Lobby phase fires during
+    // the CS→loading→game flip, fall back to whatever in-game surface
+    // matches the sticky guard rather than the literal phase. This
+    // prevents the "UI flips to pregame lobby during loading screen"
+    // bug operator hit during 2026-05-11 duo queue.
+    if (_VIEW.gameStarted === "game-start") return "loading";
+    if (_VIEW.gameStarted === "in-progress") {
+      return activeMatchEnabled() ? "active-match" : "last-match";
+    }
+    if (_VIEW.gameStarted === "champ-select") {
+      return champSelectViewEnabled() ? "champ-select" : "lobby";
+    }
     if (phase === "Lobby" || phase === "Matchmaking" || phase === "ReadyCheck") return "lobby";
     if (mode === "client" || mode === "lobby" || !mode) return "home";
     return "last-match";  // in-game default → main panels
@@ -597,7 +688,25 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     const lcu = latestLcu || (state.latest && state.latest.lcu) || {};
     const auto = _viewAutoDerive(lcu, state.mode);
     const hashView = _viewFromHash();
-    const manual = hashView || _VIEW.manual;
+    let manual = hashView || _VIEW.manual;
+    // s171: auto-clear a stale manual selection when the game-state
+    // shifts to a mid-flight surface (loading/active-match/last-match).
+    // Operator's "UI flipped to pregame lobby during the loading screen"
+    // bug was the manual="lobby" sticky surviving across the CS-end
+    // boundary — the banner asks them to switch but doesn't, and during
+    // a real game they're not staring at the dashboard to click "yes".
+    // hashView (?#lobby etc) wins over auto-clear since it's URL-level.
+    const _midFlight = (auto === "loading"
+                      || auto === "active-match"
+                      || auto === "last-match");
+    const _staleManual = (manual === "home" || manual === "lobby"
+                       || manual === "champ-select"
+                       || manual === "loading");
+    if (_midFlight && _staleManual && !hashView) {
+      _viewSaveManual(null);
+      _VIEW.bannerDismissed = null;
+      manual = null;
+    }
     if (manual) {
       // Manual sticky — apply it
       applyView(manual);
@@ -2340,6 +2449,35 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     if (_LV.mainsTab) return _LV.mainsTab;          // operator-toggled wins
     return partySize > 1 ? "party" : "you";
   }
+  // s171: server-backed Mains cache. The agent doesn't forward
+  // main_champs in the LCU envelope — it lives in match_history.db on
+  // Legion, joined with live LCU mastery. /api/mains is the resolver.
+  // Cache TTL 60s; per-puuid keyed so party-tab queries can be added
+  // later without invalidating the operator's own cache.
+  const _MAINS = { byPuuid: Object.create(null) };
+  const _MAINS_TTL_MS = 60 * 1000;
+  function _mainsFetch(puuid, onLand) {
+    const key = puuid || "";
+    const slot = _MAINS.byPuuid[key];
+    const now  = Date.now();
+    if (slot && slot.cache && (now - slot.fetchedAt) < _MAINS_TTL_MS) {
+      onLand && onLand(slot.cache);
+      return;
+    }
+    if (slot && slot.inflight) { return; }
+    _MAINS.byPuuid[key] = { ...(slot || {}), inflight: true };
+    const url = "/api/mains" + (puuid ? `?puuid=${encodeURIComponent(puuid)}` : "");
+    fetch(url, { cache: "no-store" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        const champs = (data && Array.isArray(data.main_champs)) ? data.main_champs : [];
+        _MAINS.byPuuid[key] = { cache: { champions: champs }, fetchedAt: Date.now(), inflight: false };
+        try { onLand && onLand(_MAINS.byPuuid[key].cache); } catch (_) {}
+      })
+      .catch(() => {
+        _MAINS.byPuuid[key] = { cache: null, fetchedAt: now, inflight: false };
+      });
+  }
   function _renderMains() {
     const lcu = (state.latest && state.latest.lcu) || {};
     const tab = _mainsTabState();
@@ -2355,7 +2493,23 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       tabParty.setAttribute("aria-selected",     tab === "party" ? "true" : "false");
     }
     if (tab === "you") {
-      _renderMainChamps(lcu.main_champs || null);
+      // s171: prefer server-side /api/mains (joined match_history.db +
+      // LCU mastery); fall back to lcu.main_champs when sim fixtures
+      // injected one.
+      if (Array.isArray(lcu.main_champs) || (lcu.main_champs && lcu.main_champs.champions)) {
+        const mc = Array.isArray(lcu.main_champs)
+          ? { champions: lcu.main_champs } : lcu.main_champs;
+        _renderMainChamps(mc);
+        return;
+      }
+      const cached = _MAINS.byPuuid[""] && _MAINS.byPuuid[""].cache;
+      if (cached) {
+        _renderMainChamps(cached);
+      } else {
+        _renderMainChamps(null);  // shows placeholder
+      }
+      // Always fire a hydrate — re-renders on land.
+      _mainsFetch("", (data) => { if (_mainsTabState() === "you") _renderMainChamps(data); });
     } else {
       _renderPartyMains(lcu.lobby || null);
     }
@@ -2935,12 +3089,21 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
         }
         if (action === "promote") {
           if (!window.confirm(`Promote ${ign} to leader?`)) return;
-          // Phase B: lcuCmd({ cmd: "lobby.promote_leader", riot_id: ign });
+          // s171: actually push the promote (was Phase B placeholder).
+          lcuCmd({ cmd: "lobby.promote_leader", riot_id: ign }).then((res) => {
+            lcuPollResult(res && res.id, (r) => {
+              if (r && r.ok === false) _lvQueueChangeError(`Promote ${ign}: ${r.err || "failed"}`);
+            });
+          });
           return;
         }
         if (action === "kick") {
           if (!window.confirm(`Kick ${ign} from party?`)) return;
-          // Phase B: lcuCmd({ cmd: "lobby.kick_member", riot_id: ign });
+          lcuCmd({ cmd: "lobby.kick_member", riot_id: ign }).then((res) => {
+            lcuPollResult(res && res.id, (r) => {
+              if (r && r.ok === false) _lvQueueChangeError(`Kick ${ign}: ${r.err || "failed"}`);
+            });
+          });
           return;
         }
       });
@@ -3161,9 +3324,16 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       }
       _LV.needsPick = false;
     }
-    // Phase A: visual-only. Phase B will queue an /lcu-cmd here:
-    //   lcuCmd({ cmd: "lobby.set_position_prefs",
-    //            first: _LV.prefPrimary, second: _LV.prefSecondary });
+    // s171: actually push to LCU. The local view updates optimistically
+    // above; lcuPollResult surfaces errors (non-leader, not-in-lobby,
+    // etc.) on the queue-error status line.
+    lcuCmd({ cmd: "lobby.set_position_prefs",
+             primary:   _LV.prefPrimary,
+             secondary: _LV.prefSecondary }).then((res) => {
+      lcuPollResult(res && res.id, (r) => {
+        if (r && r.ok === false) _lvQueueChangeError("Lane prefs: " + (r.err || "failed"));
+      });
+    });
     _renderLanePref("primary",   _LV.prefPrimary,   false);
     _renderLanePref("secondary", _LV.prefSecondary, false);
     _closeLanePopup();
@@ -3198,12 +3368,17 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     if (_LV.wired) return;
     _LV.wired = true;
     // ---- Find Match ----
+    // s171: surface non-leader 400s and other LCU failures inline so
+    // the operator knows why "Find Match" silently no-op'd. Previously
+    // the result was swallowed by the empty `(_r) => {}` callback.
     const find = document.getElementById("lv-find-match");
     if (find) find.addEventListener("click", () => {
       if (find.disabled) return;
       find.disabled = true;
       lcuCmd({ cmd: "start_matchmaking" }).then((res) => {
-        lcuPollResult(res && res.id, (_r) => {});
+        lcuPollResult(res && res.id, (r) => {
+          if (r && r.ok === false) _lvQueueChangeError("Find Match: " + (r.err || "failed"));
+        });
       });
       setTimeout(() => { find.disabled = false; }, 1500);
     });
@@ -3212,7 +3387,9 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     if (cancel) cancel.addEventListener("click", () => {
       if (cancel.disabled) return;
       lcuCmd({ cmd: "cancel_matchmaking" }).then((res) => {
-        lcuPollResult(res && res.id, (_r) => {});
+        lcuPollResult(res && res.id, (r) => {
+          if (r && r.ok === false) _lvQueueChangeError("Cancel: " + (r.err || "failed"));
+        });
       });
     });
     // ---- Legacy hidden queue switcher (preserved; new dropdown is
@@ -3221,32 +3398,54 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     if (qsel) qsel.addEventListener("change", () => {
       const qid = parseInt(qsel.value, 10);
       if (!qid) return;
-      lcuCmd({ cmd: "change_queue_type", queue_id: qid });
+      lcuCmd({ cmd: "change_queue_type", queue_id: qid }).then((res) => {
+        lcuPollResult(res && res.id, (r) => {
+          if (r && r.ok === false) _lvQueueChangeError(r.err);
+        });
+      });
       qsel.value = "";
     });
-    // ---- Party Open/Closed toggle (Phase A: visual-only) ----
-    // Phase B pushes:
-    //   lcuCmd({ cmd: "lobby.set_party_type", party_type: "closed"|"open" });
+    // ---- Party Open/Closed toggle (s171: wired) ----
+    // Pushes lobby.set_party_type to LCU. Optimistically updates the
+    // toggle visual state; reverts on LCU failure.
     const partyToggle = document.getElementById("lv-party-toggle");
     if (partyToggle) partyToggle.addEventListener("click", () => {
       if (partyToggle.disabled) return;
-      _LV.partyOpen = !_LV.partyOpen;
+      const nextOpen = !_LV.partyOpen;
+      _LV.partyOpen = nextOpen;
       const stateEl = document.getElementById("lv-party-toggle-state");
       partyToggle.classList.remove("is-open", "is-closed");
-      partyToggle.classList.add(_LV.partyOpen ? "is-open" : "is-closed");
-      if (stateEl) stateEl.textContent = _LV.partyOpen ? "Open" : "Closed";
+      partyToggle.classList.add(nextOpen ? "is-open" : "is-closed");
+      if (stateEl) stateEl.textContent = nextOpen ? "Open" : "Closed";
+      lcuCmd({ cmd: "lobby.set_party_type",
+               party_type: nextOpen ? "open" : "closed" }).then((res) => {
+        lcuPollResult(res && res.id, (r) => {
+          if (r && r.ok === false) {
+            // Revert visual on failure so the UI doesn't lie.
+            _LV.partyOpen = !nextOpen;
+            partyToggle.classList.remove("is-open", "is-closed");
+            partyToggle.classList.add(!nextOpen ? "is-open" : "is-closed");
+            if (stateEl) stateEl.textContent = !nextOpen ? "Open" : "Closed";
+            _lvQueueChangeError("Party type: " + (r.err || "failed"));
+          }
+        });
+      });
     });
-    // ---- Auto Accept toggle (Phase A: visual-only) ----
-    // Phase B pushes:
-    //   lcuCmd({ cmd: "lobby.set_auto_accept", enabled: bool });
+    // ---- Auto Accept toggle (s171: wired) ----
+    // Pushes set_config to the LCU agent so the agent's CONFIG flag
+    // mirrors the dashboard. Previously the agent defaulted to True
+    // and the dashboard toggle was visual-only, so auto-accept was
+    // silently always on regardless of the UI state.
     const autoAccept = document.getElementById("lv-auto-accept");
     if (autoAccept) autoAccept.addEventListener("click", () => {
       if (autoAccept.disabled) return;
-      _LV.autoAccept = !_LV.autoAccept;
+      const nextOn = !_LV.autoAccept;
+      _LV.autoAccept = nextOn;
       const stateEl = document.getElementById("lv-auto-accept-state");
       autoAccept.classList.remove("is-on", "is-off");
-      autoAccept.classList.add(_LV.autoAccept ? "is-on" : "is-off");
-      if (stateEl) stateEl.textContent = _LV.autoAccept ? "On" : "Off";
+      autoAccept.classList.add(nextOn ? "is-on" : "is-off");
+      if (stateEl) stateEl.textContent = nextOn ? "On" : "Off";
+      lcuCmd({ cmd: "set_config", auto_accept: nextOn });
     });
     // ---- Lane pref slot clicks → open popup ----
     const primary   = document.getElementById("lv-lane-primary");
@@ -3313,7 +3512,13 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
             // Practice Tool: needs a different LCU command. Phase B.
             lcuCmd({ cmd: "lobby.create_practice_tool" });
           } else if (qid > 0) {
-            lcuCmd({ cmd: "change_queue_type", queue_id: qid });
+            // s171: surface failures via lcuPollResult so non-leader
+            // 400s and "already in matchmaking" rejections don't vanish.
+            lcuCmd({ cmd: "change_queue_type", queue_id: qid }).then((res) => {
+              lcuPollResult(res && res.id, (r) => {
+                if (r && r.ok === false) _lvQueueChangeError(r.err);
+              });
+            });
           }
           modeMenu.classList.add("hidden");
           modeMenu.setAttribute("aria-hidden", "true");
@@ -3453,13 +3658,16 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     // s162 v4: re-center NORMAL DRAFT + PARTY titles after layout settles.
     requestAnimationFrame(_positionLobbyTitles);
   }
-  // ---- s162 v5: My Top 8 panel ----
+  // ---- s162 v5 / s171 reworked: My Top 8 panel ----
+  // s171: persistence moved from localStorage (origin-dependent, wiped
+  // on Chrome cache-clear, drifts when hitting Legion under different
+  // hostnames/IPs) to server-side at /api/top8 on Legion. The cache
+  // hydrates from /api/top8 on first call; subsequent reads are sync
+  // off the cache so the existing render path stays untouched. Saves
+  // POST async to /api/top8 and update the cache optimistically.
   const TOP8_KEY = "rc-top8-list";
   const TOP8_MAX = 8;
-  // s170 wipe: riot_ids that came from sim fixtures
-  // (data/sim/flow_0{1,2}_*.json) and may have leaked into the operator's
-  // live localStorage during dev. _top8Load filters these on read and
-  // writes the cleaned list back so the wipe is idempotent.
+  // s170 wipe: riot_ids that came from sim fixtures.
   const _TOP8_FAKE_RIOT_IDS = new Set([
     "FrenLuvr#NA1",
     "Brawler#NA1",
@@ -3470,30 +3678,83 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     "NoobieMcGee#NEW",
     "SamplePlayer Sock#NA1",
   ]);
+  // In-memory cache hydrated from /api/top8. Starts uninitialized so
+  // the first _top8Load() triggers a fetch + re-render once landed.
+  const _TOP8 = { cache: null, hydrating: false, hydrateP: null };
+  function _top8Hydrate(onReady) {
+    if (_TOP8.cache != null) { onReady && onReady(_TOP8.cache); return; }
+    if (_TOP8.hydrating) {
+      if (onReady) _TOP8.hydrateP.then(onReady);
+      return;
+    }
+    _TOP8.hydrating = true;
+    _TOP8.hydrateP = fetch("/api/top8", { cache: "no-store" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        let entries = (data && Array.isArray(data.entries)) ? data.entries : [];
+        // Migration: if server is empty but localStorage has entries
+        // from a pre-s171 dashboard session, push them up so the
+        // operator doesn't lose their Top 8 across the upgrade.
+        if (entries.length === 0) {
+          try {
+            const raw = localStorage.getItem(TOP8_KEY);
+            if (raw) {
+              const arr = JSON.parse(raw);
+              if (Array.isArray(arr) && arr.length) {
+                entries = arr.filter((e) => {
+                  const rid = e && (e.riot_id || e.summoner_name);
+                  return !(rid && _TOP8_FAKE_RIOT_IDS.has(rid));
+                });
+                if (entries.length) _top8Persist(entries);  // fire-and-forget
+              }
+            }
+          } catch (_) {}
+        }
+        _TOP8.cache = entries;
+        _TOP8.hydrating = false;
+        return entries;
+      })
+      .catch(() => {
+        _TOP8.cache = [];   // server unreachable — render empty rather than loop
+        _TOP8.hydrating = false;
+        return [];
+      });
+    if (onReady) _TOP8.hydrateP.then(onReady);
+  }
+  function _top8Persist(list) {
+    return fetch("/api/top8", {
+      method: "POST", cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entries: list }),
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data && Array.isArray(data.entries)) _TOP8.cache = data.entries;
+        return data;
+      })
+      .catch(() => null);
+  }
   function _top8Load() {
     // s162 v5: sim fixtures can pre-populate via lcu.top8 — fixture
-    // wins so dev preview renders without polluting the operator's
-    // localStorage. Live mode (no fixture) uses localStorage as the
-    // persistent source of truth.
+    // wins so dev preview renders without polluting persisted state.
     const lcu = (state.latest && state.latest.lcu) || {};
     if (Array.isArray(lcu.top8)) return lcu.top8;
-    try {
-      const raw = localStorage.getItem(TOP8_KEY);
-      if (!raw) return [];
-      const arr = JSON.parse(raw);
-      if (!Array.isArray(arr)) return [];
-      const cleaned = arr.filter((e) => {
-        const rid = e && (e.riot_id || e.summoner_name);
-        return !(rid && _TOP8_FAKE_RIOT_IDS.has(rid));
-      });
-      if (cleaned.length !== arr.length) {
-        try { localStorage.setItem(TOP8_KEY, JSON.stringify(cleaned)); } catch (_) {}
-      }
-      return cleaned;
-    } catch (_) { return []; }
+    // s171: cache-first; hydrate async on cache miss and let the next
+    // _renderTop8 tick land the real list (caller fires render again
+    // when the promise resolves).
+    if (_TOP8.cache == null) {
+      _top8Hydrate(() => { try { _renderTop8(); } catch (_) {} });
+      return [];
+    }
+    return _TOP8.cache;
   }
   function _top8Save(list) {
-    try { localStorage.setItem(TOP8_KEY, JSON.stringify(list)); } catch (_) {}
+    _TOP8.cache = Array.isArray(list) ? list : [];
+    _top8Persist(_TOP8.cache);
+    // s171 backup: also write the localStorage copy so a temporarily
+    // dead /api/top8 (RC restart, etc.) still has a fallback the next
+    // time the server is up + migrate-on-empty re-pushes.
+    try { localStorage.setItem(TOP8_KEY, JSON.stringify(_TOP8.cache)); } catch (_) {}
   }
   function _top8FormatRank(rank) {
     if (!rank || !rank.tier) return "Unranked";
@@ -3630,8 +3891,18 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
         if (action === "invite") {
           const target = list[idx];
           if (!target) return;
-          if (!window.confirm(`Invite ${target.riot_id || target.summoner_name} to lobby?`)) return;
-          // Phase B: lcuCmd({ cmd: "lobby.invite_player", riot_id: target.riot_id });
+          const label = target.riot_id || target.summoner_name;
+          if (!window.confirm(`Invite ${label} to lobby?`)) return;
+          // s171: actually push the invite. Falls back to summoner_id
+          // when the entry was added with a numeric id rather than
+          // a riot_id ("Name#TAG").
+          lcuCmd({ cmd: "lobby.invite_player",
+                   riot_id: target.riot_id || "",
+                   summoner_id: target.summoner_id || target.summonerId || 0 }).then((res) => {
+            lcuPollResult(res && res.id, (r) => {
+              if (r && r.ok === false) _lvQueueChangeError(`Invite ${label}: ${r.err || "failed"}`);
+            });
+          });
           return;
         }
       });
@@ -3795,7 +4066,12 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
         e.stopPropagation();
         const ign = btn.dataset.ign;
         if (!window.confirm(`Invite ${ign} to lobby?`)) return;
-        // Phase B: lcuCmd({ cmd: "lobby.invite_player", riot_id: ign });
+        // s171: actually fire the invite (was Phase B placeholder).
+        lcuCmd({ cmd: "lobby.invite_player", riot_id: ign }).then((res) => {
+          lcuPollResult(res && res.id, (r) => {
+            if (r && r.ok === false) _lvQueueChangeError(`Invite ${ign}: ${r.err || "failed"}`);
+          });
+        });
       });
     });
   }

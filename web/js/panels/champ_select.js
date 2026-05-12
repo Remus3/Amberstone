@@ -1692,6 +1692,16 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   const stateCls = myCid ? (locked ? "locked" : "hovering") : "";
   const stateTxt = locked ? "✓ LOCKED" : (myCid ? "⌛ HOVERING" : "no pick yet");
 
+  // s171: lock button — shown only when a champion is hovered but not
+  // yet locked. Click fires the LCU lock_pick command and surfaces the
+  // result inline via lcuPollResult, mirroring the legacy overlay's
+  // #cs-lock-btn (champ_select.js:818). Hidden after lock since there's
+  // nothing left to do; LCU re-emits `my_completed=true` and the next
+  // render re-renders without the button.
+  const lockBtnHtml = (myCid && !locked)
+    ? `<button class="csv-lock-btn" id="csv-lock-btn" data-cid="${myCid}">LOCK IN ${myName.toUpperCase()}</button>`
+    : "";
+
   let extraHtml = "";
   if (mode === "aram") {
     extraHtml = _csvBenchHtml(cs);
@@ -1713,6 +1723,7 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
     <div class="csv-mypick-icon ${iconCls}" id="csv-mypick-icon">${iconHtml}</div>
     <div class="csv-mypick-name" id="csv-mypick-name">${myName}</div>
     <div class="csv-mypick-state ${stateCls}" id="csv-mypick-state">${stateTxt}</div>
+    ${lockBtnHtml}
     ${extraHtml}
     ${buildsHtml}`;
 
@@ -1721,6 +1732,40 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   // we replace innerHTML and re-attach each tick.
   if (mode === "aram") _csvWireBench(body);
   _csvWireBuildVariants(body);
+  _csvWireLockButton(body);
+}
+
+// s171: lock button click handler — same shape as the legacy overlay's
+// #cs-lock-btn. Disables the button on click to prevent double-fire,
+// stamps the state line with the agent's response, then re-enables on
+// timeout so a real failure can be retried.
+function _csvWireLockButton(scope) {
+  const btn = scope.querySelector("#csv-lock-btn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    btn.disabled = true;
+    const cid = (btn.dataset.cid | 0);
+    if (!(cid > 0)) { btn.disabled = false; return; }
+    lcuCmd({ cmd: "lock_pick", championId: cid }).then((resp) => {
+      const id = resp && resp.id;
+      if (!id) { btn.disabled = false; return; }
+      lcuPollResult(id, (result) => {
+        const stateEl = document.getElementById("csv-mypick-state");
+        if (stateEl) {
+          if (result && result.ok) {
+            stateEl.textContent = result.note === "already locked"
+              ? "✓ ALREADY LOCKED" : "✓ LOCK SENT";
+            stateEl.classList.remove("hovering");
+            stateEl.classList.add("locked");
+          } else {
+            const err = (result && result.err) || "no response";
+            stateEl.textContent = "✗ Lock failed: " + err;
+          }
+        }
+      });
+    });
+    setTimeout(() => { btn.disabled = false; }, 1500);
+  });
 }
 
 // HTML for the ARAM bench strip (5 horizontal champion cells). Click
@@ -1769,41 +1814,100 @@ function _csvWireBench(scope) {
 
 // Placeholder build variants. Phase B replaces this with real loadout
 // data from /api/loadout/list keyed on champion + mode.
+// s171: DS engine cache for the new champ-select view's build chooser.
+// Keyed by `${champion}|${dsMode}` — drafts don't change build order so
+// caching across the whole champ-select session is safe. Cleared on
+// CHAMPS.ready transition (handled implicitly — page reload clears).
+const _CSV_DS_CACHE    = Object.create(null);
+const _CSV_DS_INFLIGHT = Object.create(null);
+
+// Convert the view's adapt-mode to the DS engine's mode label.
+function _csvDsModeFor(mode) {
+  if (mode === "aram")  return "ARAM";
+  if (mode === "arena") return "ARENA";
+  if (mode === "brawl") return "BRAWL";
+  return "SR";
+}
+
+// Fire the DS engine for this champion + mode. Non-blocking — the next
+// renderChampSelectView tick (~1Hz from the LCU state push) picks up
+// the cached result. ``level=6`` matches the legacy overlay's preview
+// level so the rankings match between views.
+function _csvFetchDsBuilds(champion, dsMode) {
+  if (!champion || !dsMode) return;
+  const key = `${champion}|${dsMode}`;
+  if (_CSV_DS_CACHE[key] || _CSV_DS_INFLIGHT[key]) return;
+  _CSV_DS_INFLIGHT[key] = true;
+  fetch("/api/ds-preview", {
+    method: "POST", cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ champion, mode: dsMode, level: 6, items: [] }),
+  })
+    .then((r) => r.ok ? r.json() : null)
+    .then((data) => {
+      _CSV_DS_INFLIGHT[key] = false;
+      if (data && data.ok && Array.isArray(data.ranked) && data.ranked.length) {
+        _CSV_DS_CACHE[key] = data.ranked;
+      }
+    })
+    .catch(() => { _CSV_DS_INFLIGHT[key] = false; });
+}
+
+// Build chooser variants for the central pane. s171: returns DS-engine-
+// ranked items when available (cached per champion+mode), otherwise a
+// "computing…" placeholder. Mode-specific keystone hints distinguish
+// the 3 rows visually — same items in each row for now (Phase B-2 will
+// produce per-keystone variants once the loadout resolver is wired).
 function _csvBuildVariantsFor(cid, name, mode) {
-  // Static reasonable defaults — varies per mode so the labels make
-  // sense visually. Real variants will come from champion_loadouts.json
-  // once Phase B wires through /api/loadout/list.
-  if (mode === "aram" || mode === "brawl") {
-    return [
-      { key: "standard", label: "Standard", keystone: "Lethal Tempo",
-        item_ids: [1055, 3006, 6672, 3085, 3031, 3036] },
-      { key: "lifesteal", label: "Lifesteal Skirmisher", keystone: "Conqueror",
-        item_ids: [1055, 3006, 6630, 3072, 3031, 3026] },
-      { key: "ap-burst", label: "Glass Cannon", keystone: "Press the Attack",
-        item_ids: [1055, 3006, 6672, 3094, 3031, 3036] },
-    ];
+  if (!cid || !name) {
+    return [{ key: "empty", label: "no champion yet — hover or lock to see DS picks",
+              keystone: "—", item_ids: [], is_default: true }];
   }
-  // SR draft — 3 variants tuned for the locked pick.
-  return [
-    { key: "lethal-tempo", label: "Lethal Tempo · default", keystone: "Lethal Tempo", is_default: true,
-      item_ids: [1055, 3006, 6672, 3085, 3031, 3036] },
-    { key: "press-the-attack", label: "Press the Attack", keystone: "Press the Attack",
-      item_ids: [1055, 3006, 3153, 3031, 3046, 3036] },
-    { key: "hail-of-blades", label: "Hail of Blades · burst", keystone: "Hail of Blades",
-      item_ids: [1055, 3006, 3153, 3033, 3031, 3046] },
-  ];
+  const dsMode = _csvDsModeFor(mode);
+  const ranked = _CSV_DS_CACHE[`${name}|${dsMode}`];
+  if (!ranked || !ranked.length) {
+    // Trigger the async fetch — landing fires nothing, but the next
+    // LCU envelope's re-render will hit the cache.
+    _csvFetchDsBuilds(name, dsMode);
+    return [{ key: "ds-pending", label: `${name} · DS engine computing…`,
+              keystone: "—", item_ids: [], is_default: true }];
+  }
+  const top6 = ranked.slice(0, 6).map((r) => r.item_id).filter((x) => x);
+  const reasons = {};
+  ranked.slice(0, 6).forEach((r) => {
+    if (r.item_id) reasons[r.item_id] = "+" + Math.round(r.delta_dps || 0) + " dps";
+  });
+  const keystoneLabel = (mode === "aram") ? "ARAM curve"
+                     : (mode === "arena") ? "Arena targets"
+                     : (mode === "brawl") ? "Brawl curve"
+                     : "SR targets";
+  // Single variant for now — operator's "DS not showing builds when
+  // locked in" complaint resolves by replacing the hardcoded items with
+  // real DS output. Phase B-2 may re-introduce 3 keystone-themed rows.
+  return [{
+    key: "ds-engine",
+    label: `${name} · DS engine top picks`,
+    keystone: `based on ${keystoneLabel}`,
+    item_ids: top6, reasons, is_default: true,
+  }];
 }
 
 function _csvBuildVariantRowsHtml(variants) {
   if (!variants || !variants.length) {
     return '<div class="csv-empty">no build variants for this champion / mode yet</div>';
   }
-  const ver = CHAMPS.version || "latest";
+  const ver = (ITEMS && ITEMS.version) || "latest";
   return variants.map((v, idx) => {
-    const items = (v.item_ids || []).slice(0, 6).map((iid) => `
-      <div class="csv-build-item">
-        <img src="/data/ddragon/${ver}/img/item/${iid}.png" onerror="this.style.display='none'" alt="">
-      </div>`).join("");
+    const reasons = v.reasons || {};
+    const items = (v.item_ids || []).slice(0, 6).map((iid) => {
+      const reason = reasons[iid] ? ` title="${reasons[iid]}"` : "";
+      return `
+      <div class="csv-build-item"${reason}>
+        <img src="/data/ddragon/${ver}/img/item/${iid}.png"
+             onerror="if(!this.dataset.cdn){this.dataset.cdn=1;this.src='https://ddragon.leagueoflegends.com/cdn/${ver}/img/item/${iid}.png'}else{this.style.display='none'}"
+             alt="">
+      </div>`;
+    }).join("") || '<div class="csv-empty">—</div>';
     const cb = `<div class="csv-build-checkbox"></div>`;
     const tag = v.is_default
       ? ' <span class="csv-build-default-tag">default</span>' : "";
