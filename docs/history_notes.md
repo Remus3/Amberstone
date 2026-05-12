@@ -6,6 +6,76 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s169 wrap — 2026-05-11 (ADR-007 event-coach pivot — phase 1 ship, decision_detector expansion + heartbeat pill)
+
+Operator-initiated discussion → architectural pivot doc + phase-1 ship in one session. Goal: shift coaching from continuous narration ("you're low HP — back!") to event-driven decision forks ("enemy JG missing 25s — safe/punish?"). Discovered mid-session that `core/decision_detector.py` (Tier 3 #15, 2026-05-01) ALREADY implements the architecture — `DECISION_REGISTRY`, `Decision` dataclass with A/B options, daemon loop, atomic store, JSONL log, dashboard banner + record_choice. Only 4 detectors shipped though, and the log showed only smoke-test entries (matches operator's "5 games in 5 months"). Pivot is therefore extension, not new build.
+
+## Ships
+
+- **ADR-007 (docs/adr/ADR-007-event-coach-pivot.md)** — formal pivot doc. Documents `decision_detector` as the foundation; lays out the 3 concurrent workstreams (detector library expansion, glanceable heartbeat surface, postmortem-from-rewind_history.db). Phase-1 scope explicitly = this session's ships. Phase-2 (postmortem pipeline) + phase-3 (prose-coach deprecation) deferred.
+- **Tightened `detect_low_hp_backable`** (s169 reaction to "tell me 3× I'm low HP" complaint): HP threshold 40%→25% (you're committed to back, not deciding) + alive_for 45s→90s (post-respawn pre-fight has stable framing). Same 60s bucket id stays — re-fire was already prevented; the tightening reduces false-positive *rate* per game.
+- **2 new detectors** in `core/decision_detector.py`:
+  - `detect_jungler_gank_likely` — enemy JG (Smite-identified) missing ≥20s AND last seen OUTSIDE their own jungle quadrant. SR-only; defers to `objective_contest` when drake/baron is imminent. Bucketed to 90s windows. Options: `safe / punish`.
+  - `detect_throwing_lead` — 2+ self-deaths in last 90s, clustered ≤45s apart, past 8min mark. Stateless (event-driven). Options: `reset / force`.
+- **Heartbeat counter** on `DecisionLoop`:
+  - `_eval_count` bumps after each successful eval cycle; resets on new-match game_time reversal (already-existing reset path).
+  - `heartbeat()` method + module-level `read_heartbeat()` helper.
+  - File-backed at `data/decisions_heartbeat.json` so the dashboard (RC main process) can read what the Phase 3 supervisor's loop wrote. `read_heartbeat()` recomputes `age_s` + `alive` at read time so a stuck supervisor flips `alive=False` on its own.
+- **New API routes** (registered in `dashboard/routes_diag.py`):
+  - `GET /api/decisions/heartbeat` — pill data source.
+  - `POST /api/decisions/respond_active` — body `{choice_index: 0|1, dismiss?: bool, note?: str}` — resolves first pending decision by mapping to `options[choice_index]`. Single endpoint for the Game-PC keybind listener (Numpad 1/2/0 stay constant across detector types).
+  - **POST validation loosened** — was hardcoded `choice ∈ {contest, give, skip}`; now validates against the actual pending decision's `options` list + `"skip"`. New detectors use options like `safe/punish`, `reset/force` so the old check rejected them.
+- **Dashboard `#trigger-pill`** (header row 2, next to `#ds-pill`):
+  - `web/index.html` adds the `<span class="trigger-pill" id="trigger-pill">● 0</span>`.
+  - `web/css/panels/map_state.css` adds `.trigger-pill` styles with `.alive` (green) / `.stale` (amber) / `.dead` (grey) / `.pending` (blue outline) variants. Hidden on client/tft modes.
+  - `web/js/panels/trigger_pill.js` polls both `/api/decisions/heartbeat` and `/api/decisions` at 2 Hz; displays `● N` counter (asterisked when pending). Tooltip carries diagnostic: counter / last-eval age / game_time / detector count / pending count.
+  - `web/js/main.js` adds the side-effect import (panel self-starts on import).
+  - Cache buster 2026051121 → 2026051122.
+- **Game-PC keybind listener** (`tools/gamepc_keybind_listener.py`) — install-only; not auto-deployed. Hooks Left Alt + 1/2/3 via `keyboard` lib, POSTs to `/api/decisions/respond_active`. 250ms debounce. ENV overrides for keybinds (`RC_KEY_A` / `_B` / `_DISMISS`). Self-contained — own ssl context + urllib post, no RC imports. Documented schtasks install pattern in the docstring. **Left Alt chosen over Ctrl** because Ctrl+1..6 are League's item-cast binds — Alt+1..6 are unbound by default (operator request 2026-05-11: tenkeyless keyboard, wants number-row above QWERTY).
+- **25 new tests** under `tests/test_decision_detector_adr007.py` — pure-function tests for all 3 detector changes + DecisionLoop heartbeat + file-backed read roundtrip. Full suite **719 passes** (was 694).
+
+## Live verification
+
+- RC restarted via `restart_trigger.txt` → endpoint live; `curl -ks https://127.0.0.1:8888/api/decisions/heartbeat` returns the no-file sentinel + `detectors: 6` confirming both new detectors registered.
+- Phase 3 supervisor restarted via `taskkill /F /PID 16436` + `schtasks /Run /TN "RC-Phase3-Supervisor"` — new PID 11712 picked up the new code (per-tick the supervisor will run the 6 detectors + write heartbeat once a game starts).
+- Dashboard screenshot from Game-PC monitor 1 confirmed no broken UI (pill correctly hidden in client mode). Polling logs show /api/decisions + /api/decisions/heartbeat at 2 Hz cadence — trigger_pill.js loaded and running.
+- POST validation tested: `respond_active` with no pending returns 404 cleanly.
+
+## Decisions / non-obvious notes for next-session-you
+
+- **Detector signature stays pure**: `(snapshot, vision_state) → Optional[Decision]`. New "needs prev_snapshot" data (HP delta, gold delta) belongs in a separate loop-owned context dict — DO NOT extend the signature for one-off needs.
+- **Cross-process heartbeat is file-backed**, same pattern as `DecisionStore`. The DecisionLoop singleton lives in the Phase 3 supervisor process; the dashboard reads via `read_heartbeat()` from `data/decisions_heartbeat.json`. No IPC, no socket — keeps it simple.
+- **Rate-cap math**: `_MAX_PER_GAME = 5`, `_MIN_GAP_S = 30`. Now 6 detectors compete for those 5 slots. Watch the first 3 real games' logs — if any of the new detectors gets starved (always after low_hp_back / objective_contest in the gap), bump the cap.
+- **Dispatch order matters**: POST_ROUTES registers `equals("/api/decisions/respond_active")` BEFORE `prefix("/api/decisions/")` so the equals match wins. Reversing the order would route `/respond_active` to `_serve_decision_choice_post` with id="respond_active" → 404.
+- **`/api/decisions/respond_active` is keybind-shaped**, not banner-shaped. Banner buttons keep using `POST /api/decisions/<id>` with explicit choice string. Different audiences: keybind doesn't know the id, banner does.
+- **Keybind listener needs `pip install keyboard`** on Game-PC. Schtasks docstring includes the install steps. Not yet deployed — operator should deploy when ready to live-test keybind flow. Without it, the dashboard banner buttons are the only A/B input.
+- **The pill is hidden in client/tft modes** (CSS rule mirrors ds-pill). Operator won't see it on the home overlay or in TFT; intended.
+- **`detect_low_hp_backable` tightening reduces fire rate**. Bucket is still 60s — re-fire was already prevented by the bucket id stability. The threshold tightening cuts the absolute rate (`<25%` is rare unless committed to back).
+
+## Files touched
+
+- `docs/adr/ADR-007-event-coach-pivot.md` (new, ~120 LOC)
+- `core/decision_detector.py` (+~285 LOC: 2 detectors + heartbeat + write/read pair)
+- `dashboard/routes_diag.py` (+118 LOC: 2 new handlers + relaxed POST validator + route table)
+- `web/index.html` (+10 LOC: trigger-pill span + cache buster bump)
+- `web/css/panels/map_state.css` (+42 LOC: .trigger-pill block)
+- `web/js/main.js` (+2 LOC: side-effect import)
+- `web/js/panels/trigger_pill.js` (new, ~85 LOC)
+- `tools/gamepc_keybind_listener.py` (new, ~150 LOC)
+- `tests/test_decision_detector_adr007.py` (new, ~330 LOC, 25 tests)
+- `WAKEUP_NOTES.md` / `docs/history_notes.md` (this wrap + s166 archive)
+
+## Open items handed off
+
+- 🟡 **Game-PC keybind listener deployment** — `tools/gamepc_keybind_listener.py` not yet copied to Game-PC. Operator decides whether to install + run for live test. Banner buttons work without it.
+- 🟡 **Live game observation** — first real-game test of the new detectors. Watch `data/decisions_log.jsonl` for fires; tune thresholds if any detector skip-rate exceeds 70%.
+- 🟡 **ADR-007 phase 2 (postmortem pipeline)** — `scripts/postmortem_analyze.py` mining rewind_history.db for per-player death patterns. Deferred to s170+.
+- 🟡 **ADR-007 phase 3 (prose-coach deprecation)** — mode coaches still narrate in parallel with decision_detector. Detector-by-detector deprecation pass deferred until phase-1 detectors prove out in real games.
+- 🟡 (Unchanged from s168) RC-LCU scheduled-task `Execute: py` → absolute python path on Game-PC.
+- 🟡 (Unchanged from s168) P1b augment registry, P5 default DS build #4, P3/P4 history+replay UI.
+
+---
+
 # s168 wrap — 2026-05-11 (FU01 minimap-locate + LCU mastery endpoint live-fix + Game-PC redeploy)
 
 Continuation per `NEXT_SESSION_PLAN_2026-05-10.md`. After s167 closed P1a/P2/P7/P8/P9, the remaining 🟡 backend items were either UI-blocked, data-blocked (sparse rewind), or operator-clarification-blocked (P6 Claude Desktop key). **FU01 minimap-locate** was the highest-leverage open item. Operator opened League mid-session, unblocking the s167 LCU mastery Game-PC redeploy — which surfaced a stale-endpoint bug, fixed and re-deployed in the same session.
