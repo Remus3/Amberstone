@@ -56,11 +56,14 @@ export function _splitItemList(str, splitArrow) {
 // of champs were renamed by Riot post-release and the display name no
 // longer matches the on-disk filename. Keys are lowercase-alphanumeric of
 // the display name; values are the DDragon canonical id.
-const _CHAMP_RENAME_OVERRIDES = {
-  "wukong": "MonkeyKing",
-  "renataglasc": "Renata",
-  "nunuwillump": "Nunu",      // "Nunu & Willump" → strip non-alnum → "nunuwillump"
-};
+//
+// Source of truth is `/data/champion_aliases.json`; this map is hydrated
+// by the async loader below and is shared with tools/daemon_slayer_extract.py
+// (which reads the same file at build time with .lower() normalization).
+// Until the fetch resolves the map is empty — _resolveChampId falls
+// back to a null return for the aliased trio, same as for any unknown
+// champion name.
+const _CHAMP_RENAME_OVERRIDES = {};
 
 // Resolve a champion name to its numeric ID string.
 export function _resolveChampId(name) {
@@ -131,5 +134,14 @@ export function _resolveSpell(name) {
     SPELLS.byName = j.byName || {};
     SPELLS.ready = true;
     document.dispatchEvent(new CustomEvent("rc:spells-ready"));
+  } catch (_) {}
+})();
+
+(async () => {
+  try {
+    const r = await fetch("/data/champion_aliases.json");
+    if (!r.ok) return;
+    const j = await r.json();
+    for (const [k, v] of Object.entries(j)) _CHAMP_RENAME_OVERRIDES[k] = v;
   } catch (_) {}
 })();
