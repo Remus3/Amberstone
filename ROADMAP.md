@@ -79,7 +79,7 @@ Retired to `docs/_archive/RC_FUTUREPROOFING_PLAN_retired_2026-05-09.md` after al
 | Game-PC bridge daemon | watcher=alive queue=0 |
 | Peer bridge daemon | watcher=alive queue=0 |
 | Coaches | All 4 modes DS-before-Haiku ✅ |
-| Daemon Slayer `:8893` | ENGINE 0.61.0 · 547 items · 949 tests |
+| Daemon Slayer `:8893` | ENGINE 0.62.0 · 547 items · 955 tests |
 | TFT | Set 17 patch 17.3 live (0e9617b) |
 
 ---

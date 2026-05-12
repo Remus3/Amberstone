@@ -195,6 +195,107 @@ class RankItemsTests(unittest.TestCase):
             rank_items(self.snap, "Aatrox", level=99)
 
 
+class SharedUniqueFilterTests(unittest.TestCase):
+    """Phase 6 step 8 (2026-05-12) — filter candidates whose unique passive
+    collides with an item already in current_item_ids.
+
+    The engine's ``collect_effects`` correctly zeroes the duplicate proc/pen
+    contribution, but the candidate's stat block still lifts DPS — enough
+    that items like Essence Reaver after Trinity Force would still rank
+    well on stats alone. Operator-facing this is a bug: the wasted unique
+    means worse value-per-gold than a non-redundant item.
+
+    Default filter is ON; ``filter_shared_uniques=False`` opts in to
+    surfacing the candidates with ``shares_dead_unique=True`` set.
+    """
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_trinity_then_er_filtered_by_default(self) -> None:
+        # Aatrox is a Trinity Force user; ER would normally rank well on
+        # its stats alone (75 AD + 25% crit + 25% AS + mana). With Trinity
+        # already in the build, ER's Spellblade proc is zeroed by
+        # collect_effects, so the candidate is dropped from the ranking.
+        r = rank_items(
+            self.snap, "Aatrox", level=11, target_armor=80,
+            current_item_ids=["3078"],  # Trinity Force
+            top_n=200,
+        )
+        ranked_ids = {ri.item_id for ri in r.ranked}
+        self.assertNotIn("3508", ranked_ids,  # Essence Reaver
+                         "ER shares 'spellblade' key with Trinity — should be filtered")
+        # Lich Bane (3100) also shares spellblade — filtered too.
+        self.assertNotIn("3100", ranked_ids,
+                         "Lich Bane shares 'spellblade' key with Trinity — should be filtered")
+
+    def test_trinity_then_er_surfaces_when_filter_off(self) -> None:
+        # filter_shared_uniques=False — ER appears with the flag set so the
+        # caller can decide what to do (warn? annotate? suppress?).
+        r = rank_items(
+            self.snap, "Aatrox", level=11, target_armor=80,
+            current_item_ids=["3078"],  # Trinity Force
+            top_n=200,
+            filter_shared_uniques=False,
+        )
+        er_rows = [ri for ri in r.ranked if ri.item_id == "3508"]
+        self.assertEqual(len(er_rows), 1, "ER should appear when filter is off")
+        er = er_rows[0]
+        self.assertTrue(er.shares_dead_unique,
+                        "ER's shares_dead_unique flag must be True after Trinity")
+        self.assertEqual(er.dead_unique_key, "spellblade")
+
+    def test_clean_build_has_no_dead_unique_flags(self) -> None:
+        # Naked Aatrox — no current items, no shared uniques possible.
+        r = rank_items(
+            self.snap, "Aatrox", level=11, target_armor=80, top_n=20,
+        )
+        for ri in r.ranked:
+            self.assertFalse(ri.shares_dead_unique,
+                             f"{ri.item_name} flagged dead-unique on naked build")
+            self.assertEqual(ri.dead_unique_key, "")
+
+    def test_sterak_then_maw_lifeline_family_filtered(self) -> None:
+        # Sterak's Gage (3053) and Maw of Malmortius (3156) both carry
+        # unique_passive_key="lifeline" — second one's shield is dead.
+        r = rank_items(
+            self.snap, "Aatrox", level=11, target_armor=80,
+            current_item_ids=["3053"],  # Sterak's Gage
+            top_n=200,
+        )
+        ranked_ids = {ri.item_id for ri in r.ranked}
+        self.assertNotIn("3156", ranked_ids,
+                         "Maw of Malmortius shares 'lifeline' key with Sterak's — filtered")
+
+    def test_sunfire_then_hollow_radiance_immolate_family_filtered(self) -> None:
+        # Both carry unique_passive_key="immolate". Common ARAM tank trap.
+        # Use Cho'Gath as a champion that builds these regularly.
+        r = rank_items(
+            self.snap, "Chogath", level=11, target_armor=80, target_mr=50,
+            current_item_ids=["3068"],  # Sunfire Aegis
+            top_n=200,
+        )
+        ranked_ids = {ri.item_id for ri in r.ranked}
+        self.assertNotIn("6664", ranked_ids,
+                         "Hollow Radiance shares 'immolate' key with Sunfire — filtered")
+
+    def test_to_dict_surfaces_new_fields(self) -> None:
+        # Schema regression guard — the HTTP server returns to_dict() so
+        # consumers depend on these keys being present.
+        r = rank_items(
+            self.snap, "Aatrox", level=11, target_armor=80,
+            current_item_ids=["3078"],
+            filter_shared_uniques=False,
+            top_n=5,
+        )
+        for ri in r.ranked:
+            d = ri.to_dict()
+            self.assertIn("shares_dead_unique", d)
+            self.assertIn("dead_unique_key", d)
+            self.assertIsInstance(d["shares_dead_unique"], bool)
+            self.assertIsInstance(d["dead_unique_key"], str)
+
+
 class ModeMapIdTests(unittest.TestCase):
     def test_mode_table_documented_modes_present(self) -> None:
         for m in ("SR", "ARAM", "ARENA"):

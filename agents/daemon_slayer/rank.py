@@ -20,6 +20,7 @@ from typing import Iterable, Optional
 
 from .data_loader import DataSnapshot
 from .dps import compute_dps
+from .effects import ITEM_EFFECTS
 from .stats import clamp_level
 
 # Mode → DDragon map id. Items whose ``maps[map_id]`` is False are unbuyable
@@ -70,6 +71,14 @@ class RankedItem:
     dps_per_1k_gold: float      # delta_dps / (gold/1000); 0 when delta<=0
     is_terminal: bool           # `into` is empty — final-tier item
     tags: tuple[str, ...]
+    # Phase 6 step 8 (2026-05-12): candidate's unique passive collides with an
+    # item already in current_item_ids — the proc/pen contribution would be
+    # zeroed by collect_effects() dedup. Stat block still contributes (the
+    # delta_dps reflects this honestly) but the operator gets no value from
+    # the unique itself. Default-filter is on in ``rank_items``; consumers
+    # can opt out via ``filter_shared_uniques=False`` to surface the flag.
+    shares_dead_unique: bool = False
+    dead_unique_key: str = ""
 
     def to_dict(self) -> dict:
         return {
@@ -81,6 +90,8 @@ class RankedItem:
             "dps_per_1k_gold": self.dps_per_1k_gold,
             "is_terminal": self.is_terminal,
             "tags": list(self.tags),
+            "shares_dead_unique": self.shares_dead_unique,
+            "dead_unique_key": self.dead_unique_key,
         }
 
 
@@ -244,6 +255,7 @@ def rank_items(
     only_item_ids: Optional[Iterable[str | int]] = None,
     sort_by: str = "delta",
     augments: Optional[Iterable] = None,
+    filter_shared_uniques: bool = True,
 ) -> RankResult:
     """Rank items by DPS contribution when added to ``current_item_ids``.
 
@@ -260,6 +272,13 @@ def rank_items(
     (useful when the player is mid-recipe and just bought a Long Sword).
     ``only_item_ids`` restricts to a caller-provided whitelist (e.g. UI
     pre-filtered by tag).
+
+    ``filter_shared_uniques=True`` (default) drops candidates whose
+    ``unique_passive_key`` matches a unique already in
+    ``current_item_ids`` — operator gets no value from the second proc
+    even though stat-only delta_dps would be positive (Trinity → ER,
+    Sterak's → Maw, Sunfire → Hollow Radiance). Pass ``False`` to surface
+    them with ``shares_dead_unique=True`` set on the result.
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
@@ -268,6 +287,15 @@ def rank_items(
     current_ids: tuple[str, ...] = tuple(str(i) for i in (current_item_ids or ()))
     current_ids, stripped_trinkets = strip_arena_trinkets(current_ids, mode)
     current_set = set(current_ids)
+    # Collect every unique_passive_key already locked in by the current build.
+    # Candidates sharing one of these keys would have their proc/pen effect
+    # zeroed by ``collect_effects`` — surface that to consumers via the flag
+    # on RankedItem, and filter by default.
+    current_unique_keys: set[str] = set()
+    for iid in current_ids:
+        eff = ITEM_EFFECTS.get(iid)
+        if eff is not None and eff.unique_passive_key:
+            current_unique_keys.add(eff.unique_passive_key)
     if len(current_ids) >= slot_count:
         raise ValueError(
             f"current_item_ids has {len(current_ids)} items; slot_count={slot_count} "
@@ -303,6 +331,13 @@ def rank_items(
 
     ranked: list[RankedItem] = []
     for item_id, rec in candidates:
+        # Compute the dead-unique flag BEFORE the expensive compute_dps call
+        # so the default-filter path saves the work entirely.
+        cand_eff = ITEM_EFFECTS.get(item_id)
+        cand_key = cand_eff.unique_passive_key if cand_eff is not None else ""
+        shares_dead_unique = bool(cand_key and cand_key in current_unique_keys)
+        if shares_dead_unique and filter_shared_uniques:
+            continue
         new_build = current_ids + (item_id,)
         try:
             scored = compute_dps(
@@ -335,6 +370,8 @@ def rank_items(
                 dps_per_1k_gold=eff,
                 is_terminal=_is_terminal(rec),
                 tags=tuple(rec.get("tags") or ()),
+                shares_dead_unique=shares_dead_unique,
+                dead_unique_key=cand_key if shares_dead_unique else "",
             )
         )
 

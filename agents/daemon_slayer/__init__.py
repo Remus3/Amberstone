@@ -371,4 +371,4 @@ Phase 6 step 7 (2026-05-10 — per-level DPS curve helper, ENGINE_VERSION 0.61.0
   at lvl 6, falls off at 11". 12 new tests (35 total in test_dps).
 """
 
-ENGINE_VERSION = "0.61.0"
+ENGINE_VERSION = "0.62.0"
