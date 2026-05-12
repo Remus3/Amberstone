@@ -30,18 +30,18 @@ _When an item moves to active work, migrate it to ROADMAP.md "Open items"._
 ## Data pipeline
 
 - **TFT vision relay frame dimensions**: lock OCR pipeline to 1920×1080 once validated (pair with NOTE-025 calibration).
-- **Adversarial sim fixtures**: add corrupted JSON / partial state / mode-transition fixtures to harden dashboard renderer (currently 26 happy-path fixtures).
+- ~~**Adversarial sim fixtures**~~: shipped s173.1 (`38ca915`) — 4 fixtures + 2 tests under `tests/snapshot_panels/`; uncovered s151 `gameTime` ref-error during initial run.
 
 ## Developer experience
 
 - **Type hints + ruff one-time pass**: codebase mixes annotated/unannotated. `ruff --fix` + annotations on public coach API.
-- **Test fixtures for adversarial paths**: partial state, corrupted JSON, mode transitions.
-- **Console-pipe localStorage flush failure-recovery loop**: currently fire-and-forget (queued errors replay on next post but no retry loop).
+- ~~**Test fixtures for adversarial paths**~~: shipped s173.1 (`38ca915`) — see Data pipeline entry above; this was a duplicate of the same item.
+- ~~**Console-pipe localStorage flush failure-recovery loop**~~: shipped s173.1 (`51e0da7`) — `flushQueueAfterSuccess` now preserves entries on replay failure (per-entry removal via `_dropQueuedEntry`).
 
 ## Reliability / hardening
 
 - **MCP server hung-tool watchdog**: `concurrent.futures` watchdog at the MCP server tier. Currently `run_powershell` has subprocess timeout; broader dispatch is uncovered.
-- **`MatchDB` thread-safety validation**: lock added defensively (FIX-021); validate under parallel-writer load if introduced.
+- ~~**`MatchDB` thread-safety validation**~~: moot — `core/match_db.py` was refactored 2026-04-28 (audit proposal 1.2) from RLock to WAL + per-thread connections. FIX-021 lock no longer exists; serialization is now SQLite WAL.
 - **`/api/analyze` streaming response**: current 30s timeout fine for ARAM (sub-second); may need SSE if full-mode analyses scale.
 
 ## Speculative
