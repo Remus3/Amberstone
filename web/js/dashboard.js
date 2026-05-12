@@ -2892,13 +2892,18 @@
     } catch (_) { /* pill-text fallback still works */ }
   })();
   // DDragon-rename overrides: champions whose live display name doesn't
-  // normalize cleanly to their DDragon file. Mirrors the override map in
-  // web/js/lib/items_index.js.
-  const _CHAMP_RENAME_OVERRIDES = {
-    "wukong": "MonkeyKing",
-    "renataglasc": "Renata",
-    "nunuwillump": "Nunu",
-  };
+  // normalize cleanly to their DDragon file. Loaded async from
+  // /data/champion_aliases.json — the canonical source also consumed by
+  // web/js/lib/items_index.js and tools/daemon_slayer_extract.py.
+  const _CHAMP_RENAME_OVERRIDES = {};
+  (async () => {
+    try {
+      const r = await fetch("/data/champion_aliases.json");
+      if (!r.ok) return;
+      const j = await r.json();
+      for (const [k, v] of Object.entries(j)) _CHAMP_RENAME_OVERRIDES[k] = v;
+    } catch (_) { /* silent */ }
+  })();
   function _resolveChampId(name) {
     const n = String(name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
     if (!n) return null;
