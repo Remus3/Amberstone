@@ -43,6 +43,8 @@ data/ds_calibration.jsonl
 data/placement_heatmap.json
 data/tft_live_data.json
 data/rewind_catchup.state.json
+data/decisions_heartbeat.json
+data/top8_list.json
 
 # DB backup snapshots from one-off ops (insurance copies; not source of truth)
 data/*.db.bak
