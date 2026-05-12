@@ -1899,14 +1899,22 @@ class Supervisor:
         if self._scheduler is None:
             return
         # Read whichever mode coaching file has the most recent mtime —
-        # that's the one the just-finished game was using.
-        candidates = [
-            _PROJECT_ROOT / "data" / "aram_coaching_data.json",
-            _PROJECT_ROOT / "data" / "arena_coaching_data.json",
-            _PROJECT_ROOT / "data" / "brawl_coaching_data.json",
-            _PROJECT_ROOT / "data" / "tft_coaching_data.json",
-            _PROJECT_ROOT / "coaching_data.json",
-        ]
+        # that's the one the just-finished game was using. Source of truth
+        # for the file set is dashboard._state_builder.MODE_FILES so this
+        # list can't drift from MODE_TO_FILE (ADR-008 pattern). Local
+        # import keeps module load order independent of dashboard package.
+        try:
+            from dashboard._state_builder import MODE_FILES as _MODE_FILES
+        except Exception as _imp_exc:  # noqa: BLE001
+            log.debug("MODE_FILES import failed; using hardcoded fallback: %s", _imp_exc)
+            _MODE_FILES = (
+                "data/aram_coaching_data.json",
+                "data/arena_coaching_data.json",
+                "data/brawl_coaching_data.json",
+                "data/tft_coaching_data.json",
+                "coaching_data.json",
+            )
+        candidates = [_PROJECT_ROOT / rel for rel in _MODE_FILES]
         newest = None
         newest_mtime = 0.0
         for p in candidates:
