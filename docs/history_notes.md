@@ -6,6 +6,12 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s166 — 2026-05-10 (Phase B LCU agent handlers + Loading view scaffold; UI paused)
+
+5 new dashboard-→ LCU command handlers (ban/pick intent + position/pick-order swap + augment-intent stub) shipped in `tools/gamepc_lcu_agent.py` so s164+s165 dashboard commands actually route to the client; champ-select state extended (`active_round`, `is_brawl`, swap lists, `arena_teams`, `augments` scaffold, per-player `summoners`). Phase 3 step 4 Loading Screen view scaffold (`view-loading`, `flow_04` fixture, opt-in via `?ld=1` / GameStart phase). 30 new tests under `tests/phase_b_champ_select/test_lcu_agent_phase_b.py` (665 total). Operator paused UI work at session end and directed `NEXT_SESSION_PLAN_2026-05-10.md` as bootstrap for s167.
+
+---
+
 # s165 wrap — 2026-05-10 (flow_03 mode-conditional Champ Select — central + enemies for all 4 modes)
 
 Phase 3 step 3 follow-up from s164. Champ-select view's central panel (My Pick + Build Chooser) and enemies panel now branch per mode (SR / ARAM / Arena / Brawl). Allies + Pick&Ban panels LOCKED per operator — untouched. Single commit shipped: `91a42e1` (1112 ins / 34 del across 7 files, 3 new).
