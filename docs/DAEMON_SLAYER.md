@@ -2,7 +2,7 @@
 
 Local DPS-math service on `:8893`. Computes actual damage-per-second for any champion × item × target combination using real stat math. No API cost per query.
 
-**Status: FUNCTIONALLY COMPLETE** — ENGINE_VERSION 0.61.0 · 949 tests · 547/547 DDragon purchasable items
+**Status: FUNCTIONALLY COMPLETE** — ENGINE_VERSION 0.62.0 · 955 tests · 547/547 DDragon purchasable items
 
 ## Module map (`agents/daemon_slayer/`)
 

@@ -339,6 +339,7 @@ def _route_rank(body: dict) -> dict:
     if sort_by not in SORT_KEYS:
         raise _ApiError(400, f"sort: must be one of {list(SORT_KEYS)}, got {sort_by!r}")
     include_components = _opt_bool(body, "include_components", False)
+    filter_shared_uniques = _opt_bool(body, "filter_shared_uniques", True)
     only_ids: Optional[list[str]] = None
     if "only" in body and body["only"] not in (None, ""):
         only_ids = _coerce_str_list(body["only"], "only")
@@ -355,6 +356,7 @@ def _route_rank(body: dict) -> dict:
             include_components=include_components,
             only_item_ids=only_ids, sort_by=sort_by,
             augments=augments,
+            filter_shared_uniques=filter_shared_uniques,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))

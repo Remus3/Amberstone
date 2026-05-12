@@ -58,6 +58,79 @@ Operator brief: "1 then any other items listed in roadmap, readme, or other file
 
 ---
 
+# s173.5 wrap — 2026-05-12 (DS dead-unique filter + archetype-expansion scope, 1 commit)
+
+**Operator-approved fix + multi-session scope plan** for expanding Daemon Slayer from auto-attack-DPS-only to a 6-scorer suite covering tank/bruiser/mage/assassin/enchanter archetypes. Phase 0 closed this slot — the dead-unique candidate-filter bug — and Phases 1-6 are scoped in a self-contained doc for future sessions.
+
+## Phase 0 ship — DS dead-unique filter
+
+Operator observed: "Trinity Force was suggested and I was okay with it, after it was built, Essence Reaver was still a suggestion despite not being able to build it/utilize its item effect, intentional?" Engine investigation confirmed the gap: `collect_effects()` correctly dedupes the second Spellblade proc (proc + pen contributions zeroed), but the candidate's raw stat block (75 AD + 25% crit + 25% AS + mana) still lifted DPS enough to keep ER in the top-N ranking. Operator-facing this was wrong — wasted unique = worse value-per-gold than a non-redundant item.
+
+### Engine changes
+
+| File | Change |
+|---|---|
+| [agents/daemon_slayer/rank.py](agents/daemon_slayer/rank.py) | Added `shares_dead_unique: bool = False` + `dead_unique_key: str = ""` fields to `RankedItem`. Added `filter_shared_uniques: bool = True` parameter to `rank_items()`. Computed dead-unique flag from `ITEM_EFFECTS` BEFORE the `compute_dps()` call so filtered candidates skip the expensive scoring entirely. Backward-compat dataclass defaults. |
+| [agents/daemon_slayer/server.py](agents/daemon_slayer/server.py) | `/rank` route forwards `filter_shared_uniques` from request body (default true). |
+| [core/daemon_slayer_client.py](core/daemon_slayer_client.py) | Client `RankedItem` mirrors new fields; `rank_for()` exposes `filter_shared_uniques` param (default true). |
+| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | `ENGINE_VERSION` 0.61.0 → 0.62.0 |
+| [agents/daemon_slayer/tests/test_rank.py](agents/daemon_slayer/tests/test_rank.py) | New `SharedUniqueFilterTests` class with 6 tests covering Trinity→ER, Sterak's→Maw, Sunfire→Hollow Radiance families + clean-build no-flag + to_dict schema + filter-off opt-in path. |
+| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Version-pin tests bumped 0.61.0 → 0.62.0. |
+| Living docs sync | CLAUDE.md · README.md · docs/DAEMON_SLAYER.md · docs/ARCHITECTURE.md · ROADMAP.md · BRIEF.md — version + test count + scorer description |
+| DS server runtime | Killed pid 7944 + relaunched via `pythonw tools/start_daemon_slayer.py` (per `reference_ds_server_not_supervisor_watched` memory). `/health` confirms engine_version 0.62.0 live on :8893. |
+
+### Affected unique families (now properly suppressed)
+
+| Key | Family members |
+|---|---|
+| `spellblade` | Trinity Force · Essence Reaver · Lich Bane · Iceborn Gauntlet · Sheen · Divine Sunderer · Sundered Sky · Dusk and Dawn |
+| `lifeline` | Sterak's Gage · Maw of Malmortius · Immortal Shieldbow · Seraph's Embrace · Hexdrinker · several defensive_only |
+| `immolate` | Sunfire Aegis · Hollow Radiance · Bami's Cinder |
+| `fiendhunter_barrage` · `hellfire_char` · `innervating_fill` | Single-item future-proofs |
+
+### Findings
+
+- **Computing the flag BEFORE `compute_dps` was the right call.** Default filter ON saves the expensive `compute_dps` evaluation for filtered candidates entirely — meaningful since `rank_items` is called every coach tick (8-25s) and each call is ~125-175 candidate evaluations.
+- **Backward compat preserved via dataclass defaults.** Existing callers that pass positional args or omit the new kwarg still work; new fields default to `False`/`""`. The `to_dict()` change adds keys but doesn't remove any, so consumers parsing the JSON via `.get()` are unaffected.
+- **Filter-off opt-in is operator's escape hatch.** Sophisticated callers (calibration analysis, debug tools) that WANT to see the stat-only DPS lift of a dead-unique candidate pass `filter_shared_uniques=False` and read `shares_dead_unique` to interpret the result.
+
+## Phase 1-6 scope plan
+
+Drafted [NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md](NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md) — self-contained multi-session guide. Architecture decisions locked in this slot (operator-confirmed; do not re-litigate):
+
+1. **One engine, six scorers** (not six engines): keep `agents/daemon_slayer/` umbrella; add `ds.ehp`/`ds.hybrid`/`ds.ability`/`ds.burst`/`ds.hps` siblings to `ds.dps`. Share substrate (snapshot loader, `build_champion()`, `ItemEffect` registry, `CallContext`, `:8893` server).
+2. **Daemon Slayer keeps umbrella name.** Internal scorers expose via per-archetype HTTP routes (`/rank-tank`, `/rank-mage`, etc.).
+3. **Top-2 archetypes shown for all champs** in CS panel + in-game tab. Meta default pre-selected from DDragon `tags[0]` + win-rate priors. Selection gates coach + match analysis.
+4. **Only primary scorer runs per coach tick.** Secondary freezes after initial CS + game-start passes; refreshes only on enemy/operator item-complete events.
+5. **Mid-game switch supported.** New primary fires immediately; subsequent ticks use it.
+6. **First-purchase-item inference = soft nudge** (one-time toast), not auto-override.
+
+**Phases:** 0=shipped this slot · 1=Tank EHP (1 session) · 2=Bruiser hybrid (1) · 3=CS picker UI (1) · 4=Mage ability DPS (3) · 5=Assassin burst (2) · 6=Enchanter HPS (2). Total ~10 sessions for ~90 champions with archetype-appropriate scoring.
+
+### Cadence model verified
+
+Walked the operator through the actual DS runtime cadence — they had the wrong mental model ("30s init + re-run on item change"). Corrected: DS runs every coach tick (12-25s ARAM stable, 8-22s Arena, 7-20s Brawl, faster on state-change events). Each tick = ~125-175 `compute_dps()` calls. Sub-second on warm snapshot. Dashboard `/api/ds-preview` polls independently for the `#ds-pill` and champ-select view.
+
+This cadence correction shaped the architecture: naively running all 6 scorers per tick would 6× the compute. The "primary only" rule keeps the budget bounded.
+
+## Verification
+
+- `py -m pytest agents/daemon_slayer/tests/ -q --timeout=60` → 955 passed (was 949 — +6 from SharedUniqueFilterTests)
+- `py -m pytest tests/ -q --timeout=60` → 839 passed (unchanged)
+- `py -m ruff check .` → all checks passed
+- DS server `:8893/health` → engine_version 0.62.0 live
+- Manual probe: `rank_for(champion="Aatrox", level=11, item_ids=["3078"])` returns ranking with NO Essence Reaver / Lich Bane / Iceborn Gauntlet (all spellblade-family) — fix working live.
+
+## Open items closed this slot
+
+- ✅ Operator question 1 — "Does DS evaluate based on currently purchased items?" — confirmed yes via [rank.py:281-293](agents/daemon_slayer/rank.py:281) baseline + delta walkthrough.
+- ✅ Operator question 2 — Trinity → ER recommendation bug — fixed via Phase 0 dead-unique filter.
+- ✅ Architecture decision: one engine vs six engines — one engine, six scorers (operator-confirmed).
+- ✅ Architecture decision: CS scorer-picker UX shape — top-2-always-shown across all champs, primary gates coach, secondary refreshes on item-complete events (operator-confirmed).
+- ✅ Phase 1-6 scope drafted in self-contained next-session plan.
+
+---
+
 # s173.4 wrap — 2026-05-12 (orphan team-strip retirement, 1 commit)
 
 **Operator-approved retirement** of the 2026-04-23 "Per-enemy alive/dead tiles" stack-of-ideas bullet from README. Three orphan render functions in `map_state.js` (`renderTeamTile`/`renderAllyStrip`/`renderEnemyStrip`) + ~155 lines of orphan CSS at `grid.css:198-352` + their main.js call site + `state.adaptCounterMap` writer/reader all deleted in one pass. No behavior change — strips early-returned `if (!row || !wrap) return;` on DOM IDs that didn't exist since the 2026-04-23 visual-space decision.
