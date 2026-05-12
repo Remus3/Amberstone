@@ -1,11 +1,10 @@
-// Active Match panel module (s159 — step 1 scaffold).
+// Active Match panel module (s159 — step 1 scaffold, s170 — step 2/3 wiring).
 //
-// Step 1 ships the empty render shell wired into the main dispatcher.
-// The render() entrypoint runs on every onState envelope when the
-// active-match view is current AND the game mode is in-game. It
-// updates the sub-line and a small set of placeholder fields so the
-// pane is visibly responsive to live data — but doesn't yet render
-// the curated CALL / BUILD / MAP content. Those land in steps 2-4.
+// Step 1 (s159) shipped the empty render shell wired into the main dispatcher.
+// Step 2/3 (s170) adds per-tick DS rerank by POSTing to /api/ds-preview
+// with the live champion + level + items + mode. The endpoint is locally
+// hosted (same Legion box, same process), so round-trip is sub-100ms and
+// the DS engine call lives behind the existing supervisor on :8893.
 //
 // Auto-promote behavior (gating in main.js _viewAutoDerive):
 //   activeMatchEnabled() AND mode in {sr, aram, arena, brawl}
@@ -19,6 +18,58 @@ const _AM = {
   buildBody:  () => document.getElementById("am-build-body"),
   mapBody:    () => document.getElementById("am-map-body"),
 };
+
+// s170 (step 2): per-tick DS rerank cache. Keyed by a coarse "input
+// fingerprint" so we don't refetch on every state envelope (~1 Hz)
+// when nothing meaningful changed. Cooldown floors the refetch rate
+// to once per 4s even when inputs change rapidly, so the DS engine
+// doesn't get hammered during e.g. an active item-purchase spree.
+const _DS_RERANK = {
+  lastKey:   "",
+  lastFired: 0,
+  lastRows:  null,
+  inFlight:  false,
+};
+const _DS_RERANK_COOLDOWN_MS = 4000;
+
+function _dsRerankKey(champion, mode, level, items) {
+  return `${champion}|${mode}|${level}|${(items || []).join(",")}`;
+}
+
+// Returns the most recent rank_for() result for the current inputs,
+// scheduling a refetch in the background if the inputs changed or the
+// cooldown has elapsed. Non-blocking — caller renders with whatever's
+// already cached. The next render() call will pick up the new rows
+// once the POST completes.
+function _maybeRefreshDsPicks(champion, mode, level, items) {
+  if (!champion || !mode) return _DS_RERANK.lastRows;
+  const key = _dsRerankKey(champion, mode, level, items);
+  const now = Date.now();
+  const stale = (key !== _DS_RERANK.lastKey)
+              || ((now - _DS_RERANK.lastFired) > _DS_RERANK_COOLDOWN_MS);
+  if (!stale || _DS_RERANK.inFlight) return _DS_RERANK.lastRows;
+  _DS_RERANK.inFlight  = true;
+  _DS_RERANK.lastKey   = key;
+  _DS_RERANK.lastFired = now;
+  fetch("/api/ds-preview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      champion: champion,
+      mode:     mode,
+      level:    level | 0,
+      items:    items || [],
+    }),
+  }).then((r) => r.ok ? r.json() : null)
+    .then((j) => {
+      _DS_RERANK.inFlight = false;
+      if (j && j.ok && Array.isArray(j.ranked)) {
+        _DS_RERANK.lastRows = j.ranked;
+      }
+    })
+    .catch(() => { _DS_RERANK.inFlight = false; });
+  return _DS_RERANK.lastRows;
+}
 
 // Flag check used by main.js view-router. Two opt-in paths so the
 // preference survives a refresh:
@@ -75,19 +126,36 @@ export function renderActiveMatch(payload, ctx) {
 
   const build = _AM.buildBody();
   if (build) {
-    const picks = Array.isArray(p.daemon_slayer_picks) ? p.daemon_slayer_picks : [];
-    const owned = Array.isArray(p.items) ? p.items : [];
-    if (picks.length || owned.length) {
-      build.innerHTML = "";
-      if (picks.length) {
-        const dsLine = picks.slice(0, 5)
-          .map((r) => `${r.name || r.item_name || "?"} +${(r.delta_dps || 0).toFixed(0)}dps`)
-          .join("  ·  ");
-        build.appendChild(_line("DS ENGINE", dsLine));
-      }
-      if (owned.length) {
-        build.appendChild(_line("OWNED", owned.join(" · ")));
-      }
+    // s170 step 2: per-tick rerank. Coach-emitted picks
+    // (state.daemon_slayer_picks, written every coach tick) are the
+    // fallback; the live rerank goes through /api/ds-preview every
+    // 4s when champion/mode/level/items change. Live rerank wins when
+    // available because it's freshly computed against the current
+    // inventory, not the coach's last snapshot.
+    const champion = p.champion || "";
+    const mode     = (ctx && ctx.mode) ? String(ctx.mode).toUpperCase() : "SR";
+    const level    = parseInt(p.level || 0, 10) || 1;
+    const owned    = Array.isArray(p.items) ? p.items : [];
+    const ownedSet = new Set(owned.map((o) => String(o || "").toLowerCase()));
+    const livePicks  = _maybeRefreshDsPicks(champion, mode, level, owned);
+    const coachPicks = Array.isArray(p.daemon_slayer_picks) ? p.daemon_slayer_picks : [];
+    const picks = (livePicks && livePicks.length) ? livePicks : coachPicks;
+    build.innerHTML = "";
+    if (picks.length) {
+      const strip = document.createElement("div");
+      strip.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;";
+      picks.slice(0, 5).forEach((r) => {
+        strip.appendChild(_dsIcon(r, ownedSet));
+      });
+      build.appendChild(_line("DS ENGINE", ""));
+      build.appendChild(strip);
+    }
+    if (owned.length) {
+      build.appendChild(_line("OWNED", owned.join(" · ")));
+    }
+    if (!picks.length && !owned.length) {
+      // Empty pane shouldn't be blank — surface that we're waiting.
+      build.appendChild(_line("DS ENGINE", "waiting for live data…"));
     }
   }
 
@@ -115,4 +183,55 @@ function _line(label, value) {
   row.appendChild(lbl);
   row.appendChild(val);
   return row;
+}
+
+// s170 step 2: render a single DS pick as an icon-with-overlay.
+// CommunityDragon CDN hosts the per-patch item icon at a stable path;
+// /api/state's `items` field uses item names so we match the OWNED
+// overlay by lowercased name. The "+Ndps" overlay is the rerank delta
+// from the current inventory baseline.
+//
+// Icon falls back to a labeled grey tile when the item_id isn't known
+// (DS server occasionally returns names without ids during ARAM/Arena
+// re-skin resolution).
+function _dsIcon(r, ownedSet) {
+  const wrap = document.createElement("div");
+  wrap.style.cssText = "position:relative;width:48px;text-align:center;";
+  const name = r.name || r.item_name || "?";
+  const id   = r.id   || r.item_id   || 0;
+  const delta = (r.delta_dps != null ? r.delta_dps : (r.deltaDps || 0));
+  const owned = ownedSet && ownedSet.has(String(name).toLowerCase());
+  if (id) {
+    const img = document.createElement("img");
+    img.src = `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perk-images/item-icons/${id}.png`;
+    img.alt = name;
+    img.title = `${name} (+${(delta || 0).toFixed(0)}dps)`;
+    img.style.cssText = "width:44px;height:44px;border-radius:6px;border:1px solid var(--border, #303040);display:block;margin:0 auto;";
+    img.onerror = () => {
+      // Fallback for items missing on the CDN (Arena re-skins occasionally).
+      img.replaceWith(_dsIconFallback(name, id, delta));
+    };
+    wrap.appendChild(img);
+  } else {
+    wrap.appendChild(_dsIconFallback(name, id, delta));
+  }
+  if (owned) {
+    const ow = document.createElement("div");
+    ow.textContent = "OWNED";
+    ow.style.cssText = "position:absolute;left:0;right:0;top:14px;text-align:center;font-size:9px;font-weight:700;letter-spacing:0.08em;background:rgba(0,0,0,0.7);color:#5dd47e;padding:2px 0;pointer-events:none;";
+    wrap.appendChild(ow);
+  }
+  const dlt = document.createElement("div");
+  dlt.textContent = `+${(delta || 0).toFixed(0)}`;
+  dlt.style.cssText = "font-size:11px;font-weight:600;color:var(--accent, #6cf);margin-top:2px;";
+  wrap.appendChild(dlt);
+  return wrap;
+}
+
+function _dsIconFallback(name, id, delta) {
+  const tile = document.createElement("div");
+  tile.style.cssText = "width:44px;height:44px;border-radius:6px;border:1px solid var(--border, #303040);background:var(--surface-2, #1d1d28);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text-faint);text-align:center;line-height:1.1;padding:2px;box-sizing:border-box;";
+  tile.title = `${name} (+${(delta || 0).toFixed(0)}dps)`;
+  tile.textContent = String(name).slice(0, 8);
+  return tile;
 }

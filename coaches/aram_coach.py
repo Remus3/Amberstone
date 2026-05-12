@@ -637,15 +637,28 @@ class Coach(BaseCoach):
             try:
                 from core import daemon_slayer_client as _ds_client
                 from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
+                from coach_integration.enemy_stats import compute_enemy_stats as _ds_enemy_stats
                 _owned_ids = _ds_resolve_many(state.get("items", []), mode="aram")
                 _target_bhp = self._estimate_target_bonus_hp(state)
+                _lvl = int(state.get("level", 1)) or 1
+                # s170: target_armor was hardcoded 80.0; now scales with
+                # level + ARAM economy. Item-aware bonus_hp estimator wins
+                # when items are visible (passed via override).
+                _es = _ds_enemy_stats(
+                    mode="aram",
+                    game_seconds=int(state.get("game_seconds", 0) or 0),
+                    level=_lvl,
+                    bonus_hp_override=_target_bhp if _target_bhp > 0 else None,
+                )
                 _ds_rows = _ds_client.rank_for(
                     champion=champ,
-                    level=int(state.get("level", 1)) or 1,
+                    level=_lvl,
                     item_ids=_owned_ids,
                     mode="ARAM",
-                    target_armor=80.0,
-                    target_bonus_hp=_target_bhp,
+                    target_armor=_es.armor,
+                    target_mr=_es.mr,
+                    target_max_hp=_es.max_hp,
+                    target_bonus_hp=_es.bonus_hp,
                     top=5,
                 )
                 if _ds_rows:
