@@ -1723,10 +1723,10 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
                     : mode === "brawl" ? "Brawl build chooser"
                     : "SR build chooser";
   const buildsHtml = `
-    <div class="csv-builds">
+    <div class="csv-builds" data-champion="${myName || ""}">
       <div class="csv-builds-title">${buildsTitle}</div>
       <div class="csv-builds-body" id="csv-builds-body">
-        ${_csvBuildVariantRowsHtml(variants)}
+        ${_csvBuildVariantRowsHtml(variants, _csvSavedChoice(myName))}
       </div>
     </div>`;
 
@@ -1833,6 +1833,25 @@ function _csvWireBench(scope) {
 const _CSV_DS_CACHE    = Object.create(null);
 const _CSV_DS_INFLIGHT = Object.create(null);
 
+// s171.8: parallel cache for user-curated variants from /api/loadout/list.
+// User variants are persisted to disk via loadout_resolver, so different
+// modes for the same champion can carry different variant sets.
+const _CSV_USER_CACHE    = Object.create(null);
+const _CSV_USER_INFLIGHT = Object.create(null);
+
+// s171.8: shared storage key with item_build.js (_ibStorageKey). Picking
+// a variant here in champ-select pre-selects the same row in the in-game
+// build chooser without a separate plumbing layer.
+function _csvStorageKey(champion) { return "rc-ingame-build-" + (champion || ""); }
+function _csvSavedChoice(champion) {
+  try { return localStorage.getItem(_csvStorageKey(champion)) || ""; }
+  catch (_) { return ""; }
+}
+function _csvSaveChoice(champion, variantKey) {
+  try { localStorage.setItem(_csvStorageKey(champion), variantKey); }
+  catch (_) {}
+}
+
 // Convert the view's adapt-mode to the DS engine's mode label.
 function _csvDsModeFor(mode) {
   if (mode === "aram")  return "ARAM";
@@ -1865,6 +1884,33 @@ function _csvFetchDsBuilds(champion, dsMode) {
     .catch(() => { _CSV_DS_INFLIGHT[key] = false; });
 }
 
+// s171.8: fetch user-curated variants (loadout_resolver). Mode label is
+// the lower-case form ("sr"/"aram"/"arena"/"brawl") matching the legacy
+// chooser's contract — `/api/loadout/list` normalises internally.
+function _csvFetchUserVariants(champion, mode) {
+  if (!champion || !mode) return;
+  const key = `${champion}|${mode}`;
+  if (_CSV_USER_CACHE[key] !== undefined || _CSV_USER_INFLIGHT[key]) return;
+  _CSV_USER_INFLIGHT[key] = true;
+  fetch("/api/loadout/list", {
+    method: "POST", cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ champion, mode }),
+  })
+    .then((r) => r.ok ? r.json() : null)
+    .then((data) => {
+      _CSV_USER_INFLIGHT[key] = false;
+      // Mark "empty" with [] (truthy in lookup) so we don't refetch
+      // forever for champions/modes with no user variants saved.
+      _CSV_USER_CACHE[key] = (data && Array.isArray(data.variants))
+        ? data.variants : [];
+    })
+    .catch(() => {
+      _CSV_USER_INFLIGHT[key] = false;
+      _CSV_USER_CACHE[key] = [];
+    });
+}
+
 // Build chooser variants for the central pane. s171: returns DS-engine-
 // ranked items when available (cached per champion+mode), otherwise a
 // "computing…" placeholder. Mode-specific keystone hints distinguish
@@ -1877,9 +1923,10 @@ function _csvBuildVariantsFor(cid, name, mode) {
   }
   const dsMode = _csvDsModeFor(mode);
   const ranked = _CSV_DS_CACHE[`${name}|${dsMode}`];
+  // Always trigger the user-variant fetch in parallel — independent
+  // cache from the DS engine call.
+  _csvFetchUserVariants(name, mode || "sr");
   if (!ranked || !ranked.length) {
-    // Trigger the async fetch — landing fires nothing, but the next
-    // LCU envelope's re-render will hit the cache.
     _csvFetchDsBuilds(name, dsMode);
     return [{ key: "ds-pending", label: `${name} · DS engine computing…`,
               keystone: "—", item_ids: [], is_default: true }];
@@ -1893,22 +1940,46 @@ function _csvBuildVariantsFor(cid, name, mode) {
                      : (mode === "arena") ? "Arena targets"
                      : (mode === "brawl") ? "Brawl curve"
                      : "SR targets";
-  // Single variant for now — operator's "DS not showing builds when
-  // locked in" complaint resolves by replacing the hardcoded items with
-  // real DS output. Phase B-2 may re-introduce 3 keystone-themed rows.
-  return [{
+  // s171.8: combine the DS engine top-picks row (default) with any
+  // user-curated variants from /api/loadout/list. Selection persists
+  // across CS → in-game via the shared rc-ingame-build-<champion>
+  // localStorage key (read by item_build.js:_ibSavedChoice).
+  const dsRow = {
     key: "ds-engine",
     label: `${name} · DS engine top picks`,
     keystone: `based on ${keystoneLabel}`,
     item_ids: top6, reasons, is_default: true,
-  }];
+  };
+  const userVariants = _CSV_USER_CACHE[`${name}|${mode || "sr"}`] || [];
+  // User-variant rows carry their own `keystone`/`item_ids` from the
+  // loadout file. Normalise the shape so the row renderer can treat
+  // them uniformly. Map `key` through unchanged so the save↔restore
+  // round-trip stays stable.
+  const userRows = userVariants.map((v) => ({
+    key: v.key,
+    label: v.label || v.key,
+    keystone: v.keystone || "user variant",
+    item_ids: v.item_ids || [],
+    reasons: {},
+    is_default: false,
+    is_user: true,
+  }));
+  return [dsRow].concat(userRows);
 }
 
-function _csvBuildVariantRowsHtml(variants) {
+function _csvBuildVariantRowsHtml(variants, savedChoice) {
   if (!variants || !variants.length) {
     return '<div class="csv-empty">no build variants for this champion / mode yet</div>';
   }
   const ver = (ITEMS && ITEMS.version) || "latest";
+  // s171.8: pre-select the saved choice if present; else default to
+  // the first row (DS engine top picks). Matches what the in-game
+  // chooser does via _ibSavedChoice on the same localStorage key.
+  let selectedIdx = 0;
+  if (savedChoice) {
+    const found = variants.findIndex((v) => v && v.key === savedChoice);
+    if (found >= 0) selectedIdx = found;
+  }
   return variants.map((v, idx) => {
     const reasons = v.reasons || {};
     const items = (v.item_ids || []).slice(0, 6).map((iid) => {
@@ -1922,9 +1993,10 @@ function _csvBuildVariantRowsHtml(variants) {
     }).join("") || '<div class="csv-empty">—</div>';
     const cb = `<div class="csv-build-checkbox"></div>`;
     const tag = v.is_default
-      ? ' <span class="csv-build-default-tag">default</span>' : "";
+      ? ' <span class="csv-build-default-tag">default</span>'
+      : (v.is_user ? ' <span class="csv-build-user-tag">saved</span>' : '');
     return `
-      <div class="csv-build-row${idx === 0 ? " selected" : ""}" data-variant="${v.key}">
+      <div class="csv-build-row${idx === selectedIdx ? " selected" : ""}" data-variant="${v.key}">
         ${cb}
         <div class="csv-build-meta">
           <div class="csv-build-label">${v.label}${tag}</div>
@@ -1936,10 +2008,21 @@ function _csvBuildVariantRowsHtml(variants) {
 }
 
 function _csvWireBuildVariants(scope) {
+  // s171.8: read champion from the wrapper's data-champion so the click
+  // handler can persist the selection. Falls back to no-save if absent
+  // (defensive — keeps the visual toggle working in unit-test fixtures).
+  const wrap = scope.querySelector(".csv-builds");
+  const champion = wrap ? (wrap.dataset.champion || "") : "";
   const rows = scope.querySelectorAll(".csv-build-row");
   rows.forEach((row) => {
     row.addEventListener("click", () => {
       rows.forEach((r) => r.classList.toggle("selected", r === row));
+      const variantKey = row.dataset.variant;
+      if (champion && variantKey
+          && variantKey !== "empty"
+          && variantKey !== "ds-pending") {
+        _csvSaveChoice(champion, variantKey);
+      }
     });
   });
 }
