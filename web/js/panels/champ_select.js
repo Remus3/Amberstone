@@ -2102,6 +2102,71 @@ function _csvMoodSet(v) {
   try { sessionStorage.setItem("csv-mood", v); } catch (_) {}
 }
 
+// s170 item #4: live pick&ban recommendations from
+// /api/champ-select/pickban-recs. Cached per (role, queue_id) and
+// refreshed at most every 60s — operator history isn't changing
+// during a single champ-select session, so this is just an in-memory
+// dedupe to keep the panel responsive.
+const _CSV_PB_CACHE = {};   // {`${role}|${queue}`: {data, fetchedAt}}
+const _CSV_PB_INFLIGHT = {};
+const _CSV_PB_TTL_MS = 60_000;
+
+function _csvFetchPickBanRecs(role, queueId, onLoad) {
+  // Role here is the dashboard form ("BOT"/"JNG"/etc.) — the endpoint
+  // accepts both forms via its _ROLE_ALIASES map.
+  if (!role || role === "—") return null;
+  const cacheKey = `${role}|${queueId || 0}`;
+  const now = Date.now();
+  const cached = _CSV_PB_CACHE[cacheKey];
+  if (cached && (now - cached.fetchedAt) < _CSV_PB_TTL_MS) {
+    return cached.data;
+  }
+  if (_CSV_PB_INFLIGHT[cacheKey]) return cached ? cached.data : null;
+  _CSV_PB_INFLIGHT[cacheKey] = true;
+  const url = `/api/champ-select/pickban-recs?role=${encodeURIComponent(role)}`
+            + (queueId ? `&queue=${queueId}` : "");
+  fetch(url)
+    .then((r) => r.ok ? r.json() : null)
+    .then((j) => {
+      _CSV_PB_INFLIGHT[cacheKey] = false;
+      if (j && j.ok) {
+        _CSV_PB_CACHE[cacheKey] = { data: j, fetchedAt: Date.now() };
+        if (typeof onLoad === "function") onLoad();
+      }
+    })
+    .catch(() => { _CSV_PB_INFLIGHT[cacheKey] = false; });
+  return cached ? cached.data : null;
+}
+
+function _csvMergePickBanData(role, liveRecs, placeholder) {
+  // Layer live performance over placeholder mastery/meta. When the
+  // live performance row is missing (operator has no SR history at
+  // this role), keep the placeholder so the panel doesn't go blank.
+  const out = {
+    performance: placeholder.performance,
+    mastery:     placeholder.mastery,
+    meta:        placeholder.meta,
+  };
+  if (liveRecs && liveRecs.performance) {
+    const p = liveRecs.performance;
+    out.performance = {
+      champId:   p.champId,
+      champName: p.champName,
+      reason:    p.reason,
+      bans:      (liveRecs.performance_bans || placeholder.performance.bans).map((b) => ({
+        champId: b.champId,
+        name:    b.name,
+        pct:     b.pct,
+      })),
+    };
+    // Backfill bans from placeholder if live returned fewer than 3.
+    while (out.performance.bans.length < 3 && placeholder.performance.bans[out.performance.bans.length]) {
+      out.performance.bans.push(placeholder.performance.bans[out.performance.bans.length]);
+    }
+  }
+  return out;
+}
+
 function _csvRenderPickBan(cs, myCid) {
   const body = document.getElementById("csv-pickban-body");
   if (!body) return;
@@ -2112,10 +2177,16 @@ function _csvRenderPickBan(cs, myCid) {
   const role = _csvResolveRole(cs);
   const ver = CHAMPS.version || "latest";
   const ph = _pbPlaceholdersFor(role);
+  // s170 item #4: fetch live recs (cached). Re-renders this panel when
+  // the fetch lands so the user sees the swap from placeholder → live.
+  const liveRecs = _csvFetchPickBanRecs(role, cs.queue_id, () => {
+    _csvRenderPickBan(cs, myCid);
+  });
+  const merged = _csvMergePickBanData(role, liveRecs, ph);
   const sources = [
-    { key: "performance", label: "Performance", data: ph.performance },
-    { key: "mastery",     label: "Mastery",     data: ph.mastery },
-    { key: "meta",        label: "Meta",        data: ph.meta },
+    { key: "performance", label: "Performance", data: merged.performance },
+    { key: "mastery",     label: "Mastery",     data: merged.mastery },
+    { key: "meta",        label: "Meta",        data: merged.meta },
   ];
   // Pick clicks are safe whenever we're past the ban phase (phase
   // FINALIZATION) or the user has already locked their pick. Disabling

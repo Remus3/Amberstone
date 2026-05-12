@@ -437,15 +437,28 @@ class Coach(BaseCoach):
             _ds_rows = None
             _ds_picks_str = "unavailable"
             try:
+                from coach_integration.enemy_stats import compute_enemy_stats as _ds_enemy_stats
                 owned_ids = _ds_resolve_many(state.get("items", []), mode="arena")
                 target_bonus_hp = self._estimate_target_bonus_hp(state)
+                _lvl = int(state.get("level", 1)) or 1
+                # s170: replaces hardcoded target_armor=80.0 with level-aware
+                # Arena curve. Item-aware bonus_hp estimator wins via override
+                # when enemies show items.
+                _es = _ds_enemy_stats(
+                    mode="arena",
+                    game_seconds=int(state.get("game_seconds", 0) or 0),
+                    level=_lvl,
+                    bonus_hp_override=target_bonus_hp if target_bonus_hp > 0 else None,
+                )
                 _ds_rows = _ds_client.rank_for(
                     champion=champ,
-                    level=int(state.get("level", 1)) or 1,
+                    level=_lvl,
                     item_ids=owned_ids,
                     mode="ARENA",
-                    target_armor=80.0,
-                    target_bonus_hp=target_bonus_hp,
+                    target_armor=_es.armor,
+                    target_mr=_es.mr,
+                    target_max_hp=_es.max_hp,
+                    target_bonus_hp=_es.bonus_hp,
                     top=5,
                     augments=state.get("augments") or None,
                 )

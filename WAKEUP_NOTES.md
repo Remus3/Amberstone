@@ -4,6 +4,80 @@
 
 ---
 
+# s170 wrap — 2026-05-11 (LCU wiring punch list — items #1 #2 #3 #4 #5 #7 shipped, #6 parking-lot)
+
+Operator opened by asking "what is needed to finish the LCU wiring to the UI output for things like pre-game lobby and, champion select, and DS output to active match" — informational query that produced a 7-item punch list. Then operator said "continue" repeatedly, working through items 1–4 + 7 in one continuation. Items 5 and 6 ended the session as bridge-dispatched (waiting on Game-PC Claude) and parking-lot (requires live Arena lobby) respectively.
+
+## Ships (in chronological order this session)
+
+- **Item #7 — My Top 8 dummy purge** (`web/js/main.js:3456`). Auto-prune list of 8 known sim-fixture `riot_id`s (`FrenLuvr#NA1`, `Brawler#NA1`, `SmurfLord#PRO`, `WardBot#SUP`, `CarryHarder#NA1`, `SkillIssue#TT`, `NoobieMcGee#NEW`, `SamplePlayer Sock#NA1`) filtered out of `localStorage.rc-top8-list` on `_top8Load()` read; cleaned list written back. Idempotent. Real `SamplePlayer#Vayne` cannot collide because matching is on full riot_id including tagline.
+- **Item #1 — LCU lobby members forwarder** (`tools/gamepc_lcu_agent.py:188-336`). `state["lobby"]` now carries `members[]`, `local_member`, `is_leader`, `party_id`, `party_type`, `can_search`, `queue_name`, `search_state` — driven off `/lol-lobby/v2/lobby` + `/lol-matchmaking/v1/search`. Per-member: puuid, summoner_id, riot_id (composed from gameName + tagLine), summoner_level, ready, position_preferences. 22 tests under `tests/phase_b_champ_select/test_lcu_lobby_members.py`. **Game-PC redeployed via http.server :8765 → Invoke-WebRequest dance (pid 15480 confirmed alive).**
+- **Item #1 follow-on — is_self via summoner-id match + name enrichment** (same file). Current LCU builds emit empty `gameName`/`tagLine` on lobby members and don't set `isLocalMember`. Fix: compare `member.summonerId` to local summonerId (resolved via `_resolve_local_summoner_id`, already cached for mastery hook); enrich missing names via `/lol-summoner/v1/summoners/{sid}` (per-id 10-min TTL cache `_summoner_lookup_cache`). 9 additional tests. **Game-PC redeployed AGAIN.** Verification awaits next Lobby phase (operator entered ChampSelect mid-session).
+- **Item #2 — DS enemy-stats heuristic helper** (`coach_integration/enemy_stats.py`, new). `compute_enemy_stats(mode, game_seconds, level, bonus_hp_override, enemy_levels)` returns level-scaled `EnemyStats(armor, mr, max_hp, bonus_hp)` per mode (SR/ARAM/Arena/Brawl). Replaces all 4 coaches' hardcoded `target_armor=80.0`. Coaches' existing item-aware `_estimate_target_bonus_hp` preserved via `bonus_hp_override`. 27 tests under `tests/test_enemy_stats.py`. Live via restart.
+- **Item #3 — Active Match per-tick DS rerank + icon strip** (`web/js/panels/active_match.js`). `_maybeRefreshDsPicks()` POSTs to existing `/api/ds-preview` with current `{champion, mode, level, items}`; 4s input-fingerprint cooldown so DS engine isn't hammered. `_dsIcon()` renders CommunityDragon item icon (44px) with green "OWNED" overlay + `+Ndps` delta caption. Fallback tile when icon CDN 404s (Arena re-skins). Coach-emitted `daemon_slayer_picks` remains the fallback when live rerank hasn't responded yet.
+- **Item #4 — Pick & Ban Recommendations backend join** (`dashboard/routes_pickban.py`, new + `dashboard/_dispatch.py` wired). `GET /api/champ-select/pickban-recs?role=X[&queue=Y]` returns operator-aware performance row + ban suggestions from `rewind_history.db`. Role normalization handles both LCU (BOTTOM/UTILITY) and dashboard (BOT/SUP) forms. Performance: highest-WR champ with ≥3 games. Bans: top 3 enemy-at-role champs with ≥2 encounters and ≥50% loss rate. Mastery + meta rows still on placeholders (Tier 2). Read-only SQLite connection (WAL-safe). 17 tests under `tests/test_routes_pickban.py`. Wired into `web/js/panels/champ_select.js:_csvRenderPickBan` via `_csvFetchPickBanRecs` with 60s cache + re-render on fetch land. **Live verified: 33ms response, real `MissFortune 4/6 67% WR` with ban suggestions Nilah/Twitch/Mel (all 100% loss-rate).**
+
+## Bridge-dispatched and resolved
+
+- **Item #5 — RC-LCU scheduled task action path fix** (bridge task-id `task-454fde72f190`, completed by Game-PC Claude at 1778559598, 63s round-trip). Before: `Execute: py` (failed ERROR_FILE_NOT_FOUND under scheduled-task context — same root cause as RC-PatchRefresh per `project_rc_patchrefresh_fixed.md`). After: `Execute: C:/Users/Administrator/AppData/Local/Python/pythoncore-3.14-64/python.exe`. Running agent (pid 15480) deliberately NOT restarted by Game-PC Claude — fix applies on next reboot. Pattern established: dispatch Game-PC system fixes via `bridge_cli.py task --target gamepc` with self-contained PowerShell instructions; round-trip in ~60s when /loop is running.
+
+## Parking-lot
+
+- **Item #6 — `set_augment_intent` LCU endpoint discovery**. Blocked on live Arena lobby. Discovery pattern from s168 (lockfile → basic auth → enumerate `/lol-cherry/v1/*` paths) can run when next Arena queue pops. Until then, agent's stub at `tools/gamepc_lcu_agent.py:777` returns `augment_intent_unsupported`.
+
+## Test posture at wrap
+
+- Project sweep: **788 passed** (was 719 at s169 wrap; +22 lobby members + 9 enrichment + 27 enemy_stats + 17 routes_pickban = +75 tests).
+- Snapshot panels: untouched (no active-match snapshot tests; champ_select snapshot fixtures already had placeholder render).
+
+## Live verification at wrap
+
+- RC pid=12852 alive, last_reload_ok=true (restarted twice this session — once for coach changes, once for new route module).
+- Game-PC LCU agent pid=15480 alive, posting fresh state. Verified phase=ChampSelect with mastery + champ_select populated.
+- `GET /api/champ-select/pickban-recs?role=BOT` returns 200 with real data.
+- http.server on :8765 shut down (both redeploys completed).
+- Cache buster: 2026051122 → 2026051125 (bumped three times — Top 8 wipe, active-match step 2/3, P&B recs wiring).
+
+## Decisions / non-obvious notes for next-session-you
+
+- **Game-PC redeploy is fiddly.** SMB pull from `\\192.168.8.230\C$\...` is blocked (no peer creds cached). Workaround: `cd <staging>; py -m http.server 8765` on Legion + `Invoke-WebRequest` on Game-PC. Document this in OPERATIONS.md if it recurs more (s168 + s170 both used it).
+- **`Get-WmiObject` is broken on operator's PowerShell.** Throws `0x800703E6 / BadImageFormatException`. Use `Get-CimInstance Win32_Process -Filter "Name='python.exe'"` instead. Updated all redeploy command blocks to use Get-CimInstance.
+- **PUUIDs in `rewind_history.db` are stale.** The `v8HzkOaP...` puuid (operator's old) is the most frequent participant entry but is invalid for Match-V5 calls per s167. For internal queries against participants table it's fine (it's just an internal join key). The routes_pickban endpoint uses `_resolve_operator_puuid()` which picks most frequent — works because we're doing a self-join inside the DB, not calling Riot Web.
+- **DS rerank cooldown is 4s, not coach-tick aligned.** Active Match view fires `/api/ds-preview` on input fingerprint change OR every 4s, whichever is sooner. Coach tick is variable (5-15s). Live rerank takes priority over coach-emitted picks when both are present.
+- **`compute_enemy_stats(level=11, mode="sr")` returns armor=95, mr=63, max_hp=2210, bonus_hp=1610.** Old hardcoded value was target_armor=80.0 only — all other fields were defaults (0). That means historical DS picks were missing target_mr/target_max_hp/target_bonus_hp entirely. **DS calibration baseline shifts on first in-game tick after s170.** Watch the first 2-3 games' picks; if they look wildly different from coach narration, the heuristic may need tuning.
+- **`_lobbyViewRefresh` lobby field expectations are NOT all live yet.** It also expects per-member `rank`, `played_with_me_count`, `is_online` — those need Legion-side joins (Riot Web rank + rewind_history.db games + LCU `/lol-chat/v1/friends`). Agent forwards what LCU emits; Legion enrichment is follow-on.
+- **`_PB_LIVE_CACHE` is per-role-per-queue, 60s TTL.** During an active champ-select session the WR data isn't changing, so 60s is plenty. If you ever want sub-minute freshness (e.g. running multiple sessions back-to-back with new games landing in between), bump the TTL down OR add a manual refresh button.
+
+## Files touched
+
+- `tools/gamepc_lcu_agent.py` (+~200 LOC: `_LOBBY_QUEUE_NAMES`, `_slim_lobby_member`, `_derive_search_state`, `_lookup_summoner_by_id`, `_resolve_local_puuid`, `_reset_summoner_lookup_cache_for_tests`, capture_state lobby block extension)
+- `tests/phase_b_champ_select/test_lcu_lobby_members.py` (new, ~330 LOC, 31 tests)
+- `coach_integration/enemy_stats.py` (new, ~165 LOC, EnemyStats + compute_enemy_stats)
+- `coach_integration/_coach.py` (+~20 LOC: SR coach DS call uses helper)
+- `coaches/aram_coach.py` (+~15 LOC: ARAM DS call uses helper, item-aware bonus_hp override)
+- `coaches/arena_coach.py` (+~17 LOC: same pattern for Arena)
+- `coaches/brawl_coach.py` (+~15 LOC: same pattern for Brawl)
+- `tests/test_enemy_stats.py` (new, ~190 LOC, 27 tests)
+- `web/js/panels/active_match.js` (+~100 LOC: `_maybeRefreshDsPicks`, `_dsIcon`, `_dsIconFallback`, BUILD body rewrite)
+- `dashboard/routes_pickban.py` (new, ~210 LOC: `/api/champ-select/pickban-recs` endpoint)
+- `dashboard/_dispatch.py` (+2 LOC: route registration)
+- `tests/test_routes_pickban.py` (new, ~240 LOC, 17 tests)
+- `web/js/panels/champ_select.js` (+~85 LOC: `_CSV_PB_CACHE`, `_csvFetchPickBanRecs`, `_csvMergePickBanData`, `_csvRenderPickBan` extension)
+- `web/js/main.js` (+~15 LOC: `_TOP8_FAKE_RIOT_IDS` + filter on `_top8Load`)
+- `web/index.html` (cache buster ×3: 2026051122 → 2026051125)
+
+## Open items handed off
+
+- ✅ **Bridge task `task-454fde72f190` resolved** by Game-PC Claude. RC-LCU scheduled task now uses absolute python path; auto-relaunch on reboot fixed.
+- 🟡 **Lobby-phase live verification of is_self + name enrichment.** Operator was in ChampSelect at wrap. Next Lobby phase exercises this path.
+- 🟡 **Active Match view live verification.** Operator was in ChampSelect; once they enter a game, `?am=1` (or `localStorage.activeMatch=1`) auto-promotes and the per-tick rerank + icon strip light up.
+- 🟡 **P&B Recommendations live verification.** Operator was mid-CS at wrap; the new Performance row on the champ-select view's P&B panel should overlay live data within 60s of CS entry.
+- 🟡 **Item #6** — Arena augment intent endpoint discovery. Next Arena queue pop.
+- 🟡 (Unchanged from s169) ADR-007 phase 2 (postmortem pipeline), phase 3 (prose-coach deprecation).
+- 🟡 (Unchanged from s168/s169) P1b augment registry, P5 default DS build #4, P3/P4 history+replay UI.
+
+---
+
 # s169 wrap — 2026-05-11 (ADR-007 event-coach pivot — phase 1 ship, decision_detector expansion + heartbeat pill)
 
 Operator-initiated discussion → architectural pivot doc + phase-1 ship in one session. Goal: shift coaching from continuous narration ("you're low HP — back!") to event-driven decision forks ("enemy JG missing 25s — safe/punish?"). Discovered mid-session that `core/decision_detector.py` (Tier 3 #15, 2026-05-01) ALREADY implements the architecture — `DECISION_REGISTRY`, `Decision` dataclass with A/B options, daemon loop, atomic store, JSONL log, dashboard banner + record_choice. Only 4 detectors shipped though, and the log showed only smoke-test entries (matches operator's "5 games in 5 months"). Pivot is therefore extension, not new build.
