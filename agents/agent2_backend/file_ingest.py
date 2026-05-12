@@ -149,13 +149,14 @@ class FileIngest:
         # the dashboard's onHealth tag resolution agrees with onState. Run
         # the (sync, sub-100ms-local) HTTP fetch in the default executor so
         # we don't block the supervisor's event loop.
+        lcu_snapshot: dict | None = None
         if (envelope_type == "health"
                 and _PREFLIP_AVAILABLE
                 and isinstance(data, dict)):
             try:
                 loop = asyncio.get_running_loop()
-                lcu = await loop.run_in_executor(None, _lcu_summary)
-                mode_key, preflip_active = _resolve_mode_key(data, lcu)
+                lcu_snapshot = await loop.run_in_executor(None, _lcu_summary)
+                mode_key, preflip_active = _resolve_mode_key(data, lcu_snapshot)
                 if preflip_active:
                     data = _apply_preflip_mirror(data, mode_key, preflip_active)
             except Exception as e:  # noqa: BLE001
@@ -172,8 +173,21 @@ class FileIngest:
 
         # Game-start trigger (charter): health.json.mode transition
         # client → game/in_progress fires the mode-transition hook.
+        #
+        # s171.8: on Legion, LCU lockfile isn't visible (it lives on
+        # Game-PC), so the main RC writes health.mode="client" through
+        # the entire ChampSelect + GameStart window — the supervisor
+        # only sees the transition once LiveClient finally fires (well
+        # into InProgress). Warm Agent 7 misses the early-game prime
+        # window. Overlay an LCU-phase-derived mode here so the
+        # transition hook fires on ChampSelect / GameStart entries
+        # too, mirroring what core/decision_detector + game_reader
+        # already do via the relay-age fallback.
         if envelope_type == "health" and isinstance(data, dict):
-            new_mode = str(data.get("mode") or "").lower() or None
+            lcu_phase = None
+            if isinstance(lcu_snapshot, dict):
+                lcu_phase = lcu_snapshot.get("phase")
+            new_mode = self._compute_effective_mode(data, lcu_phase)
             prev_mode = self._last_mode
             if new_mode != prev_mode:
                 self._last_mode = new_mode
@@ -182,3 +196,22 @@ class FileIngest:
                         self._on_mode_transition(prev_mode, new_mode)
                     except Exception as e:               # noqa: BLE001
                         logger.warning("on_mode_transition raised: %s", e)
+
+    @staticmethod
+    def _compute_effective_mode(health: dict, lcu_phase: str | None) -> str | None:
+        """Combine health.mode + LCU phase into an effective mode tag.
+
+        Trust health.mode when it's already in-game (LiveClient is the
+        authoritative signal). Otherwise overlay LCU phase so the
+        supervisor's mode-transition hook fires for ChampSelect and
+        GameStart even when health.mode is stuck at "client" because
+        Legion can't see Game-PC's LCU lockfile.
+        """
+        health_mode = str(health.get("mode") or "").lower() or None
+        if health_mode in ("game", "in_progress"):
+            return health_mode
+        if lcu_phase == "ChampSelect":
+            return "champ_select"
+        if lcu_phase in ("GameStart", "InProgress"):
+            return "game"
+        return health_mode
