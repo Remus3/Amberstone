@@ -6,6 +6,7 @@ hardcoded ``target_armor=80.0`` in all four coaches' DS rank_for calls.
 from __future__ import annotations
 
 import unittest
+from dataclasses import FrozenInstanceError
 
 from coach_integration.enemy_stats import (
     EnemyStats,
@@ -26,7 +27,7 @@ class TestEnemyStatsBasics(unittest.TestCase):
         s = compute_enemy_stats("sr", level=11)
         self.assertIsInstance(s, EnemyStats)
         # Frozen — attempts to mutate must raise.
-        with self.assertRaises(Exception):
+        with self.assertRaises(FrozenInstanceError):
             s.armor = 999.0  # type: ignore[misc]
 
     def test_armor_scales_with_level_sr(self):
