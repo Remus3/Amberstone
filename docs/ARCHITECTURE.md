@@ -98,6 +98,7 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 |---|---|
 | `core/bridge_envelope.py` | pydantic v2 schema for the cross-Claude bridge wire envelope |
 | `core/coaching_payload.py` | pydantic v2 schemas for per-mode coaching JSON payloads |
+| `core/enemy_aware_stats.py` | enemy stats from liveclient items |
 | `core/log_setup.py` | log init [FROZEN] |
 | `core/moon_proxy.py` | vision server proxy [FROZEN] |
 | `core/prom_metrics.py` | zero-dep Counter/Gauge/Histogram |
