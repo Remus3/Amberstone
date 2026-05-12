@@ -93,22 +93,21 @@ print("✓ item_build.js")
 
 # ── 4. map_state.js ──────────────────────────────────────────────────────────
 MAP_STATE_HEADER = """\
-// Map State panel — minimap canvas, team strips, game clock, spell CDs,
-// gold diff, objective countdowns.
+// Map State panel — minimap canvas, game clock, spell CDs, gold diff,
+// objective countdowns.
 import { el, safe, fmtList, _formatRelativeAge } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { CHAMPS, SPELLS, _resolveChampId, _resolveSpell } from '../lib/items_index.js';
 
 // State slots initialised here (map_state owns the clock + spell tracking).
 state.gameClock = { startedAt: 0, anchorS: 0, raw: "" };
-state.adaptCounterMap = {};
 state.spellCds = {};
 
 """
 MAP_STATE_FOOTER = """
 export {
   MM,
-  renderMinimap, renderTeamTile, renderAllyStrip, renderEnemyStrip,
+  renderMinimap,
   _tickSpellCooldowns, _tickObjectiveCountdowns,
   _updateGameClock, _applyGamePhase,
   _snapshotSpells, _fmtMMSS, _renderMmStateLine,
@@ -119,10 +118,10 @@ mm_dom        = L(78, 91)    # const MM = {…};  line 91 = closing };
 mm_funcs      = L(1546, 2377) # _updateGameClock … _renderMmStateLine
 mm_spell_fns  = L(2644, 2675) # state.spellCds comment + _spellKey … _currentSpellCd
 
-# Remove the state.gameClock / state.adaptCounterMap / state.spellCds init
-# lines that are inline in the function blocks — they're lifted to the header.
-# Lines 1545, 1606, 2647 in original. The extractor pulls them verbatim;
-# having duplicate assignments is harmless (second wins, same value).
+# Remove the state.gameClock / state.spellCds init lines that are inline in
+# the function blocks — they're lifted to the header. Lines 1545, 1606, 2647
+# in original. The extractor pulls them verbatim; having duplicate assignments
+# is harmless (second wins, same value).
 with open(f"{PANELS_DIR}/map_state.js", "w", encoding="utf-8") as f:
     f.write(MAP_STATE_HEADER + mm_dom + "\n" + mm_funcs + "\n" + mm_spell_fns + MAP_STATE_FOOTER)
 print("✓ map_state.js")
@@ -215,7 +214,7 @@ PANEL_IMPORTS = """
 import { RN, renderRightNow, renderWhatWent, renderDigest, renderGameSense, renderStats } from './panels/right_now.js';
 import { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine } from './panels/next.js';
 import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
-import { MM, renderMinimap, renderTeamTile, renderAllyStrip, renderEnemyStrip, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS, _renderMmStateLine } from './panels/map_state.js';
+import { MM, renderMinimap, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS, _renderMmStateLine } from './panels/map_state.js';
 import { handleChampSelect, renderChampSelectPanel, renderChampSelectCoach } from './panels/champ_select.js';
 import { renderBridgePending, renderCoachDecisions, renderRecentCoachCalls } from './panels/bridge_pending.js';
 import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce, _devViewFetch, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';

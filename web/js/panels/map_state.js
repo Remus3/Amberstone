@@ -1,12 +1,11 @@
-// Map State panel — minimap canvas, team strips, game clock, spell CDs,
-// gold diff, objective countdowns.
+// Map State panel — minimap canvas, game clock, spell CDs, gold diff,
+// objective countdowns.
 import { el, safe, fmtList, _formatRelativeAge } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { CHAMPS, SPELLS, _resolveChampId, _resolveSpell } from '../lib/items_index.js';
 
 // State slots initialised here (map_state owns the clock + spell tracking).
 state.gameClock = { startedAt: 0, anchorS: 0, raw: "" };
-state.adaptCounterMap = {};
 state.spellCds = {};
 
 const MM = {
@@ -82,107 +81,11 @@ function _extractSpawnTime(text) {
   return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
 }
 
-// Track latest adaptation counters so enemy portraits can surface the
-// hard-matchup ring without needing a second fetch.
-state.adaptCounterMap = {};  // normalized-enemy-name → { wr_delta, kda_delta }
-
-function renderTeamTile(name, opts) {
-  opts = opts || {};
-  // Wrap portrait + spell stack in a vertical container so spells sit below.
-  const wrap = document.createElement("div");
-  wrap.className = "team-tile-wrap";
-  const tile = document.createElement("div");
-  tile.className = "team-tile";
-  if (opts.isSelf) tile.classList.add("is-self");
-  let title = name;
-  if (opts.counter && opts.counter.delta <= -0.10) {
-    tile.classList.add("danger");
-    title += `  · ${Math.round(opts.counter.delta * 100)}% wr vs you`;
-  } else if (opts.counter && opts.counter.delta >= 0.10) {
-    tile.classList.add("favorable");
-    title += `  · +${Math.round(opts.counter.delta * 100)}% wr vs you`;
-  }
-  tile.title = title;
-  const cid = _resolveChampId(name);
-  if (cid) {
-    const img = document.createElement("img");
-    img.src = `/data/ddragon/${CHAMPS.version}/img/champion/${cid}.png`;
-    img.alt = name;
-    img.onerror = () => { img.remove(); tile.classList.add("no-icon"); tile.textContent = (name||"?")[0]; };
-    tile.appendChild(img);
-  } else {
-    tile.classList.add("no-icon");
-    tile.textContent = (name || "?")[0];
-  }
-  // Target-priority crosshair — the coach's "focus this one" flag.
-  if (opts.isTarget) {
-    tile.classList.add("target");
-  }
-  // Dead overlay — coral ring + respawn timer inside the portrait.
-  if (typeof opts.respawnIn === "number" && opts.respawnIn > 0) {
-    tile.classList.add("dead");
-    const rt = document.createElement("span");
-    rt.className = "respawn-timer";
-    rt.textContent = opts.respawnIn;
-    rt.dataset.respawnAnchor = Date.now();
-    rt.dataset.respawnStart  = opts.respawnIn;
-    tile.appendChild(rt);
-  }
-  wrap.appendChild(tile);
-  // Spell slots: render d+f (or however many we have) as tiny badges.
-  // Each spell may be a plain name or {spell, cd_remaining_s}.
-  if (opts.spells && opts.spells.length) {
-    const spellsRow = document.createElement("div");
-    spellsRow.className = "tile-spells";
-    opts.spells.slice(0, 2).forEach(s => {
-      const sname = typeof s === "string" ? s : s.spell;
-      const spell = _resolveSpell(sname);
-      const cell = document.createElement("span");
-      cell.className = "tile-spell";
-      cell.dataset.cdKey = _spellKey(name, sname);
-      if (spell) {
-        const img = document.createElement("img");
-        img.src = `/data/ddragon/16.8.1/img/spell/${spell.img}`;
-        img.alt = spell.name;
-        img.onerror = () => { cell.classList.add("no-icon"); img.remove(); cell.textContent = spell.name[0]; };
-        cell.appendChild(img);
-        const cdLabel = document.createElement("b");
-        cdLabel.className = "cd-label";
-        cell.appendChild(cdLabel);
-        cell.title = spell.name;
-      } else {
-        cell.classList.add("no-icon");
-        cell.textContent = (sname || "?")[0];
-      }
-      spellsRow.appendChild(cell);
-    });
-    wrap.appendChild(spellsRow);
-  }
-  return wrap;
-}
-
 // Tick every second — pull current cd from state.spellCds and update
-// each cell's display. Avoids full strip re-render for just cd change.
-// Cheap no-op when tab is backgrounded.
+// each header self-spell cell's display.
 function _tickSpellCooldowns() {
   if (document.hidden) return;
-  // Also decrement enemy respawn timers in place.
-  document.querySelectorAll(".respawn-timer").forEach(rt => {
-    const anchor = +rt.dataset.respawnAnchor;
-    const start  = +rt.dataset.respawnStart;
-    const rem = Math.max(0, Math.round(start - (Date.now() - anchor) / 1000));
-    if (rem > 0) {
-      rt.textContent = rem;
-    } else {
-      // Respawned — remove timer + unflag the dead class on parent tile.
-      const tile = rt.closest(".team-tile");
-      if (tile) tile.classList.remove("dead");
-      rt.remove();
-    }
-  });
-  // Combined selector — covers ally/enemy tile spells (.tile-spell)
-  // AND the user's own header spells (.self-spell).
-  document.querySelectorAll(".tile-spell[data-cd-key], .self-spell[data-cd-key]").forEach(cell => {
+  document.querySelectorAll(".self-spell[data-cd-key]").forEach(cell => {
     const key = cell.dataset.cdKey;
     const rem = _currentSpellCd(key);
     const label = cell.querySelector(".cd-label");
@@ -202,47 +105,6 @@ function _tickSpellCooldowns() {
   });
 }
 setInterval(_tickSpellCooldowns, 1000);
-
-function renderAllyStrip(allies, selfChampion, spellsMap) {
-  const row = el("ally-strip-row");
-  const wrap = el("ally-strip");
-  if (!row || !wrap) return;
-  if (!Array.isArray(allies) || !allies.length) {
-    wrap.classList.add("hidden");
-    row.innerHTML = "";
-    return;
-  }
-  wrap.classList.remove("hidden");
-  row.innerHTML = "";
-  const selfKey = String(selfChampion || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-  allies.slice(0, 5).forEach(name => {
-    const isSelf = selfKey && String(name || "").toLowerCase().replace(/[^a-z0-9]/g, "") === selfKey;
-    const spells = spellsMap && spellsMap[name];
-    row.appendChild(renderTeamTile(name, { isSelf, spells }));
-  });
-}
-
-function renderEnemyStrip(enemies, spellsMap, respawnMap, targetPriority) {
-  const row = el("enemy-strip-row");
-  const wrap = el("enemy-strip");
-  if (!row || !wrap) return;
-  if (!Array.isArray(enemies) || !enemies.length) {
-    wrap.classList.add("hidden");
-    row.innerHTML = "";
-    return;
-  }
-  wrap.classList.remove("hidden");
-  row.innerHTML = "";
-  const priKey = String(targetPriority || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-  enemies.slice(0, 5).forEach(name => {
-    const k = String(name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-    const counter = state.adaptCounterMap[k];
-    const spells = spellsMap && spellsMap[name];
-    const respawnIn = respawnMap ? respawnMap[name] : null;
-    const isTarget = priKey && k === priKey;
-    row.appendChild(renderTeamTile(name, { counter, isEnemy: true, spells, respawnIn, isTarget }));
-  });
-}
 
 // Default spawn-cycle durations per objective (seconds) used as the
 // progress-bar denominator. Not scientific — Riot timings shift — but
@@ -748,12 +610,8 @@ function renderMinimap(p) {
     if (elm) elm.dataset.raw = val;
   }
   _tickObjectiveCountdowns();
-  // Merge spell cooldown snapshots before we (re-)render the strips so
-  // each tile can read the up-to-date state.spellCds values.
+  // Keep self-spell CDs current — feeds the header summoner-spell pill.
   _snapshotSpells(p.ally_spells);
-  _snapshotSpells(p.enemy_spells);
-  renderAllyStrip(p.ally_comp || p.team_comp, p.champion, p.ally_spells);
-  renderEnemyStrip(p.enemy_comp, p.enemy_spells, p.enemy_respawns, p.target_priority);
   _tickSpellCooldowns();
   renderGoldDiff(p);
   renderMinimapCanvases(p);
@@ -891,7 +749,7 @@ function _currentSpellCd(key) {
 
 export {
   MM,
-  renderMinimap, renderTeamTile, renderAllyStrip, renderEnemyStrip,
+  renderMinimap,
   _tickSpellCooldowns, _tickObjectiveCountdowns,
   _updateGameClock, _applyGamePhase,
   _snapshotSpells, _fmtMMSS, _renderMmStateLine,

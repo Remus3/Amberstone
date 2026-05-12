@@ -22,7 +22,7 @@ import { idempotentRender, makeSig } from './lib/idempotent_render.js';
 import { RN, renderRightNow, renderWhatWent, renderDigest, renderGameSense, renderStats } from './panels/right_now.js';
 import { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine } from './panels/next.js';
 import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
-import { MM, renderMinimap, renderTeamTile, renderAllyStrip, renderEnemyStrip, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS, _renderMmStateLine } from './panels/map_state.js';
+import { MM, renderMinimap, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS, _renderMmStateLine } from './panels/map_state.js';
 import { handleChampSelect, renderChampSelectPanel, renderChampSelectCoach, renderChampSelectView, champSelectViewEnabled } from './panels/champ_select.js';
 import { renderLoadingView, loadingViewEnabled } from './panels/loading.js';
 import { renderTeamContext } from './panels/team_context.js';
@@ -1354,16 +1354,6 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     // --- Counters section ---
     AD.counters.innerHTML = "";
     const counters = (data.counters || []).slice(0, 5);
-    // Refresh the enemy-portrait danger map so the Minimap panel can
-    // ring hard matchups coral next re-render.
-    state.adaptCounterMap = {};
-    for (const c of (data.counters || [])) {
-      const k = String(c.opponent || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-      if (k) state.adaptCounterMap[k] = { delta: c.delta, kda: c.kda_delta };
-    }
-    // Re-render enemy strip if we have the latest enemies cached.
-    const latestState = state.latest[state.mode];
-    if (latestState && latestState.enemy_comp) renderEnemyStrip(latestState.enemy_comp);
     if (!counters.length) {
       AD.counters.textContent = "(no activated matchups vs current enemies)";
     } else {

@@ -250,12 +250,6 @@ Tesseract regions in `data/vision_regions.json` use 1920×1080 defaults — need
 
 **Phase 7 — calibration**: validate engine output against `rewind_history.db` outcomes; tune model constants. Not started; blocked on having enough live DS-guided games logged.
 
-### Possible follow-ups
-
-Not committed — stack-of-ideas for sessions where audit work is exhausted.
-
-- **Per-enemy alive/dead tiles** on the home dashboard — orphan render functions exist (`renderEnemyStrip`) but the DOM was deliberately removed 2026-04-23 for minimap space + the data pipeline emits `enemy_team` while the JS reads `enemy_comp`. Reviving needs UI approval AND a server-side rename (~3 commits across 3 files). See memory `reference_orphan_team_strips`.
-
 ---
 
 ## Operational notes
