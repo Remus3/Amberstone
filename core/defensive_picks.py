@@ -7,6 +7,13 @@ the operator is being one-shot by a fed assassin. This module fills
 that gap: classify the enemy team's damage profile + burst threat,
 then recommend defensive items keyed to the threat.
 
+Phase 1 (s174, 2026-05-12) — ``recommend_defensive_items_via_ehp()``
+layers the curated catalog on top of ``agents/daemon_slayer/ehp.py``'s
+math-driven ranker. Option B from the s174 design conversation: the
+curated catalog stays the operator-vetted pool, EHP math drives order
+within it. Falls back to the heuristic ``recommend_defensive_items``
+when the DS engine is down or the champion is unknown.
+
 Threat profile inputs:
   enemy_champions: list of champion names (e.g. ['Rengar', 'Veigar',
                    'Lulu', 'Caitlyn', 'Nautilus'])
@@ -300,3 +307,115 @@ def recommend_defensive_items(threat: dict,
 
     scored.sort(key=lambda r: r["score"], reverse=True)
     return scored[:top_n]
+
+
+# Phase 1 (s174, 2026-05-12) — EHP-driven defensive picks. Option B layering:
+# curated catalog is the whitelist, math drives order. Soft dep on the DS
+# engine (HTTP :8893) — falls back to ``recommend_defensive_items`` heuristic
+# when the engine is unreachable so the dashboard never goes dark.
+
+def _threat_to_damage_shares(threat: dict) -> tuple[float, float]:
+    """Map threat profile → ``(enemy_ad_share, enemy_ap_share)`` floats in [0,1].
+
+    Normalizes ``ad_threat`` (0..10) and ``ap_threat`` (0..10) to shares
+    summing to ≤ 1.0. When both signals are strong (>=6 each) reserves
+    ~10% true-damage share — real teams have at least some true damage
+    (Talon E, Wukong R, Cho ult, item procs) that the blended_ehp shouldn't
+    over-fit to one resist for.
+    """
+    ad = float(threat.get("ad_threat") or 0)
+    ap = float(threat.get("ap_threat") or 0)
+    total = ad + ap
+    if total <= 0:
+        return 0.5, 0.5  # No info → balanced
+    ad_share = ad / total
+    ap_share = ap / total
+    if ad >= 6 and ap >= 6:
+        ad_share *= 0.9
+        ap_share *= 0.9
+    return ad_share, ap_share
+
+
+def recommend_defensive_items_via_ehp(
+    threat: dict,
+    my_champion: str | None = None,
+    my_owned_items: list | None = None,
+    my_level: int = 11,
+    my_mode: str = "SR",
+    top_n: int = 4,
+) -> list:
+    """EHP-driven defensive item recommendation (Phase 1, s174).
+
+    Layers ``_DEFENSIVE_ITEMS`` as a whitelist on top of the DS engine's
+    ``rank_items_by_ehp`` ranker. Returns the same shape as
+    ``recommend_defensive_items``: ``{item_id, name, category, reason, score}``
+    where ``score`` is the EHP gained (rounded to 1 decimal place).
+
+    Falls back to ``recommend_defensive_items`` heuristic when:
+      * Engine unreachable (``is_engine_up`` returns False)
+      * ``my_champion`` missing/empty
+      * ``threat`` malformed
+      * Engine returns no results (champion unknown to DS, etc.)
+
+    Threat → damage-share mapping via :func:`_threat_to_damage_shares`.
+    """
+    if not isinstance(threat, dict) or not my_champion:
+        return recommend_defensive_items(
+            threat, my_champion, my_owned_items, top_n=top_n,
+        )
+    # Lazy import — keeps ``defensive_picks`` import-clean for callers that
+    # don't need the EHP path (and avoids any circular-import risk with
+    # other core modules).
+    try:
+        from core.daemon_slayer_client import is_engine_up, rank_tank_for
+    except ImportError:  # pragma: no cover — defensive
+        return recommend_defensive_items(
+            threat, my_champion, my_owned_items, top_n=top_n,
+        )
+    if not is_engine_up():
+        return recommend_defensive_items(
+            threat, my_champion, my_owned_items, top_n=top_n,
+        )
+
+    ad_share, ap_share = _threat_to_damage_shares(threat)
+    owned_lower = {str(s).lower() for s in (my_owned_items or [])}
+    catalog_by_id = {item["id"]: item for item in _DEFENSIVE_ITEMS}
+    catalog_ids = [
+        iid for iid, info in catalog_by_id.items()
+        if info["name"].lower() not in owned_lower
+    ]
+    if not catalog_ids:
+        return []
+
+    ranked = rank_tank_for(
+        my_champion,
+        level=int(my_level),
+        item_ids=[],  # Baseline = naked. ``my_owned_items`` filtering happens
+                      # via the catalog whitelist above; passing the IDs would
+                      # require a name→ID reverse map this module doesn't have.
+                      # For Phase 1 the absolute delta from naked is the
+                      # comparable scoring signal across all whitelisted picks.
+        mode=str(my_mode),
+        enemy_ad_share=ad_share,
+        enemy_ap_share=ap_share,
+        only_item_ids=catalog_ids,
+        top=top_n,
+    )
+    if not ranked:
+        return recommend_defensive_items(
+            threat, my_champion, my_owned_items, top_n=top_n,
+        )
+
+    out: list[dict] = []
+    for entry in ranked:
+        info = catalog_by_id.get(entry.item_id)
+        if info is None:
+            continue  # only_item_ids guarantees membership but be defensive
+        out.append({
+            "item_id":  entry.item_id,
+            "name":     info["name"],
+            "category": info["category"],
+            "reason":   info["reason"],
+            "score":    round(entry.delta_ehp, 1),
+        })
+    return out

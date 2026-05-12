@@ -163,6 +163,106 @@ def rank_for(
     return [RankedItem.from_dict(r) for r in ranked]
 
 
+@dataclass(frozen=True)
+class TankRankedItem:
+    """Mirror of ``agents.daemon_slayer.ehp.EhpRankedItem`` — EHP scorer
+    Phase 1 sibling of ``RankedItem``."""
+    item_id: str
+    item_name: str
+    delta_ehp: float
+    gold: int
+    shares_dead_unique: bool = False
+    dead_unique_key: str = ""
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "TankRankedItem":
+        return cls(
+            item_id=str(d.get("item_id", "")),
+            item_name=str(d.get("item_name", "")),
+            delta_ehp=float(d.get("delta_ehp", 0.0)),
+            gold=int(d.get("gold", 0)),
+            shares_dead_unique=bool(d.get("shares_dead_unique", False)),
+            dead_unique_key=str(d.get("dead_unique_key", "")),
+        )
+
+
+def rank_tank_for(
+    champion: str,
+    *,
+    level: int,
+    item_ids: Iterable[str],
+    mode: str = "SR",
+    enemy_ad_share: float = 0.5,
+    enemy_ap_share: float = 0.5,
+    top: int = 8,
+    sort_by: str = "delta",
+    only_item_ids: Optional[Iterable[str]] = None,
+    augments: Optional[Iterable[str]] = None,
+    filter_shared_uniques: bool = True,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> Optional[list[TankRankedItem]]:
+    """Call POST /rank-tank and return the parsed top-N rows. None on engine failure.
+
+    Phase 1 (s174, 2026-05-12) — Tank EHP scorer. Same engine-down semantics as
+    ``rank_for`` (None = unreachable, [] = nothing to recommend).
+
+    ``enemy_ad_share`` / ``enemy_ap_share`` are floats in [0,1] summing to ≤ 1.0;
+    remainder is true-damage share. Defaults to 50/50 as a "no info" baseline.
+
+    ``only_item_ids`` is the integration point for ``core/defensive_picks.py``
+    Option B layering — pass the curated defensive item catalog as a whitelist
+    so the EHP-driven ranking happens within an operator-vetted pool.
+    """
+    body: dict = {
+        "champion": champion,
+        "level": int(level),
+        "items": [str(i) for i in item_ids if i],
+        "mode": mode,
+        "enemy_ad_share": float(enemy_ad_share),
+        "enemy_ap_share": float(enemy_ap_share),
+        "top": int(top),
+        "sort": sort_by,
+        "filter_shared_uniques": bool(filter_shared_uniques),
+    }
+    if only_item_ids is not None:
+        body["only"] = [str(i) for i in only_item_ids if i]
+    if augments:
+        body["augments"] = [str(a) for a in augments if a]
+    data = _post_json("/rank-tank", body, timeout=timeout)
+    if data is None:
+        return None
+    ranked = data.get("ranked") or []
+    return [TankRankedItem.from_dict(r) for r in ranked]
+
+
+def ehp_for(
+    champion: str,
+    *,
+    level: int,
+    item_ids: Iterable[str],
+    mode: str = "SR",
+    enemy_ad_share: float = 0.5,
+    enemy_ap_share: float = 0.5,
+    augments: Optional[Iterable[str]] = None,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> Optional[dict]:
+    """Call POST /ehp and return the raw result dict. None on failure.
+
+    Phase 1 sibling of ``dps_for``. See ``rank_tank_for`` for share semantics.
+    """
+    body: dict = {
+        "champion": champion,
+        "level": int(level),
+        "items": [str(i) for i in item_ids if i],
+        "mode": mode,
+        "enemy_ad_share": float(enemy_ad_share),
+        "enemy_ap_share": float(enemy_ap_share),
+    }
+    if augments:
+        body["augments"] = [str(a) for a in augments if a]
+    return _post_json("/ehp", body, timeout=timeout)
+
+
 def dps_for(
     champion: str,
     *,
