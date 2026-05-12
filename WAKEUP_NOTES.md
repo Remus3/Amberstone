@@ -42,7 +42,8 @@ Operator brief: "1 then any other items listed in roadmap, readme, or other file
 ## Open items carried forward
 
 - 🟡 **Active Match view step 5** — deferred per operator to ~5 hours after slot start. Sub-items: zen-lock in-game + RIGHT NOW fold + bridge-pending → dev-panel button + fleet view removal. CLAUDE.md item 18.
-- 🟡 **s173 finding #1 — frozen-file list drift** between `CLAUDE.md` (27 entries) and `tools/process-bridge-tasks.md` (14 entries in the in-prompt skill spec). The skill spec file is itself frozen, so unification needs operator approval. Logged in s173 wrap; carried forward.
+- 🟡 **s173 finding #1 follow-up — `bridge_watcher_config.json` `legion.escalate_always`** still carries an independent 15-entry copy (14 frozen + `restart_trigger.txt`). Different consumer (`bridge_watcher_actions.py` reads JSON at process start — can't parse markdown), so unification needs `data/frozen_files.json` shared source + CI sync test + edits to a frozen file. Operator deferred per "we can follow up with 2 later" (s173.2). The skill-spec half of finding #1 closed in s173.2 below.
+- 🟡 **s173.2 finding — `.claude/commands/process-bridge-tasks.md` is gitignored**. The unification edit applied this slot is live on Legion but won't ride with a fresh clone or deploy. Two paths for durability: (a) track a canonical at `tools/process-bridge-tasks-legion.md` mirroring the Peer template pattern + add it to CLAUDE.md frozen list; (b) accept local-only since the file lives alongside other local config (bridge secrets, MCP URLs). No urgency — runtime gate is correct on this machine.
 - 🟡 **Live champ-select verification** — the Hunt 5 substitution from s173 (`907543f`) and the s171.8 cache-bust unification both await a real ChampSelect pop to reconfirm `_fetchDsPreview` fires with the correct mode label and the unified asset-hash propagates `champ_select.js` updates.
 - 🟡 **dashboard.js console-pipe mirror** — same pre-emptive-remove bug at line 8109 left unfixed since the wrap noted dashboard.js is dead code (web/index.html only loads main.js). Sync deferred to land alongside any future dashboard.js removal.
 - 🟡 **BACKLOG `MatchDB` thread-safety validation** entry is stale — `core/match_db.py` was refactored 2026-04-28 (audit proposal 1.2) from RLock to WAL + per-thread connections. The FIX-021 lock referenced in BACKLOG no longer exists. Worth a one-line BACKLOG edit when next in the area.
@@ -55,6 +56,29 @@ Operator brief: "1 then any other items listed in roadmap, readme, or other file
 - After 51e0da7: snapshot_panels 11/11 — happy path unchanged for console pipe
 
 🟡 Live verification of the s151 fix awaits next real game (current liveclient empty per startup probe). The `gameTime` ref-error in `_tickObjectiveCountdowns` fires only when `_currentGameTimeS()` returns a number, which means an active game with `game_time_s` populated. Adversarial fixture verified it; live confirm is bonus.
+
+---
+
+# s173.2 wrap — 2026-05-12 (audit finding #1 — skill-spec half closed, 1 commit)
+
+**Operator-approved unification** of the Legion `/process-bridge-tasks` skill spec's SAFETY GATE inline frozen list with CLAUDE.md's authoritative list. One-line prose edit; no behavior change, no test changes.
+
+## Ship
+
+| File | Before | After |
+|---|---|---|
+| [.claude/commands/process-bridge-tasks.md:9](.claude/commands/process-bridge-tasks.md) | SAFETY GATE quoted 14 entries (`main.py`, `core/log_setup.py`, …, `app/_game_lifecycle.py`) — a stale snapshot, 14 of CLAUDE.md's 28 entries. | "any file from CLAUDE.md's *Frozen files* hard-rule list (loaded into your context as project instructions — that list is authoritative; do not rely on a snapshot embedded in this skill)" — model already has CLAUDE.md in session context, so the gate auto-syncs forever. |
+
+## Findings / scope clarifications
+
+- **The s173 audit named the wrong file.** Hunt #3 in s173 wrote `tools/process-bridge-tasks.md` (the Game-PC variant — which actually has NO SAFETY GATE at all, only the Legion `.claude/commands/process-bridge-tasks.md` variant does). Drift was real but localized to the Legion skill spec. Audit finding cleanly closes; entry path corrected.
+- **Three places ever carried the list, not two.** The full audit during this slot found: CLAUDE.md (28 canonical) · `.claude/commands/process-bridge-tasks.md` (14) · `tools/bridge_watcher_config.json` `legion.escalate_always` (15, with `restart_trigger.txt` extra). Peer's `tools/process-bridge-tasks-peer.md` had already migrated to the abstract phrasing ("any frozen file from Peer's CLAUDE.md hard-rule list") — that's the model copied here.
+- **bridge_watcher_config.json deferred per operator** ("we can follow up with 2 later"). Different consumer ergonomics: it's read by a Python process at startup, can't parse markdown, and the file itself is frozen — proper unification needs `data/frozen_files.json` shared source + sync test + edit-to-frozen approval. Carried forward in the open-items list above.
+- **`.claude/commands/` is gitignored** (`.gitignore:54` — "Local-only Claude / MCP config (may contain server URLs, tokens)"). The skill-spec edit is live on this Legion machine but not tracked; a fresh Legion clone would not inherit it. Two follow-up paths if durability matters: (a) seed a tracked canonical at `tools/process-bridge-tasks-legion.md` (mirroring the Peer pattern) and copy-on-deploy; (b) accept the local-only nature since the file lives alongside other local config. Operator decision deferred — added to carried-forward.
+
+## Verification
+
+No code changes; ruff/pytest not relevant. Skill re-load on next /process-bridge-tasks invocation will surface the new prose (the `system-reminder` skill load mid-slot already showed the updated text).
 
 ---
 
