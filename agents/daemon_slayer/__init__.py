@@ -369,6 +369,29 @@ Phase 6 step 7 (2026-05-10 — per-level DPS curve helper, ENGINE_VERSION 0.61.0
   level, returns a list of points with weighted DPS + phase + compact stat subset.
   No engine math change; no schema breakage. Unlocks coach hints like "Lulu peaks
   at lvl 6, falls off at 11". 12 new tests (35 total in test_dps).
+
+Phase 0 (2026-05-12 — dead-unique candidate filter, ENGINE_VERSION 0.62.0):
+  Added ``shares_dead_unique`` + ``dead_unique_key`` fields to ``RankedItem`` and
+  the ``filter_shared_uniques: bool = True`` parameter to ``rank_items``. Filters
+  candidates whose unique_passive_key collides with an item already in
+  current_item_ids (Trinity→ER, Sterak's→Maw, Sunfire→Hollow Radiance families).
+  6 new tests in test_rank's ``SharedUniqueFilterTests``.
+
+Phase 1 (s174, 2026-05-12 — Tank EHP scorer, ENGINE_VERSION 0.63.0):
+  New ``ehp.py`` sibling of ``dps.py`` with ``compute_ehp()`` + ``EhpResult`` +
+  ``rank_items_by_ehp()`` + ``EhpRankedItem`` + ``EhpRankResult``. Closed-form
+  League EHP math: ``physical_ehp = hp / armor_factor(armor)``, same for
+  magical_ehp via mr, ``true_ehp = hp``. ``blended_ehp`` weighted by
+  caller-supplied ``enemy_ad_share`` / ``enemy_ap_share`` (remainder is true).
+  ARAM ``aramDamageTaken`` modifier folded into all EHP components (lower
+  modifier → take less damage → higher EHP). New ``/rank-tank`` server route
+  mirrors ``/rank`` shape. ``core/defensive_picks.py`` opt-in integration via
+  ``use_ehp_ranker=True`` (Option B layer — the s171 curated catalog is passed
+  as ``only_item_ids`` whitelist; math drives ordering within the vetted pool).
+  Deliberate Phase 1 omissions deferred to Phase 1.5: shield throughput
+  (Sterak's lifeline, Doran's Shield), healing throughput, enemy pen modeling.
+  See ``NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md`` for the multi-
+  session archetype-expansion plan this kicks off.
 """
 
-ENGINE_VERSION = "0.62.0"
+ENGINE_VERSION = "0.63.0"

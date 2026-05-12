@@ -54,6 +54,7 @@ from .beam import (
 )
 from .data_loader import DataSnapshot, SnapshotNotFound
 from .dps import compute_dps
+from .ehp import compute_ehp, rank_items_by_ehp
 from .engine import build_champion
 from .rank import SORT_KEYS, rank_items
 
@@ -87,6 +88,8 @@ _INDEX_HTML = """<!doctype html>
 <tr><td>POST</td><td>/dps</td><td>auto-attack DPS over rotation scenarios</td></tr>
 <tr><td>POST</td><td>/rank</td><td>rank items by DPS delta</td></tr>
 <tr><td>POST</td><td>/beam</td><td>full-build beam search (top-N complete builds)</td></tr>
+<tr><td>POST</td><td>/ehp</td><td>caster Effective HP under an enemy damage profile (Phase 1)</td></tr>
+<tr><td>POST</td><td>/rank-tank</td><td>rank items by EHP delta (Phase 1)</td></tr>
 </table>
 
 <h2>Example</h2>
@@ -365,6 +368,85 @@ def _route_rank(body: dict) -> dict:
     return result.to_dict()
 
 
+def _route_ehp(body: dict) -> dict:
+    """POST /ehp — compute Effective HP for the caster build.
+
+    Body shape mirrors /dps but swaps ``target_armor`` / ``target_mr`` for
+    ``enemy_ad_share`` / ``enemy_ap_share`` (the operator's *exposure* to
+    physical/magical damage, not the target's resists).
+    """
+    snap = _CACHE.get()
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
+    level = _opt_int(body, "level", 1) or 1
+    items = _coerce_str_list(body.get("items"), "items")
+    mode = _opt_str(body, "mode", "SR") or "SR"
+    enemy_ad_share = _opt_float(body, "enemy_ad_share", 0.5)
+    enemy_ap_share = _opt_float(body, "enemy_ap_share", 0.5)
+    augments = _coerce_str_list(body.get("augments"), "augments")
+    try:
+        result = compute_ehp(
+            snap, champion_id=champion, level=level,
+            item_ids=items, mode=mode,
+            enemy_ad_share=enemy_ad_share,
+            enemy_ap_share=enemy_ap_share,
+            augments=augments,
+        )
+    except KeyError as e:
+        raise _ApiError(404, str(e))
+    except ValueError as e:
+        raise _ApiError(422, str(e))
+    return result.to_dict()
+
+
+def _route_rank_tank(body: dict) -> dict:
+    """POST /rank-tank — rank items by Effective HP gained.
+
+    Mirror of ``/rank`` for the EHP scorer. Same body shape with two
+    swaps: ``enemy_ad_share`` / ``enemy_ap_share`` (floats) replace
+    ``target_armor`` / ``target_mr`` (irrelevant to EHP — they describe
+    the target, not the caster's exposure).
+    """
+    snap = _CACHE.get()
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
+    level = _opt_int(body, "level", 1) or 1
+    items = _coerce_str_list(body.get("items"), "items")
+    mode = _opt_str(body, "mode", "SR") or "SR"
+    enemy_ad_share = _opt_float(body, "enemy_ad_share", 0.5)
+    enemy_ap_share = _opt_float(body, "enemy_ap_share", 0.5)
+    augments = _coerce_str_list(body.get("augments"), "augments")
+    budget = _opt_int(body, "budget", None)
+    slot_count = _opt_int(body, "slots", 6) or 6
+    top_n = _opt_int(body, "top", 20)
+    if top_n is None:
+        top_n = 20
+    sort_by = _opt_str(body, "sort", "delta") or "delta"
+    if sort_by not in SORT_KEYS:
+        raise _ApiError(400, f"sort: must be one of {list(SORT_KEYS)}, got {sort_by!r}")
+    include_components = _opt_bool(body, "include_components", False)
+    filter_shared_uniques = _opt_bool(body, "filter_shared_uniques", True)
+    only_ids: Optional[list[str]] = None
+    if "only" in body and body["only"] not in (None, ""):
+        only_ids = _coerce_str_list(body["only"], "only")
+    try:
+        result = rank_items_by_ehp(
+            snap,
+            champion_id=champion, level=level,
+            current_item_ids=items, mode=mode,
+            enemy_ad_share=enemy_ad_share,
+            enemy_ap_share=enemy_ap_share,
+            budget=budget, slot_count=slot_count, top_n=top_n,
+            include_components=include_components,
+            only_item_ids=only_ids, sort_by=sort_by,
+            augments=augments,
+            filter_shared_uniques=filter_shared_uniques,
+        )
+    except KeyError as e:
+        raise _ApiError(404, str(e))
+    except ValueError as e:
+        raise _ApiError(422, str(e))
+    return result.to_dict()
+
+
 def _route_beam(body: dict) -> dict:
     snap = _CACHE.get()
     champion = _resolve_champion_id(snap, _required_str(body, "champion"))
@@ -456,6 +538,8 @@ _POST_ROUTES = {
     "/dps": _route_dps,
     "/rank": _route_rank,
     "/beam": _route_beam,
+    "/ehp": _route_ehp,
+    "/rank-tank": _route_rank_tank,
 }
 
 # GET routes that need a body merge from query params for the same handler.

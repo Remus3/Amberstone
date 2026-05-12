@@ -260,6 +260,57 @@ class RankRouteTests(ServerLifecycleTests):
         self.assertEqual(len(body["ranked"]), 3)
 
 
+class EhpRouteTests(ServerLifecycleTests):
+    """Phase 1 (s174, 2026-05-12) — /ehp + /rank-tank route smoke tests."""
+
+    def test_post_ehp_naked(self) -> None:
+        status, body = _post_json(self.base + "/ehp", {
+            "champion": "Malphite", "level": 11,
+        })
+        self.assertEqual(status, 200)
+        self.assertEqual(body["champion_id"], "Malphite")
+        self.assertGreater(body["hp"], 0)
+        self.assertGreater(body["armor"], 0)
+        self.assertGreater(body["physical_ehp"], body["hp"])
+        # 50/50 default split — true_share is 0 when ad+ap == 1.0
+        self.assertAlmostEqual(body["enemy_ad_share"], 0.5)
+        self.assertAlmostEqual(body["enemy_ap_share"], 0.5)
+
+    def test_post_ehp_pure_ad_enemy(self) -> None:
+        status, body = _post_json(self.base + "/ehp", {
+            "champion": "Malphite", "level": 11,
+            "enemy_ad_share": 1.0, "enemy_ap_share": 0.0,
+        })
+        self.assertEqual(status, 200)
+        # blended_ehp should equal physical_ehp when 100% AD
+        self.assertAlmostEqual(body["blended_ehp"], body["physical_ehp"], places=2)
+
+    def test_post_rank_tank_top_pick_is_armor_for_ad_enemy(self) -> None:
+        status, body = _post_json(self.base + "/rank-tank", {
+            "champion": "Malphite", "level": 11,
+            "enemy_ad_share": 0.9, "enemy_ap_share": 0.1,
+            "only": ["3075", "3110", "3047", "3143"],
+            "top": 5,
+        })
+        self.assertEqual(status, 200)
+        self.assertGreater(body["baseline_ehp"], 0)
+        self.assertGreater(len(body["ranked"]), 0)
+        ranked_ids = [r["item_id"] for r in body["ranked"]]
+        self.assertTrue(set(ranked_ids).issubset(
+            {"3075", "3110", "3047", "3143"}
+        ))
+        # Top pick should have a positive delta_ehp
+        self.assertGreater(body["ranked"][0]["delta_ehp"], 0)
+
+    def test_post_rank_tank_share_validation(self) -> None:
+        status, body = _post_json(self.base + "/rank-tank", {
+            "champion": "Malphite", "level": 11,
+            "enemy_ad_share": 0.7, "enemy_ap_share": 0.7,
+        })
+        # share sum > 1.0 → engine raises ValueError → 422
+        self.assertEqual(status, 422)
+
+
 class RoutingTests(ServerLifecycleTests):
     def test_unknown_path_returns_404(self) -> None:
         status, body = _get_json(self.base + "/nope")
