@@ -42,8 +42,7 @@ Operator brief: "1 then any other items listed in roadmap, readme, or other file
 ## Open items carried forward
 
 - 🟡 **Active Match view step 5** — deferred per operator to ~5 hours after slot start. Sub-items: zen-lock in-game + RIGHT NOW fold + bridge-pending → dev-panel button + fleet view removal. CLAUDE.md item 18.
-- 🟡 **s173 finding #1 follow-up — `bridge_watcher_config.json` `legion.escalate_always`** still carries an independent 15-entry copy (14 frozen + `restart_trigger.txt`). Different consumer (`bridge_watcher_actions.py` reads JSON at process start — can't parse markdown), so unification needs `data/frozen_files.json` shared source + CI sync test + edits to a frozen file. Operator deferred per "we can follow up with 2 later" (s173.2). The skill-spec half of finding #1 closed in s173.2 below.
-- 🟡 **s173.2 finding — `.claude/commands/process-bridge-tasks.md` is gitignored**. The unification edit applied this slot is live on Legion but won't ride with a fresh clone or deploy. Two paths for durability: (a) track a canonical at `tools/process-bridge-tasks-legion.md` mirroring the Peer template pattern + add it to CLAUDE.md frozen list; (b) accept local-only since the file lives alongside other local config (bridge secrets, MCP URLs). No urgency — runtime gate is correct on this machine.
+- 🟡 **s173.2 finding — `.claude/commands/process-bridge-tasks.md` is gitignored**. The s173.2 unification edit is live on Legion but won't ride with a fresh clone or deploy. Two paths for durability: (a) track a canonical at `tools/process-bridge-tasks-legion.md` mirroring the Peer template pattern + add it to CLAUDE.md frozen list; (b) accept local-only since the file lives alongside other local config (bridge secrets, MCP URLs). No urgency — runtime gate is correct on this machine.
 - 🟡 **Live champ-select verification** — the Hunt 5 substitution from s173 (`907543f`) and the s171.8 cache-bust unification both await a real ChampSelect pop to reconfirm `_fetchDsPreview` fires with the correct mode label and the unified asset-hash propagates `champ_select.js` updates.
 - 🟡 **dashboard.js console-pipe mirror** — same pre-emptive-remove bug at line 8109 left unfixed since the wrap noted dashboard.js is dead code (web/index.html only loads main.js). Sync deferred to land alongside any future dashboard.js removal.
 - 🟡 **BACKLOG `MatchDB` thread-safety validation** entry is stale — `core/match_db.py` was refactored 2026-04-28 (audit proposal 1.2) from RLock to WAL + per-thread connections. The FIX-021 lock referenced in BACKLOG no longer exists. Worth a one-line BACKLOG edit when next in the area.
@@ -56,6 +55,36 @@ Operator brief: "1 then any other items listed in roadmap, readme, or other file
 - After 51e0da7: snapshot_panels 11/11 — happy path unchanged for console pipe
 
 🟡 Live verification of the s151 fix awaits next real game (current liveclient empty per startup probe). The `gameTime` ref-error in `_tickObjectiveCountdowns` fires only when `_currentGameTimeS()` returns a number, which means an active game with `game_time_s` populated. Adversarial fixture verified it; live confirm is bonus.
+
+---
+
+# s173.3 wrap — 2026-05-12 (audit finding #1 — config half closed + CI sync test, 1 commit)
+
+**Operator-approved unification** of the second half of s173 finding #1: `tools/bridge_watcher_config.json` `legion.escalate_always` was carrying a 15-entry list (14 frozen + `restart_trigger.txt` sentinel) that lagged CLAUDE.md's authoritative 28-entry list by 14 paths. This was a real safety gap, not pure doc drift — the watcher's `_has_frozen_intent()` gate only checks paths listed in `escalate_always`, so a bridge auto-action task like "edit `tools/bridge_post_result.py` to add logging" would have slipped past the gate.
+
+## Ships
+
+| File | Change |
+|---|---|
+| [tools/bridge_watcher_config.json](tools/bridge_watcher_config.json) | `legion.escalate_always` grown 15 → 29 entries (28 CLAUDE.md frozen + `restart_trigger.txt`). Added `_escalate_always_doc` field pointing to the sync test. **Frozen file edit** per operator approval. |
+| [tests/test_frozen_files_sync.py](tests/test_frozen_files_sync.py) (NEW) | 3 tests: (1) every CLAUDE.md frozen path appears in `escalate_always`; (2) any `escalate_always` extras must be on the `EXTRA_PROTECTED` allowlist (currently only `restart_trigger.txt`); (3) parser sanity check (≥20 paths). CLAUDE.md becomes de-facto SSoT enforced at CI time. |
+
+## Findings
+
+- **CLAUDE.md as de-facto SSoT chosen over a new `data/frozen_files.json` file.** Considered extracting the list to a shared data file with both CLAUDE.md and config.json deferring to it, but: (a) it would be one more drift surface, (b) the test already pins the existing two surfaces, (c) consumers (`bridge_watcher_actions.py` + `bridge_watcher_classify.py`) don't need to change. The simpler approach trades a richer architecture for one less file to maintain.
+- **Game-PC and Peer `escalate_always` lists left alone.** They're separate node configs with different frozen paths (Game-PC's `C:\RC-Agent\*.py` agents; Peer's `restart_trigger.txt`-only). CLAUDE.md's frozen list is Legion-centric. If/when Game-PC develops its own analog of CLAUDE.md frozen lists (e.g., from gamepc_boot.ps1 hardening), the test pattern here is reusable.
+- **`EXTRA_PROTECTED` is the test-side allowlist** for paths that should escalate but aren't source files. Currently only `restart_trigger.txt` (supervisor sentinel — operator writes are legit, bridge auto-action writes are not). If we ever add more sentinels, the test will require a one-line update there + a comment.
+
+## Verification
+
+- `py -m pytest tests/test_frozen_files_sync.py -v` → 3/3 passed
+- `py -m ruff check tests/test_frozen_files_sync.py` → clean
+- Full suite: `py -m pytest tests/` → 839 passed (was 836 — exactly +3 from this slot)
+- Parser probe: CLAUDE.md=28 frozen · config=29 escalate · symmetric diff = `{restart_trigger.txt}` only
+
+## Open items closed this slot
+
+- ✅ s173 finding #1 fully closed (skill-spec half in s173.2; config half here)
 
 ---
 
