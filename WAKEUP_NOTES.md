@@ -4,6 +4,43 @@
 
 ---
 
+# s171.8 wrap — 2026-05-12 (overnight docs+tests backfill — 5 commits)
+
+Headless `/loop`-driven execution of `HEADLESS_BRIEF_2026-05-12_DOCS_TESTS.md`. Closes the documentation and test gaps left by the s172 wrap session (the substantive view-router / cache-bust work which committed under the "s171.8" commit scope). Risk profile LOW: docs + tests only, zero behavior changes. All 5 commits landed green on the first CI run.
+
+## Ships
+
+| Commit | Theme |
+|---|---|
+| [a43981b](https://github.com/Remus3/riot-commander/commit/a43981b) | `test:` view-router state machine integration coverage. New `dashboard/view_router_state.py` Python mirror of `web/js/main.js:_viewAutoDerive` (test-only — JS remains runtime source of truth) + `tests/test_view_router_state.py` (27 tests, 17 sub-tests). Covers ChampSelect→GameStart→InProgress→EndOfGame clean cycle, dodge clearing (CS→Lobby/Matchmaking/ReadyCheck), transient null inference (s171.8 sticky-guard fix), InProgress→null sticky preservation, post-game phase clearing, ChampSelect view-gate fallback, urgent banner classifier. |
+| [8f3f504](https://github.com/Remus3/riot-commander/commit/8f3f504) | `docs:` sync ROADMAP — annotated the existing s171.8 entry with specific commit hashes (`3e3b14e` for sticky-guard, `876fd01` for unified asset-hash) + `(g)` clause noting the test-backfill ship. Added explicit "DS calibration pipeline" entry mirroring CLAUDE.md priority #14 (`rewind_history.db` staleness blocker). |
+| [4a42911](https://github.com/Remus3/riot-commander/commit/4a42911) | `docs(adr):` ADR-008 unified asset-hash for cache + auto-reload. Captures the architectural lesson from the s164→s171.7 stale-cache incident — two functions (`compute_asset_hash` + `_serve_ui_version`) each maintained their own file allow-list; lists diverged silently in s133 ESM split + s164 panel additions. Single source of truth in `compute_asset_hash` walking root + `web/{js,css}/panels/*` + `web/js/lib/*`. |
+| [0498bad](https://github.com/Remus3/riot-commander/commit/0498bad) | `chore:` prune WAKEUP_NOTES — moved s170 (LCU wiring punch list) to `docs/history_notes.md` via `scripts/wakeup_prune.py --keep 2`. |
+| (this wrap) | `docs:` WAKEUP wrap — s171.8 view-router + cache-bust unification (this entry). |
+
+## Findings
+
+- **Two-asset-hash drift is the textbook ADR-008 case.** Two functions independently maintained allow-lists for cache-busting; they agreed by coincidence in 2026-04 because everything still lived at the root, then diverged silently when s133 introduced the ESM split. The operator-visible failure (browsers serving pre-s171.7 `champ_select.js` for ~10 days) was masked by the fact that the menu route `applyView` bypassed the gate — so clicking into the new view from the menu worked, but real `phase=ChampSelect` push routed to legacy `cs-overlay`. Lesson captured in ADR-008 for future reviewers.
+- **Python mirror was the right call (Option A) over Node-driven ESM extraction (Option B).** The JS function lives inside the main.js IIFE closure; extracting it for direct unit testing would have required either moving it to a separate ESM module (invasive refactor) or building a Node test harness that imports through dynamic ESM (fragile). The Python mirror approach is decoupled — change one, change both — but the state-machine logic is small enough (~80 lines) and stable enough (sticky-guard transitions don't churn) that drift risk is acceptable. Mirror docstring flags the obligation explicitly.
+- **`derive_view(phase="EndOfGame", mode="sr", sticky="in-progress")` returns `"last-match"` not `"home"`.** Worth noting because mode lingers as "sr" through EndOfGame in real life — `game_reader` doesn't flush `mode_key` until the next coaching tick, which usually doesn't fire until LCU resolves the post-game state. Test initially expected "home" and failed; corrected to match runtime behavior.
+
+## Open items
+
+- 🟡 **Live champ-select run** (carried from s172 wrap) — next CS pop should auto-promote to `view-champ-select` (the new view) with the unified asset-hash now propagating panel-file changes. Confirm via footer hash matches `compute_asset_hash` output.
+- 🟡 **Live loading-screen UI** (carried from s172 wrap) — sticky-guard inference + dodge clear paths need a real game to validate end-to-end. The 27 unit tests prove the state machine logic; live verification proves the LCU phase timing assumptions.
+- 🟡 **Morning audit brief** — `HEADLESS_BRIEF_2026-05-12_AUDIT.md` is the daytime follow-up. 10 hunt targets, cap 6 unified pairs / 6 hours. Operator can kick off once awake.
+
+## Files touched this session
+
+- `dashboard/view_router_state.py` (new, ~150 LOC, test-only Python mirror)
+- `tests/test_view_router_state.py` (new, ~260 LOC, 27 tests + 17 sub-tests)
+- `ROADMAP.md` (+2 lines: commit hashes + DS calibration entry)
+- `docs/adr/ADR-008-unified-asset-hash.md` (new, ~110 lines)
+- `WAKEUP_NOTES.md` (s170 pruned, this wrap added)
+- `docs/history_notes.md` (s170 wrap archived)
+
+---
+
 # s172 wrap — 2026-05-12 (view-router + cache-bust unification — 6 commits; commits scoped "s171.8")
 
 Continuation of s171. Operator opened with "check the github for errors" — 10 consecutive red CI runs caused by 4 ruff errors (including a real F601 dict-key collision bug). Cleared CI, then chained into s168 audit-6 ship + Node.js 24 bump + the substantive view-router / supervisor / cache-bust work. Capped with operator's "the champ-select tab from the RC menu is what we worked on but that is not what is surfaced during champ select" diagnosis — root-caused to two divergent asset-hash file lists drifted since s164, fixed by unifying.
