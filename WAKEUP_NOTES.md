@@ -58,6 +58,44 @@ Operator brief: "1 then any other items listed in roadmap, readme, or other file
 
 ---
 
+# s173.4 wrap — 2026-05-12 (orphan team-strip retirement, 1 commit)
+
+**Operator-approved retirement** of the 2026-04-23 "Per-enemy alive/dead tiles" stack-of-ideas bullet from README. Three orphan render functions in `map_state.js` (`renderTeamTile`/`renderAllyStrip`/`renderEnemyStrip`) + ~155 lines of orphan CSS at `grid.css:198-352` + their main.js call site + `state.adaptCounterMap` writer/reader all deleted in one pass. No behavior change — strips early-returned `if (!row || !wrap) return;` on DOM IDs that didn't exist since the 2026-04-23 visual-space decision.
+
+## Ships
+
+| File | Change |
+|---|---|
+| [web/js/panels/map_state.js](web/js/panels/map_state.js) | -158 lines. Deleted `renderTeamTile` (~74 LOC), `renderAllyStrip` (~18), `renderEnemyStrip` (~21), `state.adaptCounterMap` init (2 sites), the `.respawn-timer` forEach in `_tickSpellCooldowns`, and `_snapshotSpells(p.enemy_spells)` (orphan-only feed). `_tickSpellCooldowns` selector simplified from `.tile-spell[data-cd-key], .self-spell[data-cd-key]` → `.self-spell[data-cd-key]`. Export list pared. Kept: `_snapshotSpells(p.ally_spells)` (feeds self-spell pill if data lands). |
+| [web/js/main.js](web/js/main.js) | -14 lines. Dropped 3 orphan imports + the `state.adaptCounterMap` writer block + `renderEnemyStrip` re-render call at L1366. |
+| [tools/extract_panels.py](tools/extract_panels.py) | Synced MAP_STATE_HEADER + MAP_STATE_FOOTER + PANEL_IMPORTS templates so re-running the extractor doesn't regenerate the orphans. |
+| [web/css/panels/grid.css](web/css/panels/grid.css) | -155 lines. Deleted `.team-strip*`, `.team-tile*`, `.tile-spell*`, `.team-tile-wrap`, `.respawn-timer`, `@keyframes targetPulse`, `@keyframes enemyDangerPulse`. |
+| [web/css/panels/header.css](web/css/panels/header.css) | +5 lines. Moved `@keyframes spellReady` from grid.css to here — it's used by `.self-spell.cd-ready-flash` (active code). |
+| [web/css/panels/input_activity.css](web/css/panels/input_activity.css) | -2 lines. Dropped responsive overrides for `.team-tile` + `.tile-spell` from the narrow-viewport media query. |
+| [README.md](README.md) | Removed the "### Possible follow-ups" section (header + intro + bullet — the bullet was the only entry). |
+| `~/.claude/projects/.../memory/reference_orphan_team_strips.md` | Deleted (memory of the orphan code now stale; git captures the "why"). MEMORY.md index entry removed. |
+
+## Findings
+
+- **`@keyframes spellReady` was the only cross-file dependency inside the orphan block.** Header.css's `.self-spell.cd-ready-flash` rule referenced the keyframe by name. Moved the keyframe definition to header.css to co-locate with the live consumer. Visual behavior unchanged.
+- **`web/js/dashboard.js` still carries duplicate orphan code** (renderTeamTile at L1844, renderAllyStrip at L1961, renderEnemyStrip at L1980, the writer at L3261-3264, etc.). Per s173.1 WAKEUP, dashboard.js is dead code (web/index.html only loads main.js) and will be cleaned wholesale on its eventual removal. Left untouched per that earlier decision; the working orphan in map_state.js (the live ESM module) is fully gone.
+- **`state.adaptCounterMap` is no longer in the shared `state` object.** Only writer + reader pair was the orphan path. The `for (const c of (data.counters || []))` loop in main.js that fed it is also gone — its only purpose was to populate the map for `renderTeamTile`. The text-line counter rendering at L1367+ uses `data.counters` directly, unaffected.
+
+## Verification
+
+- `py -m pytest tests/ -q --timeout=60` → 839 passed (no regression from s173.3)
+- `py -m ruff check .` → All checks passed
+- Game-PC monitor 1 capture post-edit: dashboard renders cleanly, all 5 panels intact (Next / Right Now / Map State / Adaptation / Item Build), no JS console errors visible, layout unbroken. Strips weren't visible pre-edit either (early-return on missing DOM IDs); the visual result is identical.
+
+## Open items closed this slot
+
+- ✅ README.md "Per-enemy alive/dead tiles" bullet retired
+- ✅ Orphan render functions in map_state.js eliminated
+- ✅ Server-side `enemy_team` vs JS-side `enemy_comp` field-name drift moot (reader is gone)
+- ✅ Memory `reference_orphan_team_strips` retired (now obsolete)
+
+---
+
 # s173.3 wrap — 2026-05-12 (audit finding #1 — config half closed + CI sync test, 1 commit)
 
 **Operator-approved unification** of the second half of s173 finding #1: `tools/bridge_watcher_config.json` `legion.escalate_always` was carrying a 15-entry list (14 frozen + `restart_trigger.txt` sentinel) that lagged CLAUDE.md's authoritative 28-entry list by 14 paths. This was a real safety gap, not pure doc drift — the watcher's `_has_frozen_intent()` gate only checks paths listed in `escalate_always`, so a bridge auto-action task like "edit `tools/bridge_post_result.py` to add logging" would have slipped past the gate.
