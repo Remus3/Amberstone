@@ -595,13 +595,13 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         # 1920×1080 fallback. Arena has no minimap — falls through to 404.
         if bbox_raw:
             try:
-                parts = [int(x) for x in bbox_raw.split(",")]
-                if len(parts) == 4:
-                    bbox = tuple(parts)
-                else:
-                    raise ValueError
-            except ValueError:
-                self._send_json(400, {"error": "bbox must be x1,y1,x2,y2"})
+                from agents._minimap_bbox import parse_http_override as _parse_bbox
+                bbox = _parse_bbox(bbox_raw)
+            except ValueError as ve:
+                self._send_json(
+                    400,
+                    {"error": f"bbox must be x1,y1,x2,y2 with r>l,b>t,coords in [0,10000]: {ve}"},
+                )
                 return
         else:
             from agents._minimap_bbox import resolve as _resolve_minimap_bbox
