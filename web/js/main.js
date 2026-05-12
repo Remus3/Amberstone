@@ -28,6 +28,8 @@ import { renderLoadingView, loadingViewEnabled } from './panels/loading.js';
 import { renderTeamContext } from './panels/team_context.js';
 import { renderActiveMatch, activeMatchEnabled } from './panels/active_match.js';
 import { renderBridgePending, renderCoachDecisions, renderRecentCoachCalls } from './panels/bridge_pending.js';
+// ADR-007 (s169) — heartbeat pill self-starts on import (own setInterval).
+import './panels/trigger_pill.js';
 import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce, _devViewFetch, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
 
   const WS_HOST = location.hostname || "legion-pc.local";
