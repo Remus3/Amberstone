@@ -69,6 +69,24 @@ def load_persisted(mode: str) -> Optional[tuple[int, int, int, int]]:
     return (l, t, r, b)
 
 
+def parse_http_override(raw: str) -> tuple[int, int, int, int]:
+    """Parse and validate a `?bbox=x1,y1,x2,y2` query-string value.
+
+    Enforces the same contract as `load_persisted`: r>l, b>t, and each
+    coordinate in [0, 10000].  Raises `ValueError` with a descriptive
+    message on any violation so the caller can return HTTP 400.
+    """
+    parts = [int(x) for x in raw.split(",")]  # raises ValueError on non-int
+    if len(parts) != 4:
+        raise ValueError(f"expected 4 elements, got {len(parts)}")
+    l, t, r, b = parts
+    if r <= l or b <= t:
+        raise ValueError(f"r<=l or b<=t: ({l},{t},{r},{b})")
+    if not all(0 <= c <= 10000 for c in parts):
+        raise ValueError(f"coord out of range [0, 10000]: {parts}")
+    return (l, t, r, b)
+
+
 def resolve(mode: str) -> Optional[tuple[int, int, int, int]]:
     """Resolve a minimap bbox for the given mode.
 
