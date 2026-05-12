@@ -39,10 +39,22 @@ data/spend/
 data/vision_state.json
 data/decisions_pending.json
 data/decisions_log.jsonl
+data/ds_calibration.jsonl
+data/placement_heatmap.json
+data/tft_live_data.json
+data/rewind_catchup.state.json
+
+# DB backup snapshots from one-off ops (insurance copies; not source of truth)
+data/*.db.bak
+data/*.db.bak-*
 
 # Local-only Claude / MCP config (may contain server URLs, tokens)
 .claude/
 .mcp.json
+.playwright-mcp/
+
+# Operator scratch / design docs at repo root (not part of source tree)
+/rc-tutor-decision-matrix.md
 
 # Scraped meta build pages (re-fetchable, large)
 data/meta_build/scraped/
@@ -52,6 +64,10 @@ data/rewind_cache/
 ops/tls/*.png
 ops/tls/*.jpg
 ops/tls/*.jpeg
+
+# Ad-hoc dev screenshots dropped at repo root (UI captures, before/after pairs)
+/*.jpeg
+/*.jpg
 
 # CommunityDragon / DDragon meta dumps (re-fetchable, very large)
 data/meta/cdragon_*.json
