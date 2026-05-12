@@ -717,7 +717,6 @@ setInterval(() => {
   const s = _currentGameTimeS();
   if (s != null) {
     const str = _fmtMMSS(s);
-    gameTime.textContent = str;
     if (MM.gameTime) MM.gameTime.textContent = str;
   }
 }, 1000);

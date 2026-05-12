@@ -1,0 +1,5 @@
+{
+  "mode_key": "sr",
+  "coach_source": "sr_coaching_data.json",
+  "health": {"alive": true, "pid": 9999, "mode": "sr", "has_game": true}
+}

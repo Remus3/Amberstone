@@ -1,0 +1,30 @@
+{
+  "mode_key": "sr",
+  "coach_source": "sr_coaching_data.json",
+  "health": {"alive": true, "pid": 9999, "mode": "sr", "has_game": true},
+  "coach": {
+    "mode": "sr",
+    "action": "Adversarial: out-of-range numeric values.",
+    "immediate": "Negative gold, level beyond 18, hp_pct > 100, malformed KDA.",
+    "next": "Renderer must clamp / fall back gracefully without crashing.",
+    "fight_rule": "",
+    "wave": "",
+    "objective": "",
+    "reset_item": "",
+    "risk": "",
+    "map": "",
+    "win_pct": 9999,
+    "log": [],
+    "pregame": "",
+    "champion": "Jinx",
+    "game_time_s": -42,
+    "hp_pct": 250,
+    "kda": "not/a/number",
+    "gold": -1000,
+    "level": 99,
+    "cs": -5,
+    "ally_spells": {},
+    "ally_comp": ["Lux", "Malphite", "Vi", "Sett"],
+    "enemy_comp": ["Caitlyn", "Thresh", "Garen", "Jarvan IV"]
+  }
+}
