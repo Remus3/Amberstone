@@ -6,6 +6,68 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s172 wrap — 2026-05-12 (view-router + cache-bust unification — 6 commits; commits scoped "s171.8")
+
+Continuation of s171. Operator opened with "check the github for errors" — 10 consecutive red CI runs caused by 4 ruff errors (including a real F601 dict-key collision bug). Cleared CI, then chained into s168 audit-6 ship + Node.js 24 bump + the substantive view-router / supervisor / cache-bust work. Capped with operator's "the champ-select tab from the RC menu is what we worked on but that is not what is surfaced during champ select" diagnosis — root-caused to two divergent asset-hash file lists drifted since s164, fixed by unifying.
+
+## Ships (chronological)
+
+| Commit | Theme |
+|---|---|
+| [eba274b](https://github.com/Remus3/riot-commander/commit/eba274b) | fix(ci): clear 4 ruff errors blocking s171.* — including F601 dup `local_cell` key in gamepc_lcu_agent silently overwriting defensive coercion |
+| [2e94a76](https://github.com/Remus3/riot-commander/commit/2e94a76) | FU01 audit-6 ship — `parse_http_override` helper validates `?bbox=` against r>l/b>t/coord-range; 6 new tests. Also gitignored `data/top8_list.json` + `data/decisions_heartbeat.json` (runtime-mutated). |
+| [afe25ae](https://github.com/Remus3/riot-commander/commit/afe25ae) | ci: `actions/checkout@v4→v6` + `setup-python@v5→v6` (Node.js 24, pre Sept 2026 deprecation) |
+| [3e3b14e](https://github.com/Remus3/riot-commander/commit/3e3b14e) | Loading-view sticky-guard inference (`!phase` after CS → game-start) + dodge clear (CS → Lobby/Matchmaking → null). Phase 3 mode overlay in `file_ingest._compute_effective_mode` — LCU phase fills in when Legion can't see Game-PC lockfile (warm-Agent-7 prime fires on time). |
+| [1aba0da](https://github.com/Remus3/riot-commander/commit/1aba0da) | Build-variant persistence — `_csvBuildVariantsFor` merges DS engine row + user-saved variants from `/api/loadout/list`; click saves to `rc-ingame-build-<champion>` (same key item_build.js reads). Expanded `compute_asset_hash` to walk panels/*. |
+| [876fd01](https://github.com/Remus3/riot-commander/commit/876fd01) | `/api/ui-version` now defers to `compute_asset_hash` — unified the two drifted file lists. Fixes the s164→s171.7 cache staleness where browsers served pre-s171.7 champ_select.js (opt-in gate) the entire window. |
+
+## The meta-bug worth remembering
+
+Two functions independently maintained file allow-lists for cache-busting:
+- `dashboard/_static.compute_asset_hash` — drives the `?v=...` query-string rewrite (6 files, root only)
+- `dashboard/routes_state._serve_ui_version` — drives the 4s auto-reload poller (4 files, different list, no overlap on main.js or panels)
+
+Both supposedly answered the same question — "did any served-asset change?" — but disagreed since s164 introduced `champ_select.js`. Result: operator's browser served stale code for ~10 days post-s171.7, never received the opt-in→opt-out flip, and saw legacy `cs-overlay` instead of `view-champ-select` during real champ-selects. The menu route bypassed the gate (applyView direct), masking the symptom. Now both defer to `compute_asset_hash` walking root + `web/{js,css}/panels/*` + `web/js/lib/*`.
+
+## Pending verification
+
+🟡 **Live champ-select run** — operator can't play right now. Next CS pop should auto-promote to `view-champ-select` (the one we built) instead of legacy lobby+cs-overlay. Confirm via footer hash `37ba4a3d6f` (already live; auto-reload pulled it during this session).
+
+🟡 **Live loading-screen UI** — sticky-guard inference should now show `view-loading` reliably during the CS→game gap. Both the new branch (`gameStarted=="champ-select" && !phase → "game-start"`) and the dodge-clear (`gameStarted=="champ-select" && phase in (Lobby,Matchmaking,ReadyCheck,None) → null`) need a real game to validate.
+
+🟡 **Phase 3 warm-Agent-7 prime** — `file_ingest._compute_effective_mode` should now fire `client → champ_select` and `champ_select → game` transitions early in the game lifecycle even without health.mode confirming. Watch supervisor log for the "warm session primed on champ-select transition" line.
+
+## Process side-notes
+
+- RC-Supervisor scheduled task was in `Ready` state (last run 2026-05-09) — restart_trigger.txt writes were being ignored. Kicked back to `Running` mid-session.
+- `data/top8_list.json` started carrying real operator data (`xChunjae#Mage`) — gitignored + `git rm --cached`'d.
+- 3 new tests for `_compute_effective_mode` in `test_round12.py` (9 total there now).
+
+## Open items handed off
+
+- Operator overnight: doc/test backfill brief — see `HEADLESS_BRIEF_2026-05-12_DOCS_TESTS.md`. Self-paced `/loop`. 5 tasks, capped at 4 hours / 5 commits.
+- Operator daytime: anti-drift audit brief — see `HEADLESS_BRIEF_2026-05-12_AUDIT.md`. 10 hunt targets, cap 6 unified pairs / 6 hours. Kick off only after overnight brief reports complete.
+
+## Files touched this session
+
+- `tools/gamepc_lcu_agent.py` (F601 fix)
+- `dashboard/routes_lobby_aux.py` (E401 fix x2)
+- `tests/test_enemy_stats.py` (B017 fix)
+- `agents/_minimap_bbox.py` + `agents/supervisor.py` + `tests/fu01_minimap/test_http_override.py` (FU01 audit-6)
+- `.github/workflows/ci.yml` (Node 24 bump)
+- `.gitignore` (top8_list, decisions_heartbeat)
+- `web/js/main.js` (sticky-guard inference)
+- `web/js/panels/champ_select.js` (build-variant persistence)
+- `web/css/panels/champ_select_view.css` ("saved" tag style)
+- `web/index.html` (cache buster bump — auto-rewritten by inject_asset_hash anyway)
+- `dashboard/_static.py` (panels glob in compute_asset_hash)
+- `dashboard/routes_state.py` (`/api/ui-version` → compute_asset_hash)
+- `agents/agent2_backend/file_ingest.py` (LCU phase overlay)
+- `agents/agent3_testing/suite/test_round12.py` (3 new tests)
+- `HEADLESS_BRIEF_2026-05-12_DOCS_TESTS.md` + `HEADLESS_BRIEF_2026-05-12_AUDIT.md` (new — overnight + morning briefs)
+
+---
+
 # s171 wrap — 2026-05-12 (LCU + DS + UX bug crawl — 8 commits)
 
 Operator surfaced ~15 distinct issues across two duo-queue games, mostly LCU push gaps + in-game UX. Single biggest find: `lcuCmd`/`lcuPollResult` were referenced 22 times in `main.js` but never declared at module scope (regression from s133 38ac760 Phase 3.1 ESM split) — every Find Match / Cancel / queue-change click silently threw ReferenceError. Restored as module-local helpers. 8 commits shipped end-to-end with live verification at each stage.
