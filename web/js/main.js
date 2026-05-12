@@ -5604,11 +5604,32 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
         localStorage.setItem(QUEUE_KEY, s);
       } catch (_) { /* localStorage full / disabled — ignore */ }
     }
+    function _dropQueuedEntry(entry) {
+      // Heuristic identity: timestamp + message-prefix. Survives JSON
+      // round-trip (object identity wouldn't). Collisions are unlikely
+      // and benign — at worst we drop a near-duplicate which will replay
+      // on the next pipe success.
+      const cur = readQueue();
+      const target = (entry.message || "").slice(0, 100);
+      const idx = cur.findIndex(
+        (e) => e.ts === entry.ts && (e.message || "").slice(0, 100) === target,
+      );
+      if (idx >= 0) {
+        cur.splice(idx, 1);
+        writeQueue(cur);
+      }
+    }
     function flushQueueAfterSuccess() {
       const queued = readQueue();
       if (!queued.length) return;
-      try { localStorage.removeItem(QUEUE_KEY); } catch (_) {}
-      // Best-effort drain — fire-and-forget so we don't block the tab.
+      // BACKLOG fix (2026-05-12): the original implementation called
+      // `localStorage.removeItem(QUEUE_KEY)` BEFORE issuing replay fetches.
+      // If the endpoint went down mid-flush (or any single fetch failed)
+      // the queue was already gone — fire-and-forget meant every queued
+      // entry was lost. Now the queue stays intact; each entry is dropped
+      // individually on its own confirmed 2xx response. Persistent outages
+      // leave entries queued for the next pipe-success flush (capped at
+      // QUEUE_MAX=50 so localStorage can't grow unbounded).
       queued.forEach((entry, i) => {
         setTimeout(() => {
           try {
@@ -5616,7 +5637,12 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
               method: "POST", cache: "no-store",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ ...entry, _replay: true }),
-            }).catch(() => {});
+            }).then((r) => {
+              if (r && r.ok) _dropQueuedEntry(entry);
+              // Non-2xx → leave queued; next flush will retry.
+            }).catch(() => {
+              // Network failure → leave queued; next flush will retry.
+            });
           } catch (_) {}
         }, i * 100);  // 10 Hz max replay so we don't trip the server throttle
       });
