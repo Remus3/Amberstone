@@ -747,14 +747,40 @@ def capture_state():
             # so the lock button activates.
             _my_locked = (my_pick or {}).get("championId", 0) or 0
             _my_intent = (my_pick or {}).get("championPickIntent", 0) or 0
+            # s171.3: my_completed needs to come from the actions array,
+            # not myTeam[i]. myTeam[i] doesn't have a 'completed' field
+            # in LCU's schema — it's always returning False here, which
+            # made the dashboard show "HOVERING" forever even after lock.
+            # The true lock state is sess.actions[N][M].completed for
+            # the local cell's pick action with type == "pick".
+            _my_done = False
+            for group in sess.get("actions", []) or []:
+                if not isinstance(group, list): continue
+                for action in group:
+                    if not isinstance(action, dict): continue
+                    if action.get("type") != "pick": continue
+                    try: actor = int(action.get("actorCellId", -2))
+                    except (TypeError, ValueError): continue
+                    try: local = int(local_cell) if local_cell is not None else -1
+                    except (TypeError, ValueError): local = -1
+                    if actor != local: continue
+                    if action.get("completed"):
+                        _my_done = True
+                        break
+                if _my_done: break
             state["champ_select"] = {
                 "queue_id":     queue_id,
                 "is_aram":      queue_id in (450, 920),
                 "is_brawl":     queue_id == 480,
+                # s171.3: local_cell exposed so the dashboard's role
+                # resolver (_csvResolveRole) can find my_team[i] by
+                # cellId == local_cell to read assignedPosition. Without
+                # this the role stays "—" and the P&B fetch never fires.
+                "local_cell":   local_cell if isinstance(local_cell, int) else -1,
                 "my_champion":  _my_locked or _my_intent,
                 "my_champion_locked":  _my_locked,
                 "my_champion_intent":  _my_intent,
-                "my_completed": (my_pick or {}).get("completed", False),
+                "my_completed": _my_done,
                 "my_summoners": [
                     (my_pick or {}).get("spell1Id", 0),
                     (my_pick or {}).get("spell2Id", 0),
