@@ -33,6 +33,8 @@ const _DS_RERANK = {
   lastFired: 0,
   lastRows:  null,
   lastTargetStats: null,   // s171.4: live target_armor/_mr/_hp from /api/ds-preview
+  lastThreat:  null,       // s171.6: enemy team threat profile
+  lastDefensive: null,     // s171.6: ranked defensive picks
   inFlight:  false,
 };
 const _DS_RERANK_COOLDOWN_MS = 4000;
@@ -71,6 +73,8 @@ function _maybeRefreshDsPicks(champion, mode, level, items) {
       if (j && j.ok && Array.isArray(j.ranked)) {
         _DS_RERANK.lastRows = j.ranked;
         _DS_RERANK.lastTargetStats = j.target_stats || null;
+        _DS_RERANK.lastThreat = j.threat || null;
+        _DS_RERANK.lastDefensive = Array.isArray(j.defensive) ? j.defensive : null;
       }
     })
     .catch(() => { _DS_RERANK.inFlight = false; });
@@ -226,6 +230,31 @@ export function renderActiveMatch(payload, ctx) {
     }
     if (owned.length) {
       build.appendChild(_line("OWNED", owned.join(" · ")));
+    }
+    // s171.6: defensive-pick row. Renders only when enemy team's
+    // threat score crosses the "worth recommending defense" line:
+    //   burst_threat >= 5  (assassin / mage burst)
+    //   OR ad_threat >= 7  (AD-heavy team)
+    //   OR ap_threat >= 7  (AP-heavy team)
+    // Shows up to 3 defensive picks with their reasons, plus the
+    // threat summary so operator sees the "why".
+    const threat = _DS_RERANK.lastThreat;
+    const defensive = _DS_RERANK.lastDefensive;
+    if (threat && Array.isArray(defensive) && defensive.length) {
+      const bt = +threat.burst_threat || 0;
+      const at = +threat.ad_threat || 0;
+      const pt = +threat.ap_threat || 0;
+      const surface = (bt >= 5) || (at >= 7) || (pt >= 7);
+      if (surface) {
+        const defLabel = `DEFENSE · ${threat.summary || "threat detected"}`;
+        build.appendChild(_line(defLabel, ""));
+        const defStrip = document.createElement("div");
+        defStrip.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;";
+        defensive.slice(0, 3).forEach((r) => {
+          defStrip.appendChild(_defIcon(r, ownedSet));
+        });
+        build.appendChild(defStrip);
+      }
     }
     if (!picks.length && !owned.length) {
       // Empty pane shouldn't be blank — surface that we're waiting.
@@ -529,6 +558,48 @@ function _dsIcon(r, ownedSet) {
   dlt.textContent = `+${(delta || 0).toFixed(0)}`;
   dlt.style.cssText = "font-size:11px;font-weight:600;color:var(--accent, #6cf);margin-top:2px;";
   wrap.appendChild(dlt);
+  return wrap;
+}
+
+// s171.6: defensive pick icon — like _dsIcon but the caption is the
+// item's category (lifeline / armor / mr / sustain / tenacity) +
+// reason tooltip instead of a +Ndps delta. Amber border so they
+// visually distinguish from the offensive DS strip.
+function _defIcon(rec, ownedSet) {
+  const wrap = document.createElement("div");
+  wrap.style.cssText = "position:relative;width:62px;text-align:center;";
+  const name = rec.name || "?";
+  const id = rec.item_id || 0;
+  const owned = ownedSet && ownedSet.has(String(name).toLowerCase());
+  if (id) {
+    const ver = (ITEMS && ITEMS.version) || "latest";
+    const img = document.createElement("img");
+    img.src = `/data/ddragon/${ver}/img/item/${id}.png`;
+    img.alt = name;
+    img.title = `${name} — ${rec.reason || rec.category || ""}`;
+    img.style.cssText = "width:44px;height:44px;border-radius:6px;border:2px solid #f59e0b;display:block;margin:0 auto;";
+    img.onerror = () => {
+      if (!img.dataset.cdnRetry) {
+        img.dataset.cdnRetry = "1";
+        img.src = `https://ddragon.leagueoflegends.com/cdn/${ver}/img/item/${id}.png`;
+      } else {
+        img.replaceWith(_dsIconFallback(name, id, 0));
+      }
+    };
+    wrap.appendChild(img);
+  } else {
+    wrap.appendChild(_dsIconFallback(name, id, 0));
+  }
+  if (owned) {
+    const ow = document.createElement("div");
+    ow.textContent = "OWNED";
+    ow.style.cssText = "position:absolute;left:0;right:0;top:14px;text-align:center;font-size:9px;font-weight:700;letter-spacing:0.08em;background:rgba(0,0,0,0.7);color:#5dd47e;padding:2px 0;pointer-events:none;";
+    wrap.appendChild(ow);
+  }
+  const cap = document.createElement("div");
+  cap.textContent = rec.category || "";
+  cap.style.cssText = "font-size:10px;font-weight:600;color:#f59e0b;margin-top:2px;text-transform:uppercase;letter-spacing:0.4px;";
+  wrap.appendChild(cap);
   return wrap;
 }
 
