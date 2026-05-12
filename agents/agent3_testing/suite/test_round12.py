@@ -149,3 +149,39 @@ def test_mode_transition_callback_exception_swallowed(tmp_path: Path) -> None:
         await ingest._tick()         # callback raises — must be caught
     asyncio.run(drive())
     # If we reach here without propagating, the swallow worked.
+
+
+# ── s171.8: LCU-phase overlay for effective mode ────────────────────
+
+def test_effective_mode_trusts_health_when_in_game() -> None:
+    """LiveClient-confirmed in-game (health.mode='game') wins over LCU.
+
+    Once LiveClient :2999 fires, that's authoritative — don't downgrade
+    to LCU-derived "champ_select" if LCU briefly disagrees during the
+    GameStart → InProgress transition.
+    """
+    from agents.agent2_backend.file_ingest import FileIngest
+    assert FileIngest._compute_effective_mode({"mode": "game"}, "ChampSelect") == "game"
+    assert FileIngest._compute_effective_mode({"mode": "in_progress"}, "GameStart") == "in_progress"
+
+
+def test_effective_mode_lcu_overlay_when_health_client() -> None:
+    """Legion can't see Game-PC's LCU lockfile → health.mode='client'
+    through the entire CS+loading window. LCU phase fills the gap so
+    the supervisor's warm-Agent-7 prime hook fires on time."""
+    from agents.agent2_backend.file_ingest import FileIngest
+    fn = FileIngest._compute_effective_mode
+    assert fn({"mode": "client"}, "ChampSelect") == "champ_select"
+    assert fn({"mode": "client"}, "GameStart") == "game"
+    assert fn({"mode": "client"}, "InProgress") == "game"
+
+
+def test_effective_mode_falls_back_to_health_when_lcu_unknown() -> None:
+    """Without LCU signal (None / Lobby / EndOfGame), use raw health."""
+    from agents.agent2_backend.file_ingest import FileIngest
+    fn = FileIngest._compute_effective_mode
+    assert fn({"mode": "client"}, None) == "client"
+    assert fn({"mode": "client"}, "Lobby") == "client"
+    assert fn({"mode": "client"}, "EndOfGame") == "client"
+    # Empty health.mode → None (matches existing transition behavior).
+    assert fn({}, None) is None
