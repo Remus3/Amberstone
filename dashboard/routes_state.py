@@ -396,13 +396,66 @@ def _serve_ds_preview_post(h, payload) -> None:
         result = [{"item_id": r.item_id, "item_name": r.item_name,
                    "delta_dps": round(r.delta_dps, 1), "gold": r.gold}
                   for r in rows]
+        # s171.6: defensive-pick ranker. Computes the enemy team's
+        # threat profile (AD/AP/burst/tank) and recommends defensive
+        # items keyed to the threat. Cheap — pure stat math, no
+        # network. Skipped when no enemy champions resolvable.
+        threat = None
+        defensive = []
+        try:
+            from core.defensive_picks import (
+                compute_threat_profile, recommend_defensive_items,
+            )
+            enemy_names = _resolve_enemy_champions(payload)
+            if enemy_names:
+                threat = compute_threat_profile(enemy_names, enemy_items=None)
+                defensive = recommend_defensive_items(
+                    threat, my_champion=champion,
+                    my_owned_items=items, top_n=4,
+                )
+        except Exception as exc:
+            log.debug("ds-preview defensive resolve: %s", exc)
         h._send(200, json.dumps({
             "ok": True, "ranked": result,
-            "target_stats": tgt,  # so caller can surface "vs 105 armor avg" UX
+            "target_stats": tgt,
+            "threat":       threat,
+            "defensive":    defensive,
         }).encode(), "application/json")
     except Exception as exc:
         log.warning("ds-preview: %s", exc)
         h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+
+
+def _resolve_enemy_champions(payload: dict) -> list:
+    """Resolve enemy champion names for the defensive-pick ranker.
+    Priority:
+      1. payload["enemies"] — explicit list of names (champ-select
+         what-if exploration).
+      2. live liveclient relay — pull non-active-team champion names
+         from data.allPlayers[i].championName.
+      3. empty list (skip the defensive ranker).
+    """
+    explicit = payload.get("enemies") or payload.get("enemy_champions")
+    if isinstance(explicit, list) and explicit:
+        return [str(x) for x in explicit if x]
+    try:
+        from core.enemy_aware_stats import active_player_team
+        from core.liveclient_cache import get as _lc_get
+        snap = _lc_get()
+        if snap.data is None or snap.age_s >= 8.0:
+            return []
+        my_team = active_player_team(snap.data)
+        if not my_team:
+            return []
+        players = (snap.data or {}).get("allPlayers") or []
+        return [str(p.get("championName") or "")
+                for p in players
+                if isinstance(p, dict)
+                and p.get("team") != my_team
+                and p.get("championName")]
+    except Exception as exc:
+        log.debug("_resolve_enemy_champions: %s", exc)
+        return []
 
 
 def _resolve_ds_target_stats(payload: dict, mode: str, level: int) -> dict:
