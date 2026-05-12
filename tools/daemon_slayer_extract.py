@@ -775,13 +775,26 @@ def fetch_arena_augments() -> dict:
 
 # ─── Emission ────────────────────────────────────────────────────────────────
 
-# Hard-coded aliases for champions whose DDragon id doesn't match their lolmath
-# camelCase key after case+alphanum normalization.
-_LOLMATH_TO_DDRAGON_ALIAS = {
-    "wukong": "MonkeyKing",
-    "nunuWillump": "Nunu",
-    "renataGlasc": "Renata",
-}
+_CANONICAL_ALIAS_PATH = (
+    Path(__file__).parent.parent / "web" / "data" / "champion_aliases.json"
+)
+
+
+def _load_champion_aliases() -> dict[str, str]:
+    """Load the canonical display-name → DDragon-id alias map.
+
+    Source of truth at ``web/data/champion_aliases.json``; the same file is
+    fetched at runtime by ``web/js/lib/items_index.js`` and
+    ``web/js/dashboard.js``. Keys are lowercase-alphanumeric of the source
+    name (matching the JS ``replace(/[^a-z0-9]/g, "")`` normalization).
+    """
+    return json.loads(_CANONICAL_ALIAS_PATH.read_text("utf-8"))
+
+
+# Aliases for champions whose DDragon id doesn't match their lolmath
+# camelCase key after case+alphanum normalization. Loaded from the canonical
+# JSON file shared with the JS resolvers.
+_LOLMATH_TO_DDRAGON_ALIAS = _load_champion_aliases()
 
 
 def _championkey_to_ddragon_id(key: str, ddragon_ids: set[str]) -> str | None:
@@ -789,8 +802,12 @@ def _championkey_to_ddragon_id(key: str, ddragon_ids: set[str]) -> str | None:
     DDragon uses PascalCase ids (``Aatrox``, ``Leblanc``, ``DrMundo``)."""
     if not key:
         return None
-    if key in _LOLMATH_TO_DDRAGON_ALIAS:
-        cand = _LOLMATH_TO_DDRAGON_ALIAS[key]
+    # Canonical alias keys are lowercase-alphanumeric (matches the JS
+    # resolver); normalize the lolmath camelCase key the same way before
+    # lookup so "nunuWillump" → "nunuwillump" finds the canonical entry.
+    norm_key = re.sub(r"[^a-z0-9]", "", key.lower())
+    if norm_key in _LOLMATH_TO_DDRAGON_ALIAS:
+        cand = _LOLMATH_TO_DDRAGON_ALIAS[norm_key]
         return cand if cand in ddragon_ids else None
     lc = key.lower()
     for did in ddragon_ids:
