@@ -45,6 +45,13 @@ MODE_TO_FILE = {
     "sr":     "coaching_data.json",
 }
 
+# Deduped list of artifact paths the modes resolve to (preserves
+# insertion order via dict.fromkeys). Callers that want to scan
+# "whichever coaching JSON is freshest" — e.g. the supervisor's
+# post-game summary picker — should use this instead of hardcoding
+# their own list. Source-of-truth pattern per ADR-008.
+MODE_FILES: tuple[str, ...] = tuple(dict.fromkeys(MODE_TO_FILE.values()))
+
 
 def _preflip_mode_from_lcu(lcu_snapshot: dict | None) -> str | None:
     """Derive a dashboard mode_key from LCU lobby/champ-select queue_id.
