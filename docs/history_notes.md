@@ -6,6 +6,56 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s168 wrap — 2026-05-11 (FU01 minimap-locate + LCU mastery endpoint live-fix + Game-PC redeploy)
+
+Continuation per `NEXT_SESSION_PLAN_2026-05-10.md`. After s167 closed P1a/P2/P7/P8/P9, the remaining 🟡 backend items were either UI-blocked, data-blocked (sparse rewind), or operator-clarification-blocked (P6 Claude Desktop key). **FU01 minimap-locate** was the highest-leverage open item. Operator opened League mid-session, unblocking the s167 LCU mastery Game-PC redeploy — which surfaced a stale-endpoint bug, fixed and re-deployed in the same session.
+
+## Ships
+
+- **FU01 — minimap-locate 3-path resolver.** New module `agents/_minimap_bbox.py`; `agents/supervisor.py:597` rewired. Resolution order: HTTP `?bbox=` override (untouched) → `data/vision_regions.json` `_minimap_<mode>` key → hardcoded 1920×1080 fallback. The persisted key uses `_*` prefix so `core/vision_tesseract._regions()`'s metadata filter ignores it — no collision with OCR region namespace.
+- **LCU mastery endpoint fix + Game-PC redeploy.** The s167 mastery hook called `/lol-collections/v1/inventories/<sid>/champion-mastery` — a path that returns HTTP 404 on current LCU builds (Riot migrated the API namespace). First live LCU contact during the Game-PC redeploy revealed this. Correct endpoint discovered via path-enumeration probe: `/lol-champion-mastery/v1/local-player/champion-mastery` (no sid in path; returns local player's mastery directly). Patched in `tools/gamepc_lcu_agent.py:241-251` + 6 mock-path occurrences in `tests/phase_b_champ_select/test_lcu_mastery.py` updated; full 10/10 mastery tests + 694/694 project sweep still green. Game-PC's `C:\RC-Agent\gamepc_lcu_agent.py` redeployed to fixed version via one-shot Legion `:8765` `http.server` + Game-PC `Invoke-WebRequest` (SMB blocked, no peer creds cached).
+- **LCU mastery state-shape flatten fix.** First Lobby-phase live probe (after the endpoint patch) revealed the s167 code-path placed mastery at `state["lcu"]["lcu"]["mastery"]` — double-nested — because Legion's bridge handler already wraps the entire agent state as `legion_state["lcu"]`, and the agent was additionally doing `state.setdefault("lcu", {})["mastery"] = mastery`. Flattened to write at `state["mastery"]` and `state["summoner_id"]` at the top level of the agent's state, so Legion's wrap produces the intended `state["lcu"]["mastery"]` path. Tests updated (assertion paths + `idle` test now checks `state["mastery"]` is absent rather than `state["lcu"]`). Live-verified: `phase=Lobby` immediately produced `state["lcu"]["mastery"]` with 40 entries — top 5 ADCs (Jinx 33507 pts, Kai'Sa, Vayne, Caitlyn, Tristana) matching operator's `SamplePlayer#Vayne` main. Game-PC redeployed for a 3rd time this session via the same `http.server` mechanism.
+
+## Tests
+
+- `tests/fu01_minimap/test_minimap_bbox.py` — 19 tests: no-file → fallback; partial entries; wrong arity (3-tuple); wrong type (string); non-numeric (`"twenty"`); degenerate bbox (`l>=r`, `t>=b`); corrupted JSON; top-level non-object; case-insensitive mode lookup; `load_persisted` direct API; file-read exception swallowed via `mock.patch.object(Path, "read_text", side_effect=OSError)`.
+- `tests/phase_b_champ_select/test_lcu_mastery.py` — 10 mock-path-updated tests still green after the endpoint patch (`/lol-collections/v1/inventories/<sid>/...` → `/lol-champion-mastery/v1/local-player/...`).
+
+## Test posture at wrap
+
+- DS suite: **949/949** (unchanged from s167).
+- Project sweep: **694/694** (+19 fu01; +0 net from mastery patch — same 10 tests pass against the new path). Note: s167 wrap reported "601/601 (+10 LCU mastery)" — the 694 reflects the full `tests/` tree including snapshot/fixture suites that aren't separately tallied in session notes.
+
+## Decisions / non-obvious notes for next-session-you
+
+- **Behavior is byte-identical until calibration entries are added.** No `_minimap_<mode>` keys exist in `data/vision_regions.json` today — `resolve()` falls back to the same hardcoded bbox the inline dict had. Live `curl https://127.0.0.1:8888/api/minimap-crop?mode=sr` against the still-running pre-FU01 phase3 supervisor returns 200 with the cached vision frame (verified at session start). After phase3 restart, response will be identical.
+- **Phase 3 supervisor was NOT restarted.** `agents/supervisor.py` is the `RC-Phase3-Supervisor` scheduled task (pid 16436 at session start; listens :8890/:8891 — separate from main RC's :8888). It doesn't watch `restart_trigger.txt`. To force pick-up: `taskkill /F /PID <pid>` + `schtasks /Run /TN "RC-Phase3-Supervisor"`. Skipped here because the change is additive — no observable difference until calibration is written. Next natural reboot / supervisor cycle picks it up.
+- **Calibration recipe** (for the operator when needed): edit `data/vision_regions.json`, add `"_minimap_sr": [l, t, r, b]` (likewise for `aram`/`brawl`), then `curl -k -o /tmp/m.png "https://127.0.0.1:8888/api/minimap-crop?mode=sr"` and tweak until centered. Bbox is validated for shape (4 ints, `r>l`, `b>t`) — bad entries silently fall back to hardcoded.
+- **Pending Desktop/Tickets/ paperwork.** Original ticket file `RC_TICKET_FU01_minimap_locate.md` no longer exists on disk (Desktop/Tickets/ is gone — was the "transfer plan" pack reviewed in s144). Spec inferred from ROADMAP + `docs/history_notes.md:509-513`.
+- **LCU endpoint discovery method.** When an LCU path returns 404, enumerate candidates against the live client. The probe pattern used here: read the lockfile (`C:\Riot Games\League of Legends\lockfile`) → build basic auth header (`riot:<pw>`) → try a list of plausible paths and print HTTP code per path. Faster than reading Riot docs (which lag behind client builds). Both `/lol-champion-mastery/v1/local-player/champion-mastery` and `/lol-champion-mastery/v1/{puuid}/champion-mastery` work; chose `local-player` since it doesn't require a path-param resolve.
+- **Game-PC deploy mechanism — one-shot http.server.** SMB pull (`\\192.168.8.230\C$\...`) failed (no peer creds cached on Game-PC). Workaround: `cd <staging-dir> && py -m http.server 8765` on Legion (run_in_background=true) + `Invoke-WebRequest` on Game-PC + `taskkill` the listener afterward. Routine pattern; document in OPERATIONS.md if it recurs. Backup of pre-fix file at `C:\RC-Agent\gamepc_lcu_agent.py.bak-s168-pre-endpoint-fix`; s149 vintage at `C:\RC-Agent\gamepc_lcu_agent.py.bak-s149-2026-05-11`.
+- **RC-LCU scheduled task is broken.** `(Get-ScheduledTask -TaskName 'RC-LCU').Actions` uses `Execute: py` (the Windows Python launcher) which fails ERROR_FILE_NOT_FOUND under scheduled-task context (memory `project_rc_patchrefresh_fixed.md` predates this discovery for RC-PatchRefresh; same root cause). Live workaround: `Start-Process -FilePath 'C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64\python.exe' -ArgumentList 'C:\RC-Agent\gamepc_lcu_agent.py' -WindowStyle Hidden`. Fix the task action to use the absolute path when the operator next reboots; otherwise auto-relaunch on reboot will silently fail.
+
+## Open items handed off (unchanged from s167 plus FU01)
+
+- 🟡 **Triage uncommitted working tree** (operator-flagged at end of s168). After `git commit 0c876ef + 5715004` shipped this session, the working tree still carries pre-session changes I deliberately did NOT bundle. Next-session-you: ask the operator whether each set is **commit / retire / in-progress** so the tree doesn't accumulate orphans.
+  - **Audit-5 source code** (uncommitted modifications): `agents/supervisor.py` (h01 `_warm_agent7_alive` init at line 1540 + h02 null-guard in `_warm_agent7_handle` at line 1809) + `agents/agent7_context/warm_session.py` (m01 `stats()` lock-guard). Small, additive, thread-safety + warm-session-init fixes. Apparently applied by an audit sub-agent at some point; never landed.
+  - **Audit-5 proposal artifacts** (untracked): `agents/agent6_auditor/proposals/20260506-070234-fifth-audit/P-audit5-h01-warm-agent7-alive-init.result.md` + `…-h02-warm-agent7-actually-warm.result.md` + `…-m01-warm-stats-lock.result.md`. These document the audit's findings; likely belong with the source-code changes above.
+  - **Runtime state churn** (uncommitted, normal): `data/ds_calibration.jsonl`, `data/placement_heatmap.json`, `data/ratings/last_{arena,sr,tft}.json`, `data/tft_live_data.json`. These mutate every game; not session-authored. Probably should be `.gitignore`'d if not already (verify).
+  - **DB backups + script state** (untracked): `data/match_history.db.bak-2026-05-09-pre-darkstar-purge`, `data/match_history.db.bak-2026-05-10-prune-synthetic`, `data/rewind_history.db.bak-pre-catchup-2026-05-10`, `data/rewind_catchup.state.json`. The `.bak`s are insurance for s167's DB ops; `rewind_catchup.state.json` is the resumable sentinel for the catchup script. Almost certainly should be `.gitignore`'d.
+  - **Screenshots** (untracked): `dashboard-full.jpeg`, `ds-pill-{after,live}.jpeg`, `item-build-full.jpeg`, `last-match-arena-ds.jpeg`. Ad-hoc UI captures. Move to `docs/_archive/screenshots/` or delete?
+  - **Exploration doc** (untracked): `rc-tutor-decision-matrix.md` — looks like operator's design notes. Operator should decide whether to commit, move to `docs/`, or retire.
+  - **MCP cache** (untracked): `.playwright-mcp/` — ephemeral; `.gitignore` it.
+- 🟡 RC-LCU scheduled-task action path: change `Execute: py` → absolute python path (matches the running command-line of other Game-PC python agents).
+- 🟡 Phase 3 supervisor restart to pick up FU01 live.
+- 🟡 P6 (Sonnet/Haiku key routing) — needs operator clarification.
+- 🟡 P1b augment registry — architectural; needs `as_pct` channel design pass.
+- 🟡 P5 Default DS build #4 — waits on richer rewind data.
+- 🟡 P3/P4 (History season-WR + Replay tab) — UI work, deferred per s166 directive.
+- 🟡 UI Phase 3 steps 5–14 — UI work, deferred per s166 directive.
+
+---
+
 # s167 wrap — 2026-05-11 (backend sweep per NEXT_SESSION_PLAN_2026-05-10.md)
 
 UI paused per s166 operator directive. Five backend ships in one commit (`1522b90`). Doc sync follow-up (`be86469`).
