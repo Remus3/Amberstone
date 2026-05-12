@@ -9,7 +9,7 @@ UI work is **paused** until further notice. This session focuses on backend, DB,
 
 ## Priority 1 — Daemon Slayer headless testing
 
-The DS engine is at `ENGINE_VERSION 0.60.0`, 547 items, 929 tests. Operator wants to push it further before any new UI builds on top.
+The DS engine is at `ENGINE_VERSION 0.61.0`, 547 items, 929 tests. Operator wants to push it further before any new UI builds on top.
 
 ### What's already covered (don't redo)
 
