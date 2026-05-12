@@ -356,8 +356,17 @@ _CE_DROPPED: int   = 0
 
 def _serve_ds_preview_post(h, payload) -> None:
     """POST {champion, mode, level?, items?} → DS rank_for() top picks.
-    Used by the champ-select overlay to show DS-computed build recommendations
-    with item icons before the game starts."""
+    Used by the champ-select overlay + in-game active-match panel.
+
+    s171.4 (2026-05-12): in-game requests now pull live enemy itemization
+    from the liveclient relay and compute target_armor / target_mr /
+    target_max_hp from those items. Previously the DS rank used a fixed
+    armor=0 / mr=0 / hp=0 baseline, so picks didn't shift when enemies
+    bought defensive items (operator complaint: "DS dps increase items
+    were always the same"). The fallback is the s170 mode/level scaled
+    curve from compute_enemy_stats — used for champ-select (no game
+    yet) and when the relay is unreachable.
+    """
     try:
         from core.daemon_slayer_client import rank_for
         champion = str(payload.get("champion") or "").strip()
@@ -368,8 +377,18 @@ def _serve_ds_preview_post(h, payload) -> None:
         level = int(payload.get("level") or 6)
         level = max(1, min(18, level))
         items = [str(i) for i in (payload.get("items") or []) if i]
+
+        # s171.4: derive target stats from live enemy items when possible.
+        # Fallback to mode/level curve. Override path: caller passed
+        # explicit target_* fields in body (used by champ-select preview).
+        tgt = _resolve_ds_target_stats(payload, mode=mode, level=level)
+
         rows = rank_for(champion=champion, level=level, item_ids=items,
-                        mode=mode, top=8, sort_by="delta", timeout=2.0)
+                        mode=mode, top=8, sort_by="delta", timeout=2.0,
+                        target_armor=tgt["target_armor"],
+                        target_mr=tgt["target_mr"],
+                        target_max_hp=tgt["target_max_hp"],
+                        target_bonus_hp=tgt["target_bonus_hp"])
         if rows is None:
             h._send(503, json.dumps({"ok": False, "error": "DS engine unavailable"}).encode(),
                     "application/json")
@@ -377,10 +396,85 @@ def _serve_ds_preview_post(h, payload) -> None:
         result = [{"item_id": r.item_id, "item_name": r.item_name,
                    "delta_dps": round(r.delta_dps, 1), "gold": r.gold}
                   for r in rows]
-        h._send(200, json.dumps({"ok": True, "ranked": result}).encode(), "application/json")
+        h._send(200, json.dumps({
+            "ok": True, "ranked": result,
+            "target_stats": tgt,  # so caller can surface "vs 105 armor avg" UX
+        }).encode(), "application/json")
     except Exception as exc:
         log.warning("ds-preview: %s", exc)
         h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
+
+
+def _resolve_ds_target_stats(payload: dict, mode: str, level: int) -> dict:
+    """Pick the right target_armor / target_mr / target_max_hp source.
+
+    Priority:
+      1. Explicit ``target_armor`` / ``target_mr`` / etc. in the request
+         body — caller has pre-computed (e.g. champ-select preview with
+         a synthetic profile).
+      2. Live enemy items from the liveclient relay (in-game).
+      3. ``compute_enemy_stats(mode, level)`` mode/level scaled curve
+         (s170) — used when no live data + no explicit overrides.
+
+    Returns a dict with the 4 target_* float fields plus diagnostic
+    ``source`` / ``n_enemies`` / ``aggregator`` keys for the caller's
+    debug payload.
+    """
+    # Path 1: explicit override.
+    if any(k in payload for k in
+           ("target_armor", "target_mr", "target_max_hp", "target_bonus_hp")):
+        return {
+            "target_armor":    float(payload.get("target_armor")    or 0.0),
+            "target_mr":       float(payload.get("target_mr")       or 0.0),
+            "target_max_hp":   float(payload.get("target_max_hp")   or 0.0),
+            "target_bonus_hp": float(payload.get("target_bonus_hp") or 0.0),
+            "n_enemies":       0,
+            "source":          "explicit-override",
+            "aggregator":      "—",
+        }
+    # Path 2: live enemy items from the relay.
+    try:
+        from core.enemy_aware_stats import (
+            compute_target_stats_from_items, enemy_items_from_liveclient,
+            active_player_team,
+        )
+        from core.liveclient_cache import get as _lc_get
+        snap = _lc_get()
+        if snap.data is not None and snap.age_s < 8.0:
+            my_team = active_player_team(snap.data)
+            enemy_team = "ORDER" if my_team == "CHAOS" else ("CHAOS" if my_team == "ORDER" else None)
+            # ``enemy_items_from_liveclient(data, exclude_team=my_team)``
+            # filters to opponents.
+            enemy_items = enemy_items_from_liveclient(snap.data, exclude_team=my_team)
+            if enemy_items:
+                stats = compute_target_stats_from_items(enemy_items, aggregator="avg")
+                if stats.get("n_enemies", 0) > 0:
+                    return stats
+    except Exception as exc:
+        log.debug("ds-preview live-enemy-items resolve: %s", exc)
+
+    # Path 3: fallback to compute_enemy_stats curve.
+    try:
+        from coach_integration.enemy_stats import compute_enemy_stats
+        es = compute_enemy_stats(mode=mode.lower(), level=int(level))
+        return {
+            "target_armor":    float(getattr(es, "armor",    0.0) or 0.0),
+            "target_mr":       float(getattr(es, "mr",       0.0) or 0.0),
+            "target_max_hp":   float(getattr(es, "max_hp",   0.0) or 0.0),
+            "target_bonus_hp": float(getattr(es, "bonus_hp", 0.0) or 0.0),
+            "n_enemies":       0,
+            "source":          "mode-level-curve",
+            "aggregator":      "—",
+        }
+    except Exception as exc:
+        log.debug("ds-preview mode-level-curve resolve: %s", exc)
+
+    # Last resort.
+    return {
+        "target_armor": 0.0, "target_mr": 0.0,
+        "target_max_hp": 0.0, "target_bonus_hp": 0.0,
+        "n_enemies": 0, "source": "default-zero", "aggregator": "—",
+    }
 
 
 def _serve_analyze_post(h, payload) -> None:
