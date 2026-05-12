@@ -511,13 +511,20 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     // home/lobby by default — loading is non-destructive, just a
     // strategic-briefing render of the locked champ-select state.
     if (phase === "GameStart") return "loading";
-    // s159: when the operator has opted into Active Match (?am=1 or
-    // localStorage.activeMatch='1'), auto-promote to it whenever the
-    // game is actually running. Lobby/CS still hits the lobby view —
-    // Active Match is mid-game-only by design.
+    // s159: Active Match is mid-game-only. s171.2: tightened gate —
+    // require LCU phase=InProgress explicitly. Previously fell back to
+    // the legacy `state.mode in {sr,aram,arena,brawl,tft}` heuristic,
+    // but that mode_key sticks at "sr" through ChampSelect for the
+    // next game, which wrongly promoted active-match (with stale
+    // coach data from the previous game) during champ-select.
+    // The mode-key fallback now only fires when LCU phase is unknown
+    // (empty/null) — i.e. the LCU agent isn't reporting — AND mode
+    // says in-game, which is the rare crash-recovery path.
+    if (activeMatchEnabled() && phase === "InProgress") {
+      return "active-match";
+    }
     const inGame = ["sr", "aram", "arena", "brawl", "tft"].includes(mode);
-    if (activeMatchEnabled()
-        && (phase === "InProgress" || phase === "GameStart" || inGame)) {
+    if (activeMatchEnabled() && !phase && inGame) {
       return "active-match";
     }
     // s164: opt-in champ-select page (?cs=1 / localStorage.csView='1').
@@ -1115,7 +1122,10 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     // module's render is null-safe when DOM nodes are missing. lcuPhase
     // is left out of ctx for step 1; the state envelope carries the
     // per-mode coach payload only, not the full /api/state lcu block.
-    renderActiveMatch(p, { mode: state.mode });
+    renderActiveMatch(p, {
+      mode: state.mode,
+      lcuPhase: (state.latest && state.latest.lcu && state.latest.lcu.phase) || "",
+    });
     // s164: re-fire champ-select view on every state envelope when it's
     // active. lcu envelopes are one-shot from FakeSocket, so a render
     // that bailed on !CHAMPS.ready (champion-name index loads async)
