@@ -411,6 +411,39 @@ Phase 2 (s175, 2026-05-12 — Bruiser hybrid scorer, ENGINE_VERSION 0.64.0):
   weight calibration from rewind_history.db (Phase 2.5) and
   phase/level-aware weights (single weight pair is good enough for v1).
 
+Phase 5 (s180, 2026-05-13 — Assassin burst-window scorer, ENGINE_VERSION 0.68.0):
+  New ``burst.py`` sibling of ``ability_dps.py`` with ``compute_burst_damage()``
+  + ``BurstResult`` + ``ComboCast`` + ``rank_items_by_burst()`` +
+  ``BurstRankedItem`` + ``BurstRankResult``. Per-combo evaluator: walks a
+  caller-supplied ``combo_sequence`` (default ``("Q","W","E","AA","R","AA")``;
+  tokens ``AA`` / ``P`` / ``Q`` / ``W`` / ``E`` / ``R`` / ``Q2-R2`` for
+  repeats), fires each spell once at its level-resolved rank, sums damage
+  blocks, applies the ``compute_ability_dps`` amp pipeline (Rabadon's AP
+  amp, Liandry's damage amp, Demonic Embrace HP→AP, Abyssal Mask magic
+  amp on magic-typed spells, Riftmaker HP→AP, Mejai's stacked AP), and
+  applies the standard mitigation pipeline (lethality + flat pen + % pen
+  for PHYSICAL; flat + % magic pen for MAGIC; TRUE bypass). Auto-attack
+  hits in the combo contribute the build's per-hit ``avg_attack_dmg`` from
+  ``compute_dps`` (post-armor + mode, no on-hit periodic procs — Phase 5.5
+  deferral). ``primary_scaling`` classifier inspects the un-evaluated
+  damage blocks (AP / AD / HP / MIXED / TRUE) so it's stable across builds.
+  New ``/burst`` + ``/rank-assassin`` server routes mirror ``/ability-dps``
+  + ``/rank-mage`` shape — union of body parameters plus ``combo_sequence``
+  (list / dash-string / comma-string forms accepted). Sort keys
+  ``delta`` (absolute burst-damage gain) and ``efficiency`` (per-1k-gold).
+  ``core/daemon_slayer_client.py`` gains ``AssassinRankedItem`` +
+  ``rank_assassin_for()`` + ``burst_for()`` client helpers; the
+  ``rank_for_primary_archetype()`` dispatcher's assassin branch now routes
+  to ``ds.burst`` (was ``ds.dps`` with ``fell_back=True``). Enchanter still
+  falls back to ds.dps pending Phase 6. Champion list unblocked: Zed,
+  Talon, Akali, Kha'Zix, Rengar, Fizz, Diana, Kassadin, Katarina, LeBlanc,
+  Qiyana, Pyke, Naafiri, Briar, Yone (all 14 present in the Phase 4a
+  abilities snapshot). Deliberate omissions (Phase 5.5): real cooldown
+  sequencing, mana economy, on-hit periodic AA procs, per-champion combo
+  templates JSON (operator passes ``combo_sequence`` explicitly v1),
+  conditional damage amps (Ahri R→Q, Zoe E→Q). Phase 6 (enchanter HPS) is
+  the last remaining scorer in the archetype-expansion plan.
+
 Phase 4c (s179, 2026-05-12 — Mage ability DPS ranker, ENGINE_VERSION 0.67.0):
   ``ability_dps.py`` gains ``rank_items_by_ability_dps()`` + ``AbilityDpsRankedItem``
   + ``AbilityDpsRankResult`` mirroring ``rank_items_by_hybrid`` / ``rank_items_by_ehp``
@@ -482,4 +515,4 @@ Phase 4a (s177, 2026-05-12 — Champion ability ingest, ENGINE_VERSION 0.65.0):
   ``compute_ability_dps()`` into ``/rank-mage``.
 """
 
-ENGINE_VERSION = "0.67.0"
+ENGINE_VERSION = "0.68.0"

@@ -494,6 +494,149 @@ def ability_dps_for(
     return _post_json("/ability-dps", body, timeout=timeout)
 
 
+@dataclass(frozen=True)
+class AssassinRankedItem:
+    """Mirror of ``agents.daemon_slayer.burst.BurstRankedItem`` — Phase 5
+    sibling of ``MageRankedItem`` / ``BruiserRankedItem`` / ``TankRankedItem``.
+
+    ``delta_burst`` is the total-burst-damage gain over the baseline;
+    ``burst_per_1k_gold`` is the efficiency view.
+    """
+    item_id: str
+    item_name: str
+    delta_burst: float
+    new_burst: float
+    gold: int
+    shares_dead_unique: bool = False
+    dead_unique_key: str = ""
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "AssassinRankedItem":
+        return cls(
+            item_id=str(d.get("item_id", "")),
+            item_name=str(d.get("item_name", "")),
+            delta_burst=float(d.get("delta_burst", 0.0)),
+            new_burst=float(d.get("new_burst", 0.0)),
+            gold=int(d.get("gold", 0)),
+            shares_dead_unique=bool(d.get("shares_dead_unique", False)),
+            dead_unique_key=str(d.get("dead_unique_key", "")),
+        )
+
+
+def rank_assassin_for(
+    champion: str,
+    *,
+    level: int,
+    item_ids: Iterable[str],
+    mode: str = "SR",
+    target_armor: float = 0.0,
+    target_mr: float = 0.0,
+    target_max_hp: float = 0.0,
+    target_bonus_hp: float = 0.0,
+    target_current_hp_pct: float = 1.0,
+    top: int = 8,
+    sort_by: str = "delta",
+    only_item_ids: Optional[Iterable[str]] = None,
+    augments: Optional[Iterable[str]] = None,
+    max_priority: Optional[tuple[str, str, str]] = None,
+    block_strategy: str = "first",
+    form_index: Optional[dict[str, int]] = None,
+    combo_sequence: Optional[Iterable[str]] = None,
+    filter_shared_uniques: bool = True,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> Optional[list[AssassinRankedItem]]:
+    """Call POST /rank-assassin and return the parsed top-N rows. None on engine failure.
+
+    Phase 5 (s180, 2026-05-13) — Assassin burst-window scorer. Same engine-down
+    semantics as ``rank_for`` (None = unreachable, [] = nothing to recommend).
+
+    ``target_current_hp_pct`` is the fraction of max HP the assumed target
+    sits at when the combo lands — affects target_missing_hp_pct /
+    target_current_hp_pct damage blocks (Zed R execute, Garen R threshold).
+
+    ``combo_sequence`` is an iterable of tokens (AA / P / Q / W / E / R /
+    Q2 / W2 / E2 / R2). Default: ("Q","W","E","AA","R","AA"). See
+    ``agents.daemon_slayer.burst`` module docstring for token semantics.
+    """
+    body: dict = {
+        "champion": champion,
+        "level": int(level),
+        "items": [str(i) for i in item_ids if i],
+        "mode": mode,
+        "target_armor": float(target_armor),
+        "target_mr": float(target_mr),
+        "target_max_hp": float(target_max_hp),
+        "target_bonus_hp": float(target_bonus_hp),
+        "target_current_hp_pct": float(target_current_hp_pct),
+        "top": int(top),
+        "sort": sort_by,
+        "block_strategy": block_strategy,
+        "filter_shared_uniques": bool(filter_shared_uniques),
+    }
+    if max_priority is not None:
+        body["max_priority"] = list(max_priority)
+    if form_index is not None:
+        body["form_index"] = {str(k): int(v) for k, v in form_index.items()}
+    if combo_sequence is not None:
+        body["combo_sequence"] = [str(t) for t in combo_sequence if t]
+    if only_item_ids is not None:
+        body["only"] = [str(i) for i in only_item_ids if i]
+    if augments:
+        body["augments"] = [str(a) for a in augments if a]
+    data = _post_json("/rank-assassin", body, timeout=timeout)
+    if data is None:
+        return None
+    ranked = data.get("ranked") or []
+    return [AssassinRankedItem.from_dict(r) for r in ranked]
+
+
+def burst_for(
+    champion: str,
+    *,
+    level: int,
+    item_ids: Iterable[str],
+    mode: str = "SR",
+    target_armor: float = 0.0,
+    target_mr: float = 0.0,
+    target_max_hp: float = 0.0,
+    target_bonus_hp: float = 0.0,
+    target_current_hp_pct: float = 1.0,
+    augments: Optional[Iterable[str]] = None,
+    max_priority: Optional[tuple[str, str, str]] = None,
+    block_strategy: str = "first",
+    form_index: Optional[dict[str, int]] = None,
+    combo_sequence: Optional[Iterable[str]] = None,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> Optional[dict]:
+    """Call POST /burst and return the raw result dict. None on failure.
+
+    Phase 5 sibling of ``ability_dps_for`` / ``dps_for`` / ``ehp_for`` /
+    ``hybrid_for``. See ``rank_assassin_for`` for ``combo_sequence``
+    semantics.
+    """
+    body: dict = {
+        "champion": champion,
+        "level": int(level),
+        "items": [str(i) for i in item_ids if i],
+        "mode": mode,
+        "target_armor": float(target_armor),
+        "target_mr": float(target_mr),
+        "target_max_hp": float(target_max_hp),
+        "target_bonus_hp": float(target_bonus_hp),
+        "target_current_hp_pct": float(target_current_hp_pct),
+        "block_strategy": block_strategy,
+    }
+    if max_priority is not None:
+        body["max_priority"] = list(max_priority)
+    if form_index is not None:
+        body["form_index"] = {str(k): int(v) for k, v in form_index.items()}
+    if combo_sequence is not None:
+        body["combo_sequence"] = [str(t) for t in combo_sequence if t]
+    if augments:
+        body["augments"] = [str(a) for a in augments if a]
+    return _post_json("/burst", body, timeout=timeout)
+
+
 def hybrid_for(
     champion: str,
     *,
@@ -544,7 +687,7 @@ def rank_for_primary_archetype(
     level: int,
     item_ids: Iterable[str],
     mode: str = "SR",
-    # DPS-side inputs (used when archetype routes to ds.dps / ds.hybrid / ds.ability):
+    # DPS-side inputs (used when archetype routes to ds.dps / ds.hybrid / ds.ability / ds.burst):
     target_armor: float = 0.0,
     target_mr: float = 0.0,
     target_max_hp: float = 0.0,
@@ -552,15 +695,17 @@ def rank_for_primary_archetype(
     # EHP-side inputs (used when archetype routes to ds.ehp / ds.hybrid):
     enemy_ad_share: float = 0.5,
     enemy_ap_share: float = 0.5,
-    # Hybrid-only overrides (silently ignored by ds.dps / ds.ehp / ds.ability):
+    # Hybrid-only overrides (silently ignored by other scorers):
     alpha: Optional[float] = None,
     beta: Optional[float] = None,
-    # Mage-only inputs (silently ignored by other scorers):
+    # Mage + assassin inputs (silently ignored by other scorers):
     target_current_hp_pct: float = 1.0,
     max_priority: Optional[tuple[str, str, str]] = None,
     block_strategy: str = "first",
     form_index: Optional[dict[str, int]] = None,
-    # Tank/bruiser/mage-side whitelist (silently ignored by ds.dps):
+    # Assassin-only input (silently ignored by other scorers):
+    combo_sequence: Optional[Iterable[str]] = None,
+    # Tank/bruiser/mage/assassin-side whitelist (silently ignored by ds.dps):
     only_item_ids: Optional[Iterable[str]] = None,
     # Common:
     top: int = 8,
@@ -569,28 +714,30 @@ def rank_for_primary_archetype(
     filter_shared_uniques: bool = True,
     timeout: float = DEFAULT_TIMEOUT,
 ) -> Optional[dict]:
-    """Phase 3 + 4c (s176/s179, 2026-05-12) — route to the right scorer per archetype.
+    """Phase 3 + 4c + 5 (s176/s179/s180, 2026-05-12+) — route to the right scorer per archetype.
 
-    The DS engine ships 4 scorers today (ds.dps, ds.ehp, ds.hybrid, ds.ability)
-    and will ship 2 more in Phases 5-6 (ds.burst, ds.hps). This dispatcher
-    exposes a single call shape that the coaches + UI use, routing based on
-    the operator's pick from ``state.cs_archetype_pick.primary``.
+    The DS engine ships 5 scorers today (ds.dps, ds.ehp, ds.hybrid,
+    ds.ability, ds.burst) and will ship 1 more in Phase 6 (ds.hps). This
+    dispatcher exposes a single call shape that the coaches + UI use,
+    routing based on the operator's pick from
+    ``state.cs_archetype_pick.primary``.
 
     Returns a dict with shape:
         {
             "ok":          bool,
-            "scorer":      "dps" | "ehp" | "hybrid" | "ability",
+            "scorer":      "dps" | "ehp" | "hybrid" | "ability" | "burst",
             "archetype":   str,   # the requested archetype (echoed)
             "ranked":      [RankedItem-like dicts],
             "fell_back":   bool,  # True when archetype isn't implemented yet
         }
     ``ok=False`` means the engine was unreachable. ``fell_back=True`` is
-    a soft signal: the requested archetype (assassin/enchanter) doesn't
-    have its scorer yet, so we routed to ds.dps as a placeholder.
+    a soft signal: the requested archetype (enchanter) doesn't have its
+    scorer yet, so we routed to ds.dps as a placeholder.
 
     Args ``alpha`` / ``beta`` only apply to ``bruiser``; ``only_item_ids``
-    applies to tank/bruiser/mage; ``target_current_hp_pct`` / ``max_priority``
-    / ``block_strategy`` / ``form_index`` apply to mage only. Other
+    applies to tank/bruiser/mage/assassin; ``target_current_hp_pct`` /
+    ``max_priority`` / ``block_strategy`` / ``form_index`` apply to
+    mage + assassin; ``combo_sequence`` applies to assassin only. Other
     archetypes silently ignore them.
     """
     arch = (archetype or "").strip().lower()
@@ -701,10 +848,48 @@ def rank_for_primary_archetype(
             "fell_back": False,
         }
 
-    # carry / assassin / enchanter / anything else → fall through to
-    # ds.dps. assassin/enchanter mark fell_back=True so the UI can render
-    # a "best-effort, Phase N pending" tag.
-    fell_back = arch in {"assassin", "enchanter"}
+    if arch == "assassin":
+        rows = rank_assassin_for(
+            champion,
+            level=level, item_ids=item_ids, mode=mode,
+            target_armor=target_armor, target_mr=target_mr,
+            target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
+            target_current_hp_pct=target_current_hp_pct,
+            top=top, sort_by=sort_by,
+            only_item_ids=only_item_ids,
+            augments=augments,
+            max_priority=max_priority,
+            block_strategy=block_strategy,
+            form_index=form_index,
+            combo_sequence=combo_sequence,
+            filter_shared_uniques=filter_shared_uniques,
+            timeout=timeout,
+        )
+        if rows is None:
+            return None
+        return {
+            "ok":        True,
+            "scorer":    "burst",
+            "archetype": arch,
+            "ranked":    [
+                {
+                    "item_id":            r.item_id,
+                    "item_name":          r.item_name,
+                    "delta":              r.delta_burst,
+                    "new_burst":          r.new_burst,
+                    "gold":               r.gold,
+                    "shares_dead_unique": r.shares_dead_unique,
+                    "dead_unique_key":    r.dead_unique_key,
+                }
+                for r in rows
+            ],
+            "fell_back": False,
+        }
+
+    # carry / enchanter / anything else → fall through to ds.dps.
+    # enchanter marks fell_back=True so the UI can render a "best-effort,
+    # Phase 6 pending" tag.
+    fell_back = arch in {"enchanter"}
     rows = rank_for(
         champion,
         level=level, item_ids=item_ids, mode=mode,
