@@ -75,6 +75,20 @@ def _make_assassin_rows(n: int = 2):
     ]
 
 
+def _make_enchanter_rows(n: int = 2):
+    """Phase 6 (s181) — build mock EnchanterRankedItem rows for the hps path."""
+    return [
+        daemon_slayer_client.EnchanterRankedItem(
+            item_id=f"30{i:02d}", item_name=f"EnchanterItem{i}",
+            delta_hps=20.0 - i * 2.0,
+            new_hps=80.0 - i * 2.0,
+            gold=2200 + i * 100,
+            shares_dead_unique=False, dead_unique_key="",
+        )
+        for i in range(n)
+    ]
+
+
 class CarryRoutingTests(unittest.TestCase):
     @mock.patch("core.daemon_slayer_client.rank_for")
     def test_carry_routes_to_rank_for(self, mock_rank):
@@ -280,18 +294,61 @@ class AssassinRoutingTests(unittest.TestCase):
         self.assertIsNone(out)
 
 
-class FallbackArchetypesTests(unittest.TestCase):
-    """enchanter routes to ds.dps with fell_back=True until Phase 6
-    ships ds.hps."""
+class EnchanterRoutingTests(unittest.TestCase):
+    """Phase 6 (s181) — enchanter routes to ds.hps via rank_enchanter_for."""
 
-    @mock.patch("core.daemon_slayer_client.rank_for")
-    def test_enchanter_falls_back_to_dps(self, mock_rank):
-        mock_rank.return_value = _make_dps_rows(1)
+    @mock.patch("core.daemon_slayer_client.rank_enchanter_for")
+    def test_enchanter_routes_to_rank_enchanter_for(self, mock_rank):
+        mock_rank.return_value = _make_enchanter_rows(3)
         out = daemon_slayer_client.rank_for_primary_archetype(
-            "Lulu", "enchanter", level=11, item_ids=[],
+            "Soraka", "enchanter", level=11, item_ids=[],
         )
-        self.assertEqual(out["scorer"], "dps")
-        self.assertTrue(out["fell_back"])
+        self.assertIsNotNone(out)
+        self.assertEqual(out["scorer"], "hps")
+        self.assertEqual(out["archetype"], "enchanter")
+        self.assertFalse(out["fell_back"])
+        self.assertEqual(len(out["ranked"]), 3)
+        # HPS rows surface delta (= delta_hps) + new_hps.
+        self.assertEqual(out["ranked"][0]["delta"], 20.0)
+        self.assertIn("new_hps", out["ranked"][0])
+        mock_rank.assert_called_once()
+
+    @mock.patch("core.daemon_slayer_client.rank_enchanter_for")
+    def test_enchanter_passes_targets_per_proc_override(self, mock_rank):
+        mock_rank.return_value = _make_enchanter_rows(1)
+        daemon_slayer_client.rank_for_primary_archetype(
+            "Lulu", "enchanter", level=11, item_ids=[],
+            targets_per_proc_override=1.0,
+        )
+        kwargs = mock_rank.call_args.kwargs
+        self.assertAlmostEqual(kwargs["targets_per_proc_override"], 1.0)
+
+    @mock.patch("core.daemon_slayer_client.rank_enchanter_for")
+    def test_enchanter_passes_only_item_ids(self, mock_rank):
+        mock_rank.return_value = _make_enchanter_rows(1)
+        daemon_slayer_client.rank_for_primary_archetype(
+            "Janna", "enchanter", level=11, item_ids=[],
+            only_item_ids=["6617", "3107"],
+        )
+        kwargs = mock_rank.call_args.kwargs
+        self.assertEqual(list(kwargs["only_item_ids"]), ["6617", "3107"])
+
+    @mock.patch("core.daemon_slayer_client.rank_enchanter_for")
+    def test_enchanter_passes_filter_shared_uniques(self, mock_rank):
+        mock_rank.return_value = _make_enchanter_rows(1)
+        daemon_slayer_client.rank_for_primary_archetype(
+            "Soraka", "enchanter", level=11, item_ids=[],
+            filter_shared_uniques=False,
+        )
+        kwargs = mock_rank.call_args.kwargs
+        self.assertFalse(kwargs["filter_shared_uniques"])
+
+    @mock.patch("core.daemon_slayer_client.rank_enchanter_for", return_value=None)
+    def test_enchanter_returns_none_when_engine_down(self, _):
+        out = daemon_slayer_client.rank_for_primary_archetype(
+            "Soraka", "enchanter", level=11, item_ids=[],
+        )
+        self.assertIsNone(out)
 
 
 class EngineDownTests(unittest.TestCase):
@@ -319,6 +376,13 @@ class EngineDownTests(unittest.TestCase):
         )
         self.assertIsNone(out)
 
+    @mock.patch("core.daemon_slayer_client.rank_enchanter_for", return_value=None)
+    def test_enchanter_returns_none_when_engine_down(self, _):
+        out = daemon_slayer_client.rank_for_primary_archetype(
+            "Soraka", "enchanter", level=11, item_ids=[],
+        )
+        self.assertIsNone(out)
+
 
 class UnknownArchetypeTests(unittest.TestCase):
     @mock.patch("core.daemon_slayer_client.rank_for")
@@ -333,8 +397,10 @@ class UnknownArchetypeTests(unittest.TestCase):
 
     @mock.patch("core.daemon_slayer_client.rank_for")
     def test_unknown_archetype_falls_through_to_dps_not_marked_fell_back(self, mock_rank):
-        # An unknown string isn't mage/assassin/enchanter/bruiser/tank so
-        # it doesn't mark fell_back — it just routes to dps as the default.
+        # An unknown string isn't mage/assassin/enchanter/bruiser/tank/carry
+        # so it falls through to dps as the default; fell_back=False
+        # post-Phase-6 (all 6 archetypes have their own scorer; this path
+        # handles only catch-all labels).
         mock_rank.return_value = _make_dps_rows(1)
         out = daemon_slayer_client.rank_for_primary_archetype(
             "Aatrox", "unknown_archetype", level=11, item_ids=[],
