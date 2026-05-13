@@ -425,10 +425,15 @@ def _serve_ds_preview_post(h, payload) -> None:
                 return float(row.get("hybrid_delta_pct", 0.0)) * 100.0
             return float(row.get("delta", row.get("delta_dps", 0.0)))
 
+        # s183: stamp `scorer` per-row so the dashboard's build chooser
+        # (which caches just the rows, not the response envelope) can map
+        # each row's delta to the correct unit suffix. Mirrors the
+        # `display_rows` shape from coach_integration.archetype_dispatch.
         result = [{"item_id": r.get("item_id", ""),
                    "item_name": r.get("item_name", ""),
                    "delta_dps": round(_delta(r), 1),
-                   "gold": int(r.get("gold", 0) or 0)}
+                   "gold": int(r.get("gold", 0) or 0),
+                   "scorer": scorer}
                   for r in ranked_in]
         # s171.6: defensive-pick ranker. Computes the enemy team's
         # threat profile (AD/AP/burst/tank) and recommends defensive

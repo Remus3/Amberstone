@@ -1,6 +1,7 @@
 // Next panel — wave state, objective row, arena partner info.
 import { el, safe, isArenaPayload } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
+import { formatDsDelta } from '../lib/scorer_units.js';
 
 const NX = {
   root: el("next"),
@@ -133,7 +134,7 @@ function renderNext(p) {
     } else {
       const _dsTop = Array.isArray(p.daemon_slayer_picks) && p.daemon_slayer_picks[0];
       if (_dsTop && _dsTop.name) {
-        const _d = `+${Math.round(_dsTop.delta_dps)}dps`;
+        const _d = formatDsDelta(_dsTop);
         NX.objective.textContent = `DS: ${_dsTop.name} ${_d}`
           + (_dsTop.gold ? ` (${_dsTop.gold}g)` : "");
       } else {
