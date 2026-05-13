@@ -6,6 +6,84 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s174 wrap — 2026-05-12 (Phase 1 Tank EHP scorer — multi-commit)
+
+**Operator instruction:** "Read NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md. We're starting Phase 1 — Tank EHP scorer. Before writing code, confirm decisions on the four open design questions at the bottom of that doc. Then implement compute_ehp() + rank_items_by_ehp() + integrate with core/defensive_picks.py per the chosen option. Bump ENGINE_VERSION to 0.63.0; add tests; restart DS server; verify via /health + Game-PC monitor 1 capture before reporting done."
+
+## Open design questions — decisions locked in this slot
+
+1. **Option A vs B for `defensive_picks.py` integration** → **Option B** (layer). The s171 curated `_DEFENSIVE_ITEMS` catalog stays the operator-vetted pool; EHP math drives ordering within it via `only_item_ids` whitelist on `rank_items_by_ehp`. Preserves operator-validated work, math gives the order. Migration to Option A deferred until calibration shows curated list adds no value.
+2. **ARAM EHP semantics — `aramDamageTaken`** → **applies**. Field name verified in snapshot at `champion.lolmath.aram_modifiers.aramDamageTaken` (e.g. Aatrox=1.0). Formula: `ehp_component = hp / (resist_factor × aramDamageTaken)`. A champion with `aramDamageTaken=0.95` takes 5% less damage → effective HP scales by 1/0.95 for ALL components (physical, magical, true). Mirrors `dps.py`'s `aramDamageDealt` handling pattern.
+3. **Scorer dispatch location** → **defer the dispatcher abstraction**. For Phase 1, ship `rank_tank_for()` + `ehp_for()` as siblings of `rank_for()` / `dps_for()` in `core/daemon_slayer_client.py`. Formal dispatcher (e.g. `rank_for_primary_archetype()`) revisited at end of Phase 2 when 3+ scorers exist; Phase 3 wires it to `state.cs_archetype_pick`.
+4. **Shield-throughput in Phase 1 vs 1.5** → **defer to Phase 1.5**. Plan already calls this out (line 142). Sterak's lifeline + Doran's Shield need uptime modeling that bloats Phase 1 scope. Pure EHP first; shields layered on later.
+
+## Ships
+
+| File | Change |
+|---|---|
+| [agents/daemon_slayer/ehp.py](agents/daemon_slayer/ehp.py) | **NEW (~440 LOC).** `compute_ehp()` + `EhpResult` + `_armor_factor()` + `_aram_damage_taken()` + `rank_items_by_ehp()` + `EhpRankedItem` + `EhpRankResult`. Closed-form math: `physical_ehp = hp / armor_factor(armor) / aramDamageTaken`, magical mirror via MR, `true_ehp = hp / aramDamageTaken`. `blended_ehp` weighted by caller-supplied `enemy_ad_share` / `enemy_ap_share` (remainder = true). Imports private filter helpers (`_filter_candidates`, `_is_terminal`, `strip_arena_trinkets`) from `rank.py` rather than duplicating; inlines `_armor_factor` rather than reaching into `dps.py`'s private helpers (decouples scorers). |
+| [agents/daemon_slayer/server.py](agents/daemon_slayer/server.py) | Two new POST routes: `/ehp` (caster EHP under enemy damage profile) + `/rank-tank` (items ranked by EHP delta). Body shape mirrors `/dps` and `/rank` with `enemy_ad_share` / `enemy_ap_share` (floats) swapped for `target_armor` / `target_mr` (those describe target, not caster exposure). Index HTML route listing extended. |
+| [core/daemon_slayer_client.py](core/daemon_slayer_client.py) | New `TankRankedItem` dataclass + `rank_tank_for()` + `ehp_for()` helpers. Same engine-down semantics as `rank_for` (None = unreachable, [] = nothing). `only_item_ids` param threads to body's `only` field — the integration point for Option B layering. |
+| [core/defensive_picks.py](core/defensive_picks.py) | New `recommend_defensive_items_via_ehp()` + `_threat_to_damage_shares()` helper. Maps `ad_threat` / `ap_threat` (0..10) → `(ad_share, ap_share)` floats summing to ≤1.0 (reserves ~10% true-damage share when both signals ≥6). Passes catalog IDs as `only_item_ids` whitelist; falls back to existing `recommend_defensive_items` heuristic when engine down / champion missing / threat malformed. Lazy import keeps module import-clean for callers that don't need the EHP path. |
+| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | `ENGINE_VERSION` 0.62.0 → 0.63.0. Extended module docstring with Phase 0 + Phase 1 changelog entries. |
+| [agents/daemon_slayer/tests/test_ehp.py](agents/daemon_slayer/tests/test_ehp.py) | **NEW (~380 LOC).** 44 tests across 8 test classes: ArmorFactorTests (5 pure-math), ComputeEhpBasicsTests (9), ItemContributionTests (8), LevelScalingTests (2), ARAMModeTests (5), ValidationTests (6), SerializationTests (3), ConsistencyTests (4), NotesTests (2). |
+| [agents/daemon_slayer/tests/test_rank_tank.py](agents/daemon_slayer/tests/test_rank_tank.py) | **NEW (~210 LOC).** 19 tests across 5 classes: RankByEhpBasicsTests (9), CandidateFilteringTests (4), SharedUniqueFilterTests (2, lifeline dedup), EnemyShareSensitivityTests (2, AD-vs-AP item ordering), SerializationTests (2). |
+| [agents/daemon_slayer/tests/test_server.py](agents/daemon_slayer/tests/test_server.py) | New `EhpRouteTests` class (4 tests): `/ehp` naked, `/ehp` pure-AD enemy, `/rank-tank` armor-prio top pick, `/rank-tank` share-validation 422. |
+| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Bumped `test_batch63_version` + `test_batch64_version` to assert 0.63.0; extended Phase 0/1 comment in batch63 docstring. |
+| Living docs sync | CLAUDE.md (+s174 entry at item 31) · README.md (header DS bullet + capability matrix line) · docs/DAEMON_SLAYER.md (status + module map) · docs/ARCHITECTURE.md (DS section) · ROADMAP.md (DS status line + s174 ship entry) · BRIEF.md (RC Tutor "what's built" line). |
+| DS server runtime | Killed pid 2968 + relaunched via `pythonw tools/start_daemon_slayer.py` (per `reference_ds_server_not_supervisor_watched` memory). `/health` confirms engine_version 0.63.0 live on :8893. |
+
+## Live validation
+
+Probed `/rank-tank` against real running DS server:
+
+**Malphite + 90/10 AD enemy** (whitelist = 3075/3110/3047/3143/3742/6665/3068):
+```
+baseline_ehp: 3161.1
+  3143  Randuin's Omen         +ehp=2,036.0  gold= 2700
+  3742  Dead Man's Plate       +ehp=1,666.1  gold= 2900
+  3068  Sunfire Aegis          +ehp=1,573.7  gold= 2700
+  6665  Jak'Sho, The Protean   +ehp=1,573.7  gold= 3200
+  3075  Thornmail              +ehp=1,530.2  gold= 2450
+```
+
+**Nasus + 30/70 AP enemy** (no whitelist — full catalog):
+```
+baseline_ehp: 3395.1
+  2504  Kaenic Rookern         +ehp=2,023.5
+  3083  Warmog's Armor         +ehp=1,695.9
+  6665  Jak'Sho, The Protean   +ehp=1,651.9
+  4401  Force of Nature        +ehp=1,603.1
+  3084  Heartsteel             +ehp=1,526.3
+```
+
+Math is selecting correctly — armor-heavy items for AD-heavy enemy, MR-heavy items (Kaenic Rookern, FoN) for AP-heavy enemy. Operator-comprehensible.
+
+## Findings
+
+- **Item-stat calibration matters more than it does in DPS.** First test pass had `test_force_of_nature_lifts_mr_more_than_armor` asserting `magical_delta > 3 × physical_delta`. Failed because FoN ships +400 HP on top of +55 MR — the HP component lifts physical_ehp materially (Malphite at lvl 11 has 70+ armor → physical_factor ≈ 0.59 → 400 HP / 0.59 ≈ 680 EHP physical contribution from HP alone). Softened to `magical_delta > 1.5 × physical_delta` (observed ratio ≈ 2.3x). Lesson: defensive items are stat-dense (HP + resist + MS + AP often bundled); pin tests to qualitative directional claims rather than dimensional ratios.
+- **Null-Magic Mantle is 20 MR, not 25.** My memory said 25; the snapshot says 20 (id 1033). Used `assertGreaterEqual(..., naked.mr + 20)` instead of strict `>` so the exact-equal case (no float fuzz) passes. Snapshot is canonical, memories aren't.
+- **`shares_dead_unique` flag reuses from Phase 0 cleanly.** Lifeline-family dedup (Sterak's + Maw + Shieldbow + Verdant Barrier + Hexdrinker + Protoplasm Harness + Seraph's + Lifeline component) is the only frequent defensive collision; tests confirmed Sterak's-then-Maw filtered by default and surfaceable with `filter_shared_uniques=False`.
+- **Phase 1 deliberately doesn't model enemy pen against caster.** Lethality + %MR pen applied BY enemies to the tank's resists would shift physical_ehp / magical_ehp downward in a real fight. Skipped per scope discipline — needs enemy-build plumbing that doesn't exist yet. Documented as a Phase 1.5 candidate.
+- **`recommend_defensive_items_via_ehp` is opt-in, not a replacement.** Existing `recommend_defensive_items` heuristic stays in place; coaches that want EHP-ranked picks call the new function explicitly. No coach is wired to call it yet — operator decides at start of Phase 2 whether tank coach should use it or wait for the Bruiser hybrid scorer.
+
+## Verification
+
+- `py -m pytest agents/daemon_slayer/tests/` → **1022 passed** (was 955 — +67: 44 ehp + 19 rank_tank + 4 server EhpRouteTests)
+- `py -m pytest tests/ --timeout=120` → **839 passed** (wider RC suite, no regressions)
+- DS server `:8893/health` → `engine_version: "0.63.0"` live
+- Game-PC monitor 1 capture: dashboard renders cleanly at idle (no game in progress); all standard panels intact (NEXT / RIGHT NOW / MAP STATE / ITEM BUILD / ADAPTATION); no JS errors; layout unbroken.
+
+## Open items carried forward
+
+- 🟡 **Phase 2 — Bruiser hybrid scorer** — next session per the archetype-expansion plan. `ds.hybrid` = α·dps + β·ehp with per-champion α/β table in `archetype_weights.json`. ~20 bruisers unlocked. 1 session of work.
+- 🟡 **Phase 1.5 — shield/healing throughput** — Sterak's lifeline shield + Doran's Shield + Cinderhulk + Bloodthirster shield modeling. Needs avg-shield-uptime data; better fits alongside Phase 6 Enchanter HPS scorer than as a Phase 1 add-on.
+- 🟡 **`recommend_defensive_items_via_ehp` wire-in** — function exists but no coach calls it. Defer to Phase 3 CS scorer-picker UI when `state.cs_archetype_pick` lands; tank-primary coach tick reads the pick and routes to the EHP ranker.
+- 🟡 **DS calibration with EHP picks** — `data/ds_calibration.jsonl` doesn't yet log `scorer="ehp"` tag. Add when calibration analysis begins (blocked on richer rewind_history.db per CLAUDE.md item 14).
+- 🟡 **Caster-side enemy pen modeling** — Phase 1 treats caster armor/MR as raw values. Enemy lethality + %MR pen applied AGAINST the tank would shift EHP downward in real fights. Needs enemy-build plumbing (`/api/ds-preview` already reads enemy items for offensive ranking; symmetric read needed for defensive). Phase 1.5+ candidate.
+
+---
+
 # s173.1 wrap — 2026-05-12 (audit thread continuation — 5 commits)
 
 **operator slot complete** — `/what's-next` daytime run. Closes s173 audit findings #2 + #3, plus 3 bonus items spotted while in the area. All 5 commits CI-green on first push.
