@@ -2,7 +2,7 @@
 
 Local DPS-math service on `:8893`. Computes actual damage-per-second for any champion × item × target combination using real stat math. No API cost per query.
 
-**Status: FUNCTIONALLY COMPLETE** — ENGINE_VERSION 0.64.0 · 1066 tests · 547/547 DDragon purchasable items · Tank EHP scorer (s174) + Bruiser hybrid scorer (s175) + CS archetype-picker UI + dispatcher (s176) ship the first 3 of 6 archetype scorers per `NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md`. Coach integration deferred to a follow-up session — the picker persists the operator's pick + the dispatcher is callable, but no coach reads `state.cs_archetype_pick.primary` yet.
+**Status: FUNCTIONALLY COMPLETE** — ENGINE_VERSION 0.65.0 · 1151 tests · 547/547 DDragon purchasable items · Tank EHP scorer (s174) + Bruiser hybrid scorer (s175) + CS archetype-picker UI + dispatcher (s176) + Phase 4a champion ability ingest (s177, data only — formula evaluator follows in Phase 4b) ship the first 4 layers of the 6-archetype-scorer plan per `NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md`. Coach integration deferred to a follow-up session — the picker persists the operator's pick + the dispatcher is callable, but no coach reads `state.cs_archetype_pick.primary` yet.
 
 ## Module map (`agents/daemon_slayer/`)
 
@@ -13,6 +13,8 @@ Local DPS-math service on `:8893`. Computes actual damage-per-second for any cha
 | `effects.py` | `ItemEffect` registry — 547 entries, DDragon purchasable coverage COMPLETE |
 | `dps.py` | `CallContext` dataclass + `compute_dps()` — stat walk, armor/MR pen, on-hit, periodic procs, damage amps |
 | `ehp.py` | **Phase 1 (s174)** — `compute_ehp()` + `EhpResult` + `rank_items_by_ehp()` + `EhpRankResult` — Tank EHP scorer; HP / armor_factor math with caller-supplied AD/AP/true enemy shares; ARAM `aramDamageTaken` modifier folded in |
+| `hybrid.py` | **Phase 2 (s175)** — `compute_hybrid()` + `HybridResult` + `rank_items_by_hybrid()` — Bruiser hybrid scorer; composes `compute_dps` × `compute_ehp` weighted by per-champion (α,β) from `archetype_weights.json`; normalized-percentage-delta sort keeps weights intuitive across the ~10× DPS/EHP magnitude gap |
+| `abilities.py` | **Phase 4a (s177)** — `AbilitiesSnapshot.load()` + `AbilityForm` + `DamageBlock` + `load_default()` singleton — champion ability data loader for the Meraki bulk ingest at `data/daemon_slayer/<patch>/champion_abilities.json`. 171/172 champions × P/Q/W/E/R (multi-form preserved); per-rank `cooldown`/`cost`/`damage_blocks[]` with typed scaling fields (`base`, `total_ad_pct`, `bonus_ad_pct`, `ap_pct`, `caster_max_hp_pct`, `caster_bonus_hp_pct`, target HP family, `target_armor_pct`, `bonus_armor_pct`, `bonus_mr_pct`, `caster_max_mp_pct`). Phase 4b will layer `compute_ability_dps()` on top |
 | `hybrid.py` | **Phase 2 (s175)** — `compute_hybrid()` + `HybridResult` + `rank_items_by_hybrid()` + `HybridRankResult` — Bruiser hybrid scorer (α·dps + β·ehp); per-champion (α,β) overrides in `archetype_weights.json`; ranker sorts by normalized percentage delta |
 | `archetype_weights.json` | (s175) Per-champion bruiser α/β table — 20 entries covering Jarvan IV, Darius, Garen, Camille, Renekton, Sett, Mordekaiser, Riven, Volibear, Nasus, Olaf, Skarner, Hecarim, Udyr, Vi, Xin Zhao, Lee Sin, MonkeyKing/Wukong, Warwick, Trundle; default (0.5, 0.5) |
 | `stats.py` | Champion base-stat + per-level growth + DDragon stat-key map |
