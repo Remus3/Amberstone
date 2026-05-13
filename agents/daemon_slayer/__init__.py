@@ -549,6 +549,28 @@ Phase 4a (s177, 2026-05-12 — Champion ability ingest, ENGINE_VERSION 0.65.0):
   ``data/daemon_slayer/<patch>/champion_abilities.json``. The DS server
   does not call the abilities loader yet — Phase 4b wires
   ``compute_ability_dps()`` into ``/rank-mage``.
+
+Phase 4d (s185, 2026-05-13 — per-champion max_priority overrides, ENGINE_VERSION 0.70.0):
+
+* New ``agents/daemon_slayer/champion_max_priority.json`` registry (12 entries:
+  Cassiopeia/Kayle/Akali/TwistedFate/Kassadin/Rumble/Leblanc/Heimerdinger/
+  Karthus/Vladimir/Anivia/Lillia) — each champion mapped to a 3-key (Q,W,E)
+  permutation reflecting their canonical max order. Loader + singleton cache
+  + ``get_max_priority_for(champion_id)`` ship in ``ability_dps.py`` next to
+  the existing rank-table code.
+* ``compute_ability_dps`` + ``compute_burst_damage`` signatures relax their
+  ``max_priority`` parameter from ``tuple[str,str,str] = ("Q","W","E")`` to
+  ``Optional[Sequence[str]] = None`` — None routes through the per-champion
+  override registry; explicit values still win. Both results gain a
+  ``max_priority_source`` field tracking ``"override"`` / ``"champion"`` /
+  ``"default"`` provenance.
+* ``rank_items_by_ability_dps`` / ``rank_items_by_burst`` thread the override
+  through the baseline + every candidate so the entire ranking uses the
+  same priority. Result envelopes carry ``max_priority_source``.
+* Server route ``_parse_max_priority`` returns ``Optional`` and passes None
+  through when the operator doesn't specify, so the engine resolver kicks in.
+  ``/ability-dps``, ``/rank-mage``, ``/burst``, ``/rank-assassin`` all
+  surface ``max_priority_source`` in their JSON responses.
 """
 
-ENGINE_VERSION = "0.69.0"
+ENGINE_VERSION = "0.70.0"

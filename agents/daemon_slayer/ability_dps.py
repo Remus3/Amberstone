@@ -52,7 +52,10 @@ Phase 4b deliberate omissions (deferred):
 
 from __future__ import annotations
 
+import json
+import threading
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 from typing import Iterable, Optional, Sequence
 
 from .abilities import (
@@ -94,8 +97,9 @@ from .ult_rates import get_spell_casts_per_sec
 SPELL_KEYS: tuple[str, ...] = ("Q", "W", "E", "R")
 
 # Standard max-priority rank tables (0-indexed rank at champion level).
-# Pin to the conventional "Q-first, W-second, E-third" max order; per-champ
-# overrides can ship in a future patch via a JSON next to archetype_weights.
+# Pin to the conventional "Q-first, W-second, E-third" max order; Phase 4d
+# (s185) ships per-champion overrides via ``champion_max_priority.json``
+# loaded by ``get_max_priority_for`` below.
 _PRIORITY_TABLES: dict[str, tuple[int, ...]] = {
     # Indexed 1-18 (idx 0 unused so lookup reads naturally).
     "priority_1": (-1, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4),
@@ -104,6 +108,89 @@ _PRIORITY_TABLES: dict[str, tuple[int, ...]] = {
     # R unlocks at 6/11/16 — three ranks total.
     "ultimate":   (-1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2),
 }
+
+DEFAULT_MAX_PRIORITY: tuple[str, str, str] = ("Q", "W", "E")
+
+# Phase 4d (s185, 2026-05-13) — per-champion max_priority override registry.
+# Sibling of ``hybrid._load_archetype_weights``; same lazy-cache pattern. The
+# JSON file lives next to this module and is shipped with the engine — not
+# patch-versioned, since the override reflects a champion's kit identity not
+# a patch-time stat tweak.
+_MAX_PRIORITY_PATH = Path(__file__).resolve().parent / "champion_max_priority.json"
+_MAX_PRIORITY_LOCK = threading.Lock()
+_MAX_PRIORITY_CACHE: Optional[dict] = None
+
+
+def _load_max_priority_table() -> dict:
+    """Load the per-champion max_priority override table from disk.
+
+    Singleton cache for the process lifetime. Tests can call
+    ``reset_max_priority_cache()`` to force a re-read after mutating
+    the on-disk file.
+    """
+    global _MAX_PRIORITY_CACHE
+    with _MAX_PRIORITY_LOCK:
+        if _MAX_PRIORITY_CACHE is None:
+            _MAX_PRIORITY_CACHE = json.loads(
+                _MAX_PRIORITY_PATH.read_text(encoding="utf-8")
+            )
+        return _MAX_PRIORITY_CACHE
+
+
+def reset_max_priority_cache() -> None:
+    """Clear the singleton cache — for tests that mutate the on-disk file."""
+    global _MAX_PRIORITY_CACHE
+    with _MAX_PRIORITY_LOCK:
+        _MAX_PRIORITY_CACHE = None
+
+
+def get_max_priority_for(champion_id: str) -> tuple[tuple[str, str, str], str]:
+    """Return ``(priority_tuple, source)`` for ``champion_id``.
+
+    ``champion_id`` is the DDragon canonical id (e.g. ``"Cassiopeia"``,
+    ``"TwistedFate"``). Source is ``"champion"`` for an explicit override
+    or ``"default"`` for the table fallback.
+    """
+    table = _load_max_priority_table()
+    overrides = table.get("champions") or {}
+    if champion_id in overrides:
+        seq = overrides[champion_id]
+        if not isinstance(seq, (list, tuple)) or len(seq) != 3:
+            raise ValueError(
+                f"champion_max_priority.json: {champion_id!r} must map to a "
+                f"3-key list, got {seq!r}"
+            )
+        keys = tuple(str(s).upper() for s in seq)
+        if set(keys) != {"Q", "W", "E"}:
+            raise ValueError(
+                f"champion_max_priority.json: {champion_id!r} -> {seq!r} is "
+                f"not a permutation of (Q, W, E)"
+            )
+        return (keys, "champion")  # type: ignore[return-value]
+    default_seq = table.get("default") or list(DEFAULT_MAX_PRIORITY)
+    keys = tuple(str(s).upper() for s in default_seq)
+    return (keys, "default")  # type: ignore[return-value]
+
+
+def _resolve_max_priority(
+    champion_id: str,
+    explicit: Optional[Sequence[str]],
+) -> tuple[tuple[str, str, str], str]:
+    """Resolve max_priority from caller input + override registry.
+
+    Returns ``(priority_tuple, source)`` where source is:
+      * ``"override"`` — caller passed an explicit value
+      * ``"champion"`` — override table had an entry for the champion
+      * ``"default"`` — fell back to the table default ("Q", "W", "E")
+    """
+    if explicit is not None:
+        keys = tuple(str(k).upper() for k in explicit)
+        if len(keys) != 3 or set(keys) != {"Q", "W", "E"}:
+            raise ValueError(
+                f"max_priority must be a permutation of (Q, W, E), got {explicit!r}"
+            )
+        return (keys, "override")  # type: ignore[return-value]
+    return get_max_priority_for(champion_id)
 
 # Damage-block scaling fields and the CallContext-style attribute they
 # multiply against. ``factor`` is the value stored in the damage block
@@ -428,6 +515,7 @@ class AbilityDpsResult:
     primary_scaling: str                            # "AP" | "AD" | "HP" | "MIXED" | "TRUE"
     max_priority: tuple[str, str, str]
     block_strategy: str
+    max_priority_source: str = "default"            # "override" | "champion" | "default"
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -447,6 +535,7 @@ class AbilityDpsResult:
             "total_ability_dps": self.total_ability_dps,
             "primary_scaling": self.primary_scaling,
             "max_priority": list(self.max_priority),
+            "max_priority_source": self.max_priority_source,
             "block_strategy": self.block_strategy,
             "stats": dict(self.stats),
             "notes": list(self.notes),
@@ -547,7 +636,7 @@ def compute_ability_dps(
     target_current_hp_pct: float = 1.0,
     augments: Optional[Iterable] = None,
     abilities_snapshot: Optional[AbilitiesSnapshot] = None,
-    max_priority: tuple[str, str, str] = ("Q", "W", "E"),
+    max_priority: Optional[Sequence[str]] = None,
     block_strategy: str = "first",
     form_index_overrides: Optional[dict[str, int]] = None,
 ) -> AbilityDpsResult:
@@ -567,8 +656,10 @@ def compute_ability_dps(
         Optional override — defaults to the lazy-cached snapshot from
         ``abilities.load_default()``. Test fixtures pass synthetic ones.
     max_priority:
-        Tuple of three ability keys (e.g. ``("Q", "W", "E")``) describing
-        max order — first key is maxed first, third last. Default Q-W-E.
+        Optional three ability keys (e.g. ``("E", "Q", "W")``) describing
+        max order — first key is maxed first, third last. When ``None``,
+        the per-champion override registry (``champion_max_priority.json``)
+        is consulted; falls back to Q-W-E for unmapped champions.
     block_strategy:
         How to combine multi-block abilities — ``"first"`` (default),
         ``"sum"``, or ``"max"``. See module docstring for rationale.
@@ -581,10 +672,7 @@ def compute_ability_dps(
             f"block_strategy must be one of {_BLOCK_STRATEGIES}, "
             f"got {block_strategy!r}"
         )
-    if set(max_priority) != {"Q", "W", "E"}:
-        raise ValueError(
-            f"max_priority must be a permutation of (Q, W, E), got {max_priority!r}"
-        )
+    max_priority, max_priority_source = _resolve_max_priority(champion_id, max_priority)
     if not 0.0 <= target_current_hp_pct <= 1.0:
         raise ValueError(
             f"target_current_hp_pct must be in [0,1], got {target_current_hp_pct}"
@@ -606,6 +694,7 @@ def compute_ability_dps(
                 snapshot, champion_id, level, item_ids, mode,
                 target_armor, target_mr, target_max_hp, target_bonus_hp,
                 max_priority, block_strategy,
+                max_priority_source=max_priority_source,
                 note=f"abilities snapshot missing: {e}",
             )
 
@@ -688,6 +777,7 @@ def compute_ability_dps(
             snapshot, resolved.champion_id, level, item_ids, mode,
             target_armor, target_mr, target_max_hp, target_bonus_hp,
             max_priority, block_strategy,
+            max_priority_source=max_priority_source,
             champion_name=resolved.champion_name,
             note=f"champion {resolved.champion_id!r} absent from abilities snapshot",
         )
@@ -827,6 +917,7 @@ def compute_ability_dps(
         total_ability_dps=total_dps,
         primary_scaling=primary,
         max_priority=tuple(max_priority),
+        max_priority_source=max_priority_source,
         block_strategy=block_strategy,
         stats=dict(resolved.stats),
         notes=tuple(notes),
@@ -861,6 +952,7 @@ def _empty_result(
     max_priority: tuple[str, str, str],
     block_strategy: str,
     *,
+    max_priority_source: str = "default",
     champion_name: str | None = None,
     note: str = "",
 ) -> AbilityDpsResult:
@@ -884,6 +976,7 @@ def _empty_result(
         mode_multiplier=1.0, per_spell=per_spell, total_ability_dps=0.0,
         primary_scaling="MIXED",
         max_priority=tuple(max_priority),
+        max_priority_source=max_priority_source,
         block_strategy=block_strategy,
         stats={},
         notes=(note,) if note else (),
@@ -944,6 +1037,7 @@ class AbilityDpsRankResult:
     target_bonus_hp: float
     target_current_hp_pct: float
     max_priority: tuple[str, str, str]
+    max_priority_source: str              # "override" | "champion" | "default"
     block_strategy: str
     mode_multiplier: float                # aramDamageDealt; 1.0 outside ARAM
     budget: Optional[int]
@@ -969,6 +1063,7 @@ class AbilityDpsRankResult:
             "target_bonus_hp": self.target_bonus_hp,
             "target_current_hp_pct": self.target_current_hp_pct,
             "max_priority": list(self.max_priority),
+            "max_priority_source": self.max_priority_source,
             "block_strategy": self.block_strategy,
             "mode_multiplier": self.mode_multiplier,
             "budget": self.budget,
@@ -1046,7 +1141,7 @@ def rank_items_by_ability_dps(
     sort_by: str = "delta",
     augments: Optional[Iterable] = None,
     abilities_snapshot: Optional[AbilitiesSnapshot] = None,
-    max_priority: tuple[str, str, str] = ("Q", "W", "E"),
+    max_priority: Optional[Sequence[str]] = None,
     block_strategy: str = "first",
     form_index_overrides: Optional[dict[str, int]] = None,
     filter_shared_uniques: bool = True,
@@ -1077,6 +1172,10 @@ def rank_items_by_ability_dps(
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
     level = clamp_level(level)
 
+    # Resolve once so baseline + every candidate use the same priority +
+    # the result carries a consistent source label.
+    resolved_priority, priority_source = _resolve_max_priority(champion_id, max_priority)
+
     current_ids: tuple[str, ...] = tuple(str(i) for i in (current_item_ids or ()))
     current_ids, stripped_trinkets = strip_arena_trinkets(current_ids, mode)
     current_set = set(current_ids)
@@ -1105,7 +1204,7 @@ def rank_items_by_ability_dps(
         target_current_hp_pct=target_current_hp_pct,
         augments=augments,
         abilities_snapshot=abilities_snapshot,
-        max_priority=max_priority,
+        max_priority=resolved_priority,
         block_strategy=block_strategy,
         form_index_overrides=form_index_overrides,
     )
@@ -1169,7 +1268,8 @@ def rank_items_by_ability_dps(
 
     notes: list[str] = []
     notes.append(
-        f"max_priority={'>'.join(max_priority)}  block_strategy={block_strategy}"
+        f"max_priority={'>'.join(resolved_priority)} (source={priority_source})  "
+        f"block_strategy={block_strategy}"
     )
     notes.append(f"primary_scaling={baseline.primary_scaling}")
     if stripped_trinkets:
@@ -1206,7 +1306,8 @@ def rank_items_by_ability_dps(
         target_max_hp=target_max_hp,
         target_bonus_hp=target_bonus_hp,
         target_current_hp_pct=target_current_hp_pct,
-        max_priority=tuple(max_priority),
+        max_priority=tuple(resolved_priority),
+        max_priority_source=priority_source,
         block_strategy=block_strategy,
         mode_multiplier=baseline.mode_multiplier,
         budget=budget,
