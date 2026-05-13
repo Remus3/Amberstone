@@ -1,6 +1,6 @@
 {
   "type": "item",
-  "version": "16.9.1",
+  "version": "16.10.1",
   "basic": {
     "name": "",
     "rune": {
@@ -1465,7 +1465,7 @@
     },
     "1086": {
       "name": "Doran's Bow",
-      "description": "<mainText><stats><attention>6</attention> Attack Damage<br><attention>15%</attention> Attack Speed<br><attention>1.5%</attention> Omnivamp</stats><br><br></mainText>",
+      "description": "<mainText><stats><attention>8</attention> Attack Damage<br><attention>15%</attention> Attack Speed<br><attention>1.5%</attention> Omnivamp</stats><br><br></mainText>",
       "colloq": "",
       "plaintext": "",
       "image": {
@@ -1499,7 +1499,7 @@
         "35": false
       },
       "stats": {
-        "FlatPhysicalDamageMod": 6,
+        "FlatPhysicalDamageMod": 8,
         "PercentAttackSpeedMod": 0.15
       }
     },
@@ -1986,7 +1986,7 @@
     },
     "1120": {
       "name": "Doran's Helm",
-      "description": "<mainText><stats><attention>110</attention> Health<br><attention>10</attention> Armor<br><attention>10</attention> Magic Resist</stats><br><br><passive>Helping Hand</passive><br>Attacks deal <physicalDamage>5 bonus physical damage</physicalDamage> to minions.</mainText>",
+      "description": "<mainText><stats><attention>140</attention> Health<br><attention>10</attention> Armor<br><attention>10</attention> Magic Resist</stats><br><br><passive>Helping Hand</passive><br>Attacks deal <physicalDamage>5 bonus physical damage</physicalDamage> to minions.</mainText>",
       "colloq": "",
       "plaintext": "",
       "image": {
@@ -2021,7 +2021,7 @@
       },
       "stats": {
         "FlatSpellBlockMod": 10,
-        "FlatHPPoolMod": 110,
+        "FlatHPPoolMod": 140,
         "FlatArmorMod": 10
       }
     },
@@ -6179,7 +6179,7 @@
     },
     "222517": {
       "name": "Endless Hunger",
-      "description": "<mainText><stats><attention>60</attention> Attack Damage<br><attention>5%</attention> Omnivamp<br><attention>20%</attention> Tenacity</stats><br><br><passive>Famine</passive><br>Gain  Ability Haste.<br><br><passive>Feast</passive><br>When a champion that you damaged within 3 seconds dies, gain <omnivamp>15% Omnivamp</omnivamp> for 8 seconds. </mainText>",
+      "description": "<mainText><stats><attention>60</attention> Attack Damage<br><attention>5%</attention> Omnivamp<br><attention>20%</attention> Tenacity</stats><br><br><passive>Famine</passive><br>Gain Ability Haste based on your Bonus AD.<br><br><passive>Feast</passive><br>When a champion that you damaged recently dies, gain Omnivamp for a moderate duration. </mainText>",
       "colloq": "",
       "plaintext": "",
       "image": {
@@ -6691,7 +6691,7 @@
     },
     "223008": {
       "name": "Gluttonous Greaves",
-      "description": "<mainText><stats><attention>45</attention> Move Speed<br><attention>4%</attention> Omnivamp</stats><br><br><passive>Slay</passive><br>Gain 1% Omnivamp on Champion takedown, stacking up to 6 times.</mainText>",
+      "description": "<mainText><stats><attention>45</attention> Move Speed<br><attention>4%</attention> Omnivamp</stats><br><br><passive>Slay</passive><br>Gain 0.6% Omnivamp on Champion takedown, stacking up to 10 times.</mainText>",
       "colloq": "",
       "plaintext": "",
       "image": {
@@ -12067,7 +12067,7 @@
         "12": false,
         "21": false,
         "22": false,
-        "30": true,
+        "30": false,
         "33": false,
         "35": false
       },
@@ -12614,7 +12614,7 @@
     },
     "2517": {
       "name": "Endless Hunger",
-      "description": "<mainText><stats><attention>65</attention> Attack Damage<br><attention>5%</attention> Omnivamp<br><attention>20%</attention> Tenacity</stats><br><br><passive>Famine</passive><br>Gain  Ability Haste.<br><br><passive>Feast</passive><br>When a champion that you damaged within 3 seconds dies, gain <omnivamp>15% Omnivamp</omnivamp> for 8 seconds. </mainText>",
+      "description": "<mainText><stats><attention>65</attention> Attack Damage<br><attention>5%</attention> Omnivamp<br><attention>20%</attention> Tenacity</stats><br><br><passive>Famine</passive><br>Gain Ability Haste based on your Bonus AD.<br><br><passive>Feast</passive><br>When a champion that you damaged recently dies, gain Omnivamp for a moderate duration. </mainText>",
       "colloq": "",
       "plaintext": "",
       "from": [
@@ -13246,7 +13246,7 @@
     },
     "3008": {
       "name": "Gluttonous Greaves",
-      "description": "<mainText><stats><attention>45</attention> Move Speed<br><attention>4%</attention> Omnivamp</stats><br><br><passive>Slay</passive><br>Gain 1% Omnivamp on Champion takedown, stacking up to 6 times.</mainText>",
+      "description": "<mainText><stats><attention>45</attention> Move Speed<br><attention>4%</attention> Omnivamp</stats><br><br><passive>Slay</passive><br>Gain 0.6% Omnivamp on Champion takedown, stacking up to 10 times.</mainText>",
       "colloq": ";",
       "plaintext": "Increases Attack Damage based on maximum Mana",
       "from": [
@@ -13265,10 +13265,10 @@
         "h": 48
       },
       "gold": {
-        "base": 650,
+        "base": 700,
         "purchasable": true,
-        "total": 950,
-        "sell": 665
+        "total": 1000,
+        "sell": 700
       },
       "tags": [
         "LifeSteal",
@@ -15610,7 +15610,7 @@
     },
     "3100": {
       "name": "Lich Bane",
-      "description": "<mainText><stats><attention>100</attention> Ability Power<br><attention>4%</attention> Move Speed<br><attention>10</attention> Ability Haste</stats><br><br><passive>Spellblade</passive><br>After using an Ability, your next Attack deals <magicDamage>bonus magic damage</magicDamage> <OnHit>On-Hit</OnHit>.</mainText>",
+      "description": "<mainText><stats><attention>100</attention> Ability Power<br><attention>6%</attention> Move Speed<br><attention>10</attention> Ability Haste</stats><br><br><passive>Spellblade</passive><br>After using an Ability, your next Attack deals <magicDamage>bonus magic damage</magicDamage> <OnHit>On-Hit</OnHit>.</mainText>",
       "colloq": ";",
       "plaintext": "Grants a bonus to next attack after spell cast",
       "from": [
@@ -15650,7 +15650,7 @@
       },
       "stats": {
         "FlatMagicDamageMod": 100,
-        "PercentMovementSpeedMod": 0.04
+        "PercentMovementSpeedMod": 0.06
       },
       "depth": 3
     },
@@ -17613,7 +17613,7 @@
     },
     "3168": {
       "name": "Immortal Path",
-      "description": "<mainText><stats><attention>45</attention> Move Speed<br><attention>4%</attention> Omnivamp</stats><br><br><passive>Slay</passive><br>Gain 1% Omnivamp on Champion takedown, stacking up to 6 times.<br><br><passive>Now and Forever</passive><br>While above half Health, deal 5% increased damage. <br><br>While below half Health, gain 15% increased healing, shielding, and regeneration.</mainText>",
+      "description": "<mainText><stats><attention>45</attention> Move Speed<br><attention>4%</attention> Omnivamp</stats><br><br><passive>Slay</passive><br>Gain 0.6% Omnivamp on Champion takedown, stacking up to 10 times.<br><br><passive>Now and Forever</passive><br>While above half Health, deal 5% increased damage. <br><br>While below half Health, gain 15% increased healing, shielding, and regeneration.</mainText>",
       "colloq": "",
       "plaintext": "",
       "from": [
@@ -17631,8 +17631,8 @@
       "gold": {
         "base": 0,
         "purchasable": true,
-        "total": 950,
-        "sell": 665
+        "total": 1000,
+        "sell": 700
       },
       "tags": [
         "LifeSteal",
@@ -23602,7 +23602,7 @@
     },
     "447108": {
       "name": "Runecarver",
-      "description": "<mainText><stats><attention>80</attention> Ability Power<br><attention>20</attention> Ability Haste<br><attention>4%</attention> Move Speed</stats><br><br><passive>Helix</passive><br>Moving, attacking, and dealing damage with an ability grants 30 <keyword>Energized</keyword> stacks and triggers <keyword>Energized Attacks</keyword> if it is ready.<br><br><passive>Spiral Out</passive><br>On <keyword>Energized Attack</keyword>, gain a <keyword>Rune</keyword> stack for the rest of the round. Then fire a missile at the target for each <keyword>Rune</keyword> stack, dealing <magicDamage> magic damage</magicDamage>.</mainText>",
+      "description": "<mainText><stats><attention>80</attention> Ability Power<br><attention>20</attention> Ability Haste<br><attention>4%</attention> Move Speed</stats><br><br><passive>Helix</passive><br>Moving, attacking, and dealing damage with an ability grants 30 <keyword>Energized</keyword> stacks and triggers <keyword>Energized Actions</keyword> if it is ready.<br><br><passive>Spiral Out</passive><br>On <keyword>Energized Action</keyword>, gain a <keyword>Rune</keyword> stack for the rest of the round. Then fire a missile at the target for each <keyword>Rune</keyword> stack, dealing <magicDamage> magic damage</magicDamage>.</mainText>",
       "colloq": "",
       "plaintext": "",
       "image": {
@@ -24070,7 +24070,7 @@
     },
     "447121": {
       "name": "Twilight's Edge",
-      "description": "<mainText><stats><attention>70</attention> Attack Damage<br><attention>100</attention> Ability Power</stats><br><br><passive>The Path Between</passive><br>Threshold 130 bonus AD and 180 AP: Chakram orbit you, dealing continuous damage to enemies they strike.<br><br><keywordMajor>Spirit World</keywordMajor>: Gain <scaleAP>Ability Power</scaleAP> and Ability Haste.<br><keywordMajor>Material World</keywordMajor>: Gain <physicalDamage>Attack Damage</physicalDamage> and <attackSpeed>Attack Speed</attackSpeed>.</mainText>",
+      "description": "<mainText><stats><attention>70</attention> Attack Damage<br><attention>100</attention> Ability Power</stats><br><br><passive>The Path Between</passive><br>Threshold 100 bonus AD and 140 AP: Chakram orbit you, dealing continuous damage to enemies they strike.<br><br><keywordMajor>Spirit World</keywordMajor>: Gain <scaleAP>Ability Power</scaleAP> and Ability Haste.<br><keywordMajor>Material World</keywordMajor>: Gain <physicalDamage>Attack Damage</physicalDamage> and <attackSpeed>Attack Speed</attackSpeed>.</mainText>",
       "colloq": "",
       "plaintext": "",
       "image": {
@@ -27800,10 +27800,10 @@
         "h": 48
       },
       "gold": {
-        "base": 863,
+        "base": 963,
         "purchasable": true,
-        "total": 2900,
-        "sell": 2030
+        "total": 3000,
+        "sell": 2100
       },
       "tags": [
         "Damage",
