@@ -124,6 +124,43 @@ def apply_preflip_mirror(health: dict, mode_key: str, preflip_active: bool) -> d
     return {**health, flag: True}
 
 
+def _active_champion(coach: dict, lc: dict | None, lcu_snapshot: dict | None) -> str:
+    """Resolve the operator's currently-active champion across signals.
+
+    Priority order (most → least authoritative):
+      1. ``liveclient.champion`` — in-game, derived from LiveClient
+         ``allPlayers[]`` matched on summoner name. Single source of truth
+         once the game is running.
+      2. ``coach.champion`` — the coach JSON's persisted field (ARAM /
+         Arena / Brawl / TFT shapes carry it; SR's ``coaching_data.json``
+         doesn't — falls through).
+      3. ``lcu.champ_select.local_pick.champion_name`` — pre-game.
+      4. Empty string when nothing resolves.
+
+    Used by ``build_state`` to stamp ``state.cs_archetype_pick`` — purely
+    decorative for the dashboard's archetype-picker UI. Coaches resolve
+    champion independently from their own upstream state.
+    """
+    if isinstance(lc, dict):
+        champ = lc.get("champion")
+        if champ:
+            return str(champ)
+    if isinstance(coach, dict):
+        champ = coach.get("champion")
+        if champ:
+            return str(champ)
+    if isinstance(lcu_snapshot, dict):
+        cs = lcu_snapshot.get("champ_select")
+        if isinstance(cs, dict):
+            local = cs.get("local_pick") or cs.get("local_member") or {}
+            if isinstance(local, dict):
+                for key in ("champion_name", "championName", "champion"):
+                    v = local.get(key)
+                    if v:
+                        return str(v)
+    return ""
+
+
 def build_state() -> dict:
     health = read_json("ops/runtime/health.json")
     lcu_snapshot = lcu_summary()
@@ -156,6 +193,22 @@ def build_state() -> dict:
     # and falls back to skeleton rows when fields are empty.
     coach["team_context"] = get_team_context()
 
+    # s182 (2026-05-13) — surface the operator's effective archetype pick
+    # for the active champion. Resolves DDragon-tag default + persisted
+    # override; empty champion produces empty dict so dashboard JS can
+    # branch on ``state.cs_archetype_pick.champion`` truthiness without
+    # null-checking nested fields. Coach integration reads from
+    # core.archetype_picks directly (own pipeline); this stamp is purely
+    # decorative for the picker UI to show the current effective pick.
+    cs_archetype_pick: dict = {}
+    try:
+        champ = _active_champion(coach, lc, lcu_snapshot)
+        if champ:
+            from core.archetype_picks import get_archetype_for
+            cs_archetype_pick = get_archetype_for(champ)
+    except Exception:
+        cs_archetype_pick = {}
+
     return {
         "mode_key": mode_key,
         "coach_source": coach_file,
@@ -179,6 +232,7 @@ def build_state() -> dict:
         "coach": coach,
         "liveclient": lc,
         "lcu": lcu_snapshot,
+        "cs_archetype_pick": cs_archetype_pick,
     }
 
 

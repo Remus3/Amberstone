@@ -100,7 +100,7 @@ Team health rankings:
 
 Active augments: {augments}
 My abilities: {my_abilities}
-DS top items (DPS ranked, own-items-accounted): {ds_picks}
+DS top items ({ds_label} ranked, own-items-accounted): {ds_picks}
 {vision_context}
 """
 
@@ -434,10 +434,16 @@ class Coach(BaseCoach):
             elif vs.get("anvil_choices"):
                 vision_ctx = f"ITEM ANVIL available: {', '.join(vs.get('anvil_choices', []))}"
 
-            _ds_rows = None
+            # s182 (2026-05-13): rank_for() -> archetype dispatcher.
+            _ds_dispatch = None
             _ds_picks_str = "unavailable"
+            _ds_label = "DPS"
             try:
                 from coach_integration.enemy_stats import compute_enemy_stats as _ds_enemy_stats
+                from coach_integration.archetype_dispatch import (
+                    dispatch_for_coach as _ds_dispatch_for_coach,
+                    display_label as _ds_display_label,
+                )
                 owned_ids = _ds_resolve_many(state.get("items", []), mode="arena")
                 target_bonus_hp = self._estimate_target_bonus_hp(state)
                 _lvl = int(state.get("level", 1)) or 1
@@ -450,35 +456,29 @@ class Coach(BaseCoach):
                     level=_lvl,
                     bonus_hp_override=target_bonus_hp if target_bonus_hp > 0 else None,
                 )
-                _ds_rows = _ds_client.rank_for(
+                _ds_dispatch = _ds_dispatch_for_coach(
                     champion=champ,
+                    mode_engine="ARENA",
                     level=_lvl,
                     item_ids=owned_ids,
-                    mode="ARENA",
-                    target_armor=_es.armor,
-                    target_mr=_es.mr,
-                    target_max_hp=_es.max_hp,
-                    target_bonus_hp=_es.bonus_hp,
-                    top=5,
+                    enemy_stats=_es,
                     augments=state.get("augments") or None,
+                    top=5,
                 )
-                if _ds_rows:
-                    _ds_picks_str = " > ".join(
-                        f"{r.item_name}(+{r.delta_dps:.0f}dps,{r.gold}g)"
-                        for r in _ds_rows
-                    )
-                elif _ds_rows == []:
-                    _ds_picks_str = "none"
+                if _ds_dispatch is not None:
+                    _ds_picks_str = _ds_dispatch.picks_str
+                    _ds_label = _ds_display_label(_ds_dispatch.scorer)
             except Exception as _ds_exc:
                 logger.debug("Arena daemon_slayer pre-call: %s", _ds_exc)
-            if _ds_rows:
+            if _ds_dispatch is not None and _ds_dispatch.rows:
                 try:
                     from core.ds_calibration import log_ds_run as _ds_log
                     _ds_log(champion=champ, mode="ARENA", level=int(state.get("level", 1)) or 1,
                             owned_items=list(owned_ids),
-                            ds_picks=[{"item_id": r.item_id, "item_name": r.item_name,
-                                       "delta_dps": round(r.delta_dps, 2), "gold": r.gold}
-                                      for r in _ds_rows])
+                            ds_picks=[{"item_id": _r["id"], "item_name": _r["name"],
+                                       "delta_dps": _r["delta_dps"], "gold": _r["gold"],
+                                       "scorer": _r["scorer"]}
+                                      for _r in _ds_dispatch.display_rows])
                 except Exception:
                     pass
 
@@ -498,6 +498,7 @@ class Coach(BaseCoach):
                 augments      = augments,
                 my_abilities  = fmt_abilities(state.get("my_abilities", {})),
                 ds_picks      = _ds_picks_str,
+                ds_label      = _ds_label,
                 vision_context = vision_ctx,
             )
 
@@ -576,12 +577,8 @@ class Coach(BaseCoach):
             except Exception as exc:
                 logger.debug("arena item advisor: %s", exc)
 
-            if _ds_rows is not None:
-                current["daemon_slayer_picks"] = [
-                    {"id": r.item_id, "name": r.item_name,
-                     "delta_dps": round(r.delta_dps, 2), "gold": r.gold}
-                    for r in _ds_rows
-                ] if _ds_rows else []
+            if _ds_dispatch is not None:
+                current["daemon_slayer_picks"] = _ds_dispatch.display_rows
 
             safe_write(self._out, current)
             logger.debug("Arena coaching written (%d fields)", len(fields))
