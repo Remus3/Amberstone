@@ -7363,8 +7363,9 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         # 0.63.0 = s174 Phase 1 Tank EHP scorer;
         # 0.64.0 = s175 Phase 2 Bruiser hybrid scorer;
         # 0.65.0 = s177 Phase 4a champion ability ingest;
-        # 0.66.0 = s178 Phase 4b mage ability DPS evaluator.
-        self.assertEqual(ENGINE_VERSION, "0.66.0")
+        # 0.66.0 = s178 Phase 4b mage ability DPS evaluator;
+        # 0.67.0 = s179 Phase 4c mage ability DPS ranker (+ /rank-mage route).
+        self.assertEqual(ENGINE_VERSION, "0.67.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7425,7 +7426,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.66.0")
+        self.assertEqual(ENGINE_VERSION, "0.67.0")
 
 
 if __name__ == "__main__":
