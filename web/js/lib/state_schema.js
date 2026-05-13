@@ -196,12 +196,15 @@
  * @property {string} item_name
  * @property {number} delta_dps
  * @property {number} gold
+ * @property {string} scorer
  */
 
 /**
  * @typedef {Object} DsPreviewResponse
  * @property {boolean} ok
  * @property {Array} ranked
+ * @property {string} scorer
+ * @property {string} archetype
  * @property {string} error
  */
 

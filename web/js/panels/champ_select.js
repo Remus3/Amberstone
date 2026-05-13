@@ -4,6 +4,7 @@
 import { el, safe, fmtList, isArenaPayload } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { ITEMS, CHAMPS, _normItemName, _resolveItemId, _resolveChampId } from '../lib/items_index.js';
+import { scorerUnit } from '../lib/scorer_units.js';
 import {
   _ibPushItems, _ibFetchAndRender, _ibSetStatus,
   _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice,
@@ -1169,9 +1170,17 @@ function _fetchDsPreview(champion, dsMode) {
     .then((data) => {
       _CS_DS.inflight = false;
       if (!data || !data.ok || !Array.isArray(data.ranked)) return;
+      // s182+ response carries `scorer` at the top level; rows lift it
+      // onto each row (routes_state.py) for uniform consumption with
+      // daemon_slayer_picks. Fall back to top-level scorer if the row
+      // field is missing (older /api/ds-preview deployments).
+      const unit = scorerUnit(data.scorer);
       const names = data.ranked.map((r) => r.item_name);
       const reasons = {};
-      data.ranked.forEach((r) => { reasons[r.item_name] = "+" + Math.round(r.delta_dps) + " dps"; });
+      data.ranked.forEach((r) => {
+        const u = r.scorer ? scorerUnit(r.scorer) : unit;
+        reasons[r.item_name] = "+" + Math.round(r.delta_dps) + " " + u;
+      });
       if (subEl) subEl.textContent = champion + " · " + dsMode;
       if (tilesEl) renderItemTiles(tilesEl, names, { cap: 8, reasons });
       if (dsEl) dsEl.removeAttribute("hidden");
@@ -2076,7 +2085,10 @@ function _csvBuildVariantsFor(cid, name, mode) {
   const top6 = ranked.slice(0, 6).map((r) => r.item_id).filter((x) => x);
   const reasons = {};
   ranked.slice(0, 6).forEach((r) => {
-    if (r.item_id) reasons[r.item_id] = "+" + Math.round(r.delta_dps || 0) + " dps";
+    if (r.item_id) {
+      const u = scorerUnit(r.scorer);
+      reasons[r.item_id] = "+" + Math.round(r.delta_dps || 0) + " " + u;
+    }
   });
   const keystoneLabel = (mode === "aram") ? "ARAM curve"
                      : (mode === "arena") ? "Arena targets"

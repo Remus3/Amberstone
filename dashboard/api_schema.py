@@ -95,6 +95,7 @@ class DsPreviewRequest(_AllowExtra):
     mode: str = "SR"
     level: int = 6
     items: list[str] = []
+    archetype: str = ""  # s182+ — optional override (CS picker hover preview)
 
 
 class DsPreviewItem(_AllowExtra):
@@ -102,11 +103,14 @@ class DsPreviewItem(_AllowExtra):
     item_name: str
     delta_dps: float
     gold: int
+    scorer: str = "dps"  # s183 — per-row scorer label for unit suffix routing
 
 
 class DsPreviewResponse(_AllowExtra):
     ok: bool
     ranked: list[DsPreviewItem] = []
+    scorer: str = "dps"      # s182+ — top-level scorer (engine branch used)
+    archetype: str = "carry"  # s182+ — resolved primary archetype
     error: str = ""
 
 

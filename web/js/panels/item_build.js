@@ -2,6 +2,7 @@
 import { el, safe, fmtList, isArenaPayload } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { ITEMS, ITEM_COSTS, _resolveItemId, _splitItemList } from '../lib/items_index.js';
+import { formatDsDelta } from '../lib/scorer_units.js';
 
 const IB = {
   root: el("item-build"),
@@ -248,12 +249,13 @@ function renderItemBuild(p) {
     IB.augments.classList.toggle("no-support", !modeSupportsAugments);
     IB.augments.title = modeSupportsAugments ? "" : content;
   }
-  // DS Engine picks — daemon_slayer_picks: [{id, name, delta_dps, gold}, ...]
+  // DS Engine picks — daemon_slayer_picks: [{id, name, delta_dps, gold, scorer?}, ...]
+  // scorer (s182+) flips the unit suffix per archetype (dps/ehp/%/adps/burst/hps).
   const dsPicks = Array.isArray(p.daemon_slayer_picks) ? p.daemon_slayer_picks : [];
   if (IB.dsBlock) {
     if (dsPicks.length) {
       IB.dsPicks.innerHTML = dsPicks.map(r => {
-        const delta = `+${Math.round(r.delta_dps)}dps`;
+        const delta = formatDsDelta(r);
         return `<span class="ds-chip" title="${r.name} · ${delta} · ${r.gold}g">`
              + `${r.name}<em>${delta}</em></span>`;
       }).join('');
@@ -262,13 +264,13 @@ function renderItemBuild(p) {
       IB.dsBlock.hidden = true;
     }
   }
-  // Header DS pill — top pick + delta-dps for glanceable read. Mode-gated
+  // Header DS pill — top pick + delta for glanceable read. Mode-gated
   // to in-game modes only (CSS hides client/tft); JS additionally hides
   // when the picks list is empty so we don't render a stale "—" pill.
   if (IB.dsPill) {
     const top = dsPicks[0];
     if (top && top.name) {
-      const delta = `+${Math.round(top.delta_dps)}dps`;
+      const delta = formatDsDelta(top);
       const sig = `${top.name}|${delta}`;
       if (IB.dsPill.dataset.dsSig !== sig) {
         IB.dsPill.dataset.dsSig = sig;

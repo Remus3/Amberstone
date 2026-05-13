@@ -15,6 +15,7 @@
 // nothing changes for users who haven't opted in.
 
 import { ITEMS } from '../lib/items_index.js';
+import { scorerUnit } from '../lib/scorer_units.js';
 
 const _AM = {
   sub:        () => document.getElementById("am-sub"),
@@ -528,13 +529,14 @@ function _dsIcon(r, ownedSet) {
   const name = r.name || r.item_name || "?";
   const id   = r.id   || r.item_id   || 0;
   const delta = (r.delta_dps != null ? r.delta_dps : (r.deltaDps || 0));
+  const unit  = scorerUnit(r.scorer);
   const owned = ownedSet && ownedSet.has(String(name).toLowerCase());
   if (id) {
     const ver = (ITEMS && ITEMS.version) || "latest";
     const img = document.createElement("img");
     img.src = `/data/ddragon/${ver}/img/item/${id}.png`;
     img.alt = name;
-    img.title = `${name} (+${(delta || 0).toFixed(0)}dps)`;
+    img.title = `${name} (+${(delta || 0).toFixed(0)}${unit})`;
     img.style.cssText = "width:44px;height:44px;border-radius:6px;border:1px solid var(--border, #303040);display:block;margin:0 auto;";
     img.onerror = () => {
       if (!img.dataset.cdnRetry) {
