@@ -2,24 +2,26 @@
 
 Local DPS-math service on `:8893`. Computes actual damage-per-second for any champion × item × target combination using real stat math. No API cost per query.
 
-**Status: FUNCTIONALLY COMPLETE** — ENGINE_VERSION 0.63.0 · 1022 tests · 547/547 DDragon purchasable items · Tank EHP scorer (s174) ships the first of six archetype scorers per `NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md`.
+**Status: FUNCTIONALLY COMPLETE** — ENGINE_VERSION 0.64.0 · 1066 tests · 547/547 DDragon purchasable items · Tank EHP scorer (s174) + Bruiser hybrid scorer (s175) ship the first 2 of 6 archetype scorers per `NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md`.
 
 ## Module map (`agents/daemon_slayer/`)
 
 | File | Purpose |
 |---|---|
 | `__init__.py` | `ENGINE_VERSION` constant; `start_server()` entry point |
-| `server.py` | Stdlib `ThreadingHTTPServer`; `/rank`, `/dps`, `/health`, `/snapshot`, `/beam`, `/ehp`, `/rank-tank` endpoints |
+| `server.py` | Stdlib `ThreadingHTTPServer`; `/rank`, `/dps`, `/health`, `/snapshot`, `/beam`, `/ehp`, `/rank-tank`, `/hybrid`, `/rank-bruiser` endpoints |
 | `effects.py` | `ItemEffect` registry — 547 entries, DDragon purchasable coverage COMPLETE |
 | `dps.py` | `CallContext` dataclass + `compute_dps()` — stat walk, armor/MR pen, on-hit, periodic procs, damage amps |
 | `ehp.py` | **Phase 1 (s174)** — `compute_ehp()` + `EhpResult` + `rank_items_by_ehp()` + `EhpRankResult` — Tank EHP scorer; HP / armor_factor math with caller-supplied AD/AP/true enemy shares; ARAM `aramDamageTaken` modifier folded in |
+| `hybrid.py` | **Phase 2 (s175)** — `compute_hybrid()` + `HybridResult` + `rank_items_by_hybrid()` + `HybridRankResult` — Bruiser hybrid scorer (α·dps + β·ehp); per-champion (α,β) overrides in `archetype_weights.json`; ranker sorts by normalized percentage delta |
+| `archetype_weights.json` | (s175) Per-champion bruiser α/β table — 20 entries covering Jarvan IV, Darius, Garen, Camille, Renekton, Sett, Mordekaiser, Riven, Volibear, Nasus, Olaf, Skarner, Hecarim, Udyr, Vi, Xin Zhao, Lee Sin, MonkeyKing/Wukong, Warwick, Trundle; default (0.5, 0.5) |
 | `stats.py` | Champion base-stat + per-level growth + DDragon stat-key map |
 | `engine.py` | `build_champion()` — leveled base + items + augments → resolved stat block |
 | `rank.py` | `rank_items()` — single-slot DPS ranker over filtered candidate pool |
 | `beam.py` | `beam_search_build()` — full-build beam search returning top-N complete builds |
 | `data_loader.py` | Versioned `DataSnapshot` loader; reads `data/daemon_slayer/<patch>/` |
 | `ult_rates.py` | Per-champion ult cast rate lookup from `data/daemon_slayer/ult_cast_rates.json`; 172 champions |
-| `tests/` | 1022 tests passing (44 ehp + 19 rank_tank + 4 server EhpRouteTests added in s174) |
+| `tests/` | 1066 tests passing (44 hybrid + 4 server HybridRouteTests added in s175) |
 
 ## Key data types
 

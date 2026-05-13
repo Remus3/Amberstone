@@ -263,6 +263,141 @@ def ehp_for(
     return _post_json("/ehp", body, timeout=timeout)
 
 
+@dataclass(frozen=True)
+class BruiserRankedItem:
+    """Mirror of ``agents.daemon_slayer.hybrid.HybridRankedItem`` — Phase 2
+    sibling of ``RankedItem`` / ``TankRankedItem``.
+
+    ``hybrid_delta_pct`` is the operator-facing sort key: a weighted sum of
+    normalized percentage gains. ``delta_dps`` + ``delta_ehp`` are raw
+    deltas exposed for transparency.
+    """
+    item_id: str
+    item_name: str
+    delta_dps: float
+    delta_ehp: float
+    hybrid_delta_pct: float
+    gold: int
+    shares_dead_unique: bool = False
+    dead_unique_key: str = ""
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "BruiserRankedItem":
+        return cls(
+            item_id=str(d.get("item_id", "")),
+            item_name=str(d.get("item_name", "")),
+            delta_dps=float(d.get("delta_dps", 0.0)),
+            delta_ehp=float(d.get("delta_ehp", 0.0)),
+            hybrid_delta_pct=float(d.get("hybrid_delta_pct", 0.0)),
+            gold=int(d.get("gold", 0)),
+            shares_dead_unique=bool(d.get("shares_dead_unique", False)),
+            dead_unique_key=str(d.get("dead_unique_key", "")),
+        )
+
+
+def rank_bruiser_for(
+    champion: str,
+    *,
+    level: int,
+    item_ids: Iterable[str],
+    mode: str = "SR",
+    target_armor: float = 0.0,
+    target_mr: float = 0.0,
+    target_max_hp: float = 0.0,
+    target_bonus_hp: float = 0.0,
+    enemy_ad_share: float = 0.5,
+    enemy_ap_share: float = 0.5,
+    top: int = 8,
+    sort_by: str = "delta",
+    only_item_ids: Optional[Iterable[str]] = None,
+    augments: Optional[Iterable[str]] = None,
+    filter_shared_uniques: bool = True,
+    alpha: Optional[float] = None,
+    beta: Optional[float] = None,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> Optional[list[BruiserRankedItem]]:
+    """Call POST /rank-bruiser and return the parsed top-N rows. None on engine failure.
+
+    Phase 2 (s175, 2026-05-12) — Bruiser hybrid scorer. Same engine-down
+    semantics as ``rank_for`` (None = unreachable, [] = nothing to recommend).
+
+    ``alpha`` / ``beta`` default to per-champion ``archetype_weights.json``
+    lookup server-side; pass explicit floats only when overriding (UI sliders,
+    operator mid-game retune).
+    """
+    body: dict = {
+        "champion": champion,
+        "level": int(level),
+        "items": [str(i) for i in item_ids if i],
+        "mode": mode,
+        "target_armor": float(target_armor),
+        "target_mr": float(target_mr),
+        "target_max_hp": float(target_max_hp),
+        "target_bonus_hp": float(target_bonus_hp),
+        "enemy_ad_share": float(enemy_ad_share),
+        "enemy_ap_share": float(enemy_ap_share),
+        "top": int(top),
+        "sort": sort_by,
+        "filter_shared_uniques": bool(filter_shared_uniques),
+    }
+    if alpha is not None:
+        body["alpha"] = float(alpha)
+    if beta is not None:
+        body["beta"] = float(beta)
+    if only_item_ids is not None:
+        body["only"] = [str(i) for i in only_item_ids if i]
+    if augments:
+        body["augments"] = [str(a) for a in augments if a]
+    data = _post_json("/rank-bruiser", body, timeout=timeout)
+    if data is None:
+        return None
+    ranked = data.get("ranked") or []
+    return [BruiserRankedItem.from_dict(r) for r in ranked]
+
+
+def hybrid_for(
+    champion: str,
+    *,
+    level: int,
+    item_ids: Iterable[str],
+    mode: str = "SR",
+    target_armor: float = 0.0,
+    target_mr: float = 0.0,
+    target_max_hp: float = 0.0,
+    target_bonus_hp: float = 0.0,
+    enemy_ad_share: float = 0.5,
+    enemy_ap_share: float = 0.5,
+    alpha: Optional[float] = None,
+    beta: Optional[float] = None,
+    augments: Optional[Iterable[str]] = None,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> Optional[dict]:
+    """Call POST /hybrid and return the raw result dict. None on failure.
+
+    Phase 2 sibling of ``dps_for`` and ``ehp_for``. See ``rank_bruiser_for``
+    for alpha/beta semantics.
+    """
+    body: dict = {
+        "champion": champion,
+        "level": int(level),
+        "items": [str(i) for i in item_ids if i],
+        "mode": mode,
+        "target_armor": float(target_armor),
+        "target_mr": float(target_mr),
+        "target_max_hp": float(target_max_hp),
+        "target_bonus_hp": float(target_bonus_hp),
+        "enemy_ad_share": float(enemy_ad_share),
+        "enemy_ap_share": float(enemy_ap_share),
+    }
+    if alpha is not None:
+        body["alpha"] = float(alpha)
+    if beta is not None:
+        body["beta"] = float(beta)
+    if augments:
+        body["augments"] = [str(a) for a in augments if a]
+    return _post_json("/hybrid", body, timeout=timeout)
+
+
 def dps_for(
     champion: str,
     *,
