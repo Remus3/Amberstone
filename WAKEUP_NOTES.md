@@ -1,6 +1,91 @@
 ﻿# WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s137 + s166 + s173.5 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+> Sessions s27–s137 + s166 + s173.5 + s173.1 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+
+---
+
+# s176 wrap — 2026-05-12 (Phase 3 CS archetype-picker UI + dispatcher — single commit pending)
+
+**Operator instruction:** "continue" — after the Phase 2 push lands, ship Phase 3 in the same slot.
+
+Phase 3 in [NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md](NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md): operator-driven scorer selection. The plan calls this "single session, pure UI" but realistically the full scope (state-builder injection + coach integration + soft-nudge + in-game switch tab) is more than one slot. Shipped the **data + REST + dispatcher + picker UI** today; **deferred coach wiring + nudge + state-builder stamp** to a follow-up session per the "MVP what unblocks operator" discipline from s174.
+
+## Ships
+
+| File | Change |
+|---|---|
+| [core/archetype_picks.py](core/archetype_picks.py) | **NEW (~300 LOC).** Storage layer + tag-default resolver. Six canonical archetypes: `carry`, `bruiser`, `tank`, `mage`, `assassin`, `enchanter`. `tag_to_archetype()` maps DDragon `tags[i]` (Fighter→bruiser, Mage→mage, Marksman→carry, Tank→tank, Support→enchanter, Assassin→assassin). `default_for_champion()` returns `(primary, secondary)` from `tags[0]` + `tags[1]` (with `_fallback_secondary` heuristic when only one tag exists). Per-champion overrides persist in `data/cs_archetype_picks.json` via atomic write (mirror of `routes_lobby_aux._save_top8` pattern). `get_archetype_for(champion)` returns the merged view with `source` field (`default` / `user_cs` / `user_ingame` / `nudge`). |
+| [dashboard/routes_archetype.py](dashboard/routes_archetype.py) | **NEW.** `GET /api/cs-archetype-pick?champion=X` returns merged pick + archetype enum metadata. `POST /api/cs-archetype-pick {champion, primary, secondary?, source?}` persists. `POST {champion, clear: true}` rolls back to DDragon-tag default. 4xx on invalid archetype/source/missing-champion. |
+| [dashboard/_dispatch.py](dashboard/_dispatch.py) | Wired `routes_archetype.GET_ROUTES` + `POST_ROUTES` into the dispatcher's `_gather_get` + `_gather_post` so the new endpoints are live without a separate registration step. |
+| [core/daemon_slayer_client.py](core/daemon_slayer_client.py) | New `rank_for_primary_archetype(champion, archetype, …)` dispatcher routes carry → `rank_for()` (ds.dps), bruiser → `rank_bruiser_for()` (ds.hybrid), tank → `rank_tank_for()` (ds.ehp). mage/assassin/enchanter fall back to ds.dps with `fell_back=True` until Phases 4-6 ship dedicated scorers. Returns canonicalized `{ok, scorer, archetype, ranked, fell_back}` envelope so callers don't need to know which underlying client fired. |
+| [web/js/panels/champ_select.js](web/js/panels/champ_select.js) | New 6-button 3×2 archetype picker grid in the My Pick card render path (`_csvRenderCentralPane`), wedged between lock button and build chooser. `_csvFetchArchetype()` polls `/api/cs-archetype-pick?champion=X` on render; `_CSV_ARCH_CACHE` mirrors the response for subsequent ticks. Click handlers save to `localStorage.rc-cs-archetype-<champion>` (instant subsequent render) + POST to persist server-side. Optimistic DOM update so click→active feels instant. Unimplemented scorers carry `.placeholder` class (grayed) but stay clickable so the dispatcher's `fell_back` path runs. |
+| [web/css/panels/champ_select_view.css](web/css/panels/champ_select_view.css) | New `.csv-archetype-picker` section (~80 LOC) — 3-column grid, info-blue active state (`#5fa8ff` border + `#0e1a2e` fill matching the existing DS pill colors), gray-out placeholder buttons at 0.55 opacity. Sits between `.csv-lock-btn` and `.csv-builds`. |
+| [tests/test_archetype_picks.py](tests/test_archetype_picks.py) | **NEW.** 33 tests across 5 classes: tag-mapping (3), default-for-champion (9 including Aatrox/Lulu/Yasuo/Malphite/Caitlyn/MonkeyKing/Wukong/unknown/empty), fallback-secondary (5), persistence round-trip (15 — save/get/clear/list/validation), constants (3). Tempdir-patched so the real data file is untouched. |
+| [tests/test_routes_archetype.py](tests/test_routes_archetype.py) | **NEW.** 15 tests across 3 classes: GET (4 — no-champion list + champion-default + override + archetype enum), POST (9 — save + clear + validation 400s + default source), dispatch-table registration (2 — pins the wiring so a refactor doesn't silently drop the routes). Uses a `StubHandler` stand-in so no real HTTP server spins up. |
+| [tests/test_archetype_dispatcher.py](tests/test_archetype_dispatcher.py) | **NEW.** 15 tests across 6 classes: carry routing (2), bruiser routing (2 incl alpha/beta passthrough), tank routing (3 incl `only_item_ids` whitelist), fallback archetypes (3 — mage/assassin/enchanter all flagged `fell_back=True`), engine-down (3 — None propagation), unknown archetype (2). Mocks underlying `rank_for`/`rank_tank_for`/`rank_bruiser_for` so the test doesn't touch :8893. |
+| Living docs sync | CLAUDE.md (+s176 entry at item 33 + DS-pointer line) · README.md (header DS bullet + capability matrix + coverage block) · docs/DAEMON_SLAYER.md (status + Phase 3 section) · docs/ARCHITECTURE.md (DS section) · ROADMAP.md (DS status line + s176 ship entry). |
+| RC restart | `echo restart > restart_trigger.txt` to pick up the new route module — supervisor reloaded RC pid 15428 cleanly; `/api/cs-archetype-pick?champion=Aatrox` returns 200 with default `{primary: "bruiser", source: "default"}`. |
+
+## Live validation
+
+```
+$ curl -sk "https://127.0.0.1:8888/api/cs-archetype-pick?champion=Aatrox"
+{"ok": true, "champion": "Aatrox", "pick": {"champion": "Aatrox", "primary": "bruiser",
+ "secondary": "tank", "source": "default"}, "archetypes": ["carry", "bruiser", "tank",
+ "mage", "assassin", "enchanter"], "implemented": ["bruiser", "carry", "tank"]}
+
+$ curl -sk -X POST .../api/cs-archetype-pick -d '{"champion":"Aatrox","primary":"tank","source":"user_cs"}'
+{"ok": true, "pick": {"champion": "Aatrox", "primary": "tank", "secondary": "bruiser",
+ "source": "user_cs", "set_at": "2026-05-13T00:53:02Z"}}
+
+$ curl -sk .../api/cs-archetype-pick?champion=Aatrox  # confirms persistence
+{... "source": "user_cs" ...}
+
+$ curl -sk -X POST .../api/cs-archetype-pick -d '{"champion":"Aatrox","clear":true}'
+{"ok": true, "cleared": true, "pick": {... "source": "default" ...}}
+```
+
+Live dispatcher probe (with the running DS server on :8893):
+
+```python
+>>> rank_for_primary_archetype('Malphite', 'tank', level=11, item_ids=[],
+...                            enemy_ad_share=0.9, enemy_ap_share=0.1, top=3)
+{'ok': True, 'scorer': 'ehp', 'archetype': 'tank', 'fell_back': False,
+ 'ranked': [{'item_id': '3143', 'item_name': "Randuin's Omen", 'delta': 2036, …},
+            {'item_id': '663058', 'item_name': 'Shield of Molten Stone', 'delta': 1871, …},
+            ...]}
+
+>>> rank_for_primary_archetype('Veigar', 'mage', level=11, item_ids=[], top=3)
+{'ok': True, 'scorer': 'dps', 'archetype': 'mage', 'fell_back': True, ...}
+```
+
+Math behaves as expected — tank routing surfaces armor items for AD-heavy enemies; mage routing flags `fell_back=True` so the UI can render a "Phase 4 pending" badge.
+
+## Findings
+
+- **The "single session, pure UI" framing in the plan was misleading.** Phase 3 as written touches 7+ subsystems (state-builder, dispatcher, REST, picker UI, CSS, coach integration ×4, soft-nudge toast, in-game switch tab, invalidation events). Shipping all of that in one slot would either bloat the PR or skip tests. Split: MVP today (data + REST + dispatcher + picker), coach wiring + nudge + in-game tab in a follow-up. Same discipline as s174 Phase 1 where shield-throughput was deferred to 1.5.
+- **State-builder injection needs a server-side champion-id → name resolver that doesn't exist.** The LCU agent ships `my_champion` as an integer ID; the dashboard's JS side uses DDragon to resolve to display name (e.g. `Aatrox`). For the state-builder to stamp `state.lcu.champ_select.cs_archetype_pick`, Legion would need its own champion-id → name resolver. Three options: (a) build it via DDragon's `champion.json` (~30 LOC, low risk); (b) make the LCU agent send `my_champion_name` alongside `my_champion`; (c) defer to JS-side stamping. Chose (c) for Phase 3 because the picker UI doesn't need the state field — it fetches `/api/cs-archetype-pick` directly. Will reconsider when wiring coaches.
+- **Optimistic DOM update + localStorage write before the fetch resolves is the right UX latency model.** Operator clicks "Tank" → button highlights instantly (DOM toggle), localStorage saves instantly (next render shows correct state), POST fires in background. Failure case: POST fails but localStorage already saved → next reload retries via the GET resolving local → fetch. No flicker, no lost work.
+- **Carry/bruiser/tank with implemented scorers vs mage/assassin/enchanter as placeholders is the right v1.** Showing all 6 in the picker — even the unimplemented ones — preserves the taxonomy. Hiding them would mean future Phase 4 ships requiring a UI revamp; greying them with `fell_back=True` semantic means the dispatcher graceful-degrades and the operator still gets useful output. Same pattern as Galeforce (Arena re-skin) — visible but tagged.
+- **Mock-based dispatcher tests beat live-engine tests for routing logic.** The dispatcher's value is "this archetype goes to that scorer with these params" — that's pure routing logic, not a DS engine math check. Mocking `rank_for`/`rank_tank_for`/`rank_bruiser_for` keeps the test independent of `:8893` health, makes CI deterministic, and runs in <50ms. Live DS tests still exist (`test_server.py::HybridRouteTests` etc.) for the underlying scorers.
+
+## Verification
+
+- `py -m pytest tests/test_archetype_picks.py tests/test_routes_archetype.py tests/test_archetype_dispatcher.py -v` → **63 passed**
+- `py -m pytest tests/ agents/daemon_slayer/tests/ --timeout=120` → **1968 passed** (was 1905 — +63 net, no regressions)
+- `py -m ruff check core/archetype_picks.py dashboard/routes_archetype.py dashboard/_dispatch.py core/daemon_slayer_client.py tests/test_archetype_picks.py tests/test_routes_archetype.py tests/test_archetype_dispatcher.py` → all checks passed
+- RC restart via `restart_trigger.txt` → pid 15428 alive, `/api/cs-archetype-pick` live
+- Live POST/GET/clear roundtrip → 200 + persisted JSON file shape correct
+- `/api/ui-version` rotated → operator's browser will pick up new JS/CSS on next tab focus
+
+## Open items carried forward
+
+- 🟡 **Coach integration for state.cs_archetype_pick** — `coaches/aram_coach.py` / `arena_coach.py` / `brawl_coach.py` / `coach_integration/_coach.py` currently call `rank_for()` directly. The wire-in adds a single line per coach: replace `rank_for(...)` with `rank_for_primary_archetype(champion, state.cs_archetype_pick.primary, ...)`. Reads from the dashboard's state envelope (which doesn't yet stamp the field — see next item).
+- 🟡 **State-builder stamping of `state.lcu.champ_select.cs_archetype_pick`** — needs a server-side champion-id → name resolver. ~30 LOC if we build one from DDragon `champion.json` directly in `_state_builder.py`. Unblocks coach integration above.
+- 🟡 **First-purchase-mismatch soft-nudge** — when state.cs_archetype_pick.primary = "tank" but operator buys Liandry / Luden's / IE in the first ~3 min, surface a one-time toast: "Switch primary scorer to mage?". Per-match localStorage gate so it doesn't re-fire. Bigger UX lift than the picker — separate session.
+- 🟡 **In-game switch tab** — mid-match archetype change UI in the active match view (currently `web/js/panels/dev.js` or a new `in_game_archetype_tab.js`). New primary fires immediately (one-shot warm pass per the s173.5 architecture lock-in); subsequent ticks use it.
+- 🟡 **Secondary-scorer caching + refresh on item-complete events** — `enemy_item_complete`, `self_item_complete`, `level_threshold_crossed` invalidate the secondary's cached result. Current MVP doesn't run the secondary at all — only the primary fires per coach tick.
+- 🟡 **Phase 4 — Mage ability DPS scorer** — three-session lift per the plan. Phase 4a Meraki ability ingest, 4b `compute_ability_dps()`, 4c `rank_items_by_ability_dps()` + integration. Once Phase 4 lands, `mage` archetype no longer falls back to dps in the dispatcher.
 
 ---
 
@@ -149,57 +234,3 @@ Math is selecting correctly — armor-heavy items for AD-heavy enemy, MR-heavy i
 - 🟡 **`recommend_defensive_items_via_ehp` wire-in** — function exists but no coach calls it. Defer to Phase 3 CS scorer-picker UI when `state.cs_archetype_pick` lands; tank-primary coach tick reads the pick and routes to the EHP ranker.
 - 🟡 **DS calibration with EHP picks** — `data/ds_calibration.jsonl` doesn't yet log `scorer="ehp"` tag. Add when calibration analysis begins (blocked on richer rewind_history.db per CLAUDE.md item 14).
 - 🟡 **Caster-side enemy pen modeling** — Phase 1 treats caster armor/MR as raw values. Enemy lethality + %MR pen applied AGAINST the tank would shift EHP downward in real fights. Needs enemy-build plumbing (`/api/ds-preview` already reads enemy items for offensive ranking; symmetric read needed for defensive). Phase 1.5+ candidate.
-
----
-
-# s173.1 wrap — 2026-05-12 (audit thread continuation — 5 commits)
-
-**operator slot complete** — `/what's-next` daytime run. Closes s173 audit findings #2 + #3, plus 3 bonus items spotted while in the area. All 5 commits CI-green on first push.
-
-Operator brief: "1 then any other items listed in roadmap, readme, or other files for tasks to do, 2 will be later today in about 5 hours." Item 1 = s173 finding #2 (ENGINE_VERSION doc-sync). Item 2 = Active Match step 5 (deferred 5 hours per operator). Slot scope: anything well-scoped, no operator-approval-blocked, no live-game-blocked.
-
-## Ships
-
-| Commit | Theme |
-|---|---|
-| [5c8b53e](https://github.com/Remus3/riot-commander/commit/5c8b53e) | `docs:` sync ENGINE_VERSION 0.60.0 → 0.61.0 across 6 living docs (8 lines) — closes s173 finding #2. Historical references in archived notes + batch comments intentionally untouched. |
-| [802ad90](https://github.com/Remus3/riot-commander/commit/802ad90) | `docs:` sync DS test count 929/911 → 949 across living docs — spotted drift while doing #2. Canonical 949 from `py -m pytest agents/daemon_slayer/`. Dated planning docs left at 929 (write-time accurate). |
-| [38ca915](https://github.com/Remus3/riot-commander/commit/38ca915) | `test(snapshot_panels):` adversarial fixtures + mode-transition coverage; fix s151 `gameTime` ref-error. 4 new fixtures (no_coach / null_fields / empty_strings / out_of_range) + 2 new tests + closes the CLAUDE.md item-10 s151 follow-up (`panels/map_state.js:720` referenced bare `gameTime` outside the IIFE scope; only fired when `game_time_s` was numeric — adv_out_of_range surfaced it via -42). 11 of 11 tests green (was 6). |
-| [16334b2](https://github.com/Remus3/riot-commander/commit/16334b2) | `refactor(champion-aliases):` unify three drift-prone maps via canonical JSON — closes s173 finding #3. New `web/data/champion_aliases.json` as source of truth; `web/js/lib/items_index.js` + `web/js/dashboard.js` fetch async; `tools/daemon_slayer_extract.py` reads at import-time. New `tests/test_champion_aliases.py` (4 regression guards). `agents/daemon_slayer/server.py:_resolve_champion_id` is a different pattern (builds revmap from DDragon data dynamically) — explicitly not a drift candidate. |
-| [51e0da7](https://github.com/Remus3/riot-commander/commit/51e0da7) | `fix(console-pipe):` per-entry queue removal preserves entries on replay failure — closes BACKLOG item "Console-pipe localStorage flush failure-recovery loop". The original `flushQueueAfterSuccess` called `localStorage.removeItem(QUEUE_KEY)` BEFORE issuing replay fetches with `.catch(() => {})`; mid-flush endpoint outage lost every queued entry. Now each entry stays queued until its own 2xx; failures retry on next pipe-success (QUEUE_MAX=50 bounds growth). |
-
-## Findings
-
-- **The adversarial harness paid for itself on first run** — `test_adversarial[adv_out_of_range]` surfaced the s151 `gameTime` ref-error that had been pending as a "follow-up" deferral for ~10 days. The bug was previously invisible because no real game state has `game_time_s: -42`; only an adversarial fixture exercised the path. Closing the loop: BACKLOG-driven test design caught a CLAUDE.md item-10 known-unfixed bug. Worth keeping in mind for future test-coverage decisions — adversarial fixtures aren't just defense, they're discovery.
-- **Champion alias unification was 5 files not 3** — the s173 wrap listed three sites (items_index.js, daemon_slayer_extract.py, dashboard.js). While implementing I checked one more candidate the audit brief had flagged (`core/champion_aliases.py` doesn't exist) and audited `agents/daemon_slayer/server.py:_resolve_champion_id` — which is a different pattern (dynamic revmap from DDragon `champions[].name`) and NOT a drift candidate. Test guard at `tests/test_champion_aliases.py:test_js_consumers_reference_canonical_file` greps both JS files to catch future regressions where someone re-hardcodes the map.
-- **Console-pipe identity match by (ts, message-prefix)** — object identity doesn't survive the JSON round-trip through localStorage, so `_dropQueuedEntry` matches on (ts, message[:100]). Collisions are benign — at worst we drop a near-duplicate that retries on next flush. Heuristic chosen over assigning UUIDs at enqueue time to keep the fix surgical.
-
-## Files touched this slot
-
-**Doc-sync (2 commits, 9 line edits):**
-- `CLAUDE.md` · `README.md` (×3 lines) · `docs/DAEMON_SLAYER.md` · `docs/ARCHITECTURE.md` · `BRIEF.md` · `NEXT_SESSION_PLAN_2026-05-10.md`
-
-**Code + tests (3 commits, 8 files changed, 5 new):**
-- `web/data/champion_aliases.json` (NEW)
-- `web/js/lib/items_index.js` · `web/js/dashboard.js` · `web/js/main.js` · `web/js/panels/map_state.js`
-- `tools/daemon_slayer_extract.py`
-- `tests/test_champion_aliases.py` (NEW)
-- `tests/snapshot_panels/test_panel_snapshots.py`
-- `tests/snapshot_panels/fixtures/adv_no_coach.json` · `adv_null_fields.json` · `adv_empty_strings.json` · `adv_out_of_range.json` (4 NEW)
-
-## Open items carried forward
-
-- 🟡 **Active Match view step 5** — deferred per operator to ~5 hours after slot start. Sub-items: zen-lock in-game + RIGHT NOW fold + bridge-pending → dev-panel button + fleet view removal. CLAUDE.md item 18.
-- 🟡 **s173.2 finding — `.claude/commands/process-bridge-tasks.md` is gitignored**. The s173.2 unification edit is live on Legion but won't ride with a fresh clone or deploy. Two paths for durability: (a) track a canonical at `tools/process-bridge-tasks-legion.md` mirroring the Peer template pattern + add it to CLAUDE.md frozen list; (b) accept local-only since the file lives alongside other local config (bridge secrets, MCP URLs). No urgency — runtime gate is correct on this machine.
-- 🟡 **Live champ-select verification** — the Hunt 5 substitution from s173 (`907543f`) and the s171.8 cache-bust unification both await a real ChampSelect pop to reconfirm `_fetchDsPreview` fires with the correct mode label and the unified asset-hash propagates `champ_select.js` updates.
-- 🟡 **dashboard.js console-pipe mirror** — same pre-emptive-remove bug at line 8109 left unfixed since the wrap noted dashboard.js is dead code (web/index.html only loads main.js). Sync deferred to land alongside any future dashboard.js removal.
-- 🟡 **BACKLOG `MatchDB` thread-safety validation** entry is stale — `core/match_db.py` was refactored 2026-04-28 (audit proposal 1.2) from RLock to WAL + per-thread connections. The FIX-021 lock referenced in BACKLOG no longer exists. Worth a one-line BACKLOG edit when next in the area.
-
-## Pending verification
-
-🟢 All snapshot_panels tests + full pytest suite green throughout slot:
-- After 38ca915: 821 (full) + 11 (snapshot_panels) = 832 passing
-- After 16334b2: 836 passing (snapshot_panels rolled into full run + 4 new alias tests)
-- After 51e0da7: snapshot_panels 11/11 — happy path unchanged for console pipe
-
-🟡 Live verification of the s151 fix awaits next real game (current liveclient empty per startup probe). The `gameTime` ref-error in `_tickObjectiveCountdowns` fires only when `_currentGameTimeS()` returns a number, which means an active game with `game_time_s` populated. Adversarial fixture verified it; live confirm is bonus.
