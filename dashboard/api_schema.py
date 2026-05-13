@@ -114,6 +114,28 @@ class DsPreviewResponse(_AllowExtra):
     error: str = ""
 
 
+# ── POST /api/archetype-nudge/dismiss ────────────────────────────────────
+
+class ArchetypeNudgeDismissRequest(_ForbidExtra):
+    """s184 — operator clicked the chip's X. Server is idempotent."""
+    champion: str
+
+
+# Embedded in StateResponse.archetype_nudge (s184). May be empty dict
+# when no signal; the optional fields below are present once evaluation
+# has fired or completed with no_mismatch.
+class ArchetypeNudgePayload(_AllowExtra):
+    fired: bool = False
+    phase: str = "pending"   # "pending" | "fired" | "dismissed" | "no_mismatch"
+    champion: str = ""
+    primary: str = ""
+    first_item_id: str = ""
+    first_item_name: str = ""
+    message: str = ""
+    expected_items: list[str] = []
+    session_token: str = ""
+
+
 # ── POST /api/bridge/inbox ────────────────────────────────────────────────
 
 class BridgeInboxRequest(_AllowExtra):
