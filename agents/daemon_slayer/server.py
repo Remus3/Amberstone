@@ -574,16 +574,21 @@ def _route_rank_bruiser(body: dict) -> dict:
     return result.to_dict()
 
 
-def _parse_max_priority(body: dict) -> tuple[str, str, str]:
-    """Decode the ``max_priority`` body field.
+def _parse_max_priority(body: dict) -> Optional[tuple[str, str, str]]:
+    """Decode the optional ``max_priority`` body field.
 
-    Accepts None / list / comma-string ("Q,W,E") / compact "QWE". Phase 4c
-    shared between ``/ability-dps`` and ``/rank-mage`` so both routes parse
-    the operator's priority override identically.
+    Returns ``None`` when the field is absent or empty so the engine's
+    per-champion override registry (Phase 4d, s185) can resolve a
+    champion-specific priority. Explicit values take precedence.
+
+    Accepts list / comma-string ("Q,W,E") / compact "QWE". Phase 4c
+    shared between ``/ability-dps``, ``/rank-mage``, ``/burst``, and
+    ``/rank-assassin`` so all four routes parse the operator's priority
+    override identically.
     """
     raw_prio = body.get("max_priority")
     if raw_prio is None or raw_prio == "":
-        return ("Q", "W", "E")
+        return None
     if isinstance(raw_prio, str) and "," not in raw_prio and len(raw_prio) == 3:
         return tuple(raw_prio.upper())  # type: ignore[return-value]
     parts = _coerce_str_list(raw_prio, "max_priority")
