@@ -242,6 +242,47 @@ body[data-mode="client"] .trigger-pill,
 body[data-mode="tft"]    .trigger-pill,
 body:not([data-mode])    .trigger-pill { display: none; }
 
+/* Archetype-mismatch chip (s184.1, 2026-05-13) — warn-style nudge that
+ * fires when the operator's CS archetype pick doesn't match the
+ * dispatcher's top-15 for their first completed item. Same hide rules
+ * as .ds-pill so the row collapses cleanly in client/tft. Outline +
+ * yellow soft fill so it reads as a transient alert rather than a
+ * permanent status pill. */
+.archetype-nudge-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  vertical-align: middle;
+  line-height: 1.4;
+  padding: 4px 6px 4px 11px;
+  border-radius: 999px;
+  background: var(--warn-soft, rgba(251, 191, 36, 0.14));
+  color: var(--warn, #fbbf24);
+  font-size: 16px;
+  font-weight: 700;
+  max-width: 100%;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  outline: 1px solid var(--warn, #fbbf24);
+}
+.archetype-nudge-chip-text { font-variant-numeric: tabular-nums; }
+.archetype-nudge-chip-x {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  border-radius: 999px;
+  opacity: 0.75;
+}
+.archetype-nudge-chip-x:hover { opacity: 1; }
+.archetype-nudge-chip[hidden] { display: none !important; }
+body[data-mode="client"] .archetype-nudge-chip,
+body[data-mode="tft"]    .archetype-nudge-chip,
+body:not([data-mode])    .archetype-nudge-chip { display: none; }
+
 .panel {
   background: var(--surface);
   border-radius: var(--radius);

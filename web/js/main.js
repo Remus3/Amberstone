@@ -26,6 +26,7 @@ import { MM, renderMinimap, _tickSpellCooldowns, _tickObjectiveCountdowns, _upda
 import { handleChampSelect, renderChampSelectPanel, renderChampSelectCoach, renderChampSelectView, champSelectViewEnabled } from './panels/champ_select.js';
 import { renderLoadingView, loadingViewEnabled } from './panels/loading.js';
 import { renderTeamContext } from './panels/team_context.js';
+import { renderArchetypeNudge } from './panels/archetype_nudge_chip.js';
 import { renderActiveMatch, activeMatchEnabled } from './panels/active_match.js';
 import { renderBridgePending, renderCoachDecisions, renderRecentCoachCalls } from './panels/bridge_pending.js';
 // ADR-007 (s169) — heartbeat pill self-starts on import (own setInterval).
@@ -5350,6 +5351,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
           // history during champ-select via the LCU snapshot.
           handleLcuEnvelope(st.lcu);
           renderTeamContext(st);
+          renderArchetypeNudge(st);
         }
       } catch (_) { /* ignore — WS may come back */ }
     }
@@ -5383,6 +5385,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
                     mode: fileMode, payload: coachPayload });
           if (st.lcu) handleLcuEnvelope(st.lcu);
           renderTeamContext(st);
+          renderArchetypeNudge(st);
         } catch (_) { /* malformed event — skip */ }
       };
       es.onerror = () => {
@@ -5414,7 +5417,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
         if (r.ok) {
           const st = await r.json();
           if (st && st.lcu) handleLcuEnvelope(st.lcu);
-          if (st) renderTeamContext(st);
+          if (st) { renderTeamContext(st); renderArchetypeNudge(st); }
         }
       } catch (_) { /* silent */ }
       finally { inflight = false; }
