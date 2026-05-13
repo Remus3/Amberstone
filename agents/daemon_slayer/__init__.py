@@ -411,6 +411,23 @@ Phase 2 (s175, 2026-05-12 — Bruiser hybrid scorer, ENGINE_VERSION 0.64.0):
   weight calibration from rewind_history.db (Phase 2.5) and
   phase/level-aware weights (single weight pair is good enough for v1).
 
+Phase 4c (s179, 2026-05-12 — Mage ability DPS ranker, ENGINE_VERSION 0.67.0):
+  ``ability_dps.py`` gains ``rank_items_by_ability_dps()`` + ``AbilityDpsRankedItem``
+  + ``AbilityDpsRankResult`` mirroring ``rank_items_by_hybrid`` / ``rank_items_by_ehp``
+  shape — same candidate-filtering pipeline (purchasable + mode-legal +
+  optional whitelist + budget + terminal-only + dead-unique dedup),
+  same ``delta`` / ``efficiency`` sort keys, but each candidate is scored
+  by total-ability-DPS gain over the baseline rather than auto-attack DPS
+  or blended EHP. New ``/rank-mage`` server route mirrors ``/rank-tank`` +
+  ``/rank-bruiser`` shape: union of ``/ability-dps`` and ``/rank`` body
+  parameters, with shared ``max_priority`` / ``form_index`` decoders so
+  both routes parse the operator's priority/form overrides identically.
+  ``core/daemon_slayer_client.py`` gains ``MageRankedItem`` +
+  ``rank_mage_for()`` + ``ability_dps_for()`` client helpers; the
+  ``rank_for_primary_archetype()`` dispatcher's mage branch now routes
+  to ``ds.ability`` (was ``ds.dps`` with ``fell_back=True``). Assassin
+  + enchanter still fall back to ds.dps pending Phases 5-6.
+
 Phase 4b (s178, 2026-05-12 — Mage ability DPS evaluator, ENGINE_VERSION 0.66.0):
   New ``ability_dps.py`` sibling of ``dps.py`` with ``compute_ability_dps()``
   + ``AbilityDpsResult`` + ``AbilitySpellDps`` + ``AbilityContext``. Per-spell
@@ -465,4 +482,4 @@ Phase 4a (s177, 2026-05-12 — Champion ability ingest, ENGINE_VERSION 0.65.0):
   ``compute_ability_dps()`` into ``/rank-mage``.
 """
 
-ENGINE_VERSION = "0.66.0"
+ENGINE_VERSION = "0.67.0"
