@@ -56,6 +56,7 @@ from .data_loader import DataSnapshot, SnapshotNotFound
 from .dps import compute_dps
 from .ehp import compute_ehp, rank_items_by_ehp
 from .engine import build_champion
+from .hybrid import compute_hybrid, rank_items_by_hybrid
 from .rank import SORT_KEYS, rank_items
 
 _log = logging.getLogger("daemon_slayer.server")
@@ -90,6 +91,8 @@ _INDEX_HTML = """<!doctype html>
 <tr><td>POST</td><td>/beam</td><td>full-build beam search (top-N complete builds)</td></tr>
 <tr><td>POST</td><td>/ehp</td><td>caster Effective HP under an enemy damage profile (Phase 1)</td></tr>
 <tr><td>POST</td><td>/rank-tank</td><td>rank items by EHP delta (Phase 1)</td></tr>
+<tr><td>POST</td><td>/hybrid</td><td>bruiser combined DPS+EHP score (Phase 2)</td></tr>
+<tr><td>POST</td><td>/rank-bruiser</td><td>rank items by weighted (α·dps + β·ehp) delta (Phase 2)</td></tr>
 </table>
 
 <h2>Example</h2>
@@ -447,6 +450,117 @@ def _route_rank_tank(body: dict) -> dict:
     return result.to_dict()
 
 
+def _opt_weight(body: dict, key: str) -> Optional[float]:
+    """Optional alpha/beta override. Returns None when absent (engine
+    falls back to the per-champion table)."""
+    if key not in body or body[key] in (None, ""):
+        return None
+    try:
+        return float(body[key])
+    except (TypeError, ValueError):
+        raise _ApiError(400, f"{key}: expected number, got {body[key]!r}")
+
+
+def _route_hybrid(body: dict) -> dict:
+    """POST /hybrid — compute combined DPS+EHP score for the caster build.
+
+    Phase 2 (s175, 2026-05-12). Body shape is the union of /dps and /ehp
+    parameters plus optional ``alpha`` / ``beta`` weight overrides.
+    """
+    snap = _CACHE.get()
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
+    level = _opt_int(body, "level", 1) or 1
+    items = _coerce_str_list(body.get("items"), "items")
+    mode = _opt_str(body, "mode", "SR") or "SR"
+    target_armor = _opt_float(body, "target_armor", 0.0)
+    target_mr = _opt_float(body, "target_mr", 0.0)
+    target_max_hp = _opt_float(body, "target_max_hp", 0.0)
+    target_bonus_hp = _opt_float(body, "target_bonus_hp", 0.0)
+    enemy_ad_share = _opt_float(body, "enemy_ad_share", 0.5)
+    enemy_ap_share = _opt_float(body, "enemy_ap_share", 0.5)
+    phase = _opt_str(body, "phase")
+    if phase is not None and phase not in ("early", "mid", "late"):
+        raise _ApiError(400, f"phase: must be early|mid|late, got {phase!r}")
+    augments = _coerce_str_list(body.get("augments"), "augments")
+    alpha = _opt_weight(body, "alpha")
+    beta = _opt_weight(body, "beta")
+    try:
+        result = compute_hybrid(
+            snap, champion_id=champion, level=level,
+            item_ids=items, mode=mode,
+            target_armor=target_armor, target_mr=target_mr,
+            target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
+            enemy_ad_share=enemy_ad_share, enemy_ap_share=enemy_ap_share,
+            phase=phase, augments=augments,
+            alpha=alpha, beta=beta,
+        )
+    except KeyError as e:
+        raise _ApiError(404, str(e))
+    except ValueError as e:
+        raise _ApiError(422, str(e))
+    return result.to_dict()
+
+
+def _route_rank_bruiser(body: dict) -> dict:
+    """POST /rank-bruiser — rank items by weighted DPS+EHP delta.
+
+    Phase 2 (s175, 2026-05-12). Body is the union of /rank and /rank-tank
+    parameters. ``alpha`` / ``beta`` default to per-champion overrides
+    from ``archetype_weights.json``; pass explicit floats to override.
+    """
+    snap = _CACHE.get()
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
+    level = _opt_int(body, "level", 1) or 1
+    items = _coerce_str_list(body.get("items"), "items")
+    mode = _opt_str(body, "mode", "SR") or "SR"
+    target_armor = _opt_float(body, "target_armor", 0.0)
+    target_mr = _opt_float(body, "target_mr", 0.0)
+    target_max_hp = _opt_float(body, "target_max_hp", 0.0)
+    target_bonus_hp = _opt_float(body, "target_bonus_hp", 0.0)
+    enemy_ad_share = _opt_float(body, "enemy_ad_share", 0.5)
+    enemy_ap_share = _opt_float(body, "enemy_ap_share", 0.5)
+    phase = _opt_str(body, "phase")
+    if phase is not None and phase not in ("early", "mid", "late"):
+        raise _ApiError(400, f"phase: must be early|mid|late, got {phase!r}")
+    augments = _coerce_str_list(body.get("augments"), "augments")
+    budget = _opt_int(body, "budget", None)
+    slot_count = _opt_int(body, "slots", 6) or 6
+    top_n = _opt_int(body, "top", 20)
+    if top_n is None:
+        top_n = 20
+    sort_by = _opt_str(body, "sort", "delta") or "delta"
+    if sort_by not in SORT_KEYS:
+        raise _ApiError(400, f"sort: must be one of {list(SORT_KEYS)}, got {sort_by!r}")
+    include_components = _opt_bool(body, "include_components", False)
+    filter_shared_uniques = _opt_bool(body, "filter_shared_uniques", True)
+    alpha = _opt_weight(body, "alpha")
+    beta = _opt_weight(body, "beta")
+    only_ids: Optional[list[str]] = None
+    if "only" in body and body["only"] not in (None, ""):
+        only_ids = _coerce_str_list(body["only"], "only")
+    try:
+        result = rank_items_by_hybrid(
+            snap,
+            champion_id=champion, level=level,
+            current_item_ids=items, mode=mode,
+            target_armor=target_armor, target_mr=target_mr,
+            target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
+            enemy_ad_share=enemy_ad_share, enemy_ap_share=enemy_ap_share,
+            phase=phase,
+            budget=budget, slot_count=slot_count, top_n=top_n,
+            include_components=include_components,
+            only_item_ids=only_ids, sort_by=sort_by,
+            augments=augments,
+            filter_shared_uniques=filter_shared_uniques,
+            alpha=alpha, beta=beta,
+        )
+    except KeyError as e:
+        raise _ApiError(404, str(e))
+    except ValueError as e:
+        raise _ApiError(422, str(e))
+    return result.to_dict()
+
+
 def _route_beam(body: dict) -> dict:
     snap = _CACHE.get()
     champion = _resolve_champion_id(snap, _required_str(body, "champion"))
@@ -540,6 +654,8 @@ _POST_ROUTES = {
     "/beam": _route_beam,
     "/ehp": _route_ehp,
     "/rank-tank": _route_rank_tank,
+    "/hybrid": _route_hybrid,
+    "/rank-bruiser": _route_rank_bruiser,
 }
 
 # GET routes that need a body merge from query params for the same handler.

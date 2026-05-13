@@ -1,0 +1,29 @@
+{
+  "_meta": {
+    "description": "Phase 2 (s175, 2026-05-12) — bruiser archetype weights for ds.hybrid scorer. α weights DPS, β weights EHP. Per-champion overrides keyed by DDragon champion id (NOT display name — display→id resolution happens server-side in _resolve_champion_id). Fallback to default for any champion not listed.",
+    "default_rationale": "α=β=0.50 means equal-weight balanced fighter. Bumping α makes the scorer prefer offensive items; bumping β makes it prefer defensive items. Sum doesn't have to equal 1.0 but the recommended convention is α+β=1.0 so operators can think of (0.65, 0.35) as '65/35 toward DPS'."
+  },
+  "default": [0.5, 0.5],
+  "champions": {
+    "JarvanIV": [0.55, 0.45],
+    "Darius": [0.65, 0.35],
+    "Garen": [0.55, 0.45],
+    "Camille": [0.65, 0.35],
+    "Renekton": [0.65, 0.35],
+    "Sett": [0.55, 0.45],
+    "Mordekaiser": [0.50, 0.50],
+    "Riven": [0.70, 0.30],
+    "Volibear": [0.55, 0.45],
+    "Nasus": [0.50, 0.50],
+    "Olaf": [0.60, 0.40],
+    "Skarner": [0.50, 0.50],
+    "Hecarim": [0.55, 0.45],
+    "Udyr": [0.55, 0.45],
+    "Vi": [0.55, 0.45],
+    "XinZhao": [0.60, 0.40],
+    "LeeSin": [0.65, 0.35],
+    "MonkeyKing": [0.60, 0.40],
+    "Warwick": [0.55, 0.45],
+    "Trundle": [0.60, 0.40]
+  }
+}
