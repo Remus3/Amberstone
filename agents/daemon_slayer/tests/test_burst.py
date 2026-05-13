@@ -135,8 +135,13 @@ class ComputeBurstDamageBasicsTests(unittest.TestCase):
         self.assertEqual(r.mode, "SR")
 
     def test_default_combo_sequence_applied(self) -> None:
+        # Phase 5.5 (s186): Zed has an override (Q-W-E-R-Q2-AA via shadow Q
+        # double-cast). The engine resolver fires when combo_sequence=None.
         r = compute_burst_damage(self.snap, "Zed", level=11)
-        self.assertEqual(r.combo_sequence, ("Q", "W", "E", "AA", "R", "AA"))
+        self.assertEqual(r.combo_sequence, ("Q", "W", "E", "R", "Q2", "AA"))
+        self.assertEqual(r.combo_sequence_source, "champion")
+        # Engine default (Q-W-E-AA-R-AA) still applies for champions without
+        # an override entry — verified separately in test_max_priority_overrides.
 
     def test_per_cast_one_row_per_token(self) -> None:
         r = compute_burst_damage(self.snap, "Zed", level=11)
@@ -210,8 +215,13 @@ class BurstScoringTests(unittest.TestCase):
         self.assertEqual(r_cast.final_damage, 0.0)
 
     def test_aa_uses_compute_dps_per_hit(self) -> None:
-        # AA contribution should be > 0 at lvl 11 (Zed has AD at level).
-        r = compute_burst_damage(self.snap, "Zed", level=11, target_armor=80)
+        # AA contribution should be > 0 at lvl 11 (Zed has AD at level). Pin
+        # the combo so this test stays decoupled from the per-champion
+        # override registry — Zed's registry combo includes one AA.
+        r = compute_burst_damage(
+            self.snap, "Zed", level=11, target_armor=80,
+            combo_sequence=("Q", "W", "E", "AA", "R", "AA"),
+        )
         aa_count = sum(1 for c in r.per_cast if c.token == "AA")
         self.assertEqual(aa_count, 2)
         per_aa = next(c for c in r.per_cast if c.token == "AA")

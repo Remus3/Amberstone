@@ -56,7 +56,10 @@ amplification.
 
 from __future__ import annotations
 
+import json
+import threading
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 from typing import Iterable, Optional, Sequence
 
 from .abilities import (
@@ -108,6 +111,67 @@ from .stats import clamp_level
 # R, Diana R, Zed R) plus shadow/blink R execute with one AA before and
 # one AA after the ult lands.
 DEFAULT_COMBO_SEQUENCE: tuple[str, ...] = ("Q", "W", "E", "AA", "R", "AA")
+
+# Phase 5.5 (s186, 2026-05-13) — per-champion combo override registry.
+# Same lazy-cache pattern as ability_dps._load_max_priority_table; ships
+# next to the engine rather than next to the patch snapshot, since combo
+# overrides reflect a champion's kit identity not a patch-time stat tweak.
+_COMBO_PATH = Path(__file__).resolve().parent / "champion_combo_sequences.json"
+_COMBO_LOCK = threading.Lock()
+_COMBO_CACHE: Optional[dict] = None
+
+
+def _load_combo_table() -> dict:
+    """Load the per-champion combo_sequence override table from disk.
+
+    Singleton cache. Tests can call ``reset_combo_cache()`` to force a
+    re-read after mutating the on-disk file.
+    """
+    global _COMBO_CACHE
+    with _COMBO_LOCK:
+        if _COMBO_CACHE is None:
+            _COMBO_CACHE = json.loads(_COMBO_PATH.read_text(encoding="utf-8"))
+        return _COMBO_CACHE
+
+
+def reset_combo_cache() -> None:
+    """Clear the singleton cache — for tests that mutate the on-disk file."""
+    global _COMBO_CACHE
+    with _COMBO_LOCK:
+        _COMBO_CACHE = None
+
+
+def get_combo_for(champion_id: str) -> tuple[tuple[str, ...], str]:
+    """Return ``(combo_tuple, source)`` for ``champion_id``.
+
+    ``champion_id`` is the DDragon canonical id (``"Khazix"``, ``"Leblanc"``,
+    not apostrophes). Source is ``"champion"`` for an explicit override or
+    ``"default"`` for the table fallback. The returned combo is already
+    token-validated via ``_validate_combo_sequence``.
+    """
+    table = _load_combo_table()
+    overrides = table.get("champions") or {}
+    if champion_id in overrides:
+        seq = overrides[champion_id]
+        return (_validate_combo_sequence(seq), "champion")
+    default_seq = table.get("default") or list(DEFAULT_COMBO_SEQUENCE)
+    return (_validate_combo_sequence(default_seq), "default")
+
+
+def _resolve_combo_sequence(
+    champion_id: str,
+    explicit: Optional[Sequence[str]],
+) -> tuple[tuple[str, ...], str]:
+    """Resolve combo_sequence from caller input + override registry.
+
+    Returns ``(combo_tuple, source)`` where source is:
+      * ``"override"`` — caller passed an explicit value
+      * ``"champion"`` — override table had an entry for the champion
+      * ``"default"`` — fell back to the table default (Q-W-E-AA-R-AA)
+    """
+    if explicit is not None:
+        return (_validate_combo_sequence(explicit), "override")
+    return get_combo_for(champion_id)
 
 # Spell key set — passive included so combos like Akali's P-on-hit can
 # (in a future version) be inserted explicitly. Phase 5 v1 only fires P
@@ -236,6 +300,7 @@ class BurstResult:
     target_armor_after_pen: float
     target_mr_after_pen: float
     max_priority_source: str = "default"            # "override" | "champion" | "default"
+    combo_sequence_source: str = "default"          # "override" | "champion" | "default"
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -263,6 +328,7 @@ class BurstResult:
             "block_strategy": self.block_strategy,
             "target_armor_after_pen": self.target_armor_after_pen,
             "target_mr_after_pen": self.target_mr_after_pen,
+            "combo_sequence_source": self.combo_sequence_source,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -335,7 +401,7 @@ def compute_burst_damage(
     max_priority: Optional[Sequence[str]] = None,
     block_strategy: str = "first",
     form_index_overrides: Optional[dict[str, int]] = None,
-    combo_sequence: Sequence[str] = DEFAULT_COMBO_SEQUENCE,
+    combo_sequence: Optional[Sequence[str]] = None,
 ) -> BurstResult:
     """Compute one-combo total burst damage for the resolved build.
 
@@ -350,6 +416,12 @@ def compute_burst_damage(
     ``max_priority`` defaults to the per-champion override from
     ``champion_max_priority.json`` via ``_resolve_max_priority`` — Phase 4d
     (s185). Operator can override explicitly per call.
+
+    ``combo_sequence`` defaults to the per-champion override from
+    ``champion_combo_sequences.json`` via ``_resolve_combo_sequence`` —
+    Phase 5.5 (s186). Zed's shadow Q2, Yone's Q1-Q2-Q3 chain, and Akali's
+    R-recast all live in the registry so /rank-assassin scores their burst
+    accurately by default.
 
     Auto-attack hits in the combo contribute the build's per-hit
     ``avg_attack_dmg`` from ``compute_dps`` — that's post-armor and
@@ -369,7 +441,7 @@ def compute_burst_damage(
         raise ValueError(
             f"target_current_hp_pct must be in [0,1], got {target_current_hp_pct}"
         )
-    combo_norm = _validate_combo_sequence(combo_sequence)
+    combo_norm, combo_source = _resolve_combo_sequence(champion_id, combo_sequence)
 
     level = clamp_level(level)
 
@@ -386,6 +458,7 @@ def compute_burst_damage(
                 target_current_hp_pct, combo_norm,
                 max_priority, block_strategy,
                 max_priority_source=max_priority_source,
+                combo_sequence_source=combo_source,
                 note=f"abilities snapshot missing: {e}",
             )
 
@@ -462,6 +535,7 @@ def compute_burst_damage(
             target_current_hp_pct, combo_norm,
             max_priority, block_strategy,
             max_priority_source=max_priority_source,
+            combo_sequence_source=combo_source,
             champion_name=resolved.champion_name,
             note=f"champion {resolved.champion_id!r} absent from abilities snapshot",
         )
@@ -619,6 +693,7 @@ def compute_burst_damage(
         target_armor_after_pen=target_armor_eff,
         target_mr_after_pen=target_mr_eff,
         max_priority_source=max_priority_source,
+        combo_sequence_source=combo_source,
         stats=dict(resolved.stats),
         notes=tuple(notes),
     )
@@ -668,6 +743,7 @@ def _empty_burst(
     block_strategy: str,
     *,
     max_priority_source: str = "default",
+    combo_sequence_source: str = "default",
     champion_name: str | None = None,
     note: str = "",
 ) -> BurstResult:
@@ -696,6 +772,7 @@ def _empty_burst(
         target_armor_after_pen=target_armor,
         target_mr_after_pen=target_mr,
         max_priority_source=max_priority_source,
+        combo_sequence_source=combo_sequence_source,
         stats={},
         notes=(note,) if note else (),
     )
@@ -757,6 +834,7 @@ class BurstRankResult:
     combo_sequence: tuple[str, ...]
     max_priority: tuple[str, str, str]
     max_priority_source: str              # "override" | "champion" | "default"
+    combo_sequence_source: str            # "override" | "champion" | "default"
     block_strategy: str
     mode_multiplier: float
     budget: Optional[int]
@@ -784,6 +862,7 @@ class BurstRankResult:
             "combo_sequence": list(self.combo_sequence),
             "max_priority": list(self.max_priority),
             "max_priority_source": self.max_priority_source,
+            "combo_sequence_source": self.combo_sequence_source,
             "block_strategy": self.block_strategy,
             "mode_multiplier": self.mode_multiplier,
             "budget": self.budget,
@@ -865,7 +944,7 @@ def rank_items_by_burst(
     max_priority: Optional[Sequence[str]] = None,
     block_strategy: str = "first",
     form_index_overrides: Optional[dict[str, int]] = None,
-    combo_sequence: Sequence[str] = DEFAULT_COMBO_SEQUENCE,
+    combo_sequence: Optional[Sequence[str]] = None,
     filter_shared_uniques: bool = True,
 ) -> BurstRankResult:
     """Rank items by total-burst-damage gain when added to ``current_item_ids``.
@@ -888,10 +967,10 @@ def rank_items_by_burst(
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
     level = clamp_level(level)
-    combo_norm = _validate_combo_sequence(combo_sequence)
 
-    # Resolve once so baseline + every candidate share the same priority.
+    # Resolve once so baseline + every candidate share priority + combo.
     resolved_priority, priority_source = _resolve_max_priority(champion_id, max_priority)
+    combo_norm, combo_source = _resolve_combo_sequence(champion_id, combo_sequence)
 
     current_ids: tuple[str, ...] = tuple(str(i) for i in (current_item_ids or ()))
     current_ids, stripped_trinkets = strip_arena_trinkets(current_ids, mode)
@@ -990,7 +1069,7 @@ def rank_items_by_burst(
         f"max_priority={'>'.join(resolved_priority)} (source={priority_source})  "
         f"block_strategy={block_strategy}"
     )
-    notes.append(f"combo={' → '.join(combo_norm)}")
+    notes.append(f"combo={' → '.join(combo_norm)} (source={combo_source})")
     notes.append(f"primary_scaling={baseline.primary_scaling}")
     if stripped_trinkets:
         notes.append(
@@ -1029,6 +1108,7 @@ def rank_items_by_burst(
         combo_sequence=combo_norm,
         max_priority=tuple(resolved_priority),
         max_priority_source=priority_source,
+        combo_sequence_source=combo_source,
         block_strategy=block_strategy,
         mode_multiplier=baseline.mode_multiplier,
         budget=budget,

@@ -7367,8 +7367,9 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         # 0.67.0 = s179 Phase 4c mage ability DPS ranker (+ /rank-mage route);
         # 0.68.0 = s180 Phase 5 assassin burst-window scorer (+ /rank-assassin route);
         # 0.69.0 = s181 Phase 6 enchanter HPS scorer (+ /rank-enchanter route);
-        # 0.70.0 = s185 Phase 4d per-champion max_priority overrides.
-        self.assertEqual(ENGINE_VERSION, "0.70.0")
+        # 0.70.0 = s185 Phase 4d per-champion max_priority overrides;
+        # 0.71.0 = s186 Phase 5.5 per-champion combo_sequence overrides.
+        self.assertEqual(ENGINE_VERSION, "0.71.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7429,7 +7430,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.70.0")
+        self.assertEqual(ENGINE_VERSION, "0.71.0")
 
 
 if __name__ == "__main__":

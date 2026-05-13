@@ -88,11 +88,13 @@ class RankByBurstBasicsTests(unittest.TestCase):
         self.assertLessEqual(len(r.ranked), 3)
 
     def test_default_combo_sequence_carried(self) -> None:
+        # Phase 5.5 (s186): Zed has a registry override (Q-W-E-R-Q2-AA).
         r = rank_items_by_burst(
             self.snap, "Zed", level=11, mode="SR",
             target_armor=80.0, target_mr=30.0, top_n=1,
         )
-        self.assertEqual(r.combo_sequence, ("Q", "W", "E", "AA", "R", "AA"))
+        self.assertEqual(r.combo_sequence, ("Q", "W", "E", "R", "Q2", "AA"))
+        self.assertEqual(r.combo_sequence_source, "champion")
 
     def test_primary_scaling_surfaced(self) -> None:
         r = rank_items_by_burst(

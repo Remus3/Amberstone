@@ -605,16 +605,21 @@ def _parse_form_index(body: dict) -> Optional[dict[str, int]]:
     return None
 
 
-def _parse_combo_sequence(body: dict) -> tuple[str, ...]:
-    """Decode the ``combo_sequence`` body field for /burst + /rank-assassin.
+def _parse_combo_sequence(body: dict) -> Optional[tuple[str, ...]]:
+    """Decode the optional ``combo_sequence`` body field.
 
-    Accepts None (returns engine default Q→W→E→AA→R→AA) / list / dash-string
-    ("Q-W-E-AA-R-AA") / comma-string ("Q,W,E,AA,R,AA"). The engine validates
-    individual tokens — this helper just normalizes the list shape.
+    Returns ``None`` when the field is absent or empty so the engine's
+    per-champion override registry (``champion_combo_sequences.json``,
+    Phase 5.5 s186) can resolve a champion-specific combo. Explicit
+    values take precedence.
+
+    Accepts list / dash-string ("Q-W-E-AA-R-AA") / comma-string
+    ("Q,W,E,AA,R,AA"). The engine validates individual tokens —
+    this helper just normalizes the list shape.
     """
     raw = body.get("combo_sequence")
     if raw is None or raw == "":
-        return DEFAULT_COMBO_SEQUENCE
+        return None
     if isinstance(raw, str):
         # Dash-separated wins (no ambiguity); fall through to comma.
         sep = "-" if "-" in raw else ","
