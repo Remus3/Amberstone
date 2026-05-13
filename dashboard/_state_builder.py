@@ -209,6 +209,23 @@ def build_state() -> dict:
     except Exception:
         cs_archetype_pick = {}
 
+    # s184 (2026-05-13) — first-purchase archetype-mismatch nudge. Reads
+    # ``cs_archetype_pick`` + liveclient owned_item_ids; if operator's
+    # first non-trivial completed item isn't in the dispatcher's top-15
+    # for their picked archetype, surface a soft chip on the dashboard.
+    # Dedup'd per (champion, game-session); engine-down silently skips.
+    archetype_nudge: dict = {}
+    try:
+        from core.archetype_mismatch import compute_nudge_payload
+        archetype_nudge = compute_nudge_payload(
+            coach=coach,
+            lc=lc,
+            lcu_snapshot=lcu_snapshot,
+            cs_archetype_pick=cs_archetype_pick,
+        )
+    except Exception:
+        archetype_nudge = {}
+
     return {
         "mode_key": mode_key,
         "coach_source": coach_file,
@@ -233,6 +250,7 @@ def build_state() -> dict:
         "liveclient": lc,
         "lcu": lcu_snapshot,
         "cs_archetype_pick": cs_archetype_pick,
+        "archetype_nudge": archetype_nudge,
     }
 
 
