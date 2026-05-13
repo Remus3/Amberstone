@@ -1,0 +1,24 @@
+{
+  "_meta": {
+    "description": "Phase 5.5 (s186, 2026-05-13) — per-champion combo_sequence overrides for the ds.burst (assassin) scorer. Default combo is Q-W-E-AA-R-AA which fires every active spell once plus 2 auto-attacks — accurate for ~half the canonical assassins but materially underestimates burst for champions whose combo includes shadow/reset/chain casts (Zed Q2 via shadow, Yone Q3 chain knockup, Akali R2 recast, Katarina W dagger reset). Without this registry, /rank-assassin scores Zed as if his shadow Q didn't double-fire — items like Eclipse + Youmuu's get under-credited because the engine sees one Q at rank-X instead of two. Keys are DDragon canonical ids (NOT display names — Khazix without apostrophe, Leblanc with lowercase b). Combos use the existing token vocabulary: AA / P / Q / W / E / R plus repeat variants Q2-R2 + Q3 for triple-cast chains (Yone Q3).",
+    "rationale": "Items that scale per-cast (Eclipse 2-hit proc, Stormrazor energized AA, Duskblade unseen threat, Edge of Night spell-shield) are sensitive to combo step count. Items that scale per-stat (raw AD, lethality, %pen) are not. The override moves the score for the per-cast items without distorting the per-stat items — this is the right axis to override on. Combos that intentionally fire fewer spells (Pyke skips W since his W is a stealth-up out of combat) are honored: Pyke -> 4 tokens vs default 6."
+  },
+  "default": ["Q", "W", "E", "AA", "R", "AA"],
+  "champions": {
+    "Zed": ["Q", "W", "E", "R", "Q2", "AA"],
+    "Akali": ["Q", "AA", "E", "R", "Q2", "AA", "R2"],
+    "Yone": ["Q", "Q2", "Q3", "AA", "E", "W", "R"],
+    "Talon": ["W", "Q", "AA", "E", "R", "AA"],
+    "Katarina": ["E", "W", "Q", "AA", "R", "AA"],
+    "Fizz": ["E", "Q", "AA", "W", "R", "AA"],
+    "Leblanc": ["Q", "W", "E", "R", "Q2", "AA"],
+    "Khazix": ["Q", "AA", "W", "E", "R", "AA"],
+    "Rengar": ["AA", "Q", "AA", "W", "E", "R"],
+    "Diana": ["Q", "AA", "E", "R", "W", "AA"],
+    "Qiyana": ["E", "Q", "AA", "W", "R"],
+    "Pyke": ["Q", "E", "AA", "R"],
+    "Naafiri": ["Q", "W", "E", "R", "AA", "AA"],
+    "Briar": ["W", "AA", "Q", "E", "R", "AA"],
+    "Kassadin": ["E", "Q", "AA", "W", "R"]
+  }
+}

@@ -571,6 +571,26 @@ Phase 4d (s185, 2026-05-13 — per-champion max_priority overrides, ENGINE_VERSI
   through when the operator doesn't specify, so the engine resolver kicks in.
   ``/ability-dps``, ``/rank-mage``, ``/burst``, ``/rank-assassin`` all
   surface ``max_priority_source`` in their JSON responses.
+
+Phase 5.5 (s186, 2026-05-13 — per-champion combo_sequence overrides, ENGINE_VERSION 0.71.0):
+
+* New ``agents/daemon_slayer/champion_combo_sequences.json`` registry (15
+  entries — all 14 canonical assassins plus Briar). Zed → Q-W-E-R-Q2-AA
+  (shadow Q double); Yone → Q-Q2-Q3-AA-E-W-R (chain knockup); Akali →
+  Q-AA-E-R-Q2-AA-R2 (R recast within window); Leblanc → Q-W-E-R-Q2-AA
+  (R mimic); the rest tighten the canonical openers. Default
+  ``["Q","W","E","AA","R","AA"]`` fallback for the other 156 champions.
+* Loader + singleton cache + ``get_combo_for(champion_id)`` +
+  ``_resolve_combo_sequence(champion_id, explicit)`` ship in ``burst.py``
+  next to ``DEFAULT_COMBO_SEQUENCE``.
+* ``compute_burst_damage`` + ``rank_items_by_burst`` signatures relax
+  ``combo_sequence`` from ``Sequence[str] = DEFAULT_COMBO_SEQUENCE`` to
+  ``Optional[Sequence[str]] = None``; None routes through the per-champion
+  override registry. ``BurstResult`` / ``BurstRankResult`` gain
+  ``combo_sequence_source`` ("override" | "champion" | "default").
+* Server route ``_parse_combo_sequence`` returns ``Optional`` and passes
+  None through. ``/burst`` and ``/rank-assassin`` surface
+  ``combo_sequence_source`` in their JSON responses.
 """
 
-ENGINE_VERSION = "0.70.0"
+ENGINE_VERSION = "0.71.0"
