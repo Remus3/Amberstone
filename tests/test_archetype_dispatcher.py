@@ -47,6 +47,20 @@ def _make_bruiser_rows(n: int = 2):
     ]
 
 
+def _make_mage_rows(n: int = 2):
+    """Phase 4c (s179) — build mock MageRankedItem rows for the ability path."""
+    return [
+        daemon_slayer_client.MageRankedItem(
+            item_id=f"30{i:02d}", item_name=f"MageItem{i}",
+            delta_ability_dps=30.0 - i * 3.0,
+            new_ability_dps=140.0 - i * 3.0,
+            gold=3000 + i * 100,
+            shares_dead_unique=False, dead_unique_key="",
+        )
+        for i in range(n)
+    ]
+
+
 class CarryRoutingTests(unittest.TestCase):
     @mock.patch("core.daemon_slayer_client.rank_for")
     def test_carry_routes_to_rank_for(self, mock_rank):
@@ -138,19 +152,66 @@ class TankRoutingTests(unittest.TestCase):
         self.assertEqual(list(kwargs["only_item_ids"]), ["3075", "3143"])
 
 
-class FallbackArchetypesTests(unittest.TestCase):
-    """mage / assassin / enchanter route to ds.dps with fell_back=True
-    until Phases 4-6 ship dedicated scorers."""
+class MageRoutingTests(unittest.TestCase):
+    """Phase 4c (s179) — mage routes to ds.ability via rank_mage_for."""
 
-    @mock.patch("core.daemon_slayer_client.rank_for")
-    def test_mage_falls_back_to_dps(self, mock_rank):
-        mock_rank.return_value = _make_dps_rows(1)
+    @mock.patch("core.daemon_slayer_client.rank_mage_for")
+    def test_mage_routes_to_rank_mage_for(self, mock_rank):
+        mock_rank.return_value = _make_mage_rows(3)
         out = daemon_slayer_client.rank_for_primary_archetype(
             "Veigar", "mage", level=11, item_ids=[],
         )
-        self.assertEqual(out["scorer"], "dps")
+        self.assertIsNotNone(out)
+        self.assertEqual(out["scorer"], "ability")
         self.assertEqual(out["archetype"], "mage")
-        self.assertTrue(out["fell_back"])
+        self.assertFalse(out["fell_back"])
+        self.assertEqual(len(out["ranked"]), 3)
+        # Mage rows surface delta (= delta_ability_dps) + new_ability_dps.
+        self.assertEqual(out["ranked"][0]["delta"], 30.0)
+        self.assertIn("new_ability_dps", out["ranked"][0])
+        mock_rank.assert_called_once()
+
+    @mock.patch("core.daemon_slayer_client.rank_mage_for")
+    def test_mage_passes_target_current_hp_pct(self, mock_rank):
+        mock_rank.return_value = _make_mage_rows(1)
+        daemon_slayer_client.rank_for_primary_archetype(
+            "Veigar", "mage", level=11, item_ids=[],
+            target_current_hp_pct=0.4,
+        )
+        kwargs = mock_rank.call_args.kwargs
+        self.assertAlmostEqual(kwargs["target_current_hp_pct"], 0.4)
+
+    @mock.patch("core.daemon_slayer_client.rank_mage_for")
+    def test_mage_passes_max_priority(self, mock_rank):
+        mock_rank.return_value = _make_mage_rows(1)
+        daemon_slayer_client.rank_for_primary_archetype(
+            "Veigar", "mage", level=11, item_ids=[],
+            max_priority=("W", "E", "Q"),
+        )
+        kwargs = mock_rank.call_args.kwargs
+        self.assertEqual(kwargs["max_priority"], ("W", "E", "Q"))
+
+    @mock.patch("core.daemon_slayer_client.rank_mage_for")
+    def test_mage_passes_form_index(self, mock_rank):
+        mock_rank.return_value = _make_mage_rows(1)
+        daemon_slayer_client.rank_for_primary_archetype(
+            "Aphelios", "mage", level=11, item_ids=[],
+            form_index={"Q": 3},
+        )
+        kwargs = mock_rank.call_args.kwargs
+        self.assertEqual(kwargs["form_index"], {"Q": 3})
+
+    @mock.patch("core.daemon_slayer_client.rank_mage_for", return_value=None)
+    def test_mage_returns_none_when_engine_down(self, _):
+        out = daemon_slayer_client.rank_for_primary_archetype(
+            "Veigar", "mage", level=11, item_ids=[],
+        )
+        self.assertIsNone(out)
+
+
+class FallbackArchetypesTests(unittest.TestCase):
+    """assassin / enchanter route to ds.dps with fell_back=True until
+    Phases 5-6 ship dedicated scorers."""
 
     @mock.patch("core.daemon_slayer_client.rank_for")
     def test_assassin_falls_back_to_dps(self, mock_rank):
