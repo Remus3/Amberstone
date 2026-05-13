@@ -108,6 +108,16 @@
            Item Build panel. Hidden in client/tft modes; populated from
            coach.daemon_slayer_picks[0] by panels/ds_pill.js. -->
       <span class="ds-pill" id="ds-pill" hidden title="">—</span>
+      <!-- Archetype-mismatch chip (s184.1, 2026-05-13): yellow warn-style
+           nudge that fires when the operator's CS archetype pick doesn't
+           match the dispatcher's top-15 for their first completed item.
+           Source is /api/state.archetype_nudge (core/archetype_mismatch.py).
+           Hidden in client/tft modes + when phase != "fired"; X-click POSTs
+           /api/archetype-nudge/dismiss (idempotent, restart-wipes). -->
+      <span class="archetype-nudge-chip" id="archetype-nudge-chip" hidden role="status">
+        <span class="archetype-nudge-chip-text" id="archetype-nudge-chip-text">⚠ Mismatch</span>
+        <button type="button" class="archetype-nudge-chip-x" id="archetype-nudge-chip-x" title="dismiss for this game">×</button>
+      </span>
       <!-- Trigger pill (ADR-007 s169): glanceable decision_detector
            heartbeat. ● + match-eval counter. Polled by
            panels/trigger_pill.js from /api/decisions/heartbeat at ~2 Hz.
