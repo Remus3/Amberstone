@@ -1,6 +1,76 @@
 ﻿# WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s137 + s166 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+> Sessions s27–s137 + s166 + s173.5 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+
+---
+
+# s175 wrap — 2026-05-12 (Phase 2 Bruiser hybrid scorer — single commit pending)
+
+**Operator instruction:** "next DS in the plan" → "YES" to ship Phase 2.
+
+Phase 2 in [NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md](NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md): single-session, low-risk extension of the Phase 1 EHP work. Composes `compute_dps()` + `compute_ehp()` into a single archetype score for bruisers via per-champion α/β weights. ~20 bruisers unlocked.
+
+## Ships
+
+| File | Change |
+|---|---|
+| [agents/daemon_slayer/hybrid.py](agents/daemon_slayer/hybrid.py) | **NEW (~450 LOC).** `compute_hybrid()` + `HybridResult` + `rank_items_by_hybrid()` + `HybridRankedItem` + `HybridRankResult` + `get_weights_for()` + `_load_archetype_weights()` + `_hybrid_delta_pct()`. Scorer formula: `hybrid_score = α·dps + β·ehp` (raw scalar exposed in `HybridResult.hybrid_score`). Ranker sort key: `α · (dps_delta/baseline_dps) + β · (ehp_delta/baseline_ehp)` — normalized percentage delta so weights stay intuitive across the ~10× DPS/EHP magnitude gap. Imports private filter helpers from `rank.py` rather than duplicating; reuses lifeline-family dead-unique dedup. `alpha`/`beta` default to per-champion lookup; explicit floats override (UI sliders, A/B testing). `alpha_source` field tracks "champion" vs "default" vs "override". |
+| [agents/daemon_slayer/archetype_weights.json](agents/daemon_slayer/archetype_weights.json) | **NEW.** 20-bruiser α/β table keyed by DDragon champion ID. Convention α+β=1.0 (operator-facing slider semantics). Default fallback (0.50, 0.50). Coverage: JarvanIV 0.55/0.45 · Darius 0.65/0.35 · Garen 0.55/0.45 · Camille 0.65/0.35 · Renekton 0.65/0.35 · Sett 0.55/0.45 · Mordekaiser 0.50/0.50 · Riven 0.70/0.30 · Volibear 0.55/0.45 · Nasus 0.50/0.50 · Olaf 0.60/0.40 · Skarner 0.50/0.50 · Hecarim 0.55/0.45 · Udyr 0.55/0.45 · Vi 0.55/0.45 · XinZhao 0.60/0.40 · LeeSin 0.65/0.35 · MonkeyKing 0.60/0.40 · Warwick 0.55/0.45 · Trundle 0.60/0.40. |
+| [agents/daemon_slayer/server.py](agents/daemon_slayer/server.py) | Two new POST routes: `/hybrid` (caster combined score) + `/rank-bruiser` (items ranked by weighted percentage delta). Body shape is the union of `/dps` and `/ehp` params with optional `alpha`/`beta` overrides via new `_opt_weight()` helper. Index HTML route listing extended. |
+| [core/daemon_slayer_client.py](core/daemon_slayer_client.py) | New `BruiserRankedItem` dataclass + `rank_bruiser_for()` + `hybrid_for()` helpers. Same engine-down semantics as `rank_for` / `rank_tank_for`. `alpha`/`beta` kwargs default `None` so the server-side per-champion table is used; pass floats to override. |
+| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | `ENGINE_VERSION` 0.63.0 → 0.64.0. Extended module docstring with Phase 2 changelog entry covering the composition design + the (α,β) table + ranker normalization rationale. |
+| [agents/daemon_slayer/tests/test_hybrid.py](agents/daemon_slayer/tests/test_hybrid.py) | **NEW (~400 LOC).** 40 tests across 8 classes: WeightsTableTests (6 — registry + α+β=1.0 convention + MonkeyKing-not-Wukong key check), ComputeHybridBasicsTests (7 — field-by-field match against compute_dps/compute_ehp + linearity), HybridDeltaPctTests (4 — pure-math normalized-delta + div-by-zero guard), RankByHybridBasicsTests (12 — including α=1/β=0 matching pure-DPS ranker top + α=0/β=1 matching pure-EHP ranker top), CandidateFilteringTests (4), SharedUniqueFilterTests (2), ARAMModeTests (2), SerializationTests (3). |
+| [agents/daemon_slayer/tests/test_server.py](agents/daemon_slayer/tests/test_server.py) | New `HybridRouteTests` class (4 tests): `/hybrid` naked w/ champion-table lookup, `/hybrid` alpha/beta override, `/rank-bruiser` shape + fields, `/rank-bruiser` share-validation 422. |
+| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Bumped `test_batch63_version` + `test_batch64_version` to assert 0.64.0; extended comment in batch63 covering Phase 0/1/2 history. |
+| Living docs sync | CLAUDE.md (+s175 entry at item 32 + DS version pointer) · README.md (header DS bullet + capability matrix line + coverage block) · docs/DAEMON_SLAYER.md (status + module map) · docs/ARCHITECTURE.md (DS section) · ROADMAP.md (DS status line + s175 ship entry) · BRIEF.md (RC Tutor "what's built" line). |
+| DS server runtime | Stopped pid 2388 (PowerShell `Stop-Process`) + relaunched via `pythonw tools/start_daemon_slayer.py`. `/health` confirms engine_version 0.64.0 live on :8893. |
+
+## Live validation
+
+Probed `/rank-bruiser` against real running DS server.
+
+**JarvanIV + 50/50 enemy mix** (table default α=0.55/β=0.45 → "champion" source):
+```
+baseline_dps=57.8 baseline_ehp=2810
+  3078  Trinity Force      +dps=98.9
+  3508  Essence Reaver     +dps=90.7
+  3097  Stormrazor         +dps=89.7
+  3084  Heartsteel         +dps=64.2  +ehp=515
+  3032  Yun Tal Wildarrows +dps=79.6
+```
+
+**Nasus with defensive override α=0.2/β=0.8** (overrides table 0.50/0.50):
+```
+  3084  Heartsteel       +dps=64.4  +ehp=501
+  3078  Trinity Force    +dps=88.6  +ehp=555
+  6662  Iceborn Gauntlet +dps=53.5  +ehp=998
+  3083  Warmog's Armor   +dps=0.0   +ehp=668
+  3877  Bloodsong        +dps=77.1  +ehp=334
+```
+
+Math behaves as expected — JarvanIV at default DPS-leaning weight picks Trinity (classic Jarvan core); Nasus with strong EHP weighting surfaces Heartsteel + Warmog's near the top. Operator-comprehensible.
+
+## Findings
+
+- **Raw `hybrid_score = α·dps + β·ehp` would have been misleading.** DPS scales ~100s, EHP scales ~1000s. A naive linear combination has β dominating by 10× even at α=β=0.5 — meaning a tuned (0.55, 0.45) "DPS-leaning" pair would still produce EHP-dominated rankings. Solution: normalize each delta against its own baseline at the ranker stage (`α · dps_delta/baseline_dps + β · ehp_delta/baseline_ehp`). Operator can think of (0.65, 0.35) as a true 65/35 weight. The raw `hybrid_score` field is kept on `HybridResult` for completeness; the ranker uses the normalized form.
+- **Two-stage compute per candidate is unavoidable.** Each candidate evaluation runs both `compute_dps()` and `compute_ehp()` — 2× the per-candidate cost vs single-archetype rankers. At ~125-175 candidates per `rank_items_by_hybrid` call, that's ~250-350 sub-engine calls. Still sub-second on warm snapshot (verified — `/rank-bruiser` returns in ~50-100ms live). The "primary scorer only per coach tick" architecture (per s173.5 lock-in) keeps the budget bounded — bruiser coaches don't also call tank/mage scorers.
+- **The α=1.0 / β=0.0 → pure DPS top-pick equivalence held automatically.** Tests `test_extreme_alpha_matches_pure_dps_ranker_top` + `test_extreme_beta_matches_pure_ehp_ranker_top` pin this invariant. Useful regression guard for future engine-math refactors — confirms the hybrid scorer is a pure linear combination of the two existing scorers with no hidden cross-terms.
+- **MonkeyKing-not-Wukong test caught a real footgun.** Display name "Wukong" → DDragon ID "MonkeyKing" is the canonical RC alias gotcha (per `web/data/champion_aliases.json` shipped in s173.1). The table MUST be keyed by DDragon IDs because server-side `_resolve_champion_id` runs the display→ID translation BEFORE compute_hybrid sees the name. If someone later adds "Wukong" instead of "MonkeyKing" to the table, the override silently never fires. Test `test_monkeyking_uses_ddragon_id_not_display_name` would catch that.
+
+## Verification
+
+- `py -m pytest agents/daemon_slayer/tests/` → **1066 passed** (was 1022 — +44: 40 hybrid + 4 server HybridRouteTests; live-engine assertion fixed after DS server restart)
+- `py -m pytest tests/ --timeout=120` → **839 passed** (wider RC suite — Phase8 live-engine test passed after restart; no regressions)
+- DS server `:8893/health` → `engine_version: "0.64.0"` live
+- Live probe of `/rank-bruiser` with two distinct (α,β) pairs shows reordering — weights are doing the right thing
+
+## Open items carried forward
+
+- 🟡 **Phase 3 — CS scorer-picker UI** — next session per the plan. Single session, pure UI work. Adds `#cs-archetype-picker` row in My Pick card + state.cs_archetype_pick wiring + dispatcher in `core/daemon_slayer_client.py` (`rank_for_primary_archetype()`) that routes to ds.dps / ds.ehp / ds.hybrid based on `state.cs_archetype_pick.primary`. Invalidation events for secondary refresh (enemy_item_complete, self_item_complete, level_threshold_crossed). First-purchase mismatch soft-nudge.
+- 🟡 **Phase 2.5 — calibration (deferred)** — once `data/ds_calibration.jsonl` accumulates `scorer="hybrid"` rows with match outcomes from `rewind_history.db`, calibrate per-champion α/β by maximizing predicted-ranking → actual-buy-order alignment. Blocked on rewind_history.db freshness (per CLAUDE.md item 14).
+- 🟡 **Phase 3 dispatcher will deprecate explicit `rank_bruiser_for()` calls** — coaches won't call `rank_bruiser_for()` directly; they'll call `rank_for_primary_archetype()` and the dispatcher routes based on `state.cs_archetype_pick.primary == "bruiser"`. Current direct-call API stays for testing + debug + UI tools.
+- 🟡 **No coach is wired to call `rank_bruiser_for` yet.** Same situation as Phase 1's `recommend_defensive_items_via_ehp` — Phase 3 lands the wire-in via the CS picker. Direct API available for testing in the meantime.
+- 🟡 **Phase/level-aware weights** — current (α,β) is global per champion. Early-game Camille is more snowball-DPS than late-game Camille. Deferred to a future v2 of the table (operator can override per-call via `alpha`/`beta` params in the meantime).
 
 ---
 
@@ -133,76 +203,3 @@ Operator brief: "1 then any other items listed in roadmap, readme, or other file
 - After 51e0da7: snapshot_panels 11/11 — happy path unchanged for console pipe
 
 🟡 Live verification of the s151 fix awaits next real game (current liveclient empty per startup probe). The `gameTime` ref-error in `_tickObjectiveCountdowns` fires only when `_currentGameTimeS()` returns a number, which means an active game with `game_time_s` populated. Adversarial fixture verified it; live confirm is bonus.
-
----
-
-# s173.5 wrap — 2026-05-12 (DS dead-unique filter + archetype-expansion scope, 1 commit)
-
-**Operator-approved fix + multi-session scope plan** for expanding Daemon Slayer from auto-attack-DPS-only to a 6-scorer suite covering tank/bruiser/mage/assassin/enchanter archetypes. Phase 0 closed this slot — the dead-unique candidate-filter bug — and Phases 1-6 are scoped in a self-contained doc for future sessions.
-
-## Phase 0 ship — DS dead-unique filter
-
-Operator observed: "Trinity Force was suggested and I was okay with it, after it was built, Essence Reaver was still a suggestion despite not being able to build it/utilize its item effect, intentional?" Engine investigation confirmed the gap: `collect_effects()` correctly dedupes the second Spellblade proc (proc + pen contributions zeroed), but the candidate's raw stat block (75 AD + 25% crit + 25% AS + mana) still lifted DPS enough to keep ER in the top-N ranking. Operator-facing this was wrong — wasted unique = worse value-per-gold than a non-redundant item.
-
-### Engine changes
-
-| File | Change |
-|---|---|
-| [agents/daemon_slayer/rank.py](agents/daemon_slayer/rank.py) | Added `shares_dead_unique: bool = False` + `dead_unique_key: str = ""` fields to `RankedItem`. Added `filter_shared_uniques: bool = True` parameter to `rank_items()`. Computed dead-unique flag from `ITEM_EFFECTS` BEFORE the `compute_dps()` call so filtered candidates skip the expensive scoring entirely. Backward-compat dataclass defaults. |
-| [agents/daemon_slayer/server.py](agents/daemon_slayer/server.py) | `/rank` route forwards `filter_shared_uniques` from request body (default true). |
-| [core/daemon_slayer_client.py](core/daemon_slayer_client.py) | Client `RankedItem` mirrors new fields; `rank_for()` exposes `filter_shared_uniques` param (default true). |
-| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | `ENGINE_VERSION` 0.61.0 → 0.62.0 |
-| [agents/daemon_slayer/tests/test_rank.py](agents/daemon_slayer/tests/test_rank.py) | New `SharedUniqueFilterTests` class with 6 tests covering Trinity→ER, Sterak's→Maw, Sunfire→Hollow Radiance families + clean-build no-flag + to_dict schema + filter-off opt-in path. |
-| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Version-pin tests bumped 0.61.0 → 0.62.0. |
-| Living docs sync | CLAUDE.md · README.md · docs/DAEMON_SLAYER.md · docs/ARCHITECTURE.md · ROADMAP.md · BRIEF.md — version + test count + scorer description |
-| DS server runtime | Killed pid 7944 + relaunched via `pythonw tools/start_daemon_slayer.py` (per `reference_ds_server_not_supervisor_watched` memory). `/health` confirms engine_version 0.62.0 live on :8893. |
-
-### Affected unique families (now properly suppressed)
-
-| Key | Family members |
-|---|---|
-| `spellblade` | Trinity Force · Essence Reaver · Lich Bane · Iceborn Gauntlet · Sheen · Divine Sunderer · Sundered Sky · Dusk and Dawn |
-| `lifeline` | Sterak's Gage · Maw of Malmortius · Immortal Shieldbow · Seraph's Embrace · Hexdrinker · several defensive_only |
-| `immolate` | Sunfire Aegis · Hollow Radiance · Bami's Cinder |
-| `fiendhunter_barrage` · `hellfire_char` · `innervating_fill` | Single-item future-proofs |
-
-### Findings
-
-- **Computing the flag BEFORE `compute_dps` was the right call.** Default filter ON saves the expensive `compute_dps` evaluation for filtered candidates entirely — meaningful since `rank_items` is called every coach tick (8-25s) and each call is ~125-175 candidate evaluations.
-- **Backward compat preserved via dataclass defaults.** Existing callers that pass positional args or omit the new kwarg still work; new fields default to `False`/`""`. The `to_dict()` change adds keys but doesn't remove any, so consumers parsing the JSON via `.get()` are unaffected.
-- **Filter-off opt-in is operator's escape hatch.** Sophisticated callers (calibration analysis, debug tools) that WANT to see the stat-only DPS lift of a dead-unique candidate pass `filter_shared_uniques=False` and read `shares_dead_unique` to interpret the result.
-
-## Phase 1-6 scope plan
-
-Drafted [NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md](NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md) — self-contained multi-session guide. Architecture decisions locked in this slot (operator-confirmed; do not re-litigate):
-
-1. **One engine, six scorers** (not six engines): keep `agents/daemon_slayer/` umbrella; add `ds.ehp`/`ds.hybrid`/`ds.ability`/`ds.burst`/`ds.hps` siblings to `ds.dps`. Share substrate (snapshot loader, `build_champion()`, `ItemEffect` registry, `CallContext`, `:8893` server).
-2. **Daemon Slayer keeps umbrella name.** Internal scorers expose via per-archetype HTTP routes (`/rank-tank`, `/rank-mage`, etc.).
-3. **Top-2 archetypes shown for all champs** in CS panel + in-game tab. Meta default pre-selected from DDragon `tags[0]` + win-rate priors. Selection gates coach + match analysis.
-4. **Only primary scorer runs per coach tick.** Secondary freezes after initial CS + game-start passes; refreshes only on enemy/operator item-complete events.
-5. **Mid-game switch supported.** New primary fires immediately; subsequent ticks use it.
-6. **First-purchase-item inference = soft nudge** (one-time toast), not auto-override.
-
-**Phases:** 0=shipped this slot · 1=Tank EHP (1 session) · 2=Bruiser hybrid (1) · 3=CS picker UI (1) · 4=Mage ability DPS (3) · 5=Assassin burst (2) · 6=Enchanter HPS (2). Total ~10 sessions for ~90 champions with archetype-appropriate scoring.
-
-### Cadence model verified
-
-Walked the operator through the actual DS runtime cadence — they had the wrong mental model ("30s init + re-run on item change"). Corrected: DS runs every coach tick (12-25s ARAM stable, 8-22s Arena, 7-20s Brawl, faster on state-change events). Each tick = ~125-175 `compute_dps()` calls. Sub-second on warm snapshot. Dashboard `/api/ds-preview` polls independently for the `#ds-pill` and champ-select view.
-
-This cadence correction shaped the architecture: naively running all 6 scorers per tick would 6× the compute. The "primary only" rule keeps the budget bounded.
-
-## Verification
-
-- `py -m pytest agents/daemon_slayer/tests/ -q --timeout=60` → 955 passed (was 949 — +6 from SharedUniqueFilterTests)
-- `py -m pytest tests/ -q --timeout=60` → 839 passed (unchanged)
-- `py -m ruff check .` → all checks passed
-- DS server `:8893/health` → engine_version 0.62.0 live
-- Manual probe: `rank_for(champion="Aatrox", level=11, item_ids=["3078"])` returns ranking with NO Essence Reaver / Lich Bane / Iceborn Gauntlet (all spellblade-family) — fix working live.
-
-## Open items closed this slot
-
-- ✅ Operator question 1 — "Does DS evaluate based on currently purchased items?" — confirmed yes via [rank.py:281-293](agents/daemon_slayer/rank.py:281) baseline + delta walkthrough.
-- ✅ Operator question 2 — Trinity → ER recommendation bug — fixed via Phase 0 dead-unique filter.
-- ✅ Architecture decision: one engine vs six engines — one engine, six scorers (operator-confirmed).
-- ✅ Architecture decision: CS scorer-picker UX shape — top-2-always-shown across all champs, primary gates coach, secondary refreshes on item-complete events (operator-confirmed).
-- ✅ Phase 1-6 scope drafted in self-contained next-session plan.

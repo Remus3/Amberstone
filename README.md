@@ -9,7 +9,7 @@ Personal project. Private repo. Not packaged for general use. Codebase has been 
 ## What it does
 
 - **Real-time coaching** — Claude Haiku for fast in-game tips, Claude Sonnet for screenshot-based vision reasoning, Tesseract OCR for cheap region reads, fast-path heuristics from the Live Client snapshot when an LLM call would be redundant
-- **Daemon Slayer build engine** — local HTTP service on `:8893`; no runtime API cost. Computes real damage-per-second AND Effective HP for any champion×item×target combination. **DDragon purchasable coverage complete: 547 items** (SR, ARAM, Arena, Brawl) with **1022 passing tests** (ENGINE_VERSION 0.63.0). Models armor/MR penetration, on-hit effects, spellblade procs, true damage, Giant Slayer scaling, AP amps, damage amps, armor/MR shred, caster-HP-scaled amps, full Arena item mirror pool, and dead-unique candidate filtering (Trinity→ER, Sterak's→Maw, Sunfire→Hollow Radiance no longer ranked). s174 adds the Tank EHP scorer (`/ehp`, `/rank-tank` routes) — first of six archetype scorers. All 4 coaches (ARAM, Arena, Brawl, SR) use DS-before-Haiku — picks injected in user turn before LLM call
+- **Daemon Slayer build engine** — local HTTP service on `:8893`; no runtime API cost. Computes real damage-per-second AND Effective HP for any champion×item×target combination. **DDragon purchasable coverage complete: 547 items** (SR, ARAM, Arena, Brawl) with **1066 passing tests** (ENGINE_VERSION 0.64.0). Models armor/MR penetration, on-hit effects, spellblade procs, true damage, Giant Slayer scaling, AP amps, damage amps, armor/MR shred, caster-HP-scaled amps, full Arena item mirror pool, and dead-unique candidate filtering (Trinity→ER, Sterak's→Maw, Sunfire→Hollow Radiance no longer ranked). s174 adds the Tank EHP scorer (`/ehp`, `/rank-tank` routes); s175 adds the Bruiser hybrid scorer (`/hybrid`, `/rank-bruiser` routes) composing dps + ehp via per-champion (α,β) weights from `archetype_weights.json`. Two of six archetype scorers shipped. All 4 coaches (ARAM, Arena, Brawl, SR) use DS-before-Haiku — picks injected in user turn before LLM call
 - **Decision detector** — `core/decision_detector.py` watches game state and surfaces "decision moments" (dragon up with N enemies missing, baron contest, item spike) with a contest / give / skip choice tag; Recent Coach Calls history is on a dedicated `#coach-calls` sub-page
 - **Web dashboard** (`:8888`, HTTPS, mkcert-signed) — home / lobby / last-match / session / history / replay / loadouts / settings / diagnostics / coach-calls views, viewed in Chrome on Game-PC's secondary display. Design baseline is standard 1920×1080 with Chrome chrome present (titlebar + URL bar + bookmarks bar); the layout flex-grows into any extra vertical space when F11 fullscreen is used. Server-Sent Events on `/api/state-stream` for idle efficiency
 - **Champion-select build chooser** — surfaces preferred keystone + items per matchup from local match data; writes runes via the LCU. DS Engine build preview panel (`#cs-ds-block`, `/api/ds-preview`) shows DPS-ranked item tiles with +Ndps tooltips before the game starts. Pick & Ban Recommendations panel (`/api/champ-select/pickban-recs`) overlays operator-aware performance row + ban suggestions from `rewind_history.db` per role
@@ -241,7 +241,7 @@ Tesseract regions in `data/vision_regions.json` use 1920×1080 defaults — need
 
 ### Daemon Slayer engine — current state and remaining work
 
-**Coverage complete**: 547/547 DDragon purchasable items, ENGINE_VERSION 0.63.0, 1022 tests. All phases of item modeling complete. 3 items permanently deferred (Lightning Braid, Kinkou Jitte, Mejai's Arena mirror — schema limits). s174 adds the Tank EHP scorer (`ehp.py`) — first of six archetype scorers per `NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md`.
+**Coverage complete**: 547/547 DDragon purchasable items, ENGINE_VERSION 0.64.0, 1066 tests. All phases of item modeling complete. 3 items permanently deferred (Lightning Braid, Kinkou Jitte, Mejai's Arena mirror — schema limits). s174 adds the Tank EHP scorer (`ehp.py`); s175 adds the Bruiser hybrid scorer (`hybrid.py`) — two of six archetype scorers per `NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md`.
 
 **Coach wire-in (complete):**
 - ✅ ARAM — DS-before-Haiku; picks in user turn; pre-DS hardcoded item rules removed (−37% system prompt)
@@ -293,7 +293,7 @@ RC is the engineering foundation. **RC Tutor** is the eventual packaged product:
 |---|---|
 | LLM coaching (all modes) | ✅ live |
 | Second-screen web dashboard | ✅ live (Chrome on secondary display, 1920×1080 baseline) |
-| Daemon Slayer DPS engine | ✅ 547 items, 1022 tests, ENGINE 0.63.0; `:8893` service; all 4 coaches wired (DS-before-Haiku); dead-unique filter live; Tank EHP scorer (s174) ships first archetype scorer |
+| Daemon Slayer DPS engine | ✅ 547 items, 1066 tests, ENGINE 0.64.0; `:8893` service; all 4 coaches wired (DS-before-Haiku); dead-unique filter live; Tank EHP scorer (s174) + Bruiser hybrid scorer (s175) ship first 2 of 6 archetype scorers |
 | Vision relay (screen → Sonnet) | ✅ live; OCR calibration in progress |
 | Rune auto-writer | ✅ live (LCU integration) |
 | Champ-select live coaching | ✅ live |

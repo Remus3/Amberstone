@@ -392,6 +392,24 @@ Phase 1 (s174, 2026-05-12 — Tank EHP scorer, ENGINE_VERSION 0.63.0):
   (Sterak's lifeline, Doran's Shield), healing throughput, enemy pen modeling.
   See ``NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md`` for the multi-
   session archetype-expansion plan this kicks off.
+
+Phase 2 (s175, 2026-05-12 — Bruiser hybrid scorer, ENGINE_VERSION 0.64.0):
+  New ``hybrid.py`` composing ``compute_dps`` + ``compute_ehp`` into a single
+  archetype score for bruisers: ``hybrid_score = α·dps + β·ehp``.
+  ``compute_hybrid()`` + ``HybridResult`` for the scorer; ``rank_items_by_hybrid()``
+  + ``HybridRankedItem`` + ``HybridRankResult`` for the ranker. Per-champion
+  (α, β) overrides live in ``archetype_weights.json`` — ships with 20
+  bruisers (Jarvan IV, Darius, Garen, Camille, Renekton, Sett, Mordekaiser,
+  Riven, Volibear, Nasus, Olaf, Skarner, Hecarim, Udyr, Vi, Xin Zhao,
+  Lee Sin, MonkeyKing/Wukong, Warwick, Trundle); unlisted champions fall
+  back to (0.50, 0.50). Ranker sort key is normalized percentage delta
+  (``α · dps_delta/baseline_dps + β · ehp_delta/baseline_ehp``) so the
+  weights stay intuitive across the ~10× magnitude gap between DPS and
+  EHP. New ``/hybrid`` + ``/rank-bruiser`` server routes mirror existing
+  ``/dps`` + ``/rank`` shapes (union of /dps and /ehp params + optional
+  ``alpha`` / ``beta`` overrides). Deliberate omissions: per-champion
+  weight calibration from rewind_history.db (Phase 2.5) and
+  phase/level-aware weights (single weight pair is good enough for v1).
 """
 
-ENGINE_VERSION = "0.63.0"
+ENGINE_VERSION = "0.64.0"
