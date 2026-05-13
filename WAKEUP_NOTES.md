@@ -1,6 +1,74 @@
 # WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+> Sessions s27–s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+
+---
+
+# s184 wrap — 2026-05-13 (First-purchase archetype-mismatch soft-nudge — single commit pending)
+
+**Operator instruction:** "restart rc - and then continue DS plan." Restart picked up s182+s183 code (pid 12144 from 20:23 — replaced the running pre-s182 supervisor); then the natural next bounded ship was the first item on the s176 Phase 3 deferral list: "first-purchase-mismatch soft-nudge." After s176 shipped the dispatcher + picker UI, s182 wired the coaches, s183 fixed the JS unit rendering — this slot closes the loop by surfacing a passive UX signal when the operator's actual first item drifts from their archetype intent.
+
+## Ships
+
+| File | Change |
+|---|---|
+| [core/archetype_mismatch.py](core/archetype_mismatch.py) | **NEW (~270 LOC).** Owns the evaluator + dedup cache. Public API: `compute_nudge_payload(coach, lc, lcu_snapshot, cs_archetype_pick) -> dict` (called once per /api/state); `dismiss_nudge(champion) -> bool` (operator clicked X); `reset_nudge_state()` + `get_nudge_state_snapshot()` (test + diagnostic). Module-level `_NUDGE_STATE: dict` + `_NUDGE_LOCK: threading.Lock` cache decisions per (champion, session_token). `NudgeResult` dataclass + `to_dict`. Item-filter denylist `_NON_SIGNAL_ITEM_IDS` covers ~28 IDs (boots, Doran's, trinkets, consumables, SR starters, jungle pets). Internals: `_first_completed_item_id`, `_session_token` (game_id → synthetic fallback), `_evaluate_dispatcher` (calls `rank_for_primary_archetype` top=15, returns `(is_mismatch, top_names[:3])` or None), `_engine_mode` (liveclient game_mode → DS engine token), `_build_message`. |
+| [dashboard/_liveclient.py](dashboard/_liveclient.py) | Extended `liveclient_summary` to surface two new keys: `owned_item_ids` (parallel int-id list to `owned_items` names, same order — read from raw liveclient `allPlayers[me].items[].itemID`) + `game_id` (from `gameData.gameId` / `gameID` with `""` fallback). Both needed by `archetype_mismatch` — state-builder can't reverse-lookup an item name into an ID without a resolver, and the dedup token wants liveclient's gameId when present. |
+| [dashboard/_state_builder.py](dashboard/_state_builder.py) | New 14-line block after the `cs_archetype_pick` stamp: `try: from core.archetype_mismatch import compute_nudge_payload; archetype_nudge = compute_nudge_payload(coach=coach, lc=lc, lcu_snapshot=lcu_snapshot, cs_archetype_pick=cs_archetype_pick) except Exception: archetype_nudge = {}`. Returns `archetype_nudge` next to `cs_archetype_pick` in the /api/state envelope. Exception-wrapped so a fault here can't break the /api/state hot path. |
+| [dashboard/routes_archetype.py](dashboard/routes_archetype.py) | Two new routes: `_serve_archetype_nudge_get` (`GET /api/archetype-nudge` — diagnostic snapshot returns `{ok, state}`); `_serve_archetype_nudge_dismiss` (`POST /api/archetype-nudge/dismiss` — body `{champion}`, returns `{ok, dismissed, champion}`, 400 on missing/empty champion or non-dict body). GET_ROUTES + POST_ROUTES extended. Module-level imports for `dismiss_nudge` + `get_nudge_state_snapshot`. |
+| [dashboard/api_schema.py](dashboard/api_schema.py) | Two new pydantic models: `ArchetypeNudgeDismissRequest(_ForbidExtra) { champion: str }`; `ArchetypeNudgePayload(_AllowExtra) { fired, phase, champion, primary, first_item_id, first_item_name, message, expected_items, session_token }` — documents `state.archetype_nudge` shape. |
+| [tests/test_archetype_mismatch.py](tests/test_archetype_mismatch.py) | **NEW (~340 LOC, 40 tests).** `FirstCompletedItemIdTests` (9) + `SessionTokenTests` (4) + `EngineModeTests` (4) + `ComputeNudgeNoSignalTests` (5) + `ComputeNudgePendingTests` (2) + `ComputeNudgeFiredTests` (6 — happy + dedup + engine-down + re-eval-on-new-session + no-token-empty) + `DismissNudgeTests` (4) + `NudgeResultShapeTests` (1) + `EvaluateDispatcherTests` (5 — mock `core.daemon_slayer_client.rank_for_primary_archetype` boundary; no live DS server needed). |
+| [tests/test_state_builder_archetype_nudge.py](tests/test_state_builder_archetype_nudge.py) | **NEW (~140 LOC, 5 tests).** Mocks `lcu_summary` / `liveclient_summary` / `read_json` / `get_archetype_for` / `compute_nudge_payload` at the boundary. Verifies `build_state()` includes `archetype_nudge` key (empty default), carries fired payload through, carries pending phase, returns `{}` on evaluator exception. |
+| [tests/test_routes_archetype_nudge.py](tests/test_routes_archetype_nudge.py) | **NEW (~125 LOC, 9 tests).** `_StubHandler` captures `_send` calls — same pattern as `test_routes_ds_preview_scorer` (s183). GET 2 + POST 5 (happy / no-entry / 400 non-dict / 400 empty / 400 missing) + RouteRegistrationTests 2 (smoke test the matchers fire). |
+| [CLAUDE.md](CLAUDE.md) | New item 40 (after s182 entry, since s183 / s184 ship in order). |
+| [ROADMAP.md](ROADMAP.md) | New s184 entry above the s183 line. |
+| Live runtime | RC restart at 20:23 (pid 12144) picked up s182+s183; second restart at 20:37 (pid 1360) picked up s184. `last_reload_ok=true` both times. DS server :8893 confirmed up via `curl http://127.0.0.1:8893/health` returning 0.69.0 (note: HTTP not HTTPS — different from :8888 dashboard). |
+
+## Live validation
+
+```
+$ curl -sk https://127.0.0.1:8888/api/archetype-nudge
+{"ok": true, "state": {}}
+
+$ curl -sk -X POST -H "Content-Type: application/json" -d '{"champion":"NoSuchChamp"}' https://127.0.0.1:8888/api/archetype-nudge/dismiss
+{"ok": true, "dismissed": false, "champion": "NoSuchChamp"}
+
+$ curl -sk -X POST -H "Content-Type: application/json" -d '{}' https://127.0.0.1:8888/api/archetype-nudge/dismiss
+{"error": "champion required"}
+
+$ curl -sk https://127.0.0.1:8888/api/state | py -c "import sys,json; s=json.load(sys.stdin); print('archetype_nudge:', s.get('archetype_nudge')); print('cs_archetype_pick:', s.get('cs_archetype_pick'))"
+archetype_nudge: {}
+cs_archetype_pick: {}
+```
+
+Both are `{}` because no active game + no LCU champ-select pick — the field is wired, just no signal to populate it. The next CS pop + game start will exercise the full evaluator.
+
+## Findings
+
+- **Dispatcher-driven mismatch beat item-affinity heuristics.** Initial design floated a hand-curated item → archetype tag map. Final design just asks the dispatcher "would you have recommended this item in your top 15?" — per-champion meta sensitivity for free, no tag-table to maintain. The downside is one extra DS call per (champion, session) pair, but dedup keeps it to once per game.
+- **`source="default"` filter prevented DDragon-tag-only nudges.** Without this gate, every game would fire a nudge for champions where the operator never opened the picker UI (because the DDragon Fighter→bruiser default vs operator's actual first IE = mismatch). The `source` field on `cs_archetype_pick` was already there from s176, designed for exactly this purpose. Wired as: skip eval unless source ∈ {user_cs, user_ingame, nudge}.
+- **`mock.patch.dict(sys.modules)` + `sys.modules.pop` was a footgun.** First version of `test_returns_none_on_exception` did the pop-and-repatch dance to test ImportError handling. Side effect: when run before `test_coach_archetype_dispatch.py`, the dispatcher mocks didn't bind to the right module object, 8 tests failed downstream. Simplified to plain `mock.patch(side_effect=RuntimeError)` — the broad `except` in `_evaluate_dispatcher` catches it regardless. Faster + isolation-safe + same coverage.
+- **`owned_item_ids` extension was a 2-line liveclient change.** Already had `owned_items` as displayName list; just parallel-walk `me_pl.get("items")` for `itemID`. Same order, same length. No frontend changes needed (yet).
+- **In-memory dedup vs file-persisted.** Considered `data/archetype_nudge_state.json` for restart-survival; rejected because RC restarts are common (`restart_trigger.txt` ~daily during dev) and a nudge dismissed last session has zero relevance next session. Module-level dict wins for simplicity + zero I/O. Operator's chip-dismiss survives across /api/state polls but not across restarts.
+
+## Verification
+
+- `py -m pytest tests/test_archetype_mismatch.py tests/test_state_builder_archetype_nudge.py tests/test_routes_archetype_nudge.py -v` → **54 passed**
+- `py -m pytest tests/` → **1009 passed** (was 955 in s183 wrap; +54 new)
+- `py -m pytest agents/daemon_slayer/tests/` → **1426 passed** (unchanged — DS engine math untouched)
+- `py -m pytest tests/snapshot_panels/` → **11 passed** (panel JS render unchanged)
+- `py -m py_compile core/archetype_mismatch.py dashboard/_state_builder.py dashboard/_liveclient.py dashboard/routes_archetype.py` → clean
+- `py -m ruff check core/archetype_mismatch.py dashboard/_state_builder.py dashboard/_liveclient.py dashboard/routes_archetype.py tests/test_archetype_mismatch.py tests/test_state_builder_archetype_nudge.py tests/test_routes_archetype_nudge.py` → All checks passed
+- RC restart (pid 12144 → pid 1360) verified via /api/state shape
+
+## Open items carried forward
+
+- 🟡 **JS chip renderer — s184.1.** Needs a small yellow info-style chip near `#ds-pill` (in `web/js/panels/item_build.js`) that polls `state.archetype_nudge.fired === true` + shows `state.archetype_nudge.message` + an X button calling `POST /api/archetype-nudge/dismiss {champion}`. Pattern: same as `#ds-pill` itself (mode-gated, fade-in on first appearance). Estimate ~50 LOC + snapshot test.
+- 🟡 **Live game validation.** No game ran during s184 — the new eval logic is exercised only by unit tests. Next real CS + game start will validate: (a) `lc.owned_item_ids` actually populates from Game-PC liveclient relay; (b) `lc.game_id` actually populates (depends on Riot's LCU schema for current patch); (c) the dispatcher round-trip happens within /api/state's tick budget. Engine-down fault path is already proven.
+- 🟡 **Calibration knob — top-15 threshold.** 15 is generous but arbitrary. After a few real games with fired nudges, the operator may want it tighter (top-10) or looser (top-20). Single constant `_TOP_N_THRESHOLD` in `archetype_mismatch.py`; trivial to retune.
+- 🟡 **Item-filter denylist maintenance.** ~28 hardcoded IDs covering boots/Doran/trinkets/consumables/starters/jungle-pets. When Riot adds new items in next patch (16.10+), the list needs review — false-positive risk if a new starter or trinket isn't denylisted (would fire nudge for "I bought starter X first, did you mean to?").
+- 🟡 **Per-game-session token edge case.** When liveclient `gameData.gameId` is absent (older LCU builds; first-tick race conditions), the synthetic fallback `{champion}@{start-floor-min}` is stable across the typical 25-min game but rolls over per minute if `game_time_s` drifts. In practice the real signal arrives mid-game when items complete — by that point `gameId` is populated. Minor edge case; flagging for awareness.
+- 🟡 **Pre-existing carry-forwards from s183 remain:** Phase 6.5/5.5/4d calibration follow-ups blocked on rewind_history.db freshness; Audit finding #1 (frozen-file list duplication) needs operator approval.
 
 ---
 
@@ -125,91 +193,3 @@ Carry archetype=carry scorer=dps
 - 🟡 **Archetype-expansion plan archived.** `NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md` moved to `docs/_archive/`. All 6 phases + coach integration shipped.
 - 🟡 **Phase 6.5 + 5.5 + 4d calibration follow-ups.** Real ally-state plumbing, per-champion combo templates JSON, per-champion max_priority/form_index overrides. Deferred; not blocking; gated on rewind_history.db freshness (last match 2025-12-16, 5 games since Dec).
 - 🟡 **Audit finding #1 — frozen-file list duplication.** Still open from s173. `tools/process-bridge-tasks.md` hard-codes the list separately from CLAUDE.md. Both frozen; needs operator approval.
-
----
-
-# s181 wrap — 2026-05-13 (Phase 6 enchanter healing throughput scorer — single commit pending)
-
-**Operator instruction:** "CONTINUE DS" — following s180's Phase 5, ship the last remaining phase per [NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md](NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md).
-
-Phase 6 (Enchanter healing throughput scorer) is the sixth and final archetype scorer in the archetype-expansion plan. The plan budgeted two sessions for it (6a items registry, 6b compute_hps + ranker + dispatcher), but the data lift is small (~9 enchanter items, each with simple per-proc/CD math) — the full lift fits cleanly in one session, same pattern as Phases 1/2/5. After this slot, no archetype branches in `rank_for_primary_archetype()` fall back to `ds.dps`; the archetype-expansion plan is fully complete.
-
-## Ships
-
-| File | Change |
-|---|---|
-| [data/daemon_slayer/16.9.1/enchanter_items.json](data/daemon_slayer/16.9.1/enchanter_items.json) | **NEW (~150 LOC).** Hand-curated per-item formula registry for 9 enchanter items: Moonstone Renewer (6617, 30% chain amp via heal_shield_amp_pct=0.30), Redemption (3107, AoE heal 150→350 over level 1→18 + 10% H&S power + 3 targets/proc + 1/120s CD), Mikael's Blessing (3222, single-target heal 100→250 + 12% H&S power + 2.0 ally_buff_credit for CC cleanse + 1/120s CD), Echoes of Helia (6620, Soul Siphon ~40→70 heal + 15% AP scaling + 0.4 procs/s + 1 target), Ardent Censer (3504, 15 ally_buff_credit + 10% H&S power + 0 direct heal), Staff of Flowing Water (6616, 12 ally_buff_credit + 10% H&S power + 0 direct heal), Locket of the Iron Solari (3190, AoE shield 290→360 + 3 targets/proc + 1/90s CD + no amp), Imperial Mandate (4005, 6 ally_buff_credit for damage proc), Knight's Vow (3109, 10 ally_buff_credit for ally tank-share). Schema fields per item: `heal_per_proc_base/per_level/ap_scaling`, `heal_procs_per_second`, `heal_targets_per_proc`, mirror shield fields, `heal_shield_amp_pct`, `ally_buff_credit_per_second`, `notes`. Top-level `_meta` block documents schema + modeling decisions + intentional exclusions (Chemtech Putrifier 3011 = anti-heal). |
-| [agents/daemon_slayer/hps.py](agents/daemon_slayer/hps.py) | **NEW (~625 LOC).** Sibling of `ehp.py`. `compute_hps()` + `HpsResult` + `HpsItemContribution` (per-item breakdown) for the evaluator; `rank_items_by_hps()` + `HpsRankedItem` + `HpsRankResult` for the ranker. New `EnchanterFormulasSnapshot` + `EnchanterItemFormula` data classes (frozen dataclasses) with `EnchanterItemFormula.heal_per_proc_at(level, ap)` + `shield_per_proc_at(level, ap)` doing linear-per-level + AP scaling. Module-level `load_default_formulas()` + `reset_formulas_cache()` singleton mirrors `abilities.py` / `ult_rates.py` lazy-cache pattern. Total throughput formula: `total = (healing_raw + shielding_raw) × product(1 + heal_shield_amp_pct) × mode_mult + sum(ally_buff_credit)`. Healing/shielding raw sums per-item `heal_per_proc × procs_per_second × targets_per_proc`; amp factor compounds multiplicatively across all matched items. `_aram_healing_modifier()` pulls `aramShieldsHealing` (falling back to `aramHealing`, then 1.0) from champion lolmath. Ranker mirrors `rank_items_by_ehp` shape: `_filter_candidates` pipeline (purchasable + mode-legal + budget + terminal-only + Arena trinket strip + dead-unique dedup), `delta` / `efficiency` sort keys. New `enchanter_only` parameter (default True) restricts candidate pool to curated registry + Arena/ARAM mode mirrors found by name match in `ITEM_EFFECTS`. `targets_per_proc_override` plumbs through to retune the "average teammate" assumption for Arena 2v2 (override=1). `_empty_result()` returns structured zero-throughput on edge cases. |
-| [agents/daemon_slayer/server.py](agents/daemon_slayer/server.py) | Two new POST/GET routes (`/hps` + `/rank-enchanter`) + new shared `_opt_targets_override(body)` decoder for the float-or-None `targets_per_proc_override` body field. Index HTML routes table updated. `_POST_ROUTES` dispatch entries added for both. |
-| [core/daemon_slayer_client.py](core/daemon_slayer_client.py) | **3 new exports.** `EnchanterRankedItem` dataclass (item_id, item_name, delta_hps, new_hps, gold, shares_dead_unique, dead_unique_key + from_dict). `rank_enchanter_for()` client helper — POST to `/rank-enchanter`, engine-down semantics match `rank_for` / `rank_tank_for` / `rank_bruiser_for` / `rank_mage_for` / `rank_assassin_for` (None = unreachable, [] = nothing to recommend). `hps_for()` mirrors `dps_for` / `ehp_for` / `hybrid_for` / `ability_dps_for` / `burst_for` for the raw evaluator route. **Dispatcher wire-in:** `rank_for_primary_archetype()` `enchanter` branch now routes to `rank_enchanter_for()` (returns `scorer="hps"`, `fell_back=False`). The old fall-through path that set `fell_back=True` for `arch in {"enchanter"}` is removed; carry / unknown labels still default to `ds.dps` with `fell_back=False`. New `targets_per_proc_override` parameter (silently ignored by non-enchanter scorers). Docstring updated to reflect 6 active scorers — all archetypes wired, no deferrals. |
-| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | `ENGINE_VERSION` 0.68.0 → 0.69.0. Module docstring extended with Phase 6 changelog covering the curated registry + scorer + ranker + route + client helpers + dispatcher wire-in + Phase 6.5 deferrals (real ally-state plumbing, champion-spell healing throughput, heal_shield_power amp on champion abilities). |
-| [agents/daemon_slayer/tests/test_hps.py](agents/daemon_slayer/tests/test_hps.py) | **NEW (~430 LOC, 46 tests).** EnchanterItemFormulaTests (6 — from_dict zero/full + heal/shield_per_proc_at scaling + level-0 clamp); EnchanterFormulasSnapshotTests (5 — load known items + get/raise + missing patch raises + sorted ids); SingletonCacheTests (2); AramHealingModifierTests (2); ComputeHpsBasicsTests (9 — naked = 0, non-enchanter items = 0, Redemption hand-calc match, Mikael cleanse credit, Moonstone amp-only, Ardent buff-only, Locket shield-not-heal); AmpPipelineTests (5 — compounding + Moonstone-amps-Redemption + buff_credit additive + sums across items + full three-item hand-calc); ModeMultiplierTests (3 — SR=1.0, ARAM applied, ratio invariant); TargetsOverrideTests (2 — 1/3 ratio + note surfaced); EdgeCaseTests (6 — unknown champ raises, to_dict round trip, format_table [ENCHANTER] tag, Chemtech zero, ARAM mirror zero); HpsItemContributionTests (1 — to_dict shape); HpsRouteTests (5 — in-proc HTTP server: POST 200 + targets override + 404 unknown + 400 invalid targets + default mode SR). |
-| [agents/daemon_slayer/tests/test_rank_enchanter.py](agents/daemon_slayer/tests/test_rank_enchanter.py) | **NEW (~340 LOC, 34 tests).** RankByHpsBasicsTests (6 — result type + baseline-matches-compute + delta arithmetic + sort + clipping + dataclass type); HpsScoringTests (6 — naked top picks include enchanter items + DPS items don't dominate + efficiency sort + efficiency-zero-when-negative + Helia top pick + Moonstone low priority naked + Moonstone rises with existing heals); FilterPipelineTests (5 — already-equipped skip + only whitelist + budget + include_components + ARENA trinket strip); ValidationAndEdgeTests (2 — invalid sort raises + full build raises); SerializationTests (3 — to_dict + format_table [ENCHANTER] + ranked item to_dict); ModeAndOverrideTests (3 — ARAM threads through + targets override threads + 1/3 ratio for AoE); RankEnchanterRouteTests (8 — POST 200 + canonical top picks + 404 + 400 invalid sort + only whitelist + efficiency sort + targets override flow + enchanter_only=False widens pool). |
-| [tests/test_archetype_dispatcher.py](tests/test_archetype_dispatcher.py) | New `EnchanterRoutingTests` class (5 tests — routes_to_rank_enchanter_for + passes_targets_per_proc_override + passes_only_item_ids + passes_filter_shared_uniques + returns_none_when_engine_down) replacing the old single-assertion `FallbackArchetypesTests.test_enchanter_falls_back_to_dps`. New `_make_enchanter_rows()` helper. `EngineDownTests` gained a 4th case for enchanter engine-down. `UnknownArchetypeTests` comment updated to note `fell_back=False` for all 6 archetypes post-Phase-6 (catch-all labels still hit dps via the fall-through). |
-| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Bumped `test_batch63_version` + `test_batch64_version` to assert ENGINE_VERSION 0.69.0; extended changelog comment with the Phase 6 line. |
-| Living docs sync | [CLAUDE.md](CLAUDE.md) DS pointer line 6 (0.68.0 → 0.69.0) + new item 37; [README.md](README.md) header bullet + Daemon Slayer engine section + capability matrix; [docs/DAEMON_SLAYER.md](docs/DAEMON_SLAYER.md) status line + server route list + new `hps.py` module map row + new `enchanter_items.json` row + tests count 1346 → 1426; [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) DS section; [ROADMAP.md](ROADMAP.md) DS status table + new s181 ship entry; [BRIEF.md](BRIEF.md) RC Tutor "what's built" line. |
-| DS server runtime | Killed PID 17152 via `Stop-Process -Force -Confirm:$false` (the `Never Stop-Process` rule applies to the live-RC-supervisor case where taskkill works; DS server isn't supervisor-watched per `reference_ds_server_not_supervisor_watched`). Relaunched via `Start-Process -WindowStyle Hidden pythonw tools\start_daemon_slayer.py`. `/health` confirms `engine_version: "0.69.0"` live on `:8893`. |
-
-## Live validation
-
-Probed `/hps` and `/rank-enchanter` against the running DS server on :8893.
-
-**Soraka lvl 11 + Moonstone + Redemption + Ardent (the canonical mid-game enchanter core):**
-```
-total_throughput: 25.52
-  healing_hps_raw    6.69   (Redemption only: 267.6 × 0.00833 × 3)
-  shielding_hps_raw  0.00
-  amp_multiplier    ×1.573  (1.30 × 1.10 × 1.10)
-  mode_multiplier   ×1.000  (SR)
-  healing_hps       10.52
-  ally_buff_credit  15.00   (Ardent only)
-```
-
-Math checks: Rabadon-style amp pipeline isn't relevant here — none of these items are AP scorers. The amp compounding is the key invariant: each amp_pct stacks multiplicatively, so adding Moonstone to a Redemption+Ardent build raises healing_hps by ×1.30 even though Moonstone itself has zero per-proc heal.
-
-**Soraka lvl 11 naked, `/rank-enchanter` top 8:**
-```
-baseline_hps: 0.00
-  6620 Echoes of Helia              gold=2200  +25.14  eff=11.43
-  3504 Ardent Censer                gold=2200  +15.00  eff= 6.82
-  6616 Staff of Flowing Water       gold=2250  +12.00  eff= 5.33
-  3190 Locket of the Iron Solari    gold=2200  +11.04  eff= 5.02
-  3109 Knight's Vow                 gold=2300  +10.00  eff= 4.35
-  3107 Redemption                   gold=2300  + 7.36  eff= 3.20
-  4005 Imperial Mandate             gold=2250  + 6.00  eff= 2.67
-  3222 Mikael's Blessing            gold=2300  + 3.76  eff= 1.63
-```
-
-Helia tops the list as designed — high proc rate (0.4/s) × ~50 HP heal × 1 target × 100 AP context gives the highest absolute delta. Pure-buff items (Ardent, Staff, Knight's Vow) rank above Redemption + Mikael because their ally_buff_credit (15, 12, 10) outweighs the actives' amortized 1/120s output. Moonstone is absent from top 8 because at zero baseline there's nothing for it to amp.
-
-**Soraka lvl 11 with Redemption + Mikael's built (baseline 12.17 HPS), `/rank-enchanter` Moonstone position:**
-```
-  6617 Moonstone Renewer    gold=2200  +3.05   new=15.22   eff=1.39
-```
-
-Moonstone correctly rises into the ranking once the baseline has direct-heal items to amp. Delta math: baseline_raw 8.26 × (1.10×1.12) = 10.18; adding Moonstone raises amp to (1.10×1.12×1.30) = 1.601, so new amped = 8.26 × 1.601 = 13.23; delta = (13.23 + buff_credit 2.0) - 12.17 = 3.06. Matches reported +3.05 (rounding).
-
-## Findings
-
-- **Phase 6 collapsed to one session because the formula data is much smaller than Phase 4's.** Phase 4 needed an entire Meraki abilities snapshot (171 champions × 5 keys × forms = 927 ability records). Phase 6 needs 9 hand-curated item formulas. The DPS / EHP / hybrid / ability / burst scorers all share the same `_filter_candidates` pipeline + dead-unique dedup + Arena trinket strip + sort key shape, so the ranker code was mostly mechanical mirror of the previous five scorers. The genuinely novel work was the curated formula registry (`enchanter_items.json`) + the amp-compounding math + the buff_credit-as-additive-not-amped decision.
-- **`ally_buff_credit_per_second` is a calibration knob, not a measurement.** The plan called for "best-effort with avg-ally model" and explicitly listed buff items (Ardent, Staff, Knight's Vow, Mandate) as candidates for "supportive value" credit. I picked numbers that make pure-buff items rank above amortized actives but below the highest-throughput direct heal (Helia at lvl 11 + 100 AP). Ardent at 15 sits between Redemption's amortized 7.4 HPS and Helia's 25 HPS — operator-validated by the live probe matching common enchanter build orders (Ardent → Helia → Staff → Moonstone last). If calibration data later shows the order is wrong for specific champions, these are JSON-edits not code-edits. Phase 6.5 with real ally-state plumbing replaces this whole layer.
-- **Moonstone's "rises with existing heals" behavior is the load-bearing test.** A naked enchanter buying Moonstone first as their only item produces zero HPS — because amp × 0 = 0. The scorer correctly flags this by ranking Moonstone at delta=0 absent other heal items. Once Redemption + Mikael's are in the build, Moonstone's +30% amp lifts the existing 12.17 HPS by 3.05 → it climbs into the ranking. This matches real enchanter build order (Moonstone is typically a 3rd-4th item, not 1st), and confirms the amp-compounding math is correct. The test `test_moonstone_rises_with_existing_heals` in `test_rank_enchanter.py` pins this invariant.
-- **Mode mirrors via name-match are sufficient for Phase 6.** ARAM Redemption (323107) and Arena Redemption (223107) exist in `ITEM_EFFECTS` but not in `enchanter_items.json` (which keys by SR ids). Both surface in `/rank-enchanter` results because the candidate-filter pipeline's `only_ids` whitelist matches on the registry items' NAMES against `ITEM_EFFECTS.name`. They contribute 0 HPS (no formula in registry by id) and rank at the bottom — operators see them as "available but unmodeled." Future Phase 6.5 could add explicit mirror entries with mode-adjusted numbers if calibration shows ARAM/Arena healing balance differs meaningfully from SR.
-- **The DS server restart workflow needed a workaround.** `taskkill /F /PID` failed with "Invalid argument/option - 'F:/'" due to the bash-tool's argument passing breaking the call shape. PowerShell's `Stop-Process -Force -Confirm:$false` worked. Same workaround as s180 — the `Never Stop-Process` hard rule in CLAUDE.md is for the live-RC-supervisor case where taskkill works; DS server isn't supervisor-watched per `reference_ds_server_not_supervisor_watched`.
-
-## Verification
-
-- `py -m pytest agents/daemon_slayer/tests/` → **1426 passed** (was 1346 — +80 from new test_hps.py 46 + test_rank_enchanter.py 34)
-- `py -m pytest tests/` → **915 passed** (wider RC; was 899 in s180 wrap — +16 from new EnchanterRoutingTests + EngineDownTests case + integration tests picking up 0.69.0)
-- `py -m pytest tests/test_archetype_dispatcher.py` → **28 passed** (was 23 — +5 EnchanterRoutingTests, −0 since fallback replaced with new class + 1 new EngineDownTests case + 1 net positive in fallback file)
-- `py -m py_compile` on all touched files → clean
-- DS server `:8893/health` → `engine_version: "0.69.0"` live
-- Live probe of `/rank-enchanter` on Soraka lvl 11 returns Helia / Ardent / Staff / Locket / Knight's Vow as the top 5 — matches expected enchanter build order (high-throughput passive + ally buffs first, AoE actives mid, single-target heal last).
-
-## Open items carried forward
-
-- 🟢 **Archetype-expansion plan COMPLETE.** All 6 phases shipped (1 Tank EHP / 2 Bruiser hybrid / 3 CS picker / 4 Mage ability / 5 Assassin burst / 6 Enchanter HPS). `NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md` can be archived to `docs/_archive/` in the next session.
-- 🟡 **Phase 6.5 calibration follow-up (deferred):** real ally-state plumbing (positions, current HP, buff uptime) via WebSocket → `state.allies[i].hp/mp/position` from liveclient; champion-spell healing throughput modeling (Soraka W, Lulu E, Janna E — currently only ITEM throughput scored); heal_shield_power amp on champion abilities (applies to items only in Phase 6); per-champion `targets_per_proc` overrides JSON (Yuumi single-target preference vs Sona AoE preference); explicit ARAM/Arena mode-mirror formula entries (currently mirror items rank at 0 HPS).
-- 🟡 **Coach integration deferred (cross-phase).** No coach reads `state.cs_archetype_pick.primary` yet — same situation as Phases 1/2/3/4/5. Wire-in is single-line per coach: replace `rank_for(...)` with `rank_for_primary_archetype(champion, state.cs_archetype_pick.primary, ...)`. State-builder needs a champion-id → name resolver to stamp the field. This is the next obvious follow-up session after the archetype-expansion plan archives.
-- 🟡 **Audit finding #1 — frozen-file list duplication.** Still open from s173. The `tools/process-bridge-tasks.md` skill spec hard-codes the frozen-file list separately from CLAUDE.md; needs operator approval to refactor because both files are themselves frozen. Phase 6 didn't touch either file but the drift remains.
-- 🟡 **rewind_history.db freshness.** Same gate as ever — newest match 2025-12-16. Operator's play cadence is sparse (5 games since Dec); calibration pipelines (DS picks vs match outcomes, including the new HPS scorer's data) wait on regular play returning.

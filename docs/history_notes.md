@@ -5,6 +5,95 @@ Current WAKEUP_NOTES.md keeps only the most recent 2–3 sessions.
 Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
+
+---
+
+# s181 wrap — 2026-05-13 (Phase 6 enchanter healing throughput scorer — single commit pending)
+
+**Operator instruction:** "CONTINUE DS" — following s180's Phase 5, ship the last remaining phase per [NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md](NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md).
+
+Phase 6 (Enchanter healing throughput scorer) is the sixth and final archetype scorer in the archetype-expansion plan. The plan budgeted two sessions for it (6a items registry, 6b compute_hps + ranker + dispatcher), but the data lift is small (~9 enchanter items, each with simple per-proc/CD math) — the full lift fits cleanly in one session, same pattern as Phases 1/2/5. After this slot, no archetype branches in `rank_for_primary_archetype()` fall back to `ds.dps`; the archetype-expansion plan is fully complete.
+
+## Ships
+
+| File | Change |
+|---|---|
+| [data/daemon_slayer/16.9.1/enchanter_items.json](data/daemon_slayer/16.9.1/enchanter_items.json) | **NEW (~150 LOC).** Hand-curated per-item formula registry for 9 enchanter items: Moonstone Renewer (6617, 30% chain amp via heal_shield_amp_pct=0.30), Redemption (3107, AoE heal 150→350 over level 1→18 + 10% H&S power + 3 targets/proc + 1/120s CD), Mikael's Blessing (3222, single-target heal 100→250 + 12% H&S power + 2.0 ally_buff_credit for CC cleanse + 1/120s CD), Echoes of Helia (6620, Soul Siphon ~40→70 heal + 15% AP scaling + 0.4 procs/s + 1 target), Ardent Censer (3504, 15 ally_buff_credit + 10% H&S power + 0 direct heal), Staff of Flowing Water (6616, 12 ally_buff_credit + 10% H&S power + 0 direct heal), Locket of the Iron Solari (3190, AoE shield 290→360 + 3 targets/proc + 1/90s CD + no amp), Imperial Mandate (4005, 6 ally_buff_credit for damage proc), Knight's Vow (3109, 10 ally_buff_credit for ally tank-share). Schema fields per item: `heal_per_proc_base/per_level/ap_scaling`, `heal_procs_per_second`, `heal_targets_per_proc`, mirror shield fields, `heal_shield_amp_pct`, `ally_buff_credit_per_second`, `notes`. Top-level `_meta` block documents schema + modeling decisions + intentional exclusions (Chemtech Putrifier 3011 = anti-heal). |
+| [agents/daemon_slayer/hps.py](agents/daemon_slayer/hps.py) | **NEW (~625 LOC).** Sibling of `ehp.py`. `compute_hps()` + `HpsResult` + `HpsItemContribution` (per-item breakdown) for the evaluator; `rank_items_by_hps()` + `HpsRankedItem` + `HpsRankResult` for the ranker. New `EnchanterFormulasSnapshot` + `EnchanterItemFormula` data classes (frozen dataclasses) with `EnchanterItemFormula.heal_per_proc_at(level, ap)` + `shield_per_proc_at(level, ap)` doing linear-per-level + AP scaling. Module-level `load_default_formulas()` + `reset_formulas_cache()` singleton mirrors `abilities.py` / `ult_rates.py` lazy-cache pattern. Total throughput formula: `total = (healing_raw + shielding_raw) × product(1 + heal_shield_amp_pct) × mode_mult + sum(ally_buff_credit)`. Healing/shielding raw sums per-item `heal_per_proc × procs_per_second × targets_per_proc`; amp factor compounds multiplicatively across all matched items. `_aram_healing_modifier()` pulls `aramShieldsHealing` (falling back to `aramHealing`, then 1.0) from champion lolmath. Ranker mirrors `rank_items_by_ehp` shape: `_filter_candidates` pipeline (purchasable + mode-legal + budget + terminal-only + Arena trinket strip + dead-unique dedup), `delta` / `efficiency` sort keys. New `enchanter_only` parameter (default True) restricts candidate pool to curated registry + Arena/ARAM mode mirrors found by name match in `ITEM_EFFECTS`. `targets_per_proc_override` plumbs through to retune the "average teammate" assumption for Arena 2v2 (override=1). `_empty_result()` returns structured zero-throughput on edge cases. |
+| [agents/daemon_slayer/server.py](agents/daemon_slayer/server.py) | Two new POST/GET routes (`/hps` + `/rank-enchanter`) + new shared `_opt_targets_override(body)` decoder for the float-or-None `targets_per_proc_override` body field. Index HTML routes table updated. `_POST_ROUTES` dispatch entries added for both. |
+| [core/daemon_slayer_client.py](core/daemon_slayer_client.py) | **3 new exports.** `EnchanterRankedItem` dataclass (item_id, item_name, delta_hps, new_hps, gold, shares_dead_unique, dead_unique_key + from_dict). `rank_enchanter_for()` client helper — POST to `/rank-enchanter`, engine-down semantics match `rank_for` / `rank_tank_for` / `rank_bruiser_for` / `rank_mage_for` / `rank_assassin_for` (None = unreachable, [] = nothing to recommend). `hps_for()` mirrors `dps_for` / `ehp_for` / `hybrid_for` / `ability_dps_for` / `burst_for` for the raw evaluator route. **Dispatcher wire-in:** `rank_for_primary_archetype()` `enchanter` branch now routes to `rank_enchanter_for()` (returns `scorer="hps"`, `fell_back=False`). The old fall-through path that set `fell_back=True` for `arch in {"enchanter"}` is removed; carry / unknown labels still default to `ds.dps` with `fell_back=False`. New `targets_per_proc_override` parameter (silently ignored by non-enchanter scorers). Docstring updated to reflect 6 active scorers — all archetypes wired, no deferrals. |
+| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | `ENGINE_VERSION` 0.68.0 → 0.69.0. Module docstring extended with Phase 6 changelog covering the curated registry + scorer + ranker + route + client helpers + dispatcher wire-in + Phase 6.5 deferrals (real ally-state plumbing, champion-spell healing throughput, heal_shield_power amp on champion abilities). |
+| [agents/daemon_slayer/tests/test_hps.py](agents/daemon_slayer/tests/test_hps.py) | **NEW (~430 LOC, 46 tests).** EnchanterItemFormulaTests (6 — from_dict zero/full + heal/shield_per_proc_at scaling + level-0 clamp); EnchanterFormulasSnapshotTests (5 — load known items + get/raise + missing patch raises + sorted ids); SingletonCacheTests (2); AramHealingModifierTests (2); ComputeHpsBasicsTests (9 — naked = 0, non-enchanter items = 0, Redemption hand-calc match, Mikael cleanse credit, Moonstone amp-only, Ardent buff-only, Locket shield-not-heal); AmpPipelineTests (5 — compounding + Moonstone-amps-Redemption + buff_credit additive + sums across items + full three-item hand-calc); ModeMultiplierTests (3 — SR=1.0, ARAM applied, ratio invariant); TargetsOverrideTests (2 — 1/3 ratio + note surfaced); EdgeCaseTests (6 — unknown champ raises, to_dict round trip, format_table [ENCHANTER] tag, Chemtech zero, ARAM mirror zero); HpsItemContributionTests (1 — to_dict shape); HpsRouteTests (5 — in-proc HTTP server: POST 200 + targets override + 404 unknown + 400 invalid targets + default mode SR). |
+| [agents/daemon_slayer/tests/test_rank_enchanter.py](agents/daemon_slayer/tests/test_rank_enchanter.py) | **NEW (~340 LOC, 34 tests).** RankByHpsBasicsTests (6 — result type + baseline-matches-compute + delta arithmetic + sort + clipping + dataclass type); HpsScoringTests (6 — naked top picks include enchanter items + DPS items don't dominate + efficiency sort + efficiency-zero-when-negative + Helia top pick + Moonstone low priority naked + Moonstone rises with existing heals); FilterPipelineTests (5 — already-equipped skip + only whitelist + budget + include_components + ARENA trinket strip); ValidationAndEdgeTests (2 — invalid sort raises + full build raises); SerializationTests (3 — to_dict + format_table [ENCHANTER] + ranked item to_dict); ModeAndOverrideTests (3 — ARAM threads through + targets override threads + 1/3 ratio for AoE); RankEnchanterRouteTests (8 — POST 200 + canonical top picks + 404 + 400 invalid sort + only whitelist + efficiency sort + targets override flow + enchanter_only=False widens pool). |
+| [tests/test_archetype_dispatcher.py](tests/test_archetype_dispatcher.py) | New `EnchanterRoutingTests` class (5 tests — routes_to_rank_enchanter_for + passes_targets_per_proc_override + passes_only_item_ids + passes_filter_shared_uniques + returns_none_when_engine_down) replacing the old single-assertion `FallbackArchetypesTests.test_enchanter_falls_back_to_dps`. New `_make_enchanter_rows()` helper. `EngineDownTests` gained a 4th case for enchanter engine-down. `UnknownArchetypeTests` comment updated to note `fell_back=False` for all 6 archetypes post-Phase-6 (catch-all labels still hit dps via the fall-through). |
+| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Bumped `test_batch63_version` + `test_batch64_version` to assert ENGINE_VERSION 0.69.0; extended changelog comment with the Phase 6 line. |
+| Living docs sync | [CLAUDE.md](CLAUDE.md) DS pointer line 6 (0.68.0 → 0.69.0) + new item 37; [README.md](README.md) header bullet + Daemon Slayer engine section + capability matrix; [docs/DAEMON_SLAYER.md](docs/DAEMON_SLAYER.md) status line + server route list + new `hps.py` module map row + new `enchanter_items.json` row + tests count 1346 → 1426; [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) DS section; [ROADMAP.md](ROADMAP.md) DS status table + new s181 ship entry; [BRIEF.md](BRIEF.md) RC Tutor "what's built" line. |
+| DS server runtime | Killed PID 17152 via `Stop-Process -Force -Confirm:$false` (the `Never Stop-Process` rule applies to the live-RC-supervisor case where taskkill works; DS server isn't supervisor-watched per `reference_ds_server_not_supervisor_watched`). Relaunched via `Start-Process -WindowStyle Hidden pythonw tools\start_daemon_slayer.py`. `/health` confirms `engine_version: "0.69.0"` live on `:8893`. |
+
+## Live validation
+
+Probed `/hps` and `/rank-enchanter` against the running DS server on :8893.
+
+**Soraka lvl 11 + Moonstone + Redemption + Ardent (the canonical mid-game enchanter core):**
+```
+total_throughput: 25.52
+  healing_hps_raw    6.69   (Redemption only: 267.6 × 0.00833 × 3)
+  shielding_hps_raw  0.00
+  amp_multiplier    ×1.573  (1.30 × 1.10 × 1.10)
+  mode_multiplier   ×1.000  (SR)
+  healing_hps       10.52
+  ally_buff_credit  15.00   (Ardent only)
+```
+
+Math checks: Rabadon-style amp pipeline isn't relevant here — none of these items are AP scorers. The amp compounding is the key invariant: each amp_pct stacks multiplicatively, so adding Moonstone to a Redemption+Ardent build raises healing_hps by ×1.30 even though Moonstone itself has zero per-proc heal.
+
+**Soraka lvl 11 naked, `/rank-enchanter` top 8:**
+```
+baseline_hps: 0.00
+  6620 Echoes of Helia              gold=2200  +25.14  eff=11.43
+  3504 Ardent Censer                gold=2200  +15.00  eff= 6.82
+  6616 Staff of Flowing Water       gold=2250  +12.00  eff= 5.33
+  3190 Locket of the Iron Solari    gold=2200  +11.04  eff= 5.02
+  3109 Knight's Vow                 gold=2300  +10.00  eff= 4.35
+  3107 Redemption                   gold=2300  + 7.36  eff= 3.20
+  4005 Imperial Mandate             gold=2250  + 6.00  eff= 2.67
+  3222 Mikael's Blessing            gold=2300  + 3.76  eff= 1.63
+```
+
+Helia tops the list as designed — high proc rate (0.4/s) × ~50 HP heal × 1 target × 100 AP context gives the highest absolute delta. Pure-buff items (Ardent, Staff, Knight's Vow) rank above Redemption + Mikael because their ally_buff_credit (15, 12, 10) outweighs the actives' amortized 1/120s output. Moonstone is absent from top 8 because at zero baseline there's nothing for it to amp.
+
+**Soraka lvl 11 with Redemption + Mikael's built (baseline 12.17 HPS), `/rank-enchanter` Moonstone position:**
+```
+  6617 Moonstone Renewer    gold=2200  +3.05   new=15.22   eff=1.39
+```
+
+Moonstone correctly rises into the ranking once the baseline has direct-heal items to amp. Delta math: baseline_raw 8.26 × (1.10×1.12) = 10.18; adding Moonstone raises amp to (1.10×1.12×1.30) = 1.601, so new amped = 8.26 × 1.601 = 13.23; delta = (13.23 + buff_credit 2.0) - 12.17 = 3.06. Matches reported +3.05 (rounding).
+
+## Findings
+
+- **Phase 6 collapsed to one session because the formula data is much smaller than Phase 4's.** Phase 4 needed an entire Meraki abilities snapshot (171 champions × 5 keys × forms = 927 ability records). Phase 6 needs 9 hand-curated item formulas. The DPS / EHP / hybrid / ability / burst scorers all share the same `_filter_candidates` pipeline + dead-unique dedup + Arena trinket strip + sort key shape, so the ranker code was mostly mechanical mirror of the previous five scorers. The genuinely novel work was the curated formula registry (`enchanter_items.json`) + the amp-compounding math + the buff_credit-as-additive-not-amped decision.
+- **`ally_buff_credit_per_second` is a calibration knob, not a measurement.** The plan called for "best-effort with avg-ally model" and explicitly listed buff items (Ardent, Staff, Knight's Vow, Mandate) as candidates for "supportive value" credit. I picked numbers that make pure-buff items rank above amortized actives but below the highest-throughput direct heal (Helia at lvl 11 + 100 AP). Ardent at 15 sits between Redemption's amortized 7.4 HPS and Helia's 25 HPS — operator-validated by the live probe matching common enchanter build orders (Ardent → Helia → Staff → Moonstone last). If calibration data later shows the order is wrong for specific champions, these are JSON-edits not code-edits. Phase 6.5 with real ally-state plumbing replaces this whole layer.
+- **Moonstone's "rises with existing heals" behavior is the load-bearing test.** A naked enchanter buying Moonstone first as their only item produces zero HPS — because amp × 0 = 0. The scorer correctly flags this by ranking Moonstone at delta=0 absent other heal items. Once Redemption + Mikael's are in the build, Moonstone's +30% amp lifts the existing 12.17 HPS by 3.05 → it climbs into the ranking. This matches real enchanter build order (Moonstone is typically a 3rd-4th item, not 1st), and confirms the amp-compounding math is correct. The test `test_moonstone_rises_with_existing_heals` in `test_rank_enchanter.py` pins this invariant.
+- **Mode mirrors via name-match are sufficient for Phase 6.** ARAM Redemption (323107) and Arena Redemption (223107) exist in `ITEM_EFFECTS` but not in `enchanter_items.json` (which keys by SR ids). Both surface in `/rank-enchanter` results because the candidate-filter pipeline's `only_ids` whitelist matches on the registry items' NAMES against `ITEM_EFFECTS.name`. They contribute 0 HPS (no formula in registry by id) and rank at the bottom — operators see them as "available but unmodeled." Future Phase 6.5 could add explicit mirror entries with mode-adjusted numbers if calibration shows ARAM/Arena healing balance differs meaningfully from SR.
+- **The DS server restart workflow needed a workaround.** `taskkill /F /PID` failed with "Invalid argument/option - 'F:/'" due to the bash-tool's argument passing breaking the call shape. PowerShell's `Stop-Process -Force -Confirm:$false` worked. Same workaround as s180 — the `Never Stop-Process` hard rule in CLAUDE.md is for the live-RC-supervisor case where taskkill works; DS server isn't supervisor-watched per `reference_ds_server_not_supervisor_watched`.
+
+## Verification
+
+- `py -m pytest agents/daemon_slayer/tests/` → **1426 passed** (was 1346 — +80 from new test_hps.py 46 + test_rank_enchanter.py 34)
+- `py -m pytest tests/` → **915 passed** (wider RC; was 899 in s180 wrap — +16 from new EnchanterRoutingTests + EngineDownTests case + integration tests picking up 0.69.0)
+- `py -m pytest tests/test_archetype_dispatcher.py` → **28 passed** (was 23 — +5 EnchanterRoutingTests, −0 since fallback replaced with new class + 1 new EngineDownTests case + 1 net positive in fallback file)
+- `py -m py_compile` on all touched files → clean
+- DS server `:8893/health` → `engine_version: "0.69.0"` live
+- Live probe of `/rank-enchanter` on Soraka lvl 11 returns Helia / Ardent / Staff / Locket / Knight's Vow as the top 5 — matches expected enchanter build order (high-throughput passive + ally buffs first, AoE actives mid, single-target heal last).
+
+## Open items carried forward
+
+- 🟢 **Archetype-expansion plan COMPLETE.** All 6 phases shipped (1 Tank EHP / 2 Bruiser hybrid / 3 CS picker / 4 Mage ability / 5 Assassin burst / 6 Enchanter HPS). `NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md` can be archived to `docs/_archive/` in the next session.
+- 🟡 **Phase 6.5 calibration follow-up (deferred):** real ally-state plumbing (positions, current HP, buff uptime) via WebSocket → `state.allies[i].hp/mp/position` from liveclient; champion-spell healing throughput modeling (Soraka W, Lulu E, Janna E — currently only ITEM throughput scored); heal_shield_power amp on champion abilities (applies to items only in Phase 6); per-champion `targets_per_proc` overrides JSON (Yuumi single-target preference vs Sona AoE preference); explicit ARAM/Arena mode-mirror formula entries (currently mirror items rank at 0 HPS).
+- 🟡 **Coach integration deferred (cross-phase).** No coach reads `state.cs_archetype_pick.primary` yet — same situation as Phases 1/2/3/4/5. Wire-in is single-line per coach: replace `rank_for(...)` with `rank_for_primary_archetype(champion, state.cs_archetype_pick.primary, ...)`. State-builder needs a champion-id → name resolver to stamp the field. This is the next obvious follow-up session after the archetype-expansion plan archives.
+- 🟡 **Audit finding #1 — frozen-file list duplication.** Still open from s173. The `tools/process-bridge-tasks.md` skill spec hard-codes the frozen-file list separately from CLAUDE.md; needs operator approval to refactor because both files are themselves frozen. Phase 6 didn't touch either file but the drift remains.
+- 🟡 **rewind_history.db freshness.** Same gate as ever — newest match 2025-12-16. Operator's play cadence is sparse (5 games since Dec); calibration pipelines (DS picks vs match outcomes, including the new HPS scorer's data) wait on regular play returning.
+
 ---
 
 # s178 wrap — 2026-05-12 (Phase 4b mage ability DPS evaluator — single commit pending)
@@ -1916,138 +2005,6 @@ TFT patch 17.2: tft_pbe_engine.py system prompt + tft_pbe_data.py ENCOUNTERS (21
 
 ---
 
-## s175 — Phase 2 Bruiser hybrid scorer (2026-05-12)
-
-Composed `compute_dps` × `compute_ehp` into `compute_hybrid()` + `rank_items_by_hybrid()` via per-champion (α,β) weights in new `archetype_weights.json` (20 bruisers; default 0.50/0.50). Ranker normalizes against per-baseline percentage deltas so weights stay intuitive across the ~10× DPS/EHP magnitude gap. New `/hybrid` + `/rank-bruiser` routes + `rank_bruiser_for()` / `hybrid_for()` client helpers. ENGINE 0.63.0 → 0.64.0. 44 new tests → 1066 DS suite. Live: Jarvan IV picks Trinity Force first (α=0.55 default); Nasus with override α=0.2/β=0.8 surfaces Heartsteel + Warmog's top-5. Full details in commit 3a3bf58 / ROADMAP s175 entry.
-
----
-
-# s166 — 2026-05-10 (Phase B LCU agent handlers + Loading view scaffold; UI paused)
-
-5 new dashboard-→ LCU command handlers (ban/pick intent + position/pick-order swap + augment-intent stub) shipped in `tools/gamepc_lcu_agent.py` so s164+s165 dashboard commands actually route to the client; champ-select state extended (`active_round`, `is_brawl`, swap lists, `arena_teams`, `augments` scaffold, per-player `summoners`). Phase 3 step 4 Loading Screen view scaffold (`view-loading`, `flow_04` fixture, opt-in via `?ld=1` / GameStart phase). 30 new tests under `tests/phase_b_champ_select/test_lcu_agent_phase_b.py` (665 total). Operator paused UI work at session end and directed `NEXT_SESSION_PLAN_2026-05-10.md` as bootstrap for s167.
-
----
-
-**s125 — 2026-05-08** (9234d0f) Phase 1.1 knowledge architecture: docs/_archive/ created, 23 dated artifacts moved, 4 living docs authored (ARCHITECTURE.md 136 lines, OPERATIONS.md 153, BRIDGE.md 136, ROADMAP.md 64). Bootstrap reduced from 2000+ → 492 lines.
-
-**s124 — 2026-05-08** (no commit) RC_FUTUREPROOFING_PLAN.md authored on Desktop by Opus 4.7 1M context — 7-phase leverage-ordered refactor plan. No code changes.
-
----
-
-- **s123 2026-05-08** — rc_facts bridge probe rewrite (04a305b): `/api/health/all` peer probe replaces stale log-age heuristic. DS server health line added. RC-DaemonSlayer false exit-1 anomaly suppressed (server healthy; task runs as SYSTEM, can't write logs).
-- **s122 2026-05-08** — Game-PC socket exhaustion (STATUP.GG/Overlay Platform M 17,463 kernel handles → WSAENOBUFS). `taskkill /F /PID 3340`; restarted RC-WatcherHealthPublisher-GamePC + RC-BridgeWatcher-GamePC tasks. TDD skill installed fleet-wide.
-- **s121 2026-05-08** — Fleet model downgrade → `claude-sonnet-4-6` 200k. 5 plugins disabled on Legion (nimble, ralph-loop, playwright, chrome-devtools-mcp, firecrawl); Peer mirrored via bridge task. MEMORY.md pruned 6 stale entries.
-- **s120 2026-05-08** — RC dev panel shipped (7424e24): `⚙ Dev / Sim Preview` view with SIM FIXTURES, VISION STATUS, RC LOG TAIL cards; `dashboard/routes_dev.py` + CSS view-switch.
-- **s119 2026-05-08** — Roadmap: 5 items shipped — Phase 4 SessionStart enrichment (d069e4d), DS startup diagnostics (04e63d4), SR coach objective_window fix (e8d976b), bridge introspection `?source=` param (5a790d2), ROADMAP closures (items_index rotation, vision_token policy).
-- **s118 2026-05-08** — Bridge Watcher node-load restraint (f3ae4cb): `_check_rc_health()` downgrades auto-action to escalate when RC degraded; push notifications suppressed during degraded cycles; 30/30 selftests pass; watcher pid=15004.
-- **s116 2026-05-08** — Game-PC boot fix + Smite jungler detection (1ef54e3/2229d89/6bec3ce): `gamepc_boot.ps1` now calls `start_gamepc_claude.ps1`; Smite-based 3-tier jungler cascade in `game_reader.py`; 8 new tests.
-- **s115 2026-05-07** — DS calibration game_id wiring (d66d14b): `gamepc_lcu_agent.py` fetches `gameData.gameId` in-game; `game_reader.py` reads `/latest-lcu` relay; `coach_integration.py` passes game_id to `log_ds_run()`.
-- **s114 2026-05-07** — Bridge Watcher Phase 3 (6dd91ff): `--dry-run` mode, artifact rotation, self-healing watchdog thread; 21/21 selftests.
-- **s113 2026-05-07** — Bridge Watcher Phase 2 (05983a4): adaptive cadence (`_read_mode()`), active/sleep/auto modes, `/api/bridge/cadence`, `/sleep`+`/wake` slash commands.
-- **s112 2026-05-07** — Bridge Watcher Phase 1 (f6095a0): sliding 24h event ring, push notifications, RC-DaemonSlayer result=1 fix.
-- **s111 2026-05-06** — Infrastructure fixes: RC-BridgeWatcher + RC-Phase3-Supervisor restarted; `claude-rc.ps1` `/loop` removed; ROADMAP fleet-health items marked ✅.
-- **s110 2026-05-06** — Cross-Claude sync Phase 3 + DS/roadmap doc cleanup. `_lessons_summary()` in `rc_facts.py` for SessionStart hook (4c4ce1a); ROADMAP/CLAUDE/README doc cleanup (b6d02ae).
-- **s109 2026-05-06** — Memory library: 6 new memory entries (feedback + reference patterns). No code changes to RC repo.
-
----
-
-## s106 wrap — 2026-05-05 (DaemonSlayer flash fix + preflight expansion)
-
-### What shipped
-- **`ops/RC-DaemonSlayer.xml`** — `python.exe` → `pythonw.exe`; task reinstalled. No more console flash on boot/restart. DS live at `:8893` engine=0.60.0 patch=16.9.1.
-- **`start_claude.ps1`** — added RC-DaemonSlayer + RC-Phase3-Supervisor + RC-BridgeWatcher preflight checks; `:8893` + `:8890` HTTP probes; final `claude` launch fixed to `--name "Legion"`. commit `0d1b545`.
-
-### Do NOT redo
-- RC-DaemonSlayer XML is already pythonw.exe.
-
----
-
-## s92–s103 detailed notes (2026-05-04 – 2026-05-05)
-
-### s103 — 2026-05-05 (DS champ-select panel + dashboard bug fixes)
-- **DS champ-select panel** `112350a` — `#cs-ds-block` + `/api/ds-preview` endpoint. Fires once per (champion, mode). Item tiles with +Ndps tooltips.
-- **SR SSE mode fix** `5ee58b6` — `_state_builder.py` returned `mode_key="game"`; JS `driveNow` dropped all SR state. Fixed to `"sr"`.
-- **Item icon cache race** `f5ce231` — `_itemResolveCache` cached null before `items_index.json` loaded; idempotency sig blocked re-render. Fix: clear cache + tile sigs on ITEMS load.
-- **Augments pill fix** `5ee58b6` — CSS `static-pill` overrode `.hidden`; now `display:none !important`.
-- **`/done` §6b living-doc sync** `d6fbce0` — ROADMAP/CLAUDE.md/README updated as part of done ritual.
-
-### s102 — 2026-05-05 (SR coach signature hash fix + RECOMMENDED panel)
-- **SR coach hash fix** (frozen, user-approved) — `_state_signature` fallbacks had wrong key names vs `_convert` output. hp_bucket/mana_bucket/gold_bucket/level all fixed. Coach now re-fires on HP changes, gold/item thresholds, level-ups, deaths.
-- **RECOMMENDED panel** — `dashboard.js` falls back to `sr_items` when `item_build` empty; `next: true` items populate RECOMMENDED.
-- **SR API key** — `API-Key-Claude.txt` written from CLI env to unblock SR coaching.
-
-### s101 — 2026-05-05 (DS health indicator + Item Build DS picks panel)
-- **DS health in `/api/health/all`** `50248a7` — probes `:8893/health`; DS down → yellow rollup.
-- **Health dot tooltip** — DS engine status: `DS engine up · v0.60.0 · 547i/168c`.
-- **Item Build panel DS section** — `#ib-ds-block` renders `daemon_slayer_picks` as `.ds-chip` compact chips with green delta-dps text.
-
-### s100 — 2026-05-05 (Tiered vision + open-items cleanup)
-- **Tiered vision** `46e9fb8` — `GameVisionReader.read_tiered()` + `read_or_escalate()` wired into ARAM/Arena/Brawl. OCR first; `timer` canary gates Sonnet escalation. Expand by calibrating `data/vision_regions.json`.
-- **Open items** `41c87bc` — rune writer SR shard3: 5002→5001; items_index.json alias collision sorted by ID length; Yunara phantom dups: zero-duration exit + 90-min dedup.
-
-### s99 — 2026-05-05 (Daemon Slayer batch 64 — Malignance + Stage 5 calibration)
-- **Batch 64** `e7c4cd9` — Malignance Hatefog promoted (ENGINE_VERSION 0.60.0, 929 tests). New `CallContext.ult_casts_per_sec` + `ult_rates.py` (172 champions from rewind_history.db). Deferred: 3 (Lightning Braid, Kinkou Jitte, Mejai's Arena).
-- **Stage 5 calibration pipeline** — `core/ds_calibration.py` + `data/ds_calibration.jsonl`; all 4 coaches log DS picks per tick.
-
-### s98 — 2026-05-05 (Daemon Slayer batch 63 — blocked items resolved)
-- **Batch 63** `e56e878` — Hellfire Hatchet (CD=15s confirmed), Fiendhunter Bolts (CD=45s confirmed), Innervating Locket Fill the Soul promoted. ENGINE_VERSION 0.59.0, 922 tests.
-- Key insight: check Meraki `passives[].cooldown` before deferring "ability-triggered" items.
-
-### s96 — 2026-05-04 (ARAM DS-before-Haiku refactor + documentation sweep)
-- **ARAM coach DS-before-Haiku** `3b84949` — DS `rank_for()` before `messages.create()`; `{ds_picks}` injected into user turn; pre-DS hardcoded item rules removed (−37% system prompt ~1,849→1,170 tokens).
-- **Documentation sweep** — CLAUDE.md, README.md, ROADMAP.md updated. `DS_COMPLETION_ROADMAP.txt` created on Desktop.
-
-### s95 — 2026-05-04 (Daemon Slayer batches 57–62)
-- Batches 57–60 `9f128c4..864e65d` — `caster_bonus_armor` + `caster_lethality` added; Void Immolation, Golden Spatula, Darksteel Talons, Bastionbreaker, Reality Fracture promoted. ENGINE_VERSION 0.57.0, 899 tests.
-- Batch 61 `2148ed2` — Zaz'Zak's Realmspike + Bloodsong (spellblade + Expose Weakness damage_amp). 899 tests.
-- Batch 62 `dcfeb63` — Cruelty dual-variant (Arena 447109 + SR 667109). ENGINE_VERSION 0.58.0, 911 tests.
-
-### s94 — 2026-05-04 (Daemon Slayer batches 54–56)
-- Batch 54 `ded3d01` — `bonus_ap_stacked` (Mejai's) + `bonus_as_conditional` (Yun Tal 27% uptime) + Sword of the Divine. ENGINE_VERSION 0.55.0, 843 tests.
-- Batch 55 `e054c1c` — 46 defensive_only entries; DDragon purchasable coverage COMPLETE (547 entries, 850 tests). Coverage gate test added.
-- Batch 56 `ede9c89` — `ap_amp_pct_per_100_caster_hp` schema; Demonic Embrace Arena. ENGINE_VERSION 0.56.0, 856 tests.
-
-### s93 — 2026-05-04 (Daemon Slayer batches 50–53)
-- Batch 50 — `armor_reduction_flat` + `mr_reduction_flat` schema; Flesheater promoted.
-- Batch 51 — Fated Ashes (Inflame) + 5 defensive components.
-- Batch 52 — Night Harvester, Luden's Echo, Bloodletter's Curse SR; ability-cast schema resolved via `every_n_seconds`.
-- Batch 53 `255dd22` — Hamstringer Scour + Stormsurge Squall. ENGINE_VERSION 0.54.0, 829 tests.
-
-### s92 — 2026-05-04 (Daemon Slayer batches 38–49)
-- Batches 38–41 `0369403..bc61b4c` — Giant Slayer schema; `mr_reduction_pct`; Arena re-skins; Navori key collision fix. 494 tests.
-- Batches 42–43 `b92301f` — Arena 222xxx/223xxx/224xxx/32xxxx mirrors; 83 defensive_only. 530 tests.
-- Batches 44–45 `6eaccae` — Sheen spellblade; Tiamat Cleave; Bami's Cinder Immolate; boots. 558 tests.
-- Batches 46–47 `8795097` — Divine Sunderer Arena; Demonic Embrace; Blighting Jewel. 587 tests.
-- Batches 48–49 `1230dca` — 1xxx components complete; Spellslinger's Shoes dual-pen; Arena Arena. ENGINE_VERSION 0.53.0, 603 tests.
-
----
-
-## Session ledger s27–s91 (condensed — from WAKEUP_NOTES compaction 2026-05-04)
-
-All narrative detail in `ROADMAP.md §1` and `git log`.
-
-| Session | Date | Key commit(s) | Theme |
-|---|---|---|---|
-| s27 (a–u) | 2026-05-01 | 778971d..957dab7 | All Tier 1–4 audit items; asyncio migration (T2 #8 C1–C5); tkinter-free |
-| s28 | 2026-05-02 | a38d002..7307e6a | RC↔Peer cross-Claude bridge live (Tailscale); inheritance arc |
-| s29 | 2026-05-02 | 7223afe, c4c9e07 | Game-PC joined tailnet as `gamepc-rc`; bridge_monitor sidecar live |
-| s30 | 2026-05-02 | 645e041..4c2514d | One-click gamepc_boot.ps1; cross-Claude learning-sync vision doc |
-| s31 | 2026-05-02 | — | Phase 3 supervisor; dashboard OWNED fix; cron echo silenced |
-| s32 | 2026-05-02 | c58e689, dc73303 | Live stat mirror; ally_comp overwrite fix |
-| s33–s36 | 2026-05-02–03 | 0302fc7..0fcf102 | Action label decay fix; bridge `/messages` alias; arena advisor v1 |
-| s37–s45 | 2026-05-03 | (DS Phase 1) | Daemon Slayer extractor; lolmath chunk topology; champion builds refresh |
-| s46–s55 | 2026-05-03 | (DS Phase 2) | DS engine scaffolding; stat walk; on-hit framework; 40 items |
-| s56–s65 | 2026-05-03 | (DS Phase 3) | DS Arena items; beam search; augment schema; 150+ items |
-| s66–s75 | 2026-05-03–04 | (DS Phase 4) | DS spellblade/unique-passive; Arena mirror pass; 300+ items |
-| s76–s80 | 2026-05-04 | (DS batch 20–24) | Rune writer shard3 fix; Bridge Watcher hardening; Bridge Pending UI |
-| s81–s84 | 2026-05-04 | (DS batch 25–28) | Arena augment persistence; Meraki bulk switch; vision tracker polish |
-| s85–s88 | 2026-05-04 | 0cecfa3..28d2a93 | DS batches 29–32; magic_amp schema; Rabadon's; 550 tests |
-| s89 | 2026-05-04 | 0cecfa3 | DS batch 33: ability-burn promos, caster_bonus_hp, 367 tests |
-| s90 | 2026-05-04 | 1bd105d, 6b04992 | DS batches 34–35: magic_amp_pct schema, dual-pen, spellblade |
-| s91 | 2026-05-04 | 8f7811b, 8d208c3 | DS batches 36–37: TRUE damage type, Arena 443/447 sweeps, 428 tests |
-
----
-
 # s179 wrap — 2026-05-12 (Phase 4c mage ability DPS ranker — single commit pending)
 
 **Operator instruction:** "continue ds work" — following s178's Phase 4b mage ability DPS evaluator, ship the per-archetype ranker + route + dispatcher integration per [NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md](NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md).
@@ -2200,3 +2157,135 @@ AP burst items dominate as expected; BotRK absent from top-3 (correct — pure A
 - 🟡 **NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md is now nearly complete.** After Phase 6 ships, the plan can be archived to `docs/_archive/`. Phase 6 is the last item.
 
 ---
+
+---
+
+## s175 — Phase 2 Bruiser hybrid scorer (2026-05-12)
+
+Composed `compute_dps` × `compute_ehp` into `compute_hybrid()` + `rank_items_by_hybrid()` via per-champion (α,β) weights in new `archetype_weights.json` (20 bruisers; default 0.50/0.50). Ranker normalizes against per-baseline percentage deltas so weights stay intuitive across the ~10× DPS/EHP magnitude gap. New `/hybrid` + `/rank-bruiser` routes + `rank_bruiser_for()` / `hybrid_for()` client helpers. ENGINE 0.63.0 → 0.64.0. 44 new tests → 1066 DS suite. Live: Jarvan IV picks Trinity Force first (α=0.55 default); Nasus with override α=0.2/β=0.8 surfaces Heartsteel + Warmog's top-5. Full details in commit 3a3bf58 / ROADMAP s175 entry.
+
+---
+
+# s166 — 2026-05-10 (Phase B LCU agent handlers + Loading view scaffold; UI paused)
+
+5 new dashboard-→ LCU command handlers (ban/pick intent + position/pick-order swap + augment-intent stub) shipped in `tools/gamepc_lcu_agent.py` so s164+s165 dashboard commands actually route to the client; champ-select state extended (`active_round`, `is_brawl`, swap lists, `arena_teams`, `augments` scaffold, per-player `summoners`). Phase 3 step 4 Loading Screen view scaffold (`view-loading`, `flow_04` fixture, opt-in via `?ld=1` / GameStart phase). 30 new tests under `tests/phase_b_champ_select/test_lcu_agent_phase_b.py` (665 total). Operator paused UI work at session end and directed `NEXT_SESSION_PLAN_2026-05-10.md` as bootstrap for s167.
+
+---
+
+**s125 — 2026-05-08** (9234d0f) Phase 1.1 knowledge architecture: docs/_archive/ created, 23 dated artifacts moved, 4 living docs authored (ARCHITECTURE.md 136 lines, OPERATIONS.md 153, BRIDGE.md 136, ROADMAP.md 64). Bootstrap reduced from 2000+ → 492 lines.
+
+**s124 — 2026-05-08** (no commit) RC_FUTUREPROOFING_PLAN.md authored on Desktop by Opus 4.7 1M context — 7-phase leverage-ordered refactor plan. No code changes.
+
+---
+
+- **s123 2026-05-08** — rc_facts bridge probe rewrite (04a305b): `/api/health/all` peer probe replaces stale log-age heuristic. DS server health line added. RC-DaemonSlayer false exit-1 anomaly suppressed (server healthy; task runs as SYSTEM, can't write logs).
+- **s122 2026-05-08** — Game-PC socket exhaustion (STATUP.GG/Overlay Platform M 17,463 kernel handles → WSAENOBUFS). `taskkill /F /PID 3340`; restarted RC-WatcherHealthPublisher-GamePC + RC-BridgeWatcher-GamePC tasks. TDD skill installed fleet-wide.
+- **s121 2026-05-08** — Fleet model downgrade → `claude-sonnet-4-6` 200k. 5 plugins disabled on Legion (nimble, ralph-loop, playwright, chrome-devtools-mcp, firecrawl); Peer mirrored via bridge task. MEMORY.md pruned 6 stale entries.
+- **s120 2026-05-08** — RC dev panel shipped (7424e24): `⚙ Dev / Sim Preview` view with SIM FIXTURES, VISION STATUS, RC LOG TAIL cards; `dashboard/routes_dev.py` + CSS view-switch.
+- **s119 2026-05-08** — Roadmap: 5 items shipped — Phase 4 SessionStart enrichment (d069e4d), DS startup diagnostics (04e63d4), SR coach objective_window fix (e8d976b), bridge introspection `?source=` param (5a790d2), ROADMAP closures (items_index rotation, vision_token policy).
+- **s118 2026-05-08** — Bridge Watcher node-load restraint (f3ae4cb): `_check_rc_health()` downgrades auto-action to escalate when RC degraded; push notifications suppressed during degraded cycles; 30/30 selftests pass; watcher pid=15004.
+- **s116 2026-05-08** — Game-PC boot fix + Smite jungler detection (1ef54e3/2229d89/6bec3ce): `gamepc_boot.ps1` now calls `start_gamepc_claude.ps1`; Smite-based 3-tier jungler cascade in `game_reader.py`; 8 new tests.
+- **s115 2026-05-07** — DS calibration game_id wiring (d66d14b): `gamepc_lcu_agent.py` fetches `gameData.gameId` in-game; `game_reader.py` reads `/latest-lcu` relay; `coach_integration.py` passes game_id to `log_ds_run()`.
+- **s114 2026-05-07** — Bridge Watcher Phase 3 (6dd91ff): `--dry-run` mode, artifact rotation, self-healing watchdog thread; 21/21 selftests.
+- **s113 2026-05-07** — Bridge Watcher Phase 2 (05983a4): adaptive cadence (`_read_mode()`), active/sleep/auto modes, `/api/bridge/cadence`, `/sleep`+`/wake` slash commands.
+- **s112 2026-05-07** — Bridge Watcher Phase 1 (f6095a0): sliding 24h event ring, push notifications, RC-DaemonSlayer result=1 fix.
+- **s111 2026-05-06** — Infrastructure fixes: RC-BridgeWatcher + RC-Phase3-Supervisor restarted; `claude-rc.ps1` `/loop` removed; ROADMAP fleet-health items marked ✅.
+- **s110 2026-05-06** — Cross-Claude sync Phase 3 + DS/roadmap doc cleanup. `_lessons_summary()` in `rc_facts.py` for SessionStart hook (4c4ce1a); ROADMAP/CLAUDE/README doc cleanup (b6d02ae).
+- **s109 2026-05-06** — Memory library: 6 new memory entries (feedback + reference patterns). No code changes to RC repo.
+
+---
+
+## s106 wrap — 2026-05-05 (DaemonSlayer flash fix + preflight expansion)
+
+### What shipped
+- **`ops/RC-DaemonSlayer.xml`** — `python.exe` → `pythonw.exe`; task reinstalled. No more console flash on boot/restart. DS live at `:8893` engine=0.60.0 patch=16.9.1.
+- **`start_claude.ps1`** — added RC-DaemonSlayer + RC-Phase3-Supervisor + RC-BridgeWatcher preflight checks; `:8893` + `:8890` HTTP probes; final `claude` launch fixed to `--name "Legion"`. commit `0d1b545`.
+
+### Do NOT redo
+- RC-DaemonSlayer XML is already pythonw.exe.
+
+---
+
+## s92–s103 detailed notes (2026-05-04 – 2026-05-05)
+
+### s103 — 2026-05-05 (DS champ-select panel + dashboard bug fixes)
+- **DS champ-select panel** `112350a` — `#cs-ds-block` + `/api/ds-preview` endpoint. Fires once per (champion, mode). Item tiles with +Ndps tooltips.
+- **SR SSE mode fix** `5ee58b6` — `_state_builder.py` returned `mode_key="game"`; JS `driveNow` dropped all SR state. Fixed to `"sr"`.
+- **Item icon cache race** `f5ce231` — `_itemResolveCache` cached null before `items_index.json` loaded; idempotency sig blocked re-render. Fix: clear cache + tile sigs on ITEMS load.
+- **Augments pill fix** `5ee58b6` — CSS `static-pill` overrode `.hidden`; now `display:none !important`.
+- **`/done` §6b living-doc sync** `d6fbce0` — ROADMAP/CLAUDE.md/README updated as part of done ritual.
+
+### s102 — 2026-05-05 (SR coach signature hash fix + RECOMMENDED panel)
+- **SR coach hash fix** (frozen, user-approved) — `_state_signature` fallbacks had wrong key names vs `_convert` output. hp_bucket/mana_bucket/gold_bucket/level all fixed. Coach now re-fires on HP changes, gold/item thresholds, level-ups, deaths.
+- **RECOMMENDED panel** — `dashboard.js` falls back to `sr_items` when `item_build` empty; `next: true` items populate RECOMMENDED.
+- **SR API key** — `API-Key-Claude.txt` written from CLI env to unblock SR coaching.
+
+### s101 — 2026-05-05 (DS health indicator + Item Build DS picks panel)
+- **DS health in `/api/health/all`** `50248a7` — probes `:8893/health`; DS down → yellow rollup.
+- **Health dot tooltip** — DS engine status: `DS engine up · v0.60.0 · 547i/168c`.
+- **Item Build panel DS section** — `#ib-ds-block` renders `daemon_slayer_picks` as `.ds-chip` compact chips with green delta-dps text.
+
+### s100 — 2026-05-05 (Tiered vision + open-items cleanup)
+- **Tiered vision** `46e9fb8` — `GameVisionReader.read_tiered()` + `read_or_escalate()` wired into ARAM/Arena/Brawl. OCR first; `timer` canary gates Sonnet escalation. Expand by calibrating `data/vision_regions.json`.
+- **Open items** `41c87bc` — rune writer SR shard3: 5002→5001; items_index.json alias collision sorted by ID length; Yunara phantom dups: zero-duration exit + 90-min dedup.
+
+### s99 — 2026-05-05 (Daemon Slayer batch 64 — Malignance + Stage 5 calibration)
+- **Batch 64** `e7c4cd9` — Malignance Hatefog promoted (ENGINE_VERSION 0.60.0, 929 tests). New `CallContext.ult_casts_per_sec` + `ult_rates.py` (172 champions from rewind_history.db). Deferred: 3 (Lightning Braid, Kinkou Jitte, Mejai's Arena).
+- **Stage 5 calibration pipeline** — `core/ds_calibration.py` + `data/ds_calibration.jsonl`; all 4 coaches log DS picks per tick.
+
+### s98 — 2026-05-05 (Daemon Slayer batch 63 — blocked items resolved)
+- **Batch 63** `e56e878` — Hellfire Hatchet (CD=15s confirmed), Fiendhunter Bolts (CD=45s confirmed), Innervating Locket Fill the Soul promoted. ENGINE_VERSION 0.59.0, 922 tests.
+- Key insight: check Meraki `passives[].cooldown` before deferring "ability-triggered" items.
+
+### s96 — 2026-05-04 (ARAM DS-before-Haiku refactor + documentation sweep)
+- **ARAM coach DS-before-Haiku** `3b84949` — DS `rank_for()` before `messages.create()`; `{ds_picks}` injected into user turn; pre-DS hardcoded item rules removed (−37% system prompt ~1,849→1,170 tokens).
+- **Documentation sweep** — CLAUDE.md, README.md, ROADMAP.md updated. `DS_COMPLETION_ROADMAP.txt` created on Desktop.
+
+### s95 — 2026-05-04 (Daemon Slayer batches 57–62)
+- Batches 57–60 `9f128c4..864e65d` — `caster_bonus_armor` + `caster_lethality` added; Void Immolation, Golden Spatula, Darksteel Talons, Bastionbreaker, Reality Fracture promoted. ENGINE_VERSION 0.57.0, 899 tests.
+- Batch 61 `2148ed2` — Zaz'Zak's Realmspike + Bloodsong (spellblade + Expose Weakness damage_amp). 899 tests.
+- Batch 62 `dcfeb63` — Cruelty dual-variant (Arena 447109 + SR 667109). ENGINE_VERSION 0.58.0, 911 tests.
+
+### s94 — 2026-05-04 (Daemon Slayer batches 54–56)
+- Batch 54 `ded3d01` — `bonus_ap_stacked` (Mejai's) + `bonus_as_conditional` (Yun Tal 27% uptime) + Sword of the Divine. ENGINE_VERSION 0.55.0, 843 tests.
+- Batch 55 `e054c1c` — 46 defensive_only entries; DDragon purchasable coverage COMPLETE (547 entries, 850 tests). Coverage gate test added.
+- Batch 56 `ede9c89` — `ap_amp_pct_per_100_caster_hp` schema; Demonic Embrace Arena. ENGINE_VERSION 0.56.0, 856 tests.
+
+### s93 — 2026-05-04 (Daemon Slayer batches 50–53)
+- Batch 50 — `armor_reduction_flat` + `mr_reduction_flat` schema; Flesheater promoted.
+- Batch 51 — Fated Ashes (Inflame) + 5 defensive components.
+- Batch 52 — Night Harvester, Luden's Echo, Bloodletter's Curse SR; ability-cast schema resolved via `every_n_seconds`.
+- Batch 53 `255dd22` — Hamstringer Scour + Stormsurge Squall. ENGINE_VERSION 0.54.0, 829 tests.
+
+### s92 — 2026-05-04 (Daemon Slayer batches 38–49)
+- Batches 38–41 `0369403..bc61b4c` — Giant Slayer schema; `mr_reduction_pct`; Arena re-skins; Navori key collision fix. 494 tests.
+- Batches 42–43 `b92301f` — Arena 222xxx/223xxx/224xxx/32xxxx mirrors; 83 defensive_only. 530 tests.
+- Batches 44–45 `6eaccae` — Sheen spellblade; Tiamat Cleave; Bami's Cinder Immolate; boots. 558 tests.
+- Batches 46–47 `8795097` — Divine Sunderer Arena; Demonic Embrace; Blighting Jewel. 587 tests.
+- Batches 48–49 `1230dca` — 1xxx components complete; Spellslinger's Shoes dual-pen; Arena Arena. ENGINE_VERSION 0.53.0, 603 tests.
+
+---
+
+## Session ledger s27–s91 (condensed — from WAKEUP_NOTES compaction 2026-05-04)
+
+All narrative detail in `ROADMAP.md §1` and `git log`.
+
+| Session | Date | Key commit(s) | Theme |
+|---|---|---|---|
+| s27 (a–u) | 2026-05-01 | 778971d..957dab7 | All Tier 1–4 audit items; asyncio migration (T2 #8 C1–C5); tkinter-free |
+| s28 | 2026-05-02 | a38d002..7307e6a | RC↔Peer cross-Claude bridge live (Tailscale); inheritance arc |
+| s29 | 2026-05-02 | 7223afe, c4c9e07 | Game-PC joined tailnet as `gamepc-rc`; bridge_monitor sidecar live |
+| s30 | 2026-05-02 | 645e041..4c2514d | One-click gamepc_boot.ps1; cross-Claude learning-sync vision doc |
+| s31 | 2026-05-02 | — | Phase 3 supervisor; dashboard OWNED fix; cron echo silenced |
+| s32 | 2026-05-02 | c58e689, dc73303 | Live stat mirror; ally_comp overwrite fix |
+| s33–s36 | 2026-05-02–03 | 0302fc7..0fcf102 | Action label decay fix; bridge `/messages` alias; arena advisor v1 |
+| s37–s45 | 2026-05-03 | (DS Phase 1) | Daemon Slayer extractor; lolmath chunk topology; champion builds refresh |
+| s46–s55 | 2026-05-03 | (DS Phase 2) | DS engine scaffolding; stat walk; on-hit framework; 40 items |
+| s56–s65 | 2026-05-03 | (DS Phase 3) | DS Arena items; beam search; augment schema; 150+ items |
+| s66–s75 | 2026-05-03–04 | (DS Phase 4) | DS spellblade/unique-passive; Arena mirror pass; 300+ items |
+| s76–s80 | 2026-05-04 | (DS batch 20–24) | Rune writer shard3 fix; Bridge Watcher hardening; Bridge Pending UI |
+| s81–s84 | 2026-05-04 | (DS batch 25–28) | Arena augment persistence; Meraki bulk switch; vision tracker polish |
+| s85–s88 | 2026-05-04 | 0cecfa3..28d2a93 | DS batches 29–32; magic_amp schema; Rabadon's; 550 tests |
+| s89 | 2026-05-04 | 0cecfa3 | DS batch 33: ability-burn promos, caster_bonus_hp, 367 tests |
+| s90 | 2026-05-04 | 1bd105d, 6b04992 | DS batches 34–35: magic_amp_pct schema, dual-pen, spellblade |
+| s91 | 2026-05-04 | 8f7811b, 8d208c3 | DS batches 36–37: TRUE damage type, Arena 443/447 sweeps, 428 tests |

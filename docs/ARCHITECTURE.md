@@ -98,6 +98,7 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 ### Core utilities
 | File | Role |
 |---|---|
+| `core/archetype_mismatch.py` | first-purchase archetype mismatch nudge |
 | `core/archetype_picks.py` | cs archetype pick storage + DDragon-tag default resolver |
 | `core/bridge_envelope.py` | pydantic v2 schema for the cross-Claude bridge wire envelope |
 | `core/coaching_payload.py` | pydantic v2 schemas for per-mode coaching JSON payloads |

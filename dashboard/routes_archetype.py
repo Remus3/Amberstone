@@ -26,6 +26,10 @@ import json
 import logging
 from urllib.parse import urlparse, parse_qs
 
+from core.archetype_mismatch import (
+    dismiss_nudge,
+    get_nudge_state_snapshot,
+)
 from core.archetype_picks import (
     ARCHETYPES,
     IMPLEMENTED_SCORERS,
@@ -125,10 +129,49 @@ def _serve_archetype_post(h, payload) -> None:
     }).encode(), "application/json")
 
 
+def _serve_archetype_nudge_get(h) -> None:
+    """Diagnostic GET — returns the current in-memory nudge state.
+
+    Not security-sensitive (already exposed via /api/state); the dedicated
+    endpoint just makes manual probing easier. Operator can curl it to
+    see why a nudge isn't firing.
+    """
+    snapshot = get_nudge_state_snapshot()
+    h._send(200, json.dumps({
+        "ok": True,
+        "state": snapshot,
+    }).encode(), "application/json")
+
+
+def _serve_archetype_nudge_dismiss(h, payload) -> None:
+    """POST /api/archetype-nudge/dismiss — operator clicked the chip's X.
+
+    Body: ``{ champion: "<name>" }``. Idempotent — re-dismissing an
+    already-dismissed nudge is fine. Returns ``{ok, dismissed: bool}``.
+    """
+    if not isinstance(payload, dict):
+        h._send(400, json.dumps({"error": "JSON object required"}).encode(),
+                "application/json")
+        return
+    champion = str(payload.get("champion") or "").strip()
+    if not champion:
+        h._send(400, json.dumps({"error": "champion required"}).encode(),
+                "application/json")
+        return
+    dismissed = dismiss_nudge(champion)
+    h._send(200, json.dumps({
+        "ok":        True,
+        "dismissed": dismissed,
+        "champion":  champion,
+    }).encode(), "application/json")
+
+
 GET_ROUTES = [
     (equals("/api/cs-archetype-pick"), _serve_archetype_get),
+    (equals("/api/archetype-nudge"),   _serve_archetype_nudge_get),
 ]
 
 POST_ROUTES = [
-    (equals("/api/cs-archetype-pick"), _serve_archetype_post),
+    (equals("/api/cs-archetype-pick"),         _serve_archetype_post),
+    (equals("/api/archetype-nudge/dismiss"),   _serve_archetype_nudge_dismiss),
 ]
