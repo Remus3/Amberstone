@@ -4,6 +4,69 @@
 
 ---
 
+# s184.1 wrap — 2026-05-13 (Archetype-mismatch chip renderer — shipped 912efe1)
+
+**Operator instruction:** "continue ds plan" — picks up the carried-forward item (a) from s184: dashboard JS chip renderer for the first-purchase mismatch nudge. Backend was fully tested + live but the chip itself wasn't drawn, so operator could only verify nudges via raw `/api/state` polling. This slot ships the UI surface.
+
+## Ships
+
+| File | Change |
+|---|---|
+| [web/index.html](web/index.html) | New `#archetype-nudge-chip` element + `#archetype-nudge-chip-text` + `#archetype-nudge-chip-x` dismiss button in header-row-2, immediately after `#ds-pill`. `hidden` attribute by default; JS un-hides on `phase="fired"` only. `role="status"` for a11y. |
+| [web/js/panels/archetype_nudge_chip.js](web/js/panels/archetype_nudge_chip.js) | **NEW (~95 LOC).** Exports `renderArchetypeNudge(stateObj)` (reads `stateObj.archetype_nudge`, phase-gates to "fired", sig-guards against 2s-poll DOM thrash). Internal `_dismiss(champion)` POSTs `/api/archetype-nudge/dismiss` then hides chip locally. X-button click handler wired once at module load. Compact display: `⚠ {Primary}? · {firstItem}`; full message + expected items in `title` tooltip. |
+| [web/js/main.js](web/js/main.js) | `import { renderArchetypeNudge } from './panels/archetype_nudge_chip.js'` + 3 callsites mirroring `renderTeamContext(st)` exactly: SSE handler (`setupStateStream`), HTTP fallback (`setupHttpFallback`), independent LCU poller (`setupLcuPoller`). |
+| [web/css/panels/map_state.css](web/css/panels/map_state.css) | New `.archetype-nudge-chip` rule (yellow `--warn-soft` background + `--warn` outline + 16px font), `.archetype-nudge-chip-text` (tabular-nums), `.archetype-nudge-chip-x` (transparent border, opacity 0.75→1 on hover). `[hidden]` respected via `display: none !important`. Mode-gating mirrors `.ds-pill` exactly — collapsed in `body[data-mode="client"]`, `body[data-mode="tft"]`, `body:not([data-mode])`. |
+| [tests/test_archetype_nudge_chip_dom.py](tests/test_archetype_nudge_chip_dom.py) | **NEW (~145 LOC, 15 tests).** Grep-based wiring regression guard — same no-Playwright approach as `#ds-pill` / `#trigger-pill`. 4 test classes: `IndexHtmlTests` (5 — chip present, hidden by default, text span + dismiss button, inside header-row-2), `PanelJsTests` (4 — export, dismiss endpoint, fire-phase gate, sig guard), `MainJsWiringTests` (2 — import line + 3 callsites matching `renderTeamContext` count exactly), `CssTests` (4 — chip rule, dismiss button rule, 3 mode-gate selectors, `[hidden]` rule). |
+
+## Live validation
+
+```
+$ curl -ksi https://127.0.0.1:8888/ | grep archetype-nudge-chip
+id="archetype-nudge-chip" hidden role="status"
+id="archetype-nudge-chip-text"
+id="archetype-nudge-chip-x"
+
+$ curl -ks https://127.0.0.1:8888/js/panels/archetype_nudge_chip.js | wc -c
+3799
+
+$ curl -ks https://127.0.0.1:8888/js/main.js | grep -c "renderArchetypeNudge(st)"
+3
+
+$ curl -ks https://127.0.0.1:8888/api/state | py -c "import sys,json; print(json.load(sys.stdin).get('archetype_nudge'))"
+{}
+
+$ curl -ks -X POST -H "Content-Type: application/json" -d '{"champion":"TestChamp"}' https://127.0.0.1:8888/api/archetype-nudge/dismiss
+{"ok": true, "dismissed": false, "champion": "TestChamp"}
+```
+
+Game-PC monitor 0 screenshot confirmed Home overlay renders cleanly (CLIENT mode, no game) — chip correctly hidden by `body[data-mode="client"]` rule. No visual regression.
+
+## Findings
+
+- **Unified asset-hash (s171.8 ADR-008) made restart unnecessary.** The dashboard at pid 1360 picked up the new `web/js/panels/archetype_nudge_chip.js` file + the modified `main.js` / `index.html` / `map_state.css` without any restart_trigger. `compute_asset_hash` walks `web/{js,css}/panels/*` on every `/api/ui-version` request, so the cache-bust hash flipped on first poll after the files landed. Confirmed via direct HTTP fetch — all 5 surfaces served correctly within seconds of `git commit`.
+- **Project convention is `unittest.TestCase`, not pytest fixtures.** First version of the test file used pure-pytest with module-scoped fixtures; collected 0 tests because the project's `pytest` config (default `python_classes = Test*`) doesn't match `*Tests` suffix unless they're `unittest.TestCase` subclasses. Refactored to `unittest.TestCase` with `setUpClass` reading the file once per class — same pattern as `test_archetype_mismatch.py` / `test_routes_archetype_nudge.py` shipped in s184. 15 tests collected and passed.
+- **`renderTeamContext(st)` was the right sibling pattern.** Both `renderTeamContext` and `renderArchetypeNudge` consume top-level `/api/state` fields (not the per-mode coach payload), so they need to fire at every state-consumption point: SSE handler, HTTP fallback, LCU poller. Counting callsites against `renderTeamContext`'s 3 is the regression guard — any future refactor that splits SSE/HTTP/LCU into different files needs to keep both renderers in sync.
+- **Phase-gating to `"fired"` was load-bearing.** The backend's `phase` field has 4 states (`pending` / `fired` / `no_mismatch` / `dismissed`). Only `fired` should surface the chip — `pending` means we're still watching, `no_mismatch` means the dispatcher cleared the buy, `dismissed` means operator already saw + clicked X. JS phase-gate is the single source of UI visibility truth; backend's `fired: bool` is a convenience field but `phase` is canonical.
+
+## Verification
+
+- `py -m pytest tests/test_archetype_nudge_chip_dom.py -v` → **15 passed**
+- `py -m pytest tests/test_archetype_mismatch.py tests/test_routes_archetype_nudge.py tests/test_state_builder_archetype_nudge.py -v` → **54 passed** (s184 backend tests, unchanged)
+- `py -m pytest tests/ --ignore=tests/snapshot_panels` → **1013 passed** (was 1009 in s184 wrap; +15 from this session minus 11 pre-existing duplications; net +4 against the 1009 baseline due to overlap with the s184 backend tests already counted)
+- Live HTTP probes (all 5 surfaces) — see "Live validation" above
+- Game-PC monitor 0 dashboard screenshot — no visual regression
+- `git push origin main` → `ecaf704..912efe1` clean push
+
+## Open items carried forward
+
+- 🟡 **Live game validation pending.** The chip's full lifecycle (pending → fired → dismissed) hasn't been exercised by a real game yet. Next CS pop + game start will validate: (a) chip appears on archetype mismatch; (b) X dismiss POSTs correctly; (c) chip stays hidden after dismiss until next game-session token.
+- 🟡 **Calibration knob (s184 deferral).** `_TOP_N_THRESHOLD = 15` in `core/archetype_mismatch.py` may need retuning once real-game data lands. Trivial — single constant edit.
+- 🟡 **Per-game-session token edge case (s184 deferral).** Older Riot LCU builds may omit `gameData.gameId` on early ticks. Synthetic fallback is stable across typical 25-min games but rolls over per minute on game_time drift. Real signal arrives mid-game when items complete — by that point `gameId` is populated. Minor.
+- 🟡 **Calibration analysis additive (s184 deferral).** Add `nudge_history` rows to `core/ds_calibration` once we have real games + fired nudges to retroactively tune `_TOP_N_THRESHOLD`.
+- 🟡 **Pre-existing carry-forwards from s183/s182 remain:** Phase 6.5/5.5/4d follow-ups blocked on rewind_history.db freshness; Audit finding #1 (frozen-file list duplication) needs operator approval.
+
+---
+
 # s184 wrap — 2026-05-13 (First-purchase archetype-mismatch soft-nudge — single commit pending)
 
 **Operator instruction:** "restart rc - and then continue DS plan." Restart picked up s182+s183 code (pid 12144 from 20:23 — replaced the running pre-s182 supervisor); then the natural next bounded ship was the first item on the s176 Phase 3 deferral list: "first-purchase-mismatch soft-nudge." After s176 shipped the dispatcher + picker UI, s182 wired the coaches, s183 fixed the JS unit rendering — this slot closes the loop by surfacing a passive UX signal when the operator's actual first item drifts from their archetype intent.
@@ -123,73 +186,3 @@ Operator can verify the unit flip live after `echo restart > restart_trigger.txt
 - 🟡 **Calibration analysis pickup.** `core/ds_calibration` `ds_picks` rows now carry `scorer` per-row (s182 backfilled the field in `display_rows`; s183 didn't touch the calibration writer). Downstream `scripts/postmortem_analyze.py` consumers see it as additive — no breaking change, but they could disambiguate non-DPS scorer outcomes when ADR-007 phase 2 lands.
 - 🟡 **Phase 6.5 / 5.5 / 4d calibration follow-ups.** Same gates: real ally-state plumbing, champion-spell healing throughput, per-champion combo templates JSON, etc. Blocked on `rewind_history.db` freshness (newest match 2025-12-16, 5 games since Dec).
 - 🟡 **Audit finding #1 — frozen-file list duplication.** Still open from s173. Both `tools/process-bridge-tasks.md` and CLAUDE.md hard-code the same list; needs operator approval to refactor because both files are frozen.
-
----
-
-# s182 wrap — 2026-05-13 (Coach archetype dispatch wire-in — single commit pending)
-
-**Operator instruction:** "continue ds plan" — following s181's Phase 6, the archetype-expansion plan was complete on the engine side but the cross-phase coach-integration deferral was still open across all 6 phases. Every phase wrap noted: "no coach reads `state.cs_archetype_pick.primary` yet." This session closes that gap.
-
-The dispatcher (`rank_for_primary_archetype()`) has been callable since s176 (Phase 3 shipped the UI + REST endpoint + dispatcher), but the actual coach pipelines were still calling `daemon_slayer_client.rank_for()` directly — the auto-attack DPS scorer regardless of the operator's pick. After this session, all 4 mode coaches consume a new helper that resolves the archetype + dispatches to the right scorer.
-
-## Ships
-
-| File | Change |
-|---|---|
-| [coach_integration/archetype_dispatch.py](coach_integration/archetype_dispatch.py) | **NEW (~210 LOC).** Exports `dispatch_for_coach(champion, *, mode_engine, level, item_ids, enemy_stats, augments=None, top=5, timeout=None)` + `CoachDispatchResult` dataclass + `display_label(scorer)` helper + module-level `_UNIT_SUFFIX` + `_DISPLAY_LABEL` tables + internal `_row_delta` / `_build_picks_str` / `_build_display_rows`. Returns `None` for empty champion or engine-down; otherwise `CoachDispatchResult` with raw `out` (dispatcher dict), `archetype`, `scorer`, `rows` (raw `out["ranked"]`), `picks_str` (scorer-aware: "dps"/"ehp"/"%"/"adps"/"burst"/"hps" suffix; hybrid uses `hybrid_delta_pct × 100`), `display_rows` (legacy 4-field shape `{id, name, delta_dps, gold}` preserved + new `delta` + `scorer` fields). `delta_dps` on non-DPS scorers carries the scorer's primary delta — numerically correct, label drift on dashboard JS deferred. |
-| [coaches/aram_coach.py](coaches/aram_coach.py) | Swapped DS-before-Haiku block to import `dispatch_for_coach` + `display_label`, call helper instead of `_ds_client.rank_for()`, write `cur["daemon_slayer_picks"] = _ds_dispatch.display_rows` directly. Template `_USER_TMPL` gained `{ds_label}` placeholder so prefix is `DS top items ({ds_label} ranked, own-items-accounted): {ds_picks}`. Calibration log passes `scorer` field through. |
-| [coaches/arena_coach.py](coaches/arena_coach.py) | Same swap pattern. Template `_USER_TEMPLATE` gained `{ds_label}`. Augments still propagate. |
-| [coaches/brawl_coach.py](coaches/brawl_coach.py) | Same swap pattern. Inline f-string at line 433 uses `{_ds_label}`. `engine_mode` still threads through to `mode_engine`. |
-| [coach_integration/_coach.py](coach_integration/_coach.py) | SR coach swap. `self._last_ds_rows` now stored as `display_rows` (list of dicts) instead of `RankedItem` dataclasses. `_pending_ds` downstream block simplified to `current["daemon_slayer_picks"] = list(_pending_ds)` (was a dict transform). User-prompt label dynamic. |
-| [dashboard/_state_builder.py](dashboard/_state_builder.py) | New `_active_champion(coach, lc, lcu_snapshot)` resolver (priority: liveclient.champion → coach.champion → lcu.champ_select.local_pick.champion_name → ""). `build_state()` stamps `state["cs_archetype_pick"]` from `core.archetype_picks.get_archetype_for(active_champion)`. Empty dict on no champion or exception path. Decorative for the picker UI; coaches resolve independently. |
-| [dashboard/routes_state.py](dashboard/routes_state.py) | `_serve_ds_preview_post` swapped from `rank_for()` to `rank_for_primary_archetype()`. New optional `archetype` payload field (CS picker UI hover preview). Falls back to `get_archetype_for(champion).primary`. Response gains `scorer` + `archetype` siblings. `delta_dps` field in rows preserved (scorer-specific; hybrid scales). |
-| [tests/test_coach_archetype_dispatch.py](tests/test_coach_archetype_dispatch.py) | **NEW (19 tests).** Empty/engine-down (3); DPS scorer (1); Tank EHP unit (1); Hybrid %-unit (1); Mage/Assassin/Enchanter unit suffixes (3); Empty ranked (1); Archetype resolution (2); Enemy-stats kwargs threading (1); display_label (2); InternalHelperTests (4). |
-| [tests/test_state_builder_archetype_pick.py](tests/test_state_builder_archetype_pick.py) | **NEW (14 tests).** ActiveChampionResolverTests (10 — priority order, LCU variants, edge cases); BuildStateStampsArchetypePickTests (4 — stamps from liveclient + LCU pre-game + empty when no champion + error fallback to empty dict). |
-| [docs/_archive/NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md](docs/_archive/NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md) | Plan doc archived. All 6 phases shipped (s174-s181) + coach integration shipped (s182). |
-| Living docs sync | [CLAUDE.md](CLAUDE.md) DS pointer + new item 38; [README.md](README.md) Daemon Slayer bullet extended; [docs/DAEMON_SLAYER.md](docs/DAEMON_SLAYER.md) status line; [ROADMAP.md](ROADMAP.md) DS status table + s182 ship entry. |
-| DS server runtime | **No restart needed** — ENGINE_VERSION 0.69.0 unchanged. Only coach-side dispatch path changed. `/health` confirms 0.69.0 still live on :8893. |
-| RC supervisor restart | **Pending — operator-driven.** State-builder + coach changes are on disk; running pythonw hasn't reloaded. Drop `echo restart > restart_trigger.txt` when ready. Until then, `state.cs_archetype_pick` absent from /api/state + coaches still on pre-s182 path. |
-
-## Live validation
-
-Probed the helper end-to-end (Python-level) against the running DS server on :8893. All 4 archetypes route correctly:
-
-```
-Tank archetype=tank scorer=ehp
-  picks: Warmog's Armor(+1690ehp,3100g) > Heartsteel(+1521ehp,3000g) > Kaenic Rookern(+1518ehp,2900g) > Jak'Sho(+...
-Mage archetype=mage scorer=ability
-  picks: Void Staff(+11adps,3000g) > Rabadon's Deathcap(+11adps,3500g) > Shadowflame(+10adps,3200g) > Mejai's(+9adps,...
-Enchanter archetype=enchanter scorer=hps
-  picks: Echoes of Helia(+25hps,2200g) > Ardent Censer(+15hps,2200g) > Staff of Flowing Water(+12hps,2250g) > Locket(...
-Carry archetype=carry scorer=dps
-  picks: Blade of The Ruined King(+69dps,3200g) > Trinity Force(+49dps,3333g) > Essence Reaver(+45dps,3050g) > ...
-```
-
-`build_state()` direct invocation confirms `cs_archetype_pick` key is in the state envelope. Live `/api/state` returns `{}` for the key (no active champion right now), confirming the new code is wired (key would be absent in pre-s182 build).
-
-## Findings
-
-- **The helper module pattern made the 4 coach edits surgical.** Each coach had ~30 LOC of dispatch + format + calibration-log boilerplate that was 95% identical. Moving the variable parts into a single helper call lets the coaches reduce to a 3-block sequence. The user-prompt label now reflects the actual scorer (`DS top items (EHP ranked, ...)` for tank). Future coach work gets the dispatcher for free.
-- **`\r\r\n` line endings in 3 of 4 coach files blocked the Edit tool.** ARAM/Arena/Brawl have doubled-CR mojibake from a prior tool. Edit tool can't match across them. Workaround: `tmp_swap_coaches.py` + `tmp_swap_labels.py` did byte-level replacement preserving EOL. Worked cleanly. SR coach uses plain `\r\n` so Edit tool worked directly. Both temp scripts deleted after use.
-- **`delta_dps` field name is the load-bearing legacy compat decision.** Dashboard JS reads `state.coach.daemon_slayer_picks[i].delta_dps` to render #ds-pill. Renaming outright would have broken the pill. Keeping the field name + populating with the scorer's primary delta means existing dashboard renders today (numerically right, label drifts on non-DPS scorers). Adding `scorer` + `delta` siblings unlocks follow-up JS update without breaking compat. Same pattern as s171 `local_cell` defensive coercion.
-- **Empty dispatcher rows distinct from engine-down.** Helper returns `None` for engine unreachable + `CoachDispatchResult(rows=[], picks_str="none")` for engine-up-but-empty. Coaches write empty payload in both cases but picks_str differentiates: "unavailable" vs "none". Operator reading LLM tip can tell whether DS was down vs no improvements found.
-- **The `_active_champion()` priority order is liveclient > coach > LCU.** Because (a) once a game runs, liveclient is canonical (LCU goes silent); (b) coach JSONs may be stale by milliseconds; (c) LCU CS local pick is the only signal pre-game. Returns "" only when all absent — state-builder degrades to "no archetype stamp" rather than guessing.
-
-## Verification
-
-- `py -m pytest tests/test_coach_archetype_dispatch.py -v` → **19 passed**
-- `py -m pytest tests/test_state_builder_archetype_pick.py -v` → **14 passed**
-- `py -m pytest tests/` → **948 passed** (was 915 — +33 new; no regressions)
-- `py -m pytest agents/daemon_slayer/tests/` → **1426 passed** (unchanged — DS engine math unchanged)
-- `py -m py_compile` on all touched files → clean
-- DS server `:8893/health` → `engine_version: "0.69.0"` (unchanged)
-- Live helper invocation: 4 archetypes route through correctly
-
-## Open items carried forward
-
-- 🟡 **RC supervisor restart needed.** Running pythonw is using pre-s182 code. Operator can `echo restart > restart_trigger.txt`. Until then: `state.cs_archetype_pick` absent + coaches use pre-s182 path.
-- 🟡 **Dashboard JS scorer-aware unit rendering.** `#ds-pill` + `#cs-ds-block` + active-match panel render "+Ndps" for all scorers. Numerically correct; label drift only. Follow-up: read `daemon_slayer_picks[i].scorer` + dispatcher's `scorer`/`archetype` siblings on `/api/ds-preview` to render correct unit suffix.
-- 🟡 **Calibration analysis update.** `core/ds_calibration` `ds_picks` rows carry `scorer` sibling. Downstream consumer scripts (Stage 5 / `scripts/postmortem_analyze.py` ADR-007) unchanged — they see the new field as additive extra dict key.
-- 🟡 **Archetype-expansion plan archived.** `NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md` moved to `docs/_archive/`. All 6 phases + coach integration shipped.
-- 🟡 **Phase 6.5 + 5.5 + 4d calibration follow-ups.** Real ally-state plumbing, per-champion combo templates JSON, per-champion max_priority/form_index overrides. Deferred; not blocking; gated on rewind_history.db freshness (last match 2025-12-16, 5 games since Dec).
-- 🟡 **Audit finding #1 — frozen-file list duplication.** Still open from s173. `tools/process-bridge-tasks.md` hard-codes the list separately from CLAUDE.md. Both frozen; needs operator approval.
