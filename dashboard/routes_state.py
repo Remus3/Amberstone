@@ -357,7 +357,7 @@ _CE_DROPPED: int   = 0
 
 
 def _serve_ds_preview_post(h, payload) -> None:
-    """POST {champion, mode, level?, items?} → DS rank_for() top picks.
+    """POST {champion, mode, level?, items?, archetype?} -> DS top picks.
     Used by the champ-select overlay + in-game active-match panel.
 
     s171.4 (2026-05-12): in-game requests now pull live enemy itemization
@@ -366,11 +366,18 @@ def _serve_ds_preview_post(h, payload) -> None:
     armor=0 / mr=0 / hp=0 baseline, so picks didn't shift when enemies
     bought defensive items (operator complaint: "DS dps increase items
     were always the same"). The fallback is the s170 mode/level scaled
-    curve from compute_enemy_stats — used for champ-select (no game
+    curve from compute_enemy_stats - used for champ-select (no game
     yet) and when the relay is unreachable.
+
+    s182 (2026-05-13): routes through rank_for_primary_archetype() so the
+    scorer matches the operator's chosen archetype. Optional ``archetype``
+    field in the payload overrides the persisted pick (CS picker UI uses
+    it for hover preview without committing). Response gains ``scorer`` +
+    ``archetype`` siblings so the dashboard can label the unit correctly.
     """
     try:
-        from core.daemon_slayer_client import rank_for
+        from core.daemon_slayer_client import rank_for_primary_archetype
+        from core.archetype_picks import get_archetype_for
         champion = str(payload.get("champion") or "").strip()
         if not champion:
             h._send(400, json.dumps({"error": "champion required"}).encode(), "application/json")
@@ -380,27 +387,52 @@ def _serve_ds_preview_post(h, payload) -> None:
         level = max(1, min(18, level))
         items = [str(i) for i in (payload.get("items") or []) if i]
 
+        # s182: caller override wins; otherwise resolve from the persisted
+        # pick (or DDragon-tag default). Empty string -> falls through to
+        # carry inside the dispatcher.
+        archetype = str(payload.get("archetype") or "").strip().lower()
+        if not archetype:
+            archetype = (get_archetype_for(champion).get("primary") or "carry").lower()
+
         # s171.4: derive target stats from live enemy items when possible.
         # Fallback to mode/level curve. Override path: caller passed
         # explicit target_* fields in body (used by champ-select preview).
         tgt = _resolve_ds_target_stats(payload, mode=mode, level=level)
 
-        rows = rank_for(champion=champion, level=level, item_ids=items,
-                        mode=mode, top=8, sort_by="delta", timeout=2.0,
-                        target_armor=tgt["target_armor"],
-                        target_mr=tgt["target_mr"],
-                        target_max_hp=tgt["target_max_hp"],
-                        target_bonus_hp=tgt["target_bonus_hp"])
-        if rows is None:
+        out = rank_for_primary_archetype(
+            champion=champion, archetype=archetype, level=level,
+            item_ids=items, mode=mode, top=8, sort_by="delta", timeout=2.0,
+            target_armor=tgt["target_armor"],
+            target_mr=tgt["target_mr"],
+            target_max_hp=tgt["target_max_hp"],
+            target_bonus_hp=tgt["target_bonus_hp"],
+        )
+        if out is None:
             h._send(503, json.dumps({"ok": False, "error": "DS engine unavailable"}).encode(),
                     "application/json")
             return
-        result = [{"item_id": r.item_id, "item_name": r.item_name,
-                   "delta_dps": round(r.delta_dps, 1), "gold": r.gold}
-                  for r in rows]
+        scorer = str(out.get("scorer") or "dps")
+        ranked_in = list(out.get("ranked") or [])
+
+        def _delta(row: dict) -> float:
+            # Bruiser's hybrid scorer surfaces three separate fields; for
+            # the dashboard's existing "+Ndps" tile we display the
+            # hybrid_delta_pct as a percentage. All other scorers ship a
+            # unified `delta` key (carry: delta_dps; tank: delta_ehp;
+            # mage: delta_ability_dps; assassin: delta_burst; enchanter:
+            # delta_hps). Falls back to delta_dps for legacy compatibility.
+            if scorer == "hybrid":
+                return float(row.get("hybrid_delta_pct", 0.0)) * 100.0
+            return float(row.get("delta", row.get("delta_dps", 0.0)))
+
+        result = [{"item_id": r.get("item_id", ""),
+                   "item_name": r.get("item_name", ""),
+                   "delta_dps": round(_delta(r), 1),
+                   "gold": int(r.get("gold", 0) or 0)}
+                  for r in ranked_in]
         # s171.6: defensive-pick ranker. Computes the enemy team's
         # threat profile (AD/AP/burst/tank) and recommends defensive
-        # items keyed to the threat. Cheap — pure stat math, no
+        # items keyed to the threat. Cheap - pure stat math, no
         # network. Skipped when no enemy champions resolvable.
         threat = None
         defensive = []
@@ -419,6 +451,8 @@ def _serve_ds_preview_post(h, payload) -> None:
             log.debug("ds-preview defensive resolve: %s", exc)
         h._send(200, json.dumps({
             "ok": True, "ranked": result,
+            "scorer":       scorer,
+            "archetype":    archetype,
             "target_stats": tgt,
             "threat":       threat,
             "defensive":    defensive,

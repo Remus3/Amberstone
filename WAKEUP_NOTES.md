@@ -1,6 +1,76 @@
-﻿# WAKEUP_NOTES — RC hand-off ledger
+# WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+> Sessions s27–s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+
+---
+
+# s182 wrap — 2026-05-13 (Coach archetype dispatch wire-in — single commit pending)
+
+**Operator instruction:** "continue ds plan" — following s181's Phase 6, the archetype-expansion plan was complete on the engine side but the cross-phase coach-integration deferral was still open across all 6 phases. Every phase wrap noted: "no coach reads `state.cs_archetype_pick.primary` yet." This session closes that gap.
+
+The dispatcher (`rank_for_primary_archetype()`) has been callable since s176 (Phase 3 shipped the UI + REST endpoint + dispatcher), but the actual coach pipelines were still calling `daemon_slayer_client.rank_for()` directly — the auto-attack DPS scorer regardless of the operator's pick. After this session, all 4 mode coaches consume a new helper that resolves the archetype + dispatches to the right scorer.
+
+## Ships
+
+| File | Change |
+|---|---|
+| [coach_integration/archetype_dispatch.py](coach_integration/archetype_dispatch.py) | **NEW (~210 LOC).** Exports `dispatch_for_coach(champion, *, mode_engine, level, item_ids, enemy_stats, augments=None, top=5, timeout=None)` + `CoachDispatchResult` dataclass + `display_label(scorer)` helper + module-level `_UNIT_SUFFIX` + `_DISPLAY_LABEL` tables + internal `_row_delta` / `_build_picks_str` / `_build_display_rows`. Returns `None` for empty champion or engine-down; otherwise `CoachDispatchResult` with raw `out` (dispatcher dict), `archetype`, `scorer`, `rows` (raw `out["ranked"]`), `picks_str` (scorer-aware: "dps"/"ehp"/"%"/"adps"/"burst"/"hps" suffix; hybrid uses `hybrid_delta_pct × 100`), `display_rows` (legacy 4-field shape `{id, name, delta_dps, gold}` preserved + new `delta` + `scorer` fields). `delta_dps` on non-DPS scorers carries the scorer's primary delta — numerically correct, label drift on dashboard JS deferred. |
+| [coaches/aram_coach.py](coaches/aram_coach.py) | Swapped DS-before-Haiku block to import `dispatch_for_coach` + `display_label`, call helper instead of `_ds_client.rank_for()`, write `cur["daemon_slayer_picks"] = _ds_dispatch.display_rows` directly. Template `_USER_TMPL` gained `{ds_label}` placeholder so prefix is `DS top items ({ds_label} ranked, own-items-accounted): {ds_picks}`. Calibration log passes `scorer` field through. |
+| [coaches/arena_coach.py](coaches/arena_coach.py) | Same swap pattern. Template `_USER_TEMPLATE` gained `{ds_label}`. Augments still propagate. |
+| [coaches/brawl_coach.py](coaches/brawl_coach.py) | Same swap pattern. Inline f-string at line 433 uses `{_ds_label}`. `engine_mode` still threads through to `mode_engine`. |
+| [coach_integration/_coach.py](coach_integration/_coach.py) | SR coach swap. `self._last_ds_rows` now stored as `display_rows` (list of dicts) instead of `RankedItem` dataclasses. `_pending_ds` downstream block simplified to `current["daemon_slayer_picks"] = list(_pending_ds)` (was a dict transform). User-prompt label dynamic. |
+| [dashboard/_state_builder.py](dashboard/_state_builder.py) | New `_active_champion(coach, lc, lcu_snapshot)` resolver (priority: liveclient.champion → coach.champion → lcu.champ_select.local_pick.champion_name → ""). `build_state()` stamps `state["cs_archetype_pick"]` from `core.archetype_picks.get_archetype_for(active_champion)`. Empty dict on no champion or exception path. Decorative for the picker UI; coaches resolve independently. |
+| [dashboard/routes_state.py](dashboard/routes_state.py) | `_serve_ds_preview_post` swapped from `rank_for()` to `rank_for_primary_archetype()`. New optional `archetype` payload field (CS picker UI hover preview). Falls back to `get_archetype_for(champion).primary`. Response gains `scorer` + `archetype` siblings. `delta_dps` field in rows preserved (scorer-specific; hybrid scales). |
+| [tests/test_coach_archetype_dispatch.py](tests/test_coach_archetype_dispatch.py) | **NEW (19 tests).** Empty/engine-down (3); DPS scorer (1); Tank EHP unit (1); Hybrid %-unit (1); Mage/Assassin/Enchanter unit suffixes (3); Empty ranked (1); Archetype resolution (2); Enemy-stats kwargs threading (1); display_label (2); InternalHelperTests (4). |
+| [tests/test_state_builder_archetype_pick.py](tests/test_state_builder_archetype_pick.py) | **NEW (14 tests).** ActiveChampionResolverTests (10 — priority order, LCU variants, edge cases); BuildStateStampsArchetypePickTests (4 — stamps from liveclient + LCU pre-game + empty when no champion + error fallback to empty dict). |
+| [docs/_archive/NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md](docs/_archive/NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md) | Plan doc archived. All 6 phases shipped (s174-s181) + coach integration shipped (s182). |
+| Living docs sync | [CLAUDE.md](CLAUDE.md) DS pointer + new item 38; [README.md](README.md) Daemon Slayer bullet extended; [docs/DAEMON_SLAYER.md](docs/DAEMON_SLAYER.md) status line; [ROADMAP.md](ROADMAP.md) DS status table + s182 ship entry. |
+| DS server runtime | **No restart needed** — ENGINE_VERSION 0.69.0 unchanged. Only coach-side dispatch path changed. `/health` confirms 0.69.0 still live on :8893. |
+| RC supervisor restart | **Pending — operator-driven.** State-builder + coach changes are on disk; running pythonw hasn't reloaded. Drop `echo restart > restart_trigger.txt` when ready. Until then, `state.cs_archetype_pick` absent from /api/state + coaches still on pre-s182 path. |
+
+## Live validation
+
+Probed the helper end-to-end (Python-level) against the running DS server on :8893. All 4 archetypes route correctly:
+
+```
+Tank archetype=tank scorer=ehp
+  picks: Warmog's Armor(+1690ehp,3100g) > Heartsteel(+1521ehp,3000g) > Kaenic Rookern(+1518ehp,2900g) > Jak'Sho(+...
+Mage archetype=mage scorer=ability
+  picks: Void Staff(+11adps,3000g) > Rabadon's Deathcap(+11adps,3500g) > Shadowflame(+10adps,3200g) > Mejai's(+9adps,...
+Enchanter archetype=enchanter scorer=hps
+  picks: Echoes of Helia(+25hps,2200g) > Ardent Censer(+15hps,2200g) > Staff of Flowing Water(+12hps,2250g) > Locket(...
+Carry archetype=carry scorer=dps
+  picks: Blade of The Ruined King(+69dps,3200g) > Trinity Force(+49dps,3333g) > Essence Reaver(+45dps,3050g) > ...
+```
+
+`build_state()` direct invocation confirms `cs_archetype_pick` key is in the state envelope. Live `/api/state` returns `{}` for the key (no active champion right now), confirming the new code is wired (key would be absent in pre-s182 build).
+
+## Findings
+
+- **The helper module pattern made the 4 coach edits surgical.** Each coach had ~30 LOC of dispatch + format + calibration-log boilerplate that was 95% identical. Moving the variable parts into a single helper call lets the coaches reduce to a 3-block sequence. The user-prompt label now reflects the actual scorer (`DS top items (EHP ranked, ...)` for tank). Future coach work gets the dispatcher for free.
+- **`\r\r\n` line endings in 3 of 4 coach files blocked the Edit tool.** ARAM/Arena/Brawl have doubled-CR mojibake from a prior tool. Edit tool can't match across them. Workaround: `tmp_swap_coaches.py` + `tmp_swap_labels.py` did byte-level replacement preserving EOL. Worked cleanly. SR coach uses plain `\r\n` so Edit tool worked directly. Both temp scripts deleted after use.
+- **`delta_dps` field name is the load-bearing legacy compat decision.** Dashboard JS reads `state.coach.daemon_slayer_picks[i].delta_dps` to render #ds-pill. Renaming outright would have broken the pill. Keeping the field name + populating with the scorer's primary delta means existing dashboard renders today (numerically right, label drifts on non-DPS scorers). Adding `scorer` + `delta` siblings unlocks follow-up JS update without breaking compat. Same pattern as s171 `local_cell` defensive coercion.
+- **Empty dispatcher rows distinct from engine-down.** Helper returns `None` for engine unreachable + `CoachDispatchResult(rows=[], picks_str="none")` for engine-up-but-empty. Coaches write empty payload in both cases but picks_str differentiates: "unavailable" vs "none". Operator reading LLM tip can tell whether DS was down vs no improvements found.
+- **The `_active_champion()` priority order is liveclient > coach > LCU.** Because (a) once a game runs, liveclient is canonical (LCU goes silent); (b) coach JSONs may be stale by milliseconds; (c) LCU CS local pick is the only signal pre-game. Returns "" only when all absent — state-builder degrades to "no archetype stamp" rather than guessing.
+
+## Verification
+
+- `py -m pytest tests/test_coach_archetype_dispatch.py -v` → **19 passed**
+- `py -m pytest tests/test_state_builder_archetype_pick.py -v` → **14 passed**
+- `py -m pytest tests/` → **948 passed** (was 915 — +33 new; no regressions)
+- `py -m pytest agents/daemon_slayer/tests/` → **1426 passed** (unchanged — DS engine math unchanged)
+- `py -m py_compile` on all touched files → clean
+- DS server `:8893/health` → `engine_version: "0.69.0"` (unchanged)
+- Live helper invocation: 4 archetypes route through correctly
+
+## Open items carried forward
+
+- 🟡 **RC supervisor restart needed.** Running pythonw is using pre-s182 code. Operator can `echo restart > restart_trigger.txt`. Until then: `state.cs_archetype_pick` absent + coaches use pre-s182 path.
+- 🟡 **Dashboard JS scorer-aware unit rendering.** `#ds-pill` + `#cs-ds-block` + active-match panel render "+Ndps" for all scorers. Numerically correct; label drift only. Follow-up: read `daemon_slayer_picks[i].scorer` + dispatcher's `scorer`/`archetype` siblings on `/api/ds-preview` to render correct unit suffix.
+- 🟡 **Calibration analysis update.** `core/ds_calibration` `ds_picks` rows carry `scorer` sibling. Downstream consumer scripts (Stage 5 / `scripts/postmortem_analyze.py` ADR-007) unchanged — they see the new field as additive extra dict key.
+- 🟡 **Archetype-expansion plan archived.** `NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md` moved to `docs/_archive/`. All 6 phases + coach integration shipped.
+- 🟡 **Phase 6.5 + 5.5 + 4d calibration follow-ups.** Real ally-state plumbing, per-champion combo templates JSON, per-champion max_priority/form_index overrides. Deferred; not blocking; gated on rewind_history.db freshness (last match 2025-12-16, 5 games since Dec).
+- 🟡 **Audit finding #1 — frozen-file list duplication.** Still open from s173. `tools/process-bridge-tasks.md` hard-codes the list separately from CLAUDE.md. Both frozen; needs operator approval.
 
 ---
 
@@ -177,69 +247,3 @@ AP burst items dominate as expected; BotRK absent from top-3 (correct — pure A
 - 🟡 **NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md is now nearly complete.** After Phase 6 ships, the plan can be archived to `docs/_archive/`. Phase 6 is the last item.
 
 ---
-
-# s179 wrap — 2026-05-12 (Phase 4c mage ability DPS ranker — single commit pending)
-
-**Operator instruction:** "continue ds work" — following s178's Phase 4b mage ability DPS evaluator, ship the per-archetype ranker + route + dispatcher integration per [NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md](NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md).
-
-Phase 4c is the third and final session of the Phase 4 lift. Phase 4a (s177) produced the ability data; Phase 4b (s178) ships the formula evaluator. Phase 4c (this slot) is the ranker + `/rank-mage` route + dispatcher mage-branch wire-in, which closes the Phase 4 lift and removes mage from the `fell_back=True` set in `rank_for_primary_archetype()`.
-
-## Ships
-
-| File | Change |
-|---|---|
-| [agents/daemon_slayer/ability_dps.py](agents/daemon_slayer/ability_dps.py) | **~250 LOC of additions.** New `AbilityDpsRankedItem` dataclass (item_id, item_name, gold, delta_ability_dps, new_ability_dps, ability_dps_per_1k_gold, is_terminal, tags, shares_dead_unique, dead_unique_key + `to_dict()`). New `AbilityDpsRankResult` (champion + level + mode + current_item_ids + baseline_ability_dps + primary_scaling + target_* + target_current_hp_pct + max_priority + block_strategy + mode_multiplier + budget + slot_count + sort_by + candidates_considered/evaluated + ranked + notes + `to_dict()` + `format_table()`). New `rank_items_by_ability_dps()` — mirrors `rank_items_by_hybrid` / `rank_items_by_ehp` shape: clamps level + strips Arena trinkets + computes baseline via `compute_ability_dps()` + walks `_filter_candidates` from `rank.py` (purchasable + mode-legal + budget + terminal-only + optional whitelist) + dead-unique dedup via current build's unique_passive_key set + scores each candidate via `compute_ability_dps()` with the candidate appended + sorts by `delta` (raw `total_ability_dps` gain) or `efficiency` (per 1k gold). Module docstring updated to cover both 4b + 4c. Imports tighten: pulls `ITEM_EFFECTS` for unique-key checks, `_filter_candidates` / `_is_terminal` / `strip_arena_trinkets` / `DEFAULT_SLOT_COUNT` / `DEFAULT_TOP_N` / `SORT_KEYS` from `rank.py`. |
-| [agents/daemon_slayer/server.py](agents/daemon_slayer/server.py) | New POST/GET `/rank-mage` route + `_route_rank_mage()` handler. Body union of `/ability-dps` + `/rank` parameters (target_*, target_current_hp_pct, max_priority, block_strategy, form_index, budget, slots, top, sort, include_components, only, filter_shared_uniques, augments). Shared `_parse_max_priority()` + `_parse_form_index()` helpers extracted so `/ability-dps` and `/rank-mage` parse operator-supplied priority/form overrides identically (list / comma-string / compact "QWE" for priority; JSON dict for form_index). Index HTML routes table updated. `_POST_ROUTES` dispatch entry added. |
-| [core/daemon_slayer_client.py](core/daemon_slayer_client.py) | **3 new exports.** `MageRankedItem` dataclass mirrors server response (item_id, item_name, delta_ability_dps, new_ability_dps, gold, shares_dead_unique, dead_unique_key). `rank_mage_for()` client helper — POST to /rank-mage, same engine-down semantics as `rank_for` / `rank_tank_for` / `rank_bruiser_for` (None = unreachable, [] = nothing to recommend). `ability_dps_for()` mirrors `dps_for` / `ehp_for` / `hybrid_for` for the per-spell breakdown route. **Dispatcher wire-in:** `rank_for_primary_archetype()` mage branch now routes to `rank_mage_for()` (returns `scorer="ability"`, `fell_back=False`); assassin + enchanter still fall back to ds.dps with `fell_back=True` pending Phases 5-6. Signature gained mage-specific params: `target_current_hp_pct` (default 1.0) + `max_priority` + `block_strategy` + `form_index` (silently ignored by non-mage branches). Docstring updated to reflect 4 active scorers (ds.dps / ds.ehp / ds.hybrid / ds.ability) + 2 deferred (ds.burst / ds.hps for Phases 5-6). |
-| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | `ENGINE_VERSION` 0.66.0 → 0.67.0. Module docstring extended with Phase 4c changelog covering the ranker + route + client helpers + dispatcher wire. |
-| [agents/daemon_slayer/tests/test_rank_mage.py](agents/daemon_slayer/tests/test_rank_mage.py) | **NEW (~430 LOC, 36 tests).** RankByAbilityDpsBasicsTests (7 — result type + baseline match + delta arithmetic + sort + clipping + primary_scaling + dataclass type); AbilityDpsScoringTests (5 — Rabadon's top-3 for Veigar + BotRK absent from mage top-3 + positive delta on Rabadon-only + efficiency sort ordering + efficiency zero on negative delta); FilterPipelineTests (7 — already-equipped skip + only-whitelist + budget + include_components + ARENA trinket strip + dead-unique filter ON + dead-unique surfaced when OFF); ValidationAndEdgeTests (4 — invalid sort_by + full build raises + invalid block_strategy + invalid max_priority); SerializationTests (3 — to_dict round trip + format_table contains [MAGE] + ranked item to_dict shape); ModeAndAmpFlowTests (2 — ARAM mode_multiplier < 1.0 for AP carry + AP-amp item lifts baseline); RankMageRouteTests (8 — POST 200 + AP item in top-5 + 404 unknown champ + 400/422 invalid sort + only-whitelist + max_priority compact form + filter_shared_uniques default + efficiency sort). |
-| [tests/test_archetype_dispatcher.py](tests/test_archetype_dispatcher.py) | New `MageRoutingTests` class (5 tests — routes_to_rank_mage_for + passes_target_current_hp_pct + passes_max_priority + passes_form_index + returns_none_when_engine_down). New `_make_mage_rows()` helper. Old `FallbackArchetypesTests.test_mage_falls_back_to_dps` removed (replaced by the new MageRoutingTests assertions); assassin + enchanter fallback tests preserved. Class docstring updated to "Phases 5-6". |
-| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Bumped `test_batch63_version` + `test_batch64_version` to assert ENGINE_VERSION 0.67.0; extended changelog comment with Phase 4c line. |
-| Living docs sync | [CLAUDE.md](CLAUDE.md) DS pointer line 6 + new item 35; [README.md](README.md) header bullet + Daemon Slayer engine section + capability matrix; [docs/DAEMON_SLAYER.md](docs/DAEMON_SLAYER.md) status line + server route list + ability_dps.py row; [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) DS section; [ROADMAP.md](ROADMAP.md) DS status table + new s179 ship entry; [BRIEF.md](BRIEF.md) RC Tutor "what's built" line. |
-| DS server runtime | Killed PID 7052 via `taskkill /F` (PowerShell call after Get-CimInstance located it — never `Stop-Process` per CLAUDE.md hard rule + `reference_get_wmiobject_broken`). Relaunched via `Start-Process pythonw tools\start_daemon_slayer.py`. `/health` confirms `engine_version: "0.67.0"` live on `:8893`. |
-
-## Live validation
-
-Probed `/rank-mage` against the running DS server on :8893.
-
-**Veigar lvl 11 naked vs 30 MR**:
-```
-baseline_ability_dps: 25.07
-primary_scaling: AP
-top 5:
-  3089 Rabadon's Deathcap       gold=3500  +13.58  new=38.65  adps/1k=3.88
-  4645 Shadowflame              gold=3200  +13.26  new=38.33  adps/1k=4.14
-  3041 Mejai's Soulstealer      gold=1500  +11.65  new=36.72  adps/1k=7.77
-  4646 Stormsurge               gold=2800  +11.44  new=36.51  adps/1k=4.09
-  3135 Void Staff               gold=3000  +10.96  new=36.03  adps/1k=3.65
-```
-
-Math sanity-check: Rabadon's +130 AP × 1.30 amp = 169 effective AP. Veigar Q rank 4 base 240 + 169 × 0.70 = 358.3 raw, post-mit (30 MR) 275.6, × cps 0.098 ≈ 27 DPS. W + R contributions push the total to 38.65, matching s178's evaluator probe (which also reported 38.65 for the exact same build via `/ability-dps`). Round-trips cleanly through the new ranker — same evaluator, same numbers, just stratified into per-item delta rows.
-
-`candidates_considered=705 / candidates_evaluated=175` matches the SR purchasable + terminal filter pipeline used by `/rank` and `/rank-tank`.
-
-## Findings
-
-- **The 4c lift was 95% mechanical once 4b landed.** Phase 4b did the hard work — the per-cast formula evaluation, the AP/damage amp pipeline parity with `compute_dps`, the cast-rate plumbing. Phase 4c is "wrap a baseline call + N candidate calls in the existing `_filter_candidates` pipeline and surface a sortable row." The dataclass shape and the route handler are direct mirrors of `rank_items_by_hybrid` / `rank_items_by_ehp`. No new math; no new schemas. The only meaningful design decision was whether to put the ranker in a new file (`ability_dps_rank.py`) or extend `ability_dps.py`; chose extend because the same caller cares about both the evaluator and the ranker and they share the bulk of the imports.
-- **The shared `_parse_max_priority` / `_parse_form_index` helpers in server.py paid off on the first refactor.** Both `/ability-dps` and `/rank-mage` need to decode the same operator-supplied priority/form fields (list / comma-string / compact "QWE" for priority; JSON dict for form_index). Phase 4b shipped the parsing inline in `_route_ability_dps`; Phase 4c could have copy-pasted into `_route_rank_mage` but the two would have drifted within a release. Extracting helpers also makes Phase 5's `/rank-assassin` route cheap to add — it'll need the same parsing.
-- **The dead-unique filter coverage caught a real edge case in the test pass.** Initial test asserted Sundered Sky (6610) would be filtered out when Lich Bane (3100) was in the current build, because both are spellblade items. Wrong — per engine docstring (batches 11/21/23), Sundered Sky's "Lightshield Strike" is intentionally untagged with the "spellblade" key (distinct mechanic from Trinity Force / ER / Lich Bane / Iceborn Gauntlet / Divine Sunderer). Test fix surfaced the correct expectation. This is a coverage gap in the test suite — the engine's unique_passive_key registry is the authoritative answer, not "looks like a spellblade item to me." Test now uses the correct sib set + adds a comment explaining the carve-out.
-- **The dispatcher's old `fell_back=True` path for mage was a documented placeholder, not a hack.** When Phase 3 (s176) shipped the dispatcher, the comment said mage/assassin/enchanter "fall through to ds.dps with `fell_back=True` until Phases 4-6 ship dedicated scorers." Phase 4c removes mage from that set (assassin + enchanter remain). The plan's "explicit branch per scorer" design holds — no refactor needed when 4c lands, just a new `if arch == "mage":` branch before the fall-through. Phase 5 (assassin) will add `if arch == "assassin":` the same way; Phase 6 (enchanter) the same.
-- **Live `/rank-mage` round-trip matches `/ability-dps` exactly.** Baseline ability DPS at lvl 11 naked vs 30 MR: 25.07 from both routes. Top candidate Rabadon's lifts to 38.65 in both. Confirms the ranker is calling the evaluator without any drift — same `compute_ability_dps()` under the hood, same numbers out. If the evaluator's math is correct (validated in s178), the ranker's math is correct by construction.
-
-## Verification
-
-- `py -m pytest agents/daemon_slayer/tests/` → **1257 passed** (was 1221 — +36 from new test_rank_mage.py)
-- `py -m pytest tests/` → **906 passed** (wider RC — was 905+1fail pre-restart, now all green after DS server restart picked up 0.67.0)
-- `py -m pytest tests/test_archetype_dispatcher.py` → **19 passed** (was 15 — +5 MageRoutingTests, −1 old mage fallback test)
-- `py -m py_compile` on all touched files → clean
-- DS server `:8893/health` → `engine_version: "0.67.0"` live
-- Live probe of `/rank-mage` matches s178's `/ability-dps` baseline + top-pick math for Veigar lvl 11 vs 30 MR
-
-## Open items carried forward
-
-- 🟡 **Phase 5 — Assassin burst-window scorer** — next per the plan. New `agents/daemon_slayer/burst.py` with `compute_burst_damage()` + `rank_items_by_burst()` scoring max damage in a single combo rotation (Q→W→E→AA→R→AA) rather than sustained DPS. Reuses Phase 4 ability data (form / damage_blocks / scaling fields) + ult_rates (one-shot per combo). True damage components (Talon E, Wukong R) bypass resists. Champion list ~15 (Zed, Talon, Akali, Kha'Zix, Rengar, Fizz, Diana, Kassadin, Katarina, LeBlanc, Qiyana, Pyke, Naafiri, Briar + Yone burst-variant).
-- 🟡 **Phase 4d calibration follow-up** — per-champion `max_priority` overrides JSON (Veigar/Lux always Q-first but Karthus W-first / Akali E-first / Cassiopeia E-first benefit from explicit overrides); per-champion `form_index_overrides` JSON (Aphelios weapon defaults, Jayce stance defaults). Phase 4c ships defaults that match the canonical max-order for most mages; overrides become useful when calibration data shows the rankings are wrong for specific champions.
-- 🟡 **Coach integration deferred** — no coach reads `state.cs_archetype_pick.primary` yet. Phases 1/2/3/4 all share this deferral. Wire-in adds a single line per coach (`coaches/aram_coach.py` / `arena_coach.py` / `brawl_coach.py` / `coach_integration/_coach.py`): replace `rank_for(...)` with `rank_for_primary_archetype(champion, state.cs_archetype_pick.primary, ...)`. Reads from the dashboard's state envelope which doesn't yet stamp the field — state-builder injection (server-side champion-id → name resolver) is the precursor.
-- 🟡 **No coach is consuming the new mage scorer yet.** Same situation as Phases 1-3. The dispatcher is callable; the ranker is callable; `/rank-mage` is live. Just no coach makes the call. Operator can validate via the dashboard's DS preview routes once a mage CS pop happens.
-- 🟡 **Cast-rate dataset freshness** — `spell_cast_rates.json` is derived from 2851 matches with newest match 2025-12-16 (same gate as the DS calibration pipeline, CLAUDE.md item 14). When operator resumes play + RC-RewindCatchup wires in, this auto-refreshes.
-
