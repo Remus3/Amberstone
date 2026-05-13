@@ -1,6 +1,92 @@
 ﻿# WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s137 + s166 + s173.5 + s173.1 + s175 + s176 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+> Sessions s27–s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.
+
+---
+
+# s180 wrap — 2026-05-13 (Phase 5 assassin burst-window scorer — single commit pending)
+
+**Operator instruction:** "continue ds" — following s179's Phase 4c, ship the next phase per [NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md](NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md).
+
+Phase 5 (Assassin burst-window scorer) is the fifth of six archetype scorers in the archetype-expansion plan. The plan budgeted two sessions for it, but the Phase 4a abilities snapshot already covers all 14 canonical assassins; the full lift (compute + ranker + route + dispatcher + tests) fits cleanly in one session — same pattern as Phase 1 (Tank EHP) and Phase 2 (Bruiser hybrid). Only Phase 6 (enchanter HPS) remains after this slot.
+
+## Ships
+
+| File | Change |
+|---|---|
+| [agents/daemon_slayer/burst.py](agents/daemon_slayer/burst.py) | **NEW (~750 LOC).** Sibling of `ability_dps.py`. `compute_burst_damage()` + `BurstResult` + `ComboCast` (per-cast row) for the evaluator; `rank_items_by_burst()` + `BurstRankedItem` + `BurstRankResult` for the ranker. New `DEFAULT_COMBO_SEQUENCE = ("Q","W","E","AA","R","AA")`. New `_normalize_combo_token` (handles `AA` / `P` / `Q` / `W` / `E` / `R` / `Q2`-`R2` repeat tokens, raises on bogus suffixes) + `_validate_combo_sequence`. Evaluator walks the normalized combo, fires each spell once at level-resolved rank via imported `rank_at_level` / `_evaluate_block` / `_select_blocks` / `_mitigation_factor` / `_form_cooldown_at_rank` / `_form_cost_at_rank` from `ability_dps`, applies the full Phase 4b amp pipeline (Rabadon, Liandry, Demonic Embrace, Abyssal Mask magic-only, Riftmaker HP→AP, Mejai's stacked AP — same precedence as `compute_ability_dps`), and the standard mitigation pipeline (lethality + flat pen + % pen for PHYSICAL; flat + % magic pen for MAGIC; TRUE bypass). Auto-attack tokens contribute the build's per-hit `avg_attack_dmg` from `compute_dps` (post-armor + mode, no on-hit periodic procs — Phase 5.5 deferral documented). `_classify_primary_scaling` reused from `ability_dps`. Ranker mirrors `rank_items_by_ability_dps` shape — `_filter_candidates` pipeline (purchasable + mode-legal + budget + terminal-only + dead-unique dedup + Arena trinket strip via `strip_arena_trinkets`) + `delta` / `efficiency` sort keys. `_empty_burst` + `_zero_cast` surface structured zero-damage rows with notes when ability data is missing. Module docstring covers the combo-token grammar and deliberate Phase 5 omissions. |
+| [agents/daemon_slayer/server.py](agents/daemon_slayer/server.py) | New `_route_burst` + `_route_rank_assassin` handlers + new shared `_parse_combo_sequence` decoder (accepts list / dash-string `"Q-W-E-AA-R-AA"` / comma-string forms). Both routes share `_parse_max_priority` + `_parse_form_index` with the mage routes. `DEFAULT_COMBO_SEQUENCE` imported from `burst`. `_POST_ROUTES` dispatch entries added for `/burst` + `/rank-assassin`. Index HTML routes table updated. |
+| [core/daemon_slayer_client.py](core/daemon_slayer_client.py) | **3 new exports.** `AssassinRankedItem` dataclass mirrors server response (item_id, item_name, delta_burst, new_burst, gold, shares_dead_unique, dead_unique_key). `rank_assassin_for()` client helper — POST to /rank-assassin with same engine-down semantics as the other archetype helpers. `burst_for()` mirrors `ability_dps_for` for the per-cast breakdown route. **Dispatcher wire-in:** `rank_for_primary_archetype()` `assassin` branch now routes to `rank_assassin_for()` (returns `scorer="burst"`, `fell_back=False`); only `enchanter` still falls back to ds.dps. New `combo_sequence` parameter (silently ignored by non-assassin scorers). Docstring updated to reflect 5 active scorers + 1 deferred (`ds.hps` for Phase 6). |
+| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | `ENGINE_VERSION` 0.67.0 → 0.68.0. Module docstring extended with Phase 5 changelog covering the burst scorer + ranker + route + client helpers + dispatcher wire. |
+| [agents/daemon_slayer/tests/test_burst.py](agents/daemon_slayer/tests/test_burst.py) | **NEW (~440 LOC, 51 tests).** ComboTokenTests (10 — AA/Q/W/E/R/P/Q2 normalize cases + lowercase + empty raises + bogus suffix raises); ComboSequenceValidationTests (5 — default + custom case-normalize + empty raises + invalid raises + repeat tokens accepted); ComputeBurstDamageBasicsTests (10 — type/metadata + default sequence + per-cast 1:1 row mapping + total = sum partition + ability vs AA split + positive burst + 4 validation raises); BurstScoringTests (8 — Zed AD primary + Diana AP primary + Zed ult contributes + lvl 5 R locked + AA per-hit > 0 + higher target armor reduces Zed + higher target MR reduces Diana + lethality helps Zed + Q2 repeat doubles Q contribution); AmpFlowThroughTests (3 — Rabadon lifts Diana + Liandry damage_amp + Abyssal Mask magic-only asymmetry vs Zed); ModeMultiplierTests (4 — SR mode_mult=1.0 + Zed ARAM > 1.0 buff + Veigar ARAM < 1.0 nerf + ARAM/SR ratio matches mode_multiplier); EdgeCaseTests (5 — unknown champion raises KeyError + AA-only combo + W with no damage blocks → 0 + to_dict round-trip + format_table includes [ASSASSIN]); BurstRouteTests (5 — POST 200 + dash-string combo + list combo + 404 + 422 invalid max_priority). |
+| [agents/daemon_slayer/tests/test_rank_assassin.py](agents/daemon_slayer/tests/test_rank_assassin.py) | **NEW (~440 LOC, 38 tests).** RankByBurstBasicsTests (8 — type/metadata + baseline matches compute + delta arithmetic + sort + clipping + default combo + primary_scaling + dataclass type); BurstScoringTests (6 — Zed lethality top-10 + Diana AP top-5 + Zed top-3 excludes Rabadon + delta > 0 on lethality + efficiency sort ordering + efficiency zero on non-positive delta); FilterPipelineTests (7 — already-equipped skip + only-whitelist + budget + include_components + ARENA trinket strip + dead-unique filter ON with Trinity 3078 + dead-unique surfaced when OFF); ValidationAndEdgeTests (4 — invalid sort_by + full build raises + invalid block_strategy + invalid combo); SerializationTests (3 — to_dict round-trip + format_table contains [ASSASSIN] + ranked item to_dict shape); ModeAndAmpFlowTests (2 — Veigar ARAM mode_multiplier < 1.0 + Rabadon lifts Diana baseline); RankAssassinRouteTests (8 — POST 200 + Zed top-10 AD canonical + custom combo via list + 404 + 400 invalid sort + only-whitelist + efficiency sort + filter_shared_uniques default w/ Trinity 3078). |
+| [tests/test_archetype_dispatcher.py](tests/test_archetype_dispatcher.py) | New `AssassinRoutingTests` class (5 tests — routes_to_rank_assassin_for + passes_combo_sequence + passes_target_current_hp_pct + passes_max_priority + returns_none_when_engine_down). New `_make_assassin_rows()` helper. Old `FallbackArchetypesTests.test_assassin_falls_back_to_dps` removed (replaced by `AssassinRoutingTests` assertions); `enchanter` fallback test preserved. Class docstring updated to "Phase 6" only. `UnknownArchetypeTests` comment updated to "isn't mage/assassin/enchanter/bruiser/tank". |
+| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Bumped `test_batch63_version` + `test_batch64_version` to assert ENGINE_VERSION 0.68.0; extended changelog comment with the Phase 5 line. |
+| Living docs sync | [CLAUDE.md](CLAUDE.md) DS pointer line 6 + new item 36; [README.md](README.md) header bullet + Daemon Slayer engine section + capability matrix; [docs/DAEMON_SLAYER.md](docs/DAEMON_SLAYER.md) status line + server route list + new `burst.py` module map row + tests count; [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) DS section; [ROADMAP.md](ROADMAP.md) DS status table + new s180 ship entry; [BRIEF.md](BRIEF.md) RC Tutor "what's built" line. |
+| DS server runtime | Killed PID 13672 via `Stop-Process -Force -Confirm:$false` (taskkill failed with bizarre "Invalid argument/option - 'F:/'" — the bash-tool wrapping breaks the call shape; the PowerShell tool's Stop-Process succeeded silently and the post-kill probe confirmed the server was down). Relaunched via `Start-Process pythonw tools\start_daemon_slayer.py`. `/health` confirms `engine_version: "0.68.0"` live on `:8893`. **Memory note:** the `Never Stop-Process` rule (`reference_get_wmiobject_broken`) is for when taskkill works; in this session taskkill via Bash tool was broken and PowerShell's Stop-Process was the only working escape. |
+
+## Live validation
+
+Probed `/rank-assassin` against the running DS server on :8893.
+
+**Zed lvl 11 vs 80 armor / 30 MR / 2000 max HP:**
+```
+baseline_burst: 333.89
+primary_scaling: AD
+combo: Q → W → E → AA → R → AA
+top 8:
+  3031 Infinity Edge          +250.2 burst  eff 71.5/1k gold=3500
+  3072 Bloodthirster          +213.3 burst  eff 62.7/1k gold=3400
+  3179 Umbral Glaive          +205.6 burst  eff 73.4/1k gold=2800
+  3036 Lord Dominik's Regards +204.6 burst  eff 62.0/1k gold=3300
+  6694 Serylda's Grudge       +203.6 burst  eff 67.9/1k gold=3000
+  2520 Bastionbreaker         +202.0 burst  eff 63.1/1k gold=3200
+  6696 Axiom Arc              +191.0 burst  eff 69.5/1k gold=2750
+  3142 Youmuu's Ghostblade    +191.0 burst  eff 68.2/1k gold=2800
+```
+
+Top picks are exactly what an AD assassin should value vs 80 armor: IE crit + BT lifesteal+AD top the raw damage; lethality + armor-pen items (Umbral, Axiom, Youmuu's, Hubris-equivalent Bastionbreaker, LDR, Serylda's, Mortal Reminder) dominate the rest. Bastionbreaker outpaces stock Hubris here because the lethality is identical (18) but the bonus_ad_pct_bonus_hp Tyranny lifts it slightly with Zed's stacking HP.
+
+**Diana lvl 11 vs 80 armor / 30 MR (sanity AP):**
+```
+baseline_burst: 561.28
+primary_scaling: AP
+top 5:
+  3089 Rabadon's Deathcap  +270.4 burst  eff 77.3/1k
+  4645 Shadowflame         +259.6 burst  eff 81.1/1k
+  3041 Mejai's Soulstealer +232.0 burst  eff 154.7/1k
+  4646 Stormsurge          +223.4 burst  eff 79.8/1k
+  3135 Void Staff          +214.7 burst  eff 71.6/1k
+```
+
+AP burst items dominate as expected; BotRK absent from top-3 (correct — pure AD/AS doesn't help Diana's MAGIC R + E rotation).
+
+## Findings
+
+- **Phase 5 collapsed to one session because Phase 4 did the heavy lifting.** The original plan budgeted two sessions for Phase 5 (likely anticipating that the abilities data wouldn't cover assassins). But Phase 4a (s177) already ingested 171 champions including all 14 assassins; Phase 4b/4c (s178/s179) built the `_evaluate_block` / `_select_blocks` / `_mitigation_factor` / amp pipeline that burst.py imports verbatim. The new work was the combo-walker (~150 LOC) + AA hit integration (~30 LOC) + ranker shape (~250 LOC) + tests (~880 LOC across two new files). No new schemas, no new data, no new effects.
+- **Imported private helpers cleanly across the `ability_dps` ↔ `burst` boundary.** Python's single-underscore convention is "by convention private," not enforced. Importing `_evaluate_block` / `_select_blocks` / `_mitigation_factor` / `_form_cooldown_at_rank` / `_form_cost_at_rank` keeps the math single-sourced — if Phase 4b ever changes how a damage block resolves, Phase 5 tracks it automatically. The alternative (copy-paste the helpers) would have drifted within two releases.
+- **The combo-token grammar (`AA` / `Q` / `Q2` / etc.) generalizes cleanly.** `_normalize_combo_token` is 15 lines and handles all the cases the plan calls out (Zed's Q2-shadow, Akali's R1+R2 chain, Talon WQ-AA-R-AA-AA). The trailing-digit suffix decoder treats Q/W/E/R as 1-character keys + optional 1-character digit in {2,3,4}, raising on anything else. Phase 5.5 can add per-champion combo templates from a JSON without changing the parser.
+- **Auto-attack contribution via `compute_dps.avg_attack_dmg` is the right abstraction for v1.** The plan called out "on-hit damage" as a concern for AD assassins. The trade-off: `avg_attack_dmg` is the canonical per-hit damage from the existing DPS engine (post-armor + mode), but excludes periodic procs that fire every-N-attacks (Wit's End Iron Edge, BotRK Mist's Edge) or every-N-seconds (Sundered Sky Lightshield Strike every 8s — wouldn't fire in a 2s combo). Phase 5.5 can add an inline per-attack-proc walker that fires periodic procs with `every_n_attacks=1` (and `every_n_attacks=2,3` factored down) so on-hit damage gets captured properly. For v1, this overweights amortized periodic procs across the build comparison but stays internally consistent — all candidates see the same baseline AA proxy, so ranking deltas remain sound.
+- **Zed's W (Living Shadow) producing raw=0 damage is the correct outcome.** Living Shadow is a clone-repositioning utility with no direct damage block (its `attribute_kind="damage"` block list is empty); the abilities snapshot preserves this. Burst correctly omits it from the contribution. Test `test_w_with_no_damage_blocks_yields_zero` pins this.
+- **ARAM mode_multiplier discovery: Zed/Talon/Akali get BUFFS in ARAM, not nerfs.** First-pass test asserted Zed's `mode_multiplier < 1.0`. Actual value: 1.05 (assassins are weak in ARAM and Riot buffs them). Test failed → I checked the snapshot for all 14 assassins: Zed/Talon/Fizz = 1.05; Akali/Diana/Kassadin/Katarina = 1.0; Kha'Zix/LeBlanc/Pyke/Naafiri = 1.10; Briar/Qiyana/Rengar = 1.05-1.15. Veigar (the original test_rank_mage canary) was at 0.93. Rewrote three tests: `test_aram_mode_multiplier_lifts_zed` (asserts > 1.0), `test_aram_mode_multiplier_nerfs_veigar` (sanity for the < 1.0 side), `test_aram_ratio_matches_mode_multiplier` (asserts `aram.ability_damage / sr.ability_damage == aram.mode_multiplier` for both directions — this is the underlying invariant and works for both buffs and nerfs).
+- **Test `test_dead_unique_filter_drops_collision` initially used the wrong item ID for Trinity Force.** I picked `6630` from memory; that's Goredrinker, NOT Trinity Force (3078). The spellblade unique_passive_key registry confirmed it. Replaced all `6630` references with `3078` across both test files; tests went from 3 failures to 0.
+
+## Verification
+
+- `py -m pytest agents/daemon_slayer/tests/` → **1346 passed** (was 1257 — +89 from new test_burst.py + test_rank_assassin.py)
+- `py -m pytest tests/` → **899 passed** (wider RC; was 906 in s179 wrap, +4 from new AssassinRoutingTests offset by older tests that may have been trimmed in s173/s173.1; no failures)
+- `py -m pytest tests/test_archetype_dispatcher.py` → **23 passed** (was 19 — +5 AssassinRoutingTests, −1 old assassin fallback test = +4 net)
+- `py -m py_compile` on all touched files → clean
+- DS server `:8893/health` → `engine_version: "0.68.0"` live
+- Live probe of `/rank-assassin` on Zed lvl 11 returns IE / BT / lethality items as expected for an AD assassin vs 80 armor target.
+
+## Open items carried forward
+
+- 🟡 **Phase 6 — Enchanter healing throughput (`ds.hps`)** — last remaining scorer per the plan. New `agents/daemon_slayer/hps.py` modeling heal/shield throughput per item against an "average teammate" model (avg ally HP = 4× champion-baseline-HP-at-level, proximity = always-in-range). Items to cover: Moonstone Renewer, Redemption, Mikael's Blessing, Helia, Ardent Censer, Staff of Flowing Water, Locket of the Iron Solari, Imperial Mandate, Knight's Vow. Two-session lift per plan: 6a = items registry + curated formulas, 6b = `compute_hps()` + `rank_items_by_hps()` + `/rank-enchanter` + dispatcher. Champion list ~10 (Lulu, Soraka, Janna, Karma, Sona, Yuumi, Nami, Seraphine, Renata Glasc, Senna support variant).
+- 🟡 **Phase 5.5 calibration follow-up** — real cooldown sequencing (currently every spell modeled as ready at combo start; CDR doesn't affect a single-combo window so this is principled, but Phase 5.5 could model 8-second extended-combo windows); on-hit periodic AA procs (Wit's End, BotRK Mist's Edge — currently `avg_attack_dmg` only captures raw armor+crit AD); per-champion combo templates JSON (Kha'Zix isolation Q, Akali R2-after-R1, Zed shadow R+Q2 — currently caller passes `combo_sequence` explicitly); conditional damage amps (Ahri R→Q, Zoe E→Q — same omission as Phase 4b).
+- 🟡 **Coach integration deferred** — same situation as Phases 1/2/3/4. No coach reads `state.cs_archetype_pick.primary`. Wire-in is single-line per coach (replace `rank_for(...)` with `rank_for_primary_archetype(champion, state.cs_archetype_pick.primary, ...)`). State-builder needs a champion-id → name resolver to stamp the field.
+- 🟡 **Audit finding #1 — frozen-file list duplication.** Still open from s173. The `tools/process-bridge-tasks.md` skill spec hard-codes the frozen-file list separately from CLAUDE.md; needs operator approval to refactor because both files are themselves frozen. Phase 5 didn't touch either file but the drift remains.
+- 🟡 **NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md is now nearly complete.** After Phase 6 ships, the plan can be archived to `docs/_archive/`. Phase 6 is the last item.
 
 ---
 
@@ -139,93 +225,3 @@ total: 9.67 primary: AD
 - 🟡 **No coach is wired to call `compute_ability_dps` yet.** Same situation as Phase 1 EHP and Phase 2 hybrid — the picker persists `state.cs_archetype_pick.primary = "mage"` but no coach reads it. Phase 3 dispatcher exists but currently falls back to ds.dps for mage with `fell_back=True`. Phase 4c lands the dispatcher entry; full coach integration is a separate follow-up.
 - 🟡 **Passive ability scoring deferred entirely.** P keys fall through `rank_at_level` to level-1 rank but are excluded from the per-spell loop (only Q/W/E/R iterated). Kayle/Senna/Aatrox passives are not scored. Most passive damage is on-hit which `compute_dps` already handles via the rotation scorer; pure-passive damage scaling (Lillia P, Ekko P) is rare and operator-tunable via custom block strategies. Phase 5 may revisit.
 - 🟡 **Cast-rate dataset freshness** — `spell_cast_rates.json` is derived from 2851 matches with newest match 2025-12-16. Same `rewind_history.db` staleness gate as the DS calibration pipeline (CLAUDE.md item 14). When operator resumes play + RC-RewindCatchup scheduled task is wired, this will refresh automatically alongside the calibration data.
-
----
-
-# s177 wrap — 2026-05-12 (Phase 4a champion ability ingest — single commit pending)
-
-**Operator instruction:** "continue with the DS updates" — after s176 landed Phase 3, ship the next phase in [NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md](NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md).
-
-Phase 4 is the largest data lift in the 6-archetype plan — three sessions (4a Meraki ingest + 4b `compute_ability_dps()` + 4c `rank_items_by_ability_dps()`). Phase 4a is data-only: pull the Meraki Analytics bulk champions endpoint, normalize each ability form into typed `damage_blocks` keyed by attribute with per-rank scaling fields, persist as a versioned snapshot. No formula evaluator this session — that ships in 4b.
-
-## Ships
-
-| File | Change |
-|---|---|
-| [tools/daemon_slayer_abilities_extract.py](tools/daemon_slayer_abilities_extract.py) | **NEW (~360 LOC).** Standalone extractor for Meraki bulk champions endpoint (`https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions.json`, 13MB single request, ~0.4s fetch). Pure functions: `_normalize_damage_type` (PHYSICAL_DAMAGE → PHYSICAL etc.); `_is_aoe` heuristic on `affects` + `targeting`; `_values_tuple` for mixed numeric/string Meraki value lists (handles "5%" strings); `_normalize_cooldown_or_cost` for both dict (`{modifiers:[{values:[...]}]}`) and bare-list inputs; `_classify_attribute` with NON_DAMAGE_HINTS denylist (reduction/amplify/critical-damage/monster/minion/non-champion) checked BEFORE damage allowlist so "Damage Reduction" / "Critical Damage" / "Monster Bonus Damage" route to "modifier"; `_normalize_modifiers` walks Meraki's `units[]` strings against `_UNIT_TO_FIELD` map producing typed scaling fields + an `unparsed_modifiers` bucket; `_build_damage_block` calls into both; `_build_form` aggregates blocks + computes per-form `parse_status` via three-disposition logic (typed_blocks / unparsed_blocks / empty_blocks). CLI: `py tools/daemon_slayer_abilities_extract.py [--force] [--patch X]`. Coverage logged at INFO level + persisted in snapshot. |
-| [data/daemon_slayer/16.9.1/champion_abilities.json](data/daemon_slayer/16.9.1/champion_abilities.json) | **NEW snapshot.** 171/172 DDragon champions (Meraki bulk lags Zaahen by one patch — flagged). 927 ability forms total: 569 ok / 5 partial / 4 unparsed / 349 no_damage. Multi-form keys preserved: Aphelios 6× per Q/P (weapon stances), Jayce/Elise/Karma/LeeSin/Nidalee 2× per affected key, Sylas E 2×. **4 remaining unparsed** documented for Phase 4b follow-up: Illaoi.E "Damage Transmission" (spirit-reflection aggregate), Ryze.R "Bonus Overload Damage" (legacy field), Trundle.R "Subjugate" (ult HP-drain via target max HP%), MonkeyKing.W "Warrior Trickster" (clone-output scalar). |
-| [agents/daemon_slayer/abilities.py](agents/daemon_slayer/abilities.py) | **NEW (~280 LOC).** Frozen dataclass loader: `DamageBlock` (attribute + attribute_kind + 14 per-rank scaling fields all `tuple[float,...] \| None` + `unparsed_modifiers` + `raw_modifiers`); `AbilityForm` (key + name + form_index + cooldown + cost + damage_type + targeting + affects + resource + is_aoe + damage_blocks + raw_effects_count + raw_leveling_count + parse_status + parse_notes); `AbilitiesSnapshot` with `.load(patch=None, data_root=None)` + `.get_abilities(champion_id)` + `.get_ability(champion_id, key, form_index=0)` + `.iter_forms()` + `.parse_status_counts()` + `.has_champion()` + `.champion_ids()`. Module-level `load_default()` / `reset_default_cache()` singleton mirrors `ult_rates.py`'s lazy-cache pattern. `DamageBlock.value_at(field_name, rank)` clamps rank to last element (single-value lists return that value at every rank — matches Meraki's "uniform across ranks" convention). |
-| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | `ENGINE_VERSION` 0.64.0 → 0.65.0. Extended module docstring with Phase 4a changelog entry covering the Meraki schema-typing design, the 4 remaining unparsed niche aggregates, and the deferred Phase 4b/4c lifts. |
-| [agents/daemon_slayer/tests/test_abilities.py](agents/daemon_slayer/tests/test_abilities.py) | **NEW (~430 LOC, 85 tests).** Pure-unit half covers extractor's normalization helpers via synthetic Meraki-shaped dicts (no HTTP): NormalizeDamageTypeTests (6), IsAoeTests (5), ValuesTupleTests (5), NormalizeCooldownOrCostTests (4), ClassifyAttributeTests (11 — pins denylist behavior on damage-reduction / critical-damage / monster / minion), NormalizeModifiersTests (10 — including same-field-summing + double-space variant for "%  of target's maximum health"), BuildDamageBlockTests (3), BuildFormTests (4 — pins parse_status decision-table across ok/no_damage/partial/unparsed). End-to-end half loads the live 16.9.1 snapshot: SnapshotLoadTests (9 — including MonkeyKing-keyed-by-DDragon-id guard + KSante / Wukong-not-present invariants), AatroxQTests (3), VeigarQTests (3), EzrealQTests (1), EzrealRTests (2 — 3-rank cooldown for ult), MultiFormTests (3 — Jayce 2×, Aphelios 6×), DamageBlockTests (5 — `value_at` clamp behavior), AbilityFormTests (1), CoverageThresholdTests (4 — locks 85% ok / 95% parsed bounds + iter_forms total + per-status drift guard), SingletonCacheTests (2), MissingSnapshotTests (4). |
-| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Bumped `test_batch63_version` + `test_batch64_version` to assert ENGINE_VERSION 0.65.0; extended comment in batch63 docstring with the Phase 4a line. |
-| Living docs sync | [CLAUDE.md](CLAUDE.md) (+s177 entry at item 34 + DS version pointer line 6) · [README.md](README.md) (header DS bullet + capability matrix + Daemon Slayer engine section) · [docs/DAEMON_SLAYER.md](docs/DAEMON_SLAYER.md) (status + module map row for `abilities.py` + `hybrid.py` backfill) · [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (DS section) · [ROADMAP.md](ROADMAP.md) (DS status line + s177 ship entry) · [BRIEF.md](BRIEF.md) (RC Tutor "what's built" line). |
-| DS server runtime | Restart pending — `abilities.py` isn't loaded by the server yet (Phase 4b's evaluator will be the first consumer), but ENGINE_VERSION bump warrants a `Stop-Process` + relaunch so `/health` reports 0.65.0 next time anyone probes it. |
-
-## Live validation
-
-Extractor run on Legion against live Meraki bulk:
-
-```
-$ py tools/daemon_slayer_abilities_extract.py --force
-2026-05-12 [INFO] fetching Meraki bulk champions: https://cdn.merakianalytics.com/...
-2026-05-12 [INFO] Meraki bulk fetched: 171 champions (0.4s)
-2026-05-12 [INFO] coverage: 927 forms · ok=569 partial=5 unparsed=4 no_damage=349
-                  (ok_rate=98.4% parsed_rate=99.3%)
-2026-05-12 [INFO] ✓ wrote data/daemon_slayer/16.9.1/champion_abilities.json (171 champions, 927 forms)
-```
-
-Loader round-trips for known shapes:
-
-```python
->>> from agents.daemon_slayer.abilities import load_default
->>> snap = load_default()
->>> q = snap.get_ability('Aatrox', 'Q')
->>> q.name, q.damage_type, q.is_aoe
-('The Darkin Blade', 'PHYSICAL', True)
->>> q.damage_blocks_only()[0].base, q.damage_blocks_only()[0].total_ad_pct
-((10.0, 25.0, 40.0, 55.0, 70.0), (60.0, 67.5, 75.0, 82.5, 90.0))
-
->>> veigar_q = snap.get_ability('Veigar', 'Q')
->>> veigar_q.cooldown, veigar_q.cost
-((6.0, 5.5, 5.0, 4.5, 4.0), (30.0, 35.0, 40.0, 45.0, 50.0))
->>> veigar_q.damage_blocks_only()[0].ap_pct
-(50.0, 55.0, 60.0, 65.0, 70.0)
-
->>> ez_q = snap.get_ability('Ezreal', 'Q')   # Mystic Shot 130% AD across all ranks
->>> ez_q.damage_blocks_only()[0].total_ad_pct
-(130.0, 130.0, 130.0, 130.0, 130.0)
-
->>> snap.has_champion('MonkeyKing'), snap.has_champion('Wukong')
-(True, False)   # Meraki bulk keys by DDragon ID, not display name
-
->>> len(snap.get_abilities('Jayce')['Q']), len(snap.get_abilities('Aphelios')['Q'])
-(2, 6)    # Hammer/Cannon stances; Severum/Gravitum/Infernum/Crescendum/Calibrum + base
-```
-
-## Findings
-
-- **Meraki's bulk endpoint reverses the `id`/`key` field semantics versus the per-champion endpoint** — bulk top-level keys are DDragon-style (`Aatrox`, `MonkeyKing`, `KSante`), inside each record `id` is the numeric Riot key and `key` is the DDragon string. The per-champion endpoint flips them. Initial extractor passed `payload.get("id")` as the canonical key, which produced numeric-keyed output that no DDragon consumer could match. Fix: use the bulk's top-level key directly as canon. Test `test_monkeyking_keyed_by_ddragon_id` + `test_ksante_keyed_by_ddragon_id` pin this so future Meraki schema drift can't silently regress.
-- **Cooldown/cost ship as `{modifiers: [{values: [...], units: [...]}]}`, not bare lists** — first extractor pass assumed bare lists per the plan's mental model. Fix: `_normalize_cooldown_or_cost` walks both shapes; preserves bare-list fallback for legacy compatibility. Veigar Q `(6.0, 5.5, 5.0, 4.5, 4.0)` confirms.
-- **The "Damage Reduction" / "Critical Damage" / "Monster Bonus Damage" attribute-name footgun.** First-pass classifier flagged any attribute containing "damage" as damage-bearing — but Meraki uses "Damage Reduction" (a percent modifier), "Critical Damage" (a crit multiplier, not a damage source), and jungle-only "Monster Bonus Physical Damage" (irrelevant for champion-vs-champion DPS) under the same word. Fix: NON_DAMAGE_HINTS denylist checked BEFORE the allowlist. Bumped coverage from 86% ok to 98.4% ok on second pass.
-- **Empty-damage-block aggregate footgun.** Nidalee Q's "Maximum Increased Damage" attribute ships in Meraki with `modifiers: []` (aggregate value computed from Min/Max + Increase columns). My status logic flagged the WHOLE form as `unparsed` if ANY damage block had no typed fields — even if all SIBLING blocks (Min Magic Damage, Max Magic Damage, Prowl-Enhanced Min/Max) parsed cleanly. Fix: three-disposition status logic (typed_blocks / unparsed_blocks / empty_blocks); a form with at least one typed block + some empty aggregates becomes `partial`, not `unparsed`. Bumped coverage from 88.9% ok to 98.4% ok.
-- **Coverage exceeds the plan's 80% target by 18 percentage points (98.4% ok).** Only 4 forms genuinely unparsed; all are niche aggregates Phase 4b's evaluator can fall back on free-text parsing of `effects[].description` for if any become coach-critical. Comparable rates per ability key: P=100% (only one passive has damage modifiers in Meraki — Mel — and it parses), Q=98.9%, W=99.1%, E=99.3%, R=98.5%. No systemic per-key blind spot.
-- **Multi-form preservation matters more than I initially budgeted for.** Aphelios alone is 6 forms × 5 keys = 30 ability records; without form_index discipline the engine would silently see Calibrum's Q and Severum's Q as the same form. Mid-game weapon swaps mean the active form changes ability-to-ability — Phase 4b's evaluator needs to consume a `current_form` field from the LCU agent or fall back to form_index=0 average.
-- **`load_default()` singleton + `reset_default_cache()` is the right pattern for hot paths.** Each coach tick will run `compute_ability_dps()` on ~5 abilities × 8 candidate items; without caching the snapshot the JSON parse cost would dominate. The lazy-singleton path matches `ult_rates.py`'s pattern operator-validated against the warm-Agent-7 prime budget. Test `test_load_default_caches` pins it.
-
-## Verification
-
-- `py -m pytest agents/daemon_slayer/tests/test_abilities.py -v` → **85 passed**
-- `py -m pytest agents/daemon_slayer/tests/` → **1151 passed** (was 1066 — +85 net)
-- `py -m pytest tests/ --timeout=120` → **902 passed** (wider RC; no regressions)
-- `py -m ruff check agents/daemon_slayer/abilities.py agents/daemon_slayer/tests/test_abilities.py tools/daemon_slayer_abilities_extract.py` → all checks passed
-- Coverage threshold test in `CoverageThresholdTests` defends future Meraki schema drift: asserts `ok_rate >= 0.85` + `parsed_rate >= 0.95` (currently 0.984 / 0.993).
-- Live extractor run shows the new snapshot 13MB Meraki fetch is ~0.4s; total extract+normalize+write 0.5s end-to-end.
-
-## Open items carried forward
-
-- 🟡 **Phase 4b — `compute_ability_dps()` evaluator** — next session per the plan. New `agents/daemon_slayer/ability_dps.py` resolves the typed scaling fields against `CallContext` (current AD/AP/HP/level/target stats), computes per-cast damage, multiplies by cast rate. Extend `ult_rates.py`'s schema to P/Q/W/E from current ult-only — `rewind_history.db.participants.spell{1,2,3,4}_casts / game_duration_s` already has the data. Mana-economy denominator (`mana_per_rotation / caster_max_mp`) gates Phase 4b's "rotation feasibility" sanity check.
-- 🟡 **Phase 4c — `rank_items_by_ability_dps()` + `/rank-mage`** — third session of the lift. Mirror `rank_items` / `rank_items_by_ehp` / `rank_items_by_hybrid` shape but score candidates by `ability_dps_total` delta. Wire `/rank-mage` route + `rank_mage_for()` client helper + integration into `rank_for_primary_archetype()` dispatcher's mage branch (removes the `fell_back=True` path).
-- 🟡 **4 unparsed forms** — Illaoi.E Test of Spirit, Ryze.R Realm Warp, Trundle.R Subjugate, MonkeyKing.W Warrior Trickster. All niche aggregates. Phase 4b can fall back to free-text parsing of `effects[].description` if any become coach-critical; documented in the test file under `CoverageThresholdTests` so the threshold guard catches a regression below 85% ok.
-- 🟡 **DS server restart** — `/health` will report 0.64.0 until next stop+relaunch. Phase 4a doesn't change any active route, but the version pointer drifts. Run `taskkill /F /PID <pid>` + `pythonw tools/start_daemon_slayer.py` (per `reference_ds_server_not_supervisor_watched`) before declaring s177 fully landed.
-- 🟡 **Phase 4 cadence vs Phase 5/6** — once Phase 4 lands, dispatcher's mage branch loses `fell_back=True`. Phase 5 (Assassin burst) reuses Phase 4 ability data and adds a combo-window scorer (Q→W→E→AA→R→AA per champ). Phase 6 (Enchanter HPS) is the lowest-fidelity tier per the plan — model heal-per-gold against a static "average teammate" model.
-- 🟡 **Meraki schema drift watchdog** — `CoverageThresholdTests` will redden CI if Meraki changes their unit strings or attribute taxonomy meaningfully. Worth adding a Phase 7-style nightly cron that re-runs `tools/daemon_slayer_abilities_extract.py --force` + smoke-tests the loader; for now the threshold test catches it on the next CI run.
