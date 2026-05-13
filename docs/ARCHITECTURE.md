@@ -144,7 +144,7 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 
 ## Daemon Slayer (`:8893`)
 
-`agents/daemon_slayer/` — 547 item effects, ENGINE_VERSION 0.63.0, 1022 tests. All 4 coach modes DS-before-Haiku. Ranks items by DPS math per champion before Haiku sees the prompt; dead-unique candidates (Trinity→ER etc.) filtered by default. s174 adds the Tank EHP scorer (`ehp.py`) — `compute_ehp()` + `rank_items_by_ehp()` with caller-supplied AD/AP enemy shares; `/ehp` + `/rank-tank` routes; `core/defensive_picks.recommend_defensive_items_via_ehp()` is the first Option-B layered consumer. See `docs/DAEMON_SLAYER.md`.
+`agents/daemon_slayer/` — 547 item effects, ENGINE_VERSION 0.64.0, 1066 tests. All 4 coach modes DS-before-Haiku. Ranks items by DPS math per champion before Haiku sees the prompt; dead-unique candidates (Trinity→ER etc.) filtered by default. s174 adds the Tank EHP scorer (`ehp.py`) — `compute_ehp()` + `rank_items_by_ehp()` with caller-supplied AD/AP enemy shares; `/ehp` + `/rank-tank` routes; `core/defensive_picks.recommend_defensive_items_via_ehp()` is the first Option-B layered consumer. s175 adds the Bruiser hybrid scorer (`hybrid.py`) — `compute_hybrid()` + `rank_items_by_hybrid()` composing dps + ehp via per-champion (α,β) weights from `archetype_weights.json` (20 bruisers); `/hybrid` + `/rank-bruiser` routes. See `docs/DAEMON_SLAYER.md`.
 
 ---
 

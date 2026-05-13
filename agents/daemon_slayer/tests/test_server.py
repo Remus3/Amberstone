@@ -311,6 +311,57 @@ class EhpRouteTests(ServerLifecycleTests):
         self.assertEqual(status, 422)
 
 
+class HybridRouteTests(ServerLifecycleTests):
+    """Phase 2 (s175, 2026-05-12) — /hybrid + /rank-bruiser route smoke tests."""
+
+    def test_post_hybrid_naked(self) -> None:
+        status, body = _post_json(self.base + "/hybrid", {
+            "champion": "Darius", "level": 11,
+        })
+        self.assertEqual(status, 200)
+        self.assertEqual(body["champion_id"], "Darius")
+        self.assertGreater(body["dps"], 0)
+        self.assertGreater(body["ehp"], 0)
+        # Darius isn't in the table — falls back to default 0.5/0.5.
+        self.assertAlmostEqual(body["alpha"], 0.65)  # Darius IS in the table
+        self.assertEqual(body["alpha_source"], "champion")
+
+    def test_post_hybrid_alpha_beta_override(self) -> None:
+        status, body = _post_json(self.base + "/hybrid", {
+            "champion": "Darius", "level": 11,
+            "alpha": 0.9, "beta": 0.1,
+        })
+        self.assertEqual(status, 200)
+        self.assertAlmostEqual(body["alpha"], 0.9)
+        self.assertAlmostEqual(body["beta"], 0.1)
+        self.assertEqual(body["alpha_source"], "override")
+
+    def test_post_rank_bruiser_returns_ranked_items(self) -> None:
+        status, body = _post_json(self.base + "/rank-bruiser", {
+            "champion": "JarvanIV", "level": 11,
+            "enemy_ad_share": 0.5, "enemy_ap_share": 0.5,
+            "top": 5,
+        })
+        self.assertEqual(status, 200)
+        self.assertGreater(body["baseline_dps"], 0)
+        self.assertGreater(body["baseline_ehp"], 0)
+        self.assertGreater(len(body["ranked"]), 0)
+        # Per-item fields populated.
+        top = body["ranked"][0]
+        for key in ("delta_dps", "delta_ehp", "hybrid_delta_pct",
+                    "hybrid_score", "hybrid_per_1k_gold"):
+            self.assertIn(key, top)
+        self.assertAlmostEqual(body["alpha"], 0.55)
+
+    def test_post_rank_bruiser_share_validation(self) -> None:
+        status, body = _post_json(self.base + "/rank-bruiser", {
+            "champion": "JarvanIV", "level": 11,
+            "enemy_ad_share": 0.8, "enemy_ap_share": 0.8,
+        })
+        # share sum > 1.0 → engine raises ValueError → 422
+        self.assertEqual(status, 422)
+
+
 class RoutingTests(ServerLifecycleTests):
     def test_unknown_path_returns_404(self) -> None:
         status, body = _get_json(self.base + "/nope")
