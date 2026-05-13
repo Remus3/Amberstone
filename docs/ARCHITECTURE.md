@@ -74,6 +74,7 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 | `coach_integration/_coach.py` | CoachIntegration — SR coaching class (Haiku + cache + DS) |
 | `coach_integration/_profiles.py` | SR champion profile constants + GAME_SENSE_VOCAB |
 | `coach_integration/_sr_prompt.py` | SR prompt building — system prompt, helpers, WaveTracker |
+| `coach_integration/archetype_dispatch.py` | per-coach scorer dispatch + display formatting |
 | `coaches/aram_coach.py` | ARAM + Mayhem mode coach — DS-before-Haiku |
 | `coaches/arena_coach.py` | Arena mode coach — DS-before-Haiku |
 | `coaches/brawl_coach.py` | Brawl mode coach — DS-before-Haiku |
