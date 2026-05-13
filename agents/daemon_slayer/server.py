@@ -47,6 +47,7 @@ from typing import Any, Optional
 from urllib.parse import parse_qs, urlsplit
 
 from . import ENGINE_VERSION
+from .ability_dps import compute_ability_dps
 from .beam import (
     DEFAULT_BEAM_WIDTH,
     DEFAULT_TOP_N as BEAM_DEFAULT_TOP_N,
@@ -93,6 +94,7 @@ _INDEX_HTML = """<!doctype html>
 <tr><td>POST</td><td>/rank-tank</td><td>rank items by EHP delta (Phase 1)</td></tr>
 <tr><td>POST</td><td>/hybrid</td><td>bruiser combined DPS+EHP score (Phase 2)</td></tr>
 <tr><td>POST</td><td>/rank-bruiser</td><td>rank items by weighted (α·dps + β·ehp) delta (Phase 2)</td></tr>
+<tr><td>POST</td><td>/ability-dps</td><td>per-spell ability DPS for a mage / caster build (Phase 4b)</td></tr>
 </table>
 
 <h2>Example</h2>
@@ -561,6 +563,67 @@ def _route_rank_bruiser(body: dict) -> dict:
     return result.to_dict()
 
 
+def _route_ability_dps(body: dict) -> dict:
+    """POST /ability-dps — per-spell ability DPS for the caster build.
+
+    Phase 4b (s178, 2026-05-12). Body mirrors /dps with three additions:
+      * ``target_current_hp_pct`` (float, default 1.0) — what fraction
+        of max HP the target sits at when the cast lands; affects
+        ``target_current_hp_pct`` / ``target_missing_hp_pct`` blocks
+      * ``max_priority`` (str or list, default "QWE") — three keys
+        describing max order; comma-separated as a query param
+      * ``block_strategy`` (str, default "first") — how to combine
+        multi-block abilities; one of first|sum|max
+      * ``form_index`` (dict) — per-key form overrides for multi-form
+        abilities (Aphelios weapons, Jayce stance); JSON only
+    """
+    snap = _CACHE.get()
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
+    level = _opt_int(body, "level", 1) or 1
+    items = _coerce_str_list(body.get("items"), "items")
+    mode = _opt_str(body, "mode", "SR") or "SR"
+    target_armor = _opt_float(body, "target_armor", 0.0)
+    target_mr = _opt_float(body, "target_mr", 0.0)
+    target_max_hp = _opt_float(body, "target_max_hp", 0.0)
+    target_bonus_hp = _opt_float(body, "target_bonus_hp", 0.0)
+    target_current_hp_pct = _opt_float(body, "target_current_hp_pct", 1.0)
+    augments = _coerce_str_list(body.get("augments"), "augments")
+    block_strategy = _opt_str(body, "block_strategy", "first") or "first"
+    # max_priority accepts list, comma-string ("Q,W,E"), or compact "QWE".
+    raw_prio = body.get("max_priority")
+    if raw_prio is None or raw_prio == "":
+        max_priority: tuple[str, str, str] = ("Q", "W", "E")
+    elif isinstance(raw_prio, str) and "," not in raw_prio and len(raw_prio) == 3:
+        max_priority = tuple(raw_prio.upper())  # type: ignore[assignment]
+    else:
+        parts = _coerce_str_list(raw_prio, "max_priority")
+        if len(parts) != 3:
+            raise _ApiError(400, f"max_priority: expected 3 keys, got {parts!r}")
+        max_priority = tuple(p.upper() for p in parts)  # type: ignore[assignment]
+    # form_index is JSON-only (dict {key: index}). Query param ignored.
+    form_index_overrides = None
+    raw_form = body.get("form_index")
+    if isinstance(raw_form, dict):
+        form_index_overrides = {str(k).upper(): int(v) for k, v in raw_form.items()}
+    try:
+        result = compute_ability_dps(
+            snap, champion_id=champion, level=level,
+            item_ids=items, mode=mode,
+            target_armor=target_armor, target_mr=target_mr,
+            target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
+            target_current_hp_pct=target_current_hp_pct,
+            augments=augments,
+            max_priority=max_priority,
+            block_strategy=block_strategy,
+            form_index_overrides=form_index_overrides,
+        )
+    except KeyError as e:
+        raise _ApiError(404, str(e))
+    except ValueError as e:
+        raise _ApiError(422, str(e))
+    return result.to_dict()
+
+
 def _route_beam(body: dict) -> dict:
     snap = _CACHE.get()
     champion = _resolve_champion_id(snap, _required_str(body, "champion"))
@@ -656,6 +719,7 @@ _POST_ROUTES = {
     "/rank-tank": _route_rank_tank,
     "/hybrid": _route_hybrid,
     "/rank-bruiser": _route_rank_bruiser,
+    "/ability-dps": _route_ability_dps,
 }
 
 # GET routes that need a body merge from query params for the same handler.
