@@ -4,6 +4,96 @@
 
 ---
 
+# s177 wrap — 2026-05-12 (Phase 4a champion ability ingest — single commit pending)
+
+**Operator instruction:** "continue with the DS updates" — after s176 landed Phase 3, ship the next phase in [NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md](NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md).
+
+Phase 4 is the largest data lift in the 6-archetype plan — three sessions (4a Meraki ingest + 4b `compute_ability_dps()` + 4c `rank_items_by_ability_dps()`). Phase 4a is data-only: pull the Meraki Analytics bulk champions endpoint, normalize each ability form into typed `damage_blocks` keyed by attribute with per-rank scaling fields, persist as a versioned snapshot. No formula evaluator this session — that ships in 4b.
+
+## Ships
+
+| File | Change |
+|---|---|
+| [tools/daemon_slayer_abilities_extract.py](tools/daemon_slayer_abilities_extract.py) | **NEW (~360 LOC).** Standalone extractor for Meraki bulk champions endpoint (`https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions.json`, 13MB single request, ~0.4s fetch). Pure functions: `_normalize_damage_type` (PHYSICAL_DAMAGE → PHYSICAL etc.); `_is_aoe` heuristic on `affects` + `targeting`; `_values_tuple` for mixed numeric/string Meraki value lists (handles "5%" strings); `_normalize_cooldown_or_cost` for both dict (`{modifiers:[{values:[...]}]}`) and bare-list inputs; `_classify_attribute` with NON_DAMAGE_HINTS denylist (reduction/amplify/critical-damage/monster/minion/non-champion) checked BEFORE damage allowlist so "Damage Reduction" / "Critical Damage" / "Monster Bonus Damage" route to "modifier"; `_normalize_modifiers` walks Meraki's `units[]` strings against `_UNIT_TO_FIELD` map producing typed scaling fields + an `unparsed_modifiers` bucket; `_build_damage_block` calls into both; `_build_form` aggregates blocks + computes per-form `parse_status` via three-disposition logic (typed_blocks / unparsed_blocks / empty_blocks). CLI: `py tools/daemon_slayer_abilities_extract.py [--force] [--patch X]`. Coverage logged at INFO level + persisted in snapshot. |
+| [data/daemon_slayer/16.9.1/champion_abilities.json](data/daemon_slayer/16.9.1/champion_abilities.json) | **NEW snapshot.** 171/172 DDragon champions (Meraki bulk lags Zaahen by one patch — flagged). 927 ability forms total: 569 ok / 5 partial / 4 unparsed / 349 no_damage. Multi-form keys preserved: Aphelios 6× per Q/P (weapon stances), Jayce/Elise/Karma/LeeSin/Nidalee 2× per affected key, Sylas E 2×. **4 remaining unparsed** documented for Phase 4b follow-up: Illaoi.E "Damage Transmission" (spirit-reflection aggregate), Ryze.R "Bonus Overload Damage" (legacy field), Trundle.R "Subjugate" (ult HP-drain via target max HP%), MonkeyKing.W "Warrior Trickster" (clone-output scalar). |
+| [agents/daemon_slayer/abilities.py](agents/daemon_slayer/abilities.py) | **NEW (~280 LOC).** Frozen dataclass loader: `DamageBlock` (attribute + attribute_kind + 14 per-rank scaling fields all `tuple[float,...] \| None` + `unparsed_modifiers` + `raw_modifiers`); `AbilityForm` (key + name + form_index + cooldown + cost + damage_type + targeting + affects + resource + is_aoe + damage_blocks + raw_effects_count + raw_leveling_count + parse_status + parse_notes); `AbilitiesSnapshot` with `.load(patch=None, data_root=None)` + `.get_abilities(champion_id)` + `.get_ability(champion_id, key, form_index=0)` + `.iter_forms()` + `.parse_status_counts()` + `.has_champion()` + `.champion_ids()`. Module-level `load_default()` / `reset_default_cache()` singleton mirrors `ult_rates.py`'s lazy-cache pattern. `DamageBlock.value_at(field_name, rank)` clamps rank to last element (single-value lists return that value at every rank — matches Meraki's "uniform across ranks" convention). |
+| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | `ENGINE_VERSION` 0.64.0 → 0.65.0. Extended module docstring with Phase 4a changelog entry covering the Meraki schema-typing design, the 4 remaining unparsed niche aggregates, and the deferred Phase 4b/4c lifts. |
+| [agents/daemon_slayer/tests/test_abilities.py](agents/daemon_slayer/tests/test_abilities.py) | **NEW (~430 LOC, 85 tests).** Pure-unit half covers extractor's normalization helpers via synthetic Meraki-shaped dicts (no HTTP): NormalizeDamageTypeTests (6), IsAoeTests (5), ValuesTupleTests (5), NormalizeCooldownOrCostTests (4), ClassifyAttributeTests (11 — pins denylist behavior on damage-reduction / critical-damage / monster / minion), NormalizeModifiersTests (10 — including same-field-summing + double-space variant for "%  of target's maximum health"), BuildDamageBlockTests (3), BuildFormTests (4 — pins parse_status decision-table across ok/no_damage/partial/unparsed). End-to-end half loads the live 16.9.1 snapshot: SnapshotLoadTests (9 — including MonkeyKing-keyed-by-DDragon-id guard + KSante / Wukong-not-present invariants), AatroxQTests (3), VeigarQTests (3), EzrealQTests (1), EzrealRTests (2 — 3-rank cooldown for ult), MultiFormTests (3 — Jayce 2×, Aphelios 6×), DamageBlockTests (5 — `value_at` clamp behavior), AbilityFormTests (1), CoverageThresholdTests (4 — locks 85% ok / 95% parsed bounds + iter_forms total + per-status drift guard), SingletonCacheTests (2), MissingSnapshotTests (4). |
+| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Bumped `test_batch63_version` + `test_batch64_version` to assert ENGINE_VERSION 0.65.0; extended comment in batch63 docstring with the Phase 4a line. |
+| Living docs sync | [CLAUDE.md](CLAUDE.md) (+s177 entry at item 34 + DS version pointer line 6) · [README.md](README.md) (header DS bullet + capability matrix + Daemon Slayer engine section) · [docs/DAEMON_SLAYER.md](docs/DAEMON_SLAYER.md) (status + module map row for `abilities.py` + `hybrid.py` backfill) · [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (DS section) · [ROADMAP.md](ROADMAP.md) (DS status line + s177 ship entry) · [BRIEF.md](BRIEF.md) (RC Tutor "what's built" line). |
+| DS server runtime | Restart pending — `abilities.py` isn't loaded by the server yet (Phase 4b's evaluator will be the first consumer), but ENGINE_VERSION bump warrants a `Stop-Process` + relaunch so `/health` reports 0.65.0 next time anyone probes it. |
+
+## Live validation
+
+Extractor run on Legion against live Meraki bulk:
+
+```
+$ py tools/daemon_slayer_abilities_extract.py --force
+2026-05-12 [INFO] fetching Meraki bulk champions: https://cdn.merakianalytics.com/...
+2026-05-12 [INFO] Meraki bulk fetched: 171 champions (0.4s)
+2026-05-12 [INFO] coverage: 927 forms · ok=569 partial=5 unparsed=4 no_damage=349
+                  (ok_rate=98.4% parsed_rate=99.3%)
+2026-05-12 [INFO] ✓ wrote data/daemon_slayer/16.9.1/champion_abilities.json (171 champions, 927 forms)
+```
+
+Loader round-trips for known shapes:
+
+```python
+>>> from agents.daemon_slayer.abilities import load_default
+>>> snap = load_default()
+>>> q = snap.get_ability('Aatrox', 'Q')
+>>> q.name, q.damage_type, q.is_aoe
+('The Darkin Blade', 'PHYSICAL', True)
+>>> q.damage_blocks_only()[0].base, q.damage_blocks_only()[0].total_ad_pct
+((10.0, 25.0, 40.0, 55.0, 70.0), (60.0, 67.5, 75.0, 82.5, 90.0))
+
+>>> veigar_q = snap.get_ability('Veigar', 'Q')
+>>> veigar_q.cooldown, veigar_q.cost
+((6.0, 5.5, 5.0, 4.5, 4.0), (30.0, 35.0, 40.0, 45.0, 50.0))
+>>> veigar_q.damage_blocks_only()[0].ap_pct
+(50.0, 55.0, 60.0, 65.0, 70.0)
+
+>>> ez_q = snap.get_ability('Ezreal', 'Q')   # Mystic Shot 130% AD across all ranks
+>>> ez_q.damage_blocks_only()[0].total_ad_pct
+(130.0, 130.0, 130.0, 130.0, 130.0)
+
+>>> snap.has_champion('MonkeyKing'), snap.has_champion('Wukong')
+(True, False)   # Meraki bulk keys by DDragon ID, not display name
+
+>>> len(snap.get_abilities('Jayce')['Q']), len(snap.get_abilities('Aphelios')['Q'])
+(2, 6)    # Hammer/Cannon stances; Severum/Gravitum/Infernum/Crescendum/Calibrum + base
+```
+
+## Findings
+
+- **Meraki's bulk endpoint reverses the `id`/`key` field semantics versus the per-champion endpoint** — bulk top-level keys are DDragon-style (`Aatrox`, `MonkeyKing`, `KSante`), inside each record `id` is the numeric Riot key and `key` is the DDragon string. The per-champion endpoint flips them. Initial extractor passed `payload.get("id")` as the canonical key, which produced numeric-keyed output that no DDragon consumer could match. Fix: use the bulk's top-level key directly as canon. Test `test_monkeyking_keyed_by_ddragon_id` + `test_ksante_keyed_by_ddragon_id` pin this so future Meraki schema drift can't silently regress.
+- **Cooldown/cost ship as `{modifiers: [{values: [...], units: [...]}]}`, not bare lists** — first extractor pass assumed bare lists per the plan's mental model. Fix: `_normalize_cooldown_or_cost` walks both shapes; preserves bare-list fallback for legacy compatibility. Veigar Q `(6.0, 5.5, 5.0, 4.5, 4.0)` confirms.
+- **The "Damage Reduction" / "Critical Damage" / "Monster Bonus Damage" attribute-name footgun.** First-pass classifier flagged any attribute containing "damage" as damage-bearing — but Meraki uses "Damage Reduction" (a percent modifier), "Critical Damage" (a crit multiplier, not a damage source), and jungle-only "Monster Bonus Physical Damage" (irrelevant for champion-vs-champion DPS) under the same word. Fix: NON_DAMAGE_HINTS denylist checked BEFORE the allowlist. Bumped coverage from 86% ok to 98.4% ok on second pass.
+- **Empty-damage-block aggregate footgun.** Nidalee Q's "Maximum Increased Damage" attribute ships in Meraki with `modifiers: []` (aggregate value computed from Min/Max + Increase columns). My status logic flagged the WHOLE form as `unparsed` if ANY damage block had no typed fields — even if all SIBLING blocks (Min Magic Damage, Max Magic Damage, Prowl-Enhanced Min/Max) parsed cleanly. Fix: three-disposition status logic (typed_blocks / unparsed_blocks / empty_blocks); a form with at least one typed block + some empty aggregates becomes `partial`, not `unparsed`. Bumped coverage from 88.9% ok to 98.4% ok.
+- **Coverage exceeds the plan's 80% target by 18 percentage points (98.4% ok).** Only 4 forms genuinely unparsed; all are niche aggregates Phase 4b's evaluator can fall back on free-text parsing of `effects[].description` for if any become coach-critical. Comparable rates per ability key: P=100% (only one passive has damage modifiers in Meraki — Mel — and it parses), Q=98.9%, W=99.1%, E=99.3%, R=98.5%. No systemic per-key blind spot.
+- **Multi-form preservation matters more than I initially budgeted for.** Aphelios alone is 6 forms × 5 keys = 30 ability records; without form_index discipline the engine would silently see Calibrum's Q and Severum's Q as the same form. Mid-game weapon swaps mean the active form changes ability-to-ability — Phase 4b's evaluator needs to consume a `current_form` field from the LCU agent or fall back to form_index=0 average.
+- **`load_default()` singleton + `reset_default_cache()` is the right pattern for hot paths.** Each coach tick will run `compute_ability_dps()` on ~5 abilities × 8 candidate items; without caching the snapshot the JSON parse cost would dominate. The lazy-singleton path matches `ult_rates.py`'s pattern operator-validated against the warm-Agent-7 prime budget. Test `test_load_default_caches` pins it.
+
+## Verification
+
+- `py -m pytest agents/daemon_slayer/tests/test_abilities.py -v` → **85 passed**
+- `py -m pytest agents/daemon_slayer/tests/` → **1151 passed** (was 1066 — +85 net)
+- `py -m pytest tests/ --timeout=120` → **902 passed** (wider RC; no regressions)
+- `py -m ruff check agents/daemon_slayer/abilities.py agents/daemon_slayer/tests/test_abilities.py tools/daemon_slayer_abilities_extract.py` → all checks passed
+- Coverage threshold test in `CoverageThresholdTests` defends future Meraki schema drift: asserts `ok_rate >= 0.85` + `parsed_rate >= 0.95` (currently 0.984 / 0.993).
+- Live extractor run shows the new snapshot 13MB Meraki fetch is ~0.4s; total extract+normalize+write 0.5s end-to-end.
+
+## Open items carried forward
+
+- 🟡 **Phase 4b — `compute_ability_dps()` evaluator** — next session per the plan. New `agents/daemon_slayer/ability_dps.py` resolves the typed scaling fields against `CallContext` (current AD/AP/HP/level/target stats), computes per-cast damage, multiplies by cast rate. Extend `ult_rates.py`'s schema to P/Q/W/E from current ult-only — `rewind_history.db.participants.spell{1,2,3,4}_casts / game_duration_s` already has the data. Mana-economy denominator (`mana_per_rotation / caster_max_mp`) gates Phase 4b's "rotation feasibility" sanity check.
+- 🟡 **Phase 4c — `rank_items_by_ability_dps()` + `/rank-mage`** — third session of the lift. Mirror `rank_items` / `rank_items_by_ehp` / `rank_items_by_hybrid` shape but score candidates by `ability_dps_total` delta. Wire `/rank-mage` route + `rank_mage_for()` client helper + integration into `rank_for_primary_archetype()` dispatcher's mage branch (removes the `fell_back=True` path).
+- 🟡 **4 unparsed forms** — Illaoi.E Test of Spirit, Ryze.R Realm Warp, Trundle.R Subjugate, MonkeyKing.W Warrior Trickster. All niche aggregates. Phase 4b can fall back to free-text parsing of `effects[].description` if any become coach-critical; documented in the test file under `CoverageThresholdTests` so the threshold guard catches a regression below 85% ok.
+- 🟡 **DS server restart** — `/health` will report 0.64.0 until next stop+relaunch. Phase 4a doesn't change any active route, but the version pointer drifts. Run `taskkill /F /PID <pid>` + `pythonw tools/start_daemon_slayer.py` (per `reference_ds_server_not_supervisor_watched`) before declaring s177 fully landed.
+- 🟡 **Phase 4 cadence vs Phase 5/6** — once Phase 4 lands, dispatcher's mage branch loses `fell_back=True`. Phase 5 (Assassin burst) reuses Phase 4 ability data and adds a combo-window scorer (Q→W→E→AA→R→AA per champ). Phase 6 (Enchanter HPS) is the lowest-fidelity tier per the plan — model heal-per-gold against a static "average teammate" model.
+- 🟡 **Meraki schema drift watchdog** — `CoverageThresholdTests` will redden CI if Meraki changes their unit strings or attribute taxonomy meaningfully. Worth adding a Phase 7-style nightly cron that re-runs `tools/daemon_slayer_abilities_extract.py --force` + smoke-tests the loader; for now the threshold test catches it on the next CI run.
+
+---
+
 # s176 wrap — 2026-05-12 (Phase 3 CS archetype-picker UI + dispatcher — single commit pending)
 
 **Operator instruction:** "continue" — after the Phase 2 push lands, ship Phase 3 in the same slot.
@@ -156,81 +246,3 @@ Math behaves as expected — JarvanIV at default DPS-leaning weight picks Trinit
 - 🟡 **Phase 3 dispatcher will deprecate explicit `rank_bruiser_for()` calls** — coaches won't call `rank_bruiser_for()` directly; they'll call `rank_for_primary_archetype()` and the dispatcher routes based on `state.cs_archetype_pick.primary == "bruiser"`. Current direct-call API stays for testing + debug + UI tools.
 - 🟡 **No coach is wired to call `rank_bruiser_for` yet.** Same situation as Phase 1's `recommend_defensive_items_via_ehp` — Phase 3 lands the wire-in via the CS picker. Direct API available for testing in the meantime.
 - 🟡 **Phase/level-aware weights** — current (α,β) is global per champion. Early-game Camille is more snowball-DPS than late-game Camille. Deferred to a future v2 of the table (operator can override per-call via `alpha`/`beta` params in the meantime).
-
----
-
-# s174 wrap — 2026-05-12 (Phase 1 Tank EHP scorer — multi-commit)
-
-**Operator instruction:** "Read NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md. We're starting Phase 1 — Tank EHP scorer. Before writing code, confirm decisions on the four open design questions at the bottom of that doc. Then implement compute_ehp() + rank_items_by_ehp() + integrate with core/defensive_picks.py per the chosen option. Bump ENGINE_VERSION to 0.63.0; add tests; restart DS server; verify via /health + Game-PC monitor 1 capture before reporting done."
-
-## Open design questions — decisions locked in this slot
-
-1. **Option A vs B for `defensive_picks.py` integration** → **Option B** (layer). The s171 curated `_DEFENSIVE_ITEMS` catalog stays the operator-vetted pool; EHP math drives ordering within it via `only_item_ids` whitelist on `rank_items_by_ehp`. Preserves operator-validated work, math gives the order. Migration to Option A deferred until calibration shows curated list adds no value.
-2. **ARAM EHP semantics — `aramDamageTaken`** → **applies**. Field name verified in snapshot at `champion.lolmath.aram_modifiers.aramDamageTaken` (e.g. Aatrox=1.0). Formula: `ehp_component = hp / (resist_factor × aramDamageTaken)`. A champion with `aramDamageTaken=0.95` takes 5% less damage → effective HP scales by 1/0.95 for ALL components (physical, magical, true). Mirrors `dps.py`'s `aramDamageDealt` handling pattern.
-3. **Scorer dispatch location** → **defer the dispatcher abstraction**. For Phase 1, ship `rank_tank_for()` + `ehp_for()` as siblings of `rank_for()` / `dps_for()` in `core/daemon_slayer_client.py`. Formal dispatcher (e.g. `rank_for_primary_archetype()`) revisited at end of Phase 2 when 3+ scorers exist; Phase 3 wires it to `state.cs_archetype_pick`.
-4. **Shield-throughput in Phase 1 vs 1.5** → **defer to Phase 1.5**. Plan already calls this out (line 142). Sterak's lifeline + Doran's Shield need uptime modeling that bloats Phase 1 scope. Pure EHP first; shields layered on later.
-
-## Ships
-
-| File | Change |
-|---|---|
-| [agents/daemon_slayer/ehp.py](agents/daemon_slayer/ehp.py) | **NEW (~440 LOC).** `compute_ehp()` + `EhpResult` + `_armor_factor()` + `_aram_damage_taken()` + `rank_items_by_ehp()` + `EhpRankedItem` + `EhpRankResult`. Closed-form math: `physical_ehp = hp / armor_factor(armor) / aramDamageTaken`, magical mirror via MR, `true_ehp = hp / aramDamageTaken`. `blended_ehp` weighted by caller-supplied `enemy_ad_share` / `enemy_ap_share` (remainder = true). Imports private filter helpers (`_filter_candidates`, `_is_terminal`, `strip_arena_trinkets`) from `rank.py` rather than duplicating; inlines `_armor_factor` rather than reaching into `dps.py`'s private helpers (decouples scorers). |
-| [agents/daemon_slayer/server.py](agents/daemon_slayer/server.py) | Two new POST routes: `/ehp` (caster EHP under enemy damage profile) + `/rank-tank` (items ranked by EHP delta). Body shape mirrors `/dps` and `/rank` with `enemy_ad_share` / `enemy_ap_share` (floats) swapped for `target_armor` / `target_mr` (those describe target, not caster exposure). Index HTML route listing extended. |
-| [core/daemon_slayer_client.py](core/daemon_slayer_client.py) | New `TankRankedItem` dataclass + `rank_tank_for()` + `ehp_for()` helpers. Same engine-down semantics as `rank_for` (None = unreachable, [] = nothing). `only_item_ids` param threads to body's `only` field — the integration point for Option B layering. |
-| [core/defensive_picks.py](core/defensive_picks.py) | New `recommend_defensive_items_via_ehp()` + `_threat_to_damage_shares()` helper. Maps `ad_threat` / `ap_threat` (0..10) → `(ad_share, ap_share)` floats summing to ≤1.0 (reserves ~10% true-damage share when both signals ≥6). Passes catalog IDs as `only_item_ids` whitelist; falls back to existing `recommend_defensive_items` heuristic when engine down / champion missing / threat malformed. Lazy import keeps module import-clean for callers that don't need the EHP path. |
-| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | `ENGINE_VERSION` 0.62.0 → 0.63.0. Extended module docstring with Phase 0 + Phase 1 changelog entries. |
-| [agents/daemon_slayer/tests/test_ehp.py](agents/daemon_slayer/tests/test_ehp.py) | **NEW (~380 LOC).** 44 tests across 8 test classes: ArmorFactorTests (5 pure-math), ComputeEhpBasicsTests (9), ItemContributionTests (8), LevelScalingTests (2), ARAMModeTests (5), ValidationTests (6), SerializationTests (3), ConsistencyTests (4), NotesTests (2). |
-| [agents/daemon_slayer/tests/test_rank_tank.py](agents/daemon_slayer/tests/test_rank_tank.py) | **NEW (~210 LOC).** 19 tests across 5 classes: RankByEhpBasicsTests (9), CandidateFilteringTests (4), SharedUniqueFilterTests (2, lifeline dedup), EnemyShareSensitivityTests (2, AD-vs-AP item ordering), SerializationTests (2). |
-| [agents/daemon_slayer/tests/test_server.py](agents/daemon_slayer/tests/test_server.py) | New `EhpRouteTests` class (4 tests): `/ehp` naked, `/ehp` pure-AD enemy, `/rank-tank` armor-prio top pick, `/rank-tank` share-validation 422. |
-| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Bumped `test_batch63_version` + `test_batch64_version` to assert 0.63.0; extended Phase 0/1 comment in batch63 docstring. |
-| Living docs sync | CLAUDE.md (+s174 entry at item 31) · README.md (header DS bullet + capability matrix line) · docs/DAEMON_SLAYER.md (status + module map) · docs/ARCHITECTURE.md (DS section) · ROADMAP.md (DS status line + s174 ship entry) · BRIEF.md (RC Tutor "what's built" line). |
-| DS server runtime | Killed pid 2968 + relaunched via `pythonw tools/start_daemon_slayer.py` (per `reference_ds_server_not_supervisor_watched` memory). `/health` confirms engine_version 0.63.0 live on :8893. |
-
-## Live validation
-
-Probed `/rank-tank` against real running DS server:
-
-**Malphite + 90/10 AD enemy** (whitelist = 3075/3110/3047/3143/3742/6665/3068):
-```
-baseline_ehp: 3161.1
-  3143  Randuin's Omen         +ehp=2,036.0  gold= 2700
-  3742  Dead Man's Plate       +ehp=1,666.1  gold= 2900
-  3068  Sunfire Aegis          +ehp=1,573.7  gold= 2700
-  6665  Jak'Sho, The Protean   +ehp=1,573.7  gold= 3200
-  3075  Thornmail              +ehp=1,530.2  gold= 2450
-```
-
-**Nasus + 30/70 AP enemy** (no whitelist — full catalog):
-```
-baseline_ehp: 3395.1
-  2504  Kaenic Rookern         +ehp=2,023.5
-  3083  Warmog's Armor         +ehp=1,695.9
-  6665  Jak'Sho, The Protean   +ehp=1,651.9
-  4401  Force of Nature        +ehp=1,603.1
-  3084  Heartsteel             +ehp=1,526.3
-```
-
-Math is selecting correctly — armor-heavy items for AD-heavy enemy, MR-heavy items (Kaenic Rookern, FoN) for AP-heavy enemy. Operator-comprehensible.
-
-## Findings
-
-- **Item-stat calibration matters more than it does in DPS.** First test pass had `test_force_of_nature_lifts_mr_more_than_armor` asserting `magical_delta > 3 × physical_delta`. Failed because FoN ships +400 HP on top of +55 MR — the HP component lifts physical_ehp materially (Malphite at lvl 11 has 70+ armor → physical_factor ≈ 0.59 → 400 HP / 0.59 ≈ 680 EHP physical contribution from HP alone). Softened to `magical_delta > 1.5 × physical_delta` (observed ratio ≈ 2.3x). Lesson: defensive items are stat-dense (HP + resist + MS + AP often bundled); pin tests to qualitative directional claims rather than dimensional ratios.
-- **Null-Magic Mantle is 20 MR, not 25.** My memory said 25; the snapshot says 20 (id 1033). Used `assertGreaterEqual(..., naked.mr + 20)` instead of strict `>` so the exact-equal case (no float fuzz) passes. Snapshot is canonical, memories aren't.
-- **`shares_dead_unique` flag reuses from Phase 0 cleanly.** Lifeline-family dedup (Sterak's + Maw + Shieldbow + Verdant Barrier + Hexdrinker + Protoplasm Harness + Seraph's + Lifeline component) is the only frequent defensive collision; tests confirmed Sterak's-then-Maw filtered by default and surfaceable with `filter_shared_uniques=False`.
-- **Phase 1 deliberately doesn't model enemy pen against caster.** Lethality + %MR pen applied BY enemies to the tank's resists would shift physical_ehp / magical_ehp downward in a real fight. Skipped per scope discipline — needs enemy-build plumbing that doesn't exist yet. Documented as a Phase 1.5 candidate.
-- **`recommend_defensive_items_via_ehp` is opt-in, not a replacement.** Existing `recommend_defensive_items` heuristic stays in place; coaches that want EHP-ranked picks call the new function explicitly. No coach is wired to call it yet — operator decides at start of Phase 2 whether tank coach should use it or wait for the Bruiser hybrid scorer.
-
-## Verification
-
-- `py -m pytest agents/daemon_slayer/tests/` → **1022 passed** (was 955 — +67: 44 ehp + 19 rank_tank + 4 server EhpRouteTests)
-- `py -m pytest tests/ --timeout=120` → **839 passed** (wider RC suite, no regressions)
-- DS server `:8893/health` → `engine_version: "0.63.0"` live
-- Game-PC monitor 1 capture: dashboard renders cleanly at idle (no game in progress); all standard panels intact (NEXT / RIGHT NOW / MAP STATE / ITEM BUILD / ADAPTATION); no JS errors; layout unbroken.
-
-## Open items carried forward
-
-- 🟡 **Phase 2 — Bruiser hybrid scorer** — next session per the archetype-expansion plan. `ds.hybrid` = α·dps + β·ehp with per-champion α/β table in `archetype_weights.json`. ~20 bruisers unlocked. 1 session of work.
-- 🟡 **Phase 1.5 — shield/healing throughput** — Sterak's lifeline shield + Doran's Shield + Cinderhulk + Bloodthirster shield modeling. Needs avg-shield-uptime data; better fits alongside Phase 6 Enchanter HPS scorer than as a Phase 1 add-on.
-- 🟡 **`recommend_defensive_items_via_ehp` wire-in** — function exists but no coach calls it. Defer to Phase 3 CS scorer-picker UI when `state.cs_archetype_pick` lands; tank-primary coach tick reads the pick and routes to the EHP ranker.
-- 🟡 **DS calibration with EHP picks** — `data/ds_calibration.jsonl` doesn't yet log `scorer="ehp"` tag. Add when calibration analysis begins (blocked on richer rewind_history.db per CLAUDE.md item 14).
-- 🟡 **Caster-side enemy pen modeling** — Phase 1 treats caster armor/MR as raw values. Enemy lethality + %MR pen applied AGAINST the tank would shift EHP downward in real fights. Needs enemy-build plumbing (`/api/ds-preview` already reads enemy items for offensive ranking; symmetric read needed for defensive). Phase 1.5+ candidate.
