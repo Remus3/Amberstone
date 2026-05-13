@@ -2,7 +2,7 @@
 
 Local DPS-math service on `:8893`. Computes actual damage-per-second for any champion × item × target combination using real stat math. No API cost per query.
 
-**Status: FUNCTIONALLY COMPLETE** — ENGINE_VERSION 0.64.0 · 1066 tests · 547/547 DDragon purchasable items · Tank EHP scorer (s174) + Bruiser hybrid scorer (s175) ship the first 2 of 6 archetype scorers per `NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md`.
+**Status: FUNCTIONALLY COMPLETE** — ENGINE_VERSION 0.64.0 · 1066 tests · 547/547 DDragon purchasable items · Tank EHP scorer (s174) + Bruiser hybrid scorer (s175) + CS archetype-picker UI + dispatcher (s176) ship the first 3 of 6 archetype scorers per `NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md`. Coach integration deferred to a follow-up session — the picker persists the operator's pick + the dispatcher is callable, but no coach reads `state.cs_archetype_pick.primary` yet.
 
 ## Module map (`agents/daemon_slayer/`)
 
@@ -45,6 +45,15 @@ except Exception as e:
 # user turn includes DS top items line
 # post-Haiku: reuse _ds_rows for cur["daemon_slayer_picks"] — no second engine call
 ```
+
+## Phase 3 archetype picker + dispatcher (s176)
+
+Operator-facing scorer selection lands in three layers:
+
+- **Storage**: `core/archetype_picks.py` — DDragon-tag → archetype default + per-champion override persisted to `data/cs_archetype_picks.json`. Six canonical archetypes: `carry`, `bruiser`, `tank`, `mage`, `assassin`, `enchanter`. Three are implemented today (carry → ds.dps, bruiser → ds.hybrid, tank → ds.ehp); mage/assassin/enchanter route through the dispatcher with `fell_back=True`.
+- **REST**: `GET /api/cs-archetype-pick?champion=X` returns merged pick (override OR default). `POST /api/cs-archetype-pick {champion, primary, secondary?, source?}` persists. `POST {champion, clear: true}` rolls back to default.
+- **Dispatch**: `core.daemon_slayer_client.rank_for_primary_archetype(champion, archetype, …)` returns `{ok, scorer, archetype, ranked, fell_back}`. Coaches wiring up to read `state.cs_archetype_pick.primary` is the next session's lift; existing coaches continue calling `rank_for()` directly.
+- **UI**: 6-button 3×2 picker grid in the My Pick card of the champ-select view. Clicks save to `localStorage.rc-cs-archetype-<champion>` + POST. Unimplemented scorers grayed but still clickable.
 
 ## Coach integration status
 
