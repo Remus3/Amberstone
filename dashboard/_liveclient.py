@@ -108,12 +108,24 @@ def liveclient_summary() -> dict:
             out["cs"]  = s.get("creepScore", 0)
             out["champion"] = me_pl.get("championName")
             owned_items = [it.get("displayName", "") for it in (me_pl.get("items") or [])]
+            # s184 — parallel item-id list so server-side consumers
+            # (archetype_mismatch nudge) don't need a name → id resolver
+            # for the operator's own inventory. Same order as owned_items.
+            owned_item_ids = [str(it.get("itemID", "")) for it in (me_pl.get("items") or [])]
             my_team = me_pl.get("team")
             enemy_team = [p.get("championName", "") for p in (d.get("allPlayers") or [])
                           if p.get("team") and p.get("team") != my_team]
+        else:
+            owned_item_ids = []
         out["game_mode"] = gd.get("gameMode")
         out["owned_items"] = owned_items
+        out["owned_item_ids"] = owned_item_ids
         out["enemy_team"]  = enemy_team
+        # s184 — surface liveclient's gameId for per-game dedup tokens
+        # (archetype-nudge state). Live Client doesn't always expose this
+        # at gameData root; fall back to "" so callers detect absence.
+        gid = gd.get("gameId") or gd.get("gameID") or ""
+        out["game_id"] = str(gid) if gid else ""
 
         # Build path + boots phase via item_advisor (works for SR/Practice;
         # ARAM/Arena/Brawl have their own flows but this fallback is OK).
