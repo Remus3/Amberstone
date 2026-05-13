@@ -411,6 +411,42 @@ Phase 2 (s175, 2026-05-12 — Bruiser hybrid scorer, ENGINE_VERSION 0.64.0):
   weight calibration from rewind_history.db (Phase 2.5) and
   phase/level-aware weights (single weight pair is good enough for v1).
 
+Phase 6 (s181, 2026-05-13 — Enchanter healing throughput scorer, ENGINE_VERSION 0.69.0):
+  New ``hps.py`` sibling of ``ehp.py`` / ``burst.py`` with ``compute_hps()``
+  + ``HpsResult`` + ``HpsItemContribution`` + ``rank_items_by_hps()`` +
+  ``HpsRankedItem`` + ``HpsRankResult``. Per-item healing/shielding/buff
+  throughput model backed by a new hand-curated ``data/daemon_slayer/<patch>/
+  enchanter_items.json`` registry covering 9 enchanter items: Moonstone
+  Renewer (6617, chain amp), Redemption (3107, active AoE heal), Mikael's
+  Blessing (3222, single-target heal + cleanse), Echoes of Helia (6620,
+  Soul Siphon damage→heal), Ardent Censer (3504, AS/on-hit ally buff),
+  Staff of Flowing Water (6616, AP/AH ally buff), Locket of the Iron
+  Solari (3190, active AoE shield), Imperial Mandate (4005, damage proc),
+  Knight's Vow (3109, ally tank-share). Each item carries per-proc
+  base/per-level/AP-scaling for healing and shielding, procs-per-second,
+  targets-per-proc, heal/shield amp percent (Moonstone +30% chain;
+  Redemption/Mikael/Ardent/Staff +10–12% H&S power), and an ally_buff_credit
+  number calibrated against direct HPS (10 ≈ 10 HPS-equivalent) so pure-
+  buff items rank next to direct-heal items. Total throughput = (healing_raw
+  + shielding_raw) × product(1 + amp_pct) × mode_mult + sum(buff_credit).
+  ARAM mode applies ``aramShieldsHealing`` modifier when present on the
+  champion. Operator can pass ``targets_per_proc_override`` to retune the
+  "average teammate" assumption (Arena 2v2 → override=1). New ``/hps`` +
+  ``/rank-enchanter`` server routes mirror ``/ehp`` + ``/rank-tank`` shape
+  but drop target_*-resist parameters (irrelevant for outgoing heals).
+  ``core/daemon_slayer_client.py`` gains ``EnchanterRankedItem`` +
+  ``rank_enchanter_for()`` + ``hps_for()`` client helpers; the
+  ``rank_for_primary_archetype()`` dispatcher's enchanter branch now routes
+  to ``ds.hps`` — first time the dispatcher has all 6 archetype branches
+  wired with no fallbacks. Champion list covered: Lulu, Soraka, Janna,
+  Karma, Sona, Yuumi, Nami, Seraphine, Renata Glasc, Senna (support
+  variant). Deliberate Phase 6 omissions (Phase 6.5+): real ally-state
+  plumbing (positions, HP, buff uptime), champion-spell healing
+  throughput (Soraka W / Lulu E / Janna E — only ITEM throughput scored),
+  heal/shield-power scaling on champion abilities (applies to items only),
+  Chemtech Putrifier 3011 (anti-heal — intentionally excluded from
+  positive-HPS contributions).
+
 Phase 5 (s180, 2026-05-13 — Assassin burst-window scorer, ENGINE_VERSION 0.68.0):
   New ``burst.py`` sibling of ``ability_dps.py`` with ``compute_burst_damage()``
   + ``BurstResult`` + ``ComboCast`` + ``rank_items_by_burst()`` +
@@ -515,4 +551,4 @@ Phase 4a (s177, 2026-05-12 — Champion ability ingest, ENGINE_VERSION 0.65.0):
   ``compute_ability_dps()`` into ``/rank-mage``.
 """
 
-ENGINE_VERSION = "0.68.0"
+ENGINE_VERSION = "0.69.0"

@@ -62,6 +62,7 @@ from .data_loader import DataSnapshot, SnapshotNotFound
 from .dps import compute_dps
 from .ehp import compute_ehp, rank_items_by_ehp
 from .engine import build_champion
+from .hps import compute_hps, rank_items_by_hps
 from .hybrid import compute_hybrid, rank_items_by_hybrid
 from .rank import SORT_KEYS, rank_items
 
@@ -103,6 +104,8 @@ _INDEX_HTML = """<!doctype html>
 <tr><td>POST</td><td>/rank-mage</td><td>rank items by total-ability-DPS delta (Phase 4c)</td></tr>
 <tr><td>POST</td><td>/burst</td><td>single-combo total burst damage for an assassin build (Phase 5)</td></tr>
 <tr><td>POST</td><td>/rank-assassin</td><td>rank items by total-burst-damage delta (Phase 5)</td></tr>
+<tr><td>POST</td><td>/hps</td><td>total healing+shielding+buff throughput for an enchanter build (Phase 6)</td></tr>
+<tr><td>POST</td><td>/rank-enchanter</td><td>rank items by total-throughput delta (Phase 6)</td></tr>
 </table>
 
 <h2>Example</h2>
@@ -831,6 +834,97 @@ def _route_rank_assassin(body: dict) -> dict:
     return result.to_dict()
 
 
+def _opt_targets_override(body: dict) -> Optional[float]:
+    """Phase 6 — optional targets_per_proc_override (float). None when absent."""
+    key = "targets_per_proc_override"
+    if key not in body or body[key] in (None, ""):
+        return None
+    try:
+        return float(body[key])
+    except (TypeError, ValueError):
+        raise _ApiError(400, f"{key}: expected number, got {body[key]!r}")
+
+
+def _route_hps(body: dict) -> dict:
+    """POST /hps — total healing+shielding+buff throughput for the build.
+
+    Phase 6 (s181, 2026-05-13). Body shape mirrors /ehp's caster-only
+    schema (no target_armor/_mr/_max_hp — these don't affect outgoing
+    heals/shields). Optional ``targets_per_proc_override`` (float)
+    replaces the per-item curated targets count for ALL items in the
+    build — useful for Arena 2v2 scenarios (override=1).
+    """
+    snap = _CACHE.get()
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
+    level = _opt_int(body, "level", 1) or 1
+    items = _coerce_str_list(body.get("items"), "items")
+    mode = _opt_str(body, "mode", "SR") or "SR"
+    augments = _coerce_str_list(body.get("augments"), "augments")
+    targets_override = _opt_targets_override(body)
+    try:
+        result = compute_hps(
+            snap, champion_id=champion, level=level,
+            item_ids=items, mode=mode,
+            augments=augments,
+            targets_per_proc_override=targets_override,
+        )
+    except KeyError as e:
+        raise _ApiError(404, str(e))
+    except ValueError as e:
+        raise _ApiError(422, str(e))
+    return result.to_dict()
+
+
+def _route_rank_enchanter(body: dict) -> dict:
+    """POST /rank-enchanter — rank items by total-throughput delta.
+
+    Phase 6 (s181, 2026-05-13). Mirror of /rank-tank for the HPS scorer.
+    No target_* fields — outgoing healing doesn't care about enemy
+    resists. Optional ``enchanter_only`` (bool, default True) restricts
+    the candidate pool to the curated enchanter formulas registry; set
+    False to score every candidate (most will tie at delta=0).
+    """
+    snap = _CACHE.get()
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
+    level = _opt_int(body, "level", 1) or 1
+    items = _coerce_str_list(body.get("items"), "items")
+    mode = _opt_str(body, "mode", "SR") or "SR"
+    augments = _coerce_str_list(body.get("augments"), "augments")
+    targets_override = _opt_targets_override(body)
+    budget = _opt_int(body, "budget", None)
+    slot_count = _opt_int(body, "slots", 6) or 6
+    top_n = _opt_int(body, "top", 20)
+    if top_n is None:
+        top_n = 20
+    sort_by = _opt_str(body, "sort", "delta") or "delta"
+    if sort_by not in SORT_KEYS:
+        raise _ApiError(400, f"sort: must be one of {list(SORT_KEYS)}, got {sort_by!r}")
+    include_components = _opt_bool(body, "include_components", False)
+    filter_shared_uniques = _opt_bool(body, "filter_shared_uniques", True)
+    enchanter_only = _opt_bool(body, "enchanter_only", True)
+    only_ids: Optional[list[str]] = None
+    if "only" in body and body["only"] not in (None, ""):
+        only_ids = _coerce_str_list(body["only"], "only")
+    try:
+        result = rank_items_by_hps(
+            snap,
+            champion_id=champion, level=level,
+            current_item_ids=items, mode=mode,
+            budget=budget, slot_count=slot_count, top_n=top_n,
+            include_components=include_components,
+            only_item_ids=only_ids, sort_by=sort_by,
+            augments=augments,
+            filter_shared_uniques=filter_shared_uniques,
+            targets_per_proc_override=targets_override,
+            enchanter_only=enchanter_only,
+        )
+    except KeyError as e:
+        raise _ApiError(404, str(e))
+    except ValueError as e:
+        raise _ApiError(422, str(e))
+    return result.to_dict()
+
+
 def _route_beam(body: dict) -> dict:
     snap = _CACHE.get()
     champion = _resolve_champion_id(snap, _required_str(body, "champion"))
@@ -930,6 +1024,8 @@ _POST_ROUTES = {
     "/rank-mage": _route_rank_mage,
     "/burst": _route_burst,
     "/rank-assassin": _route_rank_assassin,
+    "/hps": _route_hps,
+    "/rank-enchanter": _route_rank_enchanter,
 }
 
 # GET routes that need a body merge from query params for the same handler.

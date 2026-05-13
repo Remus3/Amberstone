@@ -5,6 +5,79 @@ Current WAKEUP_NOTES.md keeps only the most recent 2–3 sessions.
 Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
+---
+
+# s178 wrap — 2026-05-12 (Phase 4b mage ability DPS evaluator — single commit pending)
+
+**Operator instruction:** "continue DS Phase 4b —" — following s177's Phase 4a champion ability ingest, ship the formula evaluator per [NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md](NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md).
+
+Phase 4b is the formula-evaluator middle of the three-session Phase 4 lift. Phase 4a produced the data; Phase 4b consumes it. Phase 4c (next) will ship the per-archetype ranker + `/rank-mage` route + dispatcher integration.
+
+## Ships
+
+| File | Change |
+|---|---|
+| [scripts/build_spell_cast_rates.py](scripts/build_spell_cast_rates.py) | **NEW (~150 LOC).** Derives `data/daemon_slayer/spell_cast_rates.json` from `data/rewind_history.db.participants.spell[1-4]_casts / matches.game_duration_s`. Mode buckets: SR (420/400/430/440/700) / ARAM (450/100) / ARENA (1700/1710) / global rolled together. Median per champion × mode × spell key; min 5 samples per mode bucket (global accepts smaller N). Output JSON shape mirrors the existing `ult_cast_rates.json` extended to Q/W/E/R per mode. Run produces 172 champs / 669 buckets kept / 15 dropped on the current 2851-match DB. Re-runnable for future patches. |
+| [data/daemon_slayer/spell_cast_rates.json](data/daemon_slayer/spell_cast_rates.json) | **NEW snapshot.** 172 champions × Q/W/E/R × SR/ARAM/ARENA/global. Backward-compat: legacy `ult_cast_rates.json` stays in place for `get_ult_casts_per_sec` (Malignance Hatefog still reads it). |
+| [agents/daemon_slayer/ult_rates.py](agents/daemon_slayer/ult_rates.py) | Extended to expose `get_spell_casts_per_sec(champion_name, key, mode)` for all 4 active spells. New `_load_spells()` + module-level `_spell_cache`. Legacy `get_ult_casts_per_sec` preserved for Malignance Hatefog — tolerates BOTH the flat-float `global_fallback` (legacy) and the new dict shape (forward-compat for when `ult_cast_rates.json` gets regenerated). New `reset_cache()` clears both caches for test fixtures. Module docstring rewritten to cover both layers. |
+| [agents/daemon_slayer/ability_dps.py](agents/daemon_slayer/ability_dps.py) | **NEW (~600 LOC).** Phase 4b evaluator. `compute_ability_dps()` + `AbilityDpsResult` (per-spell breakdown + total + primary scaling classifier) + `AbilitySpellDps` (per-spell record with raw / post-mode / post-mit damage per cast + measured cps + source tag + mana_uptime_factor + DPS) + `AbilityContext` (resolved caster stats — base/bonus AD/HP/armor/MR + max MP + mp_regen + target HP family with current/missing derivation). Helpers: `rank_at_level(key, level, max_priority)` pins canonical Q-first / W-second / E-third tables (R unlocks 6/11/16); `_mitigation_factor` routes per damage type; `_select_blocks` supports first/sum/max strategies with first as default; `_evaluate_block` walks per-rank scaling fields. Per-spell loop applies mode_mult + AP cross-derivations (ap_from_hp + stacked_ap + ap_amp + hp_ap_amp ported from compute_dps) + build-wide damage_amp + giant_slayer + target_bonus_hp_amp + per-spell magic_amp on magic-typed spells + effective armor/MR (lethality + flat/% pen pipeline). Cast rate: measured from spell_cast_rates.json when available, falls back to `1/cooldown × mana_uptime` otherwise. `_classify_primary_scaling` inspects damage_blocks pre-build for stable AP/AD/HP/MIXED classification. Missing-snapshot path: `_empty_result` surfaces zero DPS + structured note (vs crashing). |
+| [agents/daemon_slayer/server.py](agents/daemon_slayer/server.py) | New POST/GET `/ability-dps` route + `_route_ability_dps()` handler. Body union of `/dps` params + `target_current_hp_pct` (default 1.0) + `max_priority` accepts list / comma-string / compact 3-char string ("WQE") + `block_strategy` enum + `form_index` dict (JSON-only). Index HTML table extended. Routes table dispatch entry added. |
+| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | `ENGINE_VERSION` 0.65.0 → 0.66.0. Module docstring extended with Phase 4b changelog covering the per-spell evaluator design + the new spell_cast_rates.json + the AP/damage amp parity work + Phase 4c deferral. |
+| [agents/daemon_slayer/tests/test_cast_rates.py](agents/daemon_slayer/tests/test_cast_rates.py) | **NEW (~180 LOC, 14 tests).** SpellCastRateLookupTests (9 — champ+mode happy path + fallback chain through champ-global → global_fallback → 0.0 + invalid key raises ValueError); UltRateBackwardCompatTests (4 — legacy file takes precedence + missing-file default 0.0073 + dict-shaped global_fallback compat); LiveSpellRatesSnapshotTests (3 — smoke against the real shipped JSON, non-zero Veigar Q + global fallback >= 0 for all spells). |
+| [agents/daemon_slayer/tests/test_ability_dps.py](agents/daemon_slayer/tests/test_ability_dps.py) | **NEW (~600 LOC, 56 tests).** RankAtLevelTests (7), AbilityContextTests (4), MitigationFactorTests (6 — including MIXED + negative armor + None defaults to MAGIC), BlockEvaluationTests (11 — pure base / AP / total_ad / bonus_ad / target_max_hp + locked rank + sum/first/max selection + non-damage block filter), PrimaryScalingTests (5), ComputeAbilityDpsTests (14 — Veigar AP scaling + Aatrox PHYSICAL routing + Ezreal AD-mage + ARAM mode_mult applied to per-cast (NOT total — measured cast rates differ between modes) + Liandry's damage amp + structural to_dict/format_table + 3 validator-raises), CastRateIntegrationTests (2 — measured source flag + Q vs locked-R ordering), ServerRouteTests (5 — POST 200 + items lift DPS + 404 unknown + 422 invalid strategy + max_priority compact string form). |
+| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Bumped `test_batch63_version` + `test_batch64_version` to assert 0.66.0; extended comment in batch63 covering Phase 4a/4b history. |
+| Living docs sync | [CLAUDE.md](CLAUDE.md) DS version pointer line 6 (0.65.0 → 0.66.0). [README.md](README.md) header DS bullet + Daemon Slayer engine section (test counts + Phase 4b additions). [docs/DAEMON_SLAYER.md](docs/DAEMON_SLAYER.md) status line + module map row for `ability_dps.py` + `ult_rates.py` row rewrite. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) DS section. [ROADMAP.md](ROADMAP.md) DS status line + s178 ship entry. [BRIEF.md](BRIEF.md) RC Tutor "what's built" line. |
+| DS server runtime | Killed PID 13940 (PowerShell `taskkill /F`) + relaunched via `Start-Process pythonw tools/start_daemon_slayer.py`. `/health` confirms `engine_version: "0.66.0"` live on `:8893`. |
+
+## Live validation
+
+Probed `/ability-dps` against real running DS server.
+
+**Veigar lvl 11 + Rabadon's Deathcap (3089) vs 30 MR**:
+```
+total: 38.65 primary: AP
+  Q Baleful Strike    rank=4 dpc=275.6 cps=0.098 dps=26.94
+  W Dark Matter       rank=2 dpc=254.0 cps=0.041 dps=10.46
+  E Event Horizon     rank=0 dpc=0.0   cps=0.016 dps=0.00 (CC-only, no damage block)
+  R Primordial Burst  rank=1 dpc=283.3 cps=0.004 dps=1.24
+```
+Rabadon's +130 AP × 1.30 amp = 169 effective AP. Q rank 4 base 240 + 169 × 0.70 = 358.3 raw magic → post-mit (30 MR) 275.6. Matches hand calculation.
+
+**Aatrox lvl 11 naked vs 100 armor / 30 MR — physical mitigation routing**:
+```
+total: 9.67 primary: AD
+  Q The Darkin Blade   type=PHYSICAL dpc=84.5 dps=8.54
+  W Infernal Chains    type=PHYSICAL dpc=47.0 dps=1.00
+  E Umbral Dash        type=None     dpc=0.0  dps=0.00
+  R World Ender        type=None     dpc=25.4 dps=0.13
+```
+100 armor → exactly 0.5 mitigation factor applied (validated by ratio test).
+
+## Findings
+
+- **`compute_dps`'s AP amp pipeline matters more than expected for ability scoring.** The first cut just used `stats["ap"]` directly; live test showed Rabadon's increased ability DPS by 45% but should be ~54%. Tracking down the gap: Rabadon's 130 flat AP × 1.30 multiplicative amp = 169 effective AP, but `stats["ap"]` exposes only the 130 (matches `/stats` endpoint convention). The fix is to mirror `compute_dps`'s post-batch-32 AP-amp pipeline — `ap_from_hp + stacked_ap + ap_amp + hp_ap_amp` — applied to the AbilityContext via `dataclasses.replace`. Once ported, Veigar Q damage went 226→275 with Rabadon's (matches hand-calc). Same precedence applies to `damage_amp` (Riftmaker/Liandry) + `target_bonus_hp_amp` (LDR Giant Slayer @ enemy bonus HP) + `giant_slayer` (Perplexity @ HP diff) + `magic_amp` (Abyssal Mask, magic-only). Now per-cast damage matches the auto-attack scorer's amp pipeline exactly, so future item rankings between Mage and Carry rankers stay coherent.
+- **Cast rate from measured rewind data is dramatically better than `1/cooldown` for mage scoring.** Veigar Q has 4s base cooldown → theoretical 0.25 casts/sec; measured median is 0.098 casts/sec (40% of theoretical). That's mana / fight-window / sieging downtime baked into one number. The theoretical fallback path applies a `mana_uptime` denominator only for resource=="MANA" champs (energy/manaless users get full uptime); but for the 172 champions × 4 spells × 3 mode buckets covered in the dataset, measured rates dominate. Phase 4c's ranker will produce ordering that reflects how items actually pay out in real games rather than "if you spammed every spell every CD."
+- **Mode-multiplier × cast-rate interplay is non-monotonic.** Naive expectation: ARAM = lower per-cast damage (Veigar `aramDamageDealt=0.93`) → lower ARAM total DPS than SR. Reality: ARAM has 1.5-2× higher cast rates for W/E/R (more team-fights / shorter games / more action density), which more than offsets the 7% per-cast nerf. Total ARAM ability DPS can be HIGHER than SR despite the mode multiplier. The test `test_aram_damage_dealt_applied_to_per_cast` checks the per-cast effect (not totals) to avoid the trap; CONTEXT/CLAUDE.md item 34 should reflect this if anyone ever expects "ARAM nerf = less DPS in scorer."
+- **Multi-block / multi-form abilities are a Phase 4c+ problem.** Aphelios 6× Q forms (weapon stances), Aatrox Q's 3-cast chain (6 damage blocks), Jayce stance Q/W/E pairs (2× per affected key) all collapse to `form_index=0` + `block_strategy="first"` in this slot. The `form_index_overrides` param + `block_strategy="sum"/"max"` are wired but not selected automatically. Operator can pass them per-call; per-champion overrides JSON deferred. Doesn't block the typical mage scorer use case — Veigar/Lux/Annie/Brand/Syndra all have single-block single-form abilities.
+- **Mana economy as an "informational" output rather than a scale factor.** The Phase 4 plan called for "uptime_factor handles mana economy + downtime" baked into the DPS multiplier. I built `_mana_uptime_factor` to compute it but only apply it on the theoretical fallback path. Measured cast rates already encode mana downtime, so re-multiplying would double-discount. Surface area: `AbilitySpellDps.mana_uptime_factor` carries the raw computed value for debug visibility; the active DPS uses measured rate as-is.
+
+## Verification
+
+- `py -m pytest agents/daemon_slayer/tests/` → **1221 passed** (was 1151 — +70: 14 cast_rates + 56 ability_dps)
+- `py -m pytest tests/` → **902 passed** (wider RC suite — no regressions, same count as before)
+- DS server `:8893/health` → `engine_version: "0.66.0"` live
+- Live probe of `/ability-dps` matches hand-calculated values for Veigar Q + Aatrox Q
+
+## Open items carried forward
+
+- 🟡 **Phase 4c — `rank_items_by_ability_dps()` + `/rank-mage` route + dispatcher integration** — next session per the plan. Ships the per-item ranker mirroring `rank_items_by_hybrid`'s shape (single-slot delta against baseline), wires the dispatcher entry point in `core/daemon_slayer_client.py::rank_for_primary_archetype()` so `state.cs_archetype_pick.primary == "mage"` routes to ds.ability instead of falling back to ds.dps. Tests target ~30 cases including item AP scaling, mana-economy edge cases, ARAM mode amp, dead-unique filter parity, augments.
+- 🟡 **Phase 4b deferrals** — multi-form abilities default to `form_index=0` (Aphelios weapon-1, Jayce hammer stance); multi-block abilities use the first block only. Per-champion `max_priority` overrides + `form_index` defaults JSON to ship in Phase 4c calibration follow-up.
+- 🟡 **No coach is wired to call `compute_ability_dps` yet.** Same situation as Phase 1 EHP and Phase 2 hybrid — the picker persists `state.cs_archetype_pick.primary = "mage"` but no coach reads it. Phase 3 dispatcher exists but currently falls back to ds.dps for mage with `fell_back=True`. Phase 4c lands the dispatcher entry; full coach integration is a separate follow-up.
+- 🟡 **Passive ability scoring deferred entirely.** P keys fall through `rank_at_level` to level-1 rank but are excluded from the per-spell loop (only Q/W/E/R iterated). Kayle/Senna/Aatrox passives are not scored. Most passive damage is on-hit which `compute_dps` already handles via the rotation scorer; pure-passive damage scaling (Lillia P, Ekko P) is rare and operator-tunable via custom block strategies. Phase 5 may revisit.
+- 🟡 **Cast-rate dataset freshness** — `spell_cast_rates.json` is derived from 2851 matches with newest match 2025-12-16. Same `rewind_history.db` staleness gate as the DS calibration pipeline (CLAUDE.md item 14). When operator resumes play + RC-RewindCatchup scheduled task is wired, this will refresh automatically alongside the calibration data.
+
+---
+
 
 # s177 wrap — 2026-05-12 (Phase 4a champion ability ingest — single commit pending)
 
