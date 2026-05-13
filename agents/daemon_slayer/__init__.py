@@ -410,6 +410,29 @@ Phase 2 (s175, 2026-05-12 — Bruiser hybrid scorer, ENGINE_VERSION 0.64.0):
   ``alpha`` / ``beta`` overrides). Deliberate omissions: per-champion
   weight calibration from rewind_history.db (Phase 2.5) and
   phase/level-aware weights (single weight pair is good enough for v1).
+
+Phase 4a (s177, 2026-05-12 — Champion ability ingest, ENGINE_VERSION 0.65.0):
+  New ``abilities.py`` loader + ``tools/daemon_slayer_abilities_extract.py``
+  extractor consuming the Meraki bulk champions endpoint. Phase 4a is
+  data-only — formula evaluation ships in Phase 4b's ``ability_dps.py``.
+  Per-champion ability records expose ``P/Q/W/E/R → AbilityForm`` with
+  per-rank ``cooldown`` / ``cost``, ``damage_type``, ``targeting``,
+  ``is_aoe``, and a list of typed ``DamageBlock`` records. Each block
+  carries per-rank scaling fields (``base``, ``total_ad_pct``,
+  ``bonus_ad_pct``, ``ap_pct``, ``caster_max_hp_pct``,
+  ``caster_bonus_hp_pct``, ``target_max_hp_pct``, ``target_missing_hp_pct``,
+  ``target_current_hp_pct``, ``target_bonus_hp_pct``, ``target_armor_pct``,
+  ``bonus_armor_pct``, ``bonus_mr_pct``, ``caster_max_mp_pct``) normalized
+  from Meraki's ``leveling[].modifiers[].units[]`` strings. Multi-form
+  abilities (Aphelios 6× Q/P, Jayce/Elise/Karma/LeeSin/Nidalee/Sylas 2×
+  per affected key) preserved verbatim. Coverage: 171/172 champions (Meraki
+  bulk lags Zaahen by one patch), 927 ability forms ingested. Status
+  classifier reports 98.4% ok / 99.3% parsed (target 80%) — 4 unparsed
+  niche aggregates (Illaoi spirit reflection, Ryze legacy R, Trundle ult
+  HP-drain, MonkeyKing clone-output scalar). Snapshot lives at
+  ``data/daemon_slayer/<patch>/champion_abilities.json``. The DS server
+  does not call the abilities loader yet — Phase 4b wires
+  ``compute_ability_dps()`` into ``/rank-mage``.
 """
 
-ENGINE_VERSION = "0.64.0"
+ENGINE_VERSION = "0.65.0"
