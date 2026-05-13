@@ -680,6 +680,110 @@ def hybrid_for(
     return _post_json("/hybrid", body, timeout=timeout)
 
 
+@dataclass(frozen=True)
+class EnchanterRankedItem:
+    """Mirror of ``agents.daemon_slayer.hps.HpsRankedItem`` — HPS scorer
+    Phase 6 sibling of ``RankedItem`` / ``TankRankedItem`` / ``BruiserRankedItem``
+    / ``MageRankedItem`` / ``AssassinRankedItem``."""
+    item_id: str
+    item_name: str
+    delta_hps: float
+    new_hps: float
+    gold: int
+    shares_dead_unique: bool = False
+    dead_unique_key: str = ""
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "EnchanterRankedItem":
+        return cls(
+            item_id=str(d.get("item_id", "")),
+            item_name=str(d.get("item_name", "")),
+            delta_hps=float(d.get("delta_hps", 0.0)),
+            new_hps=float(d.get("new_hps", 0.0)),
+            gold=int(d.get("gold", 0)),
+            shares_dead_unique=bool(d.get("shares_dead_unique", False)),
+            dead_unique_key=str(d.get("dead_unique_key", "")),
+        )
+
+
+def rank_enchanter_for(
+    champion: str,
+    *,
+    level: int,
+    item_ids: Iterable[str],
+    mode: str = "SR",
+    top: int = 8,
+    sort_by: str = "delta",
+    only_item_ids: Optional[Iterable[str]] = None,
+    augments: Optional[Iterable[str]] = None,
+    targets_per_proc_override: Optional[float] = None,
+    enchanter_only: bool = True,
+    filter_shared_uniques: bool = True,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> Optional[list[EnchanterRankedItem]]:
+    """Call POST /rank-enchanter and return the parsed top-N rows. None on engine failure.
+
+    Phase 6 (s181, 2026-05-13) — Enchanter healing throughput scorer. Same
+    engine-down semantics as ``rank_for`` (None = unreachable, [] = nothing
+    to recommend).
+
+    ``targets_per_proc_override`` replaces the per-item curated targets count
+    for ALL items in the build (Arena 2v2 → override=1).
+    ``enchanter_only`` restricts the candidate pool to the curated enchanter
+    registry (default True).
+    """
+    body: dict = {
+        "champion": champion,
+        "level": int(level),
+        "items": [str(i) for i in item_ids if i],
+        "mode": mode,
+        "top": int(top),
+        "sort": sort_by,
+        "enchanter_only": bool(enchanter_only),
+        "filter_shared_uniques": bool(filter_shared_uniques),
+    }
+    if targets_per_proc_override is not None:
+        body["targets_per_proc_override"] = float(targets_per_proc_override)
+    if only_item_ids is not None:
+        body["only"] = [str(i) for i in only_item_ids if i]
+    if augments:
+        body["augments"] = [str(a) for a in augments if a]
+    data = _post_json("/rank-enchanter", body, timeout=timeout)
+    if data is None:
+        return None
+    ranked = data.get("ranked") or []
+    return [EnchanterRankedItem.from_dict(r) for r in ranked]
+
+
+def hps_for(
+    champion: str,
+    *,
+    level: int,
+    item_ids: Iterable[str],
+    mode: str = "SR",
+    augments: Optional[Iterable[str]] = None,
+    targets_per_proc_override: Optional[float] = None,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> Optional[dict]:
+    """Call POST /hps and return the raw result dict. None on failure.
+
+    Phase 6 sibling of ``dps_for`` / ``ehp_for`` / ``hybrid_for`` /
+    ``ability_dps_for`` / ``burst_for``. See ``rank_enchanter_for`` for
+    ``targets_per_proc_override`` semantics.
+    """
+    body: dict = {
+        "champion": champion,
+        "level": int(level),
+        "items": [str(i) for i in item_ids if i],
+        "mode": mode,
+    }
+    if targets_per_proc_override is not None:
+        body["targets_per_proc_override"] = float(targets_per_proc_override)
+    if augments:
+        body["augments"] = [str(a) for a in augments if a]
+    return _post_json("/hps", body, timeout=timeout)
+
+
 def rank_for_primary_archetype(
     champion: str,
     archetype: str,
@@ -705,7 +809,9 @@ def rank_for_primary_archetype(
     form_index: Optional[dict[str, int]] = None,
     # Assassin-only input (silently ignored by other scorers):
     combo_sequence: Optional[Iterable[str]] = None,
-    # Tank/bruiser/mage/assassin-side whitelist (silently ignored by ds.dps):
+    # Enchanter-only input (silently ignored by other scorers):
+    targets_per_proc_override: Optional[float] = None,
+    # Tank/bruiser/mage/assassin/enchanter-side whitelist (silently ignored by ds.dps):
     only_item_ids: Optional[Iterable[str]] = None,
     # Common:
     top: int = 8,
@@ -714,30 +820,31 @@ def rank_for_primary_archetype(
     filter_shared_uniques: bool = True,
     timeout: float = DEFAULT_TIMEOUT,
 ) -> Optional[dict]:
-    """Phase 3 + 4c + 5 (s176/s179/s180, 2026-05-12+) — route to the right scorer per archetype.
+    """Phase 3 + 4c + 5 + 6 (s176/s179/s180/s181, 2026-05-12+) — route to the right scorer per archetype.
 
-    The DS engine ships 5 scorers today (ds.dps, ds.ehp, ds.hybrid,
-    ds.ability, ds.burst) and will ship 1 more in Phase 6 (ds.hps). This
-    dispatcher exposes a single call shape that the coaches + UI use,
-    routing based on the operator's pick from
-    ``state.cs_archetype_pick.primary``.
+    The DS engine ships 6 scorers (ds.dps, ds.ehp, ds.hybrid, ds.ability,
+    ds.burst, ds.hps) — one per archetype branch. This dispatcher exposes
+    a single call shape that the coaches + UI use, routing based on the
+    operator's pick from ``state.cs_archetype_pick.primary``.
 
     Returns a dict with shape:
         {
             "ok":          bool,
-            "scorer":      "dps" | "ehp" | "hybrid" | "ability" | "burst",
+            "scorer":      "dps" | "ehp" | "hybrid" | "ability" | "burst" | "hps",
             "archetype":   str,   # the requested archetype (echoed)
             "ranked":      [RankedItem-like dicts],
-            "fell_back":   bool,  # True when archetype isn't implemented yet
+            "fell_back":   bool,  # always False post-Phase-6 (all archetypes wired)
         }
-    ``ok=False`` means the engine was unreachable. ``fell_back=True`` is
-    a soft signal: the requested archetype (enchanter) doesn't have its
-    scorer yet, so we routed to ds.dps as a placeholder.
+    ``ok=False`` means the engine was unreachable. ``fell_back`` is kept
+    for backward compatibility — all 6 archetype branches return
+    ``fell_back=False`` now that ds.hps shipped (Phase 6 s181). Unknown
+    archetype strings fall through to ds.dps with ``fell_back=False`` too.
 
     Args ``alpha`` / ``beta`` only apply to ``bruiser``; ``only_item_ids``
-    applies to tank/bruiser/mage/assassin; ``target_current_hp_pct`` /
-    ``max_priority`` / ``block_strategy`` / ``form_index`` apply to
-    mage + assassin; ``combo_sequence`` applies to assassin only. Other
+    applies to tank/bruiser/mage/assassin/enchanter; ``target_current_hp_pct``
+    / ``max_priority`` / ``block_strategy`` / ``form_index`` apply to
+    mage + assassin; ``combo_sequence`` applies to assassin only;
+    ``targets_per_proc_override`` applies to enchanter only. Other
     archetypes silently ignore them.
     """
     arch = (archetype or "").strip().lower()
@@ -886,10 +993,42 @@ def rank_for_primary_archetype(
             "fell_back": False,
         }
 
-    # carry / enchanter / anything else → fall through to ds.dps.
-    # enchanter marks fell_back=True so the UI can render a "best-effort,
-    # Phase 6 pending" tag.
-    fell_back = arch in {"enchanter"}
+    if arch == "enchanter":
+        rows = rank_enchanter_for(
+            champion,
+            level=level, item_ids=item_ids, mode=mode,
+            top=top, sort_by=sort_by,
+            only_item_ids=only_item_ids,
+            augments=augments,
+            targets_per_proc_override=targets_per_proc_override,
+            filter_shared_uniques=filter_shared_uniques,
+            timeout=timeout,
+        )
+        if rows is None:
+            return None
+        return {
+            "ok":        True,
+            "scorer":    "hps",
+            "archetype": arch,
+            "ranked":    [
+                {
+                    "item_id":            r.item_id,
+                    "item_name":          r.item_name,
+                    "delta":              r.delta_hps,
+                    "new_hps":            r.new_hps,
+                    "gold":               r.gold,
+                    "shares_dead_unique": r.shares_dead_unique,
+                    "dead_unique_key":    r.dead_unique_key,
+                }
+                for r in rows
+            ],
+            "fell_back": False,
+        }
+
+    # carry / anything else → fall through to ds.dps.
+    # Post-Phase-6 (s181): all 6 archetypes have their own scorer; this
+    # path handles only the catch-all (empty string, unknown labels).
+    fell_back = False
     rows = rank_for(
         champion,
         level=level, item_ids=item_ids, mode=mode,
