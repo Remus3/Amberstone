@@ -271,12 +271,20 @@ class CoachIntegration:
         game_state["_lane_matchup_note"] = _load_lane_matchup_note(_enemy_adc)
         user = _build_user_prompt(game_state, coach_state.get("wave_state", "unknown"))
 
-        _ds_rows = None
+        # s182 (2026-05-13): rank_for() -> archetype dispatcher.
+        # `_last_ds_rows` is now `display_rows` (list of dicts) rather than
+        # a list of RankedItem dataclasses; the post-prompt-merge block
+        # below at `_pending_ds = getattr(...)` reads it that way.
+        _ds_dispatch = None
         _ds_picks_str = "unavailable"
+        _ds_label = "DPS"
         try:
-            from core import daemon_slayer_client as _ds_client
             from core.daemon_slayer_resolver import resolve_inventory as _ds_resolve_inventory
             from coach_integration.enemy_stats import compute_enemy_stats as _ds_enemy_stats
+            from coach_integration.archetype_dispatch import (
+                dispatch_for_coach as _ds_dispatch_for_coach,
+                display_label as _ds_display_label,
+            )
             _owned_ids = _ds_resolve_inventory(game_state.get("items", []), mode="sr")
             _lvl = int(game_state.get("level", 1)) or 1
             # s170: replaces hardcoded target_armor=80.0 — DS now sees a
@@ -290,40 +298,34 @@ class CoachIntegration:
                 game_seconds=int(game_state.get("game_seconds", 0) or 0),
                 level=_lvl,
             )
-            _ds_rows = _ds_client.rank_for(
+            _ds_dispatch = _ds_dispatch_for_coach(
                 champion=champion,
+                mode_engine="SR",
                 level=_lvl,
                 item_ids=_owned_ids,
-                mode="SR",
-                target_armor=_es.armor,
-                target_mr=_es.mr,
-                target_max_hp=_es.max_hp,
-                target_bonus_hp=_es.bonus_hp,
+                enemy_stats=_es,
                 top=5,
             )
-            if _ds_rows:
-                _ds_picks_str = " > ".join(
-                    f"{r.item_name}(+{r.delta_dps:.0f}dps,{r.gold}g)"
-                    for r in _ds_rows
-                )
-            elif _ds_rows == []:
-                _ds_picks_str = "none"
+            if _ds_dispatch is not None:
+                _ds_picks_str = _ds_dispatch.picks_str
+                _ds_label = _ds_display_label(_ds_dispatch.scorer)
         except Exception as _ds_exc:
             logger.debug("SR daemon_slayer pre-call: %s", _ds_exc)
-        self._last_ds_rows = _ds_rows
-        if _ds_rows:
+        self._last_ds_rows = _ds_dispatch.display_rows if _ds_dispatch is not None else None
+        if _ds_dispatch is not None and _ds_dispatch.rows:
             try:
                 from core.ds_calibration import log_ds_run as _ds_log
                 _ds_log(champion=champion, mode="SR", level=int(game_state.get("level", 1)) or 1,
                         owned_items=list(_owned_ids),
                         game_id=str(game_state.get("game_id") or ""),
-                        ds_picks=[{"item_id": r.item_id, "item_name": r.item_name,
-                                   "delta_dps": round(r.delta_dps, 2), "gold": r.gold}
-                                  for r in _ds_rows])
+                        ds_picks=[{"item_id": _r["id"], "item_name": _r["name"],
+                                   "delta_dps": _r["delta_dps"], "gold": _r["gold"],
+                                   "scorer": _r["scorer"]}
+                                  for _r in _ds_dispatch.display_rows])
             except Exception:
                 pass
         if _ds_picks_str != "unavailable":
-            user += f"\nDS top items (DPS ranked, own-items-accounted): {_ds_picks_str}"
+            user += f"\nDS top items ({_ds_label} ranked, own-items-accounted): {_ds_picks_str}"
 
         if self.debug:
             logger.debug("User prompt:\n%s", user)
@@ -576,11 +578,10 @@ class CoachIntegration:
 
                     _pending_ds = getattr(self, "_last_ds_rows", None)
                     if _pending_ds is not None:
-                        current["daemon_slayer_picks"] = [
-                            {"id": r.item_id, "name": r.item_name,
-                             "delta_dps": round(r.delta_dps, 2), "gold": r.gold}
-                            for r in _pending_ds
-                        ] if _pending_ds else []
+                        # s182: _pending_ds is now already in display_rows shape
+                        # ({id, name, delta_dps, gold, delta, scorer}) — written
+                        # directly. Empty list -> empty list (no picks this tick).
+                        current["daemon_slayer_picks"] = list(_pending_ds)
 
                     imm = fields.get("immediate", "")
                     if imm:

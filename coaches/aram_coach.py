@@ -261,7 +261,7 @@ HP packs available: {packs}
 My abilities (Q/W/E/R): {my_abilities}
 My runes: {my_runes}
 Enemy keystones: {enemy_runes}
-DS top items (DPS ranked, own-items-accounted): {ds_picks}
+DS top items ({ds_label} ranked, own-items-accounted): {ds_picks}
 {event_line}
 """
 
@@ -632,12 +632,20 @@ class Coach(BaseCoach):
             # Run DS before Haiku so picks appear in the user turn.
             # Moved from post-Haiku (s74 wire-in) — ds_rows reused below
             # to write daemon_slayer_picks to the output JSON for the UI.
-            _ds_rows = None
+            # s182 (2026-05-13): swapped rank_for() -> archetype dispatcher
+            # so the scorer matches the operator's chosen archetype for `champ`
+            # (carry/bruiser/tank/mage/assassin/enchanter -> ds.dps/hybrid/ehp/
+            # ability/burst/hps).
+            _ds_dispatch = None
             _ds_picks_str = "unavailable"
+            _ds_label = "DPS"
             try:
-                from core import daemon_slayer_client as _ds_client
                 from core.daemon_slayer_resolver import resolve_many as _ds_resolve_many
                 from coach_integration.enemy_stats import compute_enemy_stats as _ds_enemy_stats
+                from coach_integration.archetype_dispatch import (
+                    dispatch_for_coach as _ds_dispatch_for_coach,
+                    display_label as _ds_display_label,
+                )
                 _owned_ids = _ds_resolve_many(state.get("items", []), mode="aram")
                 _target_bhp = self._estimate_target_bonus_hp(state)
                 _lvl = int(state.get("level", 1)) or 1
@@ -650,34 +658,28 @@ class Coach(BaseCoach):
                     level=_lvl,
                     bonus_hp_override=_target_bhp if _target_bhp > 0 else None,
                 )
-                _ds_rows = _ds_client.rank_for(
+                _ds_dispatch = _ds_dispatch_for_coach(
                     champion=champ,
+                    mode_engine="ARAM",
                     level=_lvl,
                     item_ids=_owned_ids,
-                    mode="ARAM",
-                    target_armor=_es.armor,
-                    target_mr=_es.mr,
-                    target_max_hp=_es.max_hp,
-                    target_bonus_hp=_es.bonus_hp,
+                    enemy_stats=_es,
                     top=5,
                 )
-                if _ds_rows:
-                    _ds_picks_str = " > ".join(
-                        f"{r.item_name}(+{r.delta_dps:.0f}dps,{r.gold}g)"
-                        for r in _ds_rows
-                    )
-                elif _ds_rows == []:
-                    _ds_picks_str = "none"
+                if _ds_dispatch is not None:
+                    _ds_picks_str = _ds_dispatch.picks_str
+                    _ds_label = _ds_display_label(_ds_dispatch.scorer)
             except Exception as _ds_exc:
                 logger.debug("ARAM daemon_slayer pre-call: %s", _ds_exc)
-            if _ds_rows:
+            if _ds_dispatch is not None and _ds_dispatch.rows:
                 try:
                     from core.ds_calibration import log_ds_run as _ds_log
                     _ds_log(champion=champ, mode="ARAM", level=int(state.get("level", 1)) or 1,
                             owned_items=list(_owned_ids),
-                            ds_picks=[{"item_id": r.item_id, "item_name": r.item_name,
-                                       "delta_dps": round(r.delta_dps, 2), "gold": r.gold}
-                                      for r in _ds_rows])
+                            ds_picks=[{"item_id": _r["id"], "item_name": _r["name"],
+                                       "delta_dps": _r["delta_dps"], "gold": _r["gold"],
+                                       "scorer": _r["scorer"]}
+                                      for _r in _ds_dispatch.display_rows])
                 except Exception:
                     pass
 
@@ -709,6 +711,7 @@ class Coach(BaseCoach):
                     (state.get("enemy_runes") or {}).items()
                 ) or "unknown",
                 ds_picks    = _ds_picks_str,
+                ds_label    = _ds_label,
                 event_line  = event_line,
             )
 
@@ -836,12 +839,8 @@ class Coach(BaseCoach):
             # DS was already called before the Haiku call; reuse _ds_rows
             # to update the UI JSON (daemon_slayer_picks) without a second
             # round-trip to the engine.
-            if _ds_rows is not None:
-                cur["daemon_slayer_picks"] = [
-                    {"id": r.item_id, "name": r.item_name,
-                     "delta_dps": round(r.delta_dps, 2), "gold": r.gold}
-                    for r in _ds_rows
-                ] if _ds_rows else []
+            if _ds_dispatch is not None:
+                cur["daemon_slayer_picks"] = _ds_dispatch.display_rows
 
             safe_write(self._out, cur)
 
