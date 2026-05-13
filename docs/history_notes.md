@@ -6,6 +6,12 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+## s175 — Phase 2 Bruiser hybrid scorer (2026-05-12)
+
+Composed `compute_dps` × `compute_ehp` into `compute_hybrid()` + `rank_items_by_hybrid()` via per-champion (α,β) weights in new `archetype_weights.json` (20 bruisers; default 0.50/0.50). Ranker normalizes against per-baseline percentage deltas so weights stay intuitive across the ~10× DPS/EHP magnitude gap. New `/hybrid` + `/rank-bruiser` routes + `rank_bruiser_for()` / `hybrid_for()` client helpers. ENGINE 0.63.0 → 0.64.0. 44 new tests → 1066 DS suite. Live: Jarvan IV picks Trinity Force first (α=0.55 default); Nasus with override α=0.2/β=0.8 surfaces Heartsteel + Warmog's top-5. Full details in commit 3a3bf58 / ROADMAP s175 entry.
+
+---
+
 # s174 wrap — 2026-05-12 (Phase 1 Tank EHP scorer — multi-commit)
 
 **Operator instruction:** "Read NEXT_SESSION_PLAN_2026-05-12_ARCHETYPE_EXPANSION.md. We're starting Phase 1 — Tank EHP scorer. Before writing code, confirm decisions on the four open design questions at the bottom of that doc. Then implement compute_ehp() + rank_items_by_ehp() + integrate with core/defensive_picks.py per the chosen option. Bump ENGINE_VERSION to 0.63.0; add tests; restart DS server; verify via /health + Game-PC monitor 1 capture before reporting done."
