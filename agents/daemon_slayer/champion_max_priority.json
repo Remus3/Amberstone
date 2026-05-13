@@ -1,0 +1,21 @@
+{
+  "_meta": {
+    "description": "Phase 4d (s185, 2026-05-13) — per-champion max_priority overrides for the ds.ability (mage) and ds.burst (assassin) scorers. Without an override, both scorers use the canonical Q-first / W-second / E-third order from agents/daemon_slayer/ability_dps.py:rank_at_level — fine for most champions (Veigar, Lux, Annie, Brand, Syndra, Zoe, etc.) but wrong for champions whose primary damage spell is W or E. Keys are DDragon canonical champion ids (NOT display names — display→id resolution happens server-side in _resolve_champion_id). Values are 3-key permutations of (Q, W, E).",
+    "rationale": "max_priority controls which ability is ranked highest at any given level, which directly affects per-cast damage contribution. Cassiopeia's E (Twin Fang, cd 0.75s) is her primary DPS spell; with the default Q-first table the scorer treats her Twin Fang as rank-1 until level 14, dramatically under-counting AP scaling. Same shape for Kayle E (Starfire Spellblade on-hit), Akali E (Shuriken Flip AP burst), Heimerdinger W (Hextech Micro-Rockets — Q is turret deploy with no direct damage at all), Twisted Fate W (Pick a Card), Leblanc W (Distortion), Kassadin E (Force Pulse), Rumble E (Electro Harpoon, cd 0.5s spam), Anivia E (Frostbite proc), and Lillia W (Watch Out! Eep! AoE)."
+  },
+  "default": ["Q", "W", "E"],
+  "champions": {
+    "Cassiopeia": ["E", "Q", "W"],
+    "Kayle": ["E", "Q", "W"],
+    "Akali": ["E", "Q", "W"],
+    "TwistedFate": ["W", "Q", "E"],
+    "Kassadin": ["E", "Q", "W"],
+    "Rumble": ["E", "Q", "W"],
+    "Leblanc": ["W", "Q", "E"],
+    "Heimerdinger": ["W", "Q", "E"],
+    "Karthus": ["Q", "E", "W"],
+    "Vladimir": ["Q", "E", "W"],
+    "Anivia": ["E", "Q", "W"],
+    "Lillia": ["W", "Q", "E"]
+  }
+}
