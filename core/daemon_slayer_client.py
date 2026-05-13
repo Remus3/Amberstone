@@ -398,6 +398,162 @@ def hybrid_for(
     return _post_json("/hybrid", body, timeout=timeout)
 
 
+def rank_for_primary_archetype(
+    champion: str,
+    archetype: str,
+    *,
+    level: int,
+    item_ids: Iterable[str],
+    mode: str = "SR",
+    # DPS-side inputs (used when archetype routes to ds.dps / ds.hybrid):
+    target_armor: float = 0.0,
+    target_mr: float = 0.0,
+    target_max_hp: float = 0.0,
+    target_bonus_hp: float = 0.0,
+    # EHP-side inputs (used when archetype routes to ds.ehp / ds.hybrid):
+    enemy_ad_share: float = 0.5,
+    enemy_ap_share: float = 0.5,
+    # Hybrid-only overrides (silently ignored by ds.dps / ds.ehp):
+    alpha: Optional[float] = None,
+    beta: Optional[float] = None,
+    # Tank/bruiser-side whitelist (silently ignored by ds.dps):
+    only_item_ids: Optional[Iterable[str]] = None,
+    # Common:
+    top: int = 8,
+    sort_by: str = "delta",
+    augments: Optional[Iterable[str]] = None,
+    filter_shared_uniques: bool = True,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> Optional[dict]:
+    """Phase 3 (s176, 2026-05-12) — route to the right scorer per archetype.
+
+    The DS engine ships 3 scorers today (ds.dps, ds.ehp, ds.hybrid) and
+    will ship 3 more in Phases 4-6 (ds.ability, ds.burst, ds.hps). This
+    dispatcher exposes a single call shape that the coaches + UI use,
+    routing based on the operator's pick from
+    ``state.cs_archetype_pick.primary``.
+
+    Returns a dict with shape:
+        {
+            "ok":          bool,
+            "scorer":      "dps" | "ehp" | "hybrid",
+            "archetype":   str,   # the requested archetype (echoed)
+            "ranked":      [RankedItem-like dicts],
+            "fell_back":   bool,  # True when archetype isn't implemented yet
+        }
+    ``ok=False`` means the engine was unreachable. ``fell_back=True`` is
+    a soft signal: the requested archetype (mage/assassin/enchanter)
+    doesn't have its scorer yet, so we routed to ds.dps as a placeholder.
+
+    Args ``alpha`` / ``beta`` / ``only_item_ids`` only apply to certain
+    routes (hybrid/tank); other archetypes silently ignore them.
+    """
+    arch = (archetype or "").strip().lower()
+
+    # Routing table — explicit so future Phase 4-6 scorers slot in by
+    # adding one branch each.
+    if arch == "tank":
+        rows = rank_tank_for(
+            champion,
+            level=level, item_ids=item_ids, mode=mode,
+            enemy_ad_share=enemy_ad_share, enemy_ap_share=enemy_ap_share,
+            top=top, sort_by=sort_by,
+            only_item_ids=only_item_ids,
+            augments=augments,
+            filter_shared_uniques=filter_shared_uniques,
+            timeout=timeout,
+        )
+        if rows is None:
+            return None
+        return {
+            "ok":        True,
+            "scorer":    "ehp",
+            "archetype": arch,
+            "ranked":    [
+                {
+                    "item_id":            r.item_id,
+                    "item_name":          r.item_name,
+                    "delta":              r.delta_ehp,
+                    "gold":               r.gold,
+                    "shares_dead_unique": r.shares_dead_unique,
+                    "dead_unique_key":    r.dead_unique_key,
+                }
+                for r in rows
+            ],
+            "fell_back": False,
+        }
+
+    if arch == "bruiser":
+        rows = rank_bruiser_for(
+            champion,
+            level=level, item_ids=item_ids, mode=mode,
+            target_armor=target_armor, target_mr=target_mr,
+            target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
+            enemy_ad_share=enemy_ad_share, enemy_ap_share=enemy_ap_share,
+            top=top, sort_by=sort_by,
+            only_item_ids=only_item_ids,
+            augments=augments,
+            filter_shared_uniques=filter_shared_uniques,
+            alpha=alpha, beta=beta,
+            timeout=timeout,
+        )
+        if rows is None:
+            return None
+        return {
+            "ok":        True,
+            "scorer":    "hybrid",
+            "archetype": arch,
+            "ranked":    [
+                {
+                    "item_id":            r.item_id,
+                    "item_name":          r.item_name,
+                    "delta_dps":          r.delta_dps,
+                    "delta_ehp":          r.delta_ehp,
+                    "hybrid_delta_pct":   r.hybrid_delta_pct,
+                    "gold":               r.gold,
+                    "shares_dead_unique": r.shares_dead_unique,
+                    "dead_unique_key":    r.dead_unique_key,
+                }
+                for r in rows
+            ],
+            "fell_back": False,
+        }
+
+    # carry / mage / assassin / enchanter / anything else → fall through
+    # to ds.dps. mage/assassin/enchanter mark fell_back=True so the UI
+    # can render a "best-effort, Phase N pending" tag.
+    fell_back = arch in {"mage", "assassin", "enchanter"}
+    rows = rank_for(
+        champion,
+        level=level, item_ids=item_ids, mode=mode,
+        target_armor=target_armor, target_mr=target_mr,
+        target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
+        top=top, sort_by=sort_by,
+        augments=augments,
+        filter_shared_uniques=filter_shared_uniques,
+        timeout=timeout,
+    )
+    if rows is None:
+        return None
+    return {
+        "ok":        True,
+        "scorer":    "dps",
+        "archetype": arch or "carry",
+        "ranked":    [
+            {
+                "item_id":            r.item_id,
+                "item_name":          r.item_name,
+                "delta":              r.delta_dps,
+                "gold":               r.gold,
+                "shares_dead_unique": r.shares_dead_unique,
+                "dead_unique_key":    r.dead_unique_key,
+            }
+            for r in rows
+        ],
+        "fell_back": fell_back,
+    }
+
+
 def dps_for(
     champion: str,
     *,

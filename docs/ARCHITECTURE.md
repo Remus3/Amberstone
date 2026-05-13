@@ -85,6 +85,7 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 | `dashboard/_dispatch.py` | route registration |
 | `dashboard/_state_builder.py` | builds /api/state payload |
 | `dashboard/api_schema.py` | pydantic v2 schemas for RC dashboard HTTP API shapes |
+| `dashboard/routes_archetype.py` | cs archetype pick rest endpoints |
 | `dashboard/routes_bridge_pending.py` | GET /api/bridge/pending — escalation queue [FROZEN] |
 | `dashboard/routes_dev.py` | dev/sim panel endpoints |
 | `dashboard/routes_health_peer.py` | GET /api/health/peer + /api/health/all |
@@ -96,6 +97,7 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 ### Core utilities
 | File | Role |
 |---|---|
+| `core/archetype_picks.py` | cs archetype pick storage + DDragon-tag default resolver |
 | `core/bridge_envelope.py` | pydantic v2 schema for the cross-Claude bridge wire envelope |
 | `core/coaching_payload.py` | pydantic v2 schemas for per-mode coaching JSON payloads |
 | `core/defensive_picks.py` | defensive item ranker |
@@ -144,7 +146,7 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 
 ## Daemon Slayer (`:8893`)
 
-`agents/daemon_slayer/` — 547 item effects, ENGINE_VERSION 0.64.0, 1066 tests. All 4 coach modes DS-before-Haiku. Ranks items by DPS math per champion before Haiku sees the prompt; dead-unique candidates (Trinity→ER etc.) filtered by default. s174 adds the Tank EHP scorer (`ehp.py`) — `compute_ehp()` + `rank_items_by_ehp()` with caller-supplied AD/AP enemy shares; `/ehp` + `/rank-tank` routes; `core/defensive_picks.recommend_defensive_items_via_ehp()` is the first Option-B layered consumer. s175 adds the Bruiser hybrid scorer (`hybrid.py`) — `compute_hybrid()` + `rank_items_by_hybrid()` composing dps + ehp via per-champion (α,β) weights from `archetype_weights.json` (20 bruisers); `/hybrid` + `/rank-bruiser` routes. See `docs/DAEMON_SLAYER.md`.
+`agents/daemon_slayer/` — 547 item effects, ENGINE_VERSION 0.64.0, 1066 tests. All 4 coach modes DS-before-Haiku. Ranks items by DPS math per champion before Haiku sees the prompt; dead-unique candidates (Trinity→ER etc.) filtered by default. s174 adds the Tank EHP scorer (`ehp.py`) — `compute_ehp()` + `rank_items_by_ehp()` with caller-supplied AD/AP enemy shares; `/ehp` + `/rank-tank` routes; `core/defensive_picks.recommend_defensive_items_via_ehp()` is the first Option-B layered consumer. s175 adds the Bruiser hybrid scorer (`hybrid.py`) — `compute_hybrid()` + `rank_items_by_hybrid()` composing dps + ehp via per-champion (α,β) weights from `archetype_weights.json` (20 bruisers); `/hybrid` + `/rank-bruiser` routes. s176 ships the CS archetype-picker UI in the champ-select view (My Pick card 6-button grid) + `core/archetype_picks.py` storage layer (DDragon-tag default + per-champion override in `data/cs_archetype_picks.json`) + `dashboard/routes_archetype.py` (`GET/POST /api/cs-archetype-pick`) + `rank_for_primary_archetype()` dispatcher in `core/daemon_slayer_client.py` routing carry/bruiser/tank to their scorers (mage/assassin/enchanter fall back to ds.dps with `fell_back=True` pending Phases 4-6). Coach integration deferred — picker persists but no coach reads `state.cs_archetype_pick.primary` yet. See `docs/DAEMON_SLAYER.md`.
 
 ---
 
