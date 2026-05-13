@@ -1720,6 +1720,11 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   if (mode === "aram") {
     extraHtml = _csvBenchHtml(cs);
   }
+  // Phase 3 (s176): trigger an async fetch for the persisted pick so the
+  // picker re-renders with overridden state once the server replies.
+  // No-op if already cached / inflight. Renders synchronously below.
+  if (myName) _csvFetchArchetype(myName);
+  const archetypeHtml = _csvArchetypePickerHtml(myName);
   const variants = _csvBuildVariantsFor(myCid, myName, mode);
   const buildsTitle = mode === "aram" ? "ARAM build chooser"
                     : mode === "brawl" ? "Brawl build chooser"
@@ -1739,6 +1744,7 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
     <div class="csv-mypick-state ${stateCls}" id="csv-mypick-state">${stateTxt}</div>
     ${lockBtnHtml}
     ${extraHtml}
+    ${archetypeHtml}
     ${buildsHtml}`;
 
   // Wire bench cells to fire bench_swap on click. Only ARAM renders
@@ -1747,6 +1753,7 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   if (mode === "aram") _csvWireBench(body);
   _csvWireBuildVariants(body);
   _csvWireLockButton(body);
+  _csvWireArchetypePicker(body);
 }
 
 // s171: lock button click handler — same shape as the legacy overlay's
@@ -1852,6 +1859,139 @@ function _csvSavedChoice(champion) {
 function _csvSaveChoice(champion, variantKey) {
   try { localStorage.setItem(_csvStorageKey(champion), variantKey); }
   catch (_) {}
+}
+
+// ─── Phase 3 (s176, 2026-05-12) — archetype scorer picker ───────────────
+//
+// Six canonical archetypes; carry/bruiser/tank have real scorers today
+// (ds.dps / ds.hybrid / ds.ehp), the rest are placeholders for Phases
+// 4-6. Order matches core/archetype_picks.ARCHETYPES so the UI is stable
+// across language changes and re-renders. Implemented set tracked
+// separately so we can gray-out the unimplemented ones without removing
+// them — operator sees the full taxonomy.
+const _CSV_ARCHETYPES = [
+  { key: "carry",     label: "Carry",     implemented: true,  scorer: "DPS" },
+  { key: "bruiser",   label: "Bruiser",   implemented: true,  scorer: "Hybrid" },
+  { key: "tank",      label: "Tank",      implemented: true,  scorer: "EHP" },
+  { key: "mage",      label: "Mage",      implemented: false, scorer: "DPS (placeholder)" },
+  { key: "assassin",  label: "Assassin",  implemented: false, scorer: "DPS (placeholder)" },
+  { key: "enchanter", label: "Enchanter", implemented: false, scorer: "DPS (placeholder)" },
+];
+
+function _csvArchetypeStorageKey(champion) { return "rc-cs-archetype-" + (champion || ""); }
+function _csvSavedArchetype(champion) {
+  try { return localStorage.getItem(_csvArchetypeStorageKey(champion)) || ""; }
+  catch (_) { return ""; }
+}
+function _csvSaveArchetype(champion, key) {
+  try { localStorage.setItem(_csvArchetypeStorageKey(champion), key); }
+  catch (_) {}
+}
+
+// Per-champion cached pick from /api/cs-archetype-pick. Map keyed by
+// champion display name. Fetched once per champion change; the picker
+// re-renders when the fetch lands. Same pattern as _CSV_DS_CACHE.
+const _CSV_ARCH_CACHE = Object.create(null);
+const _CSV_ARCH_INFLIGHT = Object.create(null);
+
+function _csvFetchArchetype(champion) {
+  if (!champion) return;
+  if (_CSV_ARCH_CACHE[champion] || _CSV_ARCH_INFLIGHT[champion]) return;
+  _CSV_ARCH_INFLIGHT[champion] = true;
+  fetch("/api/cs-archetype-pick?champion=" + encodeURIComponent(champion), {
+    cache: "no-store",
+  })
+    .then((r) => r.ok ? r.json() : null)
+    .then((data) => {
+      _CSV_ARCH_INFLIGHT[champion] = false;
+      if (data && data.ok && data.pick) {
+        _CSV_ARCH_CACHE[champion] = data.pick;
+      }
+    })
+    .catch(() => { _CSV_ARCH_INFLIGHT[champion] = false; });
+}
+
+// Resolve which archetype to highlight. Priority: localStorage (instant)
+// → cached fetch (server-side override) → "" (no selection yet, picker
+// shows nothing pre-selected and the row is dim).
+function _csvResolveArchetype(champion) {
+  if (!champion) return { key: "", source: "" };
+  const local = _csvSavedArchetype(champion);
+  if (local && _CSV_ARCHETYPES.some((a) => a.key === local)) {
+    return { key: local, source: "local" };
+  }
+  const fetched = _CSV_ARCH_CACHE[champion];
+  if (fetched && fetched.primary) {
+    return { key: fetched.primary, source: fetched.source || "default" };
+  }
+  return { key: "", source: "" };
+}
+
+function _csvArchetypePickerHtml(champion) {
+  if (!champion) return "";
+  const resolved = _csvResolveArchetype(champion);
+  const buttons = _CSV_ARCHETYPES.map((a) => {
+    const cls = ["csv-arch-btn"];
+    if (a.key === resolved.key) cls.push("active");
+    if (!a.implemented) cls.push("placeholder");
+    return `<button class="${cls.join(" ")}" data-arch="${a.key}"`
+         + ` title="${a.label} → ds.${a.scorer.toLowerCase().split(" ")[0]}">`
+         + `<span class="csv-arch-label">${a.label}</span>`
+         + `<span class="csv-arch-scorer">${a.scorer}</span>`
+         + `</button>`;
+  }).join("");
+  const sourceTag = resolved.source && resolved.source !== "default" && resolved.source !== ""
+    ? `<span class="csv-arch-source" title="set by operator">overridden</span>`
+    : (resolved.source === "default"
+      ? `<span class="csv-arch-source" title="DDragon-tag default">auto</span>`
+      : "");
+  return `
+    <div class="csv-archetype-picker" data-champion="${champion}">
+      <div class="csv-archetype-title">
+        <span>Scorer archetype</span>
+        ${sourceTag}
+      </div>
+      <div class="csv-archetype-buttons">${buttons}</div>
+    </div>`;
+}
+
+function _csvWireArchetypePicker(scope) {
+  const wrap = scope.querySelector(".csv-archetype-picker");
+  if (!wrap) return;
+  const champion = wrap.dataset.champion || "";
+  if (!champion) return;
+  wrap.querySelectorAll(".csv-arch-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const arch = btn.dataset.arch || "";
+      if (!arch) return;
+      // Save locally for instant subsequent renders, then POST to
+      // persist server-side. Match the existing build-chooser pattern.
+      _csvSaveArchetype(champion, arch);
+      // Optimistic update of the cached pick so the next render shows
+      // the active state without waiting for the POST round-trip.
+      _CSV_ARCH_CACHE[champion] = Object.assign(
+        {}, _CSV_ARCH_CACHE[champion] || {},
+        { primary: arch, source: "user_cs", champion },
+      );
+      fetch("/api/cs-archetype-pick", {
+        method: "POST", cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ champion, primary: arch, source: "user_cs" }),
+      })
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => {
+          if (data && data.ok && data.pick) {
+            _CSV_ARCH_CACHE[champion] = data.pick;
+          }
+        })
+        .catch(() => { /* localStorage already saved; next reload retries */ });
+      // Update DOM directly so the operator sees the click respond
+      // before the next render tick.
+      wrap.querySelectorAll(".csv-arch-btn").forEach((b) => {
+        b.classList.toggle("active", b.dataset.arch === arch);
+      });
+    });
+  });
 }
 
 // Convert the view's adapt-mode to the DS engine's mode label.
