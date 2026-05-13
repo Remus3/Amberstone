@@ -47,7 +47,7 @@ from typing import Any, Optional
 from urllib.parse import parse_qs, urlsplit
 
 from . import ENGINE_VERSION
-from .ability_dps import compute_ability_dps
+from .ability_dps import compute_ability_dps, rank_items_by_ability_dps
 from .beam import (
     DEFAULT_BEAM_WIDTH,
     DEFAULT_TOP_N as BEAM_DEFAULT_TOP_N,
@@ -95,6 +95,7 @@ _INDEX_HTML = """<!doctype html>
 <tr><td>POST</td><td>/hybrid</td><td>bruiser combined DPS+EHP score (Phase 2)</td></tr>
 <tr><td>POST</td><td>/rank-bruiser</td><td>rank items by weighted (α·dps + β·ehp) delta (Phase 2)</td></tr>
 <tr><td>POST</td><td>/ability-dps</td><td>per-spell ability DPS for a mage / caster build (Phase 4b)</td></tr>
+<tr><td>POST</td><td>/rank-mage</td><td>rank items by total-ability-DPS delta (Phase 4c)</td></tr>
 </table>
 
 <h2>Example</h2>
@@ -563,6 +564,32 @@ def _route_rank_bruiser(body: dict) -> dict:
     return result.to_dict()
 
 
+def _parse_max_priority(body: dict) -> tuple[str, str, str]:
+    """Decode the ``max_priority`` body field.
+
+    Accepts None / list / comma-string ("Q,W,E") / compact "QWE". Phase 4c
+    shared between ``/ability-dps`` and ``/rank-mage`` so both routes parse
+    the operator's priority override identically.
+    """
+    raw_prio = body.get("max_priority")
+    if raw_prio is None or raw_prio == "":
+        return ("Q", "W", "E")
+    if isinstance(raw_prio, str) and "," not in raw_prio and len(raw_prio) == 3:
+        return tuple(raw_prio.upper())  # type: ignore[return-value]
+    parts = _coerce_str_list(raw_prio, "max_priority")
+    if len(parts) != 3:
+        raise _ApiError(400, f"max_priority: expected 3 keys, got {parts!r}")
+    return tuple(p.upper() for p in parts)  # type: ignore[return-value]
+
+
+def _parse_form_index(body: dict) -> Optional[dict[str, int]]:
+    """Decode the optional ``form_index`` body field — JSON dict only."""
+    raw_form = body.get("form_index")
+    if isinstance(raw_form, dict):
+        return {str(k).upper(): int(v) for k, v in raw_form.items()}
+    return None
+
+
 def _route_ability_dps(body: dict) -> dict:
     """POST /ability-dps — per-spell ability DPS for the caster build.
 
@@ -589,22 +616,8 @@ def _route_ability_dps(body: dict) -> dict:
     target_current_hp_pct = _opt_float(body, "target_current_hp_pct", 1.0)
     augments = _coerce_str_list(body.get("augments"), "augments")
     block_strategy = _opt_str(body, "block_strategy", "first") or "first"
-    # max_priority accepts list, comma-string ("Q,W,E"), or compact "QWE".
-    raw_prio = body.get("max_priority")
-    if raw_prio is None or raw_prio == "":
-        max_priority: tuple[str, str, str] = ("Q", "W", "E")
-    elif isinstance(raw_prio, str) and "," not in raw_prio and len(raw_prio) == 3:
-        max_priority = tuple(raw_prio.upper())  # type: ignore[assignment]
-    else:
-        parts = _coerce_str_list(raw_prio, "max_priority")
-        if len(parts) != 3:
-            raise _ApiError(400, f"max_priority: expected 3 keys, got {parts!r}")
-        max_priority = tuple(p.upper() for p in parts)  # type: ignore[assignment]
-    # form_index is JSON-only (dict {key: index}). Query param ignored.
-    form_index_overrides = None
-    raw_form = body.get("form_index")
-    if isinstance(raw_form, dict):
-        form_index_overrides = {str(k).upper(): int(v) for k, v in raw_form.items()}
+    max_priority = _parse_max_priority(body)
+    form_index_overrides = _parse_form_index(body)
     try:
         result = compute_ability_dps(
             snap, champion_id=champion, level=level,
@@ -616,6 +629,66 @@ def _route_ability_dps(body: dict) -> dict:
             max_priority=max_priority,
             block_strategy=block_strategy,
             form_index_overrides=form_index_overrides,
+        )
+    except KeyError as e:
+        raise _ApiError(404, str(e))
+    except ValueError as e:
+        raise _ApiError(422, str(e))
+    return result.to_dict()
+
+
+def _route_rank_mage(body: dict) -> dict:
+    """POST /rank-mage — rank items by total-ability-DPS delta.
+
+    Phase 4c (s179, 2026-05-12). Body is the union of /ability-dps and
+    /rank parameters: ``target_*`` + ``target_current_hp_pct`` for the
+    cast formula plus ``budget`` / ``slots`` / ``top`` / ``sort`` /
+    ``include_components`` / ``only`` / ``filter_shared_uniques`` for the
+    candidate-filtering pipeline shared with the other rankers.
+    """
+    snap = _CACHE.get()
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
+    level = _opt_int(body, "level", 1) or 1
+    items = _coerce_str_list(body.get("items"), "items")
+    mode = _opt_str(body, "mode", "SR") or "SR"
+    target_armor = _opt_float(body, "target_armor", 0.0)
+    target_mr = _opt_float(body, "target_mr", 0.0)
+    target_max_hp = _opt_float(body, "target_max_hp", 0.0)
+    target_bonus_hp = _opt_float(body, "target_bonus_hp", 0.0)
+    target_current_hp_pct = _opt_float(body, "target_current_hp_pct", 1.0)
+    augments = _coerce_str_list(body.get("augments"), "augments")
+    block_strategy = _opt_str(body, "block_strategy", "first") or "first"
+    max_priority = _parse_max_priority(body)
+    form_index_overrides = _parse_form_index(body)
+    budget = _opt_int(body, "budget", None)
+    slot_count = _opt_int(body, "slots", 6) or 6
+    top_n = _opt_int(body, "top", 20)
+    if top_n is None:
+        top_n = 20
+    sort_by = _opt_str(body, "sort", "delta") or "delta"
+    if sort_by not in SORT_KEYS:
+        raise _ApiError(400, f"sort: must be one of {list(SORT_KEYS)}, got {sort_by!r}")
+    include_components = _opt_bool(body, "include_components", False)
+    filter_shared_uniques = _opt_bool(body, "filter_shared_uniques", True)
+    only_ids: Optional[list[str]] = None
+    if "only" in body and body["only"] not in (None, ""):
+        only_ids = _coerce_str_list(body["only"], "only")
+    try:
+        result = rank_items_by_ability_dps(
+            snap,
+            champion_id=champion, level=level,
+            current_item_ids=items, mode=mode,
+            target_armor=target_armor, target_mr=target_mr,
+            target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
+            target_current_hp_pct=target_current_hp_pct,
+            budget=budget, slot_count=slot_count, top_n=top_n,
+            include_components=include_components,
+            only_item_ids=only_ids, sort_by=sort_by,
+            augments=augments,
+            max_priority=max_priority,
+            block_strategy=block_strategy,
+            form_index_overrides=form_index_overrides,
+            filter_shared_uniques=filter_shared_uniques,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -720,6 +793,7 @@ _POST_ROUTES = {
     "/hybrid": _route_hybrid,
     "/rank-bruiser": _route_rank_bruiser,
     "/ability-dps": _route_ability_dps,
+    "/rank-mage": _route_rank_mage,
 }
 
 # GET routes that need a body merge from query params for the same handler.
