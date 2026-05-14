@@ -75,6 +75,7 @@ from .ability_dps import (
     _form_cooldown_at_rank,
     _form_cost_at_rank,
     _mitigation_factor,
+    _resolve_block_index_overrides,
     _resolve_form_index_overrides,
     _resolve_max_priority,
     _select_blocks,
@@ -304,6 +305,8 @@ class BurstResult:
     combo_sequence_source: str = "default"          # "override" | "champion" | "default"
     form_index_source: str = "default"              # "override" | "champion" | "default"
     form_index_resolved: dict[str, int] = field(default_factory=dict)
+    block_index_source: str = "default"             # "override" | "champion" | "default"
+    block_index_resolved: dict[str, int] = field(default_factory=dict)
     # Phase 5.7 (s189, 2026-05-13) — Spellblade contribution within the
     # combo. ``spellblade_procs`` counts how many ability-then-AA
     # transitions actually fired a Spellblade proc; ``spellblade_damage``
@@ -352,6 +355,8 @@ class BurstResult:
             "combo_sequence_source": self.combo_sequence_source,
             "form_index_source": self.form_index_source,
             "form_index_resolved": dict(self.form_index_resolved),
+            "block_index_source": self.block_index_source,
+            "block_index_resolved": dict(self.block_index_resolved),
             "spellblade_procs": self.spellblade_procs,
             "spellblade_damage": self.spellblade_damage,
             "spellblade_item_name": self.spellblade_item_name,
@@ -430,6 +435,7 @@ def compute_burst_damage(
     max_priority: Optional[Sequence[str]] = None,
     block_strategy: str = "first",
     form_index_overrides: Optional[dict[str, int]] = None,
+    block_index_overrides: Optional[dict[str, int]] = None,
     combo_sequence: Optional[Sequence[str]] = None,
 ) -> BurstResult:
     """Compute one-combo total burst damage for the resolved build.
@@ -469,6 +475,9 @@ def compute_burst_damage(
     form_index_overrides, form_index_source = _resolve_form_index_overrides(
         champion_id, form_index_overrides,
     )
+    block_index_overrides, block_index_source = _resolve_block_index_overrides(
+        champion_id, block_index_overrides,
+    )
     if not 0.0 <= target_current_hp_pct <= 1.0:
         raise ValueError(
             f"target_current_hp_pct must be in [0,1], got {target_current_hp_pct}"
@@ -493,6 +502,8 @@ def compute_burst_damage(
                 combo_sequence_source=combo_source,
                 form_index_source=form_index_source,
                 form_index_resolved=form_index_overrides,
+                block_index_source=block_index_source,
+                block_index_resolved=block_index_overrides,
                 note=f"abilities snapshot missing: {e}",
             )
 
@@ -598,11 +609,14 @@ def compute_burst_damage(
             combo_sequence_source=combo_source,
             form_index_source=form_index_source,
             form_index_resolved=form_index_overrides,
+            block_index_source=block_index_source,
+            block_index_resolved=block_index_overrides,
             champion_name=resolved.champion_name,
             note=f"champion {resolved.champion_id!r} absent from abilities snapshot",
         )
     per_key_forms = abil_snap.get_abilities(resolved.champion_id)
     overrides = form_index_overrides or {}
+    block_overrides = block_index_overrides or {}
 
     per_cast: list[ComboCast] = []
     forms_for_classification: list[AbilityForm] = []
@@ -716,7 +730,16 @@ def compute_burst_damage(
             continue
         cooldown = _form_cooldown_at_rank(form, rank)
         cost = _form_cost_at_rank(form, rank)
-        raw = _select_blocks(form.damage_blocks, rank, ctx, block_strategy)
+        # Phase 5.9 (s191): per-(champion, key) block_index override
+        # switches to "indexed" strategy for this key; otherwise honor
+        # the global block_strategy. Matches compute_ability_dps.
+        if ability_key in block_overrides:
+            raw = _select_blocks(
+                form.damage_blocks, rank, ctx, "indexed",
+                block_index=block_overrides[ability_key],
+            )
+        else:
+            raw = _select_blocks(form.damage_blocks, rank, ctx, block_strategy)
         post_mode = raw * mode_mult
         dt = (form.damage_type or "MAGIC").upper()
         spell_magic_amp = magic_amp if dt == "MAGIC" else 1.0
@@ -824,6 +847,12 @@ def compute_burst_damage(
             f"{aa_lightshield_per_proc:.1f} unused)"
         )
 
+    if block_overrides:
+        notes.append(
+            "block_index overrides applied: "
+            + ", ".join(f"{k}={block_overrides[k]}" for k in sorted(block_overrides))
+        )
+
     return BurstResult(
         champion_id=resolved.champion_id,
         champion_name=resolved.champion_name,
@@ -850,6 +879,8 @@ def compute_burst_damage(
         combo_sequence_source=combo_source,
         form_index_source=form_index_source,
         form_index_resolved=dict(form_index_overrides),
+        block_index_source=block_index_source,
+        block_index_resolved=dict(block_index_overrides),
         spellblade_procs=spellblade_procs_fired,
         spellblade_damage=spellblade_damage_total,
         spellblade_item_name=aa_spellblade_name,
@@ -908,6 +939,8 @@ def _empty_burst(
     combo_sequence_source: str = "default",
     form_index_source: str = "default",
     form_index_resolved: Optional[dict[str, int]] = None,
+    block_index_source: str = "default",
+    block_index_resolved: Optional[dict[str, int]] = None,
     champion_name: str | None = None,
     note: str = "",
 ) -> BurstResult:
@@ -939,6 +972,8 @@ def _empty_burst(
         combo_sequence_source=combo_sequence_source,
         form_index_source=form_index_source,
         form_index_resolved=dict(form_index_resolved or {}),
+        block_index_source=block_index_source,
+        block_index_resolved=dict(block_index_resolved or {}),
         stats={},
         notes=(note,) if note else (),
     )
@@ -1003,6 +1038,8 @@ class BurstRankResult:
     combo_sequence_source: str            # "override" | "champion" | "default"
     form_index_source: str                # "override" | "champion" | "default"
     form_index_resolved: dict[str, int]   # merged map actually used
+    block_index_source: str               # "override" | "champion" | "default"
+    block_index_resolved: dict[str, int]  # merged (champion, key) → block_index map
     block_strategy: str
     mode_multiplier: float
     budget: Optional[int]
@@ -1033,6 +1070,8 @@ class BurstRankResult:
             "combo_sequence_source": self.combo_sequence_source,
             "form_index_source": self.form_index_source,
             "form_index_resolved": dict(self.form_index_resolved),
+            "block_index_source": self.block_index_source,
+            "block_index_resolved": dict(self.block_index_resolved),
             "block_strategy": self.block_strategy,
             "mode_multiplier": self.mode_multiplier,
             "budget": self.budget,
@@ -1114,6 +1153,7 @@ def rank_items_by_burst(
     max_priority: Optional[Sequence[str]] = None,
     block_strategy: str = "first",
     form_index_overrides: Optional[dict[str, int]] = None,
+    block_index_overrides: Optional[dict[str, int]] = None,
     combo_sequence: Optional[Sequence[str]] = None,
     filter_shared_uniques: bool = True,
 ) -> BurstRankResult:
@@ -1139,11 +1179,14 @@ def rank_items_by_burst(
     level = clamp_level(level)
 
     # Resolve once so baseline + every candidate share priority + combo +
-    # form_index.
+    # form_index + block_index.
     resolved_priority, priority_source = _resolve_max_priority(champion_id, max_priority)
     combo_norm, combo_source = _resolve_combo_sequence(champion_id, combo_sequence)
     resolved_form_index, form_index_source = _resolve_form_index_overrides(
         champion_id, form_index_overrides,
+    )
+    resolved_block_index, block_index_source = _resolve_block_index_overrides(
+        champion_id, block_index_overrides,
     )
 
     current_ids: tuple[str, ...] = tuple(str(i) for i in (current_item_ids or ()))
@@ -1177,6 +1220,7 @@ def rank_items_by_burst(
         max_priority=resolved_priority,
         block_strategy=block_strategy,
         form_index_overrides=resolved_form_index,
+        block_index_overrides=resolved_block_index,
         combo_sequence=combo_norm,
     )
 
@@ -1207,9 +1251,10 @@ def rank_items_by_burst(
                 target_current_hp_pct=target_current_hp_pct,
                 augments=augments,
                 abilities_snapshot=abilities_snapshot,
-                max_priority=max_priority,
+                max_priority=resolved_priority,
                 block_strategy=block_strategy,
-                form_index_overrides=form_index_overrides,
+                form_index_overrides=resolved_form_index,
+                block_index_overrides=resolved_block_index,
                 combo_sequence=combo_norm,
             )
         except (KeyError, ValueError):
@@ -1266,6 +1311,12 @@ def rank_items_by_burst(
             "abilities snapshot, or all spells locked at this level"
         )
 
+    if resolved_block_index:
+        notes.append(
+            f"block_index source={block_index_source}: "
+            + ", ".join(f"{k}={resolved_block_index[k]}" for k in sorted(resolved_block_index))
+        )
+
     return BurstRankResult(
         champion_id=baseline.champion_id,
         champion_name=baseline.champion_name,
@@ -1285,6 +1336,8 @@ def rank_items_by_burst(
         combo_sequence_source=combo_source,
         form_index_source=form_index_source,
         form_index_resolved=dict(resolved_form_index),
+        block_index_source=block_index_source,
+        block_index_resolved=dict(resolved_block_index),
         block_strategy=block_strategy,
         mode_multiplier=baseline.mode_multiplier,
         budget=budget,
