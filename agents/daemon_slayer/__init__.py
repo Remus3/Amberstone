@@ -591,6 +591,31 @@ Phase 5.5 (s186, 2026-05-13 — per-champion combo_sequence overrides, ENGINE_VE
 * Server route ``_parse_combo_sequence`` returns ``Optional`` and passes
   None through. ``/burst`` and ``/rank-assassin`` surface
   ``combo_sequence_source`` in their JSON responses.
+
+Phase 4e (s187, 2026-05-13 — per-(champion, key) form_index overrides, ENGINE_VERSION 0.72.0):
+
+* New ``agents/daemon_slayer/champion_form_index.json`` registry (5
+  entries). Nidalee Q/W/E → 1 (cougar form has 5 damage blocks for
+  Takedown vs human's 2 on Javelin Toss). Elise Q → 1 (spider Venomous
+  Bite). Jayce Q → 1 (cannon Shock Blast — 2 blocks vs hammer leap's
+  1). Hwei Q/W/E → first damage-bearing form (form 0 is a stance setup
+  with zero damage blocks for each). LeeSin Q → 1 (Resonating Strike
+  recast). Default empty dict (form 0 for all) for the other 167 champions.
+* Loader + singleton cache + ``get_form_index_for(champion_id)`` +
+  ``_resolve_form_index_overrides(champion_id, explicit)`` ship in
+  ``ability_dps.py``. Caller-supplied dict merges with registry, with
+  caller winning per-key — registry fills any keys the caller didn't
+  override.
+* ``compute_ability_dps`` / ``rank_items_by_ability_dps`` /
+  ``compute_burst_damage`` / ``rank_items_by_burst`` all resolve
+  form_index through the new helper. Results gain ``form_index_source``
+  ("override" | "champion" | "default") + ``form_index_resolved`` (the
+  merged dict actually used). Burst.py imports the resolver from
+  ability_dps so the two scorers share resolution logic.
+* No server route change — ``/ability-dps``, ``/rank-mage``, ``/burst``,
+  ``/rank-assassin`` already accept ``form_index`` body field; the engine
+  resolver kicks in when the field is absent and surfaces both new
+  source/resolved fields in their JSON responses.
 """
 
-ENGINE_VERSION = "0.71.0"
+ENGINE_VERSION = "0.72.0"
