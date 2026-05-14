@@ -139,7 +139,8 @@ class RegistryShapeTests(unittest.TestCase):
         # Phase 5.9.5 (s192) — Akali R + R2 token-variant override
         # Akali extended in s196 with E=2 — full shape asserted below
         # Phase 5.9.6 (s193) — channeled-ability expansion + Anivia Q
-        self.assertEqual(champions["Anivia"], {"Q": 2, "E": 1})
+        # Anivia extended in s200 with R=1 (Glacial Storm Empowered tick)
+        self.assertEqual(champions["Anivia"], {"Q": 2, "E": 1, "R": 1})
         self.assertEqual(champions["Alistar"], {"E": 1})
         self.assertEqual(champions["AurelionSol"], {"E": 1})
         # Fiddlesticks extended in s199 with W=3 (Bountiful Harvest execute)
@@ -187,7 +188,8 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Karthus"], {"Q": 1, "E": 2})
         self.assertEqual(champions["Khazix"], {"Q": 1})
         self.assertEqual(champions["KogMaw"], {"R": 1})
-        self.assertEqual(champions["Lillia"], {"W": 1})
+        # Lillia extended in s200 with Q=1 (Q + Dream Dust AA combo)
+        self.assertEqual(champions["Lillia"], {"W": 1, "Q": 1})
         # Nautilus extended in s199 with R=2 (Depth Charge primary hit)
         self.assertEqual(champions["Nautilus"], {"E": 2, "R": 2})
         self.assertEqual(champions["Pantheon"], {"Q": 1})
@@ -209,10 +211,12 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Mel"], {"Q": 3, "R": 2})
         self.assertEqual(champions["MonkeyKing"], {"R": 1})
         self.assertEqual(champions["Naafiri"], {"Q": 2, "E": 1})
-        self.assertEqual(champions["Nilah"], {"R": 1})
+        # Nilah extended in s200 with Q=1 (Formless Blade max-stack empowered)
+        self.assertEqual(champions["Nilah"], {"R": 1, "Q": 1})
         # Nunu extended in s199 with E=1 (Snowball Barrage 3-snowball cap)
         self.assertEqual(champions["Nunu"], {"W": 1, "E": 1})
-        self.assertEqual(champions["Poppy"], {"R": 1})
+        # Poppy extended in s200 with Q=1 (Hammer Shock out + return)
+        self.assertEqual(champions["Poppy"], {"R": 1, "Q": 1})
         self.assertEqual(champions["Renekton"], {"Q": 1, "W": 2})
         self.assertEqual(champions["Rumble"], {"E": 1})
         # Sion R=1 extends prior {"Q": 2} from s197 (added s198)
@@ -245,6 +249,10 @@ class RegistryShapeTests(unittest.TestCase):
         # Phase 5.9.12 (s199) — new champions:
         self.assertEqual(champions["Ashe"], {"Q": 2})
         self.assertEqual(champions["Shaco"], {"E": 2})
+        # Phase 5.9.13 (s200) — Ambessa new champion (3 entries Drain amp +
+        # Lacerate total); Anivia/Lillia/Nilah/Poppy extended above with
+        # their full s200 shapes.
+        self.assertEqual(champions["Ambessa"], {"Q": 1, "W": 1, "E": 1})
         # Shen.Q raw block 0 is 'Slow' (non-damage), stripped pre-index;
         # filtered idx 1 = raw block 2 'Total Magic Damage' (3-AA total).
         self.assertEqual(champions["Shen"], {"Q": 1})
@@ -612,7 +620,8 @@ class ToDictSerializationTests(unittest.TestCase):
         d = r.to_dict()
         self.assertEqual(d["block_index_source"], "champion")
         # Phase 5.9.6 (s193) — Anivia gained Q=2 alongside existing E=1
-        self.assertEqual(d["block_index_resolved"], {"Q": 2, "E": 1})
+        # Phase 5.9.13 (s200) — Anivia gained R=1 (Glacial Storm Empowered tick)
+        self.assertEqual(d["block_index_resolved"], {"Q": 2, "E": 1, "R": 1})
 
     def test_rank_assassin_carries_source(self) -> None:
         r = rank_items_by_burst(
@@ -818,12 +827,15 @@ class ChanneledAbilityExpansionTests(unittest.TestCase):
         self._delta_check("Anivia", "Q", 2)
 
     def test_anivia_E_still_routes_to_block_1(self) -> None:
-        """The s191 E:1 entry is preserved when Q gets added."""
+        """The s191 E:1 entry is preserved when Q gets added (and s200 R=1)."""
         r = compute_ability_dps(
             self.snap, "Anivia", level=11, mode="SR",
             target_armor=80, target_mr=30,
         )
-        self.assertEqual(r.block_index_resolved, {"Q": 2, "E": 1})
+        # s193 added Q=2 to existing E=1; s200 added R=1 (Glacial Storm Empowered).
+        # E=1 must persist through both extensions.
+        self.assertEqual(r.block_index_resolved.get("E"), 1)
+        self.assertEqual(r.block_index_resolved.get("Q"), 2)
 
     def test_singed_Q_total_block_matches_per_cast_math(self) -> None:
         """Singed Q at rank 5 (level 11+, Q maxed): block 1 base = 120
@@ -2174,6 +2186,209 @@ class Phase599_12ExpansionTests(unittest.TestCase):
             target_armor=80, target_mr=30,
         )
         self.assertEqual(r.block_index_resolved, {"W": 1, "E": 1})
+
+
+# ─── Phase 5.9.13 (s200) — rescue batch: Ambessa/Anivia/Lillia/Nilah/Poppy
+
+
+class Phase599_13ExpansionTests(unittest.TestCase):
+    """Phase 5.9.13 (s200). 7 new (champion, key) entries — rescues 4
+    previously-deferred mechanics:
+      - Ambessa Q/W (s196/s197/s198 'form swap' deferral dissolved —
+        actually Drain-stack resource amp like Renekton Fury)
+      - Anivia R (s195 'channel ambiguous' — actually Empowered phase
+        amp like Belveth E max-charge)
+      - Lillia Q (s199 'uncertain' — actually Q + Dream Dust AA combo)
+      - Nilah Q (s199 'uncertain 2-stack' — actually max-stack
+        empowered AA like Twitch E / Tristana E)
+    Plus Ambessa E (slash+thrust total) and Poppy Q (out+return).
+
+    Three sub-patterns:
+      (A) Multi-hit single-target totals (Ambessa E, Lillia Q, Poppy Q)
+      (B) Resource-state amps (Ambessa Q, Ambessa W, Nilah Q)
+      (C) Channel/duration commit (Anivia R Empowered phase)
+
+    Registry 90 → 91 champions, 120 → 127 entries.
+
+    Tests verify each new entry:
+      1. Is present in the resolved registry at the expected filtered
+         block_index
+      2. Drives total_ability_dps strictly above the forced-block-0 baseline
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = _snap()
+
+    def _delta_check(self, champion: str, key: str, expected_idx: int) -> None:
+        r_reg = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r_reg.block_index_resolved.get(key), expected_idx,
+                         f"{champion}.{key} should route to filtered block {expected_idx}")
+        forced = dict(r_reg.block_index_resolved)
+        forced[key] = 0
+        r_off = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides=forced,
+        )
+        self.assertGreater(r_reg.total_ability_dps, r_off.total_ability_dps,
+                           f"{champion} registry total should exceed forced-block-0")
+
+    # Pattern A: multi-hit single-target totals (3 entries)
+    def test_ambessa_E_routes_to_block_1(self) -> None:
+        """Ambessa E block 1 'Total Physical Damage' = Lacerate
+        slash + thrust both on same target (2× block 0)."""
+        self._delta_check("Ambessa", "E", 1)
+
+    def test_lillia_Q_routes_to_filtered_block_1(self) -> None:
+        """Lillia Q filtered idx 1 = raw block 3 'Total Mixed Damage' =
+        Q damage + Dream Dust AA bonus on Q-stacked target (2× raw
+        block 2). Registry value 1 reflects the filtered index since
+        raw blocks 0, 1 are Movement Speed (non-damage attribute_kind)."""
+        self._delta_check("Lillia", "Q", 1)
+
+    def test_poppy_Q_routes_to_filtered_block_1(self) -> None:
+        """Poppy Q filtered idx 1 = raw block 4 'Total Physical Damage' =
+        Hammer Shock outgoing + return wave on same target (2× raw block
+        0). Registry value 1 reflects the filtered index since raw blocks
+        1-3 are Slow + Minion-Damage (different attribute_kind from
+        champion damage)."""
+        self._delta_check("Poppy", "Q", 1)
+
+    # Pattern B: resource-state amps (3 entries)
+    def test_ambessa_Q_routes_to_block_1(self) -> None:
+        """Ambessa Q block 1 'Increased Physical Damage' = Cunning Sweep
+        with Drain stacks ready (2× block 0). Operator commits to
+        having Drain — same model as Renekton Fury."""
+        self._delta_check("Ambessa", "Q", 1)
+
+    def test_ambessa_W_routes_to_block_1(self) -> None:
+        """Ambessa W block 1 'Increased Physical Damage' = Repudiation
+        with Drain stacks ready (1.5× block 0)."""
+        self._delta_check("Ambessa", "W", 1)
+
+    def test_nilah_Q_routes_to_block_1(self) -> None:
+        """Nilah Q block 1 'Maximum Physical Damage' = Formless Blade
+        empowered AA at max stacks (2× block 0 'Minimum'). Operator
+        commits to building stacks pre-burst — same as Twitch E (s198)
+        and Tristana E (s199) resource-state amp pattern."""
+        self._delta_check("Nilah", "Q", 1)
+
+    # Pattern C: channel/duration commit (1 entry)
+    def test_anivia_R_routes_to_filtered_block_1(self) -> None:
+        """Anivia R filtered idx 1 = raw block 2 'Empowered Damage per
+        Tick' = Glacial Storm Empowered phase (3× raw block 0 per-tick).
+        Operator commits to holding R for 1.5+ seconds to reach
+        Empowered transition — same model as Belveth E max-charge."""
+        self._delta_check("Anivia", "R", 1)
+
+    # Multi-key resolved-shape sanity for s200's new champion + extensions
+    def test_ambessa_all_three_keys_in_resolved(self) -> None:
+        """Ambessa is a new s200 champion — Q=1, W=1, E=1 all present."""
+        r = compute_ability_dps(
+            self.snap, "Ambessa", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1, "W": 1, "E": 1})
+        self.assertEqual(r.block_index_source, "champion")
+
+    def test_anivia_all_three_keys_in_resolved(self) -> None:
+        """Anivia Q=2 (s191) + E=1 (s191) + R=1 (s200) — all three keys
+        must appear in resolved map."""
+        r = compute_ability_dps(
+            self.snap, "Anivia", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 2, "E": 1, "R": 1})
+
+    def test_lillia_both_keys_in_resolved(self) -> None:
+        """Lillia W=1 (s196) + Q=1 (s200) — both keys must appear."""
+        r = compute_ability_dps(
+            self.snap, "Lillia", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"W": 1, "Q": 1})
+
+    def test_nilah_both_keys_in_resolved(self) -> None:
+        """Nilah R=1 (s197) + Q=1 (s200) — both keys must appear."""
+        r = compute_ability_dps(
+            self.snap, "Nilah", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"R": 1, "Q": 1})
+
+    def test_poppy_both_keys_in_resolved(self) -> None:
+        """Poppy R=1 (s197) + Q=1 (s200) — both keys must appear."""
+        r = compute_ability_dps(
+            self.snap, "Poppy", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"R": 1, "Q": 1})
+
+    # Math-level sanity: Ambessa Q block 1 base = 2× block 0 (Drain amp)
+    def test_ambessa_Q_block1_matches_2x_block0(self) -> None:
+        """Numeric sanity: Ambessa Q block 1 base = 2× block 0 base
+        across all 5 ranks (Drain-stack Increased Damage)."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("Ambessa", "Q", form_index=0)
+        self.assertIsNotNone(form)
+        blocks = form.damage_blocks
+        self.assertGreaterEqual(len(blocks), 2)
+        for rank, (b0, b1) in enumerate(zip(blocks[0].base, blocks[1].base)):
+            self.assertAlmostEqual(
+                b1, b0 * 2.0, places=2,
+                msg=f"Ambessa Q rank {rank+1}: block 1 base {b1} != 2× block 0 base {b0}"
+            )
+
+    # Math-level sanity: Nilah Q block 1 tAD = 2× block 0 tAD (max stacks)
+    def test_nilah_Q_block1_tad_matches_2x_block0(self) -> None:
+        """Numeric sanity: Nilah Q block 1 total_ad_pct = 2× block 0
+        total_ad_pct across all 5 ranks (Maximum vs Minimum empowered AA)."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("Nilah", "Q", form_index=0)
+        self.assertIsNotNone(form)
+        blocks = form.damage_blocks
+        self.assertGreaterEqual(len(blocks), 2)
+        b0_tad = blocks[0].total_ad_pct or []
+        b1_tad = blocks[1].total_ad_pct or []
+        self.assertEqual(len(b0_tad), len(b1_tad))
+        for rank, (a, b) in enumerate(zip(b0_tad, b1_tad)):
+            self.assertAlmostEqual(
+                b, a * 2.0, places=2,
+                msg=f"Nilah Q rank {rank+1}: block 1 tAD {b} != 2× block 0 tAD {a}"
+            )
+
+    # Backward-compat: prior-batch entries still resolve unchanged after s200
+    def test_pre_s200_aatrox_unchanged(self) -> None:
+        """Backward-compat: s197 Aatrox W=3 + s199 Q=1 preserved after s200.
+        Aatrox not touched in s200."""
+        r = compute_burst_damage(
+            self.snap, "Aatrox", level=11, target_armor=80, target_mr=30,
+            target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"W": 3, "Q": 1})
+
+    def test_pre_s200_shen_unchanged(self) -> None:
+        """Backward-compat: s199 Shen Q=1 (filtered idx for Total Magic
+        Damage 3-AA total) preserved after s200."""
+        r = compute_ability_dps(
+            self.snap, "Shen", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1})
+
+    def test_pre_s200_singed_unchanged(self) -> None:
+        """Backward-compat: s193 Singed Q=1 preserved after s200."""
+        r = compute_ability_dps(
+            self.snap, "Singed", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1})
 
 
 # ─── backward-compat: unmapped champions keep pre-s191 output ───────────────

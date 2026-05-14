@@ -7449,7 +7449,20 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          (Sejuani R, Nautilus R). Pattern F execute amp
         #          (Fiddlesticks W low-HP). Pure data batch; no walker/
         #          resolver/server code changes.
-        self.assertEqual(ENGINE_VERSION, "0.84.0")
+        # 0.85.0 = s200 Phase 5.9.13 rescue batch — 7 more (champion, key)
+        #          entries closing 4 previously-deferred mechanics: Ambessa
+        #          Q/W Drain-stack amp (s196/s197/s198 'form swap' deferral
+        #          dissolved on verification), Anivia R Empowered phase
+        #          (s195 'channel ticks ambiguous' rescued), Lillia Q
+        #          Dream Dust AA combo (s199 'uncertain' rescued), Nilah Q
+        #          max-stack empowered AA (s199 'uncertain 2-stack'
+        #          rescued). Plus Ambessa E (Lacerate slash+thrust 2×),
+        #          Poppy Q (Hammer Shock out+return 2×). Pattern A multi-
+        #          hit totals (Ambessa E, Lillia Q, Poppy Q). Pattern B
+        #          resource-state amps (Ambessa Q, Ambessa W, Nilah Q).
+        #          Pattern C channel commit (Anivia R). Registry 90 → 91
+        #          champions, 120 → 127 entries. Pure data batch.
+        self.assertEqual(ENGINE_VERSION, "0.85.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7510,7 +7523,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.84.0")
+        self.assertEqual(ENGINE_VERSION, "0.85.0")
 
 
 if __name__ == "__main__":
