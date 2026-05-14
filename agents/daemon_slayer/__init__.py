@@ -638,6 +638,41 @@ Phase 5.6 (s188, 2026-05-13 — per-attack on-hit proc damage, ENGINE_VERSION 0.
   arm-by-spell-cast / consume-by-AA model that lands Spellblade
   contributions in burst combos.
 
+Phase 5.9.8 (s195, 2026-05-14 — multi-hit/charge/recast block_index expansion, ENGINE_VERSION 0.80.0):
+
+* Pure data-only batch — no code changes, just expands the s191
+  ``champion_block_index.json`` registry with 13 new (champion, key)
+  entries across four established sub-patterns. The s191/s192 walker
+  logic (per-token-canonical lookup + base-key fallback) handles all
+  new entries transparently. Registry: 25 → 35 entries.
+* **Multi-hit single-target totals** (operator commits to focus all
+  hits/bolts/missiles on one target):
+    - Ahri W=2 (Fox-Fire 3-bolt total)
+    - Kaisa Q=2 (Icathian Rain missile-focus total)
+    - Lulu Q=3 (Glitterlance both passes)
+    - Sivir Q=2 (Boomerang out + back)
+    - Talon W=2 (Rake out + return)
+    - Talon R=2 (Shadow Assault unstealth chain)
+    - Velkoz W=2 (Void Rift both halves)
+    - Ekko Q=3 (Timewinder out + return)
+* **Fully-charged amps** (operator commits to wind-up time in burst):
+    - Varus Q=1 (fully-charged Piercing Arrow, 1.5× block 0)
+    - Zoe Q=1 (long-distance Paddle Star post-E, 2.5× block 0)
+    - Vladimir E=1 (2-charge Tides of Blood, 2× block 0 + 4× HP scaling)
+* **Recast amps** (operator commits to both stages in window):
+    - Camille Q=2 (Precision Protocol 2nd cast, 2× block 0)
+* **CC-conditional duration totals** (operator commits root + duration):
+    - Morgana W=3 (Tormented Shadow full duration vs rooted)
+* All 13 verified per-rank math against Meraki snapshot (block N's
+  base + scaling fields match the sum of components from blocks 0..N-1
+  for the canonical-condition case — e.g., Ahri W block 2 base 64 = 40
+  initial + 12×2 subsequent at rank 1, ap_pct 64% = 40% + 12%×2).
+* Backward-compat preserved: any unmapped champion sees byte-identical
+  output to pre-s195. Tenth consecutive pure-data expansion of the
+  override registry pattern; fourth batch in the channel/total/charge
+  family (s191 seed, s193 channels, s194 calibration follow-up, s195
+  multi-hit / charge / recast).
+
 Phase 5.9.7 (s194, 2026-05-14 — calibration-follow-up block_index expansion, ENGINE_VERSION 0.79.0):
 
 * Pure data-only batch — no code changes, just expands the s191
@@ -833,4 +868,4 @@ Phase 5.7 (s189, 2026-05-13 — Spellblade-in-burst, ENGINE_VERSION 0.74.0):
   doesn't exercise it (e.g. operator-supplied pure-AA combo).
 """
 
-ENGINE_VERSION = "0.79.0"
+ENGINE_VERSION = "0.80.0"

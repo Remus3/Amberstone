@@ -7393,7 +7393,13 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          (Corki W/E, Hecarim W/E, Jayce Q/W, Rell R, DrMundo W).
         #          Pure data batch; same per-tick → total / min → max amped
         #          pattern; resolver/walker code unchanged.
-        self.assertEqual(ENGINE_VERSION, "0.79.0")
+        # 0.80.0 = s195 Phase 5.9.8 multi-hit/charge/recast block_index expansion —
+        #          13 more (champion, key) entries across four sub-patterns:
+        #          multi-hit single-target totals (Ahri W, Kaisa Q, Lulu Q,
+        #          Sivir Q, Talon W/R, Velkoz W, Ekko Q), fully-charged amps
+        #          (Varus Q, Zoe Q, Vladimir E), recast amp (Camille Q),
+        #          CC-conditional duration total (Morgana W). Pure data batch.
+        self.assertEqual(ENGINE_VERSION, "0.80.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7454,7 +7460,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.79.0")
+        self.assertEqual(ENGINE_VERSION, "0.80.0")
 
 
 if __name__ == "__main__":
