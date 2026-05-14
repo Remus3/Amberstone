@@ -638,6 +638,78 @@ Phase 5.6 (s188, 2026-05-13 — per-attack on-hit proc damage, ENGINE_VERSION 0.
   arm-by-spell-cast / consume-by-AA model that lands Spellblade
   contributions in burst combos.
 
+Phase 5.9.14 (s201, 2026-05-14 — block_index expansion: Fizz / Galio / Garen / Graves / Janna / Jhin / Kennen / Taliyah / Teemo / Viego / Xerath / Yasuo / Ziggs, ENGINE_VERSION 0.86.0):
+
+* Pure data-only batch — no code changes. 16 new (champion, key)
+  entries across 13 new champions (3 multi-key: Jhin Q+R, Teemo E+R,
+  Xerath W+R, plus single-key for Fizz/Galio/Garen/Graves/Janna/
+  Kennen/Taliyah/Viego/Yasuo/Ziggs). Registry: 91 → 104 champions,
+  127 → 143 entries.
+* **Pattern A multi-hit single-target totals** (7 entries):
+    - Graves Q=2 (End of the Line buckshot + return 2.89×)
+    - Jhin Q=2 (Dancing Grenade Max Final Bounce after 3 minion
+      deaths nearby, 2.05×)
+    - Kennen R=1 filtered (Slicing Maelstrom all 6+ bolts on 1
+      target, 7.5× per-bolt)
+    - Taliyah Q=2 (Threaded Volley all 5 stones via Worked Ground,
+      2.6×)
+    - Teemo E=2 (Toxic Shot Total Poison 4-tick DoT, 2.67×)
+    - Xerath R=1 filtered (Rite of the Arcane all 4-6 bullets on
+      same target, 4-6×)
+    - Ziggs E=2 (Hexplosive Minefield all 5 mines focused, 5×)
+* **Pattern B fully-charged amps** (4 entries):
+    - Galio W=1 filtered (Shield of Durand 2s commit, 3×)
+    - Janna Q=2 (Howling Gale 3s max-charge, 1.55×)
+    - Jhin R=1 (Curtain Call Maximum at max distance, 4×)
+    - Viego Q=3 (Blade of the Ruined King fully-charged Soul Steal
+      AA, 2×)
+* **Pattern C channel/duration totals** (3 entries):
+    - Fizz R=2 (Chum the Waters Gigalodon max-distance, 2×)
+    - Garen E=1 (Judgment Increased per spin ramp on stationary
+      target, 1.25×)
+    - Teemo R=1 filtered (Noxious Trap full 4-tick poison, 4×)
+* **Pattern D resource/positional amps** (2 entries):
+    - Xerath W=1 (Eye of Destruction Increased center-spot, 1.67×)
+    - Yasuo E=3 (Sweeping Blade Total Combined at max stacks, 2×)
+* **Filtering notes** (filtered idx ≠ raw block idx; same lesson
+  as s199 Shen Q / s200 Anivia R / Lillia Q / Poppy Q):
+    - Galio.W raw block 0 'Magic Shield Strength' + blocks 1-2
+      'Damage Reduction' (non-damage) → filtered idx 1 = raw block 4
+      'Maximum Magic Damage'.
+    - Kennen.R raw block 0 'Bonus Resistances' (non-damage) →
+      filtered idx 1 = raw block 2 'Total Single-Target Damage'.
+    - Teemo.R raw blocks 0-2 'Bounce Distance Cap' / 'Maximum
+      Charges' / 'Slow' (non-damage) → filtered idx 1 = raw block 4
+      'Total Magic Damage'.
+    - Xerath.R raw block 0 'Number of Recasts' (non-damage) →
+      filtered idx 1 = raw block 2 'Total Magic Damage'.
+* **Reverts of prior skip rationale:** Xerath W (s198 'positional
+  condition, defer to conditional schema lift' → s201: aligned with
+  Khazix Q isolation framing shipped s196, same operator-commit
+  semantics), Ziggs E (s198 'unrealistic 5-mine focus' → s201:
+  operator commits to chokepoint setup, same as Ashe Q 5-AA focus
+  in s199), Janna Q (s198 'low ratio 1.46× + support' → s201: 1.55×
+  amp and support champions can route through /ability-dps for
+  mage-builds), Yasuo E (s198 'stacks decay 10s' → s201: operator
+  commits to E-stacking in burst setup, same as Twitch E 6-stack
+  pre-burst rotation).
+* **6 deliberate skips documented inline:** Seraphine Q (dispatcher
+  routes to ds.hps), Taliyah E (1.04× ratio + misses initial impact
+  block 0), Thresh E (per-soul scaling needs sum-of-blocks),
+  Nidalee W (conflicts with s187 form_index=1 cougar), Shyvana E
+  (Phase 4a parsing produces malformed interpolated base values),
+  Kindred E (dropped during s201 implementation — Enhanced damage
+  block has identical base + bAD to block 0; missing-HP amp lives
+  entirely in unparsed_modifiers nested-format scaling that the
+  Phase 4a parser cannot extract).
+* All 16 verified per-rank math against Meraki snapshot.
+* Backward-compat preserved: any unmapped champion or unchanged
+  champion sees byte-identical output to pre-s201.
+* Seventeenth consecutive override / proc-shape modeling improvement
+  on the same template (s185-s201); tenth pure-data batch in the
+  block_index family. Cumulative coverage 143 (champion, key)
+  entries across 104 champions.
+
 Phase 5.9.13 (s200, 2026-05-14 — rescue batch: Ambessa Drain + Anivia Empowered + Lillia + Nilah + Poppy + 7-entry block_index expansion, ENGINE_VERSION 0.85.0):
 
 * Pure data-only batch — no code changes. 7 new (champion, key)
@@ -1084,4 +1156,4 @@ Phase 5.7 (s189, 2026-05-13 — Spellblade-in-burst, ENGINE_VERSION 0.74.0):
   doesn't exercise it (e.g. operator-supplied pure-AA combo).
 """
 
-ENGINE_VERSION = "0.85.0"
+ENGINE_VERSION = "0.86.0"
