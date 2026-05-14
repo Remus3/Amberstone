@@ -6,6 +6,79 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s189 wrap — 2026-05-13 (Phase 5.7 Spellblade-in-burst — armed by ability cast, consumed by next AA)
+
+**Operator instruction:** "continue ds" — direct continuation of s188's deferral list. Top item: Spellblade CD modeling. Single commit ship.
+
+## Context
+
+s188 added `DpsResult.per_attack_on_hit_damage` and wired it into `burst.py` so each AA token in a combo picks up Wit's End / BotRK / Statikk contributions. The s188 hand-off claimed "Triforce/Lich Bane currently amortized as 1/N per AA via `every_n_attacks=N` schema" — but on re-reading effects.py this turned out to be **wrong**: Spellblade items use `every_n_seconds=3.0` (TF/LB/ER/IBG/Divine Sunderer) or `1.5` (Dusk+Dawn / Sheen / Bloodsong), and `_per_attack_proc_damage` explicitly **skips** time-based procs (`if proc.every_n_attacks <= 0: continue`). So in s188-era burst, Spellblade items contributed **zero** to AA damage — a bigger gap than the hand-off suggested.
+
+The fix model: Spellblade fires once per ability-then-AA transition in a combo. Walk the combo with a `spellblade_armed: bool` flag — any ability token sets armed=True; AA token consumes (armed → fire proc → armed=False). Real 1.5s internal CD is irrelevant in a single-combo window because the arming gate is binding (a fresh spell-cast is required to re-arm). Same architectural decision pattern as s180's combo modeling — no cooldown sequencing within the window.
+
+## Ships
+
+| File | Change |
+|---|---|
+| [agents/daemon_slayer/dps.py](agents/daemon_slayer/dps.py) | New `_spellblade_per_proc_damage()` helper (sibling of `_per_attack_proc_damage`) iterates `item_effects`, finds the build's `unique_passive_key=="spellblade"` item (already deduped by `collect_effects` — at most one survives), evaluates the per-proc damage through the standard pipeline (`resolve_damage(call_ctx)` → `_armor_factor(armor/mr)` → `mode_dmg_mult` → type-selective `magic_amp` for MAGIC only → `damage_amp`). Returns `(per_proc_damage, item_name)`. `DpsResult` gains `spellblade_per_proc_damage: float = 0.0` + `spellblade_item_name: str = ""` fields with full `to_dict()` coverage. `compute_dps` populates both after the existing `per_attack_on_hit_damage` block; surfaces a `notes` line when Spellblade is present so /dps clients can see the per-proc value. |
+| [agents/daemon_slayer/burst.py](agents/daemon_slayer/burst.py) | Reads `aa_probe.spellblade_per_proc_damage` + `aa_probe.spellblade_item_name` after the existing per-attack on-hit probe. Combo walker tracks new state vars `spellblade_armed: bool` / `spellblade_procs_fired: int` / `spellblade_damage_total: float`. Ability token branch sets `spellblade_armed = True`. AA token branch checks armed + per-proc>0; on hit, adds the proc damage to that ComboCast's `final_damage` (and `raw_damage` / `post_mode_damage` / `post_amps_damage` — already-mitigated value, mirrors how `aa_per_hit` is treated), resets armed, increments counter. `BurstResult` gains `spellblade_procs: int = 0` + `spellblade_damage: float = 0.0` + `spellblade_item_name: str = ""` fields; `to_dict()` carries them. Notes block now reports `Spellblade (Name) fired Nx in combo for +D damage`, or `Spellblade (Name) idle in combo — no AA followed an ability cast` when the build has Spellblade but the combo template doesn't exercise it. |
+| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | ENGINE_VERSION 0.73.0 → 0.74.0. Docstring tail expanded with the Phase 5.7 explainer (combo walker arms Spellblade, AA consumes; 1.5s internal CD irrelevant in single-combo window per the s180 architectural pattern). |
+| [agents/daemon_slayer/tests/test_spellblade_burst.py](agents/daemon_slayer/tests/test_spellblade_burst.py) | **NEW (~480 LOC, 32 tests).** Four classes. `SpellbladeHelperTests` (10) — direct exercise of `_spellblade_per_proc_damage`: empty effects / non-Spellblade build / TF returns 2.0×base_ad physical / TF armor mitigation / LB uses MR for magic / LB magic_amp applies / TF magic_amp does NOT apply to physical / damage_amp applies uniformly / mode_multiplier applies / dedup takes first Spellblade in build. `DpsResultSpellbladeFieldsTests` (5) — `compute_dps` end-to-end: naked = 0, per-attack-only items = 0 (sanity, s188 unchanged), TF surfaces, LB surfaces, `to_dict` carries fields. `BurstSpellbladeIntegrationTests` (14) — `compute_burst_damage` combo walker: naked zero / TF arms+fires / Q-AA-W-AA fires twice / Q-W-E-AA fires once / AA-Q-AA fires once / no-AA combo / only-AA combo / AA row picks up Spellblade in `final_damage` / Zed default-combo gets 1 proc / Essence Reaver in Talon / Divine Sunderer in Zed / dedup keeps one Spellblade in build / Spellblade + Wit's End both contribute / `to_dict` carries fields. `ServerBurstRouteSpellbladeTests` (2) — `/burst` route surfaces fields; skipped gracefully when :8893 unavailable. |
+| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Version-pin tests (Batch63 + Batch64) bumped 0.73.0 → 0.74.0 with Phase 5.7 line in the history comment. |
+
+## Verification
+
+- DS suite **1577 pass** (was 1545; +32 new test file)
+- Wider RC suite **1013 pass** (no regression)
+- `py_compile` clean for dps.py + burst.py
+- DS server :8893 restarted from pid 16324 → pid 12704; `/health` reports `engine_version=0.74.0`, patch=16.10.1, 172 champions, 705 items
+
+## Live A/B on :8893
+
+**Akali lvl 11 vs 80 armor / 30 MR / 2000 HP (combo Q-AA-E-R-Q2-AA-R2, 2 AAs eligible):**
+- naked total_burst: 787.9
+- +Trinity Force (3078): 1111.0 (+323), spellblade_procs=2, spellblade_damage=211.1
+- +Lich Bane (3100): 1138.2 (+350), spellblade_procs=2, spellblade_damage=186.5 (AP scaling wins for Akali)
+- +Essence Reaver (3508): 1119.5 (+332), spellblade_procs=2, spellblade_damage=145.8
+
+**Zed lvl 11 vs 80 armor / 30 MR / 2000 HP (combo Q-W-E-R-Q2-AA, 1 AA from s186 registry):**
+- naked total_burst: 413.3, AA=53.9
+- +Trinity Force: 617.1 burst, AA=181.7, spellblade_procs=1 (+107.8)
+- +Divine Sunderer: 654.0 burst, AA=210.1, spellblade_procs=1 (+134.0 — beats TF because target_max_hp scales the 6% modifier)
+- +Sheen: 467.2 burst, AA=107.8, spellblade_procs=1 (+53.9 — cheapest spellblade, 1.0×base_ad)
+
+**`/rank-assassin` shift on Zed (top 10):**
+- Pre-s189 wrap (s180): Essence Reaver +203.6 at #5; Trinity Force outside top 10.
+- Post-s189: **Essence Reaver +223.0 at #2** (#1 Infinity Edge +225.1); **Trinity Force +203.8 at #7**.
+- Lethality + armor-pen still dominate top tier — Spellblade items climb but don't overtake (correct — Zed's combo has only 1 AA, so 1 Spellblade proc vs 5 ability casts × lethality).
+
+## Findings
+
+- **The s188 hand-off was inaccurate about the Spellblade schema.** Re-reading effects.py showed Spellblade items use `every_n_seconds` not `every_n_attacks`, which means the s188 `_per_attack_proc_damage` was skipping them entirely. The wider lesson: when a hand-off references schema details, verify against current code before designing a fix on top of it. The fix here is bigger-impact than the deferral text suggested — building TF on Akali pre-s189 contributed only the stat block; post-s189 the Spellblade adds 200+ extra burst per combo.
+- **`unique_passive_key="spellblade"` is the right dedup signal.** All 8 SR Spellblade items + 6 Arena mirrors + Sheen + Bloodsong share the key. `collect_effects` first-seen-wins keeps the engine deterministic when operator builds two Spellblade items (rare but legal in beam search). The helper iterates `item_effects` (already deduped) so it returns at most one Spellblade per build.
+- **AA row's `final_damage` carries the Spellblade contribution.** No sibling field on `ComboCast` for the Spellblade portion — keeps the per-cast row's `final_damage` as the canonical "damage this step contributed", consistent with the s188 pattern where on-hit goes straight into the AA total. Verified via `test_aa_row_includes_spellblade_in_final_damage`: AA row equals `compute_dps.avg_attack_dmg + compute_dps.spellblade_per_proc_damage` from a matched-build probe.
+- **Test bug caught at first run:** initial `test_aa_row_includes_spellblade_in_final_damage` compared naked-AA vs TF-AA and asserted the delta equals the Spellblade per-proc value. The delta was off by ~20 because TF adds AD (+25), so the AA base damage also grew. Fixed by comparing the TF-AA row against `(naked-AA + spellblade) of THE SAME BUILD's probe` — single-build apples-to-apples.
+- **Idle Spellblade note added.** When the build has TF but the operator passes `combo_sequence=("AA","AA","AA")` (no ability tokens), the engine surfaces a "Spellblade (Trinity Force) idle in combo — no AA followed an ability cast" note. Useful diagnostic for operators experimenting with custom combo templates that fail to exercise the passive.
+
+## Open items carried forward
+
+- 🟡 **Sundered Sky Lightshield Strike (6610).** Same "next AA after ability cast" mechanic but with `unique_passive_key="lightshield_strike"` (separate from "spellblade"). Out of scope this batch — needs its own helper or a generalized `is_ability_triggered_aa_proc` flag. Single-item lift if added.
+- 🟡 **Real Spellblade CD in long combos.** Current model ignores the 1.5s internal CD because typical 6-token combos run <2s. Edge case: a slow 8-token combo with multiple AA-after-spell transitions might over-count Spellblade procs. Tighter model would track combo elapsed time, but the engine has no per-token timing right now.
+- 🟡 **Pre-existing carry-forwards from s188:** Aphelios upstream data gap, Karma mantra runtime plumbing, Khazix evolved-form choice, conditional damage amps (Ahri R→Q, Zoe E→Q), live-game chip lifecycle validation, calibration knob retune, audit finding #1 frozen-file list duplication.
+
+## Architectural pattern lock-in (continued from s188)
+
+Five consecutive override / proc-shape registries (s185 max_priority / s186 combo / s187 form_index / s188 per-AA on-hit / s189 Spellblade-armed) all ship on the same template:
+- JSON sibling or in-effects schema declaration
+- Helper function exposing `(value, source)` or `(damage, name)` tuple
+- Result-type field surfaced in `to_dict()`
+- Backward-compat preserved by defaulting to "no contribution"
+- Live A/B comparison demonstrating the new modeling is load-bearing
+
+The DS engine now ships with reliable scoring for all 6 archetype dispatcher paths × the s185-s189 modeling improvements. Coach-side dispatch (s182) and dashboard JS (s183) auto-pick up new fields via `to_dict()` shape — no UI changes required this batch.
+
+---
+
 # s188 wrap — 2026-05-13 (DDragon 16.10.1 refresh + per-champion DS override registries — 5 commits da67555..9953c23 covering s185/s186/s187/s188)
 
 **Operator instruction:** "CONTINUE DS" → "continue" × 4. Single long session covering one DS data refresh + four registry-pattern follow-ups to the s174-s181 archetype-expansion plan. All shipped backend-first with live `/health` + ranker verification before commit.
