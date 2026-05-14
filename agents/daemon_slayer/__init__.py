@@ -638,6 +638,34 @@ Phase 5.6 (s188, 2026-05-13 — per-attack on-hit proc damage, ENGINE_VERSION 0.
   arm-by-spell-cast / consume-by-AA model that lands Spellblade
   contributions in burst combos.
 
+Phase 5.8 (s190, 2026-05-13 — Sundered Sky Lightshield Strike in burst, ENGINE_VERSION 0.75.0):
+
+* Sundered Sky (6610 + Arena mirror 226610) carries a Lightshield Strike
+  ``PeriodicProc`` (``name="Lightshield Strike"``, ``every_n_seconds=8.0``).
+  The engine schema explicitly keeps Lightshield Strike OUT of the
+  spellblade unique-passive family (distinct in-game label, longer CD,
+  no dedup), so pre-s190 it was invisible in burst combos — same gap as
+  Spellblade pre-s189.
+* New ``dps._lightshield_strike_per_proc_damage()`` mirrors the
+  Spellblade helper but filters by ``proc.name == "Lightshield Strike"``.
+  Returns ``(per_proc_damage, item_name)`` with the standard
+  mitigation / mode / amp pipeline. Empty builds yield ``(0.0, "")``.
+* ``DpsResult`` gains ``lightshield_strike_per_proc_damage: float`` +
+  ``lightshield_strike_item_name: str`` (default 0.0 / "").
+  ``compute_dps`` populates after the existing Spellblade block.
+* ``burst.compute_burst_damage`` extends the combo walker with a second
+  arm-consume state machine: ``lightshield_armed`` set by any ability
+  cast, ``lightshield_procs_fired`` capped at 1 per combo (Sundered
+  Sky's 8s real CD doesn't permit re-arming within a 2-3s burst window).
+  AA branch consumes both Spellblade AND Lightshield independently
+  when armed — a build with Sundered Sky + Trinity Force lands BOTH
+  procs on the AA following the first ability cast.
+* ``BurstResult`` gains ``lightshield_strike_procs: int`` +
+  ``lightshield_strike_damage: float`` + ``lightshield_strike_item_name: str``.
+  Notes block reports per-combo fired count + total damage; surfaces an
+  idle diagnostic when the build has Sundered Sky but the combo doesn't
+  exercise it.
+
 Phase 5.7 (s189, 2026-05-13 — Spellblade-in-burst, ENGINE_VERSION 0.74.0):
 
 * Spellblade items (Trinity Force / Lich Bane / Essence Reaver / Iceborn
@@ -670,4 +698,4 @@ Phase 5.7 (s189, 2026-05-13 — Spellblade-in-burst, ENGINE_VERSION 0.74.0):
   doesn't exercise it (e.g. operator-supplied pure-AA combo).
 """
 
-ENGINE_VERSION = "0.74.0"
+ENGINE_VERSION = "0.75.0"
