@@ -4,6 +4,93 @@
 
 ---
 
+# s194 wrap — 2026-05-14 (Phase 5.9.7 calibration-follow-up block_index expansion)
+
+**Operator instruction:** "continue DS" — direct continuation of s193's carry-forward list. The cleanest next ship is more registry entries closing the explicit "Corki E/W, Hecarim W, Jayce W, Rell R, DrMundo W same per-tick → total pattern (+5-20% adps each, lower-impact deferral)" callout from s193's open-items section. Same template as s193 (pure data, no code), but mechanically interesting: includes the first block_index entry that layers on a prior form_index override (Jayce Q + s187 Jayce.Q form_index=1 cannon-form).
+
+## Context
+
+s193's hand-off listed exactly 5 deferred candidates: Corki E/W (Gatling Gun channel, Valkyrie trail), Hecarim W (Spirit of Dread aura), Jayce W (Lightning Field hammer aura), Rell R (Magnet Storm channel), DrMundo W (Heart Zapper drain). Inspection of the Meraki abilities snapshot confirmed each follows the same "per-tick" block 0 + "Total/Maximum" block 1 pattern as the s193 entries. Three additional candidates surfaced during inspection that fit the same template:
+
+- **Hecarim E (Devastating Charge)** — min→max charge variant (2× block 0); operator commits to full charge in burst window, same modeling intuition as s191's Belveth E full-channel Royal Maelstrom (block 2 = max-channel).
+- **Jayce Q (Shock Blast through Acceleration Gate)** — Increased Damage variant (1.4× block 0); canonical Jayce combo (fires E gate first, then Q through it). This is the first block_index that **layers on a prior form_index override** — s187 already set Jayce.Q form_index=1 (cannon form), now s194 sets block_index=1 within that form. Two orthogonal resolvers compose: form_index selects cannon form 1; block_index then selects gate-amped block 1 within that form.
+- **Corki R Big One** — block 1 "Big One Physical Damage" was inspected but deliberately SKIPPED. Big One is a charge-based mechanic (every 4th missile is a special amped shot, NOT a per-cast amp). Requires conditional resource-state modeling to apply correctly. Defer.
+
+All 8 ship-candidates verified against Meraki ATTR names in the snapshot (one of "Total Magic Damage", "Total Physical Damage", "Maximum Physical Damage", "Increased Damage") — confirming clean per-tick → total or min → max amped variants. Pure data batch — no resolver/walker/server code changes.
+
+## Ships
+
+| File | Change |
+|---|---|
+| [agents/daemon_slayer/champion_block_index.json](agents/daemon_slayer/champion_block_index.json) | **Registry expanded from 20 → 25 entries (8 new (champion, key) pairs).** New entries: Corki {W:1, E:1}, Hecarim {W:1, E:1}, Jayce {Q:1, W:1}, Rell {R:1}, DrMundo {W:1}. `_meta.description` extended with Phase 5.9.7 note explaining the calibration-follow-up class + the Jayce Q form/block layering. `_meta.rationale` adds entry-by-entry per-tick × duration math verification with the Meraki ATTR names. Skipped-list updated to document Corki R Big One (conditional resource-state, not per-cast amp). |
+| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | ENGINE_VERSION 0.78.0 → 0.79.0. Docstring extended with Phase 5.9.7 section noting the data-only nature of the batch + the form+block resolver composition for Jayce Q + A/B impact summary. |
+| [agents/daemon_slayer/tests/test_block_index_overrides.py](agents/daemon_slayer/tests/test_block_index_overrides.py) | New `CalibrationFollowUpExpansionTests` class (13 tests): one per new (champion, key) entry asserting registry routes to expected block_index + delta-check that total_ability_dps exceeds forced-block-0 baseline (`_delta_check` helper mirrors s193); plus `test_corki_both_keys_in_resolved` + `test_hecarim_both_keys_in_resolved` + `test_jayce_both_keys_in_resolved` for multi-key champions; `test_jayce_Q_block_layers_on_s187_form_index` smoke test for the form+block composition; `test_pre_s194_unmapped_unaffected` backward-compat guard preserving s193's Singed entry. Pre-existing `test_known_champion_overrides` extended with explicit assertions for all 5 new champion entries. File docstring extended with Phase 5.9.5/5.9.6/5.9.7 section. |
+| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Version-pin tests bumped 0.78.0 → 0.79.0 with the Phase 5.9.7 line in the history comment. |
+
+## Verification
+
+- DS suite **1689 pass** (was 1676 in s193 wrap; +13 from new `CalibrationFollowUpExpansionTests` class)
+- Wider RC suite **1024 pass** (was 1013 in s193; +11: 13 new DS tests carry into wider suite via discovery, minus 2 that get absorbed by setUpClass aggregation; verified by phase8_smoke's `test_live_three_profiles` pinning ENGINE_VERSION 0.79.0 post-restart)
+- `py_compile` clean for __init__.py
+- DS server :8893 restarted from PID 16176 → new PID; `/health` reports `engine_version=0.79.0` patch=16.10.1 172 champions 705 items
+
+## Live A/B on :8893 (/ability-dps at lvl 11 vs 80 armor / 30 MR / 2000 HP)
+
+| Champion.Key | Registry (post-s194) | Forced block 0 | Delta | Lift |
+|---|---|---|---|---|
+| Corki W | 17.733 adps | 14.202 adps | +3.531 | **+24.9%** |
+| Corki E | 17.733 adps | 16.465 adps | +1.268 | **+7.7%** |
+| Hecarim W | 27.648 adps | 22.442 adps | +5.206 | **+23.2%** |
+| Hecarim E | 27.648 adps | 27.121 adps | +0.527 | **+1.9%** |
+| Jayce Q | 29.103 adps | 25.040 adps | +4.063 | **+16.2%** |
+| Jayce W | 29.103 adps | 22.065 adps | +7.038 | **+31.9%** |
+| Rell R | 10.975 adps | 10.476 adps | +0.499 | **+4.8%** |
+| DrMundo W | 30.459 adps | 25.791 adps | +4.667 | **+18.1%** |
+
+Lifts are smaller than s193's headline channels (Singed +182%, Fiddle R +125%) because these champions all have multi-spell ability damage contributions — Hecarim's E adds only +1.9% to his total because his Q and W already dominate, while his W alone (+23.2%) mirrors the s193 channel pattern. Jayce W +31.9% is the biggest single-spell lift, reflecting how much the hammer-aura full duration outweighs the per-tick value the engine was using pre-s194.
+
+**Per-spell row-level checks** (extract from /ability-dps raw_damage_per_cast):
+- Corki W block 1 vs 0: per-tick 40-100 (block 0) → full-duration 200-500 (block 1) at rank 5 ≈ 5×
+- Corki E block 1 vs 0: per-shot 5-17.5 (block 0) → full-channel 80-280 (block 1) ≈ 16×
+- Hecarim W block 1 vs 0: per-tick 20-60 → full-aura 100-300 ≈ 5×
+- Hecarim E block 1 vs 0: min-charge 30-90 → max-charge 60-180 ≈ 2×
+- Jayce Q block 1 (cannon form 1) vs 0: regular Shock Blast 60-260 → gate-amped 84-364 ≈ 1.4×
+- Jayce W block 1 vs 0: per-tick 35-95 → full-aura 140-380 ≈ 4×
+- Rell R block 1 vs 0: per-tick 15-35 → full-channel 120-280 ≈ 8×
+- DrMundo W block 1 vs 0: per-tick 5-20 → full-drain 80-320 ≈ 16× (block 2 recast detonation +25% one-time burst still missed — minor known under-count, documented in rationale)
+
+**Regression checks pass:**
+- Singed Q registry-resolved block 1 unchanged (s193 entry preserved; `test_pre_s194_unmapped_unaffected` asserts exact `{"Q": 1}` shape)
+- Cassi /ability-dps total: **39.48** — unchanged from s191/s192/s193
+- Akali /burst total: **941.71** — unchanged from s192 (R=0, R2=2 token-variant logic preserved)
+- Zed (unmapped) burst with no override equals burst with explicit empty override — `BackwardCompatTests` green
+
+## Findings
+
+- **The s191/s192/s193 pattern still scales.** Tenth consecutive override registry on the same template; s194 is the third pure-data batch in the series (s191 seed, s193 channels, s194 calibration follow-up). Each new champion entry drops in as a one-line JSON addition + 1-2 test methods + a rationale comment.
+- **Form/block resolvers compose cleanly.** Jayce Q is the first block_index entry that layers on a prior form_index entry (s187 set Jayce.Q form_index=1 cannon-form; s194 sets block_index=1 within that form). The resolvers compose at runtime without any new code: form_index resolves form selection → block_index resolves block selection within the resolved form. `test_jayce_Q_block_layers_on_s187_form_index` is a smoke test for the composition; full behavior asserted by the A/B delta on Jayce.Q (+16.2%).
+- **DrMundo W's block 2 detonation is the only known under-count.** Heart Zapper has 3 damage blocks: block 0 per-tick (5-20), block 1 full-channel total (80-320), block 2 recast detonation (20-80). The single-block_index schema can pick only one — block 1 (the full channel) captures the larger share (~80% of realistic damage). Block 2's +25% one-time burst is missed. Acceptable under-count documented in rationale. Future schema lift could be `block_index: int | list[int]` to sum two blocks — defer until 3+ candidates need it.
+- **Multi-spell champions show diluted lifts.** Hecarim E only adds +1.9% to total despite block 1 being 2× block 0 because his Q (rank 5, 60% bAD) and W (full aura, 5× block 0 base + 100% AP) dominate his total_ability_dps. The W +23.2% is the bigger signal. Pattern: per-spell lift × spell's share of total_ability_dps = total lift.
+- **Corki R Big One was the cleanest skip.** Inspection showed block 0 "Physical Damage" (regular missile) + block 1 "Big One Physical Damage" (2× block 0). Looks like a per-tick → amped pattern at first glance, but Big One is mechanically a charge-stack proc (1 per ~12s real, every 4th missile), NOT a per-cast amp. Applying block_index=1 would over-count the regular cast by 2×. Documented as deferred in skipped-list with explicit "requires conditional resource-state modeling" rationale.
+- **Process-tracking pattern continues to hold.** Used `Get-CimInstance Win32_Process | Where-Object` filter to isolate the DS pythonw.exe PID 16176; `Stop-Process -Id 16176 -Force` cleanly; relaunched via bash `pythonw tools/start_daemon_slayer.py` background spawn. No false kills.
+
+## Open items carried forward
+
+- 🟡 **Conditional block_index based on target state** — same as s193 carry-forward. Zoe sleep, Lux Illumination, DrMundo E missing-HP threshold, Renekton Q full Fury. Schema lift: `{"<champion>": {"<key>": {"default": 0, "when_target_missing_hp_pct_above": [0.5, 2]}}}`. Defer until 3+ candidates accumulate cleanly.
+- 🟡 **Sum-of-blocks block_index** — DrMundo W full-channel + recast detonation. Schema lift: `block_index: int | list[int]` where list means sum. Single known candidate; defer until 3+ accumulate.
+- 🟡 **Conditional resource-state block_index** — Corki R Big One every-4th-missile, Renekton Q full Fury, Aatrox Q chain stage. Same shape as conditional damage amps; defer until 3+ candidates accumulate.
+- 🟡 **Conditional damage amps (Ahri R→Q, Zoe E→Q)** — inter-spell awareness still missing. Carried since s180.
+- 🟡 **Generalized arm-consume framework** via `is_ability_triggered_aa_proc` schema flag. Carried since s190.
+- 🟡 **Aphelios + Karma mantra + Khazix evolved** — upstream/plumbing/UI blockers.
+- 🟡 **Real internal CD in long combos** — s190 carry-forward.
+- 🟡 **Pre-existing carry-forwards from s184/s183/s182** — live-game chip lifecycle validation; `_TOP_N_THRESHOLD` retune; `nudge_history` calibration analysis.
+
+## Architectural pattern lock-in (continued from s193)
+
+Tenth consecutive override registry on the same template. Three pure-data batches in the series now (s191 seed, s193 channels, s194 calibration follow-up). Resolver composition (form + block) verified live for Jayce Q — future per-champion entries can compose any combination of max_priority / combo_sequence / form_index / block_index without coupling. The registry pattern is stable enough that a future operator-driven "add 5-10 entries when calibration data warrants" batch can ship in one session with no engineering risk.
+
+---
+
 # s193 wrap — 2026-05-14 (Phase 5.9.6 channeled-ability block_index expansion)
 
 **Operator instruction:** "continue" — straight from the s192 carry-forward. The cleanest next ship is more registry entries, focusing on a different pattern from s191 (single-block conditional amps) and s192 (per-token variants): the "per-tick → total" gap for channeled or duration-based abilities.
@@ -149,95 +236,3 @@ Registry is exactly halfway between "ignore the R2 amp" (787.9) and "naively dou
 ## Architectural pattern lock-in (continued from s191)
 
 Eighth consecutive override / proc-shape modeling improvement on the same template, and the first one to *extend* a prior registry rather than ship a new one (s191's registry gained the Akali entry; the schema stayed `dict[str, int]` but the valid-key set extended from `{Q,W,E,R}` to `{Q,W,E,R,Q2,W2,E2,R2}`). The pattern is now proven extensible across both rows (more entries) and columns (more granular keys per entry). Future conditional-block_index extensions can layer values from `int` → `dict[str, Any]` without disturbing the per-batch resolver contract.
-
----
-
-# s191 wrap — 2026-05-14 (Phase 5.9 per-(champion, key) damage block_index overrides)
-
-**Operator instruction:** "continue ds" — directly continuing the s190 carry-forward list. The carry-forward mentioned "Conditional damage amps (Ahri R→Q, Zoe E→Q, Akali R1→QE→R2)" as a Phase 5.9 candidate, but on inspection most of those map to either combo-sequence (already s186 registry) or multi-form selection. The clean modeling improvement that's been hiding in plain sight: 248 (champion, key, form) tuples in `champion_abilities.json` carry 2+ damage blocks where block ≥1 is the realistic burst-window damage (poisoned-target enhanced, all-orbs total, max-charge, executed). The engine's default `block_strategy="first"` has been locking all callers to block 0, under-scoring 11 specific champions across mage + assassin scorers. Single commit ship.
-
-## Context
-
-After s187 (form_index overrides) + s188 (per-AA on-hit) + s189 (Spellblade in burst) + s190 (Lightshield Strike in burst), the engine's modeling of *which* damage block to evaluate within a chosen form was still locked to block 0. Inspection of the Meraki abilities data showed clear amped/empowered/max blocks ready to consume:
-
-- Cassiopeia E block1 "Total Enhanced Damage" — vs poisoned (Q/W apply)
-- Veigar R block1 "Maximum Magic Damage" — vs executed target
-- Anivia E block1 "Enhanced Damage" — vs chilled (Q stun applies)
-- Brand W block1 "Increased Damage" — vs CC'd / Blaze-stacked target
-- Brand R block1 "Total Single-Target Damage" — all 3 bounces same target
-- Diana W block2 "Total Magic Damage" — all 3 Pale Cascade orbs land
-- Evelynn R block1 "Empowered Damage" — sub-30% HP execute
-- Aurora Q block2 "Maximum Magic Damage" — full-charged Twofold Hex
-- Belveth E block2 "Maximum Physical Damage per hit" — full Royal Maelstrom
-- Karma W block1 "Total Magic Damage" — full Focused Resolve channel
-- Vex R block2 "Total Magic Damage" — initial + mark detonation
-- Ahri Q block1 "Total Mixed Damage" — both passes of Orb of Deception
-
-12 entries across 11 champions. For ranking purposes (operator is comparing item builds for *their* champion in *their* combo), assuming amped conditions are met is the right model — same intuition as the engine already baking in `target_missing_hp_pct` and treating skillshots as landed.
-
-## Ships
-
-| File | Change |
-|---|---|
-| [agents/daemon_slayer/champion_block_index.json](agents/daemon_slayer/champion_block_index.json) | **NEW**. Seed registry, 12 (champion, key) → block_index entries. Defensively skips: Akali R (would double-count R1/R2 — needs per-token-variant resolution), AurelionSol R (multi-FORM not multi-block), Caitlyn Q (block1 is REDUCED fallback not enhancement), DrMundo E (block0 is stat-bonus only), Renekton Q (Fury condition not always met in burst). Operator can extend per-champion as needed; default block_index=0 preserves pre-s191 behavior for any unmapped entry. |
-| [agents/daemon_slayer/ability_dps.py](agents/daemon_slayer/ability_dps.py) | New `_BLOCK_INDEX_PATH` + `_BLOCK_INDEX_LOCK` + `_BLOCK_INDEX_CACHE` singleton-cached loader. New `get_block_index_for(champion_id) -> (mapping, source)` + `_resolve_block_index_overrides(champion_id, explicit) -> (merged, source)` mirror the Phase 4e form_index pattern. New `reset_block_index_cache()` for test isolation. `_select_blocks` gains a `block_index: int = 0` param; new strategy `"indexed"` selects that specific damage block (clamping negative→0, out-of-range→last). `_BLOCK_STRATEGIES` extended with `"indexed"`. `compute_ability_dps` + `rank_items_by_ability_dps` gain `block_index_overrides: Optional[dict[str, int]] = None` arg; per-spell loop switches to `"indexed"` strategy for keys present in the resolved map; keys without an entry honor the global `block_strategy`. `AbilityDpsResult` + `AbilityDpsRankResult` gain `block_index_source: str` + `block_index_resolved: dict[str, int]` fields surfaced in `to_dict()`. Ranker's baseline + each candidate call share the SAME resolved map (consistent source label). |
-| [agents/daemon_slayer/burst.py](agents/daemon_slayer/burst.py) | Imports `_resolve_block_index_overrides`. `compute_burst_damage` + `rank_items_by_burst` gain `block_index_overrides` arg + plumb through to per-cast `_select_blocks` call. Combo walker's ability-cast branch switches to `"indexed"` strategy for keys present in `block_overrides`; AA branch unchanged. `BurstResult` + `BurstRankResult` gain `block_index_source` + `block_index_resolved` fields. `_empty_burst` accepts the new kwargs for engine-down / champion-missing paths. |
-| [agents/daemon_slayer/server.py](agents/daemon_slayer/server.py) | New `_parse_block_index(body) -> Optional[dict[str, int]]` decoder accepting a JSON dict body field. Wired into all 4 routes (`/ability-dps`, `/rank-mage`, `/burst`, `/rank-assassin`) via the shared parsing pattern that already serves max_priority / form_index / combo_sequence. Route docstrings updated. |
-| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | ENGINE_VERSION 0.75.0 → 0.76.0. Docstring extended with Phase 5.9 section (mirrors Phase 4e + 5.7 + 5.8 structure). |
-| [agents/daemon_slayer/tests/test_block_index_overrides.py](agents/daemon_slayer/tests/test_block_index_overrides.py) | **NEW (~560 LOC, 53 tests).** 9 test classes mirroring s187's test_form_index_overrides.py structure: `RegistryShapeTests` (6), `LoaderCacheTests` (2), `GetBlockIndexForTests` (4), `ResolveBlockIndexTests` (5), `SelectBlocksIndexedTests` (8 — direct exercise of new strategy including out-of-range clamp + non-damage filter), `ComputeAbilityDpsBlockIndexTests` (6 — including Cassi E rank-max raw_dpc=168 (block1 Total Enhanced) vs forced block0=100 explicit assertion), `ComputeBurstBlockIndexTests` (5), `RankerBlockIndexTests` (3), `ToDictSerializationTests` (5), `BackwardCompatTests` (3 — unmapped champion exact-match invariant), `ServerRouteSourceTests` (6 — surfaces source/resolved on all 4 routes; skipped when :8893 unavailable). |
-| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Version-pin tests (Batch63 + Batch64) bumped 0.75.0 → 0.76.0 with the Phase 5.9 line in the history comment. |
-
-## Verification
-
-- DS suite **1658 pass** (was 1605 in s190 wrap; +53 from new test file)
-- Wider RC suite **1013 pass** (no regression)
-- `py_compile` clean for ability_dps.py / burst.py / server.py / __init__.py
-- DS server :8893 restarted; `/health` reports `engine_version=0.76.0`, patch=16.10.1, 172 champions, 705 items
-
-## Live A/B on :8893
-
-**Cassi /ability-dps total (vs 30 MR):**
-- registry-applied: 39.48 adps  (E uses block1 Total Enhanced)
-- forced block_index={'E': 0}:  27.66 adps  (E uses block0 pre-poison Base)
-- **delta: +11.82 adps (+43%)** — the Twin Fang amp is load-bearing
-
-**Veigar /burst total (vs 80 armor / 30 MR / 2000 HP):**
-- registry-applied: 807.01  (R uses block1 Maximum at 130-150% AP)
-- forced block_index={'R': 0}:  614.70  (R uses block0 Minimum at 65-75% AP)
-- **delta: +192.31 burst (+31%)** — the execute amp dominates Veigar's late-game burst
-
-**Anivia /ability-dps total:**
-- registry-applied: 14.86 adps  (E uses block1 Enhanced at 110% AP / 2× base)
-- forced block_index={'E': 0}:  9.66 adps  (E uses block0 at 55% AP / base)
-- **delta: +5.20 adps (+54%)** — Frostbite vs chilled is the canonical Anivia combo
-
-**Cassi /rank-mage (registry baseline 39.48):**
-- 1. Rabadon's Deathcap +26.50 / 2. Shadowflame +24.65 / 3. Mejai's +22.74 / 4. Stormsurge +21.10 / 5. Void Staff +20.43
-- AP-scaling items dominate as expected — Twin Fang's 65% AP scales harder on block1 than block0's 55%
-
-**Veigar /rank-assassin (registry baseline 807.01):**
-- 1. Lich Bane +391.15 / 2. Rabadon's +377.00 / 3. Shadowflame +371.20 / 4. Mejai's +323.46 / 5. Stormsurge +320.77
-- Lich Bane climbs to #1 — Spellblade procs each Veigar spell-cast, and the AP scaling amplifies the now-doubled block1 R damage
-
-## Findings
-
-- **`_select_blocks` was the natural extension point.** Instead of adding a parallel "evaluate specific block" path, extending the existing strategy enum with `"indexed"` and a `block_index` parameter kept the change localized. The per-spell loop in `compute_ability_dps` / `compute_burst_damage` just checks `if key in block_overrides` and switches strategy for that one call.
-- **Registry pattern is now load-bearing for 4 sibling registries.** champion_max_priority (s185) / champion_combo_sequences (s186) / champion_form_index (s187) / champion_block_index (s191) all share the same architectural pattern: singleton-cached JSON sibling in `agents/daemon_slayer/` + `get_X_for(champion_id) -> (value, source)` resolver + `_resolve_X_overrides(champion_id, explicit) -> (merged, source)` merger + result-type `X_source: str` + `X_resolved: dict[...]` fields. Future per-champion modeling overrides drop into this template.
-- **Backward compatibility preserved.** Pre-s191 callers (no `block_index_overrides` arg, unmapped champion) see byte-identical output: the resolver returns empty dict, the per-spell loop's `if key in block_overrides` check fails for every key, and the global `block_strategy` (default "first") is honored. Verified via new `BackwardCompatTests` class — Zed (unmapped) burst with no override equals burst with explicit empty override.
-- **Akali R deliberately skipped.** R block2 "Maximum Magic Damage" is genuinely the missing-HP-scaled R2 damage, but applying it at the (champion, key) level would double-count: the existing combo registry (`champion_combo_sequences.json`, s186) lists Akali's combo as `Q-AA-E-R-Q2-AA-R2` — both R and R2 tokens evaluate at rank 1 (R lvl 11) but they're DIFFERENT mechanics in-game (R1 = dash + base damage; R2 = dash + missing-HP execute). Setting block_index globally would force BOTH R and R2 to use the "Maximum" block, over-counting R1. Proper modeling needs per-token-variant overrides — a separate feature.
-- **DrMundo E + Renekton Q deferred.** DrMundo E block0 is no-base stat-bonus (just adds Bonus Attack Damage), block1/2 are min/max missing-HP damage; block_index choice depends on current target HP which the engine doesn't surface for per-spell evaluation. Renekton Q block1 "Enhanced Damage" requires full Fury (50+) — high but not universally assumable in a burst window. Both would benefit from a future per-(champion, key) "use block_index N when target_current_hp_pct ≤ X" conditional, but s191 keeps to unambiguous always-applies cases.
-- **`pythonw.exe` doesn't print to stdout.** First DS restart attempt used `pythonw.exe` via `Start-Process` and the process didn't actually launch (silent failure — possibly Windows Defender flagged it, possibly a startup race). Switched to `python.exe` in a `run_in_background` bash invocation; `/health` returned 200 within 4 seconds.
-
-## Open items carried forward
-
-- 🟡 **Per-token-variant block_index for Akali R.** R1 block0 + R2 block2 modeling would need either (a) a registry shape like `{"Akali": {"R": [0, 2]}}` where index N applies to the Nth occurrence of R in the combo, or (b) an extension to combo_sequence tokens (`R` vs `R2`) carrying their own block_index. Single-champion lift; out of scope this batch.
-- 🟡 **Conditional block_index based on target state.** DrMundo E + Renekton Q + Zoe sleep amp + Lux Illumination mark all want different blocks based on combat conditions. Schema would need a `condition: {target_current_hp_pct_below: 0.4}` field on each entry plus combat-state plumbing through the per-spell evaluator. Substantial design lift; defer until 3+ candidates accumulate.
-- 🟡 **Aphelios + Karma mantra + Khazix evolved** — same as s187/s188/s189/s190 carry-forwards. Upstream data gap + LCU plumbing + UI picker respectively.
-- 🟡 **Real internal CD in long combos** — same as s190 carry-forward (a). Lightshield Strike "once per combo" gate would in theory permit a second proc at 8+ tokens lasting >3s.
-- 🟡 **Generalized arm-consume framework** — same as s190 carry-forward (b). Still only 2 specific helpers (Spellblade + Lightshield Strike); generalize to `is_ability_triggered_aa_proc: bool` if a third such mechanic ships.
-- 🟡 **Conditional damage amps (Ahri R→Q, Zoe E→Q, Akali R1→QE→R2)** — carried since s180. The Akali R1→R2 piece is partially addressed by s191 if we add per-token variants, but Zoe sleep amp and other inter-spell amps still need a separate mechanism (not in Meraki data).
-- 🟡 **Pre-existing carry-forwards from s184/s183/s182** all remain unchanged: live-game chip lifecycle validation; `_TOP_N_THRESHOLD` retune blocked on real-game fired nudges; `nudge_history` calibration additive.
-
-## Architectural pattern lock-in (continued from s190)
-
-Seventh consecutive override / proc-shape modeling improvement on the same template (s185 max_priority / s186 combo_sequence / s187 form_index / s188 per-AA on-hit / s189 Spellblade-in-burst / s190 Lightshield-in-burst / s191 block_index). Each shipped backend-first with live A/B verification before commit; each added per-item or per-champion-derived modeling without breaking backward-compat (default field values + empty registry maps preserve pre-batch behavior). Engine surface area is now stable for a future "conditional block_index" lift to slot in without re-architecting.
