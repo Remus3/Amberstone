@@ -7379,7 +7379,11 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         # 0.76.0 = s191 Phase 5.9 per-(champion, key) damage block_index
         #          overrides — Cassi E poisoned amp, Veigar R execute max,
         #          Anivia E chilled amp, Diana W all-orbs, Brand W CC'd, etc.
-        self.assertEqual(ENGINE_VERSION, "0.76.0")
+        # 0.77.0 = s192 Phase 5.9.5 token-variant block_index for Akali R —
+        #          R1 → block 0 (base + bonus-AD), R2 → block 2 (max-execute
+        #          missing-HP scaling); walker checks canonical token first
+        #          then base key.
+        self.assertEqual(ENGINE_VERSION, "0.77.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7440,7 +7444,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.76.0")
+        self.assertEqual(ENGINE_VERSION, "0.77.0")
 
 
 if __name__ == "__main__":

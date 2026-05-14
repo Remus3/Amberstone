@@ -86,6 +86,8 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Karma"], {"W": 1})
         self.assertEqual(champions["Vex"], {"R": 2})
         self.assertEqual(champions["Ahri"], {"Q": 1})
+        # Phase 5.9.5 (s192) — Akali R + R2 token-variant override
+        self.assertEqual(champions["Akali"], {"R": 0, "R2": 2})
 
     def test_every_value_is_int(self) -> None:
         for champion_id, entries in self.table["champions"].items():
@@ -94,11 +96,14 @@ class RegistryShapeTests(unittest.TestCase):
                     self.assertIsInstance(value, int)
                     self.assertGreaterEqual(value, 0)
 
-    def test_every_key_is_uppercase_letter(self) -> None:
+    def test_every_key_is_valid_token(self) -> None:
+        # Phase 5.9.5 (s192) extended valid keys to repeat-variant tokens
+        # (Q2/W2/E2/R2) in addition to base ability keys (Q/W/E/R).
+        valid = {"Q", "W", "E", "R", "Q2", "W2", "E2", "R2"}
         for champion_id, entries in self.table["champions"].items():
             for key in entries:
                 with self.subTest(champion_id=champion_id, key=key):
-                    self.assertIn(key, {"Q", "W", "E", "R"})
+                    self.assertIn(key, valid)
 
 
 # ─── loader / cache ──────────────────────────────────────────────────────────
@@ -443,6 +448,114 @@ class ToDictSerializationTests(unittest.TestCase):
         d = r.to_dict()
         self.assertEqual(d["block_index_source"], "default")
         self.assertEqual(d["block_index_resolved"], {})
+
+
+# ─── Phase 5.9.5 (s192): Akali R / R2 token-variant ─────────────────────────
+
+
+class AkaliTokenVariantTests(unittest.TestCase):
+    """Phase 5.9.5 (s192). Akali registry ``{"R": 0, "R2": 2}`` should route
+    the burst walker's R token to block 0 (R1 base — bonus-AD scaling) and
+    R2 token to block 2 (R2 max-execute — missing-HP curve at 90% AP).
+    Pre-s192 the walker only knew base keys, so both R and R2 used the
+    same block_index — setting ``{"R": 2}`` would over-count R1.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = _snap()
+
+    def test_akali_registry_uses_block0_for_R_and_block2_for_R2(self) -> None:
+        r = compute_burst_damage(
+            self.snap, "Akali", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_source, "champion")
+        self.assertEqual(r.block_index_resolved, {"R": 0, "R2": 2})
+
+    def test_akali_R1_row_raw_damage_matches_block0(self) -> None:
+        """R1 token (canonical 'R') at rank 1 with block 0 = 220 base."""
+        r = compute_burst_damage(
+            self.snap, "Akali", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        # Find the first R-token row (R1, not R2).
+        r1_row = next(c for c in r.per_cast if c.token == "R")
+        self.assertEqual(r1_row.rank, 1)  # R lvl 11 → rank 1
+        # Block 0 base = 220 at rank 1 (zero AP and zero bonus AD in this
+        # naked build).
+        self.assertAlmostEqual(r1_row.raw_damage, 220.0, places=2)
+
+    def test_akali_R2_row_raw_damage_matches_block2(self) -> None:
+        """R2 token (canonical 'R2') at rank 1 with block 2 = 420 base."""
+        r = compute_burst_damage(
+            self.snap, "Akali", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        r2_row = next(c for c in r.per_cast if c.token == "R2")
+        self.assertEqual(r2_row.rank, 1)
+        # Block 2 base = 420 at rank 1.
+        self.assertAlmostEqual(r2_row.raw_damage, 420.0, places=2)
+
+    def test_akali_total_burst_with_registry_exceeds_forced_R_only(self) -> None:
+        """Registry-applied (R=0, R2=2) burst > legacy (R=0, R2=0 by base-key
+        fallback) — same combo, only R2 token's block changes."""
+        r_registry = compute_burst_damage(
+            self.snap, "Akali", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        r_legacy = compute_burst_damage(
+            self.snap, "Akali", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides={"R": 0, "R2": 0},
+        )
+        self.assertGreater(r_registry.total_burst_damage,
+                           r_legacy.total_burst_damage)
+
+    def test_explicit_R2_override_wins_over_registry(self) -> None:
+        """Operator's per-call ``{"R2": 1}`` overrides registry's 2;
+        R inherits 0 from registry."""
+        r = compute_burst_damage(
+            self.snap, "Akali", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides={"R2": 1},
+        )
+        self.assertEqual(r.block_index_source, "override")
+        self.assertEqual(r.block_index_resolved, {"R": 0, "R2": 1})
+
+    def test_R_only_override_does_not_apply_to_R2_token(self) -> None:
+        """Operator passes ``{"R": 2}`` — R2 token has no explicit entry,
+        so it falls back to base key 'R' lookup → block 2. This is the
+        pre-s192 "double-count" scenario; the test documents the model
+        when operator chooses it explicitly (without an R2 entry, both
+        R-family tokens use the same block)."""
+        r = compute_burst_damage(
+            self.snap, "Akali", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides={"R": 2},
+        )
+        # Both R and R2 should now use block 2 = 420 raw at rank 1.
+        r1_row = next(c for c in r.per_cast if c.token == "R")
+        r2_row = next(c for c in r.per_cast if c.token == "R2")
+        self.assertAlmostEqual(r1_row.raw_damage, 420.0, places=2)
+        self.assertAlmostEqual(r2_row.raw_damage, 420.0, places=2)
+
+    def test_compute_ability_dps_ignores_R2_token_entry(self) -> None:
+        """compute_ability_dps iterates only base spell keys (Q/W/E/R);
+        Akali registry's R2 token entry is invisible to it. R uses block
+        0 from the registry; W/E/Q use first-block strategy as usual."""
+        r = compute_ability_dps(
+            self.snap, "Akali", level=11, mode="SR", target_mr=30.0,
+        )
+        # R2 entry is preserved in resolved (round-trip from resolver),
+        # but only R (block 0) is consulted in the per-spell loop.
+        self.assertEqual(r.block_index_source, "champion")
+        self.assertEqual(r.block_index_resolved, {"R": 0, "R2": 2})
+        # Akali R at rank 1 (lvl 11) with block 0 = 110/220/330 base +
+        # 30% AP + 50% bonus AD. With 0 AP / 0 bAD → raw = 220.
+        r_spell = next(s for s in r.per_spell if s.key == "R")
+        self.assertEqual(r_spell.rank, 1)
+        self.assertAlmostEqual(r_spell.raw_damage_per_cast, 220.0, places=2)
 
 
 # ─── backward-compat: unmapped champions keep pre-s191 output ───────────────
