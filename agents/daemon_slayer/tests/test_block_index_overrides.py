@@ -20,6 +20,16 @@ multi-hit single-target totals (Ahri W, Kaisa Q, Lulu Q, Sivir Q,
 Talon W/R, Velkoz W, Ekko Q), fully-charged amps (Varus Q, Zoe Q,
 Vladimir E), recast amp (Camille Q), CC-conditional duration total
 (Morgana W). Same walker logic — pure data expansion.
+
+Phase 5.9.9 (s196) added 17 entries (14 new champions + 3 key
+extensions on Akali, Cassiopeia, Morgana). Pattern A multi-hit
+single-target totals: Akali E, Akshan Q, Cassiopeia W, Chogath E,
+Draven R, Lillia W, Morgana R, Nautilus E, Riven Q, Sett Q,
+Skarner Q, Soraka E. Pattern B fully-charged / condition amps:
+Gragas Q (fermented), Karthus Q (solo-target enhanced), Khazix Q
+(isolation), KogMaw R (low-HP execute), Pantheon Q (charged hurl).
+Twelfth consecutive override registry expansion; fifth pure-data
+batch.
 """
 from __future__ import annotations
 
@@ -87,8 +97,8 @@ class RegistryShapeTests(unittest.TestCase):
 
     def test_known_champion_overrides(self) -> None:
         champions = self.table["champions"]
-        # Phase 5.9 (s191) — initial seed
-        self.assertEqual(champions["Cassiopeia"], {"E": 1})
+        # Phase 5.9 (s191) — initial seed (some champions extended in later batches)
+        # Cassiopeia extended in s196 with W=1 — full shape asserted below
         self.assertEqual(champions["Veigar"], {"R": 1})
         self.assertEqual(champions["Diana"], {"W": 2})
         self.assertEqual(champions["Brand"], {"W": 1, "R": 1})
@@ -98,7 +108,7 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Karma"], {"W": 1})
         self.assertEqual(champions["Vex"], {"R": 2})
         # Phase 5.9.5 (s192) — Akali R + R2 token-variant override
-        self.assertEqual(champions["Akali"], {"R": 0, "R2": 2})
+        # Akali extended in s196 with E=2 — full shape asserted below
         # Phase 5.9.6 (s193) — channeled-ability expansion + Anivia Q
         self.assertEqual(champions["Anivia"], {"Q": 2, "E": 1})
         self.assertEqual(champions["Alistar"], {"E": 1})
@@ -119,17 +129,38 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Ahri"], {"Q": 1, "W": 2})
         # Velkoz W=2 extends prior {"R": 1} from s193 channels
         self.assertEqual(champions["Velkoz"], {"W": 2, "R": 1})
-        # New champions added this batch:
+        # New champions added in s195 (Morgana extended in s196 with R=1 — asserted below):
         self.assertEqual(champions["Camille"], {"Q": 2})
         self.assertEqual(champions["Ekko"], {"Q": 3})
         self.assertEqual(champions["Kaisa"], {"Q": 2})
         self.assertEqual(champions["Lulu"], {"Q": 3})
-        self.assertEqual(champions["Morgana"], {"W": 3})
         self.assertEqual(champions["Sivir"], {"Q": 2})
         self.assertEqual(champions["Talon"], {"W": 2, "R": 2})
         self.assertEqual(champions["Varus"], {"Q": 1})
         self.assertEqual(champions["Vladimir"], {"E": 1})
         self.assertEqual(champions["Zoe"], {"Q": 1})
+        # Phase 5.9.9 (s196) — extended multi-hit / condition amp expansion
+        # Akali E=2 extends prior {"R": 0, "R2": 2} from s192
+        self.assertEqual(champions["Akali"], {"R": 0, "R2": 2, "E": 2})
+        # Cassiopeia W=1 extends prior {"E": 1} from s191
+        self.assertEqual(champions["Cassiopeia"], {"E": 1, "W": 1})
+        # Morgana R=1 extends prior {"W": 3} from s195
+        self.assertEqual(champions["Morgana"], {"W": 3, "R": 1})
+        # New champions added this batch (14):
+        self.assertEqual(champions["Akshan"], {"Q": 1})
+        self.assertEqual(champions["Chogath"], {"E": 1})
+        self.assertEqual(champions["Draven"], {"R": 1})
+        self.assertEqual(champions["Gragas"], {"Q": 1})
+        self.assertEqual(champions["Karthus"], {"Q": 1})
+        self.assertEqual(champions["Khazix"], {"Q": 1})
+        self.assertEqual(champions["KogMaw"], {"R": 1})
+        self.assertEqual(champions["Lillia"], {"W": 1})
+        self.assertEqual(champions["Nautilus"], {"E": 2})
+        self.assertEqual(champions["Pantheon"], {"Q": 1})
+        self.assertEqual(champions["Riven"], {"Q": 1})
+        self.assertEqual(champions["Sett"], {"Q": 1})
+        self.assertEqual(champions["Skarner"], {"Q": 1})
+        self.assertEqual(champions["Soraka"], {"E": 1})
 
     def test_every_value_is_int(self) -> None:
         for champion_id, entries in self.table["champions"].items():
@@ -172,8 +203,10 @@ class LoaderCacheTests(unittest.TestCase):
 
 class GetBlockIndexForTests(unittest.TestCase):
     def test_known_override_returns_champion_source(self) -> None:
-        mapping, source = get_block_index_for("Cassiopeia")
-        self.assertEqual(mapping, {"E": 1})
+        # Veigar has been stably {R:1} since s191 — Cassiopeia was extended
+        # in s196 with W=1 so use Veigar for the simple single-key check.
+        mapping, source = get_block_index_for("Veigar")
+        self.assertEqual(mapping, {"R": 1})
         self.assertEqual(source, "champion")
 
     def test_unknown_falls_back_to_default(self) -> None:
@@ -197,8 +230,10 @@ class GetBlockIndexForTests(unittest.TestCase):
 
 class ResolveBlockIndexTests(unittest.TestCase):
     def test_none_with_known_returns_champion(self) -> None:
-        mapping, source = _resolve_block_index_overrides("Cassiopeia", None)
-        self.assertEqual(mapping, {"E": 1})
+        # Veigar has been stably {R:1} since s191 — Cassiopeia was extended
+        # in s196 with W=1 so use Veigar for the simple single-key check.
+        mapping, source = _resolve_block_index_overrides("Veigar", None)
+        self.assertEqual(mapping, {"R": 1})
         self.assertEqual(source, "champion")
 
     def test_none_with_unknown_returns_default(self) -> None:
@@ -308,7 +343,8 @@ class ComputeAbilityDpsBlockIndexTests(unittest.TestCase):
             self.snap, "Cassiopeia", level=11, mode="SR", target_mr=30.0,
         )
         self.assertEqual(r.block_index_source, "champion")
-        self.assertEqual(r.block_index_resolved, {"E": 1})
+        # Phase 5.9.9 (s196) — Cassiopeia gained W=1 alongside existing E=1
+        self.assertEqual(r.block_index_resolved, {"E": 1, "W": 1})
 
     def test_explicit_override_wins(self) -> None:
         r = compute_ability_dps(
@@ -316,7 +352,8 @@ class ComputeAbilityDpsBlockIndexTests(unittest.TestCase):
             block_index_overrides={"E": 0},
         )
         self.assertEqual(r.block_index_source, "override")
-        self.assertEqual(r.block_index_resolved, {"E": 0})
+        # Operator forces E:0; registry contributes W:1 — merged shape
+        self.assertEqual(r.block_index_resolved, {"E": 0, "W": 1})
 
     def test_explicit_merges_with_registry(self) -> None:
         # Brand has registry {W:1, R:1}. Operator passes {R:0} → merged becomes
@@ -422,7 +459,8 @@ class RankerBlockIndexTests(unittest.TestCase):
             target_mr=30.0, top_n=3,
         )
         self.assertEqual(r.block_index_source, "champion")
-        self.assertEqual(r.block_index_resolved, {"E": 1})
+        # Phase 5.9.9 (s196) — Cassiopeia gained W=1 alongside existing E=1
+        self.assertEqual(r.block_index_resolved, {"E": 1, "W": 1})
 
     def test_rank_assassin_carries_source(self) -> None:
         r = rank_items_by_burst(
@@ -455,7 +493,8 @@ class ToDictSerializationTests(unittest.TestCase):
         )
         d = r.to_dict()
         self.assertEqual(d["block_index_source"], "champion")
-        self.assertEqual(d["block_index_resolved"], {"E": 1})
+        # Phase 5.9.9 (s196) — Cassiopeia gained W=1 alongside existing E=1
+        self.assertEqual(d["block_index_resolved"], {"E": 1, "W": 1})
 
     def test_compute_burst_carries_source(self) -> None:
         r = compute_burst_damage(
@@ -514,7 +553,8 @@ class AkaliTokenVariantTests(unittest.TestCase):
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
         self.assertEqual(r.block_index_source, "champion")
-        self.assertEqual(r.block_index_resolved, {"R": 0, "R2": 2})
+        # Phase 5.9.9 (s196) — Akali gained E=2 alongside existing R=0 + R2=2
+        self.assertEqual(r.block_index_resolved, {"R": 0, "R2": 2, "E": 2})
 
     def test_akali_R1_row_raw_damage_matches_block0(self) -> None:
         """R1 token (canonical 'R') at rank 1 with block 0 = 220 base."""
@@ -557,14 +597,16 @@ class AkaliTokenVariantTests(unittest.TestCase):
 
     def test_explicit_R2_override_wins_over_registry(self) -> None:
         """Operator's per-call ``{"R2": 1}`` overrides registry's 2;
-        R inherits 0 from registry."""
+        R + E inherit from registry."""
         r = compute_burst_damage(
             self.snap, "Akali", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
             block_index_overrides={"R2": 1},
         )
         self.assertEqual(r.block_index_source, "override")
-        self.assertEqual(r.block_index_resolved, {"R": 0, "R2": 1})
+        # Phase 5.9.9 (s196) — Akali registry now includes E=2; operator's
+        # R2:1 override merges with registry {R:0, R2:2, E:2} → {R:0, R2:1, E:2}
+        self.assertEqual(r.block_index_resolved, {"R": 0, "R2": 1, "E": 2})
 
     def test_R_only_override_does_not_apply_to_R2_token(self) -> None:
         """Operator passes ``{"R": 2}`` — R2 token has no explicit entry,
@@ -586,14 +628,17 @@ class AkaliTokenVariantTests(unittest.TestCase):
     def test_compute_ability_dps_ignores_R2_token_entry(self) -> None:
         """compute_ability_dps iterates only base spell keys (Q/W/E/R);
         Akali registry's R2 token entry is invisible to it. R uses block
-        0 from the registry; W/E/Q use first-block strategy as usual."""
+        0 from the registry; W uses first-block strategy as usual. E uses
+        block 2 from s196 registry."""
         r = compute_ability_dps(
             self.snap, "Akali", level=11, mode="SR", target_mr=30.0,
         )
         # R2 entry is preserved in resolved (round-trip from resolver),
-        # but only R (block 0) is consulted in the per-spell loop.
+        # but only R (block 0), W (no entry → block 0), and E (block 2)
+        # are consulted in the per-spell loop.
         self.assertEqual(r.block_index_source, "champion")
-        self.assertEqual(r.block_index_resolved, {"R": 0, "R2": 2})
+        # Phase 5.9.9 (s196) — Akali registry now includes E=2
+        self.assertEqual(r.block_index_resolved, {"R": 0, "R2": 2, "E": 2})
         # Akali R at rank 1 (lvl 11) with block 0 = 110/220/330 base +
         # 30% AP + 50% bonus AD. With 0 AP / 0 bAD → raw = 220.
         r_spell = next(s for s in r.per_spell if s.key == "R")
@@ -986,6 +1031,233 @@ class Phase598ExpansionTests(unittest.TestCase):
         self.assertEqual(r.block_index_resolved, {"Q": 1})
 
 
+# ─── Phase 5.9.9 (s196) — extended multi-hit / condition amp expansion ──────
+
+
+class Phase599ExpansionTests(unittest.TestCase):
+    """Phase 5.9.9 (s196). 17 new (champion, key) entries spanning two
+    sub-patterns: (A) multi-hit single-target totals (Akali E, Akshan Q,
+    Cassiopeia W, Chogath E, Draven R, Lillia W, Morgana R, Nautilus E,
+    Riven Q, Sett Q, Skarner Q, Soraka E), (B) fully-charged / condition
+    amps (Gragas Q, Karthus Q, Khazix Q, KogMaw R, Pantheon Q). Same
+    'operator commits to canonical-amped condition' model as s195 — pure
+    JSON expansion, no walker changes.
+
+    Tests verify each new entry:
+      1. Is present in the resolved registry
+      2. Drives total_ability_dps strictly above the forced-block-0 baseline
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = _snap()
+
+    def _delta_check(self, champion: str, key: str, expected_idx: int) -> None:
+        """Assert champion's registry entry routes `key` to expected_idx,
+        and the resulting total_ability_dps exceeds the forced-block-0
+        baseline by a positive margin."""
+        r_reg = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r_reg.block_index_resolved.get(key), expected_idx,
+                         f"{champion}.{key} should route to block {expected_idx}")
+        forced = dict(r_reg.block_index_resolved)
+        forced[key] = 0
+        r_off = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides=forced,
+        )
+        self.assertGreater(r_reg.total_ability_dps, r_off.total_ability_dps,
+                           f"{champion} registry total should exceed forced-block-0")
+
+    # Multi-hit single-target totals (pattern A)
+    def test_akali_E_routes_to_block_2(self) -> None:
+        """Akali E block 2 'Total Magic Damage' = E1 Shuriken Flip throw
+        + E2 grappling-hook dash on tagged target."""
+        self._delta_check("Akali", "E", 2)
+
+    def test_akshan_Q_routes_to_block_1(self) -> None:
+        """Akshan Q block 1 'Total Physical Damage' = Avengerang ricochet
+        out + return on same target."""
+        self._delta_check("Akshan", "Q", 1)
+
+    def test_cassiopeia_W_routes_to_block_1(self) -> None:
+        """Cassiopeia W block 1 'Total Magic Damage' = Miasma cloud full
+        duration (5× per-second tick)."""
+        self._delta_check("Cassiopeia", "W", 1)
+
+    def test_chogath_E_routes_to_block_1(self) -> None:
+        """Cho'Gath E block 1 'Total Magic Damage' = Vorpal Spikes 3-hit
+        empowered AA rotation on same target."""
+        self._delta_check("Chogath", "E", 1)
+
+    def test_draven_R_routes_to_block_1(self) -> None:
+        """Draven R block 1 'Total Physical Damage' = Whirling Death out
+        + return on same target."""
+        self._delta_check("Draven", "R", 1)
+
+    def test_lillia_W_routes_to_block_1(self) -> None:
+        """Lillia W block 1 'Increased Damage' = Watch Out! Eep! center hit
+        on same target (3× rim damage)."""
+        self._delta_check("Lillia", "W", 1)
+
+    def test_morgana_R_routes_to_block_1(self) -> None:
+        """Morgana R block 1 'Total Magic Damage' = Soul Shackles initial
+        + delayed-snap damage both ticks on same target."""
+        self._delta_check("Morgana", "R", 1)
+
+    def test_nautilus_E_routes_to_block_2(self) -> None:
+        """Nautilus E block 2 'Maximum Total Damage' = Riptide 3-wave
+        same-target combo (full + 2× half-damage subsequent)."""
+        self._delta_check("Nautilus", "E", 2)
+
+    def test_riven_Q_routes_to_block_1(self) -> None:
+        """Riven Q block 1 'Total Physical Damage' = Broken Wings Q-Q-Q
+        3-cast chain on same target (3× block 0)."""
+        self._delta_check("Riven", "Q", 1)
+
+    def test_sett_Q_routes_to_block_1(self) -> None:
+        """Sett Q block 1 'Total Bonus Physical Damage' = Knuckle Down
+        both empowered AAs on same target (2× block 0)."""
+        self._delta_check("Sett", "Q", 1)
+
+    def test_skarner_Q_routes_to_block_1(self) -> None:
+        """Skarner Q block 1 'Total Bonus Physical Damage' = Shattered
+        Earth empowered Q 3-hit chain (3× block 0)."""
+        self._delta_check("Skarner", "Q", 1)
+
+    def test_soraka_E_routes_to_block_1(self) -> None:
+        """Soraka E block 1 'Total Magic Damage' = Equinox immediate +
+        delayed-silence proc total (2× block 0)."""
+        self._delta_check("Soraka", "E", 1)
+
+    # Fully-charged / condition amps (pattern B)
+    def test_gragas_Q_routes_to_block_1(self) -> None:
+        """Gragas Q block 1 'Maximum Magic Damage' = Barrel Roll fully-
+        fermented after 4s hold (1.5× block 0)."""
+        self._delta_check("Gragas", "Q", 1)
+
+    def test_karthus_Q_routes_to_block_1(self) -> None:
+        """Karthus Q block 1 'Enhanced Damage' = Lay Waste vs single-
+        target (passive doubles damage on solo champion, 2× block 0)."""
+        self._delta_check("Karthus", "Q", 1)
+
+    def test_khazix_Q_routes_to_block_1(self) -> None:
+        """Kha'Zix Q block 1 'Increased Damage' = Taste Their Fear vs
+        isolated target (2.1× block 0)."""
+        self._delta_check("Khazix", "Q", 1)
+
+    def test_kogmaw_R_routes_to_block_1(self) -> None:
+        """Kog'Maw R block 1 'Maximum Magic Damage' = Living Artillery
+        max-damage component vs low-HP target (2× block 0)."""
+        self._delta_check("KogMaw", "R", 1)
+
+    def test_pantheon_Q_routes_to_block_1(self) -> None:
+        """Pantheon Q block 1 'Increased Hurl Damage' = Comet Spear
+        fully-charged hurl (1.5s hold, ~2.2× block 0)."""
+        self._delta_check("Pantheon", "Q", 1)
+
+    # Resolved-map shape sanity for new multi-key champions
+    def test_akali_three_keys_in_resolved(self) -> None:
+        """Akali E=2 (s196) extends prior {R:0, R2:2} (s192) — all three
+        keys must appear in the resolved map."""
+        r = compute_ability_dps(
+            self.snap, "Akali", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"R": 0, "R2": 2, "E": 2})
+        self.assertEqual(r.block_index_source, "champion")
+
+    def test_cassiopeia_both_keys_in_resolved(self) -> None:
+        """Cassiopeia W=1 (s196) extends prior {E:1} (s191) — both keys
+        must appear in the resolved map."""
+        r = compute_ability_dps(
+            self.snap, "Cassiopeia", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"E": 1, "W": 1})
+        self.assertEqual(r.block_index_source, "champion")
+
+    def test_morgana_both_keys_in_resolved(self) -> None:
+        """Morgana R=1 (s196) extends prior {W:3} (s195) — both keys
+        must appear in the resolved map."""
+        r = compute_ability_dps(
+            self.snap, "Morgana", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"W": 3, "R": 1})
+        self.assertEqual(r.block_index_source, "champion")
+
+    # Math-level sanity: Riven Q block 1 base at rank 1 = 3× block 0
+    def test_riven_Q_block1_matches_3x_block0(self) -> None:
+        """Numeric sanity: Riven Q block 1 base = 3× block 0 base across
+        all 5 ranks (3-cast Broken Wings on same target)."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("Riven", "Q", form_index=0)
+        self.assertIsNotNone(form)
+        blocks = form.damage_blocks
+        self.assertGreaterEqual(len(blocks), 2)
+        b0_base = blocks[0].base
+        b1_base = blocks[1].base
+        self.assertEqual(len(b0_base), len(b1_base))
+        for rank, (b0, b1) in enumerate(zip(b0_base, b1_base)):
+            self.assertAlmostEqual(
+                b1, b0 * 3.0, places=2,
+                msg=f"Riven Q rank {rank+1}: block 1 base {b1} != 3× block 0 base {b0}"
+            )
+
+    # Math-level sanity: Akshan Q block 1 base = exact 2× block 0
+    def test_akshan_Q_block1_matches_2x_block0(self) -> None:
+        """Numeric sanity: Akshan Q block 1 base = 2× block 0 (Avengerang
+        out + return on same target)."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("Akshan", "Q", form_index=0)
+        self.assertIsNotNone(form)
+        blocks = form.damage_blocks
+        self.assertGreaterEqual(len(blocks), 2)
+        for rank, (b0, b1) in enumerate(zip(blocks[0].base, blocks[1].base)):
+            self.assertAlmostEqual(
+                b1, b0 * 2.0, places=2,
+                msg=f"Akshan Q rank {rank+1}: block 1 base {b1} != 2× block 0 base {b0}"
+            )
+
+    # Backward-compat: pre-s196 entries still resolve unchanged
+    def test_pre_s196_morgana_W_unchanged(self) -> None:
+        """Backward-compat: s195 Morgana W=3 entry preserved after s196
+        adds R=1; W=3 should still resolve."""
+        r = compute_ability_dps(
+            self.snap, "Morgana", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved.get("W"), 3)
+
+    def test_pre_s196_akali_R2_unchanged(self) -> None:
+        """Backward-compat: s192 Akali R/R2 token-variant entries preserved
+        after s196 adds E=2."""
+        # The s192 R2 entry only fires in burst combo walker, not
+        # compute_ability_dps. But we can still assert the resolved map
+        # contains all three keys via the burst path.
+        r = compute_burst_damage(
+            self.snap, "Akali", level=11, target_armor=80, target_mr=30,
+            target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved.get("R"), 0)
+        self.assertEqual(r.block_index_resolved.get("R2"), 2)
+        self.assertEqual(r.block_index_resolved.get("E"), 2)
+
+    def test_pre_s196_corki_unchanged(self) -> None:
+        """Backward-compat: s194 Corki entry preserved."""
+        r = compute_ability_dps(
+            self.snap, "Corki", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"W": 1, "E": 1})
+
+
 # ─── backward-compat: unmapped champions keep pre-s191 output ───────────────
 
 
@@ -1025,16 +1297,18 @@ class BackwardCompatTests(unittest.TestCase):
         # use another unmapped champion.
 
     def test_unmapped_keys_inside_mapped_champion_use_global_strategy(self) -> None:
-        """Cassi has only {E:1} in the registry. Q and W must still use
-        block_strategy="first" → block 0."""
+        """Veigar has only {R:1} in the registry. Q, W, E must still use
+        block_strategy="first" → block 0. Veigar (since s196) is the
+        stable single-key champion for this check (Cassi extended to W=1)."""
         r = compute_ability_dps(
-            self.snap, "Cassiopeia", level=11, mode="SR", target_mr=30.0,
+            self.snap, "Veigar", level=11, mode="SR", target_mr=30.0,
         )
-        # The resolved map carries E:1 but no Q/W entries.
-        self.assertEqual(r.block_index_resolved, {"E": 1})
-        # And the Q/W spells in per_spell rendered with the default first-block
-        # strategy (we don't assert exact damage values because they require
-        # snapshot-specific math; the registry-resolution shape is the contract).
+        # The resolved map carries R:1 but no Q/W/E entries.
+        self.assertEqual(r.block_index_resolved, {"R": 1})
+        # And the Q/W/E spells in per_spell rendered with the default
+        # first-block strategy (we don't assert exact damage values because
+        # they require snapshot-specific math; the registry-resolution shape
+        # is the contract).
 
 
 # ─── server route surfaces source ────────────────────────────────────────────
