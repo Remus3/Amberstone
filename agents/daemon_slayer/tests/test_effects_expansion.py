@@ -7373,8 +7373,10 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         # 0.73.0 = s188 Phase 5.6 per-attack on-hit proc damage in burst AAs;
         # 0.74.0 = s189 Phase 5.7 Spellblade in burst — armed by ability cast,
         #          consumed by next AA (Trinity Force / Lich Bane / ER / Iceborn /
-        #          Dusk+Dawn / Divine Sunderer / Sheen / Bloodsong + Arena mirrors).
-        self.assertEqual(ENGINE_VERSION, "0.74.0")
+        #          Dusk+Dawn / Divine Sunderer / Sheen / Bloodsong + Arena mirrors);
+        # 0.75.0 = s190 Phase 5.8 Sundered Sky Lightshield Strike in burst —
+        #          same arm-consume model, capped at 1 proc per combo (8s real CD).
+        self.assertEqual(ENGINE_VERSION, "0.75.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7435,7 +7437,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.74.0")
+        self.assertEqual(ENGINE_VERSION, "0.75.0")
 
 
 if __name__ == "__main__":

@@ -314,6 +314,14 @@ class BurstResult:
     spellblade_procs: int = 0
     spellblade_damage: float = 0.0
     spellblade_item_name: str = ""
+    # Phase 5.8 (s190, 2026-05-13) — Lightshield Strike (Sundered Sky)
+    # contribution within the combo. Capped at 1 proc per combo because
+    # the 8s real CD doesn't allow re-arming in a typical burst window.
+    # ``lightshield_strike_damage`` is already folded into
+    # ``auto_attack_damage`` / ``total_burst_damage``.
+    lightshield_strike_procs: int = 0
+    lightshield_strike_damage: float = 0.0
+    lightshield_strike_item_name: str = ""
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -347,6 +355,9 @@ class BurstResult:
             "spellblade_procs": self.spellblade_procs,
             "spellblade_damage": self.spellblade_damage,
             "spellblade_item_name": self.spellblade_item_name,
+            "lightshield_strike_procs": self.lightshield_strike_procs,
+            "lightshield_strike_damage": self.lightshield_strike_damage,
+            "lightshield_strike_item_name": self.lightshield_strike_item_name,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -530,6 +541,15 @@ def compute_burst_damage(
     # the "armed by new spell cast" gate is the binding constraint.
     aa_spellblade_per_proc = max(0.0, float(aa_probe.spellblade_per_proc_damage))
     aa_spellblade_name = aa_probe.spellblade_item_name or ""
+    # Phase 5.8 (s190, 2026-05-13): Lightshield Strike per-proc damage —
+    # Sundered Sky's distinct arm-consume proc (own ``unique_passive_key``-
+    # less family, 8s CD, no dedup with spellblade). Same arm-on-cast /
+    # consume-on-AA model as Spellblade but capped at 1 proc per combo
+    # because the 8s real CD greatly exceeds typical burst window. A build
+    # with both Sundered Sky + a Spellblade item gets BOTH procs on the
+    # same AA (independent state machines).
+    aa_lightshield_per_proc = max(0.0, float(aa_probe.lightshield_strike_per_proc_damage))
+    aa_lightshield_name = aa_probe.lightshield_strike_item_name or ""
 
     # Build ability context (post-AP-amp). Same precedence as
     # compute_ability_dps: ap += hp + stacked; ap *= rab; ap *= demonic.
@@ -594,6 +614,17 @@ def compute_burst_damage(
     spellblade_armed = False
     spellblade_procs_fired = 0
     spellblade_damage_total = 0.0
+    # Phase 5.8 (s190, 2026-05-13) — Lightshield Strike arming state.
+    # Same arm-consume pattern as Spellblade but capped at 1 proc per
+    # combo (Sundered Sky's 8s real CD vs typical 2-3s combo window).
+    # Re-arming guarded by ``lightshield_procs_fired == 0`` so once the
+    # proc lands, subsequent ability casts can't re-arm within the same
+    # combo. Independent of Spellblade state — a build with Sundered Sky
+    # + Trinity Force lands BOTH procs on the AA following the first
+    # ability cast.
+    lightshield_armed = False
+    lightshield_procs_fired = 0
+    lightshield_damage_total = 0.0
     for token in combo_norm:
         canonical, ability_key, is_ability = _normalize_combo_token(token)
         if not is_ability:
@@ -601,28 +632,39 @@ def compute_burst_damage(
             # avg_attack_dmg is already post-armor+mode; classify as
             # PHYSICAL for the per-cast row. Don't re-apply mode_mult
             # or armor_factor — compute_dps did that already. Spellblade
-            # (Phase 5.7, s189) fires once per ability-then-AA transition:
-            # if armed AND a Spellblade item is in the build, this AA
-            # consumes the proc.
+            # (Phase 5.7, s189) fires once per ability-then-AA transition.
+            # Lightshield Strike (Phase 5.8, s190) fires once per combo
+            # max — both procs can stack on the same AA when the build
+            # carries both items.
             aa_spellblade_added = 0.0
             if spellblade_armed and aa_spellblade_per_proc > 0:
                 aa_spellblade_added = aa_spellblade_per_proc
                 spellblade_armed = False
                 spellblade_procs_fired += 1
                 spellblade_damage_total += aa_spellblade_added
-            aa_total_damage = aa_per_hit + aa_spellblade_added
+            aa_lightshield_added = 0.0
+            if lightshield_armed and aa_lightshield_per_proc > 0:
+                aa_lightshield_added = aa_lightshield_per_proc
+                lightshield_armed = False
+                lightshield_procs_fired += 1
+                lightshield_damage_total += aa_lightshield_added
+            aa_total_damage = aa_per_hit + aa_spellblade_added + aa_lightshield_added
+            note_parts: list[str] = [
+                f"auto-attack: base {aa_base_per_hit:.1f} + on-hit "
+                f"{aa_on_hit_per_hit:.1f}"
+            ]
             if aa_spellblade_added > 0:
-                aa_note = (
-                    f"auto-attack: base {aa_base_per_hit:.1f} + on-hit "
-                    f"{aa_on_hit_per_hit:.1f} + Spellblade ({aa_spellblade_name}) "
-                    f"{aa_spellblade_added:.1f} = {aa_total_damage:.1f}"
+                note_parts.append(
+                    f"+ Spellblade ({aa_spellblade_name}) "
+                    f"{aa_spellblade_added:.1f}"
                 )
-            else:
-                aa_note = (
-                    f"auto-attack: base {aa_base_per_hit:.1f} + on-hit "
-                    f"{aa_on_hit_per_hit:.1f} = {aa_total_damage:.1f} (post-armor "
-                    "+ mode + on-hit procs amortized per AA)"
+            if aa_lightshield_added > 0:
+                note_parts.append(
+                    f"+ Lightshield Strike ({aa_lightshield_name}) "
+                    f"{aa_lightshield_added:.1f}"
                 )
+            note_parts.append(f"= {aa_total_damage:.1f}")
+            aa_note = " ".join(note_parts)
             per_cast.append(ComboCast(
                 token=canonical,
                 is_ability=False,
@@ -644,6 +686,11 @@ def compute_burst_damage(
         # Ability cast — arm Spellblade for the next AA. Subsequent
         # ability casts before the next AA leave it armed (still True).
         spellblade_armed = True
+        # Arm Lightshield Strike only if it hasn't fired yet in the
+        # combo — the 8s real CD doesn't permit re-arming within a
+        # single burst window.
+        if lightshield_procs_fired == 0:
+            lightshield_armed = True
 
         forms = per_key_forms.get(ability_key, ())
         if not forms:
@@ -762,6 +809,20 @@ def compute_burst_damage(
             "followed an ability cast (per-proc value "
             f"{aa_spellblade_per_proc:.1f} unused)"
         )
+    if lightshield_procs_fired > 0:
+        notes.append(
+            f"Lightshield Strike ({aa_lightshield_name}) fired "
+            f"{lightshield_procs_fired}× in combo for "
+            f"+{lightshield_damage_total:.1f} damage (Sundered Sky 8s "
+            "CD — capped at 1 proc per combo; per-proc "
+            f"{aa_lightshield_per_proc:.1f})"
+        )
+    elif aa_lightshield_per_proc > 0:
+        notes.append(
+            f"Lightshield Strike ({aa_lightshield_name}) idle in combo — "
+            f"no AA followed an ability cast (per-proc value "
+            f"{aa_lightshield_per_proc:.1f} unused)"
+        )
 
     return BurstResult(
         champion_id=resolved.champion_id,
@@ -792,6 +853,9 @@ def compute_burst_damage(
         spellblade_procs=spellblade_procs_fired,
         spellblade_damage=spellblade_damage_total,
         spellblade_item_name=aa_spellblade_name,
+        lightshield_strike_procs=lightshield_procs_fired,
+        lightshield_strike_damage=lightshield_damage_total,
+        lightshield_strike_item_name=aa_lightshield_name,
         stats=dict(resolved.stats),
         notes=tuple(notes),
     )
