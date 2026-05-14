@@ -6,6 +6,18 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s201 wrap — 2026-05-14 (Phase 5.9.14 block_index expansion — 16 entries / 13 new champs)
+
+Seventeenth consecutive override / proc-shape ship; tenth pure-data batch. 16 new entries across 13 new champions (Fizz, Galio, Garen, Graves, Janna, Jhin Q+R, Kennen R, Taliyah Q, Teemo E+R, Viego Q, Xerath W+R, Yasuo E, Ziggs E). Reverts 4 prior-batch skips (Xerath W positional, Ziggs E 5-mine focus, Janna Q low-amp, Yasuo E stack-decay) under operator-commits framing already established by Khazix Q isolation s196 / Ashe Q 5-AA s199 / Yuumi Q support s198 / Twitch E stack rotation s198. Discovered + documented filtered-idx semantics: `_select_blocks` strips non-damage blocks pre-index so registry values are filtered idx (4 entries route through filtering: Galio W idx 1 = raw 4, Kennen R idx 1 = raw 2, Teemo R idx 1 = raw 4, Xerath R idx 1 = raw 2). Live A/B headlines: Taliyah Q +138.2% (5-stone Worked Ground), Graves Q +104.5%, Xerath R +77.0%, Teemo R +62.5%, Viego Q +52.9%. Tests: 24 new in `Phase599_14ExpansionTests`. Registry 91 → 104 champions, 127 → 143 entries. ENGINE 0.85.0 → 0.86.0. DS suite 1842 → 1866. Test fixture rotation: Yasuo → Tryndamere as canonical unmapped fixture (Yasuo landed in registry this batch). Commits: `9365f5c` feat. **Carried forward identical to s200 plus newly-added nested missing-HP parser bucket** (Kindred E dropped during impl — Phase 4a parser cannot extract nested per-mark missing-HP coefficient).
+
+# s199 + s200 wrap — 2026-05-14 (Phase 5.9.12 + 5.9.13 — two batches one session)
+
+s199 (Phase 5.9.12): 17 new entries across 6 new champions + 11 key extensions. Six patterns: A multi-hit totals (8) / B positional/sweet-spot (3) / C resource-state (2) / D channel total (1) / E direct-hit primary (2) / F execute amp (1). **Critical discovery: filtered-idx semantics** — `_select_blocks` filters `attribute_kind != "damage"` BEFORE indexing, so registry value is FILTERED damage-block index. Shen Q corrected from 2 → 1 during empirical verification. 4 entries accidentally landed correct via `clamp out-of-range to last` semantics. Live headlines: Shen Q +113.9%, Swain Q +63.0%, Xayah Q +62.5%, Aatrox Q +56.1%. Registry 84 → 90 champions, 103 → 120 entries. ENGINE 0.83.0 → 0.84.0. DS suite 1794 → 1825 (+31 net). Commits: `4ee733c` feat + `80ccb31` docs.
+
+s200 (Phase 5.9.13): 7-entry rescue batch — resurrects 4 deferred mechanics under improved understanding. Ambessa Q/W (s196/s197/s198 'form swap' → Drain-stack resource amp like Renekton Fury); Anivia R (s195 'channel ambiguous' → Empowered phase amp like Belveth E); Lillia Q (s199 'uncertain' → Q + Dream Dust AA combo like Sett Q); Nilah Q (s199 'uncertain 2-stack' → max-stack empowered AA like Twitch E). Plus 2 net-new: Ambessa E + Poppy Q. Three patterns: A multi-hit totals (3) / B resource-state (3) / C channel commit (1). Live headlines: Nilah Q +82.0%, Poppy Q +75.7%, Ambessa Q +37.1%. Registry 90 → 91 champions, 120 → 127 entries. ENGINE 0.84.0 → 0.85.0. DS suite 1825 → 1842 (+17 net). Commits: `8f837c0` feat + `81d2b50` docs. Patterns lock-in: 17th consecutive override ship; 9th pure-data batch.
+
+---
+
 # s196 wrap — 2026-05-14 (Phase 5.9.9 extended multi-hit/condition-amp block_index expansion)
 
 **Operator instruction:** "continue DS" — direct continuation of s195. The carry-forward had three schema-lift items + the same pure-data well that s195 sampled from. Pure-data was still the cleanest ship: deeper triage of the same Meraki snapshot surfaced 17 more clean wins spanning patterns A and B from s195 (multi-hit single-target totals + fully-charged/condition amps).
