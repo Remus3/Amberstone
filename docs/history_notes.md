@@ -6,6 +6,70 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s190 wrap — 2026-05-13 (Phase 5.8 Sundered Sky Lightshield Strike in burst)
+
+**Operator instruction:** "continue" — directly continuing the s189 carry-forward list. Top item: Sundered Sky Lightshield Strike (6610) — same "next AA after ability cast" mechanic as Spellblade but explicitly OUT of the spellblade unique-passive family. Single commit ship.
+
+## Context
+
+s189 closed the Spellblade gap in burst combos. Sundered Sky was carried forward because it carries a `PeriodicProc(name="Lightshield Strike", every_n_seconds=8.0)` — same arm-consume mechanic but with its own (intentionally absent) `unique_passive_key`. The schema comment at effects.py:539 spells it out: "Sundered Sky (6610) uses its own 'Lightshield Strike' label, not Spellblade — distinct mechanic, no dedup."
+
+Two architectural decisions for this batch:
+1. **Don't generalize** — second arm-consume helper, not an `is_ability_triggered_aa_proc` flag. Two items doesn't justify abstraction; if a third arm-consume mechanic ships, generalize then.
+2. **Cap at 1 proc per combo** — Sundered Sky's real CD is 8s vs a typical 2-3s burst window. The cap is implicit: re-arming guards on `lightshield_procs_fired == 0`, so once the proc lands, subsequent ability casts in the same combo can't re-arm it. Spellblade's unlimited per-combo firing is correct because its 1.5s CD is well below combo length.
+
+## Ships
+
+| File | Change |
+|---|---|
+| [agents/daemon_slayer/dps.py](agents/daemon_slayer/dps.py) | New `LIGHTSHIELD_STRIKE_PROC_NAME = "Lightshield Strike"` constant + `_lightshield_strike_per_proc_damage()` helper (sibling of `_spellblade_per_proc_damage`). Filters by `proc.name == "Lightshield Strike"` rather than `unique_passive_key` because Sundered Sky has no dedup family. Returns `(per_proc_damage, item_name)` via the standard pipeline (`resolve_damage` → `_armor_factor` → mode → type-selective `magic_amp` for MAGIC only → `damage_amp`). `DpsResult` gains `lightshield_strike_per_proc_damage: float = 0.0` + `lightshield_strike_item_name: str = ""` fields; `to_dict()` carries them. `compute_dps` populates after the existing Spellblade block + emits a notes line when present. |
+| [agents/daemon_slayer/burst.py](agents/daemon_slayer/burst.py) | Reads `aa_probe.lightshield_strike_per_proc_damage` + `aa_probe.lightshield_strike_item_name` alongside Spellblade. Combo walker gains parallel state vars `lightshield_armed` / `lightshield_procs_fired` / `lightshield_damage_total`. Ability token branch arms BOTH spellblade + lightshield, but lightshield arm is gated by `lightshield_procs_fired == 0` (8s CD cap). AA token branch consumes both independently — a build with both Sundered Sky + Trinity Force lands BOTH procs on the same AA. ComboCast AA notes block restructured to compose `base + on-hit + Spellblade + Lightshield Strike` parts; only present parts surface. `BurstResult` gains `lightshield_strike_procs: int = 0` + `lightshield_strike_damage: float = 0.0` + `lightshield_strike_item_name: str = ""` fields. Notes block reports fired count or idle state. |
+| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | ENGINE_VERSION 0.74.0 → 0.75.0. Docstring extended with Phase 5.8 section (mirrors Phase 5.7 structure). |
+| [agents/daemon_slayer/tests/test_lightshield_strike_burst.py](agents/daemon_slayer/tests/test_lightshield_strike_burst.py) | **NEW (~395 LOC, 28 tests).** Four classes mirroring s189's test_spellblade_burst.py structure. `LightshieldHelperTests` (8) — empty / non-lightshield / Sundered Sky returns 140 (20 + 2×60 base_ad) / armor mitigation / damage_amp / mode_multiplier / physical immune to magic_amp / independent of spellblade. `DpsResultLightshieldFieldsTests` (5) — naked = 0 / Spellblade-only = 0 lightshield / Sundered Sky surfaces / both items surface independently / to_dict. `BurstLightshieldIntegrationTests` (12) — naked / arms+fires once / capped at 1 per Q-AA-W-AA combo / pure AA combo / no AA combo / AA before spell / AA row carries Lightshield in final / Sundered Sky + TF stack on same AA / dual proc AA row carries both / Lightshield after fired doesn't re-arm / to_dict / Lightshield + Wit's End on-hit stack. `ServerBurstRouteLightshieldTests` (3) — naked / Sundered Sky surfaces / dual-proc build stacks (skipped when :8893 unavailable). |
+| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Version-pin tests (Batch63 + Batch64) bumped 0.74.0 → 0.75.0 with the Phase 5.8 line in the history comment. |
+
+## Verification
+
+- DS suite **1605 pass** (was 1577 in s189 wrap; +28 from new test file)
+- Wider RC suite **1013 pass** (no regression)
+- `py_compile` clean for all 5 changed engine files
+- DS server :8893 restarted from pid 12704 (s189 leftover) → pid 2968 (s190); `/health` reports `engine_version=0.75.0` patch=16.10.1
+
+## Live A/B on :8893
+
+**Aatrox lvl 11 vs 80 armor / 30 MR / 2000 HP (default combo Q-W-E-AA-R-AA, 2 AAs):**
+- naked: 293.7 burst, AA 122.2
+- +Sundered Sky (6610): 519.9 (+226), AA 305.6, LS=1× +133
+- +Trinity Force (3078): 612.5 (+319), AA 406.7, SB=2× +244
+- +TF + Sundered Sky: 838.7 (+545), AA 590.0, **SB=2× +244 AND LS=1× +133** — clean additive stacking
+
+**Custom combo Q-AA-W-AA (2 AAs, 2 spell casts):**
+- +Sundered Sky alone: LS=1× +133 (capped at 1 proc by 8s CD, confirms the gate works even with 2 eligible AAs)
+- +Trinity Force alone: SB=2× +244 (no cap, fires on every armed-AA transition)
+- +TF + Sundered Sky: SB=2× +244 AND LS=1× +133 (still independent state machines)
+
+Math check: dual-item burst 838.7 - 293.7 = +545 = (Sundered Sky alone +226) + (TF alone +319) exactly. Confirms zero overlap; both procs land independently on the AA following the first ability cast.
+
+## Findings
+
+- **Helper sourced by proc-name, not item-id.** Sundered Sky has no `unique_passive_key`, so the helper filters on `proc.name == "Lightshield Strike"` instead. More future-proof — a future item adding a Lightshield Strike variant would auto-match. Trade-off: relies on the proc name string staying stable across patches (which it has for years).
+- **Re-arming gate keeps the model simple.** Initial design considered tracking elapsed combo time + comparing against the 8s CD, but that requires a combo-timing model the engine doesn't have. The gate `if lightshield_procs_fired == 0: armed = True` produces correct behavior for typical bursts without needing time accounting.
+- **Combined-build math validates the architecture.** Dual-item AA row's `final_damage` exactly equals `avg_attack_dmg + spellblade_per_proc + lightshield_per_proc` from the matched-build `compute_dps` probe. No double-counting, no overlap drift. The `test_dual_proc_aa_row_carries_both` test guards this invariant.
+- **PowerShell `$pid` gotcha.** PowerShell reserves `$pid` as read-only (it's the current process's PID). The DS-restart command failed silently when I tried to assign to it; eventually killed a phantom PID 17580 (probably my own test runner). Renamed to `$proc` for the restart. Logged to memory.
+
+## Open items carried forward
+
+- 🟡 **Real internal CD in long combos.** Lightshield Strike still uses the implicit "once per combo" gate. An 8+ token combo lasting >3s might in theory permit a second proc (real CD 8s — still wouldn't fit a typical burst, but conceptually). Same edge case as s189's Spellblade CD handling.
+- 🟡 **Conditional damage amps (Ahri R→Q, Zoe E→Q, Akali R1→QE→R2).** Inter-spell awareness still missing — burst is computed as additive single-spell hits. Carried since s180.
+- 🟡 **Generalized arm-consume framework.** Two specific helpers now in the engine (`_spellblade_per_proc_damage` + `_lightshield_strike_per_proc_damage`). If a third arm-consume mechanic ships, generalize to `is_ability_triggered_aa_proc: bool` schema field at the PeriodicProc level rather than adding a third helper. Tracked but not pursued this batch.
+- 🟡 **Pre-existing carry-forwards from s189:** Aphelios upstream data gap, Karma mantra runtime plumbing, Khazix evolved-form choice, live-game chip lifecycle validation, audit finding #1 frozen-file list duplication.
+
+## Architectural pattern lock-in (continued from s189)
+
+Sixth consecutive override / proc-shape modeling improvement on the same template (s185 max_priority / s186 combo_sequence / s187 form_index / s188 per-AA on-hit / s189 Spellblade-in-burst / s190 Lightshield-in-burst). Each shipped backend-first with live A/B verification before commit; each added per-item or per-champion-derived modeling without breaking backward-compat (default field values preserve pre-batch behavior).
+
+---
+
 # s189 wrap — 2026-05-13 (Phase 5.7 Spellblade-in-burst — armed by ability cast, consumed by next AA)
 
 **Operator instruction:** "continue ds" — direct continuation of s188's deferral list. Top item: Spellblade CD modeling. Single commit ship.
