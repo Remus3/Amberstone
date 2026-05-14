@@ -7433,7 +7433,23 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          ticks, Vladimir W full Sanguine Pool, Viktor R full
         #          Chaos Storm channel). Pure data batch; no walker/resolver/
         #          server code changes.
-        self.assertEqual(ENGINE_VERSION, "0.83.0")
+        # 0.84.0 = s199 Phase 5.9.12 — 17 more (champion, key) entries (6 new
+        #          champions: Ashe/Shaco/Shen/Swain/Tristana/Xayah + 11 key
+        #          extensions on Aatrox/Fiddlesticks/Karthus/Nautilus/Nunu/
+        #          Samira/Sejuani/Talon/Udyr/Viktor/Zac). Registry 84 → 90
+        #          champions, 103 → 120 entries. Six patterns: Pattern A
+        #          multi-hit single-target totals (Ashe Q Ranger's Focus,
+        #          Nunu E 3-snowball, Samira W Blade Whirl, Shen Q 3-AA
+        #          empowered, Swain Q 5-bolt, Viktor Q + AA, Xayah Q
+        #          out+return, Zac Q both arms). Pattern B positional/sweet-
+        #          spot amps (Aatrox Q1 sweet-spot, Shaco E backstab, Talon Q
+        #          champion crit). Pattern C resource-state amps (Tristana E
+        #          max-stack, Udyr Q Awakened 2-AA). Pattern D channel total
+        #          (Karthus E per-second). Pattern E direct-hit primary
+        #          (Sejuani R, Nautilus R). Pattern F execute amp
+        #          (Fiddlesticks W low-HP). Pure data batch; no walker/
+        #          resolver/server code changes.
+        self.assertEqual(ENGINE_VERSION, "0.84.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7494,7 +7510,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.83.0")
+        self.assertEqual(ENGINE_VERSION, "0.84.0")
 
 
 if __name__ == "__main__":
