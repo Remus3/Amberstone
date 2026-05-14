@@ -7383,7 +7383,12 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          R1 → block 0 (base + bonus-AD), R2 → block 2 (max-execute
         #          missing-HP scaling); walker checks canonical token first
         #          then base key.
-        self.assertEqual(ENGINE_VERSION, "0.77.0")
+        # 0.78.0 = s193 Phase 5.9.6 channeled-ability block_index expansion —
+        #          8 new champion entries (Alistar E, AurelionSol E,
+        #          Fiddlesticks R, MissFortune E, Samira R, Singed Q,
+        #          Velkoz R, Syndra R) + Anivia Q extension. Pure data
+        #          batch; no resolver/walker code changes.
+        self.assertEqual(ENGINE_VERSION, "0.78.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7444,7 +7449,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.77.0")
+        self.assertEqual(ENGINE_VERSION, "0.78.0")
 
 
 if __name__ == "__main__":
