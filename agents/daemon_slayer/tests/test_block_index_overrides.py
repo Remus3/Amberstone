@@ -203,7 +203,7 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Aatrox"], {"W": 3, "Q": 1})
         self.assertEqual(champions["Briar"], {"E": 4})
         self.assertEqual(champions["Darius"], {"R": 2})
-        self.assertEqual(champions["Hwei"], {"R": 3})
+        # Hwei extended in s205 with W=1 (Stirring Lights Maximum 3-light total) — full shape asserted in Phase 5.9.18 block
         self.assertEqual(champions["Kassadin"], {"R": 3})
         self.assertEqual(champions["Leblanc"], {"Q": 1, "E": 1})
         self.assertEqual(champions["Lucian"], {"R": 1})
@@ -246,7 +246,7 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Zac"], {"R": 2, "Q": 1})
         # Phase 5.9.12 (s199) — new champions:
         self.assertEqual(champions["Ashe"], {"Q": 2})
-        self.assertEqual(champions["Shaco"], {"E": 2})
+        # Shaco extended in s205 with W=1 (Box vs Feared target Increased Damage) — full shape asserted in Phase 5.9.18 block
         # Phase 5.9.13 (s200) — Ambessa new champion (3 entries Drain amp +
         # Lacerate total); Anivia/Lillia/Nilah/Poppy extended above with
         # their full s200 shapes.
@@ -294,14 +294,18 @@ class RegistryShapeTests(unittest.TestCase):
         # Zoe extended in s204 with E=2 — full shape asserted in Phase 5.9.17 block
         # Akshan extended in s202 with R=1 (Comeuppance max-charge)
         self.assertEqual(champions["Akshan"], {"Q": 1, "R": 1})
-        # AurelionSol extended in s202 with Q=2 (Breath of Light full channel)
+        # AurelionSol extended in s202 with Q=2 (Breath of Light full channel);
+        # s205 adds form_index R=1 routing to The Skies Descend (form 1 Empowered
+        # Magic Damage), but no block_index entry needed (default 0 within form 1
+        # is correct) — block_index registry shape unchanged.
         self.assertEqual(champions["AurelionSol"], {"E": 1, "Q": 2})
         # Nasus extended in s202 with R=1 (Fury of the Sands full duration)
         self.assertEqual(champions["Nasus"], {"E": 2, "R": 1})
         # Poppy extended in s202 with E=1 (Heroic Charge wall-slam)
         self.assertEqual(champions["Poppy"], {"R": 1, "Q": 1, "E": 1})
-        # Renekton extended in s202 with R=1 (Dominus full duration aura)
-        self.assertEqual(champions["Renekton"], {"Q": 1, "W": 2, "R": 1})
+        # Renekton extended in s202 with R=1 (Dominus full duration aura);
+        # extended in s205 with E=3 (full-Fury Slice+Dice combo, layered on
+        # form_index registry seed) — full shape asserted in Phase 5.9.18 block
         # Rumble extended in s202 with Q=2 (Danger Zone enhanced) + R=2 (Equalizer max)
         self.assertEqual(champions["Rumble"], {"E": 1, "Q": 2, "R": 2})
         # Smolder extended in s202 with Q=1 (max-stack passive) + R=1 (max-distance);
@@ -374,6 +378,34 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Syndra"], {"R": 2, "W": 2})
         # Zoe extended with E=2 — full shape:
         self.assertEqual(champions["Zoe"], {"Q": 1, "W": 1, "E": 2})
+        # Phase 5.9.18 (s205) — form_index + block_index layered expansion.
+        # 4 new (champion, key) block_index entries (1 new champion Qiyana
+        # + 3 key extensions: Hwei W, Renekton E, Shaco W) + 3 new form_index
+        # seeds (Qiyana Q=1, AurelionSol R=1, Renekton E=1). Three sub-
+        # patterns: (A) operator-commits-to-resource form layer (Qiyana Q
+        # elemental empowered, AurelionSol R full Stardust, Renekton E full
+        # Fury combo), (B) multi-hit single-target totals (Hwei W3 Stirring
+        # Lights 3 lights converging), (C) condition-amp vs target-state
+        # (Shaco W Box vs already-Feared target). Third instance of form_
+        # index + block_index NET-damage composition after s203 LeeSin Q +
+        # s204 Riven R + s204 Nidalee Q. Closes s204 carry-forward 'Qiyana
+        # Q form_index seed expansion still pending'.
+        # Hwei extended with W=1 — full shape (R=3 from s197 retained):
+        self.assertEqual(champions["Hwei"], {"R": 3, "W": 1})
+        # Qiyana NEW — composes with s205 form_index Q=1 (Elemental Wrath
+        # form). Form 0 and form 1 share identical block 0 Physical Damage
+        # so form_index alone is a no-op; block 2 'Increased Damage' (1.6×
+        # base + 1.6× bAD scaling rank-by-rank) is the canonical elemental-
+        # empowered primary-target damage.
+        self.assertEqual(champions["Qiyana"], {"Q": 2})
+        # Renekton extended with E=3 — full shape; form_index seed for E=1
+        # ships in champion_form_index.json (asserted in Phase 5.9.18 tests).
+        # Closes Q/W/E full-Fury coverage after s197 (Q=1, W=2) + s202 (R=1).
+        self.assertEqual(champions["Renekton"], {"Q": 1, "W": 2, "R": 1, "E": 3})
+        # Shaco extended with W=1 — full shape (E=2 from s196 retained).
+        # Block 1 'Increased Damage' = 2.5× block 0 base + 1.5× AP (Jack in
+        # the Box hits already-Feared target — canonical Shaco setup).
+        self.assertEqual(champions["Shaco"], {"E": 2, "W": 1})
 
     def test_every_value_is_int(self) -> None:
         for champion_id, entries in self.table["champions"].items():
@@ -1674,13 +1706,18 @@ class Phase599_10ExpansionTests(unittest.TestCase):
         self.assertEqual(r.block_index_source, "champion")
 
     def test_renekton_both_keys_in_resolved(self) -> None:
-        """Renekton Q=1 + W=2 (s197) + R=1 (s202 Dominus full duration)
-        — all three keys must appear in resolved map."""
+        """Renekton Q=1 + W=2 (s197) + R=1 (s202 Dominus full duration) —
+        all three keys must appear in resolved map. (s205 also adds E=3,
+        but this s197-era test only asserts the s197/s202 keys via subset
+        check; full s205 shape is asserted in Phase599_18ExpansionTests
+        test_renekton_all_four_keys_in_resolved.)"""
         r = compute_ability_dps(
             self.snap, "Renekton", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"Q": 1, "W": 2, "R": 1})
+        self.assertEqual(r.block_index_resolved.get("Q"), 1)
+        self.assertEqual(r.block_index_resolved.get("W"), 2)
+        self.assertEqual(r.block_index_resolved.get("R"), 1)
         self.assertEqual(r.block_index_source, "champion")
 
     # Math-level sanity: Lucian R block 1 base = 5× block 0 (full-channel)
@@ -3659,6 +3696,281 @@ class Phase599_17ExpansionTests(unittest.TestCase):
         self.assertEqual(r.block_index_resolved, {"Q": 1})
         # Form_index resolved should still route Q to form 1 (s187)
         self.assertEqual(r.form_index_resolved.get("Q"), 1)
+
+
+class Phase599_18ExpansionTests(unittest.TestCase):
+    """Phase 5.9.18 (s205). 4 new (champion, key) block_index entries (1
+    truly-new champion Qiyana + 3 key extensions on existing champions:
+    Hwei W, Renekton E, Shaco W) PLUS 3 new form_index seeds (Qiyana Q=1,
+    AurelionSol R=1, Renekton E=1). Closes the s204 carry-forward 'Qiyana
+    Q form_index seed expansion still pending'.
+
+    Registry 117 → 118 champions, 181 → 185 entries on the block_index side;
+    form_index registry 6 → 9 champions, 10 → 13 entries.
+
+    Three sub-patterns:
+      (A) Operator-commits-to-resource form layer (3): Qiyana Q form 1 +
+          block 2 (Elemental Wrath Increased Damage = 1.6× base + 1.6× bAD
+          scaling — operator commits to picking up an element before
+          casting Q. Form 0 and form 1 share identical block 0 Physical
+          Damage so form_index alone is a no-op for Qiyana Q; block_index
+          captures the empowered burst), AurelionSol R form 1 (The Skies
+          Descend Empowered Magic Damage = 1.25× base + 1.25× AP — operator
+          commits to full Stardust), Renekton E form 1 + block 3 (Total
+          Physical Damage at full Fury combo = block 0 + block 1 sum =
+          2.75× form 0 at rank 1 — operator commits to E with 50 Fury,
+          closes Renekton's Q/W/E full-Fury coverage after s197 + s202).
+      (B) Multi-hit single-target totals (1): Hwei W form 3 block 1
+          (Maximum Magic Damage = 3× block 0 'Bonus Magic Damage' base +
+          3× AP — 3 Stirring Lights converging on one target). Same model
+          as Gwen R 9-needle / Ashe Q 5-AA / Zac R 4-bounces / Naafiri Q
+          all-3-daggers — multi-hit single-target total commitment.
+      (C) Condition-amp vs target-state (1): Shaco W block 1 (Increased
+          Damage = 2.5× block 0 'Magic Damage' base + 1.5× AP — Jack in
+          the Box hits already-Feared target). Same operator-commits
+          framing as Khazix Q isolation s196 / Zoe E→Q sleep s204 / Vayne
+          E wall-stun s202 / Talon Q champion-vs-minion crit s199.
+
+    Third instance of form_index + block_index NET-damage composition
+    after s203 LeeSin Q + s204 Riven R + s204 Nidalee Q.
+
+    Tests verify each new entry:
+      1. Is present in the resolved registry at the expected filtered idx
+      2. Drives total_ability_dps strictly above the forced-block-0 baseline
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = _snap()
+
+    def _delta_check(self, champion: str, key: str, expected_idx: int) -> None:
+        r_reg = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r_reg.block_index_resolved.get(key), expected_idx,
+                         f"{champion}.{key} should route to filtered block {expected_idx}")
+        forced = dict(r_reg.block_index_resolved)
+        forced[key] = 0
+        r_off = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides=forced,
+        )
+        self.assertGreater(r_reg.total_ability_dps, r_off.total_ability_dps,
+                           f"{champion} registry total should exceed forced-block-0")
+
+    # Pattern A: operator-commits-to-resource form layer (3)
+    def test_qiyana_Q_routes_to_block_2_via_form_index_seed(self) -> None:
+        """Qiyana Q=2 layered on s205 form_index Q=1 (Elemental Wrath form).
+        Form 0 'Edge of Ixtal' and form 1 'Elemental Wrath' share identical
+        block 0 Physical Damage values (60-180 + 90% bAD), so form_index=1
+        alone is a no-op. Form 1 adds block 2 'Increased Damage' (96-288 +
+        144% bAD = 1.6× base + 1.6× bAD scaling rank-by-rank) which IS the
+        canonical elementally-empowered primary-target damage. Operator
+        commits to picking up an element via R/W/E before Q. Closes the
+        s204 carry-forward 'Qiyana Q form_index seed expansion still pending'.
+        Third instance of form_index + block_index NET-damage composition
+        after s203 LeeSin Q + s204 Riven R + s204 Nidalee Q."""
+        self._delta_check("Qiyana", "Q", 2)
+        # form_index resolved must also be 1 for Q (sourced from registry)
+        r_reg = compute_ability_dps(
+            self.snap, "Qiyana", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r_reg.form_index_resolved.get("Q"), 1,
+                         "Qiyana Q should route to form 1 via form_index registry seed")
+
+    def test_aurelionsol_R_form_index_seed_routes_to_form_1(self) -> None:
+        """AurelionSol R form_index=1 (The Skies Descend Empowered). Form 0
+        'Falling Star' has 1 damage block (150-350 + 75% AP); form 1 'The
+        Skies Descend' has 2 damage blocks with block 0 'Empowered Magic
+        Damage' (187.5-437.5 + 93.75% AP = 1.25× base + 1.25× AP rank-by-
+        rank). No block_index entry needed (default 0 within form 1 is
+        correct). Operator commits to having full Stardust before R cast.
+        Same resource-state amp pattern as Renekton full-Fury (s197 Q+W) /
+        Smolder max-stack (s202/s203)."""
+        r_reg = compute_ability_dps(
+            self.snap, "AurelionSol", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r_reg.form_index_resolved.get("R"), 1,
+                         "AurelionSol R should route to form 1 (The Skies Descend) via form_index registry seed")
+        # block_index for R must NOT be set (form_index alone captures the lift)
+        self.assertNotIn("R", r_reg.block_index_resolved,
+                         "AurelionSol R should not have a block_index entry — form_index alone is sufficient")
+        # A/B against forced form 0 should show non-trivial lift (1.25× scaling)
+        # Note: we can't force form_index easily without rewriting form_index_overrides,
+        # so just assert numerical non-zero (snapshot-based sanity)
+        self.assertGreater(r_reg.total_ability_dps, 0.0,
+                           "AurelionSol ability_dps should be positive at lvl 11")
+
+    def test_renekton_E_routes_to_block_3_via_form_index_seed(self) -> None:
+        """Renekton E=3 layered on s205 form_index E=1 (Dice form). Form 0
+        'Slice' has 1 damage block (40-160 + 90% bAD = base E damage); form 1
+        'Dice' has 4 damage blocks: block 0 'Total Physical Damage' (80-320 +
+        180% bAD = 2× form 0 = empowered Slice + empowered Dice on same
+        target, no Fury bonus), block 1 'Bonus Physical Damage' (the
+        full-Fury bonus), block 2 'Total Bonus Damage' (Slice + Bonus only),
+        block 3 'Total Physical Damage' (110-410 + 225% bAD = block 0 + block
+        1 sum = full Slice + empowered Dice + Fury bonus = 2.75× form 0 at
+        rank 1). Operator commits to E with 50 Fury = canonical full-combo
+        Renekton E. Closes Renekton's Q/W/E full-Fury coverage after s197
+        (Q=1 full Fury, W=2 full Fury) + s202 (R=1 full duration)."""
+        self._delta_check("Renekton", "E", 3)
+        # form_index resolved must also be 1 for E (sourced from registry)
+        r_reg = compute_ability_dps(
+            self.snap, "Renekton", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r_reg.form_index_resolved.get("E"), 1,
+                         "Renekton E should route to form 1 (Dice) via form_index registry seed")
+
+    # Pattern B: multi-hit single-target total (1)
+    def test_hwei_W_routes_to_block_1_within_form_3(self) -> None:
+        """Hwei W=1 within s187 form_index=3 (Stirring Lights). Block 0
+        'Bonus Magic Damage' (20-60 + 15% AP = per-light damage). Block 1
+        'Maximum Magic Damage' (60-180 + 45% AP = exactly 3× per-light,
+        captures all 3 Stirring Lights converging on one target). Operator
+        commits to landing all 3 lights on focused target. Same model as
+        Gwen R 9-needle (s203 R=4) / Ashe Q 5-AA (s199 Q=2) / Zac R 4-
+        bounces (s198 R=2) / Naafiri Q all-3-daggers (s197 Q=2) — multi-hit
+        single-target total commitment."""
+        self._delta_check("Hwei", "W", 1)
+        # form_index for W should still be 3 (s187)
+        r_reg = compute_ability_dps(
+            self.snap, "Hwei", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r_reg.form_index_resolved.get("W"), 3,
+                         "Hwei W should still route to form 3 (Stirring Lights) from s187")
+
+    # Pattern C: condition-amp vs target-state (1)
+    def test_shaco_W_routes_to_block_1(self) -> None:
+        """Shaco W=1 (Jack in the Box). Filtered shape: raw 0-2 are
+        durations/slow (stripped), filtered idx 0 = raw 3 'Magic Damage'
+        (10-30 + 12% AP = per-attack on non-feared target), filtered idx 1
+        = raw 4 'Increased Damage' (25-85 + 18% AP = per-attack on feared
+        target = 2.5× block 0 base + 1.5× AP). Operator commits to using
+        Box with a fear-able target (typically Box's own Fear proc on first
+        proximity hit, then subsequent attacks land on already-feared
+        target). Same target-state amp framing as Khazix Q isolation s196 /
+        Zoe E→Q sleep s204 / Vayne E wall-stun s202 / Talon Q champion-vs-
+        minion crit s199."""
+        self._delta_check("Shaco", "W", 1)
+
+    # Multi-key resolved-shape sanity for extension champions
+    def test_hwei_both_keys_in_resolved(self) -> None:
+        """Hwei R=3 (s197) + W=1 (s205) — both keys must appear."""
+        r = compute_ability_dps(
+            self.snap, "Hwei", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"R": 3, "W": 1})
+
+    def test_renekton_all_four_keys_in_resolved(self) -> None:
+        """Renekton Q=1 (s197) + W=2 (s197) + R=1 (s202) + E=3 (s205) —
+        all four keys present. Form_index_resolved must also contain E=1."""
+        r = compute_ability_dps(
+            self.snap, "Renekton", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1, "W": 2, "R": 1, "E": 3})
+        self.assertEqual(r.form_index_resolved.get("E"), 1)
+
+    def test_shaco_both_keys_in_resolved(self) -> None:
+        """Shaco E=2 (s196) + W=1 (s205) — both keys must appear."""
+        r = compute_ability_dps(
+            self.snap, "Shaco", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"E": 2, "W": 1})
+
+    # Math-level sanity
+    def test_qiyana_Q_form1_block2_is_1_6x_block0(self) -> None:
+        """Numeric sanity: Qiyana Q form 1 block 2 'Increased Damage' base
+        and bAD% scaling are exactly 1.6× form 1 block 0 'Physical Damage'
+        rank-by-rank. Both forms share identical block 0 values."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("Qiyana", "Q", form_index=1)
+        self.assertIsNotNone(form)
+        damage_blocks = [b for b in form.damage_blocks if b.attribute_kind == "damage"]
+        self.assertGreaterEqual(len(damage_blocks), 3)
+        b0, b2 = damage_blocks[0], damage_blocks[2]
+        for rank in range(len(b0.base)):
+            self.assertAlmostEqual(b2.base[rank], b0.base[rank] * 1.6, places=2,
+                                   msg=f"Qiyana Q rank {rank+1}: block 2 base should be 1.6× block 0")
+            self.assertAlmostEqual(b2.bonus_ad_pct[rank], b0.bonus_ad_pct[rank] * 1.6, places=2,
+                                   msg=f"Qiyana Q rank {rank+1}: block 2 bAD% should be 1.6× block 0")
+
+    def test_hwei_W_form3_block1_is_3x_block0(self) -> None:
+        """Numeric sanity: Hwei W form 3 block 1 'Maximum Magic Damage'
+        base and AP% scaling are exactly 3× block 0 'Bonus Magic Damage'
+        rank-by-rank (3 lights converging)."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("Hwei", "W", form_index=3)
+        self.assertIsNotNone(form)
+        damage_blocks = [b for b in form.damage_blocks if b.attribute_kind == "damage"]
+        self.assertGreaterEqual(len(damage_blocks), 2)
+        b0, b1 = damage_blocks[0], damage_blocks[1]
+        for rank in range(len(b0.base)):
+            self.assertAlmostEqual(b1.base[rank], b0.base[rank] * 3.0, places=2,
+                                   msg=f"Hwei W rank {rank+1}: block 1 base should be 3× block 0")
+            self.assertAlmostEqual(b1.ap_pct[rank], b0.ap_pct[rank] * 3.0, places=2,
+                                   msg=f"Hwei W rank {rank+1}: block 1 AP% should be 3× block 0")
+
+    def test_renekton_E_form1_block3_is_block0_plus_block1(self) -> None:
+        """Numeric sanity: Renekton E form 1 block 3 'Total Physical Damage'
+        base and bAD% are exactly block 0 + block 1 sums rank-by-rank
+        (Slice empowered + full-Fury Bonus)."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("Renekton", "E", form_index=1)
+        self.assertIsNotNone(form)
+        damage_blocks = [b for b in form.damage_blocks if b.attribute_kind == "damage"]
+        self.assertGreaterEqual(len(damage_blocks), 4)
+        b0, b1, b3 = damage_blocks[0], damage_blocks[1], damage_blocks[3]
+        for rank in range(len(b0.base)):
+            self.assertAlmostEqual(b3.base[rank], b0.base[rank] + b1.base[rank], places=2,
+                                   msg=f"Renekton E rank {rank+1}: block 3 base should be block 0 + block 1 sum")
+            self.assertAlmostEqual(b3.bonus_ad_pct[rank], b0.bonus_ad_pct[rank] + b1.bonus_ad_pct[rank], places=2,
+                                   msg=f"Renekton E rank {rank+1}: block 3 bAD% should be block 0 + block 1 sum")
+
+    # Backward-compat: prior-batch entries still resolve unchanged after s205
+    def test_pre_s205_thresh_unchanged(self) -> None:
+        """Backward-compat: s203 Thresh E=2 preserved after s205."""
+        r = compute_ability_dps(
+            self.snap, "Thresh", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"E": 2})
+
+    def test_pre_s205_riven_unchanged(self) -> None:
+        """Backward-compat: s204 Riven Q=1 + R=1 + form_index R=1 preserved
+        after s205. New form_index seeds shipped this batch should not
+        regress Riven's prior layering."""
+        r = compute_ability_dps(
+            self.snap, "Riven", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1, "R": 1})
+        self.assertEqual(r.form_index_resolved.get("R"), 1)
+
+    def test_pre_s205_nidalee_unchanged(self) -> None:
+        """Backward-compat: s204 Nidalee Q=1 (layered on s187 form_index)
+        preserved after s205. New form_index seeds shipped this batch should
+        not regress Nidalee's prior layering."""
+        r = compute_ability_dps(
+            self.snap, "Nidalee", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1})
+        # Form_index resolved should still route Q/W/E to form 1 (s187)
+        self.assertEqual(r.form_index_resolved.get("Q"), 1)
+        self.assertEqual(r.form_index_resolved.get("W"), 1)
+        self.assertEqual(r.form_index_resolved.get("E"), 1)
 
 
 # ─── backward-compat: unmapped champions keep pre-s191 output ───────────────

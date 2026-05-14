@@ -7544,7 +7544,28 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          needed'). Riven form 0 has zero damage blocks so no
         #          information loss from routing to form 1. Registry 115
         #          → 117 champions, 173 → 181 entries. Pure data batch.
-        self.assertEqual(ENGINE_VERSION, "0.89.0")
+        # 0.90.0 = s205 Phase 5.9.18 form_index + block_index layered
+        #          expansion — 4 new (champion, key) block_index entries
+        #          (1 new champion Qiyana + 3 key extensions on existing:
+        #          Hwei W, Renekton E, Shaco W) + 3 new form_index seeds
+        #          (Qiyana Q=1, AurelionSol R=1, Renekton E=1). Three
+        #          sub-patterns: (A) operator-commits-to-resource form
+        #          layer (Qiyana Q elemental empowered = form 1 + block 2,
+        #          AurelionSol R The Skies Descend = form 1, Renekton E
+        #          full-Fury combo = form 1 + block 3 — closes Renekton
+        #          Q/W/E full-Fury coverage after s197), (B) multi-hit
+        #          single-target totals (Hwei W3 Stirring Lights 3 lights
+        #          converging = block 1 Maximum Magic Damage = 3× block 0),
+        #          (C) condition-amp vs target-state (Shaco W Box vs
+        #          already-Feared target = block 1 Increased Damage). Third
+        #          instance of form_index + block_index NET-damage
+        #          composition after s203 LeeSin Q + s204 Riven R + s204
+        #          Nidalee Q. Closes s204 carry-forward 'Qiyana Q
+        #          form_index seed expansion still pending'. Registry 117
+        #          → 118 champions, 181 → 185 entries on block_index side;
+        #          form_index registry 6 → 9 champions, 10 → 13 entries.
+        #          Pure data batch.
+        self.assertEqual(ENGINE_VERSION, "0.90.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7605,7 +7626,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.89.0")
+        self.assertEqual(ENGINE_VERSION, "0.90.0")
 
 
 if __name__ == "__main__":
