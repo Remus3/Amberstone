@@ -304,6 +304,16 @@ class BurstResult:
     combo_sequence_source: str = "default"          # "override" | "champion" | "default"
     form_index_source: str = "default"              # "override" | "champion" | "default"
     form_index_resolved: dict[str, int] = field(default_factory=dict)
+    # Phase 5.7 (s189, 2026-05-13) — Spellblade contribution within the
+    # combo. ``spellblade_procs`` counts how many ability-then-AA
+    # transitions actually fired a Spellblade proc; ``spellblade_damage``
+    # is the cumulative damage from those procs (already in
+    # ``auto_attack_damage`` / ``total_burst_damage`` for the AA rows
+    # that consumed them). ``spellblade_item_name`` is the build's active
+    # Spellblade item (informational; "" when no Spellblade in build).
+    spellblade_procs: int = 0
+    spellblade_damage: float = 0.0
+    spellblade_item_name: str = ""
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -334,6 +344,9 @@ class BurstResult:
             "combo_sequence_source": self.combo_sequence_source,
             "form_index_source": self.form_index_source,
             "form_index_resolved": dict(self.form_index_resolved),
+            "spellblade_procs": self.spellblade_procs,
+            "spellblade_damage": self.spellblade_damage,
+            "spellblade_item_name": self.spellblade_item_name,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -501,11 +514,22 @@ def compute_burst_damage(
     )
     aa_base_per_hit = max(0.0, float(aa_probe.avg_attack_dmg))
     # Phase 5.6 (s188, 2026-05-13): on-hit proc contribution per AA —
-    # Wit's End +magic, BotRK Mist's Edge HP%, Statikk Shiv stacks,
-    # Triforce Spellblade etc. Amortized per-AA from compute_dps so the
-    # burst scorer doesn't need to re-derive call_ctx / item_effects.
+    # Wit's End +magic, BotRK Mist's Edge HP%, Statikk Shiv stacks etc.
+    # Amortized per-AA from compute_dps so the burst scorer doesn't need
+    # to re-derive call_ctx / item_effects.
     aa_on_hit_per_hit = max(0.0, float(aa_probe.per_attack_on_hit_damage))
     aa_per_hit = aa_base_per_hit + aa_on_hit_per_hit
+    # Phase 5.7 (s189, 2026-05-13): Spellblade per-proc damage. Spellblade
+    # is the canonical "next basic after spell cast" mechanic shared by
+    # eight items (Trinity Force / Lich Bane / Essence Reaver / Iceborn
+    # Gauntlet / Dusk+Dawn / Divine Sunderer / Sheen / Bloodsong). Unlike
+    # per_attack on-hit, Spellblade fires per ability-then-AA transition,
+    # not per AA. The combo walker below tracks ``spellblade_armed`` and
+    # consumes the proc on each AA that follows an ability cast. In-game
+    # 1.5s internal CD is irrelevant in a single burst window because
+    # the "armed by new spell cast" gate is the binding constraint.
+    aa_spellblade_per_proc = max(0.0, float(aa_probe.spellblade_per_proc_damage))
+    aa_spellblade_name = aa_probe.spellblade_item_name or ""
 
     # Build ability context (post-AP-amp). Same precedence as
     # compute_ability_dps: ap += hp + stacked; ap *= rab; ap *= demonic.
@@ -563,13 +587,42 @@ def compute_burst_damage(
     per_cast: list[ComboCast] = []
     forms_for_classification: list[AbilityForm] = []
     seen_keys: set[str] = set()
+    # Phase 5.7 (s189, 2026-05-13) — Spellblade arming state. Set True by
+    # any ability cast (P/Q/W/E/R or repeat variant); consumed by the
+    # next AA which adds the proc damage and resets to False. Tracked
+    # separately so the BurstResult can surface the total proc count.
+    spellblade_armed = False
+    spellblade_procs_fired = 0
+    spellblade_damage_total = 0.0
     for token in combo_norm:
         canonical, ability_key, is_ability = _normalize_combo_token(token)
         if not is_ability:
             # AA contributes raw per-hit damage from compute_dps. The
             # avg_attack_dmg is already post-armor+mode; classify as
             # PHYSICAL for the per-cast row. Don't re-apply mode_mult
-            # or armor_factor — compute_dps did that already.
+            # or armor_factor — compute_dps did that already. Spellblade
+            # (Phase 5.7, s189) fires once per ability-then-AA transition:
+            # if armed AND a Spellblade item is in the build, this AA
+            # consumes the proc.
+            aa_spellblade_added = 0.0
+            if spellblade_armed and aa_spellblade_per_proc > 0:
+                aa_spellblade_added = aa_spellblade_per_proc
+                spellblade_armed = False
+                spellblade_procs_fired += 1
+                spellblade_damage_total += aa_spellblade_added
+            aa_total_damage = aa_per_hit + aa_spellblade_added
+            if aa_spellblade_added > 0:
+                aa_note = (
+                    f"auto-attack: base {aa_base_per_hit:.1f} + on-hit "
+                    f"{aa_on_hit_per_hit:.1f} + Spellblade ({aa_spellblade_name}) "
+                    f"{aa_spellblade_added:.1f} = {aa_total_damage:.1f}"
+                )
+            else:
+                aa_note = (
+                    f"auto-attack: base {aa_base_per_hit:.1f} + on-hit "
+                    f"{aa_on_hit_per_hit:.1f} = {aa_total_damage:.1f} (post-armor "
+                    "+ mode + on-hit procs amortized per AA)"
+                )
             per_cast.append(ComboCast(
                 token=canonical,
                 is_ability=False,
@@ -580,17 +633,17 @@ def compute_burst_damage(
                 cooldown=0.0,
                 cost=0.0,
                 damage_type="PHYSICAL",
-                raw_damage=aa_per_hit,
-                post_mode_damage=aa_per_hit,
-                post_amps_damage=aa_per_hit,
-                final_damage=aa_per_hit,
-                notes=(
-                    f"auto-attack: base {aa_base_per_hit:.1f} + on-hit "
-                    f"{aa_on_hit_per_hit:.1f} = {aa_per_hit:.1f} (post-armor "
-                    "+ mode + on-hit procs amortized per AA)",
-                ),
+                raw_damage=aa_total_damage,
+                post_mode_damage=aa_total_damage,
+                post_amps_damage=aa_total_damage,
+                final_damage=aa_total_damage,
+                notes=(aa_note,),
             ))
             continue
+
+        # Ability cast — arm Spellblade for the next AA. Subsequent
+        # ability casts before the next AA leave it armed (still True).
+        spellblade_armed = True
 
         forms = per_key_forms.get(ability_key, ())
         if not forms:
@@ -693,6 +746,22 @@ def compute_burst_damage(
             f"auto-attack contribution {aa_total:.1f} from "
             f"{combo_norm.count('AA')} AA × {aa_per_hit:.1f}/hit{breakdown}"
         )
+    if spellblade_procs_fired > 0:
+        notes.append(
+            f"Spellblade ({aa_spellblade_name}) fired {spellblade_procs_fired}× "
+            f"in combo for +{spellblade_damage_total:.1f} damage "
+            f"(armed by spell-cast, consumed by next AA; "
+            f"per-proc {aa_spellblade_per_proc:.1f})"
+        )
+    elif aa_spellblade_per_proc > 0:
+        # Build has Spellblade but no AA followed a spell — surface so
+        # operator can spot when the combo template doesn't exercise the
+        # passive (e.g. a pure-AA sequence or AAs before any spell).
+        notes.append(
+            f"Spellblade ({aa_spellblade_name}) idle in combo — no AA "
+            "followed an ability cast (per-proc value "
+            f"{aa_spellblade_per_proc:.1f} unused)"
+        )
 
     return BurstResult(
         champion_id=resolved.champion_id,
@@ -720,6 +789,9 @@ def compute_burst_damage(
         combo_sequence_source=combo_source,
         form_index_source=form_index_source,
         form_index_resolved=dict(form_index_overrides),
+        spellblade_procs=spellblade_procs_fired,
+        spellblade_damage=spellblade_damage_total,
+        spellblade_item_name=aa_spellblade_name,
         stats=dict(resolved.stats),
         notes=tuple(notes),
     )
