@@ -499,7 +499,13 @@ def compute_burst_damage(
         target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
         augments=augments,
     )
-    aa_per_hit = max(0.0, float(aa_probe.avg_attack_dmg))
+    aa_base_per_hit = max(0.0, float(aa_probe.avg_attack_dmg))
+    # Phase 5.6 (s188, 2026-05-13): on-hit proc contribution per AA —
+    # Wit's End +magic, BotRK Mist's Edge HP%, Statikk Shiv stacks,
+    # Triforce Spellblade etc. Amortized per-AA from compute_dps so the
+    # burst scorer doesn't need to re-derive call_ctx / item_effects.
+    aa_on_hit_per_hit = max(0.0, float(aa_probe.per_attack_on_hit_damage))
+    aa_per_hit = aa_base_per_hit + aa_on_hit_per_hit
 
     # Build ability context (post-AP-amp). Same precedence as
     # compute_ability_dps: ap += hp + stacked; ap *= rab; ap *= demonic.
@@ -578,8 +584,11 @@ def compute_burst_damage(
                 post_mode_damage=aa_per_hit,
                 post_amps_damage=aa_per_hit,
                 final_damage=aa_per_hit,
-                notes=("auto-attack via compute_dps.avg_attack_dmg "
-                       "(post-armor + mode, no on-hit periodic procs)",),
+                notes=(
+                    f"auto-attack: base {aa_base_per_hit:.1f} + on-hit "
+                    f"{aa_on_hit_per_hit:.1f} = {aa_per_hit:.1f} (post-armor "
+                    "+ mode + on-hit procs amortized per AA)",
+                ),
             ))
             continue
 
@@ -676,10 +685,13 @@ def compute_burst_damage(
             "after flat + % magic pen"
         )
     if aa_total > 0 and combo_norm.count("AA") > 0:
+        breakdown = (
+            f" (base {aa_base_per_hit:.1f} + on-hit {aa_on_hit_per_hit:.1f})"
+            if aa_on_hit_per_hit > 0 else ""
+        )
         notes.append(
             f"auto-attack contribution {aa_total:.1f} from "
-            f"{combo_norm.count('AA')} AA × {aa_per_hit:.1f}/hit "
-            "(compute_dps.avg_attack_dmg)"
+            f"{combo_norm.count('AA')} AA × {aa_per_hit:.1f}/hit{breakdown}"
         )
 
     return BurstResult(
