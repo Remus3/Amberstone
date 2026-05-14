@@ -621,9 +621,9 @@ Phase 5.6 (s188, 2026-05-13 — per-attack on-hit proc damage, ENGINE_VERSION 0.
 
 * New ``dps._per_attack_proc_damage()`` helper computes amortized per-AA
   on-hit damage (Wit's End +magic, BotRK Mist's Edge HP%, Statikk Shiv
-  4-stack, Triforce Spellblade, etc.). Sister to ``_periodic_proc_dps``;
-  only counts ``every_n_attacks`` procs (skips ``every_n_seconds``).
-  Post-mit + post-mode + post-amps + magic-typed gets ``magic_amp``.
+  4-stack). Sister to ``_periodic_proc_dps``; only counts
+  ``every_n_attacks`` procs (skips ``every_n_seconds``). Post-mit +
+  post-mode + post-amps + magic-typed gets ``magic_amp``.
 * ``DpsResult`` gains ``per_attack_on_hit_damage: float`` (default 0.0
   for empty builds; surfaced in ``to_dict()``); computed inline at the
   end of ``compute_dps`` using the same call_ctx / effects already
@@ -633,6 +633,41 @@ Phase 5.6 (s188, 2026-05-13 — per-attack on-hit proc damage, ENGINE_VERSION 0.
   contributes the richer total. Notes line decomposes base + on-hit
   for explainability. Backward-compat preserved: builds without on-hit
   items see identical per-AA damage to pre-s188.
+* **Spellblade NOT included** here (it's ``every_n_seconds``-based, not
+  ``every_n_attacks``-based) — see Phase 5.7 below for the dedicated
+  arm-by-spell-cast / consume-by-AA model that lands Spellblade
+  contributions in burst combos.
+
+Phase 5.7 (s189, 2026-05-13 — Spellblade-in-burst, ENGINE_VERSION 0.74.0):
+
+* Spellblade items (Trinity Force / Lich Bane / Essence Reaver / Iceborn
+  Gauntlet / Dusk and Dawn / Divine Sunderer / Sheen / Bloodsong — plus
+  Arena mirrors) all carry ``unique_passive_key="spellblade"`` and use
+  ``PeriodicProc.every_n_seconds`` (3.0 or 1.5). Pre-s189, they were
+  invisible to ``burst.py`` because s188's per-attack helper only counts
+  ``every_n_attacks`` procs.
+* New ``dps._spellblade_per_proc_damage()`` returns the build's
+  Spellblade per-proc damage value (already mitigated + mode-mult'd +
+  amp-applied). ``collect_effects`` dedups via ``unique_passive_key``
+  first-seen-wins, so at most one Spellblade survives per build.
+* ``DpsResult`` gains ``spellblade_per_proc_damage: float`` +
+  ``spellblade_item_name: str`` (default 0.0 / ""); surfaced in
+  ``to_dict()``. ``compute_dps`` populates both after the existing
+  per-attack on-hit block.
+* ``burst.compute_burst_damage`` walks the combo with a
+  ``spellblade_armed: bool`` flag — any ability token (P/Q/W/E/R or
+  repeat variant) sets armed=True; AA token consumes (armed → fire
+  proc → armed=False; adds proc damage to that ComboCast's
+  ``final_damage``). Tracks ``spellblade_procs_fired`` +
+  ``spellblade_damage_total`` for surfacing on ``BurstResult``. Real
+  1.5s internal CD is irrelevant in a single-combo window — the arming
+  gate is the binding constraint (fresh spell-cast required to re-arm),
+  same architectural pattern as s180's no-cooldown-sequencing decision.
+* ``BurstResult`` gains ``spellblade_procs: int`` +
+  ``spellblade_damage: float`` + ``spellblade_item_name: str``. Notes
+  block reports per-combo fired count + total damage; surfaces an idle
+  diagnostic when the build has Spellblade but the combo template
+  doesn't exercise it (e.g. operator-supplied pure-AA combo).
 """
 
-ENGINE_VERSION = "0.73.0"
+ENGINE_VERSION = "0.74.0"
