@@ -129,7 +129,7 @@ class RegistryShapeTests(unittest.TestCase):
         # Phase 5.9 (s191) — initial seed (some champions extended in later batches)
         # Cassiopeia extended in s196 with W=1 — full shape asserted below
         self.assertEqual(champions["Veigar"], {"R": 1})
-        self.assertEqual(champions["Diana"], {"W": 2})
+        # Diana extended in s203 with R=2 (Moonfall channel total) — asserted below
         self.assertEqual(champions["Brand"], {"W": 1, "R": 1})
         self.assertEqual(champions["Evelynn"], {"R": 1})
         self.assertEqual(champions["Aurora"], {"Q": 2})
@@ -169,8 +169,8 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Sivir"], {"Q": 2})
         # Talon extended in s199 with Q=1 — full shape asserted below
         self.assertEqual(champions["Varus"], {"Q": 1})
-        # Vladimir W=1 extends prior {"E": 1} from s195 (added s198)
-        self.assertEqual(champions["Vladimir"], {"E": 1, "W": 1})
+        # Vladimir W=1 extends prior {"E": 1} from s195 (added s198);
+        # Vladimir Q=1 added s203 (Crimson Rush full-stack) — asserted below
         # Zoe extended in s202 with W=1 — full shape asserted below
         # Phase 5.9.9 (s196) — extended multi-hit / condition amp expansion
         # Akali E=2 extends prior {"R": 0, "R2": 2} from s192
@@ -225,7 +225,7 @@ class RegistryShapeTests(unittest.TestCase):
         # 20 entries across 17 new champions + 2 key extensions
         # (Sion R and Vladimir W asserted above with their extended shape):
         self.assertEqual(champions["Irelia"], {"W": 1})
-        self.assertEqual(champions["Jax"], {"E": 1})
+        # Jax extended in s203 with R=1 (Grandmaster's Might active 3-AA) — asserted below
         self.assertEqual(champions["Kayn"], {"Q": 1})
         self.assertEqual(champions["Maokai"], {"E": 1})
         self.assertEqual(champions["Nami"], {"E": 1})
@@ -271,7 +271,7 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Graves"], {"Q": 2})
         self.assertEqual(champions["Janna"], {"Q": 2})
         self.assertEqual(champions["Jhin"], {"Q": 2, "R": 1})
-        self.assertEqual(champions["Kennen"], {"R": 1})
+        # Kennen extended in s203 with W=1 (active cast vs passive 4th-AA) — asserted below
         self.assertEqual(champions["Taliyah"], {"Q": 2})
         self.assertEqual(champions["Teemo"], {"E": 2, "R": 1})
         self.assertEqual(champions["Viego"], {"Q": 3})
@@ -305,12 +305,45 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Renekton"], {"Q": 1, "W": 2, "R": 1})
         # Rumble extended in s202 with Q=2 (Danger Zone enhanced) + R=2 (Equalizer max)
         self.assertEqual(champions["Rumble"], {"E": 1, "Q": 2, "R": 2})
-        # Smolder extended in s202 with Q=1 (max-stack passive) + R=1 (max-distance)
-        self.assertEqual(champions["Smolder"], {"W": 2, "Q": 1, "R": 1})
+        # Smolder extended in s202 with Q=1 (max-stack passive) + R=1 (max-distance);
+        # s203 adds E=1 (Achooo! max-stack passive scaling) — asserted below
         # Viktor extended in s202 with E=2 (Death Ray double-hit)
         self.assertEqual(champions["Viktor"], {"R": 2, "Q": 2, "E": 2})
         # Yuumi extended in s202 with R=2 (Final Chapter 2 hits per target)
         self.assertEqual(champions["Yuumi"], {"Q": 1, "R": 2})
+        # Phase 5.9.16 (s203) — 12 entries: 5 new champions + 5 key extensions.
+        # New: Blitzcrank, Gwen, Kled (Q+E+R), LeeSin, Thresh. Extensions on
+        # Diana (R), Jax (R), Kennen (W), Smolder (E), Vladimir (Q). Six
+        # sub-patterns: (A) multi-hit single-target totals (Diana R, Gwen R,
+        # Kled Q, Kled E, Vladimir Q), (B) resource-state amps (Smolder E,
+        # Vladimir Q), (C) active-cast vs passive-zap split (Blitzcrank R,
+        # Kennen W, Jax R), (D) max-charge condition amp (Kled R), (E) missing-
+        # HP amp layered on s187 form_index=1 (LeeSin Q — first NET-damage
+        # composition with form_index registry), (F) empty-block-0 fix
+        # (Thresh E — first instance of routing past an evaluates-to-zero
+        # block 0 with only unparsed soul scaling).
+        self.assertEqual(champions["Blitzcrank"], {"R": 1})
+        # Diana extended in s203 with R=2 — full shape:
+        self.assertEqual(champions["Diana"], {"W": 2, "R": 2})
+        self.assertEqual(champions["Gwen"], {"R": 4})
+        # Jax extended in s203 with R=1 — full shape:
+        self.assertEqual(champions["Jax"], {"E": 1, "R": 1})
+        # Kennen extended in s203 with W=1 — full shape:
+        self.assertEqual(champions["Kennen"], {"R": 1, "W": 1})
+        self.assertEqual(champions["Kled"], {"Q": 2, "E": 1, "R": 1})
+        # LeeSin Q=1 composes with s187 form_index=1 (Resonating Strike form):
+        # form_index routes to form 1, block_index then routes within that
+        # form to the max-missing-HP variant. First instance of layering
+        # block_index on a form_index override that adds NET damage.
+        self.assertEqual(champions["LeeSin"], {"Q": 1})
+        # Smolder extended in s203 with E=1 — full shape:
+        self.assertEqual(champions["Smolder"], {"W": 2, "Q": 1, "R": 1, "E": 1})
+        # Thresh routes to ds.hps by default; E=2 entry is for direct
+        # /ability-dps queries since engine default block 0 evaluates to 0
+        # (only unparsed per-Soul scaling, no base/AP).
+        self.assertEqual(champions["Thresh"], {"E": 2})
+        # Vladimir extended in s203 with Q=1 — full shape:
+        self.assertEqual(champions["Vladimir"], {"E": 1, "W": 1, "Q": 1})
 
     def test_every_value_is_int(self) -> None:
         for champion_id, entries in self.table["champions"].items():
@@ -1856,12 +1889,15 @@ class Phase599_11ExpansionTests(unittest.TestCase):
         self.assertEqual(r.block_index_source, "champion")
 
     def test_vladimir_both_keys_in_resolved(self) -> None:
-        """Vladimir E=1 (s195) + W=1 (s198) — both keys must appear in resolved map."""
+        """Vladimir E=1 (s195) + W=1 (s198) + Q=1 (s203, extension) — all keys
+        present. s198-shape test extended to assert E + W subset rather than
+        equality, since s203 added Q without removing earlier keys."""
         r = compute_ability_dps(
             self.snap, "Vladimir", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"E": 1, "W": 1})
+        self.assertEqual(r.block_index_resolved.get("E"), 1)
+        self.assertEqual(r.block_index_resolved.get("W"), 1)
         self.assertEqual(r.block_index_source, "champion")
 
     # Math-level sanity: Udyr R block 1 base = 8× block 0 (full channel)
@@ -2900,12 +2936,16 @@ class Phase599_15ExpansionTests(unittest.TestCase):
         self.assertEqual(r.block_index_resolved, {"E": 1, "Q": 2, "R": 2})
 
     def test_smolder_all_three_keys_in_resolved(self) -> None:
-        """Smolder W=2 (s197) + Q=1 (s202) + R=1 (s202) — all three present."""
+        """Smolder W=2 (s197) + Q=1 (s202) + R=1 (s202) + E=1 (s203, extension).
+        s202-shape test extended to assert W+Q+R subset rather than equality,
+        since s203 added E without removing earlier keys."""
         r = compute_ability_dps(
             self.snap, "Smolder", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"W": 2, "Q": 1, "R": 1})
+        self.assertEqual(r.block_index_resolved.get("W"), 2)
+        self.assertEqual(r.block_index_resolved.get("Q"), 1)
+        self.assertEqual(r.block_index_resolved.get("R"), 1)
 
     def test_viktor_all_three_keys_in_resolved(self) -> None:
         """Viktor R=2 (s198) + Q=2 (s199) + E=2 (s202) — all three present."""
@@ -2970,6 +3010,339 @@ class Phase599_15ExpansionTests(unittest.TestCase):
             target_armor=80, target_mr=30,
         )
         self.assertEqual(r.block_index_resolved, {"Q": 1, "W": 1, "E": 1})
+
+
+# ─── Phase 5.9.16 (s203) — 12 entries / 5 new champs + 5 extensions ─────────
+
+
+class Phase599_16ExpansionTests(unittest.TestCase):
+    """Phase 5.9.16 (s203). 12 new (champion, key) entries: 5 truly-new
+    champions (Blitzcrank, Gwen, Kled, LeeSin, Thresh) + 5 key extensions
+    on existing champions (Diana R, Jax R, Kennen W, Smolder E, Vladimir Q).
+
+    Registry 110 → 115 champions, 161 → 173 entries.
+
+    Six sub-patterns:
+      (A) Multi-hit single-target totals (5): Diana R (filtered, 1.7×
+          block 1 = initial pull + 4-tick channel), Gwen R (9×, full 3-
+          cast 9-needle burst), Kled Q (filtered, 3-stage Beartrap reel),
+          Kled E (2×, Jousting recast), Vladimir Q (filtered, 1.85×
+          Crimson Rush at full stacks).
+      (B) Resource-state amps (1 net new): Smolder E (5×, max-stack
+          Achooo!). Vladimir Q also fits this category (Crimson Rush
+          builds via taking damage).
+      (C) Active-cast vs passive-zap split (3): Blitzcrank R, Kennen W,
+          Jax R — engine default block 0 was scoring the passive (per-
+          zap / per-4th-AA mark / passive 3rd-AA) as the R/W cast value;
+          block 1 captures the active cast realistic burst.
+      (D) Max-charge condition amp (1): Kled R (filtered, 3× block 0 at
+          full charge time).
+      (E) Missing-HP amp layered on form_index (1): LeeSin Q — composes
+          with s187 form_index=1 routing to Resonating Strike form, then
+          block_index=1 routes to max-missing-HP variant within form 1.
+          First instance of layering block_index on form_index that adds
+          NET damage (Jayce Q s194 was smaller magnitude precedent).
+      (F) Empty-block-0 fix (1): Thresh E — engine default block 0 has
+          only unparsed `1.7 per Soul collected` and evaluates to 0;
+          registry routes to filtered idx 2 = raw block 2 (base + AP
+          magic damage component). First instance of this fix pattern.
+
+    Reverts 1 prior-batch skip rationale: Smolder E (s198/s202 'Meraki
+    schema Minimum label ambiguity' → s203: re-framed under operator-
+    commits-to-max-stacks, identical model to Smolder Q s202 successful
+    reintroduction).
+
+    Tests verify each new entry:
+      1. Is present in the resolved registry at the expected filtered idx
+      2. Drives total_ability_dps strictly above the forced-block-0 baseline
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = _snap()
+
+    def _delta_check(self, champion: str, key: str, expected_idx: int) -> None:
+        r_reg = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r_reg.block_index_resolved.get(key), expected_idx,
+                         f"{champion}.{key} should route to filtered block {expected_idx}")
+        forced = dict(r_reg.block_index_resolved)
+        forced[key] = 0
+        r_off = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides=forced,
+        )
+        self.assertGreater(r_reg.total_ability_dps, r_off.total_ability_dps,
+                           f"{champion} registry total should exceed forced-block-0")
+
+    # Pattern A: multi-hit single-target totals (5)
+    def test_diana_R_routes_to_filtered_block_2(self) -> None:
+        """Diana R filtered idx 2 = raw block 3 'Total Magic Damage' =
+        Moonfall full 2-second channel total on pulled target = raw 1
+        (initial pull) + 4× raw 2 (per-tick during channel). Filtered
+        because raw block 0 is 'Slow' (non-damage). Operator commits to
+        landing clean Moonfall + holding target in channel."""
+        self._delta_check("Diana", "R", 2)
+
+    def test_gwen_R_routes_to_block_4(self) -> None:
+        """Gwen R block 4 'Magic Damage' = 9× block 0 per-needle (3 casts
+        × 3 needles each = 9 needles all hitting same target). No filtering
+        needed — all 5 blocks are damage (per-needle progression: 1 / recast
+        1 / 3-needle / 5-needle / 9-needle). Operator commits to landing
+        all 3 R-casts on same target = canonical Gwen burst."""
+        self._delta_check("Gwen", "R", 4)
+
+    def test_kled_Q_routes_to_filtered_block_2(self) -> None:
+        """Kled Q filtered idx 2 = raw block 3 'Physical Damage' = 3-stage
+        Beartrap on Rope full reel-in (3× block 0). Filtered because raw
+        block 1 'modifier' + raw block 4 'slow' are non-damage. Operator
+        commits to fully reeling target = canonical Kled Q engage."""
+        self._delta_check("Kled", "Q", 2)
+
+    def test_kled_E_routes_to_block_1(self) -> None:
+        """Kled E block 1 'Physical Damage' = 2× block 0 = Jousting dash +
+        recast return on same target within 4-second window. No filtering
+        needed — both blocks are damage. Operator commits to recasting E
+        on same target = canonical Kled bursty engage."""
+        self._delta_check("Kled", "E", 1)
+
+    def test_vladimir_Q_routes_to_filtered_block_1(self) -> None:
+        """Vladimir Q filtered idx 1 = raw block 2 'Magic Damage' = 1.85×
+        block 0 = Crimson Rush enhanced Q at full passive stacks. Filtered
+        because raw block 1 'Heal' is non-damage. Operator commits to
+        entering combat with passive stacks ready (passive builds via
+        taking damage) = canonical Vladimir burst rotation. Resource-state
+        amp same model as Smolder Q/E + Renekton Q full-Fury (s197)."""
+        self._delta_check("Vladimir", "Q", 1)
+
+    # Pattern B: resource-state amps (1 net new — Smolder E)
+    def test_smolder_E_routes_to_block_1(self) -> None:
+        """Smolder E block 1 'Physical Damage' = 5× block 0 = Achooo! at
+        max passive stacks (Dragon Practice stacking). Operator commits
+        to building Smolder stacks pre-burst, same model as Smolder Q s202
+        successful reintroduction. Reverts s198/s202 'Meraki Minimum schema
+        label ambiguity' skip — block 1 IS the realistic max-stack value."""
+        self._delta_check("Smolder", "E", 1)
+
+    # Pattern C: active-cast vs passive-zap split (3)
+    def test_blitzcrank_R_routes_to_block_1(self) -> None:
+        """Blitzcrank R block 1 'Magic Damage' 275-525 + 100% AP = active
+        cast burst on Static Field detonation. Engine pre-s203 default
+        block 0 captured the passive per-zap (50-150 + 30% AP + 2% caster
+        max MP) which fires every 2.5s independently — that's the passive
+        chain lightning, NOT the active R cast burst. Block 1 = active
+        engage realistic value."""
+        self._delta_check("Blitzcrank", "R", 1)
+
+    def test_kennen_W_routes_to_block_1(self) -> None:
+        """Kennen W block 1 'Magic Damage' 70-170 + 80% AP = active
+        Electrical Surge cast burst. Engine pre-s203 default block 0
+        captured the passive per-4th-AA Mark of the Storm detonation
+        (35-75 + 80-120% bAD + 35% AP) which is per-AA scaling, not per-
+        W-cast. Block 1 = active cast realistic value."""
+        self._delta_check("Kennen", "W", 1)
+
+    def test_jax_R_routes_to_block_1(self) -> None:
+        """Jax R block 1 'Magic Damage' 100-250 + 100% AP = active 3-AA
+        enhancement total when Grandmaster's Might is cast. Engine pre-
+        s203 default block 0 captured the passive every-3rd-AA scaling
+        (75-185 + 60% AP). Block 1 = active R cast realistic burst.
+        Lift is small (~1%) because Jax R has long CD; entry is
+        architecturally correct for direct /burst queries."""
+        self._delta_check("Jax", "R", 1)
+
+    # Pattern D: max-charge condition amp (1)
+    def test_kled_R_routes_to_filtered_block_1(self) -> None:
+        """Kled R filtered idx 1 = raw block 3 'Magic Damage' tMaxHP 12-24%
+        = max-charge Chaaaaaaaarge!!! impact (3× block 2 minimum). Filtered
+        because raw blocks 0-1 are 'shield' / 'shield' (non-damage). Operator
+        commits to fully charging R before colliding = canonical Kled Skaarl-
+        remount engage."""
+        self._delta_check("Kled", "R", 1)
+
+    # Pattern E: missing-HP amp layered on form_index (1)
+    def test_leesin_Q_routes_to_block_1(self) -> None:
+        """LeeSin Q=1 layers on s187 form_index=1 override. Form 1 is the
+        Resonating Strike recast (post-Sonic-Wave); within form 1, block 0
+        is min damage (55-155 + 115% bAD, no missing-HP), block 1 is max
+        damage (110-310 + 230% bAD = 2× block 0 at 50% target missing HP
+        via in-game scaling curve). Operator commits to landing Q recast
+        on low-HP target = canonical Lee Sin assassination. First NET-
+        damage layering of block_index on form_index registry."""
+        self._delta_check("LeeSin", "Q", 1)
+
+    # Pattern F: empty-block-0 fix (1)
+    def test_thresh_E_routes_to_block_2(self) -> None:
+        """Thresh E filtered idx 2 = raw block 2 'Magic Damage' 75-255 +
+        70% AP = base+AP MAGIC component of Flay. Engine pre-s203 default
+        block 0 has ONLY unparsed `1.7 per Soul collected` (no base, no
+        AP, no tAD) and evaluates to 0 damage. Registry routes past the
+        empty-evaluation block. First instance of this fix pattern.
+        Thresh routes to ds.hps by default (enchanter); entry here is
+        for direct /ability-dps queries."""
+        self._delta_check("Thresh", "E", 2)
+
+    # Multi-key resolved-shape sanity for extension champions
+    def test_diana_both_keys_in_resolved(self) -> None:
+        """Diana W=2 (s196) + R=2 (s203) — both keys must appear."""
+        r = compute_ability_dps(
+            self.snap, "Diana", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"W": 2, "R": 2})
+
+    def test_jax_both_keys_in_resolved(self) -> None:
+        """Jax E=1 (s198) + R=1 (s203) — both keys must appear."""
+        r = compute_ability_dps(
+            self.snap, "Jax", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"E": 1, "R": 1})
+
+    def test_kennen_both_keys_in_resolved(self) -> None:
+        """Kennen R=1 (s201) + W=1 (s203) — both keys must appear."""
+        r = compute_ability_dps(
+            self.snap, "Kennen", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"R": 1, "W": 1})
+
+    def test_smolder_all_four_keys_in_resolved(self) -> None:
+        """Smolder W=2 (s197) + Q=1 (s202) + R=1 (s202) + E=1 (s203) —
+        all four keys present."""
+        r = compute_ability_dps(
+            self.snap, "Smolder", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(
+            r.block_index_resolved, {"W": 2, "Q": 1, "R": 1, "E": 1},
+        )
+
+    def test_vladimir_all_three_keys_in_resolved(self) -> None:
+        """Vladimir E=1 (s195) + W=1 (s198) + Q=1 (s203) — all three keys
+        present."""
+        r = compute_ability_dps(
+            self.snap, "Vladimir", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"E": 1, "W": 1, "Q": 1})
+
+    def test_kled_all_three_keys_in_resolved(self) -> None:
+        """Kled Q=2 + E=1 + R=1 all new in s203 — all three keys present."""
+        r = compute_ability_dps(
+            self.snap, "Kled", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 2, "E": 1, "R": 1})
+
+    # Math-level sanity
+    def test_gwen_R_block4_matches_9x_block0_base(self) -> None:
+        """Numeric sanity: Gwen R block 4 base = 9× block 0 base across all
+        3 ranks (Maximum = 3 casts × 3 needles each on same target)."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("Gwen", "R", form_index=0)
+        self.assertIsNotNone(form)
+        blocks = [b for b in form.damage_blocks if b.attribute_kind == "damage"]
+        self.assertGreaterEqual(len(blocks), 5)
+        for rank, (b0, b4) in enumerate(zip(blocks[0].base, blocks[4].base)):
+            self.assertAlmostEqual(
+                b4, b0 * 9.0, places=2,
+                msg=f"Gwen R rank {rank+1}: block 4 base {b4} != 9× block 0 base {b0}"
+            )
+
+    def test_kled_Q_filtered_idx2_matches_3x_block0_bAD(self) -> None:
+        """Numeric sanity: Kled Q filtered idx 2 = raw block 3; raw block 3
+        bonus_ad_pct = 3× raw block 0 bonus_ad_pct (60% → 180%) across
+        all 5 ranks."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("Kled", "Q", form_index=0)
+        self.assertIsNotNone(form)
+        # Filtered list — only damage blocks
+        damage_blocks = [b for b in form.damage_blocks if b.attribute_kind == "damage"]
+        self.assertGreaterEqual(len(damage_blocks), 3)
+        b_filt_0 = damage_blocks[0]  # raw 0
+        b_filt_2 = damage_blocks[2]  # raw 3 after filtering raw 1 (modifier) + raw 4 (slow)
+        for rank in range(len(b_filt_0.bonus_ad_pct)):
+            self.assertAlmostEqual(
+                b_filt_2.bonus_ad_pct[rank], b_filt_0.bonus_ad_pct[rank] * 3.0,
+                places=2,
+                msg=f"Kled Q rank {rank+1}: filtered idx 2 bAD% != 3× filtered idx 0",
+            )
+
+    def test_leesin_Q_block1_matches_2x_block0_bAD_in_form1(self) -> None:
+        """Numeric sanity: LeeSin Q form 1 (Resonating Strike per s187)
+        block 1 bonus_ad_pct = 2× block 0 bonus_ad_pct (115% → 230%) =
+        max-missing-HP doubling at 50% target missing HP."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("LeeSin", "Q", form_index=1)
+        self.assertIsNotNone(form)
+        damage_blocks = [b for b in form.damage_blocks if b.attribute_kind == "damage"]
+        self.assertGreaterEqual(len(damage_blocks), 2)
+        b0, b1 = damage_blocks[0], damage_blocks[1]
+        for rank in range(len(b0.bonus_ad_pct)):
+            self.assertAlmostEqual(
+                b1.bonus_ad_pct[rank], b0.bonus_ad_pct[rank] * 2.0,
+                places=2,
+                msg=f"LeeSin Q form 1 rank {rank+1}: block 1 bAD% != 2× block 0 bAD%",
+            )
+
+    def test_thresh_E_block0_evaluates_to_zero(self) -> None:
+        """Sanity: Thresh E raw block 0 has only unparsed soul scaling —
+        no base, no AP, no tAD/bAD. The `_evaluate_block` helper should
+        return 0 for it, which is why the engine pre-s203 default
+        evaluated Thresh E damage at 0. Confirms the empty-block-0 fix
+        is necessary."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("Thresh", "E", form_index=0)
+        self.assertIsNotNone(form)
+        damage_blocks = [b for b in form.damage_blocks if b.attribute_kind == "damage"]
+        b0 = damage_blocks[0]
+        # Base list should be all zeros (or empty/None)
+        if b0.base:
+            for v in b0.base:
+                self.assertEqual(v, 0.0, "Thresh E block 0 should have zero base")
+        # AP scaling should be all zeros (or empty/None)
+        if b0.ap_pct:
+            for v in b0.ap_pct:
+                self.assertEqual(v, 0.0, "Thresh E block 0 should have zero AP scaling")
+
+    # Backward-compat: prior-batch entries still resolve unchanged after s203
+    def test_pre_s203_yunara_unchanged(self) -> None:
+        """Backward-compat: s202 Yunara Q=2 preserved after s203."""
+        r = compute_ability_dps(
+            self.snap, "Yunara", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 2})
+
+    def test_pre_s203_kennen_R_still_block_1(self) -> None:
+        """Backward-compat: s201 Kennen R=1 preserved after s203 added W=1.
+        Both keys must coexist."""
+        r = compute_ability_dps(
+            self.snap, "Kennen", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved.get("R"), 1)
+        self.assertEqual(r.block_index_resolved.get("W"), 1)
+
+    def test_pre_s203_smolder_W_still_block_2(self) -> None:
+        """Backward-compat: s197 Smolder W=2 preserved after s203 added E=1.
+        All four Smolder keys (W, Q, R, E) must coexist with original values."""
+        r = compute_ability_dps(
+            self.snap, "Smolder", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved.get("W"), 2)  # s197
+        self.assertEqual(r.block_index_resolved.get("Q"), 1)  # s202
+        self.assertEqual(r.block_index_resolved.get("R"), 1)  # s202
+        self.assertEqual(r.block_index_resolved.get("E"), 1)  # s203
 
 
 # ─── backward-compat: unmapped champions keep pre-s191 output ───────────────
