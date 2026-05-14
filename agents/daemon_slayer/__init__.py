@@ -638,6 +638,74 @@ Phase 5.6 (s188, 2026-05-13 — per-attack on-hit proc damage, ENGINE_VERSION 0.
   arm-by-spell-cast / consume-by-AA model that lands Spellblade
   contributions in burst combos.
 
+Phase 5.9.15 (s202, 2026-05-14 — block_index expansion: Gangplank / Gnar / KSante / RekSai / Vayne / Yunara new + 12 key extensions on Zoe / Akshan / AurelionSol / Nasus / Poppy / Renekton / Rumble Q+R / Smolder Q+R / Viktor / Yuumi, ENGINE_VERSION 0.87.0):
+
+* Pure data-only batch — no code changes. 18 new (champion, key)
+  entries: 6 truly-new champions (Gangplank, Gnar, KSante, RekSai,
+  Vayne, Yunara) + 12 key extensions on existing champions (Zoe W,
+  Akshan R, AurelionSol Q, Nasus R, Poppy E, Renekton R, Rumble Q+R,
+  Smolder Q+R, Viktor E, Yuumi R). Registry: 104 → 110 champions,
+  143 → 161 entries.
+* **Pattern A multi-hit single-target totals** (5 entries):
+    - KSante R=2 (All Out dash + wall-strike 2×)
+    - Vayne E=2 (Condemn dash + wall-slam 2.5×)
+    - Yunara Q=2 filtered (Combined Passive + Active 2×)
+    - Zoe W=1 filtered (3 empowered AAs from spell rotation 3×)
+    - Viktor E=2 (Death Ray double-hit 1.29×)
+* **Pattern B channel/duration totals** (7 entries):
+    - Gangplank R=2 (Cannon Barrage 4-wave total 12× per-wave)
+    - AurelionSol Q=2 (Breath of Light full 2.5s channel 26×)
+    - Nasus R=1 filtered (Fury of the Sands full 15s target_max_hp_pct)
+    - Renekton R=1 filtered (Dominus full 15s aura 30×)
+    - Rumble R=2 (Equalizer max 4s channel 10×)
+    - Yuumi R=2 filtered (Final Chapter 2 hits per target 2×)
+    - Poppy E=1 filtered (Heroic Charge wall-slam total 2×)
+* **Pattern C max-charge / max-distance amps** (3 entries):
+    - Akshan R=1 filtered (Comeuppance max-charge bullet 3×)
+    - Smolder R=1 filtered (Mouth of the Abyss max-distance 1.5×)
+    - (Pattern shared with Pattern E channel for Rumble Q overheat)
+* **Pattern D resource-state amps** (2 entries):
+    - RekSai E=1 (Furious Bite max Fury → true damage 1.25×)
+    - Smolder Q=1 (max-stack passive 1.75× — gear-INdependent)
+* **Pattern E wall-stun terrain / charge condition amps** (3 entries):
+    - Gnar R=1 filtered (GNAR! wall-stun amp 1.5×)
+    - (Vayne E + Poppy E listed under Pattern A — both wall-stun)
+    - Rumble Q=2 filtered (Total Enhanced damage during Danger Zone 1.5×)
+* **Filtered-idx semantics** (9 of 18 entries have non-damage
+  prefix blocks): Gnar R raw 0/2 'Movement Speed' + 'Disable
+  Duration' stripped; Yunara Q raw 1 'Bonus Attack Speed' +
+  raw 4-5 modifiers stripped; Zoe W raw 0-1 'Bonus Movement Speed'
+  stripped; Akshan R raw 0-1 'Maximum Bullets' / 'Storing Interval'
+  stripped; Nasus R raw 0-2 'Bonus Health' / 'Bonus Resistances' /
+  'Increased Size' stripped; Poppy E raw 1 'Stun Duration' stripped;
+  Renekton R raw 0-1 'Bonus Movement Speed' / 'Bonus Resistances'
+  stripped; Rumble Q raw 1 'Increased Damage Per Second' (intermediate
+  damage block at filtered idx 1; we pick filtered idx 2 = raw 4
+  'Total Enhanced'); Smolder R raw 0 'Self Heal' stripped; Yuumi R
+  raw 0-1 + 5-6 heal blocks stripped.
+* **Reverts of 4 prior-batch skip rationales:** Gnar R (s198 'wall-
+  stun terrain' → s202: operator-commits, same as Khazix Q isolation
+  s196 / Xerath W center-spot s201), Vayne E (s198 'wall-stun
+  terrain' → s202: same operator-commit framing), Poppy E (s199
+  'wall-state target condition' → s202: same), Rumble Q (s199
+  'Danger Zone heat decays mid-fight' → s202: operator commits to
+  overheat Q burst).
+* **6 deliberate skips documented inline:** Syndra W (block 2
+  'Total Mixed' is just 1.12× block 0 — too marginal), Camille W
+  (block 1 'Outer Cone Bonus' is target_max_hp_pct ONLY without
+  flat — needs sum-of-blocks), Yunara W (block 0 'Initial' is
+  HIGHER than block 2 'Total Expanded' — engine default correct),
+  Smolder E (Meraki schema 'Minimum' label ambiguity carried from
+  s198), Sona Q (block 1 is Power Chord bonus needing sum-of-
+  blocks), Kayle E (Phase 4a target_missing_hp_pct plumbing — same
+  pattern as s201 Kindred E drop).
+* All 18 verified per-rank math against Meraki snapshot.
+* Backward-compat preserved.
+* Eighteenth consecutive override / proc-shape modeling improvement
+  on the same template (s185-s202); eleventh pure-data batch in the
+  block_index family. Cumulative coverage 161 (champion, key)
+  entries across 110 champions (64% of the 171-champion roster).
+
 Phase 5.9.14 (s201, 2026-05-14 — block_index expansion: Fizz / Galio / Garen / Graves / Janna / Jhin / Kennen / Taliyah / Teemo / Viego / Xerath / Yasuo / Ziggs, ENGINE_VERSION 0.86.0):
 
 * Pure data-only batch — no code changes. 16 new (champion, key)
@@ -1156,4 +1224,4 @@ Phase 5.7 (s189, 2026-05-13 — Spellblade-in-burst, ENGINE_VERSION 0.74.0):
   doesn't exercise it (e.g. operator-supplied pure-AA combo).
 """
 
-ENGINE_VERSION = "0.86.0"
+ENGINE_VERSION = "0.87.0"
