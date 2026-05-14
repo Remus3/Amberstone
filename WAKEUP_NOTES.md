@@ -4,6 +4,84 @@
 
 ---
 
+# s193 wrap — 2026-05-14 (Phase 5.9.6 channeled-ability block_index expansion)
+
+**Operator instruction:** "continue" — straight from the s192 carry-forward. The cleanest next ship is more registry entries, focusing on a different pattern from s191 (single-block conditional amps) and s192 (per-token variants): the "per-tick → total" gap for channeled or duration-based abilities.
+
+## Context
+
+Scanning the 248 multi-block (champion, key, form) tuples in `champion_abilities.json` for "Total" / "Maximum" / "Increased" attribute names surfaced ~30 candidates beyond the s191 + s192 set. The biggest signal class: channeled abilities (Crowstorm, Disintegration Ray, Inferno Trigger, Trample, etc.) where Meraki ships block 0 = "per-tick" and block 1 = "Total" (the cumulative for the full channel duration). For both `/ability-dps` (cast-rate × per-cast damage) and `/burst` (single-combo per-cast damage), the realistic per-cast contribution is the FULL CHANNEL total — operator commits to the channel, sums up the ticks. The engine's default `block_strategy="first"` picked block 0 (per-tick) for every channel, systematically under-counting their item-ranking signal by 20-180% (per the A/B inspection below).
+
+Pure data batch — no resolver/walker/server code changes. The s191 + s192 token-canonical lookup logic remains unchanged; just more JSON entries on the same template.
+
+## Ships
+
+| File | Change |
+|---|---|
+| [agents/daemon_slayer/champion_block_index.json](agents/daemon_slayer/champion_block_index.json) | **Registry expanded from 12 → 20 entries.** 8 new champion entries (Alistar E=1 Trample total, AurelionSol E=1 Singularity total, Fiddlesticks R=1 Crowstorm total, MissFortune E=1 Make It Rain total, Samira R=1 Inferno Trigger spray total, Singed Q=1 Poison Trail total, Velkoz R=1 Disintegration Ray max, Syndra R=2 max sphere stacks) + Anivia entry extended from `{"E": 1}` to `{"Q": 2, "E": 1}` (Q now uses block 2 "Total Magic Damage" = initial pass + detonation combined). `_meta.description` extended with Phase 5.9.6 note explaining the per-tick → total pattern. `_meta.rationale` adds entry-by-entry rank-N math verification. Skipped-list expanded to document Corki E / Hecarim W / Jayce W / Rell R / DrMundo W (same pattern, deferred to a calibration follow-up batch since they're lower-impact in current rankings) + Renekton R + Kennen R + AurelionSol Q + Rumble R (modeling caveats per inline rationale). |
+| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | ENGINE_VERSION 0.77.0 → 0.78.0. Docstring extended with Phase 5.9.6 section noting the data-only nature of the batch + A/B impact table. |
+| [agents/daemon_slayer/tests/test_block_index_overrides.py](agents/daemon_slayer/tests/test_block_index_overrides.py) | New `ChanneledAbilityExpansionTests` class (11 tests) — one per new entry asserting (a) registry routes the key to the expected block_index, (b) total_ability_dps with registry exceeds forced-block-0 baseline. Plus `test_anivia_E_still_routes_to_block_1` regression guard, `test_singed_Q_total_block_matches_per_cast_math` numeric sanity check. `test_known_champion_overrides` extended with explicit assertions for all 9 new/extended entries. Pre-existing `test_rank_mage_carries_source` in `ToDictSerializationTests` updated for Anivia's new `{"Q": 2, "E": 1}` shape. |
+| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Version-pin tests bumped 0.77.0 → 0.78.0 with the Phase 5.9.6 line in the history comment. |
+
+## Verification
+
+- DS suite **1676 pass** (was 1665 in s192 wrap; +11 from new `ChanneledAbilityExpansionTests` class)
+- Wider RC suite **1013 pass** (no regression)
+- `py_compile` clean for __init__.py
+- DS server :8893 restarted from PID 12368 → new PID; `/health` reports `engine_version=0.78.0` patch=16.10.1 172 champions 705 items
+
+## Live A/B on :8893 (/ability-dps at lvl 11 vs 80 armor / 30 MR / 2000 HP)
+
+| Champion | Pre-s193 (block 0 only) | Post-s193 (registry) | Delta |
+|---|---|---|---|
+| Singed Q | 4.06 adps | **11.46 adps** | **+182.4%** |
+| Fiddlesticks R | 5.24 adps | **11.81 adps** | **+125.4%** |
+| Anivia Q+E | 9.66 adps | **19.80 adps** | **+105.0%** |
+| AurelionSol E | 1.99 adps | **3.29 adps** | **+64.9%** |
+| Velkoz R | 13.84 adps | **17.04 adps** | **+23.1%** |
+| MissFortune E | 9.97 adps | **11.64 adps** | **+16.7%** |
+| Syndra R | 25.55 adps | **28.06 adps** | **+9.8%** |
+
+Channel-class abilities (Crowstorm, Disintegration Ray, Poison Trail, Singularity, Make It Rain, Trample, Inferno Trigger) were systematically under-counted by 20-180% pre-s193. After the registry update, /rank-mage and /rank-assassin on these champions correctly weight their ultimate's contribution to the per-cast damage budget.
+
+**Singed /rank-mage top 5** (baseline 11.46, was 4.06 pre-s193):
+- 1. Rabadon's Deathcap +11.77 / 2. Shadowflame +10.16 / 3. Mejai's +10.10 / 4. Stormsurge +8.58 / 5. Void Staff +8.46
+- AP items dominate as expected — Poison Trail's 85% AP scaling (block 1 total) makes Rabadon's huge
+
+**Fiddlesticks /rank-mage top 5** (baseline 11.81, was 5.24 pre-s193):
+- 1. Rabadon's Deathcap +6.53 / 2. Shadowflame +6.35 / 3. Mejai's +5.60 / 4. Stormsurge +5.47 / 5. Void Staff +5.25
+- Crowstorm's 250% AP scaling at rank 3 (block 1 total) dominates Fiddle's late-game burst signal
+
+**Regression checks:**
+- Cassi /ability-dps total: **39.48** — unchanged from s191/s192 (E:1 entry preserved through s193 expansion)
+- Akali /burst total: **941.71** — unchanged from s192 (R=0, R2=2 token-variant logic preserved)
+- 1013/1013 wider RC tests pass — no fallout from the additive JSON-only change
+
+## Findings
+
+- **The s191/s192 pattern scales cleanly.** Pure JSON expansion with zero code changes ships 9 entries spanning a 20-180% impact range. The Phase 4e form_index / s185 max_priority / s186 combo / s187 form_index / s191 block_index / s192 token-variant pattern is now confirmed extensible: future per-champion modeling entries drop into the same `{"<champion>": {"<key>": <int>}}` slot with no friction.
+- **Per-tick → total is the largest single class of mis-pricing in the engine.** Channels like Singed Q / Fiddle R have been valued at 1/8 to 1/20 of their realistic per-cast damage since the engine's first ability_dps ship in s178. The Meraki schema has been correct all along; the engine just needed to know which block represents the realistic per-cast value. s193 corrects this for 8 of the worst offenders.
+- **Cast-rate sanity holds.** `spell_cast_rates.json` measures one cast per channel (not per tick), so multiplying `total_per_cast` by `casts_per_sec` gives the right time-averaged DPS contribution. No double-counting concern from the per-tick → total swap.
+- **Anivia Q is doubly amped now.** s191 added E=1 (chilled-target Enhanced); s193 adds Q=2 (Flash Frost both passes total). Anivia's full Q-W-E rotation in /rank-mage now scores correctly for the canonical Q-E-burst combo that defines her mid laner identity.
+- **Skipped-list grew with deferral rationale.** Corki E / Hecarim W / Jayce W / Rell R / DrMundo W all share the per-tick → total pattern but were skipped this batch because their /rank-* impact is smaller (lower cast frequency in rewind data, smaller absolute total damage). They're tracked as a calibration follow-up batch — if rewind volume increases, expand the registry.
+- **Process-tracking refinement from s192 worked.** Used `Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'python.exe' ... }` to filter to the actual DS process (not the powershell.exe parent). No false kills this batch.
+
+## Open items carried forward
+
+- 🟡 **Conditional block_index based on target state** — same as s192 carry-forward. Zoe sleep, Lux Illumination, DrMundo E missing-HP threshold, Renekton Q full Fury. Schema lift: `{"<champion>": {"<key>": {"default": 0, "when_target_missing_hp_pct_above": [0.5, 2]}}}`. Defer until 3+ candidates accumulate cleanly.
+- 🟡 **Calibration follow-up entries** — Corki E/W, Hecarim W, Jayce W, Rell R, DrMundo W. Same per-tick → total pattern as s193 entries; deferred this batch as lower-priority. Estimate +5-20% adps per champion. One-line additions to the registry when prioritized.
+- 🟡 **Conditional damage amps (Ahri R→Q, Zoe E→Q)** — inter-spell awareness still missing. Carried since s180.
+- 🟡 **Generalized arm-consume framework** via `is_ability_triggered_aa_proc` schema flag. Carried since s190.
+- 🟡 **Aphelios + Karma mantra + Khazix evolved** — upstream/plumbing/UI blockers.
+- 🟡 **Real internal CD in long combos** — s190 carry-forward.
+- 🟡 **Pre-existing carry-forwards from s184/s183/s182** — live-game chip lifecycle validation; `_TOP_N_THRESHOLD` retune; `nudge_history` calibration analysis.
+
+## Architectural pattern lock-in (continued from s191/s192)
+
+Ninth consecutive override registry on the same template. s193 is the second pure-data batch in the series (after s191's seed entries themselves were data-driven once the resolver shipped). The pattern is now stable enough to support routine "calibration-driven" expansion batches — operator can add 5-10 entries per session without engineering risk. Future conditional-block_index (the carry-forward) is the only remaining structural lift.
+
+---
+
 # s192 wrap — 2026-05-14 (Phase 5.9.5 token-variant block_index for Akali R)
 
 **Operator instruction:** "continue" — directly continuing the s191 carry-forward list. Top item (a): per-token-variant block_index for Akali R. R1 (block 0 base) and R2 (block 2 max-execute) need different blocks within the same combo, but the s191 per-(champion, key) registry only had a single per-key entry. Single commit ship.
@@ -163,67 +241,3 @@ After s187 (form_index overrides) + s188 (per-AA on-hit) + s189 (Spellblade in b
 ## Architectural pattern lock-in (continued from s190)
 
 Seventh consecutive override / proc-shape modeling improvement on the same template (s185 max_priority / s186 combo_sequence / s187 form_index / s188 per-AA on-hit / s189 Spellblade-in-burst / s190 Lightshield-in-burst / s191 block_index). Each shipped backend-first with live A/B verification before commit; each added per-item or per-champion-derived modeling without breaking backward-compat (default field values + empty registry maps preserve pre-batch behavior). Engine surface area is now stable for a future "conditional block_index" lift to slot in without re-architecting.
-
----
-
-# s190 wrap — 2026-05-13 (Phase 5.8 Sundered Sky Lightshield Strike in burst)
-
-**Operator instruction:** "continue" — directly continuing the s189 carry-forward list. Top item: Sundered Sky Lightshield Strike (6610) — same "next AA after ability cast" mechanic as Spellblade but explicitly OUT of the spellblade unique-passive family. Single commit ship.
-
-## Context
-
-s189 closed the Spellblade gap in burst combos. Sundered Sky was carried forward because it carries a `PeriodicProc(name="Lightshield Strike", every_n_seconds=8.0)` — same arm-consume mechanic but with its own (intentionally absent) `unique_passive_key`. The schema comment at effects.py:539 spells it out: "Sundered Sky (6610) uses its own 'Lightshield Strike' label, not Spellblade — distinct mechanic, no dedup."
-
-Two architectural decisions for this batch:
-1. **Don't generalize** — second arm-consume helper, not an `is_ability_triggered_aa_proc` flag. Two items doesn't justify abstraction; if a third arm-consume mechanic ships, generalize then.
-2. **Cap at 1 proc per combo** — Sundered Sky's real CD is 8s vs a typical 2-3s burst window. The cap is implicit: re-arming guards on `lightshield_procs_fired == 0`, so once the proc lands, subsequent ability casts in the same combo can't re-arm it. Spellblade's unlimited per-combo firing is correct because its 1.5s CD is well below combo length.
-
-## Ships
-
-| File | Change |
-|---|---|
-| [agents/daemon_slayer/dps.py](agents/daemon_slayer/dps.py) | New `LIGHTSHIELD_STRIKE_PROC_NAME = "Lightshield Strike"` constant + `_lightshield_strike_per_proc_damage()` helper (sibling of `_spellblade_per_proc_damage`). Filters by `proc.name == "Lightshield Strike"` rather than `unique_passive_key` because Sundered Sky has no dedup family. Returns `(per_proc_damage, item_name)` via the standard pipeline (`resolve_damage` → `_armor_factor` → mode → type-selective `magic_amp` for MAGIC only → `damage_amp`). `DpsResult` gains `lightshield_strike_per_proc_damage: float = 0.0` + `lightshield_strike_item_name: str = ""` fields; `to_dict()` carries them. `compute_dps` populates after the existing Spellblade block + emits a notes line when present. |
-| [agents/daemon_slayer/burst.py](agents/daemon_slayer/burst.py) | Reads `aa_probe.lightshield_strike_per_proc_damage` + `aa_probe.lightshield_strike_item_name` alongside Spellblade. Combo walker gains parallel state vars `lightshield_armed` / `lightshield_procs_fired` / `lightshield_damage_total`. Ability token branch arms BOTH spellblade + lightshield, but lightshield arm is gated by `lightshield_procs_fired == 0` (8s CD cap). AA token branch consumes both independently — a build with both Sundered Sky + Trinity Force lands BOTH procs on the same AA. ComboCast AA notes block restructured to compose `base + on-hit + Spellblade + Lightshield Strike` parts; only present parts surface. `BurstResult` gains `lightshield_strike_procs: int = 0` + `lightshield_strike_damage: float = 0.0` + `lightshield_strike_item_name: str = ""` fields. Notes block reports fired count or idle state. |
-| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | ENGINE_VERSION 0.74.0 → 0.75.0. Docstring extended with Phase 5.8 section (mirrors Phase 5.7 structure). |
-| [agents/daemon_slayer/tests/test_lightshield_strike_burst.py](agents/daemon_slayer/tests/test_lightshield_strike_burst.py) | **NEW (~395 LOC, 28 tests).** Four classes mirroring s189's test_spellblade_burst.py structure. `LightshieldHelperTests` (8) — empty / non-lightshield / Sundered Sky returns 140 (20 + 2×60 base_ad) / armor mitigation / damage_amp / mode_multiplier / physical immune to magic_amp / independent of spellblade. `DpsResultLightshieldFieldsTests` (5) — naked = 0 / Spellblade-only = 0 lightshield / Sundered Sky surfaces / both items surface independently / to_dict. `BurstLightshieldIntegrationTests` (12) — naked / arms+fires once / capped at 1 per Q-AA-W-AA combo / pure AA combo / no AA combo / AA before spell / AA row carries Lightshield in final / Sundered Sky + TF stack on same AA / dual proc AA row carries both / Lightshield after fired doesn't re-arm / to_dict / Lightshield + Wit's End on-hit stack. `ServerBurstRouteLightshieldTests` (3) — naked / Sundered Sky surfaces / dual-proc build stacks (skipped when :8893 unavailable). |
-| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Version-pin tests (Batch63 + Batch64) bumped 0.74.0 → 0.75.0 with the Phase 5.8 line in the history comment. |
-
-## Verification
-
-- DS suite **1605 pass** (was 1577 in s189 wrap; +28 from new test file)
-- Wider RC suite **1013 pass** (no regression)
-- `py_compile` clean for all 5 changed engine files
-- DS server :8893 restarted from pid 12704 (s189 leftover) → pid 2968 (s190); `/health` reports `engine_version=0.75.0` patch=16.10.1
-
-## Live A/B on :8893
-
-**Aatrox lvl 11 vs 80 armor / 30 MR / 2000 HP (default combo Q-W-E-AA-R-AA, 2 AAs):**
-- naked: 293.7 burst, AA 122.2
-- +Sundered Sky (6610): 519.9 (+226), AA 305.6, LS=1× +133
-- +Trinity Force (3078): 612.5 (+319), AA 406.7, SB=2× +244
-- +TF + Sundered Sky: 838.7 (+545), AA 590.0, **SB=2× +244 AND LS=1× +133** — clean additive stacking
-
-**Custom combo Q-AA-W-AA (2 AAs, 2 spell casts):**
-- +Sundered Sky alone: LS=1× +133 (capped at 1 proc by 8s CD, confirms the gate works even with 2 eligible AAs)
-- +Trinity Force alone: SB=2× +244 (no cap, fires on every armed-AA transition)
-- +TF + Sundered Sky: SB=2× +244 AND LS=1× +133 (still independent state machines)
-
-Math check: dual-item burst 838.7 - 293.7 = +545 = (Sundered Sky alone +226) + (TF alone +319) exactly. Confirms zero overlap; both procs land independently on the AA following the first ability cast.
-
-## Findings
-
-- **Helper sourced by proc-name, not item-id.** Sundered Sky has no `unique_passive_key`, so the helper filters on `proc.name == "Lightshield Strike"` instead. More future-proof — a future item adding a Lightshield Strike variant would auto-match. Trade-off: relies on the proc name string staying stable across patches (which it has for years).
-- **Re-arming gate keeps the model simple.** Initial design considered tracking elapsed combo time + comparing against the 8s CD, but that requires a combo-timing model the engine doesn't have. The gate `if lightshield_procs_fired == 0: armed = True` produces correct behavior for typical bursts without needing time accounting.
-- **Combined-build math validates the architecture.** Dual-item AA row's `final_damage` exactly equals `avg_attack_dmg + spellblade_per_proc + lightshield_per_proc` from the matched-build `compute_dps` probe. No double-counting, no overlap drift. The `test_dual_proc_aa_row_carries_both` test guards this invariant.
-- **PowerShell `$pid` gotcha.** PowerShell reserves `$pid` as read-only (it's the current process's PID). The DS-restart command failed silently when I tried to assign to it; eventually killed a phantom PID 17580 (probably my own test runner). Renamed to `$proc` for the restart. Logged to memory.
-
-## Open items carried forward
-
-- 🟡 **Real internal CD in long combos.** Lightshield Strike still uses the implicit "once per combo" gate. An 8+ token combo lasting >3s might in theory permit a second proc (real CD 8s — still wouldn't fit a typical burst, but conceptually). Same edge case as s189's Spellblade CD handling.
-- 🟡 **Conditional damage amps (Ahri R→Q, Zoe E→Q, Akali R1→QE→R2).** Inter-spell awareness still missing — burst is computed as additive single-spell hits. Carried since s180.
-- 🟡 **Generalized arm-consume framework.** Two specific helpers now in the engine (`_spellblade_per_proc_damage` + `_lightshield_strike_per_proc_damage`). If a third arm-consume mechanic ships, generalize to `is_ability_triggered_aa_proc: bool` schema field at the PeriodicProc level rather than adding a third helper. Tracked but not pursued this batch.
-- 🟡 **Pre-existing carry-forwards from s189:** Aphelios upstream data gap, Karma mantra runtime plumbing, Khazix evolved-form choice, live-game chip lifecycle validation, audit finding #1 frozen-file list duplication.
-
-## Architectural pattern lock-in (continued from s189)
-
-Sixth consecutive override / proc-shape modeling improvement on the same template (s185 max_priority / s186 combo_sequence / s187 form_index / s188 per-AA on-hit / s189 Spellblade-in-burst / s190 Lightshield-in-burst). Each shipped backend-first with live A/B verification before commit; each added per-item or per-champion-derived modeling without breaking backward-compat (default field values preserve pre-batch behavior).

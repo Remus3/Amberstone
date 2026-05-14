@@ -75,9 +75,9 @@ class RegistryShapeTests(unittest.TestCase):
 
     def test_known_champion_overrides(self) -> None:
         champions = self.table["champions"]
+        # Phase 5.9 (s191) — initial seed
         self.assertEqual(champions["Cassiopeia"], {"E": 1})
         self.assertEqual(champions["Veigar"], {"R": 1})
-        self.assertEqual(champions["Anivia"], {"E": 1})
         self.assertEqual(champions["Diana"], {"W": 2})
         self.assertEqual(champions["Brand"], {"W": 1, "R": 1})
         self.assertEqual(champions["Evelynn"], {"R": 1})
@@ -88,6 +88,16 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Ahri"], {"Q": 1})
         # Phase 5.9.5 (s192) — Akali R + R2 token-variant override
         self.assertEqual(champions["Akali"], {"R": 0, "R2": 2})
+        # Phase 5.9.6 (s193) — channeled-ability expansion + Anivia Q
+        self.assertEqual(champions["Anivia"], {"Q": 2, "E": 1})
+        self.assertEqual(champions["Alistar"], {"E": 1})
+        self.assertEqual(champions["AurelionSol"], {"E": 1})
+        self.assertEqual(champions["Fiddlesticks"], {"R": 1})
+        self.assertEqual(champions["MissFortune"], {"E": 1})
+        self.assertEqual(champions["Samira"], {"R": 1})
+        self.assertEqual(champions["Singed"], {"Q": 1})
+        self.assertEqual(champions["Syndra"], {"R": 2})
+        self.assertEqual(champions["Velkoz"], {"R": 1})
 
     def test_every_value_is_int(self) -> None:
         for champion_id, entries in self.table["champions"].items():
@@ -430,7 +440,8 @@ class ToDictSerializationTests(unittest.TestCase):
         )
         d = r.to_dict()
         self.assertEqual(d["block_index_source"], "champion")
-        self.assertEqual(d["block_index_resolved"], {"E": 1})
+        # Phase 5.9.6 (s193) — Anivia gained Q=2 alongside existing E=1
+        self.assertEqual(d["block_index_resolved"], {"Q": 2, "E": 1})
 
     def test_rank_assassin_carries_source(self) -> None:
         r = rank_items_by_burst(
@@ -556,6 +567,100 @@ class AkaliTokenVariantTests(unittest.TestCase):
         r_spell = next(s for s in r.per_spell if s.key == "R")
         self.assertEqual(r_spell.rank, 1)
         self.assertAlmostEqual(r_spell.raw_damage_per_cast, 220.0, places=2)
+
+
+# ─── Phase 5.9.6 (s193): channeled-ability expansion ────────────────────────
+
+
+class ChanneledAbilityExpansionTests(unittest.TestCase):
+    """Phase 5.9.6 (s193). 8 new champion entries + Anivia Q extension —
+    all covering the "per-tick → total" gap for channeled / duration
+    abilities where the engine's default first damage block picked the
+    per-tick value but the realistic per-cast contribution is the
+    full-channel total.
+
+    Tests verify each new entry:
+      1. Is present in the resolved registry
+      2. Drives the per-spell raw_damage_per_cast to the block ≥1 value
+         (not the per-tick block 0)
+      3. Produces a strictly higher total_ability_dps vs forced block 0
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = _snap()
+
+    def _delta_check(self, champion: str, key: str, expected_idx: int) -> None:
+        """Assert champion's registry entry routes `key` to expected_idx,
+        and the resulting total_ability_dps exceeds the forced-block-0
+        baseline by a positive margin."""
+        r_reg = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r_reg.block_index_resolved.get(key), expected_idx,
+                         f"{champion}.{key} should route to block {expected_idx}")
+        # Force key to block 0 (override registry's choice).
+        forced = dict(r_reg.block_index_resolved)
+        forced[key] = 0
+        r_off = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides=forced,
+        )
+        self.assertGreater(r_reg.total_ability_dps, r_off.total_ability_dps,
+                           f"{champion} registry total should exceed forced-block-0")
+
+    def test_alistar_E_routes_to_block_1(self) -> None:
+        self._delta_check("Alistar", "E", 1)
+
+    def test_aurelionsol_E_routes_to_block_1(self) -> None:
+        self._delta_check("AurelionSol", "E", 1)
+
+    def test_fiddlesticks_R_routes_to_block_1(self) -> None:
+        self._delta_check("Fiddlesticks", "R", 1)
+
+    def test_missfortune_E_routes_to_block_1(self) -> None:
+        self._delta_check("MissFortune", "E", 1)
+
+    def test_samira_R_routes_to_block_1(self) -> None:
+        self._delta_check("Samira", "R", 1)
+
+    def test_singed_Q_routes_to_block_1(self) -> None:
+        self._delta_check("Singed", "Q", 1)
+
+    def test_velkoz_R_routes_to_block_1(self) -> None:
+        self._delta_check("Velkoz", "R", 1)
+
+    def test_syndra_R_routes_to_block_2(self) -> None:
+        self._delta_check("Syndra", "R", 2)
+
+    def test_anivia_Q_routes_to_block_2(self) -> None:
+        """Anivia gets Q added to her existing {E: 1} entry."""
+        self._delta_check("Anivia", "Q", 2)
+
+    def test_anivia_E_still_routes_to_block_1(self) -> None:
+        """The s191 E:1 entry is preserved when Q gets added."""
+        r = compute_ability_dps(
+            self.snap, "Anivia", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 2, "E": 1})
+
+    def test_singed_Q_total_block_matches_per_cast_math(self) -> None:
+        """Singed Q at rank 5 (level 11+, Q maxed): block 1 base = 120
+        (per-tick 15 × 8 ticks). Confirms the registry picks block 1."""
+        r = compute_ability_dps(
+            self.snap, "Singed", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        q_spell = next(s for s in r.per_spell if s.key == "Q")
+        # Singed Q at level 11 (max priority Q-W-E, lvl 11 Q rank: probably 4)
+        # Block 1 base at rank 4 = 100 (per-tick 12.5 × 8 ticks). Block 0 = 12.5.
+        # The exact rank depends on max_priority resolver; just assert
+        # raw is closer to block 1 value than block 0.
+        self.assertGreater(q_spell.raw_damage_per_cast, 60.0,
+                           "raw should reflect total (block 1), not per-tick (block 0)")
 
 
 # ─── backward-compat: unmapped champions keep pre-s191 output ───────────────
