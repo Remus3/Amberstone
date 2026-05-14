@@ -192,6 +192,82 @@ def _resolve_max_priority(
         return (keys, "override")  # type: ignore[return-value]
     return get_max_priority_for(champion_id)
 
+
+# Phase 4e (s187, 2026-05-13) — per-(champion, key) form_index registry.
+# Multi-form champions (Nidalee cougar, Elise spider, Jayce cannon, Hwei
+# damage forms, LeeSin Q-recast) need a non-zero form_index by default
+# because their form 0 either has no damage blocks (Hwei "Subject:" stance
+# setups) or weaker scaling than a later form (Nidalee Takedown's 5 blocks
+# vs Javelin Toss's 2). Loader pattern mirrors champion_max_priority.json.
+_FORM_INDEX_PATH = Path(__file__).resolve().parent / "champion_form_index.json"
+_FORM_INDEX_LOCK = threading.Lock()
+_FORM_INDEX_CACHE: Optional[dict] = None
+
+
+def _load_form_index_table() -> dict:
+    """Load the per-champion form_index override table from disk.
+
+    Singleton cache. Tests can call ``reset_form_index_cache()`` to force
+    a re-read after mutating the on-disk file.
+    """
+    global _FORM_INDEX_CACHE
+    with _FORM_INDEX_LOCK:
+        if _FORM_INDEX_CACHE is None:
+            _FORM_INDEX_CACHE = json.loads(
+                _FORM_INDEX_PATH.read_text(encoding="utf-8")
+            )
+        return _FORM_INDEX_CACHE
+
+
+def reset_form_index_cache() -> None:
+    """Clear the singleton cache — for tests that mutate the on-disk file."""
+    global _FORM_INDEX_CACHE
+    with _FORM_INDEX_LOCK:
+        _FORM_INDEX_CACHE = None
+
+
+def get_form_index_for(champion_id: str) -> tuple[dict[str, int], str]:
+    """Return ``(form_index_map, source)`` for ``champion_id``.
+
+    Source is ``"champion"`` if the registry has an entry, ``"default"``
+    if it fell back to an empty map (form 0 for all keys).
+    """
+    table = _load_form_index_table()
+    overrides = table.get("champions") or {}
+    if champion_id in overrides:
+        raw = overrides[champion_id]
+        if not isinstance(raw, dict):
+            raise ValueError(
+                f"champion_form_index.json: {champion_id!r} must map to a "
+                f"dict, got {raw!r}"
+            )
+        mapping = {str(k).upper(): int(v) for k, v in raw.items()}
+        return (mapping, "champion")
+    return ({}, "default")
+
+
+def _resolve_form_index_overrides(
+    champion_id: str,
+    explicit: Optional[dict[str, int]],
+) -> tuple[dict[str, int], str]:
+    """Resolve form_index_overrides from caller input + registry.
+
+    Registry provides the per-champion default; caller's dict (if any) is
+    merged in with caller winning per-key. Returns ``(merged, source)``:
+
+      * ``"override"`` — caller passed any explicit value
+      * ``"champion"`` — registry entry used, caller passed None
+      * ``"default"`` — empty dict, no registry entry, no caller input
+    """
+    registry_map, registry_source = get_form_index_for(champion_id)
+    if explicit is None:
+        return (registry_map, registry_source)
+    # Caller wins per-key; registry fills the gaps.
+    merged: dict[str, int] = dict(registry_map)
+    for k, v in explicit.items():
+        merged[str(k).upper()] = int(v)
+    return (merged, "override")
+
 # Damage-block scaling fields and the CallContext-style attribute they
 # multiply against. ``factor`` is the value stored in the damage block
 # (treated as a percentage when >0 — ap_pct=50.0 means 50% of AP, so we
@@ -516,6 +592,8 @@ class AbilityDpsResult:
     max_priority: tuple[str, str, str]
     block_strategy: str
     max_priority_source: str = "default"            # "override" | "champion" | "default"
+    form_index_source: str = "default"              # "override" | "champion" | "default"
+    form_index_resolved: dict[str, int] = field(default_factory=dict)
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -537,6 +615,8 @@ class AbilityDpsResult:
             "max_priority": list(self.max_priority),
             "max_priority_source": self.max_priority_source,
             "block_strategy": self.block_strategy,
+            "form_index_source": self.form_index_source,
+            "form_index_resolved": dict(self.form_index_resolved),
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -673,6 +753,9 @@ def compute_ability_dps(
             f"got {block_strategy!r}"
         )
     max_priority, max_priority_source = _resolve_max_priority(champion_id, max_priority)
+    form_index_overrides, form_index_source = _resolve_form_index_overrides(
+        champion_id, form_index_overrides,
+    )
     if not 0.0 <= target_current_hp_pct <= 1.0:
         raise ValueError(
             f"target_current_hp_pct must be in [0,1], got {target_current_hp_pct}"
@@ -695,6 +778,8 @@ def compute_ability_dps(
                 target_armor, target_mr, target_max_hp, target_bonus_hp,
                 max_priority, block_strategy,
                 max_priority_source=max_priority_source,
+                form_index_source=form_index_source,
+                form_index_resolved=form_index_overrides,
                 note=f"abilities snapshot missing: {e}",
             )
 
@@ -778,6 +863,8 @@ def compute_ability_dps(
             target_armor, target_mr, target_max_hp, target_bonus_hp,
             max_priority, block_strategy,
             max_priority_source=max_priority_source,
+            form_index_source=form_index_source,
+            form_index_resolved=form_index_overrides,
             champion_name=resolved.champion_name,
             note=f"champion {resolved.champion_id!r} absent from abilities snapshot",
         )
@@ -919,6 +1006,8 @@ def compute_ability_dps(
         max_priority=tuple(max_priority),
         max_priority_source=max_priority_source,
         block_strategy=block_strategy,
+        form_index_source=form_index_source,
+        form_index_resolved=dict(form_index_overrides),
         stats=dict(resolved.stats),
         notes=tuple(notes),
     )
@@ -953,6 +1042,8 @@ def _empty_result(
     block_strategy: str,
     *,
     max_priority_source: str = "default",
+    form_index_source: str = "default",
+    form_index_resolved: Optional[dict[str, int]] = None,
     champion_name: str | None = None,
     note: str = "",
 ) -> AbilityDpsResult:
@@ -978,6 +1069,8 @@ def _empty_result(
         max_priority=tuple(max_priority),
         max_priority_source=max_priority_source,
         block_strategy=block_strategy,
+        form_index_source=form_index_source,
+        form_index_resolved=dict(form_index_resolved or {}),
         stats={},
         notes=(note,) if note else (),
     )
@@ -1038,6 +1131,8 @@ class AbilityDpsRankResult:
     target_current_hp_pct: float
     max_priority: tuple[str, str, str]
     max_priority_source: str              # "override" | "champion" | "default"
+    form_index_source: str                # "override" | "champion" | "default"
+    form_index_resolved: dict[str, int]   # merged map actually used
     block_strategy: str
     mode_multiplier: float                # aramDamageDealt; 1.0 outside ARAM
     budget: Optional[int]
@@ -1064,6 +1159,8 @@ class AbilityDpsRankResult:
             "target_current_hp_pct": self.target_current_hp_pct,
             "max_priority": list(self.max_priority),
             "max_priority_source": self.max_priority_source,
+            "form_index_source": self.form_index_source,
+            "form_index_resolved": dict(self.form_index_resolved),
             "block_strategy": self.block_strategy,
             "mode_multiplier": self.mode_multiplier,
             "budget": self.budget,
@@ -1173,8 +1270,11 @@ def rank_items_by_ability_dps(
     level = clamp_level(level)
 
     # Resolve once so baseline + every candidate use the same priority +
-    # the result carries a consistent source label.
+    # form_index, and the result carries consistent source labels.
     resolved_priority, priority_source = _resolve_max_priority(champion_id, max_priority)
+    resolved_form_index, form_index_source = _resolve_form_index_overrides(
+        champion_id, form_index_overrides,
+    )
 
     current_ids: tuple[str, ...] = tuple(str(i) for i in (current_item_ids or ()))
     current_ids, stripped_trinkets = strip_arena_trinkets(current_ids, mode)
@@ -1206,7 +1306,7 @@ def rank_items_by_ability_dps(
         abilities_snapshot=abilities_snapshot,
         max_priority=resolved_priority,
         block_strategy=block_strategy,
-        form_index_overrides=form_index_overrides,
+        form_index_overrides=resolved_form_index,
     )
 
     candidates = _filter_candidates(
@@ -1308,6 +1408,8 @@ def rank_items_by_ability_dps(
         target_current_hp_pct=target_current_hp_pct,
         max_priority=tuple(resolved_priority),
         max_priority_source=priority_source,
+        form_index_source=form_index_source,
+        form_index_resolved=dict(resolved_form_index),
         block_strategy=block_strategy,
         mode_multiplier=baseline.mode_multiplier,
         budget=budget,

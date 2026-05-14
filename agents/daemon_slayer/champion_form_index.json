@@ -1,0 +1,14 @@
+{
+  "_meta": {
+    "description": "Phase 4e (s187, 2026-05-13) — per-(champion, key) form_index_overrides for the ds.ability + ds.burst scorers. Default form_index=0 picks the first form in the snapshot, which is fine for ~95% of multi-form champions but materially wrong for a handful where form 0 has no damage blocks or carries weaker scaling than a later form. Keys are DDragon canonical ids; values map ability key (Q/W/E/R) to the 0-indexed form_index to use when the operator doesn't supply an explicit dict. Operator's per-call dict still wins per-key — registry fills any keys the caller didn't override.",
+    "rationale": "Per-champion examples (verified against data/daemon_slayer/16.10.1/champion_abilities.json):\n  Nidalee Q form 1 = Takedown (5 damage blocks vs Javelin Toss's 2; cougar form is the burst rotation)\n  Nidalee W form 1 = Pounce (cougar AoE), E form 1 = Swipe (cougar AoE; form 0 Primal Surge is a heal with no damage)\n  Elise Q form 1 = Venomous Bite (spider execute scaling; same blocks but the play pattern flips to spider for melee burst)\n  Jayce Q form 1 = Shock Blast (cannon orb; 2 blocks vs hammer leap's 1)\n  Hwei Q form 1 = Devastating Fire (form 0 is the stance-setup 'Subject: Disaster' which has zero damage blocks); W form 3 = Stirring Lights (W forms 0/1/2 are all dt=None utility); E form 1 = Grim Visage (form 0 is another stance setup)\n  LeeSin Q form 1 = Resonating Strike (the Q recast; 2 blocks vs initial Sonic Wave's 1)\n\nDeliberately skipped:\n  Aphelios — all 6 Q forms parsed as no_damage by the Meraki extractor; data gap blocks scoring (deferred to a future patch when the formulas land)\n  Karma — mantra-amped forms are a player choice mid-combat, not a default\n  Khazix — evolved forms are a player choice per-game, not a default\n  Gnar — form 0 is mini Gnar (the iconic poke form); default 0 is correct\n  Heimerdinger — H-28G base turret (form 0) is the typical case; form 1 is ult-amped"
+  },
+  "default": {},
+  "champions": {
+    "Nidalee": {"Q": 1, "W": 1, "E": 1},
+    "Elise": {"Q": 1},
+    "Jayce": {"Q": 1},
+    "Hwei": {"Q": 1, "W": 3, "E": 1},
+    "LeeSin": {"Q": 1}
+  }
+}
