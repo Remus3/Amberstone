@@ -5,10 +5,27 @@
   },
   "default": {},
   "champions": {
-    "Nidalee": {"Q": 1, "W": 1, "E": 1},
-    "Elise": {"Q": 1},
-    "Jayce": {"Q": 1},
-    "Hwei": {"Q": 1, "W": 3, "E": 1},
-    "LeeSin": {"Q": 1}
+    "Elise": {
+      "Q": 1
+    },
+    "Hwei": {
+      "Q": 1,
+      "W": 3,
+      "E": 1
+    },
+    "Jayce": {
+      "Q": 1
+    },
+    "LeeSin": {
+      "Q": 1
+    },
+    "Nidalee": {
+      "Q": 1,
+      "W": 1,
+      "E": 1
+    },
+    "Riven": {
+      "R": 1
+    }
   }
 }

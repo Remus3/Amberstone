@@ -7525,7 +7525,26 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          Belveth R missing-HP, Riven R form 1, Qiyana Q form).
         #          Registry 110 → 115 champions, 161 → 173 entries. Pure
         #          data batch.
-        self.assertEqual(ENGINE_VERSION, "0.88.0")
+        # 0.89.0 = s204 Phase 5.9.17 block_index + form_index expansion —
+        #          8 new (champion, key) entries (2 truly-new champions
+        #          Nidalee + Seraphine + 6 key extensions on existing:
+        #          Evelynn Q, Gwen Q, KSante W, Riven R, Syndra W, Zoe E)
+        #          PLUS 1 new champion in form_index registry (Riven R=1).
+        #          Six sub-patterns: (A) multi-hit single-target totals
+        #          (Evelynn Q, Gwen Q, Syndra W), (B) fully-charged amp
+        #          (KSante W max-charge Path Maker), (C) champion-vs-minion
+        #          amp (Seraphine Q Maximum Champion Damage), (D) execute
+        #          amp layered on form_index (Nidalee Q low-HP cougar
+        #          Takedown — second NET-damage layering after s203 LeeSin
+        #          Q), (E) target-state amp (Zoe E sleep-procced Maximum
+        #          Mixed Damage), (F) form_index seed expansion (Riven R
+        #          form 1 Wind Slash + block 1 max-missing-HP execute —
+        #          first new champion added to form_index registry since
+        #          s187, closes s203 carry-forward 'Riven form_index seed
+        #          needed'). Riven form 0 has zero damage blocks so no
+        #          information loss from routing to form 1. Registry 115
+        #          → 117 champions, 173 → 181 entries. Pure data batch.
+        self.assertEqual(ENGINE_VERSION, "0.89.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7586,7 +7605,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.88.0")
+        self.assertEqual(ENGINE_VERSION, "0.89.0")
 
 
 if __name__ == "__main__":
