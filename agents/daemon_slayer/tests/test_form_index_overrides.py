@@ -57,11 +57,23 @@ class RegistryShapeTests(unittest.TestCase):
 
     def test_known_champion_overrides(self) -> None:
         champions = self.table["champions"]
+        # Phase 4e (s187) — initial seed of 5 multi-form champions
         self.assertEqual(champions["Nidalee"], {"Q": 1, "W": 1, "E": 1})
         self.assertEqual(champions["Elise"], {"Q": 1})
         self.assertEqual(champions["Jayce"], {"Q": 1})
         self.assertEqual(champions["Hwei"], {"Q": 1, "W": 3, "E": 1})
         self.assertEqual(champions["LeeSin"], {"Q": 1})
+        # Phase 5.9.17 (s204) — Riven form_index seed (closes the s203
+        # carry-forward 'Riven form_index registry seed needed').
+        self.assertEqual(champions["Riven"], {"R": 1})
+        # Phase 5.9.18 (s205) — Qiyana / AurelionSol / Renekton form_index
+        # seeds (closes the s204 carry-forward 'Qiyana Q form_index seed
+        # expansion still pending'). Third instance of form_index +
+        # block_index NET-damage composition after s203 LeeSin Q + s204
+        # Riven R + s204 Nidalee Q.
+        self.assertEqual(champions["Qiyana"], {"Q": 1})
+        self.assertEqual(champions["AurelionSol"], {"R": 1})
+        self.assertEqual(champions["Renekton"], {"E": 1})
 
     def test_every_value_is_int(self) -> None:
         for champion_id, entries in self.table["champions"].items():
