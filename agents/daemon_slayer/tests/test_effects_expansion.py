@@ -7496,7 +7496,36 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          Sona Q (sum-of-blocks), Kayle E (same Phase 4a parser
         #          limit as s201 Kindred E). Registry 104 → 110 champions,
         #          143 → 161 entries. Pure data batch.
-        self.assertEqual(ENGINE_VERSION, "0.87.0")
+        # 0.88.0 = s203 Phase 5.9.16 block_index expansion — 12 more
+        #          (champion, key) entries: 5 truly-new champions
+        #          (Blitzcrank, Gwen, Kled, LeeSin, Thresh) + 5 key
+        #          extensions on existing (Diana R, Jax R, Kennen W,
+        #          Smolder E, Vladimir Q). Six sub-patterns: (A) multi-hit
+        #          single-target totals (Diana R, Gwen R, Kled Q, Kled E,
+        #          Vladimir Q), (B) resource-state amps (Smolder E, also
+        #          Vladimir Q via Crimson Rush), (C) active-cast vs
+        #          passive-zap split (Blitzcrank R, Kennen W, Jax R —
+        #          engine pre-s203 was scoring the passive zap / mark /
+        #          3rd-AA as the R cast value), (D) max-charge condition
+        #          amp (Kled R filtered), (E) missing-HP amp layered on
+        #          s187 form_index (LeeSin Q — first NET-damage
+        #          composition of block_index with form_index registry),
+        #          (F) empty-block-0 fix (Thresh E — first instance of
+        #          this pattern; raw block 0 evaluates to 0 via unparsed-
+        #          only soul scaling, registry routes past it). 4 entries
+        #          with non-damage prefix blocks (Diana R, Kled Q, Kled R,
+        #          Vladimir Q). Reverts 1 prior skip (Smolder E s198/s202
+        #          Meraki Minimum schema label — same operator-commit
+        #          framing as Smolder Q s202 reintroduction). 8 deliberate
+        #          skips documented inline (DrMundo Q, Caitlyn Q/R, Ezreal
+        #          R, Nocturne Q/E, Orianna Q, Pantheon R, Trundle Q/R,
+        #          Yone W/R, Zed Q, AurelionSol R form 1, Pyke/Quinn/Senna,
+        #          Vayne W passive). 8 deferred to schema lifts (Katarina
+        #          R, Malphite W, Malzahar E/R, Kalista E, Jinx R distance,
+        #          Belveth R missing-HP, Riven R form 1, Qiyana Q form).
+        #          Registry 110 → 115 champions, 161 → 173 entries. Pure
+        #          data batch.
+        self.assertEqual(ENGINE_VERSION, "0.88.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7557,7 +7586,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.87.0")
+        self.assertEqual(ENGINE_VERSION, "0.88.0")
 
 
 if __name__ == "__main__":
