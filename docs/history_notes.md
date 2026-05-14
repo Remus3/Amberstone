@@ -6,6 +6,48 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s193 wrap — 2026-05-14 (Phase 5.9.6 channeled-ability block_index expansion)
+
+**Operator instruction:** "continue" — straight from the s192 carry-forward. The cleanest next ship is more registry entries, focusing on a different pattern from s191 (single-block conditional amps) and s192 (per-token variants): the "per-tick → total" gap for channeled or duration-based abilities.
+
+## Context
+
+Scanning the 248 multi-block (champion, key, form) tuples in `champion_abilities.json` for "Total" / "Maximum" / "Increased" attribute names surfaced ~30 candidates beyond the s191 + s192 set. The biggest signal class: channeled abilities (Crowstorm, Disintegration Ray, Inferno Trigger, Trample, etc.) where Meraki ships block 0 = "per-tick" and block 1 = "Total" (the cumulative for the full channel duration). For both `/ability-dps` (cast-rate × per-cast damage) and `/burst` (single-combo per-cast damage), the realistic per-cast contribution is the FULL CHANNEL total — operator commits to the channel, sums up the ticks. The engine's default `block_strategy="first"` picked block 0 (per-tick) for every channel, systematically under-counting their item-ranking signal by 20-180% (per the A/B inspection below).
+
+Pure data batch — no resolver/walker/server code changes. The s191 + s192 token-canonical lookup logic remains unchanged; just more JSON entries on the same template.
+
+## Ships
+
+| File | Change |
+|---|---|
+| [agents/daemon_slayer/champion_block_index.json](agents/daemon_slayer/champion_block_index.json) | **Registry expanded from 12 → 20 entries.** 8 new champion entries (Alistar E=1 Trample total, AurelionSol E=1 Singularity total, Fiddlesticks R=1 Crowstorm total, MissFortune E=1 Make It Rain total, Samira R=1 Inferno Trigger spray total, Singed Q=1 Poison Trail total, Velkoz R=1 Disintegration Ray max, Syndra R=2 max sphere stacks) + Anivia entry extended from `{"E": 1}` to `{"Q": 2, "E": 1}` (Q now uses block 2 "Total Magic Damage" = initial pass + detonation combined). `_meta.description` extended with Phase 5.9.6 note explaining the per-tick → total pattern. `_meta.rationale` adds entry-by-entry rank-N math verification. Skipped-list expanded to document Corki E / Hecarim W / Jayce W / Rell R / DrMundo W (same pattern, deferred to a calibration follow-up batch since they're lower-impact in current rankings) + Renekton R + Kennen R + AurelionSol Q + Rumble R (modeling caveats per inline rationale). |
+| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | ENGINE_VERSION 0.77.0 → 0.78.0. Docstring extended with Phase 5.9.6 section noting the data-only nature of the batch + A/B impact table. |
+| [agents/daemon_slayer/tests/test_block_index_overrides.py](agents/daemon_slayer/tests/test_block_index_overrides.py) | New `ChanneledAbilityExpansionTests` class (11 tests) — one per new entry asserting (a) registry routes the key to the expected block_index, (b) total_ability_dps with registry exceeds forced-block-0 baseline. Plus `test_anivia_E_still_routes_to_block_1` regression guard, `test_singed_Q_total_block_matches_per_cast_math` numeric sanity check. `test_known_champion_overrides` extended with explicit assertions for all 9 new/extended entries. Pre-existing `test_rank_mage_carries_source` in `ToDictSerializationTests` updated for Anivia's new `{"Q": 2, "E": 1}` shape. |
+| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Version-pin tests bumped 0.77.0 → 0.78.0 with the Phase 5.9.6 line in the history comment. |
+
+## Verification
+
+- DS suite **1676 pass** (was 1665 in s192 wrap; +11 from new `ChanneledAbilityExpansionTests` class)
+- Wider RC suite **1013 pass** (no regression)
+- `py_compile` clean for __init__.py
+- DS server :8893 restarted from PID 12368 → new PID; `/health` reports `engine_version=0.78.0` patch=16.10.1 172 champions 705 items
+
+## Live A/B on :8893 (/ability-dps at lvl 11 vs 80 armor / 30 MR / 2000 HP)
+
+| Champion | Pre-s193 (block 0 only) | Post-s193 (registry) | Delta |
+|---|---|---|---|
+| Singed Q | 4.06 adps | **11.46 adps** | **+182.4%** |
+| Fiddlesticks R | 5.24 adps | **11.81 adps** | **+125.4%** |
+| Anivia Q+E | 9.66 adps | **19.80 adps** | **+105.0%** |
+| AurelionSol E | 1.99 adps | **3.29 adps** | **+64.9%** |
+| Velkoz R | 13.84 adps | **17.04 adps** | **+23.1%** |
+| MissFortune E | 9.97 adps | **11.64 adps** | **+16.7%** |
+| Syndra R | 25.55 adps | **28.06 adps** | **+9.8%** |
+
+(Full session details — Findings, Open items carried forward, Architectural pattern lock-in — preserved in commit `9a2504d`.)
+
+---
+
 # s192 wrap — 2026-05-14 (Phase 5.9.5 token-variant block_index for Akali R)
 
 **Operator instruction:** "continue" — directly continuing the s191 carry-forward list. Top item (a): per-token-variant block_index for Akali R. R1 (block 0 base) and R2 (block 2 max-execute) need different blocks within the same combo, but the s191 per-(champion, key) registry only had a single per-key entry. Single commit ship.
