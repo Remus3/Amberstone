@@ -6,6 +6,112 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s195 wrap — 2026-05-14 (Phase 5.9.8 multi-hit/charge/recast block_index expansion)
+
+**Operator instruction:** "continue ds" — direct continuation of s194. The carry-forward list had two pure-data candidates and three schema-lift candidates; pure-data was the cleanest ship. Scanned `champion_abilities.json` for the next clean class of multi-block (Total/Maximum/Increased/Enhanced/Empowered) entries beyond the s193 channel set and s194 calibration-follow-up — found 153 unregistered candidates and triaged to the 13 cleanest spanning four sub-patterns.
+
+## Context
+
+The s193 hand-off mentioned "Conditional damage amps (Ahri R→Q, Zoe E→Q, Akali R1→QE→R2)" but on inspection most of those map to existing combo-sequence (s186) or multi-form (s187) work. The actual remaining gap in the pure-data expansion pipeline is **multi-hit single-target totals + fully-charged amps + recast amps + CC-conditional duration totals** — all of which fit the established s191 "operator commits to canonical amped condition" model without any schema lift. Same `dict[str, int]` registry; same s192 token-canonical + base-key fallback walker logic; just more JSON.
+
+Four sub-patterns shipped this batch — each maps cleanly to a single static block_index:
+
+**(A) Multi-hit single-target totals (operator focuses all hits/bolts/missiles on one target):**
+- Ahri W=2 (Fox-Fire 3-bolt total)
+- Kaisa Q=2 (Icathian Rain missile-focus total)
+- Lulu Q=3 (Glitterlance both passes)
+- Sivir Q=2 (Boomerang Blade out + back)
+- Talon W=2 (Rake out + return)
+- Talon R=2 (Shadow Assault unstealth chain)
+- Velkoz W=2 (Void Rift initial + detonation)
+- Ekko Q=3 (Timewinder out + return)
+
+**(B) Fully-charged amps (operator commits to wind-up duration in burst):**
+- Varus Q=1 (fully-charged Piercing Arrow, 1.5× block 0)
+- Zoe Q=1 (long-distance Paddle Star post-E teleport, 2.5× block 0)
+- Vladimir E=1 (2-charge Tides of Blood, 2× block 0 + 4× caster HP scaling)
+
+**(C) Recast amps (operator commits to executing both stages in window):**
+- Camille Q=2 (Precision Protocol second cast, 2× block 0)
+
+**(D) CC-conditional duration totals (operator commits to root + full duration):**
+- Morgana W=3 (Tormented Shadow Maximum Total Damage vs rooted target)
+
+All 13 verified per-rank math against the Meraki snapshot — for instance, Ahri W block 2 base 64 (rank 1) = 40 (block 0 initial) + 12×2 (block 1 subsequent × 2 more bolts), ap_pct 64% = 40% + 12%×2. The `test_ahri_W_block2_matches_sum_of_blocks_0_and_2x1` sanity check pins this property.
+
+## Ships
+
+| File | Change |
+|---|---|
+| [agents/daemon_slayer/champion_block_index.json](agents/daemon_slayer/champion_block_index.json) | **Registry expanded 25 → 35 entries.** 11 new champions (Camille, Ekko, Kaisa, Lulu, Morgana, Sivir, Talon, Varus, Vladimir, Zoe) + 2 multi-key extensions (Ahri added W=2 to its existing {Q:1}; Vel'Koz added W=2 to its existing {R:1}). `_meta.description` extended with Phase 5.9.8 note explaining the four sub-patterns. `_meta.rationale` adds entry-by-entry math verification (each block N's base + scaling fields match the sum of components from blocks 0..N-1). Skipped-list extended: Xerath R (multi-target split-fire ambiguity); Galio W / Janna Q / Nunu W (tank/support roles make "commits to full charge" less universally true). |
+| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | ENGINE_VERSION 0.79.0 → 0.80.0. Docstring extended with Phase 5.9.8 section noting the data-only nature of the batch + the four sub-patterns + A/B impact summary. |
+| [agents/daemon_slayer/tests/test_block_index_overrides.py](agents/daemon_slayer/tests/test_block_index_overrides.py) | New `Phase598ExpansionTests` class (19 tests): 13 per-entry `_delta_check` (mirrors s194 pattern), 3 multi-key resolved-shape checks (Talon W+R, Ahri Q+W, Velkoz W+R), 1 Ahri W numeric sanity matching block 0 + 2× block 1, 2 backward-compat guards (`test_pre_s195_unmapped_unaffected` + `test_pre_s195_singed_unaffected`). Pre-existing `test_known_champion_overrides` extended with 11 explicit assertions for new champion entries (Ahri+W=2, Camille, Ekko, Kaisa, Lulu, Morgana, Sivir, Talon, Varus, Velkoz+W=2, Vladimir, Zoe). File docstring extended with Phase 5.9.8 section. |
+| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Version-pin tests bumped 0.79.0 → 0.80.0 with the Phase 5.9.8 line in the history comment. |
+
+## Verification
+
+- DS suite **1708 pass** (was 1689 in s194 wrap; +19 from new `Phase598ExpansionTests` class)
+- Wider RC `tests/` suite **913 pass** (test-discovery scope; the s194 wrap's "wider RC 1024" included `agents/daemon_slayer/tests/` via combined discovery — adjusting for that, the net is +19 new DS tests with zero non-DS regressions)
+- phase8_smoke `test_live_three_profiles` pins ENGINE_VERSION 0.80.0 post-restart (was failing pre-restart with `'0.79.0' != '0.80.0'`)
+- `py_compile` clean for __init__.py
+- DS server :8893 restarted from PID 16644 → PID via background spawn; `/health` reports `engine_version=0.80.0` patch=16.10.1 172 champions 705 items
+
+## Live A/B on :8893 (/ability-dps at lvl 11 vs 80 armor / 30 MR / 2000 HP)
+
+| Champion.Key | Registry (post-s195) | Forced block 0 | Delta | Lift |
+|---|---|---|---|---|
+| Morgana W | 23.71 adps | 9.17 adps | +14.54 | **+158.5%** |
+| Zoe Q | 43.93 adps | 18.63 adps | +25.30 | **+135.8%** |
+| Sivir Q | 8.27 adps | 4.47 adps | +3.80 | **+85.0%** |
+| Ekko Q | 16.44 adps | 9.68 adps | +6.76 | **+69.8%** |
+| Camille Q | 8.54 adps | 5.04 adps | +3.50 | **+69.5%** |
+| Talon W | 12.27 adps | 7.43 adps | +4.84 | **+65.2%** |
+| Kaisa Q | 11.46 adps | 7.73 adps | +3.73 | **+48.3%** |
+| Varus Q | 8.14 adps | 6.09 adps | +2.05 | **+33.6%** |
+| Lulu Q | 10.13 adps | 7.59 adps | +2.54 | **+33.5%** |
+| Vladimir E | 27.59 adps | 22.23 adps | +5.36 | **+24.1%** |
+| Velkoz W | 19.65 adps | 17.04 adps | +2.61 | **+15.3%** |
+| Ahri W | 19.43 adps | 17.36 adps | +2.07 | **+11.9%** |
+| Talon R | 12.27 adps | 11.83 adps | +0.45 | **+3.8%** |
+
+Morgana W (+158.5%) and Zoe Q (+135.8%) are the headline lifts — both are large-multiplier amps that nearly tripled their realistic burst-window contribution. Morgana W block 3 'Maximum Total Damage' represents the full Tormented Shadow channel against a rooted (Q'd) target, which is the canonical Morgana setup. Zoe Q block 1 'Maximum Magic Damage' is the long-distance Paddle Star after E-teleport, 2.5× the close-range minimum. Both pre-s195 numbers under-stated the actual per-cast damage by 2.4× and 2.4× respectively.
+
+Talon R's small 3.8% lift is because Talon R is rank-3 (lvl 6/11/16) so it has only 3 ranks of damage progression vs Q/W/E's 5 ranks; block 2 is still 2× block 0 but its contribution to `total_ability_dps` is muted by its lower cast rate and shorter rank ladder. Talon W's 65.2% is the more impactful Talon entry.
+
+**Regression checks pass:**
+- s194 entries unchanged (`test_pre_s195_unmapped_unaffected` asserts Corki {W:1, E:1} preserved)
+- s193 entries unchanged (`test_pre_s195_singed_unaffected` asserts Singed {Q:1} preserved)
+- s192 entries unchanged (Akali R/R2 token-variant logic intact — DS suite's `AkaliTokenVariantTests` still green)
+- s191 entries unchanged (Cassi E:1, Veigar R:1, etc. — `test_known_champion_overrides` still green)
+- `BackwardCompatTests` green: unmapped Zed burst with no override = unmapped Zed burst with empty explicit override (byte-identical)
+
+## Findings
+
+- **The s191-s194 pattern continues to scale.** Tenth consecutive override registry on the same template; fourth pure-data batch in the channel/total/charge family. Each new champion entry drops in as a one-line JSON addition + 1-2 test methods + a rationale comment. The pattern is now stable enough to support routine "add 5-15 entries per session" batches with no engineering risk.
+- **Multi-hit single-target totals dominated this batch.** Of 13 entries, 8 are pattern A (multi-hit focus totals). These are the cleanest-to-model "operator commits" decisions — Sivir Q boomerang focusing one target on out+back is unambiguous; Talon R unstealth re-engaging is the canonical assassin combo. The Meraki snapshot exposes the math via clean per-block decomposition.
+- **Fully-charged amps are also clean wins.** Varus Q, Zoe Q, Vladimir E all have a "minimum" vs "maximum" block pair where the operator's commit decision is binary (charge or release early). Operator's choice in burst window is to commit to charge — confirmed by Zoe's massive +135.8% lift (long-range Paddle Star is the entire point of Zoe's E→Q identity).
+- **Morgana W is a fortunate edge case.** Tormented Shadow has 4 blocks: min-per-tick, max-per-tick, min-total, max-total. The realistic burst-window value is max-total (rooted target, full duration) — block 3. This is the first single-static-block_index entry that lands on a 4-block ability where the operator must commit to BOTH a CC condition AND a duration condition (the s191 Brand W and Cassi E entries were single-condition CC amps without duration; the s193 channel entries were single-condition duration totals without CC). Morgana W is the intersection.
+- **Camille Q (recast amp) is the first pattern-C entry.** Block 0 = first cast (20-40% total AD), block 2 = second cast (40-80% total AD) — exactly 2× scaling. This pattern could expand to other recast champions (Riven Q has 3 stages, Yone Q has 3 stages — both modeled differently via combo_sequence rather than block_index). Camille is the cleanest because her two casts share a form, while Riven/Yone have per-cast forms.
+- **Process-tracking pattern continued to hold.** `Get-CimInstance Win32_Process | Where-Object` filter isolated the DS pythonw.exe PID 16644 cleanly; relaunched via bash `pythonw tools/start_daemon_slayer.py` background spawn. No false kills.
+- **Xerath R deliberately skipped despite tempting +math.** Xerath R block 2 'Total Magic Damage' would represent all 4 bolts focusing one target (170 + 220 + 270 + 50 stack = 680 base at rank 1). But Xerath R is a long-range siege ult, not a single-target burst — operator commonly splits fire across multiple enemies for poke. Defer until calibration shows a per-call override would be useful.
+
+## Open items carried forward
+
+- 🟡 **Conditional block_index based on target state** — same as s194 carry-forward. Zoe sleep (yes, even though Zoe Q is now in registry, Zoe E→sleep→Q-amp on sleeping target is a SECOND amp on top), Lux Illumination, DrMundo E missing-HP threshold, Renekton Q full Fury. Schema lift: `{"<champion>": {"<key>": {"default": 0, "when_target_missing_hp_pct_above": [0.5, 2]}}}`. Defer until 3+ candidates accumulate cleanly.
+- 🟡 **Sum-of-blocks block_index** — DrMundo W full-channel + recast detonation. Schema lift: `block_index: int | list[int]` where list means sum. Single known candidate; defer until 3+ accumulate.
+- 🟡 **Conditional resource-state block_index** — Corki R Big One every-4th-missile, Renekton Q full Fury, Aatrox Q chain stage. Same shape as conditional damage amps; defer until 3+ candidates accumulate.
+- 🟡 **Conditional damage amps (Ahri R→Q, Zoe E→Q)** — inter-spell awareness still missing. Carried since s180.
+- 🟡 **Generalized arm-consume framework** via `is_ability_triggered_aa_proc` schema flag. Carried since s190.
+- 🟡 **Aphelios + Karma mantra + Khazix evolved** — upstream/plumbing/UI blockers.
+- 🟡 **Real internal CD in long combos** — s190 carry-forward.
+- 🟡 **Pre-existing carry-forwards from s184/s183/s182** — live-game chip lifecycle validation; `_TOP_N_THRESHOLD` retune; `nudge_history` calibration analysis.
+
+## Architectural pattern lock-in (continued from s194)
+
+Eleventh consecutive override / proc-shape modeling improvement on the same template; fourth pure-data batch in the channel/total/charge family. Resolver composition (form + block) verified for Jayce Q in s194 — s195 doesn't add new compositions but adds entries spanning four NEW sub-patterns (multi-hit, fully-charged, recast, CC-conditional duration). Pattern is now stable enough to add 10-15 entries per session without engineering risk. Next structural lift is the conditional-block_index schema (which has 3+ candidates queued and is now ready) — but operator can ship more pure-data batches first if calibration analysis surfaces under-counts in unmapped champions.
+
+---
+
 # s194 wrap — 2026-05-14 (Phase 5.9.7 calibration-follow-up block_index expansion)
 
 **Operator instruction:** "continue DS" — direct continuation of s193's carry-forward list. The cleanest next ship is more registry entries closing the explicit "Corki E/W, Hecarim W, Jayce W, Rell R, DrMundo W same per-tick → total pattern (+5-20% adps each, lower-impact deferral)" callout from s193's open-items section. Same template as s193 (pure data, no code), but mechanically interesting: includes the first block_index entry that layers on a prior form_index override (Jayce Q + s187 Jayce.Q form_index=1 cannon-form).
