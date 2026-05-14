@@ -4,6 +4,51 @@
 
 ---
 
+# s200 wrap — 2026-05-14 (Phase 5.9.12 s199 + Phase 5.9.13 s200 block_index expansion — two batches one session)
+
+**Operator instruction:** "continue ds" (twice) — direct continuation of s198 (now the sixteenth + seventeenth consecutive override / proc-shape ship on the same template). Two pure-data batches shipped in the same Claude session: **s199** is the standard 17-entry sweep (similar size to s197/s198); **s200** is a smaller 7-entry rescue batch focused on resurrecting previously-deferred mechanics after improved understanding.
+
+## Context
+
+Eight prior batches (s191 seed → s193 channels → s194 calibration → s195 multi-hit → s196 condition-amp → s197 assassin/fighter → s198 bruiser/utility) ran the candidate well dry on net-new entries. The carry-forward bucket (token-variant for multi-stage chains, form-swap, sequence-state, conditional target-state) still needs schema lifts. **s199 + s200 together close the pure-data well further while two important discoveries land:** (1) **filtered-index semantics** — the engine's `_select_blocks` filters `attribute_kind != "damage"` blocks BEFORE indexing, so the registry value is the FILTERED damage-block index, not the raw block index; (2) **rescue framing** — several earlier deferrals were too conservative (Ambessa "form swap" was actually Drain-stack resource amp; Anivia R "ambiguous channel" was Empowered phase amp; Lillia/Nilah Q "uncertain" mapped cleanly to existing patterns).
+
+## s199 ship — Phase 5.9.12 — 17 entries, six patterns
+
+**Pattern A multi-hit single-target totals (8):** Ashe Q=2 (Ranger's Focus 5× per-AA), Nunu E=1 (3-snowball cap), Samira W=1 (Blade Whirl 2-rotation), Shen Q=1 filtered (3-AA Twilight Assault), Swain Q=2 (5-bolt point-blank), Viktor Q=2 (Q + empowered AA), Xayah Q=1 (out+return), Zac Q=1 (2-arm pull). **Pattern B positional/sweet-spot amps (3):** Aatrox Q=1 (Q1 Edge sweet-spot), Shaco E=2 (backstab), Talon Q=1 (champion crit). **Pattern C resource-state amps (2):** Tristana E=4 (max-stack), Udyr Q=1 (Awakened 2-AA). **Pattern D channel total (1):** Karthus E=2 (Defile per-second). **Pattern E direct-hit primary (2):** Sejuani R=1, Nautilus R=2. **Pattern F execute amp (1):** Fiddlesticks W=3 (low-HP).
+
+**Filtering note discovery:** When verifying empirically, Shen Q at indexed=2 produced the WRONG block (raw block 3 'Increased Bonus' instead of raw block 2 'Total Magic Damage'). Root cause: `_select_blocks` filters out blocks with `attribute_kind != "damage"` (Shen Q raw block 0 is 'Slow') BEFORE indexing. The registry value is the FILTERED idx, not the raw idx. Shen.Q was corrected from 2 → 1. Four other entries (Ashe Q=2, Karthus E=2, Shaco E=2, Nautilus R=2) accidentally landed on the right filtered idx via `clamp out-of-range to last` semantics. Documented in registry `_meta` description.
+
+**Live A/B headlines:** Shen Q **+113.9%**, Swain Q **+63.0%**, Xayah Q **+62.5%**, Aatrox Q **+56.1%**, Udyr Q **+44.6%**, Viktor Q **+41.9%**, Tristana E **+31.7%**.
+
+## s200 ship — Phase 5.9.13 — 7 entries, rescue batch
+
+**Rescued 4 deferred mechanics:** Ambessa Q/W (s196/s197/s198 'form swap' deferral dissolved — actually Drain-stack resource amp like Renekton Fury); Anivia R (s195 'channel ambiguous' — actually Empowered phase amp like Belveth E max-charge); Lillia Q (s199 'uncertain' — Q + Dream Dust AA combo like Sett Q); Nilah Q (s199 'uncertain 2-stack' — max-stack empowered AA like Twitch E / Tristana E). Plus 2 net-new: Ambessa E (Lacerate slash+thrust 2×), Poppy Q (Hammer Shock out+return 2×).
+
+**Three sub-patterns:** Pattern A multi-hit totals (Ambessa E, Lillia Q, Poppy Q); Pattern B resource-state amps (Ambessa Q, Ambessa W, Nilah Q); Pattern C channel commit (Anivia R Empowered).
+
+**Live A/B headlines:** Nilah Q **+82.0%**, Poppy Q **+75.7%**, Ambessa Q **+37.1%**, Lillia Q **+19.4%**, Anivia R **+10.5%**.
+
+## Ships this session
+
+| Commit | Theme |
+|---|---|
+| [`4ee733c`](https://github.com/Remus3/riot-commander/commit/4ee733c) | s199 feat — 17-entry block_index + filtering-note discovery |
+| [`80ccb31`](https://github.com/Remus3/riot-commander/commit/80ccb31) | s199 docs — CLAUDE.md item #57 |
+| [`8f837c0`](https://github.com/Remus3/riot-commander/commit/8f837c0) | s200 feat — 7-entry rescue batch |
+| [`81d2b50`](https://github.com/Remus3/riot-commander/commit/81d2b50) | s200 docs — CLAUDE.md item #58 |
+
+Registry: 84 → 90 → 91 champions. Entries: 103 → 120 → 127. ENGINE_VERSION: 0.83.0 → 0.84.0 → 0.85.0. DS suite: 1794 → 1825 → 1842 (+48 net tests). Wider RC: 913 green both restarts.
+
+## Carry-forward for tomorrow
+
+**All s198 carry-forwards remain unchanged** (token-variant for multi-stage Q chains — Aatrox Q1/Q2/Q3 with combo_sequence, Gwen R; form-swap schema — Ambessa/KSante/Kayn/Hwei; sequence-state — Jhin R 4th-shot, Corki R Big One; conditional target-state schema lift — 5+ candidates queued: Zoe sleep, Lux Illumination, DrMundo E missing-HP, Evelynn Q charm, Vayne E wall-stun).
+
+**Don't redo:** Shen Q filtered-idx discovery + fix already shipped in 4ee733c — don't re-investigate the "wrong block" path. Ambessa was NOT a form-swap mechanic (despite s196/s197/s198 saying so) — Drain-stack is the correct model and Q/W/E are all 1 in the registry. Anivia R Empowered amp shipped — don't defer it back as "channel ambiguous".
+
+**Next session candidate:** Either (a) schema lift for conditional target-state to unlock 5+ queued entries, OR (b) Aatrox Q token-variant + combo_sequence (Aatrox added to s186 combo_sequence registry + Q2/Q3 token-variant block_index entries for Q1/Q2/Q3 sweet-spot lookup). Both are architectural rather than pure-data. Operator pick.
+
+---
+
 # s198 wrap — 2026-05-14 (Phase 5.9.11 bruiser/jungler/utility/marksman block_index expansion)
 
 **Operator instruction:** "continue ds" — direct continuation of s197 (now the fifteenth consecutive override / proc-shape ship on the same template). The pure-data well still has clean candidates after seven batches, and the s197 carry-forwards (token-variant for multi-stage chains, form-swap, sequence-state) all need schema lifts. Pure-data was the cleanest ship again.
@@ -240,110 +285,3 @@ Headlines: Naafiri Q +76.8% (canonical 3-dagger same-target commit), Kassadin R 
 ## Architectural pattern lock-in (continued from s196)
 
 Thirteenth consecutive override / proc-shape modeling improvement on the same template (s185 max_priority / s186 combo / s187 form / s188 per-AA on-hit / s189 Spellblade / s190 Lightshield / s191 block_index / s192 token-variant / s193 channels / s194 calibration / s195 multi-hit/charge/recast / s196 extended multi-hit/condition-amp / s197 assassin/fighter resource + utility totals). Sixth pure-data batch in the channel/total/charge family. Pattern remains rock-solid for 10-25 entry batches; resource-state framing turned out simpler than the schema-lift s196 anticipated (cf. Renekton, Kassadin). Next genuinely-blocking lifts are token-variant for multi-stage Q chains (Aatrox Q1/Q2/Q3) and form-swap (Hwei per-form, KSante All Out, Ambessa) — both have 2+ candidates accumulated and warrant schema design.
-
----
-
-# s196 wrap — 2026-05-14 (Phase 5.9.9 extended multi-hit/condition-amp block_index expansion)
-
-**Operator instruction:** "continue DS" — direct continuation of s195. The carry-forward had three schema-lift items + the same pure-data well that s195 sampled from. Pure-data was still the cleanest ship: deeper triage of the same Meraki snapshot surfaced 17 more clean wins spanning patterns A and B from s195 (multi-hit single-target totals + fully-charged/condition amps).
-
-## Context
-
-s195 had triaged 13 candidates from 153 with a focused-cleanest cut. Re-scanning the same `champion_abilities.json` with a damage-block filter (block 0 must be `attribute_kind=damage` with damage scaling; block N's attribute must contain Total/Maximum/Increased/Enhanced/Empowered and also be damage-kind) returned 145 pure-damage candidates. Triaged to 17 entries across two patterns:
-
-**Pattern A — Multi-hit single-target totals (12 entries):**
-- Akali E=2 (E1 Shuriken Flip throw + E2 grappling-hook dash on tagged target, ~3.33×)
-- Akshan Q=1 (Avengerang ricochet out + return on same target, 2×)
-- Cassiopeia W=1 (Miasma cloud full duration, 5×)
-- Chogath E=1 (Vorpal Spikes 3-hit empowered AA rotation, 3×)
-- Draven R=1 (Whirling Death out + return, 2×)
-- Lillia W=1 (Watch Out! Eep! center hit, 3× rim damage)
-- Morgana R=1 (Soul Shackles initial + delayed-snap tether duration, 2×)
-- Nautilus E=2 (Riptide 3-wave same target, 2×)
-- Riven Q=1 (Broken Wings Q-Q-Q 3-cast chain, 3×)
-- Sett Q=1 (Knuckle Down both empowered AAs, 2×)
-- Skarner Q=1 (Shattered Earth empowered 3-hit chain, 3×)
-- Soraka E=1 (Equinox immediate + delayed-silence proc, 2×)
-
-**Pattern B — Fully-charged / condition amps (5 entries):**
-- Gragas Q=1 (Barrel Roll fully-fermented 4s hold, 1.5×)
-- Karthus Q=1 (Lay Waste single-target enhanced passive, 2×)
-- Khazix Q=1 (Taste Their Fear isolation amp — the defining Kha'Zix mechanic, 2.1×)
-- KogMaw R=1 (Living Artillery low-HP execute, 2×)
-- Pantheon Q=1 (Comet Spear fully-charged hurl, 2.2×)
-
-All 17 verified per-rank against the Meraki snapshot — block N's base + scaling fields match the exact canonical-condition multiple of block 0 (e.g., Akshan Q rank 1 block 1 base 10 = exact 2× block 0 base 5; Riven Q rank 1 block 1 base 135 = exact 3× block 0 base 45). The `test_riven_Q_block1_matches_3x_block0` and `test_akshan_Q_block1_matches_2x_block0` sanity checks pin these per-rank multipliers.
-
-## Ships
-
-| File | Change |
-|---|---|
-| [agents/daemon_slayer/champion_block_index.json](agents/daemon_slayer/champion_block_index.json) | **Registry expanded 35 → 49 champions (17 new (champion, key) pairs).** 14 new champions: Akshan, Chogath, Draven, Gragas, Karthus, Khazix, KogMaw, Lillia, Nautilus, Pantheon, Riven, Sett, Skarner, Soraka. 3 key extensions: Akali +E=2 (alongside existing R=0, R2=2), Cassiopeia +W=1 (alongside existing E=1), Morgana +R=1 (alongside existing W=3). `_meta.description` extended with Phase 5.9.9 note explaining both sub-patterns + the rationale for skip-list growth. `_meta.rationale` adds entry-by-entry per-rank math verification with Meraki ATTR names. Skipped-list extended with 15 explicit deferrals: Nidalee Q (form_index conflict with s187), Kassadin R (resource-state), Aatrox W (CC-conditional), Akshan R (charge), Ambessa Q/W/E (form swap), Pantheon W/R (no scaling / engine default OK), Gangplank R (Upgrade choices), Jhin R (4-shot sequence), Hwei R (channel deferral), Gwen R / KSante R (form swap), Karthus E/R, Mel Q, Naafiri Q, Olaf Q, Nasus E. |
-| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | ENGINE_VERSION 0.80.0 → 0.81.0. Docstring extended with Phase 5.9.9 section noting the data-only nature, both sub-patterns with all 17 entries enumerated, A/B impact summary, and deliberate skip-list rationale. |
-| [agents/daemon_slayer/tests/test_block_index_overrides.py](agents/daemon_slayer/tests/test_block_index_overrides.py) | New `Phase599ExpansionTests` class (25 tests): 17 per-entry `_delta_check` (mirrors s195 pattern), 3 multi-key resolved-shape (Akali three-key Q→E→R/R2, Cassi E+W, Morgana W+R), 2 math sanity (`test_riven_Q_block1_matches_3x_block0` + `test_akshan_Q_block1_matches_2x_block0`), 3 backward-compat (`test_pre_s196_morgana_W_unchanged` + `test_pre_s196_akali_R2_unchanged` + `test_pre_s196_corki_unchanged`). `RegistryShapeTests.test_known_champion_overrides` extended with assertions for all 14 new champions + 3 extended champions' new shapes. Existing tests updated to reflect Cassi `{E:1, W:1}` and Akali `{R:0, R2:2, E:2}` and Morgana `{W:3, R:1}` shapes (`GetBlockIndexForTests.test_known_override_returns_champion_source` repointed from Cassi to Veigar; `ResolveBlockIndexTests.test_none_with_known_returns_champion` repointed from Cassi to Veigar; `BackwardCompatTests.test_unmapped_keys_inside_mapped_champion_use_global_strategy` repointed from Cassi to Veigar; `ComputeAbilityDpsBlockIndexTests.test_mapped_champion_uses_registry` and `test_explicit_override_wins` updated for new Cassi shape; `AkaliTokenVariantTests` 3 tests updated for new Akali shape; `RankerBlockIndexTests.test_rank_mage_carries_source` and `ToDictSerializationTests.test_compute_ability_dps_carries_source` updated for new Cassi shape). File docstring extended with Phase 5.9.9 section. |
-| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Version-pin tests bumped 0.80.0 → 0.81.0 with the Phase 5.9.9 line in the history comment. |
-
-## Verification
-
-- DS suite **1733 pass** (was 1708 in s195 wrap; +25 from new `Phase599ExpansionTests` class)
-- Wider RC `tests/` suite **913 pass** (post-DS-restart — pre-restart, phase8_smoke's `test_live_three_profiles` was failing on the 0.81.0 pin against the still-0.80.0 live server, as expected)
-- `py_compile` clean for __init__.py
-- DS server :8893 restarted from PID 10420 → new PID via `Get-CimInstance` filter + `taskkill /F /PID` + `Start-Process pythonw tools\start_daemon_slayer.py`; `/health` reports `engine_version=0.81.0` patch=16.10.1 172 champions 705 items
-
-## Live A/B on :8893 (/ability-dps at lvl 11 vs 80 armor / 30 MR / 2000 HP)
-
-| Champion.Key | Registry (post-s196) | Forced block 0 | Delta | Lift |
-|---|---|---|---|---|
-| Riven Q | 56.98 adps | 20.42 adps | +36.56 | **+179.0%** |
-| Pantheon Q | 24.30 adps | 12.06 adps | +12.24 | **+101.5%** |
-| Karthus Q | 53.20 adps | 27.79 adps | +25.41 | **+91.4%** |
-| Lillia W | 21.06 adps | 11.35 adps | +9.71 | **+85.5%** |
-| Akshan Q | 7.32 adps | 3.99 adps | +3.33 | **+83.5%** |
-| Skarner Q | 13.64 adps | 7.95 adps | +5.69 | **+71.5%** |
-| Khazix Q | 15.18 adps | 9.26 adps | +5.92 | **+63.9%** |
-| Akali E | 24.15 adps | 15.41 adps | +8.74 | **+56.7%** |
-| Gragas Q | 47.41 adps | 36.42 adps | +10.99 | **+30.2%** |
-| Draven R | 3.19 adps | 2.49 adps | +0.70 | **+28.3%** |
-| Sett Q | 5.46 adps | 4.32 adps | +1.14 | **+26.5%** |
-| Soraka E | 8.47 adps | 7.61 adps | +0.86 | **+11.3%** |
-| Nautilus E | 8.24 adps | 7.51 adps | +0.73 | **+9.7%** |
-| Chogath E | 21.94 adps | 20.85 adps | +1.09 | **+5.2%** |
-| KogMaw R | 16.45 adps | 15.68 adps | +0.77 | **+4.9%** |
-| Morgana R | 24.49 adps | 23.71 adps | +0.78 | **+3.3%** |
-| Cassiopeia W | 40.44 adps | 39.48 adps | +0.96 | **+2.4%** |
-
-Riven Q +179% is the headline — Broken Wings is Riven's core damage rotation, and the 3-cast Q-Q-Q chain on the same target was being scored as a single cast pre-s196 (block 0 only). Pantheon Q +101% and Karthus Q +91% similarly reflect their identity-defining mechanics (fully-charged Comet Spear, solo-target Lay Waste).
-
-The small-lift entries (Cassi W +2.4%, Morgana R +3.3%, KogMaw R +4.9%) are utility-heavy champions whose total_ability_dps is dominated by other spells; the per-spell registry lift is real but diluted by spell-share weighting.
-
-**Regression checks pass:**
-- s195 Morgana W=3 entry preserved (`test_pre_s196_morgana_W_unchanged`)
-- s192 Akali R=0, R2=2 token-variant entries preserved + composition with new E=2 verified (`test_pre_s196_akali_R2_unchanged`)
-- s194 Corki {W:1, E:1} entry preserved (`test_pre_s196_corki_unchanged`)
-- `BackwardCompatTests` green: unmapped Zed burst with no override = unmapped Zed burst with empty explicit override (byte-identical)
-
-## Findings
-
-- **The pure-data well still has clean candidates.** s195 wrap said "13 cleanest of 153"; s196 found 17 more with the same triage criteria. Deeper inspection of the snapshot's per-rank math (block N's `base[]` must be an exact-multiple of block 0's `base[]` across all 5 ranks) is a strong-enough filter to keep the patterns clean. Estimated 80-100 more candidates remain unmapped — but they're increasingly utility-blocky (Heal/Shield/Slow blocks intermixed with damage blocks) or mechanically ambiguous.
-- **The skipped-list pattern is now self-documenting.** Each skip entry in `_meta.rationale` documents (1) what the candidate is, (2) why it was skipped, (3) which carry-forward bucket it belongs to (form-conflict, resource-state, CC-state, target-state, multi-form). 15 skip entries added this batch, all categorized.
-- **Per-spell lift % vs total_ability_dps lift %.** The headline finding from s195 was duplicated here: a per-spell 3× lift can yield anywhere from +5% to +180% total_ability_dps lift depending on the spell's weight in the champion's rotation. Single-spell-defining champions (Riven, Karthus, Akshan) see huge lifts; utility/multi-spell champions (Morgana, Cassi) see small lifts. This is correct behavior, not a bug — each champion's burst signal is now closer to reality.
-- **Akali test fallout was avoidable.** I had to repoint several Akali-based test fixtures because adding E=2 broke their hardcoded `{R:0, R2:2}` expected shape. Lesson: when extending an existing champion's registry entry, search for ALL test assertions of that champion's shape — not just the canonical RegistryShapeTests assertion. Cost was ~5 min to fix; preventable with a pre-edit grep.
-- **Test-discovery counted correctly.** s195 wrap said `+19` new tests; s196 added `+25`. Pre-s196 the DS suite was 1708, post-s196 is 1733. The math is exact (1708 + 25 = 1733), confirming all 25 new tests register at discovery time.
-- **Process-tracking pattern continued to hold.** `Get-CimInstance Win32_Process | Where-Object` filter isolated the DS pythonw.exe PID 10420 cleanly; relaunched via `Start-Process pythonw tools\start_daemon_slayer.py` background spawn. No false kills.
-- **Cassiopeia W's lift is honestly tiny but the math is right.** Cassi /ability-dps total post-s196 is 40.44 vs forced-block-0 39.48 = +2.4% lift. This is because Cassi's E (Twin Fang) dominates her ability_dps — it's a 0.5s cooldown spell with the s191 block-1 amp already applied. Adding W=1 (Miasma full duration) shifts the per-W spell from per-second tick to full-duration total — but Cassi rarely commits to W's full duration in burst-window scoring (it's a slow zone, used for setup not damage). The +0.96 adps is the marginal full-duration uplift; the rationale doc notes this is the *contract* (operator drops W, target walks through cloud), even though in practice Cassi's burst is Q+E focused.
-
-## Open items carried forward
-
-- 🟡 **Conditional block_index based on target state** — same as s195 carry-forward. Zoe sleep, Lux Illumination, DrMundo E missing-HP threshold, Renekton Q full Fury. Schema lift candidates accumulated to 4+ but each requires different conditional shape (HP threshold, mark presence, status effect, resource state). Defer until operator commits to the schema design (current `dict[str, int]` would need to become `dict[str, int | dict[str, ...]]`).
-- 🟡 **Sum-of-blocks block_index** — DrMundo W full-channel + recast detonation. Single known candidate. Defer.
-- 🟡 **Conditional resource-state block_index** — Corki R Big One, Renekton Q full Fury, Aatrox Q chain stage, Kassadin R stack count, Akshan R Comeuppance charge. Now 5+ candidates accumulated — could justify the schema lift after the target-state version ships.
-- 🟡 **Conditional damage amps (Ahri R→Q, Zoe E→Q)** — inter-spell awareness still missing. Carried since s180.
-- 🟡 **Generalized arm-consume framework** via `is_ability_triggered_aa_proc` schema flag. Carried since s190.
-- 🟡 **Aphelios + Karma mantra + Khazix evolved** — upstream/plumbing/UI blockers.
-- 🟡 **Real internal CD in long combos** — s190 carry-forward.
-- 🟡 **Form-conflict block_index entries** (Nidalee Q, Hwei R block-3, Gwen R, KSante R) — each needs orthogonal form_index + block_index registry entry resolved against the canonical form (not form 0). Future batch when conditional schema ships.
-- 🟡 **Pre-existing carry-forwards from s184/s183/s182** — live-game chip lifecycle validation; `_TOP_N_THRESHOLD` retune; `nudge_history` calibration analysis.
-
-## Architectural pattern lock-in (continued from s195)
-
-Twelfth consecutive override / proc-shape modeling improvement on the same template (s185 max_priority / s186 combo / s187 form / s188 per-AA on-hit / s189 Spellblade / s190 Lightshield / s191 block_index / s192 token-variant / s193 channels / s194 calibration / s195 multi-hit/charge/recast / s196 extended multi-hit/condition-amp). Fifth pure-data batch in the channel/total/charge family. The pattern is now well past stable enough for routine 10-25 entry batches per session; the rate-limiting step is operator triage of skip-list growth (15 skip entries this batch — manageable but the well of "easy + clean" candidates is narrowing). Next structural lift (conditional-block_index schema) is queued and has 4+ target-state candidates + 5+ resource-state candidates — ready when operator commits to schema design.
