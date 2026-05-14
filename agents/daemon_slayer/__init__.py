@@ -638,6 +638,56 @@ Phase 5.6 (s188, 2026-05-13 — per-attack on-hit proc damage, ENGINE_VERSION 0.
   arm-by-spell-cast / consume-by-AA model that lands Spellblade
   contributions in burst combos.
 
+Phase 5.9.12 (s199, 2026-05-14 — Aatrox sweet-spot / Ashe Flurry / Karthus Defile / 17-entry block_index expansion, ENGINE_VERSION 0.84.0):
+
+* Pure data-only batch — no code changes, just expands the s191
+  ``champion_block_index.json`` registry with 17 new (champion, key)
+  entries (6 new champions + 11 key extensions on existing). Registry:
+  84 → 90 champions, 103 → 120 (champion, key) pairs.
+* **Pattern A — Multi-hit single-target totals** (8 entries):
+    - Ashe Q=2 (Ranger's Focus all 5 enhanced AAs, 5×)
+    - Nunu E=1 (Snowball Barrage 3-snowball cap, 3×)
+    - Samira W=1 (Blade Whirl 2-rotation total, 2×)
+    - Shen Q=2 (Twilight Assault 3-AA empowered, 3×)
+    - Swain Q=2 (Death's Hand all 5 bolts at point-blank, 2×)
+    - Viktor Q=2 (Power Transfer ability + empowered AA, 1.7×)
+    - Xayah Q=1 (Double Daggers out + return, 2×)
+    - Zac Q=1 (Stretching Strikes both arms on target, 2×)
+* **Pattern B — Positional/sweet-spot amps** (3 entries):
+    - Aatrox Q=1 (Q1 Edge of the Blade sweet-spot, 1.7×)
+    - Shaco E=2 (Two-Shiv Poison backstab, 1.5×)
+    - Talon Q=1 (Noxian Diplomacy champion crit, 1.5×)
+* **Pattern C — Resource-state amps** (2 entries):
+    - Tristana E=4 (Explosive Charge max-stack, 2× block 1)
+    - Udyr Q=1 (Wilding Claw Awakened 2-AA, 2×)
+* **Pattern D — Channel total** (1 entry):
+    - Karthus E=2 (Defile per-second tick, 4× per-tick)
+* **Pattern E — Direct-hit primary target** (2 entries):
+    - Sejuani R=1 (Glacial Prison direct stun, ~2×)
+    - Nautilus R=2 (Depth Charge primary hit, ~2×)
+* **Pattern F — Execute amp** (1 entry):
+    - Fiddlesticks W=3 (Bountiful Harvest low-HP execute, 2× base + missing-HP)
+* All 17 verified per-rank math against the Meraki snapshot. Math-level
+  sanity tests pin three: Ashe Q block 2 = exact 5× block 1 (per-AA →
+  flurry); Karthus E block 2 = exact 4× block 1 (per-tick → per-second);
+  Tristana E block 4 = exact 2× block 1 (no-stack → full-stack).
+* **Multi-key extensions:** Aatrox now {W:3, Q:1}, Karthus now
+  {Q:1, E:2}, Nautilus now {E:2, R:2}, Nunu now {W:1, E:1}, Samira now
+  {R:1, W:1}, Sejuani now {W:2, R:1}, Talon now {W:2, R:2, Q:1}, Udyr
+  now {R:1, Q:1}, Viktor now {R:2, Q:2}, Zac now {R:2, Q:1},
+  Fiddlesticks now {R:1, W:3}.
+* **Deliberately skipped:** Diana R (multi-target pull, not single-burst),
+  Gnar R (wall-stun terrain), Lillia Q (uncertain mechanic), Poppy E/Q
+  (wall/duration target-state), Rumble Q (heat decay, defer to
+  calibration), Teemo R (4-shroom focus unrealistic), Viktor E
+  (Augmented system removed), Yasuo E (stacks decay), Yunara (new champ
+  unverified), Yuumi R (5-wave model mismatch), Zoe W (stolen-spell
+  resource), Nilah Q (uncertain 2-stack mechanic).
+* Backward-compat preserved: any unmapped champion sees byte-identical
+  output to pre-s199. Fifteenth consecutive override / proc-shape
+  modeling improvement on the same template (s185-s199); eighth pure-
+  data batch in the block_index family.
+
 Phase 5.9.11 (s198, 2026-05-14 — bruiser/jungler/utility/marksman block_index expansion, ENGINE_VERSION 0.83.0):
 
 * Pure data-only batch — no code changes, just expands the s191
@@ -980,4 +1030,4 @@ Phase 5.7 (s189, 2026-05-13 — Spellblade-in-burst, ENGINE_VERSION 0.74.0):
   doesn't exercise it (e.g. operator-supplied pure-AA combo).
 """
 
-ENGINE_VERSION = "0.83.0"
+ENGINE_VERSION = "0.84.0"
