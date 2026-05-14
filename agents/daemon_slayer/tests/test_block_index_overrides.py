@@ -142,7 +142,7 @@ class RegistryShapeTests(unittest.TestCase):
         # Anivia extended in s200 with R=1 (Glacial Storm Empowered tick)
         self.assertEqual(champions["Anivia"], {"Q": 2, "E": 1, "R": 1})
         self.assertEqual(champions["Alistar"], {"E": 1})
-        self.assertEqual(champions["AurelionSol"], {"E": 1})
+        # AurelionSol extended in s202 with Q=2 (Breath of Light full channel)
         # Fiddlesticks extended in s199 with W=3 (Bountiful Harvest execute)
         self.assertEqual(champions["Fiddlesticks"], {"R": 1, "W": 3})
         self.assertEqual(champions["MissFortune"], {"E": 1})
@@ -171,7 +171,7 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Varus"], {"Q": 1})
         # Vladimir W=1 extends prior {"E": 1} from s195 (added s198)
         self.assertEqual(champions["Vladimir"], {"E": 1, "W": 1})
-        self.assertEqual(champions["Zoe"], {"Q": 1})
+        # Zoe extended in s202 with W=1 — full shape asserted below
         # Phase 5.9.9 (s196) — extended multi-hit / condition amp expansion
         # Akali E=2 extends prior {"R": 0, "R2": 2} from s192
         self.assertEqual(champions["Akali"], {"R": 0, "R2": 2, "E": 2})
@@ -180,7 +180,7 @@ class RegistryShapeTests(unittest.TestCase):
         # Morgana R=1 extends prior {"W": 3} from s195
         self.assertEqual(champions["Morgana"], {"W": 3, "R": 1})
         # New champions added this batch (14):
-        self.assertEqual(champions["Akshan"], {"Q": 1})
+        # Akshan extended in s202 with R=1 — full shape asserted below
         self.assertEqual(champions["Chogath"], {"E": 1})
         self.assertEqual(champions["Draven"], {"R": 1})
         self.assertEqual(champions["Gragas"], {"Q": 1})
@@ -215,13 +215,12 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Nilah"], {"R": 1, "Q": 1})
         # Nunu extended in s199 with E=1 (Snowball Barrage 3-snowball cap)
         self.assertEqual(champions["Nunu"], {"W": 1, "E": 1})
-        # Poppy extended in s200 with Q=1 (Hammer Shock out + return)
-        self.assertEqual(champions["Poppy"], {"R": 1, "Q": 1})
-        self.assertEqual(champions["Renekton"], {"Q": 1, "W": 2})
-        self.assertEqual(champions["Rumble"], {"E": 1})
+        # Poppy extended in s200 with Q=1 + s202 with E=1 — asserted below
+        # Renekton extended in s202 with R=1 — asserted below
+        # Rumble extended in s202 with Q=2 + R=2 — asserted below
         # Sion R=1 extends prior {"Q": 2} from s197 (added s198)
         self.assertEqual(champions["Sion"], {"Q": 2, "R": 1})
-        self.assertEqual(champions["Smolder"], {"W": 2})
+        # Smolder extended in s202 with Q=1 + R=1 — asserted below
         # Phase 5.9.11 (s198) — bruiser/jungler/utility/marksman expansion
         # 20 entries across 17 new champions + 2 key extensions
         # (Sion R and Vladimir W asserted above with their extended shape):
@@ -230,7 +229,7 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Kayn"], {"Q": 1})
         self.assertEqual(champions["Maokai"], {"E": 1})
         self.assertEqual(champions["Nami"], {"E": 1})
-        self.assertEqual(champions["Nasus"], {"E": 2})
+        # Nasus extended in s202 with R=1 — asserted below
         self.assertEqual(champions["Neeko"], {"Q": 2})
         self.assertEqual(champions["Ornn"], {"R": 2})
         # Sejuani extended in s199 with R=1 (Glacial Prison direct stun)
@@ -240,10 +239,9 @@ class RegistryShapeTests(unittest.TestCase):
         # Udyr extended in s199 with Q=1 (Wilding Claw Awakened 2-AA)
         self.assertEqual(champions["Udyr"], {"R": 1, "Q": 1})
         self.assertEqual(champions["Vi"], {"Q": 1})
-        # Viktor extended in s199 with Q=2 (Power Transfer Q + empowered AA)
-        self.assertEqual(champions["Viktor"], {"R": 2, "Q": 2})
+        # Viktor extended in s199 + s202 — full shape asserted below
         self.assertEqual(champions["XinZhao"], {"Q": 1, "W": 2})
-        self.assertEqual(champions["Yuumi"], {"Q": 1})
+        # Yuumi extended in s202 with R=2 — full shape asserted below
         # Zac extended in s199 with Q=1 (Stretching Strikes 2-arm total)
         self.assertEqual(champions["Zac"], {"R": 2, "Q": 1})
         # Phase 5.9.12 (s199) — new champions:
@@ -280,6 +278,39 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Xerath"], {"W": 1, "R": 1})
         self.assertEqual(champions["Yasuo"], {"E": 3})
         self.assertEqual(champions["Ziggs"], {"E": 2})
+        # Phase 5.9.15 (s202) — 18 entries: 6 new champions + 12 key extensions.
+        # New: Gangplank, Gnar, KSante, RekSai, Vayne, Yunara. Extensions on
+        # Zoe (W), Akshan (R), AurelionSol (Q), Nasus (R), Poppy (E), Renekton
+        # (R), Rumble (Q+R), Smolder (Q+R), Viktor (E), Yuumi (R). 9 entries
+        # with non-damage prefix blocks (filtered idx ≠ raw idx). Reverts 4
+        # prior-batch skip rationales: Gnar R + Vayne E + Poppy E wall-stun
+        # (s198/s199 'terrain condition'), Rumble Q (s199 'heat decays').
+        self.assertEqual(champions["Gangplank"], {"R": 2})
+        self.assertEqual(champions["Gnar"], {"R": 1})
+        self.assertEqual(champions["KSante"], {"R": 2})
+        self.assertEqual(champions["RekSai"], {"E": 1})
+        self.assertEqual(champions["Vayne"], {"E": 2})
+        self.assertEqual(champions["Yunara"], {"Q": 2})
+        # Zoe extended in s202 with W=1 (3 empowered AAs total)
+        self.assertEqual(champions["Zoe"], {"Q": 1, "W": 1})
+        # Akshan extended in s202 with R=1 (Comeuppance max-charge)
+        self.assertEqual(champions["Akshan"], {"Q": 1, "R": 1})
+        # AurelionSol extended in s202 with Q=2 (Breath of Light full channel)
+        self.assertEqual(champions["AurelionSol"], {"E": 1, "Q": 2})
+        # Nasus extended in s202 with R=1 (Fury of the Sands full duration)
+        self.assertEqual(champions["Nasus"], {"E": 2, "R": 1})
+        # Poppy extended in s202 with E=1 (Heroic Charge wall-slam)
+        self.assertEqual(champions["Poppy"], {"R": 1, "Q": 1, "E": 1})
+        # Renekton extended in s202 with R=1 (Dominus full duration aura)
+        self.assertEqual(champions["Renekton"], {"Q": 1, "W": 2, "R": 1})
+        # Rumble extended in s202 with Q=2 (Danger Zone enhanced) + R=2 (Equalizer max)
+        self.assertEqual(champions["Rumble"], {"E": 1, "Q": 2, "R": 2})
+        # Smolder extended in s202 with Q=1 (max-stack passive) + R=1 (max-distance)
+        self.assertEqual(champions["Smolder"], {"W": 2, "Q": 1, "R": 1})
+        # Viktor extended in s202 with E=2 (Death Ray double-hit)
+        self.assertEqual(champions["Viktor"], {"R": 2, "Q": 2, "E": 2})
+        # Yuumi extended in s202 with R=2 (Final Chapter 2 hits per target)
+        self.assertEqual(champions["Yuumi"], {"Q": 1, "R": 2})
 
     def test_every_value_is_int(self) -> None:
         for champion_id, entries in self.table["champions"].items():
@@ -1579,12 +1610,13 @@ class Phase599_10ExpansionTests(unittest.TestCase):
         self.assertEqual(r.block_index_source, "champion")
 
     def test_renekton_both_keys_in_resolved(self) -> None:
-        """Renekton Q=1 + W=2 (s197) — both keys must appear in resolved map."""
+        """Renekton Q=1 + W=2 (s197) + R=1 (s202 Dominus full duration)
+        — all three keys must appear in resolved map."""
         r = compute_ability_dps(
             self.snap, "Renekton", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"Q": 1, "W": 2})
+        self.assertEqual(r.block_index_resolved, {"Q": 1, "W": 2, "R": 1})
         self.assertEqual(r.block_index_source, "champion")
 
     # Math-level sanity: Lucian R block 1 base = 5× block 0 (full-channel)
@@ -2108,13 +2140,13 @@ class Phase599_12ExpansionTests(unittest.TestCase):
         self.assertEqual(r.block_index_resolved, {"R": 1, "Q": 1})
 
     def test_viktor_both_keys_in_resolved(self) -> None:
-        """Viktor R=2 (s198) + Q=2 (s199) — both keys must appear in
-        resolved map."""
+        """Viktor R=2 (s198) + Q=2 (s199) + E=2 (s202 Death Ray double-hit)
+        — all three keys must appear in resolved map."""
         r = compute_ability_dps(
             self.snap, "Viktor", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"R": 2, "Q": 2})
+        self.assertEqual(r.block_index_resolved, {"R": 2, "Q": 2, "E": 2})
 
     # Math-level sanity: Ashe Q block 2 tAD% = 5× block 1 (per-AA → flurry)
     def test_ashe_Q_block2_matches_5x_block1_tad(self) -> None:
@@ -2340,12 +2372,13 @@ class Phase599_13ExpansionTests(unittest.TestCase):
         self.assertEqual(r.block_index_resolved, {"R": 1, "Q": 1})
 
     def test_poppy_both_keys_in_resolved(self) -> None:
-        """Poppy R=1 (s197) + Q=1 (s200) — both keys must appear."""
+        """Poppy R=1 (s197) + Q=1 (s200) + E=1 (s202 Heroic Charge wall-
+        slam) — all three keys must appear in resolved map."""
         r = compute_ability_dps(
             self.snap, "Poppy", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"R": 1, "Q": 1})
+        self.assertEqual(r.block_index_resolved, {"R": 1, "Q": 1, "E": 1})
 
     # Math-level sanity: Ambessa Q block 1 base = 2× block 0 (Drain amp)
     def test_ambessa_Q_block1_matches_2x_block0(self) -> None:
@@ -2647,6 +2680,296 @@ class Phase599_14ExpansionTests(unittest.TestCase):
             target_max_hp=2000,
         )
         self.assertEqual(r.block_index_resolved, {"W": 3, "Q": 1})
+
+
+# ─── Phase 5.9.15 (s202): block_index expansion 18 entries / 6 new champs ──
+
+
+class Phase599_15ExpansionTests(unittest.TestCase):
+    """Phase 5.9.15 (s202). 18 new (champion, key) entries: 6 truly-new
+    champions (Gangplank, Gnar, KSante, RekSai, Vayne, Yunara) + 12 key
+    extensions on existing champions (Zoe W, Akshan R, AurelionSol Q,
+    Nasus R, Poppy E, Renekton R, Rumble Q+R, Smolder Q+R, Viktor E,
+    Yuumi R).
+
+    Registry 104 → 110 champions, 143 → 161 entries.
+
+    Five sub-patterns:
+      (A) Multi-hit single-target totals (5): KSante R, Vayne E, Yunara
+          Q (filtered), Zoe W (filtered), Viktor E
+      (B) Channel/duration totals (7): Gangplank R, AurelionSol Q, Nasus
+          R (filtered), Renekton R (filtered), Rumble R, Yuumi R
+          (filtered), Poppy E (filtered)
+      (C) Max-charge/max-distance amps (2): Akshan R (filtered), Smolder R
+          (filtered)
+      (D) Resource-state amps (2): RekSai E, Smolder Q
+      (E) Wall-stun/charge condition amps (2): Gnar R (filtered),
+          Rumble Q (filtered)
+
+    Reverts 4 prior-batch skip rationales: Gnar R + Vayne E + Poppy E
+    wall-stun (s198/s199), Rumble Q heat-decay (s199).
+
+    Tests verify each new entry:
+      1. Is present in the resolved registry at the expected filtered idx
+      2. Drives total_ability_dps strictly above the forced-block-0 baseline
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = _snap()
+
+    def _delta_check(self, champion: str, key: str, expected_idx: int) -> None:
+        r_reg = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r_reg.block_index_resolved.get(key), expected_idx,
+                         f"{champion}.{key} should route to filtered block {expected_idx}")
+        forced = dict(r_reg.block_index_resolved)
+        forced[key] = 0
+        r_off = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides=forced,
+        )
+        self.assertGreater(r_reg.total_ability_dps, r_off.total_ability_dps,
+                           f"{champion} registry total should exceed forced-block-0")
+
+    # Pattern A: multi-hit single-target totals (5)
+    def test_ksante_R_routes_to_block_2(self) -> None:
+        """KSante R block 2 'Total Physical Damage' = All Out dash + wall-
+        strike total on same target (2× block 0). Operator commits to
+        slamming target into wall via R during All Out."""
+        self._delta_check("KSante", "R", 2)
+
+    def test_vayne_E_routes_to_block_2(self) -> None:
+        """Vayne E block 2 'Total Physical Damage' = Condemn dash + wall-
+        slam total (2.5× block 0). Operator commits to landing target
+        against wall — universally available terrain, same framing as
+        Khazix Q isolation s196."""
+        self._delta_check("Vayne", "E", 2)
+
+    def test_yunara_Q_routes_to_filtered_block_2(self) -> None:
+        """Yunara Q filtered idx 2 = raw block 3 'Combined Bonus Magic
+        Damage' = Q-active + passive on same hit (2× block 0). Filtered
+        because raw block 1 'Bonus Attack Speed' is duration (non-damage)
+        and raw blocks 4-5 are modifier (Active/Combined Increased Minion
+        Damage)."""
+        self._delta_check("Yunara", "Q", 2)
+
+    def test_zoe_W_routes_to_filtered_block_1(self) -> None:
+        """Zoe W filtered idx 1 = raw block 3 'Total Magic Damage' = 3
+        empowered AAs from Q-W-E spell rotation (3× block 0 per-bolt).
+        Filtered because raw blocks 0-1 are 'Bonus Movement Speed' /
+        'Bonus Movement Speed Duration' (non-damage). Reverts s199
+        'stolen-spell resource model' skip — Total is the cleaner 3-AA
+        combo total separate from stolen-spell mechanic."""
+        self._delta_check("Zoe", "W", 1)
+
+    def test_viktor_E_routes_to_block_2(self) -> None:
+        """Viktor E block 2 'Total Magic Damage' = Death Ray double-hit
+        on target (initial sweep + delayed second hit, 1.29× block 0).
+        Reverts s199 'Augmented variant — Augment system removed' skip
+        — blocks 0/1/2 are regular E damage variants, not Augment-related."""
+        self._delta_check("Viktor", "E", 2)
+
+    # Pattern B: channel/duration totals (7)
+    def test_gangplank_R_routes_to_block_2(self) -> None:
+        """Gangplank R block 2 'Total Magic Damage' = Cannon Barrage 4-
+        wave total on stationary target (12× block 0 per-wave at rank 1).
+        Operator commits to enemy standing in barrage = canonical late-
+        game GP teamfight zoning. Blocks 3-6 are upgrade variants (Death's
+        Daughter / Fire at Will); block 2 is the unupgraded baseline."""
+        self._delta_check("Gangplank", "R", 2)
+
+    def test_aurelionsol_Q_routes_to_block_2(self) -> None:
+        """AurelionSol Q block 2 'Total Maximum Magic Damage' = Breath of
+        Light full 2.5s channel (26× block 0 per-tick at 10 ticks/sec).
+        Same family as s193 AurelionSol E Singularity full-channel."""
+        self._delta_check("AurelionSol", "Q", 2)
+
+    def test_nasus_R_routes_to_filtered_block_1(self) -> None:
+        """Nasus R filtered idx 1 = raw block 4 'Total Magic Damage' =
+        Fury of the Sands full 15s duration with target_max_hp_pct
+        scaling. Filtered because raw blocks 0-2 are 'Bonus Health' /
+        'Bonus Resistances' / 'Increased Size' (heal/other non-damage)."""
+        self._delta_check("Nasus", "R", 1)
+
+    def test_renekton_R_routes_to_filtered_block_1(self) -> None:
+        """Renekton R filtered idx 1 = raw block 3 'Total Magic Damage'
+        = Dominus full 15s aura duration. Filtered because raw blocks
+        0-1 are 'Bonus Movement Speed' / 'Bonus Resistances'."""
+        self._delta_check("Renekton", "R", 1)
+
+    def test_rumble_R_routes_to_block_2(self) -> None:
+        """Rumble R block 2 'Maximum Magic Damage' = Equalizer max 4s
+        channel total on target standing in fire (10× block 0 per-
+        second)."""
+        self._delta_check("Rumble", "R", 2)
+
+    def test_yuumi_R_routes_to_filtered_block_2(self) -> None:
+        """Yuumi R filtered idx 2 = raw block 4 'Total Magic Damage' =
+        Final Chapter 2 hits per target (2× block 0 per-hit). Filtered
+        because raw blocks 0-1 are 'Heal per Hit' / 'Total Heal' (heal
+        non-damage), raw 5-6 are 'Best Friend Heal' variants."""
+        self._delta_check("Yuumi", "R", 2)
+
+    def test_poppy_E_routes_to_filtered_block_1(self) -> None:
+        """Poppy E filtered idx 1 = raw block 2 'Total Physical Damage'
+        = Heroic Charge dash + wall-slam total (2× block 0). Filtered
+        because raw block 1 'Stun Duration' is non-damage. Reverts s199
+        'wall-state target condition' skip — same operator-commit wall
+        framing as Vayne E + Gnar R."""
+        self._delta_check("Poppy", "E", 1)
+
+    # Pattern C: max-charge / max-distance amps (2)
+    def test_akshan_R_routes_to_filtered_block_1(self) -> None:
+        """Akshan R filtered idx 1 = raw block 3 'Maximum Physical Damage
+        per Bullet' = Comeuppance fully-charged bullet (3× minimum).
+        Filtered because raw blocks 0-1 are 'Maximum Bullets Stored' /
+        'Bullet Storing Interval Time' (non-damage). Reverts s197
+        'charge-state Comeuppance bullet stack' skip — same model as
+        Jhin R max-distance s201."""
+        self._delta_check("Akshan", "R", 1)
+
+    def test_smolder_R_routes_to_filtered_block_1(self) -> None:
+        """Smolder R filtered idx 1 = raw block 2 'Increased Physical
+        Damage' = Mouth of the Abyss at max range (1.5× block 1 close-
+        range). Filtered because raw block 0 'Self Heal' is non-damage.
+        Same max-distance amp family as Jhin R s201 / Varus Q s195."""
+        self._delta_check("Smolder", "R", 1)
+
+    # Pattern D: resource-state amps (2)
+    def test_reksai_E_routes_to_block_1(self) -> None:
+        """RekSai E block 1 'True Damage' = Furious Bite at max Fury
+        (1.25× block 0 + true damage bypasses armor). Operator commits
+        to building Fury via prior abilities = canonical RekSai burst
+        (W stealth → E bite). Resource-state amp same model as Renekton
+        Q full-Fury s197."""
+        self._delta_check("RekSai", "E", 1)
+
+    def test_smolder_Q_routes_to_block_1(self) -> None:
+        """Smolder Q block 1 'Maximum Physical Damage' = max-stack
+        passive Q scaling (1.75× block 0). Gear-INdependent — block 2
+        'Maximum with Infinity Edge' is gear-conditional (skipped).
+        Operator commits to building Smolder stacks pre-burst."""
+        self._delta_check("Smolder", "Q", 1)
+
+    # Pattern E: wall-stun / charge condition amps (2)
+    def test_gnar_R_routes_to_filtered_block_1(self) -> None:
+        """Gnar R filtered idx 1 = raw block 3 'Increased Damage' =
+        GNAR! wall-stun amp (1.5× block 0). Filtered because raw block
+        0 'Hyper Bonus Movement Speed' + raw 2 'Disable Duration' are
+        non-damage. Reverts s198 'wall-stun terrain target-state' skip
+        — operator-commits to wall positioning, same framing as Khazix
+        Q isolation s196 / Xerath W center-spot s201."""
+        self._delta_check("Gnar", "R", 1)
+
+    def test_rumble_Q_routes_to_filtered_block_2(self) -> None:
+        """Rumble Q filtered idx 2 = raw block 4 'Total Enhanced Damage'
+        = Flamespitter Total during Danger Zone overheat (1.5× block 2
+        baseline). Filtered because raw block 3 'Total Damage' is
+        intermediate (we pick the Enhanced variant). Reverts s199
+        'Danger Zone heat decays mid-fight' skip — operator commits to
+        burst-window Q during overheat."""
+        self._delta_check("Rumble", "Q", 2)
+
+    # Multi-key resolved-shape sanity for the 8 extension champions
+    def test_zoe_both_keys_in_resolved(self) -> None:
+        """Zoe Q=1 (s195) + W=1 (s202) — both keys must appear."""
+        r = compute_ability_dps(
+            self.snap, "Zoe", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1, "W": 1})
+
+    def test_akshan_both_keys_in_resolved(self) -> None:
+        """Akshan Q=1 (s196) + R=1 (s202) — both keys must appear."""
+        r = compute_ability_dps(
+            self.snap, "Akshan", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1, "R": 1})
+
+    def test_rumble_all_three_keys_in_resolved(self) -> None:
+        """Rumble E=1 (s197) + Q=2 (s202) + R=2 (s202) — all three present."""
+        r = compute_ability_dps(
+            self.snap, "Rumble", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"E": 1, "Q": 2, "R": 2})
+
+    def test_smolder_all_three_keys_in_resolved(self) -> None:
+        """Smolder W=2 (s197) + Q=1 (s202) + R=1 (s202) — all three present."""
+        r = compute_ability_dps(
+            self.snap, "Smolder", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"W": 2, "Q": 1, "R": 1})
+
+    def test_viktor_all_three_keys_in_resolved(self) -> None:
+        """Viktor R=2 (s198) + Q=2 (s199) + E=2 (s202) — all three present."""
+        r = compute_ability_dps(
+            self.snap, "Viktor", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"R": 2, "Q": 2, "E": 2})
+
+    # Math-level sanity
+    def test_ksante_R_block2_matches_2x_block0(self) -> None:
+        """Numeric sanity: KSante R block 2 base = 2× block 0 base across
+        all 3 ranks (Total = dash + wall-strike sum)."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("KSante", "R", form_index=0)
+        self.assertIsNotNone(form)
+        blocks = [b for b in form.damage_blocks if b.attribute_kind == "damage"]
+        self.assertGreaterEqual(len(blocks), 3)
+        for rank, (b0, b2) in enumerate(zip(blocks[0].base, blocks[2].base)):
+            self.assertAlmostEqual(
+                b2, b0 * 2.0, places=2,
+                msg=f"KSante R rank {rank+1}: block 2 base {b2} != 2× block 0 base {b0}"
+            )
+
+    def test_vayne_E_block2_matches_2_5x_block0(self) -> None:
+        """Numeric sanity: Vayne E block 2 base = 2.5× block 0 base across
+        all 5 ranks (Total = dash + wall-slam = block 0 + block 1)."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("Vayne", "E", form_index=0)
+        self.assertIsNotNone(form)
+        blocks = [b for b in form.damage_blocks if b.attribute_kind == "damage"]
+        self.assertGreaterEqual(len(blocks), 3)
+        for rank, (b0, b2) in enumerate(zip(blocks[0].base, blocks[2].base)):
+            self.assertAlmostEqual(
+                b2, b0 * 2.5, places=2,
+                msg=f"Vayne E rank {rank+1}: block 2 base {b2} != 2.5× block 0 base {b0}"
+            )
+
+    # Backward-compat: prior-batch entries still resolve unchanged after s202
+    def test_pre_s202_jhin_unchanged(self) -> None:
+        """Backward-compat: s201 Jhin Q=2 + R=1 preserved after s202."""
+        r = compute_ability_dps(
+            self.snap, "Jhin", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 2, "R": 1})
+
+    def test_pre_s202_taliyah_unchanged(self) -> None:
+        """Backward-compat: s201 Taliyah Q=2 preserved after s202."""
+        r = compute_ability_dps(
+            self.snap, "Taliyah", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 2})
+
+    def test_pre_s202_ambessa_unchanged(self) -> None:
+        """Backward-compat: s200 Ambessa Q=1, W=1, E=1 preserved after s202."""
+        r = compute_ability_dps(
+            self.snap, "Ambessa", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1, "W": 1, "E": 1})
 
 
 # ─── backward-compat: unmapped champions keep pre-s191 output ───────────────
