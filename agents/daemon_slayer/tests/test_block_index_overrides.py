@@ -161,6 +161,26 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Sett"], {"Q": 1})
         self.assertEqual(champions["Skarner"], {"Q": 1})
         self.assertEqual(champions["Soraka"], {"E": 1})
+        # Phase 5.9.10 (s197) — assassin/fighter resource amps + utility totals
+        # 20 entries across 18 new champions (registry 49 → 67):
+        self.assertEqual(champions["Aatrox"], {"W": 3})
+        self.assertEqual(champions["Briar"], {"E": 4})
+        self.assertEqual(champions["Darius"], {"R": 2})
+        self.assertEqual(champions["Hwei"], {"R": 3})
+        self.assertEqual(champions["Kassadin"], {"R": 3})
+        self.assertEqual(champions["Leblanc"], {"Q": 1, "E": 1})
+        self.assertEqual(champions["Lucian"], {"R": 1})
+        self.assertEqual(champions["MasterYi"], {"Q": 2})
+        self.assertEqual(champions["Mel"], {"Q": 3, "R": 2})
+        self.assertEqual(champions["MonkeyKing"], {"R": 1})
+        self.assertEqual(champions["Naafiri"], {"Q": 2, "E": 1})
+        self.assertEqual(champions["Nilah"], {"R": 1})
+        self.assertEqual(champions["Nunu"], {"W": 1})
+        self.assertEqual(champions["Poppy"], {"R": 1})
+        self.assertEqual(champions["Renekton"], {"Q": 1, "W": 2})
+        self.assertEqual(champions["Rumble"], {"E": 1})
+        self.assertEqual(champions["Sion"], {"Q": 2})
+        self.assertEqual(champions["Smolder"], {"W": 2})
 
     def test_every_value_is_int(self) -> None:
         for champion_id, entries in self.table["champions"].items():
@@ -210,7 +230,10 @@ class GetBlockIndexForTests(unittest.TestCase):
         self.assertEqual(source, "champion")
 
     def test_unknown_falls_back_to_default(self) -> None:
-        mapping, source = get_block_index_for("Aatrox")
+        # Yasuo is the stable unmapped champion (no clear amp blocks in his
+        # kit). Aatrox was previously the fixture but landed in the registry
+        # at s197 with W=3.
+        mapping, source = get_block_index_for("Yasuo")
         self.assertEqual(mapping, {})
         self.assertEqual(source, "default")
 
@@ -237,12 +260,14 @@ class ResolveBlockIndexTests(unittest.TestCase):
         self.assertEqual(source, "champion")
 
     def test_none_with_unknown_returns_default(self) -> None:
-        mapping, source = _resolve_block_index_overrides("Aatrox", None)
+        # Yasuo is unmapped (since s197 Aatrox landed in the registry).
+        mapping, source = _resolve_block_index_overrides("Yasuo", None)
         self.assertEqual(mapping, {})
         self.assertEqual(source, "default")
 
     def test_explicit_returns_override(self) -> None:
-        mapping, source = _resolve_block_index_overrides("Aatrox", {"Q": 1})
+        # Yasuo is unmapped — caller-supplied override is the sole source.
+        mapping, source = _resolve_block_index_overrides("Yasuo", {"Q": 1})
         self.assertEqual(mapping, {"Q": 1})
         self.assertEqual(source, "override")
 
@@ -253,7 +278,7 @@ class ResolveBlockIndexTests(unittest.TestCase):
         self.assertEqual(source, "override")
 
     def test_explicit_uppercases_keys(self) -> None:
-        mapping, _ = _resolve_block_index_overrides("Aatrox", {"q": 1})
+        mapping, _ = _resolve_block_index_overrides("Yasuo", {"q": 1})
         self.assertEqual(mapping, {"Q": 1})
 
 
@@ -332,8 +357,9 @@ class ComputeAbilityDpsBlockIndexTests(unittest.TestCase):
         cls.snap = _snap()
 
     def test_unmapped_champion_uses_default(self) -> None:
+        # Yasuo is unmapped (Aatrox landed in registry s197).
         r = compute_ability_dps(
-            self.snap, "Aatrox", level=11, mode="SR", target_mr=30.0,
+            self.snap, "Yasuo", level=11, mode="SR", target_mr=30.0,
         )
         self.assertEqual(r.block_index_source, "default")
         self.assertEqual(r.block_index_resolved, {})
@@ -399,8 +425,9 @@ class ComputeBurstBlockIndexTests(unittest.TestCase):
         cls.snap = _snap()
 
     def test_unmapped_champion_uses_default(self) -> None:
+        # Yasuo is unmapped (Aatrox landed in registry s197).
         r = compute_burst_damage(
-            self.snap, "Aatrox", level=11, target_armor=80,
+            self.snap, "Yasuo", level=11, target_armor=80,
         )
         self.assertEqual(r.block_index_source, "default")
         self.assertEqual(r.block_index_resolved, {})
@@ -471,8 +498,9 @@ class RankerBlockIndexTests(unittest.TestCase):
         self.assertEqual(r.block_index_resolved, {"R": 1})
 
     def test_rank_unmapped_champion_default(self) -> None:
+        # Yasuo is unmapped (Aatrox landed in registry s197).
         r = rank_items_by_ability_dps(
-            self.snap, "Aatrox", level=11, mode="SR",
+            self.snap, "Yasuo", level=11, mode="SR",
             target_mr=30.0, top_n=3,
         )
         self.assertEqual(r.block_index_source, "default")
@@ -524,8 +552,9 @@ class ToDictSerializationTests(unittest.TestCase):
         self.assertEqual(d["block_index_resolved"], {"R": 1})
 
     def test_unmapped_champion_to_dict_is_empty_dict(self) -> None:
+        # Yasuo is unmapped (Aatrox landed in registry s197).
         r = compute_ability_dps(
-            self.snap, "Aatrox", level=11, mode="SR", target_mr=30.0,
+            self.snap, "Yasuo", level=11, mode="SR", target_mr=30.0,
         )
         d = r.to_dict()
         self.assertEqual(d["block_index_source"], "default")
@@ -1258,6 +1287,269 @@ class Phase599ExpansionTests(unittest.TestCase):
         self.assertEqual(r.block_index_resolved, {"W": 1, "E": 1})
 
 
+# ─── Phase 5.9.10 (s197) — assassin/fighter resource amps + utility totals ──
+
+
+class Phase599_10ExpansionTests(unittest.TestCase):
+    """Phase 5.9.10 (s197). 20 new (champion, key) entries across 18 new
+    champions spanning five sub-patterns: (A) multi-hit / channel / mark
+    totals (Aatrox W, Hwei R, Leblanc Q/E, Lucian R, Mel Q/R, MonkeyKing R,
+    Naafiri Q/E, MasterYi Q, Smolder W), (B) fully-charged amps (Nunu W,
+    Sion Q, Briar E), (C) resource-state amps (Renekton Q/W full-Fury,
+    Kassadin R max-stack Riftwalk), (D) execute / channel-duration amps
+    (Darius R, Nilah R), (E) multi-charge / multi-fire totals (Poppy R,
+    Rumble E). Same 'operator commits to canonical-amped condition' model
+    as s191/s193/s194/s195/s196 — pure JSON expansion, no walker changes.
+
+    Tests verify each new entry:
+      1. Is present in the resolved registry
+      2. Drives total_ability_dps strictly above the forced-block-0 baseline
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = _snap()
+
+    def _delta_check(self, champion: str, key: str, expected_idx: int) -> None:
+        """Assert champion's registry entry routes `key` to expected_idx,
+        and the resulting total_ability_dps exceeds the forced-block-0
+        baseline by a positive margin."""
+        r_reg = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r_reg.block_index_resolved.get(key), expected_idx,
+                         f"{champion}.{key} should route to block {expected_idx}")
+        forced = dict(r_reg.block_index_resolved)
+        forced[key] = 0
+        r_off = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides=forced,
+        )
+        self.assertGreater(r_reg.total_ability_dps, r_off.total_ability_dps,
+                           f"{champion} registry total should exceed forced-block-0")
+
+    # Pattern A: multi-hit / channel / mark totals (12 entries)
+    def test_aatrox_W_routes_to_block_3(self) -> None:
+        """Aatrox W block 3 'Total Damage' = Infernal Chains landed +
+        pull-back trigger total (2× block 0)."""
+        self._delta_check("Aatrox", "W", 3)
+
+    def test_hwei_R_routes_to_block_3(self) -> None:
+        """Hwei R block 3 'Maximum Total Damage' = Spiraling Despair full
+        channel + per-tick panic + detonation total."""
+        self._delta_check("Hwei", "R", 3)
+
+    def test_leblanc_Q_routes_to_block_1(self) -> None:
+        """LeBlanc Q block 1 'Sigil Damage' = Sigil of Malice + detonation
+        on marked target via W/E follow-up (2× block 0)."""
+        self._delta_check("Leblanc", "Q", 1)
+
+    def test_leblanc_E_routes_to_block_1(self) -> None:
+        """LeBlanc E block 1 'Total Damage' = Ethereal Chains root +
+        return-tether on tethered target (2.12× block 0)."""
+        self._delta_check("Leblanc", "E", 1)
+
+    def test_lucian_R_routes_to_block_1(self) -> None:
+        """Lucian R block 1 'Total Damage' = Culling full-channel total
+        on same target (5× block 0 per-shot)."""
+        self._delta_check("Lucian", "R", 1)
+
+    def test_mel_Q_routes_to_block_3(self) -> None:
+        """Mel Q block 3 'Total Damage' = Radiant Volley 6-projectile
+        total on same target (~10× block 0)."""
+        self._delta_check("Mel", "Q", 3)
+
+    def test_mel_R_routes_to_block_2(self) -> None:
+        """Mel R block 2 'Total Damage' = Golden Eclipse initial + mark
+        detonation (~10× initial tick)."""
+        self._delta_check("Mel", "R", 2)
+
+    def test_monkeyking_R_routes_to_block_1(self) -> None:
+        """Wukong R block 1 'Total Damage' = Cyclone full 4-second spin
+        on same target (8× per-tick)."""
+        self._delta_check("MonkeyKing", "R", 1)
+
+    def test_naafiri_Q_routes_to_block_2(self) -> None:
+        """Naafiri Q block 2 'Total Damage' = all 3 Darkin Daggers landing
+        on same target (4× bAD scaling)."""
+        self._delta_check("Naafiri", "Q", 2)
+
+    def test_naafiri_E_routes_to_block_1(self) -> None:
+        """Naafiri E block 1 'Total Damage' = Eviscerate dash multi-strike
+        + pack-dog follow-ups (2.91× block 0)."""
+        self._delta_check("Naafiri", "E", 1)
+
+    def test_masteryi_Q_routes_to_block_2(self) -> None:
+        """Master Yi Q block 2 'Total Damage' = Alpha Strike same-target
+        focus all bounces (1.75× block 0)."""
+        self._delta_check("MasterYi", "Q", 2)
+
+    def test_smolder_W_routes_to_block_2(self) -> None:
+        """Smolder W block 2 'Total Damage' = Achooo! 3-hit AoE-on-self
+        total on same target (2.1× block 0)."""
+        self._delta_check("Smolder", "W", 2)
+
+    # Pattern B: fully-charged amps (3 entries)
+    def test_nunu_W_routes_to_block_1(self) -> None:
+        """Nunu W block 1 'Maximum Damage' = Biggest Snowball Ever! at
+        max charge after 4s channel (5× block 0)."""
+        self._delta_check("Nunu", "W", 1)
+
+    def test_sion_Q_routes_to_block_2(self) -> None:
+        """Sion Q block 2 'Maximum Damage' = Decimating Smash fully-charged
+        2-second wind-up (2.92× block 1 minimum)."""
+        self._delta_check("Sion", "Q", 2)
+
+    def test_briar_E_routes_to_block_4(self) -> None:
+        """Briar E block 4 'Maximum Headbutt Total Damage' = max-charge
+        Chilling Scream scream-tick + headbutt collision (2.4× block 2)."""
+        self._delta_check("Briar", "E", 4)
+
+    # Pattern C: resource-state amps (3 entries)
+    def test_renekton_Q_routes_to_block_1(self) -> None:
+        """Renekton Q block 1 'Empowered Damage' = Cull the Meek at 50+
+        Fury (1.5× block 0 + 1.4× bAD)."""
+        self._delta_check("Renekton", "Q", 1)
+
+    def test_renekton_W_routes_to_block_2(self) -> None:
+        """Renekton W block 2 'Empowered Damage' = Ruthless Predator at
+        50+ Fury (1.5× block 0)."""
+        self._delta_check("Renekton", "W", 2)
+
+    def test_kassadin_R_routes_to_block_3(self) -> None:
+        """Kassadin R block 3 'Maximum Bonus Damage' = Riftwalk at max
+        4-stack ramp (~3× block 0 + ~1.56× AP)."""
+        self._delta_check("Kassadin", "R", 3)
+
+    # Pattern D: execute / channel-duration amps (2 entries)
+    def test_darius_R_routes_to_block_2(self) -> None:
+        """Darius R block 2 'Execute Damage' = Noxian Guillotine vs target
+        below 5×Hemorrhage stacks threshold (2× block 0)."""
+        self._delta_check("Darius", "R", 2)
+
+    def test_nilah_R_routes_to_block_1(self) -> None:
+        """Nilah R block 1 'Total Damage' = Apotheosis full-duration
+        whirlwind on same target (4× block 0 + 4× bAD)."""
+        self._delta_check("Nilah", "R", 1)
+
+    # Pattern E: multi-charge / multi-fire totals (2 entries)
+    def test_poppy_R_routes_to_block_1(self) -> None:
+        """Poppy R block 1 'Charged Damage' = Keeper's Verdict fully-
+        charged channel knockback (2× block 0 + 2× bAD)."""
+        self._delta_check("Poppy", "R", 1)
+
+    def test_rumble_E_routes_to_block_1(self) -> None:
+        """Rumble E block 1 'Maximum Damage' = Electro Harpoon 2-charge
+        dual-fire total on same target (2× block 0 + 2× AP)."""
+        self._delta_check("Rumble", "E", 1)
+
+    # Multi-key resolved-shape sanity for new multi-key champions
+    def test_leblanc_both_keys_in_resolved(self) -> None:
+        """LeBlanc Q=1 + E=1 (s197) — both keys must appear in resolved map."""
+        r = compute_ability_dps(
+            self.snap, "Leblanc", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1, "E": 1})
+        self.assertEqual(r.block_index_source, "champion")
+
+    def test_mel_both_keys_in_resolved(self) -> None:
+        """Mel Q=3 + R=2 (s197) — both keys must appear in resolved map."""
+        r = compute_ability_dps(
+            self.snap, "Mel", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 3, "R": 2})
+        self.assertEqual(r.block_index_source, "champion")
+
+    def test_naafiri_both_keys_in_resolved(self) -> None:
+        """Naafiri Q=2 + E=1 (s197) — both keys must appear in resolved map."""
+        r = compute_ability_dps(
+            self.snap, "Naafiri", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 2, "E": 1})
+        self.assertEqual(r.block_index_source, "champion")
+
+    def test_renekton_both_keys_in_resolved(self) -> None:
+        """Renekton Q=1 + W=2 (s197) — both keys must appear in resolved map."""
+        r = compute_ability_dps(
+            self.snap, "Renekton", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1, "W": 2})
+        self.assertEqual(r.block_index_source, "champion")
+
+    # Math-level sanity: Lucian R block 1 base = 5× block 0 (full-channel)
+    def test_lucian_R_block1_matches_5x_block0(self) -> None:
+        """Numeric sanity: Lucian R block 1 base = 5× block 0 base across
+        all 3 ranks (Culling full-channel total = 5× per-shot)."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("Lucian", "R", form_index=0)
+        self.assertIsNotNone(form)
+        blocks = form.damage_blocks
+        self.assertGreaterEqual(len(blocks), 2)
+        for rank, (b0, b1) in enumerate(zip(blocks[0].base, blocks[1].base)):
+            self.assertAlmostEqual(
+                b1, b0 * 5.0, places=2,
+                msg=f"Lucian R rank {rank+1}: block 1 base {b1} != 5× block 0 base {b0}"
+            )
+
+    # Math-level sanity: Renekton Q block 1 base = 1.5× block 0 (full-Fury)
+    def test_renekton_Q_block1_matches_1_5x_block0(self) -> None:
+        """Numeric sanity: Renekton Q block 1 base = 1.5× block 0 base
+        across all 5 ranks (Cull the Meek Empowered at 50+ Fury)."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("Renekton", "Q", form_index=0)
+        self.assertIsNotNone(form)
+        blocks = form.damage_blocks
+        self.assertGreaterEqual(len(blocks), 2)
+        for rank, (b0, b1) in enumerate(zip(blocks[0].base, blocks[1].base)):
+            self.assertAlmostEqual(
+                b1, b0 * 1.5, places=2,
+                msg=f"Renekton Q rank {rank+1}: block 1 base {b1} != 1.5× block 0 base {b0}"
+            )
+
+    # Backward-compat: pre-s197 entries still resolve unchanged
+    def test_pre_s197_morgana_unchanged(self) -> None:
+        """Backward-compat: s195+s196 Morgana entry preserved after s197."""
+        r = compute_ability_dps(
+            self.snap, "Morgana", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"W": 3, "R": 1})
+
+    def test_pre_s197_akali_unchanged(self) -> None:
+        """Backward-compat: s192+s196 Akali entry preserved after s197."""
+        r = compute_burst_damage(
+            self.snap, "Akali", level=11, target_armor=80, target_mr=30,
+            target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved.get("R"), 0)
+        self.assertEqual(r.block_index_resolved.get("R2"), 2)
+        self.assertEqual(r.block_index_resolved.get("E"), 2)
+
+    def test_pre_s197_corki_unchanged(self) -> None:
+        """Backward-compat: s194 Corki entry preserved after s197."""
+        r = compute_ability_dps(
+            self.snap, "Corki", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"W": 1, "E": 1})
+
+    def test_pre_s197_singed_unchanged(self) -> None:
+        """Backward-compat: s193 Singed entry preserved after s197."""
+        r = compute_ability_dps(
+            self.snap, "Singed", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1})
+
+
 # ─── backward-compat: unmapped champions keep pre-s191 output ───────────────
 
 
@@ -1333,26 +1625,34 @@ class ServerRouteSourceTests(unittest.TestCase):
         return json.loads(urlopen(req, timeout=10).read())
 
     def test_ability_dps_champion_source(self) -> None:
+        # Cassiopeia was extended in s196 with W=1 (Miasma full duration)
+        # alongside the s191 E=1 (Twin Fang vs poisoned).
         r = self._post("/ability-dps", {
             "champion": "Cassiopeia", "level": 11, "mode": "SR", "target_mr": 30.0,
         })
         self.assertEqual(r["block_index_source"], "champion")
-        self.assertEqual(r["block_index_resolved"], {"E": 1})
+        self.assertEqual(r["block_index_resolved"], {"E": 1, "W": 1})
 
     def test_ability_dps_default_source(self) -> None:
+        # Caitlyn is the stable unmapped champion (deliberately skipped in
+        # s191 — block 1 'Reduced Damage' is the FALLBACK case, block 0 IS
+        # realistic). Aatrox was previously here but landed in the registry
+        # at s197 with W=3 (Infernal Chains pull-back).
         r = self._post("/ability-dps", {
-            "champion": "Aatrox", "level": 11, "mode": "SR", "target_mr": 30.0,
+            "champion": "Caitlyn", "level": 11, "mode": "SR", "target_mr": 30.0,
         })
         self.assertEqual(r["block_index_source"], "default")
         self.assertEqual(r["block_index_resolved"], {})
 
     def test_ability_dps_explicit_override(self) -> None:
+        # Caller's {"E": 0} override merges with the registry's W=1 entry —
+        # resolved is the union (caller wins per-key, registry fills gaps).
         r = self._post("/ability-dps", {
             "champion": "Cassiopeia", "level": 11, "mode": "SR", "target_mr": 30.0,
             "block_index": {"E": 0},
         })
         self.assertEqual(r["block_index_source"], "override")
-        self.assertEqual(r["block_index_resolved"], {"E": 0})
+        self.assertEqual(r["block_index_resolved"], {"E": 0, "W": 1})
 
     def test_rank_mage_champion_source(self) -> None:
         r = self._post("/rank-mage", {
