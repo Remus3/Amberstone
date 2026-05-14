@@ -261,6 +261,25 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Talon"], {"W": 2, "R": 2, "Q": 1})
         self.assertEqual(champions["Tristana"], {"E": 4})
         self.assertEqual(champions["Xayah"], {"Q": 1})
+        # Phase 5.9.14 (s201) — 17 entries across 14 new champions:
+        # Patterns A (multi-hit), B (fully-charged), C (channel/duration),
+        # D (condition/execute), E (resource/positional). 4 with non-damage
+        # prefix blocks (filtered idx ≠ raw idx): Galio W, Kennen R, Teemo R,
+        # Xerath R. Reverts of s198 skip rationale: Xerath W, Ziggs E,
+        # Janna Q, Yasuo E.
+        self.assertEqual(champions["Fizz"], {"R": 2})
+        self.assertEqual(champions["Galio"], {"W": 1})
+        self.assertEqual(champions["Garen"], {"E": 1})
+        self.assertEqual(champions["Graves"], {"Q": 2})
+        self.assertEqual(champions["Janna"], {"Q": 2})
+        self.assertEqual(champions["Jhin"], {"Q": 2, "R": 1})
+        self.assertEqual(champions["Kennen"], {"R": 1})
+        self.assertEqual(champions["Taliyah"], {"Q": 2})
+        self.assertEqual(champions["Teemo"], {"E": 2, "R": 1})
+        self.assertEqual(champions["Viego"], {"Q": 3})
+        self.assertEqual(champions["Xerath"], {"W": 1, "R": 1})
+        self.assertEqual(champions["Yasuo"], {"E": 3})
+        self.assertEqual(champions["Ziggs"], {"E": 2})
 
     def test_every_value_is_int(self) -> None:
         for champion_id, entries in self.table["champions"].items():
@@ -310,10 +329,10 @@ class GetBlockIndexForTests(unittest.TestCase):
         self.assertEqual(source, "champion")
 
     def test_unknown_falls_back_to_default(self) -> None:
-        # Yasuo is the stable unmapped champion (no clear amp blocks in his
-        # kit). Aatrox was previously the fixture but landed in the registry
-        # at s197 with W=3.
-        mapping, source = get_block_index_for("Yasuo")
+        # Tryndamere is the stable unmapped fixture (Q/E are single-block,
+        # W/R have no damage blocks). Yasuo was previously the fixture but
+        # landed in the registry at s201 with E=3.
+        mapping, source = get_block_index_for("Tryndamere")
         self.assertEqual(mapping, {})
         self.assertEqual(source, "default")
 
@@ -340,14 +359,14 @@ class ResolveBlockIndexTests(unittest.TestCase):
         self.assertEqual(source, "champion")
 
     def test_none_with_unknown_returns_default(self) -> None:
-        # Yasuo is unmapped (since s197 Aatrox landed in the registry).
-        mapping, source = _resolve_block_index_overrides("Yasuo", None)
+        # Tryndamere is unmapped (since s201 Yasuo landed in the registry).
+        mapping, source = _resolve_block_index_overrides("Tryndamere", None)
         self.assertEqual(mapping, {})
         self.assertEqual(source, "default")
 
     def test_explicit_returns_override(self) -> None:
-        # Yasuo is unmapped — caller-supplied override is the sole source.
-        mapping, source = _resolve_block_index_overrides("Yasuo", {"Q": 1})
+        # Tryndamere is unmapped — caller-supplied override is the sole source.
+        mapping, source = _resolve_block_index_overrides("Tryndamere", {"Q": 1})
         self.assertEqual(mapping, {"Q": 1})
         self.assertEqual(source, "override")
 
@@ -358,7 +377,7 @@ class ResolveBlockIndexTests(unittest.TestCase):
         self.assertEqual(source, "override")
 
     def test_explicit_uppercases_keys(self) -> None:
-        mapping, _ = _resolve_block_index_overrides("Yasuo", {"q": 1})
+        mapping, _ = _resolve_block_index_overrides("Tryndamere", {"q": 1})
         self.assertEqual(mapping, {"Q": 1})
 
 
@@ -437,9 +456,9 @@ class ComputeAbilityDpsBlockIndexTests(unittest.TestCase):
         cls.snap = _snap()
 
     def test_unmapped_champion_uses_default(self) -> None:
-        # Yasuo is unmapped (Aatrox landed in registry s197).
+        # Tryndamere is unmapped (Yasuo landed in registry s201).
         r = compute_ability_dps(
-            self.snap, "Yasuo", level=11, mode="SR", target_mr=30.0,
+            self.snap, "Tryndamere", level=11, mode="SR", target_mr=30.0,
         )
         self.assertEqual(r.block_index_source, "default")
         self.assertEqual(r.block_index_resolved, {})
@@ -505,9 +524,9 @@ class ComputeBurstBlockIndexTests(unittest.TestCase):
         cls.snap = _snap()
 
     def test_unmapped_champion_uses_default(self) -> None:
-        # Yasuo is unmapped (Aatrox landed in registry s197).
+        # Tryndamere is unmapped (Yasuo landed in registry s201).
         r = compute_burst_damage(
-            self.snap, "Yasuo", level=11, target_armor=80,
+            self.snap, "Tryndamere", level=11, target_armor=80,
         )
         self.assertEqual(r.block_index_source, "default")
         self.assertEqual(r.block_index_resolved, {})
@@ -578,9 +597,9 @@ class RankerBlockIndexTests(unittest.TestCase):
         self.assertEqual(r.block_index_resolved, {"R": 1})
 
     def test_rank_unmapped_champion_default(self) -> None:
-        # Yasuo is unmapped (Aatrox landed in registry s197).
+        # Tryndamere is unmapped (Yasuo landed in registry s201).
         r = rank_items_by_ability_dps(
-            self.snap, "Yasuo", level=11, mode="SR",
+            self.snap, "Tryndamere", level=11, mode="SR",
             target_mr=30.0, top_n=3,
         )
         self.assertEqual(r.block_index_source, "default")
@@ -633,9 +652,9 @@ class ToDictSerializationTests(unittest.TestCase):
         self.assertEqual(d["block_index_resolved"], {"R": 1})
 
     def test_unmapped_champion_to_dict_is_empty_dict(self) -> None:
-        # Yasuo is unmapped (Aatrox landed in registry s197).
+        # Tryndamere is unmapped (Yasuo landed in registry s201).
         r = compute_ability_dps(
-            self.snap, "Yasuo", level=11, mode="SR", target_mr=30.0,
+            self.snap, "Tryndamere", level=11, mode="SR", target_mr=30.0,
         )
         d = r.to_dict()
         self.assertEqual(d["block_index_source"], "default")
@@ -2389,6 +2408,245 @@ class Phase599_13ExpansionTests(unittest.TestCase):
             target_armor=80, target_mr=30,
         )
         self.assertEqual(r.block_index_resolved, {"Q": 1})
+
+
+# ─── Phase 5.9.14 (s201): block_index expansion 17 entries / 14 champs ──────
+
+
+class Phase599_14ExpansionTests(unittest.TestCase):
+    """Phase 5.9.14 (s201). 16 new (champion, key) entries across 13 new
+    champions (3 with two keys: Jhin Q+R, Teemo E+R, Xerath W+R; the rest
+    single-key).
+
+    Four sub-patterns:
+      (A) Multi-hit single-target totals (7 entries): Graves Q, Jhin Q,
+          Kennen R, Taliyah Q, Teemo E, Xerath R, Ziggs E
+      (B) Fully-charged amps (4 entries): Galio W, Janna Q, Jhin R, Viego Q
+      (C) Channel/duration totals (3 entries): Fizz R, Garen E, Teemo R
+      (D) Resource/positional amps (2 entries): Xerath W, Yasuo E
+
+    Registry 91 → 104 champions, 127 → 143 entries.
+
+    Reverts 4 prior-batch skip rationales: Xerath W (s198 'positional' →
+    operator-commit framing aligned with Khazix Q isolation s196), Ziggs E
+    (s198 'unrealistic 5-mine' → chokepoint commit same as Ashe Q 5-AA),
+    Janna Q (s198 'low ratio + support' → 1.55× amp valid), Yasuo E (s198
+    'stacks decay 10s' → operator commits to E-stacking pre-burst).
+
+    Tests verify each new entry:
+      1. Is present in the resolved registry at the expected filtered idx
+      2. Drives total_ability_dps strictly above the forced-block-0 baseline
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = _snap()
+
+    def _delta_check(self, champion: str, key: str, expected_idx: int) -> None:
+        r_reg = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r_reg.block_index_resolved.get(key), expected_idx,
+                         f"{champion}.{key} should route to filtered block {expected_idx}")
+        forced = dict(r_reg.block_index_resolved)
+        forced[key] = 0
+        r_off = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides=forced,
+        )
+        self.assertGreater(r_reg.total_ability_dps, r_off.total_ability_dps,
+                           f"{champion} registry total should exceed forced-block-0")
+
+    # Pattern A: multi-hit single-target totals (7 entries)
+    def test_graves_Q_routes_to_block_2(self) -> None:
+        """Graves Q block 2 'Total Physical Damage' = End of the Line all
+        shells + return ricochet on same target (2.89× block 0 base)."""
+        self._delta_check("Graves", "Q", 2)
+
+    def test_jhin_Q_routes_to_block_2(self) -> None:
+        """Jhin Q block 2 'Maximum Final Bounce Physical Damage' = Dancing
+        Grenade with 3 chain minion deaths nearby (2.05× block 0)."""
+        self._delta_check("Jhin", "Q", 2)
+
+    def test_kennen_R_routes_to_filtered_block_1(self) -> None:
+        """Kennen R filtered idx 1 = raw block 2 'Total Single-Target Damage'
+        = all 6+ bolts on 1 target (7.5× per-bolt). Raw block 0 'Bonus
+        Resistances' is non-damage and stripped pre-index."""
+        self._delta_check("Kennen", "R", 1)
+
+    def test_taliyah_Q_routes_to_block_2(self) -> None:
+        """Taliyah Q block 2 'Total Magic Damage' = all 5 Threaded Volley
+        stones on same target via Worked Ground (2.6× block 0)."""
+        self._delta_check("Taliyah", "Q", 2)
+
+    def test_teemo_E_routes_to_block_2(self) -> None:
+        """Teemo E block 2 'Total Poison Damage' = full 4-tick DoT duration
+        on stationary target (2.67× block 0 = 4 × block 1 per-tick)."""
+        self._delta_check("Teemo", "E", 2)
+
+    def test_xerath_R_routes_to_filtered_block_1(self) -> None:
+        """Xerath R filtered idx 1 = raw block 2 'Total Magic Damage' = all
+        4-6 bullets focused on 1 target (4-6× per-bullet at rank). Raw
+        block 0 'Number of Recasts' is non-damage and stripped pre-index."""
+        self._delta_check("Xerath", "R", 1)
+
+    def test_ziggs_E_routes_to_block_2(self) -> None:
+        """Ziggs E block 2 'Maximum Total Magic Damage' = all 5 Hexplosive
+        Minefield mines focused on single target (5× block 0 per-mine).
+        Operator commits to chokepoint setup, same as Ashe Q 5-AA focus."""
+        self._delta_check("Ziggs", "E", 2)
+
+    # Pattern B: fully-charged amps (4 entries)
+    def test_galio_W_routes_to_filtered_block_1(self) -> None:
+        """Galio W filtered idx 1 = raw block 4 'Maximum Magic Damage' =
+        Shield of Durand fully-charged 2s commit (3× block 0 = raw 3).
+        Raw blocks 0-2 ('Magic Shield Strength' + 'Magic Damage Reduction'
+        + 'Physical Damage Reduction') are non-damage and stripped."""
+        self._delta_check("Galio", "W", 1)
+
+    def test_janna_Q_routes_to_block_2(self) -> None:
+        """Janna Q block 2 'Maximum Magic Damage' = Howling Gale 3s max-
+        charge (1.55× block 0 = block 0 + 3 × block 1 per-second ramp)."""
+        self._delta_check("Janna", "Q", 2)
+
+    def test_jhin_R_routes_to_block_1(self) -> None:
+        """Jhin R block 1 'Maximum Physical Damage per Bullet' = Curtain
+        Call fired at max range (4× block 0 = Minimum)."""
+        self._delta_check("Jhin", "R", 1)
+
+    def test_viego_Q_routes_to_block_3(self) -> None:
+        """Viego Q block 3 'Maximum Physical Damage' = fully-charged Blade
+        of the Ruined King Soul Steal AA (2× block 2 = Minimum uncharged).
+        Operator commits to charging Q before AA, same as Tristana E."""
+        self._delta_check("Viego", "Q", 3)
+
+    # Pattern C: channel/duration totals (3 entries)
+    def test_fizz_R_routes_to_block_2(self) -> None:
+        """Fizz R block 2 'Gigalodon Damage' = max-distance Chum the Waters
+        shark travel (2× block 0 = Guppy close-range)."""
+        self._delta_check("Fizz", "R", 2)
+
+    def test_garen_E_routes_to_block_1(self) -> None:
+        """Garen E block 1 'Increased Damage Per Spin' = Judgment ramped
+        damage on consecutive hits to same target (1.25× block 0).
+        Operator commits to full E channel on stationary target."""
+        self._delta_check("Garen", "E", 1)
+
+    def test_teemo_R_routes_to_filtered_block_1(self) -> None:
+        """Teemo R filtered idx 1 = raw block 4 'Total Magic Damage' = full
+        4-tick poison duration (4× block 0 = per-tick). Raw blocks 0-2
+        ('Bounce Distance Cap' / 'Maximum Charges' / 'Slow') are non-damage
+        and stripped pre-index."""
+        self._delta_check("Teemo", "R", 1)
+
+    # Pattern D dropped during s201 implementation: Kindred E was in the
+    # initial draft as 'Enhanced damage below threshold', but Phase 4a
+    # parsing could not extract the missing-HP coefficient from the
+    # nested unparsed_modifiers format ("% (+ 0.5% per Mark) of target's
+    # missing health"). Both Kindred E blocks have identical base + bAD;
+    # the amp lives entirely in the unparsed missing-HP scaling. Setting
+    # block_index=1 would be a no-op until upstream parsing improves —
+    # see s201 docstring skip-list rationale.
+
+    # Pattern E: resource/positional amps (2 entries)
+    def test_xerath_W_routes_to_block_1(self) -> None:
+        """Xerath W block 1 'Increased Damage' = Eye of Destruction center-
+        spot landing (1.67× block 0). Operator commits to center-aim, same
+        as Khazix Q isolation (s196). Reverts s198 'defer to conditional
+        schema lift' rationale — same operator-commit framing."""
+        self._delta_check("Xerath", "W", 1)
+
+    def test_yasuo_E_routes_to_block_3(self) -> None:
+        """Yasuo E block 3 'Total Combined Damage' = Sweeping Blade at max
+        E-stacks resource state (2× block 0 = block 0 + block 2 max bonus).
+        Operator commits to E-stacking pre-burst, same as Twitch E 6-stack
+        pre-burst rotation (s198). Reverts s198 'stacks decay 10s'
+        rationale."""
+        self._delta_check("Yasuo", "E", 3)
+
+    # Multi-key resolved-shape sanity (4 multi-key champions in s201)
+    def test_jhin_both_keys_in_resolved(self) -> None:
+        """Jhin Q=2 + R=1 — both keys must appear in resolved map."""
+        r = compute_ability_dps(
+            self.snap, "Jhin", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 2, "R": 1})
+
+    def test_teemo_both_keys_in_resolved(self) -> None:
+        """Teemo E=2 + R=1 — both keys must appear in resolved map."""
+        r = compute_ability_dps(
+            self.snap, "Teemo", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"E": 2, "R": 1})
+
+    def test_xerath_both_keys_in_resolved(self) -> None:
+        """Xerath W=1 + R=1 — both keys must appear in resolved map."""
+        r = compute_ability_dps(
+            self.snap, "Xerath", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"W": 1, "R": 1})
+
+    # Math-level sanity: Jhin R block 1 base = 4× block 0 base (max distance)
+    def test_jhin_R_block1_matches_4x_block0(self) -> None:
+        """Numeric sanity: Jhin R block 1 base = 4× block 0 base across all
+        3 ranks (Maximum vs Minimum per-bullet, max-distance scaling)."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("Jhin", "R", form_index=0)
+        self.assertIsNotNone(form)
+        blocks = form.damage_blocks
+        self.assertGreaterEqual(len(blocks), 2)
+        for rank, (b0, b1) in enumerate(zip(blocks[0].base, blocks[1].base)):
+            self.assertAlmostEqual(
+                b1, b0 * 4.0, places=2,
+                msg=f"Jhin R rank {rank+1}: block 1 base {b1} != 4× block 0 base {b0}"
+            )
+
+    # Math-level sanity: Ziggs E block 2 base = 5× block 0 base (5 mines)
+    def test_ziggs_E_block2_matches_5x_block0(self) -> None:
+        """Numeric sanity: Ziggs E block 2 base = 5× block 0 base across
+        all 5 ranks (Maximum Total all 5 mines focused on single target)."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("Ziggs", "E", form_index=0)
+        self.assertIsNotNone(form)
+        blocks = [b for b in form.damage_blocks if b.attribute_kind == "damage"]
+        self.assertGreaterEqual(len(blocks), 3)
+        for rank, (b0, b2) in enumerate(zip(blocks[0].base, blocks[2].base)):
+            self.assertAlmostEqual(
+                b2, b0 * 5.0, places=2,
+                msg=f"Ziggs E rank {rank+1}: block 2 base {b2} != 5× block 0 base {b0}"
+            )
+
+    # Backward-compat: prior-batch entries still resolve unchanged after s201
+    def test_pre_s201_ambessa_unchanged(self) -> None:
+        """Backward-compat: s200 Ambessa Q=1, W=1, E=1 preserved after s201."""
+        r = compute_ability_dps(
+            self.snap, "Ambessa", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1, "W": 1, "E": 1})
+
+    def test_pre_s201_anivia_unchanged(self) -> None:
+        """Backward-compat: Anivia 3-key shape from s191+s193+s200 preserved."""
+        r = compute_ability_dps(
+            self.snap, "Anivia", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 2, "E": 1, "R": 1})
+
+    def test_pre_s201_aatrox_unchanged(self) -> None:
+        """Backward-compat: s197 Aatrox W=3 + s199 Q=1 preserved after s201."""
+        r = compute_burst_damage(
+            self.snap, "Aatrox", level=11, target_armor=80, target_mr=30,
+            target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"W": 3, "Q": 1})
 
 
 # ─── backward-compat: unmapped champions keep pre-s191 output ───────────────

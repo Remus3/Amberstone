@@ -7462,7 +7462,32 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          resource-state amps (Ambessa Q, Ambessa W, Nilah Q).
         #          Pattern C channel commit (Anivia R). Registry 90 → 91
         #          champions, 120 → 127 entries. Pure data batch.
-        self.assertEqual(ENGINE_VERSION, "0.85.0")
+        # 0.86.0 = s201 Phase 5.9.14 block_index expansion — 16 more
+        #          (champion, key) entries across 13 new champions (Fizz/
+        #          Galio/Garen/Graves/Janna/Jhin/Kennen/Taliyah/Teemo/Viego/
+        #          Xerath/Yasuo/Ziggs, 3 with two keys: Jhin Q+R, Teemo
+        #          E+R, Xerath W+R). Pattern A multi-hit single-target
+        #          totals (Graves Q, Jhin Q, Kennen R, Taliyah Q, Teemo E,
+        #          Xerath R, Ziggs E). Pattern B fully-charged amps (Galio
+        #          W, Janna Q, Jhin R, Viego Q). Pattern C channel/duration
+        #          totals (Fizz R, Garen E, Teemo R). Pattern D resource/
+        #          positional amps (Xerath W, Yasuo E). 4 entries with
+        #          non-damage prefix blocks (filtered idx ≠ raw idx): Galio
+        #          W, Kennen R, Teemo R, Xerath R. Reverts 4 prior-batch
+        #          skip rationales: Xerath W (s198 'positional' → operator-
+        #          commit framing), Ziggs E (s198 'unrealistic 5-mine' →
+        #          chokepoint commit), Janna Q (s198 'low ratio + support'
+        #          → 1.55× valid), Yasuo E (s198 'stacks decay' → operator
+        #          commits). 6 deliberate skips: Seraphine Q (enchanter
+        #          routing), Taliyah E (1.04× ratio + missing initial
+        #          impact), Thresh E (needs sum-of-blocks), Nidalee W (form
+        #          conflict with s187 cougar override), Shyvana E (Phase 4a
+        #          parsing issue with interpolated base values), Kindred E
+        #          (Phase 4a parser cannot extract nested missing-HP
+        #          coefficient from unparsed_modifiers; registry entry
+        #          would be a no-op). Registry 91 → 104 champions, 127 →
+        #          143 entries. Pure data batch.
+        self.assertEqual(ENGINE_VERSION, "0.86.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7523,7 +7548,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.85.0")
+        self.assertEqual(ENGINE_VERSION, "0.86.0")
 
 
 if __name__ == "__main__":
