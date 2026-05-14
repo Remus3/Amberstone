@@ -7375,8 +7375,11 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          consumed by next AA (Trinity Force / Lich Bane / ER / Iceborn /
         #          Dusk+Dawn / Divine Sunderer / Sheen / Bloodsong + Arena mirrors);
         # 0.75.0 = s190 Phase 5.8 Sundered Sky Lightshield Strike in burst —
-        #          same arm-consume model, capped at 1 proc per combo (8s real CD).
-        self.assertEqual(ENGINE_VERSION, "0.75.0")
+        #          same arm-consume model, capped at 1 proc per combo (8s real CD);
+        # 0.76.0 = s191 Phase 5.9 per-(champion, key) damage block_index
+        #          overrides — Cassi E poisoned amp, Veigar R execute max,
+        #          Anivia E chilled amp, Diana W all-orbs, Brand W CC'd, etc.
+        self.assertEqual(ENGINE_VERSION, "0.76.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7437,7 +7440,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.75.0")
+        self.assertEqual(ENGINE_VERSION, "0.76.0")
 
 
 if __name__ == "__main__":
