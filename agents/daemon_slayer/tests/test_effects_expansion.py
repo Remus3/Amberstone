@@ -7370,8 +7370,11 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         # 0.70.0 = s185 Phase 4d per-champion max_priority overrides;
         # 0.71.0 = s186 Phase 5.5 per-champion combo_sequence overrides;
         # 0.72.0 = s187 Phase 4e per-(champion, key) form_index overrides;
-        # 0.73.0 = s188 Phase 5.6 per-attack on-hit proc damage in burst AAs.
-        self.assertEqual(ENGINE_VERSION, "0.73.0")
+        # 0.73.0 = s188 Phase 5.6 per-attack on-hit proc damage in burst AAs;
+        # 0.74.0 = s189 Phase 5.7 Spellblade in burst — armed by ability cast,
+        #          consumed by next AA (Trinity Force / Lich Bane / ER / Iceborn /
+        #          Dusk+Dawn / Divine Sunderer / Sheen / Bloodsong + Arena mirrors).
+        self.assertEqual(ENGINE_VERSION, "0.74.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7432,7 +7435,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.73.0")
+        self.assertEqual(ENGINE_VERSION, "0.74.0")
 
 
 if __name__ == "__main__":
