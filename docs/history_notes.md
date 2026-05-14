@@ -6,6 +6,69 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s194 wrap — 2026-05-14 (Phase 5.9.7 calibration-follow-up block_index expansion)
+
+**Operator instruction:** "continue DS" — direct continuation of s193's carry-forward list. The cleanest next ship is more registry entries closing the explicit "Corki E/W, Hecarim W, Jayce W, Rell R, DrMundo W same per-tick → total pattern (+5-20% adps each, lower-impact deferral)" callout from s193's open-items section. Same template as s193 (pure data, no code), but mechanically interesting: includes the first block_index entry that layers on a prior form_index override (Jayce Q + s187 Jayce.Q form_index=1 cannon-form).
+
+## Context
+
+s193's hand-off listed exactly 5 deferred candidates: Corki E/W (Gatling Gun channel, Valkyrie trail), Hecarim W (Spirit of Dread aura), Jayce W (Lightning Field hammer aura), Rell R (Magnet Storm channel), DrMundo W (Heart Zapper drain). Inspection of the Meraki abilities snapshot confirmed each follows the same "per-tick" block 0 + "Total/Maximum" block 1 pattern as the s193 entries. Three additional candidates surfaced during inspection that fit the same template:
+
+- **Hecarim E (Devastating Charge)** — min→max charge variant (2× block 0); operator commits to full charge in burst window, same modeling intuition as s191's Belveth E full-channel Royal Maelstrom (block 2 = max-channel).
+- **Jayce Q (Shock Blast through Acceleration Gate)** — Increased Damage variant (1.4× block 0); canonical Jayce combo (fires E gate first, then Q through it). This is the first block_index that **layers on a prior form_index override** — s187 already set Jayce.Q form_index=1 (cannon form), now s194 sets block_index=1 within that form. Two orthogonal resolvers compose: form_index selects cannon form 1; block_index then selects gate-amped block 1 within that form.
+- **Corki R Big One** — block 1 "Big One Physical Damage" was inspected but deliberately SKIPPED. Big One is a charge-based mechanic (every 4th missile is a special amped shot, NOT a per-cast amp). Requires conditional resource-state modeling to apply correctly. Defer.
+
+All 8 ship-candidates verified against Meraki ATTR names in the snapshot (one of "Total Magic Damage", "Total Physical Damage", "Maximum Physical Damage", "Increased Damage") — confirming clean per-tick → total or min → max amped variants. Pure data batch — no resolver/walker/server code changes.
+
+## Ships
+
+| File | Change |
+|---|---|
+| [agents/daemon_slayer/champion_block_index.json](agents/daemon_slayer/champion_block_index.json) | **Registry expanded from 20 → 25 entries (8 new (champion, key) pairs).** New entries: Corki {W:1, E:1}, Hecarim {W:1, E:1}, Jayce {Q:1, W:1}, Rell {R:1}, DrMundo {W:1}. `_meta.description` extended with Phase 5.9.7 note explaining the calibration-follow-up class + the Jayce Q form/block layering. `_meta.rationale` adds entry-by-entry per-tick × duration math verification with the Meraki ATTR names. Skipped-list updated to document Corki R Big One (conditional resource-state, not per-cast amp). |
+| [agents/daemon_slayer/__init__.py](agents/daemon_slayer/__init__.py) | ENGINE_VERSION 0.78.0 → 0.79.0. Docstring extended with Phase 5.9.7 section noting the data-only nature of the batch + the form+block resolver composition for Jayce Q + A/B impact summary. |
+| [agents/daemon_slayer/tests/test_block_index_overrides.py](agents/daemon_slayer/tests/test_block_index_overrides.py) | New `CalibrationFollowUpExpansionTests` class (13 tests): one per new (champion, key) entry asserting registry routes to expected block_index + delta-check that total_ability_dps exceeds forced-block-0 baseline (`_delta_check` helper mirrors s193); plus `test_corki_both_keys_in_resolved` + `test_hecarim_both_keys_in_resolved` + `test_jayce_both_keys_in_resolved` for multi-key champions; `test_jayce_Q_block_layers_on_s187_form_index` smoke test for the form+block composition; `test_pre_s194_unmapped_unaffected` backward-compat guard preserving s193's Singed entry. Pre-existing `test_known_champion_overrides` extended with explicit assertions for all 5 new champion entries. File docstring extended with Phase 5.9.5/5.9.6/5.9.7 section. |
+| [agents/daemon_slayer/tests/test_effects_expansion.py](agents/daemon_slayer/tests/test_effects_expansion.py) | Version-pin tests bumped 0.78.0 → 0.79.0 with the Phase 5.9.7 line in the history comment. |
+
+## Verification
+
+- DS suite **1689 pass** (was 1676 in s193 wrap; +13 from new `CalibrationFollowUpExpansionTests` class)
+- Wider RC suite **1024 pass** (was 1013 in s193; +11: 13 new DS tests carry into wider suite via discovery, minus 2 that get absorbed by setUpClass aggregation; verified by phase8_smoke's `test_live_three_profiles` pinning ENGINE_VERSION 0.79.0 post-restart)
+- `py_compile` clean for __init__.py
+- DS server :8893 restarted from PID 16176 → new PID; `/health` reports `engine_version=0.79.0` patch=16.10.1 172 champions 705 items
+
+## Live A/B on :8893 (/ability-dps at lvl 11 vs 80 armor / 30 MR / 2000 HP)
+
+| Champion.Key | Registry (post-s194) | Forced block 0 | Delta | Lift |
+|---|---|---|---|---|
+| Corki W | 17.733 adps | 14.202 adps | +3.531 | **+24.9%** |
+| Corki E | 17.733 adps | 16.465 adps | +1.268 | **+7.7%** |
+| Hecarim W | 27.648 adps | 22.442 adps | +5.206 | **+23.2%** |
+| Hecarim E | 27.648 adps | 27.121 adps | +0.527 | **+1.9%** |
+| Jayce Q | 29.103 adps | 25.040 adps | +4.063 | **+16.2%** |
+| Jayce W | 29.103 adps | 22.065 adps | +7.038 | **+31.9%** |
+| Rell R | 10.975 adps | 10.476 adps | +0.499 | **+4.8%** |
+| DrMundo W | 30.459 adps | 25.791 adps | +4.667 | **+18.1%** |
+
+Lifts smaller than s193 (Singed +182%, Fiddle R +125%) because these champions all have multi-spell ability damage contributions — Hecarim's E adds only +1.9% to his total because his Q and W already dominate. Jayce W +31.9% is the biggest single-spell lift.
+
+## Findings
+
+- **Form/block resolvers compose cleanly.** Jayce Q is the first block_index entry that layers on a prior form_index entry (s187 set Jayce.Q form_index=1 cannon-form; s194 sets block_index=1 within that form). The resolvers compose at runtime without any new code: form_index resolves form selection → block_index resolves block selection within the resolved form.
+- **DrMundo W's block 2 detonation is the only known under-count.** Heart Zapper has 3 damage blocks: per-tick, full-channel total, recast detonation +25%. Single-block_index schema picks one — block 1 (full channel) captures ~80% of realistic damage. Future schema lift: `block_index: int | list[int]`.
+- **Corki R Big One was the cleanest skip.** Charge-stack proc (every 4th missile), NOT a per-cast amp. Documented as deferred with "requires conditional resource-state modeling" rationale.
+
+## Open items carried forward (since promoted to s195/s196/s197)
+
+- Conditional block_index based on target state (Zoe sleep, Lux Illumination, DrMundo E)
+- Sum-of-blocks block_index (DrMundo W)
+- Conditional resource-state block_index (Corki R Big One, Renekton Q full Fury — Renekton later shipped in s197)
+
+## Architectural pattern lock-in
+
+Tenth consecutive override registry on the same template. Three pure-data batches in the series (s191 seed, s193 channels, s194 calibration follow-up). Resolver composition (form + block) verified live for Jayce Q — future per-champion entries can compose any combination of max_priority / combo_sequence / form_index / block_index without coupling.
+
+---
+
 # s193 wrap — 2026-05-14 (Phase 5.9.6 channeled-ability block_index expansion)
 
 **Operator instruction:** "continue" — straight from the s192 carry-forward. The cleanest next ship is more registry entries, focusing on a different pattern from s191 (single-block conditional amps) and s192 (per-token variants): the "per-tick → total" gap for channeled or duration-based abilities.
