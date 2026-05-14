@@ -638,6 +638,36 @@ Phase 5.6 (s188, 2026-05-13 — per-attack on-hit proc damage, ENGINE_VERSION 0.
   arm-by-spell-cast / consume-by-AA model that lands Spellblade
   contributions in burst combos.
 
+Phase 5.9.5 (s192, 2026-05-14 — token-variant block_index for Akali R, ENGINE_VERSION 0.77.0):
+
+* Closes s191 carry-forward (a). Akali R has 3 damage blocks in the
+  Meraki snapshot — block0 "Magic Damage" with bonus-AD scaling (R1
+  base cast), block1 "Minimum Magic Damage" (R2 vs full-HP target),
+  block2 "Maximum Magic Damage" (R2 max-execute scaling via missing-HP
+  curve). Pre-s192, the burst walker evaluated R and R2 tokens with
+  the SAME block_index from the s191 per-(champion, key) registry —
+  setting Akali R=2 globally would have double-counted R1's execute
+  amp (R1 doesn't have it in-game).
+* ``compute_burst_damage`` walker now does TOKEN-CANONICAL lookup first
+  (``block_overrides.get(canonical)`` — e.g. ``"R2"``), falling back to
+  BASE-KEY lookup (``block_overrides.get(ability_key)`` — e.g. ``"R"``).
+  Operator's per-call dict still wins per-token; the registry fills
+  any tokens the caller didn't override.
+* ``champion_block_index.json`` registry gains Akali entry
+  ``{"R": 0, "R2": 2}``. R1 → block 0 (220 raw at rank 1, retains bAD
+  scaling); R2 → block 2 (420 raw at rank 1 + 90% AP — the missing-HP
+  max-execute scaling).
+* ``compute_ability_dps`` is unaffected — it iterates base spell keys
+  (Q/W/E/R) and the resolver's R2-keyed entry is simply absent from
+  its lookup. Token-variant entries only fire in the burst walker.
+* Live verified: Akali burst 787.9 → 941.7 (+154, +20%) on the s186
+  registry combo Q-AA-E-R-Q2-AA-R2. R1 row still raw=220 / final=169.2;
+  R2 row jumps to raw=420 / final=323.1 (+154 from the now-doubled
+  base + 60pp AP scaling delta).
+* Schema is forward-compatible — future per-token entries (Yone Q1/Q2/Q3
+  if Meraki ever ships per-stage blocks, Leblanc mimic-Q once ingested,
+  etc.) drop in without code changes.
+
 Phase 5.9 (s191, 2026-05-14 — per-(champion, key) damage block_index overrides, ENGINE_VERSION 0.76.0):
 
 * A minority of champions have a later damage block in their canonical
@@ -739,4 +769,4 @@ Phase 5.7 (s189, 2026-05-13 — Spellblade-in-burst, ENGINE_VERSION 0.74.0):
   doesn't exercise it (e.g. operator-supplied pure-AA combo).
 """
 
-ENGINE_VERSION = "0.76.0"
+ENGINE_VERSION = "0.77.0"

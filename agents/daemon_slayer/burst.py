@@ -730,10 +730,18 @@ def compute_burst_damage(
             continue
         cooldown = _form_cooldown_at_rank(form, rank)
         cost = _form_cost_at_rank(form, rank)
-        # Phase 5.9 (s191): per-(champion, key) block_index override
-        # switches to "indexed" strategy for this key; otherwise honor
-        # the global block_strategy. Matches compute_ability_dps.
-        if ability_key in block_overrides:
+        # Phase 5.9 (s191) + Phase 5.9.5 (s192): per-(champion, key)
+        # block_index override switches to "indexed" strategy for this key;
+        # otherwise honor the global block_strategy. Token-canonical lookup
+        # (e.g. "R2") wins over base-key lookup (e.g. "R"), so a champion
+        # like Akali can model R1 → block 0 (base) and R2 → block 2
+        # (max-execute scaling) within the same combo.
+        if canonical in block_overrides:
+            raw = _select_blocks(
+                form.damage_blocks, rank, ctx, "indexed",
+                block_index=block_overrides[canonical],
+            )
+        elif ability_key in block_overrides:
             raw = _select_blocks(
                 form.damage_blocks, rank, ctx, "indexed",
                 block_index=block_overrides[ability_key],
