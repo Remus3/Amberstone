@@ -638,6 +638,57 @@ Phase 5.6 (s188, 2026-05-13 — per-attack on-hit proc damage, ENGINE_VERSION 0.
   arm-by-spell-cast / consume-by-AA model that lands Spellblade
   contributions in burst combos.
 
+Phase 5.9.9 (s196, 2026-05-14 — extended multi-hit/condition-amp block_index expansion, ENGINE_VERSION 0.81.0):
+
+* Pure data-only batch — no code changes, just expands the s191
+  ``champion_block_index.json`` registry with 17 new (champion, key)
+  entries (14 new champions + 3 key extensions on Akali, Cassiopeia,
+  Morgana). The s191/s192 walker logic (per-token-canonical lookup +
+  base-key fallback) handles all new entries transparently. Registry:
+  35 → 49 champions, 17 new (champion, key) pairs.
+* **Pattern A — Multi-hit single-target totals** (12 entries):
+    - Akali E=2 (E1 Shuriken Flip + E2 grappling-hook dash, ~3.33×)
+    - Akshan Q=1 (Avengerang ricochet out + return, 2×)
+    - Cassiopeia W=1 (Miasma full duration, 5×)
+    - Chogath E=1 (Vorpal Spikes 3-hit total, 3×)
+    - Draven R=1 (Whirling Death out + return, 2×)
+    - Lillia W=1 (Watch Out! Eep! center hit, 3×)
+    - Morgana R=1 (Soul Shackles tether full duration, 2×)
+    - Nautilus E=2 (Riptide 3-wave same target, 2×)
+    - Riven Q=1 (Broken Wings 3-cast Q-Q-Q combo total, 3×)
+    - Sett Q=1 (Knuckle Down both empowered AAs, 2×)
+    - Skarner Q=1 (Shattered Earth empowered 3-hit chain, 3×)
+    - Soraka E=1 (Equinox immediate + delayed proc total, 2×)
+* **Pattern B — Fully-charged / condition amps** (5 entries):
+    - Gragas Q=1 (Barrel Roll max-fermented 4s hold, 1.5×)
+    - Karthus Q=1 (Lay Waste single-target enhanced, 2×)
+    - Khazix Q=1 (Taste Their Fear isolation amp, 2.1×)
+    - KogMaw R=1 (Living Artillery low-HP execute, 2×)
+    - Pantheon Q=1 (Comet Spear fully-charged hurl, 2.2×)
+* All 17 verified per-rank math against the Meraki abilities snapshot —
+  block N's base + scaling fields match the exact canonical-condition
+  multiple of block 0's components (e.g., Akshan Q block 1 base 10/50/90/
+  130/170 = exact 2× block 0's 5/25/45/65/85; Riven Q block 1 base 135/
+  225/315/405/495 = exact 3× block 0's 45/75/105/135/165).
+* **Deliberately skipped this batch** (documented in registry rationale):
+  Nidalee Q (form_index=1 cougar override from s187 conflicts with block_
+  index=1 human Javelin max-distance interpretation; needs conditional
+  form-specific schema lift), Kassadin R (resource-state stack condition,
+  belongs in carried-forward conditional-resource-state bucket), Aatrox
+  W (CC-conditional pull-back trigger), Akshan R (Comeuppance bullet
+  charge, resource-state), Ambessa Q/W/E (form swap mechanics need per-
+  form analysis), Gangplank R (Upgrade choices need per-upgrade modeling),
+  Jhin R (4-shot ult fits combo_sequence better than block_index), Hwei R
+  (channel full-duration, lower-impact deferral), Gwen R / KSante R
+  (multi-form / form-swap mechanics), Karthus E/R, Mel Q, Naafiri Q,
+  Olaf Q, Nasus E.
+* Backward-compat preserved: any unmapped champion (Zed, etc.) sees byte-
+  identical output to pre-s196. Twelfth consecutive override / proc-shape
+  modeling improvement on the same template; fifth pure-data batch in the
+  channel/total/charge family (s191 seed, s193 channels, s194 calibration
+  follow-up, s195 multi-hit/charge/recast, s196 extended multi-hit/
+  condition-amp).
+
 Phase 5.9.8 (s195, 2026-05-14 — multi-hit/charge/recast block_index expansion, ENGINE_VERSION 0.80.0):
 
 * Pure data-only batch — no code changes, just expands the s191
@@ -868,4 +919,4 @@ Phase 5.7 (s189, 2026-05-13 — Spellblade-in-burst, ENGINE_VERSION 0.74.0):
   doesn't exercise it (e.g. operator-supplied pure-AA combo).
 """
 
-ENGINE_VERSION = "0.80.0"
+ENGINE_VERSION = "0.81.0"

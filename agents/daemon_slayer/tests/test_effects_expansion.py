@@ -7399,7 +7399,17 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          Sivir Q, Talon W/R, Velkoz W, Ekko Q), fully-charged amps
         #          (Varus Q, Zoe Q, Vladimir E), recast amp (Camille Q),
         #          CC-conditional duration total (Morgana W). Pure data batch.
-        self.assertEqual(ENGINE_VERSION, "0.80.0")
+        # 0.81.0 = s196 Phase 5.9.9 extended multi-hit/condition-amp block_index
+        #          expansion — 17 more (champion, key) entries (14 new
+        #          champions + 3 key extensions on Akali, Cassi, Morgana).
+        #          Pattern A multi-hit single-target totals (Akali E, Akshan Q,
+        #          Cassi W, Cho'gath E, Draven R, Lillia W, Morgana R,
+        #          Nautilus E, Riven Q, Sett Q, Skarner Q, Soraka E).
+        #          Pattern B fully-charged / condition amps (Gragas Q fermented,
+        #          Karthus Q solo-target enhanced, Kha'Zix Q isolation,
+        #          Kog'Maw R low-HP execute, Pantheon Q charged hurl). Pure
+        #          data batch; no walker/resolver/server code changes.
+        self.assertEqual(ENGINE_VERSION, "0.81.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7460,7 +7470,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.80.0")
+        self.assertEqual(ENGINE_VERSION, "0.81.0")
 
 
 if __name__ == "__main__":
