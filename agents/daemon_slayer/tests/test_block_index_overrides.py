@@ -131,7 +131,7 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Veigar"], {"R": 1})
         # Diana extended in s203 with R=2 (Moonfall channel total) — asserted below
         self.assertEqual(champions["Brand"], {"W": 1, "R": 1})
-        self.assertEqual(champions["Evelynn"], {"R": 1})
+        # Evelynn extended in s204 with Q=5 — full shape asserted in Phase 5.9.17 block
         self.assertEqual(champions["Aurora"], {"Q": 2})
         self.assertEqual(champions["Belveth"], {"E": 2})
         self.assertEqual(champions["Karma"], {"W": 1})
@@ -149,7 +149,7 @@ class RegistryShapeTests(unittest.TestCase):
         # Samira extended in s199 with W=1 (Blade Whirl 2-rotation total)
         self.assertEqual(champions["Samira"], {"R": 1, "W": 1})
         self.assertEqual(champions["Singed"], {"Q": 1})
-        self.assertEqual(champions["Syndra"], {"R": 2})
+        # Syndra extended in s204 with W=2 — full shape asserted in Phase 5.9.17 block
         # Phase 5.9.7 (s194) — calibration follow-up expansion
         self.assertEqual(champions["Corki"], {"W": 1, "E": 1})
         self.assertEqual(champions["Hecarim"], {"W": 1, "E": 1})
@@ -193,7 +193,7 @@ class RegistryShapeTests(unittest.TestCase):
         # Nautilus extended in s199 with R=2 (Depth Charge primary hit)
         self.assertEqual(champions["Nautilus"], {"E": 2, "R": 2})
         self.assertEqual(champions["Pantheon"], {"Q": 1})
-        self.assertEqual(champions["Riven"], {"Q": 1})
+        # Riven extended in s204 with R=1 (+ form_index seed) — full shape asserted in Phase 5.9.17 block
         self.assertEqual(champions["Sett"], {"Q": 1})
         self.assertEqual(champions["Skarner"], {"Q": 1})
         self.assertEqual(champions["Soraka"], {"E": 1})
@@ -287,12 +287,11 @@ class RegistryShapeTests(unittest.TestCase):
         # (s198/s199 'terrain condition'), Rumble Q (s199 'heat decays').
         self.assertEqual(champions["Gangplank"], {"R": 2})
         self.assertEqual(champions["Gnar"], {"R": 1})
-        self.assertEqual(champions["KSante"], {"R": 2})
+        # KSante extended in s204 with W=3 — full shape asserted in Phase 5.9.17 block
         self.assertEqual(champions["RekSai"], {"E": 1})
         self.assertEqual(champions["Vayne"], {"E": 2})
         self.assertEqual(champions["Yunara"], {"Q": 2})
-        # Zoe extended in s202 with W=1 (3 empowered AAs total)
-        self.assertEqual(champions["Zoe"], {"Q": 1, "W": 1})
+        # Zoe extended in s204 with E=2 — full shape asserted in Phase 5.9.17 block
         # Akshan extended in s202 with R=1 (Comeuppance max-charge)
         self.assertEqual(champions["Akshan"], {"Q": 1, "R": 1})
         # AurelionSol extended in s202 with Q=2 (Breath of Light full channel)
@@ -325,7 +324,7 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Blitzcrank"], {"R": 1})
         # Diana extended in s203 with R=2 — full shape:
         self.assertEqual(champions["Diana"], {"W": 2, "R": 2})
-        self.assertEqual(champions["Gwen"], {"R": 4})
+        # Gwen extended in s204 with Q=6 — full shape asserted in Phase 5.9.17 block
         # Jax extended in s203 with R=1 — full shape:
         self.assertEqual(champions["Jax"], {"E": 1, "R": 1})
         # Kennen extended in s203 with W=1 — full shape:
@@ -344,6 +343,37 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Thresh"], {"E": 2})
         # Vladimir extended in s203 with Q=1 — full shape:
         self.assertEqual(champions["Vladimir"], {"E": 1, "W": 1, "Q": 1})
+        # Phase 5.9.17 (s204) — 8 entries: 2 new champions (Nidalee, Seraphine)
+        # + 6 key extensions (Evelynn Q, Gwen Q, KSante W, Riven R, Syndra W,
+        # Zoe E). Plus Riven added to form_index registry (R=1 routing to
+        # Wind Slash form). Six sub-patterns: (A) multi-hit single-target
+        # totals (Evelynn Q full Hate Spike rotation, Gwen Q max-scissor
+        # burst, Syndra W Total Mixed sum), (B) fully-charged amp (KSante
+        # W Path Maker max-charge), (C) champion-vs-minion amp (Seraphine
+        # Q Maximum Champion Damage), (D) execute amp layered on form_
+        # index (Nidalee Q low-HP cougar Takedown — second NET-damage
+        # layering after s203 LeeSin Q), (E) target-state amp (Zoe E
+        # sleep-procced Maximum Mixed Damage), (F) form_index seed
+        # expansion (Riven R Wind Slash — first new champion in form_
+        # index registry since s187, closes s203 carry-forward 'Riven
+        # form_index seed needed').
+        # Evelynn extended with Q=5 — full shape:
+        self.assertEqual(champions["Evelynn"], {"R": 1, "Q": 5})
+        # Gwen extended with Q=6 — full shape:
+        self.assertEqual(champions["Gwen"], {"R": 4, "Q": 6})
+        # KSante extended with W=3 — full shape:
+        self.assertEqual(champions["KSante"], {"R": 2, "W": 3})
+        # Nidalee NEW — composes with s187 form_index Q=1 (cougar form):
+        self.assertEqual(champions["Nidalee"], {"Q": 1})
+        # Riven extended with R=1 — full shape; form_index seed for R=1
+        # ships in champion_form_index.json (asserted in Phase 5.9.17 tests).
+        self.assertEqual(champions["Riven"], {"Q": 1, "R": 1})
+        # Seraphine NEW — High Note Maximum Champion Damage:
+        self.assertEqual(champions["Seraphine"], {"Q": 1})
+        # Syndra extended with W=2 — full shape:
+        self.assertEqual(champions["Syndra"], {"R": 2, "W": 2})
+        # Zoe extended with E=2 — full shape:
+        self.assertEqual(champions["Zoe"], {"Q": 1, "W": 1, "E": 2})
 
     def test_every_value_is_int(self) -> None:
         for champion_id, entries in self.table["champions"].items():
@@ -713,7 +743,8 @@ class ToDictSerializationTests(unittest.TestCase):
         )
         d = r.to_dict()
         self.assertEqual(d["block_index_source"], "champion")
-        self.assertEqual(d["block_index_resolved"], {"R": 1})
+        # Phase 5.9.17 (s204) — Evelynn gained Q=5 alongside existing R=1
+        self.assertEqual(d["block_index_resolved"], {"R": 1, "Q": 5})
 
     def test_unmapped_champion_to_dict_is_empty_dict(self) -> None:
         # Tryndamere is unmapped (Yasuo landed in registry s201).
@@ -2912,12 +2943,14 @@ class Phase599_15ExpansionTests(unittest.TestCase):
 
     # Multi-key resolved-shape sanity for the 8 extension champions
     def test_zoe_both_keys_in_resolved(self) -> None:
-        """Zoe Q=1 (s195) + W=1 (s202) — both keys must appear."""
+        """Zoe Q=1 (s195) + W=1 (s202) — both keys must appear; subset check
+        since s204 may add E=2."""
         r = compute_ability_dps(
             self.snap, "Zoe", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"Q": 1, "W": 1})
+        self.assertEqual(r.block_index_resolved.get("Q"), 1)
+        self.assertEqual(r.block_index_resolved.get("W"), 1)
 
     def test_akshan_both_keys_in_resolved(self) -> None:
         """Akshan Q=1 (s196) + R=1 (s202) — both keys must appear."""
@@ -3343,6 +3376,289 @@ class Phase599_16ExpansionTests(unittest.TestCase):
         self.assertEqual(r.block_index_resolved.get("Q"), 1)  # s202
         self.assertEqual(r.block_index_resolved.get("R"), 1)  # s202
         self.assertEqual(r.block_index_resolved.get("E"), 1)  # s203
+
+
+class Phase599_17ExpansionTests(unittest.TestCase):
+    """Phase 5.9.17 (s204). 8 new (champion, key) entries: 2 truly-new
+    champions (Nidalee, Seraphine) + 6 key extensions on existing champions
+    (Evelynn Q, Gwen Q, KSante W, Riven R, Syndra W, Zoe E). PLUS Riven is
+    added to the form_index registry (`champion_form_index.json`) with R=1
+    routing to form 1 'Wind Slash' — closes the s203 carry-forward 'Riven
+    form_index seed needed before form-conditional block_index entries'.
+
+    Registry 115 → 117 champions, 173 → 181 entries.
+
+    Six sub-patterns:
+      (A) Multi-hit single-target totals (3): Evelynn Q (Hate Spike Total
+          Magic = 1 initial + 2× 3-missile recasts, 175% AP scaling),
+          Gwen Q (Snip Snip Maximum = 5 small snips + 1 final big snip
+          on focused target, 10.3× block 0 base / 22.5× AP), Syndra W
+          (Force of Will Total Mixed = block 0 + block 1 sum, 1.12× —
+          marginal but consistent under-count).
+      (B) Fully-charged amp (1): KSante W (Path Maker Total Maximum
+          Mixed at full 2s charge = block 0 + block 2 sum, 1.8×).
+      (C) Champion-vs-minion amp (1): Seraphine Q (High Note Maximum
+          Champion Damage; 1.75× block 0 — operator burst targets
+          champions). Seraphine routes to ds.hps by default but direct
+          /ability-dps queries benefit.
+      (D) Execute amp layered on form_index (1): Nidalee Q (Cougar
+          Takedown Maximum Magic at low-HP target = block 1 in form 1
+          via s187 form_index). Second NET-damage layering after s203
+          LeeSin Q (form 1 Resonating Strike).
+      (E) Target-state amp (1): Zoe E (Sleepy Trouble Bubble Maximum
+          Mixed = 2× block 0 base + 2× AP on sleep-procced target).
+          First entry reviving the 'conditional target-state schema
+          lift' bucket under the unconditional operator-commits framing.
+      (F) Form_index seed expansion (1): Riven R (Wind Slash Maximum
+          Physical Damage at max-missing-HP). Riven form 0 'Blade of
+          the Exile' has ZERO damage blocks (pure buff/empower) — form
+          1 is the only damage-bearing form. Form_index seed + block_
+          index entry compose cleanly with no information loss.
+
+    Tests verify each new entry:
+      1. Is present in the resolved registry at the expected filtered idx
+      2. Drives total_ability_dps strictly above the forced-block-0 baseline
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = _snap()
+
+    def _delta_check(self, champion: str, key: str, expected_idx: int) -> None:
+        r_reg = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r_reg.block_index_resolved.get(key), expected_idx,
+                         f"{champion}.{key} should route to filtered block {expected_idx}")
+        forced = dict(r_reg.block_index_resolved)
+        forced[key] = 0
+        r_off = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides=forced,
+        )
+        self.assertGreater(r_reg.total_ability_dps, r_off.total_ability_dps,
+                           f"{champion} registry total should exceed forced-block-0")
+
+    # Pattern A: multi-hit single-target totals (3)
+    def test_evelynn_Q_routes_to_block_5(self) -> None:
+        """Evelynn Q block 5 'Total Magic Damage' = 7× block 0 missile
+        damage (1 initial Hate Spike + 2 recasts × 3 missiles each = 7
+        hits). 175% AP scaling vs block 0's 25%. Operator commits to
+        landing full Q rotation on same target during stealth, canonical
+        Eve sustained burst. Multi-hit total — same model as Lulu Q s195
+        / Sivir Q s195 / Talon W s195."""
+        self._delta_check("Evelynn", "Q", 5)
+
+    def test_gwen_Q_routes_to_block_6(self) -> None:
+        """Gwen Q block 6 'Maximum Damage' = full max-stack Snip Snip burst
+        (5 small snips + 1 final big snip on focused target). 10.3× block 0
+        base, 22.5× block 0 AP. Operator commits to landing all snips during
+        the 4-second Snip Snip stance — canonical Gwen scissors burst. Same
+        max-stack-burst pattern as s203 Gwen R (9-needle full 3-cast)."""
+        self._delta_check("Gwen", "Q", 6)
+
+    def test_syndra_W_routes_to_block_2(self) -> None:
+        """Syndra W block 2 'Total Mixed Damage' = block 0 + block 1 sum
+        = 78.4 base + 74.2% AP (block 0 = 70 + 65% AP, block 1 = 8.4 +
+        9.2% AP). Operator commits to hitting target with the BoW orb's
+        Bonus Damage on top of the Magic Damage. Marginal 1.12× lift but
+        captures a consistent component the engine was missing. Pattern
+        A sum-of-blocks via canonical 'Total' attribute name."""
+        self._delta_check("Syndra", "W", 2)
+
+    # Pattern B: fully-charged amp (1)
+    def test_ksante_W_routes_to_block_3(self) -> None:
+        """KSante W block 3 'Total Maximum Mixed Damage' = block 0 Physical
+        + block 2 Maximum Bonus True Damage at full 2s charge = 1.8×
+        block 0 base. Operator commits to fully charging W before release.
+        Same fully-charged amp pattern as Vi Q s198 / Sion Q s197 /
+        Pantheon Q s196 / Janna Q s201."""
+        self._delta_check("KSante", "W", 3)
+
+    # Pattern C: champion-vs-minion amp (1)
+    def test_seraphine_Q_routes_to_block_1(self) -> None:
+        """Seraphine Q block 1 'Maximum Champion Damage' = 1.75× block 0
+        base + 1.75× AP scaling. High Note deals reduced damage to
+        non-champions (block 0 = minion-reduced fallback); block 1
+        captures the canonical champion-burst case. Same model as Talon Q
+        s199 (Noxian Diplomacy guaranteed crit on champion vs minion).
+        Seraphine routes to ds.hps by default (enchanter) but direct
+        /ability-dps queries benefit. Revives s198/s202 'enchanter-class'
+        deferral under same framing as other archetype-mismatched entries."""
+        self._delta_check("Seraphine", "Q", 1)
+
+    # Pattern D: execute amp layered on form_index (1)
+    def test_nidalee_Q_routes_to_block_1(self) -> None:
+        """Nidalee Q=1 layers on s187 form_index=1. Form 1 is the Cougar
+        Takedown (post-R cougar form); within form 1, block 0 is Minimum
+        Magic Damage (full-HP target), block 1 is Maximum Magic Damage
+        (low-HP target, 2.75× block 0 base + 1.3× AP scaling). Operator
+        commits to using cougar Q on low-HP targets as the canonical Eve
+        execute, same model as KogMaw R s196 Living Artillery low-HP
+        execute. Second NET-damage layering of block_index on form_index
+        registry after s203 LeeSin Q."""
+        self._delta_check("Nidalee", "Q", 1)
+
+    # Pattern E: target-state amp on sleep proc (1)
+    def test_zoe_E_routes_to_block_2(self) -> None:
+        """Zoe E block 2 'Maximum Mixed Damage' = 2× block 0 base + 2× AP
+        scaling on sleep-procced target (canonical Zoe E→Q burst combo:
+        E lands, sleeps target, then Q hits sleeping target for the
+        amplified damage). Operator commits to landing E and waking the
+        target with damage — first entry reviving the 'conditional target-
+        state schema lift' bucket under the unconditional operator-commits
+        framing. Same model as Khazix Q isolation s196 / Vayne E wall-stun
+        s202."""
+        self._delta_check("Zoe", "E", 2)
+
+    # Pattern F: form_index seed expansion (1)
+    def test_riven_R_routes_to_block_1_via_form_index_seed(self) -> None:
+        """Riven R=1 + new form_index Riven.R=1 (Wind Slash form). Riven R
+        form 0 'Blade of the Exile' has ZERO damage blocks (pure buff/
+        empower); form 1 'Wind Slash' carries the only damage. Block 1
+        'Maximum Physical Damage' = 3× block 0 base + 3× bonus_ad_pct
+        scaling at max-missing-HP target. Operator commits to using
+        Wind Slash recast on low-HP target as the canonical Riven R
+        execute. Form_index seed shipped alongside — closes the s203
+        carry-forward 'Riven form_index registry seed needed for form-
+        conditional block_index entries'. First new champion added to
+        form_index registry since s187 (Nidalee/Elise/Jayce/Hwei/LeeSin)."""
+        self._delta_check("Riven", "R", 1)
+        # form_index resolved must also be 1 for R (sourced from registry)
+        r_reg = compute_ability_dps(
+            self.snap, "Riven", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r_reg.form_index_resolved.get("R"), 1,
+                         "Riven R should route to form 1 via form_index registry seed")
+
+    # Multi-key resolved-shape sanity for extension champions
+    def test_evelynn_both_keys_in_resolved(self) -> None:
+        """Evelynn R=1 (s191) + Q=5 (s204) — both keys must appear."""
+        r = compute_ability_dps(
+            self.snap, "Evelynn", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"R": 1, "Q": 5})
+
+    def test_gwen_both_keys_in_resolved(self) -> None:
+        """Gwen R=4 (s203) + Q=6 (s204) — both keys must appear."""
+        r = compute_ability_dps(
+            self.snap, "Gwen", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"R": 4, "Q": 6})
+
+    def test_ksante_both_keys_in_resolved(self) -> None:
+        """KSante R=2 (s202) + W=3 (s204) — both keys must appear."""
+        r = compute_ability_dps(
+            self.snap, "KSante", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"R": 2, "W": 3})
+
+    def test_riven_both_keys_in_resolved(self) -> None:
+        """Riven Q=1 (s196) + R=1 (s204) — both keys must appear in
+        block_index_resolved; form_index_resolved must also contain R=1."""
+        r = compute_ability_dps(
+            self.snap, "Riven", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1, "R": 1})
+        self.assertEqual(r.form_index_resolved.get("R"), 1)
+
+    def test_syndra_both_keys_in_resolved(self) -> None:
+        """Syndra R=2 (s195) + W=2 (s204) — both keys must appear."""
+        r = compute_ability_dps(
+            self.snap, "Syndra", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"R": 2, "W": 2})
+
+    def test_zoe_all_three_keys_in_resolved(self) -> None:
+        """Zoe Q=1 (s195) + W=1 (s202) + E=2 (s204) — all three keys present."""
+        r = compute_ability_dps(
+            self.snap, "Zoe", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1, "W": 1, "E": 2})
+
+    # Math-level sanity
+    def test_gwen_Q_block6_matches_block0_max_stack_total(self) -> None:
+        """Numeric sanity: Gwen Q block 6 base values must be substantially
+        larger than block 0 (the per-snip damage). At rank 5, block 0 base
+        is 30 (per-snip); block 6 base is 310 (Maximum Damage = full max-
+        stack 5-snip + 1-final burst on focused target)."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("Gwen", "Q", form_index=0)
+        self.assertIsNotNone(form)
+        damage_blocks = [b for b in form.damage_blocks if b.attribute_kind == "damage"]
+        self.assertGreaterEqual(len(damage_blocks), 7)
+        b0, b6 = damage_blocks[0], damage_blocks[6]
+        # Block 6 base must be >5× block 0 base across all ranks
+        for rank in range(len(b0.base)):
+            self.assertGreater(b6.base[rank], b0.base[rank] * 5.0,
+                               f"Gwen Q rank {rank+1}: block 6 base should be >5× block 0")
+
+    def test_riven_R_form0_has_no_damage_blocks(self) -> None:
+        """Sanity: Riven R form 0 'Blade of the Exile' is a pure buff form
+        with zero damage blocks. Justifies the form_index seed routing to
+        form 1 'Wind Slash' — no information loss because form 0 has no
+        damage to lose."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form0 = ab_snap.get_ability("Riven", "R", form_index=0)
+        self.assertIsNotNone(form0)
+        damage_blocks = [b for b in form0.damage_blocks if b.attribute_kind == "damage"]
+        self.assertEqual(len(damage_blocks), 0,
+                         "Riven R form 0 should have zero damage blocks")
+
+    def test_nidalee_Q_form1_block1_matches_max_missing_hp_amp(self) -> None:
+        """Numeric sanity: Nidalee Q form 1 (Cougar Takedown per s187)
+        block 1 base = 2.75× block 0 base (220 vs 80 at max rank). Same
+        execute-curve pattern as LeeSin Q s203."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("Nidalee", "Q", form_index=1)
+        self.assertIsNotNone(form)
+        damage_blocks = [b for b in form.damage_blocks if b.attribute_kind == "damage"]
+        self.assertGreaterEqual(len(damage_blocks), 2)
+        b0, b1 = damage_blocks[0], damage_blocks[1]
+        # Block 1 base at max rank must be >2× block 0 base
+        self.assertGreater(b1.base[-1], b0.base[-1] * 2.0,
+                           f"Nidalee Q form 1: block 1 base {b1.base[-1]} should be >2× block 0 {b0.base[-1]}")
+
+    # Backward-compat: prior-batch entries still resolve unchanged after s204
+    def test_pre_s204_thresh_unchanged(self) -> None:
+        """Backward-compat: s203 Thresh E=2 preserved after s204."""
+        r = compute_ability_dps(
+            self.snap, "Thresh", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"E": 2})
+
+    def test_pre_s204_blitzcrank_unchanged(self) -> None:
+        """Backward-compat: s203 Blitzcrank R=1 preserved after s204."""
+        r = compute_ability_dps(
+            self.snap, "Blitzcrank", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"R": 1})
+
+    def test_pre_s204_leesin_unchanged(self) -> None:
+        """Backward-compat: s203 LeeSin Q=1 (layered on s187 form_index)
+        preserved after s204. Riven layering shipped this batch should not
+        regress LeeSin's prior layering."""
+        r = compute_ability_dps(
+            self.snap, "LeeSin", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1})
+        # Form_index resolved should still route Q to form 1 (s187)
+        self.assertEqual(r.form_index_resolved.get("Q"), 1)
 
 
 # ─── backward-compat: unmapped champions keep pre-s191 output ───────────────
