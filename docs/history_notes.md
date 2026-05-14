@@ -6,6 +6,46 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s188 wrap — 2026-05-13 (DDragon 16.10.1 refresh + per-champion DS override registries — 5 commits da67555..9953c23 covering s185/s186/s187/s188)
+
+**Operator instruction:** "CONTINUE DS" → "continue" × 4. Single long session covering one DS data refresh + four registry-pattern follow-ups to the s174-s181 archetype-expansion plan. All shipped backend-first with live `/health` + ranker verification before commit.
+
+## Ships
+
+| Commit | Slot | Topic |
+|---|---|---|
+| [da67555](https://github.com/Remus3/riot-commander/commit/da67555) | data refresh | DS engine data `16.9.1 → 16.10.1` (re-extract via `tools/daemon_slayer_extract.py` + `tools/daemon_slayer_abilities_extract.py`; copied hand-curated `enchanter_items.json` forward; flipped `current.txt`). Doran's Bow 6→8 AD, Doran's Helm 110→140 HP, Gluttonous Greaves rebalanced 650g→700g + 1%/6→0.6%/10. Arena augments 219→220. |
+| [d0c604b](https://github.com/Remus3/riot-commander/commit/d0c604b) | s185 Phase 4d | New [champion_max_priority.json](agents/daemon_slayer/champion_max_priority.json) — 12 entries (Cassiopeia/Kayle/Akali/Kassadin/Rumble/Anivia → E-Q-W; TwistedFate/Leblanc/Heimerdinger/Lillia → W-Q-E; Karthus/Vladimir → Q-E-W). Resolver in `ability_dps.py`; consumed by mage + assassin scorers. Result types gain `max_priority_source`. ENGINE 0.69.0 → 0.70.0. Cassi lvl 9 baseline +40% (17.82 → 25.08 adps). |
+| [e8a9a1e](https://github.com/Remus3/riot-commander/commit/e8a9a1e) | s186 Phase 5.5 | New [champion_combo_sequences.json](agents/daemon_slayer/champion_combo_sequences.json) — 15 entries for all 14 canonical assassins + Briar. Zed → Q-W-E-R-Q2-AA (shadow); Yone → Q-Q2-Q3-AA-E-W-R; Akali → Q-AA-E-R-Q2-AA-R2; Leblanc → R-mimic-Q. Loader in `burst.py`. Result types gain `combo_sequence_source`. ENGINE 0.70.0 → 0.71.0. Zed baseline +24% (333.89 → 413.33 burst). |
+| [b48ff97](https://github.com/Remus3/riot-commander/commit/b48ff97) | s187 Phase 4e | New [champion_form_index.json](agents/daemon_slayer/champion_form_index.json) — 5 entries: Nidalee Q/W/E → 1 (cougar); Elise Q → 1 (Venomous Bite); Jayce Q → 1 (Shock Blast); Hwei Q/W/E → 1/3/1 (first damage-bearing form per key); LeeSin Q → 1 (Resonating Strike). Resolver merges caller dict with registry per-key. Both scorers + result types updated. ENGINE 0.71.0 → 0.72.0. Hwei DPS collapses 11.95 → 0.02 when forced to form 0 (the `Subject:` stance setups carry zero damage blocks). |
+| [9953c23](https://github.com/Remus3/riot-commander/commit/9953c23) | s188 Phase 5.6 | New `dps._per_attack_proc_damage()` + `DpsResult.per_attack_on_hit_damage` field. burst.py's `aa_per_hit = base + on-hit`. Wit's End / BotRK / Statikk / Spellblade now land in assassin item rankings. ENGINE 0.72.0 → 0.73.0. Akali +Wit's End AA contribution +82 (105.6 → 187.5); Zed +BotRK AA contribution +111 (53.9 → 165.0). |
+
+## Verification
+
+- DS suite        **1545 pass** (was 1426 at session start; +119 from s185/s186/s187/s188 new test files)
+- Wider RC suite  **1013 pass** (no regression across all 5 commits)
+- DS server :8893 restarted 5×; `/health` reports 0.73.0 + patch 16.10.1 + 172 champions + 705 items
+- Each registry shipped with live A/B comparison demonstrating the override is load-bearing (e.g. Hwei drops to 0.02 DPS without form_index override — confirms form 0 is unparseable stance metadata)
+
+## Open items carried forward
+
+- 🟡 **Aphelios data gap.** All 6 Q forms in Meraki bulk show `parse_status=no_damage`; the per-weapon damage formulas aren't ingested. Blocked on upstream Meraki update — DS can't score Aphelios abilities until then.
+- 🟡 **Karma mantra runtime plumbing.** Karma form 1 is mantra-amped; defaulting to it would over-count (mantra is a player-choice mid-combat). Needs `state.lcu.mantra_active` or similar to switch dynamically.
+- 🟡 **Khazix evolved-form choice.** Same shape — evolved Q/W/E/R is a per-game decision. Could expose as a champ-select picker UI later.
+- 🟡 **Spellblade CD modeling (s188 deferral).** Triforce/Lich Bane currently amortized as 1/N per AA via `every_n_attacks=N` schema; a tighter model would count one proc per spell-cast in the combo gated on 1.5s CD.
+- 🟡 **Conditional damage amps for burst (carried since s180).** Ahri R→Q, Zoe E→Q, Akali R1→QE→R2 amps — inter-spell awareness still missing.
+- 🟡 **Pre-existing carry-forwards from s184/s183/s182** all remain unchanged: live-game chip lifecycle validation pending CS pop; `_TOP_N_THRESHOLD` retune blocked on real-game fired nudges; `nudge_history` calibration additive.
+
+## Architectural pattern lock-in
+
+Four consecutive override registries (s185/s186/s187/s188) shipped on the same template, now a stable engine pattern: JSON sibling to `archetype_weights.json` in `agents/daemon_slayer/` + lazy-cache singleton loader + `get_X_for(champion_id) -> (value, source)` resolver + `_resolve_X(champion_id, explicit) -> (value, source)` merger + result-type `X_source: str` field surfaced in `to_dict()` + server route returns `Optional`. Future per-champion overrides (combo dynamic amps, cooldown gates, runtime form switches) drop into this template. Verified by 5 successive commits passing the same DS regression suite with no test fragility.
+
+## DDragon vs DS data split
+
+Confirmed during the s184.1 → 16.10.1 refresh: DDragon meta (`data/meta/ddragon_*.json`) and DS engine snapshot (`data/daemon_slayer/<patch>/`) are independent. The auto `RC-PatchRefresh` task refreshes DDragon meta only; DS refresh is a manual `daemon_slayer_extract.py` invocation per patch.
+
+---
+
 # s184.1 wrap — 2026-05-13 (Archetype-mismatch chip renderer — shipped 912efe1)
 
 **Operator instruction:** "continue ds plan" — picks up the carried-forward item (a) from s184: dashboard JS chip renderer for the first-purchase mismatch nudge. Backend was fully tested + live but the chip itself wasn't drawn, so operator could only verify nudges via raw `/api/state` polling. This slot ships the UI surface.

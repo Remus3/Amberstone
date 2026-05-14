@@ -31,10 +31,14 @@ expose a single ``damage`` block per ability key — straightforward to
 evaluate. A minority of champions (Aatrox Q's chain variants, Aphelios's
 weapon stances, Ezreal's R splash component) ship multiple damage blocks
 per form. Phase 4b uses ``block_strategy="first"`` by default — only the
-first damage block of the canonical form_index=0 contributes. This
-under-scores chain-cast and weapon-swap mechanics (the typical fighter
-patterns) but evaluates mage abilities accurately, which is the Phase 4b
-target. Phase 5 (assassin burst) revisits with per-champion strategies.
+first damage block of the canonical form_index=0 contributes. Phase 5.9
+(s191, 2026-05-14) layered a per-(champion, key) ``block_index_overrides``
+registry on top — ``champion_block_index.json`` ships defaults for
+Cassiopeia E (poisoned-target enhanced), Anivia E (chilled-target
+enhanced), Diana W (all-orbs total), Veigar R (executed-target maximum),
+Brand W (CC'd-target increased), etc. When a key is in the resolved
+override map, the engine switches to the new ``"indexed"`` strategy with
+that specific block; keys without an entry honor the global strategy.
 
 Phase 4b deliberate omissions (deferred):
 * Passive (P) ability damage — needs different rank model (level-scaled
@@ -268,6 +272,86 @@ def _resolve_form_index_overrides(
         merged[str(k).upper()] = int(v)
     return (merged, "override")
 
+
+# Phase 5.9 (s191, 2026-05-14) — per-(champion, key) block_index registry.
+# A minority of champions have a later damage block that represents the
+# realistic burst-window value: Cassi E block1 "Total Enhanced" (vs
+# poisoned), Anivia E block1 "Enhanced" (vs chilled), Diana W block2
+# "Total Magic Damage" (all 3 orbs), Veigar R block1 "Maximum" (executed
+# target), etc. Default block_index=0 preserves pre-s191 behavior for
+# the ~95% of champions with single-block forms. Loader pattern mirrors
+# champion_form_index.json.
+_BLOCK_INDEX_PATH = Path(__file__).resolve().parent / "champion_block_index.json"
+_BLOCK_INDEX_LOCK = threading.Lock()
+_BLOCK_INDEX_CACHE: Optional[dict] = None
+
+
+def _load_block_index_table() -> dict:
+    """Load the per-(champion, key) block_index override table from disk.
+
+    Singleton cache. Tests can call ``reset_block_index_cache()`` to force
+    a re-read after mutating the on-disk file.
+    """
+    global _BLOCK_INDEX_CACHE
+    with _BLOCK_INDEX_LOCK:
+        if _BLOCK_INDEX_CACHE is None:
+            _BLOCK_INDEX_CACHE = json.loads(
+                _BLOCK_INDEX_PATH.read_text(encoding="utf-8")
+            )
+        return _BLOCK_INDEX_CACHE
+
+
+def reset_block_index_cache() -> None:
+    """Clear the singleton cache — for tests that mutate the on-disk file."""
+    global _BLOCK_INDEX_CACHE
+    with _BLOCK_INDEX_LOCK:
+        _BLOCK_INDEX_CACHE = None
+
+
+def get_block_index_for(champion_id: str) -> tuple[dict[str, int], str]:
+    """Return ``(block_index_map, source)`` for ``champion_id``.
+
+    Source is ``"champion"`` if the registry has an entry, ``"default"``
+    if it fell back to an empty map (block 0 for all keys).
+    """
+    table = _load_block_index_table()
+    overrides = table.get("champions") or {}
+    if champion_id in overrides:
+        raw = overrides[champion_id]
+        if not isinstance(raw, dict):
+            raise ValueError(
+                f"champion_block_index.json: {champion_id!r} must map to a "
+                f"dict, got {raw!r}"
+            )
+        mapping = {str(k).upper(): int(v) for k, v in raw.items()}
+        return (mapping, "champion")
+    return ({}, "default")
+
+
+def _resolve_block_index_overrides(
+    champion_id: str,
+    explicit: Optional[dict[str, int]],
+) -> tuple[dict[str, int], str]:
+    """Resolve block_index_overrides from caller input + registry.
+
+    Registry provides the per-(champion, key) default; caller's dict
+    (if any) is merged in with caller winning per-key. Returns
+    ``(merged, source)``:
+
+      * ``"override"`` — caller passed any explicit value
+      * ``"champion"`` — registry entry used, caller passed None
+      * ``"default"`` — empty dict, no registry entry, no caller input
+    """
+    registry_map, registry_source = get_block_index_for(champion_id)
+    if explicit is None:
+        return (registry_map, registry_source)
+    # Caller wins per-key; registry fills the gaps.
+    merged: dict[str, int] = dict(registry_map)
+    for k, v in explicit.items():
+        merged[str(k).upper()] = int(v)
+    return (merged, "override")
+
+
 # Damage-block scaling fields and the CallContext-style attribute they
 # multiply against. ``factor`` is the value stored in the damage block
 # (treated as a percentage when >0 — ap_pct=50.0 means 50% of AP, so we
@@ -290,8 +374,12 @@ _SCALING_TARGETS: tuple[tuple[str, str], ...] = (
     ("caster_max_mp_pct", "caster_max_mp"),
 )
 
-# Valid block-strategies.
-_BLOCK_STRATEGIES: frozenset[str] = frozenset({"first", "sum", "max"})
+# Valid block-strategies. Phase 5.9 (s191) added ``"indexed"`` — pick a
+# specific damage-block index per spell key via ``block_index_overrides``.
+# The ``compute_*`` callers transparently switch to ``"indexed"`` for keys
+# present in the resolved override map; keys without an entry fall back to
+# the caller-supplied global ``block_strategy``.
+_BLOCK_STRATEGIES: frozenset[str] = frozenset({"first", "sum", "max", "indexed"})
 
 
 @dataclass(frozen=True)
@@ -459,13 +547,29 @@ def _select_blocks(
     rank: int,
     ctx: AbilityContext,
     strategy: str,
+    block_index: int = 0,
 ) -> float:
-    """Combine damage blocks per the configured strategy."""
+    """Combine damage blocks per the configured strategy.
+
+    ``block_index`` is consulted only when ``strategy == "indexed"`` (added
+    in Phase 5.9, s191). For ``"first"`` it is ignored (block 0 always
+    used); for ``"max"`` / ``"sum"`` it is also ignored (all blocks
+    aggregated). Out-of-range indexes clamp to the last available damage
+    block, preserving forward-compat with future patches that may add
+    extra blocks to existing forms.
+    """
     damage_blocks = tuple(b for b in blocks if b.attribute_kind == "damage")
     if not damage_blocks:
         return 0.0
     if strategy == "first":
         return _evaluate_block(damage_blocks[0], rank, ctx)
+    if strategy == "indexed":
+        idx = block_index
+        if idx < 0:
+            idx = 0
+        if idx >= len(damage_blocks):
+            idx = len(damage_blocks) - 1
+        return _evaluate_block(damage_blocks[idx], rank, ctx)
     evals = [_evaluate_block(b, rank, ctx) for b in damage_blocks]
     if strategy == "max":
         return max(evals) if evals else 0.0
@@ -594,6 +698,8 @@ class AbilityDpsResult:
     max_priority_source: str = "default"            # "override" | "champion" | "default"
     form_index_source: str = "default"              # "override" | "champion" | "default"
     form_index_resolved: dict[str, int] = field(default_factory=dict)
+    block_index_source: str = "default"             # "override" | "champion" | "default"
+    block_index_resolved: dict[str, int] = field(default_factory=dict)
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -617,6 +723,8 @@ class AbilityDpsResult:
             "block_strategy": self.block_strategy,
             "form_index_source": self.form_index_source,
             "form_index_resolved": dict(self.form_index_resolved),
+            "block_index_source": self.block_index_source,
+            "block_index_resolved": dict(self.block_index_resolved),
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -719,6 +827,7 @@ def compute_ability_dps(
     max_priority: Optional[Sequence[str]] = None,
     block_strategy: str = "first",
     form_index_overrides: Optional[dict[str, int]] = None,
+    block_index_overrides: Optional[dict[str, int]] = None,
 ) -> AbilityDpsResult:
     """Compute total ability DPS for the resolved build.
 
@@ -741,11 +850,20 @@ def compute_ability_dps(
         the per-champion override registry (``champion_max_priority.json``)
         is consulted; falls back to Q-W-E for unmapped champions.
     block_strategy:
-        How to combine multi-block abilities — ``"first"`` (default),
-        ``"sum"``, or ``"max"``. See module docstring for rationale.
+        Global strategy for multi-block abilities — ``"first"`` (default),
+        ``"sum"``, ``"max"``, or ``"indexed"``. Per-key overrides via
+        ``block_index_overrides`` switch a specific key to ``"indexed"``
+        with the supplied block_index; keys without an entry fall back to
+        the global strategy. See module docstring for rationale.
     form_index_overrides:
         Per-key form index overrides — e.g. ``{"Q": 2}`` to evaluate
         Aphelios's Q with the 3rd weapon stance. Default 0 for all keys.
+    block_index_overrides:
+        Per-key damage-block index overrides — e.g. ``{"E": 1}`` to evaluate
+        Cassiopeia E's "Total Enhanced Damage" block instead of the default
+        "Bonus Magic Damage" block0. When ``None``, the per-champion override
+        registry (``champion_block_index.json``) is consulted; falls back
+        to block 0 for unmapped (champion, key) pairs.
     """
     if block_strategy not in _BLOCK_STRATEGIES:
         raise ValueError(
@@ -755,6 +873,9 @@ def compute_ability_dps(
     max_priority, max_priority_source = _resolve_max_priority(champion_id, max_priority)
     form_index_overrides, form_index_source = _resolve_form_index_overrides(
         champion_id, form_index_overrides,
+    )
+    block_index_overrides, block_index_source = _resolve_block_index_overrides(
+        champion_id, block_index_overrides,
     )
     if not 0.0 <= target_current_hp_pct <= 1.0:
         raise ValueError(
@@ -780,6 +901,8 @@ def compute_ability_dps(
                 max_priority_source=max_priority_source,
                 form_index_source=form_index_source,
                 form_index_resolved=form_index_overrides,
+                block_index_source=block_index_source,
+                block_index_resolved=block_index_overrides,
                 note=f"abilities snapshot missing: {e}",
             )
 
@@ -865,11 +988,14 @@ def compute_ability_dps(
             max_priority_source=max_priority_source,
             form_index_source=form_index_source,
             form_index_resolved=form_index_overrides,
+            block_index_source=block_index_source,
+            block_index_resolved=block_index_overrides,
             champion_name=resolved.champion_name,
             note=f"champion {resolved.champion_id!r} absent from abilities snapshot",
         )
     per_key_forms = abil_snap.get_abilities(resolved.champion_id)
     overrides = form_index_overrides or {}
+    block_overrides = block_index_overrides or {}
 
     per_spell: list[AbilitySpellDps] = []
     forms_for_classification: list[AbilityForm] = []
@@ -894,7 +1020,16 @@ def compute_ability_dps(
             continue
         cooldown = _form_cooldown_at_rank(form, rank)
         cost = _form_cost_at_rank(form, rank)
-        raw_dpc = _select_blocks(form.damage_blocks, rank, ctx, block_strategy)
+        # Phase 5.9 (s191): if this key has a block_index override (caller
+        # or per-(champion, key) registry), switch to "indexed" strategy
+        # with that specific block; otherwise honor the global block_strategy.
+        if key in block_overrides:
+            raw_dpc = _select_blocks(
+                form.damage_blocks, rank, ctx, "indexed",
+                block_index=block_overrides[key],
+            )
+        else:
+            raw_dpc = _select_blocks(form.damage_blocks, rank, ctx, block_strategy)
         post_mode = raw_dpc * mode_mult
         # Per-spell magic_amp only applies to magic damage (Abyssal Mask
         # Unmake doesn't touch physical Garen Q or true Talon E).
@@ -989,6 +1124,12 @@ def compute_ability_dps(
             "after flat + % magic pen"
         )
 
+    if block_overrides:
+        notes.append(
+            "block_index overrides applied: "
+            + ", ".join(f"{k}={block_overrides[k]}" for k in sorted(block_overrides))
+        )
+
     return AbilityDpsResult(
         champion_id=resolved.champion_id,
         champion_name=resolved.champion_name,
@@ -1008,6 +1149,8 @@ def compute_ability_dps(
         block_strategy=block_strategy,
         form_index_source=form_index_source,
         form_index_resolved=dict(form_index_overrides),
+        block_index_source=block_index_source,
+        block_index_resolved=dict(block_index_overrides),
         stats=dict(resolved.stats),
         notes=tuple(notes),
     )
@@ -1044,6 +1187,8 @@ def _empty_result(
     max_priority_source: str = "default",
     form_index_source: str = "default",
     form_index_resolved: Optional[dict[str, int]] = None,
+    block_index_source: str = "default",
+    block_index_resolved: Optional[dict[str, int]] = None,
     champion_name: str | None = None,
     note: str = "",
 ) -> AbilityDpsResult:
@@ -1071,6 +1216,8 @@ def _empty_result(
         block_strategy=block_strategy,
         form_index_source=form_index_source,
         form_index_resolved=dict(form_index_resolved or {}),
+        block_index_source=block_index_source,
+        block_index_resolved=dict(block_index_resolved or {}),
         stats={},
         notes=(note,) if note else (),
     )
@@ -1133,6 +1280,8 @@ class AbilityDpsRankResult:
     max_priority_source: str              # "override" | "champion" | "default"
     form_index_source: str                # "override" | "champion" | "default"
     form_index_resolved: dict[str, int]   # merged map actually used
+    block_index_source: str               # "override" | "champion" | "default"
+    block_index_resolved: dict[str, int]  # merged (champion, key) → block_index map
     block_strategy: str
     mode_multiplier: float                # aramDamageDealt; 1.0 outside ARAM
     budget: Optional[int]
@@ -1161,6 +1310,8 @@ class AbilityDpsRankResult:
             "max_priority_source": self.max_priority_source,
             "form_index_source": self.form_index_source,
             "form_index_resolved": dict(self.form_index_resolved),
+            "block_index_source": self.block_index_source,
+            "block_index_resolved": dict(self.block_index_resolved),
             "block_strategy": self.block_strategy,
             "mode_multiplier": self.mode_multiplier,
             "budget": self.budget,
@@ -1241,6 +1392,7 @@ def rank_items_by_ability_dps(
     max_priority: Optional[Sequence[str]] = None,
     block_strategy: str = "first",
     form_index_overrides: Optional[dict[str, int]] = None,
+    block_index_overrides: Optional[dict[str, int]] = None,
     filter_shared_uniques: bool = True,
 ) -> AbilityDpsRankResult:
     """Rank items by total-ability-DPS gain when added to ``current_item_ids``.
@@ -1261,19 +1413,23 @@ def rank_items_by_ability_dps(
     other scorers' behavior so the mage ranker stays consistent with the
     rest of the engine.
 
-    ``max_priority``, ``block_strategy``, ``form_index_overrides``, and
-    ``target_current_hp_pct`` flow through to ``compute_ability_dps`` for
-    both the baseline and each candidate.
+    ``max_priority``, ``block_strategy``, ``form_index_overrides``,
+    ``block_index_overrides``, and ``target_current_hp_pct`` flow through
+    to ``compute_ability_dps`` for both the baseline and each candidate.
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
     level = clamp_level(level)
 
     # Resolve once so baseline + every candidate use the same priority +
-    # form_index, and the result carries consistent source labels.
+    # form_index + block_index, and the result carries consistent source
+    # labels.
     resolved_priority, priority_source = _resolve_max_priority(champion_id, max_priority)
     resolved_form_index, form_index_source = _resolve_form_index_overrides(
         champion_id, form_index_overrides,
+    )
+    resolved_block_index, block_index_source = _resolve_block_index_overrides(
+        champion_id, block_index_overrides,
     )
 
     current_ids: tuple[str, ...] = tuple(str(i) for i in (current_item_ids or ()))
@@ -1307,6 +1463,7 @@ def rank_items_by_ability_dps(
         max_priority=resolved_priority,
         block_strategy=block_strategy,
         form_index_overrides=resolved_form_index,
+        block_index_overrides=resolved_block_index,
     )
 
     candidates = _filter_candidates(
@@ -1336,9 +1493,10 @@ def rank_items_by_ability_dps(
                 target_current_hp_pct=target_current_hp_pct,
                 augments=augments,
                 abilities_snapshot=abilities_snapshot,
-                max_priority=max_priority,
+                max_priority=resolved_priority,
                 block_strategy=block_strategy,
-                form_index_overrides=form_index_overrides,
+                form_index_overrides=resolved_form_index,
+                block_index_overrides=resolved_block_index,
             )
         except (KeyError, ValueError):
             continue
@@ -1393,6 +1551,12 @@ def rank_items_by_ability_dps(
             "abilities snapshot or have no measured cast rates"
         )
 
+    if resolved_block_index:
+        notes.append(
+            f"block_index source={block_index_source}: "
+            + ", ".join(f"{k}={resolved_block_index[k]}" for k in sorted(resolved_block_index))
+        )
+
     return AbilityDpsRankResult(
         champion_id=baseline.champion_id,
         champion_name=baseline.champion_name,
@@ -1410,6 +1574,8 @@ def rank_items_by_ability_dps(
         max_priority_source=priority_source,
         form_index_source=form_index_source,
         form_index_resolved=dict(resolved_form_index),
+        block_index_source=block_index_source,
+        block_index_resolved=dict(resolved_block_index),
         block_strategy=block_strategy,
         mode_multiplier=baseline.mode_multiplier,
         budget=budget,
