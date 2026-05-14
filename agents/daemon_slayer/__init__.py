@@ -616,6 +616,23 @@ Phase 4e (s187, 2026-05-13 — per-(champion, key) form_index overrides, ENGINE_
   ``/rank-assassin`` already accept ``form_index`` body field; the engine
   resolver kicks in when the field is absent and surfaces both new
   source/resolved fields in their JSON responses.
+
+Phase 5.6 (s188, 2026-05-13 — per-attack on-hit proc damage, ENGINE_VERSION 0.73.0):
+
+* New ``dps._per_attack_proc_damage()`` helper computes amortized per-AA
+  on-hit damage (Wit's End +magic, BotRK Mist's Edge HP%, Statikk Shiv
+  4-stack, Triforce Spellblade, etc.). Sister to ``_periodic_proc_dps``;
+  only counts ``every_n_attacks`` procs (skips ``every_n_seconds``).
+  Post-mit + post-mode + post-amps + magic-typed gets ``magic_amp``.
+* ``DpsResult`` gains ``per_attack_on_hit_damage: float`` (default 0.0
+  for empty builds; surfaced in ``to_dict()``); computed inline at the
+  end of ``compute_dps`` using the same call_ctx / effects already
+  resolved for the rotation pipeline.
+* ``burst.compute_burst_damage`` now reads ``aa_probe.per_attack_on_hit_damage``
+  and adds it to ``aa_base_per_hit`` so each AA token in the combo
+  contributes the richer total. Notes line decomposes base + on-hit
+  for explainability. Backward-compat preserved: builds without on-hit
+  items see identical per-AA damage to pre-s188.
 """
 
-ENGINE_VERSION = "0.72.0"
+ENGINE_VERSION = "0.73.0"

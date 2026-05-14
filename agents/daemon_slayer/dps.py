@@ -94,6 +94,13 @@ class DpsResult:
     avg_attack_dmg: float          # per-attack avg post-armor + mode
     raw_attack_dps: float          # AD * AS * crit avg, no scenario / no resists
     mode_multiplier: float         # aramDamageDealt or 1.0
+    # Phase 5.6 (s188, 2026-05-13): per-attack on-hit proc damage —
+    # amortized sum of every-n-attacks procs (Wit's End magic damage,
+    # BotRK Mist's Edge HP%, Statikk Shiv stacks, Triforce Spellblade etc.),
+    # post-mit + post-mode + post-amps. Used by burst.py to give each AA
+    # token in a combo a richer per-hit total than raw AD-on-armor. Empty
+    # builds yield 0.0; builds with non-attack-cadence procs only also 0.0.
+    per_attack_on_hit_damage: float = 0.0
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -114,6 +121,7 @@ class DpsResult:
             "avg_attack_dmg": self.avg_attack_dmg,
             "raw_attack_dps": self.raw_attack_dps,
             "mode_multiplier": self.mode_multiplier,
+            "per_attack_on_hit_damage": self.per_attack_on_hit_damage,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -212,6 +220,49 @@ def _periodic_proc_dps(
             dmg = proc.resolve_damage(call_ctx)
             total += procs * dmg * _armor_factor(resist) * mode_dmg_mult * type_amp
     return total / duration
+
+
+def _per_attack_proc_damage(
+    effects: list[ItemEffect],
+    target_armor_for_physical: float,
+    target_mr: float,
+    mode_dmg_mult: float,
+    call_ctx: CallContext,
+    magic_amp: float = 1.0,
+    damage_amp: float = 1.0,
+) -> float:
+    """Per-attack on-hit proc damage (post-mit, post-mode, post-amps).
+
+    Sister function to ``_periodic_proc_dps`` but with a per-attack
+    semantic instead of per-second: each ``every_n_attacks`` proc
+    contributes ``1 / every_n_attacks`` of its damage per AA, amortized
+    across the burst window. Time-based procs (``every_n_seconds``) are
+    skipped — they don't fit a single-attack window cleanly and are
+    already captured at the rotation level in ``_periodic_proc_dps``.
+
+    Used by ``burst.compute_burst_damage`` (Phase 5.6, s188) so each AA
+    token in an assassin's combo gets the on-hit contribution from items
+    like Wit's End (+15-80 magic damage on attack), BotRK Mist's Edge
+    (5% target current HP), Statikk Shiv (4-stack proc), Triforce
+    Spellblade (off base_ad), Lich Bane (AP-scaling spellblade), etc.
+
+    Returns the total on-hit damage a single AA contributes — already
+    armor/MR-mitigated, mode-multiplied, magic-amp-applied for magical
+    procs, and wrapped in ``damage_amp`` to match the rotation pipeline.
+    """
+    total = 0.0
+    for e in effects:
+        for proc in e.periodics:
+            if proc.every_n_attacks <= 0:
+                continue
+            procs_per_aa = 1.0 / proc.every_n_attacks
+            is_physical = proc.damage_type == PHYSICAL
+            is_true = proc.damage_type == TRUE
+            resist = 0.0 if is_true else (target_armor_for_physical if is_physical else target_mr)
+            type_amp = 1.0 if (is_physical or is_true) else magic_amp
+            dmg = proc.resolve_damage(call_ctx)
+            total += procs_per_aa * dmg * _armor_factor(resist) * mode_dmg_mult * type_amp
+    return total * damage_amp
 
 
 def _rotation_attack_dps(
@@ -528,6 +579,15 @@ def compute_dps(
     # rotation DPS uses, so /dps clients see consistent numbers.
     avg_attack_dmg = ad * (1 + crit * crit_bonus) * _armor_factor(target_armor_eff) * mode_mult * damage_amp
     raw_attack_dps = ad * eff_as * (1 + crit * crit_bonus)
+    # Phase 5.6 (s188, 2026-05-13): per-attack on-hit proc damage. Used
+    # by burst.compute_burst_damage to score AA tokens richer than raw
+    # AD-on-armor — captures Wit's End / BotRK / Statikk / Spellblade
+    # contributions to a single AA hit. Falls out of compute_dps so the
+    # AA scorer in burst.py doesn't need to re-derive call_ctx / effects.
+    per_attack_on_hit_damage = _per_attack_proc_damage(
+        item_effects, target_armor_eff, target_mr_eff, mode_mult,
+        call_ctx, magic_amp=magic_amp, damage_amp=damage_amp,
+    )
 
     notes = list(resolved.notes)
     if mode == "ARAM" and mode_mult != 1.0:
@@ -624,6 +684,7 @@ def compute_dps(
         avg_attack_dmg=avg_attack_dmg,
         raw_attack_dps=raw_attack_dps,
         mode_multiplier=mode_mult,
+        per_attack_on_hit_damage=per_attack_on_hit_damage,
         stats=dict(stats),
         notes=tuple(notes),
     )
