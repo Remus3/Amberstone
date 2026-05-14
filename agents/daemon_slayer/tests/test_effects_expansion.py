@@ -7388,7 +7388,12 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          Fiddlesticks R, MissFortune E, Samira R, Singed Q,
         #          Velkoz R, Syndra R) + Anivia Q extension. Pure data
         #          batch; no resolver/walker code changes.
-        self.assertEqual(ENGINE_VERSION, "0.78.0")
+        # 0.79.0 = s194 Phase 5.9.7 calibration-follow-up block_index expansion —
+        #          8 more (champion, key) entries closing s193's deferred list
+        #          (Corki W/E, Hecarim W/E, Jayce Q/W, Rell R, DrMundo W).
+        #          Pure data batch; same per-tick → total / min → max amped
+        #          pattern; resolver/walker code unchanged.
+        self.assertEqual(ENGINE_VERSION, "0.79.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7449,7 +7454,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.78.0")
+        self.assertEqual(ENGINE_VERSION, "0.79.0")
 
 
 if __name__ == "__main__":

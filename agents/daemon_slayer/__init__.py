@@ -638,6 +638,41 @@ Phase 5.6 (s188, 2026-05-13 — per-attack on-hit proc damage, ENGINE_VERSION 0.
   arm-by-spell-cast / consume-by-AA model that lands Spellblade
   contributions in burst combos.
 
+Phase 5.9.7 (s194, 2026-05-14 — calibration-follow-up block_index expansion, ENGINE_VERSION 0.79.0):
+
+* Pure data-only batch — no code changes, just expands the s191
+  ``champion_block_index.json`` registry with 8 new (champion, key)
+  entries closing the s193 carry-forward calibration list. Same
+  "per-tick → total" or "min → max amped variant" pattern as s193;
+  these are the lower-impact-but-still-meaningful entries deferred
+  from s193 for triage. Now the channel/aura/charge family closes
+  systematic under-counting for non-mage/non-assassin ability-based
+  champions queried via /ability-dps + /burst direct routes:
+    - Corki W (Valkyrie fire-trail full-duration total — 5× block 0)
+    - Corki E (Gatling Gun 4-second full-channel total — 16× block 0)
+    - Hecarim W (Spirit of Dread full-aura total — 5× block 0)
+    - Hecarim E (Devastating Charge max-charge variant — 2× block 0)
+    - Jayce Q (Shock Blast through Acceleration Gate — 1.4× block 0;
+      layered on s187's Jayce Q form_index=1 cannon-form override,
+      orthogonal: form_index selects cannon form 1 → block_index then
+      selects the gate-amped block 1 within that form)
+    - Jayce W (Lightning Field hammer-form full-aura total — 4× block 0)
+    - Rell R (Magnet Storm full 4-second channel — 8× block 0)
+    - DrMundo W (Heart Zapper full drain channel — 16× block 0; block 2
+      recast detonation is a separate +25% one-time burst not summed in
+      current single-block_index schema, minor under-count, acceptable)
+* All entries verified against Meraki ATTR names ('Total Magic/Physical
+  Damage', 'Maximum Physical Damage', 'Increased Damage') in
+  champion_abilities.json — clean per-tick → total or min → max amped.
+* Backend-impact A/B on /ability-dps at level 11 vs 80/30/2000:
+    Singed-class channels (8-16× lift) for the Corki E + Hecarim W +
+    Jayce W + Rell R + DrMundo W subset; Jayce Q + Corki W see 1.4×
+    and 5× lifts respectively; Hecarim E 2× lift on max-charge.
+* No engine code changed — the s191/s192 walker logic (per-token-canonical
+  lookup + base-key fallback) handles all new entries transparently.
+* Backward-compat preserved: any unmapped champion (Aatrox, Zed-without-
+  Akali-style-R, etc.) sees byte-identical output to pre-s194.
+
 Phase 5.9.6 (s193, 2026-05-14 — channeled-ability block_index expansion, ENGINE_VERSION 0.78.0):
 
 * Pure data-only batch — no code changes, just expands the s191
@@ -798,4 +833,4 @@ Phase 5.7 (s189, 2026-05-13 — Spellblade-in-burst, ENGINE_VERSION 0.74.0):
   doesn't exercise it (e.g. operator-supplied pure-AA combo).
 """
 
-ENGINE_VERSION = "0.78.0"
+ENGINE_VERSION = "0.79.0"
