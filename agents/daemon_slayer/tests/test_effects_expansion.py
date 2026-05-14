@@ -7409,7 +7409,18 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          Karthus Q solo-target enhanced, Kha'Zix Q isolation,
         #          Kog'Maw R low-HP execute, Pantheon Q charged hurl). Pure
         #          data batch; no walker/resolver/server code changes.
-        self.assertEqual(ENGINE_VERSION, "0.81.0")
+        # 0.82.0 = s197 Phase 5.9.10 assassin/fighter resource amps + utility
+        #          totals — 20 more (champion, key) entries across 18 new
+        #          champions (registry 49 → 67). Pattern A multi-hit/channel/mark
+        #          totals (Aatrox W, Hwei R, LeBlanc Q/E, Lucian R, Mel Q/R,
+        #          MonkeyKing R, Naafiri Q/E, MasterYi Q, Smolder W).
+        #          Pattern B fully-charged amps (Nunu W, Sion Q, Briar E).
+        #          Pattern C resource-state amps (Renekton Q/W full-Fury,
+        #          Kassadin R max-stack Riftwalk). Pattern D execute /
+        #          channel-duration amps (Darius R, Nilah R). Pattern E
+        #          multi-charge / multi-fire totals (Poppy R, Rumble E). Pure
+        #          data batch; no walker/resolver/server code changes.
+        self.assertEqual(ENGINE_VERSION, "0.82.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7470,7 +7481,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.81.0")
+        self.assertEqual(ENGINE_VERSION, "0.82.0")
 
 
 if __name__ == "__main__":
