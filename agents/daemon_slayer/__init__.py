@@ -638,6 +638,67 @@ Phase 5.6 (s188, 2026-05-13 — per-attack on-hit proc damage, ENGINE_VERSION 0.
   arm-by-spell-cast / consume-by-AA model that lands Spellblade
   contributions in burst combos.
 
+Phase 5.9.11 (s198, 2026-05-14 — bruiser/jungler/utility/marksman block_index expansion, ENGINE_VERSION 0.83.0):
+
+* Pure data-only batch — no code changes, just expands the s191
+  ``champion_block_index.json`` registry with 20 new (champion, key)
+  entries (17 new champions + 2 key extensions on existing Sion and
+  Vladimir; XinZhao contributes 2 entries Q+W). Registry: 67 → 84
+  champions, 83 → 103 (champion, key) pairs.
+* **Pattern A — Multi-hit single-target totals** (12 entries):
+    - Sylas Q=3 (Chain Lash initial + delayed pulse, 3.33×)
+    - XinZhao Q=1 (Three Talon Strike 3 empowered AAs, 3×)
+    - XinZhao W=2 (Wind Becomes Lightning slash + thrust, 3.71×)
+    - Zac R=2 (Let's Bounce all 4 bounces same target, 2.5×)
+    - Maokai E=1 (Sapling Toss enhanced dual-hit, 2×)
+    - Kayn Q=1 (Reaping Slash both passes, 2×)
+    - Sejuani W=2 (Winter's Wrath swipe + thrust total, 2.89×)
+    - Neeko Q=2 (Blooming Burst initial + 2 blooms, 2.04×)
+    - Nasus E=2 (Spirit Fire initial + 5 full-duration ticks, 2×)
+    - Nami E=1 (Tidecaller's Blessing 3 empowered AAs, 3×)
+    - Ornn R=2 (Call of the Forge God initial + 2nd ram, 2×)
+    - Twitch E=3 (Contaminate at 6 Deadly Venom stacks, 4.5×)
+* **Pattern B — Fully-charged amps** (4 entries):
+    - Vi Q=1 (Vault Breaker fully-charged 1.25s, 2.5×)
+    - Sion R=1 (Unstoppable Onslaught max-speed, 2.67×)
+    - Irelia W=1 (Defiant Dance fully-charged 2s, 3×)
+    - Yuumi Q=1 (Prowling Projectile untargeted max-distance, 1.62×)
+* **Pattern C — Resource-state amp** (1 entry):
+    - Jax E=1 (Counter Strike at 2 dodge stacks, 2×)
+* **Pattern D — Channel/duration totals** (3 entries):
+    - Udyr R=1 (Wingborne Storm full 8 ticks, 8×)
+    - Vladimir W=1 (Sanguine Pool full 4-second duration, 4×)
+    - Viktor R=2 (Chaos Storm initial + 6 ticks full channel, 4.48×)
+* All 20 verified per-rank math against the Meraki abilities snapshot
+  (block N's base + scaling fields match the canonical-condition
+  multiple of block 0's components). Math-level sanity tests pin two:
+  Udyr R block 1 = exact 8× block 0 (all ranks); Vi Q block 1 = exact
+  2.5× block 0 (all 5 ranks).
+* **Deliberately skipped this batch** (documented in registry rationale):
+  Evelynn Q (target-state charm condition — schema lift bucket),
+  Vayne E (target-state wall-stun terrain condition), Vladimir Q
+  (passive-empowered AA, on-hit not per-cast), Xerath W (positional
+  target-state amp), Ziggs E (5-mine focus unrealistic), Janna Q (low
+  ratio + utility ult), Seraphine Q (enchanter-class, dispatcher routes
+  to ds.hps), Yasuo E (resource-state decay rate too fast for clean
+  commit model), Heimerdinger Q/R (turret-based not per-cast),
+  Sona R / Lux Q/E/R / Veigar Q (single-block, engine default correct),
+  Smolder Q / Smolder E (max-stacks-with-gear / Meraki schema
+  ambiguity).
+* Backward-compat preserved: any unmapped champion (Zed, Yasuo, etc.)
+  sees byte-identical output to pre-s198. Fourteenth consecutive
+  override / proc-shape modeling improvement on the same template;
+  seventh pure-data batch in the block_index family.
+
+Phase 5.9.10 (s197, 2026-05-14 — assassin/fighter resource + utility block_index expansion, ENGINE_VERSION 0.82.0):
+
+* Pure data-only batch — no code changes, just expands the s191
+  ``champion_block_index.json`` registry with 20 new (champion, key)
+  entries across 18 new champions (registry 49 → 67). Same walker
+  logic; zero engine math change. Spans five sub-patterns: multi-hit/
+  channel/mark totals, fully-charged amps, resource-state amps,
+  execute/channel-duration amps, multi-charge/multi-fire totals.
+
 Phase 5.9.9 (s196, 2026-05-14 — extended multi-hit/condition-amp block_index expansion, ENGINE_VERSION 0.81.0):
 
 * Pure data-only batch — no code changes, just expands the s191
@@ -919,4 +980,4 @@ Phase 5.7 (s189, 2026-05-13 — Spellblade-in-burst, ENGINE_VERSION 0.74.0):
   doesn't exercise it (e.g. operator-supplied pure-AA combo).
 """
 
-ENGINE_VERSION = "0.82.0"
+ENGINE_VERSION = "0.83.0"
