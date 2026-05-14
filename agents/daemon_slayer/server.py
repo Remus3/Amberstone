@@ -605,6 +605,23 @@ def _parse_form_index(body: dict) -> Optional[dict[str, int]]:
     return None
 
 
+def _parse_block_index(body: dict) -> Optional[dict[str, int]]:
+    """Decode the optional ``block_index`` body field — JSON dict only.
+
+    Phase 5.9 (s191, 2026-05-14). Per-(champion, key) damage block_index
+    override. ``{"E": 1}`` selects Cassiopeia's "Total Enhanced Damage"
+    block instead of the default "Bonus Magic Damage" block. Shared by
+    ``/ability-dps``, ``/rank-mage``, ``/burst``, and ``/rank-assassin``
+    so all four routes accept the operator-supplied override the same way.
+    Returns ``None`` when absent so the engine's per-champion registry
+    (``champion_block_index.json``) can resolve a default.
+    """
+    raw = body.get("block_index")
+    if isinstance(raw, dict):
+        return {str(k).upper(): int(v) for k, v in raw.items()}
+    return None
+
+
 def _parse_combo_sequence(body: dict) -> Optional[tuple[str, ...]]:
     """Decode the optional ``combo_sequence`` body field.
 
@@ -634,16 +651,20 @@ def _parse_combo_sequence(body: dict) -> Optional[tuple[str, ...]]:
 def _route_ability_dps(body: dict) -> dict:
     """POST /ability-dps — per-spell ability DPS for the caster build.
 
-    Phase 4b (s178, 2026-05-12). Body mirrors /dps with three additions:
+    Phase 4b (s178, 2026-05-12). Body mirrors /dps with these additions:
       * ``target_current_hp_pct`` (float, default 1.0) — what fraction
         of max HP the target sits at when the cast lands; affects
         ``target_current_hp_pct`` / ``target_missing_hp_pct`` blocks
       * ``max_priority`` (str or list, default "QWE") — three keys
         describing max order; comma-separated as a query param
-      * ``block_strategy`` (str, default "first") — how to combine
+      * ``block_strategy`` (str, default "first") — global strategy for
         multi-block abilities; one of first|sum|max
       * ``form_index`` (dict) — per-key form overrides for multi-form
         abilities (Aphelios weapons, Jayce stance); JSON only
+      * ``block_index`` (dict) — per-(champion, key) damage-block index
+        overrides; e.g. ``{"E": 1}`` for Cassi to score the "Total
+        Enhanced Damage" block. Phase 5.9 (s191) — see
+        ``champion_block_index.json`` for the engine's defaults.
     """
     snap = _CACHE.get()
     champion = _resolve_champion_id(snap, _required_str(body, "champion"))
@@ -659,6 +680,7 @@ def _route_ability_dps(body: dict) -> dict:
     block_strategy = _opt_str(body, "block_strategy", "first") or "first"
     max_priority = _parse_max_priority(body)
     form_index_overrides = _parse_form_index(body)
+    block_index_overrides = _parse_block_index(body)
     try:
         result = compute_ability_dps(
             snap, champion_id=champion, level=level,
@@ -670,6 +692,7 @@ def _route_ability_dps(body: dict) -> dict:
             max_priority=max_priority,
             block_strategy=block_strategy,
             form_index_overrides=form_index_overrides,
+            block_index_overrides=block_index_overrides,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -701,6 +724,7 @@ def _route_rank_mage(body: dict) -> dict:
     block_strategy = _opt_str(body, "block_strategy", "first") or "first"
     max_priority = _parse_max_priority(body)
     form_index_overrides = _parse_form_index(body)
+    block_index_overrides = _parse_block_index(body)
     budget = _opt_int(body, "budget", None)
     slot_count = _opt_int(body, "slots", 6) or 6
     top_n = _opt_int(body, "top", 20)
@@ -729,6 +753,7 @@ def _route_rank_mage(body: dict) -> dict:
             max_priority=max_priority,
             block_strategy=block_strategy,
             form_index_overrides=form_index_overrides,
+            block_index_overrides=block_index_overrides,
             filter_shared_uniques=filter_shared_uniques,
         )
     except KeyError as e:
@@ -742,10 +767,12 @@ def _route_burst(body: dict) -> dict:
     """POST /burst — single-combo burst damage for the caster build.
 
     Phase 5 (s180, 2026-05-13). Body mirrors /ability-dps with one
-    addition:
+    addition (Phase 5 — combo) plus all the shared registry overrides
+    (max_priority, form_index, block_index Phase 5.9 — s191):
       * ``combo_sequence`` (list or "Q-W-E-AA-R-AA") — tokens to fire;
         AA = auto-attack, P/Q/W/E/R = one cast, Q2/W2/E2/R2 = repeat
-        at same rank. Default: ("Q","W","E","AA","R","AA").
+        at same rank. Default: ("Q","W","E","AA","R","AA"); per-champion
+        registry override via ``champion_combo_sequences.json``.
     """
     snap = _CACHE.get()
     champion = _resolve_champion_id(snap, _required_str(body, "champion"))
@@ -761,6 +788,7 @@ def _route_burst(body: dict) -> dict:
     block_strategy = _opt_str(body, "block_strategy", "first") or "first"
     max_priority = _parse_max_priority(body)
     form_index_overrides = _parse_form_index(body)
+    block_index_overrides = _parse_block_index(body)
     combo_sequence = _parse_combo_sequence(body)
     try:
         result = compute_burst_damage(
@@ -773,6 +801,7 @@ def _route_burst(body: dict) -> dict:
             max_priority=max_priority,
             block_strategy=block_strategy,
             form_index_overrides=form_index_overrides,
+            block_index_overrides=block_index_overrides,
             combo_sequence=combo_sequence,
         )
     except KeyError as e:
@@ -805,6 +834,7 @@ def _route_rank_assassin(body: dict) -> dict:
     block_strategy = _opt_str(body, "block_strategy", "first") or "first"
     max_priority = _parse_max_priority(body)
     form_index_overrides = _parse_form_index(body)
+    block_index_overrides = _parse_block_index(body)
     combo_sequence = _parse_combo_sequence(body)
     budget = _opt_int(body, "budget", None)
     slot_count = _opt_int(body, "slots", 6) or 6
@@ -834,6 +864,7 @@ def _route_rank_assassin(body: dict) -> dict:
             max_priority=max_priority,
             block_strategy=block_strategy,
             form_index_overrides=form_index_overrides,
+            block_index_overrides=block_index_overrides,
             combo_sequence=combo_sequence,
             filter_shared_uniques=filter_shared_uniques,
         )

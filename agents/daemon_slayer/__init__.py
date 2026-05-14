@@ -638,6 +638,47 @@ Phase 5.6 (s188, 2026-05-13 — per-attack on-hit proc damage, ENGINE_VERSION 0.
   arm-by-spell-cast / consume-by-AA model that lands Spellblade
   contributions in burst combos.
 
+Phase 5.9 (s191, 2026-05-14 — per-(champion, key) damage block_index overrides, ENGINE_VERSION 0.76.0):
+
+* A minority of champions have a later damage block in their canonical
+  ability form that represents the realistic burst-window value: Cassi E
+  block1 "Total Enhanced Damage" (vs poisoned), Anivia E block1
+  "Enhanced Damage" (vs chilled), Diana W block2 "Total Magic Damage"
+  (all 3 orbs), Veigar R block1 "Maximum Magic Damage" (executed target),
+  Brand W block1 "Increased Damage" (vs CC'd), etc. Pre-s191, the
+  ``"first"`` strategy locked all callers to block 0 — under-scoring
+  these mages and assassins systematically.
+* New ``ability_dps._select_blocks`` strategy ``"indexed"`` accepts a
+  ``block_index`` parameter (default 0). New ``"indexed"`` is added to
+  ``_BLOCK_STRATEGIES`` alongside ``"first"`` / ``"sum"`` / ``"max"``.
+  Out-of-range indexes clamp to the last damage block (forward-compat
+  for patches that add extra blocks).
+* New ``ability_dps.{_BLOCK_INDEX_PATH, _load_block_index_table,
+  reset_block_index_cache, get_block_index_for,
+  _resolve_block_index_overrides}`` mirror the Phase 4e form_index
+  registry (s187) — singleton-cached JSON loader + per-(champion, key)
+  map. Caller's explicit dict still wins per-key; the registry fills
+  any keys the caller didn't override.
+* New ``agents/daemon_slayer/champion_block_index.json`` seed registry
+  ships 12 entries across 11 champions:
+
+    Ahri Q=1, Anivia E=1, Aurora Q=2, Belveth E=2,
+    Brand W=1 + R=1, Cassiopeia E=1, Diana W=2, Evelynn R=1,
+    Karma W=1, Veigar R=1, Vex R=2.
+
+* ``compute_ability_dps`` and ``compute_burst_damage`` gain
+  ``block_index_overrides: Optional[dict[str, int]]`` (default None →
+  resolves via registry). Per-spell loop switches to ``"indexed"``
+  strategy for keys present in the resolved map; keys without an entry
+  honor the caller-supplied global ``block_strategy``.
+* ``AbilityDpsResult`` + ``AbilityDpsRankResult`` + ``BurstResult`` +
+  ``BurstRankResult`` all gain ``block_index_source: str`` ("override"
+  | "champion" | "default") + ``block_index_resolved: dict[str, int]``
+  (the merged map actually used). ``to_dict()`` carries both.
+* Four server routes (``/ability-dps``, ``/rank-mage``, ``/burst``,
+  ``/rank-assassin``) accept a new ``block_index`` JSON dict body field.
+  Shared ``_parse_block_index`` decoder mirrors ``_parse_form_index``.
+
 Phase 5.8 (s190, 2026-05-13 — Sundered Sky Lightshield Strike in burst, ENGINE_VERSION 0.75.0):
 
 * Sundered Sky (6610 + Arena mirror 226610) carries a Lightshield Strike
@@ -698,4 +739,4 @@ Phase 5.7 (s189, 2026-05-13 — Spellblade-in-burst, ENGINE_VERSION 0.74.0):
   doesn't exercise it (e.g. operator-supplied pure-AA combo).
 """
 
-ENGINE_VERSION = "0.75.0"
+ENGINE_VERSION = "0.76.0"
