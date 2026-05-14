@@ -8,6 +8,13 @@ damage blocks: Cassi E block1 (Total Enhanced vs poisoned), Veigar R
 block1 (Maximum vs executed), Anivia E block1 (Enhanced vs chilled),
 Diana W block2 (Total all 3 orbs), Brand W block1 (Increased vs CC'd),
 Evelynn R block1 (Empowered execute), etc.
+
+Phase 5.9.5 (s192) added token-variant lookup (Akali R/R2 split).
+Phase 5.9.6 (s193) added 8 channeled-ability entries (Alistar/Fiddle/etc).
+Phase 5.9.7 (s194) added 8 calibration-follow-up entries (Corki W/E,
+Hecarim W/E, Jayce Q/W, Rell R, DrMundo W) — same per-tick → total
+pattern plus the first block_index that layers on a prior form_index
+override (Jayce Q inside cannon form 1).
 """
 from __future__ import annotations
 
@@ -98,6 +105,12 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Singed"], {"Q": 1})
         self.assertEqual(champions["Syndra"], {"R": 2})
         self.assertEqual(champions["Velkoz"], {"R": 1})
+        # Phase 5.9.7 (s194) — calibration follow-up expansion
+        self.assertEqual(champions["Corki"], {"W": 1, "E": 1})
+        self.assertEqual(champions["Hecarim"], {"W": 1, "E": 1})
+        self.assertEqual(champions["Jayce"], {"Q": 1, "W": 1})
+        self.assertEqual(champions["Rell"], {"R": 1})
+        self.assertEqual(champions["DrMundo"], {"W": 1})
 
     def test_every_value_is_int(self) -> None:
         for champion_id, entries in self.table["champions"].items():
@@ -661,6 +674,129 @@ class ChanneledAbilityExpansionTests(unittest.TestCase):
         # raw is closer to block 1 value than block 0.
         self.assertGreater(q_spell.raw_damage_per_cast, 60.0,
                            "raw should reflect total (block 1), not per-tick (block 0)")
+
+
+# ─── s194 Phase 5.9.7 — calibration follow-up entries ────────────────────────
+
+
+class CalibrationFollowUpExpansionTests(unittest.TestCase):
+    """Phase 5.9.7 (s194). 8 more (champion, key) entries closing s193's
+    deferred calibration list. Same "per-tick → total" pattern as s193
+    for channels/auras (Corki W/E, Hecarim W, Jayce W, Rell R, DrMundo W),
+    plus "min → max amped" for charge/gate variants (Hecarim E charge,
+    Jayce Q gate-amped Shock Blast). The Jayce Q entry is the first
+    block_index that layers on a prior form_index override (s187 set
+    Jayce.Q form_index=1 cannon; s194 now sets block_index=1 within
+    that form — orthogonal resolvers).
+
+    Tests verify each new entry:
+      1. Is present in the resolved registry
+      2. Drives per-spell raw_damage_per_cast above the forced-block-0
+         baseline (positive delta proves block ≥1 evaluation)
+      3. Produces strictly higher total_ability_dps vs forced block 0
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = _snap()
+
+    def _delta_check(self, champion: str, key: str, expected_idx: int) -> None:
+        """Assert champion's registry entry routes `key` to expected_idx,
+        and the resulting total_ability_dps exceeds the forced-block-0
+        baseline by a positive margin."""
+        r_reg = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r_reg.block_index_resolved.get(key), expected_idx,
+                         f"{champion}.{key} should route to block {expected_idx}")
+        forced = dict(r_reg.block_index_resolved)
+        forced[key] = 0
+        r_off = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides=forced,
+        )
+        self.assertGreater(r_reg.total_ability_dps, r_off.total_ability_dps,
+                           f"{champion} registry total should exceed forced-block-0")
+
+    def test_corki_W_routes_to_block_1(self) -> None:
+        self._delta_check("Corki", "W", 1)
+
+    def test_corki_E_routes_to_block_1(self) -> None:
+        self._delta_check("Corki", "E", 1)
+
+    def test_hecarim_W_routes_to_block_1(self) -> None:
+        self._delta_check("Hecarim", "W", 1)
+
+    def test_hecarim_E_routes_to_block_1(self) -> None:
+        self._delta_check("Hecarim", "E", 1)
+
+    def test_jayce_Q_routes_to_block_1(self) -> None:
+        """Jayce Q layers s194 block_index=1 on s187 form_index=1.
+        Cannon form (form 1) Shock Blast block 1 = 'Increased Damage'
+        (1.4× block 0) through Acceleration Gate."""
+        self._delta_check("Jayce", "Q", 1)
+
+    def test_jayce_W_routes_to_block_1(self) -> None:
+        """Jayce W hammer-form (default form 0) Lightning Field aura:
+        block 0 = 'Magic Damage Per Tick', block 1 = 'Total Magic Damage'
+        (4× block 0 over 4 second aura)."""
+        self._delta_check("Jayce", "W", 1)
+
+    def test_rell_R_routes_to_block_1(self) -> None:
+        self._delta_check("Rell", "R", 1)
+
+    def test_drmundo_W_routes_to_block_1(self) -> None:
+        self._delta_check("DrMundo", "W", 1)
+
+    def test_corki_both_keys_in_resolved(self) -> None:
+        """Both Corki W and E entries land in the same resolved map."""
+        r = compute_ability_dps(
+            self.snap, "Corki", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"W": 1, "E": 1})
+        self.assertEqual(r.block_index_source, "champion")
+
+    def test_hecarim_both_keys_in_resolved(self) -> None:
+        r = compute_ability_dps(
+            self.snap, "Hecarim", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"W": 1, "E": 1})
+        self.assertEqual(r.block_index_source, "champion")
+
+    def test_jayce_both_keys_in_resolved(self) -> None:
+        """Jayce gets Q and W both — Q block_index applies within form 1
+        (cannon, per s187 form_index override); W block_index applies in
+        form 0 (hammer, default)."""
+        r = compute_ability_dps(
+            self.snap, "Jayce", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1, "W": 1})
+
+    def test_jayce_Q_block_layers_on_s187_form_index(self) -> None:
+        """Smoke test that Jayce Q block_index=1 inside form_index=1
+        produces a non-zero raw_damage_per_cast (i.e., the form+block
+        resolvers compose correctly)."""
+        r = compute_ability_dps(
+            self.snap, "Jayce", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        q_spell = next((s for s in r.per_spell if s.key == "Q"), None)
+        self.assertIsNotNone(q_spell)
+        self.assertGreater(q_spell.raw_damage_per_cast, 0.0,
+                           "Jayce Q in cannon form block 1 should evaluate to positive damage")
+
+    def test_pre_s194_unmapped_unaffected(self) -> None:
+        """Backward-compat: s193 entries unchanged after s194 ship."""
+        r = compute_ability_dps(
+            self.snap, "Singed", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1})
 
 
 # ─── backward-compat: unmapped champions keep pre-s191 output ───────────────
