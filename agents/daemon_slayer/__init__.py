@@ -638,6 +638,35 @@ Phase 5.6 (s188, 2026-05-13 — per-attack on-hit proc damage, ENGINE_VERSION 0.
   arm-by-spell-cast / consume-by-AA model that lands Spellblade
   contributions in burst combos.
 
+Phase 5.9.6 (s193, 2026-05-14 — channeled-ability block_index expansion, ENGINE_VERSION 0.78.0):
+
+* Pure data-only batch — no code changes, just expands the s191
+  ``champion_block_index.json`` registry with 8 new champion entries
+  plus extends Anivia's existing entry to add her Q.
+* New entries cover the "per-tick → total" gap for channeled / duration
+  abilities where the engine's default "first damage block" picked the
+  per-tick value but the per-cast contribution is the full-channel total:
+    - Alistar E (Trample channel)
+    - AurelionSol E (Singularity duration)
+    - Fiddlesticks R (Crowstorm full channel)
+    - MissFortune E (Make It Rain duration)
+    - Samira R (Inferno Trigger spray total)
+    - Singed Q (Poison Trail full duration)
+    - Velkoz R (Life Form Disintegration Ray full channel)
+    - Syndra R (Maximum at 7+ Dark Sphere stacks)
+* Anivia gets Q=2 added (Total Magic Damage = initial pass + detonation
+  combined; her existing E=1 stays for chilled-target amp).
+* Backend-impact A/B on /ability-dps at level 11 vs 80/30/2000:
+    Singed Q       +182% (4.06 → 11.46 adps)
+    Fiddlesticks R +125% (5.24 → 11.81 adps)
+    Anivia Q+E     +105% (9.66 → 19.80 adps)
+    AurelionSol E   +65% (1.99 →  3.29 adps)
+    Velkoz R        +23% (13.84 → 17.04 adps)
+    MissFortune E   +17% (9.97 → 11.64 adps)
+    Syndra R        +10% (25.55 → 28.06 adps)
+* The s191 + s192 walker logic (per-token-canonical lookup + fallback)
+  remains unchanged — this batch only ships JSON entries.
+
 Phase 5.9.5 (s192, 2026-05-14 — token-variant block_index for Akali R, ENGINE_VERSION 0.77.0):
 
 * Closes s191 carry-forward (a). Akali R has 3 damage blocks in the
@@ -769,4 +798,4 @@ Phase 5.7 (s189, 2026-05-13 — Spellblade-in-burst, ENGINE_VERSION 0.74.0):
   doesn't exercise it (e.g. operator-supplied pure-AA combo).
 """
 
-ENGINE_VERSION = "0.77.0"
+ENGINE_VERSION = "0.78.0"
