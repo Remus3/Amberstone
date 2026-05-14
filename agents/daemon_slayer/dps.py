@@ -118,6 +118,14 @@ class DpsResult:
     # a Spellblade-family item.
     spellblade_per_proc_damage: float = 0.0
     spellblade_item_name: str = ""        # informational; "" when no spellblade
+    # Phase 5.8 (s190, 2026-05-13): Lightshield Strike per-proc damage.
+    # Sundered Sky (6610 + Arena mirror 226610) carries the only
+    # "Lightshield Strike" proc in the engine — explicitly distinct from
+    # spellblade (different label, 8s vs 1.5s CD, no dedup family). Same
+    # arm-consume model as Spellblade in burst.py, but capped at 1 proc
+    # per combo because the 8s CD greatly exceeds typical burst window.
+    lightshield_strike_per_proc_damage: float = 0.0
+    lightshield_strike_item_name: str = ""
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -141,6 +149,8 @@ class DpsResult:
             "per_attack_on_hit_damage": self.per_attack_on_hit_damage,
             "spellblade_per_proc_damage": self.spellblade_per_proc_damage,
             "spellblade_item_name": self.spellblade_item_name,
+            "lightshield_strike_per_proc_damage": self.lightshield_strike_per_proc_damage,
+            "lightshield_strike_item_name": self.lightshield_strike_item_name,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -242,6 +252,56 @@ def _periodic_proc_dps(
 
 
 SPELLBLADE_UNIQUE_KEY = "spellblade"
+LIGHTSHIELD_STRIKE_PROC_NAME = "Lightshield Strike"
+
+
+def _lightshield_strike_per_proc_damage(
+    effects: list[ItemEffect],
+    target_armor_for_physical: float,
+    target_mr: float,
+    mode_dmg_mult: float,
+    call_ctx: CallContext,
+    magic_amp: float = 1.0,
+    damage_amp: float = 1.0,
+) -> tuple[float, str]:
+    """Per-proc damage from Sundered Sky's Lightshield Strike (if any).
+
+    Identified by ``PeriodicProc.name == "Lightshield Strike"`` — the
+    schema explicitly keeps Lightshield Strike OUT of the spellblade
+    unique-passive family (different in-game label, 8s CD vs 1.5s, no
+    dedup). Currently only Sundered Sky (6610) + its Arena mirror
+    (226610) carry this proc.
+
+    Returns ``(per_proc_damage, item_name)`` — first match wins (Arena
+    mirror dedup is informational only; no game mode lets you stack two
+    Sundered Skys). Damage applies the standard pipeline:
+    ``resolve_damage(call_ctx)`` → ``_armor_factor`` against the
+    appropriate resist → mode multiplier → type-selective ``magic_amp``
+    (only for MAGIC) → build-wide ``damage_amp``. Empty builds yield
+    ``(0.0, "")``.
+
+    Phase 5.8 (s190, 2026-05-13): consumed by ``burst.py``'s combo
+    walker on the AA following the first ability cast — same arm-consume
+    pattern as Spellblade, but capped at 1 proc per combo because the
+    real CD (8s) far exceeds a typical burst window (2-3s). Different
+    state variable (``lightshield_strike_armed``) so a build with both
+    Sundered Sky + a Spellblade item (e.g. Trinity Force) gets BOTH
+    procs on the same AA.
+    """
+    for e in effects:
+        for proc in e.periodics:
+            if proc.name != LIGHTSHIELD_STRIKE_PROC_NAME:
+                continue
+            is_physical = proc.damage_type == PHYSICAL
+            is_true = proc.damage_type == TRUE
+            resist = 0.0 if is_true else (
+                target_armor_for_physical if is_physical else target_mr
+            )
+            type_amp = 1.0 if (is_physical or is_true) else magic_amp
+            dmg = proc.resolve_damage(call_ctx)
+            per_proc = dmg * _armor_factor(resist) * mode_dmg_mult * type_amp * damage_amp
+            return (per_proc, e.name)
+    return (0.0, "")
 
 
 def _spellblade_per_proc_damage(
@@ -671,6 +731,16 @@ def compute_dps(
         item_effects, target_armor_eff, target_mr_eff, mode_mult,
         call_ctx, magic_amp=magic_amp, damage_amp=damage_amp,
     )
+    # Phase 5.8 (s190, 2026-05-13): Lightshield Strike per-proc damage —
+    # Sundered Sky's distinct mechanic (different name, 8s CD, no dedup
+    # with the spellblade family). Tracked separately so a build with
+    # both Sundered Sky + Trinity Force fires BOTH on the same AA.
+    lightshield_strike_per_proc, lightshield_strike_name = (
+        _lightshield_strike_per_proc_damage(
+            item_effects, target_armor_eff, target_mr_eff, mode_mult,
+            call_ctx, magic_amp=magic_amp, damage_amp=damage_amp,
+        )
+    )
 
     notes = list(resolved.notes)
     if mode == "ARAM" and mode_mult != 1.0:
@@ -749,6 +819,12 @@ def compute_dps(
             "(consumed by next AA after spell cast; burst.py models the "
             "ability-then-AA transition)"
         )
+    if lightshield_strike_per_proc > 0:
+        notes.append(
+            f"Lightshield Strike ({lightshield_strike_name}) per-proc "
+            f"{lightshield_strike_per_proc:.1f} (Sundered Sky 8s CD — fires once per "
+            "burst combo on the AA after first spell cast; distinct from spellblade)"
+        )
     for e in item_effects:
         if e.note:
             notes.append(e.note)
@@ -776,6 +852,8 @@ def compute_dps(
         per_attack_on_hit_damage=per_attack_on_hit_damage,
         spellblade_per_proc_damage=spellblade_per_proc,
         spellblade_item_name=spellblade_name,
+        lightshield_strike_per_proc_damage=lightshield_strike_per_proc,
+        lightshield_strike_item_name=lightshield_strike_name,
         stats=dict(stats),
         notes=tuple(notes),
     )
