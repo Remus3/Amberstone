@@ -638,6 +638,60 @@ Phase 5.6 (s188, 2026-05-13 — per-attack on-hit proc damage, ENGINE_VERSION 0.
   arm-by-spell-cast / consume-by-AA model that lands Spellblade
   contributions in burst combos.
 
+Phase 5.9.13 (s200, 2026-05-14 — rescue batch: Ambessa Drain + Anivia Empowered + Lillia + Nilah + Poppy + 7-entry block_index expansion, ENGINE_VERSION 0.85.0):
+
+* Pure data-only batch — no code changes. 7 new (champion, key)
+  entries (1 new champion Ambessa contributing 3 entries Q/W/E + 4
+  key extensions on Anivia/Lillia/Nilah/Poppy). Registry: 90 → 91
+  champions, 120 → 127 entries.
+* **Rescues 4 previously-deferred mechanics:**
+    - Ambessa Q/W (s196/s197/s198 deferred 'form swap') is actually a
+      Drain-stack resource amp — operator commits, same model as
+      Renekton Fury (s197).
+    - Anivia R (s195 deferred 'channel ticks ambiguous') is the
+      Empowered phase amp triggered after 1.5s+ channel commit, same
+      model as Belveth E max-charge (s174).
+    - Lillia Q (s199 'uncertain mechanic') is Q damage + Dream Dust
+      AA bonus on Q-stacked target, same as Sett Q empowered-AA-
+      followup (s196).
+    - Nilah Q (s199 'uncertain 2-stack mechanic') is canonical max-
+      stack-consumed empowered AA (2× Min per-AA), same as Twitch E
+      Deadly Venom 6-stack (s198) and Tristana E full-stack (s199).
+* **Pattern A multi-hit single-target totals** (3 entries):
+    - Ambessa E=1 (Lacerate slash+thrust 2×)
+    - Lillia Q=1 filtered (Q + Dream Dust AA 2×)
+    - Poppy Q=1 filtered (Hammer Shock out + return 2×)
+* **Pattern B resource-state amps** (3 entries):
+    - Ambessa Q=1 (Cunning Sweep Drain Increased 2×)
+    - Ambessa W=1 (Repudiation Drain Increased 1.5×)
+    - Nilah Q=1 (Formless Blade Maximum empowered AA 2×)
+* **Pattern C channel/duration commit** (1 entry):
+    - Anivia R=1 filtered (Glacial Storm Empowered phase per-tick 3×)
+* **Filtering notes** (filtered idx ≠ raw block idx):
+    - Anivia.R raw block 1 'Slow' is non-damage → filtered idx 1 =
+      raw block 2 'Empowered Damage per Tick'.
+    - Lillia.Q raw blocks 0, 1 are Movement Speed (non-damage) →
+      filtered idx 1 = raw block 3 'Total Mixed Damage'.
+    - Poppy.Q raw blocks 1, 2, 3 are Slow / Minion-only → filtered
+      idx 1 = raw block 4 'Total Physical Damage'.
+* All 7 verified per-rank math against Meraki snapshot.
+* Live-validated /ability-dps on :8893 lvl 11 vs 80/30/2000:
+    - Anivia R baseline 19.80 → 21.88 (+10.5%)
+    - Lillia Q 21.06 → 25.15 (+19.4%)
+    - Poppy Q 11.51 → 20.22 (+75.7%)
+    - Ambessa Q 5.76 → 8.49 (+47.4%)
+    - Ambessa W 5.76 → 6.51 (+13.0%)
+    - Ambessa E 5.76 → 6.61 (+14.7%)
+    - Nilah Q 5.14 → 9.36 (+82.2%)
+* Backward-compat preserved: any unmapped champion or unchanged
+  champion sees byte-identical output to pre-s200.
+* Sixteenth consecutive override / proc-shape modeling improvement
+  on the same template (s185-s200); ninth pure-data batch in the
+  block_index family. Intentionally smaller batch (7 entries vs
+  s198's 20 / s199's 17) — focus is rescuing prior-batch skip-list
+  entries against improved mechanic understanding, not net-new
+  candidate scanning.
+
 Phase 5.9.12 (s199, 2026-05-14 — Aatrox sweet-spot / Ashe Flurry / Karthus Defile / 17-entry block_index expansion, ENGINE_VERSION 0.84.0):
 
 * Pure data-only batch — no code changes, just expands the s191
@@ -1030,4 +1084,4 @@ Phase 5.7 (s189, 2026-05-13 — Spellblade-in-burst, ENGINE_VERSION 0.74.0):
   doesn't exercise it (e.g. operator-supplied pure-AA combo).
 """
 
-ENGINE_VERSION = "0.84.0"
+ENGINE_VERSION = "0.85.0"
