@@ -75,6 +75,7 @@ from .ability_dps import (
     _form_cooldown_at_rank,
     _form_cost_at_rank,
     _mitigation_factor,
+    _resolve_form_index_overrides,
     _resolve_max_priority,
     _select_blocks,
     rank_at_level,
@@ -301,6 +302,8 @@ class BurstResult:
     target_mr_after_pen: float
     max_priority_source: str = "default"            # "override" | "champion" | "default"
     combo_sequence_source: str = "default"          # "override" | "champion" | "default"
+    form_index_source: str = "default"              # "override" | "champion" | "default"
+    form_index_resolved: dict[str, int] = field(default_factory=dict)
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -329,6 +332,8 @@ class BurstResult:
             "target_armor_after_pen": self.target_armor_after_pen,
             "target_mr_after_pen": self.target_mr_after_pen,
             "combo_sequence_source": self.combo_sequence_source,
+            "form_index_source": self.form_index_source,
+            "form_index_resolved": dict(self.form_index_resolved),
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -437,6 +442,9 @@ def compute_burst_damage(
             f"block_strategy must be one of first|sum|max, got {block_strategy!r}"
         )
     max_priority, max_priority_source = _resolve_max_priority(champion_id, max_priority)
+    form_index_overrides, form_index_source = _resolve_form_index_overrides(
+        champion_id, form_index_overrides,
+    )
     if not 0.0 <= target_current_hp_pct <= 1.0:
         raise ValueError(
             f"target_current_hp_pct must be in [0,1], got {target_current_hp_pct}"
@@ -459,6 +467,8 @@ def compute_burst_damage(
                 max_priority, block_strategy,
                 max_priority_source=max_priority_source,
                 combo_sequence_source=combo_source,
+                form_index_source=form_index_source,
+                form_index_resolved=form_index_overrides,
                 note=f"abilities snapshot missing: {e}",
             )
 
@@ -536,6 +546,8 @@ def compute_burst_damage(
             max_priority, block_strategy,
             max_priority_source=max_priority_source,
             combo_sequence_source=combo_source,
+            form_index_source=form_index_source,
+            form_index_resolved=form_index_overrides,
             champion_name=resolved.champion_name,
             note=f"champion {resolved.champion_id!r} absent from abilities snapshot",
         )
@@ -694,6 +706,8 @@ def compute_burst_damage(
         target_mr_after_pen=target_mr_eff,
         max_priority_source=max_priority_source,
         combo_sequence_source=combo_source,
+        form_index_source=form_index_source,
+        form_index_resolved=dict(form_index_overrides),
         stats=dict(resolved.stats),
         notes=tuple(notes),
     )
@@ -744,6 +758,8 @@ def _empty_burst(
     *,
     max_priority_source: str = "default",
     combo_sequence_source: str = "default",
+    form_index_source: str = "default",
+    form_index_resolved: Optional[dict[str, int]] = None,
     champion_name: str | None = None,
     note: str = "",
 ) -> BurstResult:
@@ -773,6 +789,8 @@ def _empty_burst(
         target_mr_after_pen=target_mr,
         max_priority_source=max_priority_source,
         combo_sequence_source=combo_sequence_source,
+        form_index_source=form_index_source,
+        form_index_resolved=dict(form_index_resolved or {}),
         stats={},
         notes=(note,) if note else (),
     )
@@ -835,6 +853,8 @@ class BurstRankResult:
     max_priority: tuple[str, str, str]
     max_priority_source: str              # "override" | "champion" | "default"
     combo_sequence_source: str            # "override" | "champion" | "default"
+    form_index_source: str                # "override" | "champion" | "default"
+    form_index_resolved: dict[str, int]   # merged map actually used
     block_strategy: str
     mode_multiplier: float
     budget: Optional[int]
@@ -863,6 +883,8 @@ class BurstRankResult:
             "max_priority": list(self.max_priority),
             "max_priority_source": self.max_priority_source,
             "combo_sequence_source": self.combo_sequence_source,
+            "form_index_source": self.form_index_source,
+            "form_index_resolved": dict(self.form_index_resolved),
             "block_strategy": self.block_strategy,
             "mode_multiplier": self.mode_multiplier,
             "budget": self.budget,
@@ -968,9 +990,13 @@ def rank_items_by_burst(
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
     level = clamp_level(level)
 
-    # Resolve once so baseline + every candidate share priority + combo.
+    # Resolve once so baseline + every candidate share priority + combo +
+    # form_index.
     resolved_priority, priority_source = _resolve_max_priority(champion_id, max_priority)
     combo_norm, combo_source = _resolve_combo_sequence(champion_id, combo_sequence)
+    resolved_form_index, form_index_source = _resolve_form_index_overrides(
+        champion_id, form_index_overrides,
+    )
 
     current_ids: tuple[str, ...] = tuple(str(i) for i in (current_item_ids or ()))
     current_ids, stripped_trinkets = strip_arena_trinkets(current_ids, mode)
@@ -1002,7 +1028,7 @@ def rank_items_by_burst(
         abilities_snapshot=abilities_snapshot,
         max_priority=resolved_priority,
         block_strategy=block_strategy,
-        form_index_overrides=form_index_overrides,
+        form_index_overrides=resolved_form_index,
         combo_sequence=combo_norm,
     )
 
@@ -1109,6 +1135,8 @@ def rank_items_by_burst(
         max_priority=tuple(resolved_priority),
         max_priority_source=priority_source,
         combo_sequence_source=combo_source,
+        form_index_source=form_index_source,
+        form_index_resolved=dict(resolved_form_index),
         block_strategy=block_strategy,
         mode_multiplier=baseline.mode_multiplier,
         budget=budget,
