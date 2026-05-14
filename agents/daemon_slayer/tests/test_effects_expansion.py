@@ -7471,23 +7471,32 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          Xerath R, Ziggs E). Pattern B fully-charged amps (Galio
         #          W, Janna Q, Jhin R, Viego Q). Pattern C channel/duration
         #          totals (Fizz R, Garen E, Teemo R). Pattern D resource/
-        #          positional amps (Xerath W, Yasuo E). 4 entries with
-        #          non-damage prefix blocks (filtered idx ≠ raw idx): Galio
-        #          W, Kennen R, Teemo R, Xerath R. Reverts 4 prior-batch
-        #          skip rationales: Xerath W (s198 'positional' → operator-
-        #          commit framing), Ziggs E (s198 'unrealistic 5-mine' →
-        #          chokepoint commit), Janna Q (s198 'low ratio + support'
-        #          → 1.55× valid), Yasuo E (s198 'stacks decay' → operator
-        #          commits). 6 deliberate skips: Seraphine Q (enchanter
-        #          routing), Taliyah E (1.04× ratio + missing initial
-        #          impact), Thresh E (needs sum-of-blocks), Nidalee W (form
-        #          conflict with s187 cougar override), Shyvana E (Phase 4a
-        #          parsing issue with interpolated base values), Kindred E
-        #          (Phase 4a parser cannot extract nested missing-HP
-        #          coefficient from unparsed_modifiers; registry entry
-        #          would be a no-op). Registry 91 → 104 champions, 127 →
-        #          143 entries. Pure data batch.
-        self.assertEqual(ENGINE_VERSION, "0.86.0")
+        #          positional amps (Xerath W, Yasuo E). Registry 91 → 104
+        #          champions, 127 → 143 entries.
+        # 0.87.0 = s202 Phase 5.9.15 block_index expansion — 18 more
+        #          (champion, key) entries: 6 truly-new champions
+        #          (Gangplank, Gnar, KSante, RekSai, Vayne, Yunara) + 12
+        #          key extensions on existing (Zoe W, Akshan R,
+        #          AurelionSol Q, Nasus R, Poppy E, Renekton R, Rumble Q+R,
+        #          Smolder Q+R, Viktor E, Yuumi R). Pattern A multi-hit
+        #          totals (KSante R, Vayne E, Yunara Q filtered, Zoe W
+        #          filtered, Viktor E). Pattern B channel/duration totals
+        #          (Gangplank R, AurelionSol Q, Nasus R filtered, Renekton
+        #          R filtered, Rumble R, Yuumi R filtered, Poppy E
+        #          filtered). Pattern C max-charge/distance (Akshan R
+        #          filtered, Smolder R filtered). Pattern D resource-state
+        #          (RekSai E, Smolder Q). Pattern E wall-stun/charge
+        #          condition (Gnar R filtered, Rumble Q filtered). 9 of
+        #          18 entries have non-damage prefix blocks. Reverts 4
+        #          prior-batch skip rationales: Gnar R + Vayne E + Poppy E
+        #          wall-stun (s198/s199 'terrain condition'), Rumble Q
+        #          (s199 'heat decays'). 6 deliberate skips: Syndra W (too
+        #          marginal 1.12×), Camille W (needs sum-of-blocks),
+        #          Yunara W (initial > total), Smolder E (Meraki ambiguity),
+        #          Sona Q (sum-of-blocks), Kayle E (same Phase 4a parser
+        #          limit as s201 Kindred E). Registry 104 → 110 champions,
+        #          143 → 161 entries. Pure data batch.
+        self.assertEqual(ENGINE_VERSION, "0.87.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7548,7 +7557,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.86.0")
+        self.assertEqual(ENGINE_VERSION, "0.87.0")
 
 
 if __name__ == "__main__":
