@@ -7420,7 +7420,20 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          channel-duration amps (Darius R, Nilah R). Pattern E
         #          multi-charge / multi-fire totals (Poppy R, Rumble E). Pure
         #          data batch; no walker/resolver/server code changes.
-        self.assertEqual(ENGINE_VERSION, "0.82.0")
+        # 0.83.0 = s198 Phase 5.9.11 bruiser/jungler/utility/marksman block_index
+        #          expansion — 20 more (champion, key) entries (17 new
+        #          champions + 2 key extensions on existing Sion and Vladimir;
+        #          XinZhao contributes 2 entries Q+W). Registry 67 → 84
+        #          champions. Pattern A multi-hit single-target totals
+        #          (Sylas Q, XinZhao Q/W, Zac R, Maokai E, Kayn Q, Sejuani W,
+        #          Neeko Q, Nasus E, Nami E, Ornn R, Twitch E). Pattern B
+        #          fully-charged amps (Vi Q, Sion R, Irelia W, Yuumi Q).
+        #          Pattern C resource-state amp (Jax E at 2 dodge stacks).
+        #          Pattern D channel/duration totals (Udyr R full storm
+        #          ticks, Vladimir W full Sanguine Pool, Viktor R full
+        #          Chaos Storm channel). Pure data batch; no walker/resolver/
+        #          server code changes.
+        self.assertEqual(ENGINE_VERSION, "0.83.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7481,7 +7494,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.82.0")
+        self.assertEqual(ENGINE_VERSION, "0.83.0")
 
 
 if __name__ == "__main__":

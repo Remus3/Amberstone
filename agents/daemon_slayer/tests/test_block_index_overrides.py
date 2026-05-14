@@ -30,6 +30,21 @@ Gragas Q (fermented), Karthus Q (solo-target enhanced), Khazix Q
 (isolation), KogMaw R (low-HP execute), Pantheon Q (charged hurl).
 Twelfth consecutive override registry expansion; fifth pure-data
 batch.
+
+Phase 5.9.10 (s197) added 20 entries across 18 new champions
+spanning five sub-patterns (multi-hit/channel/mark, fully-charged,
+resource-state, execute, multi-charge). Registry 49 → 67 champions.
+
+Phase 5.9.11 (s198) added 20 entries (17 new champions + 2 key
+extensions on Sion and Vladimir; XinZhao contributes 2 entries
+Q+W as a new champion). Registry 67 → 84 champions, 83 → 103
+(champion, key) entries. Pattern A multi-hit single-target
+totals: Sylas Q, XinZhao Q/W, Zac R, Maokai E, Kayn Q,
+Sejuani W, Neeko Q, Nasus E, Nami E, Ornn R, Twitch E. Pattern
+B fully-charged amps: Vi Q, Sion R, Irelia W, Yuumi Q. Pattern
+C resource-state amp: Jax E. Pattern D channel/duration totals:
+Udyr R, Vladimir W, Viktor R. Fourteenth consecutive override
+registry; seventh pure-data batch.
 """
 from __future__ import annotations
 
@@ -137,7 +152,8 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Sivir"], {"Q": 2})
         self.assertEqual(champions["Talon"], {"W": 2, "R": 2})
         self.assertEqual(champions["Varus"], {"Q": 1})
-        self.assertEqual(champions["Vladimir"], {"E": 1})
+        # Vladimir W=1 extends prior {"E": 1} from s195 (added s198)
+        self.assertEqual(champions["Vladimir"], {"E": 1, "W": 1})
         self.assertEqual(champions["Zoe"], {"Q": 1})
         # Phase 5.9.9 (s196) — extended multi-hit / condition amp expansion
         # Akali E=2 extends prior {"R": 0, "R2": 2} from s192
@@ -179,8 +195,29 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Poppy"], {"R": 1})
         self.assertEqual(champions["Renekton"], {"Q": 1, "W": 2})
         self.assertEqual(champions["Rumble"], {"E": 1})
-        self.assertEqual(champions["Sion"], {"Q": 2})
+        # Sion R=1 extends prior {"Q": 2} from s197 (added s198)
+        self.assertEqual(champions["Sion"], {"Q": 2, "R": 1})
         self.assertEqual(champions["Smolder"], {"W": 2})
+        # Phase 5.9.11 (s198) — bruiser/jungler/utility/marksman expansion
+        # 20 entries across 17 new champions + 2 key extensions
+        # (Sion R and Vladimir W asserted above with their extended shape):
+        self.assertEqual(champions["Irelia"], {"W": 1})
+        self.assertEqual(champions["Jax"], {"E": 1})
+        self.assertEqual(champions["Kayn"], {"Q": 1})
+        self.assertEqual(champions["Maokai"], {"E": 1})
+        self.assertEqual(champions["Nami"], {"E": 1})
+        self.assertEqual(champions["Nasus"], {"E": 2})
+        self.assertEqual(champions["Neeko"], {"Q": 2})
+        self.assertEqual(champions["Ornn"], {"R": 2})
+        self.assertEqual(champions["Sejuani"], {"W": 2})
+        self.assertEqual(champions["Sylas"], {"Q": 3})
+        self.assertEqual(champions["Twitch"], {"E": 3})
+        self.assertEqual(champions["Udyr"], {"R": 1})
+        self.assertEqual(champions["Vi"], {"Q": 1})
+        self.assertEqual(champions["Viktor"], {"R": 2})
+        self.assertEqual(champions["XinZhao"], {"Q": 1, "W": 2})
+        self.assertEqual(champions["Yuumi"], {"Q": 1})
+        self.assertEqual(champions["Zac"], {"R": 2})
 
     def test_every_value_is_int(self) -> None:
         for champion_id, entries in self.table["champions"].items():
@@ -1543,6 +1580,250 @@ class Phase599_10ExpansionTests(unittest.TestCase):
 
     def test_pre_s197_singed_unchanged(self) -> None:
         """Backward-compat: s193 Singed entry preserved after s197."""
+        r = compute_ability_dps(
+            self.snap, "Singed", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1})
+
+
+class Phase599_11ExpansionTests(unittest.TestCase):
+    """Phase 5.9.11 (s198). 20 new (champion, key) entries — 17 new
+    champions (XinZhao contributes 2 entries Q+W) + 2 key extensions
+    on existing champions Sion (adds R) and Vladimir (adds W). Registry
+    67 → 84 champions. Four sub-patterns:
+      (A) multi-hit single-target totals: Sylas Q, XinZhao Q/W, Zac R,
+          Maokai E, Kayn Q, Sejuani W, Neeko Q, Nasus E, Nami E,
+          Ornn R, Twitch E
+      (B) fully-charged amps: Vi Q, Sion R, Irelia W, Yuumi Q
+      (C) resource-state amp: Jax E
+      (D) channel/duration totals: Udyr R, Vladimir W, Viktor R
+
+    Same 'operator commits to canonical-amped condition' model as
+    s191/s193/s194/s195/s196/s197 — pure JSON expansion, no walker
+    changes.
+
+    Tests verify each new entry:
+      1. Is present in the resolved registry
+      2. Drives total_ability_dps strictly above the forced-block-0 baseline
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = _snap()
+
+    def _delta_check(self, champion: str, key: str, expected_idx: int) -> None:
+        """Assert champion's registry entry routes `key` to expected_idx,
+        and the resulting total_ability_dps exceeds the forced-block-0
+        baseline by a positive margin."""
+        r_reg = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r_reg.block_index_resolved.get(key), expected_idx,
+                         f"{champion}.{key} should route to block {expected_idx}")
+        forced = dict(r_reg.block_index_resolved)
+        forced[key] = 0
+        r_off = compute_ability_dps(
+            self.snap, champion, level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides=forced,
+        )
+        self.assertGreater(r_reg.total_ability_dps, r_off.total_ability_dps,
+                           f"{champion} registry total should exceed forced-block-0")
+
+    # Pattern A: multi-hit single-target totals (12 entries — XinZhao contributes 2)
+    def test_sylas_Q_routes_to_block_3(self) -> None:
+        """Sylas Q block 3 'Total Magic Damage' = Chain Lash initial +
+        delayed pulse on chained target (3.33× block 0)."""
+        self._delta_check("Sylas", "Q", 3)
+
+    def test_xinzhao_Q_routes_to_block_1(self) -> None:
+        """Xin Zhao Q block 1 'Total Bonus Physical Damage' = Three
+        Talon Strike 3 empowered AAs total (3× block 0)."""
+        self._delta_check("XinZhao", "Q", 1)
+
+    def test_xinzhao_W_routes_to_block_2(self) -> None:
+        """Xin Zhao W block 2 'Total Physical Damage' = Wind Becomes
+        Lightning slash + thrust both on same target (3.71× base + 4× tAD)."""
+        self._delta_check("XinZhao", "W", 2)
+
+    def test_zac_R_routes_to_block_2(self) -> None:
+        """Zac R block 2 'Total Magic Damage' = Let's Bounce all 4
+        bounces on same target (2.5× block 0)."""
+        self._delta_check("Zac", "R", 2)
+
+    def test_maokai_E_routes_to_block_1(self) -> None:
+        """Maokai E block 1 'Total Enhanced Damage' = Sapling Toss
+        enhanced dual-hit (2× block 0)."""
+        self._delta_check("Maokai", "E", 1)
+
+    def test_kayn_Q_routes_to_block_1(self) -> None:
+        """Kayn Q block 1 'Total Physical Damage' = Reaping Slash both
+        passes (out + return) on same target (2× block 0)."""
+        self._delta_check("Kayn", "Q", 1)
+
+    def test_sejuani_W_routes_to_block_2(self) -> None:
+        """Sejuani W block 2 'Total Physical Damage' = Winter's Wrath
+        swipe + thrust total (2.89× base + 4× AP)."""
+        self._delta_check("Sejuani", "W", 2)
+
+    def test_neeko_Q_routes_to_block_2(self) -> None:
+        """Neeko Q block 2 'Total Maximum Magic Damage' = Blooming
+        Burst initial + 2 bloom expansions same target (2.04×)."""
+        self._delta_check("Neeko", "Q", 2)
+
+    def test_nasus_E_routes_to_block_2(self) -> None:
+        """Nasus E block 2 'Total Magic Damage' = Spirit Fire initial
+        impact + 5 full-duration ticks (2× block 0)."""
+        self._delta_check("Nasus", "E", 2)
+
+    def test_nami_E_routes_to_block_1(self) -> None:
+        """Nami E block 1 'Total Bonus Magic Damage' = Tidecaller's
+        Blessing 3 empowered AAs all on target (3× block 0)."""
+        self._delta_check("Nami", "E", 1)
+
+    def test_ornn_R_routes_to_block_2(self) -> None:
+        """Ornn R block 2 'Total Magic Damage' = Call of the Forge God
+        initial ram + 2nd ram pass (2× block 0)."""
+        self._delta_check("Ornn", "R", 2)
+
+    def test_twitch_E_routes_to_block_3(self) -> None:
+        """Twitch E block 3 'Maximum Mixed Damage' = Contaminate at 6
+        Deadly Venom stacks (4.5× base + 6× per-stack scaling)."""
+        self._delta_check("Twitch", "E", 3)
+
+    # Pattern B: fully-charged amps (4 entries)
+    def test_vi_Q_routes_to_block_1(self) -> None:
+        """Vi Q block 1 'Maximum Physical Damage' = Vault Breaker
+        fully-charged after 1.25s wind-up (2.5× block 0)."""
+        self._delta_check("Vi", "Q", 1)
+
+    def test_sion_R_routes_to_block_1(self) -> None:
+        """Sion R block 1 'Maximum Physical Damage' = Unstoppable
+        Onslaught at max-speed after full acceleration (2.67× base)."""
+        self._delta_check("Sion", "R", 1)
+
+    def test_irelia_W_routes_to_block_1(self) -> None:
+        """Irelia W block 1 'Maximum Physical Damage' = Defiant Dance
+        fully-charged after 2s (3× block 0)."""
+        self._delta_check("Irelia", "W", 1)
+
+    def test_yuumi_Q_routes_to_block_1(self) -> None:
+        """Yuumi Q block 1 'Increased Damage' = Prowling Projectile
+        untargeted at max-distance (1.62× block 0)."""
+        self._delta_check("Yuumi", "Q", 1)
+
+    # Pattern C: resource-state amp (1 entry)
+    def test_jax_E_routes_to_block_1(self) -> None:
+        """Jax E block 1 'Maximum Magic Damage' = Counter Strike at 2
+        dodge stacks max (2× block 0 + 2× AP)."""
+        self._delta_check("Jax", "E", 1)
+
+    # Pattern D: channel/duration totals (3 entries)
+    def test_udyr_R_routes_to_block_1(self) -> None:
+        """Udyr R block 1 'Total Magic Damage' = Wingborne Storm full
+        8 ticks on same target (8× block 0)."""
+        self._delta_check("Udyr", "R", 1)
+
+    def test_vladimir_W_routes_to_block_1(self) -> None:
+        """Vladimir W block 1 'Total Magic Damage' = Sanguine Pool full
+        4-second duration ticks over enemy (4× block 0)."""
+        self._delta_check("Vladimir", "W", 1)
+
+    def test_viktor_R_routes_to_block_2(self) -> None:
+        """Viktor R block 2 'Total Magic Damage' = Chaos Storm initial
+        + 6 ticks full channel (4.48× base + 5.20× AP)."""
+        self._delta_check("Viktor", "R", 2)
+
+    # Multi-key resolved-shape sanity for newly multi-key champions
+    def test_xinzhao_both_keys_in_resolved(self) -> None:
+        """Xin Zhao Q=1 + W=2 (s198) — both keys must appear in resolved map."""
+        r = compute_ability_dps(
+            self.snap, "XinZhao", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 1, "W": 2})
+        self.assertEqual(r.block_index_source, "champion")
+
+    def test_sion_both_keys_in_resolved(self) -> None:
+        """Sion Q=2 (s197) + R=1 (s198) — both keys must appear in resolved map."""
+        r = compute_ability_dps(
+            self.snap, "Sion", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 2, "R": 1})
+        self.assertEqual(r.block_index_source, "champion")
+
+    def test_vladimir_both_keys_in_resolved(self) -> None:
+        """Vladimir E=1 (s195) + W=1 (s198) — both keys must appear in resolved map."""
+        r = compute_ability_dps(
+            self.snap, "Vladimir", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"E": 1, "W": 1})
+        self.assertEqual(r.block_index_source, "champion")
+
+    # Math-level sanity: Udyr R block 1 base = 8× block 0 (full channel)
+    def test_udyr_R_block1_matches_8x_block0(self) -> None:
+        """Numeric sanity: Udyr R block 1 base = 8× block 0 base across
+        all ranks (Wingborne Storm full 8 ticks total)."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("Udyr", "R", form_index=0)
+        self.assertIsNotNone(form)
+        blocks = form.damage_blocks
+        self.assertGreaterEqual(len(blocks), 2)
+        for rank, (b0, b1) in enumerate(zip(blocks[0].base, blocks[1].base)):
+            self.assertAlmostEqual(
+                b1, b0 * 8.0, places=2,
+                msg=f"Udyr R rank {rank+1}: block 1 base {b1} != 8× block 0 base {b0}"
+            )
+
+    # Math-level sanity: Vi Q block 1 base = 2.5× block 0 (fully-charged)
+    def test_vi_Q_block1_matches_2_5x_block0(self) -> None:
+        """Numeric sanity: Vi Q block 1 base = 2.5× block 0 base across
+        all 5 ranks (Vault Breaker fully-charged after 1.25s)."""
+        from agents.daemon_slayer.abilities import load_default
+        ab_snap = load_default()
+        form = ab_snap.get_ability("Vi", "Q", form_index=0)
+        self.assertIsNotNone(form)
+        blocks = form.damage_blocks
+        self.assertGreaterEqual(len(blocks), 2)
+        for rank, (b0, b1) in enumerate(zip(blocks[0].base, blocks[1].base)):
+            self.assertAlmostEqual(
+                b1, b0 * 2.5, places=2,
+                msg=f"Vi Q rank {rank+1}: block 1 base {b1} != 2.5× block 0 base {b0}"
+            )
+
+    # Backward-compat: prior-batch entries still resolve unchanged after s198
+    def test_pre_s198_morgana_unchanged(self) -> None:
+        """Backward-compat: s195+s196 Morgana entry preserved after s198."""
+        r = compute_ability_dps(
+            self.snap, "Morgana", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"W": 3, "R": 1})
+
+    def test_pre_s198_aatrox_unchanged(self) -> None:
+        """Backward-compat: s197 Aatrox W=3 preserved after s198 (Aatrox
+        not touched in s198 — only W=3 from Infernal Chains pull-back)."""
+        r = compute_burst_damage(
+            self.snap, "Aatrox", level=11, target_armor=80, target_mr=30,
+            target_max_hp=2000,
+        )
+        self.assertEqual(r.block_index_resolved, {"W": 3})
+
+    def test_pre_s198_camille_unchanged(self) -> None:
+        """Backward-compat: s195 Camille entry preserved after s198."""
+        r = compute_ability_dps(
+            self.snap, "Camille", level=11, mode="SR",
+            target_armor=80, target_mr=30,
+        )
+        self.assertEqual(r.block_index_resolved, {"Q": 2})
+
+    def test_pre_s198_singed_unchanged(self) -> None:
+        """Backward-compat: s193 Singed entry preserved after s198."""
         r = compute_ability_dps(
             self.snap, "Singed", level=11, mode="SR",
             target_armor=80, target_mr=30,
