@@ -4,6 +4,48 @@
 
 ---
 
+# s208 wrap — 2026-05-14 (Retire legacy #cs-overlay champ-select page)
+
+**Operator instruction:** "champ select is not forwarding meta rune and spell choices for champ" → investigation surfaced two parallel champ-select renderers (legacy `#cs-overlay` flashing on top of view-lobby + the s164 new full-page view). Operator: "retire old".
+
+## Shipped — commit 2eff521
+
+Net diff −1137 lines across 9 files (1 deleted file).
+
+**Cuts:**
+- `web/index.html`: `<div id="cs-overlay">` 124-line block
+- `web/css/panels/champ_select.css`: entire 365-line stylesheet
+- `web/js/panels/champ_select.js`: `renderChampSelectPanel` (~280 LOC) + `_fetchDsPreview` + `champSelectViewEnabled` gate + force-Flash-Snowball override + ARAM team-comp analyzer + cs-lock/reroll button wiring (~624 LOC total)
+- `web/js/main.js`: removed `renderChampSelectPanel` + `champSelectViewEnabled` imports + collapsed view-router gate (ChampSelect phase always routes to `champ-select` view; sticky-guard simplified to match)
+- `dashboard/view_router_state.py`: dropped `champ_select_view_enabled` param; Python mirror collapsed to match JS
+- `web/css/panels/champ_select_view.css`: removed `body[data-view="champ-select"] #cs-overlay { display: none !important; }`
+- Stale `cs-overlay` comment references in `team_context.css` + main.js cleaned up
+
+**Tests updated:**
+- `tests/test_view_router_state.py`: removed `ChampSelectViewGateTests` opt-out tests (2 of 3); replaced with single positive `ChampSelectViewTests.test_cs_phase_routes_to_champ_select`. `_run` helper's `csv=` param removed.
+
+**Bonus fix:** removing the force-Flash-Snowball override (lived inside the dead overlay) closes operator's original "meta rune and spell choices not forwarding" complaint — variant summoners now push to LCU on every build pick. Previously, when the toggle was on, the variant's `summoners` were suppressed and a hardcoded `set_summoners {d:4, f:32}` was sent.
+
+## Verification
+
+- Python tests: **911 / 911 green**; view-router 25 / 25; panel snapshots 11 / 11
+- `node --check` clean on `main.js` + `champ_select.js`; `ruff check` clean on touched .py files
+- RC restarted via `restart_trigger.txt` — pid 7484, `last_reload_ok=true`
+- Asset hash flipped (`5208321bea`); `curl /` returns 0 `cs-overlay`, 1 `view-champ-select`
+- Live-captured Game-PC monitor 1 — dashboard renders cleanly
+
+## Carried forward (spawn_task chip)
+
+Orphaned helper cleanup in `web/js/panels/champ_select.js`: `_csOnChampionOrModeChange`, `_csRenderBuildList`, `_csOnBuildRowClick`, `_csApplyLoadout`, `_csMarkSelectedRow`, plus the entire `_srDraft*` cluster all have zero callers. Left in place because `_csDiffItemIds` has a downstream caller in `web/js/panels/item_build.js:327` that doesn't import it — pre-existing latent ReferenceError bug. Don't chain-delete without fixing that.
+
+## Don't redo
+
+- Old `#cs-overlay` retirement — shipped this session in 2eff521. The dual-renderer flash on CS open is gone.
+- `champSelectViewEnabled` gate — removed; `?cs=0` opt-out path no longer exists. Anyone asking for the old page is asking for a regression.
+- Force-Flash-Snowball override — removed permanently. If operator asks "summoners are forced to Flash+Snowball regardless of build", check it's not `set_summoners` being sent on the LCU side now (which would be a different bug).
+
+---
+
 # s207 wrap — 2026-05-14 (Phase 5.9.20 sum-of-blocks schema lift + 4 seed entries + README rewrite)
 
 **Operator instruction:** "have the readme be in a more summary overview than technical, remove the parts for the cross-machine specifics, mentioning it is fine details are not needed, bridge application is fine, remove the 2 machine installation part. change how the check lists of things done and stuff to do is presented. remove the RC Tutor section entirely since i am slowly getting RC Tutor to be one and the same with RC, it is redundant. Simplify some descriptions for non technical non league people reading it. then continue ds" — two-part session. Part 1 is a deep README rewrite. Part 2 is the s205+s206-deferred sum-of-blocks schema lift.
@@ -216,78 +258,3 @@ Test classes:
 
 - Cooldown inheritance — shipped this session. Don't add more inheritance layers; the form_0 → form_N pattern is the only one Meraki actually uses.
 - README cleanup — done. Future sessions add to the s174-style monotonic enumeration only at their peril; instead, update the stable summary fields (test count, ENGINE_VERSION, archetype count, coverage %).
-
----
-
-# s205 wrap — 2026-05-14 (Phase 5.9.18 form_index + block_index layered expansion — 4 block_index entries + 3 form_index seeds)
-
-**Operator instruction:** "continue DS" — direct continuation of s204 (twenty-first consecutive override / proc-shape ship on the same template, fourteenth pure-data batch in the block_index family). Closes the s204 carry-forward "Qiyana Q form_index seed expansion still pending". Cumulative coverage 68% → 69% of the 171-champion roster.
-
-## What shipped
-
-**Two commits pushed to main:**
-- [`24ed6aa`](https://github.com/Remus3/riot-commander/commit/24ed6aa) — feat: 4 block_index entries (Qiyana Q=2 NEW + Hwei W=1 / Renekton E=3 / Shaco W=1 extensions) + 3 form_index seeds (Qiyana Q=1 / AurelionSol R=1 / Renekton E=1)
-- [`35638ca`](https://github.com/Remus3/riot-commander/commit/35638ca) — docs: CLAUDE.md priority #63 sync
-
-**Three sub-patterns:**
-- **Pattern A operator-commits-to-resource form layer (3):** Qiyana Q (form 1 Elemental Wrath + block 2 Increased Damage, 1.6× base; form 0/1 share block 0 so form_index alone is no-op, block_index is load-bearing), AurelionSol R (form 1 The Skies Descend, 1.25× base + 1.25× AP, default block 0 within form 1 correct), Renekton E (form 1 Dice + block 3 Total Physical Damage = block 0 + block 1 sum = full Slice+Dice+Fury combo, 2.75× form 0 at rank 1; closes Renekton Q/W/E full-Fury coverage after s197 Q=1 + W=2).
-- **Pattern B multi-hit single-target totals (1):** Hwei W form 3 block 1 Maximum Magic Damage = 3× block 0 (Stirring Lights 3 lights converging).
-- **Pattern C condition-amp vs target-state (1):** Shaco W block 1 Increased Damage = 2.5× block 0 base + 1.5× AP (Box vs already-Feared target).
-
-**Third instance of form_index + block_index NET-damage composition** after s203 LeeSin Q + s204 Riven R + s204 Nidalee Q.
-
-## Live A/B (lvl 11 vs 80/30/2000 — per-spell DPS lifts since most spells aren't the champion's dominant DPS contributor)
-
-| Champion | Key | Pattern | per-spell dps off → on | Lift | Total |
-|----------|-----|---------|------------------------|------|-------|
-| Hwei | W | 3 lights converging | 1.26 → 3.79 | **+200%** | +12.1% |
-| Shaco | W | Box vs Feared | 0.69 → 1.91 | **+175%** | +7.7% |
-| Renekton | E | full-Fury combo (form+block layer) | 1.15 → 3.16 | **+175%** | +10.4% |
-| Qiyana | Q | Elemental Wrath (form+block layer) | 6.41 → 10.26 | **+60%** | +40.1% |
-| AurelionSol | R | The Skies Descend (form seed only) | 1.38 → 1.73 | **+25%** | +2.3% |
-
-Per-cast raw damage lifts match Meraki block ratios exactly: Hwei W 40 → 120 (3× verified), Shaco W 20 → 55 (2.5× verified), Renekton E 40 → 110 (2.75× form 0 = block 0 + block 1 sum), Qiyana Q 180 → 288 (1.6× verified), AurelionSol R 250 → 312.5 (1.25× verified).
-
-## Engine limitation discovered (carry-forward)
-
-Meraki snapshots set `cooldown=None` for non-form-0 forms. DS engine falls back to default 60s CD when computing DPS conversion, dampening total ability_dps lift. Affects every form_index + non-form-0 entry currently shipped: Riven R (s204) / Renekton E / AurelionSol R / Qiyana Q (s205). For Qiyana Q the per-cast raw lift is +60% but the engine reports 60s CD vs 7s real CD — so the DPS conversion is under-counted by ~8.5×. Calibration follow-up candidate — needs an engine-side "inherit form 0 cooldown when None" fallback.
-
-## Test counts
-
-- DS suite: 1939 → 1953 (+14 net, 21 new in `Phase599_18ExpansionTests` minus 5 stale assertions converted/extended)
-- Wider RC: 1023 → 1024 (phase8_smoke restored after DS server restart picked up ENGINE_VERSION 0.90.0)
-
-## Multi-key extensions
-
-- Hwei now `{R:3, W:1}` (W=1 new)
-- Renekton now `{Q:1, W:2, R:1, E:3}` — full Q/W/E/R coverage (E=3 new + form_index seed E=1)
-- Shaco now `{E:2, W:1}` (W=1 new)
-- AurelionSol stays `{E:1, Q:2}` on block_index side — R adds via form_index registry only
-
-## Carried forward to s206+
-
-- **Sum-of-blocks bucket grows:** Heimerdinger W (Initial + 4× Subsequent on focused non-minion target) joins Thresh E + Taliyah E + Sona Q + Camille W + Katarina R + Malphite W + Malzahar E/R + Kalista E + Jinx R distance + Sona Q Power Chord — 10+ candidates queued. Lift warranted soon.
-- **Engine None-cooldown fallback** — needed for s204/s205 form-1 entries to score correctly. Currently the registry entries are net-positive but dampened.
-- **Nested missing-HP parser bucket** (Kindred E, Kayle E, Belveth R execute curve) unchanged.
-- **Conditional target-state schema lift bucket** (6+ candidates) unchanged.
-- **form_index registry expansion** — Qiyana / AurelionSol / Renekton joined Riven. Future candidates from this session's audit: TwistedFate W (3-form Pick a Card — player choice, deferred), TahmKench R form 1 Regurgitate (player choice, deferred), Annie R Tibbers pet damage (data gap upstream).
-
-## Skip list expanded this session
-
-Inspected and rejected 50+ candidates from unmapped + extension scans. Key deferrals documented inline in `champion_block_index.json` `_meta` description:
-- Caitlyn Q / Orianna Q / Zed Q / Yone W+R — engine default block 0 already correct (primary target full damage)
-- Ezreal R / Jhin R / Pantheon R — engine default block 0 already correct (primary/max distance)
-- Annie R / Mordekaiser Q/W/R — single-block or non-damage (pet damage not in snapshot)
-- Heimerdinger W — sum-of-blocks needed (Initial + 4× Subsequent on non-minion)
-- Kayle E / Kindred E / DrMundo E — nested missing-HP parser bucket
-- Malphite W / Sona Q — sum-of-blocks
-- Tryndamere Q / Fiddlesticks Q — Meraki data parsing gap (broken block schemas)
-- Karma Q form 1 / Khazix evolved / TwistedFate W — player-choice forms not default
-
-## Don't redo
-
-- Qiyana Q form_index seed — shipped this batch via form_index=1 + block_index=2 composition. Don't re-investigate without sum-of-blocks support, since form 0/1 share block 0.
-- AurelionSol R form_index seed — shipped. Don't add block_index entry; default 0 within form 1 is correct.
-- Renekton E full-Fury combo — shipped via block 3 sum.
-- Hwei W 3-light Maximum — shipped via block 1.
-- Shaco W Feared target — shipped via block 1.
