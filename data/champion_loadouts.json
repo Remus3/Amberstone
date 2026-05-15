@@ -1572,6 +1572,30 @@
             "Lord Dominik's Regards",
             "Death's Dance"
           ]
+        },
+        "lethality": {
+          "label": "Lethality",
+          "modes": [
+            "sr",
+            "aram"
+          ],
+          "runes": {
+            "keystone": "Press the Attack",
+            "primary": "Precision",
+            "secondary": "Domination"
+          },
+          "summoners": [
+            4,
+            7
+          ],
+          "items": [
+            "The Collector",
+            "Berserker's Greaves",
+            "Opportunity",
+            "Yun Tal Wildarrows",
+            "Edge of Night",
+            "Lord Dominik's Regards"
+          ]
         }
       }
     },

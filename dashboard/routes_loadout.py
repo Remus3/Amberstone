@@ -76,8 +76,65 @@ def _serve_loadout_list_post(h, payload) -> None:
         h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
 
 
+# s210 v2: build LCU command payloads for the synthetic "experimental"
+# variant row in the build chooser. The frontend supplies a complete
+# override package (keystone+primary+secondary + item-id list +
+# adaptive summoners) — we skip the variant resolver entirely and
+# build rune_cmd / item_cmd / summ_cmd inline.
+def _build_experimental_resolved(champion: str, mode: str,
+                                  override_runes: dict,
+                                  override_items: list,
+                                  override_summ: list | None) -> dict:
+    from lcu.lcu_rune_writer import _TREES, build_perk_ids
+    keystone   = str(override_runes.get("keystone") or "")
+    primary    = str(override_runes.get("primary") or "")
+    secondary  = str(override_runes.get("secondary") or "")
+    is_aram    = (mode == "aram")
+    perk_ids   = build_perk_ids(keystone, primary, secondary, is_aram)
+    primary_id = _TREES.get(primary, 0)
+    sub_id     = _TREES.get(secondary, 0)
+    rune_cmd = None
+    if perk_ids and primary_id and sub_id:
+        rune_cmd = {
+            "cmd":        "apply_runes",
+            "page_name":  f"RC Experimental — {champion}",
+            "primary_id": primary_id,
+            "sub_id":     sub_id,
+            "perk_ids":   perk_ids,
+        }
+    items_str = [str(x) for x in (override_items or []) if x]
+    item_cmd = None
+    if items_str:
+        item_cmd = {
+            "cmd":      "apply_item_set",
+            "set_name": f"RC Experimental — {champion}",
+            "blocks":   [{
+                "type":  "DS engine · top picks",
+                "items": [{"id": iid, "count": 1} for iid in items_str],
+            }],
+        }
+    summ_cmd = None
+    if override_summ and len(override_summ) == 2:
+        summ_cmd = {"cmd": "set_summoners",
+                    "d": int(override_summ[0]),
+                    "f": int(override_summ[1])}
+    return {
+        "ok":         True,
+        "mode":       mode,
+        "label":      f"Experimental ({champion})",
+        "rune_cmd":   rune_cmd,
+        "item_cmd":   item_cmd,
+        "summ_cmd":   summ_cmd,
+        "raw_items":  items_str,
+        "synthetic":  True,
+    }
+
+
 def _serve_loadout_apply_post(h, payload) -> None:
-    # Body: {champion, variant, mode, push_runes?, push_items?, push_summoners?}.
+    # Body: {champion, variant, mode, push_runes?, push_items?, push_summoners?,
+    #        override_runes?:{keystone,primary,secondary},
+    #        override_items?:[id1,...],
+    #        override_summoners?:[d,f]}.
     # Defaults: push everything that the variant declares.
     # Resolves the variant to LCU command payloads and queues them
     # one-by-one through the vision server's LCU endpoint. Returns
@@ -93,11 +150,51 @@ def _serve_loadout_apply_post(h, payload) -> None:
         push_runes = payload.get("push_runes",   True)
         push_items = payload.get("push_items",   True)
         push_summ  = payload.get("push_summoners", True)
+        # s209: optional override of the variant's stored summoners.
+        # Used by the champ-select build chooser's adaptive-summoners
+        # pipeline — when enemy comp pressures a different second spell
+        # (Cleanse vs CC / Barrier vs burst) the JS sends the swapped
+        # pair as [d_id, f_id]. Falls through to the variant's stored
+        # summoners when omitted or malformed.
+        override_summ = payload.get("override_summoners")
+        if not (isinstance(override_summ, list) and len(override_summ) == 2
+                and all(isinstance(x, int) for x in override_summ)):
+            override_summ = None
+        # s210 v2: optional override of runes + items for the experimental
+        # build chooser row. When both are provided, the resolver path is
+        # bypassed entirely — we build the LCU command payloads inline
+        # from the operator-supplied keystone+primary+secondary +
+        # item-id list. Champion arg is still required (used in page
+        # naming + as a sanity check); variant arg can be the synthetic
+        # "experimental" key that doesn't exist in champion_loadouts.json.
+        override_runes = payload.get("override_runes") or None
+        if not (isinstance(override_runes, dict)
+                and override_runes.get("keystone")
+                and override_runes.get("primary")
+                and override_runes.get("secondary")):
+            override_runes = None
+        override_items = payload.get("override_items")
+        if not (isinstance(override_items, list) and override_items
+                and all(isinstance(x, (int, str)) for x in override_items)):
+            override_items = None
         if not champ or not variant:
             h._send(400, b'{"error":"champion+variant required"}', "application/json"); return
-        resolved = resolve(champ, variant, mode)
-        if not resolved.get("ok"):
-            h._send(404, json.dumps(resolved).encode(), "application/json"); return
+        # s210 v2: experimental path — build cmds inline, skip resolver.
+        if override_runes and override_items:
+            resolved = _build_experimental_resolved(
+                champ, mode, override_runes, override_items, override_summ,
+            )
+        else:
+            resolved = resolve(champ, variant, mode)
+            if not resolved.get("ok"):
+                h._send(404, json.dumps(resolved).encode(), "application/json"); return
+            # Apply summoner override AFTER resolve so the rune + item cmds
+            # come from the variant; only the summ_cmd is rewritten.
+            if override_summ and resolved.get("summ_cmd"):
+                sc = dict(resolved["summ_cmd"])
+                sc["d"] = override_summ[0]
+                sc["f"] = override_summ[1]
+                resolved["summ_cmd"] = sc
         queued = []
         def _enqueue(cmd_obj):
             if not cmd_obj: return
