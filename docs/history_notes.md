@@ -6,6 +6,78 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s202 wrap — 2026-05-14 (Phase 5.9.15 block_index expansion — 18 entries / 6 new champs + 12 extensions)
+
+**Operator instruction:** "continue ds" — direct continuation of s201 (now the **eighteenth** consecutive override / proc-shape ship on the same template, **eleventh** pure-data batch in the block_index family). This batch broadens coverage further to 64% of the 171-champion roster (was 61% pre-s202).
+
+## Context
+
+Re-scanning unmapped champs found 30 candidates across 20 unmapped champions plus 27 candidate extensions on already-mapped champions. Triaged to 18 entries:
+- 6 truly-new champions: Gangplank, Gnar, KSante, RekSai, Vayne, Yunara
+- 12 key extensions on existing: Zoe W, Akshan R, AurelionSol Q, Nasus R, Poppy E, Renekton R, Rumble Q+R, Smolder Q+R, Viktor E, Yuumi R
+
+The framing-revert pattern emerged again across 4 prior-batch skips — all wall-stun / heat-decay conditional skips re-framed under operator-commit:
+- **Gnar R** (s198 'wall-stun terrain target-state') → same operator-commits framing as Khazix Q isolation s196 / Xerath W center-spot s201
+- **Vayne E** (s198 'wall-stun terrain') → same wall-stun framing
+- **Poppy E** (s199 'wall-state target condition') → same
+- **Rumble Q** (s199 'Danger Zone heat decays mid-fight') → operator commits to overheat Q burst window
+
+## s202 ship — Phase 5.9.15 — 18 entries, five patterns
+
+**Pattern A multi-hit single-target totals (5):** KSante R=2 (All Out dash+wall-strike 2×), Vayne E=2 (Condemn wall-slam total 2.5×), Yunara Q=2 filtered (Combined Passive+Active 2×), Zoe W=1 filtered (3 empowered AAs 3×), Viktor E=2 (Death Ray double-hit 1.29×).
+
+**Pattern B channel/duration totals (7):** Gangplank R=2 (4-wave Cannon Barrage 12× per-wave), AurelionSol Q=2 (Breath of Light full channel 26×), Nasus R=1 filtered (Dominus full 15s target_max_hp 30×), Renekton R=1 filtered (Dominus full duration 30×), Rumble R=2 (Equalizer max channel 10×), Yuumi R=2 filtered (Final Chapter 2 hits per target 2×), Poppy E=1 filtered (Heroic Charge wall-slam 2×).
+
+**Pattern C max-charge/distance amps (2):** Akshan R=1 filtered (Comeuppance max-charge 3×), Smolder R=1 filtered (Mouth of the Abyss max-distance 1.5×).
+
+**Pattern D resource-state amps (2):** RekSai E=1 (Furious Bite max Fury true damage 1.25×), Smolder Q=1 (max-stack passive 1.75× — gear-INdependent, not the Infinity Edge variant which is gear-conditional).
+
+**Pattern E wall-stun / charge condition amps (2):** Gnar R=1 filtered (GNAR! wall-stun 1.5×), Rumble Q=2 filtered (Danger Zone overheat Total Enhanced 1.5×).
+
+**Filtered-idx semantics (s199 lesson re-applied):** 9 of 18 entries have non-damage prefix blocks. Most notable: Nasus R raw 0-2 'Bonus Health' / 'Bonus Resistances' / 'Increased Size' → filtered idx 1 = raw 4. Yuumi R raw 0-1 + 5-6 heal blocks → filtered idx 2 = raw 4. Yunara Q raw 1 duration + 4-5 modifiers → filtered idx 2 = raw 3.
+
+**Live A/B headlines on :8893 (/ability-dps at lvl 11 vs 80 armor / 30 MR / 2000 HP):** AurelionSol Q **+351.6%** (3.29 → 14.85 — Breath of Light full channel is dominant), Renekton R **+68.8%** (11.43 → 19.29 — Dominus full duration aura), Smolder Q **+51.6%** (13.70 → 20.76 — max-stack passive scaling), Nasus R **+48.4%** (9.73 → 14.44), Rumble Q **+18.4%**, Gangplank R **+17.1%**, Rumble R **+9.0%**, RekSai E **+7.1%**, Vayne E **+5.9%**, KSante R **+5.7%**, Yunara Q **+4.0%**, Yuumi R **+3.8%**, Viktor E **+3.1%**, Gnar R **+2.3%**, Smolder R **+2.0%**, Poppy E **+1.8%**, Zoe W **+1.4%**, Akshan R **+0.9%**. Smaller percentages reflect spell-share dilution where the new key is correct but the champion's other spells already dominate total ability_dps.
+
+**6 deliberate skips documented inline:** Syndra W (1.12× too marginal), Camille W (Outer Cone Bonus is target_max_hp_pct ONLY without flat damage; needs sum-of-blocks), Yunara W (block 0 'Initial' is HIGHER than block 2 'Total Expanded' — engine default correct), Smolder E (Meraki 'Minimum' label ambiguity carried from s198), Sona Q (Power Chord bonus needs sum-of-blocks), Kayle E (Phase 4a parser limit — same family as s201 Kindred E drop).
+
+## Ships this session
+
+| Commit | Theme |
+|---|---|
+| [`723fb1c`](https://github.com/Remus3/riot-commander/commit/723fb1c) | s202 feat — 18-entry block_index + 4 prior-skip wall-stun reverts |
+
+Registry: 104 → 110 champions. Entries: 143 → 161. ENGINE_VERSION: 0.86.0 → 0.87.0. DS suite: 1866 → 1894 (+28 net tests). Wider RC unchanged.
+
+**Test-fixture maintenance:** 7 stale assertions in `test_known_champion_overrides` for champions extended this batch (AurelionSol/Akshan/Zoe/Poppy/Renekton/Rumble/Smolder/Nasus/Viktor/Yuumi) commented out in favor of the new s202-block assertions. 3 multi-key resolved-shape sanity tests updated in earlier Phase599 expansion classes (Renekton/Viktor/Poppy now include new R/E keys).
+
+## Carry-forward for tomorrow
+
+**All s199/s200/s201 carry-forwards remain unchanged:**
+- 🟡 **Token-variant for multi-stage Q chains** — Aatrox Q1/Q2/Q3 with combo_sequence, Gwen R needlework. 2+ candidates accumulated.
+- 🟡 **Form-swap block_index schema** — KSante R full per-form indexing (current s202 ships R=2 which works for All Out form; per-form schema needed for Q/W/E during All Out which have different blocks), Kayn (Rhaast/Shadow Q), Hwei (Q/W/E forms 0/1/2/3).
+- 🟡 **Sequence-state schema** — Jhin R 4th-shot recast, Corki R Big One every-4th-missile within ult, Aphelios stance rotation.
+- 🟡 **Conditional target-state schema lift** — 5+ candidates queued: Zoe sleep (E→Q), Lux Illumination, DrMundo E missing-HP, Evelynn Q charm, Vayne W silver bolts.
+- 🟡 **Sum-of-blocks schema** — NOW 4+ candidates: Thresh E souls+magic (s201), Taliyah E impact+detonations (s201), Sona Q spell+Power Chord (s202), Camille W flat+max-HP (s202). Lift is warranted soon.
+- 🟡 **Nested missing-HP parser** — Kindred E (s201 drop), Kayle E (s202 drop). Phase 4a `unparsed_modifiers` extractor needs upgrade.
+- 🟡 **Conditional damage amps (Ahri R→Q, Zoe E→Q)** — inter-spell awareness. Carried since s180.
+- 🟡 **Generalized arm-consume framework** — Carried since s190.
+- 🟡 **Aphelios + Karma mantra + Khazix evolved** — upstream/plumbing/UI blockers.
+- 🟡 **Pre-existing carry-forwards from s184/s183/s182** — live-game chip lifecycle validation; `_TOP_N_THRESHOLD` retune; `nudge_history` calibration analysis.
+
+**Don't redo:**
+- Sum-of-blocks bucket now has 4+ candidates (Thresh/Taliyah/Sona/Camille) — appropriate to schema-lift next architectural session.
+- Nested missing-HP parser bucket has 2 candidates (Kindred/Kayle) — Phase 4a extractor upgrade.
+- Yasuo → Tryndamere fixture rotation already done in s201.
+- Don't re-defer the 4 wall-stun reverts (Gnar R / Vayne E / Poppy E / Rumble Q) — operator-commit framing is now well-established.
+
+**Next session candidate:** Either (a) sum-of-blocks schema lift (4+ candidates ready, value-additive), (b) form-swap block_index schema (KSante R All Out per-form + Kayn/Hwei forms), or (c) more pure-data — well thinning but still has multi-form (Aphelios stances), Annie tier of remaining unmapped, and a few extensions I deliberately skipped (Camille W with sum, Sona Q with sum, Yunara W reconsideration). Operator pick.
+
+## Architectural pattern lock-in
+
+Eighteenth consecutive override / proc-shape modeling improvement on the same template (s185 max_priority → s186 combo → s187 form → s188 per-AA on-hit → s189 Spellblade → s190 Lightshield → s191 block_index → s192 token-variant → s193 channels → s194 calibration → s195 multi-hit → s196 condition-amp → s197 assassin/fighter → s198 bruiser broadening → s199 standard sweep → s200 rescue → s201 framing revert → s202 wall-stun framing revert + broadening). Eleventh pure-data batch in the channel/total/charge family. **Cumulative coverage: 161 (champion, key) entries across 110 champions** (64% of the 171-champion roster touched). Pattern remains rock-solid; rate-limit now appears to be sum-of-blocks schema lift becoming necessary (4+ candidates queued) before further pure-data expansion can capture the remaining ~50 candidates that need block-sum semantics.
+
+---
+
 # s201 wrap — 2026-05-14 (Phase 5.9.14 block_index expansion — 16 entries / 13 new champs)
 
 Seventeenth consecutive override / proc-shape ship; tenth pure-data batch. 16 new entries across 13 new champions (Fizz, Galio, Garen, Graves, Janna, Jhin Q+R, Kennen R, Taliyah Q, Teemo E+R, Viego Q, Xerath W+R, Yasuo E, Ziggs E). Reverts 4 prior-batch skips (Xerath W positional, Ziggs E 5-mine focus, Janna Q low-amp, Yasuo E stack-decay) under operator-commits framing already established by Khazix Q isolation s196 / Ashe Q 5-AA s199 / Yuumi Q support s198 / Twitch E stack rotation s198. Discovered + documented filtered-idx semantics: `_select_blocks` strips non-damage blocks pre-index so registry values are filtered idx (4 entries route through filtering: Galio W idx 1 = raw 4, Kennen R idx 1 = raw 2, Teemo R idx 1 = raw 4, Xerath R idx 1 = raw 2). Live A/B headlines: Taliyah Q +138.2% (5-stone Worked Ground), Graves Q +104.5%, Xerath R +77.0%, Teemo R +62.5%, Viego Q +52.9%. Tests: 24 new in `Phase599_14ExpansionTests`. Registry 91 → 104 champions, 127 → 143 entries. ENGINE 0.85.0 → 0.86.0. DS suite 1842 → 1866. Test fixture rotation: Yasuo → Tryndamere as canonical unmapped fixture (Yasuo landed in registry this batch). Commits: `9365f5c` feat. **Carried forward identical to s200 plus newly-added nested missing-HP parser bucket** (Kindred E dropped during impl — Phase 4a parser cannot extract nested per-mark missing-HP coefficient).
