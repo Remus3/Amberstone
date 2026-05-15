@@ -728,7 +728,9 @@ def compute_burst_damage(
                 notes=(f"{ability_key} locked at level {level}",),
             ))
             continue
-        cooldown = _form_cooldown_at_rank(form, rank)
+        # Phase 5.9.19 (s206): inherit form 0 CD when non-form-0 has None.
+        fallback = forms[0] if form_idx != 0 else None
+        cooldown = _form_cooldown_at_rank(form, rank, fallback_form=fallback)
         cost = _form_cost_at_rank(form, rank)
         # Phase 5.9 (s191) + Phase 5.9.5 (s192): per-(champion, key)
         # block_index override switches to "indexed" strategy for this key;
