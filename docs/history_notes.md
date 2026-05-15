@@ -6,6 +6,81 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s205 wrap — 2026-05-14 (Phase 5.9.18 form_index + block_index layered expansion — 4 block_index entries + 3 form_index seeds)
+
+**Operator instruction:** "continue DS" — direct continuation of s204 (twenty-first consecutive override / proc-shape ship on the same template, fourteenth pure-data batch in the block_index family). Closes the s204 carry-forward "Qiyana Q form_index seed expansion still pending". Cumulative coverage 68% → 69% of the 171-champion roster.
+
+## What shipped
+
+**Two commits pushed to main:**
+- [`24ed6aa`](https://github.com/Remus3/riot-commander/commit/24ed6aa) — feat: 4 block_index entries (Qiyana Q=2 NEW + Hwei W=1 / Renekton E=3 / Shaco W=1 extensions) + 3 form_index seeds (Qiyana Q=1 / AurelionSol R=1 / Renekton E=1)
+- [`35638ca`](https://github.com/Remus3/riot-commander/commit/35638ca) — docs: CLAUDE.md priority #63 sync
+
+**Three sub-patterns:**
+- **Pattern A operator-commits-to-resource form layer (3):** Qiyana Q (form 1 Elemental Wrath + block 2 Increased Damage, 1.6× base; form 0/1 share block 0 so form_index alone is no-op, block_index is load-bearing), AurelionSol R (form 1 The Skies Descend, 1.25× base + 1.25× AP, default block 0 within form 1 correct), Renekton E (form 1 Dice + block 3 Total Physical Damage = block 0 + block 1 sum = full Slice+Dice+Fury combo, 2.75× form 0 at rank 1; closes Renekton Q/W/E full-Fury coverage after s197 Q=1 + W=2).
+- **Pattern B multi-hit single-target totals (1):** Hwei W form 3 block 1 Maximum Magic Damage = 3× block 0 (Stirring Lights 3 lights converging).
+- **Pattern C condition-amp vs target-state (1):** Shaco W block 1 Increased Damage = 2.5× block 0 base + 1.5× AP (Box vs already-Feared target).
+
+**Third instance of form_index + block_index NET-damage composition** after s203 LeeSin Q + s204 Riven R + s204 Nidalee Q.
+
+## Live A/B (lvl 11 vs 80/30/2000 — per-spell DPS lifts since most spells aren't the champion's dominant DPS contributor)
+
+| Champion | Key | Pattern | per-spell dps off → on | Lift | Total |
+|----------|-----|---------|------------------------|------|-------|
+| Hwei | W | 3 lights converging | 1.26 → 3.79 | **+200%** | +12.1% |
+| Shaco | W | Box vs Feared | 0.69 → 1.91 | **+175%** | +7.7% |
+| Renekton | E | full-Fury combo (form+block layer) | 1.15 → 3.16 | **+175%** | +10.4% |
+| Qiyana | Q | Elemental Wrath (form+block layer) | 6.41 → 10.26 | **+60%** | +40.1% |
+| AurelionSol | R | The Skies Descend (form seed only) | 1.38 → 1.73 | **+25%** | +2.3% |
+
+Per-cast raw damage lifts match Meraki block ratios exactly: Hwei W 40 → 120 (3× verified), Shaco W 20 → 55 (2.5× verified), Renekton E 40 → 110 (2.75× form 0 = block 0 + block 1 sum), Qiyana Q 180 → 288 (1.6× verified), AurelionSol R 250 → 312.5 (1.25× verified).
+
+## Engine limitation discovered (carry-forward)
+
+Meraki snapshots set `cooldown=None` for non-form-0 forms. DS engine falls back to default 60s CD when computing DPS conversion, dampening total ability_dps lift. Affects every form_index + non-form-0 entry currently shipped: Riven R (s204) / Renekton E / AurelionSol R / Qiyana Q (s205). For Qiyana Q the per-cast raw lift is +60% but the engine reports 60s CD vs 7s real CD — so the DPS conversion is under-counted by ~8.5×. Calibration follow-up candidate — needs an engine-side "inherit form 0 cooldown when None" fallback.
+
+## Test counts
+
+- DS suite: 1939 → 1953 (+14 net, 21 new in `Phase599_18ExpansionTests` minus 5 stale assertions converted/extended)
+- Wider RC: 1023 → 1024 (phase8_smoke restored after DS server restart picked up ENGINE_VERSION 0.90.0)
+
+## Multi-key extensions
+
+- Hwei now `{R:3, W:1}` (W=1 new)
+- Renekton now `{Q:1, W:2, R:1, E:3}` — full Q/W/E/R coverage (E=3 new + form_index seed E=1)
+- Shaco now `{E:2, W:1}` (W=1 new)
+- AurelionSol stays `{E:1, Q:2}` on block_index side — R adds via form_index registry only
+
+## Carried forward to s206+
+
+- **Sum-of-blocks bucket grows:** Heimerdinger W (Initial + 4× Subsequent on focused non-minion target) joins Thresh E + Taliyah E + Sona Q + Camille W + Katarina R + Malphite W + Malzahar E/R + Kalista E + Jinx R distance + Sona Q Power Chord — 10+ candidates queued. Lift warranted soon.
+- **Engine None-cooldown fallback** — needed for s204/s205 form-1 entries to score correctly. Currently the registry entries are net-positive but dampened.
+- **Nested missing-HP parser bucket** (Kindred E, Kayle E, Belveth R execute curve) unchanged.
+- **Conditional target-state schema lift bucket** (6+ candidates) unchanged.
+- **form_index registry expansion** — Qiyana / AurelionSol / Renekton joined Riven. Future candidates from this session's audit: TwistedFate W (3-form Pick a Card — player choice, deferred), TahmKench R form 1 Regurgitate (player choice, deferred), Annie R Tibbers pet damage (data gap upstream).
+
+## Skip list expanded this session
+
+Inspected and rejected 50+ candidates from unmapped + extension scans. Key deferrals documented inline in `champion_block_index.json` `_meta` description:
+- Caitlyn Q / Orianna Q / Zed Q / Yone W+R — engine default block 0 already correct (primary target full damage)
+- Ezreal R / Jhin R / Pantheon R — engine default block 0 already correct (primary/max distance)
+- Annie R / Mordekaiser Q/W/R — single-block or non-damage (pet damage not in snapshot)
+- Heimerdinger W — sum-of-blocks needed (Initial + 4× Subsequent on non-minion)
+- Kayle E / Kindred E / DrMundo E — nested missing-HP parser bucket
+- Malphite W / Sona Q — sum-of-blocks
+- Tryndamere Q / Fiddlesticks Q — Meraki data parsing gap (broken block schemas)
+- Karma Q form 1 / Khazix evolved / TwistedFate W — player-choice forms not default
+
+## Don't redo
+
+- Qiyana Q form_index seed — shipped this batch via form_index=1 + block_index=2 composition. Don't re-investigate without sum-of-blocks support, since form 0/1 share block 0.
+- AurelionSol R form_index seed — shipped. Don't add block_index entry; default 0 within form 1 is correct.
+- Renekton E full-Fury combo — shipped via block 3 sum.
+- Hwei W 3-light Maximum — shipped via block 1.
+- Shaco W Feared target — shipped via block 1.
+
+---
+
 # s204 wrap — 2026-05-14 (Phase 5.9.17 block_index expansion — 8 entries / 2 new champs + 6 extensions + form_index seed)
 
 **Operator instruction:** "continue DS" — direct continuation of s203 (now the **twentieth** consecutive override / proc-shape ship on the same template, **thirteenth** pure-data batch in the block_index family). This batch closes the s203 carry-forward "Riven form_index seed needed for form-conditional block_index entries" — Riven becomes the first new champion added to the form_index registry since s187 (Nidalee/Elise/Jayce/Hwei/LeeSin). Cumulative coverage 67% → 68% of the 171-champion roster.
