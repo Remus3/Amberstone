@@ -869,15 +869,14 @@ function _csvShowTradeChoice(cellId, anchorEl, opts) {
 let _csvActiveRound = null;
 
 // Mode classifier for the champ-select view. SR draft is the historical
-// default; ARAM (450/920), Arena (1700/1710), and Brawl (480 + the
-// `is_brawl` LCU flag where available) get distinct central + enemies
-// layouts because the LCU surface they expose differs structurally —
-// ARAM has a bench but no roles/bans, Arena has 2v2v2v2 + augments and
-// no enemy-team field, Brawl is 5v5 random with no roles/bans.
+// default; ARAM (450/920), Arena (1700/1710) get distinct central +
+// enemies layouts because the LCU surface they expose differs
+// structurally — ARAM has a bench but no roles/bans, Arena has 2v2v2v2
+// + augments and no enemy-team field. s214 v2: Brawl mode retired from
+// the live League rotation; brawl branches dropped from this classifier.
 function _csvDetectMode(cs) {
   if (!cs) return "sr";
   const q = (cs.queue_id | 0);
-  if (cs.is_brawl || q === 480) return "brawl";
   if (q === 1700 || q === 1710) return "arena";
   if (cs.is_aram || q === 450 || q === 920) return "aram";
   return "sr";
@@ -971,7 +970,7 @@ function _csvHumanPhase(phase) {
 // Renders a team cell list. Backward-compatible 5-positional signature
 // — the 6th `opts` arg adds mode-aware behavior: `cellCount` (default
 // 5), `showGuess` (default true for enemy lists), and `allowRolePip`
-// (default true). ARAM/Brawl pass `showGuess: false` since roles are
+// (default true). ARAM passes `showGuess: false` since roles are
 // random and the (guess) annotation is meaningless; Arena uses a
 // dedicated 2-cell ally renderer instead.
 function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder, opts) {
@@ -1142,7 +1141,7 @@ export function renderChampSelectView(lcu) {
   // "FINALIZATION" → "Finalization", etc.). Raw shouty-snake-case
   // looked like a debug log line in the live sub-line.
   const bits = [];
-  const modeLabel = { sr: "SR DRAFT", aram: "ARAM", arena: "ARENA", brawl: "BRAWL" }[mode] || "";
+  const modeLabel = { sr: "SR DRAFT", aram: "ARAM", arena: "ARENA" }[mode] || "";
   if (modeLabel) bits.push(modeLabel);
   if (cs.queue_id) bits.push(_csvQueueLabel(cs.queue_id));
   if (cs.phase) bits.push(_csvHumanPhase(cs.phase));
@@ -1160,8 +1159,8 @@ export function renderChampSelectView(lcu) {
     timerEndMs = cs.timer._end;
   }
   // Pick-order swap button shows only on modes where pick order is
-  // structural (SR draft queues). ARAM/Arena/Brawl don't have a
-  // meaningful pick order — operator wanted the middle button hidden.
+  // structural (SR draft queues). ARAM/Arena don't have a meaningful
+  // pick order — operator wanted the middle button hidden.
   const showPickOrder = !!cs.sr_draft;
   // Compute active-round set (cells currently banning or picking) so
   // _csvRenderTeam can stamp the pulsing border class on them.
@@ -1174,19 +1173,19 @@ export function renderChampSelectView(lcu) {
     _csvActiveRound = null;
   }
 
-  // Allies render — Arena renders only 2 cells (me + duo); SR/ARAM/Brawl
-  // render 5. ARAM/Brawl also suppress the (guess) tag and role pip
-  // since there are no role assignments to display.
+  // Allies render — Arena renders only 2 cells (me + duo); SR/ARAM
+  // render 5. ARAM also suppresses the (guess) tag and role pip since
+  // there are no role assignments to display.
   const allyOpts = (mode === "arena")
     ? { cellCount: 2, showGuess: false, allowRolePip: false }
-    : (mode === "aram" || mode === "brawl")
+    : (mode === "aram")
       ? { cellCount: 5, showGuess: false, allowRolePip: false }
       : { cellCount: 5, showGuess: true,  allowRolePip: true };
   _csvRenderTeam("csv-allies-list", cs.my_team, myCid, timerEndMs, showPickOrder, allyOpts);
 
   // Enemies render — Arena uses a dedicated 3-team layout (3 enemy
   // duos stacked vertically). SR keeps the 5-cell list with (guess);
-  // ARAM/Brawl render 5 cells but suppress (guess) + role pip.
+  // ARAM renders 5 cells but suppresses (guess) + role pip.
   if (mode === "arena") {
     _csvRenderEnemiesArena(cs, timerEndMs);
   } else {
@@ -1200,8 +1199,8 @@ export function renderChampSelectView(lcu) {
   _csvRenderCentralPane(cs, mode, myCid, myName, locked);
   // s210: render the new Suggestions panel (row 2 right). Has its own
   // fetch path for ban-suggestions; pick-order + DS items pull from
-  // local state. SR-only — the panel is hidden on ARAM/Arena/Brawl
-  // via CSS (no bans, no pick order, no DS-engine concept of "next").
+  // local state. SR-only — the panel is hidden on ARAM/Arena via CSS
+  // (no bans, no pick order, no DS-engine concept of "next").
   if (mode === "sr") {
     _csvRenderSuggestions(cs, myCid, myName, mode);
   } else {
@@ -1228,8 +1227,8 @@ export function renderChampSelectView(lcu) {
 
 // Renders the center column (My Pick + mode-specific extras). Rebuilds
 // the .csv-card-mypick body each call so we can vary header + content
-// per mode without leaving stale elements behind. SR/ARAM/Brawl get a
-// build chooser variant list; Arena gets the duo header + augments.
+// per mode without leaving stale elements behind. SR/ARAM get a build
+// chooser variant list; Arena gets the duo header + augments.
 function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   const card = document.querySelector("#view-champ-select .csv-card-mypick");
   if (!card) return;
@@ -1274,7 +1273,7 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   const archetypeHtml = _csvArchetypePickerHtml(myName);
   const variants = _csvBuildVariantsFor(myCid, myName, mode, cs);
   const buildsTitle = mode === "aram" ? "ARAM build chooser"
-                    : mode === "brawl" ? "Brawl build chooser"
+                    : mode === "arena" ? "Arena build chooser"
                     : "SR build chooser";
   const buildsHtml = `
     <div class="csv-builds" data-champion="${myName || ""}" data-mode="${mode || "sr"}">
@@ -2074,7 +2073,6 @@ function _csvWireArchetypePicker(scope) {
 function _csvDsModeFor(mode) {
   if (mode === "aram")  return "ARAM";
   if (mode === "arena") return "ARENA";
-  if (mode === "brawl") return "BRAWL";
   return "SR";
 }
 
@@ -2123,8 +2121,9 @@ function _csvFetchDsBuilds(champion, dsMode, archetype) {
 }
 
 // s171.8: fetch user-curated variants (loadout_resolver). Mode label is
-// the lower-case form ("sr"/"aram"/"arena"/"brawl") matching the legacy
+// the lower-case form ("sr"/"aram"/"arena") matching the legacy
 // chooser's contract — `/api/loadout/list` normalises internally.
+// s214 v2: "brawl" dropped from the mode set (mode retired from rotation).
 function _csvFetchUserVariants(champion, mode) {
   if (!champion || !mode) return;
   const key = `${champion}|${mode}`;
@@ -2994,8 +2993,9 @@ function _csvRenderPickBan(cs, myCid) {
   //   430 Normal Blind  — no bans, alt picks only
   //   440 Ranked Flex   — same as 420
   //   490 Quickplay     — no bans, alt picks
-  // ARAM (450/920) + Arena (1700/1710) + Brawl don't show the P&B panel
+  // ARAM (450/920) + Arena (1700/1710) don't show the P&B panel
   // (CSS hides it via data-cs-mode), so this gate is SR-only in practice.
+  // s214 v2: Brawl branch retired from this list (mode removed).
   const inActiveBanRound = !!(cs.active_round
                               && cs.active_round.type === "ban");
   const pickClickEnabled = !inActiveBanRound;
