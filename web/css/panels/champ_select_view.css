@@ -1067,50 +1067,45 @@
 
 /* ─── Mode-conditional layouts (s165) ─────────────────────────────────
  * Champ-select renders different content per game mode. Stamped onto
- * #view-champ-select via section.dataset.csMode = "sr|aram|arena|brawl"
+ * #view-champ-select via section.dataset.csMode = "sr|aram|arena"
  * from renderChampSelectView(). SR is the historical default; the
- * other 3 modes adjust grid template, hide pickban, and route the
+ * other 2 modes adjust grid template, hide pickban, and route the
  * central pane / enemies pane to mode-specific renderers.
+ * s214 v2: Brawl branch retired — mode removed from live rotation.
  *
- * Pick&Ban panel is SR-only — ARAM/Arena/Brawl have no bans. We hide
+ * Pick&Ban panel is SR-only — ARAM/Arena have no bans. We hide
  * the entire pickban card and collapse the grid so allies grows to
- * fill row 2. Allies panel itself stays untouched per operator
- * (LOCKED — don't re-iterate).
+ * fill row 2.
  */
 #view-champ-select[data-cs-mode="aram"]  .csv-card-pickban,
-#view-champ-select[data-cs-mode="arena"] .csv-card-pickban,
-#view-champ-select[data-cs-mode="brawl"] .csv-card-pickban {
+#view-champ-select[data-cs-mode="arena"] .csv-card-pickban {
   display: none;
 }
 /* Reflow grid: with pickban hidden, allies takes the full left column
  * height. mypick + enemies still flank it. */
 #view-champ-select[data-cs-mode="aram"]  .csv-grid,
-#view-champ-select[data-cs-mode="arena"] .csv-grid,
-#view-champ-select[data-cs-mode="brawl"] .csv-grid {
+#view-champ-select[data-cs-mode="arena"] .csv-grid {
   grid-template-rows: 1fr;
   grid-template-areas: "allies mypick enemies";
 }
 
-/* In ARAM/Brawl the allies cell layout drops the role pip — collapse
+/* In ARAM the allies cell layout drops the role pip — collapse
  * the 4th column so the summoner name flexes into the freed space.
  * (allowRolePip:false in the JS render path prevents the pip element
  * from being emitted, but the grid-template-columns rule keeps the
  * slot reserved otherwise.) */
-#view-champ-select[data-cs-mode="aram"]  .csv-card-allies .csv-team-cell,
-#view-champ-select[data-cs-mode="brawl"] .csv-card-allies .csv-team-cell {
+#view-champ-select[data-cs-mode="aram"] .csv-card-allies .csv-team-cell {
   grid-template-columns: 36px var(--csv-champname-col) 1fr;
 }
 
-/* ARAM/Brawl enemies: drop the (guess) tag and role pip. Move the
- * lock/timer summ block out of the SR absolute-at-50% position (where
- * it clips the champion name) and into a normal grid column on the
- * right edge of the row. 3-col grid: icon | name | lock/timer. */
-#view-champ-select[data-cs-mode="aram"]  .csv-card-enemies .csv-team-cell,
-#view-champ-select[data-cs-mode="brawl"] .csv-card-enemies .csv-team-cell {
+/* ARAM enemies: drop the (guess) tag and role pip. Move the lock/timer
+ * summ block out of the SR absolute-at-50% position (where it clips
+ * the champion name) and into a normal grid column on the right edge
+ * of the row. 3-col grid: icon | name | lock/timer. */
+#view-champ-select[data-cs-mode="aram"] .csv-card-enemies .csv-team-cell {
   grid-template-columns: 36px 1fr auto;
 }
-#view-champ-select[data-cs-mode="aram"]  .csv-card-enemies .csv-team-cell-summ,
-#view-champ-select[data-cs-mode="brawl"] .csv-card-enemies .csv-team-cell-summ {
+#view-champ-select[data-cs-mode="aram"] .csv-card-enemies .csv-team-cell-summ {
   position: static;
   left: auto;
   top: auto;
@@ -1121,15 +1116,13 @@
 }
 /* Enemy summ text is empty in non-SR modes (LCU never reveals names),
  * but keep the span so the lock/timer's flex sibling alignment holds. */
-#view-champ-select[data-cs-mode="aram"]  .csv-card-enemies .csv-team-cell-summ-text,
-#view-champ-select[data-cs-mode="brawl"] .csv-card-enemies .csv-team-cell-summ-text {
+#view-champ-select[data-cs-mode="aram"] .csv-card-enemies .csv-team-cell-summ-text {
   display: none;
 }
 /* Ensure the champ name on the LEFT col gets the full available width
  * — without this override the var(--csv-champname-col) cap leaves the
  * 1fr col empty + the name col fixed-narrow. */
-#view-champ-select[data-cs-mode="aram"]  .csv-card-enemies .csv-team-cell-nm,
-#view-champ-select[data-cs-mode="brawl"] .csv-card-enemies .csv-team-cell-nm {
+#view-champ-select[data-cs-mode="aram"] .csv-card-enemies .csv-team-cell-nm {
   text-align: left;
 }
 
@@ -1347,7 +1340,7 @@
 /* s211: Row 4 (DS engine item strip) removed — moved to the
  * Experimental row in the build chooser. */
 
-/* ── Build chooser rows (SR / ARAM / Brawl) ───────────────────────── */
+/* ── Build chooser rows (SR / ARAM / Arena) ───────────────────────── */
 .csv-builds-body {
   display: flex;
   flex-direction: column;

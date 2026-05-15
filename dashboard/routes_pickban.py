@@ -168,7 +168,7 @@ _ROLE_ALIASES: dict[str, str] = {
 }
 
 # Default queue set when no ?queue= filter is given. All SR draft +
-# ranked + Quickplay. Excludes ARAM/Arena/Brawl/Coop because P&B is
+# ranked + Quickplay. Excludes ARAM/Arena/Coop because P&B is
 # SR-only (no bans in those modes anyway).
 _DEFAULT_SR_QUEUES = (400, 420, 430, 440, 490)
 
