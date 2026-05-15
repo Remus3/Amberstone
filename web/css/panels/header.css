@@ -829,6 +829,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   justify-content: center; flex-wrap: nowrap;
 }
 .lobby-view-queue-controls.hidden { display: none; }
+.lq-lane-pair.hidden { display: none; }
 
 /* ---- Common button class for the action strip ----
  * Static size — secondary lane button is the guide; everything

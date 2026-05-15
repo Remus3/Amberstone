@@ -3604,14 +3604,18 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       ? (lobby.queue_name || ("queue " + (lobby.queue_id || "?"))).toUpperCase()
       : "—";
 
-    // s162 controls strip — hide on non-SR queues; populate from LCU
-    // when forwarded; fall back to defaults (party Open, prefs greyed)
-    // when no data.
+    // s162 controls strip — populate from LCU when forwarded; fall back
+    // to defaults (party Open, prefs greyed) when no data.
+    // s214 (2026-05-15): strip stays visible on every queue so
+    // Accept / Party / Cancel / Find Match work in ARAM + Arena.
+    // The lane-pair below is the SR-only piece, hidden separately.
     const controls = document.getElementById("lv-queue-controls");
-    if (controls) {
-      const qid = (lobby && lobby.queue_id) | 0;
-      const showStrip = qid === 0 || SR_QUEUE_IDS.has(qid);
-      controls.classList.toggle("hidden", !showStrip);
+    const qid = (lobby && lobby.queue_id) | 0;
+    if (controls) controls.classList.remove("hidden");
+    const lanePair = controls && controls.querySelector(".lq-lane-pair");
+    if (lanePair) {
+      const showLanes = qid === 0 || SR_QUEUE_IDS.has(qid);
+      lanePair.classList.toggle("hidden", !showLanes);
     }
     // Party Open / Closed — LCU exposes lobby.party_type ("open" | "closed").
     // s209: only sync the toggle visual when (a) it's our first observation
