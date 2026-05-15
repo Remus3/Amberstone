@@ -4,6 +4,32 @@
 
 ---
 
+# s215 wrap — 2026-05-15 (Loadout auto-generator + DS Phase 5.9.21 sum-of-blocks data batch)
+
+**Operator instruction:** "continue loadout then continue ds" — close the s214 carry-forward 3-curated-variant auto-generator, then keep DS engine moving.
+
+## Shipped — commits `b395032` + `77d716c`
+
+Pushed `e89a94c..77d716c main -> main` (4 commits, 2 features). CI status pre-flight: `py_compile` clean (2350 .py), `ruff` clean, 508 phase2+regression+phase8+fu02 pass, 11 snapshot panels pass.
+
+### s215 part A — Loadout auto-generator (commit `b395032`)
+New `tools/champion_loadout_autogen.py` (~400 LOC). Emits 3 algorithmic build variants per (champion, mode) into `data/champion_loadouts.json` via `rank_for_primary_archetype` per archetype. Hand-curated wins: each (champion, mode) counts curated variants with that mode in `modes[]`; only fills to 3 with auto entries when count < 3. Stable keys `auto-<mode>-<slot>-<archetype>` so reruns refresh in place. Runes mirror `_CSV_EXPERIMENTAL_RUNES` from `champ_select.js`; summoners archetype-keyed for SR + mode-default for ARAM (4,32) / Arena (4,7). 35 new tests via DS-stub mocks; 1064 wider RC tests pass (+40 vs s214). Full 172-champ run: 13.7s, 1017 auto entries added (332 SR + 169 ARAM + 516 Arena), 0 unfilled. Vayne/Lulu/Veigar curated entries spot-verified preserved.
+
+### s215 part B — DS Phase 5.9.21 sum-of-blocks data batch (commit `77d716c`)
+First pure-data batch consuming s207's schema lift. 4 new (champion, key) entries to `champion_block_index.json`: Thresh.E=[1,2] (Maximum Bonus Magic at full Souls + canonical Magic Damage — lifts s203's single-int {E:2}), Sona.Q=[0,1] (active + Power Chord), Kalista.E=[0,1,1,1,1] (base Rend + 4× stacks = 5-stack model), Malzahar.R=[0,2] (Total Magic channel + Total target-max-HP% bonus). ENGINE_VERSION 0.92.0 → 0.93.0. DS server restarted live to pid pinned at /health=0.93.0. **Live A/B headlines:** Kalista E **+147%** raw, Malzahar R **+150%** raw, Thresh E **+94%** raw, Sona Q **+16%** raw (Power Chord block has unparsed AP scaling Phase 4a can't extract). 19 new tests in `agents/daemon_slayer/tests/test_sum_of_blocks_expansion_s215.py` + 4 prior-batch tests updated for new Thresh shape. DS suite 2022 → 2041; wider RC 1064 green.
+
+### What's next
+- **Live ARAM Mayhem test** still scheduled by operator post-/clear (carried from s214). Now also has 3-variant build chooser to validate live on every locked champion + Phase 5.9.21 Thresh/Sona/Kalista/Malzahar ability_dps lifts ride through to `/api/ds-preview` for the build chooser's experimental row.
+- **DS Phase 5.9.22+ sum-of-blocks candidates remaining**: Taliyah E (mechanic uncertain — block 2 'Total Maximum Detonation' already aggregates), Jinx R secondary AOE (not single-target), Kindred E (nested missing-HP parser bucket — Phase 4a parser limitation), Kayle E (same bucket), Belveth R execute curve (same bucket). Bucket queue moves from 6 → 2 with s215 closing Thresh/Sona/Kalista/Malzahar.
+- **Loadout autogen calibration**: operator may want to flip some `default_per_mode` pointers post-Mayhem if a curated default loses to the auto-primary on live ARAM rounds. No code work — pure JSON edit. Autogen preserves operator's manual default choices on re-run.
+- **Deadcode cleanup (carried)**: `coaches/brawl_coach.py` + brawl mode detection across 6 files.
+
+### Blockers / don't redo
+- Loadout autogen runs DS engine ~1500 times per full pass (~14s). If DS server is down during a run, all auto entries for unfilled slots stay missing — script reports them in the `unfilled` stat. Operator can re-run after starting DS. Not a bug, by design.
+- Phase 4a Meraki parser limitation on Sona Q block 1's "X% of Sona's AP" (unparsed_modifiers) is upstream — the sum-of-blocks entry correctly captures the flat base (10-30) but the AP scaling is invisible to the engine until the Phase 4a parser learns to read nested `% of <champion>'s AP` syntax. Out of scope for this batch.
+
+---
+
 # s214 wrap — 2026-05-15 (Champ-select s213 carry-forward + UI audit batch)
 
 **Operator instruction:** Run through the s213 carry-forward list (11 items) — drop CURRENT BANS title, keystone alignment, archetype-change → experimental refresh, hover hit-areas, Pick & Ban filter constraints, LIMIT/NEW/SYNERGY cascade rows, SYNERGY team-comp lookup, drop allies/enemies countdown timers, validate champ-select timings, LOCKED below portrait, tip text role+comp aware. Then audit + iterate on follow-ups operator surfaced live (scrollbars, keystone right-edge constraint, P&B 3-row uniform height, icon panel-centered, 2-row left-aligned keystone text).
