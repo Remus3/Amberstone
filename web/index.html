@@ -340,138 +340,6 @@
     </div>
   </div>
 
-  <!-- Champion-select overlay (Phase 1, 2026-04-25). Shown only while
-       lcu.phase === "ChampSelect". Renders my pick + ally/enemy team rows
-       + ARAM bench + reroll/lock controls. Clicking bench cells fires
-       bench_swap (LCU API bypasses the 5s client-side cooldown) so swaps
-       are effectively instant.
-       Moved 2026-04-29 from top-of-body to after </header> for
-       consistency with all other views (header above content). -->
-  <div id="cs-overlay" class="cs-overlay hidden" aria-hidden="true">
-    <div class="cs-card">
-      <div class="cs-head">
-        <div class="cs-phase-label">Champion Select</div>
-        <div class="cs-phase-sub" id="cs-phase-sub">—</div>
-      </div>
-      <div class="cs-my-block">
-        <div class="cs-my-icon empty" id="cs-my-icon">?</div>
-        <div class="cs-my-meta">
-          <div class="cs-my-name" id="cs-my-name">—</div>
-          <div class="cs-my-state" id="cs-my-state">no pick yet</div>
-        </div>
-        <div class="cs-actions">
-          <button type="button" class="cs-btn cs-reroll-btn" id="cs-reroll-btn" hidden>⟳ Reroll</button>
-          <button type="button" class="cs-btn cs-lock-btn" id="cs-lock-btn" hidden>🔒 Lock In</button>
-        </div>
-      </div>
-      <!-- Loadout block: build chooser as a radio-style row list (one row
-           per variant). Each row carries inline keystone + item icons so
-           the user can see what they're picking. Selecting a row fires
-           /api/loadout/apply which overwrites the LCU rune page + RC-
-           prefixed item set + summoner spells immediately. Rebuilt
-           2026-04-26 — replaced the single-line <select> dropdown which
-           hid the alternate builds behind a click. -->
-      <div class="cs-loadout-block" id="cs-loadout-block" hidden>
-        <div class="cs-loadout-head">
-          <div class="cs-loadout-label">Item Build &amp; Runes — pick one (auto-pushes to client)</div>
-          <label class="cs-force-summs" title="Override the variant's summoner spells with Flash + Snowball on every push">
-            <input type="checkbox" id="cs-force-flash-snowball" />
-            <span>Force Flash + Snowball</span>
-          </label>
-          <div class="cs-loadout-status" id="cs-loadout-status"></div>
-        </div>
-        <div class="cs-build-list" id="cs-build-list"></div>
-      </div>
-      <!-- SR Draft Theatre chooser (Phase 8 step 5). Gated on
-           cs.sr_draft (set by _state_builder for queue ids 400/420/430/440).
-           Renders 3 engine-generated profiles (primary/alt/experimental)
-           + N user-curated additive builds (data/daemon_slayer/user_builds.json).
-           Clicking a row pushes runes + items + summoners via
-           /api/sr-draft/apply with a unique RC: page name per variant. -->
-      <div class="cs-loadout-block" id="cs-srdraft-block" hidden>
-        <div class="cs-loadout-head">
-          <div class="cs-loadout-label">SR Draft Theatre — engine + user builds</div>
-          <label class="cs-srdraft-role-wrap" title="Lane assignment hint for engine rune defaults">
-            <span>Role</span>
-            <select class="cs-srdraft-role" id="cs-srdraft-role">
-              <option value="">auto</option>
-              <option value="TOP">top</option>
-              <option value="JUNGLE">jungle</option>
-              <option value="MIDDLE">middle</option>
-              <option value="BOTTOM">bottom</option>
-              <option value="UTILITY">utility</option>
-            </select>
-          </label>
-          <div class="cs-loadout-status" id="cs-srdraft-status"></div>
-        </div>
-        <div class="cs-build-list" id="cs-srdraft-list"></div>
-      </div>
-      <!-- DS Engine pre-game build preview. Shown when champion is known
-           during champ-select. Mirrors the in-game ITEM BUILD panel with
-           full item icons + DPS delta chips. Hidden until DS responds. -->
-      <div class="cs-ds-block" id="cs-ds-block" hidden>
-        <div class="cs-ds-head">
-          <span class="cs-ds-label">DS ENGINE · RECOMMENDED BUILD</span>
-          <span class="cs-ds-sub" id="cs-ds-sub"></span>
-        </div>
-        <div class="cs-ds-tiles item-tiles is-path" id="cs-ds-tiles">—</div>
-      </div>
-      <div class="cs-teams">
-        <div class="cs-team-block">
-          <div class="cs-team-label">Allies</div>
-          <div class="cs-team-row" id="cs-allies"></div>
-        </div>
-        <!-- Enemy team block. Hidden in ARAM (incl. Mayhem) where the
-             enemy roster isn't revealed during champ-select — leaving the
-             empty row was misleading. CSS selectors below drop it. -->
-        <div class="cs-team-block" id="cs-enemy-block">
-          <div class="cs-team-label">Enemies</div>
-          <div class="cs-team-row" id="cs-enemies"></div>
-        </div>
-      </div>
-      <!-- Team Context block (FU02 panel stub). Populates from the
-           coach.team_context payload spliced by _state_builder. Until
-           core/riot_api.py ships the actual fan-out, every row renders
-           skeleton fields (rank/mastery/mains/winrate dashed). The
-           shape and IDs are stable across that transition — the same
-           rows fill in field-by-field as priority-1 then priority-2
-           Riot-API responses land. -->
-      <div class="cs-team-context-block" id="cs-team-context-block" hidden>
-        <div class="tc-head">
-          <span class="tc-label">TEAM CONTEXT</span>
-          <span class="tc-status" id="tc-status">waiting for enrichment…</span>
-        </div>
-        <div class="tc-teams">
-          <div class="tc-team-block">
-            <div class="tc-team-label">Allies</div>
-            <div class="tc-team-row" id="tc-allies"></div>
-          </div>
-          <div class="tc-team-block">
-            <div class="tc-team-label">Enemies</div>
-            <div class="tc-team-row" id="tc-enemies"></div>
-          </div>
-        </div>
-      </div>
-      <!-- ARAM team-comp analyzer (Phase 3, 2026-04-26). Hidden when no
-           analysis available. Displays AI recommendation: stay, swap to
-           a specific bench champ (highlighted in the bench grid below),
-           or change variant on current champ (highlighted in the
-           Loadout dropdown above). -->
-      <div class="cs-analyzer-block" id="cs-analyzer-block" hidden>
-        <div class="cs-analyzer-head">
-          <span class="cs-analyzer-label">Team Comp Analyzer</span>
-          <span class="cs-analyzer-verdict" id="cs-analyzer-verdict">—</span>
-          <span class="cs-analyzer-conf" id="cs-analyzer-conf"></span>
-        </div>
-        <div class="cs-analyzer-reason" id="cs-analyzer-reason">analyzing…</div>
-      </div>
-      <div class="cs-bench-block" id="cs-bench-block" hidden>
-        <div class="cs-bench-label">Bench — click for instant swap (no cooldown)</div>
-        <div class="cs-bench-grid" id="cs-bench-grid"></div>
-      </div>
-    </div>
-  </div>
-
   <!-- Coach decisions banner: surfaces coachable moments (objective contest,
        etc.) detected by core/decision_detector. Hidden when no pending
        decisions; populated + animated by JS in dashboard.js (`COACH_DECISIONS`
@@ -1020,11 +888,8 @@
     </section>
 
     <!-- Champ Select view (s164 — Phase 3 step 3 scaffold).
-         New top-level page that replaces the legacy floating
-         #cs-overlay during ChampSelect when ?cs=1 is opted in
-         (localStorage.csView='1' makes it sticky).
-         Layout: 3-col grid — ALLIES | MY PICK + BUILDS | ENEMIES.
-         Auto-promote on phase=ChampSelect when opted in. -->
+         Top-level page rendered while lcu.phase === "ChampSelect".
+         Layout: 3-col grid — ALLIES | MY PICK + BUILDS | ENEMIES. -->
     <section id="view-champ-select" class="view-section" hidden>
       <div class="view-section-head">
         <h2>Champ Select</h2>
