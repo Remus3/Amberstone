@@ -20,6 +20,7 @@ _When an item moves to active work, migrate it to ROADMAP.md "Open items"._
 
 - **rewind_history.db SR records with game_id**: post-live SR game; wired in code (d66d14b) but blocked on new records.
 - **LCU deeper integration**: Pengu Loader Discord/GitHub research for endpoints RC doesn't use yet (richer pre/post-game data). Research-first, no code scheduled.
+- **Interactive Item Shaper (post-DS-100%)** _(noted s214, 2026-05-15)_: final-polish layer on top of the per-archetype scorers. UI exposes 3 modifiers — `DAMAGE` / `SURVIVABILITY` / `UTILITY` — each with a +/- nudge that reshapes the active scorer's weighting on the fly (e.g. Bruiser α=0.65/β=0.35 default → DAMAGE+ pushes toward α=0.80, SURVIVABILITY+ pushes toward α=0.45). The shaper reads + writes the running coach's archetype weights without persisting them; on match end the weights snap back to the archetype default. Intended as a real-time "I'm in a fight-heavy comp, push damage" / "they're snowballing, hold survivability" hint loop. **Block on**: DS engine reaches 100% champion coverage so the weight knobs sit on a complete underlying scorer surface before exposing them to operator-driven tuning.
 
 ## Platform / observability
 

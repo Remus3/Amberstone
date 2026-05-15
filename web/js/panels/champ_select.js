@@ -995,14 +995,12 @@ function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder, opts) {
 
     // s213 v2: lock icon (🔒) removed per operator. The cell's overall
     // outline already encodes lock state (green border for locked,
-    // amber for hovering) so the per-cell padlock was redundant. The
-    // live timer for un-locked cells still renders — that's the only
-    // signal the operator can't read from the cell's outline alone.
-    let lockHtml = "";
-    if (cid && !(p && p.completed) && timerEndMs) {
-      const secs = Math.max(0, Math.ceil((timerEndMs - Date.now()) / 1000));
-      lockHtml = `<span class="csv-team-cell-timer" data-end="${timerEndMs}">${secs}</span>`;
-    }
+    // amber for hovering) so the per-cell padlock was redundant.
+    // s214: countdown timer also removed for allies + enemies — same
+    // signal already lives in the global champ-select header timer +
+    // the active-round border indicator. Per-cell timer added too
+    // much visual noise without a unique payload.
+    const lockHtml = "";
 
     // Hoist peer-cell identity ABOVE the li.className use — referencing
     // peerCellId before its const declaration would throw a TDZ
@@ -1286,18 +1284,19 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
       </div>
     </div>`;
 
-  // s213: portrait + name + LOCKED state now stack horizontally in a
-  // single row. Pre-s213 layout stacked them vertically (icon → name →
-  // state → ... ) which consumed ~150px and capped the build chooser
-  // at 3 visible rows. Inline arrangement frees ~30-40px so the chooser
-  // can show all 4 rows (3 curated + experimental) without scroll.
+  // s214 v2: LOCKED state sits to the LEFT of the champion icon now
+  // (per operator follow-up). Pre-s214v2 it was centered below; pre-
+  // s214 it was inline-right inside .csv-mypick-text. New layout:
+  //   [LOCKED state] [icon] [name]
+  // The state column is fixed-width so the icon stays in roughly the
+  // same X position whether locked / hovering / empty.
   body.className = "csv-card-body csv-mypick";
   body.innerHTML = `
     <div class="csv-mypick-portrait-row">
+      <div class="csv-mypick-state ${stateCls}" id="csv-mypick-state">${stateTxt}</div>
       <div class="csv-mypick-icon ${iconCls}" id="csv-mypick-icon">${iconHtml}</div>
       <div class="csv-mypick-text">
         <div class="csv-mypick-name" id="csv-mypick-name">${myName}</div>
-        <div class="csv-mypick-state ${stateCls}" id="csv-mypick-state">${stateTxt}</div>
       </div>
     </div>
     ${lockBtnHtml}
@@ -1331,21 +1330,21 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
   // operator to commit; once active_round.type === "pick" (bans
   // committed, picks underway) switch to a 2-row 5-cell grid showing
   // ally bans (top) + enemy bans (bottom).
+  // s214: title row dropped — `.csv-sugg-row-label` no longer in the
+  // DOM. The grid alone communicates state via the ALLY / ENEMY side
+  // labels in the banned-list rows + the icon strip in suggestion mode.
   const bansGrid = document.getElementById("csv-sugg-bans-grid");
-  const bansLabel = document.querySelector("#csv-sugg-bans .csv-sugg-row-label");
   if (bansGrid) {
     const allyBans  = (cs.bans && Array.isArray(cs.bans.my_team)) ? cs.bans.my_team : [];
     const enemyBans = (cs.bans && Array.isArray(cs.bans.their_team)) ? cs.bans.their_team : [];
     const isPickPhase = !!(cs.active_round && cs.active_round.type === "pick")
                        || (cs.phase && cs.phase !== "BAN_PICK" && cs.phase !== "PLANNING");
     if (isPickPhase && (allyBans.length || enemyBans.length)) {
-      if (bansLabel) bansLabel.textContent = "CURRENT BANS";
       bansGrid.classList.add("is-banned-grid");
       bansGrid.classList.remove("is-suggestions-grid");
       bansGrid.innerHTML = _csvBannedListRow(allyBans, "ALLY")
                          + _csvBannedListRow(enemyBans, "ENEMY");
     } else {
-      if (bansLabel) bansLabel.textContent = "SUGGESTED BANS";
       bansGrid.classList.add("is-suggestions-grid");
       bansGrid.classList.remove("is-banned-grid");
       // Collect already-banned ids so the suggestion fetch can skip them.
@@ -1386,7 +1385,12 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
   const pickOrderBody = document.getElementById("csv-sugg-pickorder-body");
   if (pickOrderBody) {
     const role = _csvResolveRole(cs);
-    const tips = _CSV_PICKORDER_TIPS[role] || _CSV_PICKORDER_TIPS.DEFAULT;
+    const tips = (_CSV_PICKORDER_TIPS[role] || _CSV_PICKORDER_TIPS.DEFAULT).slice();
+    // s214: swap row 3 for a comp-aware tip once at least one ally lock
+    // or enemy commit is visible. Static role tip is preserved as the
+    // fallback when comp data is too thin to derive signal.
+    const compTip = _csvCompAwareTip(cs, role);
+    if (compTip) tips[2] = compTip;
     pickOrderBody.innerHTML = tips.map((tip, idx) => `
       <div class="csv-sugg-pickorder-cell">
         <span class="csv-sugg-pickorder-idx">${idx + 1}</span>
@@ -1470,8 +1474,11 @@ function _csvExperimentalRunesFor(archetypeKey) {
 }
 
 // s210: pick-order advisory blurbs per role. Short tips, ordered from
-// "what to do first" to "what to do at lock-in". Operator can refine
-// per-position as the panel matures.
+// "what to do first" to "what to do at lock-in". s214: row 3 is now
+// dynamically swapped for a comp-aware tip when ally + enemy comps
+// have enough locks to read — see _csvCompAwareTip below. Rows 1+2
+// stay static so the operator always sees the role's "pick order"
+// constants regardless of comp readability.
 const _CSV_PICKORDER_TIPS = {
   TOP: [
     "Counterpick — wait for enemy top lock",
@@ -1504,6 +1511,80 @@ const _CSV_PICKORDER_TIPS = {
     "Hover your pick to telegraph intent — see if enemy adapts before you commit",
   ],
 };
+
+// s214: derive a comp-aware tip from the locked allies + enemies tag
+// distribution. Returns null when neither side has any locks (early
+// CS) so the caller falls through to the static row-3 tip. Uses the
+// championTags cache (DDragon Fighter/Mage/Marksman/Tank/Support/
+// Assassin classifications) — same source the enemy-row tag chips
+// + adaptive-summoner classifier read from.
+function _csvCompAwareTip(cs, role) {
+  if (!cs || !championTags) return null;
+  const tagOf = (cid) => {
+    if (!cid) return [];
+    const t = championTags(cid);
+    return Array.isArray(t) ? t : [];
+  };
+  const allyIds = (cs.my_team || [])
+    .filter((p) => p && p.completed && p.championId)
+    .map((p) => p.championId | 0);
+  const enemyIds = (cs.their_team || [])
+    .filter((p) => p && p.championId)
+    .map((p) => p.championId | 0);
+  // Need at least 1 locked ally + 1 enemy commit for the tip to have
+  // signal. Pre-lock state: caller fall-through to static tip.
+  if (!allyIds.length && !enemyIds.length) return null;
+  const tagCount = (ids) => {
+    const c = { Fighter: 0, Mage: 0, Marksman: 0, Tank: 0, Support: 0, Assassin: 0 };
+    ids.forEach((cid) => tagOf(cid).forEach((t) => { if (c[t] != null) c[t] += 1; }));
+    return c;
+  };
+  const ally = tagCount(allyIds);
+  const enemy = tagCount(enemyIds);
+
+  // Damage-profile read: enemy AD = Fighter+Marksman+Assassin (Tank
+  // partial); enemy AP = Mage. When one side is heavily skewed the
+  // tip surfaces a defensive item or summoner spell suggestion.
+  const enemyAD = enemy.Fighter + enemy.Marksman + enemy.Assassin;
+  const enemyAP = enemy.Mage;
+  const enemyCC = enemy.Tank + enemy.Support;  // proxy — full CC scoring lives in adaptive-summoner classifier
+  const allyHasFrontline = (ally.Tank + ally.Fighter) >= 1;
+  const allyHasCarry = (ally.Marksman + ally.Mage + ally.Assassin) >= 1;
+
+  // Role-conditional tip selection — surface the highest-priority
+  // observation for the operator's chosen role.
+  if (role === "BOT") {
+    if (enemyCC >= 3) return "Enemy has 3+ CC threats — hover Cleanse before lock-in";
+    if (enemyAD > enemyAP + 1) return "Enemy comp leans AD — Plated Steelcaps / Tabis path opens up";
+    if (enemyAP > enemyAD) return "Enemy comp leans AP — Mercury's + Maw of Malmortius";
+    if (!allyHasFrontline) return "No locked frontline yet — wait or shift to a self-peeling ADC";
+  } else if (role === "SUP") {
+    if (!allyHasCarry) return "Carry slots still open — hover engage to telegraph aggression";
+    if (enemyAD >= 3) return "Heavy AD enemy comp — Knight's Vow / Locket of Iron Solari shine";
+    if (enemy.Assassin >= 1) return "Enemy has assassin pressure — peel-first supports beat engage here";
+  } else if (role === "TOP") {
+    if (enemy.Marksman + enemy.Mage >= 3) return "Enemy heavy on ranged damage — tank + MR rush";
+    if (enemyAD >= 3) return "Heavy AD top side — armor first (Plated / Randuin's / Sunfire)";
+    if (!allyHasCarry) return "Allies lack scaling carry — consider a self-scaling top (Nasus / Kayle)";
+  } else if (role === "JNG") {
+    if (enemy.Tank >= 2) return "Enemy fields 2+ tanks — bring %-HP or true-damage jungler";
+    if (enemyCC >= 3) return "CC-heavy enemy comp — duelist > engage jungler";
+    if (!allyHasFrontline) return "Allies lack frontline — pick an engage/tank jungler";
+  } else if (role === "MID") {
+    if (enemy.Assassin >= 1) return "Enemy assassin commits to dive — bring Zhonya's window";
+    if (enemyAP >= 2) return "Enemy double-AP — Mercury's first; Maw of Malmortius if you're AD";
+    if (!allyHasCarry) return "No locked carry yet — flex pick keeps options open";
+  } else if (role === "ARAM" || role === "MAYHEM") {
+    if (enemyCC >= 3) return "ARAM CC bomb risk — Mercury's + Cleanse if any ranged carry locks";
+    if (enemyAP > enemyAD + 1) return "Enemy ARAM is AP-heavy — Force of Nature / Spirit Visage";
+    if (enemyAD > enemyAP + 1) return "Enemy ARAM is AD-heavy — Plated / Randuin's path";
+  }
+  // Generic fall-through when nothing above triggered (mixed comp).
+  if (allyHasFrontline && allyHasCarry) {
+    return "Comp shaping up balanced — comfort > counterpick from here";
+  }
+  return null;
+}
 
 // s171: lock button click handler — same shape as the legacy overlay's
 // #cs-lock-btn. Disables the button on click to prevent double-fire,
@@ -1615,7 +1696,12 @@ function _csvComputeSig(cs, mode, myCid, myName) {
     if (!p) return "_";
     return `${p.cellId|0}:${p.championId|0}:${p.championPickIntent|0}`;
   }).join(",");
-  const dsKey   = _CSV_DS_CACHE[`${myName}|${_csvDsModeFor(mode)}`] ? "1" : "0";
+  // s214: DS cache key folds in the archetype primary alongside mode,
+  // so the sig changes when operator flips archetype mid-CS and the
+  // build chooser re-renders with fresh items.
+  const archForKey = (_CSV_ARCH_CACHE[myName] && _CSV_ARCH_CACHE[myName].primary)
+    || _csvSavedArchetype(myName) || "";
+  const dsKey   = _CSV_DS_CACHE[_csvDsCacheKey(myName, _csvDsModeFor(mode), archForKey)] ? "1" : "0";
   const userKey = _CSV_USER_CACHE[`${myName}|${mode || "sr"}`] !== undefined ? "1" : "0";
   // s211 v4: include the archetype's primary + source in the sig so a
   // mid-session swap (operator clicks Bruiser → Tank, or clicks AUTO
@@ -1905,6 +1991,23 @@ function _csvWireArchetypePicker(scope) {
         {}, _CSV_ARCH_CACHE[champion] || {},
         { primary: arch, source: "user_cs", champion },
       );
+      // s214: invalidate any cached DS entries for OTHER archetypes
+      // on this champion so the experimental row's items refresh with
+      // the new scorer. The DS cache key is `${champion}|${dsMode}|${arch}`
+      // so we drop every entry whose champion+dsMode matches but arch
+      // does not. Net effect: clicking Tank → Bruiser drops the cached
+      // Tank ranking and triggers a fresh `/api/ds-preview` POST with
+      // `archetype: "bruiser"` next render.
+      Object.keys(_CSV_DS_CACHE).forEach((k) => {
+        if (k.startsWith(`${champion}|`) && !k.endsWith(`|${arch}`)) {
+          delete _CSV_DS_CACHE[k];
+        }
+      });
+      Object.keys(_CSV_DS_INFLIGHT).forEach((k) => {
+        if (k.startsWith(`${champion}|`) && !k.endsWith(`|${arch}`)) {
+          delete _CSV_DS_INFLIGHT[k];
+        }
+      });
       fetch("/api/cs-archetype-pick", {
         method: "POST", cache: "no-store",
         headers: { "Content-Type": "application/json" },
@@ -1933,6 +2036,16 @@ function _csvWireArchetypePicker(scope) {
     autoBtn.addEventListener("click", () => {
       if (autoBtn.classList.contains("is-active")) return;  // already on AUTO
       try { localStorage.removeItem(_csvArchetypeStorageKey(champion)); } catch (_) {}
+      // s214: drop the user-archetype DS cache so the experimental row
+      // re-fetches with the about-to-be-resolved default archetype.
+      // We don't know which archetype the server will default to yet,
+      // so blow away everything for this champion + dsMode pair.
+      Object.keys(_CSV_DS_CACHE).forEach((k) => {
+        if (k.startsWith(`${champion}|`)) delete _CSV_DS_CACHE[k];
+      });
+      Object.keys(_CSV_DS_INFLIGHT).forEach((k) => {
+        if (k.startsWith(`${champion}|`)) delete _CSV_DS_INFLIGHT[k];
+      });
       // Drop server-side; the endpoint accepts `{champion, clear: true}`.
       fetch("/api/cs-archetype-pick", {
         method: "POST", cache: "no-store",
@@ -1965,19 +2078,34 @@ function _csvDsModeFor(mode) {
   return "SR";
 }
 
-// Fire the DS engine for this champion + mode. Non-blocking — the next
-// renderChampSelectView tick (~1Hz from the LCU state push) picks up
-// the cached result. ``level=6`` matches the legacy overlay's preview
-// level so the rankings match between views.
-function _csvFetchDsBuilds(champion, dsMode) {
+// s214: cache key extended to include the active archetype so a
+// mid-CS swap (Tank → Bruiser via the archetype picker) invalidates
+// the experimental row's items and re-fetches with the new scorer.
+// Pre-s214 the experimental row served stale ds.dps rankings for the
+// full champ-select session regardless of archetype clicks. Helper
+// returns the key + archetype string so callers can pass it through
+// to /api/ds-preview (the s184 backend dispatcher already routes
+// `archetype` → rank_for_primary_archetype).
+function _csvDsCacheKey(champion, dsMode, archetype) {
+  const a = archetype || "";
+  return `${champion}|${dsMode}|${a}`;
+}
+
+// Fire the DS engine for this champion + mode + archetype. Non-blocking
+// — the next renderChampSelectView tick (~1Hz from the LCU state push)
+// picks up the cached result. ``level=6`` matches the legacy overlay's
+// preview level so the rankings match between views.
+function _csvFetchDsBuilds(champion, dsMode, archetype) {
   if (!champion || !dsMode) return;
-  const key = `${champion}|${dsMode}`;
+  const key = _csvDsCacheKey(champion, dsMode, archetype);
   if (_CSV_DS_CACHE[key] || _CSV_DS_INFLIGHT[key]) return;
   _CSV_DS_INFLIGHT[key] = true;
+  const body = { champion, mode: dsMode, level: 6, items: [] };
+  if (archetype) body.archetype = archetype;
   fetch("/api/ds-preview", {
     method: "POST", cache: "no-store",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ champion, mode: dsMode, level: 6, items: [] }),
+    body: JSON.stringify(body),
   })
     .then((r) => r.ok ? r.json() : null)
     .then((data) => {
@@ -2035,10 +2163,17 @@ function _csvBuildVariantsFor(cid, name, mode, cs) {
               keystone: "—", item_ids: [], is_default: true }];
   }
   const dsMode = _csvDsModeFor(mode);
+  // s214: include the resolved archetype primary in the DS cache key so
+  // a mid-CS archetype swap (operator clicks Tank → Bruiser) re-fetches
+  // with the new scorer. Empty archetype string defaults to ds.dps (the
+  // dispatcher's `fell_back=True` path for unimplemented archetypes pre-
+  // s182 — preserves behavior for callers that don't pass archetype).
+  const archResolved = _csvResolveArchetype(name);
+  const archKey = (archResolved && archResolved.key) || "";
   // s211 v2 fix: default to empty array when cache is cold — pre-fix
   // `ranked.slice(0, 6)` below threw "Cannot read properties of
   // undefined (reading 'slice')" and aborted the whole render.
-  const ranked = _CSV_DS_CACHE[`${name}|${dsMode}`] || [];
+  const ranked = _CSV_DS_CACHE[_csvDsCacheKey(name, dsMode, archKey)] || [];
   // Always trigger the user-variant fetch + DS fetch in parallel. s210
   // dropped the DS pseudo-row from the build chooser — DS engine output
   // now renders in the Suggestions panel — but we still need DS data
@@ -2046,7 +2181,7 @@ function _csvBuildVariantsFor(cid, name, mode, cs) {
   // and for `/api/champ-select/adaptive-summoners` enemy classification.
   _csvFetchUserVariants(name, mode || "sr");
   if (!ranked.length) {
-    _csvFetchDsBuilds(name, dsMode);
+    _csvFetchDsBuilds(name, dsMode, archKey);
   }
   // s209 v2: pull enemy ids + role for the adaptive-summoner pipeline.
   // Empty enemy_ids during early CS is fine — the recommendation will
@@ -2192,10 +2327,19 @@ function _csvBuildVariantRowsHtml(variants, savedChoice) {
     // `title` until the JSON loads on first hover.
     const keystoneIcon = _csvKeystoneIcon(v.keystone);
     const ksHtml = keystoneTooltipHtml(v.keystone);
-    const ksTtAttr = ksHtml ? ` data-tt-html="${ksHtml.replace(/"/g, "&quot;")}"` : "";
+    // s214: rich tooltip lives ONLY on the wrapper so hovering either
+    // the icon OR the spelled-out keystone name fires the same
+    // DDragon-backed tooltip. Pre-s214 the img carried a bare `title`
+    // (browser native tooltip) which intercepted hover and gave a
+    // different/weaker UX than the wrapper's app-tooltip. Removing
+    // `title` from the child lets the wrapper's data-tt-html win.
+    // Fallback `title` on the wrapper for the brief window before the
+    // DDragon descriptions cache resolves.
+    const ksFallbackTitle = v.keystone ? ` title="${v.keystone}"` : "";
+    const ksTtAttr = ksHtml ? ` data-tt-html="${ksHtml.replace(/"/g, "&quot;")}"` : ksFallbackTitle;
     const runeMainHtml = (keystoneIcon || v.keystone)
       ? `<div class="csv-build-rune-main"${ksTtAttr}>
-           ${keystoneIcon ? `<img class="csv-build-rune-keystone" src="${keystoneIcon}" title="${v.keystone || ""}" onerror="this.style.display='none'">` : ""}
+           ${keystoneIcon ? `<img class="csv-build-rune-keystone" src="${keystoneIcon}" onerror="this.style.display='none'" alt="">` : ""}
            ${v.keystone   ? `<span class="csv-build-rune-tree-name">${v.keystone}</span>` : ""}
          </div>`
       : "";
@@ -2472,13 +2616,13 @@ function _csvRenderEnemiesArena(cs, timerEndMs) {
       const img = CHAMPS.byId[String(c.championId)]
         ? `<img src="/data/ddragon/${ver}/img/champion/${CHAMPS.byId[String(c.championId)]}.png" alt="${nm}" onerror="this.style.display='none'">`
         : "?";
-      let lockHtml = "";
-      if (c.completed) {
-        lockHtml = '<span class="csv-arena-cell-lock">🔒</span>';
-      } else if (timerEndMs) {
-        const secs = Math.max(0, Math.ceil((timerEndMs - Date.now()) / 1000));
-        lockHtml = `<span class="csv-arena-cell-timer" data-end="${timerEndMs}">${secs}</span>`;
-      }
+      // s214: per-cell timer removed for Arena teams too — same
+      // rationale as SR/ARAM. Lock glyph kept for arena since the
+      // sub-team card visual is denser and the cell's own outline
+      // doesn't carry the lock signal as cleanly. `timerEndMs` arg
+      // retained on the function for ABI continuity with SR's caller
+      // signature, but no longer rendered.
+      const lockHtml = c.completed ? '<span class="csv-arena-cell-lock">🔒</span>' : "";
       const stateCls = c.completed ? "locked" : "hovering";
       return `<div class="csv-arena-cell ${stateCls}">
         <div class="csv-arena-cell-icon">${img}</div>
@@ -2493,22 +2637,11 @@ function _csvRenderEnemiesArena(cs, timerEndMs) {
   });
 }
 
-// Live countdown tick — updates the red ".csv-team-cell-timer" text
-// every 250ms based on each element's data-end timestamp. Locked
-// cells (green padlock) have no data-end so they're skipped.
-let _csvTimerIntervalActive = false;
-function _csvSetupTimerTick() {
-  if (_csvTimerIntervalActive) return;
-  _csvTimerIntervalActive = true;
-  setInterval(() => {
-    document.querySelectorAll(".csv-team-cell-timer[data-end]").forEach((el) => {
-      const end = parseInt(el.dataset.end, 10);
-      if (!end) return;
-      const remaining = Math.max(0, end - Date.now());
-      el.textContent = String(Math.ceil(remaining / 1000));
-    });
-  }, 250);
-}
+// s214: per-cell countdown ticker retired alongside the per-cell timers
+// in SR/ARAM/Arena (operator: too much visual noise; the global header
+// timer + active-round border indicator already convey "round ticking
+// down"). Kept as a no-op so existing callers don't error.
+function _csvSetupTimerTick() { /* no-op since s214 */ }
 
 // Align summoner-name column with the "A" of the centered "Allies"
 // header.
@@ -2656,14 +2789,25 @@ const _CSV_PB_CACHE = {};   // {`${role}|${queue}`: {data, fetchedAt}}
 const _CSV_PB_INFLIGHT = {};
 const _CSV_PB_TTL_MS = 60_000;
 
-function _csvFetchPickBanRecs(role, queueId, mood, onLoad) {
+function _csvFetchPickBanRecs(role, queueId, mood, opts, onLoad) {
   // Role here is the dashboard form ("BOT"/"JNG"/etc.) — the endpoint
   // accepts both forms via its _ROLE_ALIASES map. s209: mood is
   // included in the cache key + query string so each toggle change
-  // surfaces a distinct rec without invalidating others.
+  // surfaces a distinct rec without invalidating others. s214: opts
+  // adds {exclude:[ids], allies:[ids], top:N} for cascade-filtered
+  // multi-row queries on LIMIT/NEW/SYNERGY moods. The full opts payload
+  // folds into the cache key so a re-fetch with different excludes
+  // doesn't return stale top-N from the prior call.
   if (!role || role === "—") return null;
   const m = mood || "comfort";
-  const cacheKey = `${role}|${queueId || 0}|${m}`;
+  const o = opts || {};
+  const exclude = Array.isArray(o.exclude) ? o.exclude.slice().sort((a, b) => a - b) : [];
+  const allies  = Array.isArray(o.allies)  ? o.allies.slice().sort((a, b) => a - b)  : [];
+  const top     = Math.max(1, Math.min(5, o.top | 0 || 1));
+  const cacheKey = [
+    role, queueId || 0, m, top,
+    `e:${exclude.join(",")}`, `a:${allies.join(",")}`,
+  ].join("|");
   const now = Date.now();
   const cached = _CSV_PB_CACHE[cacheKey];
   if (cached && (now - cached.fetchedAt) < _CSV_PB_TTL_MS) {
@@ -2671,9 +2815,12 @@ function _csvFetchPickBanRecs(role, queueId, mood, onLoad) {
   }
   if (_CSV_PB_INFLIGHT[cacheKey]) return cached ? cached.data : null;
   _CSV_PB_INFLIGHT[cacheKey] = true;
-  const url = `/api/champ-select/pickban-recs?role=${encodeURIComponent(role)}`
-            + (queueId ? `&queue=${queueId}` : "")
-            + `&mood=${encodeURIComponent(m)}`;
+  let url = `/api/champ-select/pickban-recs?role=${encodeURIComponent(role)}`
+          + (queueId ? `&queue=${queueId}` : "")
+          + `&mood=${encodeURIComponent(m)}`
+          + `&top=${top}`;
+  if (exclude.length) url += `&exclude=${encodeURIComponent(exclude.join(","))}`;
+  if (allies.length)  url += `&allies=${encodeURIComponent(allies.join(","))}`;
   fetch(url)
     .then((r) => r.ok ? r.json() : null)
     .then((j) => {
@@ -2726,31 +2873,132 @@ function _csvRenderPickBan(cs, myCid) {
   const role = _csvResolveRole(cs);
   const ver = CHAMPS.version || "latest";
   const ph = _pbPlaceholdersFor(role);
-  // s170 item #4 (s209 mood-aware): fetch live recs (cached per
-  // role|queue|mood). Re-renders this panel when the fetch lands so
-  // the user sees the swap from placeholder → live, and also when the
-  // operator flips a mood button (the mood click handler below calls
-  // back into _csvRenderPickBan).
   const mood = _csvMoodGet();
-  const liveRecs = _csvFetchPickBanRecs(role, cs.queue_id, mood, () => {
-    _csvRenderPickBan(cs, myCid);
-  });
-  const merged = _csvMergePickBanData(role, liveRecs, ph);
-  // s211: row 1's label now matches the active mood — "PERFORMANCE" for
-  // comfort, "LIMIT TEST" / "SOMETHING NEW" / "COMP SYNERGY" for the
-  // other moods. The 2nd + 3rd rows still show MASTERY / META for now;
-  // mood-specific row context for those is the next session's lift.
   const perfLabel = _CSV_MOOD_LABELS[mood] || "Performance";
-  const sources = [
-    { key: "performance", label: perfLabel, data: merged.performance },
-    { key: "mastery",     label: "Mastery", data: merged.mastery },
-    { key: "meta",        label: "Meta",    data: merged.meta },
-  ];
-  // Pick clicks are safe whenever we're past the ban phase (phase
-  // FINALIZATION) or the user has already locked their pick. Disabling
-  // during active BAN_PICK avoids the "accidentally banned my own
-  // champ" trap the operator flagged.
-  const pickClickEnabled = cs.phase === "FINALIZATION" || cs.my_completed === true;
+
+  // s214: build the cascade exclude-set — every champion already
+  // committed in the draft is off-limits as a recommendation. Source
+  // ids:
+  //   - bans (ally + enemy) from cs.bans
+  //   - picks (ally + enemy) from cs.my_team[].championId,
+  //     cs.their_team[].championId (BOTH intent + locked)
+  //   - the operator's own current pick intent (don't recommend
+  //     yourself a champ you're already hovering)
+  // Plus the row-cascade: as we render rows 1..N for LIMIT/NEW/SYNERGY,
+  // each row's pick id is added to the exclude-set for the next row's
+  // backend call so we never duplicate within the panel.
+  const collectIds = (arr) => (arr || []).map((p) => {
+    if (typeof p === "number") return p | 0;
+    return (p && (p.championId | 0)) || 0;
+  }).filter((x) => x > 0);
+  const baseExclude = new Set();
+  if (cs.bans) {
+    collectIds(cs.bans.my_team).forEach((x) => baseExclude.add(x));
+    collectIds(cs.bans.their_team).forEach((x) => baseExclude.add(x));
+  }
+  collectIds(cs.my_team).forEach((x) => baseExclude.add(x));
+  collectIds(cs.their_team).forEach((x) => baseExclude.add(x));
+  // Also exclude championPickIntent (hover state, not yet locked).
+  (cs.my_team || []).concat(cs.their_team || []).forEach((p) => {
+    const intent = p && p.championPickIntent;
+    if (intent && intent > 0) baseExclude.add(intent | 0);
+  });
+
+  // Ally ids (LOCKED only — hovers don't count toward team-comp synergy
+  // because they can swap) for the SYNERGY mood backend query.
+  const allyIds = (cs.my_team || [])
+    .filter((p) => p && p.completed && p.championId)
+    .map((p) => p.championId | 0)
+    .filter((x) => x > 0);
+
+  // ── Mood branch ────────────────────────────────────────────────
+  // COMFORT: keep the legacy 3-source layout (perf|mastery|meta).
+  // LIMIT/NEW/SYNERGY: render 3 rows all of the same mood, cascading
+  // through `exclude` so each row surfaces the next-best pick.
+  let sources;
+  if (mood === "comfort") {
+    const liveRecs = _csvFetchPickBanRecs(
+      role, cs.queue_id, mood,
+      { exclude: Array.from(baseExclude), top: 1 },
+      () => _csvRenderPickBan(cs, myCid),
+    );
+    const merged = _csvMergePickBanData(role, liveRecs, ph);
+    sources = [
+      { key: "performance", label: perfLabel, data: merged.performance },
+      { key: "mastery",     label: "Mastery", data: merged.mastery },
+      { key: "meta",        label: "Meta",    data: merged.meta },
+    ];
+  } else {
+    // Single fetch — backend returns top-3 picks with the exclude-set
+    // already applied. Cascade dedupe across rows happens server-side
+    // (each result is the next-best after the previously-yielded ones).
+    const opts = {
+      exclude: Array.from(baseExclude),
+      top: 3,
+    };
+    if (mood === "synergy") opts.allies = allyIds;
+    const liveRecs = _csvFetchPickBanRecs(
+      role, cs.queue_id, mood, opts,
+      () => _csvRenderPickBan(cs, myCid),
+    );
+    const picks = (liveRecs && Array.isArray(liveRecs.performance_picks))
+      ? liveRecs.performance_picks : [];
+    // Backend can return fewer than 3 when history is thin; pad with
+    // placeholder so the panel keeps its 3-row geometry rather than
+    // collapsing. Placeholder reuses the role's perf/mastery/meta data.
+    const fallbacks = [ph.performance, ph.mastery, ph.meta];
+    const moodBans = (liveRecs && Array.isArray(liveRecs.performance_bans))
+      ? liveRecs.performance_bans : ph.performance.bans;
+    sources = [0, 1, 2].map((i) => {
+      const p = picks[i];
+      if (p) {
+        return {
+          key: i === 0 ? "performance" : (i === 1 ? "mastery" : "meta"),
+          label: i === 0 ? perfLabel : `${perfLabel} · #${i + 1}`,
+          data: {
+            champId: p.champId,
+            champName: p.champName,
+            reason: p.reason,
+            bans: moodBans.map((b) => ({
+              champId: b.champId,
+              name:    b.name,
+              pct:     b.pct,
+            })),
+          },
+        };
+      }
+      const fb = fallbacks[i];
+      // s214 v3: short prefix tag so the reason stays ≤3 lines under
+      // the .csv-pb-reason-text clamp. Pre-s214v3 the prefix was
+      // "(no <mood> data — showing fallback) " which bloated the row
+      // to 4 lines on tight viewports per operator feedback.
+      return {
+        key: i === 0 ? "performance" : (i === 1 ? "mastery" : "meta"),
+        label: i === 0 ? perfLabel : (i === 1 ? "Mastery" : "Meta"),
+        data: { ...fb, reason: `[no ${mood} data] ${fb.reason}` },
+      };
+    });
+  }
+  // s214: pick-click safety — only disable when an actual BAN round is
+  // active so the operator can't accidentally fire `set_pick_intent`
+  // during a ban (the trap the original gate addressed). Pre-s214 the
+  // gate was `cs.phase === "FINALIZATION" || cs.my_completed === true`,
+  // which under-enabled clicks during pick rounds (the operator
+  // couldn't set pick intent until either the round was over OR they
+  // had locked, which is itself a "click to lock" decision).
+  //
+  // Per-queue confirmation that the active_round resolver covers all
+  // SR draft variants the operator cares about:
+  //   400 Normal Draft  — one simultaneous ban round, then alt picks
+  //   420 Ranked Solo   — same ban shape, alt picks
+  //   430 Normal Blind  — no bans, alt picks only
+  //   440 Ranked Flex   — same as 420
+  //   490 Quickplay     — no bans, alt picks
+  // ARAM (450/920) + Arena (1700/1710) + Brawl don't show the P&B panel
+  // (CSS hides it via data-cs-mode), so this gate is SR-only in practice.
+  const inActiveBanRound = !!(cs.active_round
+                              && cs.active_round.type === "ban");
+  const pickClickEnabled = !inActiveBanRound;
 
   const champImg = (cid) =>
     cid && CHAMPS.byId[String(cid)]
