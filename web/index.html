@@ -6,7 +6,15 @@
   <title>Riot Commander — Phase 3</title>
   <link rel="stylesheet" href="/css/dashboard.css?v=2026051125" />
 </head>
-<body>
+<!-- s209 v2: pre-stamp data-view="home" so the cold-load frame between
+     DOMContentLoaded and the first health/state/lcu envelope shows the
+     home overlay (the canonical "no game in progress" state) rather
+     than the bare in-game panel grid. Without this, the first frame on
+     hard-refresh briefly flashes NEXT/RIGHT NOW/MAP STATE/etc. — the
+     in-game default — which looks like an "after match" page no matter
+     what state the LCU is actually in. The view-router overwrites
+     data-view to the correct value once the first envelope arrives. -->
+<body data-view="home">
   <div id="sim-banner" class="sim-banner hidden">
     <span class="sim-tag">DEV PREVIEW</span>
     <span id="sim-label" class="sim-label">—</span>
@@ -808,9 +816,9 @@
                 </div>
               </div>
               <!-- s162: status text removed per operator (visual noise).
-                   Hidden but preserved: leader tag + legacy queue switcher
-                   so JS-side wiring keeps its targets. -->
-              <span class="lobby-status" id="lv-status" hidden style="display:none !important"></span>
+                   s209: dead `#lv-status` span removed (only consumer was
+                   the noop `_lvSetStatus` helper, also cleaned up). Leader
+                   tag + legacy queue switcher kept as hidden JS targets. -->
               <span class="lobby-view-leader-tag" id="lv-leader-tag" style="display:none !important" hidden>★ LEADER</span>
               <select class="lobby-queue-select" id="lv-queue-select" style="display:none !important" hidden>
                 <option value="">Change queue…</option>
@@ -938,33 +946,36 @@
               </ul>
             </div>
           </div>
-        </div>
-      </div>
-    </section>
+          <!-- s210: Suggestions panel — row 2 right, replacing the
+               bottom half of the old Enemies span. Four sub-rows:
+               (1) title (.csv-card-head), (2) 4-card ban-suggestion
+               strip (global top bans, filtered against already-banned),
+               (3) suggested pick order (counter-picks vs locked
+               enemies), (4) DS engine top-item output. -->
+          <div class="csv-card csv-card-suggestions">
+            <div class="csv-card-head">Suggestions</div>
+            <div class="csv-card-body">
+              <div class="csv-sugg-section csv-sugg-bans"
+                   id="csv-sugg-bans">
+                <div class="csv-sugg-row-label">SUGGESTED BANS</div>
+                <div class="csv-sugg-bans-grid" id="csv-sugg-bans-grid">
+                  <div class="csv-sugg-empty">waiting for champ-select…</div>
+                </div>
+              </div>
+              <div class="csv-sugg-section csv-sugg-pickorder"
+                   id="csv-sugg-pickorder">
+                <!-- s213 v3: "SUGGESTED PICK ORDER" label removed per
+                     operator — the tip rows below are self-explanatory
+                     and the label was eating vertical room. -->
+                <div class="csv-sugg-pickorder-body" id="csv-sugg-pickorder-body">
+                  <div class="csv-sugg-empty">—</div>
+                </div>
+              </div>
+              <!-- s211: DS engine item output removed — the build chooser's
+                   Experimental row now carries the same DS top-picks payload
+                   in a richer rune+spell+item layout. -->
 
-    <!-- Loading Screen view (s166 — Phase 3 step 4 scaffold).
-         Renders the locked CS state during phase=GameStart. Opt-in via
-         ?ld=1 (localStorage.loadingView='1' makes it sticky). Layout:
-         2-col grid (Allies | Enemies) on top, full-width briefing below.
-         Mode-conditional via section.dataset.lvwMode. -->
-    <section id="view-loading" class="view-section" hidden>
-      <div class="view-section-head">
-        <h2>Game Loading</h2>
-        <span class="view-section-sub" id="lvw-sub">scaffold · waiting for loading data</span>
-      </div>
-      <div class="view-section-body">
-        <div class="lvw-grid">
-          <div class="lvw-card lvw-card-allies">
-            <div class="lvw-card-head">Allies</div>
-            <ul class="lvw-team-list" id="lvw-allies-list">
-              <li class="lvw-empty">waiting for my_team data…</li>
-            </ul>
-          </div>
-          <div class="lvw-card lvw-card-enemies">
-            <div class="lvw-card-head">Enemies</div>
-            <ul class="lvw-team-list" id="lvw-enemies-list">
-              <li class="lvw-empty">waiting for their_team data…</li>
-            </ul>
+            </div>
           </div>
         </div>
       </div>

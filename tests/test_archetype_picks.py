@@ -244,10 +244,15 @@ class ConstantsTests(unittest.TestCase):
         self.assertTrue(
             archetype_picks.IMPLEMENTED_SCORERS.issubset(set(archetype_picks.ARCHETYPES))
         )
-        # carry/bruiser/tank are wired today; the rest are Phase 4-6.
+        # s209: all 6 scorers shipped (s174 tank, s175 bruiser, s176 base,
+        # s179 mage→ability, s180 assassin→burst, s181 enchanter→hps).
+        # Dispatcher routes each archetype to its dedicated scorer with no
+        # ds.dps fallbacks remaining.
         self.assertEqual(
             archetype_picks.IMPLEMENTED_SCORERS,
-            frozenset({"carry", "bruiser", "tank"}),
+            frozenset({
+                "carry", "bruiser", "tank", "mage", "assassin", "enchanter",
+            }),
         )
 
     def test_valid_sources_are_complete(self):
