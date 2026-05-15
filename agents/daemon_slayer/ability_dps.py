@@ -578,16 +578,36 @@ def _select_blocks(
     raise ValueError(f"unknown block_strategy: {strategy!r}")
 
 
-def _form_cooldown_at_rank(form: AbilityForm, rank: int) -> float:
-    """Return the cooldown at this rank, or a generous fallback (60s)
-    when the form has no per-rank CD data."""
-    if form.cooldown is None or not form.cooldown:
-        return 60.0
-    if rank < 0:
-        rank = 0
-    if rank >= len(form.cooldown):
-        return float(form.cooldown[-1])
-    return float(form.cooldown[rank])
+def _form_cooldown_at_rank(
+    form: AbilityForm,
+    rank: int,
+    fallback_form: AbilityForm | None = None,
+) -> float:
+    """Return the cooldown at this rank.
+
+    Phase 5.9.19 (s206, 2026-05-14): when ``form`` has no per-rank CD data
+    (Meraki snapshots set ``cooldown=None`` for every non-form-0 entry of a
+    form-swap ability — Riven R / Renekton E / AurelionSol R / Qiyana Q
+    etc.), inherit from ``fallback_form`` (typically form 0) which carries
+    the canonical CD list. Form-swap mechanics share the actual game CD
+    with their parent form, so inheritance is correct.
+
+    Final fallback: 60s generic default (preserves pre-s206 behavior when
+    no fallback is available — single-form abilities with malformed CD).
+    """
+    if form.cooldown:
+        if rank < 0:
+            rank = 0
+        if rank >= len(form.cooldown):
+            return float(form.cooldown[-1])
+        return float(form.cooldown[rank])
+    if fallback_form is not None and fallback_form.cooldown:
+        if rank < 0:
+            rank = 0
+        if rank >= len(fallback_form.cooldown):
+            return float(fallback_form.cooldown[-1])
+        return float(fallback_form.cooldown[rank])
+    return 60.0
 
 
 def _form_cost_at_rank(form: AbilityForm, rank: int) -> float:
@@ -1018,7 +1038,11 @@ def compute_ability_dps(
                 notes=(f"{key} locked at level {level}",),
             ))
             continue
-        cooldown = _form_cooldown_at_rank(form, rank)
+        # Phase 5.9.19 (s206): when form_idx != 0, pass form 0 as fallback
+        # so non-form-0 entries with cooldown=None inherit from the parent
+        # form's CD list (Riven R / Renekton E / AurelionSol R / Qiyana Q).
+        fallback = forms[0] if form_idx != 0 else None
+        cooldown = _form_cooldown_at_rank(form, rank, fallback_form=fallback)
         cost = _form_cost_at_rank(form, rank)
         # Phase 5.9 (s191): if this key has a block_index override (caller
         # or per-(champion, key) registry), switch to "indexed" strategy
