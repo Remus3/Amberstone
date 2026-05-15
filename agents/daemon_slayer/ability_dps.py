@@ -308,11 +308,39 @@ def reset_block_index_cache() -> None:
         _BLOCK_INDEX_CACHE = None
 
 
-def get_block_index_for(champion_id: str) -> tuple[dict[str, int], str]:
+def _normalize_block_index_value(v) -> int | list[int]:
+    """Coerce a JSON-loaded block_index value to int or list[int].
+
+    Phase 5.9.20 (s207): registry values may be int (pre-s207 schema —
+    single block per key) or list[int] (sum-of-blocks — Camille W /
+    Malphite W / Heimerdinger W / Katarina R seed entries). Validates
+    shape; raises ValueError on anything else.
+    """
+    if isinstance(v, bool):
+        # Guard: bool is an int subtype; reject it as a registry value.
+        raise ValueError(f"block_index value must be int or list[int], got bool {v!r}")
+    if isinstance(v, int):
+        return v
+    if isinstance(v, list):
+        out: list[int] = []
+        for x in v:
+            if isinstance(x, bool) or not isinstance(x, int):
+                raise ValueError(
+                    f"block_index list element must be int, got {x!r}"
+                )
+            out.append(x)
+        return out
+    raise ValueError(f"block_index value must be int or list[int], got {v!r}")
+
+
+def get_block_index_for(champion_id: str) -> tuple[dict[str, int | list[int]], str]:
     """Return ``(block_index_map, source)`` for ``champion_id``.
 
     Source is ``"champion"`` if the registry has an entry, ``"default"``
     if it fell back to an empty map (block 0 for all keys).
+
+    Phase 5.9.20 (s207): map values may now be int OR list[int]; lists
+    express sum-of-blocks (operator-commits-to-all-components) entries.
     """
     table = _load_block_index_table()
     overrides = table.get("champions") or {}
@@ -323,15 +351,17 @@ def get_block_index_for(champion_id: str) -> tuple[dict[str, int], str]:
                 f"champion_block_index.json: {champion_id!r} must map to a "
                 f"dict, got {raw!r}"
             )
-        mapping = {str(k).upper(): int(v) for k, v in raw.items()}
+        mapping: dict[str, int | list[int]] = {
+            str(k).upper(): _normalize_block_index_value(v) for k, v in raw.items()
+        }
         return (mapping, "champion")
     return ({}, "default")
 
 
 def _resolve_block_index_overrides(
     champion_id: str,
-    explicit: Optional[dict[str, int]],
-) -> tuple[dict[str, int], str]:
+    explicit: Optional[dict[str, int | list[int]]],
+) -> tuple[dict[str, int | list[int]], str]:
     """Resolve block_index_overrides from caller input + registry.
 
     Registry provides the per-(champion, key) default; caller's dict
@@ -341,14 +371,17 @@ def _resolve_block_index_overrides(
       * ``"override"`` — caller passed any explicit value
       * ``"champion"`` — registry entry used, caller passed None
       * ``"default"`` — empty dict, no registry entry, no caller input
+
+    Phase 5.9.20 (s207): caller values may be int OR list[int]; both
+    pass through ``_normalize_block_index_value`` for validation.
     """
     registry_map, registry_source = get_block_index_for(champion_id)
     if explicit is None:
         return (registry_map, registry_source)
     # Caller wins per-key; registry fills the gaps.
-    merged: dict[str, int] = dict(registry_map)
+    merged: dict[str, int | list[int]] = dict(registry_map)
     for k, v in explicit.items():
-        merged[str(k).upper()] = int(v)
+        merged[str(k).upper()] = _normalize_block_index_value(v)
     return (merged, "override")
 
 
@@ -547,7 +580,7 @@ def _select_blocks(
     rank: int,
     ctx: AbilityContext,
     strategy: str,
-    block_index: int = 0,
+    block_index: int | Sequence[int] = 0,
 ) -> float:
     """Combine damage blocks per the configured strategy.
 
@@ -557,6 +590,16 @@ def _select_blocks(
     aggregated). Out-of-range indexes clamp to the last available damage
     block, preserving forward-compat with future patches that may add
     extra blocks to existing forms.
+
+    Phase 5.9.20 (s207, 2026-05-14): ``block_index`` may now be an int OR
+    a sequence of ints. When a sequence is supplied under ``"indexed"``
+    strategy, the evaluated damage at each (clamped) index is summed —
+    used to express "operator commits to landing every component" cases
+    where the realistic single-target damage is the sum across multiple
+    Meraki blocks (Camille W base + outer-cone, Malphite W active cast
+    + first-AA bonus, Heimerdinger W initial + 4 subsequent rockets,
+    Katarina R full physical + magic dagger volleys). An empty sequence
+    returns 0.0. Single-int callers retain identical pre-s207 behavior.
     """
     damage_blocks = tuple(b for b in blocks if b.attribute_kind == "damage")
     if not damage_blocks:
@@ -564,12 +607,21 @@ def _select_blocks(
     if strategy == "first":
         return _evaluate_block(damage_blocks[0], rank, ctx)
     if strategy == "indexed":
-        idx = block_index
-        if idx < 0:
-            idx = 0
-        if idx >= len(damage_blocks):
-            idx = len(damage_blocks) - 1
-        return _evaluate_block(damage_blocks[idx], rank, ctx)
+        if isinstance(block_index, int):
+            indices: tuple[int, ...] = (block_index,)
+        else:
+            indices = tuple(int(x) for x in block_index)
+        if not indices:
+            return 0.0
+        total = 0.0
+        for raw_idx in indices:
+            idx = raw_idx
+            if idx < 0:
+                idx = 0
+            if idx >= len(damage_blocks):
+                idx = len(damage_blocks) - 1
+            total += _evaluate_block(damage_blocks[idx], rank, ctx)
+        return total
     evals = [_evaluate_block(b, rank, ctx) for b in damage_blocks]
     if strategy == "max":
         return max(evals) if evals else 0.0
@@ -847,7 +899,7 @@ def compute_ability_dps(
     max_priority: Optional[Sequence[str]] = None,
     block_strategy: str = "first",
     form_index_overrides: Optional[dict[str, int]] = None,
-    block_index_overrides: Optional[dict[str, int]] = None,
+    block_index_overrides: Optional[dict[str, int | list[int]]] = None,
 ) -> AbilityDpsResult:
     """Compute total ability DPS for the resolved build.
 
@@ -1416,7 +1468,7 @@ def rank_items_by_ability_dps(
     max_priority: Optional[Sequence[str]] = None,
     block_strategy: str = "first",
     form_index_overrides: Optional[dict[str, int]] = None,
-    block_index_overrides: Optional[dict[str, int]] = None,
+    block_index_overrides: Optional[dict[str, int | list[int]]] = None,
     filter_shared_uniques: bool = True,
 ) -> AbilityDpsRankResult:
     """Rank items by total-ability-DPS gain when added to ``current_item_ids``.
