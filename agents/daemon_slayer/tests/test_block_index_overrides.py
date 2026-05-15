@@ -162,7 +162,8 @@ class RegistryShapeTests(unittest.TestCase):
         # Velkoz W=2 extends prior {"R": 1} from s193 channels
         self.assertEqual(champions["Velkoz"], {"W": 2, "R": 1})
         # New champions added in s195 (Morgana extended in s196 with R=1 — asserted below):
-        self.assertEqual(champions["Camille"], {"Q": 2})
+        # Camille W=[0,1] added in s207 sum-of-blocks seed — full shape:
+        self.assertEqual(champions["Camille"], {"Q": 2, "W": [0, 1]})
         self.assertEqual(champions["Ekko"], {"Q": 3})
         self.assertEqual(champions["Kaisa"], {"Q": 2})
         self.assertEqual(champions["Lulu"], {"Q": 3})
@@ -407,12 +408,27 @@ class RegistryShapeTests(unittest.TestCase):
         # the Box hits already-Feared target — canonical Shaco setup).
         self.assertEqual(champions["Shaco"], {"E": 2, "W": 1})
 
-    def test_every_value_is_int(self) -> None:
+    def test_every_value_is_int_or_list_of_ints(self) -> None:
+        # Phase 5.9.20 (s207) widened the value type from int to int |
+        # list[int]. List values express sum-of-blocks (operator commits
+        # to landing every component) — Camille W / Malphite W /
+        # Heimerdinger W / Katarina R seed entries.
         for champion_id, entries in self.table["champions"].items():
             for key, value in entries.items():
                 with self.subTest(champion_id=champion_id, key=key):
-                    self.assertIsInstance(value, int)
-                    self.assertGreaterEqual(value, 0)
+                    if isinstance(value, list):
+                        self.assertTrue(
+                            all(isinstance(x, int) and not isinstance(x, bool) for x in value),
+                            f"{champion_id}.{key} list contains non-int: {value!r}",
+                        )
+                        self.assertTrue(
+                            all(x >= 0 for x in value),
+                            f"{champion_id}.{key} list contains negative: {value!r}",
+                        )
+                    else:
+                        self.assertIsInstance(value, int)
+                        self.assertNotIsInstance(value, bool)
+                        self.assertGreaterEqual(value, 0)
 
     def test_every_key_is_valid_token(self) -> None:
         # Phase 5.9.5 (s192) extended valid keys to repeat-variant tokens
@@ -2021,12 +2037,17 @@ class Phase599_11ExpansionTests(unittest.TestCase):
         self.assertEqual(r.block_index_resolved.get("W"), 3)
 
     def test_pre_s198_camille_unchanged(self) -> None:
-        """Backward-compat: s195 Camille entry preserved after s198."""
+        """Backward-compat: s195 Camille Q=2 entry preserved after s198.
+
+        s207 added W=[0,1] (sum-of-blocks); Q=2 must stay int-typed.
+        """
         r = compute_ability_dps(
             self.snap, "Camille", level=11, mode="SR",
             target_armor=80, target_mr=30,
         )
-        self.assertEqual(r.block_index_resolved, {"Q": 2})
+        self.assertEqual(r.block_index_resolved.get("Q"), 2)
+        # s207 W=[0,1] also resolved (Phase 5.9.20 sum-of-blocks).
+        self.assertEqual(r.block_index_resolved.get("W"), [0, 1])
 
     def test_pre_s198_singed_unchanged(self) -> None:
         """Backward-compat: s193 Singed entry preserved after s198."""
