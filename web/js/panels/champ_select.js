@@ -1,5 +1,5 @@
-// Champ Select panel — interactive overlay during ChampSelect phase,
-// SR draft build chooser, champ-select analyzer.
+// Champ Select panel — full-page view rendered during ChampSelect
+// phase: pick&ban + build chooser + SR Draft Theatre + analyzer.
 // _ib* functions live in item_build.js (avoid circular dep).
 import { el, safe, fmtList, isArenaPayload } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
@@ -10,11 +10,7 @@ import {
   _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice,
 } from './item_build.js';
 
-// ── Champ-select panel (Phase 1, 2026-04-25) ────────────────────────
-// Interactive overlay shown only during phase=ChampSelect. Renders
-// my pick + 5 ally + 5 enemy cells + ARAM bench. Click bench → fires
-// bench_swap (LCU bypasses the 5s client cooldown so it's instant).
-// Click reroll/lock → fires the corresponding LCU command.
+// ── LCU command helper (used by champ-select + build chooser) ──────
 function lcuCmd(cmdObj) {
   // Endpoint expects FLAT shape: {cmd: "name", ...args} — not wrapped.
   return fetch("/api/lcu-cmd", {
@@ -237,37 +233,9 @@ function _csOnBuildRowClick(variant) {
   }
 }
 
-// Force-summoners override (2026-04-26 user request). When the
-// checkbox is on, _csApplyLoadout suppresses the variant's summoner
-// push (push_summoners:false) and instead sends a separate
-// set_summoners {d:4, f:32} via /api/lcu-cmd. State persists in
-// localStorage rc-force-flash-snowball.
-function _csForceSummsOn() {
-  try { return localStorage.getItem("rc-force-flash-snowball") === "1"; }
-  catch (_) { return false; }
-}
-function _csWireForceSummsOnce() {
-  const cb = document.getElementById("cs-force-flash-snowball");
-  if (!cb || cb._wired) return;
-  cb._wired = true;
-  cb.checked = _csForceSummsOn();
-  cb.addEventListener("change", () => {
-    try { localStorage.setItem("rc-force-flash-snowball", cb.checked ? "1" : "0"); }
-    catch (_) {}
-    // Force re-push so the override takes effect immediately on the
-    // currently-selected build (no need to re-click the row).
-    _csLoadout.lastAppliedKey = "";
-    const champ = _csChampName(_csLoadout.lastChamp);
-    if (champ && _csLoadout.chosen) {
-      _csApplyLoadout(champ, _csLoadout.chosen, _csLoadout.lastMode);
-    }
-  });
-}
-
 function _csApplyLoadout(champion, variant, mode) {
   if (!champion || !variant) return;
-  const force = _csForceSummsOn();
-  const key = champion + "|" + mode + "|" + variant + (force ? "|F" : "");
+  const key = champion + "|" + mode + "|" + variant;
   if (key === _csLoadout.lastAppliedKey) return;  // already pushed
   if (_csLoadout.inflight) return;
   _csLoadout.inflight = true;
@@ -277,7 +245,6 @@ function _csApplyLoadout(champion, variant, mode) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       champion: champion, variant: variant, mode: mode,
-      push_summoners: !force,  // skip variant summoners when override is on
     }),
   })
     .then((r) => (r && r.ok ? r.json() : null))
@@ -288,22 +255,16 @@ function _csApplyLoadout(champion, variant, mode) {
         return;
       }
       _csLoadout.lastAppliedKey = key;
-      if (force) {
-        // Send the override AFTER the build apply — set_summoners is
-        // its own LCU command path, doesn't conflict with item/rune push.
-        lcuCmd({ cmd: "set_summoners", d: 4, f: 32 });
-      }
       // Persist this pre-game choice so the in-game build chooser
       // (renderItemBuild → _ibMaybeRenderBuilds) can pre-select it.
       try { localStorage.setItem("rc-ingame-build-" + champion, variant); }
       catch (_) {}
       const queued = (data.queued || []).join(", ") || "nothing";
-      const tag = force ? " · F+S forced" : "";
-      _csSetStatus("✓ pushed: " + queued + tag, "ok");
+      _csSetStatus("✓ pushed: " + queued, "ok");
       _csMarkSelectedRow(variant);
       // Clear the OK flash after a few seconds
       setTimeout(() => {
-        if (_csLoadout.lastAppliedKey === key) _csSetStatus("✓ active: " + (data.label || variant) + tag, "ok");
+        if (_csLoadout.lastAppliedKey === key) _csSetStatus("✓ active: " + (data.label || variant), "ok");
       }, 2400);
     })
     .catch(() => {
@@ -657,544 +618,19 @@ function _srDraftMaybeRender(cs, myCid, myName) {
                        cs.my_team, cs.their_team, cs.queue_id);
 }
 
-// ── Team-comp analyzer (Phase 3, 2026-04-26) ────────────────────────
-// Debounced AI call that recommends swap / variant / stay based on
-// current team comp. Only runs in ARAM and only when bench has options
-// OR the user has multiple variants available. Result drives:
-//   - verdict badge + reason text in cs-analyzer-block
-//   - star highlight on the recommended bench cell
-//   - glow on the variant dropdown when variant change is recommended
-const _csAnalyzer = {
-  lastKey: "",            // dedupe key for comp+bench+champ+variant
-  inflight: false,
-  lastResult: null,       // last response payload
-  debounceTimer: null,
-};
-
-function _csAnalyzerFireDebounced(payload, key) {
-  if (key === _csAnalyzer.lastKey) return;
-  if (_csAnalyzer.inflight) return;
-  if (_csAnalyzer.debounceTimer) clearTimeout(_csAnalyzer.debounceTimer);
-  // 4s debounce — bench/team churn during active draft shouldn't burn calls
-  _csAnalyzer.debounceTimer = setTimeout(() => {
-    _csAnalyzer.lastKey = key;
-    _csAnalyzer.inflight = true;
-    const block = document.getElementById("cs-analyzer-block");
-    const verdictEl = document.getElementById("cs-analyzer-verdict");
-    const reasonEl = document.getElementById("cs-analyzer-reason");
-    if (block) block.hidden = false;
-    if (verdictEl) {
-      verdictEl.className = "cs-analyzer-verdict busy";
-      verdictEl.textContent = "analyzing…";
-    }
-    if (reasonEl) reasonEl.textContent = "asking the coach…";
-    fetch("/api/aram-analyze", {
-      method: "POST", cache: "no-store",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
-      .then((r) => (r && r.ok ? r.json() : null))
-      .then((data) => {
-        _csAnalyzer.inflight = false;
-        _csAnalyzer.lastResult = data;
-        _csRenderAnalyzerResult(data);
-      })
-      .catch(() => {
-        _csAnalyzer.inflight = false;
-        if (verdictEl) {
-          verdictEl.className = "cs-analyzer-verdict";
-          verdictEl.textContent = "error";
-        }
-        if (reasonEl) reasonEl.textContent = "analyzer call failed";
-      });
-  }, 4000);
-}
-
-function _csRenderAnalyzerResult(data) {
-  const block = document.getElementById("cs-analyzer-block");
-  const verdictEl = document.getElementById("cs-analyzer-verdict");
-  const confEl = document.getElementById("cs-analyzer-conf");
-  const reasonEl = document.getElementById("cs-analyzer-reason");
-  if (!data || !data.ok) {
-    if (verdictEl) { verdictEl.className = "cs-analyzer-verdict"; verdictEl.textContent = "—"; }
-    if (reasonEl) reasonEl.textContent = (data && data.reason) || "analyzer unavailable";
-    return;
-  }
-  const rec = data.recommendation || "stay";
-  const verdictText = rec === "swap"    ? `SWAP → ${data.swap_to || "?"}`
-                    : rec === "variant" ? `VARIANT → ${data.variant_to || "?"}`
-                    :                     "STAY (comp ok)";
-  if (verdictEl) {
-    verdictEl.className = "cs-analyzer-verdict " + rec;
-    verdictEl.textContent = verdictText;
-  }
-  if (confEl) confEl.textContent = (data.confidence || "") + " conf";
-  if (reasonEl) reasonEl.textContent = data.reason || "";
-
-  // Apply highlights — bench cell for swap, build row for variant.
-  document.querySelectorAll(".cs-bench-cell.recommended").forEach(
-    (el) => el.classList.remove("recommended")
-  );
-  document.querySelectorAll(".cs-build-row.has-recommendation").forEach(
-    (el) => {
-      el.classList.remove("has-recommendation");
-      const t = el.querySelector(".cs-build-label .reco-tag");
-      if (t) t.remove();
-    }
-  );
-
-  if (rec === "swap" && data.swap_to) {
-    document.querySelectorAll(".cs-bench-cell").forEach((cell) => {
-      const title = cell.title || "";
-      if (title.startsWith("Swap to " + data.swap_to + " ")) {
-        cell.classList.add("recommended");
-      }
-    });
-  } else if (rec === "variant" && data.variant_to) {
-    const row = document.querySelector(
-      '.cs-build-row[data-variant="' + CSS.escape(data.variant_to) + '"]'
-    );
-    if (row) {
-      row.classList.add("has-recommendation");
-      const lbl = row.querySelector(".cs-build-label");
-      if (lbl && !lbl.querySelector(".reco-tag")) {
-        const tag = document.createElement("span");
-        tag.className = "reco-tag";
-        tag.textContent = "★ recommended";
-        lbl.appendChild(tag);
-      }
-    }
-  }
-}
-
-function _csMaybeRunAnalyzer(cs, myCid, myName, mode) {
-  // Only in ARAM (or ARAM Mayhem). Other modes don't have bench/swap
-  // and the analyzer prompt is ARAM-tuned. Mayhem queue_ids don't
-  // always set cs.is_aram (LCU agent only flags 450/920) — fall back
-  // to "bench present" or mode === aram as additional ARAM signals
-  // so Mayhem games surface the analyzer too. (2026-04-26 user-
-  // reported regression: analyzer never rendered during Mayhem.)
-  const _aramish = !!(cs && (cs.is_aram
-                             || (Array.isArray(cs.bench) && cs.bench.length > 0)
-                             || mode === "aram"));
-  if (!_aramish) {
-    const block = document.getElementById("cs-analyzer-block");
-    if (block) block.hidden = true;
-    return;
-  }
-  if (!myCid || !myName || myName === "—") return;
-  if (!CHAMPS.ready) return;
-  const myTeam = (cs.my_team || [])
-    .map((p) => CHAMPS.byId[String(p && p.championId)])
-    .filter(Boolean);
-  const theirTeam = (cs.their_team || [])
-    .map((p) => CHAMPS.byId[String(p && p.championId)])
-    .filter(Boolean);
-  const bench = (cs.bench || [])
-    .map((id) => CHAMPS.byId[String(id)])
-    .filter(Boolean);
-  // Skip when there's no swap target AND no variant alternatives —
-  // analyzer won't have anything to recommend.
-  if (!bench.length && (!_csLoadout.variants || _csLoadout.variants.length <= 1)) {
-    const block = document.getElementById("cs-analyzer-block");
-    if (block) block.hidden = true;
-    return;
-  }
-  const key = [myName, myTeam.join("|"), theirTeam.join("|"),
-               bench.join("|"), _csLoadout.chosen || ""].join("/");
-  _csAnalyzerFireDebounced({
-    my_champion: myName,
-    my_team:     myTeam,
-    their_team:  theirTeam,
-    bench:       bench,
-    current_variant: _csLoadout.chosen || "",
-    mode:        mode,
-  }, key);
-}
-
-function _csWireButtonsOnce() {
-  const r = document.getElementById("cs-reroll-btn");
-  if (r && !r._wired) {
-    r._wired = true;
-    r.addEventListener("click", () => {
-      if (r.disabled) return;
-      r.disabled = true;
-      lcuCmd({ cmd: "reroll" });
-      setTimeout(() => { r.disabled = false; }, 1500);
-    });
-  }
-  const l = document.getElementById("cs-lock-btn");
-  if (l && !l._wired) {
-    l._wired = true;
-    l.addEventListener("click", () => {
-      if (l.disabled) return;
-      l.disabled = true;
-      // Pull current pick from cached state (cs.my_champion).
-      const cid = (l._currentCid | 0);
-      if (cid > 0) {
-        // 2026-05-09 (s155): surface the agent's reply so failures aren't
-        // silent. Common cases user can't otherwise diagnose:
-        //   - "no pending pick action" → clicked before pick slot active
-        //   - "no session" → LCU agent disconnected
-        //   - http 4xx/5xx from LCU PATCH
-        // Briefly stamps the cs-my-state line ("⌛ HOVERING — lock to confirm")
-        // with a status, then restores the live state on next render tick.
-        lcuCmd({ cmd: "lock_pick", championId: cid }).then((resp) => {
-          const id = resp && resp.id;
-          if (!id) return;
-          lcuPollResult(id, (result) => {
-            const stateEl = document.getElementById("cs-my-state");
-            if (!stateEl) return;
-            if (result && result.ok) {
-              stateEl.textContent = result.note === "already locked"
-                ? "✓ ALREADY LOCKED"
-                : "✓ LOCK SENT";
-            } else {
-              const err = (result && result.err) || "no response";
-              stateEl.textContent = "✗ Lock failed: " + err;
-            }
-            // Live render restores the canonical state ~1s later.
-          });
-        });
-      }
-      setTimeout(() => { l.disabled = false; }, 1500);
-    });
-  }
-}
-
-function renderChampSelectPanel(lcu) {
-  const overlay = document.getElementById("cs-overlay");
-  if (!overlay) return;
-  // Diagnostic dump (?dbg=1 in URL): one-line console.log of cs.*
-  // fields per state poll so we can see what the LCU agent forwards
-  // during Mayhem pre-pick (benchChampions vs championPickIntent vs
-  // something else). Throttled by a "last-keys" comparison so the
-  // console doesn't get spammed on every 2s tick. (2026-04-26 Issue B.)
-  if (/[?&]dbg=1/.test(location.search) && lcu && lcu.champ_select) {
-    const cs = lcu.champ_select;
-    const sig = JSON.stringify({
-      phase: lcu.phase,
-      keys:  Object.keys(cs).sort(),
-      my_champion: cs.my_champion,
-      bench_n: (cs.bench || []).length,
-      my_team_n: (cs.my_team || []).length,
-      their_team_n: (cs.their_team || []).length,
-    });
-    if (window.__rcLastCsSig !== sig) {
-      window.__rcLastCsSig = sig;
-      console.log("[rc-dbg] champ_select sig:", sig, "full:", cs);
-    }
-  }
-  if (!lcu || lcu.phase !== "ChampSelect") {
-    overlay.classList.add("hidden");
-    overlay.setAttribute("aria-hidden", "true");
-    // Reset DS preview key so next champ-select session fires fresh.
-    // _CS_DS is defined later in the same scope; safe at poll-time.
-    _CS_DS.lastKey = "";
-    return;
-  }
-  overlay.classList.remove("hidden");
-  overlay.setAttribute("aria-hidden", "false");
-  _csWireButtonsOnce();
-  _csWireForceSummsOnce();
-  if (!CHAMPS.ready) return;  // names not loaded yet — wait next tick
-
-  const cs = lcu.champ_select || {};
-  // ARAM-style mode? Used to hide the enemy team block + collapse the
-  // ally row to full width since ARAM doesn't reveal enemies pre-game.
-  // Mayhem queue_ids don't always set cs.is_aram, so accept "bench
-  // present" as an additional ARAM signal — same fallback used by the
-  // bench renderer + analyzer.
-  {
-    const _aramish = !!(cs.is_aram
-                        || (Array.isArray(cs.bench) && cs.bench.length > 0));
-    overlay.classList.toggle("aram-mode", _aramish);
-  }
-  const myCid = cs.my_champion | 0;
-  const myName = _csChampName(myCid) || "—";
-  const locked = !!cs.my_completed;
-  const csMode = _csNormalizeMode(cs);
-
-  // Champion/mode change detection — re-fetches variant list and fires
-  // a fresh apply with the default variant. Skipped when champion is
-  // unset (null/0) so we don't push during the brief pre-pick window.
-  if (myCid > 0 && myName && myName !== "—" &&
-      (myCid !== _csLoadout.lastChamp || csMode !== _csLoadout.lastMode)) {
-    _csOnChampionOrModeChange(myName, myCid, csMode);
-  }
-  // SR Draft Theatre chooser — debounced fetch keyed on (champ, role,
-  // allies, enemies, queue). The block is always visible-or-hidden
-  // based on cs.sr_draft, so the call is idempotent on every poll.
-  _srDraftMaybeRender(cs, myCid, myName);
-  // (2026-04-26) Always surface the loadout block while in champ-select
-  // so the user knows the build chooser exists. Show a placeholder
-  // row until they pick a champion. Without this, the block is hidden
-  // when myCid===0 and the user reports "no area to select runes/items".
-  {
-    const _lb = document.getElementById("cs-loadout-block");
-    if (_lb && (!myCid || myCid <= 0)) {
-      _lb.hidden = false;
-      const _list = document.getElementById("cs-build-list");
-      if (_list && !_list.children.length) {
-        _list.innerHTML =
-          '<div class="cs-loadout-empty">Pick a champion above ' +
-          '(or click one of the rolled options below) to see build choices</div>';
-      }
-      _csSetStatus && _csSetStatus("waiting for pick", "");
-    }
-  }
-
-  // Run the team-comp analyzer (ARAM only) — debounced internally so
-  // bench churn during teammate rerolls doesn't burn API calls.
-  _csMaybeRunAnalyzer(cs, myCid, myName, csMode);
-
-  const subBits = [];
-  if (cs.is_aram) subBits.push("ARAM");
-  if (cs.phase) subBits.push(String(cs.phase).toUpperCase());
-  if (cs.queue_id) subBits.push("queue " + cs.queue_id);
-  const sub = document.getElementById("cs-phase-sub");
-  if (sub) sub.textContent = subBits.join(" · ") || "—";
-
-  const iconEl = document.getElementById("cs-my-icon");
-  if (iconEl) {
-    const cls = myCid ? (locked ? "locked" : "hovering") : "empty";
-    iconEl.className = "cs-my-icon " + cls;
-    const url = _csChampImg(myCid);
-    iconEl.innerHTML = (myCid && url)
-      ? `<img src="${url}" alt="${myName}" onerror="this.style.display='none'">`
-      : "?";
-  }
-  const nameEl = document.getElementById("cs-my-name");
-  if (nameEl) nameEl.textContent = myName;
-  const stateEl = document.getElementById("cs-my-state");
-  if (stateEl) {
-    stateEl.textContent = locked ? "✓ LOCKED"
-      : (myCid ? "⌛ HOVERING — lock to confirm" : "no pick yet");
-  }
-
-  const rerollBtn = document.getElementById("cs-reroll-btn");
-  // Same is_aram-fallback as the bench: if bench exists, treat as ARAM.
-  const _aramish = cs.is_aram || (Array.isArray(cs.bench) && cs.bench.length > 0);
-  if (rerollBtn) rerollBtn.hidden = !_aramish;
-  const lockBtn = document.getElementById("cs-lock-btn");
-  if (lockBtn) {
-    lockBtn._currentCid = myCid;
-    lockBtn.hidden = locked || !myCid;
-  }
-
-  // Build a quick lookup from cellId -> trade record so we can render
-  // trade-state badges + decide which allies are click-tradable.
-  const tradesByCell = {};
-  (cs.trades || []).forEach((t) => {
-    if (t && typeof t.cellId === "number") tradesByCell[t.cellId] = t;
-  });
-
-  const renderTeam = (containerId, team, includeMe, isAllies) => {
-    const el = document.getElementById(containerId);
-    if (!el) return;
-    // Allies render vertically (top-to-bottom matches in-game ARAM
-    // screen orientation). Enemies stay horizontal — no interaction.
-    el.className = "cs-team-row" + (isAllies ? " cs-team-vert" : "");
-    el.innerHTML = "";
-    const arr = (team || []).slice(0, 5);
-    while (arr.length < 5) arr.push(null);
-    arr.forEach((p) => {
-      const cell = document.createElement("div");
-      const cid = (p && p.championId) | 0;
-      const isMe = !!(includeMe && cid && cid === myCid);
-      const baseStateCls = !cid ? "empty" : (p.completed ? "locked" : "hovering");
-      const champNm = _csChampName(cid) || (cid ? "cid:" + cid : "—");
-      const summ = (p && p.summonerName) || "";
-      const url = _csChampImg(cid);
-
-      // Trade interaction — only for ARAM, only for allies, never for me,
-      // and only when the cell has a champion.
-      let tradeCls = "";
-      const trade = (p && typeof p.cellId === "number") ? tradesByCell[p.cellId] : null;
-      if (cs.is_aram && isAllies && !isMe && cid) {
-        const tstate = (trade && String(trade.state || "").toUpperCase()) || "AVAILABLE";
-        if (tstate === "BUSY")            tradeCls = " trade-busy";
-        else if (tstate === "SENT")        tradeCls = " trade-sent";
-        else if (tstate === "RECEIVED")    tradeCls = " trade-received";
-        else                                tradeCls = " trade-able";
-      }
-
-      cell.className = "cs-team-cell " + baseStateCls + (isMe ? " me" : "") + tradeCls;
-      cell.title = summ ? `${summ} → ${champNm}` : champNm;
-
-      // Vertical (allies) layout uses a side text column for name+summ;
-      // horizontal (enemies) keeps the name+summ stacked under the icon.
-      if (isAllies) {
-        cell.innerHTML =
-          (url
-            ? `<img src="${url}" alt="" onerror="this.style.display='none'">`
-            : '<div style="width:48px;height:48px"></div>') +
-          `<div class="cs-cell-text">` +
-            `<div class="nm">${champNm}</div>` +
-            (summ ? `<div class="summ">${summ.slice(0, 18)}</div>` : "") +
-          `</div>`;
-      } else {
-        cell.innerHTML =
-          (url
-            ? `<img src="${url}" alt="" onerror="this.style.display='none'">`
-            : '<div style="width:48px;height:48px"></div>') +
-          `<div class="nm">${champNm.slice(0, 11)}</div>` +
-          (summ ? `<div class="summ">${summ.slice(0, 12)}</div>` : "");
-      }
-
-      if (tradeCls === " trade-able" && p && typeof p.cellId === "number") {
-        const cellId = p.cellId;
-        cell.addEventListener("click", () => {
-          cell.classList.add("trade-sent");
-          cell.classList.remove("trade-able");
-          lcuCmd({ cmd: "trade_request", cell_id: cellId });
-        });
-      } else if (tradeCls === " trade-received" && p && typeof p.cellId === "number") {
-        // Incoming offer — append accept-pill + decline-× into the cell.
-        // Click anywhere on the cell (except the × button) accepts the
-        // trade; the cell's ::after badge is replaced by inline actions.
-        const cellId = p.cellId;
-        const actions = document.createElement("div");
-        actions.className = "cs-trade-actions";
-        actions.innerHTML = `<span class="accept-pill">ACCEPT</span>` +
-          `<button type="button" class="decline-x" title="Decline trade">×</button>`;
-        cell.appendChild(actions);
-        // Suppress the ::after badge once we've put real buttons in.
-        cell.style.setProperty("--no-after", "1");
-        cell.addEventListener("click", (ev) => {
-          // Skip if user hit the decline button.
-          if (ev.target && ev.target.closest && ev.target.closest(".decline-x")) return;
-          lcuCmd({ cmd: "accept_trade", cell_id: cellId });
-          cell.classList.remove("trade-received");
-          cell.classList.add("trade-sent");  // visual feedback while LCU swaps
-        });
-        actions.querySelector(".decline-x").addEventListener("click", (ev) => {
-          ev.stopPropagation();
-          lcuCmd({ cmd: "decline_trade", cell_id: cellId });
-          cell.classList.remove("trade-received");
-          cell.style.opacity = "0.55";
-        });
-      }
-      el.appendChild(cell);
-    });
-  };
-  renderTeam("cs-allies",  cs.my_team,    true,  true);
-  renderTeam("cs-enemies", cs.their_team, false, false);
-
-  const benchBlock = document.getElementById("cs-bench-block");
-  if (!benchBlock) return;
-  // (2026-04-26) The LCU agent sets cs.is_aram only when queue_id is
-  // 450/920. Mayhem variants get other queue ids and slip through, hiding
-  // the bench even though it's clearly populated. Treat "has bench" as
-  // an authoritative ARAM-style signal — bench champ selection only
-  // exists in ARAM modes regardless of queue id.
-  // (2026-04-26 v2) Mayhem rolled options surface in cs.rolled_options
-  // (extracted from action.championOptions / myTeam[].championOptions /
-  // top-level championOptions etc by the agent). When my_champion is
-  // 0 AND bench is empty, fall back to rolled_options as the
-  // pickable cards. Click fires lock_pick instead of bench_swap since
-  // there's no current pick to swap from.
-  const _benchPresent = Array.isArray(cs.bench) && cs.bench.length > 0;
-  const _rolls = Array.isArray(cs.rolled_options) ? cs.rolled_options : [];
-  const _showAsRolls = !_benchPresent && _rolls.length > 0 && (cs.my_champion | 0) === 0;
-  const _anyClickable = _benchPresent || _showAsRolls;
-  if (!cs.is_aram && !_anyClickable) {
-    benchBlock.hidden = true;
-    return;
-  }
-  benchBlock.hidden = false;
-  const grid = document.getElementById("cs-bench-grid");
-  if (!grid) return;
-  // Update the section label to telegraph what these are.
-  const benchLabel = benchBlock.querySelector(".cs-bench-label");
-  if (benchLabel) {
-    benchLabel.textContent = _showAsRolls
-      ? "Rolled options — click to pick"
-      : "Bench — click for instant swap (no cooldown)";
-  }
-  const list = _showAsRolls ? _rolls : (cs.bench || []);
-  if (!list.length) {
-    grid.innerHTML = '<div class="cs-bench-empty">No bench champs yet — wait for a teammate to reroll</div>';
-    return;
-  }
-  grid.innerHTML = "";
-  list.forEach((cid) => {
-    const champNm = _csChampName(cid) || "cid:" + cid;
-    const cell = document.createElement("div");
-    cell.className = "cs-bench-cell";
-    cell.title = _showAsRolls
-      ? "Pick " + champNm
-      : "Swap to " + champNm + " (instant)";
-    const url = _csChampImg(cid);
-    cell.innerHTML =
-      (url ? `<img src="${url}" alt="" onerror="this.style.display='none'">` : "") +
-      `<div class="nm">${champNm.slice(0, 11)}</div>`;
-    cell.addEventListener("click", () => {
-      cell.classList.add("swapping");
-      // For Mayhem rolled options (no current pick), use lock_pick to
-      // commit. For bench rerolls (active pick), bench_swap is instant.
-      const cmd = _showAsRolls
-        ? { cmd: "lock_pick", championId: cid }
-        : { cmd: "bench_swap", championId: cid };
-      lcuCmd(cmd);
-      setTimeout(() => cell.classList.remove("swapping"), 1200);
-    });
-    grid.appendChild(cell);
-  });
-}
-
 // 2026-04-25: Cold-start champ-select coaching. When LCU phase is
 // ChampSelect and we have a locked-in champion + enemy team, surface
 // the user's historical adaptation data BEFORE the game starts.
 // Resolves championId integers to names via the CHAMPS byId index.
 const _CS_LIVE = { lastKey: "", inflight: false, lastFetch: 0, lastResult: null };
 
-// DS Engine preview — fires once per (champion, dsMode) pair during
-// champ-select. Keyed separately from _CS_LIVE so drafting ally/enemy
-// changes don't re-hit DS (build order doesn't change mid-draft).
-const _CS_DS = { lastKey: "", inflight: false };
-function _fetchDsPreview(champion, dsMode) {
-  const key = champion + "/" + dsMode;
-  if (key === _CS_DS.lastKey || _CS_DS.inflight) return;
-  _CS_DS.lastKey = key;
-  _CS_DS.inflight = true;
-  const dsEl = document.getElementById("cs-ds-block");
-  const subEl = document.getElementById("cs-ds-sub");
-  const tilesEl = document.getElementById("cs-ds-tiles");
-  fetch("/api/ds-preview", {
-    method: "POST", cache: "no-store",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ champion, mode: dsMode, level: 6, items: [] }),
-  })
-    .then((r) => r.ok ? r.json() : null)
-    .then((data) => {
-      _CS_DS.inflight = false;
-      if (!data || !data.ok || !Array.isArray(data.ranked)) return;
-      // s182+ response carries `scorer` at the top level; rows lift it
-      // onto each row (routes_state.py) for uniform consumption with
-      // daemon_slayer_picks. Fall back to top-level scorer if the row
-      // field is missing (older /api/ds-preview deployments).
-      const unit = scorerUnit(data.scorer);
-      const names = data.ranked.map((r) => r.item_name);
-      const reasons = {};
-      data.ranked.forEach((r) => {
-        const u = r.scorer ? scorerUnit(r.scorer) : unit;
-        reasons[r.item_name] = "+" + Math.round(r.delta_dps) + " " + u;
-      });
-      if (subEl) subEl.textContent = champion + " · " + dsMode;
-      if (tilesEl) renderItemTiles(tilesEl, names, { cap: 8, reasons });
-      if (dsEl) dsEl.removeAttribute("hidden");
-    })
-    .catch(() => { _CS_DS.inflight = false; });
-}
 function handleChampSelect(lcu) {
   // s162: cache the LCU snapshot on state.latest so view-lobby's
   // _lobbyViewRefresh (which reads state.latest.lcu) sees the same data
-  // as the overlay. Pre-fix the lobby sub-page rendered empty in
-  // production because no upstream path ever assigned state.latest.lcu.
+  // as the new champ-select view. Pre-fix the lobby sub-page rendered
+  // empty in production because no upstream path ever assigned
+  // state.latest.lcu.
   state.latest.lcu = lcu || null;
-  // Render the interactive overlay (champ-select-specific surface).
-  renderChampSelectPanel(lcu);
   // s162 bug fix (2026-05-10): renderLobbyPanel / renderHomePanel /
   // _viewResolveAndApply / _maybeRefreshLobbyView USED to be called
   // here, but they're defined in main.js's module scope and were never
@@ -1226,15 +662,6 @@ function handleChampSelect(lcu) {
   };
   const adaptMode = modeMap[cs.queue_id] || "aram";
   fetchAdaptation(myName, adaptMode === "sr_draft" ? "sr" : adaptMode, enemies);
-
-  // DS Engine pre-game build preview — fires once per (champion, mode)
-  // pair; keyed separately from Haiku so draft changes don't re-hit DS.
-  // _csvDsModeFor is hoisted from below; using the same helper here
-  // and at line 1924 keeps the mode→DS-name mapping single-sourced
-  // (ADR-008 pattern). The original inline ternary lacked a "brawl"
-  // branch — _csvDsModeFor adds it, and current adaptMode resolution
-  // (modeMap fallback to "aram") preserves the prior brawl behavior.
-  _fetchDsPreview(myName, _csvDsModeFor(adaptMode));
 
   // Live Haiku coaching — debounced + key-deduped so we only fire when
   // the actual pick state changes (champion or team comp), not on every
@@ -1286,35 +713,8 @@ function renderChampSelectCoach(data) {
 }
 
 // ── Champ Select VIEW (s164 — Phase 3 step 3 scaffold) ─────────────
-// New top-level <section id="view-champ-select"> page (distinct from
-// the legacy #cs-overlay). Auto-promotes on phase=ChampSelect when
-// champSelectViewEnabled() — same flag pattern as activeMatchEnabled.
-
-// s171.7: flipped opt-in → opt-out. The new champ-select view is the
-// canonical surface — it ships the lock button, DS build chooser,
-// P&B Recommendations panel, ARAM bench, Arena duo+augments, and
-// Brawl 5v5 layouts. Operator opts OUT via ``?cs=0`` /
-// ``localStorage.csView === '0'`` to fall back to the legacy
-// floating #cs-overlay on top of view-lobby.
-export function champSelectViewEnabled() {
-  try {
-    if (typeof location !== "undefined" && location.search) {
-      if (location.search.includes("cs=0")) {
-        try { localStorage.setItem("csView", "0"); } catch (_) {}
-        return false;
-      }
-      if (location.search.includes("cs=1")) {
-        try { localStorage.setItem("csView", "1"); } catch (_) {}
-        return true;
-      }
-    }
-    const stored = localStorage.getItem("csView");
-    if (stored === "0") return false;
-    return true;
-  } catch (_) {
-    return true;
-  }
-}
+// Top-level <section id="view-champ-select"> page rendered while
+// lcu.phase === "ChampSelect". Auto-promoted by main.js's view router.
 
 function _csvSetText(id, text) {
   const el = document.getElementById(id);
@@ -2664,4 +2064,4 @@ function _csvRenderPickBan(cs, myCid) {
   });
 }
 
-export { handleChampSelect, renderChampSelectPanel, renderChampSelectCoach };
+export { handleChampSelect, renderChampSelectCoach };

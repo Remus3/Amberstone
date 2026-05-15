@@ -1,15 +1,8 @@
 /* Champ Select VIEW (s164 — Phase 3 step 3 scaffold).
  *
- * Distinct from panels/champ_select.css, which styles the floating
- * #cs-overlay used during legacy ChampSelect render. This file styles
- * the new top-level <section id="view-champ-select"> page that flow_03
- * targets — full-page redesign in the same series as view-lobby /
- * view-active-match.
- *
- * Hide the legacy overlay while the new view is active so they don't
- * stack visually.
+ * Styles the top-level <section id="view-champ-select"> page — full-page
+ * redesign in the same series as view-lobby / view-active-match.
  */
-body[data-view="champ-select"] #cs-overlay { display: none !important; }
 
 .csv-grid {
   display: grid;
