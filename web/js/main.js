@@ -3614,7 +3614,10 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     if (controls) controls.classList.remove("hidden");
     const lanePair = controls && controls.querySelector(".lq-lane-pair");
     if (lanePair) {
-      const showLanes = qid === 0 || SR_QUEUE_IDS.has(qid);
+      // s214: hide lane-pair when queue id isn't actively confirmed
+      // SR. Pre-data (qid===0 / awaiting LCU feed) hides them too so
+      // ARAM operators don't see Primary/Secondary placeholders.
+      const showLanes = qid !== 0 && SR_QUEUE_IDS.has(qid);
       lanePair.classList.toggle("hidden", !showLanes);
     }
     // Party Open / Closed — LCU exposes lobby.party_type ("open" | "closed").
