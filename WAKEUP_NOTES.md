@@ -1,6 +1,105 @@
 # WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+> Sessions s27–s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+
+---
+
+# s206 wrap — 2026-05-14 (Phase 5.9.19 cooldown inheritance from form 0 + README cleanup)
+
+**Operator instruction:** "clean up readme.md and then continue ds" — two-part session. Part 1 compresses the monotonic s174-s182 enumeration that grew across recent sessions. Part 2 closes the s205 carry-forward "Engine None-cooldown fallback" — but with a re-framing because the original diagnosis was wrong about the impact magnitude.
+
+## Part 1 — README cleanup
+
+3 paragraphs compressed:
+
+| README location | Before | After |
+|----|----|----|
+| Line 12 "Daemon Slayer build engine" bullet | ~1.5KB enumerating s174 → s182 inline | Stable summary: 6 archetype scorers + per-(champion, key) override registries + coach integration |
+| Line 244 "Daemon Slayer engine — current state and remaining work" | ~2KB enumerating s174 → s181 inline | 2 tables (scorer routing + override registries) + coach wire-in checklist |
+| Line 311 RC Tutor capability table row | ~600B enumerating s174 → s181 | Stable one-liner: "1979 tests, ENGINE 0.91.0, all 6 archetype scorers fully wired" |
+
+Plus same compression pass on `docs/DAEMON_SLAYER.md` line 5 status header + `docs/ARCHITECTURE.md` line 151 DS section. Living docs now describe **what RC is**, not the changelog of how it got there.
+
+## Part 2 — Phase 5.9.19 cooldown inheritance
+
+**Engine signature change** (`ability_dps.py`):
+```python
+def _form_cooldown_at_rank(form, rank, fallback_form: AbilityForm | None = None) -> float:
+    if form.cooldown:
+        # use primary form's per-rank CD
+    if fallback_form is not None and fallback_form.cooldown:
+        # inherit from fallback (typically forms[0])
+    return 60.0  # generic fallback (preserves pre-s206 behavior)
+```
+
+Both call sites (`ability_dps.py:1021` + `burst.py:731`) now pass `forms[0] if form_idx != 0 else None`. Form-swap mechanics share the actual game cooldown with their parent form, so inheritance is correct.
+
+## Re-framing the s205 carry-forward
+
+The s205 hand-off claimed "engine None-cooldown fallback ... under-counts by ~8.5× per-cast DPS conversion". Investigation found that diagnosis was incorrect because **all 4 affected entries have `casts_per_sec_source: "measured"`** from `spell_cast_rates.json` (covering 172 champs × Q/W/E/R × 3 modes from 2851 rewind matches). The cooldown lookup is only used for DPS when measured rate is absent — which it isn't for any of these.
+
+**Actual s206 impact:**
+1. `per_spell.cooldown` metadata now correct (was uniformly wrong 60s for 4 entries)
+2. ComboCast row metadata in burst output now correct
+3. Theoretical-fallback DPS conversion (only fires when measured rate absent) now uses correct CD — forward-compat for new form-swap champions before their measured rates ship
+
+So this is a **metadata + theoretical-fallback correctness fix**, not a DPS-scoring lift. Total ability_dps for the 4 entries unchanged.
+
+## Live A/B (Legion :8893 /ability-dps lvl 11 vs 80/30/2000)
+
+| Champion | Key | Pre-s206 cd | Post-s206 cd | DPS unchanged? |
+|---|---|---|---|---|
+| Riven | R | 60.0s | **90.0s** (form 0 cd[1] @ rank 2) | ✅ 2.45 unchanged |
+| Renekton | E | 60.0s | **16.0s** (form 0 cd[0] @ rank 0) | ✅ 3.16 unchanged |
+| AurelionSol | R | 60.0s | **110.0s** (form 0 cd[1] @ rank 2) | ✅ 1.73 unchanged |
+| Qiyana | Q | 60.0s | **7.0s** (form 0 cd[0] @ flat 7s) | ✅ 10.26 unchanged |
+
+DPS values unchanged because all 4 use measured cps_source — confirms the intended s206 framing.
+
+## Test counts
+
+- DS suite: 1953 → 1979 (+26 in new `test_cooldown_inheritance.py`)
+- Wider RC: 1013 (no regressions)
+
+Test classes:
+- `CooldownHelperBackwardCompatTests` (5) — pre-s206 behavior preserved when no fallback supplied
+- `CooldownHelperFallbackTests` (7) — fallback inherits when primary has None; explicit None fallback returns 60s; clamping
+- `AbilityDpsCooldownInheritanceTests` (7) — Riven R / Renekton E / ASol R / Qiyana Q + form-0 unaffected + unmapped Veigar R unaffected
+- `BurstCooldownInheritanceTests` (3) — burst.py call site mirrors
+- `ServerRouteCooldownTests` (4) — live :8893 verification
+
+## Files touched
+
+| File | Change |
+|------|--------|
+| `agents/daemon_slayer/__init__.py` | ENGINE_VERSION 0.90.0 → 0.91.0 |
+| `agents/daemon_slayer/ability_dps.py` | `_form_cooldown_at_rank` signature + s206 inline comment at call site |
+| `agents/daemon_slayer/burst.py` | Mirror call site update |
+| `agents/daemon_slayer/tests/test_cooldown_inheritance.py` | NEW — 26 tests |
+| `agents/daemon_slayer/tests/test_effects_expansion.py` | 2 ENGINE_VERSION pin bumps + 0.91.0 changelog comment |
+| `README.md` | 3 paragraphs compressed + version refs bumped |
+| `docs/DAEMON_SLAYER.md` | Status header compressed + version bumped |
+| `docs/ARCHITECTURE.md` | DS section compressed + version bumped |
+| `CLAUDE.md` | Deep-references ENGINE_VERSION ref bumped + priority #64 added |
+
+## Hand-off notes
+
+- **DS server pid 11352** running 0.91.0 / 16.10.1 (was pid 6052 on 0.90.0); verified `/health` + `/ability-dps` post-restart.
+- **DS server is HTTP not HTTPS** on :8893 — curl --insecure fails with `schannel SEC_E_INVALID_TOKEN` because the schannel implementation rejects mkcert. Use `http://127.0.0.1:8893/health` directly.
+- **No RC supervisor restart needed** — s206 only touched DS engine code; web dashboard + state-builder unchanged.
+- **Dispatcher coverage unchanged** at 6/6 archetypes, no fallbacks. Cumulative override coverage stays at 185 entries / 118 champions / 69% roster.
+
+## Carried forward to s207+
+
+- 🟢 **Sum-of-blocks schema lift** — now 10+ candidates queued (Heimerdinger W, Thresh E souls+magic, Taliyah E impact+detonations, Sona Q spell+Power Chord, Camille W flat+max-HP, Katarina R bAD+AP, Malphite W first+subsequent, Malzahar E/R on-cast+DOT, Kalista E per-stack, Jinx R distance-scaled). Schema: extend `block_index_overrides` value type from `int` to `int | list[int]` where list means sum. **Lift warranted next session.**
+- 🟡 **Nested missing-HP parser** — Kindred E, Kayle E, Belveth R execute curve. Phase 4a `unparsed_modifiers` extractor needs upgrade to handle "X% (+ Y% per Mark) of target's missing health" format.
+- 🟡 **Conditional target-state schema lift** — 6+ candidates (Lux Illumination, DrMundo E missing-HP, Evelynn Q charm, Kayle E missing-HP, Kindred E mark, Vayne E wall-stun). Defer until Sum-of-blocks ships.
+- 🟢 **form_index registry expansion** — TwistedFate W (Pick a Card), TahmKench R Regurgitate, Annie R Tibbers — needs runtime player-choice plumbing, not registry-only.
+
+## Don't redo
+
+- Cooldown inheritance — shipped this session. Don't add more inheritance layers; the form_0 → form_N pattern is the only one Meraki actually uses.
+- README cleanup — done. Future sessions add to the s174-style monotonic enumeration only at their peril; instead, update the stable summary fields (test count, ENGINE_VERSION, archetype count, coverage %).
 
 ---
 
@@ -147,72 +246,3 @@ Registry: 115 → 117 champions. Entries: 173 → 181. Form_index registry: 5 �
 ## s204 architectural delta
 
 Twentieth consecutive override / proc-shape modeling improvement on the same template (s185 max_priority → s186 combo → s187 form → s188 per-AA on-hit → s189 Spellblade → s190 Lightshield → s191 block_index → s192 token-variant → s193 channels → s194 calibration → s195 multi-hit → s196 condition-amp → s197 assassin/fighter → s198 bruiser broadening → s199 standard sweep → s200 rescue → s201 framing revert → s202 wall-stun framing revert + broadening → s203 active-cast vs passive-zap split + empty-block-0 fix + form_index×block_index NET-damage layering → s204 form_index seed expansion + second NET-damage layering + target-state amp revival). Thirteenth pure-data batch in the channel/total/charge family. Second batch to expand form_index registry (s187 was the seed). **Cumulative coverage: 181 (champion, key) entries across 117 champions** (68% of the 171-champion roster touched). Pattern remains rock-solid; rate-limit is now (a) sum-of-blocks schema lift becoming necessary (8+ candidates queued), (b) Qiyana Q form_index seed needed before next form-conditional block_index batch.
-
----
-
-# s203 wrap — 2026-05-14 (Phase 5.9.16 block_index expansion — 12 entries / 5 new champs + 5 extensions)
-
-**Operator instruction:** "continue DS" — direct continuation of s202 (now the **nineteenth** consecutive override / proc-shape ship on the same template, **twelfth** pure-data batch in the block_index family). This batch closes the assassin/bruiser-heavy candidate well: 5 brand-new champions (Blitzcrank, Gwen, Kled, LeeSin, Thresh) + 5 key extensions on existing champions (Diana R, Jax R, Kennen W, Smolder E, Vladimir Q). Cumulative coverage 64% → 67% of the 171-champion roster.
-
-## Two new architectural patterns discovered s203
-
-1. **Empty-block-0 fix** — Thresh E. Engine default `block_strategy="first"` selects `damage_blocks[0]` after filtering. Thresh E filtered idx 0 = raw block 0 has only unparsed `1.7 per Soul collected` (no base, no AP, no tAD) and `_evaluate_block` returns 0 for it. Pre-s203, Thresh E ability_dps was literally 0. Setting block_index=2 routes to the canonical 75-255 + 70% AP magic damage component. First instance of this fix pattern; DrMundo Q has similar shape but rejected because its block 0 has actual scaling (target_current_hp_pct 20-30% × target HP).
-
-2. **NET-damage layering of block_index on form_index** — LeeSin Q. s187 already set LeeSin Q form_index=1 (Resonating Strike form). s203 adds block_index=1 within form 1 (max-missing-HP variant, 2× block 0 bAD). Two orthogonal resolvers compose at runtime: form_index selects Resonating Strike form 1 → block_index then selects max-missing-HP block 1 within that form. First time block_index extension adds NET damage on top of a form_index entry — Jayce Q s194 was the smaller-magnitude precedent.
-
-## Sub-patterns reused
-
-- **Multi-hit single-target totals (5 entries):** Diana R full Moonfall channel, Gwen R 9-needle 3-cast, Kled Q 3-stage Beartrap reel, Kled E 2-strike Jousting, Vladimir Q Crimson Rush full-stack.
-- **Active-cast vs passive-zap split (3 entries):** Blitzcrank R / Kennen W / Jax R — engine default block 0 was scoring the passive (per-zap / per-4th-AA mark / passive 3rd-AA) as the R/W cast value, which is per-AA scaling not per-cast.
-- **Resource-state amp (1 net new):** Smolder E max-stack (reverts s198/s202 'Meraki Minimum label ambiguity' skip — same operator-commit framing as Smolder Q s202 successful reintroduction).
-- **Max-charge condition amp (1 entry):** Kled R fully-charged Skaarl-remount.
-
-## s203 ship — Phase 5.9.16 — 12 entries
-
-Live A/B headlines on :8893 (/ability-dps lvl 11 vs 80 armor / 30 MR / 2000 HP):
-
-| Champion | Key | Pattern | adps off → on | Lift |
-|----------|-----|---------|---------------|------|
-| Gwen | R | 9× full burst | 2.76 → 8.80 | **+218.4%** |
-| Kled | all 3 | combined Q+E+R registry | 7.36 → 17.26 | **+134.4%** |
-| Vladimir | Q | Crimson Rush full-stack | 28.09 → 43.19 | **+53.8%** |
-| LeeSin | Q | form 1 max-missing-HP | 9.99 → 14.62 | **+46.4%** |
-| Blitzcrank | R | active vs passive zap | 4.60 → 5.96 | **+29.4%** |
-| Thresh | E | empty-block-0 fix | 6.45 → 7.21 | **+11.8%** |
-| Kennen | W | active vs passive 4th-AA | 18.74 → 20.18 | **+7.6%** |
-| Smolder | E | max-stack Achooo! | 20.76 → 22.16 | **+6.7%** |
-| Diana | R | Moonfall full channel | 16.91 → 17.80 | **+5.3%** |
-| Jax | R | active 3-AA total | 15.65 → 15.82 | **+1.1%** |
-
-**Reverts 1 prior skip rationale:** Smolder E (s198/s202 'Meraki Minimum schema label ambiguity' → s203: re-framed under operator-commits-to-max-stacks). All 12 verified per-rank against Meraki snapshot. 4 of 12 entries have non-damage prefix blocks stripped pre-index (filtered idx ≠ raw idx): Diana R (raw 0 'Slow'), Kled Q (raw 1 'modifier' + raw 4 'slow'), Kled R (raw 0-1 'shield'), Vladimir Q (raw 1 'Heal').
-
-| Commit | Summary |
-|--------|---------|
-| (pending) | s203 feat — 12-entry Phase 5.9.16 block_index expansion + Smolder E revert + first empty-block-0 fix + first NET-damage block_index×form_index layering |
-
-Registry: 110 → 115 champions. Entries: 161 → 173. ENGINE_VERSION: 0.87.0 → 0.88.0. DS suite: 1894 → 1919 (+25 net tests). Wider RC: 1024 green post-DS-restart.
-
-**Test-fixture maintenance:** 2 stale assertions in earlier `Phase599_11ExpansionTests.test_vladimir_both_keys_in_resolved` + `Phase599_15ExpansionTests.test_smolder_all_three_keys_in_resolved` converted from `assertEqual(resolved, exact_dict)` to per-key `.get()` subset checks, since s203 added keys without removing the s197/s198/s202 entries.
-
-## Tomorrow / future sessions
-
-**All s199/s200/s201/s202 carry-forwards remain unchanged:**
-
-- 🟡 **Token-variant for multi-stage Q chains** — Aatrox Q1/Q2/Q3 (combo_sequence-aware), Gwen R needlework recasts (already partially handled via block_index=4 for full burst).
-- 🟡 **Form-swap block_index schema** — KSante R full per-form indexing, Kayn (Rhaast/Shadow Q), Hwei (Q/W/E forms 0/1/2/3), Riven R form 1 (s203 deferred — needs form_index registry seed for Riven), Qiyana Q (s203 deferred — needs form_index registry seed for elemental form).
-- 🟡 **Sequence-state block_index** — Jhin R 4th-shot, Corki R Big One every-4th-missile, Akshan R Comeuppance charge.
-- 🟡 **Conditional target-state block_index** — Zoe E sleep amp, Lux Illumination, DrMundo E missing-HP threshold, Evelynn Q charm, Vayne E wall-stun, Kayle E missing-HP, Kindred E mark detonation. 7+ candidates queued.
-- 🟡 **Sum-of-blocks schema** — NOW 8+ candidates: Thresh E souls+magic, Taliyah E impact+detonations, Sona Q spell+Power Chord, Camille W flat+max-HP (s202) + Katarina R bAD+AP, Malphite W first-AA+subsequent, Malzahar E/R on-cast+DOT, Kalista E per-stack accumulation, Jinx R distance-scaled (s203). Lift is increasingly warranted.
-- 🟡 **Nested missing-HP parser** — Kindred E (s201 drop), Kayle E (s202 drop), Belveth R execute curve (s203 drop). Phase 4a `unparsed_modifiers` extractor needs upgrade to handle "X% (+ Y% per Mark) of target's missing health" format.
-
-## Hand-off notes
-
-- **Tryndamere remains canonical unmapped fixture** (s201 rotation). No change s203.
-- **Kled is the first 3-key new-champion entry in a single batch** since s202's Rumble. Bruiser broadening continues from s198.
-- **Vladimir now has 3 keys** (E s195 + W s198 + Q s203). Mage archetype.
-- **Smolder now has 4 keys** (W s197 + Q s202 + R s202 + E s203). Carry archetype.
-- **DS server restart required** after ENGINE_VERSION bump. Via PowerShell `Stop-Process -Id <pid> -Force` then `Start-Process pythonw start_daemon_slayer.py -WindowStyle Hidden -WorkingDirectory "C:\Riot Commander"`. /health confirms 0.88.0.
-
-## s203 architectural delta
-
-Nineteenth consecutive override / proc-shape modeling improvement on the same template (s185 max_priority → s186 combo → s187 form → s188 per-AA on-hit → s189 Spellblade → s190 Lightshield → s191 block_index → s192 token-variant → s193 channels → s194 calibration → s195 multi-hit → s196 condition-amp → s197 assassin/fighter → s198 bruiser broadening → s199 standard sweep → s200 rescue → s201 framing revert → s202 wall-stun framing revert + broadening → s203 active-cast vs passive-zap split + empty-block-0 fix + form_index×block_index NET-damage layering). Twelfth pure-data batch in the channel/total/charge family. **Cumulative coverage: 173 (champion, key) entries across 115 champions** (67% of the 171-champion roster touched). Pattern remains rock-solid; rate-limit is now (a) sum-of-blocks schema lift becoming necessary (8+ candidates queued), (b) form_index registry seed expansion for Riven/Qiyana before next form-conditional block_index batch.
