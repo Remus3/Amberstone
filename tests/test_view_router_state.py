@@ -31,7 +31,7 @@ from dashboard.view_router_state import (  # noqa: E402
 )
 
 
-def _run(phases_modes, *, active=True, csv=True):
+def _run(phases_modes, *, active=True):
     """Drive the state machine through a sequence of (phase, mode) ticks.
 
     Returns the list of DeriveResult instances, one per tick, with the
@@ -43,7 +43,6 @@ def _run(phases_modes, *, active=True, csv=True):
         r = derive_view(
             phase, mode, sticky,
             active_match_enabled=active,
-            champ_select_view_enabled=csv,
         )
         results.append(r)
         sticky = r.game_started
@@ -224,30 +223,13 @@ class PostGameClearTests(unittest.TestCase):
         self.assertIsNone(results[0].game_started)
 
 
-class ChampSelectViewGateTests(unittest.TestCase):
-    """ChampSelect view defaults to ON per s171.7 but operators can opt out."""
+class ChampSelectViewTests(unittest.TestCase):
+    """ChampSelect always routes to the dedicated full-page view (s187+)."""
 
-    def test_cs_view_enabled_returns_champ_select(self):
-        results = _run([("ChampSelect", "client")], csv=True)
+    def test_cs_phase_routes_to_champ_select(self):
+        results = _run([("ChampSelect", "client")])
         self.assertEqual(results[0].view, "champ-select")
-
-    def test_cs_view_disabled_returns_lobby(self):
-        results = _run([("ChampSelect", "client")], csv=False)
-        self.assertEqual(results[0].view, "lobby")
-
-    def test_cs_sticky_with_view_disabled_falls_back_to_lobby(self):
-        # Sticky=champ-select fallback path also respects the gate.
-        results = _run([
-            ("ChampSelect", "client"),
-            (None,          "client"),  # would normally infer game-start
-        ], csv=False)
-        # First tick: ChampSelect with csv=False → "lobby" view, sticky=champ-select.
-        self.assertEqual(results[0].view, "lobby")
         self.assertEqual(results[0].game_started, "champ-select")
-        # Second tick: null after CS → sticky inference → game-start → loading.
-        # (Inference fires regardless of feature flag; loading view is always
-        # active.)
-        self.assertEqual(results[1].view, "loading")
 
 
 class HomeFallthroughTests(unittest.TestCase):
