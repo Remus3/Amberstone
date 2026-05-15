@@ -155,7 +155,9 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Hecarim"], {"W": 1, "E": 1})
         self.assertEqual(champions["Jayce"], {"Q": 1, "W": 1})
         self.assertEqual(champions["Rell"], {"R": 1})
-        self.assertEqual(champions["DrMundo"], {"W": 1})
+        # DrMundo W lifted from int 1 to list [1, 2] in s217 (Phase 5.9.22)
+        # — full channel total + recast detonation burst.
+        self.assertEqual(champions["DrMundo"], {"W": [1, 2]})
         # Phase 5.9.8 (s195) — multi-hit / charge / recast expansion
         # Ahri W=2 extends prior {"Q": 1} from s191 seed
         self.assertEqual(champions["Ahri"], {"Q": 1, "W": 2})
@@ -273,7 +275,9 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Janna"], {"Q": 2})
         self.assertEqual(champions["Jhin"], {"Q": 2, "R": 1})
         # Kennen extended in s203 with W=1 (active cast vs passive 4th-AA) — asserted below
-        self.assertEqual(champions["Taliyah"], {"Q": 2})
+        # Taliyah extended in s217 (Phase 5.9.22) with E=[0,2] — initial shard
+        # impact + Total Maximum Detonation aggregate.
+        self.assertEqual(champions["Taliyah"], {"Q": 2, "E": [0, 2]})
         self.assertEqual(champions["Teemo"], {"E": 2, "R": 1})
         self.assertEqual(champions["Viego"], {"Q": 3})
         self.assertEqual(champions["Xerath"], {"W": 1, "R": 1})
@@ -1088,8 +1092,27 @@ class CalibrationFollowUpExpansionTests(unittest.TestCase):
     def test_rell_R_routes_to_block_1(self) -> None:
         self._delta_check("Rell", "R", 1)
 
-    def test_drmundo_W_routes_to_block_1(self) -> None:
-        self._delta_check("DrMundo", "W", 1)
+    def test_drmundo_W_routes_to_sum_of_blocks(self) -> None:
+        """DrMundo W was {W: 1} in s194 (filtered idx 1 = raw block 1
+        'Total Magic Damage' — full 4-second Heart Zapper drain channel
+        total). s217 Phase 5.9.22 lifted to sum-of-blocks {W: [1, 2]}
+        adding raw block 2 'Magic Damage' (the recast detonation burst).
+        Operator commits to letting Heart Zapper run + manual recast at
+        end for the full Mundo W single-target burst."""
+        r_reg = compute_ability_dps(
+            self.snap, "DrMundo", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r_reg.block_index_resolved.get("W"), [1, 2])
+        # Sum must strictly exceed forced block 1 alone (channel only).
+        forced = dict(r_reg.block_index_resolved)
+        forced["W"] = 1
+        r_off = compute_ability_dps(
+            self.snap, "DrMundo", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides=forced,
+        )
+        self.assertGreater(r_reg.total_ability_dps, r_off.total_ability_dps)
 
     def test_corki_both_keys_in_resolved(self) -> None:
         """Both Corki W and E entries land in the same resolved map."""
@@ -3089,12 +3112,15 @@ class Phase599_15ExpansionTests(unittest.TestCase):
         self.assertEqual(r.block_index_resolved, {"Q": 2, "R": 1})
 
     def test_pre_s202_taliyah_unchanged(self) -> None:
-        """Backward-compat: s201 Taliyah Q=2 preserved after s202."""
+        """Backward-compat: s201 Taliyah Q=2 preserved after s202.
+        s217 Phase 5.9.22 added E=[0,2] (initial shard impact + Total
+        Maximum Detonation aggregate); test pinned to the post-s217
+        shape since the s202 batch didn't touch Taliyah's Q entry."""
         r = compute_ability_dps(
             self.snap, "Taliyah", level=11, mode="SR",
             target_armor=80, target_mr=30,
         )
-        self.assertEqual(r.block_index_resolved, {"Q": 2})
+        self.assertEqual(r.block_index_resolved, {"Q": 2, "E": [0, 2]})
 
     def test_pre_s202_ambessa_unchanged(self) -> None:
         """Backward-compat: s200 Ambessa Q=1, W=1, E=1 preserved after s202."""

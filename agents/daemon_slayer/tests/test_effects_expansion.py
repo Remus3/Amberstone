@@ -7619,7 +7619,18 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          verified per-rank against Meraki 16.10.1; Per-spell raw
         #          lifts: Kalista E +193% / Malzahar R +150% / Thresh E
         #          +84% / Sona Q +16%. Registry 121 → 124 champions.
-        self.assertEqual(ENGINE_VERSION, "0.93.0")
+        # 0.94.0 = s217 Phase 5.9.22 sum-of-blocks data batch (second).
+        #          Closes the s215 carry-forward queue. 2 entries:
+        #          Taliyah E=[0,2] (NEW key — Magic Damage initial shard
+        #          impact + Total Maximum Detonation Damage aggregate, full
+        #          single-target burst when target steps through Unraveled
+        #          Earth), DrMundo W=[1,2] (LIFT from s193's {W: 1} — full
+        #          channel drain + recast detonation burst). Per-spell raw
+        #          lifts: Taliyah E +109%, DrMundo W +25%. Registry 124 →
+        #          124 champions (Taliyah gains E key; DrMundo lifted).
+        #          Sum-of-blocks bucket queue now exhausted under current
+        #          operator-commit framing.
+        self.assertEqual(ENGINE_VERSION, "0.94.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7680,7 +7691,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.93.0")
+        self.assertEqual(ENGINE_VERSION, "0.94.0")
 
 
 if __name__ == "__main__":
