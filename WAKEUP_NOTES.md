@@ -4,6 +4,49 @@
 
 ---
 
+# s214 wrap — 2026-05-15 (Champ-select s213 carry-forward + UI audit batch)
+
+**Operator instruction:** Run through the s213 carry-forward list (11 items) — drop CURRENT BANS title, keystone alignment, archetype-change → experimental refresh, hover hit-areas, Pick & Ban filter constraints, LIMIT/NEW/SYNERGY cascade rows, SYNERGY team-comp lookup, drop allies/enemies countdown timers, validate champ-select timings, LOCKED below portrait, tip text role+comp aware. Then audit + iterate on follow-ups operator surfaced live (scrollbars, keystone right-edge constraint, P&B 3-row uniform height, icon panel-centered, 2-row left-aligned keystone text).
+
+## Shipped — commit `f31bc1b`
+
+Net diff: +947 / −280 across 6 files. Pushed `c864638..f31bc1b main -> main`.
+
+### s213 carry-forward (all 11 closed)
+- **CURRENT BANS title row dropped** from Suggestions card (`web/index.html` + `_csvRenderSuggestions`); parent card head + ALLY/ENEMY side labels carry the state.
+- **Countdown timers removed** from allies + enemies cells + ticker interval no-op'd (`csv-team-cell-timer` + `csv-arena-cell-timer` no longer rendered).
+- **LOCKED state shifted** through 3 iterations: centered-below → left-of-icon → final 3-col grid `[1fr | auto icon | 1fr]` so the portrait sits at exact panel center with state/name flanks not influencing icon position.
+- **Build chooser keystone alignment**: badge + rune strip pinned to 130px width, 2-row keystone name slot (always reserves 2 lines, left-aligned). "Press the Attack" wraps "Press the/Attack"; "Conqueror" fills line 1 with line 2 reserved for vertical rhythm across all 4 rows.
+- **Hover hit-areas expanded**: champion-name cells + build-item icons get padded hover surfaces with blue ring affordance. Item-strip gap bumped 3→6px.
+- **Unified keystone tooltip**: bare `title` removed from img so parent's `data-tt-html` rich tooltip fires on either icon or name.
+- **Archetype → experimental refresh** wired: `_csvDsCacheKey(name, dsMode, archetype)` folds archetype into cache key; archetype-button click invalidates other-archetype entries on the same champion; `/api/ds-preview` POST passes `archetype` payload. AUTO button clears everything for that champion.
+- **Pick & Ban filter constraints + cascade** shipped backend (`routes_pickban.py`): queries now return `list[dict]` with `top=` + `exclude_ids` + `ally_ids` params; response gains `performance_picks` list alongside legacy single `performance` for back-compat. Client-side: COMFORT keeps 3-source layout; LIMIT/NEW/SYNERGY render 3 same-mood rows; exclude set folds ally + enemy bans + locked picks + hover intents.
+- **SYNERGY team-comp lookup**: when `allies=` is provided, SQL scores by joint-WR-with-locked-allies (≥2 games threshold). Falls back to recent-form proxy when no allies locked yet. Reason text reflects "alongside locked allies · comp fit".
+- **Tips role + comp aware**: new `_csvCompAwareTip()` reads `championTags` for locked allies + visible enemies, derives Fighter/Mage/Marksman/Tank/Support/Assassin counts, role-conditionally swaps row-3 tip (BOT/SUP/TOP/JNG/MID/ARAM). Falls through to static role tip when comp data is too thin.
+- **Champ-select timing validated**: queue-agnostic `active_round` from `session.actions` already covers SR Normal Draft (400) / Ranked (420/440) / Blind (430) / Quickplay (490) — phase logic was correct, but `pickClickEnabled` gate retightened from coarse `cs.phase` to `cs.active_round.type === "ban"` so operator can set pick intent during pick rounds.
+- **BACKLOG**: Interactive Item Shaper (post-DS-100%) recorded — 3 modifiers DAMAGE/SURVIVABILITY/UTILITY that nudge active archetype scorer weights mid-game, reset per match.
+
+### Live audit iterations
+- **No scrollbars policy**: `.csv-card-body { overflow: auto }` → `overflow: hidden`. Operator: "I do not want any scrollbar showing unless I explicitly state."
+- **Pick & Ban 3 rows uniform height**: `flex: 1 1 auto` → `flex: 1 1 0` so the 3 rows distribute panel space equally regardless of reason-text length.
+- **P&B reason text clamped to 3 lines** via CSS line-clamp so the fallback prefix `[no <mood> data] ` can never bloat to 4 lines (operator: "row text now 4 lines... can not ever be 4 lines. always 3").
+- **Pick-order tips uniform**: 44px min-height for visual rhythm whether tips wrap to 1 or 2 lines.
+- **Enemy 100%-confidence pills dimmed** (opacity 0.55) so eye-line attention budget goes to is-med / is-low rows.
+- **Keystone 2-row left-aligned** (final form): `.csv-build-rune-tree-name` set to `display: block; text-align: left; height: 2.3em; overflow: hidden; white-space: normal` — guarantees 2 rows reserved always, wraps long names at whitespace, left-aligned at icon's right edge.
+
+### Wiring confirmed
+All 4 build chooser rows (On-Hit / Crit / Lethality / Experimental) fire `_csvApplyLoadout` → POST `/api/loadout/apply` → enqueues `rune_cmd` + `item_cmd` + `summ_cmd` to LCU agent via `:8889/lcu-cmd`. Experimental row carries `override_runes` + `override_items` so backend bypasses variant resolver and builds LCU commands inline from DS top-6 items + archetype-keyed keystone/tree pair.
+
+### Tests
+- 5 new s214 cases in `tests/test_routes_pickban.py`: `TestS214CascadeAndMultiPick` covering top-N + exclude_ids + synergy ally_ids paths + parse_csv_ints. 22 pickban tests pass (was 17).
+- Wider RC suite: 1018 pass + 30 subtests. View-router: 25. Panel snapshots: 11.
+
+### What's next
+- **Live ARAM Mayhem test** scheduled by operator post-/clear — they'll fire a real game; I'm authorized to monitor + fix inconsistencies live without permission. Watch for: build-chooser pushing correctly to LCU runes/items/spells, archetype-mismatch nudge surfacing on first non-trivial item buy, comp-aware row-3 tip rendering for ARAM mode (which uses MAYHEM role label), 3-row P&B layout collapsing cleanly to hidden via `data-cs-mode="aram"` CSS rules.
+- **Carried forward** (not blockers): pre-game lobby v3 polish parking lot from s163. SR Build Chooser variant data for non-Vayne champs is sparse — needs more curated `champion_loadouts.json` entries.
+
+---
+
 # s209–s213 wrap — 2026-05-15 (Champ-select full view redesign + tooltips + adaptive summoners)
 
 **Operator instruction:** Iterative ~14-round design redesign of the champ-select view, starting with "see about the lobby transition + champ-select not surfacing rune builds & summoner spells" (closes s208 regression carry-forward).
