@@ -4,6 +4,81 @@
 
 ---
 
+# s205 wrap — 2026-05-14 (Phase 5.9.18 form_index + block_index layered expansion — 4 block_index entries + 3 form_index seeds)
+
+**Operator instruction:** "continue DS" — direct continuation of s204 (twenty-first consecutive override / proc-shape ship on the same template, fourteenth pure-data batch in the block_index family). Closes the s204 carry-forward "Qiyana Q form_index seed expansion still pending". Cumulative coverage 68% → 69% of the 171-champion roster.
+
+## What shipped
+
+**Two commits pushed to main:**
+- [`24ed6aa`](https://github.com/Remus3/riot-commander/commit/24ed6aa) — feat: 4 block_index entries (Qiyana Q=2 NEW + Hwei W=1 / Renekton E=3 / Shaco W=1 extensions) + 3 form_index seeds (Qiyana Q=1 / AurelionSol R=1 / Renekton E=1)
+- [`35638ca`](https://github.com/Remus3/riot-commander/commit/35638ca) — docs: CLAUDE.md priority #63 sync
+
+**Three sub-patterns:**
+- **Pattern A operator-commits-to-resource form layer (3):** Qiyana Q (form 1 Elemental Wrath + block 2 Increased Damage, 1.6× base; form 0/1 share block 0 so form_index alone is no-op, block_index is load-bearing), AurelionSol R (form 1 The Skies Descend, 1.25× base + 1.25× AP, default block 0 within form 1 correct), Renekton E (form 1 Dice + block 3 Total Physical Damage = block 0 + block 1 sum = full Slice+Dice+Fury combo, 2.75× form 0 at rank 1; closes Renekton Q/W/E full-Fury coverage after s197 Q=1 + W=2).
+- **Pattern B multi-hit single-target totals (1):** Hwei W form 3 block 1 Maximum Magic Damage = 3× block 0 (Stirring Lights 3 lights converging).
+- **Pattern C condition-amp vs target-state (1):** Shaco W block 1 Increased Damage = 2.5× block 0 base + 1.5× AP (Box vs already-Feared target).
+
+**Third instance of form_index + block_index NET-damage composition** after s203 LeeSin Q + s204 Riven R + s204 Nidalee Q.
+
+## Live A/B (lvl 11 vs 80/30/2000 — per-spell DPS lifts since most spells aren't the champion's dominant DPS contributor)
+
+| Champion | Key | Pattern | per-spell dps off → on | Lift | Total |
+|----------|-----|---------|------------------------|------|-------|
+| Hwei | W | 3 lights converging | 1.26 → 3.79 | **+200%** | +12.1% |
+| Shaco | W | Box vs Feared | 0.69 → 1.91 | **+175%** | +7.7% |
+| Renekton | E | full-Fury combo (form+block layer) | 1.15 → 3.16 | **+175%** | +10.4% |
+| Qiyana | Q | Elemental Wrath (form+block layer) | 6.41 → 10.26 | **+60%** | +40.1% |
+| AurelionSol | R | The Skies Descend (form seed only) | 1.38 → 1.73 | **+25%** | +2.3% |
+
+Per-cast raw damage lifts match Meraki block ratios exactly: Hwei W 40 → 120 (3× verified), Shaco W 20 → 55 (2.5× verified), Renekton E 40 → 110 (2.75× form 0 = block 0 + block 1 sum), Qiyana Q 180 → 288 (1.6× verified), AurelionSol R 250 → 312.5 (1.25× verified).
+
+## Engine limitation discovered (carry-forward)
+
+Meraki snapshots set `cooldown=None` for non-form-0 forms. DS engine falls back to default 60s CD when computing DPS conversion, dampening total ability_dps lift. Affects every form_index + non-form-0 entry currently shipped: Riven R (s204) / Renekton E / AurelionSol R / Qiyana Q (s205). For Qiyana Q the per-cast raw lift is +60% but the engine reports 60s CD vs 7s real CD — so the DPS conversion is under-counted by ~8.5×. Calibration follow-up candidate — needs an engine-side "inherit form 0 cooldown when None" fallback.
+
+## Test counts
+
+- DS suite: 1939 → 1953 (+14 net, 21 new in `Phase599_18ExpansionTests` minus 5 stale assertions converted/extended)
+- Wider RC: 1023 → 1024 (phase8_smoke restored after DS server restart picked up ENGINE_VERSION 0.90.0)
+
+## Multi-key extensions
+
+- Hwei now `{R:3, W:1}` (W=1 new)
+- Renekton now `{Q:1, W:2, R:1, E:3}` — full Q/W/E/R coverage (E=3 new + form_index seed E=1)
+- Shaco now `{E:2, W:1}` (W=1 new)
+- AurelionSol stays `{E:1, Q:2}` on block_index side — R adds via form_index registry only
+
+## Carried forward to s206+
+
+- **Sum-of-blocks bucket grows:** Heimerdinger W (Initial + 4× Subsequent on focused non-minion target) joins Thresh E + Taliyah E + Sona Q + Camille W + Katarina R + Malphite W + Malzahar E/R + Kalista E + Jinx R distance + Sona Q Power Chord — 10+ candidates queued. Lift warranted soon.
+- **Engine None-cooldown fallback** — needed for s204/s205 form-1 entries to score correctly. Currently the registry entries are net-positive but dampened.
+- **Nested missing-HP parser bucket** (Kindred E, Kayle E, Belveth R execute curve) unchanged.
+- **Conditional target-state schema lift bucket** (6+ candidates) unchanged.
+- **form_index registry expansion** — Qiyana / AurelionSol / Renekton joined Riven. Future candidates from this session's audit: TwistedFate W (3-form Pick a Card — player choice, deferred), TahmKench R form 1 Regurgitate (player choice, deferred), Annie R Tibbers pet damage (data gap upstream).
+
+## Skip list expanded this session
+
+Inspected and rejected 50+ candidates from unmapped + extension scans. Key deferrals documented inline in `champion_block_index.json` `_meta` description:
+- Caitlyn Q / Orianna Q / Zed Q / Yone W+R — engine default block 0 already correct (primary target full damage)
+- Ezreal R / Jhin R / Pantheon R — engine default block 0 already correct (primary/max distance)
+- Annie R / Mordekaiser Q/W/R — single-block or non-damage (pet damage not in snapshot)
+- Heimerdinger W — sum-of-blocks needed (Initial + 4× Subsequent on non-minion)
+- Kayle E / Kindred E / DrMundo E — nested missing-HP parser bucket
+- Malphite W / Sona Q — sum-of-blocks
+- Tryndamere Q / Fiddlesticks Q — Meraki data parsing gap (broken block schemas)
+- Karma Q form 1 / Khazix evolved / TwistedFate W — player-choice forms not default
+
+## Don't redo
+
+- Qiyana Q form_index seed — shipped this batch via form_index=1 + block_index=2 composition. Don't re-investigate without sum-of-blocks support, since form 0/1 share block 0.
+- AurelionSol R form_index seed — shipped. Don't add block_index entry; default 0 within form 1 is correct.
+- Renekton E full-Fury combo — shipped via block 3 sum.
+- Hwei W 3-light Maximum — shipped via block 1.
+- Shaco W Feared target — shipped via block 1.
+
+---
+
 # s204 wrap — 2026-05-14 (Phase 5.9.17 block_index expansion — 8 entries / 2 new champs + 6 extensions + form_index seed)
 
 **Operator instruction:** "continue DS" — direct continuation of s203 (now the **twentieth** consecutive override / proc-shape ship on the same template, **thirteenth** pure-data batch in the block_index family). This batch closes the s203 carry-forward "Riven form_index seed needed for form-conditional block_index entries" — Riven becomes the first new champion added to the form_index registry since s187 (Nidalee/Elise/Jayce/Hwei/LeeSin). Cumulative coverage 67% → 68% of the 171-champion roster.
@@ -141,75 +216,3 @@ Registry: 110 → 115 champions. Entries: 161 → 173. ENGINE_VERSION: 0.87.0 �
 ## s203 architectural delta
 
 Nineteenth consecutive override / proc-shape modeling improvement on the same template (s185 max_priority → s186 combo → s187 form → s188 per-AA on-hit → s189 Spellblade → s190 Lightshield → s191 block_index → s192 token-variant → s193 channels → s194 calibration → s195 multi-hit → s196 condition-amp → s197 assassin/fighter → s198 bruiser broadening → s199 standard sweep → s200 rescue → s201 framing revert → s202 wall-stun framing revert + broadening → s203 active-cast vs passive-zap split + empty-block-0 fix + form_index×block_index NET-damage layering). Twelfth pure-data batch in the channel/total/charge family. **Cumulative coverage: 173 (champion, key) entries across 115 champions** (67% of the 171-champion roster touched). Pattern remains rock-solid; rate-limit is now (a) sum-of-blocks schema lift becoming necessary (8+ candidates queued), (b) form_index registry seed expansion for Riven/Qiyana before next form-conditional block_index batch.
-
----
-
-# s202 wrap — 2026-05-14 (Phase 5.9.15 block_index expansion — 18 entries / 6 new champs + 12 extensions)
-
-**Operator instruction:** "continue ds" — direct continuation of s201 (now the **eighteenth** consecutive override / proc-shape ship on the same template, **eleventh** pure-data batch in the block_index family). This batch broadens coverage further to 64% of the 171-champion roster (was 61% pre-s202).
-
-## Context
-
-Re-scanning unmapped champs found 30 candidates across 20 unmapped champions plus 27 candidate extensions on already-mapped champions. Triaged to 18 entries:
-- 6 truly-new champions: Gangplank, Gnar, KSante, RekSai, Vayne, Yunara
-- 12 key extensions on existing: Zoe W, Akshan R, AurelionSol Q, Nasus R, Poppy E, Renekton R, Rumble Q+R, Smolder Q+R, Viktor E, Yuumi R
-
-The framing-revert pattern emerged again across 4 prior-batch skips — all wall-stun / heat-decay conditional skips re-framed under operator-commit:
-- **Gnar R** (s198 'wall-stun terrain target-state') → same operator-commits framing as Khazix Q isolation s196 / Xerath W center-spot s201
-- **Vayne E** (s198 'wall-stun terrain') → same wall-stun framing
-- **Poppy E** (s199 'wall-state target condition') → same
-- **Rumble Q** (s199 'Danger Zone heat decays mid-fight') → operator commits to overheat Q burst window
-
-## s202 ship — Phase 5.9.15 — 18 entries, five patterns
-
-**Pattern A multi-hit single-target totals (5):** KSante R=2 (All Out dash+wall-strike 2×), Vayne E=2 (Condemn wall-slam total 2.5×), Yunara Q=2 filtered (Combined Passive+Active 2×), Zoe W=1 filtered (3 empowered AAs 3×), Viktor E=2 (Death Ray double-hit 1.29×).
-
-**Pattern B channel/duration totals (7):** Gangplank R=2 (4-wave Cannon Barrage 12× per-wave), AurelionSol Q=2 (Breath of Light full channel 26×), Nasus R=1 filtered (Dominus full 15s target_max_hp 30×), Renekton R=1 filtered (Dominus full duration 30×), Rumble R=2 (Equalizer max channel 10×), Yuumi R=2 filtered (Final Chapter 2 hits per target 2×), Poppy E=1 filtered (Heroic Charge wall-slam 2×).
-
-**Pattern C max-charge/distance amps (2):** Akshan R=1 filtered (Comeuppance max-charge 3×), Smolder R=1 filtered (Mouth of the Abyss max-distance 1.5×).
-
-**Pattern D resource-state amps (2):** RekSai E=1 (Furious Bite max Fury true damage 1.25×), Smolder Q=1 (max-stack passive 1.75× — gear-INdependent, not the Infinity Edge variant which is gear-conditional).
-
-**Pattern E wall-stun / charge condition amps (2):** Gnar R=1 filtered (GNAR! wall-stun 1.5×), Rumble Q=2 filtered (Danger Zone overheat Total Enhanced 1.5×).
-
-**Filtered-idx semantics (s199 lesson re-applied):** 9 of 18 entries have non-damage prefix blocks. Most notable: Nasus R raw 0-2 'Bonus Health' / 'Bonus Resistances' / 'Increased Size' → filtered idx 1 = raw 4. Yuumi R raw 0-1 + 5-6 heal blocks → filtered idx 2 = raw 4. Yunara Q raw 1 duration + 4-5 modifiers → filtered idx 2 = raw 3.
-
-**Live A/B headlines on :8893 (/ability-dps at lvl 11 vs 80 armor / 30 MR / 2000 HP):** AurelionSol Q **+351.6%** (3.29 → 14.85 — Breath of Light full channel is dominant), Renekton R **+68.8%** (11.43 → 19.29 — Dominus full duration aura), Smolder Q **+51.6%** (13.70 → 20.76 — max-stack passive scaling), Nasus R **+48.4%** (9.73 → 14.44), Rumble Q **+18.4%**, Gangplank R **+17.1%**, Rumble R **+9.0%**, RekSai E **+7.1%**, Vayne E **+5.9%**, KSante R **+5.7%**, Yunara Q **+4.0%**, Yuumi R **+3.8%**, Viktor E **+3.1%**, Gnar R **+2.3%**, Smolder R **+2.0%**, Poppy E **+1.8%**, Zoe W **+1.4%**, Akshan R **+0.9%**. Smaller percentages reflect spell-share dilution where the new key is correct but the champion's other spells already dominate total ability_dps.
-
-**6 deliberate skips documented inline:** Syndra W (1.12× too marginal), Camille W (Outer Cone Bonus is target_max_hp_pct ONLY without flat damage; needs sum-of-blocks), Yunara W (block 0 'Initial' is HIGHER than block 2 'Total Expanded' — engine default correct), Smolder E (Meraki 'Minimum' label ambiguity carried from s198), Sona Q (Power Chord bonus needs sum-of-blocks), Kayle E (Phase 4a parser limit — same family as s201 Kindred E drop).
-
-## Ships this session
-
-| Commit | Theme |
-|---|---|
-| [`723fb1c`](https://github.com/Remus3/riot-commander/commit/723fb1c) | s202 feat — 18-entry block_index + 4 prior-skip wall-stun reverts |
-
-Registry: 104 → 110 champions. Entries: 143 → 161. ENGINE_VERSION: 0.86.0 → 0.87.0. DS suite: 1866 → 1894 (+28 net tests). Wider RC unchanged.
-
-**Test-fixture maintenance:** 7 stale assertions in `test_known_champion_overrides` for champions extended this batch (AurelionSol/Akshan/Zoe/Poppy/Renekton/Rumble/Smolder/Nasus/Viktor/Yuumi) commented out in favor of the new s202-block assertions. 3 multi-key resolved-shape sanity tests updated in earlier Phase599 expansion classes (Renekton/Viktor/Poppy now include new R/E keys).
-
-## Carry-forward for tomorrow
-
-**All s199/s200/s201 carry-forwards remain unchanged:**
-- 🟡 **Token-variant for multi-stage Q chains** — Aatrox Q1/Q2/Q3 with combo_sequence, Gwen R needlework. 2+ candidates accumulated.
-- 🟡 **Form-swap block_index schema** — KSante R full per-form indexing (current s202 ships R=2 which works for All Out form; per-form schema needed for Q/W/E during All Out which have different blocks), Kayn (Rhaast/Shadow Q), Hwei (Q/W/E forms 0/1/2/3).
-- 🟡 **Sequence-state schema** — Jhin R 4th-shot recast, Corki R Big One every-4th-missile within ult, Aphelios stance rotation.
-- 🟡 **Conditional target-state schema lift** — 5+ candidates queued: Zoe sleep (E→Q), Lux Illumination, DrMundo E missing-HP, Evelynn Q charm, Vayne W silver bolts.
-- 🟡 **Sum-of-blocks schema** — NOW 4+ candidates: Thresh E souls+magic (s201), Taliyah E impact+detonations (s201), Sona Q spell+Power Chord (s202), Camille W flat+max-HP (s202). Lift is warranted soon.
-- 🟡 **Nested missing-HP parser** — Kindred E (s201 drop), Kayle E (s202 drop). Phase 4a `unparsed_modifiers` extractor needs upgrade.
-- 🟡 **Conditional damage amps (Ahri R→Q, Zoe E→Q)** — inter-spell awareness. Carried since s180.
-- 🟡 **Generalized arm-consume framework** — Carried since s190.
-- 🟡 **Aphelios + Karma mantra + Khazix evolved** — upstream/plumbing/UI blockers.
-- 🟡 **Pre-existing carry-forwards from s184/s183/s182** — live-game chip lifecycle validation; `_TOP_N_THRESHOLD` retune; `nudge_history` calibration analysis.
-
-**Don't redo:**
-- Sum-of-blocks bucket now has 4+ candidates (Thresh/Taliyah/Sona/Camille) — appropriate to schema-lift next architectural session.
-- Nested missing-HP parser bucket has 2 candidates (Kindred/Kayle) — Phase 4a extractor upgrade.
-- Yasuo → Tryndamere fixture rotation already done in s201.
-- Don't re-defer the 4 wall-stun reverts (Gnar R / Vayne E / Poppy E / Rumble Q) — operator-commit framing is now well-established.
-
-**Next session candidate:** Either (a) sum-of-blocks schema lift (4+ candidates ready, value-additive), (b) form-swap block_index schema (KSante R All Out per-form + Kayn/Hwei forms), or (c) more pure-data — well thinning but still has multi-form (Aphelios stances), Annie tier of remaining unmapped, and a few extensions I deliberately skipped (Camille W with sum, Sona Q with sum, Yunara W reconsideration). Operator pick.
-
-## Architectural pattern lock-in
-
-Eighteenth consecutive override / proc-shape modeling improvement on the same template (s185 max_priority → s186 combo → s187 form → s188 per-AA on-hit → s189 Spellblade → s190 Lightshield → s191 block_index → s192 token-variant → s193 channels → s194 calibration → s195 multi-hit → s196 condition-amp → s197 assassin/fighter → s198 bruiser broadening → s199 standard sweep → s200 rescue → s201 framing revert → s202 wall-stun framing revert + broadening). Eleventh pure-data batch in the channel/total/charge family. **Cumulative coverage: 161 (champion, key) entries across 110 champions** (64% of the 171-champion roster touched). Pattern remains rock-solid; rate-limit now appears to be sum-of-blocks schema lift becoming necessary (4+ candidates queued) before further pure-data expansion can capture the remaining ~50 candidates that need block-sum semantics.
