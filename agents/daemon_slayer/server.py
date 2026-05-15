@@ -605,7 +605,7 @@ def _parse_form_index(body: dict) -> Optional[dict[str, int]]:
     return None
 
 
-def _parse_block_index(body: dict) -> Optional[dict[str, int]]:
+def _parse_block_index(body: dict) -> Optional[dict[str, int | list[int]]]:
     """Decode the optional ``block_index`` body field — JSON dict only.
 
     Phase 5.9 (s191, 2026-05-14). Per-(champion, key) damage block_index
@@ -615,11 +615,30 @@ def _parse_block_index(body: dict) -> Optional[dict[str, int]]:
     so all four routes accept the operator-supplied override the same way.
     Returns ``None`` when absent so the engine's per-champion registry
     (``champion_block_index.json``) can resolve a default.
+
+    Phase 5.9.20 (s207, 2026-05-14): values may be int OR list[int]; lists
+    express sum-of-blocks (operator-commits-to-all-components). JSON
+    arrays parse as Python lists; this helper preserves them.
     """
     raw = body.get("block_index")
-    if isinstance(raw, dict):
-        return {str(k).upper(): int(v) for k, v in raw.items()}
-    return None
+    if not isinstance(raw, dict):
+        return None
+    out: dict[str, int | list[int]] = {}
+    for k, v in raw.items():
+        key = str(k).upper()
+        if isinstance(v, bool):
+            # bool is an int subtype in Python — reject explicitly.
+            continue
+        if isinstance(v, int):
+            out[key] = v
+        elif isinstance(v, list) and all(
+            isinstance(x, int) and not isinstance(x, bool) for x in v
+        ):
+            out[key] = list(v)
+        # else: silently skip malformed entries (preserves pre-s207
+        # behavior of accepting only well-formed values; matches
+        # _parse_form_index / _parse_max_priority defensiveness).
+    return out
 
 
 def _parse_combo_sequence(body: dict) -> Optional[tuple[str, ...]]:
