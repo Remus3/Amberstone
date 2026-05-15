@@ -7565,7 +7565,24 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          → 118 champions, 181 → 185 entries on block_index side;
         #          form_index registry 6 → 9 champions, 10 → 13 entries.
         #          Pure data batch.
-        self.assertEqual(ENGINE_VERSION, "0.90.0")
+        # 0.91.0 = s206 Phase 5.9.19 cooldown inheritance from form 0 when
+        #          non-form-0 has cooldown=None. Closes the s205
+        #          carry-forward "Engine None-cooldown fallback". Affects
+        #          the 4 form_index registry entries with form 1
+        #          cooldown=None: Riven R / Renekton E / AurelionSol R /
+        #          Qiyana Q. Engine helper _form_cooldown_at_rank gains an
+        #          optional fallback_form param; both call sites
+        #          (ability_dps.py + burst.py) pass forms[0] when
+        #          form_idx != 0. Impact: per_spell.cooldown metadata now
+        #          reports the canonical form 0 CD instead of the generic
+        #          60s default; theoretical-fallback DPS conversion (only
+        #          fires when measured cast rate is missing) is now
+        #          accurate. Measured cps_source paths are unaffected
+        #          (which covers all 4 entries in production), so total
+        #          ability_dps is unchanged. Forward-compat for new
+        #          form-swap champions where measured rates may not yet be
+        #          available.
+        self.assertEqual(ENGINE_VERSION, "0.91.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7626,7 +7643,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.90.0")
+        self.assertEqual(ENGINE_VERSION, "0.91.0")
 
 
 if __name__ == "__main__":
