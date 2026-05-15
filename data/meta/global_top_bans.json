@@ -1,0 +1,34 @@
+{
+  "_doc": [
+    "Hardcoded global top-banned champions for the champ-select Suggestions panel.",
+    "Operator-editable: bump the patch field + reorder the list whenever the meta shifts.",
+    "The endpoint /api/champ-select/ban-suggestions reads this file on each call",
+    "(no caching — load is sub-millisecond) and filters against already-banned champions.",
+    "",
+    "Currently a single global list — per-role refinement is a follow-up.",
+    "Champion names match data/meta/ddragon_champions.json display-name spelling",
+    "(spaces + apostrophes preserved). The backend tolerantly resolves slug variants."
+  ],
+  "patch": "16.10.1",
+  "updated": "2026-05-15",
+  "top_bans": [
+    "Yone",
+    "Zed",
+    "Yasuo",
+    "Master Yi",
+    "Vayne",
+    "Darius",
+    "Kha'Zix",
+    "Briar",
+    "Mordekaiser",
+    "Garen",
+    "Sett",
+    "Camille",
+    "Akali",
+    "Hwei",
+    "Sylas",
+    "Aatrox",
+    "Naafiri",
+    "K'Sante"
+  ]
+}

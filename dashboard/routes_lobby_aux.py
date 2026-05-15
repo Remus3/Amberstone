@@ -238,7 +238,6 @@ def _query_mains_for_puuid(conn: sqlite3.Connection, puuid: str,
     """, (puuid, top_n))
     agg_rows = cur.fetchall()
     out_rows = []
-    ddragon = _ddragon_version()
     for r in agg_rows:
         champ, games, wins, losses, ks, ds, as_, cs, vs, dmg, played_s = r
         wins, losses = wins or 0, losses or 0
@@ -260,9 +259,14 @@ def _query_mains_for_puuid(conn: sqlite3.Connection, puuid: str,
                 "kda": f"{lm[1] or 0}/{lm[2] or 0}/{lm[3] or 0}",
                 "ts": int((lm[4] or 0) // 1000),  # game_creation_ts is ms
             }
+        # s209: champion icons live under /icons/champions/<slug>.png served
+        # from data/icons/champions/ (172 PNGs). The DB stores DDragon-style
+        # slugs already (LeeSin, MonkeyKing, etc.) so no normalization needed.
+        # Pre-s209 emitted /data/ddragon/<patch>/img/champion/... which 404s
+        # because the data/ddragon/ mount doesn't exist on disk.
         out_rows.append({
             "name": champ,
-            "icon": f"/data/ddragon/{ddragon}/img/champion/{champ}.png",
+            "icon": f"/icons/champions/{champ}.png",
             "last_match": last_match,
             "overall": {
                 "games":  games or 0,

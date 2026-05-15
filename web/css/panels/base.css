@@ -76,6 +76,48 @@
 }
 .app-tooltip.show { opacity: 1; }
 
+/* s213: richer tooltip surface for LoL item/keystone descriptions.
+ * The tooltip receives innerHTML when an element has `data-tt-html` —
+ * these classes style that HTML's title-row / gold-pill / tree-label
+ * elements. The body text inherits the .app-tooltip base sizing. */
+.app-tooltip .lol-tt-title {
+  font-size: 19px;
+  font-weight: 800;
+  color: #f4f6fb;
+  letter-spacing: 0.02em;
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.18);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.app-tooltip .lol-tt-gold {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fbbf24;
+  white-space: nowrap;
+}
+.app-tooltip .lol-tt-tree {
+  font-size: 13px;
+  font-weight: 600;
+  color: #a78bfa;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+/* `data-tt-html` content is rendered as HTML, which means white-space
+ * pre-wrap inherited from the base rule would render literal newlines
+ * inside the HTML weirdly. Override to `normal` only for the HTML
+ * path — JS-inserted plain text still gets pre-wrap. */
+.app-tooltip:has(.lol-tt-title) { white-space: normal; }
+.app-tooltip .lol-tt-title + i {
+  display: block;
+  color: #cbd5e1;
+  font-style: italic;
+  font-weight: 500;
+}
+
 html { height: 100%; }
 
 body {

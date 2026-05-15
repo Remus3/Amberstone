@@ -11,12 +11,25 @@
    * mood + gaps + header chrome ≈ 354px) always fits — independent of
    * the live viewport height. No more section-level scrollbar. */
   grid-template-rows: auto minmax(354px, 1fr);
+  /* s210: Enemies sits in row 1 (matching Allies); the new Suggestions
+   * panel sits in row 2 right (matching Pick & Ban). Pre-s210 Enemies
+   * spanned both rows on the right. */
   grid-template-areas:
-    "allies mypick enemies"
-    "pickban mypick enemies";
-  gap: 12px;
+    "allies   mypick   enemies"
+    "pickban  mypick   suggestions";
+  /* s212: tightened row-gap 12→4px to bring the left + right stacked
+   * panels visually closer to each other. column-gap stays at 12px so
+   * the My Pick center column still has breathing room from its
+   * neighbors. */
+  column-gap: 12px;
+  row-gap: 4px;
   min-height: 0;
 }
+/* s212: drop the MY PICK header row to free vertical space for the
+ * center column's contents (champion portrait + archetype picker +
+ * build chooser). The Allies / Enemies / Suggestions headers stay
+ * since they label content that doesn't otherwise self-identify. */
+.csv-card-mypick > .csv-card-head { display: none; }
 .csv-card-allies   { grid-area: allies; }
 /* Allies header stays panel-centered (default). Summoner-name column
  * below is aligned to wherever the "A" lands via a CSS var driven by
@@ -30,12 +43,16 @@
 .csv-card-allies .csv-team-cell {
   grid-template-columns: 36px var(--csv-champname-col) 1fr auto;
 }
+/* Mirror the Allies champname column on Enemies so the two panels
+ * align visually now that they share the same row height. */
+.csv-card-enemies { --csv-champname-col: 90px; }
 /* Hide the PICK & BAN RECOMMENDATIONS panel title — the PICK / BAN
  * labels inside Row 2 act as the column headers instead. */
 .csv-card-pickban > .csv-card-head { display: none; }
-.csv-card-pickban  { grid-area: pickban; min-height: 0; overflow: hidden; }
-.csv-card-mypick   { grid-area: mypick; }
-.csv-card-enemies  { grid-area: enemies; }
+.csv-card-pickban     { grid-area: pickban; min-height: 0; overflow: hidden; }
+.csv-card-mypick      { grid-area: mypick; }
+.csv-card-enemies     { grid-area: enemies; }
+.csv-card-suggestions { grid-area: suggestions; min-height: 0; overflow: hidden; }
 
 .csv-card {
   background: var(--card-bg, #14171c);
@@ -67,19 +84,39 @@
 
 /* MY PICK center card — big champion icon, name, lock state. */
 .csv-mypick {
-  align-items: center;
+  align-items: stretch;
   text-align: center;
 }
+/* s213: portrait row groups icon + name + LOCKED state horizontally.
+ * Replaces the pre-s213 vertical stack (icon → name → state), freeing
+ * the vertical room used by the state line for an additional build
+ * chooser row. Centered horizontally in the card; left-aligned text
+ * inside the right-hand stack so the name+state read as a single
+ * tight identity block beside the portrait. */
+.csv-mypick-portrait-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 8px 0 4px;
+}
+.csv-mypick-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
 .csv-mypick-icon {
-  width: 120px;
-  height: 120px;
+  width: 88px;
+  height: 88px;
   border-radius: 8px;
   background: #1c2026;
   border: 2px solid #2a2f37;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 12px auto 8px;
+  margin: 0;
+  flex: 0 0 auto;
   overflow: hidden;
 }
 .csv-mypick-icon img { width: 100%; height: 100%; object-fit: cover; }
@@ -87,16 +124,21 @@
 .csv-mypick-icon.locked { border-color: #4ade80; }
 .csv-mypick-icon.hovering { border-color: #fbbf24; }
 
+/* s213: name + state now stack inside .csv-mypick-text beside the
+ * portrait. Removed the top/bottom margins that pre-s213 spaced them
+ * vertically; gaps are now controlled by the parent flex container. */
 .csv-mypick-name {
   font-size: 22px;
   font-weight: 900;
   color: #fff;
-  margin-bottom: 4px;
+  margin: 0;
+  line-height: 1.1;
 }
 .csv-mypick-state {
   font-size: 14px;
   color: #9ca3af;
-  margin-bottom: 12px;
+  margin: 0;
+  line-height: 1;
 }
 .csv-mypick-state.locked { color: #4ade80; }
 .csv-mypick-state.hovering { color: #fbbf24; }
@@ -136,7 +178,11 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin: 4px 0 12px;
+  /* s212 v4 (audit consider #3 option 3): bumped top-margin 4→20px so
+   * the picker has breathing room from the LOCKED state above. Stops
+   * the two heavy-outlined elements from visually competing for the
+   * eye in the center column. */
+  margin: 20px 0 12px;
   padding: 8px;
   background: #14181d;
   border: 1px solid #2a2f37;
@@ -152,6 +198,15 @@
   letter-spacing: 0.8px;
   color: #9ca3af;
 }
+/* s211: source-row container groups the AUTO button + source pill.
+ * AUTO sits to the left in matching typography; the source pill keeps
+ * a fixed width with centered content so the visual width is stable
+ * regardless of whether it reads "auto" or "overridden". */
+.csv-arch-source-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .csv-archetype-title .csv-arch-source {
   font-size: 10px;
   font-weight: 600;
@@ -162,6 +217,34 @@
   background: #1c2026;
   border-radius: 3px;
   border: 1px solid #2a2f37;
+  min-width: 72px;       /* fixed width so "auto" / "overridden" don't shift layout */
+  text-align: center;
+  display: inline-block;
+}
+/* s211: AUTO button — same typography as the source pill. When the
+ * picker is on the DDragon-tag default (no operator override), the
+ * button is `.is-active` with a slight green hue + border so the
+ * operator can see "auto mode is engaged". Click reverts to default. */
+.csv-arch-auto {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: #9ca3af;
+  background: #1c2026;
+  border: 1px solid #2a2f37;
+  border-radius: 3px;
+  padding: 1px 8px;
+  cursor: pointer;
+  text-transform: none;
+  font-family: inherit;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+.csv-arch-auto:hover { border-color: #4ade80; color: #e8eaf0; }
+.csv-arch-auto.is-active {
+  color: #4ade80;
+  background: #0f2820;
+  border-color: #047857;
+  cursor: default;
 }
 .csv-archetype-buttons {
   display: grid;
@@ -176,7 +259,12 @@
   gap: 2px;
   padding: 8px 4px;
   background: #1a1e25;
-  border: 2px solid #2a2f37;
+  /* s212 v4 (audit consider #3 option 1): dropped 2→1px so the inactive
+   * grid reads as a quieter background pattern. Active state below
+   * carries the visual weight via a 4px left-edge accent (option 2)
+   * rather than a heavy 2px border, eliminating the "two heavy
+   * outlines stacked" competition with LOCKED above. */
+  border: 1px solid #2a2f37;
   border-radius: 5px;
   color: #d1d5db;
   cursor: pointer;
@@ -200,11 +288,28 @@
   letter-spacing: 0.4px;
 }
 .csv-arch-btn.active {
-  border-color: #5fa8ff;
-  background: #0e1a2e;
-  color: #cfe1ff;
+  /* s212 v4 (audit consider #3 options 1-2-4 combined):
+   *   (1) thinner overall border — base button uses 1px now; active
+   *       state keeps that 1px ring so the perimeter isn't competing
+   *       with LOCKED's 2px green portrait outline above.
+   *   (2) 4px left-edge accent — mirrors the color-coded left borders
+   *       on the Pick & Ban rec rows so "active state" reads as the
+   *       same system-wide visual grammar across panels.
+   *   (4) recolor blue → indigo/violet (#a78bfa / #7c3aed) so the
+   *       archetype picker chromatically separates from LOCKED's
+   *       saturated green AND the Pick & Ban green/purple/blue
+   *       3-color rec stripes. Indigo isn't used anywhere else in
+   *       the column.
+   * border-left grows from 1→4px which inset-shifts the content 3px;
+   * compensate via the same -3px margin-left so the active button
+   * stays grid-aligned with its inactive siblings. */
+  border-color: #4c3a82;
+  border-left: 4px solid #a78bfa;
+  margin-left: -3px;
+  background: linear-gradient(90deg, #1a1230 0%, #14181d 60%);
+  color: #ddd6fe;
 }
-.csv-arch-btn.active .csv-arch-scorer { color: #7aa9d8; }
+.csv-arch-btn.active .csv-arch-scorer { color: #a78bfa; }
 .csv-arch-btn.placeholder {
   opacity: 0.55;
 }
@@ -285,39 +390,80 @@
 .csv-card-enemies .csv-team-cell {
   position: relative;
 }
-.csv-card-enemies .csv-team-cell-icon { grid-column: 1; }
-.csv-card-enemies .csv-team-cell-nm   { grid-column: 2; }
-/* Role pip + lock/timer offsets — operator's last nudge: pos pip
- * back to natural position (translateX(20px)→0, i.e. −20px from
- * previous), lock/timer to calc(50%+10px) (−10px from previous +20). */
-.csv-card-enemies .csv-team-cell-pos  { grid-column: 4; }
-.csv-card-enemies .csv-team-cell-summ {
-  position: absolute;
-  /* Net offset history: +20 → +10 → 0 (operator nudged left in 10px
-   * increments). At 50% the lock/timer sits exactly at the cell
-   * horizontal center, matching the centered ENEMIES title above. */
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  gap: 0;
-  pointer-events: none;
+/* s213 v3: enemy cell grid expanded from 4 cols to 5 so tags +
+ * confidence have explicit homes. Old: `36px 88px 1fr auto` with
+ * summoner-col absolute-positioned at 50%. New: `36px 88px auto auto
+ * 1fr auto auto` — col 3 = timer, col 4 = 2-piece tag chips, col 5 =
+ * 1fr spacer, col 6 = role pip, col 7 = confidence pill. The flex
+ * spacer separates "champion identity" (cols 1-4) from "role guess +
+ * confidence" (cols 6-7). */
+.csv-card-enemies .csv-team-cell {
+  grid-template-columns: 36px var(--csv-champname-col) auto auto 1fr auto auto;
+  grid-template-rows: auto;
+  gap: 6px;
 }
+/* All children pinned to grid-row 1 — without this, grid auto-flow
+ * generates a second row whenever the DOM insertion order doesn't
+ * match the explicit grid-column assignments (s213 v3 fix). */
+.csv-card-enemies .csv-team-cell-icon       { grid-column: 1; grid-row: 1; }
+.csv-card-enemies .csv-team-cell-nm         { grid-column: 2; grid-row: 1; }
+.csv-card-enemies .csv-team-cell-summ       { grid-column: 3; grid-row: 1; position: static; transform: none; }
+.csv-card-enemies .csv-team-cell-tags       { grid-column: 4; grid-row: 1; position: static; transform: none; }
+.csv-card-enemies .csv-team-cell-pos        { grid-column: 6; grid-row: 1; }
+.csv-card-enemies .csv-team-cell-confidence { grid-column: 7; grid-row: 1; position: static; transform: none; }
 /* Enemy-only "(guess)" tag — sits between the centered lock/timer
  * (at 50%) and the right-aligned role pip (~85% area). Positioned
  * at 70% so it's vertically aligned across every row regardless of
  * what's in the lock slot or how wide the pip text is. */
-.csv-card-enemies .csv-team-cell-guess {
-  position: absolute;
-  left: 70%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 10px;
-  font-style: italic;
-  color: #6a7280;
-  letter-spacing: 0.04em;
+/* s213 v2: enemy "(guess)" pip replaced with a 2-piece tag strip +
+ * confidence pill. The tags sit absolutely-positioned in the wide
+ * 138px summoner col like the old guess pip did, but as two colored
+ * chips reading like "CC · TANK" or "AD · ASSASSIN". Confidence
+ * floats further right of the role pip. */
+/* s213 v3: tag chips render as inline grid items in their own col,
+ * NOT absolute-positioned. Pre-s213v3 the absolute placement at left:
+ * 56% of the summoner-col's narrow bounding box pushed the confidence
+ * pill past the right edge of the panel and into the My Pick column. */
+.csv-card-enemies .csv-team-cell-tags {
+  display: inline-flex;
+  gap: 3px;
   pointer-events: none;
   white-space: nowrap;
 }
+.csv-team-cell-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: #cbd5e1;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  background: #1c2026;
+  border: 1px solid #2a2f37;
+  border-radius: 3px;
+}
+.csv-team-cell-tag--cc       { color: #fbbf24; border-color: #b88410; }
+.csv-team-cell-tag--burst    { color: #fb923c; border-color: #b8610c; }
+.csv-team-cell-tag--ad       { color: #fca5a5; border-color: #b8410c; }
+.csv-team-cell-tag--ap       { color: #c4b5fd; border-color: #6d4ed1; }
+.csv-team-cell-tag--tank     { color: #6ee7b7; border-color: #047857; }
+.csv-team-cell-tag--bruiser  { color: #93c5fd; border-color: #2563eb; }
+.csv-team-cell-tag--assassin { color: #f0abfc; border-color: #a21caf; }
+.csv-team-cell-tag--support  { color: #fde68a; border-color: #b8800c; }
+.csv-team-cell-tag--adc      { color: #fca5a5; border-color: #b8410c; }
+.csv-team-cell-tag--mage     { color: #c4b5fd; border-color: #6d4ed1; }
+.csv-team-cell-tag--flex     { color: #cbd5e1; border-color: #2a2f37; }
+/* s213 v3: confidence pill — grid col 7 (rightmost). No abs positioning. */
+.csv-card-enemies .csv-team-cell-confidence {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  background: #1c2026;
+  border-radius: 3px;
+  pointer-events: none;
+  letter-spacing: 0.02em;
+}
+.csv-team-cell-confidence.is-high { color: #4ade80; border: 1px solid #047857; }
+.csv-team-cell-confidence.is-med  { color: #fbbf24; border: 1px solid #b88410; }
+.csv-team-cell-confidence.is-low  { color: #6a7280; border: 1px solid #2a2f37; }
 .csv-team-cell-summ-text {
   flex: 0 1 auto;
   white-space: nowrap;
@@ -504,17 +650,21 @@
   border: 1px solid #2a2f37;
   border-radius: 3px;
 }
-/* The user's own row: position pip mirrors the pick/ban ROLE chip
- * typography (gold + bold) since both display the same role and the
- * operator wants visual continuity between the two indicators. */
+/* s212 v7 (audit must-fix #4): the user's own-row position pip now
+ * pattern-matches the .csv-team-cell.me cell border via indigo. The
+ * original gold treatment mirrored a Pick & Ban ROLE chip that was
+ * later retired, leaving the gold orphan against the surrounding
+ * indigo cell outline. Indigo (#6366f1 cell border / #818cf8 text)
+ * carries the "this is yours" signal in a single chromatic language
+ * across both the cell border and the role pip. */
 .csv-team-cell.me .csv-team-cell-pos {
   font-size: 14px;
   font-weight: 900;
-  color: #fbbf24;
+  color: #818cf8;
   letter-spacing: 0.08em;
   padding: 1px 8px;
   background: #14171c;
-  border: 1px solid #b88410;
+  border: 1px solid #6366f1;
   border-radius: 3px;
 }
 
@@ -595,9 +745,17 @@
   gap: 6px;
   align-items: center;
   padding: 4px 6px;
-  background: #1a1d23;
-  border: 1px solid #232830;
-  border-radius: 4px;
+  /* s212 v2 (audit #1): PICK/BAN floated above the rec rows with no
+   * visual tie. Drop the row's own background/border + add a thin
+   * bottom rule that ties the header strip to the column content
+   * below. PICK now reads as the green caption for the pick column;
+   * BAN as the red caption for the ban-icon strip. */
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #2a2f37;
+  border-radius: 0;
+  padding-bottom: 6px;
+  margin-bottom: 2px;
   flex: 0 0 auto;
 }
 /* Explicit grid placement on all role-row children so role-mid can
@@ -606,7 +764,17 @@
 .csv-pb-role-row > .csv-pb-pick-header {
   grid-column: 1;
   grid-row: 1;
+  /* s211 v3: PICK centered over the pick icon (which is itself centered
+   * in col 1, 70px wide). Combined with BAN being centered over the 3
+   * ban icons in col 3 below, the two headers read as the column
+   * captions they actually are. */
+  justify-self: center;
 }
+/* s212 v7: .csv-pb-role-mid retained for backward-compat only — the
+ * centered ROLE chip it styled was retired from the JS render earlier
+ * (operator: role is already shown on their ally row). No JS callsite
+ * renders this class anymore; kept the rule so a future re-introduction
+ * doesn't need to re-derive the grid placement. */
 .csv-pb-role-mid {
   grid-column: 1 / -1;
   grid-row: 1;
@@ -621,14 +789,17 @@
   grid-row: 1;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  /* s211 v3: center BAN within the col-3 slot so it sits horizontally
+   * over the middle of the 3 ban-icon strip below. col-3 is 138px wide
+   * and the 3 ban icons share that space evenly via .csv-pb-bans-col's
+   * 1fr/1fr/1fr sub-grid — centering BAN in the same col puts the
+   * label over the middle ban icon. */
+  justify-content: center;
 }
-/* BAN sits in a 70px slot right-aligned within col 3 so the distance
- * from BAN's right edge to the panel right edge mirrors the distance
- * from PICK's left edge to the panel left edge (both 20px gaps from
- * their respective panel edges, since PICK is centered in a 70px col 1). */
 .csv-pb-bans-header-slot > .csv-pb-bans-header {
-  width: 70px;
+  /* Wider slot lets the label sit flush with the 138px col rather than
+   * being pinned to a fixed-width inner box that drifts off-center. */
+  width: 100%;
   text-align: center;
 }
 .csv-pb-role-label {
@@ -737,7 +908,9 @@
   grid-column: 2 / 3;
   grid-row: 1;
   text-align: center;
-  font-size: 11px;
+  /* s211 v2: bumped 11→13px for legibility without growing row height
+   * (no line-height bump). */
+  font-size: 13px;
   font-weight: 800;
   color: #ef4444;
   letter-spacing: 0.08em;
@@ -748,7 +921,8 @@
   grid-row: 2;
 }
 .csv-pb-pick-header {
-  font-size: 11px;
+  /* s211 v2: bumped 11→13px to match BAN; no row-height growth. */
+  font-size: 13px;
   font-weight: 800;
   color: #4ade80;
   letter-spacing: 0.08em;
@@ -815,7 +989,9 @@
   line-height: 1.1;
 }
 .csv-pb-mood-label > span {
-  font-size: 10px;
+  /* s212 v2 (font-floor fix): 10→13px to clear the operator's tertiary
+   * font floor (across-room legibility). */
+  font-size: 13px;
   font-weight: 700;
   color: #6a7280;
   text-transform: uppercase;
@@ -826,7 +1002,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  /* s212 v2 (font-floor fix): 11→15px — interactive surfaces need to
+   * meet the operator's clickables floor for across-room viewing. */
+  font-size: 15px;
   font-weight: 700;
   padding: 4px 4px;
   background: #14171c;
@@ -988,18 +1166,158 @@
   padding: 12px 0;
 }
 
+/* ── s210: Suggestions panel ──────────────────────────────────────── */
+.csv-card-suggestions .csv-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 2px 0;
+}
+.csv-sugg-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.csv-sugg-row-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6a7280;
+  padding: 0 2px;
+}
+.csv-sugg-empty {
+  font-size: 11px;
+  color: #6a7280;
+  font-style: italic;
+  padding: 4px 6px;
+}
+/* Row 2: ban-suggestion cards. During the ban phase the grid carries
+ * 4 horizontally-arranged cards (.is-suggestions-grid). Post ban phase
+ * it switches to .is-banned-grid — 2 stacked rows of 5 cells each,
+ * ally bans on top + enemy bans below. s213 v3. */
+.csv-sugg-bans-grid {
+  display: grid;
+  gap: 6px;
+}
+.csv-sugg-bans-grid.is-suggestions-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+.csv-sugg-bans-grid.is-banned-grid {
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+.csv-sugg-banned-row {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  align-items: center;
+  gap: 6px;
+}
+.csv-sugg-banned-side {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6a7280;
+  text-align: right;
+}
+.csv-sugg-banned-row[data-side="ally"]  .csv-sugg-banned-side { color: #4ade80; }
+.csv-sugg-banned-row[data-side="enemy"] .csv-sugg-banned-side { color: #ef4444; }
+.csv-sugg-banned-cells {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+.csv-sugg-ban-card.is-empty {
+  opacity: 0.35;
+  border-style: dashed;
+  cursor: default;
+}
+.csv-sugg-ban-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  background: #1a1d23;
+  border: 1px solid #2a2f37;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.csv-sugg-ban-card:hover { border-color: #ef4444; }
+.csv-sugg-ban-card.is-banned {
+  opacity: 0.4;
+  border-style: dashed;
+  cursor: default;
+}
+.csv-sugg-ban-icon {
+  width: 44px; height: 44px;
+  border-radius: 4px;
+  background: #14171c;
+  border: 1px solid #2a2f37;
+  overflow: hidden;
+}
+.csv-sugg-ban-icon img { width: 100%; height: 100%; object-fit: cover; }
+.csv-sugg-ban-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e8eaf0;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+/* Row 3: pick-order list. s212 v2: stack cells vertically (each tip on
+ * its own row, full-width) so they fill the column rather than wrap
+ * narrowly. Combined with the font bump this also closes the ~40%
+ * bottom-of-panel whitespace the audit flagged. */
+.csv-sugg-pickorder-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.csv-sugg-pickorder-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #1a1d23;
+  border: 1px solid #2a2f37;
+  border-radius: 4px;
+  /* s213 v3: bumped 14→15px (rows 1+2+3 of pick order) per operator
+   * audit follow-up. Clears the 13px tertiary floor with even more
+   * headroom for across-room viewing distance. */
+  font-size: 15px;
+  color: #e8eaf0;
+  line-height: 1.35;
+}
+.csv-sugg-pickorder-cell .csv-sugg-pickorder-idx {
+  color: #6a7280;
+  font-weight: 700;
+  /* s213 v3: bumped 13→14px to scale with the surrounding text. */
+  font-size: 14px;
+  min-width: 14px;
+  text-align: center;
+}
+/* s211: Row 4 (DS engine item strip) removed — moved to the
+ * Experimental row in the build chooser. */
+
 /* ── Build chooser rows (SR / ARAM / Brawl) ───────────────────────── */
 .csv-builds-body {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
+/* s211: 4-column row — checkbox / meta (3 stacked: badge, main tree,
+ * sub tree) / summoners stacked / items (larger now). */
 .csv-build-row {
   display: grid;
-  grid-template-columns: 14px 1fr auto;
-  gap: 8px;
+  grid-template-columns: 14px 1fr auto auto;
+  gap: 10px;
   align-items: center;
-  padding: 4px 6px;
+  padding: 6px 8px;
   background: #1a1d23;
   border: 1px solid #2a2f37;
   border-radius: 4px;
@@ -1021,7 +1339,16 @@
   border-color: #4ade80;
   background: #4ade80;
 }
-.csv-build-meta { min-width: 0; }
+/* s211: 3-row meta column — badge / main tree / sub tree. All centered
+ * in the column so the build label has a clear identity anchor and the
+ * rune stack reads as a vertical pair. */
+.csv-build-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
 .csv-build-label {
   font-size: 13px;
   font-weight: 800;
@@ -1029,46 +1356,136 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: center;
 }
-.csv-build-default-tag {
+/* s211: variant badge — colored pill replacing the per-row trailing
+ * tag. The pre-s211 .csv-build-experimental-tag was the only badge
+ * (amber); now every variant gets its own hue, keyed off the variant
+ * key in JS (_csvVariantBadgeClass). Operator sees row identity at a
+ * glance. Layout: centered within the meta column, ~120-160px wide. */
+.csv-build-badge {
   display: inline-block;
-  font-size: 9px;
-  font-weight: 700;
-  color: #fbbf24;
-  background: #2a1f10;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid;
+  text-align: center;
+  min-width: 96px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.csv-build-badge-onhit       { color: #67e8f9; background: #082f3a; border-color: #1e6b80; }
+.csv-build-badge-crit        { color: #fca5a5; background: #2a1010; border-color: #b8410c; }
+.csv-build-badge-ap          { color: #c4b5fd; background: #1f1a30; border-color: #6d4ed1; }
+.csv-build-badge-tank        { color: #6ee7b7; background: #0f2820; border-color: #047857; }
+.csv-build-badge-lethality   { color: #f0abfc; background: #2a1030; border-color: #a21caf; }
+.csv-build-badge-support     { color: #fde68a; background: #2a2010; border-color: #b8800c; }
+.csv-build-badge-experimental{ color: #fb923c; background: #2a1810; border-color: #b8610c; }
+.csv-build-badge-default     { color: #cbd5e1; background: #1a1d23; border-color: #2a2f37; }
+/* s211: pre-s211 [default] / [experimental] inline tags removed —
+ * variant identity is now carried entirely by the colored badge label
+ * (.csv-build-badge / .csv-build-badge-experimental / etc.). */
+/* s211 v3: 2-row card — rune line carries keystone icon + keystone
+ * NAME spelled out (e.g., "Press the Attack"). The primary tree icon
+ * was dropped; the keystone art already implies the tree. s211 v4:
+ * keystone disc left-aligned within the meta column so the discs sit
+ * at the same X position across all rows — operator can scan down a
+ * column of keystone icons regardless of name width (Conqueror vs.
+ * Press the Attack vs. Lethal Tempo). align-self: flex-start opts the
+ * rune strip out of the meta column's center alignment without forcing
+ * the badge label to move. */
+.csv-build-rune-main {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  align-self: flex-start;
+  gap: 6px;
+}
+.csv-build-rune-keystone {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, #2a1f10 0%, #14171c 70%);
   border: 1px solid #b88410;
-  padding: 1px 4px;
-  border-radius: 3px;
-  margin-left: 4px;
-  letter-spacing: 0.06em;
 }
-/* s171.8: user-saved variant tag — sibling to default-tag. Cyan/blue
- * accent distinguishes operator-curated rows from DS engine output. */
-.csv-build-user-tag {
-  display: inline-block;
-  font-size: 9px;
+.csv-build-rune-tree {
+  width: 22px; height: 22px;
+  opacity: 0.95;
+}
+.csv-build-rune-tree-name {
+  /* s212 v3 (audit consider #1): 12→13px to clear the tertiary floor
+   * with no row-height growth (line-height stays implicit). */
+  font-size: 13px;
   font-weight: 700;
-  color: #67e8f9;
-  background: #082f3a;
-  border: 1px solid #1e6b80;
-  padding: 1px 4px;
+  letter-spacing: 0.04em;
+  color: #cbd5e1;
+  text-transform: none;
+}
+/* s209 v2: stack summoners vertically — D (slot 0) on top of F (slot 1)
+ * — matches the in-client layout the operator sees alongside the build.
+ * Both icons share a single 18px column inside the loadout strip. */
+.csv-build-spells {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+.csv-build-spell {
+  width: 20px; height: 20px;
   border-radius: 3px;
-  margin-left: 4px;
-  letter-spacing: 0.06em;
+  background: #14171c;
+  border: 1px solid #2a2f37;
+  display: block;
+}
+/* s209 v2: adaptive-summoner swap badge. When the build chooser
+ * swapped the second summoner (Heal → Cleanse vs CC, Heal → Barrier vs
+ * burst), the swapped icon gets a colored ring + a small lightning
+ * dot in the corner so the operator notices at a glance. Title attr
+ * carries the swap reason. */
+.csv-build-spell.is-swapped {
+  border-color: #fbbf24;
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.4);
+  position: relative;
+}
+.csv-build-spell.is-swapped::after {
+  content: "⚡";
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  font-size: 9px;
+  line-height: 1;
+  color: #fbbf24;
+  text-shadow: 0 0 2px #000;
+  pointer-events: none;
+}
+.csv-build-spell.empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #6a7280;
 }
 .csv-build-runes {
   font-size: 11px;
   color: #9ca3af;
-  margin-top: 2px;
   letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1 1 auto;
+  min-width: 0;
 }
+/* s211 v2: item icons bumped 36→42px after the subtree row was dropped
+ * and the card height rolled into bigger art. */
 .csv-build-items {
   display: flex;
-  gap: 2px;
+  gap: 3px;
   flex: 0 0 auto;
 }
 .csv-build-item {
-  width: 24px; height: 24px;
+  width: 42px; height: 42px;
   border-radius: 3px;
   overflow: hidden;
   background: #14171c;
