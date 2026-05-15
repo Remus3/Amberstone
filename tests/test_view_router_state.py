@@ -1,15 +1,19 @@
-"""View-router state machine integration tests (s171.8 backfill).
+"""View-router state machine integration tests (s171.8 backfill, s209 update).
 
 Exercises the Python mirror at `dashboard/view_router_state.py` which
-mirrors the JS `_viewAutoDerive` function in `web/js/main.js` lines
-482-568.  See that module's docstring for the test-mirror caveat.
+mirrors the JS `_viewAutoDerive` function in `web/js/main.js`.
 
-Coverage targets (from `HEADLESS_BRIEF_2026-05-12_DOCS_TESTS.md` Task 1):
+s209 changes:
+- Loading view retired. GameStart now lands on active-match directly.
+- Sticky-guard "game-start" tier dropped. GameStart sets sticky to
+  "in-progress"; CS→null inference advances to "in-progress" as well.
+
+Coverage targets:
 - ChampSelect → GameStart → InProgress → EndOfGame → Lobby (clean cycle)
 - ChampSelect → Lobby (dodge — sticky should clear)
 - ChampSelect → null → GameStart (transient null, sticky should hold)
 - ChampSelect → null (extended, no GameStart observed) — sticky-guard
-  inference advances to "game-start" per s171.8 fix
+  inference advances to "in-progress" per s209
 - InProgress → null/None/Lobby — gameStarted stays "in-progress"
 - EndOfGame after in-progress → clears sticky
 - Manual view sticky → auto-derive returns same view + urgent banner
@@ -61,7 +65,7 @@ class CleanCycleTests(unittest.TestCase):
             ("Lobby",       "client"),  # pre-queue
             ("ChampSelect", "client"),  # CS opens
             ("ChampSelect", "client"),  # mid-CS tick
-            ("GameStart",   "sr"),      # loading screen
+            ("GameStart",   "sr"),      # s209: → active-match (was loading)
             ("InProgress",  "sr"),      # in-game
             ("InProgress",  "sr"),      # in-game tick
             ("EndOfGame",   "sr"),      # post-game (sticky cleared)
@@ -73,7 +77,7 @@ class CleanCycleTests(unittest.TestCase):
             "lobby",
             "champ-select",
             "champ-select",
-            "loading",
+            "active-match",   # s209: GameStart → active-match
             "active-match",
             "active-match",
             "last-match",  # EndOfGame, sticky cleared, mode still "sr"
@@ -117,29 +121,28 @@ class DodgeClearTests(unittest.TestCase):
 
 
 class TransientNullTests(unittest.TestCase):
-    """ChampSelect → null → GameStart: sticky must hold or infer game-start."""
+    """ChampSelect → null → GameStart: sticky must hold or infer in-progress."""
 
     def test_brief_null_with_gamestart_arriving(self):
         # The 'easy' case — null lasts one tick, then GameStart fires.
-        # Sticky inference advances to game-start during the null tick,
-        # which is the desired behavior (s171.8 fix).
+        # s209: null after CS infers "in-progress" → active-match.
         results = _run([
             ("ChampSelect", "client"),
             (None,          "client"),  # transient blip
             ("GameStart",   "client"),
         ])
         self.assertEqual(results[0].game_started, "champ-select")
-        # s171.8 inference: null after CS advances sticky → game-start.
-        self.assertEqual(results[1].game_started, "game-start")
-        self.assertEqual(results[1].view, "loading")
-        # GameStart explicit → loading view, sticky = game-start.
-        self.assertEqual(results[2].view, "loading")
-        self.assertEqual(results[2].game_started, "game-start")
+        # s209 inference: null after CS advances sticky → in-progress.
+        self.assertEqual(results[1].game_started, "in-progress")
+        self.assertEqual(results[1].view, "active-match")
+        # GameStart → active-match, sticky = in-progress.
+        self.assertEqual(results[2].view, "active-match")
+        self.assertEqual(results[2].game_started, "in-progress")
 
-    def test_extended_null_after_cs_infers_game_start(self):
-        # The s171.8 motivating case: GameStart never observed (missed
-        # by the 2s poll), but ChampSelect is over. Sticky-guard inference
-        # must advance to "game-start" so view stays on "loading".
+    def test_extended_null_after_cs_infers_in_progress(self):
+        # The s209 motivating case: GameStart never observed (missed by
+        # the 2s poll), but ChampSelect is over. Sticky-guard inference
+        # advances to "in-progress" so view lands on active-match.
         results = _run([
             ("ChampSelect", "client"),
             (None,          "client"),
@@ -147,12 +150,12 @@ class TransientNullTests(unittest.TestCase):
             (None,          "client"),
             ("InProgress",  "sr"),  # finally lands on in-progress
         ])
-        # All three null ticks should resolve to loading via sticky inference.
-        self.assertEqual([r.view for r in results[1:4]], ["loading"] * 3)
-        # Sticky on null ticks = game-start (carried forward).
-        self.assertEqual(results[1].game_started, "game-start")
-        self.assertEqual(results[2].game_started, "game-start")
-        self.assertEqual(results[3].game_started, "game-start")
+        # All three null ticks should resolve to active-match via sticky.
+        self.assertEqual([r.view for r in results[1:4]], ["active-match"] * 3)
+        # Sticky on null ticks = in-progress (carried forward).
+        self.assertEqual(results[1].game_started, "in-progress")
+        self.assertEqual(results[2].game_started, "in-progress")
+        self.assertEqual(results[3].game_started, "in-progress")
         # InProgress lands on active-match.
         self.assertEqual(results[4].view, "active-match")
         self.assertEqual(results[4].game_started, "in-progress")
@@ -163,8 +166,8 @@ class TransientNullTests(unittest.TestCase):
             ("ChampSelect", "client"),
             ("",            "client"),
         ])
-        self.assertEqual(results[1].game_started, "game-start")
-        self.assertEqual(results[1].view, "loading")
+        self.assertEqual(results[1].game_started, "in-progress")
+        self.assertEqual(results[1].view, "active-match")
 
 
 class InProgressStickyTests(unittest.TestCase):
@@ -200,6 +203,13 @@ class InProgressStickyTests(unittest.TestCase):
         results = _run([("InProgress", "sr"), (None, "sr")], active=False)
         self.assertEqual(results[0].view, "last-match")
         self.assertEqual(results[1].view, "last-match")
+
+    def test_game_start_active_disabled_falls_through_to_last_match(self):
+        # s209: GameStart with active_match_enabled=False also falls
+        # through to last-match (same as InProgress disabled).
+        results = _run([("GameStart", "sr")], active=False)
+        self.assertEqual(results[0].view, "last-match")
+        self.assertEqual(results[0].game_started, "in-progress")
 
 
 class PostGameClearTests(unittest.TestCase):
@@ -254,18 +264,26 @@ class HomeFallthroughTests(unittest.TestCase):
 
 
 class UrgentViewTests(unittest.TestCase):
-    """`is_urgent` decides whether to auto-promote past manual sticky."""
+    """`is_urgent` decides whether to auto-promote past manual sticky.
+
+    s209: "loading" removed from urgent set; "active-match" added.
+    """
 
     def test_urgent_views_promote(self):
-        for v in ("lobby", "champ-select", "loading", "last-match"):
+        for v in ("lobby", "champ-select", "active-match", "last-match"):
             with self.subTest(view=v):
                 self.assertTrue(is_urgent(v))
 
     def test_non_urgent_views_do_not_promote(self):
-        for v in ("home", "active-match", "session", "history",
+        for v in ("home", "session", "history",
                   "replay", "user-builds", "settings", "dev"):
             with self.subTest(view=v):
                 self.assertFalse(is_urgent(v))
+
+    def test_loading_view_id_no_longer_recognised(self):
+        # s209: loading was urgent pre-s209 but the view itself is gone.
+        # is_urgent of an unknown id returns False (not in the set).
+        self.assertFalse(is_urgent("loading"))
 
 
 class UpdateGameStartedTests(unittest.TestCase):
@@ -273,17 +291,18 @@ class UpdateGameStartedTests(unittest.TestCase):
 
     def test_explicit_phases_set_sticky(self):
         self.assertEqual(update_game_started("ChampSelect", None), "champ-select")
-        self.assertEqual(update_game_started("GameStart", None), "game-start")
+        # s209: GameStart now sets sticky to "in-progress" (was "game-start").
+        self.assertEqual(update_game_started("GameStart", None), "in-progress")
         self.assertEqual(update_game_started("InProgress", None), "in-progress")
 
     def test_overriding_phases_advance_or_preserve(self):
-        # GameStart while sticky=champ-select advances.
+        # GameStart while sticky=champ-select advances to in-progress.
         self.assertEqual(
-            update_game_started("GameStart", "champ-select"), "game-start",
+            update_game_started("GameStart", "champ-select"), "in-progress",
         )
-        # InProgress while sticky=game-start advances.
+        # InProgress while sticky=in-progress stays in-progress.
         self.assertEqual(
-            update_game_started("InProgress", "game-start"), "in-progress",
+            update_game_started("InProgress", "in-progress"), "in-progress",
         )
 
     def test_clear_paths(self):
@@ -298,10 +317,6 @@ class UpdateGameStartedTests(unittest.TestCase):
         self.assertEqual(
             update_game_started("EndOfGame", "champ-select"), "champ-select",
         )
-        # game-start sticky is preserved through non-clear phases.
-        self.assertEqual(
-            update_game_started("EndOfGame", "game-start"), "game-start",
-        )
 
     def test_inference_only_fires_for_cs_sticky(self):
         # null with no prior sticky: stays None.
@@ -310,13 +325,10 @@ class UpdateGameStartedTests(unittest.TestCase):
         self.assertEqual(
             update_game_started(None, "in-progress"), "in-progress",
         )
-        # null with game-start sticky: stays game-start (no inference).
+        # s209: null with champ-select sticky infers "in-progress" (was
+        # "game-start" pre-s209).
         self.assertEqual(
-            update_game_started(None, "game-start"), "game-start",
-        )
-        # null with champ-select sticky: INFERS game-start (s171.8 fix).
-        self.assertEqual(
-            update_game_started(None, "champ-select"), "game-start",
+            update_game_started(None, "champ-select"), "in-progress",
         )
 
 

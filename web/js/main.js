@@ -24,7 +24,6 @@ import { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine } f
 import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
 import { MM, renderMinimap, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS, _renderMmStateLine } from './panels/map_state.js';
 import { handleChampSelect, renderChampSelectCoach, renderChampSelectView } from './panels/champ_select.js';
-import { renderLoadingView, loadingViewEnabled } from './panels/loading.js';
 import { renderTeamContext } from './panels/team_context.js';
 import { renderArchetypeNudge } from './panels/archetype_nudge_chip.js';
 import { renderActiveMatch, activeMatchEnabled } from './panels/active_match.js';
@@ -484,13 +483,16 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     const phase = lcu && lcu.phase;
     // s171 post-CS sticky guard: once we've entered ChampSelect, the
     // dashboard should never drop back to home/lobby until the game has
-    // cleanly resolved (EndOfGame / PreEndOfGame / WaitingForStats /
-    // TerminatedInError). LCU briefly emits phase=null or stale
-    // phase=Lobby during the CS→GameStart→InProgress flip, which used
-    // to flush the view back to "pregame lobby" mid-loading-screen.
-    // Track the highest game-state we've observed this session.
+    // cleanly resolved. LCU briefly emits phase=null or stale phase=Lobby
+    // during the CS→GameStart→InProgress flip; track the highest
+    // game-state we've observed so transient blips don't flush the view.
+    //
+    // s209: dropped the "game-start" sticky tier — loading view retired,
+    // GameStart is treated as in-progress (advances sticky directly).
+    // CS→null inference now advances to "in-progress" so the gap renders
+    // active-match instead of the now-deleted loading screen.
     if (phase === "ChampSelect")                _VIEW.gameStarted = "champ-select";
-    else if (phase === "GameStart")             _VIEW.gameStarted = "game-start";
+    else if (phase === "GameStart")             _VIEW.gameStarted = "in-progress";
     else if (phase === "InProgress")            _VIEW.gameStarted = "in-progress";
     else if (phase === "EndOfGame" || phase === "PreEndOfGame"
             || phase === "WaitingForStats" || phase === "TerminatedInError"
@@ -498,8 +500,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
             || phase === "ReadyCheck" || phase === "None") {
       // Only clear the sticky guard on a STABLE post-game phase. Treat
       // Lobby/Matchmaking/ReadyCheck/None as "post-game" when the prior
-      // session-state was in-progress/game-start (the loading-screen
-      // window is over, the user is back to a real lobby).
+      // session-state was in-progress.
       if (_VIEW.gameStarted === "in-progress"
           && (phase === "EndOfGame" || phase === "PreEndOfGame"
               || phase === "WaitingForStats" || phase === "TerminatedInError"
@@ -515,20 +516,18 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
         _VIEW.gameStarted = null;
       }
     }
-    // s171.8: ChampSelect ended but phase isn't a stable state — must
-    // be the loading-screen window (LCU drops phase to null/empty for
-    // a few hundred ms between ChampSelect ending and GameStart firing,
-    // and GameStart itself can be missed by the 2s poll). Advance the
-    // sticky guard so the auto-derive returns "loading" instead of
-    // staying on champ-select view through the whole loading window.
+    // s209: ChampSelect ended but phase isn't a stable state — must be
+    // the gap between CS ending and InProgress firing. Advance sticky
+    // straight to "in-progress" so the gap renders active-match (the
+    // loading view used to live here pre-s209).
     else if (_VIEW.gameStarted === "champ-select" && !phase) {
-      _VIEW.gameStarted = "game-start";
+      _VIEW.gameStarted = "in-progress";
     }
-    // s171: Loading view is the right surface during GameStart
-    // (loading screen). Removed the opt-in gate that left this on
-    // home/lobby by default — loading is non-destructive, just a
-    // strategic-briefing render of the locked champ-select state.
-    if (phase === "GameStart") return "loading";
+    // s209: GameStart routes directly to active-match. The loading
+    // view was retired (games load too fast for it to be useful);
+    // active-match panels render their own "waiting for liveclient"
+    // empty state until data arrives.
+    if (phase === "GameStart" && activeMatchEnabled()) return "active-match";
     // s159: Active Match is mid-game-only. s171.2: tightened gate —
     // require LCU phase=InProgress explicitly. Previously fell back to
     // the legacy `state.mode in {sr,aram,arena,brawl,tft}` heuristic,
@@ -548,12 +547,8 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     // s164: ChampSelect routes to the dedicated full-page view.
     if (phase === "ChampSelect") return "champ-select";
     if (phase === "InProgress") return "last-match";  // panels are in-game in game mode
-    // s171 sticky guard: if a transient null/Lobby phase fires during
-    // the CS→loading→game flip, fall back to whatever in-game surface
-    // matches the sticky guard rather than the literal phase. This
-    // prevents the "UI flips to pregame lobby during loading screen"
-    // bug operator hit during 2026-05-11 duo queue.
-    if (_VIEW.gameStarted === "game-start") return "loading";
+    // s209 sticky guard: in-progress sticky carries through transient
+    // null/Lobby blips so the view doesn't flush mid-game.
     if (_VIEW.gameStarted === "in-progress") {
       return activeMatchEnabled() ? "active-match" : "last-match";
     }
@@ -567,8 +562,8 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
   function _viewIsUrgent(targetView) {
     return targetView === "lobby"   // pre-queue lobby
         || targetView === "champ-select"  // s164: full-page CS
-        || targetView === "loading"  // s166: GameStart loading screen
-        || targetView === "last-match";  // game InProgress
+        || targetView === "active-match"  // s209: in-game (was loading→active)
+        || targetView === "last-match";  // game InProgress fallback
   }
   function applyView(viewId) {
     if (!VIEW_IDS.includes(viewId)) viewId = "home";
@@ -585,7 +580,6 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     // Lazy-fetch view content (wire-once + fetch on first activate)
     if (viewId === "lobby")       { _lobbyViewWireOnce(); _lobbyViewRefresh(); }
     if (viewId === "champ-select") { renderChampSelectView(state.latest.lcu); }
-    if (viewId === "loading")     { renderLoadingView(state.latest.lcu); }
     if (viewId === "session")     { _sessionFetchAndRender(); }
     if (viewId === "history")     { _historyWireOnce(); _historyFetchAndRender(); }
     if (viewId === "replay")      { _replayViewWireOnce(); _replayViewRefresh(); }
@@ -709,24 +703,24 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     const auto = _viewAutoDerive(lcu, state.mode);
     const hashView = _viewFromHash();
     let manual = hashView || _VIEW.manual;
-    // s171: auto-clear a stale manual selection when the game-state
-    // shifts to a mid-flight surface (loading/active-match/last-match).
-    // Operator's "UI flipped to pregame lobby during the loading screen"
-    // bug was the manual="lobby" sticky surviving across the CS-end
-    // boundary — the banner asks them to switch but doesn't, and during
-    // a real game they're not staring at the dashboard to click "yes".
-    // hashView (?#lobby etc) wins over auto-clear since it's URL-level.
+    // s209: auto-clear a stale manual game-state selection whenever the
+    // auto-derived view is ALSO a game-state surface (lobby / champ-select
+    // / active-match / last-match). Pre-s209 only the in-game surfaces
+    // triggered the clear, which left operators stuck on a stale "lobby"
+    // manual when phase advanced to ChampSelect — they saw the SWITCH
+    // banner instead of the actual CS page. hashView (?#lobby etc) wins
+    // since it's URL-level.
     //
     // Sticky-allowed during in-game: session / history / replay /
     // user-builds / settings / dev. The operator may intentionally
     // pull these up mid-game to check past stats or tweak settings;
-    // we don't want auto-clear to fight them.
-    const _midFlight = (auto === "loading"
+    // those aren't in _staleManual so they stay sticky.
+    const _midFlight = (auto === "lobby"
+                      || auto === "champ-select"
                       || auto === "active-match"
                       || auto === "last-match");
     const _staleManual = (manual === "home" || manual === "lobby"
                        || manual === "champ-select"
-                       || manual === "loading"
                        || manual === "active-match"
                        || manual === "last-match");
     if (_midFlight && _staleManual && !hashView) {
@@ -741,7 +735,6 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       if (_viewIsUrgent(auto) && auto !== manual && auto !== _VIEW.bannerDismissed) {
         let urgentLead = "Game in progress";
         if (auto === "lobby" || auto === "champ-select") urgentLead = "Champ Select active";
-        else if (auto === "loading") urgentLead = "Game loading";
         _viewBannerShow(auto,
           urgentLead + " — switch to " + (VIEW_LABELS[auto] || auto) + "?");
       } else {
@@ -1144,7 +1137,6 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     // that bailed on !CHAMPS.ready (champion-name index loads async)
     // would never re-run otherwise. State ticks every 2s — fine.
     if (_VIEW.current === "champ-select") renderChampSelectView(state.latest.lcu);
-    if (_VIEW.current === "loading")      renderLoadingView(state.latest.lcu);
     renderStats(p);
     renderGameSense(p);
     renderWhatWent(p);
@@ -2403,6 +2395,8 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     prefSecondary: "UNSELECTED",
     needsPick:     false,    // true when primary just changed FROM fill → role; secondary needs re-pick
     partyOpen:     true,     // operator default per s162 spec
+    partyToggleInflight: false,  // s209: gate refresh from clobbering optimistic click
+    lastLcuPartyType: null,      // s209: track external LCU changes vs operator clicks
     autoAccept:    false,    // s162 v2: Auto Accept default off
     mainsTab:      null,     // s162 v4: "you" | "party" | null (auto from party_size)
   };
@@ -2499,6 +2493,13 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       });
   }
   function _renderMains() {
+    // s209: bail until the champion-name index has loaded — otherwise
+    // `_resolveChampId(c.name)` returns null and the fallback URL
+    // `/icons/champions/<name>.png` 404s for any name with spaces
+    // ("Lee Sin", "Master Yi", "Miss Fortune"). The CHAMPS-ready event
+    // listener (wired below) re-fires this renderer once the index
+    // lands; the 2s state envelope also retries by default.
+    if (!CHAMPS.ready) return;
     const lcu = (state.latest && state.latest.lcu) || {};
     const tab = _mainsTabState();
     // Tab visual state
@@ -3381,9 +3382,13 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
            "Anvil decisions matter more than build path. Read the augment."],
   };
   // s162 v2: status text removed from the lobby card per operator. Stub
-  // kept so existing callers no-op cleanly; lobby-status element is
-  // display:none in markup.
-  function _lvSetStatus(_text, _cls) { /* noop */ }
+  // s209: re-render mains when CHAMPS index loads (first-paint fix for
+  // names with spaces — see _renderMains CHAMPS.ready bail). Idempotent
+  // when CHAMPS lands before the lobby view is mounted; the listener
+  // fires once globally.
+  document.addEventListener("rc:champs-ready", () => {
+    if (_VIEW.current === "lobby") _renderMains();
+  });
   function _lobbyViewWireOnce() {
     if (_LV.wired) return;
     _LV.wired = true;
@@ -3425,14 +3430,18 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       });
       qsel.value = "";
     });
-    // ---- Party Open/Closed toggle (s171: wired) ----
+    // ---- Party Open/Closed toggle (s171 wired; s209 inflight-guarded) ----
     // Pushes lobby.set_party_type to LCU. Optimistically updates the
-    // toggle visual state; reverts on LCU failure.
+    // toggle visual + locks `_LV.partyToggleInflight` so the 2s state
+    // envelope can't clobber the click with stale LCU truth. Reverts
+    // only on explicit LCU failure — sim/transient "no_queue_id" keeps
+    // the optimistic state (acceptable: nothing actually pushed).
     const partyToggle = document.getElementById("lv-party-toggle");
     if (partyToggle) partyToggle.addEventListener("click", () => {
       if (partyToggle.disabled) return;
       const nextOpen = !_LV.partyOpen;
       _LV.partyOpen = nextOpen;
+      _LV.partyToggleInflight = true;
       const stateEl = document.getElementById("lv-party-toggle-state");
       partyToggle.classList.remove("is-open", "is-closed");
       partyToggle.classList.add(nextOpen ? "is-open" : "is-closed");
@@ -3440,8 +3449,12 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       lcuCmd({ cmd: "lobby.set_party_type",
                party_type: nextOpen ? "open" : "closed" }).then((res) => {
         lcuPollResult(res && res.id, (r) => {
-          if (r && r.ok === false) {
-            // Revert visual on failure so the UI doesn't lie.
+          _LV.partyToggleInflight = false;
+          // Only revert on a real LCU error. "no_queue_id" means the
+          // agent was unreachable (sim mode or LCU offline) — keep the
+          // operator's optimistic state since nothing was actually
+          // applied either way.
+          if (r && r.ok === false && r.err !== "no_queue_id") {
             _LV.partyOpen = !nextOpen;
             partyToggle.classList.remove("is-open", "is-closed");
             partyToggle.classList.add(!nextOpen ? "is-open" : "is-closed");
@@ -3600,16 +3613,27 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       const showStrip = qid === 0 || SR_QUEUE_IDS.has(qid);
       controls.classList.toggle("hidden", !showStrip);
     }
-    // Party Open / Closed — LCU exposes lobby.party_type ("open" | "closed")
+    // Party Open / Closed — LCU exposes lobby.party_type ("open" | "closed").
+    // s209: only sync the toggle visual when (a) it's our first observation
+    // of the LCU state, (b) the LCU value changed externally since the last
+    // tick (lobby leader toggled it elsewhere), or (c) no operator click is
+    // in-flight. Without this guard the 2s refresh races the click handler
+    // and reverts every toggle within a single envelope cycle.
     const partyType = (lobby && (lobby.party_type || "").toLowerCase()) || "open";
-    _LV.partyOpen = (partyType !== "closed");
     const partyToggle = document.getElementById("lv-party-toggle");
     const partyStateEl = document.getElementById("lv-party-toggle-state");
     if (partyToggle && partyStateEl) {
-      partyToggle.classList.remove("is-open", "is-closed", "is-disabled");
-      partyToggle.classList.add(_LV.partyOpen ? "is-open" : "is-closed");
-      partyStateEl.textContent = _LV.partyOpen ? "Open" : "Closed";
+      const lcuChanged = (_LV.lastLcuPartyType != null
+                          && _LV.lastLcuPartyType !== partyType);
+      const firstSync = (_LV.lastLcuPartyType == null);
+      if (!_LV.partyToggleInflight && (firstSync || lcuChanged)) {
+        _LV.partyOpen = (partyType !== "closed");
+        partyToggle.classList.remove("is-open", "is-closed", "is-disabled");
+        partyToggle.classList.add(_LV.partyOpen ? "is-open" : "is-closed");
+        partyStateEl.textContent = _LV.partyOpen ? "Open" : "Closed";
+      }
       partyToggle.disabled = false;
+      _LV.lastLcuPartyType = partyType;
     }
     // s162 v2: Auto Accept toggle — LCU exposes auto-accept on
     // lobby.local_member.auto_fill_protected_for_promos / etc., or via
@@ -4116,7 +4140,6 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     _viewResolveAndApply(lcu);  // re-derive view based on new phase
     _maybeRefreshLobbyView();   // re-render view-lobby if it's the active surface
     if (_VIEW.current === "champ-select") renderChampSelectView(lcu);  // s164
-    if (_VIEW.current === "loading")      renderLoadingView(lcu);      // s166
   }
 
   // ── Lobby overlay (2026-04-26) ──────────────────────────────────────

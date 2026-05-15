@@ -60,11 +60,13 @@ ARCHETYPES: tuple[str, ...] = (
 )
 ARCHETYPE_SET = frozenset(ARCHETYPES)
 
-# Archetypes with a real scorer wired today. The dispatcher routes the
-# others (mage/assassin/enchanter) to ds.dps as a placeholder until
-# Phases 4-6 ship — operator still gets useful output, just with a
-# "best-effort, archetype scorer pending" tag.
-IMPLEMENTED_SCORERS: frozenset[str] = frozenset({"carry", "bruiser", "tank"})
+# Archetypes with a real scorer wired today. s209 flipped to all 6 after
+# verifying Phases 4-6 shipped (s179 mage→ds.ability, s180 assassin→ds.burst,
+# s181 enchanter→ds.hps per CLAUDE.md priorities 34-36). The dispatcher
+# routes each archetype to its dedicated scorer; none fall back to ds.dps.
+IMPLEMENTED_SCORERS: frozenset[str] = frozenset({
+    "carry", "bruiser", "tank", "mage", "assassin", "enchanter",
+})
 
 # DDragon tag → archetype mapping. Lowercase comparison; unknown tags
 # fall through to carry as the safest default (still gives operator

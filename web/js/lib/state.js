@@ -26,8 +26,10 @@ export const CADENCE = {
 };
 
 // All navigable view IDs (matches data-view attribute and URL hash).
+// s209: dropped "loading" — games load too fast for the screen to be
+// useful; ChampSelect now transitions directly to active-match.
 export const VIEW_IDS = [
-  "home", "lobby", "champ-select", "loading", "active-match", "last-match",
+  "home", "lobby", "champ-select", "active-match", "last-match",
   "session", "history", "replay",
   "user-builds", "settings", "dev",
 ];
@@ -35,7 +37,6 @@ export const VIEW_IDS = [
 export const VIEW_LABELS = {
   "home": "Home", "lobby": "Pre-Game Lobby",
   "champ-select": "Champ Select",
-  "loading": "Loading",
   "active-match": "Active Match",
   "last-match": "Last Match",
   "session": "Session", "history": "History", "replay": "Replay",

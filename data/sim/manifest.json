@@ -1,13 +1,7 @@
 {
-  "version": 3,
-  "_note": "s162 reset: previous 46 fixtures archived to data/sim/_archive/. Canonical fixture set is the 14-step game-flow sequence, populated one at a time per Phase 3.",
+  "version": 4,
+  "_note": "s209: dropped flow_01_lobby_solo (multi-member covers both states) + flow_04_loading_screen (loading view retired — games load too fast for the screen to be useful; CS now transitions directly to active-match).",
   "fixtures": [
-    {
-      "name": "flow_01_lobby_solo",
-      "label": "01 · Lobby · solo (no party)",
-      "mode": "client",
-      "summary": "Solo in lobby · Normal Draft · queue idle"
-    },
     {
       "name": "flow_02_lobby_with_others",
       "label": "02 · Lobby · with others",
@@ -37,12 +31,6 @@
       "label": "03d · Champ Select · Brawl (random 5v5 no bans)",
       "mode": "client",
       "summary": "Brawl 5v5 random · no roles · no bans · short timer"
-    },
-    {
-      "name": "flow_04_loading_screen",
-      "label": "04 · Loading screen · SR (briefing)",
-      "mode": "client",
-      "summary": "GameStart window · all 10 picks final · pre-InProgress briefing"
     }
   ]
 }

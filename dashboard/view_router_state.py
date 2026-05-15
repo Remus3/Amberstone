@@ -9,18 +9,19 @@ should agree on the same transition table.
 The state machine has two layers:
 
 1. **Sticky guard** (`gameStarted`): tracks the highest game-state observed
-   this session. ChampSelect → champ-select → game-start → in-progress →
-   None. Rides through transient LCU phase=null/Lobby blips during the
-   CS→loading→game flip. Cleared on stable post-game phases.
+   this session. ChampSelect → champ-select → in-progress → None. Rides
+   through transient LCU phase=null/Lobby blips during the CS→game flip.
+   Cleared on stable post-game phases.
 2. **View derivation**: maps (phase, mode, gameStarted, feature flags) to
    one of `VIEW_IDS` per the precedence rules in `_viewAutoDerive`.
 
-s171.8 additions covered here:
-- Sticky-guard inference: ChampSelect→null (no GameStart observed) advances
-  gameStarted to "game-start" so the loading view shows during the
-  ChampSelect-end → InProgress gap.
-- Dodge clearing: ChampSelect→Lobby/Matchmaking/ReadyCheck/None clears the
-  sticky guard (user backed out before game start).
+s209 changes:
+- Dropped the `loading` view tier entirely. GameStart now routes directly
+  to `active-match` (games load too fast for a dedicated loading screen
+  to be useful; active-match renders its own waiting state).
+- Dropped the `game-start` sticky tier. GameStart sets sticky directly
+  to `in-progress`; CS→null inference advances to `in-progress` as well,
+  so the CS-end → InProgress gap renders active-match.
 """
 from __future__ import annotations
 
@@ -28,7 +29,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 VIEW_IDS = (
-    "home", "lobby", "champ-select", "loading", "active-match", "last-match",
+    "home", "lobby", "champ-select", "active-match", "last-match",
     "session", "history", "replay",
     "user-builds", "settings", "dev",
 )
@@ -65,13 +66,14 @@ def update_game_started(
 ) -> Optional[str]:
     """Advance the sticky `gameStarted` flag per the JS transition table.
 
-    Maps to the `_VIEW.gameStarted` mutations in `_viewAutoDerive` lines
-    491-525. Pure function: returns the new value; never mutates inputs.
+    s209: GameStart now maps to "in-progress" (was "game-start" pre-s209
+    when the loading view existed). CS→null inference also advances to
+    "in-progress" rather than the dropped "game-start" tier.
     """
     if phase == "ChampSelect":
         return "champ-select"
     if phase == "GameStart":
-        return "game-start"
+        return "in-progress"
     if phase == "InProgress":
         return "in-progress"
 
@@ -84,11 +86,11 @@ def update_game_started(
             return None
         return prior
 
-    # s171.8 sticky-guard inference: ChampSelect ended but phase not stable —
-    # must be the loading-screen window (LCU drops phase to null/empty for
-    # ~hundred ms between CS ending and GameStart firing).
+    # s209 sticky-guard inference: ChampSelect ended but phase not stable —
+    # must be the gap between CS ending and InProgress firing. Advance to
+    # "in-progress" so the gap renders active-match.
     if prior == "champ-select" and not phase:
-        return "game-start"
+        return "in-progress"
 
     return prior
 
@@ -108,22 +110,23 @@ def derive_view(
     """
     game_started = update_game_started(phase, prior_game_started)
 
-    # Phase-driven explicit returns first.
-    if phase == "GameStart":
-        return DeriveResult("loading", game_started)
+    # s209: GameStart routes to active-match (was "loading" pre-s209).
+    if phase == "GameStart" and active_match_enabled:
+        return DeriveResult("active-match", game_started)
     if active_match_enabled and phase == "InProgress":
         return DeriveResult("active-match", game_started)
     if active_match_enabled and not phase and mode in IN_GAME_MODES:
         return DeriveResult("active-match", game_started)
     if phase == "ChampSelect":
         return DeriveResult("champ-select", game_started)
+    if phase == "GameStart":
+        # active_match_enabled=False fallback.
+        return DeriveResult("last-match", game_started)
     if phase == "InProgress":
         # active_match_enabled=False fallback.
         return DeriveResult("last-match", game_started)
 
     # Sticky-guard fallbacks during transient null/Lobby blips.
-    if game_started == "game-start":
-        return DeriveResult("loading", game_started)
     if game_started == "in-progress":
         return DeriveResult(
             "active-match" if active_match_enabled else "last-match",
@@ -142,8 +145,6 @@ def derive_view(
 def is_urgent(target_view: str) -> bool:
     """Mirror of `_viewIsUrgent` — auto-promotes past manual selection.
 
-    Used by the JS view-router to decide whether an urgent game-state
-    transition should override a sticky manual view choice and surface a
-    banner instead.
+    s209: dropped "loading"; replaced with "active-match".
     """
-    return target_view in ("lobby", "champ-select", "loading", "last-match")
+    return target_view in ("lobby", "champ-select", "active-match", "last-match")

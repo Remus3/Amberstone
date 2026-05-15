@@ -109,6 +109,25 @@
   const _SYNTH_BYPASS = [
     "/api/sim",          // fixture loader — keep hitting real server
     "/api/ui-version",   // auto-reload hash
+    // s209: champ-select reads against stateless engine/DB endpoints —
+    // route them through to the real backend so the build chooser,
+    // archetype picker, user-loadout list, pickban-recs, and adaptive
+    // summoners show real data in sim mode. Previously these returned
+    // the synth-default `{_sim, _path}` shape — the build chooser
+    // stayed on "DS engine computing…" and the mood toggle silently
+    // no-op'd because the fetch always returned junk.
+    "/api/ds-preview",                  // POST → daemon_slayer engine ranker
+    "/api/loadout/list",                // POST → champion_loadouts.json variants
+    "/api/cs-archetype-pick",           // GET/POST → archetype_picks resolver
+    "/api/archetype-nudge",             // GET/POST → first-purchase nudge state
+    "/api/mains",                       // GET → rewind_history.db top champs
+    "/api/top8",                        // GET/POST → top8_list.json
+    "/api/champ-select/pickban-recs",       // GET → mood-weighted pick/ban recs
+    "/api/champ-select/adaptive-summoners", // GET → enemy-comp summoner swap
+    "/api/champ-select/ban-suggestions",    // GET → global top bans (s210)
+    "/api/dictionary/items",                // GET → DDragon items.json (s213)
+    "/api/dictionary/runes",                // GET → DDragon runesReforged.json (s213)
+    "/api/dictionary/champion-tags",        // GET → derived 2-piece tags (s213 v2)
   ];
   window.fetch = (input, init) => {
     const url = (typeof input === "string") ? input : (input && input.url) || "";
