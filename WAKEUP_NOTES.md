@@ -1,6 +1,82 @@
 # WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+> Sessions s27–s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+
+---
+
+# s217 wrap — 2026-05-15 (DS Phase 5.9.22 sum-of-blocks data batch — Taliyah E + DrMundo W)
+
+**Operator instruction:** "continue ds" — keep DS engine moving from where s215 left off.
+
+## Shipped — single commit (this session)
+
+Second pure-data sum-of-blocks batch following s215's s207-schema-lift consumption. Closes the s215 carry-forward queue under the operator-commits-to-canonical-burst model. 2 entries (1 NEW key + 1 LIFT of existing single-int):
+
+- **Taliyah.E = [0, 2]** — NEW key. Block 0 "Magic Damage" (60-240 base + 60% AP — initial shard-impact pass-through when each launched shard hits an enemy) + Block 2 "Total Maximum Detonation Damage" (62.5-262.5 base + 75% AP — aggregate of multiple stone detonations when target steps through the resulting Unraveled Earth terrain). Operator commits to landing the spell on target + target moving through resulting terrain. Closes s215's "Taliyah E likely no-op since block 2 already aggregates" framing — that missed that block 0 IS an additional damage source separate from the detonation aggregate (the initial pass-through is a distinct hit from the detonation step-through).
+- **DrMundo.W = [1, 2]** — LIFT from s193's single-int `{W: 1}`. Block 1 "Total Magic Damage" (80-320 base — full 4-second Heart Zapper drain channel) + Block 2 "Magic Damage" (20-80 base — recast detonation burst when operator manually re-fires W at end of channel). Same in-batch lift pattern as s215's Thresh.E lift `{E: 2}` → `{E: [1, 2]}`. Operator commits to letting Heart Zapper run + manual recast for full Mundo W single-target burst.
+
+ENGINE_VERSION 0.93.0 → 0.94.0. Registry stays at 124 champions (Taliyah gains E key alongside existing Q=2; DrMundo lifted from int to list, same key count). Total (champion, key) entries: 192 → 193 (Taliyah +1; DrMundo unchanged).
+
+**Live A/B headlines on :8893 (/ability-dps at lvl 11 vs 80 armor / 30 MR / 2000 HP HTTP probe):**
+- Taliyah E per-spell raw 60.00 → 122.50 (**+104%**, 60+62.5 sum confirmed) — small total lift (+5.95%) because Taliyah Q's Threaded Volley already dominates her ability_dps total.
+- DrMundo W per-spell raw 200.00 → 250.00 (**+25%**, 200+50 sum confirmed) — modest total lift (+4.1%) because Mundo's other spells (Q/E) contribute meaningfully too.
+
+Arithmetic parity exact: `s217 sum = forced_block_A + forced_block_B` to 4 decimal places in tests. Per-rank math verified against Meraki 16.10.1 snapshot — Taliyah rank 5: 240+262.5=502.5 raw base; DrMundo rank 5: 320+80=400 raw base.
+
+**Investigation outcomes:** During scan, confirmed the other s215 carry-forwards stay deferred per their original rationale: Jinx R (block 0 "Maximum Physical Damage" 300-600 + 155% bAD IS the canonical primary-target maximum at max-distance + missing-HP scaling; blocks 2-3 are secondary AOE on enemies behind primary — engine default block 0 already correct for single-target focus, no registry entry needed); Kindred E / Kayle E / Belveth R remain in the nested missing-HP parser bucket (Phase 4a parser limitation around `target_missing_hp_pct` nested under `unparsed_modifiers`).
+
+## Tests
+- **19 new tests** in `agents/daemon_slayer/tests/test_sum_of_blocks_expansion_s217.py` (Phase599_22RegistrySeedTests 3 / Phase599_22AbilityDpsTests 6 / Phase599_22BackwardCompatTests 9 / Phase599_22EngineVersionTests 1) mirroring s215's pattern.
+- **2 ENGINE_VERSION pin bumps** in `test_effects_expansion.py` (0.93.0 → 0.94.0; one in `Phase599_20EngineVersionTests` per its 8-line s217 comment block, one in `test_batch64_version`).
+- **1 ENGINE_VERSION pin update** in `test_sum_of_blocks_expansion_s215.py` (pin tracks current engine version per established convention).
+- **3 existing assertions updated** in `test_block_index_overrides.py`: shape-pin in `test_assert_known_overrides` for DrMundo (`{W:1}` → `{W:[1,2]}`) + Taliyah (`{Q:2}` → `{Q:2,E:[0,2]}`); `test_drmundo_W_routes_to_block_1` renamed to `test_drmundo_W_routes_to_sum_of_blocks` with inline list-shape assertion replacing the `_delta_check` int-only helper (same pattern s215 used for Thresh.E lift); `test_pre_s202_taliyah_unchanged` backward-compat pinned to post-s217 shape.
+
+DS suite 2041 → 2060 (+19). Wider RC `tests/` 953 green post-DS-restart (phase8_smoke probes live :8893 engine_version which was 0.93.0 pre-restart — fails until DS bounced; passes after restart). Full project test discovery (`py -m unittest discover -s . -p "test_*.py"`): 3013 tests green.
+
+## DS server restart
+- Killed pid 9696 (running 0.93.0).
+- Cleaned stale 8893 listener (briefly bound by orphaned launcher).
+- Restarted via `Start-Process pythonw tools\start_daemon_slayer.py`; new listener pid 19128.
+- `/health` confirms `engine_version: "0.94.0", patch: 16.10.1, champions: 172, items: 705`.
+- Note: HTTPS handshake returned SSL `WRONG_VERSION_NUMBER` on first attempt — DS server is serving HTTP not HTTPS at 127.0.0.1:8893. Live A/B used `http://127.0.0.1:8893` (matches the existing wider-test wire format). Not s217-introduced; pre-existing condition.
+
+## What's next
+- **Live ARAM Mayhem test** still scheduled by operator post-/clear (carried s214 → s215 → s216 → s217). Now also validates Phase 5.9.22 Taliyah/DrMundo ability_dps lifts ride through to `/api/ds-preview` for the build chooser's experimental row + Taliyah's Worked Ground commit + DrMundo Heart Zapper recast detonation.
+- **DS Phase 5.9.23+ scoping** — sum-of-blocks bucket queue exhausted under current operator-commit framing. Next batch needs a different angle. Candidates for future work: (a) **Conditional target-state schema lift** — 6+ candidates queued since s195: Lux Illumination mark amp, DrMundo E missing-HP threshold, Renekton Q at full Fury (already routed via s197 single-int but conditional model would express the canonical Fury bar build-up), Zed shadow Q empowered, Aphelios weapon-form conditionals. Schema lift: `block_index: int | list[int] | dict[str, int]` where dict expresses conditional state → block_index mapping. (b) **Nested missing-HP parser bucket** — Kindred E / Kayle E / Belveth R execute curve still gated on Phase 4a parser learning nested `unparsed_modifiers` syntax. Upstream extractor work; not pure-data. (c) **Per-form block_index** — Heimerdinger.W form 1 (Upgrade!!!) has 20 rockets vs form 0's 5; current registry [0,1,1,1,1] under-counts upgrade form. Schema lift: registry value is per-form dict. (d) **Aphelios Q forms** — Meraki bulk parses all 6 Q weapon-form variants as `no_damage`; upstream data-quality fix required before any registry entry.
+- **Loadout autogen calibration** unchanged from s215 (operator may flip `default_per_mode` pointers post-Mayhem).
+- **Deadcode cleanup (carried, low priority)**: `coaches/brawl_coach.py` + brawl mode detection across 6 files.
+
+## Blockers / don't redo
+- DS server :8893 is HTTP, not HTTPS — don't waste cycles diagnosing SSL handshake errors. `curl -k -s https://...` returns RST/wrong-version; use `http://127.0.0.1:8893/...` instead. Pre-existing condition matches the wider-test wire format.
+- `_delta_check(champion, key, expected_idx)` helper in `test_block_index_overrides.py` only handles int expected_idx — for sum-of-blocks (list-valued) entries, use the inline pattern from `test_drmundo_W_routes_to_sum_of_blocks` (assert `block_index_resolved.get(key) == [a, b]` + delta-check against forced single block). s215 established this pattern for Thresh.E; s217 extended to DrMundo.W.
+- `_meta.rationale` in `champion_block_index.json` was NOT updated by s215 — last entries reference s205. s217 also only updated `_meta.description` (kept rationale append as future cleanup, since it's a 78KB file and rationale duplicates much of description's per-entry math). Not a regression — both fields are documentation.
+
+---
+
+# s216 wrap — 2026-05-15 (Game-PC: League settings restore from SamplePlayer backup + ReadOnly lock)
+
+**Operator instruction:** "find my last saved persisted league setting file we did with rc where the league game was borderless windowed (we kept it in case of changing riot accounts) and overwrite the games current persisted file - then make it readme [readonly] after confirming the new file change over". Pointed to `C:\rc-agent\lol_settings_SamplePlayer.py` on Game-PC.
+
+## Ops-only session — zero RC code changes, zero commits
+
+- Backup file: `C:\rc-agent\lol_settings_SamplePlayer.py` (26820B, captured 2026-04-26 for SamplePlayer#Trist). Self-contained Python restore script — writes 4 files (`game.cfg`, `input.ini`, `PersistedSettings.json`, `LCUAccountPreferences.yaml`) and has `--backup` flag that auto-snapshots current files into a timestamped subfolder before overwriting.
+- Pre-check: no LeagueClient/RiotClient processes running on Game-PC (script requires League closed).
+- Ran `py "C:\rc-agent\lol_settings_SamplePlayer.py" --backup` via `mcp__gamepc__run_powershell`. All 4 files written, pre-restore state preserved at `C:\Riot Games\League of Legends\Config\_backup_SamplePlayer_20260515_085530\`.
+- Verified `WindowMode=2` (borderless) and `Height=1080`/`Width=1920` in restored `game.cfg`.
+- Set ReadOnly attribute on all 4 restored files via `Set-ItemProperty -Name IsReadOnly -Value $true`. Confirmed `Attributes` shows `ReadOnly, Archive` for each.
+- Live `PersistedSettings.json` shrank 54734B → 11974B post-restore — expected; script's PERSISTED_SETTINGS_JSON only carries the curated subset captured 4/26, and Riot regenerates server-side data on next login (per the script's own comment).
+
+## What's next
+
+- Operator's previously-planned **live ARAM Mayhem test** (carried from s214/s215) now has stable settings — borderless windowed locked, won't drift across account swaps.
+- All s215 DS Phase 5.9.22+ carry-forwards remain unchanged (Taliyah E, Jinx R secondary AOE, Kindred E/Kayle E/Belveth R nested missing-HP parser bucket).
+- Loadout autogen calibration follow-up unchanged (operator may flip `default_per_mode` pointers post-Mayhem).
+
+## Blockers / don't redo
+
+- ReadOnly attribute means League cannot overwrite these on client-exit (intended) — BUT any in-game settings changes also won't persist until the attribute is cleared. Operator knows; flagged in chat. Clear via `Set-ItemProperty -Name IsReadOnly -Value $false` per-file if they want to retune live.
+- Don't re-search for the backup — confirmed location is `C:\rc-agent\lol_settings_SamplePlayer.py` (also mirrored at `C:\RC-Agent\` — Windows case-insensitive duplicate listing).
+- Pre-restore backup at `C:\Riot Games\League of Legends\Config\_backup_SamplePlayer_20260515_085530\` is the rollback artifact if needed.
 
 ---
 
@@ -27,160 +103,3 @@ First pure-data batch consuming s207's schema lift. 4 new (champion, key) entrie
 ### Blockers / don't redo
 - Loadout autogen runs DS engine ~1500 times per full pass (~14s). If DS server is down during a run, all auto entries for unfilled slots stay missing — script reports them in the `unfilled` stat. Operator can re-run after starting DS. Not a bug, by design.
 - Phase 4a Meraki parser limitation on Sona Q block 1's "X% of Sona's AP" (unparsed_modifiers) is upstream — the sum-of-blocks entry correctly captures the flat base (10-30) but the AP scaling is invisible to the engine until the Phase 4a parser learns to read nested `% of <champion>'s AP` syntax. Out of scope for this batch.
-
----
-
-# s214 wrap — 2026-05-15 (Champ-select s213 carry-forward + UI audit batch)
-
-**Operator instruction:** Run through the s213 carry-forward list (11 items) — drop CURRENT BANS title, keystone alignment, archetype-change → experimental refresh, hover hit-areas, Pick & Ban filter constraints, LIMIT/NEW/SYNERGY cascade rows, SYNERGY team-comp lookup, drop allies/enemies countdown timers, validate champ-select timings, LOCKED below portrait, tip text role+comp aware. Then audit + iterate on follow-ups operator surfaced live (scrollbars, keystone right-edge constraint, P&B 3-row uniform height, icon panel-centered, 2-row left-aligned keystone text).
-
-## Shipped — commit `f31bc1b`
-
-Net diff: +947 / −280 across 6 files. Pushed `c864638..f31bc1b main -> main`.
-
-### s213 carry-forward (all 11 closed)
-- **CURRENT BANS title row dropped** from Suggestions card (`web/index.html` + `_csvRenderSuggestions`); parent card head + ALLY/ENEMY side labels carry the state.
-- **Countdown timers removed** from allies + enemies cells + ticker interval no-op'd (`csv-team-cell-timer` + `csv-arena-cell-timer` no longer rendered).
-- **LOCKED state shifted** through 3 iterations: centered-below → left-of-icon → final 3-col grid `[1fr | auto icon | 1fr]` so the portrait sits at exact panel center with state/name flanks not influencing icon position.
-- **Build chooser keystone alignment**: badge + rune strip pinned to 130px width, 2-row keystone name slot (always reserves 2 lines, left-aligned). "Press the Attack" wraps "Press the/Attack"; "Conqueror" fills line 1 with line 2 reserved for vertical rhythm across all 4 rows.
-- **Hover hit-areas expanded**: champion-name cells + build-item icons get padded hover surfaces with blue ring affordance. Item-strip gap bumped 3→6px.
-- **Unified keystone tooltip**: bare `title` removed from img so parent's `data-tt-html` rich tooltip fires on either icon or name.
-- **Archetype → experimental refresh** wired: `_csvDsCacheKey(name, dsMode, archetype)` folds archetype into cache key; archetype-button click invalidates other-archetype entries on the same champion; `/api/ds-preview` POST passes `archetype` payload. AUTO button clears everything for that champion.
-- **Pick & Ban filter constraints + cascade** shipped backend (`routes_pickban.py`): queries now return `list[dict]` with `top=` + `exclude_ids` + `ally_ids` params; response gains `performance_picks` list alongside legacy single `performance` for back-compat. Client-side: COMFORT keeps 3-source layout; LIMIT/NEW/SYNERGY render 3 same-mood rows; exclude set folds ally + enemy bans + locked picks + hover intents.
-- **SYNERGY team-comp lookup**: when `allies=` is provided, SQL scores by joint-WR-with-locked-allies (≥2 games threshold). Falls back to recent-form proxy when no allies locked yet. Reason text reflects "alongside locked allies · comp fit".
-- **Tips role + comp aware**: new `_csvCompAwareTip()` reads `championTags` for locked allies + visible enemies, derives Fighter/Mage/Marksman/Tank/Support/Assassin counts, role-conditionally swaps row-3 tip (BOT/SUP/TOP/JNG/MID/ARAM). Falls through to static role tip when comp data is too thin.
-- **Champ-select timing validated**: queue-agnostic `active_round` from `session.actions` already covers SR Normal Draft (400) / Ranked (420/440) / Blind (430) / Quickplay (490) — phase logic was correct, but `pickClickEnabled` gate retightened from coarse `cs.phase` to `cs.active_round.type === "ban"` so operator can set pick intent during pick rounds.
-- **BACKLOG**: Interactive Item Shaper (post-DS-100%) recorded — 3 modifiers DAMAGE/SURVIVABILITY/UTILITY that nudge active archetype scorer weights mid-game, reset per match.
-
-### Live audit iterations
-- **No scrollbars policy**: `.csv-card-body { overflow: auto }` → `overflow: hidden`. Operator: "I do not want any scrollbar showing unless I explicitly state."
-- **Pick & Ban 3 rows uniform height**: `flex: 1 1 auto` → `flex: 1 1 0` so the 3 rows distribute panel space equally regardless of reason-text length.
-- **P&B reason text clamped to 3 lines** via CSS line-clamp so the fallback prefix `[no <mood> data] ` can never bloat to 4 lines (operator: "row text now 4 lines... can not ever be 4 lines. always 3").
-- **Pick-order tips uniform**: 44px min-height for visual rhythm whether tips wrap to 1 or 2 lines.
-- **Enemy 100%-confidence pills dimmed** (opacity 0.55) so eye-line attention budget goes to is-med / is-low rows.
-- **Keystone 2-row left-aligned** (final form): `.csv-build-rune-tree-name` set to `display: block; text-align: left; height: 2.3em; overflow: hidden; white-space: normal` — guarantees 2 rows reserved always, wraps long names at whitespace, left-aligned at icon's right edge.
-
-### Wiring confirmed
-All 4 build chooser rows (On-Hit / Crit / Lethality / Experimental) fire `_csvApplyLoadout` → POST `/api/loadout/apply` → enqueues `rune_cmd` + `item_cmd` + `summ_cmd` to LCU agent via `:8889/lcu-cmd`. Experimental row carries `override_runes` + `override_items` so backend bypasses variant resolver and builds LCU commands inline from DS top-6 items + archetype-keyed keystone/tree pair.
-
-### Tests
-- 5 new s214 cases in `tests/test_routes_pickban.py`: `TestS214CascadeAndMultiPick` covering top-N + exclude_ids + synergy ally_ids paths + parse_csv_ints. 22 pickban tests pass (was 17).
-- Wider RC suite: 1018 pass + 30 subtests. View-router: 25. Panel snapshots: 11.
-
-### s214 v2 follow-up — Brawl mode retired from champ-select (commit `85fc157`)
-Pushed `0c064c7..85fc157` immediately after the s214 living-doc sync. Operator deferred the 3-curated-variant auto-generator until after Mayhem games tonight; brawl strip was the immediate ride-along since brawl is no longer in live rotation. Net diff +44 / −135 across 5 files (1 deletion).
-- `_csvDetectMode` + `_csvDsModeFor` + `modeLabel` dict + `buildsTitle` chain stripped of brawl branches.
-- Ally / enemy renderers no longer test `mode === "brawl"`.
-- 5 CSS branches dropped (pickban hide, grid reflow, allies col, enemies col + summ + name align).
-- `flow_03d_brawl_select.json` deleted; routes_pickban.py + index.html comment strings cleaned.
-- Legacy `coaches/brawl_coach.py` + dashboard-side brawl detection in `_liveclient.py`/`_state_builder.py`/`builders.py`/`view_router_state.py` left in place as deadcode — separate cleanup pass.
-
-### What's next
-- **Live ARAM Mayhem test** scheduled by operator post-/clear — they'll fire a real game; I'm authorized to monitor + fix inconsistencies live without permission. Watch for: build-chooser pushing correctly to LCU runes/items/spells, archetype-mismatch nudge surfacing on first non-trivial item buy, comp-aware row-3 tip rendering for ARAM mode (which uses MAYHEM role label), 3-row P&B layout collapsing cleanly to hidden via `data-cs-mode="aram"` CSS rules.
-- **After Mayhem session**: build-chooser auto-generator for the 3 curated variants per (champion, mode) using DS engine scorer weights + DDragon-tag classification. Goal: every champion ships with 3 algorithmic variants + the Experimental 4th row, not just Vayne. Then continue DS engine work (next phase TBD — Phase 5.9.21 sum-of-blocks bucket extension is the most-likely candidate based on s207's queued list).
-- **Deadcode cleanup (low priority)**: `coaches/brawl_coach.py` + brawl mode detection in dashboard/_liveclient.py / _state_builder.py / builders.py / view_router_state.py. Brawl coach was a copy of ARAM coach with mode-flag swap; removal is mechanical but spans 6 files.
-
----
-
-# s209–s213 wrap — 2026-05-15 (Champ-select full view redesign + tooltips + adaptive summoners)
-
-**Operator instruction:** Iterative ~14-round design redesign of the champ-select view, starting with "see about the lobby transition + champ-select not surfacing rune builds & summoner spells" (closes s208 regression carry-forward).
-
-## Shipped — commit f1ca81e
-
-Net diff: +2181 / −1368 across 26 files (4 deletions). Pushed `04a1288..f1ca81e main -> main`.
-
-### Layout
-- Grid reshape: Enemies row 1 + new Suggestions row 2 right (was Enemies-spans-both).
-- My Pick header dropped; portrait + name + LOCKED stack horizontally to free a 4th build chooser row.
-- Loading view retired entirely (games load too fast); GameStart routes direct to active-match. Sticky-guard `game-start` tier dropped; CS→null infers in-progress.
-- Pre-stamped `<body data-view="home">` eliminates the cold-load flash.
-
-### Build chooser
-- 3 curated variants + auto-generated Experimental row (DS-engine items + archetype-derived keystone + adaptive summoners).
-- 2-row card per variant: colored badge label (cyan/red/violet/amber), left-aligned keystone disc + keystone name spelled out, 42px items, stacked summoner spells (D over F).
-- Click pushes runes + items + summoners via `/api/loadout/apply` with new `override_runes` + `override_items` + `override_summoners` payload fields. Backend bypasses variant resolver when all 3 overrides present (synthetic `_build_experimental_resolved`).
-- 3rd Vayne variant added: "lethality" (Press the Attack, Collector + Opportunity + Yun Tal + Edge of Night + LDR).
-
-### Pick & Ban panel
-- Mood toggle (Comfort/Limit/New/Synergy) **actually wired**: each mood branches the performance query in `routes_pickban.py` + drives a matching champion → counters lookup in new `data/meta/champion_counters.json` so bans flip with the recommended pick.
-- "MOOD" label + single-word ALL-CAPS button names (was 2-line PICK/ONE COMFORT/PICK etc.).
-- PICK/BAN headers centered over their column content + 13px font (was 11px floating).
-- One-time click + lockout removed; LCU decides what sticks.
-
-### Suggestions panel (new — row 2 right)
-- Phase-aware: 4 ban-suggestion cards during ban phase (from `data/meta/global_top_bans.json`); 2×5 banned grid post-ban-phase (ally bans top, enemy bans bottom).
-- 3 role-keyed pick-order tips per role.
-- DS engine item output row removed (Experimental build chooser row carries that now).
-
-### Archetype picker
-- "DAEMON SLAYER BUILD ARCHETYPE" title.
-- `IMPLEMENTED_SCORERS` flipped to all 6 (s174–s181 archetype-expansion plan was 100% shipped but the flag stayed at 3).
-- AUTO toggle: green when on DDragon-tag default, grey-clickable to revert. Active button: 1px border + 4px violet left-edge accent + indigo fill (was heavy 2px blue competing visually with LOCKED green above).
-- Sig fix: `_csvComputeSig` now includes archetype `primary:source` so the picker re-renders without page reload when operator clicks through archetypes.
-
-### Adaptive summoners (new endpoint)
-- `/api/champ-select/adaptive-summoners` reads enemy comp + champion, swaps Heal → Cleanse (CC ≥4/10) or Heal → Barrier (burst ≥6/10) for ADC-style roles. Curated + Experimental rows pull the recommendation; apply pipeline pushes the swapped pair. Frontend ⚡ badge on the swapped icon.
-
-### Tooltips (rich)
-- New `web/js/lib/lol_descriptions.js` — lazy-fetches DDragon items.json + runesReforged.json via new `/api/dictionary/items` + `/api/dictionary/runes` endpoints, strips LoL HTML tags, serves cleaned content via the existing `data-tt-html` app-tooltip system.
-- Item icons show name + gold + bold stats + passive/active.
-- Keystones show name + tree + short description.
-- Event-driven re-render via `rc:lol-descriptions-ready` + `rc:champion-tags-ready` so tooltips stamp without page reload.
-
-### Enemies panel
-- Lock 🔒 emoji removed (cell outline encodes state).
-- "(guess)" replaced with 2-piece tag chips (CC/BURST/AD/AP × TANK/BRUISER/ASSASSIN/SUPPORT/ADC/MAGE/FLEX) from new `/api/dictionary/champion-tags` endpoint + `champion_tags.js` lib.
-- Role-confidence pill: 100% locked / 85% LCU-guess / 50% unassigned.
-- Cell grid widened to 7 cols (icon, name, timer, tags, spacer, role, confidence) with explicit `grid-row: 1` on every child to prevent grid auto-flow from wrapping to 2 rows.
-
-### Allies panel
-- Self-row position pip gold → indigo (matches `.csv-team-cell.me` cell border). Closes the audit-flagged 3-treatment role-chip asymmetry.
-
-### Mains icons fix
-- `/api/mains` backend was emitting `/data/ddragon/<patch>/img/champion/<name>.png` which 404'd (`data/ddragon/` mount doesn't exist). Switched to `/icons/champions/<slug>.png` — DB stores DDragon-slug names already.
-
-### Sim mode fixes
-- Multiple endpoints added to `_SYNTH_BYPASS` so sim mode hits real backend: ds-preview, loadout/list, cs-archetype-pick, archetype-nudge, mains, top8, pickban-recs, adaptive-summoners, ban-suggestions, dictionary/items, dictionary/runes, dictionary/champion-tags. Pre-fix these returned `{_sim, _path}` garbage and silently broke each feature.
-- `cs.bans` shape: LCU agent ships `{my_team:[ids], their_team:[ids]}` (dict), NOT array. `_csvBansSig` helper tolerates both shapes — pre-fix `.map is not a function` crashed `renderChampSelectView`.
-
-### Tests
-- 27 view-router tests rewritten for the dropped loading tier.
-- 11 panel snapshot tests pass through the redesign.
-- `tests/test_archetype_picks.test_implemented_scorers_are_subset` asserts all 6.
-
-### Deletions (~430 LOC)
-- `data/sim/flow_01_lobby_solo.json`
-- `data/sim/flow_04_loading_screen.json`
-- `web/css/panels/loading_view.css`
-- `web/js/panels/loading.js`
-
-## Audit ritual run
-
-Operator dispatched UI-audit subagent mid-session. 5 must-fix + 3 consider items returned; **all 5 must-fix closed** + 2 of 3 consider closed + 1 consider explicitly kept (6-button archetype grid — operator preferred visual presence over collapse-to-chip).
-
-## Carried forward to next session
-
-Operator's `/done` was preceded by a fresh batch of asks that did NOT ship this session. Tomorrow-you, do these next — they are queued and reasoned, not redo-from-scratch:
-
-1. **Ban strip — drop "CURRENT BANS" title row** when phase shifts to picks (cosmetic). The `.csv-sugg-row-label` element needs to be cleared (not just retext'd) in the banned-grid mode.
-2. **Keystone alignment** — operator wants the keystone name text to start at the same X position across all 4 build chooser rows. Likely fix: change `.csv-build-rune-main` from flex to grid with fixed `30px auto` cols so the name always starts at x=36 regardless of img-load state.
-3. **Experimental row should update on archetype change** — currently the keystone/trees update (synchronous lookup), but `/api/ds-preview` items don't refetch because the cache key is `name|dsMode` not `name|dsMode|archetype`. Fix: include archetype in `_CSV_DS_CACHE` key + retrigger fetch when arch changes.
-4. **Hover hit-area** — operator says hover targets feel small; need to bump padding/min-size for items + name elements.
-5. **Keystone icon + name should share the same tooltip** — likely already works via `closest("[data-tt-html]")` on the parent `.csv-build-rune-main`. Verify with operator.
-6. **Pick & Ban filter constraints** — recommendations should hide champions that are: already banned, already picked, or unavailable in current mode (ARAM pool, etc.).
-7. **LIMIT / NEW / SYNERGY rows 2+3 follow row 1 heuristic** — currently rows 2 (MASTERY) + 3 (META) show fixed per-role placeholders regardless of mood. Operator wants the mode-specific filter from row 1 to also constrain rows 2+3. SYNERGY needs team-comp aware lookup (deferred — needs design). Backend lift in `_csvMergePickBanData`.
-8. **Countdown timers**: remove from allies + enemies panels. Bans-at-start vs tournament-style ban detection — validate by mode (ranked vs normal draft).
-9. **LOCKED state move**: "✓ LOCKED [champion name]" centered BELOW the champion icon (was: portrait-row with name+state on the right).
-10. **Suggestion panel tips** should incorporate operator role + ally composition + enemy composition (not just role-keyed static text).
-
-## Future feature (note for after DS is at 100% champion coverage)
-
-Operator's idea: **interactive Item Shaper with 3 modifiers** (DAMAGE / SURVIVABILITY / UTILITY) — increase/decrease on the fly based on game context, automatic. Reset to default shaping for the archetype when the match ends. Architectural: hooks into the DS engine's archetype scorer weights. Defer until DS engine ships every champion's per-key block-index + scoring complete.
-
-## Verification
-
-- RC restarted multiple times during session, all `last_reload_ok=true`.
-- Asset hash flipped cleanly each edit cycle; auto-reload via `/api/ui-version` polling held up.
-- 11/11 panel snapshot tests pass. 27/27 view-router tests pass.
-- `node --check` clean across all touched JS.
