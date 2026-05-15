@@ -7604,7 +7604,22 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          dagger volleys both summed). Backward-compat: existing
         #          int-valued entries unchanged; single-int callers retain
         #          identical pre-s207 behavior.
-        self.assertEqual(ENGINE_VERSION, "0.92.0")
+        # 0.93.0 = s215 Phase 5.9.21 sum-of-blocks data batch. First pure-
+        #          data batch consuming the s207 schema lift. Adds 4 new
+        #          (champion, key) entries from s207's queued candidate
+        #          list: Thresh E=[1,2] (Maximum Bonus Magic at full Souls
+        #          + canonical Magic Damage — extends s203's single-int
+        #          {E:2} entry to a list, first int→list lift since the
+        #          s207 seed), Sona Q=[0,1] (active Magic Damage + Power
+        #          Chord empowered AA), Kalista E=[0,1,1,1,1] (base Rend
+        #          + 4× additional stacks = 5-stack Rend, same model as
+        #          Heimerdinger W rocket-count s207), Malzahar R=[0,2]
+        #          (Total Magic suppression channel + Total target-max-HP%
+        #          bonus from full-duration Nether Grasp). 4 entries
+        #          verified per-rank against Meraki 16.10.1; Per-spell raw
+        #          lifts: Kalista E +193% / Malzahar R +150% / Thresh E
+        #          +84% / Sona Q +16%. Registry 121 → 124 champions.
+        self.assertEqual(ENGINE_VERSION, "0.93.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7665,7 +7680,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.92.0")
+        self.assertEqual(ENGINE_VERSION, "0.93.0")
 
 
 if __name__ == "__main__":

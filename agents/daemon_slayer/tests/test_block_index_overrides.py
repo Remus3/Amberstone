@@ -342,10 +342,12 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["LeeSin"], {"Q": 1})
         # Smolder extended in s203 with E=1 — full shape:
         self.assertEqual(champions["Smolder"], {"W": 2, "Q": 1, "R": 1, "E": 1})
-        # Thresh routes to ds.hps by default; E=2 entry is for direct
+        # Thresh routes to ds.hps by default; E entry is for direct
         # /ability-dps queries since engine default block 0 evaluates to 0
-        # (only unparsed per-Soul scaling, no base/AP).
-        self.assertEqual(champions["Thresh"], {"E": 2})
+        # (only unparsed per-Soul scaling, no base/AP). s215 Phase 5.9.21
+        # lifted from {E:2} to {E:[1,2]} sum-of-blocks — Maximum Bonus
+        # Magic (full Souls) + canonical Magic Damage.
+        self.assertEqual(champions["Thresh"], {"E": [1, 2]})
         # Vladimir extended in s203 with Q=1 — full shape:
         self.assertEqual(champions["Vladimir"], {"E": 1, "W": 1, "Q": 1})
         # Phase 5.9.17 (s204) — 8 entries: 2 new champions (Nidalee, Seraphine)
@@ -3267,14 +3269,30 @@ class Phase599_16ExpansionTests(unittest.TestCase):
 
     # Pattern F: empty-block-0 fix (1)
     def test_thresh_E_routes_to_block_2(self) -> None:
-        """Thresh E filtered idx 2 = raw block 2 'Magic Damage' 75-255 +
-        70% AP = base+AP MAGIC component of Flay. Engine pre-s203 default
-        block 0 has ONLY unparsed `1.7 per Soul collected` (no base, no
-        AP, no tAD) and evaluates to 0 damage. Registry routes past the
-        empty-evaluation block. First instance of this fix pattern.
-        Thresh routes to ds.hps by default (enchanter); entry here is
-        for direct /ability-dps queries."""
-        self._delta_check("Thresh", "E", 2)
+        """Thresh E was {E: 2} in s203 (filtered idx 2 = raw block 2
+        'Magic Damage' 75-255 + 70% AP). s215 Phase 5.9.21 lifted to
+        sum-of-blocks {E: [1, 2]} adding Maximum Bonus Magic (full
+        Souls = 0 base + 90-210% tAD). Engine pre-s203 default block 0
+        evaluates to 0 ('Minimum Bonus Magic Damage' has only unparsed
+        per-Soul scaling). Registry routes via [1, 2] sum. Thresh
+        routes to ds.hps by default; entry here is for direct
+        /ability-dps queries."""
+        r_reg = compute_ability_dps(
+            self.snap, "Thresh", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(r_reg.block_index_resolved.get("E"), [1, 2])
+        # Sum must strictly exceed canonical Magic Damage alone (block 2);
+        # the full-Souls Maximum Bonus tier in block 1 adds tAD-scaled
+        # damage on top of the AP-scaled base.
+        forced = dict(r_reg.block_index_resolved)
+        forced["E"] = 2
+        r_off = compute_ability_dps(
+            self.snap, "Thresh", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides=forced,
+        )
+        self.assertGreater(r_reg.total_ability_dps, r_off.total_ability_dps)
 
     # Multi-key resolved-shape sanity for extension champions
     def test_diana_both_keys_in_resolved(self) -> None:
@@ -3691,12 +3709,16 @@ class Phase599_17ExpansionTests(unittest.TestCase):
 
     # Backward-compat: prior-batch entries still resolve unchanged after s204
     def test_pre_s204_thresh_unchanged(self) -> None:
-        """Backward-compat: s203 Thresh E=2 preserved after s204."""
+        """Backward-compat: Thresh E entry preserved through s204.
+        s215 Phase 5.9.21 lifted from {E: 2} to {E: [1, 2]} (sum-of-
+        blocks adding Maximum Bonus Magic at full Souls); test pinned
+        to the post-s215 shape since the s204 batch didn't touch
+        Thresh."""
         r = compute_ability_dps(
             self.snap, "Thresh", level=11, mode="SR",
             target_armor=80, target_mr=30,
         )
-        self.assertEqual(r.block_index_resolved, {"E": 2})
+        self.assertEqual(r.block_index_resolved, {"E": [1, 2]})
 
     def test_pre_s204_blitzcrank_unchanged(self) -> None:
         """Backward-compat: s203 Blitzcrank R=1 preserved after s204."""
@@ -3961,12 +3983,15 @@ class Phase599_18ExpansionTests(unittest.TestCase):
 
     # Backward-compat: prior-batch entries still resolve unchanged after s205
     def test_pre_s205_thresh_unchanged(self) -> None:
-        """Backward-compat: s203 Thresh E=2 preserved after s205."""
+        """Backward-compat: Thresh E entry preserved through s205.
+        s215 Phase 5.9.21 lifted from {E: 2} to {E: [1, 2]}; test
+        pinned to the post-s215 shape since the s205 batch didn't
+        touch Thresh."""
         r = compute_ability_dps(
             self.snap, "Thresh", level=11, mode="SR",
             target_armor=80, target_mr=30,
         )
-        self.assertEqual(r.block_index_resolved, {"E": 2})
+        self.assertEqual(r.block_index_resolved, {"E": [1, 2]})
 
     def test_pre_s205_riven_unchanged(self) -> None:
         """Backward-compat: s204 Riven Q=1 + R=1 + form_index R=1 preserved
