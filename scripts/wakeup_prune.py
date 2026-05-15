@@ -31,7 +31,11 @@ WAKEUP = ROOT / "WAKEUP_NOTES.md"
 ARCHIVE = ROOT / "docs" / "history_notes.md"
 
 SEP = "\n---\n\n"
-SESSION_RE = re.compile(r"^# s\d+(?:\.\d+)* wrap\b", re.M)
+# Accepts single sessions (`# s171 wrap`), sub-sessions (`# s171.8 wrap`),
+# and en-dash/hyphen ranges (`# s209–s213 wrap`, `# s209-s213 wrap`).
+SESSION_RE = re.compile(
+    r"^# s\d+(?:\.\d+)*(?:[–-]s\d+(?:\.\d+)*)? wrap\b", re.M,
+)
 
 ARCHIVE_HEADER = (
     "# RC session history archive\n"
