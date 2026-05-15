@@ -435,7 +435,7 @@ def compute_burst_damage(
     max_priority: Optional[Sequence[str]] = None,
     block_strategy: str = "first",
     form_index_overrides: Optional[dict[str, int]] = None,
-    block_index_overrides: Optional[dict[str, int]] = None,
+    block_index_overrides: Optional[dict[str, int | list[int]]] = None,
     combo_sequence: Optional[Sequence[str]] = None,
 ) -> BurstResult:
     """Compute one-combo total burst damage for the resolved build.
@@ -1163,7 +1163,7 @@ def rank_items_by_burst(
     max_priority: Optional[Sequence[str]] = None,
     block_strategy: str = "first",
     form_index_overrides: Optional[dict[str, int]] = None,
-    block_index_overrides: Optional[dict[str, int]] = None,
+    block_index_overrides: Optional[dict[str, int | list[int]]] = None,
     combo_sequence: Optional[Sequence[str]] = None,
     filter_shared_uniques: bool = True,
 ) -> BurstRankResult:

@@ -7582,7 +7582,29 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          ability_dps is unchanged. Forward-compat for new
         #          form-swap champions where measured rates may not yet be
         #          available.
-        self.assertEqual(ENGINE_VERSION, "0.91.0")
+        # 0.92.0 = s207 Phase 5.9.20 sum-of-blocks schema lift. Closes the
+        #          s205+s206 carry-forward "sum-of-blocks bucket warranted
+        #          soon — 10+ candidates queued". block_index_overrides
+        #          value type widens from int to int | list[int]; lists
+        #          express "operator commits to landing every component"
+        #          where the realistic single-target damage is the sum
+        #          across multiple Meraki damage blocks. Engine helpers:
+        #          new _normalize_block_index_value validator; _select_blocks
+        #          "indexed" strategy now accepts int | Sequence[int] and
+        #          loops/sums when given a sequence; same clamp semantics
+        #          per element. server _parse_block_index decoder accepts
+        #          JSON arrays alongside ints. Seed entries (4): Camille
+        #          W=[0,1] (Tactical Sweep base + Outer Cone Bonus on
+        #          in-cone target — 2-block sum), Malphite W=[2,3] (active
+        #          cast + first empowered AA — 2-block sum), Heimerdinger
+        #          W=[0,1,1,1,1] (Initial + 4× Subsequent rockets focused
+        #          on one non-minion — sum with index repetition expresses
+        #          the 4× multiplier elegantly), Katarina R=[1,3] (full
+        #          Death Lotus on single target = max physical + max magic
+        #          dagger volleys both summed). Backward-compat: existing
+        #          int-valued entries unchanged; single-int callers retain
+        #          identical pre-s207 behavior.
+        self.assertEqual(ENGINE_VERSION, "0.92.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7643,7 +7665,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.91.0")
+        self.assertEqual(ENGINE_VERSION, "0.92.0")
 
 
 if __name__ == "__main__":
