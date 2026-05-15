@@ -1,6 +1,122 @@
 # WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+> Sessions s27–s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+
+---
+
+# s207 wrap — 2026-05-14 (Phase 5.9.20 sum-of-blocks schema lift + 4 seed entries + README rewrite)
+
+**Operator instruction:** "have the readme be in a more summary overview than technical, remove the parts for the cross-machine specifics, mentioning it is fine details are not needed, bridge application is fine, remove the 2 machine installation part. change how the check lists of things done and stuff to do is presented. remove the RC Tutor section entirely since i am slowly getting RC Tutor to be one and the same with RC, it is redundant. Simplify some descriptions for non technical non league people reading it. then continue ds" — two-part session. Part 1 is a deep README rewrite. Part 2 is the s205+s206-deferred sum-of-blocks schema lift.
+
+## Part 1 — README rewrite (313 → 86 lines)
+
+**Removed entirely:**
+- Topology table (Legion / Game-PC / Peer with IPs / hostnames / scheduled tasks)
+- Architecture file tree
+- Phase 3 agent framework table (8-row internal coordination)
+- Cross-Claude infrastructure deep details (Tailscale config, bearer tokens, bridge wire format)
+- Bridge Watcher daemon table (4 phases + per-phase rules)
+- Bring-up section (per-machine install workflow — operator's explicit ask)
+- Engineering audit table (Tier 1-3)
+- Roadmap section (cross-Claude learning sync, Bridge Watcher hardening, vision calibration phases)
+- RC Tutor — Future Direction (operator: "redundant since RC Tutor is becoming RC")
+- Operational notes (atomic writes, restart workflow, frozen files — internal dev knowledge)
+
+**Restructured:**
+- One-paragraph elevator pitch up top
+- "What it does" — 5 prose paragraphs (no bullets-of-bullets), simplified for non-League readers (e.g. "champion select" glossed as "the picking phase before each match")
+- "How it works" — 2 paragraphs covering the coaching tick + build engine
+- "Daemon Slayer build engine" — preserved as the technical centerpiece, with the 6-archetype scoring table (the only retained checklist-style structure in the README)
+- "Where it runs" — 2 sentences mentioning the 2-machine + bridge architecture as background only, no IPs / hostnames / task names
+- "Project status" — narrative paragraph + 4 plain-prose bullets describing active work direction (replaced the multi-tier ✅/🟡/🔴 checklist)
+- "More" — pointer list to CLAUDE.md / ROADMAP.md / docs/DAEMON_SLAYER.md / docs/ARCHITECTURE.md / docs/adr/
+
+## Part 2 — Phase 5.9.20 sum-of-blocks schema lift
+
+**Schema change** in `champion_block_index.json`:
+```diff
+- "Camille":  { "Q": 2 }
++ "Camille":  { "Q": 2, "W": [0, 1] }
++ "Heimerdinger": { "W": [0, 1, 1, 1, 1] }
++ "Katarina": { "R": [1, 3] }
++ "Malphite": { "W": [2, 3] }
+```
+
+Value type widens from `int` to `int | list[int]`. List values express "operator commits to landing every component" — when the realistic single-target damage is the sum across multiple Meraki damage blocks. Index repetition (`[0, 1, 1, 1, 1]`) elegantly expresses multipliers without needing dedicated multiplier syntax.
+
+**Engine signature changes** (`ability_dps.py`):
+- New `_normalize_block_index_value(v)` — rejects bool / str / float / None; accepts int + list[int] + empty list. ValueError on garbage with explicit reason.
+- `_select_blocks(... block_index: int | Sequence[int] = 0, ...)` — when sequence supplied under "indexed" strategy, loops + sums per-element with same clamp semantics.
+- `get_block_index_for(champion_id) -> tuple[dict[str, int | list[int]], str]`
+- `_resolve_block_index_overrides(...) -> tuple[dict[str, int | list[int]], str]`
+- 5 sites of `Optional[dict[str, int]]` widened to `Optional[dict[str, int | list[int]]]` (in `compute_ability_dps` / `rank_items_by_ability_dps` / `compute_burst_damage` / `rank_items_by_burst` parameters)
+
+**Server `_parse_block_index`** in `server.py` — accepts JSON arrays alongside ints; defensively skips bool / non-int payloads silently (matches `_parse_form_index` / `_parse_max_priority` defensive policy).
+
+## Live A/B headlines (Legion :8893 /ability-dps lvl 11 vs 80/30/2000)
+
+| Champion | Key | Registry | block-0 only | sum | Delta | Ratio |
+|---|---|---|---|---|---|---|
+| Camille | W | [0, 1] | 100.0 | 240.0 | +140 | **2.4×** |
+| Malphite | W | [2, 3] | 50.0 | 70.0 | +20 | **1.4×** |
+| Heimerdinger | W | [0, 1, 1, 1, 1] | 140.0 | 260.0 | +120 | **1.86×** |
+| Katarina | R | [1, 3] | 0.0 | 562.5 | +562.5 | (block 0 was bAD-only at naked AD = 0; sum captures full physical+magic volley) |
+
+**Heimerdinger sanity check:** the sum result (260 raw) exactly matches the precomputed "Combined Total Non-Minion Damage" block (raw_modifiers values=[80, 125, 170, 215, 260] at ranks 1-5) which the engine couldn't address before because that block is `kind=modifier` and gets filtered out pre-index. The sum [0, 1, 1, 1, 1] reaches the same number through `kind=damage` blocks the indexed strategy CAN see.
+
+## Test counts
+
+- DS suite: **1979 → 2022** (+43 in new `test_sum_of_blocks.py`)
+- Wider RC: **1013** (no regressions)
+
+Test classes:
+- `NormalizeBlockIndexValueTests` (9) — validator behavior, bool rejection, list rejection of non-ints
+- `SelectBlocksListTests` (8) — int-path unchanged, list path semantics, clamping, empty-list, tuple support
+- `RegistrySeedEntriesTests` (4) — 4 new entries present + correct shape
+- `ResolveBlockIndexListMergeTests` (4) — caller-int wins over registry-list and vice versa, list preservation
+- `AbilityDpsSumOfBlocksTests` (7) — integration: sum > forced-single + arithmetic equality (Camille / Malphite / Heimerdinger / Katarina)
+- `BurstSumOfBlocksTests` (3) — burst.py call site mirrors
+- `BackwardCompatIntEntriesTests` (3) — Veigar R / Cassi E still int-typed
+- `ServerRouteSumOfBlocksTests` (5) — live :8893 verification including caller-supplied list via JSON body
+
+Plus 2 existing-test updates:
+- `test_every_value_is_int` → `test_every_value_is_int_or_list_of_ints` (widened to validate both shapes)
+- `test_pre_s198_camille_unchanged` extended for new W=[0,1] entry
+
+## Files touched
+
+| File | Change |
+|------|--------|
+| `README.md` | Full rewrite 313 → 86 lines per operator restructure ask |
+| `agents/daemon_slayer/__init__.py` | ENGINE_VERSION 0.91.0 → 0.92.0 |
+| `agents/daemon_slayer/ability_dps.py` | `_normalize_block_index_value` + `_select_blocks` list path + 4 type-hint widenings |
+| `agents/daemon_slayer/burst.py` | 2 type-hint widenings |
+| `agents/daemon_slayer/server.py` | `_parse_block_index` accepts arrays |
+| `agents/daemon_slayer/champion_block_index.json` | 4 seed entries (Camille W extension + 3 new champs) + _meta description extended |
+| `agents/daemon_slayer/tests/test_sum_of_blocks.py` | NEW — 43 tests |
+| `agents/daemon_slayer/tests/test_block_index_overrides.py` | 2 existing-test updates for new schema |
+| `agents/daemon_slayer/tests/test_effects_expansion.py` | 2 ENGINE_VERSION pin bumps + 0.92.0 changelog comment |
+| `CLAUDE.md` | Deep-references ENGINE_VERSION ref bumped + priority #65 added |
+| `docs/DAEMON_SLAYER.md` | Test count + ENGINE_VERSION refs synced |
+| `docs/ARCHITECTURE.md` | Test count + ENGINE_VERSION refs synced |
+
+## Hand-off notes
+
+- **DS server pid 14476** running 0.92.0 / 16.10.1 (was pid 11352 on 0.91.0); verified `/health` + 4 A/B routes post-restart.
+- **No RC supervisor restart needed** — s207 only touched DS engine code.
+- **Cumulative override coverage** now at 189 entries / 121 champions / 71% roster (was 185/118/69% pre-s207).
+- **README is now a summary overview**, not a technical reference. Future sessions should resist the temptation to re-add detailed sections — use `CLAUDE.md` or `docs/DAEMON_SLAYER.md` for technical context.
+
+## Carried forward to s208+
+
+- 🟢 **Sum-of-blocks data batch** — 6+ remaining candidates queued (Thresh E souls+magic, Taliyah E impact+detonations, Sona Q spell+Power Chord, Malzahar E/R on-cast+DOT, Kalista E per-stack, Jinx R distance-scaled). Schema is in place; just need to add JSON entries + test assertions.
+- 🟡 **Nested missing-HP parser** — Kindred E, Kayle E, Belveth R execute curve. Phase 4a `unparsed_modifiers` extractor needs upgrade to handle "X% (+ Y% per Mark) of target's missing health" format.
+- 🟡 **Conditional target-state schema lift** — 6+ candidates remain (Lux Illumination, DrMundo E missing-HP, Evelynn Q charm, Kayle E missing-HP, Kindred E mark, Vayne E wall-stun). Defer until sum-of-blocks data batch ships.
+
+## Don't redo
+
+- Sum-of-blocks SCHEMA — shipped this session. Don't re-architect the `int | list[int]` shape; the index-repetition pattern is the canonical way to express multipliers.
+- README compression — done. Future sessions should add to `CLAUDE.md` or `docs/DAEMON_SLAYER.md` instead of re-bloating the README with monotonic enumerations.
 
 ---
 
@@ -175,74 +291,3 @@ Inspected and rejected 50+ candidates from unmapped + extension scans. Key defer
 - Renekton E full-Fury combo — shipped via block 3 sum.
 - Hwei W 3-light Maximum — shipped via block 1.
 - Shaco W Feared target — shipped via block 1.
-
----
-
-# s204 wrap — 2026-05-14 (Phase 5.9.17 block_index expansion — 8 entries / 2 new champs + 6 extensions + form_index seed)
-
-**Operator instruction:** "continue DS" — direct continuation of s203 (now the **twentieth** consecutive override / proc-shape ship on the same template, **thirteenth** pure-data batch in the block_index family). This batch closes the s203 carry-forward "Riven form_index seed needed for form-conditional block_index entries" — Riven becomes the first new champion added to the form_index registry since s187 (Nidalee/Elise/Jayce/Hwei/LeeSin). Cumulative coverage 67% → 68% of the 171-champion roster.
-
-## One new architectural pattern discovered s204
-
-**Second NET-damage layering of block_index on form_index** (after s203 LeeSin Q). Riven is a particularly clean case: form 0 "Blade of the Exile" has ZERO damage blocks (pure buff/empower form), and form 1 "Wind Slash" carries the only damage. The form_index seed routes the parser to form 1; block_index = 1 then selects max-missing-HP execute within that form. No information loss from routing past form 0 since it's data-empty. Nidalee Q (Cougar Takedown) form 1 block 1 ships in the same batch — both are execute-amp layers, both compose orthogonally with their prior form_index entries.
-
-## Sub-patterns reused
-
-- **Multi-hit single-target totals (3 entries):** Evelynn Q (Hate Spike 7-missile rotation, 175% AP scaling), Gwen Q (max-stack 6-snip burst, 10.3× block 0 base), Syndra W (Force of Will Total Mixed sum, 1.12× — small additive but consistent under-count).
-- **Fully-charged amp (1 entry):** KSante W (Path Maker full 2s charge Total Maximum Mixed, 1.8× block 0).
-- **Champion-vs-minion amp (1 entry):** Seraphine Q (High Note Maximum Champion Damage 1.75×). Revives s198/s202 'enchanter-class' skip under archetype-mismatch framing — direct /ability-dps queries benefit even though Seraphine dispatches to ds.hps.
-- **Execute amp layered on form_index (1 entry):** Nidalee Q (Cougar Takedown low-HP execute via s187 form_index=1). Second NET-damage layering after s203 LeeSin Q.
-- **Target-state amp (1 entry):** Zoe E (Maximum Mixed on sleep-procced target, 2× block 0). First entry reviving the conditional target-state schema lift bucket under unconditional operator-commits framing — same as Khazix Q isolation s196 / Xerath W center-spot s201 / Vayne E wall-stun s202.
-- **Form_index seed expansion (1 entry):** Riven R + new form_index Riven.R = 1 (Wind Slash max-missing-HP execute). Closes s203 carry-forward. First new champion added to form_index registry since s187.
-
-## s204 ship — Phase 5.9.17 — 8 entries
-
-Live A/B headlines on :8893 (/ability-dps lvl 11 vs 80 armor / 30 MR / 2000 HP) — TOTAL ability_dps deltas (per-spell preview deltas in parens):
-
-| Champion | Key | Pattern | total adps off → on | Lift |
-|----------|-----|---------|---------------------|------|
-| Evelynn | Q | full Hate Spike (7× missile) | 19.78 → 86.98 | **+339.7%** (per-spell +667%) |
-| Gwen | Q | max-stack Snip Snip (10× base) | 8.80 → 23.65 | **+168.7%** (per-spell +934%) |
-| Nidalee | Q | cougar Takedown low-HP exec | 39.02 → 68.51 | **+75.6%** (per-spell +175%) |
-| Seraphine | Q | Max Champion Damage | 11.11 → 17.02 | **+53.2%** |
-| KSante | W | Path Maker full charge | 8.48 → 9.99 | **+17.8%** |
-| Syndra | W | Total Mixed sum | 28.06 → 29.23 | **+4.2%** |
-| Zoe | E | sleep-procced Max Mixed | 44.53 → 45.99 | **+3.3%** |
-| Riven | R | Wind Slash form 1 exec | 57.80 → 59.43 | **+2.8%** (was 0.00 baseline) |
-
-**Spell-share dilution** explains why Gwen Q's per-spell +934% translates to total +168.7% (Gwen R already contributes 6.79 dps so Q is one of 3 contributors). Riven R total lift +2.8% is small because Riven's Q (Broken Wings) dominates at 54.84 dps — but architecturally significant since R was contributing 0.00 pre-s204 due to form 0 having no damage blocks. Zoe E +3.3% similar — Zoe's Q dominates at 42.17 dps.
-
-| Commit | Summary |
-|--------|---------|
-| [`1003ed9`](https://github.com/Remus3/riot-commander/commit/1003ed9) | s204 feat — 8-entry Phase 5.9.17 block_index + Riven form_index seed + 2 NET-damage form_index×block_index layerings |
-
-Registry: 115 → 117 champions. Entries: 173 → 181. Form_index registry: 5 → 6 champions, 9 → 10 entries (Riven R=1 new). ENGINE_VERSION: 0.88.0 → 0.89.0. DS suite: 1919 → 1939 (+20 net tests). Wider RC: 1023 + 1 expected phase8_smoke pass post-restart.
-
-**Test-fixture maintenance:** 5 stale assertions in `test_known_champion_overrides` converted from full-shape `assertEqual` to either commented-out OR migrated to Phase599_17 block (Evelynn / Syndra / Riven / KSante / Zoe — all extended this batch). 1 stale `test_zoe_both_keys_in_resolved` in `Phase599_15ExpansionTests` converted from full-shape `assertEqual` to per-key `.get()` subset check (Zoe now has 3 keys after s204 added E=2). 1 `test_rank_assassin_carries_source` updated for new Evelynn shape `{R:1, Q:5}`.
-
-## Tomorrow / future sessions
-
-**All s203 carry-forwards remain unchanged except Riven (closed):**
-
-- 🟡 **Token-variant for multi-stage Q chains** — Aatrox Q1/Q2/Q3 (combo_sequence-aware), Gwen R needlework recasts (already partially handled via block_index=4 for full burst).
-- 🟡 **Form-swap block_index schema** — KSante R full per-form indexing, Kayn (Rhaast/Shadow Q), Hwei (Q/W/E forms 0/1/2/3), **Qiyana Q** (s203 + s204 deferred — needs form_index registry seed for elemental form, same pattern Riven shipped this batch).
-- 🟡 **Sequence-state block_index** — Jhin R 4th-shot, Corki R Big One every-4th-missile, Akshan R Comeuppance charge.
-- 🟡 **Conditional target-state block_index** — Zoe sleep amp now SHIPPED (s204) under operator-commits framing. Remaining: Lux Illumination, DrMundo E missing-HP threshold, Evelynn Q charm, Vayne E wall-stun, Kayle E missing-HP, Kindred E mark detonation. 6+ candidates still queued — schema lift becomes warranted if 3+ ship under operator-commits framing first.
-- 🟡 **Sum-of-blocks schema** — STILL 8+ candidates: Thresh E souls+magic, Taliyah E impact+detonations, Sona Q spell+Power Chord, Camille W flat+max-HP (s202) + Katarina R bAD+AP, Malphite W first+subsequent, Malzahar E/R on-cast+DOT, Kalista E per-stack, Jinx R distance-scaled (s203). Lift continues to be warranted.
-- 🟡 **Nested missing-HP parser** — Kindred E (s201 drop), Kayle E (s202 drop), Belveth R execute curve (s203 drop). Phase 4a `unparsed_modifiers` extractor needs upgrade to handle "X% (+ Y% per Mark) of target's missing health" format.
-
-## Hand-off notes
-
-- **Tryndamere remains canonical unmapped fixture** (s201 rotation). No change s204.
-- **Evelynn now has 2 keys** (R s191 + Q s204). Assassin archetype.
-- **Gwen now has 2 keys** (R s203 + Q s204). Mage/bruiser hybrid.
-- **KSante now has 2 keys** (R s202 + W s204). Tank/bruiser hybrid.
-- **Riven now has 2 keys** (Q s196 + R s204) + form_index R=1 entry. Bruiser archetype.
-- **Syndra now has 2 keys** (R s195 + W s204). Mage archetype.
-- **Zoe now has 3 keys** (Q s195 + W s202 + E s204). Mage archetype.
-- **Nidalee + Seraphine** are the 2 truly-new champions this batch.
-- **DS server restart required** after ENGINE_VERSION bump. Via PowerShell `Stop-Process -Id <pid> -Force` then `Start-Process pythonw start_daemon_slayer.py -WindowStyle Hidden -WorkingDirectory "C:\Riot Commander"`. /health confirms 0.89.0.
-
-## s204 architectural delta
-
-Twentieth consecutive override / proc-shape modeling improvement on the same template (s185 max_priority → s186 combo → s187 form → s188 per-AA on-hit → s189 Spellblade → s190 Lightshield → s191 block_index → s192 token-variant → s193 channels → s194 calibration → s195 multi-hit → s196 condition-amp → s197 assassin/fighter → s198 bruiser broadening → s199 standard sweep → s200 rescue → s201 framing revert → s202 wall-stun framing revert + broadening → s203 active-cast vs passive-zap split + empty-block-0 fix + form_index×block_index NET-damage layering → s204 form_index seed expansion + second NET-damage layering + target-state amp revival). Thirteenth pure-data batch in the channel/total/charge family. Second batch to expand form_index registry (s187 was the seed). **Cumulative coverage: 181 (champion, key) entries across 117 champions** (68% of the 171-champion roster touched). Pattern remains rock-solid; rate-limit is now (a) sum-of-blocks schema lift becoming necessary (8+ candidates queued), (b) Qiyana Q form_index seed needed before next form-conditional block_index batch.
