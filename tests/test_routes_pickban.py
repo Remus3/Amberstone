@@ -109,10 +109,13 @@ class TestPerformanceQuery(unittest.TestCase):
         _build_test_db(self.db_path, rows)
         conn = sqlite3.connect(str(self.db_path))
         try:
-            perf = routes_pickban._query_performance(conn, "me", "BOTTOM", (420,))
+            # s214: _query_performance returns list[dict] (was dict | None).
+            # First entry is the top-WR pick at this role.
+            picks = routes_pickban._query_performance(conn, "me", "BOTTOM", (420,))
         finally:
             conn.close()
-        self.assertIsNotNone(perf)
+        self.assertTrue(picks)
+        perf = picks[0]
         self.assertEqual(perf["champName"], "Vayne")  # 80% beats 60%; MF skipped (<3 games)
         self.assertEqual(perf["wr_pct"], 80)
         self.assertEqual(perf["games"], 5)
@@ -129,10 +132,11 @@ class TestPerformanceQuery(unittest.TestCase):
         _build_test_db(self.db_path, rows)
         conn = sqlite3.connect(str(self.db_path))
         try:
-            perf = routes_pickban._query_performance(conn, "me", "BOTTOM", (420,))
+            picks = routes_pickban._query_performance(conn, "me", "BOTTOM", (420,))
         finally:
             conn.close()
-        self.assertIsNone(perf)
+        # s214: empty list instead of None when no champs qualify.
+        self.assertEqual(picks, [])
 
     def test_role_isolation(self):
         # Same champ played at two roles — only count BOTTOM stats.
@@ -148,11 +152,12 @@ class TestPerformanceQuery(unittest.TestCase):
         _build_test_db(self.db_path, rows)
         conn = sqlite3.connect(str(self.db_path))
         try:
-            perf = routes_pickban._query_performance(conn, "me", "BOTTOM", (420,))
+            picks = routes_pickban._query_performance(conn, "me", "BOTTOM", (420,))
         finally:
             conn.close()
-        self.assertEqual(perf["wins"], 5)
-        self.assertEqual(perf["games"], 5)
+        self.assertTrue(picks)
+        self.assertEqual(picks[0]["wins"], 5)
+        self.assertEqual(picks[0]["games"], 5)
 
     def test_queue_filter(self):
         # Same champ in two queues — q=400 (Normal Draft) only.
@@ -169,11 +174,175 @@ class TestPerformanceQuery(unittest.TestCase):
         conn = sqlite3.connect(str(self.db_path))
         try:
             # Filter to q=400 only.
-            perf = routes_pickban._query_performance(conn, "me", "BOTTOM", (400,))
+            picks = routes_pickban._query_performance(conn, "me", "BOTTOM", (400,))
         finally:
             conn.close()
-        self.assertEqual(perf["games"], 5)
-        self.assertEqual(perf["wins"], 5)
+        self.assertTrue(picks)
+        self.assertEqual(picks[0]["games"], 5)
+        self.assertEqual(picks[0]["wins"], 5)
+
+
+class TestS214CascadeAndMultiPick(unittest.TestCase):
+    """s214 — Pick & Ban filter constraints (cascade exclude + top-N
+    + synergy ally_ids path). Each test runs against an isolated DB so
+    we can assert exact list contents without prior-test bleed-through."""
+
+    def setUp(self):
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self._tmp.close()
+        self.db_path = Path(self._tmp.name)
+
+    def tearDown(self):
+        self.db_path.unlink(missing_ok=True)
+
+    def test_top_n_returns_multiple_picks(self):
+        # Three champs at BOT with descending WR:
+        #   Vayne 5/5 (100%), Caitlyn 6/8 (75%), Jinx 4/6 (66%).
+        rows = []
+        for i in range(5):
+            rows.append({"match_id": f"v{i}", "puuid": "me",
+                         "team_position": "BOTTOM", "champion_id": 67,
+                         "champion_name": "Vayne", "win": 1})
+        for i in range(8):
+            rows.append({"match_id": f"c{i}", "puuid": "me",
+                         "team_position": "BOTTOM", "champion_id": 51,
+                         "champion_name": "Caitlyn", "win": 1 if i < 6 else 0})
+        for i in range(6):
+            rows.append({"match_id": f"j{i}", "puuid": "me",
+                         "team_position": "BOTTOM", "champion_id": 222,
+                         "champion_name": "Jinx", "win": 1 if i < 4 else 0})
+        _build_test_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            picks = routes_pickban._query_performance(
+                conn, "me", "BOTTOM", (420,), mood="comfort", top=3)
+        finally:
+            conn.close()
+        self.assertEqual(len(picks), 3)
+        # Sorted by WR desc then games desc.
+        self.assertEqual(picks[0]["champName"], "Vayne")
+        self.assertEqual(picks[1]["champName"], "Caitlyn")
+        self.assertEqual(picks[2]["champName"], "Jinx")
+
+    def test_exclude_skips_specific_champs(self):
+        # Vayne 5/5 (100%), Caitlyn 6/8 (75%). Exclude Vayne → only Caitlyn.
+        rows = []
+        for i in range(5):
+            rows.append({"match_id": f"v{i}", "puuid": "me",
+                         "team_position": "BOTTOM", "champion_id": 67,
+                         "champion_name": "Vayne", "win": 1})
+        for i in range(8):
+            rows.append({"match_id": f"c{i}", "puuid": "me",
+                         "team_position": "BOTTOM", "champion_id": 51,
+                         "champion_name": "Caitlyn", "win": 1 if i < 6 else 0})
+        _build_test_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            picks = routes_pickban._query_performance(
+                conn, "me", "BOTTOM", (420,), mood="comfort",
+                exclude_ids=(67,), top=3)
+        finally:
+            conn.close()
+        self.assertEqual(len(picks), 1)
+        self.assertEqual(picks[0]["champName"], "Caitlyn")
+
+    def test_synergy_with_allies_scores_joint_games(self):
+        # Operator at BOT with Vayne wins 3/3 alongside ally Lulu (id 117).
+        # Operator at BOT with Caitlyn wins 2/4 alongside Lulu.
+        # Synergy mode with allies=[117] should pick Vayne (higher joint WR).
+        rows = []
+        # 3 Vayne games, all wins, with Lulu on team
+        for i in range(3):
+            rows.append({"match_id": f"v{i}", "puuid": "me",
+                         "team_id": 100, "team_position": "BOTTOM",
+                         "champion_id": 67, "champion_name": "Vayne",
+                         "win": 1})
+            rows.append({"match_id": f"v{i}", "puuid": "lulu_p",
+                         "team_id": 100, "team_position": "UTILITY",
+                         "champion_id": 117, "champion_name": "Lulu",
+                         "win": 1})
+        # 4 Caitlyn games with Lulu, 2 wins
+        for i in range(4):
+            rows.append({"match_id": f"c{i}", "puuid": "me",
+                         "team_id": 100, "team_position": "BOTTOM",
+                         "champion_id": 51, "champion_name": "Caitlyn",
+                         "win": 1 if i < 2 else 0})
+            rows.append({"match_id": f"c{i}", "puuid": "lulu_p",
+                         "team_id": 100, "team_position": "UTILITY",
+                         "champion_id": 117, "champion_name": "Lulu",
+                         "win": 1 if i < 2 else 0})
+        _build_test_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            picks = routes_pickban._query_performance(
+                conn, "me", "BOTTOM", (420,), mood="synergy",
+                top=3, ally_ids=(117,))
+        finally:
+            conn.close()
+        self.assertTrue(picks)
+        # Highest joint-with-Lulu WR is Vayne (3/3 = 100%).
+        self.assertEqual(picks[0]["champName"], "Vayne")
+        # Reason text reflects the synergy framing.
+        self.assertIn("alongside locked allies", picks[0]["reason"])
+
+    def test_synergy_empty_allies_falls_back_to_recent_form(self):
+        # With ally_ids=() the synergy mode should fall back to the recent-
+        # form proxy. Vayne with 3 wins inside the recent window.
+        import time as _time
+        recent_ts = int((_time.time() - 86400 * 10) * 1000)  # 10 days ago
+        old_ts    = int((_time.time() - 86400 * 200) * 1000)  # 200 days ago
+        conn = sqlite3.connect(str(self.db_path))
+        conn.executescript("""
+            CREATE TABLE matches (
+                match_id TEXT PRIMARY KEY,
+                queue_id INTEGER,
+                game_creation_ts INTEGER
+            );
+            CREATE TABLE participants (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id TEXT, puuid TEXT, team_id INTEGER,
+                team_position TEXT, champion_id INTEGER,
+                champion_name TEXT, win INTEGER
+            );
+        """)
+        # Recent: 3 Vayne wins
+        for i in range(3):
+            conn.execute(
+                "INSERT INTO matches(match_id, queue_id, game_creation_ts) VALUES (?,?,?)",
+                (f"r{i}", 420, recent_ts))
+            conn.execute(
+                "INSERT INTO participants(match_id, puuid, team_id, team_position, "
+                "champion_id, champion_name, win) VALUES (?,?,?,?,?,?,?)",
+                (f"r{i}", "me", 100, "BOTTOM", 67, "Vayne", 1))
+        # Old: 5 Vayne losses (outside the 60-day window — should not count)
+        for i in range(5):
+            conn.execute(
+                "INSERT INTO matches(match_id, queue_id, game_creation_ts) VALUES (?,?,?)",
+                (f"o{i}", 420, old_ts))
+            conn.execute(
+                "INSERT INTO participants(match_id, puuid, team_id, team_position, "
+                "champion_id, champion_name, win) VALUES (?,?,?,?,?,?,?)",
+                (f"o{i}", "me", 100, "BOTTOM", 67, "Vayne", 0))
+        conn.commit()
+        try:
+            picks = routes_pickban._query_performance(
+                conn, "me", "BOTTOM", (420,), mood="synergy", top=3,
+                ally_ids=())
+        finally:
+            conn.close()
+        # Recent-form path: 3 recent wins → 100% WR, fallback fires.
+        self.assertTrue(picks)
+        self.assertEqual(picks[0]["champName"], "Vayne")
+        self.assertEqual(picks[0]["wr_pct"], 100)
+        self.assertIn("recent form", picks[0]["reason"])
+
+    def test_parse_csv_ints_handles_blanks(self):
+        # Spot-test the CSV int parser used by the HTTP handler for
+        # exclude=/allies= params. Blanks and non-int tokens silently drop.
+        self.assertEqual(routes_pickban._parse_csv_ints(""), ())
+        self.assertEqual(routes_pickban._parse_csv_ints("1,2,3"), (1, 2, 3))
+        self.assertEqual(routes_pickban._parse_csv_ints("1, ,2,abc,3"), (1, 2, 3))
+        self.assertEqual(routes_pickban._parse_csv_ints(",,"), ())
 
 
 class TestBansQuery(unittest.TestCase):
