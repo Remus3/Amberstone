@@ -99,7 +99,6 @@ def derive_view(
     prior_game_started: Optional[str],
     *,
     active_match_enabled: bool = True,
-    champ_select_view_enabled: bool = True,
 ) -> DeriveResult:
     """Pure mirror of `_viewAutoDerive(lcu, mode)` from main.js.
 
@@ -116,10 +115,8 @@ def derive_view(
         return DeriveResult("active-match", game_started)
     if active_match_enabled and not phase and mode in IN_GAME_MODES:
         return DeriveResult("active-match", game_started)
-    if phase == "ChampSelect" and champ_select_view_enabled:
-        return DeriveResult("champ-select", game_started)
     if phase == "ChampSelect":
-        return DeriveResult("lobby", game_started)
+        return DeriveResult("champ-select", game_started)
     if phase == "InProgress":
         # active_match_enabled=False fallback.
         return DeriveResult("last-match", game_started)
@@ -133,10 +130,7 @@ def derive_view(
             game_started,
         )
     if game_started == "champ-select":
-        return DeriveResult(
-            "champ-select" if champ_select_view_enabled else "lobby",
-            game_started,
-        )
+        return DeriveResult("champ-select", game_started)
 
     if phase in _LOBBY_PHASES:
         return DeriveResult("lobby", game_started)

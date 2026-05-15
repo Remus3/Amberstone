@@ -1,6 +1,6 @@
 /* ── Team Context block (FU02 panel stub, 2026-05-09) ──────────────────
- * Sits inside the cs-overlay, between the existing team rows and the
- * bench grid. 5+5 row of player cards with progressive-reveal fields:
+ * Rendered into the champ-select view, between the existing team rows
+ * and the bench grid. 5+5 row of player cards with progressive-reveal fields:
  * locked-champ icon + name (or champion when name-blanked) + rank chip
  * + mastery + mains + recent winrate + last-7-games streak.
  *
@@ -162,8 +162,8 @@
   text-underline-offset: 2px;
 }
 
-/* Narrow-screen fallback — stack the two team blocks vertically when
- * the cs-overlay shrinks (1920×1080 in Chrome windowed is fine; zoom-in
+/* Narrow-screen fallback — stack the two team blocks vertically on
+ * cramped viewports (1920×1080 in Chrome windowed is fine; zoom-in
  * or half-screen layouts cut it close). */
 @media (max-width: 1100px) {
   .tc-teams {

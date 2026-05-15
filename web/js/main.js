@@ -23,7 +23,7 @@ import { RN, renderRightNow, renderWhatWent, renderDigest, renderGameSense, rend
 import { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine } from './panels/next.js';
 import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
 import { MM, renderMinimap, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS, _renderMmStateLine } from './panels/map_state.js';
-import { handleChampSelect, renderChampSelectPanel, renderChampSelectCoach, renderChampSelectView, champSelectViewEnabled } from './panels/champ_select.js';
+import { handleChampSelect, renderChampSelectCoach, renderChampSelectView } from './panels/champ_select.js';
 import { renderLoadingView, loadingViewEnabled } from './panels/loading.js';
 import { renderTeamContext } from './panels/team_context.js';
 import { renderArchetypeNudge } from './panels/archetype_nudge_chip.js';
@@ -545,11 +545,8 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     if (activeMatchEnabled() && !phase && inGame) {
       return "active-match";
     }
-    // s164: opt-in champ-select page (?cs=1 / localStorage.csView='1').
-    // When set, promote to the new view; otherwise legacy cs-overlay
-    // still wins visually on top of view-lobby.
-    if (phase === "ChampSelect" && champSelectViewEnabled()) return "champ-select";
-    if (phase === "ChampSelect")            return "lobby";   // cs-overlay still wins visually
+    // s164: ChampSelect routes to the dedicated full-page view.
+    if (phase === "ChampSelect") return "champ-select";
     if (phase === "InProgress") return "last-match";  // panels are in-game in game mode
     // s171 sticky guard: if a transient null/Lobby phase fires during
     // the CS→loading→game flip, fall back to whatever in-game surface
@@ -560,9 +557,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     if (_VIEW.gameStarted === "in-progress") {
       return activeMatchEnabled() ? "active-match" : "last-match";
     }
-    if (_VIEW.gameStarted === "champ-select") {
-      return champSelectViewEnabled() ? "champ-select" : "lobby";
-    }
+    if (_VIEW.gameStarted === "champ-select") return "champ-select";
     if (phase === "Lobby" || phase === "Matchmaking" || phase === "ReadyCheck") return "lobby";
     if (mode === "client" || mode === "lobby" || !mode) return "home";
     return "last-match";  // in-game default → main panels
@@ -570,8 +565,8 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
   // Should we auto-promote past a manual selection? Only for urgent
   // game-state events where missing the actual view is harmful.
   function _viewIsUrgent(targetView) {
-    return targetView === "lobby"   // ChampSelect-driven (cs-overlay)
-        || targetView === "champ-select"  // s164: new full-page CS
+    return targetView === "lobby"   // pre-queue lobby
+        || targetView === "champ-select"  // s164: full-page CS
         || targetView === "loading"  // s166: GameStart loading screen
         || targetView === "last-match";  // game InProgress
   }
@@ -3374,7 +3369,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     450:  ["Bench-swap is instant via the LCU API (5s client cooldown bypassed).",
            "Snowball + Flash is the standard summoner combo.",
            "ARAM Mayhem? Coach treats KIWI mode as ARAM — same loadouts apply."],
-    920:  ["ARAM Mayhem rolls 2-3 champions per slot — pick from the cs-overlay.",
+    920:  ["ARAM Mayhem rolls 2-3 champions per slot — pick from the champ-select view.",
            "Augments roll mid-game; the panel surfaces them in the header pill.",
            "Score 1-100 for a win, not 0 deaths — fight more often."],
     400:  ["Normal Draft — 6 bans per side, hover before lock.",
@@ -4126,8 +4121,8 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
 
   // ── Lobby overlay (2026-04-26) ──────────────────────────────────────
   // Pre-queue: shows what queue the user is sitting in + a Find Match
-  // button. Hidden during ChampSelect / InProgress (cs-overlay takes
-  // over). Find Match is only enabled when localMember.isLeader is true
+  // button. Hidden during ChampSelect / InProgress (champ-select view
+  // takes over). Find Match is only enabled when localMember.isLeader is true
   // (LCU restriction); otherwise the button degrades to a status pill
   // showing "Awaiting party leader". Cancel Search appears when
   // search_state === "Searching".
