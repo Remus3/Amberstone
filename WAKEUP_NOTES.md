@@ -41,9 +41,18 @@ All 4 build chooser rows (On-Hit / Crit / Lethality / Experimental) fire `_csvAp
 - 5 new s214 cases in `tests/test_routes_pickban.py`: `TestS214CascadeAndMultiPick` covering top-N + exclude_ids + synergy ally_ids paths + parse_csv_ints. 22 pickban tests pass (was 17).
 - Wider RC suite: 1018 pass + 30 subtests. View-router: 25. Panel snapshots: 11.
 
+### s214 v2 follow-up — Brawl mode retired from champ-select (commit `85fc157`)
+Pushed `0c064c7..85fc157` immediately after the s214 living-doc sync. Operator deferred the 3-curated-variant auto-generator until after Mayhem games tonight; brawl strip was the immediate ride-along since brawl is no longer in live rotation. Net diff +44 / −135 across 5 files (1 deletion).
+- `_csvDetectMode` + `_csvDsModeFor` + `modeLabel` dict + `buildsTitle` chain stripped of brawl branches.
+- Ally / enemy renderers no longer test `mode === "brawl"`.
+- 5 CSS branches dropped (pickban hide, grid reflow, allies col, enemies col + summ + name align).
+- `flow_03d_brawl_select.json` deleted; routes_pickban.py + index.html comment strings cleaned.
+- Legacy `coaches/brawl_coach.py` + dashboard-side brawl detection in `_liveclient.py`/`_state_builder.py`/`builders.py`/`view_router_state.py` left in place as deadcode — separate cleanup pass.
+
 ### What's next
 - **Live ARAM Mayhem test** scheduled by operator post-/clear — they'll fire a real game; I'm authorized to monitor + fix inconsistencies live without permission. Watch for: build-chooser pushing correctly to LCU runes/items/spells, archetype-mismatch nudge surfacing on first non-trivial item buy, comp-aware row-3 tip rendering for ARAM mode (which uses MAYHEM role label), 3-row P&B layout collapsing cleanly to hidden via `data-cs-mode="aram"` CSS rules.
-- **Carried forward** (not blockers): pre-game lobby v3 polish parking lot from s163. SR Build Chooser variant data for non-Vayne champs is sparse — needs more curated `champion_loadouts.json` entries.
+- **After Mayhem session**: build-chooser auto-generator for the 3 curated variants per (champion, mode) using DS engine scorer weights + DDragon-tag classification. Goal: every champion ships with 3 algorithmic variants + the Experimental 4th row, not just Vayne. Then continue DS engine work (next phase TBD — Phase 5.9.21 sum-of-blocks bucket extension is the most-likely candidate based on s207's queued list).
+- **Deadcode cleanup (low priority)**: `coaches/brawl_coach.py` + brawl mode detection in dashboard/_liveclient.py / _state_builder.py / builders.py / view_router_state.py. Brawl coach was a copy of ARAM coach with mode-flag swap; removal is mechanical but spans 6 files.
 
 ---
 
