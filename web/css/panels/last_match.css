@@ -13,14 +13,14 @@
 }
 
 /* ── Hero row ────────────────────────────────────────────────────────── */
-/* s219: condensed per operator — portrait + name + KDA + W/L + grade
- * cluster on the left, with empty space spilling to the right. Was
- * `72px 1fr auto auto auto` (name col stretching pushed the badges to
- * the far right edge); changed name col to auto + added a trailing 1fr
- * spacer so the cells stay tight without overflowing on short viewports. */
+/* s219 v4: 3-region layout — left cluster | centered stats | rank panel.
+ *   72px  : portrait
+ *   auto  : name + KDA + result-pill + grade-badge (each its own col)
+ *   1fr   : stats wrapper (justify-content: center inside)
+ *   auto  : rank-compare panel (dropdown + tier averages) */
 .lm-hero {
   display: grid;
-  grid-template-columns: 72px auto auto auto auto 1fr;
+  grid-template-columns: 72px auto auto auto auto 1fr auto;
   align-items: center;
   gap: 14px;
   padding: 12px 18px 12px 15px;
@@ -94,19 +94,15 @@
   min-width: 96px;
 }
 
-/* s219 v3: inline stat cluster — CS / Gold / KP / Duration folded into
- * the hero row so the page loses an entire row of vertical real estate.
- * Each cell is label-over-value-over-sub, same shape as the old
- * .lm-stat-card but without the bordered card chrome (the hero IS the
- * card). The wrapper is the trailing 1fr cell of .lm-hero so the cluster
- * right-aligns when viewport is wide. */
+/* s219 v4: inline stat cluster — CS / Gold / KP / Duration folded into
+ * the hero row. Wrapper occupies the 1fr cell between the left-cluster
+ * and the rank-compare panel, content centered within that cell. */
 .lm-hero-stats {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   align-items: center;
-  gap: 22px;
-  padding-left: 8px;
-  margin-left: auto;
+  gap: 26px;
+  padding: 0 14px;
 }
 .lm-hero-stat {
   display: flex; flex-direction: column;
@@ -133,6 +129,78 @@
   font-size: 11px;
   color: var(--text-faint, var(--text-dim));
   font-variant-numeric: tabular-nums;
+}
+
+/* s219 v4: rank-tier comparison panel on the right end of the hero row.
+ * Dropdown selects a tier; the displayed values reflect typical
+ * per-mode averages at that tier (real per-tier data is a backend
+ * follow-up; v1 carries placeholders). Setting persists to
+ * localStorage; future Settings page will own the canonical knob. */
+.lm-hero-rank-compare {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  padding-left: 14px;
+  border-left: 1px dashed var(--border-soft);
+  min-width: 168px;
+}
+.lm-rank-compare-head {
+  display: flex; align-items: center; gap: 6px;
+}
+.lm-rank-compare-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+.lm-rank-select {
+  background: var(--surface-2, #1a1a22);
+  color: var(--text);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.lm-rank-select:hover {
+  border-color: var(--accent, #8a8cf0);
+}
+.lm-rank-select:focus-visible {
+  outline: 2px solid var(--accent, #8a8cf0);
+  outline-offset: 1px;
+}
+.lm-rank-compare-values {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+.lm-rank-compare-values .lm-rank-cell {
+  display: flex; flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+}
+.lm-rank-compare-values .lm-rank-cell-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint, var(--text-dim));
+}
+.lm-rank-compare-values .lm-rank-cell-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+.lm-rank-pending {
+  font-size: 11px;
+  color: var(--text-faint, var(--text-dim));
+  font-style: italic;
 }
 .lm-kda-text {
   font-size: 21px; font-weight: 600; font-variant-numeric: tabular-nums;
