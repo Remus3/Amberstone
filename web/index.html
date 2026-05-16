@@ -1370,6 +1370,33 @@
               <span class="lm-hero-stat-sub" id="lm-when">—</span>
             </div>
           </div>
+          <!-- s219 v4: rank-tier comparison panel. Dropdown selects a
+               rank tier (Iron through Challenger); the displayed
+               averages reflect the expected per-mode values at that
+               tier. Persistence is localStorage today; future Settings
+               page will own the canonical setting + propagate here. -->
+          <div class="lm-hero-rank-compare">
+            <div class="lm-rank-compare-head">
+              <span class="lm-rank-compare-label">vs</span>
+              <select class="lm-rank-select" id="lm-rank-select"
+                      data-tt="Pick a rank tier to compare this match against the typical expected values at that tier (Mode + Tier-averaged stats).">
+                <option value="">— off —</option>
+                <option value="iron">Iron</option>
+                <option value="bronze">Bronze</option>
+                <option value="silver">Silver</option>
+                <option value="gold">Gold</option>
+                <option value="platinum">Platinum</option>
+                <option value="emerald">Emerald</option>
+                <option value="diamond">Diamond</option>
+                <option value="master">Master</option>
+                <option value="grandmaster">Grandmaster</option>
+                <option value="challenger">Challenger</option>
+              </select>
+            </div>
+            <div class="lm-rank-compare-values" id="lm-rank-compare-values">
+              <span class="lm-rank-pending">pick a tier to compare</span>
+            </div>
+          </div>
         </div>
 
         <!-- s219: 2-up row — Team Composition Ally (left) / Enemy (right).

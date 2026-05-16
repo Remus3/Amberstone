@@ -391,7 +391,7 @@ class _Phase3Watcher:
         try:
             result = subprocess.run(
                 ["schtasks", "/Run", "/TN", task_name],
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10,
+                capture_output=True, timeout=10,
             )
             return result.returncode == 0
         except (OSError, subprocess.SubprocessError):
