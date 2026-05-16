@@ -47,7 +47,12 @@ from typing import Any, Optional
 from urllib.parse import parse_qs, urlsplit
 
 from . import ENGINE_VERSION
-from .ability_dps import compute_ability_dps, rank_items_by_ability_dps
+from .ability_dps import (
+    _BLOCK_INDEX_CONDITIONS,
+    _BLOCK_INDEX_DEFAULT_KEY,
+    compute_ability_dps,
+    rank_items_by_ability_dps,
+)
 from .beam import (
     DEFAULT_BEAM_WIDTH,
     DEFAULT_TOP_N as BEAM_DEFAULT_TOP_N,
@@ -605,7 +610,20 @@ def _parse_form_index(body: dict) -> Optional[dict[str, int]]:
     return None
 
 
-def _parse_block_index(body: dict) -> Optional[dict[str, int | list[int]]]:
+def _block_index_scalar_ok(x) -> bool:
+    """True iff ``x`` is a clean int or list[int] (bool rejected)."""
+    if isinstance(x, bool):
+        return False
+    if isinstance(x, int):
+        return True
+    return isinstance(x, list) and all(
+        isinstance(e, int) and not isinstance(e, bool) for e in x
+    )
+
+
+def _parse_block_index(
+    body: dict,
+) -> "Optional[dict[str, int | list[int] | dict[str, int | list[int]]]]":
     """Decode the optional ``block_index`` body field — JSON dict only.
 
     Phase 5.9 (s191, 2026-05-14). Per-(champion, key) damage block_index
@@ -619,11 +637,21 @@ def _parse_block_index(body: dict) -> Optional[dict[str, int | list[int]]]:
     Phase 5.9.20 (s207, 2026-05-14): values may be int OR list[int]; lists
     express sum-of-blocks (operator-commits-to-all-components). JSON
     arrays parse as Python lists; this helper preserves them.
+
+    Phase 5.9.28 (s228, 2026-05-16): values may ALSO be a conditional
+    dict ``{"default": int|list[int], "<condition>": int|list[int]}``
+    (target-state schema lift). Only well-formed conditional dicts are
+    accepted — must contain ``"default"``, every other key must be in
+    ``_BLOCK_INDEX_CONDITIONS``, every nested value must be int|list[int].
+    Malformed dicts are skipped (untrusted body path: preserve the
+    no-500 / fall-back-to-registry property — the engine's
+    ``_normalize_block_index_value`` is the hard validator for the
+    trusted on-disk registry, where a typo SHOULD raise).
     """
     raw = body.get("block_index")
     if not isinstance(raw, dict):
         return None
-    out: dict[str, int | list[int]] = {}
+    out: dict[str, int | list[int] | dict[str, int | list[int]]] = {}
     for k, v in raw.items():
         key = str(k).upper()
         if isinstance(v, bool):
@@ -635,6 +663,21 @@ def _parse_block_index(body: dict) -> Optional[dict[str, int | list[int]]]:
             isinstance(x, int) and not isinstance(x, bool) for x in v
         ):
             out[key] = list(v)
+        elif isinstance(v, dict):
+            # Conditional schema (s228). Accept only if fully well-formed;
+            # else skip (defensive — same stance as the scalar branches).
+            if _BLOCK_INDEX_DEFAULT_KEY not in v:
+                continue
+            if not all(
+                (ck == _BLOCK_INDEX_DEFAULT_KEY or ck in _BLOCK_INDEX_CONDITIONS)
+                and _block_index_scalar_ok(cv)
+                for ck, cv in v.items()
+            ):
+                continue
+            out[key] = {
+                ck: (list(cv) if isinstance(cv, list) else cv)
+                for ck, cv in v.items()
+            }
         # else: silently skip malformed entries (preserves pre-s207
         # behavior of accepting only well-formed values; matches
         # _parse_form_index / _parse_max_priority defensiveness).

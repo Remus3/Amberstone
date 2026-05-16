@@ -308,17 +308,52 @@ def reset_block_index_cache() -> None:
         _BLOCK_INDEX_CACHE = None
 
 
-def _normalize_block_index_value(v) -> int | list[int]:
-    """Coerce a JSON-loaded block_index value to int or list[int].
+# Phase 5.9.28 (s228, 2026-05-16) — conditional-target-state schema lift
+# (operator sign-off: option B, the multi-session lift; Part 1 = schema +
+# validator + resolver + flagship seeds, Part 2 = live liveclient
+# HP%/CC plumbing). A block_index value may now ALSO be a conditional
+# dict mapping a target-state condition → int|list[int]. ``"default"`` is
+# the REQUIRED operator-commits / canonical-amped branch (the ranking
+# assumption — same model s191 established for "assume the amped
+# condition is met"). Every other key is a positive live-target-state
+# descriptor selecting a *downgrade* (never a more optimistic block than
+# ``"default"``). Part 1 (s228) resolves to ``"default"``
+# unconditionally; live predicate evaluation against real liveclient
+# target HP%/CC is Part 2. The vocabulary is CLOSED (mirrors
+# ``_BLOCK_STRATEGIES``): an unknown condition key is a registry typo and
+# MUST fail loudly here, never silently no-op.
+_BLOCK_INDEX_DEFAULT_KEY = "default"
+_BLOCK_INDEX_CONDITIONS: frozenset[str] = frozenset({
+    "target_full_hp",   # live target above the execute/low-HP threshold →
+                         # pick the non-execute block (Kindred E 5% vs 7.5%
+                         # missing-HP; execute-class abilities generally)
+    "target_no_cc",     # operator's setup CC/charm/sleep NOT applied →
+                         # pick the un-amped block (Zoe E sleep double,
+                         # Evelynn Q charm triple-spike total)
+})
 
-    Phase 5.9.20 (s207): registry values may be int (pre-s207 schema —
-    single block per key) or list[int] (sum-of-blocks — Camille W /
-    Malphite W / Heimerdinger W / Katarina R seed entries). Validates
-    shape; raises ValueError on anything else.
+
+def _normalize_block_index_value(
+    v,
+) -> "int | list[int] | dict[str, int | list[int]]":
+    """Coerce a JSON-loaded block_index value to int, list[int], or a
+    conditional dict.
+
+    Phase 5.9.20 (s207): int (single block) or list[int] (sum-of-blocks
+    — Camille W / Malphite W / Heimerdinger W / Katarina R).
+    Phase 5.9.28 (s228): also a conditional ``dict`` mapping a
+    target-state condition → int|list[int]. The dict MUST contain a
+    ``"default"`` key; every other key MUST be in
+    ``_BLOCK_INDEX_CONDITIONS``; nested values are themselves normalized
+    to int|list[int] (one level only — no nested conditional dicts).
+    Validates shape; raises ValueError on anything else.
     """
     if isinstance(v, bool):
         # Guard: bool is an int subtype; reject it as a registry value.
-        raise ValueError(f"block_index value must be int or list[int], got bool {v!r}")
+        raise ValueError(
+            f"block_index value must be int, list[int], or conditional "
+            f"dict, got bool {v!r}"
+        )
     if isinstance(v, int):
         return v
     if isinstance(v, list):
@@ -330,10 +365,41 @@ def _normalize_block_index_value(v) -> int | list[int]:
                 )
             out.append(x)
         return out
-    raise ValueError(f"block_index value must be int or list[int], got {v!r}")
+    if isinstance(v, dict):
+        if _BLOCK_INDEX_DEFAULT_KEY not in v:
+            raise ValueError(
+                f"conditional block_index must contain a "
+                f"{_BLOCK_INDEX_DEFAULT_KEY!r} key, got {v!r}"
+            )
+        cond_out: dict[str, int | list[int]] = {}
+        for ck, cv in v.items():
+            cks = str(ck)
+            if (
+                cks != _BLOCK_INDEX_DEFAULT_KEY
+                and cks not in _BLOCK_INDEX_CONDITIONS
+            ):
+                raise ValueError(
+                    f"unknown block_index condition {cks!r}; valid: "
+                    f"{sorted(_BLOCK_INDEX_CONDITIONS)} "
+                    f"(plus required {_BLOCK_INDEX_DEFAULT_KEY!r})"
+                )
+            nv = _normalize_block_index_value(cv)
+            if isinstance(nv, dict):
+                raise ValueError(
+                    f"nested conditional block_index not allowed: "
+                    f"{cks!r} -> {cv!r}"
+                )
+            cond_out[cks] = nv
+        return cond_out
+    raise ValueError(
+        f"block_index value must be int, list[int], or conditional "
+        f"dict, got {v!r}"
+    )
 
 
-def get_block_index_for(champion_id: str) -> tuple[dict[str, int | list[int]], str]:
+def get_block_index_for(
+    champion_id: str,
+) -> "tuple[dict[str, int | list[int] | dict[str, int | list[int]]], str]":
     """Return ``(block_index_map, source)`` for ``champion_id``.
 
     Source is ``"champion"`` if the registry has an entry, ``"default"``
@@ -360,8 +426,8 @@ def get_block_index_for(champion_id: str) -> tuple[dict[str, int | list[int]], s
 
 def _resolve_block_index_overrides(
     champion_id: str,
-    explicit: Optional[dict[str, int | list[int]]],
-) -> tuple[dict[str, int | list[int]], str]:
+    explicit: "Optional[dict[str, int | list[int] | dict[str, int | list[int]]]]",
+) -> "tuple[dict[str, int | list[int] | dict[str, int | list[int]]], str]":
     """Resolve block_index_overrides from caller input + registry.
 
     Registry provides the per-(champion, key) default; caller's dict
@@ -580,7 +646,7 @@ def _select_blocks(
     rank: int,
     ctx: AbilityContext,
     strategy: str,
-    block_index: int | Sequence[int] = 0,
+    block_index: "int | Sequence[int] | dict[str, int | Sequence[int]]" = 0,
 ) -> float:
     """Combine damage blocks per the configured strategy.
 
@@ -600,6 +666,15 @@ def _select_blocks(
     + first-AA bonus, Heimerdinger W initial + 4 subsequent rockets,
     Katarina R full physical + magic dagger volleys). An empty sequence
     returns 0.0. Single-int callers retain identical pre-s207 behavior.
+
+    Phase 5.9.28 (s228, 2026-05-16): ``block_index`` may now also be a
+    conditional ``dict`` (target-state schema lift, operator-signed-off
+    option B). Part 1 resolves it to its ``"default"`` branch
+    unconditionally — the operator-commits/canonical block, byte-identical
+    to an equivalent unconditional int/list entry. Live target-state
+    predicate evaluation (selecting a downgrade branch from real
+    liveclient HP%/CC) is Part 2 (B-2 plumbing); the int/list paths stay
+    byte-identical to pre-s228.
     """
     damage_blocks = tuple(b for b in blocks if b.attribute_kind == "damage")
     if not damage_blocks:
@@ -607,10 +682,20 @@ def _select_blocks(
     if strategy == "first":
         return _evaluate_block(damage_blocks[0], rank, ctx)
     if strategy == "indexed":
-        if isinstance(block_index, int):
-            indices: tuple[int, ...] = (block_index,)
+        bi = block_index
+        if isinstance(bi, dict):
+            # Phase 5.9.28 (s228): conditional schema. Part 1 resolves to
+            # the operator-commits / canonical "default" branch
+            # unconditionally — live target-state predicate evaluation
+            # (Part 2 / B-2) selects downgrade branches from real
+            # liveclient HP%/CC. ``"default"`` is guaranteed present by
+            # ``_normalize_block_index_value``; the ``.get(..., 0)``
+            # fallback only guards a caller dict that bypassed it.
+            bi = bi.get(_BLOCK_INDEX_DEFAULT_KEY, 0)
+        if isinstance(bi, int):
+            indices: tuple[int, ...] = (bi,)
         else:
-            indices = tuple(int(x) for x in block_index)
+            indices = tuple(int(x) for x in bi)
         if not indices:
             return 0.0
         total = 0.0
@@ -771,7 +856,7 @@ class AbilityDpsResult:
     form_index_source: str = "default"              # "override" | "champion" | "default"
     form_index_resolved: dict[str, int] = field(default_factory=dict)
     block_index_source: str = "default"             # "override" | "champion" | "default"
-    block_index_resolved: dict[str, int] = field(default_factory=dict)
+    block_index_resolved: "dict[str, int | list[int] | dict[str, int | list[int]]]" = field(default_factory=dict)
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -899,7 +984,7 @@ def compute_ability_dps(
     max_priority: Optional[Sequence[str]] = None,
     block_strategy: str = "first",
     form_index_overrides: Optional[dict[str, int]] = None,
-    block_index_overrides: Optional[dict[str, int | list[int]]] = None,
+    block_index_overrides: "Optional[dict[str, int | list[int] | dict[str, int | list[int]]]]" = None,
 ) -> AbilityDpsResult:
     """Compute total ability DPS for the resolved build.
 
@@ -1264,7 +1349,7 @@ def _empty_result(
     form_index_source: str = "default",
     form_index_resolved: Optional[dict[str, int]] = None,
     block_index_source: str = "default",
-    block_index_resolved: Optional[dict[str, int]] = None,
+    block_index_resolved: "Optional[dict[str, int | list[int] | dict[str, int | list[int]]]]" = None,
     champion_name: str | None = None,
     note: str = "",
 ) -> AbilityDpsResult:
@@ -1357,7 +1442,7 @@ class AbilityDpsRankResult:
     form_index_source: str                # "override" | "champion" | "default"
     form_index_resolved: dict[str, int]   # merged map actually used
     block_index_source: str               # "override" | "champion" | "default"
-    block_index_resolved: dict[str, int]  # merged (champion, key) → block_index map
+    block_index_resolved: "dict[str, int | list[int] | dict[str, int | list[int]]]"  # merged (champion, key) → block_index map
     block_strategy: str
     mode_multiplier: float                # aramDamageDealt; 1.0 outside ARAM
     budget: Optional[int]
@@ -1468,7 +1553,7 @@ def rank_items_by_ability_dps(
     max_priority: Optional[Sequence[str]] = None,
     block_strategy: str = "first",
     form_index_overrides: Optional[dict[str, int]] = None,
-    block_index_overrides: Optional[dict[str, int | list[int]]] = None,
+    block_index_overrides: "Optional[dict[str, int | list[int] | dict[str, int | list[int]]]]" = None,
     filter_shared_uniques: bool = True,
 ) -> AbilityDpsRankResult:
     """Rank items by total-ability-DPS gain when added to ``current_item_ids``.

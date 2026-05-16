@@ -113,7 +113,12 @@ class BackwardCompatS225Tests(unittest.TestCase):
 
     def test_s224_entries_unchanged(self) -> None:
         self.assertEqual(get_block_index_for("Belveth")[0], {"E": 2, "R": 1})
-        self.assertEqual(get_block_index_for("Kindred")[0].get("E"), 1)
+        # s228 Phase 5.9.28 converted Kindred E to a conditional dict
+        # (default=1 = the s223 execute block; Part-1 resolves to default).
+        self.assertEqual(
+            get_block_index_for("Kindred")[0].get("E"),
+            {"default": 1, "target_full_hp": 0},
+        )
 
     def test_swept_keys_deliberately_not_added(self) -> None:
         """s225's shortlist flagged Fiddlesticks Q / Fizz W / LeBlanc R
@@ -147,7 +152,7 @@ class BackwardCompatS225Tests(unittest.TestCase):
 class EngineVersionS225Tests(unittest.TestCase):
     def test_engine_version(self) -> None:
         from agents import daemon_slayer
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "0.99.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.0.0")
 
 
 if __name__ == "__main__":

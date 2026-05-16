@@ -4538,3 +4538,27 @@ The small-lift entries (Vladimir W +1.8%, Sion R +4.8%, Irelia W +6%) are utilit
 ## Architectural pattern lock-in (continued from s197)
 
 Fourteenth consecutive override / proc-shape modeling improvement on the same template (s185 max_priority / s186 combo / s187 form / s188 per-AA on-hit / s189 Spellblade / s190 Lightshield / s191 block_index / s192 token-variant / s193 channels / s194 calibration / s195 multi-hit/charge/recast / s196 extended multi-hit/condition-amp / s197 assassin/fighter resource + utility / s198 bruiser/jungler/utility/marksman broadening). Seventh pure-data batch in the channel/total/charge family. Pattern remains rock-solid for 10-25 entry batches; the rate-limiting step continues to be operator triage of skip-list growth (14 skips this batch — manageable). Next genuinely-blocking lifts are token-variant for multi-stage Q chains (Aatrox Q1/Q2/Q3) and form-swap (Hwei per-form, KSante All Out, Ambessa) — both have 2+ candidates accumulated and warrant schema design. Conditional target-state schema lift now has 5+ candidates queued (Zoe sleep, Lux Illumination, DrMundo E missing-HP, Evelynn Q charm, Vayne E wall-stun) — ready when operator commits.
+
+---
+
+# s225 wrap — 2026-05-16 (DS Phase 5.9.25: post-parser-fix block_index sweep — Varus W)
+
+**Operator instruction:** same self-paced loop ("continue ds work in parallel for the next hour self continue — maximum effort"). **Iteration 3** (same session-day; s223=it1, s224=it2).
+
+## What happened — closed the iteration-2 Varus-W follow-up
+
+s223+s224's parser fixes re-parsed %HP onto many blocks. Re-ran `tools/ds_unmapped_key_prefilter.py` over the POST-s224 snapshot — champions whose candidate blocks evaluated ~0 pre-migration now show real ratios. Shortlist: 6 (Corki R / DrMundo Q = documented skips; Fizz W = confirmed skip block-0-is-"Total"; LeBlanc R = deferred s197 data-gap; Fiddlesticks Q = no entry needed; **Varus W = the one clean ADD**).
+
+## Shipped (committing now)
+
+**`Varus: {W: 2}`** — "Blighted Quiver" block 2 `Bonus Magic Damage at Max Stacks` proven **exactly 3× block 1's per-Blight-stack** value at every rank (the 3-stack detonation = Varus's standard combo: W-passive stack via AAs/Q then Q/R-detonate). Engine defaulted to block 0 (6-30 + 35% AP passive on-hit) → scored W at ~7% of reality; **live A/B 18→240 raw (13.3×)**. Pattern D resource-state (operator fully self-controls stacking; precedent Twitch E 6-stack / Renekton full Fury). Chose block 2 over block 4 (1.5× block 2) because block 4 entangles Varus R amp — W scores R-independent. Varus → `{Q:1, W:2}`. ENGINE 0.96→0.97; 6 pin bumps + `test_block_index_overrides` Varus shape-pin + `test_post_parser_sweep_s225.py` (9 tests, incl. the 3×-mechanic proof). DS 2104→**2113**; wider RC **1107**; DS restarted → 0.97.0.
+
+## Don't-redo / blockers
+
+- **Fiddlesticks Q is correctly scored — do NOT add an entry.** s224's current-HP parse fix already made its engine-default block 0 (% current HP max'd with the Minimum floor) the right single-Q value. Its "Increased" block (2×) is a fear-sequence target-state condition → conditional-schema-lift bucket, not a clean unconditional commit.
+- **Both block_index scan spaces are now exhausted** (3 iterations): uncovered champions (s223, 0 found) + unmapped keys on covered champs (s224 Bel'Veth R, s225 Varus W — both follow-ups now closed). Don't re-run these scans expecting yield. The conditional-target-state schema lift is the next frontier but is architectural — flag for operator, don't ship autonomously.
+- The two migration scripts + 2 scanners are durable artifacts; reuse on patch re-extracts, don't refactor old ones.
+
+## NEXT (self-continuing loop)
+
+Block_index pure-data work is done. Iteration 4 options: (a) audit the **form_index / combo_sequence / max_priority** registries for the same class of parser/coverage gaps the block_index sweeps found (these registries got far less scrutiny than block_index's 25+ batches); (b) DS calibration if rewind data has refreshed; (c) flag the conditional-target-state schema lift for operator. s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
