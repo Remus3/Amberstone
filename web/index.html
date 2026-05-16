@@ -15,16 +15,6 @@
      what state the LCU is actually in. The view-router overwrites
      data-view to the correct value once the first envelope arrives. -->
 <body data-view="home">
-  <div id="sim-banner" class="sim-banner hidden">
-    <span class="sim-tag">DEV PREVIEW</span>
-    <span id="sim-label" class="sim-label">—</span>
-    <label class="sim-switcher">
-      <span>fixture:</span>
-      <select id="sim-select"></select>
-    </label>
-    <span class="sim-hints" aria-hidden="true">← → or 1–9 · H help</span>
-    <a id="sim-exit" class="sim-exit" href="/">exit preview</a>
-  </div>
   <header>
     <!-- Row 1: identity + instantaneous game state (champion, level, ult,
          zone, clock, KDA, CS, gold, status/heartbeat).
@@ -55,8 +45,6 @@
         <div class="view-menu-divider"></div>
         <button type="button" class="view-menu-item" data-view="user-builds" role="menuitem">User Builds</button>
         <button type="button" class="view-menu-item" data-view="settings"    role="menuitem">Settings</button>
-        <div class="view-menu-divider"></div>
-        <button type="button" class="view-menu-item view-menu-dev" data-view="dev" role="menuitem">⚙ Dev / Sim Preview</button>
         <div class="view-menu-divider"></div>
         <button type="button" class="view-menu-item view-menu-clear" data-view="auto" role="menuitem">↻ Auto (clear manual)</button>
       </div>
@@ -201,7 +189,7 @@
         <symbol id="hi-hex-play" viewBox="0 0 24 24">
           <path fill="currentColor" d="M12 1.5 2.5 7v10L12 22.5 21.5 17V7L12 1.5Zm0 2.3 7.5 4.3v7.8L12 20.2 4.5 15.9V8.1L12 3.8Zm-2.5 4.7v7l6-3.5-6-3.5Z"/>
         </symbol>
-        <!-- Loadouts: Hextech crystal — cut-gem silhouette with internal
+        <!-- Builds: Hextech crystal — cut-gem silhouette with internal
              facet lines. Reads as the rune-page / hextech crafting gem
              icon. Single bold shape so it survives at 28px. -->
         <symbol id="hi-crystal" viewBox="0 0 24 24">
@@ -213,22 +201,63 @@
         <symbol id="hi-gear-clean" viewBox="0 0 24 24">
           <path fill="currentColor" d="m19.4 13 2-1.7-2-3.5-2.4.7a7.5 7.5 0 0 0-1.6-.9l-.4-2.6h-4l-.4 2.6a7.5 7.5 0 0 0-1.6.9l-2.4-.7-2 3.5L4.6 13a7.5 7.5 0 0 0 0 2l-2 1.7 2 3.5L7 19.5a7.5 7.5 0 0 0 1.6.9l.4 2.6h4l.4-2.6a7.5 7.5 0 0 0 1.6-.9l2.4.7 2-3.5L19.4 15a7.5 7.5 0 0 0 0-2ZM12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5Z"/>
         </symbol>
+        <!-- Session: clock face with hands. Reads as "current session /
+             play-time window". -->
+        <symbol id="hi-clock" viewBox="0 0 24 24">
+          <path fill="currentColor" d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8Zm1-13h-2v6l5 3 1-1.7-4-2.3Z"/>
+        </symbol>
+        <!-- History: stacked horizontal lines representing a list / log. -->
+        <symbol id="hi-list" viewBox="0 0 24 24">
+          <path fill="currentColor" d="M3 5h18v2H3V5Zm0 6h18v2H3v-2Zm0 6h18v2H3v-2Z"/>
+        </symbol>
+        <!-- Replay: rewind-arrow loop with implicit play triangle. -->
+        <symbol id="hi-replay" viewBox="0 0 24 24">
+          <path fill="currentColor" d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7Z"/>
+        </symbol>
       </defs>
     </svg>
 
-    <!-- Quick-action tiles row (V2 suggestion #3). Each tile is a
-         single-click shortcut to a manual view; the JS click handler
-         calls applyView(target) which the dropdown menu also uses. -->
+    <!-- Quick-action tiles row (s218): 7 equal-width tiles. Each tile is
+         a single-click shortcut to a manual view; the JS click handler
+         (main.js:2346) calls applyView(target) which the dropdown menu
+         also uses.
+         Find Match (data-flow="find-match-launch") — operator wants this
+         to fire the change-lobby-mode picker from the lobby view (forced
+         choice → posts lobby type to the game client → routes UI to the
+         Pre-Game Lobby page). For now it routes to "lobby" and the
+         picker is invoked inside the lobby view. Follow-up wiring: lift
+         the picker into a modal that can be triggered from Home directly. -->
     <div class="home-actions">
+      <button type="button" class="home-action-tile" data-target="lobby"
+              data-flow="find-match-launch">
+        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-hex-play"/></svg>
+        <span class="home-action-label">Find Match</span>
+        <span class="home-action-sub">queue + party</span>
+      </button>
       <button type="button" class="home-action-tile" data-target="last-match">
         <svg class="home-action-icon" aria-hidden="true"><use href="#hi-swords"/></svg>
         <span class="home-action-label">Last Match</span>
         <span class="home-action-sub">post-game review</span>
       </button>
-      <button type="button" class="home-action-tile" data-target="lobby">
-        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-hex-play"/></svg>
-        <span class="home-action-label">Find Match</span>
-        <span class="home-action-sub">queue + party</span>
+      <button type="button" class="home-action-tile" data-target="session">
+        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-clock"/></svg>
+        <span class="home-action-label">Session</span>
+        <span class="home-action-sub">today's play window</span>
+      </button>
+      <button type="button" class="home-action-tile" data-target="history">
+        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-list"/></svg>
+        <span class="home-action-label">History</span>
+        <span class="home-action-sub">match log</span>
+      </button>
+      <button type="button" class="home-action-tile" data-target="replay">
+        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-replay"/></svg>
+        <span class="home-action-label">Replay</span>
+        <span class="home-action-sub">scrub past games</span>
+      </button>
+      <button type="button" class="home-action-tile" data-target="user-builds">
+        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-crystal"/></svg>
+        <span class="home-action-label">Builds</span>
+        <span class="home-action-sub">SR draft theatre</span>
       </button>
       <button type="button" class="home-action-tile" data-target="settings">
         <svg class="home-action-icon" aria-hidden="true"><use href="#hi-gear-clean"/></svg>
@@ -237,33 +266,79 @@
       </button>
     </div>
 
-    <!-- Combined row (V3 redesign 2026-04-30): Tonight's Pick (left)
-         + Trends sparkline trio (right) share one row to save vertical
-         space. Last Build sits below the row, hidden when no data. -->
+    <!-- s218 v4: Home-unique Find Match picker. Mirrors the queue
+         options from the lobby view's #lv-mode-menu so the operator
+         can pick a queue from Home WITHOUT being routed to the lobby
+         view first. On pick: fires change_queue_type, then routes to
+         Pre-Game Lobby. -->
+    <div id="home-find-match-picker"
+         class="lq-mode-menu home-find-match-picker hidden"
+         role="menu" aria-hidden="true">
+      <div class="lq-mode-column">
+        <div class="lq-mode-section">SR</div>
+        <button type="button" class="lq-mode-item" data-hfm-qid="0" data-hfm-special="practice">Practice Tool</button>
+        <button type="button" class="lq-mode-item" data-hfm-qid="480">Swiftplay</button>
+        <button type="button" class="lq-mode-item" data-hfm-qid="400">Normal Draft</button>
+        <button type="button" class="lq-mode-item" data-hfm-qid="420">Ranked Solo/Duo</button>
+        <button type="button" class="lq-mode-item" data-hfm-qid="440">Ranked Flex</button>
+      </div>
+      <div class="lq-mode-column">
+        <div class="lq-mode-section">ARAM</div>
+        <button type="button" class="lq-mode-item" data-hfm-qid="920">ARAM Mayhem</button>
+        <button type="button" class="lq-mode-item" data-hfm-qid="450">ARAM Classic</button>
+      </div>
+      <div class="lq-mode-column">
+        <div class="lq-mode-section">Rotating</div>
+        <button type="button" class="lq-mode-item" data-hfm-qid="1700">Arena</button>
+      </div>
+      <div class="lq-mode-column">
+        <div class="lq-mode-section">TFT</div>
+        <button type="button" class="lq-mode-item" data-hfm-qid="1090">Normal</button>
+        <button type="button" class="lq-mode-item" data-hfm-qid="1100">Ranked</button>
+        <button type="button" class="lq-mode-item" data-hfm-qid="1160">Double-Up</button>
+      </div>
+    </div>
+
+    <!-- s218: Tonight's Pick re-laid as 3 horizontal sections.
+         Section 1: champion intro (icon + name + meta).
+         Section 2: The Good / The Bad / The Ugly rows. PLACEHOLDER copy
+           pending wire-up to Last Match analysis output.
+           TODO(s218-dummy-data): replace "—" with real strings when
+           the post-match analyzer provides them. Tagged for removal on
+           "I am done with Home page" cleanup.
+         Section 3: Streak + Open Advisories as sub-header rows
+           (replacing the prior pip-style icon buttons). -->
     <div class="home-combo" id="home-combo" hidden>
       <div class="home-coach-pick" id="home-coach-pick" hidden>
         <div class="home-coach-pick-head">TONIGHT'S PICK</div>
         <div class="home-coach-pick-body">
-          <img class="home-coach-pick-img" id="home-coach-pick-img" alt="" />
-          <div class="home-coach-pick-meta">
-            <span class="home-coach-pick-champ" id="home-coach-pick-champ">—</span>
-            <span class="home-coach-pick-reason" id="home-coach-pick-reason">—</span>
+          <div class="home-pick-section home-pick-section-1">
+            <img class="home-coach-pick-img" id="home-coach-pick-img" alt="" />
+            <div class="home-coach-pick-meta">
+              <span class="home-coach-pick-champ" id="home-coach-pick-champ">—</span>
+              <span class="home-coach-pick-reason" id="home-coach-pick-reason">—</span>
+            </div>
           </div>
-          <!-- Advisory + digest buttons (V3 redesign 2026-04-30): moved
-               from a separate .home-alerts panel into here as stacked
-               icon buttons. IDs match the prior alerts-row IDs so the
-               existing _homeWireStartup click handlers keep working. -->
-          <div class="home-coach-pick-actions">
-            <button type="button" class="home-pick-btn" id="home-alerts-advisory"
-                    title="Open advisories" aria-label="Open advisories">
-              <span class="home-pick-btn-icon">!</span>
-              <span class="home-pick-btn-badge" id="home-alerts-advisory-val">0</span>
-            </button>
-            <button type="button" class="home-pick-btn" id="home-alerts-digest"
-                    title="Open cross-session digest" aria-label="Open cross-session digest">
-              <span class="home-pick-btn-icon">≡</span>
-              <span class="home-pick-btn-badge" id="home-alerts-digest-val">—</span>
-            </button>
+          <div class="home-pick-section home-pick-section-2"
+               data-dummy-data="tonights-pick-tips">
+            <div class="home-pick-tip-row">
+              <span class="home-pick-tip-label">The Good</span>
+              <span class="home-pick-tip-value" id="home-pick-good">—</span>
+            </div>
+            <div class="home-pick-tip-row">
+              <span class="home-pick-tip-label">The Bad</span>
+              <span class="home-pick-tip-value" id="home-pick-bad">—</span>
+            </div>
+            <div class="home-pick-tip-row">
+              <span class="home-pick-tip-label">The Ugly</span>
+              <span class="home-pick-tip-value" id="home-pick-ugly">—</span>
+            </div>
+          </div>
+          <div class="home-pick-section home-pick-section-3">
+            <span class="home-pick-meta-label">Streak</span>
+            <span class="home-pick-meta-value" id="home-pick-streak-val">—</span>
+            <span class="home-pick-meta-label">Advisories</span>
+            <span class="home-pick-meta-value" id="home-pick-advisories-val">—</span>
           </div>
         </div>
       </div>
@@ -1266,20 +1341,6 @@
       </div>
     </section>
 
-    <section id="view-dev" class="view-section" hidden>
-      <div class="view-section-head">
-        <h2>DEV / SIM PREVIEW</h2>
-        <button type="button" class="view-section-btn" id="dev-refresh">Refresh</button>
-      </div>
-      <div class="view-section-body">
-        <div class="diag-grid">
-          <div class="diag-card diag-card-wide">
-            <div class="diag-card-head">SIM FIXTURES <span class="diag-sub" id="dev-fixture-count"></span></div>
-            <div id="dev-fixtures-body"><div class="home-empty">loading…</div></div>
-          </div>
-        </div>
-      </div>
-    </section>
   </div>
 
   <div id="activity-strip" class="activity-strip">
@@ -1394,7 +1455,6 @@
       .then(r => r.ok ? r.text() : "")
       .then(t => { if (t) document.getElementById("svg-sprite-host").innerHTML = t; });
   </script>
-  <script src="/js/sim.js"></script>
   <script type="module" src="/js/main.js?v=2026051211"></script>
 </body>
 </html>

@@ -71,7 +71,7 @@ body[data-phase="late"]  .phase-seg.phase-late { opacity: 1; }
 .minimap-body::-webkit-scrollbar { width: 6px; }
 .minimap-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 .minimap-state {
-  font-size: 16px;
+  font-size: 17px;
   color: var(--text-dim);
   padding: 4px 12px;
   background: var(--surface-alt);
@@ -120,7 +120,7 @@ body[data-phase="late"]  .phase-seg.phase-late { opacity: 1; }
   margin-left: 6px;
   color: var(--text-faint);
   font-weight: 500;
-  font-size: 13px;
+  font-size: 14px;
   letter-spacing: 0.04em;
 }
 .minimap-grid {
@@ -158,14 +158,14 @@ body[data-phase="late"]  .phase-seg.phase-late { opacity: 1; }
 }
 .gold-diff-label {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.06em;
   color: var(--text-faint);
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
-.gold-diff-label #gold-diff-val.gd-ahead  { color: var(--good); font-weight: 900; font-size: 14px; }
-.gold-diff-label #gold-diff-val.gd-behind { color: var(--bad);  font-weight: 900; font-size: 14px; }
+.gold-diff-label #gold-diff-val.gd-ahead  { color: var(--good); font-weight: 900; font-size: 15px; }
+.gold-diff-label #gold-diff-val.gd-behind { color: var(--bad);  font-weight: 900; font-size: 15px; }
 
 .mm-chips {
   display: flex;
@@ -180,7 +180,7 @@ body[data-phase="late"]  .phase-seg.phase-late { opacity: 1; }
   padding: 5px 12px;
   border-radius: 999px;
   background: var(--surface-alt);
-  font-size: 14px;
+  font-size: 15px;
   letter-spacing: 0.04em;
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
@@ -243,7 +243,7 @@ body[data-phase="late"]  .phase-seg.phase-late { opacity: 1; }
   margin-top: 6px;
   padding: 4px 10px;
   font-family: "SF Mono", Consolas, monospace;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-faint);
   background: var(--surface-alt);
   border-radius: var(--radius-sm);
@@ -298,7 +298,7 @@ body[data-mode="brawl"] #mm-img { image-rendering: auto; }
 .minimap-img-caption {
   display: block;
   margin-top: 8px;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text-faint);
   text-align: center;
   letter-spacing: 0.08em;

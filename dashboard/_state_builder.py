@@ -1,5 +1,5 @@
 # arch: builds /api/state payload | section=dashboard | frozen=no
-"""Dashboard state-shape builder + sim-scenario loader.
+"""Dashboard state-shape builder.
 
 Tier 2 helper-shake (2026-05-01): extracted from web_dashboard.py.
 
@@ -8,10 +8,6 @@ the active coaching artifact based on `ops/runtime/health.json`, overlays
 fresh Live Client API fields on top so the dashboard placeholders
 (game_time, kda, level, gold, hp, mana, cs) populate immediately, and
 returns the merged dict the dashboard polls at 500ms.
-
-`sim_states()` lazy-loads `data/sim_states.json` once into a module-level
-cache. The sim scenarios feed the `/api/sim-state` route used by the
-dashboard's preview-mode scenario picker.
 
 `MODE_TO_FILE` is the public mapping consumed by `build_state()` and
 exposed for any caller that wants to know which artifact corresponds to
@@ -254,12 +250,3 @@ def build_state() -> dict:
     }
 
 
-_SIM_STATES_PATH: Path = APP_DIR / "data" / "sim_states.json"
-_SIM_STATES_CACHE: dict | None = None
-
-
-def sim_states() -> dict:
-    global _SIM_STATES_CACHE
-    if _SIM_STATES_CACHE is None:
-        _SIM_STATES_CACHE = json.loads(_SIM_STATES_PATH.read_text(encoding="utf-8"))
-    return _SIM_STATES_CACHE

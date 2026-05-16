@@ -1,7 +1,7 @@
 /* ───── Adaptation panel — round 44: no-scroll, glanceable ────── */
 .adapt-section-head {
   margin-top: 10px;
-  font-size: 14px;
+  font-size: 15px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -11,11 +11,11 @@
 }
 #adapt-counters {
   margin-top: 5px;
-  font-size: 16px;
+  font-size: 17px;
   line-height: 1.35;
   white-space: pre-wrap;
 }
-#adapt-items { font-size: 16px; line-height: 1.35; }
+#adapt-items { font-size: 17px; line-height: 1.35; }
 /* Cap visible counter-line rows in each section so long lists
  * don't push the KDA streaks + footer out of the panel. Top-N
  * carry the most signal; extras are clipped. */
@@ -42,7 +42,7 @@
 #adapt-streaks {
   display: flex; flex-direction: column; gap: 2px;
   margin-bottom: 5px;
-  font-size: 16px;
+  font-size: 17px;
   letter-spacing: 0.01em;
 }
 .streak-row {
@@ -61,7 +61,7 @@
   margin-top: 8px;
   padding-top: 6px;
   border-top: 1px solid var(--border-soft);
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-dim);
   letter-spacing: 0.04em;
   display: flex;
@@ -92,7 +92,7 @@
   box-shadow: var(--shadow-card-soft);
 }
 .input-prompt {
-  font-size: 20px;
+  font-size: 21px;
   color: var(--info);
   font-weight: 900;
 }
@@ -103,7 +103,7 @@
   color: var(--text);
   padding: 12px 6px;
   font-family: inherit;
-  font-size: 19px; font-weight: 400;
+  font-size: 20px; font-weight: 400;
   outline: none;
 }
 #input-text::placeholder     { color: var(--text-faint); }
@@ -111,7 +111,7 @@
   background: transparent;
   border: none;
   color: var(--text-faint);
-  font-size: 22px;
+  font-size: 23px;
   line-height: 1;
   width: 32px; height: 32px;
   border-radius: 50%;
@@ -129,7 +129,7 @@
   border-radius: 999px;
   padding: 11px 26px;
   font-family: inherit;
-  font-size: 15px; font-weight: 900; letter-spacing: 0.12em;
+  font-size: 16px; font-weight: 900; letter-spacing: 0.12em;
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -137,7 +137,7 @@
 #input-send:disabled { opacity: 0.4; cursor: wait; }
 
 .warm-indicator {
-  font-size: 23px;
+  font-size: 24px;
   line-height: 1;
   color: var(--bad);
   width: 20px;
@@ -155,7 +155,7 @@
 .input-reply.hidden { display: none; }
 .reply-head {
   display: flex; align-items: center; gap: 12px;
-  font-size: 12px; letter-spacing: 0.08em;
+  font-size: 13px; letter-spacing: 0.08em;
   font-weight: 700;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border-soft);
@@ -171,18 +171,18 @@
   color: var(--text-dim);
   width: 30px; height: 30px;
   font-family: inherit;
-  font-size: 16px; cursor: pointer;
+  font-size: 17px; cursor: pointer;
 }
 .reply-dismiss:hover { background: var(--bad-soft); color: var(--bad); }
 .reply-body {
-  font-size: 17px;
+  font-size: 18px;
   color: var(--text);
   line-height: 1.4;
   white-space: pre-wrap; word-break: break-word;
 }
 .reply-filed { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
 .filed-chip {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--gold);
   background: var(--gold-soft);
   border-radius: 999px;
@@ -203,7 +203,7 @@
 .input-history.hidden { display: none; }
 .history-head {
   display: flex; align-items: center; justify-content: space-between;
-  font-size: 12px; letter-spacing: 0.14em;
+  font-size: 13px; letter-spacing: 0.14em;
   color: var(--text-dim);
   padding-bottom: 5px;
   border-bottom: 1px dashed var(--border-soft);
@@ -216,21 +216,21 @@
 }
 .history-turn:last-child { border-bottom: none; }
 .turn-user {
-  font-size: 15px;
+  font-size: 16px;
   color: var(--info);
   margin-bottom: 4px;
   word-break: break-word;
 }
 .turn-user::before { content: "› "; opacity: 0.6; }
 .turn-reply {
-  font-size: 15px;
+  font-size: 16px;
   color: var(--text);
   white-space: pre-wrap; word-break: break-word;
   line-height: 1.35;
 }
 .turn-meta {
   margin-top: 4px;
-  font-size: 11px; letter-spacing: 0.08em;
+  font-size: 12px; letter-spacing: 0.08em;
   color: var(--text-faint);
 }
 .turn-meta .turn-chip {
@@ -255,7 +255,7 @@
   overflow: auto;
 }
 .ui-proposal-head {
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.05em;
   color: var(--info);
   margin-bottom: 4px;
@@ -263,7 +263,7 @@
 }
 .ui-proposal-snippet {
   font-family: "SF Mono", Consolas, "Courier New", monospace;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
@@ -271,7 +271,7 @@
 }
 .ui-proposal-status {
   margin-top: 6px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--info);
   letter-spacing: 0.04em;
 }
@@ -305,7 +305,7 @@
 }
 .task-modal-head {
   display: flex; align-items: center; justify-content: space-between;
-  font-size: 15px; letter-spacing: 0.14em;
+  font-size: 16px; letter-spacing: 0.14em;
   padding-bottom: 10px;
   border-bottom: 1px dashed var(--border);
   margin-bottom: 16px;
@@ -317,14 +317,14 @@
   color: var(--text-dim);
   width: 36px; height: 36px;
   font-family: inherit;
-  font-size: 16px; cursor: pointer;
+  font-size: 17px; cursor: pointer;
 }
 #task-modal-close:hover { background: var(--bad-soft); color: var(--bad); }
 .task-modal-kv .kv { grid-template-columns: 140px 1fr; }
 .task-modal-kv .kv span:first-child { color: var(--text-faint); }
 .task-modal-kv .kv span:last-child  {
   font-family: "SF Mono", Consolas, "Courier New", monospace;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text);
 }
 .task-modal-section {
@@ -332,7 +332,7 @@
   border-top: 1px dashed var(--border);
 }
 .task-section-head {
-  font-size: 13px; letter-spacing: 0.14em;
+  font-size: 14px; letter-spacing: 0.14em;
   color: var(--text-faint);
   margin-bottom: 8px;
 }
@@ -342,7 +342,7 @@
   border-left: 3px solid var(--border);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   background: var(--surface-alt);
-  font-size: 12px;
+  font-size: 13px;
   font-family: "SF Mono", Consolas, "Courier New", monospace;
 }
 .tm-event-row.ev-completed   { border-left-color: var(--good); }
@@ -368,7 +368,7 @@
   padding: 8px 22px;
   background: var(--canvas);
   font-family: "SF Mono", Consolas, "Courier New", monospace;
-  font-size: 14px;
+  font-size: 15px;
   letter-spacing: 0.02em;
   height: 44px;
   overflow: hidden;
@@ -378,7 +378,7 @@
   color: var(--text-dim);
   letter-spacing: 0.14em;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 14px;
   font-family: "Lato", -apple-system, sans-serif;
 }
 .activity-line {
@@ -394,7 +394,7 @@
   border-radius: 999px;
   background: var(--surface);
   font-family: "Lato", -apple-system, sans-serif;
-  font-size: 13px;
+  font-size: 14px;
   letter-spacing: 0.1em;
   font-weight: 700;
 }
@@ -433,27 +433,32 @@
 
 /* ───── Footer ─────────────────────────────────────────────────── */
 footer {
-  height: 44px;
+  /* s218: shrunk 44 → 36, color text-faint → text-dim for legibility
+   * without dominating, all children inline-flex/center so they sit
+   * on the same baseline regardless of intrinsic size. */
+  height: 36px;
   padding: 0 22px;
   display: flex; align-items: center; gap: 18px;
-  font-size: 14px;
-  color: var(--text-faint);
+  font-size: 15px;
+  color: var(--text-dim);
   background: var(--canvas);
+  line-height: 1;
 }
-footer code { color: var(--text-dim); font-family: "SF Mono", Consolas, "Courier New", monospace; font-size: 13px; }
+footer > * { display: inline-flex; align-items: center; }
+footer code { color: var(--text); font-family: "SF Mono", Consolas, "Courier New", monospace; font-size: 14px; }
 footer .spacer { flex: 1; }
 footer .ui-version {
   font-family: "SF Mono", Consolas, monospace;
-  font-size: 10px;
-  color: var(--text-faint);
-  opacity: 0.6;
-  padding: 1px 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+  opacity: 0.85;
+  padding: 2px 8px;
   border-radius: 3px;
   background: var(--surface);
   letter-spacing: 0.02em;
 }
 footer .prefs-chip {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--gold);
   background: var(--gold-soft);
   padding: 2px 8px;
@@ -476,8 +481,8 @@ footer .prefs-chip:hover { background: var(--bad-soft); color: var(--bad); }
 
 /* ───── iPad narrow viewport fallback ──────────────────────────── */
 @media (max-width: 1600px) {
-  .action     { font-size: 29px; }
-  .action-mid { font-size: 21px; }
+  .action     { font-size: 30px; }
+  .action-mid { font-size: 22px; }
   header       { gap: 10px; padding: 6px 16px; }
   main         { gap: 14px; padding: 4px 14px 12px 14px; }
   .panel       { border-radius: 12px; }

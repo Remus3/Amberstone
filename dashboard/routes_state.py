@@ -19,7 +19,7 @@ from urllib.parse import parse_qs, urlparse
 from dashboard._bridge_log import gamepc_result_age_s
 from dashboard._context import APP_DIR, read_json
 from dashboard._dispatch import equals, prefix
-from dashboard._state_builder import build_state, sim_states
+from dashboard._state_builder import build_state
 from dashboard._writers import (
     atomic_write_json,
     force_vision_scan,
@@ -132,19 +132,6 @@ def _serve_state_stream(h) -> None:
     finally:
         with _sse_count_lock:
             _sse_count -= 1
-
-
-def _serve_sim_state(h) -> None:
-    try:
-        qs = parse_qs(urlparse(h.path).query)
-        scenario = (qs.get("scenario") or ["aram_blitz"])[0]
-        state = sim_states().get(scenario)
-        if not state:
-            h._send(404, b'{"error":"unknown_scenario"}', "application/json"); return
-        h._send(200, json.dumps(state).encode(), "application/json")
-    except Exception as exc:
-        log.warning("api/sim-state: %s", exc)
-        h._send(500, b'{"error":"sim_state_failed"}', "application/json")
 
 
 def _serve_health(h) -> None:
@@ -635,14 +622,11 @@ def _serve_console_error_post(h, payload) -> None:
 
 # ── route table ──────────────────────────────────────────────────────
 
-# Order: prefix("/api/sim-state") sits before equals matchers that
-# touch the same /api/state* surface, but they're disjoint paths so
-# first-match-wins semantics don't bite. The /api/ui-version handler
-# uses prefix() because the legacy do_GET used `startswith`.
+# The /api/ui-version handler uses prefix() because the legacy do_GET
+# used `startswith`.
 GET_ROUTES = [
     (equals("/api/state"),         _serve_state),
     (equals("/api/state-stream"),  _serve_state_stream),
-    (prefix("/api/sim-state"),     _serve_sim_state),
     (equals("/api/health"),        _serve_health),
     (equals("/api/health/all"),    _serve_health_all),
     (prefix("/api/ui-version"),    _serve_ui_version),
