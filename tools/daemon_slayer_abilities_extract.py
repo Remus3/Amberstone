@@ -105,6 +105,37 @@ _KNOWN_NON_DAMAGE_UNITS: set[str] = {
     "% of damage stored",
 }
 
+# Meraki nests conditional sub-scalings inside the unit string itself, e.g.
+# Kindred E "% (+ 0.5% per Mark) of target's missing health" or K'Sante W's
+# doubly-nested "% (+ 2% per 100 bonus armor) (+ 2% per 100 bonus magic
+# resistance) of target's maximum health". The paired ``values`` list is the
+# canonical no-stack / no-scaling coefficient; the "(+ ...)" parentheticals
+# are conditional bonuses the single-value schema deliberately drops — the
+# same operator-commits-to-canonical-state model the block_index registry
+# uses. Stripping every "(+ ...)" group (innermost-first so nested parens
+# collapse) leaves a residue that matches a base _UNIT_TO_FIELD key.
+_NESTED_COND_RE = re.compile(r"\s*\(\+[^()]*\)")
+
+
+def _canonicalize_unit(unit: str) -> str:
+    """Strip Meraki's nested conditional "(+ ...)" groups from a unit string.
+
+    No-op for units without "(+" (the overwhelming common case) — returned
+    byte-identical, so an already recognized unit is never perturbed. Only
+    previously-unparsed nested-syntax units (Kindred E missing-health;
+    Cho'Gath E / K'Sante W / Sett Q / Shen Q / Zac W / Amumu W / Evelynn E /
+    Elise Q / Kled W maximum/current-health) gain a typed mapping.
+    """
+    if "(+" not in unit:
+        return unit
+    prev = None
+    cur = unit
+    while prev != cur:
+        prev = cur
+        cur = _NESTED_COND_RE.sub("", cur)
+    return re.sub(r"\s{2,}", " ", cur).strip()
+
+
 # Heuristic: "damage" in attribute name flags it as a damage-bearing block.
 # Some abilities use words like "Bolt"/"Burn"/"Bleed" without "Damage" in
 # the attribute — extend the allowlist when coverage drops.
@@ -247,8 +278,11 @@ def _normalize_modifiers(modifiers: list[dict]) -> tuple[dict[str, list[float]],
             unparsed.append(mod)
             continue
 
-        if unit in _UNIT_TO_FIELD:
-            field = _UNIT_TO_FIELD[unit]
+        # Raw match wins (zero behavior change for recognized units);
+        # nested-conditional units fall back to the canonicalized residue.
+        lookup_unit = unit if unit in _UNIT_TO_FIELD else _canonicalize_unit(unit)
+        if lookup_unit in _UNIT_TO_FIELD:
+            field = _UNIT_TO_FIELD[lookup_unit]
             vals = _values_tuple(values)
             if vals is None:
                 unparsed.append(mod)
