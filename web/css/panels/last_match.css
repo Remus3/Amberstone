@@ -40,7 +40,7 @@
 
 /* W/L pill — visible only when LCU enrichment carries a real win flag. */
 .lm-hero-result {
-  font-size: 16px; font-weight: 800;
+  font-size: 20px; font-weight: 800;
   letter-spacing: 0.1em;
   padding: 6px 14px;
   border-radius: var(--radius-sm);
@@ -82,7 +82,7 @@
   min-width: 0;
 }
 .lm-hero-champ {
-  font-size: 28px; font-weight: 700; color: var(--text);
+  font-size: 32px; font-weight: 700; color: var(--text);
   cursor: pointer;
   text-decoration: none;
   border-bottom: 1px dashed transparent;
@@ -91,7 +91,7 @@
 .lm-hero-champ:hover { border-bottom-color: var(--text-dim); }
 .lm-hero-champ:focus-visible { outline: 1px solid var(--accent, #8a8cf0); outline-offset: 2px; }
 .lm-hero-mode {
-  font-size: 15px;
+  font-size: 19px;
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -110,10 +110,14 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(72px, auto));
   grid-template-rows: auto auto;
-  gap: 6px 26px;
+  gap: 6px 14px;   /* s220: tightened + made uniform with section 3 */
   align-items: center;
   justify-content: center;
-  padding: 0 14px;
+  /* s220 #7: 1px dashed separator from section 1 (identity), mirroring
+   * section 3's existing border-left — champ-select's vertical-rule
+   * idiom, applied to delineate all three hero sections. */
+  padding: 0 14px 0 18px;
+  border-left: 1px dashed var(--border-soft);
 }
 .lm-hero-stat-blank {
   /* spacer cell — preserves column alignment with rank-compare's KDA col */
@@ -128,21 +132,21 @@
   cursor: help;
 }
 .lm-hero-stat-label {
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 .lm-hero-stat-value {
-  font-size: 23px;
+  font-size: 27px;
   font-weight: 700;
   color: var(--text);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
 .lm-hero-stat-sub {
-  font-size: 13px;
+  font-size: 17px;
   color: var(--text-faint, var(--text-dim));
   font-variant-numeric: tabular-nums;
 }
@@ -161,34 +165,50 @@
  * to localStorage; future Settings page will own the canonical knob. */
 .lm-hero-rank-compare {
   display: grid;
-  grid-template-columns: auto auto auto auto auto;
+  /* s220: 4-column grid — identical model to section 2
+   * (repeat(4, minmax(72px,auto)) + the same gap). col1 auto-grows to
+   * fit the KDA+KP% pair; the selector is widened to span them. */
+  grid-template-columns: repeat(4, minmax(72px, auto));
   grid-template-rows: auto auto;
-  /* s219 v6: explicit area placement so auto-flow doesn't spill the
-   * KP cell into row 1 col 5. Row 1 col 5 stays empty; row 2 has all
-   * 5 cells (kda + 4 stats) lined up under the corresponding row 1
-   * cells (selector ↔ kda, vision-avg ↔ kp-avg, cs-avg ↔ damage-avg,
-   * tank-avg ↔ cspm-avg, [empty] ↔ heal-avg). */
+  /* s220: 1:1 with section 2's column structure —
+   *   col1: selector (r1)  ↕  KDA+KP% pair (r2)   [section 2: blank ↕ KP%]
+   *   col2: VISION ↕ DAMAGE
+   *   col3: CS ↕ CS/MIN
+   *   col4: TANKED ↕ HEAL+SHIELD
+   * KDA + KP% are a flex pair sharing col1 row2, directly beneath the
+   * selector (widened to span them — see .lm-rank-compare-head). */
   grid-template-areas:
-    "selector vision-avg cs-avg     tank-avg   ."
-    "kda-avg  kp-avg     damage-avg cspm-avg   heal-avg";
-  gap: 6px 18px;
+    "selector vision-avg cs-avg   tank-avg"
+    "kda-kp   damage-avg cspm-avg heal-avg";
+  gap: 6px 14px;   /* s220: identical to section 2 — uniform spacing across both */
   align-items: center;
+  justify-items: end;   /* s220: right-align every item (selector + cells) like section 2 */
   padding-left: 14px;
   border-left: 1px dashed var(--border-soft);
-  min-width: 320px;
 }
 /* selector / each cell's grid-area is set inline on the HTML element. */
-.lm-rank-compare-head { display: flex; align-items: center; gap: 6px; }
+/* s220: the selector spans col1 (= the KDA+KP% pair width beneath it).
+ * justify-self:stretch overrides the grid's justify-items:end for this
+ * one item so it fills the column; the <select> fills the wrapper. */
+.lm-rank-compare-head { display: flex; align-items: center; justify-self: stretch; gap: 6px; }
+/* s220: KDA + KP% paired side-by-side in col1 row2, under the selector. */
+.lm-rank-kdakp {
+  display: flex;
+  gap: 14px;                /* matches the grid column gap */
+  align-items: center;
+  justify-content: flex-end;
+}
 .lm-rank-select {
   background: var(--surface-2, #1a1a22);
   color: var(--text);
   border: 1px solid var(--border-soft);
   border-radius: 4px;
   padding: 3px 8px;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
+  width: 100%;   /* s220: span col1 (= KDA+KP% pair width) */
 }
 .lm-rank-select:hover {
   border-color: var(--accent, #8a8cf0);
@@ -201,36 +221,40 @@
   display: flex; flex-direction: column;
   align-items: flex-end;
   gap: 1px;
-  min-width: 60px;
+  min-width: 66px;
   cursor: help;
   text-align: right;
 }
+/* s220 #8: match the hero stat typography (label 13 / value 23) so
+ * section 3 reads at the same weight as sections 1 + 2. */
 .lm-rank-cell-label {
-  font-size: 10px;
+  font-size: 17px;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-faint, var(--text-dim));
 }
 .lm-rank-cell-value {
-  font-size: 14px;
+  font-size: 27px;
   font-weight: 700;
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
+  line-height: 1.1;
 }
 .lm-rank-pending {
-  font-size: 11px;
+  font-size: 15px;
   color: var(--text-faint, var(--text-dim));
   font-style: italic;
 }
 .lm-kda-text {
-  font-size: 25px; font-weight: 600; font-variant-numeric: tabular-nums;
+  font-size: 29px; font-weight: 600; font-variant-numeric: tabular-nums;
   color: var(--text);
 }
 .lm-kda-ratio {
-  font-size: 15px; color: var(--text-dim);
+  font-size: 19px; color: var(--text-dim);
 }
 .lm-hero-grade {
-  font-size: 44px; font-weight: 800; line-height: 1;
+  font-size: 48px; font-weight: 800; line-height: 1;
   padding: 4px 18px;
   border-radius: var(--radius-sm);
   background: var(--surface-2, #1a1a22);
@@ -272,18 +296,18 @@
   gap: 2px;
 }
 .lm-stat-label {
-  font-size: 12px;
+  font-size: 16px;
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 .lm-stat-value {
-  font-size: 22px; font-weight: 700;
+  font-size: 26px; font-weight: 700;
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
 .lm-stat-sub {
-  font-size: 12px;
+  font-size: 16px;
   color: var(--text-faint, var(--text-dim));
   font-variant-numeric: tabular-nums;
 }
@@ -308,7 +332,7 @@
   display: flex; gap: 6px;
 }
 .lm-tab {
-  font-size: 15px;
+  font-size: 19px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -335,9 +359,20 @@
   outline: 2px solid var(--accent, #8a8cf0);
   outline-offset: 2px;
 }
-
-.lm-tabs-cta {
+.lm-tab:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+/* s220 #4: "Review" is a nav tab (→ deep-review page), not a panel
+ * switcher. Pushed to the strip's right edge + accent-tinted so it
+ * reads as "leaves this view" rather than another panel toggle. */
+.lm-tab-nav {
   margin-left: auto;
+  color: var(--accent, #8a8cf0);
+}
+.lm-tab-nav:hover {
+  background: var(--accent-soft, rgba(138, 140, 240, 0.10));
+  color: var(--accent, #8a8cf0);
 }
 
 .lm-tab-panel { display: none; }
@@ -345,7 +380,7 @@
 .lm-tab-panel[hidden] { display: none !important; }
 
 .lm-tab-panel-hint {
-  font-size: 13px;
+  font-size: 17px;
   color: var(--text-faint, var(--text-dim));
   font-style: italic;
   margin-bottom: 8px;
@@ -366,14 +401,14 @@
   grid-template-columns: 110px 1fr auto 1fr;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 17px;
 }
 .lm-chart-label {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: 16px;
 }
 .lm-chart-bar {
   position: relative;
@@ -390,12 +425,15 @@
   transition: width 0.25s ease;
 }
 .lm-chart-bar.lm-chart-bar-ally  { display: flex; justify-content: flex-end; }
+/* s220 #5: fills were too bright (0.85) — washed out the white value
+ * text on top. Dropped to 0.40 + a dark text-shadow so the number
+ * reads on the fill or the dark track. */
 .lm-chart-bar.lm-chart-bar-ally .lm-chart-bar-fill {
-  right: 0; background: var(--ok, #8ce5a8); opacity: 0.85;
+  right: 0; background: var(--ok, #8ce5a8); opacity: 0.40;
 }
 .lm-chart-bar.lm-chart-bar-enemy  { display: flex; justify-content: flex-start; }
 .lm-chart-bar.lm-chart-bar-enemy .lm-chart-bar-fill {
-  left: 0; background: var(--bad, #e07a7a); opacity: 0.85;
+  left: 0; background: var(--bad, #e07a7a); opacity: 0.40;
 }
 .lm-chart-bar-value {
   position: relative; z-index: 1;
@@ -403,14 +441,118 @@
   font-weight: 700;
   color: var(--text);
   padding: 2px 8px;
-  font-size: 12px;
+  font-size: 16px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
 }
 .lm-chart-vs {
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-faint, var(--text-dim));
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+
+/* ── Timeline tab — per-minute differential charts + objective ribbon ── */
+/* s220 Item E phase 1. Sparkline stroke/area use currentColor so the
+ * .lm-tl-chart[data-lead] rule tints the whole card by who ended ahead
+ * (ally → ok green, enemy → bad red, even → dim). */
+.lm-tl-wrap {
+  width: 100%;
+  display: flex; flex-direction: column;
+  gap: 12px;
+}
+.lm-tl-wrap[hidden] { display: none; }
+.lm-tl-charts {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+.lm-tl-chart {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 8px 12px;
+  background: var(--surface-2, #1a1a22);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+}
+.lm-tl-chart[data-lead="ally"]  { color: var(--ok,  #8ce5a8); }
+.lm-tl-chart[data-lead="enemy"] { color: var(--bad, #e07a7a); }
+.lm-tl-chart[data-lead="even"]  { color: var(--text-dim); }
+.lm-tl-chart-top {
+  display: flex; align-items: baseline; justify-content: space-between;
+}
+.lm-tl-chart-label {
+  font-size: 17px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-dim);
+}
+.lm-tl-chart-final {
+  font-size: 21px; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: currentColor;
+}
+.lm-tl-spark {
+  display: block;
+  width: 100%; height: 46px;
+}
+.lm-tl-spark-zero {
+  stroke: var(--border-soft);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+.lm-tl-spark-area {
+  fill: currentColor;
+  opacity: 0.14;
+  stroke: none;
+}
+.lm-tl-spark-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.lm-tl-ribbon-head {
+  font-size: 17px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-dim);
+  padding-top: 8px;
+  border-top: 1px solid var(--border-soft);
+}
+.lm-tl-ribbon {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.lm-tl-ev {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 10px;
+  background: var(--surface-2, #1a1a22);
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--text-dim);
+  border-radius: 4px;
+  font-size: 17px;
+}
+.lm-tl-ev[data-team="ally"]    { border-left-color: var(--ok,  #8ce5a8); }
+.lm-tl-ev[data-team="enemy"]   { border-left-color: var(--bad, #e07a7a); }
+.lm-tl-ev[data-team="neutral"] { border-left-color: var(--text-dim); }
+.lm-tl-ev-clock {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim); font-weight: 600;
+  min-width: 42px;
+}
+.lm-tl-ev-label { color: var(--text); font-weight: 600; }
+.lm-tl-ev-side {
+  font-size: 15px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-faint, var(--text-dim));
+}
+.lm-tl-ev[data-team="ally"]  .lm-tl-ev-side { color: var(--ok,  #8ce5a8); }
+.lm-tl-ev[data-team="enemy"] .lm-tl-ev-side { color: var(--bad, #e07a7a); }
+.lm-tl-ev-empty {
+  font-size: 16px; font-style: italic;
+  color: var(--text-faint, var(--text-dim));
+  padding: 4px 0;
 }
 
 /* ── Section wrappers (build / team / quick review) ─────────────────── */
@@ -423,7 +565,7 @@
   gap: 10px;
 }
 .lm-section-head {
-  font-size: 14px; font-weight: 700;
+  font-size: 18px; font-weight: 700;
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -433,7 +575,7 @@
   gap: 10px;
 }
 .lm-section-sub {
-  font-size: 12px;
+  font-size: 16px;
   color: var(--text-faint, var(--text-dim));
   font-weight: 500;
   text-transform: none;
@@ -450,7 +592,7 @@
 }
 .lm-build-row[hidden] { display: none; }
 .lm-build-row-label {
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -506,7 +648,7 @@
   background: var(--surface-2, #1a1a22);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  font-size: 17px;
 }
 .lm-build-item img {
   width: 32px; height: 32px; border-radius: 4px;
@@ -519,7 +661,7 @@
 }
 
 .lm-pending {
-  font-size: 13px;
+  font-size: 17px;
   color: var(--text-faint, var(--text-dim));
   font-style: italic;
   padding: 8px 4px;
@@ -547,7 +689,7 @@
 }
 .lm-tc-group-head {
   display: flex; align-items: center; gap: 12px;
-  font-size: 13px;
+  font-size: 17px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-dim);
@@ -556,7 +698,7 @@
   border-bottom: 1px dashed var(--border-soft);
 }
 .lm-tc-group-result {
-  font-size: 12px;
+  font-size: 16px;
   padding: 2px 8px;
   border-radius: 4px;
   background: var(--surface);
@@ -581,19 +723,20 @@
 }
 .lm-tc-row {
   display: grid;
-  /* portrait | name | level | KDA | CS | summoners | items
-   * s219 v6: all stat columns fixed-width so ally + enemy panels align
-   * column-for-column even though each is a separate grid context. The
-   * lvl/KDA/CS triple sits at the same X offset in BOTH panels —
-   * operator's "vertically in sync" ask. CS is right-aligned. */
-  grid-template-columns: 40px 144px 40px 84px 70px 60px 1fr;
+  /* portrait | name | score | level | KDA | summoners | CS | items
+   * s220: + score/MVP-SVP cell (left of level); CS ⇄ summoners
+   * swapped; level is digits-only so its column shrank. All stat
+   * columns stay fixed-width so ally + enemy panels align
+   * column-for-column (separate grid contexts). CS stays right-aligned
+   * + vertically in sync across both panels — operator's #3 ask. */
+  grid-template-columns: 40px 144px 46px 32px 84px 60px 70px 1fr;
   align-items: center;
   gap: 10px;
   padding: 7px 10px;
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: 4px;
-  font-size: 15px;
+  font-size: 19px;
 }
 .lm-tc-row.lm-tc-row-me {
   background: rgba(138, 140, 240, 0.08);
@@ -617,20 +760,38 @@
   white-space: nowrap;
 }
 .lm-tc-tag {
-  font-size: 13px;
+  font-size: 17px;
   color: var(--text-faint, var(--text-dim));
   font-weight: 500;
 }
+/* s220: per-player score / MVP-SVP cell (left of level). MVP = best on
+ * the winning side (gold, ties to the S-grade hue); SVP = best on the
+ * losing side (accent indigo); everyone else shows their lobby rank
+ * (#1..#10) muted. Underlying score + factors are in the hover tip. */
+.lm-tc-score {
+  font-size: 18px;
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+  color: var(--text-faint, var(--text-dim));
+}
+.lm-tc-score[data-kind="rank"] { color: var(--text-dim); font-weight: 700; }
+.lm-tc-score[data-kind="mvp"]  { color: var(--grade-s, #f5b87c); }
+.lm-tc-score[data-kind="svp"]  { color: var(--accent, #8a8cf0); }
+
 .lm-tc-lvl,
 .lm-tc-kda,
 .lm-tc-cs {
-  font-size: 15px;
+  font-size: 19px;
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .lm-tc-kda { color: var(--text); font-weight: 600; }
-.lm-tc-cs  { text-align: right; }   /* s219 v6: operator's "right-aligned vertically in sync" ask */
+.lm-tc-cs  { text-align: right; }   /* s219 v6 + s220 #3: right-aligned, vertically in sync */
 
 .lm-tc-summs { display: flex; gap: 3px; }
 .lm-tc-summ {
@@ -663,7 +824,7 @@
 }
 
 .lm-tc-empty {
-  font-size: 12px;
+  font-size: 16px;
   font-style: italic;
   color: var(--text-faint, var(--text-dim));
   padding: 4px 0;
@@ -689,7 +850,7 @@
 .lm-qr-col-chronic  { border-top-color: var(--bad,  #e07a7a); }
 
 .lm-qr-col-head {
-  font-size: 15px; font-weight: 700;
+  font-size: 19px; font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text);
@@ -703,7 +864,7 @@
   gap: 6px;
 }
 .lm-qr-list li {
-  font-size: 16px;
+  font-size: 20px;
   color: var(--text);
   padding: 8px 12px;
   background: var(--surface);
@@ -733,7 +894,7 @@
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -759,7 +920,7 @@
 
 /* Empty-state — when match_history.db has no rows yet */
 .lm-empty {
-  font-size: 13px;
+  font-size: 17px;
   color: var(--text-faint, var(--text-dim));
   font-style: italic;
   padding: 6px 0;
