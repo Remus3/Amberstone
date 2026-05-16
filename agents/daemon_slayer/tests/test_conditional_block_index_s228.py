@@ -33,8 +33,8 @@ Engine surface:
 
 Flagship seeds (3) — all CONVERSIONS of already-shipped unconditional
 entries, so Part 1 is provably no-op vs s204/s204/s223:
-  * Zoe     E = {"default": 2, "target_no_cc": 0}   (sleep 2× — s204 E:2)
-  * Evelynn Q = {"default": 5, "target_no_cc": 0}   (charm triple-spike
+  * Zoe     E = {"default": 2, "target_no_setup": 0}   (sleep 2× — s204 E:2)
+  * Evelynn Q = {"default": 5, "target_no_setup": 0}   (charm triple-spike
                 total — s204 Q:5; sibling R:1 preserved)
   * Kindred E = {"default": 1, "target_full_hp": 0} (7.5%-vs-5% missing-HP
                 execute — s223 E:1)
@@ -104,7 +104,7 @@ class BlockIndexConditionVocabTests(unittest.TestCase):
     def test_conditions_are_exactly_the_part1_closed_set(self) -> None:
         self.assertEqual(
             _BLOCK_INDEX_CONDITIONS,
-            frozenset({"target_full_hp", "target_no_cc"}),
+            frozenset({"target_full_hp", "target_no_setup"}),
         )
 
     def test_default_is_not_a_condition(self) -> None:
@@ -140,8 +140,8 @@ class NormalizeConditionalTests(unittest.TestCase):
     # conditional dict — accepted shapes
     def test_dict_int_values_accepted(self) -> None:
         self.assertEqual(
-            _normalize_block_index_value({"default": 2, "target_no_cc": 0}),
-            {"default": 2, "target_no_cc": 0},
+            _normalize_block_index_value({"default": 2, "target_no_setup": 0}),
+            {"default": 2, "target_no_setup": 0},
         )
 
     def test_dict_list_value_accepted(self) -> None:
@@ -157,13 +157,13 @@ class NormalizeConditionalTests(unittest.TestCase):
         )
 
     def test_dict_all_conditions_accepted(self) -> None:
-        v = {"default": 2, "target_no_cc": 0, "target_full_hp": 1}
+        v = {"default": 2, "target_no_setup": 0, "target_full_hp": 1}
         self.assertEqual(_normalize_block_index_value(v), v)
 
     # conditional dict — rejected shapes
     def test_dict_missing_default_rejected(self) -> None:
         with self.assertRaises(ValueError) as cm:
-            _normalize_block_index_value({"target_no_cc": 0})
+            _normalize_block_index_value({"target_no_setup": 0})
         self.assertIn("default", str(cm.exception))
 
     def test_dict_unknown_condition_rejected(self) -> None:
@@ -182,7 +182,7 @@ class NormalizeConditionalTests(unittest.TestCase):
 
     def test_dict_string_nested_value_rejected(self) -> None:
         with self.assertRaises(ValueError):
-            _normalize_block_index_value({"default": "0", "target_no_cc": 1})
+            _normalize_block_index_value({"default": "0", "target_no_setup": 1})
 
 
 # ─── _select_blocks — Part-1 dict resolution (default branch only) ───────────
@@ -203,15 +203,15 @@ class SelectBlocksConditionalTests(unittest.TestCase):
 
     def test_dict_resolves_to_default_int(self) -> None:
         self.assertEqual(
-            self._sel({"default": 2, "target_no_cc": 0}),
+            self._sel({"default": 2, "target_no_setup": 0}),
             self._sel(2),  # == forced block 2 (= 25.0)
         )
-        self.assertEqual(self._sel({"default": 2, "target_no_cc": 0}), 25.0)
+        self.assertEqual(self._sel({"default": 2, "target_no_setup": 0}), 25.0)
 
     def test_dict_condition_branches_ignored_part1(self) -> None:
-        # target_no_cc=0 would be block 0 (=100) IF predicates fired; in
+        # target_no_setup=0 would be block 0 (=100) IF predicates fired; in
         # Part 1 the default (block 1 = 50) is used regardless.
-        self.assertEqual(self._sel({"default": 1, "target_no_cc": 0}), 50.0)
+        self.assertEqual(self._sel({"default": 1, "target_no_setup": 0}), 50.0)
 
     def test_dict_default_list_sums(self) -> None:
         # default may be a sum-of-blocks list (s207 semantics preserved
@@ -241,7 +241,7 @@ class ResolveConditionalMergeTests(unittest.TestCase):
 
     def test_registry_conditional_used_when_no_caller(self) -> None:
         merged, source = _resolve_block_index_overrides("Zoe", None)
-        self.assertEqual(merged.get("E"), {"default": 2, "target_no_cc": 0})
+        self.assertEqual(merged.get("E"), {"default": 2, "target_no_setup": 0})
         self.assertEqual(source, "champion")
 
     def test_caller_conditional_wins_per_key(self) -> None:
@@ -278,7 +278,7 @@ class RegistrySeedEntriesS228Tests(unittest.TestCase):
 
     def test_zoe_E_is_conditional_sleep(self) -> None:
         m, src = get_block_index_for("Zoe")
-        self.assertEqual(m["E"], {"default": 2, "target_no_cc": 0})
+        self.assertEqual(m["E"], {"default": 2, "target_no_setup": 0})
         # siblings preserved as plain ints (s195/s201 entries)
         self.assertEqual(m["Q"], 1)
         self.assertEqual(m["W"], 1)
@@ -286,7 +286,7 @@ class RegistrySeedEntriesS228Tests(unittest.TestCase):
 
     def test_evelynn_Q_is_conditional_charm_R_preserved(self) -> None:
         m, _ = get_block_index_for("Evelynn")
-        self.assertEqual(m["Q"], {"default": 5, "target_no_cc": 0})
+        self.assertEqual(m["Q"], {"default": 5, "target_no_setup": 0})
         self.assertEqual(m["R"], 1)  # s204 sibling, unchanged
 
     def test_kindred_E_is_conditional_execute(self) -> None:
@@ -386,7 +386,7 @@ class AbilityDpsPart1InvariantTests(unittest.TestCase):
     def test_block_index_source_is_champion_for_seeds(self) -> None:
         _, out = self._spell("Zoe", "E")
         self.assertEqual(out.block_index_source, "champion")
-        self.assertEqual(out.block_index_resolved["E"], {"default": 2, "target_no_cc": 0})
+        self.assertEqual(out.block_index_resolved["E"], {"default": 2, "target_no_setup": 0})
 
 
 # ─── compute_burst_damage — conditional resolves in the combo walker ─────────
@@ -440,9 +440,9 @@ class ParseBlockIndexConditionalTests(unittest.TestCase):
 
     def test_well_formed_conditional_accepted(self) -> None:
         out = _parse_block_index(
-            {"block_index": {"e": {"default": 2, "target_no_cc": 0}}}
+            {"block_index": {"e": {"default": 2, "target_no_setup": 0}}}
         )
-        self.assertEqual(out, {"E": {"default": 2, "target_no_cc": 0}})
+        self.assertEqual(out, {"E": {"default": 2, "target_no_setup": 0}})
 
     def test_conditional_list_default_accepted(self) -> None:
         out = _parse_block_index(
@@ -453,7 +453,7 @@ class ParseBlockIndexConditionalTests(unittest.TestCase):
     def test_missing_default_skipped(self) -> None:
         # Skipped entry → empty map (engine falls back to registry).
         self.assertEqual(
-            _parse_block_index({"block_index": {"E": {"target_no_cc": 0}}}), {}
+            _parse_block_index({"block_index": {"E": {"target_no_setup": 0}}}), {}
         )
 
     def test_unknown_condition_skipped(self) -> None:
@@ -465,7 +465,7 @@ class ParseBlockIndexConditionalTests(unittest.TestCase):
     def test_bad_nested_value_skipped(self) -> None:
         self.assertEqual(
             _parse_block_index(
-                {"block_index": {"E": {"default": "two", "target_no_cc": 0}}}
+                {"block_index": {"E": {"default": "two", "target_no_setup": 0}}}
             ),
             {},
         )
@@ -556,7 +556,7 @@ class ServerRouteConditionalS228Tests(unittest.TestCase):
     def test_caller_conditional_dict_via_route(self) -> None:
         # Body-supplied conditional resolves to its default branch.
         s = self._spell(
-            "Zoe", "E", block_index={"E": {"default": 0, "target_no_cc": 2}}
+            "Zoe", "E", block_index={"E": {"default": 0, "target_no_setup": 2}}
         )
         s0 = self._spell("Zoe", "E", block_index={"E": 0})
         self.assertAlmostEqual(
@@ -565,7 +565,7 @@ class ServerRouteConditionalS228Tests(unittest.TestCase):
 
     def test_malformed_conditional_falls_back_to_registry(self) -> None:
         # Missing "default" → decoder skips → engine uses registry (E:2).
-        s_bad = self._spell("Zoe", "E", block_index={"E": {"target_no_cc": 0}})
+        s_bad = self._spell("Zoe", "E", block_index={"E": {"target_no_setup": 0}})
         s_reg = self._spell("Zoe", "E")
         self.assertAlmostEqual(
             s_bad["raw_damage_per_cast"], s_reg["raw_damage_per_cast"], places=4
@@ -579,8 +579,8 @@ class EngineVersionS228Tests(unittest.TestCase):
     def test_engine_version(self) -> None:
         from agents import daemon_slayer
 
-        # s228 (Phase 5.9.28) bumped to 1.0.0; pin tracks current.
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.0.0")
+        # s229 (Phase 5.9.29) bumped to 1.1.0; pin tracks current.
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.1.0")
 
 
 if __name__ == "__main__":

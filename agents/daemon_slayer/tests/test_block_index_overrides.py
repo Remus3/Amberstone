@@ -130,7 +130,13 @@ class RegistryShapeTests(unittest.TestCase):
         # Cassiopeia extended in s196 with W=1 — full shape asserted below
         self.assertEqual(champions["Veigar"], {"R": 1})
         # Diana extended in s203 with R=2 (Moonfall channel total) — asserted below
-        self.assertEqual(champions["Brand"], {"W": 1, "R": 1})
+        # s229 Phase 5.9.29 converted Brand W to a conditional (block 1
+        # 'Increased' = 1.25x block 0 vs an ablaze target; default=1 ==
+        # the prior int, Part-1 no-op).
+        self.assertEqual(
+            champions["Brand"],
+            {"W": {"default": 1, "target_no_setup": 0}, "R": 1},
+        )
         # Evelynn extended in s204 with Q=5 — full shape asserted in Phase 5.9.17 block
         self.assertEqual(champions["Aurora"], {"Q": 2})
         # Bel'Veth gained R=1 in s224 (recast nuke; corrects s223's
@@ -142,7 +148,13 @@ class RegistryShapeTests(unittest.TestCase):
         # Akali extended in s196 with E=2 — full shape asserted below
         # Phase 5.9.6 (s193) — channeled-ability expansion + Anivia Q
         # Anivia extended in s200 with R=1 (Glacial Storm Empowered tick)
-        self.assertEqual(champions["Anivia"], {"Q": 2, "E": 1, "R": 1})
+        # s229 Phase 5.9.29 converted Anivia E to a conditional (block 1
+        # 'Enhanced' = 2.0x block 0 vs a Chilled target; default=1 ==
+        # the s191 int, Part-1 no-op; Q=2/R=1 siblings preserved).
+        self.assertEqual(
+            champions["Anivia"],
+            {"Q": 2, "E": {"default": 1, "target_no_setup": 0}, "R": 1},
+        )
         self.assertEqual(champions["Alistar"], {"E": 1})
         # AurelionSol extended in s202 with Q=2 (Breath of Light full channel)
         # Fiddlesticks extended in s199 with W=3 (Bountiful Harvest execute)
@@ -184,8 +196,14 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Akali"], {"R": 0, "R2": 2, "E": 2})
         # Cassiopeia W=1 extends prior {"E": 1} from s191
         self.assertEqual(champions["Cassiopeia"], {"E": 1, "W": 1})
-        # Morgana R=1 extends prior {"W": 3} from s195
-        self.assertEqual(champions["Morgana"], {"W": 3, "R": 1})
+        # Morgana R=1 extends prior {"W": 3} from s195; s229 Phase 5.9.29
+        # converted W to a conditional (block 3 'Maximum Total' = 2.7x
+        # block 2 'Minimum Total' — the <50%-max-HP Tormented Shadow amp;
+        # default=3 == the s195 int, Part-1 no-op).
+        self.assertEqual(
+            champions["Morgana"],
+            {"W": {"default": 3, "target_full_hp": 2}, "R": 1},
+        )
         # New champions added this batch (14):
         # Akshan extended in s202 with R=1 — full shape asserted below
         self.assertEqual(champions["Chogath"], {"E": 1})
@@ -377,7 +395,7 @@ class RegistryShapeTests(unittest.TestCase):
         # "default" / committed branch, downgrade to 0 when not charmed):
         self.assertEqual(
             champions["Evelynn"],
-            {"R": 1, "Q": {"default": 5, "target_no_cc": 0}},
+            {"R": 1, "Q": {"default": 5, "target_no_setup": 0}},
         )
         # Gwen extended with Q=6 — full shape:
         self.assertEqual(champions["Gwen"], {"R": 4, "Q": 6})
@@ -397,7 +415,7 @@ class RegistryShapeTests(unittest.TestCase):
         # downgrade to 0 when sleep not landed):
         self.assertEqual(
             champions["Zoe"],
-            {"Q": 1, "W": 1, "E": {"default": 2, "target_no_cc": 0}},
+            {"Q": 1, "W": 1, "E": {"default": 2, "target_no_setup": 0}},
         )
         # Phase 5.9.18 (s205) — form_index + block_index layered expansion.
         # 4 new (champion, key) block_index entries (1 new champion Qiyana
@@ -558,9 +576,11 @@ class ResolveBlockIndexTests(unittest.TestCase):
         self.assertEqual(source, "override")
 
     def test_explicit_merges_with_registry(self) -> None:
-        # Operator overrides Brand R but not W — registry fills the W gap.
+        # Operator overrides Brand R but not W — registry fills the W gap
+        # (s229 converted Brand W to a conditional dict).
         mapping, source = _resolve_block_index_overrides("Brand", {"R": 0})
-        self.assertEqual(mapping, {"W": 1, "R": 0})
+        self.assertEqual(
+            mapping, {"W": {"default": 1, "target_no_setup": 0}, "R": 0})
         self.assertEqual(source, "override")
 
     def test_explicit_uppercases_keys(self) -> None:
@@ -668,14 +688,17 @@ class ComputeAbilityDpsBlockIndexTests(unittest.TestCase):
         self.assertEqual(r.block_index_resolved, {"E": 0, "W": 1})
 
     def test_explicit_merges_with_registry(self) -> None:
-        # Brand has registry {W:1, R:1}. Operator passes {R:0} → merged becomes
-        # {W:1, R:0}.
+        # Brand registry {W:{default:1,target_no_setup:0}, R:1} (s229
+        # converted W). Operator passes {R:0} → registry fills the W gap.
         r = compute_ability_dps(
             self.snap, "Brand", level=11, mode="SR", target_mr=30.0,
             block_index_overrides={"R": 0},
         )
         self.assertEqual(r.block_index_source, "override")
-        self.assertEqual(r.block_index_resolved, {"W": 1, "R": 0})
+        self.assertEqual(
+            r.block_index_resolved,
+            {"W": {"default": 1, "target_no_setup": 0}, "R": 0},
+        )
 
     def test_cassi_e_dpc_uses_block1_with_registry(self) -> None:
         """Cassi E rank-max raw_damage_per_cast pulls block1 base=168 (Total
@@ -730,9 +753,13 @@ class ComputeBurstBlockIndexTests(unittest.TestCase):
             self.snap, "Brand", level=11, target_mr=30,
             block_index_overrides={"R": 0},
         )
-        # Registry has Brand {W:1, R:1}; operator forces R:0 — merged.
+        # Registry Brand {W:{default:1,target_no_setup:0}, R:1} (s229);
+        # operator forces R:0 — registry fills the conditional W gap.
         self.assertEqual(r.block_index_source, "override")
-        self.assertEqual(r.block_index_resolved, {"W": 1, "R": 0})
+        self.assertEqual(
+            r.block_index_resolved,
+            {"W": {"default": 1, "target_no_setup": 0}, "R": 0},
+        )
 
     def test_veigar_burst_with_registry_exceeds_forced_block_0(self) -> None:
         """Veigar R block1 'Maximum Magic Damage' is 2× block0 base.
@@ -827,7 +854,11 @@ class ToDictSerializationTests(unittest.TestCase):
         self.assertEqual(d["block_index_source"], "champion")
         # Phase 5.9.6 (s193) — Anivia gained Q=2 alongside existing E=1
         # Phase 5.9.13 (s200) — Anivia gained R=1 (Glacial Storm Empowered tick)
-        self.assertEqual(d["block_index_resolved"], {"Q": 2, "E": 1, "R": 1})
+        # Phase 5.9.29 (s229) — Anivia E converted to a conditional dict.
+        self.assertEqual(
+            d["block_index_resolved"],
+            {"Q": 2, "E": {"default": 1, "target_no_setup": 0}, "R": 1},
+        )
 
     def test_rank_assassin_carries_source(self) -> None:
         r = rank_items_by_burst(
@@ -840,7 +871,7 @@ class ToDictSerializationTests(unittest.TestCase):
         # Phase 5.9.28 (s228) converted Q to a conditional dict.
         self.assertEqual(
             d["block_index_resolved"],
-            {"R": 1, "Q": {"default": 5, "target_no_cc": 0}},
+            {"R": 1, "Q": {"default": 5, "target_no_setup": 0}},
         )
 
     def test_unmapped_champion_to_dict_is_empty_dict(self) -> None:
@@ -1043,9 +1074,12 @@ class ChanneledAbilityExpansionTests(unittest.TestCase):
             self.snap, "Anivia", level=11, mode="SR",
             target_armor=80, target_mr=30,
         )
-        # s193 added Q=2 to existing E=1; s200 added R=1 (Glacial Storm Empowered).
-        # E=1 must persist through both extensions.
-        self.assertEqual(r.block_index_resolved.get("E"), 1)
+        # s193 added Q=2 to existing E=1; s200 added R=1; s229 converted
+        # E to a conditional (default=1 == the s191 block, Part-1 no-op).
+        self.assertEqual(
+            r.block_index_resolved.get("E"),
+            {"default": 1, "target_no_setup": 0},
+        )
         self.assertEqual(r.block_index_resolved.get("Q"), 2)
 
     def test_singed_Q_total_block_matches_per_cast_math(self) -> None:
@@ -1306,11 +1340,35 @@ class Phase598ExpansionTests(unittest.TestCase):
         2nd cast (2× block 0)."""
         self._delta_check("Camille", "Q", 2)
 
-    # CC-conditional duration total (pattern D)
+    # Target-state conditional (pattern D) — s229 converted to a dict
     def test_morgana_W_routes_to_block_3(self) -> None:
-        """Morgana W block 3 'Maximum Total Damage' = Tormented Shadow
-        full duration on rooted (Q'd) target."""
-        self._delta_check("Morgana", "W", 3)
+        """Morgana W block 3 'Maximum Total Damage' = full-duration
+        Tormented Shadow vs a <50%-max-HP target (2.7× block 2 'Minimum
+        Total'). s229 Phase 5.9.29 converted W to a conditional dict
+        {default:3, target_full_hp:2}; s195's 'vs rooted' framing was
+        imprecise — the amp is the <50%-HP threshold (the Q-root is the
+        operator's setup to hold them in the zone). Part 1 resolves to
+        'default' so the s195 block-3 routing is byte-identical."""
+        m, _ = get_block_index_for("Morgana")
+        self.assertEqual(m["W"], {"default": 3, "target_full_hp": 2})
+        reg = compute_ability_dps(
+            self.snap, "Morgana", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        forced_def = compute_ability_dps(
+            self.snap, "Morgana", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides={"W": 3, "R": 1},
+        )
+        forced_b0 = compute_ability_dps(
+            self.snap, "Morgana", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides={"W": 0, "R": 1},
+        )
+        self.assertAlmostEqual(
+            reg.total_ability_dps, forced_def.total_ability_dps, places=9)
+        self.assertGreater(
+            reg.total_ability_dps, forced_b0.total_ability_dps)
 
     # Resolved-map shape sanity for new multi-key champions
     def test_talon_both_keys_in_resolved(self) -> None:
@@ -1527,12 +1585,15 @@ class Phase599ExpansionTests(unittest.TestCase):
 
     def test_morgana_both_keys_in_resolved(self) -> None:
         """Morgana R=1 (s196) extends prior {W:3} (s195) — both keys
-        must appear in the resolved map."""
+        must appear; s229 converted W to a conditional dict."""
         r = compute_ability_dps(
             self.snap, "Morgana", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"W": 3, "R": 1})
+        self.assertEqual(
+            r.block_index_resolved,
+            {"W": {"default": 3, "target_full_hp": 2}, "R": 1},
+        )
         self.assertEqual(r.block_index_source, "champion")
 
     # Math-level sanity: Riven Q block 1 base at rank 1 = 3× block 0
@@ -1572,13 +1633,17 @@ class Phase599ExpansionTests(unittest.TestCase):
 
     # Backward-compat: pre-s196 entries still resolve unchanged
     def test_pre_s196_morgana_W_unchanged(self) -> None:
-        """Backward-compat: s195 Morgana W=3 entry preserved after s196
-        adds R=1; W=3 should still resolve."""
+        """Backward-compat: s195 Morgana W entry preserved after s196
+        adds R=1; s229 converted W to a conditional (default=3 == the
+        s195 block, Part-1 no-op)."""
         r = compute_ability_dps(
             self.snap, "Morgana", level=11, mode="SR",
             target_armor=80, target_mr=30,
         )
-        self.assertEqual(r.block_index_resolved.get("W"), 3)
+        self.assertEqual(
+            r.block_index_resolved.get("W"),
+            {"default": 3, "target_full_hp": 2},
+        )
 
     def test_pre_s196_akali_R2_unchanged(self) -> None:
         """Backward-compat: s192 Akali R/R2 token-variant entries preserved
@@ -1838,12 +1903,16 @@ class Phase599_10ExpansionTests(unittest.TestCase):
 
     # Backward-compat: pre-s197 entries still resolve unchanged
     def test_pre_s197_morgana_unchanged(self) -> None:
-        """Backward-compat: s195+s196 Morgana entry preserved after s197."""
+        """Backward-compat: s195+s196 Morgana entry preserved after s197
+        (s229 converted W to a conditional; default=3 == the s195 block)."""
         r = compute_ability_dps(
             self.snap, "Morgana", level=11, mode="SR",
             target_armor=80, target_mr=30,
         )
-        self.assertEqual(r.block_index_resolved, {"W": 3, "R": 1})
+        self.assertEqual(
+            r.block_index_resolved,
+            {"W": {"default": 3, "target_full_hp": 2}, "R": 1},
+        )
 
     def test_pre_s197_akali_unchanged(self) -> None:
         """Backward-compat: s192+s196 Akali entry preserved after s197."""
@@ -2086,12 +2155,16 @@ class Phase599_11ExpansionTests(unittest.TestCase):
 
     # Backward-compat: prior-batch entries still resolve unchanged after s198
     def test_pre_s198_morgana_unchanged(self) -> None:
-        """Backward-compat: s195+s196 Morgana entry preserved after s198."""
+        """Backward-compat: s195+s196 Morgana entry preserved after s198
+        (s229 converted W to a conditional; default=3 == the s195 block)."""
         r = compute_ability_dps(
             self.snap, "Morgana", level=11, mode="SR",
             target_armor=80, target_mr=30,
         )
-        self.assertEqual(r.block_index_resolved, {"W": 3, "R": 1})
+        self.assertEqual(
+            r.block_index_resolved,
+            {"W": {"default": 3, "target_full_hp": 2}, "R": 1},
+        )
 
     def test_pre_s198_aatrox_unchanged(self) -> None:
         """Backward-compat: s197 Aatrox W=3 preserved after s198 (Aatrox
@@ -2540,13 +2613,16 @@ class Phase599_13ExpansionTests(unittest.TestCase):
         self.assertEqual(r.block_index_source, "champion")
 
     def test_anivia_all_three_keys_in_resolved(self) -> None:
-        """Anivia Q=2 (s191) + E=1 (s191) + R=1 (s200) — all three keys
-        must appear in resolved map."""
+        """Anivia Q=2 (s191) + E (s191) + R=1 (s200) — all three keys
+        must appear; s229 converted E to a conditional dict."""
         r = compute_ability_dps(
             self.snap, "Anivia", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"Q": 2, "E": 1, "R": 1})
+        self.assertEqual(
+            r.block_index_resolved,
+            {"Q": 2, "E": {"default": 1, "target_no_setup": 0}, "R": 1},
+        )
 
     def test_lillia_both_keys_in_resolved(self) -> None:
         """Lillia W=1 (s196) + Q=1 (s200) — both keys must appear."""
@@ -2859,12 +2935,17 @@ class Phase599_14ExpansionTests(unittest.TestCase):
         self.assertEqual(r.block_index_resolved, {"Q": 1, "W": 1, "E": 1})
 
     def test_pre_s201_anivia_unchanged(self) -> None:
-        """Backward-compat: Anivia 3-key shape from s191+s193+s200 preserved."""
+        """Backward-compat: Anivia 3-key shape from s191+s193+s200
+        preserved (s229 converted E to a conditional; default=1 == the
+        s191 block, Part-1 no-op)."""
         r = compute_ability_dps(
             self.snap, "Anivia", level=11, mode="SR",
             target_armor=80, target_mr=30,
         )
-        self.assertEqual(r.block_index_resolved, {"Q": 2, "E": 1, "R": 1})
+        self.assertEqual(
+            r.block_index_resolved,
+            {"Q": 2, "E": {"default": 1, "target_no_setup": 0}, "R": 1},
+        )
 
     def test_pre_s201_aatrox_unchanged(self) -> None:
         """Backward-compat: s197 Aatrox W=3 + s199 Q=1 preserved after s201."""
@@ -3596,13 +3677,13 @@ class Phase599_17ExpansionTests(unittest.TestCase):
         / Sivir Q s195 / Talon W s195.
 
         s228 Phase 5.9.28: Q converted to a conditional dict
-        {"default": 5, "target_no_cc": 0} (charm-marked triple-spike is
+        {"default": 5, "target_no_setup": 0} (charm-marked triple-spike is
         the committed/canonical branch; downgrade to single spike when
         not charmed). Part 1 resolves to "default" → byte-identical to
         the old int Q=5; assert the new shape + zero-regression +
         still-load-bearing (DMGIDX[5] >> DMGIDX[0], not HP-gated)."""
         m, _ = get_block_index_for("Evelynn")
-        self.assertEqual(m["Q"], {"default": 5, "target_no_cc": 0})
+        self.assertEqual(m["Q"], {"default": 5, "target_no_setup": 0})
         reg = compute_ability_dps(
             self.snap, "Evelynn", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
@@ -3686,13 +3767,13 @@ class Phase599_17ExpansionTests(unittest.TestCase):
         s202.
 
         s228 Phase 5.9.28: E converted to the FLAGSHIP conditional dict
-        {"default": 2, "target_no_cc": 0} — this is the canonical
+        {"default": 2, "target_no_setup": 0} — this is the canonical
         target-state case the whole conditional-schema-lift bucket was
         named for. Part 1 resolves to "default" (block 2) → byte-identical
         to the old int E=2; assert new shape + zero-regression +
         still-load-bearing (DMGIDX[2] = 2× DMGIDX[0], not HP-gated)."""
         m, _ = get_block_index_for("Zoe")
-        self.assertEqual(m["E"], {"default": 2, "target_no_cc": 0})
+        self.assertEqual(m["E"], {"default": 2, "target_no_setup": 0})
         reg = compute_ability_dps(
             self.snap, "Zoe", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
@@ -3745,7 +3826,7 @@ class Phase599_17ExpansionTests(unittest.TestCase):
         )
         self.assertEqual(
             r.block_index_resolved,
-            {"R": 1, "Q": {"default": 5, "target_no_cc": 0}},
+            {"R": 1, "Q": {"default": 5, "target_no_setup": 0}},
         )
 
     def test_gwen_both_keys_in_resolved(self) -> None:
@@ -3791,7 +3872,7 @@ class Phase599_17ExpansionTests(unittest.TestCase):
         )
         self.assertEqual(
             r.block_index_resolved,
-            {"Q": 1, "W": 1, "E": {"default": 2, "target_no_cc": 0}},
+            {"Q": 1, "W": 1, "E": {"default": 2, "target_no_setup": 0}},
         )
 
     # Math-level sanity

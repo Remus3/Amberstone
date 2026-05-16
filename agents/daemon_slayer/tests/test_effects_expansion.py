@@ -7677,13 +7677,13 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          lift (operator option B, multi-session). Part 1:
         #          block_index value widens int|list -> ALSO
         #          dict{"default",<cond>} (closed vocab
-        #          target_full_hp/target_no_cc). Resolves to
+        #          target_full_hp/target_no_setup). Resolves to
         #          "default" branch unconditionally (== int/list,
         #          zero regression); live HP%/CC predicates = Part 2.
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.0.0")
+        self.assertEqual(ENGINE_VERSION, "1.1.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7744,7 +7744,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.0.0")
+        self.assertEqual(ENGINE_VERSION, "1.1.0")
 
 
 if __name__ == "__main__":
