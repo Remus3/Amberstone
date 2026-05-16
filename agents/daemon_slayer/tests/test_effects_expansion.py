@@ -7661,7 +7661,13 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          (18-dmg passive on-hit), scoring W at ~7% of real
         #          (live A/B 18→240 raw, 13.3x). Found by re-running the
         #          unmapped-key pre-filter on the post-s224 snapshot.
-        self.assertEqual(ENGINE_VERSION, "0.97.0")
+        # 0.98.0 = s226 Phase 5.9.26 first form_index coverage sweep
+        #          since s205. 3 ADDs: Swain R=1 (Demonflare recast vs
+        #          form-0 drain per-tick, A/B 12.5→250), Briar W=1 (form
+        #          0 'Blood Frenzy' has NO damage block — form 1 'Snack
+        #          Attack' is the whole W), Evelynn E=1 (Empowered
+        #          Whiplash — Eve's canonical Demon-Shade combo).
+        self.assertEqual(ENGINE_VERSION, "0.98.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7722,7 +7728,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.97.0")
+        self.assertEqual(ENGINE_VERSION, "0.98.0")
 
 
 if __name__ == "__main__":
