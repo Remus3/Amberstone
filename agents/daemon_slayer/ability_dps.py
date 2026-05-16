@@ -323,13 +323,24 @@ def reset_block_index_cache() -> None:
 # ``_BLOCK_STRATEGIES``): an unknown condition key is a registry typo and
 # MUST fail loudly here, never silently no-op.
 _BLOCK_INDEX_DEFAULT_KEY = "default"
+# Phase 5.9.29 (s229, 2026-05-16): generalized ``target_no_cc`` →
+# ``target_no_setup``. s228 scoped the non-HP condition to its CC-family
+# flagships (Zoe sleep / Evelynn charm), but the seed-expansion candidates
+# (Anivia E vs *Chilled*, Brand W vs *ablaze*, Cassiopeia E vs *poisoned*,
+# mark-based amps) share the identical modeling semantic regardless of
+# debuff *type*: the operator's own ability applied an amp-enabling target
+# state; the amped block is the operator-commits/canonical assumption, the
+# downgrade is when that state is absent. Naming it after "CC" was a
+# false narrowing — 5+ concrete uses → the honest general term.
 _BLOCK_INDEX_CONDITIONS: frozenset[str] = frozenset({
-    "target_full_hp",   # live target above the execute/low-HP threshold →
-                         # pick the non-execute block (Kindred E 5% vs 7.5%
-                         # missing-HP; execute-class abilities generally)
-    "target_no_cc",     # operator's setup CC/charm/sleep NOT applied →
-                         # pick the un-amped block (Zoe E sleep double,
-                         # Evelynn Q charm triple-spike total)
+    "target_full_hp",    # live target above the execute/low-HP threshold →
+                          # pick the non-execute block (Kindred E 5% vs 7.5%
+                          # missing-HP, Veigar/Morgana-class HP-threshold amps)
+    "target_no_setup",   # the operator's amp-enabling target state — CC /
+                          # sleep / charm / chill / ablaze / poison / mark —
+                          # is NOT present → pick the un-amped block (Zoe E
+                          # sleep, Evelynn Q charm, Anivia E chill, Brand W
+                          # ablaze). Type-agnostic by design.
 })
 
 
