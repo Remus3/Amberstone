@@ -208,7 +208,12 @@ class KindredEEntryTests(unittest.TestCase):
     def test_registry_shape(self) -> None:
         m, src = get_block_index_for("Kindred")
         self.assertEqual(src, "champion")
-        self.assertEqual(m.get("E"), 1)
+        # s228 Phase 5.9.28 converted Kindred E from int 1 to a conditional
+        # dict: default=1 (the s223 execute block — operator commits to
+        # E'ing low-HP targets), downgrade to 0 vs a full-HP target. Part 1
+        # resolves to "default" so every other test in this class (the
+        # s223 semantic guarantees) still passes unchanged.
+        self.assertEqual(m.get("E"), {"default": 1, "target_full_hp": 0})
 
     def _e(self, *, hp_pct: float, forced: int | None = None):
         kw = {} if forced is None else {"block_index_overrides": {"E": forced}}
@@ -297,15 +302,20 @@ class SaturationAndBackwardCompatTests(unittest.TestCase):
             Path("agents/daemon_slayer/champion_block_index.json")
             .read_text(encoding="utf-8")
         )
+        # s228 converts 3 entries in-place (Zoe E / Evelynn Q / Kindred E)
+        # to conditional dicts — no new champions, count stays 125.
         self.assertEqual(len(reg["champions"]), 125)
-        self.assertEqual(reg["champions"]["Kindred"], {"E": 1})
+        self.assertEqual(
+            reg["champions"]["Kindred"],
+            {"E": {"default": 1, "target_full_hp": 0}},
+        )
 
 
 class EngineVersionTests(unittest.TestCase):
     def test_engine_version_bumped(self) -> None:
         from agents import daemon_slayer
-        # s227 (Phase 5.9.27) bumped to 0.99.0; pin tracks current.
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "0.99.0")
+        # s228 (Phase 5.9.28) bumped to 1.0.0; pin tracks current.
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.0.0")
 
 
 if __name__ == "__main__":

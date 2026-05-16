@@ -7673,7 +7673,17 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          (+16.4%), Talon W-Q-E (+12.0%). Finding: the numeric
         #          pre-filter over-flags (≠ real play); max_priority +
         #          combo_sequence are meta-curated, not numeric-swept.
-        self.assertEqual(ENGINE_VERSION, "0.99.0")
+        # 1.0.0  = s228 Phase 5.9.28 conditional-target-state schema
+        #          lift (operator option B, multi-session). Part 1:
+        #          block_index value widens int|list -> ALSO
+        #          dict{"default",<cond>} (closed vocab
+        #          target_full_hp/target_no_cc). Resolves to
+        #          "default" branch unconditionally (== int/list,
+        #          zero regression); live HP%/CC predicates = Part 2.
+        #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
+        #          are no-op conversions of shipped unconditional
+        #          entries.
+        self.assertEqual(ENGINE_VERSION, "1.0.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7734,7 +7744,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.99.0")
+        self.assertEqual(ENGINE_VERSION, "1.0.0")
 
 
 if __name__ == "__main__":

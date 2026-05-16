@@ -185,7 +185,12 @@ class BackwardCompatS224Tests(unittest.TestCase):
         reset_block_index_cache()
 
     def test_s223_kindred_E_unchanged(self) -> None:
-        self.assertEqual(get_block_index_for("Kindred")[0].get("E"), 1)
+        # s228 Phase 5.9.28 converted Kindred E to a conditional dict;
+        # default=1 preserves the s223 block-1 execute routing in Part 1.
+        self.assertEqual(
+            get_block_index_for("Kindred")[0].get("E"),
+            {"default": 1, "target_full_hp": 0},
+        )
 
     def test_s223_promotions_still_typed(self) -> None:
         """s223's nested-paren promotions survive the s224 migration."""
@@ -219,8 +224,8 @@ class BackwardCompatS224Tests(unittest.TestCase):
 class EngineVersionS224Tests(unittest.TestCase):
     def test_engine_version(self) -> None:
         from agents import daemon_slayer
-        # s227 (Phase 5.9.27) bumped to 0.99.0; pin tracks current.
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "0.99.0")
+        # s228 (Phase 5.9.28) bumped to 1.0.0; pin tracks current.
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.0.0")
 
 
 if __name__ == "__main__":

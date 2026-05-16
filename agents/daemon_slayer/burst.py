@@ -306,7 +306,7 @@ class BurstResult:
     form_index_source: str = "default"              # "override" | "champion" | "default"
     form_index_resolved: dict[str, int] = field(default_factory=dict)
     block_index_source: str = "default"             # "override" | "champion" | "default"
-    block_index_resolved: dict[str, int] = field(default_factory=dict)
+    block_index_resolved: "dict[str, int | list[int] | dict[str, int | list[int]]]" = field(default_factory=dict)
     # Phase 5.7 (s189, 2026-05-13) — Spellblade contribution within the
     # combo. ``spellblade_procs`` counts how many ability-then-AA
     # transitions actually fired a Spellblade proc; ``spellblade_damage``
@@ -435,7 +435,7 @@ def compute_burst_damage(
     max_priority: Optional[Sequence[str]] = None,
     block_strategy: str = "first",
     form_index_overrides: Optional[dict[str, int]] = None,
-    block_index_overrides: Optional[dict[str, int | list[int]]] = None,
+    block_index_overrides: "Optional[dict[str, int | list[int] | dict[str, int | list[int]]]]" = None,
     combo_sequence: Optional[Sequence[str]] = None,
 ) -> BurstResult:
     """Compute one-combo total burst damage for the resolved build.
@@ -950,7 +950,7 @@ def _empty_burst(
     form_index_source: str = "default",
     form_index_resolved: Optional[dict[str, int]] = None,
     block_index_source: str = "default",
-    block_index_resolved: Optional[dict[str, int]] = None,
+    block_index_resolved: "Optional[dict[str, int | list[int] | dict[str, int | list[int]]]]" = None,
     champion_name: str | None = None,
     note: str = "",
 ) -> BurstResult:
@@ -1049,7 +1049,7 @@ class BurstRankResult:
     form_index_source: str                # "override" | "champion" | "default"
     form_index_resolved: dict[str, int]   # merged map actually used
     block_index_source: str               # "override" | "champion" | "default"
-    block_index_resolved: dict[str, int]  # merged (champion, key) → block_index map
+    block_index_resolved: "dict[str, int | list[int] | dict[str, int | list[int]]]"  # merged (champion, key) → block_index map
     block_strategy: str
     mode_multiplier: float
     budget: Optional[int]
@@ -1163,7 +1163,7 @@ def rank_items_by_burst(
     max_priority: Optional[Sequence[str]] = None,
     block_strategy: str = "first",
     form_index_overrides: Optional[dict[str, int]] = None,
-    block_index_overrides: Optional[dict[str, int | list[int]]] = None,
+    block_index_overrides: "Optional[dict[str, int | list[int] | dict[str, int | list[int]]]]" = None,
     combo_sequence: Optional[Sequence[str]] = None,
     filter_shared_uniques: bool = True,
 ) -> BurstRankResult:
