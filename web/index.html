@@ -1341,6 +1341,7 @@
             <span class="lm-kda-text" id="lm-kda-text">—/—/—</span>
             <span class="lm-kda-ratio" id="lm-kda-ratio">—</span>
           </div>
+          <div class="lm-hero-result" id="lm-result-badge" data-result="" hidden>—</div>
           <div class="lm-hero-grade" id="lm-grade-badge" data-grade="">—</div>
         </div>
 
@@ -1368,19 +1369,48 @@
         </div>
 
         <div class="lm-section lm-build-section">
-          <h3 class="lm-section-head">DS-SUGGESTED BUILD <span class="lm-section-sub">at end-of-match</span></h3>
-          <div class="lm-build-items" id="lm-ds-picks">
-            <span class="lm-empty">no DS data captured for this match</span>
+          <h3 class="lm-section-head">BUILD</h3>
+          <!-- Operator's actual final inventory from LCU (item0-item6 +
+               summoner spells). Hidden until enriched data lands. -->
+          <div class="lm-build-row" id="lm-actual-build" hidden>
+            <span class="lm-build-row-label">FINAL</span>
+            <div class="lm-inventory" id="lm-inventory"></div>
+            <div class="lm-summoners" id="lm-summoners"></div>
           </div>
-          <div class="lm-pending" data-dummy-data="last-match-items">
-            Final inventory pending — v2 Refresh-from-Riot will populate
+          <div class="lm-build-row">
+            <span class="lm-build-row-label">DS PICKS</span>
+            <div class="lm-build-items" id="lm-ds-picks">
+              <span class="lm-empty">no DS data captured for this match</span>
+            </div>
+          </div>
+          <div class="lm-pending" id="lm-build-pending" data-dummy-data="last-match-items">
+            Final inventory pending — auto-ingests on EndOfGame; or Refresh-from-Riot button (v2) on the page header.
           </div>
         </div>
 
         <div class="lm-section lm-team-comp">
           <h3 class="lm-section-head">TEAM COMPOSITION</h3>
-          <div class="lm-pending" data-dummy-data="last-match-team">
-            Team roster pending — v2 Refresh-from-Riot will populate
+          <!-- Two rosters: operator's ally team (top, with W/L tag in head)
+               and enemy team (bottom). Each row: portrait + name + KDA +
+               level + CS + 7 inventory icons + 2 summoner spells. -->
+          <div class="lm-tc-table" id="lm-tc-table" hidden>
+            <div class="lm-tc-group lm-tc-ally" data-side="ally">
+              <div class="lm-tc-group-head">
+                <span class="lm-tc-group-label">ALLY</span>
+                <span class="lm-tc-group-result" id="lm-tc-ally-result">—</span>
+              </div>
+              <ul class="lm-tc-list" id="lm-tc-ally-list"></ul>
+            </div>
+            <div class="lm-tc-group lm-tc-enemy" data-side="enemy">
+              <div class="lm-tc-group-head">
+                <span class="lm-tc-group-label">ENEMY</span>
+                <span class="lm-tc-group-result" id="lm-tc-enemy-result">—</span>
+              </div>
+              <ul class="lm-tc-list" id="lm-tc-enemy-list"></ul>
+            </div>
+          </div>
+          <div class="lm-pending" id="lm-tc-pending" data-dummy-data="last-match-team">
+            Team roster pending — auto-ingests on EndOfGame; or Refresh-from-Riot button (v2) on the page header.
           </div>
         </div>
 
