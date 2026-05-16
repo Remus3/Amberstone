@@ -4,6 +4,30 @@
 
 ---
 
+# s225 wrap — 2026-05-16 (DS Phase 5.9.25: post-parser-fix block_index sweep — Varus W)
+
+**Operator instruction:** same self-paced loop ("continue ds work in parallel for the next hour self continue — maximum effort"). **Iteration 3** (same session-day; s223=it1, s224=it2).
+
+## What happened — closed the iteration-2 Varus-W follow-up
+
+s223+s224's parser fixes re-parsed %HP onto many blocks. Re-ran `tools/ds_unmapped_key_prefilter.py` over the POST-s224 snapshot — champions whose candidate blocks evaluated ~0 pre-migration now show real ratios. Shortlist: 6 (Corki R / DrMundo Q = documented skips; Fizz W = confirmed skip block-0-is-"Total"; LeBlanc R = deferred s197 data-gap; Fiddlesticks Q = no entry needed; **Varus W = the one clean ADD**).
+
+## Shipped (committing now)
+
+**`Varus: {W: 2}`** — "Blighted Quiver" block 2 `Bonus Magic Damage at Max Stacks` proven **exactly 3× block 1's per-Blight-stack** value at every rank (the 3-stack detonation = Varus's standard combo: W-passive stack via AAs/Q then Q/R-detonate). Engine defaulted to block 0 (6-30 + 35% AP passive on-hit) → scored W at ~7% of reality; **live A/B 18→240 raw (13.3×)**. Pattern D resource-state (operator fully self-controls stacking; precedent Twitch E 6-stack / Renekton full Fury). Chose block 2 over block 4 (1.5× block 2) because block 4 entangles Varus R amp — W scores R-independent. Varus → `{Q:1, W:2}`. ENGINE 0.96→0.97; 6 pin bumps + `test_block_index_overrides` Varus shape-pin + `test_post_parser_sweep_s225.py` (9 tests, incl. the 3×-mechanic proof). DS 2104→**2113**; wider RC **1107**; DS restarted → 0.97.0.
+
+## Don't-redo / blockers
+
+- **Fiddlesticks Q is correctly scored — do NOT add an entry.** s224's current-HP parse fix already made its engine-default block 0 (% current HP max'd with the Minimum floor) the right single-Q value. Its "Increased" block (2×) is a fear-sequence target-state condition → conditional-schema-lift bucket, not a clean unconditional commit.
+- **Both block_index scan spaces are now exhausted** (3 iterations): uncovered champions (s223, 0 found) + unmapped keys on covered champs (s224 Bel'Veth R, s225 Varus W — both follow-ups now closed). Don't re-run these scans expecting yield. The conditional-target-state schema lift is the next frontier but is architectural — flag for operator, don't ship autonomously.
+- The two migration scripts + 2 scanners are durable artifacts; reuse on patch re-extracts, don't refactor old ones.
+
+## NEXT (self-continuing loop)
+
+Block_index pure-data work is done. Iteration 4 options: (a) audit the **form_index / combo_sequence / max_priority** registries for the same class of parser/coverage gaps the block_index sweeps found (these registries got far less scrutiny than block_index's 25+ batches); (b) DS calibration if rewind data has refreshed; (c) flag the conditional-target-state schema lift for operator. s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
+
+---
+
 # s224 wrap — 2026-05-16 (DS Phase 5.9.24: unmapped-key pass — Bel'Veth R + _UNIT_TO_FIELD variant family)
 
 **Operator instruction:** same self-paced loop ("continue ds work in parallel for the next hour self continue — maximum effort"). This is **iteration 2** (s223 was iteration 1, same session-day).
@@ -59,59 +83,3 @@ Applied the **parallel-batch-agents** pattern: built `tools/ds_block_scanner.py`
 ## NEXT (self-continuing loop)
 
 Conditional-target-state schema lift is the next DS frontier but is an architectural change wanting operator sign-off — flag it rather than ship autonomously. Subsequent loop iterations: audit covered champions for *additional* uncovered KEYS (distinct from the saturated new-champion space), or DS calibration once rewind data refreshes. s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
-
----
-
-# s218 wrap — 2026-05-15 (Home page redesign + foundation overhaul)
-
-**Operator instruction:** "doing ui work" — open-ended iterative pass on the Home view. Closed out with "this page is done now. commit and /done".
-
-## Shipped — single commit (`4518ed9`)
-
-**Foundation (applies to all views going forward):**
-- Pin RC menu width at 230px (static across views; fits longest case "AUTO · PRE-GAME LOBBY"). `.title-current` switched from min-width to fixed width per operator hard rule.
-- Bump typography +1px globally — 414 declarations across 14 panel CSS files via Python script; RC menu rules (4 skipped) preserved per directive.
-- Flip body zoom default 1.33 → 1.0 in `base.css`. Fixed dev.js/main.js localStorage key mismatch (slider wrote `rc-zoom`, page-load read `rc-body-zoom` — body was always 1.33 regardless of slider position). Both now use `rc-zoom`.
-
-**Dev/Sim Preview removal** (separate concern operator green-lit mid-session):
-- Drop `#view-dev` section + menu item + `#sim-banner` block.
-- Delete `web/js/sim.js`, `web/css/panels/dev.css`, `dashboard/routes_dev.py`.
-- Archive `data/sim/*` + `data/sim_states.json` → `docs/_archive/2026-05-15-dev-sim-removal/`.
-- Scrub orphan refs across `agents/supervisor.py`, `dashboard/_state_builder.py`, `dashboard/_handler.py`, `dashboard/_static.py`, `riot-commander.spec`, `tools/extract_panels.py`, `web_dashboard.py`, `view_router_state.py`.
-
-**Home view content:**
-- **7-tile quick actions** in operator's order: Find Match · Last Match · Session · History · Replay · Builds · Settings. Equal-width centered tiles. Find Match accented with lavender gradient + info-soft border + lavender icon (primary action signal).
-- **Find Match opens a Home-unique queue picker modal** (centered fixed-position, backdrop dimmer, Escape/outside-click close). Mirrors lobby-view's `#lv-mode-menu` queue list with `data-hfm-*` attributes. Click → fires `change_queue_type` LCU command → routes to Pre-Game Lobby. Two false-start iterations resolved: synthetic `.click()` on `#lv-mode-trigger` after route was racing with the document outside-click handler → final landed approach is `e.stopPropagation()` on tile click + direct DOM mutation of menu's `hidden` class.
-- **Tonight's Pick 3-section restructure**: Section 1 = champion intro (icon + name + meta); Section 2 = THE GOOD / THE BAD / THE UGLY placeholder rows tagged `data-dummy-data="tonights-pick-tips"`; Section 3 = STREAK / ADVISORIES sub-header rows wired live to `_HOME.streaks` (play_days + good_grades) and `#advisory-count`. Layout: `grid-template-columns: auto 1fr 1fr` so Section 1 sizes to content + Section 2 starts at a finite boundary after "best B" text. Section 3 uses 88px label col + 16px gap (matches Section 2) for symmetric label-value spacing. "Open Advisories" → "Advisories" rename to fit column. 14px row-gap between Streak + Advisories rows.
-- **Recent 5 row updates**: spell out "X Minutes" (was "Xm"), append CS + CS/min chip, 6-slot placeholder item strip tagged `data-dummy-data="items-pending-ingest"`. Card click → History view with `sessionStorage.rc-history-focus-ts` → auto-select date-matching session + scroll target row + pulse-highlight class for 3.5s.
-- **This Week row updates**: KDA breakdown "1.8 22/10/18" (avg + raw totals), AVG CS per game + CS/min (operator clarified avg not total), grade-tint demoted from card-bg-tint to 3px left-border accent (transparent bg + bottom-only divider — operator wanted list, not cards). Bumped `.home-week-bar-kda-raw` 13 → 14px to separate hierarchy from 15px ratio pill.
-- **Backend (`dashboard/builders.py`)**: `/api/home/summary` recent[] gains `cs`, `cs_per_min`, `items[]`, `mode_subtype`; this_week[] gains `kills`, `deaths`, `assists`, `cs_total`, `cs_per_min`. RC hard-restarted (pid 18628 → 15752) via `taskkill /F /PID + restart.bat` after `restart_trigger.txt` mechanism didn't consume two attempts.
-- **Hero headline**: drop absolute-threshold `up/down` classifier (was rendering 1.27 KDA as `.down` salmon-red despite no comparison baseline). Always `.flat` text-dim until real yesterday-comparison baseline ships.
-- **Tonight's Pick "Jinx" name → History filtered by champion**: clickable (cursor:pointer + green-tinted underline on hover) → `sessionStorage.rc-history-focus-champion` → `_historyFetchAndRender` finds most recent session containing that champion + highlights all matching match rows + scrolls to first.
-
-**Footer + tooltip polish:**
-- Footer height 44 → 36px, color `--text-faint` → `--text-dim`, line-height 1, all children `inline-flex; align-items: center`. ui-version pill opacity 0.6 → 0.85.
-- `wrapSixWords` (tooltip system) was splitting on ALL whitespace (including `\n`) so multi-section tooltips collapsed into one long line. Now preserves explicit `\n` boundaries, wrapping each source line independently at 6 words → RC pip / health-dot multi-section tooltip renders per-row.
-
-**Cleanup:**
-- Drop orphan `.home-pick-btn*` CSS (advisory + digest pip-buttons that Section 3 redesign replaced).
-- Drop orphan `wireAlertRow` calls in `_homeWireStartup`.
-- Drop orphan `view-dev` CSS selectors in header.css.
-- All edits verified: py_compile clean on touched Python files; 27/27 view-router tests; live dashboard auto-reloaded via asset-hash; cache-bust hash flipped to `b5f4bf09c6`.
-
-## Visual audit
-Mid-session ran a `general-purpose` Agent for independent UI review. Surfaced 3 must-fix + 4 should-consider + 5 leave-alone findings. Operator picked 6 of 7 to apply (skipped #1 as false positive after re-verification). All 6 applied + verified live.
-
-## Tests / verification
-- `tests/test_view_router_state.py`: 27 pass + 16 subtests.
-- `tests/test_routes_ds_preview_scorer.py` + `tests/test_state_builder_archetype_pick.py` + `tests/snapshot_panels/`: 59 pass + 16 subtests in 18.65s combined.
-- Manual: Recent 5 click → History deep-link pulse-highlight verified by operator. Find Match picker modal → operator clicked queue → routed to Pre-Game Lobby successfully.
-
-## What's next
-- **Operator signaled next session = next view.** Page order likely: Pre-Game Lobby → Champ Select → Active Match → Last Match → Session → History → Replay → User Builds → Settings.
-- **Tagged-for-removal placeholders** stay until backend work catches up: `data-dummy-data="tonights-pick-tips"` (needs post-match Good/Bad/Ugly analyzer), `data-dummy-data="items-pending-ingest"` (needs `items[]` column in match_history.db ingest), `builders.py` `items: []` + `mode_subtype: null` placeholders (same).
-
-## Blockers / don't redo
-- **Heartbeat ♥ — in header top-right** flagged by operator: WS heartbeat envelope (`{type:"heartbeat", t:epoch}`) doesn't re-arm immediately after RC restart. The dashboard at `web/js/main.js:5026` populates `#heartbeat` only on WS envelope arrival; supervisor's broadcast loop needs investigation. Don't re-investigate the WS connection itself — `ws://192.168.8.230:8891/push` is confirmed connected (footer shows it).
-- **`restart_trigger.txt` watcher wedge** confirmed pre-existing — the supervisor's poll loop at `ops/rc_supervisor.py:1240` didn't consume trigger files on 2 attempts this session. Workaround: hard `taskkill /F /PID + restart.bat` documented as standard. Don't re-debug; existing memory entry `project_rc_supervisor_restart.md` already covers.
-- **Hero headline up/down classifier removed**: do not re-add until a proper yesterday-comparison baseline is wired into `/api/home/summary`. Operator explicitly prefers flat over wrong-direction-tinted.
