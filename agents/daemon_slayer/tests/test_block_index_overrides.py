@@ -157,8 +157,19 @@ class RegistryShapeTests(unittest.TestCase):
         )
         self.assertEqual(champions["Alistar"], {"E": 1})
         # AurelionSol extended in s202 with Q=2 (Breath of Light full channel)
-        # Fiddlesticks extended in s199 with W=3 (Bountiful Harvest execute)
-        self.assertEqual(champions["Fiddlesticks"], {"R": 1, "W": 3})
+        # Fiddlesticks extended in s199 with W=3 (Bountiful Harvest
+        # execute); s230 Phase 5.9.30 added Q as the FIRST list-valued
+        # conditional ({default:[2,3]} feared/amped sum vs
+        # {target_no_setup:[0,1]} un-amped — Terrify double-vs-feared).
+        # A NEW key (real ~+200% Q-dps fix), not a no-op conversion.
+        self.assertEqual(
+            champions["Fiddlesticks"],
+            {
+                "R": 1,
+                "W": 3,
+                "Q": {"default": [2, 3], "target_no_setup": [0, 1]},
+            },
+        )
         self.assertEqual(champions["MissFortune"], {"E": 1})
         # Samira extended in s199 with W=1 (Blade Whirl 2-rotation total)
         self.assertEqual(champions["Samira"], {"R": 1, "W": 1})
@@ -194,8 +205,15 @@ class RegistryShapeTests(unittest.TestCase):
         # Phase 5.9.9 (s196) — extended multi-hit / condition amp expansion
         # Akali E=2 extends prior {"R": 0, "R2": 2} from s192
         self.assertEqual(champions["Akali"], {"R": 0, "R2": 2, "E": 2})
-        # Cassiopeia W=1 extends prior {"E": 1} from s191
-        self.assertEqual(champions["Cassiopeia"], {"E": 1, "W": 1})
+        # Cassiopeia W=1 extends prior {"E": 1} from s191; s230 Phase
+        # 5.9.30 converted E to a conditional (block 1 'Total Enhanced'
+        # vs poisoned; default=1 == the s191 int, provable Part-1
+        # no-op — resolves the s229 18-elem-array deferral). W=1
+        # sibling preserved.
+        self.assertEqual(
+            champions["Cassiopeia"],
+            {"E": {"default": 1, "target_no_setup": 0}, "W": 1},
+        )
         # Morgana R=1 extends prior {"W": 3} from s195; s229 Phase 5.9.29
         # converted W to a conditional (block 3 'Maximum Total' = 2.7x
         # block 2 'Minimum Total' — the <50%-max-HP Tormented Shadow amp;
@@ -675,8 +693,14 @@ class ComputeAbilityDpsBlockIndexTests(unittest.TestCase):
             self.snap, "Cassiopeia", level=11, mode="SR", target_mr=30.0,
         )
         self.assertEqual(r.block_index_source, "champion")
-        # Phase 5.9.9 (s196) — Cassiopeia gained W=1 alongside existing E=1
-        self.assertEqual(r.block_index_resolved, {"E": 1, "W": 1})
+        # Phase 5.9.9 (s196) — Cassiopeia gained W=1 alongside E=1.
+        # s230 Phase 5.9.30 — E converted to a conditional (default=1
+        # == the s191 int, provable Part-1 no-op; resolves the s229
+        # 18-elem-array deferral). W=1 sibling preserved.
+        self.assertEqual(
+            r.block_index_resolved,
+            {"E": {"default": 1, "target_no_setup": 0}, "W": 1},
+        )
 
     def test_explicit_override_wins(self) -> None:
         r = compute_ability_dps(
@@ -799,8 +823,13 @@ class RankerBlockIndexTests(unittest.TestCase):
             target_mr=30.0, top_n=3,
         )
         self.assertEqual(r.block_index_source, "champion")
-        # Phase 5.9.9 (s196) — Cassiopeia gained W=1 alongside existing E=1
-        self.assertEqual(r.block_index_resolved, {"E": 1, "W": 1})
+        # Phase 5.9.9 (s196) — Cassiopeia W=1; s230 Phase 5.9.30 — E
+        # converted to a conditional (default=1 == s191 int, Part-1
+        # no-op). W=1 sibling preserved.
+        self.assertEqual(
+            r.block_index_resolved,
+            {"E": {"default": 1, "target_no_setup": 0}, "W": 1},
+        )
 
     def test_rank_assassin_carries_source(self) -> None:
         r = rank_items_by_burst(
@@ -834,8 +863,13 @@ class ToDictSerializationTests(unittest.TestCase):
         )
         d = r.to_dict()
         self.assertEqual(d["block_index_source"], "champion")
-        # Phase 5.9.9 (s196) — Cassiopeia gained W=1 alongside existing E=1
-        self.assertEqual(d["block_index_resolved"], {"E": 1, "W": 1})
+        # Phase 5.9.9 (s196) — Cassiopeia W=1; s230 Phase 5.9.30 — E
+        # converted to a conditional (default=1 == s191 int, Part-1
+        # no-op). W=1 sibling preserved.
+        self.assertEqual(
+            d["block_index_resolved"],
+            {"E": {"default": 1, "target_no_setup": 0}, "W": 1},
+        )
 
     def test_compute_burst_carries_source(self) -> None:
         r = compute_burst_damage(
@@ -1574,13 +1608,18 @@ class Phase599ExpansionTests(unittest.TestCase):
         self.assertEqual(r.block_index_source, "champion")
 
     def test_cassiopeia_both_keys_in_resolved(self) -> None:
-        """Cassiopeia W=1 (s196) extends prior {E:1} (s191) — both keys
-        must appear in the resolved map."""
+        """Cassiopeia W=1 (s196) extends prior {E:1} (s191); s230 Phase
+        5.9.30 converted E to a conditional (default=1 == the s191 int,
+        provable Part-1 no-op). Both keys must appear in the resolved
+        map with the new conditional E shape."""
         r = compute_ability_dps(
             self.snap, "Cassiopeia", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"E": 1, "W": 1})
+        self.assertEqual(
+            r.block_index_resolved,
+            {"E": {"default": 1, "target_no_setup": 0}, "W": 1},
+        )
         self.assertEqual(r.block_index_source, "champion")
 
     def test_morgana_both_keys_in_resolved(self) -> None:

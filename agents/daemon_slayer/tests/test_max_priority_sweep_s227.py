@@ -119,10 +119,38 @@ class MaxPriorityABTests(unittest.TestCase):
         self.assertGreater(o, d * 1.08)
         self.assertEqual(orr["W"], 4)  # W maxed at lvl 11
 
-    def test_fiddlesticks_w_first_beats_default(self) -> None:
-        d, _ = self._total("Fiddlesticks", ["Q", "W", "E"])
-        o, _ = self._total("Fiddlesticks", ["W", "E", "Q"])
-        self.assertGreater(o, d * 1.10)
+    def test_fiddlesticks_w_first_is_the_meta_curated_registry_entry(
+        self,
+    ) -> None:
+        # s227 SHIPPED Fiddlesticks ["W","E","Q"] on REAL-META grounds
+        # (Bountiful Harvest drain is the standard jungle max) — the
+        # lvl-11 numeric A/B was only the *discovery* method, not the
+        # durable property. s230 Phase 5.9.30 added a Fiddle Q
+        # block_index entry (Terrify double-vs-feared, +200% Q-dps);
+        # because Q was under-counted at s227, the numeric lvl-11 A/B
+        # now FAVORS Q-first (ratio ~0.85, no longer >1.10). This is
+        # precisely the s227 hand-off's stated lesson — max_priority is
+        # a meta-curated registry, NOT numeric-sweepable; a correctness
+        # fix elsewhere must not silently revert a real-meta decision.
+        # Guard the DECISION (registry entry + resolution), not the
+        # now-stale inequality.
+        order, src = get_max_priority_for("Fiddlesticks")
+        self.assertEqual(tuple(order), ("W", "E", "Q"))
+        self.assertEqual(src, "champion")
+        # Registry resolution still works (no explicit arg == explicit
+        # W-E-Q list): the meta order is what the engine actually uses.
+        reg = compute_ability_dps(
+            self.snap, "Fiddlesticks", level=11, item_ids=[], mode="SR",
+            target_armor=80.0, target_mr=30.0, target_max_hp=2000.0,
+        )
+        explicit = compute_ability_dps(
+            self.snap, "Fiddlesticks", level=11, item_ids=[], mode="SR",
+            target_armor=80.0, target_mr=30.0, target_max_hp=2000.0,
+            max_priority=["W", "E", "Q"],
+        )
+        self.assertAlmostEqual(
+            sum(s.dps for s in reg.per_spell),
+            sum(s.dps for s in explicit.per_spell), places=6)
 
     def test_registry_default_resolution_uses_override(self) -> None:
         """With no explicit max_priority arg the engine must pick up the
@@ -191,7 +219,7 @@ class BackwardCompatS227Tests(unittest.TestCase):
 class EngineVersionS227Tests(unittest.TestCase):
     def test_engine_version(self) -> None:
         from agents import daemon_slayer
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.1.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.2.0")
 
 
 if __name__ == "__main__":

@@ -401,10 +401,13 @@ class BackwardCompatIntEntriesTests(unittest.TestCase):
         self.assertEqual(m.get("R"), 1)
         self.assertIsInstance(m.get("R"), int)
 
-    def test_cassiopeia_E_still_int(self) -> None:
+    def test_cassiopeia_E_converted_to_conditional_s230(self) -> None:
+        # Was an int exemplar through s207; s230 Phase 5.9.30 converted
+        # Cassi E to a conditional dict (default=1 == the s191 int —
+        # provable Part-1 no-op). Veigar R remains this class's
+        # untouched-int exemplar.
         m, _ = get_block_index_for("Cassiopeia")
-        self.assertEqual(m.get("E"), 1)
-        self.assertIsInstance(m.get("E"), int)
+        self.assertEqual(m.get("E"), {"default": 1, "target_no_setup": 0})
 
     def test_camille_Q_still_int_alongside_new_W_list(self) -> None:
         # Q=2 (s195) preserved as int; W=[0,1] (s207) added as list.

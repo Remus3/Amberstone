@@ -124,9 +124,18 @@ class BackwardCompatS225Tests(unittest.TestCase):
         """s225's shortlist flagged Fiddlesticks Q / Fizz W / LeBlanc R
         but deliberately did NOT map them (see module docstring /
         registry _meta Phase 5.9.25). These champions keep their PRIOR
-        entries on other keys; only the swept key stays absent."""
+        entries on other keys.
+
+        Fiddlesticks Q was specifically deferred to the *conditional-
+        schema bucket* ("fear-sequence conditional"). That call was
+        CORRECT: s230 Phase 5.9.30 delivered it there exactly — Q is now
+        a conditional ({default:[2,3] feared/amped sum,
+        target_no_setup:[0,1] un-amped}, the Terrify double-vs-feared
+        mechanic). Fizz W / LeBlanc R remain deliberately absent."""
         fid, _ = get_block_index_for("Fiddlesticks")
-        self.assertNotIn("Q", fid)              # swept, not added
+        # s225 deferred-to-conditional-bucket → s230 delivered there.
+        self.assertEqual(
+            fid.get("Q"), {"default": [2, 3], "target_no_setup": [0, 1]})
         self.assertEqual(fid.get("W"), 3)       # s199, preserved
         self.assertEqual(fid.get("R"), 1)       # s193, preserved
         fizz, _ = get_block_index_for("Fizz")
@@ -152,7 +161,7 @@ class BackwardCompatS225Tests(unittest.TestCase):
 class EngineVersionS225Tests(unittest.TestCase):
     def test_engine_version(self) -> None:
         from agents import daemon_slayer
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.1.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.2.0")
 
 
 if __name__ == "__main__":
