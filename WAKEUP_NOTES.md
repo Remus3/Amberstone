@@ -4,6 +4,37 @@
 
 ---
 
+# s232 wrap — 2026-05-16 (DS Phase 5.9.32: conditional pure-data vein SATURATION PROOF — autonomous loop concluded)
+
+**Operator instruction:** "Continue ds". s231's wrap flagged the vein approaching exhaustion; rather than churn low-value no-op conversions (the explicit s223-227 "don't churn low-value registry work" lesson + the no-padding principle), I ran a definitive saturation scan, surfaced the finding via `AskUserQuestion`, and **the operator chose "Accept loop complete."**
+
+## What happened — rigorous exhaustion proof, then a decision
+
+s231's constant-k pair scanner had a structural blind spot (it rejects the Kindred-E archetype, where the amp is a different-ratio bump concentrated in an HP coefficient). Built `tools/ds_execute_prefilter.py` (kept, durable per-patch) to catch exactly that. Result: **zero unaddressed clean execute candidates.**
+- `target_full_hp` (execute): Evelynn R + KogMaw R (s231) + Kindred E (s228) were the clean ones. The only other true `target_missing_hp_pct` pairs are **already engine-default-correct** (Jinx R — block 0 holds the 25-35% max missing-HP coeff, confirms s217; verified live by inspecting blocks) or **deliberate R-entangled skips** (Varus W blocks 5/6 — s225 chose block 2 to keep W R-independent). Veigar R stays the deferred stable-int fixture.
+- `target_no_setup` (self-debuff amp): the one genuine correctness fix was Fiddlesticks Q (s230). Everything else the pair scanner finds is already correctly plain-int mapped — conditional conversion is a pure Part-1 no-op, zero ranking value until a Part-2 live-advisory surface consumes the downgrade (deliberately not built; s229 reframed per-tick B-2 as a mis-feature for item ranking).
+- All other discrete-pair hits are `target_max_hp_pct` — NOT the `target_full_hp` execute semantic (max-HP scaling is a flat fraction of the health bar, not HP-gated) and already mapped-correctly.
+
+This is the s227 situation for the conditional vein: the autonomous pure-data DS work is mined out; the high-ROI remaining DS work is Part-2 (live target-state plumbing) — architectural, wants sign-off, NOT autonomous.
+
+## Shipped (committed) — NO registry/engine change, ENGINE stays 1.3.0
+
+- `tools/ds_execute_prefilter.py` (new, kept) + `tools/ds_cond_pair_prefilter.py` (s231, kept) — the durable per-patch saturation tools.
+- New `test_conditional_block_index_s232_saturation.py` (8 tests) — the s223-style **machine-checked saturation guard**: `MissingHpExecuteVeinSaturationGuard.test_no_unaccounted_clean_execute_pair` enumerates EVERY same-shape monotone-execute-coeff block pair across all 171 champs and asserts each (champ,key) is accounted-for (already-conditional / engine-default-block-0-correct / documented-skip). A future Meraki re-extract that introduces a genuinely-new clean execute candidate **trips this test** = the signal to revisit. Plus vocab-stays-2, all-10-shipped-conditionals-intact, registry-still-125, and an **ENGINE-UNCHANGED** pin (1.3.0 — there is nothing behavioral to version; do NOT bump for a docs/tooling/guard commit).
+- **No ENGINE bump, no DS restart, no stale-pin migrations** (nothing behavioral changed). DS suite 2247→**2255** (+8 guard tests); ruff+py_compile clean.
+
+## Don't-redo / blockers
+
+- **The autonomous pure-data conditional-seed-expansion vein is CONCLUDED** (operator decision). Do NOT re-run `ds_cond_pair_prefilter.py` / `ds_execute_prefilter.py` expecting yield, and do NOT ship no-op plain-int→conditional conversions to look busy — they add zero ranking value (Part-1 always resolves to default == the prior int) until Part-2 exists. The saturation guard is the tripwire if a patch re-extract genuinely changes this.
+- **Don't bump ENGINE_VERSION for pure docs/tooling/guard commits.** s232 deliberately stays 1.3.0; the s232 test pins it unchanged. ENGINE tracks engine/registry *behavior*.
+- The 10 shipped conditionals (s228-s231) are all **Part-1 no-ops by design** — they resolve to `"default"` == their prior int/list. Their value is latent until Part-2. Don't "fix" the no-op.
+
+## NEXT (operator decision required — not autonomous)
+
+The high-ROI remaining DS investment is **Part-2: live target-state plumbing** (thread liveclient target HP%/CC into the ranking call so the 10 shipped conditional downgrade branches actually fire). It is architectural and wants explicit sign-off — and note s229's open question stands: the literal per-tick "B-2" was reframed as a *mis-feature for item-ranking* (would flicker build recs), so Part-2 would need to be a **separate live-advisory product surface**, not item-build wiring. That scoping decision is the real blocker. Other non-DS directions also pending: the s220 aggregator G Post-Game-Review UI reframe (the big non-engine item, flagged ~12 sessions). DrMundo E still needs a `caster_low_hp` vocab decision if caster-state conditionals are ever wanted. Recommend the next "continue" be an explicit operator choice among {Part-2 scoping, s220 UI reframe, other} rather than more autonomous DS pure-data (that vein is provably empty).
+
+---
+
 # s231 wrap — 2026-05-16 (DS Phase 5.9.31: conditional seed-expansion — EXECUTE family: Evelynn R + KogMaw R)
 
 **Operator instruction:** "Continue ds" (self-continuing loop). Continued the s230 NEXT bucket: more debuff-state-family conditional amps. NO vocab change (s227 "don't over-build" — both entries reuse the existing `target_full_hp` term, extending the s228 Kindred E execute pattern).
@@ -55,31 +86,3 @@ The s229 NEXT list named Lux Illumination / Aatrox W / Fiddle Q / Cassi E. Verif
 ## NEXT (self-continuing loop)
 
 Remaining clean conditional candidates need fresh Meraki verification each (rigor bar — the s229/s230 lesson: ROADMAP/_meta recollection mis-names mechanics ~half the time). Likely-clean unexamined: more debuff-state-family amps (mark/charm/sleep beyond the shipped set). DrMundo E remains blocked on a `caster_low_hp` vocab decision (it's caster-missing-HP, NOT target — flag for operator before any vocab add). Aatrox W needs the positional-condition question answered architecturally, not pure-data. s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
-
----
-
-# s229 wrap — 2026-05-16 (DS Phase 5.9.29: conditional seed-expansion + vocab generalization)
-
-**Operator instruction:** "continue" (continuing s228's option B). First surfaced — via AskUserQuestion — that the signed-off literal "B-2" (thread per-tick liveclient HP/CC into the ranking call) is a **mis-feature** for the only DS surface that exists (item-build recommendation): per-tick enemy HP would flicker build recs, and the operator-commits default (Part 1) is the *correct* strategic model — the schema's value is already delivered. **Operator chose "pivot → pure-data conditional seed-expansion"** (the proven s207→s215/s217 cadence).
-
-## What happened
-
-`target_current_hp_pct` is already plumbed end-to-end (only `_serve_ds_preview_post` doesn't supply it); `target_no_cc` has NO liveclient signal. So literal B-2 is shelved as a mis-feature (it would need a separate *live-advisory* product surface, not DS-engine work). Continued option B's spirit with a pure-data batch on the s228 schema.
-
-## Shipped (committed)
-
-- **Vocab generalized `target_no_cc` → `target_no_setup`.** s228 scoped the non-HP condition to its CC-family flagships (sleep/charm); the expansion candidates (Anivia *chill*, Brand *ablaze*) share the identical modeling semantic regardless of debuff type — "operator's own ability applied an amp-enabling target state; default = committed/canonical amped block, condition key = un-amped downgrade." 5+ concrete uses → the honest general term (vocab stays **2**: `{target_full_hp, target_no_setup}`, NOT over-built — s227's lesson was about numeric sweeps, not naming a 5-instance conditional). Engine validator now **rejects the old key** (stale `target_no_cc` fails loudly). s228's Zoe E + Evelynn Q migrated.
-- **3 conversions of already-shipped unconditional entries** — all provably Part-1 no-op (`"default"` == prior int), verified per-rank vs Meraki 16.10.1, live-A/B confirmed on :8893: **Morgana W** `{default:3,target_full_hp:2}` (block 3 = exactly **2.7×** block 2; the <50%-max-HP amp — s195's "vs rooted" framing was imprecise, the Q-root is the operator's *setup*; reg 459.00==forced{W:3}), **Anivia E** `{default:1,target_no_setup:0}` (block 1 = **2.0×** block 0 vs Chilled; reg 300.00==forced{E:1}), **Brand W** `{default:1,target_no_setup:0}` (block 1 = **1.25×** block 0 vs ablaze; reg 318.75==forced{W:1}). Migrations live-verified (Zoe E 140.00, Evelynn Q 345.00; caller-cond Anivia E `{default:0,target_no_setup:2}`→150.00==forced{E:0}).
-- Registry stays **125 champions** (in-place). `_meta` description+rationale appended (surgical str.replace). New `test_conditional_block_index_s229.py` (~30 tests) + global `target_no_cc`→`target_no_setup` rename (33 refs / 4 files) + 12 `test_block_index_overrides` stale pins migrated to conditional-shape + Part-1-equivalence (the s228 iterative-suite-pinpoint method) + 10 ENGINE pin bumps. ENGINE **1.0.0→1.1.0**. DS suite 2188→**2210**; wider RC **1107**; ruff+py_compile clean; DS restarted → `/health` **1.1.0**.
-
-## Don't-redo / blockers
-
-- **Conversions are intentionally zero-numeric-change** (Part-1 resolves to `"default"` == prior int). The amp ratios (2.7× / 2.0× / 1.25×) only manifest when a future *live-advisory* surface consumes the downgrade branch — NOT in item ranking. Don't "fix" the no-op.
-- **The discrete-pair requirement** for a conditional conversion: the ability must have TWO same-shape damage blocks (amped vs un-amped). Bel'Veth R was rejected for exactly this — its 25% missing-HP is *continuous within* one block (handled by `_SCALING_TARGETS`), not a discrete pair. Continuous in-block %HP scaling is NOT a conditional candidate.
-- **Veigar R is the canonical stable-int test fixture** (`test_sum_of_blocks` + `test_block_index_overrides` GetBlockIndexFor/ResolveBlockIndex/known_champion_overrides). It IS a clean target_full_hp execute (DMG1=2.0×DMG0) but converting it cascades a fixture-repoint — defer until a fixture migration is independently warranted, or pick a non-fixture execute.
-- **DrMundo E is caster-missing-HP, not target** (its Min/Max scale on `caster_bonus_hp_pct`) — needs a `caster_low_hp` vocab term, flag for operator. The recurring "DrMundo E missing-HP" carry-forward keeps mischaracterizing this.
-- Literal B-2 (per-tick HP→ranking) is **shelved as a mis-feature**; don't re-attempt it as DS-engine plumbing.
-
-## NEXT (self-continuing loop)
-
-More pure-data conditional seed-expansion on the stable 2-term vocab: Lux Illumination, Aatrox W chain-landed (resolve the positional-vs-CC question first), Fiddle Q fear-state, the debuff-state family (Cassi E poison once its irregular 18-element Meraki base array is understood). Each entry needs Meraki block verification (rigor bar — verify the discrete-pair requirement; do NOT trust ROADMAP/_meta block-number recollection). s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
