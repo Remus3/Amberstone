@@ -23,7 +23,7 @@
          static-pill rule means layout never reshuffles across modes. -->
     <div class="header-row header-row-1">
       <!-- Title is the dropdown trigger for the view router (2026-04-26).
-           Click to open the menu: Home / Lobby / Last Match / Session /
+           Click to open the menu: Home / Lobby / Post Game Review / Session /
            History / Loadouts / Settings / Diagnostics. ESC, outside-click,
            or second click closes. URL hash routes (#home etc.) so the
            selection persists across refresh. -->
@@ -38,7 +38,7 @@
         <button type="button" class="view-menu-item" data-view="lobby"       role="menuitem">Pre-Game Lobby</button>
         <button type="button" class="view-menu-item" data-view="champ-select" role="menuitem">Champ Select</button>
         <button type="button" class="view-menu-item" data-view="active-match" role="menuitem">Active Match</button>
-        <button type="button" class="view-menu-item" data-view="last-match"  role="menuitem">Last Match</button>
+        <button type="button" class="view-menu-item" data-view="last-match"  role="menuitem">Post Game Review</button>
         <button type="button" class="view-menu-item" data-view="session"     role="menuitem">Session</button>
         <button type="button" class="view-menu-item" data-view="history"     role="menuitem">History</button>
         <button type="button" class="view-menu-item" data-view="replay"      role="menuitem">Replay</button>
@@ -236,8 +236,8 @@
       </button>
       <button type="button" class="home-action-tile" data-target="last-match">
         <svg class="home-action-icon" aria-hidden="true"><use href="#hi-swords"/></svg>
-        <span class="home-action-label">Last Match</span>
-        <span class="home-action-sub">post-game review</span>
+        <span class="home-action-label">Post Game Review</span>
+        <span class="home-action-sub">last match · stats + insights</span>
       </button>
       <button type="button" class="home-action-tile" data-target="session">
         <svg class="home-action-icon" aria-hidden="true"><use href="#hi-clock"/></svg>
@@ -1325,7 +1325,7 @@
          sessionStorage.rc-review-focus-match so that page can deep-link. -->
     <section id="view-last-match" class="view-section" hidden>
       <div class="view-section-head">
-        <h2>LAST MATCH</h2>
+        <h2>POST GAME REVIEW</h2>
         <span class="view-section-sub" id="lm-meta">loading…</span>
       </div>
       <div class="view-section-body lm-body" id="lm-body">

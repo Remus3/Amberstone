@@ -444,7 +444,7 @@
   // active during a promote-worthy event, the banner appears instead.
   const VIEW_IDS = ["home","lobby","last-match","session","history","replay","loadouts","user-builds","settings","diagnostics","coach-calls","bridge-pending","fleet","dev"];
   const VIEW_LABELS = {
-    "home":"Home","lobby":"Lobby","last-match":"Last Match","session":"Session",
+    "home":"Home","lobby":"Lobby","last-match":"Post Game Review","session":"Session",
     "history":"History","replay":"Replay",
     "loadouts":"Loadouts","user-builds":"User Builds",
     "settings":"Settings","diagnostics":"Diagnostics",
