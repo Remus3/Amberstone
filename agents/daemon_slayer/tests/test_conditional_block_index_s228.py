@@ -286,19 +286,30 @@ class RegistrySeedEntriesS228Tests(unittest.TestCase):
 
     def test_evelynn_Q_is_conditional_charm_R_preserved(self) -> None:
         m, _ = get_block_index_for("Evelynn")
+        # s228's durable property: Q is the charm target_no_setup
+        # conditional. The R sibling was a plain int 1 at s228; s231
+        # Phase 5.9.31 converted it to a target_full_hp execute
+        # conditional (default=1 == that s204 int — provable Part-1
+        # no-op, so s228's "R unchanged in effect" intent still holds).
         self.assertEqual(m["Q"], {"default": 5, "target_no_setup": 0})
-        self.assertEqual(m["R"], 1)  # s204 sibling, unchanged
+        self.assertEqual(m["R"], {"default": 1, "target_full_hp": 0})
 
     def test_kindred_E_is_conditional_execute(self) -> None:
         m, _ = get_block_index_for("Kindred")
         self.assertEqual(m["E"], {"default": 1, "target_full_hp": 0})
 
     def test_seed_count_is_three(self) -> None:
-        n = 0
-        for champ in ("Zoe", "Evelynn", "Kindred"):
-            m, _ = get_block_index_for(champ)
-            n += sum(1 for v in m.values() if isinstance(v, dict))
-        self.assertEqual(n, 3)
+        # s228's durable property: each of the THREE s228 seed keys
+        # (Zoe E, Evelynn Q, Kindred E) is a conditional dict. The total
+        # dict-count across these champions grows as later sessions add
+        # more conditionals (s231 made Evelynn R conditional too), so
+        # pin the specific s228 seed keys, not a now-stale grand total.
+        zoe, _ = get_block_index_for("Zoe")
+        eve, _ = get_block_index_for("Evelynn")
+        kin, _ = get_block_index_for("Kindred")
+        self.assertIsInstance(zoe["E"], dict)
+        self.assertIsInstance(eve["Q"], dict)
+        self.assertIsInstance(kin["E"], dict)
 
 
 # ─── compute_ability_dps — Part-1 zero-regression invariant ──────────────────
@@ -598,8 +609,8 @@ class EngineVersionS228Tests(unittest.TestCase):
     def test_engine_version(self) -> None:
         from agents import daemon_slayer
 
-        # s230 (Phase 5.9.30) bumped to 1.2.0; pin tracks current.
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.2.0")
+        # s231 (Phase 5.9.31) bumped to 1.3.0; pin tracks current.
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.3.0")
 
 
 if __name__ == "__main__":
