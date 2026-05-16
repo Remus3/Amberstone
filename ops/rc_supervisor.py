@@ -324,6 +324,174 @@ def _new_id() -> str:
     return uuid.uuid4().hex[:16]
 
 
+# ---- Phase 3 supervisor subordinate watcher (additive sidecar) -------------
+#
+# Frozen-file note: additive only. Does NOT touch any main-app lifecycle path
+# (start_app / stop_app / restart_app / _app_alive / heartbeat_valid /
+# heartbeat_stale / status.json main-app schema).
+#
+# Watches agents/state/lockfile (written by agents.supervisor every 5s, see
+# agents/supervisor.py HEARTBEAT_INTERVAL). Restarts the
+# RC-Phase3-Supervisor scheduled task via `schtasks /Run` (preserves the
+# task's run-as-Admin + HIGHEST run-level context — don't Popen
+# `pythonw -m agents.supervisor` directly from here).
+
+
+class _Phase3Watcher:
+    """Detects Phase 3 supervisor death or heartbeat staleness and
+    re-launches its scheduled task. Restart events surface via the parent
+    Supervisor's _record_incident + status.json.
+
+    Default thresholds:
+      - heartbeat staleness: 30s (~6 missed 5s heartbeats — tolerates
+        event-loop pauses, GC, startup grace, transient I/O blocks)
+      - per-attempt cooldown: 30s (new instance needs ~3-5s to write its
+        first heartbeat; cooldown prevents re-fire while booting)
+      - CircuitBreaker: max 5 restarts in 120s, then 300s lockout (same
+        defaults as main app's breaker but a separate budget — Phase 3
+        flapping must not affect main-app restart credit)
+    """
+
+    _HEARTBEAT_STALE_S = 30.0
+    _RESTART_COOLDOWN_S = 30.0
+    _SCHED_TASK_NAME = "RC-Phase3-Supervisor"
+
+    def __init__(
+        self,
+        project_root: Path,
+        runtime_dir: Path,
+        log_fn,
+        *,
+        lockfile_path: Optional[Path] = None,
+        budget_state_file: Optional[Path] = None,
+        restarter=None,
+        pid_alive_fn=None,
+        clock=None,
+    ) -> None:
+        self._project_root = project_root
+        self._lockfile = lockfile_path or (project_root / "agents" / "state" / "lockfile")
+        self._log = log_fn
+        self._restarter = restarter or self._default_restarter
+        self._pid_alive = pid_alive_fn or _pid_alive
+        self._clock = clock or time.monotonic
+
+        self._budget = CircuitBreaker(
+            state_file=budget_state_file or (runtime_dir / "phase3_breaker_state.json"),
+            max_restarts=5, window_s=120.0, cooldown_s=300.0,
+        )
+
+        self._last_restart_mono: Optional[float] = None
+        self._last_state: str = "unknown"
+        self._last_pid: Optional[int] = None
+        self._last_age_s: Optional[float] = None
+        self._last_acted_at: Optional[str] = None
+
+    @staticmethod
+    def _default_restarter(task_name: str) -> bool:
+        try:
+            result = subprocess.run(
+                ["schtasks", "/Run", "/TN", task_name],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10,
+            )
+            return result.returncode == 0
+        except (OSError, subprocess.SubprocessError):
+            return False
+
+    def _read_lockfile(self) -> Optional[Dict[str, Any]]:
+        if not self._lockfile.exists():
+            return None
+        try:
+            return json.loads(self._lockfile.read_text(encoding="utf-8-sig"))
+        except (OSError, json.JSONDecodeError):
+            return None
+
+    def check(self) -> Dict[str, Any]:
+        """Inspect Phase 3 health; restart if dead/stale + budget allows.
+
+        Result keys:
+          state: "healthy" | "stale_heartbeat" | "dead_pid" | "missing_lockfile"
+                  | "restarting" | "restart_invocation_failed" | "cooldown"
+                  | "restart_blocked"
+          pid, heartbeat_age_s, acted: bool, plus trigger / cooldown detail
+        """
+        data = self._read_lockfile()
+        pid = int(data.get("pid", 0)) if isinstance(data, dict) else 0
+        hb_str = data.get("heartbeat_at") if isinstance(data, dict) else None
+
+        age_s: Optional[float] = None
+        if hb_str:
+            try:
+                hb_dt = datetime.fromisoformat(str(hb_str))
+                if hb_dt.tzinfo is None:
+                    hb_dt = hb_dt.replace(tzinfo=timezone.utc)
+                age_s = (datetime.now(timezone.utc) - hb_dt).total_seconds()
+            except (ValueError, TypeError):
+                age_s = None
+
+        if data is None or age_s is None:
+            state = "missing_lockfile"
+            unhealthy = True
+        elif age_s > self._HEARTBEAT_STALE_S:
+            state = "stale_heartbeat"
+            unhealthy = True
+        elif pid and not self._pid_alive(pid):
+            state = "dead_pid"
+            unhealthy = True
+        else:
+            state = "healthy"
+            unhealthy = False
+
+        self._last_pid = pid or None
+        self._last_age_s = age_s
+
+        if not unhealthy:
+            self._last_state = state
+            return {"state": state, "pid": pid or None,
+                    "heartbeat_age_s": age_s, "acted": False}
+
+        now_mono = self._clock()
+        if self._last_restart_mono is not None:
+            since = now_mono - self._last_restart_mono
+            if since < self._RESTART_COOLDOWN_S:
+                self._last_state = "cooldown"
+                return {"state": "cooldown", "pid": pid or None,
+                        "heartbeat_age_s": age_s, "acted": False,
+                        "trigger": state,
+                        "cooldown_remaining_s": round(self._RESTART_COOLDOWN_S - since, 1)}
+
+        if not self._budget.allow_restart():
+            self._last_state = "restart_blocked"
+            return {"state": "restart_blocked", "pid": pid or None,
+                    "heartbeat_age_s": age_s, "acted": False,
+                    "trigger": state,
+                    "budget_cooldown_s": round(self._budget.seconds_until_reset(), 1)}
+
+        ok = self._restarter(self._SCHED_TASK_NAME)
+        self._last_restart_mono = now_mono
+        self._last_acted_at = utc_now()
+        result_state = "restarting" if ok else "restart_invocation_failed"
+        self._last_state = result_state
+        self._log(
+            f"phase3 {state} -- schtasks /Run {self._SCHED_TASK_NAME} "
+            f"{'OK' if ok else 'FAILED'} (age={age_s}s pid={pid or None})"
+        )
+        return {"state": result_state, "pid": pid or None,
+                "heartbeat_age_s": age_s, "acted": True, "trigger": state}
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "last_state":           self._last_state,
+            "last_pid":             self._last_pid,
+            "last_heartbeat_age_s": (round(self._last_age_s, 1)
+                                     if self._last_age_s is not None else None),
+            "last_acted_at":        self._last_acted_at,
+            "stale_threshold_s":    self._HEARTBEAT_STALE_S,
+            "restart_cooldown_s":   self._RESTART_COOLDOWN_S,
+            "scheduled_task":       self._SCHED_TASK_NAME,
+            "budget":               self._budget.to_dict(),
+        }
+
+
 # â”€â”€ Supervisor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class Supervisor:
@@ -412,6 +580,15 @@ class Supervisor:
                   self.runtime_dir, self.log_file.parent]:
             d.mkdir(parents=True, exist_ok=True)
 
+        # Subordinate watch for the Phase 3 supervisor (agents.supervisor).
+        # Additive sidecar — see _Phase3Watcher docstring. Does not touch
+        # any main-app lifecycle path.
+        self._phase3_watcher = _Phase3Watcher(
+            project_root=self.project_root,
+            runtime_dir=self.runtime_dir,
+            log_fn=self.log,
+        )
+
     # â”€â”€ Logging â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def log(self, line: str) -> None:
@@ -447,6 +624,7 @@ class Supervisor:
             "last_restart_reason":      self.last_restart_reason,
             "circuit_breaker":          self.circuit_breaker.to_dict(),
             "deploy_in_progress":       bool(self._deploy_in_progress),
+            "phase3":                   self._phase3_watcher.to_dict(),
         }
         if extra:
             data.update(extra)
@@ -1153,6 +1331,31 @@ class Supervisor:
             except Exception:
                 pass
 
+    def _check_phase3(self) -> None:
+        """Subordinate watch for the Phase 3 supervisor (agents.supervisor).
+        Restart events surface via _record_incident + status.json. See the
+        _Phase3Watcher class docstring for the frozen-file additive rationale.
+        Exceptions are swallowed so a watcher fault never disturbs the main
+        app lifecycle.
+        """
+        try:
+            result = self._phase3_watcher.check()
+        except Exception as exc:
+            self.log(f"phase3_watcher error (non-fatal): {exc}")
+            return
+        if not result.get("acted"):
+            return
+        trigger = result.get("trigger", "unknown")
+        state = result.get("state", "unknown")
+        detail = (
+            f"age={result.get('heartbeat_age_s')}s "
+            f"pid={result.get('pid')}"
+        )
+        severity = "WARN" if state == "restarting" else "ERROR"
+        self._record_incident(
+            severity, f"phase3_{trigger}", "phase3_restart", state, detail=detail
+        )
+
     # â”€â”€ Main loop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _verify_decisions_version(self) -> None:
@@ -1254,6 +1457,7 @@ class Supervisor:
                         self.log(f"restart_trigger watcher: {exc}")
                     self.process_deploy_requests()
                     self.process_supervisor_requests()
+                    self._check_phase3()
                     self.write_status()
 
                 except SystemExit:
