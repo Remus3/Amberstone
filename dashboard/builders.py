@@ -42,17 +42,27 @@ def _build_home_summary() -> dict:
         # renders as a fake "champion" on the home view. Hidden at the
         # read layer; the rows still exist in match_history.db for any
         # downstream consumer that wants TFT-aware aggregation.
+        # s218: surface cs + cs_per_min (already in matches schema).
+        # `items` + `mode_subtype` are placeholder fields for the home
+        # view's per-row rendering — neither is captured in
+        # match_history.db today (would need an end-of-game ingest hook
+        # for items, and a queue_id store to distinguish ARAM Classic
+        # from ARAM Mayhem). TODO(s218-dummy-data): wire when ingest ships.
         cur = conn.execute(
             "SELECT timestamp, mode, champion, grade, kda_str, "
-            "       game_time_s, kills, deaths, assists, label "
+            "       game_time_s, kills, deaths, assists, cs, cs_per_min, label "
             "FROM matches WHERE mode != 'TFT' "
             "ORDER BY timestamp DESC LIMIT 5"
         )
-        for ts, mode, champ, grade, kda, dur, k, d, a, label in cur:
+        for ts, mode, champ, grade, kda, dur, k, d, a, cs, cspm, label in cur:
             out["recent"].append({
                 "timestamp": ts, "mode": mode, "champion": champ or "?",
                 "grade": grade or "—", "kda": kda or f"{k}/{d}/{a}",
                 "duration_s": int(dur or 0), "label": label or "",
+                "cs": int(cs or 0), "cs_per_min": float(cspm or 0.0),
+                # Placeholders pending ingestion extension:
+                "items": [],
+                "mode_subtype": None,
             })
         # Today's session — group all rows whose timestamp date == today.
         # TFT excluded for the same reason as Recent 5: keeps the "N
@@ -81,29 +91,38 @@ def _build_home_summary() -> dict:
         # This week (last 7 days) — top 5 most-played champions. TFT
         # rows excluded for the same reason as Recent 5: the "champion"
         # column carries a comp name, not a champion.
+        # s218: aggregate cs + per-champion K/D/A totals so the home
+        # view can render "1.8 22/10/18" KDA breakdowns + per-week CS.
         week_cutoff = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
         cur = conn.execute(
-            "SELECT champion, mode, grade, kills, deaths, assists "
+            "SELECT champion, mode, grade, kills, deaths, assists, cs, cs_per_min, game_time_s "
             "FROM matches WHERE timestamp >= ? AND champion != '' "
             "  AND mode != 'TFT'",
             (week_cutoff,)
         )
         champ_agg: dict[str, dict] = {}
-        for champ, mode, g, k, d, a in cur:
+        for champ, mode, g, k, d, a, cs, cspm, dur in cur:
             row = champ_agg.setdefault(champ, {
                 "games": 0, "k": 0, "d": 0, "a": 0,
+                "cs_total": 0, "time_total_s": 0.0,
                 "grades": [], "modes": set(),
             })
             row["games"] += 1
             row["k"] += int(k or 0); row["d"] += int(d or 0); row["a"] += int(a or 0)
+            row["cs_total"] += int(cs or 0)
+            row["time_total_s"] += float(dur or 0)
             row["grades"].append(g or "—")
             row["modes"].add(mode or "?")
         ranked = sorted(champ_agg.items(), key=lambda kv: -kv[1]["games"])[:5]
         for champ, r in ranked:
             best = sorted(r["grades"], key=lambda x: "SABCDF—".index(x) if x in "SABCDF—" else 99)[0]
+            mins = r["time_total_s"] / 60.0 if r["time_total_s"] else 0.0
             out["this_week"].append({
                 "champion": champ, "games": r["games"],
                 "avg_kda": round((r["k"] + r["a"]) / max(r["d"], 1), 2),
+                "kills": r["k"], "deaths": r["d"], "assists": r["a"],
+                "cs_total": r["cs_total"],
+                "cs_per_min": round(r["cs_total"] / mins, 1) if mins > 0 else 0.0,
                 "best_grade": best,
                 "modes": sorted(r["modes"]),
             })

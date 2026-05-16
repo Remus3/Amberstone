@@ -1,66 +1,5 @@
-/* ───── Dev-preview corner pill (s162) ─────────────────────────────
- * Replaces the s27-era horizontal banner that pushed all dashboard
- * content down. Fixed-position pill in the top-right; never affects
- * layout. Operator picks fixtures via the dropdown or ←/→ arrows;
- * "exit preview" returns to live. Hidden in production (sim.js only
- * un-hides it when ?sim=… is in the URL). */
-.sim-banner {
-  position: fixed;
-  top: 8px;
-  right: 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-  padding: 4px 10px;
-  background: rgba(33, 34, 45, 0.92);
-  color: var(--text-dim);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  border-radius: 12px;
-  border: 1px solid var(--border-soft);
-  box-shadow: var(--shadow-card-soft);
-  z-index: 1000;
-  pointer-events: auto;
-}
-.sim-banner .sim-hints { display: none; }       /* keyboard shortcuts still work; hint chrome dropped */
-.sim-banner .sim-switcher > span { display: none; } /* "fixture:" label dropped to save width */
-.sim-banner .sim-tag {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  padding: 1px 6px;
-  border-radius: 8px;
-  background: var(--info);
-  color: var(--canvas);
-}
-.sim-banner[data-mode="sr"]     .sim-tag { background: var(--info); }
-.sim-banner[data-mode="aram"]   .sim-tag { background: var(--gold); color: var(--canvas); }
-.sim-banner[data-mode="arena"]  .sim-tag { background: var(--advisory); color: var(--canvas); }
-.sim-banner[data-mode="brawl"]  .sim-tag { background: var(--good); color: var(--canvas); }
-.sim-banner[data-mode="client"] .sim-tag { background: var(--text-dim); color: var(--canvas); }
-.sim-banner .sim-label { font-size: 11px; color: var(--text); }
-.sim-banner .sim-exit  {
-  color: var(--text-dim);
-  text-decoration: none;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 6px;
-  border: 1px solid var(--border-soft);
-}
-.sim-banner .sim-exit:hover { color: var(--text); border-color: var(--text-dim); }
-.sim-banner.hidden { display: none; }
-.sim-banner select {
-  background: var(--surface-alt);
-  color: var(--text);
-  border: 1px solid var(--border-soft);
-  border-radius: 6px;
-  padding: 2px 4px;
-  font-size: 11px;
-}
-
-/* Voice TTS toggle — same chrome as the dev-banner toggle but with an
- * "active" state so the user can see at a glance whether speech is on. */
+/* Voice TTS toggle — header pill for speech output. "active" state lets
+ * the user see at a glance whether speech is on. */
 .voice-toggle.active {
   color: var(--good);
   border-color: color-mix(in srgb, var(--good) 40%, transparent);
@@ -74,7 +13,7 @@
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
   padding: 3px 6px;
-  font-size: 11px;
+  font-size: 12px;
   max-width: 180px;
   margin-left: 4px;
 }
@@ -82,66 +21,6 @@
   outline: 1px solid var(--info);
   outline-offset: 1px;
 }
-.sim-banner .sim-tag {
-  background: var(--advisory);
-  color: var(--canvas);
-  padding: 3px 12px;
-  border-radius: 999px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-}
-.sim-banner .sim-label {
-  color: var(--advisory);
-  flex: 1;
-  font-weight: 700;
-}
-.sim-banner .sim-switcher {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--text-dim);
-  font-size: 12px;
-}
-.sim-banner select {
-  background: var(--surface);
-  color: var(--text);
-  border: none;
-  border-radius: 999px;
-  padding: 5px 12px;
-  font: inherit;
-  font-size: 12px;
-  letter-spacing: 0.06em;
-}
-.sim-banner .sim-hints {
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: var(--text-faint);
-  font-family: "SF Mono", Consolas, monospace;
-  opacity: 0.75;
-}
-.sim-banner .sim-exit {
-  color: var(--canvas);
-  background: var(--advisory);
-  padding: 5px 14px;
-  border-radius: 999px;
-  text-decoration: none;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  font-size: 12px;
-}
-.sim-banner .sim-exit:hover { filter: brightness(1.1); }
-
-/* Placeholder styling for panels that have no fixture data. */
-.panel.sim-missing .panel-body::after {
-  content: "(fixture: no data)";
-  display: block;
-  font-size: 13px;
-  color: var(--text-faint);
-  font-style: italic;
-  padding-top: 8px;
-  letter-spacing: 0.08em;
-}
-
 /* ───── Header bar ─────────────────────────────────────────────── */
 /* 2-row layout is permanent: row 1 = identity + instantaneous state, row 2
  * = bars + session-level info. Explicit rows (flex-column with row flex
@@ -294,20 +173,20 @@ header .header-row-1 .win-pill {
 footer .advisory-badge.in-footer,
 footer .digest-icon.in-footer {
   width: auto;
-  font-size: 11px !important;
+  font-size: 12px !important;
   padding: 2px 8px !important;
   letter-spacing: 0.04em;
 }
 footer .advisory-badge.in-footer b,
 footer .digest-icon.in-footer b {
-  font-size: 11px;
+  font-size: 12px;
 }
 /* Mode pill in footer (moved 2026-04-29). Parent-selector scale-down so
  * we don't need a `.in-footer` modifier — JS does
  * `modePill.className = "mode-pill " + tag` which would clobber any
  * extra class on every mode change. Parent-selector survives that. */
 footer .mode-pill {
-  font-size: 11px !important;
+  font-size: 12px !important;
   padding: 3px 10px !important;
   letter-spacing: 0.08em;
   width: auto !important;
@@ -317,13 +196,13 @@ footer .mode-pill {
  * same reason — JS sets gold-pill .hidden / .stale classes that would
  * conflict with a fixed in-footer modifier. */
 footer .gold-pill {
-  font-size: 11px !important;
+  font-size: 12px !important;
   padding: 3px 10px !important;
   width: auto !important;
   letter-spacing: 0.04em;
   font-weight: 700;
 }
-footer .gold-pill b { font-size: 11px; }
+footer .gold-pill b { font-size: 12px; }
 /* DEV ⌃ + VOICE buttons + voice-picker reduced to in-footer scale per
  * user 2026-04-29 — they were standing taller than the surrounding
  * pills (advisory / digest / mode / gold). Parent-selector overrides
@@ -331,7 +210,7 @@ footer .gold-pill b { font-size: 11px; }
  * (which is also used outside the footer e.g. in the adapt panel). */
 footer .footer-btn,
 footer .voice-picker {
-  font-size: 11px !important;
+  font-size: 12px !important;
   padding: 2px 9px !important;
   letter-spacing: 0.06em;
 }
@@ -339,7 +218,7 @@ footer .voice-picker {
  * the footer (insertion point set by _refreshPrefsChip in dashboard.js).
  * Match the in-footer pill scale so it doesn't look like a runt. */
 footer .prefs-chip {
-  font-size: 11px;
+  font-size: 12px;
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--surface);
@@ -378,10 +257,10 @@ footer .prefs-chip:hover { color: var(--text); }
 .vis-pill, .zone-pill, .game-time, .kda, .cs-pill,
 .hp, .mp, .gold-pill, .win-pill, .advisory-badge,
 .hb, .augments-pill {
-  font-size: 20px;
+  font-size: 21px;
 }
-.mode-pill, .title { font-size: 20px; letter-spacing: 0.04em; }
-.vis-pill b, .cs-pill b, .gold-pill b, .win-pill b { font-size: 20px; }
+.mode-pill, .title { font-size: 21px; letter-spacing: 0.04em; }
+.vis-pill b, .cs-pill b, .gold-pill b, .win-pill b { font-size: 21px; }
 
 /* Widths sized for 20px content + tight padding. The WIN label
  * ("WIN" after the number) stays a smaller visual sub-label so the
@@ -409,7 +288,7 @@ footer .prefs-chip:hover { color: var(--text); }
  * down (coral background + dark text + pill padding). This comment is
  * left as a signpost so future tuning doesn't overlap. */
 .title {
-  font-size: 20px;
+  font-size: 21px;
   letter-spacing: 0.04em;
   font-weight: 900;
   color: var(--text);
@@ -447,17 +326,15 @@ footer .prefs-chip:hover { color: var(--text); }
   font-size: 13px; color: var(--info); letter-spacing: 0.16em;
   text-transform: uppercase; font-weight: 700;
   border-left: 1px solid var(--border-soft); padding-left: 10px;
-  /* Reserve space for the longest label auto-mode can surface so the
-   * title-dropdown doesn't change width when the view changes (that
-   * width-jitter was shifting every other pill in the row left/right).
-   * Auto-derive only ever returns home / lobby / last-match — manual
-   * picks (diagnostics / session / etc.) drop the AUTO prefix and read
-   * shorter, so they comfortably fit too. Longest realistic label:
-   * "AUTO · LAST MATCH" (17 chars at 13px / 0.16em letter-spacing). */
+  /* s218: pinned width so the title-dropdown is STATIC across all views
+   * (operator hard rule). Sized to fit the widest realistic label —
+   * "AUTO · PRE-GAME LOBBY" (21 chars at 13px / 0.16em letter-spacing).
+   * Any manual pick is shorter and comfortably fits. */
   display: inline-block;
-  min-width: 145px;
+  width: 230px;
   text-align: left;
   white-space: nowrap;
+  overflow: hidden;
 }
 .title-current:empty { display: none; }
 .title-caret {
@@ -556,15 +433,6 @@ footer .prefs-chip:hover { color: var(--text); }
   background: var(--gold-soft); color: var(--clock);
   border-color: var(--clock); font-style: normal;
 }
-.view-menu-dev {
-  background: var(--surface-head); color: var(--bad);
-  border: 1px dashed var(--bad-soft);
-}
-.view-menu-dev:hover {
-  background: var(--bad-soft); color: var(--bad);
-  border-color: var(--bad);
-}
-
 /* Auto-promotion banner — appears when manual view is set but a game
  * event wants to switch (ChampSelect / InProgress). */
 .view-banner {
@@ -573,7 +441,7 @@ footer .prefs-chip:hover { color: var(--text); }
   border: 1px solid var(--clock); border-radius: var(--radius-sm);
   padding: 8px 14px; z-index: 9050;
   display: flex; align-items: center; gap: 12px;
-  font-size: 13px; font-weight: 700;
+  font-size: 14px; font-weight: 700;
   box-shadow: 0 4px 16px rgba(0,0,0,0.4);
   animation: bannerSlide 250ms ease-out;
 }
@@ -582,12 +450,12 @@ footer .prefs-chip:hover { color: var(--text); }
 .view-banner-accept {
   background: var(--clock); color: var(--canvas);
   border: none; border-radius: 4px; padding: 4px 10px;
-  font-size: 12px; font-weight: 800; letter-spacing: 0.06em;
+  font-size: 13px; font-weight: 800; letter-spacing: 0.06em;
   cursor: pointer; text-transform: uppercase;
 }
 .view-banner-dismiss {
   background: transparent; border: none; color: var(--text-faint);
-  font-size: 18px; cursor: pointer; padding: 0 4px;
+  font-size: 19px; cursor: pointer; padding: 0 4px;
 }
 @keyframes bannerSlide {
   from { transform: translate(-50%, -20px); opacity: 0; }
@@ -626,7 +494,7 @@ footer .prefs-chip:hover { color: var(--text); }
 /* s162 v5: panel title sits at the top of each panel, centered.
  * Same scale as My Top 8 / Recently Played title (15px white). */
 .lv-panel-title {
-  font-size: 15px; font-weight: 900; letter-spacing: 0.12em;
+  font-size: 16px; font-weight: 900; letter-spacing: 0.12em;
   color: var(--text); text-transform: uppercase;
   text-align: center;
   padding: 0 0 4px;
@@ -676,18 +544,18 @@ footer .prefs-chip:hover { color: var(--text); }
   border: 1px solid color-mix(in srgb, var(--good) 25%, transparent);
 }
 .view-section-head h2 {
-  margin: 0; font-size: 16px; letter-spacing: 0.18em;
+  margin: 0; font-size: 17px; letter-spacing: 0.18em;
   color: var(--info); font-weight: 900;
 }
 .view-section-sub {
-  font-size: 11px; color: var(--text-faint); letter-spacing: 0.04em;
+  font-size: 12px; color: var(--text-faint); letter-spacing: 0.04em;
 }
 /* s162 v14: bumped + recolored error variant. The "live" idle text is
  * suppressed in JS; this rule only fires when the panel falls into
  * an error/empty state (e.g. "awaiting LCU lobby data feed") and
  * needs to actually be read. */
 .view-section-sub.is-error {
-  font-size: 14px;
+  font-size: 15px;
   color: var(--bad);
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -695,7 +563,7 @@ footer .prefs-chip:hover { color: var(--text); }
 .view-section-tabs { display: flex; gap: 4px; margin-left: auto; }
 .view-section-btn, .view-tab {
   background: var(--surface-head); border: 1px solid var(--border);
-  color: var(--text-dim); padding: 5px 12px; font-size: 11px;
+  color: var(--text-dim); padding: 5px 12px; font-size: 12px;
   letter-spacing: 0.06em; text-transform: uppercase;
   border-radius: 4px; cursor: pointer;
   transition: background 0.1s, color 0.1s, border-color 0.1s;
@@ -723,7 +591,6 @@ body[data-view="diagnostics"] main,
 body[data-view="coach-calls"] main,
 body[data-view="bridge-pending"] main,
 body[data-view="fleet"] main,
-body[data-view="dev"] main,
 body[data-view="champ-select"] main,
 body[data-view="replay"] main { display: none; }
 body[data-view="lobby"]          #view-lobby,
@@ -738,7 +605,6 @@ body[data-view="diagnostics"]    #view-diagnostics,
 body[data-view="coach-calls"]    #view-coach-calls,
 body[data-view="bridge-pending"] #view-bridge-pending,
 body[data-view="fleet"]          #view-fleet,
-body[data-view="dev"]            #view-dev,
 body[data-view="replay"]         #view-replay { display: block; }
 /* Hide home + lobby overlays when a non-default view is active.
  * In lobby view specifically, the inline #lobby-overlay strip is
@@ -752,7 +618,6 @@ body[data-view="diagnostics"]    #home-overlay,
 body[data-view="coach-calls"]    #home-overlay,
 body[data-view="bridge-pending"] #home-overlay,
 body[data-view="fleet"]          #home-overlay,
-body[data-view="dev"]            #home-overlay,
 body[data-view="replay"]         #home-overlay,
 body[data-view="last-match"]     #home-overlay,
 body[data-view="active-match"]   #home-overlay,
@@ -798,7 +663,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   min-height: 0;
 }
 .lobby-view-card-head {
-  font-size: 10px; font-weight: 800; letter-spacing: 0.18em;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--label);
   margin-bottom: 10px; border-bottom: 1px solid var(--border-soft);
   padding-bottom: 6px;
@@ -819,7 +684,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lobby-view-queue-name {
   /* s162 v4: 22→15 to match the YOUR/PARTY MAINS tab + PARTY title
    * size, helps fit the whole lobby view without scroll. */
-  font-size: 15px; font-weight: 900; letter-spacing: 0.12em;
+  font-size: 16px; font-weight: 900; letter-spacing: 0.12em;
   color: var(--text); text-transform: uppercase;
   text-align: center; padding: 0;
 }
@@ -856,12 +721,12 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lq-btn:disabled,
 .lq-btn.is-disabled { opacity: 0.55; cursor: default; }
 .lq-btn .lq-btn-line1 {
-  font-size: 12px; font-weight: 800; letter-spacing: 0.14em;
+  font-size: 13px; font-weight: 800; letter-spacing: 0.14em;
   text-transform: uppercase; color: var(--label);
   line-height: 1;
 }
 .lq-btn .lq-btn-line2 {
-  font-size: 13px; font-weight: 700; letter-spacing: 0.06em;
+  font-size: 14px; font-weight: 700; letter-spacing: 0.06em;
   text-transform: uppercase; line-height: 1;
 }
 
@@ -912,7 +777,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   justify-content: center;
   color: var(--bad);
   opacity: 0.55;
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 900;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -926,10 +791,10 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .lq-lane-icon { width: 100%; height: 100%; object-fit: contain; }
 .lq-lane-empty {
-  font-size: 18px; color: var(--text-faint); font-weight: 700; line-height: 1;
+  font-size: 19px; color: var(--text-faint); font-weight: 700; line-height: 1;
 }
 .lq-lane-pref.needs-pick .lq-lane-empty::before { content: "✕"; color: var(--bad); }
-.lq-lane-pref.needs-pick .lq-lane-empty { font-size: 16px; }
+.lq-lane-pref.needs-pick .lq-lane-empty { font-size: 17px; }
 
 /* ---- Cancel Queue (red filled, akin to Find Match green filled) ---- */
 .lq-cancel {
@@ -986,7 +851,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .lobby-lane-popup.hidden { display: none; }
 .lobby-lane-popup-hover-label {
-  font-size: 12px; font-weight: 800; letter-spacing: 0.16em;
+  font-size: 13px; font-weight: 800; letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--text);
   text-align: center;
   min-height: 16px;
@@ -1037,7 +902,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border: 1px solid var(--info-soft);
   border-radius: 10px;
   font-family: inherit;
-  font-size: 14px; font-weight: 800; letter-spacing: 0.12em;
+  font-size: 15px; font-weight: 800; letter-spacing: 0.12em;
   text-transform: uppercase;
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s;
@@ -1076,7 +941,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: flex; flex-direction: column; gap: 4px;
 }
 .lq-mode-section {
-  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
+  font-size: 12px; font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--text-dim);
   padding: 4px 4px 6px;
   border-bottom: 1px solid var(--border-soft);
@@ -1093,7 +958,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border: 1px solid transparent;
   border-radius: 6px;
   font-family: inherit;
-  font-size: 14px; font-weight: 700; letter-spacing: 0.04em;
+  font-size: 15px; font-weight: 700; letter-spacing: 0.04em;
   cursor: pointer;
   transition: background 0.08s, border-color 0.08s;
 }
@@ -1108,7 +973,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 
 .lobby-view-leader-tag {
-  font-size: 11px; font-weight: 800; letter-spacing: 0.16em;
+  font-size: 12px; font-weight: 800; letter-spacing: 0.16em;
   color: var(--clock); padding: 3px 9px;
   background: var(--gold-soft); border-radius: 999px;
 }
@@ -1119,7 +984,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
  * column (col 4), making it horizontally centered with the Rank
  * pips below. Inner span gets the styled placement. */
 .lv-friends-title {
-  font-size: 15px; font-weight: 900; letter-spacing: 0.12em;
+  font-size: 16px; font-weight: 900; letter-spacing: 0.12em;
   color: var(--text); text-transform: uppercase;
   display: grid;
   grid-template-columns: 1.4fr 0.6fr 0.5fr 1.2fr 0.9fr 14px 26px 26px 26px;
@@ -1156,7 +1021,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   background: var(--surface-alt);
   border-radius: 6px;
   border: 1px solid transparent;
-  font-size: 13px;
+  font-size: 14px;
   min-height: 30px;
 }
 .lv-top8-row.is-placeholder { opacity: 0.5; border: 1px dashed var(--border-soft); }
@@ -1184,7 +1049,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border: none;
   color: var(--text);
   font-family: inherit;
-  font-size: 13px; font-weight: 700;
+  font-size: 14px; font-weight: 700;
   padding: 4px 6px;
   outline: none;
   width: 100%;
@@ -1196,11 +1061,11 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .lv-top8-search-input::placeholder { color: var(--text-faint); }
 .lv-top8-cell {
-  font-size: 11px; color: var(--text); text-align: center;
+  font-size: 12px; color: var(--text); text-align: center;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.lv-top8-games  { font-weight: 700; font-size: 13px; }
-.lv-top8-role   { font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); font-size: 13px; }
+.lv-top8-games  { font-weight: 700; font-size: 14px; }
+.lv-top8-role   { font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); font-size: 14px; }
 .lv-top8-rank   { font-weight: 700; }
 /* s162 v9: rank pill mirrors Party panel's tier color coding via the
  * shared .lv-rank-* color classes (defined further down). The pill
@@ -1215,7 +1080,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: inline-block;
   padding: 1px 4px;
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0;
   white-space: nowrap;
@@ -1224,7 +1089,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
  * — same italic dim treatment as PARTY's .lv-party-empty so the two
  * panels read consistently when a friend hasn't placed yet. */
 .lv-top8-rank-empty {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-faint);
   font-style: italic;
   font-weight: 600;
@@ -1253,7 +1118,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .lv-top8-reorder-btn {
   width: 26px; height: 12px;
-  font-size: 10px;
+  font-size: 11px;
   display: flex; align-items: center; justify-content: center;
   background: var(--surface-head);
   color: var(--text-dim);
@@ -1276,10 +1141,10 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   padding: 3px 6px;
   background: var(--surface-alt);
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 13px;
 }
 .lv-fr-name {
-  font-weight: 800; color: var(--text); font-size: 13px;
+  font-weight: 800; color: var(--text); font-size: 14px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .lv-fr-icon {
@@ -1291,11 +1156,11 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .lv-fr-icon img { width: 100%; height: 100%; object-fit: cover; }
 .lv-fr-games {
-  font-size: 11px; color: var(--text); text-align: right;
+  font-size: 12px; color: var(--text); text-align: right;
   font-weight: 700;
 }
 .lv-fr-role {
-  font-size: 10px; color: var(--text-dim); text-align: center;
+  font-size: 11px; color: var(--text-dim); text-align: center;
   font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
 }
 .lv-fr-rank {
@@ -1306,25 +1171,25 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   gap: 4px; cursor: help;
 }
 .lv-fr-team-mark {
-  font-size: 12px; font-weight: 900; letter-spacing: 0.08em;
+  font-size: 13px; font-weight: 900; letter-spacing: 0.08em;
 }
 .lv-fr-team-enemy .lv-fr-team-mark { color: var(--bad); }
 .lv-fr-team-ally  .lv-fr-team-mark { color: var(--good); }
 .lv-fr-team-kda {
-  font-size: 11px; color: var(--text-dim);
+  font-size: 12px; color: var(--text-dim);
   font-family: "SF Mono", Consolas, monospace;
 }
 .lv-fr-copy,
 .lv-fr-invite {
   width: 24px; height: 24px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .lv-fr-invite:hover { color: var(--good); border-color: var(--good); }
 
 /* ---- s162 v4: Party panel ---- */
 .lv-party-title {
   /* s162 v4: 22→15 to match QUEUE name + MAINS tabs. */
-  font-size: 15px; font-weight: 900; letter-spacing: 0.12em;
+  font-size: 16px; font-weight: 900; letter-spacing: 0.12em;
   color: var(--text); text-transform: uppercase;
   text-align: center;
 }
@@ -1390,7 +1255,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   background: var(--surface-alt);
   border-radius: 6px;
   border: 1px solid transparent;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 /* s162 v10: party row col 2 now hosts the member's LCU-pulled Primary
@@ -1417,7 +1282,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-faint);
 }
 /* s162 v15: Primary-lane conflict outlines.
@@ -1438,7 +1303,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-radius: 2px;
 }
 .lv-party-section-topchamps {
-  font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
   color: var(--text-dim);
   /* s162 v8: right-align so the 2 short champ names hug the right
    * edge of the topchamps cell, leaving extra space adjacent to the
@@ -1476,7 +1341,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .lv-party-empty {
   color: var(--text-faint);
-  font-size: 11px;
+  font-size: 12px;
 }
 .lobby-members-list .lobby-member-row.is-self {
   border: 1px solid var(--info-soft);
@@ -1488,13 +1353,13 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 14px;
+  font-size: 15px;
 }
 .lobby-member-pip {
   /* s162 v14: was 9px (~12px effective at zoom:1.33), below the 13px
    * tertiary floor in feedback_font_size_viewing_distance.md. Bumped
    * to 13px source so the rank/leader/role pills meet the floor. */
-  font-size: 13px; font-weight: 800; letter-spacing: 0.06em;
+  font-size: 14px; font-weight: 800; letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 2px 6px;
   border-radius: 4px;
@@ -1514,7 +1379,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   color: var(--text-dim);
   padding: 0;
   border-radius: 0;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
@@ -1544,7 +1409,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border: 1px solid var(--border-soft);
   border-radius: 4px;
   cursor: pointer;
-  font-size: 13px; padding: 0;
+  font-size: 14px; padding: 0;
   transition: color 0.12s, border-color 0.12s, background 0.12s;
 }
 .lv-member-action:hover     { color: var(--info); border-color: var(--info); }
@@ -1576,7 +1441,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   background: transparent;
   font-family: inherit;
   /* s162 v4: 15→14 to fit lobby on screen without scroll. */
-  font-size: 14px; font-weight: 900; letter-spacing: 0.12em;
+  font-size: 15px; font-weight: 900; letter-spacing: 0.12em;
   text-transform: uppercase;
   border: 2px solid var(--bad);
   border-radius: 10px;
@@ -1613,7 +1478,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   /* s162 v14: 10px → 13px so column-header labels sit at the 13px
    * tertiary floor. Letter-spacing tightened slightly so the wider
    * type doesn't crowd narrow columns. */
-  font-size: 13px; font-weight: 800; letter-spacing: 0.10em;
+  font-size: 14px; font-weight: 800; letter-spacing: 0.10em;
   text-transform: uppercase; color: var(--text-dim);
   text-align: center;
 }
@@ -1644,7 +1509,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   opacity: 0.65;
 }
 .lv-mc-summoner-name {
-  font-size: 11px; font-weight: 800; letter-spacing: 0.08em;
+  font-size: 12px; font-weight: 800; letter-spacing: 0.08em;
   color: var(--text); text-transform: uppercase;
   text-align: center;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -1672,7 +1537,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border: 1px solid var(--border-soft);
   border-radius: 4px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   padding: 0;
   transition: color 0.12s, border-color 0.12s, background 0.12s;
 }
@@ -1688,20 +1553,20 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   min-width: 0;
 }
 .lv-mc-mastery-level {
-  font-size: 13px; font-weight: 400; color: var(--text);
+  font-size: 14px; font-weight: 400; color: var(--text);
   letter-spacing: 0.04em;
 }
 .lv-mc-mastery-points {
-  font-size: 12px; color: var(--text-dim);
+  font-size: 13px; color: var(--text-dim);
 }
 .lv-mc-result {
-  font-size: 13px; font-weight: 800;
+  font-size: 14px; font-weight: 800;
   text-transform: uppercase; letter-spacing: 0.08em;
 }
 .lv-mc-result-won  { color: var(--good); }
 .lv-mc-result-lost { color: var(--bad); }
 .lv-mc-kda {
-  font-size: 12px; color: var(--text-dim);
+  font-size: 13px; color: var(--text-dim);
   font-family: "SF Mono", Consolas, monospace;
 }
 
@@ -1718,17 +1583,17 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   align-items: center;
 }
 .lv-mc-games {
-  font-size: 13px; font-weight: 700; color: var(--text);
+  font-size: 14px; font-weight: 700; color: var(--text);
   cursor: help;
 }
 .lv-mc-wl {
-  font-size: 13px; font-weight: 700;
+  font-size: 14px; font-weight: 700;
   font-family: "SF Mono", Consolas, monospace;
 }
 .lv-mc-wl .lv-mc-w { color: var(--good); }
 .lv-mc-wl .lv-mc-l { color: var(--bad); }
 .lv-mc-total-kda {
-  font-size: 12px; color: var(--text-dim);
+  font-size: 13px; color: var(--text-dim);
   font-family: "SF Mono", Consolas, monospace;
 }
 /* s162 v9: deaths in K/D/A flagged red so the eye lands on it. */
@@ -1737,7 +1602,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   font-weight: 800;
 }
 .lv-mc-kda-score {
-  font-size: 13px; font-weight: 800;
+  font-size: 14px; font-weight: 800;
   color: var(--text);
   text-align: center;
   letter-spacing: 0.04em;
@@ -1759,14 +1624,14 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   align-items: center;
 }
 .lv-mc-avg-val {
-  font-size: 13px; font-weight: 700; color: var(--text);
+  font-size: 14px; font-weight: 700; color: var(--text);
 }
 .lv-mc-avg-lbl {
   /* s162 v14: 9px → 11px (zoom:1.33 → ~14.6px effective). Sub-labels
    * inside an info-dense data cell don't need to clear the 13px
    * tertiary floor exactly — the value above them carries the
    * primary signal — but 9px was hard to read at distance. */
-  font-size: 11px; color: var(--text-faint);
+  font-size: 12px; color: var(--text-faint);
   letter-spacing: 0.1em; text-transform: uppercase;
 }
 /* s162 v10: KP% color bands — established 5-tier convention from
@@ -1786,7 +1651,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
  * cell, with "AVG 5" sitting below in the standard sub-label
  * treatment. Color bands match the KP convention. */
 .lv-mc-avg5-letter {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 900;
   letter-spacing: 0.02em;
   line-height: 1;
@@ -1813,14 +1678,14 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   text-align: center;
 }
 .lv-mc-games-tip-head > span {
-  font-size: 11px; font-weight: 900; letter-spacing: 0.14em;
+  font-size: 12px; font-weight: 900; letter-spacing: 0.14em;
   color: var(--text);
   text-transform: uppercase;
   border-bottom: 1px solid var(--border-soft);
   padding-bottom: 2px;
 }
 .lv-mc-games-tip-row:not(.lv-mc-games-tip-head) > span {
-  font-size: 14px; font-weight: 700;
+  font-size: 15px; font-weight: 700;
   font-family: "SF Mono", Consolas, monospace;
   color: var(--text);
 }
@@ -1832,7 +1697,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: flex; gap: 10px; align-items: center;
 }
 .lobby-view-tips {
-  font-size: 13px; color: var(--text-dim); line-height: 1.5;
+  font-size: 14px; color: var(--text-dim); line-height: 1.5;
   display: flex; flex-direction: column; gap: 6px;
 }
 .lobby-view-tips .tip-row {
@@ -1845,12 +1710,12 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .lobby-view-recent-list .lv-recent-row {
   display: grid; grid-template-columns: 32px 1fr 70px 60px;
-  align-items: center; gap: 8px; font-size: 12px;
+  align-items: center; gap: 8px; font-size: 13px;
   background: var(--surface-alt); border-radius: 4px;
   padding: 5px 8px;
 }
 .lobby-view-recent-list .lv-recent-grade {
-  font-weight: 900; font-size: 13px; text-align: center;
+  font-weight: 900; font-size: 14px; text-align: center;
   padding: 1px 0; border-radius: 3px;
 }
 
@@ -1864,14 +1729,14 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .session-card-wide { grid-column: 1 / -1; }
 .session-card-head {
-  font-size: 10px; font-weight: 800; letter-spacing: 0.18em;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--label);
   margin-bottom: 8px; border-bottom: 1px solid var(--border-soft);
   padding-bottom: 5px;
 }
 .session-row {
   display: flex; justify-content: space-between; align-items: baseline;
-  font-size: 12px; padding: 3px 0;
+  font-size: 13px; padding: 3px 0;
 }
 .session-row > span:first-child { color: var(--text-dim); }
 .session-row > span:last-child {
@@ -1892,14 +1757,14 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   max-height: 540px; overflow-y: auto;
 }
 .history-card-head {
-  font-size: 10px; font-weight: 800; letter-spacing: 0.18em;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--label);
   margin-bottom: 8px; border-bottom: 1px solid var(--border-soft);
   padding-bottom: 5px;
   display: flex; align-items: baseline; gap: 8px;
 }
 .history-count, .diag-sub {
-  font-size: 10px; color: var(--clock); margin-left: auto;
+  font-size: 11px; color: var(--clock); margin-left: auto;
   letter-spacing: 0.06em;
 }
 .history-session-list, .history-match-list {
@@ -1908,7 +1773,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .history-session-row, .history-match-row {
   background: var(--surface-alt); border-radius: 4px;
-  padding: 6px 10px; font-size: 11px; cursor: pointer;
+  padding: 6px 10px; font-size: 12px; cursor: pointer;
   transition: background 0.08s, border-color 0.08s;
   border: 1px solid transparent;
   display: flex; align-items: center; gap: 8px;
@@ -1926,17 +1791,17 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   padding: 6px 0 12px;
 }
 .loadouts-toolbar input[type="text"] {
-  flex: 1; padding: 6px 10px; font-size: 12px;
+  flex: 1; padding: 6px 10px; font-size: 13px;
   background: var(--surface-alt); border: 1px solid var(--border);
   border-radius: 4px; color: var(--text);
 }
 .loadouts-toolbar select {
   padding: 6px 10px; background: var(--surface-alt);
   border: 1px solid var(--border); color: var(--text);
-  font-size: 12px; border-radius: 4px;
+  font-size: 13px; border-radius: 4px;
 }
 .loadouts-count {
-  font-size: 10px; color: var(--text-faint); letter-spacing: 0.06em;
+  font-size: 11px; color: var(--text-faint); letter-spacing: 0.06em;
 }
 .loadouts-list {
   display: flex; flex-direction: column; gap: 8px;
@@ -1947,7 +1812,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-radius: var(--radius-sm); padding: 10px 14px;
 }
 .loadout-champ-name {
-  font-size: 13px; font-weight: 800; letter-spacing: 0.06em;
+  font-size: 14px; font-weight: 800; letter-spacing: 0.06em;
   color: var(--text); margin-bottom: 6px;
 }
 
@@ -1960,15 +1825,15 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   padding: 6px 0 12px;
 }
 .ub-toolbar input[type="text"] {
-  flex: 0 1 260px; padding: 6px 10px; font-size: 13px;
+  flex: 0 1 260px; padding: 6px 10px; font-size: 14px;
   background: var(--surface-alt); border: 1px solid var(--border);
   border-radius: 4px; color: var(--text);
 }
 .ub-hint {
-  font-size: 11px; color: var(--text-faint); letter-spacing: 0.04em;
+  font-size: 12px; color: var(--text-faint); letter-spacing: 0.04em;
 }
 .ub-btn {
-  padding: 6px 14px; font-size: 12px; font-weight: 700;
+  padding: 6px 14px; font-size: 13px; font-weight: 700;
   letter-spacing: 0.04em; border-radius: 4px; cursor: pointer;
   border: 1px solid var(--border); transition: background 0.1s, color 0.1s, border-color 0.1s;
 }
@@ -1985,7 +1850,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-color: var(--danger, #d96868);
 }
 .ub-btn-danger:hover { background: var(--danger, #d96868); color: var(--bg); }
-.ub-btn-tiny { padding: 3px 9px; font-size: 11px; font-weight: 700; }
+.ub-btn-tiny { padding: 3px 9px; font-size: 12px; font-weight: 700; }
 .ub-layout {
   display: grid; grid-template-columns: 1fr 1.3fr; gap: 14px;
   align-items: start;
@@ -1996,13 +1861,13 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .ub-list-head {
   display: flex; align-items: baseline; justify-content: space-between;
-  font-size: 10px; font-weight: 800; letter-spacing: 0.18em;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--label);
   margin-bottom: 8px; border-bottom: 1px solid var(--border-soft);
   padding-bottom: 5px;
 }
 .ub-count {
-  font-size: 10px; color: var(--clock); font-weight: 700;
+  font-size: 11px; color: var(--clock); font-weight: 700;
 }
 .ub-build-list {
   list-style: none; margin: 0; padding: 0;
@@ -2020,16 +1885,16 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: flex; flex-direction: column; gap: 2px; min-width: 0;
 }
 .ub-build-label {
-  font-size: 13px; font-weight: 800; color: var(--text);
+  font-size: 14px; font-weight: 800; color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .ub-build-sub {
-  font-size: 11px; color: var(--text-dim); letter-spacing: 0.02em;
+  font-size: 12px; color: var(--text-dim); letter-spacing: 0.02em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .ub-form-head {
   display: flex; align-items: center; justify-content: space-between;
-  font-size: 10px; font-weight: 800; letter-spacing: 0.18em;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--label);
   margin-bottom: 10px; border-bottom: 1px solid var(--border-soft);
   padding-bottom: 5px;
@@ -2039,16 +1904,16 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .ub-field {
   display: flex; flex-direction: column; gap: 4px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .ub-field-wide { grid-column: 1 / -1; }
 .ub-field > span {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
   text-transform: uppercase; color: var(--text-faint);
 }
 .ub-field input, .ub-field select, .ub-field textarea {
   background: var(--surface-alt); border: 1px solid var(--border);
-  color: var(--text); padding: 6px 9px; font-size: 13px;
+  color: var(--text); padding: 6px 9px; font-size: 14px;
   border-radius: 4px; font-family: inherit;
 }
 .ub-field textarea {
@@ -2056,7 +1921,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   resize: vertical; min-height: 110px;
 }
 .ub-form-status {
-  margin-top: 10px; padding: 6px 10px; font-size: 12px; border-radius: 4px;
+  margin-top: 10px; padding: 6px 10px; font-size: 13px; border-radius: 4px;
   background: var(--surface-alt); color: var(--text);
   border-left: 3px solid var(--clock);
 }
@@ -2075,14 +1940,14 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-radius: var(--radius-sm); padding: 12px 14px;
 }
 .settings-card-head {
-  font-size: 10px; font-weight: 800; letter-spacing: 0.18em;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--label);
   margin-bottom: 10px; border-bottom: 1px solid var(--border-soft);
   padding-bottom: 5px;
 }
 .settings-row {
   display: flex; align-items: center; gap: 10px;
-  padding: 6px 0; font-size: 12px; color: var(--text-dim);
+  padding: 6px 0; font-size: 13px; color: var(--text-dim);
   cursor: pointer;
 }
 .settings-row-static { cursor: default; }
@@ -2107,7 +1972,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .diag-card:nth-child(1) { grid-area: conn; }
 .diag-card:nth-child(3) { grid-area: health; }
 .diag-card-head {
-  font-size: 10px; font-weight: 800; letter-spacing: 0.18em;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--label);
   margin-bottom: 8px; border-bottom: 1px solid var(--border-soft);
   padding-bottom: 5px;
@@ -2116,7 +1981,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .diag-conn-list { list-style: none; margin: 0; padding: 0; }
 .diag-conn-row {
   display: flex; align-items: center; gap: 8px;
-  padding: 5px 0; font-size: 11px;
+  padding: 5px 0; font-size: 12px;
 }
 .diag-conn-dot {
   width: 8px; height: 8px; border-radius: 50%;
@@ -2126,7 +1991,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .diag-conn-dot.err { background: var(--bad); }
 .diag-log, .diag-health {
   font-family: "SF Mono", Consolas, monospace;
-  font-size: 10px; color: var(--text-dim);
+  font-size: 11px; color: var(--text-dim);
   background: var(--surface-alt); border-radius: 4px;
   padding: 8px 10px; margin: 0;
   white-space: pre-wrap; word-break: break-word;
@@ -2136,7 +2001,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   padding: 5px 14px;
   border: 1px solid transparent;
   border-radius: 999px;
-  font-size: 20px;
+  font-size: 21px;
   letter-spacing: 0.08em;
   font-weight: 900;
   color: var(--text-dim);
@@ -2155,7 +2020,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   padding: 3px 12px 3px 4px;
   border: 1px solid var(--info-soft);
   border-radius: 999px;
-  font-size: 20px;
+  font-size: 21px;
   letter-spacing: 0.02em;
   font-weight: 700;
   color: var(--text);
@@ -2179,7 +2044,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .self-spell.placeholder {
   color: var(--text-faint);
   background: var(--surface-alt);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 900;
   letter-spacing: 0;
   display: inline-flex;
@@ -2213,7 +2078,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 900;
   color: var(--gold);
   text-shadow: 0 0 4px rgba(0,0,0,0.8);
@@ -2242,8 +2107,8 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .champion-pill.stale, .champion-pill:empty { padding: 5px 14px; }
 .champion-pill.fallback   { color: var(--gold); border-color: var(--gold-soft); }
 .champion-pill.stale      { color: var(--text-faint); border-color: var(--border); }
-.game-time { font-size: 20px; color: var(--text); font-weight: 900; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
-.kda       { font-size: 20px; color: var(--gold); font-weight: 900; font-variant-numeric: tabular-nums; transition: color 300ms ease; position: relative; }
+.game-time { font-size: 21px; color: var(--text); font-weight: 900; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.kda       { font-size: 21px; color: var(--gold); font-weight: 900; font-variant-numeric: tabular-nums; transition: color 300ms ease; position: relative; }
 .kda.hidden { display: none; }
 .kda.kda-carry    { color: var(--good); }
 .kda.kda-even     { color: var(--gold); }
@@ -2259,7 +2124,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   left: 50%;
   padding: 2px 9px;
   border-radius: 999px;
-  font-size: 11px; font-weight: 900;
+  font-size: 12px; font-weight: 900;
   letter-spacing: 0.14em;
   opacity: 0;
   transform: translate(-50%, 0);
@@ -2330,14 +2195,14 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-radius: inherit;
   transition: width 350ms ease;
 }
-.mp { font-size: 20px; color: var(--info); font-weight: 900; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
+.mp { font-size: 21px; color: var(--info); font-weight: 900; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
 .cs-pill, .gold-pill, .lvl-pill, .vis-pill {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 3px 9px;
   border-radius: 999px;
-  font-size: 20px;
+  font-size: 21px;
   font-weight: 700;
   letter-spacing: 0.02em;
   background: var(--surface);
@@ -2349,8 +2214,8 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .cs-pill.cs-good      b { color: var(--text); }
 .cs-pill.cs-fair      b { color: var(--gold); }
 .cs-pill.cs-low       b { color: var(--bad); }
-.lvl-pill b { color: var(--text); font-size: 16px; font-weight: 900; }
-.lvl-pill .lvl-label { font-size: 9px; letter-spacing: 0.12em; color: var(--text-faint); }
+.lvl-pill b { color: var(--text); font-size: 17px; font-weight: 900; }
+.lvl-pill .lvl-label { font-size: 10px; letter-spacing: 0.12em; color: var(--text-faint); }
 .lvl-pill.spike {
   background: var(--gold-soft);
   color: var(--gold);
@@ -2362,9 +2227,9 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   40%  { box-shadow: 0 0 16px 6px rgba(245,184,124,0.55); }
   100% { box-shadow: 0 0 0 0 rgba(245,184,124,0); }
 }
-.vis-pill b { color: var(--info); font-size: 20px; font-weight: 900; }
+.vis-pill b { color: var(--info); font-size: 21px; font-weight: 900; }
 .vis-pill .obj-ico { width: 18px; height: 18px; color: var(--info); flex-shrink: 0; }
-.cs-pill b, .gold-pill b { font-size: 20px; }
+.cs-pill b, .gold-pill b { font-size: 21px; }
 
 /* Ultimate readiness pill — "R · UP" in mint when ready, "R · 42s" in
  * gold when on cooldown. Pulses briefly on transition to ready. */
@@ -2382,10 +2247,10 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .ult-pill.hidden { display: none; }
 .ult-pill b {
-  font-size: 18px;
+  font-size: 19px;
   color: var(--text);
 }
-.ult-pill span { font-size: 13px; }
+.ult-pill span { font-size: 14px; }
 .ult-pill.ult-cd    { color: var(--gold); }
 .ult-pill.ult-cd b  { color: var(--gold); }
 .ult-pill.ult-ready {
@@ -2400,7 +2265,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   align-items: center;
   padding: 3px 11px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.14em;
   font-weight: 900;
   background: var(--surface);
@@ -2428,7 +2293,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
   box-shadow: var(--shadow-card);
   opacity: 0;
@@ -2443,7 +2308,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   margin-bottom: 6px;
   color: var(--info);
   letter-spacing: 0.1em;
-  font-size: 11px;
+  font-size: 12px;
   text-transform: uppercase;
   font-weight: 700;
 }
@@ -2458,7 +2323,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   background: var(--surface);
   box-shadow: var(--shadow-card), inset 0 0 0 2px var(--advisory);
   color: var(--text);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.45;
   opacity: 0;
   transform: translateY(12px);
@@ -2472,7 +2337,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: block;
   margin-bottom: 4px;
   color: var(--advisory);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-weight: 900;
@@ -2484,7 +2349,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   padding: 2px 10px;
   border-radius: 999px;
   background: var(--surface-alt);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.12em;
   color: var(--text-dim);
   text-transform: uppercase;
@@ -2499,7 +2364,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-radius: 999px;
   background: var(--good-soft);
   color: var(--good);
-  font-size: 12px; font-weight: 900;
+  font-size: 13px; font-weight: 900;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   opacity: 0;
@@ -2516,20 +2381,20 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   background: var(--surface-alt);
   border: 1px solid var(--border);
   font-family: "SF Mono", Consolas, monospace;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--text);
 }
-.cs-pill b, .gold-pill b { color: var(--text); font-size: 20px; font-weight: 900; }
+.cs-pill b, .gold-pill b { color: var(--text); font-size: 21px; font-weight: 900; }
 .gold-pill b { color: var(--gold); }
 .gold-pill .g-icon {
   font-style: normal;
   color: var(--gold);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.05em;
   opacity: 0.7;
 }
-.hp        { font-size: 20px; color: var(--text-dim);  font-weight: 900; letter-spacing: 0.02em; transition: color 180ms ease; }
+.hp        { font-size: 21px; color: var(--text-dim);  font-weight: 900; letter-spacing: 0.02em; transition: color 180ms ease; }
 .hp.hp-critical { color: var(--bad); text-shadow: 0 0 12px rgba(240,126,139,0.4); animation: hpBlink 1.4s ease-in-out infinite; }
 .hp.hp-low      { color: var(--gold); }
 .hp.hp-mid      { color: var(--good); }
@@ -2562,8 +2427,8 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .win-pill.win-strong { box-shadow: 0 0 12px rgba(127,209,154,0.25); }
 .win-pill.win-losing { box-shadow: 0 0 12px rgba(240,126,139,0.25); }
 .win-pill.hidden { display: none; }
-.win-pill b { font-size: 20px; }
-.win-pill .win-pct-label { color: var(--text-faint); font-size: 20px; letter-spacing: 0.08em; font-weight: 700; }
+.win-pill b { font-size: 21px; }
+.win-pill .win-pct-label { color: var(--text-faint); font-size: 21px; letter-spacing: 0.08em; font-weight: 700; }
 .win-pill.win-strong { background: var(--good-soft); color: var(--good); }
 .win-pill.win-even   { background: var(--surface); color: var(--text); }
 .win-pill.win-behind { background: var(--gold-soft); color: var(--gold); }
@@ -2577,7 +2442,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-radius: 999px;
   background: var(--advisory-soft);
   color: var(--advisory);
-  font-weight: 900; font-size: 20px;
+  font-weight: 900; font-size: 21px;
   letter-spacing: 0.04em;
   cursor: pointer;
   position: relative;
@@ -2614,7 +2479,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-radius: 999px;
   background: var(--surface);
   color: var(--text-faint);
-  font-weight: 900; font-size: 20px;
+  font-weight: 900; font-size: 21px;
   letter-spacing: 0.04em;
   cursor: pointer;
   position: relative;
@@ -2656,7 +2521,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   padding: 14px 18px;
   background: var(--surface-head);
   border-bottom: 1px solid var(--border-soft);
-  font-size: 15px;
+  font-size: 16px;
   letter-spacing: 0.18em;
   font-weight: 900;
   color: var(--info);
@@ -2666,7 +2531,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   background: transparent;
   border: none;
   color: var(--text-faint);
-  font-size: 24px;
+  font-size: 25px;
   font-weight: 900;
   cursor: pointer;
   width: 28px; height: 28px;
@@ -2684,7 +2549,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-left: 3px solid var(--info);
   border-radius: var(--radius-sm);
   color: var(--text);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.45;
 }
 
@@ -2692,7 +2557,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
  * /api/digest. Severity tone drives the left border color. */
 .digest-insights-head {
   margin: 16px 0 6px 0;
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.12em;
   color: var(--text-dim);
   text-transform: uppercase;
@@ -2720,7 +2585,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   background: var(--surface-alt);
   border-left: 3px solid var(--text-faint);
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.35;
 }
 .digest-insights .ins-row.tone-alert { border-left-color: var(--bad); }
@@ -2728,7 +2593,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .digest-insights .ins-row.tone-ok    { border-left-color: var(--good); }
 .digest-insights .ins-tag {
   color: var(--text-dim);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   align-self: center;
@@ -2747,7 +2612,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   padding: 7px 18px;
   border: 1px solid transparent;
   border-radius: 999px;
-  font-size: 16px;
+  font-size: 17px;
   letter-spacing: 0.08em;
   font-weight: 700;
   background: var(--surface);
@@ -2761,7 +2626,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   35%  { box-shadow: 0 0 0 6px rgba(127,209,154,0.25); }
   100% { box-shadow: 0 0 0 0 rgba(127,209,154,0); }
 }
-.hb { color: var(--text-dim); opacity: 0.7; font-size: 20px; font-weight: 900; font-variant-numeric: tabular-nums; transition: color 300ms ease; }
+.hb { color: var(--text-dim); opacity: 0.7; font-size: 21px; font-weight: 900; font-variant-numeric: tabular-nums; transition: color 300ms ease; }
 .hb.hb-pulse { animation: hbPulse 800ms ease-out; }
 @keyframes hbPulse {
   0%   { color: var(--bad); opacity: 1; text-shadow: 0 0 8px rgba(240,126,139,0.7); }

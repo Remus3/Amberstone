@@ -57,7 +57,6 @@ SUPERVISOR_PROXY_PATHS = (
     "/api/queue",
     "/api/session",
     "/api/session-games",
-    "/api/sim",           # matches /api/sim, /api/sim/<name>, /api/sim/_manifest
     "/api/task",          # /api/task/<id>
     "/api/time-of-day",
     "/api/trending",

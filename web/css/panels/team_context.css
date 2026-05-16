@@ -25,14 +25,14 @@
   margin-bottom: 6px;
 }
 .tc-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #F5B87C;
 }
 .tc-status {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-faint);
   font-style: italic;
 }
@@ -46,7 +46,7 @@
   min-width: 0;
 }
 .tc-team-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -79,7 +79,7 @@
   background: rgba(255, 255, 255, 0.04);
   display: grid;
   place-items: center;
-  font-size: 16px;
+  font-size: 17px;
   color: var(--text-faint);
 }
 .tc-slot-icon.skel {
@@ -104,7 +104,7 @@
 }
 .tc-slot-name {
   font-weight: 700;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -112,7 +112,7 @@
   flex: 1;
 }
 .tc-slot-rank {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #F5B87C;
   letter-spacing: 0.04em;
@@ -122,7 +122,7 @@
   display: flex;
   gap: 8px;
   align-items: baseline;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-faint);
 }
 .tc-slot-champ {
@@ -136,7 +136,7 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-faint);
 }
 .tc-slot-mains {

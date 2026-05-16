@@ -69,7 +69,7 @@
 }
 
 .csv-card-head {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -146,7 +146,7 @@
   overflow: hidden;
 }
 .csv-mypick-icon img { width: 100%; height: 100%; object-fit: cover; }
-.csv-mypick-icon.empty { color: #6a7280; font-size: 48px; }
+.csv-mypick-icon.empty { color: #6a7280; font-size: 49px; }
 .csv-mypick-icon.locked { border-color: #4ade80; }
 .csv-mypick-icon.hovering { border-color: #fbbf24; }
 
@@ -155,14 +155,14 @@
  * right-aligned text so the icon's left edge stays stable across
  * locked/hovering/empty states. */
 .csv-mypick-name {
-  font-size: 22px;
+  font-size: 23px;
   font-weight: 900;
   color: #fff;
   margin: 0;
   line-height: 1.1;
 }
 .csv-mypick-state {
-  font-size: 14px;
+  font-size: 15px;
   color: #9ca3af;
   margin: 0;
   line-height: 1.15;
@@ -193,7 +193,7 @@
   width: 100%;
   margin: 4px 0 14px;
   padding: 12px 16px;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
   letter-spacing: 0.6px;
   color: #d4f8de;
@@ -234,7 +234,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.8px;
@@ -250,7 +250,7 @@
   gap: 6px;
 }
 .csv-archetype-title .csv-arch-source {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: #6b7280;
   text-transform: none;
@@ -268,7 +268,7 @@
  * button is `.is-active` with a slight green hue + border so the
  * operator can see "auto mode is engaged". Click reverts to default. */
 .csv-arch-auto {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.3px;
   color: #9ca3af;
@@ -318,12 +318,12 @@
   background: #21262e;
 }
 .csv-arch-btn .csv-arch-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.3px;
 }
 .csv-arch-btn .csv-arch-scorer {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   color: #6b7280;
   text-transform: uppercase;
@@ -411,7 +411,7 @@
    * padding so the hover target for the champion-name tooltip is the
    * full cell-width column, not just the visible text glyph row.
    * No row-height growth since the cell uses align-items:center. */
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: #e8eaf0;
   white-space: nowrap;
@@ -483,7 +483,7 @@
   white-space: nowrap;
 }
 .csv-team-cell-tag {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: #cbd5e1;
   letter-spacing: 0.04em;
@@ -505,7 +505,7 @@
 .csv-team-cell-tag--flex     { color: #cbd5e1; border-color: #2a2f37; }
 /* s213 v3: confidence pill — grid col 7 (rightmost). No abs positioning. */
 .csv-card-enemies .csv-team-cell-confidence {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   padding: 1px 5px;
   background: #1c2026;
@@ -529,7 +529,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
-  font-size: 13px;
+  font-size: 14px;
   color: #9ca3af;
   text-align: left;
 }
@@ -605,18 +605,17 @@
   gap: 1px;
   background: transparent;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.45));
-  /* Popup is appended to <html> to bypass body's zoom:1.33. Use
-   * transform: scale (not zoom) to visually match the dashboard's
-   * 1.33x scale — transform with origin 0 0 doesn't shift position
-   * values, so our JS calc using getBoundingClientRect coords lines
-   * up cleanly with no compensation math. */
-  transform: scale(1.33);
+  /* Popup is appended to <html> to bypass body's zoom (now 1.0 default,
+   * was 1.33 pre-s218). With body at 1.0 there is no scale to match,
+   * but we keep transform-origin 0 0 so any future user-set zoom can
+   * be matched by a scale() addition without disturbing the JS position
+   * math built on getBoundingClientRect. */
   transform-origin: 0 0;
 }
 .csv-trade-popup.is-open { display: flex; }
 .csv-trade-header {
   font-family: inherit;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   padding: 6px 12px;
   background: #14171c;
@@ -633,7 +632,7 @@
 }
 .csv-trade-choice {
   font-family: inherit;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   padding: 6px 12px;
   background: #14171c;
@@ -653,7 +652,7 @@
   color: #ef4444;
 }
 .csv-team-cell-summ {
-  font-size: 13px;
+  font-size: 14px;
   color: #9ca3af;
   white-space: nowrap;
   overflow: hidden;
@@ -663,7 +662,7 @@
 }
 
 .csv-team-cell-pos {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #9ca3af;
   text-transform: uppercase;
@@ -681,7 +680,7 @@
  * carries the "this is yours" signal in a single chromatic language
  * across both the cell border and the role pip. */
 .csv-team-cell.me .csv-team-cell-pos {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 900;
   color: #818cf8;
   letter-spacing: 0.08em;
@@ -713,7 +712,7 @@
   border-top: 1px solid #232830;
 }
 .csv-builds-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: #9ca3af;
   text-transform: uppercase;
@@ -730,7 +729,7 @@
   background: #1a1d23;
   border: 1px solid #2a2f37;
   border-radius: 999px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: #e8eaf0;
   text-transform: uppercase;
@@ -742,7 +741,7 @@
 
 .csv-empty {
   color: #6a7280;
-  font-size: 13px;
+  font-size: 14px;
   text-align: center;
   padding: 16px 8px;
   font-style: italic;
@@ -826,14 +825,14 @@
   text-align: center;
 }
 .csv-pb-role-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: #6a7280;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 .csv-pb-role-chip {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 900;
   color: #fbbf24;
   letter-spacing: 0.08em;
@@ -875,7 +874,7 @@
  * as a header above the explanation text — see .csv-pb-source-label
  * and .csv-pb-reason-text below. */
 .csv-pb-source-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   color: #9ca3af;
   text-transform: uppercase;
@@ -897,11 +896,11 @@
   align-items: center;
   justify-content: center;
   color: #6a7280;
-  font-size: 18px;
+  font-size: 19px;
 }
 .csv-pb-pick-icon img { width: 100%; height: 100%; object-fit: cover; }
 .csv-pb-pick-name {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: #e8eaf0;
   text-align: center;
@@ -925,7 +924,7 @@
    * data] " could push the row to 4 lines on the narrowest viewports.
    * line-clamp:3 is supported in modern Chrome/WebKit (the dashboard
    * runs on Chrome on Game-PC). */
-  font-size: 12px;
+  font-size: 13px;
   color: #b0b6c0;
   line-height: 1.3;
   display: -webkit-box;
@@ -948,7 +947,7 @@
   text-align: center;
   /* s211 v2: bumped 11→13px for legibility without growing row height
    * (no line-height bump). */
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   color: #ef4444;
   letter-spacing: 0.08em;
@@ -960,7 +959,7 @@
 }
 .csv-pb-pick-header {
   /* s211 v2: bumped 11→13px to match BAN; no row-height growth. */
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   color: #4ade80;
   letter-spacing: 0.08em;
@@ -975,7 +974,7 @@
   gap: 2px;
 }
 .csv-pb-ban-pct {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: #fbbf24;
   line-height: 1;
@@ -990,7 +989,7 @@
 }
 .csv-pb-ban-icon img { width: 100%; height: 100%; object-fit: cover; }
 .csv-pb-ban-name {
-  font-size: 10px;
+  font-size: 11px;
   color: #9ca3af;
   line-height: 1.1;
   text-align: center;
@@ -1029,7 +1028,7 @@
 .csv-pb-mood-label > span {
   /* s212 v2 (font-floor fix): 10→13px to clear the operator's tertiary
    * font floor (across-room legibility). */
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: #6a7280;
   text-transform: uppercase;
@@ -1042,7 +1041,7 @@
   justify-content: center;
   /* s212 v2 (font-floor fix): 11→15px — interactive surfaces need to
    * meet the operator's clickables floor for across-room viewing. */
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   padding: 4px 4px;
   background: #14171c;
@@ -1136,7 +1135,7 @@
   width: 100%;
 }
 .csv-bench-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: #9ca3af;
   text-transform: uppercase;
@@ -1180,7 +1179,7 @@
 }
 .csv-bench-cell-icon img { width: 100%; height: 100%; object-fit: cover; }
 .csv-bench-cell-name {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #e8eaf0;
   white-space: nowrap;
@@ -1190,7 +1189,7 @@
   text-align: center;
 }
 .csv-bench-empty {
-  font-size: 12px;
+  font-size: 13px;
   font-style: italic;
   color: #6a7280;
   text-align: center;
@@ -1210,7 +1209,7 @@
   gap: 4px;
 }
 .csv-sugg-row-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1218,7 +1217,7 @@
   padding: 0 2px;
 }
 .csv-sugg-empty {
-  font-size: 11px;
+  font-size: 12px;
   color: #6a7280;
   font-style: italic;
   padding: 4px 6px;
@@ -1245,7 +1244,7 @@
   gap: 6px;
 }
 .csv-sugg-banned-side {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1291,7 +1290,7 @@
 }
 .csv-sugg-ban-icon img { width: 100%; height: 100%; object-fit: cover; }
 .csv-sugg-ban-name {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #e8eaf0;
   text-align: center;
@@ -1324,7 +1323,7 @@
    * vertical rhythm — single-line + wrapped-two-line tips render at
    * the same height. Audit subagent flagged uneven heights as a
    * visual-hierarchy distraction. */
-  font-size: 15px;
+  font-size: 16px;
   color: #e8eaf0;
   line-height: 1.35;
   min-height: 44px;
@@ -1333,7 +1332,7 @@
   color: #6a7280;
   font-weight: 700;
   /* s213 v3: bumped 13→14px to scale with the surrounding text. */
-  font-size: 14px;
+  font-size: 15px;
   min-width: 14px;
   text-align: center;
 }
@@ -1394,7 +1393,7 @@
   gap: 4px;
 }
 .csv-build-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   color: #e8eaf0;
   white-space: nowrap;
@@ -1423,7 +1422,7 @@
   --csv-badge-w: 130px;
   display: inline-block;
   width: var(--csv-badge-w);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.04em;
   padding: 3px 10px;
@@ -1490,7 +1489,7 @@
    * the row taller than the 4-card grid budget. Combined with the
    * fixed 150px width on the parent .csv-build-rune-main the strip's
    * right edge never crosses the badge's right edge. */
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: #cbd5e1;
@@ -1548,7 +1547,7 @@
   position: absolute;
   top: -4px;
   right: -4px;
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1;
   color: #fbbf24;
   text-shadow: 0 0 2px #000;
@@ -1558,11 +1557,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 11px;
   color: #6a7280;
 }
 .csv-build-runes {
-  font-size: 11px;
+  font-size: 12px;
   color: #9ca3af;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -1627,11 +1626,11 @@
   overflow: hidden;
   display: flex; align-items: center; justify-content: center;
   color: #6a7280;
-  font-size: 28px;
+  font-size: 29px;
 }
 .csv-duo-cell-icon img { width: 100%; height: 100%; object-fit: cover; }
 .csv-duo-cell-tag {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: #6a7280;
   text-transform: uppercase;
@@ -1640,12 +1639,12 @@
 }
 .csv-duo-cell.is-me .csv-duo-cell-tag { color: #818cf8; }
 .csv-duo-cell-name {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 900;
   color: #fff;
 }
 .csv-duo-cell-summ {
-  font-size: 11px;
+  font-size: 12px;
   color: #9ca3af;
   white-space: nowrap;
   overflow: hidden;
@@ -1662,7 +1661,7 @@
   width: 100%;
 }
 .csv-augments-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: #9ca3af;
   text-transform: uppercase;
@@ -1692,7 +1691,7 @@
 }
 .csv-augment-slot.filled { background: #1a2a20; }
 .csv-augment-slot-grade {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: #9ca3af;
@@ -1702,7 +1701,7 @@
 .csv-augment-slot.gold      .csv-augment-slot-grade { color: #fbbf24; }
 .csv-augment-slot.prismatic .csv-augment-slot-grade { color: #c084fc; }
 .csv-augment-slot-name {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   color: #e8eaf0;
   white-space: nowrap;
@@ -1729,12 +1728,12 @@
 .csv-augment-option.gold      { border-left: 3px solid #b88410; }
 .csv-augment-option.prismatic { border-left: 3px solid #a855f7; }
 .csv-augment-option-name {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   color: #e8eaf0;
 }
 .csv-augment-option-blurb {
-  font-size: 11px;
+  font-size: 12px;
   color: #9ca3af;
   margin-top: 2px;
   line-height: 1.3;
@@ -1752,7 +1751,7 @@
   list-style: none;
 }
 .csv-arena-team-head {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #9ca3af;
   text-transform: uppercase;
@@ -1790,7 +1789,7 @@
 }
 .csv-arena-cell-icon img { width: 100%; height: 100%; object-fit: cover; }
 .csv-arena-cell-name {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: #e8eaf0;
   white-space: nowrap;
@@ -1803,10 +1802,10 @@
   justify-content: flex-end;
   min-width: 18px;
 }
-.csv-arena-cell-lock { color: #4ade80; font-size: 13px; font-weight: 800; }
+.csv-arena-cell-lock { color: #4ade80; font-size: 14px; font-weight: 800; }
 .csv-arena-cell-timer {
   color: #22d3ee;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.02em;
   text-shadow:
