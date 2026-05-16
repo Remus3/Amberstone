@@ -1314,6 +1314,110 @@
          Auto-promote gated on ?am=1 (or localStorage.activeMatch='1')
          while we A/B against the existing layout. Step 1 ships the
          empty scaffold; panels populate in subsequent steps. -->
+    <!-- s219: Last Match — post-game review for the most-recent
+         completed non-TFT match in data/match_history.db. Layout mirrors
+         the Home page's hierarchy (hero → stats → build → team → review)
+         so the visual language matches what the operator just left. The
+         Quick Review section's `data-tt-html` tooltips carry the `why`
+         from /api/last-match.quick_review[].why so the analysis stays
+         explainable on hover. The Deep Review button routes to a future
+         view-review page; the match id is stashed in
+         sessionStorage.rc-review-focus-match so that page can deep-link. -->
+    <section id="view-last-match" class="view-section" hidden>
+      <div class="view-section-head">
+        <h2>LAST MATCH</h2>
+        <span class="view-section-sub" id="lm-meta">loading…</span>
+      </div>
+      <div class="view-section-body lm-body" id="lm-body">
+
+        <div class="lm-hero">
+          <img class="lm-hero-portrait" id="lm-portrait" alt="" />
+          <div class="lm-hero-name">
+            <span class="lm-hero-champ" id="lm-champion-name" role="button" tabindex="0"
+                  data-tt="Open History filtered to this champion">—</span>
+            <span class="lm-hero-mode" id="lm-mode-tag">—</span>
+          </div>
+          <div class="lm-hero-kda">
+            <span class="lm-kda-text" id="lm-kda-text">—/—/—</span>
+            <span class="lm-kda-ratio" id="lm-kda-ratio">—</span>
+          </div>
+          <div class="lm-hero-grade" id="lm-grade-badge" data-grade="">—</div>
+        </div>
+
+        <div class="lm-stats-grid">
+          <div class="lm-stat-card">
+            <span class="lm-stat-label">CS</span>
+            <span class="lm-stat-value" id="lm-cs">—</span>
+            <span class="lm-stat-sub" id="lm-cs-per-min">—</span>
+          </div>
+          <div class="lm-stat-card">
+            <span class="lm-stat-label">Gold</span>
+            <span class="lm-stat-value" id="lm-gold">—</span>
+            <span class="lm-stat-sub" id="lm-gold-per-min">—</span>
+          </div>
+          <div class="lm-stat-card">
+            <span class="lm-stat-label">KP</span>
+            <span class="lm-stat-value" id="lm-kp">—</span>
+            <span class="lm-stat-sub">team-fight participation</span>
+          </div>
+          <div class="lm-stat-card">
+            <span class="lm-stat-label">Duration</span>
+            <span class="lm-stat-value" id="lm-duration">—</span>
+            <span class="lm-stat-sub" id="lm-when">—</span>
+          </div>
+        </div>
+
+        <div class="lm-section lm-build-section">
+          <h3 class="lm-section-head">DS-SUGGESTED BUILD <span class="lm-section-sub">at end-of-match</span></h3>
+          <div class="lm-build-items" id="lm-ds-picks">
+            <span class="lm-empty">no DS data captured for this match</span>
+          </div>
+          <div class="lm-pending" data-dummy-data="last-match-items">
+            Final inventory pending — v2 Refresh-from-Riot will populate
+          </div>
+        </div>
+
+        <div class="lm-section lm-team-comp">
+          <h3 class="lm-section-head">TEAM COMPOSITION</h3>
+          <div class="lm-pending" data-dummy-data="last-match-team">
+            Team roster pending — v2 Refresh-from-Riot will populate
+          </div>
+        </div>
+
+        <div class="lm-section lm-quick-review">
+          <h3 class="lm-section-head">QUICK REVIEW
+            <span class="lm-section-sub">hover any row for the data behind it</span>
+          </h3>
+          <div class="lm-qr-cols">
+            <div class="lm-qr-col lm-qr-col-right">
+              <div class="lm-qr-col-head">What went right</div>
+              <ul class="lm-qr-list" id="lm-qr-right">
+                <li class="lm-qr-empty">loading…</li>
+              </ul>
+            </div>
+            <div class="lm-qr-col lm-qr-col-wrong">
+              <div class="lm-qr-col-head">What went wrong as a team</div>
+              <ul class="lm-qr-list" id="lm-qr-wrong">
+                <li class="lm-qr-empty">loading…</li>
+              </ul>
+            </div>
+            <div class="lm-qr-col lm-qr-col-chronic">
+              <div class="lm-qr-col-head">What you fail most at</div>
+              <ul class="lm-qr-list" id="lm-qr-chronic">
+                <li class="lm-qr-empty">loading…</li>
+              </ul>
+            </div>
+          </div>
+          <div class="lm-qr-footer">
+            <button type="button" class="lm-review-btn" id="lm-go-to-review">
+              Open Deep Review →
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
     <section id="view-active-match" class="view-section" hidden>
       <div class="view-section-head">
         <h2>ACTIVE MATCH</h2>

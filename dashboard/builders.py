@@ -546,3 +546,256 @@ def _build_diagnostics() -> dict:
     except Exception as exc:
         _log.debug("diag log tail: %s", exc)
     return out
+
+
+# ---- Last Match -------------------------------------------------------------
+
+def _compute_quick_review(current: dict, history: list[dict]) -> dict:
+    """Compute the 3-section Quick Review for the Last Match page.
+
+    `current` is the just-finished match row (parsed). `history` is the
+    operator's most recent N non-TFT matches EXCLUDING `current`, used as
+    the baseline for "chronic fail" assessment.
+
+    Returns:
+      {
+        "right":      [{text, why}, ...],   # positive callouts about this match
+        "wrong_team": [{text, why}, ...],   # team-level issues this match
+        "my_chronic": [{text, why}, ...],   # repeated patterns across history
+      }
+
+    v1 heuristics — operator-revisable. The `why` field is shown in a
+    tooltip on hover so the analysis stays explainable. Team data is not
+    in match_history.db today (only operator-centric stats); the
+    wrong_team section degrades gracefully until the Riot Match-V5
+    enrich flow ships.
+    """
+    right: list[dict] = []
+    wrong_team: list[dict] = []
+    my_chronic: list[dict] = []
+
+    def _kda(k: int, d: int, a: int) -> float:
+        return round((k + a) / max(d, 1), 2)
+
+    k = int(current.get("kills") or 0)
+    d = int(current.get("deaths") or 0)
+    a = int(current.get("assists") or 0)
+    cspm = float(current.get("cs_per_min") or 0.0)
+    grade = (current.get("grade") or "").upper().strip()
+    kp = current.get("kp_pct")
+
+    cur_kda = _kda(k, d, a)
+
+    # ── right: this-match positives ─────────────────────────────────────
+    if grade in ("S", "A"):
+        right.append({
+            "text": f"Top-tier performance ({grade})",
+            "why": f"Match graded {grade} — operator scored in the top tier on "
+                   f"the per-mode rubric used by the Home page Recent 5.",
+        })
+    if cur_kda >= 3.0:
+        right.append({
+            "text": f"Excellent KDA ({cur_kda})",
+            "why": f"{k}/{d}/{a} = (K+A)/D = {cur_kda}, well above the 3.0 "
+                   f"threshold used as the strong-performance gate.",
+        })
+    if cspm >= 8.0 and current.get("mode") == "SR":
+        right.append({
+            "text": f"Solid farm ({cspm:.1f} CS/min)",
+            "why": f"{int(current.get('cs') or 0)} CS at {cspm:.1f}/min — at "
+                   f"or above the 8.0 CS/min standard for SR.",
+        })
+    if isinstance(kp, (int, float)) and kp >= 70:
+        right.append({
+            "text": f"High team-fight participation ({int(kp)}% KP)",
+            "why": f"You took part in {int(kp)}% of team kills — strong "
+                   f"presence in skirmishes / objective fights.",
+        })
+    if k >= 10 and d <= 5:
+        right.append({
+            "text": f"Carry-tier kill output ({k} kills, {d} deaths)",
+            "why": f"10+ kills with ≤5 deaths is a snowball signal — you "
+                   f"converted leads without giving them back.",
+        })
+
+    if not right:
+        right.append({
+            "text": "No standout positives this match",
+            "why": "None of the v1 thresholds tripped (S/A grade, KDA≥3, "
+                   "CS/min≥8, KP≥70%, or 10+ kills with ≤5 deaths).",
+        })
+
+    # ── wrong_team: team-level issues this match ────────────────────────
+    # match_history.db is operator-centric (no team roster, no
+    # objectives, no per-player breakdown). Once the Match-V5 enrich
+    # button (v2) lands, we'll surface: lost first tower, lost first
+    # drag, lopsided team-fight win-rate, soul/baron giveaways, etc.
+    wrong_team.append({
+        "text": "Team data unavailable",
+        "why": "match_history.db captures operator-side stats only. The "
+               "v2 Refresh from Riot API button will pull team comp + "
+               "objectives via Match-V5 to populate this section.",
+    })
+    # We CAN still flag operator-side death spikes as a team-cost proxy:
+    if d >= 10:
+        wrong_team.append({
+            "text": f"Death count cost the team ({d} deaths)",
+            "why": f"{d} deaths is a 10+ threshold — even with high KP "
+                   f"({int(kp) if isinstance(kp,(int,float)) else '?'}%), "
+                   f"each death is gold + 30+s map pressure handed back.",
+        })
+    if cur_kda < 1.0 and (k + d + a) > 0:
+        wrong_team.append({
+            "text": f"Sub-1 KDA ({cur_kda})",
+            "why": f"{k}/{d}/{a} = {cur_kda} — below the 1.0 baseline; "
+                   f"deaths outpaced (kills + assists), so each fight "
+                   f"likely net-negative for the team.",
+        })
+
+    # ── my_chronic: repeated patterns across history ────────────────────
+    if history:
+        deaths_hist = sorted(int(r.get("deaths") or 0) for r in history)
+        median_d = deaths_hist[len(deaths_hist) // 2] if deaths_hist else 0
+        if d > median_d + 3 and median_d > 0:
+            my_chronic.append({
+                "text": f"Deaths above your average ({d} vs ~{median_d} median)",
+                "why": f"Across your last {len(history)} non-TFT games, your "
+                       f"median deaths is {median_d}. This match's {d} is "
+                       f"3+ above that — repeating pattern of overcommitting.",
+            })
+
+        cspm_hist = [float(r.get("cs_per_min") or 0.0) for r in history
+                     if (r.get("mode") == "SR")]
+        if cspm_hist and current.get("mode") == "SR":
+            median_cspm = sorted(cspm_hist)[len(cspm_hist) // 2]
+            if cspm < median_cspm - 1.0:
+                my_chronic.append({
+                    "text": f"CS/min below your SR median ({cspm:.1f} vs ~{median_cspm:.1f})",
+                    "why": f"Your SR median over the last {len(cspm_hist)} games "
+                           f"is {median_cspm:.1f} CS/min. This match's "
+                           f"{cspm:.1f} is 1+ below — wave-management/death-cost "
+                           f"pattern worth a deeper review.",
+                })
+
+        grades_hist = [(r.get("grade") or "").upper().strip() for r in history]
+        bad_grades = [g for g in grades_hist if g in ("D", "F")]
+        if len(bad_grades) >= max(3, len(history) // 3):
+            my_chronic.append({
+                "text": f"Recent grade slump ({len(bad_grades)}/{len(history)} at D/F)",
+                "why": f"{len(bad_grades)} of your last {len(history)} games "
+                       f"graded D or F — a third+ of recent matches in the "
+                       f"weak-performance tier. Worth a focused review session.",
+            })
+
+    if not my_chronic:
+        my_chronic.append({
+            "text": "No chronic pattern detected (yet)",
+            "why": "Not enough recent matches to compute baselines, or this "
+                   "match's stats are within ±1 SD of your medians.",
+        })
+
+    return {
+        "right":      right,
+        "wrong_team": wrong_team,
+        "my_chronic": my_chronic,
+    }
+
+
+def _build_last_match() -> dict:
+    """Latest non-TFT match for the Last Match page.
+
+    Source: data/match_history.db (operator-centric — KDA / CS / gold /
+    grade / DS picks). rewind_history.db is stale (Dec 2025) so we do
+    NOT enrich from Match-V5 here; the v2 Refresh button will trigger
+    that path.
+
+    Returns:
+      {
+        "found": bool,
+        "match": { ... full operator-side stats ... } | None,
+        "history_count": int,   # how many rows backed the Quick Review baseline
+        "quick_review": {right, wrong_team, my_chronic},  # see _compute_quick_review
+      }
+    """
+    import json
+    out: dict = {"found": False, "match": None, "history_count": 0}
+    db_path = _APP_DIR / "data" / "match_history.db"
+    conn = _ro_conn(db_path)
+    if conn is None:
+        out["error"] = "match_history.db missing"
+        return out
+    try:
+        cur = conn.execute(
+            "SELECT id, timestamp, mode, champion, grade, kda_str, "
+            "       game_time_s, kills, deaths, assists, cs, cs_per_min, "
+            "       gold, gold_per_min, kp_pct, label, raw_data "
+            "FROM matches WHERE mode != 'TFT' "
+            "ORDER BY timestamp DESC LIMIT 1"
+        )
+        latest = cur.fetchone()
+        if not latest:
+            return out
+
+        (mid, ts, mode, champ, grade, kda_str, dur,
+         k, d, a, cs, cspm, gold, gpm, kp, label, raw) = latest
+
+        ds_picks: list = []
+        coach_action: str = ""
+        if raw:
+            try:
+                rd = json.loads(raw)
+                ds_picks = rd.get("daemon_slayer_picks") or []
+                coach_action = (rd.get("coach_action") or "").strip()
+            except Exception:
+                pass
+
+        kda_ratio = round((int(k or 0) + int(a or 0)) / max(int(d or 0), 1), 2)
+
+        match_row = {
+            "id":            int(mid),
+            "timestamp":     ts,
+            "mode":          mode,
+            "champion":      champ or "?",
+            "grade":         grade or "—",
+            "kda_str":       kda_str or f"{k or 0}/{d or 0}/{a or 0}",
+            "kda_ratio":     kda_ratio,
+            "duration_s":    int(dur or 0),
+            "kills":         int(k or 0),
+            "deaths":        int(d or 0),
+            "assists":       int(a or 0),
+            "cs":            int(cs or 0),
+            "cs_per_min":    float(cspm or 0.0),
+            "gold":          int(gold or 0) if gold is not None else None,
+            "gold_per_min":  float(gpm or 0.0) if gpm is not None else None,
+            "kp_pct":        float(kp) if kp is not None else None,
+            "label":         label or "",
+            "coach_action":  coach_action,
+            "ds_picks":      ds_picks,
+        }
+
+        # Baseline rows for chronic-fail computation (exclude this one)
+        history: list[dict] = []
+        cur = conn.execute(
+            "SELECT mode, grade, kills, deaths, assists, cs, cs_per_min "
+            "FROM matches WHERE mode != 'TFT' AND id != ? "
+            "ORDER BY timestamp DESC LIMIT 20",
+            (int(mid),)
+        )
+        for h_mode, h_grade, hk, hd, ha, h_cs, h_cspm in cur:
+            history.append({
+                "mode": h_mode, "grade": h_grade,
+                "kills": hk, "deaths": hd, "assists": ha,
+                "cs": h_cs, "cs_per_min": h_cspm,
+            })
+
+        out["found"] = True
+        out["match"] = match_row
+        out["history_count"] = len(history)
+        out["quick_review"] = _compute_quick_review(match_row, history)
+
+    except Exception as exc:
+        _log.warning("_build_last_match: %s", exc)
+        out["error"] = str(exc)
+    finally:
+        conn.close()
+    return out

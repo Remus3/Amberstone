@@ -27,6 +27,7 @@ import { handleChampSelect, renderChampSelectCoach, renderChampSelectView } from
 import { renderTeamContext } from './panels/team_context.js';
 import { renderArchetypeNudge } from './panels/archetype_nudge_chip.js';
 import { renderActiveMatch, activeMatchEnabled } from './panels/active_match.js';
+import { wireLastMatchOnce, fetchAndRenderLastMatch } from './panels/last_match.js';
 import { renderBridgePending, renderCoachDecisions, renderRecentCoachCalls } from './panels/bridge_pending.js';
 // ADR-007 (s169) — heartbeat pill self-starts on import (own setInterval).
 import './panels/trigger_pill.js';
@@ -582,6 +583,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     if (viewId === "champ-select") { renderChampSelectView(state.latest.lcu); }
     if (viewId === "session")     { _sessionFetchAndRender(); }
     if (viewId === "history")     { _historyWireOnce(); _historyFetchAndRender(); }
+    if (viewId === "last-match")  { wireLastMatchOnce(); fetchAndRenderLastMatch(); }
     if (viewId === "replay")      { _replayViewWireOnce(); _replayViewRefresh(); }
     if (viewId === "user-builds") { _userBuildsWireOnce(); _userBuildsFetchAndRender(); }
     if (viewId === "settings")    { _settingsRefresh(); }

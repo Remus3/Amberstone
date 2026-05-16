@@ -1,0 +1,261 @@
+/* s219: Last Match — post-game review view.
+ * Visual language mirrors panels/home.css so the page reads as a
+ * sibling of Home (hero → stats grid → sections), not a stranger.
+ * Grade-tinted left-border accent on hero matches s218's "demoted from
+ * card-bg-tint to 3px left-border" pattern for the This Week rows.
+ */
+
+.lm-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 18px;
+}
+
+/* ── Hero row ────────────────────────────────────────────────────────── */
+.lm-hero {
+  display: grid;
+  grid-template-columns: 72px 1fr auto auto;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 18px 12px 15px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--text-dim);
+  border-radius: var(--radius-sm);
+  min-height: 88px;
+}
+.lm-hero[data-grade="S"] { border-left-color: var(--grade-s, #f5b87c); }
+.lm-hero[data-grade="A"] { border-left-color: var(--grade-a, #8ce5a8); }
+.lm-hero[data-grade="B"] { border-left-color: var(--grade-b, #7bcadc); }
+.lm-hero[data-grade="C"] { border-left-color: var(--grade-c, #cfa3e8); }
+.lm-hero[data-grade="D"] { border-left-color: var(--grade-d, #e8a86d); }
+.lm-hero[data-grade="F"] { border-left-color: var(--grade-f, #e07a7a); }
+
+.lm-hero-portrait {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  background: var(--surface-2, #1a1a22);
+  border: 1px solid var(--border-soft);
+  object-fit: cover;
+}
+.lm-hero-name {
+  display: flex; flex-direction: column; gap: 4px;
+  min-width: 0;
+}
+.lm-hero-champ {
+  font-size: 24px; font-weight: 700; color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+  border-bottom: 1px dashed transparent;
+  align-self: flex-start;
+}
+.lm-hero-champ:hover { border-bottom-color: var(--text-dim); }
+.lm-hero-champ:focus-visible { outline: 1px solid var(--accent, #8a8cf0); outline-offset: 2px; }
+.lm-hero-mode {
+  font-size: 13px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.lm-hero-kda {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+  min-width: 96px;
+}
+.lm-kda-text {
+  font-size: 21px; font-weight: 600; font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.lm-kda-ratio {
+  font-size: 13px; color: var(--text-dim);
+}
+.lm-hero-grade {
+  font-size: 36px; font-weight: 800; line-height: 1;
+  padding: 4px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2, #1a1a22);
+  min-width: 56px; text-align: center;
+  color: var(--text);
+}
+.lm-hero-grade[data-grade="S"] { color: var(--grade-s, #f5b87c); }
+.lm-hero-grade[data-grade="A"] { color: var(--grade-a, #8ce5a8); }
+.lm-hero-grade[data-grade="B"] { color: var(--grade-b, #7bcadc); }
+.lm-hero-grade[data-grade="C"] { color: var(--grade-c, #cfa3e8); }
+.lm-hero-grade[data-grade="D"] { color: var(--grade-d, #e8a86d); }
+.lm-hero-grade[data-grade="F"] { color: var(--grade-f, #e07a7a); }
+
+/* ── Stats grid ─────────────────────────────────────────────────────── */
+.lm-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.lm-stat-card {
+  display: flex; flex-direction: column;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  min-height: 72px;
+  justify-content: center;
+  gap: 2px;
+}
+.lm-stat-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.lm-stat-value {
+  font-size: 22px; font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.lm-stat-sub {
+  font-size: 12px;
+  color: var(--text-faint, var(--text-dim));
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Section wrappers (build / team / quick review) ─────────────────── */
+.lm-section {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  display: flex; flex-direction: column;
+  gap: 10px;
+}
+.lm-section-head {
+  font-size: 14px; font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.lm-section-sub {
+  font-size: 12px;
+  color: var(--text-faint, var(--text-dim));
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* DS-suggested build row */
+.lm-build-items {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.lm-build-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px 6px 6px;
+  background: var(--surface-2, #1a1a22);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+.lm-build-item img {
+  width: 32px; height: 32px; border-radius: 4px;
+  background: var(--surface-3, #222);
+}
+.lm-build-item-name { color: var(--text); }
+.lm-build-item-delta {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.lm-pending {
+  font-size: 13px;
+  color: var(--text-faint, var(--text-dim));
+  font-style: italic;
+  padding: 8px 4px;
+  border-top: 1px dashed var(--border-soft);
+}
+
+/* ── Quick Review — 3 columns ───────────────────────────────────────── */
+.lm-qr-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+.lm-qr-col {
+  display: flex; flex-direction: column;
+  background: var(--surface-2, #1a1a22);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  min-height: 120px;
+  border-top: 3px solid var(--text-dim);
+}
+.lm-qr-col-right    { border-top-color: var(--ok,   #8ce5a8); }
+.lm-qr-col-wrong    { border-top-color: var(--warn, #e8a86d); }
+.lm-qr-col-chronic  { border-top-color: var(--bad,  #e07a7a); }
+
+.lm-qr-col-head {
+  font-size: 13px; font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.lm-qr-list {
+  list-style: none;
+  padding: 0; margin: 0;
+  display: flex; flex-direction: column;
+  gap: 6px;
+}
+.lm-qr-list li {
+  font-size: 14px;
+  color: var(--text);
+  padding: 6px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  cursor: help;
+  line-height: 1.35;
+}
+.lm-qr-list li.lm-qr-empty {
+  font-style: italic;
+  color: var(--text-faint, var(--text-dim));
+  cursor: default;
+  background: transparent;
+  border-color: transparent;
+}
+
+/* QR footer + Deep Review button */
+.lm-qr-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border-soft);
+}
+.lm-review-btn {
+  font-size: 14px; font-weight: 600;
+  padding: 8px 16px;
+  background: var(--accent-soft, rgba(138, 140, 240, 0.12));
+  border: 1px solid var(--accent, #8a8cf0);
+  border-radius: var(--radius-sm);
+  color: var(--accent, #8a8cf0);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.lm-review-btn:hover {
+  background: var(--accent, #8a8cf0);
+  color: var(--surface);
+}
+.lm-review-btn:focus-visible {
+  outline: 2px solid var(--accent, #8a8cf0);
+  outline-offset: 2px;
+}
+
+/* Empty-state — when match_history.db has no rows yet */
+.lm-empty {
+  font-size: 13px;
+  color: var(--text-faint, var(--text-dim));
+  font-style: italic;
+  padding: 6px 0;
+}

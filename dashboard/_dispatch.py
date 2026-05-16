@@ -67,7 +67,7 @@ def _gather_get() -> list:
                                routes_ban_suggestions, routes_dictionary,
                                routes_sr_draft, routes_sr_user_builds,
                                routes_team_context,
-                               routes_archetype)
+                               routes_archetype, routes_last_match)
         _GET_CACHE = (list(routes_static.GET_ROUTES)
                       + list(routes_state.GET_ROUTES)
                       + list(routes_history.GET_ROUTES)
@@ -87,7 +87,8 @@ def _gather_get() -> list:
                       + list(routes_sr_draft.GET_ROUTES)
                       + list(routes_sr_user_builds.GET_ROUTES)
                       + list(routes_team_context.GET_ROUTES)
-                      + list(routes_archetype.GET_ROUTES))
+                      + list(routes_archetype.GET_ROUTES)
+                      + list(routes_last_match.GET_ROUTES))
     return _GET_CACHE
 
 
