@@ -19,6 +19,47 @@ from dashboard._context import (
 )
 
 
+def _lcu_build_items(raw_data: str | None) -> list[int]:
+    """Resolve the operator's 6 build-slot item ids (slots 0-5, trinket
+    slot 6 excluded) from a match row's ``raw_data`` blob.
+
+    Deliberate lightweight subset of :func:`_enrich_from_lcu`'s
+    puuid -> participantId -> ``stats.itemN`` walk — the home Recent-5
+    strip only needs the build items, not the full 10-player roster.
+    Returns ``[]`` for matches that predate the s219 LCU-ingest pipeline
+    (no ``lcu_match_detail``) or on any structural mismatch — the
+    frontend then renders empty placeholder slots.
+    """
+    if not raw_data:
+        return []
+    import json
+    try:
+        rd = json.loads(raw_data)
+    except Exception:
+        return []
+    lcu_detail = rd.get("lcu_match_detail") or {}
+    tracked_puuid = (rd.get("tracked_puuid") or "").strip()
+    if not lcu_detail or not tracked_puuid:
+        return []
+    identities = lcu_detail.get("participantIdentities") or []
+    participants = lcu_detail.get("participants") or []
+    if not identities or not participants:
+        return []
+    me_pid = None
+    for ident in identities:
+        player = ident.get("player") or {}
+        if str(player.get("puuid") or "").strip() == tracked_puuid:
+            me_pid = ident.get("participantId")
+            break
+    if me_pid is None:
+        return []
+    for p in participants:
+        if p.get("participantId") == me_pid:
+            s = p.get("stats") or {}
+            return [int(s.get(f"item{i}") or 0) for i in range(6)]
+    return []
+
+
 def _build_home_summary() -> dict:
     """Aggregate read-only data for the dashboard home view.
 
@@ -50,18 +91,23 @@ def _build_home_summary() -> dict:
         # from ARAM Mayhem). TODO(s218-dummy-data): wire when ingest ships.
         cur = conn.execute(
             "SELECT timestamp, mode, champion, grade, kda_str, "
-            "       game_time_s, kills, deaths, assists, cs, cs_per_min, label "
+            "       game_time_s, kills, deaths, assists, cs, cs_per_min, "
+            "       label, raw_data "
             "FROM matches WHERE mode != 'TFT' "
             "ORDER BY timestamp DESC LIMIT 5"
         )
-        for ts, mode, champ, grade, kda, dur, k, d, a, cs, cspm, label in cur:
+        for (ts, mode, champ, grade, kda, dur, k, d, a, cs, cspm,
+             label, raw_data) in cur:
             out["recent"].append({
                 "timestamp": ts, "mode": mode, "champion": champ or "?",
                 "grade": grade or "—", "kda": kda or f"{k}/{d}/{a}",
                 "duration_s": int(dur or 0), "label": label or "",
                 "cs": int(cs or 0), "cs_per_min": float(cspm or 0.0),
-                # Placeholders pending ingestion extension:
-                "items": [],
+                # s219 LCU-ingest build items when present; [] for matches
+                # that predate the ingest pipeline (frontend renders empty
+                # slots). mode_subtype still awaits a queue_id store to
+                # split ARAM Classic from ARAM Mayhem — passthrough hook.
+                "items": _lcu_build_items(raw_data),
                 "mode_subtype": None,
             })
         # Today's session — group all rows whose timestamp date == today.
