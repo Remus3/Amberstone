@@ -1255,6 +1255,31 @@
             <span class="dim">(env var RC_LIVE_METRICS — supervisor restart required to change)</span>
           </label>
         </div>
+        <div class="settings-card">
+          <div class="settings-card-head">POST GAME REVIEW</div>
+          <label class="settings-row">
+            <span>Rank-tier comparison</span>
+            <select id="set-pgr-rank-tier"
+                    data-tt="Canonical home for the Post Game Review rank-tier comparison. Shares the same setting as the dropdown on that page.">
+              <option value="">— off —</option>
+              <option value="iron">Iron</option>
+              <option value="bronze">Bronze</option>
+              <option value="silver">Silver</option>
+              <option value="gold">Gold</option>
+              <option value="platinum">Platinum</option>
+              <option value="emerald">Emerald</option>
+              <option value="diamond">Diamond</option>
+              <option value="master">Master</option>
+              <option value="grandmaster">Grandmaster</option>
+              <option value="challenger">Challenger</option>
+            </select>
+          </label>
+          <label class="settings-row">
+            <span>Baseline window (prior games)</span>
+            <input type="range" id="set-pgr-baseline" min="5" max="50" step="5" />
+            <span id="set-pgr-baseline-val">20</span>
+          </label>
+        </div>
       </div>
     </section>
 
@@ -1392,9 +1417,10 @@
           </div>
 
           <div class="lm-hero-rank-compare">
-            <!-- s219 v6: grid-area on each cell so order is bulletproof
-                 regardless of auto-flow. Areas defined in CSS template:
-                 row 1 = selector vision cs tank [.], row 2 = kda kp damage cspm heal -->
+            <!-- s220: 4-column grid mirroring section 2 exactly.
+                 col1 = selector (r1) over KDA+KP% pair (r2);
+                 col2 = Vision/Damage; col3 = CS/CS-min;
+                 col4 = Tanked/Heal+Shield. Areas defined in CSS. -->
             <div class="lm-rank-compare-head" style="grid-area: selector;">
               <select class="lm-rank-select" id="lm-rank-select"
                       data-tt="Pick a rank tier to compare this match against the typical expected values at that tier (Mode + Tier-averaged stats).">
@@ -1423,13 +1449,17 @@
               <span class="lm-rank-cell-label">Tanked</span>
               <span class="lm-rank-cell-value" id="lm-rank-tank">—</span>
             </div>
-            <div class="lm-rank-cell lm-rank-cell-kda" style="grid-area: kda-avg;" data-tt="Tier-average KDA ratio.">
-              <span class="lm-rank-cell-label">KDA</span>
-              <span class="lm-rank-cell-value" id="lm-rank-kda">—</span>
-            </div>
-            <div class="lm-rank-cell" style="grid-area: kp-avg;" data-tt="Tier-average kill participation.">
-              <span class="lm-rank-cell-label">KP%</span>
-              <span class="lm-rank-cell-value" id="lm-rank-kp">—</span>
+            <!-- s220: KDA + KP% paired side-by-side in col 1 row 2,
+                 directly beneath the (widened) rank selector. -->
+            <div class="lm-rank-kdakp" style="grid-area: kda-kp;">
+              <div class="lm-rank-cell lm-rank-cell-kda" data-tt="Tier-average KDA ratio.">
+                <span class="lm-rank-cell-label">KDA</span>
+                <span class="lm-rank-cell-value" id="lm-rank-kda">—</span>
+              </div>
+              <div class="lm-rank-cell" data-tt="Tier-average kill participation.">
+                <span class="lm-rank-cell-label">KP%</span>
+                <span class="lm-rank-cell-value" id="lm-rank-kp">—</span>
+              </div>
             </div>
             <div class="lm-rank-cell" style="grid-area: damage-avg;" data-tt="Tier-average damage to champions.">
               <span class="lm-rank-cell-label">Damage</span>
@@ -1455,12 +1485,11 @@
             <div class="lm-tabs-strip">
               <button type="button" class="lm-tab is-active" data-tab="comp">Comp</button>
               <button type="button" class="lm-tab"          data-tab="chart">Chart</button>
-              <button type="button" class="lm-tab"          data-tab="review">Review</button>
+              <button type="button" class="lm-tab"          data-tab="timeline">Timeline</button>
+              <button type="button" class="lm-tab"          data-tab="insights">Insights</button>
+              <button type="button" class="lm-tab lm-tab-nav" id="lm-go-to-review"
+                      data-tt="Open the deeper step-by-step Review page for this match">Review →</button>
             </div>
-            <button type="button" class="lm-review-btn lm-tabs-cta" id="lm-go-to-review"
-                    data-tt="Open the deeper step-by-step Review page for this match">
-              Open Deep Review →
-            </button>
           </nav>
 
           <!-- COMP tab — ally + enemy rosters side-by-side -->
@@ -1496,8 +1525,23 @@
             </div>
           </div>
 
-          <!-- REVIEW tab — the 3-column Quick Review folded in -->
-          <div class="lm-tab-panel" data-tab-panel="review" hidden>
+          <!-- TIMELINE tab — per-minute gold/XP/CS differential + objective
+               ribbon (s220 Item E phase 1). Phase 2 reuses the same
+               ingested timeline for an interactive replay minimap. -->
+          <div class="lm-tab-panel" data-tab-panel="timeline" hidden>
+            <div class="lm-tl-wrap" id="lm-tl-wrap" hidden>
+              <div class="lm-tl-charts" id="lm-tl-charts"></div>
+              <div class="lm-tl-ribbon-head">Objectives</div>
+              <ul class="lm-tl-ribbon" id="lm-tl-ribbon"></ul>
+            </div>
+            <div class="lm-pending" id="lm-tl-pending">
+              Timeline unavailable — gold / XP / CS deltas + objective events load from the Riot Match-V5 timeline once a valid Riot API key is configured.
+            </div>
+          </div>
+
+          <!-- INSIGHTS tab — the 3-column Quick Review folded in. (The
+               "Review" tab is a nav button → deep-review page, no panel.) -->
+          <div class="lm-tab-panel" data-tab-panel="insights" hidden>
             <div class="lm-tab-panel-hint">hover any row for the data behind it</div>
             <div class="lm-qr-cols">
               <div class="lm-qr-col lm-qr-col-right">

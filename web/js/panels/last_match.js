@@ -29,6 +29,9 @@
 // stays informative rather than blank. ITEMS.version drives item
 // icon paths so we stay current with the patch.
 import { CHAMPS, ITEMS } from '../lib/items_index.js';
+// Item C (s220): rich DDragon item tooltips via the shared app-wide
+// data-tt-html plumbing — same lib champ_select.js uses (s213).
+import { itemTooltipHtml, preloadLolDescriptions } from '../lib/lol_descriptions.js';
 
 // Numeric summoner-spell id → DDragon filename. Covers SR + ARAM common
 // set; Arena (CHERRY) spell ids are not in this map and fall back to a
@@ -82,7 +85,13 @@ function _itemImgTag(iid, cls = "", title = "") {
   const localUrl = `/data/ddragon/${ver}/img/item/${iid}.png`;
   const onErr = _onErrCdnFallback(ver, "item", `${iid}.png`);
   const safeTitle = title ? `title="${String(title).replace(/"/g, "&quot;")}"` : "";
-  return `<img class="${cls}" src="${localUrl}" alt="" ${safeTitle} loading="lazy" onerror="${onErr}">`;
+  // Item C (s220): rich DDragon tooltip via the app-wide data-tt-html
+  // plumbing (mirrors champ_select.js). itemTooltipHtml() returns ""
+  // until /api/dictionary/items lands; the rc:lol-descriptions-ready
+  // listener triggers a re-render so icons pick up the attr next paint.
+  const lolHtml = itemTooltipHtml(iid);
+  const ttAttr = lolHtml ? ` data-tt-html="${lolHtml.replace(/"/g, "&quot;")}"` : "";
+  return `<img class="${cls}" src="${localUrl}" alt="" ${safeTitle}${ttAttr} loading="lazy" onerror="${onErr}">`;
 }
 
 function _summonerIconUrl(sid) {
@@ -99,6 +108,9 @@ function _summonerImgTag(sid, cls = "") {
 }
 
 let _wired = false;
+// Item C (s220): cached so the rc:lol-descriptions-ready listener can
+// re-render once the DDragon item-description fetch resolves.
+let _lastData = null;
 
 // s219 v6: rank-tier comparison sample averages per game mode.
 // Hand-curated placeholder data — backend aggregates from
@@ -135,6 +147,11 @@ const _RANK_LS_KEY = "rc-pgr-rank-tier";
 export function wireLastMatchOnce() {
   if (_wired) return;
   _wired = true;
+
+  // Item C (s220): warm the DDragon item/rune description cache on
+  // first mount so the first Comp-tab render already has tooltips.
+  // Idempotent — no-op once the cache is ready.
+  preloadLolDescriptions();
 
   const champEl = document.getElementById("lm-champion-name");
   if (champEl) {
@@ -187,7 +204,8 @@ export function wireLastMatchOnce() {
   if (tabsRoot) {
     try {
       const saved = localStorage.getItem(_TAB_LS_KEY);
-      if (saved && ["comp", "chart", "review"].includes(saved)) {
+      // "review" is a nav tab (→ deep-review page), not a persistable panel.
+      if (saved && ["comp", "chart", "timeline", "insights"].includes(saved)) {
         _activateTab(saved);
       }
     } catch (_) {}
@@ -219,7 +237,14 @@ function _activateTab(which) {
 
 /** Fetch latest match + render into DOM. Safe to call repeatedly. */
 export function fetchAndRenderLastMatch() {
-  fetch("/api/last-match", { headers: { "Accept": "application/json" } })
+  // s220: baseline window is operator-configurable from Settings
+  // (shared localStorage key rc-pgr-baseline). Clamp client-side too;
+  // the server re-clamps defensively.
+  let _b = 20;
+  try { _b = parseInt(localStorage.getItem("rc-pgr-baseline") || "20", 10); } catch (_) {}
+  if (isNaN(_b)) _b = 20;
+  _b = Math.max(5, Math.min(50, _b));
+  fetch(`/api/last-match?baseline=${_b}`, { headers: { "Accept": "application/json" } })
     .then((r) => r.json())
     .then((data) => renderLastMatch(data))
     .catch((err) => {
@@ -229,6 +254,7 @@ export function fetchAndRenderLastMatch() {
 }
 
 function renderLastMatch(data) {
+  _lastData = data;
   if (!data || !data.found) {
     _setEmptyState(data && data.error);
     return;
@@ -245,6 +271,7 @@ function renderLastMatch(data) {
   // belong on champ-select + active-match, not post-game.
   _setTeamComp(enriched);
   _setChart(enriched);
+  _setTimeline(enriched);
   _setQuickReview(qr);
   _setReviewButton(m);
   _setMeta(m, data.history_count, enriched);
@@ -254,6 +281,11 @@ function renderLastMatch(data) {
   _lastMatchMode = m.mode || "";
   let savedTier = "";
   try { savedTier = localStorage.getItem(_RANK_LS_KEY) || ""; } catch (_) {}
+  // s220: Settings is the canonical home for this knob (shared key).
+  // Keep the inline dropdown in lock-step on every render so a change
+  // made in Settings reflects here without a hard reload.
+  const _rs = document.getElementById("lm-rank-select");
+  if (_rs && _rs.value !== savedTier) _rs.value = savedTier;
   _renderRankCompare(savedTier);
 }
 
@@ -423,14 +455,40 @@ function _setTeamComp(enriched) {
   if (pending) pending.hidden = true;
 
   const myTeamId = enriched.team_id;
-  const ally  = (enriched.roster || []).filter((r) => r.team_id === myTeamId);
-  const enemy = (enriched.roster || []).filter((r) => r.team_id !== myTeamId);
-  allyList.innerHTML  = ally.map((r)  => _renderTcRow(r)).join("") || `<li class="lm-tc-empty">—</li>`;
-  enemyList.innerHTML = enemy.map((r) => _renderTcRow(r)).join("") || `<li class="lm-tc-empty">—</li>`;
+  const roster = enriched.roster || [];
+  const ally  = roster.filter((r) => r.team_id === myTeamId);
+  const enemy = roster.filter((r) => r.team_id !== myTeamId);
 
-  // Win/loss tag per team using enriched.teams (more reliable than per-row win)
+  // Win/loss per team (enriched.teams is more reliable than per-row win).
   const teamWin = {};
   (enriched.teams || []).forEach((t) => { teamWin[t.team_id] = !!t.win; });
+
+  // s220: per-player overall score → per-SIDE rank (1..N within each
+  // team). The best on each side shows MVP (that side won) / SVP (lost);
+  // the rest show #2..#N. Ranking is per-side, not lobby-wide, so the
+  // visible numbers stay contiguous (no gaps where the badge slots are).
+  const scores = _rosterScores(roster);
+  const rankSide = (list, won) => {
+    const sorted = [...list].sort((a, b) =>
+      (scores[b.participant_id] || 0) - (scores[a.participant_id] || 0));
+    const meta = {};
+    sorted.forEach((r, i) => {
+      const sc = scores[r.participant_id] || 0;
+      meta[r.participant_id] = (i === 0)
+        ? { badge: won ? "MVP" : "SVP", rank: 1, score: sc }
+        : { badge: "", rank: i + 1, score: sc };
+    });
+    return meta;
+  };
+  const enemyTid  = enemy.length ? enemy[0].team_id : null;
+  const allyMeta  = rankSide(ally,  !!teamWin[myTeamId]);
+  const enemyMeta = rankSide(enemy, enemyTid != null ? !!teamWin[enemyTid] : false);
+  const metaFor = (r) =>
+    ((r.team_id === myTeamId ? allyMeta : enemyMeta)[r.participant_id])
+    || { badge: "", rank: 0, score: 0 };
+  allyList.innerHTML  = ally.map((r)  => _renderTcRow(r, metaFor(r))).join("")  || `<li class="lm-tc-empty">—</li>`;
+  enemyList.innerHTML = enemy.map((r) => _renderTcRow(r, metaFor(r))).join("") || `<li class="lm-tc-empty">—</li>`;
+
   const myWin = teamWin[myTeamId];
   if (myWin != null && allyResult) {
     allyResult.textContent = myWin ? "VICTORY" : "DEFEAT";
@@ -448,7 +506,7 @@ function _setTeamComp(enriched) {
   }
 }
 
-function _renderTcRow(r) {
+function _renderTcRow(r, sm) {
   // Resolve championId → name via CHAMPS.byId (async-hydrated by items_index.js)
   const slug = (CHAMPS && CHAMPS.byId && CHAMPS.byId[String(r.champion_id)]) || "";
   const portrait = slug ? `/icons/champions/${slug}.png` : "";
@@ -463,18 +521,67 @@ function _renderTcRow(r) {
   }).join("");
   const sp1 = r.summoner1, sp2 = r.summoner2;
   const summHtml = [sp1, sp2].map((sid) => {
-    const tag = _summonerImgTag(sid, "lm-tc-summ");
-    return tag || `<div class="lm-tc-summ lm-tc-summ-empty"></div>`;
+    const t = _summonerImgTag(sid, "lm-tc-summ");
+    return t || `<div class="lm-tc-summ lm-tc-summ-empty"></div>`;
   }).join("");
+  // s220: score / MVP-SVP cell, left of level. The single best player
+  // per side shows MVP (won) / SVP (lost); everyone else shows their
+  // lobby rank. Underlying score + factors live in the hover tooltip.
+  const m = sm || { badge: "", rank: 0, score: 0 };
+  const sVal = (typeof m.score === "number") ? m.score.toFixed(1) : "0.0";
+  const scoreCell = m.badge
+    ? `<span class="lm-tc-score" data-kind="${m.badge.toLowerCase()}" data-tt="${m.badge === "MVP" ? "MVP — best on the winning side" : "SVP — best on the losing side"} (overall score ${sVal}/100)">${m.badge}</span>`
+    : `<span class="lm-tc-score" data-kind="rank" data-tt="Lobby rank by overall score ${sVal}/100 — blend of KDA, damage, gold, CS, vision, tanked">#${m.rank || "—"}</span>`;
+  // s220 (#H): champ level shows just the number (no "L" prefix).
+  // s220 (#F): summoner spells now sit before CS (swapped).
   return `<li class="lm-tc-row${meRow}" data-team="${r.team_id}">
     <img class="lm-tc-portrait" src="${portrait}" alt="${slug || ''}" loading="lazy" onerror="this.style.visibility='hidden'">
     <div class="lm-tc-name">${name}${tag}</div>
-    <span class="lm-tc-lvl" title="champion level">L${r.champ_level || 0}</span>
+    ${scoreCell}
+    <span class="lm-tc-lvl" title="champion level">${r.champ_level || 0}</span>
     <span class="lm-tc-kda" title="kills / deaths / assists">${kda}</span>
-    <span class="lm-tc-cs" title="creep score">${r.cs || 0} CS</span>
     <div class="lm-tc-summs">${summHtml}</div>
+    <span class="lm-tc-cs" title="creep score">${r.cs || 0} CS</span>
     <div class="lm-tc-items">${itemsHtml}</div>
   </li>`;
+}
+
+// s220: per-player overall score → { participant_id: score } map.
+// _setTeamComp turns this into a per-side 1..N rank + MVP/SVP badge.
+// Transparent heuristic (surfaced in each row's hover tooltip): a
+// weighted blend of KDA, damage to champs, gold, CS, vision, and
+// damage tanked, each normalized to the lobby max so it's comparable
+// across roles + modes. Not Riot's MVP formula (proprietary) — a
+// defensible proxy from the roster fields we already ship.
+function _rosterScores(roster) {
+  const rows = roster || [];
+  if (!rows.length) return {};
+  const maxOf = (sel) => {
+    let mx = 1;
+    for (const r of rows) { const v = Number(sel(r)) || 0; if (v > mx) mx = v; }
+    return mx;
+  };
+  const mDmg  = maxOf((r) => r.damage_to_champs);
+  const mGold = maxOf((r) => r.gold);
+  const mCs   = maxOf((r) => r.cs);
+  const mVis  = maxOf((r) => r.vision_score);
+  const mTank = maxOf((r) => r.damage_taken);
+  const scored = rows.map((r) => {
+    const k = +r.kills || 0, d = +r.deaths || 0, a = +r.assists || 0;
+    const kdaN = Math.min(((k + a) / Math.max(d, 1)) / 6, 1);
+    const score = 100 * (
+      0.30 * kdaN +
+      0.28 * ((+r.damage_to_champs || 0) / mDmg) +
+      0.16 * ((+r.gold || 0) / mGold) +
+      0.12 * ((+r.cs || 0) / mCs) +
+      0.08 * ((+r.vision_score || 0) / mVis) +
+      0.06 * ((+r.damage_taken || 0) / mTank)
+    );
+    return { pid: r.participant_id, score };
+  });
+  const out = {};
+  scored.forEach((e) => { out[e.pid] = e.score; });
+  return out;
 }
 
 function _setStatsGrid(m, enriched) {
@@ -615,6 +722,106 @@ function _fmtThousands(n) {
   return String(v);
 }
 
+// s220 Item E (phase 1): Timeline tab — per-minute gold/XP/CS
+// differential sparklines + an objective-event ribbon. Diffs are
+// ally − enemy (positive = operator's team ahead). Data comes from
+// enriched.timeline (dashboard.builders._enrich_timeline_from_lcu);
+// absent until a game completes post-agent-redeploy → placeholder.
+function _setTimeline(enriched) {
+  const wrap    = document.getElementById("lm-tl-wrap");
+  const charts  = document.getElementById("lm-tl-charts");
+  const ribbon  = document.getElementById("lm-tl-ribbon");
+  const pending = document.getElementById("lm-tl-pending");
+  if (!wrap || !charts || !ribbon) return;
+  const tl = enriched && enriched.timeline;
+  const series = tl && tl.series;
+  if (!tl || !series || !Array.isArray(series.gold) || series.gold.length < 2) {
+    wrap.hidden = true;
+    if (pending) pending.hidden = false;
+    return;
+  }
+  wrap.hidden = false;
+  if (pending) pending.hidden = true;
+
+  const fin = tl.final || {};
+  const specs = [
+    { key: "gold", label: "GOLD", thousands: true  },
+    { key: "xp",   label: "XP",   thousands: true  },
+    { key: "cs",   label: "CS",   thousands: false },
+  ];
+  charts.innerHTML = specs.map((sp) => {
+    const data = series[sp.key] || [];
+    const finalV = (typeof fin[sp.key] === "number")
+      ? fin[sp.key] : (data[data.length - 1] || 0);
+    const lead = finalV > 0 ? "ally" : (finalV < 0 ? "enemy" : "even");
+    return `<div class="lm-tl-chart" data-lead="${lead}">
+      <div class="lm-tl-chart-top">
+        <span class="lm-tl-chart-label">${sp.label} DIFF</span>
+        <span class="lm-tl-chart-final">${_escHtml(_fmtSigned(finalV, sp.thousands))}</span>
+      </div>
+      ${_tlSparkline(data)}
+    </div>`;
+  }).join("");
+
+  const evs = Array.isArray(tl.events) ? tl.events : [];
+  if (!evs.length) {
+    ribbon.innerHTML = `<li class="lm-tl-ev-empty">no objective events recorded</li>`;
+  } else {
+    ribbon.innerHTML = evs.map((e) => {
+      const team  = (e && e.team) || "neutral";
+      const clock = _escHtml(String(e && e.clock || ""));
+      const label = _escHtml(String(e && e.label || ""));
+      const side  = team === "ally" ? "Ally"
+                  : (team === "enemy" ? "Enemy" : "");
+      return `<li class="lm-tl-ev" data-team="${team}">
+        <span class="lm-tl-ev-clock">${clock}</span>
+        <span class="lm-tl-ev-label">${label}</span>
+        <span class="lm-tl-ev-side">${side}</span>
+      </li>`;
+    }).join("");
+  }
+}
+
+// Inline SVG sparkline with a zero baseline. preserveAspectRatio=none
+// so it stretches to the card width; stroke/area use currentColor so
+// the parent .lm-tl-chart[data-lead] rule tints the whole thing by who
+// ended ahead. vector-effect keeps the 2px stroke crisp despite the
+// non-uniform scale.
+function _tlSparkline(data) {
+  const n = (data && data.length) || 0;
+  const W = 100, H = 40, PAD = 3;
+  if (n < 2) {
+    return `<svg class="lm-tl-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"></svg>`;
+  }
+  let maxAbs = 1;
+  for (const v of data) {
+    const a = Math.abs(Number(v) || 0);
+    if (a > maxAbs) maxAbs = a;
+  }
+  const half = (H / 2) - PAD;
+  const xAt = (i) => ((i / (n - 1)) * W);
+  const yAt = (v) => (H / 2) - ((Number(v) || 0) / maxAbs) * half;
+  let line = "";
+  for (let i = 0; i < n; i++) {
+    line += (i === 0 ? "M" : "L") + xAt(i).toFixed(2) + " " + yAt(data[i]).toFixed(2) + " ";
+  }
+  const midY = (H / 2).toFixed(2);
+  const area = `${line}L${W} ${midY} L0 ${midY} Z`;
+  return `<svg class="lm-tl-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <line class="lm-tl-spark-zero" x1="0" y1="${midY}" x2="${W}" y2="${midY}"></line>
+    <path class="lm-tl-spark-area" d="${area}"></path>
+    <path class="lm-tl-spark-line" d="${line.trim()}"></path>
+  </svg>`;
+}
+
+function _fmtSigned(v, thousands) {
+  const n = Number(v) || 0;
+  const sign = n > 0 ? "+" : (n < 0 ? "-" : "");
+  const abs = Math.abs(n);
+  const body = thousands ? _fmtThousands(abs) : String(Math.round(abs));
+  return `${sign}${body}`;
+}
+
 function _setQuickReview(qr) {
   _renderQrColumn("lm-qr-right", qr.right);
   _renderQrColumn("lm-qr-wrong", qr.wrong_team);
@@ -674,7 +881,9 @@ function _setEmptyState(errMsg) {
   if (tcTable) tcTable.hidden = true;
   const chartWrap = document.getElementById("lm-chart-wrap");
   if (chartWrap) chartWrap.hidden = true;
-  ["lm-build-pending","lm-tc-pending","lm-chart-pending"].forEach((id) => {
+  const tlWrap = document.getElementById("lm-tl-wrap");
+  if (tlWrap) tlWrap.hidden = true;
+  ["lm-build-pending","lm-tc-pending","lm-chart-pending","lm-tl-pending"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.hidden = false;
   });
@@ -745,3 +954,12 @@ function _escHtml(s) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
+
+// Item C (s220): re-render once the DDragon item-description cache
+// lands so Comp-tab item icons pick up their data-tt-html rich
+// tooltip (itemTooltipHtml returns "" until the fetch resolves).
+// Module scope mirrors champ_select.js's rc:lol-descriptions-ready
+// handler — fires at most twice (items + runes), idempotent renders.
+document.addEventListener("rc:lol-descriptions-ready", () => {
+  if (_lastData) renderLastMatch(_lastData);
+});

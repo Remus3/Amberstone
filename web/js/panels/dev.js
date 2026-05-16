@@ -32,6 +32,32 @@ function _settingsRefresh() {
       document.body.style.zoom = zoom.value;
     });
   }
+  // s220: Post Game Review knobs. Rank-tier writes the SAME
+  // localStorage key the PGR page's inline dropdown uses
+  // (rc-pgr-rank-tier) — Settings is the canonical home, the two stay
+  // in sync via the shared key. Baseline window (rc-pgr-baseline) is
+  // read by last_match.js and passed to /api/last-match?baseline=.
+  const pgrTier = document.getElementById("set-pgr-rank-tier");
+  if (pgrTier) {
+    pgrTier.value = get("rc-pgr-rank-tier") || "";
+    pgrTier.addEventListener("change", () => {
+      setLS("rc-pgr-rank-tier", pgrTier.value);
+    });
+  }
+  const pgrBase = document.getElementById("set-pgr-baseline");
+  const pgrBaseVal = document.getElementById("set-pgr-baseline-val");
+  if (pgrBase) {
+    let saved = parseInt(get("rc-pgr-baseline") || "20", 10);
+    if (isNaN(saved)) saved = 20;
+    saved = Math.max(5, Math.min(50, saved));
+    pgrBase.value = saved;
+    if (pgrBaseVal) pgrBaseVal.textContent = String(saved);
+    pgrBase.addEventListener("input", () => {
+      setLS("rc-pgr-baseline", pgrBase.value);
+      if (pgrBaseVal) pgrBaseVal.textContent = pgrBase.value;
+    });
+  }
+
   // Live metrics status (read-only — env var)
   fetch("/api/diagnostics", { cache: "no-store" })
     .then((r) => (r && r.ok ? r.json() : null))
