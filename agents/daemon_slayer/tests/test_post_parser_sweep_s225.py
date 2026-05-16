@@ -147,7 +147,7 @@ class BackwardCompatS225Tests(unittest.TestCase):
 class EngineVersionS225Tests(unittest.TestCase):
     def test_engine_version(self) -> None:
         from agents import daemon_slayer
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "0.97.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "0.98.0")
 
 
 if __name__ == "__main__":

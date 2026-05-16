@@ -4,6 +4,34 @@
 
 ---
 
+# s226 wrap — 2026-05-16 (DS Phase 5.9.26: first form_index coverage sweep since s205)
+
+**Operator instruction:** same self-paced loop. **Iteration 4** (s223=it1, s224=it2, s225=it3, all same session-day).
+
+## What happened — pivoted the proven methodology to a fresh registry
+
+block_index coverage exhausted across s223-225 (both scan axes). Applied the SAME pre-filter+ground-truth-A/B methodology to the far-less-scrutinized `champion_form_index.json` (only 9 champs vs block_index's 25+ batches). New `tools/ds_form_index_prefilter.py` A/B'd forced form 0 vs each later form over all 16 multi-DAMAGE-form (champ,key) pairs not yet mapped → 9 flagged, 3 clean ADDs after per-champion judgment.
+
+## Shipped (committing now)
+
+- **`Swain {R:1}`** — form 0 'Demonic Ascension' is the 7.5-17.5 drain-channel per-tick; form 1 'Demonflare' is the 150-350 + 50% AP recast nuke (Swain's ult payoff). Live A/B **12.5→250 (20×)**. Same shape as the pre-existing AurelionSol R=1.
+- **`Briar {W:1}`** — form 0 'Blood Frenzy' has **zero damage blocks** (it's the AS/MS frenzy-buff cast); form 1 'Snack Attack' is the entire W damage incl. the s224-migrated 9% missing-HP. A/B 72→129.5.
+- **`Evelynn {E:1}`** — form 1 'Empowered Whiplash' = Eve's canonical Demon-Shade-opened combo E (1.33× form 0 + 4% vs 3% max HP). **Composes orthogonally** with Evelynn's s204 block_index `{R:1,Q:5}` (form_index picks the form, block_index the block within it — like Jayce Q s194). A/B 120→160.
+
+form_index 9→**12 champs**. ENGINE 0.97→0.98; 8 pin bumps + `test_form_index_sweep_s226.py` (10 tests). DS 2113→**2123**; wider RC **1107**; DS restarted → 0.98.0.
+
+## Don't-redo / blockers
+
+- **Skips are deliberate + documented in the registry _meta rationale**: Heimerdinger W/E form 1 = the R-UPGRADED one-shot cast → R-gated; modeling W/E as upgraded over-attributes R's empower to W/E (must score R-independent — same principle as s225 Varus W block 2 vs R-entangled block 4). These belong to the **conditional-target-state schema-lift bucket** along with Fiddle fear-state, Skarner boulder, LeBlanc Mimic. Gnar Q/E + RekSai Q = contextual transforms (uncontrollable Rage / burrow-dance) — form 0 is the dominant-uptime default, correct as-is.
+- form_index and block_index are **orthogonal registries that compose** — Evelynn now exercises both. Don't assume a champion in one is absent from the other.
+- Both block_index AND form_index coverage spaces are now swept (4 iterations s223-226). Don't re-run these scans expecting yield.
+
+## NEXT (self-continuing loop)
+
+Iteration 5 options: (a) **combo_sequence registry audit** (assassin burst combos — even less scrutinized than form_index; does the default `Q-W-E-AA-R-AA` under-represent specific champions' real burst rotations?); (b) **max_priority registry audit** (mage spell-max order — s185 did 12 champs, are there more?); (c) flag the conditional-target-state schema lift for operator (architectural; it's now the common blocker for Heimer/Fiddle/Skarner/LeBlanc). s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
+
+---
+
 # s225 wrap — 2026-05-16 (DS Phase 5.9.25: post-parser-fix block_index sweep — Varus W)
 
 **Operator instruction:** same self-paced loop ("continue ds work in parallel for the next hour self continue — maximum effort"). **Iteration 3** (same session-day; s223=it1, s224=it2).
@@ -52,34 +80,3 @@ ENGINE 0.95.0→0.96.0; 5 pin bumps + `test_block_index_overrides` Belveth shape
 ## NEXT (self-continuing loop)
 
 Unmapped-key space near-exhausted (only Bel'Veth R was a clean find across 125 champs). Iteration 3 options: (a) Varus W block_index entry (data now parsed); (b) audit the *form_index* / *combo_sequence* registries for similar gaps; (c) the conditional-target-state schema lift (architectural — flag for operator, don't ship autonomously). s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
-
----
-
-# s223 wrap — 2026-05-16 (DS Phase 5.9.23: nested %HP parser fix + provable block_index saturation)
-
-**Operator instruction:** "continue ds work in parallel for the next hour self continue — opus 4.7 1m maximum effort". Self-paced loop; this is iteration 1.
-
-## What happened — parallel batch ran, found the registry is saturated, pivoted to the real debt
-
-Applied the **parallel-batch-agents** pattern: built `tools/ds_block_scanner.py` (filtered-index ground-truth A/B helper — verified against Aatrox's documented s197/s199 multipliers) then spawned **5 parallel research agents** over all **47 not-yet-covered champions** (alphabetical slices). Every agent independently returned **zero** block_index proposals. Cross-checked by an independent enumeration: only 20 multi-damage-block (key,form) pairs exist among the 47, every one a documented skip (single-block / block-0-already-single-target-max / nested-parser / malformed-Meraki / card-choice / turret-pet). **The s191→s217 single-int/list `block_index` registry is provably saturated** — future growth needs the conditional-target-state schema lift or upstream Meraki fixes, not more uncovered-champion scanning. This is a real, valuable negative result (closes a 12-session line of work).
-
-**Pivot** (don't ship an empty batch): tackled the longest-deferred DS debt instead — the s199→s217 "nested missing-HP parser bucket". Root cause: Meraki encodes %-target-health scalings behind nested conditional `(+ ...)` parentheticals (Kindred E `"% (+ 0.5% per Mark) of target's missing health"`, K'Sante W doubly-nested per-resist, Kindred E block1 recursively-nested) that `_normalize_modifiers` dropped into `unparsed_modifiers` → the entire %HP damage component was silently uncounted since Phase 4a.
-
-## Shipped (uncommitted at time of writing — committing now)
-
-- **`tools/daemon_slayer_abilities_extract._canonicalize_unit()`** — strips `(+ ...)` groups innermost-first (regex loop, handles arbitrary nesting). Purely additive: no-op for units without `(+`, so recognized units are byte-identical (raw-match-wins guard). Wired as a fallback after the raw `_UNIT_TO_FIELD` lookup.
-- **`tools/migrate_abilities_nested_hp_s223.py`** — deterministic **zero-re-fetch** in-place migration (re-parses only `unparsed_modifiers`, which preserve original `{values,units}`). Imports the extractor's own helpers so logic == a future clean re-extract. **Hard audit gate**: aborts without writing unless it touches exactly the 22 audited mods across the 10 expected champions (drift = Meraki changed). Promoted 22 mods / 10 champs (Amumu W · Cho'Gath E×2 · Elise Q×2 both forms · Evelynn E×2 · K'Sante W×4 · Kindred W+E×2 · Kled W · Sett Q×2 · Shen Q×4 · Zac W). Live A/B (vs 2000 HP): Cho'Gath E +250%, Zac W +200%, K'Sante W +152%, Amumu W +300%, Sett Q +40% raw.
-- **`Kindred: {E: 1}`** registry entry — enhanced-execute (7.5% missing-HP vs block 0's 5%). Monotone ≥ block 0; exact no-op at full HP (engine default `target_current_hp_pct=1.0`); +21% at 40% HP. Registry 124→125 champs.
-- **`tools/ds_block_scanner.py`** (kept — reusable for any future scan/audit).
-- ENGINE_VERSION 0.94.0→0.95.0; 4 pin bumps. **`agents/daemon_slayer/tests/test_nested_hp_parser_s223.py`** (26 tests: canonicalizer / `_normalize_modifiers` integration / live-snapshot migration correctness / Kindred E A/B monotone+no-op / saturation guards). DS suite 2060→**2086**; wider RC **1107**; DS server restarted (pid was 16472) → `/health` 0.95.0.
-
-## Don't-redo / blockers
-
-- **Do NOT re-scan uncovered champions for block_index** — provably saturated (the registry `_meta.description` Phase 5.9.23 note + `test_nested_hp_parser_s223.SaturationAndBackwardCompatTests` pin this). Next block_index work is the **conditional-target-state schema lift** (`block_index: int | list[int] | dict[str,int]`) — needs operator schema sign-off, candidates: Lux Illumination, DrMundo E missing-HP, Renekton Q full Fury, Zed shadow-Q, TwistedFate card-choice.
-- **Do NOT re-run the extractor (`--force`)** to apply the parser fix — it hits Meraki's mutable `latest` and would risk a patch bump + smear unrelated churn. The migration is the deterministic path; it's idempotent (re-running finds 0 to promote).
-- Kayle E / Bel'Veth R are **NOT** parser-gap champions — their `target_missing_hp_pct` was already parsed pre-s223 (only second-order `% per 100 AP` amps stay unparsed). The s217 hand-off mischaracterized them. No entry warranted; Bel'Veth keeps only its prior `{E:2}`.
-- DS server :8893 is HTTP not HTTPS and NOT supervisor-watched — restart via `taskkill /F /PID` (use the **PowerShell tool**, Git-Bash mangles `/F`) + `Start-Process pythonw tools\start_daemon_slayer.py`.
-
-## NEXT (self-continuing loop)
-
-Conditional-target-state schema lift is the next DS frontier but is an architectural change wanting operator sign-off — flag it rather than ship autonomously. Subsequent loop iterations: audit covered champions for *additional* uncovered KEYS (distinct from the saturated new-champion space), or DS calibration once rewind data refreshes. s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
