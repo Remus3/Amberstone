@@ -4,6 +4,25 @@
 
 ---
 
+# memory-consolidation wrap — 2026-05-16 (/consolidate-memory pass)
+
+**Operator:** ran `/consolidate-memory` (the s222 NEXT optional item) — reflective pass over the auto-memory system. **No RC code touched; repo clean, nothing committed/pushed.**
+
+## Done — memory dir only (lives outside the repo at `.claude/projects/C--Riot-Commander/memory/`)
+- Read all 81 topic files + index. Net **81 → 66 files**.
+- Retired 15: 6 stale/resolved orphans (never indexed), 6 merged-then-deleted, 3 re-derivable (bridge `--suggestions` / `diagnose`+`caveman` skills / stale champ-select build-chooser memory that s215 autogen had made misleading).
+- Collapsed the 7-file Peer-bridge/bridge sprawl → 3; folded the Yunara-dup-match, RC-PatchRefresh, and bridge-404 lessons into existing reference memories.
+- **Resolved the s222-flagged deferral**: `project_daemon_slayer_engine.md` rewritten — dropped the stale 929-tests / ENGINE 0.60.0 / Batch-64 numbers, now durable-architecture-only and points to `docs/DAEMON_SLAYER.md` + `ROADMAP.md` + `agents/daemon_slayer/__init__.py` for live state. `reference_no_riot_api_key.md` slimmed to the current ADR-006 policy pointer.
+- Created `user_operator_profile.md` (there were **zero** user-type memories before this).
+- Rebuilt `MEMORY.md`: 66 semantically-grouped entries, 89 lines / 10.6 KB; verified 0 orphans + 0 dangling pointers; fixed the `gh_cli` double-index.
+
+## Don't-redo
+- The DS-memory staleness flagged in s222 is **FIXED** — don't re-investigate or re-defer it.
+- Memory files are outside `C:/Riot Commander` — they never show in repo `git status`; there is nothing to commit for memory work.
+
+## NEXT
+- s220 aggregator-G-style Post-Game-Review reframe remains the big pending UI item (untouched this session).
+
 # s222 wrap — 2026-05-16 (/sync-all-md skill + repo-wide md congruence pass)
 
 **Operator:** "update the readme … be sure all parts are congruent across the other .mds … make this a skill /sync all md" → built the skill, dry-ran it, operator approved 4 decisions, ran it for real + committed, then /done.
