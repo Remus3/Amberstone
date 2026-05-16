@@ -2,7 +2,7 @@
 
 Local DPS-math service on `:8893`. Computes actual damage-per-second for any champion × item × target combination using real stat math. No API cost per query.
 
-**Status: FUNCTIONALLY COMPLETE** — ENGINE_VERSION 0.92.0 · 2022 tests · 547/547 DDragon purchasable items · patch 16.10.1. **All 6 archetype scorers wired** through `rank_for_primary_archetype()` — carry → `ds.dps`, tank → `ds.ehp`, bruiser → `ds.hybrid`, mage → `ds.ability`, assassin → `ds.burst`, enchanter → `ds.hps`. Coach integration via `coach_integration/archetype_dispatch.py`: all 4 mode coaches (SR/ARAM/Arena/Brawl) inject scorer-aware DS picks before each Haiku call; legacy `daemon_slayer_picks` shape preserved for dashboard compat. Per-(champion, key) override registries cover 69% of the 171-champion roster: `champion_max_priority.json` / `champion_combo_sequences.json` / `champion_form_index.json` / `champion_block_index.json` (185 entries / 118 champions). Cooldown inheritance from form 0 when non-form-0 has `cooldown=None` (Riven R / Renekton E / AurelionSol R / Qiyana Q — s206).
+**Status: FUNCTIONALLY COMPLETE** — ENGINE_VERSION 0.94.0 · 2060 tests · 547/547 DDragon purchasable items · patch 16.10.1. **All 6 archetype scorers wired** through `rank_for_primary_archetype()` — carry → `ds.dps`, tank → `ds.ehp`, bruiser → `ds.hybrid`, mage → `ds.ability`, assassin → `ds.burst`, enchanter → `ds.hps`. Coach integration via `coach_integration/archetype_dispatch.py`: all 4 mode coaches (SR/ARAM/Arena/Brawl) inject scorer-aware DS picks before each Haiku call; legacy `daemon_slayer_picks` shape preserved for dashboard compat. Per-(champion, key) override registries cover 72% of the 171-champion roster: `champion_max_priority.json` / `champion_combo_sequences.json` / `champion_form_index.json` / `champion_block_index.json` (193 entries / 124 champions). Cooldown inheritance from form 0 when non-form-0 has `cooldown=None` (Riven R / Renekton E / AurelionSol R / Qiyana Q — s206).
 
 ## Module map (`agents/daemon_slayer/`)
 
@@ -27,7 +27,7 @@ Local DPS-math service on `:8893`. Computes actual damage-per-second for any cha
 | `beam.py` | `beam_search_build()` — full-build beam search returning top-N complete builds |
 | `data_loader.py` | Versioned `DataSnapshot` loader; reads `data/daemon_slayer/<patch>/` |
 | `ult_rates.py` | Per-champion cast-rate lookup. Legacy `get_ult_casts_per_sec` (R-only, reads `ult_cast_rates.json`) preserved for Malignance Hatefog backward compat; `get_spell_casts_per_sec(champion, key, mode)` (Phase 4b, s178) reads `spell_cast_rates.json` for all 4 active spells; both derived from rewind_history.db via `scripts/build_spell_cast_rates.py`; 172 champions × 4 spells × 3 mode buckets |
-| `tests/` | 1426 tests passing (46 in `test_hps.py` + 34 in `test_rank_enchanter.py` added in s181) |
+| `tests/` | 2060 tests passing |
 
 ## Key data types
 
@@ -56,9 +56,9 @@ except Exception as e:
 
 Operator-facing scorer selection lands in three layers:
 
-- **Storage**: `core/archetype_picks.py` — DDragon-tag → archetype default + per-champion override persisted to `data/cs_archetype_picks.json`. Six canonical archetypes: `carry`, `bruiser`, `tank`, `mage`, `assassin`, `enchanter`. Three are implemented today (carry → ds.dps, bruiser → ds.hybrid, tank → ds.ehp); mage/assassin/enchanter route through the dispatcher with `fell_back=True`.
+- **Storage**: `core/archetype_picks.py` — DDragon-tag → archetype default + per-champion override persisted to `data/cs_archetype_picks.json`. Six canonical archetypes: `carry`, `bruiser`, `tank`, `mage`, `assassin`, `enchanter` — all six implemented and wired through `rank_for_primary_archetype()` (carry → ds.dps, bruiser → ds.hybrid, tank → ds.ehp, mage → ds.ability, assassin → ds.burst, enchanter → ds.hps); no dispatcher fallbacks remain (s174–s181).
 - **REST**: `GET /api/cs-archetype-pick?champion=X` returns merged pick (override OR default). `POST /api/cs-archetype-pick {champion, primary, secondary?, source?}` persists. `POST {champion, clear: true}` rolls back to default.
-- **Dispatch**: `core.daemon_slayer_client.rank_for_primary_archetype(champion, archetype, …)` returns `{ok, scorer, archetype, ranked, fell_back}`. Coaches wiring up to read `state.cs_archetype_pick.primary` is the next session's lift; existing coaches continue calling `rank_for()` directly.
+- **Dispatch**: `core.daemon_slayer_client.rank_for_primary_archetype(champion, archetype, …)` returns `{ok, scorer, archetype, ranked, fell_back}`. Coaches read the picked archetype via `coach_integration/archetype_dispatch.py` (s182); all 4 mode coaches inject scorer-aware DS picks before each Haiku call.
 - **UI**: 6-button 3×2 picker grid in the My Pick card of the champ-select view. Clicks save to `localStorage.rc-cs-archetype-<champion>` + POST. Unimplemented scorers grayed but still clickable.
 
 ## Coach integration status

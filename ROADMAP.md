@@ -1,6 +1,6 @@
 # Riot Commander — Roadmap
 
-_Now + Next only. Full history in `docs/_archive/CHANGELOG.md`. Aspirational in `BACKLOG.md`._
+_Now + Next only. Full history in `docs/history_notes.md`. Aspirational in `BACKLOG.md`._
 
 ---
 
