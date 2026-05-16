@@ -241,10 +241,29 @@ class S229BackwardCompatTests(unittest.TestCase):
         m, _ = get_block_index_for("Kindred")
         self.assertEqual(m["E"], {"default": 1, "target_full_hp": 0})
 
-    def test_cassiopeia_E_still_plain_int(self) -> None:
-        # Deferred from s229 (irregular Meraki array) — must stay int.
+    def test_cassiopeia_E_converted_s230_part1_noop(self) -> None:
+        # s229 deferred Cassi E (irregular 18-elem Meraki array). s230
+        # Phase 5.9.30 resolved that carry-forward: the array is block
+        # 1's base scaling, orthogonal to the conditional conversion
+        # (Part-1 always resolves to default=1 == the s191 int). This
+        # s229→s230 evolution guard asserts the new shape + the no-op.
         m, _ = get_block_index_for("Cassiopeia")
-        self.assertEqual(m["E"], 1)
+        self.assertEqual(m["E"], {"default": 1, "target_no_setup": 0})
+        reg = next(
+            s for s in compute_ability_dps(
+                self.snap, "Cassiopeia", level=11, mode="SR",
+                target_armor=80.0, target_mr=30.0, target_max_hp=2000.0,
+            ).per_spell if s.key == "E"
+        )
+        forced1 = next(
+            s for s in compute_ability_dps(
+                self.snap, "Cassiopeia", level=11, mode="SR",
+                target_armor=80.0, target_mr=30.0, target_max_hp=2000.0,
+                block_index_overrides={"E": 1, "W": 1},
+            ).per_spell if s.key == "E"
+        )
+        self.assertAlmostEqual(
+            reg.raw_damage_per_cast, forced1.raw_damage_per_cast, places=9)
 
     def test_camille_W_still_list(self) -> None:
         m, _ = get_block_index_for("Camille")
@@ -263,8 +282,8 @@ class EngineVersionS229Tests(unittest.TestCase):
     def test_engine_version(self) -> None:
         from agents import daemon_slayer
 
-        # s229 (Phase 5.9.29) bumped to 1.1.0; pin tracks current.
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.1.0")
+        # s230 (Phase 5.9.30) bumped to 1.2.0; pin tracks current.
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.2.0")
 
 
 if __name__ == "__main__":
