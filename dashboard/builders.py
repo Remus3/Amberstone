@@ -550,6 +550,155 @@ def _build_diagnostics() -> dict:
 
 # ---- Last Match -------------------------------------------------------------
 
+def _enrich_from_lcu(lcu_detail: dict, tracked_puuid: str) -> dict:
+    """Parse a full LCU /lol-match-history/v1/games/{gameId} payload into
+    the shape the Post Game Review page renders.
+
+    Locates the operator's participant via puuid -> participantId, then
+    extracts: win/loss, full build (item0-item6), summoner spells,
+    runes (keystone + tree paths + stat perks), damage breakdown,
+    Arena augments, vision, and the full 10-player roster (KDA + items
+    + champion + summoner names + is_me flag). Team-level objectives
+    are surfaced alongside (dragons, baron, towers, first-blood/tower,
+    bans).
+
+    Returns an empty dict on any structural mismatch — caller treats
+    None / {} as "no enriched data yet, render placeholders".
+    """
+    if not isinstance(lcu_detail, dict) or not tracked_puuid:
+        return {}
+
+    identities = lcu_detail.get("participantIdentities") or []
+    participants = lcu_detail.get("participants") or []
+    if not identities or not participants:
+        return {}
+
+    # Resolve operator's participantId via puuid match
+    me_pid = None
+    for ident in identities:
+        player = ident.get("player") or {}
+        if str(player.get("puuid") or "").strip() == tracked_puuid:
+            me_pid = ident.get("participantId")
+            break
+    if me_pid is None:
+        return {}
+
+    # Build identity lookup
+    ident_by_pid: dict = {}
+    for ident in identities:
+        pid = ident.get("participantId")
+        if pid is not None:
+            ident_by_pid[pid] = ident.get("player") or {}
+
+    # Operator's participant + stats
+    me_part: dict = {}
+    for p in participants:
+        if p.get("participantId") == me_pid:
+            me_part = p
+            break
+    if not me_part:
+        return {}
+    s = me_part.get("stats") or {}
+
+    out: dict = {}
+    out["champion_id"] = me_part.get("championId")
+    out["team_id"]     = me_part.get("teamId")
+    out["win"]         = bool(s.get("win"))
+    out["champ_level"] = int(s.get("champLevel") or 0)
+    out["spell1_id"]   = me_part.get("spell1Id")
+    out["spell2_id"]   = me_part.get("spell2Id")
+    out["items"]       = [int(s.get(f"item{i}") or 0) for i in range(7)]
+    out["runes"] = {
+        "keystone":       s.get("perk0"),
+        "primary_style":  s.get("perkPrimaryStyle"),
+        "sub_style":      s.get("perkSubStyle"),
+        "primary":        [s.get(f"perk{i}") for i in range(4)],
+        "secondary":      [s.get(f"perk{i}") for i in range(4, 6)],
+    }
+    out["damage"] = {
+        "dealt_to_champs":     int(s.get("totalDamageDealtToChampions") or 0),
+        "physical_to_champs":  int(s.get("physicalDamageDealtToChampions") or 0),
+        "magic_to_champs":     int(s.get("magicDamageDealtToChampions") or 0),
+        "true_to_champs":      int(s.get("trueDamageDealtToChampions") or 0),
+        "taken":               int(s.get("totalDamageTaken") or 0),
+        "self_mitigated":      int(s.get("damageSelfMitigated") or 0),
+        "to_objectives":       int(s.get("damageDealtToObjectives") or 0),
+        "to_turrets":          int(s.get("damageDealtToTurrets") or 0),
+    }
+    out["arena_augments"] = [int(s.get(f"playerAugment{i}") or 0)
+                              for i in range(1, 7)]
+    out["vision"] = {
+        "score":          int(s.get("visionScore") or 0),
+        "wards_placed":   int(s.get("wardsPlaced") or 0),
+        "wards_killed":   int(s.get("wardsKilled") or 0),
+        "control_wards":  int(s.get("visionWardsBoughtInGame") or 0),
+    }
+
+    # Full 10-player roster
+    roster: list = []
+    for p in participants:
+        s2 = p.get("stats") or {}
+        pid = p.get("participantId")
+        player = ident_by_pid.get(pid, {})
+        roster.append({
+            "participant_id":    pid,
+            "team_id":           p.get("teamId"),
+            "champion_id":       p.get("championId"),
+            "game_name":         player.get("gameName") or player.get("summonerName") or "",
+            "tag_line":          player.get("tagLine") or "",
+            "is_me":             pid == me_pid,
+            "kills":             int(s2.get("kills") or 0),
+            "deaths":            int(s2.get("deaths") or 0),
+            "assists":           int(s2.get("assists") or 0),
+            "cs":                int(s2.get("totalMinionsKilled") or 0)
+                                  + int(s2.get("neutralMinionsKilled") or 0),
+            "gold":              int(s2.get("goldEarned") or 0),
+            "damage_to_champs":  int(s2.get("totalDamageDealtToChampions") or 0),
+            "damage_taken":      int(s2.get("totalDamageTaken") or 0),
+            "vision_score":      int(s2.get("visionScore") or 0),
+            "champ_level":       int(s2.get("champLevel") or 0),
+            "items":             [int(s2.get(f"item{i}") or 0) for i in range(7)],
+            "summoner1":         p.get("spell1Id"),
+            "summoner2":         p.get("spell2Id"),
+            "win":               bool(s2.get("win")),
+        })
+    out["roster"] = roster
+
+    # Team-level objectives
+    teams_out: list = []
+    for t in (lcu_detail.get("teams") or []):
+        teams_out.append({
+            "team_id":           t.get("teamId"),
+            "win":               (str(t.get("win") or "").lower() == "win"),
+            "first_blood":       bool(t.get("firstBlood")),
+            "first_tower":       bool(t.get("firstTower")),
+            "first_baron":       bool(t.get("firstBaron")),
+            "first_dragon":      bool(t.get("firstDargon")),  # sic: LCU typo
+            "first_inhibitor":   bool(t.get("firstInhibitor")),
+            "baron_kills":       int(t.get("baronKills") or 0),
+            "dragon_kills":      int(t.get("dragonKills") or 0),
+            "tower_kills":       int(t.get("towerKills") or 0),
+            "inhibitor_kills":   int(t.get("inhibitorKills") or 0),
+            "rift_herald_kills": int(t.get("riftHeraldKills") or 0),
+            "horde_kills":       int(t.get("hordeKills") or 0),
+            "bans":              list(t.get("bans") or []),
+        })
+    out["teams"] = teams_out
+
+    # Top-level match metadata
+    out["game_id"]            = lcu_detail.get("gameId")
+    out["game_mode"]          = lcu_detail.get("gameMode")
+    out["queue_id"]           = lcu_detail.get("queueId")
+    out["map_id"]             = lcu_detail.get("mapId")
+    out["game_duration_s"]    = int(lcu_detail.get("gameDuration") or 0)
+    out["game_creation_ts"]   = lcu_detail.get("gameCreation")
+    out["game_creation_date"] = lcu_detail.get("gameCreationDate")
+    out["game_version"]       = lcu_detail.get("gameVersion")
+    out["end_of_game_result"] = lcu_detail.get("endOfGameResult")
+
+    return out
+
+
 def _compute_quick_review(current: dict, history: list[dict]) -> dict:
     """Compute the 3-section Quick Review for the Last Match page.
 
@@ -741,36 +890,45 @@ def _build_last_match() -> dict:
 
         ds_picks: list = []
         coach_action: str = ""
+        lcu_detail: dict = {}
+        tracked_puuid: str = ""
+        lcu_ingested_at: str = ""
         if raw:
             try:
                 rd = json.loads(raw)
-                ds_picks = rd.get("daemon_slayer_picks") or []
-                coach_action = (rd.get("coach_action") or "").strip()
+                ds_picks        = rd.get("daemon_slayer_picks") or []
+                coach_action    = (rd.get("coach_action") or "").strip()
+                lcu_detail      = rd.get("lcu_match_detail") or {}
+                tracked_puuid   = (rd.get("tracked_puuid") or "").strip()
+                lcu_ingested_at = rd.get("lcu_ingested_at") or ""
             except Exception:
                 pass
 
         kda_ratio = round((int(k or 0) + int(a or 0)) / max(int(d or 0), 1), 2)
 
         match_row = {
-            "id":            int(mid),
-            "timestamp":     ts,
-            "mode":          mode,
-            "champion":      champ or "?",
-            "grade":         grade or "—",
-            "kda_str":       kda_str or f"{k or 0}/{d or 0}/{a or 0}",
-            "kda_ratio":     kda_ratio,
-            "duration_s":    int(dur or 0),
-            "kills":         int(k or 0),
-            "deaths":        int(d or 0),
-            "assists":       int(a or 0),
-            "cs":            int(cs or 0),
-            "cs_per_min":    float(cspm or 0.0),
-            "gold":          int(gold or 0) if gold is not None else None,
-            "gold_per_min":  float(gpm or 0.0) if gpm is not None else None,
-            "kp_pct":        float(kp) if kp is not None else None,
-            "label":         label or "",
-            "coach_action":  coach_action,
-            "ds_picks":      ds_picks,
+            "id":               int(mid),
+            "timestamp":        ts,
+            "mode":             mode,
+            "champion":         champ or "?",
+            "grade":            grade or "—",
+            "kda_str":          kda_str or f"{k or 0}/{d or 0}/{a or 0}",
+            "kda_ratio":        kda_ratio,
+            "duration_s":       int(dur or 0),
+            "kills":            int(k or 0),
+            "deaths":           int(d or 0),
+            "assists":          int(a or 0),
+            "cs":               int(cs or 0),
+            "cs_per_min":       float(cspm or 0.0),
+            "gold":             int(gold or 0) if gold is not None else None,
+            "gold_per_min":     float(gpm or 0.0) if gpm is not None else None,
+            "kp_pct":           float(kp) if kp is not None else None,
+            "label":            label or "",
+            "coach_action":     coach_action,
+            "ds_picks":         ds_picks,
+            "lcu_ingested_at":  lcu_ingested_at,
+            "enriched":         _enrich_from_lcu(lcu_detail, tracked_puuid)
+                                if (lcu_detail and tracked_puuid) else None,
         }
 
         # Baseline rows for chronic-fail computation (exclude this one)

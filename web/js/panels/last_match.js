@@ -23,6 +23,82 @@
  * for the future deep-analysis page).
  */
 
+// CHAMPS.byId is async-hydrated from /data/champions_index.json by
+// the items_index.js loader. Until that fetch resolves, byId is {} —
+// the team-comp row renderer falls back to a numeric id label so it
+// stays informative rather than blank. ITEMS.version drives item
+// icon paths so we stay current with the patch.
+import { CHAMPS, ITEMS } from '../lib/items_index.js';
+
+// Numeric summoner-spell id → DDragon filename. Covers SR + ARAM common
+// set; Arena (CHERRY) spell ids are not in this map and fall back to a
+// blank slot. Source: DDragon summoner.json. Extend if a new spell ships.
+const SUMMONER_SPELL_BY_ID = {
+  1:  "SummonerBoost",           // Cleanse
+  3:  "SummonerExhaust",
+  4:  "SummonerFlash",
+  6:  "SummonerHaste",           // Ghost
+  7:  "SummonerHeal",
+  11: "SummonerSmite",
+  12: "SummonerTeleport",
+  13: "SummonerMana",            // Clarity
+  14: "SummonerDot",             // Ignite
+  21: "SummonerBarrier",
+  30: "SummonerPoroRecall",
+  31: "SummonerPoroThrow",
+  32: "SummonerSnowball",        // legacy ARAM Mark
+  39: "SummonerSnowURFSnowball_Mark", // current ARAM Mark
+  54: "Summoner_UltBookPlaceholder",
+  55: "SummonerSmiteSweep",      // ult-book smite
+};
+
+function _ddragonVersion() {
+  // Pin to the locally-mirrored version. ITEMS.version reflects the
+  // current DS patch (16.10.1) but the /data/ddragon/ mirror is at
+  // 16.8.1 and item/spell icons rarely change between minor patches.
+  // The onerror handler falls back to the live CDN for any 404.
+  return "16.8.1";
+}
+
+// onerror chain: try local at current ITEMS.version first; on 404 fall
+// back to the official DDragon CDN at the same version. Mirrors the
+// active_match.js cdnRetry pattern. Important because the local
+// /data/ddragon/<ver>/img/item/ mirror sometimes lags the live patch
+// (e.g. ITEMS.version=16.10.1 but on-disk dir is 16.8.1).
+function _onErrCdnFallback(ver, kind, id) {
+  // kind = "item" | "spell" — only used to build the CDN url
+  const cdnUrl = `https://ddragon.leagueoflegends.com/cdn/${ver}/img/${kind}/${id}.png`;
+  return (
+    `if(this.dataset.cdn){this.style.visibility='hidden';}` +
+    `else{this.dataset.cdn='1';this.src='${cdnUrl}';}`
+  );
+}
+
+function _itemIconUrl(iid) {
+  return iid ? `/data/ddragon/${_ddragonVersion()}/img/item/${iid}.png` : "";
+}
+function _itemImgTag(iid, cls = "", title = "") {
+  if (!iid) return "";
+  const ver = _ddragonVersion();
+  const localUrl = `/data/ddragon/${ver}/img/item/${iid}.png`;
+  const onErr = _onErrCdnFallback(ver, "item", `${iid}.png`);
+  const safeTitle = title ? `title="${String(title).replace(/"/g, "&quot;")}"` : "";
+  return `<img class="${cls}" src="${localUrl}" alt="" ${safeTitle} loading="lazy" onerror="${onErr}">`;
+}
+
+function _summonerIconUrl(sid) {
+  const key = SUMMONER_SPELL_BY_ID[sid];
+  return key ? `/data/ddragon/${_ddragonVersion()}/img/spell/${key}.png` : "";
+}
+function _summonerImgTag(sid, cls = "") {
+  const key = SUMMONER_SPELL_BY_ID[sid];
+  if (!key) return "";
+  const ver = _ddragonVersion();
+  const localUrl = `/data/ddragon/${ver}/img/spell/${key}.png`;
+  const onErr = _onErrCdnFallback(ver, "spell", `${key}.png`);
+  return `<img class="${cls}" src="${localUrl}" alt="spell ${sid}" loading="lazy" onerror="${onErr}">`;
+}
+
 let _wired = false;
 
 /** One-time DOM wiring — click handlers, etc. Idempotent. */
@@ -78,16 +154,19 @@ function renderLastMatch(data) {
   }
   const m = data.match || {};
   const qr = data.quick_review || {};
+  const enriched = m.enriched || null;
 
-  _setHero(m);
+  _setHero(m, enriched);
   _setStatsGrid(m);
   _setDsPicks(m.ds_picks || []);
+  _setEnrichedBuild(enriched);
+  _setTeamComp(enriched);
   _setQuickReview(qr);
   _setReviewButton(m);
-  _setMeta(m, data.history_count);
+  _setMeta(m, data.history_count, enriched);
 }
 
-function _setMeta(m, historyCount) {
+function _setMeta(m, historyCount, enriched) {
   const meta = document.getElementById("lm-meta");
   if (!meta) return;
   const when = _fmtAgo(m.timestamp);
@@ -95,16 +174,23 @@ function _setMeta(m, historyCount) {
   if (typeof historyCount === "number" && historyCount > 0) {
     parts.push(`baseline · ${historyCount} prior games`);
   }
+  if (enriched && enriched.lcu_ingested_at == null) {
+    // surfaced from m.lcu_ingested_at on the row, not enriched itself
+  }
+  if (m.lcu_ingested_at) {
+    parts.push(`LCU detail ingested`);
+  }
   meta.textContent = parts.filter(Boolean).join(" · ");
 }
 
-function _setHero(m) {
+function _setHero(m, enriched) {
   const portrait = document.getElementById("lm-portrait");
   const champEl = document.getElementById("lm-champion-name");
   const modeTag = document.getElementById("lm-mode-tag");
   const kdaText = document.getElementById("lm-kda-text");
   const kdaRatio = document.getElementById("lm-kda-ratio");
   const grade = document.getElementById("lm-grade-badge");
+  const result = document.getElementById("lm-result-badge");
   const heroBox = document.querySelector(".lm-hero");
 
   const champion = m.champion || "?";
@@ -131,6 +217,129 @@ function _setHero(m) {
   if (heroBox) {
     heroBox.dataset.grade = (g && g !== "—") ? g : "";
   }
+  // W/L badge — only shown when LCU enrichment is in. Arena (CHERRY)
+  // has 4 sub-teams and `win` semantics differ; suppress there until
+  // we model subteam_placement.
+  if (result) {
+    const queueId = enriched && enriched.queue_id;
+    const isArenaSubteamMode = (queueId === 1700 || queueId === 1710);
+    if (enriched && enriched.win != null && !isArenaSubteamMode) {
+      const won = !!enriched.win;
+      result.textContent = won ? "VICTORY" : "DEFEAT";
+      result.dataset.result = won ? "win" : "loss";
+      result.hidden = false;
+    } else if (enriched && isArenaSubteamMode) {
+      // Surface the sub-team placement as a numeric pill if available
+      result.textContent = "ARENA";
+      result.dataset.result = "neutral";
+      result.hidden = false;
+    } else {
+      result.hidden = true;
+      result.dataset.result = "";
+    }
+  }
+}
+
+function _setEnrichedBuild(enriched) {
+  const wrap = document.getElementById("lm-actual-build");
+  const inv = document.getElementById("lm-inventory");
+  const summ = document.getElementById("lm-summoners");
+  const pending = document.getElementById("lm-build-pending");
+  if (!wrap || !inv || !summ) return;
+  if (!enriched || !enriched.items) {
+    wrap.hidden = true;
+    if (pending) pending.hidden = false;
+    return;
+  }
+  wrap.hidden = false;
+  if (pending) pending.hidden = true;
+  // Inventory: 7 slots (item0-item6). item6 is the trinket. Empty (0) → faded slot.
+  inv.innerHTML = (enriched.items || []).map((iid, idx) => {
+    const isTrinket = idx === 6;
+    const cls = isTrinket ? "lm-item lm-item-trinket" : "lm-item";
+    if (!iid) {
+      return `<div class="${cls} lm-item-empty" aria-label="empty slot"></div>`;
+    }
+    return `<div class="${cls}" title="item ${iid}">${_itemImgTag(iid)}</div>`;
+  }).join("");
+  // Summoner spells: spell1Id + spell2Id (D + F)
+  const sp1 = enriched.spell1_id, sp2 = enriched.spell2_id;
+  summ.innerHTML = [sp1, sp2].map((sid) => {
+    const tag = _summonerImgTag(sid);
+    if (!tag) return `<div class="lm-summ lm-summ-empty" title="spell ${sid || ''}"></div>`;
+    return `<div class="lm-summ" title="spell ${sid}">${tag}</div>`;
+  }).join("");
+}
+
+function _setTeamComp(enriched) {
+  const table = document.getElementById("lm-tc-table");
+  const allyList = document.getElementById("lm-tc-ally-list");
+  const enemyList = document.getElementById("lm-tc-enemy-list");
+  const allyResult = document.getElementById("lm-tc-ally-result");
+  const enemyResult = document.getElementById("lm-tc-enemy-result");
+  const pending = document.getElementById("lm-tc-pending");
+  if (!table || !allyList || !enemyList) return;
+  if (!enriched || !enriched.roster || !enriched.roster.length) {
+    table.hidden = true;
+    if (pending) pending.hidden = false;
+    return;
+  }
+  table.hidden = false;
+  if (pending) pending.hidden = true;
+
+  const myTeamId = enriched.team_id;
+  const ally  = (enriched.roster || []).filter((r) => r.team_id === myTeamId);
+  const enemy = (enriched.roster || []).filter((r) => r.team_id !== myTeamId);
+  allyList.innerHTML  = ally.map((r)  => _renderTcRow(r)).join("") || `<li class="lm-tc-empty">—</li>`;
+  enemyList.innerHTML = enemy.map((r) => _renderTcRow(r)).join("") || `<li class="lm-tc-empty">—</li>`;
+
+  // Win/loss tag per team using enriched.teams (more reliable than per-row win)
+  const teamWin = {};
+  (enriched.teams || []).forEach((t) => { teamWin[t.team_id] = !!t.win; });
+  const myWin = teamWin[myTeamId];
+  if (myWin != null && allyResult) {
+    allyResult.textContent = myWin ? "VICTORY" : "DEFEAT";
+    allyResult.dataset.result = myWin ? "win" : "loss";
+  } else if (allyResult) {
+    allyResult.textContent = "—"; allyResult.dataset.result = "";
+  }
+  const enemyTeamId = enemy.length ? enemy[0].team_id : null;
+  const enemyWin = enemyTeamId != null ? teamWin[enemyTeamId] : null;
+  if (enemyWin != null && enemyResult) {
+    enemyResult.textContent = enemyWin ? "VICTORY" : "DEFEAT";
+    enemyResult.dataset.result = enemyWin ? "win" : "loss";
+  } else if (enemyResult) {
+    enemyResult.textContent = "—"; enemyResult.dataset.result = "";
+  }
+}
+
+function _renderTcRow(r) {
+  // Resolve championId → name via CHAMPS.byId (async-hydrated by items_index.js)
+  const slug = (CHAMPS && CHAMPS.byId && CHAMPS.byId[String(r.champion_id)]) || "";
+  const portrait = slug ? `/icons/champions/${slug}.png` : "";
+  const name = _escHtml(r.game_name || "—");
+  const tag = r.tag_line ? `<span class="lm-tc-tag">#${_escHtml(r.tag_line)}</span>` : "";
+  const meRow = r.is_me ? " lm-tc-row-me" : "";
+  const kda = `${r.kills}/${r.deaths}/${r.assists}`;
+  const itemsHtml = (r.items || []).map((iid, idx) => {
+    const cls = idx === 6 ? "lm-tc-item lm-tc-item-trinket" : "lm-tc-item";
+    if (!iid) return `<div class="${cls} lm-tc-item-empty"></div>`;
+    return _itemImgTag(iid, cls);
+  }).join("");
+  const sp1 = r.summoner1, sp2 = r.summoner2;
+  const summHtml = [sp1, sp2].map((sid) => {
+    const tag = _summonerImgTag(sid, "lm-tc-summ");
+    return tag || `<div class="lm-tc-summ lm-tc-summ-empty"></div>`;
+  }).join("");
+  return `<li class="lm-tc-row${meRow}" data-team="${r.team_id}">
+    <img class="lm-tc-portrait" src="${portrait}" alt="${slug || ''}" loading="lazy" onerror="this.style.visibility='hidden'">
+    <div class="lm-tc-name">${name}${tag}</div>
+    <span class="lm-tc-lvl" title="champion level">L${r.champ_level || 0}</span>
+    <span class="lm-tc-kda" title="kills / deaths / assists">${kda}</span>
+    <span class="lm-tc-cs" title="creep score">${r.cs || 0} CS</span>
+    <div class="lm-tc-summs">${summHtml}</div>
+    <div class="lm-tc-items">${itemsHtml}</div>
+  </li>`;
 }
 
 function _setStatsGrid(m) {
@@ -169,10 +378,9 @@ function _setDsPicks(picks) {
     const scorer = p.scorer || "dps";
     const unit = _scorerUnit(scorer);
     const deltaTxt = (delta != null) ? `+${Math.round(delta)}${unit}` : "";
-    const iconSrc = id ? `/data/ddragon/img/item/${id}.png` : "";
     const safeName = _escHtml(name);
     return `<div class="lm-build-item" title="${safeName} (${scorer})">
-      <img src="${iconSrc}" alt="${safeName}" loading="lazy" onerror="this.style.visibility='hidden'">
+      ${id ? _itemImgTag(id, "", safeName) : ""}
       <span class="lm-build-item-name">${safeName}</span>
       <span class="lm-build-item-delta">${deltaTxt}</span>
     </div>`;
@@ -227,8 +435,18 @@ function _setEmptyState(errMsg) {
     const el = document.getElementById(id);
     if (el) el.textContent = "—";
   });
+  const result = document.getElementById("lm-result-badge");
+  if (result) { result.hidden = true; result.dataset.result = ""; }
   const dsRoot = document.getElementById("lm-ds-picks");
   if (dsRoot) dsRoot.innerHTML = '<span class="lm-empty">no match yet</span>';
+  const actual = document.getElementById("lm-actual-build");
+  if (actual) actual.hidden = true;
+  const tcTable = document.getElementById("lm-tc-table");
+  if (tcTable) tcTable.hidden = true;
+  ["lm-build-pending","lm-tc-pending"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.hidden = false;
+  });
   ["lm-qr-right","lm-qr-wrong","lm-qr-chronic"].forEach((id) => {
     const ul = document.getElementById(id);
     if (ul) ul.innerHTML = '<li class="lm-qr-empty">no signal yet</li>';

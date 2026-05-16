@@ -15,7 +15,7 @@
 /* ── Hero row ────────────────────────────────────────────────────────── */
 .lm-hero {
   display: grid;
-  grid-template-columns: 72px 1fr auto auto;
+  grid-template-columns: 72px 1fr auto auto auto;
   align-items: center;
   gap: 18px;
   padding: 12px 18px 12px 15px;
@@ -24,6 +24,32 @@
   border-left: 3px solid var(--text-dim);
   border-radius: var(--radius-sm);
   min-height: 88px;
+}
+
+/* W/L pill — visible only when LCU enrichment carries a real win flag. */
+.lm-hero-result {
+  font-size: 14px; font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2, #1a1a22);
+  border: 1px solid var(--border-soft);
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.lm-hero-result[hidden] { display: none; }
+.lm-hero-result[data-result="win"] {
+  color: var(--ok, #8ce5a8);
+  border-color: var(--ok, #8ce5a8);
+  background: rgba(140, 229, 168, 0.08);
+}
+.lm-hero-result[data-result="loss"] {
+  color: var(--bad, #e07a7a);
+  border-color: var(--bad, #e07a7a);
+  background: rgba(224, 122, 122, 0.08);
+}
+.lm-hero-result[data-result="neutral"] {
+  color: var(--text-dim);
 }
 .lm-hero[data-grade="S"] { border-left-color: var(--grade-s, #f5b87c); }
 .lm-hero[data-grade="A"] { border-left-color: var(--grade-a, #8ce5a8); }
@@ -144,6 +170,62 @@
   letter-spacing: 0;
 }
 
+/* Build section — operator's actual inventory + DS picks side-by-side */
+.lm-build-row {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+}
+.lm-build-row[hidden] { display: none; }
+.lm-build-row-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-align: right;
+  padding-right: 6px;
+  border-right: 1px solid var(--border-soft);
+}
+
+/* Operator's final inventory — 7 item slots */
+.lm-inventory {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.lm-item {
+  width: 36px; height: 36px;
+  border-radius: 4px;
+  background: var(--surface-2, #1a1a22);
+  border: 1px solid var(--border-soft);
+  overflow: hidden;
+  position: relative;
+}
+.lm-item img { width: 100%; height: 100%; display: block; }
+.lm-item.lm-item-empty {
+  background: transparent;
+  border-style: dashed;
+  opacity: 0.4;
+}
+.lm-item.lm-item-trinket { border-color: var(--accent-soft, rgba(138, 140, 240, 0.4)); }
+
+/* Summoner spells — 2 icons */
+.lm-summoners {
+  display: flex; gap: 6px;
+}
+.lm-summ {
+  width: 30px; height: 30px;
+  border-radius: 4px;
+  background: var(--surface-2, #1a1a22);
+  border: 1px solid var(--border-soft);
+  overflow: hidden;
+}
+.lm-summ img { width: 100%; height: 100%; display: block; }
+.lm-summ.lm-summ-empty { opacity: 0.4; border-style: dashed; }
+
 /* DS-suggested build row */
 .lm-build-items {
   display: flex; flex-wrap: wrap; gap: 8px;
@@ -172,6 +254,142 @@
   font-style: italic;
   padding: 8px 4px;
   border-top: 1px dashed var(--border-soft);
+}
+.lm-pending[hidden] { display: none; }
+
+/* ── Team Composition — ally + enemy rosters ────────────────────────── */
+.lm-tc-table {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.lm-tc-table[hidden] { display: none; }
+
+.lm-tc-group {
+  display: flex; flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--surface-2, #1a1a22);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+.lm-tc-group-head {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  font-weight: 700;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed var(--border-soft);
+}
+.lm-tc-group-result {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+}
+.lm-tc-group-result[data-result="win"] {
+  color: var(--ok, #8ce5a8);
+  border-color: var(--ok, #8ce5a8);
+}
+.lm-tc-group-result[data-result="loss"] {
+  color: var(--bad, #e07a7a);
+  border-color: var(--bad, #e07a7a);
+}
+
+.lm-tc-list {
+  list-style: none;
+  margin: 0; padding: 0;
+  display: flex; flex-direction: column;
+  gap: 4px;
+}
+.lm-tc-row {
+  display: grid;
+  /* portrait | name | level | KDA | CS | summoners | items */
+  grid-template-columns: 36px minmax(110px, 1.2fr) auto auto auto auto 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  font-size: 13px;
+}
+.lm-tc-row.lm-tc-row-me {
+  background: rgba(138, 140, 240, 0.08);
+  border-color: var(--accent-soft, rgba(138, 140, 240, 0.4));
+}
+.lm-tc-portrait {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--surface-2, #1a1a22);
+  border: 1px solid var(--border-soft);
+  object-fit: cover;
+}
+.lm-tc-name {
+  display: flex; flex-direction: column;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lm-tc-tag {
+  font-size: 11px;
+  color: var(--text-faint, var(--text-dim));
+  font-weight: 500;
+}
+.lm-tc-lvl,
+.lm-tc-kda,
+.lm-tc-cs {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.lm-tc-kda { color: var(--text); font-weight: 600; }
+
+.lm-tc-summs { display: flex; gap: 3px; }
+.lm-tc-summ {
+  width: 24px; height: 24px;
+  border-radius: 4px;
+  background: var(--surface-2, #1a1a22);
+  border: 1px solid var(--border-soft);
+  object-fit: cover;
+}
+.lm-tc-summ.lm-tc-summ-empty { opacity: 0.4; border-style: dashed; }
+
+.lm-tc-items {
+  display: flex; gap: 3px;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+.lm-tc-item {
+  width: 24px; height: 24px;
+  border-radius: 3px;
+  background: var(--surface-2, #1a1a22);
+  border: 1px solid var(--border-soft);
+  object-fit: cover;
+}
+.lm-tc-item.lm-tc-item-empty {
+  border-style: dashed;
+  opacity: 0.35;
+}
+.lm-tc-item.lm-tc-item-trinket {
+  border-color: var(--accent-soft, rgba(138, 140, 240, 0.4));
+}
+
+.lm-tc-empty {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-faint, var(--text-dim));
+  padding: 4px 0;
 }
 
 /* ── Quick Review — 3 columns ───────────────────────────────────────── */
