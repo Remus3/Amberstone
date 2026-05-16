@@ -53,11 +53,10 @@ const SUMMONER_SPELL_BY_ID = {
 };
 
 function _ddragonVersion() {
-  // Pin to the locally-mirrored version. ITEMS.version reflects the
-  // current DS patch (16.10.1) but the /data/ddragon/ mirror is at
-  // 16.8.1 and item/spell icons rarely change between minor patches.
-  // The onerror handler falls back to the live CDN for any 404.
-  return "16.8.1";
+  // Unpinned s219 v3: local mirror was bumped to 16.10.1 (cloned from
+  // 16.8.1 since item icons rarely change between minor patches; new
+  // items in 16.10.1 fall back to the live CDN via onerror).
+  return (ITEMS && ITEMS.version) || "16.10.1";
 }
 
 // onerror chain: try local at current ITEMS.version first; on 404 fall
@@ -158,8 +157,10 @@ function renderLastMatch(data) {
 
   _setHero(m, enriched);
   _setStatsGrid(m);
-  _setDsPicks(m.ds_picks || []);
-  _setEnrichedBuild(enriched);
+  // s219 v3: _setDsPicks + _setEnrichedBuild dropped — operator removed
+  // the BUILD section entirely. Final inventory + summoner spells now
+  // live in the Team Composition card (operator's own row); DS picks
+  // belong on champ-select + active-match, not post-game.
   _setTeamComp(enriched);
   _setQuickReview(qr);
   _setReviewButton(m);
