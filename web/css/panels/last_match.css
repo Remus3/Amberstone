@@ -13,11 +13,16 @@
 }
 
 /* ── Hero row ────────────────────────────────────────────────────────── */
+/* s219: condensed per operator — portrait + name + KDA + W/L + grade
+ * cluster on the left, with empty space spilling to the right. Was
+ * `72px 1fr auto auto auto` (name col stretching pushed the badges to
+ * the far right edge); changed name col to auto + added a trailing 1fr
+ * spacer so the cells stay tight without overflowing on short viewports. */
 .lm-hero {
   display: grid;
-  grid-template-columns: 72px 1fr auto auto auto;
+  grid-template-columns: 72px auto auto auto auto 1fr;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
   padding: 12px 18px 12px 15px;
   background: var(--surface);
   border: 1px solid var(--border-soft);
@@ -443,31 +448,41 @@
   border-color: transparent;
 }
 
-/* QR footer + Deep Review button */
-.lm-qr-footer {
+/* s219: section header IS the Deep Review button. Styled to read as
+ * a section title (uppercase, kerned) but with the accent color +
+ * hover lift of a primary CTA. Sub-span renders the "hover any row for
+ * the data behind it" hint to the right of the title. */
+.lm-section-head-btn {
   display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding-top: 6px;
-  border-top: 1px dashed var(--border-soft);
-}
-.lm-review-btn {
-  font-size: 14px; font-weight: 600;
-  padding: 8px 16px;
-  background: var(--accent-soft, rgba(138, 140, 240, 0.12));
-  border: 1px solid var(--accent, #8a8cf0);
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--accent, #8a8cf0);
   cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease;
+  text-align: left;
+  transition: background 0.12s ease, border-color 0.12s ease;
 }
-.lm-review-btn:hover {
-  background: var(--accent, #8a8cf0);
-  color: var(--surface);
+.lm-section-head-btn:hover {
+  background: var(--accent-soft, rgba(138, 140, 240, 0.08));
+  border-color: var(--accent, #8a8cf0);
 }
-.lm-review-btn:focus-visible {
+.lm-section-head-btn:focus-visible {
   outline: 2px solid var(--accent, #8a8cf0);
   outline-offset: 2px;
+}
+.lm-section-head-btn .lm-section-sub {
+  color: var(--text-faint, var(--text-dim));
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 /* Empty-state — when match_history.db has no rows yet */

@@ -594,6 +594,20 @@ body[data-view="fleet"] main,
 body[data-view="champ-select"] main,
 body[data-view="last-match"] main,
 body[data-view="replay"] main { display: none; }
+
+/* s219: hide live-game pills on Post Game Review — operator doesn't
+ * want CS / Vision / ZOI / level / ult / gold / win cluttering the top
+ * header when reviewing a completed match. The JS pill-visibility gate
+ * runs on state updates only, so a CSS override is the simpler hard
+ * floor. */
+body[data-view="last-match"] #cs-pill,
+body[data-view="last-match"] #vis-pill,
+body[data-view="last-match"] #lvl-pill,
+body[data-view="last-match"] #ult-pill,
+body[data-view="last-match"] #gold-pill,
+body[data-view="last-match"] #win-pill,
+body[data-view="last-match"] #zone-pill,
+body[data-view="last-match"] #game-time { display: none !important; }
 body[data-view="lobby"]          #view-lobby,
 body[data-view="champ-select"]   #view-champ-select,
 body[data-view="active-match"]   #view-active-match,
