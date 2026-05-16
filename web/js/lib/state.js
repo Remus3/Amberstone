@@ -38,7 +38,7 @@ export const VIEW_LABELS = {
   "home": "Home", "lobby": "Pre-Game Lobby",
   "champ-select": "Champ Select",
   "active-match": "Active Match",
-  "last-match": "Last Match",
+  "last-match": "Post Game Review",
   "session": "Session", "history": "History", "replay": "Replay",
   "user-builds": "User Builds",
   "settings": "Settings",
