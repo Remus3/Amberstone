@@ -8,9 +8,9 @@
     "total_forms": 927,
     "multiform_keys": 58,
     "status_counts": {
-      "ok": 568,
-      "partial": 5,
-      "unparsed": 4,
+      "ok": 571,
+      "partial": 3,
+      "unparsed": 3,
       "no_damage": 350
     },
     "by_key": {
@@ -21,14 +21,14 @@
         "no_damage": 177
       },
       "Q": {
-        "ok": 175,
-        "partial": 2,
+        "ok": 176,
+        "partial": 1,
         "unparsed": 0,
         "no_damage": 16
       },
       "W": {
-        "ok": 116,
-        "partial": 1,
+        "ok": 117,
+        "partial": 0,
         "unparsed": 1,
         "no_damage": 68
       },
@@ -39,15 +39,15 @@
         "no_damage": 46
       },
       "R": {
-        "ok": 134,
+        "ok": 135,
         "partial": 1,
-        "unparsed": 2,
+        "unparsed": 1,
         "no_damage": 43
       }
     },
     "damage_eligible": 577,
-    "ok_rate": 0.9844,
-    "parsed_rate": 0.9931
+    "ok_rate": 0.9896,
+    "parsed_rate": 0.9948
   },
   "data": {
     "Aatrox": {
@@ -2077,23 +2077,12 @@
                 30.0,
                 30.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    1,
-                    1.5,
-                    2,
-                    2.5,
-                    3
-                  ],
-                  "units": [
-                    "% (+ 1.5% per 100 bonus AD) of the target's maximum health",
-                    "% (+ 1.5% per 100 bonus AD) of the target's maximum health",
-                    "% (+ 1.5% per 100 bonus AD) of the target's maximum health",
-                    "% (+ 1.5% per 100 bonus AD) of the target's maximum health",
-                    "% (+ 1.5% per 100 bonus AD) of the target's maximum health"
-                  ]
-                }
+              "target_max_hp_pct": [
+                1.0,
+                1.5,
+                2.0,
+                2.5,
+                3.0
               ]
             },
             {
@@ -2113,23 +2102,12 @@
                 60.0,
                 60.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    2,
-                    3,
-                    4,
-                    5,
-                    6
-                  ],
-                  "units": [
-                    "% (+ 3% per 100 bonus AD) of the target's maximum health",
-                    "% (+ 3% per 100 bonus AD) of the target's maximum health",
-                    "% (+ 3% per 100 bonus AD) of the target's maximum health",
-                    "% (+ 3% per 100 bonus AD) of the target's maximum health",
-                    "% (+ 3% per 100 bonus AD) of the target's maximum health"
-                  ]
-                }
+              "target_max_hp_pct": [
+                2.0,
+                3.0,
+                4.0,
+                5.0,
+                6.0
               ]
             }
           ],
@@ -2174,23 +2152,12 @@
                 45.0,
                 45.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    1,
-                    1.5,
-                    2,
-                    2.5,
-                    3
-                  ],
-                  "units": [
-                    "% (+ 2% per 100 bonus AD) of the target's maximum health",
-                    "% (+ 2% per 100 bonus AD) of the target's maximum health",
-                    "% (+ 2% per 100 bonus AD) of the target's maximum health",
-                    "% (+ 2% per 100 bonus AD) of the target's maximum health",
-                    "% (+ 2% per 100 bonus AD) of the target's maximum health"
-                  ]
-                }
+              "target_max_hp_pct": [
+                1.0,
+                1.5,
+                2.0,
+                2.5,
+                3.0
               ]
             },
             {
@@ -2210,23 +2177,12 @@
                 90.0,
                 90.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    2,
-                    3,
-                    4,
-                    5,
-                    6
-                  ],
-                  "units": [
-                    "% (+ 4% per 100 bonus AD) of the target's maximum health",
-                    "% (+ 4% per 100 bonus AD) of the target's maximum health",
-                    "% (+ 4% per 100 bonus AD) of the target's maximum health",
-                    "% (+ 4% per 100 bonus AD) of the target's maximum health",
-                    "% (+ 4% per 100 bonus AD) of the target's maximum health"
-                  ]
-                }
+              "target_max_hp_pct": [
+                2.0,
+                3.0,
+                4.0,
+                5.0,
+                6.0
               ]
             }
           ],
@@ -6738,23 +6694,12 @@
                 225.0,
                 275.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    2.5,
-                    2.5,
-                    2.5,
-                    2.5,
-                    2.5
-                  ],
-                  "units": [
-                    "% of Braum's maximum health",
-                    "% of Braum's maximum health",
-                    "% of Braum's maximum health",
-                    "% of Braum's maximum health",
-                    "% of Braum's maximum health"
-                  ]
-                }
+              "caster_max_hp_pct": [
+                2.5,
+                2.5,
+                2.5,
+                2.5,
+                2.5
               ]
             }
           ],
@@ -7324,23 +7269,12 @@
                 5.0,
                 5.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    9,
-                    9,
-                    9,
-                    9,
-                    9
-                  ],
-                  "units": [
-                    "% (+ 2.5% per 100 bonus AD) of the target's missing health",
-                    "% (+ 2.5% per 100 bonus AD) of the target's missing health",
-                    "% (+ 2.5% per 100 bonus AD) of the target's missing health",
-                    "% (+ 2.5% per 100 bonus AD) of the target's missing health",
-                    "% (+ 2.5% per 100 bonus AD) of the target's missing health"
-                  ]
-                }
+              "target_missing_hp_pct": [
+                9.0,
+                9.0,
+                9.0,
+                9.0,
+                9.0
               ]
             },
             {
@@ -12369,22 +12303,6 @@
               "unparsed_modifiers": [
                 {
                   "values": [
-                    4,
-                    4.5,
-                    5,
-                    5.5,
-                    6
-                  ],
-                  "units": [
-                    "%  of target's current health",
-                    "%  of target's current health",
-                    "%  of target's current health",
-                    "%  of target's current health",
-                    "%  of target's current health"
-                  ]
-                },
-                {
-                  "values": [
                     3,
                     3,
                     3,
@@ -12399,6 +12317,13 @@
                     "% per 100 AP"
                   ]
                 }
+              ],
+              "target_current_hp_pct": [
+                4.0,
+                4.5,
+                5.0,
+                5.5,
+                6.0
               ]
             },
             {
@@ -12440,22 +12365,6 @@
               "unparsed_modifiers": [
                 {
                   "values": [
-                    8,
-                    9,
-                    10,
-                    11,
-                    12
-                  ],
-                  "units": [
-                    "%  of target's current health",
-                    "%  of target's current health",
-                    "%  of target's current health",
-                    "%  of target's current health",
-                    "%  of target's current health"
-                  ]
-                },
-                {
-                  "values": [
                     6,
                     6,
                     6,
@@ -12470,6 +12379,13 @@
                     "% per 100 AP"
                   ]
                 }
+              ],
+              "target_current_hp_pct": [
+                8.0,
+                9.0,
+                10.0,
+                11.0,
+                12.0
               ]
             },
             {
@@ -12486,7 +12402,7 @@
           ],
           "raw_effects_count": 4,
           "raw_leveling_count": 6,
-          "parse_status": "partial",
+          "parse_status": "ok",
           "parse_notes": []
         }
       ],
@@ -15139,23 +15055,12 @@
                 185.0,
                 220.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    6,
-                    6,
-                    6,
-                    6,
-                    6
-                  ],
-                  "units": [
-                    "% of his maximum health",
-                    "% of his maximum health",
-                    "% of his maximum health",
-                    "% of his maximum health",
-                    "% of his maximum health"
-                  ]
-                }
+              "caster_max_hp_pct": [
+                6.0,
+                6.0,
+                6.0,
+                6.0,
+                6.0
               ]
             }
           ],
@@ -16085,23 +15990,12 @@
                 2.0,
                 2.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    1,
-                    1,
-                    1,
-                    1,
-                    1
-                  ],
-                  "units": [
-                    "% (+ 0.55% per 100 AP) of the target's maximum health",
-                    "% (+ 0.55% per 100 AP) of the target's maximum health",
-                    "% (+ 0.55% per 100 AP) of the target's maximum health",
-                    "% (+ 0.55% per 100 AP) of the target's maximum health",
-                    "% (+ 0.55% per 100 AP) of the target's maximum health"
-                  ]
-                }
+              "target_max_hp_pct": [
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0
               ]
             },
             {
@@ -16139,23 +16033,12 @@
                 35.0,
                 35.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    1,
-                    1,
-                    1,
-                    1,
-                    1
-                  ],
-                  "units": [
-                    "% (+ 0.55% per 100 AP) of the target's maximum health",
-                    "% (+ 0.55% per 100 AP) of the target's maximum health",
-                    "% (+ 0.55% per 100 AP) of the target's maximum health",
-                    "% (+ 0.55% per 100 AP) of the target's maximum health",
-                    "% (+ 0.55% per 100 AP) of the target's maximum health"
-                  ]
-                }
+              "target_max_hp_pct": [
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0
               ]
             },
             {
@@ -16193,23 +16076,12 @@
                 37.0,
                 37.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    2,
-                    2,
-                    2,
-                    2,
-                    2
-                  ],
-                  "units": [
-                    "% (+ 1.1% per 100 AP) of the target's maximum health",
-                    "% (+ 1.1% per 100 AP) of the target's maximum health",
-                    "% (+ 1.1% per 100 AP) of the target's maximum health",
-                    "% (+ 1.1% per 100 AP) of the target's maximum health",
-                    "% (+ 1.1% per 100 AP) of the target's maximum health"
-                  ]
-                }
+              "target_max_hp_pct": [
+                2.0,
+                2.0,
+                2.0,
+                2.0,
+                2.0
               ]
             },
             {
@@ -16247,23 +16119,12 @@
                 45.0,
                 45.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    6,
-                    6,
-                    6,
-                    6,
-                    6
-                  ],
-                  "units": [
-                    "% (+ 3.3% per 100 AP) of the target's maximum health",
-                    "% (+ 3.3% per 100 AP) of the target's maximum health",
-                    "% (+ 3.3% per 100 AP) of the target's maximum health",
-                    "% (+ 3.3% per 100 AP) of the target's maximum health",
-                    "% (+ 3.3% per 100 AP) of the target's maximum health"
-                  ]
-                }
+              "target_max_hp_pct": [
+                6.0,
+                6.0,
+                6.0,
+                6.0,
+                6.0
               ]
             }
           ],
@@ -16427,19 +16288,10 @@
                 8.0,
                 8.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    1,
-                    1,
-                    1
-                  ],
-                  "units": [
-                    "% (+ 0.55% per 100 AP) of the target's maximum health",
-                    "% (+ 0.55% per 100 AP) of the target's maximum health",
-                    "% (+ 0.55% per 100 AP) of the target's maximum health"
-                  ]
-                }
+              "target_max_hp_pct": [
+                1.0,
+                1.0,
+                1.0
               ]
             },
             {
@@ -16455,19 +16307,10 @@
                 24.0,
                 24.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    3,
-                    3,
-                    3
-                  ],
-                  "units": [
-                    "% (+ 1.65% per 100 AP) of the target's maximum health",
-                    "% (+ 1.65% per 100 AP) of the target's maximum health",
-                    "% (+ 1.65% per 100 AP) of the target's maximum health"
-                  ]
-                }
+              "target_max_hp_pct": [
+                3.0,
+                3.0,
+                3.0
               ]
             },
             {
@@ -16483,19 +16326,10 @@
                 40.0,
                 40.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    5,
-                    5,
-                    5
-                  ],
-                  "units": [
-                    "% (+ 2.75% per 100 AP) of the target's maximum health",
-                    "% (+ 2.75% per 100 AP) of the target's maximum health",
-                    "% (+ 2.75% per 100 AP) of the target's maximum health"
-                  ]
-                }
+              "target_max_hp_pct": [
+                5.0,
+                5.0,
+                5.0
               ]
             },
             {
@@ -16511,19 +16345,10 @@
                 72.0,
                 72.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    9,
-                    9,
-                    9
-                  ],
-                  "units": [
-                    "% (+ 4.95% per 100 AP) of the target's maximum health",
-                    "% (+ 4.95% per 100 AP) of the target's maximum health",
-                    "% (+ 4.95% per 100 AP) of the target's maximum health"
-                  ]
-                }
+              "target_max_hp_pct": [
+                9.0,
+                9.0,
+                9.0
               ]
             }
           ],
@@ -30993,23 +30818,12 @@
                 40.0,
                 40.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    2,
-                    2.5,
-                    3,
-                    3.5,
-                    4
-                  ],
-                  "units": [
-                    "% of the target's maximum health",
-                    "% of the target's maximum health",
-                    "% of the target's maximum health",
-                    "% of the target's maximum health",
-                    "% of the target's maximum health"
-                  ]
-                }
+              "target_max_hp_pct": [
+                2.0,
+                2.5,
+                3.0,
+                3.5,
+                4.0
               ]
             },
             {
@@ -44825,23 +44639,12 @@
                 20.0,
                 20.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    4,
-                    4,
-                    4,
-                    4,
-                    4
-                  ],
-                  "units": [
-                    "% of her maximum health",
-                    "% of her maximum health",
-                    "% of her maximum health",
-                    "% of her maximum health",
-                    "% of her maximum health"
-                  ]
-                }
+              "caster_max_hp_pct": [
+                4.0,
+                4.0,
+                4.0,
+                4.0,
+                4.0
               ]
             },
             {
@@ -44861,23 +44664,12 @@
                 60.0,
                 60.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    8,
-                    8,
-                    8,
-                    8,
-                    8
-                  ],
-                  "units": [
-                    "% of her maximum health",
-                    "% of her maximum health",
-                    "% of her maximum health",
-                    "% of her maximum health",
-                    "% of her maximum health"
-                  ]
-                }
+              "caster_max_hp_pct": [
+                8.0,
+                8.0,
+                8.0,
+                8.0,
+                8.0
               ]
             },
             {
@@ -44897,23 +44689,12 @@
                 80.0,
                 80.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    12,
-                    12,
-                    12,
-                    12,
-                    12
-                  ],
-                  "units": [
-                    "% of her maximum health",
-                    "% of her maximum health",
-                    "% of her maximum health",
-                    "% of her maximum health",
-                    "% of her maximum health"
-                  ]
-                }
+              "caster_max_hp_pct": [
+                12.0,
+                12.0,
+                12.0,
+                12.0,
+                12.0
               ]
             }
           ],
@@ -49000,23 +48781,12 @@
                 120.0,
                 150.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    6,
-                    6,
-                    6,
-                    6,
-                    6
-                  ],
-                  "units": [
-                    "% of his maximum health",
-                    "% of his maximum health",
-                    "% of his maximum health",
-                    "% of his maximum health",
-                    "% of his maximum health"
-                  ]
-                }
+              "caster_max_hp_pct": [
+                6.0,
+                6.0,
+                6.0,
+                6.0,
+                6.0
               ]
             }
           ],
@@ -51853,19 +51623,10 @@
                 250.0,
                 400.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    15,
-                    15,
-                    15
-                  ],
-                  "units": [
-                    "% (+ 7% per 100 AP) of the target's maximum health",
-                    "% (+ 7% per 100 AP) of the target's maximum health",
-                    "% (+ 7% per 100 AP) of the target's maximum health"
-                  ]
-                }
+              "target_max_hp_pct": [
+                15.0,
+                15.0,
+                15.0
               ]
             }
           ],
@@ -54164,18 +53925,6 @@
               "unparsed_modifiers": [
                 {
                   "values": [
-                    20,
-                    25,
-                    30
-                  ],
-                  "units": [
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health"
-                  ]
-                },
-                {
-                  "values": [
                     2,
                     2,
                     2
@@ -54186,24 +53935,17 @@
                     "% per 100 AP"
                   ]
                 }
+              ],
+              "target_max_hp_pct": [
+                20.0,
+                25.0,
+                30.0
               ]
             },
             {
               "attribute": "Initial Magic Damage",
               "attribute_kind": "damage",
               "unparsed_modifiers": [
-                {
-                  "values": [
-                    10,
-                    12.5,
-                    15
-                  ],
-                  "units": [
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health"
-                  ]
-                },
                 {
                   "values": [
                     1,
@@ -54216,24 +53958,17 @@
                     "% per 100 AP"
                   ]
                 }
+              ],
+              "target_max_hp_pct": [
+                10.0,
+                12.5,
+                15.0
               ]
             },
             {
               "attribute": "Magic Damage Per Second",
               "attribute_kind": "damage",
               "unparsed_modifiers": [
-                {
-                  "values": [
-                    2.5,
-                    3.125,
-                    3.75
-                  ],
-                  "units": [
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health"
-                  ]
-                },
                 {
                   "values": [
                     0.25,
@@ -54246,12 +53981,17 @@
                     "% per 100 AP"
                   ]
                 }
+              ],
+              "target_max_hp_pct": [
+                2.5,
+                3.125,
+                3.75
               ]
             }
           ],
           "raw_effects_count": 3,
           "raw_leveling_count": 3,
-          "parse_status": "unparsed",
+          "parse_status": "ok",
           "parse_notes": [
             "no damage modifiers normalized"
           ]
@@ -56675,22 +56415,6 @@
               "unparsed_modifiers": [
                 {
                   "values": [
-                    3,
-                    3.5,
-                    4,
-                    4.5,
-                    5
-                  ],
-                  "units": [
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health"
-                  ]
-                },
-                {
-                  "values": [
                     1.5,
                     1.5,
                     1.5,
@@ -56705,28 +56429,19 @@
                     "% per 100 AP"
                   ]
                 }
+              ],
+              "target_max_hp_pct": [
+                3.0,
+                3.5,
+                4.0,
+                4.5,
+                5.0
               ]
             },
             {
               "attribute": "Bonus Magic Damage at Max Stacks",
               "attribute_kind": "damage",
               "unparsed_modifiers": [
-                {
-                  "values": [
-                    9,
-                    10.5,
-                    12,
-                    13.5,
-                    15
-                  ],
-                  "units": [
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health"
-                  ]
-                },
                 {
                   "values": [
                     4.5,
@@ -56743,28 +56458,19 @@
                     "% per 100 AP"
                   ]
                 }
+              ],
+              "target_max_hp_pct": [
+                9.0,
+                10.5,
+                12.0,
+                13.5,
+                15.0
               ]
             },
             {
               "attribute": "Maximum Bonus Magic Damage per Stack",
               "attribute_kind": "damage",
               "unparsed_modifiers": [
-                {
-                  "values": [
-                    4.5,
-                    5.25,
-                    6,
-                    6.75,
-                    7.5
-                  ],
-                  "units": [
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health"
-                  ]
-                },
                 {
                   "values": [
                     2.25,
@@ -56781,28 +56487,19 @@
                     "% per 100 AP"
                   ]
                 }
+              ],
+              "target_max_hp_pct": [
+                4.5,
+                5.25,
+                6.0,
+                6.75,
+                7.5
               ]
             },
             {
               "attribute": "Maximum Bonus Magic Damage at Max Stacks",
               "attribute_kind": "damage",
               "unparsed_modifiers": [
-                {
-                  "values": [
-                    13.5,
-                    15.75,
-                    18,
-                    20.25,
-                    22.5
-                  ],
-                  "units": [
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health",
-                    "%  of the target's maximum health"
-                  ]
-                },
                 {
                   "values": [
                     6.75,
@@ -56819,6 +56516,13 @@
                     "% per 100 AP"
                   ]
                 }
+              ],
+              "target_max_hp_pct": [
+                13.5,
+                15.75,
+                18.0,
+                20.25,
+                22.5
               ]
             },
             {
@@ -56846,7 +56550,7 @@
           ],
           "raw_effects_count": 6,
           "raw_leveling_count": 7,
-          "parse_status": "partial",
+          "parse_status": "ok",
           "parse_notes": []
         }
       ],
@@ -63817,23 +63521,12 @@
                 30.0,
                 30.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    3,
-                    3,
-                    3,
-                    3,
-                    3
-                  ],
-                  "units": [
-                    "% of Zac's maximum health",
-                    "% of Zac's maximum health",
-                    "% of Zac's maximum health",
-                    "% of Zac's maximum health",
-                    "% of Zac's maximum health"
-                  ]
-                }
+              "caster_max_hp_pct": [
+                3.0,
+                3.0,
+                3.0,
+                3.0,
+                3.0
               ]
             },
             {
@@ -63853,23 +63546,12 @@
                 60.0,
                 60.0
               ],
-              "unparsed_modifiers": [
-                {
-                  "values": [
-                    6,
-                    6,
-                    6,
-                    6,
-                    6
-                  ],
-                  "units": [
-                    "% of Zac's maximum health",
-                    "% of Zac's maximum health",
-                    "% of Zac's maximum health",
-                    "% of Zac's maximum health",
-                    "% of Zac's maximum health"
-                  ]
-                }
+              "caster_max_hp_pct": [
+                6.0,
+                6.0,
+                6.0,
+                6.0,
+                6.0
               ]
             }
           ],
