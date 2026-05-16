@@ -100,6 +100,25 @@ function _summonerImgTag(sid, cls = "") {
 
 let _wired = false;
 
+// s219 v4: rank-tier comparison sample averages, per game mode.
+// Hand-curated placeholder data — backend aggregates by tier from
+// rewind_history.db are a future settings page follow-up. Keys are
+// the dropdown values; values are { mode: {cs, kda, duration_s, kp} }
+// expressing what an "average <tier>" looks like in that mode.
+const _RANK_TIER_AVERAGES = {
+  iron:        { ARAM:{cs:35,kda:1.6,duration_s:1080,kp:55}, SR:{cs:140,kda:1.7,duration_s:1800,kp:50} },
+  bronze:      { ARAM:{cs:42,kda:1.9,duration_s:1080,kp:58}, SR:{cs:165,kda:2.0,duration_s:1830,kp:53} },
+  silver:      { ARAM:{cs:48,kda:2.1,duration_s:1080,kp:60}, SR:{cs:185,kda:2.2,duration_s:1860,kp:55} },
+  gold:        { ARAM:{cs:55,kda:2.4,duration_s:1080,kp:62}, SR:{cs:205,kda:2.5,duration_s:1890,kp:58} },
+  platinum:    { ARAM:{cs:62,kda:2.7,duration_s:1080,kp:64}, SR:{cs:225,kda:2.8,duration_s:1920,kp:60} },
+  emerald:     { ARAM:{cs:68,kda:3.0,duration_s:1080,kp:66}, SR:{cs:240,kda:3.1,duration_s:1920,kp:62} },
+  diamond:     { ARAM:{cs:75,kda:3.3,duration_s:1080,kp:68}, SR:{cs:260,kda:3.4,duration_s:1950,kp:64} },
+  master:      { ARAM:{cs:80,kda:3.6,duration_s:1080,kp:70}, SR:{cs:280,kda:3.7,duration_s:1980,kp:66} },
+  grandmaster: { ARAM:{cs:85,kda:3.9,duration_s:1080,kp:72}, SR:{cs:300,kda:4.0,duration_s:2010,kp:68} },
+  challenger:  { ARAM:{cs:90,kda:4.2,duration_s:1080,kp:74}, SR:{cs:320,kda:4.3,duration_s:2040,kp:70} },
+};
+const _RANK_LS_KEY = "rc-pgr-rank-tier";
+
 /** One-time DOM wiring — click handlers, etc. Idempotent. */
 export function wireLastMatchOnce() {
   if (_wired) return;
@@ -131,6 +150,21 @@ export function wireLastMatchOnce() {
       try { location.hash = "#review"; } catch (_) {}
       if (typeof window._viewSaveManual === "function") window._viewSaveManual("review");
       if (typeof window._viewResolveAndApply === "function") window._viewResolveAndApply();
+    });
+  }
+
+  // Rank-tier comparison dropdown: restore from localStorage + persist
+  // on change. The values displayed depend on the current match's
+  // mode, so we re-render via the panel's cached last match data.
+  const rankSel = document.getElementById("lm-rank-select");
+  if (rankSel) {
+    try {
+      const saved = localStorage.getItem(_RANK_LS_KEY) || "";
+      if (saved) rankSel.value = saved;
+    } catch (_) {}
+    rankSel.addEventListener("change", () => {
+      try { localStorage.setItem(_RANK_LS_KEY, rankSel.value); } catch (_) {}
+      _renderRankCompare(rankSel.value);
     });
   }
 }
@@ -165,21 +199,64 @@ function renderLastMatch(data) {
   _setQuickReview(qr);
   _setReviewButton(m);
   _setMeta(m, data.history_count, enriched);
+
+  // s219 v4: cache the current match's mode for the rank-compare
+  // panel + re-render with the saved tier choice.
+  _lastMatchMode = m.mode || "";
+  let savedTier = "";
+  try { savedTier = localStorage.getItem(_RANK_LS_KEY) || ""; } catch (_) {}
+  _renderRankCompare(savedTier);
 }
 
-function _setMeta(m, historyCount, enriched) {
+// Cache so the dropdown can re-render without refetching /api/last-match.
+let _lastMatchMode = "";
+
+function _renderRankCompare(tier) {
+  const root = document.getElementById("lm-rank-compare-values");
+  if (!root) return;
+  if (!tier) {
+    root.innerHTML = '<span class="lm-rank-pending">pick a tier to compare</span>';
+    return;
+  }
+  const tierData = _RANK_TIER_AVERAGES[tier];
+  if (!tierData) {
+    root.innerHTML = `<span class="lm-rank-pending">no data for ${_escHtml(tier)}</span>`;
+    return;
+  }
+  // Look up the current match's mode (defaults to SR if mode missing/unknown).
+  const mode = (_lastMatchMode || "").toUpperCase();
+  const modeKey = mode in tierData ? mode : (mode === "ARAM" || mode === "KIWI" ? "ARAM" : "SR");
+  const avg = tierData[modeKey] || tierData.SR;
+  if (!avg) {
+    root.innerHTML = `<span class="lm-rank-pending">no data for ${_escHtml(tier)} / ${_escHtml(mode)}</span>`;
+    return;
+  }
+  // 3 cells: avg CS / avg KDA / avg duration. Compact.
+  const cells = [
+    { label: "CS",  value: String(avg.cs) },
+    { label: "KDA", value: avg.kda.toFixed(1) },
+    { label: "DUR", value: _fmtDuration(avg.duration_s) },
+  ];
+  root.innerHTML = cells.map((c) => `
+    <div class="lm-rank-cell">
+      <span class="lm-rank-cell-label">${_escHtml(c.label)}</span>
+      <span class="lm-rank-cell-value">${_escHtml(c.value)}</span>
+    </div>
+  `).join("");
+}
+
+function _setMeta(m, historyCount, _enriched) {
+  // s219 v4: trimmed to mode · "X ago" · baseline-count. Duration
+  // already lives in the hero stats inline; the "LCU detail ingested"
+  // debug callout was operator-noise. The N in "baseline · N prior
+  // games" will become operator-configurable from the Settings page
+  // (window currently fixed at 20 via _build_last_match's LIMIT 20
+  // SQL clause; once Settings ships a knob it'll propagate here).
   const meta = document.getElementById("lm-meta");
   if (!meta) return;
-  const when = _fmtAgo(m.timestamp);
-  const parts = [m.mode || "—", _fmtDuration(m.duration_s), when];
+  const parts = [m.mode || "—", _fmtAgo(m.timestamp)];
   if (typeof historyCount === "number" && historyCount > 0) {
     parts.push(`baseline · ${historyCount} prior games`);
-  }
-  if (enriched && enriched.lcu_ingested_at == null) {
-    // surfaced from m.lcu_ingested_at on the row, not enriched itself
-  }
-  if (m.lcu_ingested_at) {
-    parts.push(`LCU detail ingested`);
   }
   meta.textContent = parts.filter(Boolean).join(" · ");
 }
