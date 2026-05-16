@@ -6,6 +6,33 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s230 wrap — 2026-05-16 (DS Phase 5.9.30: conditional seed-expansion — Fiddle Q + Cassi E)
+
+**Operator instruction:** "continue ds" (self-continuing loop). Continued the s229 NEXT bucket: pure-data conditional seed-expansion on the stable 2-term vocab. NO vocab change (s227 "don't over-build" — both entries reuse `target_no_setup`).
+
+## What happened — rigor bar first, recollection rejected
+
+The s229 NEXT list named Lux Illumination / Aatrox W / Fiddle Q / Cassi E. Verified every candidate against the live Meraki 16.10.1 `champion_abilities.json` (built `tools/ds_cond_inspect.py`, kept — reusable per-patch). **Lux CLOSED as a phantom carry-forward:** Lux P is `parse_status=no_damage` with zero damage_blocks; Q/E/R are each single-block — no discrete amped/un-amped pair anywhere in Lux's kit; it never met the discrete-pair rigor bar (the recurring "Lux Illumination" mention was recollection, not reality). **Aatrox W stays deferred:** "chain-landed" is a positional escaped/not-escaped condition, NOT an operator-applied target-state setup — fails the `target_no_setup` semantic. 2 clean entries shipped.
+
+## Shipped (committed)
+
+- **Fiddlesticks Q "Terrify" = `{"default": [2,3], "target_no_setup": [0,1]}`** — a NEW key (real correctness fix, NOT a no-op) AND the FIRST registry conditional whose branches are `list[int]` (combines the s207 sum-of-blocks list schema with the s228 conditional schema; ZERO engine change — `_normalize_block_index_value` already recursively normalizes each branch and only rejects a *nested* dict). Filtered damage blocks (raw[0]/raw[3] are duration, dropped by the `attribute_kind=='damage'` filter): fidx0 `target_current_hp_pct`[4..6], fidx1 base[40..120], fidx2 = EXACTLY 2.0× fidx0, fidx3 = EXACTLY 2.0× fidx1 — the textbook Terrify-double-vs-feared discrete pair. `default`=[2,3] (feared/amped sum — Fiddle's kit revolves around fear, operator-commits canonical), `target_no_setup`=[0,1] (un-amped vs not-yet-feared). Pre-s230 the engine scored Q at filtered-block-0 ONLY (un-amped %HP, missing the un-amped base AND the fear-amp). Live A/B :8893 (lvl11 80/30/2000): Q raw/cast **80→240 (+200%)**, Qdps 3.31→9.93, total_ability_dps 22.998→29.618; exact-2× check `registry 240 == 2.0 × no_setup 120` confirmed live.
+- **Cassiopeia E "Twin Fang" int `1` → `{"default": 1, "target_no_setup": 0}`** — provable Part-1 no-op conversion (default==prior int 1, byte-identical). Twin Fang is enhanced vs a poisoned target (Cassi's own Q/W poison is the setup). **RESOLVES the s229 "Cassi E irregular 18-element Meraki array — defer until investigated" carry-forward:** the array is block 1's base scaling, rank-indexed by `_evaluate_block` exactly as since s191; the conditional conversion is orthogonal (Part-1 always resolves to default=1). Live A/B: registry raw 168 == forced E:1 == 168 (no-op match True); forced E:0 raw 100 (non-poisoned downgrade; load-bearing True).
+- Registry stays **125 champions** (Fiddlesticks gains Q alongside R/W; Cassiopeia E converted in-place). `_meta` description+rationale appended via surgical str.replace (no JSON reformat). New `test_conditional_block_index_s230.py` (24 tests). 10 ENGINE pin bumps. **Cross-registry stale-pin migrations:** 4 `test_block_index_overrides` Cassi-E shape pins → conditional shape; s228/s229 `test_cassiopeia_E_still_plain_int` → s230 evolution guards (shape + Part-1 numeric equivalence); s223 byte-stable pin + s225 "swept keys not added" + s207 sum_of_blocks int-exemplar all migrated. ENGINE **1.1.0→1.2.0**. DS suite 2210→**2232**; wider RC **1107**; ruff+py_compile clean; DS restarted (taskkill 14372 → pythonw relaunch, not supervisor-watched) → `/health` **1.2.0**.
+
+## Don't-redo / blockers
+
+- **`test_max_priority_sweep_s227.test_fiddlesticks_w_first_beats_default` was MIGRATED, not "fixed".** s230's correct Fiddle Q boost (Q was under-counted at s227) flips the lvl-11 numeric A/B so Q-first now numerically beats W-first (ratio ~0.85, no longer >1.10). This is **precisely the s227 lesson** — max_priority is meta-curated, NOT numeric-sweepable. The W-E-Q registry entry is still real-meta-correct (Bountiful Harvest drain IS Fiddle's jungle max). The test now guards the *decision* (registry entry + resolution), not the now-stale inequality. **Do NOT revert the Fiddle max_priority entry or the s230 Q block_index entry to "restore" the old numeric margin** — both are correct; the margin was an artifact of the pre-s230 Q under-count.
+- **Lux is a closed phantom — do not re-add it to the NEXT list.** No discrete pair exists in its kit (verified, not recalled).
+- Fiddle Q is the first list-valued conditional; the schema already supported it (no engine change needed). Future list-branch conditionals are pure data.
+- Conversions are intentionally zero-numeric-change (Part-1 resolves to `"default"`); don't "fix" the no-op.
+
+## NEXT (self-continuing loop)
+
+Remaining clean conditional candidates need fresh Meraki verification each (rigor bar — the s229/s230 lesson: ROADMAP/_meta recollection mis-names mechanics ~half the time). Likely-clean unexamined: more debuff-state-family amps (mark/charm/sleep beyond the shipped set). DrMundo E remains blocked on a `caster_low_hp` vocab decision (it's caster-missing-HP, NOT target — flag for operator before any vocab add). Aatrox W needs the positional-condition question answered architecturally, not pure-data. s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
+
+---
+
 # s229 wrap — 2026-05-16 (DS Phase 5.9.29: conditional seed-expansion + vocab generalization)
 
 **Operator instruction:** "continue" (continuing s228's option B). First surfaced — via AskUserQuestion — that the signed-off literal "B-2" (thread per-tick liveclient HP/CC into the ranking call) is a **mis-feature** for the only DS surface that exists (item-build recommendation): per-tick enemy HP would flicker build recs, and the operator-commits default (Part 1) is the *correct* strategic model — the schema's value is already delivered. **Operator chose "pivot → pure-data conditional seed-expansion"** (the proven s207→s215/s217 cadence).
