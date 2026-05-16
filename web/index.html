@@ -1399,61 +1399,78 @@
           </div>
         </div>
 
-        <!-- s219: 2-up row — Team Composition Ally (left) / Enemy (right).
-             Each side is a self-contained .lm-tc-group with its own W/L
-             pill. Previously stacked, now side-by-side to save vertical
-             space + place ally directly above the enemy for easier
-             cross-comparison. -->
-        <div class="lm-section lm-team-comp">
-          <h3 class="lm-section-head">TEAM COMPOSITION</h3>
-          <div class="lm-tc-table lm-row-half" id="lm-tc-table" hidden>
-            <div class="lm-tc-group lm-tc-ally" data-side="ally">
-              <div class="lm-tc-group-head">
-                <span class="lm-tc-group-label">ALLY</span>
-                <span class="lm-tc-group-result" id="lm-tc-ally-result">—</span>
-              </div>
-              <ul class="lm-tc-list" id="lm-tc-ally-list"></ul>
+        <!-- s219 v5: TEAM COMPOSITION title swapped for a tabbed panel
+             (Comp / Chart / Review). Quick Review folded in as the
+             Review tab so the panel uses one shared box. Deep Review
+             button sits in the tab nav right side, always visible. -->
+        <div class="lm-section lm-tabbed-section" id="lm-tabbed-section">
+          <nav class="lm-tabs-nav">
+            <div class="lm-tabs-strip">
+              <button type="button" class="lm-tab is-active" data-tab="comp">Comp</button>
+              <button type="button" class="lm-tab"          data-tab="chart">Chart</button>
+              <button type="button" class="lm-tab"          data-tab="review">Review</button>
             </div>
-            <div class="lm-tc-group lm-tc-enemy" data-side="enemy">
-              <div class="lm-tc-group-head">
-                <span class="lm-tc-group-label">ENEMY</span>
-                <span class="lm-tc-group-result" id="lm-tc-enemy-result">—</span>
-              </div>
-              <ul class="lm-tc-list" id="lm-tc-enemy-list"></ul>
-            </div>
-          </div>
-          <div class="lm-pending" id="lm-tc-pending" data-dummy-data="last-match-team">
-            Team roster pending — auto-ingests on EndOfGame; or Refresh-from-Riot button (v2) on the page header.
-          </div>
-        </div>
+            <button type="button" class="lm-review-btn lm-tabs-cta" id="lm-go-to-review"
+                    data-tt="Open the deeper step-by-step Review page for this match">
+              Open Deep Review →
+            </button>
+          </nav>
 
-        <div class="lm-section lm-quick-review">
-          <!-- s219: section header IS the Deep Review button — operator
-               called the "QUICK REVIEW" label self-explanatory given the
-               3 columns below it carry their own headings. -->
-          <button type="button" class="lm-section-head-btn lm-review-btn" id="lm-go-to-review"
-                  data-tt="Open the deeper step-by-step Review page for this match">
-            Open Deep Review →
-            <span class="lm-section-sub">hover any row for the data behind it</span>
-          </button>
-          <div class="lm-qr-cols">
-            <div class="lm-qr-col lm-qr-col-right">
-              <div class="lm-qr-col-head">What went right</div>
-              <ul class="lm-qr-list" id="lm-qr-right">
-                <li class="lm-qr-empty">loading…</li>
-              </ul>
+          <!-- COMP tab — ally + enemy rosters side-by-side -->
+          <div class="lm-tab-panel is-active" data-tab-panel="comp">
+            <div class="lm-tc-table lm-row-half" id="lm-tc-table" hidden>
+              <div class="lm-tc-group lm-tc-ally" data-side="ally">
+                <div class="lm-tc-group-head">
+                  <span class="lm-tc-group-label">ALLY</span>
+                  <span class="lm-tc-group-result" id="lm-tc-ally-result">—</span>
+                </div>
+                <ul class="lm-tc-list" id="lm-tc-ally-list"></ul>
+              </div>
+              <div class="lm-tc-group lm-tc-enemy" data-side="enemy">
+                <div class="lm-tc-group-head">
+                  <span class="lm-tc-group-label">ENEMY</span>
+                  <span class="lm-tc-group-result" id="lm-tc-enemy-result">—</span>
+                </div>
+                <ul class="lm-tc-list" id="lm-tc-enemy-list"></ul>
+              </div>
             </div>
-            <div class="lm-qr-col lm-qr-col-wrong">
-              <div class="lm-qr-col-head">What went wrong as a team</div>
-              <ul class="lm-qr-list" id="lm-qr-wrong">
-                <li class="lm-qr-empty">loading…</li>
-              </ul>
+            <div class="lm-pending" id="lm-tc-pending" data-dummy-data="last-match-team">
+              Team roster pending — auto-ingests on EndOfGame; or Refresh-from-Riot button (v2) on the page header.
             </div>
-            <div class="lm-qr-col lm-qr-col-chronic">
-              <div class="lm-qr-col-head">What you fail most at</div>
-              <ul class="lm-qr-list" id="lm-qr-chronic">
-                <li class="lm-qr-empty">loading…</li>
-              </ul>
+          </div>
+
+          <!-- CHART tab — team comparison bars (ally vs enemy aggregates) -->
+          <div class="lm-tab-panel" data-tab-panel="chart" hidden>
+            <div class="lm-chart-wrap" id="lm-chart-wrap" hidden>
+              <ul class="lm-chart-list" id="lm-chart-list"></ul>
+            </div>
+            <div class="lm-pending" id="lm-chart-pending">
+              Chart pending — populates from LCU enrichment alongside the Comp roster.
+            </div>
+          </div>
+
+          <!-- REVIEW tab — the 3-column Quick Review folded in -->
+          <div class="lm-tab-panel" data-tab-panel="review" hidden>
+            <div class="lm-tab-panel-hint">hover any row for the data behind it</div>
+            <div class="lm-qr-cols">
+              <div class="lm-qr-col lm-qr-col-right">
+                <div class="lm-qr-col-head">What went right</div>
+                <ul class="lm-qr-list" id="lm-qr-right">
+                  <li class="lm-qr-empty">loading…</li>
+                </ul>
+              </div>
+              <div class="lm-qr-col lm-qr-col-wrong">
+                <div class="lm-qr-col-head">What went wrong as a team</div>
+                <ul class="lm-qr-list" id="lm-qr-wrong">
+                  <li class="lm-qr-empty">loading…</li>
+                </ul>
+              </div>
+              <div class="lm-qr-col lm-qr-col-chronic">
+                <div class="lm-qr-col-head">What you fail most at</div>
+                <ul class="lm-qr-list" id="lm-qr-chronic">
+                  <li class="lm-qr-empty">loading…</li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
