@@ -246,8 +246,8 @@ class Phase599_21BackwardCompatTests(unittest.TestCase):
 class Phase599_21EngineVersionTests(unittest.TestCase):
     def test_engine_version_bumped(self) -> None:
         from agents import daemon_slayer
-        # s227 (Phase 5.9.27) bumped to 0.99.0; pin tracks current.
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "0.99.0")
+        # s228 (Phase 5.9.28) bumped to 1.0.0; pin tracks current.
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.0.0")
 
 
 if __name__ == "__main__":

@@ -372,8 +372,13 @@ class RegistryShapeTests(unittest.TestCase):
         # expansion (Riven R Wind Slash — first new champion in form_
         # index registry since s187, closes s203 carry-forward 'Riven
         # form_index seed needed').
-        # Evelynn extended with Q=5 — full shape:
-        self.assertEqual(champions["Evelynn"], {"R": 1, "Q": 5})
+        # Evelynn extended with Q=5 — full shape (s228 Phase 5.9.28
+        # converted Q to a conditional: charm triple-spike total is the
+        # "default" / committed branch, downgrade to 0 when not charmed):
+        self.assertEqual(
+            champions["Evelynn"],
+            {"R": 1, "Q": {"default": 5, "target_no_cc": 0}},
+        )
         # Gwen extended with Q=6 — full shape:
         self.assertEqual(champions["Gwen"], {"R": 4, "Q": 6})
         # KSante extended with W=3 — full shape:
@@ -387,8 +392,13 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Seraphine"], {"Q": 1})
         # Syndra extended with W=2 — full shape:
         self.assertEqual(champions["Syndra"], {"R": 2, "W": 2})
-        # Zoe extended with E=2 — full shape:
-        self.assertEqual(champions["Zoe"], {"Q": 1, "W": 1, "E": 2})
+        # Zoe extended with E=2 — full shape (s228 Phase 5.9.28 converted
+        # E to a conditional: sleep-amped 2× is "default"/committed,
+        # downgrade to 0 when sleep not landed):
+        self.assertEqual(
+            champions["Zoe"],
+            {"Q": 1, "W": 1, "E": {"default": 2, "target_no_cc": 0}},
+        )
         # Phase 5.9.18 (s205) — form_index + block_index layered expansion.
         # 4 new (champion, key) block_index entries (1 new champion Qiyana
         # + 3 key extensions: Hwei W, Renekton E, Shaco W) + 3 new form_index
@@ -418,27 +428,52 @@ class RegistryShapeTests(unittest.TestCase):
         # the Box hits already-Feared target — canonical Shaco setup).
         self.assertEqual(champions["Shaco"], {"E": 2, "W": 1})
 
-    def test_every_value_is_int_or_list_of_ints(self) -> None:
-        # Phase 5.9.20 (s207) widened the value type from int to int |
-        # list[int]. List values express sum-of-blocks (operator commits
-        # to landing every component) — Camille W / Malphite W /
-        # Heimerdinger W / Katarina R seed entries.
+    def test_every_value_is_int_list_or_conditional(self) -> None:
+        # Phase 5.9.20 (s207) widened int -> int | list[int] (sum-of-
+        # blocks). Phase 5.9.28 (s228) widens again: ALSO a conditional
+        # dict {"default": int|list[int], "<cond>": int|list[int]} where
+        # every non-"default" key is in the closed _BLOCK_INDEX_CONDITIONS
+        # vocab. This is the canonical structural guard for the s228
+        # schema (the engine's _normalize_block_index_value is the runtime
+        # enforcer; this pins the on-disk registry shape).
+        from agents.daemon_slayer.ability_dps import (
+            _BLOCK_INDEX_CONDITIONS,
+            _BLOCK_INDEX_DEFAULT_KEY,
+        )
+
+        def _ok_scalar(v, where: str) -> None:
+            if isinstance(v, list):
+                self.assertTrue(
+                    all(isinstance(x, int) and not isinstance(x, bool) for x in v),
+                    f"{where} list contains non-int: {v!r}",
+                )
+                self.assertTrue(
+                    all(x >= 0 for x in v),
+                    f"{where} list contains negative: {v!r}",
+                )
+            else:
+                self.assertIsInstance(v, int, f"{where} not int: {v!r}")
+                self.assertNotIsInstance(v, bool, f"{where} is bool: {v!r}")
+                self.assertGreaterEqual(v, 0, f"{where} negative: {v!r}")
+
         for champion_id, entries in self.table["champions"].items():
             for key, value in entries.items():
+                where = f"{champion_id}.{key}"
                 with self.subTest(champion_id=champion_id, key=key):
-                    if isinstance(value, list):
-                        self.assertTrue(
-                            all(isinstance(x, int) and not isinstance(x, bool) for x in value),
-                            f"{champion_id}.{key} list contains non-int: {value!r}",
+                    if isinstance(value, dict):
+                        self.assertIn(
+                            _BLOCK_INDEX_DEFAULT_KEY, value,
+                            f"{where} conditional missing 'default': {value!r}",
                         )
-                        self.assertTrue(
-                            all(x >= 0 for x in value),
-                            f"{champion_id}.{key} list contains negative: {value!r}",
-                        )
+                        for ck, cv in value.items():
+                            self.assertTrue(
+                                ck == _BLOCK_INDEX_DEFAULT_KEY
+                                or ck in _BLOCK_INDEX_CONDITIONS,
+                                f"{where} unknown condition {ck!r}",
+                            )
+                            _ok_scalar(cv, f"{where}[{ck}]")
                     else:
-                        self.assertIsInstance(value, int)
-                        self.assertNotIsInstance(value, bool)
-                        self.assertGreaterEqual(value, 0)
+                        _ok_scalar(value, where)
 
     def test_every_key_is_valid_token(self) -> None:
         # Phase 5.9.5 (s192) extended valid keys to repeat-variant tokens
@@ -801,8 +836,12 @@ class ToDictSerializationTests(unittest.TestCase):
         )
         d = r.to_dict()
         self.assertEqual(d["block_index_source"], "champion")
-        # Phase 5.9.17 (s204) — Evelynn gained Q=5 alongside existing R=1
-        self.assertEqual(d["block_index_resolved"], {"R": 1, "Q": 5})
+        # Phase 5.9.17 (s204) — Evelynn gained Q=5 alongside existing R=1;
+        # Phase 5.9.28 (s228) converted Q to a conditional dict.
+        self.assertEqual(
+            d["block_index_resolved"],
+            {"R": 1, "Q": {"default": 5, "target_no_cc": 0}},
+        )
 
     def test_unmapped_champion_to_dict_is_empty_dict(self) -> None:
         # Tryndamere is unmapped (Yasuo landed in registry s201).
@@ -3554,8 +3593,36 @@ class Phase599_17ExpansionTests(unittest.TestCase):
         hits). 175% AP scaling vs block 0's 25%. Operator commits to
         landing full Q rotation on same target during stealth, canonical
         Eve sustained burst. Multi-hit total — same model as Lulu Q s195
-        / Sivir Q s195 / Talon W s195."""
-        self._delta_check("Evelynn", "Q", 5)
+        / Sivir Q s195 / Talon W s195.
+
+        s228 Phase 5.9.28: Q converted to a conditional dict
+        {"default": 5, "target_no_cc": 0} (charm-marked triple-spike is
+        the committed/canonical branch; downgrade to single spike when
+        not charmed). Part 1 resolves to "default" → byte-identical to
+        the old int Q=5; assert the new shape + zero-regression +
+        still-load-bearing (DMGIDX[5] >> DMGIDX[0], not HP-gated)."""
+        m, _ = get_block_index_for("Evelynn")
+        self.assertEqual(m["Q"], {"default": 5, "target_no_cc": 0})
+        reg = compute_ability_dps(
+            self.snap, "Evelynn", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        forced_def = compute_ability_dps(
+            self.snap, "Evelynn", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides={"R": 1, "Q": 5},
+        )
+        forced_b0 = compute_ability_dps(
+            self.snap, "Evelynn", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides={"R": 1, "Q": 0},
+        )
+        self.assertAlmostEqual(
+            reg.total_ability_dps, forced_def.total_ability_dps, places=9
+        )
+        self.assertGreater(
+            reg.total_ability_dps, forced_b0.total_ability_dps
+        )
 
     def test_gwen_Q_routes_to_block_6(self) -> None:
         """Gwen Q block 6 'Maximum Damage' = full max-stack Snip Snip burst
@@ -3616,8 +3683,36 @@ class Phase599_17ExpansionTests(unittest.TestCase):
         target with damage — first entry reviving the 'conditional target-
         state schema lift' bucket under the unconditional operator-commits
         framing. Same model as Khazix Q isolation s196 / Vayne E wall-stun
-        s202."""
-        self._delta_check("Zoe", "E", 2)
+        s202.
+
+        s228 Phase 5.9.28: E converted to the FLAGSHIP conditional dict
+        {"default": 2, "target_no_cc": 0} — this is the canonical
+        target-state case the whole conditional-schema-lift bucket was
+        named for. Part 1 resolves to "default" (block 2) → byte-identical
+        to the old int E=2; assert new shape + zero-regression +
+        still-load-bearing (DMGIDX[2] = 2× DMGIDX[0], not HP-gated)."""
+        m, _ = get_block_index_for("Zoe")
+        self.assertEqual(m["E"], {"default": 2, "target_no_cc": 0})
+        reg = compute_ability_dps(
+            self.snap, "Zoe", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        forced_def = compute_ability_dps(
+            self.snap, "Zoe", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides={"Q": 1, "W": 1, "E": 2},
+        )
+        forced_b0 = compute_ability_dps(
+            self.snap, "Zoe", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides={"Q": 1, "W": 1, "E": 0},
+        )
+        self.assertAlmostEqual(
+            reg.total_ability_dps, forced_def.total_ability_dps, places=9
+        )
+        self.assertGreater(
+            reg.total_ability_dps, forced_b0.total_ability_dps
+        )
 
     # Pattern F: form_index seed expansion (1)
     def test_riven_R_routes_to_block_1_via_form_index_seed(self) -> None:
@@ -3642,12 +3737,16 @@ class Phase599_17ExpansionTests(unittest.TestCase):
 
     # Multi-key resolved-shape sanity for extension champions
     def test_evelynn_both_keys_in_resolved(self) -> None:
-        """Evelynn R=1 (s191) + Q=5 (s204) — both keys must appear."""
+        """Evelynn R=1 (s191) + Q=5 (s204) — both keys must appear;
+        s228 converted Q to a conditional dict."""
         r = compute_ability_dps(
             self.snap, "Evelynn", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"R": 1, "Q": 5})
+        self.assertEqual(
+            r.block_index_resolved,
+            {"R": 1, "Q": {"default": 5, "target_no_cc": 0}},
+        )
 
     def test_gwen_both_keys_in_resolved(self) -> None:
         """Gwen R=4 (s203) + Q=6 (s204) — both keys must appear."""
@@ -3684,12 +3783,16 @@ class Phase599_17ExpansionTests(unittest.TestCase):
         self.assertEqual(r.block_index_resolved, {"R": 2, "W": 2})
 
     def test_zoe_all_three_keys_in_resolved(self) -> None:
-        """Zoe Q=1 (s195) + W=1 (s202) + E=2 (s204) — all three keys present."""
+        """Zoe Q=1 (s195) + W=1 (s202) + E=2 (s204) — all three keys
+        present; s228 converted E to a conditional dict."""
         r = compute_ability_dps(
             self.snap, "Zoe", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
-        self.assertEqual(r.block_index_resolved, {"Q": 1, "W": 1, "E": 2})
+        self.assertEqual(
+            r.block_index_resolved,
+            {"Q": 1, "W": 1, "E": {"default": 2, "target_no_cc": 0}},
+        )
 
     # Math-level sanity
     def test_gwen_Q_block6_matches_block0_max_stack_total(self) -> None:
