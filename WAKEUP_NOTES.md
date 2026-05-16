@@ -52,17 +52,45 @@
 - **Item E — port LCU `/lol-match-history/v1/games/{gameId}/timeline` view OR final interactive minimap** into the Post Game Review page. Timeline has gold/cs/level deltas per minute + kill/death events; minimap would be the visual replay overlay. Operator's hint: "the final interactive minimap that is seen from the league client when looking at the match history results."
 - **Settings page additions** — canonical home for the rank-tier dropdown persistence (currently localStorage `rc-pgr-rank-tier`), the baseline-count knob (currently fixed at 20 via `_build_last_match`'s SQL LIMIT 20), and any future post-game-review toggles. Existing `view-settings` section already in HTML.
 
-**Operator's deferred polish items from mid-session (do these in the look-over):**
-- 3rd font bump (+1 again on hero + tab panel). Operator asked for this twice; v6 commit was the 2nd bump. 3rd is still owed.
-- Section 3 typography increase to match hero (currently rank-cell-value 14px, label 10px — should match hero-stat-value 23px, label 13px). Plus: move KP% to (2,1) where KDA was, shift KDA to (1,2) right next to selector.
-- Tab rename: current "Review" tab → "Insights"; new "Review" tab that routes to deep-review page (the Open Deep Review CTA button folds into the tab strip as a navigation tab).
-- Chart tab contrast fix — bars use `--ok`/`--bad` at 0.85 opacity, white text on bar washes out. Tone bars to ~0.5 opacity + move text to dark background end of each bar.
-- Visual separator between hero sections — 1px dashed line (like champ_select uses) OR colored tabbing for the 3 sections.
-- Per-player augments rendering in Comp tab — backend already ships `enriched.roster[].augments`; frontend needs CDN icon URL research for Cherry/Mayhem augment images (CommunityDragon likely path: `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perk-images/...` or similar).
+**Operator's deferred polish items from final mid-session message — verbatim quotes preserved so nothing is lost in interpretation. Operator explicitly said: "i dont wish to reiterate on them":**
+
+1. _"bump all font sizes up by 1 again, for all elements from hero row and down."_
+   → This is the **3rd** font bump operator has asked for this session. v5 (`31c214b`) was bump #1, v6 (`740e8ee`) was bump #2. Bump #3 is still owed. Apply to **hero row AND down** (so: hero champ/KDA/grade/stats + tab nav labels + tab panel content including Quick Review li, team-comp roster row, Chart bars). Reference current sizes in `web/css/panels/last_match.css`.
+
+2. _"tab titles should be uniformly spaced and likely will need some sort of tying color to the panel it controls.. not sure - we can ask the ui agent when its time."_
+   → Uniform spacing DONE in v5/v6 (`.lm-tab { min-width: 96px }`). **Color-tying** deferred to UI agent. Don't ship until UI agent reviews.
+
+3. _"for the ally enemy panels, the vertical alignment of the CS is off for both, they should be right aligned vertically insync"_
+   → CLAIMED done in v6 (`740e8ee`) via fixed-width grid columns + `text-align: right` on `.lm-tc-cs`. **VERIFY in next session** — operator restated this AFTER v6 shipped, so they may still see misalignment or there may be a render bug I missed. Capture screenshot of both COMP-tab rosters and check that the CS column right-edges align column-for-column between ally + enemy.
+
+4. _"move the Open Deep review button to be a 'tab' as Review, and change the current tab named review to be Insights"_
+   → Tab strip becomes: **Comp / Chart / Insights / Review**. The current "Review" tab content (3-column Quick Review) becomes the "Insights" tab. The new "Review" tab is the **deep-review navigation tab** — it doesn't have its own panel; clicking it should navigate to `view-review` (or wherever the Deep Review page lives) with `sessionStorage.rc-review-focus-match` stash. The right-aligned "Open Deep Review →" button in the current tab nav gets removed (its functionality folds into the new Review tab).
+
+5. _"in the tab panel, chart -- cant read the text, and is super bright...."_
+   → Chart tab contrast. Current bars use `--ok` (#8ce5a8) and `--bad` (#e07a7a) at 0.85 opacity; white value text sits ON TOP of the bar fill and gets washed out. Fix candidates: (a) drop opacity to ~0.5; (b) move text to the dark surface background (outside the fill area); (c) use only-the-tip color highlight + neutral bar body; (d) add text-shadow / outline so text reads on any background. Pick one + verify on a real capture.
+
+6. _"i have also noticed perhaps its my eyesight but the Ranking icon for S-D etc .. is harsh to view like it doesnt visually flow right something isnt correct when viewing it as compared to other icons or background n borders that we have used once we finish the ui agent and if it passes -- propagate this change to all pages that use the ranking icon n bg"_
+   → **Grade letter badge (D in Quinn's case, S/A/B/C/F otherwise) in the hero row.** Current `.lm-hero-grade`: 44px bold colored grade letter on a `var(--surface-2)` background with `var(--radius-sm)` border. Operator finds it harsh — likely the **strong-tinted grade-color text on dark surface** creates excessive contrast vs the rest of the muted dashboard palette. Defer to UI agent pass for the redesign spec. **Once UI agent approves** → propagate the new style across all panels that show this badge: Home page Recent 5 row + This Week row, History view, Session view, Replay view, anywhere else it appears. Grep `.lm-hero-grade` and the `--grade-*` CSS variables to find consumers.
+
+7. _"use a visual separator that we have seen used in the champ select page the 1 px wide line , just vertically. or the colored tabbing to distinctly show the 3 section separation for the hero row."_
+   → Hero row currently has 3 sections (identity / match-stats / rank-tier-cmp) packed close. Section 3 already has `border-left: 1px dashed var(--border-soft)`. Section 2 has NO separator from section 1. Apply the same 1px dashed/solid vertical line between section 1 and section 2 (or operator's alternative: "colored tabbing" — likely means a subtle colored stripe at each section's left edge that ties to the section's content theme). The champ-select reference is `web/css/panels/champ_select_view.css` — search there for the 1px-line pattern operator likes.
+
+8. _"for the hero row, section 3 - increase the fonts to match the rest of the hero row typography, and move the kp% to where the kda is , and shift kda over to the left more but not beyond the left side of the selectors left most side"_
+   → Section 3 typography is currently smaller than sections 1+2 (rank-cell-value 14px, rank-cell-label 10px) — operator wants it to MATCH the hero row (so: rank-cell-value should go to ~23px to match `.lm-hero-stat-value`, rank-cell-label to ~13px to match `.lm-hero-stat-label`). **Plus a reordering**: in section 3, swap KP% and KDA — KP% takes the spot KDA currently occupies (row 2 col 1 — directly below selector), and KDA shifts LEFT (operator: "shift kda over to the left more but not beyond the left side of the selectors left most side" — so KDA's left edge can be ≤ selector's left edge but no further left). Likely target layout: selector at (1,1), KDA at (1,2) right next to selector, KP% at (2,1) below selector, then the other stats fill the remaining cells. Check the `grid-template-areas` definition in `.lm-hero-rank-compare`.
+
+9. _"include in the comp tab, for each player - their selected augments. if aram mayhem or arnea *"_
+   → Per-player augment icons in Comp tab roster rows. **ARAM Mayhem (KIWI mode, queue 2400) + Arena (CHERRY mode, queue 1700/1710) only.** Backend already ships the data: each `enriched.roster[N].augments` is a 6-element list of integer augment IDs (`playerAugment1-6` from LCU stats). Frontend lift remaining: (a) decide where in the team-comp row to place the icons (probably between summoner spells and items, or below the row as a sub-strip); (b) resolve augment ID → icon URL. Riot's augment icons aren't in DDragon. Likely CDN paths to investigate:
+   - `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/cherry-augments-img/<id>.png` (Arena)
+   - `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perks/augments/<id>.png`
+   - Pengu Loader Discord likely has the canonical map (covers our existing BACKLOG item to crawl)
+   No icons for ARAM Mayhem augments yet — research needed.
 
 **Deferred to UI agent review (don't ship until reviewed):**
-- Grade icon (S/A/B/C/D badge in hero) redesign — operator: "harsh to view... doesn't visually flow." Once UI agent passes, propagate to all pages using the badge.
-- Tab title color-tying to the panel it controls — operator: "we can ask the ui agent when its time."
+- Item #6 above (grade-letter badge redesign) + post-approval propagation to all pages using the badge.
+- Item #2 above (tab title color-tying).
+
+**Operator's session closing instruction** (verbatim): _"do /done for a /clear then next session to finish C and E and settings page add, then a quick lookover for anything else"_
+   → Priority order for next session: (1) Item C, (2) Item E, (3) Settings page additions, (4) sweep the 9 polish items above + verify CS alignment (#3) still holds + check for anything else missed across the session that didn't land in this list.
 
 ## Blockers / don't redo
 
