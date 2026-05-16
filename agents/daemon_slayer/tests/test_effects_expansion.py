@@ -7667,7 +7667,13 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          0 'Blood Frenzy' has NO damage block — form 1 'Snack
         #          Attack' is the whole W), Evelynn E=1 (Empowered
         #          Whiplash — Eve's canonical Demon-Shade combo).
-        self.assertEqual(ENGINE_VERSION, "0.98.0")
+        # 0.99.0 = s227 Phase 5.9.27 max_priority audit. 3 ADDs of
+        #          universally-established W-first orders the registry
+        #          missed: Brand W-E-Q (+18.7%), Fiddlesticks W-E-Q
+        #          (+16.4%), Talon W-Q-E (+12.0%). Finding: the numeric
+        #          pre-filter over-flags (≠ real play); max_priority +
+        #          combo_sequence are meta-curated, not numeric-swept.
+        self.assertEqual(ENGINE_VERSION, "0.99.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7728,7 +7734,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.98.0")
+        self.assertEqual(ENGINE_VERSION, "0.99.0")
 
 
 if __name__ == "__main__":
