@@ -714,6 +714,210 @@ def _enrich_from_lcu(lcu_detail: dict, tracked_puuid: str) -> dict:
     return out
 
 
+def _enrich_match_timeline(timeline: dict, lcu_detail: dict,
+                           my_team_id) -> dict:
+    """Parse a Riot Match-V5 timeline payload (…/matches/{id}/timeline)
+    into the per-minute differential series + objective-event ribbon the
+    Post Game Review "Timeline" tab renders (s220 Item E, phase 1).
+
+    Match-V5 nests the per-minute frames under ``info``; a flat top-level
+    ``frames`` list is also accepted (defensive). Participant→team comes
+    from the stashed LCU match detail — Match-V5 timelines only map
+    participantId→puuid, not teamId.
+
+    All diffs are ally_total − enemy_total, so a positive value means the
+    operator's team was ahead. Per-frame participant `position` data is
+    deliberately NOT parsed here — that's the phase-2 interactive replay
+    minimap, which reads the same Match-V5 timeline.
+
+    Output shape:
+      {
+        "frame_interval_ms": 60000,
+        "duration_s": 1930,
+        "minutes": [0, 1, 2, ...],            # one x value per frame
+        "series": {"gold": [...], "xp": [...], "cs": [...]},
+        "final":  {"gold": int, "xp": int, "cs": int},
+        "events": [{"t_s", "clock", "kind", "team", "label"}, ...],
+      }
+    Returns {} on any structural problem (Arena / round-based modes carry
+    no per-minute frames — the caller renders a placeholder)."""
+    if not isinstance(timeline, dict):
+        return {}
+    info = timeline.get("info")
+    src = info if (isinstance(info, dict) and info.get("frames")) else timeline
+    frames = src.get("frames")
+    if not isinstance(frames, list) or not frames:
+        return {}
+
+    # participantId -> teamId from the detail payload.
+    pid_team: dict = {}
+    for p in (lcu_detail.get("participants") or []):
+        pid = p.get("participantId")
+        if pid is not None:
+            try:
+                pid_team[int(pid)] = p.get("teamId")
+            except (TypeError, ValueError):
+                continue
+    if not pid_team:
+        return {}
+    teams_seen = sorted({v for v in pid_team.values() if v is not None})
+    my_tid = my_team_id if my_team_id in teams_seen else (
+        teams_seen[0] if teams_seen else 100)
+
+    interval = int(src.get("frameInterval") or 60000)
+
+    minutes: list = []
+    s_gold: list = []
+    s_xp: list = []
+    s_cs: list = []
+    for idx, fr in enumerate(frames):
+        pf = fr.get("participantFrames") or {}
+        ally = {"gold": 0, "xp": 0, "cs": 0}
+        enemy = {"gold": 0, "xp": 0, "cs": 0}
+        for raw_pid, pdata in pf.items():
+            if not isinstance(pdata, dict):
+                continue
+            try:
+                pid = int(pdata.get("participantId") or raw_pid)
+            except (TypeError, ValueError):
+                continue
+            bucket = ally if pid_team.get(pid) == my_tid else enemy
+            bucket["gold"] += int(pdata.get("totalGold") or 0)
+            bucket["xp"]   += int(pdata.get("xp") or 0)
+            bucket["cs"]   += (int(pdata.get("minionsKilled") or 0)
+                               + int(pdata.get("jungleMinionsKilled") or 0))
+        ts_ms = fr.get("timestamp")
+        if ts_ms is None:
+            ts_ms = idx * interval
+        minutes.append(round(ts_ms / 60000.0))
+        s_gold.append(ally["gold"] - enemy["gold"])
+        s_xp.append(ally["xp"] - enemy["xp"])
+        s_cs.append(ally["cs"] - enemy["cs"])
+
+    def _ev_team(ev: dict) -> str:
+        try:
+            killer = int(ev.get("killerId") or 0)
+        except (TypeError, ValueError):
+            killer = 0
+        if killer in pid_team:
+            return "ally" if pid_team[killer] == my_tid else "enemy"
+        ktid = ev.get("killerTeamId")
+        if ktid in teams_seen:
+            return "ally" if ktid == my_tid else "enemy"
+        # BUILDING_KILL.teamId is the team that LOST the structure.
+        lost = ev.get("teamId")
+        if lost in teams_seen:
+            return "enemy" if lost == my_tid else "ally"
+        return "neutral"
+
+    _MON = {
+        "DRAGON":       ("dragon",  "Dragon"),
+        "RIFTHERALD":   ("herald",  "Rift Herald"),
+        "BARON_NASHOR": ("baron",   "Baron"),
+        "HORDE":        ("grubs",   "Void Grubs"),
+        "ATAKHAN":      ("atakhan", "Atakhan"),
+    }
+    events: list = []
+    first_blood_taken = False
+    for fr in frames:
+        for ev in (fr.get("events") or []):
+            if not isinstance(ev, dict):
+                continue
+            et = ev.get("type") or ""
+            t_s = int(ev.get("timestamp") or 0) // 1000
+            clock = f"{t_s // 60}:{t_s % 60:02d}"
+            if et == "CHAMPION_KILL" and not first_blood_taken:
+                first_blood_taken = True
+                events.append({"t_s": t_s, "clock": clock,
+                               "kind": "first_blood", "team": _ev_team(ev),
+                               "label": "First Blood"})
+            elif et == "ELITE_MONSTER_KILL":
+                kind, lbl = _MON.get(ev.get("monsterType") or "",
+                                     ("objective", "Objective"))
+                sub = ev.get("monsterSubType") or ""
+                if kind == "dragon" and sub:
+                    pretty = sub.replace("_DRAGON", "").replace("_", " ").title()
+                    if pretty:
+                        lbl = f"{pretty} Dragon"
+                events.append({"t_s": t_s, "clock": clock, "kind": kind,
+                               "team": _ev_team(ev), "label": lbl})
+            elif et == "BUILDING_KILL":
+                bt = ev.get("buildingType") or ""
+                if bt == "TOWER_BUILDING":
+                    events.append({"t_s": t_s, "clock": clock,
+                                   "kind": "tower", "team": _ev_team(ev),
+                                   "label": "Tower"})
+                elif bt == "INHIBITOR_BUILDING":
+                    events.append({"t_s": t_s, "clock": clock,
+                                   "kind": "inhibitor", "team": _ev_team(ev),
+                                   "label": "Inhibitor"})
+    events.sort(key=lambda e: e["t_s"])
+    # Bound payload — a stomp can rack up 20+ structures; 60 keeps the
+    # ribbon readable and raw_data lean.
+    if len(events) > 60:
+        events = events[:60]
+
+    dur = int(lcu_detail.get("gameDuration") or 0)
+    if dur <= 0 and frames:
+        last_ts = frames[-1].get("timestamp") or 0
+        dur = int(last_ts / 1000)
+
+    return {
+        "frame_interval_ms": interval,
+        "duration_s": dur,
+        "minutes": minutes,
+        "series": {"gold": s_gold, "xp": s_xp, "cs": s_cs},
+        "final": {
+            "gold": s_gold[-1] if s_gold else 0,
+            "xp":   s_xp[-1] if s_xp else 0,
+            "cs":   s_cs[-1] if s_cs else 0,
+        },
+        "events": events,
+    }
+
+
+# Match-V5 routing cluster by platform id. Match-V5 (incl. /timeline)
+# uses the regional cluster, not the platform cluster. Default americas.
+_MV5_REGION_BY_PLATFORM = {
+    "NA1": "americas", "BR1": "americas", "LA1": "americas",
+    "LA2": "americas", "OC1": "americas",
+    "EUW1": "europe", "EUN1": "europe", "TR1": "europe", "RU": "europe",
+    "KR": "asia", "JP1": "asia",
+}
+
+
+def _attach_match_timeline(enriched: dict, lcu_detail: dict) -> None:
+    """Fetch the Riot Match-V5 timeline for this game and attach the
+    parsed result to ``enriched["timeline"]`` (s220 Item E, phase 1).
+
+    The LCU exposes no per-game timeline endpoint, so the authoritative
+    source is Match-V5 (…/matches/{platform}_{gameId}/timeline) — exactly
+    the consumer s148 anticipated. ``core.riot_api.get_match_timeline``
+    is immutable-cached: one Riot call per match, then served from cache.
+
+    Degrades silently — when the Riot key is missing/revoked (returns
+    None) or anything raises, ``enriched["timeline"]`` is simply not set
+    and the frontend shows its "Timeline pending" placeholder. This must
+    never break /api/last-match."""
+    try:
+        platform = str(lcu_detail.get("platformId") or "").upper()
+        game_id = lcu_detail.get("gameId")
+        if not platform or not game_id:
+            return
+        match_id = f"{platform}_{game_id}"
+        region = _MV5_REGION_BY_PLATFORM.get(platform, "americas")
+        from core import riot_api  # lazy — avoids import cost on cold paths
+        timeline = riot_api.get_match_timeline(match_id, region=region)
+        if not isinstance(timeline, dict):
+            return
+        parsed = _enrich_match_timeline(
+            timeline, lcu_detail, enriched.get("team_id"))
+        if parsed:
+            enriched["timeline"] = parsed
+    except Exception as exc:  # never break the page over a timeline
+        _log.warning("_attach_match_timeline: %s", exc)
+
+
 def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a: int) -> list[dict]:
     """Team-level "what went wrong" signals derived from LCU enrichment.
 
@@ -1046,7 +1250,7 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
     }
 
 
-def _build_last_match() -> dict:
+def _build_last_match(baseline: int = 20) -> dict:
     """Latest non-TFT match for the Last Match page.
 
     Source: data/match_history.db (operator-centric — KDA / CS / gold /
@@ -1063,6 +1267,14 @@ def _build_last_match() -> dict:
       }
     """
     import json
+    # s220: baseline window is operator-configurable from the Settings
+    # page (localStorage rc-pgr-baseline → ?baseline= query param).
+    # Clamp to a sane range; default 20 preserves pre-s220 behavior.
+    try:
+        baseline = int(baseline)
+    except (TypeError, ValueError):
+        baseline = 20
+    baseline = max(5, min(50, baseline))
     out: dict = {"found": False, "match": None, "history_count": 0}
     db_path = _APP_DIR / "data" / "match_history.db"
     conn = _ro_conn(db_path)
@@ -1102,6 +1314,16 @@ def _build_last_match() -> dict:
 
         kda_ratio = round((int(k or 0) + int(a or 0)) / max(int(d or 0), 1), 2)
 
+        # s220 Item E: attach the Match-V5 per-minute timeline (gold/xp/cs
+        # differential + objective ribbon) onto the enriched blob for the
+        # Post Game Review "Timeline" tab. Server-side fetch — the LCU has
+        # no timeline endpoint; Match-V5 is the source (immutable-cached,
+        # degrades to a placeholder when the Riot key is unavailable).
+        enriched = (_enrich_from_lcu(lcu_detail, tracked_puuid)
+                    if (lcu_detail and tracked_puuid) else None)
+        if enriched and lcu_detail:
+            _attach_match_timeline(enriched, lcu_detail)
+
         match_row = {
             "id":               int(mid),
             "timestamp":        ts,
@@ -1123,8 +1345,7 @@ def _build_last_match() -> dict:
             "coach_action":     coach_action,
             "ds_picks":         ds_picks,
             "lcu_ingested_at":  lcu_ingested_at,
-            "enriched":         _enrich_from_lcu(lcu_detail, tracked_puuid)
-                                if (lcu_detail and tracked_puuid) else None,
+            "enriched":         enriched,
         }
 
         # Baseline rows for chronic-fail computation (exclude this one)
@@ -1132,8 +1353,8 @@ def _build_last_match() -> dict:
         cur = conn.execute(
             "SELECT mode, grade, kills, deaths, assists, cs, cs_per_min "
             "FROM matches WHERE mode != 'TFT' AND id != ? "
-            "ORDER BY timestamp DESC LIMIT 20",
-            (int(mid),)
+            "ORDER BY timestamp DESC LIMIT ?",
+            (int(mid), baseline)
         )
         for h_mode, h_grade, hk, hd, ha, h_cs, h_cspm in cur:
             history.append({
