@@ -6,6 +6,34 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s229 wrap — 2026-05-16 (DS Phase 5.9.29: conditional seed-expansion + vocab generalization)
+
+**Operator instruction:** "continue" (continuing s228's option B). First surfaced — via AskUserQuestion — that the signed-off literal "B-2" (thread per-tick liveclient HP/CC into the ranking call) is a **mis-feature** for the only DS surface that exists (item-build recommendation): per-tick enemy HP would flicker build recs, and the operator-commits default (Part 1) is the *correct* strategic model — the schema's value is already delivered. **Operator chose "pivot → pure-data conditional seed-expansion"** (the proven s207→s215/s217 cadence).
+
+## What happened
+
+`target_current_hp_pct` is already plumbed end-to-end (only `_serve_ds_preview_post` doesn't supply it); `target_no_cc` has NO liveclient signal. So literal B-2 is shelved as a mis-feature (it would need a separate *live-advisory* product surface, not DS-engine work). Continued option B's spirit with a pure-data batch on the s228 schema.
+
+## Shipped (committed)
+
+- **Vocab generalized `target_no_cc` → `target_no_setup`.** s228 scoped the non-HP condition to its CC-family flagships (sleep/charm); the expansion candidates (Anivia *chill*, Brand *ablaze*) share the identical modeling semantic regardless of debuff type — "operator's own ability applied an amp-enabling target state; default = committed/canonical amped block, condition key = un-amped downgrade." 5+ concrete uses → the honest general term (vocab stays **2**: `{target_full_hp, target_no_setup}`, NOT over-built — s227's lesson was about numeric sweeps, not naming a 5-instance conditional). Engine validator now **rejects the old key** (stale `target_no_cc` fails loudly). s228's Zoe E + Evelynn Q migrated.
+- **3 conversions of already-shipped unconditional entries** — all provably Part-1 no-op (`"default"` == prior int), verified per-rank vs Meraki 16.10.1, live-A/B confirmed on :8893: **Morgana W** `{default:3,target_full_hp:2}` (block 3 = exactly **2.7×** block 2; the <50%-max-HP amp — s195's "vs rooted" framing was imprecise, the Q-root is the operator's *setup*; reg 459.00==forced{W:3}), **Anivia E** `{default:1,target_no_setup:0}` (block 1 = **2.0×** block 0 vs Chilled; reg 300.00==forced{E:1}), **Brand W** `{default:1,target_no_setup:0}` (block 1 = **1.25×** block 0 vs ablaze; reg 318.75==forced{W:1}). Migrations live-verified (Zoe E 140.00, Evelynn Q 345.00; caller-cond Anivia E `{default:0,target_no_setup:2}`→150.00==forced{E:0}).
+- Registry stays **125 champions** (in-place). `_meta` description+rationale appended (surgical str.replace). New `test_conditional_block_index_s229.py` (~30 tests) + global `target_no_cc`→`target_no_setup` rename (33 refs / 4 files) + 12 `test_block_index_overrides` stale pins migrated to conditional-shape + Part-1-equivalence (the s228 iterative-suite-pinpoint method) + 10 ENGINE pin bumps. ENGINE **1.0.0→1.1.0**. DS suite 2188→**2210**; wider RC **1107**; ruff+py_compile clean; DS restarted → `/health` **1.1.0**.
+
+## Don't-redo / blockers
+
+- **Conversions are intentionally zero-numeric-change** (Part-1 resolves to `"default"` == prior int). The amp ratios (2.7× / 2.0× / 1.25×) only manifest when a future *live-advisory* surface consumes the downgrade branch — NOT in item ranking. Don't "fix" the no-op.
+- **The discrete-pair requirement** for a conditional conversion: the ability must have TWO same-shape damage blocks (amped vs un-amped). Bel'Veth R was rejected for exactly this — its 25% missing-HP is *continuous within* one block (handled by `_SCALING_TARGETS`), not a discrete pair. Continuous in-block %HP scaling is NOT a conditional candidate.
+- **Veigar R is the canonical stable-int test fixture** (`test_sum_of_blocks` + `test_block_index_overrides` GetBlockIndexFor/ResolveBlockIndex/known_champion_overrides). It IS a clean target_full_hp execute (DMG1=2.0×DMG0) but converting it cascades a fixture-repoint — defer until a fixture migration is independently warranted, or pick a non-fixture execute.
+- **DrMundo E is caster-missing-HP, not target** (its Min/Max scale on `caster_bonus_hp_pct`) — needs a `caster_low_hp` vocab term, flag for operator. The recurring "DrMundo E missing-HP" carry-forward keeps mischaracterizing this.
+- Literal B-2 (per-tick HP→ranking) is **shelved as a mis-feature**; don't re-attempt it as DS-engine plumbing.
+
+## NEXT (self-continuing loop)
+
+More pure-data conditional seed-expansion on the stable 2-term vocab: Lux Illumination, Aatrox W chain-landed (resolve the positional-vs-CC question first), Fiddle Q fear-state, the debuff-state family (Cassi E poison once its irregular 18-element Meraki base array is understood). Each entry needs Meraki block verification (rigor bar — verify the discrete-pair requirement; do NOT trust ROADMAP/_meta block-number recollection). s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
+
+---
+
 # s228 wrap — 2026-05-16 (DS Phase 5.9.28: conditional-target-state block_index schema lift — Part 1)
 
 **Operator instruction:** "continue DS". Surfaced via AskUserQuestion that pure-data registry work is **exhausted** (s223-227, 5 iterations, all 4 override registries swept) and the only remaining DS vein is the conditional-target-state schema lift — flagged across the s225/s226/s227 hand-offs as architectural + needing sign-off. **Operator chose option B** (multi-session: schema + live target-state plumbing). This commit = **Part 1**.
