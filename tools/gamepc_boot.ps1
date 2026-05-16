@@ -36,8 +36,16 @@ Write-Host ''
 Write-Host '=== Game-PC pre-flight ===' -ForegroundColor Cyan
 
 # 1. Refresh agent scripts from Legion (canonical source).
+# `tasksOwn` = launched exclusively by its own ONLOGON scheduled
+# task(s); boot must NOT also direct-launch it. Set on the screen
+# agent because it has THREE variant tasks (RC-ScreenAgent-League /
+# -Minimap / -UI = primary-game / 5Hz-minimap / monitor-1-UI streams).
+# A boot direct-launch would race those tasks and spawn a 4th
+# default-channel instance → two monitor-0 primary captures fighting
+# over /latest-frame. It is still refreshed from Legion below (the
+# refresh loop ignores this flag — only launch/task-ensure honour it).
 $AGENTS = @(
-    @{ name = 'gamepc_screen_agent.py';     port = $null;  task = 'RC-ScreenAgent'      },
+    @{ name = 'gamepc_screen_agent.py';     port = $null;  task = 'RC-ScreenAgent';     tasksOwn = $true },
     @{ name = 'gamepc_lcu_agent.py';        port = $null;  task = 'RC-LCU'              },
     @{ name = 'gamepc_liveclient_relay.py'; port = $null;  task = 'RC-LiveClientRelay'  },
     @{ name = 'gamepc_mcp_server.py';       port = 8892;   task = 'RC-MCP-Server'       },
@@ -175,6 +183,10 @@ function Ensure-Agent {
 }
 
 foreach ($a in $AGENTS) {
+    if ($a.tasksOwn) {
+        Write-Host "  $($a.name): launched by its ONLOGON task(s); skipping boot direct-launch" -ForegroundColor DarkGray
+        continue
+    }
     Ensure-Agent -name $a.name -port $a.port -task $a.task
 }
 
@@ -194,6 +206,13 @@ if (-not (Test-Path $pyExe)) {
 }
 
 foreach ($a in $AGENTS) {
+    if ($a.tasksOwn) {
+        # Variant tasks (RC-ScreenAgent-League/-Minimap/-UI) are managed
+        # deliberately out-of-band with the correct bettercam interpreter.
+        # Never let boot recreate a no-suffix RC-ScreenAgent here (it would
+        # use the wrong/legacy interpreter and double-launch).
+        continue
+    }
     $existing = Get-ScheduledTask -TaskName "$($a.task)*" -ErrorAction SilentlyContinue
     if ($existing) {
         # Already covered (exact or variant). Nothing to do.
