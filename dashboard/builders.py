@@ -699,6 +699,184 @@ def _enrich_from_lcu(lcu_detail: dict, tracked_puuid: str) -> dict:
     return out
 
 
+def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a: int) -> list[dict]:
+    """Team-level "what went wrong" signals derived from LCU enrichment.
+
+    enriched.teams provides:  win, first_blood, first_tower, first_baron,
+      first_dragon, first_inhibitor, baron_kills, dragon_kills, tower_kills,
+      inhibitor_kills, rift_herald_kills, horde_kills, bans.
+
+    Heuristics per mode bucket:
+      - SR (queueId 400/420/430/440):
+          objective-control + soul + baron + tower diff
+      - ARAM / Mayhem (queueId 450 / 2400 / KIWI mode):
+          tower diff + KDA disparity (only rift to push on)
+      - Arena (queueId 1700/1710 / CHERRY mode):
+          deferred — 4 subteam paradigm doesn't fit win/loss heuristics
+      - Other: degrade gracefully to operator-side death/KDA proxies.
+
+    Each emitted item is {text, why} — `why` backs the tooltip on hover.
+    """
+    out: list[dict] = []
+
+    teams = enriched.get("teams") or []
+    if len(teams) < 2:
+        return out
+    my_tid = enriched.get("team_id")
+    me = next((t for t in teams if t.get("team_id") == my_tid), None)
+    opp = next((t for t in teams if t.get("team_id") != my_tid), None)
+    if not me or not opp:
+        return out
+
+    queue_id  = enriched.get("queue_id") or 0
+    game_mode = (enriched.get("game_mode") or "").upper()
+    is_arena   = queue_id in (1700, 1710) or game_mode == "CHERRY"
+    is_aram    = (queue_id == 450 or queue_id == 2400
+                  or game_mode in ("ARAM", "KIWI"))
+    is_sr      = (queue_id in (400, 420, 430, 440)
+                  or (game_mode == "CLASSIC" and not is_aram))
+
+    if is_arena:
+        # Arena's 4-team structure doesn't fit a single ally/enemy frame
+        # cleanly. Skip team-level heuristics; the chronic + right
+        # sections still fire on operator-side stats.
+        return out
+
+    # ── First-objective losses (works in SR + ARAM) ────────────────────
+    if opp.get("first_blood") and not me.get("first_blood"):
+        out.append({
+            "text": "Lost first blood",
+            "why":  ("Enemy team took first blood — early gold + tempo "
+                     "advantage. Worth reviewing the lane / fight that opened "
+                     "the match in the deep Review page."),
+        })
+    if opp.get("first_tower") and not me.get("first_tower"):
+        out.append({
+            "text": "Lost first tower",
+            "why":  ("Enemy team took the first tower (250g globally + "
+                     "platings + first-tower trinket bounty). Indicates "
+                     "early lane pressure was conceded — common cause: "
+                     "death timer + freeze break."),
+        })
+
+    # ── Tower differential (SR only — ARAM has its own framing below) ─
+    my_towers  = int(me.get("tower_kills") or 0)
+    opp_towers = int(opp.get("tower_kills") or 0)
+    if is_sr and opp_towers - my_towers >= 4:
+        out.append({
+            "text": f"Tower diff −{opp_towers - my_towers} (lost {opp_towers}-{my_towers})",
+            "why":  (f"Enemy took {opp_towers} towers to your {my_towers} — "
+                     f"map pressure was lopsided. Each tower is ~430g + "
+                     f"vision real estate. Re-watching mid-game roams in "
+                     f"the deep Review page would surface where the trades "
+                     f"went sideways."),
+        })
+
+    if is_sr:
+        # ── Dragon control + soul ─────────────────────────────────────
+        my_drag  = int(me.get("dragon_kills") or 0)
+        opp_drag = int(opp.get("dragon_kills") or 0)
+        if opp_drag >= 4 and not me.get("win"):
+            out.append({
+                "text": f"Enemy got soul ({opp_drag} drakes)",
+                "why":  (f"4+ dragons = Dragon Soul, a permanent team-wide "
+                         f"power-spike. You finished with {my_drag}; review "
+                         f"early drake setups + vision in the deep Review."),
+            })
+        elif opp_drag - my_drag >= 2:
+            out.append({
+                "text": f"Dragon control lost ({my_drag}-{opp_drag})",
+                "why":  (f"Enemy took {opp_drag} dragons to your {my_drag}. "
+                         f"Each dragon stack is a teamwide bonus — review "
+                         f"who was contesting + your top-side trades that "
+                         f"enabled the call."),
+            })
+
+        # ── Baron giveaway ────────────────────────────────────────────
+        my_baron  = int(me.get("baron_kills") or 0)
+        opp_baron = int(opp.get("baron_kills") or 0)
+        if opp_baron > 0 and my_baron == 0:
+            out.append({
+                "text": f"Gave up Baron(s) ×{opp_baron}",
+                "why":  (f"Enemy took {opp_baron} Baron Nashor with zero "
+                         f"answer from your team. Baron buff fuels minion "
+                         f"empowerment + sieges; review vision setup before "
+                         f"the pit fight in the deep Review."),
+            })
+
+        # ── Rift Herald ───────────────────────────────────────────────
+        my_herald  = int(me.get("rift_herald_kills") or 0)
+        opp_herald = int(opp.get("rift_herald_kills") or 0)
+        if opp_herald > 0 and my_herald == 0:
+            out.append({
+                "text": "Gave up Rift Herald",
+                "why":  ("Enemy took Herald with no answer. Each Herald is "
+                         "~5 plates of pressure on whichever lane it gets "
+                         "dumped in — review jungle / mid pathing 8-14min."),
+            })
+
+    elif is_aram:
+        # ARAM Mayhem (KIWI) and ARAM Classic — tower-diff is the
+        # main team-level signal; dragons/baron don't exist.
+        if opp_towers > 0 and my_towers == 0:
+            out.append({
+                "text": f"Lost every tower trade ({opp_towers}-0)",
+                "why":  (f"Enemy team broke {opp_towers} of your towers "
+                         f"without taking one back — pure attrition loss. "
+                         f"Common in ARAM when comp lacks AOE waveclear "
+                         f"vs siege champions."),
+            })
+
+    # ── Roster aggregates (works in any 5v5 mode) ─────────────────────
+    roster = enriched.get("roster") or []
+    if roster:
+        my_side  = [r for r in roster if r.get("team_id") == my_tid]
+        opp_side = [r for r in roster if r.get("team_id") != my_tid]
+        if my_side and opp_side:
+            my_k  = sum(int(r.get("kills") or 0)  for r in my_side)
+            my_d  = sum(int(r.get("deaths") or 0) for r in my_side)
+            opp_k = sum(int(r.get("kills") or 0)  for r in opp_side)
+            opp_d = sum(int(r.get("deaths") or 0) for r in opp_side)
+            if opp_k >= my_k * 1.5 and opp_k - my_k >= 10:
+                out.append({
+                    "text": f"Team kill deficit ({my_k}-{opp_k})",
+                    "why":  (f"Enemy outscored your team {opp_k} kills to "
+                             f"{my_k} (1.5×+ ratio with a 10+ gap). Each "
+                             f"team-fight you took was net-losing — review "
+                             f"engage timings + comp synergy."),
+                })
+            my_gold  = sum(int(r.get("gold") or 0) for r in my_side)
+            opp_gold = sum(int(r.get("gold") or 0) for r in opp_side)
+            if opp_gold - my_gold >= 8000:
+                out.append({
+                    "text": f"Gold deficit −{(opp_gold - my_gold)//1000}k",
+                    "why":  (f"Enemy ended {opp_gold - my_gold}g ahead "
+                             f"({(opp_gold/1000):.1f}k vs {(my_gold/1000):.1f}k). "
+                             f"That's roughly an extra completed mythic + "
+                             f"finisher across the team — review mid-game "
+                             f"objective trades."),
+                })
+
+    # ── Operator-side proxies (always fire if applicable) ─────────────
+    if op_d >= 10:
+        out.append({
+            "text": f"Death count cost the team ({op_d} deaths)",
+            "why":  (f"{op_d} deaths is a 10+ threshold. Even with the "
+                     f"objectives + team aggregates above, each personal "
+                     f"death is gold + 30+s map pressure handed back."),
+        })
+
+    if not out:
+        out.append({
+            "text": "No team-level red flags this match",
+            "why":  ("LCU enrichment surfaced team data but nothing tripped "
+                     "the heuristics (no early-objective loss, tower diff "
+                     "<4, no soul/baron giveaway, no major gold/kill gap)."),
+        })
+
+    return out
+
+
 def _compute_quick_review(current: dict, history: list[dict]) -> dict:
     """Compute the 3-section Quick Review for the Last Match page.
 
@@ -775,31 +953,34 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
         })
 
     # ── wrong_team: team-level issues this match ────────────────────────
-    # match_history.db is operator-centric (no team roster, no
-    # objectives, no per-player breakdown). Once the Match-V5 enrich
-    # button (v2) lands, we'll surface: lost first tower, lost first
-    # drag, lopsided team-fight win-rate, soul/baron giveaways, etc.
-    wrong_team.append({
-        "text": "Team data unavailable",
-        "why": "match_history.db captures operator-side stats only. The "
-               "v2 Refresh from Riot API button will pull team comp + "
-               "objectives via Match-V5 to populate this section.",
-    })
-    # We CAN still flag operator-side death spikes as a team-cost proxy:
-    if d >= 10:
+    # If LCU enrichment is present, surface real team-level signals
+    # (objectives lost, comp asymmetry, gold deficit). Falls back to
+    # operator-side proxies (death spike + sub-1 KDA) when enrichment
+    # is missing (e.g. agent hasn't pushed yet, or pre-s219 row).
+    enriched = current.get("enriched") if isinstance(current, dict) else None
+    if isinstance(enriched, dict) and enriched.get("teams"):
+        wrong_team.extend(_compute_wrong_team_from_enriched(enriched, k, d, a))
+    else:
         wrong_team.append({
-            "text": f"Death count cost the team ({d} deaths)",
-            "why": f"{d} deaths is a 10+ threshold — even with high KP "
-                   f"({int(kp) if isinstance(kp,(int,float)) else '?'}%), "
-                   f"each death is gold + 30+s map pressure handed back.",
+            "text": "Team data unavailable",
+            "why": "LCU match detail not ingested yet. The Game-PC LCU "
+                   "agent auto-POSTs on EndOfGame; this section unlocks "
+                   "team objectives + roster signals once that lands.",
         })
-    if cur_kda < 1.0 and (k + d + a) > 0:
-        wrong_team.append({
-            "text": f"Sub-1 KDA ({cur_kda})",
-            "why": f"{k}/{d}/{a} = {cur_kda} — below the 1.0 baseline; "
-                   f"deaths outpaced (kills + assists), so each fight "
-                   f"likely net-negative for the team.",
-        })
+        if d >= 10:
+            wrong_team.append({
+                "text": f"Death count cost the team ({d} deaths)",
+                "why": f"{d} deaths is a 10+ threshold — even with high KP "
+                       f"({int(kp) if isinstance(kp,(int,float)) else '?'}%), "
+                       f"each death is gold + 30+s map pressure handed back.",
+            })
+        if cur_kda < 1.0 and (k + d + a) > 0:
+            wrong_team.append({
+                "text": f"Sub-1 KDA ({cur_kda})",
+                "why": f"{k}/{d}/{a} = {cur_kda} — below the 1.0 baseline; "
+                       f"deaths outpaced (kills + assists), so each fight "
+                       f"likely net-negative for the team.",
+            })
 
     # ── my_chronic: repeated patterns across history ────────────────────
     if history:
