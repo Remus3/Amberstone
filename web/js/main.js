@@ -30,7 +30,7 @@ import { renderActiveMatch, activeMatchEnabled } from './panels/active_match.js'
 import { renderBridgePending, renderCoachDecisions, renderRecentCoachCalls } from './panels/bridge_pending.js';
 // ADR-007 (s169) — heartbeat pill self-starts on import (own setInterval).
 import './panels/trigger_pill.js';
-import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce, _devViewFetch, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
+import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
 
   const WS_HOST = location.hostname || "legion-pc.local";
   const WS_PORT = 8891;
@@ -585,7 +585,6 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     if (viewId === "replay")      { _replayViewWireOnce(); _replayViewRefresh(); }
     if (viewId === "user-builds") { _userBuildsWireOnce(); _userBuildsFetchAndRender(); }
     if (viewId === "settings")    { _settingsRefresh(); }
-    if (viewId === "dev")         { _devViewWireOnce(); _devViewFetch(); }
   }
   function _viewUpdateTitleLabel(viewId) {
     const el = document.getElementById("view-current-label");
@@ -1516,6 +1515,80 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
         set("history-season-total", ss.total != null ? ss.total : "—");
         set("history-season-kda",   ss.avg_kda != null ? ss.avg_kda.toFixed(2) : "—");
         set("history-season-fav",   ss.favorite || "—");
+
+        // s218 v7: deep-link focus by champion (clicked from Tonight's
+        // Pick on Home). Find the most recent session containing the
+        // champion, auto-select it, highlight all matching match rows.
+        let focusChamp = null;
+        try { focusChamp = sessionStorage.getItem("rc-history-focus-champion"); } catch (_) {}
+        if (focusChamp && ul) {
+          try { sessionStorage.removeItem("rc-history-focus-champion"); } catch (_) {}
+          const sessions = d.sessions || [];
+          const champLower = String(focusChamp).toLowerCase();
+          let targetIdx = sessions.findIndex(s =>
+            (s.matches || []).some(m => String(m.champion || "").toLowerCase() === champLower)
+          );
+          if (targetIdx < 0 && sessions.length > 0) targetIdx = 0;
+          if (targetIdx >= 0) {
+            const session = sessions[targetIdx];
+            _HISTORY.selectedSession = targetIdx;
+            ul.querySelectorAll(".history-session-row").forEach((r) => r.classList.remove("active"));
+            const sessionRow = ul.querySelector(`[data-session-idx="${targetIdx}"]`);
+            if (sessionRow) sessionRow.classList.add("active");
+            _historyRenderMatches(session);
+            const head = document.getElementById("history-detail-head");
+            if (head) head.textContent = `MATCHES · ${session.date} · ${session.games}g · ${focusChamp}`;
+            requestAnimationFrame(() => {
+              const matchUl = document.getElementById("history-match-list");
+              if (!matchUl) return;
+              const rows = matchUl.querySelectorAll(".history-match-row");
+              let firstMatch = null;
+              rows.forEach(row => {
+                const champText = row.querySelector("span:nth-child(2)");
+                const t = champText ? champText.textContent : "";
+                if (t.toLowerCase().includes(champLower)) {
+                  row.classList.add("is-focused");
+                  if (!firstMatch) firstMatch = row;
+                  setTimeout(() => row.classList.remove("is-focused"), 3500);
+                }
+              });
+              if (firstMatch) firstMatch.scrollIntoView({ behavior: "smooth", block: "center" });
+            });
+          }
+        }
+        // s218 v6: deep-link focus from Recent 5 click on Home. The
+        // pending timestamp is "YYYY-MM-DD HH:MM:SS". Find the session
+        // whose date prefix matches, auto-select it, then scroll +
+        // highlight the matching match row briefly.
+        let focusTs = null;
+        try { focusTs = sessionStorage.getItem("rc-history-focus-ts"); } catch (_) {}
+        if (focusTs && ul) {
+          try { sessionStorage.removeItem("rc-history-focus-ts"); } catch (_) {}
+          const dateStr = String(focusTs).split(" ")[0];
+          const sessions = d.sessions || [];
+          let targetIdx = sessions.findIndex(s => s.date === dateStr);
+          if (targetIdx < 0 && sessions.length > 0) targetIdx = 0; // fallback: latest
+          if (targetIdx >= 0) {
+            const session = sessions[targetIdx];
+            _HISTORY.selectedSession = targetIdx;
+            ul.querySelectorAll(".history-session-row").forEach((r) => r.classList.remove("active"));
+            const sessionRow = ul.querySelector(`[data-session-idx="${targetIdx}"]`);
+            if (sessionRow) sessionRow.classList.add("active");
+            _historyRenderMatches(session);
+            const head = document.getElementById("history-detail-head");
+            if (head) head.textContent = `MATCHES · ${session.date} · ${session.games}g`;
+            requestAnimationFrame(() => {
+              const matchUl = document.getElementById("history-match-list");
+              if (!matchUl) return;
+              const matchRow = matchUl.querySelector(`[data-match-ts="${CSS.escape(focusTs)}"]`);
+              if (matchRow) {
+                matchRow.classList.add("is-focused");
+                matchRow.scrollIntoView({ behavior: "smooth", block: "center" });
+                setTimeout(() => matchRow.classList.remove("is-focused"), 3500);
+              }
+            });
+          }
+        }
       })
       .catch(() => {});
   }
@@ -1526,6 +1599,10 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     (session.matches || []).forEach((m) => {
       const li = document.createElement("li");
       li.className = "history-match-row";
+      // s218 v6: stamp timestamp on the row so the Recent-5 deep-link
+      // (sessionStorage "rc-history-focus-ts") can scroll + highlight
+      // the matching row after the session is selected.
+      if (m.timestamp) li.dataset.matchTs = m.timestamp;
       const grade = String(m.grade || "—")[0];
       li.innerHTML = `<span class="home-recent-grade ${grade}">${grade}</span>` +
         `<span style="flex:1; margin-left:8px">${m.champion} · ${m.mode}</span>` +
@@ -1908,11 +1985,23 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       const tier = (gradeRaw === "S" || gradeRaw === "A") ? "tier-good"
                  : (gradeRaw === "D" || gradeRaw === "F") ? "tier-bad"
                  : "tier-mid";
+      // s218: spell out duration as "X Minutes" (was "Xm").
       const dur = m.duration_s
-        ? `${Math.floor(m.duration_s / 60)}m`
+        ? `${Math.floor(m.duration_s / 60)} Minutes`
         : "";
       const tsShort = _to12((m.timestamp || "").split(" ")[1]?.slice(0,5) || "");
-      const metaParts = [m.mode, tsShort, dur].filter(Boolean).join(" · ");
+      // s218: mode subtype hook — when backend supplies mode_subtype
+      // (e.g. "Classic" / "Mayhem" for ARAM 450/920), join it to the
+      // mode label. Pure passthrough for now since match_history.db
+      // doesn't capture queue_id yet. TODO(s218-dummy-data): drop the
+      // mode_subtype branch once ingest stops returning null.
+      const modeLabel = (m.mode_subtype && m.mode_subtype !== "")
+        ? `${m.mode} ${m.mode_subtype}` : (m.mode || "");
+      // CS row chip — DB already carries cs + cs_per_min per match.
+      const csChip = (m.cs != null && m.cs > 0)
+        ? `${m.cs} CS · ${(m.cs_per_min || 0).toFixed(1)}/min`
+        : "";
+      const metaParts = [modeLabel, tsShort, dur, csChip].filter(Boolean).join(" · ");
 
       const stripe = document.createElement("div");
       stripe.className = `home-recent-stripe ${tier}`;
@@ -1938,18 +2027,53 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       meta.className = "home-recent-meta";
       meta.textContent = metaParts;
       main.append(champ, meta);
+      // s218: end-of-match item strip. PLACEHOLDER — match_history.db
+      // doesn't capture per-match item builds today.
+      // TODO(s218-dummy-data): wire to real items[] once ingest ships
+      // and remove the 6-slot dummy strip + this comment.
+      const itemStrip = document.createElement("div");
+      itemStrip.className = "home-recent-items";
+      itemStrip.dataset.dummyData = "items-pending-ingest";
+      const slotCount = (m.items && m.items.length) ? m.items.length : 6;
+      for (let i = 0; i < Math.min(slotCount, 6); i++) {
+        const slot = document.createElement("span");
+        slot.className = "home-recent-item-slot";
+        if (m.items && m.items[i]) {
+          const ii = document.createElement("img");
+          ii.className = "home-recent-item-icon";
+          ii.src = `/icons/items/${m.items[i]}.png`;
+          ii.alt = "";
+          ii.loading = "lazy";
+          ii.onerror = () => { ii.style.visibility = "hidden"; };
+          slot.appendChild(ii);
+        } else {
+          slot.classList.add("empty");
+        }
+        itemStrip.appendChild(slot);
+      }
       const kda = document.createElement("span");
       kda.className = "home-recent-kda";
       kda.textContent = m.kda || "—";
       const grade = document.createElement("span");
       grade.className = `home-recent-grade-badge ${gradeRaw}`;
       grade.textContent = gradeRaw;
-      card.append(stripe, img, main, kda, grade);
+      card.append(stripe, img, main, itemStrip, kda, grade);
 
-      // Click → open replay view if a match_id is present. Use the
-      // existing applyView helper so the URL hash + menu state stay in sync.
-      if (m.match_id && typeof applyView === "function") {
-        card.addEventListener("click", () => applyView("replay"));
+      // s218 v6: click → History view focused on this match.
+      // Saves the timestamp to sessionStorage so _historyFetchAndRender
+      // can auto-select the matching session + scroll the match row
+      // into view + highlight it briefly. Was previously gated on
+      // m.match_id (rewind_history.db ids) which the local match_history
+      // capture doesn't populate — the click handler never fired.
+      if (m.timestamp) {
+        card.style.cursor = "pointer";
+        card.addEventListener("click", () => {
+          try { sessionStorage.setItem("rc-history-focus-ts", m.timestamp); } catch (_) {}
+          if (typeof _viewSaveManual === "function") _viewSaveManual("history");
+          try { location.hash = "#history"; } catch (_) {}
+          if (typeof _viewResolveAndApply === "function") _viewResolveAndApply();
+          else if (typeof applyView === "function") applyView("history");
+        });
       }
       ul.appendChild(card);
     }
@@ -1971,6 +2095,10 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       const row = document.createElement("div");
       row.className = "home-week-bar-row";
       const gradeRaw = String(r.best_grade || "—").toUpperCase()[0] || "—";
+      // s218: hue tint by best grade — subtle spectrum from green (S/A)
+      // through neutral (B/C) to red (D/F). Applied via class so the
+      // tint colors live in CSS variables.
+      row.classList.add(`grade-tint-${gradeRaw}`);
       const pct = Math.round(((r.games || 0) / maxGames) * 100);
 
       const name = document.createElement("span");
@@ -1983,16 +2111,37 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       const gn = r.games || 0;
       games.textContent = `${gn} game${gn === 1 ? "" : "s"}`;
 
+      // s218: KDA cell now shows "1.8  22/10/18" — average + raw totals
+      // pulled from per-champion aggregation. Falls back to avg only if
+      // the backend hasn't supplied breakdown fields (pre-s218).
       const kda = document.createElement("span");
       kda.className = "home-week-bar-kda";
-      kda.textContent = (r.avg_kda != null) ? r.avg_kda.toFixed(1) : "—";
+      const avgStr = (r.avg_kda != null) ? r.avg_kda.toFixed(1) : "—";
+      if (r.kills != null && r.deaths != null && r.assists != null) {
+        kda.innerHTML = `<b>${avgStr}</b> <span class="home-week-bar-kda-raw">${r.kills}/${r.deaths}/${r.assists}</span>`;
+      } else {
+        kda.textContent = avgStr;
+      }
+
+      // s218: CS chip — AVERAGE CS per game + CS/min average over the
+      // week's games on this champion. Operator clarified average, not
+      // total. Hidden when zero (Arena / Brawl don't track CS the same
+      // way and many sessions surface 0).
+      const cs = document.createElement("span");
+      cs.className = "home-week-bar-cs";
+      if (r.cs_total != null && r.cs_total > 0 && r.games > 0) {
+        const csAvg = Math.round(r.cs_total / r.games);
+        cs.textContent = `${csAvg} CS · ${(r.cs_per_min || 0).toFixed(1)}/min`;
+      } else {
+        cs.textContent = "";
+      }
 
       const grade = document.createElement("span");
       grade.className = `home-recent-grade-badge ${gradeRaw}`;
       grade.textContent = gradeRaw;
       // No inline sizing — the .home-week-bar-row .home-recent-grade-badge
       // selector in CSS handles the inline-row variant (28x28 / 13px).
-      row.append(name, games, kda, grade);
+      row.append(name, games, kda, cs, grade);
       host.appendChild(row);
     }
   }
@@ -2045,11 +2194,12 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       } else {
         const avgStr = avg != null ? avg.toFixed(2) : "—";
         headline.textContent = `${games} game${games===1?"":"s"} · ${avgStr} avg KDA`;
-        if (avg != null) {
-          if (avg >= 2.5) headline.classList.add("up");
-          else if (avg < 1.5) headline.classList.add("down");
-          else headline.classList.add("flat");
-        }
+        // s218 v7: always .flat. The prior absolute-threshold classifier
+        // (>=2.5 up / <1.5 down) had no comparison baseline — a single
+        // 1.27-KDA day rendered as "down/red" even though there was
+        // nothing to compare against. Real up/down should wait until
+        // a yesterday/avg-of-last-N baseline is wired.
+        headline.classList.add("flat");
       }
     }
 
@@ -2107,6 +2257,9 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
         _HOME.fetching = false;
         if (!data) return;
         _HOME.lastFetchAt = Date.now();
+        // s218 v7: cache streaks so _homeMirrorAlerts can read them
+        // when populating Section 3 of Tonight's Pick.
+        _HOME.streaks = data.streaks || {};
         _homeRenderToday(data.today || {}, data.streaks || {});
         _homeRenderRecent(data.recent || []);
         _homeRenderWeek(data.this_week || []);
@@ -2116,6 +2269,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
         // _homeRenderCoach decides whether the combo wrapper shows.
         _homeRenderTrends(data.trends || {});
         _homeRenderCoach(data.tonight_pick, data.last_build);
+        _homeMirrorAlerts();
       })
       .catch(() => { _HOME.fetching = false; });
   }
@@ -2218,7 +2372,21 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
         img.alt = pick.champion;
         img.onerror = () => { img.style.visibility = "hidden"; };
       }
-      if (champ) champ.textContent = pick.champion;
+      if (champ) {
+        champ.textContent = pick.champion;
+        // s218 v7: clicking the champion name jumps to History filtered
+        // by this champion. Wired idempotently — re-renders replace the
+        // listener via cloneNode-and-replace to avoid stacking handlers.
+        const fresh = champ.cloneNode(true);
+        fresh.addEventListener("click", () => {
+          try { sessionStorage.setItem("rc-history-focus-champion", pick.champion); } catch (_) {}
+          if (typeof _viewSaveManual === "function") _viewSaveManual("history");
+          try { location.hash = "#history"; } catch (_) {}
+          if (typeof _viewResolveAndApply === "function") _viewResolveAndApply();
+          else if (typeof applyView === "function") applyView("history");
+        });
+        champ.parentNode.replaceChild(fresh, champ);
+      }
       if (reason) {
         const modeStr = (pick.modes || []).join("/");
         reason.textContent = pick.reason
@@ -2288,25 +2456,33 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
   // .has-data so CSS recolors the button when the count/label is
   // non-default. Badge tooltip carries the verbose text.
   function _homeMirrorAlerts() {
+    // s218 v7: populates Section 3 of Tonight's Pick — the Streak +
+    // Advisories sub-header rows. Was previously mirroring badge text
+    // into the (now-removed) advisory + digest pip-buttons. Streak
+    // reads from cached _HOME.streaks (from /api/home/summary);
+    // advisories read live from the footer #advisory-count span which
+    // is the canonical store the existing advisory system updates.
     const advCount = document.getElementById("advisory-count");
-    const advBtn = document.getElementById("home-alerts-advisory");
-    const advBadge = document.getElementById("home-alerts-advisory-val");
-    if (advCount && advBtn && advBadge) {
-      const n = parseInt(advCount.textContent || "0", 10) || 0;
-      advBadge.textContent = n;
-      advBtn.classList.toggle("has-data", n > 0);
-      advBtn.title = n === 0 ? "No open advisories"
-                             : `${n} open advisor${n === 1 ? "y" : "ies"}`;
+    const advValEl = document.getElementById("home-pick-advisories-val");
+    if (advValEl) {
+      const n = advCount ? (parseInt(advCount.textContent || "0", 10) || 0) : 0;
+      advValEl.textContent = n === 0 ? "None"
+                                     : `${n} open`;
+      advValEl.title = n === 0 ? "No open advisories"
+                               : `${n} open advisor${n === 1 ? "y" : "ies"}`;
     }
-    const digLabel = document.getElementById("digest-label");
-    const digBtn = document.getElementById("home-alerts-digest");
-    const digBadge = document.getElementById("home-alerts-digest-val");
-    if (digLabel && digBtn && digBadge) {
-      const t = (digLabel.textContent || "").trim();
-      const hasData = !!t && t !== "—";
-      digBadge.textContent = hasData ? t : "—";
-      digBtn.classList.toggle("has-data", hasData);
-      digBtn.title = hasData ? `Cross-session digest: ${t}` : "No streak data yet";
+    const streakValEl = document.getElementById("home-pick-streak-val");
+    if (streakValEl) {
+      const s = _HOME.streaks || {};
+      const gg = s.good_grades || 0;
+      const pd = s.play_days || 0;
+      if (gg >= 2) {
+        streakValEl.textContent = `${gg}× S/A in a row`;
+      } else if (pd >= 2) {
+        streakValEl.textContent = `${pd}-day play streak`;
+      } else {
+        streakValEl.textContent = "—";
+      }
     }
   }
   function renderHomePanel(lcu) {
@@ -2333,6 +2509,39 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     overlay.setAttribute("aria-hidden", "false");
     if (!_HOME.lastFetchAt) _homeFetchAndRender();
   }
+  // s218 v5: Home-unique Find Match picker show/hide. Lazily creates
+  // a backdrop dimmer on first show; both close on outside-click +
+  // Escape. Wired once on first call.
+  function _homeFindMatchPickerShow() {
+    const picker = document.getElementById("home-find-match-picker");
+    if (!picker) return;
+    let backdrop = document.getElementById("home-find-match-backdrop");
+    if (!backdrop) {
+      backdrop = document.createElement("div");
+      backdrop.id = "home-find-match-backdrop";
+      backdrop.className = "home-find-match-backdrop";
+      backdrop.addEventListener("click", _homeFindMatchPickerHide);
+      document.body.appendChild(backdrop);
+      // Escape closes the picker. Bound once; safe to leave attached.
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !picker.classList.contains("hidden")) {
+          _homeFindMatchPickerHide();
+        }
+      });
+    }
+    backdrop.classList.remove("hidden");
+    picker.classList.remove("hidden");
+    picker.setAttribute("aria-hidden", "false");
+  }
+  function _homeFindMatchPickerHide() {
+    const picker = document.getElementById("home-find-match-picker");
+    const backdrop = document.getElementById("home-find-match-backdrop");
+    if (picker) {
+      picker.classList.add("hidden");
+      picker.setAttribute("aria-hidden", "true");
+    }
+    if (backdrop) backdrop.classList.add("hidden");
+  }
   // V3 (2026-04-29): unconditional startup wiring + fetch tick. Click
   // handlers and the data poll now run regardless of whether
   // renderHomePanel ever fires (the previous design left them dormant
@@ -2345,15 +2554,56 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
      // dropdown menu uses). Without _viewSaveManual the next LCU poll's
      // _viewResolveAndApply auto-derives back to "home" within 2s.
     overlay.querySelectorAll(".home-action-tile[data-target]").forEach((tile) => {
-      tile.addEventListener("click", () => {
+      tile.addEventListener("click", (e) => {
         const t = tile.dataset.target;
         if (!t) return;
+        const isFindMatch = tile.dataset.flow === "find-match-launch";
+        // s218 v5: Find Match opens its own Home-unique picker instead
+        // of routing — operator picks a queue first, then we fire the
+        // LCU change_queue_type cmd and only THEN route to lobby. The
+        // lobby view's #lv-mode-menu is left alone; the Home picker is
+        // a standalone copy mirrored from the same queue list.
+        if (isFindMatch) {
+          e.stopPropagation();
+          _homeFindMatchPickerShow();
+          return;
+        }
         if (typeof _viewSaveManual === "function") _viewSaveManual(t);
         try { location.hash = "#" + t; } catch (_) {}
         if (typeof _viewResolveAndApply === "function") _viewResolveAndApply();
         else if (typeof applyView === "function") applyView(t);
       });
     });
+    // s218 v5: wire the Home-unique Find Match picker (item clicks +
+    // backdrop close + Escape close). Backdrop is created lazily on
+    // first show so the DOM stays clean when the picker isn't used.
+    const pickerEl = document.getElementById("home-find-match-picker");
+    if (pickerEl) {
+      pickerEl.querySelectorAll(".lq-mode-item[data-hfm-qid]").forEach((item) => {
+        item.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const qid = parseInt(item.dataset.hfmQid, 10) || 0;
+          const special = item.dataset.hfmSpecial || "";
+          if (special === "practice") {
+            try { lcuCmd({ cmd: "lobby.create_practice_tool" }); } catch (_) {}
+          } else if (qid > 0) {
+            try {
+              lcuCmd({ cmd: "change_queue_type", queue_id: qid }).then((res) => {
+                if (typeof lcuPollResult === "function") {
+                  lcuPollResult(res && res.id, () => {});
+                }
+              });
+            } catch (_) {}
+          }
+          _homeFindMatchPickerHide();
+          // Route to Pre-Game Lobby after the LCU command is dispatched.
+          if (typeof _viewSaveManual === "function") _viewSaveManual("lobby");
+          try { location.hash = "#lobby"; } catch (_) {}
+          if (typeof _viewResolveAndApply === "function") _viewResolveAndApply();
+          else if (typeof applyView === "function") applyView("lobby");
+        });
+      });
+    }
     // Alerts rows → synthesize click on the original hidden footer
     // triggers so the existing popout / cycle handlers fire unchanged.
     const wireAlertRow = (rowId, anchorId) => {
@@ -2368,8 +2618,10 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
         if (e.key === "Enter" || e.key === " ") { e.preventDefault(); anchor.click(); }
       });
     };
-    wireAlertRow("home-alerts-advisory", "advisory-badge");
-    wireAlertRow("home-alerts-digest",   "digest-icon");
+    // s218 v7: the old advisory + digest pip-buttons that wireAlertRow
+    // targeted were removed in the Tonight's Pick Section-3 redesign.
+    // Streak + Advisories now live as sub-header rows populated by
+    // _homeMirrorAlerts; no per-row click wiring needed.
     // Initial fetch + recurring tick + alerts mirror.
     _homeFetchAndRender();
     setInterval(_homeFetchAndRender, _HOME.intervalMs);
@@ -4855,14 +5107,6 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
   });
 
   // Round 42: in-memory conversation thread used for sim-mode context.
-  // Resets on fixture switch (page navigation wipes it naturally).
-  const SIM_THREAD = [];       // [{user, reply, intent}, ...]
-  const SIM_THREAD_CAP = 5;
-
-  // Detect sim mode from URL — matches the ?sim=<name> gate used by
-  // sim.js. Stays false when no sim param is present.
-  const SIM_ACTIVE = new URLSearchParams(window.location.search).has("sim");
-  const SIM_FIXTURE = new URLSearchParams(window.location.search).get("sim") || null;
 
   async function _pollTaskUntilDone(taskId, maxMs = 5000, stepMs = 400) {
     const start = performance.now();
@@ -4888,11 +5132,6 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     INPUT.warmDot.classList.add("pending");
     const t0 = performance.now();
     const body = { text };
-    if (SIM_ACTIVE) {
-      body.sim_context = true;
-      body.sim_fixture = SIM_FIXTURE;
-      body.history = SIM_THREAD.slice(-SIM_THREAD_CAP);
-    }
     try {
       const resp = await fetch("/api/input", {
         method: "POST",
@@ -4909,15 +5148,6 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       INPUT.text.value = "";
       INPUT.text.dispatchEvent(new Event("input"));
 
-      if (SIM_ACTIVE) {
-        SIM_THREAD.push({
-          user: text,
-          reply: env.reply,
-          intent: env.intent,
-        });
-        while (SIM_THREAD.length > SIM_THREAD_CAP) SIM_THREAD.shift();
-      }
-
       refreshEnv();       // warm indicator
       refreshActivity();  // show the filed tasks in ticker
 
@@ -4927,7 +5157,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       // doesn't gate it. Poll briefly and reload on success.
       const filedTasks = env.filed || [];
       const looksLikeUIProposal =
-        SIM_ACTIVE && !env.refused && filedTasks.length &&
+        !env.refused && filedTasks.length &&
         (env.proposed_changes && env.proposed_changes.length);
       if (looksLikeUIProposal) {
         const tid = filedTasks[0];
@@ -5079,7 +5309,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
   // layout is stable enough once the advisory badge height is normalised.
   (function restorePrefs() {
     try {
-      const savedZoom = localStorage.getItem("rc-body-zoom");
+      const savedZoom = localStorage.getItem("rc-zoom");
       if (savedZoom) document.body.style.zoom = savedZoom;
       // Zen is OFF by default (2026-04-24). Only enabled when the user
       // has explicitly opted in (stored as "1" via the Z hotkey). First
@@ -5116,9 +5346,12 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     // s161: zen flag dropped from the prefs chip — operator wanted
     // the "ZEN:OFF" pill removed from the footer. Zoom flag stays
     // since zoom drift is still useful diagnostic info.
-    const z = localStorage.getItem("rc-body-zoom");
+    const z = localStorage.getItem("rc-zoom");
     const flags = [];
-    if (z && parseFloat(z) < 1.1) flags.push("zoom:1×");
+    // Default is 1.0 — only flag in the footer chip when the user has
+    // dialed the slider above the default (was inverted pre-s218 when
+    // default was 1.33 and 1.0 was the opt-in setting).
+    if (z && parseFloat(z) > 1.05) flags.push("zoom:" + parseFloat(z).toFixed(2) + "×");
     let chip = document.querySelector("footer .prefs-chip");
     if (!flags.length) {
       if (chip) chip.remove();
@@ -5137,7 +5370,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       chip.style.cursor = "pointer";
       chip.addEventListener("click", () => {
         localStorage.removeItem("rc-zen");
-        localStorage.removeItem("rc-body-zoom");
+        localStorage.removeItem("rc-zoom");
         localStorage.removeItem("rc-header-lock");
         window.location.reload();
       });
@@ -5189,7 +5422,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
       if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA")) return;
       try {
         localStorage.removeItem("rc-zen");
-        localStorage.removeItem("rc-body-zoom");
+        localStorage.removeItem("rc-zoom");
         localStorage.removeItem("rc-header-lock");
       } catch (_) {}
       window.location.reload();
@@ -5820,12 +6053,20 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce,
     // narrow + predictable instead of relying on CSS max-width which
     // produced awkward wrap points near screen edges.
     function wrapSixWords(text) {
-      const words = String(text).split(/\s+/).filter(Boolean);
-      const lines = [];
-      for (let i = 0; i < words.length; i += 6) {
-        lines.push(words.slice(i, i + 6).join(" "));
+      // s218: preserve explicit "\n" boundaries so multi-section
+      // tooltips (e.g. the health-dot's RC / supervisor / vision /
+      // DS / cost / bridge lines) render each section on its own row
+      // instead of running them all together. Each source line wraps
+      // independently at 6 words.
+      const out = [];
+      for (const line of String(text).split("\n")) {
+        const words = line.split(/\s+/).filter(Boolean);
+        if (!words.length) { out.push(""); continue; }
+        for (let i = 0; i < words.length; i += 6) {
+          out.push(words.slice(i, i + 6).join(" "));
+        }
       }
-      return lines.join("\n");
+      return out.join("\n");
     }
     // Placement (2026-04-24 rewrite): tooltip always sits immediately
     // below-right of the cursor, with viewport-edge clamping that pulls

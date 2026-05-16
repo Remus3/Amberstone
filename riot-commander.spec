@@ -42,7 +42,6 @@ What's bundled (datas)
 * data/meta/              — DDragon champion + rune metadata
 * data/meta_build/        — curated SR builds, ARAM rune recommendations
 * data/champion_loadouts.json — loadout variants the dashboard renders
-* data/sim_states.json    — sim scenarios for the preview view
 * data/vision_regions.json — Tesseract region definitions
 * config/coach_settings.json (template) — user must edit
 * ops/tls/                — TLS cert + key (if present); recipient may
@@ -112,7 +111,7 @@ datas = []
 datas += _gather(ROOT / "web",                 "web")
 datas += _gather(ROOT / "data" / "meta",       "data/meta")
 datas += _gather(ROOT / "data" / "meta_build", "data/meta_build")
-for fname in ("champion_loadouts.json", "sim_states.json", "vision_regions.json"):
+for fname in ("champion_loadouts.json", "vision_regions.json"):
     src = ROOT / "data" / fname
     if src.exists():
         datas.append((str(src), "data"))

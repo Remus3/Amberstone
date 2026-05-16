@@ -415,8 +415,6 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             return self._handle_duration()
         if self.path.startswith("/api/digest"):
             return self._handle_digest()
-        if self.path.startswith("/api/sim"):
-            return self._handle_sim_fixture()
         if self.path.startswith("/api/locked-champion"):
             return self._handle_locked_champion()
         super().do_GET()
@@ -1114,46 +1112,6 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         self._send_json(200, coaching_digest(
             mode=mode, since_iso=since, top_n=top_n,
         ))
-
-    # Dev-preview fixture dir — JSON files only. Path traversal is
-    # guarded by stripping slashes and validating the name charset.
-    _SIM_DIR = _PROJECT_ROOT / "data" / "sim"
-
-    def _handle_sim_fixture(self) -> None:
-        """GET /api/sim/<name>[.json] — serve a dev-preview fixture.
-        GET /api/sim/ or /api/sim/_manifest — serve the manifest.
-        """
-        from urllib.parse import urlparse
-        parsed = urlparse(self.path)
-        parts = parsed.path.split("/")
-        # ["", "api", "sim"] or ["", "api", "sim", "<name>"]
-        name = parts[3] if len(parts) >= 4 else ""
-        if not name or name == "_manifest":
-            target = self._SIM_DIR / "manifest.json"
-        else:
-            # Defense in depth: only allow [A-Za-z0-9_-], up to 64 chars.
-            clean = name.removesuffix(".json")
-            if len(clean) > 64 or not clean \
-                    or not all(c.isalnum() or c in "-_" for c in clean):
-                self._send_json(400, {"error": "invalid fixture name"})
-                return
-            target = self._SIM_DIR / f"{clean}.json"
-
-        if not target.exists() or not target.is_file():
-            self._send_json(404, {"error": "fixture not found"})
-            return
-        try:
-            body = target.read_bytes()
-        except OSError as e:
-            self._send_json(500, {"error": f"read failed: {e}"})
-            return
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        if self.command != "HEAD":
-            self.wfile.write(body)
 
     def _handle_locked_champion(self) -> None:
         """GET /api/locked-champion[?fresh=1]

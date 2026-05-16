@@ -31,7 +31,7 @@ from typing import Optional
 VIEW_IDS = (
     "home", "lobby", "champ-select", "active-match", "last-match",
     "session", "history", "replay",
-    "user-builds", "settings", "dev",
+    "user-builds", "settings",
 )
 
 IN_GAME_MODES = frozenset({"sr", "aram", "arena", "brawl", "tft"})

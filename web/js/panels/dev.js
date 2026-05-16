@@ -173,100 +173,6 @@ function _diagWireOnce() {
   });
 }
 
-// ── Dev / Sim Preview panel ──────────────────────────────────────
-function _devViewWireOnce() {
-  if (window.__devWired) return;
-  window.__devWired = true;
-  const r = document.getElementById("dev-refresh");
-  if (r) r.addEventListener("click", _devViewFetch);
-}
-
-function _devViewFetch() {
-  // Fixtures only — log tail + vision status removed s162 per operator
-  // request (they were blocking the actual fixture list).
-  fetch("/api/sim/_manifest").then(r => r.ok ? r.json() : null).then(d => {
-    _devRenderFixtures(d);
-  }).catch(() => _devRenderFixtures(null));
-}
-
-function _devRenderFixtures(manifest) {
-  const body = document.getElementById("dev-fixtures-body");
-  const sub  = document.getElementById("dev-fixture-count");
-  if (!body) return;
-  const fixtures = (manifest && manifest.fixtures) || [];
-  if (sub) sub.textContent = fixtures.length ? `${fixtures.length} fixtures` : "";
-  if (!fixtures.length) {
-    body.innerHTML = '<div class="home-empty">No fixtures yet — Phase 3 game-flow fixtures (lobby_solo → last_match) will land here as they\'re built. Existing fixtures are archived under <code>data/sim/_archive/</code>.</div>';
-    return;
-  }
-  const inSim = /[?&]sim=/.test(location.search);
-  let html = '<table class="dev-fixture-table">';
-  html += '<thead><tr><th>Mode</th><th>Label</th><th></th></tr></thead><tbody>';
-  for (const f of fixtures) {
-    const url = new URL(location.href);
-    url.searchParams.set("sim", f.name);
-    // s162: clear the URL hash so the view-router auto-derives based on
-    // the fixture's lcu.phase (Lobby → lobby, ChampSelect → lobby/cs,
-    // InProgress → active-match). Without this the Preview link inherits
-    // the operator's current hash (e.g. "#dev") which pins them on the
-    // dev view and shows just an auto-promote banner instead of the
-    // fixture's natural surface.
-    url.hash = "";
-    const active = inSim && new URLSearchParams(location.search).get("sim") === f.name;
-    html += `<tr class="${active ? "dev-fixture-active" : ""}">`;
-    html += `<td><span class="mode-tag mode-tag-${f.mode || "??"}">${(f.mode || "?").toUpperCase()}</span></td>`;
-    html += `<td class="dev-fixture-label">${f.label || f.name}</td>`;
-    html += `<td><a class="dev-fixture-link" href="${url.toString()}">Preview</a></td>`;
-    html += "</tr>";
-  }
-  html += "</tbody></table>";
-  if (inSim) {
-    const exitUrl = new URL(location.href);
-    exitUrl.searchParams.delete("sim");
-    exitUrl.searchParams.delete("dbg");
-    html += `<a class="dev-exit-sim" href="${exitUrl.toString()}">Exit Sim Mode</a>`;
-  }
-  body.innerHTML = html;
-}
-
-function _devRenderVision(d) {
-  const body = document.getElementById("dev-vision-body");
-  const sub  = document.getElementById("dev-vision-sub");
-  if (!body) return;
-  if (!d) {
-    if (sub) sub.textContent = "";
-    body.innerHTML = '<div class="home-empty">vision-status unavailable</div>';
-    return;
-  }
-  const h = d.vision_health || {};
-  const m = d.latest_frame || {};
-  const age = d.frame_age_s;
-  const ageStr = age == null ? "no frame" : (age < 10 ? `${age}s ago ✓` : `${age}s ago ⚠`);
-  if (sub) sub.textContent = ageStr;
-  const rows = [
-    ["Server alive", h.alive ? "yes" : "NO"],
-    ["Uptime",  h.uptime_s != null ? `${Math.round(h.uptime_s / 60)} min` : "?"],
-    ["Frame age", ageStr],
-    ["Source",  m.source || "none"],
-    ["Dimensions", (m.width && m.height) ? `${m.width}×${m.height}` : "?"],
-    ["Size",    m.size ? `${(m.size / 1024).toFixed(0)} KB b64` : "?"],
-  ];
-  let html = '<table class="dev-kv-table">';
-  for (const [k, v] of rows) {
-    html += `<tr><td class="dev-kv-key">${k}</td><td class="dev-kv-val">${v}</td></tr>`;
-  }
-  html += "</table>";
-  body.innerHTML = html;
-}
-
-function _devRenderLog(d) {
-  const el = document.getElementById("dev-log");
-  if (!el) return;
-  el.textContent = (d && d.lines) ? d.lines.join("\n") || "(no log lines)" : "(log unavailable)";
-  // Scroll to bottom so the latest lines are visible.
-  el.scrollTop = el.scrollHeight;
-}
-
 // ── Replay scrubber (audit suggestion 2.3, 2026-04-28) ────────────
 // Loads recent matches from /api/replay/matches; clicking one fetches
 // /api/replay/match/<id> and lets the user scrub through per-minute
@@ -458,6 +364,5 @@ function _replayViewWireOnce() {
 export {
   _settingsRefresh,
   _diagFetchAndRender, _diagWireOnce,
-  _devViewWireOnce, _devViewFetch,
   _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch,
 };

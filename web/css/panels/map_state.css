@@ -12,7 +12,7 @@
   border-radius: 999px;
   background: var(--surface);
   color: var(--text-dim);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.06em;
   font-variant-numeric: tabular-nums;
 }
@@ -23,7 +23,7 @@
   border-radius: 999px;
   background: var(--surface);
   color: var(--text-dim);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.06em;
 }
 .analyze-stat.pending { color: var(--gold); }
@@ -85,7 +85,7 @@ body[data-view="home"] header .gold-pill.hidden {
   border: none;
   border-radius: 999px;
   font-family: inherit;
-  font-size: 11px; font-weight: 700;
+  font-size: 12px; font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 5px 14px;
@@ -97,7 +97,7 @@ body[data-view="home"] header .gold-pill.hidden {
 .adapt-notice {
   padding: 8px 14px;
   margin-bottom: 10px;
-  font-size: 13px;
+  font-size: 14px;
   letter-spacing: 0.02em;
   border-left: 3px solid var(--border);
   border-radius: var(--radius-sm);
@@ -113,7 +113,7 @@ body[data-view="home"] header .gold-pill.hidden {
   border: none;
   border-radius: 999px;
   background: var(--surface-alt);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.1em;
   font-weight: 700;
   text-transform: uppercase;
@@ -143,7 +143,7 @@ body[data-view="home"] header .gold-pill.hidden {
   border-radius: 999px;
   background: var(--gold-soft);
   color: var(--gold);
-  font-size: 20px;
+  font-size: 21px;
   font-weight: 700;
   max-width: 100%;
   white-space: nowrap;
@@ -177,7 +177,7 @@ body[data-view="home"] header .gold-pill.hidden {
   border-radius: 999px;
   background: var(--info-soft);
   color: var(--info);
-  font-size: 20px;
+  font-size: 21px;
   font-weight: 700;
   max-width: 100%;
   white-space: nowrap;
@@ -213,7 +213,7 @@ body:not([data-mode])    .ds-pill { display: none; }
   border-radius: 999px;
   background: var(--bg-soft, rgba(80, 80, 80, 0.18));
   color: var(--fg-muted, #9aa);
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
@@ -258,7 +258,7 @@ body:not([data-mode])    .trigger-pill { display: none; }
   border-radius: 999px;
   background: var(--warn-soft, rgba(251, 191, 36, 0.14));
   color: var(--warn, #fbbf24);
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
   max-width: 100%;
   white-space: nowrap;
@@ -270,7 +270,7 @@ body:not([data-mode])    .trigger-pill { display: none; }
   border: 0;
   background: transparent;
   color: inherit;
-  font-size: 18px;
+  font-size: 19px;
   line-height: 1;
   cursor: pointer;
   padding: 0 4px;
@@ -366,7 +366,7 @@ body[data-zen="1"] .panel-right-now .panel-head::after {
   border-radius: 999px;
   background: var(--gold-soft);
   color: var(--gold);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.14em;
   font-weight: 900;
   text-transform: uppercase;
@@ -409,13 +409,13 @@ body[data-zone="deep"] .mm-canvas-stack {
   flex-shrink: 0;
 }
 .panel-title {
-  font-size: 15px;
+  font-size: 16px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-faint);
   font-weight: 700;
 }
-.panel-right-now  .panel-title { color: var(--gold); font-size: 16px; letter-spacing: 0.22em; }
+.panel-right-now  .panel-title { color: var(--gold); font-size: 17px; letter-spacing: 0.22em; }
 .panel-next       .panel-title { color: var(--info); }
 .panel-minimap    .panel-title { color: var(--text-dim); }
 .panel-item-build .panel-title { color: var(--text-dim); }
@@ -483,7 +483,7 @@ body[data-mode="client"] #mm-whatwent-view   { display: block; }
 .what-went-section { margin-bottom: 14px; }
 .what-went-section:last-child { margin-bottom: 0; }
 .what-went-title {
-  font-size: 13px;
+  font-size: 14px;
   letter-spacing: 0.16em;
   font-weight: 700;
   text-transform: uppercase;
@@ -501,7 +501,7 @@ body[data-mode="client"] #mm-whatwent-view   { display: block; }
 .what-went-list li {
   padding: 5px 0 5px 18px;
   position: relative;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.4;
   color: var(--text);
 }
@@ -583,7 +583,7 @@ body:not([data-mode="client"])[data-phase="early"] .stats-group:not([data-stage~
 body:not([data-mode="client"])[data-phase="mid"]   .stats-group:not([data-stage~="mid"]):not([data-stage="all"])   { display: none; }
 body:not([data-mode="client"])[data-phase="late"]  .stats-group:not([data-stage~="late"]):not([data-stage="all"])  { display: none; }
 .stats-group-title {
-  font-size: 15px;
+  font-size: 16px;
   letter-spacing: 0.16em;
   /* Distinct accent (info cyan) so group headers read visibly separate
    * from the text-faint field labels. Keeps the 5 section boundaries
@@ -598,7 +598,7 @@ body:not([data-mode="client"])[data-phase="late"]  .stats-group:not([data-stage~
   grid-template-columns: 120px 1fr;
   gap: 12px;
   padding: 4px 0;
-  font-size: 16px;
+  font-size: 17px;
   align-items: baseline;
   line-height: 1.35;
 }
@@ -607,12 +607,12 @@ body:not([data-mode="client"])[data-phase="late"]  .stats-group:not([data-stage~
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 14px;
 }
 .stats-row .stats-val {
   color: var(--text);
   font-weight: 600;
-  font-size: 16px;
+  font-size: 17px;
   word-break: break-word;
 }
 
@@ -628,7 +628,7 @@ body:not([data-mode="client"])[data-phase="late"]  .stats-group:not([data-stage~
   margin-bottom: 10px;
 }
 .game-sense-title {
-  font-size: 15px;
+  font-size: 16px;
   letter-spacing: 0.16em;
   color: var(--info);
   font-weight: 700;
@@ -641,19 +641,19 @@ body:not([data-mode="client"])[data-phase="late"]  .stats-group:not([data-stage~
   gap: 12px;
   align-items: baseline;
   padding: 6px 0;
-  font-size: 16px;
+  font-size: 17px;
 }
 .game-sense-phase {
   color: var(--text-faint);
   letter-spacing: 0.14em;
   font-weight: 900;
-  font-size: 13px;
+  font-size: 14px;
 }
 .game-sense-word {
   color: var(--gold);
   font-weight: 900;
   letter-spacing: 0.04em;
-  font-size: 18px;
+  font-size: 19px;
   text-transform: uppercase;
 }
 /* Tone-tinted words map to the 12-word vocabulary's rough valence. */
@@ -664,7 +664,7 @@ body:not([data-mode="client"])[data-phase="late"]  .stats-group:not([data-stage~
 .game-sense-blurb {
   color: var(--text-dim);
   font-weight: 500;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.35;
 }
 .game-sense-trend {
@@ -673,13 +673,13 @@ body:not([data-mode="client"])[data-phase="late"]  .stats-group:not([data-stage~
   background: var(--surface-alt);
   border-radius: var(--radius-sm);
   color: var(--text-faint);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 /* Staleness indicator — empty/fresh/stale/severe */
 .staleness {
-  font-size: 13px;
+  font-size: 14px;
   letter-spacing: 0.1em;
   font-weight: 700;
   color: var(--text-faint);
@@ -694,7 +694,7 @@ body:not([data-mode="client"])[data-phase="late"]  .stats-group:not([data-stage~
 .panel.severe .panel-body { opacity: 0.45; filter: grayscale(0.4); }
 
 .counter {
-  font-size: 15px;
+  font-size: 16px;
   color: var(--text-dim);
 }
 
