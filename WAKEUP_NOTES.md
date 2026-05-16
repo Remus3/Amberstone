@@ -1,6 +1,34 @@
 # WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+> Sessions s27–s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+
+---
+
+# s229 wrap — 2026-05-16 (DS Phase 5.9.29: conditional seed-expansion + vocab generalization)
+
+**Operator instruction:** "continue" (continuing s228's option B). First surfaced — via AskUserQuestion — that the signed-off literal "B-2" (thread per-tick liveclient HP/CC into the ranking call) is a **mis-feature** for the only DS surface that exists (item-build recommendation): per-tick enemy HP would flicker build recs, and the operator-commits default (Part 1) is the *correct* strategic model — the schema's value is already delivered. **Operator chose "pivot → pure-data conditional seed-expansion"** (the proven s207→s215/s217 cadence).
+
+## What happened
+
+`target_current_hp_pct` is already plumbed end-to-end (only `_serve_ds_preview_post` doesn't supply it); `target_no_cc` has NO liveclient signal. So literal B-2 is shelved as a mis-feature (it would need a separate *live-advisory* product surface, not DS-engine work). Continued option B's spirit with a pure-data batch on the s228 schema.
+
+## Shipped (committed)
+
+- **Vocab generalized `target_no_cc` → `target_no_setup`.** s228 scoped the non-HP condition to its CC-family flagships (sleep/charm); the expansion candidates (Anivia *chill*, Brand *ablaze*) share the identical modeling semantic regardless of debuff type — "operator's own ability applied an amp-enabling target state; default = committed/canonical amped block, condition key = un-amped downgrade." 5+ concrete uses → the honest general term (vocab stays **2**: `{target_full_hp, target_no_setup}`, NOT over-built — s227's lesson was about numeric sweeps, not naming a 5-instance conditional). Engine validator now **rejects the old key** (stale `target_no_cc` fails loudly). s228's Zoe E + Evelynn Q migrated.
+- **3 conversions of already-shipped unconditional entries** — all provably Part-1 no-op (`"default"` == prior int), verified per-rank vs Meraki 16.10.1, live-A/B confirmed on :8893: **Morgana W** `{default:3,target_full_hp:2}` (block 3 = exactly **2.7×** block 2; the <50%-max-HP amp — s195's "vs rooted" framing was imprecise, the Q-root is the operator's *setup*; reg 459.00==forced{W:3}), **Anivia E** `{default:1,target_no_setup:0}` (block 1 = **2.0×** block 0 vs Chilled; reg 300.00==forced{E:1}), **Brand W** `{default:1,target_no_setup:0}` (block 1 = **1.25×** block 0 vs ablaze; reg 318.75==forced{W:1}). Migrations live-verified (Zoe E 140.00, Evelynn Q 345.00; caller-cond Anivia E `{default:0,target_no_setup:2}`→150.00==forced{E:0}).
+- Registry stays **125 champions** (in-place). `_meta` description+rationale appended (surgical str.replace). New `test_conditional_block_index_s229.py` (~30 tests) + global `target_no_cc`→`target_no_setup` rename (33 refs / 4 files) + 12 `test_block_index_overrides` stale pins migrated to conditional-shape + Part-1-equivalence (the s228 iterative-suite-pinpoint method) + 10 ENGINE pin bumps. ENGINE **1.0.0→1.1.0**. DS suite 2188→**2210**; wider RC **1107**; ruff+py_compile clean; DS restarted → `/health` **1.1.0**.
+
+## Don't-redo / blockers
+
+- **Conversions are intentionally zero-numeric-change** (Part-1 resolves to `"default"` == prior int). The amp ratios (2.7× / 2.0× / 1.25×) only manifest when a future *live-advisory* surface consumes the downgrade branch — NOT in item ranking. Don't "fix" the no-op.
+- **The discrete-pair requirement** for a conditional conversion: the ability must have TWO same-shape damage blocks (amped vs un-amped). Bel'Veth R was rejected for exactly this — its 25% missing-HP is *continuous within* one block (handled by `_SCALING_TARGETS`), not a discrete pair. Continuous in-block %HP scaling is NOT a conditional candidate.
+- **Veigar R is the canonical stable-int test fixture** (`test_sum_of_blocks` + `test_block_index_overrides` GetBlockIndexFor/ResolveBlockIndex/known_champion_overrides). It IS a clean target_full_hp execute (DMG1=2.0×DMG0) but converting it cascades a fixture-repoint — defer until a fixture migration is independently warranted, or pick a non-fixture execute.
+- **DrMundo E is caster-missing-HP, not target** (its Min/Max scale on `caster_bonus_hp_pct`) — needs a `caster_low_hp` vocab term, flag for operator. The recurring "DrMundo E missing-HP" carry-forward keeps mischaracterizing this.
+- Literal B-2 (per-tick HP→ranking) is **shelved as a mis-feature**; don't re-attempt it as DS-engine plumbing.
+
+## NEXT (self-continuing loop)
+
+More pure-data conditional seed-expansion on the stable 2-term vocab: Lux Illumination, Aatrox W chain-landed (resolve the positional-vs-CC question first), Fiddle Q fear-state, the debuff-state family (Cassi E poison once its irregular 18-element Meraki base array is understood). Each entry needs Meraki block verification (rigor bar — verify the discrete-pair requirement; do NOT trust ROADMAP/_meta block-number recollection). s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
 
 ---
 
@@ -61,31 +89,3 @@ max_priority 12→**15 champs**. ENGINE 0.98→0.99; 8 pin bumps + `test_max_pri
 ## NEXT (self-continuing loop)
 
 Pure-data registry sweeps are done (5 iterations, ENGINE 0.94→0.99, ~30 high-value correctness fixes shipped). Iteration 6+ has no obvious autonomous pure-data DS work left that meets the rigor bar. Options: (a) **flag the conditional-target-state schema lift for the operator** (the now-clearly-dominant next DS investment, but architectural — needs sign-off); (b) a calibration/data-quality pass if rewind data refreshed; (c) consider the autonomous DS loop complete for this session and surface the summary. Recommend (a)+(c): the high-ROI autonomous vein is mined out; further block_index/registry work needs the schema lift which wants operator input. s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
-
----
-
-# s226 wrap — 2026-05-16 (DS Phase 5.9.26: first form_index coverage sweep since s205)
-
-**Operator instruction:** same self-paced loop. **Iteration 4** (s223=it1, s224=it2, s225=it3, all same session-day).
-
-## What happened — pivoted the proven methodology to a fresh registry
-
-block_index coverage exhausted across s223-225 (both scan axes). Applied the SAME pre-filter+ground-truth-A/B methodology to the far-less-scrutinized `champion_form_index.json` (only 9 champs vs block_index's 25+ batches). New `tools/ds_form_index_prefilter.py` A/B'd forced form 0 vs each later form over all 16 multi-DAMAGE-form (champ,key) pairs not yet mapped → 9 flagged, 3 clean ADDs after per-champion judgment.
-
-## Shipped (committing now)
-
-- **`Swain {R:1}`** — form 0 'Demonic Ascension' is the 7.5-17.5 drain-channel per-tick; form 1 'Demonflare' is the 150-350 + 50% AP recast nuke (Swain's ult payoff). Live A/B **12.5→250 (20×)**. Same shape as the pre-existing AurelionSol R=1.
-- **`Briar {W:1}`** — form 0 'Blood Frenzy' has **zero damage blocks** (it's the AS/MS frenzy-buff cast); form 1 'Snack Attack' is the entire W damage incl. the s224-migrated 9% missing-HP. A/B 72→129.5.
-- **`Evelynn {E:1}`** — form 1 'Empowered Whiplash' = Eve's canonical Demon-Shade-opened combo E (1.33× form 0 + 4% vs 3% max HP). **Composes orthogonally** with Evelynn's s204 block_index `{R:1,Q:5}` (form_index picks the form, block_index the block within it — like Jayce Q s194). A/B 120→160.
-
-form_index 9→**12 champs**. ENGINE 0.97→0.98; 8 pin bumps + `test_form_index_sweep_s226.py` (10 tests). DS 2113→**2123**; wider RC **1107**; DS restarted → 0.98.0.
-
-## Don't-redo / blockers
-
-- **Skips are deliberate + documented in the registry _meta rationale**: Heimerdinger W/E form 1 = the R-UPGRADED one-shot cast → R-gated; modeling W/E as upgraded over-attributes R's empower to W/E (must score R-independent — same principle as s225 Varus W block 2 vs R-entangled block 4). These belong to the **conditional-target-state schema-lift bucket** along with Fiddle fear-state, Skarner boulder, LeBlanc Mimic. Gnar Q/E + RekSai Q = contextual transforms (uncontrollable Rage / burrow-dance) — form 0 is the dominant-uptime default, correct as-is.
-- form_index and block_index are **orthogonal registries that compose** — Evelynn now exercises both. Don't assume a champion in one is absent from the other.
-- Both block_index AND form_index coverage spaces are now swept (4 iterations s223-226). Don't re-run these scans expecting yield.
-
-## NEXT (self-continuing loop)
-
-Iteration 5 options: (a) **combo_sequence registry audit** (assassin burst combos — even less scrutinized than form_index; does the default `Q-W-E-AA-R-AA` under-represent specific champions' real burst rotations?); (b) **max_priority registry audit** (mage spell-max order — s185 did 12 champs, are there more?); (c) flag the conditional-target-state schema lift for operator (architectural; it's now the common blocker for Heimer/Fiddle/Skarner/LeBlanc). s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
