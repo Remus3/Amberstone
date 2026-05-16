@@ -6,7 +6,7 @@
  * panel heroes share a size grammar; differentiation is by color (info
  * lavender here vs gold on Right Now) and vertical position, not size. */
 .action-mid {
-  font-size: 20px;
+  font-size: 21px;
   color: var(--info);
   font-weight: 900;
   margin-bottom: 10px;

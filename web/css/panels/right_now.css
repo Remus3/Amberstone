@@ -14,7 +14,7 @@
    * flagged as "20+ pixel space" (2026-04-24). Layout now flexes by
    * one line height between 1- and 2-line fixtures; acceptable trade
    * given the current coach prompts target short headlines. */
-  font-size: 20px;
+  font-size: 21px;
   letter-spacing: 0.005em;
   font-weight: 900;
   margin-bottom: 4px;
@@ -32,7 +32,7 @@
 .action.action-good   { color: var(--good); }
 .action.action-empty  {
   color: var(--text-faint);
-  font-size: 20px !important;    /* don't balloon a lonely em-dash via fitText */
+  font-size: 21px !important;    /* don't balloon a lonely em-dash via fitText */
   letter-spacing: 0.12em;
   opacity: 0.55;
 }
@@ -53,7 +53,7 @@
   border-radius: 999px;
   background: var(--good);
   color: var(--canvas);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.12em;
   opacity: 0;
@@ -64,7 +64,7 @@
 .copied-bubble.show { opacity: 1; transform: translateY(0); }
 .action { position: relative; }
 .immediate {
-  font-size: 20px;
+  font-size: 21px;
   color: var(--text);
   font-weight: 400;
   line-height: 1.35;
@@ -86,7 +86,7 @@
 /* Arena pregame briefing — dense card (build + augments + combos +
  * round phasing). Clipped, not scrolled per round 44. */
 .immediate.is-pregame {
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.45;
   color: var(--text-dim);
   border-left: 3px solid var(--gold-soft);

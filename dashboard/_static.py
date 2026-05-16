@@ -39,7 +39,7 @@ def compute_asset_hash() -> str:
     # imports, so without this any edit to a panel went unnoticed by
     # browsers until manual cache-clear.
     for rel in ("index.html", "css/dashboard.css", "js/dashboard.js",
-                "js/main.js", "js/sim.js", "js/ws_client.js"):
+                "js/main.js", "js/ws_client.js"):
         p = web_root / rel
         try:
             parts.append(f"{rel}:{int(p.stat().st_mtime)}")

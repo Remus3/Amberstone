@@ -196,7 +196,6 @@ DEV_FOOTER = """
 export {
   _settingsRefresh,
   _diagFetchAndRender, _diagWireOnce,
-  _devViewWireOnce, _devViewFetch,
   _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch,
 };
 """
@@ -217,7 +216,7 @@ import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushIt
 import { MM, renderMinimap, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS, _renderMmStateLine } from './panels/map_state.js';
 import { handleChampSelect, renderChampSelectPanel, renderChampSelectCoach } from './panels/champ_select.js';
 import { renderBridgePending, renderCoachDecisions, renderRecentCoachCalls } from './panels/bridge_pending.js';
-import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _devViewWireOnce, _devViewFetch, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
+import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
 """
 
 print("\nAll 7 panel files written to", PANELS_DIR)

@@ -49,7 +49,7 @@
 .rc-card-m { padding: 18px 20px; gap: 10px; }
 .rc-card-l { padding: 24px 28px; gap: 14px; }
 .rc-card-head {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.12em;
   color: var(--text-dim);
@@ -101,24 +101,24 @@ header { transition: height 180ms ease; }
  * with the existing diagnostics-card styles. */
 .cost-tile { display: grid; gap: 6px; min-width: 220px; }
 .cost-tile .cost-tile-row { display: flex; justify-content: space-between; gap: 16px; }
-.cost-tile .cost-tile-key { color: var(--text-dim); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+.cost-tile .cost-tile-key { color: var(--text-dim); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
 .cost-tile .cost-tile-val { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
-.cost-tile .cost-tile-banner { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; }
+.cost-tile .cost-tile-banner { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; letter-spacing: 0.1em; }
 .cost-tile .cost-tile-banner.ok    { background: var(--good-soft);  color: var(--good); }
 .cost-tile .cost-tile-banner.warn  { background: var(--gold-soft);  color: var(--gold); }
 .cost-tile .cost-tile-banner.over  { background: var(--bad-soft);   color: var(--bad);  }
 
 .coach-toggle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .coach-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; background: var(--surface-alt); border-radius: var(--radius-sm); }
-.coach-toggle-row .coach-toggle-label { font-size: 13px; font-weight: 700; letter-spacing: 0.05em; color: var(--text); text-transform: uppercase; }
-.coach-toggle-row .coach-toggle-pill { font-size: 11px; padding: 2px 10px; border-radius: 999px; font-weight: 800; letter-spacing: 0.1em; cursor: pointer; user-select: none; }
+.coach-toggle-row .coach-toggle-label { font-size: 14px; font-weight: 700; letter-spacing: 0.05em; color: var(--text); text-transform: uppercase; }
+.coach-toggle-row .coach-toggle-pill { font-size: 12px; padding: 2px 10px; border-radius: 999px; font-weight: 800; letter-spacing: 0.1em; cursor: pointer; user-select: none; }
 .coach-toggle-row .coach-toggle-pill.on  { background: var(--good-soft); color: var(--good); }
 .coach-toggle-row .coach-toggle-pill.off { background: var(--bad-soft);  color: var(--bad);  }
 
 .trace-list { display: flex; flex-direction: column; gap: 6px; max-height: 70vh; overflow-y: auto; }
-.trace-item { padding: 10px 12px; background: var(--surface-alt); border-radius: var(--radius-sm); font-size: 12px; }
-.trace-item .trace-meta { display: flex; gap: 12px; color: var(--text-dim); font-size: 11px; letter-spacing: 0.05em; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
-.trace-item pre { white-space: pre-wrap; word-break: break-word; color: var(--text); margin-top: 4px; font-size: 11px; line-height: 1.4; }
+.trace-item { padding: 10px 12px; background: var(--surface-alt); border-radius: var(--radius-sm); font-size: 13px; }
+.trace-item .trace-meta { display: flex; gap: 12px; color: var(--text-dim); font-size: 12px; letter-spacing: 0.05em; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.trace-item pre { white-space: pre-wrap; word-break: break-word; color: var(--text); margin-top: 4px; font-size: 12px; line-height: 1.4; }
 
 /* Health rollup dot (proposal 4.4). Anchored to row 2 of the header at
  * the far right via margin-left:auto so it shares the row with the
@@ -161,7 +161,7 @@ header { transition: height 180ms ease; }
 .replay-list-head {
   padding: 12px 16px;
   background: var(--surface-head);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.12em;
   color: var(--text-dim);
@@ -185,7 +185,7 @@ header { transition: height 180ms ease; }
 .replay-match-row.lost   { box-shadow: inset 3px 0 0 var(--bad); }
 .replay-match-top {
   display: flex; align-items: baseline; gap: 8px;
-  font-size: 13px; font-weight: 700;
+  font-size: 14px; font-weight: 700;
 }
 .replay-match-verdict {
   display: inline-block; min-width: 16px; text-align: center;
@@ -197,13 +197,13 @@ header { transition: height 180ms ease; }
   color: var(--text); font-weight: 700;
 }
 .replay-match-queue {
-  margin-left: auto; font-size: 10px;
+  margin-left: auto; font-size: 11px;
   color: var(--text-faint); letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 .replay-match-bot {
   margin-top: 2px;
-  font-size: 11px; color: var(--text-dim);
+  font-size: 12px; color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
 
@@ -224,12 +224,12 @@ header { transition: height 180ms ease; }
   flex-wrap: wrap;
 }
 .replay-meta {
-  font-size: 13px; color: var(--text-dim);
+  font-size: 14px; color: var(--text-dim);
   font-variant-numeric: tabular-nums;
   flex: 1;
 }
 .replay-clock {
-  font-size: 18px; font-weight: 900;
+  font-size: 19px; font-weight: 900;
   color: var(--text);
   letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
@@ -247,7 +247,7 @@ header { transition: height 180ms ease; }
 .replay-grid {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
 .replay-grid th {
@@ -255,7 +255,7 @@ header { transition: height 180ms ease; }
   padding: 8px 10px;
   background: var(--surface-head);
   position: sticky; top: 0;
-  font-size: 10px; letter-spacing: 0.1em;
+  font-size: 11px; letter-spacing: 0.1em;
   color: var(--text-dim);
   text-transform: uppercase;
 }
