@@ -100,22 +100,34 @@ function _summonerImgTag(sid, cls = "") {
 
 let _wired = false;
 
-// s219 v4: rank-tier comparison sample averages, per game mode.
-// Hand-curated placeholder data — backend aggregates by tier from
+// s219 v6: rank-tier comparison sample averages per game mode.
+// Hand-curated placeholder data — backend aggregates from
 // rewind_history.db are a future settings page follow-up. Keys are
-// the dropdown values; values are { mode: {cs, kda, duration_s, kp} }
-// expressing what an "average <tier>" looks like in that mode.
+// the dropdown values; values are {mode: {cs, cs_per_min, kda, kp,
+// damage, tanked, vision, healing}} expressing what an "average
+// <tier>" looks like in that mode. ARAM values are smaller because
+// the mode runs ~12min average vs SR's ~30min.
 const _RANK_TIER_AVERAGES = {
-  iron:        { ARAM:{cs:35,kda:1.6,duration_s:1080,kp:55}, SR:{cs:140,kda:1.7,duration_s:1800,kp:50} },
-  bronze:      { ARAM:{cs:42,kda:1.9,duration_s:1080,kp:58}, SR:{cs:165,kda:2.0,duration_s:1830,kp:53} },
-  silver:      { ARAM:{cs:48,kda:2.1,duration_s:1080,kp:60}, SR:{cs:185,kda:2.2,duration_s:1860,kp:55} },
-  gold:        { ARAM:{cs:55,kda:2.4,duration_s:1080,kp:62}, SR:{cs:205,kda:2.5,duration_s:1890,kp:58} },
-  platinum:    { ARAM:{cs:62,kda:2.7,duration_s:1080,kp:64}, SR:{cs:225,kda:2.8,duration_s:1920,kp:60} },
-  emerald:     { ARAM:{cs:68,kda:3.0,duration_s:1080,kp:66}, SR:{cs:240,kda:3.1,duration_s:1920,kp:62} },
-  diamond:     { ARAM:{cs:75,kda:3.3,duration_s:1080,kp:68}, SR:{cs:260,kda:3.4,duration_s:1950,kp:64} },
-  master:      { ARAM:{cs:80,kda:3.6,duration_s:1080,kp:70}, SR:{cs:280,kda:3.7,duration_s:1980,kp:66} },
-  grandmaster: { ARAM:{cs:85,kda:3.9,duration_s:1080,kp:72}, SR:{cs:300,kda:4.0,duration_s:2010,kp:68} },
-  challenger:  { ARAM:{cs:90,kda:4.2,duration_s:1080,kp:74}, SR:{cs:320,kda:4.3,duration_s:2040,kp:70} },
+  iron:        { ARAM:{cs:35, cs_per_min:2.9, kda:1.6, kp:55, damage:11000, tanked:18000, vision:0, healing:1500},
+                 SR:  {cs:140,cs_per_min:4.7, kda:1.7, kp:50, damage:14000, tanked:21000, vision:18,healing:2500} },
+  bronze:      { ARAM:{cs:42, cs_per_min:3.5, kda:1.9, kp:58, damage:13000, tanked:21000, vision:0, healing:1800},
+                 SR:  {cs:165,cs_per_min:5.5, kda:2.0, kp:53, damage:16500, tanked:23000, vision:21,healing:2800} },
+  silver:      { ARAM:{cs:48, cs_per_min:4.0, kda:2.1, kp:60, damage:15000, tanked:23000, vision:0, healing:2100},
+                 SR:  {cs:185,cs_per_min:6.2, kda:2.2, kp:55, damage:18500, tanked:25000, vision:24,healing:3000} },
+  gold:        { ARAM:{cs:55, cs_per_min:4.6, kda:2.4, kp:62, damage:17500, tanked:25000, vision:0, healing:2400},
+                 SR:  {cs:205,cs_per_min:6.8, kda:2.5, kp:58, damage:21000, tanked:27000, vision:27,healing:3300} },
+  platinum:    { ARAM:{cs:62, cs_per_min:5.2, kda:2.7, kp:64, damage:20000, tanked:27000, vision:0, healing:2700},
+                 SR:  {cs:225,cs_per_min:7.5, kda:2.8, kp:60, damage:23500, tanked:29000, vision:30,healing:3600} },
+  emerald:     { ARAM:{cs:68, cs_per_min:5.7, kda:3.0, kp:66, damage:22500, tanked:29000, vision:0, healing:2900},
+                 SR:  {cs:240,cs_per_min:8.0, kda:3.1, kp:62, damage:25500, tanked:30500, vision:33,healing:3800} },
+  diamond:     { ARAM:{cs:75, cs_per_min:6.2, kda:3.3, kp:68, damage:25000, tanked:31000, vision:0, healing:3200},
+                 SR:  {cs:260,cs_per_min:8.7, kda:3.4, kp:64, damage:28000, tanked:32000, vision:36,healing:4100} },
+  master:      { ARAM:{cs:80, cs_per_min:6.7, kda:3.6, kp:70, damage:27500, tanked:33000, vision:0, healing:3500},
+                 SR:  {cs:280,cs_per_min:9.3, kda:3.7, kp:66, damage:30500, tanked:33500, vision:39,healing:4400} },
+  grandmaster: { ARAM:{cs:85, cs_per_min:7.1, kda:3.9, kp:72, damage:30000, tanked:35000, vision:0, healing:3800},
+                 SR:  {cs:300,cs_per_min:10.0,kda:4.0, kp:68, damage:33000, tanked:35000, vision:42,healing:4700} },
+  challenger:  { ARAM:{cs:90, cs_per_min:7.5, kda:4.2, kp:74, damage:32500, tanked:37000, vision:0, healing:4100},
+                 SR:  {cs:320,cs_per_min:10.7,kda:4.3, kp:70, damage:36000, tanked:37000, vision:45,healing:5000} },
 };
 const _RANK_LS_KEY = "rc-pgr-rank-tier";
 
@@ -226,7 +238,7 @@ function renderLastMatch(data) {
   const enriched = m.enriched || null;
 
   _setHero(m, enriched);
-  _setStatsGrid(m);
+  _setStatsGrid(m, enriched);
   // s219 v3: _setDsPicks + _setEnrichedBuild dropped — operator removed
   // the BUILD section entirely. Final inventory + summoner spells now
   // live in the Team Composition card (operator's own row); DS picks
@@ -249,37 +261,45 @@ function renderLastMatch(data) {
 let _lastMatchMode = "";
 
 function _renderRankCompare(tier) {
-  const root = document.getElementById("lm-rank-compare-values");
-  if (!root) return;
-  if (!tier) {
-    root.innerHTML = '<span class="lm-rank-pending">pick a tier to compare</span>';
-    return;
-  }
+  // s219 v6: 8 individual cells (4 row 1 + 4 row 2 minus the selector
+  // in col 1 row 1). Populates by ID rather than rewriting the whole
+  // container, so the HTML structure + grid placement stays stable.
+  const cells = {
+    "lm-rank-kda":    "",
+    "lm-rank-vision": "",
+    "lm-rank-cs":     "",
+    "lm-rank-tank":   "",
+    "lm-rank-kp":     "",
+    "lm-rank-damage": "",
+    "lm-rank-cspm":   "",
+    "lm-rank-heal":   "",
+  };
+  const set = (vals) => {
+    Object.keys(cells).forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = vals[id] != null ? vals[id] : "—";
+    });
+  };
+
+  if (!tier) { set({}); return; }
   const tierData = _RANK_TIER_AVERAGES[tier];
-  if (!tierData) {
-    root.innerHTML = `<span class="lm-rank-pending">no data for ${_escHtml(tier)}</span>`;
-    return;
-  }
-  // Look up the current match's mode (defaults to SR if mode missing/unknown).
+  if (!tierData) { set({}); return; }
   const mode = (_lastMatchMode || "").toUpperCase();
-  const modeKey = mode in tierData ? mode : (mode === "ARAM" || mode === "KIWI" ? "ARAM" : "SR");
+  const modeKey = mode in tierData
+    ? mode
+    : (mode === "ARAM" || mode === "KIWI" ? "ARAM" : "SR");
   const avg = tierData[modeKey] || tierData.SR;
-  if (!avg) {
-    root.innerHTML = `<span class="lm-rank-pending">no data for ${_escHtml(tier)} / ${_escHtml(mode)}</span>`;
-    return;
-  }
-  // 3 cells: avg CS / avg KDA / avg duration. Compact.
-  const cells = [
-    { label: "CS",  value: String(avg.cs) },
-    { label: "KDA", value: avg.kda.toFixed(1) },
-    { label: "DUR", value: _fmtDuration(avg.duration_s) },
-  ];
-  root.innerHTML = cells.map((c) => `
-    <div class="lm-rank-cell">
-      <span class="lm-rank-cell-label">${_escHtml(c.label)}</span>
-      <span class="lm-rank-cell-value">${_escHtml(c.value)}</span>
-    </div>
-  `).join("");
+  if (!avg) { set({}); return; }
+  set({
+    "lm-rank-kda":    avg.kda.toFixed(1),
+    "lm-rank-vision": String(avg.vision),
+    "lm-rank-cs":     String(avg.cs),
+    "lm-rank-tank":   _fmtThousands(avg.tanked),
+    "lm-rank-kp":     `${avg.kp}%`,
+    "lm-rank-damage": _fmtThousands(avg.damage),
+    "lm-rank-cspm":   avg.cs_per_min.toFixed(1),
+    "lm-rank-heal":   _fmtThousands(avg.healing),
+  });
 }
 
 function _setMeta(m, historyCount, _enriched) {
@@ -457,25 +477,38 @@ function _renderTcRow(r) {
   </li>`;
 }
 
-function _setStatsGrid(m) {
-  const cs = document.getElementById("lm-cs");
-  const cspm = document.getElementById("lm-cs-per-min");
-  const gold = document.getElementById("lm-gold");
-  const gpm = document.getElementById("lm-gold-per-min");
-  const kp = document.getElementById("lm-kp");
-  const dur = document.getElementById("lm-duration");
-  const when = document.getElementById("lm-when");
+function _setStatsGrid(m, enriched) {
+  // s219 v6: section 2 of hero — 2 rows × 4 cols. Row 1: Vision / CS /
+  // Tanked. Row 2: KP% / Damage / CS/min / Heal+Shield.
+  const cs       = document.getElementById("lm-cs");
+  const cspm     = document.getElementById("lm-cs-per-min");
+  const kp       = document.getElementById("lm-kp");
+  const vision   = document.getElementById("lm-vision");
+  const tankDmg  = document.getElementById("lm-tank-dmg");
+  const damage   = document.getElementById("lm-damage");
+  const healing  = document.getElementById("lm-healing");
 
-  if (cs) cs.textContent = (m.cs != null && m.cs > 0) ? String(m.cs) : "—";
+  if (cs)   cs.textContent   = (m.cs != null && m.cs > 0) ? String(m.cs) : "—";
   if (cspm) cspm.textContent = (typeof m.cs_per_min === "number")
-    ? `${m.cs_per_min.toFixed(1)} CS/min` : "—";
-  if (gold) gold.textContent = (m.gold != null && m.gold > 0)
-    ? _fmtGold(m.gold) : "—";
-  if (gpm) gpm.textContent = (typeof m.gold_per_min === "number" && m.gold_per_min > 0)
-    ? `${Math.round(m.gold_per_min)} / min` : "—";
-  if (kp) kp.textContent = (typeof m.kp_pct === "number") ? `${Math.round(m.kp_pct)}%` : "—";
-  if (dur) dur.textContent = _fmtDuration(m.duration_s);
-  if (when) when.textContent = _fmtAgo(m.timestamp);
+                                ? m.cs_per_min.toFixed(1) : "—";
+  if (kp)   kp.textContent   = (typeof m.kp_pct === "number")
+                                ? `${Math.round(m.kp_pct)}%` : "—";
+
+  // Enriched-only stats — Vision / Damage / Tanked / Heal+Shield.
+  const e   = enriched || {};
+  const dmg = e.damage  || {};
+  const sup = e.support || {};
+  const vs  = e.vision  || {};
+
+  if (vision)  vision.textContent  = (vs.score != null) ? String(vs.score) : "—";
+  if (tankDmg) tankDmg.textContent = (dmg.taken)
+                                      ? _fmtThousands(dmg.taken) : "—";
+  if (damage)  damage.textContent  = (dmg.dealt_to_champs)
+                                      ? _fmtThousands(dmg.dealt_to_champs) : "—";
+  if (healing) {
+    const hs = sup.heal_plus_shield || 0;
+    healing.textContent = hs > 0 ? _fmtThousands(hs) : "—";
+  }
 }
 
 function _setDsPicks(picks) {
@@ -624,8 +657,10 @@ function _setEmptyState(errMsg) {
   const champEl = document.getElementById("lm-champion-name");
   if (champEl) { champEl.textContent = "—"; champEl.dataset.champion = ""; }
   ["lm-mode-tag","lm-kda-text","lm-kda-ratio","lm-grade-badge",
-   "lm-cs","lm-cs-per-min","lm-gold","lm-gold-per-min",
-   "lm-kp","lm-duration","lm-when"].forEach((id) => {
+   "lm-cs","lm-cs-per-min","lm-kp",
+   "lm-vision","lm-tank-dmg","lm-damage","lm-healing",
+   "lm-rank-kda","lm-rank-vision","lm-rank-cs","lm-rank-tank",
+   "lm-rank-kp","lm-rank-damage","lm-rank-cspm","lm-rank-heal"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.textContent = "—";
   });
