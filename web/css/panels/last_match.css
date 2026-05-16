@@ -115,10 +115,21 @@
 .lm-hero-grade[data-grade="D"] { color: var(--grade-d, #e8a86d); }
 .lm-hero-grade[data-grade="F"] { color: var(--grade-f, #e07a7a); }
 
+/* ── 2-up row wrapper (stats|build, ally|enemy) ─────────────────────── */
+.lm-row-half {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+
 /* ── Stats grid ─────────────────────────────────────────────────────── */
+/* s219 v2: now sits in the left half of a 2-up row alongside BUILD.
+ * Switched 1×4 → 2×2 since 4 columns at half-width crushed the values. */
 .lm-stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: 1fr;
   gap: 10px;
 }
 .lm-stat-card {
@@ -263,10 +274,12 @@
 .lm-pending[hidden] { display: none; }
 
 /* ── Team Composition — ally + enemy rosters ────────────────────────── */
+/* s219 v2: .lm-tc-table now ALSO carries .lm-row-half so ally + enemy
+ * sit side-by-side. The 2-column grid rules come from .lm-row-half;
+ * this rule just defines the hidden default + gap fallback for when
+ * .lm-row-half is absent (e.g. legacy callers). */
 .lm-tc-table {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 .lm-tc-table[hidden] { display: none; }
 
@@ -314,10 +327,13 @@
 }
 .lm-tc-row {
   display: grid;
-  /* portrait | name | level | KDA | CS | summoners | items */
-  grid-template-columns: 36px minmax(110px, 1.2fr) auto auto auto auto 1fr;
+  /* portrait | name | level | KDA | CS | summoners | items
+   * s219 v2: half-width container means tighter columns. Name is the
+   * elastic cell (truncates with ellipsis); items column gets minmax
+   * floor so 7 icons always fit without overflowing. */
+  grid-template-columns: 32px minmax(80px, 1fr) auto auto auto auto minmax(168px, auto);
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 6px 8px;
   background: var(--surface);
   border: 1px solid var(--border-soft);
@@ -329,7 +345,7 @@
   border-color: var(--accent-soft, rgba(138, 140, 240, 0.4));
 }
 .lm-tc-portrait {
-  width: 36px; height: 36px;
+  width: 32px; height: 32px;
   border-radius: 50%;
   background: var(--surface-2, #1a1a22);
   border: 1px solid var(--border-soft);
