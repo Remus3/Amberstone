@@ -6,6 +6,33 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s224 wrap — 2026-05-16 (DS Phase 5.9.24: unmapped-key pass — Bel'Veth R + _UNIT_TO_FIELD variant family)
+
+**Operator instruction:** same self-paced loop ("continue ds work in parallel for the next hour self continue — maximum effort"). This is **iteration 2** (s223 was iteration 1, same session-day).
+
+## What happened — worked the space orthogonal to s223's saturation finding
+
+s223 proved the *uncovered-champion* block_index space saturated. s224 worked the other axis: ability KEYS on already-covered champions not yet in the registry. Built `tools/ds_unmapped_key_prefilter.py` (runs the s223 ground-truth A/B over every unmapped key of all 125 covered champs, full-HP + 40%-HP passes) → tight **7-item shortlist**. 2 were documented skips (Corki R = s194 every-4th-missile; DrMundo Q = s203 conditional-higher-vs-full-HP), 3 were false flags on already-mapped siblings. Two real findings:
+
+## Shipped (committing now)
+
+1. **`Belveth: {R: 1}`** — block 1 "True Damage" (150-250 + 100% AP + 25% missing-HP) is the canonical Endless-Banquet recast nuke; engine defaulted to block 0 ("Bonus True Damage" 6-10), live A/B **8→450 raw (56×)**. This **corrects s223's over-conservative "Bel'Veth R = no entry, already parsed" call** — field-parsed ≠ engine-block-selected (engine always defaults to block 0; an explicit entry is needed to select block 1). The s223 test `test_kayle_belveth_R_remain_unmapped` was rewritten → `test_kayle_unmapped_belveth_R_added_s224` (s223→s224 evolution guard). Bel'Veth → `{E:2, R:1}`.
+2. **`_UNIT_TO_FIELD` text-drift family (s223-sibling)** — the pre-filter exposed 8 missing Meraki health-unit variants: double-space `"%  of target's current health"`, `"the target's"` maximum/missing forms (single+double space), caster-max pronoun/name forms (`"% of his/her maximum health"`, `"% of Braum's/Zac's maximum health"`). Added; `tools/migrate_abilities_unit_variants_s224.py` (same audit-gated zero-re-fetch contract as s223, reuses its `_promote`/`_recompute_parse_status`, idempotent) promoted **exactly 32 mods across 13 champs** (Ambessa Q · Braum Q · Briar W · Fiddlesticks Q · Gnar E · Gwen Q·R · Maokai Q · Sejuani W · Skarner E · TahmKench R · Trundle R · Varus W · Zac Q) whose %HP component was dropped. **Trundle R + Fiddlesticks Q evaluated 0 entirely pre-s224** (live A/B Trundle R 0→500, Fiddle Q 0→72). Skipped non-clean: TahmKench Q / Pantheon W `% AP per 100 bonus health` (hybrid), AurelionSol Q malformed Stardust string.
+
+ENGINE 0.95.0→0.96.0; 5 pin bumps + `test_block_index_overrides` Belveth shape-pin update + `test_unit_variants_s224.py` (18 tests). DS suite 2086→**2104**; wider RC **1107**; DS server restarted → `/health` 0.96.0.
+
+## Don't-redo / blockers
+
+- **Don't `--force` re-extract** to apply parser fixes — Meraki `latest` is mutable (patch-bump + churn risk). The two migration scripts (`migrate_abilities_nested_hp_s223.py`, `migrate_abilities_unit_variants_s224.py`) are **historical artifacts** like DB migrations — don't refactor old ones; write a new dated one per parser change. All idempotent + hard audit-gated.
+- **Varus W is now a FUTURE block_index candidate** — s224 parsed its Blight-stack maxHP (blocks 1-4) but the engine defaults Varus W to block 0 (18-dmg passive on-hit). A `Varus: {W: <blight-block>}` entry would surface the detonation — but pick the right block (per-stack vs max-stack vs the Q/R-detonation interaction) carefully; this is iteration-3+ material.
+- s224's `test_target_max_hp_textdrift_promoted` etc. pin the live snapshot — if the snapshot is ever cleanly re-extracted (new patch), these stay green because the fixed `_UNIT_TO_FIELD` produces the same typed fields.
+
+## NEXT (self-continuing loop)
+
+Unmapped-key space near-exhausted (only Bel'Veth R was a clean find across 125 champs). Iteration 3 options: (a) Varus W block_index entry (data now parsed); (b) audit the *form_index* / *combo_sequence* registries for similar gaps; (c) the conditional-target-state schema lift (architectural — flag for operator, don't ship autonomously). s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
+
+---
+
 # s223 wrap — 2026-05-16 (DS Phase 5.9.23: nested %HP parser fix + provable block_index saturation)
 
 **Operator instruction:** "continue ds work in parallel for the next hour self continue — opus 4.7 1m maximum effort". Self-paced loop; this is iteration 1.
