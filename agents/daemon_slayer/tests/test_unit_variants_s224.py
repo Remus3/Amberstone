@@ -224,8 +224,8 @@ class BackwardCompatS224Tests(unittest.TestCase):
 class EngineVersionS224Tests(unittest.TestCase):
     def test_engine_version(self) -> None:
         from agents import daemon_slayer
-        # s228 (Phase 5.9.28) bumped to 1.0.0; pin tracks current.
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.0.0")
+        # s229 (Phase 5.9.29) bumped to 1.1.0; pin tracks current.
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.1.0")
 
 
 if __name__ == "__main__":

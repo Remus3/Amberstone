@@ -136,7 +136,7 @@ class FormIndexABTests(unittest.TestCase):
         # s228 Phase 5.9.28 converted Evelynn Q to a conditional dict;
         # form_index (E=1) and block_index (Q conditional) still compose
         # orthogonally — the point of this test.
-        self.assertEqual(bi.get("Q"), {"default": 5, "target_no_cc": 0})
+        self.assertEqual(bi.get("Q"), {"default": 5, "target_no_setup": 0})
 
 
 class BackwardCompatS226Tests(unittest.TestCase):
@@ -167,8 +167,8 @@ class BackwardCompatS226Tests(unittest.TestCase):
 class EngineVersionS226Tests(unittest.TestCase):
     def test_engine_version(self) -> None:
         from agents import daemon_slayer
-        # s228 (Phase 5.9.28) bumped to 1.0.0; pin tracks current.
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.0.0")
+        # s229 (Phase 5.9.29) bumped to 1.1.0; pin tracks current.
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.1.0")
 
 
 if __name__ == "__main__":
