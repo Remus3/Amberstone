@@ -4,6 +4,79 @@
 
 ---
 
+# s219 wrap — 2026-05-15/16 (Post Game Review build — multi-session marathon)
+
+**Operator instruction:** "ready for last match page - lets go to it" → 16+ iterations of build + redesign over ~6 hours of wall time. Closed with "do /done for a /clear then next session to finish C and E and settings page add".
+
+## Shipped — 16 commits (`8228164` → `6c0728e`)
+
+**Pre-work side ships (before the main build):**
+- `8228164` — salvaged PR #3 (Boots + Spellblade tuples for `_ITEM_CLASS_PEERS`); 11 tests; closed PR #3, deleted both stale agent branches, GitHub now clean (0 PRs, 0 forks, 1 branch).
+- `c78c004` — folded Phase 3 supervisor into main RC supervisor's watch (frozen-file edit, ~200 lines additive `_Phase3Watcher`, 15 unit tests). Restarted RC-Supervisor scheduled task (pid 184); auto-restarts dead Phase 3 process via `schtasks /Run` + heartbeat-stale check. `status.json` now carries a `phase3` block.
+
+**Post Game Review page — backend ingest pipeline:**
+- `eee6cfa` — s219 v1 scaffold: `/api/last-match` route + builder + HTML/CSS/JS panel. Source: `data/match_history.db` latest non-TFT row. Quick Review heuristics with `{text, why}` for tooltip-based explainability.
+- `97cafcb` — rename "Last Match" → "Post Game Review" across menu/tile/h2/dropdown trigger/urgent-view banner/dead-dashboard label map. Internal view-id `last-match` preserved (view-router tests don't churn).
+- `19d8027` — LCU `/lol-match-history/v1/games/{gameId}` ingest endpoint `POST /api/last-match/ingest`; raw_data stash (no normalized schema per operator); `_enrich_from_lcu` builder parses 10-player roster + items + summoners + runes + damage + objectives + W/L. Live verified via PowerShell ingest of gameId 5560797021.
+- `3b46441` — Game-PC LCU agent edge-fires the POST on `EndOfGame` phase transition.
+- `781f895` — agent crash-recovery: persists `last_game_id_ingested` to `C:\RC-Agent\agent_state.json`, runs one-shot `_recover_missed_ingest()` on boot to ship any game that was missed (covers Game-PC crash at end-of-game, agent offline at end-of-game).
+
+**Post Game Review page — frontend iterations:**
+- `9641648` — Quick Review team-level heuristics from LCU enrichment (lost first blood/tower, dragon control diff, soul/baron giveaway, tower diff, gold deficit, kill deficit — mode-aware for SR + ARAM, suppressed for Arena).
+- `03f7fc5` — condense hero (cluster left + drop padding), fold Deep Review button into Quick Review section title, hide live-game pills on this view.
+- `6883c32` — 2-up layout: stats|build same row, ally|enemy team comp same row.
+- `62884cd` — drop BUILD section entirely (operator: redundant with team-comp items), stats fold into hero row, roster name col fixed at 130px so L## / KDA / CS columns align vertically.
+- `dca7ffe` — rank-tier compare dropdown (Iron→Challenger), localStorage-persisted (`rc-pgr-rank-tier`); hand-curated `_RANK_TIER_AVERAGES` for v1.
+- `09b6ed3` — fix panel snapshot tests: `/#last-match` URL was the legacy "show main panels" view-id; s219 made it hide `main`. Test now injects CSS override to nullify the hide rules for that URL only.
+- `31c214b` — tabbed panel: Comp / Chart / Review tabs replace "TEAM COMPOSITION" title. Chart tab is new (ally-vs-enemy aggregate bars). Review tab is the relocated Quick Review. Tab choice persists.
+- `740e8ee` — biggest hero rework: 3 sections (identity / 2-row match stats / 2-row rank-cmp). Stats now include Vision, Tanked, Damage, CS/min, Heal+Shield. Section 3 uses `grid-template-areas` for bulletproof cell positioning. `enriched.support.heal_plus_shield` added. Font bump (+1px). Team-comp row columns fully fixed-width so ally + enemy share identical column widths.
+- `6c0728e` — per-player augments extracted into `enriched.roster[].augments` (LCU `playerAugment1-6`). Backend only — frontend rendering carried to next session.
+
+**Other:**
+- BACKLOG.md gained 4 research/inspiration items (coachless.gg teardown, DDragon mirror auto-refresh, Pengu.lol MCP adaptation, Pengu.lol Discord crawl).
+- DDragon mirror at `web/data/ddragon/16.8.1` cloned to `16.10.1` (12 MB, gitignored) so the running patch's item/spell icons load locally without CDN-fallback hammering.
+
+## Live in browser (verified by capture)
+
+- 1080-viewport fits hero + tabbed panel without scroll.
+- Hero shows: portrait + Quinn + ARAM + 3/11/11 + 1.27 KDA + DEFEAT + D grade clustered tight | centered match stats (CS 20 1.7/min, Tanked 21.6k, KP 56%, Damage 12.4k, etc.) | right rank-cmp (Diamond avg: CS 75 6.2/min, Tanked 31k, KDA 3.3, KP 68%, Damage 25k, Heal 3.2k).
+- Quick Review heuristics fire 5 signals on Quinn match (Lost first blood, Lost first tower, Lost every tower trade, Team kill deficit 25-48, Death count cost the team).
+- Chart tab renders ally-vs-enemy aggregate bars (Kills 25-48, Deaths 48-26, Damage 54.6k-98k, etc.).
+- Team Comp tab renders both rosters with portraits + items + summoners + me-highlight on SamplePlayer row.
+- LCU agent auto-ingest verified live: gameId 5560797021 ingested through `EndOfGame` → `agent_state.json` saved.
+
+## What's next (carried into next session)
+
+**Operator's deferred items (do these first per final s219 message):**
+- **Item C — rich item tooltips on hover** (champ-select style with LoL content via `lol_descriptions.js` + `/api/dictionary/{items,runes,champion-tags}`). Backed by existing `data-tt-html` app-tooltip plumbing in `champ_select.js`. Should propagate to DS picks tiles + Comp tab item icons + augments (once shipped).
+- **Item E — port LCU `/lol-match-history/v1/games/{gameId}/timeline` view OR final interactive minimap** into the Post Game Review page. Timeline has gold/cs/level deltas per minute + kill/death events; minimap would be the visual replay overlay. Operator's hint: "the final interactive minimap that is seen from the league client when looking at the match history results."
+- **Settings page additions** — canonical home for the rank-tier dropdown persistence (currently localStorage `rc-pgr-rank-tier`), the baseline-count knob (currently fixed at 20 via `_build_last_match`'s SQL LIMIT 20), and any future post-game-review toggles. Existing `view-settings` section already in HTML.
+
+**Operator's deferred polish items from mid-session (do these in the look-over):**
+- 3rd font bump (+1 again on hero + tab panel). Operator asked for this twice; v6 commit was the 2nd bump. 3rd is still owed.
+- Section 3 typography increase to match hero (currently rank-cell-value 14px, label 10px — should match hero-stat-value 23px, label 13px). Plus: move KP% to (2,1) where KDA was, shift KDA to (1,2) right next to selector.
+- Tab rename: current "Review" tab → "Insights"; new "Review" tab that routes to deep-review page (the Open Deep Review CTA button folds into the tab strip as a navigation tab).
+- Chart tab contrast fix — bars use `--ok`/`--bad` at 0.85 opacity, white text on bar washes out. Tone bars to ~0.5 opacity + move text to dark background end of each bar.
+- Visual separator between hero sections — 1px dashed line (like champ_select uses) OR colored tabbing for the 3 sections.
+- Per-player augments rendering in Comp tab — backend already ships `enriched.roster[].augments`; frontend needs CDN icon URL research for Cherry/Mayhem augment images (CommunityDragon likely path: `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perk-images/...` or similar).
+
+**Deferred to UI agent review (don't ship until reviewed):**
+- Grade icon (S/A/B/C/D badge in hero) redesign — operator: "harsh to view... doesn't visually flow." Once UI agent passes, propagate to all pages using the badge.
+- Tab title color-tying to the panel it controls — operator: "we can ask the ui agent when its time."
+
+## Blockers / don't redo
+
+- The **rename** is everywhere — don't add a new view-id (e.g. `post-game-review`); operator chose to keep internal id `last-match` so all 27 view_router_state tests don't churn. Display label is the only operator-visible surface.
+- The DDragon **mirror at 16.10.1** is a clone of 16.8.1 (most item icons don't change between minor patches). Don't try to fetch the actual 16.10.1 assets from CDN — only do it when a specific icon goes missing AND CDN fallback fails. The auto-refresh BACKLOG item covers the durable fix.
+- The `_RANK_TIER_AVERAGES` constants in `web/js/panels/last_match.js` are **hand-curated**. Don't pretend they're statistically grounded — real per-tier aggregates from rewind_history.db are a deferred backend feature; Settings page work could unlock this if it adds the calibration pipeline knob.
+- The **Phase 3 supervisor watch** in `ops/rc_supervisor.py` is a frozen-file edit — operator authorized this session. Don't unfold without explicit reauthorization.
+- `gamepc_lcu_agent.py` running at `C:\RC-Agent\` on Game-PC was redeployed twice this session via the http.server-on-Legion + Invoke-WebRequest dance. Pid is currently **2428** per last check; will be different on next reboot. Use the memory-documented redeploy steps for changes.
+- `agent_state.json` at `C:\RC-Agent\agent_state.json` is the crash-recovery anchor — DON'T delete it. If corrupted, the agent treats the next launch as a fresh boot and recovers from LCU's latest gameId.
+- Panel snapshot test override (`page.add_style_tag(...)`) in `tests/snapshot_panels/test_panel_snapshots.py` is load-bearing — without it, all 6 game-mode fixtures fail because the test's `/#last-match` URL now activates the Post Game Review view-section which hides `main`.
+- Don't repeat the **CDN onerror fallback debug** — when ITEMS.version was 16.10.1 and the local 16.10.1 dir didn't exist, the inline `onerror="..."` chain to CDN didn't fire visibly. The proper fix was already taken (clone local mirror to 16.10.1). The real "why didn't onerror fire" investigation is still open but blocked on Chrome devtools access we don't have remotely. Don't re-investigate without a new approach.
+
+---
+
 # s218 wrap — 2026-05-15 (Home page redesign + foundation overhaul)
 
 **Operator instruction:** "doing ui work" — open-ended iterative pass on the Home view. Closed out with "this page is done now. commit and /done".
@@ -106,30 +179,3 @@ DS suite 2041 → 2060 (+19). Wider RC `tests/` 953 green post-DS-restart (phase
 - DS server :8893 is HTTP, not HTTPS — don't waste cycles diagnosing SSL handshake errors. `curl -k -s https://...` returns RST/wrong-version; use `http://127.0.0.1:8893/...` instead. Pre-existing condition matches the wider-test wire format.
 - `_delta_check(champion, key, expected_idx)` helper in `test_block_index_overrides.py` only handles int expected_idx — for sum-of-blocks (list-valued) entries, use the inline pattern from `test_drmundo_W_routes_to_sum_of_blocks` (assert `block_index_resolved.get(key) == [a, b]` + delta-check against forced single block). s215 established this pattern for Thresh.E; s217 extended to DrMundo.W.
 - `_meta.rationale` in `champion_block_index.json` was NOT updated by s215 — last entries reference s205. s217 also only updated `_meta.description` (kept rationale append as future cleanup, since it's a 78KB file and rationale duplicates much of description's per-entry math). Not a regression — both fields are documentation.
-
----
-
-# s216 wrap — 2026-05-15 (Game-PC: League settings restore from SamplePlayer backup + ReadOnly lock)
-
-**Operator instruction:** "find my last saved persisted league setting file we did with rc where the league game was borderless windowed (we kept it in case of changing riot accounts) and overwrite the games current persisted file - then make it readme [readonly] after confirming the new file change over". Pointed to `C:\rc-agent\lol_settings_SamplePlayer.py` on Game-PC.
-
-## Ops-only session — zero RC code changes, zero commits
-
-- Backup file: `C:\rc-agent\lol_settings_SamplePlayer.py` (26820B, captured 2026-04-26 for SamplePlayer#Trist). Self-contained Python restore script — writes 4 files (`game.cfg`, `input.ini`, `PersistedSettings.json`, `LCUAccountPreferences.yaml`) and has `--backup` flag that auto-snapshots current files into a timestamped subfolder before overwriting.
-- Pre-check: no LeagueClient/RiotClient processes running on Game-PC (script requires League closed).
-- Ran `py "C:\rc-agent\lol_settings_SamplePlayer.py" --backup` via `mcp__gamepc__run_powershell`. All 4 files written, pre-restore state preserved at `C:\Riot Games\League of Legends\Config\_backup_SamplePlayer_20260515_085530\`.
-- Verified `WindowMode=2` (borderless) and `Height=1080`/`Width=1920` in restored `game.cfg`.
-- Set ReadOnly attribute on all 4 restored files via `Set-ItemProperty -Name IsReadOnly -Value $true`. Confirmed `Attributes` shows `ReadOnly, Archive` for each.
-- Live `PersistedSettings.json` shrank 54734B → 11974B post-restore — expected; script's PERSISTED_SETTINGS_JSON only carries the curated subset captured 4/26, and Riot regenerates server-side data on next login (per the script's own comment).
-
-## What's next
-
-- Operator's previously-planned **live ARAM Mayhem test** (carried from s214/s215) now has stable settings — borderless windowed locked, won't drift across account swaps.
-- All s215 DS Phase 5.9.22+ carry-forwards remain unchanged (Taliyah E, Jinx R secondary AOE, Kindred E/Kayle E/Belveth R nested missing-HP parser bucket).
-- Loadout autogen calibration follow-up unchanged (operator may flip `default_per_mode` pointers post-Mayhem).
-
-## Blockers / don't redo
-
-- ReadOnly attribute means League cannot overwrite these on client-exit (intended) — BUT any in-game settings changes also won't persist until the attribute is cleared. Operator knows; flagged in chat. Clear via `Set-ItemProperty -Name IsReadOnly -Value $false` per-file if they want to retune live.
-- Don't re-search for the backup — confirmed location is `C:\rc-agent\lol_settings_SamplePlayer.py` (also mirrored at `C:\RC-Agent\` — Windows case-insensitive duplicate listing).
-- Pre-restore backup at `C:\Riot Games\League of Legends\Config\_backup_SamplePlayer_20260515_085530\` is the rollback artifact if needed.
