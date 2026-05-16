@@ -1330,6 +1330,11 @@
       </div>
       <div class="view-section-body lm-body" id="lm-body">
 
+        <!-- s219 v3: stats folded into the hero row.
+             BUILD section removed entirely — operator's final inventory
+             is already surfaced in the Team Composition card below
+             (their row's item icons), and DS picks aren't useful on the
+             post-game review (they live in champ-select + active-match). -->
         <div class="lm-hero">
           <img class="lm-hero-portrait" id="lm-portrait" alt="" />
           <div class="lm-hero-name">
@@ -1343,50 +1348,26 @@
           </div>
           <div class="lm-hero-result" id="lm-result-badge" data-result="" hidden>—</div>
           <div class="lm-hero-grade" id="lm-grade-badge" data-grade="">—</div>
-        </div>
-
-        <!-- s219: 2-up row — stats grid on the left, BUILD on the right -->
-        <div class="lm-row-half">
-          <div class="lm-stats-grid">
-            <div class="lm-stat-card">
-              <span class="lm-stat-label">CS</span>
-              <span class="lm-stat-value" id="lm-cs">—</span>
-              <span class="lm-stat-sub" id="lm-cs-per-min">—</span>
+          <div class="lm-hero-stats">
+            <div class="lm-hero-stat">
+              <span class="lm-hero-stat-label">CS</span>
+              <span class="lm-hero-stat-value" id="lm-cs">—</span>
+              <span class="lm-hero-stat-sub" id="lm-cs-per-min">—</span>
             </div>
-            <div class="lm-stat-card">
-              <span class="lm-stat-label">Gold</span>
-              <span class="lm-stat-value" id="lm-gold">—</span>
-              <span class="lm-stat-sub" id="lm-gold-per-min">—</span>
+            <div class="lm-hero-stat">
+              <span class="lm-hero-stat-label">Gold</span>
+              <span class="lm-hero-stat-value" id="lm-gold">—</span>
+              <span class="lm-hero-stat-sub" id="lm-gold-per-min">—</span>
             </div>
-            <div class="lm-stat-card">
-              <span class="lm-stat-label">KP</span>
-              <span class="lm-stat-value" id="lm-kp">—</span>
-              <span class="lm-stat-sub">team-fight participation</span>
+            <div class="lm-hero-stat">
+              <span class="lm-hero-stat-label">KP</span>
+              <span class="lm-hero-stat-value" id="lm-kp">—</span>
+              <span class="lm-hero-stat-sub">team-fight</span>
             </div>
-            <div class="lm-stat-card">
-              <span class="lm-stat-label">Duration</span>
-              <span class="lm-stat-value" id="lm-duration">—</span>
-              <span class="lm-stat-sub" id="lm-when">—</span>
-            </div>
-          </div>
-
-          <div class="lm-section lm-build-section">
-            <h3 class="lm-section-head">BUILD</h3>
-            <!-- Operator's actual final inventory from LCU (item0-item6 +
-                 summoner spells). Hidden until enriched data lands. -->
-            <div class="lm-build-row" id="lm-actual-build" hidden>
-              <span class="lm-build-row-label">FINAL</span>
-              <div class="lm-inventory" id="lm-inventory"></div>
-              <div class="lm-summoners" id="lm-summoners"></div>
-            </div>
-            <div class="lm-build-row">
-              <span class="lm-build-row-label">DS PICKS</span>
-              <div class="lm-build-items" id="lm-ds-picks">
-                <span class="lm-empty">no DS data captured for this match</span>
-              </div>
-            </div>
-            <div class="lm-pending" id="lm-build-pending" data-dummy-data="last-match-items">
-              Final inventory pending — auto-ingests on EndOfGame; or Refresh-from-Riot button (v2) on the page header.
+            <div class="lm-hero-stat">
+              <span class="lm-hero-stat-label">Duration</span>
+              <span class="lm-hero-stat-value" id="lm-duration">—</span>
+              <span class="lm-hero-stat-sub" id="lm-when">—</span>
             </div>
           </div>
         </div>

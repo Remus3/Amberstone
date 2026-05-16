@@ -93,6 +93,47 @@
   display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
   min-width: 96px;
 }
+
+/* s219 v3: inline stat cluster — CS / Gold / KP / Duration folded into
+ * the hero row so the page loses an entire row of vertical real estate.
+ * Each cell is label-over-value-over-sub, same shape as the old
+ * .lm-stat-card but without the bordered card chrome (the hero IS the
+ * card). The wrapper is the trailing 1fr cell of .lm-hero so the cluster
+ * right-aligns when viewport is wide. */
+.lm-hero-stats {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 22px;
+  padding-left: 8px;
+  margin-left: auto;
+}
+.lm-hero-stat {
+  display: flex; flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  min-width: 64px;
+  text-align: right;
+}
+.lm-hero-stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.lm-hero-stat-value {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.lm-hero-stat-sub {
+  font-size: 11px;
+  color: var(--text-faint, var(--text-dim));
+  font-variant-numeric: tabular-nums;
+}
 .lm-kda-text {
   font-size: 21px; font-weight: 600; font-variant-numeric: tabular-nums;
   color: var(--text);
@@ -328,12 +369,14 @@
 .lm-tc-row {
   display: grid;
   /* portrait | name | level | KDA | CS | summoners | items
-   * s219 v2: half-width container means tighter columns. Name is the
-   * elastic cell (truncates with ellipsis); items column gets minmax
-   * floor so 7 icons always fit without overflowing. */
-  grid-template-columns: 32px minmax(80px, 1fr) auto auto auto auto minmax(168px, auto);
+   * s219 v3: fixed-width name column (was minmax(80px, 1fr)) so the
+   * level / KDA / CS triple lines up vertically across every roster
+   * row. Names truncate via the existing ellipsis on .lm-tc-name when
+   * the slot doesn't fit. Items column stays auto-sized (7 × 24 + gaps
+   * is consistent so it aligns naturally). */
+  grid-template-columns: 32px 130px auto auto auto auto auto;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   padding: 6px 8px;
   background: var(--surface);
   border: 1px solid var(--border-soft);
