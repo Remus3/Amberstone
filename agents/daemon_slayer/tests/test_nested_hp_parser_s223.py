@@ -292,7 +292,13 @@ class SaturationAndBackwardCompatTests(unittest.TestCase):
         self.assertEqual(get_block_index_for("Chogath")[0].get("E"), 1)
         self.assertEqual(get_block_index_for("Sett")[0].get("Q"), 1)
         self.assertEqual(get_block_index_for("Shen")[0].get("Q"), 1)
-        self.assertEqual(get_block_index_for("Cassiopeia")[0].get("E"), 1)
+        # Cassi E was int 1 through s223; s230 Phase 5.9.30 converted it
+        # to a conditional (default=1 == the int — provable Part-1
+        # no-op, the s223 snapshot migration is still byte-stable).
+        self.assertEqual(
+            get_block_index_for("Cassiopeia")[0].get("E"),
+            {"default": 1, "target_no_setup": 0},
+        )
         self.assertEqual(get_block_index_for("Thresh")[0].get("E"), [1, 2])
 
     def test_covered_count_grew_by_one(self) -> None:
@@ -314,8 +320,8 @@ class SaturationAndBackwardCompatTests(unittest.TestCase):
 class EngineVersionTests(unittest.TestCase):
     def test_engine_version_bumped(self) -> None:
         from agents import daemon_slayer
-        # s229 (Phase 5.9.29) bumped to 1.1.0; pin tracks current.
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.1.0")
+        # s230 (Phase 5.9.30) bumped to 1.2.0; pin tracks current.
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.2.0")
 
 
 if __name__ == "__main__":
