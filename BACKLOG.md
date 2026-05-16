@@ -50,3 +50,10 @@ _When an item moves to active work, migrate it to ROADMAP.md "Open items"._
 - **`.rofl` file replay coaching**: `coaches/replay_coach.py` shipped lite version (rewind_history.db). Full `.rofl` parsing deferred (encrypted, non-public format).
 - **PyInstaller packaging**: `riot-commander.spec` exists as opt-in starter. Not prioritized.
 - **OBS publisher activation**: `T3 #11` shipped (264 LOC, opt-in); not wired to any active workflow.
+
+## Research / inspiration (s219, 2026-05-15)
+
+- **coachless.gg teardown**: analyze https://coachless.gg/ — both the site and its app — for build patterns, post-game analysis UX, and any insight worth lifting into the Post Game Review or future Deep Review page. Operator can re-subscribe for a month to access the locked content if a deeper teardown is warranted.
+- **Local DDragon mirror auto-refresh**: download every icon path (champions, items, summoner spells, runes, augments, profile-icons) into `/data/ddragon/<patch>/` on each patch flip + auto-update when DDragon ships new assets mid-patch. Today the mirror lags at 16.8.1 while live patch is 16.10.1 — Post Game Review pinned to 16.8.1 + CDN fallback as workaround (s219). A real mirror keeper would be one cron + a manifest diff.
+- **Pengu.lol MCP — adapt to RC**: there's a partially-built MCP for Pengu Loader that exposes LCU api/client surfaces. Investigate whether copying it into `tools/` or wrapping it as an `mcp__pengu__*` server saves us from re-implementing every LCU probe. Pairs with the existing **LCU deeper integration** entry above.
+- **Pengu.lol Discord crawl**: search the Pengu Loader Discord for in-progress projects that touch RC-relevant LCU/client connection surfaces — anything from `lol-match-history`, replay timeline access, ARAM Mayhem mode detection, etc. Research-only; surface findings before scheduling code work.

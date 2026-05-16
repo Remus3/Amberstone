@@ -1565,6 +1565,122 @@ def _maybe_refresh_team_context(state: dict) -> None:
         print(f"[team-context] refresh failed: {detail}", flush=True)
 
 
+# -- s219 Post Game Review: LCU match-detail auto-ingest ---------------------
+#
+# Edge-triggers on phase transition INTO EndOfGame. Fetches the operator's
+# puuid + latest gameId + full /lol-match-history/v1/games/{gameId} payload,
+# then POSTs to Legion's /api/last-match/ingest endpoint so the Post Game
+# Review page is instant when the operator opens it.
+#
+# Tracked state survives the loop iteration so we only fire once per game
+# end (until phase leaves EndOfGame OR a new gameId appears).
+
+_post_match_ingest_state = {
+    "last_phase":             None,    # phase from prior cycle
+    "last_game_id_ingested":  None,    # gameId we successfully shipped
+    "last_post_at":           0.0,     # monotonic ts of last POST attempt
+}
+
+# Minimum interval between ingest POSTs even if EndOfGame re-fires.
+POST_MATCH_INGEST_RATE_LIMIT_S = 10.0
+
+
+def _fetch_latest_match_for_ingest():
+    """Returns (puuid, gameId, match_detail_dict) or (None, None, None)
+    on any failure. Never raises — caller treats triple-None as 'try
+    again later'."""
+    summ, _ = lcu_request("GET", "/lol-summoner/v1/current-summoner")
+    if not isinstance(summ, dict):
+        return (None, None, None)
+    puuid = (summ.get("puuid") or "").strip()
+    if not puuid:
+        return (None, None, None)
+    # Latest 1 match summary — gives us the gameId.
+    ml, _ = lcu_request("GET",
+        f"/lol-match-history/v1/products/lol/{puuid}/matches"
+        f"?begIndex=0&endIndex=1")
+    if not isinstance(ml, dict):
+        return (None, None, None)
+    games = (ml.get("games") or {}).get("games") or []
+    if not games:
+        return (None, None, None)
+    gid = games[0].get("gameId")
+    if not gid:
+        return (None, None, None)
+    # Full detail (the actual goldmine — 10 participants + teams + items + runes).
+    detail, _ = lcu_request("GET", f"/lol-match-history/v1/games/{gid}")
+    if not isinstance(detail, dict):
+        return (None, None, None)
+    return (puuid, gid, detail)
+
+
+def post_last_match_ingest(tracked_puuid: str, match_detail: dict):
+    """POST the LCU match detail to Legion. Returns (ok, detail).
+    No auth header — /api/last-match/ingest is LAN-trust only for now
+    (matches existing convention for /upload-lcu)."""
+    url = f"{LEGION_DASHBOARD}/api/last-match/ingest"
+    body = json.dumps({
+        "tracked_puuid": tracked_puuid,
+        "match_detail":  match_detail,
+    }).encode()
+    req = urllib.request.Request(
+        url, data=body, method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent":   "rc-lcu-agent/0",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10.0,
+                                     context=_dash_ssl_ctx) as r:
+            r.read()
+        return (True, "ok")
+    except urllib.error.HTTPError as exc:
+        return (False, f"http_{exc.code}")
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        return (False, f"network: {type(exc).__name__}")
+
+
+def _maybe_ingest_last_match(state: dict) -> None:
+    """Edge-triggered POST to /api/last-match/ingest on EndOfGame entry.
+    Called once per state-push cycle by `_state_push_loop`; no-op when
+    not in EndOfGame or when we already shipped this game's detail.
+    Rate-limited by POST_MATCH_INGEST_RATE_LIMIT_S between attempts to
+    avoid hammering LCU + Legion if EndOfGame re-fires."""
+    phase = state.get("phase") or ""
+    prior = _post_match_ingest_state["last_phase"]
+    _post_match_ingest_state["last_phase"] = phase
+
+    # We fire on (transition INTO EndOfGame) OR (sitting in EndOfGame and
+    # haven't ingested yet — covers agent-restart-mid-EOG). Once shipped,
+    # the gameId guard prevents re-fire.
+    if phase != "EndOfGame":
+        return
+    now = time.monotonic()
+    since_last = now - _post_match_ingest_state["last_post_at"]
+    if since_last < POST_MATCH_INGEST_RATE_LIMIT_S:
+        return
+
+    puuid, gid, detail = _fetch_latest_match_for_ingest()
+    if not (puuid and gid and detail):
+        # LCU may not have finalized the match record yet — try again
+        # next cycle. Don't update last_post_at so we don't back off.
+        return
+    if _post_match_ingest_state["last_game_id_ingested"] == gid:
+        # Already shipped this game's detail this session.
+        return
+
+    _post_match_ingest_state["last_post_at"] = now
+    ok, status = post_last_match_ingest(puuid, detail)
+    if ok:
+        _post_match_ingest_state["last_game_id_ingested"] = gid
+        print(f"[last-match-ingest] shipped gameId={gid} "
+              f"(transition {prior!r} → EndOfGame)", flush=True)
+    else:
+        print(f"[last-match-ingest] POST failed: {status} "
+              f"(gameId={gid}; will retry next cycle)", flush=True)
+
+
 # -- Worker loops (one per concern) ------------------------------------------
 
 def _state_push_loop():
@@ -1589,6 +1705,13 @@ def _state_push_loop():
                 _maybe_refresh_team_context(state)
             except Exception as e:
                 print(f"  [team-context err] {e}", flush=True)
+            # s219 Post Game Review: edge-fire LCU match-detail ingest
+            # on EndOfGame transition so the Post Game Review page is
+            # instant. Same isolation as team-context above.
+            try:
+                _maybe_ingest_last_match(state)
+            except Exception as e:
+                print(f"  [last-match-ingest err] {e}", flush=True)
         except Exception as e:
             print(f"[state loop err] {e}", flush=True)
         if consecutive_fail >= 3:
