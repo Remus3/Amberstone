@@ -7654,7 +7654,14 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          (Gwen Q·R / Varus W / Trundle R / Fiddlesticks Q /
         #          Sejuani W / Zac Q / Ambessa Q / …) whose %HP component
         #          was dropped (Trundle R + Fiddle Q were 0 entirely).
-        self.assertEqual(ENGINE_VERSION, "0.96.0")
+        # 0.97.0 = s225 Phase 5.9.25 post-parser-fix block_index sweep.
+        #          Varus W=2 — 'Bonus Magic Damage at Max Stacks' (3x the
+        #          per-Blight-stack value, the 3-stack detonation = the
+        #          standard Varus combo). Engine defaulted to block 0
+        #          (18-dmg passive on-hit), scoring W at ~7% of real
+        #          (live A/B 18→240 raw, 13.3x). Found by re-running the
+        #          unmapped-key pre-filter on the post-s224 snapshot.
+        self.assertEqual(ENGINE_VERSION, "0.97.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7715,7 +7722,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.96.0")
+        self.assertEqual(ENGINE_VERSION, "0.97.0")
 
 
 if __name__ == "__main__":

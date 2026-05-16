@@ -173,7 +173,9 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Lulu"], {"Q": 3})
         self.assertEqual(champions["Sivir"], {"Q": 2})
         # Talon extended in s199 with Q=1 — full shape asserted below
-        self.assertEqual(champions["Varus"], {"Q": 1})
+        # Varus gained W=2 in s225 (3-stack Blight detonation; engine
+        # defaulted to the 18-dmg passive on-hit block 0). Q=1 is s195.
+        self.assertEqual(champions["Varus"], {"Q": 1, "W": 2})
         # Vladimir W=1 extends prior {"E": 1} from s195 (added s198);
         # Vladimir Q=1 added s203 (Crimson Rush full-stack) — asserted below
         # Zoe extended in s202 with W=1 — full shape asserted below
