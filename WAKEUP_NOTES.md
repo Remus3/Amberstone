@@ -4,6 +4,27 @@
 
 ---
 
+# s233 wrap — 2026-05-16 (operator decision: DS conditional arc CLOSED; next = s220 aggregator G reframe)
+
+**Operator instruction:** asked what direction the DS Part-2 decision needed, chose to close the arc, then "plan what is next then /done".
+
+## Decision (recorded in ROADMAP §High-priority s232 line + CLAUDE.md item 84)
+
+- **DS conditional Part-2 — SHELVED PERMANENTLY.** s229 finding confirmed: Part-1 `"default"` is the correct strategic model for the only DS surface (item-build ranking); live per-tick target-state resolution would only be valid as a *separate live-advisory product surface* = out of scope / not wanted. **Do NOT re-pitch Part-2.**
+- **DrMundo E `caster_low_hp` vocab — DECLINED.** Single instance, fails the s227/s229 5+-uses bar, moot with Part-2 shelved. No caster-state vocab family will be added.
+- The 10 shipped conditionals (s228–s231) stay as latent correctness scaffolding, guarded by the s232 saturation test. **No further DS conditional-engine work.**
+
+## Don't-redo / blockers
+
+- The entire DS conditional vein (autonomous pure-data AND Part-2) is **closed by operator decision**. A future "continue ds" must NOT reopen it — zero remaining DS-engine ROI here.
+- Docs-only session: no code/engine change, ENGINE stays **1.3.0**, no DS restart, no test delta (suite still 2255).
+
+## NEXT
+
+**s220 Post Game Review aggregator-G-style reframe** — the big non-engine UI item, already a 🟡 in ROADMAP with full scope (clickable match rows → persistent header + 10-player score strip → AI Analysis/Graph/Build tabs; 0–100 color-banded score; MVP purple card; carried polish: Sustain rename, hero section-1, aggregator G roster row, color-coding, #9 augments). **NOT blocked on the Riot key** (diagnosed s220 — only event-mode/KIWI queue-2400 403s; standard-queue last-matches populate fine; do NOT redo the key investigation). Per-player runes/ranks need an `_enrich_from_lcu` extension.
+
+---
+
 # s232 wrap — 2026-05-16 (DS Phase 5.9.32: conditional pure-data vein SATURATION PROOF — autonomous loop concluded)
 
 **Operator instruction:** "Continue ds". s231's wrap flagged the vein approaching exhaustion; rather than churn low-value no-op conversions (the explicit s223-227 "don't churn low-value registry work" lesson + the no-padding principle), I ran a definitive saturation scan, surfaced the finding via `AskUserQuestion`, and **the operator chose "Accept loop complete."**
@@ -59,30 +80,3 @@ Built `tools/ds_cond_pair_prefilter.py` (kept, reusable per-patch) — scans all
 ## NEXT (self-continuing loop)
 
 The execute (`target_full_hp`) vein has Evelynn R + KogMaw R shipped; remaining clean executes are scarce (Veigar R deferred-fixture; most other "2× vs low HP" hits are already plain-int mapped-correctly and converting adds no value without a real downgrade consumer). Next candidates need fresh Meraki verification each (the s229/s230/s231 lesson: ROADMAP/_meta recollection mis-names mechanics ~half the time — `tools/ds_cond_pair_prefilter.py` + `tools/ds_cond_inspect.py` are the durable rigor tools). Remaining `target_no_setup` debuff-amp candidates are mostly already-correctly-mapped plain ints; the conditional-conversion ROI is now low (each adds value only if a future Part-2 live-advisory surface consumes the downgrade). Consider flagging to the operator that the autonomous conditional-seed-expansion vein is approaching exhaustion (like the s223-227 pure-data sweep did) — the high-ROI remaining DS work may be Part-2 (live target-state plumbing) which is architectural and wants sign-off. DrMundo E still blocked on a `caster_low_hp` vocab decision. s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
-
----
-
-# s230 wrap — 2026-05-16 (DS Phase 5.9.30: conditional seed-expansion — Fiddle Q + Cassi E)
-
-**Operator instruction:** "continue ds" (self-continuing loop). Continued the s229 NEXT bucket: pure-data conditional seed-expansion on the stable 2-term vocab. NO vocab change (s227 "don't over-build" — both entries reuse `target_no_setup`).
-
-## What happened — rigor bar first, recollection rejected
-
-The s229 NEXT list named Lux Illumination / Aatrox W / Fiddle Q / Cassi E. Verified every candidate against the live Meraki 16.10.1 `champion_abilities.json` (built `tools/ds_cond_inspect.py`, kept — reusable per-patch). **Lux CLOSED as a phantom carry-forward:** Lux P is `parse_status=no_damage` with zero damage_blocks; Q/E/R are each single-block — no discrete amped/un-amped pair anywhere in Lux's kit; it never met the discrete-pair rigor bar (the recurring "Lux Illumination" mention was recollection, not reality). **Aatrox W stays deferred:** "chain-landed" is a positional escaped/not-escaped condition, NOT an operator-applied target-state setup — fails the `target_no_setup` semantic. 2 clean entries shipped.
-
-## Shipped (committed)
-
-- **Fiddlesticks Q "Terrify" = `{"default": [2,3], "target_no_setup": [0,1]}`** — a NEW key (real correctness fix, NOT a no-op) AND the FIRST registry conditional whose branches are `list[int]` (combines the s207 sum-of-blocks list schema with the s228 conditional schema; ZERO engine change — `_normalize_block_index_value` already recursively normalizes each branch and only rejects a *nested* dict). Filtered damage blocks (raw[0]/raw[3] are duration, dropped by the `attribute_kind=='damage'` filter): fidx0 `target_current_hp_pct`[4..6], fidx1 base[40..120], fidx2 = EXACTLY 2.0× fidx0, fidx3 = EXACTLY 2.0× fidx1 — the textbook Terrify-double-vs-feared discrete pair. `default`=[2,3] (feared/amped sum — Fiddle's kit revolves around fear, operator-commits canonical), `target_no_setup`=[0,1] (un-amped vs not-yet-feared). Pre-s230 the engine scored Q at filtered-block-0 ONLY (un-amped %HP, missing the un-amped base AND the fear-amp). Live A/B :8893 (lvl11 80/30/2000): Q raw/cast **80→240 (+200%)**, Qdps 3.31→9.93, total_ability_dps 22.998→29.618; exact-2× check `registry 240 == 2.0 × no_setup 120` confirmed live.
-- **Cassiopeia E "Twin Fang" int `1` → `{"default": 1, "target_no_setup": 0}`** — provable Part-1 no-op conversion (default==prior int 1, byte-identical). Twin Fang is enhanced vs a poisoned target (Cassi's own Q/W poison is the setup). **RESOLVES the s229 "Cassi E irregular 18-element Meraki array — defer until investigated" carry-forward:** the array is block 1's base scaling, rank-indexed by `_evaluate_block` exactly as since s191; the conditional conversion is orthogonal (Part-1 always resolves to default=1). Live A/B: registry raw 168 == forced E:1 == 168 (no-op match True); forced E:0 raw 100 (non-poisoned downgrade; load-bearing True).
-- Registry stays **125 champions** (Fiddlesticks gains Q alongside R/W; Cassiopeia E converted in-place). `_meta` description+rationale appended via surgical str.replace (no JSON reformat). New `test_conditional_block_index_s230.py` (24 tests). 10 ENGINE pin bumps. **Cross-registry stale-pin migrations:** 4 `test_block_index_overrides` Cassi-E shape pins → conditional shape; s228/s229 `test_cassiopeia_E_still_plain_int` → s230 evolution guards (shape + Part-1 numeric equivalence); s223 byte-stable pin + s225 "swept keys not added" + s207 sum_of_blocks int-exemplar all migrated. ENGINE **1.1.0→1.2.0**. DS suite 2210→**2232**; wider RC **1107**; ruff+py_compile clean; DS restarted (taskkill 14372 → pythonw relaunch, not supervisor-watched) → `/health` **1.2.0**.
-
-## Don't-redo / blockers
-
-- **`test_max_priority_sweep_s227.test_fiddlesticks_w_first_beats_default` was MIGRATED, not "fixed".** s230's correct Fiddle Q boost (Q was under-counted at s227) flips the lvl-11 numeric A/B so Q-first now numerically beats W-first (ratio ~0.85, no longer >1.10). This is **precisely the s227 lesson** — max_priority is meta-curated, NOT numeric-sweepable. The W-E-Q registry entry is still real-meta-correct (Bountiful Harvest drain IS Fiddle's jungle max). The test now guards the *decision* (registry entry + resolution), not the now-stale inequality. **Do NOT revert the Fiddle max_priority entry or the s230 Q block_index entry to "restore" the old numeric margin** — both are correct; the margin was an artifact of the pre-s230 Q under-count.
-- **Lux is a closed phantom — do not re-add it to the NEXT list.** No discrete pair exists in its kit (verified, not recalled).
-- Fiddle Q is the first list-valued conditional; the schema already supported it (no engine change needed). Future list-branch conditionals are pure data.
-- Conversions are intentionally zero-numeric-change (Part-1 resolves to `"default"`); don't "fix" the no-op.
-
-## NEXT (self-continuing loop)
-
-Remaining clean conditional candidates need fresh Meraki verification each (rigor bar — the s229/s230 lesson: ROADMAP/_meta recollection mis-names mechanics ~half the time). Likely-clean unexamined: more debuff-state-family amps (mark/charm/sleep beyond the shipped set). DrMundo E remains blocked on a `caster_low_hp` vocab decision (it's caster-missing-HP, NOT target — flag for operator before any vocab add). Aatrox W needs the positional-condition question answered architecturally, not pure-data. s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
