@@ -6,6 +6,34 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# s216 wrap — 2026-05-15 (Game-PC: League settings restore from SamplePlayer backup + ReadOnly lock)
+
+**Operator instruction:** "find my last saved persisted league setting file we did with rc where the league game was borderless windowed (we kept it in case of changing riot accounts) and overwrite the games current persisted file - then make it readme [readonly] after confirming the new file change over". Pointed to `C:\rc-agent\lol_settings_SamplePlayer.py` on Game-PC.
+
+## Ops-only session — zero RC code changes, zero commits
+
+- Backup file: `C:\rc-agent\lol_settings_SamplePlayer.py` (26820B, captured 2026-04-26 for SamplePlayer#Trist). Self-contained Python restore script — writes 4 files (`game.cfg`, `input.ini`, `PersistedSettings.json`, `LCUAccountPreferences.yaml`) and has `--backup` flag that auto-snapshots current files into a timestamped subfolder before overwriting.
+- Pre-check: no LeagueClient/RiotClient processes running on Game-PC (script requires League closed).
+- Ran `py "C:\rc-agent\lol_settings_SamplePlayer.py" --backup` via `mcp__gamepc__run_powershell`. All 4 files written, pre-restore state preserved at `C:\Riot Games\League of Legends\Config\_backup_SamplePlayer_20260515_085530\`.
+- Verified `WindowMode=2` (borderless) and `Height=1080`/`Width=1920` in restored `game.cfg`.
+- Set ReadOnly attribute on all 4 restored files via `Set-ItemProperty -Name IsReadOnly -Value $true`. Confirmed `Attributes` shows `ReadOnly, Archive` for each.
+- Live `PersistedSettings.json` shrank 54734B → 11974B post-restore — expected; script's PERSISTED_SETTINGS_JSON only carries the curated subset captured 4/26, and Riot regenerates server-side data on next login (per the script's own comment).
+
+## What's next
+
+- Operator's previously-planned **live ARAM Mayhem test** (carried from s214/s215) now has stable settings — borderless windowed locked, won't drift across account swaps.
+- All s215 DS Phase 5.9.22+ carry-forwards remain unchanged (Taliyah E, Jinx R secondary AOE, Kindred E/Kayle E/Belveth R nested missing-HP parser bucket).
+- Loadout autogen calibration follow-up unchanged (operator may flip `default_per_mode` pointers post-Mayhem).
+
+## Blockers / don't redo
+
+- ReadOnly attribute means League cannot overwrite these on client-exit (intended) — BUT any in-game settings changes also won't persist until the attribute is cleared. Operator knows; flagged in chat. Clear via `Set-ItemProperty -Name IsReadOnly -Value $false` per-file if they want to retune live.
+- Don't re-search for the backup — confirmed location is `C:\rc-agent\lol_settings_SamplePlayer.py` (also mirrored at `C:\RC-Agent\` — Windows case-insensitive duplicate listing).
+- Pre-restore backup at `C:\Riot Games\League of Legends\Config\_backup_SamplePlayer_20260515_085530\` is the rollback artifact if needed.
+
+---
+
+
 # s215 wrap — 2026-05-15 (Loadout auto-generator + DS Phase 5.9.21 sum-of-blocks data batch)
 
 **Operator instruction:** "continue loadout then continue ds" — close the s214 carry-forward 3-curated-variant auto-generator, then keep DS engine moving.
