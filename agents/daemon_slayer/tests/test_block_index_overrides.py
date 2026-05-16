@@ -230,7 +230,11 @@ class RegistryShapeTests(unittest.TestCase):
         # Karthus extended in s199 with E=2 (Defile per-second tick)
         self.assertEqual(champions["Karthus"], {"Q": 1, "E": 2})
         self.assertEqual(champions["Khazix"], {"Q": 1})
-        self.assertEqual(champions["KogMaw"], {"R": 1})
+        # s231 Phase 5.9.31 — KogMaw R converted to a target_full_hp
+        # execute conditional (Living Artillery block 1 = 2.0× block 0
+        # vs <40% HP; default=1 == the s196 int, provable Part-1 no-op).
+        self.assertEqual(
+            champions["KogMaw"], {"R": {"default": 1, "target_full_hp": 0}})
         # Lillia extended in s200 with Q=1 (Q + Dream Dust AA combo)
         self.assertEqual(champions["Lillia"], {"W": 1, "Q": 1})
         # Nautilus extended in s199 with R=2 (Depth Charge primary hit)
@@ -410,10 +414,16 @@ class RegistryShapeTests(unittest.TestCase):
         # form_index seed needed').
         # Evelynn extended with Q=5 — full shape (s228 Phase 5.9.28
         # converted Q to a conditional: charm triple-spike total is the
-        # "default" / committed branch, downgrade to 0 when not charmed):
+        # "default" / committed branch, downgrade to 0 when not charmed).
+        # s231 Phase 5.9.31 converted R to a target_full_hp execute
+        # conditional (Last Caress block 1 = 2.4× block 0 vs <30% HP;
+        # default=1 == the s204 int, provable Part-1 no-op):
         self.assertEqual(
             champions["Evelynn"],
-            {"R": 1, "Q": {"default": 5, "target_no_setup": 0}},
+            {
+                "R": {"default": 1, "target_full_hp": 0},
+                "Q": {"default": 5, "target_no_setup": 0},
+            },
         )
         # Gwen extended with Q=6 — full shape:
         self.assertEqual(champions["Gwen"], {"R": 4, "Q": 6})
@@ -902,10 +912,15 @@ class ToDictSerializationTests(unittest.TestCase):
         d = r.to_dict()
         self.assertEqual(d["block_index_source"], "champion")
         # Phase 5.9.17 (s204) — Evelynn gained Q=5 alongside existing R=1;
-        # Phase 5.9.28 (s228) converted Q to a conditional dict.
+        # Phase 5.9.28 (s228) converted Q to a conditional dict;
+        # Phase 5.9.31 (s231) converted R to a target_full_hp execute
+        # conditional (Last Caress; default=1 == s204 int, no-op).
         self.assertEqual(
             d["block_index_resolved"],
-            {"R": 1, "Q": {"default": 5, "target_no_setup": 0}},
+            {
+                "R": {"default": 1, "target_full_hp": 0},
+                "Q": {"default": 5, "target_no_setup": 0},
+            },
         )
 
     def test_unmapped_champion_to_dict_is_empty_dict(self) -> None:
@@ -1586,10 +1601,26 @@ class Phase599ExpansionTests(unittest.TestCase):
         isolated target (2.1× block 0)."""
         self._delta_check("Khazix", "Q", 1)
 
-    def test_kogmaw_R_routes_to_block_1(self) -> None:
+    def test_kogmaw_R_routes_to_conditional_default_block_1(self) -> None:
         """Kog'Maw R block 1 'Maximum Magic Damage' = Living Artillery
-        max-damage component vs low-HP target (2× block 0)."""
-        self._delta_check("KogMaw", "R", 1)
+        max-damage vs low-HP target (2× block 0). s231 Phase 5.9.31
+        converted R to a target_full_hp execute conditional; default=1
+        == the s196 int (provable Part-1 no-op). Assert the conditional
+        shape + that the default (execute) is load-bearing vs block 0."""
+        r_reg = compute_ability_dps(
+            self.snap, "KogMaw", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+        )
+        self.assertEqual(
+            r_reg.block_index_resolved.get("R"),
+            {"default": 1, "target_full_hp": 0})
+        r_off = compute_ability_dps(
+            self.snap, "KogMaw", level=11, mode="SR",
+            target_armor=80, target_mr=30, target_max_hp=2000,
+            block_index_overrides={"R": 0},
+        )
+        self.assertGreater(r_reg.total_ability_dps,
+                           r_off.total_ability_dps)
 
     def test_pantheon_Q_routes_to_block_1(self) -> None:
         """Pantheon Q block 1 'Increased Hurl Damage' = Comet Spear
@@ -3857,15 +3888,19 @@ class Phase599_17ExpansionTests(unittest.TestCase):
 
     # Multi-key resolved-shape sanity for extension champions
     def test_evelynn_both_keys_in_resolved(self) -> None:
-        """Evelynn R=1 (s191) + Q=5 (s204) — both keys must appear;
-        s228 converted Q to a conditional dict."""
+        """Evelynn R + Q — both keys must appear; s228 converted Q to a
+        target_no_setup conditional, s231 converted R to a
+        target_full_hp execute conditional (default=1 == s204 int)."""
         r = compute_ability_dps(
             self.snap, "Evelynn", level=11, mode="SR",
             target_armor=80, target_mr=30, target_max_hp=2000,
         )
         self.assertEqual(
             r.block_index_resolved,
-            {"R": 1, "Q": {"default": 5, "target_no_setup": 0}},
+            {
+                "R": {"default": 1, "target_full_hp": 0},
+                "Q": {"default": 5, "target_no_setup": 0},
+            },
         )
 
     def test_gwen_both_keys_in_resolved(self) -> None:
@@ -4347,13 +4382,16 @@ class ServerRouteSourceTests(unittest.TestCase):
         return json.loads(urlopen(req, timeout=10).read())
 
     def test_ability_dps_champion_source(self) -> None:
-        # Cassiopeia was extended in s196 with W=1 (Miasma full duration)
-        # alongside the s191 E=1 (Twin Fang vs poisoned).
+        # Cassiopeia W=1 (s196 Miasma) + E (s191 Twin Fang vs poisoned);
+        # s230 Phase 5.9.30 converted E to a target_no_setup conditional
+        # (default=1 == the s191 int, provable Part-1 no-op).
         r = self._post("/ability-dps", {
             "champion": "Cassiopeia", "level": 11, "mode": "SR", "target_mr": 30.0,
         })
         self.assertEqual(r["block_index_source"], "champion")
-        self.assertEqual(r["block_index_resolved"], {"E": 1, "W": 1})
+        self.assertEqual(
+            r["block_index_resolved"],
+            {"E": {"default": 1, "target_no_setup": 0}, "W": 1})
 
     def test_ability_dps_default_source(self) -> None:
         # Caitlyn is the stable unmapped champion (deliberately skipped in

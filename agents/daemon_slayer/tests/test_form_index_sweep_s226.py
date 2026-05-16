@@ -132,10 +132,12 @@ class FormIndexABTests(unittest.TestCase):
         fi, _ = get_form_index_for("Evelynn")
         bi, _ = get_block_index_for("Evelynn")
         self.assertEqual(fi.get("E"), 1)
-        self.assertEqual(bi.get("R"), 1)
-        # s228 Phase 5.9.28 converted Evelynn Q to a conditional dict;
-        # form_index (E=1) and block_index (Q conditional) still compose
-        # orthogonally — the point of this test.
+        # s228 converted Evelynn Q to a target_no_setup conditional;
+        # s231 Phase 5.9.31 converted R to a target_full_hp execute
+        # conditional. form_index (E=1) and block_index (Q+R both
+        # conditional dicts) still compose orthogonally — the point of
+        # this test.
+        self.assertEqual(bi.get("R"), {"default": 1, "target_full_hp": 0})
         self.assertEqual(bi.get("Q"), {"default": 5, "target_no_setup": 0})
 
 
@@ -167,8 +169,8 @@ class BackwardCompatS226Tests(unittest.TestCase):
 class EngineVersionS226Tests(unittest.TestCase):
     def test_engine_version(self) -> None:
         from agents import daemon_slayer
-        # s230 (Phase 5.9.30) bumped to 1.2.0; pin tracks current.
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.2.0")
+        # s231 (Phase 5.9.31) bumped to 1.3.0; pin tracks current.
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.3.0")
 
 
 if __name__ == "__main__":

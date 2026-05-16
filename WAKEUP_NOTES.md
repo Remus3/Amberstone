@@ -4,6 +4,33 @@
 
 ---
 
+# s231 wrap — 2026-05-16 (DS Phase 5.9.31: conditional seed-expansion — EXECUTE family: Evelynn R + KogMaw R)
+
+**Operator instruction:** "Continue ds" (self-continuing loop). Continued the s230 NEXT bucket: more debuff-state-family conditional amps. NO vocab change (s227 "don't over-build" — both entries reuse the existing `target_full_hp` term, extending the s228 Kindred E execute pattern).
+
+## What happened — built a reusable pre-filter, found the execute vein
+
+Built `tools/ds_cond_pair_prefilter.py` (kept, reusable per-patch) — scans all 171 champions for the discrete amped/un-amped pair signature (same-shape damage blocks where B_hi = constant k×B_lo). Found 280 hits but most are channel/multi-hit totals already correctly mapped as plain ints (the s193/s198 pattern, NOT target-state conditionals). The genuine untapped vein: **the EXECUTE family** (`target_full_hp` vocab, the Kindred-E s228 shape) — champions whose R deals a clean discrete multiple more to sub-threshold-HP targets, currently mapped as a plain int to the execute block. Verified each by hand (rigor bar).
+
+## Shipped (committed)
+
+- **Evelynn R "Last Caress"** int `1` → `{default:1, target_full_hp:0}` — Meraki block 1 = EXACTLY **2.4×** block 0 every rank (base 125→300, ap 75→180); the bonus-vs-sub-30%-max-HP execute. TWO discrete Meraki blocks (clean amped/un-amped pair), NOT a continuous in-block missing-HP coefficient — the precise distinction that rejected Bel'Veth R. `default`=1 (the execute, operator-commits canonical, s191 model — same as Kindred E s228); `target_full_hp`=0 (un-amped downgrade when target above threshold, Part-2's signal). Evelynn's s228 sibling Q `{default:5,target_no_setup:0}` preserved through the dict-merge. Live A/B :8893 /burst lvl11 80/30/2000: registry **1220.34** == forced{R:1} == cond-dict (provable Part-1 no-op); forced{R:0} **951.11** (load-bearing downgrade).
+- **KogMaw R "Living Artillery"** int `1` → `{default:1, target_full_hp:0}` — Meraki block 1 = EXACTLY **2.0×** block 0 (base/bonus_ad/ap all 2×); the double-damage-vs-low-HP execute. Live A/B: registry **640.68** == forced{R:1} == cond-dict; forced{R:0} **532.99**.
+- Both provable Part-1 no-op (default == prior int 1, byte-identical; default == s204 Evelynn / s196 KogMaw). Registry stays **125 champions** (both converted in-place). `_meta` appended via surgical str.replace. New `test_conditional_block_index_s231.py` (15 tests) + 11 ENGINE pin bumps + 9 stale-pin migrations (Evelynn/KogMaw R shape pins in test_block_index_overrides ×5, s228 ×2, s229 ×1, s226 form/block-compose ×1). **Caught + migrated a latent s230 stale pin:** `ServerRouteSourceTests.test_ability_dps_champion_source` asserted the pre-s230 Cassi E int shape — it's a *live-server* test and s230 only re-ran phase8_smoke post-restart (not the full suite), so it had been silently stale since s230; now asserts the s230 conditional shape. ENGINE **1.2.0→1.3.0**. DS suite 2232→**2247**; wider RC **1107**; ruff+py_compile clean; DS restarted (taskkill 3724 → pythonw relaunch, not supervisor-watched) → `/health` **1.3.0**.
+
+## Don't-redo / blockers
+
+- **Veigar R stays the deferred non-converted exemplar.** It IS a clean 2.0× execute (verified: block0 base[175,250,325]ap[65,70,75] → block1 exactly 2.0×) but it's the canonical stable-int test fixture (s229 _meta: "pick non-fixture executes" — s231 did exactly that with Evelynn/KogMaw). Converting Veigar R cascades fixture repoints across test_sum_of_blocks + test_block_index_overrides GetBlockIndexFor/ResolveBlockIndex/known_champion_overrides — only do it as a deliberate, independently-scoped fixture migration, NOT as part of a pure-data batch.
+- **Akali R/R2 NOT a conditional candidate to touch.** Its execute lives in the s192 token-variant special case ({R:0, R2:2}) carefully scoped to avoid double-counting R1 in the combo registry — layering a conditional on top is high-risk. Leave it.
+- **post-restart full-suite check matters.** The s230→s231 latent stale pin (ServerRouteSourceTests) proves: live-server tests must be re-run against the *restarted* server, not just phase8_smoke. s231 re-verified live A/B post-restart and the migrated pin will pass against 1.3.0 (Cassi E shape unchanged s230→s231).
+- Conversions are intentionally zero-numeric-change (Part-1 resolves to `"default"` == the prior int); don't "fix" the no-op.
+
+## NEXT (self-continuing loop)
+
+The execute (`target_full_hp`) vein has Evelynn R + KogMaw R shipped; remaining clean executes are scarce (Veigar R deferred-fixture; most other "2× vs low HP" hits are already plain-int mapped-correctly and converting adds no value without a real downgrade consumer). Next candidates need fresh Meraki verification each (the s229/s230/s231 lesson: ROADMAP/_meta recollection mis-names mechanics ~half the time — `tools/ds_cond_pair_prefilter.py` + `tools/ds_cond_inspect.py` are the durable rigor tools). Remaining `target_no_setup` debuff-amp candidates are mostly already-correctly-mapped plain ints; the conditional-conversion ROI is now low (each adds value only if a future Part-2 live-advisory surface consumes the downgrade). Consider flagging to the operator that the autonomous conditional-seed-expansion vein is approaching exhaustion (like the s223-227 pure-data sweep did) — the high-ROI remaining DS work may be Part-2 (live target-state plumbing) which is architectural and wants sign-off. DrMundo E still blocked on a `caster_low_hp` vocab decision. s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
+
+---
+
 # s230 wrap — 2026-05-16 (DS Phase 5.9.30: conditional seed-expansion — Fiddle Q + Cassi E)
 
 **Operator instruction:** "continue ds" (self-continuing loop). Continued the s229 NEXT bucket: pure-data conditional seed-expansion on the stable 2-term vocab. NO vocab change (s227 "don't over-build" — both entries reuse `target_no_setup`).
@@ -56,33 +83,3 @@ Remaining clean conditional candidates need fresh Meraki verification each (rigo
 ## NEXT (self-continuing loop)
 
 More pure-data conditional seed-expansion on the stable 2-term vocab: Lux Illumination, Aatrox W chain-landed (resolve the positional-vs-CC question first), Fiddle Q fear-state, the debuff-state family (Cassi E poison once its irregular 18-element Meraki base array is understood). Each entry needs Meraki block verification (rigor bar — verify the discrete-pair requirement; do NOT trust ROADMAP/_meta block-number recollection). s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
-
----
-
-# s228 wrap — 2026-05-16 (DS Phase 5.9.28: conditional-target-state block_index schema lift — Part 1)
-
-**Operator instruction:** "continue DS". Surfaced via AskUserQuestion that pure-data registry work is **exhausted** (s223-227, 5 iterations, all 4 override registries swept) and the only remaining DS vein is the conditional-target-state schema lift — flagged across the s225/s226/s227 hand-offs as architectural + needing sign-off. **Operator chose option B** (multi-session: schema + live target-state plumbing). This commit = **Part 1**.
-
-## What happened — the schema lift, phased exactly like s207
-
-Part 1 scope = the schema-lift foundation (the s207 `int→int|list[int]` shape: land schema+validator+resolver+flagship seeds; bulk seeding + B-2 live plumbing are follow-ups). `block_index` value widens `int | list[int]` → ALSO `dict[str, int|list[int]]`. `"default"` (REQUIRED) = the operator-commits/canonical-amped branch (the ranking assumption — s191 model); other keys = positive live-target-state descriptors selecting a *downgrade* (never more optimistic). Closed vocab `_BLOCK_INDEX_CONDITIONS = {target_full_hp, target_no_cc}` (mirrors `_BLOCK_STRATEGIES`); an unknown key **raises**. **Part-1 resolver: `_select_blocks` resolves any conditional dict to its `"default"` branch UNCONDITIONALLY → byte-identical to the equivalent int/list entry (provably zero regression).** Live predicate evaluation = Part 2.
-
-## Shipped (committed)
-
-- Engine: `_normalize_block_index_value` dict branch (one-level-only guard; bool/str/nested/missing-default rejection) + `_BLOCK_INDEX_DEFAULT_KEY`/`_BLOCK_INDEX_CONDITIONS` + `_select_blocks` dict→default resolver + type-widening across `ability_dps.py`+`burst.py` (also fixed a latent s207 staleness where `block_index_resolved` was left `dict[str,int]`) + server `_parse_block_index` accepts well-formed conditional objects & **skips malformed defensively** (untrusted-body no-500/registry-fallback; the engine validator is the HARD enforcer for the trusted on-disk registry — two layers, same rule, different failure mode per trust level; do NOT unify them).
-- **3 flagship seeds — all CONVERSIONS of already-shipped unconditional entries** so Part 1 is provably no-op vs s204/s204/s223: **Zoe E** `{default:2,target_no_cc:0}` (sleep 2×; live A/B reg 140.00==forced{E:2}, 2× block-0 70.00), **Evelynn Q** `{default:5,target_no_cc:0}` (charm triple-spike total; 345.00==forced{Q:5}, 7.7× block-0 45.00; sibling R:1 preserved), **Kindred E** `{default:1,target_full_hp:0}` (7.5%-vs-5% missing-HP execute; 80.00==forced{E:1}==forced{E:0} — honest full-HP no-op: the amp is missing-HP-gated, which IS Part-2's signal). Caller conditional dict via wire proven (`{default:0,target_no_cc:2}`→70.00==forced{E:0}).
-- `_meta` description+rationale appended via surgical str.replace (no JSON reformat — file stays hand-formatted). Registry stays **125 champions** (3 in-place conversions, no new champs).
-- Tests: new `test_conditional_block_index_s228.py` (~52: vocab/validator/resolver/seed-routing/Part-1-invariant/burst/`_parse_block_index`-unit/backward-compat/live-route); `test_block_index_overrides` shape-pins migrated for the 3 conversions (incl. `test_every_value_is_int_or_list_of_ints`→`_int_list_or_conditional`, mirrors how s207 widened it for int→list); 5 s223–s226 backward-compat pins updated to assert the new shape **+ Part-1 equivalence** (the s223 KindredEEntryTests class's 4 semantic-guarantee tests pass UNCHANGED — strong proof the conversion preserves s223's guarantees); 9 ENGINE pin bumps. ENGINE **0.99.0→1.0.0**. DS suite 2136→**2188**; wider RC **1107**; ruff+py_compile clean; DS restarted (taskkill pid 13452 → pythonw relaunch; not supervisor-watched) → `/health` **1.0.0**.
-
-## Don't-redo / blockers
-
-- **Part 1 is INTENTIONALLY a zero-numeric-change schema lift.** The 3 seeds resolve to `"default"` == their old int — anyone seeing "no A/B delta" should read THIS: the payoff is Part 2 (live state makes downgrade branches fire). Do not "fix" the no-op.
-- **DrMundo E is NOT a target-state conditional** — verified its Min/Max blocks scale on `caster_bonus_hp_pct` (Dr. Mundo's OWN missing HP), not target HP. The recurring "DrMundo E missing-HP" carry-forward (s203/s204/etc. _meta) mischaracterized it. A caster-state conditional needs a vocab extension (e.g. `caster_low_hp`) — **flag for operator, out of the signed-off target-state scope**.
-- Closed vocab is deliberately minimal — only the 2 conditions the seeds need (s227's "don't over-build / play-pattern registries aren't auto-sweepable" lesson). Adding a condition = add to `_BLOCK_INDEX_CONDITIONS` **and** wire its Part-2 predicate, together.
-- Don't `--force` re-extract Meraki to "apply" anything (mutable `latest`); the registry edits are pure JSON.
-
-## NEXT (operator option B continues)
-
-**B-2 — live target-state plumbing (the next session):** thread real liveclient target HP%/CC into the ranking call so conditional dicts resolve against actual game state instead of always `"default"`. Touches `coach_integration/archetype_dispatch.py` + `dashboard/_state_builder.py` + `/api/ds-preview` (`dashboard/routes_state.py`) + `core/daemon_slayer_client.py` + the DS server routes (`agents/daemon_slayer/server.py`). Design: add a predicate layer (gated on a NEW optional live-state arg) above/inside `_select_blocks`; `AbilityContext` already carries `target_current_hp_pct` (→ `target_full_hp` predicate, clean liveclient enemy HP signal). `target_no_cc` has NO clean liveclient signal → it stays commits-default (resolves to `"default"`) until a CC-state source exists — honest scoping, document at ship. **HARD invariant:** Part-1 callers (no live-state arg) MUST keep resolving to `"default"` — `test_conditional_block_index_s228.AbilityDpsPart1InvariantTests` + `SelectBlocksConditionalTests` pin this; keep green.
-**Pure-data conditional seed-expansion (fast, interleavable, the s207→s215/s217 pattern):** the deferred bucket on the now-stable schema — Lux Illumination, Aatrox W chain-landed, Fiddle Q fear-state, more sleep/charm/mark amps. Each entry needs Meraki block verification (the rigor bar — do NOT trust ROADMAP recollection of block numbers). DrMundo E only after a caster-state vocab decision.
-s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
