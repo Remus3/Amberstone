@@ -625,6 +625,16 @@ def _enrich_from_lcu(lcu_detail: dict, tracked_puuid: str) -> dict:
         "to_objectives":       int(s.get("damageDealtToObjectives") or 0),
         "to_turrets":          int(s.get("damageDealtToTurrets") or 0),
     }
+    # s219 v6: healing + shielding contribution to teammates (self-heal
+    # excluded — that's a stat about your own sustain, not team-care).
+    out["support"] = {
+        "total_heal":              int(s.get("totalHeal") or 0),
+        "heal_on_teammates":       int(s.get("totalHealsOnTeammates") or 0),
+        "shield_on_teammates":     int(s.get("totalDamageShieldedOnTeammates") or 0),
+        "heal_plus_shield":        int(s.get("totalHealsOnTeammates") or 0)
+                                    + int(s.get("totalDamageShieldedOnTeammates") or 0),
+        "units_healed":            int(s.get("totalUnitsHealed") or 0),
+    }
     out["arena_augments"] = [int(s.get(f"playerAugment{i}") or 0)
                               for i in range(1, 7)]
     out["vision"] = {
