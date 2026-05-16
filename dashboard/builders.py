@@ -941,8 +941,8 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
     if k >= 10 and d <= 5:
         right.append({
             "text": f"Carry-tier kill output ({k} kills, {d} deaths)",
-            "why": f"10+ kills with ≤5 deaths is a snowball signal — you "
-                   f"converted leads without giving them back.",
+            "why": "10+ kills with ≤5 deaths is a snowball signal — you "
+                   "converted leads without giving them back.",
         })
 
     if not right:
