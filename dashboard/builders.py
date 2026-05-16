@@ -670,6 +670,11 @@ def _enrich_from_lcu(lcu_detail: dict, tracked_puuid: str) -> dict:
             "items":             [int(s2.get(f"item{i}") or 0) for i in range(7)],
             "summoner1":         p.get("spell1Id"),
             "summoner2":         p.get("spell2Id"),
+            # s219 v7: per-player augments for ARAM Mayhem (KIWI) +
+            # Arena (CHERRY). Empty list when the LCU fields aren't
+            # populated (typical SR / non-augment modes return 0s).
+            "augments":          [int(s2.get(f"playerAugment{i}") or 0)
+                                   for i in range(1, 7)],
             "win":               bool(s2.get("win")),
         })
     out["roster"] = roster
