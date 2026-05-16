@@ -493,10 +493,29 @@ class BackwardCompatPreS228Tests(unittest.TestCase):
         cls.snap = _snap()
         reset_block_index_cache()
 
-    def test_cassiopeia_E_still_plain_int(self) -> None:
+    def test_cassiopeia_E_s230_conditional_part1_preserves_s191(self) -> None:
+        # s228 left Cassi E a plain int (the irregular Meraki array was
+        # deferred). s230 Phase 5.9.30 converted it to a conditional
+        # ({default:1, target_no_setup:0}); this evolution guard now
+        # asserts the new shape AND that Part-1 resolves byte-identical
+        # to the s191 int 1 (the conversion is a provable no-op).
         m, _ = get_block_index_for("Cassiopeia")
-        self.assertEqual(m["E"], 1)
-        self.assertNotIsInstance(m["E"], dict)
+        self.assertEqual(m["E"], {"default": 1, "target_no_setup": 0})
+        reg = next(
+            s for s in compute_ability_dps(
+                self.snap, "Cassiopeia", level=11, mode="SR",
+                target_armor=80.0, target_mr=30.0, target_max_hp=2000.0,
+            ).per_spell if s.key == "E"
+        )
+        forced1 = next(
+            s for s in compute_ability_dps(
+                self.snap, "Cassiopeia", level=11, mode="SR",
+                target_armor=80.0, target_mr=30.0, target_max_hp=2000.0,
+                block_index_overrides={"E": 1, "W": 1},
+            ).per_spell if s.key == "E"
+        )
+        self.assertAlmostEqual(
+            reg.raw_damage_per_cast, forced1.raw_damage_per_cast, places=9)
 
     def test_camille_W_still_list(self) -> None:
         m, _ = get_block_index_for("Camille")
@@ -579,8 +598,8 @@ class EngineVersionS228Tests(unittest.TestCase):
     def test_engine_version(self) -> None:
         from agents import daemon_slayer
 
-        # s229 (Phase 5.9.29) bumped to 1.1.0; pin tracks current.
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.1.0")
+        # s230 (Phase 5.9.30) bumped to 1.2.0; pin tracks current.
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.2.0")
 
 
 if __name__ == "__main__":

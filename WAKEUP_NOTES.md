@@ -4,6 +4,33 @@
 
 ---
 
+# s230 wrap — 2026-05-16 (DS Phase 5.9.30: conditional seed-expansion — Fiddle Q + Cassi E)
+
+**Operator instruction:** "continue ds" (self-continuing loop). Continued the s229 NEXT bucket: pure-data conditional seed-expansion on the stable 2-term vocab. NO vocab change (s227 "don't over-build" — both entries reuse `target_no_setup`).
+
+## What happened — rigor bar first, recollection rejected
+
+The s229 NEXT list named Lux Illumination / Aatrox W / Fiddle Q / Cassi E. Verified every candidate against the live Meraki 16.10.1 `champion_abilities.json` (built `tools/ds_cond_inspect.py`, kept — reusable per-patch). **Lux CLOSED as a phantom carry-forward:** Lux P is `parse_status=no_damage` with zero damage_blocks; Q/E/R are each single-block — no discrete amped/un-amped pair anywhere in Lux's kit; it never met the discrete-pair rigor bar (the recurring "Lux Illumination" mention was recollection, not reality). **Aatrox W stays deferred:** "chain-landed" is a positional escaped/not-escaped condition, NOT an operator-applied target-state setup — fails the `target_no_setup` semantic. 2 clean entries shipped.
+
+## Shipped (committed)
+
+- **Fiddlesticks Q "Terrify" = `{"default": [2,3], "target_no_setup": [0,1]}`** — a NEW key (real correctness fix, NOT a no-op) AND the FIRST registry conditional whose branches are `list[int]` (combines the s207 sum-of-blocks list schema with the s228 conditional schema; ZERO engine change — `_normalize_block_index_value` already recursively normalizes each branch and only rejects a *nested* dict). Filtered damage blocks (raw[0]/raw[3] are duration, dropped by the `attribute_kind=='damage'` filter): fidx0 `target_current_hp_pct`[4..6], fidx1 base[40..120], fidx2 = EXACTLY 2.0× fidx0, fidx3 = EXACTLY 2.0× fidx1 — the textbook Terrify-double-vs-feared discrete pair. `default`=[2,3] (feared/amped sum — Fiddle's kit revolves around fear, operator-commits canonical), `target_no_setup`=[0,1] (un-amped vs not-yet-feared). Pre-s230 the engine scored Q at filtered-block-0 ONLY (un-amped %HP, missing the un-amped base AND the fear-amp). Live A/B :8893 (lvl11 80/30/2000): Q raw/cast **80→240 (+200%)**, Qdps 3.31→9.93, total_ability_dps 22.998→29.618; exact-2× check `registry 240 == 2.0 × no_setup 120` confirmed live.
+- **Cassiopeia E "Twin Fang" int `1` → `{"default": 1, "target_no_setup": 0}`** — provable Part-1 no-op conversion (default==prior int 1, byte-identical). Twin Fang is enhanced vs a poisoned target (Cassi's own Q/W poison is the setup). **RESOLVES the s229 "Cassi E irregular 18-element Meraki array — defer until investigated" carry-forward:** the array is block 1's base scaling, rank-indexed by `_evaluate_block` exactly as since s191; the conditional conversion is orthogonal (Part-1 always resolves to default=1). Live A/B: registry raw 168 == forced E:1 == 168 (no-op match True); forced E:0 raw 100 (non-poisoned downgrade; load-bearing True).
+- Registry stays **125 champions** (Fiddlesticks gains Q alongside R/W; Cassiopeia E converted in-place). `_meta` description+rationale appended via surgical str.replace (no JSON reformat). New `test_conditional_block_index_s230.py` (24 tests). 10 ENGINE pin bumps. **Cross-registry stale-pin migrations:** 4 `test_block_index_overrides` Cassi-E shape pins → conditional shape; s228/s229 `test_cassiopeia_E_still_plain_int` → s230 evolution guards (shape + Part-1 numeric equivalence); s223 byte-stable pin + s225 "swept keys not added" + s207 sum_of_blocks int-exemplar all migrated. ENGINE **1.1.0→1.2.0**. DS suite 2210→**2232**; wider RC **1107**; ruff+py_compile clean; DS restarted (taskkill 14372 → pythonw relaunch, not supervisor-watched) → `/health` **1.2.0**.
+
+## Don't-redo / blockers
+
+- **`test_max_priority_sweep_s227.test_fiddlesticks_w_first_beats_default` was MIGRATED, not "fixed".** s230's correct Fiddle Q boost (Q was under-counted at s227) flips the lvl-11 numeric A/B so Q-first now numerically beats W-first (ratio ~0.85, no longer >1.10). This is **precisely the s227 lesson** — max_priority is meta-curated, NOT numeric-sweepable. The W-E-Q registry entry is still real-meta-correct (Bountiful Harvest drain IS Fiddle's jungle max). The test now guards the *decision* (registry entry + resolution), not the now-stale inequality. **Do NOT revert the Fiddle max_priority entry or the s230 Q block_index entry to "restore" the old numeric margin** — both are correct; the margin was an artifact of the pre-s230 Q under-count.
+- **Lux is a closed phantom — do not re-add it to the NEXT list.** No discrete pair exists in its kit (verified, not recalled).
+- Fiddle Q is the first list-valued conditional; the schema already supported it (no engine change needed). Future list-branch conditionals are pure data.
+- Conversions are intentionally zero-numeric-change (Part-1 resolves to `"default"`); don't "fix" the no-op.
+
+## NEXT (self-continuing loop)
+
+Remaining clean conditional candidates need fresh Meraki verification each (rigor bar — the s229/s230 lesson: ROADMAP/_meta recollection mis-names mechanics ~half the time). Likely-clean unexamined: more debuff-state-family amps (mark/charm/sleep beyond the shipped set). DrMundo E remains blocked on a `caster_low_hp` vocab decision (it's caster-missing-HP, NOT target — flag for operator before any vocab add). Aatrox W needs the positional-condition question answered architecturally, not pure-data. s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
+
+---
+
 # s229 wrap — 2026-05-16 (DS Phase 5.9.29: conditional seed-expansion + vocab generalization)
 
 **Operator instruction:** "continue" (continuing s228's option B). First surfaced — via AskUserQuestion — that the signed-off literal "B-2" (thread per-tick liveclient HP/CC into the ranking call) is a **mis-feature** for the only DS surface that exists (item-build recommendation): per-tick enemy HP would flicker build recs, and the operator-commits default (Part 1) is the *correct* strategic model — the schema's value is already delivered. **Operator chose "pivot → pure-data conditional seed-expansion"** (the proven s207→s215/s217 cadence).
@@ -59,33 +86,3 @@ Part 1 scope = the schema-lift foundation (the s207 `int→int|list[int]` shape:
 **B-2 — live target-state plumbing (the next session):** thread real liveclient target HP%/CC into the ranking call so conditional dicts resolve against actual game state instead of always `"default"`. Touches `coach_integration/archetype_dispatch.py` + `dashboard/_state_builder.py` + `/api/ds-preview` (`dashboard/routes_state.py`) + `core/daemon_slayer_client.py` + the DS server routes (`agents/daemon_slayer/server.py`). Design: add a predicate layer (gated on a NEW optional live-state arg) above/inside `_select_blocks`; `AbilityContext` already carries `target_current_hp_pct` (→ `target_full_hp` predicate, clean liveclient enemy HP signal). `target_no_cc` has NO clean liveclient signal → it stays commits-default (resolves to `"default"`) until a CC-state source exists — honest scoping, document at ship. **HARD invariant:** Part-1 callers (no live-state arg) MUST keep resolving to `"default"` — `test_conditional_block_index_s228.AbilityDpsPart1InvariantTests` + `SelectBlocksConditionalTests` pin this; keep green.
 **Pure-data conditional seed-expansion (fast, interleavable, the s207→s215/s217 pattern):** the deferred bucket on the now-stable schema — Lux Illumination, Aatrox W chain-landed, Fiddle Q fear-state, more sleep/charm/mark amps. Each entry needs Meraki block verification (the rigor bar — do NOT trust ROADMAP recollection of block numbers). DrMundo E only after a caster-state vocab decision.
 s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
-
----
-
-# s227 wrap — 2026-05-16 (DS Phase 5.9.27: max_priority audit + combo_sequence assessment)
-
-**Operator instruction:** same self-paced loop. **Iteration 5** (s223-227 all same session-day; ENGINE 0.94→0.99).
-
-## What happened — the last two override registries; key methodology finding
-
-block_index (s223-225) + form_index (s226) coverage swept. Iteration 5 applied the same pre-filter+A/B method to the final two: max_priority + combo_sequence. **Critical finding: these are play-pattern registries, NOT numeric-sweepable.** `tools/ds_max_priority_prefilter.py` flagged 59 champions where some non-QWE order numerically beats default at lvl 11 — but the numeric optimum ≠ real in-game max order (it flags **Azir W-first**, contradicting the universal Azir Q-max; Ziggs/Ryze/Taliyah numerically reorder but really max Q which default already does). Blindly shipping numeric optima would degrade rankings. So I filtered to ds.ability/ds.burst-archetype champs AND cross-checked established meta — only **3 clean, universally-known non-default orders** the registry genuinely missed.
-
-## Shipped (committing now)
-
-- **`Brand` ["W","E","Q"]** — Pillar of Flame is Brand's primary damage + waveclear; W-max-first has been THE Brand order for years. The original s185 _meta WRONGLY listed Brand as a "default Q-first is fine" example — **corrected this session**. Live A/B **+18.7%** (default left W at rank 2; W-first → rank 4).
-- **`Talon` ["W","Q","E"]** — Rake (W) is Talon's canonical max-first (waveclear+poke+damage). A/B **+12.0%**.
-- **`Fiddlesticks` ["W","E","Q"]** — Bountiful Harvest (W) drain is the standard jungle max. A/B **+16.4%**.
-
-**combo_sequence assessed → ADEQUATE, no adds** (valid negative result): genuinely-unmapped assassin-archetype champs are just Shaco/Ekko (Fizz+Katarina ARE curated in the 15) and neither has the reset/shadow/chain mechanic the default `Q-W-E-AA-R-AA` misses — the registry's stated purpose is fully covered.
-
-max_priority 12→**15 champs**. ENGINE 0.98→0.99; 8 pin bumps + `test_max_priority_sweep_s227.py` (13 tests incl. the Azir over-flag guard + combo-adequacy negative-result guard). DS 2123→**2136**; wider RC **1107**; DS restarted → 0.99.0.
-
-## Don't-redo / blockers
-
-- **max_priority + combo_sequence are play-pattern (meta-curated) registries — do NOT numeric-sweep them.** The pre-filter over-flags by ~20×; its level-11 optimum is not the real max order. Future additions need real-meta/operator knowledge per champion. Pinned by `test_max_priority_sweep_s227.test_over_flag_finding_azir_not_shipped`.
-- **All 4 override registries (block_index / form_index / max_priority / combo_sequence) are now swept** across 5 iterations (s223-227). Pure-data registry-coverage DS work is **exhausted**. Don't re-run any of the 4 pre-filters expecting yield.
-- The remaining DS frontier is the **conditional-target-state schema lift** (`block_index: int|list|dict`) — it's the common blocker for every deferred case (Heimer R-upgraded W/E, Fiddle fear-state, Skarner boulder, LeBlanc Mimic, Zoe/Lux/DrMundo-E target-state). It's **architectural** — flag for operator sign-off, do NOT ship autonomously.
-
-## NEXT (self-continuing loop)
-
-Pure-data registry sweeps are done (5 iterations, ENGINE 0.94→0.99, ~30 high-value correctness fixes shipped). Iteration 6+ has no obvious autonomous pure-data DS work left that meets the rigor bar. Options: (a) **flag the conditional-target-state schema lift for the operator** (the now-clearly-dominant next DS investment, but architectural — needs sign-off); (b) a calibration/data-quality pass if rewind data refreshed; (c) consider the autonomous DS loop complete for this session and surface the summary. Recommend (a)+(c): the high-ROI autonomous vein is mined out; further block_index/registry work needs the schema lift which wants operator input. s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
