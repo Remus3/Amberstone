@@ -103,7 +103,7 @@ def _gather_post() -> list:
                                routes_loadout, routes_lobby_aux, routes_metrics,
                                routes_sr_draft, routes_sr_user_builds,
                                routes_team_context,
-                               routes_archetype)
+                               routes_archetype, routes_last_match)
         _POST_CACHE = (list(routes_static.POST_ROUTES)
                        + list(routes_state.POST_ROUTES)
                        + list(routes_history.POST_ROUTES)
@@ -120,7 +120,8 @@ def _gather_post() -> list:
                        + list(routes_sr_draft.POST_ROUTES)
                        + list(routes_sr_user_builds.POST_ROUTES)
                        + list(routes_team_context.POST_ROUTES)
-                       + list(routes_archetype.POST_ROUTES))
+                       + list(routes_archetype.POST_ROUTES)
+                       + list(routes_last_match.POST_ROUTES))
     return _POST_CACHE
 
 
