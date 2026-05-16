@@ -4,6 +4,23 @@
 
 ---
 
+# s221 wrap — 2026-05-16 (Game-PC BSOD root-cause + view-router fix + lobby settings)
+
+**Operator:** Recent-5 item icons missing → Game-PC game-end BSOD report → view auto-switch bug + lobby-settings feature → fix scheduled-task paths → /done.
+
+## Shipped — 3 code commits + docs
+- **`a92e9e2`** Game-PC BSOD (`0x50 PAGE_FAULT_IN_NONPAGED_AREA`, ~30-50s after every match, first 2026-05-09, deterministic). Root cause: `gamepc_screen_agent.py` `ImageGrab(all_screens=True)` BitBlt across the virtual desktop (Parsec+Duet virtual display adapters) faulting a display driver at the game→desktop mode switch. → **bettercam DXGI** single real Intel adapter (out0=game / out1=Duet; BGRA→numpy RGB, no cv2; graceful access-loss rebuild). bettercam+numpy+comtypes in `pythoncore-3.14-64`. Deployed; 3 stream agents live. `gamepc_boot.ps1` `tasksOwn` marker → 3 RC-ScreenAgent-* tasks are sole launcher (no boot double-launch / double-primary race); refresh loop kept (durability).
+- **`5dafe32`** View auto-switch: Home Find-Match pinned `#lobby`; `_viewResolveAndApply` skipped its stale-manual clear on ANY hash (`!hashView`) → stuck on lobby through CS+game. Fix: a stale *game-state* hash now clears; non-game-state hashes (#settings/#history) stay sticky. + PRE-GAME LOBBY settings card: Auto Accept = agent CONFIG source-of-truth (bidirectional w/ lobby toggle, persistent); Party = localStorage pref, no auto-apply.
+- **`e9d921c`** Recent-5 items: `_lcu_build_items` from `raw_data.lcu_match_detail`; frontend → DDragon mirror icon path (old /icons/items/ is slug-named, 404s on numeric ids).
+- Game-PC RC-ScreenAgent-League/Minimap/UI tasks repointed `py`→`pythoncore-3.14-64\pythonw.exe` + workdir (lastResult 0x80070002→0x41301). Scheduled-task defs are Game-PC OS state, not repo.
+
+## Don't-redo
+- **Never revert the screen agent to `ImageGrab(all_screens=True)`** — deterministic 0x50 BSOD. Memory `feedback_gamepc_screen_capture_bsod.md`. bettercam must use `output_color="BGRA"` (RGB path imports cv2).
+- `/agent/gamepc_screen_agent.py` serves the working tree → fix is reboot-durable; `a92e9e2` makes it robust. `view_router_state.py` mirrors only `_viewAutoDerive`, NOT `_viewResolveAndApply` — the hash fix needs no test churn.
+
+## NEXT
+- Operator to confirm post-real-match: no BSOD; lobby→CS→game auto-switch; lobby↔settings toggles persist/sync (needs a real lobby/ready-check). s220 aggregator G Post-Game-Review reframe still the big pending UI item — untouched this session.
+
 # s220 wrap — 2026-05-16 (Post Game Review: C/E/Settings + polish, then aggregator G reframe pivot)
 
 **Operator instruction:** "continue the ui work" → executed the s219 hand-off priority order, then a long operator-driven polish + a scope pivot.
@@ -16,7 +33,7 @@
 
 ## Key decisions / don't-redo
 - **gamepc_lcu_agent.py was edited then fully REVERTED** — LCU exposes no `/timeline`. Do NOT re-add an agent timeline push. Match-V5 server-side is the path.
-- **Riot key is 403** (`API-Key-Riot.txt`) — Item E timeline + the entire reframe (below) need it. Operator-side renewal at developer.riotgames.com. Code degrades gracefully (placeholder); lights up automatically when key valid.
+- **Riot key was NEVER the problem (diagnosed 2026-05-16).** Product key in `API-Key-Riot.txt` is valid + in-scope — live-probed **200** on all 6 RC endpoints incl. Match-V5 timeline for a standard match. The Item-E timeline 403s because **Riot Match-V5 does not serve event-mode games**: operator's stashed last match is ARAM Mayhem (`gameMode=KIWI`, `queueId=2400`, `NA1_5560797021`) → both `/timeline` and `/matches/{id}` return app-JSON `403 Forbidden`, and Match-V5 `by-puuid/ids` omits the game entirely. NOT renewal/scope/routing/Cloudflare/stale-cache. RC restarted (pid 16424→17480) as hygiene; the 403 did not change — proof it was never a key/cache issue. **Item E + the reframe are unblocked for standard-queue matches**; event-mode last-matches will (correctly, permanently) placeholder. The earlier diagnostic `error code: 1010` was a Cloudflare UA block from a UA-less probe — irrelevant to RC's `rc-riot-api/1` path. Follow-up (not done): `_attach_match_timeline` should early-skip known event queues (2400 etc.) to kill the misleading "key may be invalid or revoked" WARN spam + error-metric noise.
 - Section 3 went through ~5 layout iterations; **final = 4-col matching section 2's column pairing** (VISION↕DAMAGE, CS↕CS/MIN, TANKED↕HEAL, selector↕[KDA KP%]). Do not re-litigate — operator confirmed via spec table.
 - `_rosterScores` is currently **per-side 1–5** (lobby-wide 1–10 caused gap-looking numbers — operator flagged, fixed).
 
