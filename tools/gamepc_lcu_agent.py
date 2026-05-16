@@ -37,6 +37,7 @@ the 12s ready-check accept window:
 """
 import base64
 import json
+import os
 import re
 import ssl
 import sys
@@ -1573,16 +1574,125 @@ def _maybe_refresh_team_context(state: dict) -> None:
 # Review page is instant when the operator opens it.
 #
 # Tracked state survives the loop iteration so we only fire once per game
-# end (until phase leaves EndOfGame OR a new gameId appears).
+# end (until phase leaves EndOfGame OR a new gameId appears). The
+# last_game_id_ingested ALSO persists to disk (INGEST_STATE_FILE) so a
+# Game-PC crash right at game end is recovered on next agent boot via
+# _recover_missed_ingest().
 
 _post_match_ingest_state = {
     "last_phase":             None,    # phase from prior cycle
     "last_game_id_ingested":  None,    # gameId we successfully shipped
     "last_post_at":           0.0,     # monotonic ts of last POST attempt
+    "startup_recovery_done":  False,   # one-shot per agent boot
 }
 
 # Minimum interval between ingest POSTs even if EndOfGame re-fires.
 POST_MATCH_INGEST_RATE_LIMIT_S = 10.0
+
+# Persisted state path. Survives agent restart so a crash right at game end
+# doesn't cause the next boot to miss the ingest.
+INGEST_STATE_FILE = Path(os.environ.get(
+    "RC_AGENT_STATE_FILE",
+    "C:/RC-Agent/agent_state.json"
+))
+
+
+def _load_ingest_state() -> None:
+    """Restore last_game_id_ingested from disk on agent boot. Safe to call
+    even if the file is missing or malformed — empty state means
+    everything will look uningested + recovery will fire."""
+    try:
+        if not INGEST_STATE_FILE.exists():
+            return
+        data = json.loads(INGEST_STATE_FILE.read_text(encoding="utf-8"))
+        gid = data.get("last_game_id_ingested")
+        if gid is not None:
+            _post_match_ingest_state["last_game_id_ingested"] = gid
+            print(f"[ingest-state] restored last_game_id_ingested={gid} "
+                  f"from {INGEST_STATE_FILE}", flush=True)
+    except (OSError, ValueError) as exc:
+        print(f"[ingest-state] load failed (continuing fresh): {exc}",
+              flush=True)
+
+
+def _save_ingest_state() -> None:
+    """Atomic write of the persisted ingest state. Called after each
+    successful POST + after startup recovery."""
+    try:
+        INGEST_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        tmp = INGEST_STATE_FILE.with_suffix(INGEST_STATE_FILE.suffix + ".tmp")
+        payload = {
+            "last_game_id_ingested": _post_match_ingest_state["last_game_id_ingested"],
+            "saved_at":              time.strftime("%Y-%m-%dT%H:%M:%S"),
+        }
+        tmp.write_text(json.dumps(payload), encoding="utf-8")
+        os.replace(tmp, INGEST_STATE_FILE)
+    except OSError as exc:
+        print(f"[ingest-state] save failed: {exc}", flush=True)
+
+
+def _recover_missed_ingest() -> None:
+    """One-shot startup check: fetch latest LCU gameId and POST ingest if
+    it doesn't match our persisted last_game_id_ingested. Handles the
+    "Game-PC crashed right at game end" case where the agent died
+    before /api/last-match/ingest was POSTed. Also catches "agent was
+    offline when game ended" — operator restarts agent later, we
+    auto-recover.
+
+    Skipped silently when LCU is unreachable (operator hasn't launched
+    League yet) — the regular state-push loop will retry as soon as
+    LCU comes up. Skipped silently when latest gameId matches the
+    persisted one (already shipped)."""
+    if _post_match_ingest_state["startup_recovery_done"]:
+        return
+    try:
+        # Probe LCU reachability — silent return if not up yet.
+        summ, status = lcu_request("GET", "/lol-summoner/v1/current-summoner")
+        if not isinstance(summ, dict):
+            return
+        puuid = (summ.get("puuid") or "").strip()
+        if not puuid:
+            return
+        # Latest match summary.
+        ml, _ = lcu_request("GET",
+            f"/lol-match-history/v1/products/lol/{puuid}/matches"
+            f"?begIndex=0&endIndex=1")
+        if not isinstance(ml, dict):
+            return
+        games = (ml.get("games") or {}).get("games") or []
+        if not games:
+            _post_match_ingest_state["startup_recovery_done"] = True
+            return
+        gid = games[0].get("gameId")
+        if not gid:
+            _post_match_ingest_state["startup_recovery_done"] = True
+            return
+        last = _post_match_ingest_state["last_game_id_ingested"]
+        if last == gid:
+            print(f"[ingest-recovery] latest gameId={gid} matches persisted "
+                  f"— no recovery needed", flush=True)
+            _post_match_ingest_state["startup_recovery_done"] = True
+            return
+        # Mismatch — fetch full detail + POST.
+        detail, _ = lcu_request("GET", f"/lol-match-history/v1/games/{gid}")
+        if not isinstance(detail, dict):
+            print(f"[ingest-recovery] couldn't fetch detail for gameId={gid}; "
+                  f"will retry via EndOfGame path", flush=True)
+            return
+        ok, status = post_last_match_ingest(puuid, detail)
+        if ok:
+            _post_match_ingest_state["last_game_id_ingested"] = gid
+            _post_match_ingest_state["last_post_at"] = time.monotonic()
+            _save_ingest_state()
+            _post_match_ingest_state["startup_recovery_done"] = True
+            print(f"[ingest-recovery] shipped gameId={gid} on agent boot "
+                  f"(persisted={last!r}, latest={gid}) — crash-recovery "
+                  f"path engaged", flush=True)
+        else:
+            print(f"[ingest-recovery] POST failed: {status}; will retry "
+                  f"via EndOfGame path", flush=True)
+    except Exception as exc:
+        print(f"[ingest-recovery] error (non-fatal): {exc}", flush=True)
 
 
 def _fetch_latest_match_for_ingest():
@@ -1646,7 +1756,15 @@ def _maybe_ingest_last_match(state: dict) -> None:
     Called once per state-push cycle by `_state_push_loop`; no-op when
     not in EndOfGame or when we already shipped this game's detail.
     Rate-limited by POST_MATCH_INGEST_RATE_LIMIT_S between attempts to
-    avoid hammering LCU + Legion if EndOfGame re-fires."""
+    avoid hammering LCU + Legion if EndOfGame re-fires.
+
+    Also retries the one-shot startup crash-recovery here so it gets a
+    chance to run even when LCU was offline at agent boot time."""
+    # Retry the crash-recovery if it hasn't successfully completed yet
+    # (e.g. LCU wasn't running at boot, only came up later).
+    if not _post_match_ingest_state.get("startup_recovery_done"):
+        _recover_missed_ingest()
+
     phase = state.get("phase") or ""
     prior = _post_match_ingest_state["last_phase"]
     _post_match_ingest_state["last_phase"] = phase
@@ -1674,6 +1792,7 @@ def _maybe_ingest_last_match(state: dict) -> None:
     ok, status = post_last_match_ingest(puuid, detail)
     if ok:
         _post_match_ingest_state["last_game_id_ingested"] = gid
+        _save_ingest_state()  # persist for crash-recovery on next boot
         print(f"[last-match-ingest] shipped gameId={gid} "
               f"(transition {prior!r} → EndOfGame)", flush=True)
     else:
@@ -1767,6 +1886,12 @@ def _cmd_poll_loop():
 def loop():
     print(f"lcu agent -> {LEGION} state={INTERVAL}s auto={AUTO_INTERVAL}s cmd={CMD_INTERVAL}s",
           flush=True)
+    # s219: restore persisted ingest state + one-shot crash-recovery for
+    # a missed EndOfGame POST. Both no-op gracefully if LCU isn't up yet
+    # (the state-push loop's normal EndOfGame trigger handles the live
+    # case once League comes online).
+    _load_ingest_state()
+    _recover_missed_ingest()
     for fn in (_state_push_loop, _auto_features_loop, _cmd_poll_loop):
         threading.Thread(target=fn, daemon=True, name=fn.__name__).start()
     while True:
