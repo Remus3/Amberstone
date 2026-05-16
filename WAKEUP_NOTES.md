@@ -4,6 +4,25 @@
 
 ---
 
+# s220 wrap — 2026-05-16 (Post Game Review: C/E/Settings + polish, then aggregator G reframe pivot)
+
+**Operator instruction:** "continue the ui work" → executed the s219 hand-off priority order, then a long operator-driven polish + a scope pivot.
+
+## Shipped — `920c9a3` (+1004/−99, 7 files) + the docs commit below
+- **Item C** rich DDragon item tooltips on Comp tab (mirrors champ_select s213).
+- **Item E phase 1** Timeline tab (per-min gold/XP/CS diff sparklines + objective ribbon). Source pivoted: **LCU has NO timeline endpoint (404)** → server-side **Match-V5** via `core.riot_api.get_match_timeline` (immutable-cached) in `dashboard/builders._attach_match_timeline`. 17 tests `tests/test_last_match_timeline.py`. Phase 2 (interactive minimap) deferred.
+- **Settings** "POST GAME REVIEW" card: rank-tier selector (canonical `rc-pgr-rank-tier`) + baseline knob (`/api/last-match?baseline=`, clamped 5–50, in `_build_last_match`).
+- **Polish:** tabs → Comp/Chart/Timeline/Insights/Review (Deep-Review→Review nav tab); Chart contrast; hero section separators; **section 3 rebuilt as 4-col grid mirroring section 2** (col1 = selector over KDA+KP% flex pair, selector widened via justify-self:stretch); per-side roster score + MVP/SVP; CS↔summoner swap; L##→##; **+1 then +3 font bumps** (44 decls, hero↔section3 parity preserved); uniform 17px column gap.
+
+## Key decisions / don't-redo
+- **gamepc_lcu_agent.py was edited then fully REVERTED** — LCU exposes no `/timeline`. Do NOT re-add an agent timeline push. Match-V5 server-side is the path.
+- **Riot key is 403** (`API-Key-Riot.txt`) — Item E timeline + the entire reframe (below) need it. Operator-side renewal at developer.riotgames.com. Code degrades gracefully (placeholder); lights up automatically when key valid.
+- Section 3 went through ~5 layout iterations; **final = 4-col matching section 2's column pairing** (VISION↕DAMAGE, CS↕CS/MIN, TANKED↕HEAL, selector↕[KDA KP%]). Do not re-litigate — operator confirmed via spec table.
+- `_rosterScores` is currently **per-side 1–5** (lobby-wide 1–10 caused gap-looking numbers — operator flagged, fixed).
+
+## NEXT SESSION — major reframe (operator pivot, paint-tool iteration)
+Operator wants Post Game Review reframed aggregator-G-style: **clickable, lightly explorable**; deep coach refinement routes to the **Replay page**. 6 reference screenshots analyzed this session (model: compact match rows → expand → persistent header + 10-player score strip → **AI Analysis / AI Graph / Build** tabs; 0–100 color-banded score + lobby-wide rank + 👑 best; MVP=purple card; AI-Graph = trend line, click event → minimap+detail+win-prob). Carried, NOT yet done: Sustain rename; hero section-1 (KDA `##/##/##` min-width, champ-name 2-line, remove "ARAM"); aggregator G roster row (level-on-icon, vertical summoners, runes, rank badge, score+rank, KDA 2-line, damage fill-bar, cs/min parens); color-coding feature; #9 per-player augments. Per-player runes/ranks need `_enrich_from_lcu` extension. Operator will paint-tool-annotate section by section.
+
 # s219 wrap — 2026-05-15/16 (Post Game Review build — multi-session marathon)
 
 **Operator instruction:** "ready for last match page - lets go to it" → 16+ iterations of build + redesign over ~6 hours of wall time. Closed with "do /done for a /clear then next session to finish C and E and settings page add".
