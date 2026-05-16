@@ -1,6 +1,62 @@
 # WAKEUP_NOTES — RC hand-off ledger
 
-> Sessions s27–s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+> Sessions s27–s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 archived to docs/history_notes.md. Only the last 3 sessions kept here.
+
+---
+
+# s218 wrap — 2026-05-15 (Home page redesign + foundation overhaul)
+
+**Operator instruction:** "doing ui work" — open-ended iterative pass on the Home view. Closed out with "this page is done now. commit and /done".
+
+## Shipped — single commit (`4518ed9`)
+
+**Foundation (applies to all views going forward):**
+- Pin RC menu width at 230px (static across views; fits longest case "AUTO · PRE-GAME LOBBY"). `.title-current` switched from min-width to fixed width per operator hard rule.
+- Bump typography +1px globally — 414 declarations across 14 panel CSS files via Python script; RC menu rules (4 skipped) preserved per directive.
+- Flip body zoom default 1.33 → 1.0 in `base.css`. Fixed dev.js/main.js localStorage key mismatch (slider wrote `rc-zoom`, page-load read `rc-body-zoom` — body was always 1.33 regardless of slider position). Both now use `rc-zoom`.
+
+**Dev/Sim Preview removal** (separate concern operator green-lit mid-session):
+- Drop `#view-dev` section + menu item + `#sim-banner` block.
+- Delete `web/js/sim.js`, `web/css/panels/dev.css`, `dashboard/routes_dev.py`.
+- Archive `data/sim/*` + `data/sim_states.json` → `docs/_archive/2026-05-15-dev-sim-removal/`.
+- Scrub orphan refs across `agents/supervisor.py`, `dashboard/_state_builder.py`, `dashboard/_handler.py`, `dashboard/_static.py`, `riot-commander.spec`, `tools/extract_panels.py`, `web_dashboard.py`, `view_router_state.py`.
+
+**Home view content:**
+- **7-tile quick actions** in operator's order: Find Match · Last Match · Session · History · Replay · Builds · Settings. Equal-width centered tiles. Find Match accented with lavender gradient + info-soft border + lavender icon (primary action signal).
+- **Find Match opens a Home-unique queue picker modal** (centered fixed-position, backdrop dimmer, Escape/outside-click close). Mirrors lobby-view's `#lv-mode-menu` queue list with `data-hfm-*` attributes. Click → fires `change_queue_type` LCU command → routes to Pre-Game Lobby. Two false-start iterations resolved: synthetic `.click()` on `#lv-mode-trigger` after route was racing with the document outside-click handler → final landed approach is `e.stopPropagation()` on tile click + direct DOM mutation of menu's `hidden` class.
+- **Tonight's Pick 3-section restructure**: Section 1 = champion intro (icon + name + meta); Section 2 = THE GOOD / THE BAD / THE UGLY placeholder rows tagged `data-dummy-data="tonights-pick-tips"`; Section 3 = STREAK / ADVISORIES sub-header rows wired live to `_HOME.streaks` (play_days + good_grades) and `#advisory-count`. Layout: `grid-template-columns: auto 1fr 1fr` so Section 1 sizes to content + Section 2 starts at a finite boundary after "best B" text. Section 3 uses 88px label col + 16px gap (matches Section 2) for symmetric label-value spacing. "Open Advisories" → "Advisories" rename to fit column. 14px row-gap between Streak + Advisories rows.
+- **Recent 5 row updates**: spell out "X Minutes" (was "Xm"), append CS + CS/min chip, 6-slot placeholder item strip tagged `data-dummy-data="items-pending-ingest"`. Card click → History view with `sessionStorage.rc-history-focus-ts` → auto-select date-matching session + scroll target row + pulse-highlight class for 3.5s.
+- **This Week row updates**: KDA breakdown "1.8 22/10/18" (avg + raw totals), AVG CS per game + CS/min (operator clarified avg not total), grade-tint demoted from card-bg-tint to 3px left-border accent (transparent bg + bottom-only divider — operator wanted list, not cards). Bumped `.home-week-bar-kda-raw` 13 → 14px to separate hierarchy from 15px ratio pill.
+- **Backend (`dashboard/builders.py`)**: `/api/home/summary` recent[] gains `cs`, `cs_per_min`, `items[]`, `mode_subtype`; this_week[] gains `kills`, `deaths`, `assists`, `cs_total`, `cs_per_min`. RC hard-restarted (pid 18628 → 15752) via `taskkill /F /PID + restart.bat` after `restart_trigger.txt` mechanism didn't consume two attempts.
+- **Hero headline**: drop absolute-threshold `up/down` classifier (was rendering 1.27 KDA as `.down` salmon-red despite no comparison baseline). Always `.flat` text-dim until real yesterday-comparison baseline ships.
+- **Tonight's Pick "Jinx" name → History filtered by champion**: clickable (cursor:pointer + green-tinted underline on hover) → `sessionStorage.rc-history-focus-champion` → `_historyFetchAndRender` finds most recent session containing that champion + highlights all matching match rows + scrolls to first.
+
+**Footer + tooltip polish:**
+- Footer height 44 → 36px, color `--text-faint` → `--text-dim`, line-height 1, all children `inline-flex; align-items: center`. ui-version pill opacity 0.6 → 0.85.
+- `wrapSixWords` (tooltip system) was splitting on ALL whitespace (including `\n`) so multi-section tooltips collapsed into one long line. Now preserves explicit `\n` boundaries, wrapping each source line independently at 6 words → RC pip / health-dot multi-section tooltip renders per-row.
+
+**Cleanup:**
+- Drop orphan `.home-pick-btn*` CSS (advisory + digest pip-buttons that Section 3 redesign replaced).
+- Drop orphan `wireAlertRow` calls in `_homeWireStartup`.
+- Drop orphan `view-dev` CSS selectors in header.css.
+- All edits verified: py_compile clean on touched Python files; 27/27 view-router tests; live dashboard auto-reloaded via asset-hash; cache-bust hash flipped to `b5f4bf09c6`.
+
+## Visual audit
+Mid-session ran a `general-purpose` Agent for independent UI review. Surfaced 3 must-fix + 4 should-consider + 5 leave-alone findings. Operator picked 6 of 7 to apply (skipped #1 as false positive after re-verification). All 6 applied + verified live.
+
+## Tests / verification
+- `tests/test_view_router_state.py`: 27 pass + 16 subtests.
+- `tests/test_routes_ds_preview_scorer.py` + `tests/test_state_builder_archetype_pick.py` + `tests/snapshot_panels/`: 59 pass + 16 subtests in 18.65s combined.
+- Manual: Recent 5 click → History deep-link pulse-highlight verified by operator. Find Match picker modal → operator clicked queue → routed to Pre-Game Lobby successfully.
+
+## What's next
+- **Operator signaled next session = next view.** Page order likely: Pre-Game Lobby → Champ Select → Active Match → Last Match → Session → History → Replay → User Builds → Settings.
+- **Tagged-for-removal placeholders** stay until backend work catches up: `data-dummy-data="tonights-pick-tips"` (needs post-match Good/Bad/Ugly analyzer), `data-dummy-data="items-pending-ingest"` (needs `items[]` column in match_history.db ingest), `builders.py` `items: []` + `mode_subtype: null` placeholders (same).
+
+## Blockers / don't redo
+- **Heartbeat ♥ — in header top-right** flagged by operator: WS heartbeat envelope (`{type:"heartbeat", t:epoch}`) doesn't re-arm immediately after RC restart. The dashboard at `web/js/main.js:5026` populates `#heartbeat` only on WS envelope arrival; supervisor's broadcast loop needs investigation. Don't re-investigate the WS connection itself — `ws://192.168.8.230:8891/push` is confirmed connected (footer shows it).
+- **`restart_trigger.txt` watcher wedge** confirmed pre-existing — the supervisor's poll loop at `ops/rc_supervisor.py:1240` didn't consume trigger files on 2 attempts this session. Workaround: hard `taskkill /F /PID + restart.bat` documented as standard. Don't re-debug; existing memory entry `project_rc_supervisor_restart.md` already covers.
+- **Hero headline up/down classifier removed**: do not re-add until a proper yesterday-comparison baseline is wired into `/api/home/summary`. Operator explicitly prefers flat over wrong-direction-tinted.
 
 ---
 
@@ -77,29 +133,3 @@ DS suite 2041 → 2060 (+19). Wider RC `tests/` 953 green post-DS-restart (phase
 - ReadOnly attribute means League cannot overwrite these on client-exit (intended) — BUT any in-game settings changes also won't persist until the attribute is cleared. Operator knows; flagged in chat. Clear via `Set-ItemProperty -Name IsReadOnly -Value $false` per-file if they want to retune live.
 - Don't re-search for the backup — confirmed location is `C:\rc-agent\lol_settings_SamplePlayer.py` (also mirrored at `C:\RC-Agent\` — Windows case-insensitive duplicate listing).
 - Pre-restore backup at `C:\Riot Games\League of Legends\Config\_backup_SamplePlayer_20260515_085530\` is the rollback artifact if needed.
-
----
-
-# s215 wrap — 2026-05-15 (Loadout auto-generator + DS Phase 5.9.21 sum-of-blocks data batch)
-
-**Operator instruction:** "continue loadout then continue ds" — close the s214 carry-forward 3-curated-variant auto-generator, then keep DS engine moving.
-
-## Shipped — commits `b395032` + `77d716c`
-
-Pushed `e89a94c..77d716c main -> main` (4 commits, 2 features). CI status pre-flight: `py_compile` clean (2350 .py), `ruff` clean, 508 phase2+regression+phase8+fu02 pass, 11 snapshot panels pass.
-
-### s215 part A — Loadout auto-generator (commit `b395032`)
-New `tools/champion_loadout_autogen.py` (~400 LOC). Emits 3 algorithmic build variants per (champion, mode) into `data/champion_loadouts.json` via `rank_for_primary_archetype` per archetype. Hand-curated wins: each (champion, mode) counts curated variants with that mode in `modes[]`; only fills to 3 with auto entries when count < 3. Stable keys `auto-<mode>-<slot>-<archetype>` so reruns refresh in place. Runes mirror `_CSV_EXPERIMENTAL_RUNES` from `champ_select.js`; summoners archetype-keyed for SR + mode-default for ARAM (4,32) / Arena (4,7). 35 new tests via DS-stub mocks; 1064 wider RC tests pass (+40 vs s214). Full 172-champ run: 13.7s, 1017 auto entries added (332 SR + 169 ARAM + 516 Arena), 0 unfilled. Vayne/Lulu/Veigar curated entries spot-verified preserved.
-
-### s215 part B — DS Phase 5.9.21 sum-of-blocks data batch (commit `77d716c`)
-First pure-data batch consuming s207's schema lift. 4 new (champion, key) entries to `champion_block_index.json`: Thresh.E=[1,2] (Maximum Bonus Magic at full Souls + canonical Magic Damage — lifts s203's single-int {E:2}), Sona.Q=[0,1] (active + Power Chord), Kalista.E=[0,1,1,1,1] (base Rend + 4× stacks = 5-stack model), Malzahar.R=[0,2] (Total Magic channel + Total target-max-HP% bonus). ENGINE_VERSION 0.92.0 → 0.93.0. DS server restarted live to pid pinned at /health=0.93.0. **Live A/B headlines:** Kalista E **+147%** raw, Malzahar R **+150%** raw, Thresh E **+94%** raw, Sona Q **+16%** raw (Power Chord block has unparsed AP scaling Phase 4a can't extract). 19 new tests in `agents/daemon_slayer/tests/test_sum_of_blocks_expansion_s215.py` + 4 prior-batch tests updated for new Thresh shape. DS suite 2022 → 2041; wider RC 1064 green.
-
-### What's next
-- **Live ARAM Mayhem test** still scheduled by operator post-/clear (carried from s214). Now also has 3-variant build chooser to validate live on every locked champion + Phase 5.9.21 Thresh/Sona/Kalista/Malzahar ability_dps lifts ride through to `/api/ds-preview` for the build chooser's experimental row.
-- **DS Phase 5.9.22+ sum-of-blocks candidates remaining**: Taliyah E (mechanic uncertain — block 2 'Total Maximum Detonation' already aggregates), Jinx R secondary AOE (not single-target), Kindred E (nested missing-HP parser bucket — Phase 4a parser limitation), Kayle E (same bucket), Belveth R execute curve (same bucket). Bucket queue moves from 6 → 2 with s215 closing Thresh/Sona/Kalista/Malzahar.
-- **Loadout autogen calibration**: operator may want to flip some `default_per_mode` pointers post-Mayhem if a curated default loses to the auto-primary on live ARAM rounds. No code work — pure JSON edit. Autogen preserves operator's manual default choices on re-run.
-- **Deadcode cleanup (carried)**: `coaches/brawl_coach.py` + brawl mode detection across 6 files.
-
-### Blockers / don't redo
-- Loadout autogen runs DS engine ~1500 times per full pass (~14s). If DS server is down during a run, all auto entries for unfilled slots stay missing — script reports them in the `unfilled` stat. Operator can re-run after starting DS. Not a bug, by design.
-- Phase 4a Meraki parser limitation on Sona Q block 1's "X% of Sona's AP" (unparsed_modifiers) is upstream — the sum-of-blocks entry correctly captures the flat base (10-30) but the AP scaling is invisible to the engine until the Phase 4a parser learns to read nested `% of <champion>'s AP` syntax. Out of scope for this batch.
