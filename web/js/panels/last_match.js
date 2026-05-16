@@ -167,6 +167,42 @@ export function wireLastMatchOnce() {
       _renderRankCompare(rankSel.value);
     });
   }
+
+  // s219 v5: Tab nav (Comp / Chart / Review). Defaults to Comp on first
+  // render; persists active tab to localStorage so the operator's last
+  // choice survives a reload.
+  const tabsRoot = document.getElementById("lm-tabbed-section");
+  if (tabsRoot) {
+    try {
+      const saved = localStorage.getItem(_TAB_LS_KEY);
+      if (saved && ["comp", "chart", "review"].includes(saved)) {
+        _activateTab(saved);
+      }
+    } catch (_) {}
+    tabsRoot.querySelectorAll(".lm-tab[data-tab]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const which = btn.dataset.tab || "";
+        _activateTab(which);
+        try { localStorage.setItem(_TAB_LS_KEY, which); } catch (_) {}
+      });
+    });
+  }
+}
+
+const _TAB_LS_KEY = "rc-pgr-tab";
+
+function _activateTab(which) {
+  const tabsRoot = document.getElementById("lm-tabbed-section");
+  if (!tabsRoot) return;
+  tabsRoot.querySelectorAll(".lm-tab[data-tab]").forEach((t) => {
+    t.classList.toggle("is-active", t.dataset.tab === which);
+  });
+  tabsRoot.querySelectorAll(".lm-tab-panel[data-tab-panel]").forEach((p) => {
+    const match = p.dataset.tabPanel === which;
+    p.classList.toggle("is-active", match);
+    if (match) p.removeAttribute("hidden");
+    else p.setAttribute("hidden", "");
+  });
 }
 
 /** Fetch latest match + render into DOM. Safe to call repeatedly. */
@@ -196,6 +232,7 @@ function renderLastMatch(data) {
   // live in the Team Composition card (operator's own row); DS picks
   // belong on champ-select + active-match, not post-game.
   _setTeamComp(enriched);
+  _setChart(enriched);
   _setQuickReview(qr);
   _setReviewButton(m);
   _setMeta(m, data.history_count, enriched);
@@ -466,6 +503,85 @@ function _setDsPicks(picks) {
   root.innerHTML = html;
 }
 
+// s219 v5: Chart tab — team-aggregate ally vs enemy bars.
+// Derived from enriched.roster (per-player KDA/damage/gold/vision)
+// + enriched.teams (tower/dragon/baron/inhibitor kills). Each row is
+// a pair of bars normalized to the larger value so the visual diff
+// reads instantly. SR-only metrics (Dragons / Barons) suppressed on
+// other modes; conversely tower kills + vision show in all 5v5 modes.
+function _setChart(enriched) {
+  const wrap = document.getElementById("lm-chart-wrap");
+  const list = document.getElementById("lm-chart-list");
+  const pending = document.getElementById("lm-chart-pending");
+  if (!wrap || !list) return;
+  if (!enriched || !enriched.roster || !enriched.roster.length) {
+    wrap.hidden = true;
+    if (pending) pending.hidden = false;
+    return;
+  }
+  wrap.hidden = false;
+  if (pending) pending.hidden = true;
+
+  const myTid = enriched.team_id;
+  const ally  = (enriched.roster || []).filter((r) => r.team_id === myTid);
+  const enemy = (enriched.roster || []).filter((r) => r.team_id !== myTid);
+  const teams = enriched.teams || [];
+  const myTeam = teams.find((t) => t.team_id === myTid) || {};
+  const enemyTeam = teams.find((t) => t.team_id !== myTid) || {};
+
+  const sum = (arr, fn) => arr.reduce((a, r) => a + (Number(fn(r)) || 0), 0);
+
+  // Build rows. Suppress mode-irrelevant rows.
+  const queueId = enriched.queue_id || 0;
+  const gameMode = (enriched.game_mode || "").toUpperCase();
+  const isAram   = queueId === 450 || queueId === 2400 || gameMode === "ARAM" || gameMode === "KIWI";
+  const isArena  = queueId === 1700 || queueId === 1710 || gameMode === "CHERRY";
+  const isSr     = !isAram && !isArena;
+
+  const rows = [
+    { label: "Kills",   ally: sum(ally, r => r.kills),   enemy: sum(enemy, r => r.kills) },
+    { label: "Deaths",  ally: sum(ally, r => r.deaths),  enemy: sum(enemy, r => r.deaths) },
+    { label: "Assists", ally: sum(ally, r => r.assists), enemy: sum(enemy, r => r.assists) },
+    { label: "Damage",  ally: sum(ally, r => r.damage_to_champs), enemy: sum(enemy, r => r.damage_to_champs), fmt: _fmtThousands },
+    { label: "Damage Tkn", ally: sum(ally, r => r.damage_taken), enemy: sum(enemy, r => r.damage_taken), fmt: _fmtThousands },
+    { label: "Gold",    ally: sum(ally, r => r.gold), enemy: sum(enemy, r => r.gold), fmt: _fmtThousands },
+    { label: "Vision",  ally: sum(ally, r => r.vision_score), enemy: sum(enemy, r => r.vision_score) },
+  ];
+  if (myTeam.tower_kills != null || enemyTeam.tower_kills != null) {
+    rows.push({ label: "Towers", ally: myTeam.tower_kills || 0, enemy: enemyTeam.tower_kills || 0 });
+  }
+  if (isSr) {
+    rows.push({ label: "Dragons", ally: myTeam.dragon_kills || 0, enemy: enemyTeam.dragon_kills || 0 });
+    rows.push({ label: "Barons",  ally: myTeam.baron_kills  || 0, enemy: enemyTeam.baron_kills  || 0 });
+    rows.push({ label: "Heralds", ally: myTeam.rift_herald_kills || 0, enemy: enemyTeam.rift_herald_kills || 0 });
+  }
+
+  list.innerHTML = rows.map((r) => {
+    const max = Math.max(r.ally, r.enemy, 1);
+    const allyPct  = Math.round((r.ally  / max) * 100);
+    const enemyPct = Math.round((r.enemy / max) * 100);
+    const fmtFn = r.fmt || ((v) => String(v));
+    return `<li class="lm-chart-row">
+      <div class="lm-chart-label">${_escHtml(r.label)}</div>
+      <div class="lm-chart-bar lm-chart-bar-ally">
+        <span class="lm-chart-bar-fill" style="width:${allyPct}%"></span>
+        <span class="lm-chart-bar-value">${_escHtml(fmtFn(r.ally))}</span>
+      </div>
+      <div class="lm-chart-vs">vs</div>
+      <div class="lm-chart-bar lm-chart-bar-enemy">
+        <span class="lm-chart-bar-fill" style="width:${enemyPct}%"></span>
+        <span class="lm-chart-bar-value">${_escHtml(fmtFn(r.enemy))}</span>
+      </div>
+    </li>`;
+  }).join("");
+}
+
+function _fmtThousands(n) {
+  const v = Number(n) || 0;
+  if (v >= 1000) return `${(v / 1000).toFixed(1)}k`;
+  return String(v);
+}
+
 function _setQuickReview(qr) {
   _renderQrColumn("lm-qr-right", qr.right);
   _renderQrColumn("lm-qr-wrong", qr.wrong_team);
@@ -521,7 +637,9 @@ function _setEmptyState(errMsg) {
   if (actual) actual.hidden = true;
   const tcTable = document.getElementById("lm-tc-table");
   if (tcTable) tcTable.hidden = true;
-  ["lm-build-pending","lm-tc-pending"].forEach((id) => {
+  const chartWrap = document.getElementById("lm-chart-wrap");
+  if (chartWrap) chartWrap.hidden = true;
+  ["lm-build-pending","lm-tc-pending","lm-chart-pending"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.hidden = false;
   });

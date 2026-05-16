@@ -33,7 +33,7 @@
 
 /* W/L pill — visible only when LCU enrichment carries a real win flag. */
 .lm-hero-result {
-  font-size: 14px; font-weight: 800;
+  font-size: 15px; font-weight: 800;
   letter-spacing: 0.1em;
   padding: 6px 14px;
   border-radius: var(--radius-sm);
@@ -75,7 +75,7 @@
   min-width: 0;
 }
 .lm-hero-champ {
-  font-size: 24px; font-weight: 700; color: var(--text);
+  font-size: 26px; font-weight: 700; color: var(--text);
   cursor: pointer;
   text-decoration: none;
   border-bottom: 1px dashed transparent;
@@ -84,14 +84,14 @@
 .lm-hero-champ:hover { border-bottom-color: var(--text-dim); }
 .lm-hero-champ:focus-visible { outline: 1px solid var(--accent, #8a8cf0); outline-offset: 2px; }
 .lm-hero-mode {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 .lm-hero-kda {
   display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
-  min-width: 96px;
+  min-width: 102px;
 }
 
 /* s219 v4: inline stat cluster — CS / Gold / KP / Duration folded into
@@ -112,21 +112,21 @@
   text-align: right;
 }
 .lm-hero-stat-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 .lm-hero-stat-value {
-  font-size: 19px;
+  font-size: 21px;
   font-weight: 700;
   color: var(--text);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
 .lm-hero-stat-sub {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-faint, var(--text-dim));
   font-variant-numeric: tabular-nums;
 }
@@ -203,18 +203,18 @@
   font-style: italic;
 }
 .lm-kda-text {
-  font-size: 21px; font-weight: 600; font-variant-numeric: tabular-nums;
+  font-size: 23px; font-weight: 600; font-variant-numeric: tabular-nums;
   color: var(--text);
 }
 .lm-kda-ratio {
-  font-size: 13px; color: var(--text-dim);
+  font-size: 14px; color: var(--text-dim);
 }
 .lm-hero-grade {
-  font-size: 36px; font-weight: 800; line-height: 1;
-  padding: 4px 14px;
+  font-size: 40px; font-weight: 800; line-height: 1;
+  padding: 4px 16px;
   border-radius: var(--radius-sm);
   background: var(--surface-2, #1a1a22);
-  min-width: 56px; text-align: center;
+  min-width: 60px; text-align: center;
   color: var(--text);
 }
 .lm-hero-grade[data-grade="S"] { color: var(--grade-s, #f5b87c); }
@@ -266,6 +266,126 @@
   font-size: 12px;
   color: var(--text-faint, var(--text-dim));
   font-variant-numeric: tabular-nums;
+}
+
+/* ── Tabbed section (Comp / Chart / Review) ──────────────────────────── */
+/* s219 v5: TEAM COMPOSITION title replaced by a tab nav (Comp / Chart /
+ * Review). Quick Review folded in as the Review tab. The Open Deep
+ * Review CTA sits on the right end of the tab strip, always visible. */
+.lm-tabs-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 12px;
+}
+.lm-tabs-strip {
+  display: flex; gap: 4px;
+}
+.lm-tab {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.lm-tab:hover {
+  background: var(--surface-2, #1a1a22);
+  color: var(--text);
+}
+.lm-tab.is-active {
+  background: var(--surface-2, #1a1a22);
+  color: var(--accent, #8a8cf0);
+  border-color: var(--accent, #8a8cf0);
+}
+.lm-tab:focus-visible {
+  outline: 2px solid var(--accent, #8a8cf0);
+  outline-offset: 2px;
+}
+
+.lm-tabs-cta {
+  margin-left: auto;
+}
+
+.lm-tab-panel { display: none; }
+.lm-tab-panel.is-active { display: block; }
+.lm-tab-panel[hidden] { display: none !important; }
+
+.lm-tab-panel-hint {
+  font-size: 12px;
+  color: var(--text-faint, var(--text-dim));
+  font-style: italic;
+  margin-bottom: 8px;
+}
+
+/* ── Chart tab — team aggregate bars ──────────────────────────────────── */
+.lm-chart-wrap { width: 100%; }
+.lm-chart-wrap[hidden] { display: none; }
+.lm-chart-list {
+  list-style: none;
+  margin: 0; padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lm-chart-row {
+  display: grid;
+  grid-template-columns: 110px 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.lm-chart-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.lm-chart-bar {
+  position: relative;
+  height: 22px;
+  background: var(--surface-2, #1a1a22);
+  border: 1px solid var(--border-soft);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.lm-chart-bar-fill {
+  position: absolute;
+  top: 0; bottom: 0;
+  background: var(--text-dim);
+  transition: width 0.25s ease;
+}
+.lm-chart-bar.lm-chart-bar-ally  { display: flex; justify-content: flex-end; }
+.lm-chart-bar.lm-chart-bar-ally .lm-chart-bar-fill {
+  right: 0; background: var(--ok, #8ce5a8); opacity: 0.85;
+}
+.lm-chart-bar.lm-chart-bar-enemy  { display: flex; justify-content: flex-start; }
+.lm-chart-bar.lm-chart-bar-enemy .lm-chart-bar-fill {
+  left: 0; background: var(--bad, #e07a7a); opacity: 0.85;
+}
+.lm-chart-bar-value {
+  position: relative; z-index: 1;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--text);
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.lm-chart-vs {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-faint, var(--text-dim));
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 /* ── Section wrappers (build / team / quick review) ─────────────────── */
@@ -402,7 +522,7 @@
 }
 .lm-tc-group-head {
   display: flex; align-items: center; gap: 12px;
-  font-size: 12px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-dim);
@@ -411,7 +531,7 @@
   border-bottom: 1px dashed var(--border-soft);
 }
 .lm-tc-group-result {
-  font-size: 11px;
+  font-size: 12px;
   padding: 2px 8px;
   border-radius: 4px;
   background: var(--surface);
@@ -441,22 +561,23 @@
    * level / KDA / CS triple lines up vertically across every roster
    * row. Names truncate via the existing ellipsis on .lm-tc-name when
    * the slot doesn't fit. Items column stays auto-sized (7 × 24 + gaps
-   * is consistent so it aligns naturally). */
-  grid-template-columns: 32px 130px auto auto auto auto auto;
+   * is consistent so it aligns naturally).
+   * s219 v5: font bump 13px → 14px + slightly wider name column. */
+  grid-template-columns: 36px 140px auto auto auto auto auto;
   align-items: center;
   gap: 10px;
-  padding: 6px 8px;
+  padding: 7px 10px;
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 14px;
 }
 .lm-tc-row.lm-tc-row-me {
   background: rgba(138, 140, 240, 0.08);
   border-color: var(--accent-soft, rgba(138, 140, 240, 0.4));
 }
 .lm-tc-portrait {
-  width: 32px; height: 32px;
+  width: 36px; height: 36px;
   border-radius: 50%;
   background: var(--surface-2, #1a1a22);
   border: 1px solid var(--border-soft);
@@ -473,14 +594,14 @@
   white-space: nowrap;
 }
 .lm-tc-tag {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-faint, var(--text-dim));
   font-weight: 500;
 }
 .lm-tc-lvl,
 .lm-tc-kda,
 .lm-tc-cs {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -489,7 +610,7 @@
 
 .lm-tc-summs { display: flex; gap: 3px; }
 .lm-tc-summ {
-  width: 24px; height: 24px;
+  width: 26px; height: 26px;
   border-radius: 4px;
   background: var(--surface-2, #1a1a22);
   border: 1px solid var(--border-soft);
@@ -503,7 +624,7 @@
   flex-wrap: nowrap;
 }
 .lm-tc-item {
-  width: 24px; height: 24px;
+  width: 26px; height: 26px;
   border-radius: 3px;
   background: var(--surface-2, #1a1a22);
   border: 1px solid var(--border-soft);
@@ -544,7 +665,7 @@
 .lm-qr-col-chronic  { border-top-color: var(--bad,  #e07a7a); }
 
 .lm-qr-col-head {
-  font-size: 13px; font-weight: 700;
+  font-size: 14px; font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text);
@@ -558,9 +679,9 @@
   gap: 6px;
 }
 .lm-qr-list li {
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text);
-  padding: 6px 8px;
+  padding: 7px 10px;
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: 4px;
