@@ -1415,9 +1415,14 @@
         </div>
 
         <div class="lm-section lm-quick-review">
-          <h3 class="lm-section-head">QUICK REVIEW
+          <!-- s219: section header IS the Deep Review button — operator
+               called the "QUICK REVIEW" label self-explanatory given the
+               3 columns below it carry their own headings. -->
+          <button type="button" class="lm-section-head-btn lm-review-btn" id="lm-go-to-review"
+                  data-tt="Open the deeper step-by-step Review page for this match">
+            Open Deep Review →
             <span class="lm-section-sub">hover any row for the data behind it</span>
-          </h3>
+          </button>
           <div class="lm-qr-cols">
             <div class="lm-qr-col lm-qr-col-right">
               <div class="lm-qr-col-head">What went right</div>
@@ -1437,11 +1442,6 @@
                 <li class="lm-qr-empty">loading…</li>
               </ul>
             </div>
-          </div>
-          <div class="lm-qr-footer">
-            <button type="button" class="lm-review-btn" id="lm-go-to-review">
-              Open Deep Review →
-            </button>
           </div>
         </div>
 

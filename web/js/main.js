@@ -780,7 +780,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // never want WIN% / ZOI / CS / vision / game-time pills cluttering
     // the header.
     const _activeView = (_VIEW && _VIEW.current) || null;
-    const _isInGameView = (_activeView === "active-match" || _activeView === "last-match");
+    // s219: last-match is now the Post Game Review page (operator
+    // doesn't want live in-game pills cluttering the header there).
+    // Only active-match is treated as in-game for the pill-visibility
+    // gate. View-router still recognises last-match elsewhere.
+    const _isInGameView = (_activeView === "active-match");
     if (state.mode === "client" || !_isInGameView) {
       const inGamePills = [
         "lvl-pill", "vis-pill", "ult-pill", "cs-pill", "gold-pill",
