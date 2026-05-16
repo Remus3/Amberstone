@@ -107,9 +107,13 @@ class S228MigrationTests(unittest.TestCase):
         self.assertEqual(m["E"], {"default": 2, "target_no_setup": 0})
 
     def test_evelynn_Q_migrated_R_preserved(self) -> None:
+        # s229's durable property: Q migrated to the target_no_setup
+        # key. R was a plain int 1 at s229; s231 converted it to a
+        # target_full_hp execute conditional (default=1 == that int —
+        # provable Part-1 no-op, so s229's intent is preserved).
         m, _ = get_block_index_for("Evelynn")
         self.assertEqual(m["Q"], {"default": 5, "target_no_setup": 0})
-        self.assertEqual(m["R"], 1)
+        self.assertEqual(m["R"], {"default": 1, "target_full_hp": 0})
 
     def test_kindred_E_unaffected_by_rename(self) -> None:
         m, _ = get_block_index_for("Kindred")
@@ -282,8 +286,8 @@ class EngineVersionS229Tests(unittest.TestCase):
     def test_engine_version(self) -> None:
         from agents import daemon_slayer
 
-        # s230 (Phase 5.9.30) bumped to 1.2.0; pin tracks current.
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.2.0")
+        # s231 (Phase 5.9.31) bumped to 1.3.0; pin tracks current.
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.3.0")
 
 
 if __name__ == "__main__":
