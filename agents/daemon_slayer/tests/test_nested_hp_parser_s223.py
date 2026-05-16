@@ -267,17 +267,19 @@ class SaturationAndBackwardCompatTests(unittest.TestCase):
             self.assertEqual(m, {}, f"{champ} unexpectedly mapped")
             self.assertEqual(src, "default")
 
-    def test_kayle_belveth_R_remain_unmapped(self) -> None:
-        """The s217 hand-off's "nested missing-HP bucket" named Kindred E
-        / Kayle E / Bel'Veth R. s223 re-examined them: Kayle E and
-        Bel'Veth R already had target_missing_hp_pct parsed pre-s223
-        (only second-order "% per 100 AP" amps stay unparsed) — they are
-        NOT parser-gap champions, so s223 added NO entry for them. Kayle
-        stays fully unmapped; Bel'Veth keeps ONLY its prior E=2 (no R)."""
+    def test_kayle_unmapped_belveth_R_added_s224(self) -> None:
+        """s223 originally left Bel'Veth R unmapped, reasoning "field
+        already parsed". s224's unmapped-key pre-filter proved that
+        reasoning incomplete: the engine still DEFAULTS to block 0
+        (8-dmg per-takedown bonus), not the 200-dmg recast nuke (block
+        1, 25% missing-HP) — so an explicit entry IS required. s224
+        added Bel'Veth R=1 (kept E=2). Kayle E stays correctly unmapped:
+        its only unparsed bit is a genuine second-order "% per 100 AP"
+        amp (not a health-pct), so no entry is warranted."""
         self.assertEqual(get_block_index_for("Kayle")[0], {})
         bel, _ = get_block_index_for("Belveth")
-        self.assertEqual(bel.get("E"), 2)   # prior batch, preserved
-        self.assertNotIn("R", bel)          # s223 did NOT add the R key
+        self.assertEqual(bel.get("E"), 2)   # s174-era, preserved
+        self.assertEqual(bel.get("R"), 1)   # s224 correction
 
     def test_prior_entries_unchanged(self) -> None:
         """Migration touched several covered champions' snapshot blocks
@@ -302,7 +304,8 @@ class SaturationAndBackwardCompatTests(unittest.TestCase):
 class EngineVersionTests(unittest.TestCase):
     def test_engine_version_bumped(self) -> None:
         from agents import daemon_slayer
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "0.95.0")
+        # s224 (Phase 5.9.24) bumped to 0.96.0; pin tracks current.
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "0.96.0")
 
 
 if __name__ == "__main__":
