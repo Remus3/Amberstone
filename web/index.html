@@ -1330,54 +1330,72 @@
       </div>
       <div class="view-section-body lm-body" id="lm-body">
 
-        <!-- s219 v3: stats folded into the hero row.
-             BUILD section removed entirely — operator's final inventory
-             is already surfaced in the Team Composition card below
-             (their row's item icons), and DS picks aren't useful on the
-             post-game review (they live in champ-select + active-match). -->
+        <!-- s219 v6: hero row split into 3 sections.
+             section 1 — identity cluster (champ + name + mode + KDA
+                         text + KDA ratio + W/L pill + grade letter)
+             section 2 — operator's match stats in a 2-row 4-col grid:
+                         row 1: [blank], Vision, CS, Tanked-Dmg
+                         row 2: KP%, Damage, CS/min, Healing+Shielding
+             section 3 — rank-tier comparison panel in matching 2-row
+                         grid; column 1 carries the dropdown selector +
+                         the KDA-average value (so it lines up vertically
+                         with section 2's empty + KP% cells). -->
         <div class="lm-hero">
-          <img class="lm-hero-portrait" id="lm-portrait" alt="" />
-          <div class="lm-hero-name">
-            <span class="lm-hero-champ" id="lm-champion-name" role="button" tabindex="0"
-                  data-tt="Open History filtered to this champion">—</span>
-            <span class="lm-hero-mode" id="lm-mode-tag">—</span>
+          <div class="lm-hero-identity">
+            <img class="lm-hero-portrait" id="lm-portrait" alt="" />
+            <div class="lm-hero-name">
+              <span class="lm-hero-champ" id="lm-champion-name" role="button" tabindex="0"
+                    data-tt="Open History filtered to this champion">—</span>
+              <span class="lm-hero-mode" id="lm-mode-tag">—</span>
+            </div>
+            <div class="lm-hero-kda">
+              <span class="lm-kda-text" id="lm-kda-text">—/—/—</span>
+              <span class="lm-kda-ratio" id="lm-kda-ratio">—</span>
+            </div>
+            <div class="lm-hero-result" id="lm-result-badge" data-result="" hidden>—</div>
+            <div class="lm-hero-grade" id="lm-grade-badge" data-grade="">—</div>
           </div>
-          <div class="lm-hero-kda">
-            <span class="lm-kda-text" id="lm-kda-text">—/—/—</span>
-            <span class="lm-kda-ratio" id="lm-kda-ratio">—</span>
-          </div>
-          <div class="lm-hero-result" id="lm-result-badge" data-result="" hidden>—</div>
-          <div class="lm-hero-grade" id="lm-grade-badge" data-grade="">—</div>
-          <div class="lm-hero-stats">
-            <div class="lm-hero-stat">
+
+          <div class="lm-hero-stats-grid">
+            <!-- Row 1: leading blank, Vision, CS, Tanked Damage -->
+            <div class="lm-hero-stat lm-hero-stat-blank" aria-hidden="true"></div>
+            <div class="lm-hero-stat" data-tt="Vision score — wards placed + wards killed + control wards seen by the team.">
+              <span class="lm-hero-stat-label">Vision</span>
+              <span class="lm-hero-stat-value" id="lm-vision">—</span>
+            </div>
+            <div class="lm-hero-stat" data-tt="Creep score — minions + monsters killed.">
               <span class="lm-hero-stat-label">CS</span>
               <span class="lm-hero-stat-value" id="lm-cs">—</span>
-              <span class="lm-hero-stat-sub" id="lm-cs-per-min">—</span>
             </div>
-            <div class="lm-hero-stat">
-              <span class="lm-hero-stat-label">Gold</span>
-              <span class="lm-hero-stat-value" id="lm-gold">—</span>
-              <span class="lm-hero-stat-sub" id="lm-gold-per-min">—</span>
+            <div class="lm-hero-stat" data-tt="Total damage taken from champions, minions, monsters, towers.">
+              <span class="lm-hero-stat-label">Tanked</span>
+              <span class="lm-hero-stat-value" id="lm-tank-dmg">—</span>
             </div>
-            <div class="lm-hero-stat">
-              <span class="lm-hero-stat-label">KP</span>
+
+            <!-- Row 2: KP%, Damage, CS/min, Healing+Shielding -->
+            <div class="lm-hero-stat" data-tt="Kill participation — share of team kills you took part in.">
+              <span class="lm-hero-stat-label">KP%</span>
               <span class="lm-hero-stat-value" id="lm-kp">—</span>
-              <span class="lm-hero-stat-sub">team-fight</span>
             </div>
-            <div class="lm-hero-stat">
-              <span class="lm-hero-stat-label">Duration</span>
-              <span class="lm-hero-stat-value" id="lm-duration">—</span>
-              <span class="lm-hero-stat-sub" id="lm-when">—</span>
+            <div class="lm-hero-stat" data-tt="Damage dealt to enemy champions.">
+              <span class="lm-hero-stat-label">Damage</span>
+              <span class="lm-hero-stat-value" id="lm-damage">—</span>
+            </div>
+            <div class="lm-hero-stat" data-tt="Creep score per minute.">
+              <span class="lm-hero-stat-label">CS/min</span>
+              <span class="lm-hero-stat-value" id="lm-cs-per-min">—</span>
+            </div>
+            <div class="lm-hero-stat" data-tt="Healing + shielding contributed to teammates (excludes self-heal).">
+              <span class="lm-hero-stat-label">Heal+Shield</span>
+              <span class="lm-hero-stat-value" id="lm-healing">—</span>
             </div>
           </div>
-          <!-- s219 v4: rank-tier comparison panel. Dropdown selects a
-               rank tier (Iron through Challenger); the displayed
-               averages reflect the expected per-mode values at that
-               tier. Persistence is localStorage today; future Settings
-               page will own the canonical setting + propagate here. -->
+
           <div class="lm-hero-rank-compare">
-            <div class="lm-rank-compare-head">
-              <span class="lm-rank-compare-label">vs</span>
+            <!-- s219 v6: grid-area on each cell so order is bulletproof
+                 regardless of auto-flow. Areas defined in CSS template:
+                 row 1 = selector vision cs tank [.], row 2 = kda kp damage cspm heal -->
+            <div class="lm-rank-compare-head" style="grid-area: selector;">
               <select class="lm-rank-select" id="lm-rank-select"
                       data-tt="Pick a rank tier to compare this match against the typical expected values at that tier (Mode + Tier-averaged stats).">
                 <option value="">— off —</option>
@@ -1393,8 +1411,37 @@
                 <option value="challenger">Challenger</option>
               </select>
             </div>
-            <div class="lm-rank-compare-values" id="lm-rank-compare-values">
-              <span class="lm-rank-pending">pick a tier to compare</span>
+            <div class="lm-rank-cell" style="grid-area: vision-avg;" data-tt="Tier-average Vision score.">
+              <span class="lm-rank-cell-label">Vision</span>
+              <span class="lm-rank-cell-value" id="lm-rank-vision">—</span>
+            </div>
+            <div class="lm-rank-cell" style="grid-area: cs-avg;" data-tt="Tier-average CS.">
+              <span class="lm-rank-cell-label">CS</span>
+              <span class="lm-rank-cell-value" id="lm-rank-cs">—</span>
+            </div>
+            <div class="lm-rank-cell" style="grid-area: tank-avg;" data-tt="Tier-average damage taken.">
+              <span class="lm-rank-cell-label">Tanked</span>
+              <span class="lm-rank-cell-value" id="lm-rank-tank">—</span>
+            </div>
+            <div class="lm-rank-cell lm-rank-cell-kda" style="grid-area: kda-avg;" data-tt="Tier-average KDA ratio.">
+              <span class="lm-rank-cell-label">KDA</span>
+              <span class="lm-rank-cell-value" id="lm-rank-kda">—</span>
+            </div>
+            <div class="lm-rank-cell" style="grid-area: kp-avg;" data-tt="Tier-average kill participation.">
+              <span class="lm-rank-cell-label">KP%</span>
+              <span class="lm-rank-cell-value" id="lm-rank-kp">—</span>
+            </div>
+            <div class="lm-rank-cell" style="grid-area: damage-avg;" data-tt="Tier-average damage to champions.">
+              <span class="lm-rank-cell-label">Damage</span>
+              <span class="lm-rank-cell-value" id="lm-rank-damage">—</span>
+            </div>
+            <div class="lm-rank-cell" style="grid-area: cspm-avg;" data-tt="Tier-average CS per minute.">
+              <span class="lm-rank-cell-label">CS/min</span>
+              <span class="lm-rank-cell-value" id="lm-rank-cspm">—</span>
+            </div>
+            <div class="lm-rank-cell" style="grid-area: heal-avg;" data-tt="Tier-average heal + shield contribution.">
+              <span class="lm-rank-cell-label">Heal+Shield</span>
+              <span class="lm-rank-cell-value" id="lm-rank-heal">—</span>
             </div>
           </div>
         </div>

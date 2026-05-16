@@ -13,16 +13,17 @@
 }
 
 /* ── Hero row ────────────────────────────────────────────────────────── */
-/* s219 v4: 3-region layout — left cluster | centered stats | rank panel.
- *   72px  : portrait
- *   auto  : name + KDA + result-pill + grade-badge (each its own col)
- *   1fr   : stats wrapper (justify-content: center inside)
- *   auto  : rank-compare panel (dropdown + tier averages) */
+/* s219 v6: 3-section layout (each section can hold multiple rows).
+ *   Section 1 — identity cluster (portrait + name + KDA + W/L + grade)
+ *   Section 2 — operator's match stats, 2×4 inner grid
+ *   Section 3 — rank-tier comparison, 2×4 inner grid (dropdown in
+ *               col 1 row 1, KDA-avg in col 1 row 2 — aligns with the
+ *               blank leading cell + KP% leading cell in section 2). */
 .lm-hero {
   display: grid;
-  grid-template-columns: 72px auto auto auto auto 1fr auto;
+  grid-template-columns: auto 1fr auto;
+  gap: 18px;
   align-items: center;
-  gap: 14px;
   padding: 12px 18px 12px 15px;
   background: var(--surface);
   border: 1px solid var(--border-soft);
@@ -30,10 +31,16 @@
   border-radius: var(--radius-sm);
   min-height: 88px;
 }
+.lm-hero-identity {
+  display: grid;
+  grid-template-columns: 72px auto auto auto auto;
+  align-items: center;
+  gap: 14px;
+}
 
 /* W/L pill — visible only when LCU enrichment carries a real win flag. */
 .lm-hero-result {
-  font-size: 15px; font-weight: 800;
+  font-size: 16px; font-weight: 800;
   letter-spacing: 0.1em;
   padding: 6px 14px;
   border-radius: var(--radius-sm);
@@ -75,7 +82,7 @@
   min-width: 0;
 }
 .lm-hero-champ {
-  font-size: 26px; font-weight: 700; color: var(--text);
+  font-size: 28px; font-weight: 700; color: var(--text);
   cursor: pointer;
   text-decoration: none;
   border-bottom: 1px dashed transparent;
@@ -84,25 +91,33 @@
 .lm-hero-champ:hover { border-bottom-color: var(--text-dim); }
 .lm-hero-champ:focus-visible { outline: 1px solid var(--accent, #8a8cf0); outline-offset: 2px; }
 .lm-hero-mode {
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 .lm-hero-kda {
   display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
-  min-width: 102px;
+  min-width: 108px;
 }
 
-/* s219 v4: inline stat cluster — CS / Gold / KP / Duration folded into
- * the hero row. Wrapper occupies the 1fr cell between the left-cluster
- * and the rank-compare panel, content centered within that cell. */
-.lm-hero-stats {
-  display: flex;
-  justify-content: center;
+/* s219 v6: section 2 — operator's match stats laid out as 2 rows × 4 cols
+ *   row 1: [blank], Vision, CS, Tanked
+ *   row 2: KP%, Damage, CS/min, Heal+Shield
+ * The blank col-1 cell in row 1 keeps the grid aligned with section 3's
+ * dropdown+KDA cells (which take col 1). */
+.lm-hero-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(72px, auto));
+  grid-template-rows: auto auto;
+  gap: 6px 26px;
   align-items: center;
-  gap: 26px;
+  justify-content: center;
   padding: 0 14px;
+}
+.lm-hero-stat-blank {
+  /* spacer cell — preserves column alignment with rank-compare's KDA col */
+  min-width: 64px;
 }
 .lm-hero-stat {
   display: flex; flex-direction: column;
@@ -110,51 +125,60 @@
   gap: 1px;
   min-width: 64px;
   text-align: right;
+  cursor: help;
 }
 .lm-hero-stat-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 .lm-hero-stat-value {
-  font-size: 21px;
+  font-size: 23px;
   font-weight: 700;
   color: var(--text);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
 .lm-hero-stat-sub {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-faint, var(--text-dim));
   font-variant-numeric: tabular-nums;
 }
 
-/* s219 v4: rank-tier comparison panel on the right end of the hero row.
- * Dropdown selects a tier; the displayed values reflect typical
- * per-mode averages at that tier (real per-tier data is a backend
- * follow-up; v1 carries placeholders). Setting persists to
- * localStorage; future Settings page will own the canonical knob. */
+/* s219 v6: rank-tier comparison panel on the right end of the hero row.
+ * 2 rows × 4 columns mirror section 2's stats grid:
+ *   row 1: [selector] | Vision-avg | CS-avg | Tanked-avg
+ *   row 2: KDA-avg    | KP%-avg   | Damage-avg | CS/min-avg | Heal-avg
+ * (section 2 row 2 has KP% in col 1; rank panel row 2 has KDA in col 1
+ *  + KP% in col 2 → 5 cols total. Section 2 sits in the middle 1fr cell
+ *  so its 4-col grid centers within its space; the rank panel's 5 cols
+ *  pack to the right.)
+ * Dropdown selects a tier; displayed values reflect typical per-mode
+ * averages at that tier (real per-tier aggregates are a backend
+ * follow-up; v1 carries hand-curated placeholders). Setting persists
+ * to localStorage; future Settings page will own the canonical knob. */
 .lm-hero-rank-compare {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: auto auto auto auto auto;
+  grid-template-rows: auto auto;
+  /* s219 v6: explicit area placement so auto-flow doesn't spill the
+   * KP cell into row 1 col 5. Row 1 col 5 stays empty; row 2 has all
+   * 5 cells (kda + 4 stats) lined up under the corresponding row 1
+   * cells (selector ↔ kda, vision-avg ↔ kp-avg, cs-avg ↔ damage-avg,
+   * tank-avg ↔ cspm-avg, [empty] ↔ heal-avg). */
+  grid-template-areas:
+    "selector vision-avg cs-avg     tank-avg   ."
+    "kda-avg  kp-avg     damage-avg cspm-avg   heal-avg";
+  gap: 6px 18px;
+  align-items: center;
   padding-left: 14px;
   border-left: 1px dashed var(--border-soft);
-  min-width: 168px;
+  min-width: 320px;
 }
-.lm-rank-compare-head {
-  display: flex; align-items: center; gap: 6px;
-}
-.lm-rank-compare-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-dim);
-}
+/* selector / each cell's grid-area is set inline on the HTML element. */
+.lm-rank-compare-head { display: flex; align-items: center; gap: 6px; }
 .lm-rank-select {
   background: var(--surface-2, #1a1a22);
   color: var(--text);
@@ -173,29 +197,25 @@
   outline: 2px solid var(--accent, #8a8cf0);
   outline-offset: 1px;
 }
-.lm-rank-compare-values {
-  display: flex;
-  gap: 14px;
-  align-items: baseline;
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-dim);
-}
-.lm-rank-compare-values .lm-rank-cell {
+.lm-rank-cell {
   display: flex; flex-direction: column;
   align-items: flex-end;
-  gap: 0;
+  gap: 1px;
+  min-width: 60px;
+  cursor: help;
+  text-align: right;
 }
-.lm-rank-compare-values .lm-rank-cell-label {
-  font-size: 9px;
+.lm-rank-cell-label {
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-faint, var(--text-dim));
 }
-.lm-rank-compare-values .lm-rank-cell-value {
-  font-size: 13px;
+.lm-rank-cell-value {
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
 }
 .lm-rank-pending {
   font-size: 11px;
@@ -203,18 +223,18 @@
   font-style: italic;
 }
 .lm-kda-text {
-  font-size: 23px; font-weight: 600; font-variant-numeric: tabular-nums;
+  font-size: 25px; font-weight: 600; font-variant-numeric: tabular-nums;
   color: var(--text);
 }
 .lm-kda-ratio {
-  font-size: 14px; color: var(--text-dim);
+  font-size: 15px; color: var(--text-dim);
 }
 .lm-hero-grade {
-  font-size: 40px; font-weight: 800; line-height: 1;
-  padding: 4px 16px;
+  font-size: 44px; font-weight: 800; line-height: 1;
+  padding: 4px 18px;
   border-radius: var(--radius-sm);
   background: var(--surface-2, #1a1a22);
-  min-width: 60px; text-align: center;
+  min-width: 66px; text-align: center;
   color: var(--text);
 }
 .lm-hero-grade[data-grade="S"] { color: var(--grade-s, #f5b87c); }
@@ -281,15 +301,20 @@
   border-bottom: 1px solid var(--border-soft);
   margin-bottom: 12px;
 }
+/* s219 v6: tab strip uses a fixed-width per tab so the labels space
+ * uniformly regardless of text length. Color-tying to the active panel
+ * is deferred (operator wants the UI agent to weigh in first). */
 .lm-tabs-strip {
-  display: flex; gap: 4px;
+  display: flex; gap: 6px;
 }
 .lm-tab {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 8px 16px;
+  padding: 8px 0;
+  min-width: 96px;
+  text-align: center;
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
@@ -320,7 +345,7 @@
 .lm-tab-panel[hidden] { display: none !important; }
 
 .lm-tab-panel-hint {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-faint, var(--text-dim));
   font-style: italic;
   margin-bottom: 8px;
@@ -557,20 +582,18 @@
 .lm-tc-row {
   display: grid;
   /* portrait | name | level | KDA | CS | summoners | items
-   * s219 v3: fixed-width name column (was minmax(80px, 1fr)) so the
-   * level / KDA / CS triple lines up vertically across every roster
-   * row. Names truncate via the existing ellipsis on .lm-tc-name when
-   * the slot doesn't fit. Items column stays auto-sized (7 × 24 + gaps
-   * is consistent so it aligns naturally).
-   * s219 v5: font bump 13px → 14px + slightly wider name column. */
-  grid-template-columns: 36px 140px auto auto auto auto auto;
+   * s219 v6: all stat columns fixed-width so ally + enemy panels align
+   * column-for-column even though each is a separate grid context. The
+   * lvl/KDA/CS triple sits at the same X offset in BOTH panels —
+   * operator's "vertically in sync" ask. CS is right-aligned. */
+  grid-template-columns: 40px 144px 40px 84px 70px 60px 1fr;
   align-items: center;
   gap: 10px;
   padding: 7px 10px;
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 15px;
 }
 .lm-tc-row.lm-tc-row-me {
   background: rgba(138, 140, 240, 0.08);
@@ -594,19 +617,20 @@
   white-space: nowrap;
 }
 .lm-tc-tag {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-faint, var(--text-dim));
   font-weight: 500;
 }
 .lm-tc-lvl,
 .lm-tc-kda,
 .lm-tc-cs {
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .lm-tc-kda { color: var(--text); font-weight: 600; }
+.lm-tc-cs  { text-align: right; }   /* s219 v6: operator's "right-aligned vertically in sync" ask */
 
 .lm-tc-summs { display: flex; gap: 3px; }
 .lm-tc-summ {
@@ -665,7 +689,7 @@
 .lm-qr-col-chronic  { border-top-color: var(--bad,  #e07a7a); }
 
 .lm-qr-col-head {
-  font-size: 14px; font-weight: 700;
+  font-size: 15px; font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text);
@@ -679,9 +703,9 @@
   gap: 6px;
 }
 .lm-qr-list li {
-  font-size: 15px;
+  font-size: 16px;
   color: var(--text);
-  padding: 7px 10px;
+  padding: 8px 12px;
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: 4px;
