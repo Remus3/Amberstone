@@ -7630,7 +7630,21 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          124 champions (Taliyah gains E key; DrMundo lifted).
         #          Sum-of-blocks bucket queue now exhausted under current
         #          operator-commit framing.
-        self.assertEqual(ENGINE_VERSION, "0.94.0")
+        # 0.95.0 = s223 Phase 5.9.23 nested missing/current/maximum-HP
+        #          parser fix + registry-saturation finding. Extractor
+        #          _canonicalize_unit() strips Meraki's nested '(+ ...)'
+        #          conditional parentheticals so % target-health units
+        #          (Kindred E missing-HP, Cho'Gath E / K'Sante W / Sett Q
+        #          / Shen Q / Zac W / Amumu W / Evelynn E / Elise Q / Kled
+        #          W maximum/current-HP) resolve to their typed field; a
+        #          deterministic in-place migration promoted exactly 22
+        #          such modifiers across 10 champions (their %HP component
+        #          was dropped since Phase 4a). One new entry: Kindred
+        #          E=1 (enhanced-execute 7.5% missing-HP). The s191→s217
+        #          single-int/list registry is now provably saturated (a
+        #          5-way parallel scan of all 47 uncovered champions found
+        #          zero clean candidates).
+        self.assertEqual(ENGINE_VERSION, "0.95.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7691,7 +7705,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.94.0")
+        self.assertEqual(ENGINE_VERSION, "0.95.0")
 
 
 if __name__ == "__main__":
