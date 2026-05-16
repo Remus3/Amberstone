@@ -3,7 +3,7 @@
 Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude Haiku for coaching and Sonnet for vision, writes JSON to `data/`, serves `:8888` HTTPS dashboard on Game-PC's secondary display. RC is tkinter-free; Daemon Slayer (`:8893`) computes real DPS math per champion.
 
 > **Living docs (read at session start):** `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `docs/BRIDGE.md` · `ROADMAP.md` · `docs/API.md`
-> **Deep references:** `docs/DAEMON_SLAYER.md` (DS engine · 547 items · ENGINE_VERSION 0.92.0 · all 6 archetype scorers wired) · `docs/AGENTS.md` (Phase 3 framework) · `BACKLOG.md` (aspirational)
+> **Deep references:** `docs/DAEMON_SLAYER.md` (DS engine · 547 items · ENGINE_VERSION 0.94.0 · all 6 archetype scorers wired) · `docs/AGENTS.md` (Phase 3 framework) · `BACKLOG.md` (aspirational)
 > **Architectural decisions:** `docs/adr/` — before re-litigating a past choice, check here first.
 > **Dated artifacts** in `docs/_archive/` (excluded from ripgrep searches).
 
@@ -85,7 +85,7 @@ Game-PC `gamepc_screen_agent.py` POSTs frames every 2s to `:8889/upload-frame`. 
 - Architecture / module map: `docs/ARCHITECTURE.md`
 - Ops commands + restart: `docs/OPERATIONS.md`
 - Bridge wire format + watcher: `docs/BRIDGE.md`
-- Open work: `ROADMAP.md` · Aspirational: `BACKLOG.md` · History: `docs/_archive/CHANGELOG.md`
+- Open work: `ROADMAP.md` · Aspirational: `BACKLOG.md` · History: `docs/history_notes.md`
 
 ## Useful commands
 
@@ -262,4 +262,4 @@ When invoked with `/done` or asked to wrap a session: (1) audit pending changes,
 
 41. ✅ **s184.1 — Archetype-mismatch chip renderer** (2026-05-13, `912efe1`). Closes carried-forward item (a) from s184: dashboard JS chip near `#ds-pill` that surfaces the first-purchase mismatch nudge. New `web/js/panels/archetype_nudge_chip.js` (~95 LOC) exports `renderArchetypeNudge(state)` — reads `state.archetype_nudge`, phase-gates to `"fired"` (pending/no_mismatch/dismissed all collapse to hidden), sig-guards against 2s-poll DOM thrash. Internal `_dismiss(champion)` POSTs `/api/archetype-nudge/dismiss` then locally hides; X-button click handler wired once at module load. Compact display `⚠ {Primary}? · {firstItem}` with full message + expected top-3 items in `title` tooltip. New `#archetype-nudge-chip` + `#archetype-nudge-chip-text` + `#archetype-nudge-chip-x` elements in `web/index.html` header-row-2, immediately after `#ds-pill`, `hidden` by default with `role="status"`. New `.archetype-nudge-chip` rule in `web/css/panels/map_state.css` (yellow `--warn-soft` bg + `--warn` outline + 16px font); mode-gating mirrors `.ds-pill` exactly (collapsed in `body[data-mode="client"]` / `body[data-mode="tft"]` / `body:not([data-mode])`); `[hidden]` respected via `display: none !important`. `web/js/main.js` gains the panel import + 3 callsites mirroring `renderTeamContext(st)` count exactly (SSE handler / HTTP fallback / LCU poller — all three top-level state-consumers). Tests: 15 new in `tests/test_archetype_nudge_chip_dom.py` (unittest.TestCase-based grep regression guard — IndexHtmlTests 5 / PanelJsTests 4 / MainJsWiringTests 2 / CssTests 4) → 1013 wider RC suite (was 1009 in s184 wrap). **No RC supervisor restart required** — unified asset-hash (s171.8 ADR-008 `compute_asset_hash` walks `web/{js,css}/panels/*`) auto-reloaded the new files on pid 1360; cache-bust hash flipped on first `/api/ui-version` poll after commit. Live-verified end-to-end on Legion :8888: (a) `GET /` returns chip + text span + dismiss button + hidden attr; (b) `GET /api/state` returns `archetype_nudge: {}` (empty since no game); (c) panel JS module serves 3799 bytes with `export function renderArchetypeNudge` + `/api/archetype-nudge/dismiss` path; (d) main.js serves with 3 callsites; (e) CSS rule present; (f) dismiss endpoint round-trips happy/400-missing/400-non-dict; (g) Game-PC monitor 0 dashboard Home overlay (CLIENT mode) shows chip correctly hidden by data-mode rule — no visual regression. **Carried forward:** (a) live-game chip lifecycle validation (pending → fired → dismissed) pending next CS pop + game start; (b) `_TOP_N_THRESHOLD = 15` calibration knob retune once real games yield fired nudges; (c) per-game-session token edge case for older Riot LCU builds; (d) calibration analysis additive — `nudge_history` rows to `core/ds_calibration` for retroactive threshold tuning.
 
-Full open work + future: `ROADMAP.md` + `BACKLOG.md`. Completed work: `docs/_archive/CHANGELOG.md`.
+Full open work + future: `ROADMAP.md` + `BACKLOG.md`. Completed work: `docs/history_notes.md`.
