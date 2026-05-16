@@ -4,6 +4,33 @@
 
 ---
 
+# s224 wrap — 2026-05-16 (DS Phase 5.9.24: unmapped-key pass — Bel'Veth R + _UNIT_TO_FIELD variant family)
+
+**Operator instruction:** same self-paced loop ("continue ds work in parallel for the next hour self continue — maximum effort"). This is **iteration 2** (s223 was iteration 1, same session-day).
+
+## What happened — worked the space orthogonal to s223's saturation finding
+
+s223 proved the *uncovered-champion* block_index space saturated. s224 worked the other axis: ability KEYS on already-covered champions not yet in the registry. Built `tools/ds_unmapped_key_prefilter.py` (runs the s223 ground-truth A/B over every unmapped key of all 125 covered champs, full-HP + 40%-HP passes) → tight **7-item shortlist**. 2 were documented skips (Corki R = s194 every-4th-missile; DrMundo Q = s203 conditional-higher-vs-full-HP), 3 were false flags on already-mapped siblings. Two real findings:
+
+## Shipped (committing now)
+
+1. **`Belveth: {R: 1}`** — block 1 "True Damage" (150-250 + 100% AP + 25% missing-HP) is the canonical Endless-Banquet recast nuke; engine defaulted to block 0 ("Bonus True Damage" 6-10), live A/B **8→450 raw (56×)**. This **corrects s223's over-conservative "Bel'Veth R = no entry, already parsed" call** — field-parsed ≠ engine-block-selected (engine always defaults to block 0; an explicit entry is needed to select block 1). The s223 test `test_kayle_belveth_R_remain_unmapped` was rewritten → `test_kayle_unmapped_belveth_R_added_s224` (s223→s224 evolution guard). Bel'Veth → `{E:2, R:1}`.
+2. **`_UNIT_TO_FIELD` text-drift family (s223-sibling)** — the pre-filter exposed 8 missing Meraki health-unit variants: double-space `"%  of target's current health"`, `"the target's"` maximum/missing forms (single+double space), caster-max pronoun/name forms (`"% of his/her maximum health"`, `"% of Braum's/Zac's maximum health"`). Added; `tools/migrate_abilities_unit_variants_s224.py` (same audit-gated zero-re-fetch contract as s223, reuses its `_promote`/`_recompute_parse_status`, idempotent) promoted **exactly 32 mods across 13 champs** (Ambessa Q · Braum Q · Briar W · Fiddlesticks Q · Gnar E · Gwen Q·R · Maokai Q · Sejuani W · Skarner E · TahmKench R · Trundle R · Varus W · Zac Q) whose %HP component was dropped. **Trundle R + Fiddlesticks Q evaluated 0 entirely pre-s224** (live A/B Trundle R 0→500, Fiddle Q 0→72). Skipped non-clean: TahmKench Q / Pantheon W `% AP per 100 bonus health` (hybrid), AurelionSol Q malformed Stardust string.
+
+ENGINE 0.95.0→0.96.0; 5 pin bumps + `test_block_index_overrides` Belveth shape-pin update + `test_unit_variants_s224.py` (18 tests). DS suite 2086→**2104**; wider RC **1107**; DS server restarted → `/health` 0.96.0.
+
+## Don't-redo / blockers
+
+- **Don't `--force` re-extract** to apply parser fixes — Meraki `latest` is mutable (patch-bump + churn risk). The two migration scripts (`migrate_abilities_nested_hp_s223.py`, `migrate_abilities_unit_variants_s224.py`) are **historical artifacts** like DB migrations — don't refactor old ones; write a new dated one per parser change. All idempotent + hard audit-gated.
+- **Varus W is now a FUTURE block_index candidate** — s224 parsed its Blight-stack maxHP (blocks 1-4) but the engine defaults Varus W to block 0 (18-dmg passive on-hit). A `Varus: {W: <blight-block>}` entry would surface the detonation — but pick the right block (per-stack vs max-stack vs the Q/R-detonation interaction) carefully; this is iteration-3+ material.
+- s224's `test_target_max_hp_textdrift_promoted` etc. pin the live snapshot — if the snapshot is ever cleanly re-extracted (new patch), these stay green because the fixed `_UNIT_TO_FIELD` produces the same typed fields.
+
+## NEXT (self-continuing loop)
+
+Unmapped-key space near-exhausted (only Bel'Veth R was a clean find across 125 champs). Iteration 3 options: (a) Varus W block_index entry (data now parsed); (b) audit the *form_index* / *combo_sequence* registries for similar gaps; (c) the conditional-target-state schema lift (architectural — flag for operator, don't ship autonomously). s220 aggregator G Post-Game-Review reframe remains the big pending UI item.
+
+---
+
 # s223 wrap — 2026-05-16 (DS Phase 5.9.23: nested %HP parser fix + provable block_index saturation)
 
 **Operator instruction:** "continue ds work in parallel for the next hour self continue — opus 4.7 1m maximum effort". Self-paced loop; this is iteration 1.
@@ -88,52 +115,3 @@ Mid-session ran a `general-purpose` Agent for independent UI review. Surfaced 3 
 - **Heartbeat ♥ — in header top-right** flagged by operator: WS heartbeat envelope (`{type:"heartbeat", t:epoch}`) doesn't re-arm immediately after RC restart. The dashboard at `web/js/main.js:5026` populates `#heartbeat` only on WS envelope arrival; supervisor's broadcast loop needs investigation. Don't re-investigate the WS connection itself — `ws://192.168.8.230:8891/push` is confirmed connected (footer shows it).
 - **`restart_trigger.txt` watcher wedge** confirmed pre-existing — the supervisor's poll loop at `ops/rc_supervisor.py:1240` didn't consume trigger files on 2 attempts this session. Workaround: hard `taskkill /F /PID + restart.bat` documented as standard. Don't re-debug; existing memory entry `project_rc_supervisor_restart.md` already covers.
 - **Hero headline up/down classifier removed**: do not re-add until a proper yesterday-comparison baseline is wired into `/api/home/summary`. Operator explicitly prefers flat over wrong-direction-tinted.
-
----
-
-# s217 wrap — 2026-05-15 (DS Phase 5.9.22 sum-of-blocks data batch — Taliyah E + DrMundo W)
-
-**Operator instruction:** "continue ds" — keep DS engine moving from where s215 left off.
-
-## Shipped — single commit (this session)
-
-Second pure-data sum-of-blocks batch following s215's s207-schema-lift consumption. Closes the s215 carry-forward queue under the operator-commits-to-canonical-burst model. 2 entries (1 NEW key + 1 LIFT of existing single-int):
-
-- **Taliyah.E = [0, 2]** — NEW key. Block 0 "Magic Damage" (60-240 base + 60% AP — initial shard-impact pass-through when each launched shard hits an enemy) + Block 2 "Total Maximum Detonation Damage" (62.5-262.5 base + 75% AP — aggregate of multiple stone detonations when target steps through the resulting Unraveled Earth terrain). Operator commits to landing the spell on target + target moving through resulting terrain. Closes s215's "Taliyah E likely no-op since block 2 already aggregates" framing — that missed that block 0 IS an additional damage source separate from the detonation aggregate (the initial pass-through is a distinct hit from the detonation step-through).
-- **DrMundo.W = [1, 2]** — LIFT from s193's single-int `{W: 1}`. Block 1 "Total Magic Damage" (80-320 base — full 4-second Heart Zapper drain channel) + Block 2 "Magic Damage" (20-80 base — recast detonation burst when operator manually re-fires W at end of channel). Same in-batch lift pattern as s215's Thresh.E lift `{E: 2}` → `{E: [1, 2]}`. Operator commits to letting Heart Zapper run + manual recast for full Mundo W single-target burst.
-
-ENGINE_VERSION 0.93.0 → 0.94.0. Registry stays at 124 champions (Taliyah gains E key alongside existing Q=2; DrMundo lifted from int to list, same key count). Total (champion, key) entries: 192 → 193 (Taliyah +1; DrMundo unchanged).
-
-**Live A/B headlines on :8893 (/ability-dps at lvl 11 vs 80 armor / 30 MR / 2000 HP HTTP probe):**
-- Taliyah E per-spell raw 60.00 → 122.50 (**+104%**, 60+62.5 sum confirmed) — small total lift (+5.95%) because Taliyah Q's Threaded Volley already dominates her ability_dps total.
-- DrMundo W per-spell raw 200.00 → 250.00 (**+25%**, 200+50 sum confirmed) — modest total lift (+4.1%) because Mundo's other spells (Q/E) contribute meaningfully too.
-
-Arithmetic parity exact: `s217 sum = forced_block_A + forced_block_B` to 4 decimal places in tests. Per-rank math verified against Meraki 16.10.1 snapshot — Taliyah rank 5: 240+262.5=502.5 raw base; DrMundo rank 5: 320+80=400 raw base.
-
-**Investigation outcomes:** During scan, confirmed the other s215 carry-forwards stay deferred per their original rationale: Jinx R (block 0 "Maximum Physical Damage" 300-600 + 155% bAD IS the canonical primary-target maximum at max-distance + missing-HP scaling; blocks 2-3 are secondary AOE on enemies behind primary — engine default block 0 already correct for single-target focus, no registry entry needed); Kindred E / Kayle E / Belveth R remain in the nested missing-HP parser bucket (Phase 4a parser limitation around `target_missing_hp_pct` nested under `unparsed_modifiers`).
-
-## Tests
-- **19 new tests** in `agents/daemon_slayer/tests/test_sum_of_blocks_expansion_s217.py` (Phase599_22RegistrySeedTests 3 / Phase599_22AbilityDpsTests 6 / Phase599_22BackwardCompatTests 9 / Phase599_22EngineVersionTests 1) mirroring s215's pattern.
-- **2 ENGINE_VERSION pin bumps** in `test_effects_expansion.py` (0.93.0 → 0.94.0; one in `Phase599_20EngineVersionTests` per its 8-line s217 comment block, one in `test_batch64_version`).
-- **1 ENGINE_VERSION pin update** in `test_sum_of_blocks_expansion_s215.py` (pin tracks current engine version per established convention).
-- **3 existing assertions updated** in `test_block_index_overrides.py`: shape-pin in `test_assert_known_overrides` for DrMundo (`{W:1}` → `{W:[1,2]}`) + Taliyah (`{Q:2}` → `{Q:2,E:[0,2]}`); `test_drmundo_W_routes_to_block_1` renamed to `test_drmundo_W_routes_to_sum_of_blocks` with inline list-shape assertion replacing the `_delta_check` int-only helper (same pattern s215 used for Thresh.E lift); `test_pre_s202_taliyah_unchanged` backward-compat pinned to post-s217 shape.
-
-DS suite 2041 → 2060 (+19). Wider RC `tests/` 953 green post-DS-restart (phase8_smoke probes live :8893 engine_version which was 0.93.0 pre-restart — fails until DS bounced; passes after restart). Full project test discovery (`py -m unittest discover -s . -p "test_*.py"`): 3013 tests green.
-
-## DS server restart
-- Killed pid 9696 (running 0.93.0).
-- Cleaned stale 8893 listener (briefly bound by orphaned launcher).
-- Restarted via `Start-Process pythonw tools\start_daemon_slayer.py`; new listener pid 19128.
-- `/health` confirms `engine_version: "0.94.0", patch: 16.10.1, champions: 172, items: 705`.
-- Note: HTTPS handshake returned SSL `WRONG_VERSION_NUMBER` on first attempt — DS server is serving HTTP not HTTPS at 127.0.0.1:8893. Live A/B used `http://127.0.0.1:8893` (matches the existing wider-test wire format). Not s217-introduced; pre-existing condition.
-
-## What's next
-- **Live ARAM Mayhem test** still scheduled by operator post-/clear (carried s214 → s215 → s216 → s217). Now also validates Phase 5.9.22 Taliyah/DrMundo ability_dps lifts ride through to `/api/ds-preview` for the build chooser's experimental row + Taliyah's Worked Ground commit + DrMundo Heart Zapper recast detonation.
-- **DS Phase 5.9.23+ scoping** — sum-of-blocks bucket queue exhausted under current operator-commit framing. Next batch needs a different angle. Candidates for future work: (a) **Conditional target-state schema lift** — 6+ candidates queued since s195: Lux Illumination mark amp, DrMundo E missing-HP threshold, Renekton Q at full Fury (already routed via s197 single-int but conditional model would express the canonical Fury bar build-up), Zed shadow Q empowered, Aphelios weapon-form conditionals. Schema lift: `block_index: int | list[int] | dict[str, int]` where dict expresses conditional state → block_index mapping. (b) **Nested missing-HP parser bucket** — Kindred E / Kayle E / Belveth R execute curve still gated on Phase 4a parser learning nested `unparsed_modifiers` syntax. Upstream extractor work; not pure-data. (c) **Per-form block_index** — Heimerdinger.W form 1 (Upgrade!!!) has 20 rockets vs form 0's 5; current registry [0,1,1,1,1] under-counts upgrade form. Schema lift: registry value is per-form dict. (d) **Aphelios Q forms** — Meraki bulk parses all 6 Q weapon-form variants as `no_damage`; upstream data-quality fix required before any registry entry.
-- **Loadout autogen calibration** unchanged from s215 (operator may flip `default_per_mode` pointers post-Mayhem).
-- **Deadcode cleanup (carried, low priority)**: `coaches/brawl_coach.py` + brawl mode detection across 6 files.
-
-## Blockers / don't redo
-- DS server :8893 is HTTP, not HTTPS — don't waste cycles diagnosing SSL handshake errors. `curl -k -s https://...` returns RST/wrong-version; use `http://127.0.0.1:8893/...` instead. Pre-existing condition matches the wider-test wire format.
-- `_delta_check(champion, key, expected_idx)` helper in `test_block_index_overrides.py` only handles int expected_idx — for sum-of-blocks (list-valued) entries, use the inline pattern from `test_drmundo_W_routes_to_sum_of_blocks` (assert `block_index_resolved.get(key) == [a, b]` + delta-check against forced single block). s215 established this pattern for Thresh.E; s217 extended to DrMundo.W.
-- `_meta.rationale` in `champion_block_index.json` was NOT updated by s215 — last entries reference s205. s217 also only updated `_meta.description` (kept rationale append as future cleanup, since it's a 78KB file and rationale duplicates much of description's per-entry math). Not a regression — both fields are documentation.

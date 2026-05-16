@@ -80,11 +80,27 @@ _UNIT_TO_FIELD: dict[str, str] = {
     "% of his bonus health": "caster_bonus_hp_pct",
     "% of her bonus health": "caster_bonus_hp_pct",
     "% of their bonus health": "caster_bonus_hp_pct",
+    # s224: caster-max-health pronoun + champion-name forms (Sejuani W
+    # "her", Gnar/Skarner E "his", Braum Q / Zac Q name-specific). Mirror
+    # of the existing "% of his bonus health" caster-bonus family — these
+    # scale with the CASTER's own max HP and were dropped pre-s224.
+    "% of his maximum health": "caster_max_hp_pct",
+    "% of her maximum health": "caster_max_hp_pct",
+    "% of Braum's maximum health": "caster_max_hp_pct",
+    "% of Zac's maximum health": "caster_max_hp_pct",
     "% of target's maximum health": "target_max_hp_pct",
     "%  of target's maximum health": "target_max_hp_pct",
+    # s224: Meraki text-drift "the target's" + double-space variants of
+    # the target-health family (Gwen Q/R, Varus W Blight, Trundle R,
+    # Ambessa Q, Maokai Q, TahmKench R, Briar W, Fiddlesticks Q). Same
+    # semantic as the no-"the" forms above — pure formatting drift.
+    "% of the target's maximum health": "target_max_hp_pct",
+    "%  of the target's maximum health": "target_max_hp_pct",
     "% of target's missing health": "target_missing_hp_pct",
     "%  of target's missing health": "target_missing_hp_pct",
+    "% of the target's missing health": "target_missing_hp_pct",
     "% of target's current health": "target_current_hp_pct",
+    "%  of target's current health": "target_current_hp_pct",
     "% of target's bonus health": "target_bonus_hp_pct",
     "% of primary target's bonus health": "target_bonus_hp_pct",
     "% of target's armor": "target_armor_pct",

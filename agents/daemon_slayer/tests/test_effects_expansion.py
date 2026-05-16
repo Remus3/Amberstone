@@ -7644,7 +7644,17 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          single-int/list registry is now provably saturated (a
         #          5-way parallel scan of all 47 uncovered champions found
         #          zero clean candidates).
-        self.assertEqual(ENGINE_VERSION, "0.95.0")
+        # 0.96.0 = s224 Phase 5.9.24 unmapped-key pass on COVERED
+        #          champions. Bel'Veth R=1 (corrects s223's over-
+        #          conservative no-entry call — engine defaults to the
+        #          8-dmg block 0, not the 200-dmg recast nuke). Plus 8
+        #          _UNIT_TO_FIELD text-drift health-unit variants
+        #          (double-space / "the target's" / caster pronoun+name)
+        #          → migration promoted 32 mods across 13 champions
+        #          (Gwen Q·R / Varus W / Trundle R / Fiddlesticks Q /
+        #          Sejuani W / Zac Q / Ambessa Q / …) whose %HP component
+        #          was dropped (Trundle R + Fiddle Q were 0 entirely).
+        self.assertEqual(ENGINE_VERSION, "0.96.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7705,7 +7715,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "0.95.0")
+        self.assertEqual(ENGINE_VERSION, "0.96.0")
 
 
 if __name__ == "__main__":

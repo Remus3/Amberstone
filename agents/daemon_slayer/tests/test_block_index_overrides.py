@@ -133,7 +133,9 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(champions["Brand"], {"W": 1, "R": 1})
         # Evelynn extended in s204 with Q=5 — full shape asserted in Phase 5.9.17 block
         self.assertEqual(champions["Aurora"], {"Q": 2})
-        self.assertEqual(champions["Belveth"], {"E": 2})
+        # Bel'Veth gained R=1 in s224 (recast nuke; corrects s223's
+        # over-conservative no-entry call). E=2 is the s174-era entry.
+        self.assertEqual(champions["Belveth"], {"E": 2, "R": 1})
         self.assertEqual(champions["Karma"], {"W": 1})
         self.assertEqual(champions["Vex"], {"R": 2})
         # Phase 5.9.5 (s192) — Akali R + R2 token-variant override
