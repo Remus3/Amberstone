@@ -4,6 +4,25 @@
 
 ---
 
+# s222 wrap — 2026-05-16 (/sync-all-md skill + repo-wide md congruence pass)
+
+**Operator:** "update the readme … be sure all parts are congruent across the other .mds … make this a skill /sync all md" → built the skill, dry-ran it, operator approved 4 decisions, ran it for real + committed, then /done.
+
+## Shipped — `014eef0` + this docs commit
+- **New `/sync-all-md` skill** — tracked canonical `tools/sync-all-md.md` (`.claude/commands/` mirror is gitignored local runtime, per the `done.md` house pattern). 10 ordered sections: canonical-facts-once → classify every .md → reconcile LIVING only → locked-s207 README → cross-ref integrity → orphan/deprecation → history-protect → self-congruence → report. Args `--dry-run` / `commit` / `readme`.
+- **Congruence pass applied**: ENGINE_VERSION 0.92.0→0.94.0; DS tests→2060; block_index coverage→193 entries / 124 champions (72%); rewind matches→2851; README "2,022 tests"→"2,060" + "two-thirds"→"three-quarters"; BRIEF stale 922/1426/0.69.0/2,846 → canonical (BOM + portfolio voice preserved).
+- **Broken ref**: dead `docs/_archive/CHANGELOG.md` (cited 3×, never existed) repointed → `docs/history_notes.md` (CLAUDE.md ×2 + ROADMAP.md).
+- **Structural**: DAEMON_SLAYER.md Phase-3 stale "three implemented / next session's lift" → all six scorers wired via `archetype_dispatch` (s174–s182).
+- **Quarantine**: `audit-notes.md`, `AUDIT_PHASE_2_STATUS.md`, `rc-tutor-decision-matrix.md` → `docs/_archive/2026-05-16-doc-sync/`.
+
+## Key decisions / don't-redo
+- **block_index registry is the canonical champion-coverage denominator** for DS docs (operator-confirmed; s205=185/118 → s217=193/124). README prose mirrors it ("about three-quarters").
+- `.claude/` + `_archive/` are gitignored → only `tools/sync-all-md.md` is version-controlled; the two `git mv`'d orphans stay tracked at the archive path, untracked `rc-tutor-decision-matrix.md` just physically moved.
+- Skill **never rewrites history**; memory `project_daemon_slayer_engine.md` index staleness (929 tests / ENGINE 0.60.0) was FLAGGED not fixed — deferred to `/consolidate-memory` by design.
+
+## NEXT
+- Optional: `/consolidate-memory` to refresh the stale DS memory index line. `/sync-all-md` now available for routine pre-audit doc hygiene. s220 aggregator G Post-Game-Review reframe remains the big pending UI item (untouched this session).
+
 # s221 wrap — 2026-05-16 (Game-PC BSOD root-cause + view-router fix + lobby settings)
 
 **Operator:** Recent-5 item icons missing → Game-PC game-end BSOD report → view auto-switch bug + lobby-settings feature → fix scheduled-task paths → /done.
