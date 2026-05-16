@@ -6,8 +6,15 @@ frame; coaches read it via /latest-frame and pass to /vision, /ocr, /coach.
 
 Deploy on Game-PC (one time):
     1. Copy this file to C:\\RC-Agent\\gamepc_screen_agent.py
-    2. Install Pillow:  py -m pip install Pillow
+    2. Install deps:    py -m pip install Pillow bettercam numpy comtypes
     3. Run:             py C:\\RC-Agent\\gamepc_screen_agent.py --monitor 0
+
+Capture backend: DXGI Desktop Duplication via `bettercam`, bound to the
+single real GPU adapter. The legacy PIL ImageGrab(all_screens=True)
+backend was retired 2026-05-16 — it BitBlt'd the whole virtual desktop
+(spanning virtual display adapters) and pagefaulted a display driver
+during the match-end display-mode switch (bugcheck 0x50). See the
+AUDIT note on `capture()`.
 
 Bandwidth: ~100-300KB per frame (PNG, optimized) at 0.5 Hz default = ~150KB/s.
 
@@ -119,36 +126,118 @@ def _enum_monitor_rects() -> list[tuple[int, int, int, int]]:
     return rects
 
 
+# --- Capture backend: DXGI Desktop Duplication via bettercam ----------------
+# AUDIT 2026-05-16 (BSOD root-cause fix). The previous backend was
+# PIL ImageGrab.grab(all_screens=True): a GDI BitBlt across the entire
+# VIRTUAL DESKTOP, which on Game-PC spans the real Intel Xe GPU PLUS the
+# Parsec + Duet VIRTUAL display adapters. A BitBlt landing during the
+# fullscreen-game → desktop mode switch at match-end pagefaulted a
+# display driver → bugcheck 0x50 (PAGE_FAULT_IN_NONPAGED_AREA), ~30-50s
+# after every game. bettercam uses DXGI Desktop Duplication bound to the
+# single real adapter (device 0): it never touches the virtual adapters,
+# and on a display-mode change the duplication loses access GRACEFULLY
+# (grab() returns None / raises a recoverable error) — we release and
+# rebuild the camera next cycle instead of faulting a driver.
+_BETTERCAM: dict = {}          # output_idx -> bettercam camera (created once, reused)
+_BETTERCAM_LASTIMG: dict = {}  # output_idx -> last good PIL image (static-screen fill)
+_BETTERCAM_DISABLED = False    # True only if bettercam import hard-fails
+
+
+def _resolve_output_idx(monitor_index: int | None) -> int:
+    """Map the agent's monitor index to a DXGI output index on device 0.
+    None (legacy 'virtual desktop' / all_screens) is retired — it was the
+    0x50-BSOD trigger — and maps to the primary output with a warning."""
+    if monitor_index is None:
+        log.warning("virtual-desktop capture (all_screens) retired — it was the "
+                    "0x50-BSOD trigger; using primary output 0 instead")
+        return 0
+    return max(0, monitor_index)
+
+
+def _release_camera(output_idx: int) -> None:
+    cam = _BETTERCAM.pop(output_idx, None)
+    if cam is not None:
+        try:
+            cam.release()
+        except Exception:
+            pass
+
+
+def _bettercam_image(output_idx: int):
+    """Return a PIL RGB image for the DXGI output, or None on a transient
+    miss. A grab failure (mode-change access-loss) releases the camera so
+    the next cycle rebuilds it — this graceful loss is what replaces the
+    BSOD-prone virtual-desktop BitBlt."""
+    import bettercam
+    import numpy as np
+    from PIL import Image
+    try:
+        cam = _BETTERCAM.get(output_idx)
+        if cam is None:
+            # device_idx=0 is the only DXGI adapter (Intel Xe); the
+            # Parsec/Duet virtual adapters are intentionally unreachable.
+            # output_color="BGRA" returns the raw native array — bettercam
+            # skips its cv2-based colour conversion (no OpenCV dep), we
+            # reorder BGRA→RGB below in numpy.
+            cam = bettercam.create(device_idx=0, output_idx=output_idx,
+                                   output_color="BGRA")
+            _BETTERCAM[output_idx] = cam
+            log.info("bettercam camera created: device=0 output=%d", output_idx)
+        frame = cam.grab()  # numpy HxWx4 BGRA, or None if no new frame
+        if frame is None and output_idx not in _BETTERCAM_LASTIMG:
+            # Cold start on a static screen: one short retry before giving up.
+            time.sleep(0.05)
+            frame = cam.grab()
+    except Exception as e:
+        log.warning("bettercam grab error on output %d (%s); recreating camera",
+                    output_idx, e)
+        _release_camera(output_idx)
+        return _BETTERCAM_LASTIMG.get(output_idx)
+    if frame is None:
+        # No new frame since last grab (static screen) — reuse last good so
+        # the stream doesn't gap on idle. None only on a true cold miss.
+        return _BETTERCAM_LASTIMG.get(output_idx)
+    rgb = np.ascontiguousarray(frame[:, :, [2, 1, 0]])  # BGRA -> RGB
+    img = Image.fromarray(rgb, "RGB")
+    _BETTERCAM_LASTIMG[output_idx] = img
+    return img
+
+
 def capture(monitor_index: int | None = MONITOR_INDEX,
             crop: tuple[int, int, int, int] | None = None) -> tuple[str, str, int, int]:
-    """Return (b64, format, width, height) for the chosen monitor.
+    """Return (b64, format, width, height) for the chosen monitor via DXGI
+    Desktop Duplication (bettercam) on the single real adapter — legacy
+    virtual-desktop / virtual-adapter capture is retired (see the BSOD
+    AUDIT note above).
 
-    monitor_index:
-        None → whole virtual desktop spanning all monitors
-        0    → the first monitor EnumDisplayMonitors returns (usually primary)
-        1..N → subsequent monitors; N must be < number of enumerated displays
+    monitor_index → DXGI output index on device 0 (0 = primary game
+    monitor, 1 = secondary). None maps to the primary output.
 
-    crop: optional (left, top, right, bottom) bbox in monitor-local coords
-    applied AFTER the monitor grab. Used by the fast minimap stream so
-    Game-PC sends a ~30KB region instead of a 200KB full frame at 5-10Hz.
+    crop: optional (left, top, right, bottom) bbox in output-local coords
+    applied AFTER the grab. Used by the fast minimap stream so Game-PC
+    sends a ~30KB region instead of a full frame.
     """
-    from PIL import ImageGrab
-    if monitor_index is None:
-        img = ImageGrab.grab(all_screens=True)
-    else:
-        rects = _enum_monitor_rects()
-        if not rects:
-            log.warning("EnumDisplayMonitors returned 0 rects; falling back to primary")
-            img = ImageGrab.grab()
-        elif monitor_index < 0 or monitor_index >= len(rects):
-            log.warning("monitor %d not present (found %d); falling back to monitor 0",
-                        monitor_index, len(rects))
-            img = ImageGrab.grab(bbox=rects[0], all_screens=True)
-        else:
-            # Grab the virtual desktop + crop to the target monitor. `all_screens`
-            # is required — without it ImageGrab clips to the primary monitor's
-            # rect and a negative-x / off-primary monitor returns black pixels.
-            img = ImageGrab.grab(bbox=rects[monitor_index], all_screens=True)
+    global _BETTERCAM_DISABLED
+    output_idx = _resolve_output_idx(monitor_index)
+    img = None
+    if not _BETTERCAM_DISABLED:
+        try:
+            img = _bettercam_image(output_idx)
+        except ImportError as e:
+            _BETTERCAM_DISABLED = True
+            log.critical("bettercam unavailable (%s) — DEGRADED to primary-only "
+                         "ImageGrab (NO all_screens). Reinstall bettercam to "
+                         "restore the safe DXGI backend.", e)
+    if img is None and _BETTERCAM_DISABLED:
+        # Last-resort degraded path: primary monitor ONLY, no all_screens
+        # (does not traverse the Parsec/Duet virtual adapters). Less safe
+        # than DXGI but far safer than the retired virtual-desktop BitBlt.
+        from PIL import ImageGrab
+        img = ImageGrab.grab()
+    if img is None:
+        # Transient miss (cold start / mid-mode-change). Signal loop() to
+        # skip this cycle; the vision server keeps serving its cached frame.
+        raise RuntimeError("no frame this cycle (transient — camera rebuilding)")
     if crop is not None:
         l, t, r, b = crop
         l = max(0, min(l, img.width))
