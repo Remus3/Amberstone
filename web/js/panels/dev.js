@@ -58,6 +58,18 @@ function _settingsRefresh() {
     });
   }
 
+  // PRE-GAME LOBBY: party-type default. Remembered preference only
+  // (rc-lobby-party-default), shared with the lobby Party toggle via the
+  // same key — last-write-wins, survives reload. Per the operator's
+  // choice this is NOT auto-pushed to LCU on lobby entry; it's just the
+  // persisted preference. (The lobby Auto Accept checkbox in this same
+  // card is agent-CONFIG-backed and wired in main.js, not here.)
+  const lpd = document.getElementById("set-lobby-party-default");
+  if (lpd) {
+    lpd.value = get("rc-lobby-party-default") || "open";
+    lpd.addEventListener("change", () => { setLS("rc-lobby-party-default", lpd.value); });
+  }
+
   // Live metrics status (read-only — env var)
   fetch("/api/diagnostics", { cache: "no-store" })
     .then((r) => (r && r.ok ? r.json() : null))

@@ -586,7 +586,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     if (viewId === "last-match")  { wireLastMatchOnce(); fetchAndRenderLastMatch(); }
     if (viewId === "replay")      { _replayViewWireOnce(); _replayViewRefresh(); }
     if (viewId === "user-builds") { _userBuildsWireOnce(); _userBuildsFetchAndRender(); }
-    if (viewId === "settings")    { _settingsRefresh(); }
+    if (viewId === "settings")    { _settingsRefresh(); _settingsLobbyWireOnce(); _syncAutoAcceptUI(); }
   }
   function _viewUpdateTitleLabel(viewId) {
     const el = document.getElementById("view-current-label");
@@ -724,8 +724,25 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
                        || manual === "champ-select"
                        || manual === "active-match"
                        || manual === "last-match");
-    if (_midFlight && _staleManual && !hashView) {
+    // A hash pointing at a *game-state* surface (e.g. #lobby set by the
+    // Home Find-Match route at the lcuCmd callsite, or a menu-nav to
+    // lobby) is itself stale once the live game advances to a DIFFERENT
+    // game-state surface. The s209 stale-manual clear used to bail
+    // whenever ANY hash was present (`!hashView`), which froze the
+    // operator on #lobby through the whole lobby→champ-select→active-
+    // match flow — the urgent-promote banner showed but it never auto-
+    // switched. Treat a stale game-state hash like a stale manual: clear
+    // it AND the URL hash so the flow auto-advances. Non-game-state
+    // hashes (#settings/#history/#replay/#session/#user-builds) stay
+    // sticky exactly as before — the operator pulled those up on purpose.
+    const _hashIsStaleGameState = !!hashView && hashView !== auto
+                      && (hashView === "home" || hashView === "lobby"
+                          || hashView === "champ-select"
+                          || hashView === "active-match"
+                          || hashView === "last-match");
+    if (_midFlight && _staleManual && (!hashView || _hashIsStaleGameState)) {
       _viewSaveManual(null);
+      if (_hashIsStaleGameState) { try { location.hash = ""; } catch (_) {} }
       _VIEW.bannerDismissed = null;
       manual = null;
     }
@@ -2033,24 +2050,33 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       meta.className = "home-recent-meta";
       meta.textContent = metaParts;
       main.append(champ, meta);
-      // s218: end-of-match item strip. PLACEHOLDER — match_history.db
-      // doesn't capture per-match item builds today.
-      // TODO(s218-dummy-data): wire to real items[] once ingest ships
-      // and remove the 6-slot dummy strip + this comment.
+      // End-of-match build strip. s219 LCU-ingest supplies items[] for
+      // ingested matches; matches predating the pipeline send [] and
+      // render as empty hatched slots (graceful — never fabricated).
+      // Icons resolve from the local DDragon mirror (same source as the
+      // champion portrait above), CDN fallback when the mirror lags the
+      // live patch — mirrors the active_match / last_match convention.
       const itemStrip = document.createElement("div");
       itemStrip.className = "home-recent-items";
-      itemStrip.dataset.dummyData = "items-pending-ingest";
       const slotCount = (m.items && m.items.length) ? m.items.length : 6;
       for (let i = 0; i < Math.min(slotCount, 6); i++) {
         const slot = document.createElement("span");
         slot.className = "home-recent-item-slot";
         if (m.items && m.items[i]) {
+          const iid = m.items[i];
           const ii = document.createElement("img");
           ii.className = "home-recent-item-icon";
-          ii.src = `/icons/items/${m.items[i]}.png`;
+          ii.src = `/data/ddragon/${ver}/img/item/${iid}.png`;
           ii.alt = "";
           ii.loading = "lazy";
-          ii.onerror = () => { ii.style.visibility = "hidden"; };
+          ii.onerror = () => {
+            if (!ii.dataset.cdnRetry) {
+              ii.dataset.cdnRetry = "1";
+              ii.src = `https://ddragon.leagueoflegends.com/cdn/${ver}/img/item/${iid}.png`;
+            } else {
+              ii.style.visibility = "hidden";
+            }
+          };
           slot.appendChild(ii);
         } else {
           slot.classList.add("empty");
@@ -3650,6 +3676,13 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   function _lobbyViewWireOnce() {
     if (_LV.wired) return;
     _LV.wired = true;
+    // Instant-paint seed: reflect the last-known auto-accept value before
+    // the first state envelope arrives. state.lcu.config.auto_accept (the
+    // agent CONFIG) overrides this within ~1-2s via _syncAutoAcceptFromConfig.
+    try {
+      const _aaSeed = localStorage.getItem("rc-lobby-auto-accept");
+      if (_aaSeed === "1" || _aaSeed === "0") _LV.autoAccept = (_aaSeed === "1");
+    } catch (_) {}
     // ---- Find Match ----
     // s171: surface non-leader 400s and other LCU failures inline so
     // the operator knows why "Find Match" silently no-op'd. Previously
@@ -3699,6 +3732,10 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       if (partyToggle.disabled) return;
       const nextOpen = !_LV.partyOpen;
       _LV.partyOpen = nextOpen;
+      // Persist the preference (shared with the Settings "Party default"
+      // select via rc-lobby-party-default — last-write-wins, survives
+      // reload). Preference only: not auto-applied on lobby entry.
+      try { localStorage.setItem("rc-lobby-party-default", nextOpen ? "open" : "closed"); } catch (_) {}
       _LV.partyToggleInflight = true;
       const stateEl = document.getElementById("lv-party-toggle-state");
       partyToggle.classList.remove("is-open", "is-closed");
@@ -3730,13 +3767,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     const autoAccept = document.getElementById("lv-auto-accept");
     if (autoAccept) autoAccept.addEventListener("click", () => {
       if (autoAccept.disabled) return;
-      const nextOn = !_LV.autoAccept;
-      _LV.autoAccept = nextOn;
-      const stateEl = document.getElementById("lv-auto-accept-state");
-      autoAccept.classList.remove("is-on", "is-off");
-      autoAccept.classList.add(nextOn ? "is-on" : "is-off");
-      if (stateEl) stateEl.textContent = nextOn ? "On" : "Off";
-      lcuCmd({ cmd: "set_config", auto_accept: nextOn });
+      _setAutoAccept(!_LV.autoAccept);
     });
     // ---- Lane pref slot clicks → open popup ----
     const primary   = document.getElementById("lv-lane-primary");
@@ -4400,11 +4431,67 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   // cutting renders ARE defined.
   function handleLcuEnvelope(lcu) {
     handleChampSelect(lcu);     // champ-select overlay + state.latest.lcu cache
+    _syncAutoAcceptFromConfig(lcu);  // reflect agent CONFIG → both controls
     renderLobbyPanel(lcu);      // inline lobby overlay (home view)
     renderHomePanel(lcu);       // home-view phase chip
     _viewResolveAndApply(lcu);  // re-derive view based on new phase
     _maybeRefreshLobbyView();   // re-render view-lobby if it's the active surface
     if (_VIEW.current === "champ-select") renderChampSelectView(lcu);  // s164
+  }
+
+  // ── Auto Accept (agent-CONFIG-backed, lobby ↔ settings synced) ──────
+  // Source of truth is the Game-PC LCU agent CONFIG — it's what actually
+  // accepts the ready-check — surfaced live at state.lcu.config.auto_accept
+  // and written via the set_config command. The lobby Auto Accept toggle
+  // and the Settings "Auto Accept" checkbox are two views of the same
+  // flag, so they stay in sync bidirectionally and persist (the agent
+  // persists its CONFIG). localStorage rc-lobby-auto-accept is only an
+  // instant-paint mirror for the gap before the first state envelope.
+  function _syncAutoAcceptUI() {
+    const on = !!_LV.autoAccept;
+    const lt = document.getElementById("lv-auto-accept");
+    const ls = document.getElementById("lv-auto-accept-state");
+    if (lt) { lt.classList.remove("is-on", "is-off"); lt.classList.add(on ? "is-on" : "is-off"); }
+    if (ls) ls.textContent = on ? "On" : "Off";
+    const sc = document.getElementById("set-lobby-auto-accept");
+    if (sc) sc.checked = on;
+  }
+  function _syncAutoAcceptFromConfig(lcu) {
+    try {
+      const cfg = (lcu && lcu.config)
+                || (state.latest && state.latest.lcu && state.latest.lcu.config)
+                || {};
+      if (!_LV.autoAcceptInflight && typeof cfg.auto_accept === "boolean") {
+        _LV.autoAccept = cfg.auto_accept;
+        try { localStorage.setItem("rc-lobby-auto-accept", cfg.auto_accept ? "1" : "0"); } catch (_) {}
+      }
+      _syncAutoAcceptUI();
+    } catch (_) {}
+  }
+  function _setAutoAccept(nextOn) {
+    nextOn = !!nextOn;
+    _LV.autoAccept = nextOn;
+    _LV.autoAcceptInflight = true;   // guard the ~1-2s envelope round-trip
+    try { localStorage.setItem("rc-lobby-auto-accept", nextOn ? "1" : "0"); } catch (_) {}
+    _syncAutoAcceptUI();
+    try {
+      Promise.resolve(lcuCmd({ cmd: "set_config", auto_accept: nextOn })).then((res) => {
+        if (typeof lcuPollResult === "function") {
+          lcuPollResult(res && res.id, () => { _LV.autoAcceptInflight = false; });
+        } else {
+          _LV.autoAcceptInflight = false;
+        }
+      }, () => { _LV.autoAcceptInflight = false; });
+    } catch (_) { _LV.autoAcceptInflight = false; }
+  }
+  // Settings-page Auto Accept checkbox listener. Wired from the
+  // settings-view show hook (guaranteed to run when the operator opens
+  // Settings, even if they never visited the lobby view this session).
+  function _settingsLobbyWireOnce() {
+    if (_LV.settingsLobbyWired) return;
+    _LV.settingsLobbyWired = true;
+    const sc = document.getElementById("set-lobby-auto-accept");
+    if (sc) sc.addEventListener("change", () => { _setAutoAccept(!!sc.checked); });
   }
 
   // ── Lobby overlay (2026-04-26) ──────────────────────────────────────
