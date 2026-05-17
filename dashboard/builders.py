@@ -756,6 +756,12 @@ def _enrich_from_lcu(lcu_detail: dict, tracked_puuid: str) -> dict:
     out["game_creation_date"] = lcu_detail.get("gameCreationDate")
     out["game_version"]       = lcu_detail.get("gameVersion")
     out["end_of_game_result"] = lcu_detail.get("endOfGameResult")
+    # s220 surrender tag: LCU stamps these on every participant's stats
+    # (game-wide value). Surfacing-only — lets the hero badge an FF'd
+    # loss vs a played-out one, and flag an early-surrender remake.
+    # Pre-s220 ingested rows lack the keys → bool(None) → False.
+    out["ended_in_surrender"]       = bool(s.get("gameEndedInSurrender"))
+    out["ended_in_early_surrender"] = bool(s.get("gameEndedInEarlySurrender"))
 
     return out
 

@@ -392,8 +392,17 @@ function _setHero(m, enriched) {
     const isArenaSubteamMode = (queueId === 1700 || queueId === 1710);
     if (enriched && enriched.win != null && !isArenaSubteamMode) {
       const won = !!enriched.win;
-      result.textContent = won ? "VICTORY" : "DEFEAT";
+      let label = won ? "VICTORY" : "DEFEAT";
+      // s220 surrender tag: distinguish an FF'd result from a
+      // played-out one; early surrender = remake. data-surrender lets
+      // CSS refine the badge in the later UI-audit pass without
+      // coupling now (the text suffix already works standalone).
+      if (enriched.ended_in_early_surrender) label += " (REMAKE)";
+      else if (enriched.ended_in_surrender) label += " (FF)";
+      result.textContent = label;
       result.dataset.result = won ? "win" : "loss";
+      result.dataset.surrender = enriched.ended_in_early_surrender ? "early"
+        : (enriched.ended_in_surrender ? "yes" : "");
       result.hidden = false;
     } else if (enriched && isArenaSubteamMode) {
       // Surface the sub-team placement as a numeric pill if available
