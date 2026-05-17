@@ -114,6 +114,17 @@ class DsPreviewResponse(_AllowExtra):
     error: str = ""
 
 
+# ── POST /api/build-order ────────────────────────────────────────────────
+
+class BuildOrderRequest(_AllowExtra):
+    champion: str
+    mode: str = "SR"
+    level: int = 11
+    items: list[str] = []          # owned/build-so-far ids
+    archetype: str = ""            # optional override (else persisted pick)
+    slots: int = 6                 # full build = 6 item slots
+
+
 # ── POST /api/archetype-nudge/dismiss ────────────────────────────────────
 
 class ArchetypeNudgeDismissRequest(_ForbidExtra):

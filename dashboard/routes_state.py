@@ -620,6 +620,63 @@ def _serve_console_error_post(h, payload) -> None:
                 "application/json")
 
 
+def _serve_build_order_post(h, payload) -> None:
+    """POST {champion, mode, level?, items?, archetype?, slots?, enemies?}
+    -> a contextual, match-specific ORDERED build.
+
+    Sibling of /api/ds-preview but returns a *sequence* instead of a flat
+    ranked list: core.build_order.plan_build_order iterates the same
+    per-archetype scorer, appending each pick so later slots re-rank
+    against the accumulated build + enemy context. The unique-passive
+    no-double rule (Trinity Force + Essence Reaver invalid together;
+    also lifeline / immolate families) is enforced engine-side via the
+    iterate-with-accumulated-item_ids design — no two same-passive items
+    can appear in the order. Read-only; the UI seam the dashboard build
+    chooser will consume.
+    """
+    try:
+        from core.archetype_picks import get_archetype_for
+        from core.build_order import plan_build_order
+
+        champion = str(payload.get("champion") or "").strip()
+        if not champion:
+            h._send(400, json.dumps({"error": "champion required"}).encode(),
+                     "application/json")
+            return
+        mode = str(payload.get("mode") or "SR").upper()
+        level = max(1, min(18, int(payload.get("level") or 11)))
+        items = [str(i) for i in (payload.get("items") or []) if i]
+        slots = max(1, min(6, int(payload.get("slots") or 6)))
+
+        archetype = str(payload.get("archetype") or "").strip().lower()
+        if not archetype:
+            archetype = (get_archetype_for(champion).get("primary") or "carry").lower()
+
+        tgt = _resolve_ds_target_stats(payload, mode=mode, level=level)
+
+        res = plan_build_order(
+            champion, archetype, level=level, owned_item_ids=items,
+            mode=mode, slots=slots, timeout=2.0,
+            target_armor=tgt["target_armor"],
+            target_mr=tgt["target_mr"],
+            target_max_hp=tgt["target_max_hp"],
+            target_bonus_hp=tgt["target_bonus_hp"],
+        )
+        if res is None:
+            h._send(503, json.dumps(
+                {"ok": False, "error": "DS engine unavailable"}).encode(),
+                "application/json")
+            return
+        out = res.to_dict()
+        out["ok"] = True
+        out["target_stats"] = tgt
+        h._send(200, json.dumps(out).encode(), "application/json")
+    except Exception as exc:
+        log.warning("build-order: %s", exc)
+        h._send(500, json.dumps({"error": str(exc)}).encode(),
+                "application/json")
+
+
 # ── route table ──────────────────────────────────────────────────────
 
 # The /api/ui-version handler uses prefix() because the legacy do_GET
@@ -639,4 +696,5 @@ POST_ROUTES = [
     (equals("/api/console-error"),  _serve_console_error_post),
     (equals("/api/analyze"),        _serve_analyze_post),
     (equals("/api/ds-preview"),     _serve_ds_preview_post),
+    (equals("/api/build-order"),    _serve_build_order_post),
 ]
