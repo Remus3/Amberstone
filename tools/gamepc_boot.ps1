@@ -1,306 +1,244 @@
-# gamepc_boot.ps1 — idempotent boot script for the 4 Game-PC agents.
+# gamepc_boot.ps1 — shortcut-only launcher for the Game-PC agents.
 #
-# Run from the Game-PC desktop shortcut. Ensures each agent is actually
-# *bound* to its expected port, not just running with a matching command
-# line — covers the 2026-04-30 zombie py.exe case where the MCP process
-# was running but never listening. Also installs the firewall rule for
-# the inbound MCP port (8892) if missing.
+# Remodeled 2026-05-16 (operator decision). The "RC Agent claude" desktop
+# shortcut is the SOLE initiator. This script NO LONGER installs ONLOGON
+# persistence for the agents or for itself — agents are launched per session
+# only. The ONLY logon persistence kept is the bridge infra (RC-BridgeDaemon
+# + the pre-existing RC-BridgeWatcher-GamePC / RC-WatcherHealthPublisher-GamePC)
+# so cross-Claude coordination survives a reboot without the shortcut. This
+# script ensures RC-BridgeDaemon and intentionally leaves the other two alone.
 #
-# Pulls the canonical script from Legion before launching, so a stale
-# copy on Game-PC self-heals on next boot.
+# Screen-agent --monitor args reflect the post-Q27GAZD-swap DXGI mapping
+# confirmed by task-45f704742197 + Legion cross-check:
+#   bettercam device_idx=0  output_idx 0 = Duet/dashboard (1920x1280)
+#                            output_idx 1 = Q27GAZD/League (1920x1080)
+# So league/minimap -> --monitor 1, ui -> --monitor 0. The 0/1 index order is
+# NOT stable across reboots/display changes — re-confirm by RESOLUTION, not
+# index, if displays change again.
 #
-# Usage (single-line paste, never wraps):
-#   iex (iwr https://legion-rc:8888/agent/gamepc_boot.ps1).Content
+# The recurring game-end 0x50 BSOD is a Riot Vanguard (vgk.sys) kernel fault
+# during the fullscreen->desktop mode switch — NOT a screen-capture problem.
+# Do not chase it here.
 #
-# Or, after installation, just run from C:\RC-Agent\:
-#   powershell -ExecutionPolicy Bypass -File C:\RC-Agent\gamepc_boot.ps1
+# Claude: opens the Claude Code Desktop app. The exact launch command is
+# resolved on Game-PC and written to C:\RC-Agent\claude_code_app.txt; falls
+# back to the legacy CLI launcher (start_gamepc_claude.ps1) if absent.
+#
+# Usage (desktop shortcut target):
+#   powershell -ExecutionPolicy Bypass -NoExit -Command "iex (iwr https://legion-rc:8888/agent/gamepc_boot.ps1).Content"
 
 $ErrorActionPreference = 'Stop'
 $dest = 'C:\RC-Agent'
 if (-not (Test-Path $dest)) { New-Item -ItemType Directory -Path $dest | Out-Null }
 
-# Self-elevate for firewall rule + scheduled task creation.
+# Self-elevate — firewall rule + RC-BridgeDaemon ensure need admin.
 $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Start-Process powershell.exe -ArgumentList '-NoExit','-ExecutionPolicy','Bypass','-File',"`"$PSCommandPath`"" -Verb RunAs
     exit
 }
 
-# PS 5.1 defaults to TLS 1.0/1.1 which the RC dashboard rejects.
-# ServicePointManager state is per-process; setting it here covers
-# every Invoke-WebRequest call below.
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
 
 Write-Host ''
-Write-Host '=== Game-PC pre-flight ===' -ForegroundColor Cyan
+Write-Host '=== Game-PC boot (shortcut-only model) ===' -ForegroundColor Cyan
 
-# 1. Refresh agent scripts from Legion (canonical source).
-# `tasksOwn` = launched exclusively by its own ONLOGON scheduled
-# task(s); boot must NOT also direct-launch it. Set on the screen
-# agent because it has THREE variant tasks (RC-ScreenAgent-League /
-# -Minimap / -UI = primary-game / 5Hz-minimap / monitor-1-UI streams).
-# A boot direct-launch would race those tasks and spawn a 4th
-# default-channel instance → two monitor-0 primary captures fighting
-# over /latest-frame. It is still refreshed from Legion below (the
-# refresh loop ignores this flag — only launch/task-ensure honour it).
-$AGENTS = @(
-    @{ name = 'gamepc_screen_agent.py';     port = $null;  task = 'RC-ScreenAgent';     tasksOwn = $true },
-    @{ name = 'gamepc_lcu_agent.py';        port = $null;  task = 'RC-LCU'              },
-    @{ name = 'gamepc_liveclient_relay.py'; port = $null;  task = 'RC-LiveClientRelay'  },
-    @{ name = 'gamepc_mcp_server.py';       port = 8892;   task = 'RC-MCP-Server'       },
-    @{ name = 'gamepc_hotkey_listener.py';  port = $null;  task = 'RC-HotkeyListener'   }
-)
-
-# Non-agent support scripts (launchers, helpers) pulled fresh on each boot
-# so updates ship via the same /agent/ allowlist.
-$SUPPORT_SCRIPTS = @('start_gamepc_claude.ps1', 'gamepc_bridge_daemon.py')
-foreach ($s in $SUPPORT_SCRIPTS) {
-    $url = "https://legion-rc:8888/agent/$s"
+# 1. Refresh agent + support scripts + slash commands from Legion (canonical
+#    source) so edits ship via the /agent/ allowlist on every shortcut run.
+$AGENT_SCRIPTS  = @('gamepc_screen_agent.py','gamepc_lcu_agent.py','gamepc_liveclient_relay.py','gamepc_mcp_server.py','gamepc_hotkey_listener.py')
+$SUPPORT_SCRIPTS = @('start_gamepc_claude.ps1','gamepc_bridge_daemon.py')
+foreach ($s in ($AGENT_SCRIPTS + $SUPPORT_SCRIPTS)) {
     $out = Join-Path $dest $s
-    & curl.exe -sk -m 5 -o $out $url 2>$null
+    & curl.exe -sk -m 5 -o $out "https://legion-rc:8888/agent/$s" 2>$null
     if ($LASTEXITCODE -eq 0 -and (Test-Path $out) -and (Get-Item $out).Length -gt 0) {
         Write-Host "  fetched $s" -ForegroundColor Green
     } elseif (Test-Path $out) {
-        Write-Host "  fetch $s failed, using existing local copy" -ForegroundColor Yellow
+        Write-Host "  fetch $s failed, using local copy" -ForegroundColor Yellow
     } else {
-        Write-Host "  fetch $s FAILED and no local copy" -ForegroundColor Red
+        Write-Host "  fetch $s FAILED, no local copy" -ForegroundColor Red
     }
 }
-
-# Slash-command files for Claude on Game-PC. RC-BridgeDaemon (step 6)
-# invokes `claude --print /process-bridge-tasks` when tasks are pending,
-# so process-bridge-tasks.md must live in ~/.claude/commands/ even though
-# there's no always-running /loop. Pulled fresh on each boot so RC-side
-# edits propagate without a manual copy.
 $cmdsDir = Join-Path $env:USERPROFILE '.claude\commands'
-if (-not (Test-Path $cmdsDir)) {
-    New-Item -ItemType Directory -Path $cmdsDir | Out-Null
-}
-# Each entry: @{src='<filename on /agent/>'; dst='<local name in ~/.claude/commands>'}
-# dst differs from src for peer-variant skills (e.g., done-gamepc.md is served
-# but lands as done.md so the user can type /done).
-$SLASH_COMMANDS = @(
-    @{ src = 'process-bridge-tasks.md'; dst = 'process-bridge-tasks.md' },
-    @{ src = 'done-gamepc.md';          dst = 'done.md' }
-)
-foreach ($c in $SLASH_COMMANDS) {
-    $url = "https://legion-rc:8888/agent/$($c.src)"
+if (-not (Test-Path $cmdsDir)) { New-Item -ItemType Directory -Path $cmdsDir | Out-Null }
+$SLASH = @(@{src='process-bridge-tasks.md';dst='process-bridge-tasks.md'}, @{src='done-gamepc.md';dst='done.md'})
+foreach ($c in $SLASH) {
     $out = Join-Path $cmdsDir $c.dst
-    & curl.exe -sk -m 5 -o $out $url 2>$null
+    & curl.exe -sk -m 5 -o $out "https://legion-rc:8888/agent/$($c.src)" 2>$null
     if ($LASTEXITCODE -eq 0 -and (Test-Path $out) -and (Get-Item $out).Length -gt 0) {
-        Write-Host "  fetched $($c.src) → ~/.claude/commands/$($c.dst)" -ForegroundColor Green
-    } elseif (Test-Path $out) {
-        Write-Host "  fetch $($c.src) failed, using existing local copy at $($c.dst)" -ForegroundColor Yellow
-    } else {
-        Write-Host "  fetch $($c.src) FAILED and no local copy" -ForegroundColor Red
+        Write-Host "  fetched $($c.src) -> ~/.claude/commands/$($c.dst)" -ForegroundColor Green
     }
 }
 
-# Use curl.exe (bundled with Win10/11 in System32) instead of
-# Invoke-WebRequest. PS 5.1's iwr fails the TLS handshake against the
-# dashboard's self-signed cert under iex even with SecurityProtocol set
-# and ServerCertificateValidationCallback assigned — the callback
-# doesn't take effect from inside an iex'd script. curl.exe -sk is
-# unaffected by any of that.
-foreach ($a in $AGENTS) {
-    $url = "https://legion-rc:8888/agent/$($a.name)"
-    $out = Join-Path $dest $a.name
-    & curl.exe -sk -m 5 -o $out $url 2>$null
-    if ($LASTEXITCODE -eq 0 -and (Test-Path $out) -and (Get-Item $out).Length -gt 0) {
-        Write-Host "  fetched $($a.name)" -ForegroundColor Green
-    } elseif (Test-Path $out) {
-        Write-Host "  fetch $($a.name) failed, using existing local copy" -ForegroundColor Yellow
-    } else {
-        Write-Host "  fetch $($a.name) FAILED and no local copy" -ForegroundColor Red
-    }
-}
-
-# 2. Firewall — ensure inbound rule for the MCP server port. The other
-#    three agents don't accept inbound (they're outbound-only POSTs).
-$fw = Get-NetFirewallRule -DisplayName 'RC-MCP' -ErrorAction SilentlyContinue
-if (-not $fw) {
+# 2. Firewall — inbound rule for the MCP server port (others are outbound-only).
+if (-not (Get-NetFirewallRule -DisplayName 'RC-MCP' -ErrorAction SilentlyContinue)) {
     try {
         New-NetFirewallRule -DisplayName 'RC-MCP' -Direction Inbound -Protocol TCP -LocalPort 8892 -Action Allow -Profile Any -ErrorAction Stop | Out-Null
-        Write-Host '  firewall rule RC-MCP (TCP 8892) added' -ForegroundColor Green
-    } catch {
-        Write-Host "  firewall rule add FAILED: $($_.Exception.Message)" -ForegroundColor Red
-    }
+        Write-Host '  firewall rule RC-MCP added' -ForegroundColor Green
+    } catch { Write-Host "  firewall add FAILED: $($_.Exception.Message)" -ForegroundColor Red }
+} else { Write-Host '  firewall rule RC-MCP present' -ForegroundColor Green }
+
+# 3. Interpreters. pythoncore-3.14-64 is the bettercam-capable interpreter the
+#    screen agents require; fall back to the standard Python314 install.
+$pyCore = 'C:\Users\Administrator\AppData\Local\Python\pythoncore-3.14-64'
+$pyW = Join-Path $pyCore 'pythonw.exe'
+$pyC = Join-Path $pyCore 'python.exe'
+if (-not (Test-Path $pyW)) { $pyW = 'C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe' }
+if (-not (Test-Path $pyC)) { $pyC = 'C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe' }
+
+function Test-AgentRunning {
+    param([string]$scriptName)
+    $p = Get-CimInstance Win32_Process -Filter "Name='python.exe' OR Name='pythonw.exe'" |
+         Where-Object { $_.CommandLine -like "*$scriptName*" } | Select-Object -First 1
+    return [bool]$p
+}
+
+# 4. Launch agents PER SESSION (no scheduled-task persistence). Idempotent —
+#    a process already alive for a script is left as-is (never double-launch).
+
+# Screen agents x3 — corrected post-swap mapping (output_idx 1 = Q27GAZD/
+# League, 0 = Duet/dashboard). pythonw (no window), bettercam DXGI.
+$SCREEN = @(
+    '--monitor 1 --channel game-pc-league',
+    '--monitor 0 --channel game-pc-ui --no-primary',
+    '--monitor 1 --channel minimap --no-primary --crop 1580,780,1920,1080 --interval 0.2'
+)
+# === ISOLATION TEST 2026-05-16 — screen agents DELIBERATELY NOT LAUNCHED ===
+# Confirming gamepc_screen_agent.py (DXGI capture) is the Vanguard vgk.sys
+# game-end/mid-game BSOD trigger. RC comes up WITHOUT the 3 screen agents;
+# operator plays one match. REVERT this block (restore the foreach launch
+# below) once the test concludes or the real capture-off-during-game fix
+# ships. $SCREEN is left defined above so revert is a one-line uncomment.
+Write-Host '  screen agents SKIPPED — isolation test 2026-05-16 (Vanguard-BSOD trigger check)' -ForegroundColor Yellow
+# if (Test-AgentRunning 'gamepc_screen_agent.py') {
+#     Write-Host '  screen agents: already running, leaving as-is' -ForegroundColor Green
+# } else {
+#     foreach ($a in $SCREEN) {
+#         Start-Process -WindowStyle Hidden -FilePath $pyW -ArgumentList "C:\RC-Agent\gamepc_screen_agent.py $a"
+#     }
+#     Write-Host '  screen agents x3 launched' -ForegroundColor Green
+# }
+
+# LCU agent — operator wants its console window MINIMIZED (visible/accessible,
+# out of the way), not hidden. Console python so the window exists.
+if (Test-AgentRunning 'gamepc_lcu_agent.py') {
+    Write-Host '  lcu agent: already running' -ForegroundColor Green
 } else {
-    Write-Host '  firewall rule RC-MCP already present' -ForegroundColor Green
+    Start-Process -WindowStyle Minimized -FilePath $pyC -ArgumentList 'C:\RC-Agent\gamepc_lcu_agent.py'
+    Write-Host '  lcu agent launched (minimized)' -ForegroundColor Green
 }
 
-# 3. Per-agent: verify it's actually listening (port-bound, not just
-#    process-alive — the zombie case). If a stale process owns the
-#    CommandLine but no listener exists, taskkill /F it before relaunch.
-function Ensure-Agent {
-    param($name, $port, $task)
-
-    $script = Join-Path 'C:\RC-Agent' $name
-
-    # For agents that bind a port, the listener is the source of truth.
-    $listenerOk = $false
-    if ($port) {
-        $conn = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
-        if ($conn) { $listenerOk = $true }
-    }
-
-    # Find any python process whose command line mentions the script.
-    $procs = Get-CimInstance Win32_Process -Filter "Name='py.exe' OR Name='python.exe' OR Name='pythonw.exe'" |
-             Where-Object { $_.CommandLine -like "*$name*" }
-
-    if ($port -and -not $listenerOk -and $procs) {
-        # Zombie: process exists but no listener. Kill before restart.
-        foreach ($p in $procs) {
-            Write-Host "  $name`: zombie PID $($p.ProcessId) (no listener), killing" -ForegroundColor Yellow
-            taskkill /F /PID $p.ProcessId 2>&1 | Out-Null
-        }
-        $procs = $null
-    }
-
-    if ($procs) {
-        Write-Host "  $name`: running (PID $($procs[0].ProcessId))" -ForegroundColor Green
-        return
-    }
-
-    if (-not (Test-Path $script)) {
-        Write-Host "  $name`: SCRIPT MISSING at $script" -ForegroundColor Red
-        return
-    }
-    Start-Process -WindowStyle Hidden py -ArgumentList $script
-    Write-Host "  $name`: started" -ForegroundColor Green
-
-    # If a port is expected, give it 3s to bind and verify.
-    if ($port) {
-        Start-Sleep -Seconds 3
-        $conn = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
-        if ($conn) {
-            Write-Host "    bound :$port" -ForegroundColor Green
-        } else {
-            Write-Host "    WARNING: did not bind :$port within 3s" -ForegroundColor Red
-        }
-    }
-}
-
-foreach ($a in $AGENTS) {
-    if ($a.tasksOwn) {
-        Write-Host "  $($a.name): launched by its ONLOGON task(s); skipping boot direct-launch" -ForegroundColor DarkGray
-        continue
-    }
-    Ensure-Agent -name $a.name -port $a.port -task $a.task
-}
-
-# 4. Persistence — install scheduled tasks at logon if missing.
-#    Wildcard-prefix match so we don't create a stray RC-ScreenAgent
-#    alongside an existing variant set (e.g. RC-ScreenAgent-League,
-#    RC-ScreenAgent-Minimap, RC-ScreenAgent-UI). Same protection covers
-#    any future agent that grows variant tasks.
-# Use absolute python.exe path — 'py' launcher is not resolvable in
-# task-scheduler's restricted PATH (same fix as RC-PatchRefresh on Legion).
-$pyExe = "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe"
-if (-not (Test-Path $pyExe)) {
-    # Fallback: find any python.exe in standard AppData install locations
-    $found = Get-ChildItem "$env:LOCALAPPDATA\Programs\Python\*\python.exe" -ErrorAction SilentlyContinue |
-             Sort-Object FullName -Descending | Select-Object -First 1
-    if ($found) { $pyExe = $found.FullName }
-}
-
-foreach ($a in $AGENTS) {
-    if ($a.tasksOwn) {
-        # Variant tasks (RC-ScreenAgent-League/-Minimap/-UI) are managed
-        # deliberately out-of-band with the correct bettercam interpreter.
-        # Never let boot recreate a no-suffix RC-ScreenAgent here (it would
-        # use the wrong/legacy interpreter and double-launch).
-        continue
-    }
-    $existing = Get-ScheduledTask -TaskName "$($a.task)*" -ErrorAction SilentlyContinue
-    if ($existing) {
-        # Already covered (exact or variant). Nothing to do.
-        continue
-    }
-    $tr = "`"$pyExe`" C:\RC-Agent\$($a.name)"
-    schtasks /Create /TN $a.task /SC ONLOGON /RL HIGHEST /F /TR $tr 2>&1 | Out-Null
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "  scheduled task $($a.task) installed" -ForegroundColor Green
+# Liveclient relay + hotkey listener — hidden (no window needed).
+foreach ($s in @('gamepc_liveclient_relay.py','gamepc_hotkey_listener.py')) {
+    if (Test-AgentRunning $s) {
+        Write-Host "  ${s}: already running" -ForegroundColor Green
     } else {
-        Write-Host "  scheduled task $($a.task) install failed" -ForegroundColor Red
+        Start-Process -WindowStyle Hidden -FilePath $pyW -ArgumentList "C:\RC-Agent\$s"
+        Write-Host "  $s launched" -ForegroundColor Green
     }
 }
 
-# 5. Logon-trigger scheduled task — auto-runs THIS script after every
-#    user logon so a Game-PC reboot self-restores agents + Claude session
-#    without a manual shortcut click. Idempotent: only installs if absent.
-$bootTaskName = 'RC-GamePCBoot'
-$bootTask = Get-ScheduledTask -TaskName $bootTaskName -ErrorAction SilentlyContinue
-if (-not $bootTask) {
-    $tr = "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File C:\RC-Agent\gamepc_boot.ps1"
-    schtasks /Create /TN $bootTaskName /SC ONLOGON /RL HIGHEST /F /TR $tr 2>&1 | Out-Null
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "  scheduled task $bootTaskName installed (logon trigger)" -ForegroundColor Green
-    } else {
-        Write-Host "  scheduled task $bootTaskName install failed" -ForegroundColor Red
-    }
+# MCP server — verify it actually binds :8892 (zombie case: process alive but
+# never listening). Kill a non-listening stale process before relaunch.
+$mcpListening = [bool](Get-NetTCPConnection -LocalPort 8892 -State Listen -ErrorAction SilentlyContinue)
+$mcpProcs = Get-CimInstance Win32_Process -Filter "Name='python.exe' OR Name='pythonw.exe'" |
+            Where-Object { $_.CommandLine -like '*gamepc_mcp_server.py*' }
+if ($mcpProcs -and -not $mcpListening) {
+    foreach ($p in $mcpProcs) { taskkill /F /PID $p.ProcessId 2>&1 | Out-Null }
+    $mcpProcs = $null
+}
+if ($mcpProcs) {
+    Write-Host '  mcp server: running + bound :8892' -ForegroundColor Green
 } else {
-    Write-Host "  scheduled task $bootTaskName already present" -ForegroundColor Green
+    Start-Process -WindowStyle Hidden -FilePath $pyW -ArgumentList 'C:\RC-Agent\gamepc_mcp_server.py'
+    Start-Sleep -Seconds 3
+    if (Get-NetTCPConnection -LocalPort 8892 -State Listen -ErrorAction SilentlyContinue) {
+        Write-Host '  mcp server launched + bound :8892' -ForegroundColor Green
+    } else {
+        Write-Host '  mcp server launched but NOT bound :8892 within 3s' -ForegroundColor Red
+    }
 }
 
-# 6. Bridge daemon — zero-cost sentinel that only invokes Claude when there
-#    are pending bridge tasks. Replaces the old "/loop 1m /process-bridge-tasks"
-#    terminal window. Registered as a proper scheduled task (pythonw.exe, no
-#    console window); self-restarts on failure.
-$pyW = "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe"
+# 5. Bridge infra — the ONLY logon persistence kept (operator decision):
+#    coordination must survive a reboot without the shortcut. Ensure the
+#    RC-BridgeDaemon scheduled task exists + running. RC-BridgeWatcher-GamePC
+#    and RC-WatcherHealthPublisher-GamePC are pre-existing ONLOGON tasks and
+#    are intentionally NOT touched here.
 $daemonScript = Join-Path $dest 'gamepc_bridge_daemon.py'
-$daemonTask = Get-ScheduledTask -TaskName 'RC-BridgeDaemon' -ErrorAction SilentlyContinue
-if (-not $daemonTask) {
+$pyW314 = 'C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe'
+if (-not (Test-Path $pyW314)) { $pyW314 = $pyW }
+if (-not (Get-ScheduledTask -TaskName 'RC-BridgeDaemon' -ErrorAction SilentlyContinue)) {
     if (Test-Path $daemonScript) {
-        $action   = New-ScheduledTaskAction -Execute $pyW -Argument $daemonScript
+        $action   = New-ScheduledTaskAction -Execute $pyW314 -Argument $daemonScript
         $trigger  = New-ScheduledTaskTrigger -AtLogOn -User 'Administrator'
-        $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew `
-                        -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) `
-                        -ExecutionTimeLimit ([TimeSpan]::Zero)
-        $principal = New-ScheduledTaskPrincipal -UserId 'Administrator' `
-                        -LogonType Interactive -RunLevel Highest
-        Register-ScheduledTask -TaskName 'RC-BridgeDaemon' -Action $action `
-            -Trigger $trigger -Settings $settings -Principal $principal `
-            -Description 'Zero-cost bridge sentinel: polls Legion /api/bridge every 30s; invokes claude --print /process-bridge-tasks only when tasks are pending.' `
-            -Force | Out-Null
+        $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero)
+        $prin     = New-ScheduledTaskPrincipal -UserId 'Administrator' -LogonType Interactive -RunLevel Highest
+        Register-ScheduledTask -TaskName 'RC-BridgeDaemon' -Action $action -Trigger $trigger -Settings $settings -Principal $prin -Description 'Zero-cost bridge sentinel (kept on logon by operator decision 2026-05-16).' -Force | Out-Null
         Write-Host '  RC-BridgeDaemon task installed' -ForegroundColor Green
+    } else { Write-Host '  gamepc_bridge_daemon.py missing; skipping' -ForegroundColor Yellow }
+} else { Write-Host '  RC-BridgeDaemon task present' -ForegroundColor Green }
+$dt = Get-ScheduledTask -TaskName 'RC-BridgeDaemon' -ErrorAction SilentlyContinue
+if ($dt -and $dt.State -ne 'Running') { Start-ScheduledTask -TaskName 'RC-BridgeDaemon'; Write-Host '  RC-BridgeDaemon started' -ForegroundColor Green }
+
+Write-Host ''
+Write-Host '=== agents up ===' -ForegroundColor Cyan
+Write-Host ''
+
+# 6. Open the Claude Code Desktop app (operator: the shortcut opens the app,
+#    not a CLI window). Resolve the NEWEST installed Claude Code at launch
+#    time so a Claude Code self-update doesn't silently regress to the CLI
+#    (the version dir, e.g. 2.1.138, changes on every update). Order:
+#    6a dynamic newest -> 6b claude_code_app.txt marker (manual override /
+#    last-known fallback) -> 6c legacy CLI launcher (last resort).
+$ccRoot    = 'C:\Users\Administrator\AppData\Roaming\Claude\claude-code'
+$ccMarker  = Join-Path $dest 'claude_code_app.txt'
+$ccProject = 'C:\RC-Agent'
+$launched  = $false
+
+# 6a. Dynamic: newest claude-code\<version>\claude.exe. Sort by [version]
+#     (lexical sort is wrong: 2.1.9 vs 2.1.138); fall back to most-recently
+#     -written dir if no version-parseable names.
+if (Test-Path $ccRoot) {
+    $verDirs = Get-ChildItem $ccRoot -Directory -ErrorAction SilentlyContinue
+    $pick = $verDirs | Where-Object { $_.Name -as [version] } | Sort-Object { [version]$_.Name } | Select-Object -Last 1
+    if (-not $pick) { $pick = $verDirs | Sort-Object LastWriteTime | Select-Object -Last 1 }
+    if ($pick) {
+        $ccExe = Join-Path $pick.FullName 'claude.exe'
+        if (Test-Path $ccExe) {
+            try {
+                Write-Host "Opening Claude Code Desktop app ($($pick.Name))..." -ForegroundColor Cyan
+                Start-Process -FilePath $ccExe -ArgumentList $ccProject
+                $launched = $true
+            } catch { Write-Host "  Claude Code launch failed: $($_.Exception.Message)" -ForegroundColor Yellow }
+        }
+    }
+}
+
+# 6b. Fallback: claude_code_app.txt marker (manual override / last-known).
+if (-not $launched -and (Test-Path $ccMarker)) {
+    $cc = Get-Content -Raw $ccMarker -ErrorAction SilentlyContinue
+    if ($cc) { $cc = $cc.Trim() }
+    if ($cc) {
+        try {
+            Write-Host '  dynamic resolve missed — using claude_code_app.txt marker' -ForegroundColor Yellow
+            Start-Process -FilePath 'cmd.exe' -ArgumentList '/c', $cc -WindowStyle Hidden
+            $launched = $true
+        } catch { Write-Host "  marker launch failed: $($_.Exception.Message)" -ForegroundColor Yellow }
+    }
+}
+
+# 6c. Last resort: legacy CLI launcher.
+if (-not $launched) {
+    $legacy = Join-Path $dest 'start_gamepc_claude.ps1'
+    if (Test-Path $legacy) {
+        Write-Host '  no Claude Code app found — using legacy CLI launcher' -ForegroundColor Yellow
+        try { & $legacy } catch { Write-Host "  legacy launch warning: $($_.Exception.Message)" -ForegroundColor Yellow }
     } else {
-        Write-Host '  gamepc_bridge_daemon.py missing; skipping daemon install' -ForegroundColor Yellow
+        Write-Host '  no Claude launcher available' -ForegroundColor Red
     }
-} else {
-    Write-Host '  RC-BridgeDaemon task already present' -ForegroundColor Green
-}
-# Ensure it's running right now (idempotent — IgnoreNew if already active)
-$daemonTask = Get-ScheduledTask -TaskName 'RC-BridgeDaemon' -ErrorAction SilentlyContinue
-if ($daemonTask -and $daemonTask.State -ne 'Running') {
-    Start-ScheduledTask -TaskName 'RC-BridgeDaemon'
-    Write-Host '  RC-BridgeDaemon started' -ForegroundColor Green
-} elseif ($daemonTask) {
-    Write-Host '  RC-BridgeDaemon already running' -ForegroundColor Green
 }
 
 Write-Host ''
-Write-Host '=== ready ===' -ForegroundColor Cyan
-Write-Host ''
-
-# 7. Launch the visible Game-PC Claude session (idempotent — script
-#    checks for an existing "Game-PC bridge" window and no-ops if found).
-$claudeLauncher = Join-Path $dest 'start_gamepc_claude.ps1'
-if (Test-Path $claudeLauncher) {
-    Write-Host 'Launching Game-PC bridge Claude...' -ForegroundColor Cyan
-    try {
-        & $claudeLauncher
-    } catch {
-        Write-Host "  Claude launch warning: $($_.Exception.Message)" -ForegroundColor Yellow
-    }
-} else {
-    Write-Host '  start_gamepc_claude.ps1 missing — skipping Claude launch' -ForegroundColor Yellow
-}
-
-Write-Host ''
-Write-Host '(this window auto-closes in 15s)' -ForegroundColor DarkGray
-
-# Auto-close: 15s is enough to read the output; Claude window stays open.
+Write-Host '(this window auto-closes in 15s; Claude stays open)' -ForegroundColor DarkGray
 Start-Sleep -Seconds 15
 [Environment]::Exit(0)
