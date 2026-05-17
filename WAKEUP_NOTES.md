@@ -4,6 +4,35 @@
 
 ---
 
+# ⚠ KNOWN BUG (logged 2026-05-17, operator) — champ-select screen wrong for ARAM / ARAM-Mayhem / Arena
+
+Operator report, verbatim: *"the champ select screen is all wrong for aram + aram mayhem + arena."*
+No detail captured yet — "all wrong" is unspecified (layout vs data vs render vs which elements). When picked up, gather specifics live: needs a champ-select pop in **each** of ARAM, ARAM-Mayhem, and Arena to see what's broken (a Game-PC `capture_monitor` of the dashboard during champ-select is fine — capture is only Vanguard-unsafe *in-game*, not in champ-select/client).
+Leads for whoever investigates: champ-select had heavy recent churn (s164–s214 redesign, s208 legacy `#cs-overlay` retirement) and this 2026-05-17 session disabled the Game-PC screen agents + reworked the shortcut-only boot model — view-router / mode-detection regressions are plausible suspects. Not yet investigated; fix not started.
+
+---
+
+# 2026-05-17 wrap — Vanguard crash ROOT-CAUSED + Game-PC boot remodel + OVERNIGHT AUTONOMOUS RUN
+
+Long crash-firefight session (not a numbered DS session). Operator flagged mid-session flip-flopping (borderless→Parsec→read-only→"definitive no API"→retraction) + memory over-churn — corrected; steady read below.
+
+## Confirmed — do NOT re-investigate
+- **Game-end AND mid-game `0x50` BSOD = `gamepc_screen_agent.py` DXGI screen capture vs Riot Vanguard (`vgk.sys`).** Isolation test proved it: RC fully up with the 3 screen agents NOT launched → full ~25min Mayhem match, no crash, Game-PC uptime continuous. Borderless / read-only-settings / Parsec-virtual-display all tested + RULED OUT. Full detail: memory `feedback_gamepc_screen_capture_bsod.md`.
+- **Crash-safe state shipped:** `tools/gamepc_boot.ps1` remodeled → shortcut-only (no ONLOGON reinstall), version-agnostic Claude Code Desktop launch, LCU minimized. On Game-PC the 8 agent/boot ONLOGON tasks are DISABLED, 3 bridge tasks kept. **Screen agents DISABLED via an isolation stub** (commented-out launch block, step 4 of gamepc_boot.ps1) — KEEP disabled. Recovery: reboot → click "RC Agent claude" shortcut.
+
+## Open / corrected
+- **Augment-API question is OPEN (a prior "definitive no API" memory note was RETRACTED — probed off-window + shallow method).** Competitor overlays show augments instantly w/o crashing ⇒ a capture-free path almost certainly exists. Real discovery (LCU WebSocket `OnJsonApiEvent` capture AT the live augment-pick + full LCU resource enumeration + :2999 activeplayer/playerlist) is **TABLED until morning per operator** — do NOT pursue augment/Overlay App E discovery during the overnight run.
+- **KNOWN BUG (top of this file):** champ-select wrong for ARAM/Mayhem/Arena — unspecified; detail it live (champ-select capture is Vanguard-safe; only *in-game* capture crashes).
+
+## OVERNIGHT AUTONOMOUS DIRECTIVE (operator asleep ~6h; self-continuing headless loop armed)
+**Primary goal:** plan + headless-test a **contextual, match-specific, DS-backed item BUILD ORDER** — fix "always the same items, not match-specific"; output an ORDER with contextual relevance from DS, NOT just max-damage/max-health. **HARD RULE:** unique passives cannot be doubled — never recommend two items sharing a unique passive (Sheen/Spellblade family: Trinity Force + Essence Reaver invalid together). DS already dedups spellblade via `unique_passive_key`; the build-ORDER layer must enforce this across ALL unique-passive families.
+**Cascade** (advance when prior exhausted / blocked >5min / needs asleep operator): (1) DS headless tests toward the goal + a staged plan; (2) UI smoke-test with data + verify end-to-end wiring; (3) connect local match DB ↔ `rewind_history.db`, run DS against combined data; (4) self-continue + self-compact; (5) roadblock → full project audit (every line: deficiency/refactor/optimization); (6) → deep-dive research: feature options, UI iterations, competitor lifts, UI-density / information-overload UX best practices → staged plan `.md` on the **Legion desktop** (`C:\Users\Administrator\Desktop\`). Commit progress as it goes. No screen capture / no Vanguard-risk / no destructive unattended ops.
+
+## NEXT-SESSION TRIGGER
+Operator will `/clear` then paste the trigger text given at end of the wrap turn (resume this directive + read this wrap + the desktop plan .md).
+
+---
+
 # s233 wrap — 2026-05-16 (operator decision: DS conditional arc CLOSED; next = s220 aggregator G reframe)
 
 **Operator instruction:** asked what direction the DS Part-2 decision needed, chose to close the arc, then "plan what is next then /done".
