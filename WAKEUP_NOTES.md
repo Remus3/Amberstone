@@ -98,6 +98,26 @@ only the operator's own eyes on the rendered bench in a future Mayhem
 champ-select as optional reassurance. Small still-open: `only_item_ids`
 carry-branch fix (RUN-1 (b), needs a DS restart).
 
+**⚠ TOOLING (wakeup_prune) — §6c SKIPPED again, now FULLY root-caused (don't
+re-diagnose):** `scripts/wakeup_prune.py` still crashes (`SESSION_RE.search(b)
+.group(0)` → None, line 105). The eve-entry's partial diagnosis ("chokes on
+the pinned KNOWN-BUG block") was incomplete. **Real root cause:** `SESSION_RE`
+(`^# s\d+…wrap\b`) only matches the *old* `# sNNN wrap` heading format, but
+every recent session uses the *dated* format (`# 2026-05-17 (late) — …`,
+`# 2026-05-17 (eve) — …`, `# 2026-05-17 OVERNIGHT RUN-1 — …`) which it does
+NOT match. So `split_sessions` dumps ALL current sessions + the pinned
+RESOLVED block into `extras`; only ancient `# sNNN wrap` blocks register as
+sessions. A pure line-105 crash-guard would therefore **mis-archive the
+NEWEST sessions and un-pin the RESOLVED block while keeping s231-233** — worse
+than crashing. **Correct fix (own slot, NOT /done-tail — rewrites WAKEUP +
+history_notes via atomic write, high blast radius):** (1) widen `SESSION_RE`
+to also match `^# \d{4}-\d{2}-\d{2}\b`; (2) in `split_sessions`, fold any
+leading non-session block (the pinned `# ✅ RESOLVED …` / `# ⚠ …` block) into
+the header so it's never archived; (3) `--dry-run` and eyeball that the
+RIGHT (oldest) blocks move before writing. Until then §6c stays skipped;
+WAKEUP grows unbounded (marginal bridge cold-load cost — tolerable, not a
+/clear blocker).
+
 ---
 
 # 2026-05-17 (eve) — build-order UI (B+C) + live augment-OCR PROVEN + KNOWN-BUG keystone lead
