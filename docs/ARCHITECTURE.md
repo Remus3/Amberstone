@@ -84,6 +84,7 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 ### Dashboard
 | File | Role |
 |---|---|
+| `dashboard/_cs_retention.py` | champ-select snapshot retention across no-draft transition |
 | `dashboard/_dispatch.py` | route registration |
 | `dashboard/_state_builder.py` | builds /api/state payload |
 | `dashboard/api_schema.py` | pydantic v2 schemas for RC dashboard HTTP API shapes |

@@ -26,6 +26,7 @@ from coaches.sr_draft_profile import is_sr_draft_queue
 from core.coaching_payload import validate_coaching_payload
 from core.queue_modes import mode_key_from_queue_id
 from dashboard._context import APP_DIR, read_json
+from dashboard._cs_retention import apply_cs_retention
 from dashboard._liveclient import lcu_summary, liveclient_summary
 from dashboard.routes_team_context import get_team_context
 
@@ -160,6 +161,11 @@ def _active_champion(coach: dict, lc: dict | None, lcu_snapshot: dict | None) ->
 def build_state() -> dict:
     health = read_json("ops/runtime/health.json")
     lcu_snapshot = lcu_summary()
+    # Hold the last champ_select across the fast no-draft (ARAM /
+    # Mayhem / Arena) champ-select → game transition + >5s agent-push
+    # staleness. Applied before resolve_mode_key so the s150 pre-flip
+    # mode survives the transient loss too.
+    lcu_snapshot = apply_cs_retention(lcu_snapshot)
     mode_key, preflip_active = resolve_mode_key(health, lcu_snapshot)
     health = apply_preflip_mirror(health, mode_key, preflip_active)
 
