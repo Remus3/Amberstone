@@ -79,6 +79,7 @@ Dashboard is viewed on Game-PC's secondary display (Duet iPad mirror). **iPad is
 | `coaches/arena_coach.py` | Arena mode coach — DS-before-Haiku |
 | `coaches/brawl_coach.py` | Brawl mode coach — DS-before-Haiku |
 | `coaches/tft_coach.py` | TFT Set 17 mode coach |
+| `core/build_order.py` | contextual DS-backed build-ORDER planner |
 
 ### Dashboard
 | File | Role |
