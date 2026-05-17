@@ -3,6 +3,7 @@ import { el, safe, fmtList, isArenaPayload } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { ITEMS, ITEM_COSTS, _resolveItemId, _splitItemList } from '../lib/items_index.js';
 import { formatDsDelta } from '../lib/scorer_units.js';
+import { buildOrderPill } from './build_order.js';
 
 const IB = {
   root: el("item-build"),
@@ -264,23 +265,39 @@ function renderItemBuild(p) {
       IB.dsBlock.hidden = true;
     }
   }
-  // Header DS pill — top pick + delta for glanceable read. Mode-gated
-  // to in-game modes only (CSS hides client/tft); JS additionally hides
-  // when the picks list is empty so we don't render a stale "—" pill.
+  // Header DS pill. (C) plan §6b: when an in-game build ORDER is cached,
+  // show the next-2-in-order + a full-order rich tooltip; otherwise fall
+  // back to the flat top-pick render. build_order.js owns the order
+  // fetch + cache — this only consumes it. Mode-gated to in-game via CSS
+  // (hidden client/tft); JS hides when there's nothing to show. The
+  // "BO|" sig prefix guarantees a DOM rewrite when switching modes.
   if (IB.dsPill) {
-    const top = dsPicks[0];
-    if (top && top.name) {
-      const delta = formatDsDelta(top);
-      const sig = `${top.name}|${delta}`;
+    const bo = buildOrderPill(p);
+    if (bo) {
+      const sig = `BO|${bo.html}`;
       if (IB.dsPill.dataset.dsSig !== sig) {
         IB.dsPill.dataset.dsSig = sig;
-        IB.dsPill.innerHTML = `${top.name}<em>${delta}</em>`;
-        IB.dsPill.title = `${top.name} · ${delta}` + (top.gold ? ` · ${top.gold}g` : '');
+        IB.dsPill.innerHTML = bo.html;
+        IB.dsPill.dataset.ttHtml = bo.tt; // app tooltip reads data-tt-html first
+        IB.dsPill.removeAttribute("title");
       }
       IB.dsPill.hidden = false;
     } else {
-      IB.dsPill.hidden = true;
-      IB.dsPill.dataset.dsSig = "";
+      const top = dsPicks[0];
+      if (top && top.name) {
+        const delta = formatDsDelta(top);
+        const sig = `${top.name}|${delta}`;
+        if (IB.dsPill.dataset.dsSig !== sig) {
+          IB.dsPill.dataset.dsSig = sig;
+          IB.dsPill.innerHTML = `${top.name}<em>${delta}</em>`;
+          if (IB.dsPill.dataset.ttHtml) delete IB.dsPill.dataset.ttHtml;
+          IB.dsPill.title = `${top.name} · ${delta}` + (top.gold ? ` · ${top.gold}g` : '');
+        }
+        IB.dsPill.hidden = false;
+      } else {
+        IB.dsPill.hidden = true;
+        IB.dsPill.dataset.dsSig = "";
+      }
     }
   }
   state.lastTouch.item_build = Date.now() / 1000;
