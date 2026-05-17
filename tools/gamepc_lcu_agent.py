@@ -106,6 +106,15 @@ CMD_INTERVAL  = 0.5   # Legion command-queue drain cadence
 # point hammering it on every 1s state-push cycle.
 TEAM_CONTEXT_REPOST_S = 3.0
 
+# ARAM-family queue IDs. Mirror of the aram keys in
+# core/queue_modes.QUEUE_ID_TO_MODE_KEY (this agent runs standalone on
+# Game-PC and can't import core.*, so it's a hand-kept mirror — keep
+# the two in sync). 2400 = ARAM Mayhem (KIWI gameMode); its absence
+# here is why is_aram was False for Mayhem → the dashboard's
+# _csvDetectMode fell through to "sr" and the bench / quick-swap UI
+# never rendered (KNOWN BUG 2026-05-17).
+_ARAM_QUEUE_IDS = frozenset({450, 720, 920, 2400})
+
 LOCKFILE_PATHS = [
     Path(r"C:\Riot Games\League of Legends\lockfile"),
     Path(r"C:\Riot Games\League of Legends (PBE)\lockfile"),
@@ -631,6 +640,19 @@ def capture_state():
     else:
         state["phase"] = "Unknown"
 
+    # KNOWN-BUG diagnostic breadcrumb (2026-05-17): the operator's
+    # ARAM / ARAM Mayhem / Arena champ-select view kept rendering blank.
+    # raw_phase is the unmodified gameflow-phase string — capturing it
+    # every cycle lets a `/api/state` curl during the next live
+    # no-draft champ-select reveal exactly what phase Mayhem reports
+    # during its bench window (the open question: does it ever report
+    # "ChampSelect", or flip straight to "InProgress"?). Free — phase
+    # is already fetched. Enriched below with the champ-select session
+    # shape when that block runs. Rides the existing 1s push → cached
+    # on Legion's vision server → no Game-PC console / screen capture
+    # needed to root-cause the remaining uncertainty.
+    state["cs_debug"] = {"raw_phase": state["phase"], "ts": time.time()}
+
     if state["phase"] in ("ReadyCheck", "Matchmaking", "Lobby"):
         rc, _ = lcu_request("GET", "/lol-matchmaking/v1/ready-check")
         if isinstance(rc, dict):
@@ -687,6 +709,26 @@ def capture_state():
 
     if state["phase"] in ("ChampSelect", "GameStart", "InProgress"):
         sess, _ = lcu_request("GET", "/lol-champ-select/v1/session")
+        # KNOWN-BUG diagnostic enrichment: did /lol-champ-select/v1/
+        # session even return a dict for this mode? For KIWI / Mayhem
+        # the open question is whether the agent ever sees a populated
+        # champ-select session at all. The full queue object (id /
+        # mapId / gameMode / type) is the robust signal a future
+        # is_aram could key off instead of a brittle queue-id list —
+        # capture its real shape live rather than guessing it now.
+        state["cs_debug"]["cs_session_is_dict"] = isinstance(sess, dict)
+        if isinstance(sess, dict):
+            _q = (sess.get("gameData", {}).get("queue", {})
+                  if "gameData" in sess else {})
+            state["cs_debug"]["queue_obj"] = {
+                "id":       _q.get("id"),
+                "mapId":    _q.get("mapId"),
+                "gameMode": _q.get("gameMode"),
+                "type":     _q.get("type"),
+                "category": _q.get("category"),
+            }
+            state["cs_debug"]["bench_len"] = len(
+                sess.get("benchChampions", []) or [])
         if isinstance(sess, dict):
             local_cell = sess.get("localPlayerCellId", -1)
             my_pick = next((p for p in sess.get("myTeam", [])
@@ -771,7 +813,7 @@ def capture_state():
                 if _my_done: break
             state["champ_select"] = {
                 "queue_id":     queue_id,
-                "is_aram":      queue_id in (450, 920),
+                "is_aram":      queue_id in _ARAM_QUEUE_IDS,
                 "is_brawl":     queue_id == 480,
                 # s171.3: local_cell exposed so the dashboard's role
                 # resolver (_csvResolveRole) can find my_team[i] by

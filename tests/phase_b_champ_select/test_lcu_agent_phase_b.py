@@ -403,5 +403,29 @@ class TestSetAugmentIntentStub(unittest.TestCase):
         self.assertEqual(out["err"], "no augment_id")
 
 
+class TestAramQueueIdsAntiDrift(unittest.TestCase):
+    """Pin the KNOWN-BUG fix + the agent↔core mirror.
+
+    is_aram was ``queue_id in (450, 920)`` — missing 2400 (ARAM
+    Mayhem / KIWI) — so the dashboard's _csvDetectMode fell through to
+    "sr" and the bench / quick-swap UI never rendered for Mayhem. The
+    agent runs standalone on Game-PC and can't import core.*, so
+    ``_ARAM_QUEUE_IDS`` is a hand-kept mirror of the aram keys in
+    core.queue_modes — this guards it from silently drifting again."""
+
+    def test_mayhem_2400_in_aram_set(self):
+        self.assertIn(2400, agent._ARAM_QUEUE_IDS)
+        self.assertIn(450, agent._ARAM_QUEUE_IDS)
+
+    def test_mirror_matches_core_queue_modes_aram_keys(self):
+        from core.queue_modes import QUEUE_ID_TO_MODE_KEY
+        core_aram = {qid for qid, m in QUEUE_ID_TO_MODE_KEY.items()
+                     if m == "aram"}
+        self.assertEqual(
+            set(agent._ARAM_QUEUE_IDS), core_aram,
+            "tools/gamepc_lcu_agent._ARAM_QUEUE_IDS drifted from "
+            "core.queue_modes aram keys — keep the mirror in sync")
+
+
 if __name__ == "__main__":
     unittest.main()
