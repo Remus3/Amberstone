@@ -44,6 +44,8 @@ QUEUE_ID_TO_MODE_KEY: dict[int, str] = {
     450:  "aram", # ARAM
     720:  "aram", # ARAM Clash
     920:  "aram", # Legend of the Poro King
+    2400: "aram", # ARAM Mayhem (KIWI gameMode) — queueId confirmed s220
+                  # from the operator's stashed post-game LCU match payload.
     # Arena
     1700: "arena",  # Arena
     1710: "arena",  # Arena variant
