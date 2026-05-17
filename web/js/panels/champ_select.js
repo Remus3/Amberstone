@@ -12,6 +12,7 @@ import {
   _ibPushItems, _ibFetchAndRender, _ibSetStatus,
   _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice,
 } from './item_build.js';
+import { buildOrderCardHtml } from './build_order.js';
 
 // ── LCU command helper (used by champ-select + build chooser) ──────
 function lcuCmd(cmdObj) {
@@ -1282,6 +1283,18 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
         ${_csvBuildVariantRowsHtml(variants, _csvSavedChoice(myName))}
       </div>
     </div>`;
+  // Build Order (2026-05-17, plan §6b option B): contextual DS-backed
+  // ordered build with the engine-enforced unique-passive no-double
+  // rule. Sits under the build chooser in the mode-agnostic My Pick
+  // card (matters in ARAM/Arena too — unlike the SR-only Suggestions
+  // panel). The async fetch is cache-keyed (one engine round per
+  // champ+mode+arch per session) and its re-render piggybacks on
+  // _csvScheduleRender, exactly like the DS-builds fetch.
+  const _boArch = (_csvResolveArchetype(myName) || {}).key || "";
+  const boHtml = buildOrderCardHtml(myName, _csvDsModeFor(mode), _boArch, {
+    ver: (ITEMS && ITEMS.version) || "latest",
+    scheduleRender: _csvScheduleRender,
+  });
 
   // s214 v2: LOCKED state sits to the LEFT of the champion icon now
   // (per operator follow-up). Pre-s214v2 it was centered below; pre-
@@ -1301,7 +1314,8 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
     ${lockBtnHtml}
     ${extraHtml}
     ${archetypeHtml}
-    ${buildsHtml}`;
+    ${buildsHtml}
+    ${boHtml}`;
 
   // Wire bench cells to fire bench_swap on click. Only ARAM renders
   // the bench block; the wiring is idempotent under re-render since
@@ -1775,6 +1789,13 @@ document.addEventListener("rc:lol-descriptions-ready", () => {
 // s213 v2: same for champion-tags — enemy cells get the 2-piece tag +
 // confidence pill once the cache resolves.
 document.addEventListener("rc:champion-tags-ready", () => {
+  _csvScheduleRender();
+});
+// 2026-05-17: re-render when the Build Order card's expander toggles.
+// build_order.js dispatches this on the collapsed↔full click; the card
+// HTML is rebuilt by renderChampSelectView so it needs a render pass to
+// reflect the new collapsed state (mirrors the cache-land re-renders).
+document.addEventListener("rc:build-order-toggle", () => {
   _csvScheduleRender();
 });
 

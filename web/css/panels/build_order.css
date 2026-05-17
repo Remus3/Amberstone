@@ -1,0 +1,175 @@
+/* Build Order card (2026-05-17, plan §6b option B; density pass).
+ *
+ * Nested inside the champ-select My Pick card, directly under the build
+ * chooser. NOT a top-level .csv-card (no grid surgery on the locked
+ * champ-select 3x2 grid).
+ *
+ * The My Pick card is documented-tight (s214: portrait + lock + arch
+ * picker + 4 build rows already fill it at the 1920x1080 baseline). So
+ * the DEFAULT is a single dense line — tag · ordered-name chain · chip ·
+ * expander — with the full numbered order + per-slot math in the hover
+ * tooltip. One click expands to the full vertical list. This trims
+ * content rather than shrinking fonts (feedback_font_size_viewing_
+ * distance): the expanded list keeps names/deltas at the 15px readable
+ * floor; density is bought by collapse, not by tiny type.
+ *
+ * Palette: neo-fintech vars from base.css.
+ */
+
+.bo-card {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--card-border, #2a2f37);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Header / collapsed line — single row, ellipsis-safe. */
+.bo-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.bo-tag {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim, #9da0b3);
+}
+
+/* Collapsed ordered-name chain — takes the slack, clips with an
+ * ellipsis; the full order + math lives in the data-tt-html tooltip. */
+.bo-chain {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: var(--text, #f5f5f7);
+  cursor: help;
+}
+
+/* Expanded-header context line ("vs 105 armor · 69 MR · 2430 HP"). */
+.bo-ctx {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text-faint, #6b6d7c);
+}
+
+.bo-msg {
+  flex: 1 1 auto;
+  font-size: 13px;
+  color: var(--text-faint, #6b6d7c);
+}
+
+.bo-safe,
+.bo-unsafe {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.bo-safe {
+  color: var(--good, #7fd19a);
+  background: rgba(127, 209, 154, 0.12);
+  border: 1px solid rgba(127, 209, 154, 0.35);
+}
+.bo-unsafe {
+  color: var(--bad, #f07e8b);
+  background: rgba(240, 126, 139, 0.12);
+  border: 1px solid rgba(240, 126, 139, 0.4);
+}
+
+/* Expander — glyph button (▾ / ▴). Generous hit area (the operator
+ * flags small tap targets in audits) without taking layout height. */
+.bo-expander {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 2px 6px;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--info, #8a8cf0);
+  cursor: pointer;
+}
+.bo-expander:hover {
+  color: var(--text, #f5f5f7);
+}
+
+/* Expanded vertical list. */
+.bo-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 5px;
+  min-height: 0;
+}
+
+.bo-slot {
+  display: grid;
+  grid-template-columns: 16px 20px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: default;
+}
+.bo-slot:hover {
+  background: rgba(138, 140, 240, 0.1); /* --info tint */
+}
+
+.bo-num {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-faint, #6b6d7c);
+  text-align: center;
+}
+
+.bo-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  display: block;
+}
+
+/* Names + deltas stay at the 15px readable floor — density is bought by
+ * the collapse, never by shrinking the primary content. */
+.bo-name {
+  font-size: 15px;
+  color: var(--text, #f5f5f7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bo-delta {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--good, #7fd19a);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Excluded-family signal — spans the row width under the slot, muted so
+ * it informs without competing with the pick itself. */
+.bo-excl {
+  grid-column: 2 / -1;
+  font-size: 12px;
+  color: var(--text-faint, #6b6d7c);
+  font-style: italic;
+}
