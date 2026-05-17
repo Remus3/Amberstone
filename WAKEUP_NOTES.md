@@ -33,6 +33,99 @@ Operator will `/clear` then paste the trigger text given at end of the wrap turn
 
 ---
 
+# 2026-05-17 OVERNIGHT RUN-1 — contextual DS build-ORDER shipped (PRIMARY goal DONE)
+
+Executed the OVERNIGHT AUTONOMOUS DIRECTIVE (above). The PRIMARY goal —
+contextual, match-specific, DS-backed item BUILD ORDER with the hard
+unique-passive no-double rule — is **functionally complete, proven
+end-to-end against the live DS engine, wired, and hardened with a
+machine guard**. 4 commits on `cc6aaa9`, all green, ruff+py_compile
+clean, **0 engine changes, 0 DS restart, ENGINE stays 1.3.0**.
+
+## Shipped (local main — NOT pushed; see "blocked on operator")
+
+- `1a20424` `core/build_order.py` — `plan_build_order()`. Iterative
+  greedy forward selection over `rank_for_primary_archetype`: one engine
+  call per slot, each pick appended to `item_ids` so later slots re-rank
+  vs the accumulated build + real enemy context. Kills "always the same
+  items". 19 headless tests.
+- `18139a5` opt-in wiring into `coach_integration/archetype_dispatch.py`
+  (`with_build_order=False` default — per-tick path stays 1 call;
+  `CoachDispatchResult.build_order`). +3 tests. **Live-proved vs real DS
+  :8893**: flat bruiser ranking of {Trinity Force, Lich Bane, Essence
+  Reaver} returns all 3 (the bug); planner picks Trinity Force then the
+  engine's own `current_unique_keys` dedup filters the rest for every
+  later slot → order stops at exactly 1.
+- `240f709` read-only `POST /api/build-order`
+  (`dashboard/routes_state._serve_build_order_post` + `BuildOrderRequest`
+  schema + dispatch entry). The UI seam. +7 route tests.
+- `da4f334` anti-drift / all-families machine guard
+  (`tests/test_build_order_no_double_guard.py`, 5 tests).
+
+## Key architectural facts (don't re-derive)
+
+- **The no-double rule is engine-authoritative, not planner-side.** The
+  planner forces `filter_shared_uniques=True` and *iterates* — the
+  engine's `collect_effects`/`current_unique_keys` dedup (source of
+  truth = `agents/daemon_slayer/effects.py`) does the actual exclusion.
+  The planner carries **NO family map** on purpose (s173 anti-drift).
+- **`effects.py` has 6 unique-passive families, not 3**: `spellblade`(16)
+  `lifeline`(12) `immolate`(7) + single-item `fiendhunter_barrage`
+  `hellfire_char` `innervating_fill`. The family-agnostic planner covers
+  all 6 + any future one for free; the guard test machine-checks this
+  (derives the set from `ITEM_EFFECTS` at runtime; ≥6 tripwire).
+- **Gap found:** `only_item_ids` is silently ignored by the carry/dps
+  branch (`rank_for` has no such param; only tank/bruiser/mage/assassin/
+  enchanter thread it). Latent surprise for any caller. Fix is small
+  (~1 file, thread `body["only"]`) but needs a DS restart → operator-gated.
+
+## Blocked on operator (nothing blocks the backend; these are gated)
+
+1. **Go-live:** `echo restart > restart_trigger.txt` on Legion to serve
+   `/api/build-order` (deferred — unattended supervisor-restart risk vs
+   marginal gain; route is headless-proven, planner live-proven).
+2. **Push:** 4 commits are local-only. Directive said "commit", not
+   "push" — deferred as a shared-state action (same discipline as the
+   restart). Operator can push + restart + /clear in one reviewed step.
+3. **Phase-3 UI render** of the ordered build — staged, NOT done blind
+   overnight (UI-audit ritual + a live game to verify, per
+   `feedback_phase3_fixture_ritual.md`). Desktop plan
+   `BUILD_ORDER_PLAN_2026-05-17.md` §6b is a researched, decision-ready
+   3-option UI menu (recommend: dedicated vertical "Build Order" card B
+   + `#ds-pill` glance C; reject horizontal-cram A).
+4. **`only_item_ids` carry-branch fix** (above) — needs DS restart.
+5. **Champ-select KNOWN BUG (ARAM/Mayhem/Arena "all wrong")** — still
+   unspecified, untouched (needs a live champ-select pop per mode to
+   detail; champ-select capture is Vanguard-safe). Not the primary goal.
+6. **Augment / LCU-WS discovery** — needs a live Mayhem/Arena augment
+   window; can't be done headless. Un-tabled but operator-gated.
+
+## Don't-redo
+
+- DS engine + ENGINE_VERSION untouched (1.3.0) — `build_order.py` is
+  pure orchestration. No DS restart was needed and none was done.
+- Don't add a family map to `core/build_order.py` — it's deliberately
+  family-agnostic; the guard test fails if a family literal appears.
+- Vanguard BSOD = screen capture, CONFIRMED — screen agents stay
+  disabled, do not re-litigate.
+- Full `tests/` suite run post-change (schema/route discipline):
+  **1141 passed, 0 failed** after `81af51e` synced the
+  dispatch-validate path pin (the one regression RUN-1 introduced +
+  fixed in-run). 5 commits total: `1a20424 18139a5 240f709 da4f334
+  81af51e`.
+
+## NEXT
+
+Operator picks: (a) push + restart + verify `/api/build-order` live,
+then the Phase-3 UI session (desktop plan §6b is the decision menu);
+(b) the `only_item_ids` carry-branch fix (small, needs restart);
+(c) the still-open non-build-order items (champ-select bug, augment
+discovery) which need a live game; or (d) the long-pending s220 aggregator G
+Post-Game-Review reframe. Recommend (a) — the primary feature is built +
+proven and just needs the operator-gated go-live + the reviewed UI pass.
+
+---
+
 # s233 wrap — 2026-05-16 (operator decision: DS conditional arc CLOSED; next = s220 aggregator G reframe)
 
 **Operator instruction:** asked what direction the DS Part-2 decision needed, chose to close the arc, then "plan what is next then /done".
