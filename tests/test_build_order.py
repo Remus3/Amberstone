@@ -365,5 +365,91 @@ class ScorerUnitTests(unittest.TestCase):
         self.assertIn("hps", res.order_str())
 
 
+class _Stats:
+    """Duck-typed coach_integration.enemy_stats.EnemyStats stub."""
+    def __init__(self, armor=80.0, mr=30.0, max_hp=2000.0, bonus_hp=500.0):
+        self.armor = armor
+        self.mr = mr
+        self.max_hp = max_hp
+        self.bonus_hp = bonus_hp
+
+
+def _disp_response():
+    return {
+        "ok": True, "scorer": "dps", "archetype": "carry",
+        "ranked": [
+            {"item_id": "3078", "item_name": "Trinity Force", "delta": 60.0,
+             "gold": 3333, "shares_dead_unique": False, "dead_unique_key": ""},
+            {"item_id": "3074", "item_name": "Ravenous Hydra", "delta": 50.0,
+             "gold": 3300, "shares_dead_unique": False, "dead_unique_key": ""},
+        ],
+        "fell_back": False,
+    }
+
+
+class DispatchIntegrationTests(unittest.TestCase):
+    """Opt-in wiring in coach_integration.archetype_dispatch — the
+    per-tick path must stay one engine call (build-order is opt-in)."""
+
+    from unittest import mock as _m
+
+    @_m.patch("core.daemon_slayer_client.rank_for_primary_archetype")
+    @_m.patch("core.archetype_picks.get_archetype_for")
+    def test_default_off_no_build_order_single_engine_call(self, m_arch, m_rk):
+        from coach_integration.archetype_dispatch import dispatch_for_coach
+        m_arch.return_value = {"primary": "carry"}
+        m_rk.return_value = _disp_response()
+        res = dispatch_for_coach(
+            "Ezreal", mode_engine="SR", level=11, item_ids=[],
+            enemy_stats=_Stats(),
+        )
+        self.assertIsNotNone(res)
+        self.assertIsNone(res.build_order)            # opt-in, default off
+        self.assertEqual(m_rk.call_count, 1)          # per-tick: ONE call
+
+    @_m.patch("core.daemon_slayer_client.rank_for_primary_archetype")
+    @_m.patch("core.archetype_picks.get_archetype_for")
+    def test_opt_in_populates_ordered_build(self, m_arch, m_rk):
+        from coach_integration.archetype_dispatch import dispatch_for_coach
+        m_arch.return_value = {"primary": "carry"}
+        m_rk.return_value = _disp_response()
+        res = dispatch_for_coach(
+            "Ezreal", mode_engine="SR", level=11, item_ids=[],
+            enemy_stats=_Stats(), with_build_order=True, build_order_slots=6,
+        )
+        self.assertIsNotNone(res)
+        self.assertIsInstance(res.build_order, BuildOrderResult)
+        # 2-row static mock → planner takes both then stops (picked-id
+        # filter drains it); flat dispatch + slot calls > 1.
+        self.assertGreater(m_rk.call_count, 1)
+        names = [s.item_name for s in res.build_order.order]
+        self.assertEqual(names, ["Trinity Force", "Ravenous Hydra"])
+        self.assertTrue(res.build_order.unique_passive_safe)
+        # legacy consumers untouched
+        self.assertTrue(res.picks_str.startswith("Trinity Force"))
+
+    @_m.patch("core.daemon_slayer_client.rank_for_primary_archetype")
+    @_m.patch("core.archetype_picks.get_archetype_for")
+    def test_build_order_failure_does_not_sink_dispatch(self, m_arch, m_rk):
+        from coach_integration import archetype_dispatch
+        m_arch.return_value = {"primary": "carry"}
+        m_rk.return_value = _disp_response()
+        with self._m.patch.object(
+            archetype_dispatch, "dispatch_for_coach",
+            wraps=archetype_dispatch.dispatch_for_coach,
+        ):
+            with self._m.patch(
+                "core.build_order.plan_build_order",
+                side_effect=RuntimeError("boom"),
+            ):
+                res = archetype_dispatch.dispatch_for_coach(
+                    "Ezreal", mode_engine="SR", level=11, item_ids=[],
+                    enemy_stats=_Stats(), with_build_order=True,
+                )
+        self.assertIsNotNone(res)            # flat dispatch survives
+        self.assertIsNone(res.build_order)   # order failed gracefully
+        self.assertTrue(res.picks_str.startswith("Trinity Force"))
+
+
 if __name__ == "__main__":
     unittest.main()

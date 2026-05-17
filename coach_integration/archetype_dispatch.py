@@ -89,6 +89,13 @@ class CoachDispatchResult:
     rows: list[dict] = field(default_factory=list)
     picks_str: str = "none"
     display_rows: list[dict] = field(default_factory=list)
+    # Opt-in (default None). Populated only when dispatch_for_coach is
+    # called with with_build_order=True — a contextual, match-specific
+    # ORDERED build with the cross-family unique-passive no-double rule
+    # enforced (core.build_order.BuildOrderResult). Kept off the per-tick
+    # path by default: an ordered plan is N sequential engine calls vs
+    # the single call display_rows needs.
+    build_order: object = None
 
 
 def _row_delta(row: dict, scorer: str) -> float:
@@ -175,6 +182,8 @@ def dispatch_for_coach(
     augments: Optional[Iterable[str]] = None,
     top: int = 5,
     timeout: Optional[float] = None,
+    with_build_order: bool = False,
+    build_order_slots: int = 6,
 ) -> Optional[CoachDispatchResult]:
     """Resolve archetype for ``champion`` + call the right DS scorer.
 
@@ -228,7 +237,7 @@ def dispatch_for_coach(
 
     scorer = str(out.get("scorer") or "dps")
     rows = list(out.get("ranked") or [])
-    return CoachDispatchResult(
+    result = CoachDispatchResult(
         out=out,
         archetype=archetype,
         scorer=scorer,
@@ -236,6 +245,39 @@ def dispatch_for_coach(
         picks_str=_build_picks_str(rows, scorer),
         display_rows=_build_display_rows(rows, scorer),
     )
+
+    # Opt-in ordered build. Reuses the same champion/archetype/level +
+    # enemy context as the flat ranking. plan_build_order issues one
+    # engine call per remaining slot (the iteration is exactly what makes
+    # the no-double rule hold across the sequence), so it stays off the
+    # per-tick path — only champ-select planning / ds-preview / a periodic
+    # refresh should pass with_build_order=True. A build-order failure
+    # never sinks the (already successful) flat dispatch.
+    if with_build_order:
+        try:
+            from core.build_order import plan_build_order
+
+            result.build_order = plan_build_order(
+                str(champion),
+                archetype,
+                level=int(level),
+                owned_item_ids=list(item_ids),
+                mode=str(mode_engine),
+                target_armor=float(getattr(enemy_stats, "armor", 0.0) or 0.0),
+                target_mr=float(getattr(enemy_stats, "mr", 0.0) or 0.0),
+                target_max_hp=float(getattr(enemy_stats, "max_hp", 0.0) or 0.0),
+                target_bonus_hp=float(getattr(enemy_stats, "bonus_hp", 0.0) or 0.0),
+                slots=int(build_order_slots),
+                augments=list(augments) if augments else None,
+                timeout=timeout,
+                rank_fn=_ds.rank_for_primary_archetype,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("dispatch_for_coach build_order failed (%s): %s",
+                         champion, exc)
+            result.build_order = None
+
+    return result
 
 
 def display_label(scorer: str) -> str:
