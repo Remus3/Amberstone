@@ -28,6 +28,7 @@ from pydantic import ValidationError
 
 from dashboard.api_schema import (
     BridgeInboxRequest,
+    BuildOrderRequest,
     CommandRequest,
     DsPreviewRequest,
     InputRequest,
@@ -148,6 +149,7 @@ _REQUEST_MODELS = {
     "/api/input":                   InputRequest,
     "/api/command":                 CommandRequest,
     "/api/ds-preview":              DsPreviewRequest,
+    "/api/build-order":             BuildOrderRequest,
     "/api/bridge/inbox":            BridgeInboxRequest,
     "/api/speak":                   SpeakRequest,
     "/api/team-context/refresh":    TeamContextRefreshRequest,
