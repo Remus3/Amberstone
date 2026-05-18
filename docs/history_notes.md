@@ -6,6 +6,18 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# 2026-05-18 - s237: builders.py payload-boundary split + _enrich_from_lcu coverage (`2d1993c`, pushed)
+
+Executed the s236 next-priority order (AUTONOMOUS_AUDIT s5): 4.E then 4.C, paired so the split is provably behavior-preserving.
+
+- **`2d1993c` (pushed `29bb13c..2d1993c main`).** **4.E first:** `tests/test_builders_enrich.py` - 31 characterization tests for the untrusted-LCU parser `_enrich_from_lcu` (6 guard-clause bails return `{}` not None; full parse shape; the high-value regression anchors = `firstDargon` LCU-typo key, `cs=minions+neutral`, `heal_plus_shield=heals+shields`, 1-indexed `playerAugment`, single `is_me`; SR/Mayhem/Arena fixtures; odd-field coercion). Written + green on the PRE-split baseline.
+- **4.C split:** `dashboard/builders.py` 1428 -> 288 LOC. Home / LCU-enrich / last-match clusters extracted **byte-verbatim** via an audit-gated atomic-splice script (boundary sentinels; script deleted after) into `builders_home.py` (353) / `builders_lcu_enrich.py` (387) / `builders_last_match.py` (478). builders.py keeps session/history/loadouts/diagnostics + **re-exports all 21 public names** -> every `from dashboard.builders import _x` caller (and web_dashboard's re-bind) unchanged. No circular import, no `builders_common` needed (shared `_load_match_rows`/`_ts_to_epoch`/`SESSION_GAP_S` only used by the retained clusters). Newly-authored module headers are ASCII; relocated bodies kept the original non-ASCII rendered-string chars verbatim.
+- **Verified:** py_compile (8 modules) + ruff clean; full `tests/` **1314 passed / 30 subtests / 0 failed**; facade smoke (correct `__module__`, no cycle); RC reloaded clean (pid 17292 -> 11020, last_reload_ok=true); `/api/home/summary` `/api/last-match` `/api/history` `/api/diagnostics` all 200 live.
+- **Don't-redo:** the split is done + behavior-proven - do NOT re-extract or re-investigate builders boundaries; `dashboard.builders` is now a facade, callers import unchanged.
+- **NEXT (AUTONOMOUS_AUDIT s5 order, item 4):** product-level - competitive opportunity #2 (per-user pick-ban foregrounding) or #3 (on-demand VLM coach), operator-directed. Remaining 4.C MED candidates: `adaptation_hint.py` (1602) splittable autonomously; `agents/supervisor.py` (2312) is FROZEN -> needs operator approval; `effects.py` (5692) engine-core = reviewed-only, never autonomous. DS conditional arc stays operator-CLOSED (s232).
+
+---
+
 # 2026-05-18 - s236: dead dashboard.js quarantine + agent3 pre-existing-rot cleanup (3 commits, CI green)
 
 Two scoped follow-ups off the `9bba79a` AUTONOMOUS_AUDIT next-priority order. All pushed, CI green.
