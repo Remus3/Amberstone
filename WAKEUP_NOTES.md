@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-05-18 (done) — header-row-2 pill flicker: full bug-chain closed (e4b08ba c114e5b 00277c4 2329ebf, pushed)
+
+Operator: "in pgl the 2nd row pills are switching on and off / occurs in other pages as well."
+
+- **Root cause (don't re-investigate):** `body[data-mode]` flapped aram↔client ~1×/sec on the shared header. `/api/state.mode_key=aram` (correct s150 ARAM-lobby preflip via build_state.resolve_mode_key) drove `onState`→setMode("aram"); the WS `:8891/push` health envelope was **un-mirrored** (`aram_mode=False`) so `onHealth`→setMode("client"). Independent JS tasks → flap → every mode-gated row-2 pill flickered on every view.
+- **`e4b08ba`** client fix: `onHealth` defers its "client" downgrade while `onState` recently asserted a preflip/in-game mode_key (8s staleness bound). `state.lastStateMode`/`Ts` added. Resilient regardless of server mirror. Replay: 41 flips/20 cycles → 1.
+- **Server-side half:** the WS mirror (`file_ingest`) was dead because **RC-Phase3-Supervisor pid 5400 ran ~27h of pre-keystone-`3eb2e2d` code** (couldn't resolve queue 2400). Supervisor was *healthy*, not crash-looping — the anomaly's non-zero LastResult was a stale scheduled-task code. **Manually restarted it (pid 5400→17160); WS health now 17/17 mirrored.** `c114e5b` = file_ingest mirror regression test.
+- **Regression (operator reported mid-session):** flap-fix made mode stably "aram" in lobby (by design), but the 4 row-2 pills were only mode-gated → showed on every page. **`00277c4`** view-gates ds/augments/trigger/nudge to `active-match` only (the s162 pattern, never extended to these 4).
+- **Systemic gap fixed (frozen ops/rc_supervisor.py — operator-authorized):** **`2329ebf`** — `agents/supervisor.py` heartbeat now re-stamps a stable `started_at`; `_Phase3Watcher` restarts Phase-3 when `started_at` predates the newest import-chain mtime (agents/**/*.py + 4 cross-pkg files), via the existing cooldown+CircuitBreaker+schtasks path. Backward-compat (no started_at→skip), self-limiting, guarded. 24 watcher tests; verified vs live tree.
+- **NEXT / activation:** `2329ebf` activates on the next RC-Supervisor restart (main watchdog) + next RC-Phase3-Supervisor restart (writes started_at). Acute issue already cleared (pid 17160). **Don't restart the top-level supervisor just to activate** — preventive + backward-compat; lands naturally on reboot/next deploy. Don't re-investigate the flap root cause or re-pitch a server-only fix; the client deferral is the durable backstop. Memory `reference_phase3_supervisor_stale_code.md` written.
+
+---
+
 # 2026-05-18 (done) — Mayhem augment recommender SHIPPED (10aa944, pushed)
 
 CLAUDE #88 plan executed end-to-end (`Desktop/MAYHEM_AUGMENT_RECOMMENDER_PLAN_2026-05-17.md`). #88 flipped ✅ in CLAUDE.md + ROADMAP.
@@ -30,32 +43,3 @@ ROADMAP #89 shipped off the s234 recon (recon was accurate; one staleness noted)
 
 **Verified:** py_compile + node --check clean; phase_b / snapshot / view_router / cs_retention suites green.
 **Operator-gated NEXT (not provable offline):** live Practice/Mayhem/Arena lobby creation + Arena 6×3 visual + Mayhem-2400 switch. Agent name-map change (cosmetic label + Brawl) needs a Game-PC `C:\RC-Agent\` redeploy (offer bridge dispatch) — but the core Mayhem fix is JS/served-from-Legion, no redeploy needed. Precondition: confirm League WindowMode in-client (prior session's fullscreen-lockup note).
-
----
-
-# 2026-05-17 — `open item research.txt` liftability-triage integrated (docs only, no code)
-
-**Operator instruction:** implement the referenced multi-agent research methodology, run it on `Desktop/open item research.txt` (~90 links), triage NOW/FUTURE/CLOSED, "go over what to keep" → 3 decisions locked → integrate.
-
-## Methodology (reusable — memory `reference_liftability_triage.md`)
-s234 link-list triage + the two referenced agent memories (investigate-command: conditions+table+"no fixes yet"; parallel-batch-agents: subagents own slices, supervisor synthesizes). 6 parallel general-purpose slice agents (WebFetch + `gh`), fixed per-link schema: what-it-is / single-most-liftable-thing / RC-fit / license. Supervisor synthesized; agents proposed no fixes.
-
-## 3 decisions LOCKED (don't re-litigate)
-1. **Fold Morello** (`noaboa07/Morello`, **MIT**) `badges.ts` + `match-insights.ts` + 5-tab card → reference impl for the s220 PGR **0–100 score** + Deep-Review tabs.
-2. **Shared smoothed-rate primitive** — ONE module (Laplace/Beta over own match DB; algo ref `Maelian25/lol-draft-prediction`, **no license → reimplement clean**) for #88 augment + pick/ban synergy + PGR score. Same family already locked for #88.
-3. **101.qq.com** CN duo-synergy — worth a one-off Game-PC Network-tab capture (static `game.gtimg.cn` JSON; exact path needs the live capture).
-
-## Integrated (docs only — `/done` will commit)
-- `CLAUDE.md` new active-priority **#90** (full triage + 3 decisions + CLOSED corpus).
-- `ROADMAP.md`: augment-recommender item cross-linked; new 🟡 **shared smoothed-rate primitive** + 🔵 **101.qq.com capture** one-off.
-- `BACKLOG.md` "Research / inspiration": DDragon-mirror item annotated with vendor-safe tooling found (download-data-dragon Unlicense + get-league-patch MIT + Nyx0ra/lol-asset-downloader MIT + OriannaBot MIT); full FUTURE + CLOSED triage block appended.
-- Memory: `project_lcu_pengu_pregame_postgame.md` findings appended (LCU corpus CLOSED, KebsCS still canonical, league_record=video-not-rofl); new `reference_liftability_triage.md` + MEMORY.md index.
-
-## Don't-redo / NEXT
-- **Don't re-research:** the 27-repo LCU corpus (zero lobby payloads anywhere — #89 needs live capture/KebsCS); ML/CV/voice/`riot-offline-mode` repos; `.rofl` (reinforced CLOSED).
-- **NEXT:** shared-primitive build = its own `/clear`'d scoped session (Task-1 = the #88 data-audit gate already in ROADMAP). 101.qq.com capture = one-off Game-PC step. No RC code shipped — nothing to verify live.
-
-## Game-PC (also this session — investigated live via :8892 MCP; memory captured)
-- **ARAM-Mayhem match misbehaved:** operator moved the Duet display below-main, then League booted **exclusive-Fullscreen** → window vanished (alt-tab-out) → couldn't tab back. Recovered: taskbar-close → in-game leave-prompt → switch off fullscreen. **Not RC** (screen-agent disabled s221, no capture ran during web research). **Not the Vanguard 0x50 BSOD** (window lockup at match *start*, no crash). Captured: new `feedback_gamepc_league_fullscreen_lockup.md` + `reference_gamepc_monitor_index_volatility.md` updated (Duet now 1920×1280 @ y=1080 below main; resolution discriminator still valid 1080=game/1280=dash).
-- **Game-PC daemons all UP** — verified live: gamepc_lcu_agent / liveclient_relay / hotkey / mcp_server / bridge_daemon all running, RC-BridgeDaemon task Running. Operator closed only Claude Code → **do NOT restart the daemons**; only a Game-PC Claude Code session needs reopening for `/process-bridge-tasks` autoflow.
-- League persisted `WindowMode=2` (Windowed @1920×1080 main monitor) — safe (only exclusive Fullscreen=0 triggers the lockup). Re-verify the Window-Mode dropdown **in-client** before any live Game-PC test (PersistedSettings.json can overwrite game.cfg; League resets to Fullscreen on some patches/driver updates). This is now effectively a precondition for the #89 lobby-verify + Mayhem-recommender live runs.
