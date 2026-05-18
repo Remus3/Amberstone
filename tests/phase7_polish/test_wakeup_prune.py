@@ -117,6 +117,124 @@ class TestRender(unittest.TestCase):
         self.assertIn("4. bullet\n\n---\n\n# s001", rendered)
 
 
+class TestDatedAndPinnedFormat(unittest.TestCase):
+    """Real-file shape regression (s235): recent sessions use a dated heading
+    (`# 2026-05-17 (late) — …`) not the legacy `# sNNN wrap`, and the file
+    opens with a pinned non-session block (`# ✅ RESOLVED … `) right after the
+    top header. Pre-fix, SESSION_RE matched neither, so split_sessions
+    tail-dumped them all into `extras` (inverting newest/oldest) and prune()
+    crashed at the moved_ids line — a lucky guard against mis-archiving the
+    newest sessions + un-pinning the RESOLVED block.
+    """
+
+    PIN = (
+        "# ✅ RESOLVED 2026-05-17 — champ-select wrong for ARAM\n"
+        "\nResolved-block body that must never be archived.\n"
+    )
+
+    @staticmethod
+    def _dated(date: str, label: str, body: str = "stuff") -> str:
+        return f"# {date} {label}\n\n## What shipped\n- {body}\n"
+
+    def setUp(self):
+        import tempfile
+        self.tmp = Path(tempfile.mkdtemp(prefix="rc_wakeup_dated_"))
+        self._orig_wakeup = WP.WAKEUP
+        self._orig_archive = WP.ARCHIVE
+        WP.WAKEUP = self.tmp / "WAKEUP_NOTES.md"
+        WP.ARCHIVE = self.tmp / "docs" / "history_notes.md"
+
+    def tearDown(self):
+        WP.WAKEUP = self._orig_wakeup
+        WP.ARCHIVE = self._orig_archive
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    # ── regex ────────────────────────────────────────────────────────────
+    def test_session_re_matches_dated_headings(self):
+        for h in (
+            "# 2026-05-17 (late) — KEYSTONE champ-select",
+            "# 2026-05-17 (eve) — build-order UI",
+            "# 2026-05-17 wrap — Vanguard crash",
+            "# 2026-05-17 OVERNIGHT RUN-1 — contextual DS",
+        ):
+            self.assertIsNotNone(WP.SESSION_RE.match(h), h)
+
+    def test_session_re_still_matches_legacy(self):
+        self.assertIsNotNone(WP.SESSION_RE.match("# s234 wrap — 2026-05-17"))
+        self.assertIsNotNone(
+            WP.SESSION_RE.match("# s209–s213 wrap — 2026-05-16"))
+
+    def test_session_re_does_not_match_pin(self):
+        self.assertIsNone(
+            WP.SESSION_RE.match(
+                "# ✅ RESOLVED 2026-05-17 — champ-select wrong"))
+
+    # ── split ────────────────────────────────────────────────────────────
+    def test_leading_pin_folds_into_header_not_sessions(self):
+        text = _doc([
+            self.PIN,
+            self._dated("2026-05-17", "(late) — keystone"),
+            self._dated("2026-05-16", "(eve) — build order"),
+        ])
+        header, sessions = WP.split_sessions(text)
+        self.assertEqual(len(sessions), 2)
+        self.assertIn("RESOLVED", header)
+        self.assertTrue(all("RESOLVED" not in s for s in sessions))
+        self.assertIn("(late)", sessions[0])
+        self.assertIn("(eve)", sessions[1])
+
+    def test_pinned_dated_round_trip_is_stable(self):
+        original = _doc([
+            self.PIN,
+            self._dated("2026-05-17", "(late) — a"),
+            self._dated("2026-05-16", "(eve) — b"),
+        ])
+        header, sessions = WP.split_sessions(original)
+        self.assertEqual(WP.render(header, sessions).strip(), original.strip())
+
+    # ── prune ────────────────────────────────────────────────────────────
+    def test_prune_keeps_newest_dated_archives_oldest_pin_retained(self):
+        WP.WAKEUP.write_text(_doc([
+            self.PIN,
+            self._dated("2026-05-17", "(late) — newest"),
+            self._dated("2026-05-16", "(eve) — mid"),
+            self._dated("2026-05-15", "wrap — old1"),
+            self._dated("2026-05-14", "wrap — old2"),
+            self._dated("2026-05-13", "wrap — old3"),
+        ]), encoding="utf-8")
+        rc = WP.prune(keep=3, dry_run=False)
+        self.assertEqual(rc, 0)
+
+        wakeup_after = WP.WAKEUP.read_text(encoding="utf-8")
+        self.assertIn("RESOLVED", wakeup_after)            # pin retained
+        self.assertIn("newest", wakeup_after)
+        self.assertIn("mid", wakeup_after)
+        self.assertIn("old1", wakeup_after)
+        self.assertNotIn("old2", wakeup_after)
+        self.assertNotIn("old3", wakeup_after)
+
+        archive_after = WP.ARCHIVE.read_text(encoding="utf-8")
+        self.assertNotIn("RESOLVED", archive_after)        # pin never archived
+        self.assertIn("old2", archive_after)
+        self.assertIn("old3", archive_after)
+        # Newest-first inside the archive (old2 before old3).
+        self.assertLess(
+            archive_after.index("old2"), archive_after.index("old3"))
+
+    def test_prune_does_not_crash_on_pin_in_move_slice(self):
+        # The original crash: a non-session block in the move slice hitting
+        # SESSION_RE.search(b).group(0) → AttributeError.
+        WP.WAKEUP.write_text(_doc([
+            self.PIN,
+            self._dated("2026-05-17", "(late) — a"),
+            self._dated("2026-05-16", "(eve) — b"),
+            self._dated("2026-05-15", "wrap — c"),
+            self._dated("2026-05-14", "wrap — d"),
+        ]), encoding="utf-8")
+        self.assertEqual(WP.prune(keep=2, dry_run=True), 0)
+
+
 class TestPrune(unittest.TestCase):
     def setUp(self):
         # Redirect WAKEUP/ARCHIVE constants to a tmp dir for the test.
