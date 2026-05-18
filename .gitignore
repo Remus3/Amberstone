@@ -37,6 +37,7 @@ data/ratings/last_*.json
 data/coach_trace.jsonl
 data/spend/
 data/vision_state.json
+data/screen_read.json
 data/decisions_pending.json
 data/decisions_log.jsonl
 data/ds_calibration.jsonl

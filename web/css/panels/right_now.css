@@ -95,3 +95,65 @@
 }
 .immediate.is-pregame br { line-height: 1.55; }
 
+/* s240 - on-demand VLM coach. Trigger button + dedicated pill at the
+ * foot of the RIGHT NOW panel. The pill is SEPARATE from .immediate so
+ * an operator-triggered read is not clobbered by the next coach tick.
+ * Lavender accent = the dashboard's primary-action convention (s218/
+ * s239). Pill content >=15px per the viewing-distance font floor. */
+.rn-screenread {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 8px;
+}
+.rn-sr-btn {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #cbb8ff;
+  background: #1b1726;
+  border: 1px solid #a78bfa;
+  border-radius: 5px;
+  padding: 6px 11px;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.rn-sr-btn:hover { background: #2a2140; color: #e6dcff; }
+.rn-sr-btn:disabled,
+.rn-sr-btn.is-reading {
+  cursor: wait;
+  opacity: 0.55;
+  color: #9a8fb5;
+}
+.rn-sr-pill {
+  flex: 1 1 auto;
+  font-size: 15px;
+  line-height: 1.3;
+  color: var(--text);
+  background: #181b22;
+  border-left: 3px solid #a78bfa;
+  border-radius: 4px;
+  padding: 6px 9px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.rn-sr-pill[hidden] { display: none; }
+.rn-sr-pill.is-pending {
+  color: #fbbf24;
+  font-style: italic;
+  border-left-color: #fbbf24;
+}
+.rn-sr-pill.is-ok {
+  color: var(--text);
+  border-left-color: #4ade80;
+}
+.rn-sr-pill.is-error {
+  color: #f0a3a3;
+  border-left-color: #f87171;
+  font-size: 13px;
+}
+

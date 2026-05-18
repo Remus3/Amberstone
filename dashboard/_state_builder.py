@@ -228,6 +228,19 @@ def build_state() -> dict:
     except Exception:
         archetype_nudge = {}
 
+    # s240 - on-demand VLM coach ("SCREEN READ"). Dedicated field,
+    # independent of coach.immediate so an operator-triggered read isn't
+    # clobbered by the next coach tick. Defaults to {} and is wrapped so
+    # a malformed/missing file can never break /api/state (mirrors the
+    # s184 archetype_nudge stamping pattern).
+    screen_read: dict = {}
+    try:
+        sr = read_json("data/screen_read.json")
+        if isinstance(sr, dict):
+            screen_read = sr
+    except Exception:
+        screen_read = {}
+
     return {
         "mode_key": mode_key,
         "coach_source": coach_file,
@@ -253,6 +266,7 @@ def build_state() -> dict:
         "lcu": lcu_snapshot,
         "cs_archetype_pick": cs_archetype_pick,
         "archetype_nudge": archetype_nudge,
+        "screen_read": screen_read,
     }
 
 
