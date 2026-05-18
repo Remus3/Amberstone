@@ -258,7 +258,15 @@ class TestQueueNameMap(unittest.TestCase):
         self.assertEqual(agent._LOBBY_QUEUE_NAMES[420], "Ranked Solo/Duo")
         self.assertEqual(agent._LOBBY_QUEUE_NAMES[450], "ARAM")
         self.assertEqual(agent._LOBBY_QUEUE_NAMES[1700], "Arena")
-        self.assertEqual(agent._LOBBY_QUEUE_NAMES[920], "ARAM Mayhem")
+        # s234 (#89): ARAM Mayhem is queue 2400 (KIWI gameMode, confirmed
+        # s220 / item 87) — NOT 920. 920 is Legend of the Poro King; the
+        # old map labelled 920 "ARAM Mayhem", which is why the lobby
+        # "change mode" picker couldn't switch into Mayhem.
+        self.assertEqual(agent._LOBBY_QUEUE_NAMES[2400], "ARAM Mayhem")
+        self.assertEqual(agent._LOBBY_QUEUE_NAMES[920], "Poro King")
+        # s234 (#89): Brawl (2300) retired from the live rotation (s214) —
+        # the lobby-side name-map residue is removed.
+        self.assertNotIn(2300, agent._LOBBY_QUEUE_NAMES)
 
     def test_unknown_queue_returns_empty(self):
         # Caller uses dict.get(qid, "") — dashboard falls back to "queue N".
