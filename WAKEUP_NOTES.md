@@ -4,6 +4,21 @@
 
 ---
 
+# 2026-05-18 - s238: shared smoothed-rate primitive built + 2 consumers wired (`3f4902d`, pushed)
+
+Operator-directed off the AUTONOMOUS_AUDIT s5 fork (item 4). Picked the LOCKED, zero-open-decision engineering session: CLAUDE.md #90 decision (2), the shared smoothed-rate primitive.
+
+- **`3f4902d` (pushed).** New `core/smoothed_rates.py` - ONE module owning the Laplace/Beta family RC had reimplemented 3x: `laplace_rate(w,g,alpha)=(w+a)/(g+2a)` (Beta == Laplace on pair counts, one primitive serves own + pairwise), `shrink(n,k)=n/(n+k)` (exact original `(n+k)>0 else 0.0` guard), `blend(own,prior,w)=w*own+(1-w)*prior`. Pure/stateless/never-raises. TDD: 25 unit tests incl. guard edges + the exact augment_recommender parity vectors.
+- **Consumer 1 - `augment_recommender.py` refactored onto it, provably byte-identical.** `_own_wr`/`_pair_wr`/the blend-weight + synergy-shrink lines now call the primitive; `DEFAULT_ALPHA/K` sourced from it. Equivalence proof = the unchanged `tests/test_augment_recommender.py` (SmoothingMath/BlendRegime/Synergy, exact numeric pins like 2/6, 3/4, 2/7) staying green. Every caller passes alpha=1.0 so the laplace zero-guard is unreachable for real inputs - the extraction cannot shift output.
+- **Consumer 2 - `routes_pickban.py` synergy mood** (the locked "today only a raw recent-form proxy" example). New `_rank_by_smoothed_wr` helper; both synergy sub-paths (ally-joint + recent-form fallback) drop the SQL `ORDER BY raw-WR ... LIMIT` and rank in Python via the primitive. A 2-0 no longer outranks a proven 14-8. **Invariant kept:** displayed `wr_pct` is the RAW observed rate (operator sees real WR); only the ranking key is smoothed. `HAVING games>=2` floor kept; comfort/limit/new untouched (out of the locked "pick/ban synergy" scope - changing them is creep). +5 s238 characterization tests pinning the behavior change + the raw-wr_pct invariant; reason text gains a "(smoothed)" transparency marker (existing `assertIn` tests still hold).
+- **Consumer 3 (c) NOT wired by design:** the s220 PGR Morello-style 0-100 score is ROADMAP-S3, **not built**. The API is shaped to serve it; there is no consumer to wire. Fold the `noaboa07/Morello` (MIT) reference in when S3 ships - do NOT pre-build it here.
+- **Verified:** full `tests/` **1344 passed / 30 subtests / 0 failed** (s237 1314 + 30 new). ruff + py_compile clean; pre-commit hooks green (py_compile + archmap). RC reloaded clean (pid 11020 -> 20488, last_reload_ok=true). Live: synergy no-allies correctly falls back to comfort (`fell_back=True`) because `rewind_history.db` is stale (newest 2025-12-16, 0 matches in the 60d window - **pre-existing**, CLAUDE.md item 14, NOT a regression: my change only reorders non-empty sets, the selection SQL + dispatcher fallback are untouched); synergy **ally-path** (`allies=234` Viego, 16 joint games) verified end-to-end - real smoothed path, `fell_back=None`, "(smoothed)" marker live, raw `wr_pct` correct.
+- **No ENGINE_VERSION bump / no DS restart** - behavior-preserving extraction + non-engine consumer (ROADMAP item-85 precedent for behavior-neutral work).
+- **Don't-redo:** the primitive + the 2 wired consumers are done + proven; do NOT re-extract or re-derive the math. The augment refactor is byte-identical (locked by the unchanged test_augment_recommender suite). PGR consumer (c) is correctly deferred to S3 - not incomplete.
+- **NEXT:** back to the AUTONOMOUS_AUDIT s5 order - product-level competitive opportunity #2 (per-user pick-ban foregrounding) or #3 (on-demand VLM coach), operator-directed; OR the autonomous-safe 4.C `coaches/adaptation_hint.py` (1602) split (`agents/supervisor.py` is FROZEN, `effects.py` is engine reviewed-only-never-autonomous). Optional pick/ban data enrichment: the one-off 101.qq.com Game-PC CDN capture (ROADMAP 🔵). DS conditional arc stays operator-CLOSED (s232).
+
+---
+
 # 2026-05-18 - s237: builders.py payload-boundary split + _enrich_from_lcu coverage (`2d1993c`, pushed)
 
 Executed the s236 next-priority order (AUTONOMOUS_AUDIT s5): 4.E then 4.C, paired so the split is provably behavior-preserving.
@@ -25,29 +40,3 @@ Two scoped follow-ups off the `9bba79a` AUTONOMOUS_AUDIT next-priority order. Al
 - **Key fact for next-session-me:** the true spec-triplet baseline was **33 pre-existing failures**, NOT "0" - the WAKEUP/spec "0 failed" was a `tail`-masked / tests-only number. agent3-alone went **17 -> 356 passed/0 failed**; SLICE A proved the polluter is `tests/`-only (daemon_slayer innocent). CI never runs `agents/agent3_testing` so it's unaffected.
 - **Process note (don't repeat):** I mishandled full-triplet verification - launched a 2nd triplet without cleanly stopping the 1st (Git-Bash mangled `taskkill /F`), two ~3900-test runs starved each other. Per operator (option 2) the agent3 commit shipped on the deterministic agent3-alone + root-cause proof, NOT a clean full triplet. If you want the clean triplet, run it ONCE (no concurrency); expect ~0 failures.
 - **NEXT (AUTONOMOUS_AUDIT s5 order):** `builders.py` split (4.C lowest-risk) + `_enrich_from_lcu` test coverage (4.E). Phase 4(d) already shipped `aaa9c5a` (pre-this-session). DS conditional arc stays operator-CLOSED.
-
----
-
-# 2026-05-18 - Autonomous audit+refactor+research session shipped `9bba79a` (CI green) - executed the PIN directive
-
-Executed WAKEUP Part-2 (the pre-authorized autonomous mega-session). Ran a competitor-research subagent + a code-health-audit subagent in parallel, implemented the highest-leverage findings, fully tested, shipped, CI verified green. Full deliverable: **`C:\Users\Administrator\Desktop\AUTONOMOUS_AUDIT_2026-05-18.md`** (research + all 15 audit findings + staged execution specs + next-session priority order) - read it for the full picture; this is the condensed hand-off.
-
-**Shipped `9bba79a` (pushed, CI run 26021518544 = success):**
-- **#1 (HIGH, real live bug):** the in-game Build Chooser threw `ReferenceError` every render - `item_build.js:361` called `_csDiffItemIds` which it never imported (`champ_select.js` defined but did not export it). Moved the helper to shared `web/js/lib/items_index.js` as `diffVariantItemIds` (avoids a new panel->panel coupling); wired the live caller; cleaned the now-permanently-dead `_csLoadout` typeof guard in item_build.js.
-- **#2 (dead code):** removed the s208-carried **558-LOC** orphan cluster from `champ_select.js` (3153 -> 2595) - `_csLoadout`/`_csNormalizeMode`/`_csSetStatus`/`_csDiffItemIds`/`_csRenderBuildList`/`_csMarkSelectedRow`/`_csOnBuildRowClick`/`_csApplyLoadout`/`_csOnChampionOrModeChange`/full `_srDraft*`. All zero-caller in the live module (only dead `dashboard.js` referenced them). Audit-gated atomic splice (guards assert exact boundaries). `_csChampName`/`_csChampImg` confirmed LIVE and preserved.
-- **#4 (HIGH, robustness):** `lessons_receiver._fetch_bridge` did a bare urlopen+json.loads; any bridge outage/malformed response crashed `/process-incoming-lessons`. Now fail-soft to `[]` (callers already treat `[]` as "no lessons").
-- **#5 (engine drift):** `ability_dps._mitigation_factor` carried a byte-identical copy of `dps._armor_factor`'s resist curve - one-sided edit would silently desync DPS/ability-DPS/burst. Folded onto the single source of truth + 7-test parity drift-guard. **Provably behavior-preserving** (full DS value-pinning suite stayed green) -> deliberately **NO ENGINE_VERSION bump / NO DS restart** (no-op refactor; running :8893 math identical; matches ROADMAP-85 precedent).
-- **only_item_ids carry-branch:** `rank_for` (carry/dps) silently dropped the candidate whitelist all 5 sibling rankers thread; ADC build-order plan restricted to a curated pool no-oped. Threaded + passed via `rank_for_primary_archetype` carry fall-through. Client-only (server `/rank` already supported `only`).
-- **#10:** `bridge_monitor.py:86` bare `try:/except: pass` one-liner -> formatted + debug log. Other 251 broad-excepts reviewed: mostly deliberate documented defensive boundaries, intentionally left (no-over-engineering; audit said "not a blanket fix").
-- **+20 regression tests** (7 mitigation parity / 7 lessons_receiver incl. coverage-gap #13 / 6 only_item_ids). **Full suite 3516 -> 3536 passed, 0 failed.** ruff + py_compile clean. pre-commit hooks green.
-
-**STAGED, NOT done (deliberate scoped-grant judgment - precise specs in the Desktop .md sections 4.A-4.E):**
-- **#3 dead `dashboard.js` (8531 LOC):** the audit's "just move it, lowest effort" was WRONG - it has real test/agent coupling (`tests/test_champion_aliases.py:85` dead-mirror, `agent3_testing` round tests, `agent4_coach_mentor/ui_applier.py:33` allowlist, `data/api_surface.csv`). Quarantining blind would break tests. 7-step spec in 4.A. (Classic `feedback_audit_proposals_are_intent.md`.)
-- **Phase 4(d) `unique_passive_key` exposure:** pre-approved + seam confirmed trivial (`rank.py:337` `cand_key` already computed, only surfaced on dead-collision) but it is ~10 files across all 6 ranker modules + client + planner + ENGINE bump + DS restart. Risk = mechanical breadth at context tail, not design. Staged with exact spec (4.B).
-- Oversized-module refactor program #6-#9 (`effects.py` 5692 / `builders.py` 1428 / `supervisor.py` 2312 / `adaptation_hint.py` 1602) - 4.C, engine one is reviewed-only-never-autonomous.
-
-**Competitive research (full in Desktop .md s1):** RC's moat = first-principles item math (every competitor ranks by winrate correlation) + per-user model + no-bloat architecture. Top opportunities: (1) surface the math "why" on PGR/champ-select [Phase 4(d) serves this], (2) foreground per-user pick-ban, (3) on-demand screen-aware VLM coach (infra owned), (4) Arena/Mayhem augment recommender as a marketed pillar.
-
-**Next-session priority (from the Desktop .md s5):** Phase 4(d) -> dashboard.js quarantine -> builders.py split + `_enrich_from_lcu` coverage -> product opportunities. DS conditional arc stays operator-CLOSED (not reopened).
-
-**Discipline:** no frozen-file edits were needed (moon_proxy.py json.loads flagged, untouched - spirit of frozen rule held). Every change behavior-preserving or additive + tested. ASCII-only honored.
