@@ -15,6 +15,7 @@ Two entry points (the CLI wrappers live in tools/):
 from __future__ import annotations
 
 import json
+import logging
 import os
 import platform
 import re
@@ -22,6 +23,7 @@ import socket
 import ssl
 import sys
 import time
+import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -51,15 +53,35 @@ _SSL_CTX = ssl.create_default_context()
 _SSL_CTX.check_hostname = False
 _SSL_CTX.verify_mode = ssl.CERT_NONE
 
+logger = logging.getLogger("rc.core.lessons_receiver")
+
 
 # ---------------------------------------------------------------------------
 # Bridge fetch
 # ---------------------------------------------------------------------------
 
 def _fetch_bridge(since: float) -> list[dict]:
+    """Query the bridge log. Returns [] on any network/parse failure.
+
+    Callers (``pull`` / ``_find_lesson_envelope``) treat [] as "no
+    lessons", so a bridge outage degrades gracefully instead of
+    crashing the ``/process-incoming-lessons`` skill. Mirrors the
+    fail-soft pattern in ``core.daemon_slayer_client._post_json``.
+    """
     url = f"{LEGION_BRIDGE}?since={since}&limit=100"
-    with urllib.request.urlopen(url, timeout=TIMEOUT, context=_SSL_CTX) as r:
-        data = json.loads(r.read())
+    try:
+        with urllib.request.urlopen(url, timeout=TIMEOUT, context=_SSL_CTX) as r:
+            data = json.loads(r.read())
+    except (urllib.error.URLError, socket.timeout, TimeoutError,
+            ConnectionError, OSError, ssl.SSLError) as e:
+        logger.debug("bridge unreachable (%s): %s", url, e)
+        return []
+    except (json.JSONDecodeError, ValueError) as e:
+        logger.warning("bridge returned malformed JSON: %s", e)
+        return []
+    if not isinstance(data, dict):
+        logger.warning("bridge payload not a dict: %s", type(data).__name__)
+        return []
     return data.get("messages") or []
 
 

@@ -50,6 +50,26 @@ export function _splitItemList(str, splitArrow) {
   return String(str).split(sep).map(s => s.trim()).filter(Boolean);
 }
 
+// Build the set of item_ids that appear in some build variants but NOT
+// all - the "differing" items that distinguish one build from another.
+// Used by the in-game Build Chooser + champ-select renderers to mark
+// items with .cs-build-item--diff so the eye lands on exactly what
+// trades off between variants. Returns an empty Set when there's fewer
+// than two variants (nothing to diff). Shared from here so item_build.js
+// and champ_select.js don't cross-import each other.
+export function diffVariantItemIds(variants) {
+  const out = new Set();
+  if (!variants || variants.length < 2) return out;
+  const sets = variants.map((v) =>
+    new Set((v.item_ids || []).slice(0, 6).map(String)));
+  const union = new Set();
+  sets.forEach((s) => s.forEach((id) => union.add(id)));
+  union.forEach((id) => {
+    if (!sets.every((s) => s.has(id))) out.add(id);
+  });
+  return out;
+}
+
 // DDragon name-rename overrides: champions whose live display name doesn't
 // normalize cleanly to their DDragon file. The champions_index.json byName
 // map handles apostrophes/spaces (Kai'Sa → kaisa → 'Kaisa'), but a handful

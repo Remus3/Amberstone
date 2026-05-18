@@ -69,6 +69,7 @@ from .abilities import (
     DamageBlock,
 )
 from .data_loader import DataSnapshot
+from .dps import _armor_factor
 from .effects import (
     ITEM_EFFECTS,
     collect_effects,
@@ -608,24 +609,24 @@ def rank_at_level(
 def _mitigation_factor(damage_type: str | None, target_armor: float, target_mr: float) -> float:
     """League's mitigation factor for a damage block.
 
-    Mirrors ``dps._armor_factor`` for both resists. MIXED splits 50/50
-    armor/MR (rare; mostly utility abilities). TRUE bypasses all resists.
-    Unknown / None defaults to MAGIC routing - most multi-block abilities
-    without a form-level damage_type are magical.
+    Delegates to the single source of truth ``dps._armor_factor`` for
+    both resists (League's resist->multiplier curve is identical for
+    armor and MR). MIXED splits 50/50 armor/MR (rare; mostly utility
+    abilities). TRUE bypasses all resists. Unknown / None defaults to
+    MAGIC routing - most multi-block abilities without a form-level
+    damage_type are magical. Was a local copy of the formula until the
+    2026-05-18 audit folded it onto _armor_factor to kill the drift
+    risk (a one-sided edit would silently desync the DPS / ability-DPS
+    / burst scorers).
     """
-    def _resist_factor(resist: float) -> float:
-        if resist >= 0:
-            return 100.0 / (100.0 + resist)
-        return 2.0 - 100.0 / (100.0 - resist)
-
     dt = (damage_type or "MAGIC").upper()
     if dt == "TRUE":
         return 1.0
     if dt == "PHYSICAL":
-        return _resist_factor(target_armor)
+        return _armor_factor(target_armor)
     if dt == "MIXED":
-        return 0.5 * _resist_factor(target_armor) + 0.5 * _resist_factor(target_mr)
-    return _resist_factor(target_mr)  # MAGIC + fallback
+        return 0.5 * _armor_factor(target_armor) + 0.5 * _armor_factor(target_mr)
+    return _armor_factor(target_mr)  # MAGIC + fallback
 
 
 def _evaluate_block(
