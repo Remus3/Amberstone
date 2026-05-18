@@ -120,6 +120,7 @@ def rank_for(
     target_bonus_hp: float = 0.0,
     top: int = 8,
     sort_by: str = "delta",
+    only_item_ids: Optional[Iterable[str]] = None,
     augments: Optional[Iterable[str]] = None,
     filter_shared_uniques: bool = True,
     timeout: float = DEFAULT_TIMEOUT,
@@ -140,6 +141,12 @@ def rank_for(
     target-conditional damage amps (LDR Giant Slayer). Both default
     0.0 - engine treats 0 as "no signal" and procs gracefully no-op,
     so pre-batch callers see identical behavior.
+
+    ``only_item_ids`` whitelists the candidate pool (same semantics as
+    the tank/bruiser/mage/assassin/enchanter siblings). Before this was
+    added the carry/dps branch silently ignored the whitelist, so an
+    ADC build-order plan restricted to a curated pool would no-op the
+    restriction - it now threads through to the server's ``only`` field.
     """
     body = {
         "champion": champion,
@@ -154,6 +161,8 @@ def rank_for(
         "sort": sort_by,
         "filter_shared_uniques": bool(filter_shared_uniques),
     }
+    if only_item_ids is not None:
+        body["only"] = [str(i) for i in only_item_ids if i]
     if augments:
         body["augments"] = [str(a) for a in augments if a]
     data = _post_json("/rank", body, timeout=timeout)
@@ -1035,6 +1044,7 @@ def rank_for_primary_archetype(
         target_armor=target_armor, target_mr=target_mr,
         target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
         top=top, sort_by=sort_by,
+        only_item_ids=only_item_ids,
         augments=augments,
         filter_shared_uniques=filter_shared_uniques,
         timeout=timeout,
