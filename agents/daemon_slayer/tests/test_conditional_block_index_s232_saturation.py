@@ -253,10 +253,12 @@ class EngineVersionUnchangedS232Tests(unittest.TestCase):
     def test_engine_version_unchanged(self) -> None:
         from agents import daemon_slayer
 
-        # s232 is a saturation-proof + tooling + docs commit ONLY - no
-        # registry/engine behavior changed, so ENGINE stays at s231's
-        # 1.3.0 (NOT bumped - there is nothing to version).
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.3.0")
+        # s232 itself was a saturation-proof + tooling + docs commit ONLY
+        # (no registry/engine change of its own). This pin tracks the
+        # live ENGINE_VERSION stamp, which later milestones legitimately
+        # bump - it is 1.4.0 as of Phase 4(d) (candidate
+        # unique_passive_key exposure).
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.4.0")
 
 
 if __name__ == "__main__":
