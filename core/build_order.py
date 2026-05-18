@@ -96,6 +96,11 @@ class BuildStep:
     # was excluded for a family reason at this slot.
     excluded_family: str = ""
     excluded_example: str = ""
+    # Phase 4(d): the family the CHOSEN item at this slot locks in for
+    # the rest of the build (engine-supplied unique_passive_key, always
+    # populated). Empty when the pick has no unique passive. Positive
+    # counterpart to ``excluded_family`` above.
+    locked_family: str = ""
 
     def to_dict(self) -> dict:
         return {
@@ -108,6 +113,7 @@ class BuildStep:
             "unit": self.unit,
             "excluded_family": self.excluded_family,
             "excluded_example": self.excluded_example,
+            "locked_family": self.locked_family,
         }
 
 
@@ -343,6 +349,7 @@ def plan_build_order(
             unit=_UNIT_SUFFIX.get(scorer, "delta"),
             excluded_family=excl_family,
             excluded_example=excl_example,
+            locked_family=str(chosen.get("unique_passive_key") or ""),
         )
         result.order.append(step)
         accumulated.append(item_id)

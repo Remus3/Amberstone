@@ -296,6 +296,67 @@ class SharedUniqueFilterTests(unittest.TestCase):
             self.assertIsInstance(d["dead_unique_key"], str)
 
 
+class Phase4dUniquePassiveKeyTests(unittest.TestCase):
+    """Phase 4(d) (2026-05-18) - every ranked row carries the candidate's
+    OWN ``unique_passive_key``, populated unconditionally (not gated on a
+    dead collision the way ``dead_unique_key`` is). This is the positive
+    "this item locks the <family>" signal the build-order card needs.
+    """
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_key_present_collision_independent(self) -> None:
+        # Naked Aatrox: no current items, so Trinity Force does NOT collide
+        # with anything. Pre-4(d) its only family signal (dead_unique_key)
+        # would be "" here; the new field must still report "spellblade".
+        r = rank_items(
+            self.snap, "Aatrox", level=11, target_armor=80, top_n=200,
+        )
+        tf = [ri for ri in r.ranked if ri.item_id == "3078"]
+        self.assertEqual(len(tf), 1, "Trinity Force should rank for Aatrox")
+        self.assertEqual(tf[0].unique_passive_key, "spellblade")
+        self.assertFalse(tf[0].shares_dead_unique)
+        self.assertEqual(tf[0].dead_unique_key, "",
+                          "dead_unique_key stays collision-gated; the new "
+                          "field is the collision-independent one")
+
+    def test_every_row_key_is_str_and_some_populated(self) -> None:
+        r = rank_items(
+            self.snap, "Aatrox", level=11, target_armor=80, top_n=60,
+        )
+        for ri in r.ranked:
+            self.assertIsInstance(ri.unique_passive_key, str)
+        self.assertTrue(
+            any(ri.unique_passive_key for ri in r.ranked),
+            "at least one ranked item must expose a unique-passive family",
+        )
+
+    def test_collision_row_keeps_its_own_key(self) -> None:
+        # Trinity already owned + filter off: ER is surfaced flagged. Its
+        # own family key must still be present (proves the field is the
+        # candidate's own, not a copy of the collision-gated dead key).
+        r = rank_items(
+            self.snap, "Aatrox", level=11, target_armor=80,
+            current_item_ids=["3078"], filter_shared_uniques=False,
+            top_n=200,
+        )
+        er = [ri for ri in r.ranked if ri.item_id == "3508"]
+        self.assertEqual(len(er), 1)
+        self.assertTrue(er[0].shares_dead_unique)
+        self.assertEqual(er[0].unique_passive_key, "spellblade")
+        self.assertEqual(er[0].dead_unique_key, "spellblade")
+
+    def test_to_dict_includes_key(self) -> None:
+        r = rank_items(
+            self.snap, "Aatrox", level=11, target_armor=80, top_n=5,
+        )
+        for ri in r.ranked:
+            d = ri.to_dict()
+            self.assertIn("unique_passive_key", d)
+            self.assertIsInstance(d["unique_passive_key"], str)
+
+
 class ModeMapIdTests(unittest.TestCase):
     def test_mode_table_documented_modes_present(self) -> None:
         for m in ("SR", "ARAM", "ARENA"):
