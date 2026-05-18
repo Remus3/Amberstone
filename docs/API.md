@@ -17,7 +17,7 @@ Pydantic schemas: `dashboard/api_schema.py` (outer shapes) · `core/coaching_pay
 | `/api/health/peer` | Peer health index (all known peers) | - |
 | `/api/health/peer/<node>` | Single peer health record (`gamepc`, `peer`) | `PeerHealth` |
 | `/api/ui-version` | SHA-1 hash of static asset mtimes (dashboard hot-reload trigger) | `{"v": str}` |
-| `/api/asset-stamp` | Max mtime across `index.html`, `dashboard.css`, `dashboard.js` | `{"mtime": float}` |
+| `/api/asset-stamp` | Max mtime across `index.html`, `dashboard.css`, `main.js` | `{"mtime": float}` |
 | `/api/cost` | Cost tracker state + daily spend | - |
 | `/api/coach/trace` | Coach execution trace (last N calls) | - |
 | `/api/coach/state` | Coach active/disabled state per mode | - |
