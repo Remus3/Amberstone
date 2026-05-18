@@ -317,7 +317,7 @@ def _serve_asset_stamp(h) -> None:
     # changes and refresh without the user alt-tabbing to hit Ctrl+F5.
     try:
         root = APP_DIR / "web"
-        files = ["index.html", "css/dashboard.css", "js/dashboard.js"]
+        files = ["index.html", "css/dashboard.css", "js/main.js"]
         stamp = max(os.path.getmtime(root / f) for f in files
                     if (root / f).exists())
         h._send(200, json.dumps({"mtime": stamp}).encode(),

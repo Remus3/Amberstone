@@ -92,7 +92,7 @@ def mirror_live_stats(payload: dict, state: dict) -> None:
 
     The dashboard's WS push channel receives the full coaching JSON; its
     JS reads `p.cs / p.kda / p.level / p.gold / p.game_time_s` for the
-    top-bar pills (web/js/dashboard.js:2647-2675). Without these in the
+    top-bar pills (rendered by the live dashboard JS). Without these in the
     per-mode coaching JSON, the `typeof p.X === "number"` guards hide
     the pills (-- symptom; s32 finding).
 

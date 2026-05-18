@@ -257,7 +257,7 @@
 
 /* Fleet Health sub-page (2026-05-03): cross-Claude bridge_watcher
  * peer status cards. Read-only view of /api/health/peer; render is
- * idempotent (sig change-detection in dashboard.js). */
+ * idempotent (sig change-detection in the dashboard JS). */
 .fleet-list {
   list-style: none;
   margin: 0;

@@ -62,7 +62,7 @@
 }
 
 /* 3.3 - sticky header that compresses on scroll. JS toggles
- * <header data-compressed="1"> at scroll-Y > 200 (see dashboard.js). */
+ * <header data-compressed="1"> at scroll-Y > 200 (see the dashboard JS). */
 header[data-compressed="1"] {
   height: 44px !important;
   min-height: 44px;
