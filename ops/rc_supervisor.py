@@ -356,6 +356,26 @@ class _Phase3Watcher:
     _RESTART_COOLDOWN_S = 30.0
     _SCHED_TASK_NAME = "RC-Phase3-Supervisor"
 
+    # Stale-code detection (2026-05-18). `python -m agents.supervisor`
+    # imports its code once at process start and has no restart_trigger
+    # equivalent — a deploy that doesn't stall its heartbeat leaves it
+    # running old code indefinitely (2026-05-17 incident: a ~27h process
+    # never picked up keystone 3eb2e2d, silently broadcasting un-mirrored
+    # WS health). When the process is otherwise healthy but its
+    # `started_at` predates the newest mtime in its import chain, restart
+    # it via the SAME cooldown + CircuitBreaker + schtasks path. The
+    # grace margin absorbs the import→lockfile-write gap + clock skew.
+    # Self-limiting: the restarted process's started_at moves past the
+    # mtimes (one restart per deploy); the budget bounds any pathology.
+    _STALE_CODE_GRACE_S = 5.0
+    _WATCHED_CODE_FILES = (
+        "dashboard/_state_builder.py",
+        "dashboard/_liveclient.py",
+        "dashboard/_cs_retention.py",
+        "core/queue_modes.py",
+    )
+    _WATCHED_CODE_DIRS = ("agents",)
+
     def __init__(
         self,
         project_root: Path,
@@ -405,13 +425,63 @@ class _Phase3Watcher:
         except (OSError, json.JSONDecodeError):
             return None
 
+    @staticmethod
+    def _started_at_epoch(data: Optional[Dict[str, Any]]) -> Optional[float]:
+        """Epoch seconds for the lockfile's ``started_at``, or None when
+        absent/unparseable. Absent = an old supervisor predating the
+        2026-05-18 heartbeat change — the stale-code check then no-ops
+        (it will gain the field the first time it restarts for any
+        reason), so this is backward-compatible by construction."""
+        if not isinstance(data, dict):
+            return None
+        s = data.get("started_at")
+        if not s:
+            return None
+        try:
+            dt = datetime.fromisoformat(str(s))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.timestamp()
+        except (ValueError, TypeError):
+            return None
+
+    def _newest_code_mtime(self) -> Optional[float]:
+        """Newest mtime across the Phase-3 import chain: every ``*.py``
+        under the watched package dirs plus the explicit cross-package
+        files. Returns None if nothing is found / all stats fail (caller
+        treats None as 'cannot determine' → skip, never false-restart)."""
+        newest: Optional[float] = None
+        try:
+            for rel in self._WATCHED_CODE_FILES:
+                p = self._project_root / rel
+                try:
+                    m = p.stat().st_mtime
+                except OSError:
+                    continue
+                if newest is None or m > newest:
+                    newest = m
+            for rel in self._WATCHED_CODE_DIRS:
+                base = self._project_root / rel
+                if not base.is_dir():
+                    continue
+                for p in base.rglob("*.py"):
+                    try:
+                        m = p.stat().st_mtime
+                    except OSError:
+                        continue
+                    if newest is None or m > newest:
+                        newest = m
+        except Exception:  # noqa: BLE001 — scan must never raise
+            return None
+        return newest
+
     def check(self) -> Dict[str, Any]:
         """Inspect Phase 3 health; restart if dead/stale + budget allows.
 
         Result keys:
           state: "healthy" | "stale_heartbeat" | "dead_pid" | "missing_lockfile"
-                  | "restarting" | "restart_invocation_failed" | "cooldown"
-                  | "restart_blocked"
+                  | "stale_code" | "restarting" | "restart_invocation_failed"
+                  | "cooldown" | "restart_blocked"
           pid, heartbeat_age_s, acted: bool, plus trigger / cooldown detail
         """
         data = self._read_lockfile()
@@ -440,6 +510,24 @@ class _Phase3Watcher:
         else:
             state = "healthy"
             unhealthy = False
+
+        # Stale-code upgrade: an otherwise-healthy process (alive +
+        # fresh heartbeat) that imported its code before a later deploy
+        # touched its import chain. Reuses the same cooldown + budget +
+        # restarter path below. Fully guarded — any failure to determine
+        # started_at or scan mtimes SKIPS the check (never false-restart);
+        # absent started_at = an old supervisor, also skipped.
+        if not unhealthy:
+            try:
+                started_epoch = self._started_at_epoch(data)
+                if started_epoch is not None:
+                    newest = self._newest_code_mtime()
+                    if (newest is not None
+                            and newest > started_epoch + self._STALE_CODE_GRACE_S):
+                        state = "stale_code"
+                        unhealthy = True
+            except Exception:  # noqa: BLE001 — never crash the watcher
+                pass
 
         self._last_pid = pid or None
         self._last_age_s = age_s
@@ -486,6 +574,7 @@ class _Phase3Watcher:
                                      if self._last_age_s is not None else None),
             "last_acted_at":        self._last_acted_at,
             "stale_threshold_s":    self._HEARTBEAT_STALE_S,
+            "stale_code_grace_s":   self._STALE_CODE_GRACE_S,
             "restart_cooldown_s":   self._RESTART_COOLDOWN_S,
             "scheduled_task":       self._SCHED_TASK_NAME,
             "budget":               self._budget.to_dict(),
