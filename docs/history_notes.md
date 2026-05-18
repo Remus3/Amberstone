@@ -6,6 +6,20 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# 2026-05-18 (done) - Mayhem augment recommender SHIPPED (10aa944, pushed)
+
+CLAUDE #88 plan executed end-to-end (`Desktop/MAYHEM_AUGMENT_RECOMMENDER_PLAN_2026-05-17.md`). #88 flipped ✅ in CLAUDE.md + ROADMAP.
+
+- **Task-1 gate (DON'T re-audit):** `match_history.db` = 13 augment-bearing matches, **ALL ARAM Mayhem (KIWI/2400), 0 Arena**. IDs = int `participant.stats.playerAugment{1..6}` (0=empty); win = `stats.win`; tracked via `raw_data.tracked_puuid`→participantIdentities. Substrate = `raw_data.lcu_match_detail` (NOT a stored `enriched` - that's a read-time `_enrich_from_lcu` transform). n_own≈0-2 → external prior dominates **by design** (Option B working, not a bug).
+- **Shipped:** `core/augment_external_source.py` (Overlay App E Mayhem WR + cherry-augments.json meta cache; patch-pinned; degrade-on-outage; 199/199 ext↔cherry id reconcile; `_http_get` monkeypatch-able) · `core/augment_recommender.py` (Laplace `(w+α)/(g+2α)` + `n/(n+5)` pairwise synergy + §4 blend `w=n_own/(n_own+K)`; KIWI/CHERRY-filtered own scan; **row-count cache key = WAL-safe**, bug found+fixed via test) · `coaches/arena_coach.py` (`_augment_recommendation` + 2 splices in `_handle_augment_select`; parallel to Haiku, persists on Haiku outage) · `web/js/panels/item_build.js` (ranking+confidence in existing augments-pill tooltip; no reflow, idempotent). 33 new + 271 coach-sweep + 77 broader tests green; ruff clean; RC reloaded pid 7632 reload_ok=true.
+- **Known/expected (DON'T "fix"):** Overlay App E `arena_augments` sibling = 0 usable rows → graceful neutral degrade. In scope: §4 locks Mayhem primary, 0 Arena own-data. Mayhem path fully works.
+- **NEXT (operator-gated, not provable offline):** live Mayhem augment-select cross-check (OCR→rank vs pick made). Precondition: confirm League WindowMode in-client (fullscreen-lockup note). Recommender live in pid 7632; tooltip auto-serves via ADR-008.
+- **#90 shared-primitive:** still its own scoped session; its Task-1 gate is now satisfied by this ship - `core/augment_recommender.py`'s Laplace/shrinkage is the concrete impl to generalize. Don't re-derive the augment data audit.
+
+_(Older sessions archived to `docs/history_notes.md`.)_
+
+---
+
 # 2026-05-17 - `open item research.txt` liftability-triage integrated (docs only, no code)
 
 **Operator instruction:** implement the referenced multi-agent research methodology, run it on `Desktop/open item research.txt` (~90 links), triage NOW/FUTURE/CLOSED, "go over what to keep" → 3 decisions locked → integrate.
@@ -4468,6 +4482,23 @@ Iteration 5 options: (a) **combo_sequence registry audit** (assassin burst combo
 
 ---
 
+# 2026-05-17 (done) - #89 lobby change-mode FIXED + champ-select 920→2400 label sweep (c3a1e23, pushed)
+
+ROADMAP #89 shipped off the s234 recon (recon was accurate; one staleness noted).
+
+- **Mayhem 920→2400** (core bug - 920 = Poro King, Mayhem = 2400 KIWI): both pickers (index.html), agent `_LOBBY_QUEUE_NAMES`, `LV_QUEUE_TIPS`. Auto-serves from Legion via ADR-008 asset hash - no RC restart.
+- **Silent-failure fix:** Home Find-Match picker swallowed every LCU result; both pickers now surface failures via `lcuPollResult`/`_lvQueueChangeError`. **Bespoke Arena/Mayhem create payloads deliberately NOT fabricated** (recon: must come from live capture) - the error-surfacing is what makes that one-shot capture possible.
+- **Brawl 2300** dropped from agent lobby name-map (retired s214).
+- **Arena 8×2 → 6×3:** LV tip, allyOpts cellCount, `_csvArenaPaneHtml` duo→trio, `_csvRenderEnemiesArena` slices (3→5 teams, 2→3 cells), 2 CSS grids.
+- **Champ-select 920→2400 label sweep** (spawn-task follow-up, same commit): `_csvResolveRole` MAYHEM badge, `_csvQueueLabel`/`modeMap`, dev.js `_replayQueueLabel`; classifiers gain `q===2400`. **`cs.is_aram` rendering path untouched - item 87 preserved.**
+
+**Don't re-investigate:** recon's "practice not special-cased in lobby-view dropdown" was stale - it already was; real defect = swallowed errors + 920 id (both fixed). **dashboard.js:5055** has the same `_replayQueueLabel` 920 bug but is confirmed-dead legacy - left alone.
+
+**Verified:** py_compile + node --check clean; phase_b / snapshot / view_router / cs_retention suites green.
+**Operator-gated NEXT (not provable offline):** live Practice/Mayhem/Arena lobby creation + Arena 6×3 visual + Mayhem-2400 switch. Agent name-map change (cosmetic label + Brawl) needs a Game-PC `C:\RC-Agent\` redeploy (offer bridge dispatch) - but the core Mayhem fix is JS/served-from-Legion, no redeploy needed. Precondition: confirm League WindowMode in-client (prior session's fullscreen-lockup note).
+
+---
+
 # ✅ RESOLVED 2026-05-17 - champ-select wrong for ARAM / ARAM-Mayhem / Arena
 
 **Fixed `3eb2e2d`, proven live.** Root cause was a flat **queue-ID gap**, NOT
@@ -5132,20 +5163,3 @@ The small-lift entries (Vladimir W +1.8%, Sion R +4.8%, Irelia W +6%) are utilit
 ## Architectural pattern lock-in (continued from s197)
 
 Fourteenth consecutive override / proc-shape modeling improvement on the same template (s185 max_priority / s186 combo / s187 form / s188 per-AA on-hit / s189 Spellblade / s190 Lightshield / s191 block_index / s192 token-variant / s193 channels / s194 calibration / s195 multi-hit/charge/recast / s196 extended multi-hit/condition-amp / s197 assassin/fighter resource + utility / s198 bruiser/jungler/utility/marksman broadening). Seventh pure-data batch in the channel/total/charge family. Pattern remains rock-solid for 10-25 entry batches; the rate-limiting step continues to be operator triage of skip-list growth (14 skips this batch - manageable). Next genuinely-blocking lifts are token-variant for multi-stage Q chains (Aatrox Q1/Q2/Q3) and form-swap (Hwei per-form, KSante All Out, Ambessa) - both have 2+ candidates accumulated and warrant schema design. Conditional target-state schema lift now has 5+ candidates queued (Zoe sleep, Lux Illumination, DrMundo E missing-HP, Evelynn Q charm, Vayne E wall-stun) - ready when operator commits.
-
----
-
-# 2026-05-17 (done) - #89 lobby change-mode FIXED + champ-select 920→2400 label sweep (c3a1e23, pushed)
-
-ROADMAP #89 shipped off the s234 recon (recon was accurate; one staleness noted).
-
-- **Mayhem 920→2400** (core bug - 920 = Poro King, Mayhem = 2400 KIWI): both pickers (index.html), agent `_LOBBY_QUEUE_NAMES`, `LV_QUEUE_TIPS`. Auto-serves from Legion via ADR-008 asset hash - no RC restart.
-- **Silent-failure fix:** Home Find-Match picker swallowed every LCU result; both pickers now surface failures via `lcuPollResult`/`_lvQueueChangeError`. **Bespoke Arena/Mayhem create payloads deliberately NOT fabricated** (recon: must come from live capture) - the error-surfacing is what makes that one-shot capture possible.
-- **Brawl 2300** dropped from agent lobby name-map (retired s214).
-- **Arena 8×2 → 6×3:** LV tip, allyOpts cellCount, `_csvArenaPaneHtml` duo→trio, `_csvRenderEnemiesArena` slices (3→5 teams, 2→3 cells), 2 CSS grids.
-- **Champ-select 920→2400 label sweep** (spawn-task follow-up, same commit): `_csvResolveRole` MAYHEM badge, `_csvQueueLabel`/`modeMap`, dev.js `_replayQueueLabel`; classifiers gain `q===2400`. **`cs.is_aram` rendering path untouched - item 87 preserved.**
-
-**Don't re-investigate:** recon's "practice not special-cased in lobby-view dropdown" was stale - it already was; real defect = swallowed errors + 920 id (both fixed). **dashboard.js:5055** has the same `_replayQueueLabel` 920 bug but is confirmed-dead legacy - left alone.
-
-**Verified:** py_compile + node --check clean; phase_b / snapshot / view_router / cs_retention suites green.
-**Operator-gated NEXT (not provable offline):** live Practice/Mayhem/Arena lobby creation + Arena 6×3 visual + Mayhem-2400 switch. Agent name-map change (cosmetic label + Brawl) needs a Game-PC `C:\RC-Agent\` redeploy (offer bridge dispatch) - but the core Mayhem fix is JS/served-from-Legion, no redeploy needed. Precondition: confirm League WindowMode in-client (prior session's fullscreen-lockup note).
