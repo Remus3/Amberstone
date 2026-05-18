@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-05-18 (done) — Mayhem augment recommender SHIPPED (10aa944, pushed)
+
+CLAUDE #88 plan executed end-to-end (`Desktop/MAYHEM_AUGMENT_RECOMMENDER_PLAN_2026-05-17.md`). #88 flipped ✅ in CLAUDE.md + ROADMAP.
+
+- **Task-1 gate (DON'T re-audit):** `match_history.db` = 13 augment-bearing matches, **ALL ARAM Mayhem (KIWI/2400), 0 Arena**. IDs = int `participant.stats.playerAugment{1..6}` (0=empty); win = `stats.win`; tracked via `raw_data.tracked_puuid`→participantIdentities. Substrate = `raw_data.lcu_match_detail` (NOT a stored `enriched` — that's a read-time `_enrich_from_lcu` transform). n_own≈0–2 → external prior dominates **by design** (Option B working, not a bug).
+- **Shipped:** `core/augment_external_source.py` (Overlay App E Mayhem WR + cherry-augments.json meta cache; patch-pinned; degrade-on-outage; 199/199 ext↔cherry id reconcile; `_http_get` monkeypatch-able) · `core/augment_recommender.py` (Laplace `(w+α)/(g+2α)` + `n/(n+5)` pairwise synergy + §4 blend `w=n_own/(n_own+K)`; KIWI/CHERRY-filtered own scan; **row-count cache key = WAL-safe**, bug found+fixed via test) · `coaches/arena_coach.py` (`_augment_recommendation` + 2 splices in `_handle_augment_select`; parallel to Haiku, persists on Haiku outage) · `web/js/panels/item_build.js` (ranking+confidence in existing augments-pill tooltip; no reflow, idempotent). 33 new + 271 coach-sweep + 77 broader tests green; ruff clean; RC reloaded pid 7632 reload_ok=true.
+- **Known/expected (DON'T "fix"):** Overlay App E `arena_augments` sibling = 0 usable rows → graceful neutral degrade. In scope: §4 locks Mayhem primary, 0 Arena own-data. Mayhem path fully works.
+- **NEXT (operator-gated, not provable offline):** live Mayhem augment-select cross-check (OCR→rank vs pick made). Precondition: confirm League WindowMode in-client (fullscreen-lockup note). Recommender live in pid 7632; tooltip auto-serves via ADR-008.
+- **#90 shared-primitive:** still its own scoped session; its Task-1 gate is now satisfied by this ship — `core/augment_recommender.py`'s Laplace/shrinkage is the concrete impl to generalize. Don't re-derive the augment data audit.
+
+---
+
 # 2026-05-17 (done) — #89 lobby change-mode FIXED + champ-select 920→2400 label sweep (c3a1e23, pushed)
 
 ROADMAP #89 shipped off the s234 recon (recon was accurate; one staleness noted).
@@ -47,16 +59,3 @@ s234 link-list triage + the two referenced agent memories (investigate-command: 
 - **ARAM-Mayhem match misbehaved:** operator moved the Duet display below-main, then League booted **exclusive-Fullscreen** → window vanished (alt-tab-out) → couldn't tab back. Recovered: taskbar-close → in-game leave-prompt → switch off fullscreen. **Not RC** (screen-agent disabled s221, no capture ran during web research). **Not the Vanguard 0x50 BSOD** (window lockup at match *start*, no crash). Captured: new `feedback_gamepc_league_fullscreen_lockup.md` + `reference_gamepc_monitor_index_volatility.md` updated (Duet now 1920×1280 @ y=1080 below main; resolution discriminator still valid 1080=game/1280=dash).
 - **Game-PC daemons all UP** — verified live: gamepc_lcu_agent / liveclient_relay / hotkey / mcp_server / bridge_daemon all running, RC-BridgeDaemon task Running. Operator closed only Claude Code → **do NOT restart the daemons**; only a Game-PC Claude Code session needs reopening for `/process-bridge-tasks` autoflow.
 - League persisted `WindowMode=2` (Windowed @1920×1080 main monitor) — safe (only exclusive Fullscreen=0 triggers the lockup). Re-verify the Window-Mode dropdown **in-client** before any live Game-PC test (PersistedSettings.json can overwrite game.cfg; League resets to Fullscreen on some patches/driver updates). This is now effectively a precondition for the #89 lobby-verify + Mayhem-recommender live runs.
-
----
-
-# 2026-05-17 (done) — known-carry wakeup_prune FIXED + ROADMAP medium #3/#4 closed + lobby-bug hand-off staged
-
-Three threads, all shipped. Code = `ef30b6f`; docs-sync commit follows.
-
-- **wakeup_prune.py FIXED (the known-carry — closed, don't re-investigate).** Root cause confirmed empirically: `SESSION_RE` matched only legacy `# sNNN wrap`; recent dated/pinned headings tail-dumped into `extras`, inverting newest/oldest → crash at moved_ids (a lucky guard vs mis-archiving the newest sessions + un-pinning RESOLVED). Fix: widen regex to dated `# YYYY-MM-DD`, position-aware leading-pin fold into header, hardened moved_ids label. TDD +7 (20 total); phase7_polish 43 green. Executed the real prune (5 oldest → history_notes; pin retained).
-- **ROADMAP medium #3 CLOSED.** Resilient `_log_startup`: ProgramData fallback + stderr echo + never-raise. **Deliberately rejected** the SYSTEM→Admin+logon ops change (DS not supervisor-watched → unattended-reboot regression) — don't redo it. TDD +10, live-smoked.
-- **ROADMAP medium #4 CLOSED (verified not-a-bug, don't re-investigate).** Externally-reported bonus-AD-zeroing augment: Maw / Death's Dance / Endless Hunger all `defensive_only`/non-DPS in `effects.py`; Sterak's Claws keyed off base AD; EHP shield throughput is the Phase-1.5 deferral → nothing to over-rank.
-- ROADMAP medium #1/#2 left BLOCKED (Phase-3 auto-action gate uncleared, 0 samples); #5 deferred (own scoped session, CLAUDE #88).
-
-**NEXT SESSION FIRST:** lobby "change mode" button half-wired — Practice Tool / ARAM Mayhem / Arena won't switch (standard queues fine). Full recon + per-mode root causes + the 2 patch-structural changes (Brawl removed; Arena 2v8→3x6) are in **CLAUDE #89** + ROADMAP High-priority top. Recon is done — don't re-grep cold; needs a live client to verify.
