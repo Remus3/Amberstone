@@ -1,12 +1,20 @@
-"""One-shot + reusable maintenance: purge U+2014 (em-dash) from the repo.
+"""One-shot + reusable maintenance: purge Unicode dashes from the repo.
 
-Hard rule (CLAUDE.md, 2026-05-18): no em-dashes in any authored text.
-This replaces every em-dash with a plain ASCII hyphen-minus '-'. A flat
-1:1 char swap (not context-aware) is deliberate: it keeps the functional
-"-no-data-" sentinel consistent on BOTH sides automatically (the literal
-producers like `grade or "X"` and the consumer `val == "X"` in
-core/match_metrics.py get the identical substitution), and ' X ' (spaced
-em-dash) naturally becomes ' - ' which reads fine in prose.
+Hard rule (CLAUDE.md, 2026-05-18): no em-dashes OR en-dashes in any
+authored text - keep authored content 7-bit ASCII. This replaces every
+em-dash (U+2014) and en-dash (U+2013) with a plain ASCII hyphen-minus
+'-'. A flat 1:1 char swap (not context-aware) is deliberate: it keeps
+the functional "-no-data-" sentinel consistent on BOTH sides
+automatically (the literal producers like `grade or "X"` and the
+consumer `val == "X"` in core/match_metrics.py get the identical
+substitution), and ' X ' (spaced dash) naturally becomes ' - ' which
+reads fine in prose. Smart quotes / arrows / math symbols are NOT in
+scope (the hard rule names dashes + smart-quotes; smart-quote sweep is
+a separate operator-gated decision; arrows/x/~= are out of scope).
+
+This script keeps itself 7-bit ASCII (codepoints via chr(), not the
+literal glyphs) so it does not need to be its own exclusion for that
+reason - it is still skipped to avoid self-mutation mid-walk.
 
 EXCLUSIONS (immutable history / non-text, per the standing
 don't-rewrite-history rule + CLAUDE.md carve-out):
@@ -29,7 +37,10 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-EM = "—"
+EM = chr(0x2014)   # em-dash
+EN = chr(0x2013)   # en-dash
+DASHES = (EM, EN)
+_DASH_BYTES = (b"\xe2\x80\x94", b"\xe2\x80\x93")  # UTF-8 for U+2014/U+2013
 REPL = "-"
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -96,14 +107,14 @@ def main() -> int:
             raw = p.read_bytes()
         except OSError:
             continue
-        if b"\xe2\x80\x94" not in raw:  # UTF-8 bytes for U+2014
+        if not any(b in raw for b in _DASH_BYTES):  # U+2014 / U+2013
             continue
         try:
             text = raw.decode("utf-8")
         except UnicodeDecodeError:
             skipped_binary += 1
             continue
-        n = text.count(EM)
+        n = sum(text.count(d) for d in DASHES)
         if not n:
             continue
         total_occ += n
@@ -111,14 +122,16 @@ def main() -> int:
         by_ext[p.suffix.lower() or "<none>"] += n
         per_file.append((n, str(p.relative_to(ROOT))))
         if args.apply:
-            new = text.replace(EM, REPL)
+            new = text
+            for d in DASHES:
+                new = new.replace(d, REPL)
             tmp = p.with_suffix(p.suffix + ".emtmp")
             tmp.write_text(new, encoding="utf-8", newline="")
             os.replace(tmp, p)
 
     mode = "APPLIED" if args.apply else "DRY-RUN (no writes)"
-    print(f"=== strip_em_dashes {mode} ===")
-    print(f"files with em-dashes : {files_changed}")
+    print(f"=== strip_em_dashes (em+en) {mode} ===")
+    print(f"files with dashes    : {files_changed}")
     print(f"total occurrences    : {total_occ}")
     print(f"skipped (binary utf8): {skipped_binary}")
     print("by extension:")

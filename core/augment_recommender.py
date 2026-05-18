@@ -15,7 +15,7 @@ from `ReformedDoge/Mayhem-Doctor` (no LICENSE - algorithm only, §7):
   • §4 blend (Option B external-seed):
         score₀(a) = w·own_wr(a) + (1−w)·ext_wr(a),  w = n_own/(n_own+K)
     Zero own games ⇒ w=0 ⇒ 100 % external prior; shifts to own history
-    smoothly as ingest grows (Task-1 reality: n_own ≈ 0–2 today).
+    smoothly as ingest grows (Task-1 reality: n_own ≈ 0-2 today).
   • Pairwise co-occurrence synergy (own-history only - the external source
     has no augment-pair data), shrunk by its own sample count:
         syn(a) = mean_{p∈picked} [ m/(m+K) · (pair_wr(a,p) − own_wr(a)) ]

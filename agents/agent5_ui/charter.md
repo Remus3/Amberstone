@@ -14,11 +14,11 @@ The panel roster you are building toward (§5 of the spec):
 
 | # | Panel            | Modes visible                        | Refresh |
 |---|------------------|--------------------------------------|---------|
-| 1 | Minimap          | SR draft, SR ranked, ARAM, Brawl     | 1–2s    |
-| 1A| Arena Map State  | Arena only                           | 1–2s    |
-| 2 | Right Now        | All                                  | 1–2s    |
+| 1 | Minimap          | SR draft, SR ranked, ARAM, Brawl     | 1-2s    |
+| 1A| Arena Map State  | Arena only                           | 1-2s    |
+| 2 | Right Now        | All                                  | 1-2s    |
 | 3 | Next             | All                                  | ~8s     |
-| 4 | Next Milestone   | All                                  | 30–60s  |
+| 4 | Next Milestone   | All                                  | 30-60s  |
 | 5 | Item Build       | All                                  | event   |
 | 6 | Team Directive   | SR/ARAM/Brawl (folded into 2/3 else) | ~8s     |
 | 7 | Augments         | ARAM, Arena, Brawl                   | event   |

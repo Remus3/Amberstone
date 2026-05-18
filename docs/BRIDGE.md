@@ -116,7 +116,7 @@ Do **not** POST directly to `/api/bridge` - that only stores locally. Use `core.
 
 ---
 
-## Lessons sync (Phase 1–3 shipped 2026-05-06)
+## Lessons sync (Phase 1-3 shipped 2026-05-06)
 
 - `tools/lessons_send.py` - operator-driven send; wraps `core/lessons_sender.py`
 - `core/lessons_receiver.py` - triage on receive

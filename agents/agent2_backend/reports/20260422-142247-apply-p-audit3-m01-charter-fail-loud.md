@@ -8,14 +8,14 @@
 
 ## Finding
 
-`agents/supervisor.py` lines 476–496 already contain the full fix described in
+`agents/supervisor.py` lines 476-496 already contain the full fix described in
 proposal P-audit3-m01.  The code was applied (presumably by an earlier agent
 session) and includes:
 
-1. **Audit comment** (lines 476–479) explicitly citing P-audit3-m01 and the
+1. **Audit comment** (lines 476-479) explicitly citing P-audit3-m01 and the
    rationale (missing-charter spawns silently widen authority, burn budget).
 
-2. **`EphemeralStubNotWired` raise - file missing** (lines 483–486):
+2. **`EphemeralStubNotWired` raise - file missing** (lines 483-486):
    ```python
    if not charter_path.exists():
        raise EphemeralStubNotWired(
@@ -23,7 +23,7 @@ session) and includes:
        )
    ```
 
-3. **`EphemeralStubNotWired` raise - file unreadable** (lines 489–492):
+3. **`EphemeralStubNotWired` raise - file unreadable** (lines 489-492):
    ```python
    except OSError as e:
        raise EphemeralStubNotWired(
@@ -31,7 +31,7 @@ session) and includes:
        ) from e
    ```
 
-4. **`EphemeralStubNotWired` raise - file empty** (lines 493–496):
+4. **`EphemeralStubNotWired` raise - file empty** (lines 493-496):
    ```python
    if not charter.strip():
        raise EphemeralStubNotWired(
@@ -45,7 +45,7 @@ silently completing or spawning without scope constraint.
 
 ## Verification
 
-- `EphemeralStubNotWired` docstring (lines 397–404) updated to clarify retained
+- `EphemeralStubNotWired` docstring (lines 397-404) updated to clarify retained
   uses: CLI-missing and the explicit no-charter guard.
 - `--append-system-prompt` is only omitted when `charter == ""` (i.e., agent
   has no entry in `AGENT_CHARTERS`), which is intentional for unchartered

@@ -144,9 +144,9 @@ CHAMP_SELECT_FOOTER = """
 export { handleChampSelect, renderChampSelectPanel, renderChampSelectCoach };
 """
 
-# Section 1: lcuCmd … _csMarkSelectedRow (3067–3269), then skip _ib* (3270–3419),
-#            then _csOnBuildRowClick … _csWireButtonsOnce (3420–4051)
-# Section 2: renderChampSelectPanel … renderChampSelectCoach  (5816–6223)
+# Section 1: lcuCmd … _csMarkSelectedRow (3067-3269), then skip _ib* (3270-3419),
+#            then _csOnBuildRowClick … _csWireButtonsOnce (3420-4051)
+# Section 2: renderChampSelectPanel … renderChampSelectCoach  (5816-6223)
 cs_comment  = L(3067, 3071)   # block comment before lcuCmd
 cs_funcs1a  = L(3072, 3269)   # lcuCmd … _csMarkSelectedRow (before _ib* block)
 cs_funcs1b  = L(3420, 4051)   # _csOnBuildRowClick … _csWireButtonsOnce (after _ib* block)

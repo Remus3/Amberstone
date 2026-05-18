@@ -31,7 +31,7 @@ Read these authoritative sources and write the values down. Every doc must match
 | Match-history rows | `rewind_history.db` row count (sqlite) - BRIEF/memory historically cite ~2,8xx |
 | Latest session + commits | `git -C "C:/Riot Commander" log --oneline -15` + the top block of `WAKEUP_NOTES.md` + the highest-numbered item in CLAUDE.md "Active priorities" |
 
-Produce a **Canonical Facts table** in your working notes. This is the contract for §3–§5. If DS `:8893` is down, derive `ENGINE_VERSION`/items from source files and note "DS offline - values from source, not /health" in the report.
+Produce a **Canonical Facts table** in your working notes. This is the contract for §3-§5. If DS `:8893` is down, derive `ENGINE_VERSION`/items from source files and note "DS offline - values from source, not /health" in the report.
 
 ### 2. Inventory the .md ecosystem
 
