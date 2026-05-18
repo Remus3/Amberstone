@@ -184,7 +184,7 @@ _Inline `# arch: phase <id> [(YYYY-MM-DD)] - <note>` markers across the tree, su
 
 | File | LOC | Plan |
 |---|---|---|
-| `web/js/dashboard.js` | 8507 | Phase 3 - ESM split |
+| ~~`web/js/dashboard.js`~~ | ~~8507~~ | ✅ quarantined s236 - dead pre-ESM monolith archived to `docs/_archive/`; live UI is `main.js` + `panels/` |
 | ~~`game_reader.py`~~ | ~~1473~~ | ✅ Phase 2.2 done - root pkg via mixins (poller + normalizer + mode_router) |
 | ~~`coach_integration.py`~~ | ~~1217~~ | ✅ Phase 2.3 done - `_profiles` + `_sr_prompt` + `_coach` |
 | ~~`champion_profiles.py`~~ | ~~902~~ | ✅ Phase 2.1 done - 29 LOC thin loader + `data/champion_profiles/*.json` |
