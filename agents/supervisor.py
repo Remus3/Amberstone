@@ -157,6 +157,16 @@ def _iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# Captured once at module import (~process start for `python -m
+# agents.supervisor`). The 5s heartbeat (refresh_lock) re-stamps this
+# value UNCHANGED so _Phase3Watcher in ops/rc_supervisor.py can compare
+# it against the import-chain mtimes and auto-restart a supervisor that
+# is serving stale code after a deploy — the 2026-05-17 incident, where
+# a ~27h-old process never picked up keystone 3eb2e2d and silently
+# broadcast un-mirrored WS health.
+_STARTED_AT: str = _iso_now()
+
+
 # AUDIT 2026-04-28 (P-audit4-m03): patterns for secret-shaped substrings
 # that should never land in a per-task log. Conservative — false positives
 # are fine, missing a real key is not.
@@ -244,7 +254,7 @@ def acquire_lock() -> bool:
         LOCKFILE.write_text(
             json.dumps({
                 "pid": os.getpid(),
-                "started_at": _iso_now(),
+                "started_at": _STARTED_AT,
                 "host": socket.gethostname(),
             }),
             encoding="utf-8",
@@ -335,6 +345,7 @@ def refresh_lock() -> None:
     LOCKFILE.write_text(
         json.dumps({
             "pid": os.getpid(),
+            "started_at": _STARTED_AT,
             "heartbeat_at": _iso_now(),
             "host": socket.gethostname(),
         }),

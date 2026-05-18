@@ -7,6 +7,7 @@ so no Phase 3 supervisor needs to be running. Lockfile is a temp file the
 test owns. Per-test breaker state file lives under tmp_path.
 """
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -33,6 +34,26 @@ def _write_lockfile(path: Path, pid: int, hb_dt: datetime, host: str = "TEST-HOS
         "heartbeat_at": _iso_utc(hb_dt),
         "host": host,
     }), encoding="utf-8")
+
+
+def _write_lockfile_started(path: Path, pid: int, hb_dt: datetime,
+                            started_dt: datetime, host: str = "TEST-HOST") -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({
+        "pid": pid,
+        "started_at": _iso_utc(started_dt),
+        "heartbeat_at": _iso_utc(hb_dt),
+        "host": host,
+    }), encoding="utf-8")
+
+
+def _make_code_file(root: Path, rel: str, mtime_epoch: float) -> Path:
+    """Create a watched import-chain file with a controlled mtime."""
+    p = root / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("# test\n", encoding="utf-8")
+    os.utime(p, (mtime_epoch, mtime_epoch))
+    return p
 
 
 class _FakeClock:
@@ -261,6 +282,138 @@ class LoggingTests(unittest.TestCase):
             _write_lockfile(lf, 9999, datetime.now(timezone.utc))
             w.check()
         self.assertEqual(logs, [])
+
+
+class StaleCodeDetectionTests(unittest.TestCase):
+    """2026-05-18: an otherwise-healthy Phase-3 process whose started_at
+    predates the newest import-chain mtime must be restarted (it's
+    serving stale code — the 2026-05-17 WS-mirror incident). Backward
+    compatible: a lockfile without started_at (old supervisor) is never
+    false-restarted."""
+
+    @staticmethod
+    def _now() -> datetime:
+        return datetime.now(timezone.utc)
+
+    def test_code_newer_than_started_at_triggers_restart(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            w, lf, r, _clk, logs = _build_watcher(root)
+            started = self._now() - timedelta(hours=2)
+            _write_lockfile_started(lf, 9999, self._now(), started)
+            _make_code_file(root, "core/queue_modes.py",
+                             started.timestamp() + 600)
+            res = w.check()
+        self.assertTrue(res["acted"])
+        self.assertEqual(res["trigger"], "stale_code")
+        self.assertEqual(res["state"], "restarting")
+        r.assert_called_once_with("RC-Phase3-Supervisor")
+        self.assertTrue(any("phase3 stale_code" in ln for ln in logs))
+
+    def test_agents_package_py_also_watched(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            w, lf, r, _clk, _logs = _build_watcher(root)
+            started = self._now() - timedelta(hours=2)
+            _write_lockfile_started(lf, 9999, self._now(), started)
+            _make_code_file(root, "agents/agent2_backend/file_ingest.py",
+                             started.timestamp() + 600)
+            res = w.check()
+        self.assertTrue(res["acted"])
+        self.assertEqual(res["trigger"], "stale_code")
+
+    def test_code_older_than_started_at_stays_healthy(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            w, lf, r, _clk, _logs = _build_watcher(root)
+            started = self._now()
+            _write_lockfile_started(lf, 9999, self._now(), started)
+            _make_code_file(root, "core/queue_modes.py",
+                             started.timestamp() - 600)
+            res = w.check()
+        self.assertFalse(res["acted"])
+        self.assertEqual(res["state"], "healthy")
+        r.assert_not_called()
+
+    def test_within_grace_stays_healthy(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            w, lf, r, _clk, _logs = _build_watcher(root)
+            started = self._now()
+            _write_lockfile_started(lf, 9999, self._now(), started)
+            # +2s < the 5s grace margin
+            _make_code_file(root, "core/queue_modes.py",
+                             started.timestamp() + 2)
+            res = w.check()
+        self.assertFalse(res["acted"])
+        self.assertEqual(res["state"], "healthy")
+
+    def test_missing_started_at_skips_stale_check(self) -> None:
+        # Old supervisor (pre-2026-05-18): lockfile has no started_at.
+        # Even with much-newer code it must NOT be false-restarted.
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            w, lf, r, _clk, _logs = _build_watcher(root)
+            _write_lockfile(lf, 9999, self._now())  # no started_at
+            _make_code_file(root, "core/queue_modes.py",
+                            self._now().timestamp() + 99999)
+            res = w.check()
+        self.assertFalse(res["acted"])
+        self.assertEqual(res["state"], "healthy")
+        r.assert_not_called()
+
+    def test_unparseable_started_at_skips(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            w, lf, r, _clk, _logs = _build_watcher(root)
+            lf.parent.mkdir(parents=True, exist_ok=True)
+            lf.write_text(json.dumps({
+                "pid": 9999, "started_at": "not-a-date",
+                "heartbeat_at": _iso_utc(self._now()), "host": "T",
+            }), encoding="utf-8")
+            _make_code_file(root, "core/queue_modes.py",
+                            self._now().timestamp() + 99999)
+            res = w.check()
+        self.assertFalse(res["acted"])
+        self.assertEqual(res["state"], "healthy")
+
+    def test_stale_heartbeat_takes_precedence_over_stale_code(self) -> None:
+        # A dead/stale process is the more urgent trigger; stale_code
+        # only upgrades an otherwise-healthy one.
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            w, lf, r, _clk, _logs = _build_watcher(root)
+            started = self._now() - timedelta(hours=2)
+            stale_hb = self._now() - timedelta(seconds=120)
+            _write_lockfile_started(lf, 9999, stale_hb, started)
+            _make_code_file(root, "core/queue_modes.py",
+                            started.timestamp() + 600)
+            res = w.check()
+        self.assertEqual(res["trigger"], "stale_heartbeat")
+
+    def test_stale_code_restart_respects_cooldown(self) -> None:
+        clk = _FakeClock()
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            w, lf, r, _clk, _logs = _build_watcher(root, clock=clk)
+            started = self._now() - timedelta(hours=2)
+            _write_lockfile_started(lf, 9999, self._now(), started)
+            _make_code_file(root, "core/queue_modes.py",
+                            started.timestamp() + 600)
+            r1 = w.check()
+            clk.advance(5.0)  # < 30s cooldown
+            r2 = w.check()
+        self.assertTrue(r1["acted"])
+        self.assertEqual(r1["trigger"], "stale_code")
+        self.assertFalse(r2["acted"])
+        self.assertEqual(r2["state"], "cooldown")
+
+
+class StaleCodeToDictTests(unittest.TestCase):
+    def test_to_dict_exposes_grace(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            w, _lf, _r, _clk, _logs = _build_watcher(Path(td))
+            self.assertIn("stale_code_grace_s", w.to_dict())
 
 
 if __name__ == "__main__":
