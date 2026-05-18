@@ -572,7 +572,7 @@ body[data-zen="1"][data-mode="brawl"] #mm-img { max-width: 640px; }
 }
 .stats-group:last-child { border-bottom: none; }
 /* (2026-04-25) Stage-gated visibility for STATS groups. body[data-phase]
- * is set live by `_applyGamePhase(gtS)` in dashboard.js (early < 15min,
+ * is set live by the dashboard JS phase-applier (early < 15min,
  * mid 15-25min, late 25min+). Each .stats-group carries data-stage:
  *   "early"     - LANING PHASE (only relevant in laning)
  *   "mid late"  - COMBAT/TEAMFIGHT, MAP PRESENCE

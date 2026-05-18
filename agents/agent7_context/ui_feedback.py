@@ -33,7 +33,11 @@ from pathlib import Path
 from typing import Any, Callable
 
 from agents.agent1_lead import Scheduler
-from agents.agent4_coach_mentor.ui_applier import ALLOWED_PATHS, _is_path_allowed
+from agents.agent4_coach_mentor.ui_applier import (
+    ALLOWED_DIR_PREFIXES,
+    ALLOWED_PATHS,
+    _is_path_allowed,
+)
 
 logger = logging.getLogger("agent7.ui_feedback")
 
@@ -211,15 +215,18 @@ class UIFeedbackParser:
         mult = 1.0 + (pct / 100.0) if bump else 1.0 - (pct / 100.0)
         mult = max(0.5, min(2.0, mult))     # clamp
 
-        css_path = _PROJECT_ROOT / "web" / "css" / "dashboard.css"
+        css_path = _PROJECT_ROOT / "web" / "css" / "panels" / "base.css"
         try:
             css = css_path.read_text(encoding="utf-8")
         except OSError as e:
-            logger.warning("couldn't read dashboard.css: %s", e)
+            logger.warning("couldn't read base.css: %s", e)
             return None
 
+        # Live base font lives in a bare `body { ... font-size: Npx }`
+        # rule (panels/base.css); the legacy dead dashboard.css used
+        # `html, body { ... }`. Accept either form.
         old_base_match = re.search(
-            r"html,\s*body\s*\{[^}]*?font-size:\s*(\d+(?:\.\d+)?)px",
+            r"(?:html\s*,\s*)?body\s*\{[^}]*?font-size:\s*(\d+(?:\.\d+)?)px",
             css, re.DOTALL,
         )
         if not old_base_match:
@@ -252,7 +259,7 @@ class UIFeedbackParser:
                 f"review + approve to apply."
             ),
             proposed_changes=[{
-                "file": "web/css/dashboard.css",
+                "file": "web/css/panels/base.css",
                 "content": new_css,
                 "summary": f"font-size tokens × {ratio:.3f}",
             }],
@@ -272,7 +279,7 @@ class UIFeedbackParser:
             return None
         var = m.group("var").lower()
         val = m.group("val")
-        css_path = _PROJECT_ROOT / "web" / "css" / "dashboard.css"
+        css_path = _PROJECT_ROOT / "web" / "css" / "panels" / "base.css"
         try:
             css = css_path.read_text(encoding="utf-8")
         except OSError:
@@ -286,16 +293,16 @@ class UIFeedbackParser:
         )
         if n == 0:
             return UIProposalResult(
-                reply=f"No CSS var `--{var}` found in dashboard.css - check the name.",
+                reply=f"No CSS var `--{var}` found in base.css - check the name.",
                 intent="ui_feedback_noop",
             )
         return UIProposalResult(
             reply=(
-                f"Changing `--{var}` → `{val}` in dashboard.css. Proposed - "
+                f"Changing `--{var}` → `{val}` in base.css. Proposed - "
                 f"review + approve to apply."
             ),
             proposed_changes=[{
-                "file": "web/css/dashboard.css",
+                "file": "web/css/panels/base.css",
                 "content": new_css,
                 "summary": f"--{var} = {val}",
             }],
@@ -311,7 +318,10 @@ class UIFeedbackParser:
     ) -> UIProposalResult | None:
         if self._llm_spawn is None:
             return None
-        allow_list = ", ".join(sorted(ALLOWED_PATHS)) + ", data/sim/<name>.json"
+        allow_list = ", ".join(
+            sorted(ALLOWED_PATHS)
+            + [f"{p}<name>{sfx}" for p, sfx in ALLOWED_DIR_PREFIXES]
+        )
         prompt_data = {
             "message": text,
             "sim_fixture": sim_fixture,
