@@ -1,7 +1,7 @@
 // Item Build panel - owned/recommended tiles, DS picks, in-game build switcher.
 import { el, safe, fmtList, isArenaPayload } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
-import { ITEMS, ITEM_COSTS, _resolveItemId, _splitItemList } from '../lib/items_index.js';
+import { ITEMS, ITEM_COSTS, _resolveItemId, _splitItemList, diffVariantItemIds } from '../lib/items_index.js';
 import { formatDsDelta } from '../lib/scorer_units.js';
 import { buildOrderPill } from './build_order.js';
 
@@ -164,11 +164,8 @@ function _updateItemBuildHeader(champion, mode) {
     .then((data) => {
       let activeLabel = "";
       if (data && data.variants && data.variants.length) {
-        // Prefer the chosen variant from cs-loadout state if it's for
-        // this champion; otherwise use the default.
-        const chosen = (typeof _csLoadout !== "undefined" && _csLoadout.chosen) || "";
         const defaultKey = data.default || "";
-        const matchKey = chosen || defaultKey || data.variants[0].key;
+        const matchKey = defaultKey || data.variants[0].key;
         const found = data.variants.find((v) => v.key === matchKey);
         activeLabel = (found && found.label) || "";
       }
@@ -358,7 +355,7 @@ function _ibRenderRows(variants, chosen) {
   wrap.innerHTML = "";
   if (!variants || !variants.length) return;
   const ver = CHAMPS.version || "latest";
-  const diffIds = _csDiffItemIds(variants);
+  const diffIds = diffVariantItemIds(variants);
   variants.forEach((v) => {
     const row = document.createElement("div");
     const isExp = v.key === "experimental";
