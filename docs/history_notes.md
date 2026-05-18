@@ -1,7 +1,7 @@
 # RC session history archive
 
-Sessions older than the last 2–3 full sessions are progressively compacted here.
-Current WAKEUP_NOTES.md keeps only the most recent 2–3 sessions.
+Sessions older than the last 2-3 full sessions are progressively compacted here.
+Current WAKEUP_NOTES.md keeps only the most recent 2-3 sessions.
 Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
@@ -14,7 +14,7 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 s234 link-list triage + the two referenced agent memories (investigate-command: conditions+table+"no fixes yet"; parallel-batch-agents: subagents own slices, supervisor synthesizes). 6 parallel general-purpose slice agents (WebFetch + `gh`), fixed per-link schema: what-it-is / single-most-liftable-thing / RC-fit / license. Supervisor synthesized; agents proposed no fixes.
 
 ## 3 decisions LOCKED (don't re-litigate)
-1. **Fold Morello** (`noaboa07/Morello`, **MIT**) `badges.ts` + `match-insights.ts` + 5-tab card → reference impl for the s220 PGR **0–100 score** + Deep-Review tabs.
+1. **Fold Morello** (`noaboa07/Morello`, **MIT**) `badges.ts` + `match-insights.ts` + 5-tab card → reference impl for the s220 PGR **0-100 score** + Deep-Review tabs.
 2. **Shared smoothed-rate primitive** - ONE module (Laplace/Beta over own match DB; algo ref `Maelian25/lol-draft-prediction`, **no license → reimplement clean**) for #88 augment + pick/ban synergy + PGR score. Same family already locked for #88.
 3. **101.qq.com** CN duo-synergy - worth a one-off Game-PC Network-tab capture (static `game.gtimg.cn` JSON; exact path needs the live capture).
 
@@ -83,7 +83,7 @@ next" → s220 chain.
   `data-surrender` attr. 5 tests; snapshot/timeline/view-router green.
 - **Operator decisions (locked, don't re-litigate):** (1) PGR stays a
   **single-match richer aggregator G layout**, NOT a multi-match list (History
-  view owns browsing). (2) The 0–100 score is an **RC heuristic over the
+  view owns browsing). (2) The 0-100 score is an **RC heuristic over the
   already-enriched stats** (no Claude/Riot dependency) - I propose weights for
   sign-off in S3.
 - Staged plan: **S2** = structure (persistent header + 10-player score strip +
@@ -331,7 +331,7 @@ proven and just needs the operator-gated go-live + the reviewed UI pass.
 
 - **DS conditional Part-2 - SHELVED PERMANENTLY.** s229 finding confirmed: Part-1 `"default"` is the correct strategic model for the only DS surface (item-build ranking); live per-tick target-state resolution would only be valid as a *separate live-advisory product surface* = out of scope / not wanted. **Do NOT re-pitch Part-2.**
 - **DrMundo E `caster_low_hp` vocab - DECLINED.** Single instance, fails the s227/s229 5+-uses bar, moot with Part-2 shelved. No caster-state vocab family will be added.
-- The 10 shipped conditionals (s228–s231) stay as latent correctness scaffolding, guarded by the s232 saturation test. **No further DS conditional-engine work.**
+- The 10 shipped conditionals (s228-s231) stay as latent correctness scaffolding, guarded by the s232 saturation test. **No further DS conditional-engine work.**
 
 ## Don't-redo / blockers
 
@@ -340,7 +340,7 @@ proven and just needs the operator-gated go-live + the reviewed UI pass.
 
 ## NEXT
 
-**s220 Post Game Review aggregator-G-style reframe** - the big non-engine UI item, already a 🟡 in ROADMAP with full scope (clickable match rows → persistent header + 10-player score strip → AI Analysis/Graph/Build tabs; 0–100 color-banded score; MVP purple card; carried polish: Sustain rename, hero section-1, aggregator G roster row, color-coding, #9 augments). **NOT blocked on the Riot key** (diagnosed s220 - only event-mode/KIWI queue-2400 403s; standard-queue last-matches populate fine; do NOT redo the key investigation). Per-player runes/ranks need an `_enrich_from_lcu` extension.
+**s220 Post Game Review aggregator-G-style reframe** - the big non-engine UI item, already a 🟡 in ROADMAP with full scope (clickable match rows → persistent header + 10-player score strip → AI Analysis/Graph/Build tabs; 0-100 color-banded score; MVP purple card; carried polish: Sustain rename, hero section-1, aggregator G roster row, color-coding, #9 augments). **NOT blocked on the Riot key** (diagnosed s220 - only event-mode/KIWI queue-2400 403s; standard-queue last-matches populate fine; do NOT redo the key investigation). Per-player runes/ranks need an `_enrich_from_lcu` extension.
 
 ---
 
@@ -470,7 +470,7 @@ Part 1 scope = the schema-lift foundation (the s207 `int→int|list[int]` shape:
 - Engine: `_normalize_block_index_value` dict branch (one-level-only guard; bool/str/nested/missing-default rejection) + `_BLOCK_INDEX_DEFAULT_KEY`/`_BLOCK_INDEX_CONDITIONS` + `_select_blocks` dict→default resolver + type-widening across `ability_dps.py`+`burst.py` (also fixed a latent s207 staleness where `block_index_resolved` was left `dict[str,int]`) + server `_parse_block_index` accepts well-formed conditional objects & **skips malformed defensively** (untrusted-body no-500/registry-fallback; the engine validator is the HARD enforcer for the trusted on-disk registry - two layers, same rule, different failure mode per trust level; do NOT unify them).
 - **3 flagship seeds - all CONVERSIONS of already-shipped unconditional entries** so Part 1 is provably no-op vs s204/s204/s223: **Zoe E** `{default:2,target_no_cc:0}` (sleep 2×; live A/B reg 140.00==forced{E:2}, 2× block-0 70.00), **Evelynn Q** `{default:5,target_no_cc:0}` (charm triple-spike total; 345.00==forced{Q:5}, 7.7× block-0 45.00; sibling R:1 preserved), **Kindred E** `{default:1,target_full_hp:0}` (7.5%-vs-5% missing-HP execute; 80.00==forced{E:1}==forced{E:0} - honest full-HP no-op: the amp is missing-HP-gated, which IS Part-2's signal). Caller conditional dict via wire proven (`{default:0,target_no_cc:2}`→70.00==forced{E:0}).
 - `_meta` description+rationale appended via surgical str.replace (no JSON reformat - file stays hand-formatted). Registry stays **125 champions** (3 in-place conversions, no new champs).
-- Tests: new `test_conditional_block_index_s228.py` (~52: vocab/validator/resolver/seed-routing/Part-1-invariant/burst/`_parse_block_index`-unit/backward-compat/live-route); `test_block_index_overrides` shape-pins migrated for the 3 conversions (incl. `test_every_value_is_int_or_list_of_ints`→`_int_list_or_conditional`, mirrors how s207 widened it for int→list); 5 s223–s226 backward-compat pins updated to assert the new shape **+ Part-1 equivalence** (the s223 KindredEEntryTests class's 4 semantic-guarantee tests pass UNCHANGED - strong proof the conversion preserves s223's guarantees); 9 ENGINE pin bumps. ENGINE **0.99.0→1.0.0**. DS suite 2136→**2188**; wider RC **1107**; ruff+py_compile clean; DS restarted (taskkill pid 13452 → pythonw relaunch; not supervisor-watched) → `/health` **1.0.0**.
+- Tests: new `test_conditional_block_index_s228.py` (~52: vocab/validator/resolver/seed-routing/Part-1-invariant/burst/`_parse_block_index`-unit/backward-compat/live-route); `test_block_index_overrides` shape-pins migrated for the 3 conversions (incl. `test_every_value_is_int_or_list_of_ints`→`_int_list_or_conditional`, mirrors how s207 widened it for int→list); 5 s223-s226 backward-compat pins updated to assert the new shape **+ Part-1 equivalence** (the s223 KindredEEntryTests class's 4 semantic-guarantee tests pass UNCHANGED - strong proof the conversion preserves s223's guarantees); 9 ENGINE pin bumps. ENGINE **0.99.0→1.0.0**. DS suite 2136→**2188**; wider RC **1107**; ruff+py_compile clean; DS restarted (taskkill pid 13452 → pythonw relaunch; not supervisor-watched) → `/health` **1.0.0**.
 
 ## Don't-redo / blockers
 
@@ -781,7 +781,7 @@ Pushed `0c064c7..85fc157` immediately after the s214 living-doc sync. Operator d
 
 ---
 
-# s209–s213 wrap - 2026-05-15 (Champ-select full view redesign + tooltips + adaptive summoners)
+# s209-s213 wrap - 2026-05-15 (Champ-select full view redesign + tooltips + adaptive summoners)
 
 **Operator instruction:** Iterative ~14-round design redesign of the champ-select view, starting with "see about the lobby transition + champ-select not surfacing rune builds & summoner spells" (closes s208 regression carry-forward).
 
@@ -814,7 +814,7 @@ Net diff: +2181 / −1368 across 26 files (4 deletions). Pushed `04a1288..f1ca81
 
 ### Archetype picker
 - "DAEMON SLAYER BUILD ARCHETYPE" title.
-- `IMPLEMENTED_SCORERS` flipped to all 6 (s174–s181 archetype-expansion plan was 100% shipped but the flag stayed at 3).
+- `IMPLEMENTED_SCORERS` flipped to all 6 (s174-s181 archetype-expansion plan was 100% shipped but the flag stayed at 3).
 - AUTO toggle: green when on DDragon-tag default, grey-clickable to revert. Active button: 1px border + 4px violet left-edge accent + indigo fill (was heavy 2px blue competing visually with LOCKED green above).
 - Sig fix: `_csvComputeSig` now includes archetype `primary:source` so the picker re-renders without page reload when operator clicks through archetypes.
 
@@ -3111,7 +3111,7 @@ Live pid 1976 confirmed running.
 
 # s170 wrap - 2026-05-11 (LCU wiring punch list - items #1 #2 #3 #4 #5 #7 shipped, #6 parking-lot)
 
-Operator opened by asking "what is needed to finish the LCU wiring to the UI output for things like pre-game lobby and, champion select, and DS output to active match" - informational query that produced a 7-item punch list. Then operator said "continue" repeatedly, working through items 1–4 + 7 in one continuation. Items 5 and 6 ended the session as bridge-dispatched (waiting on Game-PC Claude) and parking-lot (requires live Arena lobby) respectively.
+Operator opened by asking "what is needed to finish the LCU wiring to the UI output for things like pre-game lobby and, champion select, and DS output to active match" - informational query that produced a 7-item punch list. Then operator said "continue" repeatedly, working through items 1-4 + 7 in one continuation. Items 5 and 6 ended the session as bridge-dispatched (waiting on Game-PC Claude) and parking-lot (requires live Arena lobby) respectively.
 
 ## Ships (in chronological order this session)
 
@@ -3299,7 +3299,7 @@ Continuation per `NEXT_SESSION_PLAN_2026-05-10.md`. After s167 closed P1a/P2/P7/
 - 🟡 P1b augment registry - architectural; needs `as_pct` channel design pass.
 - 🟡 P5 Default DS build #4 - waits on richer rewind data.
 - 🟡 P3/P4 (History season-WR + Replay tab) - UI work, deferred per s166 directive.
-- 🟡 UI Phase 3 steps 5–14 - UI work, deferred per s166 directive.
+- 🟡 UI Phase 3 steps 5-14 - UI work, deferred per s166 directive.
 
 ---
 
@@ -3337,7 +3337,7 @@ UI paused per s166 operator directive. Five backend ships in one commit (`1522b9
 - 🟡 P1b augment registry - architectural; needs `as_pct` channel design pass.
 - 🟡 P5 Default DS build #4 - waits on richer rewind data.
 - 🟡 P3/P4 (History season-WR + Replay tab) - UI work, deferred.
-- 🟡 UI Phase 3 steps 5–14 - UI work, deferred per s166 directive.
+- 🟡 UI Phase 3 steps 5-14 - UI work, deferred per s166 directive.
 
 ---
 
@@ -3603,7 +3603,7 @@ Long UI session. Operator-driven incremental redesign of the entire Lobby view a
 - Tab toggle: green border = selected / red border = deselected. Default tab driven by `lobby.party_size` (1 → YOUR, ≥2 → PARTY); operator-toggle wins once clicked.
 - 5-section card layout per row: `Champion (icon + 📋 copy) · Mastery · Recent · Overall (2x2: games / W-L / WR% / total KDA) · Averaged (Gold/CS/Vis on top, H/S/Tnk on bottom)`.
 - Summoner name centered above Mastery # (operator's name on YOUR MAINS, party member's name on PARTY MAINS - pulled from fixture or `lobby.members[non-self][i]`).
-- Username color palette via `data-color-idx` (self → lavender, members 1–4 → mint/amber/teal/coral). Same idx links Party panel rows to PARTY MAINS cards.
+- Username color palette via `data-color-idx` (self → lavender, members 1-4 → mint/amber/teal/coral). Same idx links Party panel rows to PARTY MAINS cards.
 - YOUR MAINS shows 4 cards (operator's top mastery champs). PARTY MAINS shows 4 party-member cards (placeholder when solo).
 - Click PARTY MAINS card OR Party row → cross-highlight both with white border (`.is-selected`). Doc click clears.
 - Copy clipboard format: `Moonbeam - Vayne - Mastery 8 : 388 K points · 47 Games All-Time · 60% WR`.
@@ -3679,7 +3679,7 @@ Per `feedback_phase3_fixture_ritual.md`, when operator declares fixture done:
 
 ---
 
-# s161 wrap - 2026-05-10 (s153–s161 chain: SR-lobby flicker + Active Match scaffold + ZEN/DEV/tooltip polish)
+# s161 wrap - 2026-05-10 (s153-s161 chain: SR-lobby flicker + Active Match scaffold + ZEN/DEV/tooltip polish)
 
 Long live-fire session. Operator was mid-Arena game when it started, finished SR draft mid-session, lobbied between games. Nine commits, three independent bug chains plus Active Match step 1.
 
@@ -3717,13 +3717,13 @@ Long live-fire session. Operator was mid-Arena game when it started, finished SR
 - **Bridge-pending view** - operator wants kept (the `routes_bridge_pending.py` route IS frozen per CLAUDE.md so don't delete) but moved off the main view dropdown into a hidden access button on the Dev panel. Step 5 of the Active Match plan handles this.
 - **Fleet view** - operator wants removed entirely. Step 5 of the plan.
 
-## What's next - Active Match steps 2–5 (operator-locked)
+## What's next - Active Match steps 2-5 (operator-locked)
 
 Operator's locked decisions from this session, before /clear:
 - All in-game modes share the layout (`sr / aram / arena / brawl`). TFT excluded.
 - STATS panel removal scope: in-game only; preserve for last-match.
 - NEXT folds into RIGHT NOW as a continuous block (reformat content, simplify).
-- Build sequence is the agreed Day 1–5; tonight shipped Day 1 only.
+- Build sequence is the agreed Day 1-5; tonight shipped Day 1 only.
 
 ### Step 2 - DS engine in BUILD pane (icons + owned-as-text + per-tick rerank)
 
@@ -3770,7 +3770,7 @@ MAP pane currently shows placeholder text. Replace with:
 - **Pre-flip mirror is at the envelope layer** (HTTP `_state_builder.py` + WS `file_ingest.py`). Don't go patching `app/_health_monitor.py` (frozen) or RC's app-state to set `_arena_mode` during lobby.
 - **DS resolver is server-side** (`agents/daemon_slayer/server.py`). Don't add a client-side champion-id normalizer.
 - **`resolve_inventory` is the new inventory-only path.** `resolve_many` keeps the full set for calibration/mirror callers - don't change its behavior.
-- **Active Match auto-promote is `?am=1`-gated.** Don't flip it to default-on until steps 2–5 land and operator confirms.
+- **Active Match auto-promote is `?am=1`-gated.** Don't flip it to default-on until steps 2-5 land and operator confirms.
 
 ## Live state at /clear
 
@@ -3892,8 +3892,8 @@ MAP pane currently shows placeholder text. Replace with:
 # s147 wrap - 2026-05-09 (FU04 close - Personal-tier API key issued same-day)
 
 ## What shipped
-- **FU04 application submitted and approved same-day** on developer.riotgames.com (App ID 834837, well inside the documented 2–6 week window). Personal keys never expire → FU03 clipboard helper permanently superseded.
-- **Evidence bundle** at `Desktop/FU04-Application-Evidence/` (4 PNGs + README; mirror at Game-PC `C:\fu04-evidence\`). Operator added 6 confirmation PNGs (1.PNG–6.PNG) post-approval.
+- **FU04 application submitted and approved same-day** on developer.riotgames.com (App ID 834837, well inside the documented 2-6 week window). Personal keys never expire → FU03 clipboard helper permanently superseded.
+- **Evidence bundle** at `Desktop/FU04-Application-Evidence/` (4 PNGs + README; mirror at Game-PC `C:\fu04-evidence\`). Operator added 6 confirmation PNGs (1.PNG-6.PNG) post-approval.
 - **Capture pipeline patched mid-session:** .NET `CopyFromScreen` raced against Edge's hardware compositor during view transitions, saving stale framebuffer content. Rewrote PS capture to use `PrintWindow` API with `PW_RENDERFULLCONTENT` flag - reads window surface directly, race-free. Helper at `C:\fu04-evidence\_capture_window.ps1`.
 - **Caught + excluded** the dashboard's `LAST MATCH` view from evidence - it's actually the live in-game coaching surface (NEXT/RIGHT NOW/FIGHT/BASE/MAP STATE), exactly what Riot forbids in Web-API context. SESSION view used instead for scene 3.
 - **HISTORY view scored the strongest evidence slot** (scene 4) - 2846 matches + literal "needs Riot key" UI label in SEASON STATS column.
@@ -3917,7 +3917,7 @@ MAP pane currently shows placeholder text. Replace with:
 - **Reviewed 12 RC_TICKET_*.md from `Desktop/Tickets/`** (a "transfer plan" pack adapted from another project). All rejected for premise mismatches against RC's architecture (no flat-string coach state, no WebSocket LCU, no YOLO, no numpy, no async runtime, hardcoded minimap bbox, etc.). Per-ticket rationale lives in the session transcript.
 - **Two real concerns surfaced** during review and were addressed via follow-up tickets:
   1. Hardcoded minimap bbox in `agents/supervisor.py:597` is brittle to HUD-scale changes / left-side toggle / non-1080p. → FU01.
-  2. Full-team context enrichment (loss streak, mains, rank, mastery on locked champ) requires Riot Web API - LCU/scrapers can't reach it. → ADR-006 + FU02–FU04.
+  2. Full-team context enrichment (loss streak, mains, rank, mastery on locked champ) requires Riot Web API - LCU/scrapers can't reach it. → ADR-006 + FU02-FU04.
 - **ADR-006 - Riot API key policy reversal** (`docs/adr/ADR-006-riot-api-key-policy.md`): Personal-tier key permitted for champ-select + post-game enrichment only. Single-user shape. Live in-game advisory remains LCU/LiveClient-only per Riot ToS. Memory `reference_no_riot_api_key.md` rewritten as superseded; MEMORY.md index updated.
 - **4 follow-up tickets drafted** to `C:/Users/Administrator/Desktop/Tickets/`:
   - **FU01** minimap-locate - 3-path resolver (override → PersistedSettings → hardcoded fallback).
@@ -3928,12 +3928,12 @@ MAP pane currently shows placeholder text. Replace with:
 
 ## Key decisions
 - **Personal tier, not Production.** Personal = non-expiring, no domain verification, same 20/s + 100/2min throughput as Dev. Production requires verified domain + ToS + Privacy Policy + hosted site - overkill for single-user.
-- **Channel is a web form, not email.** developer.riotgames.com → Register Product → Personal. Reviews via portal Project Discussion tab. Realistic approval window: 2–6 weeks.
+- **Channel is a web form, not email.** developer.riotgames.com → Register Product → Personal. Reviews via portal Project Discussion tab. Realistic approval window: 2-6 weeks.
 - **Web API key MUST NOT power live in-game advisory** per Riot policy. RC's live coaching loop runs on LCU + LiveClient + local vision and is unaffected by this ADR.
-- **Cold all-10-player champ-select fan-out is ~80–150 calls** vs the 100/2min ceiling. Cache-immutable (Match-V5, Account-V1) + TTL (League-V4, Mastery) + progressive reveal over 90s window + priority queue (locked-champ mastery + rank fire first; mains + streak as bandwidth allows).
+- **Cold all-10-player champ-select fan-out is ~80-150 calls** vs the 100/2min ceiling. Cache-immutable (Match-V5, Account-V1) + TTL (League-V4, Mastery) + progressive reveal over 90s window + priority queue (locked-champ mastery + rank fire first; mains + streak as bandwidth allows).
 
 ## What's next
-- **Recommended:** FU02 panel stub (route + ESM panel + CSS scaffolding + `TeamContext` payload schema) → captures honest screenshots → submit FU04 application. The 2–6 week Riot clock dominates downstream timeline.
+- **Recommended:** FU02 panel stub (route + ESM panel + CSS scaffolding + `TeamContext` payload schema) → captures honest screenshots → submit FU04 application. The 2-6 week Riot clock dominates downstream timeline.
 - **Alternate:** FU01 minimap-locate (S, fully independent, removes a silent-failure mode you've already hit).
 - FU03 only useful during the dev-key bridge period - not yet needed.
 
@@ -3942,8 +3942,8 @@ MAP pane currently shows placeholder text. Replace with:
 # s144 wrap - 2026-05-09 (Phase 6 - bridge CLI consolidation)
 
 ## What shipped
-- **`tools/bridge_cli.py`** (574 LOC) - single argparse-subparser entrypoint with subcommands `task | post-result | pull | fetch | ping | heartbeat | post`. SSL ctx, urllib helpers, processed-tasks file, last-seen file, vision-health probe, and Stop-hook transcript parsing - each previously duplicated 2–7× across the originals - now live exactly once.
-- **7 thin shims** (16–26 LOC each, 139 LOC total) replace the 7 originals (772 LOC total). Each shim imports `bridge_cli.main` and prepends its subcommand to argv. Cron contracts preserved exactly - `bridge_pull_tasks.py --target legion` still emits `{now, target, count, tasks}`; the `/process-bridge-tasks` skill spec was untouched.
+- **`tools/bridge_cli.py`** (574 LOC) - single argparse-subparser entrypoint with subcommands `task | post-result | pull | fetch | ping | heartbeat | post`. SSL ctx, urllib helpers, processed-tasks file, last-seen file, vision-health probe, and Stop-hook transcript parsing - each previously duplicated 2-7× across the originals - now live exactly once.
+- **7 thin shims** (16-26 LOC each, 139 LOC total) replace the 7 originals (772 LOC total). Each shim imports `bridge_cli.main` and prepends its subcommand to argv. Cron contracts preserved exactly - `bridge_pull_tasks.py --target legion` still emits `{now, target, count, tasks}`; the `/process-bridge-tasks` skill spec was untouched.
 - **`BridgeMetrics` namespace** in `core/prom_metrics.py` - counters `posts_total{kind,target}`, `fetches_total{status}`, `pulls_total{target,status}`; gauge `pull_pending{target}`. Class-level Counter/Gauge so registration happens on import.
 - **`tests/phase6_bridge_cli/test_bridge_cli.py`** (new) - 42 tests: argparse contracts, envelope shapes (task with/without prompt, post-result with --suggestions/--exit-code/--from-stdin/--reply-to=peer routing via core.bridge.send), pull filtering (target match, rc alias on legion, answered/processed exclusion, sort-oldest-first, fetch-error path), fetch hook (last-seen file write, peer filtering case-insensitive), Stop-hook transcript extraction, heartbeat `--once` mode, BridgeMetrics class registration, parametrized subprocess --help dispatch over each shim.
 - **Live verified**: `py tools/bridge_pull_tasks.py --target legion` → exact pre-shim JSON shape; `py tools/bridge_ping.py` → POST + GET read-back + vision health all OK, exit 0. RC supervisor untouched (RC-BridgeWatcher daemon excluded from rewrite scope).
@@ -4040,7 +4040,7 @@ MAP pane currently shows placeholder text. Replace with:
 - 386 tests pass, ruff 0 violations, archmap `--check` clean, py_compile clean. Commit: **48d11be** pushed → origin/main.
 
 ## Key decisions
-- **Plan estimate vs reality**: plan said "27 phase-markers"; actual universe is ~200+ across 4 numbering systems (RC orchestration Phase 0.X, RC futureproofing 1–7, RC Tier 1–4 milestones, DS engine internal Phase 4 batches in `agents/daemon_slayer/`). Narrowed to RC orchestration/architecture markers only.
+- **Plan estimate vs reality**: plan said "27 phase-markers"; actual universe is ~200+ across 4 numbering systems (RC orchestration Phase 0.X, RC futureproofing 1-7, RC Tier 1-4 milestones, DS engine internal Phase 4 batches in `agents/daemon_slayer/`). Narrowed to RC orchestration/architecture markers only.
 - **Excluded**: DS engine batch tags (~100+, own batch system, all dated 2026-05-04, self-document via DS roadmap) and Tier markers (mostly inside frozen files like `web_dashboard.py`, `main.py`, `app/__init__.py`).
 - **Skipped frozen file**: `ops/rc_supervisor.py:1188` (FROZEN per CLAUDE.md). Phase 0.13 marker at `ops/rc_self_monitor.py:197` covers same phase; journal not impoverished.
 - **Format edge case**: `phase 0.3 (fix 3)` collides with optional `(YYYY-MM-DD)` group; convention is to put qualifiers in the note (`phase 0.3 - note (fix 3)`).
@@ -4171,7 +4171,7 @@ MAP pane currently shows placeholder text. Replace with:
 - **`web/css/dashboard.css`** (modified): 5812 → 25 lines (Google Fonts @import + 13 panel @imports).
 
 ## Key decisions
-- `champ_select.css` merges two non-contiguous source ranges (lines 4264–4276 + 5118–5468); the home overlay CSS between them goes into `home.css`. Cascade order is safe - distinct class namespaces (`cs-*` vs `home-*`).
+- `champ_select.css` merges two non-contiguous source ranges (lines 4264-4276 + 5118-5468); the home overlay CSS between them goes into `home.css`. Cascade order is safe - distinct class namespaces (`cs-*` vs `home-*`).
 - Static handler `prefix("/css/")` already covers subdirs - no server change needed.
 
 ## Verification
@@ -4489,7 +4489,7 @@ them, the bug is closed.
 
 Operator report, verbatim: *"the champ select screen is all wrong for aram + aram mayhem + arena."*
 No detail captured yet - "all wrong" is unspecified (layout vs data vs render vs which elements). When picked up, gather specifics live: needs a champ-select pop in **each** of ARAM, ARAM-Mayhem, and Arena to see what's broken (a Game-PC `capture_monitor` of the dashboard during champ-select is fine - capture is only Vanguard-unsafe *in-game*, not in champ-select/client).
-Leads for whoever investigates: champ-select had heavy recent churn (s164–s214 redesign, s208 legacy `#cs-overlay` retirement) and this 2026-05-17 session disabled the Game-PC screen agents + reworked the shortcut-only boot model - view-router / mode-detection regressions are plausible suspects. Not yet investigated; fix not started.
+Leads for whoever investigates: champ-select had heavy recent churn (s164-s214 redesign, s208 legacy `#cs-overlay` retirement) and this 2026-05-17 session disabled the Game-PC screen agents + reworked the shortcut-only boot model - view-router / mode-detection regressions are plausible suspects. Not yet investigated; fix not started.
 
 **2026-05-17 live-session leads (operator detail + code probe - partial diagnosis):**
 - **Operator-reported specific symptom:** the **quick-swap (ARAM bench champion swap) is not active** on RC's champ-select screen for ARAM **and** ARAM-Mayhem.
@@ -4526,7 +4526,7 @@ Leads for whoever investigates: champ-select had heavy recent churn (s164–s214
 - **New `/sync-all-md` skill** - tracked canonical `tools/sync-all-md.md` (`.claude/commands/` mirror is gitignored local runtime, per the `done.md` house pattern). 10 ordered sections: canonical-facts-once → classify every .md → reconcile LIVING only → locked-s207 README → cross-ref integrity → orphan/deprecation → history-protect → self-congruence → report. Args `--dry-run` / `commit` / `readme`.
 - **Congruence pass applied**: ENGINE_VERSION 0.92.0→0.94.0; DS tests→2060; block_index coverage→193 entries / 124 champions (72%); rewind matches→2851; README "2,022 tests"→"2,060" + "two-thirds"→"three-quarters"; BRIEF stale 922/1426/0.69.0/2,846 → canonical (BOM + portfolio voice preserved).
 - **Broken ref**: dead `docs/_archive/CHANGELOG.md` (cited 3×, never existed) repointed → `docs/history_notes.md` (CLAUDE.md ×2 + ROADMAP.md).
-- **Structural**: DAEMON_SLAYER.md Phase-3 stale "three implemented / next session's lift" → all six scorers wired via `archetype_dispatch` (s174–s182).
+- **Structural**: DAEMON_SLAYER.md Phase-3 stale "three implemented / next session's lift" → all six scorers wired via `archetype_dispatch` (s174-s182).
 - **Quarantine**: `audit-notes.md`, `AUDIT_PHASE_2_STATUS.md`, `rc-tutor-decision-matrix.md` → `docs/_archive/2026-05-16-doc-sync/`.
 
 ## Key decisions / don't-redo
@@ -4561,17 +4561,17 @@ Leads for whoever investigates: champ-select had heavy recent churn (s164–s214
 ## Shipped - `920c9a3` (+1004/−99, 7 files) + the docs commit below
 - **Item C** rich DDragon item tooltips on Comp tab (mirrors champ_select s213).
 - **Item E phase 1** Timeline tab (per-min gold/XP/CS diff sparklines + objective ribbon). Source pivoted: **LCU has NO timeline endpoint (404)** → server-side **Match-V5** via `core.riot_api.get_match_timeline` (immutable-cached) in `dashboard/builders._attach_match_timeline`. 17 tests `tests/test_last_match_timeline.py`. Phase 2 (interactive minimap) deferred.
-- **Settings** "POST GAME REVIEW" card: rank-tier selector (canonical `rc-pgr-rank-tier`) + baseline knob (`/api/last-match?baseline=`, clamped 5–50, in `_build_last_match`).
+- **Settings** "POST GAME REVIEW" card: rank-tier selector (canonical `rc-pgr-rank-tier`) + baseline knob (`/api/last-match?baseline=`, clamped 5-50, in `_build_last_match`).
 - **Polish:** tabs → Comp/Chart/Timeline/Insights/Review (Deep-Review→Review nav tab); Chart contrast; hero section separators; **section 3 rebuilt as 4-col grid mirroring section 2** (col1 = selector over KDA+KP% flex pair, selector widened via justify-self:stretch); per-side roster score + MVP/SVP; CS↔summoner swap; L##→##; **+1 then +3 font bumps** (44 decls, hero↔section3 parity preserved); uniform 17px column gap.
 
 ## Key decisions / don't-redo
 - **gamepc_lcu_agent.py was edited then fully REVERTED** - LCU exposes no `/timeline`. Do NOT re-add an agent timeline push. Match-V5 server-side is the path.
 - **Riot key was NEVER the problem (diagnosed 2026-05-16).** Product key in `API-Key-Riot.txt` is valid + in-scope - live-probed **200** on all 6 RC endpoints incl. Match-V5 timeline for a standard match. The Item-E timeline 403s because **Riot Match-V5 does not serve event-mode games**: operator's stashed last match is ARAM Mayhem (`gameMode=KIWI`, `queueId=2400`, `NA1_5560797021`) → both `/timeline` and `/matches/{id}` return app-JSON `403 Forbidden`, and Match-V5 `by-puuid/ids` omits the game entirely. NOT renewal/scope/routing/Cloudflare/stale-cache. RC restarted (pid 16424→17480) as hygiene; the 403 did not change - proof it was never a key/cache issue. **Item E + the reframe are unblocked for standard-queue matches**; event-mode last-matches will (correctly, permanently) placeholder. The earlier diagnostic `error code: 1010` was a Cloudflare UA block from a UA-less probe - irrelevant to RC's `rc-riot-api/1` path. Follow-up (not done): `_attach_match_timeline` should early-skip known event queues (2400 etc.) to kill the misleading "key may be invalid or revoked" WARN spam + error-metric noise.
 - Section 3 went through ~5 layout iterations; **final = 4-col matching section 2's column pairing** (VISION↕DAMAGE, CS↕CS/MIN, TANKED↕HEAL, selector↕[KDA KP%]). Do not re-litigate - operator confirmed via spec table.
-- `_rosterScores` is currently **per-side 1–5** (lobby-wide 1–10 caused gap-looking numbers - operator flagged, fixed).
+- `_rosterScores` is currently **per-side 1-5** (lobby-wide 1-10 caused gap-looking numbers - operator flagged, fixed).
 
 ## NEXT SESSION - major reframe (operator pivot, paint-tool iteration)
-Operator wants Post Game Review reframed aggregator-G-style: **clickable, lightly explorable**; deep coach refinement routes to the **Replay page**. 6 reference screenshots analyzed this session (model: compact match rows → expand → persistent header + 10-player score strip → **AI Analysis / AI Graph / Build** tabs; 0–100 color-banded score + lobby-wide rank + 👑 best; MVP=purple card; AI-Graph = trend line, click event → minimap+detail+win-prob). Carried, NOT yet done: Sustain rename; hero section-1 (KDA `##/##/##` min-width, champ-name 2-line, remove "ARAM"); aggregator G roster row (level-on-icon, vertical summoners, runes, rank badge, score+rank, KDA 2-line, damage fill-bar, cs/min parens); color-coding feature; #9 per-player augments. Per-player runes/ranks need `_enrich_from_lcu` extension. Operator will paint-tool-annotate section by section.
+Operator wants Post Game Review reframed aggregator-G-style: **clickable, lightly explorable**; deep coach refinement routes to the **Replay page**. 6 reference screenshots analyzed this session (model: compact match rows → expand → persistent header + 10-player score strip → **AI Analysis / AI Graph / Build** tabs; 0-100 color-banded score + lobby-wide rank + 👑 best; MVP=purple card; AI-Graph = trend line, click event → minimap+detail+win-prob). Carried, NOT yet done: Sustain rename; hero section-1 (KDA `##/##/##` min-width, champ-name 2-line, remove "ARAM"); aggregator G roster row (level-on-icon, vertical summoners, runes, rank badge, score+rank, KDA 2-line, damage fill-bar, cs/min parens); color-coding feature; #9 per-player augments. Per-player runes/ranks need `_enrich_from_lcu` extension. Operator will paint-tool-annotate section by section.
 
 # s219 wrap - 2026-05-15/16 (Post Game Review build - multi-session marathon)
 
@@ -4812,7 +4812,7 @@ Composed `compute_dps` × `compute_ehp` into `compute_hybrid()` + `rank_items_by
 
 ---
 
-## s92–s103 detailed notes (2026-05-04 – 2026-05-05)
+## s92-s103 detailed notes (2026-05-04 - 2026-05-05)
 
 ### s103 - 2026-05-05 (DS champ-select panel + dashboard bug fixes)
 - **DS champ-select panel** `112350a` - `#cs-ds-block` + `/api/ds-preview` endpoint. Fires once per (champion, mode). Item tiles with +Ndps tooltips.
@@ -4847,54 +4847,54 @@ Composed `compute_dps` × `compute_ehp` into `compute_hybrid()` + `rank_items_by
 - **ARAM coach DS-before-Haiku** `3b84949` - DS `rank_for()` before `messages.create()`; `{ds_picks}` injected into user turn; pre-DS hardcoded item rules removed (−37% system prompt ~1,849→1,170 tokens).
 - **Documentation sweep** - CLAUDE.md, README.md, ROADMAP.md updated. `DS_COMPLETION_ROADMAP.txt` created on Desktop.
 
-### s95 - 2026-05-04 (Daemon Slayer batches 57–62)
-- Batches 57–60 `9f128c4..864e65d` - `caster_bonus_armor` + `caster_lethality` added; Void Immolation, Golden Spatula, Darksteel Talons, Bastionbreaker, Reality Fracture promoted. ENGINE_VERSION 0.57.0, 899 tests.
+### s95 - 2026-05-04 (Daemon Slayer batches 57-62)
+- Batches 57-60 `9f128c4..864e65d` - `caster_bonus_armor` + `caster_lethality` added; Void Immolation, Golden Spatula, Darksteel Talons, Bastionbreaker, Reality Fracture promoted. ENGINE_VERSION 0.57.0, 899 tests.
 - Batch 61 `2148ed2` - Zaz'Zak's Realmspike + Bloodsong (spellblade + Expose Weakness damage_amp). 899 tests.
 - Batch 62 `dcfeb63` - Cruelty dual-variant (Arena 447109 + SR 667109). ENGINE_VERSION 0.58.0, 911 tests.
 
-### s94 - 2026-05-04 (Daemon Slayer batches 54–56)
+### s94 - 2026-05-04 (Daemon Slayer batches 54-56)
 - Batch 54 `ded3d01` - `bonus_ap_stacked` (Mejai's) + `bonus_as_conditional` (Yun Tal 27% uptime) + Sword of the Divine. ENGINE_VERSION 0.55.0, 843 tests.
 - Batch 55 `e054c1c` - 46 defensive_only entries; DDragon purchasable coverage COMPLETE (547 entries, 850 tests). Coverage gate test added.
 - Batch 56 `ede9c89` - `ap_amp_pct_per_100_caster_hp` schema; Demonic Embrace Arena. ENGINE_VERSION 0.56.0, 856 tests.
 
-### s93 - 2026-05-04 (Daemon Slayer batches 50–53)
+### s93 - 2026-05-04 (Daemon Slayer batches 50-53)
 - Batch 50 - `armor_reduction_flat` + `mr_reduction_flat` schema; Flesheater promoted.
 - Batch 51 - Fated Ashes (Inflame) + 5 defensive components.
 - Batch 52 - Night Harvester, Luden's Echo, Bloodletter's Curse SR; ability-cast schema resolved via `every_n_seconds`.
 - Batch 53 `255dd22` - Hamstringer Scour + Stormsurge Squall. ENGINE_VERSION 0.54.0, 829 tests.
 
-### s92 - 2026-05-04 (Daemon Slayer batches 38–49)
-- Batches 38–41 `0369403..bc61b4c` - Giant Slayer schema; `mr_reduction_pct`; Arena re-skins; Navori key collision fix. 494 tests.
-- Batches 42–43 `b92301f` - Arena 222xxx/223xxx/224xxx/32xxxx mirrors; 83 defensive_only. 530 tests.
-- Batches 44–45 `6eaccae` - Sheen spellblade; Tiamat Cleave; Bami's Cinder Immolate; boots. 558 tests.
-- Batches 46–47 `8795097` - Divine Sunderer Arena; Demonic Embrace; Blighting Jewel. 587 tests.
-- Batches 48–49 `1230dca` - 1xxx components complete; Spellslinger's Shoes dual-pen; Arena Arena. ENGINE_VERSION 0.53.0, 603 tests.
+### s92 - 2026-05-04 (Daemon Slayer batches 38-49)
+- Batches 38-41 `0369403..bc61b4c` - Giant Slayer schema; `mr_reduction_pct`; Arena re-skins; Navori key collision fix. 494 tests.
+- Batches 42-43 `b92301f` - Arena 222xxx/223xxx/224xxx/32xxxx mirrors; 83 defensive_only. 530 tests.
+- Batches 44-45 `6eaccae` - Sheen spellblade; Tiamat Cleave; Bami's Cinder Immolate; boots. 558 tests.
+- Batches 46-47 `8795097` - Divine Sunderer Arena; Demonic Embrace; Blighting Jewel. 587 tests.
+- Batches 48-49 `1230dca` - 1xxx components complete; Spellslinger's Shoes dual-pen; Arena Arena. ENGINE_VERSION 0.53.0, 603 tests.
 
 ---
 
-## Session ledger s27–s91 (condensed - from WAKEUP_NOTES compaction 2026-05-04)
+## Session ledger s27-s91 (condensed - from WAKEUP_NOTES compaction 2026-05-04)
 
 All narrative detail in `ROADMAP.md §1` and `git log`.
 
 | Session | Date | Key commit(s) | Theme |
 |---|---|---|---|
-| s27 (a–u) | 2026-05-01 | 778971d..957dab7 | All Tier 1–4 audit items; asyncio migration (T2 #8 C1–C5); tkinter-free |
+| s27 (a-u) | 2026-05-01 | 778971d..957dab7 | All Tier 1-4 audit items; asyncio migration (T2 #8 C1-C5); tkinter-free |
 | s28 | 2026-05-02 | a38d002..7307e6a | RC↔Peer cross-Claude bridge live (Tailscale); inheritance arc |
 | s29 | 2026-05-02 | 7223afe, c4c9e07 | Game-PC joined tailnet as `gamepc-rc`; bridge_monitor sidecar live |
 | s30 | 2026-05-02 | 645e041..4c2514d | One-click gamepc_boot.ps1; cross-Claude learning-sync vision doc |
 | s31 | 2026-05-02 | - | Phase 3 supervisor; dashboard OWNED fix; cron echo silenced |
 | s32 | 2026-05-02 | c58e689, dc73303 | Live stat mirror; ally_comp overwrite fix |
-| s33–s36 | 2026-05-02–03 | 0302fc7..0fcf102 | Action label decay fix; bridge `/messages` alias; arena advisor v1 |
-| s37–s45 | 2026-05-03 | (DS Phase 1) | Daemon Slayer extractor; lolmath chunk topology; champion builds refresh |
-| s46–s55 | 2026-05-03 | (DS Phase 2) | DS engine scaffolding; stat walk; on-hit framework; 40 items |
-| s56–s65 | 2026-05-03 | (DS Phase 3) | DS Arena items; beam search; augment schema; 150+ items |
-| s66–s75 | 2026-05-03–04 | (DS Phase 4) | DS spellblade/unique-passive; Arena mirror pass; 300+ items |
-| s76–s80 | 2026-05-04 | (DS batch 20–24) | Rune writer shard3 fix; Bridge Watcher hardening; Bridge Pending UI |
-| s81–s84 | 2026-05-04 | (DS batch 25–28) | Arena augment persistence; Meraki bulk switch; vision tracker polish |
-| s85–s88 | 2026-05-04 | 0cecfa3..28d2a93 | DS batches 29–32; magic_amp schema; Rabadon's; 550 tests |
+| s33-s36 | 2026-05-02-03 | 0302fc7..0fcf102 | Action label decay fix; bridge `/messages` alias; arena advisor v1 |
+| s37-s45 | 2026-05-03 | (DS Phase 1) | Daemon Slayer extractor; lolmath chunk topology; champion builds refresh |
+| s46-s55 | 2026-05-03 | (DS Phase 2) | DS engine scaffolding; stat walk; on-hit framework; 40 items |
+| s56-s65 | 2026-05-03 | (DS Phase 3) | DS Arena items; beam search; augment schema; 150+ items |
+| s66-s75 | 2026-05-03-04 | (DS Phase 4) | DS spellblade/unique-passive; Arena mirror pass; 300+ items |
+| s76-s80 | 2026-05-04 | (DS batch 20-24) | Rune writer shard3 fix; Bridge Watcher hardening; Bridge Pending UI |
+| s81-s84 | 2026-05-04 | (DS batch 25-28) | Arena augment persistence; Meraki bulk switch; vision tracker polish |
+| s85-s88 | 2026-05-04 | 0cecfa3..28d2a93 | DS batches 29-32; magic_amp schema; Rabadon's; 550 tests |
 | s89 | 2026-05-04 | 0cecfa3 | DS batch 33: ability-burn promos, caster_bonus_hp, 367 tests |
-| s90 | 2026-05-04 | 1bd105d, 6b04992 | DS batches 34–35: magic_amp_pct schema, dual-pen, spellblade |
-| s91 | 2026-05-04 | 8f7811b, 8d208c3 | DS batches 36–37: TRUE damage type, Arena 443/447 sweeps, 428 tests |
+| s90 | 2026-05-04 | 1bd105d, 6b04992 | DS batches 34-35: magic_amp_pct schema, dual-pen, spellblade |
+| s91 | 2026-05-04 | 8f7811b, 8d208c3 | DS batches 36-37: TRUE damage type, Arena 443/447 sweeps, 428 tests |
 
 ---
 # s197 wrap - 2026-05-14 (Phase 5.9.10 assassin/fighter resource + utility block_index expansion)

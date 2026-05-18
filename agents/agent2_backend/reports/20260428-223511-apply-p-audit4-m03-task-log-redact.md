@@ -12,7 +12,7 @@
 
 ### Pattern coverage
 
-`_SECRET_PATTERNS` (lines 163–168) defines four compiled regexes:
+`_SECRET_PATTERNS` (lines 163-168) defines four compiled regexes:
 
 | Pattern | Threat covered |
 |---|---|
@@ -26,11 +26,11 @@ pattern is a conservative bonus.
 
 ### Redactor wiring
 
-`_redact_secrets()` (lines 171–178) iterates over `_SECRET_PATTERNS` and
+`_redact_secrets()` (lines 171-178) iterates over `_SECRET_PATTERNS` and
 calls `p.sub("[REDACTED-SECRET]", s)` on each. It is idempotent and
 short-circuits on empty/non-str inputs.
 
-The per-task log write at lines 1440–1451 passes both capture streams through
+The per-task log write at lines 1440-1451 passes both capture streams through
 the redactor:
 
 ```python
@@ -38,7 +38,7 @@ f"--- stdout ---\n{_redact_secrets(proc.stdout)}\n\n"
 f"--- stderr ---\n{_redact_secrets(proc.stderr)}\n",
 ```
 
-The comment block at lines 1434–1438 documents the audit finding and threat
+The comment block at lines 1434-1438 documents the audit finding and threat
 model (env injection → traceback → file-on-disk) for future readers.
 
 ### Remaining log-path (stderr truncation at line 1459)

@@ -34,7 +34,7 @@ WP = _load_module()
 HEADER = (
     "# WAKEUP_NOTES - RC hand-off ledger\n"
     "\n"
-    "> Sessions s27–s137 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.\n"
+    "> Sessions s27-s137 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.\n"
 )
 
 
@@ -163,7 +163,7 @@ class TestDatedAndPinnedFormat(unittest.TestCase):
     def test_session_re_still_matches_legacy(self):
         self.assertIsNotNone(WP.SESSION_RE.match("# s234 wrap - 2026-05-17"))
         self.assertIsNotNone(
-            WP.SESSION_RE.match("# s209–s213 wrap - 2026-05-16"))
+            WP.SESSION_RE.match("# s209-s213 wrap - 2026-05-16"))
 
     def test_session_re_does_not_match_pin(self):
         self.assertIsNone(

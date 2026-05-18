@@ -5649,7 +5649,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         <div><kbd>A</kbd> run Analyze Now</div>
         <div><kbd>Shift</kbd>+<kbd>R</kbd> reset saved prefs</div>
         <div><kbd>Z</kbd> toggle Zen (hide side panels)</div>
-        <div><kbd>1</kbd>–<kbd>9</kbd> switch sim fixture (dev mode only)</div>
+        <div><kbd>1</kbd>-<kbd>9</kbd> switch sim fixture (dev mode only)</div>
         <div><kbd>←</kbd> <kbd>→</kbd> cycle sim fixture (dev mode)</div>
         <div><kbd>?</kbd> or <kbd>H</kbd> show this</div>
       `;

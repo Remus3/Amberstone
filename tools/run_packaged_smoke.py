@@ -193,7 +193,7 @@ def check_exclusions(entries: set[str], zip_path: Path) -> None:
     else:
         _fail("ops/runtime/ has live runtime artifacts", f"{rt_non_placeholder[:3]}")
 
-    # Verify archive size is in Option B range (~15–50 MB)
+    # Verify archive size is in Option B range (~15-50 MB)
     size_mb = zip_path.stat().st_size / (1024 * 1024)
     if size_mb >= 10:
         _ok("archive size consistent with Option B (embedded runtime)", f"{size_mb:.1f} MB")

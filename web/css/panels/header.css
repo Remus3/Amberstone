@@ -1274,7 +1274,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lobby-members-list .lobby-member-row {
   display: grid;
   /* s162 v7: 6 cols - name | icon-spacer | role | rank | top-2-champs
-   * | actions. Cols 1–4 mirror Top 8 panel's name/games/role/rank fr
+   * | actions. Cols 1-4 mirror Top 8 panel's name/games/role/rank fr
    * ratios so the Role + Rank columns line up vertically across both
    * panels. (Top 8: 1.4fr 0.6fr 0.5fr 1.2fr ... ; col 2 here is the
    * empty icon-spacer that aligns with Top 8's games cell.)

@@ -402,7 +402,7 @@ FIXTURES["aram_mayhem_mid"] = {
         "augments": "Limited Shopping, Platform Regen Disabled",
         "augment_select": True,
         "augment_choices": [
-            "Goldrend - Damage attacks deal +50–150 magic damage, grants gold + MS for 1.5s",
+            "Goldrend - Damage attacks deal +50-150 magic damage, grants gold + MS for 1.5s",
             "Fan The Hammer - Attacks fire 5 extra Firecrackers, each direction has its own CD",
             "Draw Your Sword - Become melee, gain AD/HP/AS/Lifesteal/MS scaling with range given up",
         ],

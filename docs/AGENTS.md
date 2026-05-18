@@ -7,7 +7,7 @@ Deep reference for the agent roster and supervisor stack. For operating rules se
 | Supervisor | File | Port(s) | Role |
 |---|---|---|---|
 | **RC Supervisor** | `ops/rc_supervisor.py` | - | Owns `main.py` process lifecycle; PID lock; restart trigger |
-| **Phase 3 Supervisor** | `agents/supervisor.py` | `:8890` HTTP · `:8891` WS | Orchestrates Agent 0–7; proxied at `/api/analyze` |
+| **Phase 3 Supervisor** | `agents/supervisor.py` | `:8890` HTTP · `:8891` WS | Orchestrates Agent 0-7; proxied at `/api/analyze` |
 
 Both coexist on Legion. Neither kills the other.
 
@@ -55,4 +55,4 @@ agents/
 - Game-PC daemon: `tools/gamepc_bridge_daemon.py` - polls `bridge_pull_tasks.py --target gamepc` every 30s idle / 10s after batch; spawns `claude --print /process-bridge-tasks` only when count > 0
 - Peer daemon: `tools/peer_bridge_daemon.py` - same pattern, Peer-side
 
-Bridge spawn cost note: each `claude --print` spawn cold-loads CLAUDE.md + WAKEUP_NOTES + project context. Keep CLAUDE.md under 120 lines and WAKEUP_NOTES to last 2–3 sessions to limit per-spawn token overhead.
+Bridge spawn cost note: each `claude --print` spawn cold-loads CLAUDE.md + WAKEUP_NOTES + project context. Keep CLAUDE.md under 120 lines and WAKEUP_NOTES to last 2-3 sessions to limit per-spawn token overhead.

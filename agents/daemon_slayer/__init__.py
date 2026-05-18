@@ -67,7 +67,7 @@ rule), Yun Tal Wildarrows (3032) + Atma's Reckoning (3039) paired
 promotion via the new ItemEffect crit_chance_bonus_flat /
 crit_chance_bonus_max_pct + per_bonus_hp_cap fields (Phase 4 batch 26,
 2026-05-04 - Yun Tal pinned at full Wildarrows stacks 25%, Atma's
-Big Hands linear ramp 0–30% over 0–3000 caster bonus HP; summed and
+Big Hands linear ramp 0-30% over 0-3000 caster bonus HP; summed and
 clamped at 1.0 in compute_dps so both auto-attack crit and ER's
 Spellblade scaling see the boosted total; Yun Tal's Flurry AS bonus
 intentionally not modeled), Manamune (3004) + Muramana (3042) paired
@@ -425,7 +425,7 @@ Phase 6 (s181, 2026-05-13 - Enchanter healing throughput scorer, ENGINE_VERSION 
   Knight's Vow (3109, ally tank-share). Each item carries per-proc
   base/per-level/AP-scaling for healing and shielding, procs-per-second,
   targets-per-proc, heal/shield amp percent (Moonstone +30% chain;
-  Redemption/Mikael/Ardent/Staff +10–12% H&S power), and an ally_buff_credit
+  Redemption/Mikael/Ardent/Staff +10-12% H&S power), and an ally_buff_credit
   number calibrated against direct HPS (10 ≈ 10 HPS-equivalent) so pure-
   buff items rank next to direct-heal items. Total throughput = (healing_raw
   + shielding_raw) × product(1 + amp_pct) × mode_mult + sum(buff_credit).

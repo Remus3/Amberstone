@@ -20,7 +20,7 @@ const k = document.createElement("span"); k.className = "ev-kind";  k.textConten
 span.append(g, t, o, k);
 ```
 
-An inline audit comment at lines 114–118 already cites `P-audit4-m04` and
+An inline audit comment at lines 114-118 already cites `P-audit4-m04` and
 documents the kiosk same-origin threat model. No further changes required.
 
 ## Verification

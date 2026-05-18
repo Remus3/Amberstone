@@ -58,7 +58,7 @@ _KEYSTONES = {
     "First Strike":     8369,
 }
 
-# Primary tree rows 1–3 defaults (ADC-optimised)
+# Primary tree rows 1-3 defaults (ADC-optimised)
 # These are the 3 non-keystone row picks for the PRIMARY tree.
 # Layout: [row1_id, row2_id, row3_id]
 _PRIMARY_ROWS: dict[str, dict[str, list[int]]] = {

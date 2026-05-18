@@ -68,7 +68,7 @@ def main(check: bool = False) -> int:
     for fname, start, end in SECTIONS:
         chunk = "".join(lines[start - 1 : end])
         (PANELS_DIR / fname).write_text(chunk, encoding="utf-8")
-        print(f"  wrote {fname} ({end - start + 1} lines, {start}–{end})")
+        print(f"  wrote {fname} ({end - start + 1} lines, {start}-{end})")
 
     # Write champ_select.css (two ranges concatenated)
     cs_chunks = []

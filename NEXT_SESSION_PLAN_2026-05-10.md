@@ -3,7 +3,7 @@
 Operator directive (end of s166):
 > _"ill wait on the ui stuff for the moment, lets just finish the back end work for now and any pending backlog items that are not checked off and any roadmap items not checked off yet … priority task to check first will be the Daemon Slayer headless testing if nothing substantive - then connect to the rewind database: and run that headless overnight."_
 
-UI work is **paused** until further notice. This session focuses on backend, DB, headless DS testing, infra hygiene, and the planning doc the operator asked for. The fixture flow steps 5–14 (champ-select variants, active-match minute fixtures, game summary, last-match) are explicitly deferred - do not start them unless the operator unblocks.
+UI work is **paused** until further notice. This session focuses on backend, DB, headless DS testing, infra hygiene, and the planning doc the operator asked for. The fixture flow steps 5-14 (champ-select variants, active-match minute fixtures, game summary, last-match) are explicitly deferred - do not start them unless the operator unblocks.
 
 ---
 
@@ -144,8 +144,8 @@ Copied from `ROADMAP.md` as of 2026-05-10. Status notes reflect what s166 left i
 - 🟡 **Vision regions calibration** - `data/vision_regions.json` bboxes. Blocked on live game for calibration frames. Not actionable headless.
 - 🟡 **Bridge Watcher acceptance-criteria** - need 50+ real-traffic auto-action samples. Watch `auto_ok_since_boot` vs `auto_err_since_boot`. Background ride-along; no headless work possible.
 - 🟡 **gamepc_boot.ps1 hardening** - add `RC-WatcherHealthPublisher-GamePC` + `RC-BridgeWatcher-GamePC` to idempotent start sequence. Independent; Game-PC PowerShell work.
-- 🟡 **Active Match view steps 2–5** (UI-blocked per operator) - DS icons + per-tick rerank, enemy-comp threading into `target_armor/mr/bonus_hp`, static map + overlay, zen-lock + RIGHT NOW fold + bridge-pending → dev-panel button. **Deferred per operator.**
-- 🟡 **Phase 3 fixture flow steps 5–14** (UI-blocked) - champ-select variants, active match @ 0/6/12/20/30/40 min, game summary, last match. **Deferred per operator.**
+- 🟡 **Active Match view steps 2-5** (UI-blocked per operator) - DS icons + per-tick rerank, enemy-comp threading into `target_armor/mr/bonus_hp`, static map + overlay, zen-lock + RIGHT NOW fold + bridge-pending → dev-panel button. **Deferred per operator.**
+- 🟡 **Phase 3 fixture flow steps 5-14** (UI-blocked) - champ-select variants, active match @ 0/6/12/20/30/40 min, game summary, last match. **Deferred per operator.**
 - 🟡 **Phase B set_augment_intent** - s166 shipped the stub; real LCU `/lol-cherry/v1/*` endpoint discovery needs a live Arena lobby. Headless cannot resolve.
 
 ### Medium-priority open
@@ -251,7 +251,7 @@ Headless-friendly. Pure analysis + doc work. Foundational for the Default DS bui
 
 ## Execution order recommendation
 
-1. **Start with Priority 1** - pick 1–2 of the DS headless candidates (per-level DPS curves + Arena augment overlay are the highest-leverage). Implement + ship tests, no UI surface.
+1. **Start with Priority 1** - pick 1-2 of the DS headless candidates (per-level DPS curves + Arena augment overlay are the highest-leverage). Implement + ship tests, no UI surface.
 2. **If DS testing stalls** - drop to **Priority 2** (rewind_history.db catchup script). Kick off the overnight run before EOD.
 3. **Priority 9** (API surface audit) is a foundational doc pass - slot in early to surface Priority 8's mastery wiring + Priority 5's per-champion data needs. Pure-text + grep work; cheap on token budget.
 4. **Priority 8** (LCU mastery) is a small concrete win once the audit is done - single LCU endpoint, single capture-state extension, ~10 tests.

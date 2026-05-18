@@ -7,7 +7,7 @@
 
 Haiku coaching prompts included raw item lists and champion stats, but Haiku lacks the math depth to evaluate complex item interactions (e.g., Lethality stacking, Sheen proc timing, AD-scaling on ability passives). Coach prompts were long and Haiku still gave generic "build AD items" advice.
 
-Alternative: run a separate heavier model (Sonnet) for item evaluation. Cost would be 10–20× higher per coaching tick.
+Alternative: run a separate heavier model (Sonnet) for item evaluation. Cost would be 10-20× higher per coaching tick.
 
 ## Decision
 
