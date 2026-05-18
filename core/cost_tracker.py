@@ -1,5 +1,5 @@
 """
-core/cost_tracker.py — central cost tracking + cost-control gates.
+core/cost_tracker.py - central cost tracking + cost-control gates.
 
 AUDIT 2026-04-28 (proposals 5.1, 5.4, 5.5, 5.7, 5.8 + 2.1, 2.2):
 
@@ -32,7 +32,7 @@ from core.prom_metrics import Counter
 _log = logging.getLogger("rc.cost_tracker")
 
 # Prometheus instrumentation (T3 #12, 2026-05-01). Counters bumped from
-# the singleton's chokepoints — every Anthropic API call lands at
+# the singleton's chokepoints - every Anthropic API call lands at
 # `record_call`, every vision-rate-limit decision lands at
 # `acquire_vision_token`, every dedup lookup at `vision_dedupe_get`.
 _M_COACH_CALLS = Counter(
@@ -68,7 +68,7 @@ _M_VISION_DEDUPE_MISSES = Counter(
 )
 
 # Approximate per-model pricing (USD per 1M tokens). Conservative; used
-# only for the dashboard ledger — real billing is whatever Anthropic
+# only for the dashboard ledger - real billing is whatever Anthropic
 # charges. Update alongside model rollouts.
 MODEL_PRICING: Dict[str, Dict[str, float]] = {
     "claude-haiku-4-5-20251001": {

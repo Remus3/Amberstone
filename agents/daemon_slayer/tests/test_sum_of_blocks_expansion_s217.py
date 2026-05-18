@@ -1,11 +1,11 @@
-"""Phase 5.9.22 (s217, 2026-05-15) — second sum-of-blocks data batch.
+"""Phase 5.9.22 (s217, 2026-05-15) - second sum-of-blocks data batch.
 
 Closes the s215 carry-forward queue by reframing the two remaining
 candidates under the operator-commits-to-canonical-burst model.
 
 Two entries:
 
-  * Taliyah.E  = [0, 2]   — NEW key. Block 0 Magic Damage (initial
+  * Taliyah.E  = [0, 2]   - NEW key. Block 0 Magic Damage (initial
                             shard-impact pass-through) + block 2 Total
                             Maximum Detonation Damage (aggregate of
                             multiple stone detonations when target
@@ -17,7 +17,7 @@ Two entries:
                             damage source separate from the detonation
                             aggregate.
 
-  * DrMundo.W = [1, 2]    — LIFT from s193's single-int {W: 1}. Block 1
+  * DrMundo.W = [1, 2]    - LIFT from s193's single-int {W: 1}. Block 1
                             Total Magic Damage (full 4-second Heart
                             Zapper drain channel) + block 2 Magic
                             Damage (recast detonation burst). Operator
@@ -32,9 +32,9 @@ Backward-compat: prior s207 + s215 sum-of-blocks entries unchanged.
 
 All 2 entries verified per-rank against the Meraki 16.10.1 snapshot
 during s217 implementation:
-  * Taliyah E rank 5: block 0 240+60%AP, block 2 262.5+75%AP — sum 502.5
+  * Taliyah E rank 5: block 0 240+60%AP, block 2 262.5+75%AP - sum 502.5
                       raw base (+109% over forced block 0 alone)
-  * DrMundo W rank 5: block 1 320 base, block 2 80 base — sum 400 raw
+  * DrMundo W rank 5: block 1 320 base, block 2 80 base - sum 400 raw
                       base (+25% over forced block 1 alone)
 """
 from __future__ import annotations
@@ -60,7 +60,7 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── Registry shape — 2 new/lifted entries ───────────────────────────────────
+# ─── Registry shape - 2 new/lifted entries ───────────────────────────────────
 
 
 class Phase599_22RegistrySeedTests(unittest.TestCase):
@@ -93,7 +93,7 @@ class Phase599_22RegistrySeedTests(unittest.TestCase):
         self.assertEqual(v, [1, 2])
 
 
-# ─── Arithmetic parity — sum == sum of forced singletons ─────────────────────
+# ─── Arithmetic parity - sum == sum of forced singletons ─────────────────────
 
 
 class Phase599_22AbilityDpsTests(unittest.TestCase):
@@ -129,7 +129,7 @@ class Phase599_22AbilityDpsTests(unittest.TestCase):
     # ─── Taliyah E [0, 2] ───────────────────────────────────────────────────
 
     def test_taliyah_E_sum_exceeds_block_0_alone(self) -> None:
-        """Sum strictly exceeds block 0 (initial impact) alone — block 2
+        """Sum strictly exceeds block 0 (initial impact) alone - block 2
         adds the Total Maximum Detonation aggregate which carries 75% AP
         and a larger base at every rank."""
         s_sum = self._spell("Taliyah", "E")
@@ -137,7 +137,7 @@ class Phase599_22AbilityDpsTests(unittest.TestCase):
         self.assertGreater(s_sum.raw_damage_per_cast, s_forced.raw_damage_per_cast)
 
     def test_taliyah_E_sum_exceeds_block_2_alone(self) -> None:
-        """Sum strictly exceeds block 2 (max detonation) alone — block 0
+        """Sum strictly exceeds block 2 (max detonation) alone - block 0
         adds the initial pass-through impact damage."""
         s_sum = self._spell("Taliyah", "E")
         s_forced = self._spell_forced("Taliyah", "E", 2)
@@ -156,14 +156,14 @@ class Phase599_22AbilityDpsTests(unittest.TestCase):
     # ─── DrMundo W [1, 2] ───────────────────────────────────────────────────
 
     def test_drmundo_W_sum_exceeds_block_1_alone(self) -> None:
-        """Sum strictly exceeds block 1 (full channel) alone — block 2
+        """Sum strictly exceeds block 1 (full channel) alone - block 2
         adds the recast detonation burst (20-80 base damage)."""
         s_sum = self._spell("DrMundo", "W")
         s_forced = self._spell_forced("DrMundo", "W", 1)
         self.assertGreater(s_sum.raw_damage_per_cast, s_forced.raw_damage_per_cast)
 
     def test_drmundo_W_sum_exceeds_block_2_alone(self) -> None:
-        """Sum strictly exceeds block 2 (recast detonation) alone — the
+        """Sum strictly exceeds block 2 (recast detonation) alone - the
         full-channel total carries the bulk of the damage at higher ranks."""
         s_sum = self._spell("DrMundo", "W")
         s_forced = self._spell_forced("DrMundo", "W", 2)
@@ -180,7 +180,7 @@ class Phase599_22AbilityDpsTests(unittest.TestCase):
         )
 
 
-# ─── Backward-compat — s207 + s215 sum-of-blocks entries preserved ───────────
+# ─── Backward-compat - s207 + s215 sum-of-blocks entries preserved ───────────
 
 
 class Phase599_22BackwardCompatTests(unittest.TestCase):

@@ -137,7 +137,7 @@ def _supervisor_status() -> dict:
     except (json.JSONDecodeError, OSError):
         pass
 
-    # Port status — do we have the ports bound?
+    # Port status - do we have the ports bound?
     for port, label in [(8890, "web"), (8891, "ws")]:
         try:
             with socket.create_connection(("127.0.0.1", port), timeout=0.5):
@@ -200,7 +200,7 @@ def _first_task() -> dict | None:
 
 def main() -> int:
     print("=" * 72)
-    print("RIOT COMMANDER — Phase 3 setup completion summary")
+    print("RIOT COMMANDER - Phase 3 setup completion summary")
     print("=" * 72)
     print()
 
@@ -276,21 +276,21 @@ def main() -> int:
         for k, v in ft.items():
             print(f"  {k}: {v}")
     else:
-        print("  (none — task_queue.jsonl empty)")
+        print("  (none - task_queue.jsonl empty)")
     print()
 
     # --- deferred ---
-    print("## Deferred (not built in this pass — follow-up sessions)")
+    print("## Deferred (not built in this pass - follow-up sessions)")
     deferred = [
-        "Forwarder Agent on Game-PC (tray app; §12 — user handles setup separately)",
+        "Forwarder Agent on Game-PC (tray app; §12 - user handles setup separately)",
         "Ephemeral Claude Code session spawning with charters (stubbed in supervisor; "
         "needs per-agent system prompts from deliverable A follow-ups)",
-        "Agent 5 real UI (web stub only; Agent 5 builds full panel roster — §5)",
+        "Agent 5 real UI (web stub only; Agent 5 builds full panel roster - §5)",
         "Agent 4 analyzer.py and learn/adapt loop implementation (proposals/ dir exists, logic deferred)",
         "Agent 6 safeguards implementations (dir exists, rules deferred until audit pass)",
         "Agent 7 input_parser.py (dir exists, warm-session handle stubbed in supervisor)",
         "Agent 2 pipeline/ (dir exists, scrape orchestrators deferred)",
-        "scraped sites — no actual HTML fetched yet (scraper primitives ready; "
+        "scraped sites - no actual HTML fetched yet (scraper primitives ready; "
         "Agent 4 triggers fetch during first audit)",
         "DDragon bundles not yet cached (fetcher ready; will pull on first coach call)",
     ]
@@ -299,7 +299,7 @@ def main() -> int:
     print()
 
     print("=" * 72)
-    print("setup OK — supervisor is installed as RC-Phase3-Supervisor (at-logon, "
+    print("setup OK - supervisor is installed as RC-Phase3-Supervisor (at-logon, "
           "30s delay, restart-on-failure 5x). Running right now is optional; the "
           "scheduled task will bring it up on next logon. Audit task is queued.")
     print("=" * 72)

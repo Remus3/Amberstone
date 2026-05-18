@@ -3,7 +3,7 @@ tft/tft_ocr_reader.py
 
 Free OCR-based reader for TFT structured UI data.
 Replaces Claude vision for: stage/round, HP, level, gold.
-Uses Tesseract 5.x via pytesseract — zero API cost.
+Uses Tesseract 5.x via pytesseract - zero API cost.
 
 TFT 1600x900 UI coordinates (calibrated):
   Stage/Round:  top-center, white text on dark bg  ~(680, 8, 920, 42)
@@ -46,7 +46,7 @@ def _init_tesseract():
         pytesseract.pytesseract.tesseract_cmd = _TESS_CMD
         return pytesseract
     except ImportError:
-        logger.warning("pytesseract not available — OCR disabled")
+        logger.warning("pytesseract not available - OCR disabled")
         return None
 
 
@@ -76,7 +76,7 @@ def _capture_full_frame():
 def _grab_region(bbox, full_img=None):
     """Crop a region from the (cached) full frame.
 
-    If `full_img` is given (preferred), crop from it — the caller has
+    If `full_img` is given (preferred), crop from it - the caller has
     already paid the relay round-trip cost. If None, fetch a fresh full
     frame ourselves (slower; one HTTP call per crop).
     """
@@ -200,7 +200,7 @@ def _ocr_hp(img, tess) -> Optional[int]:
 
         # Find the brightest row (your HP row is highlighted)
         row_brightness = arr.mean(axis=1)
-        # Your row is brighter than avg — find rows significantly above mean
+        # Your row is brighter than avg - find rows significantly above mean
         mean_b = row_brightness.mean()
         bright_rows = [i for i, b in enumerate(row_brightness) if b > mean_b * 1.3]
 
@@ -311,7 +311,7 @@ class TftOcrReader:
                     result["gold"] = gd
                     logger.debug("OCR gold=%d", gd)
 
-            # HP (more expensive — skip if game not started)
+            # HP (more expensive - skip if game not started)
             if result.get("stage_round"):  # only try HP if we got a valid round
                 img = _grab_region(self._region("hp_panel"), full_img)
                 if img is not None:
@@ -328,7 +328,7 @@ class TftOcrReader:
         return result
 
     def read_stage_round_only(self) -> Optional[str]:
-        """Fastest path — just the round counter. One relay round-trip."""
+        """Fastest path - just the round counter. One relay round-trip."""
         if not self._available:
             return None
         try:

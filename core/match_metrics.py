@@ -1,14 +1,14 @@
 """
-Match metrics recorder — persists every STATS panel field to a SQLite DB
+Match metrics recorder - persists every STATS panel field to a SQLite DB
 with game-time + milestone tagging.
 
 Purpose (per project memory queue items #6 and #9):
   - Post-game analysis: replay the metric trajectory by game_time_s
-    ("you were +8 CSD at 10, −4 at 15 — what happened?").
+    ("you were +8 CSD at 10, −4 at 15 - what happened?").
   - Post-session aggregation: AVG/stddev across matches in a session.
   - Coach-guidance comparison: vs your baseline, vs rank-tier benchmarks.
 
-Write cadence (hybrid — caller chooses which API to invoke):
+Write cadence (hybrid - caller chooses which API to invoke):
   - Milestone snapshots: event-triggered (first_blood, l6_spike, drake_take,
     10min_mark, laning_end, game_end, etc.). Call record(milestone_tag=...).
   - Periodic snapshots: every 60s of in-game time. Call record() without
@@ -24,9 +24,9 @@ Storage:
     metric_type column carries a hint ("numeric" | "pct" | "duration_s"
     | "text" | "pair") for downstream analytics.
 
-This module is IMPORT-ONLY safe — calling init_db() is idempotent.
+This module is IMPORT-ONLY safe - calling init_db() is idempotent.
 The `recorder` module-level singleton buffers writes in memory and
-flushes on demand (every ~5s or at milestone boundaries — caller's choice).
+flushes on demand (every ~5s or at milestone boundaries - caller's choice).
 """
 from __future__ import annotations
 import sqlite3
@@ -68,7 +68,7 @@ _INDEX_DDL = [
 # inferred_wide≈0.4. These are the ONLY accepted values.
 PROVENANCE_TIERS = ("source_truth", "inferred_tight", "inferred_wide")
 
-# Canonical milestone tags — the coach emits one of these at the right
+# Canonical milestone tags - the coach emits one of these at the right
 # moment so post-game tooling can slice the match at well-known phases.
 CANONICAL_MILESTONES = frozenset([
     "game_start",
@@ -105,7 +105,7 @@ def init_db() -> None:
                 "ALTER TABLE match_metrics ADD COLUMN provenance TEXT "
                 "NOT NULL DEFAULT 'source_truth'"
             )
-        # Create/update indexes — safe after the column definitely exists.
+        # Create/update indexes - safe after the column definitely exists.
         for idx_sql in _INDEX_DDL:
             conn.execute(idx_sql)
         conn.commit()
@@ -114,7 +114,7 @@ def init_db() -> None:
 
 
 def integrity_check() -> tuple[bool, str]:
-    """PRAGMA integrity_check — returns (ok, message). Caller should run
+    """PRAGMA integrity_check - returns (ok, message). Caller should run
     this before every retro-fill batch so a corrupt DB doesn't mask bad
     writes silently."""
     conn = sqlite3.connect(DB_PATH)
@@ -158,7 +158,7 @@ class Recorder:
         provenance: str = "source_truth",
     ) -> None:
         """Buffer one metric row. `provenance` must be one of
-        PROVENANCE_TIERS — defaults to source_truth (direct data read);
+        PROVENANCE_TIERS - defaults to source_truth (direct data read);
         callers deriving values with math should pass 'inferred_tight'
         (small-margin) or 'inferred_wide' (notable uncertainty)."""
         if provenance not in PROVENANCE_TIERS:
@@ -215,7 +215,7 @@ class Recorder:
         "hp_pct":                  ("hp_pct",               "pct"),
         "mp_pct":                  ("mp_pct",               "pct"),
         "vision_score":            ("vision_score",         "numeric"),
-        # STATS panel fields — mirror the UI's renderStats() reads.
+        # STATS panel fields - mirror the UI's renderStats() reads.
         "cannon_cs_summary":       ("cannon_cs",            "pair"),
         "cs_at_10":                ("cs_at_10_str",         "text"),
         "csd_at_15":               ("csd_at_15_str",        "text"),
@@ -370,7 +370,7 @@ class Recorder:
         overrides = provenance_overrides or {}
         for pkey, (mkey, mtype) in self._PAYLOAD_METRIC_MAP.items():
             val = payload.get(pkey)
-            if val is None or val == "" or val == "—":
+            if val is None or val == "" or val == "-":
                 continue
             prov = overrides.get(mkey) or overrides.get(pkey) or provenance
             self.record(

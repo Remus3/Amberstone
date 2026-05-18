@@ -1,4 +1,4 @@
-"""Integration test for smb_push — actually writes to the SMB share.
+"""Integration test for smb_push - actually writes to the SMB share.
 
 Skips gracefully when the share is unreachable (Game-PC off).
 """
@@ -16,7 +16,7 @@ from agents.agent2_backend import smb_push
 @pytest.fixture(autouse=True)
 def _require_share():
     if not smb_push.share_reachable():
-        pytest.skip(f"{smb_push.SHARE_UNC} unreachable — Game-PC likely off")
+        pytest.skip(f"{smb_push.SHARE_UNC} unreachable - Game-PC likely off")
 
 
 def test_push_web_roundtrip(tmp_path: Path) -> None:
@@ -40,7 +40,7 @@ def test_push_web_roundtrip(tmp_path: Path) -> None:
 
 
 def test_push_web_overwrites_creates_backup(tmp_path: Path) -> None:
-    """Audit P-audit-m1 — exercise the backup branch.
+    """Audit P-audit-m1 - exercise the backup branch.
 
     Push same remote filename twice with different payloads; assert the
     second result carries a backup path whose contents match the first
@@ -54,13 +54,13 @@ def test_push_web_overwrites_creates_backup(tmp_path: Path) -> None:
     src1.write_bytes(payload1)
     src2.write_bytes(payload2)
 
-    # First push — no backup expected.
+    # First push - no backup expected.
     r1 = smb_push.push(src1, remote_subdir="web", label="m1-initial", remote_name=remote_name)
     assert r1["backup"] is None
     remote = Path(r1["remote"])
     assert remote.read_bytes() == payload1
 
-    # Second push to same remote — must back up the prior payload.
+    # Second push to same remote - must back up the prior payload.
     r2 = smb_push.push(src2, remote_subdir="web", label="m1-overwrite", remote_name=remote_name)
     assert r2["backup"] is not None, "backup path should exist on overwrite"
     backup = Path(r2["backup"])

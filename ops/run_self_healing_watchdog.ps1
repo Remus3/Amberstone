@@ -44,7 +44,7 @@ Write-Log "Self-healing watchdog started (PID=$PID)"
 Write-Log "Config: $ConfigPath"
 Write-Log "Python: $pythonExe"
 
-# League process names — watchdog exits if League closes (league_watcher handles restart)
+# League process names - watchdog exits if League closes (league_watcher handles restart)
 $leagueNames = @("LeagueClient", "LeagueClientUx", "League of Legends")
 $leagueGoneAt = $null
 $leagueGraceSecs = 15
@@ -58,7 +58,7 @@ while ($true) {
         break
     }
 
-    # Check League presence — exit watchdog if League has been gone > grace period
+    # Check League presence - exit watchdog if League has been gone > grace period
     # (rc_league_watcher.ps1 will restart the whole stack when League reopens)
     $leagueUp = $false
     foreach ($name in $leagueNames) {
@@ -67,9 +67,9 @@ while ($true) {
     if (-not $leagueUp) {
         if ($leagueGoneAt -eq $null) {
             $leagueGoneAt = Get-Date
-            Write-Log "League not detected — grace period started (${leagueGraceSecs}s)"
+            Write-Log "League not detected - grace period started (${leagueGraceSecs}s)"
         } elseif (((Get-Date) - $leagueGoneAt).TotalSeconds -ge $leagueGraceSecs) {
-            Write-Log "League closed — watchdog exiting (league_watcher will handle restart)"
+            Write-Log "League closed - watchdog exiting (league_watcher will handle restart)"
             break
         }
     } else {

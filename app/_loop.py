@@ -1,10 +1,10 @@
 # arch: async scheduler (post-tkinter-removal) | section=orchestration | frozen=yes
 """
-app/_loop.py — asyncio scheduler replacing the Tk mainloop / root.after
+app/_loop.py - asyncio scheduler replacing the Tk mainloop / root.after
 pattern for game polling (T2 #8 C1, 2026-05-01).
 
 Drop-in replacement: `app.scheduler.schedule(ms, fn)` is the asyncio
-equivalent of `root.after(ms, fn)` — one-shot, no args, no return,
+equivalent of `root.after(ms, fn)` - one-shot, no args, no return,
 thread-safe. Re-arming a poll loop works the same way: the scheduled
 callable can call `schedule()` again to re-fire.
 
@@ -38,7 +38,7 @@ def get_loop() -> "Optional[AppLoop]":
 def ensure_loop() -> "AppLoop":
     """Idempotently create + return the process-wide AppLoop. Call this
     before launching subsystems whose loops should ride the main event
-    loop, even if `OverlayApp` hasn't been constructed yet (T2 #8 C4 —
+    loop, even if `OverlayApp` hasn't been constructed yet (T2 #8 C4 -
     main.py creates the singleton early so liveclient_cache/etc. can
     spawn_task on it during boot)."""
     global _INSTANCE

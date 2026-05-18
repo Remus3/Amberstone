@@ -1,4 +1,4 @@
-# P-audit5-h01 — Result
+# P-audit5-h01 - Result
 
 **Status:** APPLIED  
 **Applied by:** Agent 2 (backend), task `t-8e210c9fdfef`  
@@ -20,12 +20,12 @@ correctly typed. No other occurrences of `_warm_agent7_alive` in
 
 `_warm_agent7_handle()` at `:1812` will no longer raise `AttributeError`
 on first queue-dispatched Agent 7 task. The flag still has its original
-semantics (latent "was this handle ever called?") — see H-02 proposal
+semantics (latent "was this handle ever called?") - see H-02 proposal
 for the follow-up that makes queue dispatch actually route through the
 warm session.
 
 ## Remaining open items (this bundle)
 
-- **P-audit5-h02** — `_warm_agent7_handle()` bypasses warm session;
+- **P-audit5-h02** - `_warm_agent7_handle()` bypasses warm session;
   should be addressed in the same PR per audit-5 recommendation.
-- **P-audit5-m01** — `WarmAgent7Session.stats()` lock gap; independent.
+- **P-audit5-m01** - `WarmAgent7Session.stats()` lock gap; independent.

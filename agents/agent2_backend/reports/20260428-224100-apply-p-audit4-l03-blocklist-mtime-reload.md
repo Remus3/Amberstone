@@ -1,9 +1,9 @@
-# Agent 2 — Task Report
-**Task:** `t-124ceb68ba76` — `apply-proposal-p-audit4-l03-blocklist-mtime-reload`
+# Agent 2 - Task Report
+**Task:** `t-124ceb68ba76` - `apply-proposal-p-audit4-l03-blocklist-mtime-reload`
 **Date:** 2026-04-28
 **Proposal:** `P-audit4-l03-blocklist-mtime-reload` (low)
 
-## Result: no code change required — fix already landed
+## Result: no code change required - fix already landed
 
 `lib/http/client.py` already contains the full mtime-based auto-reload fix,
 applied in commit `70d3ba9` ("audit batch 9: round-4 audit findings (M-01,
@@ -26,7 +26,7 @@ self._blocklist_mtime: float = 0.0
 
 `_reload_blocklist()` (lines 110–132) issues a `stat()` before parsing, stores
 `stat.st_mtime` into `self._blocklist_mtime` on success, and also updates the
-field (to the new mtime) when parse fails — so a subsequent correct edit is
+field (to the new mtime) when parse fails - so a subsequent correct edit is
 still detected rather than being skipped because the mtime "changed" to the
 failed-parse value.
 
@@ -46,7 +46,7 @@ def _maybe_reload_blocklist(self) -> None:
 
 One `stat()` syscall per outbound request; re-parses only when mtime differs.
 The `FileNotFoundError` branch handles the edge case where the file is deleted
-after an initial load — it triggers a reload (which then clears the sets) only
+after an initial load - it triggers a reload (which then clears the sets) only
 if the file existed before, avoiding repeated reload attempts when the file was
 never present.
 

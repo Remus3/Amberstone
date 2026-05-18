@@ -1,5 +1,5 @@
 """
-coaches/voice_coach.py — opt-in voice output for the Right Now headline.
+coaches/voice_coach.py - opt-in voice output for the Right Now headline.
 
 Uses Windows' built-in System.Speech.Synthesis.SpeechSynthesizer via a
 PowerShell subprocess so no pip dependencies are required. Throttled
@@ -87,7 +87,7 @@ def speak(text: str, *, dedup: bool = True, rate: int = 0) -> bool:
 
 
 def is_available() -> bool:
-    """Best-effort availability probe — checks PowerShell + SAPI."""
+    """Best-effort availability probe - checks PowerShell + SAPI."""
     try:
         r = subprocess.run(
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",

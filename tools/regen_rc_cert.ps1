@@ -1,8 +1,8 @@
-# regen_rc_cert.ps1 — refresh ops/tls/rc.pem + rc-key.pem with the canonical
+# regen_rc_cert.ps1 - refresh ops/tls/rc.pem + rc-key.pem with the canonical
 # SAN list. One-stop helper so future cert refreshes don't have to relearn
 # which names belong (the s30 mkcert regen had to reconstruct this by hand).
 #
-# Canonical SAN list — when adding a new identity for Legion (new tailnet
+# Canonical SAN list - when adding a new identity for Legion (new tailnet
 # rename, additional VPN, second LAN bridge), update $SAN_NAMES below and
 # re-run. Game-PC's existing trust of the mkcert root CA covers any new
 # leaf as long as the root doesn't rotate.
@@ -42,7 +42,7 @@ if (-not (Test-Path $tlsDir)) {
 $certOut = Join-Path $tlsDir 'rc.pem'
 $keyOut  = Join-Path $tlsDir 'rc-key.pem'
 
-# Sanity: mkcert must be on PATH. Don't try to install it — that's a
+# Sanity: mkcert must be on PATH. Don't try to install it - that's a
 # one-time setup the operator already did (winget install FiloSottile.mkcert
 # + mkcert -install).
 $mkcert = Get-Command mkcert -ErrorAction SilentlyContinue
@@ -74,7 +74,7 @@ if ($openssl) {
     & openssl x509 -in $certOut -noout -ext subjectAltName
     & openssl x509 -in $certOut -noout -dates
 } else {
-    Write-Host '  (openssl not on PATH; skipping SAN dump — install with: winget install ShiningLight.OpenSSL.Light)' -ForegroundColor Yellow
+    Write-Host '  (openssl not on PATH; skipping SAN dump - install with: winget install ShiningLight.OpenSSL.Light)' -ForegroundColor Yellow
 }
 
 Write-Host ''

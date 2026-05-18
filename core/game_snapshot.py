@@ -1,7 +1,7 @@
 # arch: raw JSON → snapshot dataclass | section=vision | frozen=yes
 """
 core/game_snapshot.py
-Phase 1 Step 3 — Mode-aware state envelope and payload types.
+Phase 1 Step 3 - Mode-aware state envelope and payload types.
 
 Defines the authoritative GameEnvelope and four mode-specific payload types.
 All types use __slots__ for memory efficiency but are NOT frozen or immutable:
@@ -9,21 +9,21 @@ callers can assign to any slot directly. Mutation safety is enforced externally
 by app.get_snapshot(), which deep-copies the payload before returning it.
 
 Single-writer rules (enforced by convention, not runtime locks):
-  app.py              — owns the current GameEnvelope reference; updates it
+  app.py              - owns the current GameEnvelope reference; updates it
                         on every game-state change and on mode transitions.
-  game_reader.py      — primary writer of RiftSnapshot and AramSnapshot payloads
+  game_reader.py      - primary writer of RiftSnapshot and AramSnapshot payloads
                         (via RiftSnapshot.from_state_dict / AramSnapshot.from_state_dict
                         and the three-tier factory helpers to_rift_snapshot /
                         to_aram_snapshot).
-  app.py              — final emergency writer for SR/ARAM/Arena/Brawl payloads
+  app.py              - final emergency writer for SR/ARAM/Arena/Brawl payloads
                         when factory construction catastrophically fails (all three
                         factory tiers exhausted).  Calls
                         RiftSnapshot.emergency_raw_state_only() /
                         AramSnapshot.emergency_raw_state_only() to guarantee a
                         non-None payload for those modes.
-  tft_state_reader.py — sole writer of TftSnapshot payloads
+  tft_state_reader.py - sole writer of TftSnapshot payloads
                         (via TftSnapshot.from_state_dict). Runtime wiring deferred to Step 5.
-  app.py              — constructs ClientSnapshot directly for non-game state.
+  app.py              - constructs ClientSnapshot directly for non-game state.
 
 Consumers (coach_integration.py, ui/ panels, etc.) read payloads via
 app.get_snapshot() and must not write to any snapshot field directly.
@@ -57,7 +57,7 @@ def _snapshot_copy(d: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
-# Mode constants — canonical string values used in GameEnvelope.mode
+# Mode constants - canonical string values used in GameEnvelope.mode
 # ---------------------------------------------------------------------------
 
 MODE_CLIENT = "client"
@@ -103,7 +103,7 @@ class ClientSnapshot:
     """
     State during client / non-game mode.
     Written by app.py only.
-    Fields are minimal — no game state exists in client mode.
+    Fields are minimal - no game state exists in client mode.
     """
     __slots__ = ("timestamp",)
 
@@ -270,15 +270,15 @@ class RiftSnapshot:
 
         Two-layer internal strategy:
           Layer 1: object.__new__(cls) + normal slot assignment
-          Layer 2: object.__new__(cls) + object.__setattr__()  — bypasses
+          Layer 2: object.__new__(cls) + object.__setattr__()  - bypasses
                    any possible __setattr__ override on the class.
 
         Returns None ONLY if Python's allocator cannot produce ANY instance of
-        this class — which is a fatal runtime condition, not a handled failure.
+        this class - which is a fatal runtime condition, not a handled failure.
         After this method, payload=None for SR/ARAM/Arena/Brawl is impossible
         through any handled software failure path.
         """
-        # AUDIT 2026-04-28 (deferred-frozen): copy here too — the
+        # AUDIT 2026-04-28 (deferred-frozen): copy here too - the
         # emergency path is rare, but if we ever take it the snapshot
         # should still be mutation-safe.
         copied = _snapshot_copy(state_dict)
@@ -323,7 +323,7 @@ class AramSnapshot:
     Written by game_reader.py only, via AramSnapshot.from_state_dict().
 
     ARAM shares the same Riot API data shape as SR but the coaching context
-    differs. Payload is deliberately a strict subset of RiftSnapshot —
+    differs. Payload is deliberately a strict subset of RiftSnapshot -
     no wave/jungle/objective-timer fields that don't apply in ARAM.
     The full raw dict is stored in raw_state for legacy consumers.
     """
@@ -430,7 +430,7 @@ class AramSnapshot:
     def emergency_raw_state_only(cls, state_dict: Dict[str, Any]) -> "AramSnapshot":
         """
         Final-resort emergency constructor.  Identical strategy to
-        RiftSnapshot.emergency_raw_state_only — see that docstring.
+        RiftSnapshot.emergency_raw_state_only - see that docstring.
         Returns None ONLY if Python's allocator cannot produce ANY instance
         of this class (fatal runtime condition, not a handled failure).
         """
@@ -473,7 +473,7 @@ class TftSnapshot:
     Written by tft/tft_state_reader.py only, via TftSnapshot.from_state_dict().
 
     Fields match tft_state_reader._parse() output.
-    TFT is NOT shaped like SR — it has stage/round/augments/traits/board/bench
+    TFT is NOT shaped like SR - it has stage/round/augments/traits/board/bench
     and does NOT have champion/wave/objectives/ward fields.
     The full raw dict is stored in raw_state for legacy consumers.
     """
@@ -624,7 +624,7 @@ class TftSnapshot:
 
 
 # ---------------------------------------------------------------------------
-# GameEnvelope — common container
+# GameEnvelope - common container
 # ---------------------------------------------------------------------------
 
 # Union of all payload types (type alias, 3.9 compatible)
@@ -635,11 +635,11 @@ class GameEnvelope:
     """
     Authoritative mode container for Riot Commander.
 
-    mode     — one of MODE_CLIENT, MODE_SR, MODE_ARAM, MODE_TFT,
+    mode     - one of MODE_CLIENT, MODE_SR, MODE_ARAM, MODE_TFT,
                       MODE_ARENA, MODE_BRAWL.
-    payload  — the mode-specific snapshot (ClientSnapshot, RiftSnapshot,
+    payload  - the mode-specific snapshot (ClientSnapshot, RiftSnapshot,
                 AramSnapshot, TftSnapshot, or None during transitions).
-    timestamp — monotonic time of last envelope update.
+    timestamp - monotonic time of last envelope update.
 
     Written only by app.py. All other code reads via app.get_snapshot().
     """

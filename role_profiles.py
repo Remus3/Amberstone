@@ -6,7 +6,7 @@ Used by coach_integration.py when the player's role is detected.
 Covers:
   - Mid lane mages
   - Bot lane APC (mage ADC)
-  - Bot lane marksman (ADC — primary pool)
+  - Bot lane marksman (ADC - primary pool)
   - Bot lane support (tank + enchanter)
   - Vayne top lane
   - ARAM itemization by damage type / comp
@@ -24,25 +24,25 @@ MID_MAGE_PROFILES = {
     "Syndra": (
         "Mid Syndra. Mechanics: W throw orb/minion, E stun. 7-orb R execute. "
         "Spikes: Luden's (poke), Shadowflame (burst), Rabadon (execute). "
-        "Macro: priority lane — shove and roam or shove and control vision. "
+        "Macro: priority lane - shove and roam or shove and control vision. "
         "Exploit: E stun from max range after E+W orb stack setup."
     ),
     "Lux": (
         "Mid Lux. E snare two targets if aimed correctly. "
-        "R global cooldown — use for picks and objective setup. "
+        "R global cooldown - use for picks and objective setup. "
         "Spikes: Luden's (waveclear), Shadowflame (burst), Rabadon. "
         "Macro: priority lane; R from range on escaping enemies. "
         "Exploit: E through minion line to double-snare bot lane brush."
     ),
     "Viktor": (
-        "Mid Viktor. Evolve Q→E→W. W gravity stuns after 1.5s — drop on group. "
+        "Mid Viktor. Evolve Q→E→W. W gravity stuns after 1.5s - drop on group. "
         "Fully evolved E+R = lane clear machine and fight controller. "
         "Spikes: Luden's (waveclear), Zhonya's (teamfight). "
-        "Macro: hard to roam — control mid, scale, group for objectives. "
+        "Macro: hard to roam - control mid, scale, group for objectives. "
         "Exploit: W→Q auto for max DPS in short trades."
     ),
     "Zed": (
-        "Mid Zed. W shadow stays for return dash. R death mark — auto+Q+E then R-back. "
+        "Mid Zed. W shadow stays for return dash. R death mark - auto+Q+E then R-back. "
         "Spikes: Duskblade (1-item lethality), Serylda's (slow+pen). "
         "Macro: shove wave, roam side lanes at level 6. "
         "Kill window: R when target is below 50% HP for execute combo. "
@@ -58,7 +58,7 @@ MID_MAGE_PROFILES = {
         "Mid Azir. Soldiers attack simultaneously on Q. R wall repositions enemies. "
         "Spikes: Nashor's Tooth (attack speed), Rabadon (AP). "
         "Macro: hard-shove with soldiers, safe R-walling dive attempts. "
-        "Exploit: R pushes enemies into your team — coordinate with a frontline."
+        "Exploit: R pushes enemies into your team - coordinate with a frontline."
     ),
 }
 
@@ -66,26 +66,26 @@ MID_MAGE_PROFILES = {
 APC_BOT_PROFILES = {
     "Seraphine": (
         "Bot APC Seraphine. Note passive echoes nearby ally casts. "
-        "R extends from allies hit — position BEHIND your team for max range. "
+        "R extends from allies hit - position BEHIND your team for max range. "
         "Spikes: Luden's (poke), Shadowflame, Rabadon. "
         "Macro: team-fight oriented; your ult wins objective fights. "
         "Exploit: R through your whole team extends the hit range massively."
     ),
     "Ziggs": (
         "Bot APC Ziggs. W Satchel can self-reposition over walls. "
-        "Passive demolishes towers — attack weakened tower autos. "
+        "Passive demolishes towers - attack weakened tower autos. "
         "Spikes: Luden's (clear), Shadowflame (burst). "
-        "Macro: best split-push mage — clear bot, take tower, reset. "
-        "Exploit: Q bounces — fire at feet of enemy, not directly at them."
+        "Macro: best split-push mage - clear bot, take tower, reset. "
+        "Exploit: Q bounces - fire at feet of enemy, not directly at them."
     ),
     "Heimerdinger": (
-        "Bot APC Heimerdinger. Three turrets focus nearest target — "
+        "Bot APC Heimerdinger. Three turrets focus nearest target - "
         "place in bushes for ambush, in lane for zone. R+E = guaranteed stun combo. "
         "Spikes: first turret component, Nashor's (attack speed for turrets). "
         "Macro: turret waveclear is strongest in game. Don't overextend without turrets."
     ),
     "Veigar": (
-        "Bot APC Veigar. E cage stuns edges — place ON enemies. "
+        "Bot APC Veigar. E cage stuns edges - place ON enemies. "
         "Stack AP every CS; R execute scales with your AP. "
         "Spikes: Luden's (first item), Rabadon (high AP). "
         "Macro: stall game, scale, hard-win late. Never die early. "
@@ -93,16 +93,16 @@ APC_BOT_PROFILES = {
     ),
     "Swain": (
         "Bot APC Swain. E root→detonate for hard pull onto team. "
-        "R sustain heals massively — activate mid-fight, not before. "
+        "R sustain heals massively - activate mid-fight, not before. "
         "Spikes: Rod of Ages (sustain tank), Rylai's (perma-slow). "
-        "Macro: melee range — needs peel support. Value 5v5 grouped fights."
+        "Macro: melee range - needs peel support. Value 5v5 grouped fights."
     ),
     "Karthus": (
         "Bot APC Karthus. Spam Q on grouped enemies continuously. "
-        "R global — fires regardless of your position or death state. "
+        "R global - fires regardless of your position or death state. "
         "Spikes: Luden's (clear), Rabadon (R damage). "
         "Macro: play passive early, scale, spam R after every fight. "
-        "Exploit: die after using R for free global damage — passive still fires."
+        "Exploit: die after using R for free global damage - passive still fires."
     ),
 }
 
@@ -110,7 +110,7 @@ APC_BOT_PROFILES = {
 TANK_SUPPORT_PROFILES = {
     "Nautilus": (
         "Support Nautilus. Q hook pulls self to wall or champion. "
-        "Passive roots every 1st auto on each target — proc on support items. "
+        "Passive roots every 1st auto on each target - proc on support items. "
         "R single-target hard CC that chains through enemies in path. "
         "Macro: hook + R to set up kills; peel with R if ADC dived. "
         "Itemization: Locket, Zeke's (if ADC is crit), Warmog's, Knight's Vow."
@@ -123,13 +123,13 @@ TANK_SUPPORT_PROFILES = {
     ),
     "Thresh": (
         "Support Thresh. Q hook separates one target. W lantern saves ally. "
-        "E flay direction matters — pull in for kill or push away for peel. "
+        "E flay direction matters - pull in for kill or push away for peel. "
         "Macro: hook priority targets; W lantern when ADC is being dived. "
         "Itemization: Imperial Mandate, Knight's Vow, Locket, Redemption. "
-        "No mana — never buy mana items."
+        "No mana - never buy mana items."
     ),
     "Blitzcrank": (
-        "Support Blitzcrank. Q grab separates squishy targets. E+Q timing — "
+        "Support Blitzcrank. Q grab separates squishy targets. E+Q timing - "
         "W speed boost before grab increases hook range window. "
         "Passive mana shield. R silences in a ring. "
         "Macro: hook the ADC not the tank. Win lane by isolating squishy targets. "
@@ -137,14 +137,14 @@ TANK_SUPPORT_PROFILES = {
     ),
     "Alistar": (
         "Support Alistar. W→Q combo = headbutt then knockup. "
-        "R reduces all damage by 75% — use when dove or when catching someone. "
+        "R reduces all damage by 75% - use when dove or when catching someone. "
         "Macro: best in-fight peel. Use R to tank tower dives. "
         "Itemization: Locket, Knight's Vow, Warmog's, Frozen Heart."
     ),
     "Rell": (
         "Support Rell. Mount Q knockup, dismount E stun. "
         "R Ferromancy pulls all nearby enemies. W mounted = hard engage. "
-        "Macro: chain CC machine — engage, peel, re-engage. "
+        "Macro: chain CC machine - engage, peel, re-engage. "
         "Itemization: Locket, Zeke's, Warmog's, Sunfire."
     ),
 }
@@ -160,12 +160,12 @@ ENCHANTER_SUPPORT_PROFILES = {
     ),
     "Soraka": (
         "Support Soraka. Q Starcall heals if hitting enemy. "
-        "R global heal — use BEFORE allies die, not after. E silence stops channeled ults. "
+        "R global heal - use BEFORE allies die, not after. E silence stops channeled ults. "
         "Macro: stand behind ADC, poke with Q for heal refund. "
         "Itemization: Moonstone, Redemption, Ardent Censer, Mikael's."
     ),
     "Nami": (
-        "Support Nami. Q bubble is powerful CC — hard to land, crucial to master. "
+        "Support Nami. Q bubble is powerful CC - hard to land, crucial to master. "
         "W bounces heal+damage. E empowers ally autos with slow. "
         "Macro: E your ADC before every trade window. "
         "Itemization: Imperial Mandate, Ardent Censer, Staff of Flowing Water."
@@ -178,26 +178,26 @@ ENCHANTER_SUPPORT_PROFILES = {
     ),
     "Janna": (
         "Support Janna. W tornado max range = guaranteed engage interrupt. "
-        "R heals everyone nearby instantly — use in losing fights to reset. "
+        "R heals everyone nearby instantly - use in losing fights to reset. "
         "E shield grants bonus AD to shielded champion. "
         "Macro: best peel in the game. R to disengage, W to interrupt engage. "
         "Itemization: Shurelya's, Ardent Censer, Staff of Flowing Water, Redemption."
     ),
     "Yuumi": (
         "Support Yuumi. Attach to highest-damage ally and heal/speed them. "
-        "R stuns multiple — jump off ally first so R can hit enemies. "
+        "R stuns multiple - jump off ally first so R can hit enemies. "
         "Macro: attach to ADC in lane, swap to frontline in fights. "
         "Itemization: Moonstone, Ardent Censer, Staff of Flowing Water."
     ),
     "Milio": (
-        "Support Milio. W extends ally attack range — attach to ADC. "
-        "R AoE cleanse + heal — use to remove all CC in a teamfight. "
-        "Macro: R timing is the skill expression — cleanse just as CC lands. "
+        "Support Milio. W extends ally attack range - attach to ADC. "
+        "R AoE cleanse + heal - use to remove all CC in a teamfight. "
+        "Macro: R timing is the skill expression - cleanse just as CC lands. "
         "Itemization: Moonstone, Ardent Censer, Redemption, Staff of Flowing Water."
     ),
     "Seraphine": (
         "Support Seraphine. Note echoes nearby ally casts. "
-        "R extends range through each ally hit — position behind team. "
+        "R extends range through each ally hit - position behind team. "
         "Macro: poke phase + teamfight ult. "
         "Itemization: Moonstone (heal), Redemption, Ardent Censer."
     ),
@@ -210,13 +210,13 @@ Vayne Top. High-risk high-reward matchup pick. Wins vs tanks late; loses vs most
 EARLY GAME (levels 1-9): SURVIVAL ONLY.
 • Do not fight. Do not trade unless you have level + item advantage.
 • Q tumble away from all-ins. Condemn into wall only when 100% safe.
-• CS under tower. Freeze if possible — force enemy to take tower aggro.
+• CS under tower. Freeze if possible - force enemy to take tower aggro.
 • Back at 1100g minimum (BotRK component + Long Sword).
 
 IF BEHIND (losing CS by 20+, or died once):
-• Freeze wave at YOUR tower — let enemy push. They waste time, you CS safely.
-• Ping jungler to avoid your lane — no dive available.
-• Buy BotRK FIRST item regardless — it's your only path back into relevance.
+• Freeze wave at YOUR tower - let enemy push. They waste time, you CS safely.
+• Ping jungler to avoid your lane - no dive available.
+• Buy BotRK FIRST item regardless - it's your only path back into relevance.
 • Respect the enemy: do not trade until BotRK is complete.
 • Your comeback condition: enemy isolates themselves near a wall. One condemn stun = kill.
 • Do NOT split if your team needs you for dragon/baron. You are weaker early.
@@ -242,8 +242,8 @@ POWER SPIKES: BotRK (survivable), BotRK+PD (duel anyone), BotRK+PD+IE (win game)
 
 ARAM_ITEM_RULES = """
 ARAM ITEMIZATION RULES:
-ARAM fights are continuous — survival stats have higher value than in SR.
-Items are discounted ~20% in ARAM. Fights never stop — sustain beats burst timing.
+ARAM fights are continuous - survival stats have higher value than in SR.
+Items are discounted ~20% in ARAM. Fights never stop - sustain beats burst timing.
 
 AD/MARKSMAN ARAM (GENERAL):
 • 1st item: Immortal Shieldbow (safety) OR Kraken Slayer (vs tanks)
@@ -298,7 +298,7 @@ def get_role_profile(champion: str, role: str = "bot") -> str:
         if champion in ENCHANTER_SUPPORT_PROFILES:
             return ENCHANTER_SUPPORT_PROFILES[champion]
 
-    # Fall through — caller will use champion_profiles.py
+    # Fall through - caller will use champion_profiles.py
     return ""
 
 def aram_item_context(enemy_champs: list, ally_champs: list, champion: str) -> str:

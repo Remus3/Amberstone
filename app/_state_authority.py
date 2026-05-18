@@ -1,6 +1,6 @@
 # arch: GameEnvelope + envelope update/read paths | section=orchestration | frozen=yes
 """
-app/_state_authority.py — StateAuthority extracted from app/__init__.py (ARCH-001 Phase 2)
+app/_state_authority.py - StateAuthority extracted from app/__init__.py (ARCH-001 Phase 2)
 
 Owns the GameEnvelope (single source of truth for current game state envelope)
 and the win-probability calculation.
@@ -21,11 +21,11 @@ _log = logging.getLogger("rc.app.state")
 class StateAuthority:
     """
     Owns:
-      envelope   — the authoritative GameEnvelope (read via .envelope property)
-      init()     — reset to client-mode envelope
-      get_snapshot() — deep-copied envelope for external consumers
-      set_envelope() — low-level write (no mode-flag derivation)
-      calc_win_pct() — pure static win-probability estimate
+      envelope   - the authoritative GameEnvelope (read via .envelope property)
+      init()     - reset to client-mode envelope
+      get_snapshot() - deep-copied envelope for external consumers
+      set_envelope() - low-level write (no mode-flag derivation)
+      calc_win_pct() - pure static win-probability estimate
     """
 
     def __init__(self) -> None:
@@ -58,7 +58,7 @@ class StateAuthority:
 
     def set_envelope(self, mode: str, payload) -> None:
         """
-        Low-level envelope write — no mode-flag derivation.
+        Low-level envelope write - no mode-flag derivation.
         Used by _process_game_state for the Step C direct assignment path.
         _update_envelope() on OverlayApp calls this AND derives legacy flags.
         """
@@ -71,7 +71,7 @@ class StateAuthority:
     def calc_win_pct(state: dict) -> float:
         """
         Heuristic win-probability estimate from game state dict.
-        Pure function — no self references, independently testable.
+        Pure function - no self references, independently testable.
         """
         pct = 50.0
         kd  = state.get("ally_kills_total", 0) - state.get("enemy_kills_total", 0)

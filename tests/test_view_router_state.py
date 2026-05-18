@@ -10,11 +10,11 @@ s209 changes:
 
 Coverage targets:
 - ChampSelect → GameStart → InProgress → EndOfGame → Lobby (clean cycle)
-- ChampSelect → Lobby (dodge — sticky should clear)
+- ChampSelect → Lobby (dodge - sticky should clear)
 - ChampSelect → null → GameStart (transient null, sticky should hold)
-- ChampSelect → null (extended, no GameStart observed) — sticky-guard
+- ChampSelect → null (extended, no GameStart observed) - sticky-guard
   inference advances to "in-progress" per s209
-- InProgress → null/None/Lobby — gameStarted stays "in-progress"
+- InProgress → null/None/Lobby - gameStarted stays "in-progress"
 - EndOfGame after in-progress → clears sticky
 - Manual view sticky → auto-derive returns same view + urgent banner
 """
@@ -59,7 +59,7 @@ class CleanCycleTests(unittest.TestCase):
     def test_full_cycle_lands_on_each_view(self):
         # Phase sequence mimics what LCU emits across a real game.
         # Note: mode lingers as "sr" through EndOfGame because game_reader
-        # doesn't flush mode_key until the next coaching tick — so the
+        # doesn't flush mode_key until the next coaching tick - so the
         # post-game tick still resolves to "last-match", not "home".
         timeline = [
             ("Lobby",       "client"),  # pre-queue
@@ -124,7 +124,7 @@ class TransientNullTests(unittest.TestCase):
     """ChampSelect → null → GameStart: sticky must hold or infer in-progress."""
 
     def test_brief_null_with_gamestart_arriving(self):
-        # The 'easy' case — null lasts one tick, then GameStart fires.
+        # The 'easy' case - null lasts one tick, then GameStart fires.
         # s209: null after CS infers "in-progress" → active-match.
         results = _run([
             ("ChampSelect", "client"),
@@ -228,7 +228,7 @@ class PostGameClearTests(unittest.TestCase):
 
     def test_postgame_without_prior_in_progress_does_not_change_sticky(self):
         # If sticky was never set (no prior InProgress observed), the
-        # post-game phase doesn't have anything to clear — sticky stays None.
+        # post-game phase doesn't have anything to clear - sticky stays None.
         results = _run([("EndOfGame", "client")])
         self.assertIsNone(results[0].game_started)
 
@@ -258,7 +258,7 @@ class HomeFallthroughTests(unittest.TestCase):
         self.assertEqual(r.view, "home")
 
     def test_unknown_mode_no_phase_returns_last_match(self):
-        # Catch-all fallthrough — anything we didn't match.
+        # Catch-all fallthrough - anything we didn't match.
         r = derive_view(None, "weirdmode", None)
         self.assertEqual(r.view, "last-match")
 

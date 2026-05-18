@@ -25,7 +25,7 @@ class TestModeKeyFromQueueId(unittest.TestCase):
         self.assertEqual(mode_key_from_queue_id(920), "aram")
 
     def test_aram_mayhem_kiwi_queue_returns_aram(self):
-        # ARAM Mayhem (KIWI gameMode) reports queueId 2400 — confirmed
+        # ARAM Mayhem (KIWI gameMode) reports queueId 2400 - confirmed
         # s220 from the operator's stashed post-game LCU match payload.
         # Pre-fix this was unmapped → mode_key stayed "client" → the
         # champ-select bench / quick-swap UI never rendered for Mayhem.
@@ -46,7 +46,7 @@ class TestModeKeyFromQueueId(unittest.TestCase):
 
     def test_zero_and_negative_return_none(self):
         # LCU reports queueId=0 for custom games + Practice Tool. We
-        # don't want to flip to "client" via accident — None signals
+        # don't want to flip to "client" via accident - None signals
         # caller to fall back.
         self.assertIsNone(mode_key_from_queue_id(0))
         self.assertIsNone(mode_key_from_queue_id(-1))

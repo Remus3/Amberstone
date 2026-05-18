@@ -1,28 +1,28 @@
 """
-tools/daemon_slayer_extract.py — Phase 1 data extractor for the Daemon Slayer
+tools/daemon_slayer_extract.py - Phase 1 data extractor for the Daemon Slayer
 build engine.
 
 Produces a versioned snapshot under ``data/daemon_slayer/<patch>/``:
 
-    champions.json  — per-champion sheet (DDragon stats + lolmath cooldowns,
+    champions.json  - per-champion sheet (DDragon stats + lolmath cooldowns,
                       roles, healing/shielding ratings)
-    items.json      — DDragon item catalog (full, version-pinned)
-    scenarios.json  — lolmath playstyle scenario records, keyed by championKey
+    items.json      - DDragon item catalog (full, version-pinned)
+    scenarios.json  - lolmath playstyle scenario records, keyed by championKey
                       (e.g. ``aatrox``); includes every variant the bundle
                       defines (e.g. Akali "Shadow Assassin", Aphelios "Ap")
-    manifest.json   — provenance: timestamps, source URLs, validation counts
+    manifest.json   - provenance: timestamps, source URLs, validation counts
 
 Plus ``data/daemon_slayer/current.txt`` (plain-text patch string the engine
 points at).
 
 Usage:
-    py tools/daemon_slayer_extract.py            # idempotent — skips if patch is already extracted
+    py tools/daemon_slayer_extract.py            # idempotent - skips if patch is already extracted
     py tools/daemon_slayer_extract.py --force    # re-extract regardless of patch state
     py tools/daemon_slayer_extract.py --chunk-url URL  # override chunk autodiscovery
 
 Design rationale (see project_daemon_slayer_engine.md):
   - DDragon is the canonical source for champion/item/stat data.
-  - lolmath provides only the *scenario* priors — playstyle weight tables,
+  - lolmath provides only the *scenario* priors - playstyle weight tables,
     expected-time-alive, statPreference, proficiency. lolmath.net's
     optimizer is a static SPA whose payload lives entirely in a single
     Turbopack chunk (currently ``14.<hash>.js``); the chunk hash rotates
@@ -32,7 +32,7 @@ Design rationale (see project_daemon_slayer_engine.md):
     references between variant scenarios.
 
 Phase 1 step 1 verdict (2026-05-03 probe): regex+json5 extraction is
-sufficient — 172/172 champions resolved, 196/196 top-level records parse.
+sufficient - 172/172 champions resolved, 196/196 top-level records parse.
 """
 from __future__ import annotations
 
@@ -60,13 +60,13 @@ MERAKI_BASE = "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/c
 # Phase 4 batch 20 (2026-05-04): Meraki bulk items endpoint. Single 3.2 MB
 # request returns 320 items keyed by id; per-item endpoints (.../items/<id>.json)
 # observed stale on 2026-05-04 (e.g. ER showed only Essence Drain, missing
-# Spellblade). Always prefer bulk for the snapshot — atomic + current.
+# Spellblade). Always prefer bulk for the snapshot - atomic + current.
 MERAKI_ITEMS_URL = "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/items.json"
 CDRAGON_ARENA_URL = "https://raw.communitydragon.org/latest/cdragon/arena/en_us.json"
 USER_AGENT = "RiotCommander/DaemonSlayer-extract/1.0"
 
 # Markers used to identify the right chunk among lolmath's ~20 chunks.
-# `statPreference:` is the strongest signal for the scenarios chunk — appears
+# `statPreference:` is the strongest signal for the scenarios chunk - appears
 # 170+ times there, zero anywhere else. The data chunk (Phase 1.5) is a
 # separate ~1.5MB chunk holding 12 JSON.parse blocks; `aramDamageTaken` is
 # its strongest anchor (172 hits, one per champion).
@@ -77,7 +77,7 @@ COOLDOWN_PAYLOAD_ANCHOR = '{"Aatrox":{"Q":'
 # Anchors for the three Phase 1.5 JSON.parse payloads inside the data chunk.
 # Each must appear inside the first 80 chars of its block's payload (the
 # `_extract_json_parse_string` window), and must NOT collide with any earlier
-# block's first 80 chars — verified 2026-05-03.
+# block's first 80 chars - verified 2026-05-03.
 ARAM_MODIFIERS_ANCHOR = "aramDamageTaken"
 DAMAGE_DISTRIBUTION_ANCHOR = '"trued":'
 SKILL_ORDER_ANCHOR = '["Q","E","W"'
@@ -369,13 +369,13 @@ _SUBS_PRECOMPILED = [
     (re.compile(r"\bw\.LanePosition\.([A-Za-z_$][\w$]*)"), r'"\1"'),
     (re.compile(r"\bI\.GameModes\.([A-Za-z_$][\w$]*)"), r'"\1"'),
     (re.compile(r"\bH\.MapId\.([A-Za-z_$][\w$]*)"), r'"\1"'),
-    # Cooldown helper calls — minified per champion (different letter each time):
+    # Cooldown helper calls - minified per champion (different letter each time):
     # `<id>("P")`, `<id>("Q")`, etc. Replace with null; cooldown table is sourced separately.
     (re.compile(r'\b[A-Za-z_$][\w$]*\("[PQWER]"\)'), "null"),
     # Computed keys like `[j.calibrumBasic]:` or `[ny.ZaahenAbilities.Q2]:`
     # → keep the trailing leaf segment as a quoted string key.
     (re.compile(r"\[[A-Za-z_$][\w$.]*\.([A-Za-z_$][\w$]*)\]\s*:"), r'"\1":'),
-    # Numeric object keys — JSON5 requires them to be quoted.
+    # Numeric object keys - JSON5 requires them to be quoted.
     (re.compile(r"([{,])\s*(\d+)\s*:"), r'\1"\2":'),
     # Surviving dotted member references in *value* positions → null.
     # Limited to value contexts (after `:` `,` or `[`) so we don't corrupt
@@ -428,7 +428,7 @@ def _resolve_text(rec_text: str,
             return mm.group(0)
         if not target:
             return ""
-        # No trailing comma — the surrounding source already has separators,
+        # No trailing comma - the surrounding source already has separators,
         # and we collapse any double-commas afterwards.
         return json.dumps(target)[1:-1]
 
@@ -504,7 +504,7 @@ def extract_from_chunk(chunk: str, chunk_url: str) -> LolmathExtract:
     parsed = _parse_top_level(bindings)
     log.info("parsed %d/%d bindings", len(parsed), len(bindings))
 
-    # Collect scenarios — they're arrays whose first element has settings.championKey.
+    # Collect scenarios - they're arrays whose first element has settings.championKey.
     scenarios: dict[str, list[dict]] = {}
 
     def collect_scenario(rec: Any) -> None:
@@ -582,7 +582,7 @@ def extract_data_chunk(chunk: str, chunk_url: str) -> dict[str, Any]:
       * physical/magical/trued damage distribution (block 5)
       * canonical skill-up order (block 9)
 
-    All three are keyed by DDragon id (``Aatrox``, ``MonkeyKing``, etc.) — no
+    All three are keyed by DDragon id (``Aatrox``, ``MonkeyKing``, etc.) - no
     lolmath alias dance needed. Returned dict has keys ``aram_modifiers``,
     ``damage_distribution``, ``skill_orders``, ``data_chunk_url``,
     ``data_chunk_bytes``.
@@ -632,7 +632,7 @@ def fetch_ddragon() -> DDragonSnapshot:
 # ─── Meraki perlevel backfill (Phase 1.5) ────────────────────────────────────
 
 # DDragon's bulk and per-champion endpoints both ship `attackdamageperlevel: 0`
-# for every champion as of patch 16.x — Riot stopped exporting AD growth even
+# for every champion as of patch 16.x - Riot stopped exporting AD growth even
 # though the in-game value is non-zero. Meraki Analytics scrapes the actual
 # game data and exposes it under `stats.attackDamage.perLevel`. We overlay
 # only this one field; the other zero perlevel fields in DDragon (Jhin AS,
@@ -642,7 +642,7 @@ def fetch_meraki_perlevel_overlay(ddragon_ids: set[str]) -> dict[str, dict[str, 
 
     Returns ``{ddragon_id: {ddragon_field_name: value}}`` only for champions
     where Meraki has a non-zero value. Failures (HTTP errors, missing
-    champions) are logged and skipped — extraction continues with whatever
+    champions) are logged and skipped - extraction continues with whatever
     DDragon shipped for that champion.
     """
     overlay: dict[str, dict[str, float]] = {}
@@ -680,12 +680,12 @@ def fetch_meraki_perlevel_overlay(ddragon_ids: set[str]) -> dict[str, dict[str, 
 # ─── Meraki items (Phase 4 batch 20) ─────────────────────────────────────────
 
 # DDragon item ``description`` strips numeric coefficients from passive prose
-# (Hullbreaker Skipper "consumes all stacks to deal bonus physical damage" —
-# no number; Essence Reaver Spellblade "deals bonus physical damage" — no
+# (Hullbreaker Skipper "consumes all stacks to deal bonus physical damage" -
+# no number; Essence Reaver Spellblade "deals bonus physical damage" - no
 # number). Meraki Analytics scrapes the wiki + game data and exposes the
 # numeric formula text in ``passives[*].effects`` as wikitext (the {{as|…|ad}}
 # token format). The engine consumer (effects.py) doesn't parse the wikitext
-# at runtime — coefficients still get pinned by hand per patch — but having
+# at runtime - coefficients still get pinned by hand per patch - but having
 # the structured Meraki snapshot in the extracted bundle:
 #   1. Makes the manual pinning auditable ("here's the source text I read")
 #   2. Surfaces patch-to-patch text changes (next extract diff flags drift)
@@ -697,7 +697,7 @@ def fetch_meraki_items() -> dict:
     Returns ``{"fetched_at": <iso>, "source": <url>, "count": N,
                "items": {<id>: {name, passives, active, simpleDescription, ...}}}``
 
-    Failure raises — Meraki bulk items is small (~3.2MB) and stable.
+    Failure raises - Meraki bulk items is small (~3.2MB) and stable.
     """
     log.info("fetching Meraki bulk items: %s", MERAKI_ITEMS_URL)
     raw = _fetch_json(MERAKI_ITEMS_URL)
@@ -734,7 +734,7 @@ def fetch_meraki_items() -> dict:
 
 # cdragon's arena dump has 219 augments across 4 rarities:
 #   0 = Silver, 1 = Gold, 2 = Prismatic, 4 = Hero (GoH = Guardian of Heaven)
-# Source is "latest" — augment rotations don't fully align with DDragon patches,
+# Source is "latest" - augment rotations don't fully align with DDragon patches,
 # so the arena_augments file carries its own `cdragon_fetched_at` timestamp.
 def fetch_arena_augments() -> dict:
     """Fetch the cdragon Arena augment dump and return a normalized payload.
@@ -743,7 +743,7 @@ def fetch_arena_augments() -> dict:
                "augments": [{id, apiName, name, rarity, desc, tooltip,
                              dataValues, calculations, iconLarge, iconSmall}, ...]}``
 
-    Failure raises — augment data is small (~400KB) and rarely flaky.
+    Failure raises - augment data is small (~400KB) and rarely flaky.
     """
     log.info("fetching cdragon arena augments: %s", CDRAGON_ARENA_URL)
     raw = _fetch_json(CDRAGON_ARENA_URL)
@@ -980,18 +980,18 @@ def main() -> int:
     log.info("=" * 60)
     log.info("daemon_slayer extract starting (force=%s)", args.force)
 
-    # Fetch DDragon first — its version is also the patch label for output.
+    # Fetch DDragon first - its version is also the patch label for output.
     dd = fetch_ddragon()
     patch = args.patch or dd.version
     patch_dir = DATA_ROOT / patch
 
     if patch_dir.exists() and not args.force:
         if (patch_dir / "manifest.json").exists():
-            log.info("patch %s already extracted at %s — skip (use --force to redo)",
+            log.info("patch %s already extracted at %s - skip (use --force to redo)",
                      patch, patch_dir)
             _atomic_write_text(DATA_ROOT / "current.txt", patch)
             return 0
-        log.info("patch dir %s exists but no manifest — re-extracting", patch_dir)
+        log.info("patch dir %s exists but no manifest - re-extracting", patch_dir)
 
     scen_url, data_url = discover_chunks(args.chunk_url, args.data_chunk_url)
     scen_chunk = fetch_chunk(scen_url)

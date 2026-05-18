@@ -1,4 +1,4 @@
-"""s170 (2026-05-11) — DS enemy-stats heuristic for coach DS calls.
+"""s170 (2026-05-11) - DS enemy-stats heuristic for coach DS calls.
 
 Before s170, all 4 coaches (`coach_integration/_coach.py` for SR,
 `coaches/aram_coach.py`, `coaches/arena_coach.py`, `coaches/brawl_coach.py`)
@@ -12,7 +12,7 @@ This module computes per-mode, level-aware aggregate enemy stats. Level
 drives the curve (better than time because mid-game shutdowns / early
 ganks shift the level lead independently of the clock). Each coach's
 existing `_estimate_target_bonus_hp` item-aware estimator is preserved
-via the `bonus_hp_override` kwarg — when items are visible (mid/late
+via the `bonus_hp_override` kwarg - when items are visible (mid/late
 SR or ARAM), the item-derived number is more accurate than the curve.
 
 This is Tier 1: heuristic only. Tier 2 (later, scoped in ROADMAP) will
@@ -43,7 +43,7 @@ class EnemyStats:
 # Per-mode anchors. Each tuple is (armor_base, armor_per_level,
 # mr_base, mr_per_level, hp_base, hp_per_level). Values calibrated to
 # League's typical aggregate enemy stat lines at the mode's typical
-# pace, NOT theoretical maximums — DS uses these as "good enough"
+# pace, NOT theoretical maximums - DS uses these as "good enough"
 # rerank targets, not as a damage-prediction ground truth.
 #
 # SR: classic 5v5, gradual scaling. Armor anchors at lvl 11 → 95
@@ -78,7 +78,7 @@ def _estimate_level_from_game_time(game_seconds: float) -> float:
 
     Standard SR XP curve: ~1 level per 90s of game time, plus a head
     start at minute 0 (everyone is level 1, not 0). Capped at 18 (max
-    champion level). Used as a fallback only — when ``level`` is
+    champion level). Used as a fallback only - when ``level`` is
     supplied explicitly we always prefer that.
     """
     if game_seconds <= 0:
@@ -125,7 +125,7 @@ def compute_enemy_stats(
         bonus_hp_override: When set, replaces the heuristic-derived
             bonus_hp. Coaches' existing `_estimate_target_bonus_hp`
             (item-aware, walks enemy item displayNames) is more accurate
-            when enemy items are visible — pass that result through here.
+            when enemy items are visible - pass that result through here.
         enemy_levels: Per-enemy levels when known (e.g. parsed from
             Live Client `enemy_details`). When supplied, averaged into
             the effective level used for the curve. Overrides ``level``.

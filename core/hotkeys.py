@@ -1,5 +1,5 @@
 """
-core/hotkeys.py  — Global hotkey listener for Riot Commander
+core/hotkeys.py  - Global hotkey listener for Riot Commander
 Ctrl+Tab → triggers forced vision scan in all active non-TFT coaches.
 Runs as a daemon thread; safe to import from any module.
 """
@@ -55,7 +55,7 @@ def _listen_loop() -> None:
 
     Inner try/except with auto-restart: a single GetAsyncKeyState glitch
     (driver hiccup, low-memory blip) used to silently kill the listener
-    forever — Ctrl+Tab would stop working with no signal. Now we log,
+    forever - Ctrl+Tab would stop working with no signal. Now we log,
     sleep briefly, and resume the loop instead of exiting.
     """
     import ctypes
@@ -79,13 +79,13 @@ def _listen_loop() -> None:
                     _trigger_force_scan()
 
             was_down = combo
-            time.sleep(0.05)   # 50ms poll — low CPU, responsive enough
+            time.sleep(0.05)   # 50ms poll - low CPU, responsive enough
         except Exception as e:
             crash_count += 1
             # Exponential backoff (cap at 5s) so a permanent fault doesn't
             # spin a tight error loop, but a transient blip recovers fast.
             sleep_for = min(5.0, 0.1 * (2 ** min(crash_count, 6)))
-            _log.warning("Hotkey listener glitch %dx: %s — resuming in %.1fs",
+            _log.warning("Hotkey listener glitch %dx: %s - resuming in %.1fs",
                          crash_count, e, sleep_for)
             time.sleep(sleep_for)
 

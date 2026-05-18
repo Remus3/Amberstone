@@ -1,5 +1,5 @@
 @echo off
-:: restart.bat — kill and relaunch Riot Commander
+:: restart.bat - kill and relaunch Riot Commander
 echo [Riot Commander] Restarting...
 wmic process where "commandline like '%%main.py%%'" delete >nul 2>&1
 taskkill /F /IM pythonw.exe >nul 2>&1

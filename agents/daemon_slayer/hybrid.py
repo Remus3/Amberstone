@@ -1,8 +1,8 @@
-"""Phase 2 (s175, 2026-05-12) — Bruiser hybrid scorer.
+"""Phase 2 (s175, 2026-05-12) - Bruiser hybrid scorer.
 
 Composes ``compute_dps()`` (Phase 4 thin slice + later batches) with
 ``compute_ehp()`` (Phase 1 s174) into a single archetype score for
-bruisers — champions that want both damage AND survivability.
+bruisers - champions that want both damage AND survivability.
 
 The score is
 
@@ -21,9 +21,9 @@ Hecarim, Udyr, Vi, Xin Zhao, Lee Sin, Wukong/MonkeyKing, Warwick,
 Trundle). Unlisted champions fall back to the default (0.50, 0.50).
 
 Phase 2 deliberate omissions (deferred):
-* Per-champion calibration from rewind_history.db — Phase 2.5 once we
+* Per-champion calibration from rewind_history.db - Phase 2.5 once we
   have enough hybrid-scorer logs to compare against actual outcomes.
-* Phase/level-aware weights — early-game Camille is more snowball-DPS
+* Phase/level-aware weights - early-game Camille is more snowball-DPS
   than late-game Camille, but a single weight pair is good enough for
   the v1 ranker.
 
@@ -143,8 +143,8 @@ class HybridResult:
 
     def format_table(self) -> str:
         head = (
-            f"{self.champion_name} ({self.champion_id}) — lvl {self.level} "
-            f"— mode {self.mode}  [BRUISER]"
+            f"{self.champion_name} ({self.champion_id}) - lvl {self.level} "
+            f"- mode {self.mode}  [BRUISER]"
         )
         rows = [head, "-" * len(head)]
         if self.item_ids:
@@ -202,7 +202,7 @@ def compute_hybrid(
     The returned ``hybrid_score`` is the raw weighted sum and is in mixed
     units (DPS + EHP). It exists for completeness; the ranker uses a
     normalized percentage-delta formulation that handles the unit
-    mismatch — see ``rank_items_by_hybrid``.
+    mismatch - see ``rank_items_by_hybrid``.
     """
     level = clamp_level(level)
     if alpha is None or beta is None:
@@ -292,7 +292,7 @@ class HybridRankedItem:
     new_dps: float
     new_ehp: float
     # Normalized score: alpha * (delta_dps / baseline_dps) + beta * (delta_ehp / baseline_ehp).
-    # Sort key. Operator-facing — represents the weighted-percentage gain
+    # Sort key. Operator-facing - represents the weighted-percentage gain
     # so that alpha+beta=1.0 maps to an intuitive 'balance' default.
     hybrid_delta_pct: float
     hybrid_score: float                # alpha * new_dps + beta * new_ehp (raw, units mixed)
@@ -383,8 +383,8 @@ class HybridRankResult:
 
     def format_table(self) -> str:
         head = (
-            f"{self.champion_name} ({self.champion_id}) — lvl {self.level} "
-            f"— mode {self.mode} — phase {self.phase}  [BRUISER]"
+            f"{self.champion_name} ({self.champion_id}) - lvl {self.level} "
+            f"- mode {self.mode} - phase {self.phase}  [BRUISER]"
         )
         rows = [head, "-" * len(head)]
         if self.current_item_ids:
@@ -445,7 +445,7 @@ def _hybrid_delta_pct(
     Normalizes each delta against its own baseline so the alpha/beta
     weights have a consistent meaning regardless of the raw magnitude
     gap between DPS (~hundreds) and EHP (~thousands). At alpha=beta=0.5,
-    a 10% DPS gain weights the same as a 10% EHP gain — intuitive for
+    a 10% DPS gain weights the same as a 10% EHP gain - intuitive for
     operator-facing slider semantics.
 
     Falls back to absolute deltas when a baseline is 0 (e.g. naked
@@ -483,11 +483,11 @@ def rank_items_by_hybrid(
     """Rank items by weighted (α·dps + β·ehp) delta when added to ``current_item_ids``.
 
     Sort keys:
-      * ``delta``       — weighted percentage delta (alpha*dps_pct + beta*ehp_pct); default
-      * ``efficiency``  — hybrid delta percentage per 1000 gold
+      * ``delta``       - weighted percentage delta (alpha*dps_pct + beta*ehp_pct); default
+      * ``efficiency``  - hybrid delta percentage per 1000 gold
 
     Same candidate filtering pipeline as ``rank_items`` and
-    ``rank_items_by_ehp`` — purchasable + mode-legal + optional whitelist
+    ``rank_items_by_ehp`` - purchasable + mode-legal + optional whitelist
     + budget + terminal-only + dead-unique dedup. Only the scoring
     function differs.
 
@@ -598,7 +598,7 @@ def rank_items_by_hybrid(
             + beta_resolved * ehp_scored.blended_ehp
         )
         # Efficiency: weighted percentage gain per 1000 gold.
-        # Zero or negative deltas zero out — regression isn't "efficient".
+        # Zero or negative deltas zero out - regression isn't "efficient".
         eff = (delta_pct / (gold / 1000.0)) if (gold > 0 and delta_pct > 0) else 0.0
         ranked.append(HybridRankedItem(
             item_id=item_id,
@@ -636,18 +636,18 @@ def rank_items_by_hybrid(
     )
     if stripped_trinkets:
         notes.append(
-            f"mode=ARENA — stripped trinket(s) {list(stripped_trinkets)} "
+            f"mode=ARENA - stripped trinket(s) {list(stripped_trinkets)} "
             f"from current_item_ids"
         )
     if include_components:
-        notes.append("include_components=True — non-terminal items in the ranking")
+        notes.append("include_components=True - non-terminal items in the ranking")
     if budget is not None:
-        notes.append(f"budget={budget}g — items over budget filtered")
+        notes.append(f"budget={budget}g - items over budget filtered")
     if only_ids is not None:
         notes.append(f"only_item_ids restricted to {len(only_ids)} whitelisted ids")
     if baseline_dps_result.mode_multiplier == 0.0:
         notes.append(
-            "DPS mode_multiplier=0 — hybrid score will weight EHP entirely "
+            "DPS mode_multiplier=0 - hybrid score will weight EHP entirely "
             "(e.g. Yunara in ARAM)"
         )
 

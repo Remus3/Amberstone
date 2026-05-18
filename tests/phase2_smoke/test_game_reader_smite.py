@@ -1,4 +1,4 @@
-"""Tests for GameReader._has_smite — Smite-based jungler detection."""
+"""Tests for GameReader._has_smite - Smite-based jungler detection."""
 import unittest
 from game_reader import GameReader
 

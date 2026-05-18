@@ -1,4 +1,4 @@
-"""Round 32 — /api/advisories list + POST /api/task/<id>/dismiss."""
+"""Round 32 - /api/advisories list + POST /api/task/<id>/dismiss."""
 from __future__ import annotations
 
 import json
@@ -11,7 +11,7 @@ import pytest
 # A lightweight mock of the request-handler shape the handler methods need.
 class _MockHandler:
     """Mimics just enough of BaseHTTPRequestHandler for the handler
-    methods under test. We don't go through a real HTTP stack — the
+    methods under test. We don't go through a real HTTP stack - the
     endpoints are pure logic over self.server.supervisor.scheduler."""
 
     def __init__(self, path: str, scheduler, command: str = "GET") -> None:
@@ -200,7 +200,7 @@ def test_dismiss_invalid_task_id_rejected(fresh_scheduler) -> None:
 
 
 def test_dismiss_malformed_url_rejected(fresh_scheduler) -> None:
-    # Missing trailing /dismiss is handled by the dispatcher — we test
+    # Missing trailing /dismiss is handled by the dispatcher - we test
     # the handler with a malformed path it shouldn't have been routed to.
     h = _make_handler("/api/task//dismiss", fresh_scheduler, command="POST")
     h._handle_task_dismiss()

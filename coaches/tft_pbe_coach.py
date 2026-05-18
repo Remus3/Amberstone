@@ -1,14 +1,14 @@
 """
 coaches/tft_pbe_coach.py
 
-TFT Set 17: Space Gods PBE coaching — Double Up focus.
+TFT Set 17: Space Gods PBE coaching - Double Up focus.
 Duplicate of tft_coach.py with Set 17-specific engine and data.
 
 Architecture:
-  TftStateReader      — polls Riot Live Client API (same as live)
-  TftPbeCoachEngine   — Set 17 text coaching (gods, new traits, Double Up)
-  TftLiveAnalysis     — vision-based coaching (reused, Set 17 champ list)
-  TftOverlay          — 3 tkinter windows (reused)
+  TftStateReader      - polls Riot Live Client API (same as live)
+  TftPbeCoachEngine   - Set 17 text coaching (gods, new traits, Double Up)
+  TftLiveAnalysis     - vision-based coaching (reused, Set 17 champ list)
+  TftOverlay          - 3 tkinter windows (reused)
 """
 
 import sys
@@ -64,7 +64,7 @@ class Coach:
         self._ensure_data_files()
 
         if not _HAS_TFT:
-            logger.warning("TFT PBE subsystems unavailable — coach will not function")
+            logger.warning("TFT PBE subsystems unavailable - coach will not function")
             return
 
         api_key = _read_api_key(_APP_DIR)

@@ -1,6 +1,6 @@
 """Unit tests for the warm-session UI-close watchdog (supervisor-level).
 
-We don't boot a real supervisor — we exercise the loop body directly
+We don't boot a real supervisor - we exercise the loop body directly
 with a mocked ws server + warm session. A fake monotonic clock lets us
 fast-forward past the grace window.
 """
@@ -104,7 +104,7 @@ def test_watchdog_handles_missing_ws_gracefully() -> None:
     from agents.supervisor import Supervisor
 
     sup = Supervisor()
-    # _ws is None — watchdog must not crash.
+    # _ws is None - watchdog must not crash.
 
     async def drive():
         with patch("agents.supervisor.WARM_UI_CHECK_INTERVAL_SEC", 0.01):

@@ -1,6 +1,6 @@
-# arch: mode switching (no UI overlays — legacy name) | section=orchestration | frozen=yes
+# arch: mode switching (no UI overlays - legacy name) | section=orchestration | frozen=yes
 """
-app/_overlay_manager.py — OverlayManager (post-T2 #6 dashboard-only)
+app/_overlay_manager.py - OverlayManager (post-T2 #6 dashboard-only)
 
 The web dashboard at :8888 is the UI. Tkinter overlay windows are gone.
 This module survives only because lifecycle code still calls
@@ -31,7 +31,7 @@ class OverlayManager:
         app.game_windows = {}
         app.client_windows = {}
         app.mode_indicator = None
-        _log.info("OverlayManager: dashboard-only — no tk overlay windows created")
+        _log.info("OverlayManager: dashboard-only - no tk overlay windows created")
 
     def all_windows(self):
         return iter(())

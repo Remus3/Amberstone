@@ -1,5 +1,5 @@
 """
-coaches/champ_pool_recommender.py — champ-select pool recommendation.
+coaches/champ_pool_recommender.py - champ-select pool recommendation.
 
 AUDIT 2026-04-28 (suggestion 2.6): given the enemy comp seen in champ-
 select and the user's pool of comfort picks, score each pick against
@@ -81,7 +81,7 @@ def _load_champ_index() -> None:
 
 def _resolve_user_puuid(c: sqlite3.Connection) -> Optional[str]:
     """Pick the puuid that played the most tracked-champion games. In
-    practice this is unambiguous — the DB only has one user's history."""
+    practice this is unambiguous - the DB only has one user's history."""
     global _user_puuid
     if _user_puuid is not None:
         return _user_puuid
@@ -164,7 +164,7 @@ def _load_materialized_kda() -> Optional[dict]:
 def _kda_for(c: sqlite3.Connection, puuid: str, champ_id: int) -> tuple[int, int, int, int]:
     """(kills, deaths, assists, games) summed across the user's games on
     the champion. AUDIT 2026-04-29: prefers data/coach_reference/
-    champ_kda.json (built by scripts/build_champ_kda.py) when present —
+    champ_kda.json (built by scripts/build_champ_kda.py) when present -
     that path is ~50 ms vs ~474 ms for the live timeline_events fold.
     Live SQL is the fallback when the file is missing or doesn't have
     this champ_id (e.g. user picked up a new champ since last build)."""
@@ -179,7 +179,7 @@ def _kda_for(c: sqlite3.Connection, puuid: str, champ_id: int) -> tuple[int, int
     # Live-SQL fallback (original implementation).
     # timeline_events has CHAMPION_KILL events. Match-scoped JOIN against
     # participants by puuid + champion_id gives the user's row in each
-    # match — kills/deaths are counted by killer_id/victim_id; assists
+    # match - kills/deaths are counted by killer_id/victim_id; assists
     # use a JSON-substring LIKE which is good enough for an O(2.5M-row)
     # one-shot read once per recommendation request.
     cur = c.execute(
@@ -253,7 +253,7 @@ def recommend(my_pool: Iterable[str],
                 continue
             cid = _name_to_id.get(str(champ).lower())
             if not cid:
-                _log.debug("recommend: unknown champion %r — skipping", champ)
+                _log.debug("recommend: unknown champion %r - skipping", champ)
                 continue
             games = _games_on_champ(c, puuid, cid)
             if not games:

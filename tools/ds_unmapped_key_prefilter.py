@@ -9,8 +9,8 @@ block out-evaluates block 0.
 For every covered champion × key-not-in-registry, runs the same
 ground-truth A/B `compute_ability_dps` the scanner uses, at BOTH full HP
 and 40% HP (the second pass catches missing/current-HP execute blocks
-that are a no-op at full HP — the Kindred-E class). Emits only keys
-where some filtered block i>0 exceeds block 0 by >MARGIN at either HP —
+that are a no-op at full HP - the Kindred-E class). Emits only keys
+where some filtered block i>0 exceeds block 0 by >MARGIN at either HP -
 that shortlist is what parallel agents then judge against the documented
 pattern/skip rules.
 

@@ -38,7 +38,7 @@ class TestPreflipModeFromLcu(unittest.TestCase):
     def test_lobby_skipped_when_custom(self):
         # Custom games / Practice Tool carry the queue_id of whatever
         # mode template they're built off of, but they shouldn't drive
-        # the dashboard panel — there's no coach payload for customs.
+        # the dashboard panel - there's no coach payload for customs.
         snap = {"lobby": {"queue_id": 1700, "is_custom": True}}
         self.assertIsNone(_state_builder._preflip_mode_from_lcu(snap))
 
@@ -55,7 +55,7 @@ class TestBuildStateModeResolution(unittest.TestCase):
     """End-to-end mode_key resolution via build_state()."""
 
     def setUp(self):
-        # Stub the heavy IO bits of build_state — we only care about
+        # Stub the heavy IO bits of build_state - we only care about
         # mode_key resolution here.
         self._patches = [
             mock.patch.object(_state_builder, "validate_coaching_payload",

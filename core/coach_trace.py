@@ -1,11 +1,11 @@
 """
-core/coach_trace.py — persistent ring buffer of coach API calls.
+core/coach_trace.py - persistent ring buffer of coach API calls.
 
 AUDIT 2026-04-28 (proposal 2.5): "Why did the coach say that?" Trace
 each call's prompt + context + model response so the dashboard ops tab
 can surface the exchange. Also useful for prompt tuning.
 
-File format: JSONL at data/coach_trace.jsonl. Capped at MAX_LINES — older
+File format: JSONL at data/coach_trace.jsonl. Capped at MAX_LINES - older
 lines are dropped on append. Best-effort: a write failure logs and
 continues; the coach must never crash because the trace file is busy.
 """
@@ -59,7 +59,7 @@ def append(
 ) -> None:
     """Append one coach-call record. Best-effort; never raises to caller.
 
-    Prompts/responses are truncated to 4 KB each — the dashboard surfaces
+    Prompts/responses are truncated to 4 KB each - the dashboard surfaces
     the full prompt only on demand, and the trace file otherwise grows
     proportional to call count, not content size."""
     rec = {
@@ -112,7 +112,7 @@ def _trim() -> None:
 
 
 def read_recent(limit: int = 50) -> list:
-    """Return the most recent `limit` records (newest last) — list[dict]."""
+    """Return the most recent `limit` records (newest last) - list[dict]."""
     try:
         if not _TRACE_FILE.exists():
             return []

@@ -1,4 +1,4 @@
-/* s219: Last Match — post-game review view.
+/* s219: Last Match - post-game review view.
  * Visual language mirrors panels/home.css so the page reads as a
  * sibling of Home (hero → stats grid → sections), not a stranger.
  * Grade-tinted left-border accent on hero matches s218's "demoted from
@@ -14,10 +14,10 @@
 
 /* ── Hero row ────────────────────────────────────────────────────────── */
 /* s219 v6: 3-section layout (each section can hold multiple rows).
- *   Section 1 — identity cluster (portrait + name + KDA + W/L + grade)
- *   Section 2 — operator's match stats, 2×4 inner grid
- *   Section 3 — rank-tier comparison, 2×4 inner grid (dropdown in
- *               col 1 row 1, KDA-avg in col 1 row 2 — aligns with the
+ *   Section 1 - identity cluster (portrait + name + KDA + W/L + grade)
+ *   Section 2 - operator's match stats, 2×4 inner grid
+ *   Section 3 - rank-tier comparison, 2×4 inner grid (dropdown in
+ *               col 1 row 1, KDA-avg in col 1 row 2 - aligns with the
  *               blank leading cell + KP% leading cell in section 2). */
 .lm-hero {
   display: grid;
@@ -38,7 +38,7 @@
   gap: 14px;
 }
 
-/* W/L pill — visible only when LCU enrichment carries a real win flag. */
+/* W/L pill - visible only when LCU enrichment carries a real win flag. */
 .lm-hero-result {
   font-size: 20px; font-weight: 800;
   letter-spacing: 0.1em;
@@ -101,7 +101,7 @@
   min-width: 108px;
 }
 
-/* s219 v6: section 2 — operator's match stats laid out as 2 rows × 4 cols
+/* s219 v6: section 2 - operator's match stats laid out as 2 rows × 4 cols
  *   row 1: [blank], Vision, CS, Tanked
  *   row 2: KP%, Damage, CS/min, Heal+Shield
  * The blank col-1 cell in row 1 keeps the grid aligned with section 3's
@@ -114,13 +114,13 @@
   align-items: center;
   justify-content: center;
   /* s220 #7: 1px dashed separator from section 1 (identity), mirroring
-   * section 3's existing border-left — champ-select's vertical-rule
+   * section 3's existing border-left - champ-select's vertical-rule
    * idiom, applied to delineate all three hero sections. */
   padding: 0 14px 0 18px;
   border-left: 1px dashed var(--border-soft);
 }
 .lm-hero-stat-blank {
-  /* spacer cell — preserves column alignment with rank-compare's KDA col */
+  /* spacer cell - preserves column alignment with rank-compare's KDA col */
   min-width: 64px;
 }
 .lm-hero-stat {
@@ -165,22 +165,22 @@
  * to localStorage; future Settings page will own the canonical knob. */
 .lm-hero-rank-compare {
   display: grid;
-  /* s220: 4-column grid — identical model to section 2
+  /* s220: 4-column grid - identical model to section 2
    * (repeat(4, minmax(72px,auto)) + the same gap). col1 auto-grows to
    * fit the KDA+KP% pair; the selector is widened to span them. */
   grid-template-columns: repeat(4, minmax(72px, auto));
   grid-template-rows: auto auto;
-  /* s220: 1:1 with section 2's column structure —
+  /* s220: 1:1 with section 2's column structure -
    *   col1: selector (r1)  ↕  KDA+KP% pair (r2)   [section 2: blank ↕ KP%]
    *   col2: VISION ↕ DAMAGE
    *   col3: CS ↕ CS/MIN
    *   col4: TANKED ↕ HEAL+SHIELD
    * KDA + KP% are a flex pair sharing col1 row2, directly beneath the
-   * selector (widened to span them — see .lm-rank-compare-head). */
+   * selector (widened to span them - see .lm-rank-compare-head). */
   grid-template-areas:
     "selector vision-avg cs-avg   tank-avg"
     "kda-kp   damage-avg cspm-avg heal-avg";
-  gap: 6px 14px;   /* s220: identical to section 2 — uniform spacing across both */
+  gap: 6px 14px;   /* s220: identical to section 2 - uniform spacing across both */
   align-items: center;
   justify-items: end;   /* s220: right-align every item (selector + cells) like section 2 */
   padding-left: 14px;
@@ -386,7 +386,7 @@
   margin-bottom: 8px;
 }
 
-/* ── Chart tab — team aggregate bars ──────────────────────────────────── */
+/* ── Chart tab - team aggregate bars ──────────────────────────────────── */
 .lm-chart-wrap { width: 100%; }
 .lm-chart-wrap[hidden] { display: none; }
 .lm-chart-list {
@@ -425,7 +425,7 @@
   transition: width 0.25s ease;
 }
 .lm-chart-bar.lm-chart-bar-ally  { display: flex; justify-content: flex-end; }
-/* s220 #5: fills were too bright (0.85) — washed out the white value
+/* s220 #5: fills were too bright (0.85) - washed out the white value
  * text on top. Dropped to 0.40 + a dark text-shadow so the number
  * reads on the fill or the dark track. */
 .lm-chart-bar.lm-chart-bar-ally .lm-chart-bar-fill {
@@ -452,7 +452,7 @@
   letter-spacing: 0.08em;
 }
 
-/* ── Timeline tab — per-minute differential charts + objective ribbon ── */
+/* ── Timeline tab - per-minute differential charts + objective ribbon ── */
 /* s220 Item E phase 1. Sparkline stroke/area use currentColor so the
  * .lm-tl-chart[data-lead] rule tints the whole card by who ended ahead
  * (ally → ok green, enemy → bad red, even → dim). */
@@ -582,7 +582,7 @@
   letter-spacing: 0;
 }
 
-/* Build section — operator's actual inventory + DS picks side-by-side */
+/* Build section - operator's actual inventory + DS picks side-by-side */
 .lm-build-row {
   display: grid;
   grid-template-columns: 96px 1fr auto;
@@ -602,7 +602,7 @@
   border-right: 1px solid var(--border-soft);
 }
 
-/* Operator's final inventory — 7 item slots */
+/* Operator's final inventory - 7 item slots */
 .lm-inventory {
   display: flex;
   gap: 6px;
@@ -624,7 +624,7 @@
 }
 .lm-item.lm-item-trinket { border-color: var(--accent-soft, rgba(138, 140, 240, 0.4)); }
 
-/* Summoner spells — 2 icons */
+/* Summoner spells - 2 icons */
 .lm-summoners {
   display: flex; gap: 6px;
 }
@@ -669,7 +669,7 @@
 }
 .lm-pending[hidden] { display: none; }
 
-/* ── Team Composition — ally + enemy rosters ────────────────────────── */
+/* ── Team Composition - ally + enemy rosters ────────────────────────── */
 /* s219 v2: .lm-tc-table now ALSO carries .lm-row-half so ally + enemy
  * sit side-by-side. The 2-column grid rules come from .lm-row-half;
  * this rule just defines the hidden default + gap fallback for when
@@ -728,7 +728,7 @@
    * swapped; level is digits-only so its column shrank. All stat
    * columns stay fixed-width so ally + enemy panels align
    * column-for-column (separate grid contexts). CS stays right-aligned
-   * + vertically in sync across both panels — operator's #3 ask. */
+   * + vertically in sync across both panels - operator's #3 ask. */
   grid-template-columns: 40px 144px 46px 32px 84px 60px 70px 1fr;
   align-items: center;
   gap: 10px;
@@ -830,7 +830,7 @@
   padding: 4px 0;
 }
 
-/* ── Quick Review — 3 columns ───────────────────────────────────────── */
+/* ── Quick Review - 3 columns ───────────────────────────────────────── */
 .lm-qr-cols {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -918,7 +918,7 @@
   text-transform: none;
 }
 
-/* Empty-state — when match_history.db has no rows yet */
+/* Empty-state - when match_history.db has no rows yet */
 .lm-empty {
   font-size: 17px;
   color: var(--text-faint, var(--text-dim));

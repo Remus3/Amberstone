@@ -3,9 +3,9 @@
     "Hardcoded global top-banned champions for the champ-select Suggestions panel.",
     "Operator-editable: bump the patch field + reorder the list whenever the meta shifts.",
     "The endpoint /api/champ-select/ban-suggestions reads this file on each call",
-    "(no caching — load is sub-millisecond) and filters against already-banned champions.",
+    "(no caching - load is sub-millisecond) and filters against already-banned champions.",
     "",
-    "Currently a single global list — per-role refinement is a follow-up.",
+    "Currently a single global list - per-role refinement is a follow-up.",
     "Champion names match data/meta/ddragon_champions.json display-name spelling",
     "(spaces + apostrophes preserved). The backend tolerantly resolves slug variants."
   ],

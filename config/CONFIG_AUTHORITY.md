@@ -1,6 +1,6 @@
 ﻿# CONFIG_AUTHORITY.md
-# Riot Commander — Config File Authority and Domain Ownership
-# Phase 1 Step 1 — documentation only, no behavior changes.
+# Riot Commander - Config File Authority and Domain Ownership
+# Phase 1 Step 1 - documentation only, no behavior changes.
 
 ---
 
@@ -30,7 +30,7 @@ ops/rc_config.json
 
 ## File Domain Ownership
 
-### ops/rc_config.json — Runtime Ops Authority
+### ops/rc_config.json - Runtime Ops Authority
 
 Owns:
 - `project_root`, `runtime_dir`, `python_exe`, `app_cmd`, `health_file`
@@ -45,7 +45,7 @@ Owns:
 
 Does NOT own: coaching behaviour, hot-reload policy, feature flags.
 
-### config/self_monitor_profile.json — Monitor Behaviour Authority
+### config/self_monitor_profile.json - Monitor Behaviour Authority
 
 Owns:
 - `enabled`, `resume_on_boot` (whether SelfMonitor is armed at startup)
@@ -65,7 +65,7 @@ They are read by different subsystems independently:
 - self_monitor_profile.json value → SelfMonitor circuit breaker
 They may legitimately differ. Both values are documented here for audit purposes.
 
-### config/coach_settings.json — AI Coaching Authority
+### config/coach_settings.json - AI Coaching Authority
 
 Owns:
 - `model` (Anthropic model string for Claude API calls)
@@ -77,7 +77,7 @@ Owns:
 Read by: `coach_integration.py`, `coaches/__init__.py`.
 Does NOT affect the control plane, supervisor, or self-monitor.
 
-### config/feature_flags.json — Feature Policy Authority [Phase 1 Step 7]
+### config/feature_flags.json - Feature Policy Authority [Phase 1 Step 7]
 
 Owns:
 - Per-mode feature enable/disable matrix (modes: sr, aram, arena, brawl, tft)
@@ -86,31 +86,31 @@ Owns:
 
 Read ONLY by: `core/feature_policy.py` (non-frozen).
 
-Runtime consumers via feature_policy.is_allowed() — final gate locations:
+Runtime consumers via feature_policy.is_allowed() - final gate locations:
 
   SR live_coaching:
-    `core/sr_aram_worker._submit_coaching()` — per-poll gate
+    `core/sr_aram_worker._submit_coaching()` - per-poll gate
 
   ARAM live_coaching:
-    `app._on_game_start()` — startup gate
-    `coaches/aram_coach._run_coach()` — per-poll gate (Phase 4 Step 2)
-    `coaches/aram_coach._run_vision()` — per-poll vision gate (Phase 4 Step 2.1)
+    `app._on_game_start()` - startup gate
+    `coaches/aram_coach._run_coach()` - per-poll gate (Phase 4 Step 2)
+    `coaches/aram_coach._run_vision()` - per-poll vision gate (Phase 4 Step 2.1)
 
   Arena live_coaching:
-    `app._on_game_start()` — startup gate
-    `coaches/arena_coach._run_coach()` — per-poll gate (Phase 2)
-    `coaches/arena_coach._run_vision()` — per-poll vision gate (Phase 3 Step 1)
+    `app._on_game_start()` - startup gate
+    `coaches/arena_coach._run_coach()` - per-poll gate (Phase 2)
+    `coaches/arena_coach._run_vision()` - per-poll vision gate (Phase 3 Step 1)
 
   Brawl live_coaching:
-    `app._on_game_start()` — startup gate
-    `coaches/brawl_coach._run_coach()` — per-poll gate (Phase 2)
-    `coaches/brawl_coach._run_vision()` — per-poll vision gate (Phase 3 Step 1)
+    `app._on_game_start()` - startup gate
+    `coaches/brawl_coach._run_coach()` - per-poll gate (Phase 2)
+    `coaches/brawl_coach._run_vision()` - per-poll vision gate (Phase 3 Step 1)
 
   TFT live_coaching:
-    `core/tft_worker._run()` — per-poll gate
+    `core/tft_worker._run()` - per-poll gate
 
   TFT tft_vision_analysis:
-    `core/tft_worker._init_components()` — startup gate
+    `core/tft_worker._init_components()` - startup gate
 
 Artifact paths affected by policy-disabled output:
 - sr.live_coaching disabled → `coaching_data.json` (project root)
@@ -130,9 +130,9 @@ No remaining gate debt: all modes have full per-poll live_coaching gate coverage
 | config file | frozen readers | non-frozen readers |
 |---|---|---|
 | ops/rc_config.json | rc_supervisor.py (FROZEN) | main.py (DevRuntime init), ops/rc_transactional_deploy.py |
-| self_monitor_profile.json | rc_supervisor.py (FROZEN), rc_self_monitor.py (FROZEN) | — |
-| coach_settings.json | — | coach_integration.py, coaches/__init__.py |
-| feature_flags.json | — | core/feature_policy.py (Step 7) |
+| self_monitor_profile.json | rc_supervisor.py (FROZEN), rc_self_monitor.py (FROZEN) | - |
+| coach_settings.json | - | coach_integration.py, coaches/__init__.py |
+| feature_flags.json | - | core/feature_policy.py (Step 7) |
 
 ---
 
@@ -146,9 +146,9 @@ which is not permitted in Phase 1.
 
 | constant A | location A | constant B | location B | relationship |
 |---|---|---|---|---|
-| `max_heartbeat_age_seconds` (default 15) | ops/rc_config.json | `max_heartbeat_age` (default 15.0) | rc_supervisor.py (reads from config) | must match; supervisor reads from rc_config.json directly — no separate agreement needed |
+| `max_heartbeat_age_seconds` (default 15) | ops/rc_config.json | `max_heartbeat_age` (default 15.0) | rc_supervisor.py (reads from config) | must match; supervisor reads from rc_config.json directly - no separate agreement needed |
 | `startup_heartbeat_timeout_s` (default 30) | rc_supervisor.py (reads from rc_config.json) | `_startup_grace_s` (hardcoded 30.0) | rc_self_monitor.py | must match; _startup_grace_s is frozen hardcoded; rc_config.json value drives supervisor only |
-| `_BOOTSTRAP_GRACE_S` (hardcoded 60.0) | rc_self_monitor.py | no config key exists | — | bootstrap grace is 2× startup grace by design; document only |
+| `_BOOTSTRAP_GRACE_S` (hardcoded 60.0) | rc_self_monitor.py | no config key exists | - | bootstrap grace is 2× startup grace by design; document only |
 | `max_restart_attempts` | ops/rc_config.json | `max_restart_attempts` | self_monitor_profile.json | different subsystems; may intentionally differ; document disagreements |
 
 ---
@@ -171,8 +171,8 @@ read constitutes a behavior change and is not permitted.
 
 ## Install-Time vs Runtime
 
-- `config/runtime.json` — install-time only; NOT read by the runtime ops stack.
+- `config/runtime.json` - install-time only; NOT read by the runtime ops stack.
   Written by install.bat; contains install paths for LCU integration. Ignored
   after installation is complete.
-- `config/settings.json` — legacy settings file; read by LCU/UI code only;
+- `config/settings.json` - legacy settings file; read by LCU/UI code only;
   not part of the ops stack config hierarchy.

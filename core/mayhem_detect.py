@@ -1,7 +1,7 @@
 """Detect ARAM Mayhem from a game-state snapshot or raw state dict.
 
 Riot exposes Mayhem under several internal strings depending on the API
-surface — `KIWI` from /liveclientdata, `ARAM_MAYHEM` from select LCU
+surface - `KIWI` from /liveclientdata, `ARAM_MAYHEM` from select LCU
 endpoints, the literal `MAYHEM` if Riot ever cleans it up. This helper
 is the single source of truth so individual call sites don't each
 hand-roll their own substring check (and miss `KIWI`, the actual live
@@ -39,7 +39,7 @@ def _coerce_string(state: Any) -> str:
 
 def is_mayhem(state: Any) -> bool:
     """Return True if `state`'s game_mode field is one of the known
-    Mayhem aliases. Safe on None / missing field — returns False."""
+    Mayhem aliases. Safe on None / missing field - returns False."""
     gm = _coerce_string(state).upper()
     if not gm:
         return False

@@ -1,4 +1,4 @@
-"""Round 28 — adaptation_hint CLI."""
+"""Round 28 - adaptation_hint CLI."""
 from __future__ import annotations
 
 import json

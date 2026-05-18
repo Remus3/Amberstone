@@ -43,7 +43,7 @@ class HelperPredicateTests(unittest.TestCase):
         self.assertTrue(_seed_has_boots(self.snap, ["3031", "3006"]))
 
     def test_is_consumable_catches_potions_and_wards(self) -> None:
-        # Health Potion, Control Ward, Stealth Ward — all purchasable
+        # Health Potion, Control Ward, Stealth Ward - all purchasable
         # consumables that should never land in a "build".
         for iid in ("2003", "2055", "2056"):
             rec = self.snap.items.get(iid) or {}
@@ -53,7 +53,7 @@ class HelperPredicateTests(unittest.TestCase):
             )
 
     def test_is_consumable_passes_real_items(self) -> None:
-        # Infinity Edge, Stormrazor — full items, never flagged consumable.
+        # Infinity Edge, Stormrazor - full items, never flagged consumable.
         for iid in ("3031", "3097"):
             rec = self.snap.items.get(iid) or {}
             self.assertFalse(_is_consumable(rec))
@@ -116,7 +116,7 @@ class BeamSearchConstraintTests(unittest.TestCase):
         cls.snap = DataSnapshot.load()
 
     def test_current_items_pinned_in_every_returned_build(self) -> None:
-        # 3031=IE, 3072=Bloodthirster — both should appear in every result.
+        # 3031=IE, 3072=Bloodthirster - both should appear in every result.
         r = beam_search_build(
             self.snap, "Aatrox", level=11, mode="SR", target_armor=80,
             current_item_ids=["3031", "3072"],
@@ -183,7 +183,7 @@ class BeamSearchConstraintTests(unittest.TestCase):
 
     def test_boots_unique_false_can_admit_multiple_boots(self) -> None:
         # Restrict the candidate pool to terminal SR boots (enchanted feet
-        # variants 3168-3175) — when boots_unique=False, beam search will
+        # variants 3168-3175) - when boots_unique=False, beam search will
         # double up on them since the pool has nothing else.
         boots_pool = ["3168", "3170", "3171", "3173", "3174", "3175"]
         r = beam_search_build(
@@ -204,7 +204,7 @@ class BeamSearchConstraintTests(unittest.TestCase):
         self.assertTrue(any_double_boots, f"no double-boot build in {[b.item_ids for b in r.ranked]}")
 
     def test_consumables_excluded_from_search_pool(self) -> None:
-        # Tight budget that only fits a few full items — beam search must
+        # Tight budget that only fits a few full items - beam search must
         # NOT fill remaining slots with Health Potions / Control Wards.
         r = beam_search_build(
             self.snap, "Aatrox", level=11, mode="SR", target_armor=80,

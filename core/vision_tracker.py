@@ -1,10 +1,10 @@
 """
-core/vision_tracker.py — fog-of-war state derivation from Live Client.
+core/vision_tracker.py - fog-of-war state derivation from Live Client.
 
 The Live Client API only updates a champion's `position` when YOUR team
 has vision on them. Position freezes when they enter fog. By watching
 which positions tick vs. stall frame-to-frame, we can derive a complete
-visibility model with last-seen timestamps and zones — strictly free
+visibility model with last-seen timestamps and zones - strictly free
 data the coach prompts and minimap overlay can both consume.
 
 Output: data/vision_state.json (atomic write). Polled by the dashboard
@@ -26,8 +26,8 @@ _log = logging.getLogger("rc.vision_tracker")
 _APP_DIR = Path(__file__).parent.parent
 
 # Position delta below this counts as "did not move" (in League map units).
-# Champions almost never stay perfectly still in real games — AAs and kiting
-# generate constant micro-movement when in vision — so a small threshold is
+# Champions almost never stay perfectly still in real games - AAs and kiting
+# generate constant micro-movement when in vision - so a small threshold is
 # a reliable proxy for "engine update happened."
 _POS_EPSILON = 5.0
 
@@ -36,16 +36,16 @@ _POS_EPSILON = 5.0
 # the natural ~1s relay polling cadence.
 _VISIBILITY_STALL_S = 2.5
 
-# Stale-snapshot threshold — anything older than this is treated as
+# Stale-snapshot threshold - anything older than this is treated as
 # "no game / relay dead" and triggers a tracked-state reset.
 _RELAY_MAX_AGE_S = 8.0
 
 # Default poll interval when running as background daemon. Matches the
-# Game-PC liveclient relay's own ~1s cadence — going faster wastes CPU
+# Game-PC liveclient relay's own ~1s cadence - going faster wastes CPU
 # without surfacing new data.
 _DEFAULT_POLL_S = 0.75
 
-# Modes with shared lane vision — every alive enemy is map-visible by design,
+# Modes with shared lane vision - every alive enemy is map-visible by design,
 # so position tracking can't derive fog (and Live Client emits position="NONE"
 # anyway). KIWI is the internal name for ARAM Mayhem.
 _SHARED_VISION_MODES = frozenset({"ARAM", "KIWI"})
@@ -53,7 +53,7 @@ _SHARED_VISION_MODES = frozenset({"ARAM", "KIWI"})
 
 # ── Zone labelling ────────────────────────────────────────────────────────────
 # League SR map is roughly 14800x14800 game units, origin at Order/Blue base
-# corner. These zone bounds are coarse on purpose — the goal is a human-readable
+# corner. These zone bounds are coarse on purpose - the goal is a human-readable
 # label for prompts ("last seen at mid_river"), not pinpoint accuracy.
 
 def _sr_zone(x: float, z: float) -> str:
@@ -84,7 +84,7 @@ def _sr_zone(x: float, z: float) -> str:
         return "baron_pit"
     if 9500 < x < 11500 and 4000 < z < 6500:
         return "dragon_pit"
-    # Jungle quadrants — fall through
+    # Jungle quadrants - fall through
     if x < 7400 and z > 7400:
         return "blue_top_jungle"
     if x < 7400 and z < 7400:
@@ -232,7 +232,7 @@ class VisionTracker:
                     self._stop.wait(self._poll_s)
                     continue
                 if age > _RELAY_MAX_AGE_S:
-                    # Game ended or relay dead — reset so we don't carry
+                    # Game ended or relay dead - reset so we don't carry
                     # stale tracked positions into the next game.
                     if self._tracked:
                         _log.info("vision_tracker: relay stale (%.1fs), resetting tracked state", age)
@@ -248,7 +248,7 @@ class VisionTracker:
     async def _loop_async(self) -> None:
         # _fetch_snapshot reads from the in-memory liveclient_cache (fast);
         # ingest + _write_atomic are dict transforms + a tmp-file replace
-        # (also fast). All inline — no to_thread needed.
+        # (also fast). All inline - no to_thread needed.
         while not self._stop.is_set():
             try:
                 snap, age = self._fetch_snapshot()
@@ -307,7 +307,7 @@ class VisionTracker:
             champ = p.get("championName") or "?"
             key = champ  # Champion name is unique within a match
             # Live Client emits `position: "NONE"` (string) in ARAM and on
-            # dead/loading players in SR — `or {}` doesn't catch it because
+            # dead/loading players in SR - `or {}` doesn't catch it because
             # the string is truthy. isinstance guard keeps `pos.get(...)`
             # below from raising "'str' object has no attribute 'get'".
             pos = p.get("position")
@@ -355,7 +355,7 @@ class VisionTracker:
                         tracked["last_seen_zone"] = _zone_for(game_mode, x, z)
                         visible = True
                     else:
-                        # Position frozen — if recent, still call it visible;
+                        # Position frozen - if recent, still call it visible;
                         # if stale, fog of war.
                         elapsed = game_time - (tracked["last_seen_t"] or game_time)
                         visible = elapsed < _VISIBILITY_STALL_S

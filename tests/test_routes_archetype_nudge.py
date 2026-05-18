@@ -3,8 +3,8 @@ dashboard/routes_archetype.py.
 
 Two new routes:
 
-* ``GET  /api/archetype-nudge``          — diagnostic snapshot
-* ``POST /api/archetype-nudge/dismiss``  — operator dismissed the chip
+* ``GET  /api/archetype-nudge``          - diagnostic snapshot
+* ``POST /api/archetype-nudge/dismiss``  - operator dismissed the chip
 
 Stub HTTP handler captures ``_send`` calls. We mock the
 ``core.archetype_mismatch`` module so the route boundary is the only
@@ -104,7 +104,7 @@ class ArchetypeNudgeDismissPostTests(unittest.TestCase):
 
 
 class RouteRegistrationTests(unittest.TestCase):
-    """Smoke test — the new routes are exposed in GET_ROUTES / POST_ROUTES
+    """Smoke test - the new routes are exposed in GET_ROUTES / POST_ROUTES
     so dispatch picks them up."""
 
     def test_get_route_registered(self):

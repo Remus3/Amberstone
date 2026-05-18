@@ -1,14 +1,14 @@
 # arch: vision_server package facade + entrypoint | section=vision | frozen=no
-"""vision_server — :8889 HTTP server for frame cache + Sonnet vision + OCR.
+"""vision_server - :8889 HTTP server for frame cache + Sonnet vision + OCR.
 
 Phase 2.4 split (2026-05-09): the original ``moon_vision_server.py`` (710
 LOC) was decomposed into:
-  - ``_config``    — port/auth/model constants + Anthropic client
-  - ``_stats``     — call counters + log/latency rings
-  - ``_frame``     — latest-frame cache + upload handler
-  - ``_relay``     — LCU + Live Client API relays
-  - ``_inference`` — Sonnet vision + Haiku coach + Tesseract OCR
-  - ``_http``      — BaseHTTPRequestHandler routing
+  - ``_config``    - port/auth/model constants + Anthropic client
+  - ``_stats``     - call counters + log/latency rings
+  - ``_frame``     - latest-frame cache + upload handler
+  - ``_relay``     - LCU + Live Client API relays
+  - ``_inference`` - Sonnet vision + Haiku coach + Tesseract OCR
+  - ``_http``      - BaseHTTPRequestHandler routing
 
 The root ``moon_vision_server.py`` is kept as a thin entrypoint shim because
 ``RC-VisionServer`` scheduled task and ``dashboard/server.py`` both spawn the
@@ -62,8 +62,8 @@ def main() -> int:
     already = probe.connect_ex(("127.0.0.1", PORT)) == 0
     probe.close()
     if already:
-        log.warning("Port %d already in use — another instance is running. Exiting.", PORT)
-        return 0   # clean exit, not error — autostart VBS sees success
+        log.warning("Port %d already in use - another instance is running. Exiting.", PORT)
+        return 0   # clean exit, not error - autostart VBS sees success
 
     _get_client()
     log.info("Moon Vision Server on 0.0.0.0:%d  python=%s", PORT, sys.executable)

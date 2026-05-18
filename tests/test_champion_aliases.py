@@ -3,11 +3,11 @@
 The JSON at ``web/data/champion_aliases.json`` is the single source of truth
 for display-name → DDragon-id rename overrides. It is consumed by:
   - ``web/js/lib/items_index.js`` (runtime, async fetch)
-  - ``web/js/dashboard.js`` (runtime, async fetch — dead-code mirror)
+  - ``web/js/dashboard.js`` (runtime, async fetch - dead-code mirror)
   - ``tools/daemon_slayer_extract.py`` (build-time, sync read)
 
 If any consumer hardcodes the map again or the JSON drops an entry, this
-test fails — preserving the audit-finding #3 invariant.
+test fails - preserving the audit-finding #3 invariant.
 """
 from __future__ import annotations
 
@@ -58,7 +58,7 @@ def test_python_resolver_uses_canonical_map():
     )
 
     assert _LOLMATH_TO_DDRAGON_ALIAS == EXPECTED_ALIASES, (
-        "Python resolver's loaded map diverges from canonical JSON — "
+        "Python resolver's loaded map diverges from canonical JSON - "
         "likely a hardcoded fallback was reintroduced."
     )
 
@@ -77,7 +77,7 @@ def test_js_consumers_reference_canonical_file():
     """Sanity check: both JS consumers must fetch ``/data/champion_aliases.json``
     rather than carrying a hardcoded dict.
 
-    This is a string-grep, not a runtime check — but it's enough to catch
+    This is a string-grep, not a runtime check - but it's enough to catch
     a regression where someone re-hardcodes the map inline.
     """
     for js_path in [

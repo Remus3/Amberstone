@@ -1,4 +1,4 @@
-"""Agent 2 data pipeline — DDragon + scraper orchestrator."""
+"""Agent 2 data pipeline - DDragon + scraper orchestrator."""
 from agents.agent2_backend.pipeline.orchestrator import (
     PipelineOrchestrator,
     refresh_ddragon,

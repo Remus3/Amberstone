@@ -1,6 +1,6 @@
 """
 tests/phase2_smoke/test_perf_tracker_ds_snapshot.py
-s152 — DS pick snapshot persistence into matches.raw_data.
+s152 - DS pick snapshot persistence into matches.raw_data.
 
 `performance_tracker._ds_picks_snapshot` reads the per-mode coaching
 JSON written by each coach and returns the engine's last DS pick set
@@ -55,7 +55,7 @@ class DsPicksSnapshotTests(unittest.TestCase):
         self.assertEqual(_ds_picks_snapshot(str(self.sd), "BOGUS"), [])
 
     def test_returns_empty_when_file_missing(self) -> None:
-        # No file written — snapshot must soft-fail.
+        # No file written - snapshot must soft-fail.
         self.assertEqual(_ds_picks_snapshot(str(self.sd), "ARAM"), [])
 
     def test_returns_empty_when_file_unparseable(self) -> None:

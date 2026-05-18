@@ -6,9 +6,9 @@ One-shot cleanup for synthetic test rows in `data/match_history.db` and
 be removed; rerun without the flag to commit. Both targets are backed
 up to .bak-YYYY-MM-DD-prune-synthetic before any write.
 
-What counts as synthetic (conservative — keeps anything ambiguous):
+What counts as synthetic (conservative - keeps anything ambiguous):
   * matches.champion = 'Dark Star Vertical' (TFT comp name leaked into
-    the champion field during a dev test pass — not a real champion).
+    the champion field during a dev test pass - not a real champion).
   * matches.champion = '' AND matches.game_time_s = 0 (no champion AND
     no gameplay duration).
 
@@ -34,7 +34,7 @@ ROOT = Path(__file__).resolve().parent.parent
 MATCH_DB = ROOT / "data" / "match_history.db"
 DS_JSONL = ROOT / "data" / "ds_calibration.jsonl"
 
-# Champions/comps that are NOT real League champions — when they appear
+# Champions/comps that are NOT real League champions - when they appear
 # in the matches.champion column they're test fixture leakage.
 SYNTHETIC_CHAMPION_NAMES: set[str] = {
     "Dark Star Vertical",

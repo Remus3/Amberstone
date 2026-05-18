@@ -1,4 +1,4 @@
-"""Phase 2 (s175, 2026-05-12) — Bruiser hybrid scorer tests.
+"""Phase 2 (s175, 2026-05-12) - Bruiser hybrid scorer tests.
 
 Mirrors ``test_ehp`` + ``test_rank_tank`` shape. Exercises ``compute_hybrid``
 + ``rank_items_by_hybrid`` + the ``archetype_weights.json`` lookup against
@@ -49,7 +49,7 @@ class WeightsTableTests(unittest.TestCase):
         # server-side). Wukong → MonkeyKing.
         a, b = get_weights_for("MonkeyKing")
         self.assertAlmostEqual(a, 0.60)
-        # "Wukong" should NOT be in the table — falls back to default.
+        # "Wukong" should NOT be in the table - falls back to default.
         a_wukong, b_wukong = get_weights_for("Wukong")
         self.assertEqual((a_wukong, b_wukong), (0.5, 0.5))
 
@@ -92,7 +92,7 @@ class ComputeHybridBasicsTests(unittest.TestCase):
         self.assertAlmostEqual(r_hybrid.ehp, r_ehp.blended_ehp, places=4)
 
     def test_hybrid_score_is_linear_combination(self) -> None:
-        # hybrid_score = α·dps + β·ehp — pin the raw scalar.
+        # hybrid_score = α·dps + β·ehp - pin the raw scalar.
         r = compute_hybrid(self.snap, "JarvanIV", level=11)
         expected = r.alpha * r.dps + r.beta * r.ehp
         self.assertAlmostEqual(r.hybrid_score, expected, places=4)
@@ -122,7 +122,7 @@ class HybridDeltaPctTests(unittest.TestCase):
     """Pure-math tests for the normalized-delta scoring helper."""
 
     def test_linearity_in_weights(self) -> None:
-        # 0.5*dps + 0.5*ehp == 0.5*(dps + ehp) — pin the linearity invariant.
+        # 0.5*dps + 0.5*ehp == 0.5*(dps + ehp) - pin the linearity invariant.
         score_half_each = _hybrid_delta_pct(
             delta_dps=50.0, delta_ehp=500.0,
             baseline_dps=200.0, baseline_ehp=2500.0,
@@ -207,7 +207,7 @@ class RankByHybridBasicsTests(unittest.TestCase):
         self.assertEqual(scores, sorted(scores, reverse=True))
 
     def test_high_alpha_prefers_pure_dps_items(self) -> None:
-        # Riven at α=0.9 vs α=0.1 — with α=0.9, pure-AD/AS items
+        # Riven at α=0.9 vs α=0.1 - with α=0.9, pure-AD/AS items
         # should rank higher than with α=0.1.
         # Use a constrained whitelist: pure DPS (Infinity Edge 3031)
         # vs pure tank (Thornmail 3075). At α=0.9 IE should top;
@@ -368,7 +368,7 @@ class ARAMModeTests(unittest.TestCase):
         self.assertIsInstance(r.mode_multiplier_ehp, float)
 
     def test_aram_mode_does_not_raise(self) -> None:
-        # Smoke test — ranker works in ARAM mode.
+        # Smoke test - ranker works in ARAM mode.
         r = rank_items_by_hybrid(self.snap, "Darius", level=11, mode="ARAM",
                                  top_n=3)
         self.assertGreater(len(r.ranked), 0)

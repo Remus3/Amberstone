@@ -1,4 +1,4 @@
-"""Phase 3 supervisor — the single process that owns everything on Legion-PC.
+"""Phase 3 supervisor - the single process that owns everything on Legion-PC.
 
 Per §10 responsibilities:
 
@@ -6,7 +6,7 @@ Per §10 responsibilities:
   * Start the web UI HTTP server on 0.0.0.0:8890 (serves ``web/``).
   * Run the async event loop for Agents 0, 1, 3 (pure Python).
   * Spawn ephemeral ``claude`` sessions on Agent 1 dispatches for 2/4/5/6.
-  * Maintain a warm Agent 7 session during play windows (stub — warm
+  * Maintain a warm Agent 7 session during play windows (stub - warm
     lifecycle hooks are scaffolded here and will be filled by the
     user-context build session).
   * Heartbeat to ``agents/state/lockfile`` every 5 seconds.
@@ -14,7 +14,7 @@ Per §10 responsibilities:
     disable cross-machine dispatch until re-verified.
   * Graceful shutdown on SIGTERM / SIGBREAK.
 
-The process also acquires a PID lock against ``agents/state/lockfile`` —
+The process also acquires a PID lock against ``agents/state/lockfile`` -
 duplicate launches abort cleanly (matching the existing RC-Supervisor pattern).
 
 This skeleton is intentionally MVP:
@@ -90,7 +90,7 @@ AGENT_MODELS = {
 }
 
 # Where each agent's charter lives. Loaded and passed via
-# --append-system-prompt at spawn time. Missing charters are non-fatal —
+# --append-system-prompt at spawn time. Missing charters are non-fatal -
 # the agent still spawns with just its model; we log a WARNING.
 AGENT_CHARTERS = {
     "2": _PROJECT_ROOT / "agents" / "agent2_backend" / "charter.md",
@@ -114,7 +114,7 @@ WARM_UI_CLOSE_GRACE_SEC = 300         # 5 min
 WARM_UI_CHECK_INTERVAL_SEC = 30
 
 # Agent 4 charter: "runs at system idle (not in-game, not in champ
-# select) — ≥2 minutes idle". We auto-schedule an analyzer run this
+# select) - ≥2 minutes idle". We auto-schedule an analyzer run this
 # long after a game ends so adaptation_buckets absorb the newest match.
 IDLE_ANALYZE_SEC = 120
 
@@ -124,7 +124,7 @@ IDLE_ANALYZE_SEC = 120
 # spawning an LLM for a pure-Python operation.
 DETERMINISTIC_OPS = frozenset({
     "game-summary",       # agent 2 in charter, but consumer is plain Python
-    "ui-proposal",        # round 42 — agent7 sim-mode UI feedback applier
+    "ui-proposal",        # round 42 - agent7 sim-mode UI feedback applier
 })
 
 # Round 43: explicit allowlist of op names that may reach the
@@ -134,7 +134,7 @@ DETERMINISTIC_OPS = frozenset({
 #      that exist to produce audit trail + dashboard visibility; the
 #      act of filing IS the work.
 #   2. Real ops that have handlers registered in ``_run_deterministic``.
-# Anything outside this set hitting the deterministic path is a bug —
+# Anything outside this set hitting the deterministic path is a bug -
 # almost certainly Agent 7's LLM fallback fabricating a free-form op
 # name. Fail loudly so the UI surfaces the problem instead of showing
 # a completed-but-no-op task.
@@ -150,14 +150,14 @@ _DETERMINISTIC_RECORDKEEPING_OPS = frozenset({
     "user-destructive-request",
     "user-unparsed",
     "ui-feedback-unhandled",
-    "bridge-publisher-stale",   # Audit7 H-01 — filing IS the alarm
+    "bridge-publisher-stale",   # Audit7 H-01 - filing IS the alarm
 })
 
-# Audit7 H-01 (2026-05-18) — bridge health-publisher staleness alarm.
+# Audit7 H-01 (2026-05-18) - bridge health-publisher staleness alarm.
 # Peers POST their watcher heartbeat ~every 60s to /api/health/peer/<node>,
 # persisted at ops/runtime/peer_health/<node>.json. When that file goes
 # silent the bridge *task loop* may still be alive (only the publisher
-# sub-process died) — a false-confidence shape the rc_facts probe
+# sub-process died) - a false-confidence shape the rc_facts probe
 # rendered but nothing escalated (2026-05-18: gamepc silent ~2.7h while
 # peer was fresh at 25s). The watchdog files a deduped Agent-1 triage
 # task on threshold cross.
@@ -178,7 +178,7 @@ def _bridge_pub_should_file(
     """Pure dedup decision for the bridge-publisher watchdog (Audit7
     H-01). Returns ``(should_file, rearm)``:
 
-      - healthy (age <= alert): ``(False, True)`` — publisher recovered;
+      - healthy (age <= alert): ``(False, True)`` - publisher recovered;
         clear the node's fired_at so a fresh outage re-alarms.
       - stale, within re-file cooldown of the last filing: ``(False, False)``
       - stale, never filed or cooldown elapsed: ``(True, False)``
@@ -198,14 +198,14 @@ def _iso_now() -> str:
 # agents.supervisor`). The 5s heartbeat (refresh_lock) re-stamps this
 # value UNCHANGED so _Phase3Watcher in ops/rc_supervisor.py can compare
 # it against the import-chain mtimes and auto-restart a supervisor that
-# is serving stale code after a deploy — the 2026-05-17 incident, where
+# is serving stale code after a deploy - the 2026-05-17 incident, where
 # a ~27h-old process never picked up keystone 3eb2e2d and silently
 # broadcast un-mirrored WS health.
 _STARTED_AT: str = _iso_now()
 
 
 # AUDIT 2026-04-28 (P-audit4-m03): patterns for secret-shaped substrings
-# that should never land in a per-task log. Conservative — false positives
+# that should never land in a per-task log. Conservative - false positives
 # are fine, missing a real key is not.
 _SECRET_PATTERNS = (
     re.compile(r"sk-ant-[A-Za-z0-9_\-]{20,}"),
@@ -242,7 +242,7 @@ def _build_logger() -> logging.Logger:
     lg.addHandler(sh)
     # T3 #15 follow-on (2026-05-01): also route rc.* loggers (decision_detector,
     # liveclient_cache, etc.) into supervisor.log when those modules run inside
-    # this process. Same handler instances — Python's logging.Handler.emit holds
+    # this process. Same handler instances - Python's logging.Handler.emit holds
     # a per-handler lock so concurrent writes interleave safely.
     rc_lg = logging.getLogger("rc")
     if not rc_lg.handlers:
@@ -307,17 +307,17 @@ def acquire_lock() -> bool:
     except FileExistsError:
         pass
 
-    # Sentinel exists — check if the owning pid is still alive.
+    # Sentinel exists - check if the owning pid is still alive.
     try:
         prior_pid = int(sentinel.read_text(encoding="ascii").strip() or "0")
     except (OSError, ValueError):
         prior_pid = 0
 
     if prior_pid and _pid_alive(prior_pid):
-        log.error("another supervisor is alive (pid=%s) — aborting", prior_pid)
+        log.error("another supervisor is alive (pid=%s) - aborting", prior_pid)
         return False
 
-    # Stale sentinel — reclaim atomically.
+    # Stale sentinel - reclaim atomically.
     log.warning("reclaiming stale lock from pid=%s", prior_pid)
     try:
         sentinel.unlink()
@@ -343,7 +343,7 @@ def _verify_decisions_version() -> None:
     path = STATE_DIR / "resolved_decisions.json"
     if not path.exists():
         raise RuntimeError(
-            f"resolved_decisions.json missing at {path} — run "
+            f"resolved_decisions.json missing at {path} - run "
             "`python ops/phase3_setup.py` to restore"
         )
     try:
@@ -355,7 +355,7 @@ def _verify_decisions_version() -> None:
     actual = str(data.get("version") or "")
     if actual != EXPECTED_DECISIONS_VERSION:
         raise RuntimeError(
-            f"resolved_decisions.json version mismatch — "
+            f"resolved_decisions.json version mismatch - "
             f"expected {EXPECTED_DECISIONS_VERSION!r}, got {actual!r}. "
             "Either update the code to honour the new contract, or "
             "restore the decisions file from backup."
@@ -494,7 +494,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
         except ValueError:
             length = 0
-        # 256 KiB cap on request body — prevent accidental huge uploads.
+        # 256 KiB cap on request body - prevent accidental huge uploads.
         if length <= 0 or length > 256 * 1024:
             return b""
         return self.rfile.read(length)
@@ -604,7 +604,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         self._send_json(200, sched.snapshot())
 
     def _handle_env(self) -> None:
-        """GET /api/env — selective environment surface for the dashboard.
+        """GET /api/env - selective environment surface for the dashboard.
 
         Only exposes flags the UI needs; never full env (which could
         leak the API key path). Keep this whitelist short.
@@ -621,14 +621,14 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         self._send_json(200, out)
 
     def _handle_minimap_crop(self) -> None:
-        """GET /api/minimap-crop?mode=sr — fetches the latest Game-PC frame
+        """GET /api/minimap-crop?mode=sr - fetches the latest Game-PC frame
         from the vision server, crops the minimap region, returns PNG.
 
         Mode-specific bboxes are empirically calibrated for 1920×1080
         windowed-borderless. Override via query string
         ``?bbox=x1,y1,x2,y2`` for debugging.
 
-        Never blocks the supervisor — fails closed with a clear status
+        Never blocks the supervisor - fails closed with a clear status
         if the vision server is cold or PIL isn't available.
         """
         from urllib.parse import urlparse, parse_qs
@@ -638,7 +638,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
 
         # Bbox resolution order: ?bbox= override → persisted calibration in
         # data/vision_regions.json (`_minimap_<mode>` key) → hardcoded
-        # 1920×1080 fallback. Arena has no minimap — falls through to 404.
+        # 1920×1080 fallback. Arena has no minimap - falls through to 404.
         if bbox_raw:
             try:
                 from agents._minimap_bbox import parse_http_override as _parse_bbox
@@ -670,7 +670,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
 
         # Fast path: a dedicated Game-PC minimap stream uploads pre-cropped
         # frames to source=minimap at high cadence (5-10Hz). When fresh,
-        # serve it directly — no decode/re-encode on the supervisor.
+        # serve it directly - no decode/re-encode on the supervisor.
         # Falls through to the slow path on any failure.
         try:
             req = urllib.request.Request(
@@ -685,7 +685,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
                 raw = base64.b64decode(fast_b64)
                 # Source frame is JPEG from the agent; re-encode only if the
                 # caller specifically wants PNG semantics. For overlay use,
-                # JPEG is fine and ~5x smaller — pass through as-is.
+                # JPEG is fine and ~5x smaller - pass through as-is.
                 ctype = "image/jpeg" if fast_b64.startswith("/9j/") else "image/png"
                 self.send_response(200)
                 self.send_header("Content-Type", ctype)
@@ -728,14 +728,14 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "image/png")
         self.send_header("Content-Length", str(len(body)))
-        # No cache — the minimap should refresh with each poll.
+        # No cache - the minimap should refresh with each poll.
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(body)
 
     def _handle_task_detail(self) -> None:
-        """GET /api/task/<id> — current snapshot of a single task plus
+        """GET /api/task/<id> - current snapshot of a single task plus
         its event history from the jsonl. Powers the activity-ticker
         click-to-detail modal.
         """
@@ -750,7 +750,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
             return
         sched = self.server.supervisor.scheduler
         task = sched.get(task_id)
-        # Walk the jsonl for this task's event history — small scan,
+        # Walk the jsonl for this task's event history - small scan,
         # queue log is KB-range.
         events: list[dict[str, Any]] = []
         try:
@@ -806,7 +806,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         })
 
     # Advisory ops are filed by the cold-streak detector + insight
-    # detector (and future similar producers) — READY tasks carrying
+    # detector (and future similar producers) - READY tasks carrying
     # user-visible notices.
     ADVISORY_OPS = frozenset({"cold-streak-advisory", "coaching-insight-advisory"})
 
@@ -866,7 +866,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         self._send_json(200, {"advisories": entries[:limit]})
 
     def _handle_task_dismiss(self) -> None:
-        """POST /api/task/<id>/dismiss — completes the task with a
+        """POST /api/task/<id>/dismiss - completes the task with a
         ``{dismissed_at, source: "user"}`` result marker. Useful for
         advisory tasks the user has read and wants out of the active list.
         """
@@ -911,7 +911,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         })
 
     def _handle_activity(self) -> None:
-        """GET /api/activity?limit=N — last N scheduler events for the
+        """GET /api/activity?limit=N - last N scheduler events for the
         dashboard activity ticker. Keeps the autonomous framework's
         work visible to the operator.
         """
@@ -1180,14 +1180,14 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         self._send_json(200, current_champion(force_fresh=force))
 
     def _handle_file_task(self) -> None:
-        """POST /api/file-task — file a task directly into the running
+        """POST /api/file-task - file a task directly into the running
         supervisor's in-memory heap.
 
         Request body (JSON)::
 
             {
               "op": "some-op",          # required
-              "owner_agent": "6",       # required — string "0".."7"
+              "owner_agent": "6",       # required - string "0".."7"
               "priority": 50,           # optional int (default 100)
               "categories": [1, 5],     # optional int list
               "payload": {...},         # optional dict
@@ -1200,7 +1200,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         Goes through all existing gating (hard-gate, frozen-file guard,
         Agent 0 review). Fails with 400 on malformed input.
 
-        LAN trust model: same as /api/input — whoever can reach 8890
+        LAN trust model: same as /api/input - whoever can reach 8890
         can dispatch tasks. Don't expose 8890 beyond LAN.
         """
         raw = self._read_body()
@@ -1260,8 +1260,8 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         })
 
     def _handle_analyze(self) -> None:
-        """POST /api/analyze — optional JSON body ``{"mode": "aram"}`` to run
-        one mode, otherwise runs all. Synchronous — returns the summary.
+        """POST /api/analyze - optional JSON body ``{"mode": "aram"}`` to run
+        one mode, otherwise runs all. Synchronous - returns the summary.
         Intended for on-demand refresh from the iPad after a match ends.
         """
         raw = self._read_body()
@@ -1315,7 +1315,7 @@ class EphemeralStubNotWired(RuntimeError):
     """Retained for backwards-compat and for the explicit no-charter path.
 
     After the real subprocess spawn landed (2026-04-22), this is only
-    raised when the ``claude`` CLI itself is missing from PATH — the
+    raised when the ``claude`` CLI itself is missing from PATH - the
     dispatcher still translates it into ``Scheduler.fail()`` so tasks
     stay visible.
     """
@@ -1328,7 +1328,7 @@ class EphemeralSpawnFailed(RuntimeError):
 def _format_task_prompt(agent: str, task_id: str, op: str, payload: dict) -> str:
     """Build the user prompt the ephemeral claude session will see."""
     lines = [
-        f"# Task dispatch — agent{agent}",
+        f"# Task dispatch - agent{agent}",
         "",
         f"- Task id: `{task_id}`",
         f"- Operation: `{op}`",
@@ -1381,18 +1381,18 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
     if model is None:
         raise EphemeralStubNotWired(f"no model mapping for agent{agent}")
 
-    # Locate the claude CLI — fall back to EphemeralStubNotWired so the
+    # Locate the claude CLI - fall back to EphemeralStubNotWired so the
     # dispatcher reports a clean failure rather than a shell error.
     claude_bin = shutil.which(CLAUDE_CLI)
     if claude_bin is None:
         raise EphemeralStubNotWired(
-            f"`{CLAUDE_CLI}` not found on PATH — install Claude Code CLI "
+            f"`{CLAUDE_CLI}` not found on PATH - install Claude Code CLI "
             f"or ensure it's on the supervisor's PATH"
         )
 
     # Load charter. AUDIT P-audit3-m01 (2026-04-22): if the agent has a
     # declared charter path but the file is missing or unreadable, FAIL
-    # LOUDLY instead of dispatching without — missing-charter spawns
+    # LOUDLY instead of dispatching without - missing-charter spawns
     # silently widen authority and burn budget with no scope constraint.
     charter = ""
     charter_path = AGENT_CHARTERS.get(agent)
@@ -1418,7 +1418,7 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
 
     # Argument construction: on Windows, `shutil.which("claude")` resolves
     # to `claude.CMD` (a batch wrapper around node). Batch scripts mangle
-    # quoted multi-line prompts on the command line — newlines and
+    # quoted multi-line prompts on the command line - newlines and
     # interleaved quotes silently get truncated. So we pipe the prompt
     # via stdin and let claude's default --input-format=text consume it.
     cmd: list[str] = [
@@ -1505,7 +1505,7 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
             f"{proc.stderr.strip()[:400]}"
         )
 
-    # Parse the JSON envelope. Fall back to raw stdout if parse fails —
+    # Parse the JSON envelope. Fall back to raw stdout if parse fails -
     # better to surface whatever the model returned than claim failure.
     result: Any
     try:
@@ -1567,7 +1567,7 @@ class Supervisor:
         # AUDIT P-audit4-m02: assert PHASE3_MODES still matches db.files.
         _verify_modes()
         init_all_dbs()
-        # Round 23 — retro-fit KDA columns on pre-existing DBs. No-op on
+        # Round 23 - retro-fit KDA columns on pre-existing DBs. No-op on
         # already-migrated DBs; fast on fresh DBs (columns land via CREATE
         # TABLE in SCHEMA_STATEMENTS, ALTER just sees them present).
         try:
@@ -1579,13 +1579,13 @@ class Supervisor:
         for port, label in ((WEB_PORT, "web"), (WS_PORT, "ws")):
             if not _port_available("0.0.0.0", port):
                 raise RuntimeError(
-                    f"port {port} ({label}) is already in use — another supervisor? "
+                    f"port {port} ({label}) is already in use - another supervisor? "
                     f"run: `netstat -ano | findstr :{port}` to identify the holder"
                 )
 
         if not smb_credential_present():
             log.warning(
-                "SMB credential for %s not found via cmdkey — disabling cross-machine dispatch",
+                "SMB credential for %s not found via cmdkey - disabling cross-machine dispatch",
                 SMB_TARGET,
             )
             self.cross_machine_enabled = False
@@ -1596,13 +1596,13 @@ class Supervisor:
         self._ws = WSServer(host="0.0.0.0", port=WS_PORT)
         await self._ws.start()
 
-        # Warm Agent 7 session — lazy, opens on first /api/input call OR
+        # Warm Agent 7 session - lazy, opens on first /api/input call OR
         # file_ingest's client→game transition trigger below.
         self._warm_agent7 = WarmAgent7Session()
 
         # File-watcher ingest: bridges the existing RC coaching JSONs to
         # the /push stream until the Game-PC Forwarder is deployed (§12).
-        # Charter: warm starts when game begins — hook the mode transition.
+        # Charter: warm starts when game begins - hook the mode transition.
         self._file_ingest = FileIngest(
             self._ws,
             on_mode_transition=self._on_mode_transition,
@@ -1617,7 +1617,7 @@ class Supervisor:
         asyncio.create_task(self._warm_ui_watchdog())
         asyncio.create_task(self._bridge_publisher_watchdog())  # Audit7 H-01
 
-        # Decision detector loop (T3 #15, 2026-05-01) — relocated from
+        # Decision detector loop (T3 #15, 2026-05-01) - relocated from
         # dashboard/server.py. Polls the Live Client relay + vision_state
         # and reconciles data/decisions_pending.json. The dashboard reads
         # pending + writes choices via DecisionStore directly; cross-
@@ -1672,7 +1672,7 @@ class Supervisor:
     async def _warm_ui_watchdog(self) -> None:
         """Per Agent 7 charter, warm ends when the UI closes. We grant a
         ``WARM_UI_CLOSE_GRACE_SEC`` grace period after the last /push
-        subscriber disconnects — a page reload reconnects within a few
+        subscriber disconnects - a page reload reconnects within a few
         seconds and the warm conversation context survives that.
 
         No subscribers + no warm session → no-op.
@@ -1696,7 +1696,7 @@ class Supervisor:
                 now = time.monotonic()
                 if zero_since is None:
                     zero_since = now
-                    log.info("warm watchdog: 0 push subscribers — grace timer started")
+                    log.info("warm watchdog: 0 push subscribers - grace timer started")
                 elif now - zero_since >= WARM_UI_CLOSE_GRACE_SEC:
                     log.info(
                         "warm watchdog: closing warm session after %ds with no UI subscribers",
@@ -1712,7 +1712,7 @@ class Supervisor:
         """Detect a silent peer bridge health-publisher and file a
         deduped Agent-1 triage task. The bridge task loop can be alive
         while only the publisher sub-process is dead (2026-05-18: gamepc
-        silent ~2.7h, peer fresh at 25s) — the rc_facts probe rendered it
+        silent ~2.7h, peer fresh at 25s) - the rc_facts probe rendered it
         but nothing escalated. Fully guarded: any read/scheduler fault
         is swallowed so the loop never dies.
 
@@ -1735,7 +1735,7 @@ class Supervisor:
                     try:
                         rec_path = peer_dir / f"{node}.json"
                         if not rec_path.exists():
-                            continue  # never deployed — not an alarm
+                            continue  # never deployed - not an alarm
                         rec = json.loads(rec_path.read_text(encoding="utf-8"))
                         recv = rec.get("received_at") or 0
                         age_s = max(0.0, time.time() - recv)
@@ -1759,7 +1759,7 @@ class Supervisor:
                                 "threshold_s": int(_BRIDGE_PUB_ALERT_S),
                                 "detail": (
                                     f"{node} bridge health-publisher silent "
-                                    f"{int(age_s)}s — bridge task loop may "
+                                    f"{int(age_s)}s - bridge task loop may "
                                     f"still be alive (only the publisher "
                                     f"sub-process). False-confidence shape."
                                 ),
@@ -1828,7 +1828,7 @@ class Supervisor:
 
         Logs the dispatch first, then routes by ``task.op``. Unknown
         ops fall through to the logging no-op so the task completes
-        without error — this keeps legacy agent0/1/3 tasks working
+        without error - this keeps legacy agent0/1/3 tasks working
         while new deterministic ops can register handlers here.
         """
         log_path = LOG_ROOT / f"agent{task.owner_agent}.log"
@@ -1839,7 +1839,7 @@ class Supervisor:
                 f"payload={json.dumps(task.payload, default=str)[:400]}\n"
             )
 
-        # Op-specific handlers — grow this registry carefully.
+        # Op-specific handlers - grow this registry carefully.
         if task.op == "game-summary":
             from agents.agent2_backend.game_ingest import (
                 IngestError, ingest_game_summary,
@@ -1853,7 +1853,7 @@ class Supervisor:
                     **result,
                 }
             except IngestError as e:
-                # Real DB error — surface as task failure.
+                # Real DB error - surface as task failure.
                 raise RuntimeError(f"game-summary ingest failed: {e}") from e
 
         if task.op == "ui-proposal":
@@ -1874,14 +1874,14 @@ class Supervisor:
         # Round 43: strict allowlist. Record-keeping ops intentionally
         # no-op (filing them IS the work). Test-prefixed ops are
         # permitted so pytest doesn't have to register fakes. Anything
-        # else is a fabricated op — fail loudly so the user sees WHY.
+        # else is a fabricated op - fail loudly so the user sees WHY.
         if (task.op in _DETERMINISTIC_RECORDKEEPING_OPS
                 or task.op.startswith("test-")):
             return {
                 "dispatched": True,
                 "substrate": "deterministic",
                 "noop": True,
-                "reason": "record-keeping op — filing is the work",
+                "reason": "record-keeping op - filing is the work",
             }
         raise RuntimeError(
             f"no deterministic handler for op={task.op!r} "
@@ -1903,7 +1903,7 @@ class Supervisor:
             return spawn_ephemeral_llm("7", task.id, task.op, task.payload)
 
     def _on_mode_transition(self, prev: str, new: str) -> None:
-        """File-ingest callback — fires when ``ops/runtime/health.json.mode``
+        """File-ingest callback - fires when ``ops/runtime/health.json.mode``
         transitions between client and game.
 
         Two actions wired:
@@ -1936,7 +1936,7 @@ class Supervisor:
             except Exception as e:  # noqa: BLE001
                 log.debug("warm prime ping failed: %s", e)
 
-        # Champ-select prime — warm before pick phase so mid-draft
+        # Champ-select prime - warm before pick phase so mid-draft
         # queries are sub-second. Skip if already warm.
         champ_select_states = ("champ_select", "pregame", "lobby_champ_select")
         if (self._warm_agent7 is not None
@@ -1950,7 +1950,7 @@ class Supervisor:
                     )
                     log.info("warm session primed on champ-select transition")
                 else:
-                    log.debug("warm already hot — skipping champ-select prime")
+                    log.debug("warm already hot - skipping champ-select prime")
             except Exception as e:  # noqa: BLE001
                 log.debug("warm prime ping (champ-select) failed: %s", e)
 
@@ -1966,7 +1966,7 @@ class Supervisor:
             self._file_post_game_summary(prev_norm, new_norm)
             loop = asyncio.get_running_loop() if asyncio.get_event_loop().is_running() else None
             if loop is None:
-                log.debug("no running loop — skipping auto-analyze schedule")
+                log.debug("no running loop - skipping auto-analyze schedule")
                 return
             # Schedule safely via call_soon_threadsafe since file_ingest
             # runs in a background thread of its own.
@@ -1983,7 +1983,7 @@ class Supervisor:
         """
         if self._scheduler is None:
             return
-        # Read whichever mode coaching file has the most recent mtime —
+        # Read whichever mode coaching file has the most recent mtime -
         # that's the one the just-finished game was using. Source of truth
         # for the file set is dashboard._state_builder.MODE_FILES so this
         # list can't drift from MODE_TO_FILE (ADR-008 pattern). Local
@@ -2029,7 +2029,7 @@ class Supervisor:
         # Also pull the most recent per-mode rating file for grade + stats.
         # 2026-04-27: switched from the legacy data/ratings/last_game_rating.json
         # (which ignored RC_ACCOUNT_ID namespacing) to the most-recently-
-        # modified last_<mode>.json — performance_tracker._latest_rating_file
+        # modified last_<mode>.json - performance_tracker._latest_rating_file
         # is the authoritative locator.
         try:
             from performance_tracker import _latest_rating_file as _lrf  # type: ignore
@@ -2044,7 +2044,7 @@ class Supervisor:
                     if k in rating_data:
                         summary_payload[k] = rating_data[k]
                 # Prefer the rating file's champion if coaching JSON
-                # didn't have one — it's more authoritative post-match.
+                # didn't have one - it's more authoritative post-match.
                 if "champion" in rating_data and "champion" not in summary_payload:
                     summary_payload["champion"] = rating_data["champion"]
                 if "game_mode" in rating_data and "game_mode" not in summary_payload:
@@ -2069,7 +2069,7 @@ class Supervisor:
     # ---- auto-analyze lifecycle --------------------------------------
     def _schedule_auto_analyze(self) -> None:
         """Start a background coroutine that runs the analyzer after the
-        charter's 2-min idle window. Idempotent — if one's already
+        charter's 2-min idle window. Idempotent - if one's already
         pending, do nothing (caller may call multiple times as
         transitions fire)."""
         if getattr(self, "_auto_analyze_task", None) and not self._auto_analyze_task.done():
@@ -2092,7 +2092,7 @@ class Supervisor:
         2. Runs analyze_all so the new win signals flow into buckets /
            matchup modifiers / recency_30d.
 
-        Gets cancelled on a new game start. Any exception is logged —
+        Gets cancelled on a new game start. Any exception is logged -
         analyzer failures never crash the supervisor loop.
         """
         try:
@@ -2104,7 +2104,7 @@ class Supervisor:
             self._auto_analyze_scheduled_at = None
             self._auto_analyze_running_since = time.monotonic()
 
-            # Step 1: reconcile win signals. Fast — runs SQL only.
+            # Step 1: reconcile win signals. Fast - runs SQL only.
             reconcile_result = await asyncio.to_thread(reconcile_all)
             total_patched = sum(
                 r.get("patched", 0) for r in reconcile_result.values()
@@ -2118,7 +2118,7 @@ class Supervisor:
             total_champs = sum(r.get("champion_buckets", 0) for r in result.values() if isinstance(r, dict))
             total_items = sum(r.get("top_items_total", 0) for r in result.values() if isinstance(r, dict))
 
-            # Step 3: cold-streak detector — autonomously files advisory
+            # Step 3: cold-streak detector - autonomously files advisory
             # tasks for champions whose last-10 KDA has tanked. Runs
             # off-thread since it touches SQLite + the cooldown file.
             advisories: dict = {"filed": [], "skipped_cooldown": [], "below_threshold": 0}
@@ -2134,7 +2134,7 @@ class Supervisor:
                 except Exception as e:  # noqa: BLE001
                     log.exception("cold-streak detector failed: %s", e)
 
-            # Step 4: general digest-driven insight detector — catches
+            # Step 4: general digest-driven insight detector - catches
             # worst-hour slumps, weak weekdays, bad duration tiers.
             # Skips cold_streak type (already handled above).
             insight_summary: dict = {"filed": [], "skipped_cooldown": []}
@@ -2154,7 +2154,7 @@ class Supervisor:
                 except Exception as e:  # noqa: BLE001
                     log.exception("insight detector failed: %s", e)
 
-            # Step 5: auto-dismiss stale advisories — keeps the queue
+            # Step 5: auto-dismiss stale advisories - keeps the queue
             # fresh so the user only sees actionable recent signals.
             sweeper_summary: dict = {"dismissed": [], "inspected": 0}
             if self._scheduler is not None:
@@ -2193,7 +2193,7 @@ class Supervisor:
             self._auto_analyze_last_done_at = time.monotonic()
 
     def auto_analyze_stats(self) -> dict:
-        """Snapshot for /api/env — captures pending / running / last-run
+        """Snapshot for /api/env - captures pending / running / last-run
         state so the dashboard can show "refresh in 1:47" or "refreshing…".
         """
         now = time.monotonic()
@@ -2216,7 +2216,7 @@ class Supervisor:
                 state = "pending"
                 fires_in_sec = round(remaining, 1)
             else:
-                # Scheduled but not yet flipped to running — transient.
+                # Scheduled but not yet flipped to running - transient.
                 state = "pending"
                 fires_in_sec = 0.0
         if done_at is not None:

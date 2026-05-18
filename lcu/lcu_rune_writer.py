@@ -1,12 +1,12 @@
 """
-lcu/lcu_rune_writer.py — Champion select rune auto-writer for Riot Commander.
+lcu/lcu_rune_writer.py - Champion select rune auto-writer for Riot Commander.
 
 Polls LCU champ select session every 2s.
 When a champion is selected (intent OR locked), loads the recommended
 rune page from rune_recommendations_{aram|sr}.json and writes it to
-the LCU immediately — replacing the Overlay App E workflow.
+the LCU immediately - replacing the Overlay App E workflow.
 
-Manages only pages prefixed "RC: " — never touches user-created pages.
+Manages only pages prefixed "RC: " - never touches user-created pages.
 """
 from __future__ import annotations
 
@@ -96,7 +96,7 @@ _PRIMARY_ROWS: dict[str, dict[str, list[int]]] = {
     },
 }
 
-# Secondary tree — best 2 picks for each tree (ADC-optimised)
+# Secondary tree - best 2 picks for each tree (ADC-optimised)
 # Layout: [pick1_id, pick2_id]
 _SECONDARY_PICKS: dict[str, list[int]] = {
     "Precision":   [9111, 9104],   # Triumph + Legend: Alacrity
@@ -127,7 +127,7 @@ def build_perk_ids(
     """
     ks_id = _KEYSTONES.get(keystone)
     if not ks_id:
-        _log.warning("Unknown keystone %r — skipping rune write", keystone)
+        _log.warning("Unknown keystone %r - skipping rune write", keystone)
         return None
 
     pri_id = _TREES.get(primary_tree)
@@ -137,7 +137,7 @@ def build_perk_ids(
         return None
 
     if primary_tree == secondary_tree:
-        _log.warning("Primary and secondary trees are the same (%r) — using Resolve as secondary", secondary_tree)
+        _log.warning("Primary and secondary trees are the same (%r) - using Resolve as secondary", secondary_tree)
         secondary_tree = "Resolve" if primary_tree != "Resolve" else "Precision"
         sec_id = _TREES[secondary_tree]
 
@@ -281,7 +281,7 @@ class RuneWriter:
     the RC-recommended rune page to the LCU client.
 
     Replaces Overlay App E / Moba rune auto-apply.
-    Only manages pages with the prefix "RC: " — never touches other pages.
+    Only manages pages with the prefix "RC: " - never touches other pages.
     """
 
     PAGE_PREFIX = "RC: "
@@ -370,7 +370,7 @@ class RuneWriter:
                 mode == self._last_applied_mode):
             return
 
-        _log.info("RuneWriter: champion=%s mode=%s — applying runes", champion_name, mode)
+        _log.info("RuneWriter: champion=%s mode=%s - applying runes", champion_name, mode)
         success = self._apply_runes(champion_name, mode)
         if success:
             self._last_applied_champion = champion_name
@@ -425,7 +425,7 @@ class RuneWriter:
         """Resolve champion ID to display name."""
         name = self._champ_id_map.get(champ_id, "")
         if not name:
-            _log.debug("Unknown champion ID %d — refreshing map", champ_id)
+            _log.debug("Unknown champion ID %d - refreshing map", champ_id)
             self._champ_id_map = build_champ_id_map()
             name = self._champ_id_map.get(champ_id, "")
         return name
@@ -441,7 +441,7 @@ class RuneWriter:
         if not rec:
             # Fall back to ARAM runes for ARAM modes, SR runes for others
             fallback_mode = "ARAM" if is_aram else "CLASSIC"
-            _log.debug("No rune rec for %s/%s — using generic %s defaults", champion, mode, fallback_mode)
+            _log.debug("No rune rec for %s/%s - using generic %s defaults", champion, mode, fallback_mode)
             # Use a safe default for ADC: Lethal Tempo / Precision / Domination
             rec = ("Lethal Tempo", "Precision", "Domination")
 

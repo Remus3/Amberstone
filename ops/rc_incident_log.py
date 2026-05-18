@@ -17,7 +17,7 @@ Log entry schema:
   run_id      optional: run_id of the app process that triggered this entry
 
 Phase 0.3 changes:
-  [5] threading.Lock added — all mutations to _recent, _append_line, write_summary,
+  [5] threading.Lock added - all mutations to _recent, _append_line, write_summary,
       and purge_old are serialized. IncidentLog is now safe for concurrent calls from
       the SelfMonitor-Main and SelfMonitor-Cmd threads, and from the supervisor thread.
   [4] run_id added to every log entry when supplied via IncidentLog(run_id=...) or
@@ -69,7 +69,7 @@ class IncidentLog:
       and do not call each other while holding it, so there is no deadlock risk.
 
       Callers from different threads (SelfMonitor-Main, SelfMonitor-Cmd, supervisor
-      main loop) may call record() concurrently — they will serialise at the lock.
+      main loop) may call record() concurrently - they will serialise at the lock.
 
     run_id context (Phase 0.3):
       - Set at construction time via run_id= parameter (populated by supervisor from
@@ -138,7 +138,7 @@ class IncidentLog:
             entry["run_id"] = effective_run_id
 
         with self._lock:
-            # Read session_id, append entry, trim _recent — all under one lock acquire
+            # Read session_id, append entry, trim _recent - all under one lock acquire
             if self._session_id:
                 entry["session_id"] = self._session_id
             self._append_line_locked(entry)

@@ -1,23 +1,23 @@
-"""Audit7 H-01 — bridge health-publisher staleness alarm.
+"""Audit7 H-01 - bridge health-publisher staleness alarm.
 
 A peer's bridge health publisher POSTs its watcher heartbeat ~every 60s
 to /api/health/peer/<node> (persisted at ops/runtime/peer_health/<node>
 .json). When that file goes silent the bridge *task loop* may still be
-alive — only the publisher sub-process died (2026-05-18 incident: gamepc
+alive - only the publisher sub-process died (2026-05-18 incident: gamepc
 silent ~2.7h while peer was fresh at 25s). The rc_facts probe rendered
 the staleness but nothing on the dashboard flipped and nothing escalated
-— the exact false-confidence shape the auditor charter warns about.
+- the exact false-confidence shape the auditor charter warns about.
 
 Two pure decision seams encode the fix; both are unit-tested here. The
 rollup "dot flips yellow" integration is live-verified against the
-still-stale publisher (proposal acceptance #4), not mocked — a heavily
+still-stale publisher (proposal acceptance #4), not mocked - a heavily
 stubbed _serve_health_all test would be weaker evidence than the real
 endpoint.
 
-  Part A — dashboard/routes_state._peer_health_status: the graded
+  Part A - dashboard/routes_state._peer_health_status: the graded
            green/yellow/red ladder that feeds peers.<node>.status and
            (via peer_degraded) the top-right rollup dot.
-  Part B — agents.supervisor._bridge_pub_should_file: the dedup / re-arm
+  Part B - agents.supervisor._bridge_pub_should_file: the dedup / re-arm
            decision the watchdog loop uses to file at most one Agent-1
            task per node per outage.
 """
@@ -41,14 +41,14 @@ from agents.supervisor import (
 
 
 class PeerHealthStatusLadderTests(unittest.TestCase):
-    """Part A — graded status. <=WARN green, <=ALERT yellow, >ALERT red."""
+    """Part A - graded status. <=WARN green, <=ALERT yellow, >ALERT red."""
 
     def test_fresh_is_green(self):
         self.assertEqual(_peer_health_status(0), "green")
         self.assertEqual(_peer_health_status(60), "green")
 
     def test_warn_boundary_inclusive_green(self):
-        # 299/300 green (<= WARN), 301 yellow — preserves the prior
+        # 299/300 green (<= WARN), 301 yellow - preserves the prior
         # hardcoded `stale = age_s > 300` boundary exactly.
         self.assertEqual(_peer_health_status(_PEER_HEALTH_WARN_S - 1), "green")
         self.assertEqual(_peer_health_status(_PEER_HEALTH_WARN_S), "green")
@@ -68,11 +68,11 @@ class PeerHealthStatusLadderTests(unittest.TestCase):
 
 
 class BridgePubShouldFileTests(unittest.TestCase):
-    """Part B — the proposal's three test-plan cases + re-arm."""
+    """Part B - the proposal's three test-plan cases + re-arm."""
 
     def test_below_alarm_threshold_does_not_file_and_rearms(self):
         # Proposal "mtime 700s ago": the dashboard goes yellow via Part A,
-        # but the *alarm* threshold is 1800 — no Agent-1 task, and the
+        # but the *alarm* threshold is 1800 - no Agent-1 task, and the
         # node is (re-)armed so a later real outage still fires.
         should_file, rearm = _bridge_pub_should_file(700.0, None, 10_000.0)
         self.assertFalse(should_file)

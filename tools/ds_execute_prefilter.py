@@ -1,18 +1,18 @@
-"""Execute / threshold-amp pre-filter — finds the Kindred-E archetype
+"""Execute / threshold-amp pre-filter - finds the Kindred-E archetype
 the constant-k pair scanner (ds_cond_pair_prefilter.py) structurally
 MISSES.
 
 That scanner requires every shared scaling field to scale by ONE
 constant k. The execute archetype is two SAME-shape damage blocks where
 the amp is concentrated in a target-HP coefficient (Kindred E: 5% →
-7.5% missing-HP, base unchanged) — different per-field ratios, so the
+7.5% missing-HP, base unchanged) - different per-field ratios, so the
 constant-k scanner rejects it.
 
 Signature here: an ability FORM with two filtered damage blocks B_lo,
 B_hi of the same shape (same non-zero scaling-field key set) where
 at least one of {target_missing_hp_pct, target_current_hp_pct,
 target_max_hp_pct} is strictly larger in B_hi, and every other shared
-field is >= its B_lo value (B_hi is a monotone threshold-amp of B_lo —
+field is >= its B_lo value (B_hi is a monotone threshold-amp of B_lo -
 the discrete execute pair). Filters keys already conditional.
 
 High-precision shortlist; HAND-VERIFY each against real mechanics +
@@ -61,7 +61,7 @@ def _is_threshold_amp(b_lo, b_hi):
     for f in sh:
         lo, hi = _first(b_lo, f), _first(b_hi, f)
         if hi < lo - 1e-9:
-            return None  # not monotone — a different facet, not an amp
+            return None  # not monotone - a different facet, not an amp
         if f in HP_FIELDS and hi > lo + 1e-9:
             hp_bump = True
     if not hp_bump:
@@ -101,7 +101,7 @@ def main() -> None:
                         rows.append((champ, key, fi, i, j, desc,
                                      sorted(_shape(fb[i])), cur))
     rows.sort(key=lambda r: (r[0], r[1], r[2]))
-    print(f"# execute / threshold-amp candidates — {len(rows)} hits "
+    print(f"# execute / threshold-amp candidates - {len(rows)} hits "
           f"(patch {PATCH})")
     print("#   HAND-VERIFY mechanic + Meraki before any registry entry")
     for champ, key, fi, i, j, desc, shape, cur in rows:

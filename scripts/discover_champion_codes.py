@@ -20,7 +20,7 @@ lockfiles = [
 ]
 lf = next((p for p in lockfiles if p.exists()), None)
 if not lf:
-    print("NO_LOCKFILE — launch League client first"); sys.exit(1)
+    print("NO_LOCKFILE - launch League client first"); sys.exit(1)
 
 parts    = lf.read_text().strip().split(":")
 port, pw = parts[2], parts[3]
@@ -86,7 +86,7 @@ DISPLAY = {
 clear_team()
 baseline = get_code()
 if not baseline:
-    print("ERROR: Cannot get baseline code — is the client in a game?")
+    print("ERROR: Cannot get baseline code - is the client in a game?")
     sys.exit(1)
 print(f"Baseline: {baseline}")
 

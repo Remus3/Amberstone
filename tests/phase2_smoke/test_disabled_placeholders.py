@@ -12,7 +12,7 @@ import unittest
 import tempfile
 from pathlib import Path
 
-# Project root resolved relative to this file — no hardcoded absolute paths.
+# Project root resolved relative to this file - no hardcoded absolute paths.
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 sys.path.insert(0, str(_PROJECT_ROOT))
@@ -41,7 +41,7 @@ class TestDisabledPlaceholders(unittest.TestCase):
 
     def test_sr_placeholder_production_path_contract(self):
         """SR production artifact path must equal project_root/coaching_data.json."""
-        # This is an import/path contract check only — no file is written.
+        # This is an import/path contract check only - no file is written.
         expected = _PROJECT_DIR / "coaching_data.json"
         self.assertEqual(_SR_ARTIFACT, expected)
 

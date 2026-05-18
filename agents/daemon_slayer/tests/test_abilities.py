@@ -1,12 +1,12 @@
-"""Phase 4a (s177, 2026-05-12) — champion ability ingest + loader tests.
+"""Phase 4a (s177, 2026-05-12) - champion ability ingest + loader tests.
 
 Two halves:
 
-* Pure unit tests of the extractor's normalization helpers — synthetic
+* Pure unit tests of the extractor's normalization helpers - synthetic
   Meraki-shaped dicts, no HTTP. These pin the unit-string → typed-field
   map, the damage-vs-modifier classifier, and the parse_status decision
   table so future Meraki schema drift can't silently downgrade coverage.
-* End-to-end loader tests against the live 16.9.1 snapshot — Aatrox/Veigar/
+* End-to-end loader tests against the live 16.9.1 snapshot - Aatrox/Veigar/
   Ezreal/MonkeyKing/Jayce known shapes pinned. A coverage threshold
   assertion (``parse_status_counts["ok"] / damage_eligible >= 0.85``)
   defends against regressions on future patch extracts.
@@ -28,7 +28,7 @@ from agents.daemon_slayer.abilities import (
     reset_default_cache,
 )
 
-# Load the extractor module via importlib — tools/ has no __init__.py.
+# Load the extractor module via importlib - tools/ has no __init__.py.
 _EXTRACT_PATH = Path(__file__).resolve().parents[3] / "tools" / "daemon_slayer_abilities_extract.py"
 _spec = importlib.util.spec_from_file_location("ds_abilities_extract", _EXTRACT_PATH)
 extract = importlib.util.module_from_spec(_spec)
@@ -173,7 +173,7 @@ class NormalizeModifiersTests(unittest.TestCase):
 
     def test_target_max_hp_double_space_variant(self) -> None:
         """Meraki sometimes ships ``"%  of target's maximum health"`` with
-        two spaces — caught by the explicit alias in ``_UNIT_TO_FIELD``."""
+        two spaces - caught by the explicit alias in ``_UNIT_TO_FIELD``."""
         mods = [{"values": [10], "units": ["%  of target's maximum health"]}]
         typed, _ = extract._normalize_modifiers(mods)
         self.assertEqual(typed, {"target_max_hp_pct": [10.0]})
@@ -203,7 +203,7 @@ class NormalizeModifiersTests(unittest.TestCase):
         self.assertEqual(unparsed, [])
 
     def test_same_field_from_two_modifiers_sums(self) -> None:
-        # Two modifiers both mapping to "base" — sum element-wise (rare but
+        # Two modifiers both mapping to "base" - sum element-wise (rare but
         # happens with Sweetspot-merged blocks).
         mods = [
             {"values": [10, 20], "units": ["", ""]},
@@ -429,7 +429,7 @@ class EzrealQTests(unittest.TestCase):
     def test_q_has_total_ad_pct(self) -> None:
         damage = self.q.damage_blocks_only()
         block = next(b for b in damage if b.total_ad_pct is not None)
-        # Q is Mystic Shot — 130% AD scaling at all ranks (same value 5x).
+        # Q is Mystic Shot - 130% AD scaling at all ranks (same value 5x).
         self.assertEqual(block.total_ad_pct[0], 130.0)
 
 
@@ -532,7 +532,7 @@ class AbilityFormTests(unittest.TestCase):
 
 
 class CoverageThresholdTests(unittest.TestCase):
-    """Lock in the Phase 4a coverage promise — ~80% target per the plan,
+    """Lock in the Phase 4a coverage promise - ~80% target per the plan,
     measured at 98% on first extract. Drop below 85% should redden CI to
     surface Meraki schema drift quickly."""
 

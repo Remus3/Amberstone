@@ -1,4 +1,4 @@
-"""Round 34 — time-of-day performance analysis."""
+"""Round 34 - time-of-day performance analysis."""
 from __future__ import annotations
 
 import json
@@ -74,10 +74,10 @@ def test_returns_all_24_buckets_even_when_empty(tmp_path: Path, monkeypatch) -> 
 def test_best_and_worst_picked_from_insightful_buckets(tmp_path: Path, monkeypatch) -> None:
     from coaches.adaptation_hint import time_of_day_analysis
     _init(tmp_path, monkeypatch)
-    # Hour 15: 5 wins, 0 losses — clearly best.
+    # Hour 15: 5 wins, 0 losses - clearly best.
     for _ in range(5):
         _insert(tmp_path / "aram.db", "Ahri", 1, 10, 3, 15, _at_local_hour(15))
-    # Hour 2: 1 win, 4 losses — worst.
+    # Hour 2: 1 win, 4 losses - worst.
     _insert(tmp_path / "aram.db", "Jinx", 1, 10, 3, 15, _at_local_hour(2))
     for _ in range(4):
         _insert(tmp_path / "aram.db", "Jinx", 0, 3, 10, 5, _at_local_hour(2))
@@ -92,7 +92,7 @@ def test_min_games_filter_excludes_outliers(tmp_path: Path, monkeypatch) -> None
     _init(tmp_path, monkeypatch)
     # Hour 4: 1 lucky win.
     _insert(tmp_path / "aram.db", "Ahri", 1, 10, 0, 20, _at_local_hour(4))
-    # Hour 15: 4 wins, 1 loss — our real best.
+    # Hour 15: 4 wins, 1 loss - our real best.
     for _ in range(4):
         _insert(tmp_path / "aram.db", "Ahri", 1, 10, 3, 15, _at_local_hour(15))
     _insert(tmp_path / "aram.db", "Ahri", 0, 3, 10, 5, _at_local_hour(15))

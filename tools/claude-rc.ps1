@@ -1,4 +1,4 @@
-# claude-rc — launch the "Legion" Claude session in a visible Windows
+# claude-rc - launch the "Legion" Claude session in a visible Windows
 # Terminal window with statusline + bridge hooks active.
 #
 # Mirrors tools/start_gamepc_claude.ps1's pattern: idempotent (skip if a
@@ -28,7 +28,7 @@ $existing = Get-Process -ErrorAction SilentlyContinue |
             Where-Object { $_.MainWindowTitle -like "$SessionName*" }
 if ($existing) { return }
 
-# Refresh the helper .cmd every launch — self-heals if it's been edited or
+# Refresh the helper .cmd every launch - self-heals if it's been edited or
 # deleted. cmd quoting is more forgiving than wt's argv parsing for the
 # embedded --name "Legion" + --dangerously-skip-permissions combination.
 if (-not (Test-Path $RuntimeDir)) {
@@ -46,7 +46,7 @@ claude --name "Legion" --dangerously-skip-permissions
 # PowerShell's per-arg quoting when paths contain spaces (e.g.
 # "C:\Riot Commander"). Build the command line as one pre-quoted string
 # and pass it via -ArgumentList <string>, which Start-Process forwards
-# verbatim — no re-quoting by PowerShell.
+# verbatim - no re-quoting by PowerShell.
 $wt = Get-Command wt.exe -ErrorAction SilentlyContinue
 if ($wt) {
     $cmdLine = "-d `"$ProjectDir`" cmd /k `"$Helper`""

@@ -1,4 +1,4 @@
-"""Round 36 — game-duration analysis."""
+"""Round 36 - game-duration analysis."""
 from __future__ import annotations
 
 import json
@@ -57,7 +57,7 @@ def test_four_tiers_always_returned(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_null_and_zero_durations_skipped(tmp_path: Path, monkeypatch) -> None:
-    """duration_sec IS NULL or 0 shouldn't count — they're incomplete rows."""
+    """duration_sec IS NULL or 0 shouldn't count - they're incomplete rows."""
     from coaches.adaptation_hint import duration_analysis
     _init(tmp_path, monkeypatch)
     # 2 valid rows.

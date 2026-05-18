@@ -1,10 +1,10 @@
-"""Phase 5 (s180, 2026-05-13) — Assassin burst-window scorer.
+"""Phase 5 (s180, 2026-05-13) - Assassin burst-window scorer.
 
 Sibling of ``ability_dps.py``. ``compute_burst_damage()`` returns the
 caster's total damage dealt during a single combo rotation
-(``Q→W→E→AA→R→AA`` by default — operator-overridable via
+(``Q→W→E→AA→R→AA`` by default - operator-overridable via
 ``combo_sequence``). ``rank_items_by_burst()`` drives the
-``/rank-assassin`` route — same candidate-filtering pipeline as the
+``/rank-assassin`` route - same candidate-filtering pipeline as the
 DPS / EHP / hybrid / ability scorers, but each candidate is scored by
 total burst-damage gain over the baseline.
 
@@ -19,37 +19,37 @@ Combo template
 ~~~~~~~~~~~~~~
 
 Default: ``("Q", "W", "E", "AA", "R", "AA")``. Caller can pass a
-custom template via ``combo_sequence`` — e.g. Zed's full rotation
+custom template via ``combo_sequence`` - e.g. Zed's full rotation
 ``("W", "E", "Q", "AA", "R", "Q2", "AA", "AA", "AA")`` or Talon's
 ``("W", "Q", "AA", "R", "AA")``. Tokens:
 
-* ``"AA"`` — one auto-attack hit; uses the build's per-hit
+* ``"AA"`` - one auto-attack hit; uses the build's per-hit
   ``avg_attack_dmg`` from ``compute_dps`` (post-armor + mode).
-* ``"P"`` / ``"Q"`` / ``"W"`` / ``"E"`` / ``"R"`` — one cast of that
+* ``"P"`` / ``"Q"`` / ``"W"`` / ``"E"`` / ``"R"`` - one cast of that
   ability at its level-resolved rank.
-* ``"Q2"`` / ``"W2"`` / ``"E2"`` / ``"R2"`` — a repeat cast of the
+* ``"Q2"`` / ``"W2"`` / ``"E2"`` / ``"R2"`` - a repeat cast of the
   same ability at the SAME rank (the combo window is too short for a
   level-up). The trailing digit is treated as a "second instance"
   marker; Zed's R-shadow re-cast Q is the canonical case.
 * Anything else raises ``ValueError`` at validation time.
 
 Phase 5 deliberate omissions (Phase 5.5 / future):
-* Real cooldown sequencing — every spell modeled as ready at combo
+* Real cooldown sequencing - every spell modeled as ready at combo
   start; CDR doesn't affect a single-combo window.
-* Mana economy — assassins typically run energy / manaless / one-rotation
+* Mana economy - assassins typically run energy / manaless / one-rotation
   buffer; not a meaningful burst constraint.
 * On-attack periodic procs (Wit's End, Sundered Sky Lightshield Strike,
-  BotRK Mist's Edge) — captured in ``avg_attack_dmg`` as ZERO. Phase 5
+  BotRK Mist's Edge) - captured in ``avg_attack_dmg`` as ZERO. Phase 5
   models AA damage as raw post-armor AD × crit, no on-hit procs.
   Phase 5.5 adds an inline ``per_attack_proc_damage`` walker.
 * Champion-specific combo templates (Kha'Zix isolation Q bonus, Akali
-  R2 after R1, Zed shadow R+Q2) — Phase 5.5 with a per-champion
+  R2 after R1, Zed shadow R+Q2) - Phase 5.5 with a per-champion
   combo-template JSON. v1 caller passes ``combo_sequence`` explicitly.
-* Conditional damage amps (Ahri R→Q amp, Zoe E→Q amp) — single
+* Conditional damage amps (Ahri R→Q amp, Zoe E→Q amp) - single
   per-cast scoring with no combo-multiplier; same omission as Phase 4b.
 
 Phase 5 ALSO models the burst window with the SAME amp pipeline as
-Phase 4b — Rabadon's, Liandry's, Demonic Embrace, Riftmaker HP→AP, all
+Phase 4b - Rabadon's, Liandry's, Demonic Embrace, Riftmaker HP→AP, all
 flow through correctly so a Diana or Akali build registers their AP
 amplification.
 """
@@ -108,13 +108,13 @@ from .rank import (
 )
 from .stats import clamp_level
 
-# Default combo template — Q W E AA R AA. Most AD/AP assassins fit the
+# Default combo template - Q W E AA R AA. Most AD/AP assassins fit the
 # ability-then-AA-then-R cadence; channel/burst ults (Akali R, Kassadin
 # R, Diana R, Zed R) plus shadow/blink R execute with one AA before and
 # one AA after the ult lands.
 DEFAULT_COMBO_SEQUENCE: tuple[str, ...] = ("Q", "W", "E", "AA", "R", "AA")
 
-# Phase 5.5 (s186, 2026-05-13) — per-champion combo override registry.
+# Phase 5.5 (s186, 2026-05-13) - per-champion combo override registry.
 # Same lazy-cache pattern as ability_dps._load_max_priority_table; ships
 # next to the engine rather than next to the patch snapshot, since combo
 # overrides reflect a champion's kit identity not a patch-time stat tweak.
@@ -137,7 +137,7 @@ def _load_combo_table() -> dict:
 
 
 def reset_combo_cache() -> None:
-    """Clear the singleton cache — for tests that mutate the on-disk file."""
+    """Clear the singleton cache - for tests that mutate the on-disk file."""
     global _COMBO_CACHE
     with _COMBO_LOCK:
         _COMBO_CACHE = None
@@ -167,20 +167,20 @@ def _resolve_combo_sequence(
     """Resolve combo_sequence from caller input + override registry.
 
     Returns ``(combo_tuple, source)`` where source is:
-      * ``"override"`` — caller passed an explicit value
-      * ``"champion"`` — override table had an entry for the champion
-      * ``"default"`` — fell back to the table default (Q-W-E-AA-R-AA)
+      * ``"override"`` - caller passed an explicit value
+      * ``"champion"`` - override table had an entry for the champion
+      * ``"default"`` - fell back to the table default (Q-W-E-AA-R-AA)
     """
     if explicit is not None:
         return (_validate_combo_sequence(explicit), "override")
     return get_combo_for(champion_id)
 
-# Spell key set — passive included so combos like Akali's P-on-hit can
+# Spell key set - passive included so combos like Akali's P-on-hit can
 # (in a future version) be inserted explicitly. Phase 5 v1 only fires P
 # when the operator includes it in combo_sequence.
 _SPELL_KEYS: frozenset[str] = frozenset({"P", "Q", "W", "E", "R"})
 
-# Token markers — strip the trailing digit if present to find the ability
+# Token markers - strip the trailing digit if present to find the ability
 # key; the digit just signals a repeat cast at the same rank.
 _REPEAT_SUFFIXES: frozenset[str] = frozenset({"2", "3", "4"})
 
@@ -192,7 +192,7 @@ def _normalize_combo_token(token: str) -> tuple[str, str, bool]:
     distinguishing Q from Q2 in operator-readable output. ``ability_key``
     is the underlying P/Q/W/E/R for evaluation (empty for AA).
 
-    Raises ``ValueError`` on unrecognized tokens — callers should validate
+    Raises ``ValueError`` on unrecognized tokens - callers should validate
     the full sequence up front.
     """
     t = (token or "").strip().upper()
@@ -307,7 +307,7 @@ class BurstResult:
     form_index_resolved: dict[str, int] = field(default_factory=dict)
     block_index_source: str = "default"             # "override" | "champion" | "default"
     block_index_resolved: "dict[str, int | list[int] | dict[str, int | list[int]]]" = field(default_factory=dict)
-    # Phase 5.7 (s189, 2026-05-13) — Spellblade contribution within the
+    # Phase 5.7 (s189, 2026-05-13) - Spellblade contribution within the
     # combo. ``spellblade_procs`` counts how many ability-then-AA
     # transitions actually fired a Spellblade proc; ``spellblade_damage``
     # is the cumulative damage from those procs (already in
@@ -317,7 +317,7 @@ class BurstResult:
     spellblade_procs: int = 0
     spellblade_damage: float = 0.0
     spellblade_item_name: str = ""
-    # Phase 5.8 (s190, 2026-05-13) — Lightshield Strike (Sundered Sky)
+    # Phase 5.8 (s190, 2026-05-13) - Lightshield Strike (Sundered Sky)
     # contribution within the combo. Capped at 1 proc per combo because
     # the 8s real CD doesn't allow re-arming in a typical burst window.
     # ``lightshield_strike_damage`` is already folded into
@@ -369,8 +369,8 @@ class BurstResult:
 
     def format_table(self) -> str:
         head = (
-            f"{self.champion_name} ({self.champion_id}) — lvl {self.level} "
-            f"— mode {self.mode}  [ASSASSIN]"
+            f"{self.champion_name} ({self.champion_id}) - lvl {self.level} "
+            f"- mode {self.mode}  [ASSASSIN]"
         )
         rows = [head, "-" * len(head)]
         if self.item_ids:
@@ -440,8 +440,8 @@ def compute_burst_damage(
 ) -> BurstResult:
     """Compute one-combo total burst damage for the resolved build.
 
-    Mirror of ``compute_ability_dps``'s contract — same ``snapshot``,
-    ``mode``, ``target_*``, ``augments``, and ability-resolution plumbing —
+    Mirror of ``compute_ability_dps``'s contract - same ``snapshot``,
+    ``mode``, ``target_*``, ``augments``, and ability-resolution plumbing -
     but the result decomposes by combo step (one row per token in
     ``combo_sequence``) instead of by spell key. ``target_current_hp_pct``
     pin lets the caller assume the cast lands at a specific HP-band, which
@@ -449,17 +449,17 @@ def compute_burst_damage(
     fields (Zed R execute, Kha'Zix isolated Q bonus when modeled later).
 
     ``max_priority`` defaults to the per-champion override from
-    ``champion_max_priority.json`` via ``_resolve_max_priority`` — Phase 4d
+    ``champion_max_priority.json`` via ``_resolve_max_priority`` - Phase 4d
     (s185). Operator can override explicitly per call.
 
     ``combo_sequence`` defaults to the per-champion override from
-    ``champion_combo_sequences.json`` via ``_resolve_combo_sequence`` —
+    ``champion_combo_sequences.json`` via ``_resolve_combo_sequence`` -
     Phase 5.5 (s186). Zed's shadow Q2, Yone's Q1-Q2-Q3 chain, and Akali's
     R-recast all live in the registry so /rank-assassin scores their burst
     accurately by default.
 
     Auto-attack hits in the combo contribute the build's per-hit
-    ``avg_attack_dmg`` from ``compute_dps`` — that's post-armor and
+    ``avg_attack_dmg`` from ``compute_dps`` - that's post-armor and
     post-mode-multiplier, no on-hit periodic procs (see module docstring
     "Phase 5 deliberate omissions"). For 14 of 15 canonical assassins
     (Zed/Talon/Akali/Kha'Zix/Rengar/Fizz/Diana/Kassadin/Katarina/LeBlanc/
@@ -486,10 +486,10 @@ def compute_burst_damage(
 
     level = clamp_level(level)
 
-    # Load abilities snapshot lazily — same pattern as compute_ability_dps.
+    # Load abilities snapshot lazily - same pattern as compute_ability_dps.
     abil_snap = abilities_snapshot
     if abil_snap is None:
-        from .abilities import load_default  # noqa: PLC0415 — local import keeps tests fast
+        from .abilities import load_default  # noqa: PLC0415 - local import keeps tests fast
         try:
             abil_snap = load_default()
         except AbilitiesNotFound as e:
@@ -508,7 +508,7 @@ def compute_burst_damage(
             )
 
     # Resolve the build once. Reused for ability stats AND the AA per-hit
-    # damage probe via compute_dps below. Two engine passes per call — same
+    # damage probe via compute_dps below. Two engine passes per call - same
     # cost shape as Phase 4b's compute_ability_dps.
     resolved = build_champion(
         snapshot, champion_id, level, item_ids=item_ids, mode=mode,
@@ -525,7 +525,7 @@ def compute_burst_damage(
     # gives us the canonical ``avg_attack_dmg`` (per-hit, post-armor +
     # mode) that the rest of the engine treats as the AA contribution.
     # Note: this picks up the same effective_target_armor (lethality
-    # included) as the ability mitigation pipeline below — assassin
+    # included) as the ability mitigation pipeline below - assassin
     # rankings stay internally consistent.
     aa_probe = compute_dps(
         snapshot, champion_id=resolved.champion_id, level=level,
@@ -535,7 +535,7 @@ def compute_burst_damage(
         augments=augments,
     )
     aa_base_per_hit = max(0.0, float(aa_probe.avg_attack_dmg))
-    # Phase 5.6 (s188, 2026-05-13): on-hit proc contribution per AA —
+    # Phase 5.6 (s188, 2026-05-13): on-hit proc contribution per AA -
     # Wit's End +magic, BotRK Mist's Edge HP%, Statikk Shiv stacks etc.
     # Amortized per-AA from compute_dps so the burst scorer doesn't need
     # to re-derive call_ctx / item_effects.
@@ -552,7 +552,7 @@ def compute_burst_damage(
     # the "armed by new spell cast" gate is the binding constraint.
     aa_spellblade_per_proc = max(0.0, float(aa_probe.spellblade_per_proc_damage))
     aa_spellblade_name = aa_probe.spellblade_item_name or ""
-    # Phase 5.8 (s190, 2026-05-13): Lightshield Strike per-proc damage —
+    # Phase 5.8 (s190, 2026-05-13): Lightshield Strike per-proc damage -
     # Sundered Sky's distinct arm-consume proc (own ``unique_passive_key``-
     # less family, 8s CD, no dedup with spellblade). Same arm-on-cast /
     # consume-on-AA model as Spellblade but capped at 1 proc per combo
@@ -594,7 +594,7 @@ def compute_burst_damage(
     )
     magic_amp = total_magic_amp_multiplier(item_effects)
 
-    # Effective resists — lethality flows through here.
+    # Effective resists - lethality flows through here.
     target_armor_eff = effective_target_armor(target_armor, item_effects, level)
     target_mr_eff = effective_target_mr(target_mr, item_effects)
 
@@ -621,19 +621,19 @@ def compute_burst_damage(
     per_cast: list[ComboCast] = []
     forms_for_classification: list[AbilityForm] = []
     seen_keys: set[str] = set()
-    # Phase 5.7 (s189, 2026-05-13) — Spellblade arming state. Set True by
+    # Phase 5.7 (s189, 2026-05-13) - Spellblade arming state. Set True by
     # any ability cast (P/Q/W/E/R or repeat variant); consumed by the
     # next AA which adds the proc damage and resets to False. Tracked
     # separately so the BurstResult can surface the total proc count.
     spellblade_armed = False
     spellblade_procs_fired = 0
     spellblade_damage_total = 0.0
-    # Phase 5.8 (s190, 2026-05-13) — Lightshield Strike arming state.
+    # Phase 5.8 (s190, 2026-05-13) - Lightshield Strike arming state.
     # Same arm-consume pattern as Spellblade but capped at 1 proc per
     # combo (Sundered Sky's 8s real CD vs typical 2-3s combo window).
     # Re-arming guarded by ``lightshield_procs_fired == 0`` so once the
     # proc lands, subsequent ability casts can't re-arm within the same
-    # combo. Independent of Spellblade state — a build with Sundered Sky
+    # combo. Independent of Spellblade state - a build with Sundered Sky
     # + Trinity Force lands BOTH procs on the AA following the first
     # ability cast.
     lightshield_armed = False
@@ -645,10 +645,10 @@ def compute_burst_damage(
             # AA contributes raw per-hit damage from compute_dps. The
             # avg_attack_dmg is already post-armor+mode; classify as
             # PHYSICAL for the per-cast row. Don't re-apply mode_mult
-            # or armor_factor — compute_dps did that already. Spellblade
+            # or armor_factor - compute_dps did that already. Spellblade
             # (Phase 5.7, s189) fires once per ability-then-AA transition.
             # Lightshield Strike (Phase 5.8, s190) fires once per combo
-            # max — both procs can stack on the same AA when the build
+            # max - both procs can stack on the same AA when the build
             # carries both items.
             aa_spellblade_added = 0.0
             if spellblade_armed and aa_spellblade_per_proc > 0:
@@ -697,11 +697,11 @@ def compute_burst_damage(
             ))
             continue
 
-        # Ability cast — arm Spellblade for the next AA. Subsequent
+        # Ability cast - arm Spellblade for the next AA. Subsequent
         # ability casts before the next AA leave it armed (still True).
         spellblade_armed = True
         # Arm Lightshield Strike only if it hasn't fired yet in the
-        # combo — the 8s real CD doesn't permit re-arming within a
+        # combo - the 8s real CD doesn't permit re-arming within a
         # single burst window.
         if lightshield_procs_fired == 0:
             lightshield_armed = True
@@ -711,7 +711,7 @@ def compute_burst_damage(
             per_cast.append(_zero_cast(
                 canonical, ability_key, "missing", -1,
                 notes=(f"no {ability_key} ability recorded for "
-                       f"{resolved.champion_id} — skipped",),
+                       f"{resolved.champion_id} - skipped",),
             ))
             continue
         form_idx = overrides.get(ability_key, 0)
@@ -834,11 +834,11 @@ def compute_burst_damage(
             f"per-proc {aa_spellblade_per_proc:.1f})"
         )
     elif aa_spellblade_per_proc > 0:
-        # Build has Spellblade but no AA followed a spell — surface so
+        # Build has Spellblade but no AA followed a spell - surface so
         # operator can spot when the combo template doesn't exercise the
         # passive (e.g. a pure-AA sequence or AAs before any spell).
         notes.append(
-            f"Spellblade ({aa_spellblade_name}) idle in combo — no AA "
+            f"Spellblade ({aa_spellblade_name}) idle in combo - no AA "
             "followed an ability cast (per-proc value "
             f"{aa_spellblade_per_proc:.1f} unused)"
         )
@@ -847,12 +847,12 @@ def compute_burst_damage(
             f"Lightshield Strike ({aa_lightshield_name}) fired "
             f"{lightshield_procs_fired}× in combo for "
             f"+{lightshield_damage_total:.1f} damage (Sundered Sky 8s "
-            "CD — capped at 1 proc per combo; per-proc "
+            "CD - capped at 1 proc per combo; per-proc "
             f"{aa_lightshield_per_proc:.1f})"
         )
     elif aa_lightshield_per_proc > 0:
         notes.append(
-            f"Lightshield Strike ({aa_lightshield_name}) idle in combo — "
+            f"Lightshield Strike ({aa_lightshield_name}) idle in combo - "
             f"no AA followed an ability cast (per-proc value "
             f"{aa_lightshield_per_proc:.1f} unused)"
         )
@@ -1029,7 +1029,7 @@ class BurstRankedItem:
 
 @dataclass(frozen=True)
 class BurstRankResult:
-    """Phase 5 — output of ``rank_items_by_burst``."""
+    """Phase 5 - output of ``rank_items_by_burst``."""
     champion_id: str
     champion_name: str
     level: int
@@ -1095,8 +1095,8 @@ class BurstRankResult:
 
     def format_table(self) -> str:
         head = (
-            f"{self.champion_name} ({self.champion_id}) — lvl {self.level} "
-            f"— mode {self.mode}  [ASSASSIN]"
+            f"{self.champion_name} ({self.champion_id}) - lvl {self.level} "
+            f"- mode {self.mode}  [ASSASSIN]"
         )
         rows = [head, "-" * len(head)]
         if self.current_item_ids:
@@ -1171,17 +1171,17 @@ def rank_items_by_burst(
 
     Phase 5 sibling of ``rank_items`` (DPS), ``rank_items_by_ehp`` (EHP),
     ``rank_items_by_hybrid`` (bruiser), and ``rank_items_by_ability_dps``
-    (mage). Same candidate-filtering pipeline — purchasable + mode-legal +
+    (mage). Same candidate-filtering pipeline - purchasable + mode-legal +
     optional whitelist + budget + terminal-only + dead-unique dedup. Only
     the scoring function changes: each candidate's combo total via
     ``compute_burst_damage`` is compared to the baseline.
 
     Sort keys:
-      * ``delta``       — absolute burst-damage gain (default)
-      * ``efficiency``  — burst-damage gain per 1000 gold
+      * ``delta``       - absolute burst-damage gain (default)
+      * ``efficiency``  - burst-damage gain per 1000 gold
 
     ``filter_shared_uniques=True`` drops candidates whose unique passive
-    key collides with one already in ``current_item_ids`` — matches the
+    key collides with one already in ``current_item_ids`` - matches the
     other scorers' behavior so the assassin ranker stays consistent.
     """
     if sort_by not in SORT_KEYS:
@@ -1302,13 +1302,13 @@ def rank_items_by_burst(
     notes.append(f"primary_scaling={baseline.primary_scaling}")
     if stripped_trinkets:
         notes.append(
-            f"mode=ARENA — stripped trinket(s) {list(stripped_trinkets)} "
+            f"mode=ARENA - stripped trinket(s) {list(stripped_trinkets)} "
             f"from current_item_ids"
         )
     if include_components:
-        notes.append("include_components=True — non-terminal items in the ranking")
+        notes.append("include_components=True - non-terminal items in the ranking")
     if budget is not None:
-        notes.append(f"budget={budget}g — items over budget filtered")
+        notes.append(f"budget={budget}g - items over budget filtered")
     if only_ids is not None:
         notes.append(f"only_item_ids restricted to {len(only_ids)} whitelisted ids")
     if baseline.mode_multiplier != 1.0:
@@ -1317,7 +1317,7 @@ def rank_items_by_burst(
         )
     if baseline.total_burst_damage == 0.0:
         notes.append(
-            "baseline burst damage is 0 — champion may be missing from the "
+            "baseline burst damage is 0 - champion may be missing from the "
             "abilities snapshot, or all spells locked at this level"
         )
 

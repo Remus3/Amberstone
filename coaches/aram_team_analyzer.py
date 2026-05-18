@@ -1,4 +1,4 @@
-"""coaches/aram_team_analyzer.py — pre-game ARAM team-comp swap/variant advisor.
+"""coaches/aram_team_analyzer.py - pre-game ARAM team-comp swap/variant advisor.
 
 Single job: given the current ally team + bench + the user's pick + the
 variants available for the user's current champion, decide whether to:
@@ -6,7 +6,7 @@ variants available for the user's current champion, decide whether to:
   (b) change VARIANT (runes/items) on the current champion, or
   (c) STAY with current pick + variant.
 
-Explicitly assumes teammates won't change — only the user's swap is on
+Explicitly assumes teammates won't change - only the user's swap is on
 the table. Variant change is preferred when the gap can be fixed without
 giving up the current champ (e.g. team needs more damage and current
 champ has both an enchanter and an AP-burst variant available).
@@ -57,24 +57,24 @@ _MODEL = "claude-haiku-4-5-20251001"
 _MAX_TOKENS = 280
 
 _SYSTEM_PROMPT = """You are an ARAM team-comp analyzer. The user can:
-  (a) SWAP their pick to a bench champion (only the user's pick changes —
+  (a) SWAP their pick to a bench champion (only the user's pick changes -
       teammates will NOT change), OR
   (b) change the VARIANT (different runes + items) on their current pick
       without swapping champions, OR
   (c) STAY with current pick and current variant.
 
 Prefer VARIANT changes over SWAPS when a variant would adequately fix
-the gap — variant changes have zero risk (same champ, just different
+the gap - variant changes have zero risk (same champ, just different
 build). Prefer SWAPS only when no available variant of the current pick
 addresses the gap.
 
 Evaluate these factors in order of importance for ARAM:
-  1. Range mix — all-melee comps lose; need at least 2 ranged champs.
-  2. Damage type — avoid mono-AP or mono-AD (enemy itemization punishes).
-  3. Frontline — need at least one tank or beefy bruiser to soak/engage.
-  4. Engage tool — someone has to start fights; pure poke comps stall.
-  5. Sustain — healing/shielding extends fights significantly.
-  6. Wave clear — weak clear loses ARAM into poke comps.
+  1. Range mix - all-melee comps lose; need at least 2 ranged champs.
+  2. Damage type - avoid mono-AP or mono-AD (enemy itemization punishes).
+  3. Frontline - need at least one tank or beefy bruiser to soak/engage.
+  4. Engage tool - someone has to start fights; pure poke comps stall.
+  5. Sustain - healing/shielding extends fights significantly.
+  6. Wave clear - weak clear loses ARAM into poke comps.
 
 If the current comp is already balanced AND current variant fits, STAY.
 
@@ -82,7 +82,7 @@ Output EXACTLY five lines, label + colon + value, no markdown, no extras:
 Recommendation: swap | variant | stay
 SwapTo: <bench champion name, or 'none'>
 VariantTo: <variant key from the list provided, or 'none'>
-Reason: <one short sentence — concrete gap + why this fixes it, or why current is fine>
+Reason: <one short sentence - concrete gap + why this fixes it, or why current is fine>
 Confidence: high | medium | low"""
 
 
@@ -91,7 +91,7 @@ Enemy team:                      {their_team}
 My current pick:                 {my_champion}
 My current variant:              {current_variant}
 
-Bench (only I can swap to these — teammates won't change):
+Bench (only I can swap to these - teammates won't change):
 {bench_block}
 
 Available variants for {my_champion} (alternatives to swapping):
@@ -126,12 +126,12 @@ def analyze(state: dict, api_key: str | None) -> dict[str, Any]:
     bench = [c for c in (state.get("bench") or []) if c]
     variants = [v for v in (state.get("variants") or []) if v.get("key")]
     if not bench and len(variants) <= 1:
-        out["reason"] = "Empty bench and no other variants — stuck with current"
+        out["reason"] = "Empty bench and no other variants - stuck with current"
         out["recommendation"] = "stay"
         out["ok"] = True
         return out
     if not api_key:
-        out["reason"] = "(API key missing — analyzer disabled)"
+        out["reason"] = "(API key missing - analyzer disabled)"
         return out
 
     my_team = ", ".join(c for c in (state.get("my_team") or []) if c) or "?"
@@ -143,7 +143,7 @@ def analyze(state: dict, api_key: str | None) -> dict[str, Any]:
             for v in variants
         )
     else:
-        variants_block = "  (no other variants — only the current build)"
+        variants_block = "  (no other variants - only the current build)"
 
     prompt = _USER_TEMPLATE.format(
         my_team=my_team,

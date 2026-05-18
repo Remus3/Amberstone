@@ -48,7 +48,7 @@ class CacheAndPassthroughTests(unittest.TestCase):
         self.assertIsNone(apply_cs_retention(None, now=1.0))
 
     def test_empty_cs_dict_not_cached(self):
-        # Agent stamps champ_select:{} on some cycles — that's "no
+        # Agent stamps champ_select:{} on some cycles - that's "no
         # champ-select", must not poison the cache.
         apply_cs_retention({"phase": "InProgress", "champ_select": {}},
                            now=1000.0)
@@ -71,7 +71,7 @@ class RetentionWindowTests(unittest.TestCase):
         self.assertEqual(out["phase"], "GameStart")
 
     def test_cs_respliced_when_snapshot_stale_empty(self):
-        # lcu_summary() returns {} on >5s agent staleness — phase is
+        # lcu_summary() returns {} on >5s agent staleness - phase is
         # absent entirely. That IS the transient window: retain.
         out = apply_cs_retention({}, now=1003.0)
         self.assertEqual(out["champ_select"]["queue_id"], 2400)
@@ -120,7 +120,7 @@ class ClearTests(unittest.TestCase):
 
     def test_string_none_phase_clears_retention(self):
         # gameflow-phase serializes to the literal string "None" when
-        # no flow is active — that's a clear signal (distinct from a
+        # no flow is active - that's a clear signal (distinct from a
         # Python-None phase which means stale snapshot → retain).
         out = apply_cs_retention({"phase": "None"}, now=1002.0)
         self.assertNotIn("champ_select", out)

@@ -1,4 +1,4 @@
-"""Agent 4 — Coach Mentor (learn + adapt)."""
+"""Agent 4 - Coach Mentor (learn + adapt)."""
 from agents.agent4_coach_mentor.analyzer import (
     Analyzer,
     analyze_mode,

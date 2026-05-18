@@ -1,7 +1,7 @@
 {
   "champion": "Caitlyn",
   "aram_tier": "S",
-  "build_note": "Hexoptics C44 first (55 AD + 25% crit) — triggers headshot every 6 autos or on trap/net. RFC second (25% crit) for empowered long-range headshot at max range. IE third (50% crit from Hexoptics + RFC before IE = IE fully active at 75%). Trap all health pack paths — every trap is a free headshot proc.",
+  "build_note": "Hexoptics C44 first (55 AD + 25% crit) - triggers headshot every 6 autos or on trap/net. RFC second (25% crit) for empowered long-range headshot at max range. IE third (50% crit from Hexoptics + RFC before IE = IE fully active at 75%). Trap all health pack paths - every trap is a free headshot proc.",
   "core_items": ["Hexoptics C44", "Rapid Firecannon", "Infinity Edge"],
   "full_build": [
     "Berserker's Greaves",
@@ -11,9 +11,9 @@
     "Lord Dominik's Regards",
     "Bloodthirster"
   ],
-  "vs_tanks": "Lord Dominik's Regards 4th — swap to Mortal Reminder vs healing, never both",
-  "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies — never run both",
-  "vs_burst": "Immortal Shieldbow replaces Bloodthirster vs heavy burst — still reaches IE threshold",
-  "kit_notes": "Hexoptics C44 headshot triggers after: 6 autos, stepping on trap, or getting hit by net (E). RFC headshot at max range crits for massive damage. Traps at chokepoints force enemies off health packs. E-net to interrupt dashes/escapes. Never use E offensively — it's your escape and net combo.",
-  "aram_specific": "Trap all 4 health pack approach paths at game start. RFC extends Q and headshot range to 850+ — stay at absolute max range. Enemies stepping on traps give free headshots which crit with RFC active. Never dash forward with E — it's your only escape vs dive."
+  "vs_tanks": "Lord Dominik's Regards 4th - swap to Mortal Reminder vs healing, never both",
+  "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies - never run both",
+  "vs_burst": "Immortal Shieldbow replaces Bloodthirster vs heavy burst - still reaches IE threshold",
+  "kit_notes": "Hexoptics C44 headshot triggers after: 6 autos, stepping on trap, or getting hit by net (E). RFC headshot at max range crits for massive damage. Traps at chokepoints force enemies off health packs. E-net to interrupt dashes/escapes. Never use E offensively - it's your escape and net combo.",
+  "aram_specific": "Trap all 4 health pack approach paths at game start. RFC extends Q and headshot range to 850+ - stay at absolute max range. Enemies stepping on traps give free headshots which crit with RFC active. Never dash forward with E - it's your only escape vs dive."
 }

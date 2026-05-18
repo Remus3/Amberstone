@@ -2,7 +2,7 @@
 
 Bug (2026-05-17): in any non-game state where build_state preflips
 ``mode_key`` (ARAM/Arena lobby + champ-select) the dashboard received
-two disagreeing mode authorities — onState carrying the correct preflip
+two disagreeing mode authorities - onState carrying the correct preflip
 ``mode_key`` (e.g. "aram") and onHealth deriving "client" from a health
 envelope whose preflip mirror wasn't applied (the :8891 file_ingest
 mirror can fail/lag; /api/health is never mirrored). Both write
@@ -14,8 +14,8 @@ on every view (shared header).
 The fix makes ``/api/state.mode_key`` (the canonical resolver) win:
 onState stamps ``state.lastStateMode`` + ts, and onHealth defers its
 "client" downgrade while a recent onState asserted a preflip/in-game
-mode. This is pure JS with no JS test runner in-repo, so — same pattern
-as test_archetype_nudge_chip_dom — these are grep-based smoke checks
+mode. This is pure JS with no JS test runner in-repo, so - same pattern
+as test_archetype_nudge_chip_dom - these are grep-based smoke checks
 that trip if a future refactor drops the wiring.
 """
 from __future__ import annotations
@@ -112,10 +112,10 @@ class OnHealthDeferralTests(unittest.TestCase):
 class RowTwoPillViewGateTests(unittest.TestCase):
     """Second half of the same bug: with the flap fixed, body[data-mode]
     is stably "aram"/"arena" during the s150 lobby/CS pre-flip (by
-    design — it primes the coach panels). The four in-game-only row-2
+    design - it primes the coach panels). The four in-game-only row-2
     pills were only mode-gated (client/tft), so stable-preflip-mode
     leaked them onto every pre-game page. They must be view-gated to
-    active-match ONLY (no last-match exception — operator: "only the
+    active-match ONLY (no last-match exception - operator: "only the
     active game page"), mirroring the s162 telemetry-pill view-gate."""
 
     @classmethod
@@ -133,7 +133,7 @@ class RowTwoPillViewGateTests(unittest.TestCase):
 
     def test_view_gate_is_active_match_only_not_last_match(self) -> None:
         # The four-pill block must NOT carry the :not([data-view="last-
-        # match"]) exception the s162 telemetry block has — these are
+        # match"]) exception the s162 telemetry block has - these are
         # meaningless on Post Game Review.
         idx = self.text.find(
             'body:not([data-view="active-match"]) header .ds-pill'

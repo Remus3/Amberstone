@@ -94,7 +94,7 @@ class BuildChampionTests(unittest.TestCase):
 
 
 class ModeModifierHookTests(unittest.TestCase):
-    """Phase 2 step 2 — _apply_mode_modifiers covers ARAM aramAttackSpeed.
+    """Phase 2 step 2 - _apply_mode_modifiers covers ARAM aramAttackSpeed.
 
     Live snapshot 16.9.1 has aramAttackSpeed=1 for every champion, so we
     exercise the multiplier path with a synthetic champion record.

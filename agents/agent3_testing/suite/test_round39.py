@@ -1,4 +1,4 @@
-"""Round 39 — advisory_sweeper: auto-dismiss stale advisory tasks."""
+"""Round 39 - advisory_sweeper: auto-dismiss stale advisory tasks."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -50,7 +50,7 @@ def test_preserves_fresh_tasks(tmp_path: Path) -> None:
         payload={"mode": "aram", "champion": "Jinx"},
         user_override=True,
     )
-    # Task was just filed — well under 72 h.
+    # Task was just filed - well under 72 h.
     out = sweep_stale(s, max_age_hours=72)
     assert out["dismissed"] == []
     assert s.get(t.id).status == "ready"
@@ -123,9 +123,9 @@ def test_custom_max_age(tmp_path: Path) -> None:
         user_override=True,
     )
     _backdate(s, t.id, hours_ago=5)
-    # Default 72h — still fresh.
+    # Default 72h - still fresh.
     assert sweep_stale(s, max_age_hours=72)["dismissed"] == []
-    # Tighter 2h threshold — now stale.
+    # Tighter 2h threshold - now stale.
     out = sweep_stale(s, max_age_hours=2)
     assert len(out["dismissed"]) == 1
 

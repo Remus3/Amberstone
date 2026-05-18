@@ -227,7 +227,7 @@ def clear_cache() -> None:
 
 
 def _gen_id() -> str:
-    """8-char hex token — short enough for URLs, big enough to avoid
+    """8-char hex token - short enough for URLs, big enough to avoid
     collisions in practice (~16M unique). Operator never sees these."""
     return secrets.token_hex(4)
 

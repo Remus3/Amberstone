@@ -1,4 +1,4 @@
-"""Round 40 — dev preview mode (sim fixtures + supervisor route)."""
+"""Round 40 - dev preview mode (sim fixtures + supervisor route)."""
 from __future__ import annotations
 
 import json

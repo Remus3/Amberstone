@@ -1,4 +1,4 @@
-# Riot Commander — Operations Reference
+# Riot Commander - Operations Reference
 
 _Living document. Full ops command set for Legion sessions._
 
@@ -31,15 +31,15 @@ curl http://127.0.0.1:8889/health                # vision server health
 echo restart > restart_trigger.txt
 ```
 
-**Verify:** read `ops/runtime/health.json` — confirm new `pid`, `alive=true`, `last_reload_ok=true`.
+**Verify:** read `ops/runtime/health.json` - confirm new `pid`, `alive=true`, `last_reload_ok=true`.
 
 **Hard fallback** (if supervisor is also dead):
 ```powershell
-taskkill /F /PID <pid>        # never Stop-Process — hangs MCP pipe
+taskkill /F /PID <pid>        # never Stop-Process - hangs MCP pipe
 schtasks /Run /TN "RC-Supervisor"
 ```
 
-**Do NOT use** `Stop-Process` or `restart.bat` from an interactive shell — use `taskkill /F /PID`.
+**Do NOT use** `Stop-Process` or `restart.bat` from an interactive shell - use `taskkill /F /PID`.
 
 ---
 
@@ -69,7 +69,7 @@ python data_pipeline.py meta      # meta only (faster)
 python data_pipeline.py aram_builds
 ```
 
-Run from `C:\Riot Commander\scripts\`. Patch releases typically Wednesdays — `RC-PatchRefresh` fires automatically.
+Run from `C:\Riot Commander\scripts\`. Patch releases typically Wednesdays - `RC-PatchRefresh` fires automatically.
 
 ---
 
@@ -80,7 +80,7 @@ curl http://127.0.0.1:8889/health
 curl http://127.0.0.1:8889/latest-frame     # check if frames flowing
 ```
 
-Vision token is in `config/vision_token.txt` (Legion) and `tools/vision_token.txt` (Game-PC). Rotate quarterly — next rotation ~2026-08-01.
+Vision token is in `config/vision_token.txt` (Legion) and `tools/vision_token.txt` (Game-PC). Rotate quarterly - next rotation ~2026-08-01.
 
 ---
 
@@ -98,8 +98,8 @@ curl -k https://127.0.0.1:8888/api/health/all    # peers block shows watcher_ali
 
 Bridge cadence:
 ```
-curl -k https://127.0.0.1:8888/api/bridge/cadence          # GET — current mode
-curl -k -X POST https://127.0.0.1:8888/api/bridge/cadence  # POST — toggle active/sleep
+curl -k https://127.0.0.1:8888/api/bridge/cadence          # GET - current mode
+curl -k -X POST https://127.0.0.1:8888/api/bridge/cadence  # POST - toggle active/sleep
 ```
 
 Or use `/sleep` and `/wake` skills from the Claude session.

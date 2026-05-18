@@ -1,4 +1,4 @@
-"""Round 22 — POST /api/file-task + ops._scheduler_client fallback + task detail."""
+"""Round 22 - POST /api/file-task + ops._scheduler_client fallback + task detail."""
 from __future__ import annotations
 
 import json
@@ -74,7 +74,7 @@ def test_file_task_endpoint_missing_fields_400(live_supervisor) -> None:
 @pytest.mark.timeout(10)
 def test_file_task_endpoint_frozen_file_gates(live_supervisor) -> None:
     """Payload mentioning a frozen file should land in NEEDS_APPROVAL
-    when user_override is false — guardrail is re-used from round 18."""
+    when user_override is false - guardrail is re-used from round 18."""
     body = {
         "op": "test-round22-frozen",
         "owner_agent": "2",
@@ -98,7 +98,7 @@ def test_file_task_endpoint_frozen_file_gates(live_supervisor) -> None:
 def test_client_fallback_when_supervisor_unreachable(tmp_path: Path, monkeypatch) -> None:
     """Point the client at a dead port so HTTP fails, confirm it falls
     back to a direct Scheduler.file_task that writes to jsonl."""
-    monkeypatch.setenv("RC_SUPERVISOR_URL", "http://127.0.0.1:1")   # TCP 1 — guaranteed closed
+    monkeypatch.setenv("RC_SUPERVISOR_URL", "http://127.0.0.1:1")   # TCP 1 - guaranteed closed
 
     # Isolate the scheduler fallback by redirecting QUEUE_LOG.
     import agents.agent1_lead.scheduler as sched_mod

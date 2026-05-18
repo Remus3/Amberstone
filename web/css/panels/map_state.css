@@ -29,7 +29,7 @@
 .analyze-stat.pending { color: var(--gold); }
 .analyze-stat.running { color: var(--good); }
 
-/* User request 2026-04-29: visually hidden — JS still updates these
+/* User request 2026-04-29: visually hidden - JS still updates these
  * elements (latency stat ticks per /api/input round-trip; ANALYZE NOW
  * still wired to /api/command analyze; analyze-footer status text and
  * frame-count WS counter still update via JS). Restore by removing rules. */
@@ -47,9 +47,9 @@
 .vis-pill      { display: none; }
 
 /* Mode-scoped hides. Augments are an in-game concept (ARAM Mayhem /
- * Arena / Brawl) — not relevant in the lobby. Hide while body[data-mode]
+ * Arena / Brawl) - not relevant in the lobby. Hide while body[data-mode]
  * is "client" OR while data-mode hasn't been set yet (initial page load
- * before setMode fires — JS sets dataset.mode lazily on first state
+ * before setMode fires - JS sets dataset.mode lazily on first state
  * tick, so without :not([data-mode]) the pill flashes visible until a
  * mode arrives). JS still populates #augments-pill so the pill restores
  * automatically when a game starts. */
@@ -63,7 +63,7 @@ body:not([data-mode])   .augments-pill { display: none; }
 body[data-view="home"] .zone-pill,
 body[data-view="home"] .game-time { display: none; }
 
-/* (2026-04-30) Same reasoning for CS / vision / gold pills — they're
+/* (2026-04-30) Same reasoning for CS / vision / gold pills - they're
  * in-game telemetry with no bearing on a session-summary home card. JS
  * still populates the elements (and the in-game/lobby views still show
  * them per their existing rules); only the home-view visual is dropped.
@@ -120,19 +120,19 @@ body[data-view="home"] header .gold-pill.hidden {
   color: var(--text-dim);
 }
 .trend-pill.hidden  { display: none; }
-/* Trend pill content like "30d 45% ↑" must stay on one line — in narrow
+/* Trend pill content like "30d 45% ↑" must stay on one line - in narrow
  * pill widths, it was wrapping to two visual rows. */
 .trend-pill { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .trend-pill.up      { color: var(--good); background: var(--good-soft); }
 .trend-pill.down    { color: var(--bad);  background: var(--bad-soft); }
 .trend-pill.neutral { color: var(--text-dim); }
 
-/* Augments pill — lives on header row 2, right of the trend pill. Row 2
+/* Augments pill - lives on header row 2, right of the trend pill. Row 2
  * has more horizontal room than row 1, so the pill reads larger + wider
  * without increasing the top-bar height. Hard 1-line cap still enforced:
  * overflow ellipsizes so the pill can never wrap onto a 3rd row. */
 .augments-pill {
-  /* (2026-04-26) Auto-expand to text content per user — was clipping
+  /* (2026-04-26) Auto-expand to text content per user - was clipping
    * "Goredrink, Ice Cold" + 3rd augment with ellipsis. Removed fixed
    * width and ellipsis; pill now grows to fit. Soft cap via max-width
    * keeps it from pushing the heartbeat off the row at 4+ long names. */
@@ -200,7 +200,7 @@ body[data-mode="client"] .ds-pill,
 body[data-mode="tft"]    .ds-pill,
 body:not([data-mode])    .ds-pill { display: none; }
 
-/* Trigger pill (ADR-007 s169) — decision_detector heartbeat surface.
+/* Trigger pill (ADR-007 s169) - decision_detector heartbeat surface.
  * Small, monochrome, glanceable. Green dot indicates loop is evaluating
  * (last eval <5s); amber 5-15s (slow); grey >15s or no eval ever.
  * Counter = eval cycles in current match (resets on new game). Click
@@ -233,7 +233,7 @@ body:not([data-mode])    .ds-pill { display: none; }
   background: var(--bg-soft, rgba(107, 114, 128, 0.10));
 }
 .trigger-pill.pending {
-  /* When at least one decision is pending — slight emphasis so the
+  /* When at least one decision is pending - slight emphasis so the
    * operator notices without the pill becoming jarring. No animation:
    * the popup banner is the action surface, this is just status. */
   outline: 1px solid var(--info, #60a5fa);
@@ -242,7 +242,7 @@ body[data-mode="client"] .trigger-pill,
 body[data-mode="tft"]    .trigger-pill,
 body:not([data-mode])    .trigger-pill { display: none; }
 
-/* Archetype-mismatch chip (s184.1, 2026-05-13) — warn-style nudge that
+/* Archetype-mismatch chip (s184.1, 2026-05-13) - warn-style nudge that
  * fires when the operator's CS archetype pick doesn't match the
  * dispatcher's top-15 for their first completed item. Same hide rules
  * as .ds-pill so the row collapses cleanly in client/tft. Outline +
@@ -293,7 +293,7 @@ body:not([data-mode])    .archetype-nudge-chip { display: none; }
   transition: box-shadow 250ms ease, transform 250ms ease;
   contain: layout paint;
 }
-/* Right Now is the hierarchy winner — slightly brighter, stronger shadow,
+/* Right Now is the hierarchy winner - slightly brighter, stronger shadow,
  * bigger radius. Eye sorts to it first even without reading. */
 .panel-right-now {
   background: linear-gradient(180deg, var(--surface-head) 0%, var(--surface) 45%);
@@ -302,7 +302,7 @@ body:not([data-mode])    .archetype-nudge-chip { display: none; }
               0 3px 10px rgba(0,0,0,0.4),
               inset 0 0 0 1px rgba(255,255,255,0.02);
 }
-/* Brief flash when the action text updates — gold inset ring only (no
+/* Brief flash when the action text updates - gold inset ring only (no
  * scale) so the panel stays dimensionally stable. */
 .panel-right-now.rn-fresh {
   box-shadow: 0 10px 36px -12px rgba(0,0,0,0.7),
@@ -310,17 +310,17 @@ body:not([data-mode])    .archetype-nudge-chip { display: none; }
               inset 0 0 0 2px var(--gold);
 }
 
-/* Zen mode — Z keybind (default-off 2026-04-24) hides Next + Adaptation
+/* Zen mode - Z keybind (default-off 2026-04-24) hides Next + Adaptation
  * and re-composes the grid so Minimap (col 1, both rows), Right Now
  * (col 2 row 1), and Item Build (col 2 row 2) own the full real estate.
- * Also hides the below-grid QUEUE strip and the Ask-Agent input bar —
+ * Also hides the below-grid QUEUE strip and the Ask-Agent input bar -
  * zen is a focus-only reading mode, input + queue are noise there.
  * `display: none` (rather than visibility: hidden) so the freed ~110 px
  * propagates upward through the body flex column into `main` (flex: 1 1
  * auto), which lets the Map State panel actually expand vertically to
  * the footer rather than just leaving dead space. The footer itself
  * stays pinned at viewport bottom because body is `height: 100%` with
- * footer as the last flex child — its Y position doesn't move when
+ * footer as the last flex child - its Y position doesn't move when
  * its predecessors disappear. */
 body[data-zen="1"] main {
   grid-template-columns: 1fr 1.2fr;
@@ -333,7 +333,7 @@ body[data-zen="1"] #input-bar {
 }
 /* Re-pin the three surviving panels so the 2-col zen grid actually places
  * them. The non-zen layout puts NEXT+ADAPT in col 1, RIGHT NOW+ITEM BUILD
- * in col 2, MAP in col 3 — but in zen we only have 2 columns, so MAP at
+ * in col 2, MAP in col 3 - but in zen we only have 2 columns, so MAP at
  * col 3 fell into an auto-created narrow third column and the freed col 1
  * sat empty. (2026-04-26 user-flipped layout regression.) */
 body[data-zen="1"] .panel-right-now  { grid-column: 1; grid-row: 1; }
@@ -372,7 +372,7 @@ body[data-zen="1"] .panel-right-now .panel-head::after {
   text-transform: uppercase;
 }
 
-/* Spatial danger mode — when user's dot sits in enemy-colored ZOI, the
+/* Spatial danger mode - when user's dot sits in enemy-colored ZOI, the
  * Right Now panel and the canvas-stack get a subtle coral outline so
  * the warning is peripheral-readable, not just a pill in the header. */
 body[data-zone="enemy"] .panel-right-now {
@@ -383,7 +383,7 @@ body[data-zone="enemy"] .panel-right-now {
 body[data-zone="enemy"] .mm-canvas-stack {
   box-shadow: 0 0 0 2px var(--bad), 0 0 16px rgba(240,126,139,0.3);
 }
-/* Deep-enemy — pulsing thicker ring for the existential-threat case. */
+/* Deep-enemy - pulsing thicker ring for the existential-threat case. */
 body[data-zone="deep"] .panel-right-now {
   box-shadow: 0 10px 36px -12px rgba(0,0,0,0.7),
               0 3px 10px rgba(0,0,0,0.4),
@@ -420,13 +420,13 @@ body[data-zone="deep"] .mm-canvas-stack {
 .panel-minimap    .panel-title { color: var(--text-dim); }
 .panel-item-build .panel-title { color: var(--text-dim); }
 .panel-adaptation .panel-title { color: var(--text-faint); }
-/* Compact empty state — don't eat vertical space for placeholder em-dashes. */
+/* Compact empty state - don't eat vertical space for placeholder em-dashes. */
 .panel-adaptation.adapt-empty .adapt-section-head,
 .panel-adaptation.adapt-empty #adapt-counters,
 .panel-adaptation.adapt-empty #adapt-items,
 .panel-adaptation.adapt-empty #adapt-streaks,
 .panel-adaptation.adapt-empty .adapt-footer { display: none; }
-/* Round 44: no-scroll glanceable panels — content is clipped, not
+/* Round 44: no-scroll glanceable panels - content is clipped, not
  * scrolled. Shrink type/padding here before re-enabling overflow. */
 .panel-body {
   padding: 6px 18px 14px 18px;
@@ -457,11 +457,11 @@ body[data-zone="deep"] .mm-canvas-stack {
   padding-right: 10px;
 }
 
-/* (2026-04-24) In-game STATS panel now fills the full grid cell — same
- * height as Item Build — and scrolls when the 23-field list exceeds the
+/* (2026-04-24) In-game STATS panel now fills the full grid cell - same
+ * height as Item Build - and scrolls when the 23-field list exceeds the
  * cell. Previously capped to 240px; the user wants the full real estate. */
 
-/* Aftergame / client-mode (queue #3) — hide Item Build so SESSION SUMMARY
+/* Aftergame / client-mode (queue #3) - hide Item Build so SESSION SUMMARY
  * (Right Now) absorbs the vertical space. The design says: no "next item
  * to buy" outside live gameplay; Item Build is a live-game panel only. */
 body[data-mode="client"] .panel-item-build {
@@ -527,7 +527,7 @@ body[data-mode="client"] #mm-whatwent-view   { display: block; }
 }
 .what-went-list li.ww-empty::before { content: ""; }
 /* STATS view (in-game) vs ADAPTATION view (client/aftergame).
- * Mode-toggled visibility — in-game shows STATS, other modes keep the
+ * Mode-toggled visibility - in-game shows STATS, other modes keep the
  * legacy ADAPTATION markup. */
 #stats-view { display: none; }
 #adapt-view { display: block; }
@@ -550,7 +550,7 @@ body[data-mode="brawl"] #mm-objectives-view { display: none; }
 /* Reclaim the freed-up vertical space: bump the minimap canvas/img cap
  * in ARAM/Brawl since the objectives row is gone. Non-zen 460→580,
  * zen 480→640. The canvas keeps aspect-ratio: 1 so width drives height
- * — the panel-minimap container already provides the column space. */
+ * - the panel-minimap container already provides the column space. */
 body[data-mode="aram"]  .mm-canvas-stack,
 body[data-mode="aram"]  #mm-img,
 body[data-mode="brawl"] .mm-canvas-stack,
@@ -560,7 +560,7 @@ body[data-zen="1"][data-mode="aram"]  #mm-img,
 body[data-zen="1"][data-mode="brawl"] .mm-canvas-stack,
 body[data-zen="1"][data-mode="brawl"] #mm-img { max-width: 640px; }
 
-/* STATS field groups — a title row + stacked label/value rows per group.
+/* STATS field groups - a title row + stacked label/value rows per group.
  * Tabular-nums keep numbers from jittering as values update. Font sizes
  * bumped for readability from ~4ft viewing distance. */
 .stats-view {
@@ -574,10 +574,10 @@ body[data-zen="1"][data-mode="brawl"] #mm-img { max-width: 640px; }
 /* (2026-04-25) Stage-gated visibility for STATS groups. body[data-phase]
  * is set live by `_applyGamePhase(gtS)` in dashboard.js (early < 15min,
  * mid 15-25min, late 25min+). Each .stats-group carries data-stage:
- *   "early"     — LANING PHASE (only relevant in laning)
- *   "mid late"  — COMBAT/TEAMFIGHT, MAP PRESENCE
- *   "all"       — IDENTITY, RANK / SESSION (always visible)
- * Out-of-game (client/aftergame mode) shows ALL groups for review —
+ *   "early"     - LANING PHASE (only relevant in laning)
+ *   "mid late"  - COMBAT/TEAMFIGHT, MAP PRESENCE
+ *   "all"       - IDENTITY, RANK / SESSION (always visible)
+ * Out-of-game (client/aftergame mode) shows ALL groups for review -
  * the body:not([data-mode="client"]) gate skips filtering there. */
 body:not([data-mode="client"])[data-phase="early"] .stats-group:not([data-stage~="early"]):not([data-stage="all"]) { display: none; }
 body:not([data-mode="client"])[data-phase="mid"]   .stats-group:not([data-stage~="mid"]):not([data-stage="all"])   { display: none; }
@@ -616,7 +616,7 @@ body:not([data-mode="client"])[data-phase="late"]  .stats-group:not([data-stage~
   word-break: break-word;
 }
 
-/* GAME SENSE block — shown at the top of adapt-view in client/aftergame
+/* GAME SENSE block - shown at the top of adapt-view in client/aftergame
  * modes. Three phase rows (Early / Mid / Late) each carry one descriptor
  * word from the approved 12-word vocabulary (Chaotic, Tilted, Drowning,
  * Scattered, Hesitant, Reactive, Steady, Composed, Patient, Opportunistic,
@@ -677,7 +677,7 @@ body:not([data-mode="client"])[data-phase="late"]  .stats-group:not([data-stage~
   font-weight: 600;
 }
 
-/* Staleness indicator — empty/fresh/stale/severe */
+/* Staleness indicator - empty/fresh/stale/severe */
 .staleness {
   font-size: 14px;
   letter-spacing: 0.1em;

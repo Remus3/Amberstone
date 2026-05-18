@@ -1,6 +1,6 @@
 """Shared pytest fixtures for the RC test suite.
 
-`reset_cs_retention_between_tests` — `dashboard._state_builder.build_state()`
+`reset_cs_retention_between_tests` - `dashboard._state_builder.build_state()`
 holds a *process-global* last-champ_select across the fast no-draft
 (ARAM / Mayhem / Arena) champ-select → game transition (see
 `dashboard/_cs_retention.py`). That persistence is correct in

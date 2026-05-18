@@ -1,7 +1,7 @@
 """DS block_index candidate scanner (Phase 5.9.x batch tooling).
 
 For a champion, prints every ability key's FILTERED damage blocks (the
-index space the registry uses — `_select_blocks` strips
+index space the registry uses - `_select_blocks` strips
 ``attribute_kind != "damage"`` before indexing, so raw Meraki block N
 is NOT registry index N when non-damage prefix blocks exist) plus the
 ground-truth A/B: `compute_ability_dps` raw_damage_per_cast at level 11,
@@ -11,7 +11,7 @@ the ratio vs filtered block 0.
 A "candidate" is a key where some filtered block i>0 has a meaningfully
 larger evaluated value than block 0 AND represents a realistic
 single-target burst the operator commits to (full channel, all hits
-focused, fully-charged, max-stack, sub-execute) — see
+focused, fully-charged, max-stack, sub-execute) - see
 champion_block_index.json _meta for the documented pattern + skip list.
 
 Usage:
@@ -64,7 +64,7 @@ def scan(champion: str, snap: DataSnapshot) -> None:
                 if dmg:
                     tag = "" if len(dmg) == 1 else " (NO DAMAGE BLOCKS)"
                     print(f"  {key} form{form.form_index} '{form.name}': "
-                          f"{len(dmg)} dmg block{tag} — block 0 canonical, skip")
+                          f"{len(dmg)} dmg block{tag} - block 0 canonical, skip")
                 continue
             print(f"\n  {key} form{form.form_index} '{form.name}'  "
                   f"({form.damage_type})  {len(dmg)} filtered damage blocks:")

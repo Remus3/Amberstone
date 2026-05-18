@@ -1,8 +1,8 @@
-"""Phase 4a (s177, 2026-05-12) — champion ability data loader.
+"""Phase 4a (s177, 2026-05-12) - champion ability data loader.
 
 Reads the versioned ``champion_abilities.json`` snapshot produced by
 ``tools/daemon_slayer_abilities_extract.py`` and exposes typed dataclasses
-for downstream consumers. Phase 4a is data-ingest only — formula evaluation
+for downstream consumers. Phase 4a is data-ingest only - formula evaluation
 ships in Phase 4b's ``ability_dps.py``.
 
 The loader mirrors ``ult_rates.py``'s lazy-singleton pattern: ``load()``
@@ -45,7 +45,7 @@ from typing import Any, Iterable
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_DATA_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
 
-# Ability keys in canonical order — match Meraki schema.
+# Ability keys in canonical order - match Meraki schema.
 _KEY_ORDER: tuple[str, ...] = ("P", "Q", "W", "E", "R")
 
 # Damage scaling field names (Phase 4b's evaluator walks these).
@@ -73,7 +73,7 @@ class AbilitiesNotFound(FileNotFoundError):
 
 @dataclass(frozen=True)
 class DamageBlock:
-    """One leveling sub-component of an ability — e.g. Aatrox Q "First Cast
+    """One leveling sub-component of an ability - e.g. Aatrox Q "First Cast
     Damage" with per-rank base + AD scaling.
 
     ``attribute_kind`` is one of ``"damage"`` / ``"heal"`` / ``"shield"`` /
@@ -133,7 +133,7 @@ class DamageBlock:
 
         Lists shorter than ``rank+1`` are clamped to the last element (so a
         1-element list returns that value for every rank). Missing fields
-        return 0.0 — Phase 4b can sum across fields without None-guards.
+        return 0.0 - Phase 4b can sum across fields without None-guards.
         """
         vals = getattr(self, field_name, None)
         if vals is None:
@@ -272,7 +272,7 @@ class AbilitiesSnapshot:
 
         Raises ``KeyError`` when the champion is not in the snapshot. Keys
         always include P/Q/W/E/R (empty tuple if the champion has no entry
-        for that key — common for passives that Meraki ships as utility).
+        for that key - common for passives that Meraki ships as utility).
         """
         if champion_id not in self.champions:
             raise KeyError(

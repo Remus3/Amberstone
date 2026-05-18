@@ -6,7 +6,7 @@ Covers:
   - New detect_throwing_lead (2 deaths within 45s post-8min)
   - DecisionLoop.heartbeat() counter + reset + file-backed read
 
-Pure-function tests for detectors — no live game, no relay, no
+Pure-function tests for detectors - no live game, no relay, no
 supervisor. Snapshot dicts are hand-built minimal fixtures matching
 the Live Client API shape.
 """
@@ -216,7 +216,7 @@ class TestJunglerGankLikely:
         assert detect_jungler_gank_likely(snap, vs) is None
 
     def test_defers_to_objective_when_dragon_imminent(self):
-        # Dragon spawn at 300; we're at 280 — within the 60s window.
+        # Dragon spawn at 300; we're at 280 - within the 60s window.
         snap = _base_snapshot(game_time=280.0)
         vs = _vision_state_with_missing_jg(
             missing_for_s=25.0, last_seen_zone="top_river",
@@ -224,7 +224,7 @@ class TestJunglerGankLikely:
         assert detect_jungler_gank_likely(snap, vs) is None
 
     def test_id_bucketed_to_90s_windows(self):
-        # game_time // 90 — 400→4, 440→4, 460→5. Pick 400 + 440 for the
+        # game_time // 90 - 400→4, 440→4, 460→5. Pick 400 + 440 for the
         # same-bucket assertion, 550 (→6) for new-bucket.
         snap = _base_snapshot(game_time=400.0)
         vs = _vision_state_with_missing_jg(
@@ -373,7 +373,7 @@ class TestHeartbeat:
         import core.decision_detector as dd
         path = tmp_path / "hb.json"
         monkeypatch.setattr(dd, "_HEARTBEAT_PATH", path)
-        # File says alive=True but timestamp is 30s old — read must
+        # File says alive=True but timestamp is 30s old - read must
         # detect that and flip alive False.
         payload = {
             "counter": 50,

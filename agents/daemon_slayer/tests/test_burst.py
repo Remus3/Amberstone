@@ -1,15 +1,15 @@
-"""Phase 5 (s180, 2026-05-13) — Assassin burst-window evaluator tests.
+"""Phase 5 (s180, 2026-05-13) - Assassin burst-window evaluator tests.
 
 Coverage split into eight groups:
 
-* ``ComboTokenTests`` — token normalization + validation.
-* ``ComboSequenceValidationTests`` — sequence-level parsing.
-* ``ComputeBurstDamageBasicsTests`` — type / metadata sanity.
-* ``BurstScoringTests`` — end-to-end on Zed / Diana / Talon / Akali.
-* ``AmpFlowThroughTests`` — Rabadon / Liandry / Abyssal Mask flow through.
-* ``ModeMultiplierTests`` — ARAM damage modifier on per-cast.
-* ``EdgeCaseTests`` — missing snapshot / unknown champion / locked spells.
-* ``BurstRouteTests`` — POST /burst happy path + errors.
+* ``ComboTokenTests`` - token normalization + validation.
+* ``ComboSequenceValidationTests`` - sequence-level parsing.
+* ``ComputeBurstDamageBasicsTests`` - type / metadata sanity.
+* ``BurstScoringTests`` - end-to-end on Zed / Diana / Talon / Akali.
+* ``AmpFlowThroughTests`` - Rabadon / Liandry / Abyssal Mask flow through.
+* ``ModeMultiplierTests`` - ARAM damage modifier on per-cast.
+* ``EdgeCaseTests`` - missing snapshot / unknown champion / locked spells.
+* ``BurstRouteTests`` - POST /burst happy path + errors.
 """
 from __future__ import annotations
 
@@ -87,7 +87,7 @@ class ComboTokenTests(unittest.TestCase):
             _normalize_combo_token("")
 
     def test_bogus_suffix_raises(self) -> None:
-        # "Q9" — 9 isn't a valid repeat suffix (only 2/3/4).
+        # "Q9" - 9 isn't a valid repeat suffix (only 2/3/4).
         with self.assertRaises(ValueError):
             _normalize_combo_token("Q9")
 
@@ -141,7 +141,7 @@ class ComputeBurstDamageBasicsTests(unittest.TestCase):
         self.assertEqual(r.combo_sequence, ("Q", "W", "E", "R", "Q2", "AA"))
         self.assertEqual(r.combo_sequence_source, "champion")
         # Engine default (Q-W-E-AA-R-AA) still applies for champions without
-        # an override entry — verified separately in test_max_priority_overrides.
+        # an override entry - verified separately in test_max_priority_overrides.
 
     def test_per_cast_one_row_per_token(self) -> None:
         r = compute_burst_damage(self.snap, "Zed", level=11)
@@ -208,7 +208,7 @@ class BurstScoringTests(unittest.TestCase):
         self.assertGreater(r_cast.raw_damage, 0)
 
     def test_pre_lvl_6_r_locked(self) -> None:
-        # R locked at lvl 5 — that cast should be 0 damage with a "locked" note.
+        # R locked at lvl 5 - that cast should be 0 damage with a "locked" note.
         r = compute_burst_damage(self.snap, "Zed", level=5, target_armor=40)
         r_cast = next(c for c in r.per_cast if c.token == "R")
         self.assertEqual(r_cast.rank, -1)
@@ -217,7 +217,7 @@ class BurstScoringTests(unittest.TestCase):
     def test_aa_uses_compute_dps_per_hit(self) -> None:
         # AA contribution should be > 0 at lvl 11 (Zed has AD at level). Pin
         # the combo so this test stays decoupled from the per-champion
-        # override registry — Zed's registry combo includes one AA.
+        # override registry - Zed's registry combo includes one AA.
         r = compute_burst_damage(
             self.snap, "Zed", level=11, target_armor=80,
             combo_sequence=("Q", "W", "E", "AA", "R", "AA"),
@@ -277,7 +277,7 @@ class AmpFlowThroughTests(unittest.TestCase):
         cls.snap = _snap()
 
     def test_rabadons_lifts_diana_burst(self) -> None:
-        # Rabadon's Deathcap (3089) — 30% AP amp + 130 raw AP.
+        # Rabadon's Deathcap (3089) - 30% AP amp + 130 raw AP.
         naked = compute_burst_damage(
             self.snap, "Diana", level=11, target_mr=30,
         )
@@ -289,7 +289,7 @@ class AmpFlowThroughTests(unittest.TestCase):
         self.assertTrue(any("AP amplified" in n for n in rab.notes))
 
     def test_liandrys_damage_amp_applies(self) -> None:
-        # Liandry's Torment (6653) — damage_amp_pct=0.06 + 80 AP.
+        # Liandry's Torment (6653) - damage_amp_pct=0.06 + 80 AP.
         naked = compute_burst_damage(
             self.snap, "Diana", level=11, target_mr=30, target_max_hp=2000,
         )
@@ -300,7 +300,7 @@ class AmpFlowThroughTests(unittest.TestCase):
         self.assertGreater(liandry.total_burst_damage, naked.total_burst_damage)
 
     def test_abyssal_mask_magic_amp_only_on_magic(self) -> None:
-        # Abyssal Mask (8020) — magic_amp_pct=0.12. Zed (PHYSICAL) shouldn't
+        # Abyssal Mask (8020) - magic_amp_pct=0.12. Zed (PHYSICAL) shouldn't
         # benefit; Diana (MAGIC) should. Test the directional asymmetry.
         zed_naked = compute_burst_damage(
             self.snap, "Zed", level=11, target_armor=80, target_mr=30,
@@ -322,7 +322,7 @@ class AmpFlowThroughTests(unittest.TestCase):
         zed_lift_pct = (zed_abyssal.total_burst_damage - zed_naked.total_burst_damage) / max(1.0, zed_naked.total_burst_damage)
         diana_lift_pct = (diana_abyssal.total_burst_damage - diana_naked.total_burst_damage) / max(1.0, diana_naked.total_burst_damage)
         # Diana gets the magic amp ×1.12 multiplicatively + 50 MR for survival.
-        # Zed gets stats only — much smaller lift.
+        # Zed gets stats only - much smaller lift.
         self.assertGreater(diana_lift_pct, zed_lift_pct)
 
 
@@ -340,14 +340,14 @@ class ModeMultiplierTests(unittest.TestCase):
         self.assertEqual(r.mode_multiplier, 1.0)
 
     def test_aram_mode_multiplier_lifts_zed(self) -> None:
-        # Zed has aramDamageDealt > 1.0 per current ARAM rebalance —
+        # Zed has aramDamageDealt > 1.0 per current ARAM rebalance -
         # the engine surfaces the modifier verbatim from the snapshot.
         r = compute_burst_damage(self.snap, "Zed", level=11, mode="ARAM",
                                  target_armor=80)
         self.assertGreater(r.mode_multiplier, 1.0)
 
     def test_aram_mode_multiplier_nerfs_veigar(self) -> None:
-        # Veigar has aramDamageDealt < 1.0 — sanity-check the nerf side.
+        # Veigar has aramDamageDealt < 1.0 - sanity-check the nerf side.
         r = compute_burst_damage(self.snap, "Veigar", level=11, mode="ARAM",
                                  target_mr=30)
         self.assertLess(r.mode_multiplier, 1.0)

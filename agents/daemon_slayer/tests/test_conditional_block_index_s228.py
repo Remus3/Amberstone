@@ -1,43 +1,43 @@
-"""Phase 5.9.28 (s228, 2026-05-16) — conditional-target-state block_index
+"""Phase 5.9.28 (s228, 2026-05-16) - conditional-target-state block_index
 schema lift (operator-signed-off option B; Part 1).
 
 Closes the long-deferred "conditional-target-state schema lift" carry-forward
 that every prior block_index batch (s191–s227) parked. Operator chose option
-B (the multi-session lift): this is **Part 1** — schema + validator +
+B (the multi-session lift): this is **Part 1** - schema + validator +
 resolver + 3 flagship seeds. Part 2 (live liveclient HP%/CC predicate
 plumbing into the ranking call) is a follow-up session.
 
 Schema lift: ``block_index`` value type widens from ``int | list[int]``
-(s207) to ALSO ``dict[str, int | list[int]]`` — a conditional mapping a
+(s207) to ALSO ``dict[str, int | list[int]]`` - a conditional mapping a
 target-state condition → block. ``"default"`` is REQUIRED and is the
-operator-commits / canonical-amped branch (the ranking assumption — same
+operator-commits / canonical-amped branch (the ranking assumption - same
 model s191 established). Every other key must be in the CLOSED vocabulary
 ``_BLOCK_INDEX_CONDITIONS`` and selects a *downgrade* (never more optimistic
 than ``"default"``). An unknown key is a registry typo and MUST raise.
 
 Part-1 resolver contract: ``_select_blocks`` resolves any conditional dict
-to its ``"default"`` branch UNCONDITIONALLY — byte-identical to the
+to its ``"default"`` branch UNCONDITIONALLY - byte-identical to the
 equivalent unconditional int/list entry (zero regression). Live
 target-state predicate evaluation is Part 2.
 
 Engine surface:
-  * ``_BLOCK_INDEX_DEFAULT_KEY`` / ``_BLOCK_INDEX_CONDITIONS`` — the
+  * ``_BLOCK_INDEX_DEFAULT_KEY`` / ``_BLOCK_INDEX_CONDITIONS`` - the
     reserved key + closed condition vocabulary.
-  * ``_normalize_block_index_value(v)`` — also accepts a conditional dict;
+  * ``_normalize_block_index_value(v)`` - also accepts a conditional dict;
     rejects missing-``default`` / unknown-condition / nested-dict; int /
     list / bool / str behavior unchanged.
-  * ``_select_blocks(... block_index: int | Sequence[int] | dict ...)`` —
+  * ``_select_blocks(... block_index: int | Sequence[int] | dict ...)`` -
     dict path resolves to ``"default"`` then proceeds as int/list.
-  * Server ``_parse_block_index`` — accepts a well-formed conditional
+  * Server ``_parse_block_index`` - accepts a well-formed conditional
     JSON object; skips malformed (defensive, untrusted body).
 
-Flagship seeds (3) — all CONVERSIONS of already-shipped unconditional
+Flagship seeds (3) - all CONVERSIONS of already-shipped unconditional
 entries, so Part 1 is provably no-op vs s204/s204/s223:
-  * Zoe     E = {"default": 2, "target_no_setup": 0}   (sleep 2× — s204 E:2)
+  * Zoe     E = {"default": 2, "target_no_setup": 0}   (sleep 2× - s204 E:2)
   * Evelynn Q = {"default": 5, "target_no_setup": 0}   (charm triple-spike
-                total — s204 Q:5; sibling R:1 preserved)
+                total - s204 Q:5; sibling R:1 preserved)
   * Kindred E = {"default": 1, "target_full_hp": 0} (7.5%-vs-5% missing-HP
-                execute — s223 E:1)
+                execute - s223 E:1)
 """
 from __future__ import annotations
 
@@ -112,16 +112,16 @@ class BlockIndexConditionVocabTests(unittest.TestCase):
         self.assertNotIn(_BLOCK_INDEX_DEFAULT_KEY, _BLOCK_INDEX_CONDITIONS)
 
 
-# ─── _normalize_block_index_value — conditional dict ─────────────────────────
+# ─── _normalize_block_index_value - conditional dict ─────────────────────────
 
 
 class NormalizeConditionalTests(unittest.TestCase):
     """Validator accepts a well-formed conditional dict; rejects bad shapes.
 
     int / list / bool / str behavior is unchanged from s207 (regression
-    guard — the lift is purely additive)."""
+    guard - the lift is purely additive)."""
 
-    # backward-compat (s207 + s191) — unchanged
+    # backward-compat (s207 + s191) - unchanged
     def test_int_unchanged(self) -> None:
         self.assertEqual(_normalize_block_index_value(0), 0)
         self.assertEqual(_normalize_block_index_value(5), 5)
@@ -137,7 +137,7 @@ class NormalizeConditionalTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             _normalize_block_index_value("0")
 
-    # conditional dict — accepted shapes
+    # conditional dict - accepted shapes
     def test_dict_int_values_accepted(self) -> None:
         self.assertEqual(
             _normalize_block_index_value({"default": 2, "target_no_setup": 0}),
@@ -160,7 +160,7 @@ class NormalizeConditionalTests(unittest.TestCase):
         v = {"default": 2, "target_no_setup": 0, "target_full_hp": 1}
         self.assertEqual(_normalize_block_index_value(v), v)
 
-    # conditional dict — rejected shapes
+    # conditional dict - rejected shapes
     def test_dict_missing_default_rejected(self) -> None:
         with self.assertRaises(ValueError) as cm:
             _normalize_block_index_value({"target_no_setup": 0})
@@ -185,7 +185,7 @@ class NormalizeConditionalTests(unittest.TestCase):
             _normalize_block_index_value({"default": "0", "target_no_setup": 1})
 
 
-# ─── _select_blocks — Part-1 dict resolution (default branch only) ───────────
+# ─── _select_blocks - Part-1 dict resolution (default branch only) ───────────
 
 
 class SelectBlocksConditionalTests(unittest.TestCase):
@@ -229,7 +229,7 @@ class SelectBlocksConditionalTests(unittest.TestCase):
         self.assertEqual(self._sel([0, 2]), 125.0)
 
 
-# ─── _resolve_block_index_overrides — conditional merge ──────────────────────
+# ─── _resolve_block_index_overrides - conditional merge ──────────────────────
 
 
 class ResolveConditionalMergeTests(unittest.TestCase):
@@ -289,7 +289,7 @@ class RegistrySeedEntriesS228Tests(unittest.TestCase):
         # s228's durable property: Q is the charm target_no_setup
         # conditional. The R sibling was a plain int 1 at s228; s231
         # Phase 5.9.31 converted it to a target_full_hp execute
-        # conditional (default=1 == that s204 int — provable Part-1
+        # conditional (default=1 == that s204 int - provable Part-1
         # no-op, so s228's "R unchanged in effect" intent still holds).
         self.assertEqual(m["Q"], {"default": 5, "target_no_setup": 0})
         self.assertEqual(m["R"], {"default": 1, "target_full_hp": 0})
@@ -312,12 +312,12 @@ class RegistrySeedEntriesS228Tests(unittest.TestCase):
         self.assertIsInstance(kin["E"], dict)
 
 
-# ─── compute_ability_dps — Part-1 zero-regression invariant ──────────────────
+# ─── compute_ability_dps - Part-1 zero-regression invariant ──────────────────
 
 
 class AbilityDpsPart1InvariantTests(unittest.TestCase):
     """Each seed's registry conditional resolves byte-identical to the
-    equivalent forced ``default`` int — proving the schema lift adds zero
+    equivalent forced ``default`` int - proving the schema lift adds zero
     numeric change in Part 1 (the whole point of the phased ship)."""
 
     @classmethod
@@ -372,10 +372,10 @@ class AbilityDpsPart1InvariantTests(unittest.TestCase):
 
     def test_kindred_E_seed_is_load_bearing_at_low_hp(self) -> None:
         # Kindred E blocks differ ONLY in target_missing_hp_pct (DMGIDX[1]
-        # 7.5%/stack vs DMGIDX[0] 5%/stack) — identical base + bAD. At full
+        # 7.5%/stack vs DMGIDX[0] 5%/stack) - identical base + bAD. At full
         # HP (Part-1 default ctx) the missing-HP term is 0 so default(1) ==
         # block 0 (an honest Part-1 no-op). The seed becomes load-bearing
-        # only against a missing-HP target — which is exactly the signal
+        # only against a missing-HP target - which is exactly the signal
         # Part 2's live HP% plumbing will carry. Prove it at 30% HP.
         def spell(**ov):
             out = compute_ability_dps(
@@ -400,7 +400,7 @@ class AbilityDpsPart1InvariantTests(unittest.TestCase):
         self.assertEqual(out.block_index_resolved["E"], {"default": 2, "target_no_setup": 0})
 
 
-# ─── compute_burst_damage — conditional resolves in the combo walker ─────────
+# ─── compute_burst_damage - conditional resolves in the combo walker ─────────
 
 
 class BurstConditionalTests(unittest.TestCase):
@@ -435,7 +435,7 @@ class BurstConditionalTests(unittest.TestCase):
         self.assertAlmostEqual(reg, forced, places=6)
 
 
-# ─── server _parse_block_index — conditional decoder (pure unit) ─────────────
+# ─── server _parse_block_index - conditional decoder (pure unit) ─────────────
 
 
 class ParseBlockIndexConditionalTests(unittest.TestCase):
@@ -559,7 +559,7 @@ class ServerRouteConditionalS228Tests(unittest.TestCase):
     def setUpClass(cls) -> None:
         try:
             urlopen(f"{cls.BASE_URL}/health", timeout=2).read()
-        except Exception as e:  # pragma: no cover — env-dependent
+        except Exception as e:  # pragma: no cover - env-dependent
             raise unittest.SkipTest(f"DS server unavailable: {e}")
 
     def _spell(self, champion: str, key: str, **extra):

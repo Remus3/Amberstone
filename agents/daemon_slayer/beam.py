@@ -1,4 +1,4 @@
-"""Phase 2 step 4 — full-build beam-search ranker.
+"""Phase 2 step 4 - full-build beam-search ranker.
 
 Single-slot ``rank_items`` picks the best Nth item GREEDILY against a fixed
 baseline; it can't see synergies that only score well together (Trinity Force
@@ -15,7 +15,7 @@ Algorithm:
        * Expand every surviving beam by every candidate not already in it.
        * Honour boots-uniqueness (only one ``"Boots"``-tagged item per build).
        * Skip expansions that exceed ``total_budget`` (when set).
-       * Dedupe by ``frozenset(item_ids)`` — order-invariant; equivalent
+       * Dedupe by ``frozenset(item_ids)`` - order-invariant; equivalent
          orderings are scored once.
        * Score each expansion via ``compute_dps`` (full Phase 4 effect chain).
        * Keep top ``beam_width`` by weighted DPS.
@@ -23,7 +23,7 @@ Algorithm:
 
 Cost: ``slots × beam_width × |candidate_pool|`` compute_dps calls in the
 worst case (no dedup hits). Default ``beam_width=10`` over the SR pool
-(~175 candidates) lands a 6-slot search in ~10k evaluations — sub-second
+(~175 candidates) lands a 6-slot search in ~10k evaluations - sub-second
 on the warm snapshot. Tune ``beam_width`` for thoroughness vs. wall time.
 """
 
@@ -113,8 +113,8 @@ class BeamResult:
 
     def format_table(self) -> str:
         head = (
-            f"{self.champion_name} ({self.champion_id}) — lvl {self.level} "
-            f"— mode {self.mode} — phase {self.phase} — beam"
+            f"{self.champion_name} ({self.champion_id}) - lvl {self.level} "
+            f"- mode {self.mode} - phase {self.phase} - beam"
         )
         rows = [head, "-" * len(head)]
         if self.current_item_ids:
@@ -161,7 +161,7 @@ def _is_consumable(rec: dict) -> bool:
     Beam search treats consumables as build-irrelevant: they have positive
     gold but contribute zero DPS, so a tight ``total_budget`` would
     otherwise fill empty slots with potions instead of leaving them open.
-    Trinkets (3340/3363/3364) are already excluded — total_gold=0 fails
+    Trinkets (3340/3363/3364) are already excluded - total_gold=0 fails
     the ``_is_purchasable`` filter upstream.
     """
     if rec.get("consumed") is True:
@@ -218,7 +218,7 @@ def beam_search_build(
 
     When the seed already fills ``slot_count`` no search runs and a single
     baseline-only result is returned. When search exhausts (no candidates
-    can extend any surviving beam — common with tight budgets or
+    can extend any surviving beam - common with tight budgets or
     ``only_item_ids`` whitelists), the deepest layer reached is what
     ``ranked`` returns.
     """
@@ -262,25 +262,25 @@ def beam_search_build(
     if mode in MODE_MAP_ID:
         notes.append(f"mode={mode} → maps id {MODE_MAP_ID[mode]}")
     else:
-        notes.append(f"mode={mode} not in MODE_MAP_ID — no per-mode item filter applied")
+        notes.append(f"mode={mode} not in MODE_MAP_ID - no per-mode item filter applied")
     if stripped_trinkets:
         notes.append(
-            f"mode=ARENA — stripped trinket(s) {list(stripped_trinkets)} from current_item_ids"
+            f"mode=ARENA - stripped trinket(s) {list(stripped_trinkets)} from current_item_ids"
         )
     if total_budget is not None:
         notes.append(f"total_budget={total_budget}g")
     if not boots_unique:
-        notes.append("boots_unique=False — multiple boots items allowed")
+        notes.append("boots_unique=False - multiple boots items allowed")
     if include_components:
-        notes.append("include_components=True — non-terminal items in the search")
+        notes.append("include_components=True - non-terminal items in the search")
     if baseline.mode_multiplier == 0.0:
         notes.append(
-            "baseline mode_multiplier=0 — every build evaluates to 0 DPS (e.g. Yunara in ARAM)"
+            "baseline mode_multiplier=0 - every build evaluates to 0 DPS (e.g. Yunara in ARAM)"
         )
 
     remaining = slot_count - len(current_ids)
     if remaining <= 0:
-        # Seed already fills the build — nothing to search. Return a
+        # Seed already fills the build - nothing to search. Return a
         # single-row result so the consumer always sees a valid build.
         names = tuple(str((snapshot.items.get(i) or {}).get("name", i)) for i in current_ids)
         single = RankedBuild(
@@ -305,12 +305,12 @@ def beam_search_build(
             total_budget=total_budget,
             candidate_pool_size=0, builds_evaluated=1, depth_reached=0,
             ranked=(single,),
-            notes=tuple(notes + ["seed already fills slot_count — no search performed"]),
+            notes=tuple(notes + ["seed already fills slot_count - no search performed"]),
         )
 
     # Pool = all candidates regardless of beam contents. Cheaper to pre-prepare
     # gold + boots-flag once than to re-derive per beam expansion. Consumables
-    # (Health Potion, Control Ward, etc.) get dropped here — they're
+    # (Health Potion, Control Ward, etc.) get dropped here - they're
     # purchasable and DPS-neutral, so a tight ``total_budget`` would
     # otherwise fill empty slots with them.
     raw_pool = _filter_candidates(
@@ -371,7 +371,7 @@ def beam_search_build(
                 builds_evaluated += 1
                 next_beams.append((new_items, scored.weighted_dps, new_gold))
         if not next_beams:
-            # No surviving expansion — search exhausted (tight budget,
+            # No surviving expansion - search exhausted (tight budget,
             # narrow whitelist, etc). Stop and rank what we have at the
             # deepest layer that produced beams.
             break
@@ -399,7 +399,7 @@ def beam_search_build(
 
     if depth_reached < remaining:
         notes.append(
-            f"search exhausted at depth {depth_reached}/{remaining} — no further expansions"
+            f"search exhausted at depth {depth_reached}/{remaining} - no further expansions"
         )
 
     return BeamResult(

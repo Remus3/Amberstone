@@ -6,9 +6,9 @@ Three focal areas:
 2. Empty payload when no mismatch evaluator signal is available.
 3. Hot path forwards the nudge dict through unchanged.
 
-Mocks at the same boundary as ``test_state_builder_archetype_pick`` —
+Mocks at the same boundary as ``test_state_builder_archetype_pick`` -
 ``lcu_summary`` / ``liveclient_summary`` / ``read_json`` /
-``get_archetype_for`` — plus the new ``compute_nudge_payload`` boundary
+``get_archetype_for`` - plus the new ``compute_nudge_payload`` boundary
 so we don't need a live DS server.
 """
 from __future__ import annotations
@@ -75,7 +75,7 @@ class BuildStateStampsNudgeTests(unittest.TestCase):
             "primary":         "tank",
             "first_item_id":   "3031",
             "first_item_name": "Infinity Edge",
-            "message":         "Picked Tank but bought IE — switch?",
+            "message":         "Picked Tank but bought IE - switch?",
             "expected_items":  ["Warmog's", "Heartsteel"],
         }
         patches = self._patches(

@@ -1,4 +1,4 @@
-# P-audit6-m01 — `/api/minimap-crop` HTTP `?bbox=` override must validate r>l, b>t (and clamp coord range)
+# P-audit6-m01 - `/api/minimap-crop` HTTP `?bbox=` override must validate r>l, b>t (and clamp coord range)
 
 **Owner:** Agent 2
 **Severity:** MEDIUM
@@ -22,8 +22,8 @@ Two consequences:
    intent of the override entirely. There's no caller-side feedback
    that the values were nonsensical.
 
-Trust boundary is dashboard-internal Tailnet HTTP — not externally
-exposed — so this is defense-in-depth, not production-blocking. Real
+Trust boundary is dashboard-internal Tailnet HTTP - not externally
+exposed - so this is defense-in-depth, not production-blocking. Real
 defect: the two paths (HTTP override, persisted file) should enforce
 the same contract on the `bbox` tuple they hand to `Image.crop()`.
 
@@ -39,7 +39,7 @@ closes both M-01 and L-01.
 @@ -593,15 +593,21 @@ class _Handler(BaseHTTPRequestHandler):
          # Bbox resolution order: ?bbox= override → persisted calibration in
          # data/vision_regions.json (`_minimap_<mode>` key) → hardcoded
-         # 1920×1080 fallback. Arena has no minimap — falls through to 404.
+         # 1920×1080 fallback. Arena has no minimap - falls through to 404.
          if bbox_raw:
              try:
                  parts = [int(x) for x in bbox_raw.split(",")]
@@ -68,7 +68,7 @@ closes both M-01 and L-01.
              bbox = _resolve_minimap_bbox(mode)
 ```
 
-Note the indentation of the `return` — it must move into the `except`
+Note the indentation of the `return` - it must move into the `except`
 block (currently it's the trailing line of the outer `try`). Verify
 before submitting.
 
@@ -110,11 +110,11 @@ GOOD_INPUTS = [
 
 ## Notes
 
-- The integer-range clamp (10000) is generous — well beyond any
+- The integer-range clamp (10000) is generous - well beyond any
   realistic display resolution but small enough that an unbounded
   coord can't waste memory inside PIL during the crop. Adjust upward
   if a 4K/8K case ever lands.
 - After applying, `py_compile agents/supervisor.py` and run the FU01
   test directory: `python -m pytest tests/fu01_minimap/ -q`.
-- The 19 existing FU01 tests should remain green — this change is
+- The 19 existing FU01 tests should remain green - this change is
   in the supervisor handler, not the resolver.

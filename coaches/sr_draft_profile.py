@@ -1,7 +1,7 @@
-"""SR Draft Theatre — 3-build profile generator.
+"""SR Draft Theatre - 3-build profile generator.
 
 Phase 8 step 1 (thin slice, 2026-05-04): stub envelope + queue gate.
-Phase 8 step 2 (2026-05-04): engine-backed body — calls Daemon Slayer
+Phase 8 step 2 (2026-05-04): engine-backed body - calls Daemon Slayer
 `/beam` 3× with primary / alt-playstyle / experimental presets and
 maps each to the canonical profile shape consumed by P8-5's UI.
 
@@ -64,7 +64,7 @@ _ENGINE_VERSION_TTL_S = 300.0
 _PRESETS_CACHE: dict[str, Any] | None = None
 _PRESETS_MTIME: int | None = None
 
-# Default fallback presets if the JSON is missing/broken — keeps the
+# Default fallback presets if the JSON is missing/broken - keeps the
 # generator alive when the file is being hand-edited.
 _FALLBACK_PRESETS: dict[str, Any] = {
     "engine_query": {
@@ -208,7 +208,7 @@ def _normalize_role(role: Optional[str]) -> Optional[str]:
     r = role.strip().upper()
     if r in {"TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY"}:
         return r
-    # LCU sometimes emits MID / BOT / SUPPORT — coerce.
+    # LCU sometimes emits MID / BOT / SUPPORT - coerce.
     aliases = {"MID": "MIDDLE", "BOT": "BOTTOM", "ADC": "BOTTOM",
                "SUPPORT": "UTILITY", "SUP": "UTILITY", "JG": "JUNGLE"}
     return aliases.get(r)

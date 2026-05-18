@@ -35,7 +35,7 @@ def test_missing_cli_raises_stub_not_wired() -> None:
 
 
 def test_nonzero_exit_raises_spawn_failed() -> None:
-    """Simulate a claude subprocess that exits non-zero — the wrapper
+    """Simulate a claude subprocess that exits non-zero - the wrapper
     must raise EphemeralSpawnFailed (dispatcher routes to fail())."""
     from subprocess import CompletedProcess
     fake_proc = CompletedProcess(
@@ -50,7 +50,7 @@ def test_nonzero_exit_raises_spawn_failed() -> None:
 
 
 def test_zero_exit_returns_ephemeral_result() -> None:
-    """Happy path — exit 0 with valid JSON stdout → normal result dict."""
+    """Happy path - exit 0 with valid JSON stdout → normal result dict."""
     from subprocess import CompletedProcess
     fake_proc = CompletedProcess(
         args=["claude"], returncode=0,

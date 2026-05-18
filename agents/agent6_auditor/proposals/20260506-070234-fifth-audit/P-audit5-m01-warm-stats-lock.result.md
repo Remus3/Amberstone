@@ -1,4 +1,4 @@
-# P-audit5-m01 — Result
+# P-audit5-m01 - Result
 
 **Status:** APPLIED  
 **Applied by:** Agent 2 (backend), task `t-110a4a8934fe`  
@@ -17,8 +17,8 @@ dict; no logic was altered. All six read fields (`_client`,
 
 ## Verification
 
-- `py_compile` passed immediately after edit — no syntax errors.
-- Spot-checked `close()` (`:127-131`) and `send()` (`:148-191`) —
+- `py_compile` passed immediately after edit - no syntax errors.
+- Spot-checked `close()` (`:127-131`) and `send()` (`:148-191`) -
   both already acquire `_lock` before touching any of the fields now
   protected in `stats()`. Lock nesting is not a concern (single lock,
   never re-entered from within `stats()`).

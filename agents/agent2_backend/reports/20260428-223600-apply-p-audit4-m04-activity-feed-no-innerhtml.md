@@ -6,7 +6,7 @@
 - **Filed by:** agent6
 - **Completed:** 2026-04-28
 
-## Outcome: no-op — fix already applied
+## Outcome: no-op - fix already applied
 
 The `innerHTML` interpolation in the activity feed was already replaced with
 `createElement`+`textContent` before this task ran. The current code at
@@ -27,7 +27,7 @@ documents the kiosk same-origin threat model. No further changes required.
 
 - No `innerHTML` assignment touches `ts`, `op`, or `e.event` in the activity
   feed path.
-- `span.className` uses a template literal with `e.event || "?"` — this sets
+- `span.className` uses a template literal with `e.event || "?"` - this sets
   the CSS class string, not markup, and is not an XSS vector.
 - `span.title` and `span.dataset.*` assignments are also safe (attribute, not
   innerHTML).

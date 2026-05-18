@@ -1,4 +1,4 @@
-"""Phase 1 (s174, 2026-05-12) — Tank EHP scorer.
+"""Phase 1 (s174, 2026-05-12) - Tank EHP scorer.
 
 Sibling of ``dps.py``. ``compute_ehp()`` returns the caster's Effective HP
 under a given enemy damage profile; ``rank_items_by_ehp()`` scores every
@@ -9,7 +9,7 @@ EHP = HP / damage_taken_factor. For physical damage,
 ``damage_taken_factor = armor_factor(armor) = 100/(100+armor)``
 (or the inverted form when armor is negative). For magical, same formula
 applied to MR. For true, ``damage_taken_factor = 1.0``. ARAM's
-``aramDamageTaken`` modifier multiplies every damage_taken_factor — a
+``aramDamageTaken`` modifier multiplies every damage_taken_factor - a
 champion with ``aramDamageTaken=0.95`` takes 5% less damage so effective
 HP scales by ``1/0.95`` for ALL damage types (including true).
 
@@ -18,15 +18,15 @@ enemy damage shares. ``enemy_ad_share + enemy_ap_share <= 1.0``; remainder
 is true-damage share.
 
 Phase 1 deliberate omissions (deferred to Phase 1.5):
-* Shield throughput (Sterak's lifeline, Doran's Shield, Bloodthirster) —
+* Shield throughput (Sterak's lifeline, Doran's Shield, Bloodthirster) -
   needs uptime modeling
-* Healing throughput (lifesteal, Spirit Visage amp) — fits Phase 6
+* Healing throughput (lifesteal, Spirit Visage amp) - fits Phase 6
 * Caster-side enemy pen/reduction (Black Cleaver shred ON the tank,
-  Void Staff %MR pen ON the tank) — needs enemy build plumbing
+  Void Staff %MR pen ON the tank) - needs enemy build plumbing
 
 Bonus HP amps (Jak'Sho's Voidborne Resilience +6% bonus resists fully
 stacked, Cinderhulk +15% bonus HP) flow through ``build_champion`` already
-via the existing stat schema — no new field needed; EHP picks them up
+via the existing stat schema - no new field needed; EHP picks them up
 automatically because ``stats["hp"]/["armor"]/["mr"]`` reflect the amp.
 """
 
@@ -67,7 +67,7 @@ def _aram_damage_taken(snapshot: DataSnapshot, champion_id: str, mode: str) -> f
 
     ARAM applies a per-champion modifier to ALL damage taken (physical,
     magical, true). Snapshot stores it under
-    ``champion.lolmath.aram_modifiers.aramDamageTaken`` — extracted by
+    ``champion.lolmath.aram_modifiers.aramDamageTaken`` - extracted by
     ``tools/daemon_slayer_extract.py`` from lolmath's data chunk.
     """
     if mode != "ARAM":
@@ -122,8 +122,8 @@ class EhpResult:
 
     def format_table(self) -> str:
         head = (
-            f"{self.champion_name} ({self.champion_id}) — lvl {self.level} "
-            f"— mode {self.mode}"
+            f"{self.champion_name} ({self.champion_id}) - lvl {self.level} "
+            f"- mode {self.mode}"
         )
         rows = [head, "-" * len(head)]
         if self.item_ids:
@@ -168,7 +168,7 @@ def compute_ehp(
 
     ``enemy_ad_share`` and ``enemy_ap_share`` are floats in ``[0.0, 1.0]``
     summing to ≤ 1.0; the remainder is true-damage share. Defaults to
-    50/50 AD/AP — a reasonable "no info" baseline. Operator-facing
+    50/50 AD/AP - a reasonable "no info" baseline. Operator-facing
     callers (``core/defensive_picks.py``) derive these shares from the
     threat profile.
 
@@ -257,7 +257,7 @@ class EhpRankedItem:
     ehp_per_1k_gold: float       # delta_ehp / (gold/1000); 0 when delta<=0
     is_terminal: bool
     tags: tuple[str, ...]
-    # Phase 0 dead-unique filter mirror — see ``rank.RankedItem`` for the
+    # Phase 0 dead-unique filter mirror - see ``rank.RankedItem`` for the
     # full rationale. Same flag, same dedup semantics: a candidate whose
     # unique_passive_key collides with an item already in current_item_ids
     # is filtered by default (proc/pen would be zeroed by collect_effects).
@@ -324,8 +324,8 @@ class EhpRankResult:
 
     def format_table(self) -> str:
         head = (
-            f"{self.champion_name} ({self.champion_id}) — lvl {self.level} "
-            f"— mode {self.mode}  [TANK]"
+            f"{self.champion_name} ({self.champion_id}) - lvl {self.level} "
+            f"- mode {self.mode}  [TANK]"
         )
         rows = [head, "-" * len(head)]
         if self.current_item_ids:
@@ -386,11 +386,11 @@ def rank_items_by_ehp(
 
     Mirror of ``rank.rank_items`` for the EHP scorer. Same candidate
     filtering pipeline (purchasable + mode-legal + optional whitelist +
-    budget + terminal-only) — only the scoring function differs.
+    budget + terminal-only) - only the scoring function differs.
 
     Sort keys:
-      * ``delta``       — absolute EHP gained (default)
-      * ``efficiency``  — EHP gained per 1000 gold spent
+      * ``delta``       - absolute EHP gained (default)
+      * ``efficiency``  - EHP gained per 1000 gold spent
 
     ``only_item_ids`` is the integration point for the s171
     ``core/defensive_picks.py`` curated catalog (Option B from the s174
@@ -405,7 +405,7 @@ def rank_items_by_ehp(
     current_ids, stripped_trinkets = strip_arena_trinkets(current_ids, mode)
     current_set = set(current_ids)
     # Collect unique_passive_keys already locked in. Same logic as
-    # ``rank.rank_items`` — candidates colliding here are filtered by default.
+    # ``rank.rank_items`` - candidates colliding here are filtered by default.
     current_unique_keys: set[str] = set()
     for iid in current_ids:
         eff = ITEM_EFFECTS.get(iid)
@@ -466,7 +466,7 @@ def rank_items_by_ehp(
         gold = int((rec.get("gold") or {}).get("total", 0) or 0)
         delta = scored.blended_ehp - baseline.blended_ehp
         # Efficiency in EHP per 1000 gold so the column stays readable.
-        # Negative or zero deltas zero-out — they're regressions, not efficient.
+        # Negative or zero deltas zero-out - they're regressions, not efficient.
         eff = (delta / (gold / 1000.0)) if (gold > 0 and delta > 0) else 0.0
         ranked.append(EhpRankedItem(
             item_id=item_id,
@@ -497,13 +497,13 @@ def rank_items_by_ehp(
     )
     if stripped_trinkets:
         notes.append(
-            f"mode=ARENA — stripped trinket(s) {list(stripped_trinkets)} "
+            f"mode=ARENA - stripped trinket(s) {list(stripped_trinkets)} "
             f"from current_item_ids"
         )
     if include_components:
-        notes.append("include_components=True — non-terminal items in the ranking")
+        notes.append("include_components=True - non-terminal items in the ranking")
     if budget is not None:
-        notes.append(f"budget={budget}g — items over budget filtered")
+        notes.append(f"budget={budget}g - items over budget filtered")
     if only_ids is not None:
         notes.append(f"only_item_ids restricted to {len(only_ids)} whitelisted ids")
     if baseline.mode_multiplier != 1.0:

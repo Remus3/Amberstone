@@ -1,5 +1,5 @@
 # arch: post task result back to issuing machine | section=bridge | frozen=yes
-"""bridge_post_result.py — Phase 6 shim. Real code lives in tools/bridge_cli.py.
+"""bridge_post_result.py - Phase 6 shim. Real code lives in tools/bridge_cli.py.
 
 Frozen contract (cron + /loop /process-bridge-tasks invoke this by file path):
     py tools/bridge_post_result.py <task_id> [--source ...] [--summary ...]

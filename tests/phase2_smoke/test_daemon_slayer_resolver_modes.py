@@ -1,6 +1,6 @@
 """
 tests/phase2_smoke/test_daemon_slayer_resolver_modes.py
-s74 — mode-aware byName lookup in daemon_slayer_resolver.
+s74 - mode-aware byName lookup in daemon_slayer_resolver.
 
 The resolver builds a per-mode byName index from DDragon's ``maps``
 field so SR/ARAM/Brawl callers don't accidentally pick up the 22XXXX
@@ -57,14 +57,14 @@ class NameToIdModeAwareTests(unittest.TestCase):
     def test_mode_none_resolves_canonical_id(self) -> None:
         # items_index.json was fixed (commit 41c87bc) to sort by ID length
         # so 4-digit canonical IDs win over 6-digit 22XXXX aliases. The
-        # old "setdefault first-seen-wins alias quirk" is gone — mode=None
+        # old "setdefault first-seen-wins alias quirk" is gone - mode=None
         # now returns the canonical base ID, same as mode='aram'/'sr'.
         self.assertEqual(ds_res.name_to_id("Heartsteel"), "3084")
         self.assertEqual(ds_res.name_to_id("Heartsteel", mode=None), "3084")
 
     def test_unknown_mode_falls_through_to_legacy(self) -> None:
         # Unknown modes (e.g. 'tft') fall through to legacy lookup
-        # rather than raising. Defensive — bad mode strings shouldn't
+        # rather than raising. Defensive - bad mode strings shouldn't
         # break coach loops. Post-41c87bc the legacy path returns 3084.
         self.assertEqual(ds_res.name_to_id("Heartsteel", mode="tft"), "3084")
 
@@ -101,7 +101,7 @@ class ResolveManyModeAwareTests(unittest.TestCase):
 
 class HpFlowThroughModeAwarePathTests(unittest.TestCase):
     """End-to-end: resolve in mode → look up HP. Validates the wire-in
-    ARAM coach uses (which is the whole point of s74 — non-Arena modes
+    ARAM coach uses (which is the whole point of s74 - non-Arena modes
     must get base-ID HP values, not alias HP)."""
 
     def test_aram_heartsteel_hp_is_900(self) -> None:
@@ -125,7 +125,7 @@ class HpFlowThroughModeAwarePathTests(unittest.TestCase):
         self.assertAlmostEqual(ds_res.total_bonus_hp(ids), 1600.0, places=1)
 
     def test_arena_total_bonus_hp_uses_alias_values(self) -> None:
-        # Same names, mode='arena' — Arena Heartsteel is 700, not 900.
+        # Same names, mode='arena' - Arena Heartsteel is 700, not 900.
         # Riftmaker+Sunfire happen to share the alias HP value (350)
         # in the current patch but that's coincidence, not a guarantee.
         ids = ds_res.resolve_many(
@@ -136,7 +136,7 @@ class HpFlowThroughModeAwarePathTests(unittest.TestCase):
 
 
 class ResolveInventoryFiltersTrinketsAndConsumablesTests(unittest.TestCase):
-    """s156 regression — DS engine /rank refuses calls when
+    """s156 regression - DS engine /rank refuses calls when
     current_item_ids fills slot_count. Live-Client serializes trinkets +
     consumables alongside shop items, so the resolver was returning a
     ``len(items) == 6`` list once the user bought 5 components +
@@ -176,7 +176,7 @@ class ResolveInventoryFiltersTrinketsAndConsumablesTests(unittest.TestCase):
         self.assertEqual(ids, ["3031"])
 
     def test_resolve_many_unaffected(self) -> None:
-        # Sanity — resolve_many keeps trinkets so calibration / mirror
+        # Sanity - resolve_many keeps trinkets so calibration / mirror
         # callers see the full live-client item set.
         items = ["Farsight Alteration", "Infinity Edge"]
         self.assertEqual(ds_res.resolve_many(items, mode="sr"),

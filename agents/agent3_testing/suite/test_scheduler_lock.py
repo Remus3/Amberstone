@@ -2,7 +2,7 @@
 and for the cross-process dispatch race guard (P-audit3-followup-single-scheduler).
 
 Lock tests: spawn two subprocesses that hammer the same log file and
-verify that every appended line parses as valid JSON — proving writes
+verify that every appended line parses as valid JSON - proving writes
 are never interleaved at byte level.
 
 Race guard tests: verify that next_ready() re-reads disk before dispatching
@@ -68,7 +68,7 @@ def test_two_processes_no_interleaved_lines(tmp_path: Path) -> None:
         except json.JSONDecodeError as e:
             pytest.fail(f"corrupt line: {e}: {line[:80]!r}")
         ids.add(rec["task"]["id"])
-    # Both writers contribute — at least 2*count distinct task ids.
+    # Both writers contribute - at least 2*count distinct task ids.
     assert len(ids) >= count * 2
 
 
@@ -121,7 +121,7 @@ def test_next_ready_skips_task_completed_by_second_instance(tmp_path: Path) -> N
     # next_ready() must detect the disk-level completion and return None.
     result = s1.next_ready()
     assert result is None, (
-        f"next_ready() returned {result} — stale task was re-dispatched "
+        f"next_ready() returned {result} - stale task was re-dispatched "
         "despite being completed by a concurrent Scheduler"
     )
     # In-memory state should have been synced to the disk status.

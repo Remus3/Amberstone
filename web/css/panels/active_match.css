@@ -1,4 +1,4 @@
-/* Active Match view (s159) — curated mid-game layout that replaces
+/* Active Match view (s159) - curated mid-game layout that replaces
  * the 5-panel main grid for in-game modes. Three-pane horizontal
  * grid with even widths at the canonical 1920×1080 / 100% scale.
  *
@@ -77,7 +77,7 @@
 /* MAP pane will host an <img> (static mode map) + an absolutely-
  * positioned overlay layer for ZOI/threat coloring. The img-bound
  * box keeps the overlay aligned regardless of pane resize. Empty
- * shell here — overlay layer wires in step 4. */
+ * shell here - overlay layer wires in step 4. */
 #view-active-match .am-map-shell {
   position: relative;
   width: 100%;

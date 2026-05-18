@@ -1,4 +1,4 @@
-"""Phase 6 (s181, 2026-05-13) — Enchanter ranker tests.
+"""Phase 6 (s181, 2026-05-13) - Enchanter ranker tests.
 
 Mirrors ``test_rank_tank`` / ``test_rank_assassin`` shape. Covers the
 ranker pipeline, filter/whitelist/budget/dead-unique logic, sort keys,
@@ -112,7 +112,7 @@ class HpsScoringTests(unittest.TestCase):
 
     def test_helia_top_pick_at_naked(self) -> None:
         """Echoes of Helia (6620) has the highest delta_hps for naked enchanter
-        at lvl 11 — it's the only direct-heal item with high proc rate (0.4/s)
+        at lvl 11 - it's the only direct-heal item with high proc rate (0.4/s)
         AND AP scaling. Verifies our live-probe finding stays stable across
         levels.
         """
@@ -198,7 +198,7 @@ class FilterPipelineTests(unittest.TestCase):
             mode="ARENA", top_n=5,
         )
         # The trinket strip note may or may not fire depending on what's in
-        # current_item_ids — at minimum the call should succeed.
+        # current_item_ids - at minimum the call should succeed.
         self.assertIsInstance(r, HpsRankResult)
 
 

@@ -1,4 +1,4 @@
-"""Agent 4 — Coach Mentor: analyzer.
+"""Agent 4 - Coach Mentor: analyzer.
 
 Replays matches in a mode DB, rolls per-champion aggregates into
 ``adaptation_buckets``, and bumps ``matchup_modifiers`` sample counts.
@@ -6,10 +6,10 @@ Runs autonomously on the supervisor's idle pass per charter.
 
 Per charter scope:
 
-  * **Autonomous writes allowed** — ``adaptation_buckets`` rows,
+  * **Autonomous writes allowed** - ``adaptation_buckets`` rows,
     ``matchup_modifiers`` rows (both already in the §9 schema); files
     under ``data/meta_build/curated/``.
-  * **Propose-and-queue only** — coach prompts, coach Python, decision
+  * **Propose-and-queue only** - coach prompts, coach Python, decision
     heuristics, panel templates.
 
 This module does not touch any propose-only surface. It reads ``matches``
@@ -62,7 +62,7 @@ def _load_item_metadata() -> dict[int, dict]:
     """Pull item names + gold cost from the newest cached DDragon bundle.
 
     Returns {item_id: {"name", "gold_total", "maps"}}. Empty dict if no
-    cache — callers fall back to bare numeric item ids in that case.
+    cache - callers fall back to bare numeric item ids in that case.
     """
     ddragon_dir = _PROJECT_ROOT / "data" / "meta_build" / "ddragon"
     if not ddragon_dir.exists():
@@ -109,11 +109,11 @@ class _ChampionStats:
     duration_sum: int = 0
     duration_count: int = 0
     recent_results: list[int] = None   # type: ignore[assignment]
-    # 30-day window (meta-trend) — sparse, only populated for matches
+    # 30-day window (meta-trend) - sparse, only populated for matches
     # inside RECENCY_WINDOW_DAYS of analysis time.
     recency_30d_games: int = 0
     recency_30d_wins: int = 0
-    # KDA aggregation — decoupled from win/loss observation so that
+    # KDA aggregation - decoupled from win/loss observation so that
     # recent live matches (win still NULL pending reconcile) still
     # contribute to avg_kda. Only counts rows with non-null k/d/a.
     kda_games: int = 0
@@ -366,7 +366,7 @@ class Analyzer:
             if has_kda:
                 stats.observe_kda(row["kills"], row["deaths"], row["assists"])
 
-            # Matchup modifiers — only meaningful when we have a win signal.
+            # Matchup modifiers - only meaningful when we have a win signal.
             if row["win"] is None:
                 continue
             try:
@@ -389,7 +389,7 @@ class Analyzer:
         #
         # Pull DISTINCT (match_id, item_id) pairs so we count matches, not
         # individual buys (a player might buy the same component 3x in
-        # one game — we want "games where this item was purchased").
+        # one game - we want "games where this item was purchased").
         # Then group by (champion, item_id), count wins, compute delta
         # vs the champion's baseline. Filter to legendary/mythic items
         # by gold cost when DDragon metadata is available.
@@ -415,7 +415,7 @@ class Analyzer:
                 if meta is None or meta["gold_total"] < ITEM_MIN_GOLD:
                     continue
             elif iid < 3000:
-                # No DDragon metadata — exclude consumables/wards by id range.
+                # No DDragon metadata - exclude consumables/wards by id range.
                 continue
             champ = r["champion"] or "Unknown"
             bucket = item_stats.setdefault((champ, iid), {"matches": 0, "wins": 0})

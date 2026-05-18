@@ -1,4 +1,4 @@
-"""verify_bridge_roundtrip.py — one-shot verifier for the Legion /loop pattern.
+"""verify_bridge_roundtrip.py - one-shot verifier for the Legion /loop pattern.
 
 Issued task target=legion source=gamepc → expects Legion's /loop /process-
 bridge-tasks (registered in claude-rc.ps1 spawn) to pick it up, execute the
@@ -7,7 +7,7 @@ Result lands on Legion's local /api/bridge log, observable from this script.
 
 Source=gamepc is chosen deliberately: --reply-to gamepc routes through the
 local Legion bridge POST (not Peer), so the verdict is observable from
-Legion alone — no Peer dependency.
+Legion alone - no Peer dependency.
 
 Verdict is written to ops/runtime/bridge_roundtrip_verdict.json AND posted
 as a kind=note to the Legion bridge so the operator's next prompt surfaces
@@ -78,7 +78,7 @@ def surface_to_bridge(summary: str, body: dict) -> None:
             "body":    body,
         })
     except Exception as exc:
-        # non-fatal — verdict file is the source of truth
+        # non-fatal - verdict file is the source of truth
         print(f"surface_to_bridge failed: {exc}", file=sys.stderr)
 
 
@@ -91,12 +91,12 @@ def main() -> int:
         "id":      task_id,
         "source":  "gamepc",        # mimic gamepc→legion path; --reply-to gamepc keeps result local
         "target":  "legion",
-        "summary": "RC /loop verify — echo hostname/pid/ts (auto-issued by RC-VerifyBridgeRoundtrip-Once)",
+        "summary": "RC /loop verify - echo hostname/pid/ts (auto-issued by RC-VerifyBridgeRoundtrip-Once)",
         "body":    {
             "issued":  issued_at,
             "prompt": ("Reply with hostname, current pid, and current epoch ts. "
                        "Use bridge_post_result.py --source legion --reply-to gamepc "
-                       "to post the result. This is a low-stakes verifier task — "
+                       "to post the result. This is a low-stakes verifier task - "
                        "no frozen-file writes, no shell command execution required "
                        "beyond reading hostname/pid/ts."),
         },
@@ -112,7 +112,7 @@ def main() -> int:
             "error":    f"failed to post task: {exc}",
         }
         write_verdict(verdict)
-        surface_to_bridge(f"Bridge roundtrip verifier ERROR — could not post task: {exc}", verdict)
+        surface_to_bridge(f"Bridge roundtrip verifier ERROR - could not post task: {exc}", verdict)
         return 1
 
     deadline = issued_at + WAIT_S
@@ -138,13 +138,13 @@ def main() -> int:
                 }
                 write_verdict(verdict)
                 surface_to_bridge(
-                    f"Bridge roundtrip verifier PASS — Legion /loop picked up "
+                    f"Bridge roundtrip verifier PASS - Legion /loop picked up "
                     f"task {task_id[:18]}… and replied in {latency:.1f}s",
                     verdict,
                 )
                 return 0
 
-    # Timed out — capture last 5 inbox entries for diagnostic
+    # Timed out - capture last 5 inbox entries for diagnostic
     tail = []
     for m in last_messages[-5:]:
         tail.append({
@@ -164,7 +164,7 @@ def main() -> int:
     }
     write_verdict(verdict)
     surface_to_bridge(
-        f"Bridge roundtrip verifier FAIL_TIMEOUT — no result for {task_id[:18]}… "
+        f"Bridge roundtrip verifier FAIL_TIMEOUT - no result for {task_id[:18]}… "
         f"after {WAIT_S}s. Check ops/runtime/bridge_roundtrip_verdict.json",
         verdict,
     )

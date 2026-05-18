@@ -1,4 +1,4 @@
-// Riot Commander — Phase 3 dashboard. ES module — no outer IIFE.
+// Riot Commander - Phase 3 dashboard. ES module - no outer IIFE.
 // Subscribes to the supervisor's /push WebSocket relay (which in turn
 // receives file-watcher pushes from agents/agent2_backend/file_ingest.py
 // while the Game-PC Forwarder is still deferred).
@@ -29,7 +29,7 @@ import { renderArchetypeNudge } from './panels/archetype_nudge_chip.js';
 import { renderActiveMatch, activeMatchEnabled } from './panels/active_match.js';
 import { wireLastMatchOnce, fetchAndRenderLastMatch } from './panels/last_match.js';
 import { renderBridgePending, renderCoachDecisions, renderRecentCoachCalls } from './panels/bridge_pending.js';
-// ADR-007 (s169) — heartbeat pill self-starts on import (own setInterval).
+// ADR-007 (s169) - heartbeat pill self-starts on import (own setInterval).
 import './panels/trigger_pill.js';
 import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
 
@@ -40,7 +40,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   // ── LCU helper (s171 restore) ──────────────────────────────────────
   // ``lcuCmd`` / ``lcuPollResult`` were referenced 22 times in main.js
   // (Find Match / Cancel / Change Lobby Mode / queue switcher / etc.)
-  // but never declared in this module — the function existed only in
+  // but never declared in this module - the function existed only in
   // champ_select.js's module scope where main.js's callsites can't
   // reach it. Result: every operator click on a lobby button threw
   // ReferenceError silently. Restored here as plain module-local
@@ -148,7 +148,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
             // AUDIT 2026-04-28 (P-audit4-m04): build the row with
             // createElement + textContent so a future event payload that
             // overrides ts/op/event with HTML can't inject markup. The
-            // dashboard runs in an unsandboxed kiosk-mode Edge — any XSS
+            // dashboard runs in an unsandboxed kiosk-mode Edge - any XSS
             // here can same-origin call /api/* on the supervisor.
             const g = document.createElement("span"); g.className = "ev-glyph"; g.textContent = glyph;
             const t = document.createElement("span"); t.className = "ev-ts";    t.textContent = ts;
@@ -214,11 +214,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       }
       const d = await resp.json();
       TMODAL.id.textContent = d.id || taskId;
-      TMODAL.op.textContent = d.op || "—";
-      TMODAL.owner.textContent = d.owner_agent != null ? `agent${d.owner_agent}` : "—";
-      TMODAL.status.textContent = d.status || "—";
-      TMODAL.priority.textContent = (d.priority != null) ? String(d.priority) : "—";
-      TMODAL.ts.textContent = d.created_at || "—";
+      TMODAL.op.textContent = d.op || "-";
+      TMODAL.owner.textContent = d.owner_agent != null ? `agent${d.owner_agent}` : "-";
+      TMODAL.status.textContent = d.status || "-";
+      TMODAL.priority.textContent = (d.priority != null) ? String(d.priority) : "-";
+      TMODAL.ts.textContent = d.created_at || "-";
       // Events, newest at top
       TMODAL.events.innerHTML = "";
       const events = (d.events || []).slice().reverse();
@@ -295,7 +295,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           ADAPT_COPY_BTN.textContent = "NO DATA";
         } else {
           // Clipboard API. On iPad Chrome kiosk this requires a secure
-          // context or user gesture — the button click qualifies.
+          // context or user gesture - the button click qualifies.
           try {
             await navigator.clipboard.writeText(card);
             ADAPT_COPY_BTN.textContent = `COPIED (${payload.chars}c)`;
@@ -378,10 +378,10 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   // ── Transition log (s158) ─────────────────────────────────────────
   // Capture every mode/view change so flicker is debuggable from the
   // dashboard itself without opening DevTools. Three sinks:
-  //   1. console.log (always) — visible in F12.
-  //   2. window.__rcDebugLog ring buffer (last 50) — inspectable.
+  //   1. console.log (always) - visible in F12.
+  //   2. window.__rcDebugLog ring buffer (last 50) - inspectable.
   //   3. Floating overlay #rc-dbg (when location.search includes dbg=1
-  //      or localStorage.rcDebug==='1') — always-on screen tail of
+  //      or localStorage.rcDebug==='1') - always-on screen tail of
   //      the last 8 lines, monospace, mode pill bottom right corner.
   // The overlay is wired once on first call.
   if (!window.__rcDebugLog) window.__rcDebugLog = [];
@@ -418,7 +418,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       const meta = e.meta
         ? " " + Object.entries(e.meta).map(([k, v]) => `${k}=${v}`).join(" ")
         : "";
-      return `${t} ${e.kind}: ${e.from || "—"} → ${e.to}${meta}`;
+      return `${t} ${e.kind}: ${e.from || "-"} → ${e.to}${meta}`;
     }).join("\n");
   }
   function _rcLogTransition(kind, from, to, meta) {
@@ -428,7 +428,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     const metaStr = meta
       ? " " + Object.entries(meta).map(([k, v]) => `${k}=${v}`).join(" ")
       : "";
-    console.log(`[rc-${kind}] ${from || "—"} → ${to}${metaStr}`);
+    console.log(`[rc-${kind}] ${from || "-"} → ${to}${metaStr}`);
     _rcDbgPaint();
   }
 
@@ -488,7 +488,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // during the CS→GameStart→InProgress flip; track the highest
     // game-state we've observed so transient blips don't flush the view.
     //
-    // s209: dropped the "game-start" sticky tier — loading view retired,
+    // s209: dropped the "game-start" sticky tier - loading view retired,
     // GameStart is treated as in-progress (advances sticky directly).
     // CS→null inference now advances to "in-progress" so the gap renders
     // active-match instead of the now-deleted loading screen.
@@ -508,7 +508,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
               || phase === "Lobby")) {
         _VIEW.gameStarted = null;
       }
-      // s171.8: dodge handling — ChampSelect → Lobby/Matchmaking/etc.
+      // s171.8: dodge handling - ChampSelect → Lobby/Matchmaking/etc.
       // means user backed out before game start. Clear the sticky guard
       // so the auto-derive doesn't keep them on the now-stale CS view.
       else if (_VIEW.gameStarted === "champ-select"
@@ -517,7 +517,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         _VIEW.gameStarted = null;
       }
     }
-    // s209: ChampSelect ended but phase isn't a stable state — must be
+    // s209: ChampSelect ended but phase isn't a stable state - must be
     // the gap between CS ending and InProgress firing. Advance sticky
     // straight to "in-progress" so the gap renders active-match (the
     // loading view used to live here pre-s209).
@@ -529,14 +529,14 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // active-match panels render their own "waiting for liveclient"
     // empty state until data arrives.
     if (phase === "GameStart" && activeMatchEnabled()) return "active-match";
-    // s159: Active Match is mid-game-only. s171.2: tightened gate —
+    // s159: Active Match is mid-game-only. s171.2: tightened gate -
     // require LCU phase=InProgress explicitly. Previously fell back to
     // the legacy `state.mode in {sr,aram,arena,brawl,tft}` heuristic,
     // but that mode_key sticks at "sr" through ChampSelect for the
     // next game, which wrongly promoted active-match (with stale
     // coach data from the previous game) during champ-select.
     // The mode-key fallback now only fires when LCU phase is unknown
-    // (empty/null) — i.e. the LCU agent isn't reporting — AND mode
+    // (empty/null) - i.e. the LCU agent isn't reporting - AND mode
     // says in-game, which is the rare crash-recovery path.
     if (activeMatchEnabled() && phase === "InProgress") {
       return "active-match";
@@ -708,7 +708,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // auto-derived view is ALSO a game-state surface (lobby / champ-select
     // / active-match / last-match). Pre-s209 only the in-game surfaces
     // triggered the clear, which left operators stuck on a stale "lobby"
-    // manual when phase advanced to ChampSelect — they saw the SWITCH
+    // manual when phase advanced to ChampSelect - they saw the SWITCH
     // banner instead of the actual CS page. hashView (?#lobby etc) wins
     // since it's URL-level.
     //
@@ -730,11 +730,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // game-state surface. The s209 stale-manual clear used to bail
     // whenever ANY hash was present (`!hashView`), which froze the
     // operator on #lobby through the whole lobby→champ-select→active-
-    // match flow — the urgent-promote banner showed but it never auto-
+    // match flow - the urgent-promote banner showed but it never auto-
     // switched. Treat a stale game-state hash like a stale manual: clear
     // it AND the URL hash so the flow auto-advances. Non-game-state
     // hashes (#settings/#history/#replay/#session/#user-builds) stay
-    // sticky exactly as before — the operator pulled those up on purpose.
+    // sticky exactly as before - the operator pulled those up on purpose.
     const _hashIsStaleGameState = !!hashView && hashView !== auto
                       && (hashView === "home" || hashView === "lobby"
                           || hashView === "champ-select"
@@ -747,14 +747,14 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       manual = null;
     }
     if (manual) {
-      // Manual sticky — apply it
+      // Manual sticky - apply it
       applyView(manual);
       // Banner if auto wants to promote to an urgent target we're not on
       if (_viewIsUrgent(auto) && auto !== manual && auto !== _VIEW.bannerDismissed) {
         let urgentLead = "Game in progress";
         if (auto === "lobby" || auto === "champ-select") urgentLead = "Champ Select active";
         _viewBannerShow(auto,
-          urgentLead + " — switch to " + (VIEW_LABELS[auto] || auto) + "?");
+          urgentLead + " - switch to " + (VIEW_LABELS[auto] || auto) + "?");
       } else {
         _viewBannerHide();
       }
@@ -788,9 +788,9 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // there's no live game; in-game pills (CS/KDA/level/gold/vision/ult/game-time)
     // would just show stale values from the prior game. Hide the lot and return.
     // Exception: keep KDA visible in aftergame so the operator can review the
-    // just-finished match — but blank the in-game-only pills.
+    // just-finished match - but blank the in-game-only pills.
     // Hide in-game pills whenever the operator-facing surface isn't an
-    // in-game view. The active view is the most reliable signal —
+    // in-game view. The active view is the most reliable signal -
     // state.mode can be "sr" with empty lcu (live LCU not forwarding
     // lobby data), and lcu.phase can be undefined for the same reason,
     // but if the operator is on the lobby/home/session/etc view they
@@ -882,7 +882,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         const g = Math.round(p.gold);
         goldVal.textContent = g >= 1000 ? (g/1000).toFixed(1) + "k" : g;
         goldPill.classList.remove("hidden");
-        // CSS also — CSS/m (creep-score per minute) as tooltip.
+        // CSS also - CSS/m (creep-score per minute) as tooltip.
         if (typeof p.game_time_s === "number" && p.game_time_s > 60 && typeof p.cs === "number") {
           const cspm = (p.cs / (p.game_time_s / 60)).toFixed(1);
           goldPill.title = `gold · CS/m ${cspm}`;
@@ -901,7 +901,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     let kdaRatioClass = "";
     if (p.kda != null) {
       // KDA pill shows only the raw x/y/z. Ratio is still computed for
-      // color class (carry/even/struggle) but no longer rendered as text —
+      // color class (carry/even/struggle) but no longer rendered as text -
       // the color communicates performance band at a glance.
       const m = /^(\d+)\/(\d+)\/(\d+)$/.exec(safe(p.kda));
       if (m) {
@@ -910,7 +910,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         kdaRatioClass = r >= 3 ? "kda-carry" : r >= 1.5 ? "kda-even" : "kda-struggle";
       }
       const newText = safe(p.kda);
-      if (kdaEl.textContent !== newText && kdaEl.textContent !== "—") {
+      if (kdaEl.textContent !== newText && kdaEl.textContent !== "-") {
         // Diff prior vs new K/D/A to decide which event fired.
         const mPrev = /(\d+)\/(\d+)\/(\d+)/.exec(kdaEl.textContent);
         const mNext = /(\d+)\/(\d+)\/(\d+)/.exec(newText);
@@ -931,7 +931,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       kdaEl.classList.remove("kda-carry", "kda-even", "kda-struggle");
       if (kdaRatioClass) kdaEl.classList.add(kdaRatioClass);
     }
-    // Live win probability pill — hidden if state doesn't provide it.
+    // Live win probability pill - hidden if state doesn't provide it.
     const winPill = el("win-pill");
     const winVal = el("win-pct-val");
     if (winPill && winVal) {
@@ -954,7 +954,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     }
 
     const hpFill = el("hp-bar-fill");
-    // Mana / resource bar — hidden when champion has none (Tryndamere etc)
+    // Mana / resource bar - hidden when champion has none (Tryndamere etc)
     const mpGroup = el("mp-group"), mpBar = el("mp-bar"), mpFill = el("mp-bar-fill");
     if (mpGroup && mpBar && mpFill) {
       if (typeof p.mp_pct === "number" && p.mp_pct >= 0) {
@@ -995,7 +995,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // and positionally stable.
     const selfSpellsEl = el("self-spells");
     const selfSpellsData = (p.ally_spells || {})[p.champion];
-    // Skip the DOM build entirely when the slot is hidden by CSS — the
+    // Skip the DOM build entirely when the slot is hidden by CSS - the
     // header `display: none !important` rule kills layout/paint anyway,
     // but every coach tick was still creating + destroying spell cells
     // that never rendered. Cheap getComputedStyle check on a stable
@@ -1025,18 +1025,18 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           selfSpellsEl.appendChild(cell);
         });
       } else {
-        // D / F placeholders — matches League's default hotkey convention
+        // D / F placeholders - matches League's default hotkey convention
         // for summoner spells so the reader's mental model is consistent.
         ["D", "F"].forEach(letter => {
           const cell = document.createElement("span");
           cell.className = "self-spell placeholder";
           cell.textContent = letter;
-          cell.title = `summoner ${letter} — no data`;
+          cell.title = `summoner ${letter} - no data`;
           selfSpellsEl.appendChild(cell);
         });
       }
     }
-    // Dynamic page title — mode + champion, falls back to mode-only.
+    // Dynamic page title - mode + champion, falls back to mode-only.
     const modeTag = (state.mode || "").toUpperCase();
     const gt = p.game_time || "";
     const parts = ["RC"];
@@ -1057,7 +1057,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   function setChampionPill(name, source) {
     if (!champPill) return;
     if (!name) {
-      champPill.textContent = "—";
+      champPill.textContent = "-";
       champPill.className = "champion-pill stale";
       championPillState = { name: null, source: null };
       return;
@@ -1102,7 +1102,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       if (data.champion) {
         setChampionPill(data.champion, data.source || "fallback");
       }
-    } catch { /* silent — we'll retry */ }
+    } catch { /* silent - we'll retry */ }
   }
   setInterval(refreshChampionFallback, 15000);
   refreshChampionFallback();     // kick one immediately
@@ -1119,7 +1119,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     state.lastStateMode = env.mode || "";
     state.lastStateModeTs = Date.now();
 
-    // 2026-04-26: faster mode-switch — onState envelopes carry the source
+    // 2026-04-26: faster mode-switch - onState envelopes carry the source
     // mode in env.mode (mode_key from /api/state). Previously mode flipped
     // ONLY on the next health envelope (~5s gap from MetricsCache cadence).
     // Treating env.mode as authoritative for in-game tags shaves 3-5s off
@@ -1153,7 +1153,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     renderItemBuild(p);
     renderMinimap(p);
     // s159: feed the Active Match scaffold on every state envelope so
-    // the pane stays current when the view is active. Cheap pass — the
+    // the pane stays current when the view is active. Cheap pass - the
     // module's render is null-safe when DOM nodes are missing. lcuPhase
     // is left out of ctx for step 1; the state envelope carries the
     // per-mode coach payload only, not the full /api/state lcu block.
@@ -1164,7 +1164,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // s164: re-fire champ-select view on every state envelope when it's
     // active. lcu envelopes are one-shot from FakeSocket, so a render
     // that bailed on !CHAMPS.ready (champion-name index loads async)
-    // would never re-run otherwise. State ticks every 2s — fine.
+    // would never re-run otherwise. State ticks every 2s - fine.
     if (_VIEW.current === "champ-select") renderChampSelectView(state.latest.lcu);
     renderStats(p);
     renderGameSense(p);
@@ -1192,7 +1192,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // every mode-gated header pill (ds/augments/trigger/nudge), the mode
     // pill, and the panel titles flicker on/off every cycle, on all
     // views (shared header). /api/state.mode_key is the canonical
-    // resolver — defer the "client" downgrade to it whenever onState
+    // resolver - defer the "client" downgrade to it whenever onState
     // recently asserted a preflip/in-game mode. The staleness window
     // still lets a genuine return-to-client through once /api/state
     // stops asserting a game (its mode_key resolves to "client" too).
@@ -1228,7 +1228,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     ]) {
       const touched = state.lastTouch[panelKey];
       if (!touched) {
-        elm.textContent = "—";
+        elm.textContent = "-";
         elm.className = "staleness";
         rootElm.classList.remove("stale", "severe");
         continue;
@@ -1293,7 +1293,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       TRENDS.fetchedAt = Date.now();
       renderStreaks(data);
     } catch (e) {
-      /* network err — leave prior render in place */
+      /* network err - leave prior render in place */
     } finally {
       TRENDS.inflight = false;
     }
@@ -1316,11 +1316,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     if (!data || !data.present) {
       AD.status.textContent = "no data";
       AD.status.className = "counter";
-      AD.champ.textContent = data && data.champion ? data.champion : "—";
-      AD.baseline.textContent = "—";
-      AD.recent.textContent = "—";
-      if (AD.kda) AD.kda.textContent = "—";
-      AD.counters.textContent = "—";
+      AD.champ.textContent = data && data.champion ? data.champion : "-";
+      AD.baseline.textContent = "-";
+      AD.recent.textContent = "-";
+      if (AD.kda) AD.kda.textContent = "-";
+      AD.counters.textContent = "-";
       if (trendEl) trendEl.classList.add("hidden");
       if (adaptPanel) adaptPanel.classList.add("adapt-empty");
       return;
@@ -1329,7 +1329,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     AD.status.textContent = `${data.games_played} games`;
     AD.champ.textContent = `${data.champion}  (${data.mode})`;
     AD.baseline.textContent = `${(data.win_rate * 100).toFixed(1)}%  ${data.wins}W-${data.losses}L`;
-    // Trend arrow: recent vs baseline WR — glance read for hot/cold streak.
+    // Trend arrow: recent vs baseline WR - glance read for hot/cold streak.
     let arrow = "", cls = "";
     if (data.recent_win_rate != null && data.win_rate != null) {
       const delta = data.recent_win_rate - data.win_rate;
@@ -1339,11 +1339,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     }
     const recentPart = data.recent_win_rate != null
       ? `${(data.recent_win_rate * 100).toFixed(0)}% over last ${data.recent_sample_size}`
-      : "—";
+      : "-";
     AD.recent.textContent = recentPart + arrow;
     AD.recent.className = cls;
 
-    // Typical KDA — shown once we have ≥5 samples; otherwise placeholder.
+    // Typical KDA - shown once we have ≥5 samples; otherwise placeholder.
     if (AD.kda) {
       const kda = data.avg_kda;
       if (kda && (kda.sample || 0) >= 5) {
@@ -1358,11 +1358,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         }
         AD.kda.textContent = line;
       } else {
-        AD.kda.textContent = "—";
+        AD.kda.textContent = "-";
       }
     }
 
-    // Trend pill in the header — prefers 30d window, falls back to rolling.
+    // Trend pill in the header - prefers 30d window, falls back to rolling.
     if (trendEl) {
       trendEl.classList.remove("hidden", "up", "down", "neutral");
       const r30 = data.recency_30d;
@@ -1424,7 +1424,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   }
 
   async function fetchAdaptation(champion, modeTag, enemies) {
-    // Trending is mode-dependent only — fire regardless of champion.
+    // Trending is mode-dependent only - fire regardless of champion.
     fetchTrending(modeTag);
     if (!champion || champion === "Unknown") {
       renderAdaptation({ present: false });
@@ -1442,7 +1442,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       : "";
     const key = `${champion}|${mode}|${enemies ? enemies.join(",") : ""}`;
 
-    // Skip if same key within the last 8s — no need to hammer the endpoint.
+    // Skip if same key within the last 8s - no need to hammer the endpoint.
     if (key === ADAPT.lastKey && (Date.now() - ADAPT.fetchedAt) < 8000) return;
     if (ADAPT.inflight) return;
     ADAPT.inflight = true;
@@ -1484,19 +1484,19 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       .then((d) => {
         if (!d) return;
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-        set("session-window", d.window_label || "—");
+        set("session-window", d.window_label || "-");
         set("session-games", d.games || "0");
         const sec = (d.time_played_s | 0);
         const hh = Math.floor(sec / 3600), mm = Math.floor((sec % 3600) / 60);
         set("session-time", hh > 0 ? `${hh}h ${mm}m` : `${mm}m`);
-        set("session-start", d.started_at || "—");
-        set("session-last", d.last_at || "—");
-        set("session-kda", d.total_kda || "—");
-        set("session-avg", d.avg_kda != null ? d.avg_kda.toFixed(2) : "—");
+        set("session-start", d.started_at || "-");
+        set("session-last", d.last_at || "-");
+        set("session-kda", d.total_kda || "-");
+        set("session-avg", d.avg_kda != null ? d.avg_kda.toFixed(2) : "-");
         set("session-grades",
-          d.grades ? Object.entries(d.grades).map(([g,n]) => `${g}×${n}`).join(" ") : "—");
+          d.grades ? Object.entries(d.grades).map(([g,n]) => `${g}×${n}`).join(" ") : "-");
         set("session-modes",
-          d.modes ? Object.entries(d.modes).map(([m,n]) => `${m} ${n}`).join(" · ") : "—");
+          d.modes ? Object.entries(d.modes).map(([m,n]) => `${m} ${n}`).join(" · ") : "-");
         const champUl = document.getElementById("session-champs");
         if (champUl) {
           champUl.innerHTML = "";
@@ -1505,7 +1505,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
             li.className = "history-match-row";
             li.innerHTML = `<span style="flex:1">${c.champion}</span>` +
               `<span class="dim">${c.games}g</span>` +
-              `<span style="margin-left:10px">${c.kda || "—"}</span>`;
+              `<span style="margin-left:10px">${c.kda || "-"}</span>`;
             champUl.appendChild(li);
           });
           if (!champUl.children.length) champUl.innerHTML = '<li class="home-empty">no champs in session</li>';
@@ -1516,7 +1516,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           (d.matches || []).forEach((m) => {
             const li = document.createElement("li");
             li.className = "history-match-row";
-            const grade = String(m.grade || "—")[0];
+            const grade = String(m.grade || "-")[0];
             li.innerHTML = `<span class="home-recent-grade ${grade}">${grade}</span>` +
               `<span style="flex:1; margin-left:8px">${m.champion} · ${m.mode}</span>` +
               `<span class="dim">${m.kda}</span>` +
@@ -1562,9 +1562,9 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         }
         // Season stats panel
         const ss = d.season_stats || {};
-        set("history-season-total", ss.total != null ? ss.total : "—");
-        set("history-season-kda",   ss.avg_kda != null ? ss.avg_kda.toFixed(2) : "—");
-        set("history-season-fav",   ss.favorite || "—");
+        set("history-season-total", ss.total != null ? ss.total : "-");
+        set("history-season-kda",   ss.avg_kda != null ? ss.avg_kda.toFixed(2) : "-");
+        set("history-season-fav",   ss.favorite || "-");
 
         // s218 v7: deep-link focus by champion (clicked from Tonight's
         // Pick on Home). Find the most recent session containing the
@@ -1653,7 +1653,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       // (sessionStorage "rc-history-focus-ts") can scroll + highlight
       // the matching row after the session is selected.
       if (m.timestamp) li.dataset.matchTs = m.timestamp;
-      const grade = String(m.grade || "—")[0];
+      const grade = String(m.grade || "-")[0];
       li.innerHTML = `<span class="home-recent-grade ${grade}">${grade}</span>` +
         `<span style="flex:1; margin-left:8px">${m.champion} · ${m.mode}</span>` +
         `<span class="dim">${m.kda}</span>` +
@@ -1714,7 +1714,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     if (m) m.addEventListener("change", _loadoutsFetchAndRender);
   }
 
-  // ── User Builds view (Phase 8 step 6 — 2026-05-04) ───────────────
+  // ── User Builds view (Phase 8 step 6 - 2026-05-04) ───────────────
   // CRUD over data/daemon_slayer/user_builds.json via
   // /api/sr-draft/user-builds (action-keyed POST: list/add/update/delete).
   // Builds saved here APPEND to the engine-generated SR-draft profiles
@@ -1752,7 +1752,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     });
   }
   function _ubFormatSpells(pair) {
-    if (!Array.isArray(pair) || pair.length !== 2) return "—";
+    if (!Array.isArray(pair) || pair.length !== 2) return "-";
     const NAMES = {
       1: "Cleanse", 3: "Exhaust", 4: "Flash", 6: "Ghost", 7: "Heal",
       11: "Smite", 12: "Teleport", 13: "Clarity", 14: "Ignite",
@@ -1780,7 +1780,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     if (!champ) {
       list.innerHTML = '<li class="home-empty">pick a champion above ↑</li>';
       if (lbl) lbl.textContent = "No champion selected";
-      if (cnt) cnt.textContent = "—";
+      if (cnt) cnt.textContent = "-";
       if (hint) hint.textContent = "Pick a champion to view their saved builds.";
       _UB.builds = [];
       return;
@@ -1796,7 +1796,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         if (cnt) cnt.textContent = `${builds.length} build${builds.length === 1 ? "" : "s"}`;
         list.innerHTML = "";
         if (!builds.length) {
-          list.innerHTML = '<li class="home-empty">no builds yet — click + Add build above.</li>';
+          list.innerHTML = '<li class="home-empty">no builds yet - click + Add build above.</li>';
           return;
         }
         for (const b of builds) {
@@ -1964,7 +1964,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     if (_UB.champion) {
       try { localStorage.setItem("rc-ub-last-champ", _UB.champion); } catch (_) {}
     }
-    // Close any open form when the champion changes — editingId is
+    // Close any open form when the champion changes - editingId is
     // scoped to the previous champion's builds.
     const pane = _ubEl("ub-form-pane");
     if (pane) pane.hidden = true;
@@ -2031,7 +2031,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       const card = document.createElement("div");
       card.className = "home-recent-card";
       card.dataset.matchId = m.match_id || "";
-      const gradeRaw = String(m.grade || "—").toUpperCase()[0] || "—";
+      const gradeRaw = String(m.grade || "-").toUpperCase()[0] || "-";
       const tier = (gradeRaw === "S" || gradeRaw === "A") ? "tier-good"
                  : (gradeRaw === "D" || gradeRaw === "F") ? "tier-bad"
                  : "tier-mid";
@@ -2040,14 +2040,14 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         ? `${Math.floor(m.duration_s / 60)} Minutes`
         : "";
       const tsShort = _to12((m.timestamp || "").split(" ")[1]?.slice(0,5) || "");
-      // s218: mode subtype hook — when backend supplies mode_subtype
+      // s218: mode subtype hook - when backend supplies mode_subtype
       // (e.g. "Classic" / "Mayhem" for ARAM 450/920), join it to the
       // mode label. Pure passthrough for now since match_history.db
       // doesn't capture queue_id yet. TODO(s218-dummy-data): drop the
       // mode_subtype branch once ingest stops returning null.
       const modeLabel = (m.mode_subtype && m.mode_subtype !== "")
         ? `${m.mode} ${m.mode_subtype}` : (m.mode || "");
-      // CS row chip — DB already carries cs + cs_per_min per match.
+      // CS row chip - DB already carries cs + cs_per_min per match.
       const csChip = (m.cs != null && m.cs > 0)
         ? `${m.cs} CS · ${(m.cs_per_min || 0).toFixed(1)}/min`
         : "";
@@ -2079,10 +2079,10 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       main.append(champ, meta);
       // End-of-match build strip. s219 LCU-ingest supplies items[] for
       // ingested matches; matches predating the pipeline send [] and
-      // render as empty hatched slots (graceful — never fabricated).
+      // render as empty hatched slots (graceful - never fabricated).
       // Icons resolve from the local DDragon mirror (same source as the
       // champion portrait above), CDN fallback when the mirror lags the
-      // live patch — mirrors the active_match / last_match convention.
+      // live patch - mirrors the active_match / last_match convention.
       const itemStrip = document.createElement("div");
       itemStrip.className = "home-recent-items";
       const slotCount = (m.items && m.items.length) ? m.items.length : 6;
@@ -2112,7 +2112,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       }
       const kda = document.createElement("span");
       kda.className = "home-recent-kda";
-      kda.textContent = m.kda || "—";
+      kda.textContent = m.kda || "-";
       const grade = document.createElement("span");
       grade.className = `home-recent-grade-badge ${gradeRaw}`;
       grade.textContent = gradeRaw;
@@ -2123,7 +2123,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       // can auto-select the matching session + scroll the match row
       // into view + highlight it briefly. Was previously gated on
       // m.match_id (rewind_history.db ids) which the local match_history
-      // capture doesn't populate — the click handler never fired.
+      // capture doesn't populate - the click handler never fired.
       if (m.timestamp) {
         card.style.cursor = "pointer";
         card.addEventListener("click", () => {
@@ -2153,8 +2153,8 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     for (const r of rows) {
       const row = document.createElement("div");
       row.className = "home-week-bar-row";
-      const gradeRaw = String(r.best_grade || "—").toUpperCase()[0] || "—";
-      // s218: hue tint by best grade — subtle spectrum from green (S/A)
+      const gradeRaw = String(r.best_grade || "-").toUpperCase()[0] || "-";
+      // s218: hue tint by best grade - subtle spectrum from green (S/A)
       // through neutral (B/C) to red (D/F). Applied via class so the
       // tint colors live in CSS variables.
       row.classList.add(`grade-tint-${gradeRaw}`);
@@ -2170,19 +2170,19 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       const gn = r.games || 0;
       games.textContent = `${gn} game${gn === 1 ? "" : "s"}`;
 
-      // s218: KDA cell now shows "1.8  22/10/18" — average + raw totals
+      // s218: KDA cell now shows "1.8  22/10/18" - average + raw totals
       // pulled from per-champion aggregation. Falls back to avg only if
       // the backend hasn't supplied breakdown fields (pre-s218).
       const kda = document.createElement("span");
       kda.className = "home-week-bar-kda";
-      const avgStr = (r.avg_kda != null) ? r.avg_kda.toFixed(1) : "—";
+      const avgStr = (r.avg_kda != null) ? r.avg_kda.toFixed(1) : "-";
       if (r.kills != null && r.deaths != null && r.assists != null) {
         kda.innerHTML = `<b>${avgStr}</b> <span class="home-week-bar-kda-raw">${r.kills}/${r.deaths}/${r.assists}</span>`;
       } else {
         kda.textContent = avgStr;
       }
 
-      // s218: CS chip — AVERAGE CS per game + CS/min average over the
+      // s218: CS chip - AVERAGE CS per game + CS/min average over the
       // week's games on this champion. Operator clarified average, not
       // total. Hidden when zero (Arena / Brawl don't track CS the same
       // way and many sessions surface 0).
@@ -2198,7 +2198,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       const grade = document.createElement("span");
       grade.className = `home-recent-grade-badge ${gradeRaw}`;
       grade.textContent = gradeRaw;
-      // No inline sizing — the .home-week-bar-row .home-recent-grade-badge
+      // No inline sizing - the .home-week-bar-row .home-recent-grade-badge
       // selector in CSS handles the inline-row variant (28x28 / 13px).
       row.append(name, games, kda, cs, grade);
       host.appendChild(row);
@@ -2251,10 +2251,10 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         headline.textContent = "Ready when you are";
         headline.classList.add("flat");
       } else {
-        const avgStr = avg != null ? avg.toFixed(2) : "—";
+        const avgStr = avg != null ? avg.toFixed(2) : "-";
         headline.textContent = `${games} game${games===1?"":"s"} · ${avgStr} avg KDA`;
         // s218 v7: always .flat. The prior absolute-threshold classifier
-        // (>=2.5 up / <1.5 down) had no comparison baseline — a single
+        // (>=2.5 up / <1.5 down) had no comparison baseline - a single
         // 1.27-KDA day rendered as "down/red" even though there was
         // nothing to compare against. Real up/down should wait until
         // a yesterday/avg-of-last-N baseline is wired.
@@ -2263,28 +2263,28 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     }
 
     // Chips
-    set("home-hero-kda", t && t.total_kda ? t.total_kda : "—");
-    set("home-hero-avg", avg != null ? avg.toFixed(2) : "—");
+    set("home-hero-kda", t && t.total_kda ? t.total_kda : "-");
+    set("home-hero-avg", avg != null ? avg.toFixed(2) : "-");
     const gradeStr = t && t.grades
       ? Object.entries(t.grades).map(([g,n]) => `${g}×${n}`).join(" ")
-      : "—";
-    set("home-hero-grades", gradeStr || "—");
+      : "-";
+    set("home-hero-grades", gradeStr || "-");
     const modeStr = t && t.modes
       ? Object.entries(t.modes).map(([m,n]) => `${m} ${n}`).join(" · ")
-      : "—";
-    set("home-hero-modes", modeStr || "—");
+      : "-";
+    set("home-hero-modes", modeStr || "-");
 
     // Legacy IDs (set if present so any external reader still works).
     set("home-today-count", games > 0 ? `${games} game${games===1?"":"s"}` : "");
-    set("home-today-kda",   t && t.total_kda ? t.total_kda : "—");
-    set("home-today-avg",   avg != null ? avg.toFixed(2) : "—");
-    set("home-today-grades", gradeStr || "—");
-    set("home-today-modes",  modeStr || "—");
+    set("home-today-kda",   t && t.total_kda ? t.total_kda : "-");
+    set("home-today-avg",   avg != null ? avg.toFixed(2) : "-");
+    set("home-today-grades", gradeStr || "-");
+    set("home-today-modes",  modeStr || "-");
   }
   function _homeRenderServices(rows) {
     // V1 redesign 2026-04-29: render as a thin strip of compact pills
     // (dot + name) instead of a card-sized bulleted list. Detail string
-    // moves to the title attribute (hover tooltip) — services are a
+    // moves to the title attribute (hover tooltip) - services are a
     // glance check, not browsable content. Container changed from <ul>
     // to <div class="home-services-strip"> in the new HTML.
     const strip = document.getElementById("home-services-list");
@@ -2345,7 +2345,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       const svg = chip.querySelector(".home-hero-spark");
       if (!svg) continue;
       // Set the chip's headline value to the latest non-null trend point
-      // (CS / GOLD only — KDA chip val stays driven by _homeRenderToday
+      // (CS / GOLD only - KDA chip val stays driven by _homeRenderToday
       // which uses today's KDA, more relevant than 14d-latest).
       const latest = [...points].reverse().find(p => p && p.value != null);
       if (latest != null && metric !== "kda") {
@@ -2434,7 +2434,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       if (champ) {
         champ.textContent = pick.champion;
         // s218 v7: clicking the champion name jumps to History filtered
-        // by this champion. Wired idempotently — re-renders replace the
+        // by this champion. Wired idempotently - re-renders replace the
         // listener via cloneNode-and-replace to avoid stacking handlers.
         const fresh = champ.cloneNode(true);
         fresh.addEventListener("click", () => {
@@ -2492,7 +2492,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   }
   // Champion motif on the hero bg. Picks the most-played champion from
   // this_week (or the most-recent match as a fallback) and sets the
-  // local DDragon icon as the hero background. Local-only — no CDN
+  // local DDragon icon as the hero background. Local-only - no CDN
   // round-trip; falls back silently if no champion data is available.
   function _homeUpdateHeroMotif(data) {
     const bg = document.getElementById("home-hero-bg");
@@ -2515,7 +2515,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   // .has-data so CSS recolors the button when the count/label is
   // non-default. Badge tooltip carries the verbose text.
   function _homeMirrorAlerts() {
-    // s218 v7: populates Section 3 of Tonight's Pick — the Streak +
+    // s218 v7: populates Section 3 of Tonight's Pick - the Streak +
     // Advisories sub-header rows. Was previously mirroring badge text
     // into the (now-removed) advisory + digest pip-buttons. Streak
     // reads from cached _HOME.streaks (from /api/home/summary);
@@ -2540,7 +2540,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       } else if (pd >= 2) {
         streakValEl.textContent = `${pd}-day play streak`;
       } else {
-        streakValEl.textContent = "—";
+        streakValEl.textContent = "-";
       }
     }
   }
@@ -2551,7 +2551,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // un-hid based on phase regardless of active view, which caused it
     // to leak into Lobby / Dev / etc when handleLcuEnvelope started
     // actually firing renderHomePanel after the champ_select.js
-    // ReferenceError fix. Home-overlay is the home-view surface — only
+    // ReferenceError fix. Home-overlay is the home-view surface - only
     // show when the home view is active.
     const onHomeView = document.body.dataset.view === "home";
     if (!onHomeView) {
@@ -2618,7 +2618,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         if (!t) return;
         const isFindMatch = tile.dataset.flow === "find-match-launch";
         // s218 v5: Find Match opens its own Home-unique picker instead
-        // of routing — operator picks a queue first, then we fire the
+        // of routing - operator picks a queue first, then we fire the
         // LCU change_queue_type cmd and only THEN route to lobby. The
         // lobby view's #lv-mode-menu is left alone; the Home picker is
         // a standalone copy mirrored from the same queue list.
@@ -2646,7 +2646,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           // s234 (#89): poll the LCU result + surface failures via the
           // lobby-view error channel (we route there next). Previously the
           // result was swallowed (`() => {}` / fire-and-forget), so Practice
-          // Tool / ARAM Mayhem / Arena failed silently — the operator had no
+          // Tool / ARAM Mayhem / Arena failed silently - the operator had no
           // signal to capture. _lvQueueChangeError is module-scope.
           if (special === "practice") {
             try {
@@ -2717,7 +2717,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   // here OR auto-mode resolves to lobby.
   const _LV = {
     wired: false,
-    activeSlot: null,    // "primary" | "secondary" | null — which lane-pref slot the popup is anchored to
+    activeSlot: null,    // "primary" | "secondary" | null - which lane-pref slot the popup is anchored to
     prefPrimary:   "UNSELECTED",
     prefSecondary: "UNSELECTED",
     needsPick:     false,    // true when primary just changed FROM fill → role; secondary needs re-pick
@@ -2731,7 +2731,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   // actual League captain-icon (CommunityDragon mirror, downloaded
   // to /icons/lobby/captain-icon-crown.png) so the Party panel
   // matches the in-client lobby treatment exactly. Copy swapped to
-  // Phosphor `copy-simple` SVG — thin stroke matches the action
+  // Phosphor `copy-simple` SVG - thin stroke matches the action
   // button border-soft treatment, currentColor inherits hover.
   const _LV_ICON_CROWN = '<img class="lv-crown-img" src="/icons/lobby/captain-icon-crown.png" alt="Party leader" />';
   const _LV_ICON_COPY = (
@@ -2745,7 +2745,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   const LANE_LABELS = {
     TOP: "TOP", JUNGLE: "JUNGLE", MIDDLE: "MIDDLE",
     BOTTOM: "BOTTOM", UTILITY: "SUPPORT", FILL: "FILL",
-    UNSELECTED: "—",
+    UNSELECTED: "-",
   };
   const LANE_ICONS = {
     TOP: "/icons/positions/top.png",
@@ -2755,10 +2755,10 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     UTILITY: "/icons/positions/utility.png",
     FILL: "/icons/positions/fill.png",
   };
-  // SR map queue ids — controls strip is SR-only. ARAM (450/920),
+  // SR map queue ids - controls strip is SR-only. ARAM (450/920),
   // Arena (1700), Brawl (1300/900/1900/1400) hide the strip entirely.
-  // s162 (2026-05-10): SR map queue ids — controls strip is SR-only.
-  // Includes Swiftplay (480) — added 2026-05-10 from operator's live
+  // s162 (2026-05-10): SR map queue ids - controls strip is SR-only.
+  // Includes Swiftplay (480) - added 2026-05-10 from operator's live
   // mode list. Brawl modes (NEXUSBLITZ/etc) removed since Brawl is no
   // longer a selectable queue per Riot. ARAM (450/920), Arena (1700)
   // hide the strip entirely.
@@ -2779,7 +2779,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     return String(v);
   }
   function _fmtPct(num, den) {
-    if (!den) return "—";
+    if (!den) return "-";
     return Math.round((num / den) * 100) + "%";
   }
   function _mainsTabState() {
@@ -2791,7 +2791,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     return partySize > 1 ? "party" : "you";
   }
   // s171: server-backed Mains cache. The agent doesn't forward
-  // main_champs in the LCU envelope — it lives in match_history.db on
+  // main_champs in the LCU envelope - it lives in match_history.db on
   // Legion, joined with live LCU mastery. /api/mains is the resolver.
   // Cache TTL 60s; per-puuid keyed so party-tab queries can be added
   // later without invalidating the operator's own cache.
@@ -2820,7 +2820,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       });
   }
   function _renderMains() {
-    // s209: bail until the champion-name index has loaded — otherwise
+    // s209: bail until the champion-name index has loaded - otherwise
     // `_resolveChampId(c.name)` returns null and the fallback URL
     // `/icons/champions/<name>.png` 404s for any name with spaces
     // ("Lee Sin", "Master Yi", "Miss Fortune"). The CHAMPS-ready event
@@ -2856,7 +2856,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       } else {
         _renderMainChamps(null);  // shows placeholder
       }
-      // Always fire a hydrate — re-renders on land.
+      // Always fire a hydrate - re-renders on land.
       _mainsFetch("", (data) => { if (_mainsTabState() === "you") _renderMainChamps(data); });
     } else {
       _renderPartyMains(lcu.lobby || null);
@@ -2865,11 +2865,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   // s162 v9: shared helpers for the YOUR MAINS + PARTY MAINS rows so
   // both panels render the same Overall + Averaged structure.
   function _kdaScore(totalKda) {
-    // total_kda string is "K/D/A" — return (K + A) / D as 2-decimal
-    // string. D=0 returns "Perfect"; missing/malformed returns "—".
-    if (!totalKda || typeof totalKda !== "string") return "—";
+    // total_kda string is "K/D/A" - return (K + A) / D as 2-decimal
+    // string. D=0 returns "Perfect"; missing/malformed returns "-".
+    if (!totalKda || typeof totalKda !== "string") return "-";
     const parts = totalKda.split("/").map((s) => parseFloat(s));
-    if (parts.length !== 3 || parts.some((n) => isNaN(n))) return "—";
+    if (parts.length !== 3 || parts.some((n) => isNaN(n))) return "-";
     const [k, d, a] = parts;
     if (d === 0) return "Perfect";
     return ((k + a) / d).toFixed(2);
@@ -2884,14 +2884,14 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   function _mcOverallHtml(ov) {
     const wins = ov.wins | 0;
     const losses = ov.losses | 0;
-    const totalKda = ov.total_kda || "—";
+    const totalKda = ov.total_kda || "-";
     const split = _splitKdaForRender(totalKda);
     const kdaLine = split
       ? `${split.k}/<span class="lv-mc-deaths">${split.d}</span>/${split.a}`
-      : (totalKda || "—");
+      : (totalKda || "-");
     const kdaScore = _kdaScore(totalKda);
     // s162 v10: 2-col × 2-row grid layout per operator:
-    //   [N Games]   [K/D/A — D in red]
+    //   [N Games]   [K/D/A - D in red]
     //   [W - L]     [N.NN KDA]
     return (
       '<span class="lv-mc-overall">' +
@@ -2918,7 +2918,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
               ((modes.arena && modes.arena.games | 0) || 0);
     }
     if (!total) {
-      return '<span class="lv-mc-games">—</span>';
+      return '<span class="lv-mc-games">-</span>';
     }
     if (!modes) {
       return '<span class="lv-mc-games">' + total + ' Games</span>';
@@ -2926,7 +2926,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     const cell = (g, w) => {
       const games = g | 0;
       const wins = w | 0;
-      const wr = games > 0 ? Math.round((wins / games) * 100) + "%" : "—";
+      const wr = games > 0 ? Math.round((wins / games) * 100) + "%" : "-";
       return { games, wr };
     };
     const r = cell((modes.rift && modes.rift.games)  || 0, (modes.rift && modes.rift.wins)  || 0);
@@ -2956,11 +2956,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   // s162 v10: 5-tier KP% color bands. Numbers reflect what aggregator B /
   // aggregator A / aggregator D consensus on what's a "carry-engaged" vs
   // "passive" kill-participation rate at solo-queue ranked play.
-  //   ≥70%  S — elite; almost always a carry/jungler stat
-  //   60-69 A — strong; reliable on objectives + skirmishes
-  //   50-59 B — average for laners
-  //   40-49 C — fades; missing skirmishes / over-farm
-  //   <40   D — passive; rarely shows up to fights
+  //   ≥70%  S - elite; almost always a carry/jungler stat
+  //   60-69 A - strong; reliable on objectives + skirmishes
+  //   50-59 B - average for laners
+  //   40-49 C - fades; missing skirmishes / over-farm
+  //   <40   D - passive; rarely shows up to fights
   function _kpTierClass(kp) {
     if (kp == null || isNaN(kp)) return "";
     if (kp >= 70) return "lv-mc-kp-s";
@@ -2969,7 +2969,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     if (kp >= 40) return "lv-mc-kp-c";
     return "lv-mc-kp-d";
   }
-  // s162 v17: AVG 5 grade tier classes — letter color coding for the
+  // s162 v17: AVG 5 grade tier classes - letter color coding for the
   // 5-match rating average. Same neo-fintech palette as the KP bands
   // but tighter: S = gold (top), A = good (great), B = info (good),
   // C = clock (average), D = bad (poor). Drives a single .lv-mc-avg5-{cls}
@@ -2985,13 +2985,13 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   }
   function _mcAveragedHtml(av) {
     const kp     = (av.kp     != null) ? Math.round(Number(av.kp)) : null;
-    const cs     = (av.cs     != null) ? av.cs : "—";
-    const vis    = (av.vision != null) ? av.vision : "—";
-    const dmg    = (av.dmg    != null) ? _fmtK(av.dmg) : "—";
-    const cspm   = (av.cs_per_min != null) ? Number(av.cs_per_min).toFixed(1) : "—";
-    const kpVal  = kp != null ? kp + "%" : "—";
+    const cs     = (av.cs     != null) ? av.cs : "-";
+    const vis    = (av.vision != null) ? av.vision : "-";
+    const dmg    = (av.dmg    != null) ? _fmtK(av.dmg) : "-";
+    const cspm   = (av.cs_per_min != null) ? Number(av.cs_per_min).toFixed(1) : "-";
+    const kpVal  = kp != null ? kp + "%" : "-";
     const kpCls  = _kpTierClass(kp);
-    const avg5   = av.avg5 || "—";
+    const avg5   = av.avg5 || "-";
     const avg5Cls = _avg5RankClass(avg5);
     // s162 v17: 3-col × 2-row grid (Gold dropped, Vision moved up):
     //   [KP%]    [Vision]  [CS]
@@ -3066,20 +3066,20 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
                   'title="Copy summary for League chat" aria-label="Copy">' + _LV_ICON_COPY + '</button>' +
         '</span>' +
         '<span class="lv-mc-mastery">' +
-          '<span class="lv-mc-summoner-name">' + (selfName || "—") + '</span>' +
-          '<b class="lv-mc-mastery-level">Mastery ' + (c.mastery_level != null ? c.mastery_level : "—") + '</b>' +
+          '<span class="lv-mc-summoner-name">' + (selfName || "-") + '</span>' +
+          '<b class="lv-mc-mastery-level">Mastery ' + (c.mastery_level != null ? c.mastery_level : "-") + '</b>' +
           '<span class="lv-mc-mastery-points">' + _fmtMasteryPoints(c.mastery_points) + '</span>' +
         '</span>' +
         '<span class="lv-mc-recent">' +
-          '<span class="lv-mc-result lv-mc-result-' + resultLow + '">' + (result || "—") + '</span>' +
-          '<span class="lv-mc-kda">' + (lm.kda || "—") + '</span>' +
+          '<span class="lv-mc-result lv-mc-result-' + resultLow + '">' + (result || "-") + '</span>' +
+          '<span class="lv-mc-kda">' + (lm.kda || "-") + '</span>' +
         '</span>' +
         overallHtml +
         averagedHtml
       );
       list.appendChild(li);
     });
-    // Wire copy buttons (lazy — re-attached on every render)
+    // Wire copy buttons (lazy - re-attached on every render)
     list.querySelectorAll(".lv-mc-copy").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -3092,12 +3092,12 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         const wr = (games > 0) ? Math.round((wins / games) * 100) : null;
         const points = _fmtMasteryPoints(c.mastery_points);
         // s162 v5 format: "Summoner - Champion - Mastery N : ## K points · ## Games All-Time · ##% WR"
-        const txt = `${selfName || "—"} - ${c.name} - Mastery ${c.mastery_level || "?"} : ${points} · ${games} Games All-Time${wr != null ? " · " + wr + "% WR" : ""}`;
+        const txt = `${selfName || "-"} - ${c.name} - Mastery ${c.mastery_level || "?"} : ${points} · ${games} Games All-Time${wr != null ? " · " + wr + "% WR" : ""}`;
         try {
           navigator.clipboard.writeText(txt);
           btn.classList.add("is-copied");
           setTimeout(() => btn.classList.remove("is-copied"), 1200);
-        } catch (_) { /* ignore — older browsers without clipboard API */ }
+        } catch (_) { /* ignore - older browsers without clipboard API */ }
       });
     });
   }
@@ -3110,7 +3110,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   // fixtures used JGL / SUPP. This collapses every variant to the
   // 3-letter operator label.
   function _roleShort(role) {
-    if (!role) return "—";
+    if (!role) return "-";
     const r = String(role).toUpperCase();
     if (r === "JUNGLE" || r === "JGL" || r === "JG" || r === "JUNGLER" || r === "JNG") return "JNG";
     if (r === "UTILITY" || r === "SUPPORT" || r === "SUPP" || r === "SUP") return "SUP";
@@ -3122,7 +3122,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     return m.riot_id || (m.game_name && m.tag_line ? `${m.game_name}#${m.tag_line}` : (m.summoner_name || "Unknown"));
   }
   function _resolvePartyMember(m) {
-    // s162 v4: party panel display drops the #tag — operator wants just
+    // s162 v4: party panel display drops the #tag - operator wants just
     // the game name. Copy actions still write the full riot_id via
     // _fullPartyMember.
     return _fullPartyMember(m).split("#")[0];
@@ -3147,9 +3147,9 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   // section-head row so they sit EXACTLY above the centers of their
   // respective panels. CSS calc() math drifts when the section-head's
   // measured width differs from the lobby-view-grid's measured width
-  // (browser rounding, scrollbar reservations, etc.) — so anchor to
+  // (browser rounding, scrollbar reservations, etc.) - so anchor to
   // the actual rendered DOMRects.
-  // s162 v4: cross-panel selection sync — clicking a Party row OR a
+  // s162 v4: cross-panel selection sync - clicking a Party row OR a
   // PARTY MAINS card highlights both with white border. Document click
   // outside clears.
   function _selectPartyMember(idx) {
@@ -3187,7 +3187,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   }
 
   // s162 v13: SR draft party caps at 5 members. The PARTY panel
-  // always renders 5 row slots — filled slots show real members,
+  // always renders 5 row slots - filled slots show real members,
   // unfilled slots show dashed placeholder rows. When a member
   // joins or leaves the party, the LCU agent re-pushes the lobby
   // envelope; this renderer auto-populates / depopulates accordingly.
@@ -3198,7 +3198,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     const iAmLeader = !!(lobby && lobby.is_leader);
     if (!ul) return;
     if (!members.length) {
-      ul.innerHTML = '<li class="home-empty">no members visible — Game-PC LCU agent needs to forward lcu.lobby.members[]</li>';
+      ul.innerHTML = '<li class="home-empty">no members visible - Game-PC LCU agent needs to forward lcu.lobby.members[]</li>';
       return;
     }
     const isSolo = members.length === 1;
@@ -3211,7 +3211,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       if (e.riot_id) top8Keys.add(e.riot_id);
       if (e.summoner_name) top8Keys.add(e.summoner_name);
     });
-    // s162 v15: Primary-lane conflict detection — pre-pass before the
+    // s162 v15: Primary-lane conflict detection - pre-pass before the
     // render loop. For each pair of members (incl. self) where their
     // resolved Primary == another's Primary AND it's not FILL/UNSELECTED,
     // mark BOTH as conflicting. Self-involvement → 'self' (red); two
@@ -3261,7 +3261,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         const phLi = document.createElement("li");
         phLi.className = "lobby-member-row is-placeholder";
         phLi.innerHTML = (
-          '<span class="lv-party-section-name"><span class="lv-party-empty">—</span></span>' +
+          '<span class="lv-party-section-name"><span class="lv-party-empty">-</span></span>' +
           '<span class="lv-party-section-prefs"></span>' +
           '<span class="lv-party-section-peak"></span>' +
           '<span class="lv-party-section-rank"></span>' +
@@ -3276,7 +3276,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         ul.appendChild(phLi);
         continue;
       }
-      // Real-member branch — same logic that used to live inside the
+      // Real-member branch - same logic that used to live inside the
       // members.forEach((m) => { ... }) callback below.
       ((m) => {
       const li = document.createElement("li");
@@ -3324,7 +3324,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           ? (conflictKind === "self" ? " is-conflict-self" : " is-conflict-other")
           : "";
         if (!lane || lane === "UNSELECTED") {
-          return `<span class="lv-party-pref-empty${conflictCls}" title="${slot} pref — none set" data-tt="${slot} pref — none set">—</span>`;
+          return `<span class="lv-party-pref-empty${conflictCls}" title="${slot} pref - none set" data-tt="${slot} pref - none set">-</span>`;
         }
         const url  = LANE_ICONS[lane] || "";
         const lbl  = LANE_LABELS[lane] || lane;
@@ -3337,7 +3337,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         '<span class="lv-party-section-prefs">' +
           prefIcon("Primary", pPrimary, true) + prefIcon("Secondary", pSecondary, false) +
         '</span>';
-      // Section 2: current rank / div / LP — shown in BOTH solo and
+      // Section 2: current rank / div / LP - shown in BOTH solo and
       // party 2+. Falls back to "LVL NNN : Unranked" when the member
       // has no ranked tier (s162 v10: was "Level NNN").
       let section2;
@@ -3350,15 +3350,15 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
             `<span class="lobby-member-pip lobby-member-pip-rank ${rankCls}">${m.rank.tier}${div}${lp}</span>` +
           '</span>';
       } else {
-        const lvl = (m.summoner_level != null) ? m.summoner_level : (m.level != null ? m.level : "—");
+        const lvl = (m.summoner_level != null) ? m.summoner_level : (m.level != null ? m.level : "-");
         section2 = `<span class="lv-party-section-rank"><span class="lv-party-empty">LVL ${lvl} : Unranked</span></span>`;
       }
-      // s162 v4: Section 3 — preferred role pip (was peak rank). Based
+      // s162 v4: Section 3 - preferred role pip (was peak rank). Based
       // on match history; LCU agent + rewind_history.db will populate
       // m.preferred_role in Phase B.
       // s162 v15: self row also renders its DB/history-assessed role
       // pip (m.assessed_role || m.preferred_role for self). When the
-      // user is solo we still render the pip — empty becomes "—".
+      // user is solo we still render the pip - empty becomes "-".
       const roleVal = m.is_self
         ? (m.assessed_role || m.preferred_role || null)
         : (m.preferred_role || null);
@@ -3369,7 +3369,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
             `<span class="lobby-member-pip lobby-member-pip-role">${_roleShort(roleVal)}</span>` +
           '</span>';
       } else {
-        section3 = '<span class="lv-party-section-peak"><span class="lv-party-empty">—</span></span>';
+        section3 = '<span class="lv-party-section-peak"><span class="lv-party-empty">-</span></span>';
       }
       // s162 v6: 4 always-present action slots per row so widths line
       // up across all party rows regardless of role permissions.
@@ -3378,11 +3378,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       // the same column as the promote icon on every other row.
       const fullIgn = _fullPartyMember(m);
       const actions = [];
-      // Slot 1 — spacer (reserved column for future left-side action)
+      // Slot 1 - spacer (reserved column for future left-side action)
       actions.push('<span class="lv-member-action-spacer" aria-hidden="true"></span>');
-      // Slot 2 — copy (always present)
+      // Slot 2 - copy (always present)
       actions.push(`<button type="button" class="lv-member-action" data-action="copy" data-ign="${fullIgn}" title="Copy username" aria-label="Copy username">${_LV_ICON_COPY}</button>`);
-      // Slot 3 — leader crown OR promote OR spacer
+      // Slot 3 - leader crown OR promote OR spacer
       if (m.is_leader) {
         actions.push(`<span class="lv-member-action lv-member-leader-crown" title="Party leader" aria-label="Party leader">${_LV_ICON_CROWN}</span>`);
       } else if (!isSolo && iAmLeader && !m.is_self) {
@@ -3390,14 +3390,14 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       } else {
         actions.push('<span class="lv-member-action-spacer" aria-hidden="true"></span>');
       }
-      // Slot 4 — kick / spacer
+      // Slot 4 - kick / spacer
       if (!isSolo && iAmLeader && !m.is_self && !m.is_leader) {
         actions.push(`<button type="button" class="lv-member-action" data-action="kick" data-ign="${fullIgn}" title="Kick from party" aria-label="Kick">✕</button>`);
       } else {
         actions.push('<span class="lv-member-action-spacer" aria-hidden="true"></span>');
       }
       const section4 = `<span class="lobby-member-actions">${actions.join("")}</span>`;
-      // s162 v5: 6-col layout — name (1) | icon-spacer (2) | role (3)
+      // s162 v5: 6-col layout - name (1) | icon-spacer (2) | role (3)
       // | rank (4) | top-2-champs-for-role (5) | actions (6).
       // s162 v7: 3 → 2 champs so the topchamps cell narrows and Role
       // + Rank columns line up vertically with the Top 8 panel.
@@ -3406,11 +3406,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         .map((n) => String(n || "").split(/[ '&]/)[0].slice(0, 5))
         .filter(Boolean);
       const sectionTopChamps = '<span class="lv-party-section-topchamps">' +
-        (shortChamps.length ? shortChamps.join(" | ") : "—") +
+        (shortChamps.length ? shortChamps.join(" | ") : "-") +
         '</span>';
       li.innerHTML = section1 + section3 + section2 + sectionTopChamps + section4;
       ul.appendChild(li);
-      })(m);   // close v13 real-member IIFE — invokes with current m
+      })(m);   // close v13 real-member IIFE - invokes with current m
     }
     // s162 v4: click party row → highlight matching PARTY MAINS card
     // (and the row itself). Clicks on action buttons are ignored.
@@ -3484,13 +3484,13 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         const wins  = ov.wins  | 0;
         const losses = ov.losses | 0;
         const wr = (games > 0) ? Math.round((wins / games) * 100) : null;
-        const totalKda = ov.total_kda || "—";
+        const totalKda = ov.total_kda || "-";
         const av = c.averaged || {};
         li.className = "lv-mc-row";
         li.dataset.rank = String(rank);
         li.dataset.memberIdx = String(i);  // for click-to-select sync with party panel
         li.dataset.colorIdx  = String(i + 1);  // matches the party-panel non-self color
-        const playerName = c.player || _partyOtherShortName(i) || "—";
+        const playerName = c.player || _partyOtherShortName(i) || "-";
         li.innerHTML = (
           '<span class="lv-mc-champ">' +
             '<span class="lv-mc-icon">' +
@@ -3501,23 +3501,23 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           '</span>' +
           '<span class="lv-mc-mastery">' +
             `<span class="lv-mc-summoner-name">${playerName}</span>` +
-            `<b class="lv-mc-mastery-level">Mastery ${c.mastery_level != null ? c.mastery_level : "—"}</b>` +
+            `<b class="lv-mc-mastery-level">Mastery ${c.mastery_level != null ? c.mastery_level : "-"}</b>` +
             `<span class="lv-mc-mastery-points">${_fmtMasteryPoints(c.mastery_points)}</span>` +
           '</span>' +
           '<span class="lv-mc-recent">' +
-            `<span class="lv-mc-result lv-mc-result-${resultLow}">${result || "—"}</span>` +
-            `<span class="lv-mc-kda">${lm.kda || "—"}</span>` +
+            `<span class="lv-mc-result lv-mc-result-${resultLow}">${result || "-"}</span>` +
+            `<span class="lv-mc-kda">${lm.kda || "-"}</span>` +
           '</span>' +
           _mcOverallHtml(ov) +
           _mcAveragedHtml(av)
         );
-        // Wire copy for this party member — same format as YOUR MAINS:
+        // Wire copy for this party member - same format as YOUR MAINS:
         // "Summoner - Champion - Mastery N : ## K points · ## Games All-Time · ##% WR"
         const copyBtn = li.querySelector(".lv-mc-copy");
         if (copyBtn) copyBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           const points = _fmtMasteryPoints(c.mastery_points);
-          const txt = `${playerName || "—"} - ${c.name} - Mastery ${c.mastery_level || "?"} : ${points} · ${games} Games All-Time${wr != null ? " · " + wr + "% WR" : ""}`;
+          const txt = `${playerName || "-"} - ${c.name} - Mastery ${c.mastery_level || "?"} : ${points} · ${games} Games All-Time${wr != null ? " · " + wr + "% WR" : ""}`;
           try {
             navigator.clipboard.writeText(txt);
             copyBtn.classList.add("is-copied");
@@ -3535,27 +3535,27 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
                     'title="Copy summary for League chat" aria-label="Copy" disabled>' + _LV_ICON_COPY + '</button>' +
           '</span>' +
           '<span class="lv-mc-mastery">' +
-            '<span class="lv-mc-summoner-name">—</span>' +
-            '<b class="lv-mc-mastery-level">—</b>' +
-            '<span class="lv-mc-mastery-points">— points</span>' +
+            '<span class="lv-mc-summoner-name">-</span>' +
+            '<b class="lv-mc-mastery-level">-</b>' +
+            '<span class="lv-mc-mastery-points">- points</span>' +
           '</span>' +
           '<span class="lv-mc-recent">' +
-            '<span class="lv-mc-result">—</span>' +
-            '<span class="lv-mc-kda">—</span>' +
+            '<span class="lv-mc-result">-</span>' +
+            '<span class="lv-mc-kda">-</span>' +
           '</span>' +
           '<span class="lv-mc-overall">' +
-            '<span class="lv-mc-games">—</span>' +
-            '<span class="lv-mc-total-kda">—</span>' +
-            '<span class="lv-mc-wl">—</span>' +
-            '<span class="lv-mc-kda-score">—</span>' +
+            '<span class="lv-mc-games">-</span>' +
+            '<span class="lv-mc-total-kda">-</span>' +
+            '<span class="lv-mc-wl">-</span>' +
+            '<span class="lv-mc-kda-score">-</span>' +
           '</span>' +
           '<span class="lv-mc-averaged">' +
-            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">KP%</span></span>' +
-            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">Vision</span></span>' +
-            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">CS</span></span>' +
-            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">AVG 5</span></span>' +
-            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">Dmg</span></span>' +
-            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">—</span><span class="lv-mc-avg-lbl">CS/m</span></span>' +
+            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">-</span><span class="lv-mc-avg-lbl">KP%</span></span>' +
+            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">-</span><span class="lv-mc-avg-lbl">Vision</span></span>' +
+            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">-</span><span class="lv-mc-avg-lbl">CS</span></span>' +
+            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">-</span><span class="lv-mc-avg-lbl">AVG 5</span></span>' +
+            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">-</span><span class="lv-mc-avg-lbl">Dmg</span></span>' +
+            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">-</span><span class="lv-mc-avg-lbl">CS/m</span></span>' +
           '</span>'
         );
       }
@@ -3607,7 +3607,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       if (empty) empty.hidden = true;
     } else {
       if (img) img.hidden = true;
-      if (empty) { empty.textContent = "—"; empty.hidden = false; }
+      if (empty) { empty.textContent = "-"; empty.hidden = false; }
     }
   }
   function _openLanePopup(slot) {
@@ -3634,7 +3634,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // s162 v8: Primary and Secondary cannot share the same role. If
     // the operator picks a role for one slot that already lives in
     // the OTHER slot, swap: the other slot inherits whatever the
-    // edited slot used to hold. Only applies to specific roles —
+    // edited slot used to hold. Only applies to specific roles -
     // FILL has its own auto-mirror semantics below.
     const isSpecific = (pref && pref !== "UNSELECTED" && pref !== "FILL");
     if (slot === "primary") {
@@ -3642,7 +3642,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       const oldPrimary = _LV.prefPrimary;
       if (isSpecific && _LV.prefSecondary === pref) {
         // Conflict: secondary holds the same role we're picking for
-        // primary. Swap — secondary inherits the old primary value.
+        // primary. Swap - secondary inherits the old primary value.
         _LV.prefSecondary = oldPrimary;
         _LV.prefPrimary = pref;
         _LV.needsPick = false;
@@ -3664,7 +3664,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       const oldSecondary = _LV.prefSecondary;
       if (isSpecific && _LV.prefPrimary === pref) {
         // Conflict: primary holds the same role we're picking for
-        // secondary. Swap — primary inherits the old secondary value.
+        // secondary. Swap - primary inherits the old secondary value.
         _LV.prefPrimary = oldSecondary;
         _LV.prefSecondary = pref;
       } else {
@@ -3691,26 +3691,26 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     const _lcu = (state.latest && state.latest.lcu) || {};
     if (_lcu.lobby) _renderPartyMembers(_lcu.lobby);
   }
-  // Static queue-tip table — per queue_id, a list of short tips.
+  // Static queue-tip table - per queue_id, a list of short tips.
   // Hardcoded since they don't change per-game; feel free to extend.
   const LV_QUEUE_TIPS = {
     450:  ["Bench-swap is instant via the LCU API (5s client cooldown bypassed).",
            "Snowball + Flash is the standard summoner combo.",
-           "ARAM Mayhem? Coach treats KIWI mode as ARAM — same loadouts apply."],
-    2400: ["ARAM Mayhem rolls 2-3 champions per slot — pick from the champ-select view.",
+           "ARAM Mayhem? Coach treats KIWI mode as ARAM - same loadouts apply."],
+    2400: ["ARAM Mayhem rolls 2-3 champions per slot - pick from the champ-select view.",
            "Augments roll mid-game; the panel surfaces them in the header pill.",
-           "Score 1-100 for a win, not 0 deaths — fight more often."],
-    400:  ["Normal Draft — 6 bans per side, hover before lock.",
+           "Score 1-100 for a win, not 0 deaths - fight more often."],
+    400:  ["Normal Draft - 6 bans per side, hover before lock.",
            "Counterpick last-pick role if possible."],
-    420:  ["Ranked Solo — match decides LP. Don't dodge unless griefed.",
+    420:  ["Ranked Solo - match decides LP. Don't dodge unless griefed.",
            "Ban on what enemy team comp / role threats."],
-    440:  ["Ranked Flex — premade up to 5; matchmaking pools differ from solo."],
-    1700: ["Arena — 6 teams of 3. Pick a synergy trio.",
+    440:  ["Ranked Flex - premade up to 5; matchmaking pools differ from solo."],
+    1700: ["Arena - 6 teams of 3. Pick a synergy trio.",
            "Anvil decisions matter more than build path. Read the augment."],
   };
   // s162 v2: status text removed from the lobby card per operator. Stub
   // s209: re-render mains when CHAMPS index loads (first-paint fix for
-  // names with spaces — see _renderMains CHAMPS.ready bail). Idempotent
+  // names with spaces - see _renderMains CHAMPS.ready bail). Idempotent
   // when CHAMPS lands before the lobby view is mounted; the listener
   // fires once globally.
   document.addEventListener("rc:champs-ready", () => {
@@ -3768,7 +3768,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // Pushes lobby.set_party_type to LCU. Optimistically updates the
     // toggle visual + locks `_LV.partyToggleInflight` so the 2s state
     // envelope can't clobber the click with stale LCU truth. Reverts
-    // only on explicit LCU failure — sim/transient "no_queue_id" keeps
+    // only on explicit LCU failure - sim/transient "no_queue_id" keeps
     // the optimistic state (acceptable: nothing actually pushed).
     const partyToggle = document.getElementById("lv-party-toggle");
     if (partyToggle) partyToggle.addEventListener("click", () => {
@@ -3776,7 +3776,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       const nextOpen = !_LV.partyOpen;
       _LV.partyOpen = nextOpen;
       // Persist the preference (shared with the Settings "Party default"
-      // select via rc-lobby-party-default — last-write-wins, survives
+      // select via rc-lobby-party-default - last-write-wins, survives
       // reload). Preference only: not auto-applied on lobby entry.
       try { localStorage.setItem("rc-lobby-party-default", nextOpen ? "open" : "closed"); } catch (_) {}
       _LV.partyToggleInflight = true;
@@ -3789,7 +3789,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         lcuPollResult(res && res.id, (r) => {
           _LV.partyToggleInflight = false;
           // Only revert on a real LCU error. "no_queue_id" means the
-          // agent was unreachable (sim mode or LCU offline) — keep the
+          // agent was unreachable (sim mode or LCU offline) - keep the
           // operator's optimistic state since nothing was actually
           // applied either way.
           if (r && r.ok === false && r.err !== "no_queue_id") {
@@ -3831,7 +3831,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       const lbl = document.getElementById("lv-lane-popup-label");
       popup.querySelectorAll(".lobby-lane-popup-cell").forEach((cell) => {
         cell.addEventListener("mouseenter", () => {
-          if (lbl) lbl.textContent = LANE_LABELS[cell.dataset.pref] || "—";
+          if (lbl) lbl.textContent = LANE_LABELS[cell.dataset.pref] || "-";
         });
         cell.addEventListener("mouseleave", () => {
           if (lbl) lbl.innerHTML = "&nbsp;";
@@ -3876,7 +3876,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           if (special === "practice") {
             // Practice Tool: needs a different LCU command (customGameLobby
             // PRACTICETOOL). s234 (#89): surface failures via lcuPollResult
-            // like the change_queue_type sibling below — the practice
+            // like the change_queue_type sibling below - the practice
             // create can fail (e.g. must leave a matchmade lobby first) and
             // the operator needs that error visible, not swallowed.
             lcuCmd({ cmd: "lobby.create_practice_tool" }).then((res) => {
@@ -3943,9 +3943,9 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     const qName = document.getElementById("lv-queue-name");
     if (qName) qName.textContent = lobby
       ? (lobby.queue_name || ("queue " + (lobby.queue_id || "?"))).toUpperCase()
-      : "—";
+      : "-";
 
-    // s162 controls strip — populate from LCU when forwarded; fall back
+    // s162 controls strip - populate from LCU when forwarded; fall back
     // to defaults (party Open, prefs greyed) when no data.
     // s214 (2026-05-15): strip stays visible on every queue so
     // Accept / Party / Cancel / Find Match work in ARAM + Arena.
@@ -3961,7 +3961,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       const showLanes = qid !== 0 && SR_QUEUE_IDS.has(qid);
       lanePair.classList.toggle("hidden", !showLanes);
     }
-    // Party Open / Closed — LCU exposes lobby.party_type ("open" | "closed").
+    // Party Open / Closed - LCU exposes lobby.party_type ("open" | "closed").
     // s209: only sync the toggle visual when (a) it's our first observation
     // of the LCU state, (b) the LCU value changed externally since the last
     // tick (lobby leader toggled it elsewhere), or (c) no operator click is
@@ -3983,7 +3983,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       partyToggle.disabled = false;
       _LV.lastLcuPartyType = partyType;
     }
-    // s162 v2: Auto Accept toggle — LCU exposes auto-accept on
+    // s162 v2: Auto Accept toggle - LCU exposes auto-accept on
     // lobby.local_member.auto_fill_protected_for_promos / etc., or via
     // /lol-matchmaking/v1/ready-check/auto-accept. Phase A: read from
     // _LV.autoAccept (operator-toggled). Phase B: read live state.
@@ -4017,7 +4017,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // s162 v2: Find Match always visible (2-line "Find" / "Match"),
     // gold pulse via .is-searching class when LCU reports searching.
     // Cancel Queue always visible too, disabled until searching. Both
-    // buttons keep their static labels — visual state communicates
+    // buttons keep their static labels - visual state communicates
     // status (no inline status text).
     const find = document.getElementById("lv-find-match");
     const cancel = document.getElementById("lv-cancel-match");
@@ -4038,13 +4038,13 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // action pips (copy / promote / kick) right-aligned.
     _renderPartyMembers(lobby);
 
-    // s162 v4: Your Mains / Party Mains panel — tab-switched.
+    // s162 v4: Your Mains / Party Mains panel - tab-switched.
     _renderMains();
 
     // s162 v5: panel repurposed to "My Top 8" (operator-curated short
     // list with localStorage persistence). The Recently-Played render
     // logic (_renderFriendsRecent) is preserved below for reuse on a
-    // future panel — just no longer invoked here.
+    // future panel - just no longer invoked here.
     _renderTop8();
     _top8WireSearchOnce();
     // s162 v4: re-center NORMAL DRAFT + PARTY titles after layout settles.
@@ -4107,7 +4107,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         return entries;
       })
       .catch(() => {
-        _TOP8.cache = [];   // server unreachable — render empty rather than loop
+        _TOP8.cache = [];   // server unreachable - render empty rather than loop
         _TOP8.hydrating = false;
         return [];
       });
@@ -4127,7 +4127,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       .catch(() => null);
   }
   function _top8Load() {
-    // s162 v5: sim fixtures can pre-populate via lcu.top8 — fixture
+    // s162 v5: sim fixtures can pre-populate via lcu.top8 - fixture
     // wins so dev preview renders without polluting persisted state.
     const lcu = (state.latest && state.latest.lcu) || {};
     if (Array.isArray(lcu.top8)) return lcu.top8;
@@ -4175,18 +4175,18 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         const inParty = partyKeys.has(entry.riot_id) || partyKeys.has(entry.summoner_name);
         const isOnline = !!entry.is_online;
         // s162 v7: offline rows get a soft red tint via .is-offline.
-        // is-in-party tint takes precedence — being in your party
+        // is-in-party tint takes precedence - being in your party
         // implies online.
         let cls = "lv-top8-row";
         if (inParty) cls += " is-in-party";
         else if (!isOnline) cls += " is-offline";
         li.className = cls;
         li.dataset.idx = String(i);
-        // s162 v10: per-member color-idx removed — single green hue
+        // s162 v10: per-member color-idx removed - single green hue
         // mirrors PARTY panel's .is-top8-mate.
-        const fullId = entry.riot_id || entry.summoner_name || "—";
+        const fullId = entry.riot_id || entry.summoner_name || "-";
         const name = String(fullId).split("#")[0];
-        const games = entry.games_with_me != null ? `${entry.games_with_me} G` : "—";
+        const games = entry.games_with_me != null ? `${entry.games_with_me} G` : "-";
         const role  = _roleShort(entry.preferred_role);
         const rankTxt = _top8FormatRank(entry.rank);
         // s162 v9: extend Party-panel rank tier color coding (.lv-rank-*)
@@ -4195,13 +4195,13 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         const rankCls = _rankClass(entry.rank ? entry.rank.tier : null);
         // s162 v16: when an entry is unranked, mirror the PARTY panel's
         // empty fallback ("LVL ### : Unranked") rather than a plain
-        // "Unranked" pill — gives a consistent treatment across the
+        // "Unranked" pill - gives a consistent treatment across the
         // two panels and surfaces summoner_level when LCU forwards it.
         const isUnranked = !entry.rank || !entry.rank.tier;
         let rankCellHtml;
         if (isUnranked) {
           const lvl = (entry.summoner_level != null) ? entry.summoner_level
-                    : (entry.level != null ? entry.level : "—");
+                    : (entry.level != null ? entry.level : "-");
           rankCellHtml = `<span class="lv-top8-rank-empty">LVL ${lvl} : Unranked</span>`;
         } else {
           rankCellHtml = `<span class="lv-top8-rank-pip ${rankCls}">${rankTxt}</span>`;
@@ -4226,11 +4226,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       } else {
         li.className = "lv-top8-row is-placeholder";
         li.innerHTML = (
-          '<span class="lv-top8-cell">—</span>' +
-          '<span class="lv-top8-cell">—</span>' +
-          '<span class="lv-top8-cell">—</span>' +
-          '<span class="lv-top8-cell">—</span>' +
-          '<span class="lv-top8-cell">—</span>' +
+          '<span class="lv-top8-cell">-</span>' +
+          '<span class="lv-top8-cell">-</span>' +
+          '<span class="lv-top8-cell">-</span>' +
+          '<span class="lv-top8-cell">-</span>' +
+          '<span class="lv-top8-cell">-</span>' +
           '<span class="lv-top8-dot lv-top8-dot-off" title="Empty slot"></span>' +
           '<span class="lv-top8-spacer-reorder"></span>' +
           '<span class="lv-top8-spacer-reorder"></span>' +
@@ -4352,9 +4352,9 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   function _renderFriendsRecent(friends) {
     const ul = document.getElementById("lv-friends-list");
     if (!ul) return;
-    // s162 v4: ALWAYS render 8 slots — real entries fill from top,
+    // s162 v4: ALWAYS render 8 slots - real entries fill from top,
     // remaining slots are 50%-opacity placeholders. Filters out anyone
-    // currently in the party (by riot_id / summoner_name match) — they
+    // currently in the party (by riot_id / summoner_name match) - they
     // re-appear here once they leave.
     const TARGET_SLOTS = 8;
     const lcuOuter = (state.latest && state.latest.lcu) || {};
@@ -4382,7 +4382,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       const games = f.games_with_me | 0;
       const gamesLbl = games + (games === 1 ? " Game" : " Games");
       const role = (f.preferred_role || "").toUpperCase();
-      // Section 5 — rank or "Level NNN : Unranked"
+      // Section 5 - rank or "Level NNN : Unranked"
       let rankHtml;
       if (f.rank && f.rank.tier) {
         const rankCls = _rankClass(f.rank.tier);
@@ -4390,14 +4390,14 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         const lp = (f.rank.lp != null) ? ` ${f.rank.lp} LP` : "";
         rankHtml = `<span class="lobby-member-pip lobby-member-pip-rank ${rankCls}">${f.rank.tier}${div}${lp}</span>`;
       } else {
-        const lvl = (f.summoner_level != null) ? f.summoner_level : "—";
+        const lvl = (f.summoner_level != null) ? f.summoner_level : "-";
         rankHtml = `<span class="lv-party-empty">Level ${lvl} : Unranked</span>`;
       }
-      // Section 6 — team marker [E]/[A] + KDA, with hover tooltip
+      // Section 6 - team marker [E]/[A] + KDA, with hover tooltip
       const lm = f.last_match || {};
       const team = (lm.team || "").toUpperCase();    // "ENEMY" | "ALLY"
       const result = (lm.result || "").toUpperCase(); // "WON" | "LOST"
-      const teamMark = team === "ENEMY" ? "E" : (team === "ALLY" ? "A" : "—");
+      const teamMark = team === "ENEMY" ? "E" : (team === "ALLY" ? "A" : "-");
       const teamCls = team === "ENEMY" ? "lv-fr-team-enemy"
                     : team === "ALLY"  ? "lv-fr-team-ally" : "";
       // s162 v4: descriptive tooltip per operator spec.
@@ -4412,11 +4412,11 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         `<span class="lv-fr-name">${ign}</span>` +
         `<span class="lv-fr-icon">${champIcon ? `<img src="${champIcon}" alt="${champ}" onerror="this.style.display='none'" />` : ""}</span>` +
         `<span class="lv-fr-games">${gamesLbl}</span>` +
-        `<span class="lv-fr-role">${role || "—"}</span>` +
+        `<span class="lv-fr-role">${role || "-"}</span>` +
         `<span class="lv-fr-rank">${rankHtml}</span>` +
         `<span class="lv-fr-team ${teamCls}" data-tt="${tt}">` +
           `<span class="lv-fr-team-mark">[${teamMark}]</span>` +
-          `<span class="lv-fr-team-kda">${lm.kda || "—"}</span>` +
+          `<span class="lv-fr-team-kda">${lm.kda || "-"}</span>` +
         `</span>` +
         `<button type="button" class="lv-fr-copy lv-member-action" data-action="copy" data-ign="${ign}" title="Copy summoner name" aria-label="Copy">${_LV_ICON_COPY}</button>` +
         `<button type="button" class="lv-fr-invite lv-member-action" data-action="invite" data-ign="${ign}" title="Invite to lobby" aria-label="Invite">➕</button>`
@@ -4429,17 +4429,17 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       const li = document.createElement("li");
       li.className = "lv-fr-row is-placeholder";
       li.innerHTML = (
-        '<span class="lv-fr-name">—</span>' +
+        '<span class="lv-fr-name">-</span>' +
         '<span class="lv-fr-icon"></span>' +
-        '<span class="lv-fr-games">—</span>' +
-        '<span class="lv-fr-role">—</span>' +
-        '<span class="lv-fr-rank"><span class="lv-party-empty">—</span></span>' +
-        '<span class="lv-fr-team"><span class="lv-fr-team-mark">—</span></span>' +
+        '<span class="lv-fr-games">-</span>' +
+        '<span class="lv-fr-role">-</span>' +
+        '<span class="lv-fr-rank"><span class="lv-party-empty">-</span></span>' +
+        '<span class="lv-fr-team"><span class="lv-fr-team-mark">-</span></span>' +
         '<button type="button" class="lv-fr-copy lv-member-action" disabled aria-label="Copy">' + _LV_ICON_COPY + '</button>'
       );
       ul.appendChild(li);
     }
-    // Wire copy buttons (only on real entries — placeholders are disabled)
+    // Wire copy buttons (only on real entries - placeholders are disabled)
     ul.querySelectorAll(".lv-fr-row:not(.is-placeholder) .lv-fr-copy").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -4492,8 +4492,8 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   }
 
   // ── Auto Accept (agent-CONFIG-backed, lobby ↔ settings synced) ──────
-  // Source of truth is the Game-PC LCU agent CONFIG — it's what actually
-  // accepts the ready-check — surfaced live at state.lcu.config.auto_accept
+  // Source of truth is the Game-PC LCU agent CONFIG - it's what actually
+  // accepts the ready-check - surfaced live at state.lcu.config.auto_accept
   // and written via the set_config command. The lobby Auto Accept toggle
   // and the Settings "Auto Accept" checkbox are two views of the same
   // flag, so they stay in sync bidirectionally and persist (the agent
@@ -4604,7 +4604,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     });
   }
   // Render the party member list from lcu.lobby.members[]. Each member
-  // shape (forwarded by Game-PC LCU agent — pending):
+  // shape (forwarded by Game-PC LCU agent - pending):
   //   { puuid, summoner_name, is_self, is_leader,
   //     played_with_me_count, played_with_me_record }  // local match_history join
   function _renderLobbyMembers(members, meIsLeader) {
@@ -4636,7 +4636,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       } else if (!m.is_self) {
         stats.push(`<span class="lobby-member-stat" style="color:var(--text-faint)">no shared games</span>`);
       }
-      // Public-stats fallback link (no Riot key — user opens manually).
+      // Public-stats fallback link (no Riot key - user opens manually).
       const lookup = (m.summoner_name && !m.is_self)
         ? `<a class="lobby-member-link" href="https://aggregator-b.invalid/lol/profile/na1/${encodeURIComponent(m.summoner_name)}" target="_blank" rel="noopener">aggregator-b ↗</a>`
         : "";
@@ -4693,7 +4693,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     if (party) {
       const size = lobby.party_size | 0;
       const max  = lobby.max_party_size | 0;
-      party.textContent = max > 0 ? `Party ${size || 1}/${max}` : "Party —";
+      party.textContent = max > 0 ? `Party ${size || 1}/${max}` : "Party -";
     }
     const leaderTag = document.getElementById("lobby-leader-tag");
     if (leaderTag) leaderTag.hidden = !lobby.is_leader;
@@ -4721,7 +4721,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           : (lobby.is_leader ? "Find Match" : "Leader-only");
       }
     }
-    // Status line — reads as a single peripheral signal.
+    // Status line - reads as a single peripheral signal.
     if (searching) _setLobbyStatus("Searching…", "searching");
     else if (found) _setLobbyStatus("Match Found · accept in client", "found");
     else if (!lobby.is_leader) _setLobbyStatus("Awaiting party leader", "");
@@ -4747,7 +4747,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           const turns = warmInfo.turns || 0;
           const idle = warmInfo.idle_sec;
           warmEl.title = warmInfo.warm
-            ? `warm — ${turns} turn(s), idle ${idle}s`
+            ? `warm - ${turns} turn(s), idle ${idle}s`
             : "cold (first send will warm)";
         }
         // Latency footer
@@ -4759,7 +4759,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
             if (lat.avg_ms >= 2500) LAT.footer.classList.add("severe");
             else if (lat.avg_ms >= 1500) LAT.footer.classList.add("slow");
           } else {
-            LAT.footer.textContent = "latency —";
+            LAT.footer.textContent = "latency -";
             LAT.footer.classList.remove("slow", "severe");
           }
         }
@@ -4797,7 +4797,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           adaptNotice.classList.remove("pending", "running", "hidden");
           if (az.state === "running") {
             adaptNotice.classList.add("running");
-            adaptNotice.textContent = "refreshing historic data — new match being incorporated";
+            adaptNotice.textContent = "refreshing historic data - new match being incorporated";
           } else if (az.state === "pending") {
             const r = Math.max(0, Math.round(az.fires_in_sec || 0));
             const mm = Math.floor(r / 60);
@@ -4818,7 +4818,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   // Polls /api/minimap-crop on a fast cadence when the dedicated Game-PC
   // minimap stream is live (5-10Hz pre-cropped JPEGs on source=minimap),
   // otherwise the supervisor falls back to crop-from-full-frame which is
-  // bounded by the 2s full-frame upload cadence — pointless to poll
+  // bounded by the 2s full-frame upload cadence - pointless to poll
   // faster than that. We pick the interval based on which path served
   // the last response: JPEG = fast stream, PNG = slow re-crop.
   const MINIMAP_MODES = new Set(["sr", "aram", "brawl"]);
@@ -4885,7 +4885,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   // SR / ARAM map sizes in game units (Howling Abyss is smaller than SR).
   const VT_MAP_SIZE = { CLASSIC: 14800, ARAM: 13800, KIWI: 13800,
                         URF: 14800, NEXUSBLITZ: 14800, ULTBOOK: 14800 };
-  // Mirror of core/vision_tracker._SHARED_VISION_MODES — modes where the
+  // Mirror of core/vision_tracker._SHARED_VISION_MODES - modes where the
   // whole map is visible to both teams and Live Client emits no positions.
   const VT_SHARED_VISION = new Set(["ARAM", "KIWI"]);
 
@@ -4904,7 +4904,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       VT_OVERLAY.style.display = "none";
       return;
     }
-    // Shared-vision modes (ARAM/KIWI) — Live Client has no positions, so
+    // Shared-vision modes (ARAM/KIWI) - Live Client has no positions, so
     // the dot-overlay won't draw anything useful, but vision_tracker still
     // produces a meaningful summary (visible/dead counts, on_bridge zone).
     // Drive the MAP STATE pill from that summary.
@@ -4922,7 +4922,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           MM.status.className = "minimap-state live";
         }
       } else {
-        // Same summary — refresh the timestamp so "Xs ago" stays at 0
+        // Same summary - refresh the timestamp so "Xs ago" stays at 0
         // instead of climbing while data is actually fresh.
         MM.status._lastT = Date.now();
       }
@@ -4932,7 +4932,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       return;
     }
     // Size the canvas to the rendered <img> bounds (it's centered in the
-    // wrap with margin auto and padded — getBoundingClientRect gives the
+    // wrap with margin auto and padded - getBoundingClientRect gives the
     // post-layout box we need to align to).
     const img = MM.img;
     if (!img.complete || !img.naturalWidth) {
@@ -5023,7 +5023,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   };
 
   function _fmtNum(n) {
-    if (n == null) return "—";
+    if (n == null) return "-";
     if (typeof n !== "number") return String(n);
     if (n >= 1000) return (n / 1000).toFixed(1) + "k";
     return String(n);
@@ -5058,7 +5058,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     if (F.empty) F.empty.hidden = liveCount > 0;
 
     // Sig: node + received_at + alive + queue_depth + escalations_since_boot.
-    // Don't include age_s — it ticks every poll and would force rebuilds.
+    // Don't include age_s - it ticks every poll and would force rebuilds.
     const sig = entries.map(([k, r]) => {
       const hb = r.heartbeat || {};
       return [k, r.received_at || 0, r.stale ? 1 : 0, hb.alive ? 1 : 0,
@@ -5118,7 +5118,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         ["auto-err 24h", _fmtNum(hb.auto_err_24h)],
         ["errors 24h", _fmtNum(hb.errors_24h)],
         ["spend today", hb.tokens_used_today_usd != null
-          ? "$" + Number(hb.tokens_used_today_usd).toFixed(2) : "—"],
+          ? "$" + Number(hb.tokens_used_today_usd).toFixed(2) : "-"],
       ];
       for (const [label, value] of cells) {
         const cell = document.createElement("div");
@@ -5219,7 +5219,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     const meta = document.createElement("div");
     meta.className = "turn-meta";
     const parts = [];
-    parts.push(`intent: ${env.intent || "—"}`);
+    parts.push(`intent: ${env.intent || "-"}`);
     if (env.spawn_path) parts.push(env.spawn_path);
     if (!isError && elapsedMs != null) parts.push(`${Math.round(elapsedMs)}ms`);
     if (env.filed && env.filed.length) {
@@ -5312,14 +5312,14 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         INPUT.turns.lastChild.appendChild(status);
         const out = await _pollTaskUntilDone(tid);
         if (out.ok) {
-          status.textContent = "applied — reloading…";
+          status.textContent = "applied - reloading…";
           setTimeout(() => window.location.reload(), 400);
         } else if (out.timeout) {
           status.textContent =
-            `still dispatching (task ${tid}) — refresh manually when ready`;
+            `still dispatching (task ${tid}) - refresh manually when ready`;
         } else {
           status.textContent =
-            `apply failed (task ${tid}) — open it for error detail`;
+            `apply failed (task ${tid}) - open it for error detail`;
           status.classList.add("ui-proposal-failed");
         }
       }
@@ -5374,12 +5374,12 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       }
       if (env.type === "health") { _pulseStatus(); return onHealth(env); }
       if (env.type === "state")  { _pulseStatus(); return onState(env); }
-      // s162: lcu envelope — drives the lobby view + champ-select overlay.
+      // s162: lcu envelope - drives the lobby view + champ-select overlay.
       // Live operation gets lcu via the SSE/HTTP /api/state.lcu path
       // (handleChampSelect is called there). Sim mode delivers it through
       // the WS path so a fixture can preview the lobby/champ-select flow.
       if (env.type === "lcu")    { _pulseStatus(); return handleLcuEnvelope(env.payload); }
-      // Unknown envelope — log raw.
+      // Unknown envelope - log raw.
       logLine("ws", JSON.stringify(env).slice(0, 200));
     };
   }
@@ -5426,7 +5426,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     badge.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openLatest(); }
     });
-    // Lightweight advisory toast — coral card that slides in from the
+    // Lightweight advisory toast - coral card that slides in from the
     // bottom-right, tap to dismiss, auto-fades after 8s.
     function _showAdvisoryToast(a) {
       let t = document.getElementById("advisory-toast");
@@ -5448,7 +5448,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
 
   // Restore persisted preferences (zoom / zen) from prior session. Also
   // builds a footer chip listing the active flags. The Shift+L header-lock
-  // mechanism was removed 2026-04-23 — it broke the UI composition when
+  // mechanism was removed 2026-04-23 - it broke the UI composition when
   // hidden pills were temporarily un-hidden during measurement, which
   // displaced the visible pills' captured positions. The natural flex
   // layout is stable enough once the advisory badge height is normalised.
@@ -5483,17 +5483,17 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     } catch (_) {}
   })();
 
-  // Footer prefs chip — shows "zen:off" and/or "zoom:1×" when the user is
+  // Footer prefs chip - shows "zen:off" and/or "zoom:1×" when the user is
   // running with non-default prefs. Recomputed from live state on each call
   // so a Z-toggle (or zoom hotkey) updates the chip immediately rather
   // than reflecting the value at page-load time only.
   function _refreshPrefsChip() {
-    // s161: zen flag dropped from the prefs chip — operator wanted
+    // s161: zen flag dropped from the prefs chip - operator wanted
     // the "ZEN:OFF" pill removed from the footer. Zoom flag stays
     // since zoom drift is still useful diagnostic info.
     const z = localStorage.getItem("rc-zoom");
     const flags = [];
-    // Default is 1.0 — only flag in the footer chip when the user has
+    // Default is 1.0 - only flag in the footer chip when the user has
     // dialed the slider above the default (was inverted pre-s218 when
     // default was 1.33 and 1.0 was the opt-in setting).
     if (z && parseFloat(z) > 1.05) flags.push("zoom:" + parseFloat(z).toFixed(2) + "×");
@@ -5524,7 +5524,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     chip.textContent = flags.join(" · ");
   }
 
-  // Post-auto-reload banner — lets user know the rebuild landed.
+  // Post-auto-reload banner - lets user know the rebuild landed.
   try {
     if (sessionStorage.getItem("rc-just-reloaded") === "1") {
       sessionStorage.removeItem("rc-just-reloaded");
@@ -5573,7 +5573,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       window.location.reload();
       return;
     }
-    // A triggers the ANALYZE NOW footer button — quick kickoff.
+    // A triggers the ANALYZE NOW footer button - quick kickoff.
     if ((e.key === "a" || e.key === "A") && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const tgt = e.target;
       if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA")) return;
@@ -5589,10 +5589,10 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       e.preventDefault();
       return;
     }
-    // Z toggles "zen" mode — hides Next + Adaptation panels so the grid
+    // Z toggles "zen" mode - hides Next + Adaptation panels so the grid
     // re-composes around Minimap + Right Now + Item Build. Uses body data
     // attribute so CSS does the rest. Zen is the default view, so we
-    // persist "0" on opt-out (not "" — restorePrefs treats null as on).
+    // persist "0" on opt-out (not "" - restorePrefs treats null as on).
     if ((e.key === "z" || e.key === "Z") && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const tgt = e.target;
       if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA")) return;
@@ -5685,7 +5685,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     show();
   })();
 
-  // Input clear button — shows only when the field has content.
+  // Input clear button - shows only when the field has content.
   (function setupInputClear() {
     const input = el("input-text"), clear = el("input-clear");
     if (!input || !clear) return;
@@ -5708,7 +5708,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   // restart, transient network drop during a match).
   //
   // Bug history (2026-04-25): the fallback was synthesising
-  // onState({mode: st.mode || "client"}) — but /api/state returns the
+  // onState({mode: st.mode || "client"}) - but /api/state returns the
   // mode under `mode_key`, not `mode`, so st.mode was ALWAYS undefined
   // and the fallback always declared mode="client". Same for the
   // health-envelope wrapping: /api/state's `health` is flat (alive,
@@ -5727,7 +5727,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         return;
       }
       // Tier 4 #16: skip when /api/state-stream pushed something within
-      // the last 4s — SSE has already delivered the same payload.
+      // the last 4s - SSE has already delivered the same payload.
       if (Date.now() - state.lastSseTs < 4000) return;
       const ageMs = Date.now() - lastFrameTs;
       if (ageMs < 4000) return;
@@ -5738,25 +5738,25 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         ]);
         if (hlResp.ok) {
           const hp = await hlResp.json();
-          // /api/health returns raw health.json — contains aram_mode,
+          // /api/health returns raw health.json - contains aram_mode,
           // arena_mode, tft_mode, has_game, mode flags onHealth needs.
           onHealth({ type: "health", source: "health-http", payload: hp });
         }
         if (stResp.ok) {
           const st = await stResp.json();
           const fileMode = st.mode_key || "client";
-          // The "coach" sub-object is the state envelope's payload —
+          // The "coach" sub-object is the state envelope's payload -
           // contains action, immediate, kda, augments, item_build, etc.
           const coachPayload = st.coach || st;
           onState({ type: "state", source: "state-http",
                     mode: fileMode, payload: coachPayload });
-          // 2026-04-25: cold-start champ-select prep — surface adaptation
+          // 2026-04-25: cold-start champ-select prep - surface adaptation
           // history during champ-select via the LCU snapshot.
           handleLcuEnvelope(st.lcu);
           renderTeamContext(st);
           renderArchetypeNudge(st);
         }
-      } catch (_) { /* ignore — WS may come back */ }
+      } catch (_) { /* ignore - WS may come back */ }
     }
     setInterval(pollIfStale, 2000);
   })();
@@ -5789,7 +5789,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           if (st.lcu) handleLcuEnvelope(st.lcu);
           renderTeamContext(st);
           renderArchetypeNudge(st);
-        } catch (_) { /* malformed event — skip */ }
+        } catch (_) { /* malformed event - skip */ }
       };
       es.onerror = () => {
         // EventSource auto-reconnects per the server's `retry: 2000`
@@ -5832,7 +5832,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   // ── Voice TTS toggle ─────────────────────────────────────────────
   // (2026-04-25, revised same-day) Speech now uses the browser's
   // window.speechSynthesis (Web Speech API) so audio plays on the
-  // device viewing the dashboard — iPad, Game-PC, Legion, whatever —
+  // device viewing the dashboard - iPad, Game-PC, Legion, whatever -
   // not on the server. The server-side /api/speak endpoint is kept
   // for parity / curl testing but the dashboard no longer uses it.
   // State persisted in localStorage; off by default.
@@ -5911,7 +5911,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         return;
       }
       btn.textContent = on ? "🔊 VOICE" : "🔇 VOICE";
-      btn.title = on ? "Voice on — speaks Right Now headline changes" : "Voice off";
+      btn.title = on ? "Voice on - speaks Right Now headline changes" : "Voice off";
       btn.classList.toggle("active", on);
       if (picker) picker.style.display = on ? "" : "none";
     }
@@ -5944,7 +5944,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     function maybeSpeak() {
       if (!on) return;
       const txt = (actionEl.textContent || "").replace(/^[▶►⚠️\s]+/, "").trim();
-      if (!txt || txt === "—") return;
+      if (!txt || txt === "-") return;
       if (/awaiting|loading|no advice/i.test(txt)) return;
       const now = Date.now();
       if (txt === lastSpoken && (now - lastSpokenTs) < _DEDUP_MS) return;
@@ -5970,7 +5970,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   // leave a JS trace; this makes them visible from the Legion side.
   // Throttled to ≤2 posts/sec so a render-loop crash can't flood RC's
   // log file. The original console.error is preserved (DevTools still
-  // shows it) — we just tee a copy server-side.
+  // shows it) - we just tee a copy server-side.
   (function setupConsoleErrorPipe() {
     let lastSend = 0;
     let dropCount = 0;
@@ -5998,12 +5998,12 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
           s = JSON.stringify(trimmed);
         }
         localStorage.setItem(QUEUE_KEY, s);
-      } catch (_) { /* localStorage full / disabled — ignore */ }
+      } catch (_) { /* localStorage full / disabled - ignore */ }
     }
     function _dropQueuedEntry(entry) {
       // Heuristic identity: timestamp + message-prefix. Survives JSON
       // round-trip (object identity wouldn't). Collisions are unlikely
-      // and benign — at worst we drop a near-duplicate which will replay
+      // and benign - at worst we drop a near-duplicate which will replay
       // on the next pipe success.
       const cur = readQueue();
       const target = (entry.message || "").slice(0, 100);
@@ -6021,7 +6021,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       // BACKLOG fix (2026-05-12): the original implementation called
       // `localStorage.removeItem(QUEUE_KEY)` BEFORE issuing replay fetches.
       // If the endpoint went down mid-flush (or any single fetch failed)
-      // the queue was already gone — fire-and-forget meant every queued
+      // the queue was already gone - fire-and-forget meant every queued
       // entry was lost. Now the queue stays intact; each entry is dropped
       // individually on its own confirmed 2xx response. Persistent outages
       // leave entries queued for the next pipe-success flush (capped at
@@ -6070,7 +6070,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
             const q = readQueue(); q.push(body); writeQueue(q);
           }
         }).catch(() => {
-          // Network failure / endpoint down — queue for next success.
+          // Network failure / endpoint down - queue for next success.
           const q = readQueue(); q.push(body); writeQueue(q);
         });
       } catch (_) { /* don't recurse on send errors */ }
@@ -6097,7 +6097,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
         stack:   (isErr && r.stack) || "",
       });
     });
-    // Tee console.error → pipe. We don't tee console.warn/log — too
+    // Tee console.error → pipe. We don't tee console.warn/log - too
     // noisy and most real bugs surface as either thrown errors or
     // explicit console.error calls in our own code.
     const origErr = console.error.bind(console);
@@ -6174,7 +6174,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
   //     tip would clip past the right/bottom edge
   //   - native `title` is stashed in `data-tt` on first hover and the DOM
   //     `title` is cleared so Chromium's delayed popup never shadows ours.
-  // Event delegation on document.body — catches dynamically-rendered
+  // Event delegation on document.body - catches dynamically-rendered
   // elements too (champion-pill, item tiles, etc.) without re-init.
   (function initTooltips() {
     const tip = document.createElement("div");
@@ -6224,7 +6224,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     // Body-zoom compensation: the dashboard sets `body { zoom: 1.33 }`,
     // so all UI content scales up uniformly. `event.clientX/Y` reports
     // viewport device pixels, but the tip is a descendant of the zoomed
-    // body — its `style.left` is interpreted in body-zoom CSS pixels and
+    // body - its `style.left` is interpreted in body-zoom CSS pixels and
     // rendered at that × zoom visually. Without dividing cursor coords
     // by the zoom factor the tip drifted roughly `cursorX × (zoom − 1)`
     // to the right, producing the "~1 inch down, 2 inches over" offset
@@ -6235,7 +6235,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       tip.style.left = "-9999px"; tip.style.top = "-9999px";
       const tr = tip.getBoundingClientRect();
       // tr is in viewport device pixels, but the final position needs to
-      // be expressed in body-zoom CSS pixels — convert everything once.
+      // be expressed in body-zoom CSS pixels - convert everything once.
       const trW = tr.width  / z;
       const trH = tr.height / z;
       const vw  = window.innerWidth  / z;
@@ -6259,7 +6259,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     function show(el) {
       // s162 v9: rich tooltips. If `data-tt-html` is set, render the
       // attribute value as innerHTML (the page is the only source of
-      // these strings — operator-authored, not user input). Falls
+      // these strings - operator-authored, not user input). Falls
       // back to plain `data-tt`/`title` text-only path otherwise.
       const html = el.getAttribute("data-tt-html");
       const text = capture(el);
@@ -6277,7 +6277,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       activeEl = null;
       tip.classList.remove("show");
     }
-    // Track cursor continuously — mousemove fires during hover so the tip
+    // Track cursor continuously - mousemove fires during hover so the tip
     // follows the pointer if the user drags the cursor inside the anchor.
     document.body.addEventListener("mousemove", e => {
       cursorX = e.clientX; cursorY = e.clientY;
@@ -6302,25 +6302,25 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     document.body.addEventListener("click", hide, true);
   })();
 
-  // ───── AUDIT 2026-04-28 — proposals 3.3, 3.6 + 4.4, 2.1 ─────
+  // ───── AUDIT 2026-04-28 - proposals 3.3, 3.6 + 4.4, 2.1 ─────
   // Sticky-header compression on scroll + skeleton loaders + health
-  // rollup dot + cost-tile poll. All passive — no-ops if the target
+  // rollup dot + cost-tile poll. All passive - no-ops if the target
   // elements are absent.
   (function rcAuditUiEnhancements() {
     const header = document.querySelector("header");
     const COMPRESS_AT = 200;
     if (header) {
-      // 3.3 — compress on scroll-Y > 200, restore below.
+      // 3.3 - compress on scroll-Y > 200, restore below.
       window.addEventListener("scroll", () => {
         const y = window.scrollY || document.documentElement.scrollTop || 0;
         if (y > COMPRESS_AT) header.dataset.compressed = "1";
         else delete header.dataset.compressed;
       }, { passive: true });
 
-      // 4.4 — health rollup dot ("claude cost pill" — tooltip carries
+      // 4.4 - health rollup dot ("claude cost pill" - tooltip carries
       // Claude $/day + supervisor + vision health). 2026-04-29: moved
       // from header.header-row-2 to the footer (right of mode-pill) per
-      // user — it was visually distracting in the header. Lookup goes
+      // user - it was visually distracting in the header. Lookup goes
       // both header AND footer for back-compat with any cached layout.
       try {
         let dot = document.querySelector(".health-dot");
@@ -6377,7 +6377,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
                 : "DS engine DOWN";
               // Audit7 H-01: surface peer bridge health-publisher age so
               // hovering the (now peer-aware, see rollup status) dot tells
-              // you WHICH node is silent — the rc_facts probe rendered
+              // you WHICH node is silent - the rc_facts probe rendered
               // this but nothing on the dashboard did.
               const peers = j.peers || {};
               const peerBits = [];
@@ -6414,7 +6414,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       } catch (e) { /* never let the dot break the dashboard */ }
     }
 
-    // 3.7 — Hot-reload poller (2026-04-30). Polls /api/asset-stamp
+    // 3.7 - Hot-reload poller (2026-04-30). Polls /api/asset-stamp
     // every 3s; on mtime increase, hard-reload the page so CSS/JS
     // edits Legion-side land on Game-PC's secondary display without
     // an alt-tab. Disabled if `localStorage.rc_hot_reload === '0'`.
@@ -6441,8 +6441,8 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
       setInterval(tick, 3000);
     })();
 
-    // 3.6 — flag elements with data-rc-skel for the first 500 ms after
-    // game-start. Anything bearing the attribute that still reads "—"
+    // 3.6 - flag elements with data-rc-skel for the first 500 ms after
+    // game-start. Anything bearing the attribute that still reads "-"
     // gets the .rc-skel class until the first data tick lands.
     document.querySelectorAll("[data-rc-skel]").forEach(el => {
       el.classList.add("rc-skel");
@@ -6452,7 +6452,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     window.addEventListener("rc:state-tick", () => {
       document.querySelectorAll(".rc-skel").forEach(el => {
         const t = (el.textContent || "").trim();
-        if (t && t !== "—" && t.length > 0) el.classList.remove("rc-skel");
+        if (t && t !== "-" && t.length > 0) el.classList.remove("rc-skel");
       });
     });
   })();

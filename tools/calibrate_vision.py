@@ -1,10 +1,10 @@
 """
-calibrate_vision.py — Pull latest frame, overlay current OCR regions, run OCR.
+calibrate_vision.py - Pull latest frame, overlay current OCR regions, run OCR.
 
 Outputs:
-  data/debug_frame.jpg            — raw frame
-  data/debug_frame_annotated.jpg  — frame + bbox overlay + field labels
-  data/debug_crops/<field>.png    — per-field cropped region
+  data/debug_frame.jpg            - raw frame
+  data/debug_frame_annotated.jpg  - frame + bbox overlay + field labels
+  data/debug_crops/<field>.png    - per-field cropped region
 
 Usage:
   python tools/calibrate_vision.py
