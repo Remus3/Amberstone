@@ -248,7 +248,24 @@ function renderItemBuild(p) {
     IB.augments.textContent = content;
     IB.augments.classList.toggle("hidden", !modeSupportsAugments);
     IB.augments.classList.toggle("no-support", !modeSupportsAugments);
-    IB.augments.title = modeSupportsAugments ? "" : content;
+    // Data-driven ranking (CLAUDE #88) surfaces in the tooltip — visible
+    // pill text stays the owned-augments glance (static-pill / no-reflow
+    // rule). Confidence = blend weight (how much own-history is trusted;
+    // low early by design — external Mayhem prior dominates cold-start).
+    let augTitle = "";
+    if (modeSupportsAugments && Array.isArray(p.aug_reco) && p.aug_reco.length) {
+      const conf = Math.round((p.aug_reco_conf || 0) * 100);
+      const head = `Pick: ${p.aug_reco_top} (conf ${conf}%)`;
+      const meta = `${p.aug_reco_mode || "?"}`
+        + (p.aug_reco_stage ? ` · stage ${p.aug_reco_stage}` : "")
+        + ` · ${p.aug_reco_n_matches || 0} own games`;
+      const rows = p.aug_reco.slice(0, 4).map((r, i) => {
+        const ext = (r.ext_wr == null) ? "—" : `${Math.round(r.ext_wr * 100)}%`;
+        return `${i + 1}. ${r.name}  ${r.score}  own ${Math.round(r.own_wr * 100)}% / ext ${ext} (n${r.n_own})`;
+      });
+      augTitle = [head, meta, ...rows].join("\n");
+    }
+    IB.augments.title = modeSupportsAugments ? augTitle : content;
   }
   // DS Engine picks — daemon_slayer_picks: [{id, name, delta_dps, gold, scorer?}, ...]
   // scorer (s182+) flips the unit suffix per archetype (dps/ehp/%/adps/burst/hps).
