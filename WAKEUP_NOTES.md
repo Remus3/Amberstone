@@ -4,6 +4,23 @@
 
 ---
 
+# 2026-05-17 (done) — #89 lobby change-mode FIXED + champ-select 920→2400 label sweep (c3a1e23, pushed)
+
+ROADMAP #89 shipped off the s234 recon (recon was accurate; one staleness noted).
+
+- **Mayhem 920→2400** (core bug — 920 = Poro King, Mayhem = 2400 KIWI): both pickers (index.html), agent `_LOBBY_QUEUE_NAMES`, `LV_QUEUE_TIPS`. Auto-serves from Legion via ADR-008 asset hash — no RC restart.
+- **Silent-failure fix:** Home Find-Match picker swallowed every LCU result; both pickers now surface failures via `lcuPollResult`/`_lvQueueChangeError`. **Bespoke Arena/Mayhem create payloads deliberately NOT fabricated** (recon: must come from live capture) — the error-surfacing is what makes that one-shot capture possible.
+- **Brawl 2300** dropped from agent lobby name-map (retired s214).
+- **Arena 8×2 → 6×3:** LV tip, allyOpts cellCount, `_csvArenaPaneHtml` duo→trio, `_csvRenderEnemiesArena` slices (3→5 teams, 2→3 cells), 2 CSS grids.
+- **Champ-select 920→2400 label sweep** (spawn-task follow-up, same commit): `_csvResolveRole` MAYHEM badge, `_csvQueueLabel`/`modeMap`, dev.js `_replayQueueLabel`; classifiers gain `q===2400`. **`cs.is_aram` rendering path untouched — item 87 preserved.**
+
+**Don't re-investigate:** recon's "practice not special-cased in lobby-view dropdown" was stale — it already was; real defect = swallowed errors + 920 id (both fixed). **dashboard.js:5055** has the same `_replayQueueLabel` 920 bug but is confirmed-dead legacy — left alone.
+
+**Verified:** py_compile + node --check clean; phase_b / snapshot / view_router / cs_retention suites green.
+**Operator-gated NEXT (not provable offline):** live Practice/Mayhem/Arena lobby creation + Arena 6×3 visual + Mayhem-2400 switch. Agent name-map change (cosmetic label + Brawl) needs a Game-PC `C:\RC-Agent\` redeploy (offer bridge dispatch) — but the core Mayhem fix is JS/served-from-Legion, no redeploy needed. Precondition: confirm League WindowMode in-client (prior session's fullscreen-lockup note).
+
+---
+
 # 2026-05-17 — `open item research.txt` liftability-triage integrated (docs only, no code)
 
 **Operator instruction:** implement the referenced multi-agent research methodology, run it on `Desktop/open item research.txt` (~90 links), triage NOW/FUTURE/CLOSED, "go over what to keep" → 3 decisions locked → integrate.
@@ -43,88 +60,3 @@ Three threads, all shipped. Code = `ef30b6f`; docs-sync commit follows.
 - ROADMAP medium #1/#2 left BLOCKED (Phase-3 auto-action gate uncleared, 0 samples); #5 deferred (own scoped session, CLAUDE #88).
 
 **NEXT SESSION FIRST:** lobby "change mode" button half-wired — Practice Tool / ARAM Mayhem / Arena won't switch (standard queues fine). Full recon + per-mode root causes + the 2 patch-structural changes (Brawl removed; Arena 2v8→3x6) are in **CLAUDE #89** + ROADMAP High-priority top. Recon is done — don't re-grep cold; needs a live client to verify.
-
----
-
-# 2026-05-17 (late) — KEYSTONE champ-select/Mayhem FIXED+proven live · s220 surrender slice · reframe plan locked
-
-Operator-driven, off the "start the next item" → keystone → "start what is
-next" → s220 chain.
-
-**Keystone (the actual blocking KNOWN BUG) — CLOSED.** Two commits:
-- `3eb2e2d` fix(champ-select): queue 2400→aram (`core/queue_modes` + agent
-  `_ARAM_QUEUE_IDS` mirror w/ anti-drift parity test) + `dashboard/_cs_retention.py`
-  (transient-loss retention, wired into `build_state()` before pre-flip) +
-  agent `cs_debug` breadcrumb + `tests/conftest.py` autouse isolation for the
-  new process-global cache. 1159 tests pass.
-- Root cause was the flat **queue-2400-unmapped** gap, NOT the hand-off's
-  phase/retention/router fear. Disproven live: `cs_debug.raw_phase=ChampSelect`
-  (router was right — deliberately NOT changed). Don't re-pitch a view-router
-  change for this.
-- **Proven in a real live Mayhem champ-select:** `queue_id=2400 is_aram=True
-  mode_key=aram`, `bench=[420,38,27,12,887,238,83]`, `raw_phase=ChampSelect`.
-- Deployed: RC reloaded via `restart_trigger.txt` (pid 14340→12668,
-  last_reload_ok=true); Game-PC `gamepc_lcu_agent.py` redeployed via bridge
-  `task-08722043fb4c` (~45s round-trip → agent pid 13960→8464). The
-  session-start "⚠ stale gamepc bridge daemon" was only the *health publisher*
-  — the task loop is alive (45s round-trip).
-- Load-bearing detail: Mayhem's `/lol-champ-select/v1/session` omits
-  `gameData.queue` (all-None, s154 behavior); the agent's
-  `/lol-gameflow/v1/session` fallback recovers 2400 — that path is essential
-  and confirmed working. A future "robust mapId/gameMode signal" can't use the
-  CS session's queue_obj (empty for Mayhem).
-
-**s220 Post Game Review reframe — STARTED, direction locked.**
-- Slice 1 shipped `a5405ee` feat(post-game-review): surrender tag —
-  `_enrich_from_lcu` surfaces `ended_in_surrender`/`ended_in_early_surrender`
-  (surfacing-only, no new fetch) → hero badge `(FF)`/`(REMAKE)` +
-  `data-surrender` attr. 5 tests; snapshot/timeline/view-router green.
-- **Operator decisions (locked, don't re-litigate):** (1) PGR stays a
-  **single-match richer aggregator G layout**, NOT a multi-match list (History
-  view owns browsing). (2) The 0–100 score is an **RC heuristic over the
-  already-enriched stats** (no Claude/Riot dependency) — I propose weights for
-  sign-off in S3.
-- Staged plan: **S2** = structure (persistent header + 10-player score strip +
-  aggregator G roster row + color-coding + #9 augments frontend + hero §1 polish:
-  KDA min-width, 2-line champ name, drop "ARAM", Sustain rename) · **S3** =
-  score+rank+👑+MVP-purple-card · **S4** = AI Analysis/Graph/Build tabs
-  (repurpose Comp/Chart/Timeline/Insights) · **S5** = Replay page. Each is its
-  own session + the per-page UI-audit ritual.
-
-**⚠ Process note (honest hand-off):** while verifying the keystone I ran a
-Game-PC `mcp__gamepc__capture_monitor` against monitor 1 — `/api/state` had
-shown `raw_phase=ChampSelect` but the operator had already fast-flipped into
-the live game (the very transition this keystone is about), so the capture
-landed **in-game, un-gated** — the Vanguard-BSOD-risk surface. No BSOD
-observed, but this violated the operator-gated capture discipline. **Capture
-stays operator-gated: operator says "now" AND holds until "got it". Do not
-infer champ-select-safety from a single `/api/state` read during no-draft
-modes — the flip is sub-read-cycle fast.**
-
-**NEXT:** **S2 aggregator G structure session.** Needs the visual loop (a real
-ingested match render + the per-page UI-audit ritual per
-`feedback_phase3_fixture_ritual.md`) — best run when the operator has a fresh
-standard-queue last match. Keystone needs nothing further (data path proven);
-only the operator's own eyes on the rendered bench in a future Mayhem
-champ-select as optional reassurance. Small still-open: `only_item_ids`
-carry-branch fix (RUN-1 (b), needs a DS restart).
-
-**⚠ TOOLING (wakeup_prune) — §6c SKIPPED again, now FULLY root-caused (don't
-re-diagnose):** `scripts/wakeup_prune.py` still crashes (`SESSION_RE.search(b)
-.group(0)` → None, line 105). The eve-entry's partial diagnosis ("chokes on
-the pinned KNOWN-BUG block") was incomplete. **Real root cause:** `SESSION_RE`
-(`^# s\d+…wrap\b`) only matches the *old* `# sNNN wrap` heading format, but
-every recent session uses the *dated* format (`# 2026-05-17 (late) — …`,
-`# 2026-05-17 (eve) — …`, `# 2026-05-17 OVERNIGHT RUN-1 — …`) which it does
-NOT match. So `split_sessions` dumps ALL current sessions + the pinned
-RESOLVED block into `extras`; only ancient `# sNNN wrap` blocks register as
-sessions. A pure line-105 crash-guard would therefore **mis-archive the
-NEWEST sessions and un-pin the RESOLVED block while keeping s231-233** — worse
-than crashing. **Correct fix (own slot, NOT /done-tail — rewrites WAKEUP +
-history_notes via atomic write, high blast radius):** (1) widen `SESSION_RE`
-to also match `^# \d{4}-\d{2}-\d{2}\b`; (2) in `split_sessions`, fold any
-leading non-session block (the pinned `# ✅ RESOLVED …` / `# ⚠ …` block) into
-the header so it's never archived; (3) `--dry-run` and eyeball that the
-RIGHT (oldest) blocks move before writing. Until then §6c stays skipped;
-WAKEUP grows unbounded (marginal bridge cold-load cost — tolerable, not a
-/clear blocker).
