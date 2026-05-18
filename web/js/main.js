@@ -1112,6 +1112,13 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     const p = env.payload || {};
     state.latest[env.mode] = p;
 
+    // Record the /api/state mode_key + when we saw it. mode_key is the
+    // canonical preflip/in-game resolver (build_state.resolve_mode_key +
+    // cs_retention); onHealth defers to it so a raw-health "client" can't
+    // flap body[data-mode] during ARAM/Arena-lobby preflip.
+    state.lastStateMode = env.mode || "";
+    state.lastStateModeTs = Date.now();
+
     // 2026-04-26: faster mode-switch — onState envelopes carry the source
     // mode in env.mode (mode_key from /api/state). Previously mode flipped
     // ONLY on the next health envelope (~5s gap from MetricsCache cadence).
@@ -1176,6 +1183,26 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
     else if (p.tft_mode)   tag = "tft";
     else if (p.has_game)   tag = "sr";
     else                   tag = (p.mode || "client").toLowerCase();
+    // The health envelope's mode flags are NOT a reliable mode authority:
+    // the WS /push health mirror (file_ingest) can fail/lag in the :8891
+    // supervisor and /api/health is never preflip-mirrored, so during
+    // ARAM/Arena-lobby + champ-select preflip onHealth computes "client"
+    // while onState correctly carries the preflip mode_key. Both write
+    // body[data-mode] on independent cadences → it flaps aram↔client and
+    // every mode-gated header pill (ds/augments/trigger/nudge), the mode
+    // pill, and the panel titles flicker on/off every cycle, on all
+    // views (shared header). /api/state.mode_key is the canonical
+    // resolver — defer the "client" downgrade to it whenever onState
+    // recently asserted a preflip/in-game mode. The staleness window
+    // still lets a genuine return-to-client through once /api/state
+    // stops asserting a game (its mode_key resolves to "client" too).
+    if (tag === "client"
+        && ["aram", "arena", "brawl", "sr", "tft"].includes(state.lastStateMode)
+        && (Date.now() - (state.lastStateModeTs || 0)) < 8000) {
+      logLine("health",
+        `pid=${p.pid} alive=${p.alive} mode=client(deferred→${state.lastStateMode}) reload_ok=${p.last_reload_ok}`);
+      return;
+    }
     setMode(tag);
     logLine("health", `pid=${p.pid} alive=${p.alive} mode=${tag} reload_ok=${p.last_reload_ok}`);
   }
