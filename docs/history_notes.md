@@ -6,6 +6,18 @@ Compaction rule: 3+ sessions old → 1-2 line summary entry below.
 
 ---
 
+# 2026-05-18 - s236: dead dashboard.js quarantine + agent3 pre-existing-rot cleanup (3 commits, CI green)
+
+Two scoped follow-ups off the `9bba79a` AUTONOMOUS_AUDIT next-priority order. All pushed, CI green.
+
+- **`141ec91` + `7b05c78` - dashboard.js quarantine (closes AUTONOMOUS_AUDIT staged #3 - do NOT re-investigate).** `git mv web/js/dashboard.js` (8531 LOC dead, zero `<script>`/import) -> `docs/_archive/2026-05-18-dead-dashboard-js/` (100% rename, reversible). **Operator decision (AskUserQuestion): "Repoint to live UI"** - `ui_applier.py` ALLOWED_PATHS + `ui_feedback.py` parser repointed off dead dashboard.js/sim.js onto live `index.html`/`main.js`/`panels/` + `css/panels/base.css`; dead sim/JSON branch removed; smoke-verified vs the REAL live base.css. **Spec correction (don't re-litigate): `web/css/dashboard.css` is LIVE** (the `<link>`ed `@import` aggregator) - only dashboard.js was dead. A1 mirror + 10 dead-content tests deleted; `test_round42` rewritten w/ repoint guards; 9 stale comments generalized; stale `js/dashboard.js` removed from `_static.py` + `routes_state.py`; `api_surface.csv` regenerated; `API.md`/`ARCHITECTURE.md` synced.
+- **`c5f42a4` - agent3 ~30-failure rot (the flagged follow-up; do NOT re-triage).** 3 distinct root causes: (1) `test_round40.py` DELETED - genuine s218 sim-removal orphan (16 tests, zero live refs). (2) `test_auto_analyze`/`round12`/`round17`/`warm_ui_watchdog` (14) were INNOCENT pollution victims - a `tests/` `unittest.IsolatedAsyncioTestCase` (`tests/preflip_mode/test_file_ingest_mirror.py`) leaks asyncio's running-loop slot under full-suite load; fixed at root via an autouse asyncio-isolation fixture in `agents/agent3_testing/suite/conftest.py` (s223/item-87 pattern), victim tests untouched. (3) `test_scheduler_lock` race = `TimeoutExpired` under saturation; bounded-retry v2 (corruption still hard-fails).
+- **Key fact for next-session-me:** the true spec-triplet baseline was **33 pre-existing failures**, NOT "0" - the WAKEUP/spec "0 failed" was a `tail`-masked / tests-only number. agent3-alone went **17 -> 356 passed/0 failed**; SLICE A proved the polluter is `tests/`-only (daemon_slayer innocent). CI never runs `agents/agent3_testing` so it's unaffected.
+- **Process note (don't repeat):** I mishandled full-triplet verification - launched a 2nd triplet without cleanly stopping the 1st (Git-Bash mangled `taskkill /F`), two ~3900-test runs starved each other. Per operator (option 2) the agent3 commit shipped on the deterministic agent3-alone + root-cause proof, NOT a clean full triplet. If you want the clean triplet, run it ONCE (no concurrency); expect ~0 failures.
+- **NEXT (AUTONOMOUS_AUDIT s5 order):** `builders.py` split (4.C lowest-risk) + `_enrich_from_lcu` test coverage (4.E). Phase 4(d) already shipped `aaa9c5a` (pre-this-session). DS conditional arc stays operator-CLOSED.
+
+---
+
 # 2026-05-18 - Autonomous audit+refactor+research session shipped `9bba79a` (CI green) - executed the PIN directive
 
 Executed WAKEUP Part-2 (the pre-authorized autonomous mega-session). Ran a competitor-research subagent + a code-health-audit subagent in parallel, implemented the highest-leverage findings, fully tested, shipped, CI verified green. Full deliverable: **`C:\Users\Administrator\Desktop\AUTONOMOUS_AUDIT_2026-05-18.md`** (research + all 15 audit findings + staged execution specs + next-session priority order) - read it for the full picture; this is the condensed hand-off.
