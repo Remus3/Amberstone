@@ -115,7 +115,7 @@ def _download_icon(url: str, dest: Path, label: str = "") -> bool:
 def cmd_items_index(force: bool = False) -> bool:
     """Regenerate web/data/items_index.json from data/meta/ddragon_items.json.
 
-    Output schema mirrors the existing index used by web/js/dashboard.js:
+    Output schema mirrors the existing index used by web/js/lib/items_index.js:
       {
         "version": "<patch>",
         "byName":  { "<lowercased-stripped-name>": "<id-string>", ... },
@@ -160,7 +160,7 @@ def cmd_items_index(force: bool = False) -> bool:
         name = info.get("name") or ""
         if not name:
             continue
-        # byName key matches dashboard.js _normItemName: lowercase, strip non-alnum.
+        # byName key matches the items_index.js name normalizer: lowercase, strip non-alnum.
         norm = "".join(c for c in name.lower() if c.isalnum())
         by_name.setdefault(norm, str(item_id))
         by_id[str(item_id)] = name

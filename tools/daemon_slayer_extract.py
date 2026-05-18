@@ -784,8 +784,8 @@ def _load_champion_aliases() -> dict[str, str]:
     """Load the canonical display-name → DDragon-id alias map.
 
     Source of truth at ``web/data/champion_aliases.json``; the same file is
-    fetched at runtime by ``web/js/lib/items_index.js`` and
-    ``web/js/dashboard.js``. Keys are lowercase-alphanumeric of the source
+    fetched at runtime by ``web/js/lib/items_index.js``. Keys are
+    lowercase-alphanumeric of the source
     name (matching the JS ``replace(/[^a-z0-9]/g, "")`` normalization).
     """
     return json.loads(_CANONICAL_ALIAS_PATH.read_text("utf-8"))

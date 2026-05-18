@@ -256,11 +256,3 @@ def test_insight_card_suppresses_small_kda_drift(tmp_path: Path, monkeypatch) ->
     assert "KDA 5.0" in card
     # No recent-arrow annotation, since |delta| < 0.3
     assert "↑" not in card and "↓" not in card
-
-
-# ── dashboard JS surfaces kda_delta ─────────────────────────────────
-
-def test_dashboard_counter_line_uses_matchup_kda() -> None:
-    js = Path("web/js/dashboard.js").read_text(encoding="utf-8")
-    assert "c.kda_ratio" in js
-    assert "c.kda_delta" in js

@@ -3,7 +3,6 @@
 The JSON at ``web/data/champion_aliases.json`` is the single source of truth
 for display-name → DDragon-id rename overrides. It is consumed by:
   - ``web/js/lib/items_index.js`` (runtime, async fetch)
-  - ``web/js/dashboard.js`` (runtime, async fetch - dead-code mirror)
   - ``tools/daemon_slayer_extract.py`` (build-time, sync read)
 
 If any consumer hardcodes the map again or the JSON drops an entry, this
@@ -82,7 +81,6 @@ def test_js_consumers_reference_canonical_file():
     """
     for js_path in [
         ROOT / "web" / "js" / "lib" / "items_index.js",
-        ROOT / "web" / "js" / "dashboard.js",
     ]:
         src = js_path.read_text("utf-8")
         assert "/data/champion_aliases.json" in src, (

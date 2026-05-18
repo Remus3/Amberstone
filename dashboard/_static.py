@@ -38,7 +38,7 @@ def compute_asset_hash() -> str:
     # the cache too - they're loaded through main.js / dashboard.css
     # imports, so without this any edit to a panel went unnoticed by
     # browsers until manual cache-clear.
-    for rel in ("index.html", "css/dashboard.css", "js/dashboard.js",
+    for rel in ("index.html", "css/dashboard.css",
                 "js/main.js", "js/ws_client.js"):
         p = web_root / rel
         try:

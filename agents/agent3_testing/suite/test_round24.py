@@ -135,11 +135,3 @@ def test_dashboard_has_kda_row() -> None:
     html = Path("web/index.html").read_text(encoding="utf-8")
     assert 'id="adapt-kda"' in html
     assert "Typical KDA" in html
-
-
-def test_dashboard_js_binds_kda_element() -> None:
-    js = Path("web/js/dashboard.js").read_text(encoding="utf-8")
-    assert 'kda: el("adapt-kda")' in js
-    assert "data.avg_kda" in js
-    # Must also consume recent_kda when serving the trend.
-    assert "data.recent_kda" in js
