@@ -267,6 +267,9 @@ class EhpRankedItem:
     # Lifeline component) is a real conflict source.
     shares_dead_unique: bool = False
     dead_unique_key: str = ""
+    # Phase 4(d): candidate's own unique-passive family key, always set
+    # (collision-independent) - the positive "locks <family>" signal.
+    unique_passive_key: str = ""
 
     def to_dict(self) -> dict:
         return {
@@ -280,6 +283,7 @@ class EhpRankedItem:
             "tags": list(self.tags),
             "shares_dead_unique": self.shares_dead_unique,
             "dead_unique_key": self.dead_unique_key,
+            "unique_passive_key": self.unique_passive_key,
         }
 
 
@@ -479,6 +483,7 @@ def rank_items_by_ehp(
             tags=tuple(rec.get("tags") or ()),
             shares_dead_unique=shares_dead_unique,
             dead_unique_key=cand_key if shares_dead_unique else "",
+            unique_passive_key=cand_key,
         ))
 
     if sort_by == "efficiency":

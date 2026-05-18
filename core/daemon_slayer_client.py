@@ -39,6 +39,9 @@ class RankedItem:
     # candidates without a second engine call.
     shares_dead_unique: bool = False
     dead_unique_key: str = ""
+    # Phase 4(d): mirrors server unique_passive_key - the positive
+    # locked-family signal (collision-independent).
+    unique_passive_key: str = ""
 
     @classmethod
     def from_dict(cls, d: dict) -> "RankedItem":
@@ -49,6 +52,7 @@ class RankedItem:
             gold=int(d.get("gold", 0)),
             shares_dead_unique=bool(d.get("shares_dead_unique", False)),
             dead_unique_key=str(d.get("dead_unique_key", "")),
+            unique_passive_key=str(d.get("unique_passive_key", "")),
         )
 
 
@@ -182,6 +186,9 @@ class TankRankedItem:
     gold: int
     shares_dead_unique: bool = False
     dead_unique_key: str = ""
+    # Phase 4(d): mirrors server unique_passive_key - the positive
+    # locked-family signal (collision-independent).
+    unique_passive_key: str = ""
 
     @classmethod
     def from_dict(cls, d: dict) -> "TankRankedItem":
@@ -192,6 +199,7 @@ class TankRankedItem:
             gold=int(d.get("gold", 0)),
             shares_dead_unique=bool(d.get("shares_dead_unique", False)),
             dead_unique_key=str(d.get("dead_unique_key", "")),
+            unique_passive_key=str(d.get("unique_passive_key", "")),
         )
 
 
@@ -289,6 +297,9 @@ class BruiserRankedItem:
     gold: int
     shares_dead_unique: bool = False
     dead_unique_key: str = ""
+    # Phase 4(d): mirrors server unique_passive_key - the positive
+    # locked-family signal (collision-independent).
+    unique_passive_key: str = ""
 
     @classmethod
     def from_dict(cls, d: dict) -> "BruiserRankedItem":
@@ -301,6 +312,7 @@ class BruiserRankedItem:
             gold=int(d.get("gold", 0)),
             shares_dead_unique=bool(d.get("shares_dead_unique", False)),
             dead_unique_key=str(d.get("dead_unique_key", "")),
+            unique_passive_key=str(d.get("unique_passive_key", "")),
         )
 
 
@@ -380,6 +392,9 @@ class MageRankedItem:
     gold: int
     shares_dead_unique: bool = False
     dead_unique_key: str = ""
+    # Phase 4(d): mirrors server unique_passive_key - the positive
+    # locked-family signal (collision-independent).
+    unique_passive_key: str = ""
 
     @classmethod
     def from_dict(cls, d: dict) -> "MageRankedItem":
@@ -391,6 +406,7 @@ class MageRankedItem:
             gold=int(d.get("gold", 0)),
             shares_dead_unique=bool(d.get("shares_dead_unique", False)),
             dead_unique_key=str(d.get("dead_unique_key", "")),
+            unique_passive_key=str(d.get("unique_passive_key", "")),
         )
 
 
@@ -518,6 +534,9 @@ class AssassinRankedItem:
     gold: int
     shares_dead_unique: bool = False
     dead_unique_key: str = ""
+    # Phase 4(d): mirrors server unique_passive_key - the positive
+    # locked-family signal (collision-independent).
+    unique_passive_key: str = ""
 
     @classmethod
     def from_dict(cls, d: dict) -> "AssassinRankedItem":
@@ -529,6 +548,7 @@ class AssassinRankedItem:
             gold=int(d.get("gold", 0)),
             shares_dead_unique=bool(d.get("shares_dead_unique", False)),
             dead_unique_key=str(d.get("dead_unique_key", "")),
+            unique_passive_key=str(d.get("unique_passive_key", "")),
         )
 
 
@@ -701,6 +721,9 @@ class EnchanterRankedItem:
     gold: int
     shares_dead_unique: bool = False
     dead_unique_key: str = ""
+    # Phase 4(d): mirrors server unique_passive_key - the positive
+    # locked-family signal (collision-independent).
+    unique_passive_key: str = ""
 
     @classmethod
     def from_dict(cls, d: dict) -> "EnchanterRankedItem":
@@ -712,6 +735,7 @@ class EnchanterRankedItem:
             gold=int(d.get("gold", 0)),
             shares_dead_unique=bool(d.get("shares_dead_unique", False)),
             dead_unique_key=str(d.get("dead_unique_key", "")),
+            unique_passive_key=str(d.get("unique_passive_key", "")),
         )
 
 
@@ -885,6 +909,7 @@ def rank_for_primary_archetype(
                     "gold":               r.gold,
                     "shares_dead_unique": r.shares_dead_unique,
                     "dead_unique_key":    r.dead_unique_key,
+                    "unique_passive_key": r.unique_passive_key,
                 }
                 for r in rows
             ],
@@ -921,6 +946,7 @@ def rank_for_primary_archetype(
                     "gold":               r.gold,
                     "shares_dead_unique": r.shares_dead_unique,
                     "dead_unique_key":    r.dead_unique_key,
+                    "unique_passive_key": r.unique_passive_key,
                 }
                 for r in rows
             ],
@@ -958,6 +984,7 @@ def rank_for_primary_archetype(
                     "gold":               r.gold,
                     "shares_dead_unique": r.shares_dead_unique,
                     "dead_unique_key":    r.dead_unique_key,
+                    "unique_passive_key": r.unique_passive_key,
                 }
                 for r in rows
             ],
@@ -996,6 +1023,7 @@ def rank_for_primary_archetype(
                     "gold":               r.gold,
                     "shares_dead_unique": r.shares_dead_unique,
                     "dead_unique_key":    r.dead_unique_key,
+                    "unique_passive_key": r.unique_passive_key,
                 }
                 for r in rows
             ],
@@ -1028,6 +1056,7 @@ def rank_for_primary_archetype(
                     "gold":               r.gold,
                     "shares_dead_unique": r.shares_dead_unique,
                     "dead_unique_key":    r.dead_unique_key,
+                    "unique_passive_key": r.unique_passive_key,
                 }
                 for r in rows
             ],
@@ -1063,6 +1092,7 @@ def rank_for_primary_archetype(
                 "gold":               r.gold,
                 "shares_dead_unique": r.shares_dead_unique,
                 "dead_unique_key":    r.dead_unique_key,
+                "unique_passive_key": r.unique_passive_key,
             }
             for r in rows
         ],

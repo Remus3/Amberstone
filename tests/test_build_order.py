@@ -99,6 +99,9 @@ class FakeEngine:
                 "gold": 3000,
                 "shares_dead_unique": collides,
                 "dead_unique_key": family if collides else "",
+                # Phase 4(d): the real envelope always carries the
+                # candidate's own family key, collision-independent.
+                "unique_passive_key": family,
             })
         rows.sort(key=lambda r: r["delta"], reverse=True)
         top = int(kw.get("top", 8) or 8)
@@ -342,6 +345,54 @@ class EdgeCaseContractTests(unittest.TestCase):
                                slots=1, rank_fn=eng)
         self.assertEqual(res.archetype, "carry")
         self.assertEqual(eng.calls[0]["archetype"], "carry")
+
+
+class Phase4dLockedFamilyTests(unittest.TestCase):
+    """Phase 4(d): BuildStep.locked_family surfaces the engine-supplied
+    unique_passive_key of the CHOSEN item at each slot - the positive
+    'this slot locks the <family>' counterpart to excluded_family.
+    target_armor/mr pinned to 0 so the greedy order is deterministic."""
+
+    def test_locked_family_reflects_chosen_item(self):
+        eng = FakeEngine()
+        res = plan_build_order("Ezreal", "carry", level=11,
+                               owned_item_ids=[], slots=6,
+                               target_armor=0.0, target_mr=0.0, rank_fn=eng)
+        self.assertEqual(res.order[0].item_id, "3078")        # Trinity
+        self.assertEqual(res.order[0].locked_family, "spellblade")
+        hydra = [s for s in res.order if s.item_id == "3074"]  # no unique
+        self.assertEqual(len(hydra), 1)
+        self.assertEqual(hydra[0].locked_family, "")
+        sterak = [s for s in res.order if s.item_id == "3053"]  # lifeline
+        self.assertEqual(len(sterak), 1)
+        self.assertEqual(sterak[0].locked_family, "lifeline")
+
+    def test_to_dict_carries_locked_family(self):
+        eng = FakeEngine()
+        res = plan_build_order("Ezreal", "carry", level=11,
+                               owned_item_ids=[], slots=2,
+                               target_armor=0.0, target_mr=0.0, rank_fn=eng)
+        d0 = res.order[0].to_dict()
+        self.assertIn("locked_family", d0)
+        self.assertEqual(d0["locked_family"], "spellblade")
+
+    def test_legacy_engine_without_key_defaults_empty(self):
+        # Backward-compat: an envelope predating 4(d) omits the key. The
+        # planner must yield locked_family "" - never KeyError.
+        class LegacyEngine(FakeEngine):
+            def __call__(self, champion, archetype, **kw):
+                out = super().__call__(champion, archetype, **kw)
+                if out:
+                    for r in out["ranked"]:
+                        r.pop("unique_passive_key", None)
+                return out
+        res = plan_build_order("Ezreal", "carry", level=11,
+                               owned_item_ids=[], slots=3,
+                               target_armor=0.0, target_mr=0.0,
+                               rank_fn=LegacyEngine())
+        self.assertTrue(res.order)
+        for s in res.order:
+            self.assertEqual(s.locked_family, "")
 
 
 class ScorerUnitTests(unittest.TestCase):
