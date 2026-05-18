@@ -31,10 +31,20 @@ WAKEUP = ROOT / "WAKEUP_NOTES.md"
 ARCHIVE = ROOT / "docs" / "history_notes.md"
 
 SEP = "\n---\n\n"
-# Accepts single sessions (`# s171 wrap`), sub-sessions (`# s171.8 wrap`),
-# and en-dash/hyphen ranges (`# s209–s213 wrap`, `# s209-s213 wrap`).
+# A session heading is either:
+#   legacy — `# s171 wrap`, `# s171.8 wrap`, `# s209–s213 wrap` (en-dash or
+#            hyphen ranges); or
+#   dated  — `# 2026-05-17 (late) — …`, `# 2026-05-17 wrap — …`,
+#            `# 2026-05-17 OVERNIGHT RUN-1 — …` (any suffix after the date).
+# A leading pinned block (`# ✅ RESOLVED 2026-05-17 — …`) matches NEITHER —
+# the date is not at heading-start — so split_sessions folds it into the
+# header rather than archiving it.
 SESSION_RE = re.compile(
-    r"^# s\d+(?:\.\d+)*(?:[–-]s\d+(?:\.\d+)*)? wrap\b", re.M,
+    r"^# (?:"
+    r"s\d+(?:\.\d+)*(?:[–-]s\d+(?:\.\d+)*)? wrap\b"
+    r"|\d{4}-\d{2}-\d{2}\b"
+    r")",
+    re.M,
 )
 
 ARCHIVE_HEADER = (
@@ -57,16 +67,27 @@ def split_sessions(text: str) -> tuple[str, list[str]]:
     if len(parts) <= 1:
         return text, []
     header, *rest = parts
+    leading_pins: list[str] = []
     sessions: list[str] = []
-    extras: list[str] = []
+    trailing_extras: list[str] = []
+    seen_session = False
     for block in rest:
         if SESSION_RE.match(block.lstrip("\n")):
+            seen_session = True
             sessions.append(block)
+        elif not seen_session:
+            # Pinned non-session block(s) that precede the first session
+            # (e.g. `# ✅ RESOLVED … `). These belong with the header so
+            # they are never archived and stay at the top of WAKEUP_NOTES.
+            leading_pins.append(block)
         else:
-            # Unexpected non-session block (e.g. a stray separator). Preserve
-            # it at the tail so we never silently drop content.
-            extras.append(block)
-    return header, sessions + extras
+            # Unexpected non-session block AFTER sessions began (e.g. a
+            # stray separator / malformed block). Preserve it at the tail
+            # so we never silently drop content.
+            trailing_extras.append(block)
+    if leading_pins:
+        header = render(header, leading_pins)
+    return header, sessions + trailing_extras
 
 
 def render(header: str, sessions: list[str]) -> str:
@@ -102,7 +123,11 @@ def prune(*, keep: int, dry_run: bool) -> int:
 
     keep_sessions = sessions[:keep]
     move_sessions = sessions[keep:]
-    moved_ids = [SESSION_RE.search(b).group(0) for b in move_sessions]
+    moved_ids = [
+        next((ln for ln in b.lstrip("\n").splitlines() if ln.strip()),
+             "(non-session block)")
+        for b in move_sessions
+    ]
     print(f"wakeup_prune: moving {len(move_sessions)} session(s): {moved_ids}")
 
     new_wakeup = render(header, keep_sessions)
