@@ -27,6 +27,7 @@ from pathlib import Path
 WEB = Path(__file__).resolve().parent.parent / "web"
 STATE_JS = WEB / "js" / "lib" / "state.js"
 MAIN_JS = WEB / "js" / "main.js"
+HEADER_CSS = WEB / "css" / "panels" / "header.css"
 
 
 def _read(p: Path) -> str:
@@ -106,6 +107,52 @@ class OnHealthDeferralTests(unittest.TestCase):
     def test_deferral_logs_for_observability(self) -> None:
         # ?dbg=1 / console operators need to see the suppressed write.
         self.assertIn("mode=client(deferred", self.text)
+
+
+class RowTwoPillViewGateTests(unittest.TestCase):
+    """Second half of the same bug: with the flap fixed, body[data-mode]
+    is stably "aram"/"arena" during the s150 lobby/CS pre-flip (by
+    design — it primes the coach panels). The four in-game-only row-2
+    pills were only mode-gated (client/tft), so stable-preflip-mode
+    leaked them onto every pre-game page. They must be view-gated to
+    active-match ONLY (no last-match exception — operator: "only the
+    active game page"), mirroring the s162 telemetry-pill view-gate."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.text = _read(HEADER_CSS)
+
+    def test_view_gate_block_present_for_all_four_pills(self) -> None:
+        for sel in (
+            'body:not([data-view="active-match"]) header .ds-pill',
+            'body:not([data-view="active-match"]) header .augments-pill',
+            'body:not([data-view="active-match"]) header .trigger-pill',
+            'body:not([data-view="active-match"]) header .archetype-nudge-chip',
+        ):
+            self.assertIn(sel, self.text, f"missing view-gate selector: {sel}")
+
+    def test_view_gate_is_active_match_only_not_last_match(self) -> None:
+        # The four-pill block must NOT carry the :not([data-view="last-
+        # match"]) exception the s162 telemetry block has — these are
+        # meaningless on Post Game Review.
+        idx = self.text.find(
+            'body:not([data-view="active-match"]) header .ds-pill'
+        )
+        self.assertGreater(idx, 0)
+        block = self.text[idx:idx + 400]
+        self.assertNotIn('.ds-pill,\nbody:not([data-view="last-match"])', block)
+        self.assertNotIn(
+            'body:not([data-view="active-match"]):not([data-view="last-match"]) header .ds-pill',
+            self.text,
+        )
+
+    def test_view_gate_hides_with_important(self) -> None:
+        idx = self.text.find(
+            'body:not([data-view="active-match"]) header .archetype-nudge-chip'
+        )
+        self.assertGreater(idx, 0)
+        decl = self.text[idx:idx + 220]
+        self.assertRegex(decl, r"display:\s*none\s*!important;")
 
 
 if __name__ == "__main__":
