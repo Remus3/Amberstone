@@ -4,6 +4,20 @@
 
 ---
 
+# 2026-05-18 (done) — Audit7 H-01: bridge health-publisher staleness detection + escalation (UNPUSHED)
+
+Seventh-audit cron (`t-f4d6c8cfb697`, 04:54 UTC) filed 2 proposals; H-01 (HIGH) **was** the live session-start anomaly (gamepc health publisher stale ~3h). Operator chose "full incl. Part B".
+
+- **Investigation reframed the proposal (don't trust its literal code):** `P-audit7-h01`'s `bridge_<node>_health.json` path + `_file_agent1_task` are **invented**. Reality: `/api/health/all` *already* carried `peers.<node>.age_s/stale` (reads `ops/runtime/peer_health/<node>.json`); the real gaps were (1) no graded status, (2) peer staleness never flipped the rollup dot, (3) nothing rendered/escalated it. The proposal's frozen `ops/rc_supervisor.py._Phase3Watcher` is a process-liveness watchdog (`_record_incident` only, zero `file_task` coupling) — **wrong layer**. Real Agent-1 API = `Scheduler.file_task()` owned+looped by **`agents/supervisor.py` (NOT frozen)**. Operator approved that home → **no frozen-file edit**.
+- **Part A (`dashboard/routes_state.py` + `web/js/main.js`, non-frozen):** new pure `_peer_health_status(age_s)` ladder (≤300 green / ≤1800 yellow / >1800 red; 300 preserves the prior hardcoded `stale` boundary byte-identically); `peers.<node>.status` added; new `peer_degraded` factors into `rollup["status"]` **capped at yellow** (same philosophy as the existing `bridge` block — observability gap ≠ RC outage). Health-dot tooltip gains a `publishers: <node> <ok|stale|DEAD> <age>` line. **Live-verified:** gamepc `status=red age=10896s`, peer `status=green`, `rollup=yellow` (was falsely green). No new DOM (survives the slated fleet-view removal; the existing fleet-menu badge already covered the "menu chip" idea).
+- **Part B (`agents/supervisor.py` — NOT frozen):** pure `_bridge_pub_should_file(age, prev_fired_mono, now) -> (should_file, rearm)` dedup/re-arm decision + `_bridge_publisher_watchdog` async loop (300s cadence, registered in `start()` beside the other create_task calls). Files a deduped Agent-1 task `op="bridge-publisher-stale"` (added to the Round-43 `_DETERMINISTIC_RECORDKEEPING_OPS` allowlist — else `_run_deterministic` fails it loudly as a "fabricated op"). Dedup = `fired_at` + 6h re-file cooldown + recover-rearm (matches the proposal's dedup_key intent). Payload carries node/age/threshold + a `tools/gamepc_boot.ps1` suggested_action (bundles with the s167 boot-hardening *prevention* half).
+- **Tests:** `tests/audit7_h01/` 13 new (status ladder boundaries + the proposal's 3 dedup cases + re-arm + wiring guards) + 84 regression green (preflip / routes_ds_preview / state_builder_nudge / agent3 scheduler+allowlist round43). py_compile + node --check clean.
+- **Activation:** RC main restarted (pid 7632→**4844**, reload_ok). Phase-3 **bounced** (pid 17160→**10808**; `started_at` now populated — was `None`, so this **also closes the 2329ebf backward-compat gap** as a bonus). Part B armed; **deterministic proof** it fires: real live `peer_health/gamepc.json` (age 10912s) → `_bridge_pub_should_file → (True, False)`. Background check in flight to confirm the actual filed task (~5min first tick).
+- **Audit backlog status (don't re-triage):** **L-01 moot** — `tests/preflip_mode/test_file_ingest_mirror.py` IS tracked (committed `c114e5b`; the audit's "untracked" was its own 04:54 session). **M-01 weaker than filed** — `e4b08ba` is client-side JS (`onHealth`/`onState`); the proposal's Python `build_state()` test can't exercise it, and `c114e5b` already covers the server-mirror half. **C-01 (audit6 bbox HTTP-override validation) still OPEN** — untouched this session.
+- **NEXT:** (1) confirm the background-checked filed task (acceptance #4); (2) **push is operator-gated** — not yet pushed; (3) the s167 `gamepc_boot.ps1` publisher-hardening is the *prevention* half that bundles with this *detection* half; (4) the acute live gamepc publisher still needs a Game-PC-side restart (delegate to Game-PC Claude via bridge) — this work makes it *visible/escalated*, it doesn't restart the publisher; (5) audit M-01/C-01 remain operator decisions.
+
+---
+
 # 2026-05-18 (done) — header-row-2 pill flicker: full bug-chain closed (e4b08ba c114e5b 00277c4 2329ebf, pushed)
 
 Operator: "in pgl the 2nd row pills are switching on and off / occurs in other pages as well."
@@ -27,19 +41,4 @@ CLAUDE #88 plan executed end-to-end (`Desktop/MAYHEM_AUGMENT_RECOMMENDER_PLAN_20
 - **NEXT (operator-gated, not provable offline):** live Mayhem augment-select cross-check (OCR→rank vs pick made). Precondition: confirm League WindowMode in-client (fullscreen-lockup note). Recommender live in pid 7632; tooltip auto-serves via ADR-008.
 - **#90 shared-primitive:** still its own scoped session; its Task-1 gate is now satisfied by this ship — `core/augment_recommender.py`'s Laplace/shrinkage is the concrete impl to generalize. Don't re-derive the augment data audit.
 
----
-
-# 2026-05-17 (done) — #89 lobby change-mode FIXED + champ-select 920→2400 label sweep (c3a1e23, pushed)
-
-ROADMAP #89 shipped off the s234 recon (recon was accurate; one staleness noted).
-
-- **Mayhem 920→2400** (core bug — 920 = Poro King, Mayhem = 2400 KIWI): both pickers (index.html), agent `_LOBBY_QUEUE_NAMES`, `LV_QUEUE_TIPS`. Auto-serves from Legion via ADR-008 asset hash — no RC restart.
-- **Silent-failure fix:** Home Find-Match picker swallowed every LCU result; both pickers now surface failures via `lcuPollResult`/`_lvQueueChangeError`. **Bespoke Arena/Mayhem create payloads deliberately NOT fabricated** (recon: must come from live capture) — the error-surfacing is what makes that one-shot capture possible.
-- **Brawl 2300** dropped from agent lobby name-map (retired s214).
-- **Arena 8×2 → 6×3:** LV tip, allyOpts cellCount, `_csvArenaPaneHtml` duo→trio, `_csvRenderEnemiesArena` slices (3→5 teams, 2→3 cells), 2 CSS grids.
-- **Champ-select 920→2400 label sweep** (spawn-task follow-up, same commit): `_csvResolveRole` MAYHEM badge, `_csvQueueLabel`/`modeMap`, dev.js `_replayQueueLabel`; classifiers gain `q===2400`. **`cs.is_aram` rendering path untouched — item 87 preserved.**
-
-**Don't re-investigate:** recon's "practice not special-cased in lobby-view dropdown" was stale — it already was; real defect = swallowed errors + 920 id (both fixed). **dashboard.js:5055** has the same `_replayQueueLabel` 920 bug but is confirmed-dead legacy — left alone.
-
-**Verified:** py_compile + node --check clean; phase_b / snapshot / view_router / cs_retention suites green.
-**Operator-gated NEXT (not provable offline):** live Practice/Mayhem/Arena lobby creation + Arena 6×3 visual + Mayhem-2400 switch. Agent name-map change (cosmetic label + Brawl) needs a Game-PC `C:\RC-Agent\` redeploy (offer bridge dispatch) — but the core Mayhem fix is JS/served-from-Legion, no redeploy needed. Precondition: confirm League WindowMode in-client (prior session's fullscreen-lockup note).
+_(Older sessions archived to `docs/history_notes.md`.)_
