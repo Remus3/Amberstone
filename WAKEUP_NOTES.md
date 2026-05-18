@@ -289,6 +289,27 @@ proven and just needs the operator-gated go-live + the reviewed UI pass.
 
 ---
 
+# s234 wrap — 2026-05-17 (pengu/research-list triage + Mayhem augment recommender SCOPED — docs only, no code)
+
+**Operator instruction:** triage two Desktop link-lists (`pengu list.txt`, `research list.txt`) for liftability; then "a and b" (record closed questions + scope the augment recommender); validated the Overlay App E source; then /done.
+
+## Shipped (docs only — no RC code touched)
+- `BACKLOG.md` ×4 edits: **Pengu.lol MCP struck → rejected** (rumi-chan/league-client-mcp = thin fetch() passthrough, worse than RC's lockfile client); **`.rofl` full-parse → confirmed dead-end** (fraxiinus roflxd = EOG-aggregate subset of Match-V5; S5 Replay page stays Match-V5-driven); **KebsCS catalog** logged as the LCU richer-endpoints reference (lcu.kebs.dev, 26.05, 2839 ops, no license → reference only); Discord-crawl demoted; `cherry-augments.json` lift noted.
+- `ROADMAP.md`: new 🟡 Mayhem/Arena augment recommender item (medium-pri) with source locked.
+- `CLAUDE.md` active-priorities item **88** added.
+- Memory `project_lcu_pengu_pregame_postgame.md` + `MEMORY.md` index updated (memory dir is outside the RC repo — not in the commit).
+- `Desktop/MAYHEM_AUGMENT_RECOMMENDER_PLAN_2026-05-17.md` written — turnkey, **zero open decisions**.
+
+## Key decisions (don't re-litigate)
+- Augment recommender cold-start = **Option B external-seed** (operator-chosen).
+- External source **validated + locked**: `GET https://data.v2.iesdev.com/api/v1/query_objects/prod/lol/aram_mayhem_augments` — unauth, CORS-open, daily, **true Mayhem**, keyed by Riot `augment_id` (1:1 with `cherry-augments.json`). **Per-augment marginal WR only — no pairwise**; own-history still owns synergy/co-occurrence. Caveat: undocumented private API + ToS unreviewed → patch-pinned cached snapshot + graceful fallback (baked into plan).
+
+## Don't-redo / NEXT
+- **Don't re-research:** Pengu MCP (NO), `.rofl` full-parse (NO), the Overlay App E source validation (done).
+- **NEXT:** execute `Desktop/MAYHEM_AUGMENT_RECOMMENDER_PLAN_2026-05-17.md` in a fresh `/clear`'d session. Task 1 = gating data audit (count `match_history.db` augment rows by mode Mayhem-KIWI/Arena-CHERRY; confirm `arena_coach` ~L380 + `builders.py` ~L684/722). No code shipped this session — nothing to verify live.
+
+---
+
 # s233 wrap — 2026-05-16 (operator decision: DS conditional arc CLOSED; next = s220 aggregator G reframe)
 
 **Operator instruction:** asked what direction the DS Part-2 decision needed, chose to close the arc, then "plan what is next then /done".
