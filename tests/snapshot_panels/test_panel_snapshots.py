@@ -58,7 +58,7 @@ def test_panels(fixture_name, mock_server, pw_browser):
         # panels" contract working, we inject a stylesheet override below
         # that nullifies the s219 hide rule for this URL only. This test
         # is specifically scoped to the legacy in-game panels (#right-now,
-        # #next, #item-build, #minimap) which live in main — the new
+        # #next, #item-build, #minimap) which live in main - the new
         # Post Game Review section has its own panel-snapshot coverage in
         # a separate test if needed.
         url = mock_server.url + "/#last-match"
@@ -68,12 +68,12 @@ def test_panels(fixture_name, mock_server, pw_browser):
           body[data-view="last-match"] #view-last-match { display: none !important; }
         """)
 
-        # For game fixtures, wait until #rn-action shows coaching text (not "—").
+        # For game fixtures, wait until #rn-action shows coaching text (not "-").
         # SSE delivers health+state immediately; typical latency < 200 ms.
-        # For lobby the action stays "—"; just let the event loop settle.
+        # For lobby the action stays "-"; just let the event loop settle.
         if fixture_name != "lobby":
             page.wait_for_function(
-                "(document.querySelector('#rn-action')?.textContent?.trim() || '') !== '—'",
+                "(document.querySelector('#rn-action')?.textContent?.trim() || '') !== '-'",
                 timeout=8_000,
             )
         else:
@@ -90,7 +90,7 @@ def test_panels(fixture_name, mock_server, pw_browser):
         # Game fixtures: verify meaningful coaching content rendered.
         if fixture_name != "lobby":
             action = page.locator("#rn-action").inner_text()
-            assert action.strip() and action.strip() != "—", (
+            assert action.strip() and action.strip() != "-", (
                 f"#rn-action placeholder not replaced (fixture={fixture_name})"
             )
 
@@ -113,7 +113,7 @@ def test_adversarial(fixture_name, mock_server, pw_browser):
       - `adv_out_of_range`: negative gold/cs/game_time_s, hp_pct=250,
         level=99, malformed kda
 
-    We do NOT wait for #rn-action to leave the placeholder — by design
+    We do NOT wait for #rn-action to leave the placeholder - by design
     these fixtures may never produce coaching text. We only assert
     that the four panel DOM nodes exist and no unhandled JS errors fire.
     """
@@ -129,7 +129,7 @@ def test_adversarial(fixture_name, mock_server, pw_browser):
     try:
         url = mock_server.url + "/#last-match"
         page.goto(url, wait_until="domcontentloaded", timeout=15_000)
-        # s219: same override as test_panels — `last-match` is now Post
+        # s219: same override as test_panels - `last-match` is now Post
         # Game Review; the legacy "show main panels" contract this test
         # relies on requires nullifying the s219 hide rules.
         page.add_style_tag(content="""
@@ -170,7 +170,7 @@ def test_mode_transition(mock_server, pw_browser):
     # main.js initializes state.mode = "client" (web/js/lib/state.js:5) and
     # setMode early-returns when tag === state.mode. So for a fixture whose
     # mode_key is "client" loaded on a fresh page, body[data-mode] never gets
-    # stamped — it's either None (initial) or whatever the prior step left.
+    # stamped - it's either None (initial) or whatever the prior step left.
     # Game modes always stamp a definite attribute value.
     game_modes = {"sr", "aram", "tft"}
 
@@ -193,7 +193,7 @@ def test_mode_transition(mock_server, pw_browser):
                     f"body[data-mode]={actual!r} expected {fixture_name!r}"
                 )
             else:
-                # Lobby — main.js state.mode default is already "client"
+                # Lobby - main.js state.mode default is already "client"
                 # so setMode("client") short-circuits and the attribute may
                 # be None (fresh load) or stale from a prior step. Both OK.
                 assert actual in (None, "client"), (

@@ -1,4 +1,4 @@
-"""Round 43 — strict deterministic op allowlist + Agent 7 LLM op vocabulary."""
+"""Round 43 - strict deterministic op allowlist + Agent 7 LLM op vocabulary."""
 from __future__ import annotations
 
 import json
@@ -15,7 +15,7 @@ def _make_supervisor(tmp_path: Path):
     for _run_deterministic to execute without booting the whole
     scheduler / WS stack."""
     from agents import supervisor as sup_mod
-    # We don't need a real Supervisor instance — _run_deterministic
+    # We don't need a real Supervisor instance - _run_deterministic
     # only touches `task` attrs + LOG_ROOT. Pin LOG_ROOT to tmp_path.
     log_root = tmp_path / "logs"
     log_root.mkdir()
@@ -41,10 +41,10 @@ def _fake_task(op: str, owner: str = "3", payload=None):
 
 def test_unknown_op_raises(tmp_path: Path) -> None:
     """The exact bug from 2026-04-23: op='update' used to silently
-    complete — now it must raise."""
+    complete - now it must raise."""
     handler, monkey = _make_supervisor(tmp_path)
     try:
-        self = SimpleNamespace()  # _run_deterministic is a bound method —
+        self = SimpleNamespace()  # _run_deterministic is a bound method -
         # but it only uses `task`, so self doesn't actually need to be a
         # real Supervisor. The method treats `self` opaquely.
         with pytest.raises(RuntimeError) as exc:
@@ -57,7 +57,7 @@ def test_unknown_op_raises(tmp_path: Path) -> None:
 
 def test_record_keeping_op_noops(tmp_path: Path) -> None:
     """Record-keeping ops (advisories, notes) still complete without
-    a handler — filing IS the work."""
+    a handler - filing IS the work."""
     handler, monkey = _make_supervisor(tmp_path)
     try:
         self = SimpleNamespace()
@@ -71,7 +71,7 @@ def test_record_keeping_op_noops(tmp_path: Path) -> None:
 
 
 def test_test_prefixed_op_noops(tmp_path: Path) -> None:
-    """pytest fakes use 'test-*' — permit so existing tests still pass."""
+    """pytest fakes use 'test-*' - permit so existing tests still pass."""
     handler, monkey = _make_supervisor(tmp_path)
     try:
         self = SimpleNamespace()
@@ -84,7 +84,7 @@ def test_test_prefixed_op_noops(tmp_path: Path) -> None:
 
 def test_registered_handler_still_runs(tmp_path: Path, monkeypatch) -> None:
     """game-summary must still route to the real handler (not the noop
-    path) — the allowlist can't break existing deterministic ops."""
+    path) - the allowlist can't break existing deterministic ops."""
     handler, monkey = _make_supervisor(tmp_path)
     try:
         # Stub ingest_game_summary so we don't need a real mode DB.

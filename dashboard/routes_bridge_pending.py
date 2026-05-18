@@ -1,5 +1,5 @@
-# arch: GET /api/bridge/pending — escalation queue | section=dashboard | frozen=yes
-"""GET /api/bridge/pending — escalation queue from bridge_watcher.
+# arch: GET /api/bridge/pending - escalation queue | section=dashboard | frozen=yes
+"""GET /api/bridge/pending - escalation queue from bridge_watcher.
 
 Reads ops/runtime/bridge_inbox_pending.json and returns it. The watcher
 (tools/bridge_watcher.py) writes; this route only reads. Operator surfaces:
@@ -8,7 +8,7 @@ Reads ops/runtime/bridge_inbox_pending.json and returns it. The watcher
   - /process-bridge-tasks slash command will check this file alongside
     its existing bridge poll once Phase 1 ships.
 
-No POST handlers at MVP — operator dismisses by draining via
+No POST handlers at MVP - operator dismisses by draining via
 /process-bridge-tasks (which posts results, after which the watcher
 naturally won't re-escalate the same task_id).
 

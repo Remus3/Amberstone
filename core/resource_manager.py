@@ -6,7 +6,7 @@ Responsibilities:
 - Register cleanup callbacks that fire on exit (atexit + signal)
 - Memory watchdog (warn at 300 MB, force gc.collect() at 500 MB).
   NOTE: an earlier docstring promised "restart coach at 500 MB" but the
-  watchdog only logs + gc.collect()s — it never invokes a remediation
+  watchdog only logs + gc.collect()s - it never invokes a remediation
   hook. Wiring an actual coach restart would need to call into the
   frozen `app/_remediation.py`; a future refactor could do that.
 - Provide a single shutdown() entry point that drains all threads cleanly
@@ -16,7 +16,7 @@ Usage:
     from core.resource_manager import ResourceManager
     rm = ResourceManager(app_dir)
     rm.register(my_object)          # object must have a shutdown() method
-    rm.start_memory_watchdog()      # optional — monitors RSS
+    rm.start_memory_watchdog()      # optional - monitors RSS
     # ... at exit ...
     rm.shutdown()
 """
@@ -92,7 +92,7 @@ class ResourceManager:
                 rss_mb = self._rss_mb()
                 if rss_mb > _LIMIT_MB:
                     _log.error(
-                        "Memory limit exceeded: %.0f MB > %d MB — "
+                        "Memory limit exceeded: %.0f MB > %d MB - "
                         "forcing garbage collection",
                         rss_mb, _LIMIT_MB,
                     )
@@ -143,7 +143,7 @@ class ResourceManager:
     # ── Shutdown ─────────────────────────────────────────────────────────────
 
     def _signal_handler(self, signum, frame):
-        _log.info("Signal %d received — shutting down", signum)
+        _log.info("Signal %d received - shutting down", signum)
         self.shutdown()
         sys.exit(0)
 
@@ -154,7 +154,7 @@ class ResourceManager:
                 return
             self._shutdown_done = True
 
-        _log.info("ResourceManager.shutdown() — cleaning up %d objects",
+        _log.info("ResourceManager.shutdown() - cleaning up %d objects",
                   len(self._registry))
 
         # Shut down in reverse order (last registered = first to close)

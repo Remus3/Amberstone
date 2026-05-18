@@ -1,6 +1,6 @@
 """
 tests/phase2_smoke/test_coach_state_parsing.py
-Phase 5 — Coach state-parsing smoke harness.
+Phase 5 - Coach state-parsing smoke harness.
 
 One test class per coach mode. Exercises the state-parsing layer
 (raw → coaching dict) and the SR prompt builder without calling the
@@ -21,7 +21,7 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 from tests.fixtures.state_dicts import SR_STATE, ARAM_STATE, ARENA_STATE, BRAWL_STATE, TFT_STATE
 
 # ── Minimal raw Riot API fixtures (activePlayer + gameData + allPlayers) ──────
-# These mirror the shape of /liveclientdata/allgamedata — not the processed
+# These mirror the shape of /liveclientdata/allgamedata - not the processed
 # game_reader output. The _parse_* functions operate on this raw format.
 
 _ARAM_RAW = {
@@ -101,7 +101,7 @@ _BRAWL_RAW = {
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# SR — _build_user_prompt (coach_integration.py)
+# SR - _build_user_prompt (coach_integration.py)
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestSrCoachPromptBuilder(unittest.TestCase):
@@ -139,7 +139,7 @@ class TestSrCoachPromptBuilder(unittest.TestCase):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ARAM — aram_coach._parse_state
+# ARAM - aram_coach._parse_state
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestAramCoachParsing(unittest.TestCase):
@@ -189,7 +189,7 @@ class TestAramCoachParsing(unittest.TestCase):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Arena — arena_coach._parse_arena_state
+# Arena - arena_coach._parse_arena_state
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestArenaCoachParsing(unittest.TestCase):
@@ -230,7 +230,7 @@ class TestArenaCoachParsing(unittest.TestCase):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Brawl — brawl_coach._parse_brawl_state
+# Brawl - brawl_coach._parse_brawl_state
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestBrawlCoachParsing(unittest.TestCase):
@@ -271,7 +271,7 @@ class TestBrawlCoachParsing(unittest.TestCase):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# TFT — tft_coach._coach_board_to_placement
+# TFT - tft_coach._coach_board_to_placement
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestTftCoachBoardPlacement(unittest.TestCase):

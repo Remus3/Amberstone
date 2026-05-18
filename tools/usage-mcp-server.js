@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * tools/usage-mcp-server.js — Anthropic usage MCP server
+ * tools/usage-mcp-server.js - Anthropic usage MCP server
  *
  * Add to Claude Code:
  *   claude mcp add anthropic-usage -- node "C:\Riot Commander\tools\usage-mcp-server.js"
@@ -102,7 +102,7 @@ async function queryUsage(startDate, endDate) {
     }
     lines.push(`  TOTAL: $${(total / 100).toFixed(2)}\n`);
   } else {
-    lines.push(`Cost API: HTTP ${cRes.status} — ${JSON.stringify(cRes.body)}\n`);
+    lines.push(`Cost API: HTTP ${cRes.status} - ${JSON.stringify(cRes.body)}\n`);
   }
 
   // ── Token section ─────────────────────────────────────────────────────────────
@@ -116,7 +116,7 @@ async function queryUsage(startDate, endDate) {
       lines.push(`    in:${(row.uncached_input_tokens||0).toLocaleString()}  out:${(row.output_tokens||0).toLocaleString()}  cache_w:${cw.toLocaleString()}  cache_r:${(row.cache_read_input_tokens||0).toLocaleString()}`);
     }
   } else {
-    lines.push(`Usage API: HTTP ${uRes.status} — ${JSON.stringify(uRes.body)}`);
+    lines.push(`Usage API: HTTP ${uRes.status} - ${JSON.stringify(uRes.body)}`);
   }
 
   return lines.join('\n');

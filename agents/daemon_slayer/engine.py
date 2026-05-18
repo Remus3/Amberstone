@@ -1,4 +1,4 @@
-"""Champion stat resolution — base + level scaling + items, mode-aware.
+"""Champion stat resolution - base + level scaling + items, mode-aware.
 
 Phase 2 step 1 + step 2 deliverables. Pure stat math; ``dps.py`` layers
 DPS scoring on top. Mode hook applies ARAM stat multipliers (currently
@@ -59,8 +59,8 @@ class ResolvedStats:
 
     def format_table(self) -> str:
         head = (
-            f"{self.champion_name} ({self.champion_id}) — lvl {self.level} "
-            f"— mode {self.mode} — gold spent {self.gold_spent}"
+            f"{self.champion_name} ({self.champion_id}) - lvl {self.level} "
+            f"- mode {self.mode} - gold spent {self.gold_spent}"
         )
         rows = [head, "-" * len(head)]
         if self.item_ids:
@@ -116,7 +116,7 @@ def _combine_items(
 
     * **AS**: items add into the bonus_pct sum that multiplies the BASE AS,
       alongside the per-level bonus. Engine recomputes from base × (1 + Σpct).
-    * **MS**: ``(base + flat) × (1 + pct)`` — standard, matches default.
+    * **MS**: ``(base + flat) × (1 + pct)`` - standard, matches default.
     * **Crit**: capped at 1.0 (100%) post-stack.
     """
     out = dict(scaled)
@@ -135,14 +135,14 @@ def _combine_items(
     ms_pct = item_totals.get("ms_pct", 0.0)
     out["ms"] = (raw_base.get("ms", 0.0) + ms_flat) * (1 + ms_pct)
 
-    # Pct-only stats — stack additively (e.g. lifesteal 0.18 = +18%).
+    # Pct-only stats - stack additively (e.g. lifesteal 0.18 = +18%).
     for key in ("lifesteal", "spellvamp"):
         out[key] = out.get(key, 0.0) + item_totals.get(f"{key}_pct", 0.0)
 
-    # AP — champion record has no base AP; surface from items.
+    # AP - champion record has no base AP; surface from items.
     out["ap"] = out.get("ap", 0.0) + item_totals.get("ap_flat", 0.0)
 
-    # Generic (flat adds, then pct multiplies) — covers crit too.
+    # Generic (flat adds, then pct multiplies) - covers crit too.
     GENERIC_FLAT_PCT = ("hp", "mp", "hpregen", "mpregen", "armor", "mr", "ad", "crit")
     for key in GENERIC_FLAT_PCT:
         flat = item_totals.get(f"{key}_flat", 0.0)
@@ -161,10 +161,10 @@ def _apply_mode_modifiers(
     mode: str,
     champion: dict,
 ) -> tuple[dict[str, float], list[str]]:
-    """Phase 2 step 2 hook — apply mode-specific stat multipliers.
+    """Phase 2 step 2 hook - apply mode-specific stat multipliers.
 
     Currently: ARAM ``aramAttackSpeed`` (multiplier on bonus AS). Damage
-    multipliers (``aramDamageDealt``) live in the DPS layer, not here —
+    multipliers (``aramDamageDealt``) live in the DPS layer, not here -
     they don't change AD/AP, only output. Other ARAM modifiers
     (Tenacity / Healing / Shielding / DamageTaken / AbilityHaste) are
     intentionally not applied at the stat layer; they belong in their
@@ -200,10 +200,10 @@ def build_champion(
     each is resolved against ``snapshot.arena_augment(...)`` and stat overlays
     from :func:`agents.daemon_slayer.augments.compute_augment_stats` are
     applied additively after items, before mode modifiers. Augments outside
-    the registered overlay set are silently ignored — registry coverage
+    the registered overlay set are silently ignored - registry coverage
     grows incrementally without breaking calls. Augments are honored
     regardless of mode (arena coach is the only natural caller, but the
-    engine doesn't gate them — it's the caller's job to not pass arena
+    engine doesn't gate them - it's the caller's job to not pass arena
     augments into an SR query).
     """
     level = clamp_level(level)
@@ -222,13 +222,13 @@ def build_champion(
     scaled, raw_base = _scale_champion_base(champ_stats, level)
 
     # Phase 4 batch 20 (2026-05-04): item-passive bonus AD as a percentage of
-    # leveled base AD (Sterak's "+45% base AD as bonus AD"). Walked here —
+    # leveled base AD (Sterak's "+45% base AD as bonus AD"). Walked here -
     # AFTER _scale_champion_base resolves leveled base AD, BEFORE
-    # _combine_items folds item totals into the final block — so the
+    # _combine_items folds item totals into the final block - so the
     # passive AD lands in ad_flat just like any other item-side AD bonus.
     # NOTE: ``scaled`` carries the LEVELED base AD (the value League's UI
     # calls "base AD"). ``raw_base`` is the unscaled level-1 base used by
-    # _combine_items for AS rebuild math — the wrong source for "% of base
+    # _combine_items for AS rebuild math - the wrong source for "% of base
     # AD" passives. dps.py uses the same convention via
     # resolved.base_stats (= scaled).
     leveled_base_ad = scaled.get("ad", 0.0)
@@ -242,12 +242,12 @@ def build_champion(
             item_totals["ad_flat"] = item_totals.get("ad_flat", 0.0) + passive_bonus_ad
 
     # Phase 4 batch 27 (2026-05-04): item-passive bonus AD as a percentage of
-    # the wielder's total max mana (Manamune / Muramana's "Awe" — +2% max
+    # the wielder's total max mana (Manamune / Muramana's "Awe" - +2% max
     # mana as bonus AD). Same wiring shape as the Sterak's walk above, but
     # keyed off mana instead of base AD. Walked AFTER aggregate_item_stats
     # produces ``item_totals["mp_flat"]`` so the items' own mana pools
     # (Manamune 500, Muramana 1000) are included in the conversion base.
-    # Awe is mana → AD one-way — no feedback loop, no need to iterate to a
+    # Awe is mana → AD one-way - no feedback loop, no need to iterate to a
     # fixed point. Manaless champions (energy users) have ``scaled["mp"]``
     # = 0; if their build also has no item mp_flat the Awe contribution
     # resolves to 0, so the walk is safe to run unconditionally.
@@ -263,11 +263,11 @@ def build_champion(
 
     # Phase 4 batch 28 (2026-05-04): item-passive bonus AP as a percentage of
     # the wielder's BONUS mana (Archangel's Staff / Seraph's Embrace
-    # "Awe" — +1% / +2% bonus mana as AP). Mirror of the Awe-AD walk
+    # "Awe" - +1% / +2% bonus mana as AP). Mirror of the Awe-AD walk
     # above, with two key differences: (1) targets ``ap_flat`` instead
-    # of ``ad_flat``, (2) keyed off BONUS mana (item-contributed only —
+    # of ``ad_flat``, (2) keyed off BONUS mana (item-contributed only -
     # ``item_totals.get("mp_flat", 0.0)``) NOT max mana. The asymmetry
-    # vs the Manamune family is by design — DDragon + Meraki both pin
+    # vs the Manamune family is by design - DDragon + Meraki both pin
     # the AP-side Awe to "bonus mana" specifically. Archangel-line items
     # have no AP stat in the resolved block until this walk fires
     # (their listed AP is in the DDragon stat block, item-aggregated
@@ -286,7 +286,7 @@ def build_champion(
     # the wielder's bonus HP. Overlord's Bloodmail "Tyranny" grants bonus AD
     # = 2.5% bonus HP. Bonus HP in League = HP from items only (not base HP
     # from leveling). Approximation: item_totals["hp_flat"] = item-contributed
-    # HP, the correct value — champion per-level HP is BASE HP, not bonus HP.
+    # HP, the correct value - champion per-level HP is BASE HP, not bonus HP.
     # Walked AFTER aggregate_item_stats produces item_totals["hp_flat"] so
     # Overlord's own 550 HP is included in the conversion base.
     # One-way, no feedback loop (HP → AD only). Same wiring pattern as the
@@ -312,9 +312,9 @@ def build_champion(
 
     notes: list[str] = list(mode_notes)
     if mode not in ("SR", "ARAM"):
-        notes.append(f"mode={mode} — modifier table not plugged in for this mode")
+        notes.append(f"mode={mode} - modifier table not plugged in for this mode")
     if aug_list and not augment_overlay:
-        notes.append(f"augments={list(aug_list)} — none in stat-overlay registry yet")
+        notes.append(f"augments={list(aug_list)} - none in stat-overlay registry yet")
 
     return ResolvedStats(
         champion_id=champion_id,

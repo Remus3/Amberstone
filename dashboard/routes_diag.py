@@ -1,7 +1,7 @@
 """Diagnostics / vision / OCR / decisions routes.
 
 Slice 2C (2026-05-01): handlers carved out of web_dashboard._Handler.
-Group 4 — read-only diag and vision endpoints. Several reach the
+Group 4 - read-only diag and vision endpoints. Several reach the
 in-process vision server at 127.0.0.1:8889 (using `_VISION_TOKEN`)
 and the Live Client API at 192.168.8.237:2999 (https, self-signed).
 
@@ -12,7 +12,7 @@ Module-level GET_ROUTES is consumed by `dashboard._dispatch`.
 `_VISION_TOKEN` is deferred-imported from web_dashboard inside the
 OCR handlers to avoid a circular import at module load time.
 `diagnostics_cached` is imported directly from `dashboard._diagnostics`
-(Tier 2 #2 helper-shake — no longer routed through web_dashboard).
+(Tier 2 #2 helper-shake - no longer routed through web_dashboard).
 """
 import json
 import logging
@@ -38,7 +38,7 @@ def _serve_decisions(h) -> None:
     #
     # Tier 3 #15 (2026-05-01): instantiate DecisionStore directly instead
     # of routing through get_loop(). The store is a thin file-I/O wrapper
-    # over data/decisions_pending.json — no need to touch the singleton's
+    # over data/decisions_pending.json - no need to touch the singleton's
     # threading machinery just to read the file. Decouples the API from
     # the loop's process location: a future move of the detector to
     # agents/supervisor.py won't break this endpoint.
@@ -55,12 +55,12 @@ def _serve_decisions(h) -> None:
 # Tier 4 #18 (2026-05-01): tail of resolved decisions for the dashboard's
 # "Recent Coach Calls" panel. Reads the JSONL log directly so we don't
 # depend on the in-memory pending store (which only holds active
-# decisions). Cap is 50 — past that the dashboard panel doesn't add value.
+# decisions). Cap is 50 - past that the dashboard panel doesn't add value.
 _LOG_PATH = APP_DIR / "data" / "decisions_log.jsonl"
 
 
 def _serve_decisions_log(h) -> None:
-    """GET /api/decisions/log?limit=N — last N resolved decisions, newest
+    """GET /api/decisions/log?limit=N - last N resolved decisions, newest
     first. N caps at 50. Tolerates a torn final line (mid-write append)."""
     try:
         from urllib.parse import parse_qs, urlparse
@@ -71,7 +71,7 @@ def _serve_decisions_log(h) -> None:
             limit = 20
         if not _LOG_PATH.exists():
             h._send(200, b'{"entries":[]}', "application/json"); return
-        # Read whole file — bounded by the JSONL's natural size cap (the
+        # Read whole file - bounded by the JSONL's natural size cap (the
         # detector emits at most ~5 decisions per game).
         try:
             text = _LOG_PATH.read_text(encoding="utf-8", errors="replace")
@@ -126,7 +126,7 @@ def _serve_ocr(h) -> None:
         import time
         import urllib.request as _ur
         from web_dashboard import _VISION_TOKEN
-        # Check Live Client relay freshness — if fresh (<3s), drop OCR
+        # Check Live Client relay freshness - if fresh (<3s), drop OCR
         # fields the API authoritatively provides (cs, kda, gold, level,
         # hp, mana, score_blue, score_red, timer).
         _AUTH = {"X-RC-Token": _VISION_TOKEN}
@@ -227,7 +227,7 @@ def _serve_validate_ocr(h) -> None:
 
 
 def _serve_ocr_crop(h) -> None:
-    # /api/ocr-crop?field=NAME — returns the cropped PNG for visual verification.
+    # /api/ocr-crop?field=NAME - returns the cropped PNG for visual verification.
     try:
         import base64
         import urllib.request as _ur
@@ -260,7 +260,7 @@ def _serve_decision_choice_post(h, payload) -> None:
     # POST /api/decisions/<id>  body: {choice: <one of decision.options + "skip">, note?}
     # Records the player's choice and removes the decision from pending.
     #
-    # Tier 3 #15 (2026-05-01): same singleton-decoupling as the GET — the
+    # Tier 3 #15 (2026-05-01): same singleton-decoupling as the GET - the
     # write path is also pure file I/O and doesn't need the loop's
     # threading.Lock since DecisionStore has its own.
     #
@@ -326,7 +326,7 @@ def _serve_decisions_respond_active_post(h, payload) -> None:
 
     Resolves the FIRST pending decision by mapping `choice_index` →
     `options[choice_index]` (or "skip" when dismiss=true). Intended for
-    the Game-PC keybind listener — single endpoint that doesn't require
+    the Game-PC keybind listener - single endpoint that doesn't require
     the caller to know which decision is currently pending or which
     options apply, so Numpad 1 / Numpad 2 / Numpad 0 stay constant
     across detector types."""
@@ -383,7 +383,7 @@ GET_ROUTES = [
     (prefix("/api/ocr-crop"),             _serve_ocr_crop),
 ]
 
-# /api/decisions/<id> uses prefix() — the legacy elif used
+# /api/decisions/<id> uses prefix() - the legacy elif used
 # `startswith("/api/decisions/")`. The trailing slash is required so
 # this doesn't shadow the GET on `/api/decisions` (no id).
 #

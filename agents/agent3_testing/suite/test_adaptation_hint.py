@@ -27,7 +27,7 @@ def seeded(tmp_path: Path, monkeypatch):
         for stmt in SCHEMA_STATEMENTS:
             conn.execute(stmt)
         now = datetime.now(timezone.utc).isoformat()
-        # Ahri synthetic data — engineered for delta > 0.15:
+        # Ahri synthetic data - engineered for delta > 0.15:
         #   5 games vs Xerath, all wins  (100% vs Xerath, n=5)
         #   3 games vs other comps, all losses
         #   1 game with Fizz as enemy (alone, below sample threshold)
@@ -86,7 +86,7 @@ def test_for_champion_surfaces_strong_counter(seeded: Path) -> None:
 
 def test_matchup_delta_below_sample_returns_none(seeded: Path) -> None:
     from coaches.adaptation_hint import matchup_delta
-    # Ahri vs Fizz only has 1 sample — below _MIN_SAMPLE.
+    # Ahri vs Fizz only has 1 sample - below _MIN_SAMPLE.
     assert matchup_delta("Ahri", "aram", "Fizz") is None
 
 
@@ -100,11 +100,11 @@ def test_matchup_delta_activated_returns_signed_float(seeded: Path) -> None:
 
 def test_format_hint_line_respects_enemy_filter(seeded: Path) -> None:
     from coaches.adaptation_hint import format_hint_line
-    # With matching enemy — line flags Xerath.
+    # With matching enemy - line flags Xerath.
     hit = format_hint_line("Ahri", "aram", enemies=["Xerath", "Sivir"])
     assert "Ahri" in hit
     assert "Xerath" in hit
-    # Without Xerath — no flagged matchups.
+    # Without Xerath - no flagged matchups.
     miss = format_hint_line("Ahri", "aram", enemies=["Sivir", "Lulu"])
     assert "Ahri" in miss
     assert "Xerath" not in miss

@@ -1,4 +1,4 @@
-# Riot Commander — Cross-Claude Bridge
+# Riot Commander - Cross-Claude Bridge
 
 _Living document. Covers RC↔Peer bridge wire format + Bridge Watcher daemon architecture._
 
@@ -7,9 +7,9 @@ _Living document. Covers RC↔Peer bridge wire format + Bridge Watcher daemon ar
 ## Overview
 
 Three Claude Code sessions coordinate via a shared HTTPS bridge:
-- **Legion** (`legion-rc`) — RC runtime + primary bridge host
-- **Game-PC** (`gamepc-rc`) — Game agent; sends notes/results to Legion
-- **Peer** (`peer-host`) — Separate Claude Code project; bidirectional lessons/tasks
+- **Legion** (`legion-rc`) - RC runtime + primary bridge host
+- **Game-PC** (`gamepc-rc`) - Game agent; sends notes/results to Legion
+- **Peer** (`peer-host`) - Separate Claude Code project; bidirectional lessons/tasks
 
 Bridge is **opt-in**. Both sides must share a secret in `ops/local_paths.json` (gitignored). Nothing happens if unconfigured.
 
@@ -37,7 +37,7 @@ POST body to `/api/bridge/inbox` (both directions):
 | `summary` | yes | Human-readable line (≤2000 chars) |
 | `kind` | no | `note` \| `result` \| `ask` \| `task` \| `ack` (≤20 chars) |
 | `id` | no | Caller-assigned ID (≤80 chars) |
-| `target` | no | Addressed recipient — `rc` \| `gamepc` \| `peer` |
+| `target` | no | Addressed recipient - `rc` \| `gamepc` \| `peer` |
 | `body` | no | Structured payload |
 | `in_reply_to` | no | Prior message ID |
 
@@ -85,8 +85,8 @@ peer machines → POST /api/bridge/inbox
 ```
 
 **Auto-action lanes** (Legion, opt-in via `--enable-auto-action-lanes read`):
-- `read` — safe read-only ops (file reads, curl health checks)
-- `ops` — restricted write ops (restart trigger, cert regen, git pull)
+- `read` - safe read-only ops (file reads, curl health checks)
+- `ops` - restricted write ops (restart trigger, cert regen, git pull)
 
 `Edit`, `Write`, `NotebookEdit` are always blocked from the auto-action runner.
 
@@ -99,7 +99,7 @@ peer machines → POST /api/bridge/inbox
 | Node | Task | What it does |
 |---|---|---|
 | Legion | `RC-BridgeWatcher` | Silent bridge poll daemon |
-| Game-PC | `RC-BridgeDaemon` | `gamepc_bridge_daemon.py` — polls Legion, invokes `claude --print` only when inbox > 0 |
+| Game-PC | `RC-BridgeDaemon` | `gamepc_bridge_daemon.py` - polls Legion, invokes `claude --print` only when inbox > 0 |
 | Game-PC | `RC-BridgeWatcher-GamePC` | Watcher health publisher |
 | Game-PC | `RC-WatcherHealthPublisher-GamePC` | Pushes peer health to Legion |
 
@@ -112,15 +112,15 @@ from core.bridge import send
 ok, detail = send(source="rc", summary="...", kind="note", target="peer")
 ```
 
-Do **not** POST directly to `/api/bridge` — that only stores locally. Use `core.bridge.send()` which POSTs to Peer's `/api/bridge/inbox` with bearer auth.
+Do **not** POST directly to `/api/bridge` - that only stores locally. Use `core.bridge.send()` which POSTs to Peer's `/api/bridge/inbox` with bearer auth.
 
 ---
 
 ## Lessons sync (Phase 1–3 shipped 2026-05-06)
 
-- `tools/lessons_send.py` — operator-driven send; wraps `core/lessons_sender.py`
-- `core/lessons_receiver.py` — triage on receive
-- `.claude/commands/process-incoming-lessons.md` — `/process-incoming-lessons` skill
+- `tools/lessons_send.py` - operator-driven send; wraps `core/lessons_sender.py`
+- `core/lessons_receiver.py` - triage on receive
+- `.claude/commands/process-incoming-lessons.md` - `/process-incoming-lessons` skill
 - Phase 4 (confidence scoring, symmetry check, auto-revert) deferred
 
 ---

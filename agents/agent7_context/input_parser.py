@@ -1,4 +1,4 @@
-"""Agent 7 — Natural-language input parser.
+"""Agent 7 - Natural-language input parser.
 
 Takes a string from the user (typed into the iPad dashboard or a CLI
 tool) and translates it into zero, one, or more tasks filed via
@@ -13,7 +13,7 @@ Two-stage approach:
      the Agent 7 charter and let the model decide. Returns the same
      ``ParseResult`` shape regardless of path.
 
-The parser never dispatches other agents directly — it only files
+The parser never dispatches other agents directly - it only files
 tasks. Routing is Agent 1's job. User overrides (``user_override=True``
 on the task) flow through for direct orders like ``Agent 6 audit now``.
 """
@@ -39,7 +39,7 @@ class ParseResult:
     - ``filed``: task ids that were filed in response.
     - ``reply``: short prose to show the user (may be empty if the task
       itself is the response).
-    - ``intent``: semantic tag — "audit" / "note" / "status" / "clarify" /
+    - ``intent``: semantic tag - "audit" / "note" / "status" / "clarify" /
       "chitchat" / "fallback_llm".
     - ``used_llm``: True if we fell back to the ephemeral spawn.
     """
@@ -70,7 +70,7 @@ _RE_DESTRUCTIVE = re.compile(r"\b(?:rm\s+-rf|drop\s+table|delete\s+all|wipe\b|tr
 # allowed to produce. Anything outside this set gets coerced to
 # ``user-unparsed`` so we never file a task to a deterministic agent
 # that has no handler for the fabricated op (which used to complete
-# silently as a no-op — bug reported 2026-04-23).
+# silently as a no-op - bug reported 2026-04-23).
 LLM_ALLOWED_OPS: frozenset[str] = frozenset({
     # Deterministic handled ops
     "game-summary",
@@ -95,7 +95,7 @@ class InputParser:
         llm_spawn: Callable[[str, str, str, dict], dict] | None = None,
     ) -> None:
         self._scheduler = scheduler or Scheduler()
-        self._llm_spawn = llm_spawn  # optional — falls back to prose-only if not wired
+        self._llm_spawn = llm_spawn  # optional - falls back to prose-only if not wired
 
     # ---- public entry point ----------------------------------------
     def parse(self, text: str) -> ParseResult:
@@ -141,12 +141,12 @@ class InputParser:
                 intent="audit",
             )
 
-        # Status / queue summary — no task, just prose.
+        # Status / queue summary - no task, just prose.
         if _RE_STATUS.search(text):
             snap = self._scheduler.snapshot()
             summary = ", ".join(f"{k}={v}" for k, v in sorted(snap["by_status"].items()))
             return ParseResult(
-                reply=f"Queue: {snap['total']} total — {summary or '(empty)'}.",
+                reply=f"Queue: {snap['total']} total - {summary or '(empty)'}.",
                 intent="status",
             )
 
@@ -201,7 +201,7 @@ class InputParser:
             ).id
             return ParseResult(
                 filed=[tid],
-                reply="Noted — Agent 4 will consider it on the next idle pass.",
+                reply="Noted - Agent 4 will consider it on the next idle pass.",
                 intent="note",
             )
 
@@ -241,7 +241,7 @@ class InputParser:
             except Exception as e:  # noqa: BLE001
                 logger.warning("LLM fallback failed: %s", e)
 
-        # Neither rules nor LLM — file a no-op task so the input isn't lost.
+        # Neither rules nor LLM - file a no-op task so the input isn't lost.
         tid = self._scheduler.file_task(
             op="user-unparsed",
             owner_agent="7",
@@ -251,7 +251,7 @@ class InputParser:
         return ParseResult(
             filed=[tid],
             reply=("I wasn't sure what to do with that. Filed it as "
-                   f"`user-unparsed` (task {tid}) — rephrase or try "
+                   f"`user-unparsed` (task {tid}) - rephrase or try "
                    "`Agent <N> <instruction>`."),
             intent="fallback_unparsed",
         )
@@ -289,7 +289,7 @@ class InputParser:
                 fabricated = False
             else:
                 logger.warning(
-                    "LLM fabricated op %r not in allowed vocabulary — "
+                    "LLM fabricated op %r not in allowed vocabulary - "
                     "coercing to user-unparsed",
                     raw_op,
                 )
@@ -331,7 +331,7 @@ class InputParser:
                 used_llm=True,
             )
 
-        # LLM gave prose — surface it as the reply.
+        # LLM gave prose - surface it as the reply.
         return ParseResult(
             reply=text_out.strip() or "(no reply)",
             intent="chitchat",

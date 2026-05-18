@@ -1,4 +1,4 @@
-"""Round 19 — /api/activity + post-game summary filing."""
+"""Round 19 - /api/activity + post-game summary filing."""
 from __future__ import annotations
 
 import json
@@ -53,7 +53,7 @@ def test_recent_events_skips_corrupt_lines(tmp_path: Path) -> None:
 
 
 def test_recent_events_trimmed_fields(tmp_path: Path) -> None:
-    """The returned shape is whitelisted — no full payload dump."""
+    """The returned shape is whitelisted - no full payload dump."""
     s = Scheduler(queue_log=tmp_path / "q.jsonl")
     s.file_task(
         "big-payload", owner_agent="2", priority=50,
@@ -124,7 +124,7 @@ def test_post_game_summary_files_task(tmp_path: Path, monkeypatch) -> None:
 
 def test_post_game_summary_survives_missing_json(tmp_path: Path, monkeypatch) -> None:
     """If no coaching JSON exists (edge case), task still files but with
-    minimal payload — should not crash."""
+    minimal payload - should not crash."""
     from agents.supervisor import Supervisor
     import agents.supervisor as sup_mod
     monkeypatch.setattr(sup_mod, "_PROJECT_ROOT", tmp_path)

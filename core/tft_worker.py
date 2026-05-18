@@ -1,6 +1,6 @@
 """
 core/tft_worker.py
-Phase 1 Step 5 — TFT runtime poll worker.
+Phase 1 Step 5 - TFT runtime poll worker.
 
 Owns TftStateReader, TftCoachEngine, and TftLiveAnalysis.  Runs the TFT
 poll loop on a background thread and hands TftWorkerResult objects to
@@ -52,11 +52,11 @@ class TftWorkerResult:
     Structured result from a single TFT poll iteration.
 
     Fields:
-      state        — dict from TftStateReader.read(), or None
-      end_signal   — True when the worker declares the game has ended
+      state        - dict from TftStateReader.read(), or None
+      end_signal   - True when the worker declares the game has ended
                      (state is None and was previously in-game)
-      pulse_ts     — worker liveness timestamp (monotonic)
-      last_success — monotonic timestamp of most recent successful read
+      pulse_ts     - worker liveness timestamp (monotonic)
+      last_success - monotonic timestamp of most recent successful read
     """
     __slots__ = ("state", "end_signal", "pulse_ts", "last_success")
 
@@ -118,12 +118,12 @@ class TftWorker(BaseCoachWorker):
         self._api_key      = api_key
         self._debug        = debug
 
-        # TFT runtime components — lazily initialised in _init_components()
+        # TFT runtime components - lazily initialised in _init_components()
         self._reader: Any = None   # TftStateReader
         self._engine: Any = None   # TftCoachEngine
         self._live:   Any = None   # TftLiveAnalysis
 
-        # AI status bar reference — stored here so it survives the race between
+        # AI status bar reference - stored here so it survives the race between
         # wire_ai_bar() (called from Tk thread on overlay attach) and
         # _init_components() (called from worker thread on first poll).
         # Invariant: _ai_bar is always applied to _live whenever both exist.
@@ -146,7 +146,7 @@ class TftWorker(BaseCoachWorker):
     def _init_components(self) -> bool:
         """
         Lazily initialise TftStateReader, TftCoachEngine, TftLiveAnalysis.
-        Returns True on success.  Idempotent — safe to call multiple times.
+        Returns True on success.  Idempotent - safe to call multiple times.
         """
         if self._reader is not None:
             return True
@@ -185,7 +185,7 @@ class TftWorker(BaseCoachWorker):
                     write_disabled_placeholder("tft", "tft_vision_analysis")
                     _log.info("TftWorker: tft_vision_analysis disabled by policy")
             except Exception:
-                pass  # policy unavailable — allow
+                pass  # policy unavailable - allow
 
             if _vision_allowed:
                 self._live.start()
@@ -229,7 +229,7 @@ class TftWorker(BaseCoachWorker):
           - If _live already exists (worker initialised first), applies immediately.
           - If _live does not exist yet, the stored reference is applied by
             _init_components() when TftLiveAnalysis is created.
-          - Safe to call multiple times (reattach) — always updates both the
+          - Safe to call multiple times (reattach) - always updates both the
             stored reference and the live object if present.
 
         Thread-safe: TftLiveAnalysis.set_ai_bar() is a simple object assignment
@@ -252,14 +252,14 @@ class TftWorker(BaseCoachWorker):
 
     def _run(self, my_gen: int) -> None:
         """
-        Worker main loop — background thread only.
+        Worker main loop - background thread only.
 
         Polls TftStateReader every POLL_INTERVAL_S.  Forwards state to
         TftCoachEngine and TftLiveAnalysis.  Emits TftWorkerResult objects.
         Exits when stopped or superseded by a new generation.
         """
         if not self._init_components():
-            _log.error("TftWorker gen=%d: component init failed — exiting", my_gen)
+            _log.error("TftWorker gen=%d: component init failed - exiting", my_gen)
             return
 
         was_in_game  = False
@@ -268,7 +268,7 @@ class TftWorker(BaseCoachWorker):
         while not self._stop_event.is_set():
             # ── Pre-read generation check ──────────────────────────────────
             if my_gen != self._generation:
-                _log.debug("TftWorker gen=%d superseded — exiting", my_gen)
+                _log.debug("TftWorker gen=%d superseded - exiting", my_gen)
                 return
 
             self.pulse_ts = time.monotonic()
@@ -323,7 +323,7 @@ class TftWorker(BaseCoachWorker):
                 else:
                     if was_in_game:
                         # Still poll; game end is declared by app.py via SrAramWorker
-                        # end_signal or via absence of TFT mode — not by this worker.
+                        # end_signal or via absence of TFT mode - not by this worker.
                         # Emit None result so app.py can observe the gap.
                         self._enqueue(TftWorkerResult(
                             state=None,

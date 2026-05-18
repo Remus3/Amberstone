@@ -1,5 +1,5 @@
 """
-scripts/data_pipeline.py — Riot Commander data asset pipeline.
+scripts/data_pipeline.py - Riot Commander data asset pipeline.
 
 Usage:
     python data_pipeline.py ddragon         # Download DDragon meta JSON files
@@ -130,7 +130,7 @@ def cmd_items_index(force: bool = False) -> bool:
     src = META / "ddragon_items.json"
     dest = ROOT / "web" / "data" / "items_index.json"
     if not src.exists():
-        log.error("ddragon_items.json missing — run `data_pipeline.py ddragon` first")
+        log.error("ddragon_items.json missing - run `data_pipeline.py ddragon` first")
         return False
     try:
         d = json.loads(src.read_text(encoding="utf-8"))
@@ -146,7 +146,7 @@ def cmd_items_index(force: bool = False) -> bool:
         try:
             existing = json.loads(dest.read_text(encoding="utf-8"))
             if existing.get("version") == version:
-                log.info("items_index.json already at patch %s — skipping (use force=True)", version)
+                log.info("items_index.json already at patch %s - skipping (use force=True)", version)
                 return True
         except Exception:
             pass
@@ -170,7 +170,7 @@ def cmd_items_index(force: bool = False) -> bool:
     tmp = dest.with_suffix(".tmp")
     tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     tmp.replace(dest)
-    log.info("items_index.json: %d items, patch %s — written to %s",
+    log.info("items_index.json: %d items, patch %s - written to %s",
              len(by_id), version, dest)
     return True
 
@@ -201,7 +201,7 @@ def cmd_ddragon(force: bool = False):
 
     cached = _get_cached_version()
     if cached == live and not force:
-        log.info("Already on patch %s — skipping (use force=True to override)", live)
+        log.info("Already on patch %s - skipping (use force=True to override)", live)
         return True
 
     log.info("Downloading patch %s meta...", live)
@@ -227,7 +227,7 @@ def cmd_ddragon(force: bool = False):
 
     if ok:
         _write_json(META / "ddragon_version.json", {"version": live, "downloaded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ")})
-        log.info("DDragon meta complete — patch %s", live)
+        log.info("DDragon meta complete - patch %s", live)
     return ok
 
 
@@ -254,7 +254,7 @@ def cmd_runes(force: bool = False):
             log.error("  FAILED rune JSON: %s", e)
             return False
     else:
-        log.info("  ddragon_runes.json already exists — skipping JSON fetch")
+        log.info("  ddragon_runes.json already exists - skipping JSON fetch")
         data = json.loads(rune_dest.read_text(encoding="utf-8"))
 
     rune_icon_dir = ICONS / "runes"
@@ -299,7 +299,7 @@ def cmd_icons(force: bool = False):
 
     champ_json = META / "ddragon_champions.json"
     if not champ_json.exists():
-        log.warning("ddragon_champions.json missing — run 'ddragon' first")
+        log.warning("ddragon_champions.json missing - run 'ddragon' first")
     else:
         champs = json.loads(champ_json.read_text(encoding="utf-8")).get("data", {})
         log.info("  Downloading %d champion icons...", len(champs))
@@ -317,7 +317,7 @@ def cmd_icons(force: bool = False):
 
     spell_json = META / "ddragon_summoner_spells.json"
     if not spell_json.exists():
-        log.warning("ddragon_summoner_spells.json missing — run 'ddragon' first")
+        log.warning("ddragon_summoner_spells.json missing - run 'ddragon' first")
     else:
         spells = json.loads(spell_json.read_text(encoding="utf-8")).get("data", {})
         log.info("  Downloading %d summoner spell icons...", len(spells))
@@ -338,7 +338,7 @@ def cmd_aram_builds(force: bool = False) -> bool:
     Update ARAM champion tier rankings in data/meta_build/aram_champion_builds.json.
 
     Attempts automated fetch from Aggregator B. Falls back gracefully (non-fatal) if
-    sources are unavailable — anti-scraping protections are common on stats sites.
+    sources are unavailable - anti-scraping protections are common on stats sites.
 
     Manual update guide (patch day):
       1. https://www.leagueoflegends.com/en-us/news/game-updates/patch-notes/
@@ -385,7 +385,7 @@ def cmd_aram_builds(force: bool = False) -> bool:
 
     note = builds.get("_note", "")
     if not force and live_version and live_version in note:
-        log.info("Already at patch %s — skipping (use force=True to override)", live_version)
+        log.info("Already at patch %s - skipping (use force=True to override)", live_version)
         log.info("Patch notes: https://www.leagueoflegends.com/en-us/news/game-updates/patch-notes/")
         return True
 
@@ -418,7 +418,7 @@ def cmd_aram_builds(force: bool = False) -> bool:
         if tier_data:
             log.info("Aggregator B: fetched tier data for %d champions", len(tier_data))
     except Exception as e:
-        log.warning("Aggregator B fetch failed (%s) — automated tier update unavailable", e)
+        log.warning("Aggregator B fetch failed (%s) - automated tier update unavailable", e)
 
     if not tier_data:
         log.warning(
@@ -465,7 +465,7 @@ def cmd_all():
     if ok:
         log.info("=== Pipeline complete ===")
     else:
-        log.warning("=== Pipeline completed with errors — check log ===")
+        log.warning("=== Pipeline completed with errors - check log ===")
     return ok
 
 

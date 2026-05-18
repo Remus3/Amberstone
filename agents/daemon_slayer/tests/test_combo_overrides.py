@@ -1,4 +1,4 @@
-"""Phase 5.5 (s186, 2026-05-13) — per-champion combo_sequence override tests.
+"""Phase 5.5 (s186, 2026-05-13) - per-champion combo_sequence override tests.
 
 Tests the ``champion_combo_sequences.json`` registry loader plus its
 integration with ``compute_burst_damage`` and ``rank_items_by_burst``.
@@ -80,7 +80,7 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertIn("R2", akali)
 
     def test_canonical_assassin_ids_used(self) -> None:
-        # DDragon canonical ids — no apostrophe, lowercase 'b'.
+        # DDragon canonical ids - no apostrophe, lowercase 'b'.
         champions = self.table["champions"]
         self.assertIn("Khazix", champions)
         self.assertIn("Leblanc", champions)
@@ -210,7 +210,7 @@ class ComputeBurstOverrideTests(unittest.TestCase):
         )
 
     def test_yone_q3_chain(self) -> None:
-        """Yone's combo fires Q1+Q2+Q3 — three Q casts at the same rank."""
+        """Yone's combo fires Q1+Q2+Q3 - three Q casts at the same rank."""
         r = compute_burst_damage(
             self.snap, "Yone", level=11, target_armor=80,
         )
@@ -303,7 +303,7 @@ class ServerRouteSourceTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         try:
             urlopen(f"{cls.BASE_URL}/health", timeout=2).read()
-        except Exception as e:  # pragma: no cover — env-dependent
+        except Exception as e:  # pragma: no cover - env-dependent
             raise unittest.SkipTest(f"DS server unavailable: {e}")
 
     def _post(self, path: str, body: dict) -> dict:

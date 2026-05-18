@@ -1,4 +1,4 @@
-"""FU01 — minimap bbox resolver tests.
+"""FU01 - minimap bbox resolver tests.
 
 Covers `agents._minimap_bbox.resolve()` across:
   * persisted file missing → hardcoded fallback
@@ -70,7 +70,7 @@ class MinimapBboxResolveTests(unittest.TestCase):
 
     def test_resolve_none_mode_returns_none(self) -> None:
         with _RegionsFileSwap(self._regions):
-            # `None` is coerced via `mode or ""` — should not raise.
+            # `None` is coerced via `mode or ""` - should not raise.
             self.assertIsNone(mb.resolve(None))  # type: ignore[arg-type]
 
     # ── resolve: persisted file missing → hardcoded ───────────────────────

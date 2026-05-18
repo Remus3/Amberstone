@@ -1,15 +1,15 @@
 """
-gamepc_keybind_listener.py — Left Alt + 1/2/3 keybinds for decision_detector.
+gamepc_keybind_listener.py - Left Alt + 1/2/3 keybinds for decision_detector.
 
 Run on Game-PC. Hooks global keypresses (left alt+1 / left alt+2 /
 left alt+3) and POSTs to Legion's /api/decisions/respond_active so the
 operator can answer mid-game without alt-tabbing to the dashboard.
 
 Left Alt + number row was chosen for tenkeyless keyboards (no numpad)
-and because Alt+1..6 are NOT bound in League's default keymap — unlike
+and because Alt+1..6 are NOT bound in League's default keymap - unlike
 Ctrl+1..6 which would item-cast slots 1/2/3 alongside the listener fire.
 
-ADR-007 (s169) — phase-1 ship. Optional install; the dashboard banner
+ADR-007 (s169) - phase-1 ship. Optional install; the dashboard banner
 buttons keep working without this. The point of the keybinds is to
 preserve game focus.
 
@@ -19,28 +19,28 @@ Default keymap:
     Left Alt + 3   → dismiss           ("skip")
 
 Override via env vars RC_KEY_A / RC_KEY_B / RC_KEY_DISMISS (use `keyboard`
-names — see https://github.com/boppreh/keyboard).
+names - see https://github.com/boppreh/keyboard).
 
 Deploy on Game-PC (one time):
     1. Install dependency:  py -m pip install keyboard
     2. Copy this file to:   C:\\RC-Agent\\gamepc_keybind_listener.py
     3. Run:                 py C:\\RC-Agent\\gamepc_keybind_listener.py
 
-Scheduled task (run as user, ONLOGON — same elevation tier as other
+Scheduled task (run as user, ONLOGON - same elevation tier as other
 RC-* Game-PC agents):
     schtasks /Create /TN "RC-KeybindListener" /SC ONLOGON /RL HIGHEST /F ^
         /TR "py C:\\RC-Agent\\gamepc_keybind_listener.py"
 
 Note on permissions: the `keyboard` library hooks the Win32 low-level
 keyboard event API. On Windows it works without admin for most users;
-some League fullscreen modes block global hooks — start the listener
+some League fullscreen modes block global hooks - start the listener
 BEFORE launching League to be safe.
 
 Rate-limit: a single 250ms debounce per key. Holding numpad1 fires
 exactly one POST.
 
 Failure mode: if Legion is unreachable, the script logs and keeps
-running — no game disruption. The dashboard banner still records
+running - no game disruption. The dashboard banner still records
 choices on its own.
 """
 from __future__ import annotations
@@ -59,7 +59,7 @@ LEGION_HOST = os.environ.get("RC_LEGION_HOST", "192.168.8.230")
 LEGION_PORT = int(os.environ.get("RC_LEGION_PORT", "8888"))
 RESPOND_URL = f"https://{LEGION_HOST}:{LEGION_PORT}/api/decisions/respond_active"
 
-# Default keybinds — use `keyboard` library names. Left Alt + number row
+# Default keybinds - use `keyboard` library names. Left Alt + number row
 # above QWERTY (tenkeyless-friendly; collision-free with League which
 # only binds Ctrl+1..6 to items, not Alt+1..6).
 KEY_A = os.environ.get("RC_KEY_A", "left alt+1")
@@ -76,7 +76,7 @@ logging.basicConfig(
 )
 _log = logging.getLogger("rc.keybind")
 
-# Trust the RC dashboard's mkcert cert without per-cert verification — the
+# Trust the RC dashboard's mkcert cert without per-cert verification - the
 # operator's machine doesn't have legion's CA installed and the bridge is
 # already mTLS-equivalent via tailnet. Mirrors the pattern in
 # tools/gamepc_lcu_agent.py.
@@ -107,7 +107,7 @@ def _post_respond(*, choice_index: int | None = None,
                   choice_index, dismiss, payload.decode("utf-8")[:120])
     except urllib.error.HTTPError as exc:
         # 404 is the common case: no decision is pending. Treat as info,
-        # not error — operator may have pressed early or after the
+        # not error - operator may have pressed early or after the
         # decision auto-expired.
         if exc.code == 404:
             _log.info("no pending decision (idx=%s dismiss=%s)",

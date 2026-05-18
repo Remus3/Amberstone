@@ -81,10 +81,10 @@ def _make_headless_app() -> OverlayApp:
     app._tft_q        = queue.Queue(maxsize=4)
     app._sr_aram_q    = queue.Queue(maxsize=2)
 
-    # State authority — owns the authoritative GameEnvelope
+    # State authority - owns the authoritative GameEnvelope
     app.state = StateAuthority()
 
-    # Lifecycle manager — owns process_game_state, drain_tft_q, etc.
+    # Lifecycle manager - owns process_game_state, drain_tft_q, etc.
     app.lifecycle = GameLifecycleManager(app)
 
     # Initialise envelope via property (delegates to app.state.set_envelope)

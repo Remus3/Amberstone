@@ -1,4 +1,4 @@
-"""Phase 4c (s179, 2026-05-12) — Mage ability ranker tests.
+"""Phase 4c (s179, 2026-05-12) - Mage ability ranker tests.
 
 Mirrors ``test_rank`` / ``test_rank_tank`` shape but exercises the
 ability-DPS scorer side. The filter-pipeline correctness already lives
@@ -84,7 +84,7 @@ class RankByAbilityDpsBasicsTests(unittest.TestCase):
         self.assertLessEqual(len(r.ranked), 3)
 
     def test_primary_scaling_surfaced(self) -> None:
-        # Veigar is canonical AP — primary_scaling should classify AP.
+        # Veigar is canonical AP - primary_scaling should classify AP.
         r = rank_items_by_ability_dps(
             self.snap, "Veigar", level=11, mode="SR", target_mr=30.0, top_n=1,
         )
@@ -245,7 +245,7 @@ class FilterPipelineTests(unittest.TestCase):
         )
         # At least one of the real spellblade sibs should now be present
         # and carry the flag. Use Trinity Force (6630) as the canonical
-        # check — it's a high-tier terminal item certain to survive any
+        # check - it's a high-tier terminal item certain to survive any
         # other filter.
         spellblade_sibs = {"3057", "6630", "3508", "6662", "6632"}
         present_items = [ri for ri in r.ranked if ri.item_id in spellblade_sibs]

@@ -1,10 +1,10 @@
-# Task Report — P-audit3-l01: ws_client.js exponential backoff
+# Task Report - P-audit3-l01: ws_client.js exponential backoff
 
 - **Task id:** `t-738d3be71876`
 - **Operation:** `apply-proposal-p-audit3-l01-ws-client-backoff`
 - **Agent:** agent5 (UI / Charter)
 - **Completed:** 2026-04-22T14:26:02Z
-- **Result:** NO-OP — fix already applied
+- **Result:** NO-OP - fix already applied
 
 ## Finding
 
@@ -15,7 +15,7 @@ earlier agent session) and includes:
 1. **Audit comment** (lines 30–33) explicitly citing P-audit3-l01 and the
    rationale (reconnect storm prevention across multiple kiosks/tabs).
 
-2. **Backoff table** (line 34): `[1500, 3000, 6000, 12000, 30000]` — exact
+2. **Backoff table** (line 34): `[1500, 3000, 6000, 12000, 30000]` - exact
    sequence from the proposal (1.5s → 3s → 6s → 12s → 30s ceiling).
 
 3. **`nextBackoff()` function** (lines 36–42): increments `backoffIdx` each
@@ -40,7 +40,7 @@ function nextBackoff() {
 
 ## Verification
 
-- `ws.onopen` resets `backoffIdx = 0` — backoff sequence restarts cleanly
+- `ws.onopen` resets `backoffIdx = 0` - backoff sequence restarts cleanly
   after each successful reconnection.
 - `ws.onerror` does **not** schedule a reconnect; `ws.onclose` fires after
   any error/close, so the backoff path is the single reconnect code path.
@@ -49,4 +49,4 @@ function nextBackoff() {
 
 ## Status
 
-**CLOSED — already shipped.** No code changes required in this session.
+**CLOSED - already shipped.** No code changes required in this session.

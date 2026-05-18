@@ -1,4 +1,4 @@
-"""Phase 5.6 (s188, 2026-05-13) — per-attack on-hit proc damage tests.
+"""Phase 5.6 (s188, 2026-05-13) - per-attack on-hit proc damage tests.
 
 Covers the new ``DpsResult.per_attack_on_hit_damage`` field + its
 integration with ``compute_burst_damage``. Items that proc on every AA
@@ -79,7 +79,7 @@ class BurstOnHitIntegrationTests(unittest.TestCase):
 
     def test_akali_wits_end_increases_burst(self) -> None:
         """Akali with Wit's End should have higher total burst than naked
-        Akali — every AA in the combo procs Wit's End magic damage."""
+        Akali - every AA in the combo procs Wit's End magic damage."""
         naked = compute_burst_damage(
             self.snap, "Akali", level=11,
             target_armor=80.0, target_mr=30.0, target_max_hp=2000.0,
@@ -130,7 +130,7 @@ class BurstOnHitIntegrationTests(unittest.TestCase):
 
     def test_naked_build_aa_unchanged(self) -> None:
         """Without any on-hit items, AA damage equals avg_attack_dmg (the
-        pre-s188 behavior — backward-compat sanity)."""
+        pre-s188 behavior - backward-compat sanity)."""
         naked = compute_burst_damage(
             self.snap, "Zed", level=11,
             target_armor=80.0, target_mr=30.0, target_max_hp=2000.0,
@@ -177,7 +177,7 @@ class ServerDpsRouteTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         try:
             urlopen(f"{cls.BASE_URL}/health", timeout=2).read()
-        except Exception as e:  # pragma: no cover — env-dependent
+        except Exception as e:  # pragma: no cover - env-dependent
             raise unittest.SkipTest(f"DS server unavailable: {e}")
 
     def _post(self, path: str, body: dict) -> dict:

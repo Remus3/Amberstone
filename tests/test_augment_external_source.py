@@ -1,10 +1,10 @@
 """
-tests/test_augment_external_source.py — CLAUDE #88 Task 2 + 3.
+tests/test_augment_external_source.py - CLAUDE #88 Task 2 + 3.
 
 Covers the external Mayhem win-rate prior fetch/parse/cache/degrade and
 the cherry-augments.json metadata cache + OCR-name→id reconciliation.
 HTTP is monkey-patched (`_http_get` / `_http_get_json` are encapsulated
-for exactly this — riot_api pattern); the cache dir is redirected to a
+for exactly this - riot_api pattern); the cache dir is redirected to a
 temp tree so no real network or repo writes happen.
 """
 import json

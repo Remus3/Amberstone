@@ -1,4 +1,4 @@
-# RC Deep Audit — connections, smoke-tests, efficiency, latency, OCR setup
+# RC Deep Audit - connections, smoke-tests, efficiency, latency, OCR setup
 
 - **Date:** 2026-04-28 18:56 America/Chicago (23:56 UTC)
 - **Branch:** main @ 7995e96 (after batches 1–12 + dot-row fix)
@@ -6,7 +6,7 @@
 - **Method:** live probes against running RC + vision server + agents :8890 +
   Game-PC LAN; no code changes from this audit (read-only).
 
-## Verdict: 🟢 GREEN — every component reachable, no errors.
+## Verdict: 🟢 GREEN - every component reachable, no errors.
 Two cosmetic anomalies to address (`RCVisionServer` dupe task,
 `rewind_history.db` size). Everything else clean.
 
@@ -24,13 +24,13 @@ Two cosmetic anomalies to address (`RCVisionServer` dupe task,
 | Game-PC | 192.168.8.237 | ✅ ping 0 % loss, 0 ms avg | |
 | Game-PC screen agent | → vision :8889/upload-frame | ✅ 4237 uploads, 0 errors, 3.16 GB total, every 2 s | |
 | Game-PC LCU agent | → vision :8889/upload-lcu | ✅ 8327 uploads, 0 errors, every 1 s, phase=`Offline` (League closed) | |
-| Game-PC liveclient relay | → vision :8889/upload-liveclient | ⚪ 0 uploads (League not running — relay only emits during a live game; this is correct) | |
+| Game-PC liveclient relay | → vision :8889/upload-liveclient | ⚪ 0 uploads (League not running - relay only emits during a live game; this is correct) | |
 
 **Active processes (RSS):**
-- 8772 main.py — 40.2 MB
-- 1560 agents.supervisor — 27.4 MB
-- 9724 moon_vision_server — 8.5 MB
-- 8280 rc_supervisor — 5.6 MB
+- 8772 main.py - 40.2 MB
+- 1560 agents.supervisor - 27.4 MB
+- 9724 moon_vision_server - 8.5 MB
+- 8280 rc_supervisor - 5.6 MB
 
 Healthy footprint; no process is leaking.
 
@@ -52,7 +52,7 @@ All 16 routes returned **HTTP 200**:
 | /api/replay/matches?limit=3 | 6.2 ms | 675 |
 | /api/replay/match/&lt;id&gt; | 7.2 ms | 74 580 |
 | /api/recommend-champ (cold) | 474 ms | 658 |
-| /api/recommend-champ (warm) | 143 ms (median) | — |
+| /api/recommend-champ (warm) | 143 ms (median) | - |
 | /api/home/summary | 10.1 ms | 1 628 |
 | /api/diagnostics | **2 019 ms** | 5 853 |
 | /api/session/summary | 3.6 ms | 1 418 |
@@ -81,10 +81,10 @@ All 16 routes returned **HTTP 200**:
 | /api/cost | 1.9 | 2.0 | 2.0 ms | reads today's spend ledger |
 | /api/replay/match | 6.6 | 6.9 | 6.9 ms | full match (10 parts × 36 frames + 77 kills) |
 | /api/recommend-champ | 142.3 | 143.4 | 159.7 ms | KDA aggregation across 2.5M timeline events |
-| /api/ocr | — | 562 ms | — | 11 ms server overhead + **551 ms Tesseract** |
+| /api/ocr | - | 562 ms | - | 11 ms server overhead + **551 ms Tesseract** |
 
 **OCR is the slowest hot path.** Tesseract on a 3840×1280 frame across all 29
-configured fields takes ~550 ms — that's the cost of a `/api/ocr` call. The
+configured fields takes ~550 ms - that's the cost of a `/api/ocr` call. The
 parallel ThreadPoolExecutor in `core/vision_tesseract.read_fast_fields` already
 fans out across cores; further wins need either smaller crops or fewer fields.
 
@@ -103,7 +103,7 @@ fans out across cores; further wins need either smaller crops or fewer fields.
 | data/decisions.db | 0.6 MB |
 | data/match_history.db | 0.1 MB |
 
-`rewind_history.db` is dominant — that's the cost of 645 982 timeline frames +
+`rewind_history.db` is dominant - that's the cost of 645 982 timeline frames +
 2 516 873 events. Acceptable for a local-first dataset; bears watching as it
 grows. WAL files are < 32 KB so no checkpoint pressure.
 
@@ -119,13 +119,13 @@ grows. WAL files are < 32 KB so no checkpoint pressure.
 ### Vision-server throughput
 - 4237 frame uploads / 8476 s ≈ **0.50 fps** (matches Game-PC agent 2-s cadence)
 - 8327 LCU uploads / 8476 s ≈ **0.98 / s** (matches LCU agent 1-s cadence)
-- Both 0 errors — agents stable.
+- Both 0 errors - agents stable.
 
 ---
 
 ## 5. Anomalies / concerns
 
-### ✅ Duplicate scheduled task — RESOLVED 2026-04-28
+### ✅ Duplicate scheduled task - RESOLVED 2026-04-28
 ```
 \RC-VisionServer    Running   last 4/28/2026 4:34 PM   result 267009 (running)
 \RCVisionServer     Ready     last 4/28/2026 3:21 PM   result 0      (success)
@@ -184,14 +184,14 @@ that pins each HUD region to the right pixels.
    3840×1280, divide each x by 2 and each y by 1280/1080 ≈ 1.185 to land
    in the 1920×1080 reference. Or write the bboxes directly in the
    captured resolution and update `_base` in `vision_regions.json` to
-   match — same outcome, less arithmetic.
+   match - same outcome, less arithmetic.
 4. **Live-preview a single field** to verify:
    `curl -sk "https://127.0.0.1:8888/api/ocr-crop?field=timer" | jq -r .b64
    | base64 -d > timer.png` then visually inspect.
 5. **Reload regions live** without restarting RC:
    `curl -sk "https://127.0.0.1:8888/api/reload-regions"`
 6. **Validate against ground truth** with `/api/validate-ocr` while a game
-   is live — it cross-checks Tesseract output against the Live Client
+   is live - it cross-checks Tesseract output against the Live Client
    API's authoritative HP / mana / level / gold / KDA / CS values.
 
 ### Field cadence
@@ -201,12 +201,12 @@ that pins each HUD region to the right pixels.
 - **Fast fields** (HP, mana, gold, kda, ult-ready bools): read every call.
 - **Drop set** (`configure_drop_fields`): when Live Client API is fresh
   (< 3 s), the dashboard tells the OCR layer to skip cs/kda/gold/level/
-  hp/mana/timer because the API is authoritative — saves ~80 % of OCR
+  hp/mana/timer because the API is authoritative - saves ~80 % of OCR
   work during a live game.
 
 ### Recommended additions if you go for a deep recalibration
 - Per-resolution overlays: instead of one base, support `_base_3840x1280`,
-  `_base_2560x1440`, etc. — pick the closest match at frame-decode time
+  `_base_2560x1440`, etc. - pick the closest match at frame-decode time
   rather than scaling. Higher fidelity for non-aspect-matched displays.
 - A `data/vision_regions.YYYYMMDD.json` snapshot per calibration so you
   can roll back if a tweak regresses the validate-ocr score.
@@ -220,7 +220,7 @@ works and the auto-scale handles the resolution mismatch transparently.
 
 | # | Priority | Action |
 |---|---|---|
-| 1 | ✅ done | `schtasks /Delete /TN RCVisionServer /F` — duplicate vision-server task deleted post-audit; survivor `RC-VisionServer` still Running, /health alive. |
+| 1 | ✅ done | `schtasks /Delete /TN RCVisionServer /F` - duplicate vision-server task deleted post-audit; survivor `RC-VisionServer` still Running, /health alive. |
 | 2 | low | Consider a nightly job that materializes per-champion KDA aggregates from `rewind_history.db` into a small JSON, so `/api/recommend-champ` cold-call drops from 474 ms to ≈ 50 ms. |
 | 3 | low | When you get back into a live game, re-run this audit so the `liveclient_upload` line + Sonnet vision-call latency are also captured. |
 | 4 | info | Daily spend ledger will populate the moment a coach loop or vision call fires; the empty file today is correct. |

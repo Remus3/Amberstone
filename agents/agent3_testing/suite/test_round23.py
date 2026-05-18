@@ -1,4 +1,4 @@
-"""Round 23 — KDA schema migration + backfill + analyzer aggregation."""
+"""Round 23 - KDA schema migration + backfill + analyzer aggregation."""
 from __future__ import annotations
 
 import json
@@ -73,7 +73,7 @@ def test_migrate_missing_db_is_safe(tmp_path: Path) -> None:
 
 def test_init_all_includes_kda_natively(tmp_path: Path, monkeypatch) -> None:
     """Fresh mode DBs built by db_schema.init_all should have the KDA
-    columns already — no migration step required on clean install."""
+    columns already - no migration step required on clean install."""
     import agents.agent2_backend.db_schema as dbs
     monkeypatch.setattr(dbs, "DB_DIR", tmp_path)
     dbs.init_mode("aram")
@@ -150,7 +150,7 @@ def test_game_ingest_without_kda_leaves_nulls(tmp_path: Path, monkeypatch) -> No
 # ── backfill from rewind ────────────────────────────────────────────
 
 def _build_fake_rewind(path: Path, entries: list[tuple[str, int, int, int]]) -> None:
-    """Minimal rewind schema — just what backfill reads."""
+    """Minimal rewind schema - just what backfill reads."""
     with sqlite3.connect(path) as conn:
         conn.execute("""
             CREATE TABLE matches (
@@ -176,7 +176,7 @@ def test_backfill_updates_null_rows(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(bk, "REWIND_DB", tmp_path / "rewind.db")
     (tmp_path / "mdb").mkdir()
 
-    # Fresh aram DB — has KDA columns natively (init_all path).
+    # Fresh aram DB - has KDA columns natively (init_all path).
     dbs.init_mode("aram")
 
     mode_path = tmp_path / "mdb" / "aram.db"
@@ -250,7 +250,7 @@ def test_backfill_dry_run_does_not_write(tmp_path: Path, monkeypatch) -> None:
             "SELECT kills, deaths, assists FROM matches WHERE match_id = ?",
             (local_id,),
         ).fetchone()
-    # Still null — dry-run shouldn't write.
+    # Still null - dry-run shouldn't write.
     assert row == (None, None, None)
 
 
@@ -285,7 +285,7 @@ def test_backfill_skips_already_populated(tmp_path: Path, monkeypatch) -> None:
 
     summary = bk.backfill_all()
     assert summary["per_mode"]["aram"]["candidates"] == 0
-    # Row is unchanged — the 99s are sacred once set.
+    # Row is unchanged - the 99s are sacred once set.
     with sqlite3.connect(mode_path) as conn:
         row = conn.execute(
             "SELECT kills, deaths, assists FROM matches WHERE match_id = ?",

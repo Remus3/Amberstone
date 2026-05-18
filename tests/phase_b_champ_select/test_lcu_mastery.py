@@ -1,4 +1,4 @@
-"""Priority 8 (2026-05-10) — LCU mastery cache + capture_state plumbing.
+"""Priority 8 (2026-05-10) - LCU mastery cache + capture_state plumbing.
 
 Validates the new gamepc_lcu_agent path:
   /lol-summoner/v1/current-summoner → summonerId (cached once, surfaced for downstream)
@@ -27,9 +27,9 @@ def _patch_lcu(responses: dict[tuple[str, str], object]):
     """Return a side-effect that maps (method, path) → response.
 
     ``responses[(method, path)]`` is either:
-      * a (payload, err) tuple — returned directly
-      * any other object — returned as (obj, None)
-      * Exception instance — raised
+      * a (payload, err) tuple - returned directly
+      * any other object - returned as (obj, None)
+      * Exception instance - raised
     Unknown paths return (None, "unmocked").
     """
     def side(method, path, body=None):
@@ -60,7 +60,7 @@ class TestSummonerIdResolver(unittest.TestCase):
             sid2 = agent._resolve_local_summoner_id()
         self.assertEqual(sid1, 12345)
         self.assertEqual(sid2, 12345)
-        # Second call must hit cache — only one LCU GET.
+        # Second call must hit cache - only one LCU GET.
         self.assertEqual(m.call_count, 1)
 
     def test_returns_none_when_lcu_unreachable(self) -> None:
@@ -129,7 +129,7 @@ class TestMasteryFetch(unittest.TestCase):
                                side_effect=_patch_lcu(responses)) as m:
             agent._maybe_refresh_mastery()
             agent._maybe_refresh_mastery()
-        # 1 summoner + 1 mastery — second _maybe_refresh hits cache for both.
+        # 1 summoner + 1 mastery - second _maybe_refresh hits cache for both.
         self.assertEqual(m.call_count, 2)
 
     def test_ttl_expiry_triggers_re_fetch(self) -> None:
@@ -160,7 +160,7 @@ class TestMasteryFetch(unittest.TestCase):
 
 class TestCaptureStatePlumbing(unittest.TestCase):
     """Smoke-test the mastery hook inside capture_state without driving the
-    full ChampSelect plumbing — we only verify that the lcu.mastery key
+    full ChampSelect plumbing - we only verify that the lcu.mastery key
     appears for session-relevant phases.
     """
 

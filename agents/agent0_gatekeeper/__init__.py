@@ -1,4 +1,4 @@
-"""Agent 0 — Gatekeeper for cross-machine operations."""
+"""Agent 0 - Gatekeeper for cross-machine operations."""
 from agents.agent0_gatekeeper.evaluator import (
     Decision,
     Evaluator,

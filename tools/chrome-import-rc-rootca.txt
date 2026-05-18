@@ -1,5 +1,5 @@
 ============================================================
-DIRECT CHROME IMPORT — bypasses Windows trust store entirely
+DIRECT CHROME IMPORT - bypasses Windows trust store entirely
 ============================================================
 
 If Chrome still shows "Not Secure" after running install +
@@ -53,7 +53,7 @@ Chrome on Windows uses a hybrid trust model since version 105:
   - Windows trust store is consulted for private CAs IF the cert
     is in LocalMachine\Root AND passes Chrome's path checks.
 
-The "Authorities" import bypasses both layers — it directly
+The "Authorities" import bypasses both layers - it directly
 adds the CA to Chrome's per-user trust list, no admin needed,
 no policy negotiation. The trade-off: only that user profile
 trusts it (per Chrome profile, not system-wide).
@@ -63,7 +63,7 @@ Verify in Chrome
 ------------------------------------------------------------
 
 After import, visit chrome://settings/certificates again and
-look in the Authorities tab. Search "mkcert" — you should see
+look in the Authorities tab. Search "mkcert" - you should see
 a single entry like:
    org-mkcert development CA
        mkcert LEGION-RC\Administrator@LEGION-RC

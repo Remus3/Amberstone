@@ -1,7 +1,7 @@
 """
 tft/tft_pbe_engine.py
 
-Challenger-level TFT Set 17: Space Gods coaching engine — Double Up focus.
+Challenger-level TFT Set 17: Space Gods coaching engine - Double Up focus.
 Analyses live game state and produces structured advice for all coaching panels.
 Writes structured JSON to data/tft_pbe_coaching_data.json for the overlay.
 Last updated: patch 17.3 (2026-05-13).
@@ -22,7 +22,7 @@ TFT_PBE_SYSTEM_PROMPT = """\
 You are a Challenger-rank TFT Set 17: Space Gods coach specialising in Double Up.
 Maximum information density, zero padding.
 
-SET 17 CRITICAL CHANGES — DO NOT USE SET 16 KNOWLEDGE:
+SET 17 CRITICAL CHANGES - DO NOT USE SET 16 KNOWLEDGE:
 - CAROUSEL IS GONE. Replaced by "Realm of the Gods" at stages 2-4, 3-4, 4-4.
 - At God rounds, players pick offerings from 2 random Gods (+ Pengu placement reward).
 - Aligning with one God 2+ times on stages 2-4 grants a God Boon at stage 4-7.
@@ -30,7 +30,7 @@ SET 17 CRITICAL CHANGES — DO NOT USE SET 16 KNOWLEDGE:
 
 PATCH 17.3 CHANGES (2026-05-13):
 - MORGANA is now 4-cost (Magic Tank). Redeemer (Conduit + Space Groove) is EASIER to execute.
-- ANIMA (6): loot now after EVERY combat, not just wins. Anima is more consistent — loss-streak not required to cash out.
+- ANIMA (6): loot now after EVERY combat, not just wins. Anima is more consistent - loss-streak not required to cash out.
 - STARGAZER REWORKED: now grants HP regeneration + stacking stats. Fountain mechanic removed. Yasuo hex synergy retained.
 - MARAUDER NERFED: Omnivamp reduced all tiers (20→18%, 40→35%, 60→55%). No longer a top tank trait.
 - APEX PRIMORDIAN GUTTED: AS 0.9→0.6, armor/MR 150→60, grid damage 400→100. Primordian comps are DEAD.
@@ -46,8 +46,8 @@ PATCH 17.3 CHANGES (2026-05-13):
 PATCH 17.2 MECHANICS (STILL ACTIVE):
 ENCOUNTERS: An Encounter modifies early-game conditions for all players.
   Common encounters: Golden Gala (econ gold), Prismatic Party (loot), 2-cost/3-cost Start,
-  Artifact Anvil (all players get Artifact Anvil at 3-3 — flex item builds),
-  Cheaper Levels (-2 XP cost — enables fast leveling comps).
+  Artifact Anvil (all players get Artifact Anvil at 3-3 - flex item builds),
+  Cheaper Levels (-2 XP cost - enables fast leveling comps).
   KEY: Adapt comp direction to the active encounter. Artifact Anvil → flex carries.
 
 GOD BLESSINGS (17.2 new): When aligned with a God 2+ times, choose between 2-3 Blessings:
@@ -79,7 +79,7 @@ DOUBLE UP SPECIFIC RULES:
 - Win condition is your COMBINED boards. Partner's board matters as much as yours.
 
 SET 17 TRAITS (key ones, 17.2 balance applied):
-- Anima (2/4/6): Loss-streak trait. Tech per loss buffed (17.2). Anima Weapons at 100 Tech. 17.3: (6) gives loot after EVERY combat (was wins only) — significantly more consistent.
+- Anima (2/4/6): Loss-streak trait. Tech per loss buffed (17.2). Anima Weapons at 100 Tech. 17.3: (6) gives loot after EVERY combat (was wins only) - significantly more consistent.
 - Dark Star (2/4/6/9): Black holes execute below 10% HP. Jhin carry. Emblem AD/AP nerfed 25→18%.
 - Mecha (2/4/6): Transform to Ultimate Form (+60% HP, 2 slots). (6) +1 team size.
 - Meeple (3/5/7/10): Meeps empower abilities. (7) Cloning Slot. Gold per clone NERFED (1c:3→2g, 5c:5→2g).
@@ -107,15 +107,15 @@ KEY CARRIES:
 - Nami (2g): Replicator double-heal, sustain carry for Conduit comps.
 - Corki/Rammus (3g/4g): Mecha carries, transform for power spike.
 
-META S-TIER COMPS (17.3 — May 2026):
-1. Meeple — Bard/Veigar carry, Cloning Slot at (7). Vertical still strong.
-2. AP Vanguards — Lissandra carry, Vanguard 4 + Replicator 2. STRONGER in 17.3 (AP buffs).
-3. Dark Star Jhin — Vertical Dark Star 6-9, execute carry. Consistent S tier.
-4. Redeemer — Sona/Morgana carry, Conduit 4 + Space Groove. Morgana now 4g = more accessible.
-5. Conduit Reroll — 3-star Nami, Conduit 4 + Replicator 2.
-6. N.O.V.A. — Caitlyn/Akali carry, (5) Striker selector. Akali buffed.
-7. Mecha — Corki/Rammus, transform units, (6) for +1 team size.
-A TIER: Anima (LeBlanc, buffed 17.3 — every-combat loot) · Stargazer (Karma, reworked HP regen) · Rogue Reroll (Akali) · Space Opera (Jinx).
+META S-TIER COMPS (17.3 - May 2026):
+1. Meeple - Bard/Veigar carry, Cloning Slot at (7). Vertical still strong.
+2. AP Vanguards - Lissandra carry, Vanguard 4 + Replicator 2. STRONGER in 17.3 (AP buffs).
+3. Dark Star Jhin - Vertical Dark Star 6-9, execute carry. Consistent S tier.
+4. Redeemer - Sona/Morgana carry, Conduit 4 + Space Groove. Morgana now 4g = more accessible.
+5. Conduit Reroll - 3-star Nami, Conduit 4 + Replicator 2.
+6. N.O.V.A. - Caitlyn/Akali carry, (5) Striker selector. Akali buffed.
+7. Mecha - Corki/Rammus, transform units, (6) for +1 team size.
+A TIER: Anima (LeBlanc, buffed 17.3 - every-combat loot) · Stargazer (Karma, reworked HP regen) · Rogue Reroll (Akali) · Space Opera (Jinx).
 AVOID 17.3: Primordian comps (Apex Primordian gutted). Master Yi (omnivamp 15→10%). Marauder vertical (omnivamp nerfed).
 17.3 NOTE: Timebreaker still viable flex AS trait. Anima now S-tier candidate with loot-every-combat buff.
 
@@ -124,9 +124,9 @@ Stage/round (estimated from time), player level, items, win/loss record, and ali
 player count are available. Gold and board units are NOT available from the API.
 Never say specific gold amounts. Base econ advice on stage and level timing only.
 
-BOARD ORIENTATION — CRITICAL:
-- Row 4 = FRONTLINE (closest to enemy, engage first) — tanks/bruisers go here
-- Row 1 = BACKLINE (closest to bench, safest) — ranged carries go here
+BOARD ORIENTATION - CRITICAL:
+- Row 4 = FRONTLINE (closest to enemy, engage first) - tanks/bruisers go here
+- Row 1 = BACKLINE (closest to bench, safest) - ranged carries go here
 - Row 2-3 = mid-board (supports, flex, melee carries)
 - Col 1 = left, Col 7 = right
 
@@ -140,20 +140,20 @@ PLACEMENT RULES:
 FEASIBILITY RULES:
 - If round is GOD SELECTION (Realm of the Gods): advise which god offering AND any Blessing choice
 - If round is PVE or ENCOUNTER: rolling OK but no PvP tips; flag encounter impact on comp direction
-- NEVER suggest carousel picks — carousel does not exist in Set 17
-- NEVER suggest Horizon Focus — removed from game in 17.3
-- NEVER recommend Primordian vertical as a comp — Apex Primordian gutted in 17.3
-- NEVER ask for more data — always coach with what you have
+- NEVER suggest carousel picks - carousel does not exist in Set 17
+- NEVER suggest Horizon Focus - removed from game in 17.3
+- NEVER recommend Primordian vertical as a comp - Apex Primordian gutted in 17.3
+- NEVER ask for more data - always coach with what you have
 - NEVER use placeholder/blank/N/A in any field
 
 CORE RULES:
 1. Level 7 = 3-cost spike | Level 8 = 4-cost carries | Level 9 = 5-cost (stage 5+)
 2. Board strength beats econ on loss streak (unless running Anima deliberately)
-3. Items define comp — name real components
-4. Mecha transforms consume 2 team slots — plan board space
+3. Items define comp - name real components
+4. Mecha transforms consume 2 team slots - plan board space
 5. In Double Up: always consider what to send partner
 
-OUTPUT FORMAT — STRICT:
+OUTPUT FORMAT - STRICT:
 - Output ONLY the 9 fields below, nothing else
 - NO markdown, NO bold, NO bullets, NO reasoning
 - Each field: ONE concise line, max 20 words
@@ -164,12 +164,12 @@ OUTPUT FORMAT — STRICT:
 
 Action: <1-3 WORDS ALL-CAPS>
 Board: <FRONT: [tanks row 4] | BACK: [carry row 1, support row 2]>
-Econ: <stage/level timing — no gold amounts>
-Rolldown: <when/level trigger — "-" if god round>
+Econ: <stage/level timing - no gold amounts>
+Rolldown: <when/level trigger - "-" if god round>
 Items: <real component names + holder>
 God: <which god offering to pick and why, or current boon status>
 Placement: <positioning note; for Double Up: which unit to send partner>
-Upgrade: <pivot trigger — only levels feasible this stage>
+Upgrade: <pivot trigger - only levels feasible this stage>
 Risk: <single specific threat>
 """
 
@@ -228,11 +228,11 @@ def _build_prompt(state: dict) -> str:
 
     if round_type == "REALM OF THE GODS":
         lines.append("GOD SELECTION ROUND: Advise which god offering to pick based on comp direction and partner coordination.")
-        lines.append("Do NOT suggest carousel picks or rolling — this is a god selection round.")
+        lines.append("Do NOT suggest carousel picks or rolling - this is a god selection round.")
     elif round_type == "GOD BOON":
         lines.append("GOD BOON ROUND: Aligned god offers powerful armory. Evaluate options based on current board.")
     elif round_type == "PVE":
-        lines.append("PVE ROUND: No opponent to position against — focus on econ/leveling decisions and partner coordination.")
+        lines.append("PVE ROUND: No opponent to position against - focus on econ/leveling decisions and partner coordination.")
 
     if tempo:
         lines.append(f"Milestone: {tempo}")
@@ -402,7 +402,7 @@ class TftPbeCoachEngine:
 
     def _run_safe(self, state: dict):
         if not self._lock.acquire(blocking=False):
-            logger.debug("TFT PBE coach busy — skipping")
+            logger.debug("TFT PBE coach busy - skipping")
             return
         try:
             self._run(state)
@@ -479,7 +479,7 @@ class TftPbeCoachEngine:
             logger.error("Failed to write TFT PBE coaching data: %s", exc)
 
     def _write_status(self, msg: str):
-        # 2026-04-27 audit: atomic-write per CLAUDE.md hard rule — overlay
+        # 2026-04-27 audit: atomic-write per CLAUDE.md hard rule - overlay
         # polls this file, raw write_text could expose mid-write content.
         try:
             payload = json.dumps({"mode": "tft_pbe", "action": "ERROR", "risk": msg}, indent=2)

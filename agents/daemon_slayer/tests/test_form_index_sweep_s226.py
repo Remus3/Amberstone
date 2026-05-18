@@ -1,26 +1,26 @@
-"""Phase 5.9.26 (s226, 2026-05-16) — first form_index coverage sweep
+"""Phase 5.9.26 (s226, 2026-05-16) - first form_index coverage sweep
 since s205. Iteration 4 of the self-paced DS loop.
 
 `tools/ds_form_index_prefilter.py` ran ground-truth A/B (forced form 0
 vs each later form) over all 16 multi-DAMAGE-form (champion, key) pairs
-NOT yet in `champion_form_index.json`. Three clean ADDs — each the
+NOT yet in `champion_form_index.json`. Three clean ADDs - each the
 canonical operator-commit form the engine was wrongly defaulting away
 from:
 
-  Swain R=1   — form 0 'Demonic Ascension' is the 7.5-17.5 drain-channel
+  Swain R=1   - form 0 'Demonic Ascension' is the 7.5-17.5 drain-channel
                 per-tick; form 1 'Demonflare' is the 150-350 + 50% AP
                 recast nuke (Swain's ult payoff). Same shape as the
                 existing AurelionSol R=1. Live A/B 12.5→250 (20×).
-  Briar W=1   — form 0 'Blood Frenzy' has ZERO damage blocks (it is the
+  Briar W=1   - form 0 'Blood Frenzy' has ZERO damage blocks (it is the
                 AS/MS frenzy-buff cast); form 1 'Snack Attack' is the
                 entire W damage incl. the s224-migrated 9% missing-HP.
-  Evelynn E=1 — form 1 'Empowered Whiplash' is Eve's canonical
+  Evelynn E=1 - form 1 'Empowered Whiplash' is Eve's canonical
                 Demon-Shade-opened combo E (1.33× form 0 base, 4% vs 3%
                 target max HP). Composes orthogonally with Evelynn's
                 s204 block_index {R:1,Q:5}.
 
 Skips (documented in the registry _meta rationale): Heimerdinger W/E
-(R-gated upgraded form — conditional bucket), Gnar Q/E + RekSai Q
+(R-gated upgraded form - conditional bucket), Gnar Q/E + RekSai Q
 (contextual transforms, form 0 is the dominant-uptime default),
 Skarner Q (form 1 Upheaval is boulder-resource-gated).
 
@@ -95,7 +95,7 @@ class FormIndexABTests(unittest.TestCase):
                                f1.raw_damage_per_cast, places=6)
 
     def test_briar_W_form0_is_the_buff_cast(self) -> None:
-        """Form 0 'Blood Frenzy' is the AS/MS frenzy-buff cast — its lone
+        """Form 0 'Blood Frenzy' is the AS/MS frenzy-buff cast - its lone
         damage-kind block carries NO parsed scaling (base None), so it
         is not the real W damage. Form 1 'Snack Attack' is. The registry
         must route to form 1 and strictly beat form 0."""
@@ -127,7 +127,7 @@ class FormIndexABTests(unittest.TestCase):
 
     def test_evelynn_form_and_block_index_compose(self) -> None:
         """Evelynn carries BOTH a form_index (E=1, s226) and a
-        block_index ({R:1,Q:5}, s204). They are orthogonal registries —
+        block_index ({R:1,Q:5}, s204). They are orthogonal registries -
         assert both still resolve for Evelynn."""
         fi, _ = get_form_index_for("Evelynn")
         bi, _ = get_block_index_for("Evelynn")
@@ -135,7 +135,7 @@ class FormIndexABTests(unittest.TestCase):
         # s228 converted Evelynn Q to a target_no_setup conditional;
         # s231 Phase 5.9.31 converted R to a target_full_hp execute
         # conditional. form_index (E=1) and block_index (Q+R both
-        # conditional dicts) still compose orthogonally — the point of
+        # conditional dicts) still compose orthogonally - the point of
         # this test.
         self.assertEqual(bi.get("R"), {"default": 1, "target_full_hp": 0})
         self.assertEqual(bi.get("Q"), {"default": 5, "target_no_setup": 0})

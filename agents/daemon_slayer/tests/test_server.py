@@ -1,4 +1,4 @@
-"""Phase 3 — server route tests.
+"""Phase 3 - server route tests.
 
 Spins up `start_server` on port 0 (kernel-assigned) in a daemon thread,
 hits each route via stdlib `urllib.request`, asserts JSON shape and
@@ -53,7 +53,7 @@ def _post_json(url: str, body: dict) -> tuple[int, dict]:
 
 
 class ServerLifecycleTests(unittest.TestCase):
-    """One server instance shared across the suite — start/stop is the
+    """One server instance shared across the suite - start/stop is the
     expensive op (~30 ms snapshot load), tests themselves are quick."""
 
     @classmethod
@@ -261,7 +261,7 @@ class RankRouteTests(ServerLifecycleTests):
 
 
 class EhpRouteTests(ServerLifecycleTests):
-    """Phase 1 (s174, 2026-05-12) — /ehp + /rank-tank route smoke tests."""
+    """Phase 1 (s174, 2026-05-12) - /ehp + /rank-tank route smoke tests."""
 
     def test_post_ehp_naked(self) -> None:
         status, body = _post_json(self.base + "/ehp", {
@@ -272,7 +272,7 @@ class EhpRouteTests(ServerLifecycleTests):
         self.assertGreater(body["hp"], 0)
         self.assertGreater(body["armor"], 0)
         self.assertGreater(body["physical_ehp"], body["hp"])
-        # 50/50 default split — true_share is 0 when ad+ap == 1.0
+        # 50/50 default split - true_share is 0 when ad+ap == 1.0
         self.assertAlmostEqual(body["enemy_ad_share"], 0.5)
         self.assertAlmostEqual(body["enemy_ap_share"], 0.5)
 
@@ -312,7 +312,7 @@ class EhpRouteTests(ServerLifecycleTests):
 
 
 class HybridRouteTests(ServerLifecycleTests):
-    """Phase 2 (s175, 2026-05-12) — /hybrid + /rank-bruiser route smoke tests."""
+    """Phase 2 (s175, 2026-05-12) - /hybrid + /rank-bruiser route smoke tests."""
 
     def test_post_hybrid_naked(self) -> None:
         status, body = _post_json(self.base + "/hybrid", {
@@ -322,7 +322,7 @@ class HybridRouteTests(ServerLifecycleTests):
         self.assertEqual(body["champion_id"], "Darius")
         self.assertGreater(body["dps"], 0)
         self.assertGreater(body["ehp"], 0)
-        # Darius isn't in the table — falls back to default 0.5/0.5.
+        # Darius isn't in the table - falls back to default 0.5/0.5.
         self.assertAlmostEqual(body["alpha"], 0.65)  # Darius IS in the table
         self.assertEqual(body["alpha_source"], "champion")
 
@@ -376,7 +376,7 @@ class RoutingTests(ServerLifecycleTests):
 
 class ChampionIdResolutionTests(ServerLifecycleTests):
     """s156: server-side display-name → DDragon-id fallback.
-    Regression target — RC's coaches feed champion as the display name
+    Regression target - RC's coaches feed champion as the display name
     ('Kai'Sa', 'Wukong', 'Renata Glasc') from coaching_data.json. Before
     this fix, /rank returned 404 → daemon_slayer_picks never written →
     dashboard #ds-pill stayed hidden mid-game ('ds not loaded at all')."""
@@ -433,7 +433,7 @@ class ChampionIdResolutionTests(ServerLifecycleTests):
         self.assertEqual(body["champion_id"], "Kaisa")
 
     def test_unknown_still_404s(self) -> None:
-        # Resolver returns the input unchanged when no match — engine
+        # Resolver returns the input unchanged when no match - engine
         # then raises the canonical KeyError → 404. No silent successes.
         status, body = _post_json(self.base + "/rank",
                                   {"champion": "Notarealchamp", "level": 1,

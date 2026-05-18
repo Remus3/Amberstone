@@ -1,12 +1,12 @@
-"""Tests for `core.archetype_mismatch` — s184 first-purchase soft-nudge.
+"""Tests for `core.archetype_mismatch` - s184 first-purchase soft-nudge.
 
 Covers the four entry points the dashboard touches:
 
-* ``_first_completed_item_id`` — denylist filtering
-* ``_session_token`` — game-session dedup key resolution
-* ``compute_nudge_payload`` — full evaluator (12 cases — happy path,
+* ``_first_completed_item_id`` - denylist filtering
+* ``_session_token`` - game-session dedup key resolution
+* ``compute_nudge_payload`` - full evaluator (12 cases - happy path,
   dedup, edge cases, engine-down)
-* ``dismiss_nudge`` — operator dismissed the chip
+* ``dismiss_nudge`` - operator dismissed the chip
 
 Plus a tiny ``NudgeResult.to_dict`` shape test.
 
@@ -149,7 +149,7 @@ class ComputeNudgeNoSignalTests(unittest.TestCase):
         )
 
     def test_default_source_skipped(self):
-        # DDragon-tag default isn't operator intent — no nudge
+        # DDragon-tag default isn't operator intent - no nudge
         self.assertEqual(
             am.compute_nudge_payload(
                 {},
@@ -231,7 +231,7 @@ class ComputeNudgeFiredTests(unittest.TestCase):
 
     def test_fires_when_first_item_not_in_top15(self):
         # Operator picked tank but bought IE (3031). Dispatcher returns
-        # tank items (Warmog/Heartsteel/Sunfire/…) — IE not in top 15.
+        # tank items (Warmog/Heartsteel/Sunfire/…) - IE not in top 15.
         with mock.patch.object(
             am, "_evaluate_dispatcher",
             return_value=(True, ["Warmog's Armor", "Heartsteel", "Sunfire"]),
@@ -290,7 +290,7 @@ class ComputeNudgeFiredTests(unittest.TestCase):
         # liveclient has owned items but no game_id and no game_time_s
         lc = self._lc(["3047", "3031"])
         del lc["game_id"]
-        # also remove fallback game_time_s — _session_token will return ""
+        # also remove fallback game_time_s - _session_token will return ""
         result = am.compute_nudge_payload({}, lc, {}, self._pick())
         self.assertEqual(result, {})
 

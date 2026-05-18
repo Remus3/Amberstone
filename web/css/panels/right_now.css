@@ -1,5 +1,5 @@
 /* ───── Right Now panel ────────────────────────────────────────── */
-/* Round 44: responsive headline — scales with panel width so it can't
+/* Round 44: responsive headline - scales with panel width so it can't
  * push the immediate/risk/fight lines below the panel clip.
  * Size history (2026-04-24): 48 → 40 (headline "still very large"),
  * then 40 → 20 to match the new Next headline size. The hero-scale look
@@ -9,7 +9,7 @@
   /* Size-to-content with a hard 2-line cap. 1-line content takes 22px,
    * 2-line takes 44px, 3+ lines clip at line 2 with ellipsis. Prior
    * revisions used a fixed 52px slot to keep subsequent rows from
-   * shifting between fixtures — but that reserved ~30px of whitespace
+   * shifting between fixtures - but that reserved ~30px of whitespace
    * below 1-line headlines (the common case), which is what the user
    * flagged as "20+ pixel space" (2026-04-24). Layout now flexes by
    * one line height between 1- and 2-line fixtures; acceptable trade
@@ -72,7 +72,7 @@
   /* Fixed 2-line slot at the sub-headline font size. Short text still
    * leaves the box the same height, so subsequent KV rows never shift
    * between fixtures. (2026-04-24: shrunk from 3-line / 84px + 10px
-   * margin to a 2-line / 54px + 4px margin — the previous 3-line slot
+   * margin to a 2-line / 54px + 4px margin - the previous 3-line slot
    * was reserving ~30px of whitespace on typical 2-line coach output.
    * Coach prompts already cap the immediate around 12 words, so the
    * 3rd-line escape hatch was rarely used.) */
@@ -83,7 +83,7 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* Arena pregame briefing — dense card (build + augments + combos +
+/* Arena pregame briefing - dense card (build + augments + combos +
  * round phasing). Clipped, not scrolled per round 44. */
 .immediate.is-pregame {
   font-size: 13px;

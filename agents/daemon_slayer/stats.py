@@ -2,11 +2,11 @@
 
 Two extension points are deliberate:
 
-* ``CHAMPION_SCALING_RULES`` — per-stat rule list. Adding a stat means adding
+* ``CHAMPION_SCALING_RULES`` - per-stat rule list. Adding a stat means adding
   one ``ScalingRule`` entry; engine.py iterates the list, no engine edit needed.
-* ``ITEM_STAT_KEY_MAP`` — DDragon stat key → ``(canonical_key, kind)``.
+* ``ITEM_STAT_KEY_MAP`` - DDragon stat key → ``(canonical_key, kind)``.
   ``kind`` is ``"flat"`` or ``"pct"``. Items whose stats live only in description
-  text (passive effects, on-hit, conversions) are deliberately absent — that's
+  text (passive effects, on-hit, conversions) are deliberately absent - that's
   the Phase 4 conditional-effects layer.
 """
 
@@ -22,7 +22,7 @@ LEVEL_MAX = 18
 # ----- per-level scaling formulas ---------------------------------------------
 
 def linear(base: float, perlevel: float, level: int) -> float:
-    """Linear stat scaling — current League math for hp/mp/armor/mr/ad/regen."""
+    """Linear stat scaling - current League math for hp/mp/armor/mr/ad/regen."""
     return base + perlevel * (level - 1)
 
 
@@ -75,7 +75,7 @@ PASSTHROUGH_STAT_FIELDS: dict[str, str] = {
 
 # ----- DDragon item stat mapping ----------------------------------------------
 
-# (canonical_key, kind) — kind is "flat" or "pct".
+# (canonical_key, kind) - kind is "flat" or "pct".
 # Pct values from DDragon are unit-fraction (0.07 == +7%), NOT percentage points.
 ITEM_STAT_KEY_MAP: dict[str, tuple[str, str]] = {
     "FlatHPPoolMod":          ("hp",        "flat"),
@@ -118,7 +118,7 @@ def aggregate_item_stats(item_stat_blocks: list[dict]) -> dict[str, float]:
     """Sum DDragon item stat blocks into canonical ``{key_kind: total}`` form.
 
     Returns keys like ``"ad_flat"``, ``"as_pct"``, ``"hp_flat"``. Unknown
-    DDragon keys are silently skipped — that's the Phase 4 conditional layer's
+    DDragon keys are silently skipped - that's the Phase 4 conditional layer's
     job, not the stat aggregator's.
     """
     totals: dict[str, float] = {}

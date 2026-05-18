@@ -1,5 +1,5 @@
 """
-core/coaching_data_lock.py — combined process-local + cross-process
+core/coaching_data_lock.py - combined process-local + cross-process
 lock for coaching_data.json read-modify-write cycles.
 
 Shared across the writers of `coaching_data.json`:
@@ -30,7 +30,7 @@ Locking strategy:
      custom locking proved fragile across antivirus + OneDrive paths.
 
 If the OS lock acquire fails (timeout or transient permission error),
-the writer proceeds anyway — better to risk a lost update than block
+the writer proceeds anyway - better to risk a lost update than block
 the coach for an unbounded window. The in-process lock still applies.
 """
 import threading
@@ -47,7 +47,7 @@ _LOCK_TIMEOUT_S = 2.0
 class _CombinedLock:
     """Composes an in-process threading.Lock with an OS-level file lock.
 
-    File-lock acquire is best-effort with a 2s timeout — we'd rather
+    File-lock acquire is best-effort with a 2s timeout - we'd rather
     risk a rare lost update than block the coach indefinitely on a
     misbehaving lock holder."""
 
@@ -57,7 +57,7 @@ class _CombinedLock:
         self._has_file_lock = False
 
     def __enter__(self):
-        # 1. In-process lock — fast, serializes coach + dashboard threads.
+        # 1. In-process lock - fast, serializes coach + dashboard threads.
         self._tl.acquire()
         # 2. OS file lock via portalocker. EXCLUSIVE | NON_BLOCKING is the
         #    default; we override timeout so it polls up to 2s before
@@ -70,12 +70,12 @@ class _CombinedLock:
             self._fl.acquire()
             self._has_file_lock = True
         except portalocker.LockException:
-            # Holder didn't release in time — fall through with TL only.
+            # Holder didn't release in time - fall through with TL only.
             self._has_file_lock = False
             self._fl = None
         except Exception:
             # Any other lock-infra failure (e.g. permissions, AV blocking
-            # the lockfile) — also fall through. TL still serializes the
+            # the lockfile) - also fall through. TL still serializes the
             # in-process callers.
             self._has_file_lock = False
             self._fl = None
@@ -95,7 +95,7 @@ class _CombinedLock:
 
 
 def coaching_data_lock():
-    """Context manager — see module docstring. Always release on exit
+    """Context manager - see module docstring. Always release on exit
     even if the file-lock acquire failed; the threading.Lock guarantees
     in-process serialization regardless."""
     return _CombinedLock()

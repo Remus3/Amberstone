@@ -1,4 +1,4 @@
-"""tools/daemon_slayer_abilities_extract.py — Phase 4a champion ability extractor.
+"""tools/daemon_slayer_abilities_extract.py - Phase 4a champion ability extractor.
 
 Pulls the Meraki Analytics bulk champions endpoint and produces a versioned
 snapshot at ``data/daemon_slayer/<patch>/champion_abilities.json`` mirroring
@@ -10,19 +10,19 @@ swaps, LeeSin/Nidalee form swaps, Sylas E direction). Each form is
 normalized into:
 
 * ``name``, ``icon``, ``cooldown[]``, ``cost[]``
-* ``damage_type`` — ``"PHYSICAL"`` / ``"MAGIC"`` / ``"TRUE"`` / ``"MIXED"`` / ``None``
+* ``damage_type`` - ``"PHYSICAL"`` / ``"MAGIC"`` / ``"TRUE"`` / ``"MIXED"`` / ``None``
 * ``targeting``, ``affects``, ``resource``, ``is_aoe``
-* ``damage_blocks`` — list of per-attribute leveling normalized to typed
+* ``damage_blocks`` - list of per-attribute leveling normalized to typed
   scaling fields (``base``, ``total_ad_pct``, ``bonus_ad_pct``, ``ap_pct``,
   ``caster_max_hp_pct``, ``caster_bonus_hp_pct``, ``target_max_hp_pct``,
   ``target_missing_hp_pct``, ``target_current_hp_pct``,
   ``target_bonus_hp_pct``, ``target_armor_pct``, ``bonus_armor_pct``,
   ``bonus_mr_pct``, ``caster_max_mp_pct``)
-* ``parse_status`` — ``"ok"`` (all damage modifiers typed),
+* ``parse_status`` - ``"ok"`` (all damage modifiers typed),
   ``"partial"`` (some unparsed), ``"unparsed"`` (no recognized fields)
 
 Phase 4b will layer a formula evaluator on top of this snapshot. Phase 4a
-is data ingest only — we do not evaluate per-cast damage here.
+is data ingest only - we do not evaluate per-cast damage here.
 
 Usage::
 
@@ -82,7 +82,7 @@ _UNIT_TO_FIELD: dict[str, str] = {
     "% of their bonus health": "caster_bonus_hp_pct",
     # s224: caster-max-health pronoun + champion-name forms (Sejuani W
     # "her", Gnar/Skarner E "his", Braum Q / Zac Q name-specific). Mirror
-    # of the existing "% of his bonus health" caster-bonus family — these
+    # of the existing "% of his bonus health" caster-bonus family - these
     # scale with the CASTER's own max HP and were dropped pre-s224.
     "% of his maximum health": "caster_max_hp_pct",
     "% of her maximum health": "caster_max_hp_pct",
@@ -93,7 +93,7 @@ _UNIT_TO_FIELD: dict[str, str] = {
     # s224: Meraki text-drift "the target's" + double-space variants of
     # the target-health family (Gwen Q/R, Varus W Blight, Trundle R,
     # Ambessa Q, Maokai Q, TahmKench R, Briar W, Fiddlesticks Q). Same
-    # semantic as the no-"the" forms above — pure formatting drift.
+    # semantic as the no-"the" forms above - pure formatting drift.
     "% of the target's maximum health": "target_max_hp_pct",
     "%  of the target's maximum health": "target_max_hp_pct",
     "% of target's missing health": "target_missing_hp_pct",
@@ -114,7 +114,7 @@ _UNIT_TO_FIELD: dict[str, str] = {
 _KNOWN_NON_DAMAGE_UNITS: set[str] = {
     " seconds",
     "  seconds",
-    "%",  # bare percent — usually a stat, not a damage scalar
+    "%",  # bare percent - usually a stat, not a damage scalar
     "% maximum mana",  # caster_max_mp_pct; tracked but not a damage modifier
     "% of missing mana",
     "% of damage dealt",
@@ -126,7 +126,7 @@ _KNOWN_NON_DAMAGE_UNITS: set[str] = {
 # doubly-nested "% (+ 2% per 100 bonus armor) (+ 2% per 100 bonus magic
 # resistance) of target's maximum health". The paired ``values`` list is the
 # canonical no-stack / no-scaling coefficient; the "(+ ...)" parentheticals
-# are conditional bonuses the single-value schema deliberately drops — the
+# are conditional bonuses the single-value schema deliberately drops - the
 # same operator-commits-to-canonical-state model the block_index registry
 # uses. Stripping every "(+ ...)" group (innermost-first so nested parens
 # collapse) leaves a residue that matches a base _UNIT_TO_FIELD key.
@@ -136,7 +136,7 @@ _NESTED_COND_RE = re.compile(r"\s*\(\+[^()]*\)")
 def _canonicalize_unit(unit: str) -> str:
     """Strip Meraki's nested conditional "(+ ...)" groups from a unit string.
 
-    No-op for units without "(+" (the overwhelming common case) — returned
+    No-op for units without "(+" (the overwhelming common case) - returned
     byte-identical, so an already recognized unit is never perturbed. Only
     previously-unparsed nested-syntax units (Kindred E missing-health;
     Cho'Gath E / K'Sante W / Sett Q / Shen Q / Zac W / Amumu W / Evelynn E /
@@ -154,7 +154,7 @@ def _canonicalize_unit(unit: str) -> str:
 
 # Heuristic: "damage" in attribute name flags it as a damage-bearing block.
 # Some abilities use words like "Bolt"/"Burn"/"Bleed" without "Damage" in
-# the attribute — extend the allowlist when coverage drops.
+# the attribute - extend the allowlist when coverage drops.
 _DAMAGE_ATTRIBUTE_HINTS = re.compile(
     r"\b(damage|burn|bleed|smite|strike|bolt|shock|burst)\b",
     re.IGNORECASE,
@@ -163,7 +163,7 @@ _DAMAGE_ATTRIBUTE_HINTS = re.compile(
 # Denylist: attribute names that *contain* "damage" but describe a modifier
 # (Damage Reduction, Damage Increase, Critical Damage multiplier, etc.) rather
 # than a raw damage source. These are filtered to "modifier" attribute_kind so
-# they don't redden parse_status — Phase 4b's evaluator never reads them.
+# they don't redden parse_status - Phase 4b's evaluator never reads them.
 _NON_DAMAGE_HINTS = re.compile(
     r"\b(reduction|reduce|amplification|amplify|increase|absorb|"
     r"resistance|resist|critical damage|damage taken|damage dealt|"
@@ -244,8 +244,8 @@ def _normalize_cooldown_or_cost(raw: Any) -> list[float] | None:
     Older snapshots and a few oddly-shaped ability forms ship the values as
     a bare list (e.g. ``[14, 12, 10, 8, 6]``); tolerate both. We take the
     first modifier's ``values`` list since cooldown/cost rarely have
-    multi-component scaling (and when they do — e.g. cost ``[30, 35, 40,
-    45, 50] - 0% bonus AD`` — the secondary modifier is usually a CDR
+    multi-component scaling (and when they do - e.g. cost ``[30, 35, 40,
+    45, 50] - 0% bonus AD`` - the secondary modifier is usually a CDR
     reduction we'd skip anyway).
     """
     if isinstance(raw, list):
@@ -304,7 +304,7 @@ def _normalize_modifiers(modifiers: list[dict]) -> tuple[dict[str, list[float]],
                 unparsed.append(mod)
                 continue
             # If we somehow get two modifiers mapping to the same field
-            # within one block (rare — e.g. Sweetspot + Sweetspot), sum
+            # within one block (rare - e.g. Sweetspot + Sweetspot), sum
             # them; the Phase 4b evaluator only sees the aggregate.
             if field in typed:
                 # Sum elementwise; pad shorter list with zeros.
@@ -318,7 +318,7 @@ def _normalize_modifiers(modifiers: list[dict]) -> tuple[dict[str, list[float]],
             else:
                 typed[field] = vals
         elif unit in _KNOWN_NON_DAMAGE_UNITS:
-            # Recognized but not a damage scalar — silently drop (it's likely
+            # Recognized but not a damage scalar - silently drop (it's likely
             # under a non-damage attribute we should have filtered earlier).
             continue
         else:
@@ -407,7 +407,7 @@ def _build_form(form: dict, form_index: int, ability_key: str) -> dict:
     # Compute parse status across the damage-classified blocks. Three
     # dispositions: typed (has scaling fields), unparsed (has at least one
     # modifier we couldn't normalize), empty (damage attribute declared but
-    # Meraki ships no modifiers — common for aggregate fields like
+    # Meraki ships no modifiers - common for aggregate fields like
     # "Maximum Increased Damage" that downstream values derive from).
     _META_KEYS = {"attribute", "attribute_kind", "unparsed_modifiers", "raw_modifiers"}
     typed_blocks = 0
@@ -427,7 +427,7 @@ def _build_form(form: dict, form_index: int, ability_key: str) -> dict:
     damage_block_count = typed_blocks + unparsed_blocks + empty_blocks
 
     if damage_block_count == 0:
-        # No damage attribute at all — likely a passive utility or pure-stat ability.
+        # No damage attribute at all - likely a passive utility or pure-stat ability.
         parse_status = "no_damage"
     elif unparsed_blocks == 0 and empty_blocks == 0:
         parse_status = "ok"
@@ -539,7 +539,7 @@ def main() -> int:
     out_path = patch_dir / "champion_abilities.json"
 
     if out_path.exists() and not args.force:
-        log.info("abilities file already exists at %s — skip (use --force to redo)", out_path)
+        log.info("abilities file already exists at %s - skip (use --force to redo)", out_path)
         return 0
 
     log.info("fetching Meraki bulk champions: %s", MERAKI_BULK_URL)
@@ -556,7 +556,7 @@ def main() -> int:
             continue
         # Meraki bulk uses the DDragon-style ID as the top-level dict key
         # (Aatrox, MonkeyKing, KSante, …). Inside each record, ``id`` is the
-        # numeric Riot key and ``key`` is the DDragon string — the per-champion
+        # numeric Riot key and ``key`` is the DDragon string - the per-champion
         # endpoint reverses them. The top-level key is the only reliable
         # cross-source canonical anchor, so use it directly.
         data_out[name] = _build_champion(name, payload)

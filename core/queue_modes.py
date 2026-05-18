@@ -12,7 +12,7 @@ Returns lowercase keys matching the keys in
 `brawl`, `sr`) or `None` for unknown queue IDs (caller falls back to
 `client`).
 
-ID coverage is conservative — Arena (1700/1710) and ARAM (450/720/920)
+ID coverage is conservative - Arena (1700/1710) and ARAM (450/720/920)
 are the cases that actually deliver a coach payload pre-game today;
 SR ranked/draft IDs are mapped because the SR draft profile already
 keys off the same set in `coaches/sr_draft_profile.py`. Add TFT/Brawl
@@ -44,7 +44,7 @@ QUEUE_ID_TO_MODE_KEY: dict[int, str] = {
     450:  "aram", # ARAM
     720:  "aram", # ARAM Clash
     920:  "aram", # Legend of the Poro King
-    2400: "aram", # ARAM Mayhem (KIWI gameMode) — queueId confirmed s220
+    2400: "aram", # ARAM Mayhem (KIWI gameMode) - queueId confirmed s220
                   # from the operator's stashed post-game LCU match payload.
     # Arena
     1700: "arena",  # Arena

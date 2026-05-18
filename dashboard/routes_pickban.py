@@ -1,4 +1,4 @@
-"""s170 — Pick & Ban Recommendations backend (item #4).
+"""s170 - Pick & Ban Recommendations backend (item #4).
 
 Provides GET /api/champ-select/pickban-recs?role=BOT[&queue=420] which
 returns the "performance" row that the champ-select view's P&B panel
@@ -7,7 +7,7 @@ hardcoded `_PB_PLACEHOLDERS`; this endpoint replaces the performance
 row with real per-champion WR + ban suggestions computed from
 ``data/rewind_history.db``.
 
-Mastery + meta rows still drive off placeholders for now — mastery
+Mastery + meta rows still drive off placeholders for now - mastery
 needs LCU-side joining and meta needs a current-patch tier list source.
 Listed as follow-on work in ROADMAP.
 
@@ -136,7 +136,7 @@ def _load_champ_id_to_name() -> dict[int, str]:
 
 def _counters_for_champion(name: str) -> list[dict]:
     """Resolve hardcoded counters → list of {champId, name, pct} dicts.
-    `pct` is a static "high counter pressure" value (75) — we don't have
+    `pct` is a static "high counter pressure" value (75) - we don't have
     win-rate data to drive it yet."""
     if not name:
         return []
@@ -182,19 +182,19 @@ _MIN_GAMES_BAN  = 2
 # mood toggle that pre-s209 just persisted to sessionStorage with no
 # downstream effect. Each mood reshapes the `performance` query:
 #
-#   comfort — operator's highest-WR pick at this role (≥3 games). Default.
-#             "Safe pick — proven track record".
-#   limit   — operator's highest-WR pick within the 1-5 games band. Hits
+#   comfort - operator's highest-WR pick at this role (≥3 games). Default.
+#             "Safe pick - proven track record".
+#   limit   - operator's highest-WR pick within the 1-5 games band. Hits
 #             the "I've tried this a few times and it's working" sweet
-#             spot — a champ they can develop toward mastery.
-#   new     — most-popular role champion the operator has never played
+#             spot - a champ they can develop toward mastery.
+#   new     - most-popular role champion the operator has never played
 #             in this role. Operator-never-played + cross-pool popular.
-#   synergy — operator's highest-WR pick at this role limited to matches
+#   synergy - operator's highest-WR pick at this role limited to matches
 #             from the last 60 days. Proxy for "what's working RIGHT NOW";
 #             true team-comp synergy needs ally-locked context which the
 #             endpoint doesn't yet receive.
 #
-# Bans are unchanged per mood — what threatens the operator at this role
+# Bans are unchanged per mood - what threatens the operator at this role
 # is mood-independent.
 _VALID_MOODS = frozenset({"comfort", "limit", "new", "synergy"})
 _MOOD_DEFAULT = "comfort"
@@ -203,7 +203,7 @@ _MOOD_DEFAULT = "comfort"
 # patch + a buffer for irregular play schedules.
 _SYNERGY_WINDOW_DAYS = 60
 
-# Limit Test sample-size band — narrow enough to exclude mains, wide
+# Limit Test sample-size band - narrow enough to exclude mains, wide
 # enough to surface signal beyond a single coin-flip game.
 _LIMIT_GAMES_MIN = 1
 _LIMIT_GAMES_MAX = 5
@@ -212,7 +212,7 @@ _LIMIT_GAMES_MAX = 5
 def _resolve_operator_puuid(conn: sqlite3.Connection) -> str | None:
     """The operator is the puuid that appears in the most matches in
     rewind_history.db. Resolving from the DB rather than configuration
-    keeps the endpoint self-contained — no env var, no cross-module
+    keeps the endpoint self-contained - no env var, no cross-module
     dependency on ``core.riot_api``.
     """
     cur = conn.execute(
@@ -295,9 +295,9 @@ def _query_performance_limit(conn: sqlite3.Connection, puuid: str, role: str,
                              queue_ids: tuple[int, ...],
                              exclude_ids: tuple[int, ...] = (),
                              top: int = 1) -> list[dict]:
-    """Operator's best champions in the 1-5 games "developing" band —
+    """Operator's best champions in the 1-5 games "developing" band -
     enough plays to show signal but not enough to be a true main. The
-    intent is "push your range" — surface champs you're trending up on.
+    intent is "push your range" - surface champs you're trending up on.
     """
     placeholders = ",".join("?" * len(queue_ids))
     excl_sql, excl_params = _exclude_clause(exclude_ids)
@@ -330,7 +330,7 @@ def _query_performance_limit(conn: sqlite3.Connection, puuid: str, role: str,
             "games":     int(games),
             "wins":      int(wins),
             "wr_pct":    wr_pct,
-            "reason":    f"{wr_pct}% WR · {games} games · growth pick — small sample",
+            "reason":    f"{wr_pct}% WR · {games} games · growth pick - small sample",
         })
     return out
 
@@ -383,7 +383,7 @@ def _query_performance_synergy(conn: sqlite3.Connection, puuid: str, role: str,
                                top: int = 1,
                                ally_ids: tuple[int, ...] = ()) -> list[dict]:
     """Operator's highest-WR champion at this role limited to recent
-    matches OR — when ``ally_ids`` is provided — joint-WR-with-allies
+    matches OR - when ``ally_ids`` is provided - joint-WR-with-allies
     scoring across the operator's full history.
 
     Pre-s214 this mode was just "recent form" (60-day window proxy). The
@@ -498,7 +498,7 @@ def _query_performance(conn: sqlite3.Connection, puuid: str, role: str,
     selected mood (e.g. no 1-5 games band for `limit`, no recent matches
     for `synergy`). When the fallback fires, every result is tagged
     `fell_back=true` + `requested_mood=<mood>` so the UI can surface
-    "no <mood> data — defaulting to comfort"."""
+    "no <mood> data - defaulting to comfort"."""
     fn = _PERFORMANCE_QUERIES.get(mood, _query_performance_comfort)
     if fn is _query_performance_synergy:
         result = fn(conn, puuid, role, queue_ids, exclude_ids, top, ally_ids)
@@ -550,7 +550,7 @@ def _query_bans(conn: sqlite3.Connection, puuid: str, role: str,
             continue
         pct = int(round(100 * losses / encounters))
         # Only surface matchups where operator actually loses more than
-        # half the time — sub-50% loss rate isn't a ban-worthy threat.
+        # half the time - sub-50% loss rate isn't a ban-worthy threat.
         if pct < 50:
             continue
         out.append({
@@ -659,9 +659,9 @@ def _serve_pickban_recs(h) -> None:
             conn.close()
 
         # s214 response shape:
-        #   `performance` — first pick (back-compat with pre-s214 callers
+        #   `performance` - first pick (back-compat with pre-s214 callers
         #                   that consumed a single dict)
-        #   `performance_picks` — full list of up to `top` picks for the
+        #   `performance_picks` - full list of up to `top` picks for the
         #                         mood, used by the new LIMIT/NEW/SYNERGY
         #                         3-row layouts
         first = picks[0] if picks else None
@@ -681,7 +681,7 @@ def _serve_pickban_recs(h) -> None:
                 "application/json")
 
 
-# Route table — imported by dashboard/_dispatch.py at module load.
+# Route table - imported by dashboard/_dispatch.py at module load.
 
 def _equals(p: str):
     """Local copy of routes_coach._equals to avoid the cross-import."""

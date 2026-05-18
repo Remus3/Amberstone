@@ -1,5 +1,5 @@
 // Async data-index loaders for items, champions, and summoner spells.
-// Each exported object is mutable — loaders populate it in-place once ready.
+// Each exported object is mutable - loaders populate it in-place once ready.
 // Callers that need to re-render after load should listen to the custom
 // events: "rc:items-ready", "rc:champs-ready", "rc:spells-ready".
 
@@ -60,7 +60,7 @@ export function _splitItemList(str, splitArrow) {
 // Source of truth is `/data/champion_aliases.json`; this map is hydrated
 // by the async loader below and is shared with tools/daemon_slayer_extract.py
 // (which reads the same file at build time with .lower() normalization).
-// Until the fetch resolves the map is empty — _resolveChampId falls
+// Until the fetch resolves the map is empty - _resolveChampId falls
 // back to a null return for the aliased trio, same as for any unknown
 // champion name.
 const _CHAMP_RENAME_OVERRIDES = {};

@@ -1,4 +1,4 @@
-"""Phase 8 step 1 — queue gate + sr_draft state-builder flag + route shape.
+"""Phase 8 step 1 - queue gate + sr_draft state-builder flag + route shape.
 
 Originally shipped as the P8-1 thin-slice tests against an empty-profiles
 stub. P8-2 swapped the stub body for live engine /beam calls, so the
@@ -77,7 +77,7 @@ class TestStateBuilderFlag(unittest.TestCase):
         self.assertFalse(out["lcu"]["champ_select"]["sr_draft"])
 
     def test_sr_draft_false_when_no_champ_select(self):
-        # Lobby / not in queue — champ_select absent. Should not crash.
+        # Lobby / not in queue - champ_select absent. Should not crash.
         snap = {}
         out = self._run_with(snap)
         self.assertNotIn("champ_select", out["lcu"])
@@ -92,7 +92,7 @@ class TestRouteHandler(unittest.TestCase):
     """Exercise routes_sr_draft._serve_sr_draft_profile_post via a fake handler.
 
     Engine is mocked away (URLError) so profiles=[] and the test only
-    verifies the route layer's contract — type coercion, 400 path, and
+    verifies the route layer's contract - type coercion, 400 path, and
     the locked envelope keys. Engine integration is covered separately
     in test_sr_draft_profile_engine.py."""
 

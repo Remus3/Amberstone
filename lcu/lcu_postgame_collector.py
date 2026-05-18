@@ -62,7 +62,7 @@ _SPELL_ID_MAP = {
     39: "Mark (Snowball)", 54: "Placeholder",
 }
 
-# ── Schema — one set of 3 tables per mode ─────────────────────────────────────
+# ── Schema - one set of 3 tables per mode ─────────────────────────────────────
 _MODES_SQL = {}
 for _m in _VALID_MODES:
     _tbl = _m.lower()
@@ -325,7 +325,7 @@ def _parse_player(player: dict, team_result: str,
     if sp2_id == 0:
         sp2_id = _s(stats, "SPELL2", "spell2", default=0)
 
-    # Runes — try player.perks first (cleaner), then stats.PERK*
+    # Runes - try player.perks first (cleaner), then stats.PERK*
     perks = player.get("perks") or {}
     if isinstance(perks, dict):
         perk_ids  = perks.get("perkIds") or perks.get("perk_ids") or []
@@ -430,7 +430,7 @@ def _save_eog(eog: dict, game_mode: str, item_map: dict, rune_map: dict):
     tbl       = mode.lower()
     match_id  = str(eog.get("gameId") or eog.get("game_id") or "")
     if not match_id:
-        _log.warning("postgame: no gameId in EOG data — skip")
+        _log.warning("postgame: no gameId in EOG data - skip")
         return
 
     captured_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
@@ -438,7 +438,7 @@ def _save_eog(eog: dict, game_mode: str, item_map: dict, rune_map: dict):
     map_id      = int(eog.get("mapId") or 0)
     patch       = str(eog.get("gameVersion") or eog.get("patch") or "")
 
-    # Normalise teams structure — LCU EOG uses {"teams": [...]} or flat player list
+    # Normalise teams structure - LCU EOG uses {"teams": [...]} or flat player list
     teams = eog.get("teams") or []
     if not teams:
         # Some versions have players directly under the EOG block
@@ -476,7 +476,7 @@ def _save_eog(eog: dict, game_mode: str, item_map: dict, rune_map: dict):
                 (match_id, mode, map_id, game_len, patch, captured_at, game_mode)
             )
             if cur.rowcount == 0:
-                _log.info("postgame: match %s already stored — skip", match_id)
+                _log.info("postgame: match %s already stored - skip", match_id)
                 return
 
             # Insert player rows
@@ -651,7 +651,7 @@ class PostgameCollector:
     # ── Internal ────────────────────────────────────────────────────────────
 
     def _run(self):
-        """Background loop — waits for trigger, then captures EOG data."""
+        """Background loop - waits for trigger, then captures EOG data."""
         while not self._stop.is_set():
             # Wait for a game-end trigger
             triggered = self._trigger.wait(timeout=30.0)
@@ -663,7 +663,7 @@ class PostgameCollector:
             self._capture_after_trigger(self._game_mode_hint)
 
     async def _run_async(self):
-        """Async equivalent of _run — wraps the blocking trigger.wait + the
+        """Async equivalent of _run - wraps the blocking trigger.wait + the
         EOG-poll/HTTP burst in asyncio.to_thread so the AppLoop never
         blocks on the embedded time.sleep + synchronous LCU calls."""
         while not self._stop.is_set():

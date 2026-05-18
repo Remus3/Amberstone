@@ -1,8 +1,8 @@
 """
 tft/tft_pbe_data.py
-TFT Set 17: Space Gods data — traits, tier probabilities, god offerings,
+TFT Set 17: Space Gods data - traits, tier probabilities, god offerings,
 round structure (Realm of the Gods replaces carousel).
-Last updated: patch 17.3 (2026-05-13) — Morgana cost drop, Anima/Stargazer reworks, Primordian nerfed.
+Last updated: patch 17.3 (2026-05-13) - Morgana cost drop, Anima/Stargazer reworks, Primordian nerfed.
 """
 
 # ── Tier probability tables (standard Set 17) ───────────────────────────────
@@ -21,7 +21,7 @@ TIER_ODDS = {
 
 POOL_SIZES = {1: 29, 2: 22, 3: 18, 4: 12, 5: 10}
 
-# ── Stage / round structure — Set 17 "Realm of the Gods" ────────────────────
+# ── Stage / round structure - Set 17 "Realm of the Gods" ────────────────────
 # Carousel rounds (X-1 for stages 2+) are GONE.
 # Replaced by God selection at mid-stage: 2-4, 3-4, 4-4
 # Stage 4-7: God Boon (alignment reward)
@@ -137,9 +137,9 @@ META_COMPS = {
     # 17.3 meta: AP late-game stronger (Sol/Karma/LeBlanc/Sona buffed). Primordian dead. Morgana now 4-cost.
     "S": [
         {"name": "Meeple",           "carry": "Bard/Veigar",  "core": "Meeple 7+, Cloning Slot for 5-cost"},
-        {"name": "AP Vanguards",     "carry": "Lissandra",    "core": "Vanguard 4, Replicator 2, Dark Star splash — buffed 17.3"},
+        {"name": "AP Vanguards",     "carry": "Lissandra",    "core": "Vanguard 4, Replicator 2, Dark Star splash - buffed 17.3"},
         {"name": "Redeemer",         "carry": "Sona/Morgana", "core": "Conduit 4, Space Groove; Morgana now 4g (easier to hit)"},
-        {"name": "Dark Star Jhin",   "carry": "Jhin",         "core": "Dark Star 6-9, execute carry — stable S tier"},
+        {"name": "Dark Star Jhin",   "carry": "Jhin",         "core": "Dark Star 6-9, execute carry - stable S tier"},
         {"name": "Conduit Reroll",   "carry": "Nami",         "core": "Conduit 4, Replicator 2, 3-star Nami"},
         {"name": "N.O.V.A.",         "carry": "Caitlyn/Akali","core": "N.O.V.A. 5 for Striker selector; Akali buffed"},
         {"name": "Mecha",            "carry": "Corki/Rammus", "core": "Mecha 4-6, transformed units fill slots"},

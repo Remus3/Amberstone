@@ -6,7 +6,7 @@ vision server at 127.0.0.1:8889 (which proxies to Game-PC's LCU agent),
 so they share the `_VISION_TOKEN` auth header.
 
 `_VISION_TOKEN` is deferred-imported from `web_dashboard` inside each
-handler — same pattern as `routes_diag` — to avoid a circular import
+handler - same pattern as `routes_diag` - to avoid a circular import
 at module load time (web_dashboard imports the dashboard package
 during start-up).
 """
@@ -45,7 +45,7 @@ _LCU_ALLOWED_CMDS = {
     "set_pick_intent", "set_ban_intent",
     "request_position_swap", "request_pick_order_swap",
     "set_augment_intent",
-    # s171: pre-game lobby controls — lane prefs, party visibility,
+    # s171: pre-game lobby controls - lane prefs, party visibility,
     # invitations, Practice Tool. Mirrors the Phase A "visual-only"
     # toggles in the lobby view that previously never propagated to
     # the League client.
@@ -79,7 +79,7 @@ def _serve_loadout_list_post(h, payload) -> None:
 # s210 v2: build LCU command payloads for the synthetic "experimental"
 # variant row in the build chooser. The frontend supplies a complete
 # override package (keystone+primary+secondary + item-id list +
-# adaptive summoners) — we skip the variant resolver entirely and
+# adaptive summoners) - we skip the variant resolver entirely and
 # build rune_cmd / item_cmd / summ_cmd inline.
 def _build_experimental_resolved(champion: str, mode: str,
                                   override_runes: dict,
@@ -97,7 +97,7 @@ def _build_experimental_resolved(champion: str, mode: str,
     if perk_ids and primary_id and sub_id:
         rune_cmd = {
             "cmd":        "apply_runes",
-            "page_name":  f"RC Experimental — {champion}",
+            "page_name":  f"RC Experimental - {champion}",
             "primary_id": primary_id,
             "sub_id":     sub_id,
             "perk_ids":   perk_ids,
@@ -107,7 +107,7 @@ def _build_experimental_resolved(champion: str, mode: str,
     if items_str:
         item_cmd = {
             "cmd":      "apply_item_set",
-            "set_name": f"RC Experimental — {champion}",
+            "set_name": f"RC Experimental - {champion}",
             "blocks":   [{
                 "type":  "DS engine · top picks",
                 "items": [{"id": iid, "count": 1} for iid in items_str],
@@ -152,7 +152,7 @@ def _serve_loadout_apply_post(h, payload) -> None:
         push_summ  = payload.get("push_summoners", True)
         # s209: optional override of the variant's stored summoners.
         # Used by the champ-select build chooser's adaptive-summoners
-        # pipeline — when enemy comp pressures a different second spell
+        # pipeline - when enemy comp pressures a different second spell
         # (Cleanse vs CC / Barrier vs burst) the JS sends the swapped
         # pair as [d_id, f_id]. Falls through to the variant's stored
         # summoners when omitted or malformed.
@@ -162,7 +162,7 @@ def _serve_loadout_apply_post(h, payload) -> None:
             override_summ = None
         # s210 v2: optional override of runes + items for the experimental
         # build chooser row. When both are provided, the resolver path is
-        # bypassed entirely — we build the LCU command payloads inline
+        # bypassed entirely - we build the LCU command payloads inline
         # from the operator-supplied keystone+primary+secondary +
         # item-id list. Champion arg is still required (used in page
         # naming + as a sanity check); variant arg can be the synthetic
@@ -179,7 +179,7 @@ def _serve_loadout_apply_post(h, payload) -> None:
             override_items = None
         if not champ or not variant:
             h._send(400, b'{"error":"champion+variant required"}', "application/json"); return
-        # s210 v2: experimental path — build cmds inline, skip resolver.
+        # s210 v2: experimental path - build cmds inline, skip resolver.
         if override_runes and override_items:
             resolved = _build_experimental_resolved(
                 champ, mode, override_runes, override_items, override_summ,

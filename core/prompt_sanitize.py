@@ -1,18 +1,18 @@
 """
-core/prompt_sanitize.py — defense-in-depth sanitizer for external strings
+core/prompt_sanitize.py - defense-in-depth sanitizer for external strings
 that reach Anthropic prompt builders.
 
 AUDIT 2026-04-28 (deferred-low-value): champion + item names today flow
 from Riot LCU / DDragon JSON, both trusted sources. The audit flagged
 prompt-injection sanitization as theoretical for that reason. This module
-adds the cheap defense anyway — a future MITM, a CDragon mirror swap, or
+adds the cheap defense anyway - a future MITM, a CDragon mirror swap, or
 a user-named queue/lobby field could otherwise smuggle "Ignore previous
 instructions…" into the user-content block.
 
 Goals:
   * Strip control chars (keep \\n, \\t).
   * Neutralise role markers and instruction-overrides via inline marking
-    rather than removal — the LLM still sees the text but can't act on
+    rather than removal - the LLM still sees the text but can't act on
     it as a command.
   * Cap length so a single field can't blow past the context budget.
 
@@ -30,7 +30,7 @@ from typing import Iterable
 # fits a single CSV-style display cell while staying scannable.
 _NEWLINE_TOKEN = "[\\n]"
 
-# Patterns that look like prompt-injection attempts. Conservative — we
+# Patterns that look like prompt-injection attempts. Conservative - we
 # replace the matched text with a marker so the LLM sees an opaque token
 # and cannot follow the embedded instruction.
 _INJECTION_PATTERNS = (
@@ -68,7 +68,7 @@ def clean(value, *, max_len: int = DEFAULT_MAX_LEN) -> str:
         for ch in value
     )
     # Replace newlines with a token so multi-line input stays contained
-    # in a single visible line — preserves info, removes the newline as
+    # in a single visible line - preserves info, removes the newline as
     # an LLM section delimiter.
     out = out.replace("\n", _NEWLINE_TOKEN)
     # Tab → single space (tab is a delimiter in some prompt formats).
@@ -78,7 +78,7 @@ def clean(value, *, max_len: int = DEFAULT_MAX_LEN) -> str:
     # Inject-pattern neutralisation.
     for p in _INJECTION_PATTERNS:
         out = p.sub(_INJECTION_MARKER, out)
-    # Final length cap — append an ellipsis so a downstream reader can
+    # Final length cap - append an ellipsis so a downstream reader can
     # see truncation happened.
     if len(out) > max_len:
         out = out[: max_len - 1] + "…"

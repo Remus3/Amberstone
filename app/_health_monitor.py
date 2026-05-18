@@ -1,11 +1,11 @@
 # arch: Tk pulse + health state reporting | section=orchestration | frozen=yes
 """
-app/_health_monitor.py — HealthMonitor extracted from app.py (ARCH-001)
+app/_health_monitor.py - HealthMonitor extracted from app.py (ARCH-001)
 
 Owns the UI pulse heartbeat and health-state reporting. Extracted so
 OverlayApp's health concern is independently readable. Post-T2 #8 the
 heartbeat re-arms via `app.scheduler.schedule(...)` instead of
-`root.after(...)` — the loop name "ui_pulse" stuck since pre-headless.
+`root.after(...)` - the loop name "ui_pulse" stuck since pre-headless.
 
 State transferred from OverlayApp:
   _ui_pulse_lock  → self._lock
@@ -57,7 +57,7 @@ class HealthMonitor:
         with self._lock:
             ui_age = now - self._ts
 
-        # Worker liveness — prefer SrAramWorker; fall back to legacy timestamps
+        # Worker liveness - prefer SrAramWorker; fall back to legacy timestamps
         if app._sr_aram_worker is not None:
             w_pulse = app._sr_aram_worker.pulse_ts
             w_last  = app._sr_aram_worker.last_success_ts

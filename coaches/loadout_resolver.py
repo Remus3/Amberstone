@@ -1,4 +1,4 @@
-"""coaches/loadout_resolver.py — Phase 2 champion loadout resolver.
+"""coaches/loadout_resolver.py - Phase 2 champion loadout resolver.
 
 Reads `data/champion_loadouts.json` (single mode-keyed file with per-
 champion variants) and resolves a variant choice to concrete LCU
@@ -9,7 +9,7 @@ payloads ready for the gamepc_lcu_agent command queue:
   - summoner spell IDs        → set_summoners command
 
 Variants are scoped per champion. Mode (aram / sr / arena) filters
-which variants are visible — a variant only shows in a mode if that
+which variants are visible - a variant only shows in a mode if that
 mode appears in its `modes` array. The default variant per mode is
 controlled by `default_per_mode`; changing it just edits the JSON.
 
@@ -26,7 +26,7 @@ from typing import Optional
 
 # These are private constants in the frozen lcu_rune_writer, but we
 # need them to translate variant rune names into LCU perk IDs. We're
-# not modifying the file — only importing constants.
+# not modifying the file - only importing constants.
 from lcu.lcu_rune_writer import _TREES, build_perk_ids
 
 _log = logging.getLogger("rc.loadout")
@@ -210,7 +210,7 @@ def resolve(champion: str, variant: str, mode: str) -> dict:
           "rune_cmd":  {cmd, page_name, primary_id, sub_id, perk_ids} | None,
           "item_cmd":  {cmd, set_uid, title, champion_id, blocks}     | None,
           "summ_cmd":  {cmd, d, f}                                     | None,
-          "raw_items": [str item names — for UI display]
+          "raw_items": [str item names - for UI display]
         }
     """
     loadouts = _load_loadouts().get("champions", {}) or {}
@@ -316,7 +316,7 @@ def _resolve_item_ids(names: list[str]) -> list[str]:
         n = _norm(nm)
         rid = by_name.get(n)
         if not rid and len(n) >= 5:
-            # Substring fallback — find a ddragon name that CONTAINS this token.
+            # Substring fallback - find a ddragon name that CONTAINS this token.
             # Bias toward shortest match (most specific).
             candidates = [(len(full), iid) for full, iid in norm_pairs if n in full]
             if candidates:

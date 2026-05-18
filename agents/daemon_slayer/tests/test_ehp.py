@@ -1,4 +1,4 @@
-"""Phase 1 (s174, 2026-05-12) — Tank EHP scorer tests.
+"""Phase 1 (s174, 2026-05-12) - Tank EHP scorer tests.
 
 Mirrors ``test_dps`` shape: load the 16.9.1 snapshot once, exercise
 ``compute_ehp`` across champions × items × modes. EHP math is
@@ -131,7 +131,7 @@ class ItemContributionTests(unittest.TestCase):
         physical_delta = with_fon.physical_ehp - naked.physical_ehp
         magical_delta = with_fon.magical_ehp - naked.magical_ehp
         self.assertGreater(magical_delta, physical_delta)
-        # And materially so — at least 1.5× the physical lift.
+        # And materially so - at least 1.5× the physical lift.
         self.assertGreater(magical_delta, physical_delta * 1.5)
 
     def test_pure_ap_enemy_doesnt_value_armor(self) -> None:
@@ -166,7 +166,7 @@ class ItemContributionTests(unittest.TestCase):
         self.assertGreater(with_belt.true_ehp, naked.true_ehp)
 
     def test_kindlegem_adds_hp(self) -> None:
-        # 3067 Kindlegem — small HP component.
+        # 3067 Kindlegem - small HP component.
         naked = compute_ehp(self.snap, "Malphite", level=11)
         with_kindle = compute_ehp(self.snap, "Malphite", level=11, item_ids=["3067"])
         self.assertGreater(with_kindle.hp, naked.hp)
@@ -297,7 +297,7 @@ class ValidationTests(unittest.TestCase):
                         enemy_ad_share=1.5, enemy_ap_share=0.0)
 
     def test_share_sum_exactly_one_ok(self) -> None:
-        # No true damage assumption — should not raise.
+        # No true damage assumption - should not raise.
         r = compute_ehp(self.snap, "Aatrox", level=11,
                         enemy_ad_share=0.5, enemy_ap_share=0.5)
         self.assertAlmostEqual(r.enemy_true_share, 0.0, places=4)

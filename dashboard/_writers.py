@@ -2,20 +2,20 @@
 
 Tier 2 helper-shake (2026-05-01): extracted from web_dashboard.py.
 
-CLAUDE.md hard rule: "Atomic writes only — tmp.write_text + tmp.replace.
+CLAUDE.md hard rule: "Atomic writes only - tmp.write_text + tmp.replace.
 Overlays poll mid-write." All writers under `data/` and root
 `coaching_data.json` go through `atomic_write_json()` so an overlay
 reading mid-write either sees the previous full file or the new full
-file — never a torn one.
+file - never a torn one.
 
 `set_pregame()` additionally holds the shared `core.coaching_data_lock`
 because root `coaching_data.json` is also written by the SR coach
 (`coach_integration._write_fields`) and the supervisor's aftergame
-collector — without the lock, a concurrent R-M-W can clobber the
+collector - without the lock, a concurrent R-M-W can clobber the
 pregame field (NOTE-003 fix).
 
 `force_vision_scan()` writes a sentinel that BaseCoach._vision_loop
-polls — same effect as the Ctrl+Tab hotkey.
+polls - same effect as the Ctrl+Tab hotkey.
 """
 from __future__ import annotations
 

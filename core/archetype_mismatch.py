@@ -9,7 +9,7 @@ one-time soft nudge so the operator notices the mismatch.
 Why server-side, not coach-side? The four mode coaches already dispatch
 to the right scorer via ``coach_integration.archetype_dispatch`` (s182).
 They get archetype-matched DS picks regardless of operator's actual buy.
-The mismatch signal — "your buy doesn't match your archetype pick" — is
+The mismatch signal - "your buy doesn't match your archetype pick" - is
 better surfaced as a passive UI hint than a coach prompt: the coach
 operates on what the operator should buy NEXT given current state, not
 what they bought a minute ago.
@@ -20,13 +20,13 @@ Design notes:
   (champion, game_session_token) pair. ``game_session_token`` comes from
   liveclient's ``gameData.gameId`` when present; falls back to a
   ``champion+start-floor`` synthetic token when liveclient doesn't expose
-  one. Module-level dict cache — restart-wipes by design, matches
+  one. Module-level dict cache - restart-wipes by design, matches
   ``rewind_history.db`` ephemerality for in-game state.
 
 * **Dispatcher-driven, not hardcoded.** No item → archetype affinity
   table. Mismatch = "first completed item not in top-15 of
   ``rank_for_primary_archetype(champion, primary, top=15)``". This means
-  the bar adapts to per-champion meta — Veigar players bench AP items in
+  the bar adapts to per-champion meta - Veigar players bench AP items in
   top-15, so a non-AP item triggers; Yasuo crit IE-builds get IE in
   top-15, so IE is fine on Yasuo even though "carry" archetype generally
   prefers other items. The dispatcher already does the heavy lifting.
@@ -36,7 +36,7 @@ Design notes:
   DS-before-Haiku path.
 
 * **Item filter.** Boots, Doran's, trinkets, consumables, jungle pets,
-  and SR starter quest items are not signal-bearing — operator buying
+  and SR starter quest items are not signal-bearing - operator buying
   Berserker's first tells us nothing about their archetype intent.
   Hardcoded denylist of ~25 item IDs; new items added to the list as
   Riot adds them.
@@ -100,7 +100,7 @@ _NON_SIGNAL_ITEM_IDS: frozenset[str] = frozenset({
     # Trinkets
     "3340",  # Stealth Ward
     "3341",  # Scrying Orb (legacy / Arena variants)
-    "3348",  # Arcane Sweeper (Arena trinket — covered by mode-strip in DS server)
+    "3348",  # Arcane Sweeper (Arena trinket - covered by mode-strip in DS server)
     "3363",  # Farsight Alteration
     "3364",  # Oracle Lens
     # Consumables
@@ -193,14 +193,14 @@ def _session_token(lc: dict | None, champion: str) -> str:
     """Resolve a per-game dedup token.
 
     Priority:
-      1. ``lc.game_id`` — liveclient's ``gameData.gameId`` field, populated
+      1. ``lc.game_id`` - liveclient's ``gameData.gameId`` field, populated
          by the s184 ``liveclient_summary`` extension when present.
       2. Synthetic ``{champion}@{game_start_floor_min}`` where the floor
-         is ``int((now - game_time_s) / 60)`` — buckets each game to its
+         is ``int((now - game_time_s) / 60)`` - buckets each game to its
          minute-of-start. Crude but stable across the typical 25-minute
          game window, and survives clock drift better than absolute ts.
 
-    Returns empty string if no liveclient data — caller can decide to
+    Returns empty string if no liveclient data - caller can decide to
     skip eval entirely in that case.
     """
     if not isinstance(lc, dict):
@@ -232,7 +232,7 @@ def _evaluate_dispatcher(
     item names from the dispatcher (for the nudge message).
 
     Returns ``None`` when the dispatcher is unreachable, has no rows, or
-    raises any import/runtime error — caller should treat as "no signal,
+    raises any import/runtime error - caller should treat as "no signal,
     skip nudge."
     """
     try:
@@ -264,11 +264,11 @@ def _evaluate_dispatcher(
 
 
 def _build_message(primary: str, first_item_name: str, expected_items: list[str]) -> str:
-    """One-line nudge text. Mirrors picks_str compactness — terse, no
+    """One-line nudge text. Mirrors picks_str compactness - terse, no
     instructions. Operator decides whether to switch archetype."""
     expected = ", ".join(expected_items[:2]) if expected_items else "the archetype's core"
     return (
-        f"Picked {primary.title()} but first item is {first_item_name} — "
+        f"Picked {primary.title()} but first item is {first_item_name} - "
         f"expected items like {expected}. Consider switching archetype."
     )
 
@@ -295,14 +295,14 @@ def compute_nudge_payload(
 ) -> dict:
     """Top-level entry called by the state-builder.
 
-    Returns the ``state.archetype_nudge`` payload — a dict with at least
+    Returns the ``state.archetype_nudge`` payload - a dict with at least
     ``fired`` + ``phase``. Empty when no signal (no champion / no
     archetype / no first item / engine down / already dismissed this
     game). The dashboard's chip renderer reads ``fired`` + ``phase`` to
     decide whether to display.
 
     Side effects: mutates the module-level ``_NUDGE_STATE`` to record
-    decisions per (champion, session_token) — avoids re-evaluating the
+    decisions per (champion, session_token) - avoids re-evaluating the
     dispatcher on every /api/state poll.
     """
     if not isinstance(cs_archetype_pick, dict) or not cs_archetype_pick:
@@ -310,7 +310,7 @@ def compute_nudge_payload(
     primary = (cs_archetype_pick.get("primary") or "").strip().lower()
     if not primary:
         return {}
-    # Default DDragon-tag picks aren't operator intent — only fire when
+    # Default DDragon-tag picks aren't operator intent - only fire when
     # the operator explicitly picked or accepted a prior nudge.
     source = (cs_archetype_pick.get("source") or "").strip().lower()
     if source == "default":
@@ -352,7 +352,7 @@ def compute_nudge_payload(
 
     # Resolve item name for the message + payload. liveclient owned_items
     # is a list of display names parallel to owned_item_ids; if absent,
-    # we'll leave name blank — message still readable.
+    # we'll leave name blank - message still readable.
     owned_names = lc.get("owned_items") or []
     first_item_name = ""
     try:
@@ -375,7 +375,7 @@ def compute_nudge_payload(
         mode_engine=mode_engine,
     )
     if verdict is None:
-        # Engine down or empty ranking — don't cache; we want to retry
+        # Engine down or empty ranking - don't cache; we want to retry
         # on the next poll once the engine is healthy.
         return {}
 
@@ -405,7 +405,7 @@ def compute_nudge_payload(
 
 def dismiss_nudge(champion: str) -> bool:
     """Mark the current nudge for ``champion`` as dismissed. Returns True
-    if a nudge entry existed for the champion. Idempotent — re-dismissing
+    if a nudge entry existed for the champion. Idempotent - re-dismissing
     a dismissed nudge is fine.
     """
     if not champion:

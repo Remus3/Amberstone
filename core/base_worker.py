@@ -1,5 +1,5 @@
 """
-core/base_worker.py — shared lifecycle for SR/ARAM and TFT poll workers.
+core/base_worker.py - shared lifecycle for SR/ARAM and TFT poll workers.
 
 AUDIT 2026-04-28 (proposal 1.4): SrAramWorker and TftWorker independently
 re-implement the same start/stop/restart/join/is_alive shape plus pulse
@@ -14,7 +14,7 @@ implement `_run(my_gen)` (the long-running poll loop) and may override
 
 Compatibility note: existing call sites use `start`, `stop`, `restart`,
 `join`, `is_alive`, `pulse_ts`, `last_success_ts`. The base preserves
-all of these. TftWorker adds `shutdown()` — kept on the subclass.
+all of these. TftWorker adds `shutdown()` - kept on the subclass.
 """
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ class BaseCoachWorker:
     """Lifecycle base for poll-based coach workers.
 
     Subclass contract:
-      * implement `_run(self, my_gen: int) -> None` — the poll loop. Read
+      * implement `_run(self, my_gen: int) -> None` - the poll loop. Read
         `self._stop_event.is_set()` to exit cleanly. Set
         `self.pulse_ts = time.time()` on each iteration so HealthMonitor
         sees liveness; set `self.last_success_ts` on a successful read.
@@ -46,7 +46,7 @@ class BaseCoachWorker:
         self._stop_event = threading.Event()
         self._generation: int = 0
         self._thread: Optional[threading.Thread] = None
-        # Float writes are GIL-atomic on CPython — no lock needed.
+        # Float writes are GIL-atomic on CPython - no lock needed.
         self.pulse_ts: float = 0.0
         self.last_success_ts: float = 0.0
 
@@ -74,7 +74,7 @@ class BaseCoachWorker:
         _log.info("%s stop signalled", self._thread_name_prefix)
 
     def join(self, timeout: float = 3.0) -> None:
-        """Wait for the worker thread (optional — daemon threads exit with proc)."""
+        """Wait for the worker thread (optional - daemon threads exit with proc)."""
         if self._thread is not None:
             self._thread.join(timeout=timeout)
 
@@ -102,11 +102,11 @@ class BaseCoachWorker:
 
     # ── Subclass hook ────────────────────────────────────────────────────
 
-    def _run(self, my_gen: int) -> None:  # pragma: no cover — abstract
+    def _run(self, my_gen: int) -> None:  # pragma: no cover - abstract
         raise NotImplementedError("BaseCoachWorker subclasses must implement _run")
 
     def _run_safe(self, my_gen: int) -> None:
-        """Wrap _run to guarantee a log line on unhandled exceptions —
+        """Wrap _run to guarantee a log line on unhandled exceptions -
         otherwise a poll thread can die silently and HealthMonitor only
         notices via the stale pulse_ts."""
         try:

@@ -1,5 +1,5 @@
 """
-coaches/feedback.py — close the adaptation feedback loop.
+coaches/feedback.py - close the adaptation feedback loop.
 
 After a match ends, performance_tracker assigns the user a grade
 (S/A/B/C/D/F). This module translates that grade into a confidence
@@ -20,7 +20,7 @@ confidence at 1.0, while a B/C run is roughly stable):
 
     S  → 1.5  (capped at 1.0)
     A  → 1.2
-    B  → 1.0  (no-op — neutral grade keeps things steady)
+    B  → 1.0  (no-op - neutral grade keeps things steady)
     C  → 0.95 (mild down-weight)
     D  → 0.8
     F  → flag_bad (existing path; halves confidence + records feedback row)
@@ -52,9 +52,9 @@ def apply_grade(grade: str, last_state: Optional[dict],
                 cache=None, db_path: Optional[str] = None) -> bool:
     """Apply post-match grade to the cache entry for `last_state`.
 
-    `cache`     — optional CacheEngine instance (use existing handle from
+    `cache`     - optional CacheEngine instance (use existing handle from
                   the SR coach when available)
-    `db_path`   — optional path to the cache DB; constructs a fresh
+    `db_path`   - optional path to the cache DB; constructs a fresh
                   CacheEngine if `cache` not given
 
     Returns True if a cache update was attempted, False if skipped
@@ -87,7 +87,7 @@ def apply_grade(grade: str, last_state: Optional[dict],
         else:
             mult = _GRADE_MULT[g]
             if mult == 1.0:
-                # B grade — explicitly skip the write (no-op multiplier)
+                # B grade - explicitly skip the write (no-op multiplier)
                 _log.debug("feedback: grade B (mult=1.0) → no-op")
                 return True
             cache.bump_confidence(last_state, mult, flag=f"grade_{g}")

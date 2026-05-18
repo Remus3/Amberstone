@@ -1,4 +1,4 @@
-"""Phase 4 expansion tests — callable bonus_damage, armor pen layer, +25 items.
+"""Phase 4 expansion tests - callable bonus_damage, armor pen layer, +25 items.
 
 Companion to ``test_effects.py`` (thin slice). New coverage:
 * ``CallContext`` resolution for callable ``bonus_damage``.
@@ -6,12 +6,12 @@ Companion to ``test_effects.py`` (thin slice). New coverage:
 * Black Cleaver, LDR, Mortal Reminder DPS impact.
 * Energized family entries (Statikk Shiv, Rapid Firecannon, Voltaic, Sundered Sky).
 * Scaling proc entries (Wit's End by level, Runaan's by bonus AD, TriForce by base AD).
-* AP-scaling spellblade / on-hit (Lich Bane, Nashor's Tooth) — Phase 4 batch 3.
-* Magic pen layer (Void Staff, Cryptbloom, Sorc, Shadowflame) — Phase 4 batch 4.
-* Target-HP layer (BotRK Mist's Edge, Eclipse Ever Rising Moon) — Phase 4 batch 5.
-* Caster-HP layer (Titanic Hydra Cleave, Heartsteel Colossal Consumption) — Phase 4 batch 6.
-* Multi-target rotation layer (Ravenous Hydra Cleave) — Phase 4 batch 7.
-* defensive_only entries — no DPS contribution beyond stat block.
+* AP-scaling spellblade / on-hit (Lich Bane, Nashor's Tooth) - Phase 4 batch 3.
+* Magic pen layer (Void Staff, Cryptbloom, Sorc, Shadowflame) - Phase 4 batch 4.
+* Target-HP layer (BotRK Mist's Edge, Eclipse Ever Rising Moon) - Phase 4 batch 5.
+* Caster-HP layer (Titanic Hydra Cleave, Heartsteel Colossal Consumption) - Phase 4 batch 6.
+* Multi-target rotation layer (Ravenous Hydra Cleave) - Phase 4 batch 7.
+* defensive_only entries - no DPS contribution beyond stat block.
 """
 
 import unittest
@@ -210,7 +210,7 @@ class EnergizedFamilyTests(unittest.TestCase):
         v_bt = compute_dps(self.snap, "Aatrox", level=11, item_ids=["6699", "3072"])
         # BT adds 80 AD as bonus → Voltaic proc gains 0.25*80=20 per fire.
         # v_bt should exceed v_only by more than just the BT auto-attack
-        # contribution alone — but proving that cleanly is hard. Cheaper
+        # contribution alone - but proving that cleanly is hard. Cheaper
         # assertion: BT lifts DPS, period.
         self.assertGreater(v_bt.weighted_dps, v_only.weighted_dps)
 
@@ -275,7 +275,7 @@ class DefensiveOnlyExpansionTests(unittest.TestCase):
 
     def test_sterak_no_periodic(self) -> None:
         # Phase 4 batch 20 (2026-05-04): Sterak's Claws that Catch is a
-        # stat-layer passive (+45% base AD), not a periodic — promotion
+        # stat-layer passive (+45% base AD), not a periodic - promotion
         # path differs from BotRK/Eclipse (which got periodics). The
         # entry no longer carries defensive_only, but periodics stay
         # empty because the AD bonus is folded into the build at stat
@@ -292,28 +292,28 @@ class DefensiveOnlyExpansionTests(unittest.TestCase):
     # path matches Shadowflame in batch 4.
 
     # Terminus (3302) promoted out of defensive_only in Phase 4 batch 13
-    # (2026-05-04) — Shadow on-hit proc + Juxtaposition Dark sustained
+    # (2026-05-04) - Shadow on-hit proc + Juxtaposition Dark sustained
     # pen. Promotion-shape assertions live in TerminusPromotionTests
     # at the bottom of this file.
 
 
 class DefensiveOnlyBatch2Tests(unittest.TestCase):
-    """Phase 4 batch 2 (2026-05-04) — 10 high-pickrate SR legendaries.
+    """Phase 4 batch 2 (2026-05-04) - 10 high-pickrate SR legendaries.
 
-    All defensive_only — utilities/shields/storage with no DPS proc.
+    All defensive_only - utilities/shields/storage with no DPS proc.
     Pinning the table here so future schema-promotion work (target HP,
     magic pen, ability scaling) can find these via grep when the
     relevant hooks land.
     """
 
     # Heartsteel (3084) was here through batch 5; promoted in batch 6
-    # (caster-HP layer, 2026-05-04) — its proc-shape assertions live
+    # (caster-HP layer, 2026-05-04) - its proc-shape assertions live
     # in CasterHpItemTests below.
     # Stridebreaker (6631) was here through batch 20; promoted in
-    # batch 21 (multi-target rotation layer, 2026-05-04) — its
+    # batch 21 (multi-target rotation layer, 2026-05-04) - its
     # proc-shape assertions live in StridebreakerCleaveTests below.
     # Essence Reaver (3508) was here through batch 20; promoted in
-    # batch 21 (CallContext.crit_chance schema, 2026-05-04) — its
+    # batch 21 (CallContext.crit_chance schema, 2026-05-04) - its
     # proc-shape assertions live in EssenceReaverSpellbladeTests below.
     EXPECTED = {
         "6333": "Death's Dance",
@@ -349,10 +349,10 @@ class DefensiveOnlyBatch2Tests(unittest.TestCase):
 
 
 class CallContextApTests(unittest.TestCase):
-    """Phase 4 batch 3 — CallContext.ap field for AP-scaling procs."""
+    """Phase 4 batch 3 - CallContext.ap field for AP-scaling procs."""
 
     def test_ap_default_zero(self) -> None:
-        # Backward-compatible default — pre-batch-3 callers don't pass ap.
+        # Backward-compatible default - pre-batch-3 callers don't pass ap.
         ctx = CallContext(base_ad=60, bonus_ad=0, level=11)
         self.assertEqual(ctx.ap, 0.0)
 
@@ -386,7 +386,7 @@ class CallContextApTests(unittest.TestCase):
 
 
 class SpellbladeAndOnHitApTests(unittest.TestCase):
-    """Lich Bane (3100) + Nashor's Tooth (3115) — AP-scaling promotions."""
+    """Lich Bane (3100) + Nashor's Tooth (3115) - AP-scaling promotions."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -443,7 +443,7 @@ class SpellbladeAndOnHitApTests(unittest.TestCase):
         # damage rises with the bigger AP pile; we already test Lich Bane
         # raises DPS, so we need "Nashor + Lich beats Nashor + non-AP".
         # Pair Nashor's with Bloodthirster (3072, +80 AD, no AP) as the
-        # control — same gold-ish, no AP. Lich Bane companion has AP.
+        # control - same gold-ish, no AP. Lich Bane companion has AP.
         nt_bt = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3115", "3072"])
         nt_lb = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3115", "3100"])
         # nt_lb has 100 extra AP in CallContext → Nashor's proc gains
@@ -453,7 +453,7 @@ class SpellbladeAndOnHitApTests(unittest.TestCase):
 
 
 class DefensiveOnlyBatch3Tests(unittest.TestCase):
-    """Phase 4 batch 3 (2026-05-04) — AP-stat siblings without DPS proc.
+    """Phase 4 batch 3 (2026-05-04) - AP-stat siblings without DPS proc.
 
     Luden's Echo (6655) / Deathfire Grasp (3128). Both carry AP stat
     blocks but their effects don't fit the periodic/on-hit shape:
@@ -463,18 +463,18 @@ class DefensiveOnlyBatch3Tests(unittest.TestCase):
     grep.
 
     Note: Shadowflame (4645) shipped batch 3 as defensive_only but
-    promoted in batch 4 — its 15 flat magic pen IS modeled by the new
+    promoted in batch 4 - its 15 flat magic pen IS modeled by the new
     pipeline (the unmodeled piece is the magic-crit-on-low-HP). So
     it now lives in MagicPenItemTests, not here.
 
     Note: Riftmaker (4633) was here through batch 13; promoted in
-    batch 14 (damage_amp_pct schema, 2026-05-04) — its proc-shape
+    batch 14 (damage_amp_pct schema, 2026-05-04) - its proc-shape
     assertions live in RiftmakerPromotionTests at the bottom of this
     file. HP→AP cross-derivation is still separate.
 
     Note: Hextech Gunblade (3146) was here through batch 21; promoted
     in batch 22 (long-CD active modeled as periodic proc, 2026-05-04)
-    — its proc-shape assertions live in HextechGunbladeTests below.
+    - its proc-shape assertions live in HextechGunbladeTests below.
     """
 
     EXPECTED = {
@@ -506,7 +506,7 @@ class DefensiveOnlyBatch3Tests(unittest.TestCase):
 
 
 class EffectiveTargetMrTests(unittest.TestCase):
-    """Phase 4 batch 4 — % magic pen → flat magic pen pipeline."""
+    """Phase 4 batch 4 - % magic pen → flat magic pen pipeline."""
 
     def test_no_effects_passthrough(self) -> None:
         self.assertEqual(effective_target_mr(60.0, []), 60.0)
@@ -567,12 +567,12 @@ class MagicPenItemTests(unittest.TestCase):
         self.assertGreater(with_void.weighted_dps, no_void.weighted_dps)
 
     def test_void_staff_no_proc_effect_vs_zero_mr(self) -> None:
-        # Vs 0 MR, pen does nothing — only Void's stat block contributes.
+        # Vs 0 MR, pen does nothing - only Void's stat block contributes.
         bare = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3100"])
         with_void = compute_dps(
             self.snap, "Aatrox", level=11, item_ids=["3100", "3135"],
         )
-        # Stat block alone (95 AP) lifts the Lich Bane proc — assert >.
+        # Stat block alone (95 AP) lifts the Lich Bane proc - assert >.
         self.assertGreater(with_void.weighted_dps, bare.weighted_dps)
         # And note no MR-pen note surfaces when target_mr=0.
         joined = " ".join(with_void.notes)
@@ -646,11 +646,11 @@ class CoverageCountTests(unittest.TestCase):
     5 thin slice + 25 expansion + 10 batch 2 + 6 batch 3 + 4 batch 4 = 50.
     Batch 3 originally landed 7 items but Shadowflame (4645) promoted in
     batch 4, leaving 6 net batch-3 entries here. Batch 5 (target HP)
-    promoted BotRK + Eclipse from defensive_only — count stayed at 50
+    promoted BotRK + Eclipse from defensive_only - count stayed at 50
     (promotions don't add or remove entries). Batch 6 (caster HP)
-    adds Titanic Hydra (new entry) + promotes Heartsteel — table grows
-    to 51. Batch 7 (multi-target rotations) adds Ravenous Hydra — 52.
-    Batch 9 (Immolate items) adds Sunfire Aegis + Hollow Radiance — 54.
+    adds Titanic Hydra (new entry) + promotes Heartsteel - table grows
+    to 51. Batch 7 (multi-target rotations) adds Ravenous Hydra - 52.
+    Batch 9 (Immolate items) adds Sunfire Aegis + Hollow Radiance - 54.
     """
 
     def test_table_size_at_phase_4_expansion(self) -> None:
@@ -659,10 +659,10 @@ class CoverageCountTests(unittest.TestCase):
 
 
 class CallContextTargetMaxHpTests(unittest.TestCase):
-    """Phase 4 batch 5 — CallContext.target_max_hp field for %HP procs."""
+    """Phase 4 batch 5 - CallContext.target_max_hp field for %HP procs."""
 
     def test_target_max_hp_default_zero(self) -> None:
-        # Backward-compat default — pre-batch-5 callers don't pass it.
+        # Backward-compat default - pre-batch-5 callers don't pass it.
         ctx = CallContext(base_ad=60, bonus_ad=0, level=11)
         self.assertEqual(ctx.target_max_hp, 0.0)
 
@@ -678,7 +678,7 @@ class CallContextTargetMaxHpTests(unittest.TestCase):
         self.assertAlmostEqual(proc.resolve_damage(ctx), 120.0, places=3)
 
     def test_zero_target_max_hp_zeros_hp_proc(self) -> None:
-        # Default target_max_hp=0 means %HP procs contribute zero — keeps
+        # Default target_max_hp=0 means %HP procs contribute zero - keeps
         # pre-batch tests stable when callers don't supply HP.
         proc = PeriodicProc(
             name="hp_scale",
@@ -693,7 +693,7 @@ class CallContextTargetMaxHpTests(unittest.TestCase):
 class TargetHpItemTests(unittest.TestCase):
     """BotRK + Eclipse promoted from defensive_only via target_max_hp.
 
-    Both procs scale linearly with target_max_hp — tests assert the
+    Both procs scale linearly with target_max_hp - tests assert the
     monotonicity (more HP → more DPS) and the shape (BotRK every basic,
     Eclipse every 2nd basic). Default target_max_hp=0.0 means a caller
     that doesn't supply HP gets the pre-batch DPS exactly, so there's
@@ -721,7 +721,7 @@ class TargetHpItemTests(unittest.TestCase):
         self.assertIn("ever rising moon", e.note.lower())
 
     def test_botrk_dps_zero_target_hp_matches_no_hp_signal(self) -> None:
-        # With target_max_hp=0 (default), BotRK proc contributes zero —
+        # With target_max_hp=0 (default), BotRK proc contributes zero -
         # only the stat block (AD/AS/lifesteal) lifts DPS. Sanity: stat
         # block alone makes BotRK > bare baseline, but the lambda's HP
         # contribution is exactly zero.
@@ -772,8 +772,8 @@ class TargetHpItemTests(unittest.TestCase):
     def test_botrk_per_basic_outpaces_eclipse_per_2nd(self) -> None:
         # BotRK fires every basic at 8% HP; Eclipse fires every 2nd at
         # 6% HP. Same target_max_hp, BotRK should score higher on the
-        # proc piece. (Stat blocks differ — BotRK has AS/lifesteal,
-        # Eclipse has lethality — but at zero target_armor the AS bonus
+        # proc piece. (Stat blocks differ - BotRK has AS/lifesteal,
+        # Eclipse has lethality - but at zero target_armor the AS bonus
         # makes BotRK win regardless.)
         botrk = compute_dps(
             self.snap, "Aatrox", level=11, item_ids=["3153"],
@@ -787,7 +787,7 @@ class TargetHpItemTests(unittest.TestCase):
 
     def test_target_max_hp_round_trips_in_dps_result(self) -> None:
         # Result carries target_max_hp back so callers can audit what
-        # they got — same shape as target_armor / target_mr.
+        # they got - same shape as target_armor / target_mr.
         result = compute_dps(
             self.snap, "Aatrox", level=11, item_ids=["3153"],
             target_max_hp=1750.0,
@@ -806,7 +806,7 @@ class TargetHpItemTests(unittest.TestCase):
 
 
 class CallContextCasterHpTests(unittest.TestCase):
-    """Phase 4 batch 6 — CallContext.caster_max_hp / caster_bonus_hp."""
+    """Phase 4 batch 6 - CallContext.caster_max_hp / caster_bonus_hp."""
 
     def test_caster_hp_defaults_zero(self) -> None:
         # Backward-compat: pre-batch-6 ctx construction omits both fields.
@@ -842,7 +842,7 @@ class CallContextCasterHpTests(unittest.TestCase):
 class CasterHpItemTests(unittest.TestCase):
     """Titanic Hydra (new) + Heartsteel (promoted) scale with caster HP.
 
-    Caster HP is engine-derived (no caller param) — building with HP
+    Caster HP is engine-derived (no caller param) - building with HP
     items (Titanic itself, Heartsteel itself, Warmog's, Sterak's) lifts
     caster_max_hp and thus the proc damage. Tests pin the engine-side
     derivation by stacking HP items and asserting monotonic uplift.
@@ -861,7 +861,7 @@ class CasterHpItemTests(unittest.TestCase):
         self.assertIn("cleave", e.note.lower())
 
     def test_heartsteel_promoted_not_defensive_only(self) -> None:
-        # Heartsteel left DefensiveOnlyBatch2Tests in batch 6 — pin the
+        # Heartsteel left DefensiveOnlyBatch2Tests in batch 6 - pin the
         # promotion path (mirrors Shadowflame in batch 4).
         e = ITEM_EFFECTS["3084"]
         self.assertFalse(e.defensive_only)
@@ -880,7 +880,7 @@ class CasterHpItemTests(unittest.TestCase):
 
     def test_titanic_hydra_scales_with_more_hp(self) -> None:
         # Titanic alone (600 bonus HP) vs Titanic + Warmog's (600 + 800 = 1400
-        # bonus HP) — proc piece should rise. Stat block contributions
+        # bonus HP) - proc piece should rise. Stat block contributions
         # differ but the DELTA between (Titanic+Warmog vs Warmog alone)
         # should beat the DELTA from (Titanic alone vs naked) because
         # bonus HP grew.
@@ -903,7 +903,7 @@ class CasterHpItemTests(unittest.TestCase):
         # max_hp ≈ 2690. Per DDragon 16.9.1 "70 plus 6%": flat 70 +
         # 0.06*2690 ≈ 231 per ~3.5s ≈ 66 DPS. (Pre-batch-17 the lambda
         # added a wrong 90*(level-1)/17 lerp that came from an older
-        # patch.) Threshold left at 30 — still well above noise.
+        # patch.) Threshold left at 30 - still well above noise.
         bare = compute_dps(self.snap, "Aatrox", level=11).weighted_dps
         with_hs = compute_dps(
             self.snap, "Aatrox", level=11, item_ids=["3084"],
@@ -928,7 +928,7 @@ class CasterHpItemTests(unittest.TestCase):
         self.assertGreater(delta_hs_with_warmog, delta_hs_alone)
 
     def test_caster_hp_derivation_is_engine_internal(self) -> None:
-        # The caster HP fields are derived inside compute_dps — there's
+        # The caster HP fields are derived inside compute_dps - there's
         # no caller-supplied parameter (unlike target_max_hp). Sanity
         # check: compute_dps signature has no caster_max_hp kwarg.
         import inspect
@@ -938,11 +938,11 @@ class CasterHpItemTests(unittest.TestCase):
 
 
 class CallContextTargetsInRotationTests(unittest.TestCase):
-    """Phase 4 batch 7 — CallContext.targets_in_rotation field."""
+    """Phase 4 batch 7 - CallContext.targets_in_rotation field."""
 
     def test_default_one(self) -> None:
         # Default 1.0 = single-target rotation. cleave-to-others lambdas
-        # multiply by max(0, n-1) which is 0 at n=1 — backward-compat.
+        # multiply by max(0, n-1) which is 0 at n=1 - backward-compat.
         ctx = CallContext(base_ad=60, bonus_ad=0, level=11)
         self.assertEqual(ctx.targets_in_rotation, 1.0)
 
@@ -971,7 +971,7 @@ class CallContextTargetsInRotationTests(unittest.TestCase):
         self.assertAlmostEqual(proc.resolve_damage(ctx), 70.0, places=3)
 
     def test_aoe_incl_primary_scales_with_n_directly(self) -> None:
-        # Sunfire-style (hypothetical): direct n multiplier — pin the
+        # Sunfire-style (hypothetical): direct n multiplier - pin the
         # idiom for future AoE-incl-primary procs.
         proc = PeriodicProc(
             name="aoe_incl",
@@ -984,10 +984,10 @@ class CallContextTargetsInRotationTests(unittest.TestCase):
 
 
 class CallContextCritChanceTests(unittest.TestCase):
-    """Phase 4 batch 21 — CallContext.crit_chance field."""
+    """Phase 4 batch 21 - CallContext.crit_chance field."""
 
     def test_default_zero(self) -> None:
-        # Backward-compat default — pre-batch-21 callers don't pass it.
+        # Backward-compat default - pre-batch-21 callers don't pass it.
         ctx = CallContext(base_ad=60, bonus_ad=0, level=11)
         self.assertEqual(ctx.crit_chance, 0.0)
 
@@ -1016,7 +1016,7 @@ class CallContextCritChanceTests(unittest.TestCase):
         self.assertAlmostEqual(proc.resolve_damage(ctx), 125.0, places=3)
 
     def test_full_crit_caps_at_50_bonus(self) -> None:
-        # Meraki text "0 to 50 based on critical strike chance" — at
+        # Meraki text "0 to 50 based on critical strike chance" - at
         # 100% crit, crit piece = 50 flat. Engine doesn't enforce a cap
         # on the lambda; it relies on the caller clamping crit_chance to
         # 1.0 (compute_dps does this via min(stats.crit, 1.0)).
@@ -1032,7 +1032,7 @@ class CallContextCritChanceTests(unittest.TestCase):
 
 
 class RavenousHydraMultiTargetTests(unittest.TestCase):
-    """Ravenous Hydra (3074) — cleave-to-others scales with rotation targets.
+    """Ravenous Hydra (3074) - cleave-to-others scales with rotation targets.
 
     Most champions have all-n=1 rotations; Ravenous adds zero DPS for
     them. Champions whose lolmath scenarios carry n>1 rotations (Amumu,
@@ -1057,7 +1057,7 @@ class RavenousHydraMultiTargetTests(unittest.TestCase):
         # to zero. So Aatrox+Ravenous DPS should equal the engine's
         # stat-block-only response (AD lifted from the 65 AD stat).
         # We assert this indirectly: replace Ravenous with a hypothetical
-        # 65 AD pure-stat item — same DPS expected. Easier path: just
+        # 65 AD pure-stat item - same DPS expected. Easier path: just
         # assert the proc *would* resolve to zero given Aatrox's rotations.
         from agents.daemon_slayer.engine import build_champion
         from agents.daemon_slayer.dps import _phase_rotations
@@ -1067,7 +1067,7 @@ class RavenousHydraMultiTargetTests(unittest.TestCase):
                 self.assertEqual(
                     float(r.get("numberOfTargets", 1.0) or 1.0),
                     1.0,
-                    f"Aatrox rotation {r.get('title','?')} has n>1 — fixture changed",
+                    f"Aatrox rotation {r.get('title','?')} has n>1 - fixture changed",
                 )
 
     def test_ravenous_hydra_lifts_dps_on_multi_target_champion(self) -> None:
@@ -1082,7 +1082,7 @@ class RavenousHydraMultiTargetTests(unittest.TestCase):
     def test_ravenous_hydra_per_rotation_isolation(self) -> None:
         # The proc must use *each* rotation's numberOfTargets, not a
         # global fallback. We exercise this by computing DPS at a phase
-        # whose rotations mix n=1 and n>1 — the math should average to
+        # whose rotations mix n=1 and n>1 - the math should average to
         # something between "all-n=1 zero" and "all-n=3 max".
         # Use Annie's mid phase: "AOE Initiation" w=60, n=3 + others n=1.
         result = compute_dps(
@@ -1096,13 +1096,13 @@ class RavenousHydraMultiTargetTests(unittest.TestCase):
 
 
 class StridebreakerCleaveTests(unittest.TestCase):
-    """Phase 4 batch 21 — Stridebreaker (6631) promoted via the same
+    """Phase 4 batch 21 - Stridebreaker (6631) promoted via the same
     multi-target rotation layer as Ravenous Hydra (3074).
 
     Coefficient is 40% AD (Ravenous is 35%), so on a champion whose
     rotations include n>1 targets, Stridebreaker should outscore
-    Ravenous on the cleave piece. Stat blocks differ — Ravenous brings
-    omnivamp + 5% MS; Stridebreaker brings AS + Halting Slash active —
+    Ravenous on the cleave piece. Stat blocks differ - Ravenous brings
+    omnivamp + 5% MS; Stridebreaker brings AS + Halting Slash active -
     so we test the cleave-piece signal, not the absolute total.
     """
 
@@ -1130,7 +1130,7 @@ class StridebreakerCleaveTests(unittest.TestCase):
                 self.assertEqual(
                     float(r.get("numberOfTargets", 1.0) or 1.0),
                     1.0,
-                    f"Aatrox rotation {r.get('title','?')} has n>1 — fixture changed",
+                    f"Aatrox rotation {r.get('title','?')} has n>1 - fixture changed",
                 )
 
     def test_stridebreaker_lifts_dps_on_multi_target_champion(self) -> None:
@@ -1156,7 +1156,7 @@ class StridebreakerCleaveTests(unittest.TestCase):
     def test_stridebreaker_cleave_outscores_ravenous_at_same_n(self) -> None:
         # Direct coefficient check: 40% > 35% on the cleave piece. Stat
         # blocks differ between the two items, so we can't compare total
-        # DPS — we compare proc resolution at a fixed CallContext.
+        # DPS - we compare proc resolution at a fixed CallContext.
         sb = ITEM_EFFECTS["6631"].periodics[0]
         rh = ITEM_EFFECTS["3074"].periodics[0]
         # n=3, base_ad=100, bonus_ad=50 → cleave hits 2 enemies.
@@ -1181,15 +1181,15 @@ class StridebreakerCleaveTests(unittest.TestCase):
 
 
 class ProfaneHydraCleaveTests(unittest.TestCase):
-    """Phase 4 batch 24 — Profane Hydra (6698) added to ITEM_EFFECTS as
-    a new entry (was stats-only via item aggregation prior — assassin-
+    """Phase 4 batch 24 - Profane Hydra (6698) added to ITEM_EFFECTS as
+    a new entry (was stats-only via item aggregation prior - assassin-
     tagged Tiamat upgrade).
 
     Coefficient pinned at 40% (melee) to match Stridebreaker's call
     from batch 21. Skips the Heretical Cleave active (no Meraki bulk
     cooldown). Tiamat-tree exclusivity (only one of Strider/Ravenous/
     Profane/Titanic at a time in-game) is enforced by the ranker, not
-    here — same pattern as the other hydras (no unique_passive_key).
+    here - same pattern as the other hydras (no unique_passive_key).
     """
 
     @classmethod
@@ -1214,7 +1214,7 @@ class ProfaneHydraCleaveTests(unittest.TestCase):
         self.assertEqual(e.unique_passive_key, "")
 
     def test_profane_hydra_zero_proc_on_single_target_champion(self) -> None:
-        # Aatrox's rotations are all n=1 — cleave resolves to zero on
+        # Aatrox's rotations are all n=1 - cleave resolves to zero on
         # every rotation. Same fixture invariant check as Stridebreaker
         # / Ravenous; surfaces a fixture drift if Aatrox's rotations
         # ever pick up an n>1 entry.
@@ -1225,7 +1225,7 @@ class ProfaneHydraCleaveTests(unittest.TestCase):
                 self.assertEqual(
                     float(r.get("numberOfTargets", 1.0) or 1.0),
                     1.0,
-                    f"Aatrox rotation {r.get('title','?')} has n>1 — fixture changed",
+                    f"Aatrox rotation {r.get('title','?')} has n>1 - fixture changed",
                 )
 
     def test_profane_hydra_lifts_dps_on_multi_target_champion(self) -> None:
@@ -1241,7 +1241,7 @@ class ProfaneHydraCleaveTests(unittest.TestCase):
     def test_profane_hydra_matches_stridebreaker_cleave_at_same_ctx(self) -> None:
         # Both use 40% coefficient and identical formula structure. At
         # any fixed CallContext the resolve_damage calls must match
-        # exactly — pins the family-shape invariant. Stat blocks differ
+        # exactly - pins the family-shape invariant. Stat blocks differ
         # (PH: AD/lethality/AH; SB: AD/HP/AH/AS/MS) but the cleave
         # proc itself is shape-identical.
         ph = ITEM_EFFECTS["6698"].periodics[0]
@@ -1279,7 +1279,7 @@ class ProfaneHydraCleaveTests(unittest.TestCase):
 
 
 class EssenceReaverSpellbladeTests(unittest.TestCase):
-    """Phase 4 batch 21 — Essence Reaver (3508) promoted via the new
+    """Phase 4 batch 21 - Essence Reaver (3508) promoted via the new
     CallContext.crit_chance schema.
 
     ER fires Spellblade once per ~3s rotation cadence (same shape as
@@ -1332,7 +1332,7 @@ class EssenceReaverSpellbladeTests(unittest.TestCase):
         self.assertGreater(with_er.weighted_dps, bare.weighted_dps)
 
     def test_er_dps_higher_with_crit_stack(self) -> None:
-        # ER + IE (3031, 60 AD, 25% crit) on Caitlyn — the crit_chance
+        # ER + IE (3031, 60 AD, 25% crit) on Caitlyn - the crit_chance
         # passed into ER's lambda is the BUILD's crit, not 0. So adding
         # IE on top of ER should lift DPS more than two stat-equivalent
         # items would in isolation, because ER's crit-piece scales with
@@ -1353,7 +1353,7 @@ class EssenceReaverSpellbladeTests(unittest.TestCase):
         from agents.daemon_slayer.effects import collect_effects
         effects_er_first = collect_effects(["3508", "3100"])
         effects_lb_first = collect_effects(["3100", "3508"])
-        # Both orderings drop one spellblade proc — only one remains.
+        # Both orderings drop one spellblade proc - only one remains.
         self.assertEqual(len(effects_er_first), 1)
         self.assertEqual(len(effects_lb_first), 1)
         # First-seen-wins ordering: ER first keeps ER; LB first keeps LB.
@@ -1362,12 +1362,12 @@ class EssenceReaverSpellbladeTests(unittest.TestCase):
 
 
 class HextechGunbladeTests(unittest.TestCase):
-    """Phase 4 batch 22 — Hextech Gunblade (3146) promoted from
+    """Phase 4 batch 22 - Hextech Gunblade (3146) promoted from
     defensive_only.
 
     Lightning Bolt active is a long-CD targeted nuke: 175→253 (level
     1→18, linear) + 30% AP magic damage, 40s cooldown. Modeled as a
-    PeriodicProc with ``every_n_seconds=40.0`` — same shape as Sundered
+    PeriodicProc with ``every_n_seconds=40.0`` - same shape as Sundered
     Sky's 8s Lightshield Strike, just a far longer cadence. The 25%/1.5s
     slow is utility, not damage, and is not modeled. AP scales via
     ``c.ap`` (build-derived stat-property, plumbed at compute_dps
@@ -1421,7 +1421,7 @@ class HextechGunbladeTests(unittest.TestCase):
         # Akali level 11 + Gunblade: stat block alone (60 AP, 45 AD,
         # 12% omnivamp) lifts DPS; the now-active Lightning Bolt proc
         # adds a small additional contribution. We assert the engine
-        # ran clean post-promotion — bare baseline < with-gunblade.
+        # ran clean post-promotion - bare baseline < with-gunblade.
         bare = compute_dps(self.snap, "Akali", level=11)
         with_gb = compute_dps(
             self.snap, "Akali", level=11, item_ids=["3146"],
@@ -1430,15 +1430,15 @@ class HextechGunbladeTests(unittest.TestCase):
 
 
 class IcebornGauntletSpellbladeTests(unittest.TestCase):
-    """Phase 4 batch 23 — Iceborn Gauntlet (6662) added to ITEM_EFFECTS
+    """Phase 4 batch 23 - Iceborn Gauntlet (6662) added to ITEM_EFFECTS
     as a new entry (was stats-only via item aggregation prior).
 
     Iceborn's Spellblade variant: 150% base AD bonus physical on the
     next basic after an ability, 1.5s real CD post-empowered-attack.
     Rotation cadence approx ~3s (matches Trinity / Lich Bane / Essence
-    Reaver — the family's shared ability-cast frequency assumption).
+    Reaver - the family's shared ability-cast frequency assumption).
     Joins the spellblade unique-passive dedup family. Frost field's
-    25% slow is utility, not damage — not modeled.
+    25% slow is utility, not damage - not modeled.
     """
 
     @classmethod
@@ -1469,7 +1469,7 @@ class IcebornGauntletSpellbladeTests(unittest.TestCase):
 
     def test_ibg_dedups_against_trinity_force(self) -> None:
         # First-seen-wins: [TF, IBG] keeps TF; [IBG, TF] keeps IBG.
-        # Both orderings drop one spellblade proc — only one remains.
+        # Both orderings drop one spellblade proc - only one remains.
         from agents.daemon_slayer.effects import collect_effects
         effects_tf_first = collect_effects(["3078", "6662"])
         effects_ibg_first = collect_effects(["6662", "3078"])
@@ -1500,7 +1500,7 @@ class IcebornGauntletSpellbladeTests(unittest.TestCase):
         # Camille level 11 + Iceborn: 60 AD effective contribution from
         # the Spellblade proc on top of the stat block (300 HP, 50
         # armor, 15 AH, 5% MS). The full DPS lift comes mostly from the
-        # Spellblade proc — bare baseline must be below the with-IBG
+        # Spellblade proc - bare baseline must be below the with-IBG
         # value. Asserts the engine ran clean post-promotion.
         bare = compute_dps(self.snap, "Camille", level=11)
         with_ibg = compute_dps(
@@ -1510,7 +1510,7 @@ class IcebornGauntletSpellbladeTests(unittest.TestCase):
 
 
 class MultiProcSchemaTests(unittest.TestCase):
-    """Phase 4 batch 8 — `ItemEffect.periodics: tuple[PeriodicProc, ...]`.
+    """Phase 4 batch 8 - `ItemEffect.periodics: tuple[PeriodicProc, ...]`.
 
     Schema rename from `Optional[PeriodicProc]` → `tuple[..., ...]` lets
     a single item carry multiple periodic procs. Titanic Hydra is the
@@ -1606,12 +1606,12 @@ class MultiProcSchemaTests(unittest.TestCase):
 
 
 class ImmolateItemTests(unittest.TestCase):
-    """Phase 4 batch 9 — Sunfire Aegis (3068) + Hollow Radiance (6664).
+    """Phase 4 batch 9 - Sunfire Aegis (3068) + Hollow Radiance (6664).
 
     Both items share the same Immolate periodic shape: per-second magic
     aura damage to nearby enemies, scaling with caster bonus HP and the
     rotation's targets count. Reuses the batch-6 caster-HP layer + the
-    batch-7 multi-target layer — no new schema. Tests pin the per-second
+    batch-7 multi-target layer - no new schema. Tests pin the per-second
     shape, the AoE-incl-primary multiplier, the bonus-HP scaling, and
     the end-to-end DPS uplift on a tank champion.
     """
@@ -1672,7 +1672,7 @@ class ImmolateItemTests(unittest.TestCase):
         self.assertAlmostEqual(proc.resolve_damage(ctx), 12.0, places=3)
 
     def test_sunfire_lifts_dps_on_tank_champion(self) -> None:
-        # Sunfire's stat block alone contributes zero DPS (350 HP, 50 armor —
+        # Sunfire's stat block alone contributes zero DPS (350 HP, 50 armor -
         # both defensive). Any uplift over baseline must come from the
         # Immolate proc. Aatrox lvl 11 has all-n=1 rotations so n=1, and
         # Sunfire's +350 HP is bonus HP (lifts the proc damage above the
@@ -1745,7 +1745,7 @@ class ImmolateItemTests(unittest.TestCase):
 
 
 class UniquePassiveTests(unittest.TestCase):
-    """Phase 4 batch 10 — unique-passive de-duplication.
+    """Phase 4 batch 10 - unique-passive de-duplication.
 
     ItemEffect.unique_passive_key + collect_effects dedup. Surfaced by
     batch 9: building Sunfire + Hollow Radiance currently double-counted
@@ -1795,7 +1795,7 @@ class UniquePassiveTests(unittest.TestCase):
         self.assertEqual(effects[2].item_id, "3071")
 
     def test_sunfire_solo_unchanged(self) -> None:
-        # Single-item Sunfire DPS must be unchanged from batch 9 — dedup
+        # Single-item Sunfire DPS must be unchanged from batch 9 - dedup
         # only fires when the same key appears twice.
         r = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3068"])
         # Batch 9 verified 64.32 dps for this exact probe.
@@ -1833,14 +1833,14 @@ class UniquePassiveTests(unittest.TestCase):
 
 
 class SpellbladeUniquePassiveTests(unittest.TestCase):
-    """Phase 4 batch 11 — Spellblade unique-passive on TF + Lich Bane.
+    """Phase 4 batch 11 - Spellblade unique-passive on TF + Lich Bane.
 
     Trinity Force (3078) and Lich Bane (3100) both fire Spellblade procs
-    in current League. In-game, Spellblade is unique-passive — only one
+    in current League. In-game, Spellblade is unique-passive - only one
     spellblade fires per ability+attack. The engine now respects this
     via the batch-10 unique_passive_key="spellblade" tag on both items.
 
-    Sundered Sky (6610) uses "Lightshield Strike" — a distinct mechanic
+    Sundered Sky (6610) uses "Lightshield Strike" - a distinct mechanic
     despite being ability-gated; not tagged. Essence Reaver (3508) has
     the Spellblade label but is currently defensive_only (proc not
     modeled); tagging it would dedup against TF/LB depending on order,
@@ -1865,7 +1865,7 @@ class SpellbladeUniquePassiveTests(unittest.TestCase):
     def test_essence_reaver_tagged_spellblade(self) -> None:
         # Phase 4 batch 21 (2026-05-04) promoted ER out of defensive_only
         # and joined the spellblade family. Pre-promotion this test
-        # asserted the *opposite* (untagged) — preserving the dedup
+        # asserted the *opposite* (untagged) - preserving the dedup
         # order-dependence guard until the proc itself was modeled.
         # EssenceReaverSpellbladeTests below covers the full dedup pair
         # against Lich Bane.
@@ -1874,7 +1874,7 @@ class SpellbladeUniquePassiveTests(unittest.TestCase):
     def test_iceborn_gauntlet_tagged_spellblade(self) -> None:
         # Phase 4 batch 23 (2026-05-04) added Iceborn Gauntlet (6662) to
         # ITEM_EFFECTS as a new entry (was stats-only prior). It joins
-        # the spellblade family — full dedup pair coverage against
+        # the spellblade family - full dedup pair coverage against
         # TF / LB / ER lives in IcebornGauntletSpellbladeTests above.
         self.assertEqual(ITEM_EFFECTS["6662"].unique_passive_key, "spellblade")
 
@@ -1904,7 +1904,7 @@ class SpellbladeUniquePassiveTests(unittest.TestCase):
 
     def test_triforce_plus_lich_bane_no_double_count(self) -> None:
         # Pre-fix this build was 122.50 dps (sum of solo deltas =
-        # double-count of spellblade). Post-fix should be ~85 dps —
+        # double-count of spellblade). Post-fix should be ~85 dps -
         # TF spellblade kept, LB spellblade dropped, LB stat block
         # (100 AP, 4% MS, 10 AH) contributes ~0 to AA-DPS for Ahri.
         # Floor below the double-count level is the key assertion.
@@ -1922,7 +1922,7 @@ class SpellbladeUniquePassiveTests(unittest.TestCase):
             delta_both, delta_solo + 5.0,
             "Spellblade double-count regression: LB proc still firing",
         )
-        # And both must be well above bare — TF's spellblade still fires.
+        # And both must be well above bare - TF's spellblade still fires.
         self.assertGreater(delta_both, 50.0)
 
     def test_triforce_plus_lich_bane_order_swap_yields_lich_bane_proc(self) -> None:
@@ -1933,22 +1933,22 @@ class SpellbladeUniquePassiveTests(unittest.TestCase):
         tf_first = compute_dps(self.snap, "Ahri", level=11, item_ids=["3078", "3100"])
         lb_first = compute_dps(self.snap, "Ahri", level=11, item_ids=["3100", "3078"])
         # Both are valid "single spellblade" approximations but produce
-        # different numerical results — order dependence is real and
+        # different numerical results - order dependence is real and
         # documented.
         self.assertNotAlmostEqual(tf_first.weighted_dps, lb_first.weighted_dps, places=1)
 
 
 class LifelineUniquePassiveTests(unittest.TestCase):
-    """Phase 4 batch 12 — Lifeline unique-passive on Shieldbow / Sterak's / Maw.
+    """Phase 4 batch 12 - Lifeline unique-passive on Shieldbow / Sterak's / Maw.
 
     All 3 items use the literal "Lifeline" tooltip label in DDragon and
     are unique-passive in current League (only one Lifeline shield
     triggers per low-HP threshold). All 3 are currently defensive_only,
-    so dedup affects DpsResult.notes only — no DPS proc to drop.
+    so dedup affects DpsResult.notes only - no DPS proc to drop.
 
     Phantom Dancer (3046) is intentionally NOT tagged: DDragon shows it
     uses "Spectral Waltz" (Ghost effect on low HP), not Lifeline. RC's
-    older note for PD called it "Lifeline" — corrected this batch.
+    older note for PD called it "Lifeline" - corrected this batch.
     """
 
     @classmethod
@@ -1961,7 +1961,7 @@ class LifelineUniquePassiveTests(unittest.TestCase):
         self.assertEqual(ITEM_EFFECTS["3156"].unique_passive_key, "lifeline")
 
     def test_phantom_dancer_not_tagged_lifeline(self) -> None:
-        # Spectral Waltz is a distinct passive — DDragon labels diverge.
+        # Spectral Waltz is a distinct passive - DDragon labels diverge.
         self.assertNotEqual(ITEM_EFFECTS["3046"].unique_passive_key, "lifeline")
 
     def test_phantom_dancer_note_corrected(self) -> None:
@@ -1994,7 +1994,7 @@ class LifelineUniquePassiveTests(unittest.TestCase):
         self.assertEqual(len(effects), 2)
 
     def test_no_dps_change_for_solo_lifeline_items(self) -> None:
-        # All 3 Lifeline items are defensive_only — no proc to model.
+        # All 3 Lifeline items are defensive_only - no proc to model.
         # Adding any one of them to a build must not change weighted_dps
         # vs bare (because the engine doesn't model the shield itself).
         # This isn't strictly a unique-passive test, but it's a useful
@@ -2007,10 +2007,10 @@ class LifelineUniquePassiveTests(unittest.TestCase):
                 # Stat block can still raise DPS (Maw has 60 AD, Sterak's
                 # has 400 HP no AA effect, Shieldbow has 55 AD).
                 # The point is: no Lifeline proc damage was added.
-                # We assert the increase is purely stat-block — same as
+                # We assert the increase is purely stat-block - same as
                 # if the item had NO ItemEffect entry at all.
                 # Easiest check: the result didn't add any "Lifeline" damage
-                # note to notes — defensive_only entries do surface their
+                # note to notes - defensive_only entries do surface their
                 # note string but no proc damage hits.
                 # We don't have a clean way to assert "no proc fired"
                 # without instrumenting; instead, we just confirm the
@@ -2019,9 +2019,9 @@ class LifelineUniquePassiveTests(unittest.TestCase):
 
 
 class TerminusPromotionTests(unittest.TestCase):
-    """Phase 4 batch 13 — Terminus promoted from defensive_only.
+    """Phase 4 batch 13 - Terminus promoted from defensive_only.
 
-    Shadow on-hit (30 magic per basic, constant — not alternating as
+    Shadow on-hit (30 magic per basic, constant - not alternating as
     the prior note claimed) + Juxtaposition Dark sustained pen
     (10% armor pen + 10% magic pen, same sustained-DPS approximation
     as Black Cleaver's stacking). Light buff is caster-resists,
@@ -2094,7 +2094,7 @@ class TerminusPromotionTests(unittest.TestCase):
 
 
 class TotalDamageAmpMultiplierTests(unittest.TestCase):
-    """Phase 4 batch 14 — multiplicative damage-amp helper.
+    """Phase 4 batch 14 - multiplicative damage-amp helper.
 
     Direct unit tests on ``total_damage_amp_multiplier``. Item-side and
     DPS-pipeline assertions live in ``RiftmakerPromotionTests``.
@@ -2105,7 +2105,7 @@ class TotalDamageAmpMultiplierTests(unittest.TestCase):
         self.assertEqual(total_damage_amp_multiplier([]), 1.0)
 
     def test_no_amps_in_effects_returns_unity(self) -> None:
-        # IE / Kraken / Stormrazor — none carry damage_amp_pct.
+        # IE / Kraken / Stormrazor - none carry damage_amp_pct.
         from agents.daemon_slayer.effects import total_damage_amp_multiplier
         effs = [ITEM_EFFECTS["3031"], ITEM_EFFECTS["6672"], ITEM_EFFECTS["3097"]]
         self.assertEqual(total_damage_amp_multiplier(effs), 1.0)
@@ -2116,7 +2116,7 @@ class TotalDamageAmpMultiplierTests(unittest.TestCase):
         self.assertAlmostEqual(total_damage_amp_multiplier([rift]), 1.08, places=4)
 
     def test_two_amps_stack_multiplicatively(self) -> None:
-        # Build two synthetic amp items inline — engine doesn't ship a
+        # Build two synthetic amp items inline - engine doesn't ship a
         # second amp yet (Conqueror is a rune, not an item; future
         # ItemEffect entries with damage_amp_pct will hit this path).
         from agents.daemon_slayer.effects import (
@@ -2130,12 +2130,12 @@ class TotalDamageAmpMultiplierTests(unittest.TestCase):
 
 
 class RiftmakerPromotionTests(unittest.TestCase):
-    """Phase 4 batch 14 — Riftmaker promoted from defensive_only.
+    """Phase 4 batch 14 - Riftmaker promoted from defensive_only.
 
     Void Corruption ramps to 8% bonus damage after 4s in combat. The
     sustained-DPS approximation pins the full-ramp value (same shape
     as Black Cleaver's 30%-at-5-stacks). HP→AP cross-derivation
-    landed in batch 15 (RiftmakerHpToApTests below) — these tests
+    landed in batch 15 (RiftmakerHpToApTests below) - these tests
     cover the amp piece in isolation and stay valid because Aatrox
     auto-attacks don't read AP.
     """
@@ -2162,7 +2162,7 @@ class RiftmakerPromotionTests(unittest.TestCase):
         # Build with Riftmaker should beat the same build minus Riftmaker
         # by approximately the amp factor times the stat-only DPS.
         # Aatrox AAs are physical so the 70 AP / 350 HP / 15 AH stat
-        # block doesn't contribute directly — the entire delta is the
+        # block doesn't contribute directly - the entire delta is the
         # 8% Void Corruption amp.
         bare = compute_dps(self.snap, "Aatrox", level=11)
         rift = compute_dps(self.snap, "Aatrox", level=11, item_ids=["4633"])
@@ -2191,7 +2191,7 @@ class RiftmakerPromotionTests(unittest.TestCase):
         # block is identical between the two builds.
         ratio = with_amp.weighted_dps / no_amp_dps.weighted_dps
         self.assertAlmostEqual(ratio, 1.08, places=3,
-            msg=f"amp ratio {ratio:.4f} != 1.08 — multiplier wiring is broken")
+            msg=f"amp ratio {ratio:.4f} != 1.08 - multiplier wiring is broken")
 
     def test_riftmaker_amp_surfaces_in_notes(self) -> None:
         result = compute_dps(self.snap, "Aatrox", level=11, item_ids=["4633"])
@@ -2211,7 +2211,7 @@ class RiftmakerPromotionTests(unittest.TestCase):
 
 
 class TotalBonusApFromHpTests(unittest.TestCase):
-    """Phase 4 batch 15 — additive HP→AP cross-derivation helper."""
+    """Phase 4 batch 15 - additive HP→AP cross-derivation helper."""
 
     def test_no_effects_returns_zero(self) -> None:
         from agents.daemon_slayer.effects import total_bonus_ap_from_hp
@@ -2225,7 +2225,7 @@ class TotalBonusApFromHpTests(unittest.TestCase):
         self.assertEqual(total_bonus_ap_from_hp([rift], 0.0), 0.0)
 
     def test_negative_hp_clamped_to_zero(self) -> None:
-        # Defensive paranoia — engine floors caster_bonus_hp at zero
+        # Defensive paranoia - engine floors caster_bonus_hp at zero
         # before passing to the helper, but verify the helper itself
         # is also defensive.
         from agents.daemon_slayer.effects import total_bonus_ap_from_hp
@@ -2248,11 +2248,11 @@ class TotalBonusApFromHpTests(unittest.TestCase):
 
 
 class RiftmakerHpToApTests(unittest.TestCase):
-    """Phase 4 batch 15 — Riftmaker Void Infusion HP→AP wiring.
+    """Phase 4 batch 15 - Riftmaker Void Infusion HP→AP wiring.
 
     Validates the cross-derivation appears in DpsResult.notes when
     triggered, the converted AP isn't stored back into resolved.stats
-    (engine-internal — /stats reflects raw stat blocks only), and the
+    (engine-internal - /stats reflects raw stat blocks only), and the
     converted AP feeds AP-scaling procs (Lich Bane spellblade,
     Nashor's Tooth on-hit) so HP-stack builds get the expected boost.
     """
@@ -2268,7 +2268,7 @@ class RiftmakerHpToApTests(unittest.TestCase):
     def test_no_other_items_carry_hp_to_ap(self) -> None:
         # Sanity: only Riftmaker (4633/224633) and Demonic Embrace (4637) carry
         # ap_per_bonus_hp_pct. Batch 32 added Demonic Embrace; batch 42 added
-        # Arena mirror 224633 — allow-list updated. Surfacing any new additions
+        # Arena mirror 224633 - allow-list updated. Surfacing any new additions
         # as a schema-add signal.
         ALLOWLIST = {"4633", "4637", "224633", "224637"}
         for iid, e in ITEM_EFFECTS.items():
@@ -2303,7 +2303,7 @@ class RiftmakerHpToApTests(unittest.TestCase):
         )
 
     def test_resolved_stats_ap_unchanged_by_cross_derivation(self) -> None:
-        # /stats consumers see raw stat-block AP only — cross-derivation
+        # /stats consumers see raw stat-block AP only - cross-derivation
         # is dps-internal. Riftmaker's stat block is 70 AP per DDragon.
         result = compute_dps(self.snap, "Aatrox", level=11, item_ids=["4633"])
         self.assertAlmostEqual(
@@ -2333,17 +2333,17 @@ class RiftmakerHpToApTests(unittest.TestCase):
         # Bane 0 HP + Riftmaker 350 HP) = 7 AP cross-derived → 177 AP
         # visible to Lich Bane spellblade. The 7 AP delta lifts each
         # spellblade by 0.50*7 = 3.5 magic dmg (ignoring MR factor).
-        # Synthetic test — strip Riftmaker's amp + cross-derivation
+        # Synthetic test - strip Riftmaker's amp + cross-derivation
         # to isolate the HP→AP contribution from the amp piece.
         from agents.daemon_slayer import effects as effects_mod
         original = effects_mod.ITEM_EFFECTS["4633"]
-        # No-amp, no-HP→AP variant — only stat block (70 AP, 350 HP, 15 AH).
+        # No-amp, no-HP→AP variant - only stat block (70 AP, 350 HP, 15 AH).
         no_xforms = ItemEffect(
             item_id="4633",
             name="Riftmaker",
             note=original.note,
         )
-        # Amp-only variant — reproduces batch 14 behavior.
+        # Amp-only variant - reproduces batch 14 behavior.
         amp_only = ItemEffect(
             item_id="4633",
             name="Riftmaker",
@@ -2372,7 +2372,7 @@ class RiftmakerHpToApTests(unittest.TestCase):
 
 
 class TotalTargetBonusHpAmpMultiplierTests(unittest.TestCase):
-    """Phase 4 batch 19 — target-conditional damage-amp helper.
+    """Phase 4 batch 19 - target-conditional damage-amp helper.
 
     Direct unit tests on ``total_target_bonus_hp_amp_multiplier``. LDR
     end-to-end + multiplicative-stack-with-Riftmaker pinning lives in
@@ -2384,21 +2384,21 @@ class TotalTargetBonusHpAmpMultiplierTests(unittest.TestCase):
         self.assertEqual(total_target_bonus_hp_amp_multiplier([], 1500.0), 1.0)
 
     def test_zero_target_bonus_hp_returns_unity(self) -> None:
-        # Pre-batch-19 callers don't supply target_bonus_hp — default 0.
+        # Pre-batch-19 callers don't supply target_bonus_hp - default 0.
         # Result must short-circuit to 1.0 even when items carry the schema.
         from agents.daemon_slayer.effects import total_target_bonus_hp_amp_multiplier
         ldr = ITEM_EFFECTS["3036"]
         self.assertEqual(total_target_bonus_hp_amp_multiplier([ldr], 0.0), 1.0)
 
     def test_negative_target_bonus_hp_returns_unity(self) -> None:
-        # Defensive guard — caller-supplied negative values should not
+        # Defensive guard - caller-supplied negative values should not
         # produce a damage REDUCTION; treat as "no signal".
         from agents.daemon_slayer.effects import total_target_bonus_hp_amp_multiplier
         ldr = ITEM_EFFECTS["3036"]
         self.assertEqual(total_target_bonus_hp_amp_multiplier([ldr], -100.0), 1.0)
 
     def test_no_amp_items_in_effects_returns_unity(self) -> None:
-        # IE / Kraken / Stormrazor — none carry target_bonus_hp_amp_max_pct.
+        # IE / Kraken / Stormrazor - none carry target_bonus_hp_amp_max_pct.
         from agents.daemon_slayer.effects import total_target_bonus_hp_amp_multiplier
         effs = [ITEM_EFFECTS["3031"], ITEM_EFFECTS["6672"], ITEM_EFFECTS["3097"]]
         self.assertEqual(total_target_bonus_hp_amp_multiplier(effs, 1500.0), 1.0)
@@ -2420,7 +2420,7 @@ class TotalTargetBonusHpAmpMultiplierTests(unittest.TestCase):
         )
 
     def test_ldr_above_cap_clamps_to_max_pct(self) -> None:
-        # 3000 / 1500 = 2.0, but min(1.0, 2.0) = 1.0 — multiplier stays
+        # 3000 / 1500 = 2.0, but min(1.0, 2.0) = 1.0 - multiplier stays
         # at ×1.15. Matches DDragon "maximum damage bonus reached at
         # 1500 bonus Health".
         from agents.daemon_slayer.effects import total_target_bonus_hp_amp_multiplier
@@ -2468,7 +2468,7 @@ class TotalTargetBonusHpAmpMultiplierTests(unittest.TestCase):
 
 
 class LdrGiantSlayerTests(unittest.TestCase):
-    """Phase 4 batch 19 — LDR Giant Slayer end-to-end via /dps.
+    """Phase 4 batch 19 - LDR Giant Slayer end-to-end via /dps.
 
     Mirrors RiftmakerPromotionTests' shape: stat-only baseline,
     schema field present, DPS lifts when target_bonus_hp is supplied,
@@ -2491,14 +2491,14 @@ class LdrGiantSlayerTests(unittest.TestCase):
         self.assertIn("1500", e.note)
 
     def test_no_amp_when_target_bonus_hp_unset(self) -> None:
-        # Pre-batch-19 caller shape — no target_bonus_hp kwarg. The
+        # Pre-batch-19 caller shape - no target_bonus_hp kwarg. The
         # /dps response must look identical to a build with no Giant
         # Slayer item modulo the existing armor-pen wiring.
         result = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3036"],
                              target_armor=80.0)
         self.assertFalse(
             any("target-conditional amp" in n for n in result.notes),
-            "no target_bonus_hp signal — must not surface a target-amp note",
+            "no target_bonus_hp signal - must not surface a target-amp note",
         )
 
     def test_amp_lifts_dps_at_full_cap(self) -> None:
@@ -2556,7 +2556,7 @@ class LdrGiantSlayerTests(unittest.TestCase):
     def test_ldr_plus_riftmaker_amps_stack_multiplicatively(self) -> None:
         # Riftmaker carries 8% damage_amp_pct (batch 14), LDR carries
         # 15% target-conditional amp (batch 19). Combined multiplier
-        # must be 1.08 * 1.15 = 1.242 — NOT 1.23 (additive). Pins the
+        # must be 1.08 * 1.15 = 1.242 - NOT 1.23 (additive). Pins the
         # batch-14 doctrine ("League stacks amps multiplicatively").
         from agents.daemon_slayer import effects as effects_mod
         # Build a "no-amp Riftmaker" baseline so the 8% piece is the
@@ -2590,7 +2590,7 @@ class LdrGiantSlayerTests(unittest.TestCase):
 
 
 class HullbreakerSkipperTests(unittest.TestCase):
-    """Phase 4 batch 20 — Hullbreaker (3181) Skipper periodic.
+    """Phase 4 batch 20 - Hullbreaker (3181) Skipper periodic.
 
     Promoted from defensive_only using Meraki's bulk items snapshot,
     which carries the numeric formula DDragon strips. Procs every 5th
@@ -2630,7 +2630,7 @@ class HullbreakerSkipperTests(unittest.TestCase):
 
     def test_bonus_damage_zero_when_unqualified(self) -> None:
         # If caller can't supply caster_max_hp (default 0.0), the proc
-        # still pays out the base_ad piece — never crashes, never NaN.
+        # still pays out the base_ad piece - never crashes, never NaN.
         proc = ITEM_EFFECTS["3181"].periodics[0]
         ctx = CallContext(base_ad=70.0, bonus_ad=0.0, level=8)
         # 1.20*70 + 0.05*0 = 84
@@ -2672,9 +2672,9 @@ class HullbreakerSkipperTests(unittest.TestCase):
 
 
 class SteraksClawsThatCatchTests(unittest.TestCase):
-    """Phase 4 batch 20 — Sterak's Gage (3053) "The Claws that Catch".
+    """Phase 4 batch 20 - Sterak's Gage (3053) "The Claws that Catch".
 
-    +45% base AD as bonus AD — a stat layer, not a proc. Promoted via the
+    +45% base AD as bonus AD - a stat layer, not a proc. Promoted via the
     new ``ItemEffect.bonus_ad_pct_base_ad`` field, resolved in
     ``build_champion`` against the leveled raw base AD before
     ``_combine_items`` folds totals into the final block. Lifeline shield
@@ -2690,12 +2690,12 @@ class SteraksClawsThatCatchTests(unittest.TestCase):
         self.assertAlmostEqual(e.bonus_ad_pct_base_ad, 0.45, places=4)
 
     def test_promoted_not_defensive_only(self) -> None:
-        # The Claws piece IS DPS-positive — defensive_only would mask it.
+        # The Claws piece IS DPS-positive - defensive_only would mask it.
         e = ITEM_EFFECTS["3053"]
         self.assertFalse(e.defensive_only)
 
     def test_lifeline_dedup_preserved(self) -> None:
-        # Lifeline is still unique-passive — pin the key so future batches
+        # Lifeline is still unique-passive - pin the key so future batches
         # don't accidentally drop dedup when fiddling with this entry.
         self.assertEqual(ITEM_EFFECTS["3053"].unique_passive_key, "lifeline")
 
@@ -2724,7 +2724,7 @@ class SteraksEngineWireInTests(unittest.TestCase):
 
     def test_sterak_raises_total_ad(self) -> None:
         # Sterak's stat block carries +400 HP only (no AD flat in DDragon)
-        # — all the AD comes from the Claws passive (Phase 4 batch 20):
+        # - all the AD comes from the Claws passive (Phase 4 batch 20):
         # 0.45 * leveled_base_ad. For Aatrox at lvl 11, leveled base AD
         # ≈ 60 + 17*(105-60)/17 * (10/17) ... measured at runtime via
         # base_stats["ad"]; expect delta ≈ 0.45 * that, which clears
@@ -2763,7 +2763,7 @@ class SteraksEngineWireInTests(unittest.TestCase):
     def test_sterak_zero_when_not_in_build(self) -> None:
         # Defensive: items without bonus_ad_pct_base_ad contribute the
         # raw DDragon stat block AD only. Bloodthirster has 80 AD flat
-        # and bonus_ad_pct_base_ad=0 — delta should match flat exactly.
+        # and bonus_ad_pct_base_ad=0 - delta should match flat exactly.
         from agents.daemon_slayer.engine import build_champion
         bare = build_champion(self.snap, "Aatrox", level=11).stats["ad"]
         bt = build_champion(
@@ -2785,8 +2785,8 @@ class SteraksEngineWireInTests(unittest.TestCase):
 
 
 class SeryldasGrudgeTests(unittest.TestCase):
-    """Phase 4 batch 25 — Serylda's Grudge (6694) added to ITEM_EFFECTS as a
-    new entry (was unmodeled prior — stats-only via item aggregation).
+    """Phase 4 batch 25 - Serylda's Grudge (6694) added to ITEM_EFFECTS as a
+    new entry (was unmodeled prior - stats-only via item aggregation).
 
     Slot: % armor pen layer next to LDR (3036) / Mortal Reminder (3033).
     DDragon snapshot 16.9.1: 45 AD / 35% Armor Penetration / 15 Ability
@@ -2795,7 +2795,7 @@ class SeryldasGrudgeTests(unittest.TestCase):
     LDR is no Giant Slayer (no target_bonus_hp_amp_max_pct).
 
     Tests pin: presence, stat shape, no unique_passive_key (% pen sums
-    in current League — build legality is ranker-owned), pen-pipeline
+    in current League - build legality is ranker-owned), pen-pipeline
     parity with LDR at the same coefficient, DPS uplift vs an armored
     target, no uplift attributable to pen vs zero-armor target.
     """
@@ -2817,7 +2817,7 @@ class SeryldasGrudgeTests(unittest.TestCase):
     def test_seryldas_no_unique_passive_key(self) -> None:
         # % pen layer in current engine sums across items (additive). The
         # in-game Last Whisper exclusivity (only one of LDR / MR / Serylda
-        # at a time) is build-legality, not effect-layer — same call as
+        # at a time) is build-legality, not effect-layer - same call as
         # Tiamat-tree exclusivity for the hydra family.
         self.assertEqual(ITEM_EFFECTS["6694"].unique_passive_key, "")
 
@@ -2871,11 +2871,11 @@ class SeryldasGrudgeTests(unittest.TestCase):
 
 
 class TotalCritChanceBonusHelperTests(unittest.TestCase):
-    """Phase 4 batch 26 — ``total_crit_chance_bonus`` helper.
+    """Phase 4 batch 26 - ``total_crit_chance_bonus`` helper.
 
     Sums each effect's flat + HP-scaled contribution into a single
     fraction. Returns 0.0 with no contributors. The clamp at 1.0 lives
-    at the call site (compute_dps), not here — this helper exposes the
+    at the call site (compute_dps), not here - this helper exposes the
     raw sum so over-cap stacking is visible to callers.
     """
 
@@ -2939,8 +2939,8 @@ class TotalCritChanceBonusHelperTests(unittest.TestCase):
 
 
 class YunTalWildarrowsTests(unittest.TestCase):
-    """Phase 4 batch 26 — Yun Tal Wildarrows (3032) added to ITEM_EFFECTS as
-    a new entry (was unmodeled prior — stats-only via item aggregation).
+    """Phase 4 batch 26 - Yun Tal Wildarrows (3032) added to ITEM_EFFECTS as
+    a new entry (was unmodeled prior - stats-only via item aggregation).
 
     Practice Makes Lethal pinned at full Wildarrows stacks (25%); same
     steady-state assumption as Black Cleaver's "30% reduction at 5
@@ -2987,7 +2987,7 @@ class YunTalWildarrowsTests(unittest.TestCase):
         # block carries 50 AD + 40% AS (DDragon) + 0% base crit.
         with_yt = compute_dps(self.snap, "Caitlyn", level=11, item_ids=["3032"])
         # Crit comes from stats.get("crit") as the raw build crit (not
-        # the boosted total) — same separation as batch 15 HP→AP. The
+        # the boosted total) - same separation as batch 15 HP→AP. The
         # *engine-internal* boosted value flows through procs + display.
         # We verify the boosted note exists rather than checking for
         # mutation of resolved.stats (which should not happen).
@@ -3010,8 +3010,8 @@ class YunTalWildarrowsTests(unittest.TestCase):
 
 
 class AtmasReckoningCritTests(unittest.TestCase):
-    """Phase 4 batch 26 — Atma's Reckoning (3039) added to ITEM_EFFECTS as
-    a new entry (was unmodeled prior — stats-only via item aggregation).
+    """Phase 4 batch 26 - Atma's Reckoning (3039) added to ITEM_EFFECTS as
+    a new entry (was unmodeled prior - stats-only via item aggregation).
 
     Big Hands: 1% crit per 100 bonus HP, max 30% at 3000 bonus HP. Linear
     ramp; same shape as batch 19's target_bonus_hp_amp on the caster
@@ -3053,7 +3053,7 @@ class AtmasReckoningCritTests(unittest.TestCase):
 
     def test_atma_scales_with_added_hp_items(self) -> None:
         # Stack Atma + Heartsteel (3084, 800 HP) + Warmog's (3083, 800 HP)
-        # — the build's caster_bonus_hp climbs and Big Hands ramps with it.
+        # - the build's caster_bonus_hp climbs and Big Hands ramps with it.
         # Build with just Atma: ~700 bonus HP → ~7% Big Hands.
         # Build with Atma + Heartsteel + Warmog's: ~2300 bonus HP → ~23%.
         atma_only = compute_dps(self.snap, "Sett", level=11, item_ids=["3039"])
@@ -3076,7 +3076,7 @@ class AtmasReckoningCritTests(unittest.TestCase):
 
 
 class CallContextCasterMaxMpTests(unittest.TestCase):
-    """Phase 4 batch 27 — CallContext.caster_max_mp default + plumbing."""
+    """Phase 4 batch 27 - CallContext.caster_max_mp default + plumbing."""
 
     def test_default_caster_max_mp_zero(self) -> None:
         # Pre-batch-27 callers + manaless champion builds carry 0 here.
@@ -3104,7 +3104,7 @@ class CallContextCasterMaxMpTests(unittest.TestCase):
 
 
 class ManamuneAweTests(unittest.TestCase):
-    """Phase 4 batch 27 — Manamune (3004) "Awe" stat layer.
+    """Phase 4 batch 27 - Manamune (3004) "Awe" stat layer.
 
     Awe converts 2% max mana into bonus AD. Walked in build_champion
     after aggregate_item_stats so the items' own mana pool is included
@@ -3120,7 +3120,7 @@ class ManamuneAweTests(unittest.TestCase):
         e = ITEM_EFFECTS["3004"]
         self.assertEqual(e.name, "Manamune")
         self.assertFalse(e.defensive_only)
-        self.assertEqual(e.periodics, ())  # no Shock — that's Muramana
+        self.assertEqual(e.periodics, ())  # no Shock - that's Muramana
         self.assertAlmostEqual(e.bonus_ad_pct_max_mp, 0.02, places=4)
         self.assertEqual(e.crit_chance_bonus_flat, 0.0)
         self.assertEqual(e.bonus_ad_pct_base_ad, 0.0)
@@ -3128,7 +3128,7 @@ class ManamuneAweTests(unittest.TestCase):
 
     def test_manamune_no_unique_passive_key(self) -> None:
         # Awe is one-of-two in current League (Manamune transforms into
-        # Muramana — you can't own both); build legality is ranker-owned.
+        # Muramana - you can't own both); build legality is ranker-owned.
         self.assertEqual(ITEM_EFFECTS["3004"].unique_passive_key, "")
 
     def test_manamune_lifts_total_ad_on_ezreal(self) -> None:
@@ -3151,7 +3151,7 @@ class ManamuneAweTests(unittest.TestCase):
 
 
 class MuramanaShockTests(unittest.TestCase):
-    """Phase 4 batch 27 — Muramana (3042) "Awe" + "Shock".
+    """Phase 4 batch 27 - Muramana (3042) "Awe" + "Shock".
 
     Muramana doubles Manamune's mana pool (1000 vs 500) and adds Shock,
     a per-attack 1.2% max mana physical proc. Both Awe and Shock scale
@@ -3194,7 +3194,7 @@ class MuramanaShockTests(unittest.TestCase):
         self.assertEqual(proc.resolve_damage(ctx), 0.0)
 
     def test_muramana_lifts_dps_more_than_manamune_on_ezreal(self) -> None:
-        # Same gold, same AD/AH stats — Muramana's 1000 mana pool vs
+        # Same gold, same AD/AH stats - Muramana's 1000 mana pool vs
         # Manamune's 500 doubles the Awe contribution AND unlocks Shock.
         # On a high-mana champ (Ezreal, 1075 mp at lvl 11) the Muramana
         # build clears Manamune by a comfortable margin.
@@ -3260,7 +3260,7 @@ class AweEngineWireInTests(unittest.TestCase):
         # a no-op for it.
         archangel = build_champion(self.snap, "Ezreal", level=11, item_ids=["3003"])
         # AD should match: champion base AD + 0 (Archangel has no AD
-        # stat block — it's an AP item). If the Awe walk wrongly fired
+        # stat block - it's an AP item). If the Awe walk wrongly fired
         # this would surface as an AD bump.
         bare_ad = build_champion(self.snap, "Ezreal", level=11).stats["ad"]
         self.assertAlmostEqual(archangel.stats["ad"], bare_ad, places=2)
@@ -3288,9 +3288,9 @@ class AweEngineWireInTests(unittest.TestCase):
 
 
 class ArchangelsAweTests(unittest.TestCase):
-    """Phase 4 batch 28 — Archangel's Staff (3003) "Awe" stat layer.
+    """Phase 4 batch 28 - Archangel's Staff (3003) "Awe" stat layer.
 
-    Awe converts 1% BONUS mana (item-contributed only — distinct from
+    Awe converts 1% BONUS mana (item-contributed only - distinct from
     Manamune's max-mana keying) into bonus AP. Walked in build_champion
     against item_totals["mp_flat"] (the bonus-mana sum), AFTER
     aggregate_item_stats. Manaflow stack-up + transformation into
@@ -3318,11 +3318,11 @@ class ArchangelsAweTests(unittest.TestCase):
         self.assertEqual(ITEM_EFFECTS["3003"].unique_passive_key, "")
 
     def test_archangel_lifts_ap_via_bonus_mana_only(self) -> None:
-        # Ezreal lvl 11: champion base mp ≈ 1075 — must NOT count toward
+        # Ezreal lvl 11: champion base mp ≈ 1075 - must NOT count toward
         # Archangel's Awe (bonus mana only). Archangel adds 600 mana →
         # bonus mana = 600 → Awe AP = 0.01 * 600 = 6 AP.
         # If the walk wrongly used max mana (1075 + 600 = 1675), AP
-        # contribution would be ~16.75 — this test pins the asymmetry.
+        # contribution would be ~16.75 - this test pins the asymmetry.
         from agents.daemon_slayer.engine import build_champion
         bare = build_champion(self.snap, "Ezreal", level=11)
         with_arch = build_champion(self.snap, "Ezreal", level=11, item_ids=["3003"])
@@ -3352,7 +3352,7 @@ class ArchangelsAweTests(unittest.TestCase):
         self.assertLess(ap_lift, 7.0)
 
     def test_archangel_lifts_dps_on_caster(self) -> None:
-        # Annie / Lux / any AP user — Archangel raises DPS via the AP
+        # Annie / Lux / any AP user - Archangel raises DPS via the AP
         # piece feeding Lich Bane / Nashor's spellblades or just by
         # raising auto attack contribution. Use a generic AP champ.
         bare = compute_dps(self.snap, "Lux", level=11)
@@ -3361,7 +3361,7 @@ class ArchangelsAweTests(unittest.TestCase):
 
 
 class SeraphsEmbraceTests(unittest.TestCase):
-    """Phase 4 batch 28 — Seraph's Embrace (3040) Awe-AP twin.
+    """Phase 4 batch 28 - Seraph's Embrace (3040) Awe-AP twin.
 
     Same field as Archangel's but at 2% (post-transformation form).
     Lifeline shield is non-DPS, deduped via unique_passive_key="lifeline";
@@ -3381,7 +3381,7 @@ class SeraphsEmbraceTests(unittest.TestCase):
         self.assertAlmostEqual(e.bonus_ap_pct_bonus_mp, 0.02, places=4)
 
     def test_seraphs_lifeline_unique_passive_tagged(self) -> None:
-        # Same key as Shieldbow / Sterak's / Maw — lifeline shield piece.
+        # Same key as Shieldbow / Sterak's / Maw - lifeline shield piece.
         self.assertEqual(ITEM_EFFECTS["3040"].unique_passive_key, "lifeline")
 
     def test_seraphs_lifts_ap_at_double_archangel_rate(self) -> None:
@@ -3397,7 +3397,7 @@ class SeraphsEmbraceTests(unittest.TestCase):
 
     def test_seraphs_awe_survives_lifeline_dedup(self) -> None:
         # Build with Seraph's + Sterak's (3053, also lifeline). Sterak's
-        # comes first via item_id ordering — wait, ordering is the
+        # comes first via item_id ordering - wait, ordering is the
         # caller's. Let's pin both orderings.
         # collect_effects dedups the second lifeline-tagged ItemEffect,
         # but engine.py's Awe walk reads ITEM_EFFECTS directly so the
@@ -3432,7 +3432,7 @@ class ArchangelEngineWireInTests(unittest.TestCase):
         cls.snap = DataSnapshot.load()
 
     def test_walk_safe_when_no_archangel_items(self) -> None:
-        # Pure stat-only build — walk should not crash and should
+        # Pure stat-only build - walk should not crash and should
         # contribute nothing to ap_flat. Lich Bane (3100) has 100 AP +
         # 4% MS, no bonus_ap_pct_bonus_mp; lift should match its stat
         # block exactly with no Awe contribution.
@@ -3453,7 +3453,7 @@ class ArchangelEngineWireInTests(unittest.TestCase):
         with_manamune_ap = build_champion(
             self.snap, "Ezreal", level=11, item_ids=["3004"],
         ).stats.get("ap", 0.0)
-        # Manamune has no AP stat block, no Awe-AP — AP unchanged.
+        # Manamune has no AP stat block, no Awe-AP - AP unchanged.
         self.assertAlmostEqual(with_manamune_ap, bare_ap, places=2)
 
     def test_archangel_walk_asymmetric_vs_manamune_walk(self) -> None:
@@ -3474,9 +3474,9 @@ class ArchangelEngineWireInTests(unittest.TestCase):
             self.snap, "Ezreal", level=11, item_ids=["3003"],
         ).stats["ap"]
         bare_ap = build_champion(self.snap, "Ezreal", level=11).stats["ap"]
-        # Manamune AD lift includes 35 stat + Awe — Awe ≈ 31.5.
+        # Manamune AD lift includes 35 stat + Awe - Awe ≈ 31.5.
         manamune_awe = (manamune_ad - bare_ad) - 35.0  # subtract stat block
-        # Archangel AP lift includes 70 stat + Awe — Awe ≈ 6.
+        # Archangel AP lift includes 70 stat + Awe - Awe ≈ 6.
         archangel_awe = (archangel_ap - bare_ap) - 70.0
         # Ratio asserts asymmetry: if Archangel used max mana, ratio
         # would be ~16.75/31.5 = 0.53. With bonus mana, ratio is
@@ -3486,7 +3486,7 @@ class ArchangelEngineWireInTests(unittest.TestCase):
 
 
 class Batch29DefensiveOnlyCoverageTests(unittest.TestCase):
-    """Phase 4 batch 29 — 4 new defensive_only entries.
+    """Phase 4 batch 29 - 4 new defensive_only entries.
 
     Coverage-completeness for Hubris, Spirit Visage, Kaenic Rookern,
     Cosmic Drive. Each carries no current-engine DPS contribution
@@ -3532,7 +3532,7 @@ class Batch29DefensiveOnlyCoverageTests(unittest.TestCase):
 
 
 class LiandrysSufferingTests(unittest.TestCase):
-    """Phase 4 batch 29 — Liandry's Torment (6653) partial promotion via
+    """Phase 4 batch 29 - Liandry's Torment (6653) partial promotion via
     damage_amp_pct.
 
     Suffering: 2% bonus damage per second in champion combat, max 3
@@ -3583,7 +3583,7 @@ class LiandrysSufferingTests(unittest.TestCase):
 
 
 class StormsurgeMagicPenTests(unittest.TestCase):
-    """Phase 4 batch 29 — Stormsurge (4646) partial promotion via
+    """Phase 4 batch 29 - Stormsurge (4646) partial promotion via
     magic_pen_flat.
 
     Stormsurge carries 15 flat magic pen in its description (DDragon's
@@ -3602,7 +3602,7 @@ class StormsurgeMagicPenTests(unittest.TestCase):
         e = ITEM_EFFECTS["4646"]
         self.assertEqual(e.name, "Stormsurge")
         self.assertFalse(e.defensive_only)
-        # batch 53: Squall proc added — periodics no longer empty
+        # batch 53: Squall proc added - periodics no longer empty
         self.assertAlmostEqual(e.magic_pen_flat, 15.0, places=2)
         self.assertEqual(e.magic_pen_pct, 0.0)
         self.assertIn("magic pen", e.note.lower())
@@ -3631,7 +3631,7 @@ class StormsurgeMagicPenTests(unittest.TestCase):
     def test_stormsurge_raises_magic_proc_dps_vs_mr_target(self) -> None:
         # Magic pen only lifts magic-damage rotations. Lux's bare auto
         # attacks are physical (use target_armor), so Stormsurge's 15
-        # magic pen contributes 0 to a bare-auto rotation — adding
+        # magic pen contributes 0 to a bare-auto rotation - adding
         # Nashor's Tooth (3115, Icathian Bite per-attack magic proc)
         # surfaces the pen contribution.
         with_nashors = compute_dps(
@@ -3646,7 +3646,7 @@ class StormsurgeMagicPenTests(unittest.TestCase):
     def test_stormsurge_pen_note_surfaces(self) -> None:
         # Even without a magic-damage rotation, the effective-MR note
         # surfaces whenever target_mr > 0 and a magic pen item is
-        # present — the engine reports the pipeline outcome regardless
+        # present - the engine reports the pipeline outcome regardless
         # of rotation magic damage.
         with_ss = compute_dps(
             self.snap, "Lux", level=11, item_ids=["4646"], target_mr=80.0,
@@ -3657,7 +3657,7 @@ class StormsurgeMagicPenTests(unittest.TestCase):
 
 
 class LethalityScalingTests(unittest.TestCase):
-    """Phase 4 batch 30 — lethality × (0.6 + 0.4 × level/18) formula.
+    """Phase 4 batch 30 - lethality × (0.6 + 0.4 × level/18) formula.
 
     Pins the level-scaling math: 60% effective at lvl 1, 100% at lvl 18,
     linear in between. Pre-batch callers that omit ``level`` see no
@@ -3672,7 +3672,7 @@ class LethalityScalingTests(unittest.TestCase):
 
     def test_lethality_at_level_1(self) -> None:
         # Wiki formula: factor = 0.6 + 0.4 × level/18. At level=1 the
-        # factor is 0.6 + 0.4/18 = 0.6222 (NOT a flat 0.6 — the "60%
+        # factor is 0.6 + 0.4/18 = 0.6222 (NOT a flat 0.6 - the "60%
         # at lvl 1" wiki shorthand rounds the lower bound). 18 × 0.6222
         # = 11.2 effective flat pen; 100 - 11.2 = 88.8.
         e = ItemEffect(item_id="x", name="x", lethality=18.0)
@@ -3724,7 +3724,7 @@ class LethalityScalingTests(unittest.TestCase):
 
 
 class HubrisLethalityTests(unittest.TestCase):
-    """Phase 4 batch 30 — Hubris (6697) lethality lands."""
+    """Phase 4 batch 30 - Hubris (6697) lethality lands."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -3744,7 +3744,7 @@ class HubrisLethalityTests(unittest.TestCase):
 
 
 class LethalityPromotionsTests(unittest.TestCase):
-    """Phase 4 batch 30 — 4 in-place promotions: Voltaic, Edge of Night,
+    """Phase 4 batch 30 - 4 in-place promotions: Voltaic, Edge of Night,
     Youmuu's, Opportunity."""
 
     def test_voltaic_carries_10_lethality(self) -> None:
@@ -3770,7 +3770,7 @@ class LethalityPromotionsTests(unittest.TestCase):
 
 
 class LethalityNewEntriesTests(unittest.TestCase):
-    """Phase 4 batch 30 — Axiom Arc (6696) + Umbral Glaive (3179) new entries."""
+    """Phase 4 batch 30 - Axiom Arc (6696) + Umbral Glaive (3179) new entries."""
 
     def test_axiom_arc_new_entry(self) -> None:
         e = ITEM_EFFECTS["6696"]
@@ -3789,19 +3789,19 @@ class LethalityNewEntriesTests(unittest.TestCase):
 
 
 class LethalityEngineWireInTests(unittest.TestCase):
-    """Phase 4 batch 30 — compute_dps passes level into effective_target_armor."""
+    """Phase 4 batch 30 - compute_dps passes level into effective_target_armor."""
 
     @classmethod
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
     def test_higher_level_caster_gets_more_lethality(self) -> None:
-        # Same Hubris build, lvl 1 vs lvl 18 — the higher level caster
+        # Same Hubris build, lvl 1 vs lvl 18 - the higher level caster
         # gets more effective flat pen, so vs the same armored target
         # the DPS is higher (controlling for stat scaling).
         # Aatrox lvl 1 has lower base AD, so we can't use raw DPS; use
         # the resolved target_armor_eff in DpsResult (engine-internal).
-        # Actually, target_armor is unchanged in the result — we need
+        # Actually, target_armor is unchanged in the result - we need
         # to inspect the notes for the effective armor pin.
         with_lvl1 = compute_dps(
             self.snap, "Aatrox", level=1, item_ids=["6697"], target_armor=100.0,
@@ -3840,7 +3840,7 @@ class LethalityEngineWireInTests(unittest.TestCase):
 
 
 class CritBonusComposesWithEssenceReaverTests(unittest.TestCase):
-    """Phase 4 batch 26 — item-effect-contributed crit feeds ER's Spellblade.
+    """Phase 4 batch 26 - item-effect-contributed crit feeds ER's Spellblade.
 
     Essence Reaver's bonus_damage scales linearly with CallContext.crit_chance:
     1.25 * base_ad + 50 * crit_chance. With Yun Tal contributing +25% crit,
@@ -3862,12 +3862,12 @@ class CritBonusComposesWithEssenceReaverTests(unittest.TestCase):
         er_plus_yt = compute_dps(
             self.snap, "Caitlyn", level=11, item_ids=["3508", "3032"],
         )
-        # Strict greater — the proc+stat composition should beat ER alone.
+        # Strict greater - the proc+stat composition should beat ER alone.
         self.assertGreater(er_plus_yt.weighted_dps, er_only.weighted_dps)
 
 
 class DeadMansPlateShipwreckerTests(unittest.TestCase):
-    """Phase 4 batch 31 — Dead Man's Plate Shipwrecker partial promotion.
+    """Phase 4 batch 31 - Dead Man's Plate Shipwrecker partial promotion.
 
     Shipwrecker fires every ~4 attacks at full Momentum (100 stacks, 20 bonus MS,
     damage = 100 + 0.45*20 = 109 physical). Approximation assumes continuous
@@ -3896,7 +3896,7 @@ class DeadMansPlateShipwreckerTests(unittest.TestCase):
         self.assertEqual(ITEM_EFFECTS["3742"].unique_passive_key, "")
 
     def test_dps_lift_on_tank_champ(self) -> None:
-        # Sett lvl 11 with Dead Man's vs bare Sett — Shipwrecker should lift DPS.
+        # Sett lvl 11 with Dead Man's vs bare Sett - Shipwrecker should lift DPS.
         bare = compute_dps(self.snap, "Sett", level=11, item_ids=[])
         with_dmp = compute_dps(self.snap, "Sett", level=11, item_ids=["3742"])
         self.assertGreater(with_dmp.weighted_dps, bare.weighted_dps)
@@ -3909,7 +3909,7 @@ class DeadMansPlateShipwreckerTests(unittest.TestCase):
 
 
 class SpectralCutlassLethality(unittest.TestCase):
-    """Phase 4 batch 31 — Spectral Cutlass ARAM-only lethality entry.
+    """Phase 4 batch 31 - Spectral Cutlass ARAM-only lethality entry.
 
     15 Lethality (same coefficient as Edge of Night) via the batch-30 schema.
     ARAM-only item; lethality pipeline applies identically to mode.
@@ -3946,7 +3946,7 @@ class SpectralCutlassLethality(unittest.TestCase):
 
 
 class Batch31DefensiveOnlyCoverageTests(unittest.TestCase):
-    """Phase 4 batch 31 — 19 defensive_only support/ramp items.
+    """Phase 4 batch 31 - 19 defensive_only support/ramp items.
 
     Each entry is present, tagged defensive_only=True, has no proc,
     and carries a one-line note. Coverage-completeness verification only.
@@ -4290,7 +4290,7 @@ class GamblersBladeDualPenTests(unittest.TestCase):
 
     def test_lethality_dps_lift(self) -> None:
         # Magic pen flat has no effect on an AA-only rotation (physical damage);
-        # lethality does — verify the pen pipeline fires on the physical side.
+        # lethality does - verify the pen pipeline fires on the physical side.
         from agents.daemon_slayer.dps import compute_dps
         dps_bare = compute_dps(self.snap, "Zed", level=11, target_armor=50.0)
         dps_with = compute_dps(self.snap, "Zed", level=11, item_ids=["667101"],
@@ -4390,7 +4390,7 @@ class AbyssalMaskMagicAmpTests(unittest.TestCase):
 
     def test_multiplier_is_1_without_abyssal(self) -> None:
         from agents.daemon_slayer.effects import total_magic_amp_multiplier, collect_effects
-        effects_bare = collect_effects(["3031"])  # IE — no magic_amp_pct
+        effects_bare = collect_effects(["3031"])  # IE - no magic_amp_pct
         self.assertAlmostEqual(total_magic_amp_multiplier(effects_bare), 1.0, places=4)
 
     def test_multiplier_stacks_with_second_abyssal(self) -> None:
@@ -4409,11 +4409,11 @@ class AbyssalMaskMagicAmpTests(unittest.TestCase):
         self.assertGreater(dps_nashor_abyssal.weighted_dps, dps_nashor.weighted_dps)
 
     def test_magic_amp_does_not_help_physical_only_build(self) -> None:
-        # Abyssal Mask has no proc of its own — it only amplifies other items'
+        # Abyssal Mask has no proc of its own - it only amplifies other items'
         # magical procs. Verify it carries no periodics (the amp fires externally).
         eff = ITEM_EFFECTS.get("8020")
         self.assertEqual(len(eff.periodics), 0,
-                         "Abyssal Mask has no periodic proc — amp fires on other items' magic procs")
+                         "Abyssal Mask has no periodic proc - amp fires on other items' magic procs")
 
     def test_note_in_dps_output(self) -> None:
         from agents.daemon_slayer.dps import compute_dps
@@ -4530,7 +4530,7 @@ class NavoriFlickerbladeTests(unittest.TestCase):
     """Navori Flickerblade (6675) Bring It Down every-3rd-attack level-scaling physical proc.
 
     Note: batch 35 mistakenly keyed this as "6672" (Kraken Slayer's DDragon ID),
-    silently overwriting Kraken Slayer. Fixed in batch 41 — now correctly at "6675".
+    silently overwriting Kraken Slayer. Fixed in batch 41 - now correctly at "6675".
     """
 
     @classmethod
@@ -4776,7 +4776,7 @@ class Batch37TrueDamageTests(unittest.TestCase):
         self.assertAlmostEqual(proc.resolve_damage(ctx), 20.0, places=4)
 
     def test_darksteel_talons_true_bypasses_armor(self) -> None:
-        # TRUE procs ignore armor — DPS with 200 armor should equal DPS with 0 armor
+        # TRUE procs ignore armor - DPS with 200 armor should equal DPS with 0 armor
         from agents.daemon_slayer.dps import compute_dps
         dps_no_armor = compute_dps(
             self.snap, "Jinx", level=11, item_ids=["443054"], target_armor=0.0
@@ -4872,7 +4872,7 @@ class Batch37TrueDamageTests(unittest.TestCase):
                               target_armor=0.0, target_max_hp=3000.0)
         dps_high = compute_dps(self.snap, "Jinx", level=11, item_ids=["443090"],
                                target_armor=300.0, target_max_hp=3000.0)
-        # AA DPS drops, but the 0.7% HP true proc doesn't — difference should be small
+        # AA DPS drops, but the 0.7% HP true proc doesn't - difference should be small
         # compared to a physical item at same armor swing
         dps_bork_low = compute_dps(self.snap, "Jinx", level=11, item_ids=["3153"],
                                    target_armor=0.0, target_max_hp=3000.0)
@@ -4934,7 +4934,7 @@ class Batch38GiantSlayerSchemaTests(unittest.TestCase):
     def test_giant_slayer_multiplier_zero_when_caster_higher(self) -> None:
         from agents.daemon_slayer.effects import total_giant_slayer_multiplier
         eff = [ITEM_EFFECTS["4015"]]
-        # Caster has 3000 HP, target has 2000 HP — no amp
+        # Caster has 3000 HP, target has 2000 HP - no amp
         result = total_giant_slayer_multiplier(eff, target_max_hp=2000.0, caster_max_hp=3000.0)
         self.assertAlmostEqual(result, 1.0, places=6)
 
@@ -5032,7 +5032,7 @@ class Batch38ActiveItemTests(unittest.TestCase):
 
     def test_wooglets_dps_lift_with_ap_proc_item(self) -> None:
         # ap_amp_pct only boosts DPS when an AP-scaling proc item is present.
-        # Nashor's Tooth (3115) has a per-attack AP proc — Wooglet's 50% AP amp
+        # Nashor's Tooth (3115) has a per-attack AP proc - Wooglet's 50% AP amp
         # should meaningfully boost Nashor's contribution.
         from agents.daemon_slayer.dps import compute_dps
         dps_nashor = compute_dps(self.snap, "Lux", level=11, item_ids=["3115"])
@@ -5167,7 +5167,7 @@ class Batch39MRReductionSchemaTests(unittest.TestCase):
 
     def test_bloodletters_dps_lift_vs_magic_proc_target(self) -> None:
         from agents.daemon_slayer.dps import compute_dps
-        # Blackfire Torch (2503) has an AP-based magical proc — pair with Bloodletter's
+        # Blackfire Torch (2503) has an AP-based magical proc - pair with Bloodletter's
         dps_bare = compute_dps(self.snap, "Lux", level=11, target_mr=50.0,
                                item_ids=["2503"])
         dps_with = compute_dps(self.snap, "Lux", level=11, target_mr=50.0,
@@ -5197,7 +5197,7 @@ class Batch39MRReductionSchemaTests(unittest.TestCase):
 
     def test_divine_sunderer_arena_dedup_with_sr(self) -> None:
         from agents.daemon_slayer.effects import collect_effects
-        # Both Divine Sunderers share "spellblade" key — only one should fire
+        # Both Divine Sunderers share "spellblade" key - only one should fire
         effects = collect_effects(["6632", "446632"])
         self.assertEqual(sum(1 for e in effects if e.unique_passive_key == "spellblade"), 1)
 
@@ -5274,7 +5274,7 @@ class Batch39MRReductionSchemaTests(unittest.TestCase):
 
 
 class Batch40ComponentAndSweepTests(unittest.TestCase):
-    """Phase 4 batch 40 (2026-05-04) — component items + final SR/Arena sweep.
+    """Phase 4 batch 40 (2026-05-04) - component items + final SR/Arena sweep.
 
     3 active promotions reusing existing schemas:
       3035  Last Whisper          armor_pen_pct=0.18
@@ -5381,7 +5381,7 @@ class Batch40ComponentAndSweepTests(unittest.TestCase):
 
 
 class Batch41Arena226MirrorTests(unittest.TestCase):
-    """Phase 4 batch 41 (2026-05-04) — Arena 226xxx mirrors + Kraken/Navori fix.
+    """Phase 4 batch 41 (2026-05-04) - Arena 226xxx mirrors + Kraken/Navori fix.
 
     Key-collision fix: Navori Flickerblade was incorrectly keyed to "6672"
     (Kraken Slayer's DDragon ID) in batch 35, silently overwriting Kraken Slayer.
@@ -5527,7 +5527,7 @@ class Batch41Arena226MirrorTests(unittest.TestCase):
 
 
 class Batch42ArenaMirror222x224x32xTests(unittest.TestCase):
-    """Phase 4 batch 42 — 222xxx/224xxx Arena + 32xxxx ARAM mirrors (35 items)."""
+    """Phase 4 batch 42 - 222xxx/224xxx Arena + 32xxxx ARAM mirrors (35 items)."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -5638,7 +5638,7 @@ class Batch42ArenaMirror222x224x32xTests(unittest.TestCase):
 
 
 class Batch43Arena223MirrorTests(unittest.TestCase):
-    """Phase 4 batch 43 — 223xxx Arena mirrors of SR 3xxx items (58 items)."""
+    """Phase 4 batch 43 - 223xxx Arena mirrors of SR 3xxx items (58 items)."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -5787,7 +5787,7 @@ class Batch43Arena223MirrorTests(unittest.TestCase):
 
 
 class Batch44DPSComponentsAndFullItemsTests(unittest.TestCase):
-    """Batch 44: 19 DPS-contributing items — proc components + full items."""
+    """Batch 44: 19 DPS-contributing items - proc components + full items."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -5923,7 +5923,7 @@ class Batch44DPSComponentsAndFullItemsTests(unittest.TestCase):
 
 
 class Batch45DefensiveItemsAndBootsTests(unittest.TestCase):
-    """Batch 45: 21 items — defensive full items, defensive components, boots."""
+    """Batch 45: 21 items - defensive full items, defensive components, boots."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -6171,10 +6171,10 @@ class Batch47Arena22xAnd32xRemainingTests(unittest.TestCase):
     def test_batch47_defensive_entries(self) -> None:
         expected = [
             "223002", "223067",          "223105", "223111", "223112",
-            # 223069 promoted batch 57: Void Immolation — TRUE Immolate proc
+            # 223069 promoted batch 57: Void Immolation - TRUE Immolate proc
             "223121", "223158", "223172", "223177", "223184", "223193",
             "222065", "222051", "222524", "222526", "222530",
-            # 224403 promoted batch 57: Golden Spatula — Doing Something burn
+            # 224403 promoted batch 57: Golden Spatula - Doing Something burn
                       "322065", "322526", "322530",
             "323002", "323070", "323121",
             "222022", "222141",
@@ -6197,7 +6197,7 @@ class Batch47Arena22xAnd32xRemainingTests(unittest.TestCase):
 
 
 class Batch48Core1xxxComponentsTests(unittest.TestCase):
-    """Phase 4 batch 48 — 1xxx tier-1 component coverage."""
+    """Phase 4 batch 48 - 1xxx tier-1 component coverage."""
 
     # ── Recurve Bow proc ──────────────────────────────────────────────────
 
@@ -6246,14 +6246,14 @@ class Batch48Core1xxxComponentsTests(unittest.TestCase):
 
 
 class Batch49Remaining3xxx2xxxArenaTests(unittest.TestCase):
-    """Phase 4 batch 49 — remaining 3xxx/2xxx boots/components + final Arena pool."""
+    """Phase 4 batch 49 - remaining 3xxx/2xxx boots/components + final Arena pool."""
 
     @classmethod
     def setUpClass(cls) -> None:
         from agents.daemon_slayer.data_loader import DataSnapshot
         cls.snap = DataSnapshot.load()
 
-    # ── Spellslinger's Shoes — dual-pen ──────────────────────────────────
+    # ── Spellslinger's Shoes - dual-pen ──────────────────────────────────
 
     def test_spelllslingers_shoes_dual_pen(self) -> None:
         e = ITEM_EFFECTS["3175"]
@@ -6545,7 +6545,7 @@ class Batch53CritBleedAndSquallTests(unittest.TestCase):
         self.assertAlmostEqual(half, full * 0.5, places=4)
 
     def test_hamstringer_raises_dps_with_crit(self) -> None:
-        # Need crit on the build — pair with IE (3031, adds 25% crit).
+        # Need crit on the build - pair with IE (3031, adds 25% crit).
         bare = compute_dps(self.snap, "Aatrox", level=11, item_ids=["3031"])
         with_hs = compute_dps(
             self.snap, "Aatrox", level=11, item_ids=["3031", "443069"]
@@ -6707,7 +6707,7 @@ class Batch54SwordOfDivineEvTests(unittest.TestCase):
         self.assertGreater(ie_sotd.weighted_dps, ie_only.weighted_dps)
 
     def test_batch54_total_count(self) -> None:
-        # No new entries — 2 items promoted from defensive_only to active.
+        # No new entries - 2 items promoted from defensive_only to active.
         # Total ITEM_EFFECTS count stays at 501.
         self.assertGreaterEqual(len(ITEM_EFFECTS), 501)
 
@@ -6715,7 +6715,7 @@ class Batch54SwordOfDivineEvTests(unittest.TestCase):
 class Batch55DDragonCoverageTests(unittest.TestCase):
     """Batch 55: remaining DDragon purchasable items added as defensive_only.
 
-    Completes DDragon purchasable coverage — every purchasable item with a
+    Completes DDragon purchasable coverage - every purchasable item with a
     gold price > 0 (excluding 9xxx Quickplay and 550xxx cosmetics) now has
     an ITEM_EFFECTS entry.
     """
@@ -6828,12 +6828,12 @@ class Batch56CasterHpApAmpTests(unittest.TestCase):
         self.assertGreater(rab_dem.weighted_dps, rab.weighted_dps)
 
     def test_batch56_count_unchanged(self) -> None:
-        # 1 promotion from defensive_only to active — count stays >= 547.
+        # 1 promotion from defensive_only to active - count stays >= 547.
         self.assertGreaterEqual(len(ITEM_EFFECTS), 547)
 
 
 class Batch57VoidImmolationGoldenSpatulaTests(unittest.TestCase):
-    """Phase 4 batch 57 — Void Immolation (223069) + Golden Spatula (224403) promotions."""
+    """Phase 4 batch 57 - Void Immolation (223069) + Golden Spatula (224403) promotions."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -6874,7 +6874,7 @@ class Batch57VoidImmolationGoldenSpatulaTests(unittest.TestCase):
 
     def test_223069_unique_passive_deduplication(self) -> None:
         # Both Void Immolation and Sunfire Aegis carry unique_passive_key="immolate"
-        # — the engine should only apply one Immolate proc when both are in build.
+        # - the engine should only apply one Immolate proc when both are in build.
         with_both = compute_dps(
             self.snap, "Malphite", level=11, item_ids=["3068", "223069"]
         )
@@ -6922,12 +6922,12 @@ class Batch57VoidImmolationGoldenSpatulaTests(unittest.TestCase):
         self.assertGreater(with_spat.weighted_dps, bare.weighted_dps)
 
     def test_batch57_count_unchanged(self) -> None:
-        # 2 promotions from defensive_only to active — total stays >= 547.
+        # 2 promotions from defensive_only to active - total stays >= 547.
         self.assertGreaterEqual(len(ITEM_EFFECTS), 547)
 
 
 class Batch58DarksteelTalonsArmorScalingTests(unittest.TestCase):
-    """Phase 4 batch 58 — caster_bonus_armor field + Darksteel Talons full formula."""
+    """Phase 4 batch 58 - caster_bonus_armor field + Darksteel Talons full formula."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -6976,7 +6976,7 @@ class Batch58DarksteelTalonsArmorScalingTests(unittest.TestCase):
 
 
 class Batch59BastionbreakerLethScalingTests(unittest.TestCase):
-    """Phase 4 batch 59 — caster_lethality + Bastionbreaker Shaped Charge."""
+    """Phase 4 batch 59 - caster_lethality + Bastionbreaker Shaped Charge."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -7022,7 +7022,7 @@ class Batch59BastionbreakerLethScalingTests(unittest.TestCase):
 
 
 class Batch60RealityFractureVoidmitesTests(unittest.TestCase):
-    """Phase 4 batch 60 — Reality Fracture (447102) ZZ'Rot Voidmites promotion."""
+    """Phase 4 batch 60 - Reality Fracture (447102) ZZ'Rot Voidmites promotion."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -7067,7 +7067,7 @@ class Batch60RealityFractureVoidmitesTests(unittest.TestCase):
 
 
 class Batch61ZazzakBloodsongTests(unittest.TestCase):
-    """Phase 4 batch 61 — Zaz'Zak's Realmspike (3871) + Bloodsong (3877) promotion."""
+    """Phase 4 batch 61 - Zaz'Zak's Realmspike (3871) + Bloodsong (3877) promotion."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -7167,7 +7167,7 @@ class Batch61ZazzakBloodsongTests(unittest.TestCase):
 
 
 class Batch62CrueltyWatchThemFallTests(unittest.TestCase):
-    """Phase 4 batch 62 — Cruelty Arena (447109) + SR (667109) promotion."""
+    """Phase 4 batch 62 - Cruelty Arena (447109) + SR (667109) promotion."""
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -7252,10 +7252,10 @@ class Batch62CrueltyWatchThemFallTests(unittest.TestCase):
 
 
 class Batch63BlockedItemPromotionsTests(unittest.TestCase):
-    """Batch 63 — 3 previously-blocked items promoted using binding-constraint CDs.
+    """Batch 63 - 3 previously-blocked items promoted using binding-constraint CDs.
 
-    * Hellfire Hatchet (4017): Char 15s CD — hp_diff + lethality scaling
-    * Fiendhunter Bolts (2512): Opening Barrage 45s CD — 3×crit-bonus attacks
+    * Hellfire Hatchet (4017): Char 15s CD - hp_diff + lethality scaling
+    * Fiendhunter Bolts (2512): Opening Barrage 45s CD - 3×crit-bonus attacks
     * Innervating Locket (447104): Fill the Soul bonus_ap_stacked midpoint
     """
 
@@ -7371,36 +7371,36 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         # 0.71.0 = s186 Phase 5.5 per-champion combo_sequence overrides;
         # 0.72.0 = s187 Phase 4e per-(champion, key) form_index overrides;
         # 0.73.0 = s188 Phase 5.6 per-attack on-hit proc damage in burst AAs;
-        # 0.74.0 = s189 Phase 5.7 Spellblade in burst — armed by ability cast,
+        # 0.74.0 = s189 Phase 5.7 Spellblade in burst - armed by ability cast,
         #          consumed by next AA (Trinity Force / Lich Bane / ER / Iceborn /
         #          Dusk+Dawn / Divine Sunderer / Sheen / Bloodsong + Arena mirrors);
-        # 0.75.0 = s190 Phase 5.8 Sundered Sky Lightshield Strike in burst —
+        # 0.75.0 = s190 Phase 5.8 Sundered Sky Lightshield Strike in burst -
         #          same arm-consume model, capped at 1 proc per combo (8s real CD);
         # 0.76.0 = s191 Phase 5.9 per-(champion, key) damage block_index
-        #          overrides — Cassi E poisoned amp, Veigar R execute max,
+        #          overrides - Cassi E poisoned amp, Veigar R execute max,
         #          Anivia E chilled amp, Diana W all-orbs, Brand W CC'd, etc.
-        # 0.77.0 = s192 Phase 5.9.5 token-variant block_index for Akali R —
+        # 0.77.0 = s192 Phase 5.9.5 token-variant block_index for Akali R -
         #          R1 → block 0 (base + bonus-AD), R2 → block 2 (max-execute
         #          missing-HP scaling); walker checks canonical token first
         #          then base key.
-        # 0.78.0 = s193 Phase 5.9.6 channeled-ability block_index expansion —
+        # 0.78.0 = s193 Phase 5.9.6 channeled-ability block_index expansion -
         #          8 new champion entries (Alistar E, AurelionSol E,
         #          Fiddlesticks R, MissFortune E, Samira R, Singed Q,
         #          Velkoz R, Syndra R) + Anivia Q extension. Pure data
         #          batch; no resolver/walker code changes.
-        # 0.79.0 = s194 Phase 5.9.7 calibration-follow-up block_index expansion —
+        # 0.79.0 = s194 Phase 5.9.7 calibration-follow-up block_index expansion -
         #          8 more (champion, key) entries closing s193's deferred list
         #          (Corki W/E, Hecarim W/E, Jayce Q/W, Rell R, DrMundo W).
         #          Pure data batch; same per-tick → total / min → max amped
         #          pattern; resolver/walker code unchanged.
-        # 0.80.0 = s195 Phase 5.9.8 multi-hit/charge/recast block_index expansion —
+        # 0.80.0 = s195 Phase 5.9.8 multi-hit/charge/recast block_index expansion -
         #          13 more (champion, key) entries across four sub-patterns:
         #          multi-hit single-target totals (Ahri W, Kaisa Q, Lulu Q,
         #          Sivir Q, Talon W/R, Velkoz W, Ekko Q), fully-charged amps
         #          (Varus Q, Zoe Q, Vladimir E), recast amp (Camille Q),
         #          CC-conditional duration total (Morgana W). Pure data batch.
         # 0.81.0 = s196 Phase 5.9.9 extended multi-hit/condition-amp block_index
-        #          expansion — 17 more (champion, key) entries (14 new
+        #          expansion - 17 more (champion, key) entries (14 new
         #          champions + 3 key extensions on Akali, Cassi, Morgana).
         #          Pattern A multi-hit single-target totals (Akali E, Akshan Q,
         #          Cassi W, Cho'gath E, Draven R, Lillia W, Morgana R,
@@ -7410,7 +7410,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          Kog'Maw R low-HP execute, Pantheon Q charged hurl). Pure
         #          data batch; no walker/resolver/server code changes.
         # 0.82.0 = s197 Phase 5.9.10 assassin/fighter resource amps + utility
-        #          totals — 20 more (champion, key) entries across 18 new
+        #          totals - 20 more (champion, key) entries across 18 new
         #          champions (registry 49 → 67). Pattern A multi-hit/channel/mark
         #          totals (Aatrox W, Hwei R, LeBlanc Q/E, Lucian R, Mel Q/R,
         #          MonkeyKing R, Naafiri Q/E, MasterYi Q, Smolder W).
@@ -7421,7 +7421,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          multi-charge / multi-fire totals (Poppy R, Rumble E). Pure
         #          data batch; no walker/resolver/server code changes.
         # 0.83.0 = s198 Phase 5.9.11 bruiser/jungler/utility/marksman block_index
-        #          expansion — 20 more (champion, key) entries (17 new
+        #          expansion - 20 more (champion, key) entries (17 new
         #          champions + 2 key extensions on existing Sion and Vladimir;
         #          XinZhao contributes 2 entries Q+W). Registry 67 → 84
         #          champions. Pattern A multi-hit single-target totals
@@ -7433,7 +7433,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          ticks, Vladimir W full Sanguine Pool, Viktor R full
         #          Chaos Storm channel). Pure data batch; no walker/resolver/
         #          server code changes.
-        # 0.84.0 = s199 Phase 5.9.12 — 17 more (champion, key) entries (6 new
+        # 0.84.0 = s199 Phase 5.9.12 - 17 more (champion, key) entries (6 new
         #          champions: Ashe/Shaco/Shen/Swain/Tristana/Xayah + 11 key
         #          extensions on Aatrox/Fiddlesticks/Karthus/Nautilus/Nunu/
         #          Samira/Sejuani/Talon/Udyr/Viktor/Zac). Registry 84 → 90
@@ -7449,7 +7449,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          (Sejuani R, Nautilus R). Pattern F execute amp
         #          (Fiddlesticks W low-HP). Pure data batch; no walker/
         #          resolver/server code changes.
-        # 0.85.0 = s200 Phase 5.9.13 rescue batch — 7 more (champion, key)
+        # 0.85.0 = s200 Phase 5.9.13 rescue batch - 7 more (champion, key)
         #          entries closing 4 previously-deferred mechanics: Ambessa
         #          Q/W Drain-stack amp (s196/s197/s198 'form swap' deferral
         #          dissolved on verification), Anivia R Empowered phase
@@ -7462,7 +7462,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          resource-state amps (Ambessa Q, Ambessa W, Nilah Q).
         #          Pattern C channel commit (Anivia R). Registry 90 → 91
         #          champions, 120 → 127 entries. Pure data batch.
-        # 0.86.0 = s201 Phase 5.9.14 block_index expansion — 16 more
+        # 0.86.0 = s201 Phase 5.9.14 block_index expansion - 16 more
         #          (champion, key) entries across 13 new champions (Fizz/
         #          Galio/Garen/Graves/Janna/Jhin/Kennen/Taliyah/Teemo/Viego/
         #          Xerath/Yasuo/Ziggs, 3 with two keys: Jhin Q+R, Teemo
@@ -7473,7 +7473,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          totals (Fizz R, Garen E, Teemo R). Pattern D resource/
         #          positional amps (Xerath W, Yasuo E). Registry 91 → 104
         #          champions, 127 → 143 entries.
-        # 0.87.0 = s202 Phase 5.9.15 block_index expansion — 18 more
+        # 0.87.0 = s202 Phase 5.9.15 block_index expansion - 18 more
         #          (champion, key) entries: 6 truly-new champions
         #          (Gangplank, Gnar, KSante, RekSai, Vayne, Yunara) + 12
         #          key extensions on existing (Zoe W, Akshan R,
@@ -7496,7 +7496,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          Sona Q (sum-of-blocks), Kayle E (same Phase 4a parser
         #          limit as s201 Kindred E). Registry 104 → 110 champions,
         #          143 → 161 entries. Pure data batch.
-        # 0.88.0 = s203 Phase 5.9.16 block_index expansion — 12 more
+        # 0.88.0 = s203 Phase 5.9.16 block_index expansion - 12 more
         #          (champion, key) entries: 5 truly-new champions
         #          (Blitzcrank, Gwen, Kled, LeeSin, Thresh) + 5 key
         #          extensions on existing (Diana R, Jax R, Kennen W,
@@ -7504,18 +7504,18 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          single-target totals (Diana R, Gwen R, Kled Q, Kled E,
         #          Vladimir Q), (B) resource-state amps (Smolder E, also
         #          Vladimir Q via Crimson Rush), (C) active-cast vs
-        #          passive-zap split (Blitzcrank R, Kennen W, Jax R —
+        #          passive-zap split (Blitzcrank R, Kennen W, Jax R -
         #          engine pre-s203 was scoring the passive zap / mark /
         #          3rd-AA as the R cast value), (D) max-charge condition
         #          amp (Kled R filtered), (E) missing-HP amp layered on
-        #          s187 form_index (LeeSin Q — first NET-damage
+        #          s187 form_index (LeeSin Q - first NET-damage
         #          composition of block_index with form_index registry),
-        #          (F) empty-block-0 fix (Thresh E — first instance of
+        #          (F) empty-block-0 fix (Thresh E - first instance of
         #          this pattern; raw block 0 evaluates to 0 via unparsed-
         #          only soul scaling, registry routes past it). 4 entries
         #          with non-damage prefix blocks (Diana R, Kled Q, Kled R,
         #          Vladimir Q). Reverts 1 prior skip (Smolder E s198/s202
-        #          Meraki Minimum schema label — same operator-commit
+        #          Meraki Minimum schema label - same operator-commit
         #          framing as Smolder Q s202 reintroduction). 8 deliberate
         #          skips documented inline (DrMundo Q, Caitlyn Q/R, Ezreal
         #          R, Nocturne Q/E, Orianna Q, Pantheon R, Trundle Q/R,
@@ -7525,7 +7525,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          Belveth R missing-HP, Riven R form 1, Qiyana Q form).
         #          Registry 110 → 115 champions, 161 → 173 entries. Pure
         #          data batch.
-        # 0.89.0 = s204 Phase 5.9.17 block_index + form_index expansion —
+        # 0.89.0 = s204 Phase 5.9.17 block_index + form_index expansion -
         #          8 new (champion, key) entries (2 truly-new champions
         #          Nidalee + Seraphine + 6 key extensions on existing:
         #          Evelynn Q, Gwen Q, KSante W, Riven R, Syndra W, Zoe E)
@@ -7535,24 +7535,24 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          (KSante W max-charge Path Maker), (C) champion-vs-minion
         #          amp (Seraphine Q Maximum Champion Damage), (D) execute
         #          amp layered on form_index (Nidalee Q low-HP cougar
-        #          Takedown — second NET-damage layering after s203 LeeSin
+        #          Takedown - second NET-damage layering after s203 LeeSin
         #          Q), (E) target-state amp (Zoe E sleep-procced Maximum
         #          Mixed Damage), (F) form_index seed expansion (Riven R
-        #          form 1 Wind Slash + block 1 max-missing-HP execute —
+        #          form 1 Wind Slash + block 1 max-missing-HP execute -
         #          first new champion added to form_index registry since
         #          s187, closes s203 carry-forward 'Riven form_index seed
         #          needed'). Riven form 0 has zero damage blocks so no
         #          information loss from routing to form 1. Registry 115
         #          → 117 champions, 173 → 181 entries. Pure data batch.
         # 0.90.0 = s205 Phase 5.9.18 form_index + block_index layered
-        #          expansion — 4 new (champion, key) block_index entries
+        #          expansion - 4 new (champion, key) block_index entries
         #          (1 new champion Qiyana + 3 key extensions on existing:
         #          Hwei W, Renekton E, Shaco W) + 3 new form_index seeds
         #          (Qiyana Q=1, AurelionSol R=1, Renekton E=1). Three
         #          sub-patterns: (A) operator-commits-to-resource form
         #          layer (Qiyana Q elemental empowered = form 1 + block 2,
         #          AurelionSol R The Skies Descend = form 1, Renekton E
-        #          full-Fury combo = form 1 + block 3 — closes Renekton
+        #          full-Fury combo = form 1 + block 3 - closes Renekton
         #          Q/W/E full-Fury coverage after s197), (B) multi-hit
         #          single-target totals (Hwei W3 Stirring Lights 3 lights
         #          converging = block 1 Maximum Magic Damage = 3× block 0),
@@ -7584,7 +7584,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          available.
         # 0.92.0 = s207 Phase 5.9.20 sum-of-blocks schema lift. Closes the
         #          s205+s206 carry-forward "sum-of-blocks bucket warranted
-        #          soon — 10+ candidates queued". block_index_overrides
+        #          soon - 10+ candidates queued". block_index_overrides
         #          value type widens from int to int | list[int]; lists
         #          express "operator commits to landing every component"
         #          where the realistic single-target damage is the sum
@@ -7595,10 +7595,10 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          per element. server _parse_block_index decoder accepts
         #          JSON arrays alongside ints. Seed entries (4): Camille
         #          W=[0,1] (Tactical Sweep base + Outer Cone Bonus on
-        #          in-cone target — 2-block sum), Malphite W=[2,3] (active
-        #          cast + first empowered AA — 2-block sum), Heimerdinger
+        #          in-cone target - 2-block sum), Malphite W=[2,3] (active
+        #          cast + first empowered AA - 2-block sum), Heimerdinger
         #          W=[0,1,1,1,1] (Initial + 4× Subsequent rockets focused
-        #          on one non-minion — sum with index repetition expresses
+        #          on one non-minion - sum with index repetition expresses
         #          the 4× multiplier elegantly), Katarina R=[1,3] (full
         #          Death Lotus on single target = max physical + max magic
         #          dagger volleys both summed). Backward-compat: existing
@@ -7608,7 +7608,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          data batch consuming the s207 schema lift. Adds 4 new
         #          (champion, key) entries from s207's queued candidate
         #          list: Thresh E=[1,2] (Maximum Bonus Magic at full Souls
-        #          + canonical Magic Damage — extends s203's single-int
+        #          + canonical Magic Damage - extends s203's single-int
         #          {E:2} entry to a list, first int→list lift since the
         #          s207 seed), Sona Q=[0,1] (active Magic Damage + Power
         #          Chord empowered AA), Kalista E=[0,1,1,1,1] (base Rend
@@ -7621,10 +7621,10 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          +84% / Sona Q +16%. Registry 121 → 124 champions.
         # 0.94.0 = s217 Phase 5.9.22 sum-of-blocks data batch (second).
         #          Closes the s215 carry-forward queue. 2 entries:
-        #          Taliyah E=[0,2] (NEW key — Magic Damage initial shard
+        #          Taliyah E=[0,2] (NEW key - Magic Damage initial shard
         #          impact + Total Maximum Detonation Damage aggregate, full
         #          single-target burst when target steps through Unraveled
-        #          Earth), DrMundo W=[1,2] (LIFT from s193's {W: 1} — full
+        #          Earth), DrMundo W=[1,2] (LIFT from s193's {W: 1} - full
         #          channel drain + recast detonation burst). Per-spell raw
         #          lifts: Taliyah E +109%, DrMundo W +25%. Registry 124 →
         #          124 champions (Taliyah gains E key; DrMundo lifted).
@@ -7646,7 +7646,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          zero clean candidates).
         # 0.96.0 = s224 Phase 5.9.24 unmapped-key pass on COVERED
         #          champions. Bel'Veth R=1 (corrects s223's over-
-        #          conservative no-entry call — engine defaults to the
+        #          conservative no-entry call - engine defaults to the
         #          8-dmg block 0, not the 200-dmg recast nuke). Plus 8
         #          _UNIT_TO_FIELD text-drift health-unit variants
         #          (double-space / "the target's" / caster pronoun+name)
@@ -7655,7 +7655,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          Sejuani W / Zac Q / Ambessa Q / …) whose %HP component
         #          was dropped (Trundle R + Fiddle Q were 0 entirely).
         # 0.97.0 = s225 Phase 5.9.25 post-parser-fix block_index sweep.
-        #          Varus W=2 — 'Bonus Magic Damage at Max Stacks' (3x the
+        #          Varus W=2 - 'Bonus Magic Damage at Max Stacks' (3x the
         #          per-Blight-stack value, the 3-stack detonation = the
         #          standard Varus combo). Engine defaulted to block 0
         #          (18-dmg passive on-hit), scoring W at ~7% of real
@@ -7664,9 +7664,9 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         # 0.98.0 = s226 Phase 5.9.26 first form_index coverage sweep
         #          since s205. 3 ADDs: Swain R=1 (Demonflare recast vs
         #          form-0 drain per-tick, A/B 12.5→250), Briar W=1 (form
-        #          0 'Blood Frenzy' has NO damage block — form 1 'Snack
+        #          0 'Blood Frenzy' has NO damage block - form 1 'Snack
         #          Attack' is the whole W), Evelynn E=1 (Empowered
-        #          Whiplash — Eve's canonical Demon-Shade combo).
+        #          Whiplash - Eve's canonical Demon-Shade combo).
         # 0.99.0 = s227 Phase 5.9.27 max_priority audit. 3 ADDs of
         #          universally-established W-first orders the registry
         #          missed: Brand W-E-Q (+18.7%), Fiddlesticks W-E-Q
@@ -7687,7 +7687,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
 
 
 class Batch64MalignanceTests(unittest.TestCase):
-    """Batch 64 (2026-05-05) — Malignance Hatefog promotion via ult-cast schema."""
+    """Batch 64 (2026-05-05) - Malignance Hatefog promotion via ult-cast schema."""
 
     @classmethod
     def setUpClass(cls) -> None:

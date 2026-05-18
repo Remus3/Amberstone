@@ -1,17 +1,17 @@
-"""POST /api/bridge/pending/<task_id>/<action> — operator triage actions.
+"""POST /api/bridge/pending/<task_id>/<action> - operator triage actions.
 
 Companion to the read-only routes_bridge_pending.py (frozen). Provides
 in-dashboard accept/defer/dismiss for entries the bridge_watcher has
 escalated to ops/runtime/bridge_inbox_pending.json.
 
 Actions:
-  - accept   — stamp claimed_by="operator" + claimed_at=now. Visual
+  - accept   - stamp claimed_by="operator" + claimed_at=now. Visual
                indicator only; operator drains via /process-bridge-tasks.
                Watcher auto-clears claims older than 60s, so a dropped
                accept doesn't permanently block the entry.
-  - defer    — extend ttl_at by 24h (resetting any claim). Pushes the
+  - defer    - extend ttl_at by 24h (resetting any claim). Pushes the
                task back in the queue without removing.
-  - dismiss  — remove the task from the pending list. The watcher's
+  - dismiss  - remove the task from the pending list. The watcher's
                processed_ids dedup set already contains the envelope
                key (added when the escalation was first seen), so the
                watcher won't re-add it. Operator should still post a

@@ -4,7 +4,7 @@ Proves the contextual, match-specific BUILD-ORDER planner:
 
   1. Produces a *sequenced* order (not a flat top-N), filling
      ``slots - owned`` positions by greedy forward selection.
-  2. Is match-specific — flipping the enemy context reorders the build
+  2. Is match-specific - flipping the enemy context reorders the build
      (this is the direct regression for "always the same items").
   3. Enforces the hard no-double rule across the whole sequence: the
      fake engine faithfully reproduces the real ``rank.py`` dedup
@@ -15,7 +15,7 @@ Proves the contextual, match-specific BUILD-ORDER planner:
   4. Owned items + engine-down + build-full edge cases match the
      ``dispatch_for_coach`` contract.
 
-No live DS server — ``rank_fn`` is injected with a fake engine.
+No live DS server - ``rank_fn`` is injected with a fake engine.
 """
 from __future__ import annotations
 
@@ -127,7 +127,7 @@ class PlanBasicsTests(unittest.TestCase):
         self.assertIsInstance(res, BuildOrderResult)
         self.assertEqual(len(res.order), 6)
         self.assertEqual([s.slot for s in res.order], [1, 2, 3, 4, 5, 6])
-        # one engine call per slot — this is a *plan*, not a flat top-N
+        # one engine call per slot - this is a *plan*, not a flat top-N
         self.assertEqual(len(eng.calls), 6)
         for s in res.order:
             self.assertIsInstance(s, BuildStep)
@@ -187,7 +187,7 @@ class MatchSpecificityTests(unittest.TestCase):
         high_ids = [s.item_id for s in high.order]
         self.assertNotEqual(
             low_ids, high_ids,
-            "order must change with enemy armor — else 'always the same items'",
+            "order must change with enemy armor - else 'always the same items'",
         )
         # armor-pen items climb when the enemy stacks armor
         self.assertLess(high_ids.index("3033"), low_ids.index("3033"))
@@ -221,11 +221,11 @@ class MatchSpecificityTests(unittest.TestCase):
 
 
 class UniquePassiveNoDoubleTests(unittest.TestCase):
-    """The HARD RULE — no two items sharing a unique passive."""
+    """The HARD RULE - no two items sharing a unique passive."""
 
     def test_flat_call_reproduces_the_bug_planner_must_fix(self):
         # Sanity: a SINGLE engine call with no spellblade owned returns
-        # BOTH Trinity Force AND Essence Reaver — exactly the flat-list
+        # BOTH Trinity Force AND Essence Reaver - exactly the flat-list
         # double-pick the planner exists to prevent.
         eng = FakeEngine()
         out = eng("Ezreal", "carry", level=11, item_ids=[],
@@ -254,7 +254,7 @@ class UniquePassiveNoDoubleTests(unittest.TestCase):
         ids = [s.item_id for s in res.order]
         spellblades = [i for i in ids if _CATALOG[i][2] == "spellblade"]
         self.assertEqual(len(spellblades), 1)
-        # the one spellblade is the highest-base (Trinity Force) — greedy
+        # the one spellblade is the highest-base (Trinity Force) - greedy
         # took it first, then the family was locked
         self.assertEqual(spellblades[0], "3078")
 
@@ -388,7 +388,7 @@ def _disp_response():
 
 
 class DispatchIntegrationTests(unittest.TestCase):
-    """Opt-in wiring in coach_integration.archetype_dispatch — the
+    """Opt-in wiring in coach_integration.archetype_dispatch - the
     per-tick path must stay one engine call (build-order is opt-in)."""
 
     from unittest import mock as _m

@@ -1,4 +1,4 @@
-"""Phase 2 receiver — consumes kind=lesson envelopes from the bridge log,
+"""Phase 2 receiver - consumes kind=lesson envelopes from the bridge log,
 runs the auto-gates, and either auto-handles (reject / skipped_neg_match)
 or surfaces the lesson to Claude for triage (apply / queue / discard).
 
@@ -167,7 +167,7 @@ def _ack(lesson_id: str, decision: str, rationale: str,
 
 
 # ---------------------------------------------------------------------------
-# Pull — finds new lessons, runs cheap gates, returns triage queue
+# Pull - finds new lessons, runs cheap gates, returns triage queue
 # ---------------------------------------------------------------------------
 
 @dataclass
@@ -248,7 +248,7 @@ def pull() -> PullReport:
 
 
 # ---------------------------------------------------------------------------
-# Post-decision — finalize one lesson with Claude's triage outcome
+# Post-decision - finalize one lesson with Claude's triage outcome
 # ---------------------------------------------------------------------------
 
 _FM_RE = re.compile(r"^---\n(.*?)\n---\n(.*)$", re.DOTALL)
@@ -264,7 +264,7 @@ def _strip_origin_frontmatter(full_md: str) -> str:
 
 
 def _short_id(lesson_id: str) -> str:
-    """Last 6 hex chars of the deterministic prefix — enough for filename
+    """Last 6 hex chars of the deterministic prefix - enough for filename
     disambiguation without dragging the unix-ts suffix in."""
     parts = lesson_id.split("-")
     if len(parts) >= 2 and re.fullmatch(r"[0-9a-f]+", parts[1]):
@@ -320,11 +320,11 @@ def _build_memory_file(envelope: dict, decision: str,
 
 
 def _index_pointer(filename: str, fm_name: str, description: str) -> str:
-    """One-line MEMORY.md entry per CLAUDE.md format: '- [Title](file.md) — hook'."""
+    """One-line MEMORY.md entry per CLAUDE.md format: '- [Title](file.md) - hook'."""
     hook = description.strip().splitlines()[0] if description else fm_name
     if len(hook) > 110:
         hook = hook[:107] + "..."
-    return f"- [{fm_name}]({filename}) — {hook}\n"
+    return f"- [{fm_name}]({filename}) - {hook}\n"
 
 
 def _append_to_memory_index(line: str) -> bool:

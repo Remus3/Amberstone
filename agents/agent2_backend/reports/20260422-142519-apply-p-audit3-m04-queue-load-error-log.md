@@ -3,7 +3,7 @@
 - **Task ID**: t-8a01ca7b5dae
 - **Date**: 2026-04-22
 - **Agent**: agent2 (Backend/Charter)
-- **Result**: NO-OP — fix already applied
+- **Result**: NO-OP - fix already applied
 
 ## Finding
 
@@ -27,7 +27,7 @@ And after the loop (lines 203–208):
 ```python
 if corrupt:
     logger.error(
-        "task_queue.jsonl: %d corrupt line(s) dropped on load — "
+        "task_queue.jsonl: %d corrupt line(s) dropped on load - "
         "consider filing an audit-queue-corruption task",
         corrupt,
     )
@@ -36,11 +36,11 @@ if corrupt:
 ## Verification
 
 - Per-line `logger.error` includes `lineno`, the `JSONDecodeError` message, and
-  `line[:120]` — exactly what the proposal requires.
+  `line[:120]` - exactly what the proposal requires.
 - The `continue` after logging keeps boot alive (no stall).
 - Post-loop aggregate error gives ops a count and a remediation hint.
 - No code changes were made; the fix predates this dispatch.
 
 ## Status
 
-**COMPLETED (no-op)** — proposal P-audit3-m04 fully satisfied.
+**COMPLETED (no-op)** - proposal P-audit3-m04 fully satisfied.

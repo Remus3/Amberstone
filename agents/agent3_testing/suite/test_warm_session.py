@@ -1,4 +1,4 @@
-"""Unit tests for Agent 7 warm session — mocked Anthropic client.
+"""Unit tests for Agent 7 warm session - mocked Anthropic client.
 
 No real network calls. Verify:
   * Lazy client instantiation on first send.
@@ -128,7 +128,7 @@ def test_warm_spawn_factory_matches_cli_envelope() -> None:
     assert env["ok"] is True
     assert env["substrate"] == "warm_agent7_session"
     assert env["exit_code"] == 0
-    # Same shape as spawn_ephemeral_llm — .result.result carries the text
+    # Same shape as spawn_ephemeral_llm - .result.result carries the text
     assert env["result"]["type"] == "result"
     assert env["result"]["result"] == '{"reply":"from warm","filed":[]}'
     assert env["result"]["usage"]["input_tokens"] == 12

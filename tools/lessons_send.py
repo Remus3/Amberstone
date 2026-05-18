@@ -1,4 +1,4 @@
-"""lessons_send.py — fire kind=lesson envelopes for eligible memories.
+"""lessons_send.py - fire kind=lesson envelopes for eligible memories.
 
 Operator-driven; not on a /loop. Run after flipping `cross_project: true`
 on memories you want to share with the peer.
@@ -11,7 +11,7 @@ Usage:
 Reads cross_project + applies_when frontmatter (per Phase 1 §1), builds
 envelopes per §2, dedupes against ops/runtime/lessons_sent.jsonl, then
 POSTs each via core.bridge.send(). On success the ledger row carries
-`ack_received: False` until the peer's kind=result reply lands — track
+`ack_received: False` until the peer's kind=result reply lands - track
 that via the ack-watcher (TBD) or by grepping bridge log for
 `in_reply_to=<lesson_id>`.
 """

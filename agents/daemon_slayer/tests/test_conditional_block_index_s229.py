@@ -1,8 +1,8 @@
-"""Phase 5.9.29 (s229, 2026-05-16) — pure-data conditional seed-expansion
+"""Phase 5.9.29 (s229, 2026-05-16) - pure-data conditional seed-expansion
 + vocab generalization (operator pivot from literal B-2).
 
 Operator pivoted: literal B-2 (per-tick HP/CC threaded into the item-
-ranking call) was found to be a mis-feature — it would flicker build
+ranking call) was found to be a mis-feature - it would flicker build
 recommendations on a combat-moment signal, and the operator-commits
 default (Part 1) is the *correct* model for item-build ranking. So the
 schema's value is already delivered; continue option B's spirit via the
@@ -12,7 +12,7 @@ VOCAB GENERALIZED: ``_BLOCK_INDEX_CONDITIONS`` condition key
 ``target_no_cc`` → ``target_no_setup``. s228 scoped the non-HP condition
 to its CC-family flagships (Zoe sleep / Evelynn charm). The expansion
 candidates (Anivia E vs *Chilled*, Brand W vs *ablaze*) share the
-identical modeling semantic regardless of debuff *type* — the operator's
+identical modeling semantic regardless of debuff *type* - the operator's
 own ability applied an amp-enabling target state; ``"default"`` is the
 committed/canonical amped block, the condition key is the un-amped
 downgrade when that state is absent. 5+ concrete uses → the honest
@@ -21,24 +21,24 @@ The 2 s228 entries (Zoe E / Evelynn Q) were migrated; the engine
 validator now rejects the old ``target_no_cc`` key (a stale one fails
 loudly).
 
-3 CONVERSIONS of already-shipped unconditional entries — all provably
+3 CONVERSIONS of already-shipped unconditional entries - all provably
 Part-1 no-op (``"default"`` branch == the prior int, byte-identical),
 verified per-rank vs Meraki 16.10.1:
-  * Morgana W = {"default": 3, "target_full_hp": 2}  — Tormented Shadow
+  * Morgana W = {"default": 3, "target_full_hp": 2}  - Tormented Shadow
         block 3 'Maximum Total' = exactly 2.7× block 2 'Minimum Total'
         (the <50%-max-HP amp; both full-duration channel totals so the
         downgrade is same-shape). s195's "vs rooted" framing was
         imprecise: the amp is HP-threshold; the Q-root is the operator's
         setup to hold the target in the zone.
-  * Anivia E  = {"default": 1, "target_no_setup": 0} — Frostbite block 1
+  * Anivia E  = {"default": 1, "target_no_setup": 0} - Frostbite block 1
         'Enhanced' = exactly 2.0× block 0 'Magic Damage' vs a Chilled
-        target (Anivia's own Q/passive chill — same setup model as Zoe).
-  * Brand W   = {"default": 1, "target_no_setup": 0} — Pillar of Flame
+        target (Anivia's own Q/passive chill - same setup model as Zoe).
+  * Brand W   = {"default": 1, "target_no_setup": 0} - Pillar of Flame
         block 1 'Increased' = exactly 1.25× block 0 vs an ablaze target
         (Brand's own Blaze passive).
 
 Deferred (registry _meta): Veigar R (clean target_full_hp execute but
-the canonical stable-int test fixture — converting cascades fixture
+the canonical stable-int test fixture - converting cascades fixture
 repoints), Bel'Veth R (continuous in-block missing-HP, not a discrete
 block pair), Cho'Gath R (single block), Cassiopeia E (irregular Meraki
 array), Brand R / Aatrox W.
@@ -109,7 +109,7 @@ class S228MigrationTests(unittest.TestCase):
     def test_evelynn_Q_migrated_R_preserved(self) -> None:
         # s229's durable property: Q migrated to the target_no_setup
         # key. R was a plain int 1 at s229; s231 converted it to a
-        # target_full_hp execute conditional (default=1 == that int —
+        # target_full_hp execute conditional (default=1 == that int -
         # provable Part-1 no-op, so s229's intent is preserved).
         m, _ = get_block_index_for("Evelynn")
         self.assertEqual(m["Q"], {"default": 5, "target_no_setup": 0})
@@ -159,7 +159,7 @@ class S229ConversionShapeTests(unittest.TestCase):
 
 class S229ZeroRegressionTests(unittest.TestCase):
     """Each conversion's registry conditional resolves byte-identical to
-    the equivalent forced ``default`` int — the schema lift adds zero
+    the equivalent forced ``default`` int - the schema lift adds zero
     numeric change to item ranking (the whole point of the pivot)."""
 
     @classmethod
@@ -224,7 +224,7 @@ class S229ZeroRegressionTests(unittest.TestCase):
 
     def test_brand_W_load_bearing(self) -> None:
         # default (block 1, +25% ablaze) strictly exceeds engine-default
-        # block 0 — the conditional entry is not a no-op vs the un-mapped
+        # block 0 - the conditional entry is not a no-op vs the un-mapped
         # baseline (it's a no-op only relative to the prior int entry).
         reg, _ = self._spell("Brand", "W")
         b0, _ = self._spell(

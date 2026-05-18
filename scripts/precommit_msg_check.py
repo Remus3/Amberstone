@@ -1,11 +1,11 @@
 """
-scripts/precommit_msg_check.py — commit-msg hook (Conventional Commits).
+scripts/precommit_msg_check.py - commit-msg hook (Conventional Commits).
 
-# arch: phase 7 (2026-05-09) — make Conventional Commits subject lines mechanical
+# arch: phase 7 (2026-05-09) - make Conventional Commits subject lines mechanical
 
 Validates the staged commit's subject line against the Conventional Commits
 shape: `<type>(<scope>)?!?: <description>`. The repo already follows this
-convention by hand (see `git log` — every commit since s125 matches);
+convention by hand (see `git log` - every commit since s125 matches);
 this hook prevents drift.
 
 The hook only inspects the SUBJECT line. Body and trailers are unrestricted.

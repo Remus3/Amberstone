@@ -1,5 +1,5 @@
 """
-tests/test_augment_recommender.py — CLAUDE #88 Task 4 + 5.
+tests/test_augment_recommender.py - CLAUDE #88 Task 4 + 5.
 
 Recommender math (Laplace / n/(n+K) shrinkage / greedy synergy), the §4
 external blend at its three regimes (w=0 / mid / w→1), own-history scan

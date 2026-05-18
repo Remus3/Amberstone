@@ -5,11 +5,11 @@ Split out of moon_vision_server.py during Phase 2.4. Owns:
 - ``_stats`` dict (per-kind call/error/latency/byte counters).
 - ``_log_ring`` (rolling 80-entry request log).
 - ``_latency_ring`` (rolling 60-entry latency series for sparkline).
-- ``_record(kind, ms, ok, tokens)`` — the single mutator.
-- ``get_stats()`` — snapshot for the /stats endpoint.
+- ``_record(kind, ms, ok, tokens)`` - the single mutator.
+- ``get_stats()`` - snapshot for the /stats endpoint.
 
 Sibling modules (``_frame``, ``_relay``) directly mutate ``_stats[kind]["bytes"]``
-under ``_stats_lock`` to record upload byte totals. Keep that contract — moving
+under ``_stats_lock`` to record upload byte totals. Keep that contract - moving
 those mutations behind setters would just create indirection.
 """
 from __future__ import annotations

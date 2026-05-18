@@ -1,5 +1,5 @@
 """
-tft/tft_live_analysis.py — Vision-based comp coaching with smart round-phase timing.
+tft/tft_live_analysis.py - Vision-based comp coaching with smart round-phase timing.
 Scans at planning phase (~1.5s after round start) and mid-round (~12s).
 Skips combat. Force scan via right-click overrides all timing.
 """
@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional
 logger = logging.getLogger("rc.tft.live")
 _TFT_CHAMPIONS = {
-    # Set 17: Space Gods — confirmed from CommunityDragon PBE
+    # Set 17: Space Gods - confirmed from CommunityDragon PBE
     "Aatrox","Akali","Aurelion Sol","Aurora","Bard","Bel'Veth","Blitzcrank",
     "Briar","Caitlyn","Cho'Gath","Corki","Diana","Ezreal","Fiora","Fizz",
     "Gnar","Gragas","Graves","Gwen","Illaoi","Jax","Jhin","Jinx",
@@ -94,12 +94,12 @@ GRID: A=row4(front), B=row3, C=row2, D=row1(back). Cols 1-7.
 RULES:
 - Shop: read the CHAMPION NAME (large bold text) on each card, NOT the trait/origin tags below it.
 - These are ALL TRAIT NAMES, never champion names: Timebreaker, Space Groove, Dark Star, Anima, N.O.V.A., NOVA, Meeple, Mecha, Conduit, Redeemer, Rogue, Stargazer, Psionic, Shepherd, Vanguard, Primordian, Bastion, Fateweaver, Voyager, Scholar, Bruiser, Defender, Invoker, Quickstriker, Slayer, Vanquisher, Arcanist, Juggernaut, Warden, Gunslinger, Replicator, Ixtal, Yordle, Shadow Isles, Zaun, Bilgewater, Noxus, Freljord, Demacia, Ionia, Targon, Shurima.
-- If you cannot read the champion name clearly, use "unknown" — NEVER output a trait name as a shop unit. If you cannot read the champion name, use "unknown".
+- If you cannot read the champion name clearly, use "unknown" - NEVER output a trait name as a shop unit. If you cannot read the champion name, use "unknown".
 - Use display names. SELL only bench units. BUY only shop units. No guessing.
-- If Board units has entries but they are ALL "unknown", units ARE on board but unidentified — say "board active — units unidentified" in Loss. NEVER say "empty board", "no units", "completely empty", "zero board" when board_units has entries.
-- If Board units is empty at stage 3+, this means the scan happened during COMBAT — do NOT say "no units on board" or "critical deficit". Say "combat scan — board not visible".
+- If Board units has entries but they are ALL "unknown", units ARE on board but unidentified - say "board active - units unidentified" in Loss. NEVER say "empty board", "no units", "completely empty", "zero board" when board_units has entries.
+- If Board units is empty at stage 3+, this means the scan happened during COMBAT - do NOT say "no units on board" or "critical deficit". Say "combat scan - board not visible".
 - UnitPlacement: ONLY units from "Board units" above. NEVER include shop, bench, or suggested units.
-- If Board units shows "unknown", skip those — only position units you can NAME from the board list.
+- If Board units shows "unknown", skip those - only position units you can NAME from the board list.
 - The board canvas shows YOUR current units. Do NOT add units you want the player to buy.
 
 OUTPUT \u2014 9 fields, one line each. NO markdown.
@@ -160,7 +160,7 @@ class TftLiveAnalysis:
             if self._ai_bar: self._ai_bar.notify_scan_scheduled(at_mono)
         except Exception: pass
     def force_scan(self):
-        # arch: phase 7 P2-C — clear stale choices on augment-select force scan
+        # arch: phase 7 P2-C - clear stale choices on augment-select force scan
         # so the fresh vision read produces new advice
         try:
             import json as _j
@@ -188,7 +188,7 @@ class TftLiveAnalysis:
             prev_stage=self._last_round[0]; new_stage=sr[0]
             if prev_stage > 2 and new_stage <= 2 and sr != (0,0):
                 self._known_augments=[]; self._last_placement=""
-                logger.info("New game detected (stage %s→%s) — augments cleared",self._last_round,sr)
+                logger.info("New game detected (stage %s→%s) - augments cleared",self._last_round,sr)
             self._last_round=sr; self._round_start_time=time.time()
             self._scanned_planning=False; self._scanned_mid=False
     def notify_coach_state(self,state): self._coach_state=state
@@ -203,14 +203,14 @@ class TftLiveAnalysis:
                 if self._is_carousel_or_spectate(): time.sleep(2.0); continue
                 if sr in self._AUGMENT_ROUNDS or sr in self._GOD_ROUNDS:
                     # Augment/God rounds: scan once when it starts, then every 20s max
-                    # (was every 5s — too expensive with sonnet)
+                    # (was every 5s - too expensive with sonnet)
                     if (now-self._last_vision)>=20.0: self._last_vision=now; self._run_cycle()
                     time.sleep(2.0); continue
                 ra=now-self._round_start_time if self._round_start_time>0 else 999
                 scan=False
                 if 1.5<=ra<3.5 and not self._scanned_planning:
                     scan=True; self._scanned_planning=True; logger.debug("Vision: planning scan (%.1fs)",ra)
-                # Mid-round scan removed — 1 scan/round is sufficient and halves sonnet cost
+                # Mid-round scan removed - 1 scan/round is sufficient and halves sonnet cost
                 if scan: self._last_vision=now; self._run_cycle()
                 # Notify AI bar when next scan is expected (do after scan check)
                 if self._ai_bar:
@@ -373,7 +373,7 @@ class TftLiveAnalysis:
         _loss = out.get("loss", "") or ""
         if _bu and len(_bu) > 0 and any(_loss.lower().count(w) for w in ["zero board","no units","empty board","no board","critical deficit"]):
             if all(str(u) == "unknown" for u in _bu):
-                out["loss"] = "board active — units unidentified"
+                out["loss"] = "board active - units unidentified"
             else:
                 out["loss"] = "N/A"
         if any(out.get(k)!=self._last_write.get(k) for k in ("comp","buy","sell","unit_placement","unit_swap","loss")):
@@ -412,7 +412,7 @@ def _write(path, data):
                 existing = json.loads(path.read_text(encoding="utf-8"))
                 prev_augs = existing.get("augments") or []
                 if prev_augs:
-                    # Detect new game by stage comparison — reset if stage regressed to <=2
+                    # Detect new game by stage comparison - reset if stage regressed to <=2
                     prev_sr = str(existing.get("stage_round", ""))
                     curr_sr = str(data.get("stage_round", ""))
                     prev_stage = int(prev_sr.split("-")[0]) if "-" in prev_sr else 0

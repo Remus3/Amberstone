@@ -4757,7 +4757,7 @@
           "alt": [
             "Guardbreaker"
           ],
-          "note": "Standard Zed — no HA. Weaker than Mirror Mayhem."
+          "note": "Standard Zed - no HA. Weaker than Mirror Mayhem."
         },
         "Master Yi": {
           "bis": [
@@ -5561,7 +5561,7 @@
       "top4_pct": 55,
       "avg_placement": 3.8,
       "play_rate": 7,
-      "heuristic_note": "Ornn is the unique mechanic — tank items on him always.",
+      "heuristic_note": "Ornn is the unique mechanic - tank items on him always.",
       "source": "aggregator C + TFT guide site Y patch 17.1",
       "display_source": "moba",
       "lv9": [
@@ -5697,7 +5697,7 @@
         "Karma": 2
       },
       "level_plan": "fast_9",
-      "gameplan": "Skip level 8 if possible — go directly to 9. Kindred + Lucian dual AD carry.",
+      "gameplan": "Skip level 8 if possible - go directly to 9. Kindred + Lucian dual AD carry.",
       "augments_best": [
         "Divine Duelist Emblem",
         "Challenger Emblem",
@@ -5710,7 +5710,7 @@
       "top4_pct": 53,
       "avg_placement": 4.0,
       "play_rate": 5,
-      "heuristic_note": "Situational — wants to skip lv8. Strong at lv9, weak on lv8 interim.",
+      "heuristic_note": "Situational - wants to skip lv8. Strong at lv9, weak on lv8 interim.",
       "source": "TFT guide site Y patch 17.1",
       "display_source": "moba",
       "lv9": [
@@ -6834,7 +6834,7 @@
       "top4_pct": 46,
       "avg_placement": 4.3,
       "play_rate": 4,
-      "heuristic_note": "Summoner comp — power scales with total star level on board.",
+      "heuristic_note": "Summoner comp - power scales with total star level on board.",
       "source": "aggregator C patch 17.1",
       "board_placement": [
         {
@@ -7410,7 +7410,7 @@
           "Loot Subscription"
         ]
       },
-      "double_up_note": "Partner: Space Groove vertical. Shared units: Sona, Nami (partner holds both). Your units: LeBlanc, Karma, Aatrox, Fiora, Morgana, Akali — no overlap."
+      "double_up_note": "Partner: Space Groove vertical. Shared units: Sona, Nami (partner holds both). Your units: LeBlanc, Karma, Aatrox, Fiora, Morgana, Akali - no overlap."
     },
     "NOVA Marauders": {
       "tier": "A",
@@ -7493,7 +7493,7 @@
         "NOVA",
         "Marauder"
       ],
-      "heuristic_note": "Ornn tank forge mechanic — give him tank items always.",
+      "heuristic_note": "Ornn tank forge mechanic - give him tank items always.",
       "top4_pct": 56,
       "avg_placement": 3.7,
       "play_rate": 9,
@@ -7806,7 +7806,7 @@
         "Cards",
         "Challenger"
       ],
-      "heuristic_note": "Roll at 3-1 for TF 3-star. Don't overspend — need gold for 8.",
+      "heuristic_note": "Roll at 3-1 for TF 3-star. Don't overspend - need gold for 8.",
       "top4_pct": 55,
       "avg_placement": 3.8,
       "play_rate": 8,
@@ -7958,7 +7958,7 @@
       "emblem_value": [
         "Vanguard"
       ],
-      "heuristic_note": "Requires Guinsoo on LeBlanc — same core requirement as Vanguard LeBlanc.",
+      "heuristic_note": "Requires Guinsoo on LeBlanc - same core requirement as Vanguard LeBlanc.",
       "top4_pct": 49,
       "avg_placement": 4.1,
       "play_rate": 6,
@@ -8121,7 +8121,7 @@
       "emblem_value": [
         "Channeler"
       ],
-      "heuristic_note": "Miss Fortune Channeler mode is default — gives her a trait based on choice.",
+      "heuristic_note": "Miss Fortune Channeler mode is default - gives her a trait based on choice.",
       "top4_pct": 48,
       "avg_placement": 4.2,
       "play_rate": 5,
@@ -8569,7 +8569,7 @@
         "Veigar": 2
       },
       "level_plan": "fast_8",
-      "gameplan": "Psionic trait Yi + Veigar AP. Inconsistent — needs specific Psionic items.",
+      "gameplan": "Psionic trait Yi + Veigar AP. Inconsistent - needs specific Psionic items.",
       "augments_best": [
         "Psionic Emblem",
         "Titanic Force",
@@ -8755,7 +8755,7 @@
       "top4_pct": 72,
       "avg_placement": 3.37,
       "play_rate": 24,
-      "heuristic_note": "Roll at 3-1 for Lissandra 3-star. Do NOT level before hitting 3-star. Viktor is the cap — find him after Lissandra locked in.",
+      "heuristic_note": "Roll at 3-1 for Lissandra 3-star. Do NOT level before hitting 3-star. Viktor is the cap - find him after Lissandra locked in.",
       "ext_avg": 3.37,
       "ext_top4": 72,
       "display_source": "overlay app E",
@@ -9534,7 +9534,7 @@
           "alt": [
             "Dragons Claw"
           ],
-          "note": "Ornn forges 1 item/fight. Give tank items — forge upgrades them."
+          "note": "Ornn forges 1 item/fight. Give tank items - forge upgrades them."
         },
         "Samira": {
           "bis": [
@@ -9575,7 +9575,7 @@
       "top4_pct": 63,
       "avg_placement": 3.87,
       "play_rate": 16,
-      "heuristic_note": "Ornn forge is the core mechanic. Tank items on Ornn always — they get upgraded.",
+      "heuristic_note": "Ornn forge is the core mechanic. Tank items on Ornn always - they get upgraded.",
       "ext_avg": 3.87,
       "ext_top4": 63,
       "display_source": "overlay app E",
@@ -9903,21 +9903,21 @@
         }
       },
       "level_plan": "reroll_1cost",
-      "gameplan": "Reroll comp. Stay lv4-5 and roll at 3-2 for Cho'Gath 3-star and Lissandra 3-star. Both are 1-cost — should hit by 4-1 with normal econ. Do NOT level to 7 before both 3-stars are locked. After 3-stars: level 7 at 4-2, push lv8 at 4-5/5-1 for Karma + Jhin. At 6DS Karma goes Supermassive.",
+      "gameplan": "Reroll comp. Stay lv4-5 and roll at 3-2 for Cho'Gath 3-star and Lissandra 3-star. Both are 1-cost - should hit by 4-1 with normal econ. Do NOT level to 7 before both 3-stars are locked. After 3-stars: level 7 at 4-2, push lv8 at 4-5/5-1 for Karma + Jhin. At 6DS Karma goes Supermassive.",
       "rolldown": {
         "3-2": "Main rolldown at 50g+. Roll for Cho'Gath 3-star first (HP snowball), then Lissandra 3-star. Both 1-cost.",
-        "4-1": "Secondary roll if 3-stars not hit — keep rolling, do NOT level 7 until both locked.",
+        "4-1": "Secondary roll if 3-stars not hit - keep rolling, do NOT level 7 until both locked.",
         "lv7": "Level 7 ONLY after Cho'Gath 3-star AND Lissandra 3-star confirmed.",
         "lv8": "Hard roll for Karma 2-star at lv8, then slot Jhin as win condition."
       },
       "level_ups": {
         "2-1": "Level 4",
         "3-1": "Level 5",
-        "3-2": "ROLL — Cho'Gath 3-star + Lissandra 3-star at 50g+",
+        "3-2": "ROLL - Cho'Gath 3-star + Lissandra 3-star at 50g+",
         "4-1": "Continue rolling if 3-stars not locked",
-        "4-2 post 3-stars": "Level 7 — only after both 3-stars confirmed",
-        "4-5 or 5-1": "Level 8 — Karma + Jhin, full 6DS rolldown",
-        "5-3+": "Level 9 optional — 70g+ and healthy only"
+        "4-2 post 3-stars": "Level 7 - only after both 3-stars confirmed",
+        "4-5 or 5-1": "Level 8 - Karma + Jhin, full 6DS rolldown",
+        "5-3+": "Level 9 optional - 70g+ and healthy only"
       },
       "augment_advice": {
         "prismatic": [
@@ -9947,7 +9947,7 @@
       "top4_pct": 58,
       "avg_placement": 4.1,
       "play_rate": 8,
-      "heuristic_note": "Reroll for Cho'Gath 3-star + Lissandra 3-star before leveling 7. Both 1-cost — roll at 3-2 on 50g. Do NOT level to 7 before both locked. After 3-stars: normal level plan to 8 for Karma + Jhin.",
+      "heuristic_note": "Reroll for Cho'Gath 3-star + Lissandra 3-star before leveling 7. Both 1-cost - roll at 3-2 on 50g. Do NOT level to 7 before both locked. After 3-stars: normal level plan to 8 for Karma + Jhin.",
       "board_placement": [
         {
           "champion": "Cho'Gath",
@@ -9999,7 +9999,7 @@
         }
       ],
       "board_carry": "Karma",
-      "board_notes": "Karma center row 1 — Supermassive black hole covers board. Jhin far corner row 1 — protected 4-shot burst. Cho'Gath front-left — HP snowball through fight.",
+      "board_notes": "Karma center row 1 - Supermassive black hole covers board. Jhin far corner row 1 - protected 4-shot burst. Cho'Gath front-left - HP snowball through fight.",
       "team_code": "0204504604e02002202303b01d000000TFTSet17"
     }
   },
@@ -10910,7 +10910,7 @@
   "_note": "PBE data path -- used when comp_state.json pbe=true",
   "_patch": "17.1",
   "_patch_notes_17.1": {
-    "carousel": "REMOVED — replaced by Realm of the Gods",
+    "carousel": "REMOVED - replaced by Realm of the Gods",
     "realm_of_gods": "Stage X-4 = God offering. Stage 4-7 = God Boon armory.",
     "keywords": {
       "Chill": "Slow",
@@ -10932,7 +10932,7 @@
     "items_nerfed_AP": {
       "Nashors Tooth": "AP 18->15"
     },
-    "encounters": "NOT in 17.1 — returning in 17.2",
+    "encounters": "NOT in 17.1 - returning in 17.2",
     "targeting": "Carries stay on target better (1-hex follow cap)"
   },
   "_bm_source": "TFT guide author X/meta/ patch 17.1"

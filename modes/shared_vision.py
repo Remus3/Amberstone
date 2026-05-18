@@ -23,19 +23,19 @@ logger = logging.getLogger("rc.vision")
 GAME_W, GAME_H = 1920, 1080
 
 _VISION_SERVER = "http://127.0.0.1:8889"
-# AUDIT (2026-04-22): token now resolved via core.vision_token —
+# AUDIT (2026-04-22): token now resolved via core.vision_token -
 # env var RC_VISION_TOKEN, then config/vision_token.txt, then
 # legacy hardcoded default for backward compat.
 from core.vision_token import get_vision_token as _get_vision_token
 _AUTH_TOKEN    = _get_vision_token()
 _FRAME_TIMEOUT = 3.0
 _FRAME_MAX_AGE_S = 8.0   # warn if cached frame older than this
-_FRAME_HARD_AGE_S = 30.0 # REJECT if older than this — prevents API credit
+_FRAME_HARD_AGE_S = 30.0 # REJECT if older than this - prevents API credit
                          # waste when Game-PC agent is down (relay still
                          # serves the last cached frame indefinitely)
 
 # AUDIT (2026-04-22): track consecutive failures so we escalate from
-# DEBUG to WARNING after the issue persists — a silent debug-only log
+# DEBUG to WARNING after the issue persists - a silent debug-only log
 # made "Game-PC agent is dead" invisible until someone spotted the
 # absence of frames in the dashboard.
 _FRAME_FAIL_WARN_STREAK = 3
@@ -65,7 +65,7 @@ def _capture_screen() -> Optional[str]:
             return None
         age = max(0.0, time.time() - float(data.get("ts", 0)))
         if age > _FRAME_HARD_AGE_S:
-            # Reject outright — Sonnet would burn credits analyzing a
+            # Reject outright - Sonnet would burn credits analyzing a
             # game state that's 30+ s old. Treat as if the frame doesn't
             # exist; coach loops should skip the vision tick this turn.
             logger.warning(
@@ -106,7 +106,7 @@ class GameVisionReader:
     Subclasses provide PROMPT and override _postprocess(raw_dict).
     Always uses claude-sonnet-4-6 for best small-text OCR.
 
-    AUDIT 2026-04-28 (5.6): pass `state_summary` to read() — a short
+    AUDIT 2026-04-28 (5.6): pass `state_summary` to read() - a short
     text snapshot of HUD-relevant facts the LCU/live-client API
     already gives us (gold bucket, level, dead-count, items hash, etc.)
     When that summary equals the previous successful read's, the cached
@@ -124,7 +124,7 @@ class GameVisionReader:
     # Subclasses MUST override
     PROMPT: str = ""
 
-    # Tiered-routing configuration — set per-instance or per-subclass.
+    # Tiered-routing configuration - set per-instance or per-subclass.
     # TIERED_FIELDS: all fields the mode needs (OCR-able + semantic).
     # TIERED_VALIDATORS: {field: callable(value) -> bool} overrides on top
     #   of vision_routing.DEFAULT_VALIDATORS.  Semantic fields should use
@@ -168,7 +168,7 @@ class GameVisionReader:
 
         Routes through core.vision_routing.read_or_escalate using
         self.TIERED_FIELDS and self.TIERED_VALIDATORS.  Sonnet is the
-        escalate_fn — it runs in bulk for all fields OCR couldn't validate,
+        escalate_fn - it runs in bulk for all fields OCR couldn't validate,
         using self.PROMPT unchanged.  Results are merged (OCR wins for
         numeric fields it validates; Sonnet fills the rest).
 
@@ -219,7 +219,7 @@ class GameVisionReader:
         # singleton (unified Moon-PC client) instead of lan_bridge.  lan_bridge
         # is an HTTPServer module whose import-time `serve_forever()` call
         # blocks (or raises OSError if port 8888 is already bound by the
-        # running lan_bridge process) — it was never a functioning client.
+        # running lan_bridge process) - it was never a functioning client.
         # AUDIT 2026-04-28 (5.1 + 5.4): gate every vision call on (a) the
         # daily spend cap and (b) a token-bucket rate limit so a chaotic
         # teamfight can't spike calls per second.

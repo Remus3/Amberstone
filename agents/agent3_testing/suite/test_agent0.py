@@ -1,4 +1,4 @@
-"""Unit tests for Agent 0 evaluator — 6 criteria × pass/fail per §7."""
+"""Unit tests for Agent 0 evaluator - 6 criteria × pass/fail per §7."""
 from __future__ import annotations
 
 import pytest
@@ -115,7 +115,7 @@ def test_repeat_pattern_trips_on_third_attempt() -> None:
     r"\\192.168.8.237\RCClient\web\%2e%2e\x.html",           # url-encoded
 ])
 def test_reject_path_traversal(bad_path: str) -> None:
-    """Traversal check must fire before any other criterion — including
+    """Traversal check must fire before any other criterion - including
     mixed-separator paths, so no attacker can hide behind target_mismatch.
     """
     e = Evaluator()
@@ -139,6 +139,6 @@ def test_reject_subdir_substring_attack() -> None:
         payload_ext=".html", tag="substr",
     ))
     assert d.accepted is False
-    # Rejected at destination prefix — forwarder prefix is not allowed for
+    # Rejected at destination prefix - forwarder prefix is not allowed for
     # push-web-ui's web-subdir expectation.
     assert d.rejection.reason_code == 3

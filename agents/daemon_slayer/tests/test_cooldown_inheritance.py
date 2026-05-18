@@ -1,11 +1,11 @@
-"""Phase 5.9.19 (s206, 2026-05-14) — cooldown inheritance from form 0.
+"""Phase 5.9.19 (s206, 2026-05-14) - cooldown inheritance from form 0.
 
 Closes the s205 carry-forward "Engine None-cooldown fallback". Meraki
 ability snapshots set ``cooldown=None`` for every non-form-0 entry of a
-form-swap ability — Riven R form 1 (Wind Slash), Renekton E form 1
+form-swap ability - Riven R form 1 (Wind Slash), Renekton E form 1
 (Dice), AurelionSol R form 1 (The Skies Descend), Qiyana Q form 1
 (Elemental Wrath). Pre-s206, ``_form_cooldown_at_rank`` returned a
-generic 60s default for these — wrong for the per-spell cooldown
+generic 60s default for these - wrong for the per-spell cooldown
 metadata, and wrong for the theoretical-fallback DPS conversion when no
 measured cast rate exists in ``spell_cast_rates.json``.
 
@@ -66,7 +66,7 @@ def _form(name: str, *, cooldown: tuple[float, ...] | None) -> AbilityForm:
     )
 
 
-# ─── _form_cooldown_at_rank — helper unit tests ──────────────────────────────
+# ─── _form_cooldown_at_rank - helper unit tests ──────────────────────────────
 
 
 class CooldownHelperBackwardCompatTests(unittest.TestCase):
@@ -96,12 +96,12 @@ class CooldownHelperBackwardCompatTests(unittest.TestCase):
 
 
 class CooldownHelperFallbackTests(unittest.TestCase):
-    """s206 — fallback_form inherits when primary form has no CD."""
+    """s206 - fallback_form inherits when primary form has no CD."""
 
     def test_form_with_cd_ignores_fallback(self) -> None:
         f = _form("Has CD", cooldown=(120.0, 90.0, 60.0))
         fb = _form("Fallback CD", cooldown=(7.0, 7.0, 7.0))
-        # Primary form has its own CD — fallback ignored.
+        # Primary form has its own CD - fallback ignored.
         self.assertEqual(_form_cooldown_at_rank(f, 1, fallback_form=fb), 90.0)
 
     def test_form_with_no_cd_inherits_from_fallback(self) -> None:
@@ -124,7 +124,7 @@ class CooldownHelperFallbackTests(unittest.TestCase):
     def test_fallback_clamps_overflow_rank_to_last(self) -> None:
         f = _form("No CD", cooldown=None)
         fb = _form("Fallback CD", cooldown=(120.0, 90.0, 60.0))
-        # rank 5 > len(fallback.cooldown) — clamps to last entry.
+        # rank 5 > len(fallback.cooldown) - clamps to last entry.
         self.assertEqual(_form_cooldown_at_rank(f, 5, fallback_form=fb), 60.0)
 
     def test_fallback_clamps_negative_rank_to_zero(self) -> None:
@@ -134,13 +134,13 @@ class CooldownHelperFallbackTests(unittest.TestCase):
 
     def test_explicit_none_fallback_returns_60s_default(self) -> None:
         f = _form("No CD", cooldown=None)
-        # Explicit None fallback — same as no fallback.
+        # Explicit None fallback - same as no fallback.
         self.assertEqual(
             _form_cooldown_at_rank(f, 2, fallback_form=None), 60.0
         )
 
 
-# ─── compute_ability_dps integration — 4 affected form-1 entries ─────────────
+# ─── compute_ability_dps integration - 4 affected form-1 entries ─────────────
 
 
 class AbilityDpsCooldownInheritanceTests(unittest.TestCase):
@@ -177,7 +177,7 @@ class AbilityDpsCooldownInheritanceTests(unittest.TestCase):
     def test_renekton_E_inherits_form0_cooldown(self) -> None:
         # Renekton E form 0 cd=[16, 14.5, 13, 11.5, 10]; at lvl 11 E is
         # rank 3 (Q maxed first lvl 9 + W up to rank 1, E starts rank 2)
-        # — actual rank depends on max_priority. Assert it's NOT 60s.
+        # - actual rank depends on max_priority. Assert it's NOT 60s.
         s = self._spell("Renekton", "E", level=11)
         self.assertIsNotNone(s)
         self.assertEqual(s.form_index, 1)
@@ -203,7 +203,7 @@ class AbilityDpsCooldownInheritanceTests(unittest.TestCase):
 
     def test_form0_unaffected(self) -> None:
         # Riven Q form 0 cd=[13, 13, 13, 13, 13]; flat 13s.
-        # form_idx == 0, so fallback is None — uses primary form's CD.
+        # form_idx == 0, so fallback is None - uses primary form's CD.
         s = self._spell("Riven", "Q", level=11)
         self.assertIsNotNone(s)
         self.assertEqual(s.form_index, 0)
@@ -211,7 +211,7 @@ class AbilityDpsCooldownInheritanceTests(unittest.TestCase):
 
     def test_unmapped_form_swap_champion_unaffected(self) -> None:
         # Champions WITHOUT a form_index registry entry still default to
-        # form 0 — fallback is None, so behavior is identical to pre-s206.
+        # form 0 - fallback is None, so behavior is identical to pre-s206.
         s = self._spell("Veigar", "R", level=11)
         self.assertIsNotNone(s)
         self.assertEqual(s.form_index, 0)
@@ -271,7 +271,7 @@ class ServerRouteCooldownTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         try:
             urlopen(f"{cls.BASE_URL}/health", timeout=2).read()
-        except Exception as e:  # pragma: no cover — env-dependent
+        except Exception as e:  # pragma: no cover - env-dependent
             raise unittest.SkipTest(f"DS server unavailable: {e}")
 
     def _ability_dps_spell(self, champion: str, key: str, level: int = 11):

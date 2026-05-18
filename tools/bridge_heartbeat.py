@@ -1,5 +1,5 @@
 # arch: long-running alive heartbeat to the bridge | section=bridge | frozen=no
-"""bridge_heartbeat.py — Phase 6 shim. Real code lives in tools/bridge_cli.py.
+"""bridge_heartbeat.py - Phase 6 shim. Real code lives in tools/bridge_cli.py.
 
 Long-running entrypoint posting an alive note every 60s:
     py C:\\Riot Commander\\tools\\bridge_heartbeat.py

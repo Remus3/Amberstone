@@ -1,4 +1,4 @@
-"""Shared pytest config — ensure project root is on sys.path."""
+"""Shared pytest config - ensure project root is on sys.path."""
 from __future__ import annotations
 
 import sys

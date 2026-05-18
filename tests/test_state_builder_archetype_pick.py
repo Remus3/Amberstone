@@ -194,7 +194,7 @@ class BuildStateStampsArchetypePickTests(unittest.TestCase):
 
     @mock.patch("core.archetype_picks.get_archetype_for")
     def test_arch_lookup_error_returns_empty_dict(self, mock_arch):
-        # If archetype lookup raises, the state-builder must not crash —
+        # If archetype lookup raises, the state-builder must not crash -
         # cs_archetype_pick falls back to empty dict.
         mock_arch.side_effect = RuntimeError("synthetic")
         self._patch_environment(

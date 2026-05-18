@@ -1,9 +1,9 @@
-"""merge_refresh_builds.py — merge Phase 1+2 refresh data into canonical build files.
+"""merge_refresh_builds.py - merge Phase 1+2 refresh data into canonical build files.
 
 Reads from `data/meta_build/refresh_2026-05-02/{sr,aram,arena}_{top30,next30}.json`
 and writes back to:
-- `data/meta_build/aram_champion_builds.json` (existing — overwrite per-champ)
-- `data/meta_build/sr_champion_builds.json` (existing 18 entries — expand)
+- `data/meta_build/aram_champion_builds.json` (existing - overwrite per-champ)
+- `data/meta_build/sr_champion_builds.json` (existing 18 entries - expand)
 - `data/meta_build/arena_champion_builds.json` (NEW)
 
 Strategy:
@@ -67,7 +67,7 @@ def merge_aram(dry_run: bool = False) -> tuple[int, int]:
                 new_count += 1
     canonical["_note"] = (
         f"ARAM builds for full champion roster. Patch {PATCH} / Season 16. "
-        f"Updated {TODAY} (s33 phase merge — {updated_count + new_count} "
+        f"Updated {TODAY} (s33 phase merge - {updated_count + new_count} "
         f"champions refreshed via aggregator K + aggregator A primary sources)."
     )
     canonical["_refresh_metadata"] = {
@@ -98,7 +98,7 @@ def merge_sr(dry_run: bool = False) -> tuple[int, int]:
                 new_count += 1
     canonical["_note"] = (
         f"SR builds. Patch {PATCH} / Season 16. Updated {TODAY} "
-        f"(s33 phase merge — {updated_count + new_count} champions refreshed "
+        f"(s33 phase merge - {updated_count + new_count} champions refreshed "
         f"via aggregator A primary)."
     )
     canonical["_refresh_metadata"] = {
@@ -115,7 +115,7 @@ def merge_sr(dry_run: bool = False) -> tuple[int, int]:
 
 
 def merge_arena(dry_run: bool = False) -> tuple[int, int]:
-    """Arena gets a NEW canonical file — no existing data to preserve.
+    """Arena gets a NEW canonical file - no existing data to preserve.
     Builds from refresh data only."""
     canonical_path = META_BUILD / "arena_champion_builds.json"
     canonical: dict = {}
@@ -127,7 +127,7 @@ def merge_arena(dry_run: bool = False) -> tuple[int, int]:
                 canonical[name] = entry
                 new_count += 1
             else:
-                # Phase 1 wins on overlap (Phase 2 was retries — Phase 1
+                # Phase 1 wins on overlap (Phase 2 was retries - Phase 1
                 # had multi-source verification)
                 pass
     canonical["_note"] = (

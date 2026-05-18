@@ -2,7 +2,7 @@
 
 Extracted verbatim from web_dashboard.py (slice 2B, 2026-05-01).
 Each function reads from data/* sqlite DBs or json files and returns
-a plain dict — no IO side-effects, no http handler coupling.
+a plain dict - no IO side-effects, no http handler coupling.
 
 `web_dashboard.py` re-imports these into its module namespace under
 their original underscored names (`_build_home_summary`, etc.) so all
@@ -24,10 +24,10 @@ def _lcu_build_items(raw_data: str | None) -> list[int]:
     slot 6 excluded) from a match row's ``raw_data`` blob.
 
     Deliberate lightweight subset of :func:`_enrich_from_lcu`'s
-    puuid -> participantId -> ``stats.itemN`` walk — the home Recent-5
+    puuid -> participantId -> ``stats.itemN`` walk - the home Recent-5
     strip only needs the build items, not the full 10-player roster.
     Returns ``[]`` for matches that predate the s219 LCU-ingest pipeline
-    (no ``lcu_match_detail``) or on any structural mismatch — the
+    (no ``lcu_match_detail``) or on any structural mismatch - the
     frontend then renders empty placeholder slots.
     """
     if not raw_data:
@@ -64,10 +64,10 @@ def _build_home_summary() -> dict:
     """Aggregate read-only data for the dashboard home view.
 
     Source of truth: data/match_history.db (live-captured per game,
-    today's matches present). rewind_history.db is NOT used here —
+    today's matches present). rewind_history.db is NOT used here -
     it's stale until the user runs a manual backfill pass.
 
-    Win/loss is not stored on rows — we surface grade (S-F) instead
+    Win/loss is not stored on rows - we surface grade (S-F) instead
     as the per-game performance signal.
     """
     from datetime import datetime, timedelta
@@ -78,14 +78,14 @@ def _build_home_summary() -> dict:
         out["error"] = "match_history.db missing"
         return out
     try:
-        # Recent 5 games. TFT is excluded — those rows store the comp
+        # Recent 5 games. TFT is excluded - those rows store the comp
         # name (e.g. "Dark Star Vertical") in the champion column, which
         # renders as a fake "champion" on the home view. Hidden at the
         # read layer; the rows still exist in match_history.db for any
         # downstream consumer that wants TFT-aware aggregation.
         # s218: surface cs + cs_per_min (already in matches schema).
         # `items` + `mode_subtype` are placeholder fields for the home
-        # view's per-row rendering — neither is captured in
+        # view's per-row rendering - neither is captured in
         # match_history.db today (would need an end-of-game ingest hook
         # for items, and a queue_id store to distinguish ARAM Classic
         # from ARAM Mayhem). TODO(s218-dummy-data): wire when ingest ships.
@@ -100,17 +100,17 @@ def _build_home_summary() -> dict:
              label, raw_data) in cur:
             out["recent"].append({
                 "timestamp": ts, "mode": mode, "champion": champ or "?",
-                "grade": grade or "—", "kda": kda or f"{k}/{d}/{a}",
+                "grade": grade or "-", "kda": kda or f"{k}/{d}/{a}",
                 "duration_s": int(dur or 0), "label": label or "",
                 "cs": int(cs or 0), "cs_per_min": float(cspm or 0.0),
                 # s219 LCU-ingest build items when present; [] for matches
                 # that predate the ingest pipeline (frontend renders empty
                 # slots). mode_subtype still awaits a queue_id store to
-                # split ARAM Classic from ARAM Mayhem — passthrough hook.
+                # split ARAM Classic from ARAM Mayhem - passthrough hook.
                 "items": _lcu_build_items(raw_data),
                 "mode_subtype": None,
             })
-        # Today's session — group all rows whose timestamp date == today.
+        # Today's session - group all rows whose timestamp date == today.
         # TFT excluded for the same reason as Recent 5: keeps the "N
         # games today" header consistent with the row list below it.
         today = datetime.now().strftime("%Y-%m-%d")
@@ -124,7 +124,7 @@ def _build_home_summary() -> dict:
         modes:  dict[str, int] = {}
         tk = td = ta = 0
         for mode, champ, g, k, d, a in rows:
-            grades[g or "—"] = grades.get(g or "—", 0) + 1
+            grades[g or "-"] = grades.get(g or "-", 0) + 1
             modes[mode or "?"] = modes.get(mode or "?", 0) + 1
             tk += int(k or 0); td += int(d or 0); ta += int(a or 0)
         out["today"] = {
@@ -134,7 +134,7 @@ def _build_home_summary() -> dict:
             "total_kda": f"{tk}/{td}/{ta}",
             "avg_kda": round((tk + ta) / max(td, 1), 2) if rows else 0.0,
         }
-        # This week (last 7 days) — top 5 most-played champions. TFT
+        # This week (last 7 days) - top 5 most-played champions. TFT
         # rows excluded for the same reason as Recent 5: the "champion"
         # column carries a comp name, not a champion.
         # s218: aggregate cs + per-champion K/D/A totals so the home
@@ -157,11 +157,11 @@ def _build_home_summary() -> dict:
             row["k"] += int(k or 0); row["d"] += int(d or 0); row["a"] += int(a or 0)
             row["cs_total"] += int(cs or 0)
             row["time_total_s"] += float(dur or 0)
-            row["grades"].append(g or "—")
+            row["grades"].append(g or "-")
             row["modes"].add(mode or "?")
         ranked = sorted(champ_agg.items(), key=lambda kv: -kv[1]["games"])[:5]
         for champ, r in ranked:
-            best = sorted(r["grades"], key=lambda x: "SABCDF—".index(x) if x in "SABCDF—" else 99)[0]
+            best = sorted(r["grades"], key=lambda x: "SABCDF-".index(x) if x in "SABCDF-" else 99)[0]
             mins = r["time_total_s"] / 60.0 if r["time_total_s"] else 0.0
             out["this_week"].append({
                 "champion": champ, "games": r["games"],
@@ -176,7 +176,7 @@ def _build_home_summary() -> dict:
         # Evict poisoned conn so the next call reopens cleanly.
         getattr(_DB_CONN_LOCAL, "conns", {}).pop(str(db_path), None)
         raise
-    # Services snapshot — RC + vision + dashboard self.
+    # Services snapshot - RC + vision + dashboard self.
     h = _read_json("ops/runtime/health.json")
     out["services"].append({
         "name": "RC", "ok": bool(h.get("alive")),
@@ -357,7 +357,7 @@ def _home_streaks(db_path) -> dict:
 # Shared helper: groups match_history.db rows into sessions where each
 # session is a run of consecutive matches with no ≥SESSION_GAP_S gap
 # between them. Sessions span midnight; Riot client restarts (which
-# manifest as nothing in the DB) are NOT a boundary on their own —
+# manifest as nothing in the DB) are NOT a boundary on their own -
 # only the gap rule decides.
 SESSION_GAP_S = 2 * 3600   # 2 hours
 def _load_match_rows(limit: int | None = None) -> list[dict]:
@@ -382,7 +382,7 @@ def _load_match_rows(limit: int | None = None) -> list[dict]:
         for ts, mode, champ, grade, kda, dur, k, d, a, label in conn.execute(sql):
             rows.append({
                 "timestamp": ts, "mode": mode or "?", "champion": champ or "?",
-                "grade": grade or "—", "kda": kda or f"{k}/{d}/{a}",
+                "grade": grade or "-", "kda": kda or f"{k}/{d}/{a}",
                 "duration_s": int(dur or 0),
                 "kills": int(k or 0), "deaths": int(d or 0), "assists": int(a or 0),
                 "label": label or "",
@@ -478,10 +478,10 @@ def _build_session_summary() -> dict:
 
 def _build_history(scope: str) -> dict:
     """List all sessions in scope. Scopes:
-        14d            — last 14 days
-        season         — current season (best-effort: last 90d)
-        prior_season   — 90 → 180d ago
-        all            — every match in match_history.db
+        14d            - last 14 days
+        season         - current season (best-effort: last 90d)
+        prior_season   - 90 → 180d ago
+        all            - every match in match_history.db
     """
     from datetime import datetime, timedelta
     now = datetime.now()
@@ -524,7 +524,7 @@ def _build_history(scope: str) -> dict:
             season_stats = {
                 "total":     int(row[0] or 0),
                 "avg_kda":   round(float(row[1] or 0), 2),
-                "favorite":  row[2] or "—",
+                "favorite":  row[2] or "-",
             }
         except sqlite3.Error as exc:
             getattr(_DB_CONN_LOCAL, "conns", {}).pop(str(rdb), None)
@@ -541,7 +541,7 @@ def _build_loadouts_all(mode: str) -> dict:
         rows = list_variants(champ_name, mode)
         if not rows:
             continue
-        # Strip raw item_ids from this view — we just want labels.
+        # Strip raw item_ids from this view - we just want labels.
         slim = [{"key": r["key"], "label": r["label"], "is_default": r["is_default"],
                  "keystone": r.get("keystone", "")} for r in rows]
         out_champs.append({"champion": champ_name, "variants": slim})
@@ -581,7 +581,7 @@ def _build_diagnostics() -> dict:
                                         "detail": "192.168.8.237:2999"})
     except Exception as exc:
         out["connections"].append({"name": "Live Client API (Game-PC)", "ok": False,
-                                    "detail": f"unreachable ({type(exc).__name__}) — normal if no game"})
+                                    "detail": f"unreachable ({type(exc).__name__}) - normal if no game"})
     # Tail today's log
     try:
         from datetime import datetime
@@ -608,7 +608,7 @@ def _enrich_from_lcu(lcu_detail: dict, tracked_puuid: str) -> dict:
     are surfaced alongside (dragons, baron, towers, first-blood/tower,
     bans).
 
-    Returns an empty dict on any structural mismatch — caller treats
+    Returns an empty dict on any structural mismatch - caller treats
     None / {} as "no enriched data yet, render placeholders".
     """
     if not isinstance(lcu_detail, dict) or not tracked_puuid:
@@ -672,7 +672,7 @@ def _enrich_from_lcu(lcu_detail: dict, tracked_puuid: str) -> dict:
         "to_turrets":          int(s.get("damageDealtToTurrets") or 0),
     }
     # s219 v6: healing + shielding contribution to teammates (self-heal
-    # excluded — that's a stat about your own sustain, not team-care).
+    # excluded - that's a stat about your own sustain, not team-care).
     out["support"] = {
         "total_heal":              int(s.get("totalHeal") or 0),
         "heal_on_teammates":       int(s.get("totalHealsOnTeammates") or 0),
@@ -757,7 +757,7 @@ def _enrich_from_lcu(lcu_detail: dict, tracked_puuid: str) -> dict:
     out["game_version"]       = lcu_detail.get("gameVersion")
     out["end_of_game_result"] = lcu_detail.get("endOfGameResult")
     # s220 surrender tag: LCU stamps these on every participant's stats
-    # (game-wide value). Surfacing-only — lets the hero badge an FF'd
+    # (game-wide value). Surfacing-only - lets the hero badge an FF'd
     # loss vs a played-out one, and flag an early-surrender remake.
     # Pre-s220 ingested rows lack the keys → bool(None) → False.
     out["ended_in_surrender"]       = bool(s.get("gameEndedInSurrender"))
@@ -774,12 +774,12 @@ def _enrich_match_timeline(timeline: dict, lcu_detail: dict,
 
     Match-V5 nests the per-minute frames under ``info``; a flat top-level
     ``frames`` list is also accepted (defensive). Participant→team comes
-    from the stashed LCU match detail — Match-V5 timelines only map
+    from the stashed LCU match detail - Match-V5 timelines only map
     participantId→puuid, not teamId.
 
     All diffs are ally_total − enemy_total, so a positive value means the
     operator's team was ahead. Per-frame participant `position` data is
-    deliberately NOT parsed here — that's the phase-2 interactive replay
+    deliberately NOT parsed here - that's the phase-2 interactive replay
     minimap, which reads the same Match-V5 timeline.
 
     Output shape:
@@ -792,7 +792,7 @@ def _enrich_match_timeline(timeline: dict, lcu_detail: dict,
         "events": [{"t_s", "clock", "kind", "team", "label"}, ...],
       }
     Returns {} on any structural problem (Arena / round-based modes carry
-    no per-minute frames — the caller renders a placeholder)."""
+    no per-minute frames - the caller renders a placeholder)."""
     if not isinstance(timeline, dict):
         return {}
     info = timeline.get("info")
@@ -904,7 +904,7 @@ def _enrich_match_timeline(timeline: dict, lcu_detail: dict,
                                    "kind": "inhibitor", "team": _ev_team(ev),
                                    "label": "Inhibitor"})
     events.sort(key=lambda e: e["t_s"])
-    # Bound payload — a stomp can rack up 20+ structures; 60 keeps the
+    # Bound payload - a stomp can rack up 20+ structures; 60 keeps the
     # ribbon readable and raw_data lean.
     if len(events) > 60:
         events = events[:60]
@@ -943,11 +943,11 @@ def _attach_match_timeline(enriched: dict, lcu_detail: dict) -> None:
     parsed result to ``enriched["timeline"]`` (s220 Item E, phase 1).
 
     The LCU exposes no per-game timeline endpoint, so the authoritative
-    source is Match-V5 (…/matches/{platform}_{gameId}/timeline) — exactly
+    source is Match-V5 (…/matches/{platform}_{gameId}/timeline) - exactly
     the consumer s148 anticipated. ``core.riot_api.get_match_timeline``
     is immutable-cached: one Riot call per match, then served from cache.
 
-    Degrades silently — when the Riot key is missing/revoked (returns
+    Degrades silently - when the Riot key is missing/revoked (returns
     None) or anything raises, ``enriched["timeline"]`` is simply not set
     and the frontend shows its "Timeline pending" placeholder. This must
     never break /api/last-match."""
@@ -958,7 +958,7 @@ def _attach_match_timeline(enriched: dict, lcu_detail: dict) -> None:
             return
         match_id = f"{platform}_{game_id}"
         region = _MV5_REGION_BY_PLATFORM.get(platform, "americas")
-        from core import riot_api  # lazy — avoids import cost on cold paths
+        from core import riot_api  # lazy - avoids import cost on cold paths
         timeline = riot_api.get_match_timeline(match_id, region=region)
         if not isinstance(timeline, dict):
             return
@@ -983,10 +983,10 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
       - ARAM / Mayhem (queueId 450 / 2400 / KIWI mode):
           tower diff + KDA disparity (only rift to push on)
       - Arena (queueId 1700/1710 / CHERRY mode):
-          deferred — 4 subteam paradigm doesn't fit win/loss heuristics
+          deferred - 4 subteam paradigm doesn't fit win/loss heuristics
       - Other: degrade gracefully to operator-side death/KDA proxies.
 
-    Each emitted item is {text, why} — `why` backs the tooltip on hover.
+    Each emitted item is {text, why} - `why` backs the tooltip on hover.
     """
     out: list[dict] = []
 
@@ -1017,7 +1017,7 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
     if opp.get("first_blood") and not me.get("first_blood"):
         out.append({
             "text": "Lost first blood",
-            "why":  ("Enemy team took first blood — early gold + tempo "
+            "why":  ("Enemy team took first blood - early gold + tempo "
                      "advantage. Worth reviewing the lane / fight that opened "
                      "the match in the deep Review page."),
         })
@@ -1026,17 +1026,17 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
             "text": "Lost first tower",
             "why":  ("Enemy team took the first tower (250g globally + "
                      "platings + first-tower trinket bounty). Indicates "
-                     "early lane pressure was conceded — common cause: "
+                     "early lane pressure was conceded - common cause: "
                      "death timer + freeze break."),
         })
 
-    # ── Tower differential (SR only — ARAM has its own framing below) ─
+    # ── Tower differential (SR only - ARAM has its own framing below) ─
     my_towers  = int(me.get("tower_kills") or 0)
     opp_towers = int(opp.get("tower_kills") or 0)
     if is_sr and opp_towers - my_towers >= 4:
         out.append({
             "text": f"Tower diff −{opp_towers - my_towers} (lost {opp_towers}-{my_towers})",
-            "why":  (f"Enemy took {opp_towers} towers to your {my_towers} — "
+            "why":  (f"Enemy took {opp_towers} towers to your {my_towers} - "
                      f"map pressure was lopsided. Each tower is ~430g + "
                      f"vision real estate. Re-watching mid-game roams in "
                      f"the deep Review page would surface where the trades "
@@ -1058,7 +1058,7 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
             out.append({
                 "text": f"Dragon control lost ({my_drag}-{opp_drag})",
                 "why":  (f"Enemy took {opp_drag} dragons to your {my_drag}. "
-                         f"Each dragon stack is a teamwide bonus — review "
+                         f"Each dragon stack is a teamwide bonus - review "
                          f"who was contesting + your top-side trades that "
                          f"enabled the call."),
             })
@@ -1083,17 +1083,17 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
                 "text": "Gave up Rift Herald",
                 "why":  ("Enemy took Herald with no answer. Each Herald is "
                          "~5 plates of pressure on whichever lane it gets "
-                         "dumped in — review jungle / mid pathing 8-14min."),
+                         "dumped in - review jungle / mid pathing 8-14min."),
             })
 
     elif is_aram:
-        # ARAM Mayhem (KIWI) and ARAM Classic — tower-diff is the
+        # ARAM Mayhem (KIWI) and ARAM Classic - tower-diff is the
         # main team-level signal; dragons/baron don't exist.
         if opp_towers > 0 and my_towers == 0:
             out.append({
                 "text": f"Lost every tower trade ({opp_towers}-0)",
                 "why":  (f"Enemy team broke {opp_towers} of your towers "
-                         f"without taking one back — pure attrition loss. "
+                         f"without taking one back - pure attrition loss. "
                          f"Common in ARAM when comp lacks AOE waveclear "
                          f"vs siege champions."),
             })
@@ -1113,7 +1113,7 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
                     "text": f"Team kill deficit ({my_k}-{opp_k})",
                     "why":  (f"Enemy outscored your team {opp_k} kills to "
                              f"{my_k} (1.5×+ ratio with a 10+ gap). Each "
-                             f"team-fight you took was net-losing — review "
+                             f"team-fight you took was net-losing - review "
                              f"engage timings + comp synergy."),
                 })
             my_gold  = sum(int(r.get("gold") or 0) for r in my_side)
@@ -1124,7 +1124,7 @@ def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a
                     "why":  (f"Enemy ended {opp_gold - my_gold}g ahead "
                              f"({(opp_gold/1000):.1f}k vs {(my_gold/1000):.1f}k). "
                              f"That's roughly an extra completed mythic + "
-                             f"finisher across the team — review mid-game "
+                             f"finisher across the team - review mid-game "
                              f"objective trades."),
                 })
 
@@ -1162,7 +1162,7 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
         "my_chronic": [{text, why}, ...],   # repeated patterns across history
       }
 
-    v1 heuristics — operator-revisable. The `why` field is shown in a
+    v1 heuristics - operator-revisable. The `why` field is shown in a
     tooltip on hover so the analysis stays explainable. Team data is not
     in match_history.db today (only operator-centric stats); the
     wrong_team section degrades gracefully until the Riot Match-V5
@@ -1188,7 +1188,7 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
     if grade in ("S", "A"):
         right.append({
             "text": f"Top-tier performance ({grade})",
-            "why": f"Match graded {grade} — operator scored in the top tier on "
+            "why": f"Match graded {grade} - operator scored in the top tier on "
                    f"the per-mode rubric used by the Home page Recent 5.",
         })
     if cur_kda >= 3.0:
@@ -1200,19 +1200,19 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
     if cspm >= 8.0 and current.get("mode") == "SR":
         right.append({
             "text": f"Solid farm ({cspm:.1f} CS/min)",
-            "why": f"{int(current.get('cs') or 0)} CS at {cspm:.1f}/min — at "
+            "why": f"{int(current.get('cs') or 0)} CS at {cspm:.1f}/min - at "
                    f"or above the 8.0 CS/min standard for SR.",
         })
     if isinstance(kp, (int, float)) and kp >= 70:
         right.append({
             "text": f"High team-fight participation ({int(kp)}% KP)",
-            "why": f"You took part in {int(kp)}% of team kills — strong "
+            "why": f"You took part in {int(kp)}% of team kills - strong "
                    f"presence in skirmishes / objective fights.",
         })
     if k >= 10 and d <= 5:
         right.append({
             "text": f"Carry-tier kill output ({k} kills, {d} deaths)",
-            "why": "10+ kills with ≤5 deaths is a snowball signal — you "
+            "why": "10+ kills with ≤5 deaths is a snowball signal - you "
                    "converted leads without giving them back.",
         })
 
@@ -1241,14 +1241,14 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
         if d >= 10:
             wrong_team.append({
                 "text": f"Death count cost the team ({d} deaths)",
-                "why": f"{d} deaths is a 10+ threshold — even with high KP "
+                "why": f"{d} deaths is a 10+ threshold - even with high KP "
                        f"({int(kp) if isinstance(kp,(int,float)) else '?'}%), "
                        f"each death is gold + 30+s map pressure handed back.",
             })
         if cur_kda < 1.0 and (k + d + a) > 0:
             wrong_team.append({
                 "text": f"Sub-1 KDA ({cur_kda})",
-                "why": f"{k}/{d}/{a} = {cur_kda} — below the 1.0 baseline; "
+                "why": f"{k}/{d}/{a} = {cur_kda} - below the 1.0 baseline; "
                        f"deaths outpaced (kills + assists), so each fight "
                        f"likely net-negative for the team.",
             })
@@ -1262,7 +1262,7 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
                 "text": f"Deaths above your average ({d} vs ~{median_d} median)",
                 "why": f"Across your last {len(history)} non-TFT games, your "
                        f"median deaths is {median_d}. This match's {d} is "
-                       f"3+ above that — repeating pattern of overcommitting.",
+                       f"3+ above that - repeating pattern of overcommitting.",
             })
 
         cspm_hist = [float(r.get("cs_per_min") or 0.0) for r in history
@@ -1274,7 +1274,7 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
                     "text": f"CS/min below your SR median ({cspm:.1f} vs ~{median_cspm:.1f})",
                     "why": f"Your SR median over the last {len(cspm_hist)} games "
                            f"is {median_cspm:.1f} CS/min. This match's "
-                           f"{cspm:.1f} is 1+ below — wave-management/death-cost "
+                           f"{cspm:.1f} is 1+ below - wave-management/death-cost "
                            f"pattern worth a deeper review.",
                 })
 
@@ -1284,7 +1284,7 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
             my_chronic.append({
                 "text": f"Recent grade slump ({len(bad_grades)}/{len(history)} at D/F)",
                 "why": f"{len(bad_grades)} of your last {len(history)} games "
-                       f"graded D or F — a third+ of recent matches in the "
+                       f"graded D or F - a third+ of recent matches in the "
                        f"weak-performance tier. Worth a focused review session.",
             })
 
@@ -1305,7 +1305,7 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
 def _build_last_match(baseline: int = 20) -> dict:
     """Latest non-TFT match for the Last Match page.
 
-    Source: data/match_history.db (operator-centric — KDA / CS / gold /
+    Source: data/match_history.db (operator-centric - KDA / CS / gold /
     grade / DS picks). rewind_history.db is stale (Dec 2025) so we do
     NOT enrich from Match-V5 here; the v2 Refresh button will trigger
     that path.
@@ -1368,7 +1368,7 @@ def _build_last_match(baseline: int = 20) -> dict:
 
         # s220 Item E: attach the Match-V5 per-minute timeline (gold/xp/cs
         # differential + objective ribbon) onto the enriched blob for the
-        # Post Game Review "Timeline" tab. Server-side fetch — the LCU has
+        # Post Game Review "Timeline" tab. Server-side fetch - the LCU has
         # no timeline endpoint; Match-V5 is the source (immutable-cached,
         # degrades to a placeholder when the Riot key is unavailable).
         enriched = (_enrich_from_lcu(lcu_detail, tracked_puuid)
@@ -1381,7 +1381,7 @@ def _build_last_match(baseline: int = 20) -> dict:
             "timestamp":        ts,
             "mode":             mode,
             "champion":         champ or "?",
-            "grade":            grade or "—",
+            "grade":            grade or "-",
             "kda_str":          kda_str or f"{k or 0}/{d or 0}/{a or 0}",
             "kda_ratio":        kda_ratio,
             "duration_s":       int(dur or 0),

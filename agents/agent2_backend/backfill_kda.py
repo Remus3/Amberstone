@@ -1,4 +1,4 @@
-"""Round 23 — backfill ``matches.kills/deaths/assists`` for rows
+"""Round 23 - backfill ``matches.kills/deaths/assists`` for rows
 migrated from ``rewind_history.db``.
 
 The rewind migration (see ``migration_rewind.py``) ran before the KDA
@@ -120,7 +120,7 @@ def backfill_mode(
                 continue
             k, d, a = triple
             if k is None and d is None and a is None:
-                # Rewind has the row but its tracked_* cols are NULL — skip,
+                # Rewind has the row but its tracked_* cols are NULL - skip,
                 # but don't count as missing (row *was* findable).
                 continue
             updates.append((k, d, a, int(r["local_id"])))

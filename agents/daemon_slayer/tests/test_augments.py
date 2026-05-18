@@ -1,4 +1,4 @@
-"""Phase 6 step 2 tests — Arena augment data layer + stat-overlay scaffold."""
+"""Phase 6 step 2 tests - Arena augment data layer + stat-overlay scaffold."""
 
 import unittest
 
@@ -69,7 +69,7 @@ class AugmentStatOverlayTests(unittest.TestCase):
         self.assertEqual(totals.get("ap"), 60.0)
 
     def test_unknown_augment_silently_skipped(self) -> None:
-        # Real augment exists but has no overlay registered yet — fine.
+        # Real augment exists but has no overlay registered yet - fine.
         totals = compute_augment_stats(["ApexInventor"], self.snap)
         self.assertEqual(totals, {})
 
@@ -221,7 +221,7 @@ class EngineIntegrationTests(unittest.TestCase):
 
 
 class AugmentsThroughDpsAndRankTests(unittest.TestCase):
-    """Phase 6 step 6 — augments thread through compute_dps + rank_items."""
+    """Phase 6 step 6 - augments thread through compute_dps + rank_items."""
 
     def setUp(self) -> None:
         self.snap = DataSnapshot.load()
@@ -246,7 +246,7 @@ class AugmentsThroughDpsAndRankTests(unittest.TestCase):
 
     def test_rank_baseline_shifts_with_augments(self) -> None:
         # The baseline DPS that delta is measured against MUST include
-        # augment overlay — otherwise rank deltas would double-count the
+        # augment overlay - otherwise rank deltas would double-count the
         # augment contribution into every candidate's score.
         from agents.daemon_slayer.rank import rank_items
         from agents.daemon_slayer.dps import compute_dps
@@ -262,7 +262,7 @@ class AugmentsThroughDpsAndRankTests(unittest.TestCase):
             augments=["TheBrutalizer"], top_n=3,
         )
         # First-rank delta should be measured off the augmented baseline,
-        # not the bare one — i.e. delta + aug_baseline ≈ first pick's
+        # not the bare one - i.e. delta + aug_baseline ≈ first pick's
         # absolute new_dps. (Allow small float wobble from candidate filter.)
         top = result.ranked[0]
         self.assertAlmostEqual(top.new_dps, aug_baseline.weighted_dps + top.delta_dps,

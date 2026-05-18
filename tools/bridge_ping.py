@@ -1,5 +1,5 @@
 # arch: end-to-end bridge + vision health validator | section=bridge | frozen=no
-"""bridge_ping.py — Phase 6 shim. Real code lives in tools/bridge_cli.py.
+"""bridge_ping.py - Phase 6 shim. Real code lives in tools/bridge_cli.py.
 
 Preserves the original CLI surface (no flags) and exit-code contract:
     0 = both legs healthy

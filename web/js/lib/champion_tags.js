@@ -1,6 +1,6 @@
 // s213 v2: champion 2-piece tag lookup for the enemies panel.
 //
-// Mirrors the lol_descriptions.js pattern — lazy-fetches once on first
+// Mirrors the lol_descriptions.js pattern - lazy-fetches once on first
 // access, dispatches `rc:champion-tags-ready` when the cache lands so
 // dependent panels can re-render. Returns `{tags: [t1, t2], primary,
 // attack, magic, defense}` per champion display name.
@@ -17,7 +17,7 @@ async function _load() {
   _CACHE.loading = (async () => {
     try {
       // s213 v3: `default` cache mode (vs `force-cache`) so HTTP
-       // validation runs — operator-edited counters / DDragon refreshes
+       // validation runs - operator-edited counters / DDragon refreshes
        // pick up without a hard refresh. Body is ~50KB so the
        // round-trip is cheap.
       const r = await fetch("/api/dictionary/champion-tags", { cache: "default" });
@@ -40,7 +40,7 @@ async function _load() {
   return _CACHE.loading;
 }
 
-// Public — kick off lazy load on first call. Returns null until the
+// Public - kick off lazy load on first call. Returns null until the
 // cache lands; callers re-render on the `rc:champion-tags-ready` event.
 export function championTags(name) {
   if (!_CACHE.ready && !_CACHE.loading) _load();

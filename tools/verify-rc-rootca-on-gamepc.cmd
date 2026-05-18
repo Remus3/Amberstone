@@ -29,7 +29,7 @@ echo.
 set FOUND_CU=0
 certutil -user -store "Root" 2>nul | findstr /I /C:"mkcert" >nul
 if %errorlevel% equ 0 (
-    echo [warn] CurrentUser\Root has a mkcert entry — Chrome on modern
+    echo [warn] CurrentUser\Root has a mkcert entry - Chrome on modern
     echo        Windows ONLY trusts certs installed to LocalMachine\Root.
     echo        Re-run the installer elevated, or add to the right store:
     echo            certutil -addstore -f "Root" "\\192.168.8.230\RCClient\rc-mkcert-rootCA.pem"
@@ -40,7 +40,7 @@ echo.
 echo === Step 3: full Chrome kill (background processes survive close-window) ===
 echo.
 
-REM Chrome keeps background helper processes after you close the window —
+REM Chrome keeps background helper processes after you close the window -
 REM they hold the previous "untrusted" verdict for the URL. Kill them all.
 taskkill /F /IM chrome.exe /T 2>nul
 if %errorlevel% equ 0 (
@@ -61,7 +61,7 @@ echo.
 
 if "%FOUND_LM%"=="1" (
     echo Cert is in the right store.
-    echo Open Chrome again and visit https://192.168.8.230:8888/ —
+    echo Open Chrome again and visit https://192.168.8.230:8888/ -
     echo it should load with the padlock and no warning.
     echo.
     echo If it STILL shows "Not Secure":
@@ -69,7 +69,7 @@ if "%FOUND_LM%"=="1" (
     echo     Under "Delete domain security policies" type 192.168.8.230
     echo     and click Delete. Then revisit the URL.
     echo   - Or visit chrome://flags/#test-third-party-cookie-phaseout-impact
-    echo     and search "root store" — make sure no flag forces CRS-only.
+    echo     and search "root store" - make sure no flag forces CRS-only.
 ) else (
     echo Cert is NOT in LocalMachine\Root yet.
     echo Run install-rc-rootca-on-gamepc.cmd as administrator first

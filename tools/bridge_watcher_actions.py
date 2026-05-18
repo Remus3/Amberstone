@@ -1,4 +1,4 @@
-"""bridge_watcher_actions.py — Phase 2 auto-action handlers.
+"""bridge_watcher_actions.py - Phase 2 auto-action handlers.
 
 Spawns headless `claude --print` with restricted tool allowlist + system prompt.
 Captures structured JSON output. Returns a tagged result the watcher uses to
@@ -43,7 +43,7 @@ _AUTO_READ_TOOLS = ("Read", "Grep", "Glob")
 _AUTO_OPS_BASE_TOOLS = ("Read", "Grep", "Glob")
 
 # Intent verbs that, when paired with a frozen-file mention, trip the gate.
-# The gate is intentionally broad — "modify" alone shouldn't trip; only
+# The gate is intentionally broad - "modify" alone shouldn't trip; only
 # verbs near a path token. See _has_frozen_intent below.
 _WRITE_VERBS = frozenset({
     "edit", "write", "replace", "modify", "patch", "delete", "remove",
@@ -118,7 +118,7 @@ def _matches_any_pattern(prompt: str, patterns: list[str]) -> Optional[str]:
             if re.search(pat.lower(), p_lower):
                 return pat
         except re.error as exc:
-            _log.warning("invalid pattern %r: %s — skipping", pat, exc)
+            _log.warning("invalid pattern %r: %s - skipping", pat, exc)
     return None
 
 
@@ -273,7 +273,7 @@ def _parse_claude_json(stdout: str) -> Tuple[Optional[dict], Optional[float], Op
             cost = float(envelope.get("total_cost_usd") or envelope.get("cost_usd") or 0.0) or None
         except (TypeError, ValueError):
             cost = None
-    # Handle is_error envelopes (max-turns exceeded, budget hit, etc.) — surface as error result
+    # Handle is_error envelopes (max-turns exceeded, budget hit, etc.) - surface as error result
     if isinstance(envelope, dict) and envelope.get("is_error"):
         errs = envelope.get("errors") or []
         err_text = "; ".join(str(e)[:200] for e in errs) if errs else (envelope.get("stop_reason") or "unknown error")
@@ -304,7 +304,7 @@ def _parse_claude_json(stdout: str) -> Tuple[Optional[dict], Optional[float], Op
                           "_parse_error": str(exc)[:200]}},
                 cost, None)
     if not isinstance(action, dict):
-        # Result was JSON but not a dict (list/string/number) — wrap it.
+        # Result was JSON but not a dict (list/string/number) - wrap it.
         return ({"status": "ok", "summary": "sub-Claude returned non-dict JSON; wrapped",
                  "body": {"value": action, "auto_wrapped": True}},
                 cost, None)
@@ -329,9 +329,9 @@ def run_action(*, envelope: dict, lane: str, node_config: dict,
     """Run one auto-action. Returns (status, body, cost_usd).
 
     status:
-      "ok"       — task completed; caller should bridge_post_result with --exit-code 0
-      "error"    — task failed; caller should bridge_post_result with --exit-code 1
-      "escalate" — caller should NOT post; demote to escalation lane
+      "ok"       - task completed; caller should bridge_post_result with --exit-code 0
+      "error"    - task failed; caller should bridge_post_result with --exit-code 1
+      "escalate" - caller should NOT post; demote to escalation lane
 
     body: dict to JSON-encode for the bridge_post_result --body argument
           (or for the pending file if escalating)
@@ -344,7 +344,7 @@ def run_action(*, envelope: dict, lane: str, node_config: dict,
     if isinstance(body_field, dict):
         prompt = str(body_field.get("prompt") or "")
 
-    # 1. Frozen-file intent gate (before spawning claude — saves tokens)
+    # 1. Frozen-file intent gate (before spawning claude - saves tokens)
     frozen = node_config.get("escalate_always") or []
     intent_reason = _has_frozen_intent(prompt, frozen)
     if intent_reason:
@@ -376,7 +376,7 @@ def run_action(*, envelope: dict, lane: str, node_config: dict,
                 {"error": f"unknown lane {lane!r}", "details": "expected auto-read or auto-ops"},
                 0.0)
 
-    # 4. Per-call budget — min of (config per-call) and (remaining daily)
+    # 4. Per-call budget - min of (config per-call) and (remaining daily)
     per_call_budget = float(node_config.get("per_call_budget_usd") or _DEFAULT_PER_CALL_BUDGET_USD)
     remaining = cap - float(state.get("tokens_used_today_usd", 0.0))
     per_call_budget = max(0.05, min(per_call_budget, remaining))
@@ -448,7 +448,7 @@ def _test() -> None:
     frozen = ["main.py", "core/log_setup.py", "app/__init__.py"]
 
     cases = [
-        ("explain main.py last error", None, "read query — no intent"),
+        ("explain main.py last error", None, "read query - no intent"),
         ("edit main.py line 42", "edit", "write verb near path"),
         ("show me what's wrong with app/__init__.py", None, "no verb"),
         ("rewrite the auth in core/log_setup.py", "rewrite", "verb near path"),

@@ -1,4 +1,4 @@
-# GitHub Linguist hints — keep the Languages pie chart on the repo page
+# GitHub Linguist hints - keep the Languages pie chart on the repo page
 # representative of human-authored code, not vendored/generated artifacts.
 #
 # Without these flags Linguist counts every tracked .html / .css / .js byte
@@ -9,15 +9,15 @@
 # (c) the _archive/ quarantine of removed code
 # Reference: https://github.com/github-linguist/linguist/blob/master/docs/overrides.md
 
-# (a) Build-refresh scraped HTML — generated artifact, not authored
+# (a) Build-refresh scraped HTML - generated artifact, not authored
 data/meta_build/**/*.html         linguist-generated=true
 data/meta_build/**/_*_html/**     linguist-vendored=true
 
-# (b) Vendored Python distro — not our code
+# (b) Vendored Python distro - not our code
 python-embed/**                   linguist-vendored=true
 
 # (c) Archived inert code (e.g. pre-T2 #8 tkinter overlays under
-#     _archive/2026-05-01-audit/) — preserved for reversibility, not active
+#     _archive/2026-05-01-audit/) - preserved for reversibility, not active
 _archive/**                       linguist-vendored=true
 
 # (d) Local data caches that occasionally get tracked

@@ -1,10 +1,10 @@
-# Task Report — P-audit3-m02: DDragon cache-read JSONDecodeError guard
+# Task Report - P-audit3-m02: DDragon cache-read JSONDecodeError guard
 
 - **Task id:** `t-439eac71cab8`
 - **Operation:** `apply-proposal-p-audit3-m02-ddragon-cache-parse-guard`
 - **Agent:** agent2 (Backend / Charter)
 - **Completed:** 2026-04-22T14:24:13Z
-- **Result:** NO-OP — fix already applied
+- **Result:** NO-OP - fix already applied
 
 ## Finding
 
@@ -25,13 +25,13 @@ and includes:
            return json.loads(p.read_text(encoding="utf-8"))
        except (json.JSONDecodeError, OSError, UnicodeDecodeError) as e:
            logger.warning(
-               "ddragon cache %s corrupt (%s) — re-pulling", p.name, e,
+               "ddragon cache %s corrupt (%s) - re-pulling", p.name, e,
            )
            return None
    ```
 
 3. **All four bundle methods** (`champions`, `items`, `runes`,
-   `summoner_spells`) — lines 95–121 — route through `_read_cached()` instead
+   `summoner_spells`) - lines 95–121 - route through `_read_cached()` instead
    of the former bare `json.loads(p.read_text())`.  A `None` return causes
    each method to fall through to `self._pull(name)`, re-fetching from CDN
    and atomically overwriting the corrupt file.
@@ -55,4 +55,4 @@ single guarded read path.
 
 ## Status
 
-**CLOSED — already shipped.** No code changes required in this session.
+**CLOSED - already shipped.** No code changes required in this session.

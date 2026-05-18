@@ -1,4 +1,4 @@
-"""gamepc_mcp_server.py — MCP server exposing Game-PC tools to Legion's Claude.
+"""gamepc_mcp_server.py - MCP server exposing Game-PC tools to Legion's Claude.
 
 Speaks the MCP JSON-RPC protocol over HTTP on port 8892. LAN-only access
 between Legion (192.168.8.230) and Game-PC (192.168.8.237); auth via
@@ -162,7 +162,7 @@ def tool_read_file(path: str, max_bytes: int = 65536, encoding: str = "utf-8") -
     full_size = p.stat().st_size
     truncated = full_size > cap
     # Stream-read up to `cap` bytes; do NOT pull the whole file into
-    # memory then slice — a multi-GB log file would OOM the server.
+    # memory then slice - a multi-GB log file would OOM the server.
     with open(p, "rb") as f:
         data = f.read(cap)
     try:
@@ -186,7 +186,7 @@ def tool_write_file(path: str, content: str, mode: str = "overwrite",
         with open(p, "ab") as f:
             f.write(data)
         return {"path": str(p), "bytes_written": len(data), "mode": "append"}
-    # Atomic overwrite — tmp + replace.
+    # Atomic overwrite - tmp + replace.
     tmp = p.with_suffix(p.suffix + ".tmp")
     tmp.write_bytes(data)
     tmp.replace(p)
@@ -410,7 +410,7 @@ def handle_tools_call(params: dict) -> dict:
                 "content": [{"type": "text",
                              "text": f"{type(e).__name__}: {e}\n"
                                      + traceback.format_exc(limit=3)}]}
-    # capture_monitor returns binary image data — wrap as MCP image
+    # capture_monitor returns binary image data - wrap as MCP image
     # content so Claude Code renders it inline instead of dumping a
     # base64 blob into a text block. Metadata (monitor index, dims,
     # rect) follows in a sibling text block so callers still get the
@@ -485,7 +485,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         except Exception as e:
             self._send_jsonrpc(None, error=(-32700, f"Parse error: {e}"))
             return
-        # Notifications (no `id`) — no response body. Server ACKs with 202.
+        # Notifications (no `id`) - no response body. Server ACKs with 202.
         is_notification = "id" not in req
         method = req.get("method", "")
         rid    = req.get("id")
@@ -534,12 +534,12 @@ def main() -> int:
     try:
         probe.connect(("127.0.0.1", args.port))
         probe.close()
-        log.warning("port %d already serving — another gamepc-mcp instance "
+        log.warning("port %d already serving - another gamepc-mcp instance "
                     "is running; exiting cleanly (no duplicate launch)",
                     args.port)
         return 0
     except (ConnectionRefusedError, socket.timeout, OSError):
-        # Nothing listening — proceed to bind.
+        # Nothing listening - proceed to bind.
         pass
     finally:
         try: probe.close()

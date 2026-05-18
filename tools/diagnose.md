@@ -5,7 +5,7 @@ description: Systematic debugging loop. Use when something is broken or behaving
 You will diagnose ONE specific failure, methodically, in five phases.
 Do not skip phases. Do not start fixing until phase 4.
 
-# Phase 1 — REPRODUCE
+# Phase 1 - REPRODUCE
 
 State the failure in one sentence. Then reproduce it cleanly:
 - What command / input triggers it?
@@ -15,7 +15,7 @@ State the failure in one sentence. Then reproduce it cleanly:
 If you cannot reproduce it on demand, you cannot diagnose it. Stop and
 ask the operator for a reliable repro before continuing.
 
-# Phase 2 — MINIMIZE
+# Phase 2 - MINIMIZE
 
 Strip the failing case to its smallest form:
 - Remove unrelated state (other coaches running, other modes, other peers)
@@ -25,7 +25,7 @@ Strip the failing case to its smallest form:
 Goal: the minimal repro should fit in your head AND in 5 lines of
 description. If it doesn't, keep stripping.
 
-# Phase 3 — HYPOTHESIZE
+# Phase 3 - HYPOTHESIZE
 
 Write down 2-4 candidate explanations for what's going wrong.
 For each:
@@ -35,7 +35,7 @@ For each:
 
 Rank by likelihood × cheap-to-test. Pick the top one.
 
-# Phase 4 — INSTRUMENT + TEST
+# Phase 4 - INSTRUMENT + TEST
 
 Add JUST enough instrumentation to confirm/refute the top hypothesis.
 Examples:
@@ -48,7 +48,7 @@ Run the minimal repro. Did the evidence match the hypothesis?
 - YES → go to phase 5
 - NO → return to phase 3 with the next hypothesis
 
-# Phase 5 — FIX
+# Phase 5 - FIX
 
 ONLY now write the fix. The fix should:
 - Address the root cause, not the symptom
@@ -56,7 +56,7 @@ ONLY now write the fix. The fix should:
 - Include a regression test if RC has test coverage in this area
 
 Verify by running the original repro from phase 1. If it still fails,
-the diagnosis was wrong — go back to phase 1, do not patch around it.
+the diagnosis was wrong - go back to phase 1, do not patch around it.
 
 # Anti-patterns
 

@@ -1,5 +1,5 @@
 # arch: live RC health + topology probe | section=tools | frozen=no
-"""rc_facts.py — print live ground truth for the RC stack.
+"""rc_facts.py - print live ground truth for the RC stack.
 
 Designed to be invoked as a Claude Code SessionStart hook on Legion.
 Output (markdown to stdout) is injected as additional context, so the
@@ -11,7 +11,7 @@ Probes (all should complete within ~3s total):
     8888/8889, RC scheduled tasks state, last boot.
   - Game-PC: /api/state's lcu block freshness (proves the LCU agent is
     posting), /api/health for vision server alive, plus a quick curl to
-    192.168.8.237:8892/health (MCP listener) — flags any silently-down
+    192.168.8.237:8892/health (MCP listener) - flags any silently-down
     component.
   - Anomaly summary: anything unexpected, listed first.
 
@@ -177,7 +177,7 @@ def _lessons_summary() -> str | None:
             n = dc.get(label, 0)
             if n:
                 detail.append(f"{n} {label}")
-        lines.append(f"- from {peer}: {total} — " + ", ".join(detail))
+        lines.append(f"- from {peer}: {total} - " + ", ".join(detail))
     return "\n".join(lines)
 
 
@@ -218,7 +218,7 @@ def main() -> int:
     if not p_vis:
         anomalies.append("Legion: vision server :8889 not listening")
 
-    # Fetch /api/health/all once — used for DS health + bridge peer probes
+    # Fetch /api/health/all once - used for DS health + bridge peer probes
     health_all = _health_all() or {}
 
     # DS alive check used to suppress RC-DaemonSlayer task false-positive
@@ -234,7 +234,7 @@ def main() -> int:
             n = t.get("name")
             s = t.get("state")
             r = t.get("last_result")
-            # 267014 = shutdown-terminated (VisionServer in-process popen exit) — expected
+            # 267014 = shutdown-terminated (VisionServer in-process popen exit) - expected
             # RC-DaemonSlayer result=1: suppress if /api/health/all confirms ds alive
             suppress = n == "RC-DaemonSlayer" and r == 1 and ds_alive
             mark = "" if r in (0, 267009, 267011, 267014) or suppress else f"  ⚠ result={r}"

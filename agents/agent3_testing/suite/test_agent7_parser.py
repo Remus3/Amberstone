@@ -12,7 +12,7 @@ from agents.agent7_context import InputParser
 @pytest.fixture()
 def parser(tmp_path: Path) -> InputParser:
     s = Scheduler(queue_log=tmp_path / "q.jsonl")
-    # No LLM spawn — force rule-based path for these tests.
+    # No LLM spawn - force rule-based path for these tests.
     return InputParser(scheduler=s, llm_spawn=None)
 
 
@@ -67,7 +67,7 @@ def test_note_goes_to_agent4(parser: InputParser) -> None:
 
 
 def test_unparsed_input_still_files_task(parser: InputParser) -> None:
-    # Nonsense input that matches no rule — rules-only mode, no LLM.
+    # Nonsense input that matches no rule - rules-only mode, no LLM.
     r = parser.parse("quergglebranch flibbertigibbet")
     assert r.intent == "fallback_unparsed"
     assert len(r.filed) == 1

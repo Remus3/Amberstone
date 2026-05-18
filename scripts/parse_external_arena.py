@@ -21,7 +21,7 @@ def parse(path: Path) -> dict:
     m = re.search(r"/champion/([^/]+)/arena", url)
     out["champ_url_key"] = m.group(1) if m else None
 
-    # Tier + WR — plain_text format: "Arena PerformanceF9.8%Win Rate (1st)22.7%Top 2 Rate"
+    # Tier + WR - plain_text format: "Arena PerformanceF9.8%Win Rate (1st)22.7%Top 2 Rate"
     m = re.search(r"Arena Performance([SABCDF])([\d.]+)%Win Rate \(1st\)", content)
     if m:
         out["tier"] = m.group(1)
@@ -41,7 +41,7 @@ def parse(path: Path) -> dict:
     if m:
         out["kda"] = {"k": float(m.group(1)), "d": float(m.group(2)), "a": float(m.group(3))}
 
-    # Best duo partners — short summary
+    # Best duo partners - short summary
     m = re.search(r"Best duo partners include ([^.]+)\.", content)
     if m:
         out["best_duos_summary"] = [s.strip() for s in m.group(1).split(",")]
@@ -54,7 +54,7 @@ def parse(path: Path) -> dict:
     if m:
         out["best_duo_2_3"] = [m.group(1).strip(), m.group(2).strip()]
 
-    # Top 3 duo partners with stats — pattern: "1<Name><avg>Avg Place<+diff>Place Diff<wr>%Win Rate<top4>%Top 4"
+    # Top 3 duo partners with stats - pattern: "1<Name><avg>Avg Place<+diff>Place Diff<wr>%Win Rate<top4>%Top 4"
     duos = []
     # The Top Arena Duo Partners section list: "1<Champ>X.YAvg Place..."
     # Better: pull from the table at end. In plain text the pattern is "[Name]TierWR%diff%top2%top4%avg%diff%matches"
@@ -74,7 +74,7 @@ def parse(path: Path) -> dict:
             })
     out["top_duos"] = duos[:5]
 
-    # Augments — pattern: "<TierLetter><pickrate>%Pick Rate<AugmentName>"
+    # Augments - pattern: "<TierLetter><pickrate>%Pick Rate<AugmentName>"
     augs = []
     aug_section = re.search(r"Best Arena Augments in Patch [\d.]+(.+?)Best Arena Duo Partners", content, re.S)
     if aug_section:
@@ -94,7 +94,7 @@ def parse(path: Path) -> dict:
             })
     out["augments"] = augs[:12]
 
-    # Strongest augment choices summary — the most reliable augment names
+    # Strongest augment choices summary - the most reliable augment names
     m = re.search(r"strongest augment choices include ([^.]+?), which provide", content)
     if m:
         out["strongest_augments"] = [s.strip() for s in m.group(1).split(",")]

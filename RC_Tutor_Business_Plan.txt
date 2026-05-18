@@ -1,6 +1,6 @@
-RC TUTOR — BUSINESS PLAN & MARKET ANALYSIS
+RC TUTOR - BUSINESS PLAN & MARKET ANALYSIS
 Generated: 2026-05-04
-Status: Working document — not for distribution
+Status: Working document - not for distribution
 
 =============================================================================
 SECTION 1: WHAT RC TUTOR IS
@@ -8,9 +8,9 @@ SECTION 1: WHAT RC TUTOR IS
 
 RC (Riot Commander) is a personal second-screen AI coaching system for
 League of Legends. It reads Riot's Live Client API, captures the game
-screen via a relay agent, and combines three AI tiers — Tesseract OCR for
+screen via a relay agent, and combines three AI tiers - Tesseract OCR for
 cheap region reads, Claude Haiku for fast coaching tips, and Claude Sonnet
-for visual reasoning — to deliver real-time advice displayed on a secondary
+for visual reasoning - to deliver real-time advice displayed on a secondary
 monitor in a web dashboard.
 
 RC Tutor is the productized version of that system: packaged, installable by
@@ -21,7 +21,7 @@ The core differentiator that no existing product has: Daemon Slayer, a local
 build engine that computes real damage-per-second curves for any
 champion×item×target combination. 547 items modeled. The system tells you
 not just "buy Kraken Slayer" but "Kraken Slayer adds 847 DPS against this
-tanky Malphite at your current level vs. your other option at 612 DPS — and
+tanky Malphite at your current level vs. your other option at 612 DPS - and
 here's why."
 
 =============================================================================
@@ -36,8 +36,8 @@ Platform: Overlay Platform M SDK + standalone Windows app.
 Pricing: Free + $7.99/mo Pro.
 
 How it started: A simple champion suggestion app that showed builds in
-pre-game lobby. Grew feature by feature — matchup data, voice coaching,
-item timing alerts, jungle tracking — over 18 months before feeling polished.
+pre-game lobby. Grew feature by feature - matchup data, voice coaching,
+item timing alerts, jungle tracking - over 18 months before feeling polished.
 
 Strengths:
 - Deepest in-game overlay feature set of any tool (rune import, item
@@ -49,7 +49,7 @@ Weaknesses:
 - Overlay Platform M dependency means Riot can flag it if ToS changes
 - Heavy resource usage (200-400MB RAM, CPU spikes during fights)
 - Privacy: Overlay Platform M telemetry and data collection on match history
-- No real AI reasoning — advice is pattern-matched from aggregated data,
+- No real AI reasoning - advice is pattern-matched from aggregated data,
   not generated. It shows "what 50% of Platinum players buy," not "what's
   optimal for this specific matchup"
 - Post-acquisition integration with Aggregator C has been rocky (feature
@@ -64,7 +64,7 @@ Founded: 2017. Raised $11.25M Series A (2018) + undisclosed later rounds.
 Platform: Web dashboard + Chrome extension + desktop overlay (via Overlay App E).
 Pricing: ~$14.99/mo Pro (was $24.99/mo at launch, reduced post-competition).
 
-How it started: The GPI (Gamer Performance Index) — a proprietary 7-axis
+How it started: The GPI (Gamer Performance Index) - a proprietary 7-axis
 skill score (Vision, Farming, Fighting, etc.) that nobody else had. That
 unique score was the hook that differentiated them from Aggregator A's simpler stats.
 
@@ -76,7 +76,7 @@ Strengths:
 
 Weaknesses:
 - Most expensive subscription in the space
-- AI content is largely GPT-generated from template prompts — not reasoning
+- AI content is largely GPT-generated from template prompts - not reasoning
 - GPI scores can feel arbitrary and don't translate to in-game decisions
 - The SaaS model means all your data lives on their servers
 - Post-Overlay App E merger integration problems inherited
@@ -90,13 +90,13 @@ Founded: 2013 (South Korea). Monthly users: 50M+.
 Platform: Web + Aggregator A App (Overlay Platform M) + Chrome extension.
 Pricing: Free, ad-supported. "Aggregator A PRO" ~$4.99/mo removes ads + extras.
 
-How it started: Pure stat tracker — type in a summoner name, see their rank,
+How it started: Pure stat tracker - type in a summoner name, see their rank,
 champions, and recent games. The simplest possible value proposition.
 Became the default lookup tool through pure execution and reliability. Grew
 into build recommendations and tier lists over ~5 years.
 
 Strengths:
-- Unmatched brand recognition — "look them up on Aggregator A" is standard vocabulary
+- Unmatched brand recognition - "look them up on Aggregator A" is standard vocabulary
 - Enormous data sample (50M users = most accurate tier lists)
 - Chrome extension for automatic pre-game lookup
 - Clean, fast interface
@@ -106,7 +106,7 @@ Weaknesses:
 - Advice is tier-list-based, not adaptive
 - In-game app overlay is relatively thin compared to Overlay App E
 - Revenue depends heavily on advertising; Pro tier underwhelming
-- No damage math — builds are "most popular," not "most optimal"
+- No damage math - builds are "most popular," not "most optimal"
 
 Where they are now: The reference tool. Not a coaching platform. Won the
 "lookup" category and has largely defended it, but lost the "coaching" space
@@ -139,7 +139,7 @@ Valuable for pregame prep, zero value during the game. Expanding to Valorant.
 Founded: 2019. Platform: Overlay Platform M overlay.
 Pricing: Free + $6.99/mo Pro.
 
-How it started: One focused feature — show you the rank, champion mastery,
+How it started: One focused feature - show you the rank, champion mastery,
 and win rate of everyone in your pregame lobby (both teams). Instant value,
 no onboarding required.
 
@@ -150,12 +150,12 @@ Strengths:
 - Low price point
 
 Weaknesses:
-- Limited to pregame — nothing in-game
+- Limited to pregame - nothing in-game
 - No coaching, no builds, no vision
 - No AI component
 - Feature set hasn't grown much
 
-Where they are now: Strong at what it does. Niche but sticky — players who
+Where they are now: Strong at what it does. Niche but sticky - players who
 want pregame context without heavyweight installs. Has not tried to expand
 into full coaching territory.
 
@@ -173,7 +173,7 @@ Strengths:
 - 1-on-1 coaching is irreplaceable for some learners
 
 Weaknesses:
-- Cannot scale — human coaches are the bottleneck
+- Cannot scale - human coaches are the bottleneck
 - Not real-time, not in-game
 - $30/mo for human coaching is expensive
 - AI competitors eat the bottom of their market
@@ -185,7 +185,7 @@ premium tier. Struggling against free AI-adjacent tools.
 --- LOLMATH.NET ---
 Platform: Web SPA (Cloudflare Pages). No subscription.
 
-How it started: Item math calculator — compute effective HP, DPS,
+How it started: Item math calculator - compute effective HP, DPS,
 breakpoints. Pure client-side JavaScript.
 
 Strengths: Free. Good for static item comparison.
@@ -217,7 +217,7 @@ SECTION 3: RC TUTOR PRODUCT DEFINITION
 
 CORE VALUE PROPOSITION
 "The only coaching tool that shows you the math behind every recommendation
-— live, during your game, on your second screen."
+- live, during your game, on your second screen."
 
 TARGET USERS
 - Primary: Improvement-focused players in Gold–Diamond who think critically
@@ -232,7 +232,7 @@ FEATURE TIERS
 Free Tier (acquisition):
 - Dashboard with live game state (game time, gold, KDA, wave state)
 - Basic pregame build suggestions from local match history
-- Champion-select coaching (no LLM — heuristic only)
+- Champion-select coaching (no LLM - heuristic only)
 - Match history lookup
 
 Standard Tier (~$7.99/mo):
@@ -286,7 +286,7 @@ regardless of platform.
 DECISION 2: RIOT ToS COMPLIANCE
 
 RC's architecture is designed to stay clean:
-- Reads the Live Client DATA API (:2999) — explicitly supported and documented
+- Reads the Live Client DATA API (:2999) - explicitly supported and documented
 - No memory reads, no inject, no process hooking
 - Screen capture is on a separate machine or windowed (not hooking game process)
 - No automation of gameplay (auto-accept is opt-in, doesn't affect gameplay)
@@ -388,19 +388,19 @@ TARGET ADDRESSABLE: 1.5-2M players in the RC Tutor sweet spot
 
 REALISTIC CAPTURE SCENARIOS
 
-Scenario A — Indie side project, word-of-mouth only:
+Scenario A - Indie side project, word-of-mouth only:
   Year 1: 1,000 paying users
   Revenue: 1,000 × $9.99/mo × 12mo = ~$120K ARR
   Cost: API costs ~$15K/year + infrastructure ~$5K = ~$100K net
   Verdict: Profitable at small scale. Good "ramen profitability" threshold.
 
-Scenario B — Developer preview / early access push:
+Scenario B - Developer preview / early access push:
   Year 1: 5,000 paying users
   Revenue: 5,000 × $9.99/mo × 12mo = ~$600K ARR
   Cost: API ~$75K + infra ~$15K + part-time support ~$60K = ~$450K net
   Verdict: Sustaining business. Funds continued development.
 
-Scenario C — With marketing / content creator partnerships:
+Scenario C - With marketing / content creator partnerships:
   Year 1: 20,000 paying users
   Year 2: 50,000 paying users
   Revenue Y2: $6M ARR
@@ -440,33 +440,33 @@ approximations. The gap is real for 12-18 months minimum.
 SECTION 7: WHAT NEEDS TO HAPPEN TO GET THERE
 =============================================================================
 
-PHASE A — Single-machine mode (2-3 weeks engineering)
+PHASE A - Single-machine mode (2-3 weeks engineering)
   Currently requires two machines. Compress to one:
   - Vision relay becomes localhost (screen_agent → 127.0.0.1:8889)
   - LCU and LiveClient agents run locally
   - Dashboard viewed on second monitor in a browser window
   - Test on a single-machine setup
 
-PHASE B — PyInstaller polish (1-2 weeks)
+PHASE B - PyInstaller polish (1-2 weeks)
   Spec exists. Needs:
   - Bundle all agents and dependencies
   - First-run wizard (API key input, single vs dual machine toggle)
   - Auto-update check on startup
   - Test on a clean machine with no Python
 
-PHASE C — Daemon Slayer calibration (1 week) ✅ ENGINE COMPLETE
+PHASE C - Daemon Slayer calibration (1 week) ✅ ENGINE COMPLETE
   Daemon Slayer is functionally complete: 547/547 DDragon purchasable items,
   ENGINE_VERSION 0.59.0, 922 passing tests. All 4 coach modes (ARAM, Arena,
   Brawl, SR) use DS-before-Haiku. 4 items permanently deferred (no modelable
   formula). Remaining work: calibration against live match history to validate
   DPS predictions against observed outcomes.
 
-PHASE D — Vision calibration (1-2 sessions with real game frames)
+PHASE D - Vision calibration (1-2 sessions with real game frames)
   - Tesseract region calibration for 1920×1080 game frames
   - Coach routing that calls OCR first, Sonnet only on low confidence
   - TFT OCR recalibration for autobattler
 
-PHASE E — Distribution and launch
+PHASE E - Distribution and launch
   - Beta invite list (Reddit/Discord/Twitch)
   - Stripe/Lemon Squeezy for payments
   - Basic landing page

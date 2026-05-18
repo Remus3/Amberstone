@@ -1,4 +1,4 @@
-"""peer_bridge_daemon.py — zero-cost bridge task sentinel for Peer.
+"""peer_bridge_daemon.py - zero-cost bridge task sentinel for Peer.
 
 Polls Peer's local /api/bridge/messages for unhandled tasks targeted at 'peer'.
 Invokes `claude --print "/process-bridge-tasks"` ONLY when count > 0.
@@ -8,9 +8,9 @@ Self-contained: no dependency on bridge_pull_tasks.py (uses inline HTTP fetch
 compatible with Peer's bare-list response format as well as the RC dict format).
 
 State files (alongside this script, default: <repo>/tools/):
-    peer_bridge_daemon_health.json  — last poll status, invocation count
-    peer_bridge_daemon.lock         — held while claude --print is running
-    peer_bridge_daemon.log          — rotating log (1 MB × 2)
+    peer_bridge_daemon_health.json  - last poll status, invocation count
+    peer_bridge_daemon.lock         - held while claude --print is running
+    peer_bridge_daemon.log          - rotating log (1 MB × 2)
 
 Scheduled / boot setup:
     python3 tools/peer_bridge_daemon.py   # foreground, ctrl-c to stop
@@ -49,7 +49,7 @@ LOCK_FILE     = SCRIPT_DIR / "peer_bridge_daemon.lock"
 _local = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
 PROCESSED_FILE = Path(_local) / "rc-bridge-tasks-processed.txt"
 
-# ── SSL context (skip cert verify — mirrors bridge_pull_tasks.py) ─────────
+# ── SSL context (skip cert verify - mirrors bridge_pull_tasks.py) ─────────
 _SSL = ssl.create_default_context()
 _SSL.check_hostname = False
 _SSL.verify_mode = ssl.CERT_NONE
@@ -72,7 +72,7 @@ _log  = logging.getLogger("peer_bridge_daemon")
 # ── Helpers ───────────────────────────────────────────────────────────────
 
 def _resolve_claude() -> str:
-    """Find claude CLI binary — checks env override, npm shim, then PATH."""
+    """Find claude CLI binary - checks env override, npm shim, then PATH."""
     override = os.environ.get("ANTHROPIC_CLAUDE_PATH")
     if override and os.path.exists(override):
         return override
@@ -216,7 +216,7 @@ def main() -> None:
         if count > 0:
             _log.info("%d task(s) pending for %s", count, TARGET)
             if _lock_held():
-                _log.info("claude already running (lock held) — recheck in %ds",
+                _log.info("claude already running (lock held) - recheck in %ds",
                           POLL_WORK_S)
                 _write_health("locked", count, last_task_ts, invocations)
                 sleep_s = POLL_WORK_S

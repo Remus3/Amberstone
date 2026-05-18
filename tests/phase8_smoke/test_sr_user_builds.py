@@ -1,4 +1,4 @@
-"""Phase 8 step 3 — user-curated additive build store.
+"""Phase 8 step 3 - user-curated additive build store.
 
 Hermetic tests: each test redirects sr_user_builds._STORE_PATH to a
 tempdir so the real data/daemon_slayer/user_builds.json is never
@@ -71,7 +71,7 @@ class TestCrudHappyPath(_HermeticStoreCase):
         sr_user_builds.add("Jhin", {
             "label": "snowball", "items": ["The Collector"],
         })
-        # Direct file read — proves atomic write happened.
+        # Direct file read - proves atomic write happened.
         raw = json.loads(self._store_path.read_text(encoding="utf-8"))
         self.assertIn("Jhin", raw["champions"])
         self.assertEqual(raw["_schema_version"], 1)

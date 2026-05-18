@@ -2,7 +2,7 @@
 """Champ-select snapshot retention across the fast no-draft transition.
 
 ARAM (450) / ARAM Mayhem (KIWI, 2400) / Arena (1700) have no ban/pick
-draft — champ-select is a short bench / reroll / augment window that
+draft - champ-select is a short bench / reroll / augment window that
 flips ChampSelect → GameStart → InProgress in well under the dashboard
 snapshot path's latency budget:
 
@@ -19,12 +19,12 @@ snapshot's ``champ_select`` was already gone (game started → the LCU
 This keeps the last non-empty ``champ_select`` and re-splices it into
 a snapshot that lost it, for a bounded retention window, so the view
 survives the transition. Scope note: this is a robustness layer for
-*transient loss* — the primary Mayhem functional fix is the queue-2400
+*transient loss* - the primary Mayhem functional fix is the queue-2400
 mapping (``core.queue_modes`` + the agent's ``is_aram``). Retention's
 clean win is the phase-still-ChampSelect-but-cs-momentarily-empty
 agent-race case; when the LCU phase has genuinely advanced to
 InProgress the phase-driven view router (s208/s209) governs which view
-shows — that path is closed separately by the agent ``cs_debug``
+shows - that path is closed separately by the agent ``cs_debug``
 breadcrumb's live evidence.
 
 Pure function over an injected clock + module cache → deterministic
@@ -36,7 +36,7 @@ from __future__ import annotations
 import copy
 from typing import Optional
 
-# A retained champ-select older than this is definitely stale — no
+# A retained champ-select older than this is definitely stale - no
 # no-draft champ-select + loading lasts anywhere near 2 minutes, and
 # the explicit-phase clear below fires long before this in practice.
 RETENTION_TTL_S = 120.0
@@ -49,7 +49,7 @@ RETENTION_TTL_S = 120.0
 # NB: the literal string ``"None"`` (gameflow-phase serializes the
 # no-flow state to that) is a clear signal; a Python ``None`` phase
 # means the snapshot is empty/stale (>5s agent push) which IS the
-# transient window we want to bridge — so only the *string* is listed.
+# transient window we want to bridge - so only the *string* is listed.
 _CLEAR_PHASES = frozenset({
     "Lobby", "Matchmaking", "ReadyCheck", "None",
     "EndOfGame", "PreEndOfGame", "WaitingForStats", "TerminatedInError",
@@ -86,7 +86,7 @@ def apply_cs_retention(
 
     ``now`` is injectable for deterministic tests; defaults to wall
     clock. The return value is the input object (passthrough) or a
-    shallow-copied dict with a deep-copied retained ``champ_select`` —
+    shallow-copied dict with a deep-copied retained ``champ_select`` -
     never the cached object itself.
     """
     if now is None:

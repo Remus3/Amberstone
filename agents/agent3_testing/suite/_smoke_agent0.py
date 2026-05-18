@@ -1,4 +1,4 @@
-"""Manual smoke-test for Agent 0 evaluator (not a pytest — used in build validation).
+"""Manual smoke-test for Agent 0 evaluator (not a pytest - used in build validation).
 
 pytest version lives in test_agent0.py.
 """

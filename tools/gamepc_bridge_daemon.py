@@ -1,12 +1,12 @@
-"""gamepc_bridge_daemon.py — zero-cost bridge task sentinel for Game-PC.
+"""gamepc_bridge_daemon.py - zero-cost bridge task sentinel for Game-PC.
 
 Polls Legion's /api/bridge for unhandled tasks targeted at 'gamepc'.
 Invokes `claude --print "/process-bridge-tasks"` ONLY when count > 0.
 Zero API cost when the queue is empty.
 
 State files (C:\\RC-Agent\\):
-    bridge_daemon_health.json  — last poll status, invocation count
-    bridge_daemon.lock         — held while claude --print is running
+    bridge_daemon_health.json  - last poll status, invocation count
+    bridge_daemon.lock         - held while claude --print is running
 
 Scheduled task: RC-BridgeDaemon  (at logon, restart-on-failure 3×/1min)
 """
@@ -42,7 +42,7 @@ _root.setLevel(logging.INFO)
 _ch = logging.StreamHandler()
 _ch.setFormatter(_fmt)
 _root.addHandler(_ch)
-# File handler — always active; rotate at ~1 MB to keep it bounded
+# File handler - always active; rotate at ~1 MB to keep it bounded
 from logging.handlers import RotatingFileHandler as _RFH
 _fh = _RFH(SCRIPT_DIR / "bridge_daemon.log", maxBytes=1_000_000, backupCount=2,
             encoding="utf-8")
@@ -174,7 +174,7 @@ def main() -> None:
         if count > 0:
             _log.info("%d task(s) pending for %s", count, TARGET)
             if _lock_held():
-                _log.info("claude already running (lock held) — will recheck in %ds",
+                _log.info("claude already running (lock held) - will recheck in %ds",
                           POLL_WORK_S)
                 _write_health("locked", count, last_task_ts, invocations)
                 sleep_s = POLL_WORK_S
@@ -197,7 +197,7 @@ def main() -> None:
                     _log.error("claude invocation error: %s", e)
                 finally:
                     _set_lock(False)
-                # Re-check quickly — the batch may have had multiple tasks and
+                # Re-check quickly - the batch may have had multiple tasks and
                 # bridge_pull_tasks dedupes by processed IDs, so a fresh check
                 # confirms everything was handled.
                 sleep_s = POLL_WORK_S

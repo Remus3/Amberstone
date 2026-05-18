@@ -18,7 +18,7 @@ Pipeline:
       → DS server's rank_for / rank_items / compute_dps
 
 When the request is from champ-select (no live game), there's no enemy
-inventory to sum — caller falls back to ``compute_enemy_stats(mode,
+inventory to sum - caller falls back to ``compute_enemy_stats(mode,
 level)`` from coach_integration.enemy_stats which provides a mode/level
 scaled curve.
 
@@ -27,7 +27,7 @@ catalog). The relevant Flat* fields:
     FlatArmorMod         → armor
     FlatSpellBlockMod    → magic resist
     FlatHPPoolMod        → max HP / bonus HP
-We do NOT subtract base champion stats — the DS engine adds those
+We do NOT subtract base champion stats - the DS engine adds those
 separately via ``compute_enemy_stats``. ``target_*`` params are
 *additive deltas* on top of the base curve in s170's design.
 """
@@ -68,7 +68,7 @@ def _load_stat_index() -> dict[str, dict]:
             if armor or mr or hp:
                 out[str(item_id)] = {"armor": armor, "mr": mr, "hp": hp}
     except FileNotFoundError:
-        _log.warning("enemy_aware_stats: %s missing — falling back to empty index",
+        _log.warning("enemy_aware_stats: %s missing - falling back to empty index",
                      _ITEMS_PATH)
     except Exception as exc:
         _log.warning("enemy_aware_stats: load failed: %s", exc)
@@ -84,8 +84,8 @@ def compute_target_stats_from_items(enemy_items_by_player: list[list],
     item-id lists. Item ids may be ints or strings; everything is
     coerced to str for the catalog lookup.
 
-    ``aggregator``: ``"avg"`` (mean across enemies — typical-target),
-    ``"max"`` (highest-stat enemy — worst-case for armor/MR pen),
+    ``aggregator``: ``"avg"`` (mean across enemies - typical-target),
+    ``"max"`` (highest-stat enemy - worst-case for armor/MR pen),
     ``"top1"`` (only the most-itemized enemy).
 
     Returns ``{"target_armor": float, "target_mr": float,
@@ -174,7 +174,7 @@ def enemy_items_from_liveclient(liveclient_data: dict,
     pass the active player's team to get just the enemies.
 
     Returns ``[[item_id, item_id, ...], ...]`` (one inner list per
-    enemy). Trinkets are filtered out — they don't contribute relevant
+    enemy). Trinkets are filtered out - they don't contribute relevant
     stats and would dilute the average.
     """
     if not isinstance(liveclient_data, dict):
@@ -193,7 +193,7 @@ def enemy_items_from_liveclient(liveclient_data: dict,
                 continue
             iid = it.get("itemID") or it.get("itemId") or 0
             slot = it.get("slot")
-            # Slot 6 is the trinket — skip; 0-5 are real items.
+            # Slot 6 is the trinket - skip; 0-5 are real items.
             if slot is not None and slot >= 6:
                 continue
             if iid:

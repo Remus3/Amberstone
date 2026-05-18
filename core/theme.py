@@ -1,5 +1,5 @@
 """
-core/theme.py — Shared visual constants for all Riot Commander UI.
+core/theme.py - Shared visual constants for all Riot Commander UI.
 
 Single source of truth for colors, fonts, zone geometry, and grade colors.
 Import from here instead of defining constants in each panel file.

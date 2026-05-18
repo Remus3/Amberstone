@@ -1,11 +1,11 @@
-/* Voice TTS toggle — header pill for speech output. "active" state lets
+/* Voice TTS toggle - header pill for speech output. "active" state lets
  * the user see at a glance whether speech is on. */
 .voice-toggle.active {
   color: var(--good);
   border-color: color-mix(in srgb, var(--good) 40%, transparent);
 }
 
-/* Voice picker dropdown — only visible when the toggle is on. Matches
+/* Voice picker dropdown - only visible when the toggle is on. Matches
  * the footer-btn chrome so they read as one control pair. */
 .voice-picker {
   background: var(--surface);
@@ -47,7 +47,7 @@ header {
 }
 /* Anchor for the absolutely-positioned view-menu (which is a child
  * of header-row-1). Using row-1 as the offset parent means the menu's
- * top:100% lands exactly at the bottom of row 1 — no zoom math
+ * top:100% lands exactly at the bottom of row 1 - no zoom math
  * needed (the body { zoom: 1.33 } scales everything uniformly inside
  * an absolute-positioned tree). */
 .header-row-1 { position: relative; }
@@ -58,7 +58,7 @@ header {
 }
 /* Static-pill rule: every header pill keeps its slot even when its
  * underlying data is missing. `.hidden` toggles on individual pills are
- * no-ops visually — the pill retains its footprint with a "—" placeholder
+ * no-ops visually - the pill retains its footprint with a "-" placeholder
  * so peripheral vision can anchor to the slot map by position, not by
  * scanning a reshuffled row. JS can still toggle the class freely. */
 header .lvl-pill.hidden,
@@ -75,13 +75,13 @@ header .trend-pill.hidden,
 header .advisory-badge.hidden,
 header .self-spells.hidden {
   display: inline-flex !important;
-  opacity: 0.55;   /* faded rather than gone — still readable at a glance */
+  opacity: 0.55;   /* faded rather than gone - still readable at a glance */
 }
-/* Augments pill is a mode-indicator, not a data anchor — truly hide it
+/* Augments pill is a mode-indicator, not a data anchor - truly hide it
  * in modes that don't have augments so it doesn't add visual noise. */
 header .augments-pill.hidden { display: none !important; }
 /* (2026-04-25) HP / MP / gold / 30d-trend pills hidden in-game per
- * user — "wasn't looking at them while playing". Visible during
+ * user - "wasn't looking at them while playing". Visible during
  * client mode (lobby + aftergame) where they help frame post-match
  * review. Wins over the static-pill !important rule above via higher
  * specificity (body[data-mode] + header + .pill = 0,3,2 vs the
@@ -92,7 +92,7 @@ body:not([data-mode="client"]) header .gold-pill,
 body:not([data-mode="client"]) header .trend-pill {
   display: none !important;
 }
-/* (2026-04-26) Also hide HP / MP / WIN pills in CLIENT mode per user —
+/* (2026-04-26) Also hide HP / MP / WIN pills in CLIENT mode per user -
  * "client panel does not need the hp,mana, win% pills". Visual-only
  * hide; JS still populates #hp-bar / #mp-bar / #win-pct-val so any
  * future ALT-tab indicator or aftergame summary can read the values. */
@@ -108,7 +108,7 @@ body[data-mode="client"] header .win-pill {
  * stayed on screen with stale values + the champion-pill ("Zoi") had
  * no gate at all. Higher specificity (0,3,1) + !important wins over
  * static-pill (0,2,1). game-time is a fixed-width element that would
- * otherwise hold a stale "—" placeholder. JS still updates these
+ * otherwise hold a stale "-" placeholder. JS still updates these
  * elements; only the visual is dropped. */
 body[data-mode="client"] header .champion-pill,
 body[data-mode="client"] header .zone-pill,
@@ -122,7 +122,7 @@ body[data-mode="client"] header .ult-pill {
 }
 
 /* (s162 2026-05-10) View-scoped hide. data-mode can be "sr" / "aram"
- * etc. while the operator is on a pre-game view (lobby — LCU detected
+ * etc. while the operator is on a pre-game view (lobby - LCU detected
  * a queue but the game hasn't started; or home/session/history/etc.).
  * In any view that isn't active-match or last-match, hide all in-game
  * telemetry pills regardless of data-mode. Specificity 0,2,2 beats
@@ -141,8 +141,8 @@ body:not([data-view="active-match"]):not([data-view="last-match"]) header .win-p
 }
 /* (2026-05-18) Same view-scoped principle as the s162 block above, but
  * active-match ONLY (no last-match exception). The four row-2 pills are
- * live-game surfaces — DS in-game pick glance, currently-owned augments,
- * decision_detector heartbeat, first-item archetype mismatch — that are
+ * live-game surfaces - DS in-game pick glance, currently-owned augments,
+ * decision_detector heartbeat, first-item archetype mismatch - that are
  * meaningless on lobby/home/champ-select/Post-Game-Review. They were
  * only ever mode-gated (client/tft) on the assumption mode=="client"
  * whenever not in a game; but mode is legitimately "aram"/"arena" during
@@ -157,14 +157,14 @@ body:not([data-view="active-match"]) header .trigger-pill,
 body:not([data-view="active-match"]) header .archetype-nudge-chip {
   display: none !important;
 }
-/* (2026-04-26) Win% pill is in-game-only — outcome is known by the
+/* (2026-04-26) Win% pill is in-game-only - outcome is known by the
  * time post-match lobby renders, so the live probability has no
  * meaning. Hide outside in-game modes (covers any view-router state
  * where data-mode might briefly be missing or 'client'). */
 body:not([data-mode="aram"]):not([data-mode="sr"]):not([data-mode="brawl"]):not([data-mode="arena"]):not([data-mode="tft"]) header .win-pill {
   display: none !important;
 }
-/* (2026-04-25) KDA pill removed from top bar per user — "not needed".
+/* (2026-04-25) KDA pill removed from top bar per user - "not needed".
  * Visual-only hide (the JS keeps updating #kda + the burst animation
  * stays wired) so this is a one-line revert if they change their mind. */
 header .kda {
@@ -177,7 +177,7 @@ header .kda {
 header .self-spells {
   display: none !important;
 }
-/* (2026-04-25) WIN pill moved to row 1 — drop the row-2 right-pin so
+/* (2026-04-25) WIN pill moved to row 1 - drop the row-2 right-pin so
  * it sits naturally between champion and zone pills instead of being
  * pushed against the row's right edge. */
 header .header-row-1 .win-pill {
@@ -200,7 +200,7 @@ footer .digest-icon.in-footer b {
   font-size: 12px;
 }
 /* Mode pill in footer (moved 2026-04-29). Parent-selector scale-down so
- * we don't need a `.in-footer` modifier — JS does
+ * we don't need a `.in-footer` modifier - JS does
  * `modePill.className = "mode-pill " + tag` which would clobber any
  * extra class on every mode change. Parent-selector survives that. */
 footer .mode-pill {
@@ -211,7 +211,7 @@ footer .mode-pill {
   font-weight: 700;
 }
 /* Gold pill scaled to match (moved 2026-04-29). Parent-selector for the
- * same reason — JS sets gold-pill .hidden / .stale classes that would
+ * same reason - JS sets gold-pill .hidden / .stale classes that would
  * conflict with a fixed in-footer modifier. */
 footer .gold-pill {
   font-size: 12px !important;
@@ -222,7 +222,7 @@ footer .gold-pill {
 }
 footer .gold-pill b { font-size: 12px; }
 /* DEV ⌃ + VOICE buttons + voice-picker reduced to in-footer scale per
- * user 2026-04-29 — they were standing taller than the surrounding
+ * user 2026-04-29 - they were standing taller than the surrounding
  * pills (advisory / digest / mode / gold). Parent-selector overrides
  * the base .footer-btn padding without touching the .footer-btn class
  * (which is also used outside the footer e.g. in the adapt panel). */
@@ -251,7 +251,7 @@ footer .prefs-chip:hover { color: var(--text); }
  * content (e.g. "CLIENT" for mode-pill, "Renata Glasc" for champion,
  * "DEEP ENEMY" for zone, "XX/XX/XX" for KDA). Shorter content centers in
  * the pill. No pill ever widens, narrows, grows taller, or shrinks shorter
- * as content changes — the pill grid is a fixed slot map the eye can
+ * as content changes - the pill grid is a fixed slot map the eye can
  * anchor by position alone. */
 .header-row > * {
   display: inline-flex;
@@ -267,7 +267,7 @@ footer .prefs-chip:hover { color: var(--text); }
 .header-row-2 > * { height: 40px; }
 
 /* Font-uniformity rule: every header pill's primary readable text
- * renders at 20px — matching the HP pill so row 1 and row 2 share a
+ * renders at 20px - matching the HP pill so row 1 and row 2 share a
  * visual "size grammar". Internal <b> elements inherit. Sub-labels
  * (WIN, LVL placeholders) sit at 20px too for a cohesive look.
  * (Stepped down 22→20 2026-04-24 so row 2 fits 1180px iPad viewport.) */
@@ -345,7 +345,7 @@ footer .prefs-chip:hover { color: var(--text); }
   text-transform: uppercase; font-weight: 700;
   border-left: 1px solid var(--border-soft); padding-left: 10px;
   /* s218: pinned width so the title-dropdown is STATIC across all views
-   * (operator hard rule). Sized to fit the widest realistic label —
+   * (operator hard rule). Sized to fit the widest realistic label -
    * "AUTO · PRE-GAME LOBBY" (21 chars at 13px / 0.16em letter-spacing).
    * Any manual pick is shorter and comfortably fits. */
   display: inline-block;
@@ -364,13 +364,13 @@ footer .prefs-chip:hover { color: var(--text); }
 }
 
 /* s162: .title-auto-pill rules removed. The header pill was deleted in
- * favor of the dropdown's "↻ Auto (clear manual)" item — single source
+ * favor of the dropdown's "↻ Auto (clear manual)" item - single source
  * of truth for clearing manual mode. */
 
 .view-menu {
   /* (2026-04-26 v7) The menu is moved to be a direct child of <body>
    * via JS on first wire (escapes ALL parent positioning quirks).
-   * position: fixed with hardcoded top in CSS pixels — visual lands
+   * position: fixed with hardcoded top in CSS pixels - visual lands
    * at top * body-zoom (~93px at 70px CSS / 1.33 zoom). Hardcoded
    * bottom/right/transform clearance so nothing can override. */
   position: fixed !important;
@@ -393,14 +393,14 @@ footer .prefs-chip:hover { color: var(--text); }
   min-width: 280px;
   max-width: calc(100vw - 36px);
   padding: 8px;
-  /* gap is the SOLE source of spacing between rows + dividers — every
+  /* gap is the SOLE source of spacing between rows + dividers - every
    * adjacent pair is exactly `gap` apart. Don't add margins on items
    * or dividers; they'll compound and break uniformity. */
   display: flex; flex-direction: column; gap: 6px;
 }
 .view-menu.hidden { display: none; }
 .view-menu-item {
-  /* Pill-row aesthetic — rounded rectangles inside the menu container,
+  /* Pill-row aesthetic - rounded rectangles inside the menu container,
    * mirroring the title-dropdown's rounded shape. Solid theme background
    * fixes the "no background on hover" bug (button user-agent defaults
    * were overriding). width: 100% + box-sizing: border-box forces every
@@ -435,11 +435,11 @@ footer .prefs-chip:hover { color: var(--text); }
   outline: 2px solid var(--info); outline-offset: 1px;
 }
 .view-menu-divider {
-  /* No margin — the parent flex `gap: 6px` provides uniform spacing
+  /* No margin - the parent flex `gap: 6px` provides uniform spacing
    * around dividers AND items. (2026-04-26 v3 fix.) */
   height: 1px; background: var(--border-soft); margin: 0;
 }
-/* Special menu rows — keep the same surface-head base background as
+/* Special menu rows - keep the same surface-head base background as
  * regular items so all rows look unified, but tint the border + text
  * to telegraph "this is a different kind of action". (2026-04-26 v3:
  * earlier transparent backgrounds made these rows look disconnected.) */
@@ -451,7 +451,7 @@ footer .prefs-chip:hover { color: var(--text); }
   background: var(--gold-soft); color: var(--clock);
   border-color: var(--clock); font-style: normal;
 }
-/* Auto-promotion banner — appears when manual view is set but a game
+/* Auto-promotion banner - appears when manual view is set but a game
  * event wants to switch (ChampSelect / InProgress). */
 .view-banner {
   position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
@@ -490,7 +490,7 @@ footer .prefs-chip:hover { color: var(--text); }
    * sits closer to the top panel border. Was 12/16, now 4/8.
    * s162 v6: bottom padding 16→4 to eliminate the last bit of overflow
    * causing the page to scroll.
-   * s162 v11: tightened further — top padding 8→4 + bottom 4→2 +
+   * s162 v11: tightened further - top padding 8→4 + bottom 4→2 +
    * top margin 4→2 to claw back ~10px of vertical so lobby fits in
    * 1080-viewport without the auto-scrollbar. */
   margin: 2px 18px 0; padding: 4px 18px 2px;
@@ -502,7 +502,7 @@ footer .prefs-chip:hover { color: var(--text); }
 .view-section[hidden] { display: none; }
 .view-section-head {
   display: flex; align-items: baseline; gap: 12px;
-  /* s162 v4: tightened vertical buffer per operator — was 14/10, now
+  /* s162 v4: tightened vertical buffer per operator - was 14/10, now
    * 8/6 to make room for 5 party-mains cards in the lobby grid.
    * s162 v11: 8/6 → 4/4 to recover another 6px of vertical for the
    * lobby grid without losing the divider line. */
@@ -521,7 +521,7 @@ footer .prefs-chip:hover { color: var(--text); }
  * the same column template as its rows so the title text can be
  * placed in the rank column (col 4), making it horizontally centered
  * with the row's Rank pip. The queue card's #lv-queue-name also uses
- * .lv-panel-title — leaving the generic rule above (text-align:
+ * .lv-panel-title - leaving the generic rule above (text-align:
  * center) unscoped keeps that one centered as before. */
 .lobby-view-card-party > .lv-panel-title {
   display: grid;
@@ -551,7 +551,7 @@ footer .prefs-chip:hover { color: var(--text); }
 
 /* s162 v5: My Top 8 row gets a light tint when the entry is currently
  * in the party. When they leave, the tint clears.
- * s162 v10: reverted v9's per-member color matrix — operator wants a
+ * s162 v10: reverted v9's per-member color matrix - operator wants a
  * single green hue for ALL in-party Top 8 rows (the FrenLuvr tint),
  * mirrored onto the matching PARTY-panel row via .is-top8-mate. Both
  * use the same 8% mix + 25% border so the two panels read as a pair
@@ -613,7 +613,7 @@ body[data-view="champ-select"] main,
 body[data-view="last-match"] main,
 body[data-view="replay"] main { display: none; }
 
-/* s219: hide live-game pills on Post Game Review — operator doesn't
+/* s219: hide live-game pills on Post Game Review - operator doesn't
  * want CS / Vision / ZOI / level / ult / gold / win cluttering the top
  * header when reviewing a completed match. The JS pill-visibility gate
  * runs on state updates only, so a CSS override is the simpler hard
@@ -682,7 +682,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 /* s162 v8: row 1 panels shrink to natural content (was stretching to
  * row 2 height and leaving dead space below the 5th party row).
  * s162 v11: queue panel reverted to default stretch so it matches
- * the PARTY panel's height — its inner queue-block uses
+ * the PARTY panel's height - its inner queue-block uses
  * justify-content: space-evenly to spread NORMAL DRAFT title +
  * buttons row + CHANGE LOBBY MODE evenly with equal vertical buffer
  * above and below the Change-Lobby-Mode button. The PARTY panel
@@ -693,7 +693,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   min-height: 0;
 }
 .lobby-view-card-queue {
-  /* default align-self: stretch — fills row 1 height */
+  /* default align-self: stretch - fills row 1 height */
   min-height: 0;
 }
 .lobby-view-card-head {
@@ -712,7 +712,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   justify-content: space-evenly;
   position: relative;
 }
-/* s162 v2 — Row 1 queue name. Static neutral color across all modes
+/* s162 v2 - Row 1 queue name. Static neutral color across all modes
  * (was --info / lavender, which felt mode-themed). White matches the
  * panel's brand tone without leaning into accent territory. */
 .lobby-view-queue-name {
@@ -722,7 +722,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   color: var(--text); text-transform: uppercase;
   text-align: center; padding: 0;
 }
-/* Row 2 controls strip — 6 buttons, equal static sizing. */
+/* Row 2 controls strip - 6 buttons, equal static sizing. */
 .lobby-view-queue-controls {
   display: flex; align-items: stretch; gap: 8px;
   justify-content: center; flex-wrap: nowrap;
@@ -731,7 +731,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lq-lane-pair.hidden { display: none; }
 
 /* ---- Common button class for the action strip ----
- * Static size — secondary lane button is the guide; everything
+ * Static size - secondary lane button is the guide; everything
  * matches that footprint (110px × 64px). Two-line content centered
  * vertically + horizontally. Font size +2pts above the previous
  * 10/11px treatment so labels are readable at a glance. */
@@ -867,7 +867,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   animation: lq-find-pulse 1.8s ease-in-out infinite;
 }
 
-/* ---- Lane picker popup — anchored above the lane pair, centered ----
+/* ---- Lane picker popup - anchored above the lane pair, centered ----
  * Position absolute, bottom edge offset above the lane-pair, left:50%
  * centers on the wrapper's midpoint (which equals primary + gap +
  * secondary midpoint per operator spec). */
@@ -916,13 +916,13 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 
 /* ---- Row 4: Change Lobby Mode dropdown ---- */
 .lobby-view-mode-switcher {
-  /* s162 v4: zero top margin — gap from queue-block already provides
+  /* s162 v4: zero top margin - gap from queue-block already provides
    * 6px between buttons row and the mode switcher. */
   position: relative;
   width: 100%;
   margin-top: 0;
 }
-/* s162 v4: .lv-mode-spacer removed — queue-block now uses
+/* s162 v4: .lv-mode-spacer removed - queue-block now uses
  * justify-content: space-evenly to distribute spacing across all flex
  * children, mirroring CLM's centering with the buttons-row's
  * centering. */
@@ -964,7 +964,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   box-shadow:
     0 2px 6px rgba(0,0,0,0.55),
     0 12px 32px rgba(0,0,0,0.65);
-  /* s162 v2: 4-column grid — SR / ARAM / Rotating / TFT. */
+  /* s162 v2: 4-column grid - SR / ARAM / Rotating / TFT. */
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
@@ -1061,7 +1061,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lv-top8-row.is-placeholder { opacity: 0.5; border: 1px dashed var(--border-soft); }
 .lv-top8-row { cursor: pointer; }
 .lv-top8-row:hover { border: 1px solid var(--info-soft); }
-/* s162 v7: offline rows — light red tint at reduced opacity so the
+/* s162 v7: offline rows - light red tint at reduced opacity so the
  * "this person isn't around right now" signal reads at a glance
  * without overpowering. is-in-party (green) wins if both apply. */
 .lv-top8-row.is-offline {
@@ -1120,7 +1120,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   white-space: nowrap;
 }
 /* s162 v16: unranked Top 8 entries fall back to "LVL ### : Unranked"
- * — same italic dim treatment as PARTY's .lv-party-empty so the two
+ * - same italic dim treatment as PARTY's .lv-party-empty so the two
  * panels read consistently when a friend hasn't placed yet. */
 .lv-top8-rank-empty {
   font-size: 14px;
@@ -1134,7 +1134,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lv-top8-tag:hover { color: var(--info); }
 /* s162 v8: name cell left-aligns so it reads at the leading edge of
  * the row, mirroring native client friends list.
- * s162 v9: tag (Notes) cell flipped to right-align — it's the last
+ * s162 v9: tag (Notes) cell flipped to right-align - it's the last
  * data column before the action buttons, and right-aligning gives
  * the trailing edge a clean stop before the dot/invite/reorder. */
 .lv-top8-name   { text-align: left; }
@@ -1227,7 +1227,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   color: var(--text); text-transform: uppercase;
   text-align: center;
 }
-/* s162 v4: party row split into 4 sections — name | current rank |
+/* s162 v4: party row split into 4 sections - name | current rank |
  * peak rank | actions. Section 4 (actions) is auto-sized; the three
  * data columns share the remaining width equally. */
 /* s162 v4: override the home.css "auto-fit" grid rule that stacks
@@ -1240,7 +1240,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   /* s162 v4: tightened 3→1 to fit 5 stacked party rows comfortably. */
   gap: 1px;
 }
-/* s162 v4: leader crown pip — non-interactive but sized like the
+/* s162 v4: leader crown pip - non-interactive but sized like the
  * kick/promote/copy action buttons so they line up consistently.
  * s162 v15: crown is now the actual League captain-icon-crown PNG
  * (CommunityDragon mirror). The button background/border drop so
@@ -1257,7 +1257,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: block;
   object-fit: contain;
 }
-/* s162 v15: Phosphor copy-simple SVG — sized to fit inside the
+/* s162 v15: Phosphor copy-simple SVG - sized to fit inside the
  * 26×26 .lv-member-action button. currentColor inherits the button's
  * text color so hover/focus transitions still work via the existing
  * `.lv-member-action:hover` color rule. */
@@ -1267,13 +1267,13 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: block;
 }
 .lv-mc-copy .lv-copy-svg {
-  /* MAINS panel copy button is wider than the row action buttons —
+  /* MAINS panel copy button is wider than the row action buttons -
    * scale the icon up slightly to match. */
   width: 18px; height: 18px;
 }
 .lobby-members-list .lobby-member-row {
   display: grid;
-  /* s162 v7: 6 cols — name | icon-spacer | role | rank | top-2-champs
+  /* s162 v7: 6 cols - name | icon-spacer | role | rank | top-2-champs
    * | actions. Cols 1–4 mirror Top 8 panel's name/games/role/rank fr
    * ratios so the Role + Rank columns line up vertically across both
    * panels. (Top 8: 1.4fr 0.6fr 0.5fr 1.2fr ... ; col 2 here is the
@@ -1296,7 +1296,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
  * + Secondary lane preferences as small icons. Self row leaves col 2
  * empty (operator's own prefs live in the QUEUE panel's lane picker).
  * s162 v14: padding-right 6px adds breathing room between the
- * lane-prefs col 2 and the role pip col 3 — the icons + role pip
+ * lane-prefs col 2 and the role pip col 3 - the icons + role pip
  * were reading as one chunk at the operator's viewing distance. */
 .lv-party-section-prefs {
   display: flex;
@@ -1320,8 +1320,8 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   color: var(--text-faint);
 }
 /* s162 v15: Primary-lane conflict outlines.
- *   .is-conflict-self  — red (operator's primary clashes with someone else's)
- *   .is-conflict-other — orange (two NON-self members clash, no self involved)
+ *   .is-conflict-self  - red (operator's primary clashes with someone else's)
+ *   .is-conflict-other - orange (two NON-self members clash, no self involved)
  * Outline (not border) keeps the icon's own dimensions intact so the
  * lane-icon glyph doesn't shift when a conflict appears/clears. */
 .lv-party-pref-icon.is-conflict-self,
@@ -1348,7 +1348,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lobby-members-list .lobby-member-row.is-selected {
   border-color: var(--text);
 }
-/* s162 v13: empty PARTY slots — dashed border + 50% opacity, mirroring
+/* s162 v13: empty PARTY slots - dashed border + 50% opacity, mirroring
  * the Top 8 placeholder treatment. The renderer always emits 5 row
  * slots; unfilled slots show this style and auto-populate when a
  * member joins (LCU push) or depopulate when they leave. */
@@ -1361,12 +1361,12 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lobby-members-list .lobby-member-row.is-placeholder:hover {
   border-color: var(--border-soft);
 }
-/* Section 1 — name + (YOU/LEADER) pips inline */
+/* Section 1 - name + (YOU/LEADER) pips inline */
 .lv-party-section-name {
   display: flex; align-items: center; gap: 6px;
   min-width: 0;
 }
-/* Section 2/3 — rank info */
+/* Section 2/3 - rank info */
 .lv-party-section-rank,
 .lv-party-section-peak {
   display: flex; align-items: center; gap: 4px;
@@ -1404,7 +1404,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lobby-member-pip-rank   { font-weight: 700; }
 .lobby-member-pip-peak   { background: var(--surface-head); color: var(--text-dim); }
 /* s162 v7: role pip in PARTY panel mirrors Top 8 .lv-top8-role typography
- * — plain dim uppercase text, no pill background. Drops padding +
+ * - plain dim uppercase text, no pill background. Drops padding +
  * background + border-radius from the .lobby-member-pip base so the
  * value sits at the same visual weight as the Top 8 role column.
  * s162 v14: 11px → 13px for the 13px floor. */
@@ -1496,7 +1496,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   background: color-mix(in srgb, var(--bad-soft) 30%, transparent);
 }
 /* 5-column grid: Champion (icon+copy) | Mastery | Recent | Overall | Averaged.
- * Champion column has a copy button next to the icon — shifts content
+ * Champion column has a copy button next to the icon - shifts content
  * left across the row by giving 76px to that column. */
 .lv-mc-grid-cols {
   grid-template-columns: 76px 1.0fr 1.0fr 1.6fr 1.8fr;
@@ -1605,7 +1605,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 
 /* s162 v10: Overall = 2-col × 2-row grid:
- *   [N Games (with mode tooltip)]   [K/D/A — D in red]
+ *   [N Games (with mode tooltip)]   [K/D/A - D in red]
  *   [W - L]                          [N.NN KDA]
  */
 .lv-mc-overall {
@@ -1663,15 +1663,15 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lv-mc-avg-lbl {
   /* s162 v14: 9px → 11px (zoom:1.33 → ~14.6px effective). Sub-labels
    * inside an info-dense data cell don't need to clear the 13px
-   * tertiary floor exactly — the value above them carries the
-   * primary signal — but 9px was hard to read at distance. */
+   * tertiary floor exactly - the value above them carries the
+   * primary signal - but 9px was hard to read at distance. */
   font-size: 12px; color: var(--text-faint);
   letter-spacing: 0.1em; text-transform: uppercase;
 }
-/* s162 v10: KP% color bands — established 5-tier convention from
+/* s162 v10: KP% color bands - established 5-tier convention from
  * aggregator B / aggregator A / aggregator D.
- *   ≥70 S — gold   60-69 A — info/lavender   50-59 B — good/green
- *   40-49 C — clock/amber   <40 D — bad/red
+ *   ≥70 S - gold   60-69 A - info/lavender   50-59 B - good/green
+ *   40-49 C - clock/amber   <40 D - bad/red
  * Applied to .lv-mc-avg-val so the number itself is colored. */
 .lv-mc-kp-s { color: var(--gold); }
 .lv-mc-kp-a { color: var(--info); }
@@ -1679,7 +1679,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lv-mc-kp-c { color: var(--clock); }
 .lv-mc-kp-d { color: var(--bad); }
 
-/* s162 v17: AVG 5 grade letter — operator's last-5-match performance
+/* s162 v17: AVG 5 grade letter - operator's last-5-match performance
  * grade for the listed champion. Bigger + heavier than the standard
  * .lv-mc-avg-val so the letter reads as the primary signal in the
  * cell, with "AVG 5" sitting below in the standard sub-label
@@ -1696,7 +1696,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lv-mc-avg5-c { color: var(--clock); }
 .lv-mc-avg5-d { color: var(--bad); }
 
-/* s162 v9: games-cell tooltip — 3-col table (RIFT / ARAM / ARENA)
+/* s162 v9: games-cell tooltip - 3-col table (RIFT / ARAM / ARENA)
  * with mode counts and WR%. Renders inside .app-tooltip via
  * data-tt-html. Inherits the tooltip's font (17px) but tightens
  * line-height and uses monospace for numerals. */
@@ -1850,7 +1850,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   color: var(--text); margin-bottom: 6px;
 }
 
-/* User Builds view (Phase 8 step 6 — 2026-05-04). Operator CRUD over
+/* User Builds view (Phase 8 step 6 - 2026-05-04). Operator CRUD over
  * data/daemon_slayer/user_builds.json. Two-pane layout: list of saved
  * builds for the picked champion on the left, add/edit form on the
  * right (form pane hidden until + Add or Edit is clicked). */
@@ -2041,7 +2041,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   color: var(--text-dim);
   background: var(--surface);
 }
-/* Mode accent vocabulary — blue for modes that historically used
+/* Mode accent vocabulary - blue for modes that historically used
  * cyan (aram), pink for arena, gold for brawl, rust for tft. */
 .mode-pill.aram   { color: var(--info);      border-color: var(--info-soft); }
 .mode-pill.arena  { color: var(--advisory);  border-color: var(--advisory-soft); }
@@ -2069,11 +2069,11 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   gap: 3px;
   /* Static width for the 2-cell pair (2 × 32px + 3px gap). Prevents the
    * slot from collapsing when data is missing and placeholder D/F cells
-   * render — adjacent pills never shift. */
+   * render - adjacent pills never shift. */
   width: 67px;
 }
 .self-spells.hidden { display: none; }
-/* Placeholder cells (D / F) when no real summoner spell data — muted so
+/* Placeholder cells (D / F) when no real summoner spell data - muted so
  * they read as "slot reserved" not "ready-to-fire spell". */
 .self-spell.placeholder {
   color: var(--text-faint);
@@ -2130,7 +2130,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .champion-pill .champ-name {
   display: inline-block;
-  /* Fits 12-char names at 20px font — Aurelion Sol / Renata Glasc /
+  /* Fits 12-char names at 20px font - Aurelion Sol / Renata Glasc /
    * Twisted Fate / Miss Fortune / Heimerdinger / Fiddlesticks. */
   max-width: 160px;
   overflow: hidden;
@@ -2202,7 +2202,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .hp-fill.hp-high     { background: var(--text-dim); }
 .hp-fill.hp-dead     { background: var(--bad-soft); }
 
-/* Mana / resource — thinner than HP, lavender */
+/* Mana / resource - thinner than HP, lavender */
 .mp-group {
   display: inline-flex;
   align-items: center;
@@ -2265,7 +2265,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .vis-pill .obj-ico { width: 18px; height: 18px; color: var(--info); flex-shrink: 0; }
 .cs-pill b, .gold-pill b { font-size: 21px; }
 
-/* Ultimate readiness pill — "R · UP" in mint when ready, "R · 42s" in
+/* Ultimate readiness pill - "R · UP" in mint when ready, "R · 42s" in
  * gold when on cooldown. Pulses briefly on transition to ready. */
 .ult-pill {
   display: inline-flex;
@@ -2318,7 +2318,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   50%     { box-shadow: 0 0 0 6px rgba(240,126,139,0.25); }
 }
 
-/* Keyboard shortcuts toast — bottom-right, fades in on `?`. */
+/* Keyboard shortcuts toast - bottom-right, fades in on `?`. */
 .keybinds-toast {
   position: fixed;
   right: 22px;
@@ -2346,7 +2346,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   text-transform: uppercase;
   font-weight: 700;
 }
-/* Advisory toast — coral-tinted card with pulse-in, bottom-right. */
+/* Advisory toast - coral-tinted card with pulse-in, bottom-right. */
 .advisory-toast {
   position: fixed;
   right: 22px;
@@ -2436,7 +2436,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .hp.hp-dead     { color: var(--canvas); background: var(--bad); padding: 3px 11px; border-radius: 999px; letter-spacing: 0.12em; }
 @keyframes hpBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
 
-/* win-pill starts the right-aligned group on header row 2 — auto-margin
+/* win-pill starts the right-aligned group on header row 2 - auto-margin
  * here pushes it (and everything after: trend, advisory, status, heart)
  * against the right edge of the row. */
 .win-pill {
@@ -2480,7 +2480,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   letter-spacing: 0.04em;
   cursor: pointer;
   position: relative;
-  /* margin-left:auto removed — only .win-pill has the right-push anchor
+  /* margin-left:auto removed - only .win-pill has the right-push anchor
    * on row 2. Having it on both created a 50/50 free-space split that
    * visually separated win/trend from advisory/heartbeat. */
   transition: transform 200ms ease;
@@ -2499,7 +2499,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .advisory-badge:hover { filter: brightness(1.15); }
 
-/* Cross-session digest icon — neighbour of advisory-badge. Static-pill
+/* Cross-session digest icon - neighbour of advisory-badge. Static-pill
  * footprint; background tint communicates state:
  *   neutral  = nothing to surface
  *   warn     = minor pattern (mild slump, late-night plays)
@@ -2527,7 +2527,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .digest-icon.warn  { background: var(--gold-soft); color: var(--gold); }
 .digest-icon.alert { background: var(--bad-soft);  color: var(--bad); }
 
-/* Digest popout — modal-like overlay, centered, dark backdrop. */
+/* Digest popout - modal-like overlay, centered, dark backdrop. */
 .digest-popout {
   position: fixed;
   inset: 0;
@@ -2587,7 +2587,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   line-height: 1.45;
 }
 
-/* TOP INSIGHTS list inside the digest popout — populated from
+/* TOP INSIGHTS list inside the digest popout - populated from
  * /api/digest. Severity tone drives the left border color. */
 .digest-insights-head {
   margin: 16px 0 6px 0;

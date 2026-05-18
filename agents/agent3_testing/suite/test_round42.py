@@ -1,4 +1,4 @@
-"""Round 42 — UI-feedback Agent 7 channel + ui_applier deterministic op."""
+"""Round 42 - UI-feedback Agent 7 channel + ui_applier deterministic op."""
 from __future__ import annotations
 
 import json
@@ -191,7 +191,7 @@ def test_parser_strips_bypass_dev_prefix(tmp_path: Path) -> None:
 def test_parser_font_bump_produces_proposal(tmp_path: Path, monkeypatch) -> None:
     from agents.agent1_lead import Scheduler
     import agents.agent7_context.ui_feedback as ufb
-    # Need to point the parser at a minimal dashboard.css — it reads the
+    # Need to point the parser at a minimal dashboard.css - it reads the
     # real file on disk to compute the new content. Our test monkey-
     # patches _PROJECT_ROOT on BOTH the parser and the applier so the
     # same sandbox is consulted throughout.

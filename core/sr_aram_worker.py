@@ -1,6 +1,6 @@
 """
 core/sr_aram_worker.py
-Phase 1 Step 4 / Step 4.1 — SR/ARAM/Arena/Brawl poll worker.
+Phase 1 Step 4 / Step 4.1 - SR/ARAM/Arena/Brawl poll worker.
 
 Owns a dedicated GameReader instance, runs the non-TFT read loop on a
 background thread, and hands structured WorkerResult objects to app.py
@@ -9,7 +9,7 @@ the worker calls coach.submit_state() after building the enriched state
 dict for SR (CLASSIC/RANKED) modes only.
 
 ARAM coaching: app.py starts a dedicated coaches.aram_coach on ARAM game
-start.  The worker does NOT submit generic coaching for ARAM — this is the
+start.  The worker does NOT submit generic coaching for ARAM - this is the
 intended permanent architecture, not deferred debt.  ARAM coaching authority
 belongs exclusively to coaches.aram_coach to avoid dual authority.
 
@@ -125,7 +125,7 @@ class SrAramWorker(BaseCoachWorker):
 
     def _run(self, my_gen: int) -> None:
         if not self._init_reader():
-            _log.error("SrAramWorker gen=%d: no GameReader — exiting", my_gen)
+            _log.error("SrAramWorker gen=%d: no GameReader - exiting", my_gen)
             return
 
         backoff      = BACKOFF_MIN_S
@@ -134,7 +134,7 @@ class SrAramWorker(BaseCoachWorker):
 
         while not self._stop_event.is_set():
             if my_gen != self._generation:
-                _log.debug("SrAramWorker gen=%d superseded — exiting", my_gen)
+                _log.debug("SrAramWorker gen=%d superseded - exiting", my_gen)
                 return
 
             self.pulse_ts = time.monotonic()
@@ -143,7 +143,7 @@ class SrAramWorker(BaseCoachWorker):
                 state = self._reader.read_game()
 
                 if my_gen != self._generation:
-                    _log.debug("SrAramWorker gen=%d superseded post-read — discarding", my_gen)
+                    _log.debug("SrAramWorker gen=%d superseded post-read - discarding", my_gen)
                     return
 
                 if state:
@@ -215,7 +215,7 @@ class SrAramWorker(BaseCoachWorker):
                     write_disabled_placeholder("sr")
                     return
             except Exception:
-                pass  # policy module unavailable — allow by default
+                pass  # policy module unavailable - allow by default
 
             dead_enemies = state.get("dead_enemies", [])
             dead_count   = len(dead_enemies)

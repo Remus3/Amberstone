@@ -7,7 +7,7 @@ Each scraper:
   - Returns structured dicts after parsing.
 
 Agent 6 owns reweighting and circuit-trip rules. This module only surfaces
-signals (Blocked, CircuitOpen, parse errors) — it does not decide policy.
+signals (Blocked, CircuitOpen, parse errors) - it does not decide policy.
 """
 from lib.scrapers.site_d import SiteDScraper
 from lib.scrapers.ugg import UggScraper

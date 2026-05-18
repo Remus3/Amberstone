@@ -1,4 +1,4 @@
-DASHBOARD SCREENSHOT — please capture now.
+DASHBOARD SCREENSHOT - please capture now.
 
 Target: https://192.168.8.230:8888/?sim=aram_blitz  (Chrome/Edge on display 2, iPad-mirrored via Duet)
 

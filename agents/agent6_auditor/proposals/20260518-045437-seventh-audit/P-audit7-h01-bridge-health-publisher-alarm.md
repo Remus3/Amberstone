@@ -1,4 +1,4 @@
-# P-audit7-h01 — Bridge health-publisher staleness alarm path
+# P-audit7-h01 - Bridge health-publisher staleness alarm path
 
 **Target agent:** Agent 2 (backend)
 **Severity:** HIGH
@@ -29,10 +29,10 @@ exact false-confidence shape charter focus-area #6 warns about.
 
 ## Proposed fix (two parts)
 
-### Part A — surface staleness in `/api/health/all`
+### Part A - surface staleness in `/api/health/all`
 
 `dashboard/routes_state.py` (or wherever `/api/health/all` is wired
-— Agent 2 to confirm). Add a per-node `health_publisher_age_s` field
+- Agent 2 to confirm). Add a per-node `health_publisher_age_s` field
 derived from the same `health.json` file the rc_facts probe reads.
 
 ```python
@@ -48,10 +48,10 @@ node_health = {
 
 Dashboard renders amber chip when `> 600`, red chip when `> 1800`.
 
-### Part B — Phase 3 supervisor alarm
+### Part B - Phase 3 supervisor alarm
 
 `ops/rc_supervisor.py` `_Phase3Watcher` already has the structure
-(per s171 active-priority — Phase 3 supervisor folded into main).
+(per s171 active-priority - Phase 3 supervisor folded into main).
 Add a sibling check that files an Agent 1 task on threshold cross:
 
 ```python
@@ -76,7 +76,7 @@ def _check_bridge_publishers(self):
             )
 ```
 
-The dedup_key prevents spam — Agent 1 only re-files when the task is
+The dedup_key prevents spam - Agent 1 only re-files when the task is
 acknowledged or aged out.
 
 ## Why this is the right shape
@@ -104,4 +104,4 @@ crashes).
 - [ ] Dashboard renders amber/red chip on threshold cross.
 - [ ] Agent 1 receives exactly one task per node-staleness event.
 - [ ] Live verification on the current Game-PC publisher (still STALE
-      as of audit time) — task fires within 5 minutes of deploy.
+      as of audit time) - task fires within 5 minutes of deploy.

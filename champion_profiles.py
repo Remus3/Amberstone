@@ -1,6 +1,6 @@
 # arch: static champion data thin loader | section=coaching | frozen=no
 """
-champion_profiles.py — loads per-champion data from data/champion_profiles/*.json.
+champion_profiles.py - loads per-champion data from data/champion_profiles/*.json.
 
 Fields per champion: dmg, role, mana, sustain, mechanic, aram.
 Source of truth is the JSON files; edit those, not this loader.

@@ -15,7 +15,7 @@ Reports:
 Optionally downloads missing icons from the DDragon CDN when --download
 is passed. Without that flag the script is read-only (safe for headless).
 
-This is queue item #7: "DDragon icon asset coverage audit" — verifies the
+This is queue item #7: "DDragon icon asset coverage audit" - verifies the
 jungle-enchantment items (Stalker's Warrior etc.), consumables (Elixirs),
 arena-specific items actually have images so the Item Build panel never
 falls back to a placeholder '?' tile.
@@ -63,7 +63,7 @@ def resolve(name: str, by_name: dict) -> str | None:
         return None
     if n in by_name:
         return by_name[n]
-    # Substring — try shorter coach forms against longer official names
+    # Substring - try shorter coach forms against longer official names
     for k, v in by_name.items():
         if n == k or n in k or k in n:
             return v
@@ -179,7 +179,7 @@ def main(download: bool = False) -> int:
     else:
         print("  ✓ every id we care about has a png on disk")
 
-    # 4) Optional download — tries DDragon then CommunityDragon fallback.
+    # 4) Optional download - tries DDragon then CommunityDragon fallback.
     if download and missing:
         print()
         print(f"Downloading {len(missing)} missing icons (DDragon → CommunityDragon fallback)...")

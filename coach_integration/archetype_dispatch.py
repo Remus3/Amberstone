@@ -5,7 +5,7 @@ Cross-phase coach-integration follow-up from the archetype-expansion plan.
 Each of the four mode coaches (SR via ``coach_integration/_coach.py``,
 ARAM via ``coaches/aram_coach.py``, Arena via ``coaches/arena_coach.py``,
 Brawl via ``coaches/brawl_coach.py``) previously called
-``daemon_slayer_client.rank_for()`` directly — always the auto-attack
+``daemon_slayer_client.rank_for()`` directly - always the auto-attack
 DPS scorer (``ds.dps``) regardless of the champion's archetype.
 
 This module exposes a single ``dispatch_for_coach()`` helper that:
@@ -16,7 +16,7 @@ This module exposes a single ``dispatch_for_coach()`` helper that:
 2. Calls ``rank_for_primary_archetype()`` which routes to the right scorer
    (``ds.dps`` for carry, ``ds.hybrid`` for bruiser, ``ds.ehp`` for tank,
    ``ds.ability`` for mage, ``ds.burst`` for assassin, ``ds.hps`` for
-   enchanter — Phases 1-6 shipped s174-s181).
+   enchanter - Phases 1-6 shipped s174-s181).
 3. Returns a ``CoachDispatchResult`` containing:
    - ``picks_str``: scorer-aware formatted string for the LLM user prompt
      (unit suffix flips per scorer: "dps" / "ehp" / "%" / "adps" / etc.).
@@ -33,7 +33,7 @@ when the engine is unreachable; this helper propagates that as a return
 value of ``None`` so callers can fall back to ``picks_str="unavailable"``
 without writing partial calibration entries.
 
-Empty champion string returns ``None`` too — no point dispatching for an
+Empty champion string returns ``None`` too - no point dispatching for an
 unknown champion. The dispatcher would default to ``"carry"`` archetype +
 fail at the engine's champion lookup anyway.
 """
@@ -47,7 +47,7 @@ logger = logging.getLogger("rc.coach_integration.archetype_dispatch")
 
 
 # Scorer → display unit suffix. Used in the picks_str format like
-# "Stormrazor(+54dps,3500g) > Kraken Slayer(+48dps,3300g)" — operator
+# "Stormrazor(+54dps,3500g) > Kraken Slayer(+48dps,3300g)" - operator
 # reads the unit + sees the scorer label in the prefix.
 _UNIT_SUFFIX: dict[str, str] = {
     "dps":     "dps",
@@ -90,7 +90,7 @@ class CoachDispatchResult:
     picks_str: str = "none"
     display_rows: list[dict] = field(default_factory=list)
     # Opt-in (default None). Populated only when dispatch_for_coach is
-    # called with with_build_order=True — a contextual, match-specific
+    # called with with_build_order=True - a contextual, match-specific
     # ORDERED build with the cross-family unique-passive no-double rule
     # enforced (core.build_order.BuildOrderResult). Kept off the per-tick
     # path by default: an ordered plan is N sequential engine calls vs
@@ -103,7 +103,7 @@ def _row_delta(row: dict, scorer: str) -> float:
 
     Most scorers expose a unified ``delta`` field. Bruiser's hybrid
     scorer ships three (``delta_dps`` / ``delta_ehp`` / ``hybrid_delta_pct``)
-    and uses the percentage as its display unit — we read that and scale
+    and uses the percentage as its display unit - we read that and scale
     to a single-digit-friendly number.
     """
     if scorer == "hybrid":
@@ -144,13 +144,13 @@ def _build_display_rows(rows: list[dict], scorer: str) -> list[dict]:
             "name":       <str>,    # item name (legacy)
             "delta_dps":  <float>,  # scorer's primary delta (legacy field
                                     # name; carries scorer-specific units
-                                    # for non-DPS scorers — dashboard JS
+                                    # for non-DPS scorers - dashboard JS
                                     # will gain a scorer-aware renderer in
                                     # a follow-up session)
             "gold":       <int>,    # gold cost (legacy)
-            "delta":      <float>,  # NEW — same value as delta_dps, named
+            "delta":      <float>,  # NEW - same value as delta_dps, named
                                     # consistently across scorers
-            "scorer":     <str>,    # NEW — "dps"|"ehp"|"hybrid"|"ability"|
+            "scorer":     <str>,    # NEW - "dps"|"ehp"|"hybrid"|"ability"|
                                     # "burst"|"hps" so consumers can render
                                     # the correct unit / color the pill
         }
@@ -195,7 +195,7 @@ def dispatch_for_coach(
     Caller writes ``picks_str="unavailable"`` and skips calibration logging
     in those cases. The empty-engine-response case ("engine up but
     returned empty list") yields a ``CoachDispatchResult`` with empty
-    ``rows`` + ``display_rows`` + ``picks_str="none"`` — caller still
+    ``rows`` + ``display_rows`` + ``picks_str="none"`` - caller still
     has a populated ``archetype``/``scorer`` for diagnostics.
     """
     if not champion or not str(champion).strip():
@@ -250,7 +250,7 @@ def dispatch_for_coach(
     # enemy context as the flat ranking. plan_build_order issues one
     # engine call per remaining slot (the iteration is exactly what makes
     # the no-double rule hold across the sequence), so it stays off the
-    # per-tick path — only champ-select planning / ds-preview / a periodic
+    # per-tick path - only champ-select planning / ds-preview / a periodic
     # refresh should pass with_build_order=True. A build-order failure
     # never sinks the (already successful) flat dispatch.
     if with_build_order:

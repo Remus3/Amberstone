@@ -1,5 +1,5 @@
 """
-core/bridge_monitor.py — RC's mirror of Peer's bridge_monitor sidecar.
+core/bridge_monitor.py - RC's mirror of Peer's bridge_monitor sidecar.
 
 Polls dashboard._bridge_log every 2s, surfaces inbound peer traffic to the
 RC log, and auto-responds to a narrow ping/pong shape so the peer (Peer)
@@ -18,7 +18,7 @@ State file: ops/runtime/bridge_monitor_state.json (atomic-written).
 Cold-boot starts last_seen_ts at time.time() so historical entries don't
 re-trigger.
 
-Run via .start_background() — prefers AppLoop, falls back to daemon thread.
+Run via .start_background() - prefers AppLoop, falls back to daemon thread.
 Mirrors core/vision_tracker.py's lifecycle pattern.
 """
 from __future__ import annotations
@@ -104,7 +104,7 @@ class BridgeMonitor:
 
     def _hydrate(self) -> None:
         """Load last_seen_ts from disk so a restart doesn't replay history.
-        Cold-boot (no state file) starts at time.time() — matches Peer."""
+        Cold-boot (no state file) starts at time.time() - matches Peer."""
         try:
             if self._state_path.exists():
                 d = json.loads(self._state_path.read_text(encoding="utf-8"))
@@ -116,7 +116,7 @@ class BridgeMonitor:
                     return
         except Exception as exc:
             _log.debug("bridge_monitor hydrate failed: %s", exc)
-        # Cold start — only react to entries posted from now on.
+        # Cold start - only react to entries posted from now on.
         self._last_seen_ts = time.time()
 
     def _write_atomic(self, *, reason: str = "poll") -> None:
@@ -128,7 +128,7 @@ class BridgeMonitor:
             tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
             # os.replace can transiently raise WinError 5 when a reader has
             # the dst open; brief retries clear it. (Same fix as
-            # atomic_write_json — see reference_os_replace_winerror5 memory.)
+            # atomic_write_json - see reference_os_replace_winerror5 memory.)
             for delay in (0, 0.025, 0.050, 0.200):
                 if delay:
                     time.sleep(delay)
@@ -162,7 +162,7 @@ class BridgeMonitor:
                 return
 
     def _poll_once(self) -> None:
-        # Read directly from the in-process bridge log — same module that
+        # Read directly from the in-process bridge log - same module that
         # web_dashboard's POST /api/bridge writes into. No HTTP overhead.
         from dashboard._bridge_log import bridge_since, bridge_post
         new_entries = bridge_since(self._last_seen_ts, limit=50)

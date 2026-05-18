@@ -1,5 +1,5 @@
 # arch: GET /api/health/peer + /api/health/all | section=dashboard | frozen=no
-"""POST /api/health/peer/<node> — peer publishes their bridge_watcher_health.json.
+"""POST /api/health/peer/<node> - peer publishes their bridge_watcher_health.json.
 
 Closes ROADMAP §3 polish item: peers' watcher heartbeats live on their own
 disks; this endpoint receives them so Legion's /api/health/all rolls up
@@ -7,7 +7,7 @@ fleet-wide. Each peer runs `tools/bridge_watcher_health_publisher.py`
 which polls local heartbeat every 60s and POSTs here.
 
 Auth: same Bearer secret as /api/bridge/inbox (shared cross-Claude token).
-Storage: ops/runtime/peer_health/<node>.json — atomic-write, retained
+Storage: ops/runtime/peer_health/<node>.json - atomic-write, retained
 indefinitely (small file, ~600 bytes per peer).
 Staleness: consumers read updated_at; consider a peer stale if its
 bridge_watcher heartbeat hasn't refreshed in 5+ minutes.

@@ -1,14 +1,14 @@
 # arch: LCU auth + command client | section=core | frozen=yes
 """
-lcu/lcu_client.py — League Client Update (LCU) API client.
+lcu/lcu_client.py - League Client Update (LCU) API client.
 Auto-accept queue pops + ARAM bench swap + rune page read (API-001).
 
 LCU API: https://192.168.8.237:{port} with Basic auth "riot:{password}"
 Lockfile: {LeaguePath}/lockfile -> processName:pid:port:password:protocol
 
-AUDIT-PHASE-2-API-001 — 2026-04-18
+AUDIT-PHASE-2-API-001 - 2026-04-18
   Added: get_current_rune_page(), get_all_rune_pages(), format_rune_page()
-  Added: _build_rune_id_map() — resolves perk IDs to names via local DDragon data
+  Added: _build_rune_id_map() - resolves perk IDs to names via local DDragon data
 """
 import asyncio
 import json
@@ -64,7 +64,7 @@ class LcuClient(_PGMixin):
                     return True
                 except (OSError, IndexError, ValueError, UnicodeDecodeError) as e:
                     _log.warning("LCU lockfile parse (%s): %s", type(e).__name__, e)
-        _log.info("LCU lockfile not found — client may not be running")
+        _log.info("LCU lockfile not found - client may not be running")
         return False
 
     def _request(self, method, endpoint, data=None):
@@ -159,7 +159,7 @@ class LcuClient(_PGMixin):
         try:
             session = self.get_champ_select()
             if not isinstance(session, dict):
-                # Not in champ select — reset tracking
+                # Not in champ select - reset tracking
                 self._last_locked_champ = ""
                 self._last_locked_mode  = ""
                 return
@@ -196,13 +196,13 @@ class LcuClient(_PGMixin):
             if champ_name == self._last_locked_champ and game_mode == self._last_locked_mode:
                 return  # already applied for this champion this session
 
-            _log.info("Champ select locked: %s (mode=%s) — applying rune page", champ_name, game_mode)
+            _log.info("Champ select locked: %s (mode=%s) - applying rune page", champ_name, game_mode)
             ok = self.apply_recommended_rune_page(champ_name, game_mode)
             if ok:
                 self._last_locked_champ = champ_name
                 self._last_locked_mode  = game_mode
             else:
-                _log.debug("No rune rec for %s/%s — rune page not changed", champ_name, game_mode)
+                _log.debug("No rune rec for %s/%s - rune page not changed", champ_name, game_mode)
         except Exception as exc:
             _log.debug("_maybe_apply_runes: %s", exc)
 
@@ -319,7 +319,7 @@ class LcuClient(_PGMixin):
 
         summary = " | ".join(parts[:1])
         if len(parts) > 1:
-            summary += " — " + " / ".join(parts[1:])
+            summary += " - " + " / ".join(parts[1:])
 
         if page_name:
             summary = f"[{page_name}] {summary}"
@@ -456,7 +456,7 @@ class LcuClient(_PGMixin):
             new_id = result.get("id")
             if new_id:
                 self._request("PUT", "/lol-perks/v1/currentpage", {"id": new_id})
-                _log.info("Rune page applied: %s (id=%s) — %s | %s / %s",
+                _log.info("Rune page applied: %s (id=%s) - %s | %s / %s",
                           page_name, new_id, keystone, primary, secondary)
             return True
         except Exception as exc:

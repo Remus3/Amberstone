@@ -18,7 +18,7 @@ from coach_integration import CoachIntegration   # noqa: E402
 
 
 class Coach(CoachIntegration):
-    """SR Coach — identical to CoachIntegration but registered under the
+    """SR Coach - identical to CoachIntegration but registered under the
     standard Coach interface used by the mode loader."""
 
     GAME_MODES = ("CLASSIC", "PRACTICETOOL")

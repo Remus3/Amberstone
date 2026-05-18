@@ -1,4 +1,4 @@
-"""Round 45 — champion fallback for when live-client (:2999) is dead.
+"""Round 45 - champion fallback for when live-client (:2999) is dead.
 
 When Game-PC's live-client API is unreachable, the legacy RC pipeline
 can't populate ``champion`` / ``game_time`` / ``kda`` / ``items_*``
@@ -33,7 +33,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _MATCH_DB_PATH = _PROJECT_ROOT / "data" / "match_history.db"
 _QUEUE_LOG_PATH = _PROJECT_ROOT / "data" / "task_queue.jsonl"
 
-# Well-known LoL champion names — cheap filter when scanning free-text
+# Well-known LoL champion names - cheap filter when scanning free-text
 # user input. Not exhaustive; additions go here as needed.
 _KNOWN_CHAMPIONS: frozenset[str] = frozenset({
     "Aatrox", "Ahri", "Akali", "Akshan", "Alistar", "Amumu", "Anivia",
@@ -109,7 +109,7 @@ def _try_lcu_champ_select() -> str | None:
 
 
 def _try_match_db_last() -> str | None:
-    """Most recent row in match_history.db — useful after a match ends
+    """Most recent row in match_history.db - useful after a match ends
     or between games when LCU is idle."""
     if not _MATCH_DB_PATH.exists():
         return None

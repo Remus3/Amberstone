@@ -8,7 +8,7 @@ recommendation derived from:
   - already-owned items (substring dedup, same idiom as ARAM coach)
   - alive opponents' tank/healer counts → anti-tank + anti-heal pivots
 
-No Haiku call — pure rule-based, runs every coach tick. Defaults
+No Haiku call - pure rule-based, runs every coach tick. Defaults
 chosen for s33 (operator-confirmed): healer threshold 2+, finished
 items only, 6-item cap, `is_next_opponent` punted to a later pass
 so we operate on all alive opponents (good proxy for the next 1-3
@@ -32,7 +32,7 @@ _ARAM_BUILDS_PATH = _APP_DIR / "data" / "meta_build" / "aram_champion_builds.jso
 _DDRAGON_PATH = _APP_DIR / "data" / "meta" / "ddragon_champions.json"
 
 # Champions with sustained mid-fight heal (not just lifesteal). Targeted
-# at arena 2v2v2v2 — these meaningfully sustain a fight; pure-lifesteal
+# at arena 2v2v2v2 - these meaningfully sustain a fight; pure-lifesteal
 # ADCs are excluded (their healing is already gated on damage they're
 # dealing, which antiheal already counters via the standard anti-ADC kit).
 _HEALERS = frozenset({
@@ -53,7 +53,7 @@ _ANTI_HEAL = (
     "Oblivion Orb", "Bramble", "Thornmail",
 )
 
-# v2 substitution table — when a champion's full_build LACKS any
+# v2 substitution table - when a champion's full_build LACKS any
 # anti-heal item but contains the LHS, swap to the RHS to get
 # Grievous Wounds without losing the slot's role. Only items where
 # the swap is universally favorable (same damage type, similar power
@@ -92,7 +92,7 @@ def _load_aram_builds() -> dict:
 
 def _resolve_build_path(champion: str) -> tuple[list[str], str]:
     """Find the canonical item path for a champion. Prefers
-    arena_champion_builds.json (s33 refresh — uses ideal_core_priority).
+    arena_champion_builds.json (s33 refresh - uses ideal_core_priority).
     Falls back to aram_champion_builds.json (full_build) for champs
     not yet in the arena dataset.
 

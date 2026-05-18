@@ -1,5 +1,5 @@
 """
-core/bridge.py — RC↔Peer cross-Claude bridge client + config readers.
+core/bridge.py - RC↔Peer cross-Claude bridge client + config readers.
 
 Mirrors Peer's `core/bridge.py` per docs io RC peer/RC_BRIDGE_CONTRACT.md (v0).
 
@@ -34,7 +34,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _LOCAL_PATHS_FILE = _PROJECT_ROOT / "ops" / "local_paths.json"
 
 # Module-scope cache so we don't re-read local_paths.json on every send().
-# Refreshed by reload(). Mtime-based invalidation isn't worth the cost —
+# Refreshed by reload(). Mtime-based invalidation isn't worth the cost -
 # operator restart picks up changes (the file changes infrequently).
 _CONFIG: Optional[dict] = None
 
@@ -49,7 +49,7 @@ def _load_config() -> dict:
         else:
             _CONFIG = {}
     except (OSError, ValueError) as exc:
-        _log.warning("local_paths.json unreadable: %s — bridge disabled", exc)
+        _log.warning("local_paths.json unreadable: %s - bridge disabled", exc)
         _CONFIG = {}
     return _CONFIG
 
@@ -86,7 +86,7 @@ def send(*, source: str,
          timeout_s: float = 4.0) -> Tuple[bool, str]:
     """POST a bridge message to the peer. Returns (ok, detail).
 
-    Never raises — bridge failure is a normal state. Caller can log the
+    Never raises - bridge failure is a normal state. Caller can log the
     detail string but should not treat failure as fatal.
 
     On success: (True, "ok").
@@ -100,7 +100,7 @@ def send(*, source: str,
     # get filtered out by bridge_pull_tasks.py (`m.get("id")` gate), so
     # auto-execute on the peer never fires. Symmetric with Peer's planned
     # core/bridge.py fix per the 2026-05-02 e2e validate result.
-    # Shape: <kind>-<12 hex chars> — short, collision-free, sortable enough
+    # Shape: <kind>-<12 hex chars> - short, collision-free, sortable enough
     # that operators can eyeball pairs in the log.
     if not entry_id:
         entry_id = f"{kind}-{secrets.token_hex(6)}"
@@ -130,7 +130,7 @@ def send(*, source: str,
     )
 
     # Self-signed certs are the norm for loopback/LAN dashboards. The
-    # shared-secret bearer is the actual auth — TLS here is just transport
+    # shared-secret bearer is the actual auth - TLS here is just transport
     # confidentiality, not identity. When real certs land (cross-host),
     # flip verify back on by passing context=ssl.create_default_context().
     ctx = ssl.create_default_context()
@@ -144,7 +144,7 @@ def send(*, source: str,
                 return (True, "ok")
             return (False, f"http_{status}")
     except urllib.error.HTTPError as exc:
-        # Read short error body for context (capped — peer's error JSON is
+        # Read short error body for context (capped - peer's error JSON is
         # tiny; don't need more than a few hundred bytes).
         try:
             err_body = exc.read(500).decode("utf-8", errors="replace")
@@ -160,7 +160,7 @@ def send(*, source: str,
 def status_summary() -> dict:
     """Read-only status block for the dashboard / health endpoints.
     Surfaces enough that the operator can tell at a glance whether the
-    bridge is wired and pointed at the right place — without leaking
+    bridge is wired and pointed at the right place - without leaking
     the secret itself."""
     cfg = _load_config()
     secret = str(cfg.get("bridge_shared_secret") or "").strip()

@@ -1,4 +1,4 @@
-"""scheduled_boot_verify.py — runs from Windows Task Scheduler on Legion.
+"""scheduled_boot_verify.py - runs from Windows Task Scheduler on Legion.
 
 Fires once at the scheduled time, dispatches a no-op bridge task to
 Game-PC, and watches /api/bridge for an in_reply_to kind:result for up
@@ -8,7 +8,7 @@ Outputs a single JSON line to %LOCALAPPDATA%\\rc-boot-verify\\<ts>.jsonl
 so the result is durable even though the task itself is fire-and-forget.
 
 Pairs with a one-time scheduled remote agent (trig_01Xk1YCJbrPBPRXA3LmKTWfk)
-that opens a tracking GitHub issue at the same moment — together they
+that opens a tracking GitHub issue at the same moment - together they
 cover the cold-boot persistence test that warm verification missed.
 """
 from __future__ import annotations

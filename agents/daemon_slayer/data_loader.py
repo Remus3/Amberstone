@@ -63,7 +63,7 @@ class DataSnapshot:
         champions_doc = _read("champions.json")
         items_doc = _read("items.json")
         scenarios_doc = _read("scenarios.json")
-        # arena_augments.json is Phase 6 — older snapshots predate it; tolerate absence.
+        # arena_augments.json is Phase 6 - older snapshots predate it; tolerate absence.
         augments_doc = _read_optional("arena_augments.json") or {"augments": []}
         augs = augments_doc.get("augments") or []
         augs_by_id = {int(a["id"]): a for a in augs if isinstance(a.get("id"), int)}

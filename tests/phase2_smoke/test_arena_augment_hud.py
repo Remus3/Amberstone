@@ -1,6 +1,6 @@
 """
 tests/phase2_smoke/test_arena_augment_hud.py
-Augment Vision v2 — HUD reconciliation override semantics (s50).
+Augment Vision v2 - HUD reconciliation override semantics (s50).
 
 Verifies the conservative override:
 - All HUD slots resolve via _augment_name_map -> overwrite _picked_augments
@@ -48,7 +48,7 @@ class ArenaAugmentHudReconcileTests(unittest.TestCase):
         self._td_obj = tempfile.TemporaryDirectory()
         self._td = Path(self._td_obj.name)
         self._out = self._td / "arena_coaching_data.json"
-        # Patch the apiName resolver — independent of cdragon snapshot rotation.
+        # Patch the apiName resolver - independent of cdragon snapshot rotation.
         self._resolver = mock.patch.object(
             arena_coach, "_resolve_augment_apiname",
             side_effect=self._fake_resolver,

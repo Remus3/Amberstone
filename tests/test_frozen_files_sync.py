@@ -2,7 +2,7 @@
 
 CLAUDE.md is the canonical source of truth for the project's frozen-file list.
 The bridge watcher's `legion.escalate_always` must contain every frozen path,
-because that list drives `_has_frozen_intent()` — the gate that escalates
+because that list drives `_has_frozen_intent()` - the gate that escalates
 auto-action bridge tasks attempting to write a frozen file.
 
 Drift here is a real safety gap, not just docs noise: a CLAUDE.md entry that
@@ -25,7 +25,7 @@ CLAUDE_MD = ROOT / "CLAUDE.md"
 CONFIG_JSON = ROOT / "tools" / "bridge_watcher_config.json"
 
 # Paths legitimately in escalate_always that are NOT source files in CLAUDE.md's
-# frozen list. restart_trigger.txt is a supervisor sentinel — writing it is a
+# frozen list. restart_trigger.txt is a supervisor sentinel - writing it is a
 # valid restart trigger from the operator, but a bridge auto-action attempting
 # the same write must still escalate for review.
 EXTRA_PROTECTED: frozenset[str] = frozenset({"restart_trigger.txt"})
@@ -79,7 +79,7 @@ def test_legion_escalate_always_contains_every_claude_md_frozen_file() -> None:
     missing = claude_frozen - config_escalate
     assert not missing, (
         "Frozen files declared in CLAUDE.md are missing from "
-        "tools/bridge_watcher_config.json legion.escalate_always — the "
+        "tools/bridge_watcher_config.json legion.escalate_always - the "
         "watcher's intent gate cannot protect them:\n"
         f"  {sorted(missing)}\n"
         "Add them to escalate_always (or remove from CLAUDE.md if no "

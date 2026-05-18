@@ -3,7 +3,7 @@
     "description": "SR-specific champion builds for coach_integration.py SR coaching.",
     "format": "start_item + first_back_target + full_build_order + notes",
     "patch": "16.8.1",
-    "notes": "Different from ARAM builds — SR starts 450g, no ARAM buffs, matchup-dependent first items"
+    "notes": "Different from ARAM builds - SR starts 450g, no ARAM buffs, matchup-dependent first items"
   },
   "Vayne": {
     "start": "Doran's Blade",
@@ -20,7 +20,7 @@
     "vs_healing": "Mortal Reminder swap for Hexplate vs sustain",
     "vs_burst": "Jak'Sho, The Protean 4th (55.17% WR per aggregator A); Guardian Angel 6th (63.18% WR)",
     "build_note": "BotRK + Rageblade + Terminus = full anti-tank on-hit stack. Doran's Bow new starter (26.9) is theoretically aggressive alt but Doran's Blade still default per aggregator A.",
-    "recall_timing": "Back at 800g (Recurve) or 1100g (Recurve + Long Sword). Never sit at 500g — wasteful.",
+    "recall_timing": "Back at 800g (Recurve) or 1100g (Recurve + Long Sword). Never sit at 500g - wasteful.",
     "role": "ADC",
     "tier": "C",
     "wr": 50.65,
@@ -69,10 +69,10 @@
       "Infinity Edge",
       "Lord Dominik's Regards"
     ],
-    "vs_tanks": "LDR 5th — Collector(25%) + RFC(25%) + IE(25%) = 75% crit active before LDR",
-    "vs_healing": "Mortal Reminder replaces LDR if 2+ sustain — never both",
+    "vs_tanks": "LDR 5th - Collector(25%) + RFC(25%) + IE(25%) = 75% crit active before LDR",
+    "vs_healing": "Mortal Reminder replaces LDR if 2+ sustain - never both",
     "vs_burst": "Immortal Shieldbow replaces The Collector if 3+ divers",
-    "build_note": "Yun Tal gives AS not crit in S16. Need RFC for 25% crit, then Collector for 50% before IE. IE fully activates at 75% total. Never switch to rockets until Yun Tal complete — minigun stacks plates faster.",
+    "build_note": "Yun Tal gives AS not crit in S16. Need RFC for 25% crit, then Collector for 50% before IE. IE fully activates at 75% total. Never switch to rockets until Yun Tal complete - minigun stacks plates faster.",
     "recall_timing": "Back at 1050g (Yun Tal component BF Sword) or 900g (Recurve + pickaxe path)."
   },
   "Tristana": {
@@ -86,10 +86,10 @@
       "Lord Dominik's Regards",
       "Rapid Firecannon"
     ],
-    "vs_tanks": "LDR 4th — physical burst scales with armor pen",
-    "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+    "vs_tanks": "LDR 4th - physical burst scales with armor pen",
+    "vs_healing": "Mortal Reminder replaces LDR vs sustain - never both",
     "vs_burst": "Immortal Shieldbow replaces Stormrazor vs heavy burst",
-    "build_note": "Collector first for early execute + plates value. Stormrazor slows make E all-ins guaranteed. Never use W offensively when behind — it's your escape. E stacks: 3 on tower before 14min = plates gold.",
+    "build_note": "Collector first for early execute + plates value. Stormrazor slows make E all-ins guaranteed. Never use W offensively when behind - it's your escape. E stacks: 3 on tower before 14min = plates gold.",
     "recall_timing": "Back at 1300g (BF Sword) or 875g (Pickaxe). Never sit on 500g."
   },
   "Caitlyn": {
@@ -106,8 +106,8 @@
     "vs_tanks": "Lord Dominik's Regards 4th (60.57% WR per aggregator A)",
     "vs_healing": "Mortal Reminder 4th (54.02% WR per aggregator A)",
     "vs_burst": "Bloodthirster 4th (58.04% WR per aggregator A) or Guardian Angel 6th (62.89% WR)",
-    "build_note": "Kraken Slayer core 1st item — on-hit chain procs RFC stacks faster. RFC extends headshot to 850+ for safe poke. IE activates at 75% crit.",
-    "recall_timing": "Back at 1100g (Hexoptics C44 half-item). E is escape only — never burn offensively.",
+    "build_note": "Kraken Slayer core 1st item - on-hit chain procs RFC stacks faster. RFC extends headshot to 850+ for safe poke. IE activates at 75% crit.",
+    "recall_timing": "Back at 1100g (Hexoptics C44 half-item). E is escape only - never burn offensively.",
     "role": "ADC",
     "tier": "B",
     "wr": 50.22,
@@ -120,7 +120,7 @@
       "Infinity Edge",
       "Rapid Firecannon"
     ],
-    "kit_notes": "Lane-bully ADC; passive headshot every 6 AAs (extended range, bonus damage). W trap setup. R global execute. Net (E) is escape — never burn forward.",
+    "kit_notes": "Lane-bully ADC; passive headshot every 6 AAs (extended range, bonus damage). W trap setup. R global execute. Net (E) is escape - never burn forward.",
     "_sources": [
       {
         "url": "https://aggregator-a.invalid/lol/champions/caitlyn/build/adc",
@@ -156,10 +156,10 @@
       "Mortal Reminder",
       "Guinsoo's Rageblade"
     ],
-    "vs_tanks": "Kraken Slayer + BotRK core — never skip either",
-    "vs_healing": "Mortal Reminder 4th — melee range means you sustain fight long enough for it to matter",
+    "vs_tanks": "Kraken Slayer + BotRK core - never skip either",
+    "vs_healing": "Mortal Reminder 4th - melee range means you sustain fight long enough for it to matter",
     "vs_burst": "Immortal Shieldbow 3rd provides shield during melee all-in",
-    "build_note": "All-in ONLY on confirmed ally CC. E flip = engage AND escape — never use without a CC chain. W active reduces enemy healing. Melee ADC in lane — play passive until jungler comes or level 6.",
+    "build_note": "All-in ONLY on confirmed ally CC. E flip = engage AND escape - never use without a CC chain. W active reduces enemy healing. Melee ADC in lane - play passive until jungler comes or level 6.",
     "recall_timing": "Back at 800g (Recurve Bow). Never extend when support is dead."
   },
   "Miss Fortune": {
@@ -173,10 +173,10 @@
       "Infinity Edge",
       "Bloodthirster"
     ],
-    "vs_tanks": "LDR mandatory — Collector(25%) + Phantom Dancer(20%) + IE(25%) = 70% crit active",
-    "vs_healing": "Mortal Reminder replaces LDR — never both",
+    "vs_tanks": "LDR mandatory - Collector(25%) + Phantom Dancer(20%) + IE(25%) = 70% crit active",
+    "vs_healing": "Mortal Reminder replaces LDR - never both",
     "vs_burst": "Immortal Shieldbow replaces Phantom Dancer vs heavy burst",
-    "build_note": "Strut (W) stacks when out of combat — don't get poked. E rain slows then Bullet Time = guaranteed full channel. Ult angle: perpendicular to enemy team, 30-45 degrees for max spread.",
+    "build_note": "Strut (W) stacks when out of combat - don't get poked. E rain slows then Bullet Time = guaranteed full channel. Ult angle: perpendicular to enemy team, 30-45 degrees for max spread.",
     "recall_timing": "Back at 1300g (BF Sword for Collector) or 1100g (Caulfield's vs all-in threat)."
   },
   "Lucian": {
@@ -192,8 +192,8 @@
       "Bloodthirster"
     ],
     "vs_tanks": "Lord Dominik's Regards already in 6-item; pull to 4th vs heavy armor",
-    "vs_healing": "Mortal Reminder 4th (56.04% WR per aggregator A) — replaces LDR slot",
-    "vs_burst": "Immortal Shieldbow replaces Phantom Dancer vs 3+ divers — always keep TF",
+    "vs_healing": "Mortal Reminder 4th (56.04% WR per aggregator A) - replaces LDR slot",
+    "vs_burst": "Immortal Shieldbow replaces Phantom Dancer vs 3+ divers - always keep TF",
     "build_note": "Trinity Force is MANDATORY first item. Q activates Spellblade AND Lightslinger: bonus damage + empowered auto + second auto = 3-hit burst. Rush TF via Long Sword → Caulfield's → Sheen. Never RFC.",
     "recall_timing": "Back at 1100g (Caulfield's Warhammer) or 800g (Pickaxe + Dagger). TF complete by 12-13min target.",
     "role": "ADC",
@@ -212,7 +212,7 @@
   },
   "Ezreal": {
     "start": "Doran's Blade",
-    "first_back": "Tear of the Goddess (400g) — buy at first recall regardless of gold",
+    "first_back": "Tear of the Goddess (400g) - buy at first recall regardless of gold",
     "full_build": [
       "Sorcerer's Shoes",
       "Trinity Force",
@@ -221,10 +221,10 @@
       "Lord Dominik's Regards",
       "Bloodthirster"
     ],
-    "vs_tanks": "LDR + Serylda's double armor pen — Q applies both",
-    "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+    "vs_tanks": "LDR + Serylda's double armor pen - Q applies both",
+    "vs_healing": "Mortal Reminder replaces LDR vs sustain - never both",
     "vs_burst": "Immortal Shieldbow replaces Bloodthirster vs assassins",
-    "build_note": "Buy Tear FIRST back no matter what — stack immediately via Q spam. TF Spellblade + Muramana on Q = core damage. Serylda's slows enemies on Q hit. E is your ONLY escape — never burn forward.",
+    "build_note": "Buy Tear FIRST back no matter what - stack immediately via Q spam. TF Spellblade + Muramana on Q = core damage. Serylda's slows enemies on Q hit. E is your ONLY escape - never burn forward.",
     "recall_timing": "Buy Tear at first recall (400g). Full Manamune stacked = power spike. TF complete ~14min."
   },
   "Jhin": {
@@ -242,7 +242,7 @@
     "vs_healing": "Mortal Reminder 4th (53.37% WR per aggregator A)",
     "vs_burst": "Guardian Angel 6th (62.13% WR slot per aggregator A); Bloodthirster swap",
     "build_note": "Hubris (still 55 AD post-26.9 nerf, snowball stack) + Collector executes + IE crit damage = the lethality-crit hybrid jhin meta. Boots of Swiftness MANDATORY (88.39% PR) for kiting.",
-    "recall_timing": "Back at 1100g (BF Sword path) or 875g (Pickaxe). Reload window forces repositioning — track enemy aggression.",
+    "recall_timing": "Back at 1100g (BF Sword path) or 875g (Pickaxe). Reload window forces repositioning - track enemy aggression.",
     "role": "ADC",
     "tier": "D",
     "wr": 49.9,
@@ -362,10 +362,10 @@
       "Infinity Edge",
       "Lord Dominik's Regards"
     ],
-    "vs_tanks": "LDR 5th — Collector(25%) + Phantom Dancer(20%) + Navori(25%) + IE(25%) = 95% crit",
-    "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+    "vs_tanks": "LDR 5th - Collector(25%) + Phantom Dancer(20%) + Navori(25%) + IE(25%) = 95% crit",
+    "vs_healing": "Mortal Reminder replaces LDR vs sustain - never both",
     "vs_burst": "Immortal Shieldbow replaces Phantom Dancer vs heavy burst",
-    "build_note": "Catch BOTH Spinning Axes on every throw — lose axes = lose stacks. League of Draven passive stacks on every kill. Convert stacks with R on low-HP escaping enemies. Caulfield's rush for early haste.",
+    "build_note": "Catch BOTH Spinning Axes on every throw - lose axes = lose stacks. League of Draven passive stacks on every kill. Convert stacks with R on low-HP escaping enemies. Caulfield's rush for early haste.",
     "recall_timing": "Back at 1100g (Caulfield's) or 1300g (BF Sword). Never extend when axes are dropped."
   },
   "Xayah": {
@@ -379,11 +379,11 @@
       "Infinity Edge",
       "Lord Dominik's Regards"
     ],
-    "vs_tanks": "LDR 5th — Yun Tal(0%) + RFC(25%) + Collector(25%) + IE(25%) = 75% crit",
-    "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+    "vs_tanks": "LDR 5th - Yun Tal(0%) + RFC(25%) + Collector(25%) + IE(25%) = 75% crit",
+    "vs_healing": "Mortal Reminder replaces LDR vs sustain - never both",
     "vs_burst": "Immortal Shieldbow replaces The Collector vs assassins",
-    "build_note": "Yun Tal gives AS not crit in S16 — need RFC as crit bridge. Plant feathers with autos, E pulls all through the group. R (Featherstorm) is invincible — use to dodge Malphite R, Lux R, any burst.",
-    "recall_timing": "Back at 800g (Recurve Bow) to start Yun Tal path. Never use R proactively — save for incoming burst."
+    "build_note": "Yun Tal gives AS not crit in S16 - need RFC as crit bridge. Plant feathers with autos, E pulls all through the group. R (Featherstorm) is invincible - use to dodge Malphite R, Lux R, any burst.",
+    "recall_timing": "Back at 800g (Recurve Bow) to start Yun Tal path. Never use R proactively - save for incoming burst."
   },
   "Samira": {
     "start": "Long Sword",
@@ -396,11 +396,11 @@
       "Infinity Edge",
       "Lord Dominik's Regards"
     ],
-    "vs_tanks": "LDR 5th — Collector(25%) + Navori(25%) + ISB(25%) + IE(25%) = 100% crit",
-    "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+    "vs_tanks": "LDR 5th - Collector(25%) + Navori(25%) + ISB(25%) + IE(25%) = 100% crit",
+    "vs_healing": "Mortal Reminder replaces LDR vs sustain - never both",
     "vs_burst": "Immortal Shieldbow already in core build",
-    "build_note": "Style rank D→S via alternating melee Q / ranged auto + using ally CC nearby. R (Inferno Trigger) only at S rank — build rank on 3+ enemies before R. Weave through grouped enemies with passive dashes.",
-    "recall_timing": "Back at 1100g (Caulfield's). Don't extend when style rank is below C — vulnerable before R available."
+    "build_note": "Style rank D→S via alternating melee Q / ranged auto + using ally CC nearby. R (Inferno Trigger) only at S rank - build rank on 3+ enemies before R. Weave through grouped enemies with passive dashes.",
+    "recall_timing": "Back at 1100g (Caulfield's). Don't extend when style rank is below C - vulnerable before R available."
   },
   "Sivir": {
     "start": "Doran's Blade",
@@ -413,11 +413,11 @@
       "Lord Dominik's Regards",
       "Bloodthirster"
     ],
-    "vs_tanks": "LDR 4th — Boomerang Blade (Q) procs LDR through groups",
-    "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+    "vs_tanks": "LDR 4th - Boomerang Blade (Q) procs LDR through groups",
+    "vs_healing": "Mortal Reminder replaces LDR vs sustain - never both",
     "vs_burst": "Immortal Shieldbow replaces Bloodthirster vs assassins",
-    "build_note": "Navori reduces Q/W cooldown on crit — Ricochet (W) bounces become constant. Spell Shield (E) blocks one ability — save for hard CC or Caitlyn R. On-hit from Ricochet stacks Q haste faster.",
-    "recall_timing": "Back at 875g (Pickaxe). Q/W to clear waves fast — crash and recall every 3 waves."
+    "build_note": "Navori reduces Q/W cooldown on crit - Ricochet (W) bounces become constant. Spell Shield (E) blocks one ability - save for hard CC or Caitlyn R. On-hit from Ricochet stacks Q haste faster.",
+    "recall_timing": "Back at 875g (Pickaxe). Q/W to clear waves fast - crash and recall every 3 waves."
   },
   "Varus": {
     "start": "Doran's Blade",
@@ -430,11 +430,11 @@
       "Infinity Edge",
       "Lord Dominik's Regards"
     ],
-    "vs_tanks": "Kraken + LDR — W blight + Kraken true damage shreds through max armor",
-    "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+    "vs_tanks": "Kraken + LDR - W blight + Kraken true damage shreds through max armor",
+    "vs_healing": "Mortal Reminder replaces LDR vs sustain - never both",
     "vs_burst": "Immortal Shieldbow replaces The Collector vs assassins",
-    "build_note": "W (Blighted Quiver): stack 3 blight with autos, then E root detonates for % max HP burst. R chain of corruption jumps between enemies — throw into grouped cluster at objectives.",
-    "recall_timing": "Back at 800g (Recurve Bow). Never Q charge in place — stationary = gank target."
+    "build_note": "W (Blighted Quiver): stack 3 blight with autos, then E root detonates for % max HP burst. R chain of corruption jumps between enemies - throw into grouped cluster at objectives.",
+    "recall_timing": "Back at 800g (Recurve Bow). Never Q charge in place - stationary = gank target."
   },
   "Kalista": {
     "start": "Doran's Blade",
@@ -447,11 +447,11 @@
       "Lord Dominik's Regards",
       "Immortal Shieldbow"
     ],
-    "vs_tanks": "Kraken + LDR — Rend detonates Kraken procs through tanks simultaneously",
-    "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+    "vs_tanks": "Kraken + LDR - Rend detonates Kraken procs through tanks simultaneously",
+    "vs_healing": "Mortal Reminder replaces LDR vs sustain - never both",
     "vs_burst": "Immortal Shieldbow in core build",
-    "build_note": "NEVER stand still — every auto hops to new position. Stack 4+ spears on target before Rend (E). Hurricane plants spears on 3 targets simultaneously. R throws support into enemy team — coordinate the timing.",
-    "recall_timing": "Back at 800g (Recurve Bow). Kalista needs AS more than AD early — Recurve first is correct."
+    "build_note": "NEVER stand still - every auto hops to new position. Stack 4+ spears on target before Rend (E). Hurricane plants spears on 3 targets simultaneously. R throws support into enemy team - coordinate the timing.",
+    "recall_timing": "Back at 800g (Recurve Bow). Kalista needs AS more than AD early - Recurve first is correct."
   },
   "Zeri": {
     "start": "Doran's Blade",
@@ -465,10 +465,10 @@
       "Guinsoo's Rageblade"
     ],
     "vs_tanks": "Kraken + LDR + Rageblade double on-hit synergy",
-    "vs_healing": "Mortal Reminder replaces LDR vs sustain — never both",
+    "vs_healing": "Mortal Reminder replaces LDR vs sustain - never both",
     "vs_burst": "Immortal Shieldbow replaces Guinsoo's vs heavy assassin",
-    "build_note": "Q (Burst Fire) passes through minions — chip enemies through waves for free. E (Spark Surge) wall-hop for flank angles or escape. R overcharge: every kill extends — all-in at 2+ enemies grouped.",
-    "recall_timing": "Back at 800g (Recurve Bow). E wall-hops available — use to find safe recall paths."
+    "build_note": "Q (Burst Fire) passes through minions - chip enemies through waves for free. E (Spark Surge) wall-hop for flank angles or escape. R overcharge: every kill extends - all-in at 2+ enemies grouped.",
+    "recall_timing": "Back at 800g (Recurve Bow). E wall-hops available - use to find safe recall paths."
   },
   "Naafiri": {
     "role": "Mid",
@@ -495,8 +495,8 @@
     "vs_tanks": "Serylda's Grudge already in core; add Black Cleaver 4th if 2+ tanks (replaces Edge of Night)",
     "vs_healing": "Serpent's Fang 4th (aggregator A 56.52% WR in slot)",
     "vs_burst": "Edge of Night earlier (move to 2nd) for spell shield",
-    "kit_notes": "Pack-of-dogs assassin; W spawns dogs that boost AD/AS. Q1 dash + Q2 follow is her gap-close + execute. R doubles dog count and grants tracking — engage tool, not escape.",
-    "build_note": "Voltaic Cyclosword now ability-trigger (26.9 rework) — synergizes with Q-spam burst pattern. EoN second buys spell shield for bursting back into fights.",
+    "kit_notes": "Pack-of-dogs assassin; W spawns dogs that boost AD/AS. Q1 dash + Q2 follow is her gap-close + execute. R doubles dog count and grants tracking - engage tool, not escape.",
+    "build_note": "Voltaic Cyclosword now ability-trigger (26.9 rework) - synergizes with Q-spam burst pattern. EoN second buys spell shield for bursting back into fights.",
     "_sources": [
       {
         "url": "https://aggregator-a.invalid/lol/champions/naafiri/build/mid",
@@ -566,7 +566,7 @@
     "vs_healing": "Cryptbloom replaces Void Staff (% MR pen + healing aura unique to her support flex pool)",
     "vs_burst": "Zhonya's Hourglass replaces Stormsurge as 3rd (53.66% WR per aggregator A)",
     "kit_notes": "Long-range mage; Q binds 2 targets, E AOE slow + detonation, R global beam. Passive marks targets that her own AAs/spells detonate for AOE bonus damage.",
-    "build_note": "Luden's first for waveclear + roam burst. Stormsurge/Shadowflame stack burst for one-shot R fishing. Build pivots to Cryptbloom in support role (not covered here — mid only).",
+    "build_note": "Luden's first for waveclear + roam burst. Stormsurge/Shadowflame stack burst for one-shot R fishing. Build pivots to Cryptbloom in support role (not covered here - mid only).",
     "_sources": [
       {
         "url": "https://aggregator-a.invalid/lol/champions/lux/build/mid",
@@ -744,7 +744,7 @@
     "vs_healing": "Morellonomicon replaces Shadowflame (or 6th item if Shadowflame kept)",
     "vs_burst": "Banshee's Veil 6th (per aggregator A); Mercury's Treads boots swap (16.09% PR)",
     "kit_notes": "Energy-based assassin; R double-dash execute; passive empowered AA after ability. E-Q-AA kill rotation post-6.",
-    "build_note": "Hextech Gunblade gives omnivamp + active dash — core to her brawling pattern. Sorcerer's pen prio over Mercs unless heavy AP burst lane.",
+    "build_note": "Hextech Gunblade gives omnivamp + active dash - core to her brawling pattern. Sorcerer's pen prio over Mercs unless heavy AP burst lane.",
     "_sources": [
       {
         "url": "https://aggregator-a.invalid/lol/champions/akali/build/mid",
@@ -793,7 +793,7 @@
     ],
     "vs_tanks": "Lord Dominik's Regards 4th (replaces Death's Dance in slot, 57.5% WR per aggregator A)",
     "vs_healing": "Mortal Reminder 4th (57.61% WR per aggregator A)",
-    "vs_burst": "Immortal Shieldbow already 2nd in core — keep position",
+    "vs_burst": "Immortal Shieldbow already 2nd in core - keep position",
     "kit_notes": "Crit-AA bruiser-assassin; Q3 knockup + AA dash, E swap dash, R AOE knockup engage. Doran's Bow new aggressive starter (26.9) replaces Doran's Blade for AA-trade pattern.",
     "build_note": "BotRK first for % HP on-hit + active slow. Shieldbow shield mid-fight survival. New Doran's Bow starter (44.76% PR) is post-26.9 shift over Doran's Shield (31.64% PR).",
     "_sources": [
@@ -846,7 +846,7 @@
     "vs_healing": "Serpent's Fang replaces Edge of Night",
     "vs_burst": "Edge of Night earlier (move to 4th); Maw of Malmortius vs heavy AP",
     "kit_notes": "Energy assassin; R shadow swap + delayed mark execute. W shadow + E AOE slow defines burst combo. Voltaic Cyclosword (26.9 ability-trigger) procs off Q.",
-    "build_note": "Voltaic Cyclosword + Axiom Arc lethality + ult-cd refund stack — defines snowball pattern. Hubris removed from default since 26.9 nerf (60AD->55AD); aggregator A shows VC + Axiom + Serylda's at 57.36% core WR.",
+    "build_note": "Voltaic Cyclosword + Axiom Arc lethality + ult-cd refund stack - defines snowball pattern. Hubris removed from default since 26.9 nerf (60AD->55AD); aggregator A shows VC + Axiom + Serylda's at 57.36% core WR.",
     "_sources": [
       {
         "url": "https://aggregator-a.invalid/lol/champions/zed/build/mid",
@@ -878,7 +878,7 @@
     "pr": 3.41,
     "br": 1.2,
     "starter": "Doran's Ring",
-    "first_back": "Tear of the Goddess (400g) — buy first back regardless of gold",
+    "first_back": "Tear of the Goddess (400g) - buy first back regardless of gold",
     "boots": "Sorcerer's Shoes",
     "full_build": [
       "Tear of the Goddess",
@@ -897,7 +897,7 @@
     "vs_healing": "Cryptbloom 5th (63.22% WR per aggregator A) replaces Zhonya's",
     "vs_burst": "Zhonya's 4th (move ahead of Deathcap, 59.01% WR slot)",
     "kit_notes": "Stack-passive caster; Q stacks AP per minion/champ kill. E cage stun is the setup tool. R execute scales with target's missing HP.",
-    "build_note": "Tear MUST buy first back regardless of gold — stack via Q spam ASAP. RoA evolves at 10min into Seraph's. Late-game Deathcap snowballs his stack pattern.",
+    "build_note": "Tear MUST buy first back regardless of gold - stack via Q spam ASAP. RoA evolves at 10min into Seraph's. Late-game Deathcap snowballs his stack pattern.",
     "_sources": [
       {
         "url": "https://aggregator-a.invalid/lol/champions/veigar/build/mid",
@@ -947,8 +947,8 @@
     "vs_tanks": "Terminus already in core; Void Staff 5th",
     "vs_healing": "Morellonomicon swap for Rabadon's vs sustain comp",
     "vs_burst": "Zhonya's Hourglass 4th (58.82% WR slot, 64.79% as 5th per aggregator A)",
-    "kit_notes": "Reset-mechanic assassin; passive throws daggers on cd, pickup grants empowered AA + AOE. R channeled AOE is the fight-winner — needs cover.",
-    "build_note": "Crit-bruiser hybrid build (Kraken/BotRK/Terminus) is the meta — different from old AP burst pattern. Mercs treads viable (20.46% PR) into heavy CC.",
+    "kit_notes": "Reset-mechanic assassin; passive throws daggers on cd, pickup grants empowered AA + AOE. R channeled AOE is the fight-winner - needs cover.",
+    "build_note": "Crit-bruiser hybrid build (Kraken/BotRK/Terminus) is the meta - different from old AP burst pattern. Mercs treads viable (20.46% PR) into heavy CC.",
     "_sources": [
       {
         "url": "https://aggregator-a.invalid/lol/champions/katarina/build/mid",
@@ -998,7 +998,7 @@
     "vs_tanks": "Serylda's Grudge already in core; Black Cleaver if 2+ tanks",
     "vs_healing": "Serpent's Fang 4th (53.6% WR per aggregator A)",
     "vs_burst": "Edge of Night 4th (58.53% WR per aggregator A)",
-    "kit_notes": "Lethality assassin; W AOE blade rake + bleed, E wall-jump, R invis dash + AOE on reveal. Roam-heavy — Youmuu's MS is core.",
+    "kit_notes": "Lethality assassin; W AOE blade rake + bleed, E wall-jump, R invis dash + AOE on reveal. Roam-heavy - Youmuu's MS is core.",
     "build_note": "Pure lethality stack. Voltaic Cyclosword (26.9 ability-trigger) hits W & R AOE. Youmuu's MS scales his roam advantage post-6.",
     "_sources": [
       {
@@ -1046,11 +1046,11 @@
       "Rylai's Crystal Scepter",
       "Protoplasm Harness"
     ],
-    "vs_tanks": "Riftmaker 4th (67.09% WR per aggregator A) — replaces Protoplasm",
+    "vs_tanks": "Riftmaker 4th (67.09% WR per aggregator A) - replaces Protoplasm",
     "vs_healing": "Morellonomicon flex 5th (Singed kit doesn't natively need it but vs Soraka/Aatrox swap in)",
     "vs_burst": "Dead Man's Plate / Jak'Sho earlier",
     "kit_notes": "Proxy-farm tank-mage; Q poison trail damage scales with target HP. W ground glue. E flip turns chasers into kited corpses. R ult buff stats + MS.",
-    "build_note": "Boots of Swiftness (NOT Sorcerer's) is mandatory — kiting is his win condition. Liandry's HP-burn pairs with Rylai's slow + Q-trail uptime.",
+    "build_note": "Boots of Swiftness (NOT Sorcerer's) is mandatory - kiting is his win condition. Liandry's HP-burn pairs with Rylai's slow + Q-trail uptime.",
     "_sources": [
       {
         "url": "https://aggregator-a.invalid/lol/champions/singed/build/top",
@@ -1155,7 +1155,7 @@
       "Death's Dance"
     ],
     "vs_tanks": "Sterak's Gage 4th (60.94% WR per aggregator A) for HP scaling",
-    "vs_healing": "Death's Dance gives sustain — for direct anti-heal swap Chempunk Chainsword 4th",
+    "vs_healing": "Death's Dance gives sustain - for direct anti-heal swap Chempunk Chainsword 4th",
     "vs_burst": "Sterak's Gage / Maw of Malmortius earlier",
     "kit_notes": "5-stack-bleed bruiser; passive bleed stacks +AD per stack. E pull. R true-damage execute resets on kill (snowball tool).",
     "build_note": "Lethality-into-bruiser hybrid. Youmuu's MS + Dead Man's Plate MS = closes gap on kited targets. R-reset chains define teamfight pattern.",
@@ -1259,7 +1259,7 @@
     "vs_tanks": "Death's Dance replaces Zhonya's in core",
     "vs_healing": "Wit's End 4th/5th (aggregator A flagged as anti-heal swap)",
     "vs_burst": "Sterak's Gage 4th (60.37% WR per aggregator A); Maw vs heavy AP",
-    "kit_notes": "AS-scaling bruiser; passive every-3rd-AA bonus magic damage. E counter-stun on incoming AAs. R passive stacks armor+MR per AA — itemize INTO his AS spike.",
+    "kit_notes": "AS-scaling bruiser; passive every-3rd-AA bonus magic damage. E counter-stun on incoming AAs. R passive stacks armor+MR per AA - itemize INTO his AS spike.",
     "build_note": "Trinity Force + Sundered Sky for Sheen-scaled burst rotation. Zhonya's stops dive + lets E counter heavy nuke combos. AP-Jax variant exists but crit-trinity is aggregator A meta.",
     "_sources": [
       {
@@ -1308,10 +1308,10 @@
       "Jak'Sho, The Protean"
     ],
     "vs_tanks": "Anathema's Chains pivot vs single-tank threat",
-    "vs_healing": "Kaenic Rookern early (53.24% WR per aggregator A) — also gives MR shield",
+    "vs_healing": "Kaenic Rookern early (53.24% WR per aggregator A) - also gives MR shield",
     "vs_burst": "Thornmail combo (51.4-52.57% WR) or earlier Randuin's",
-    "kit_notes": "Tank-divetank-bruiser hybrid; R All Out converts armor/MR into AD + AOE knockback. Itemize tank stats — R converts them when needed.",
-    "build_note": "Doran's Helm new 26.9 starter (50.06% WR per aggregator A) is canonical. Build pure tank — R conversion does the damage. Mercs viable (30.24% PR, 50.23% WR) into heavy CC.",
+    "kit_notes": "Tank-divetank-bruiser hybrid; R All Out converts armor/MR into AD + AOE knockback. Itemize tank stats - R converts them when needed.",
+    "build_note": "Doran's Helm new 26.9 starter (50.06% WR per aggregator A) is canonical. Build pure tank - R conversion does the damage. Mercs viable (30.24% PR, 50.23% WR) into heavy CC.",
     "_sources": [
       {
         "url": "https://aggregator-a.invalid/lol/champions/ksante/build/top",
@@ -1362,7 +1362,7 @@
     "vs_healing": "Thornmail in core (built-in Grievous Wounds on hit)",
     "vs_burst": "Kaenic Rookern earlier (move to 4th); Protoplasm Harness flex",
     "kit_notes": "Forge-master tank; passive upgrades teammate items at L13. W brittle-passive enables stronger CC. R brittle-knockup AOE + remote knockup.",
-    "build_note": "Pure tank stack — Sunfire/Thornmail/Jak'Sho is the canonical 3-core. Ornn upgrades 1 item per ally at L13 (Sunfire->Bonfire Cataclysm, Thornmail->Leviathan, etc).",
+    "build_note": "Pure tank stack - Sunfire/Thornmail/Jak'Sho is the canonical 3-core. Ornn upgrades 1 item per ally at L13 (Sunfire->Bonfire Cataclysm, Thornmail->Leviathan, etc).",
     "_sources": [
       {
         "url": "https://aggregator-a.invalid/lol/champions/ornn/build/top",
@@ -1476,8 +1476,8 @@
     "vs_tanks": "Sterak's Gage / Spear of Shojin (58.67% WR core swap per aggregator A)",
     "vs_healing": "Chempunk Chainsword swap for Ravenous Hydra",
     "vs_burst": "Guardian Angel / Maw of Malmortius earlier",
-    "kit_notes": "Hextech-bruiser; passive shield on AA cycle scales with enemy MR/armor. E wall-jump-stun (charge & release). R AOE prison isolates targets — pick + 1v1.",
-    "build_note": "Trinity Force Spellblade + Ravenous Hydra AOE define waveclear + skirmish. R isolates priority target — itemize bruiser stats to brawl post-engage. Mercury's Treads alt (33.47% PR) into CC.",
+    "kit_notes": "Hextech-bruiser; passive shield on AA cycle scales with enemy MR/armor. E wall-jump-stun (charge & release). R AOE prison isolates targets - pick + 1v1.",
+    "build_note": "Trinity Force Spellblade + Ravenous Hydra AOE define waveclear + skirmish. R isolates priority target - itemize bruiser stats to brawl post-engage. Mercury's Treads alt (33.47% PR) into CC.",
     "_sources": [
       {
         "url": "https://aggregator-a.invalid/lol/champions/camille/build/top",
@@ -1527,7 +1527,7 @@
     "vs_tanks": "Liandry's already in core (% HP burn); Experimental Hexplate 4th (59.25% WR per aggregator A)",
     "vs_healing": "Thornmail (56.12% WR as 4th per aggregator A)",
     "vs_burst": "Zhonya's Hourglass 4th (59.89% WR per aggregator A)",
-    "kit_notes": "Death-realm bruiser-mage; passive AOE empowered AA. E pull from medium range. R isolates target for 7s in death realm — 1v1 carry zone with stat steal.",
+    "kit_notes": "Death-realm bruiser-mage; passive AOE empowered AA. E pull from medium range. R isolates target for 7s in death realm - 1v1 carry zone with stat steal.",
     "build_note": "Rylai's slow + Liandry's burn defines kiting + sustained DPS. Riftmaker omnivamp keeps him alive in melee. Plated Steelcaps prio over Mercs vs AD top lanes.",
     "_sources": [
       {
@@ -1578,7 +1578,7 @@
     "vs_tanks": "BotRK + Stridebreaker already core; Black Cleaver swap if 3+ tanks",
     "vs_healing": "Thornmail in core (Grievous Wounds on hit)",
     "vs_burst": "Sterak's Gage 4th (60.73% WR per aggregator A); Spirit Visage vs heavy AP",
-    "kit_notes": "Sustain bruiser-jungler; passive + Q lifesteal scaling. W passive low-HP ping (track wounded enemies). R suppression — flash R is the engage tool.",
+    "kit_notes": "Sustain bruiser-jungler; passive + Q lifesteal scaling. W passive low-HP ping (track wounded enemies). R suppression - flash R is the engage tool.",
     "build_note": "Stridebreaker + BotRK = % HP shred + sustain + MS. Mercs treads alt (40.64% PR, 53.25% WR) into heavy CC. Buffed in 26.9.",
     "_sources": [
       {
@@ -1646,7 +1646,7 @@
     ],
     "vs_tanks": "Serylda's Grudge 4th (59.35% WR per aggregator A)",
     "vs_healing": "Serpent's Fang 4th (55.94% WR per aggregator A)",
-    "vs_burst": "Edge of Night already in core (60.92% WR slot per aggregator A) — keep at 4th or earlier",
+    "vs_burst": "Edge of Night already in core (60.92% WR slot per aggregator A) - keep at 4th or earlier",
     "kit_notes": "Evolution assassin; passive isolation bonus. W slow + heal on isolated targets. E dash. R 3-charge invis (evolve at 16 = unstoppable picks). Q evo true damage isolated.",
     "build_note": "Umbral Glaive ward-clear pen for vision-denied picks. Bastionbreaker shield-pierce defines burst pattern. Q evo first usually.",
     "_sources": [
@@ -1749,7 +1749,7 @@
     "vs_tanks": "Rabadon's Deathcap 4th (62.69% WR per aggregator A) for raw AP scaling vs Liandry burn",
     "vs_healing": "Bloodletter's Curse 4th (61.22% WR per aggregator A)",
     "vs_burst": "Zhonya's Hourglass 4th (66.55% WR per aggregator A)",
-    "kit_notes": "AOE-burn AP jungler; passive bonus MS after AA/ability. Q AOE swing. E sleep dart (R synergy — sleeping enemies take bonus R nuke).",
+    "kit_notes": "AOE-burn AP jungler; passive bonus MS after AA/ability. Q AOE swing. E sleep dart (R synergy - sleeping enemies take bonus R nuke).",
     "build_note": "Liandry's % HP burn + Riftmaker omnivamp + Zhonya's defines kite-burn pattern. R sleep + reactivate = teamfight pickoff. Ionian Boots viable (20.04% PR).",
     "_sources": [
       {
@@ -1862,9 +1862,9 @@
     ],
     "vs_tanks": "Nashor's Tooth 4th (56.58% WR per aggregator A) for AP on-hit",
     "vs_healing": "Fiendhunter Bolts 4th (55.04% WR per aggregator A)",
-    "vs_burst": "Zhonya's Hourglass 4th (53.67% WR per aggregator A) — earlier slot vs assassins",
-    "kit_notes": "Hybrid AD/AP on-hit ADC; passive evolves Q (AD), W (AP), E (AS) at item thresholds. R dash from R-marked target — invuln + reposition.",
-    "build_note": "Statikk Shiv reworked 26.9 — now 40 AD/45 AP/30% AS hybrid + applies on-hits to chain bounces. Massive Kai'Sa buff — synergizes with Q+W evo and Rageblade's hybrid scaling. Was a major mid-patch shift.",
+    "vs_burst": "Zhonya's Hourglass 4th (53.67% WR per aggregator A) - earlier slot vs assassins",
+    "kit_notes": "Hybrid AD/AP on-hit ADC; passive evolves Q (AD), W (AP), E (AS) at item thresholds. R dash from R-marked target - invuln + reposition.",
+    "build_note": "Statikk Shiv reworked 26.9 - now 40 AD/45 AP/30% AS hybrid + applies on-hits to chain bounces. Massive Kai'Sa buff - synergizes with Q+W evo and Rageblade's hybrid scaling. Was a major mid-patch shift.",
     "_sources": [
       {
         "url": "https://aggregator-a.invalid/lol/champions/kaisa/build/adc",
@@ -1963,7 +1963,7 @@
     "starter": "Doran's Ring",
     "vs_tanks": "Void Staff 5th-6th (% magic pen scales with their MR stack)",
     "vs_healing": "Morellonomicon swap into 4th slot",
-    "kit_notes": "Every 4th spell stuns; short-range immobile burst mage with Tibbers ult engage — pre-stack passive in fog before fight.",
+    "kit_notes": "Every 4th spell stuns; short-range immobile burst mage with Tibbers ult engage - pre-stack passive in fog before fight.",
     "_source": "https://aggregator-a.invalid/lol/champions/annie/build/mid"
   },
   "Cassiopeia": {
@@ -1984,9 +1984,9 @@
       "Rod of Ages",
       "Seraph's Embrace"
     ],
-    "boots": "None (kit restriction — Cassiopeia cannot purchase boots; movespeed comes from W passive)",
+    "boots": "None (kit restriction - Cassiopeia cannot purchase boots; movespeed comes from W passive)",
     "starter": "Doran's Ring",
-    "vs_tanks": "Liandry's Torment swap into 4th (replace Rylai's) — burn-stack tanks via E spam",
+    "vs_tanks": "Liandry's Torment swap into 4th (replace Rylai's) - burn-stack tanks via E spam",
     "vs_healing": "Morellonomicon (cuts healing on every E proc)",
     "kit_notes": "Immobile sustained-DPS mage; chain Q→W→E spam in twin-fang range. Ult R is point-blank cone stun on enemies facing her.",
     "_source": "https://aggregator-a.invalid/lol/champions/cassiopeia/build/mid"
@@ -2014,7 +2014,7 @@
     "starter": "Doran's Ring",
     "vs_tanks": "Rabadon's Deathcap pull forward (62.41% WR per aggregator A) for raw AP scaling on Riftmaker procs",
     "vs_healing": "Morellonomicon (replaces Frozen Heart vs healing comps)",
-    "kit_notes": "AP-tank mid counterpick to AP threats; W magic-damage shield, E knockup, R global flash-engage — pairs with assassin junglers.",
+    "kit_notes": "AP-tank mid counterpick to AP threats; W magic-damage shield, E knockup, R global flash-engage - pairs with assassin junglers.",
     "_source": "https://aggregator-a.invalid/lol/champions/galio/build/mid"
   },
   "Kassadin": {
@@ -2039,7 +2039,7 @@
     "boots": "Sorcerer's Shoes",
     "starter": "Dark Seal + Refillable Potion",
     "vs_tanks": "Void Staff 5th-6th (% magic pen)",
-    "vs_healing": "Morellonomicon or Oblivion Orb — situational vs healing comps",
+    "vs_healing": "Morellonomicon or Oblivion Orb - situational vs healing comps",
     "kit_notes": "Lvl 16 R-spam carry; weak early, scales nuclear once R rank 3 + RoA + Muramana online. Magic-damage W is melee burst, E silence cone is poke.",
     "_source": "https://aggregator-a.invalid/lol/champions/kassadin/build/mid"
   },
@@ -2092,7 +2092,7 @@
     "starter": "Doran's Ring",
     "vs_tanks": "Void Staff 5th (replaces Rabadon's vs MR-stacking team)",
     "vs_healing": "Morellonomicon 5th (54.64% WR per aggregator A)",
-    "kit_notes": "Wave-clear safe-laner; R is point-click suppression — saves teammates from mobile threats (Yasuo, Yone, Master Yi).",
+    "kit_notes": "Wave-clear safe-laner; R is point-click suppression - saves teammates from mobile threats (Yasuo, Yone, Master Yi).",
     "_source": "https://aggregator-a.invalid/lol/champions/malzahar/build/mid"
   },
   "Orianna": {
@@ -2194,8 +2194,8 @@
     ],
     "boots": "Ionian Boots of Lucidity",
     "starter": "Doran's Ring",
-    "vs_tanks": "Void Staff (already 6th — pull to 4th vs MR-heavy)",
-    "vs_healing": "Morellonomicon — critical vs Vlad's omnivamp playstyle (forces enemy to cut his sustain back)",
+    "vs_tanks": "Void Staff (already 6th - pull to 4th vs MR-heavy)",
+    "vs_healing": "Morellonomicon - critical vs Vlad's omnivamp playstyle (forces enemy to cut his sustain back)",
     "kit_notes": "AP bruiser sustain mage; W Sanguine Pool dodges CC + projectiles, R Hemoplague AoE damage-amp engage. Pre-pool armor-pen / lockdown ults.",
     "_source": "https://aggregator-a.invalid/lol/champions/vladimir/build/mid"
   },
@@ -2220,9 +2220,9 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Doran's Shield",
-    "vs_tanks": "Endless Hunger 4th (66.09% WR per aggregator A) replaces Sterak's Gage — % HP true-damage scaling",
+    "vs_tanks": "Endless Hunger 4th (66.09% WR per aggregator A) replaces Sterak's Gage - % HP true-damage scaling",
     "vs_healing": "Mortal Reminder (replace Serylda's Grudge 5th)",
-    "kit_notes": "Conqueror bruiser; Q chain (3 sweet-spots) is core damage + knockup combo. R revive on takedown — bait by walking in low.",
+    "kit_notes": "Conqueror bruiser; Q chain (3 sweet-spots) is core damage + knockup combo. R revive on takedown - bait by walking in low.",
     "_source": "https://aggregator-a.invalid/lol/champions/aatrox/build/top"
   },
   "ChoGath": {
@@ -2246,9 +2246,9 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Doran's Ring",
-    "vs_tanks": "Kaenic Rookern 4th (62.91% WR per aggregator A) — magic shield vs AP",
-    "vs_healing": "Thornmail (already 6th; pull to 4th vs healing — provides Grievous Wounds)",
-    "kit_notes": "AP-tank carry; R execute stacks permanent HP — farm cannon waves + steal kills for snowball. Q knockup + W silence chain locks down assassins.",
+    "vs_tanks": "Kaenic Rookern 4th (62.91% WR per aggregator A) - magic shield vs AP",
+    "vs_healing": "Thornmail (already 6th; pull to 4th vs healing - provides Grievous Wounds)",
+    "kit_notes": "AP-tank carry; R execute stacks permanent HP - farm cannon waves + steal kills for snowball. Q knockup + W silence chain locks down assassins.",
     "_source": "https://aggregator-a.invalid/lol/champions/chogath/build/top"
   },
   "Fiora": {
@@ -2272,7 +2272,7 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Doran's Blade",
-    "vs_tanks": "Endless Hunger 4th — % HP true damage shreds tanks via vital procs",
+    "vs_tanks": "Endless Hunger 4th - % HP true damage shreds tanks via vital procs",
     "vs_healing": "Mortal Reminder (replaces Maw 5th vs healing comps)",
     "kit_notes": "Split-push duelist; W Riposte parries CC + AAs (timing-dependent). Vitals on cardinal directions = shred tanks. R 4-vital execute heals teamfights.",
     "_source": "https://aggregator-a.invalid/lol/champions/fiora/build/top"
@@ -2326,7 +2326,7 @@
     "starter": "Doran's Ring",
     "vs_tanks": "Void Staff (already 6th; pull to 4th vs MR-stacking)",
     "vs_healing": "Morellonomicon (replace Shadowflame 4th)",
-    "kit_notes": "AP bruiser; W Hallowed Mist blocks ranged + projectiles inside zone — bait skillshots. Q Snip Snip on-hit % current HP shreds tanks. Counter-pick into low-mobility tops.",
+    "kit_notes": "AP bruiser; W Hallowed Mist blocks ranged + projectiles inside zone - bait skillshots. Q Snip Snip on-hit % current HP shreds tanks. Counter-pick into low-mobility tops.",
     "_source": "https://aggregator-a.invalid/lol/champions/gwen/build/top"
   },
   "Illaoi": {
@@ -2350,9 +2350,9 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Doran's Blade",
-    "vs_tanks": "Death's Dance pull to 4th — bleed-conversion sustains through tank trades",
-    "vs_healing": "Thornmail 4th (replaces Spirit Visage in slot) — Grievous Wounds + armor",
-    "kit_notes": "Tentacle bruiser; E Test of Spirit pulls enemy soul (ranged), all tentacles slap soul + champ — landing E is the entire kit. R Leap of Faith spawns 4-6 tentacles in radius for teamfight zone control.",
+    "vs_tanks": "Death's Dance pull to 4th - bleed-conversion sustains through tank trades",
+    "vs_healing": "Thornmail 4th (replaces Spirit Visage in slot) - Grievous Wounds + armor",
+    "kit_notes": "Tentacle bruiser; E Test of Spirit pulls enemy soul (ranged), all tentacles slap soul + champ - landing E is the entire kit. R Leap of Faith spawns 4-6 tentacles in radius for teamfight zone control.",
     "_source": "https://aggregator-a.invalid/lol/champions/illaoi/build/top"
   },
   "Irelia": {
@@ -2376,9 +2376,9 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Doran's Blade",
-    "vs_tanks": "BoRK already in core (% current HP) — add Mortal Reminder if Soraka/Yuumi healing",
-    "vs_healing": "Death's Dance pull forward — bleed-conversion + healing-cut via combat sustain pattern",
-    "kit_notes": "Stack-AS skirmisher; Q passes through marked minions/champs (low-CD reset). E stun is 2-blade skillshot — bait engage. R wall blocks projectiles.",
+    "vs_tanks": "BoRK already in core (% current HP) - add Mortal Reminder if Soraka/Yuumi healing",
+    "vs_healing": "Death's Dance pull forward - bleed-conversion + healing-cut via combat sustain pattern",
+    "kit_notes": "Stack-AS skirmisher; Q passes through marked minions/champs (low-CD reset). E stun is 2-blade skillshot - bait engage. R wall blocks projectiles.",
     "_source": "https://aggregator-a.invalid/lol/champions/irelia/build/top"
   },
   "Maokai": {
@@ -2402,9 +2402,9 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Doran's Shield",
-    "vs_tanks": "Liandry's Torment 4th (replace Unending Despair) — % HP burn",
+    "vs_tanks": "Liandry's Torment 4th (replace Unending Despair) - % HP burn",
     "vs_healing": "Morellonomicon or Chempunk Chainsword (situational 5th)",
-    "kit_notes": "Tank utility; W root chain into Q knockback combo, E twisted-advance long-range root engage. R global root pressure (channel — pre-fight setup).",
+    "kit_notes": "Tank utility; W root chain into Q knockback combo, E twisted-advance long-range root engage. R global root pressure (channel - pre-fight setup).",
     "_source": "https://aggregator-a.invalid/lol/champions/maokai/build/top",
     "_note": "aggregator A shows PR 54.8 for Maokai which seems anomalous (likely top+jungle+sup combined display); kept conservative 5.48% as standalone top-lane PR per typical pattern."
   },
@@ -2429,7 +2429,7 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Doran's Blade",
-    "vs_tanks": "Black Cleaver already in core — armor shred ramp; add Mortal Reminder 4th vs healing tanks",
+    "vs_tanks": "Black Cleaver already in core - armor shred ramp; add Mortal Reminder 4th vs healing tanks",
     "vs_healing": "Chempunk Chainsword 5th (64.58% WR per aggregator A) replaces Sterak's Gage",
     "kit_notes": "Bruiser-lethality hybrid; E Aegis Assault blocks AAs + frontal damage in cone. R Grand Starfall global = roam pressure on side waves.",
     "_source": "https://aggregator-a.invalid/lol/champions/pantheon/build/top"
@@ -2455,9 +2455,9 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Doran's Ring",
-    "vs_tanks": "Riftmaker replaces Spirit Visage (64.35% WR per aggregator A) — % HP true-damage tank shred",
+    "vs_tanks": "Riftmaker replaces Spirit Visage (64.35% WR per aggregator A) - % HP true-damage tank shred",
     "vs_healing": "Thornmail (already in core; pull to 4th vs healing comps for Grievous Wounds)",
-    "kit_notes": "Stacking-AS bruiser; passive on-hit magic dmg ramps. R lightning-leap unstoppable + tower disable — engage from fog or jungle.",
+    "kit_notes": "Stacking-AS bruiser; passive on-hit magic dmg ramps. R lightning-leap unstoppable + tower disable - engage from fog or jungle.",
     "_source": "https://aggregator-a.invalid/lol/champions/volibear/build/top"
   },
   "Briar": {
@@ -2482,7 +2482,7 @@
     "boots": "Plated Steelcaps",
     "starter": "Gustwalker Hatchling",
     "vs_tanks": "Lord Dominik's Regards already in 3-item core (% armor pen)",
-    "vs_healing": "Mortal Reminder swap for LDR slot (LDR has anti-heal in 26.9 — verify slot)",
+    "vs_healing": "Mortal Reminder swap for LDR slot (LDR has anti-heal in 26.9 - verify slot)",
     "kit_notes": "Frenzy bruiser; W Blood Frenzy = unable-to-control rage state with bonus AS + lifesteal. Untargetable Q gap-close (long range, locks onto target). R global recall + ult cast.",
     "_source": "https://aggregator-a.invalid/lol/champions/briar/build/jungle"
   },
@@ -2509,7 +2509,7 @@
     "starter": "Scorchclaw Pup",
     "vs_tanks": "Void Staff replaces Shadowflame (% magic pen)",
     "vs_healing": "Morellonomicon (replace Shadowflame 5th)",
-    "kit_notes": "AP fighter-assassin; passive 3rd-hit magic burst, Q crescent skillshot, E pull engage, R AoE pull-in second cast — flank from fog with Q→E→R combo.",
+    "kit_notes": "AP fighter-assassin; passive 3rd-hit magic burst, Q crescent skillshot, E pull engage, R AoE pull-in second cast - flank from fog with Q→E→R combo.",
     "_source": "https://aggregator-a.invalid/lol/champions/diana/build/jungle"
   },
   "Graves": {
@@ -2562,7 +2562,7 @@
     "starter": "Scorchclaw Pup",
     "vs_tanks": "Void Staff already in core (already 5th)",
     "vs_healing": "Morellonomicon (replace Stormsurge 6th)",
-    "kit_notes": "Death-passive (free-cast spirit form) ult-bot mage jungler; R Requiem global execute — coordinate with low-HP teamfight calls. Q farms jungle camps long-range.",
+    "kit_notes": "Death-passive (free-cast spirit form) ult-bot mage jungler; R Requiem global execute - coordinate with low-HP teamfight calls. Q farms jungle camps long-range.",
     "_source": "https://aggregator-a.invalid/lol/champions/karthus/build/jungle"
   },
   "Nidalee": {
@@ -2613,8 +2613,8 @@
     "boots": "Plated Steelcaps",
     "starter": "Gustwalker Hatchling",
     "vs_tanks": "Black Cleaver already in core; add Mortal Reminder 5th vs healing tanks",
-    "vs_healing": "Death's Dance — bleed-conversion functions as soft anti-heal sustain pattern",
-    "kit_notes": "Bruiser fighter; W clone-decoy stealth (drops aggro), R AoE knockup spinning ult — flank from clone for double-engage. NO Spear of Shojin per aggregator A.",
+    "vs_healing": "Death's Dance - bleed-conversion functions as soft anti-heal sustain pattern",
+    "kit_notes": "Bruiser fighter; W clone-decoy stealth (drops aggro), R AoE knockup spinning ult - flank from clone for double-engage. NO Spear of Shojin per aggregator A.",
     "_source": "https://aggregator-a.invalid/lol/champions/monkeyking/build/jungle"
   },
   "XinZhao": {
@@ -2664,9 +2664,9 @@
     ],
     "boots": "Ionian Boots of Lucidity",
     "starter": "Scorchclaw Pup",
-    "vs_tanks": "Thornmail already 5th — pull to 4th for Grievous Wounds + reflect",
+    "vs_tanks": "Thornmail already 5th - pull to 4th for Grievous Wounds + reflect",
     "vs_healing": "Thornmail handles it via Grievous Wounds passive on AAs",
-    "kit_notes": "Tank engage jungler; E long-range cone-blob jump, R AoE bounce knockup engage. Passive blob revive — bait death in fog. Pre-cast E from jungle for surprise flank.",
+    "kit_notes": "Tank engage jungler; E long-range cone-blob jump, R AoE bounce knockup engage. Passive blob revive - bait death in fog. Pre-cast E from jungle for surprise flank.",
     "_source": "https://aggregator-a.invalid/lol/champions/zac/build/jungle"
   },
   "Twitch": {
@@ -2695,7 +2695,7 @@
     "kit_notes": "Stealth ranged-AD; Q Ambush invisibility into long-range R Spray and Pray bypasses minion blocks. Stack passive E true dmg poison for execute pop.",
     "_source": "https://aggregator-a.invalid/lol/champions/twitch/build/adc"
   },
-  "_note": "SR builds. Patch 26.9 / Season 16. Updated 2026-05-03 (s33 phase merge — 160 champions refreshed via aggregator A primary).",
+  "_note": "SR builds. Patch 26.9 / Season 16. Updated 2026-05-03 (s33 phase merge - 160 champions refreshed via aggregator A primary).",
   "_refresh_metadata": {
     "patch": "26.9",
     "merged_at": "2026-05-03",
@@ -2726,7 +2726,7 @@
     ],
     "boots": "Mercury's Treads",
     "starter": "Doran's Blade",
-    "vs_tanks": "Lord Dominik's Regards already core (3rd item) — no swap needed",
+    "vs_tanks": "Lord Dominik's Regards already core (3rd item) - no swap needed",
     "vs_healing": "Mortal Reminder swap into 4th-5th slot (replace IE if heavy)",
     "kit_notes": "Every third hit and ability grants a shield while firing bonus attacks for reduced damage or mobility.",
     "_source": "https://aggregator-a.invalid/lol/champions/akshan/build"
@@ -2751,7 +2751,7 @@
     ],
     "boots": "Boots of Swiftness",
     "starter": "Health Potion x2",
-    "vs_tanks": "Black Cleaver swap (replace Knight's Vow) — % armor shred for ally carries",
+    "vs_tanks": "Black Cleaver swap (replace Knight's Vow) - % armor shred for ally carries",
     "vs_healing": "Bramble Vest into 5th, upgrade to Thornmail vs ADC heal stack",
     "kit_notes": "Aftershock + Resolve maximizes tankiness for W-Q knockup-knockback engage chains.",
     "_source": "https://aggregator-a.invalid/lol/champions/alistar/build"
@@ -2777,7 +2777,7 @@
     "boots": "Plated Steelcaps",
     "starter": "Scorchclaw Pup",
     "vs_tanks": "Serylda's Grudge swap into 4th (replace Endless Hunger) for armor shred",
-    "vs_healing": "Mortal Reminder swap into 5th — AD bruiser anti-heal",
+    "vs_healing": "Mortal Reminder swap into 5th - AD bruiser anti-heal",
     "kit_notes": "Uses dashes from ability casts to dodge skills and engage targets while scaling strongly with shield and lifesteal items.",
     "_source": "https://aggregator-a.invalid/lol/champions/ambessa/build"
   },
@@ -2801,8 +2801,8 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Mosstomper Seedling + Health Potion",
-    "vs_tanks": "Void Staff swap (replace Randuin's Omen) — AP-tank needs % magic pen vs MR stack",
-    "vs_healing": "Thornmail already core (5th) — ADC heal countered; swap Morellonomicon into 6th vs AP heal",
+    "vs_tanks": "Void Staff swap (replace Randuin's Omen) - AP-tank needs % magic pen vs MR stack",
+    "vs_healing": "Thornmail already core (5th) - ADC heal countered; swap Morellonomicon into 6th vs AP heal",
     "kit_notes": "AP tank delivering Q stun engage into R AoE root for guaranteed teamfight setup.",
     "_source": "https://aggregator-a.invalid/lol/champions/amumu/build"
   },
@@ -2828,7 +2828,7 @@
     "starter": "Doran's Ring",
     "vs_tanks": "Void Staff swap into 6th (replace Rabadon's if tank-stacked)",
     "vs_healing": "Morellonomicon swap into 4th slot (replace Liandry's vs heavy heal)",
-    "kit_notes": "Stationary control mage; wall-block + Q stun + R DoT zone — vulnerable to long-range poke (Xerath) but counters dive (Yone).",
+    "kit_notes": "Stationary control mage; wall-block + Q stun + R DoT zone - vulnerable to long-range poke (Xerath) but counters dive (Yone).",
     "_source": "https://aggregator-a.invalid/lol/champions/anivia/build"
   },
   "Aphelios": {
@@ -2851,7 +2851,7 @@
     ],
     "boots": "Berserker's Greaves",
     "starter": "Doran's Blade",
-    "vs_tanks": "Lord Dominik's Regards already core (3rd) — no swap needed",
+    "vs_tanks": "Lord Dominik's Regards already core (3rd) - no swap needed",
     "vs_healing": "Mortal Reminder swap into 5th (replace Bloodthirster)",
     "kit_notes": "Cycles through 5 unique Lunari weapons with different abilities, requiring mastery of gun combinations for optimal positioning.",
     "_source": "https://aggregator-a.invalid/lol/champions/aphelios/build"
@@ -2876,9 +2876,9 @@
     ],
     "boots": "Sorcerer's Shoes",
     "starter": "Doran's Ring",
-    "vs_tanks": "Void Staff swap into 6th (replace Shadowflame) — burn-stack scales with their MR",
+    "vs_tanks": "Void Staff swap into 6th (replace Shadowflame) - burn-stack scales with their MR",
     "vs_healing": "Morellonomicon swap into 4th (replace Zhonya's if mobility OK)",
-    "kit_notes": "Damaging abilities break enemies into Stardust stacks that permanently improve each ability — scales infinitely.",
+    "kit_notes": "Damaging abilities break enemies into Stardust stacks that permanently improve each ability - scales infinitely.",
     "_source": "https://aggregator-a.invalid/lol/champions/aurelionsol/build"
   },
   "Aurora": {
@@ -2901,8 +2901,8 @@
     ],
     "boots": "Sorcerer's Shoes",
     "starter": "Doran's Ring",
-    "vs_tanks": "Void Staff already core (5th) — no swap needed",
-    "vs_healing": "Morellonomicon swap into 6th (replace Mejai's — drop snowball for utility)",
+    "vs_tanks": "Void Staff already core (5th) - no swap needed",
+    "vs_healing": "Morellonomicon swap into 6th (replace Mejai's - drop snowball for utility)",
     "kit_notes": "Mobility through stealth and movement skills; weak laning phase, limited late-game carry potential.",
     "_source": "https://aggregator-a.invalid/lol/champions/aurora/build"
   },
@@ -2926,9 +2926,9 @@
     ],
     "boots": "Sorcerer's Shoes",
     "starter": "Doran's Ring",
-    "vs_tanks": "Void Staff already core (5th) — no swap needed",
+    "vs_tanks": "Void Staff already core (5th) - no swap needed",
     "vs_healing": "Morellonomicon swap into 6th (replace Banshee's Veil)",
-    "kit_notes": "Demands extremely high mastery and mechanics; teamwork is crucial — soldier-DPS scaling into late game.",
+    "kit_notes": "Demands extremely high mastery and mechanics; teamwork is crucial - soldier-DPS scaling into late game.",
     "_source": "https://aggregator-a.invalid/lol/champions/azir/build"
   },
   "Bard": {
@@ -2951,7 +2951,7 @@
     ],
     "boots": "Boots of Swiftness",
     "starter": "Health Potion x2",
-    "vs_tanks": "Black Cleaver swap into 6th (replace Redemption) — % armor shred",
+    "vs_tanks": "Black Cleaver swap into 6th (replace Redemption) - % armor shred",
     "vs_healing": "Mikael's Blessing swap (replace Bandlepipes if heavy CC heal team)",
     "kit_notes": "Roam mid for map pressure while collecting chimes; R global stasis enables cross-map plays.",
     "_source": "https://aggregator-a.invalid/lol/champions/bard/build"
@@ -2976,7 +2976,7 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Gustwalker Hatchling",
-    "vs_tanks": "Blade of the Ruined King swap into 4th (replace Wit's End) — % HP for tank shred",
+    "vs_tanks": "Blade of the Ruined King swap into 4th (replace Wit's End) - % HP for tank shred",
     "vs_healing": "Mortal Reminder swap into 6th (replace Guardian Angel if ahead)",
     "kit_notes": "Mastery of E ability enables early dominance; scales infinitely from kills via passive stacks.",
     "_source": "https://aggregator-a.invalid/lol/champions/belveth/build"
@@ -3001,9 +3001,9 @@
     ],
     "boots": "Boots of Swiftness",
     "starter": "Health Potion x2",
-    "vs_tanks": "Knight's Vow swap (replace Shurelya's) — ally damage redirect vs tank cleave",
+    "vs_tanks": "Knight's Vow swap (replace Shurelya's) - ally damage redirect vs tank cleave",
     "vs_healing": "Bramble Vest into 6th vs AD heal; Morellonomicon swap if AP heal team",
-    "kit_notes": "Q Rocket Grab is the core ability; patience with hitbox mechanics — single grab can win lane.",
+    "kit_notes": "Q Rocket Grab is the core ability; patience with hitbox mechanics - single grab can win lane.",
     "_source": "https://aggregator-a.invalid/lol/champions/blitzcrank/build"
   },
   "Brand": {
@@ -3027,7 +3027,7 @@
     "boots": "Sorcerer's Shoes",
     "starter": "Health Potion x2",
     "vs_tanks": "Void Staff swap into 6th (replace Zhonya's if back-line safe)",
-    "vs_healing": "Morellonomicon already core (5th) — no swap needed",
+    "vs_healing": "Morellonomicon already core (5th) - no swap needed",
     "kit_notes": "Ignites targets with Blaze stacking damage; at max stacks on champions it detonates for massive area damage.",
     "_source": "https://aggregator-a.invalid/lol/champions/brand/build"
   },
@@ -3052,7 +3052,7 @@
     "boots": "Plated Steelcaps",
     "starter": "Health Potion x2",
     "vs_tanks": "Black Cleaver swap into 6th (replace Thornmail if no ADC heal threat)",
-    "vs_healing": "Thornmail already core (6th) — covers AD heal; swap Morellonomicon if AP heal team",
+    "vs_healing": "Thornmail already core (6th) - covers AD heal; swap Morellonomicon if AP heal team",
     "kit_notes": "Excels in mid-game teamfights with crowd control and ally protection through E shield wall.",
     "_source": "https://aggregator-a.invalid/lol/champions/braum/build"
   },
@@ -3101,8 +3101,8 @@
     ],
     "boots": "Boots of Swiftness",
     "starter": "Doran's Shield",
-    "vs_tanks": "Black Cleaver swap into 6th (replace Dead Man's Plate) — % armor shred",
-    "vs_healing": "Thornmail swap into 5th (replace Overlord's) — Mundo's heal beats anti-heal",
+    "vs_tanks": "Black Cleaver swap into 6th (replace Dead Man's Plate) - % armor shred",
+    "vs_healing": "Thornmail swap into 5th (replace Overlord's) - Mundo's heal beats anti-heal",
     "kit_notes": "Farms from distance with Q dealing health-scaling damage; excels with stacked HP defensive items.",
     "_source": "https://aggregator-a.invalid/lol/champions/drmundo/build"
   },
@@ -3126,7 +3126,7 @@
     ],
     "boots": "Sorcerer's Shoes",
     "starter": "Scorchclaw Pup + Health Potion",
-    "vs_tanks": "Void Staff already core (5th) — no swap needed",
+    "vs_tanks": "Void Staff already core (5th) - no swap needed",
     "vs_healing": "Morellonomicon swap into 6th (replace Banshee's Veil)",
     "kit_notes": "Mid-to-late game burst with Hextech Rocketbelt + R combo; rewind R is escape + heal panic button.",
     "_source": "https://aggregator-a.invalid/lol/champions/ekko/build"
@@ -3151,7 +3151,7 @@
     ],
     "boots": "Sorcerer's Shoes",
     "starter": "Scorchclaw Pup",
-    "vs_tanks": "Void Staff already core (6th) — no swap needed",
+    "vs_tanks": "Void Staff already core (6th) - no swap needed",
     "vs_healing": "Morellonomicon swap into 4th (replace Zhonya's if positioning safe)",
     "kit_notes": "Early-mid game dominance with burst and human-form E stun from bushes; falls off late.",
     "_source": "https://aggregator-a.invalid/lol/champions/elise/build"
@@ -3176,7 +3176,7 @@
     ],
     "boots": "Sorcerer's Shoes",
     "starter": "Gustwalker Hatchling",
-    "vs_tanks": "Void Staff already core (5th) — no swap needed",
+    "vs_tanks": "Void Staff already core (5th) - no swap needed",
     "vs_healing": "Morellonomicon swap into 6th (replace Banshee's Veil)",
     "kit_notes": "Maintain safe jungle path until level 6, leverage stealth for surprise ganks rather than engaging early-game duelists.",
     "_source": "https://aggregator-a.invalid/lol/champions/evelynn/build"
@@ -3201,7 +3201,7 @@
     ],
     "boots": "Sorcerer's Shoes",
     "starter": "Gustwalker Hatchling",
-    "vs_tanks": "Void Staff already core (6th) — no swap needed",
+    "vs_tanks": "Void Staff already core (6th) - no swap needed",
     "vs_healing": "Morellonomicon swap into 4th (replace Zhonya's only if safe)",
     "kit_notes": "Late-game carry; execute R decisively from unwarded positions for surprise teamfight wipes.",
     "_source": "https://aggregator-a.invalid/lol/champions/fiddlesticks/build"
@@ -3226,7 +3226,7 @@
     ],
     "boots": "Sorcerer's Shoes",
     "starter": "Doran's Ring + Health Potion",
-    "vs_tanks": "Void Staff already core (5th) — no swap needed",
+    "vs_tanks": "Void Staff already core (5th) - no swap needed",
     "vs_healing": "Morellonomicon swap into 6th (replace Stormsurge)",
     "kit_notes": "E untargetable dodge enables frequent trading; Lich Bane + R combo for explosive bursts.",
     "_source": "https://aggregator-a.invalid/lol/champions/fizz/build"
@@ -3251,12 +3251,12 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Doran's Blade",
-    "vs_tanks": "Lord Dominik's Regards already 6th — already covers tank shred",
+    "vs_tanks": "Lord Dominik's Regards already 6th - already covers tank shred",
     "vs_healing": "Mortal Reminder swap into 5th (replace Youmuu's)",
-    "kit_notes": "Deploy barrels for lane control, Parrrley for gold gen, Oranges cleanse — global R map pressure.",
+    "kit_notes": "Deploy barrels for lane control, Parrrley for gold gen, Oranges cleanse - global R map pressure.",
     "_source": "https://aggregator-a.invalid/lol/champions/gangplank/build",
     "_filtered_items": [
-      "aggregator A returned Infinity Edge twice — replaced 2nd IE with Lord Dominik's Regards (typical 6th-slot anti-armor finisher)"
+      "aggregator A returned Infinity Edge twice - replaced 2nd IE with Lord Dominik's Regards (typical 6th-slot anti-armor finisher)"
     ]
   },
   "Gragas": {
@@ -3304,7 +3304,7 @@
     ],
     "boots": "Sorcerer's Shoes",
     "starter": "Doran's Ring + 2 Health Potions",
-    "vs_tanks": "Void Staff already core (5th) — no swap needed",
+    "vs_tanks": "Void Staff already core (5th) - no swap needed",
     "vs_healing": "Morellonomicon swap into 6th (replace Shadowflame)",
     "kit_notes": "Excels in lower tiers through dominant turret-assisted laning but faces specific counters in Diamond+.",
     "_source": "https://aggregator-a.invalid/lol/champions/heimerdinger/build"
@@ -3329,7 +3329,7 @@
     ],
     "boots": "Sorcerer's Shoes",
     "starter": "Doran's Ring",
-    "vs_tanks": "Void Staff already core (6th) — no swap needed",
+    "vs_tanks": "Void Staff already core (6th) - no swap needed",
     "vs_healing": "Morellonomicon swap into 5th (replace Zhonya's if safe)",
     "kit_notes": "Highly versatile mage with diverse spellbooks; long-range crowd control to zone enemies and control battlefield.",
     "_source": "https://aggregator-a.invalid/lol/champions/hwei/build"
@@ -3356,7 +3356,7 @@
     "starter": "Gustwalker Hatchling",
     "vs_tanks": "Void Staff swap into 6th (replace Cosmic Drive) for AP rare-finisher",
     "vs_healing": "Morellonomicon swap into 5th (replace Mejai's)",
-    "kit_notes": "Strong early game; Daisy ult is the late-game scaling threat — unique pacifist jungler with ally W shields.",
+    "kit_notes": "Strong early game; Daisy ult is the late-game scaling threat - unique pacifist jungler with ally W shields.",
     "_source": "https://aggregator-a.invalid/lol/champions/ivern/build"
   },
   "Janna": {
@@ -3404,7 +3404,7 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Scorchclaw Pup",
-    "vs_tanks": "Black Cleaver already core (2nd) — already covers tank shred",
+    "vs_tanks": "Black Cleaver already core (2nd) - already covers tank shred",
     "vs_healing": "Mortal Reminder swap into 6th (replace Frozen Heart vs ADC heal)",
     "kit_notes": "Strong initiator excelling at disrupting enemy formations and setting up team opportunities via E-Q knockup + R cage.",
     "_source": "https://aggregator-a.invalid/lol/champions/jarvaniv/build"
@@ -3429,7 +3429,7 @@
     ],
     "boots": "Ionian Boots of Lucidity",
     "starter": "Doran's Blade",
-    "vs_tanks": "Serylda's Grudge already core (4th) — already covers tank shred",
+    "vs_tanks": "Serylda's Grudge already core (4th) - already covers tank shred",
     "vs_healing": "Mortal Reminder swap into 5th (replace Edge of Night)",
     "kit_notes": "Strong early game with poke and lane dominance; snowball before falling off late.",
     "_source": "https://aggregator-a.invalid/lol/champions/jayce/build"
@@ -3456,7 +3456,7 @@
     "starter": "Health Potion x2",
     "vs_tanks": "Mikael's Blessing swap into 6th (replace Dawncore vs heavy CC)",
     "vs_healing": "Morellonomicon swap into 6th (replace Dawncore)",
-    "kit_notes": "Utility support with Aery and Moonstone Renewer for shields and ally protection — avoid AP DPS items.",
+    "kit_notes": "Utility support with Aery and Moonstone Renewer for shields and ally protection - avoid AP DPS items.",
     "_source": "https://aggregator-a.invalid/lol/champions/karma/build"
   },
   "Kayle": {
@@ -3479,7 +3479,7 @@
     ],
     "boots": "Boots of Swiftness",
     "starter": "Doran's Blade",
-    "vs_tanks": "Void Staff already core (5th) — no swap needed",
+    "vs_tanks": "Void Staff already core (5th) - no swap needed",
     "vs_healing": "Morellonomicon swap into 6th (replace Zhonya's only if safe)",
     "kit_notes": "PtA + AS+AF shards; on-hit AP scaling; R grants invulnerability but not CC immunity.",
     "_source": "https://aggregator-a.invalid/lol/champions/kayle/build"
@@ -3504,7 +3504,7 @@
     ],
     "boots": "Ionian Boots of Lucidity",
     "starter": "Gustwalker Hatchling",
-    "vs_tanks": "Serylda's Grudge already core (3rd) — already covers tank shred",
+    "vs_tanks": "Serylda's Grudge already core (3rd) - already covers tank shred",
     "vs_healing": "Mortal Reminder swap into 4th (replace Edge of Night)",
     "kit_notes": "Transforms into Darkin Slayer (vs squishies) or Shadow Assassin (vs tanks) based on combat interactions.",
     "_source": "https://aggregator-a.invalid/lol/champions/kayn/build"
@@ -3529,7 +3529,7 @@
     ],
     "boots": "Sorcerer's Shoes",
     "starter": "Doran's Blade + Health Potion",
-    "vs_tanks": "Void Staff already core (5th) — no swap needed",
+    "vs_tanks": "Void Staff already core (5th) - no swap needed",
     "vs_healing": "Morellonomicon swap into 6th (replace Banshee's Veil)",
     "kit_notes": "Long-range Q poke, reliable W stun, high mobility; R AoE stun for teamfight blowout.",
     "_source": "https://aggregator-a.invalid/lol/champions/kennen/build"
@@ -3554,7 +3554,7 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Scorchclaw Pup",
-    "vs_tanks": "Lord Dominik's Regards already core (4th) — already covers tank shred",
+    "vs_tanks": "Lord Dominik's Regards already core (4th) - already covers tank shred",
     "vs_healing": "Mortal Reminder swap into 5th (replace Guardian Angel if ahead)",
     "kit_notes": "Strong level-3 ganks; secure marks with ally support and avoid 1vN engagements until 10+ stacks.",
     "_source": "https://aggregator-a.invalid/lol/champions/kindred/build"
@@ -3579,7 +3579,7 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Doran's Blade",
-    "vs_tanks": "Black Cleaver swap into 6th (replace Youmuu's) — % armor shred",
+    "vs_tanks": "Black Cleaver swap into 6th (replace Youmuu's) - % armor shred",
     "vs_healing": "Mortal Reminder swap into 6th (replace Youmuu's)",
     "kit_notes": "Strong early skirmisher who snowballs with kills but falls off if not ahead; excels vs Akali, Nasus, Yasuo.",
     "_source": "https://aggregator-a.invalid/lol/champions/kled/build"
@@ -3604,9 +3604,9 @@
     ],
     "boots": "Berserker's Greaves",
     "starter": "Doran's Bow",
-    "vs_tanks": "Blade of The Ruined King already core (2nd) — % HP for tank shred",
+    "vs_tanks": "Blade of The Ruined King already core (2nd) - % HP for tank shred",
     "vs_healing": "Mortal Reminder swap into 5th (replace Jak'Sho)",
-    "kit_notes": "Focus on W on-hit effects rather than physical auto-attack or AP builds — needs peel.",
+    "kit_notes": "Focus on W on-hit effects rather than physical auto-attack or AP builds - needs peel.",
     "_source": "https://aggregator-a.invalid/lol/champions/kogmaw/build"
   },
   "Lee Sin": {
@@ -3629,12 +3629,12 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Scorchclaw Pup",
-    "vs_tanks": "Black Cleaver already 6th — already covers tank shred",
+    "vs_tanks": "Black Cleaver already 6th - already covers tank shred",
     "vs_healing": "Mortal Reminder swap into 5th (replace Youmuu's)",
-    "kit_notes": "Versatile champion with excellent mobility and powerful skillset for aggressive early snowballing — R kick playmaker.",
+    "kit_notes": "Versatile champion with excellent mobility and powerful skillset for aggressive early snowballing - R kick playmaker.",
     "_source": "https://aggregator-a.invalid/lol/champions/leesin/build",
     "_filtered_items": [
-      "aggregator A returned Guardian Angel twice — replaced 2nd GA with Black Cleaver (typical late-game tank shred for bruiser jungler)"
+      "aggregator A returned Guardian Angel twice - replaced 2nd GA with Black Cleaver (typical late-game tank shred for bruiser jungler)"
     ]
   },
   "Leona": {
@@ -3658,7 +3658,7 @@
     "boots": "Plated Steelcaps",
     "starter": "Health Potion x2",
     "vs_tanks": "Black Cleaver swap into 6th (replace Thornmail if no ADC heal threat)",
-    "vs_healing": "Thornmail already core (6th) — covers AD heal; Morellonomicon swap if AP heal team",
+    "vs_healing": "Thornmail already core (6th) - covers AD heal; Morellonomicon swap if AP heal team",
     "kit_notes": "Excels in early skirmishes and roaming; superior tankiness and chained CC for engages.",
     "_source": "https://aggregator-a.invalid/lol/champions/leona/build"
   },
@@ -3733,7 +3733,7 @@
     "boots": "Plated Steelcaps",
     "starter": "Doran's Ring",
     "vs_tanks": "Black Cleaver swap into 6th (replace Randuin's vs tank team)",
-    "vs_healing": "Thornmail already core (2nd) — covers AD heal",
+    "vs_healing": "Thornmail already core (2nd) - covers AD heal",
     "kit_notes": "Tank excelling against AD matchups; R is point-and-click engage knockup for guaranteed teamfight setup.",
     "_source": "https://aggregator-a.invalid/lol/champions/malphite/build"
   },
@@ -3757,7 +3757,7 @@
     ],
     "boots": "Sorcerer's Shoes",
     "starter": "Doran's Ring",
-    "vs_tanks": "Void Staff already core (5th) — no swap needed",
+    "vs_tanks": "Void Staff already core (5th) - no swap needed",
     "vs_healing": "Morellonomicon swap into 6th (replace Banshee's Veil)",
     "kit_notes": "Projectile reflection (R) neutralizes many champion skills; long-range Q enables dominant laning and execution.",
     "_source": "https://aggregator-a.invalid/lol/champions/mel/build"
@@ -3808,8 +3808,8 @@
     "boots": "Ionian Boots of Lucidity",
     "starter": "Health Potion x2",
     "vs_tanks": "Void Staff swap into 6th (replace Morellonomicon if no heal threat)",
-    "vs_healing": "Morellonomicon already core (6th) — no swap needed",
-    "kit_notes": "Q root deadly to immobile champions; Zhonya's counters her R chain — E magic shield blocks single CC.",
+    "vs_healing": "Morellonomicon already core (6th) - no swap needed",
+    "kit_notes": "Q root deadly to immobile champions; Zhonya's counters her R chain - E magic shield blocks single CC.",
     "_source": "https://aggregator-a.invalid/lol/champions/morgana/build"
   },
   "Nami": {
@@ -3858,7 +3858,7 @@
     "boots": "Ionian Boots of Lucidity",
     "starter": "Doran's Shield",
     "vs_tanks": "Black Cleaver swap into 6th (replace Dead Man's Plate)",
-    "vs_healing": "Thornmail already core (4th) — covers AD heal",
+    "vs_healing": "Thornmail already core (4th) - covers AD heal",
     "kit_notes": "Infinite scaling on Q stacks; weak late-game mobility but pure physical damage output via Siphoning Strike.",
     "_source": "https://aggregator-a.invalid/lol/champions/nasus/build"
   },
@@ -3883,7 +3883,7 @@
     "boots": "Plated Steelcaps",
     "starter": "Health Potion x2",
     "vs_tanks": "Black Cleaver swap into 6th (replace Thornmail)",
-    "vs_healing": "Thornmail already core (6th) — covers AD heal",
+    "vs_healing": "Thornmail already core (6th) - covers AD heal",
     "kit_notes": "Q hook initiates fights and locks down enemies; manage mana usage and avoid prolonged engagements.",
     "_source": "https://aggregator-a.invalid/lol/champions/nautilus/build"
   },
@@ -3908,7 +3908,7 @@
     "boots": "Ionian Boots of Lucidity",
     "starter": "Health Potion x2",
     "vs_tanks": "Void Staff swap into 6th (replace Rabadon's if tank team)",
-    "vs_healing": "Morellonomicon already core (4th) — no swap needed",
+    "vs_healing": "Morellonomicon already core (4th) - no swap needed",
     "kit_notes": "Rocketbelt-Flash-R-Zhonya's combo for safe engages disrupting enemy lines and initiating teamfights.",
     "_source": "https://aggregator-a.invalid/lol/champions/neeko/build"
   },
@@ -3932,7 +3932,7 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Scorchclaw Pup",
-    "vs_tanks": "Black Cleaver already core (3rd) — already covers tank shred",
+    "vs_tanks": "Black Cleaver already core (3rd) - already covers tank shred",
     "vs_healing": "Mortal Reminder swap into 6th (replace Maw)",
     "kit_notes": "Excels in early-mid game with R global isolation gank; limited late-game carry potential.",
     "_source": "https://aggregator-a.invalid/lol/champions/nocturne/build"
@@ -3982,7 +3982,7 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Doran's Blade",
-    "vs_tanks": "Blade of the Ruined King swap into 6th (replace Sterak's vs tank stack) — % HP shred",
+    "vs_tanks": "Blade of the Ruined King swap into 6th (replace Sterak's vs tank stack) - % HP shred",
     "vs_healing": "Mortal Reminder swap into 5th (replace Maw)",
     "kit_notes": "Accuracy with Q axe throws; aggressive all-ins using Ghost + R CC-immunity against specific matchups.",
     "_source": "https://aggregator-a.invalid/lol/champions/olaf/build"
@@ -4008,7 +4008,7 @@
     "boots": "Boots of Swiftness",
     "starter": "Refillable Potion",
     "vs_tanks": "Black Cleaver swap into 6th (replace Thornmail if no ADC heal threat)",
-    "vs_healing": "Thornmail already core (6th) — covers AD heal; Morellonomicon swap if AP heal",
+    "vs_healing": "Thornmail already core (6th) - covers AD heal; Morellonomicon swap if AP heal",
     "kit_notes": "Tank with high max-HP% damage, dash interruption (W), stun (Q), and R wall-bonk for back-line displacement.",
     "_source": "https://aggregator-a.invalid/lol/champions/poppy/build"
   },
@@ -4032,9 +4032,9 @@
     ],
     "boots": "Boots of Swiftness",
     "starter": "Health Potion x2",
-    "vs_tanks": "Serylda's Grudge swap into 5th (replace Axiom Arc) — slow + armor shred",
+    "vs_tanks": "Serylda's Grudge swap into 5th (replace Axiom Arc) - slow + armor shred",
     "vs_healing": "Mortal Reminder swap into 5th (replace Axiom Arc vs heal team)",
-    "kit_notes": "Q is core for poke and engagement; exceptional mobility for survivability — avoid overextension.",
+    "kit_notes": "Q is core for poke and engagement; exceptional mobility for survivability - avoid overextension.",
     "_source": "https://aggregator-a.invalid/lol/champions/pyke/build"
   },
   "Qiyana": {
@@ -4057,7 +4057,7 @@
     ],
     "boots": "Ionian Boots of Lucidity",
     "starter": "Doran's Blade",
-    "vs_tanks": "Serylda's Grudge already core (3rd) — already covers tank shred",
+    "vs_tanks": "Serylda's Grudge already core (3rd) - already covers tank shred",
     "vs_healing": "Mortal Reminder swap into 4th (replace Edge of Night)",
     "kit_notes": "High-skill assassin leveraging elemental Q combos and mobility for burst + R AoE wall-bonk crowd control.",
     "_source": "https://aggregator-a.invalid/lol/champions/qiyana/build"
@@ -4082,7 +4082,7 @@
     ],
     "boots": "Boots of Swiftness",
     "starter": "Doran's Blade",
-    "vs_tanks": "Lord Dominik's Regards already core (5th) — already covers tank shred",
+    "vs_tanks": "Lord Dominik's Regards already core (5th) - already covers tank shred",
     "vs_healing": "Mortal Reminder swap into 4th (replace Infinity Edge)",
     "kit_notes": "Excels vs melee carries with superior mobility and CC; R global ult for map pressure and roaming.",
     "_source": "https://aggregator-a.invalid/lol/champions/quinn/build"
@@ -4109,7 +4109,7 @@
     "starter": "Health Potion x2",
     "vs_tanks": "Black Cleaver swap into 6th (replace Knight's Vow vs tank team)",
     "vs_healing": "Bramble Vest into 6th vs ADC heal; Morellonomicon if AP heal team",
-    "kit_notes": "Passive shield reduces damage during engages — core W charm-engage and R AoE knockup setup.",
+    "kit_notes": "Passive shield reduces damage during engages - core W charm-engage and R AoE knockup setup.",
     "_source": "https://aggregator-a.invalid/lol/champions/rakan/build"
   },
   "Rammus": {
@@ -4133,8 +4133,8 @@
     "boots": "Plated Steelcaps",
     "starter": "Gustwalker Hatchling + Health Potion",
     "vs_tanks": "Black Cleaver swap into 6th (replace Dead Man's Plate)",
-    "vs_healing": "Thornmail already core (1st) — no swap needed; covers AD heal",
-    "kit_notes": "Gains bonus AD scaling with Armor and MR — pure stat-stick tank with Q ball-roll engage and R taunt.",
+    "vs_healing": "Thornmail already core (1st) - no swap needed; covers AD heal",
+    "kit_notes": "Gains bonus AD scaling with Armor and MR - pure stat-stick tank with Q ball-roll engage and R taunt.",
     "_source": "https://aggregator-a.invalid/lol/champions/rammus/build"
   },
   "Rek'Sai": {
@@ -4157,7 +4157,7 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Scorchclaw Pup",
-    "vs_tanks": "Black Cleaver already core (6th) — already covers tank shred",
+    "vs_tanks": "Black Cleaver already core (6th) - already covers tank shred",
     "vs_healing": "Mortal Reminder swap into 5th (replace Guardian Angel if ahead)",
     "kit_notes": "Excels in early skirmishes using airborne (E unburrow), true damage, and R wall-dash execute for snowballing.",
     "_source": "https://aggregator-a.invalid/lol/champions/reksai/build"
@@ -4183,7 +4183,7 @@
     "boots": "Plated Steelcaps",
     "starter": "Health Potion x2",
     "vs_tanks": "Black Cleaver swap into 6th (replace Thornmail if no ADC heal threat)",
-    "vs_healing": "Thornmail already core (6th) — covers AD heal",
+    "vs_healing": "Thornmail already core (6th) - covers AD heal",
     "kit_notes": "Tank support with airborne CC (W remount) and ally protection through initiation and R AoE pull.",
     "_source": "https://aggregator-a.invalid/lol/champions/rell/build"
   },
@@ -4207,9 +4207,9 @@
     ],
     "boots": "Ionian Boots of Lucidity",
     "starter": "Health Potion x2",
-    "vs_tanks": "Knight's Vow swap (replace Ardent Censer) — ally damage redirect",
+    "vs_tanks": "Knight's Vow swap (replace Ardent Censer) - ally damage redirect",
     "vs_healing": "Morellonomicon swap into 6th (replace Ardent Censer)",
-    "kit_notes": "W ally revive + R hand-of-Tyrant berserk on enemies — high-skill enchanter with engage tools.",
+    "kit_notes": "W ally revive + R hand-of-Tyrant berserk on enemies - high-skill enchanter with engage tools.",
     "_source": "https://aggregator-a.invalid/lol/champions/renata/build/support"
   },
   "Rengar": {
@@ -4232,7 +4232,7 @@
     ],
     "boots": "Ionian Boots of Lucidity",
     "starter": "Gustwalker Hatchling",
-    "vs_tanks": "Lord Dominik's Regards already core (4th) — already covers tank shred",
+    "vs_tanks": "Lord Dominik's Regards already core (4th) - already covers tank shred",
     "vs_healing": "Mortal Reminder swap into 4th (replace LDR if needed)",
     "kit_notes": "Generates Ferocity with ability casts; max-stack empowered abilities + R stealth engage assassinate squishies.",
     "_source": "https://aggregator-a.invalid/lol/champions/rengar/build"
@@ -4257,7 +4257,7 @@
     ],
     "boots": "Ionian Boots of Lucidity",
     "starter": "Doran's Blade",
-    "vs_tanks": "Serylda's Grudge already core (4th) — already covers tank shred",
+    "vs_tanks": "Serylda's Grudge already core (4th) - already covers tank shred",
     "vs_healing": "Mortal Reminder swap into 5th (replace Endless Hunger)",
     "kit_notes": "Mastery of Q charge-canceling (animation cancels) and mobility maximizes damage output in fights.",
     "_source": "https://aggregator-a.invalid/lol/champions/riven/build"
@@ -4282,7 +4282,7 @@
     ],
     "boots": "Sorcerer's Shoes",
     "starter": "Doran's Ring",
-    "vs_tanks": "Void Staff already core (6th) — no swap needed",
+    "vs_tanks": "Void Staff already core (6th) - no swap needed",
     "vs_healing": "Morellonomicon swap into 5th (replace Shadowflame)",
     "kit_notes": "Reaches Danger Zone at 50% Heat for empowered abilities; Overheating at 100% grants AS but prevents spellcasting.",
     "_source": "https://aggregator-a.invalid/lol/champions/rumble/build"
@@ -4307,7 +4307,7 @@
     ],
     "boots": "Mercury's Treads",
     "starter": "Doran's Ring",
-    "vs_tanks": "Void Staff already core (6th) — no swap needed",
+    "vs_tanks": "Void Staff already core (6th) - no swap needed",
     "vs_healing": "Morellonomicon swap into 5th (replace Rabadon's only if safe)",
     "kit_notes": "Master QEQWQ combo for dominant lane CC; R Realm Warp for swift wave clear and strategic roaming.",
     "_source": "https://aggregator-a.invalid/lol/champions/ryze/build"
@@ -4333,7 +4333,7 @@
     "boots": "Plated Steelcaps",
     "starter": "Mosstomper Seedling",
     "vs_tanks": "Black Cleaver swap into 6th (replace Randuin's vs tank team)",
-    "vs_healing": "Thornmail already core (3rd) — covers AD heal",
+    "vs_healing": "Thornmail already core (3rd) - covers AD heal",
     "kit_notes": "Tank with chain CC (W frost-passive + R global stun) scaling into overwhelming late-game force via defensive itemization.",
     "_source": "https://aggregator-a.invalid/lol/champions/sejuani/build"
   },
@@ -4357,7 +4357,7 @@
     ],
     "boots": "Boots of Swiftness",
     "starter": "Health Potion x2",
-    "vs_tanks": "Black Cleaver already core (3rd) — already covers tank shred",
+    "vs_tanks": "Black Cleaver already core (3rd) - already covers tank shred",
     "vs_healing": "Mortal Reminder swap into 6th (replace Hexoptics)",
     "kit_notes": "Late-game scaling via passive soul stacks; communicate playstyle as secondary marksman not conventional support.",
     "_source": "https://aggregator-a.invalid/lol/champions/senna/build"
@@ -4382,12 +4382,12 @@
     ],
     "boots": "Ionian Boots of Lucidity",
     "starter": "Gustwalker Hatchling",
-    "vs_tanks": "Lord Dominik's Regards already core (4th) — already covers tank shred",
+    "vs_tanks": "Lord Dominik's Regards already core (4th) - already covers tank shred",
     "vs_healing": "Mortal Reminder swap into 4th (replace LDR if heal-heavy)",
     "kit_notes": "Backstab Q damage and Deceive mobility enable burst combo executions with careful target positioning.",
     "_source": "https://aggregator-a.invalid/lol/champions/shaco/build",
     "_filtered_items": [
-      "aggregator A returned IE and Youmuu's twice each — replaced 5th Youmuu's with Edge of Night (typical lethality 5th-slot defensive option)"
+      "aggregator A returned IE and Youmuu's twice each - replaced 5th Youmuu's with Edge of Night (typical lethality 5th-slot defensive option)"
     ]
   },
   "Shen": {
@@ -4411,11 +4411,11 @@
     "boots": "Plated Steelcaps",
     "starter": "Doran's Shield",
     "vs_tanks": "Black Cleaver swap into 6th (replace Dead Man's Plate)",
-    "vs_healing": "Thornmail already 5th — covers AD heal",
+    "vs_healing": "Thornmail already 5th - covers AD heal",
     "kit_notes": "Heavy macro play and team coordination; strong dueling via Q sword + R global ally shield ult.",
     "_source": "https://aggregator-a.invalid/lol/champions/shen/build",
     "_filtered_items": [
-      "aggregator A returned Protoplasm Harness twice — replaced 5th Protoplasm with Thornmail (standard tank anti-AD-heal slot)"
+      "aggregator A returned Protoplasm Harness twice - replaced 5th Protoplasm with Thornmail (standard tank anti-AD-heal slot)"
     ]
   },
   "Shyvana": {
@@ -4438,9 +4438,9 @@
     ],
     "boots": "Mercury's Treads",
     "starter": "Scorchclaw Pup",
-    "vs_tanks": "Blade of the Ruined King swap into 6th (replace Sterak's) — % HP shred for tanks",
+    "vs_tanks": "Blade of the Ruined King swap into 6th (replace Sterak's) - % HP shred for tanks",
     "vs_healing": "Mortal Reminder swap into 5th (replace Death's Dance)",
-    "kit_notes": "Hybrid fighter excelling in dueling when transformed (R) — auto-attack + Q damage core with on-hit scaling.",
+    "kit_notes": "Hybrid fighter excelling in dueling when transformed (R) - auto-attack + Q damage core with on-hit scaling.",
     "_source": "https://aggregator-a.invalid/lol/champions/shyvana/build"
   },
   "Sion": {
@@ -4464,7 +4464,7 @@
     "boots": "Plated Steelcaps",
     "starter": "Doran's Shield",
     "vs_tanks": "Black Cleaver swap into 6th (replace Thornmail vs tank team)",
-    "vs_healing": "Thornmail already core (6th) — covers AD heal",
+    "vs_healing": "Thornmail already core (6th) - covers AD heal",
     "kit_notes": "Tank with excellent CSing via Q charge; reanimates after death (passive) with rapid attacks and bonus damage.",
     "_source": "https://aggregator-a.invalid/lol/champions/sion/build"
   },
@@ -4489,7 +4489,7 @@
     "boots": "Plated Steelcaps",
     "starter": "Mosstomper Seedling",
     "vs_tanks": "Black Cleaver swap into 6th (replace Randuin's vs tank team)",
-    "vs_healing": "Thornmail already core (4th) — covers AD heal",
+    "vs_healing": "Thornmail already core (4th) - covers AD heal",
     "kit_notes": "Tank jungler applying Quaking stacks for magic damage; R suppress single-target carry into team for guaranteed kill.",
     "_source": "https://aggregator-a.invalid/lol/champions/skarner/build"
   },
@@ -4563,7 +4563,7 @@
     ],
     "boots": "Ionian Boots of Lucidity",
     "starter": "Health Potion x2",
-    "vs_tanks": "Mikael's Blessing already 6th — covers heavy CC",
+    "vs_tanks": "Mikael's Blessing already 6th - covers heavy CC",
     "vs_healing": "Morellonomicon swap into 6th (replace Mikael's vs heal team)",
     "kit_notes": "Pure healer providing team healing and protection through W-target heal + R global heal.",
     "_source": "https://aggregator-a.invalid/lol/champions/soraka/build"
@@ -4589,7 +4589,7 @@
     "boots": "Sorcerer's Shoes",
     "starter": "Health Potion x2",
     "vs_tanks": "Void Staff swap into 6th (replace Morellonomicon if no heal threat)",
-    "vs_healing": "Morellonomicon already core (6th) — no swap needed",
+    "vs_healing": "Morellonomicon already core (6th) - no swap needed",
     "kit_notes": "Movement speed and ability haste runes; high sustain via R drain for favorable trades.",
     "_source": "https://aggregator-a.invalid/lol/champions/swain/build"
   },
@@ -4613,7 +4613,7 @@
     ],
     "boots": "Sorcerer's Shoes",
     "starter": "Doran's Ring",
-    "vs_tanks": "Void Staff already core (5th) — no swap needed",
+    "vs_tanks": "Void Staff already core (5th) - no swap needed",
     "vs_healing": "Morellonomicon swap into 6th (replace Cosmic Drive)",
     "kit_notes": "Weak early scaling but exceptional late-game burst via passive sphere stacking; potent E stun and zone control.",
     "_source": "https://aggregator-a.invalid/lol/champions/syndra/build"
@@ -4639,7 +4639,7 @@
     "boots": "Plated Steelcaps",
     "starter": "Health Potion x2",
     "vs_tanks": "Black Cleaver swap into 6th (replace Randuin's vs tank team)",
-    "vs_healing": "Thornmail already core (3rd) — covers AD heal",
+    "vs_healing": "Thornmail already core (3rd) - covers AD heal",
     "kit_notes": "Excels in early skirmishes with strong auto-attack dueling; weak wave clear compensated by W ally swallow + R global engage.",
     "_source": "https://aggregator-a.invalid/lol/champions/tahmkench/build"
   },
@@ -4663,7 +4663,7 @@
     ],
     "boots": "Ionian Boots of Lucidity",
     "starter": "Doran's Ring",
-    "vs_tanks": "Void Staff already core (6th) — no swap needed",
+    "vs_tanks": "Void Staff already core (6th) - no swap needed",
     "vs_healing": "Morellonomicon swap into 4th (replace Zhonya's only if safe)",
     "kit_notes": "Counter-pick against dive compositions with strong CC (E knockback, R wall) to influence teamfights.",
     "_source": "https://aggregator-a.invalid/lol/champions/taliyah/build"
@@ -4689,7 +4689,7 @@
     "boots": "Plated Steelcaps",
     "starter": "Stealth Ward + Health Potion x2",
     "vs_tanks": "Black Cleaver swap into 6th (replace Thornmail if no ADC heal threat)",
-    "vs_healing": "Thornmail already core (6th) — covers AD heal",
+    "vs_healing": "Thornmail already core (6th) - covers AD heal",
     "kit_notes": "Robust ally protection and crowd control through E stun and R team invulnerability shield.",
     "_source": "https://aggregator-a.invalid/lol/champions/taric/build"
   },
@@ -4739,7 +4739,7 @@
     "boots": "Boots of Swiftness",
     "starter": "Health Potion x2",
     "vs_tanks": "Black Cleaver swap into 6th (replace Thornmail if no ADC heal threat)",
-    "vs_healing": "Thornmail already core (6th) — covers AD heal",
+    "vs_healing": "Thornmail already core (6th) - covers AD heal",
     "kit_notes": "High-skill champion whose performance depends heavily on Q hook accuracy and W lantern-flay timing.",
     "_source": "https://aggregator-a.invalid/lol/champions/thresh/build"
   },
@@ -4763,8 +4763,8 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Doran's Blade",
-    "vs_tanks": "Black Cleaver swap into 6th (replace Randuin's) — % armor shred",
-    "vs_healing": "Thornmail already core (5th) — covers AD heal",
+    "vs_tanks": "Black Cleaver swap into 6th (replace Randuin's) - % armor shred",
+    "vs_healing": "Thornmail already core (5th) - covers AD heal",
     "kit_notes": "Excels at 1v1 dueling and split-pushing; objective control via E pillar and R tank-stat-steal.",
     "_source": "https://aggregator-a.invalid/lol/champions/trundle/build"
   },
@@ -4788,7 +4788,7 @@
     ],
     "boots": "Berserker's Greaves",
     "starter": "Doran's Blade",
-    "vs_tanks": "Lord Dominik's Regards already core (5th) — already covers tank shred",
+    "vs_tanks": "Lord Dominik's Regards already core (5th) - already covers tank shred",
     "vs_healing": "Mortal Reminder swap into 5th (replace LDR if heal team)",
     "kit_notes": "Aggressive early trades with crit scaling, sustain via Q heal, and late-game split-pushing dominance with R undying.",
     "_source": "https://aggregator-a.invalid/lol/champions/tryndamere/build"
@@ -4813,7 +4813,7 @@
     ],
     "boots": "Boots of Swiftness",
     "starter": "Gustwalker Hatchling",
-    "vs_tanks": "Black Cleaver swap into 6th (replace Randuin's) — % armor shred",
+    "vs_tanks": "Black Cleaver swap into 6th (replace Randuin's) - % armor shred",
     "vs_healing": "Mortal Reminder swap into 6th (replace Randuin's vs heal team)",
     "kit_notes": "Alternates between four stances; ability recasts gain ultimate benefits while gaining attack speed after each ability.",
     "_source": "https://aggregator-a.invalid/lol/champions/udyr/build"
@@ -4838,8 +4838,8 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Doran's Blade",
-    "vs_tanks": "Black Cleaver already core (1st) — already covers tank shred",
-    "vs_healing": "Thornmail already core (4th) — covers AD heal",
+    "vs_tanks": "Black Cleaver already core (1st) - already covers tank shred",
+    "vs_healing": "Thornmail already core (4th) - covers AD heal",
     "kit_notes": "Struggles vs armor-stacking opponents; prioritize Q maxing and Ravenous Hydra option for sustain.",
     "_source": "https://aggregator-a.invalid/lol/champions/urgot/build"
   },
@@ -4888,7 +4888,7 @@
     ],
     "boots": "Sorcerer's Shoes",
     "starter": "Doran's Ring",
-    "vs_tanks": "Void Staff already core (6th) — no swap needed",
+    "vs_tanks": "Void Staff already core (6th) - no swap needed",
     "vs_healing": "Morellonomicon swap into 5th (replace Rabadon's only if safe)",
     "kit_notes": "Counter-pick against dash-reliant assassins and melee divers like Zed and Katarina via passive Doom + R reset.",
     "_source": "https://aggregator-a.invalid/lol/champions/vex/build"
@@ -4913,7 +4913,7 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Gustwalker Hatchling",
-    "vs_tanks": "Black Cleaver already core (2nd) — already covers tank shred",
+    "vs_tanks": "Black Cleaver already core (2nd) - already covers tank shred",
     "vs_healing": "Mortal Reminder swap into 5th (replace IE)",
     "kit_notes": "Isolate key targets using R airborne CC and Q dash engage to lock down and neutralize single champions.",
     "_source": "https://aggregator-a.invalid/lol/champions/vi/build"
@@ -4938,7 +4938,7 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Gustwalker Hatchling",
-    "vs_tanks": "Lord Dominik's Regards already core (4th) — already covers tank shred",
+    "vs_tanks": "Lord Dominik's Regards already core (4th) - already covers tank shred",
     "vs_healing": "Mortal Reminder swap into 4th (replace LDR if heal team)",
     "kit_notes": "Passive: seizes control of fallen enemies temporarily, gaining their abilities and healing for % max health.",
     "_source": "https://aggregator-a.invalid/lol/champions/viego/build"
@@ -4963,7 +4963,7 @@
     ],
     "boots": "Sorcerer's Shoes",
     "starter": "Doran's Ring",
-    "vs_tanks": "Void Staff already core (4th) — no swap needed",
+    "vs_tanks": "Void Staff already core (4th) - no swap needed",
     "vs_healing": "Morellonomicon swap into 6th (replace Stormsurge)",
     "kit_notes": "Long-range poke mage vulnerable to assassins; maintain positioning for continuous Q damage and R artillery usage.",
     "_source": "https://aggregator-a.invalid/lol/champions/xerath/build"
@@ -4988,7 +4988,7 @@
     ],
     "boots": "Berserker's Greaves",
     "starter": "Doran's Bow",
-    "vs_tanks": "Blade of the Ruined King already core (1st) — % HP for tank shred",
+    "vs_tanks": "Blade of the Ruined King already core (1st) - % HP for tank shred",
     "vs_healing": "Mortal Reminder swap into 5th (replace Guardian Angel)",
     "kit_notes": "High-mastery champion; use E dash and W Wind Wall for lane dominance against mages and skill-shot reliant comps.",
     "_source": "https://aggregator-a.invalid/lol/champions/yasuo/build"
@@ -5013,8 +5013,8 @@
     ],
     "boots": "Plated Steelcaps",
     "starter": "Doran's Shield + Health Potion",
-    "vs_tanks": "Serylda's Grudge already core (3rd) — already covers tank shred",
-    "vs_healing": "Thornmail already 5th — covers AD heal; Mortal Reminder swap into 4th if heavy heal",
+    "vs_tanks": "Serylda's Grudge already core (3rd) - already covers tank shred",
+    "vs_healing": "Thornmail already 5th - covers AD heal; Mortal Reminder swap into 4th if heavy heal",
     "kit_notes": "Summon Mist Walkers (W passive) to attack enemies and trap opponents with W cage after E-enhanced ghouls.",
     "_source": "https://aggregator-a.invalid/lol/champions/yorick/build"
   },
@@ -5038,9 +5038,9 @@
     ],
     "boots": "Berserker's Greaves",
     "starter": "Doran's Blade",
-    "vs_tanks": "Lord Dominik's Regards already core (4th) — already covers tank shred",
+    "vs_tanks": "Lord Dominik's Regards already core (4th) - already covers tank shred",
     "vs_healing": "Mortal Reminder swap into 5th (replace Shieldbow vs heavy heal)",
-    "kit_notes": "Critical strikes grant bonus magic damage through passive — hybrid scaling marksman.",
+    "kit_notes": "Critical strikes grant bonus magic damage through passive - hybrid scaling marksman.",
     "_source": "https://aggregator-a.invalid/lol/champions/yunara/build"
   },
   "Yuumi": {
@@ -5063,7 +5063,7 @@
     ],
     "boots": "Ionian Boots of Lucidity",
     "starter": "Health Potion x2",
-    "vs_tanks": "Mikael's Blessing already core (4th) — covers heavy CC",
+    "vs_tanks": "Mikael's Blessing already core (4th) - covers heavy CC",
     "vs_healing": "Morellonomicon swap into 6th (replace Dawncore)",
     "kit_notes": "Active warding and Q poke while maintaining W attachment to allies for survival and shield-amp support.",
     "_source": "https://aggregator-a.invalid/lol/champions/yuumi/build"
@@ -5113,7 +5113,7 @@
     ],
     "boots": "Sorcerer's Shoes",
     "starter": "Doran's Ring",
-    "vs_tanks": "Void Staff already core (5th) — no swap needed",
+    "vs_tanks": "Void Staff already core (5th) - no swap needed",
     "vs_healing": "Morellonomicon swap into 6th (replace Zhonya's only if safe)",
     "kit_notes": "Area control via E + W combined with long-range Q poke pressure enables bot lane dominance and tower damage.",
     "_source": "https://aggregator-a.invalid/lol/champions/ziggs/build"
@@ -5138,12 +5138,12 @@
     ],
     "boots": "Ionian Boots of Lucidity",
     "starter": "Health Potion x2",
-    "vs_tanks": "Mikael's Blessing already 6th — covers heavy CC",
+    "vs_tanks": "Mikael's Blessing already 6th - covers heavy CC",
     "vs_healing": "Morellonomicon swap into 4th (replace Cosmic Drive)",
     "kit_notes": "Excels at survivability and escape via R rewind-to-life ally revive and W speed-buff time manipulation.",
     "_source": "https://aggregator-a.invalid/lol/champions/zilean/build",
     "_filtered_items": [
-      "aggregator A returned 'Control Ward' as a build slot — replaced with Mikael's Blessing (typical Zilean late-game enchanter capstone)"
+      "aggregator A returned 'Control Ward' as a build slot - replaced with Mikael's Blessing (typical Zilean late-game enchanter capstone)"
     ]
   },
   "Zoe": {
@@ -5166,8 +5166,8 @@
     ],
     "boots": "Sorcerer's Shoes",
     "starter": "Doran's Ring + Health Potion",
-    "vs_tanks": "Void Staff already core (5th) — no swap needed",
-    "vs_healing": "Morellonomicon swap into 6th (replace Mejai's — drop snowball for utility)",
+    "vs_tanks": "Void Staff already core (5th) - no swap needed",
+    "vs_healing": "Morellonomicon swap into 6th (replace Mejai's - drop snowball for utility)",
     "kit_notes": "Fast Q-based wave clear with long-range poke; passive-enhanced autos enable strong early pressure + R blink playmaker.",
     "_source": "https://aggregator-a.invalid/lol/champions/zoe/build"
   },
@@ -5192,8 +5192,8 @@
     "boots": "Sorcerer's Shoes",
     "starter": "Refillable Potion",
     "vs_tanks": "Void Staff swap into 6th (replace Zhonya's if back-line safe)",
-    "vs_healing": "Morellonomicon already core (5th) — no swap needed",
-    "kit_notes": "Spawns seeds periodically that become plants when Q (Deadly Spines) or E (Grasping Roots) cast nearby — burst + DoT zone control.",
+    "vs_healing": "Morellonomicon already core (5th) - no swap needed",
+    "kit_notes": "Spawns seeds periodically that become plants when Q (Deadly Spines) or E (Grasping Roots) cast nearby - burst + DoT zone control.",
     "_source": "https://aggregator-a.invalid/lol/champions/zyra/build"
   }
 }

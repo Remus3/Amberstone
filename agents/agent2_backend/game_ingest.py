@@ -2,7 +2,7 @@
 
 Consumes ``game-summary`` tasks filed by the supervisor on game-end
 transitions and inserts the corresponding row into the right mode DB.
-This is what makes ``recency_30d`` populate — the rewind seed is all
+This is what makes ``recency_30d`` populate - the rewind seed is all
 >30 days old, so without this pipe no post-seed match ever reaches
 Agent 4's analyzer.
 
@@ -53,7 +53,7 @@ GAME_MODE_TO_DB = {
 
 
 class IngestError(RuntimeError):
-    """Raised when the consumer can't make progress — caller should
+    """Raised when the consumer can't make progress - caller should
     mark the task failed with this exception's message."""
 
 
@@ -81,16 +81,16 @@ def _infer_win(task_payload: dict[str, Any]) -> int | None:
     """Extract a win/loss int from the post-game payload strings.
 
     Priority order (first non-empty wins):
-      1. explicit ``win`` field (already an int) — already used upstream
+      1. explicit ``win`` field (already an int) - already used upstream
       2. ``action``: coaching JSON's end-of-game marker ("Victory"/"Defeat")
       3. ``label``: rating JSON's grade label when it's a win/loss word
       4. ``stats.outcome`` / ``notes.outcome`` / nested strings
 
-    Conservative — unknown / ambiguous values fall through to None, so
+    Conservative - unknown / ambiguous values fall through to None, so
     the column stays NULL rather than recording a false positive. The
     analyzer skips NULL-win rows for win-rate aggregates.
     """
-    # (1) explicit win — take precedence if caller already resolved it
+    # (1) explicit win - take precedence if caller already resolved it
     explicit = task_payload.get("win")
     if explicit is not None:
         try:
@@ -227,7 +227,7 @@ def ingest_game_summary(task_payload: dict[str, Any]) -> dict[str, Any]:
     if duration_sec == 0:
         return {
             "inserted": False,
-            "reason": "zero-duration — phantom reconnect event",
+            "reason": "zero-duration - phantom reconnect event",
             "champion": champion,
         }
     started_at_dt = finished_at_dt - timedelta(seconds=duration_sec)
@@ -259,7 +259,7 @@ def ingest_game_summary(task_payload: dict[str, Any]) -> dict[str, Any]:
             if _already_ingested(conn, started_iso, champion, duration_sec=duration_sec):
                 return {
                     "inserted": False,
-                    "reason": "duplicate — already ingested",
+                    "reason": "duplicate - already ingested",
                     "mode_db": mode_db,
                     "champion": champion,
                     "started_at": started_iso,

@@ -1,5 +1,5 @@
 """
-tft/tft_state_reader.py — Riot Live Client API reader for TFT.
+tft/tft_state_reader.py - Riot Live Client API reader for TFT.
 Variant detection via mapNumber (22=Double Up). Stage/round from OCR (free)
 with time-table fallback.
 """
@@ -13,7 +13,7 @@ from typing import Optional
 logger = logging.getLogger("rc.tft.reader")
 TFT_API = "https://192.168.8.237:2999/liveclientdata/allgamedata"
 _TIME_TO_ROUND = [
-    # Set 17 Space Gods Double Up — calibrated from 3 confirmed live data points:
+    # Set 17 Space Gods Double Up - calibrated from 3 confirmed live data points:
     # t=32s→1-2, t=348s→2-5, t≈1002s→4-6, t=1879s→7-4
     # Fit: ~51 seconds per round on average
     (0,   1, 1), (32,  1, 2), (82,  1, 3),
@@ -45,7 +45,7 @@ class TftStateReader:
         self._ssl=ssl.create_default_context();self._ssl.check_hostname=False;self._ssl.verify_mode=ssl.CERT_NONE
         self._my_name="";self._last_level=1;self._last_gold=0
         self._confirmed_stage=1;self._confirmed_round=1  # forward-only OCR guard
-        # OCR subsystem — runs in background, provides free stage/round/level/gold/hp
+        # OCR subsystem - runs in background, provides free stage/round/level/gold/hp
         self._ocr = None
         self._ocr_cache: dict = {}
         self._ocr_lock = threading.Lock()
@@ -61,12 +61,12 @@ class TftStateReader:
                 self._ocr_thread.start()
                 logger.info("OCR subsystem started (free round/HP/level/gold reads)")
             else:
-                logger.warning("OCR subsystem unavailable — using time table for round")
+                logger.warning("OCR subsystem unavailable - using time table for round")
         except Exception as e:
-            logger.warning("OCR init failed: %s — falling back to time table", e)
+            logger.warning("OCR init failed: %s - falling back to time table", e)
 
     def _ocr_loop(self):
-        """Background OCR thread — reads every 2s, caches results."""
+        """Background OCR thread - reads every 2s, caches results."""
         while self._ocr_running:
             try:
                 data = self._ocr.read()
@@ -86,7 +86,7 @@ class TftStateReader:
         self._ocr_running = False
 
     # ------------------------------------------------------------------
-    # arch: phase 1 step 3 — snapshot factory helper (only path that may produce TftSnapshot)
+    # arch: phase 1 step 3 - snapshot factory helper (only path that may produce TftSnapshot)
     # ------------------------------------------------------------------
 
     @staticmethod

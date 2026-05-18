@@ -2,7 +2,7 @@
   "_meta": {
     "schema_version": 1,
     "patch": "16.9.1",
-    "purpose": "Phase 6 (s181, 2026-05-13) — curated per-item healing/shielding/ally-buff formulas for the ds.hps enchanter scorer.",
+    "purpose": "Phase 6 (s181, 2026-05-13) - curated per-item healing/shielding/ally-buff formulas for the ds.hps enchanter scorer.",
     "source": "Hand-curated from DDragon item descriptions + Meraki passive prose; Phase 6 scorer is best-effort with no in-game proc instrumentation.",
     "schema": {
       "items.<id>.name": "DDragon item name (informational; engine resolves id → name from snapshot).",
@@ -27,7 +27,7 @@
       "ally_buff_credit_per_second is intentionally lower than direct-heal HPS (10 = roughly 10 HPS-equivalent) so direct-heal items still outscore pure buff items per gold.",
       "Heal/shield amp percentages compound multiplicatively across items: final_amp = product(1 + amp_pct).",
       "ARAM aramHealing/aramShielding modifiers fold into the per-proc base on the engine side; this file stores SR baseline numbers.",
-      "Chemtech Putrifier (3011) is anti-heal — intentionally excluded from this scorer's positive HPS contribution. Operators wanting it as an enchanter pick get it from rank_for fall-through."
+      "Chemtech Putrifier (3011) is anti-heal - intentionally excluded from this scorer's positive HPS contribution. Operators wanting it as an enchanter pick get it from rank_for fall-through."
     ]
   },
   "items": {
@@ -109,7 +109,7 @@
       "shield_targets_per_proc": 0.0,
       "heal_shield_amp_pct": 0.10,
       "ally_buff_credit_per_second": 15.0,
-      "notes": "Sanctify: heal/shield ally → +25% AS + 20 on-hit magic dmg to BOTH for 6s. No direct healing. Buff credit ~15/sec for AS+on-hit ally damage value (high — Ardent is the canonical hyper-carry enabler). +10% heal/shield power."
+      "notes": "Sanctify: heal/shield ally → +25% AS + 20 on-hit magic dmg to BOTH for 6s. No direct healing. Buff credit ~15/sec for AS+on-hit ally damage value (high - Ardent is the canonical hyper-carry enabler). +10% heal/shield power."
     },
     "6616": {
       "name": "Staff of Flowing Water",
@@ -157,7 +157,7 @@
       "shield_targets_per_proc": 0.0,
       "heal_shield_amp_pct": 0.0,
       "ally_buff_credit_per_second": 6.0,
-      "notes": "Coordinated Fire: ally hits CC'd target for 10% current HP magic damage. Damage proc, not healing. Buff credit ~6/sec — meaningful but lower than direct-heal items; this is the 'support mage' item that prioritizes damage output."
+      "notes": "Coordinated Fire: ally hits CC'd target for 10% current HP magic damage. Damage proc, not healing. Buff credit ~6/sec - meaningful but lower than direct-heal items; this is the 'support mage' item that prioritizes damage output."
     },
     "3109": {
       "name": "Knight's Vow",
@@ -173,7 +173,7 @@
       "shield_targets_per_proc": 0.0,
       "heal_shield_amp_pct": 0.0,
       "ally_buff_credit_per_second": 10.0,
-      "notes": "Sacrifice: redirect 12% of bonded ally's damage taken to self; self-heal 10% of ally's damage dealt. Indirect tank-share for the bonded ally. Buff credit ~10/sec — solid ally EHP boost but only one bonded target."
+      "notes": "Sacrifice: redirect 12% of bonded ally's damage taken to self; self-heal 10% of ally's damage dealt. Indirect tank-share for the bonded ally. Buff credit ~10/sec - solid ally EHP boost but only one bonded target."
     }
   }
 }

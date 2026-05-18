@@ -17,7 +17,7 @@ falls back to the legacy elif chains in web_dashboard while the
 migration is in progress.
 
 Phase 4.1 (s143): POST bodies for paths in _REQUEST_MODELS are
-soft-validated against dashboard.api_schema before dispatch — warnings
+soft-validated against dashboard.api_schema before dispatch - warnings
 only, never reject. Mirrors the soft-warn pattern from
 core.coaching_payload (Phase 4.3).
 """
@@ -143,7 +143,7 @@ def dispatch_get(handler) -> bool:
 # Path -> pydantic Request model. Only paths listed here are validated;
 # unmapped paths pass through silently (no false-warning noise on
 # routes that haven't been schema'd yet). Path lookup matches
-# equals()-style routes — strip query string before lookup so
+# equals()-style routes - strip query string before lookup so
 # `/api/input?foo=1` still validates.
 _REQUEST_MODELS = {
     "/api/input":                   InputRequest,

@@ -1,5 +1,5 @@
 # arch: top8 + mains backend | section=dashboard | frozen=no
-"""Lobby auxiliary routes — server-side persistence for the pre-game
+"""Lobby auxiliary routes - server-side persistence for the pre-game
 lobby view's Top 8 list, plus the enriched ``main_champs`` data the
 Mains panel renders.
 
@@ -7,7 +7,7 @@ Origin-independent storage. The previous Top 8 implementation
 (``localStorage.rc-top8-list`` in ``main.js``) only persisted per-origin
 in the browser, so an operator hitting the dashboard from multiple
 URLs (legion-rc, 192.168.8.230, 127.0.0.1) had separate, drifting
-lists — and a Chrome cache-clear or Game-PC restart wiped everything.
+lists - and a Chrome cache-clear or Game-PC restart wiped everything.
 Server-side storage on Legion is the single source of truth.
 
 Schema (``data/top8_list.json``):
@@ -44,7 +44,7 @@ Mains schema (``/api/mains?puuid=...`` response):
       ]
     }
 
-Both endpoints are read-only against external systems — they touch
+Both endpoints are read-only against external systems - they touch
 local files only (``data/top8_list.json``, ``match_history.db``,
 ``rewind_history.db``) so they never block on Riot API or LCU.
 """
@@ -87,7 +87,7 @@ def _load_top8() -> list:
 
 
 def _save_top8(entries: list) -> None:
-    """Atomic write — mirrors core.atomic_write_json's tmp+replace pattern.
+    """Atomic write - mirrors core.atomic_write_json's tmp+replace pattern.
     Caller is responsible for sanitizing entries; this just persists."""
     _DATA_DIR.mkdir(parents=True, exist_ok=True)
     tmp_fd, tmp_path = tempfile.mkstemp(
@@ -142,7 +142,7 @@ def _serve_top8_get(h) -> None:
 
 
 def _serve_top8_post(h, payload) -> None:
-    """Overwrite the entire list. Body shape: {entries: [...]} — the
+    """Overwrite the entire list. Body shape: {entries: [...]} - the
     client always sends the full sorted list, no PATCH semantics.
     Returns the canonicalized list (post-sanitization) so the client
     can render exactly what got persisted."""
@@ -169,7 +169,7 @@ def _serve_top8_post(h, payload) -> None:
 
 # ── Mains data ───────────────────────────────────────────────────────
 
-# Canonical source: rewind_history.db.participants — populated by
+# Canonical source: rewind_history.db.participants - populated by
 # scripts/rewind_catchup.py (s167) from Match-V5. The operator's puuid
 # is the most-frequent in the table (currently ~2845 entries vs the
 # next at 715). The same resolver pattern is used in routes_pickban.py.
@@ -242,7 +242,7 @@ def _query_mains_for_puuid(conn: sqlite3.Connection, puuid: str,
         champ, games, wins, losses, ks, ds, as_, cs, vs, dmg, played_s = r
         wins, losses = wins or 0, losses or 0
         played_min = max(1, (played_s or 0) / 60)
-        # Last match for this champ — join participants→matches.
+        # Last match for this champ - join participants→matches.
         cur.execute("""
             SELECT p.win, p.kills, p.deaths, p.assists, m.game_creation_ts
             FROM participants p

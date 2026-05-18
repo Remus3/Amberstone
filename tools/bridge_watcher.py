@@ -1,5 +1,5 @@
-# arch: bridge watcher daemon — classify → action loop | section=bridge | frozen=no
-"""bridge_watcher.py — silent cross-Claude bridge poller (MVP).
+# arch: bridge watcher daemon - classify → action loop | section=bridge | frozen=no
+"""bridge_watcher.py - silent cross-Claude bridge poller (MVP).
 
 Phase 0 per BRIDGE_WATCHER_PLAN.md §11:
   - Polls /api/bridge every 15s (configurable)
@@ -16,7 +16,7 @@ NOT in scope for MVP (later phases):
   - Token cap enforcement
 
 Operator drains escalations via the existing /process-bridge-tasks
-slash command. Watcher does NOT post results to the bridge — that
+slash command. Watcher does NOT post results to the bridge - that
 remains the operator's job (or Phase 2 auto-action's).
 
 Run via:
@@ -78,7 +78,7 @@ _ARTIFACT_RETENTION_S = 7 * 86400  # delete artifacts older than 7 days
 
 # RC health checks (node-load restraint for auto-action lanes).
 # Only relevant on nodes where RC runs (legion). On game-pc/peer the file
-# won't exist and _check_rc_health returns (False, "") — no suppression.
+# won't exist and _check_rc_health returns (False, "") - no suppression.
 _RC_HEALTH_PATH     = _PROJECT_ROOT / "ops" / "runtime" / "health.json"
 _RC_HEALTH_STALE_S  = 60    # suppress if RC heartbeat is older than this
 _RC_RESTART_GRACE_S = 120   # suppress for this many seconds after RC PID started
@@ -91,7 +91,7 @@ _RC_RESTART_GRACE_S = 120   # suppress for this many seconds after RC PID starte
 _DEFAULT_BRIDGE_URL = {
     "legion": "https://127.0.0.1:8888/api/bridge",
     "gamepc": "https://legion-rc:8888/api/bridge",
-    # Peer serves /api/bridge/messages (NOT bare /api/bridge — confirmed by
+    # Peer serves /api/bridge/messages (NOT bare /api/bridge - confirmed by
     # Peer 2026-05-03 install probe). Their response is a bare JSON list;
     # _fetch_since handles both shapes.
     "peer":    "https://127.0.0.1:8888/api/bridge/messages",
@@ -112,7 +112,7 @@ def _check_rc_health(health: dict, now: float) -> tuple:
     degraded=True suppresses auto-action lanes for one poll cycle so the
     watcher doesn't compete for resources during RC incidents.
 
-    Returns (False, '') when health is empty (no RC on this node — game-pc/peer)
+    Returns (False, '') when health is empty (no RC on this node - game-pc/peer)
     so those nodes are never suppressed by this check.
     """
     if not health:
@@ -124,7 +124,7 @@ def _check_rc_health(health: dict, now: float) -> tuple:
         return True, f"RC last_reload_ok=False (error={err!r})"
     if health.get("booting"):
         return True, "RC booting=True"
-    # Stale heartbeat — RC may be hung.
+    # Stale heartbeat - RC may be hung.
     updated_str = health.get("updated_at") or ""
     if updated_str:
         try:
@@ -137,7 +137,7 @@ def _check_rc_health(health: dict, now: float) -> tuple:
                               f"(threshold={_RC_HEALTH_STALE_S}s)")
         except Exception:
             pass
-    # Recent restart — give RC time to stabilize.
+    # Recent restart - give RC time to stabilize.
     started_str = health.get("started_at") or ""
     if started_str:
         try:
@@ -166,7 +166,7 @@ def _atomic_write_json(path: Path, payload: dict) -> None:
                    encoding="utf-8")
     # os.replace can transiently raise PermissionError (WinError 5) when a
     # reader has the dst open; brief retries clear it. (Same pattern as
-    # core.bridge_monitor._write_atomic — see reference_os_replace_winerror5.)
+    # core.bridge_monitor._write_atomic - see reference_os_replace_winerror5.)
     last_exc: Exception | None = None
     for delay in (0, 0.025, 0.050, 0.200):
         if delay:
@@ -329,7 +329,7 @@ def _fetch_since(since_ts: float, bridge_url: str) -> list[dict]:
     with urllib.request.urlopen(req, timeout=4.0, context=_SSL_CTX) as r:
         data = json.loads(r.read())
     # Legion/RC returns wrapped {now, messages: [...]}, Peer returns bare list.
-    # Per Peer 2026-05-03 install report — handle both shapes defensively.
+    # Per Peer 2026-05-03 install report - handle both shapes defensively.
     if isinstance(data, list):
         msgs = data
     elif isinstance(data, dict):
@@ -443,9 +443,9 @@ def _save_state(state: dict) -> None:
 
 def _write_heartbeat(stats: dict) -> None:
     # Counter naming clarity (per Peer 2026-05-03 ask):
-    #   queue_depth          : LIVE — current size of bridge_inbox_pending.json
-    #   *_since_boot         : MONOTONIC — counts since this watcher process started
-    #   tokens_used_today_usd: DAILY — resets at local midnight (only "today" field)
+    #   queue_depth          : LIVE - current size of bridge_inbox_pending.json
+    #   *_since_boot         : MONOTONIC - counts since this watcher process started
+    #   tokens_used_today_usd: DAILY - resets at local midnight (only "today" field)
     # Old "*_24h" keys are aliased for one release for any external readers,
     # then removed.
     auto_actions = int(stats.get("auto_actions_since_boot", 0))
@@ -464,7 +464,7 @@ def _write_heartbeat(stats: dict) -> None:
         "last_poll_at":   stats["last_poll_at"],
         "queue_depth":    stats["queue_depth"],
 
-        # Preferred names — accurate semantics
+        # Preferred names - accurate semantics
         "auto_actions_since_boot":    auto_actions,
         "auto_ok_since_boot":         auto_ok,
         "auto_err_since_boot":        auto_err,
@@ -472,7 +472,7 @@ def _write_heartbeat(stats: dict) -> None:
         "errors_since_boot":          errors,
         "auto_suppressed_since_boot": int(stats.get("auto_suppressed_since_boot", 0)),
 
-        # Sliding 24h-window counts (accurate — backed by persisted timestamp
+        # Sliding 24h-window counts (accurate - backed by persisted timestamp
         # ring in state; no longer aliases for *_since_boot).
         "escalations_24h":     int(stats.get("escalations_24h",     escalations)),
         "auto_ok_24h":         int(stats.get("auto_ok_24h",         auto_ok)),
@@ -554,13 +554,13 @@ def _post_result_back(envelope: dict, *, res_status: str, body: dict, node: str,
     elif raw_src.startswith("gamepc"):
         src_field = "gamepc"
     else:
-        _log.warning("post_result: unknown envelope source %r — defaulting to 'peer'", raw_src)
+        _log.warning("post_result: unknown envelope source %r - defaulting to 'peer'", raw_src)
         src_field = "peer"
     exit_code = "0" if res_status == "ok" else "1"
     summary = body.pop("_summary", None) or f"auto-action {res_status} (lane {body.get('_lane','?')})"
     poster = (tools_dir or _DEFAULT_TOOLS_DIR) / "bridge_post_result.py"
     if not poster.exists():
-        _log.warning("bridge_post_result.py missing at %s — cannot post result", poster)
+        _log.warning("bridge_post_result.py missing at %s - cannot post result", poster)
         return
     import subprocess
     argv = [
@@ -588,7 +588,7 @@ _STOP = False
 
 def _handle_signal(signum, _frame) -> None:
     global _STOP
-    _log.info("received signal %s — stopping", signum)
+    _log.info("received signal %s - stopping", signum)
     _STOP = True
 
 
@@ -606,7 +606,7 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
     _actions.reset_daily_spend_if_new_day(state)
 
     started_at = time.time()
-    # last_task_ts — epoch of last kind=task envelope; determines auto-mode sleep.
+    # last_task_ts - epoch of last kind=task envelope; determines auto-mode sleep.
     # Default to started_at so a fresh restart begins in active cadence.
     state.setdefault("last_task_ts", started_at)
     processed_ids: set = set(state.get("processed_ids") or [])
@@ -643,7 +643,7 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
                 if age > threshold:
                     _log.error(
                         "watchdog: main loop stalled %.0fs (threshold=%.0fs eff_poll=%.0fs) "
-                        "— forcing exit so scheduled-task restart fires",
+                        "- forcing exit so scheduled-task restart fires",
                         age, threshold, _current_eff_poll[0],
                     )
                     os._exit(1)
@@ -652,7 +652,7 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
         _wd.start()
 
     if dry_run:
-        _log.info("bridge_watcher starting in DRY-RUN mode — no pending writes, no auto-actions, no notifications")
+        _log.info("bridge_watcher starting in DRY-RUN mode - no pending writes, no auto-actions, no notifications")
 
     while not _STOP:
         try:
@@ -710,12 +710,12 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
                             first_new_esc = {"source": env.get("source", "?"),
                                              "summary": (env.get("summary") or "")[:120]}
                         _pfx = "DRY-RUN would-escalate" if dry_run else "escalate"
-                        _log.info("%s id=%s src=%s kind=%s — %s",
+                        _log.info("%s id=%s src=%s kind=%s - %s",
                                   _pfx, env.get("id"), env.get("source"),
                                   env.get("kind"), reason)
                 elif cls == "ack-only":
                     new_acks += 1
-                    _log.debug("ack-only id=%s src=%s kind=%s — %s",
+                    _log.debug("ack-only id=%s src=%s kind=%s - %s",
                                env.get("id"), env.get("source"),
                                env.get("kind"), reason)
                 elif cls in ("auto-read", "auto-ops"):
@@ -729,7 +729,7 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
                             if first_new_esc is None:
                                 first_new_esc = {"source": env.get("source", "?"),
                                                  "summary": (env.get("summary") or "")[:120]}
-                        _log.info("auto-action SUPPRESSED lane=%s id=%s — %s",
+                        _log.info("auto-action SUPPRESSED lane=%s id=%s - %s",
                                   cls, env.get("id"), _rc_reason)
                         continue
                     # Phase 2: invoke claude --print for auto-action lanes.
@@ -742,7 +742,7 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
 
                     # Past-task memory short-circuit (Phase 4).
                     # If a near-identical prompt+lane succeeded recently, return
-                    # the cached body — no $ spent, no claude --print spawn.
+                    # the cached body - no $ spent, no claude --print spawn.
                     # If a near-identical prompt+lane FAILED recently, escalate
                     # without re-spawning so we don't burn tokens on a known-bad path.
                     cached = _history.lookup_recent_match(
@@ -777,7 +777,7 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
                             esc_reason = (f"recent failure on near-identical prompt "
                                           f"(sim={cached['similarity']:.2f}, "
                                           f"orig={cached['original_task_id']}, "
-                                          f"{cached['hours_ago']}h ago) — escalating without retry")
+                                          f"{cached['hours_ago']}h ago) - escalating without retry")
                             newly_sc = True if dry_run else _add_to_pending(env, esc_reason)
                             if newly_sc:
                                 new_escalations += 1
@@ -852,7 +852,7 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
                         _log.info("auto-action ESCALATE lane=%s id=%s reason=%s",
                                   cls, env.get("id"), res_body.get("reason", ""))
                 else:  # reject or unknown
-                    _log.warning("reject id=%s src=%s kind=%s — %s",
+                    _log.warning("reject id=%s src=%s kind=%s - %s",
                                  env.get("id"), env.get("source"),
                                  env.get("kind"), reason)
 
@@ -882,7 +882,7 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
             state["last_seen_ts"] = new_max_ts
             state["processed_ids"] = list(processed_ids)
             # State persists tokens_used_today_usd (daily reset) but NOT the
-            # since-boot counters — those reset every restart by design.
+            # since-boot counters - those reset every restart by design.
             _save_state(state)
             _rotate_artifacts(state, processed_ids, time.time())
 
@@ -902,14 +902,14 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
             stats["errors_since_boot"]  += 1
             _ring_add(state, "error", time.time())
             _log.warning("poll failed: %s", exc)
-        except Exception as exc:  # pragma: no cover — defensive
+        except Exception as exc:  # pragma: no cover - defensive
             stats["last_poll_ok"] = False
             stats["errors_since_boot"]  += 1
             _ring_add(state, "error", time.time())
             _log.exception("unexpected error: %s", exc)
 
         # Determine effective poll interval from cadence sentinel (read once
-        # per poll cycle — not during sleep — to avoid excess FS reads).
+        # per poll cycle - not during sleep - to avoid excess FS reads).
         _cmode = _read_mode()
         if _cmode == "sleep":
             _eff_poll = _SLEEP_POLL_S

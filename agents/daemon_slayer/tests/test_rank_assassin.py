@@ -1,4 +1,4 @@
-"""Phase 5 (s180, 2026-05-13) — Assassin burst ranker tests.
+"""Phase 5 (s180, 2026-05-13) - Assassin burst ranker tests.
 
 Mirrors ``test_rank_mage`` shape but exercises the burst scorer side.
 The filter-pipeline correctness already lives in ``test_rank``; these
@@ -136,7 +136,7 @@ class BurstScoringTests(unittest.TestCase):
         )
 
     def test_ap_item_in_top_for_diana(self) -> None:
-        # Diana is AP — top-5 should include Rabadon's / Shadowflame /
+        # Diana is AP - top-5 should include Rabadon's / Shadowflame /
         # Stormsurge / Void Staff / Mejai's / Luden's.
         r = rank_items_by_burst(
             self.snap, "Diana", level=11, mode="SR",
@@ -150,7 +150,7 @@ class BurstScoringTests(unittest.TestCase):
         )
 
     def test_pure_ap_item_not_in_top_for_zed(self) -> None:
-        # Zed lvl 11 vs 80 armor — Rabadon's (3089, pure AP) should NOT
+        # Zed lvl 11 vs 80 armor - Rabadon's (3089, pure AP) should NOT
         # be a top-3 burst pick.
         r = rank_items_by_burst(
             self.snap, "Zed", level=11, mode="SR",
@@ -254,7 +254,7 @@ class FilterPipelineTests(unittest.TestCase):
 
     def test_dead_unique_filter_drops_collision(self) -> None:
         # Eclipse (6692, unique_passive_key "spellblade" via Ever Rising
-        # Moon family) — wait, Eclipse is NOT spellblade-keyed in the
+        # Moon family) - wait, Eclipse is NOT spellblade-keyed in the
         # engine docstring. Use Trinity Force (6630) as a confirmed
         # spellblade-key holder via current items. Then Sheen 3057,
         # Lich Bane 3100, ER 3508, Iceborn 6662, Divine Sunderer 6632
@@ -374,7 +374,7 @@ class ModeAndAmpFlowTests(unittest.TestCase):
         cls.snap = _snap()
 
     def test_mode_multiplier_surfaced(self) -> None:
-        # Veigar gets aramDamageDealt < 1.0 — sanity that ARAM passes through.
+        # Veigar gets aramDamageDealt < 1.0 - sanity that ARAM passes through.
         sr = rank_items_by_burst(
             self.snap, "Veigar", level=11, mode="SR", target_mr=30.0, top_n=3,
         )

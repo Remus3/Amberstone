@@ -1,4 +1,4 @@
-# P-audit5-h02 — Result
+# P-audit5-h02 - Result
 
 **Status:** APPLIED  
 **Applied by:** Agent 2 (backend), task `t-652d004822c7`  
@@ -41,7 +41,7 @@ def _warm_agent7_handle(self, task) -> dict:
 
 ## Verification
 
-- Re-read block `:1812-1823` post-edit — structure matches inline pattern.
+- Re-read block `:1812-1823` post-edit - structure matches inline pattern.
 - Full test suite: **635 passed**, 0 failed, 0 errors.
 
 ## Outcome
@@ -58,6 +58,6 @@ exists).
 
 ## Bundle status
 
-- **P-audit5-h01** — APPLIED (previous session, `:1543`)
-- **P-audit5-h02** — APPLIED (this task)
-- **P-audit5-m01** — `WarmAgent7Session.stats()` lock gap; pending
+- **P-audit5-h01** - APPLIED (previous session, `:1543`)
+- **P-audit5-h02** - APPLIED (this task)
+- **P-audit5-m01** - `WarmAgent7Session.stats()` lock gap; pending

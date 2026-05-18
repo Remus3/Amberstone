@@ -1,4 +1,4 @@
-"""Agent 0 — Gatekeeper. Evaluates cross-machine tasks against the six
+"""Agent 0 - Gatekeeper. Evaluates cross-machine tasks against the six
 criteria from §7 and returns an accept/reject Decision.
 
 Agent 0 is **not** a security boundary against the user. Direct user orders
@@ -46,7 +46,7 @@ class Task:
     originating_agent: str            # "2", "5", etc.
     remote_path: str                  # UNC path target
     payload_ext: str                  # ".html", ".py", ...
-    tag: str | None = None            # e.g. "restart-forwarder" — marks protected-window sensitive ops
+    tag: str | None = None            # e.g. "restart-forwarder" - marks protected-window sensitive ops
     signature: str | None = None      # for repeat detection; falls back to op+remote_path+payload_ext
     extra: dict[str, Any] = field(default_factory=dict)
 
@@ -68,7 +68,7 @@ class Decision:
 
 
 class _RepeatWindow:
-    """Rolling-window repeat detector — signature → list[timestamps]."""
+    """Rolling-window repeat detector - signature → list[timestamps]."""
 
     def __init__(self, window_sec: float = 60.0, max_in_window: int = 3) -> None:
         self.window = window_sec
@@ -127,7 +127,7 @@ class Evaluator:
     def _has_traversal(remote_path: str) -> bool:
         """Reject any path containing ``..`` or URL-encoded ``%2e%2e`` as a
         distinct segment. Handles both / and \\ separators mixed. See audit
-        P-audit-h1 — defends the share even when callers bypass ``smb_push``.
+        P-audit-h1 - defends the share even when callers bypass ``smb_push``.
         """
         norm = remote_path.replace("/", "\\").lower()
         parts = [p for p in norm.split("\\") if p]
@@ -147,7 +147,7 @@ class Evaluator:
 
     def _subdir_ok(self, op_spec: dict[str, Any], remote_path: str) -> bool:
         """Require the op's target subdir to immediately follow the share
-        root (``RCClient\\``) — not just appear anywhere in the path.
+        root (``RCClient\\``) - not just appear anywhere in the path.
 
         This fixes audit finding M3 (substring vs prefix match) which was
         made exploitable by the H1 traversal gap.
@@ -180,7 +180,7 @@ class Evaluator:
         try:
             state = str(self._game_state_probe() or "").upper()
         except Exception as e:  # noqa: BLE001
-            logger.warning("game_state_probe raised %s — treating as NONE", e)
+            logger.warning("game_state_probe raised %s - treating as NONE", e)
             return False
         return state not in ("", "NONE", "LOBBY", "CHAMP_SELECT_POST")
 
@@ -201,7 +201,7 @@ class Evaluator:
 
     # ----- entry point ---------------------------------------------
     def evaluate(self, task: Task) -> Decision:
-        # First resolve the op spec — unknown ops fail criterion 1 (bad op) or 6 (authority).
+        # First resolve the op spec - unknown ops fail criterion 1 (bad op) or 6 (authority).
         op_spec = self._ops.get(task.op)
         if op_spec is None:
             return self._reject(task, REASON_AUTHORITY, "unknown_operation",
@@ -241,7 +241,7 @@ class Evaluator:
         # 4. Protected window (active match)
         if self._protected_window_blocks(task):
             return self._reject(task, REASON_PROTECTED_WINDOW, "active_match_protected",
-                                "forwarder-restart rejected during active match — retry post-match")
+                                "forwarder-restart rejected during active match - retry post-match")
         passed.append(4)
 
         # 5. Repeat-retry pattern

@@ -1,8 +1,8 @@
-# gamepc_boot.ps1 — shortcut-only launcher for the Game-PC agents.
+# gamepc_boot.ps1 - shortcut-only launcher for the Game-PC agents.
 #
 # Remodeled 2026-05-16 (operator decision). The "RC Agent claude" desktop
 # shortcut is the SOLE initiator. This script NO LONGER installs ONLOGON
-# persistence for the agents or for itself — agents are launched per session
+# persistence for the agents or for itself - agents are launched per session
 # only. The ONLY logon persistence kept is the bridge infra (RC-BridgeDaemon
 # + the pre-existing RC-BridgeWatcher-GamePC / RC-WatcherHealthPublisher-GamePC)
 # so cross-Claude coordination survives a reboot without the shortcut. This
@@ -13,11 +13,11 @@
 #   bettercam device_idx=0  output_idx 0 = Duet/dashboard (1920x1280)
 #                            output_idx 1 = Q27GAZD/League (1920x1080)
 # So league/minimap -> --monitor 1, ui -> --monitor 0. The 0/1 index order is
-# NOT stable across reboots/display changes — re-confirm by RESOLUTION, not
+# NOT stable across reboots/display changes - re-confirm by RESOLUTION, not
 # index, if displays change again.
 #
 # The recurring game-end 0x50 BSOD is a Riot Vanguard (vgk.sys) kernel fault
-# during the fullscreen->desktop mode switch — NOT a screen-capture problem.
+# during the fullscreen->desktop mode switch - NOT a screen-capture problem.
 # Do not chase it here.
 #
 # Claude: opens the Claude Code Desktop app. The exact launch command is
@@ -31,7 +31,7 @@ $ErrorActionPreference = 'Stop'
 $dest = 'C:\RC-Agent'
 if (-not (Test-Path $dest)) { New-Item -ItemType Directory -Path $dest | Out-Null }
 
-# Self-elevate — firewall rule + RC-BridgeDaemon ensure need admin.
+# Self-elevate - firewall rule + RC-BridgeDaemon ensure need admin.
 $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Start-Process powershell.exe -ArgumentList '-NoExit','-ExecutionPolicy','Bypass','-File',"`"$PSCommandPath`"" -Verb RunAs
@@ -70,7 +70,7 @@ foreach ($c in $SLASH) {
     }
 }
 
-# 2. Firewall — inbound rule for the MCP server port (others are outbound-only).
+# 2. Firewall - inbound rule for the MCP server port (others are outbound-only).
 if (-not (Get-NetFirewallRule -DisplayName 'RC-MCP' -ErrorAction SilentlyContinue)) {
     try {
         New-NetFirewallRule -DisplayName 'RC-MCP' -Direction Inbound -Protocol TCP -LocalPort 8892 -Action Allow -Profile Any -ErrorAction Stop | Out-Null
@@ -93,23 +93,23 @@ function Test-AgentRunning {
     return [bool]$p
 }
 
-# 4. Launch agents PER SESSION (no scheduled-task persistence). Idempotent —
+# 4. Launch agents PER SESSION (no scheduled-task persistence). Idempotent -
 #    a process already alive for a script is left as-is (never double-launch).
 
-# Screen agents x3 — corrected post-swap mapping (output_idx 1 = Q27GAZD/
+# Screen agents x3 - corrected post-swap mapping (output_idx 1 = Q27GAZD/
 # League, 0 = Duet/dashboard). pythonw (no window), bettercam DXGI.
 $SCREEN = @(
     '--monitor 1 --channel game-pc-league',
     '--monitor 0 --channel game-pc-ui --no-primary',
     '--monitor 1 --channel minimap --no-primary --crop 1580,780,1920,1080 --interval 0.2'
 )
-# === ISOLATION TEST 2026-05-16 — screen agents DELIBERATELY NOT LAUNCHED ===
+# === ISOLATION TEST 2026-05-16 - screen agents DELIBERATELY NOT LAUNCHED ===
 # Confirming gamepc_screen_agent.py (DXGI capture) is the Vanguard vgk.sys
 # game-end/mid-game BSOD trigger. RC comes up WITHOUT the 3 screen agents;
 # operator plays one match. REVERT this block (restore the foreach launch
 # below) once the test concludes or the real capture-off-during-game fix
 # ships. $SCREEN is left defined above so revert is a one-line uncomment.
-Write-Host '  screen agents SKIPPED — isolation test 2026-05-16 (Vanguard-BSOD trigger check)' -ForegroundColor Yellow
+Write-Host '  screen agents SKIPPED - isolation test 2026-05-16 (Vanguard-BSOD trigger check)' -ForegroundColor Yellow
 # if (Test-AgentRunning 'gamepc_screen_agent.py') {
 #     Write-Host '  screen agents: already running, leaving as-is' -ForegroundColor Green
 # } else {
@@ -119,7 +119,7 @@ Write-Host '  screen agents SKIPPED — isolation test 2026-05-16 (Vanguard-BSOD
 #     Write-Host '  screen agents x3 launched' -ForegroundColor Green
 # }
 
-# LCU agent — operator wants its console window MINIMIZED (visible/accessible,
+# LCU agent - operator wants its console window MINIMIZED (visible/accessible,
 # out of the way), not hidden. Console python so the window exists.
 if (Test-AgentRunning 'gamepc_lcu_agent.py') {
     Write-Host '  lcu agent: already running' -ForegroundColor Green
@@ -128,7 +128,7 @@ if (Test-AgentRunning 'gamepc_lcu_agent.py') {
     Write-Host '  lcu agent launched (minimized)' -ForegroundColor Green
 }
 
-# Liveclient relay + hotkey listener — hidden (no window needed).
+# Liveclient relay + hotkey listener - hidden (no window needed).
 foreach ($s in @('gamepc_liveclient_relay.py','gamepc_hotkey_listener.py')) {
     if (Test-AgentRunning $s) {
         Write-Host "  ${s}: already running" -ForegroundColor Green
@@ -138,7 +138,7 @@ foreach ($s in @('gamepc_liveclient_relay.py','gamepc_hotkey_listener.py')) {
     }
 }
 
-# MCP server — verify it actually binds :8892 (zombie case: process alive but
+# MCP server - verify it actually binds :8892 (zombie case: process alive but
 # never listening). Kill a non-listening stale process before relaunch.
 $mcpListening = [bool](Get-NetTCPConnection -LocalPort 8892 -State Listen -ErrorAction SilentlyContinue)
 $mcpProcs = Get-CimInstance Win32_Process -Filter "Name='python.exe' OR Name='pythonw.exe'" |
@@ -159,10 +159,10 @@ if ($mcpProcs) {
     }
 }
 
-# 5. Bridge infra — the ONLY logon persistence kept (operator decision):
+# 5. Bridge infra - the ONLY logon persistence kept (operator decision):
 #    coordination must survive a reboot without the shortcut. Ensure the
 #    RC-BridgeDaemon scheduled task exists + running. RC-BridgeWatcher-GamePC
-#    and RC-WatcherHealthPublisher-GamePC are pre-existing ONLOGON tasks —
+#    and RC-WatcherHealthPublisher-GamePC are pre-existing ONLOGON tasks -
 #    hardened (not fabricated) in step 5b below (Audit7 H-01).
 $daemonScript = Join-Path $dest 'gamepc_bridge_daemon.py'
 $pyW314 = 'C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe'
@@ -254,7 +254,7 @@ if (-not $launched -and (Test-Path $ccMarker)) {
     if ($cc) { $cc = $cc.Trim() }
     if ($cc) {
         try {
-            Write-Host '  dynamic resolve missed — using claude_code_app.txt marker' -ForegroundColor Yellow
+            Write-Host '  dynamic resolve missed - using claude_code_app.txt marker' -ForegroundColor Yellow
             Start-Process -FilePath 'cmd.exe' -ArgumentList '/c', $cc -WindowStyle Hidden
             $launched = $true
         } catch { Write-Host "  marker launch failed: $($_.Exception.Message)" -ForegroundColor Yellow }
@@ -265,7 +265,7 @@ if (-not $launched -and (Test-Path $ccMarker)) {
 if (-not $launched) {
     $legacy = Join-Path $dest 'start_gamepc_claude.ps1'
     if (Test-Path $legacy) {
-        Write-Host '  no Claude Code app found — using legacy CLI launcher' -ForegroundColor Yellow
+        Write-Host '  no Claude Code app found - using legacy CLI launcher' -ForegroundColor Yellow
         try { & $legacy } catch { Write-Host "  legacy launch warning: $($_.Exception.Message)" -ForegroundColor Yellow }
     } else {
         Write-Host '  no Claude launcher available' -ForegroundColor Red

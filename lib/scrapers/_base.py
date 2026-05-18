@@ -55,9 +55,9 @@ class ScraperBase:
                 self._robots = rp
                 self._log.info("robots.txt loaded for %s", self.site)
             else:
-                self._log.warning("robots.txt %s: HTTP %d — permissive fallback", self.site, resp.status)
+                self._log.warning("robots.txt %s: HTTP %d - permissive fallback", self.site, resp.status)
         except (HttpError, Blocked) as e:
-            self._log.warning("robots.txt fetch failed for %s: %s — permissive fallback", self.site, e)
+            self._log.warning("robots.txt fetch failed for %s: %s - permissive fallback", self.site, e)
 
     def can_fetch(self, url: str, user_agent: str = "RiotCommander/3.0") -> bool:
         self._load_robots()

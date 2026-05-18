@@ -1,4 +1,4 @@
-# P-audit5-h02 — `_warm_agent7_handle` must use the warm session
+# P-audit5-h02 - `_warm_agent7_handle` must use the warm session
 
 **Owner:** Agent 2
 **Severity:** HIGH
@@ -11,11 +11,11 @@ always returns `spawn_ephemeral_llm("7", ...)`. Queue-dispatched
 Agent 7 tasks pay full cold subprocess cost (~5 s, ~6× tokens) even
 though the warm session is alive and primed (`:1599`, `:1842`,
 `:1859`). Inline `/api/input` already uses the warm path correctly
-at `:489-501` — the queue path is the only regression.
+at `:489-501` - the queue path is the only regression.
 
-## Fix (unified diff sketch — pick one of the two)
+## Fix (unified diff sketch - pick one of the two)
 
-### Option A — reuse `warm_spawn_factory`
+### Option A - reuse `warm_spawn_factory`
 
 ```diff
 --- a/agents/supervisor.py
@@ -39,7 +39,7 @@ at `:489-501` — the queue path is the only regression.
 +            return spawn_ephemeral_llm("7", task.id, task.op, task.payload)
 ```
 
-### Option B — inline (no factory)
+### Option B - inline (no factory)
 
 See `agents/agent7_context/warm_session.py:210-243` for the envelope
 shape `warm_spawn_factory` produces; replicate inline if the import

@@ -1,4 +1,4 @@
-"""Phase 6 (s181, 2026-05-13) — Enchanter healing throughput scorer tests.
+"""Phase 6 (s181, 2026-05-13) - Enchanter healing throughput scorer tests.
 
 Covers ``hps.py``'s formula loader, ``compute_hps`` evaluator, amp pipeline,
 mode multiplier, edge cases, and the ``/hps`` server route.
@@ -205,7 +205,7 @@ class ComputeHpsBasicsTests(unittest.TestCase):
         self.assertAlmostEqual(r.amp_multiplier, 1.12, places=4)
 
     def test_moonstone_alone_provides_amp_only(self) -> None:
-        """Moonstone (6617) is pure amp — 0 direct heal/shield, +30% to others."""
+        """Moonstone (6617) is pure amp - 0 direct heal/shield, +30% to others."""
         r = compute_hps(self.snap, "Soraka", level=11, item_ids=["6617"])
         self.assertEqual(r.healing_hps_raw, 0.0)
         self.assertEqual(r.shielding_hps_raw, 0.0)
@@ -290,7 +290,7 @@ class AmpPipelineTests(unittest.TestCase):
         self.assertAlmostEqual(
             r.healing_hps, r.healing_hps_raw * r.amp_multiplier, places=3
         )
-        # buff_credit = 15.0 (Ardent only — Moonstone is amp, Redemption is direct heal)
+        # buff_credit = 15.0 (Ardent only - Moonstone is amp, Redemption is direct heal)
         self.assertAlmostEqual(r.ally_buff_credit, 15.0, places=3)
         # total = direct + buff
         self.assertAlmostEqual(
@@ -395,7 +395,7 @@ class EdgeCaseTests(unittest.TestCase):
         """ARAM Redemption (323107) is not in the curated registry by id."""
         r = compute_hps(self.snap, "Soraka", level=11, item_ids=["323107"], mode="ARAM")
         # Either zero (mirror not in registry) or behaves like SR Redemption
-        # depending on engine — Phase 6 v1 chose "by ID match," so mirrors
+        # depending on engine - Phase 6 v1 chose "by ID match," so mirrors
         # without registry entries contribute zero.
         self.assertEqual(r.total_throughput, 0.0)
 

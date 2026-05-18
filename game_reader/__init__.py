@@ -1,5 +1,5 @@
-# arch: GameReader facade — composes poller + normalizer mixins | section=vision | frozen=no
-"""game_reader — Reads League of Legends game state from Riot's local APIs.
+# arch: GameReader facade - composes poller + normalizer mixins | section=vision | frozen=no
+"""game_reader - Reads League of Legends game state from Riot's local APIs.
 
 Live Client Data API (in-game): https://192.168.8.237:2999/liveclientdata/
   - No auth required, runs automatically during any game.
@@ -10,18 +10,18 @@ LCU API (client/champ select): https://192.168.8.237:{port}/
   - Provides: champ select picks/bans, summoner data.
 
 Phase 2.2 split (was 1474-line monolith):
-  poller.py             — Live Client / LCU / vision-relay IO
-  snapshot_normalizer.py — raw JSON → coaching state dict + derived fields
-  mode_router.py        — TFT detection + mode-keyed helpers
+  poller.py             - Live Client / LCU / vision-relay IO
+  snapshot_normalizer.py - raw JSON → coaching state dict + derived fields
+  mode_router.py        - TFT detection + mode-keyed helpers
 
 Public surface preserved:
-  GameReader              — instantiated by app/__init__.py (frozen),
+  GameReader              - instantiated by app/__init__.py (frozen),
                             core/sr_aram_worker.py, tests, tools/run_phase2_perf.py
   GameReader.to_rift_snapshot / to_aram_snapshot
-                          — used as class-static factories by tests
-  RELAY_MAX_AGE_S         — referenced in coaches/_base_coach.py docstring
+                          - used as class-static factories by tests
+  RELAY_MAX_AGE_S         - referenced in coaches/_base_coach.py docstring
 
-No external dependencies — uses urllib + ssl from stdlib.
+No external dependencies - uses urllib + ssl from stdlib.
 """
 
 import ssl

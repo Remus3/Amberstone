@@ -1,6 +1,6 @@
 """
 tft/tft_data.py
-TFT Set data — units, traits, items, tier probabilities, carousel logic.
+TFT Set data - units, traits, items, tier probabilities, carousel logic.
 Set-agnostic structure: update UNITS / TRAITS / ITEMS dicts each set patch.
 Currently seeded for TFT Set 14 (patch 15.x baseline).
 """
@@ -61,14 +61,14 @@ PVE_ROUNDS = {(1,3), (2,5), (3,5), (4,5), (5,5), (6,5)}
 
 # ── Key tempo milestones ─────────────────────────────────────────────────────
 TEMPO_MILESTONES = {
-    "2-1":  "First PvP — roll to 50g if needed for strong 2-star opener",
-    "2-5":  "Wolves PvE — save roll-down gold, plan econ after",
-    "3-1":  "Carousel — pick item component or 2-cost for comp",
-    "3-2":  "Mid-game pivot point — evaluate contested units, decide comp direction",
-    "4-1":  "Carousel — target BiS item component or 4-cost carry",
+    "2-1":  "First PvP - roll to 50g if needed for strong 2-star opener",
+    "2-5":  "Wolves PvE - save roll-down gold, plan econ after",
+    "3-1":  "Carousel - pick item component or 2-cost for comp",
+    "3-2":  "Mid-game pivot point - evaluate contested units, decide comp direction",
+    "4-1":  "Carousel - target BiS item component or 4-cost carry",
     "4-2":  "Consider level 8 push for 4-costs if health permits",
-    "5-1":  "Level 9 decision — fast 9 or hyper-roll for 5-cost?",
-    "6-1":  "Late game — stabilise board, push level 9-10",
+    "5-1":  "Level 9 decision - fast 9 or hyper-roll for 5-cost?",
+    "6-1":  "Late game - stabilise board, push level 9-10",
 }
 
 # ── Item tier list ───────────────────────────────────────────────────────────

@@ -18,7 +18,7 @@
       "priority_item": "Galeforce",
       "slot_override": 4,
       "trigger": "always",
-      "reason": "Double R CC — mobility dash escapes ult range"
+      "reason": "Double R CC - mobility dash escapes ult range"
     },
     "Zac": {
       "priority_item": "Immortal Shieldbow",
@@ -30,55 +30,55 @@
       "priority_item": "Galeforce",
       "slot_override": 4,
       "trigger": "always",
-      "reason": "Hook death sentence — mobility to dodge/escape hook"
+      "reason": "Hook death sentence - mobility to dodge/escape hook"
     },
     "Thresh": {
       "priority_item": "Galeforce",
       "slot_override": 4,
       "trigger": "always",
-      "reason": "Hook + lantern + box — mobile repositioning required"
+      "reason": "Hook + lantern + box - mobile repositioning required"
     },
     "Nautilus": {
       "priority_item": "Galeforce",
       "slot_override": 4,
       "trigger": "always",
-      "reason": "Anchor + passive root chain — you must never be in hook range"
+      "reason": "Anchor + passive root chain - you must never be in hook range"
     },
     "Leona": {
       "priority_item": "Immortal Shieldbow",
       "slot_override": 4,
       "trigger": "always",
-      "reason": "E-Q-R stun chain deletes squishies — lifeline shield essential"
+      "reason": "E-Q-R stun chain deletes squishies - lifeline shield essential"
     },
     "Rell": {
       "priority_item": "Galeforce",
       "slot_override": 4,
       "trigger": "always",
-      "reason": "Magnetic Fracture AOE knockup — need pre-emptive repositioning"
+      "reason": "Magnetic Fracture AOE knockup - need pre-emptive repositioning"
     },
     "Warwick": {
       "priority_item": "Mercurial Scimitar",
       "slot_override": 4,
       "trigger": "always",
-      "reason": "Infinite Duress R is unstoppable suppress — QSS required"
+      "reason": "Infinite Duress R is unstoppable suppress - QSS required"
     },
     "Malzahar": {
       "priority_item": "Mercurial Scimitar",
       "slot_override": 4,
       "trigger": "always",
-      "reason": "Nether Grasp R suppress — QSS required"
+      "reason": "Nether Grasp R suppress - QSS required"
     },
     "Skarner": {
       "priority_item": "Mercurial Scimitar",
       "slot_override": 4,
       "trigger": "always",
-      "reason": "Impale R 3.5s suppress — QSS required"
+      "reason": "Impale R 3.5s suppress - QSS required"
     },
     "Mordekaiser": {
       "priority_item": "Mercurial Scimitar",
       "slot_override": 5,
       "trigger": "always",
-      "reason": "Death Realm R isolates you for 7s — QSS escapes early"
+      "reason": "Death Realm R isolates you for 7s - QSS escapes early"
     },
     "Zoe": {
       "priority_item": "Banshee's Veil",
@@ -90,19 +90,19 @@
       "priority_item": "Mortal Reminder",
       "slot_override": 3,
       "trigger": "always",
-      "reason": "Global R heals all allies — must have Grievous by item 3"
+      "reason": "Global R heals all allies - must have Grievous by item 3"
     },
     "Yuumi": {
       "priority_item": "Mortal Reminder",
       "slot_override": 3,
       "trigger": "always",
-      "reason": "Attached healing negates fight damage — Grievous early required"
+      "reason": "Attached healing negates fight damage - Grievous early required"
     },
     "Sona": {
       "priority_item": "Mortal Reminder",
       "slot_override": 3,
       "trigger": "always",
-      "reason": "Passive aura healing + R — Grievous Wounds essential"
+      "reason": "Passive aura healing + R - Grievous Wounds essential"
     },
     "Nami": {
       "priority_item": "Mortal Reminder",
@@ -132,19 +132,19 @@
       "priority_item": "Mortal Reminder",
       "slot_override": 3,
       "trigger": "always",
-      "reason": "R drain-tank restores massive HP — Grievous mandatory"
+      "reason": "R drain-tank restores massive HP - Grievous mandatory"
     },
     "Briar": {
       "priority_item": "Mortal Reminder",
       "slot_override": 3,
       "trigger": "always",
-      "reason": "Passive healing scales with damage dealt — Grievous counters"
+      "reason": "Passive healing scales with damage dealt - Grievous counters"
     },
     "Sylas": {
       "priority_item": "Mortal Reminder",
       "slot_override": 3,
       "trigger": "always",
-      "reason": "W heal is huge in melee range — Grievous Wounds on item 3"
+      "reason": "W heal is huge in melee range - Grievous Wounds on item 3"
     },
     "Dr. Mundo": {
       "priority_item": "Mortal Reminder",
@@ -156,25 +156,25 @@
       "priority_item": "Lord Dominik's Regards",
       "slot_override": 2,
       "trigger": "vs_heavy_tank",
-      "reason": "Thornmail + Armor aura — must have LDR before full build"
+      "reason": "Thornmail + Armor aura - must have LDR before full build"
     },
     "Ornn": {
       "priority_item": "Lord Dominik's Regards",
       "slot_override": 3,
       "trigger": "vs_heavy_tank",
-      "reason": "Brittle proc damage scaled by enemy max HP — LDR synergizes"
+      "reason": "Brittle proc damage scaled by enemy max HP - LDR synergizes"
     },
     "Sion": {
       "priority_item": "Lord Dominik's Regards",
       "slot_override": 3,
       "trigger": "vs_heavy_tank",
-      "reason": "HP stacking tank — armor pen converts auto damage efficiently"
+      "reason": "HP stacking tank - armor pen converts auto damage efficiently"
     },
     "Cho'Gath": {
       "priority_item": "Lord Dominik's Regards",
       "slot_override": 3,
       "trigger": "vs_heavy_tank",
-      "reason": "Stack mechanic scales armor — LDR prioritized over later slots"
+      "reason": "Stack mechanic scales armor - LDR prioritized over later slots"
     },
     "Hecarim": {
       "priority_item": "Immortal Shieldbow",
@@ -192,189 +192,189 @@
       "priority_item": "Immortal Shieldbow",
       "slot_override": 3,
       "trigger": "always",
-      "reason": "Challenge R knockback into isolation — Shieldbow lifeline mandatory"
+      "reason": "Challenge R knockback into isolation - Shieldbow lifeline mandatory"
     },
     "Rengar": {
       "priority_item": "Immortal Shieldbow",
       "slot_override": 2,
       "trigger": "always",
-      "reason": "One-shot from stealth — Shieldbow lifeline saves from burst threshold"
+      "reason": "One-shot from stealth - Shieldbow lifeline saves from burst threshold"
     },
     "Kha'Zix": {
       "priority_item": "Immortal Shieldbow",
       "slot_override": 2,
       "trigger": "always",
-      "reason": "Isolation burst deletes squishy ADC — Shieldbow mandatory"
+      "reason": "Isolation burst deletes squishy ADC - Shieldbow mandatory"
     },
     "Zed": {
       "priority_item": "Immortal Shieldbow",
       "slot_override": 2,
       "trigger": "always",
-      "reason": "Death Mark burst window — Shieldbow prevents the 1-shot threshold"
+      "reason": "Death Mark burst window - Shieldbow prevents the 1-shot threshold"
     },
     "Talon": {
       "priority_item": "Immortal Shieldbow",
       "slot_override": 2,
       "trigger": "always",
-      "reason": "All-in burst combo — Shieldbow lifeline required"
+      "reason": "All-in burst combo - Shieldbow lifeline required"
     },
     "Naafiri": {
       "priority_item": "Immortal Shieldbow",
       "slot_override": 2,
       "trigger": "always",
-      "reason": "Pack + R burst — Shieldbow prevents one-shot; QSS vs strong CC team"
+      "reason": "Pack + R burst - Shieldbow prevents one-shot; QSS vs strong CC team"
     },
     "Nocturne": {
       "priority_item": "Immortal Shieldbow",
       "slot_override": 3,
       "trigger": "always",
-      "reason": "Paranoia R global dark + Unspeakable Horror fear — Shieldbow mandatory"
+      "reason": "Paranoia R global dark + Unspeakable Horror fear - Shieldbow mandatory"
     },
     "Evelynn": {
       "priority_item": "Immortal Shieldbow",
       "slot_override": 2,
       "trigger": "always",
-      "reason": "Last Caress R one-shot from stealth — need HP buffer to survive"
+      "reason": "Last Caress R one-shot from stealth - need HP buffer to survive"
     },
     "Pyke": {
       "priority_item": "Immortal Shieldbow",
       "slot_override": 3,
       "trigger": "always",
-      "reason": "Death from Below R execute at HP thresholds — Shieldbow HP lifts you above"
+      "reason": "Death from Below R execute at HP thresholds - Shieldbow HP lifts you above"
     }
   },
   "adc_lane_matchups": {
     "Draven": {
       "difficulty": 5,
       "lane_style": "survive",
-      "priority_note": "Rushing Axes deal bonus AD damage. Don't trade level 1-2. Respect his all-in at any time — he has no weak window. Play for gank setup only.",
-      "key_mechanic": "Spinning Axes Q — he drops them on stack if you poke him off. Force him to walk away from axes to deny gold."
+      "priority_note": "Rushing Axes deal bonus AD damage. Don't trade level 1-2. Respect his all-in at any time - he has no weak window. Play for gank setup only.",
+      "key_mechanic": "Spinning Axes Q - he drops them on stack if you poke him off. Force him to walk away from axes to deny gold."
     },
     "Caitlyn": {
       "difficulty": 4,
       "lane_style": "survive_or_outrange",
-      "priority_note": "She outranges you on most ADCs. Avoid her traps at all costs — free headshots. Priority: match her wave control and farm safely to items.",
-      "key_mechanic": "Trap W + headshot combo — step on trap = free trade lost. Zone control at objective approaches."
+      "priority_note": "She outranges you on most ADCs. Avoid her traps at all costs - free headshots. Priority: match her wave control and farm safely to items.",
+      "key_mechanic": "Trap W + headshot combo - step on trap = free trade lost. Zone control at objective approaches."
     },
     "Jinx": {
       "difficulty": 3,
       "lane_style": "poke",
-      "priority_note": "Weak pre-6 without passive. Force trades before she gets items. Avoid letting her reach 3 items — passive reset snowball becomes unkillable.",
-      "key_mechanic": "Passive Get Excited! — never leave her with a free reset target nearby. Reset windows are her power spike."
+      "priority_note": "Weak pre-6 without passive. Force trades before she gets items. Avoid letting her reach 3 items - passive reset snowball becomes unkillable.",
+      "key_mechanic": "Passive Get Excited! - never leave her with a free reset target nearby. Reset windows are her power spike."
     },
     "Jhin": {
       "difficulty": 3,
       "lane_style": "dodge",
-      "priority_note": "4th shot crits but is telegraphed. Play unpredictably in lane. He has no mobility — punish with hard engage at 4th shot window.",
-      "key_mechanic": "4th auto + W root — sidestep the W root to deny his combo chain."
+      "priority_note": "4th shot crits but is telegraphed. Play unpredictably in lane. He has no mobility - punish with hard engage at 4th shot window.",
+      "key_mechanic": "4th auto + W root - sidestep the W root to deny his combo chain."
     },
     "Tristana": {
       "difficulty": 4,
       "lane_style": "poke_safely",
-      "priority_note": "Explosive Charge E stacks on you passively — trade when she hasn't stacked E. Deny her tower resets with early all-ins before she hits level 7.",
-      "key_mechanic": "Rocket Jump W reset — if she's fed, assume she will all-in on any kill target. Don't fight unless you can one-shot her."
+      "priority_note": "Explosive Charge E stacks on you passively - trade when she hasn't stacked E. Deny her tower resets with early all-ins before she hits level 7.",
+      "key_mechanic": "Rocket Jump W reset - if she's fed, assume she will all-in on any kill target. Don't fight unless you can one-shot her."
     },
     "Vayne": {
       "difficulty": 2,
       "lane_style": "poke_and_bully",
       "priority_note": "Weak early, strong late. Deny CS early and force her behind in gold. She can't fight back level 1-5. Win lane phase before she scales.",
-      "key_mechanic": "Silver Bolts W — avoid extended 3-hit trades. Trade short, disengage before 3rd stack."
+      "key_mechanic": "Silver Bolts W - avoid extended 3-hit trades. Trade short, disengage before 3rd stack."
     },
     "Miss Fortune": {
       "difficulty": 4,
       "lane_style": "dodge_ult_angle",
-      "priority_note": "E Double Up bounces off minions — never stand behind a low-HP minion. Bullet Time R is the fight ender — disrupt or dodge it at all costs.",
-      "key_mechanic": "Bullet Time R — sidestep or break LoS. Never cluster with allies near her angle."
+      "priority_note": "E Double Up bounces off minions - never stand behind a low-HP minion. Bullet Time R is the fight ender - disrupt or dodge it at all costs.",
+      "key_mechanic": "Bullet Time R - sidestep or break LoS. Never cluster with allies near her angle."
     },
     "Sivir": {
       "difficulty": 3,
       "lane_style": "burst_window",
-      "priority_note": "Spell Shield E blocks one ability — drain it with a low-value ability before committing your CC or kill combo.",
-      "key_mechanic": "Spell Shield E — bait it before engaging. Team movespeed R ult makes her teamfight dangerous."
+      "priority_note": "Spell Shield E blocks one ability - drain it with a low-value ability before committing your CC or kill combo.",
+      "key_mechanic": "Spell Shield E - bait it before engaging. Team movespeed R ult makes her teamfight dangerous."
     },
     "Ezreal": {
       "difficulty": 3,
       "lane_style": "pressure",
-      "priority_note": "Safe but low damage early. Push him off farm with poke — he can't fight without his Q hits stacking. Punish blink E cooldown (18s) windows.",
-      "key_mechanic": "Arcane Shift E — time your engage for when E is on CD. He has no answer for hard engage on E CD."
+      "priority_note": "Safe but low damage early. Push him off farm with poke - he can't fight without his Q hits stacking. Punish blink E cooldown (18s) windows.",
+      "key_mechanic": "Arcane Shift E - time your engage for when E is on CD. He has no answer for hard engage on E CD."
     },
     "Xayah": {
       "difficulty": 3,
       "lane_style": "respect_root",
-      "priority_note": "Feather root range is deceptively long — track her feather placement. Featherstorm R invincibility is her escape — don't waste CC into it.",
-      "key_mechanic": "Bladecaller E root — never walk through feather trail paths. Root from unexpected angles."
+      "priority_note": "Feather root range is deceptively long - track her feather placement. Featherstorm R invincibility is her escape - don't waste CC into it.",
+      "key_mechanic": "Bladecaller E root - never walk through feather trail paths. Root from unexpected angles."
     },
     "Kog'Maw": {
       "difficulty": 2,
       "lane_style": "aggressive_early",
-      "priority_note": "Zero mobility and weak early. Kill him before 2 items. Don't let him reach W Bio-Arcane Barrage range — his DPS becomes unkillable.",
-      "key_mechanic": "Bio-Arcane Barrage W — he scales to insane DPS with items. Aggressive early is mandatory."
+      "priority_note": "Zero mobility and weak early. Kill him before 2 items. Don't let him reach W Bio-Arcane Barrage range - his DPS becomes unkillable.",
+      "key_mechanic": "Bio-Arcane Barrage W - he scales to insane DPS with items. Aggressive early is mandatory."
     },
     "Ashe": {
       "difficulty": 3,
       "lane_style": "sidestep_arrow",
-      "priority_note": "Perma-slow makes her hard to escape once she's ahead. Her ult R Crystal Arrow global stun is a teamfight game-changer — always have escape up.",
-      "key_mechanic": "Crystal Arrow R — can come from off-screen. Keep enough distance that you can dodge it reactively."
+      "priority_note": "Perma-slow makes her hard to escape once she's ahead. Her ult R Crystal Arrow global stun is a teamfight game-changer - always have escape up.",
+      "key_mechanic": "Crystal Arrow R - can come from off-screen. Keep enough distance that you can dodge it reactively."
     },
     "Lucian": {
       "difficulty": 4,
       "lane_style": "avoid_passive_procs",
       "priority_note": "Relentless Pursuit E makes him very mobile. Passive Lightslinger double-shot after each spell means his trades are always +1 free auto. Respect his burst pattern.",
-      "key_mechanic": "Relentless Pursuit E + passive proc — he dashes then immediately double-shots. Dodge the dash direction."
+      "key_mechanic": "Relentless Pursuit E + passive proc - he dashes then immediately double-shots. Dodge the dash direction."
     },
     "Samira": {
       "difficulty": 4,
       "lane_style": "poke_no_engage",
-      "priority_note": "Daredevil Impulse passive parries projectiles in melee range. Don't close into melee range voluntarily. Her Style rank S = R use — deny the style stacks.",
-      "key_mechanic": "Flair E parry — she can block your projectile abilities with E timing. Deny her early stacks."
+      "priority_note": "Daredevil Impulse passive parries projectiles in melee range. Don't close into melee range voluntarily. Her Style rank S = R use - deny the style stacks.",
+      "key_mechanic": "Flair E parry - she can block your projectile abilities with E timing. Deny her early stacks."
     },
     "Nilah": {
       "difficulty": 3,
       "lane_style": "poke_from_range",
-      "priority_note": "Melee range ADC — poke her for free from max range. She can't trade without dashing in. She excels in grouped fights; avoid those.",
-      "key_mechanic": "Jubilant Veil W dash — can leap to tagged allies ignoring terrain. Track her W CD before stepping up."
+      "priority_note": "Melee range ADC - poke her for free from max range. She can't trade without dashing in. She excels in grouped fights; avoid those.",
+      "key_mechanic": "Jubilant Veil W dash - can leap to tagged allies ignoring terrain. Track her W CD before stepping up."
     },
     "Twitch": {
       "difficulty": 3,
       "lane_style": "ward_flanks",
-      "priority_note": "Ambush from Spray and Pray R angle is devastating — always ward river and brush. Weak without stealth setup. Punish his short auto range pre-items.",
-      "key_mechanic": "Rat-Ta-Tat R — ultra-long piercing autos. Stay at perpendicular angles to reduce exposure."
+      "priority_note": "Ambush from Spray and Pray R angle is devastating - always ward river and brush. Weak without stealth setup. Punish his short auto range pre-items.",
+      "key_mechanic": "Rat-Ta-Tat R - ultra-long piercing autos. Stay at perpendicular angles to reduce exposure."
     },
     "Kai'Sa": {
       "difficulty": 4,
       "lane_style": "avoid_evolution_windows",
-      "priority_note": "Her power spike is tied to ability evolutions — she gets dramatically stronger at item thresholds. Watch her evolving — play aggressive before, defensive after.",
-      "key_mechanic": "Killer Instinct R repositioning + passive Plasma stacks — she can close from long range on Plasma'd targets."
+      "priority_note": "Her power spike is tied to ability evolutions - she gets dramatically stronger at item thresholds. Watch her evolving - play aggressive before, defensive after.",
+      "key_mechanic": "Killer Instinct R repositioning + passive Plasma stacks - she can close from long range on Plasma'd targets."
     },
     "Aphelios": {
       "difficulty": 4,
       "lane_style": "track_weapons",
-      "priority_note": "Gravitum + Calibrum combo is his best engage. Track his weapon cycle — Infernum turret at objectives is map control. He's weaker during off-weapon rotations.",
-      "key_mechanic": "Weapon rotation — Infernum AoE + Calibrum long-range snipe are his kill threats. Respect the slow-root combo."
+      "priority_note": "Gravitum + Calibrum combo is his best engage. Track his weapon cycle - Infernum turret at objectives is map control. He's weaker during off-weapon rotations.",
+      "key_mechanic": "Weapon rotation - Infernum AoE + Calibrum long-range snipe are his kill threats. Respect the slow-root combo."
     },
     "Zeri": {
       "difficulty": 3,
       "lane_style": "poke_safely",
-      "priority_note": "Slippery — her E wall-hops make positioning hard. Poke when she's on cooldown. Punish E landing since it has a brief recovery.",
-      "key_mechanic": "Spark Surge (E) wall-hop — she'll hop terrain to escape or flank. Ward brushes beside lane so E angles are predictable."
+      "priority_note": "Slippery - her E wall-hops make positioning hard. Poke when she's on cooldown. Punish E landing since it has a brief recovery.",
+      "key_mechanic": "Spark Surge (E) wall-hop - she'll hop terrain to escape or flank. Ward brushes beside lane so E angles are predictable."
     },
     "Kalista": {
       "difficulty": 4,
       "lane_style": "aggressive_early",
       "priority_note": "Her passive hop makes her very hard to hit. AA-cancel her autos by stepping into her. Force trades when her spear count is low (0-1 stacks).",
-      "key_mechanic": "Rend (E) detonation timing — she waits for 4+ spears before E. If you can move away briefly between her autos, you reduce stack count."
+      "key_mechanic": "Rend (E) detonation timing - she waits for 4+ spears before E. If you can move away briefly between her autos, you reduce stack count."
     },
     "Varus": {
       "difficulty": 3,
       "lane_style": "sidestep_q",
-      "priority_note": "Long charge-up Q is his main poke tool. Sidestep at 0.5s into his Q channel — it's easy to dodge. Punish him after he misses.",
-      "key_mechanic": "Chain of Corruption (R) roots and chains — separate from your support before R lands. Never stand adjacent to your support."
+      "priority_note": "Long charge-up Q is his main poke tool. Sidestep at 0.5s into his Q channel - it's easy to dodge. Punish him after he misses.",
+      "key_mechanic": "Chain of Corruption (R) roots and chains - separate from your support before R lands. Never stand adjacent to your support."
     },
     "Corki": {
       "difficulty": 3,
       "lane_style": "pressure",
-      "priority_note": "Mixed damage — his Q and abilities deal magic damage through armor. Don't build armor early vs Corki; MR is more effective.",
-      "key_mechanic": "The Package (Special Delivery) empowers his next Q for massive damage. He'll recall at 10min and come back loaded — respect it."
+      "priority_note": "Mixed damage - his Q and abilities deal magic damage through armor. Don't build armor early vs Corki; MR is more effective.",
+      "key_mechanic": "The Package (Special Delivery) empowers his next Q for massive damage. He'll recall at 10min and come back loaded - respect it."
     },
     "Senna": {
       "difficulty": 3,
@@ -385,32 +385,32 @@
     "Quinn": {
       "difficulty": 3,
       "lane_style": "respect_blind",
-      "priority_note": "Blinding Assault (Q) stops your autos entirely for 1.5-2.5s — cancel auto attacks immediately when blinded. Poke during her cooldowns.",
-      "key_mechanic": "Behind Enemy Lines (R) can engage from anywhere on map — not just lane. If she leaves, ping your team and track her immediately."
+      "priority_note": "Blinding Assault (Q) stops your autos entirely for 1.5-2.5s - cancel auto attacks immediately when blinded. Poke during her cooldowns.",
+      "key_mechanic": "Behind Enemy Lines (R) can engage from anywhere on map - not just lane. If she leaves, ping your team and track her immediately."
     },
     "Akshan": {
       "difficulty": 3,
       "lane_style": "dodge_w",
-      "priority_note": "W (Going Rogue) marks you if an ally he's marked killed you. Grappleshot (E) hooks terrain for unexpected flanks — ward side brushes.",
-      "key_mechanic": "Comeuppance (R) long-channel damages you at 60% reduced damage while channeling. He can't dodge during R — all-in during his R cast."
+      "priority_note": "W (Going Rogue) marks you if an ally he's marked killed you. Grappleshot (E) hooks terrain for unexpected flanks - ward side brushes.",
+      "key_mechanic": "Comeuppance (R) long-channel damages you at 60% reduced damage while channeling. He can't dodge during R - all-in during his R cast."
     },
     "Smolder": {
       "difficulty": 2,
       "lane_style": "poke_safely",
-      "priority_note": "Q gains stacks permanently — he gets stronger as game goes. Weak early (Q has 525 range). Punish him pre-50 stacks before Q upgrades.",
-      "key_mechanic": "At 225 Q stacks: execute on Q, heals on kill, bounces to adjacent enemies. Track his stack count — he becomes a different champion."
+      "priority_note": "Q gains stacks permanently - he gets stronger as game goes. Weak early (Q has 525 range). Punish him pre-50 stacks before Q upgrades.",
+      "key_mechanic": "At 225 Q stacks: execute on Q, heals on kill, bounces to adjacent enemies. Track his stack count - he becomes a different champion."
     },
     "Zed": {
       "difficulty": 5,
       "lane_style": "survive",
-      "priority_note": "Assassin bot — he'll ult you as ADC. Buy ISB second item always. Death Mark R marks you — Galeforce away BEFORE mark detonates.",
+      "priority_note": "Assassin bot - he'll ult you as ADC. Buy ISB second item always. Death Mark R marks you - Galeforce away BEFORE mark detonates.",
       "key_mechanic": "Death Mark detonation window is 3s after R lands. Use Galeforce dash or QSS immediately when marked."
     },
     "Yasuo": {
       "difficulty": 4,
       "lane_style": "sidestep_q",
-      "priority_note": "Double crit passive means he crits reliably at 2 crit items. Never stand in line with minions — Q tornado goes through them.",
-      "key_mechanic": "Wind Wall (W) blocks all projectiles for 4s — he'll Wall your full combo. Wait for Wall to expire before using skill shots."
+      "priority_note": "Double crit passive means he crits reliably at 2 crit items. Never stand in line with minions - Q tornado goes through them.",
+      "key_mechanic": "Wind Wall (W) blocks all projectiles for 4s - he'll Wall your full combo. Wait for Wall to expire before using skill shots."
     }
   }
 }

@@ -1,6 +1,6 @@
 """Coach-facing read API for Agent 4's adaptation aggregates.
 
-Opt-in helper — existing coaches stay unchanged unless they explicitly
+Opt-in helper - existing coaches stay unchanged unless they explicitly
 import this module. That preserves the "coach Python is propose-and-
 queue" charter rule: wiring this into ``_base_coach.py`` or any
 mode-specific coach is a future proposal, not this round's work.
@@ -16,7 +16,7 @@ Typical use:
     #   "(strongest counter of active matchups)."
 
 Contracts:
-  * Never raises in the happy path — missing DB, missing bucket, missing
+  * Never raises in the happy path - missing DB, missing bucket, missing
     matchup all return empty / None. Coaches call this from a hot path
     and can't tolerate exceptions.
   * Read-only. Agent 4 owns the writes.
@@ -195,7 +195,7 @@ def format_hint_line(
 ) -> str:
     """One-liner suitable for inlining into a coach prompt.
 
-    Returns ``""`` (empty string) when there's nothing useful to say —
+    Returns ``""`` (empty string) when there's nothing useful to say -
     so the coach can safely concatenate without conditionals.
     """
     data = for_champion(champion, mode)
@@ -223,7 +223,7 @@ def format_hint_line(
             f"(n={r30.get('games')})"
         )
 
-    # Typical KDA — survivability signal, independent of win/loss so it
+    # Typical KDA - survivability signal, independent of win/loss so it
     # lights up even before the first live reconcile.
     kda = data.get("avg_kda")
     if kda and kda.get("sample", 0) >= 5:
@@ -250,7 +250,7 @@ def format_hint_line(
             continue
         sign = "+" if c["delta"] >= 0 else ""
         seg = f"vs {c['opponent']} {sign}{c['delta']*100:.0f}% (n={c['sample']})"
-        # Matchup KDA delta — only surface if meaningful (|Δ| ≥ 0.3).
+        # Matchup KDA delta - only surface if meaningful (|Δ| ≥ 0.3).
         if "kda_delta" in c and abs(c["kda_delta"]) >= 0.3:
             ksign = "+" if c["kda_delta"] >= 0 else ""
             seg += f" KDA {c['kda_ratio']} ({ksign}{c['kda_delta']})"
@@ -261,7 +261,7 @@ def format_hint_line(
     if flagged:
         parts.append("active matchups: " + ", ".join(flagged))
 
-    # First-legendary signal (most actionable — tells the coach "rush X")
+    # First-legendary signal (most actionable - tells the coach "rush X")
     first_leg = data.get("first_legendary") or []
     if first_leg:
         fl_parts = []
@@ -273,7 +273,7 @@ def format_hint_line(
             )
         parts.append("first-leg signal: " + "; ".join(fl_parts))
 
-    # Generic item-outcome signals (any pickup) — lower priority, smaller list
+    # Generic item-outcome signals (any pickup) - lower priority, smaller list
     items = data.get("top_items") or []
     item_parts = []
     for it in items[:2]:
@@ -294,14 +294,14 @@ def insight_card(
     enemies: Iterable[str] | None = None,
     max_chars: int = 240,
 ) -> str:
-    """Compact copy-to-clipboard summary — one line, bounded.
+    """Compact copy-to-clipboard summary - one line, bounded.
 
     Returns "" when no champion data. Format:
       "Tristana ARAM 72% wr (n=61) ↑ · rush Statikk Shiv (+19%) ·
        vs Morgana -52% (n=5)"
 
     Always ends after cutting at a ``·`` boundary so the card never
-    ends mid-phrase. ``max_chars`` defaults to 240 — long enough for
+    ends mid-phrase. ``max_chars`` defaults to 240 - long enough for
     two lines on iPad, short enough for a Discord paste.
     """
     data = for_champion(champion, mode)
@@ -318,7 +318,7 @@ def insight_card(
         head += f" {arrow}30d {r30.get('win_rate',0)*100:.0f}%"
     segs.append(head)
 
-    # KDA segment — only if we have enough sample to be meaningful.
+    # KDA segment - only if we have enough sample to be meaningful.
     kda = data.get("avg_kda")
     if kda and kda.get("sample", 0) >= 5:
         kseg = f"KDA {kda['ratio']}"
@@ -339,7 +339,7 @@ def insight_card(
         verb = "rush" if it.get("delta", 0) > 0 else "avoid"
         segs.append(f"{verb} {name} ({sign}{it['delta']*100:.0f}%)")
 
-    # Top items — one mention if space
+    # Top items - one mention if space
     items = data.get("top_items") or []
     if items and len(first_leg) < 2:
         it = items[0]
@@ -413,7 +413,7 @@ def top_champions(mode: str, n: int = 10, min_games: int = 20) -> list[dict]:
 def kda_trends(mode: str, n: int = 3, min_sample: int = 5) -> dict:
     """Identify champions on KDA streaks (hot or cold) in ``mode``.
 
-    Uses ``recent_kda.delta_ratio`` — positive means the last-N window
+    Uses ``recent_kda.delta_ratio`` - positive means the last-N window
     is outperforming the all-time baseline, negative means the player
     is underperforming on that champion recently.
 
@@ -463,7 +463,7 @@ def kda_trends(mode: str, n: int = 3, min_sample: int = 5) -> dict:
 
 
 def _start_of_today_iso() -> str:
-    """Local midnight, ISO-8601 with tz — used as default ``since`` for
+    """Local midnight, ISO-8601 with tz - used as default ``since`` for
     session_summary."""
     from datetime import datetime, timezone
     now = datetime.now().astimezone()
@@ -684,7 +684,7 @@ def time_of_day_analysis(
 
     ``mode`` restricts to a single mode DB; ``None`` sums across all.
     ``since_iso`` clamps history (default: all time).
-    ``min_games`` controls what counts as an insight-worthy bucket —
+    ``min_games`` controls what counts as an insight-worthy bucket -
     buckets below threshold are still returned but flagged
     ``insight=False`` so callers can filter cheaply.
 
@@ -742,7 +742,7 @@ def time_of_day_analysis(
                         dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
                     except ValueError:
                         continue
-                    # Convert to local time — rewind history is UTC; the
+                    # Convert to local time - rewind history is UTC; the
                     # user cares what wall-clock hour they played at.
                     hour = dt.astimezone().hour
                     b = buckets[hour]
@@ -803,7 +803,7 @@ def time_of_day_analysis(
 _WEEKDAY_NAMES = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
 # Duration tiers in seconds. Tuned to LoL ARAM (fast) + SR (slower)
-# combined — short (<15) captures stomps / surrenders, long (35+)
+# combined - short (<15) captures stomps / surrenders, long (35+)
 # captures scaling-dependent outcomes.
 _DURATION_TIERS = (
     ("stomp",    0,    15 * 60),
@@ -1039,7 +1039,7 @@ def coaching_digest(
     top_n: int = 5,
 ) -> dict:
     """Assemble a ranked list of actionable insights across all
-    analysis dimensions — kda streaks, time-of-day, day-of-week,
+    analysis dimensions - kda streaks, time-of-day, day-of-week,
     and game duration. Produces one-endpoint "what should I focus
     on?" output for dashboards, Discord pastes, and the CLI.
 
@@ -1227,7 +1227,7 @@ def _format_session_text(data: dict) -> str:
         lines.append("(no games)")
         return "\n".join(lines)
     wr = data["win_rate"]
-    wr_str = f"{wr*100:.0f}%" if wr is not None else "—"
+    wr_str = f"{wr*100:.0f}%" if wr is not None else "-"
     lines.append(
         f"{data['games']} games · {data['wins']}W-{data['losses']}L · wr {wr_str}"
     )
@@ -1236,7 +1236,7 @@ def _format_session_text(data: dict) -> str:
         lines.append(
             f"avg KDA {k['ratio']} ({k['k']}/{k['d']}/{k['a']}, n={k['sample']})"
         )
-    lines.append("— by mode —")
+    lines.append("- by mode -")
     for mode, slot in data["per_mode"].items():
         if not slot["games"]:
             continue
@@ -1246,10 +1246,10 @@ def _format_session_text(data: dict) -> str:
             f"  {mode:<10} {slot['games']}g · {slot['wins']}W-{slot['losses']}L{kseg}"
         )
     if data["champions"]:
-        lines.append("— champions —")
+        lines.append("- champions -")
         for c in data["champions"]:
             wr = c.get("win_rate")
-            wr_str = f"{wr*100:.0f}%" if wr is not None else "—"
+            wr_str = f"{wr*100:.0f}%" if wr is not None else "-"
             kr = c.get("kda_ratio")
             kseg = f" KDA {kr}" if kr is not None else ""
             lines.append(
@@ -1278,7 +1278,7 @@ def _format_digest_text(data: dict) -> str:
         f"=== Coaching digest ({data['mode']}, {data['count']} insights) ==="
     ]
     if not data["insights"]:
-        lines.append("(no actionable insights yet — play more games)")
+        lines.append("(no actionable insights yet - play more games)")
         return "\n".join(lines)
     for ins in data["insights"]:
         tag = _severity_tag(ins["severity"])
@@ -1303,9 +1303,9 @@ def _format_duration_text(data: dict) -> str:
         if not b["games"]:
             continue
         wr = b["win_rate"]
-        wr_str = f"{wr*100:>3.0f}%" if wr is not None else "  — "
+        wr_str = f"{wr*100:>3.0f}%" if wr is not None else "  - "
         kda = b["kda_ratio"]
-        kda_str = f"{kda:>4.2f}" if kda is not None else "  —"
+        kda_str = f"{kda:>4.2f}" if kda is not None else "  -"
         flag = "*" if b["insight"] else " "
         lines.append(
             f"  {b['tier']:<8}{flag}  {b['games']:>4}   "
@@ -1336,9 +1336,9 @@ def _format_day_of_week_text(data: dict) -> str:
         if not b["games"]:
             continue
         wr = b["win_rate"]
-        wr_str = f"{wr*100:>3.0f}%" if wr is not None else "  — "
+        wr_str = f"{wr*100:>3.0f}%" if wr is not None else "  - "
         kda = b["kda_ratio"]
-        kda_str = f"{kda:>4.2f}" if kda is not None else "  —"
+        kda_str = f"{kda:>4.2f}" if kda is not None else "  -"
         flag = "*" if b["insight"] else " "
         lines.append(
             f"  {b['name']}{flag}  {b['games']:>4}   "
@@ -1369,9 +1369,9 @@ def _format_time_of_day_text(data: dict) -> str:
         if not b["games"]:
             continue
         wr = b["win_rate"]
-        wr_str = f"{wr*100:>3.0f}%" if wr is not None else "  — "
+        wr_str = f"{wr*100:>3.0f}%" if wr is not None else "  - "
         kda = b["kda_ratio"]
-        kda_str = f"{kda:>4.2f}" if kda is not None else "  —"
+        kda_str = f"{kda:>4.2f}" if kda is not None else "  -"
         flag = "*" if b["insight"] else " "
         lines.append(
             f"  {b['hour']:02d}{flag}  {b['games']:>4}   "
@@ -1408,7 +1408,7 @@ def _format_games_text(rows: list[dict], since_spec: str = "today") -> str:
             if kda else "   -   "
         )
         ratio = r.get("kda_ratio")
-        ratio_str = f"KDA {ratio:>4.2f}" if ratio is not None else "KDA  —  "
+        ratio_str = f"KDA {ratio:>4.2f}" if ratio is not None else "KDA  -  "
         dur = r.get("duration_sec") or 0
         dur_str = f"{dur // 60:>2}:{dur % 60:02d}" if dur else "  :  "
         lines.append(
@@ -1419,7 +1419,7 @@ def _format_games_text(rows: list[dict], since_spec: str = "today") -> str:
 
 
 def _format_trends_text(data: dict) -> str:
-    """Human-readable version of kda_trends() output — for --trends."""
+    """Human-readable version of kda_trends() output - for --trends."""
     lines = [f"=== {data.get('mode', '?').upper()} KDA streaks (last 10) ==="]
     hot = data.get("hot") or []
     cold = data.get("cold") or []
@@ -1444,7 +1444,7 @@ def _format_trends_text(data: dict) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """CLI entry point — see ``python -m coaches.adaptation_hint --help``."""
+    """CLI entry point - see ``python -m coaches.adaptation_hint --help``."""
     import argparse
     p = argparse.ArgumentParser(
         description="Query Agent 4's adaptation aggregates from the terminal."

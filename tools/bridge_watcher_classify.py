@@ -1,11 +1,11 @@
-"""bridge_watcher_classify.py — pure classification for bridge envelopes.
+"""bridge_watcher_classify.py - pure classification for bridge envelopes.
 
 Phase 0 + Phase 2 per BRIDGE_WATCHER_PLAN.md §5:
   - escalate   : operator should drain via /process-bridge-tasks
   - ack-only   : log it, do nothing else
   - reject     : malformed; drop with reason
-  - auto-read  : safe read-only auto-action (Phase 2 — Read/Grep/Glob)
-  - auto-ops   : whitelisted ops auto-action (Phase 2 — Read/Grep/Glob/Bash)
+  - auto-read  : safe read-only auto-action (Phase 2 - Read/Grep/Glob)
+  - auto-ops   : whitelisted ops auto-action (Phase 2 - Read/Grep/Glob/Bash)
 
 Auto-* classifications are returned only when:
   - kind=task or kind=ask
@@ -13,7 +13,7 @@ Auto-* classifications are returned only when:
   - prompt does NOT trip the frozen-file intent gate
   - prompt matches a config-defined auto_read_pattern OR auto_ops_verb
 
-Pure functions only — no I/O, no state. Easy to unit-test.
+Pure functions only - no I/O, no state. Easy to unit-test.
 """
 from __future__ import annotations
 
@@ -52,16 +52,16 @@ def classify(envelope: dict, *, node: str,
     `node` is this machine's bridge label: 'legion', 'gamepc', or 'peer'.
     `node_config` is the per-node block from bridge_watcher_config.json
        (auto_read_patterns, auto_ops_verbs, escalate_always, etc.)
-    `auto_action_enabled` — when False (default), never returns auto-* lanes
+    `auto_action_enabled` - when False (default), never returns auto-* lanes
        even if patterns match. Phase 2 ships disabled-by-default; operator
        opts in via watcher --enable-auto-action flag.
 
     Classifications:
-      "escalate"  — operator should action via /process-bridge-tasks
-      "ack-only"  — log only, no operator surface
-      "reject"    — malformed; drop, do not escalate
-      "auto-read" — Phase 2: safe read-only auto-action (Read/Grep/Glob)
-      "auto-ops"  — Phase 2: whitelisted ops (Bash with restricted regex)
+      "escalate"  - operator should action via /process-bridge-tasks
+      "ack-only"  - log only, no operator surface
+      "reject"    - malformed; drop, do not escalate
+      "auto-read" - Phase 2: safe read-only auto-action (Read/Grep/Glob)
+      "auto-ops"  - Phase 2: whitelisted ops (Bash with restricted regex)
     """
     if not isinstance(envelope, dict):
         return ("reject", "envelope is not a dict")
@@ -84,24 +84,24 @@ def classify(envelope: dict, *, node: str,
     if kind == "ask":
         if not _is_targeted_at(envelope, node):
             return ("ack-only", "kind=ask but not targeted at this node")
-        # ask is interactive by nature — don't auto-action even if pattern matches
-        return ("escalate", "kind=ask targeted at this node — operator response needed")
+        # ask is interactive by nature - don't auto-action even if pattern matches
+        return ("escalate", "kind=ask targeted at this node - operator response needed")
 
     if kind == "result":
         body = envelope.get("body") or {}
         exit_code = body.get("exit_code") if isinstance(body, dict) else None
         if isinstance(exit_code, int) and exit_code != 0:
-            return ("escalate", f"kind=result with exit_code={exit_code} — failure surfacing")
-        return ("ack-only", "kind=result success — log only")
+            return ("escalate", f"kind=result with exit_code={exit_code} - failure surfacing")
+        return ("ack-only", "kind=result success - log only")
 
     if kind == "note":
-        return ("ack-only", "kind=note — log only, context-carrying")
+        return ("ack-only", "kind=note - log only, context-carrying")
 
     if kind == "ack":
-        return ("ack-only", "kind=ack — log only, lifecycle close")
+        return ("ack-only", "kind=ack - log only, lifecycle close")
 
     # Unknown kinds are conservative: escalate so operator sees them.
-    return ("escalate", f"unknown kind={kind!r} — escalate by default")
+    return ("escalate", f"unknown kind={kind!r} - escalate by default")
 
 
 # ── Phase 2 helpers ─────────────────────────────────────────────────────
@@ -118,7 +118,7 @@ _INTENT_PROXIMITY = 80
 def _has_frozen_intent(prompt: str, frozen_files: list) -> Optional[str]:
     """Return reason string if prompt suggests writing a frozen file, else None.
 
-    Same logic as bridge_watcher_actions._has_frozen_intent — duplicated here
+    Same logic as bridge_watcher_actions._has_frozen_intent - duplicated here
     to keep classifier import-free of the actions module (which imports
     subprocess / claude binary / etc.). Tested in actions module's _test().
     """
@@ -167,7 +167,7 @@ def _classify_actionable(envelope: dict, node_config: Optional[dict],
         prompt = str(body.get("prompt") or "")
 
     # Frozen-file intent gate ALWAYS runs, even when auto-action disabled.
-    # If hit, escalate with the reason — never auto-action.
+    # If hit, escalate with the reason - never auto-action.
     if node_config:
         frozen = node_config.get("escalate_always") or []
         intent_hit = _has_frozen_intent(prompt, frozen)
@@ -175,7 +175,7 @@ def _classify_actionable(envelope: dict, node_config: Optional[dict],
             return ("escalate", intent_hit)
 
     if not auto_action_enabled or not node_config:
-        return ("escalate", f"{fallback_reason} targeted at this node — operator action needed (auto-action disabled)")
+        return ("escalate", f"{fallback_reason} targeted at this node - operator action needed (auto-action disabled)")
 
     # Try auto-read patterns first (cheaper, safer)
     read_pat = _matches_pattern(prompt, node_config.get("auto_read_patterns") or [])
@@ -187,14 +187,14 @@ def _classify_actionable(envelope: dict, node_config: Optional[dict],
     if ops_verb:
         return ("auto-ops", f"matches auto_ops_verb: {ops_verb!r}")
 
-    return ("escalate", f"{fallback_reason} — no auto-action pattern match")
+    return ("escalate", f"{fallback_reason} - no auto-action pattern match")
 
 
 # ── Self-test (run via: py tools/bridge_watcher_classify.py) ──────────
 
 
 def _test() -> None:
-    # Phase 0 cases — auto-action disabled
+    # Phase 0 cases - auto-action disabled
     cases = [
         # (envelope, node, kwargs, expected_class)
         ({"source": "legion", "kind": "note"}, "legion", {}, "ack-only"),
@@ -209,7 +209,7 @@ def _test() -> None:
         ({"source": "peer", "kind": "task", "id": "t-3", "target": "rc"}, "legion", {}, "escalate"),
         (None, "legion", {}, "reject"),
     ]
-    # Phase 2 cases — auto-action enabled, node_config wired
+    # Phase 2 cases - auto-action enabled, node_config wired
     legion_cfg = {
         "auto_read_patterns": ["tail .* log", "show .* state"],
         "auto_ops_verbs":     ["restart RC"],

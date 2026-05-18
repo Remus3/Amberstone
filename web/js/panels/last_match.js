@@ -11,7 +11,7 @@
  *                    gold, gold_per_min, kp_pct, ds_picks: [...]},
  *     history_count, quick_review: {right, wrong_team, my_chronic}
  *   }
- * Each Quick Review item is {text, why} — `why` becomes the data-tt-html
+ * Each Quick Review item is {text, why} - `why` becomes the data-tt-html
  * tooltip on hover so the analysis stays explainable.
  *
  * Champion deep-link: clicking the champion name stashes the champion to
@@ -24,13 +24,13 @@
  */
 
 // CHAMPS.byId is async-hydrated from /data/champions_index.json by
-// the items_index.js loader. Until that fetch resolves, byId is {} —
+// the items_index.js loader. Until that fetch resolves, byId is {} -
 // the team-comp row renderer falls back to a numeric id label so it
 // stays informative rather than blank. ITEMS.version drives item
 // icon paths so we stay current with the patch.
 import { CHAMPS, ITEMS } from '../lib/items_index.js';
 // Item C (s220): rich DDragon item tooltips via the shared app-wide
-// data-tt-html plumbing — same lib champ_select.js uses (s213).
+// data-tt-html plumbing - same lib champ_select.js uses (s213).
 import { itemTooltipHtml, preloadLolDescriptions } from '../lib/lol_descriptions.js';
 
 // Numeric summoner-spell id → DDragon filename. Covers SR + ARAM common
@@ -68,7 +68,7 @@ function _ddragonVersion() {
 // /data/ddragon/<ver>/img/item/ mirror sometimes lags the live patch
 // (e.g. ITEMS.version=16.10.1 but on-disk dir is 16.8.1).
 function _onErrCdnFallback(ver, kind, id) {
-  // kind = "item" | "spell" — only used to build the CDN url
+  // kind = "item" | "spell" - only used to build the CDN url
   const cdnUrl = `https://ddragon.leagueoflegends.com/cdn/${ver}/img/${kind}/${id}.png`;
   return (
     `if(this.dataset.cdn){this.style.visibility='hidden';}` +
@@ -113,7 +113,7 @@ let _wired = false;
 let _lastData = null;
 
 // s219 v6: rank-tier comparison sample averages per game mode.
-// Hand-curated placeholder data — backend aggregates from
+// Hand-curated placeholder data - backend aggregates from
 // rewind_history.db are a future settings page follow-up. Keys are
 // the dropdown values; values are {mode: {cs, cs_per_min, kda, kp,
 // damage, tanked, vision, healing}} expressing what an "average
@@ -143,14 +143,14 @@ const _RANK_TIER_AVERAGES = {
 };
 const _RANK_LS_KEY = "rc-pgr-rank-tier";
 
-/** One-time DOM wiring — click handlers, etc. Idempotent. */
+/** One-time DOM wiring - click handlers, etc. Idempotent. */
 export function wireLastMatchOnce() {
   if (_wired) return;
   _wired = true;
 
   // Item C (s220): warm the DDragon item/rune description cache on
   // first mount so the first Comp-tab render already has tooltips.
-  // Idempotent — no-op once the cache is ready.
+  // Idempotent - no-op once the cache is ready.
   preloadLolDescriptions();
 
   const champEl = document.getElementById("lm-champion-name");
@@ -265,7 +265,7 @@ function renderLastMatch(data) {
 
   _setHero(m, enriched);
   _setStatsGrid(m, enriched);
-  // s219 v3: _setDsPicks + _setEnrichedBuild dropped — operator removed
+  // s219 v3: _setDsPicks + _setEnrichedBuild dropped - operator removed
   // the BUILD section entirely. Final inventory + summoner spells now
   // live in the Team Composition card (operator's own row); DS picks
   // belong on champ-select + active-match, not post-game.
@@ -309,7 +309,7 @@ function _renderRankCompare(tier) {
   const set = (vals) => {
     Object.keys(cells).forEach((id) => {
       const el = document.getElementById(id);
-      if (el) el.textContent = vals[id] != null ? vals[id] : "—";
+      if (el) el.textContent = vals[id] != null ? vals[id] : "-";
     });
   };
 
@@ -343,7 +343,7 @@ function _setMeta(m, historyCount, _enriched) {
   // SQL clause; once Settings ships a knob it'll propagate here).
   const meta = document.getElementById("lm-meta");
   if (!meta) return;
-  const parts = [m.mode || "—", _fmtAgo(m.timestamp)];
+  const parts = [m.mode || "-", _fmtAgo(m.timestamp)];
   if (typeof historyCount === "number" && historyCount > 0) {
     parts.push(`baseline · ${historyCount} prior games`);
   }
@@ -370,21 +370,21 @@ function _setHero(m, enriched) {
     champEl.textContent = champion;
     champEl.dataset.champion = champion;
   }
-  if (modeTag) modeTag.textContent = m.mode || "—";
-  if (kdaText) kdaText.textContent = m.kda_str || "—/—/—";
+  if (modeTag) modeTag.textContent = m.mode || "-";
+  if (kdaText) kdaText.textContent = m.kda_str || "-/-/-";
   if (kdaRatio) {
     const r = m.kda_ratio;
-    kdaRatio.textContent = (typeof r === "number") ? `${r.toFixed(2)} KDA` : "—";
+    kdaRatio.textContent = (typeof r === "number") ? `${r.toFixed(2)} KDA` : "-";
   }
-  const g = (m.grade || "—").toUpperCase().trim();
+  const g = (m.grade || "-").toUpperCase().trim();
   if (grade) {
-    grade.textContent = g || "—";
-    grade.dataset.grade = (g && g !== "—") ? g : "";
+    grade.textContent = g || "-";
+    grade.dataset.grade = (g && g !== "-") ? g : "";
   }
   if (heroBox) {
-    heroBox.dataset.grade = (g && g !== "—") ? g : "";
+    heroBox.dataset.grade = (g && g !== "-") ? g : "";
   }
-  // W/L badge — only shown when LCU enrichment is in. Arena (CHERRY)
+  // W/L badge - only shown when LCU enrichment is in. Arena (CHERRY)
   // has 4 sub-teams and `win` semantics differ; suppress there until
   // we model subteam_placement.
   if (result) {
@@ -495,15 +495,15 @@ function _setTeamComp(enriched) {
   const metaFor = (r) =>
     ((r.team_id === myTeamId ? allyMeta : enemyMeta)[r.participant_id])
     || { badge: "", rank: 0, score: 0 };
-  allyList.innerHTML  = ally.map((r)  => _renderTcRow(r, metaFor(r))).join("")  || `<li class="lm-tc-empty">—</li>`;
-  enemyList.innerHTML = enemy.map((r) => _renderTcRow(r, metaFor(r))).join("") || `<li class="lm-tc-empty">—</li>`;
+  allyList.innerHTML  = ally.map((r)  => _renderTcRow(r, metaFor(r))).join("")  || `<li class="lm-tc-empty">-</li>`;
+  enemyList.innerHTML = enemy.map((r) => _renderTcRow(r, metaFor(r))).join("") || `<li class="lm-tc-empty">-</li>`;
 
   const myWin = teamWin[myTeamId];
   if (myWin != null && allyResult) {
     allyResult.textContent = myWin ? "VICTORY" : "DEFEAT";
     allyResult.dataset.result = myWin ? "win" : "loss";
   } else if (allyResult) {
-    allyResult.textContent = "—"; allyResult.dataset.result = "";
+    allyResult.textContent = "-"; allyResult.dataset.result = "";
   }
   const enemyTeamId = enemy.length ? enemy[0].team_id : null;
   const enemyWin = enemyTeamId != null ? teamWin[enemyTeamId] : null;
@@ -511,7 +511,7 @@ function _setTeamComp(enriched) {
     enemyResult.textContent = enemyWin ? "VICTORY" : "DEFEAT";
     enemyResult.dataset.result = enemyWin ? "win" : "loss";
   } else if (enemyResult) {
-    enemyResult.textContent = "—"; enemyResult.dataset.result = "";
+    enemyResult.textContent = "-"; enemyResult.dataset.result = "";
   }
 }
 
@@ -519,7 +519,7 @@ function _renderTcRow(r, sm) {
   // Resolve championId → name via CHAMPS.byId (async-hydrated by items_index.js)
   const slug = (CHAMPS && CHAMPS.byId && CHAMPS.byId[String(r.champion_id)]) || "";
   const portrait = slug ? `/icons/champions/${slug}.png` : "";
-  const name = _escHtml(r.game_name || "—");
+  const name = _escHtml(r.game_name || "-");
   const tag = r.tag_line ? `<span class="lm-tc-tag">#${_escHtml(r.tag_line)}</span>` : "";
   const meRow = r.is_me ? " lm-tc-row-me" : "";
   const kda = `${r.kills}/${r.deaths}/${r.assists}`;
@@ -539,8 +539,8 @@ function _renderTcRow(r, sm) {
   const m = sm || { badge: "", rank: 0, score: 0 };
   const sVal = (typeof m.score === "number") ? m.score.toFixed(1) : "0.0";
   const scoreCell = m.badge
-    ? `<span class="lm-tc-score" data-kind="${m.badge.toLowerCase()}" data-tt="${m.badge === "MVP" ? "MVP — best on the winning side" : "SVP — best on the losing side"} (overall score ${sVal}/100)">${m.badge}</span>`
-    : `<span class="lm-tc-score" data-kind="rank" data-tt="Lobby rank by overall score ${sVal}/100 — blend of KDA, damage, gold, CS, vision, tanked">#${m.rank || "—"}</span>`;
+    ? `<span class="lm-tc-score" data-kind="${m.badge.toLowerCase()}" data-tt="${m.badge === "MVP" ? "MVP - best on the winning side" : "SVP - best on the losing side"} (overall score ${sVal}/100)">${m.badge}</span>`
+    : `<span class="lm-tc-score" data-kind="rank" data-tt="Lobby rank by overall score ${sVal}/100 - blend of KDA, damage, gold, CS, vision, tanked">#${m.rank || "-"}</span>`;
   // s220 (#H): champ level shows just the number (no "L" prefix).
   // s220 (#F): summoner spells now sit before CS (swapped).
   return `<li class="lm-tc-row${meRow}" data-team="${r.team_id}">
@@ -560,7 +560,7 @@ function _renderTcRow(r, sm) {
 // Transparent heuristic (surfaced in each row's hover tooltip): a
 // weighted blend of KDA, damage to champs, gold, CS, vision, and
 // damage tanked, each normalized to the lobby max so it's comparable
-// across roles + modes. Not Riot's MVP formula (proprietary) — a
+// across roles + modes. Not Riot's MVP formula (proprietary) - a
 // defensible proxy from the roster fields we already ship.
 function _rosterScores(roster) {
   const rows = roster || [];
@@ -594,7 +594,7 @@ function _rosterScores(roster) {
 }
 
 function _setStatsGrid(m, enriched) {
-  // s219 v6: section 2 of hero — 2 rows × 4 cols. Row 1: Vision / CS /
+  // s219 v6: section 2 of hero - 2 rows × 4 cols. Row 1: Vision / CS /
   // Tanked. Row 2: KP% / Damage / CS/min / Heal+Shield.
   const cs       = document.getElementById("lm-cs");
   const cspm     = document.getElementById("lm-cs-per-min");
@@ -604,26 +604,26 @@ function _setStatsGrid(m, enriched) {
   const damage   = document.getElementById("lm-damage");
   const healing  = document.getElementById("lm-healing");
 
-  if (cs)   cs.textContent   = (m.cs != null && m.cs > 0) ? String(m.cs) : "—";
+  if (cs)   cs.textContent   = (m.cs != null && m.cs > 0) ? String(m.cs) : "-";
   if (cspm) cspm.textContent = (typeof m.cs_per_min === "number")
-                                ? m.cs_per_min.toFixed(1) : "—";
+                                ? m.cs_per_min.toFixed(1) : "-";
   if (kp)   kp.textContent   = (typeof m.kp_pct === "number")
-                                ? `${Math.round(m.kp_pct)}%` : "—";
+                                ? `${Math.round(m.kp_pct)}%` : "-";
 
-  // Enriched-only stats — Vision / Damage / Tanked / Heal+Shield.
+  // Enriched-only stats - Vision / Damage / Tanked / Heal+Shield.
   const e   = enriched || {};
   const dmg = e.damage  || {};
   const sup = e.support || {};
   const vs  = e.vision  || {};
 
-  if (vision)  vision.textContent  = (vs.score != null) ? String(vs.score) : "—";
+  if (vision)  vision.textContent  = (vs.score != null) ? String(vs.score) : "-";
   if (tankDmg) tankDmg.textContent = (dmg.taken)
-                                      ? _fmtThousands(dmg.taken) : "—";
+                                      ? _fmtThousands(dmg.taken) : "-";
   if (damage)  damage.textContent  = (dmg.dealt_to_champs)
-                                      ? _fmtThousands(dmg.dealt_to_champs) : "—";
+                                      ? _fmtThousands(dmg.dealt_to_champs) : "-";
   if (healing) {
     const hs = sup.heal_plus_shield || 0;
-    healing.textContent = hs > 0 ? _fmtThousands(hs) : "—";
+    healing.textContent = hs > 0 ? _fmtThousands(hs) : "-";
   }
 }
 
@@ -652,7 +652,7 @@ function _setDsPicks(picks) {
   root.innerHTML = html;
 }
 
-// s219 v5: Chart tab — team-aggregate ally vs enemy bars.
+// s219 v5: Chart tab - team-aggregate ally vs enemy bars.
 // Derived from enriched.roster (per-player KDA/damage/gold/vision)
 // + enriched.teams (tower/dragon/baron/inhibitor kills). Each row is
 // a pair of bars normalized to the larger value so the visual diff
@@ -731,7 +731,7 @@ function _fmtThousands(n) {
   return String(v);
 }
 
-// s220 Item E (phase 1): Timeline tab — per-minute gold/XP/CS
+// s220 Item E (phase 1): Timeline tab - per-minute gold/XP/CS
 // differential sparklines + an objective-event ribbon. Diffs are
 // ally − enemy (positive = operator's team ahead). Data comes from
 // enriched.timeline (dashboard.builders._enrich_timeline_from_lcu);
@@ -867,18 +867,18 @@ function _setEmptyState(errMsg) {
   const meta = document.getElementById("lm-meta");
   if (meta) {
     meta.textContent = errMsg
-      ? `no match data — ${errMsg}`
+      ? `no match data - ${errMsg}`
       : "no matches captured yet";
   }
   const champEl = document.getElementById("lm-champion-name");
-  if (champEl) { champEl.textContent = "—"; champEl.dataset.champion = ""; }
+  if (champEl) { champEl.textContent = "-"; champEl.dataset.champion = ""; }
   ["lm-mode-tag","lm-kda-text","lm-kda-ratio","lm-grade-badge",
    "lm-cs","lm-cs-per-min","lm-kp",
    "lm-vision","lm-tank-dmg","lm-damage","lm-healing",
    "lm-rank-kda","lm-rank-vision","lm-rank-cs","lm-rank-tank",
    "lm-rank-kp","lm-rank-damage","lm-rank-cspm","lm-rank-heal"].forEach((id) => {
     const el = document.getElementById(id);
-    if (el) el.textContent = "—";
+    if (el) el.textContent = "-";
   });
   const result = document.getElementById("lm-result-badge");
   if (result) { result.hidden = true; result.dataset.result = ""; }
@@ -906,7 +906,7 @@ function _setEmptyState(errMsg) {
 
 function _fmtDuration(s) {
   const t = Number(s) || 0;
-  if (t <= 0) return "—";
+  if (t <= 0) return "-";
   const mm = Math.floor(t / 60);
   const ss = Math.floor(t % 60);
   return `${mm}:${ss.toString().padStart(2, "0")}`;
@@ -919,10 +919,10 @@ function _fmtGold(g) {
 }
 
 function _fmtAgo(timestamp) {
-  if (!timestamp) return "—";
+  if (!timestamp) return "-";
   // match_history.db uses "YYYY-MM-DD HH:MM:SS" local time
   const t = Date.parse(String(timestamp).replace(" ", "T"));
-  if (isNaN(t)) return "—";
+  if (isNaN(t)) return "-";
   const delta = (Date.now() - t) / 1000;
   if (delta < 60) return "just now";
   if (delta < 3600) return `${Math.floor(delta / 60)}m ago`;
@@ -932,7 +932,7 @@ function _fmtAgo(timestamp) {
 }
 
 function _resolveChampKey(name) {
-  // Mirror of main.js _resolveChampId — try the window-level resolver
+  // Mirror of main.js _resolveChampId - try the window-level resolver
   // if available, else best-effort capitalize+strip-spaces.
   if (typeof window._resolveChampId === "function") {
     try { return window._resolveChampId(name) || ""; } catch (_) {}
@@ -942,7 +942,7 @@ function _resolveChampKey(name) {
 }
 
 function _scorerUnit(scorer) {
-  // Mirror of scorer_units.js scorerUnit — kept local to avoid an
+  // Mirror of scorer_units.js scorerUnit - kept local to avoid an
   // import cycle on the rare chance that file moves.
   switch ((scorer || "").toLowerCase()) {
     case "ehp":     return "ehp";
@@ -968,7 +968,7 @@ function _escHtml(s) {
 // lands so Comp-tab item icons pick up their data-tt-html rich
 // tooltip (itemTooltipHtml returns "" until the fetch resolves).
 // Module scope mirrors champ_select.js's rc:lol-descriptions-ready
-// handler — fires at most twice (items + runes), idempotent renders.
+// handler - fires at most twice (items + runes), idempotent renders.
 document.addEventListener("rc:lol-descriptions-ready", () => {
   if (_lastData) renderLastMatch(_lastData);
 });

@@ -1,4 +1,4 @@
-# arch: SR prompt building — system prompt, helpers, WaveTracker | section=coaching | frozen=no
+# arch: SR prompt building - system prompt, helpers, WaveTracker | section=coaching | frozen=no
 """SR-specific prompt assembly: system prompt, data loaders, _build_user_prompt, WaveTracker."""
 
 import json
@@ -28,7 +28,7 @@ def _load_sr_rune_rec(champion: str) -> str:
         note = rec.get("coaching_note", "")
         result = f"{ks} | {pri} / {sec}"
         if note:
-            result += f" — {note}"
+            result += f" - {note}"
         return result
     except Exception:
         return ""
@@ -102,18 +102,18 @@ Nexus turrets exposed: STOP everything, group, end \u2014 no exceptions.
 Backdoor enemy racing you: end faster on your side unless you have TP.
 
 
-NAME TAGS — mandatory in every field:
+NAME TAGS - mandatory in every field:
   Ally champions: [A]Name[/A]   Enemy champions: [E]Name[/E]   Timings: [T]value[/T]
   Apply to the exact champion name only. e.g. [A]Hecarim[/A] ganks, [E]Caitlyn[/E] at [T]4:45[/T]
 
-ALLY vs ENEMY RULE — CRITICAL: never swap these tags.
-  YOUR ALLIES (same team, listed under YOUR ALLIES below) — ALWAYS use [A]Name[/A].
-  ENEMIES (opposing team, listed under ENEMY TEAM below) — ALWAYS use [E]Name[/E].
+ALLY vs ENEMY RULE - CRITICAL: never swap these tags.
+  YOUR ALLIES (same team, listed under YOUR ALLIES below) - ALWAYS use [A]Name[/A].
+  ENEMIES (opposing team, listed under ENEMY TEAM below) - ALWAYS use [E]Name[/E].
   If you are uncertain which team a champion is on, do NOT tag them rather than risk a swap.
-  A wrong tag inverts the color on screen and directly misleads the player — this is a hard error.
+  A wrong tag inverts the color on screen and directly misleads the player - this is a hard error.
 
-OUTPUT FORMAT — follow exactly, no preamble. Every field has a hard word cap:
-Action: <1-3 WORDS ALL-CAPS macro priority — e.g. PUSH BOT LANE / BASE LOW HP / FREEZE WAVE / FIGHT NOW / GIVE SPACE / DEFEND TOWER / CRASH AND RESET / TAKE DRAKE / TAKE BARON / END GAME>
+OUTPUT FORMAT - follow exactly, no preamble. Every field has a hard word cap:
+Action: <1-3 WORDS ALL-CAPS macro priority - e.g. PUSH BOT LANE / BASE LOW HP / FREEZE WAVE / FIGHT NOW / GIVE SPACE / DEFEND TOWER / CRASH AND RESET / TAKE DRAKE / TAKE BARON / END GAME>
 Immediate: <concise 3-5s action, use [A]/[E] name tags, max 12 words>
 Next: <15-30s plan, use [A]/[E] tags and [T] for all timings, max 16 words>
 Wave: <state + <=6 word reason>
@@ -163,13 +163,13 @@ Item priority on ARAM: health/sustain earlier than SR; fights are continuous.
 Augments (Mayhem): use augment effects in combo.
 
 
-NAME TAGS: [A]AllyName[/A]  [E]EnemyName[/E]  [T]timing[/T] — use in all fields.
+NAME TAGS: [A]AllyName[/A]  [E]EnemyName[/E]  [T]timing[/T] - use in all fields.
 
-OUTPUT FORMAT — follow exactly, no preamble:
-Action: <1-3 WORDS ALL-CAPS — e.g. ALL IN NOW / FALL BACK / POKE ONLY / GROUP MID / FOUNTAIN NOW / PUSH TURRET>
+OUTPUT FORMAT - follow exactly, no preamble:
+Action: <1-3 WORDS ALL-CAPS - e.g. ALL IN NOW / FALL BACK / POKE ONLY / GROUP MID / FOUNTAIN NOW / PUSH TURRET>
 Immediate: <fight action right now, use [A]/[E] name tags>
 Next: <15-30s plan, use [A]/[E] and [T] for timings>
-Wave: N/A — ARAM auto-push
+Wave: N/A - ARAM auto-push
 Objective: <push/hold/setup/group + [T] timing>
 Fight rule: <all-in condition using [A]/[E] tags + exact mechanics>
 Reset / item: <fountain timing + next item>
@@ -305,7 +305,7 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
     summ_f     = _ps_clean(gs.get("summoner_f", "?"), max_len=24)
     allies     = ", ".join(_ps_iter(gs.get("ally_comp", []))) or "unknown"
     enemies    = ", ".join(_ps_iter(gs.get("enemy_comp", []))) or "unknown"
-    # Prefer vision_tracker output (position-freeze detection — more
+    # Prefer vision_tracker output (position-freeze detection - more
     # accurate fog-of-war model than game_reader's (0,0) heuristic).
     # Falls through to game_reader's enemy_locs when tracker is cold/stale.
     enemy_locs = _ps_clean(_vision_tracker_locs() or gs.get("enemy_locs", "unknown"))
@@ -347,7 +347,7 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
 
     quest_boots = gs.get("quest_boots_owned", False)
     if quest_boots:
-        lines.append("Note: Lane quest boots owned (invisible slot — skip boots in item path)")
+        lines.append("Note: Lane quest boots owned (invisible slot - skip boots in item path)")
     elif gs.get("level", 1) >= 5 and not quest_boots:
         lines.append(f"Note: Lane quest boots NOT yet completed (level {gs.get('level',1)})")
 
@@ -364,24 +364,24 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
     lines += [
         f"Summoners: D={summ_d}  F={summ_f}",
         "",
-        f"YOUR ALLIES (same team — use [A] tags): {ally_status}",
-        f"ENEMY TEAM (opponents — use [E] tags): {enemies}",
-        "REMINDER: [A]=ally (green), [E]=enemy (red) — do NOT swap.",
+        f"YOUR ALLIES (same team - use [A] tags): {ally_status}",
+        f"ENEMY TEAM (opponents - use [E] tags): {enemies}",
+        "REMINDER: [A]=ally (green), [E]=enemy (red) - do NOT swap.",
         f"Enemy locations: {enemy_locs}",
     ]
-    if dead_info:  # enemy respawn timers — critical for macro decisions
+    if dead_info:  # enemy respawn timers - critical for macro decisions
         lines.append(f"Enemy respawns: {dead_info}")
     if enemy_lane:
         lines.append(f"Enemy bot lane (your lane opponents): {enemy_lane}")
     elif enemy_list:
-        lines.append(f"Note: enemies are {', '.join(enemy_list)} — do NOT use their names as allies")
+        lines.append(f"Note: enemies are {', '.join(enemy_list)} - do NOT use their names as allies")
     lane_matchup_note = gs.get("_lane_matchup_note", "")
     if lane_matchup_note:
         lines.append(f"Lane matchup vs {lane_matchup_note}")
 
     lines.append("")
     if is_aram:
-        lines.append("Mode: ARAM — no wave management, pure team combat")
+        lines.append("Mode: ARAM - no wave management, pure team combat")
         lines += [
             f"Objectives: {objectives}",
         ]

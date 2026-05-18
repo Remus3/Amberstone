@@ -1,4 +1,4 @@
-"""Round 30 — win-signal inference in game_ingest."""
+"""Round 30 - win-signal inference in game_ingest."""
 from __future__ import annotations
 
 import sqlite3
@@ -43,7 +43,7 @@ def test_infer_win_from_action_string() -> None:
 def test_infer_win_from_label_string() -> None:
     from agents.agent2_backend.game_ingest import _infer_win
     assert _infer_win({"label": "Victory"}) == 1
-    # Rating grades are not win signals — leave NULL.
+    # Rating grades are not win signals - leave NULL.
     assert _infer_win({"label": "S+"}) is None
     assert _infer_win({"label": "A"}) is None
 
@@ -114,7 +114,7 @@ def test_ingest_leaves_win_null_without_signal(tmp_path: Path, monkeypatch) -> N
 
 def test_ingest_explicit_win_takes_precedence(tmp_path: Path, monkeypatch) -> None:
     """If the caller already resolved win, the string parser must not
-    second-guess it — otherwise an off-label wrong string could flip."""
+    second-guess it - otherwise an off-label wrong string could flip."""
     from agents.agent2_backend.game_ingest import ingest_game_summary
     _init(tmp_path, monkeypatch)
     payload = {**BASE_PAYLOAD, "champion": "Zed", "win": 0, "action": "Victory"}

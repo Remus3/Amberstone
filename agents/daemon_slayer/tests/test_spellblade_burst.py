@@ -1,4 +1,4 @@
-"""Phase 5.7 (s189, 2026-05-13) — Spellblade-in-burst tests.
+"""Phase 5.7 (s189, 2026-05-13) - Spellblade-in-burst tests.
 
 Covers the new ``DpsResult.spellblade_per_proc_damage`` /
 ``DpsResult.spellblade_item_name`` fields and the
@@ -6,7 +6,7 @@ Covers the new ``DpsResult.spellblade_per_proc_damage`` /
 ability cast and consumes it on the next AA. Spellblade family in the
 engine: Trinity Force (3078), Lich Bane (3100), Essence Reaver (3508),
 Iceborn Gauntlet (6662), Dusk and Dawn (2510), Divine Sunderer (6632),
-Sheen (3057), Bloodsong (5311) — plus Arena mirrors. ``collect_effects``
+Sheen (3057), Bloodsong (5311) - plus Arena mirrors. ``collect_effects``
 dedups via ``unique_passive_key="spellblade"`` so at most one survives.
 """
 from __future__ import annotations
@@ -132,7 +132,7 @@ class SpellbladeHelperTests(unittest.TestCase):
         dmg_amp, _ = _spellblade_per_proc_damage(
             effects, 0.0, 0.0, 1.0, self._ctx(), magic_amp=1.20,
         )
-        # Trinity Force is PHYSICAL — magic_amp must not affect it.
+        # Trinity Force is PHYSICAL - magic_amp must not affect it.
         self.assertAlmostEqual(dmg_amp, dmg_base, places=2)
 
     def test_damage_amp_applies(self) -> None:
@@ -156,7 +156,7 @@ class SpellbladeHelperTests(unittest.TestCase):
         self.assertAlmostEqual(dmg_aram, dmg_sr * 0.95, places=2)
 
     def test_dedup_takes_first_spellblade(self) -> None:
-        # collect_effects dedups via unique_passive_key — first item wins.
+        # collect_effects dedups via unique_passive_key - first item wins.
         # Build [Trinity Force, Lich Bane] keeps TF (physical).
         effects_tf_first = collect_effects([TRINITY_FORCE, LICH_BANE])
         dmg, name = _spellblade_per_proc_damage(
@@ -283,7 +283,7 @@ class BurstSpellbladeIntegrationTests(unittest.TestCase):
         self.assertGreater(per_aa_added, 0.0)
 
     def test_multi_spell_then_single_aa_fires_once(self) -> None:
-        """Q-W-E-AA fires Spellblade once — sequential casts before any AA
+        """Q-W-E-AA fires Spellblade once - sequential casts before any AA
         leave it armed, single AA consumes."""
         r = compute_burst_damage(
             self.snap, "Akali", level=11,
@@ -330,7 +330,7 @@ class BurstSpellbladeIntegrationTests(unittest.TestCase):
 
     def test_aa_row_includes_spellblade_in_final_damage(self) -> None:
         """The AA ComboCast row's final_damage reflects Spellblade contribution
-        when armed — armed-and-consumed AA row equals
+        when armed - armed-and-consumed AA row equals
         ``avg_attack_dmg + spellblade_per_proc_damage`` from the same
         build's compute_dps probe."""
         with_sb = compute_burst_damage(
@@ -355,7 +355,7 @@ class BurstSpellbladeIntegrationTests(unittest.TestCase):
 
     def test_zed_combo_with_trinity_force_meaningful_lift(self) -> None:
         """Zed full combo (Q-W-E-R-Q2-AA) with TF should lift burst
-        meaningfully — Zed has 1 AA preceded by 5 ability casts."""
+        meaningfully - Zed has 1 AA preceded by 5 ability casts."""
         naked = compute_burst_damage(
             self.snap, "Zed", level=11,
             target_armor=80.0, target_mr=30.0, target_max_hp=2000.0,
@@ -373,7 +373,7 @@ class BurstSpellbladeIntegrationTests(unittest.TestCase):
         )
 
     def test_essence_reaver_in_assassin_combo(self) -> None:
-        """Essence Reaver (crit-scaling Spellblade) — same arming model."""
+        """Essence Reaver (crit-scaling Spellblade) - same arming model."""
         r = compute_burst_damage(
             self.snap, "Talon", level=11,
             item_ids=[ESSENCE_REAVER],
@@ -384,7 +384,7 @@ class BurstSpellbladeIntegrationTests(unittest.TestCase):
         self.assertGreater(r.spellblade_damage, 0.0)
 
     def test_divine_sunderer_in_burst(self) -> None:
-        """Divine Sunderer Spellblade scales with target max HP — assassin
+        """Divine Sunderer Spellblade scales with target max HP - assassin
         fighting beefy target should see meaningful lift."""
         r = compute_burst_damage(
             self.snap, "Zed", level=11,
@@ -403,7 +403,7 @@ class BurstSpellbladeIntegrationTests(unittest.TestCase):
             target_armor=80.0, target_mr=30.0, target_max_hp=2000.0,
             combo_sequence=("Q", "AA"),
         )
-        # First-seen wins — TF is the active spellblade, not LB.
+        # First-seen wins - TF is the active spellblade, not LB.
         self.assertEqual(r.spellblade_item_name, "Trinity Force")
         self.assertEqual(r.spellblade_procs, 1)
 
@@ -454,7 +454,7 @@ class BurstSpellbladeIntegrationTests(unittest.TestCase):
 
     def test_zed_default_combo_uses_override(self) -> None:
         """Zed's per-champion combo (Q-W-E-R-Q2-AA from s186 registry)
-        has 1 AA — Spellblade fires exactly once."""
+        has 1 AA - Spellblade fires exactly once."""
         r = compute_burst_damage(
             self.snap, "Zed", level=11,
             item_ids=[TRINITY_FORCE],
@@ -474,7 +474,7 @@ class ServerBurstRouteSpellbladeTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         try:
             urlopen(f"{cls.BASE_URL}/health", timeout=2).read()
-        except Exception as e:  # pragma: no cover — env-dependent
+        except Exception as e:  # pragma: no cover - env-dependent
             raise unittest.SkipTest(f"DS server unavailable: {e}")
 
     def _post(self, path: str, body: dict) -> dict:

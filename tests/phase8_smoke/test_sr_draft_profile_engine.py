@@ -1,4 +1,4 @@
-"""Phase 8 step 2 — engine-backed 3-profile generator.
+"""Phase 8 step 2 - engine-backed 3-profile generator.
 
 The integration test against a live engine on :8893 lives at the bottom
 and skips when the engine isn't reachable (mirrors phase2_smoke
@@ -27,7 +27,7 @@ from coaches.sr_draft_profile import (
 )
 
 
-# Canonical fake beam response — mirrors the live engine shape we just probed.
+# Canonical fake beam response - mirrors the live engine shape we just probed.
 _FAKE_BEAM = {
     "champion_id": "Tristana",
     "champion_name": "Tristana",
@@ -112,7 +112,7 @@ class TestSplitSkeleton(unittest.TestCase):
         self.assertEqual(out["start"][0]["id"], "1")
 
     def test_short_build(self):
-        # If beam returns <6 items, slices clip naturally — no crash.
+        # If beam returns <6 items, slices clip naturally - no crash.
         out = _split_skeleton(["A", "B", "C"], ["1", "2", "3"],
                               {"skeleton_split": {"start": [0, 2], "core": [2, 4], "final": [4, 6]}})
         self.assertEqual(len(out["start"]), 2)
@@ -266,7 +266,7 @@ class TestLiveEngineIntegration(unittest.TestCase):
             with urllib.request.urlopen("http://127.0.0.1:8893/health", timeout=1) as r:
                 json.loads(r.read())
         except Exception:
-            self.skipTest("engine on :8893 unreachable — skipping live integration")
+            self.skipTest("engine on :8893 unreachable - skipping live integration")
 
     def test_live_three_profiles(self):
         from agents.daemon_slayer import ENGINE_VERSION

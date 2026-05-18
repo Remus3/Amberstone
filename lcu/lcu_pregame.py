@@ -1,12 +1,12 @@
 """
-lcu/lcu_pregame.py — Pre-game LCU helpers for champion select.
+lcu/lcu_pregame.py - Pre-game LCU helpers for champion select.
 
 Covers:
   - Champion icon loading from LCU local asset server
   - Champion pick (action complete)
-  - Bench swap (no cooldown — direct API bypasses client 5s delay)
+  - Bench swap (no cooldown - direct API bypasses client 5s delay)
   - Summoner spell writing (idempotent when caller provides current_pair)
-  - Per-role spell defaults (Phase 8 step 4 — SR draft)
+  - Per-role spell defaults (Phase 8 step 4 - SR draft)
   - Champ select session parsing for ARAM
 """
 from __future__ import annotations
@@ -69,7 +69,7 @@ def spells_for_role(role: Optional[str]) -> tuple[int, int]:
     """Return (d_spell_id, f_spell_id) for the given lane.
 
     Coerces aliases (MID/BOT/ADC/SUP/JG) to canonical names. Falls back
-    to BOTTOM Flash+Heal when role is unknown — safest default since
+    to BOTTOM Flash+Heal when role is unknown - safest default since
     Heal can't grief teammates the way Smite or TP would.
     """
     if not isinstance(role, str):
@@ -188,7 +188,7 @@ class LcuPregame:
 
     def bench_swap_fast(self, champion_id: int) -> bool:
         """
-        Swap to bench champion — bypasses the 5-second client-side cooldown.
+        Swap to bench champion - bypasses the 5-second client-side cooldown.
         POST /lol-champ-select/v1/session/bench/swap/{championId}
         """
         result = self._request(
@@ -210,7 +210,7 @@ class LcuPregame:
     ) -> bool:
         """Set summoner spells in champ select.
 
-        PATCH /lol-champ-select/v1/session/my-selection — but only when
+        PATCH /lol-champ-select/v1/session/my-selection - but only when
         the target pair differs from what's already selected. Phase 8
         step 4 made this idempotent so a profile-apply round-trip
         doesn't hammer the LCU when the operator already has the right
@@ -224,7 +224,7 @@ class LcuPregame:
             (typical: parsed from a champ-select session via
             ``get_my_summoner_spells``). If provided AND it matches
             the target, no PATCH fires and the call returns True.
-            If None, PATCH is sent unconditionally — preserves the
+            If None, PATCH is sent unconditionally - preserves the
             pre-Phase-8 contract for callers that haven't been
             updated yet.
         """

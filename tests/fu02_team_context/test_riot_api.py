@@ -1,4 +1,4 @@
-"""Riot API client tests for `core/riot_api.py` — FU02 fan-out main.
+"""Riot API client tests for `core/riot_api.py` - FU02 fan-out main.
 
 Covers (from RC_TICKET_FU02 acceptance #2 + #4 + #10):
 
@@ -8,7 +8,7 @@ Covers (from RC_TICKET_FU02 acceptance #2 + #4 + #10):
     - 429 cooldown imposes a minimum-wait floor on the next acquire.
     - snapshot() returns the currently-tracked counts.
 
-  Endpoint wrappers — all six, with mocked _http_get:
+  Endpoint wrappers - all six, with mocked _http_get:
     - get_account_by_riot_id: 200 → returns parsed dict + caches immutable.
     - get_account_by_riot_id: cache hit short-circuits HTTP.
     - get_recent_matches: 200 list response.
@@ -136,7 +136,7 @@ class TestKeyResolver(unittest.TestCase):
     def test_missing_file_returns_none_and_warns_once(self):
         with self.assertLogs("rc.riot_api", level="WARNING") as logs:
             self.assertIsNone(RA._get_api_key())
-            # Second call — already warned, no new record.
+            # Second call - already warned, no new record.
             self.assertIsNone(RA._get_api_key())
         # Only one WARNING about the missing file; subsequent silent.
         self.assertEqual(
@@ -232,7 +232,7 @@ class TestEndpointsHappyPath(_ApiKeyTestCase):
         self.assertEqual(m.call_count, 1)
 
     def test_get_summoner_rank_unranked_empty_list(self):
-        # Unranked players return [] from Riot — must round-trip cleanly.
+        # Unranked players return [] from Riot - must round-trip cleanly.
         with mock.patch.object(RA, "_http_get",
                                return_value=_resp(200, [])):
             out = RA.get_summoner_rank("PUUID-UNRANKED")
@@ -306,7 +306,7 @@ class TestEndpointFailureModes(_ApiKeyTestCase):
 
 class TestRateLimiterIntegration(_ApiKeyTestCase):
     def test_bucket_exhaustion_returns_none(self):
-        # Saturate the bucket then try one more — must be skipped.
+        # Saturate the bucket then try one more - must be skipped.
         # Direct injection by replacing the limiter is cleaner than
         # waiting for real time.
         b = DualBucket(short_n=2, short_window_s=10.0,
@@ -347,7 +347,7 @@ class TestRenderHelpers(unittest.TestCase):
         self.assertEqual(out["tier"], "PLATINUM")
 
     def test_pick_solo_rank_fallback_to_highest_tier(self):
-        # No solo entry — pick the highest tier of what's there.
+        # No solo entry - pick the highest tier of what's there.
         entries = [
             {"queueType": "RANKED_FLEX_SR", "tier": "GOLD"},
             {"queueType": "RANKED_TFT", "tier": "DIAMOND"},
@@ -404,7 +404,7 @@ class TestSummarizeRecent(_ApiKeyTestCase):
         self.assertEqual(out["w_l_streak_7"], [0, 0])
 
     def test_missing_participant_skipped(self):
-        # A match where our PUUID isn't in participants — soft-skip.
+        # A match where our PUUID isn't in participants - soft-skip.
         ids = ["NA1_zzz"]
         match = {"info": {"participants": [
             {"puuid": "OTHER", "championName": "Foo", "win": True},

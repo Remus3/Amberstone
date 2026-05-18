@@ -1,4 +1,4 @@
-"""Audit probes — verify suspected weaknesses empirically."""
+"""Audit probes - verify suspected weaknesses empirically."""
 from __future__ import annotations
 
 from agents.agent0_gatekeeper import Evaluator, Task
@@ -7,7 +7,7 @@ from agents.agent0_gatekeeper import Evaluator, Task
 def main() -> None:
     e = Evaluator()
 
-    # Probe 1: traversal via .. — does the evaluator catch it or does smb_push catch it?
+    # Probe 1: traversal via .. - does the evaluator catch it or does smb_push catch it?
     cases = [
         ("traversal sibling",
          r"\\192.168.8.237\RCClient\web\..\forwarder\evil.py", ".py"),
@@ -25,14 +25,14 @@ def main() -> None:
         print(f"  {label:<24} accepted={d.accepted} reject={reason}")
 
     print()
-    # Probe 2: subdir contains-check — does `in` substring match let through crafted paths?
+    # Probe 2: subdir contains-check - does `in` substring match let through crafted paths?
     t = Task(op="push-web-ui", originating_agent="5",
              remote_path=r"\\192.168.8.237\RCClient\forwarder\web\x.html",   # web inside forwarder
              payload_ext=".html", tag="sneaky")
     d = e.evaluate(t)
     print(f"  subdir substring sneaky accepted={d.accepted} reject={d.rejection.reason_code if d.rejection else None}")
 
-    # Probe 3: dotfiles / hidden — would the evaluator accept a secret file?
+    # Probe 3: dotfiles / hidden - would the evaluator accept a secret file?
     t = Task(op="push-web-ui", originating_agent="5",
              remote_path=r"\\192.168.8.237\RCClient\web\.env", payload_ext=".env", tag="dotfile")
     d = e.evaluate(t)

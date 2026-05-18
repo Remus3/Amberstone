@@ -1,5 +1,5 @@
 """
-gamepc_liveclient_relay.py — Game-PC agent that pushes Riot Live Client API
+gamepc_liveclient_relay.py - Game-PC agent that pushes Riot Live Client API
 data to Legion every N seconds.
 
 Riot's :2999 endpoint binds to 127.0.0.1 only; Legion can't reach it over
@@ -12,7 +12,7 @@ Deploy on Game-PC (one time):
   3. py C:\\RC-Agent\\gamepc_liveclient_relay.py
   4. (optional task) schtasks /Create /TN "RC-LiveClientRelay" /SC ONLOGON /F /TR "py C:\\RC-Agent\\gamepc_liveclient_relay.py"
 
-When in champ select / not in game, /liveclientdata returns 404 — relay
+When in champ select / not in game, /liveclientdata returns 404 - relay
 backs off and retries.
 """
 import json
@@ -28,7 +28,7 @@ LIVE_URLS = [
 ]
 LEGION_URL = "http://192.168.8.230:8889/upload-liveclient"
 
-# AUDIT (2026-04-22): token resolver — env → config file → fallback.
+# AUDIT (2026-04-22): token resolver - env → config file → fallback.
 import os as _os_tok
 from pathlib import Path as _Path_tok
 def _resolve_auth_token() -> str:

@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "rc_config.schema.json",
-  "_doc": "Documentation artifact for ops/rc_config.json. NOT loaded by config_validator.py at runtime — validation logic is hardcoded in core/config_validator.py. See CONFIG_AUTHORITY.md for the rationale.",
+  "_doc": "Documentation artifact for ops/rc_config.json. NOT loaded by config_validator.py at runtime - validation logic is hardcoded in core/config_validator.py. See CONFIG_AUTHORITY.md for the rationale.",
 
   "_schema_status": "documentation-only in Phase 1 Step 1",
 
@@ -51,7 +51,7 @@
   },
 
   "_field_notes": {
-    "heartbeat_interval_s": "Read by main.py when constructing DevRuntime. Default 1.0s if absent. Not present in the live rc_config.json today — main.py falls back to hardcoded default.",
+    "heartbeat_interval_s": "Read by main.py when constructing DevRuntime. Default 1.0s if absent. Not present in the live rc_config.json today - main.py falls back to hardcoded default.",
     "command_poll_interval_s": "Read by main.py when constructing DevRuntime. Default 0.5s if absent. Not present in live rc_config.json today.",
     "heartbeat_timeout": "max_heartbeat_age_seconds (here) is read directly by rc_supervisor.py (FROZEN). Validator covers the non-frozen read path; the frozen read is self-documenting.",
     "app_cmd": "Must be a list with at least one element. First element is the Python executable."

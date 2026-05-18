@@ -76,7 +76,7 @@ def test_persistence_replay(tmp_path: Path) -> None:
 
 
 def test_unknown_blocked_by_is_dropped_not_silently_stalled(tmp_path: Path, caplog) -> None:
-    """Audit M4 — dropping unknown deps is safer than silently stalling."""
+    """Audit M4 - dropping unknown deps is safer than silently stalling."""
     import logging
     s = Scheduler(queue_log=tmp_path / "q.jsonl", agent0_evaluate=Evaluator().evaluate)
     with caplog.at_level(logging.WARNING, logger="agent1.scheduler"):
@@ -95,7 +95,7 @@ def test_blocked_by_dependency_waits_for_completion(tmp_path: Path) -> None:
     # skip it and dispatch `first` (priority 10, unblocked) first.
     got = s.next_ready()
     assert got.id == first.id
-    # `second` still can't dispatch — first is in_progress, not completed.
+    # `second` still can't dispatch - first is in_progress, not completed.
     assert s.next_ready() is None
     s.complete(first.id)
     # Now second is unblocked.

@@ -1,4 +1,4 @@
-"""Round 35 — day-of-week analysis."""
+"""Round 35 - day-of-week analysis."""
 from __future__ import annotations
 
 import json

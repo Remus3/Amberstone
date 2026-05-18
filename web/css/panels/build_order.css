@@ -6,8 +6,8 @@
  *
  * The My Pick card is documented-tight (s214: portrait + lock + arch
  * picker + 4 build rows already fill it at the 1920x1080 baseline). So
- * the DEFAULT is a single dense line — tag · ordered-name chain · chip ·
- * expander — with the full numbered order + per-slot math in the hover
+ * the DEFAULT is a single dense line - tag · ordered-name chain · chip ·
+ * expander - with the full numbered order + per-slot math in the hover
  * tooltip. One click expands to the full vertical list. This trims
  * content rather than shrinking fonts (feedback_font_size_viewing_
  * distance): the expanded list keeps names/deltas at the 15px readable
@@ -25,7 +25,7 @@
   min-height: 0;
 }
 
-/* Header / collapsed line — single row, ellipsis-safe. */
+/* Header / collapsed line - single row, ellipsis-safe. */
 .bo-line {
   display: flex;
   align-items: center;
@@ -42,7 +42,7 @@
   color: var(--text-dim, #9da0b3);
 }
 
-/* Collapsed ordered-name chain — takes the slack, clips with an
+/* Collapsed ordered-name chain - takes the slack, clips with an
  * ellipsis; the full order + math lives in the data-tt-html tooltip. */
 .bo-chain {
   flex: 1 1 auto;
@@ -92,7 +92,7 @@
   border: 1px solid rgba(240, 126, 139, 0.4);
 }
 
-/* Expander — glyph button (▾ / ▴). Generous hit area (the operator
+/* Expander - glyph button (▾ / ▴). Generous hit area (the operator
  * flags small tap targets in audits) without taking layout height. */
 .bo-expander {
   flex: 0 0 auto;
@@ -147,7 +147,7 @@
   display: block;
 }
 
-/* Names + deltas stay at the 15px readable floor — density is bought by
+/* Names + deltas stay at the 15px readable floor - density is bought by
  * the collapse, never by shrinking the primary content. */
 .bo-name {
   font-size: 15px;
@@ -165,7 +165,7 @@
   white-space: nowrap;
 }
 
-/* Excluded-family signal — spans the row width under the slot, muted so
+/* Excluded-family signal - spans the row width under the slot, muted so
  * it informs without competing with the pick itself. */
 .bo-excl {
   grid-column: 2 / -1;

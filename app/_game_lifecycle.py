@@ -1,9 +1,9 @@
 # arch: game start/end transitions, worker management | section=orchestration | frozen=yes
 """
-app/_game_lifecycle.py — GameLifecycleManager extracted from app/__init__.py (ARCH-001 Phase 4)
+app/_game_lifecycle.py - GameLifecycleManager extracted from app/__init__.py (ARCH-001 Phase 4)
 
 Owns the entire game start/end transition, worker management, state processing,
-and auto-field derivation.  The most complex manager — all game logic lives here.
+and auto-field derivation.  The most complex manager - all game logic lives here.
 
 OverlayApp delegates:
   _on_game_start()       → self.lifecycle.on_game_start(canon_mode)
@@ -251,7 +251,7 @@ class GameLifecycleManager:
             _log.warning("SrAramWorker unavailable; game polling disabled")
 
     def game_poll_worker(self, my_gen: int) -> None:
-        """Legacy stub — kept for restart_game_poll fallback path only."""
+        """Legacy stub - kept for restart_game_poll fallback path only."""
         _log.warning("Legacy _game_poll_worker called (gen=%d)", my_gen)
 
     def _drain_game_q(self) -> None:

@@ -1,4 +1,4 @@
-"""s170 — dashboard/routes_pickban.py tests (item #4).
+"""s170 - dashboard/routes_pickban.py tests (item #4).
 
 Validates the new /api/champ-select/pickban-recs endpoint that surfaces
 operator WR per role + ban suggestions from rewind_history.db.
@@ -122,7 +122,7 @@ class TestPerformanceQuery(unittest.TestCase):
         self.assertEqual(perf["wins"], 4)
 
     def test_returns_none_when_no_qualifying_champs(self):
-        # Only one champion, 2 games — below _MIN_GAMES_PICK threshold.
+        # Only one champion, 2 games - below _MIN_GAMES_PICK threshold.
         rows = [
             {"match_id": "a", "puuid": "me", "team_position": "BOTTOM",
              "champion_id": 1, "champion_name": "Annie", "win": 1},
@@ -139,7 +139,7 @@ class TestPerformanceQuery(unittest.TestCase):
         self.assertEqual(picks, [])
 
     def test_role_isolation(self):
-        # Same champ played at two roles — only count BOTTOM stats.
+        # Same champ played at two roles - only count BOTTOM stats.
         rows = []
         for i in range(5):
             rows.append({"match_id": f"b{i}", "puuid": "me",
@@ -160,7 +160,7 @@ class TestPerformanceQuery(unittest.TestCase):
         self.assertEqual(picks[0]["games"], 5)
 
     def test_queue_filter(self):
-        # Same champ in two queues — q=400 (Normal Draft) only.
+        # Same champ in two queues - q=400 (Normal Draft) only.
         rows = []
         for i in range(5):
             rows.append({"match_id": f"a{i}", "puuid": "me", "queue_id": 400,
@@ -183,7 +183,7 @@ class TestPerformanceQuery(unittest.TestCase):
 
 
 class TestS214CascadeAndMultiPick(unittest.TestCase):
-    """s214 — Pick & Ban filter constraints (cascade exclude + top-N
+    """s214 - Pick & Ban filter constraints (cascade exclude + top-N
     + synergy ally_ids path). Each test runs against an isolated DB so
     we can assert exact list contents without prior-test bleed-through."""
 
@@ -314,7 +314,7 @@ class TestS214CascadeAndMultiPick(unittest.TestCase):
                 "INSERT INTO participants(match_id, puuid, team_id, team_position, "
                 "champion_id, champion_name, win) VALUES (?,?,?,?,?,?,?)",
                 (f"r{i}", "me", 100, "BOTTOM", 67, "Vayne", 1))
-        # Old: 5 Vayne losses (outside the 60-day window — should not count)
+        # Old: 5 Vayne losses (outside the 60-day window - should not count)
         for i in range(5):
             conn.execute(
                 "INSERT INTO matches(match_id, queue_id, game_creation_ts) VALUES (?,?,?)",
@@ -371,7 +371,7 @@ class TestBansQuery(unittest.TestCase):
         # vs Nilah (id 895): 3 encounters, 3 losses → 100%
         # vs Twitch (29): 2/2 losses → 100%
         # vs Caitlyn (51): 5 encounters, 3 losses → 60%
-        # vs Jinx (222): 10 encounters, 4 losses → 40% — should be filtered (<50%)
+        # vs Jinx (222): 10 encounters, 4 losses → 40% - should be filtered (<50%)
         rows = []
         for i in range(3):
             rows.extend(self._add_match(f"n{i}", 67, 0, 895))  # operator loses to Nilah
@@ -397,7 +397,7 @@ class TestBansQuery(unittest.TestCase):
         self.assertNotIn("C222", names)     # Jinx filtered (40% < 50% threshold)
 
     def test_no_bans_when_no_losses(self):
-        # Operator wins every game — no ban candidates surface.
+        # Operator wins every game - no ban candidates surface.
         rows = []
         for i in range(5):
             rows.extend(self._add_match(f"w{i}", 67, 1, 895))
@@ -410,7 +410,7 @@ class TestBansQuery(unittest.TestCase):
         self.assertEqual(bans, [])
 
     def test_min_encounters_threshold(self):
-        # 1 loss vs Mel — below _MIN_GAMES_BAN of 2.
+        # 1 loss vs Mel - below _MIN_GAMES_BAN of 2.
         rows = self._add_match("a", 67, 0, 800)  # loss to Mel
         _build_test_db(self.db_path, rows)
         conn = sqlite3.connect(str(self.db_path))

@@ -1,7 +1,7 @@
 {
   "champion": "Lucian",
   "aram_tier": "A",
-  "build_note": "Trinity Force FIRST, every time. Q activates Spellblade AND Lightslinger simultaneously: Q-proc + Spellblade-empowered auto + second auto = 3-hit burst per ability use. Galeforce dash supplements E for gap closing. His range is short — dash in, burst, dash out. Never RFC (siege item, wrong for his kit). Never pure crit without TF.",
+  "build_note": "Trinity Force FIRST, every time. Q activates Spellblade AND Lightslinger simultaneously: Q-proc + Spellblade-empowered auto + second auto = 3-hit burst per ability use. Galeforce dash supplements E for gap closing. His range is short - dash in, burst, dash out. Never RFC (siege item, wrong for his kit). Never pure crit without TF.",
   "core_items": ["Trinity Force", "Galeforce", "Navori Flickerblades"],
   "full_build": [
     "Berserker's Greaves",
@@ -11,9 +11,9 @@
     "The Collector",
     "Lord Dominik's Regards"
   ],
-  "vs_tanks": "Lord Dominik's Regards 5th — TF + Navori haste means more Q cycles which amplifies LDR value",
-  "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies — never run both",
-  "vs_burst": "Immortal Shieldbow replaces Galeforce if 3+ assassins/divers — keep TF core always",
+  "vs_tanks": "Lord Dominik's Regards 5th - TF + Navori haste means more Q cycles which amplifies LDR value",
+  "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies - never run both",
+  "vs_burst": "Immortal Shieldbow replaces Galeforce if 3+ assassins/divers - keep TF core always",
   "kit_notes": "Q procs Spellblade + Lightslinger: empowered auto + second auto in one cycle. E gaps close and procs Lightslinger again. Weave: Q→auto→auto→E→auto→auto. Galeforce dash + E = two repositioning tools per fight. Never auto without a Lightslinger proc queued.",
-  "aram_specific": "Short range forces aggressive positioning — ISB shield is important vs dive-heavy ARAM. Galeforce dash can escape engage or chase. TF haste reduces Q CD so you proc Lightslinger more frequently."
+  "aram_specific": "Short range forces aggressive positioning - ISB shield is important vs dive-heavy ARAM. Galeforce dash can escape engage or chase. TF haste reduces Q CD so you proc Lightslinger more frequently."
 }

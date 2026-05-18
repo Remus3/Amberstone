@@ -2,7 +2,7 @@
 Retro-fill `match_metrics` from `rewind_history.db`.
 
 Populates the new metrics DB (queue item #9) with values derivable from
-REAL historical data in rewind_history.db. No fabrication — every value
+REAL historical data in rewind_history.db. No fabrication - every value
 maps to an actual column in `participants` / `timeline_frames` /
 `timeline_events`. If a metric can't be inferred from real data, we skip
 it rather than invent.
@@ -111,7 +111,7 @@ def retrofill_match(src_conn, match: dict) -> int:
         ).fetchone(),
     ))
 
-    # Team totals (kills + dmg) — needed for KP + dmg share
+    # Team totals (kills + dmg) - needed for KP + dmg share
     team_kills, team_dmg = src_conn.execute(
         "SELECT SUM(kills), SUM(total_damage_dealt_to_champs) FROM participants "
         "WHERE match_id=? AND team_id=?",
@@ -183,7 +183,7 @@ def retrofill_match(src_conn, match: dict) -> int:
     rec("gold_earned_total", str(p["gold_earned"] or 0), "numeric")
     rec("longest_alive_s", str(p["longest_time_alive"] or 0), "duration_s")
 
-    # Item slots 0-6 — final build
+    # Item slots 0-6 - final build
     for slot in range(7):
         iid = p.get(f"item{slot}")
         if iid and iid > 0:

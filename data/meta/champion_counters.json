@@ -9,7 +9,7 @@
     "Each value: list of 3 counter display names. The backend resolves both",
     "ends via data/meta/ddragon_champions.json (tolerant of slug variants).",
     "Champions not present here fall back to the operator's worst-matchup",
-    "query (legacy s170 behavior — operator's lose-rate top-3 in role)."
+    "query (legacy s170 behavior - operator's lose-rate top-3 in role)."
   ],
   "patch": "16.10.1",
   "updated": "2026-05-15",

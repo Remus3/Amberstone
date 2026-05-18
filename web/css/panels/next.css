@@ -17,7 +17,7 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* NEXT body rows — 3-line cap via line-clamp. Wave-state lanes are
+/* NEXT body rows - 3-line cap via line-clamp. Wave-state lanes are
  * now block-display + nowrap (.wave-line) so they're guaranteed
  * exactly 3 lines, no sub-pixel wrap risk; the older 4-line bump
  * isn't needed. */
@@ -33,7 +33,7 @@
  * from stacking at different Y positions across fixtures. */
 .panel-next .kv { min-height: 90px; }
 
-/* RIGHT NOW kv rows (Risk / Fight rule / Reset) — 2-line cap + fixed
+/* RIGHT NOW kv rows (Risk / Fight rule / Reset) - 2-line cap + fixed
  * min-height so all three rows are the same height regardless of whether
  * their content is 1 short sentence or 2 lines of stress text. */
 .panel-right-now .kv > span:last-child {

@@ -1,7 +1,7 @@
 {
   "champion": "Aphelios",
   "aram_tier": "A",
-  "build_note": "Season 16: Yun Tal gives 0% crit (pure AS). Fix build: RFC second for 25% crit, Collector third for 50% crit before IE. Turret (Infernum crescendum) setup at chokepoints wins ARAM. Learn weapon rotations — Gravitum root into Infernum/Calibrum for combo kills.",
+  "build_note": "Season 16: Yun Tal gives 0% crit (pure AS). Fix build: RFC second for 25% crit, Collector third for 50% crit before IE. Turret (Infernum crescendum) setup at chokepoints wins ARAM. Learn weapon rotations - Gravitum root into Infernum/Calibrum for combo kills.",
   "core_items": ["Yun Tal Wildarrows", "Rapid Firecannon", "The Collector"],
   "full_build": [
     "Berserker's Greaves",
@@ -11,8 +11,8 @@
     "Infinity Edge",
     "Lord Dominik's Regards"
   ],
-  "vs_tanks": "Lord Dominik's Regards 5th — Calibrum (sniper) shots apply LDR from safety",
-  "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies — never run both",
+  "vs_tanks": "Lord Dominik's Regards 5th - Calibrum (sniper) shots apply LDR from safety",
+  "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies - never run both",
   "vs_burst": "Immortal Shieldbow 4th replaces The Collector vs heavy burst dive",
   "kit_notes": "Weapons cycle: Calibrum (long range), Severum (heals), Gravitum (slow/root), Infernum (AoE), Crescendum (turret). Ult varies by off-hand: Calibrum = mark all enemies, Infernum = AOE cone (best in ARAM), Gravitum = root all. Gravitum R into Infernum ult = root then AOE sweep.",
   "aram_specific": "Infernum (blue flame) ult in grouped ARAM = AOE sweep hitting everyone. Pre-stack Gravitum (grey chains) before fights for root. Place Crescendum turret at chokepoints during laning. Calibrum Q at max range for free poke between weapons."

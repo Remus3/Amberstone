@@ -1,5 +1,5 @@
 # arch: BaseHTTPRequestHandler routing for :8889 | section=vision | frozen=no
-"""HTTP handler — routes /health, /stats, /monitor, /latest-frame, /upload-*,
+"""HTTP handler - routes /health, /stats, /monitor, /latest-frame, /upload-*,
 /vision, /coach, /ocr, /lcu-*, /sync.
 
 Split out of moon_vision_server.py during Phase 2.4.
@@ -239,7 +239,7 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b)
         except (ConnectionAbortedError, ConnectionResetError, BrokenPipeError):
-            pass  # client closed connection early — harmless
+            pass  # client closed connection early - harmless
 
     def log_message(self, fmt, *a):
         log.debug("HTTP " + fmt, *a)

@@ -16,5 +16,5 @@ Remove all tkinter UI overlays and the secondary-display window. Retain `tk.Tk()
 ## Consequences
 
 **Good:** RC no longer needs a display on Legion. Overlays were fragile; the web dashboard is CSS + JS, much easier to iterate on. Console windows eliminated.  
-**Trade-off:** `tk.Tk()` root remains as a silent scheduler dependency — `import tkinter` still must succeed on Legion, and a full asyncio refactor is deferred.  
+**Trade-off:** `tk.Tk()` root remains as a silent scheduler dependency - `import tkinter` still must succeed on Legion, and a full asyncio refactor is deferred.  
 **Watch for:** The `_overlay_manager.py` name is now a misnomer (no overlays). Full asyncio migration (Tier 2 #8) will remove the last tkinter dependency.

@@ -7,11 +7,11 @@
 //
 // Cleaning rules:
 //   - Strip <mainText> / <rarityMythic> / <rarityLegendary> / <attention>
-//     / <maintext> / </maintext> outer wrappers — keep their text.
+//     / <maintext> / </maintext> outer wrappers - keep their text.
 //   - Replace LoL's <lol-uikit-tooltipped-keyword key='...'>X</...>
 //     with just X (drop the keyword link).
 //   - Preserve <br>, <passive>, <active>, <unique>, <stats>, <ornnBonus>,
-//     <flavorText>, <consumable> — render as line breaks or styled spans.
+//     <flavorText>, <consumable> - render as line breaks or styled spans.
 //   - Strip <stats>...</stats> wrapper but keep its content (one stat
 //     per line).
 //   - <attention>X</attention> → bold "X" so numbers pop.
@@ -35,7 +35,7 @@ function _cleanLolHtml(raw) {
   s = s.replace(/<\/?stats>/gi, "");
   // Strip the keyword-tooltip wrapper but keep its inner text.
   s = s.replace(/<lol-uikit-tooltipped-keyword[^>]*>([^<]*)<\/lol-uikit-tooltipped-keyword>/gi, "$1");
-  // <font color='#X'>...</font> — drop the font tag but keep text.
+  // <font color='#X'>...</font> - drop the font tag but keep text.
   s = s.replace(/<\/?font[^>]*>/gi, "");
   // <attention>N</attention> → bold "N".
   s = s.replace(/<attention>(.*?)<\/attention>/gi, "<b>$1</b>");
@@ -74,11 +74,11 @@ async function _loadItems() {
         };
       }
       _ITEMS_CACHE.ready = true;
-      // s213: cache landed — let listeners (e.g. champ_select view)
+      // s213: cache landed - let listeners (e.g. champ_select view)
       // schedule a re-render so the next paint stamps data-tt-html
       // on item icons.
       document.dispatchEvent(new CustomEvent("rc:lol-descriptions-ready", { detail: { kind: "items" } }));
-    } catch (_) { /* swallow — tooltips fall back to title text */ }
+    } catch (_) { /* swallow - tooltips fall back to title text */ }
     return _ITEMS_CACHE.byId;
   })();
   return _ITEMS_CACHE.loading;
@@ -116,7 +116,7 @@ async function _loadRunes() {
   return _RUNES_CACHE.loading;
 }
 
-// Public — synchronous lookups. Kick off the lazy load on first call
+// Public - synchronous lookups. Kick off the lazy load on first call
 // so subsequent renders see the cache. Returns "" until data lands;
 // the caller's `data-tt-html` attr will be missing on the first paint
 // and present on the next render after the cache resolves.
@@ -138,7 +138,7 @@ export function keystoneTooltipHtml(keystoneName) {
   return `<div class="lol-tt-title">${rune.name}${tree}</div>${body}`;
 }
 
-// Bulk loaders — call once on view mount to warm the caches so the
+// Bulk loaders - call once on view mount to warm the caches so the
 // first render after has tooltips ready.
 export function preloadLolDescriptions() {
   _loadItems();

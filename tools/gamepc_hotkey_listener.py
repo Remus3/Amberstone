@@ -1,7 +1,7 @@
-"""gamepc_hotkey_listener.py — Game-PC global hotkeys for coach decisions.
+"""gamepc_hotkey_listener.py - Game-PC global hotkeys for coach decisions.
 
 Background process that registers Ctrl+Shift+1 / Ctrl+Shift+2 as Win32
-global hotkeys (NOT a keyboard hook — uses RegisterHotKey, which is the
+global hotkeys (NOT a keyboard hook - uses RegisterHotKey, which is the
 quiet, registered-accelerator API that doesn't trip anti-cheat watch
 patterns the way `pynput`/`keyboard` low-level hooks tend to).
 
@@ -22,11 +22,11 @@ Deploy on Game-PC:
       https://192.168.8.230:8888/agent/gamepc_hotkey_listener.py
   Start-Process -WindowStyle Hidden py -ArgumentList "C:\\RC-Agent\\gamepc_hotkey_listener.py"
 
-Or — preferred — let `gamepc_boot.ps1` start it at logon (it's now in
+Or - preferred - let `gamepc_boot.ps1` start it at logon (it's now in
 the canonical agent list).
 
 Stops on Ctrl+C (when run interactively) or when the process is killed
-via taskkill /F. No state to flush — pending decisions live on Legion.
+via taskkill /F. No state to flush - pending decisions live on Legion.
 """
 from __future__ import annotations
 
@@ -152,7 +152,7 @@ def _register(hotkey_id: int, vk: int) -> None:
     if not _user32.RegisterHotKey(None, hotkey_id, _HOTKEY_FLAGS, vk):
         raise OSError(
             f"RegisterHotKey id={hotkey_id} vk=0x{vk:02x} failed "
-            f"(GetLastError={ctypes.get_last_error()}) — another process "
+            f"(GetLastError={ctypes.get_last_error()}) - another process "
             f"already owns this combo?"
         )
 

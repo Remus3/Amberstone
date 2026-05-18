@@ -1,4 +1,4 @@
-// Right Now panel — immediate coaching actions, game-sense, stats, digest.
+// Right Now panel - immediate coaching actions, game-sense, stats, digest.
 import { el, safe, fmtList, classifyAction, isArenaPayload, logLine, _formatRelativeAge } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 
@@ -20,7 +20,7 @@ if (RN.action && !RN.action.dataset.bound) {
   RN.action.title = "click to copy the coach's call";
   RN.action.addEventListener("click", () => {
     const text = RN.action.dataset.raw || RN.action.textContent || "";
-    if (!text || text === "—") return;
+    if (!text || text === "-") return;
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(() => {
         RN.action.classList.add("copied");
@@ -54,7 +54,7 @@ function renderWhatWent(p) {
     if (!items.length) {
       const li = document.createElement("li");
       li.className = "ww-empty";
-      li.textContent = "—";
+      li.textContent = "-";
       ul.appendChild(li);
       return;
     }
@@ -84,11 +84,11 @@ function renderDigest(p) {
   if (state === "alert") icon.classList.add("alert");
   else if (state === "warn") icon.classList.add("warn");
   // Label: short glyph + optional count ("⟳", "⟳ 3L", "⟳ SLUMP")
-  const tag = safe(p.digest_label) || (state === "none" ? "—" : state.toUpperCase());
+  const tag = safe(p.digest_label) || (state === "none" ? "-" : state.toUpperCase());
   label.textContent = tag;
   icon.title = safe(p.digest_tooltip) || "cross-session digest";
   // Populate popout fields from the same payload.
-  const setd = (id, v) => { const e = el(id); if (e) e.textContent = safe(v) || "—"; };
+  const setd = (id, v) => { const e = el(id); if (e) e.textContent = safe(v) || "-"; };
   setd("dig-state",      p.digest_state_long);
   setd("dig-streak",     p.digest_streak);
   setd("dig-recent",     p.digest_recent);
@@ -192,7 +192,7 @@ function renderGameSense(p) {
   const e = safe(p.game_sense_early);
   const m = safe(p.game_sense_mid);
   const l = safe(p.game_sense_late);
-  const hasAny = [e, m, l].some(v => v && v !== "—");
+  const hasAny = [e, m, l].some(v => v && v !== "-");
   gsBlock.style.display = hasAny ? "" : "none";
   if (!hasAny) return;
   const triples = [
@@ -204,12 +204,12 @@ function renderGameSense(p) {
     const wEl = el(wordId);
     const bEl = el(blurbId);
     if (wEl) {
-      wEl.textContent = (word || "—").toUpperCase();
+      wEl.textContent = (word || "-").toUpperCase();
       wEl.className = "game-sense-word " + _valenceClass(word);
     }
     if (bEl) bEl.textContent = safe(blurb) || "";
   }
-  // Trend line — last N matches aggregate. Coach-emitted string.
+  // Trend line - last N matches aggregate. Coach-emitted string.
   const trendEl = el("gs-trend");
   if (trendEl) {
     const trend = safe(p.game_sense_trend);
@@ -221,12 +221,12 @@ function renderGameSense(p) {
 // ── STATS panel renderer ─────────────────────────────────────────
 // Populates the in-game STATS view (replaces Adaptation for in-game
 // modes). Each field reads a specific payload key; when the coach hasn't
-// emitted that field yet, the placeholder "—" stays. Coach-side work
+// emitted that field yet, the placeholder "-" stays. Coach-side work
 // to populate these from live-client + Riot API is a separate pass.
 //
 // Level breakdown math (Lane/Jungle and Jungle Camp rows):
 // Both rows compute independently from p.xp_to_next and don't influence
-// each other — they show parallel paths to the next level (take lane
+// each other - they show parallel paths to the next level (take lane
 // minions OR jungle camps, not a mix).
 //
 // Lane minion XP (mid-game approximation, patch-independent enough):
@@ -258,31 +258,31 @@ function _levelBreakdowns(xpNeeded) {
 function renderStats(p) {
   if (!p) return;
   const $ = id => el(id);
-  const setv = (id, v) => { const e = $(id); if (e) e.textContent = v == null || v === "" ? "—" : v; };
+  const setv = (id, v) => { const e = $(id); if (e) e.textContent = v == null || v === "" ? "-" : v; };
   // LANING PHASE
-  // Level row: "Ln — need X xp"
+  // Level row: "Ln - need X xp"
   if (p.level != null && p.xp_to_next != null) {
-    setv("st-level", `L${p.level} — need ${p.xp_to_next} xp`);
+    setv("st-level", `L${p.level} - need ${p.xp_to_next} xp`);
   } else if (p.level != null) {
     setv("st-level", `L${p.level}`);
   } else {
-    setv("st-level", "—");
+    setv("st-level", "-");
   }
-  // Two independent breakdowns below Level — lane minions vs jungle camps.
+  // Two independent breakdowns below Level - lane minions vs jungle camps.
   // Neither influences the other; both re-derive from the same xp_to_next.
   const brk = _levelBreakdowns(p.xp_to_next);
   setv("st-level-lane",   brk.lane);
   setv("st-level-jungle", brk.jungle);
   setv("st-cannon",       p.cannon_cs_summary);
-  // Spike hit + Next spike collapsed (2026-04-24) — power-spike status
+  // Spike hit + Next spike collapsed (2026-04-24) - power-spike status
   // now carries the next-item spike hint appended after the level-hit
   // summary so one row covers both views.
   {
     const sh = safe(p.powerspike_status) || "";
     const ns = safe(p.next_spike) || "";
     let v = sh;
-    if (ns && ns !== "—") v = sh ? `${sh} · ${ns}` : ns;
-    setv("st-spike-status", v || "—");
+    if (ns && ns !== "-") v = sh ? `${sh} · ${ns}` : ns;
+    setv("st-spike-status", v || "-");
   }
   setv("st-cs-at-10",     p.cs_at_10);
   setv("st-csd-15",       p.csd_at_15);
@@ -306,15 +306,15 @@ function renderStats(p) {
   setv("st-cc",           p.cc_score_summary);
   setv("st-heal",         p.heal_shield_summary);
   setv("st-peel",         p.peel_on_carry);
-  // Alive/Dead collapsed — two lines worth of info ("28s dead" +
+  // Alive/Dead collapsed - two lines worth of info ("28s dead" +
   // "98% alive") on one row so the reader sees the death cost and
   // life ratio together.
   {
     const td = safe(p.time_dead_summary) || "";
     const ta = safe(p.time_alive_pct) || "";
     let v = td;
-    if (ta && ta !== "—") v = td ? `${td} · alive ${ta}` : `alive ${ta}`;
-    setv("st-time-dead", v || "—");
+    if (ta && ta !== "-") v = td ? `${td} · alive ${ta}` : `alive ${ta}`;
+    setv("st-time-dead", v || "-");
   }
   setv("st-skillshot",    p.skillshot_summary);
   setv("st-combo-hit",    p.combo_hit_rate);
@@ -356,27 +356,27 @@ function renderStats(p) {
   setv("st-mastery",      p.mastery_summary);
   setv("st-runes",        p.runes_chosen);
   setv("st-spike-map",    p.power_spike_map);
-  // Matchup row collapsed (2026-04-24 reorganize) — both history and
+  // Matchup row collapsed (2026-04-24 reorganize) - both history and
   // counter warning surface on the same line so the eye sees "this
   // opponent, here's the record + threat" in one glance.
   const mh = safe(p.matchup_history) || "";
   const cw = safe(p.counter_warning) || "";
   let matchup = mh;
-  if (cw && cw !== "—") matchup = mh ? `${mh} · ${cw}` : cw;
-  setv("st-matchup", matchup || "—");
+  if (cw && cw !== "-") matchup = mh ? `${mh} · ${cw}` : cw;
+  setv("st-matchup", matchup || "-");
   setv("st-champ-key",    p.champ_key_metric);
   setv("st-keystone",     p.keystone_procs);
   setv("st-rune-adapt",   p.rune_adapt_hint);
   // RANK / SESSION
   setv("st-rank",         p.current_rank_lp);
   setv("st-lp-forecast",  p.lp_forecast);
-  // Session row collapsed — LP delta + session duration on one line.
+  // Session row collapsed - LP delta + session duration on one line.
   {
     const sd = safe(p.lp_session_delta) || "";
     const dur = safe(p.session_duration) || "";
     let v = sd;
-    if (dur && dur !== "—") v = sd ? `${sd} · ${dur}` : dur;
-    setv("st-session-delta", v || "—");
+    if (dur && dur !== "-") v = sd ? `${sd} · ${dur}` : dur;
+    setv("st-session-delta", v || "-");
   }
   setv("st-gold-diff-trend", p.team_gold_diff_trend);
   setv("st-promo",        p.promo_status);
@@ -386,15 +386,15 @@ function renderStats(p) {
   setv("st-benchmark",    p.rank_benchmark);
   setv("st-improve",      p.improvement_target);
   setv("st-chat-tone",    p.chat_tone);
-  // Perf row collapsed — strength (+) and weakness (−) of the game
+  // Perf row collapsed - strength (+) and weakness (−) of the game
   // in one line, sign-prefixed so the eye reads both as a unit.
   {
     const sg = safe(p.strength_of_game) || "";
     const wg = safe(p.weakness_of_game) || "";
     const parts = [];
-    if (sg && sg !== "—") parts.push(`+ ${sg}`);
-    if (wg && wg !== "—") parts.push(`− ${wg}`);
-    setv("st-strength", parts.join("   ") || "—");
+    if (sg && sg !== "-") parts.push(`+ ${sg}`);
+    if (wg && wg !== "-") parts.push(`− ${wg}`);
+    setv("st-strength", parts.join("   ") || "-");
   }
   setv("st-adjust",       p.adjustment_rate);
   setv("st-tilt",         p.tilt_meter);
@@ -412,9 +412,9 @@ function renderRightNow(p) {
   const arena = isArenaPayload(p);
   let rawAction = safe(p.action);
   // DEAD state: the coral `DEAD Ns` pill in the header is the authoritative
-  // countdown. When the coach echoes "DEAD — 18s" as the action headline,
+  // countdown. When the coach echoes "DEAD - 18s" as the action headline,
   // rewrite so the big text carries the 1-line next-action (headline) and
-  // the sub-headline carries the 1-line why/threat — matching the live-
+  // the sub-headline carries the 1-line why/threat - matching the live-
   // game pattern (action = what to do, immediate = detail). Both kept to
   // 1 sentence so the panel reads without duplication.
   let overriddenImmediate = null;
@@ -434,7 +434,7 @@ function renderRightNow(p) {
   }
   const hasAction = !!rawAction;
   const klass = hasAction ? classifyAction(rawAction) : "empty";
-  // Detect content change for fresh-state flash — only pulse when the
+  // Detect content change for fresh-state flash - only pulse when the
   // headline actually changes, not on every re-emit of the same text.
   const prevAction = RN.action.dataset.raw || "";
   if (hasAction && rawAction !== prevAction) {
@@ -445,7 +445,7 @@ function renderRightNow(p) {
   }
   RN.action.dataset.raw = rawAction;
   RN.action.className = "action action-" + klass;
-  // Priority glyph prefix — a quick shape-read for peripheral vision.
+  // Priority glyph prefix - a quick shape-read for peripheral vision.
   // Skip the glyph when we have no action text to avoid a lonely "►".
   // Also skip if the fixture/coach already starts the string with a
   // matching glyph, to avoid double "⚠ ⚠ DEFEAT".
@@ -454,13 +454,13 @@ function renderRightNow(p) {
               :                      "► ";
   const alreadyGlyphed = hasAction && /^[⚠✓►•⚡⛔🚨✳▶◉→]/.test(rawAction);
   // Fixed-height .action slot with CSS line-clamp (see .action in
-  // dashboard.css). No fitText shrinking — font stays at the CSS-defined
+  // dashboard.css). No fitText shrinking - font stays at the CSS-defined
   // 48-56px, long content ellipsizes at line 2. Short content sits at
   // the top of the fixed 130px box; the box itself never changes size
   // so subsequent rows stay pinned across fixtures.
   RN.action.textContent = hasAction
     ? (alreadyGlyphed ? rawAction : glyph + rawAction)
-    : "—";
+    : "-";
   // Arena: in pregame (no round yet / no round_strategy), surface the
   // full pregame card as the immediate content. Once the live coach
   // starts writing round_strategy, swap to that.
@@ -468,8 +468,8 @@ function renderRightNow(p) {
     const liveStrategy = safe(p.round_strategy);
     const hasLiveRound = (typeof p.round === "number" && p.round > 0) || !!liveStrategy;
     const imm = hasLiveRound
-      ? (liveStrategy || safe(p.immediate) || "—")
-      : (safe(p.pregame) || safe(p.immediate) || "—");
+      ? (liveStrategy || safe(p.immediate) || "-")
+      : (safe(p.pregame) || safe(p.immediate) || "-");
     RN.immediate.classList.toggle("is-pregame", !hasLiveRound && !!safe(p.pregame));
     RN.immediate.textContent = imm;
   } else {
@@ -478,15 +478,15 @@ function renderRightNow(p) {
     // single-sentence "why" so headline and sub don't duplicate each other.
     const immText = overriddenImmediate !== null
       ? overriddenImmediate
-      : (safe(p.immediate) || safe(p.pregame) || "—");
+      : (safe(p.immediate) || safe(p.pregame) || "-");
     RN.immediate.textContent = immText;
   }
-  RN.risk.textContent   = safe(p.risk) || "—";
-  RN.fight.textContent  = safe(p.fight_rule) || "—";
+  RN.risk.textContent   = safe(p.risk) || "-";
+  RN.fight.textContent  = safe(p.fight_rule) || "-";
   // Reset item: if the text has a "(Ng)" price tag, color-code by
   // whether the current gold clears it. "Dark Seal + boots (950g)".
   if (RN.reset) {
-    const resetTxt = safe(p.reset_item) || "—";
+    const resetTxt = safe(p.reset_item) || "-";
     const mg = /\((\d+)\s*g\)/.exec(resetTxt);
     RN.reset.textContent = resetTxt;
     RN.reset.classList.remove("can-afford", "short-gold");
@@ -499,10 +499,10 @@ function renderRightNow(p) {
   // (who to focus) since that's the single highest-value per-fight datum.
   if (arena) {
     const tgt = safe(p.target_priority);
-    RN.reset.textContent = tgt || safe(p.anvil_advice) || "—";
+    RN.reset.textContent = tgt || safe(p.anvil_advice) || "-";
     RN.reset.parentElement.firstElementChild.textContent = "Target";
   } else {
-    RN.reset.textContent = safe(p.reset_item) || "—";
+    RN.reset.textContent = safe(p.reset_item) || "-";
     RN.reset.parentElement.firstElementChild.textContent = "Base";
   }
   state.lastTouch.right_now = Date.now() / 1000;

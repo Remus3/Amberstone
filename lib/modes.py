@@ -30,7 +30,7 @@ def verify_modes() -> None:
     current = _load()
     if current != PHASE3_MODES:
         raise RuntimeError(
-            f"lib.modes.PHASE3_MODES drift detected — "
+            f"lib.modes.PHASE3_MODES drift detected - "
             f"in-memory {list(PHASE3_MODES)!r} vs "
             f"resolved_decisions.json {list(current)!r}. "
             "Restart the supervisor to pick up the updated mode list."

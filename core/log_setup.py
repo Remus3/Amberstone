@@ -71,7 +71,7 @@ class DailyRotatingFileHandler(RotatingFileHandler):
                 pass
             self._current_day = today
             self.baseFilename = str(self._path_for(today))
-            # New day, fresh file — no need to rotate via size logic.
+            # New day, fresh file - no need to rotate via size logic.
             return 0
         return super().shouldRollover(record)
 
@@ -189,7 +189,7 @@ def setup(app_dir: Path, debug: bool = False) -> logging.Logger:
         pass
 
     _root_logger_configured = True
-    _logger.info("Riot Commander logging started — level=%s  file=%s",
+    _logger.info("Riot Commander logging started - level=%s  file=%s",
                  "DEBUG" if debug else "INFO", log_file)
     if _n_pruned:
         _logger.info("log retention: pruned %d file(s) older than %d days",

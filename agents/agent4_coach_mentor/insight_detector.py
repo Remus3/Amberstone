@@ -1,10 +1,10 @@
-"""Round 38 — autonomous digest-driven advisory filer.
+"""Round 38 - autonomous digest-driven advisory filer.
 
 Cold-streak detection (round 31) only surfaces one kind of insight.
 This module runs the whole ``coaching_digest`` and files an advisory
-task for every insight above ``SEVERITY_FLOOR`` — covering
+task for every insight above ``SEVERITY_FLOOR`` - covering
 worst-hour slumps, weak weekdays, bad duration tiers, hot streaks,
-etc. — so the dashboard queue becomes a live coaching feed.
+etc. - so the dashboard queue becomes a live coaching feed.
 
 Uses a distinct op (``coaching-insight-advisory``) from the cold
 detector's (``cold-streak-advisory``) to keep the two streams
@@ -32,7 +32,7 @@ SEVERITY_FLOOR = 0.7
 COOLDOWN_HOURS = 24
 ADVISORY_OP = "coaching-insight-advisory"
 
-# Cold-streak advisories are already handled by cold_streak_detector —
+# Cold-streak advisories are already handled by cold_streak_detector -
 # skip them here so we don't duplicate filings on top of an existing op.
 SKIP_TYPES = frozenset({"cold_streak"})
 
@@ -136,7 +136,7 @@ def detect_insights_and_file(
             try:
                 t = scheduler.file_task(
                     op=ADVISORY_OP,
-                    owner_agent="1",      # deterministic lead — no LLM dispatch
+                    owner_agent="1",      # deterministic lead - no LLM dispatch
                     priority=65,
                     categories=[4],       # coaching insight
                     payload=payload,

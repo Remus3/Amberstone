@@ -1,4 +1,4 @@
-"""Phase B — Champ Select LCU agent handlers + state population.
+"""Phase B - Champ Select LCU agent handlers + state population.
 
 Pins the contracts added to `tools/gamepc_lcu_agent.py` for the
 Champ Select view's command flow:
@@ -9,9 +9,9 @@ Champ Select view's command flow:
   - _local_in_progress_action → walk actions for the local cell's
                                 in-progress ban|pick
 
-  - set_ban_intent / set_pick_intent — PATCH local action, completed=false
-  - request_position_swap / request_pick_order_swap — cell_id → swap id
-  - set_augment_intent — stub returns explicit "unsupported" error
+  - set_ban_intent / set_pick_intent - PATCH local action, completed=false
+  - request_position_swap / request_pick_order_swap - cell_id → swap id
+  - set_augment_intent - stub returns explicit "unsupported" error
 
 The agent runs on Game-PC and is stdlib-only; tests import via
 `sys.path.insert(..., "tools")` because tools/ has no __init__.py.
@@ -30,7 +30,7 @@ import gamepc_lcu_agent as agent  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
-# Pure helpers — no LCU contact, just shape transforms.
+# Pure helpers - no LCU contact, just shape transforms.
 # ---------------------------------------------------------------------------
 
 
@@ -205,14 +205,14 @@ class TestLocalInProgressAction(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Command handlers — mock lcu_request to avoid touching a real LCU.
+# Command handlers - mock lcu_request to avoid touching a real LCU.
 # ---------------------------------------------------------------------------
 
 
 def _mock_lcu_request_for(responses):
     """Build a side_effect that returns ``responses[i]`` per call.
 
-    Each entry is ``(payload, err)`` — same tuple shape as the real
+    Each entry is ``(payload, err)`` - same tuple shape as the real
     ``lcu_request``. If exhausted, returns (None, "exhausted") so the
     test fails loudly rather than mysteriously timing out.
     """
@@ -406,12 +406,12 @@ class TestSetAugmentIntentStub(unittest.TestCase):
 class TestAramQueueIdsAntiDrift(unittest.TestCase):
     """Pin the KNOWN-BUG fix + the agent↔core mirror.
 
-    is_aram was ``queue_id in (450, 920)`` — missing 2400 (ARAM
-    Mayhem / KIWI) — so the dashboard's _csvDetectMode fell through to
+    is_aram was ``queue_id in (450, 920)`` - missing 2400 (ARAM
+    Mayhem / KIWI) - so the dashboard's _csvDetectMode fell through to
     "sr" and the bench / quick-swap UI never rendered for Mayhem. The
     agent runs standalone on Game-PC and can't import core.*, so
     ``_ARAM_QUEUE_IDS`` is a hand-kept mirror of the aram keys in
-    core.queue_modes — this guards it from silently drifting again."""
+    core.queue_modes - this guards it from silently drifting again."""
 
     def test_mayhem_2400_in_aram_set(self):
         self.assertIn(2400, agent._ARAM_QUEUE_IDS)
@@ -424,7 +424,7 @@ class TestAramQueueIdsAntiDrift(unittest.TestCase):
         self.assertEqual(
             set(agent._ARAM_QUEUE_IDS), core_aram,
             "tools/gamepc_lcu_agent._ARAM_QUEUE_IDS drifted from "
-            "core.queue_modes aram keys — keep the mirror in sync")
+            "core.queue_modes aram keys - keep the mirror in sync")
 
 
 if __name__ == "__main__":

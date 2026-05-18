@@ -1,9 +1,9 @@
-# Decision — P-audit6-m01-bbox-override-validate
+# Decision - P-audit6-m01-bbox-override-validate
 
 **Decided by:** Agent 2 (Backend)
 **Decision date:** 2026-05-12
 **Proposal severity:** MEDIUM
-**Outcome:** ACCEPTED — shipped
+**Outcome:** ACCEPTED - shipped
 
 ## What was proposed
 
@@ -16,12 +16,12 @@ already enforced by `agents/_minimap_bbox.load_persisted()`:
 - Return HTTP 400 with a descriptive error on any violation
 
 The old code accepted any 4-int tuple, letting PIL silently return degenerate
-images and letting extreme coordinates clip to full-frame — defeating the
+images and letting extreme coordinates clip to full-frame - defeating the
 purpose of the override.
 
 ## Changes made
 
-### `agents/_minimap_bbox.py` — new `parse_http_override(raw)` helper
+### `agents/_minimap_bbox.py` - new `parse_http_override(raw)` helper
 
 Rather than inlining the validation in the handler (the proposal's diff),
 I extracted it into a dedicated function in `_minimap_bbox.py`. This module
@@ -35,7 +35,7 @@ def parse_http_override(raw: str) -> tuple[int, int, int, int]:
     Raises ValueError (with message) on any violation."""
 ```
 
-### `agents/supervisor.py:596-605` — handler now calls `parse_http_override`
+### `agents/supervisor.py:596-605` - handler now calls `parse_http_override`
 
 Old:
 ```python
@@ -50,7 +50,7 @@ except ValueError:
     return
 ```
 
-New (simplified handler — validation logic lives in `_minimap_bbox`):
+New (simplified handler - validation logic lives in `_minimap_bbox`):
 ```python
 try:
     from agents._minimap_bbox import parse_http_override as _parse_bbox
@@ -63,7 +63,7 @@ except ValueError as ve:
     return
 ```
 
-### `tests/fu01_minimap/test_http_override.py` — new, closes L-01
+### `tests/fu01_minimap/test_http_override.py` - new, closes L-01
 
 10 bad-input cases (each `ValueError`), 4 good-input cases with equality
 assertions, plus 3 boundary tests. Run via `pytest tests/fu01_minimap/ -q`.
@@ -86,5 +86,5 @@ testability and consolidates the two bbox validation paths into one module.
 
 ## Audit findings closed
 
-- **M-01** — HTTP `?bbox=` override skips bounds-validity check → CLOSED
-- **L-01** — `tests/fu01_minimap/` has zero coverage of HTTP override path → CLOSED
+- **M-01** - HTTP `?bbox=` override skips bounds-validity check → CLOSED
+- **L-01** - `tests/fu01_minimap/` has zero coverage of HTTP override path → CLOSED

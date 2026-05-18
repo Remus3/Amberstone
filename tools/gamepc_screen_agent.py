@@ -1,5 +1,5 @@
 """
-gamepc_screen_agent.py — Captures Game-PC screen and pushes to Legion's vision server.
+gamepc_screen_agent.py - Captures Game-PC screen and pushes to Legion's vision server.
 
 Run on Game-PC (192.168.8.237). Legion (192.168.8.230:8889) caches the latest
 frame; coaches read it via /latest-frame and pass to /vision, /ocr, /coach.
@@ -11,7 +11,7 @@ Deploy on Game-PC (one time):
 
 Capture backend: DXGI Desktop Duplication via `bettercam`, bound to the
 single real GPU adapter. The legacy PIL ImageGrab(all_screens=True)
-backend was retired 2026-05-16 — it BitBlt'd the whole virtual desktop
+backend was retired 2026-05-16 - it BitBlt'd the whole virtual desktop
 (spanning virtual display adapters) and pagefaulted a display driver
 during the match-end display-mode switch (bugcheck 0x50). See the
 AUDIT note on `capture()`.
@@ -58,7 +58,7 @@ from ctypes import wintypes
 
 LEGION_URL = "http://192.168.8.230:8889/upload-frame"
 
-# AUDIT (2026-04-22): self-contained token resolver — env var →
+# AUDIT (2026-04-22): self-contained token resolver - env var →
 # local config file → hardcoded fallback. The Game-PC has no access to
 # core.vision_token, so we re-implement the same order in 6 lines.
 import os as _os_tok
@@ -109,7 +109,7 @@ def _enum_monitor_rects() -> list[tuple[int, int, int, int]]:
     """Return monitor rects as (left, top, right, bottom) in the order
     Windows' EnumDisplayMonitors reports them. Index 0 is conventionally
     the primary on a single-adapter system, but the OS is free to reorder
-    if displays are added/removed — always check the startup enum log.
+    if displays are added/removed - always check the startup enum log.
     """
     rects: list[tuple[int, int, int, int]] = []
     MonitorEnumProc = ctypes.WINFUNCTYPE(
@@ -136,7 +136,7 @@ def _enum_monitor_rects() -> list[tuple[int, int, int, int]]:
 # after every game. bettercam uses DXGI Desktop Duplication bound to the
 # single real adapter (device 0): it never touches the virtual adapters,
 # and on a display-mode change the duplication loses access GRACEFULLY
-# (grab() returns None / raises a recoverable error) — we release and
+# (grab() returns None / raises a recoverable error) - we release and
 # rebuild the camera next cycle instead of faulting a driver.
 _BETTERCAM: dict = {}          # output_idx -> bettercam camera (created once, reused)
 _BETTERCAM_LASTIMG: dict = {}  # output_idx -> last good PIL image (static-screen fill)
@@ -145,10 +145,10 @@ _BETTERCAM_DISABLED = False    # True only if bettercam import hard-fails
 
 def _resolve_output_idx(monitor_index: int | None) -> int:
     """Map the agent's monitor index to a DXGI output index on device 0.
-    None (legacy 'virtual desktop' / all_screens) is retired — it was the
-    0x50-BSOD trigger — and maps to the primary output with a warning."""
+    None (legacy 'virtual desktop' / all_screens) is retired - it was the
+    0x50-BSOD trigger - and maps to the primary output with a warning."""
     if monitor_index is None:
-        log.warning("virtual-desktop capture (all_screens) retired — it was the "
+        log.warning("virtual-desktop capture (all_screens) retired - it was the "
                     "0x50-BSOD trigger; using primary output 0 instead")
         return 0
     return max(0, monitor_index)
@@ -166,7 +166,7 @@ def _release_camera(output_idx: int) -> None:
 def _bettercam_image(output_idx: int):
     """Return a PIL RGB image for the DXGI output, or None on a transient
     miss. A grab failure (mode-change access-loss) releases the camera so
-    the next cycle rebuilds it — this graceful loss is what replaces the
+    the next cycle rebuilds it - this graceful loss is what replaces the
     BSOD-prone virtual-desktop BitBlt."""
     import bettercam
     import numpy as np
@@ -176,7 +176,7 @@ def _bettercam_image(output_idx: int):
         if cam is None:
             # device_idx=0 is the only DXGI adapter (Intel Xe); the
             # Parsec/Duet virtual adapters are intentionally unreachable.
-            # output_color="BGRA" returns the raw native array — bettercam
+            # output_color="BGRA" returns the raw native array - bettercam
             # skips its cv2-based colour conversion (no OpenCV dep), we
             # reorder BGRA→RGB below in numpy.
             cam = bettercam.create(device_idx=0, output_idx=output_idx,
@@ -194,7 +194,7 @@ def _bettercam_image(output_idx: int):
         _release_camera(output_idx)
         return _BETTERCAM_LASTIMG.get(output_idx)
     if frame is None:
-        # No new frame since last grab (static screen) — reuse last good so
+        # No new frame since last grab (static screen) - reuse last good so
         # the stream doesn't gap on idle. None only on a true cold miss.
         return _BETTERCAM_LASTIMG.get(output_idx)
     rgb = np.ascontiguousarray(frame[:, :, [2, 1, 0]])  # BGRA -> RGB
@@ -206,7 +206,7 @@ def _bettercam_image(output_idx: int):
 def capture(monitor_index: int | None = MONITOR_INDEX,
             crop: tuple[int, int, int, int] | None = None) -> tuple[str, str, int, int]:
     """Return (b64, format, width, height) for the chosen monitor via DXGI
-    Desktop Duplication (bettercam) on the single real adapter — legacy
+    Desktop Duplication (bettercam) on the single real adapter - legacy
     virtual-desktop / virtual-adapter capture is retired (see the BSOD
     AUDIT note above).
 
@@ -225,7 +225,7 @@ def capture(monitor_index: int | None = MONITOR_INDEX,
             img = _bettercam_image(output_idx)
         except ImportError as e:
             _BETTERCAM_DISABLED = True
-            log.critical("bettercam unavailable (%s) — DEGRADED to primary-only "
+            log.critical("bettercam unavailable (%s) - DEGRADED to primary-only "
                          "ImageGrab (NO all_screens). Reinstall bettercam to "
                          "restore the safe DXGI backend.", e)
     if img is None and _BETTERCAM_DISABLED:
@@ -237,7 +237,7 @@ def capture(monitor_index: int | None = MONITOR_INDEX,
     if img is None:
         # Transient miss (cold start / mid-mode-change). Signal loop() to
         # skip this cycle; the vision server keeps serving its cached frame.
-        raise RuntimeError("no frame this cycle (transient — camera rebuilding)")
+        raise RuntimeError("no frame this cycle (transient - camera rebuilding)")
     if crop is not None:
         l, t, r, b = crop
         l = max(0, min(l, img.width))
@@ -325,7 +325,7 @@ def loop(interval: float, monitor_index: int | None,
         # the operator notices a sustained outage instead of stale frames
         # being served from the server's cache.
         if consecutive_fail == 6:
-            log.critical("vision stream down for 6 consecutive uploads — Legion unreachable?")
+            log.critical("vision stream down for 6 consecutive uploads - Legion unreachable?")
         if consecutive_fail > 8:
             consecutive_fail = 8  # cap exponent so backoff stays at 30s ceiling
         sleep_for = interval if consecutive_fail < 3 else min(30.0, interval * (2 ** (consecutive_fail - 2)))

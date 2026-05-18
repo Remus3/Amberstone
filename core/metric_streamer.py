@@ -1,5 +1,5 @@
 """
-MetricStreamer — cadence wrapper around `core.match_metrics.recorder`.
+MetricStreamer - cadence wrapper around `core.match_metrics.recorder`.
 
 The recorder writes metric rows whenever asked. The streamer decides
 *when* to ask: on game-time milestones, on 60s periodic boundaries, and
@@ -12,7 +12,7 @@ Design:
   - `on_state(payload, events=[])` is called by the coach on every tick
     (post-write of coaching_data.json). The streamer inspects the payload
     to decide whether to record + flush
-  - stateless between snapshots — no internal payload diffing; that's
+  - stateless between snapshots - no internal payload diffing; that's
     the coach's job
 
 Cadence rules:
@@ -38,7 +38,7 @@ WIRE-IN (coach side, not activated automatically):
     streamer.on_state(coaching_data, events=[...], game_end=True)
     streamer.close()
 
-The wire-in above is INTENTIONALLY left unapplied in the coach modules —
+The wire-in above is INTENTIONALLY left unapplied in the coach modules -
 enable it manually when you're ready to verify against a live match
 without risking the coach crashing on a regression.
 """
@@ -154,7 +154,7 @@ class MetricStreamer:
                 rows += self._snapshot(payload, gt, tag)
 
             # 5. periodic 60s sample (only if no other milestone fired
-            #    this tick — avoids double-writes)
+            #    this tick - avoids double-writes)
             if rows == 0 and gt >= 0:
                 bucket = (gt // _PERIODIC_INTERVAL_S) * _PERIODIC_INTERVAL_S
                 if bucket > self._last_periodic_s and bucket >= _PERIODIC_INTERVAL_S:

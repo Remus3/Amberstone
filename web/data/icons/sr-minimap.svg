@@ -23,7 +23,7 @@
   <!-- Neutral jungle floor -->
   <rect x="0" y="0" width="100" height="100" fill="#1e2433"/>
 
-  <!-- River running top-left to bot-right (anti-diagonal) — this is the
+  <!-- River running top-left to bot-right (anti-diagonal) - this is the
        team-boundary axis on SR. Drawn as a thick rotated band. -->
   <g transform="translate(50 50) rotate(-45)">
     <rect x="-80" y="-10" width="160" height="20" fill="url(#river)"/>
@@ -44,7 +44,7 @@
   <rect x="0" y="0" width="100" height="100" fill="url(#blue-base)"/>
   <rect x="0" y="0" width="100" height="100" fill="url(#red-base)"/>
 
-  <!-- Jungle camp markers — small tinted dots at approximate positions.
+  <!-- Jungle camp markers - small tinted dots at approximate positions.
        Each side has: Blue buff, Red buff, Gromp, Wolves, Raptors, Krugs. -->
   <g fill="#4a6b4a" fill-opacity="0.55" stroke="#6b8a6b" stroke-opacity="0.4" stroke-width="0.3">
     <!-- Blue-side jungle (bot-left quadrant) -->

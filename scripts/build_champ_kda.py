@@ -1,5 +1,5 @@
 """
-scripts/build_champ_kda.py — pre-aggregate per-champion KDA totals
+scripts/build_champ_kda.py - pre-aggregate per-champion KDA totals
 from data/rewind_history.db so /api/recommend-champ doesn't have to
 re-fold 2.5M timeline_events on cold-cache.
 
@@ -21,7 +21,7 @@ Shape:
     }
 
 Run weekly (or after a big rewind_history backfill). Drops the
-recommender's cold-call time from ~474 ms to ~50 ms — the fold of
+recommender's cold-call time from ~474 ms to ~50 ms - the fold of
 timeline_events is the bottleneck.
 
 Caller (coaches/champ_pool_recommender) reads the JSON if present and

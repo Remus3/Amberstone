@@ -1,4 +1,4 @@
-"""bridge_watcher_health_publisher.py — peer-side sidecar for fleet health.
+"""bridge_watcher_health_publisher.py - peer-side sidecar for fleet health.
 
 Polls the local bridge_watcher_health.json every PUBLISH_INTERVAL_S seconds
 and POSTs to Legion's /api/health/peer/<node>. Lets Legion's
@@ -23,7 +23,7 @@ CLI:
       --interval 60 \\
       [--token-file path/to/local_paths.json]   # if can't import core.bridge
 
-The script is intentionally robust — failures are logged, not raised; the
+The script is intentionally robust - failures are logged, not raised; the
 peer's primary work shouldn't be impacted by Legion being down.
 """
 from __future__ import annotations
@@ -126,7 +126,7 @@ def main() -> int:
     token_file = Path(args.token_file) if args.token_file else None
     token = _resolve_token(token_file)
     if not token:
-        log.error("could not resolve bearer token — set --token-file or "
+        log.error("could not resolve bearer token - set --token-file or "
                   "ensure core.bridge is importable")
         return 2
 

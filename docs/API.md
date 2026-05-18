@@ -11,41 +11,41 @@ Pydantic schemas: `dashboard/api_schema.py` (outer shapes) · `core/coaching_pay
 |---|---|---|
 | `/api/state` | Current coach payload + health + LCU snapshot (500 ms poll target) | `StateResponse` |
 | `/api/state-stream` | SSE stream of `/api/state` on change (heartbeat every 15 s) | `StateResponse` events |
-| `/api/sim-state?scenario=<name>` | Sim scenario state from `data/sim_states.json` | — |
+| `/api/sim-state?scenario=<name>` | Sim scenario state from `data/sim_states.json` | - |
 | `/api/health` | RC process health (`ops/runtime/health.json` + `rc_version`) | `HealthResponse` |
 | `/api/health/all` | Consolidated rollup: RC + vision + DS + supervisor + cost + bridge + peers | `HealthAllResponse` |
-| `/api/health/peer` | Peer health index (all known peers) | — |
+| `/api/health/peer` | Peer health index (all known peers) | - |
 | `/api/health/peer/<node>` | Single peer health record (`gamepc`, `peer`) | `PeerHealth` |
 | `/api/ui-version` | SHA-1 hash of static asset mtimes (dashboard hot-reload trigger) | `{"v": str}` |
 | `/api/asset-stamp` | Max mtime across `index.html`, `dashboard.css`, `dashboard.js` | `{"mtime": float}` |
-| `/api/cost` | Cost tracker state + daily spend | — |
-| `/api/coach/trace` | Coach execution trace (last N calls) | — |
-| `/api/coach/state` | Coach active/disabled state per mode | — |
-| `/api/session/summary` | Current session summary (kills / deaths / gold delta etc.) | — |
-| `/api/history?...` | Match history (query: `mode`, `limit`, `since_days`) | — |
-| `/api/loadouts/all` | All stored loadout variants from `data/sr_user_builds.json` | — |
-| `/api/home/summary` | Home-screen summary card (win rate, streak, recent matches) | — |
-| `/api/replay/matches` | Replay-eligible match list from `rewind_history.db` | — |
-| `/api/replay/match/<id>` | Single replay match detail | — |
-| `/api/recommend-champ` | Champion recommendation (DS + history) | — |
-| `/api/logs` | Recent RC log lines (tail) | — |
-| `/api/bridge` | Bridge inbox messages (`?since=<ts>&limit=<n>`) | — |
-| `/api/bridge/messages` | Alias for `/api/bridge` | — |
-| `/api/bridge/status` | Bridge connection + watcher status | — |
-| `/api/bridge/cadence` | Bridge watcher cadence setting | — |
-| `/api/preview-build` | DS build preview for a champion | — |
-| `/api/champions` | Champion list from `data/champion_profiles/*.json` | — |
-| `/api/sr-draft/user-builds` | SR draft user build list | — |
-| `/api/lcu-cmd-result` | LCU command last result | — |
-| `/api/vision-state` | Vision pipeline state (tracker + last-frame age) | — |
-| `/api/decisions` | Bridge watcher decision ring (last 24 h) | — |
-| `/api/decisions/log` | Extended decision log | — |
-| `/api/diagnostics` | Full system diagnostics dump | — |
-| `/api/reload-regions` | Reload `data/vision_regions.json` (no restart needed) | — |
-| `/api/ocr` | OCR debug: run tiered OCR on latest frame | — |
-| `/api/validate-ocr` | Validate OCR region coverage | — |
+| `/api/cost` | Cost tracker state + daily spend | - |
+| `/api/coach/trace` | Coach execution trace (last N calls) | - |
+| `/api/coach/state` | Coach active/disabled state per mode | - |
+| `/api/session/summary` | Current session summary (kills / deaths / gold delta etc.) | - |
+| `/api/history?...` | Match history (query: `mode`, `limit`, `since_days`) | - |
+| `/api/loadouts/all` | All stored loadout variants from `data/sr_user_builds.json` | - |
+| `/api/home/summary` | Home-screen summary card (win rate, streak, recent matches) | - |
+| `/api/replay/matches` | Replay-eligible match list from `rewind_history.db` | - |
+| `/api/replay/match/<id>` | Single replay match detail | - |
+| `/api/recommend-champ` | Champion recommendation (DS + history) | - |
+| `/api/logs` | Recent RC log lines (tail) | - |
+| `/api/bridge` | Bridge inbox messages (`?since=<ts>&limit=<n>`) | - |
+| `/api/bridge/messages` | Alias for `/api/bridge` | - |
+| `/api/bridge/status` | Bridge connection + watcher status | - |
+| `/api/bridge/cadence` | Bridge watcher cadence setting | - |
+| `/api/preview-build` | DS build preview for a champion | - |
+| `/api/champions` | Champion list from `data/champion_profiles/*.json` | - |
+| `/api/sr-draft/user-builds` | SR draft user build list | - |
+| `/api/lcu-cmd-result` | LCU command last result | - |
+| `/api/vision-state` | Vision pipeline state (tracker + last-frame age) | - |
+| `/api/decisions` | Bridge watcher decision ring (last 24 h) | - |
+| `/api/decisions/log` | Extended decision log | - |
+| `/api/diagnostics` | Full system diagnostics dump | - |
+| `/api/reload-regions` | Reload `data/vision_regions.json` (no restart needed) | - |
+| `/api/ocr` | OCR debug: run tiered OCR on latest frame | - |
+| `/api/validate-ocr` | Validate OCR region coverage | - |
 | `/api/ocr-crop?region=<name>` | OCR crop image for a named region | PNG |
-| `/api/dev/vision-status` | Vision server diagnostic (frame age, tier counts) | — |
+| `/api/dev/vision-status` | Vision server diagnostic (frame age, tier counts) | - |
 | `/metrics` | Prometheus metrics (Counter / Gauge / Histogram) | text/plain |
 
 ---

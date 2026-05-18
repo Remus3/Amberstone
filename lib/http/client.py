@@ -7,7 +7,7 @@ Responsibilities:
   - Circuit breaker per hostname: opens after 5 consecutive failures,
     half-open after 60s; one probe call closes it on success.
 
-Uses only the stdlib (``urllib.request``) — no third-party deps so the
+Uses only the stdlib (``urllib.request``) - no third-party deps so the
 client works in the embedded python-embed too.
 
 Thread-safe. Intended use:
@@ -38,7 +38,7 @@ MIN_INTERVAL_SEC = 1.0
 BREAKER_THRESHOLD = 5
 BREAKER_COOLDOWN_SEC = 60.0
 
-# SSL context: prefer certifi's bundled Mozilla CA list when available —
+# SSL context: prefer certifi's bundled Mozilla CA list when available -
 # Python 3.14's embedded python-embed distribution ships without a CA
 # store, which fails on some sites (aggregator B, cloudflare-fronted domains).
 # Falls back to the default system store if certifi isn't installed.
@@ -111,7 +111,7 @@ class HttpClient:
         try:
             stat = self._blocklist_path.stat()
         except FileNotFoundError:
-            logger.warning("blocklist missing at %s — allowing all", self._blocklist_path)
+            logger.warning("blocklist missing at %s - allowing all", self._blocklist_path)
             self._blocklist_hosts = set()
             self._blocklist_suffixes = ()
             self._blocklist_mtime = 0.0
@@ -119,7 +119,7 @@ class HttpClient:
         try:
             data = _json.loads(self._blocklist_path.read_text(encoding="utf-8"))
         except (OSError, _json.JSONDecodeError, UnicodeDecodeError) as e:
-            logger.warning("blocklist parse failed (%s): %s — allowing all",
+            logger.warning("blocklist parse failed (%s): %s - allowing all",
                            self._blocklist_path, e)
             self._blocklist_hosts = set()
             self._blocklist_suffixes = ()
@@ -144,7 +144,7 @@ class HttpClient:
             self._reload_blocklist()
 
     def reload_blocklist(self) -> None:
-        """Manual reload — kept for callers that want to force a refresh
+        """Manual reload - kept for callers that want to force a refresh
         without waiting for the next is_blocked() to notice."""
         self._reload_blocklist()
 
@@ -175,9 +175,9 @@ class HttpClient:
             return
         if now - st.opened_at < BREAKER_COOLDOWN_SEC:
             raise CircuitOpen(
-                f"breaker open for {host} — {BREAKER_COOLDOWN_SEC - (now - st.opened_at):.0f}s remaining"
+                f"breaker open for {host} - {BREAKER_COOLDOWN_SEC - (now - st.opened_at):.0f}s remaining"
             )
-        # cooldown elapsed — allow one probe
+        # cooldown elapsed - allow one probe
 
     def _on_success(self, host: str) -> None:
         st = self._host_state(host)
@@ -230,7 +230,7 @@ class HttpClient:
 
         req = urllib_request.Request(url, data=data, headers=req_headers, method=method.upper())
         try:
-            # Pass our certifi-backed SSL context for HTTPS — urllib only
+            # Pass our certifi-backed SSL context for HTTPS - urllib only
             # uses it when explicitly supplied.
             open_kwargs: dict[str, Any] = {"timeout": timeout}
             if url.lower().startswith("https") and _SSL_CONTEXT is not None:
@@ -240,7 +240,7 @@ class HttpClient:
                 hdrs = {k: v for k, v in resp.getheaders()}
                 r = Response(resp.status, hdrs, body, resp.url)
         except urllib_error.HTTPError as e:
-            # 4xx/5xx — body available via e.read(); still a failure for breaker purposes.
+            # 4xx/5xx - body available via e.read(); still a failure for breaker purposes.
             body = e.read() if hasattr(e, "read") else b""
             hdrs = {k: v for k, v in (e.headers.items() if e.headers else [])}
             r = Response(e.code, hdrs, body, url)

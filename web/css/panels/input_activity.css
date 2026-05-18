@@ -1,4 +1,4 @@
-/* ───── Adaptation panel — round 44: no-scroll, glanceable ────── */
+/* ───── Adaptation panel - round 44: no-scroll, glanceable ────── */
 .adapt-section-head {
   margin-top: 10px;
   font-size: 15px;
@@ -71,8 +71,8 @@
 .adapt-footer b       { color: var(--gold); }
 .adapt-footer b.on    { color: var(--good); }
 
-/* ───── Input bar — round 44: compact for glanceable layout ─────
- * (2026-04-25) Hidden globally per user request — "Ask Agent 7" wasn't
+/* ───── Input bar - round 44: compact for glanceable layout ─────
+ * (2026-04-25) Hidden globally per user request - "Ask Agent 7" wasn't
  * working as intended. Per the static-layout / visual-only-remove rule,
  * the form, input element, send button, and all JS event handlers stay
  * wired (Stop/UserPromptSubmit hooks still query the bridge, history
@@ -280,8 +280,8 @@
 /* Round 44: grid reserves enough for header (70) + activity (36) +
  * compact input bar w/ history hidden (~110) + footer (36). When
  * the history opens it's scrollable in-place and doesn't push the
- * grid — so the grid doesn't need to reserve for it. */
-/* Round 44 height calc removed — main is flex-grow now. See top of file. */
+ * grid - so the grid doesn't need to reserve for it. */
+/* Round 44 height calc removed - main is flex-grow now. See top of file. */
 
 /* ───── Task detail modal ──────────────────────────────────────── */
 .task-modal {
@@ -357,7 +357,7 @@
 .activity-event:hover { filter: brightness(1.2); }
 
 /* ───── Activity ticker strip ──────────────────────────────────── */
-/* User request 2026-04-29: visually hidden — supervisor task tracking
+/* User request 2026-04-29: visually hidden - supervisor task tracking
  * (refreshActivity / activity-line / activity-count = "165/193") still
  * runs server-side and the JS still polls; only the strip is hidden so
  * the row doesn't take screen real estate. Set display:flex to restore. */
@@ -425,7 +425,7 @@
 .activity-event.event-filed       .ev-kind { color: var(--gold); }
 .activity-event.event-dispatched  .ev-kind { color: var(--info); }
 
-/* Pink advisory treatment — overrides the per-event-color above so
+/* Pink advisory treatment - overrides the per-event-color above so
  * cold-streak / coaching-insight advisories pop visually. */
 .activity-event.op-advisory .ev-op { color: var(--advisory); }
 .activity-event.op-advisory .ev-kind { color: var(--advisory); }
@@ -469,7 +469,7 @@ footer .prefs-chip {
 }
 footer .prefs-chip:hover { background: var(--bad-soft); color: var(--bad); }
 
-/* ───── Reduced motion — respect OS preference ─────────────────── */
+/* ───── Reduced motion - respect OS preference ─────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -494,7 +494,7 @@ footer .prefs-chip:hover { background: var(--bad-soft); color: var(--bad); }
   .item-tile.next-up .item-cost { top: 46px; }
 }
 
-/* Very narrow (half-screen window) — drop the 3-col main grid to 2. */
+/* Very narrow (half-screen window) - drop the 3-col main grid to 2. */
 @media (max-width: 1280px) {
   main {
     grid-template-columns: 1fr 1fr;

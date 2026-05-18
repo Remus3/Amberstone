@@ -1,5 +1,5 @@
-# arch: vision server entrypoint shim — delegates to vision_server.main | section=vision | frozen=no
-"""moon_vision_server.py — thin entrypoint shim for the :8889 vision server.
+# arch: vision server entrypoint shim - delegates to vision_server.main | section=vision | frozen=no
+"""moon_vision_server.py - thin entrypoint shim for the :8889 vision server.
 
 The real implementation lives in the ``vision_server/`` package (Phase 2.4
 split, 2026-05-09). This file is preserved as a top-level entry point because

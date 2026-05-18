@@ -1,5 +1,5 @@
 """
-core/polled_json.py — single source of truth for "polled JSON file" semantics.
+core/polled_json.py - single source of truth for "polled JSON file" semantics.
 
 AUDIT 2026-04-28 (proposal 1.3): coaching_data.json, all
 data/<mode>_coaching_data.json files, and ops/runtime/health.json are
@@ -29,7 +29,7 @@ _log = logging.getLogger("rc.polled_json")
 
 def atomic_write_json(path: Path, payload: Any, *, indent: int = 2) -> None:
     """Atomic JSON write via tmp + rename. Safe for files polled by other
-    processes — readers see either the old content or the new, never a
+    processes - readers see either the old content or the new, never a
     partial write. Creates parent directories on demand."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)

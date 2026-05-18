@@ -426,7 +426,7 @@ def is_redundant(item_name, owned_items):
     given `owned_items` (list/set of names). False otherwise.
 
     Allows the candidate to upgrade FROM an owned component (e.g. owning
-    Bramble Vest does NOT make Thornmail redundant — Thornmail is the
+    Bramble Vest does NOT make Thornmail redundant - Thornmail is the
     upgrade path).
     """
     cand = _norm(item_name)
@@ -434,7 +434,7 @@ def is_redundant(item_name, owned_items):
     if not cand or cand in owned_set:
         return True, "already owned"
     # Componentry: if the candidate's recipe lists a component the player
-    # owns, that means we're upgrading — not redundant by exclusion.
+    # owns, that means we're upgrading - not redundant by exclusion.
     item_def = ITEMS.get(item_name) or COMPONENTS.get(item_name) or {}
     parts_lc = {_norm(p) for p in item_def.get("from", [])}
     for group_key, group in _load_exclusions().items():
@@ -482,7 +482,7 @@ def boots_phase(level, gold, owned_count, owned_items=None,
             (level 1-2, gold < 300)
     - buy_basic: 300g basic Boots OR 1100g specialized boots fits the breakpoint
     - upgrade: level 11+ AND have ~3000g free for Symbiotic/Crimson/Forever
-    - consider_sell: 6 items + boots filled, level 16+, late game — selling
+    - consider_sell: 6 items + boots filled, level 16+, late game - selling
                      boots for a 6th legendary often increases survivability
                      or DPS more
     - sell_for_quest: lane quest is complete → invisible "quest boots" are

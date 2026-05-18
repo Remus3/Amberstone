@@ -1,6 +1,6 @@
 """
 tests/phase7_polish/test_start_daemon_slayer_logging.py
-ROADMAP medium-priority #3 — RC-DaemonSlayer startup traceability.
+ROADMAP medium-priority #3 - RC-DaemonSlayer startup traceability.
 
 The RC-DaemonSlayer scheduled task runs as SYSTEM; writes under the project
 root can fail there and pythonw.exe has no console, so the old

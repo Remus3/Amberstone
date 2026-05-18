@@ -1,4 +1,4 @@
-"""Anti-drift guard for the HARD RULE — no two items sharing a unique
+"""Anti-drift guard for the HARD RULE - no two items sharing a unique
 passive in a planned build (2026-05-17).
 
 The operator's hard rule is enforced engine-side: core.build_order
@@ -11,11 +11,11 @@ family map of its own.
 That property is load-bearing and must not rot:
 
   * If the planner ever grew a hardcoded family list it could drift from
-    effects.py (the s173 anti-drift trap) — Test A forbids that.
+    effects.py (the s173 anti-drift trap) - Test A forbids that.
   * effects.py defines SIX families today (spellblade/lifeline/immolate
     + the single-item fiendhunter_barrage/hellfire_char/innervating_fill).
-    A family-agnostic planner covers all of them — and any future family
-    added to effects.py — for free. Tests B/C prove that by deriving the
+    A family-agnostic planner covers all of them - and any future family
+    added to effects.py - for free. Tests B/C prove that by deriving the
     family set from ITEM_EFFECTS at runtime and asserting no family is
     ever doubled in a planned order. A 7th family added later is covered
     automatically; a family tag accidentally dropped from effects.py
@@ -33,7 +33,7 @@ _BUILD_ORDER_SRC = Path(__file__).resolve().parent.parent / "core" / "build_orde
 
 
 def _engine_families() -> set[str]:
-    """The unique-passive family set as the engine actually defines it —
+    """The unique-passive family set as the engine actually defines it -
     the source of truth the planner must defer to."""
     return {
         e.unique_passive_key
@@ -43,12 +43,12 @@ def _engine_families() -> set[str]:
 
 
 class PlannerIsFamilyAgnosticTests(unittest.TestCase):
-    """Test A — the planner must NOT hardcode any family name. The rule
+    """Test A - the planner must NOT hardcode any family name. The rule
     is enforced by engine iteration, not a local map that could drift."""
 
     def test_no_family_literal_in_planner_source(self):
         src = _BUILD_ORDER_SRC.read_text(encoding="utf-8")
-        # Strip the module docstring + comments — prose may name families
+        # Strip the module docstring + comments - prose may name families
         # to explain *why* the design is family-agnostic; only executable
         # code must be clean.
         code_lines = []
@@ -67,7 +67,7 @@ class PlannerIsFamilyAgnosticTests(unittest.TestCase):
         for fam in _engine_families():
             self.assertNotIn(
                 f'"{fam}"', code,
-                f"planner code references family literal {fam!r} — it must "
+                f"planner code references family literal {fam!r} - it must "
                 f"stay family-agnostic (engine is the source of truth)",
             )
             self.assertNotIn(f"'{fam}'", code)
@@ -126,7 +126,7 @@ class _FakeEngine:
 
 
 class EveryEngineFamilyCoveredTests(unittest.TestCase):
-    """Tests B/C — the planner never doubles ANY family the engine
+    """Tests B/C - the planner never doubles ANY family the engine
     defines, including the single-item ones, with zero family-aware code
     in the planner."""
 
@@ -146,13 +146,13 @@ class EveryEngineFamilyCoveredTests(unittest.TestCase):
         for fam in _engine_families():
             self.assertLessEqual(
                 fams.count(fam), 1,
-                f"family {fam!r} appears >1× in the planned order — "
+                f"family {fam!r} appears >1× in the planned order - "
                 f"HARD RULE violated",
             )
         self.assertTrue(res.unique_passive_safe)
 
     def test_whitelist_of_pure_family_yields_exactly_one(self):
-        # Force the engine to only offer items of ONE family — correct
+        # Force the engine to only offer items of ONE family - correct
         # behavior is the order stops at exactly one (rest engine-deduped).
         for fam in sorted(_engine_families()):
             ids = [iid for iid, (_, _, f) in self.cat.items() if f == fam]
@@ -166,7 +166,7 @@ class EveryEngineFamilyCoveredTests(unittest.TestCase):
             self.assertEqual(
                 len(res.order), 1,
                 f"family {fam!r}: planner emitted {len(res.order)} items "
-                f"from a single-family pool — engine dedup not enforced "
+                f"from a single-family pool - engine dedup not enforced "
                 f"through iteration",
             )
             self.assertTrue(res.unique_passive_safe)
@@ -174,7 +174,7 @@ class EveryEngineFamilyCoveredTests(unittest.TestCase):
     def test_family_set_has_not_regressed(self):
         # s232-style tripwire: the 6 known families must still be tagged
         # in effects.py. A drop here means a unique-passive item lost its
-        # tag (silent no-double regression) — investigate effects.py, do
+        # tag (silent no-double regression) - investigate effects.py, do
         # not just lower this bound.
         fams = _engine_families()
         for known in ("spellblade", "lifeline", "immolate"):
@@ -183,7 +183,7 @@ class EveryEngineFamilyCoveredTests(unittest.TestCase):
         self.assertGreaterEqual(
             len(fams), 6,
             f"expected >=6 unique-passive families, found {len(fams)}: "
-            f"{sorted(fams)} — a family tag was likely dropped",
+            f"{sorted(fams)} - a family tag was likely dropped",
         )
 
 

@@ -1,5 +1,5 @@
 """
-ops/rc_dev_runtime.py  —  Phase 0 Addendum compliant rewrite
+ops/rc_dev_runtime.py  -  Phase 0 Addendum compliant rewrite
 
 Lightweight file-based control plane for Riot Commander.
 
@@ -49,7 +49,7 @@ def _atomic_write_json(path: Path, data: Dict[str, Any]) -> None:
 #   to a live tkinter widget or holds per-game mutable state.
 #
 # RESTART_ONLY: modules that own live instances, threads, or tkinter state.
-#   Hot-reloading these corrupts in-process state — must be restart-only.
+#   Hot-reloading these corrupts in-process state - must be restart-only.
 #
 SAFE_RELOAD_MODULES = frozenset({
     "core.theme",
@@ -115,7 +115,7 @@ class DevRuntime:
         self._threads:        list[threading.Thread] = []
         self._started_at      = _utc_now()
 
-        # Unique IDs for this run — written to every health.json
+        # Unique IDs for this run - written to every health.json
         self._run_id     = uuid.uuid4().hex
         self._session_id = uuid.uuid4().hex
 
@@ -154,7 +154,7 @@ class DevRuntime:
             "session_id": self._session_id,
             "started_at": self._started_at,
             "updated_at": _utc_now(),
-            "alive":      False,   # not yet alive — set to True on first tick
+            "alive":      False,   # not yet alive - set to True on first tick
             "booting":    True,
         }
         try:
@@ -220,10 +220,10 @@ class DevRuntime:
 
         Pattern:
           1. Call state_provider (if wired) and capture its this-tick result.
-          2. Build payload using that result — never the pre-call stale value.
+          2. Build payload using that result - never the pre-call stale value.
           3. Update self._last_sp_ok for persistent tracking after payload is set.
         """
-        # Step 1 — call the state provider first, capture this-tick outcome
+        # Step 1 - call the state provider first, capture this-tick outcome
         this_tick_sp_ok: Optional[bool]          = None   # None = no provider
         this_tick_sp_error: Optional[str]        = None
         this_tick_state: Optional[Dict[str, Any]] = None
@@ -237,7 +237,7 @@ class DevRuntime:
                 this_tick_sp_ok    = False
                 this_tick_sp_error = f"{type(exc).__name__}: {exc}"
 
-        # Step 2 — build payload using this-tick result
+        # Step 2 - build payload using this-tick result
         payload: Dict[str, Any] = {
             "app":               self.app_name,
             "pid":               os.getpid(),
@@ -253,20 +253,20 @@ class DevRuntime:
         }
 
         if this_tick_sp_ok is None:
-            # No provider registered — omit subsystem fields entirely.
+            # No provider registered - omit subsystem fields entirely.
             # SelfMonitor treats absent fields as unknown, not unhealthy.
             pass
         elif this_tick_sp_ok:
-            # Provider succeeded this tick — write True for this tick.
+            # Provider succeeded this tick - write True for this tick.
             payload["last_state_provider_ok"] = True
             if this_tick_state:
                 payload.update(this_tick_state)
         else:
-            # Provider failed this tick — write False + error for this tick.
+            # Provider failed this tick - write False + error for this tick.
             payload["last_state_provider_ok"] = False
             payload["state_provider_error"]   = this_tick_sp_error
 
-        # Step 3 — update persistent tracking AFTER payload is constructed
+        # Step 3 - update persistent tracking AFTER payload is constructed
         if this_tick_sp_ok is not None:
             self._last_sp_ok = this_tick_sp_ok
 
@@ -351,7 +351,7 @@ class DevRuntime:
                 r = self._reload_modules(safe)
                 if unsafe:
                     r.setdefault("errors", []).extend([
-                        {"module": m, "error": "RESTART_ONLY module — not hot-reloadable"}
+                        {"module": m, "error": "RESTART_ONLY module - not hot-reloadable"}
                         for m in unsafe
                     ])
                     r["ok"] = r["ok"] and not unsafe
@@ -584,7 +584,7 @@ class DevRuntime:
             result["callback"] = name   # ensure callback name is always present
             return result
 
-        # Non-dict return value — wrap it.
+        # Non-dict return value - wrap it.
         self._last_reload_ok    = True
         self._last_reload_error = None
         return {"ok": True, "callback": name, "result": value}
@@ -647,7 +647,7 @@ class DevRuntime:
                 return {"ok": False, "pid": proc.pid,
                         "error": f"process exited immediately (rc={rc})"}
         except subprocess.TimeoutExpired:
-            # Still alive — fire-and-forget success path.
+            # Still alive - fire-and-forget success path.
             return {"ok": True, "pid": proc.pid}
         except OSError as exc:
             return {"ok": False, "pid": proc.pid,

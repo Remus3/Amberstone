@@ -37,22 +37,22 @@ already has from `/api/state`:
      }
 
 Errors:
-  400 — body missing `champion`
-  500 — anything unexpected
+  400 - body missing `champion`
+  500 - anything unexpected
 
   POST /api/sr-draft/apply
   {
     "champion":  "Tristana",
-    "key":       "primary",                 # profile key — used in page name
+    "key":       "primary",                 # profile key - used in page name
     "label":     "Primary",                 # optional, surfaces in response
     "kind":      "engine"|"user",           # optional, response only
-    "runes": {                              # optional — skipped if missing
+    "runes": {                              # optional - skipped if missing
       "keystone":  "Press the Attack",
       "primary":   "Precision",
       "secondary": "Domination"
     },
-    "summoner_spells": [4, 12],             # optional — [d, f] LCU IDs
-    "item_ids":  ["6675", "3094", ...],     # optional — pre-resolved
+    "summoner_spells": [4, 12],             # optional - [d, f] LCU IDs
+    "item_ids":  ["6675", "3094", ...],     # optional - pre-resolved
     "push_runes": true,                     # default true
     "push_items": true,                     # default true
     "push_summoners": true                  # default true
@@ -67,8 +67,8 @@ Errors:
      }
 
 Errors:
-  400 — body missing `champion` or `key`
-  500 — anything unexpected
+  400 - body missing `champion` or `key`
+  500 - anything unexpected
 """
 import json
 import logging
@@ -102,7 +102,7 @@ def _build_item_set(champion: str, key: str, item_ids: list) -> dict:
         "cmd":      "apply_item_set",
         "set_uid":  f"RC-{norm_champ}-sr-{norm_key}",
         "title":    f"RC: {champion} {key} (SR)"[:50],
-        # champion_id is best-effort — the LCU agent tolerates 0 (item
+        # champion_id is best-effort - the LCU agent tolerates 0 (item
         # set still applies; just isn't auto-equipped on champion lock).
         "champion_id": 0,
         "blocks": [{
@@ -116,7 +116,7 @@ def _build_rune_cmd(champion: str, key: str, runes: dict) -> "dict | None":
     """Translate a profile's runes dict → `apply_runes` LCU command.
 
     Returns None when the keystone or trees aren't recognised by the
-    frozen `lcu.lcu_rune_writer.build_perk_ids` resolver — in that case
+    frozen `lcu.lcu_rune_writer.build_perk_ids` resolver - in that case
     the caller skips the rune push and surfaces a note. The shard3=5002
     SR bug in the rune writer is documented in
     `project_rune_writer_shard3_not_applied.md`; SR-draft variants ride
@@ -198,9 +198,9 @@ def _serve_sr_draft_apply_post(h, payload) -> None:
                 notes.append(f"{cmd_obj.get('cmd')}: {exc}")
 
         if push_runes and rune_cmd is None and isinstance(runes, dict) and runes:
-            notes.append("runes: keystone/tree unrecognised — skipped")
+            notes.append("runes: keystone/tree unrecognised - skipped")
         if push_items and item_cmd is None and item_ids:
-            notes.append("items: empty after coercion — skipped")
+            notes.append("items: empty after coercion - skipped")
 
         _enqueue(rune_cmd)
         _enqueue(item_cmd)

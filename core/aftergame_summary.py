@@ -5,20 +5,20 @@ Queries `match_metrics.db` for the just-completed match's metrics and
 joins against `champion_benchmarks.json` to produce the aftergame
 payload fields the dashboard reads in client mode:
 
-  - advice_headline       — single line take on the match
-  - advice_objective      — session/rank-goal framing
-  - key_points_review     — 3 bullets to pay attention to in VOD review
-  - clips_review          — single clip timestamp worth rewatching
-  - what_went_good        — list of 2-5 positives
-  - what_went_bad         — list of 2-5 negatives
-  - game_sense_early/mid/late   — one word each from GAME_SENSE_VOCAB
-  - game_sense_*_blurb    — short why-this-word
-  - game_sense_trend      — aggregate of last-N game_sense_* ratings
-  - digest_state          — none | ok | warn | alert
-  - digest_* fields       — when state != none
+  - advice_headline       - single line take on the match
+  - advice_objective      - session/rank-goal framing
+  - key_points_review     - 3 bullets to pay attention to in VOD review
+  - clips_review          - single clip timestamp worth rewatching
+  - what_went_good        - list of 2-5 positives
+  - what_went_bad         - list of 2-5 negatives
+  - game_sense_early/mid/late   - one word each from GAME_SENSE_VOCAB
+  - game_sense_*_blurb    - short why-this-word
+  - game_sense_trend      - aggregate of last-N game_sense_* ratings
+  - digest_state          - none | ok | warn | alert
+  - digest_* fields       - when state != none
 
 This is a RULE-BASED generator (not LLM-driven). The logic compares
-match metrics against the player's own historical benchmarks — above-p75
+match metrics against the player's own historical benchmarks - above-p75
 becomes a positive, below-p25 becomes a negative. Game Sense words
 are selected by heuristic on match patterns (death count, kill spree,
 time alive, comeback_flag, etc.). An LLM flavor pass can come later.
@@ -69,7 +69,7 @@ _NEGATIVE_CANDIDATES: list[tuple[str, bool, str]] = [
     ("damage_share",            True,  "Damage share {value}% (below your {p25}% p25)"),
     ("cs_at_10",                True,  "CS@10 {value} (below your {p25} p25)"),
     ("cs_at_15",                True,  "CS@15 {value} (below your {p25} p25)"),
-    ("vision_score",            True,  "Vision score {value} — below your {p25} p25"),
+    ("vision_score",            True,  "Vision score {value} - below your {p25} p25"),
     ("time_alive_pct",          True,  "Time alive {value}% (below your {p25}% p25)"),
 ]
 
@@ -133,11 +133,11 @@ def _match_meta(match_id: str) -> dict:
 def _pick_game_sense(metrics: dict, meta: dict) -> dict:
     """Heuristic Game Sense picker. Returns {early, mid, late, *_blurb}.
 
-    The heuristic is deliberately simple and rule-based — an LLM flavor
+    The heuristic is deliberately simple and rule-based - an LLM flavor
     pass can re-select words with richer context later. For now:
-      EARLY — picks from {Composed, Hesitant, Reactive, Steady, Chaotic}
-      MID   — picks from {Opportunistic, Patient, Reactive, Scattered, Tilted}
-      LATE  — picks from {Dominant, On Point, Steady, Drowning, Chaotic}
+      EARLY - picks from {Composed, Hesitant, Reactive, Steady, Chaotic}
+      MID   - picks from {Opportunistic, Patient, Reactive, Scattered, Tilted}
+      LATE  - picks from {Dominant, On Point, Steady, Drowning, Chaotic}
     based on match features we can see: CS@10 diff, kill-spree size,
     time_dead %, damage share, death count.
     """
@@ -149,13 +149,13 @@ def _pick_game_sense(metrics: dict, meta: dict) -> dict:
     cs_at_10 = _first_int(metrics.get("cs_at_10", ""))
     first_blood_self = _first_int(metrics.get("first_blood_self", ""))
     if cs_at_10 is not None and cs_at_10 >= 75:
-        early, early_blurb = "Composed", f"CS@10 {cs_at_10} — clean early execution."
+        early, early_blurb = "Composed", f"CS@10 {cs_at_10} - clean early execution."
     elif first_blood_self == 1:
         early, early_blurb = "Opportunistic", "First-blood in the first 4 minutes."
     elif cs_at_10 is not None and cs_at_10 < 55:
-        early, early_blurb = "Hesitant", f"CS@10 {cs_at_10} — early bleed vs lane opp."
+        early, early_blurb = "Hesitant", f"CS@10 {cs_at_10} - early bleed vs lane opp."
     elif deaths >= 3 and duration < 900:
-        early, early_blurb = "Chaotic", "Multiple deaths before 15min — lost early tempo."
+        early, early_blurb = "Chaotic", "Multiple deaths before 15min - lost early tempo."
     else:
         early, early_blurb = "Steady", "No early standout, no early mistakes."
 
@@ -164,13 +164,13 @@ def _pick_game_sense(metrics: dict, meta: dict) -> dict:
     time_dead = _first_int(metrics.get("time_dead_summary", ""))
     dmg_share = _first_int(metrics.get("damage_share", ""))
     if kp is not None and kp >= 65 and time_dead is not None and time_dead <= 60:
-        mid, mid_blurb = "Opportunistic", f"KP {kp}% with only {time_dead}s dead — you showed up for fights."
+        mid, mid_blurb = "Opportunistic", f"KP {kp}% with only {time_dead}s dead - you showed up for fights."
     elif time_dead is not None and time_dead >= 180:
-        mid, mid_blurb = "Tilted", f"Spent {time_dead}s dead through mid — kept rolling into bad fights."
+        mid, mid_blurb = "Tilted", f"Spent {time_dead}s dead through mid - kept rolling into bad fights."
     elif dmg_share is not None and dmg_share >= 30:
         mid, mid_blurb = "Dominant", f"Carrying dmg share at {dmg_share}% mid."
     elif kp is not None and kp < 40:
-        mid, mid_blurb = "Scattered", f"Low KP {kp}% through mid — off-map."
+        mid, mid_blurb = "Scattered", f"Low KP {kp}% through mid - off-map."
     elif deaths >= 6:
         mid, mid_blurb = "Chaotic", "Deaths compounded through mid."
     else:
@@ -180,13 +180,13 @@ def _pick_game_sense(metrics: dict, meta: dict) -> dict:
     longest = _first_int(metrics.get("longest_alive_s", ""))
     turret_kills = _first_int(metrics.get("tower_kills", ""))
     if win and longest and longest >= 420:
-        late, late_blurb = "Dominant", f"Held {longest}s alive in late — closed the game clean."
+        late, late_blurb = "Dominant", f"Held {longest}s alive in late - closed the game clean."
     elif win and turret_kills and turret_kills >= 3:
-        late, late_blurb = "On Point", f"{turret_kills} turret kills — read the siege window."
+        late, late_blurb = "On Point", f"{turret_kills} turret kills - read the siege window."
     elif not win and deaths >= 8:
-        late, late_blurb = "Drowning", "Deaths piled up in late — tempo fully reset."
+        late, late_blurb = "Drowning", "Deaths piled up in late - tempo fully reset."
     elif not win and longest and longest < 180:
-        late, late_blurb = "Scattered", "No long alive streaks in late — caught repeatedly."
+        late, late_blurb = "Scattered", "No long alive streaks in late - caught repeatedly."
     elif win:
         late, late_blurb = "Steady", "Closed the game without standout late plays."
     else:
@@ -203,7 +203,7 @@ def _pick_game_sense(metrics: dict, meta: dict) -> dict:
 
 
 def _pick_what_went(metrics: dict, meta: dict) -> tuple[list[str], list[str]]:
-    """Return (what_went_good, what_went_bad) — each list of 2-5 bullets.
+    """Return (what_went_good, what_went_bad) - each list of 2-5 bullets.
     Rule: top quartile hits vs personal benchmark → positives; bottom
     quartile → negatives. If no benchmark data, fall back to hard
     thresholds."""
@@ -271,7 +271,7 @@ def _pick_what_went(metrics: dict, meta: dict) -> tuple[list[str], list[str]]:
     # Death-specific negative if heavy
     deaths = meta.get("deaths", 0)
     if deaths >= 8:
-        bads.append(f"Died {deaths} times — position/discipline issue.")
+        bads.append(f"Died {deaths} times - position/discipline issue.")
 
     # Cap lists
     return goods[:5], bads[:5]
@@ -283,22 +283,22 @@ def _pick_advice(metrics: dict, meta: dict, goods: list[str], bads: list[str]) -
     deaths = meta.get("deaths", 0)
 
     if win and deaths <= 3:
-        headline = "Clean win — preserve the streak"
+        headline = "Clean win - preserve the streak"
         objective = "Next game: same build, same map pace"
     elif win:
-        headline = f"Won despite {deaths} deaths — cheese-it-out win"
+        headline = f"Won despite {deaths} deaths - cheese-it-out win"
         objective = "Next game: tighten death discipline, keep the aggression"
     elif deaths >= 8:
-        headline = "Heavy loss — consider a break"
+        headline = "Heavy loss - consider a break"
         objective = "Break 15min, single clip review, requeue only if calm"
     else:
-        headline = "Close loss — fixable"
+        headline = "Close loss - fixable"
         objective = "Review: laning phase + mid-game rotations"
 
     # Key points: invert the bads into action items
     key_points = []
     for bad in bads[:3]:
-        # Turn "Vision Score 12 — below your 22 p25" into
+        # Turn "Vision Score 12 - below your 22 p25" into
         # "Push vision to 20+ (you were 12)"
         if "Vision" in bad:
             key_points.append("Push vision score to match your personal p50 target")
@@ -311,9 +311,9 @@ def _pick_advice(metrics: dict, meta: dict, goods: list[str], bads: list[str]) -
         else:
             key_points.append(f"Re-watch and address: {bad}")
     if not key_points:
-        key_points = ["Continue current approach — metrics are at your baseline"]
+        key_points = ["Continue current approach - metrics are at your baseline"]
 
-    clips_review = "Full match — no single clip flagged; review around each death cluster."
+    clips_review = "Full match - no single clip flagged; review around each death cluster."
     # Try to find a death cluster from match_metrics timeline (if it has death events)
     # For MVP just keep the generic line.
 
@@ -345,10 +345,10 @@ def _pick_digest(meta: dict, metrics: dict) -> dict:
     a digest_* dict. For MVP: leave as 'none' unless obvious signal.
     Real detection logic will query session-scope rows from
     match_metrics (session_id joins) in a future pass."""
-    # MVP — no session_id threading yet; leave neutral.
+    # MVP - no session_id threading yet; leave neutral.
     return {
         "digest_state": "none",
-        "digest_label": "—",
+        "digest_label": "-",
         "digest_tooltip": "cross-session digest",
     }
 
@@ -421,7 +421,7 @@ def write_to_client_coaching_data(summary: dict,
                 current = json.loads(target.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 current = {}
-        # Client-mode payload — merge summary fields in
+        # Client-mode payload - merge summary fields in
         current.update(summary)
         current["mode"] = current.get("mode") or "client"
         tmp = target.with_suffix(".json.tmp")

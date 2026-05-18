@@ -1,11 +1,11 @@
 # arch: SQLite cache for core/riot_api.py | section=core | frozen=no
-"""SQLite persistence layer for `core/riot_api.py` — FU02 fan-out backing.
+"""SQLite persistence layer for `core/riot_api.py` - FU02 fan-out backing.
 
 Two tables, one SQLite file at `data/riot_api_cache.db`:
 
   cache_immutable(key TEXT PK, response_json TEXT, fetched_at INTEGER)
     Match-V5 detail + Match-V5 timeline + Account-V1 PUUID lookups.
-    These rows never expire — Riot match data is historical record and
+    These rows never expire - Riot match data is historical record and
     Account PUUIDs are stable. Once cached, no need to re-fetch.
 
   cache_ttl(key TEXT PK, response_json TEXT, fetched_at INTEGER, expires_at INTEGER)
@@ -23,7 +23,7 @@ writers from blocking.
 Soft-fail invariants:
   - Any DB error is caught + logged at WARNING; callers get None back
     so the rate limiter / fan-out treats the cache as cold.
-  - File creation is lazy — first call to `get` or `set` opens the
+  - File creation is lazy - first call to `get` or `set` opens the
     connection, runs the schema, and commits. No bootstrapping needed.
 """
 from __future__ import annotations
@@ -115,7 +115,7 @@ class RiotApiCache:
             return None
 
     def set_immutable(self, key: str, response: dict) -> bool:
-        # Serialize writes via the instance lock — SQLite WAL + per-call
+        # Serialize writes via the instance lock - SQLite WAL + per-call
         # connections + tight thread contention can produce "database is
         # locked" errors on Windows even under busy_timeout. The cache
         # is low-traffic (capped by the API rate limiter), so giving up
@@ -189,7 +189,7 @@ class RiotApiCache:
     # ── housekeeping ─────────────────────────────────────────────────────
 
     def purge_expired_ttl(self) -> int:
-        """Drop expired TTL rows. Returns count purged. Best-effort —
+        """Drop expired TTL rows. Returns count purged. Best-effort -
         called opportunistically by the rate-limit prune; not required
         for correctness because get_ttl() filters on expires_at."""
         try:
@@ -246,7 +246,7 @@ def get_cache() -> RiotApiCache:
 
 
 def _reset_for_tests(db_path: Optional[Path] = None) -> RiotApiCache:
-    """Test helper — replace the singleton with a fresh instance."""
+    """Test helper - replace the singleton with a fresh instance."""
     global _SINGLETON
     with _SINGLETON_LOCK:
         _SINGLETON = RiotApiCache(db_path=db_path)

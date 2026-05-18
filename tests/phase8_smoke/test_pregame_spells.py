@@ -1,4 +1,4 @@
-"""Phase 8 step 4 — spells_for_role + set_summoner_spells idempotency.
+"""Phase 8 step 4 - spells_for_role + set_summoner_spells idempotency.
 
 Doesn't import LcuClient (which opens lockfiles + sockets); tests the
 pure helper directly + exercises set_summoner_spells via a minimal
@@ -38,7 +38,7 @@ class TestSpellsForRole(unittest.TestCase):
         self.assertEqual(spells_for_role("jg"),      SPELLS_BY_ROLE["JUNGLE"])
 
     def test_unknown_falls_back_to_bottom(self):
-        # Bottom Flash+Heal is the safest default — Heal can't grief
+        # Bottom Flash+Heal is the safest default - Heal can't grief
         # the way Smite (steals jungle camps) or TP (warps you out
         # of base) would.
         self.assertEqual(spells_for_role("FILL"), SPELLS_BY_ROLE["BOTTOM"])
@@ -50,7 +50,7 @@ class TestSpellsForRole(unittest.TestCase):
         self.assertEqual(spells_for_role([4, 7]), SPELLS_BY_ROLE["BOTTOM"])  # type: ignore[arg-type]
 
     def test_no_smite_in_non_jungle_defaults(self):
-        # Smite should never be a non-jungle default — it's locked to
+        # Smite should never be a non-jungle default - it's locked to
         # jungle items in modern League and writing it for a laner
         # would brick the slot.
         for role, pair in SPELLS_BY_ROLE.items():
@@ -119,7 +119,7 @@ class TestSetSummonerSpellsIdempotency(unittest.TestCase):
 
     def test_garbage_current_pair_falls_through_to_patch(self):
         # If the caller passes a malformed current_pair, don't trust it
-        # for the idempotency check — fire the PATCH to be safe.
+        # for the idempotency check - fire the PATCH to be safe.
         s = _StubPregame()
         ok = s.set_summoner_spells(
             SPELL["flash"], SPELL["heal"],

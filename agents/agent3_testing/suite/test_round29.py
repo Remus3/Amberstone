@@ -1,4 +1,4 @@
-"""Round 29 — session_summary helper + /api/session endpoint + --session CLI."""
+"""Round 29 - session_summary helper + /api/session endpoint + --session CLI."""
 from __future__ import annotations
 
 import json
@@ -70,7 +70,7 @@ def test_session_summary_champion_rollup(tmp_path: Path, monkeypatch) -> None:
     _init(tmp_path, monkeypatch)
     now = datetime.now(timezone.utc)
     ts = (now - timedelta(hours=1)).isoformat()
-    # Same champ across two modes — should collapse.
+    # Same champ across two modes - should collapse.
     _insert(tmp_path / "aram.db", "Ahri", 1, 10, 3, 15, ts)
     _insert(tmp_path / "sr_ranked.db", "Ahri", 0, 5, 10, 8, ts)
     data = session_summary((now - timedelta(hours=12)).isoformat())

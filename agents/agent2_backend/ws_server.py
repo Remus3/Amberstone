@@ -2,11 +2,11 @@
 
 Two paths served on the same port (§11.5):
 
-  /ingest  — Game-PC Forwarder connects and streams live-client / LCU JSON
+  /ingest  - Game-PC Forwarder connects and streams live-client / LCU JSON
              frames here. Each incoming frame is fanned out to all /push
              subscribers after being stamped with an ``ingested_at`` field.
 
-  /push    — Chrome kiosk(s) on Game-PC subscribe here. They receive every
+  /push    - Chrome kiosk(s) on Game-PC subscribe here. They receive every
              frame the forwarder pushes plus any payloads the supervisor
              broadcasts internally via ``broadcast_push()``.
 
@@ -14,8 +14,8 @@ Heartbeat: a JSON ``{"type":"heartbeat","t":<epoch>}`` is broadcast to all
 /push subscribers every 5 seconds so stale connections drop quickly.
 
 Logging split:
-  logs/ws/ingest.log   — /ingest connect/disconnect/frame traffic (SEND/ERROR)
-  logs/ws/push.log     — /push connect/disconnect/broadcast fanout
+  logs/ws/ingest.log   - /ingest connect/disconnect/frame traffic (SEND/ERROR)
+  logs/ws/push.log     - /push connect/disconnect/broadcast fanout
 
 Usage (standalone test):
   python -m agents.agent2_backend.ws_server --host 0.0.0.0 --port 8891
@@ -46,7 +46,7 @@ HEARTBEAT_INTERVAL_SEC = 5.0
 
 # Explicit per-frame cap (audit P-audit-m5). 1 MiB covers JSON game-state
 # frames (LCU + live-client) with plenty of headroom. Screenshots are
-# routed through the separate :8889 HTTP vision server, not WS — if that
+# routed through the separate :8889 HTTP vision server, not WS - if that
 # ever changes, bump this (or pass None) and add a size-log at ingest.
 WS_MAX_FRAME_BYTES = 1 << 20
 
@@ -97,7 +97,7 @@ class WSServer:
 
         AUDIT P-audit3-h01 (2026-04-22): fanout is now parallel with a
         per-client 2s timeout. One laggy iPad/forwarder WS cannot block
-        the other subscribers — the 1-2s latency-tier promise in
+        the other subscribers - the 1-2s latency-tier promise in
         resolved_decisions.json stays honoured.
         """
         msg = json.dumps(payload)

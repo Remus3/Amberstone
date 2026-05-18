@@ -1,5 +1,5 @@
 # arch: fetch pending bridge tasks targeted at this machine | section=bridge | frozen=yes
-"""bridge_pull_tasks.py — Phase 6 shim. Real code lives in tools/bridge_cli.py.
+"""bridge_pull_tasks.py - Phase 6 shim. Real code lives in tools/bridge_cli.py.
 
 Frozen contract (the /process-bridge-tasks skill spec parses this script's
 JSON output by exact shape):

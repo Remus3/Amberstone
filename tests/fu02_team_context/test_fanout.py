@@ -141,7 +141,7 @@ class TestRankedNameBlanking(_BaseFanoutCase):
         cache = RTC.get_team_context()
         assert cache is not None
         self.assertEqual(cache["allies"][0]["summoner_name"], "")
-        # PUUID still flows — only the name is suppressed.
+        # PUUID still flows - only the name is suppressed.
         self.assertEqual(cache["allies"][0]["puuid"], "P1")
         # Champion + team_id still present so the dashboard can render.
         self.assertEqual(cache["allies"][0]["locked_champion"], "Camille")
@@ -269,7 +269,7 @@ class TestFanoutWorker(_BaseFanoutCase):
         self.assertEqual(ally1["mastery_on_locked"], 0)
         self.assertEqual(ally2["mastery_on_locked"], 100)
         self.assertEqual(enemy["mastery_on_locked"], 100)
-        # partial still flips False — the worker drained both priorities.
+        # partial still flips False - the worker drained both priorities.
         self.assertFalse(cache["partial"])
 
     def test_unranked_player_keeps_rank_blank(self):
@@ -377,7 +377,7 @@ class TestUpdateEntryAtomicity(_BaseFanoutCase):
 
 class TestStateBuilderProgressiveReveal(_BaseFanoutCase):
     """Once the worker mutates entries, build_state() picks up each
-    revision on its next call — that's the dashboard's progressive
+    revision on its next call - that's the dashboard's progressive
     reveal contract."""
 
     def test_state_carries_partial_then_complete(self):

@@ -3,7 +3,7 @@ ops/rc_bootstrap.py
 
 One-shot bootstrap: when hot-reloaded into the running app, starts any
 ops components (bridge, supervisor, watchdog) that are not currently running.
-Safe to reload repeatedly — checks before spawning.
+Safe to reload repeatedly - checks before spawning.
 """
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ _results = {}
 if not _is_running("rc_file_bridge"):
     pid = _start("pythonw.exe", [_BRIDGE, "--config", _CONFIG], "file_bridge")
     _results["bridge"] = f"started pid={pid}"
-    _log.info("rc_bootstrap: bridge was down — started pid=%s", pid)
+    _log.info("rc_bootstrap: bridge was down - started pid=%s", pid)
 else:
     _results["bridge"] = "already_running"
     _log.info("rc_bootstrap: bridge already running")
@@ -71,7 +71,7 @@ else:
 if not _is_running("rc_supervisor"):
     pid = _start("pythonw.exe", [_SUPERVISOR, "--config", _CONFIG], "supervisor")
     _results["supervisor"] = f"started pid={pid}"
-    _log.info("rc_bootstrap: supervisor was down — started pid=%s", pid)
+    _log.info("rc_bootstrap: supervisor was down - started pid=%s", pid)
 else:
     _results["supervisor"] = "already_running"
     _log.info("rc_bootstrap: supervisor already running")
@@ -85,7 +85,7 @@ if not _is_running("run_self_healing_watchdog"):
         "watchdog"
     )
     _results["watchdog"] = f"started pid={pid}"
-    _log.info("rc_bootstrap: watchdog was down — started pid=%s", pid)
+    _log.info("rc_bootstrap: watchdog was down - started pid=%s", pid)
 else:
     _results["watchdog"] = "already_running"
     _log.info("rc_bootstrap: watchdog already running")

@@ -1,6 +1,6 @@
-﻿# bridge_watcher_hook.ps1 — UserPromptSubmit hook for no-dashboard nodes.
+﻿# bridge_watcher_hook.ps1 - UserPromptSubmit hook for no-dashboard nodes.
 #
-# Phase 1 per BRIDGE_WATCHER_PLAN.md §8 "Operator surface" — Game-PC + Peer
+# Phase 1 per BRIDGE_WATCHER_PLAN.md §8 "Operator surface" - Game-PC + Peer
 # don't run the RC dashboard, so the bridge_inbox_pending.json queue needs a
 # non-browser surface. This hook fires on every prompt the operator submits
 # in their Claude Code session. If the queue has unclaimed entries, it emits
@@ -35,7 +35,7 @@ if (-not $PendingPath) {
 }
 
 if (-not (Test-Path -LiteralPath $PendingPath)) {
-    exit 0   # silent — watcher hasn't escalated anything yet
+    exit 0   # silent - watcher hasn't escalated anything yet
 }
 
 try {

@@ -44,7 +44,7 @@ header {
   display:grid;
   /* Match the main game-layout's column widths AND padding exactly so
      the per-team trackers align with the ally/enemy card columns below
-     — otherwise chips bleed past the minimap boundary. */
+     - otherwise chips bleed past the minimap boundary. */
   grid-template-columns: 1fr minmax(340px, 1.3fr) 1fr;
   column-gap: 3px;
   align-items:center; padding: 0 clamp(20px, 1.3vw, 26px);
@@ -54,7 +54,7 @@ header {
 .hdr-left, .hdr-right { height: 100%; display: flex; flex-direction: column;
                         align-items: center; justify-content: flex-end;
                         padding-bottom: 4px; gap: 2px; }
-/* Mode badge + in-game clock — fixed-positioned at the viewport's horizontal
+/* Mode badge + in-game clock - fixed-positioned at the viewport's horizontal
    center so they stack directly above the RT-clock overlay (which uses the
    same left:50%/translateX strategy). This sidesteps any sub-pixel drift
    that can happen when mixing grid-centered and fixed-positioned siblings. */
@@ -104,7 +104,7 @@ header {
 .hdr-winpct .val[data-wp="50"] { color: #ff8a2e; text-shadow: 0 0 6px rgba(255,138,46,0.5); }
 .hdr-winpct .val[data-wp="25"] { color: #ff2a48; text-shadow: 0 0 8px rgba(255,42,72,0.6); }
 .hdr-winpct .val[data-wp="0"]  { color: #6a6a72; }
-/* Real-world clock overlay — fixed-position band between the header and
+/* Real-world clock overlay - fixed-position band between the header and
    the minimap area, centered horizontally with the mode badge. */
 .rtclock-overlay { position: fixed;
                    top: calc(clamp(46px, 6vh, 70px) + 4px);
@@ -144,7 +144,7 @@ main { display:grid;
 .card.risk      .value { color: #f0d8d8; }
 .card.risk      .value .tag-enemy { color: #ff4a6a; text-shadow: 0 0 4px rgba(255,74,106,0.5); }
 
-/* SR item build grid — 3-col, icon + 2-line name, owned = green border */
+/* SR item build grid - 3-col, icon + 2-line name, owned = green border */
 .card.build         { border-left: 3px solid var(--map); }
 .card.build .meta   { font-size: 11px; color: var(--dim); margin: 4px 0 8px; }
 .item-grid          { display:grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -271,7 +271,7 @@ main { display:grid;
 .empty .value { color: var(--dim); font-style: italic; font-size: 13px; }
 
 /* ── Game-mode layout ──────────────────────────────────────────────
-   DESIGN BASELINE — all sizes below are tuned for:
+   DESIGN BASELINE - all sizes below are tuned for:
      Windows OS display scale : 100%
      Edge browser zoom        : 100%
      Edge window state        : fullscreen (F11)
@@ -279,7 +279,7 @@ main { display:grid;
    Everything below (clamp mins/maxes, row heights, padding, fonts)
    should read well at that target.
 
-   SECONDARY VIEWING TARGET — iPad via Duet:
+   SECONDARY VIEWING TARGET - iPad via Duet:
      physical resolution     : 1920 × 1280
      Windows OS display scale: 125%
      Edge browser zoom       : 100%
@@ -302,9 +302,9 @@ main.has-game-layout { overflow: hidden; padding: 0; }
                       clamp(56px, 6.6vh, 74px)
                       /* r9: rsk / log continues */
                       clamp(56px, 6.6vh, 74px)
-                      /* r10: BUILD strip — full width recommended-item row */
+                      /* r10: BUILD strip - full width recommended-item row */
                       clamp(40px, 4.4vh, 50px)
-                      /* r11: chat-entry — full width */
+                      /* r11: chat-entry - full width */
                       clamp(36px, 4.2vh, 46px);
                     grid-template-areas:
                       "a1  mini e1"
@@ -348,7 +348,7 @@ main.has-game-layout { overflow: hidden; padding: 0; }
 .gl-imm   { grid-area: imm; } .gl-obj { grid-area: obj; }
 .gl-wav   { grid-area: wav; }
 
-/* Champion row — 5-col flex. Card hugs top of its grid row (align-self:start)
+/* Champion row - 5-col flex. Card hugs top of its grid row (align-self:start)
    so popout tabs can jut below the card's border into the row's spare space. */
 .champ-row        { display: flex; align-items: stretch; gap: 10px;
                     padding: 6px 10px; background: #14141d;
@@ -356,7 +356,7 @@ main.has-game-layout { overflow: hidden; padding: 0; }
                     min-width: 0; overflow: visible;
                     /* Absolute-positioned children (PRO tab, popout tabs,
                        rank badge) need this row as their positioning
-                       ancestor — without it they resolve to .app and
+                       ancestor - without it they resolve to .app and
                        render off-screen. */
                     position: relative;
                     /* align-self: start keeps card flush with row top so
@@ -387,7 +387,7 @@ main.has-game-layout { overflow: hidden; padding: 0; }
                     z-index: 3; max-width: 96%; }
 /* Rank (icon column) → flush with the card's OUTER border. Card has 10px
    horizontal padding + 2px border (border-box), so content area starts 12px
-   inside the outer edge — the tab must shift -12px to land on it. */
+   inside the outer edge - the tab must shift -12px to land on it. */
 .cr-col-icon .cr-tab              { left: -12px; transform: none;
                                      border-radius: 0 0 6px 0; }
 .champ-row.enemy-row .cr-col-icon .cr-tab
@@ -409,12 +409,12 @@ main.has-game-layout { overflow: hidden; padding: 0; }
                                    { left: -12px; right: auto; transform: none;
                                      border-radius: 0 0 6px 0; }
 
-/* Role outlines — priority: me > dmg-leader > ehp-leader — with shadow.
+/* Role outlines - priority: me > dmg-leader > ehp-leader - with shadow.
    The leader color also propagates to popout tabs so the card outline
    visually wraps around them. */
 .champ-row        { box-shadow: 0 2px 6px rgba(0,0,0,0.45); }
 
-/* PRO title tab — iridescent gradient, vertical P·R·O on the outer
+/* PRO title tab - iridescent gradient, vertical P·R·O on the outer
    (screen-edge) side of the card. Rendered only if player.title==="PRO". */
 .cr-pro-tab       { position: absolute !important; top: 0; bottom: 0;
                     left: -20px; width: 18px;
@@ -505,7 +505,7 @@ main.has-game-layout { overflow: hidden; padding: 0; }
 .champ-row.enemy-row .cr-buff.buff-red,
 .champ-row.enemy-row .cr-buff.buff-blue { right: auto; left: -24px; }
 /* Baron-buff active: applied to <body> (baron-order / baron-chaos).
-   Cards themselves are NOT tinted — the team's page-background half
+   Cards themselves are NOT tinted - the team's page-background half
    gets a purple smokey overlay instead. */
 body.baron-order::before,
 body.baron-chaos::before {
@@ -525,7 +525,7 @@ body.baron-chaos::before  { right: 0; }
 }
 .app { position: relative; z-index: 1; }
 
-/* Top-bar per-team objectives tracker — spans the full width of its
+/* Top-bar per-team objectives tracker - spans the full width of its
    team's grid column (header column matches main grid). First chip's
    left edge sits on the champ cards' outer-left edge; last chip's right
    edge sits on the champ cards' outer-right edge. Equal gaps between. */
@@ -545,7 +545,7 @@ body.baron-chaos::before  { right: 0; }
 .obj-tracker .obj .n  { font-weight: 800; font-size: 18px; color: #ffe879; }
 /* Dragon chip reserves room for up to 4 aspect pips + soul label above */
 .obj-tracker .obj.obj-dragon       { min-width: 130px; position: relative; }
-/* Dragon Soul — chasing gold pulse border + white label on top of chip */
+/* Dragon Soul - chasing gold pulse border + white label on top of chip */
 .obj-tracker .obj.obj-dragon.has-soul {
   border-color: transparent;
   background:
@@ -587,7 +587,7 @@ body.baron-chaos::before  { right: 0; }
 .obj-tracker .obj.obj-dragon .pip.d-chemtech { background: #88c05a; }
 .obj-tracker .obj.obj-dragon .pip.d-elder    { background: #e0d5ff;
                                                box-shadow: 0 0 6px #c08aff; }
-/* Border is always the single 2px line — no inset shadow layer that would
+/* Border is always the single 2px line - no inset shadow layer that would
    make the card's visible edge thicker than the tab's 2px border. */
 .champ-row.me             { border-color: #44ff88;
                             box-shadow: 0 0 10px rgba(68,255,136,0.35),
@@ -639,12 +639,12 @@ body.baron-chaos::before  { right: 0; }
                     font-variant-numeric: tabular-nums; z-index: 2; }
 .champ-row.enemy-row .cr-lv-badge { left: auto; right: -3px; top: 1px; }
 
-/* Info col internal layout — name, combined icons row, EHP, CS stacked. */
+/* Info col internal layout - name, combined icons row, EHP, CS stacked. */
 .cr-col-info      { gap: 1px; padding: 2px 2px; }
 .cr-name          { text-align: center; font-weight: 700; color: #e6e6f0;
                     font-size: clamp(14px, 1.1vw, 19px); line-height: 1.2;
                     padding-bottom: 3px;  /* room for descenders on g,p,y,j */
-                    /* Break only at whitespace (e.g. "Miss Fortune") — never
+                    /* Break only at whitespace (e.g. "Miss Fortune") - never
                        mid-word. Single long words that still don't fit fall
                        back to break-word so they don't visually blow up. */
                     word-break: keep-all;
@@ -696,7 +696,7 @@ body.baron-chaos::before  { right: 0; }
                     width: 26px; height: 26px; border-radius: 50%;
                     display: flex; align-items: center; justify-content: center;
                     font-weight: 900; font-size: 16px;
-                    /* Crisp 1-px black stroke, no blur — the R stays sharp */
+                    /* Crisp 1-px black stroke, no blur - the R stays sharp */
                     text-shadow:
                       -1px -1px 0 #000, 1px -1px 0 #000,
                       -1px  1px 0 #000, 1px  1px 0 #000,
@@ -738,9 +738,9 @@ body.baron-chaos::before  { right: 0; }
 .cr-items .ci.empty { border-style: dashed; opacity: 0.25; }
 .cr-items .ci img { width:100%; height:100%; display:block; object-fit:cover; }
 
-/* Damage — 3 stacked horizontal bars, width weighted by team share,
+/* Damage - 3 stacked horizontal bars, width weighted by team share,
    value printed at the start of the colored fill. */
-/* Damage column content — 3 weighted bars stacked vertically */
+/* Damage column content - 3 weighted bars stacked vertically */
 .cr-dmg           { display: flex; flex-direction: column; gap: 4px;
                     min-width: 140px; width: 100%;
                     justify-content: center;
@@ -789,7 +789,7 @@ body.baron-chaos::before  { right: 0; }
 .champ-row.enemy-row .cr-dmg .dr   { justify-content: flex-end; }
 .champ-row.enemy-row .cr-dmg .dr .df { left: auto; right: 0; }
 
-/* Popout tabs — small pill labels that pop off the card from below. */
+/* Popout tabs - small pill labels that pop off the card from below. */
 .cr-tab           { display: inline-flex; align-items: center; justify-content: center;
                     padding: 2px 10px; border-radius: 0 0 6px 6px;
                     border: 1px solid var(--border); border-top: none;
@@ -836,7 +836,7 @@ body.baron-chaos::before  { right: 0; }
                     padding-left: 12px; padding-right: 10px; }
 .cr-gold-tab      { min-width: 60px; }
 
-/* Coach panels — title on top (smaller font), content below. Minimal
+/* Coach panels - title on top (smaller font), content below. Minimal
    buffer between title and content. 4-line clamp, no scroll. */
 .gl-panel         { background: var(--bg-sec); border: 1px solid var(--border);
                     border-radius: 5px; padding: 3px 8px 4px;
@@ -860,7 +860,7 @@ body.baron-chaos::before  { right: 0; }
 .gl-panel.bld { height: 100%; }
 .gl-panel.empty .pnl-val { color: var(--dim); font-style: italic; }
 /* Coach panels: no per-kind accent border; all share the same neutral look.
-   Risk panel no longer has its red-tinted background — matches the others. */
+   Risk panel no longer has its red-tinted background - matches the others. */
 .gl-panel.bld   { padding: 6px 10px 8px; }
 /* Item-build icon strip: horizontal row of 24–34px item cells, green outline
    on icons that the active player already owns. */
@@ -940,7 +940,7 @@ body.baron-chaos::before  { right: 0; }
                     stroke-dasharray: 1.2 0.8; }
 .mm-pit-baron     { stroke: #a855f7; }
 .mm-pit-dragon    { stroke: #ff8a2e; fill: rgba(255,138,46,0.12); }
-/* Placeholder label removed — minimap shows just the map image now. */
+/* Placeholder label removed - minimap shows just the map image now. */
 .gl-mini-action   { padding: clamp(8px, 1vh, 16px) 14px;
                     text-align: center;
                     font-size: clamp(22px, 2.4vw, 38px); font-weight: 800;
@@ -1084,7 +1084,7 @@ body.baron-chaos::before  { right: 0; }
 .tag-enemy { color: #ff4a6a; font-weight: 600; }
 .tag-timer { color: #ffd700; font-weight: 700; font-variant-numeric: tabular-nums;
              padding: 0 2px; }
-/* Sentence break — coach text is split on `. ` to make scannable lines */
+/* Sentence break - coach text is split on `. ` to make scannable lines */
 .card .value .sline { display:block; margin-top: 4px; }
 .card .value .sline:first-child { margin-top: 0; }
 
@@ -1257,7 +1257,7 @@ const CARDS = [
 ];
 function setText(id, val) {
   const el = document.getElementById(id);
-  if (el) el.textContent = val || '—';
+  if (el) el.textContent = val || '-';
 }
 // Escape HTML, then convert coach inline tags to spans + split sentences
 // for easier glance-reading. Returns innerHTML-safe string.
@@ -1268,7 +1268,7 @@ function markupHTML(raw) {
   // 1. HTML-escape
   let s = String(raw)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  // After HTML-escape, tag markers become &lt;/A&gt; etc? No — the tags
+  // After HTML-escape, tag markers become &lt;/A&gt; etc? No - the tags
   // use [A]/[E]/[T] brackets, which are NOT escaped. Safe for replaceAll.
   // Opening tags
   s = s.replaceAll('[A]', '<span class="tag-ally">');
@@ -1422,7 +1422,7 @@ function renderLcuPanel(lcu) {
     'None':           'Idle (logged in)',
     'Lobby':          'In Lobby',
     'Matchmaking':    'Queued',
-    'ReadyCheck':     'Match found — accepting',
+    'ReadyCheck':     'Match found - accepting',
     'ChampSelect':    'Champ Select',
     'GameStart':      'Loading',
     'InProgress':     'In Game',
@@ -1749,8 +1749,8 @@ function renderBuildCard(srItems, bootsPhase, bootsSwap) {
     'skip':           'Boots: skip for now (rush damage)',
     'buy_basic':      'Boots: buy basic boots this back',
     'upgrade':        'Boots: upgrade to enchanted',
-    'consider_sell':  'Boots: full build — consider selling for upgrade',
-    'sell_for_quest': 'Boots: lane quest done — sell for free slot',
+    'consider_sell':  'Boots: full build - consider selling for upgrade',
+    'sell_for_quest': 'Boots: lane quest done - sell for free slot',
     'ok':             'Boots: on plan',
   })[bootsPhase] || '';
   meta.textContent = phaseTxt;
@@ -1760,7 +1760,7 @@ function renderBuildCard(srItems, bootsPhase, bootsSwap) {
   if (bootsSwap && bootsSwap.item) {
     const hint = document.createElement('div');
     hint.className = 'swap-hint';
-    hint.innerHTML = 'Swap boots → <strong>' + bootsSwap.item + '</strong> — ' + bootsSwap.reason;
+    hint.innerHTML = 'Swap boots → <strong>' + bootsSwap.item + '</strong> - ' + bootsSwap.reason;
     card.appendChild(hint);
   }
   return card;
@@ -1769,7 +1769,7 @@ function renderBuildCard(srItems, bootsPhase, bootsSwap) {
 // Cache item/champion icon slugs that returned 404 so we don't keep
 // requesting them every poll (the re-request is what causes 1-frame
 // flicker on empty/missing slots). Attached to window so inline onerror
-// handlers can see it — top-level const isn't visible to inline handlers.
+// handlers can see it - top-level const isn't visible to inline handlers.
 window.BAD_ICON_SLUGS = window.BAD_ICON_SLUGS || new Set();
 function itemIconImg(name) {
   const slug = itemSlug(name);
@@ -1844,7 +1844,7 @@ function fmtDmgKiloSpace(n) {
 }
 function renderCrDmgRow(cls, val, teamTypeMax) {
   // Scale by team-MAX per damage type so the team's top carry always fills
-  // their bar fully. Each team is an independent scale — cross-team bar
+  // their bar fully. Each team is an independent scale - cross-team bar
   // lengths are NOT comparable (per user: team-only comparison).
   const pct = teamTypeMax > 0 ? Math.min(100, (val / teamTypeMax) * 100) : 0;
   return `
@@ -1961,7 +1961,7 @@ function hpBucket(hp, hpMax) {
   return '100';
 }
 function fmtReviveTime(p) {
-  // Whole seconds only — no M:SS, no fractions.
+  // Whole seconds only - no M:SS, no fractions.
   const s = Math.floor(p.respawn_s || 0);
   return s > 0 ? String(s) : '';
 }
@@ -2031,7 +2031,7 @@ function renderChampRow(p, colIsRight, teamTotals, roleFlags) {
   const itemCells = [];
   for (let i = 0; i < 6; i++) {
     const n = items[i];
-    if (n) itemCells.push(`<div class="ci" title="${n}${p.items_gold && p.items_gold[i] ? ' — ' + p.items_gold[i] + 'g' : ''}">${itemIconImg(n)}</div>`);
+    if (n) itemCells.push(`<div class="ci" title="${n}${p.items_gold && p.items_gold[i] ? ' - ' + p.items_gold[i] + 'g' : ''}">${itemIconImg(n)}</div>`);
     else itemCells.push('<div class="ci empty"></div>');
   }
 
@@ -2048,7 +2048,7 @@ function renderChampRow(p, colIsRight, teamTotals, roleFlags) {
   const proTab = (p.title === 'PRO')
     ? `<div class="cr-pro-tab" title="Professional player">PRO</div>` : '';
 
-  // Summoner spell thumbnails — served locally from data/icons/spells/Summoner<Name>.png
+  // Summoner spell thumbnails - served locally from data/icons/spells/Summoner<Name>.png
   const SUMM_CDN = '/icons/spells/Summoner';
   const SUMM_SUFFIX = {
     Flash: 'Flash', Heal: 'Heal', Ignite: 'Dot', Exhaust: 'Exhaust',
@@ -2062,7 +2062,7 @@ function renderChampRow(p, colIsRight, teamTotals, roleFlags) {
   const summD = p.summ_d ? `<img class="summ" src="${summSrc(p.summ_d)}" alt="${p.summ_d}" title="${p.summ_d} (D)">` : '';
   const summF = p.summ_f ? `<img class="summ" src="${summSrc(p.summ_f)}" alt="${p.summ_f}" title="${p.summ_f} (F)">` : '';
 
-  // Rune icons — served locally from data/icons/runes/<Name>.png
+  // Rune icons - served locally from data/icons/runes/<Name>.png
   const RUNE_CDN = '/icons/runes';
   const KEY_PATH = {
     LethalTempoTemp: 'LethalTempoTemp.png',
@@ -2247,7 +2247,7 @@ function buildGameLayout() {
     const e = document.createElement('div'); e.className = 'gl-enemy-' + i;
     e.id = 'gl-enemy-' + i; gl.appendChild(e);
   }
-  // Middle column fixed panels — minimap with the "RIGHT NOW" action bar
+  // Middle column fixed panels - minimap with the "RIGHT NOW" action bar
   // below the overlay-reserve area.
   const mini = document.createElement('div');
   mini.className = 'gl-mini gl-mini-box'; mini.id = 'gl-mini';
@@ -2317,7 +2317,7 @@ const ITEM_GOLD = {
 };
 function itemGoldTooltip(name) {
   const g = ITEM_GOLD[String(name || '').toLowerCase().trim()];
-  return g != null ? `${name} — ${g}g` : name;
+  return g != null ? `${name} - ${g}g` : name;
 }
 function renderItemBuildStrip(itemBuildStr, augmentsStr, lc) {
   const el = document.getElementById('gl-bld');
@@ -2365,7 +2365,7 @@ function _mmChampInitials(name) {
   const n = String(name || '').replace(/[^a-zA-Z]/g, '');
   return (n.slice(0, 2) || '?').toUpperCase();
 }
-// SR structure positions — datamined approximations used to draw turrets,
+// SR structure positions - datamined approximations used to draw turrets,
 // inhibs, nexus, and neutral objectives on the minimap overlay. All values
 // are in SR game-coord space (0..14820), converted to SVG space in mmToSvg.
 const _SR_STRUCT = {
@@ -2429,7 +2429,7 @@ function renderMinimapOverlay(lc, coach) {
   const enemies = (lc && Array.isArray(lc.enemies)) ? lc.enemies : [];
   const parts = [];
 
-  // Baron pit + dragon pit — outlined ellipses for visual anchors.
+  // Baron pit + dragon pit - outlined ellipses for visual anchors.
   const bp = mmToSvg(_SR_STRUCT.baron);
   const dp = mmToSvg(_SR_STRUCT.dragon);
   parts.push(`<ellipse class="mm-pit mm-pit-baron" cx="${bp.x.toFixed(2)}" cy="${bp.y.toFixed(2)}" rx="4.5" ry="3.2"/>`);
@@ -2437,7 +2437,7 @@ function renderMinimapOverlay(lc, coach) {
 
   // Per-team structures: turrets (small squares), inhibitors (rotated
   // diamonds), nexus (larger square). Fallen structures use the
-  // .mm-struct-fallen variant — live ones show their team color.
+  // .mm-struct-fallen variant - live ones show their team color.
   // In this sim the enemy (blue/order team 100) has lost mid T2; my team
   // (red/chaos 200) has lost mid T1 (baron buff from enemy earlier).
   // Fallen keys are hard-coded here since the sim doesn't expose a full
@@ -2528,14 +2528,14 @@ function renderGame(coach, lc) {
   _lastGameDigest = digest;
   if (!_gameLayoutBuilt) buildGameLayout();
 
-  // Teams — side logic: ORDER = blue = my team on LEFT, CHAOS = right
+  // Teams - side logic: ORDER = blue = my team on LEFT, CHAOS = right
   const mySide   = ((lc && lc.my_side) || 'ORDER').toUpperCase();
   const myOnLeft = (mySide !== 'CHAOS');
   const allies   = (lc && Array.isArray(lc.allies))  ? lc.allies  : [];
   const enemies  = (lc && Array.isArray(lc.enemies)) ? lc.enemies :
                    ((lc && (lc.enemy_team||[]).map(n => ({champion:n}))) || []);
   // Top-bar objectives tracker (uses coach.objectives.ally/enemy).
-  // WIN% injected here so digest-rebuilds don't flicker to —.
+  // WIN% injected here so digest-rebuilds don't flicker to -.
   const _wpAlly  = coach.win_pct != null ? Math.round(coach.win_pct) : null;
   const _wpEnemy = _wpAlly != null ? Math.max(0, Math.min(100, 100 - _wpAlly)) : null;
   renderObjectivesTracker(coach.objectives, myOnLeft, {
@@ -2553,7 +2553,7 @@ function renderGame(coach, lc) {
   document.body.classList.toggle('baron-order', !!baronOnLeft);
   document.body.classList.toggle('baron-chaos', !!baronOnRight);
   // Per-team damage totals for weighted bars (share of team's total for
-  // each damage type — higher dealers get a longer bar).
+  // each damage type - higher dealers get a longer bar).
   const aTotals = teamDmgTotals(allies);
   const eTotals = teamDmgTotals(enemies);
   const aLead = teamLeaders(allies);
@@ -2620,7 +2620,7 @@ function logCoachChanges(c) {
     _lastCoachImmediate = imm;
     const html = markupHTML(imm);
     chatLog('coach', 'coach', html, true);
-  } else if (act && act !== _lastCoachAction && act !== '—') {
+  } else if (act && act !== _lastCoachAction && act !== '-') {
     _lastCoachAction = act;
     const html = '<strong>' + markupHTML(act) + '</strong>';
     chatLog('coach', 'coach', html, true);
@@ -2651,17 +2651,17 @@ async function tick() {
       const flagged = _chatMsgs.filter(m => m.flagged && !m.reviewed);
       chatLog('system', 'mode', `${_lastSeenMode} \u2192 ${modeKey}`, false);
       if (flagged.length) {
-        toast(`Mode changed. ${flagged.length} flagged message${flagged.length===1?'':'s'} pending review — tap \ud83d\uddd1`, true);
+        toast(`Mode changed. ${flagged.length} flagged message${flagged.length===1?'':'s'} pending review - tap \ud83d\uddd1`, true);
       }
     }
     _lastSeenMode = modeKey;
     setText('clock', c.game_time || fmtClock(c.game_time_s));
-    setText('kda',   c.kda || '—');
+    setText('kda',   c.kda || '-');
     // WIN% is rendered inside renderObjectivesTracker (avoids digest-rebuild
     // flicker where it would reset to an em-dash).
     const actionRaw = c.action || (modeKey === 'client' ? 'WAITING FOR GAME' : '');
     const abEl = document.getElementById('action-bar');
-    if (abEl) abEl.innerHTML = actionRaw ? markupHTML(actionRaw) : '—';
+    if (abEl) abEl.innerHTML = actionRaw ? markupHTML(actionRaw) : '-';
 
     const inGame = !(modeKey === 'client' || !h.has_game);
     // Mode transition: leaving game → undock chat, reset built flag.
@@ -2765,7 +2765,7 @@ function chatStorageSave() {
     const trimmed = _chatMsgs.slice(-CHAT_STORAGE_MAX);
     _chatMsgs = trimmed;
     localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(trimmed));
-  } catch (e) { /* quota — ignore */ }
+  } catch (e) { /* quota - ignore */ }
 }
 function isFlagged(kind, text) {
   if (kind !== 'user') return false;

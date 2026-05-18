@@ -1,4 +1,4 @@
-"""Round 12 coverage — input-latency rollup + file_ingest mode-transition callback."""
+"""Round 12 coverage - input-latency rollup + file_ingest mode-transition callback."""
 from __future__ import annotations
 
 import asyncio
@@ -25,7 +25,7 @@ def test_latency_stats_empty_returns_none_fields() -> None:
 def test_latency_stats_accumulates_and_caps() -> None:
     from agents.supervisor import Supervisor
     sup = Supervisor()
-    # Push 25 samples — buffer caps at 20.
+    # Push 25 samples - buffer caps at 20.
     for i, v in enumerate([50, 80, 120, 200, 350, 600,
                            50, 80, 100, 150, 220, 280,
                            40, 90, 110, 170, 230, 310,
@@ -57,7 +57,7 @@ def test_latency_stats_single_sample() -> None:
 
 @pytest.mark.timeout(10)
 def test_mode_transition_fires_on_health_change(tmp_path: Path) -> None:
-    """Simulate health.json mtime advances with different mode values —
+    """Simulate health.json mtime advances with different mode values -
     the callback should receive only transitions (not first sighting
     or duplicates)."""
     from agents.agent2_backend.file_ingest import FileIngest
@@ -85,7 +85,7 @@ def test_mode_transition_fires_on_health_change(tmp_path: Path) -> None:
 
     async def drive():
         _write_mode("client")
-        await ingest._tick()       # first sighting, no prev — no callback
+        await ingest._tick()       # first sighting, no prev - no callback
         _write_mode("game")
         await ingest._tick()       # transition
         _write_mode("game")
@@ -117,7 +117,7 @@ def test_mode_transition_same_mode_no_callback(tmp_path: Path) -> None:
     async def drive():
         health.write_text(json.dumps({"mode": "client"}), encoding="utf-8")
         await ingest._tick()
-        # Change a non-mode field and bump mtime — mode same.
+        # Change a non-mode field and bump mtime - mode same.
         time.sleep(0.02)
         health.write_text(json.dumps({"mode": "client", "pid": 123}),
                           encoding="utf-8")
@@ -146,7 +146,7 @@ def test_mode_transition_callback_exception_swallowed(tmp_path: Path) -> None:
         await ingest._tick()         # prime last_mode
         time.sleep(0.02)
         health.write_text(json.dumps({"mode": "game"}), encoding="utf-8")
-        await ingest._tick()         # callback raises — must be caught
+        await ingest._tick()         # callback raises - must be caught
     asyncio.run(drive())
     # If we reach here without propagating, the swallow worked.
 
@@ -156,7 +156,7 @@ def test_mode_transition_callback_exception_swallowed(tmp_path: Path) -> None:
 def test_effective_mode_trusts_health_when_in_game() -> None:
     """LiveClient-confirmed in-game (health.mode='game') wins over LCU.
 
-    Once LiveClient :2999 fires, that's authoritative — don't downgrade
+    Once LiveClient :2999 fires, that's authoritative - don't downgrade
     to LCU-derived "champ_select" if LCU briefly disagrees during the
     GameStart → InProgress transition.
     """

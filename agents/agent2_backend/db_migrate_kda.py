@@ -1,4 +1,4 @@
-"""Round 23 — idempotent schema upgrade adding ``kills/deaths/assists``
+"""Round 23 - idempotent schema upgrade adding ``kills/deaths/assists``
 columns to every mode DB's ``matches`` table.
 
 New DBs get these columns natively via ``db_schema.SCHEMA_STATEMENTS``.
@@ -48,7 +48,7 @@ def ensure_kda_columns(path: Path) -> dict[str, bool]:
                 added[col] = True
                 logger.info("added matches.%s to %s", col, path.name)
             except sqlite3.OperationalError as e:
-                # Race / someone beat us to it — check again.
+                # Race / someone beat us to it - check again.
                 if "duplicate column name" in str(e).lower():
                     added[col] = False
                 else:

@@ -1,4 +1,4 @@
-# P-audit5-m01 — `WarmAgent7Session.stats()` must hold `_lock`
+# P-audit5-m01 - `WarmAgent7Session.stats()` must hold `_lock`
 
 **Owner:** Agent 2
 **Severity:** MEDIUM

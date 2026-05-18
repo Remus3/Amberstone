@@ -1,6 +1,6 @@
 # arch: OverlayApp orchestrator; tk.Tk() root drives poll loops via root.after() | section=orchestration | frozen=yes
 """
-app/__init__.py — OverlayApp orchestrator (post-T2 #8 asyncio scheduler)
+app/__init__.py - OverlayApp orchestrator (post-T2 #8 asyncio scheduler)
 
 ARCH-001 decomposed app.py 1228L into managers (HealthMonitor, RemediationService,
 StateAuthority, OverlayManager, GameLifecycleManager). T2 #6 then removed the
@@ -10,12 +10,12 @@ the tk.Tk() root with an asyncio event loop; game polling re-arms via
 genuinely Tk-free.
 
 Sub-managers:
-  app/_loop.py               — AppLoop (asyncio scheduler, replaces tk.Tk())
-  app/_health_monitor.py     — HealthMonitor
-  app/_remediation.py        — RemediationService (rebuild_panel_* now no-op)
-  app/_state_authority.py    — StateAuthority + calc_win_pct
-  app/_overlay_manager.py    — OverlayManager (mode persistence shell)
-  app/_game_lifecycle.py     — GameLifecycleManager
+  app/_loop.py               - AppLoop (asyncio scheduler, replaces tk.Tk())
+  app/_health_monitor.py     - HealthMonitor
+  app/_remediation.py        - RemediationService (rebuild_panel_* now no-op)
+  app/_state_authority.py    - StateAuthority + calc_win_pct
+  app/_overlay_manager.py    - OverlayManager (mode persistence shell)
+  app/_game_lifecycle.py     - GameLifecycleManager
 """
 import queue
 import sys
@@ -103,9 +103,9 @@ class OverlayApp:
                 )
             except Exception as exc:
                 # AUDIT P-rc-frozen-app-init-swallow (2026-04-22): silent
-                # failure here used to leave self._coach=None with no log —
+                # failure here used to leave self._coach=None with no log -
                 # subsystems downstream would "work" but produce no coaching.
-                _log.exception("CoachIntegration init failed — coach disabled: %s", exc)
+                _log.exception("CoachIntegration init failed - coach disabled: %s", exc)
                 self._coach = None
 
         self._sr_aram_q = queue.Queue(maxsize=2)
@@ -281,7 +281,7 @@ class OverlayApp:
 
     def shutdown(self):
         # AUDIT P-rc-frozen-app-init-swallow (2026-04-22): log shutdown
-        # failures instead of swallowing — invisible failures here have
+        # failures instead of swallowing - invisible failures here have
         # stranded workers during past restarts.
         if self._sr_aram_worker is not None:
             self._sr_aram_worker.stop()

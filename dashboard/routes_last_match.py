@@ -1,8 +1,8 @@
 """Post Game Review (a.k.a. Last Match) view routes.
 
-GET  /api/last-match          — operator's most-recent non-TFT match + Quick
+GET  /api/last-match          - operator's most-recent non-TFT match + Quick
                                 Review (right / wrong-team / chronic patterns).
-POST /api/last-match/ingest   — receives the full LCU match detail JSON +
+POST /api/last-match/ingest   - receives the full LCU match detail JSON +
                                 operator's puuid (pushed by the Game-PC
                                 LCU agent on EndOfGame phase transition;
                                 also callable on-demand from the frontend
@@ -13,7 +13,7 @@ POST /api/last-match/ingest   — receives the full LCU match detail JSON +
                                 runes + win/loss + damage breakdown.
 
 Source of truth: data/match_history.db. The raw_data column carries
-the LCU payload verbatim — no normalization-on-write, parse-on-read.
+the LCU payload verbatim - no normalization-on-write, parse-on-read.
 Audit later if other pages start reading the same blob.
 """
 import json
@@ -26,14 +26,14 @@ from dashboard._dispatch import equals
 
 log = logging.getLogger("rc.web_dashboard")
 
-# Bound the payload — the LCU detail for one game is typically 50-120 KB.
+# Bound the payload - the LCU detail for one game is typically 50-120 KB.
 _MAX_INGEST_BYTES = 2 * 1024 * 1024  # 2 MB hard cap
 
 
 def _serve_last_match(h) -> None:
     try:
         # s220: optional ?baseline=N (operator-set in Settings; clamped
-        # in _build_last_match). Defaults to 20 — pre-s220 behavior.
+        # in _build_last_match). Defaults to 20 - pre-s220 behavior.
         from urllib.parse import urlparse, parse_qs
         qs = parse_qs(urlparse(h.path).query or "")
         try:
@@ -100,7 +100,7 @@ def _serve_last_match_ingest(h, body) -> None:
                     "application/json")
             return
 
-        # Resolve operator's participant champion in the LCU payload —
+        # Resolve operator's participant champion in the LCU payload -
         # used as a soft sanity check against the DB row's champion col.
         lcu_champion_id = None
         identities = match_detail.get("participantIdentities") or []

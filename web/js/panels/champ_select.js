@@ -1,4 +1,4 @@
-// Champ Select panel — full-page view rendered during ChampSelect
+// Champ Select panel - full-page view rendered during ChampSelect
 // phase: pick&ban + build chooser + SR Draft Theatre + analyzer.
 // _ib* functions live in item_build.js (avoid circular dep).
 import { el, safe, fmtList, isArenaPayload } from '../lib/helpers.js';
@@ -16,7 +16,7 @@ import { buildOrderCardHtml } from './build_order.js';
 
 // ── LCU command helper (used by champ-select + build chooser) ──────
 function lcuCmd(cmdObj) {
-  // Endpoint expects FLAT shape: {cmd: "name", ...args} — not wrapped.
+  // Endpoint expects FLAT shape: {cmd: "name", ...args} - not wrapped.
   return fetch("/api/lcu-cmd", {
     method: "POST", cache: "no-store",
     headers: { "Content-Type": "application/json" },
@@ -64,7 +64,7 @@ function _csChampName(cid) {
   return (cid && CHAMPS.byId[String(cid)]) || "";
 }
 
-// Loadout state — tracks what we've applied to avoid spam-pushing on
+// Loadout state - tracks what we've applied to avoid spam-pushing on
 // every 2s poll. Re-pushes when champion or variant key changes, or
 // when the user explicitly picks a different variant from the selector.
 const _csLoadout = {
@@ -72,7 +72,7 @@ const _csLoadout = {
   lastMode:  "",       // mode we last pushed for
   variants:  [],       // [{key,label,is_default}] for current champion+mode
   chosen:    "",       // user-chosen variant key (sticky until champ change)
-  inflight:  false,    // POST in flight — block re-entry
+  inflight:  false,    // POST in flight - block re-entry
   lastAppliedKey: "",  // `${champ}|${mode}|${variant}` of last successful push
 };
 
@@ -94,7 +94,7 @@ function _csSetStatus(text, cls) {
 }
 
 // Build the set of item_ids that appear in some variants but NOT all
-// — these are the "differing" items that distinguish one build from
+// - these are the "differing" items that distinguish one build from
 // another. Used by both renderers to mark items with .cs-build-item--diff
 // so the user's eye lands on exactly what trades off between variants.
 // Returns an empty set when there's only one variant (nothing to diff).
@@ -116,7 +116,7 @@ function _csDiffItemIds(variants) {
 // Render the variant list as selectable rows. Each row carries inline
 // keystone + first-N item icons so the user can compare builds at a
 // glance. Clicking a row selects it (radio-style) and triggers an
-// /api/loadout/apply push. Rebuilt 2026-04-26 — the old <select>
+// /api/loadout/apply push. Rebuilt 2026-04-26 - the old <select>
 // dropdown hid alternate builds behind a click and gave the user the
 // impression there was only one choice. 2026-05-01: items that differ
 // across variants get .cs-build-item--diff so the eye lands on the
@@ -128,7 +128,7 @@ function _csRenderBuildList(variants, chosen) {
   if (!variants || !variants.length) {
     wrap.innerHTML =
       '<div class="cs-loadout-empty">No builds defined for this champion ' +
-      'in this mode — add one to data/champion_loadouts.json</div>';
+      'in this mode - add one to data/champion_loadouts.json</div>';
     return;
   }
   const ver = CHAMPS.version || "latest";
@@ -158,7 +158,7 @@ function _csRenderBuildList(variants, chosen) {
     meta.appendChild(label);
     const runes = document.createElement("div");
     runes.className = "cs-build-runes";
-    const ks = v.keystone || (isExp ? "auto-generated on pick" : "—");
+    const ks = v.keystone || (isExp ? "auto-generated on pick" : "-");
     const tree = v.primary ? ` · ${v.primary}${v.secondary ? "/" + v.secondary : ""}` : "";
     runes.textContent = ks + tree;
     meta.appendChild(runes);
@@ -202,7 +202,7 @@ function _csMarkSelectedRow(variantKey) {
 
 // In-game build chooser state (`_ibBuilds`) used to live here but the
 // references all moved to panels/item_build.js during the Phase 3 ESM
-// split — the orphaned const lingered. Now declared next to its callers
+// split - the orphaned const lingered. Now declared next to its callers
 // in item_build.js so the symbol is reachable.
 function _csOnBuildRowClick(variant) {
   if (!variant) return;
@@ -278,7 +278,7 @@ function _csApplyLoadout(champion, variant, mode) {
 }
 
 function _csOnChampionOrModeChange(championName, championId, mode) {
-  // Reset chosen variant — sticky only within same champion.
+  // Reset chosen variant - sticky only within same champion.
   _csLoadout.lastChamp = championId;
   _csLoadout.lastMode  = mode;
   _csLoadout.chosen    = "";
@@ -309,7 +309,7 @@ function _csOnChampionOrModeChange(championName, championId, mode) {
 }
 
 // ── SR Draft Theatre chooser (Phase 8 step 5, 2026-05-04) ──────────
-// Gated on cs.sr_draft (true for queue ids 400/420/430/440 — Normal
+// Gated on cs.sr_draft (true for queue ids 400/420/430/440 - Normal
 // Draft, Ranked Solo/Duo, Normal Blind, Ranked Flex). Pulls 3 engine-
 // generated profiles + N user-curated additive builds from
 // /api/sr-draft/profile, renders them as .cs-build-row siblings, and
@@ -321,8 +321,8 @@ function _csOnChampionOrModeChange(championName, championId, mode) {
 // the route layer (see dashboard/routes_sr_draft._serve_sr_draft_profile_post);
 // the frontend just renders whatever order they arrive in.
 const _srDraft = {
-  lastChamp:  0,        // championId — dedupe key
-  lastSig:    "",       // (champ|role|allies|enemies|queue) — dedupe key
+  lastChamp:  0,        // championId - dedupe key
+  lastSig:    "",       // (champ|role|allies|enemies|queue) - dedupe key
   profiles:   [],
   chosen:     "",
   inflight:   false,
@@ -401,7 +401,7 @@ function _srDraftRenderRows(profiles, chosen) {
   wrap.innerHTML = "";
   if (!profiles || !profiles.length) {
     wrap.innerHTML =
-      '<div class="cs-loadout-empty">No engine profiles available — ' +
+      '<div class="cs-loadout-empty">No engine profiles available - ' +
       'is the Daemon Slayer engine running on :8893?</div>';
     return;
   }
@@ -423,7 +423,7 @@ function _srDraftRenderRows(profiles, chosen) {
     const label = document.createElement("div");
     label.className = "cs-build-label";
     label.textContent = p.label || p.key;
-    // engine vs user tag — surface so the user knows which row is
+    // engine vs user tag - surface so the user knows which row is
     // their own curated build vs the auto-generated profiles.
     const tag = document.createElement("span");
     tag.className = "cs-build-kind " + (p.kind === "user" ? "user" : "engine");
@@ -433,22 +433,22 @@ function _srDraftRenderRows(profiles, chosen) {
 
     const runes = document.createElement("div");
     runes.className = "cs-build-runes";
-    const ks = (p.runes && p.runes.keystone) || p.keystone || "—";
+    const ks = (p.runes && p.runes.keystone) || p.keystone || "-";
     const tree = (p.runes && p.runes.primary)
       ? ` · ${p.runes.primary}${p.runes.secondary ? "/" + p.runes.secondary : ""}`
       : "";
     runes.textContent = ks + tree;
     meta.appendChild(runes);
 
-    // Engine stat line — quick "why this build" scan: dps + gold.
+    // Engine stat line - quick "why this build" scan: dps + gold.
     // Hidden for user profiles (no engine eval available).
     if (p.kind !== "user" && p.engine) {
       const stats = document.createElement("div");
       stats.className = "cs-build-engine-stats";
       const dps = p.engine.final_dps != null
-        ? Math.round(p.engine.final_dps).toLocaleString() : "—";
+        ? Math.round(p.engine.final_dps).toLocaleString() : "-";
       const gold = p.engine.total_gold != null
-        ? (p.engine.total_gold / 1000).toFixed(1) + "k" : "—";
+        ? (p.engine.total_gold / 1000).toFixed(1) + "k" : "-";
       stats.textContent = `${dps} dps · ${gold} gold`;
       meta.appendChild(stats);
     }
@@ -554,7 +554,7 @@ function _srDraftFetchProfile(championName, championId, role,
           _srDraftSetStatus("fetch failed", "err");
           return;
         }
-        // Profiles arrive engine-first then user-additive — render in
+        // Profiles arrive engine-first then user-additive - render in
         // the order the route returns (operator-additive invariant).
         const profiles = data.profiles || [];
         _srDraft.profiles = profiles;
@@ -591,7 +591,7 @@ function _srDraftMaybeRender(cs, myCid, myName) {
     return;
   }
   _srDraftWireRoleSelectOnce();
-  if (!myCid || !myName || myName === "—") {
+  if (!myCid || !myName || myName === "-") {
     // Show the block with a placeholder so the user knows the chooser
     // exists during early draft phases (banning, hovering).
     block.hidden = false;
@@ -638,7 +638,7 @@ function handleChampSelect(lcu) {
   // s162 bug fix (2026-05-10): renderLobbyPanel / renderHomePanel /
   // _viewResolveAndApply / _maybeRefreshLobbyView USED to be called
   // here, but they're defined in main.js's module scope and were never
-  // imported into champ_select.js — every call threw ReferenceError
+  // imported into champ_select.js - every call threw ReferenceError
   // silently caught by the SSE try/catch, so post-refresh the lobby
   // view never re-rendered with newly-arrived lcu data. Orchestration
   // now lives in main.js's handleLcuEnvelope wrapper.
@@ -668,7 +668,7 @@ function handleChampSelect(lcu) {
   const adaptMode = modeMap[cs.queue_id] || "aram";
   fetchAdaptation(myName, adaptMode === "sr_draft" ? "sr" : adaptMode, enemies);
 
-  // Live Haiku coaching — debounced + key-deduped so we only fire when
+  // Live Haiku coaching - debounced + key-deduped so we only fire when
   // the actual pick state changes (champion or team comp), not on every
   // 2 s state poll. ~1 Haiku call per ~10 s of active drafting.
   const liveKey = [
@@ -703,7 +703,7 @@ function handleChampSelect(lcu) {
     .catch(() => { _CS_LIVE.inflight = false; });
 }
 
-// Light renderer — drops the Haiku output into the Right Now action +
+// Light renderer - drops the Haiku output into the Right Now action +
 // immediate slots while in champ-select. Keeps the existing in-game
 // UI surface; switches content when phase=ChampSelect.
 function renderChampSelectCoach(data) {
@@ -717,7 +717,7 @@ function renderChampSelectCoach(data) {
   _rnImmediate.textContent = lines.join("  •  ");
 }
 
-// ── Champ Select VIEW (s164 — Phase 3 step 3 scaffold) ─────────────
+// ── Champ Select VIEW (s164 - Phase 3 step 3 scaffold) ─────────────
 // Top-level <section id="view-champ-select"> page rendered while
 // lcu.phase === "ChampSelect". Auto-promoted by main.js's view router.
 
@@ -781,7 +781,7 @@ const _CSV_SHORT_ROLE = {
   BOTTOM: "BOTTOM", UTILITY: "SUPPORT",
 };
 function _csvShortRole(pos) {
-  return _CSV_SHORT_ROLE[pos] || pos || "—";
+  return _CSV_SHORT_ROLE[pos] || pos || "-";
 }
 // Singleton popup that appears when the operator clicks an ally's
 // summoner name. Structure: a SWAP / TRADE header row above three
@@ -794,7 +794,7 @@ function _csvShortRole(pos) {
 function _csvShowTradeChoice(cellId, anchorEl, opts) {
   const champName    = (opts && opts.champName)    || "Champion";
   const pickOrderLbl = (opts && opts.pickOrderLbl) || "";
-  const roleLbl      = (opts && opts.roleLbl)      || "—";
+  const roleLbl      = (opts && opts.roleLbl)      || "-";
   const showPickOrd  = !!(opts && opts.showPickOrder);
 
   let popup = document.getElementById("csv-trade-popup");
@@ -809,7 +809,7 @@ function _csvShowTradeChoice(cellId, anchorEl, opts) {
         '<button type="button" class="csv-trade-choice" data-action="pick-order"></button>' +
         '<button type="button" class="csv-trade-choice" data-action="role"></button>' +
       '</div>';
-    // Append to <html> instead of <body> — body has zoom:1.33 (see
+    // Append to <html> instead of <body> - body has zoom:1.33 (see
     // base.css), and any position:fixed descendant of a zoomed element
     // has its top/left values scaled by that zoom, which was offsetting
     // the popup ~33% below where the click landed. The popup gets a
@@ -864,7 +864,7 @@ function _csvShowTradeChoice(cellId, anchorEl, opts) {
   popup.style.visibility = "visible";
 }
 
-// Module-level cache: { type: "ban"|"pick", cellSet: Set<cellId> } —
+// Module-level cache: { type: "ban"|"pick", cellSet: Set<cellId> } -
 // derived from cs.active_round and consulted by _csvRenderTeam to
 // apply the pulsating border class to cells whose cellId is in the
 // active round. Reset on each renderChampSelectView call.
@@ -873,7 +873,7 @@ let _csvActiveRound = null;
 // Mode classifier for the champ-select view. SR draft is the historical
 // default; ARAM (450/920), Arena (1700/1710) get distinct central +
 // enemies layouts because the LCU surface they expose differs
-// structurally — ARAM has a bench but no roles/bans, Arena has 6 teams of 3
+// structurally - ARAM has a bench but no roles/bans, Arena has 6 teams of 3
 // + augments and no enemy-team field. s214 v2: Brawl mode retired from
 // the live League rotation; brawl branches dropped from this classifier.
 function _csvDetectMode(cs) {
@@ -885,7 +885,7 @@ function _csvDetectMode(cs) {
 }
 
 // s209: queue_id → human label for the CS sub-line. Mirrors the agent's
-// `_LOBBY_QUEUE_NAMES` map in tools/gamepc_lcu_agent.py:205 — the agent
+// `_LOBBY_QUEUE_NAMES` map in tools/gamepc_lcu_agent.py:205 - the agent
 // forwards `queue_name` on the lobby envelope but not the champ-select
 // envelope, so the dashboard needs its own local mapping. Unknown IDs
 // fall through to "queue <N>" for visibility.
@@ -914,7 +914,7 @@ function _csvQueueLabel(queueId) {
 
 // s209: rune-tree icon paths. Files live at data/icons/runes/<slug>.png
 // and ride the numeric-prefix convention DDragon ships them with. The
-// "Whimsy" file is Riot's Arena-tier rebrand of the Inspiration tree —
+// "Whimsy" file is Riot's Arena-tier rebrand of the Inspiration tree -
 // it's the only Inspiration art the icon set carries.
 const _CSV_RUNE_TREE_FILES = {
   Precision:   "7201_Precision",
@@ -930,13 +930,13 @@ function _csvTreeIcon(treeName) {
 // Keystone slug overrides for keystones whose icon filename doesn't
 // match the TitleCase-no-spaces derivation. Riot has shipped a couple
 // of mid-rebrand assets with "Temp" / "Veteran" prefixes that haven't
-// been renamed back. Keep this map small — add entries only when a
+// been renamed back. Keep this map small - add entries only when a
 // concrete file mismatch is observed.
 const _CSV_KEYSTONE_SLUG_OVERRIDES = {
   "Lethal Tempo": "LethalTempoTemp",
   "Aftershock":   "VeteranAftershock",
 };
-// Keystone slug — TitleCase each word + strip spaces. ("Press the Attack"
+// Keystone slug - TitleCase each word + strip spaces. ("Press the Attack"
 // → "PressTheAttack", "Grasp of the Undying" → "GraspOfTheUndying").
 // Matches the file naming convention in data/icons/runes/.
 function _csvKeystoneIcon(keystoneName) {
@@ -971,7 +971,7 @@ function _csvHumanPhase(phase) {
 }
 
 // Renders a team cell list. Backward-compatible 5-positional signature
-// — the 6th `opts` arg adds mode-aware behavior: `cellCount` (default
+// - the 6th `opts` arg adds mode-aware behavior: `cellCount` (default
 // 5), `showGuess` (default true for enemy lists), and `allowRolePip`
 // (default true). ARAM passes `showGuess: false` since roles are
 // random and the (guess) annotation is meaningless; Arena uses a
@@ -989,7 +989,7 @@ function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder, opts) {
   arr.forEach((p, idx) => {
     const cid = (p && p.championId) | 0;
     const isMe = !!(myCid && cid === myCid);
-    const champNm = _csChampName(cid) || (cid ? "cid:" + cid : "—");
+    const champNm = _csChampName(cid) || (cid ? "cid:" + cid : "-");
     const summ = (p && p.summonerName) || "";
     const pos = (p && p.assignedPosition) || "";
     const stateCls = !cid ? "empty" : ((p && p.completed) ? "locked" : "hovering");
@@ -998,13 +998,13 @@ function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder, opts) {
     // s213 v2: lock icon (🔒) removed per operator. The cell's overall
     // outline already encodes lock state (green border for locked,
     // amber for hovering) so the per-cell padlock was redundant.
-    // s214: countdown timer also removed for allies + enemies — same
+    // s214: countdown timer also removed for allies + enemies - same
     // signal already lives in the global champ-select header timer +
     // the active-round border indicator. Per-cell timer added too
     // much visual noise without a unique payload.
     const lockHtml = "";
 
-    // Hoist peer-cell identity ABOVE the li.className use — referencing
+    // Hoist peer-cell identity ABOVE the li.className use - referencing
     // peerCellId before its const declaration would throw a TDZ
     // ReferenceError and crash the whole forEach (no cells rendered).
     const isAllyOther = (listId === "csv-allies-list") && !isMe && cid;
@@ -1024,11 +1024,11 @@ function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder, opts) {
       ? `<img src="${url}" alt="" onerror="this.style.display='none'">`
       : "";
     // Per operator: champion-icon and pos-pip no longer initiate
-    // trades directly — the only click target for trades is the
+    // trades directly - the only click target for trades is the
     // summoner name (which opens the SWAP / TRADE popup).
     li.appendChild(icon);
 
-    // Champ name col is plain text again — lock/timer moved out.
+    // Champ name col is plain text again - lock/timer moved out.
     const nm = document.createElement("div");
     nm.className = "csv-team-cell-nm";
     nm.textContent = champNm;
@@ -1062,7 +1062,7 @@ function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder, opts) {
       const posEl = document.createElement("span");
       posEl.className = "csv-team-cell-pos";
       posEl.textContent = _csvShortRole(pos);
-      // Pos pip is now display-only — trades go through the popup.
+      // Pos pip is now display-only - trades go through the popup.
       li.appendChild(posEl);
     }
     // s213 v2: enemy cells now carry a 2-piece comp identifier + role
@@ -1091,8 +1091,8 @@ function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder, opts) {
       else if (confPct >= 80) confEl.classList.add("is-med");
       else confEl.classList.add("is-low");
       confEl.textContent = `${confPct}%`;
-      confEl.title = (confPct >= 95) ? "champion locked — role confirmed"
-                    : (confPct >= 80) ? "LCU role guess — pick not yet committed"
+      confEl.title = (confPct >= 95) ? "champion locked - role confirmed"
+                    : (confPct >= 80) ? "LCU role guess - pick not yet committed"
                     : "no role assigned yet";
       li.appendChild(confEl);
     }
@@ -1101,13 +1101,13 @@ function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder, opts) {
 }
 
 export function renderChampSelectView(lcu) {
-  // Section may not exist yet on older cached HTML — bail out cleanly.
+  // Section may not exist yet on older cached HTML - bail out cleanly.
   const section = document.getElementById("view-champ-select");
   const grid = section && section.querySelector(".csv-grid");
   if (!grid) return;
   // s213: warm the DDragon item + rune description caches on first
   // mount so the first hover already has tooltip content ready.
-  // Idempotent — subsequent calls are no-ops once cache is ready.
+  // Idempotent - subsequent calls are no-ops once cache is ready.
   preloadLolDescriptions();
   // s213 v2: warm champion-tags cache for the enemies-panel 2-piece
   // identifier + confidence pill.
@@ -1116,16 +1116,16 @@ export function renderChampSelectView(lcu) {
     _csvSetText("csv-sub", "waiting for champ-select…");
     return;
   }
-  if (!CHAMPS.ready) return;  // names not loaded yet — wait next tick
+  if (!CHAMPS.ready) return;  // names not loaded yet - wait next tick
 
   const cs = lcu.champ_select || {};
   const mode = _csvDetectMode(cs);
   const myCid = (cs.my_champion | 0);
-  const myName = _csChampName(myCid) || "—";
+  const myName = _csChampName(myCid) || "-";
   const locked = !!cs.my_completed;
 
   // s209 v2: idempotent render gate. The state envelope re-fires every
-  // 2s in live, and the sim FakeSocket tick re-fires every 3s — each
+  // 2s in live, and the sim FakeSocket tick re-fires every 3s - each
   // tick triggers a full renderChampSelectView which rebuilds three
   // panels worth of innerHTML. The operator saw the build chooser
   // flicker every ~3s on cold load. Skip the render when nothing
@@ -1151,10 +1151,10 @@ export function renderChampSelectView(lcu) {
   if (cs.timer && cs.timer.remaining_ms != null) {
     bits.push(Math.max(0, Math.round(cs.timer.remaining_ms / 1000)) + "s");
   }
-  _csvSetText("csv-sub", bits.join(" · ") || "—");
+  _csvSetText("csv-sub", bits.join(" · ") || "-");
 
   // Cache absolute timer end timestamp on the cs object so re-renders
-  // (every 2s state envelope) don't reset the countdown — important
+  // (every 2s state envelope) don't reset the countdown - important
   // for sim mode where the lcu envelope only fires once.
   let timerEndMs = 0;
   if (cs.timer && typeof cs.timer.remaining_ms === "number") {
@@ -1163,7 +1163,7 @@ export function renderChampSelectView(lcu) {
   }
   // Pick-order swap button shows only on modes where pick order is
   // structural (SR draft queues). ARAM/Arena don't have a meaningful
-  // pick order — operator wanted the middle button hidden.
+  // pick order - operator wanted the middle button hidden.
   const showPickOrder = !!cs.sr_draft;
   // Compute active-round set (cells currently banning or picking) so
   // _csvRenderTeam can stamp the pulsing border class on them.
@@ -1176,7 +1176,7 @@ export function renderChampSelectView(lcu) {
     _csvActiveRound = null;
   }
 
-  // Allies render — Arena renders 3 cells (me + 2 teammates; s234/#89:
+  // Allies render - Arena renders 3 cells (me + 2 teammates; s234/#89:
   // Arena is now 6 teams of 3, was 8×2); SR/ARAM render 5. ARAM also
   // suppresses the (guess) tag and role pip since there are no role
   // assignments to display.
@@ -1187,7 +1187,7 @@ export function renderChampSelectView(lcu) {
       : { cellCount: 5, showGuess: true,  allowRolePip: true };
   _csvRenderTeam("csv-allies-list", cs.my_team, myCid, timerEndMs, showPickOrder, allyOpts);
 
-  // Enemies render — Arena stacks the 5 other sub-teams vertically
+  // Enemies render - Arena stacks the 5 other sub-teams vertically
   // (s234/#89: 6 teams of 3 total). SR keeps the 5-cell list with
   // (guess); ARAM renders 5 cells but suppresses (guess) + role pip.
   if (mode === "arena") {
@@ -1203,7 +1203,7 @@ export function renderChampSelectView(lcu) {
   _csvRenderCentralPane(cs, mode, myCid, myName, locked);
   // s210: render the new Suggestions panel (row 2 right). Has its own
   // fetch path for ban-suggestions; pick-order + DS items pull from
-  // local state. SR-only — the panel is hidden on ARAM/Arena via CSS
+  // local state. SR-only - the panel is hidden on ARAM/Arena via CSS
   // (no bans, no pick order, no DS-engine concept of "next").
   if (mode === "sr") {
     _csvRenderSuggestions(cs, myCid, myName, mode);
@@ -1216,7 +1216,7 @@ export function renderChampSelectView(lcu) {
     if (spo) spo.innerHTML = '<div class="csv-sugg-empty">non-SR mode</div>';
   }
 
-  // Pick & Ban panel — SR-only. Other modes hide it via CSS rule
+  // Pick & Ban panel - SR-only. Other modes hide it via CSS rule
   // [data-cs-mode] but we skip the render entirely to save work and
   // keep the body empty (it's display:none anyway).
   if (mode === "sr") {
@@ -1225,7 +1225,7 @@ export function renderChampSelectView(lcu) {
     const body = document.getElementById("csv-pickban-body");
     if (body) body.innerHTML = "";
   }
-  // _csvAlignAllies() disabled — JS measurement kept returning wrong
+  // _csvAlignAllies() disabled - JS measurement kept returning wrong
   // values; champname col width is hardcoded in CSS instead.
 }
 
@@ -1256,7 +1256,7 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   const stateCls = myCid ? (locked ? "locked" : "hovering") : "";
   const stateTxt = locked ? "✓ LOCKED" : (myCid ? "⌛ HOVERING" : "no pick yet");
 
-  // s171: lock button — shown only when a champion is hovered but not
+  // s171: lock button - shown only when a champion is hovered but not
   // yet locked. Click fires the LCU lock_pick command and surfaces the
   // result inline via lcuPollResult, mirroring the legacy overlay's
   // #cs-lock-btn (champ_select.js:818). Hidden after lock since there's
@@ -1289,7 +1289,7 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   // Build Order (2026-05-17, plan §6b option B): contextual DS-backed
   // ordered build with the engine-enforced unique-passive no-double
   // rule. Sits under the build chooser in the mode-agnostic My Pick
-  // card (matters in ARAM/Arena too — unlike the SR-only Suggestions
+  // card (matters in ARAM/Arena too - unlike the SR-only Suggestions
   // panel). The async fetch is cache-keyed (one engine round per
   // champ+mode+arch per session) and its re-render piggybacks on
   // _csvScheduleRender, exactly like the DS-builds fetch.
@@ -1346,7 +1346,7 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
   // operator to commit; once active_round.type === "pick" (bans
   // committed, picks underway) switch to a 2-row 5-cell grid showing
   // ally bans (top) + enemy bans (bottom).
-  // s214: title row dropped — `.csv-sugg-row-label` no longer in the
+  // s214: title row dropped - `.csv-sugg-row-label` no longer in the
   // DOM. The grid alone communicates state via the ALLY / ENEMY side
   // labels in the banned-list rows + the icon strip in suggestion mode.
   const bansGrid = document.getElementById("csv-sugg-bans-grid");
@@ -1396,7 +1396,7 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
   }
   // ---- Row 3: pick-order tips (no header label per s213 v3) ----
   // Static advisory keyed on operator's assigned role. 3 tips per role
-  // — the third row is the "consider" / strategic depth tip beyond
+  // - the third row is the "consider" / strategic depth tip beyond
   // basic "pick after / pick first" logic.
   const pickOrderBody = document.getElementById("csv-sugg-pickorder-body");
   if (pickOrderBody) {
@@ -1413,12 +1413,12 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
         <span>${tip}</span>
       </div>`).join("");
   }
-  // s211: DS engine item output row removed — the Experimental build
+  // s211: DS engine item output row removed - the Experimental build
   // chooser row now carries DS top picks in a richer rune+spell+item
   // layout, making the duplicate strip here visual noise.
 }
 
-// s213 v3: helper — render a single-row 5-cell banned-list strip for
+// s213 v3: helper - render a single-row 5-cell banned-list strip for
 // the Suggestions panel's post-ban-phase view. Banned ids come from
 // LCU's cs.bans.my_team / cs.bans.their_team arrays. Pads to 5 cells
 // with placeholder slots when fewer than 5 bans are committed (Riot
@@ -1441,7 +1441,7 @@ function _csvBannedListRow(banIds, sideLabel) {
       cells.push(`
         <div class="csv-sugg-ban-card is-empty">
           <div class="csv-sugg-ban-icon"></div>
-          <div class="csv-sugg-ban-name">—</div>
+          <div class="csv-sugg-ban-name">-</div>
         </div>`);
     }
   }
@@ -1474,7 +1474,7 @@ function _csvVariantBadgeClass(v) {
 
 // s210 v2: archetype → (keystone, primary tree, secondary tree) for
 // the experimental row's auto-built rune page. Mirrors the standard
-// "default keystone per archetype" consensus — operator can refine
+// "default keystone per archetype" consensus - operator can refine
 // per-champion later via a JSON override file. The keystone slug is
 // converted to /icons/runes/<slug>.png via _csvKeystoneIcon().
 const _CSV_EXPERIMENTAL_RUNES = {
@@ -1492,39 +1492,39 @@ function _csvExperimentalRunesFor(archetypeKey) {
 // s210: pick-order advisory blurbs per role. Short tips, ordered from
 // "what to do first" to "what to do at lock-in". s214: row 3 is now
 // dynamically swapped for a comp-aware tip when ally + enemy comps
-// have enough locks to read — see _csvCompAwareTip below. Rows 1+2
+// have enough locks to read - see _csvCompAwareTip below. Rows 1+2
 // stay static so the operator always sees the role's "pick order"
 // constants regardless of comp readability.
 const _CSV_PICKORDER_TIPS = {
   TOP: [
-    "Counterpick — wait for enemy top lock",
+    "Counterpick - wait for enemy top lock",
     "Then commit to your matchup pick",
-    "Watch enemy jungler — a gank-heavy comp punishes weak-early lane picks",
+    "Watch enemy jungler - a gank-heavy comp punishes weak-early lane picks",
   ],
   JNG: [
-    "Pick early — clear path matters more than counter",
+    "Pick early - clear path matters more than counter",
     "Avoid blind-picking weak-early junglers",
-    "Match enemy team's tempo — vs poke comp pick gank, vs engage pick disengage",
+    "Match enemy team's tempo - vs poke comp pick gank, vs engage pick disengage",
   ],
   MID: [
-    "Flex picks have leverage — hover late",
+    "Flex picks have leverage - hover late",
     "Lock when enemy team comp is readable",
     "Save assassins for after enemy ADC + sup lock so you confirm dive targets",
   ],
   BOT: [
-    "Pick after support locks — synergy > counter",
+    "Pick after support locks - synergy > counter",
     "Lethality vs squishy comps, crit vs draft",
     "Hard-CC enemy support? Hover Cleanse before lock-in",
   ],
   SUP: [
-    "Lock support pick first — your ADC counts on it",
+    "Lock support pick first - your ADC counts on it",
     "Engage vs poke comp; peel vs assassin comp",
-    "Vision-heavy supports (Bard, Senna) scale with map awareness — pair carefully",
+    "Vision-heavy supports (Bard, Senna) scale with map awareness - pair carefully",
   ],
   DEFAULT: [
     "Watch enemy hovers before locking",
     "Comfort > counterpick if matchup is unclear",
-    "Hover your pick to telegraph intent — see if enemy adapts before you commit",
+    "Hover your pick to telegraph intent - see if enemy adapts before you commit",
   ],
 };
 
@@ -1532,7 +1532,7 @@ const _CSV_PICKORDER_TIPS = {
 // distribution. Returns null when neither side has any locks (early
 // CS) so the caller falls through to the static row-3 tip. Uses the
 // championTags cache (DDragon Fighter/Mage/Marksman/Tank/Support/
-// Assassin classifications) — same source the enemy-row tag chips
+// Assassin classifications) - same source the enemy-row tag chips
 // + adaptive-summoner classifier read from.
 function _csvCompAwareTip(cs, role) {
   if (!cs || !championTags) return null;
@@ -1563,46 +1563,46 @@ function _csvCompAwareTip(cs, role) {
   // tip surfaces a defensive item or summoner spell suggestion.
   const enemyAD = enemy.Fighter + enemy.Marksman + enemy.Assassin;
   const enemyAP = enemy.Mage;
-  const enemyCC = enemy.Tank + enemy.Support;  // proxy — full CC scoring lives in adaptive-summoner classifier
+  const enemyCC = enemy.Tank + enemy.Support;  // proxy - full CC scoring lives in adaptive-summoner classifier
   const allyHasFrontline = (ally.Tank + ally.Fighter) >= 1;
   const allyHasCarry = (ally.Marksman + ally.Mage + ally.Assassin) >= 1;
 
-  // Role-conditional tip selection — surface the highest-priority
+  // Role-conditional tip selection - surface the highest-priority
   // observation for the operator's chosen role.
   if (role === "BOT") {
-    if (enemyCC >= 3) return "Enemy has 3+ CC threats — hover Cleanse before lock-in";
-    if (enemyAD > enemyAP + 1) return "Enemy comp leans AD — Plated Steelcaps / Tabis path opens up";
-    if (enemyAP > enemyAD) return "Enemy comp leans AP — Mercury's + Maw of Malmortius";
-    if (!allyHasFrontline) return "No locked frontline yet — wait or shift to a self-peeling ADC";
+    if (enemyCC >= 3) return "Enemy has 3+ CC threats - hover Cleanse before lock-in";
+    if (enemyAD > enemyAP + 1) return "Enemy comp leans AD - Plated Steelcaps / Tabis path opens up";
+    if (enemyAP > enemyAD) return "Enemy comp leans AP - Mercury's + Maw of Malmortius";
+    if (!allyHasFrontline) return "No locked frontline yet - wait or shift to a self-peeling ADC";
   } else if (role === "SUP") {
-    if (!allyHasCarry) return "Carry slots still open — hover engage to telegraph aggression";
-    if (enemyAD >= 3) return "Heavy AD enemy comp — Knight's Vow / Locket of Iron Solari shine";
-    if (enemy.Assassin >= 1) return "Enemy has assassin pressure — peel-first supports beat engage here";
+    if (!allyHasCarry) return "Carry slots still open - hover engage to telegraph aggression";
+    if (enemyAD >= 3) return "Heavy AD enemy comp - Knight's Vow / Locket of Iron Solari shine";
+    if (enemy.Assassin >= 1) return "Enemy has assassin pressure - peel-first supports beat engage here";
   } else if (role === "TOP") {
-    if (enemy.Marksman + enemy.Mage >= 3) return "Enemy heavy on ranged damage — tank + MR rush";
-    if (enemyAD >= 3) return "Heavy AD top side — armor first (Plated / Randuin's / Sunfire)";
-    if (!allyHasCarry) return "Allies lack scaling carry — consider a self-scaling top (Nasus / Kayle)";
+    if (enemy.Marksman + enemy.Mage >= 3) return "Enemy heavy on ranged damage - tank + MR rush";
+    if (enemyAD >= 3) return "Heavy AD top side - armor first (Plated / Randuin's / Sunfire)";
+    if (!allyHasCarry) return "Allies lack scaling carry - consider a self-scaling top (Nasus / Kayle)";
   } else if (role === "JNG") {
-    if (enemy.Tank >= 2) return "Enemy fields 2+ tanks — bring %-HP or true-damage jungler";
-    if (enemyCC >= 3) return "CC-heavy enemy comp — duelist > engage jungler";
-    if (!allyHasFrontline) return "Allies lack frontline — pick an engage/tank jungler";
+    if (enemy.Tank >= 2) return "Enemy fields 2+ tanks - bring %-HP or true-damage jungler";
+    if (enemyCC >= 3) return "CC-heavy enemy comp - duelist > engage jungler";
+    if (!allyHasFrontline) return "Allies lack frontline - pick an engage/tank jungler";
   } else if (role === "MID") {
-    if (enemy.Assassin >= 1) return "Enemy assassin commits to dive — bring Zhonya's window";
-    if (enemyAP >= 2) return "Enemy double-AP — Mercury's first; Maw of Malmortius if you're AD";
-    if (!allyHasCarry) return "No locked carry yet — flex pick keeps options open";
+    if (enemy.Assassin >= 1) return "Enemy assassin commits to dive - bring Zhonya's window";
+    if (enemyAP >= 2) return "Enemy double-AP - Mercury's first; Maw of Malmortius if you're AD";
+    if (!allyHasCarry) return "No locked carry yet - flex pick keeps options open";
   } else if (role === "ARAM" || role === "MAYHEM") {
-    if (enemyCC >= 3) return "ARAM CC bomb risk — Mercury's + Cleanse if any ranged carry locks";
-    if (enemyAP > enemyAD + 1) return "Enemy ARAM is AP-heavy — Force of Nature / Spirit Visage";
-    if (enemyAD > enemyAP + 1) return "Enemy ARAM is AD-heavy — Plated / Randuin's path";
+    if (enemyCC >= 3) return "ARAM CC bomb risk - Mercury's + Cleanse if any ranged carry locks";
+    if (enemyAP > enemyAD + 1) return "Enemy ARAM is AP-heavy - Force of Nature / Spirit Visage";
+    if (enemyAD > enemyAP + 1) return "Enemy ARAM is AD-heavy - Plated / Randuin's path";
   }
   // Generic fall-through when nothing above triggered (mixed comp).
   if (allyHasFrontline && allyHasCarry) {
-    return "Comp shaping up balanced — comfort > counterpick from here";
+    return "Comp shaping up balanced - comfort > counterpick from here";
   }
   return null;
 }
 
-// s171: lock button click handler — same shape as the legacy overlay's
+// s171: lock button click handler - same shape as the legacy overlay's
 // #cs-lock-btn. Disables the button on click to prevent double-fire,
 // stamps the state line with the agent's response, then re-enables on
 // timeout so a real failure can be retried.
@@ -1643,7 +1643,7 @@ function _csvBenchHtml(cs) {
     return `
       <div class="csv-bench">
         <div class="csv-bench-title">Bench</div>
-        <div class="csv-bench-empty">no bench champs yet — wait for a teammate to reroll</div>
+        <div class="csv-bench-empty">no bench champs yet - wait for a teammate to reroll</div>
       </div>`;
   }
   const ver = CHAMPS.version || "latest";
@@ -1671,7 +1671,7 @@ function _csvWireBench(scope) {
       const cid = parseInt(cell.dataset.benchId, 10);
       if (!cid) return;
       lcuCmd({ cmd: "bench_swap", champion_id: cid });
-      // Visual feedback — pulse the cell so the operator sees the click
+      // Visual feedback - pulse the cell so the operator sees the click
       // registered before the LCU agent confirms via state push.
       cell.classList.add("is-pending");
       setTimeout(() => cell.classList.remove("is-pending"), 500);
@@ -1703,7 +1703,7 @@ function _csvBansSig(bans) {
 
 // s209 v2: idempotent render sig. Captures everything renderChampSelectView
 // reads to draw the three panels (allies / center / enemies + pickban).
-// Timer remaining_ms is deliberately excluded — _csvSetupTimerTick owns
+// Timer remaining_ms is deliberately excluded - _csvSetupTimerTick owns
 // the countdown text and updates it independently of the innerHTML
 // rebuild. DS / user-variant / archetype caches are folded in as a
 // 1-or-0 presence stamp so the render fires once when each cache lands.
@@ -1731,11 +1731,11 @@ function _csvComputeSig(cs, mode, myCid, myName) {
     : "0::";
   // s209 v2: include adaptive-summoners cache state so the render fires
   // once when the recommendation lands per enemy roster. Just count the
-  // cached keys for this champion — granular enough to detect "new
+  // cached keys for this champion - granular enough to detect "new
   // recommendation arrived" without hashing the whole cache.
   const adaptCount = Object.keys(_CSV_ADAPT_CACHE)
     .filter((k) => k.startsWith(`${myName}|`)).length;
-  // s210: ban-suggestions cache state — count keys so the Suggestions
+  // s210: ban-suggestions cache state - count keys so the Suggestions
   // panel re-renders when the global top-bans fetch lands.
   const banSuggCount = Object.keys(_CSV_BANSUGG_CACHE).length;
   return [
@@ -1757,7 +1757,7 @@ function _csvComputeSig(cs, mode, myCid, myName) {
 // s209 v2: coalesce post-fetch re-renders into a single rAF tick.
 // _csvFetchDsBuilds / _csvFetchUserVariants / _csvFetchArchetype each
 // fire their own .then() re-render, and on a cold-cache champion they
-// can all land within the same frame — back-to-back synchronous
+// can all land within the same frame - back-to-back synchronous
 // renderChampSelectView() calls rebuild innerHTML three times in a
 // row, which the operator sees as flicker in the build chooser. This
 // helper queues one rAF, runs at most once per frame, and re-reads
@@ -1772,7 +1772,7 @@ function _csvScheduleRender() {
       // s213: bump the section sig so the idempotent gate at the top
       // of renderChampSelectView doesn't bail. The sig already
       // captures DS/user/arch/adapt/bsugg cache state, but not the
-      // lol-descriptions cache — events that fire `_csvScheduleRender`
+      // lol-descriptions cache - events that fire `_csvScheduleRender`
       // (DS land, adaptive land, ban-sugg land, lol-desc land) need
       // to defeat the sig either by changing one of its inputs OR by
       // clearing the stamp explicitly. Clearing is safer than coupling
@@ -1789,7 +1789,7 @@ function _csvScheduleRender() {
 document.addEventListener("rc:lol-descriptions-ready", () => {
   _csvScheduleRender();
 });
-// s213 v2: same for champion-tags — enemy cells get the 2-piece tag +
+// s213 v2: same for champion-tags - enemy cells get the 2-piece tag +
 // confidence pill once the cache resolves.
 document.addEventListener("rc:champion-tags-ready", () => {
   _csvScheduleRender();
@@ -1803,9 +1803,9 @@ document.addEventListener("rc:build-order-toggle", () => {
 });
 
 // s171: DS engine cache for the new champ-select view's build chooser.
-// Keyed by `${champion}|${dsMode}` — drafts don't change build order so
+// Keyed by `${champion}|${dsMode}` - drafts don't change build order so
 // caching across the whole champ-select session is safe. Cleared on
-// CHAMPS.ready transition (handled implicitly — page reload clears).
+// CHAMPS.ready transition (handled implicitly - page reload clears).
 const _CSV_DS_CACHE    = Object.create(null);
 const _CSV_DS_INFLIGHT = Object.create(null);
 
@@ -1891,15 +1891,15 @@ function _csvSaveChoice(champion, variantKey) {
   catch (_) {}
 }
 
-// ─── Phase 3 (s176, 2026-05-12) — archetype scorer picker ───────────────
+// ─── Phase 3 (s176, 2026-05-12) - archetype scorer picker ───────────────
 //
 // Six canonical archetypes; carry/bruiser/tank have real scorers today
 // (ds.dps / ds.hybrid / ds.ehp), the rest are placeholders for Phases
 // 4-6. Order matches core/archetype_picks.ARCHETYPES so the UI is stable
 // across language changes and re-renders. Implemented set tracked
 // separately so we can gray-out the unimplemented ones without removing
-// them — operator sees the full taxonomy.
-// s209: all 6 scorers shipped — flipped `implemented: false → true` for
+// them - operator sees the full taxonomy.
+// s209: all 6 scorers shipped - flipped `implemented: false → true` for
 // mage/assassin/enchanter and pointed to their dedicated scorers
 // (ability DPS / burst / HPS) per Phases 4-6 (s179/s180/s181). Pre-s209
 // the dispatcher routed these to ds.dps as a placeholder; that fallback
@@ -1941,7 +1941,7 @@ function _csvFetchArchetype(champion) {
       _CSV_ARCH_INFLIGHT[champion] = false;
       if (data && data.ok && data.pick) {
         _CSV_ARCH_CACHE[champion] = data.pick;
-        // s209 v2: rAF-coalesced — see _csvScheduleRender.
+        // s209 v2: rAF-coalesced - see _csvScheduleRender.
         _csvScheduleRender();
       }
     })
@@ -1977,7 +1977,7 @@ function _csvArchetypePickerHtml(champion) {
          + `<span class="csv-arch-scorer">${a.scorer}</span>`
          + `</button>`;
   }).join("");
-  // s212 v3: dropped the "overridden" / "auto" source pill — duplicate
+  // s212 v3: dropped the "overridden" / "auto" source pill - duplicate
   // of the AUTO button's active state (green-active = auto, grey =
   // overridden). The AUTO button alone carries both signals: when
   // green it's the active mode; when grey-clickable it means "click
@@ -2114,7 +2114,7 @@ function _csvDsCacheKey(champion, dsMode, archetype) {
 }
 
 // Fire the DS engine for this champion + mode + archetype. Non-blocking
-// — the next renderChampSelectView tick (~1Hz from the LCU state push)
+// - the next renderChampSelectView tick (~1Hz from the LCU state push)
 // picks up the cached result. ``level=6`` matches the legacy overlay's
 // preview level so the rankings match between views.
 function _csvFetchDsBuilds(champion, dsMode, archetype) {
@@ -2146,7 +2146,7 @@ function _csvFetchDsBuilds(champion, dsMode, archetype) {
 
 // s171.8: fetch user-curated variants (loadout_resolver). Mode label is
 // the lower-case form ("sr"/"aram"/"arena") matching the legacy
-// chooser's contract — `/api/loadout/list` normalises internally.
+// chooser's contract - `/api/loadout/list` normalises internally.
 // s214 v2: "brawl" dropped from the mode set (mode retired from rotation).
 function _csvFetchUserVariants(champion, mode) {
   if (!champion || !mode) return;
@@ -2166,7 +2166,7 @@ function _csvFetchUserVariants(champion, mode) {
       const variants = (data && Array.isArray(data.variants))
         ? data.variants : [];
       _CSV_USER_CACHE[key] = variants;
-      // s209 v2: rAF-coalesced — see _csvScheduleRender.
+      // s209 v2: rAF-coalesced - see _csvScheduleRender.
       if (variants.length) _csvScheduleRender();
     })
     .catch(() => {
@@ -2178,28 +2178,28 @@ function _csvFetchUserVariants(champion, mode) {
 // Build chooser variants for the central pane. s171: returns DS-engine-
 // ranked items when available (cached per champion+mode), otherwise a
 // "computing…" placeholder. Mode-specific keystone hints distinguish
-// the 3 rows visually — same items in each row for now (Phase B-2 will
+// the 3 rows visually - same items in each row for now (Phase B-2 will
 // produce per-keystone variants once the loadout resolver is wired).
 function _csvBuildVariantsFor(cid, name, mode, cs) {
   if (!cid || !name) {
-    return [{ key: "empty", label: "no champion yet — hover or lock to see builds",
-              keystone: "—", item_ids: [], is_default: true }];
+    return [{ key: "empty", label: "no champion yet - hover or lock to see builds",
+              keystone: "-", item_ids: [], is_default: true }];
   }
   const dsMode = _csvDsModeFor(mode);
   // s214: include the resolved archetype primary in the DS cache key so
   // a mid-CS archetype swap (operator clicks Tank → Bruiser) re-fetches
   // with the new scorer. Empty archetype string defaults to ds.dps (the
   // dispatcher's `fell_back=True` path for unimplemented archetypes pre-
-  // s182 — preserves behavior for callers that don't pass archetype).
+  // s182 - preserves behavior for callers that don't pass archetype).
   const archResolved = _csvResolveArchetype(name);
   const archKey = (archResolved && archResolved.key) || "";
-  // s211 v2 fix: default to empty array when cache is cold — pre-fix
+  // s211 v2 fix: default to empty array when cache is cold - pre-fix
   // `ranked.slice(0, 6)` below threw "Cannot read properties of
   // undefined (reading 'slice')" and aborted the whole render.
   const ranked = _CSV_DS_CACHE[_csvDsCacheKey(name, dsMode, archKey)] || [];
   // Always trigger the user-variant fetch + DS fetch in parallel. s210
-  // dropped the DS pseudo-row from the build chooser — DS engine output
-  // now renders in the Suggestions panel — but we still need DS data
+  // dropped the DS pseudo-row from the build chooser - DS engine output
+  // now renders in the Suggestions panel - but we still need DS data
   // for the experimental row's item set (DS top picks under the hood)
   // and for `/api/champ-select/adaptive-summoners` enemy classification.
   _csvFetchUserVariants(name, mode || "sr");
@@ -2207,7 +2207,7 @@ function _csvBuildVariantsFor(cid, name, mode, cs) {
     _csvFetchDsBuilds(name, dsMode, archKey);
   }
   // s209 v2: pull enemy ids + role for the adaptive-summoner pipeline.
-  // Empty enemy_ids during early CS is fine — the recommendation will
+  // Empty enemy_ids during early CS is fine - the recommendation will
   // be the base pair (no swap) until enemies lock.
   const enemyIds = cs
     ? ((cs.their_team || []).map((p) => (p && p.championId) | 0).filter((x) => x > 0))
@@ -2256,7 +2256,7 @@ function _csvBuildVariantsFor(cid, name, mode, cs) {
   });
   // s210: experimental auto-build row appended to every champion's
   // chooser. Pulls DS engine top-6 items + adaptive summoners (when
-  // available). Keystone is left blank — operator can copy a curated
+  // available). Keystone is left blank - operator can copy a curated
   // variant's rune page if they want runes too; experimental is items+
   // spells only. Click pushes runes:false / items:true / summoners:true.
   let experimentalRow = null;
@@ -2296,7 +2296,7 @@ function _csvBuildVariantsFor(cid, name, mode, cs) {
   // s210: experimental row goes LAST so the curated rows are the
   // operator's default eye-line. Drop the DS pseudo-row (now in the
   // Suggestions panel) and the [saved] tag (every non-experimental
-  // row is curated — the tag was redundant once the DS row left).
+  // row is curated - the tag was redundant once the DS row left).
   return experimentalRow ? userRows.concat([experimentalRow]) : userRows;
 }
 
@@ -2329,22 +2329,22 @@ function _csvBuildVariantRowsHtml(variants, savedChoice) {
              onerror="if(!this.dataset.cdn){this.dataset.cdn=1;this.src='https://ddragon.leagueoflegends.com/cdn/${ver}/img/item/${iid}.png'}else{this.style.display='none'}"
              alt="">
       </div>`;
-    }).join("") || '<div class="csv-empty">—</div>';
+    }).join("") || '<div class="csv-empty">-</div>';
     const cb = `<div class="csv-build-checkbox"></div>`;
     // s211: variant badge replaces the row tag. Each row's label is
     // rendered as a colored pill in the same visual style as the
     // pre-s211 [experimental] tag. The color is keyed off the variant
     // key so On-Hit / Crit / Experimental each get a distinct hue.
-    // No separate trailing tag — the badge IS the label.
+    // No separate trailing tag - the badge IS the label.
     const tag = '';
     const badgeClass = _csvVariantBadgeClass(v);
 
-    // s211 v3: rune line 2 is just the KEYSTONE — icon on the left,
+    // s211 v3: rune line 2 is just the KEYSTONE - icon on the left,
     // keystone name spelled out as text on the right. The primary tree
     // icon (round tree-shield symbol) was dropped per operator request;
     // the keystone art IS already in the primary tree visually, so
     // showing both was redundant. Tree info still rides through the
-    // apply payload — just visually elided.
+    // apply payload - just visually elided.
     // s213: keystone gets a rich tooltip from DDragon runesReforged
     // (name + tree + short description). Falls back silently to bare
     // `title` until the JSON loads on first hover.
@@ -2392,7 +2392,7 @@ function _csvBuildVariantRowsHtml(variants, savedChoice) {
             : `<span class="${cls} empty" title="${tip}">?</span>`;
         }).join("")}</span>`
       : "";
-    // s211: runes-text caption removed — rune main + sub icons replace
+    // s211: runes-text caption removed - rune main + sub icons replace
     // it visually, and the redundant "Keystone · Primary / Secondary"
     // line was eating row height. Hovering the icons still shows the
     // tree names via title attrs.
@@ -2403,7 +2403,7 @@ function _csvBuildVariantRowsHtml(variants, savedChoice) {
     // Empty when no swap applied (click uses variant's stored summoners).
     // For experimental rows we ALWAYS pass the recommended summoners
     // (adaptive when available; baseline Flash+Heal otherwise) so the
-    // apply pipeline pushes them — variant isn't in the loadouts file
+    // apply pipeline pushes them - variant isn't in the loadouts file
     // so there's no "stored" pair to fall back to.
     const summOverride = (v.is_experimental || swappedSecondary) && Array.isArray(v.summoners)
       ? v.summoners.join(",")
@@ -2420,11 +2420,11 @@ function _csvBuildVariantRowsHtml(variants, savedChoice) {
                + ` data-exp-secondary="${v.secondary}"`
                + ` data-exp-items="${itemList}"`;
     }
-    // s211: 4-column row — checkbox / meta (3 stacked rows: badge, main
+    // s211: 4-column row - checkbox / meta (3 stacked rows: badge, main
     // tree, sub tree) / summoners (stacked vertically) / items (larger).
     // Label rendered as a colored pill via csv-build-badge so the row
     // identity reads at a glance without a trailing tag.
-    // s211 v2: 2-row card — badge label on row 1, rune main (keystone
+    // s211 v2: 2-row card - badge label on row 1, rune main (keystone
     // + primary icon + primary tree name) on row 2. Subtree row dropped;
     // freed vertical room rolls into the larger icon sizes.
     return `
@@ -2442,7 +2442,7 @@ function _csvBuildVariantRowsHtml(variants, savedChoice) {
 
 // s209: in-flight guard on the loadout-apply call so a rapid double-click
 // doesn't fire two LCU pushes back-to-back. Keyed per
-// (champion, variant, mode) — cleared when the response lands.
+// (champion, variant, mode) - cleared when the response lands.
 const _CSV_APPLY_INFLIGHT = Object.create(null);
 
 function _csvApplyLoadout(champion, variantKey, mode, overrideSummoners, overrideRunes, overrideItems) {
@@ -2488,7 +2488,7 @@ function _csvApplyLoadout(champion, variantKey, mode, overrideSummoners, overrid
 function _csvWireBuildVariants(scope) {
   // s171.8: read champion + mode from the wrapper's data-* so the click
   // handler can persist the selection AND fire the loadout push. Falls
-  // back to no-save if absent (defensive — keeps the visual toggle
+  // back to no-save if absent (defensive - keeps the visual toggle
   // working in unit-test fixtures).
   const wrap = scope.querySelector(".csv-builds");
   const champion = wrap ? (wrap.dataset.champion || "") : "";
@@ -2502,7 +2502,7 @@ function _csvWireBuildVariants(scope) {
           && variantKey !== "empty"
           && variantKey !== "ds-pending") {
         _csvSaveChoice(champion, variantKey);
-        // s209: fire the actual LCU push — runes + items + summoners.
+        // s209: fire the actual LCU push - runes + items + summoners.
         // s209 v2 / s210 v2: read override data stamped on the row.
         // Curated rows pass override_summoners only (when adaptive
         // swapped). Experimental rows additionally pass override_runes
@@ -2561,7 +2561,7 @@ function _csvArenaPaneHtml(cs, myCid, myName) {
       <div class="csv-duo-cell-icon">${img}</div>
       <div class="csv-duo-cell-tag">${isMe ? "ME" : "ALLY"}</div>
       <div class="csv-duo-cell-name">${nm}</div>
-      <div class="csv-duo-cell-summ">${(c.summonerName || "").slice(0, 22) || "—"}</div>
+      <div class="csv-duo-cell-summ">${(c.summonerName || "").slice(0, 22) || "-"}</div>
     </div>`;
   };
 
@@ -2574,7 +2574,7 @@ function _csvArenaPaneHtml(cs, myCid, myName) {
     const isActive = tier === curTier;
     return `<div class="csv-augment-slot ${tier}${filled ? " filled" : ""}${isActive ? " is-active" : ""}">
       <div class="csv-augment-slot-grade">${tier.toUpperCase()}</div>
-      <div class="csv-augment-slot-name">${filled ? s.name : (isActive ? "PICKING…" : "—")}</div>
+      <div class="csv-augment-slot-name">${filled ? s.name : (isActive ? "PICKING…" : "-")}</div>
     </div>`;
   }).join("");
 
@@ -2607,7 +2607,7 @@ function _csvWireArenaAugments(scope, cs) {
     cell.addEventListener("click", () => {
       const id = parseInt(cell.dataset.augmentId, 10);
       if (!id) return;
-      // Mark selected (visual only — LCU push is Phase B once we have
+      // Mark selected (visual only - LCU push is Phase B once we have
       // the right LCU verb / payload schema for arena augments).
       scope.querySelectorAll(".csv-augment-option").forEach((c) =>
         c.classList.toggle("is-selected", c === cell));
@@ -2637,14 +2637,14 @@ function _csvRenderEnemiesArena(cs, timerEndMs) {
       if (!c || !c.championId) {
         return `<div class="csv-arena-cell is-empty">
           <div class="csv-arena-cell-icon">?</div>
-          <div class="csv-arena-cell-name">—</div>
+          <div class="csv-arena-cell-name">-</div>
         </div>`;
       }
       const nm = _csChampName(c.championId) || ("cid:" + c.championId);
       const img = CHAMPS.byId[String(c.championId)]
         ? `<img src="/data/ddragon/${ver}/img/champion/${CHAMPS.byId[String(c.championId)]}.png" alt="${nm}" onerror="this.style.display='none'">`
         : "?";
-      // s214: per-cell timer removed for Arena teams too — same
+      // s214: per-cell timer removed for Arena teams too - same
       // rationale as SR/ARAM. Lock glyph kept for arena since the
       // sub-team card visual is denser and the cell's own outline
       // doesn't carry the lock signal as cleanly. `timerEndMs` arg
@@ -2674,7 +2674,7 @@ function _csvSetupTimerTick() { /* no-op since s214 */ }
 // Align summoner-name column with the "A" of the centered "Allies"
 // header.
 //
-// Strategy: canvas measureText() — DOM-based measurement (Range API,
+// Strategy: canvas measureText() - DOM-based measurement (Range API,
 // inline span, cloned head off-screen) all gave wrong values across
 // attempts (returning end-of-text or end-of-line positions, likely
 // browser-specific quirks). Canvas is text-only, no layout quirks.
@@ -2742,7 +2742,7 @@ const _ROLE_FROM_LCU = {
 
 function _csvResolveRole(cs) {
   // Mode-specific labels for non-SR queues. s234 (#89 follow-up): ARAM
-  // Mayhem is queue 2400 (KIWI), not 920 — 920 is Legend of the Poro
+  // Mayhem is queue 2400 (KIWI), not 920 - 920 is Legend of the Poro
   // King (ARAM-family). Real Mayhem games were falling through to the
   // SR position logic and never showing the MAYHEM badge.
   if (cs.queue_id === 1700 || cs.queue_id === 1710) return "ARENA";
@@ -2752,7 +2752,7 @@ function _csvResolveRole(cs) {
   const myCell = cs.local_cell;
   const me = (cs.my_team || []).find((p) => p && p.cellId === myCell);
   const pos = (me && me.assignedPosition) || "";
-  return _ROLE_FROM_LCU[pos.toUpperCase()] || "—";
+  return _ROLE_FROM_LCU[pos.toUpperCase()] || "-";
 }
 
 // Placeholder pick/ban data per role. Phase B replaces this with
@@ -2813,7 +2813,7 @@ const _CSV_MOOD_LABELS = {
 
 // s170 item #4: live pick&ban recommendations from
 // /api/champ-select/pickban-recs. Cached per (role, queue_id) and
-// refreshed at most every 60s — operator history isn't changing
+// refreshed at most every 60s - operator history isn't changing
 // during a single champ-select session, so this is just an in-memory
 // dedupe to keep the panel responsive.
 const _CSV_PB_CACHE = {};   // {`${role}|${queue}`: {data, fetchedAt}}
@@ -2821,7 +2821,7 @@ const _CSV_PB_INFLIGHT = {};
 const _CSV_PB_TTL_MS = 60_000;
 
 function _csvFetchPickBanRecs(role, queueId, mood, opts, onLoad) {
-  // Role here is the dashboard form ("BOT"/"JNG"/etc.) — the endpoint
+  // Role here is the dashboard form ("BOT"/"JNG"/etc.) - the endpoint
   // accepts both forms via its _ROLE_ALIASES map. s209: mood is
   // included in the cache key + query string so each toggle change
   // surfaces a distinct rec without invalidating others. s214: opts
@@ -2829,7 +2829,7 @@ function _csvFetchPickBanRecs(role, queueId, mood, opts, onLoad) {
   // multi-row queries on LIMIT/NEW/SYNERGY moods. The full opts payload
   // folds into the cache key so a re-fetch with different excludes
   // doesn't return stale top-N from the prior call.
-  if (!role || role === "—") return null;
+  if (!role || role === "-") return null;
   const m = mood || "comfort";
   const o = opts || {};
   const exclude = Array.isArray(o.exclude) ? o.exclude.slice().sort((a, b) => a - b) : [];
@@ -2907,7 +2907,7 @@ function _csvRenderPickBan(cs, myCid) {
   const mood = _csvMoodGet();
   const perfLabel = _CSV_MOOD_LABELS[mood] || "Performance";
 
-  // s214: build the cascade exclude-set — every champion already
+  // s214: build the cascade exclude-set - every champion already
   // committed in the draft is off-limits as a recommendation. Source
   // ids:
   //   - bans (ally + enemy) from cs.bans
@@ -2935,7 +2935,7 @@ function _csvRenderPickBan(cs, myCid) {
     if (intent && intent > 0) baseExclude.add(intent | 0);
   });
 
-  // Ally ids (LOCKED only — hovers don't count toward team-comp synergy
+  // Ally ids (LOCKED only - hovers don't count toward team-comp synergy
   // because they can swap) for the SYNERGY mood backend query.
   const allyIds = (cs.my_team || [])
     .filter((p) => p && p.completed && p.championId)
@@ -2960,7 +2960,7 @@ function _csvRenderPickBan(cs, myCid) {
       { key: "meta",        label: "Meta",    data: merged.meta },
     ];
   } else {
-    // Single fetch — backend returns top-3 picks with the exclude-set
+    // Single fetch - backend returns top-3 picks with the exclude-set
     // already applied. Cascade dedupe across rows happens server-side
     // (each result is the next-best after the previously-yielded ones).
     const opts = {
@@ -3001,7 +3001,7 @@ function _csvRenderPickBan(cs, myCid) {
       const fb = fallbacks[i];
       // s214 v3: short prefix tag so the reason stays ≤3 lines under
       // the .csv-pb-reason-text clamp. Pre-s214v3 the prefix was
-      // "(no <mood> data — showing fallback) " which bloated the row
+      // "(no <mood> data - showing fallback) " which bloated the row
       // to 4 lines on tight viewports per operator feedback.
       return {
         key: i === 0 ? "performance" : (i === 1 ? "mastery" : "meta"),
@@ -3010,7 +3010,7 @@ function _csvRenderPickBan(cs, myCid) {
       };
     });
   }
-  // s214: pick-click safety — only disable when an actual BAN round is
+  // s214: pick-click safety - only disable when an actual BAN round is
   // active so the operator can't accidentally fire `set_pick_intent`
   // during a ban (the trap the original gate addressed). Pre-s214 the
   // gate was `cs.phase === "FINALIZATION" || cs.my_completed === true`,
@@ -3020,11 +3020,11 @@ function _csvRenderPickBan(cs, myCid) {
   //
   // Per-queue confirmation that the active_round resolver covers all
   // SR draft variants the operator cares about:
-  //   400 Normal Draft  — one simultaneous ban round, then alt picks
-  //   420 Ranked Solo   — same ban shape, alt picks
-  //   430 Normal Blind  — no bans, alt picks only
-  //   440 Ranked Flex   — same as 420
-  //   490 Quickplay     — no bans, alt picks
+  //   400 Normal Draft  - one simultaneous ban round, then alt picks
+  //   420 Ranked Solo   - same ban shape, alt picks
+  //   430 Normal Blind  - no bans, alt picks only
+  //   440 Ranked Flex   - same as 420
+  //   490 Quickplay     - no bans, alt picks
   // ARAM (450/920) + Arena (1700/1710) don't show the P&B panel
   // (CSS hides it via data-cs-mode), so this gate is SR-only in practice.
   // s214 v2: Brawl branch retired from this list (mode removed).
@@ -3038,7 +3038,7 @@ function _csvRenderPickBan(cs, myCid) {
       : "?";
 
   // Role row column-header strip: PICK on the left and BAN on the
-  // right. Operator removed the centered ROLE chip — the user's role
+  // right. Operator removed the centered ROLE chip - the user's role
   // is already shown on their ally row (gold "BOT" pip), so the
   // duplicate chip here was redundant.
   let html = `
@@ -3053,7 +3053,7 @@ function _csvRenderPickBan(cs, myCid) {
     const d = src.data;
     const banCells = d.bans.map((b, i) => {
       const role3 = ["counter", "struggle", "terror"][i] || "";
-      // s212 v6: no more `is-disabled` lockout — every cell stays
+      // s212 v6: no more `is-disabled` lockout - every cell stays
       // clickable so operator can re-fire `set_ban_intent` to LCU as
       // many times as they want during draft (LCU decides what sticks).
       // `.is-selected` still marks the most recent click for visual
@@ -3136,7 +3136,7 @@ function _csvRenderPickBan(cs, myCid) {
       _csvOnBanSelect(cid);
     });
   });
-  // Pick quick-select: same flow as bans — every click fires
+  // Pick quick-select: same flow as bans - every click fires
   // `set_pick_intent`; latest-click gets the green border highlight,
   // siblings stay clickable.
   body.querySelectorAll(".csv-pb-pick-icon.is-clickable").forEach((cell) => {
