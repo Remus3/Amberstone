@@ -8,7 +8,7 @@ prevented stale-heap dispatch but didn't pull from disk).
 This client resolves that by filing through ``POST /api/file-task`` on
 the running supervisor (which uses the SAME scheduler instance its
 dispatch loop is pulling from). If the supervisor is down, it falls
-back to direct Scheduler.file_task — that path writes to jsonl so the
+back to direct Scheduler.file_task - that path writes to jsonl so the
 task still gets picked up on next supervisor startup.
 
 Usage:
@@ -75,7 +75,7 @@ def file_task(
             result["used_http"] = True
             return result
     except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as e:
-        logger.info("HTTP file-task failed (%s) — falling back to direct Scheduler", e)
+        logger.info("HTTP file-task failed (%s) - falling back to direct Scheduler", e)
 
     # Fallback path. This works even when supervisor isn't running
     # (writes to the jsonl; task gets picked up on next supervisor boot).

@@ -1,13 +1,13 @@
 """
-core/augment_recommender.py — data-driven Mayhem/Arena augment ranking.
+core/augment_recommender.py - data-driven Mayhem/Arena augment ranking.
 
 CLAUDE.md #88 / plan `Desktop/MAYHEM_AUGMENT_RECOMMENDER_PLAN_2026-05-17.md`.
 The augment-OCR → coach path is already live (item 86): vision reads *which
 augments are offered*; this module decides *which to take* by historical
 win-rate, conditioned on the augments already taken this game.
 
-Algorithm — re-implemented from the plan's math spec (§4/§5), NOT vendored
-from `ReformedDoge/Mayhem-Doctor` (no LICENSE — algorithm only, §7):
+Algorithm - re-implemented from the plan's math spec (§4/§5), NOT vendored
+from `ReformedDoge/Mayhem-Doctor` (no LICENSE - algorithm only, §7):
 
   • Per-augment own win-rate, Laplace/Beta-smoothed toward 0.5:
         own_wr(a) = (wins[a] + α) / (games[a] + 2α)
@@ -16,7 +16,7 @@ from `ReformedDoge/Mayhem-Doctor` (no LICENSE — algorithm only, §7):
         score₀(a) = w·own_wr(a) + (1−w)·ext_wr(a),  w = n_own/(n_own+K)
     Zero own games ⇒ w=0 ⇒ 100 % external prior; shifts to own history
     smoothly as ingest grows (Task-1 reality: n_own ≈ 0–2 today).
-  • Pairwise co-occurrence synergy (own-history only — the external source
+  • Pairwise co-occurrence synergy (own-history only - the external source
     has no augment-pair data), shrunk by its own sample count:
         syn(a) = mean_{p∈picked} [ m/(m+K) · (pair_wr(a,p) − own_wr(a)) ]
     Conditioning on the already-picked set === the plan's "greedy synergy".
@@ -207,7 +207,7 @@ def _lcu_row_count(path: Path) -> int:
     """Cheap freshness signal: how many rows carry an lcu_match_detail.
     The main db file's (mtime,size) can lag under WAL and a small INSERT
     may not change the page count, so the row count is the reliable cache
-    key — a newly-ingested game must invalidate the scan (§4 blend depends
+    key - a newly-ingested game must invalidate the scan (§4 blend depends
     on own-history growing)."""
     if not path.exists():
         return -1
@@ -233,7 +233,7 @@ def _lcu_row_count(path: Path) -> int:
 
 def load_own_history(mode: str = "mayhem", *, db_path: Optional[Path] = None) -> OwnHistory:
     """Cached own-history scan. Re-scans only when the count of
-    augment-bearing rows (or db mtime/size) changes — augment history
+    augment-bearing rows (or db mtime/size) changes - augment history
     grows post-game, never mid-pick, so this is safe to call per
     augment-select tick."""
     path = db_path or _DB_PATH
@@ -321,7 +321,7 @@ def recommend(
             conf = w
         else:
             w = 0.0
-            base = 0.5            # neutral — coach keeps LLM path primary
+            base = 0.5            # neutral - coach keeps LLM path primary
             conf = 0.0
 
         syn = 0.0
@@ -367,7 +367,7 @@ def recommend(
 
 
 def reset_cache() -> None:
-    """Test hook — clear the own-history process cache."""
+    """Test hook - clear the own-history process cache."""
     with _lock:
         _own_cache.clear()
         _own_cache_key.clear()

@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-riot-commander.spec — PyInstaller build spec (Tier 3 #13, 2026-05-01).
+riot-commander.spec - PyInstaller build spec (Tier 3 #13, 2026-05-01).
 
 Bundles main.py + all RC modules + the dashboard's web/ and data/ trees
 into a single-folder distribution under dist/riot-commander/. Yields
@@ -8,14 +8,14 @@ into a single-folder distribution under dist/riot-commander/. Yields
 doesn't need Python installed.
 
 This is **opt-in starter infrastructure**. The current Legion+Game-PC
-deployment uses a Python install directly — the spec exists so a
+deployment uses a Python install directly - the spec exists so a
 future "share RC with someone else" path is one command away rather
 than a from-scratch packaging exercise.
 
 ──────────────────────────────────────────────────────────────────────
 Build
 ──────────────────────────────────────────────────────────────────────
-First time (PyInstaller is not in requirements.txt — the bundle is
+First time (PyInstaller is not in requirements.txt - the bundle is
 opt-in, no point pinning the lib for users who never package):
 
     py -m pip install pyinstaller>=6.0
@@ -38,27 +38,27 @@ boot the dashboard at https://0.0.0.0:8888.
 ──────────────────────────────────────────────────────────────────────
 What's bundled (datas)
 ──────────────────────────────────────────────────────────────────────
-* web/                    — dashboard HTML/CSS/JS (always shipped)
-* data/meta/              — DDragon champion + rune metadata
-* data/meta_build/        — curated SR builds, ARAM rune recommendations
-* data/champion_loadouts.json — loadout variants the dashboard renders
-* data/vision_regions.json — Tesseract region definitions
-* config/coach_settings.json (template) — user must edit
-* ops/tls/                — TLS cert + key (if present); recipient may
+* web/                    - dashboard HTML/CSS/JS (always shipped)
+* data/meta/              - DDragon champion + rune metadata
+* data/meta_build/        - curated SR builds, ARAM rune recommendations
+* data/champion_loadouts.json - loadout variants the dashboard renders
+* data/vision_regions.json - Tesseract region definitions
+* config/coach_settings.json (template) - user must edit
+* ops/tls/                - TLS cert + key (if present); recipient may
                             need to regenerate via mkcert on their host
 
 What's intentionally NOT bundled:
-* API-Key-Claude.txt      — recipient supplies their own
-* logs/                   — generated at runtime
+* API-Key-Claude.txt      - recipient supplies their own
+* logs/                   - generated at runtime
 * data/match_history.db, postgame_stats.db, rewind_history.db
-                          — historical session data (huge + private)
-* data/spend/, data/loadouts/ — per-user runtime state
-* _archive/               — quarantined files
+                          - historical session data (huge + private)
+* data/spend/, data/loadouts/ - per-user runtime state
+* _archive/               - quarantined files
 
 ──────────────────────────────────────────────────────────────────────
 Hidden imports
 ──────────────────────────────────────────────────────────────────────
-Listed below are modules PyInstaller misses without help — typically
+Listed below are modules PyInstaller misses without help - typically
 because RC imports them via importlib.import_module() inside coach
 lazy-loaders, or because they're optional deps (tkinter, anthropic).
 
@@ -68,14 +68,14 @@ add the missing module to `hiddenimports` and rebuild.
 ──────────────────────────────────────────────────────────────────────
 Known limitations (first-build issues to expect)
 ──────────────────────────────────────────────────────────────────────
-1. Tesseract OCR is NOT bundled — recipient installs separately.
+1. Tesseract OCR is NOT bundled - recipient installs separately.
    `core/vision_tesseract.py` pins the binary at
    "C:/Program Files/Tesseract-OCR/tesseract.exe".
 2. Pillow image codecs may need explicit hooks on first build; if
    PNG/JPEG fails, append `--hidden-import PIL._tkinter_finder` and
    rebuild with --clean.
 3. websockets 16.x (asyncio-based) and portalocker 3.x are pure-
-   Python — no special hooks needed.
+   Python - no special hooks needed.
 4. anthropic SDK pulls in tokenizers + httpx; PyInstaller's auto-
    discovery handles them, but if the resulting binary is >300 MB
    look at `excludes` for unused submodules.
@@ -90,7 +90,7 @@ ROOT = Path(os.getcwd()).resolve()
 
 # ── Data files: tuples of (source_path, dest_relative_path) ────────────
 # Walk web/ recursively; data/ selectively (DBs and per-user runtime
-# state intentionally excluded — see "What's intentionally NOT bundled"
+# state intentionally excluded - see "What's intentionally NOT bundled"
 # in the docstring).
 def _gather(src_dir: Path, dest: str, *, recursive: bool = True):
     out = []
@@ -115,7 +115,7 @@ for fname in ("champion_loadouts.json", "vision_regions.json"):
     src = ROOT / "data" / fname
     if src.exists():
         datas.append((str(src), "data"))
-# Bundle the config template if present — recipient edits in place.
+# Bundle the config template if present - recipient edits in place.
 cfg = ROOT / "config" / "coach_settings.json"
 if cfg.exists():
     datas.append((str(cfg), "config"))
@@ -128,7 +128,7 @@ for fname in ("rc.pem", "rc-key.pem"):
 
 # ── Hidden imports ─────────────────────────────────────────────────────
 # Coaches are lazy-loaded by string name in coaches/__init__.py and
-# core/game_snapshot.py — PyInstaller's static analysis misses these.
+# core/game_snapshot.py - PyInstaller's static analysis misses these.
 hiddenimports = [
     "coaches.aram_coach",
     "coaches.arena_coach",
@@ -141,7 +141,7 @@ hiddenimports = [
     "coaches.experimental_builder",
     "coaches.loadout_resolver",
     "coaches.champ_pool_recommender",
-    # Dashboard sub-modules — imported by string in dashboard/_dispatch.py.
+    # Dashboard sub-modules - imported by string in dashboard/_dispatch.py.
     "dashboard.routes_state",
     "dashboard.routes_history",
     "dashboard.routes_diag",
@@ -159,12 +159,12 @@ hiddenimports = [
     # anthropic SDK
     "anthropic",
     "anthropic.types",
-    # PIL — Tk-finder hook is the usual missing piece on Windows.
+    # PIL - Tk-finder hook is the usual missing piece on Windows.
     "PIL._tkinter_finder",
 ]
 
 
-# ── Excludes — submodules we don't ship to keep the bundle smaller. ────
+# ── Excludes - submodules we don't ship to keep the bundle smaller. ────
 # Trim if a runtime ImportError surfaces.
 excludes = [
     "tkinter.test",

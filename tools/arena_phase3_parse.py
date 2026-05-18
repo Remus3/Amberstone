@@ -13,7 +13,7 @@ Each page yields:
   - best_duos (top 1-2 partners from JSON-LD)
   - kit_notes / vs_tanks / vs_healing / arena_meta -- generic per-tag fallback
                 (Phase 3 keeps these short; full text from aggregator J would need an
-                LLM pass — out of scope for the 30-min budget. We synthesize from
+                LLM pass - out of scope for the 30-min budget. We synthesize from
                 champion class tags + build outcome.)
 """
 from __future__ import annotations
@@ -238,7 +238,7 @@ def parse_page(name: str, slug: str, tags: list[str], html: str) -> dict:
 
     entry["tier"] = derive_tier(entry["wr_first"])
 
-    # 2) total matches across page-level data — use sum of augment 'matches'
+    # 2) total matches across page-level data - use sum of augment 'matches'
     aug_match_total = 0
     aug_records: list[dict] = []
     aug_pat = re.compile(
@@ -269,13 +269,13 @@ def parse_page(name: str, slug: str, tags: list[str], html: str) -> dict:
     entry["build_changing_augments"] = [
         f"{a['name']} ({a['wr']}% WR, n={a['matches']})" for a in candidates[:2]
     ]
-    # prismatic_priority — sort by winRate
+    # prismatic_priority - sort by winRate
     prismatic_sorted = sorted(prismatic, key=lambda x: (-x["wr"], -x["matches"]))
     entry["prismatic_priority"] = [
         f"{a['name']} ({a['wr']}% WR)" for a in prismatic_sorted[:3]
     ]
 
-    # 3) Items — pull from build descriptions: "X, Y, Z as core items"
+    # 3) Items - pull from build descriptions: "X, Y, Z as core items"
     # Top build first
     item_names: list[str] = []
     m = re.search(r"top-performing build features ([^.]+?) as core items", combined)
@@ -307,7 +307,7 @@ def parse_page(name: str, slug: str, tags: list[str], html: str) -> dict:
             ordered.append(nm)
     entry["ideal_core_priority"] = ordered[:7]
     if not entry["ideal_core_priority"]:
-        # No build table on aggregator J — synthesize from class defaults
+        # No build table on aggregator J - synthesize from class defaults
         entry["ideal_core_priority"] = core_default(tags)
         entry["_core_synthetic"] = True
 
@@ -329,40 +329,40 @@ def parse_page(name: str, slug: str, tags: list[str], html: str) -> dict:
     # 5) Class-derived narrative
     primary = tags[0] if tags else "Fighter"
     if "Tank" in tags or primary == "Tank":
-        entry["vs_tanks"] = "Anti-tank not your job — focus engage/peel; let duo carry %HP dmg."
-        entry["kit_notes"] = "Frontline body — soak engage, re-position duo, peel CC chains."
+        entry["vs_tanks"] = "Anti-tank not your job - focus engage/peel; let duo carry %HP dmg."
+        entry["kit_notes"] = "Frontline body - soak engage, re-position duo, peel CC chains."
     elif "Marksman" in tags:
         entry["vs_tanks"] = "Mortal Reminder + on-hit (BotRK / Kraken) anvil priority vs HP stacks."
-        entry["kit_notes"] = "Ranged DPS — range = HP in arena; need peel duo (Tank/Enchanter)."
+        entry["kit_notes"] = "Ranged DPS - range = HP in arena; need peel duo (Tank/Enchanter)."
     elif "Mage" in tags:
         entry["vs_tanks"] = "Liandry's anvil core; Void Staff if 2+ MR items on enemies."
-        entry["kit_notes"] = "AP burst/DPS — positioning critical, value Stasis/Edge of Night vs assassins."
+        entry["kit_notes"] = "AP burst/DPS - positioning critical, value Stasis/Edge of Night vs assassins."
     elif "Assassin" in tags:
-        entry["vs_tanks"] = "Don't try — pivot to squishies; Serpent's Fang / Edge of Night vs shields."
-        entry["kit_notes"] = "Burst pick-off — needs angle; mediocre into peel duos, strong vs squishy comps."
+        entry["vs_tanks"] = "Don't try - pivot to squishies; Serpent's Fang / Edge of Night vs shields."
+        entry["kit_notes"] = "Burst pick-off - needs angle; mediocre into peel duos, strong vs squishy comps."
     elif "Support" in tags:
         entry["vs_tanks"] = "Build defensive (Locket/Knight's Vow) and let carry duo handle DPS."
-        entry["kit_notes"] = "Enchanter/engage — duo-dependent; pick ADC/bruiser carry partner."
+        entry["kit_notes"] = "Enchanter/engage - duo-dependent; pick ADC/bruiser carry partner."
     else:  # Fighter
         entry["vs_tanks"] = "BotRK + Black Cleaver anvil; Goredrink keeps you topped vs sustained HP fights."
-        entry["kit_notes"] = "Bruiser — mid-range engage, HP+omnivamp scaling, look for Reverberation/Goliath prismatics."
+        entry["kit_notes"] = "Bruiser - mid-range engage, HP+omnivamp scaling, look for Reverberation/Goliath prismatics."
 
     # arena_meta one-liner
     wr = entry["wr_first"]
     n = entry["matches"]
     sample_note = " (low sample)" if n and n < 1000 else ""
     if wr is None:
-        entry["arena_meta"] = "Stats unavailable on aggregator J 26.9 — synthetic class-default build."
+        entry["arena_meta"] = "Stats unavailable on aggregator J 26.9 - synthetic class-default build."
     elif wr >= 17:
-        entry["arena_meta"] = f"S-tier overperformer at {wr}% wr_first{sample_note} — first-pick worthy."
+        entry["arena_meta"] = f"S-tier overperformer at {wr}% wr_first{sample_note} - first-pick worthy."
     elif wr >= 15:
         entry["arena_meta"] = f"A-tier solid blind pick at {wr}% wr_first{sample_note}."
     elif wr >= 13:
-        entry["arena_meta"] = f"B-tier — playable into most lobbies at {wr}% wr_first{sample_note}."
+        entry["arena_meta"] = f"B-tier - playable into most lobbies at {wr}% wr_first{sample_note}."
     elif wr >= 11:
-        entry["arena_meta"] = f"C-tier filler at {wr}% wr_first{sample_note} — needs duo synergy or augment lottery."
+        entry["arena_meta"] = f"C-tier filler at {wr}% wr_first{sample_note} - needs duo synergy or augment lottery."
     else:
-        entry["arena_meta"] = f"D/F-tier on aggregator J 26.9 ({wr}% wr_first{sample_note}) — counter-pick only."
+        entry["arena_meta"] = f"D/F-tier on aggregator J 26.9 ({wr}% wr_first{sample_note}) - counter-pick only."
 
     return entry
 
@@ -416,7 +416,7 @@ def main() -> int:
                 out["_synthetic"].append(name)
             elif entry.get("_core_synthetic"):
                 out["_partial"].append(
-                    {"name": name, "reason": "aggregator J has no arena build table — core_priority synthesized from class default"}
+                    {"name": name, "reason": "aggregator J has no arena build table - core_priority synthesized from class default"}
                 )
             out["champions"][name] = entry
         except Exception as e:

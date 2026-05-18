@@ -7,9 +7,9 @@
 
 The vision pipeline needs to receive JPEG frames from Game-PC, cache the latest frame, run OCR (Tesseract), and optionally escalate to Sonnet vision API. Options considered:
 
-1. **Separate process on Legion** — isolated but adds IPC overhead and a second process to supervise.
-2. **In-process HTTP server** (`moon_vision_server.py`) started as a thread inside RC — same process, shared memory, simpler restart story.
-3. **Separate process on Game-PC** — would require a full Anthropic API key on Game-PC for every vision call; adds latency for the coach prompt on Legion.
+1. **Separate process on Legion** - isolated but adds IPC overhead and a second process to supervise.
+2. **In-process HTTP server** (`moon_vision_server.py`) started as a thread inside RC - same process, shared memory, simpler restart story.
+3. **Separate process on Game-PC** - would require a full Anthropic API key on Game-PC for every vision call; adds latency for the coach prompt on Legion.
 
 ## Decision
 
@@ -19,4 +19,4 @@ The vision pipeline needs to receive JPEG frames from Game-PC, cache the latest 
 
 **Good:** Single process to supervise. Frame cache is in-memory (fast). Vision API key stays on Legion only.  
 **Trade-off:** `moon_vision_server.py` has grown to 701 LOC (god module). A crash in the vision thread can destabilize RC (mitigated by thread isolation + health monitor).  
-**Watch for:** Content-type mismatch — vision server hardcodes `image/png` but Game-PC sends JPEG. Magic-byte detection workaround is in place. Phase 2.4 will split this into `vision/`.
+**Watch for:** Content-type mismatch - vision server hardcodes `image/png` but Game-PC sends JPEG. Magic-byte detection workaround is in place. Phase 2.4 will split this into `vision/`.

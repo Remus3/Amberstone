@@ -1,4 +1,4 @@
-// scorer_units.js — DS pick row → display unit mapping.
+// scorer_units.js - DS pick row → display unit mapping.
 //
 // Source of truth: coach_integration/archetype_dispatch.py:_UNIT_SUFFIX (s182).
 // Per-archetype DS scorers produce different deltas (DPS / EHP / hybrid %
@@ -9,7 +9,7 @@
 //
 // Mapping must stay in sync with the Python helper. Rows without a
 // `scorer` field (pre-s182 supervisors, or callers that haven't been
-// migrated yet) fall back to "dps" — numerically wrong unit on non-DPS
+// migrated yet) fall back to "dps" - numerically wrong unit on non-DPS
 // scorers, but matches the pre-s183 status quo for backward-compat.
 const SCORER_UNIT = {
   dps:     'dps',

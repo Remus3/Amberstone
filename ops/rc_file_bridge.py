@@ -1,5 +1,5 @@
 """
-ops/rc_file_bridge.py  —  Phase 0 Addendum compliant rewrite
+ops/rc_file_bridge.py  -  Phase 0 Addendum compliant rewrite
 
 Subprocess bridge: exposes file/log/clipboard/screenshot ops to Claude MCP
 via JSON request files in ops/runtime/bridge_requests/.
@@ -179,7 +179,7 @@ class FileBridge:
             except RuntimeError:
                 raise
             except Exception:
-                pass  # stale / corrupt — overwrite
+                pass  # stale / corrupt - overwrite
 
         # Write our lock
         self._write_bridge_pid()
@@ -196,7 +196,7 @@ class FileBridge:
         except RuntimeError:
             raise
         except Exception:
-            pass  # file unreadable — proceed
+            pass  # file unreadable - proceed
 
     def _write_bridge_pid(self) -> None:
         import uuid as _uuid
@@ -280,7 +280,7 @@ class FileBridge:
             except Exception:
                 pass
             path.unlink(missing_ok=True)
-            self.log(f"bad JSON in {path.name} — error result written")
+            self.log(f"bad JSON in {path.name} - error result written")
             return
 
         result: Dict[str, Any] = {
@@ -406,7 +406,7 @@ class FileBridge:
             si = subprocess.STARTUPINFO()
             si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
             si.wShowWindow = 0
-            # Use SetText via .NET — avoids the heredoc quoting issues
+            # Use SetText via .NET - avoids the heredoc quoting issues
             ps_cmd = (
                 "Add-Type -AssemblyName System.Windows.Forms;"
                 f"[System.Windows.Forms.Clipboard]::SetText({json.dumps(text)})"
@@ -438,7 +438,7 @@ class FileBridge:
         }
 
     def _read_log_tail(self, req: Dict[str, Any]) -> Dict[str, Any]:
-        """Safe log read — self-monitor uses this instead of run_powershell."""
+        """Safe log read - self-monitor uses this instead of run_powershell."""
         log_name = str(req.get("log", "supervisor"))  # supervisor|file_bridge|watchdog
         valid    = {"supervisor", "file_bridge", "watchdog", "rc_app"}
         if log_name not in valid:
@@ -453,7 +453,7 @@ class FileBridge:
         return {"ok": True, "lines": content[-lines:], "path": str(path)}
 
     def _read_health_file(self) -> Dict[str, Any]:
-        """Safe read of health.json — self-monitor uses this."""
+        """Safe read of health.json - self-monitor uses this."""
         hf = self.runtime_dir / "health.json"
         if not hf.exists():
             return {"ok": True, "health": {}}
@@ -463,7 +463,7 @@ class FileBridge:
             return {"ok": False, "error": str(exc)}
 
     def _read_incident_summary(self) -> Dict[str, Any]:
-        """Safe read of incident_summary.json — self-monitor uses this."""
+        """Safe read of incident_summary.json - self-monitor uses this."""
         sf = self.runtime_dir / "incident_summary.json"
         if not sf.exists():
             return {"ok": True, "summary": {}}

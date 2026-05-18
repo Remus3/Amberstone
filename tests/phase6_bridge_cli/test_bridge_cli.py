@@ -1,4 +1,4 @@
-"""Phase 6 — tools/bridge_cli.py contract tests.
+"""Phase 6 - tools/bridge_cli.py contract tests.
 
 Covers the consolidated bridge CLI:
 - argparse surface (required flags, choices, defaults)
@@ -232,7 +232,7 @@ class TestPostResultSubcommand:
             called.update(kw)
             return (True, "ok")
 
-        # core.bridge module — bridge_cli imports it lazily in cmd_post_result.
+        # core.bridge module - bridge_cli imports it lazily in cmd_post_result.
         import core.bridge as core_bridge
         monkeypatch.setattr(core_bridge, "send", fake_send)
         # Don't write the local processed file
@@ -536,7 +536,7 @@ def test_shim_help_dispatches_to_correct_subcommand(shim, subcmd):
 
 
 def test_shim_files_are_thin():
-    """No shim should exceed ~30 LOC — they're meant to be one-liners."""
+    """No shim should exceed ~30 LOC - they're meant to be one-liners."""
     for shim, _ in SHIMS:
         loc = sum(1 for line in (TOOLS / shim).read_text().splitlines()
                   if line.strip() and not line.strip().startswith("#"))

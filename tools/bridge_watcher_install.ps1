@@ -95,7 +95,7 @@ if (-not (Test-Path -LiteralPath $InstallDir)) {
 
 # Cert bypass: legion serves a mkcert-signed cert that Peer/Game-PC may not
 # have trusted (rc_rootCA.pem is in /agent/ but not auto-installed). PS5.1
-# and PS6+ require different bypass mechanisms — set both.
+# and PS6+ require different bypass mechanisms - set both.
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
 

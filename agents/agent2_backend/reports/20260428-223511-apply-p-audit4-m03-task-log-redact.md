@@ -1,9 +1,9 @@
-# Agent 2 — Task Report
-**Task:** `t-cc5c46eea78d` — `apply-proposal-p-audit4-m03-task-log-redact`
+# Agent 2 - Task Report
+**Task:** `t-cc5c46eea78d` - `apply-proposal-p-audit4-m03-task-log-redact`
 **Date:** 2026-04-28
 **Proposal:** `P-audit4-m03-task-log-redact` (medium)
 
-## Result: no code change required — fix already landed
+## Result: no code change required - fix already landed
 
 `agents/supervisor.py` already contains the full fix, applied in commit
 `70d3ba9` ("audit batch 9: round-4 audit findings (M-01, M-03, M-04, L-03)").

@@ -1,4 +1,4 @@
-"""tools/champion_loadout_autogen.py — s215 build-chooser auto-generator.
+"""tools/champion_loadout_autogen.py - s215 build-chooser auto-generator.
 
 Generates up to 3 algorithmic build variants per (champion, mode) into
 ``data/champion_loadouts.json`` using the Daemon Slayer engine's per-
@@ -11,7 +11,7 @@ Policy
 ------
 **Hand-curated wins.** For each (champion, mode), the script counts
 existing variants whose ``modes[]`` includes the target mode. If the
-count is ≥ 3, no auto entries are generated for that slot — the
+count is ≥ 3, no auto entries are generated for that slot - the
 operator's curated decisions stay untouched. If the count is < 3,
 auto-* entries fill the gap. Auto entries can refresh on re-run
 (items shift as DS engine evolves); curated entries are never
@@ -19,9 +19,9 @@ overwritten.
 
 Three variants per (champion, mode):
 
-* ``auto-<mode>-primary-<arch>``   — champion's primary archetype
-* ``auto-<mode>-secondary-<arch>`` — champion's secondary archetype
-* ``auto-<mode>-flavor-<arch>``    — complementary archetype heuristic
+* ``auto-<mode>-primary-<arch>``   - champion's primary archetype
+* ``auto-<mode>-secondary-<arch>`` - champion's secondary archetype
+* ``auto-<mode>-flavor-<arch>``    - complementary archetype heuristic
 
 The complementary archetype follows the same pattern the experimental
 row's keystone mapping does (see _CSV_EXPERIMENTAL_RUNES in
@@ -30,13 +30,13 @@ alt, carry→assassin alt, mage→assassin alt, etc.
 
 Per-archetype defaults
 ----------------------
-* ``runes``     — mirrors ``_CSV_EXPERIMENTAL_RUNES`` from champ_select.js
+* ``runes``     - mirrors ``_CSV_EXPERIMENTAL_RUNES`` from champ_select.js
                   (canonical archetype → keystone+trees consensus).
-* ``summoners`` — SR is archetype-keyed (tanks/bruisers Flash+TP,
+* ``summoners`` - SR is archetype-keyed (tanks/bruisers Flash+TP,
                   carries Flash+Heal, mages/assassins Flash+Ignite,
                   enchanters Flash+Exhaust). ARAM always Flash+Mark.
                   Arena defaults to Flash+Heal (no smite/teleport).
-* ``items``     — top 6 from
+* ``items``     - top 6 from
                   ``daemon_slayer_client.rank_for_primary_archetype``
                   at level 11 with empty current-build (mid-game items).
 
@@ -86,7 +86,7 @@ DS_MODE_BY_KEY = {"sr": "SR", "aram": "ARAM", "arena": "ARENA"}
 
 # Archetype → (keystone, primary tree, secondary tree). Source of truth
 # is also duplicated in ``web/js/panels/champ_select.js`` for the
-# experimental row's runes — keep both in sync if updating.
+# experimental row's runes - keep both in sync if updating.
 ARCH_RUNES: dict[str, dict[str, str]] = {
     "carry":     {"keystone": "Lethal Tempo",  "primary": "Precision",  "secondary": "Domination"},
     "bruiser":   {"keystone": "Conqueror",     "primary": "Precision",  "secondary": "Resolve"},
@@ -109,7 +109,7 @@ SR_SUMM_BY_ARCH: dict[str, list[int]] = {
 ARAM_SUMM_DEFAULT = [4, 32]   # Flash + Mark
 ARENA_SUMM_DEFAULT = [4, 7]   # Flash + Heal
 
-# Complementary archetype heuristic — when filling the third slot, pick
+# Complementary archetype heuristic - when filling the third slot, pick
 # something the operator might genuinely consider over the primary.
 THIRD_ARCH_HEURISTIC: dict[str, str] = {
     "carry":     "assassin",  # lethality alt for marksmen
@@ -280,7 +280,7 @@ def generate_for_champion(
         unfilled = 0
 
         # First, drop any auto-<mode>-* entries that we'd be regenerating
-        # — needed if --reset-auto fired OR if the archetype mapping has
+        # - needed if --reset-auto fired OR if the archetype mapping has
         # shifted (e.g. DDragon retag). Keep auto entries from OTHER
         # modes untouched.
         auto_keys_for_mode = [

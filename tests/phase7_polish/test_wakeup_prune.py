@@ -1,6 +1,6 @@
 """
 tests/phase7_polish/test_wakeup_prune.py
-Phase 7 — auto-prune helper for WAKEUP_NOTES.md.
+Phase 7 - auto-prune helper for WAKEUP_NOTES.md.
 
 Verifies the parse → render round-trip is byte-stable, and that pruning
 moves the correct session blocks newest-first into the archive.
@@ -32,14 +32,14 @@ WP = _load_module()
 # ── Synthetic fixtures ────────────────────────────────────────────────────────
 
 HEADER = (
-    "# WAKEUP_NOTES — RC hand-off ledger\n"
+    "# WAKEUP_NOTES - RC hand-off ledger\n"
     "\n"
     "> Sessions s27–s137 archived to `docs/history_notes.md`. Only the last 3 sessions kept here.\n"
 )
 
 
 def _session(sid: str, body: str = "stuff happened") -> str:
-    return f"# {sid} wrap — 2026-05-09\n\n## What shipped\n- {body}\n"
+    return f"# {sid} wrap - 2026-05-09\n\n## What shipped\n- {body}\n"
 
 
 def _doc(sessions: list[str]) -> str:
@@ -96,8 +96,8 @@ class TestRender(unittest.TestCase):
         # Regression for s142 dogfood bug: render() was stripping the natural
         # trailing \n on each block, collapsing `4. bullet\n\n---\n\n# next`
         # to `4. bullet\n---\n\n# next` (missing blank line before ---).
-        s1 = "# s002 wrap — 2026-01-02\n\n## What's next\n4. last bullet\n"
-        s2 = "# s001 wrap — 2026-01-01\n\n## What's next\n3. older bullet\n"
+        s1 = "# s002 wrap - 2026-01-02\n\n## What's next\n4. last bullet\n"
+        s2 = "# s001 wrap - 2026-01-01\n\n## What's next\n3. older bullet\n"
         rendered = WP.render(HEADER, [s1, s2])
         # Blank line BEFORE the separator that follows each session.
         self.assertIn("4. last bullet\n\n---\n\n# s001", rendered)
@@ -108,9 +108,9 @@ class TestRender(unittest.TestCase):
         buggy = (
             HEADER
             + "\n---\n\n"
-            + "# s002 wrap — 2026-01-02\n\n## last\n4. bullet\n"  # no extra \n
-            + "---\n\n"  # missing leading \n — buggy
-            + "# s001 wrap — 2026-01-01\n\n## last\n3. older\n"
+            + "# s002 wrap - 2026-01-02\n\n## last\n4. bullet\n"  # no extra \n
+            + "---\n\n"  # missing leading \n - buggy
+            + "# s001 wrap - 2026-01-01\n\n## last\n3. older\n"
         )
         header, sessions = WP.split_sessions(buggy)
         rendered = WP.render(header, sessions)
@@ -119,16 +119,16 @@ class TestRender(unittest.TestCase):
 
 class TestDatedAndPinnedFormat(unittest.TestCase):
     """Real-file shape regression (s235): recent sessions use a dated heading
-    (`# 2026-05-17 (late) — …`) not the legacy `# sNNN wrap`, and the file
+    (`# 2026-05-17 (late) - …`) not the legacy `# sNNN wrap`, and the file
     opens with a pinned non-session block (`# ✅ RESOLVED … `) right after the
     top header. Pre-fix, SESSION_RE matched neither, so split_sessions
     tail-dumped them all into `extras` (inverting newest/oldest) and prune()
-    crashed at the moved_ids line — a lucky guard against mis-archiving the
+    crashed at the moved_ids line - a lucky guard against mis-archiving the
     newest sessions + un-pinning the RESOLVED block.
     """
 
     PIN = (
-        "# ✅ RESOLVED 2026-05-17 — champ-select wrong for ARAM\n"
+        "# ✅ RESOLVED 2026-05-17 - champ-select wrong for ARAM\n"
         "\nResolved-block body that must never be archived.\n"
     )
 
@@ -153,29 +153,29 @@ class TestDatedAndPinnedFormat(unittest.TestCase):
     # ── regex ────────────────────────────────────────────────────────────
     def test_session_re_matches_dated_headings(self):
         for h in (
-            "# 2026-05-17 (late) — KEYSTONE champ-select",
-            "# 2026-05-17 (eve) — build-order UI",
-            "# 2026-05-17 wrap — Vanguard crash",
-            "# 2026-05-17 OVERNIGHT RUN-1 — contextual DS",
+            "# 2026-05-17 (late) - KEYSTONE champ-select",
+            "# 2026-05-17 (eve) - build-order UI",
+            "# 2026-05-17 wrap - Vanguard crash",
+            "# 2026-05-17 OVERNIGHT RUN-1 - contextual DS",
         ):
             self.assertIsNotNone(WP.SESSION_RE.match(h), h)
 
     def test_session_re_still_matches_legacy(self):
-        self.assertIsNotNone(WP.SESSION_RE.match("# s234 wrap — 2026-05-17"))
+        self.assertIsNotNone(WP.SESSION_RE.match("# s234 wrap - 2026-05-17"))
         self.assertIsNotNone(
-            WP.SESSION_RE.match("# s209–s213 wrap — 2026-05-16"))
+            WP.SESSION_RE.match("# s209–s213 wrap - 2026-05-16"))
 
     def test_session_re_does_not_match_pin(self):
         self.assertIsNone(
             WP.SESSION_RE.match(
-                "# ✅ RESOLVED 2026-05-17 — champ-select wrong"))
+                "# ✅ RESOLVED 2026-05-17 - champ-select wrong"))
 
     # ── split ────────────────────────────────────────────────────────────
     def test_leading_pin_folds_into_header_not_sessions(self):
         text = _doc([
             self.PIN,
-            self._dated("2026-05-17", "(late) — keystone"),
-            self._dated("2026-05-16", "(eve) — build order"),
+            self._dated("2026-05-17", "(late) - keystone"),
+            self._dated("2026-05-16", "(eve) - build order"),
         ])
         header, sessions = WP.split_sessions(text)
         self.assertEqual(len(sessions), 2)
@@ -187,8 +187,8 @@ class TestDatedAndPinnedFormat(unittest.TestCase):
     def test_pinned_dated_round_trip_is_stable(self):
         original = _doc([
             self.PIN,
-            self._dated("2026-05-17", "(late) — a"),
-            self._dated("2026-05-16", "(eve) — b"),
+            self._dated("2026-05-17", "(late) - a"),
+            self._dated("2026-05-16", "(eve) - b"),
         ])
         header, sessions = WP.split_sessions(original)
         self.assertEqual(WP.render(header, sessions).strip(), original.strip())
@@ -197,11 +197,11 @@ class TestDatedAndPinnedFormat(unittest.TestCase):
     def test_prune_keeps_newest_dated_archives_oldest_pin_retained(self):
         WP.WAKEUP.write_text(_doc([
             self.PIN,
-            self._dated("2026-05-17", "(late) — newest"),
-            self._dated("2026-05-16", "(eve) — mid"),
-            self._dated("2026-05-15", "wrap — old1"),
-            self._dated("2026-05-14", "wrap — old2"),
-            self._dated("2026-05-13", "wrap — old3"),
+            self._dated("2026-05-17", "(late) - newest"),
+            self._dated("2026-05-16", "(eve) - mid"),
+            self._dated("2026-05-15", "wrap - old1"),
+            self._dated("2026-05-14", "wrap - old2"),
+            self._dated("2026-05-13", "wrap - old3"),
         ]), encoding="utf-8")
         rc = WP.prune(keep=3, dry_run=False)
         self.assertEqual(rc, 0)
@@ -227,10 +227,10 @@ class TestDatedAndPinnedFormat(unittest.TestCase):
         # SESSION_RE.search(b).group(0) → AttributeError.
         WP.WAKEUP.write_text(_doc([
             self.PIN,
-            self._dated("2026-05-17", "(late) — a"),
-            self._dated("2026-05-16", "(eve) — b"),
-            self._dated("2026-05-15", "wrap — c"),
-            self._dated("2026-05-14", "wrap — d"),
+            self._dated("2026-05-17", "(late) - a"),
+            self._dated("2026-05-16", "(eve) - b"),
+            self._dated("2026-05-15", "wrap - c"),
+            self._dated("2026-05-14", "wrap - d"),
         ]), encoding="utf-8")
         self.assertEqual(WP.prune(keep=2, dry_run=True), 0)
 

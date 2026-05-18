@@ -1,4 +1,4 @@
-"""s170 (2026-05-11) — LCU lobby members forwarder + lobby field expansion.
+"""s170 (2026-05-11) - LCU lobby members forwarder + lobby field expansion.
 
 Validates the new gamepc_lcu_agent path that forwards:
   /lol-lobby/v2/lobby → state["lobby"].members[], local_member, is_leader,
@@ -23,7 +23,7 @@ import gamepc_lcu_agent as agent  # noqa: E402
 
 def _patch_lcu(responses):
     """Map (method, path) → response. Same helper pattern as
-    test_lcu_mastery.py — unknown paths return (None, "unmocked").
+    test_lcu_mastery.py - unknown paths return (None, "unmocked").
     """
     def side(method, path, body=None):
         key = (method, path)
@@ -39,7 +39,7 @@ def _patch_lcu(responses):
 
 
 class TestLocalSummonerIdMatching(unittest.TestCase):
-    """s170.1 — is_self via summoner-id match (LCU isLocalMember unreliable
+    """s170.1 - is_self via summoner-id match (LCU isLocalMember unreliable
     on current builds).
     """
 
@@ -69,7 +69,7 @@ class TestLocalSummonerIdMatching(unittest.TestCase):
 
 
 class TestNameEnrichment(unittest.TestCase):
-    """s170.1 — current LCU builds frequently emit empty gameName/tagLine
+    """s170.1 - current LCU builds frequently emit empty gameName/tagLine
     on /lol-lobby/v2/lobby members. Enrich by per-summoner lookup.
     """
 
@@ -201,7 +201,7 @@ class TestSlimLobbyMember(unittest.TestCase):
         self.assertIsNone(agent._slim_lobby_member(42))
 
     def test_position_preference_uppercased(self):
-        # LCU sometimes emits lowercase ("top") — view-lobby's _renderLanePref
+        # LCU sometimes emits lowercase ("top") - view-lobby's _renderLanePref
         # expects upper. Normalize at the agent boundary.
         raw = {"firstPositionPreference": "top", "secondPositionPreference": "jungle"}
         m = agent._slim_lobby_member(raw)
@@ -209,7 +209,7 @@ class TestSlimLobbyMember(unittest.TestCase):
         self.assertEqual(m["position_preferences"]["second_preference"], "JUNGLE")
 
     def test_invalid_summoner_id_falls_to_zero(self):
-        # Belt and braces — if LCU ever returns a string here, don't crash.
+        # Belt and braces - if LCU ever returns a string here, don't crash.
         raw = {"summonerId": "not-an-int"}
         m = agent._slim_lobby_member(raw)
         self.assertEqual(m["summoner_id"], 0)
@@ -259,17 +259,17 @@ class TestQueueNameMap(unittest.TestCase):
         self.assertEqual(agent._LOBBY_QUEUE_NAMES[450], "ARAM")
         self.assertEqual(agent._LOBBY_QUEUE_NAMES[1700], "Arena")
         # s234 (#89): ARAM Mayhem is queue 2400 (KIWI gameMode, confirmed
-        # s220 / item 87) — NOT 920. 920 is Legend of the Poro King; the
+        # s220 / item 87) - NOT 920. 920 is Legend of the Poro King; the
         # old map labelled 920 "ARAM Mayhem", which is why the lobby
         # "change mode" picker couldn't switch into Mayhem.
         self.assertEqual(agent._LOBBY_QUEUE_NAMES[2400], "ARAM Mayhem")
         self.assertEqual(agent._LOBBY_QUEUE_NAMES[920], "Poro King")
-        # s234 (#89): Brawl (2300) retired from the live rotation (s214) —
+        # s234 (#89): Brawl (2300) retired from the live rotation (s214) -
         # the lobby-side name-map residue is removed.
         self.assertNotIn(2300, agent._LOBBY_QUEUE_NAMES)
 
     def test_unknown_queue_returns_empty(self):
-        # Caller uses dict.get(qid, "") — dashboard falls back to "queue N".
+        # Caller uses dict.get(qid, "") - dashboard falls back to "queue N".
         self.assertEqual(agent._LOBBY_QUEUE_NAMES.get(99999, ""), "")
 
 
@@ -386,7 +386,7 @@ class TestCaptureStateLobby(unittest.TestCase):
         self.assertFalse(state["lobby"]["is_leader"])
 
     def test_garbage_member_entries_silently_dropped(self):
-        # Mix of valid + invalid member entries — the invalid ones must
+        # Mix of valid + invalid member entries - the invalid ones must
         # be filtered without crashing capture_state().
         rs = self._stub_lobby(members=[
             None,

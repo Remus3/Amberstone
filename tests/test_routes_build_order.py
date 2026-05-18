@@ -3,7 +3,7 @@
 The route (dashboard/routes_state._serve_build_order_post) wraps
 core.build_order.plan_build_order, which iterates the per-archetype DS
 scorer. Mock the engine boundary
-(core.daemon_slayer_client.rank_for_primary_archetype — what
+(core.daemon_slayer_client.rank_for_primary_archetype - what
 plan_build_order's default rank_fn imports) so no live DS server is
 needed. A family-aware fake proves the unique-passive no-double rule
 survives end-to-end through the HTTP route, not just the unit layer.
@@ -33,7 +33,7 @@ class _Handler:
         return json.loads(self.body.decode())
 
 
-# Family-aware fake engine — mirrors the real rank.py contract: excludes
+# Family-aware fake engine - mirrors the real rank.py contract: excludes
 # owned ids, and with filter_shared_uniques=True omits any candidate whose
 # unique-passive family is already in item_ids (rank.py:339).
 _CAT = {

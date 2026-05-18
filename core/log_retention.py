@@ -1,5 +1,5 @@
 """
-core/log_retention.py — periodic log dir trimmer.
+core/log_retention.py - periodic log dir trimmer.
 
 `core/log_setup.py` (frozen) prunes files >30 days old, but only on RC
 startup. A long-lived RC that doesn't restart for a week never reclaims
@@ -7,14 +7,14 @@ space; the audit on 2026-05-01 found logs/ at 191 MB.
 
 This module adds:
   - tighter age policy (14 days vs. 30)
-  - hard size cap (100 MB) — deletes oldest *.log* files past 14 days only
+  - hard size cap (100 MB) - deletes oldest *.log* files past 14 days only
     if the dir is still over cap after the age sweep
   - hourly periodic sweep from a daemon thread, not just at boot
 
 Sits beside log_setup.py rather than modifying it (frozen file).
 
 Thread safety: the periodic thread is the sole writer. `prune()` is
-re-entrant — multiple calls from different threads are safe; worst case
+re-entrant - multiple calls from different threads are safe; worst case
 one observes files the other already deleted (handled with try/except
 on unlink).
 """

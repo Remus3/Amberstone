@@ -1,4 +1,4 @@
-"""Conditional-pair pre-filter — finds discrete amped/un-amped damage-block
+"""Conditional-pair pre-filter - finds discrete amped/un-amped damage-block
 pairs across every champion, the signature of a `target_no_setup`-style
 conditional block_index candidate (Fiddle Q / Anivia E / Brand W shape).
 
@@ -8,7 +8,7 @@ scaling-field keys) where B_hi is a near-constant scalar k>1 multiple of
 B_lo across every rank position. That is the clean discrete pair the
 rigor bar requires (NOT continuous in-block %HP scaling).
 
-Output is a high-precision SHORTLIST only — every hit must still be
+Output is a high-precision SHORTLIST only - every hit must still be
 hand-verified with tools/ds_cond_inspect.py + real-mechanic knowledge
 before it enters the registry (the s229/s230 lesson: recollection
 mis-names mechanics ~half the time).
@@ -98,7 +98,7 @@ def main(min_k: float) -> None:
                             json.dumps(cur) if cur is not None else "-",
                         ))
     rows.sort(key=lambda r: (-r[0], r[1]))
-    print(f"# discrete-pair candidates (k>={min_k}) — {len(rows)} hits")
+    print(f"# discrete-pair candidates (k>={min_k}) - {len(rows)} hits")
     print(f"#   patch {PATCH}; HAND-VERIFY each before registry entry")
     print(f"{'k':>6}  {'champ':14s} key f  lo->hi  shape "
           f"/ current_registry")

@@ -1,10 +1,10 @@
 """
-scripts/champion_drift_alerts.py — weekly drift report.
+scripts/champion_drift_alerts.py - weekly drift report.
 
 AUDIT 2026-04-28 (proposal 2.4): compare each champion's last 7 days of
 real games against `data/coach_reference/champion_benchmarks.json`. If a
 metric (CS@10, KDA, gold/min, kp_pct) has dropped > THRESHOLD vs the
-champion's p50 — and we have at least MIN_GAMES recent samples — flag it.
+champion's p50 - and we have at least MIN_GAMES recent samples - flag it.
 
 Designed to run nightly as a scheduled remote agent (proposal 4.6 sister
 job). Read-only; emits one line per drift to stdout and optionally writes

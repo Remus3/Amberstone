@@ -12,17 +12,17 @@ authenticating until they're re-deployed with the new resolver.
 
   1. Generate a new token:
      ``python -c "import secrets; print(secrets.token_hex(16))"``
-  2. On Legion — write it to ``C:\\Riot Commander\\config\\vision_token.txt``
+  2. On Legion - write it to ``C:\\Riot Commander\\config\\vision_token.txt``
      (first line, no newline required) OR set ``RC_VISION_TOKEN`` env
      var for the supervisor process.
-  3. On Game-PC — either set ``RC_VISION_TOKEN`` in the environment of
+  3. On Game-PC - either set ``RC_VISION_TOKEN`` in the environment of
      the tray agents OR drop the same content at
      ``tools/vision_token.txt`` (the Game-PC tools' built-in resolver
      looks in the same relative location next to their scripts).
   4. Restart the supervisor on Legion (``echo x > restart_trigger.txt``)
      + restart the Game-PC relay agents.
   5. Verify ``get_vision_token_source()`` on both sides returns
-     ``"env"`` or ``"config"`` — not ``"legacy"``.
+     ``"env"`` or ``"config"`` - not ``"legacy"``.
   6. Once both sides confirm non-legacy, retire ``_LEGACY_DEFAULT``
      below (delete the constant and the last fallback branch).
 
@@ -86,7 +86,7 @@ def is_using_legacy_fallback() -> bool:
 
 def debug() -> None:
     """Print the active source + first/last 4 chars of the token. Never
-    prints the full secret — safe for copy-paste troubleshooting."""
+    prints the full secret - safe for copy-paste troubleshooting."""
     tok, src = _resolve()
     if len(tok) >= 8:
         masked = f"{tok[:4]}…{tok[-4:]}"
@@ -96,7 +96,7 @@ def debug() -> None:
 
 
 # Log resolution source once at import time so operators see it in the
-# supervisor log without having to probe. A missing token raises here —
+# supervisor log without having to probe. A missing token raises here -
 # allow that to propagate so a misconfigured deploy fails loud.
 logger.info("vision_token: resolved from %s", get_vision_token_source())
 

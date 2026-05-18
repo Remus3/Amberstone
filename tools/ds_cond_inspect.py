@@ -2,7 +2,7 @@
 
 Dumps the per-form damage blocks for a (champion, key) so the discrete-pair
 requirement for a conditional block_index conversion can be verified against
-the live Meraki snapshot — NOT against ROADMAP/_meta recollection.
+the live Meraki snapshot - NOT against ROADMAP/_meta recollection.
 
 Usage:  py tools/ds_cond_inspect.py <Champion> [KEY ...]
 """

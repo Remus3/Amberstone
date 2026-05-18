@@ -1,4 +1,4 @@
-"""SQLite cache tests for `core/riot_api_cache.py` — FU02 fan-out backing.
+"""SQLite cache tests for `core/riot_api_cache.py` - FU02 fan-out backing.
 
 Covers:
   - Immutable cache: store + retrieve + miss returns None.
@@ -35,7 +35,7 @@ class _TempCache(unittest.TestCase):
 
     def tearDown(self):
         # On Windows, SQLite WAL/SHM sidecar files can linger briefly
-        # after the last connection closes — TemporaryDirectory cleanup
+        # after the last connection closes - TemporaryDirectory cleanup
         # then raises PermissionError. Best-effort: ignore_errors.
         try:
             self._tmp.cleanup()
@@ -116,7 +116,7 @@ class TestStats(_TempCache):
 
 class TestConcurrency(_TempCache):
     def test_parallel_writes_dont_corrupt(self):
-        # 8 threads each writing 50 distinct keys — no corruption,
+        # 8 threads each writing 50 distinct keys - no corruption,
         # all rows survive. Validates the WAL + INSERT OR REPLACE path.
         def writer(tid: int) -> None:
             for i in range(50):

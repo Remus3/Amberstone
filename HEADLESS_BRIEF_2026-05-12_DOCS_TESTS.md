@@ -1,9 +1,9 @@
-# HEADLESS BRIEF — s171.8 docs + tests backfill (overnight run)
+# HEADLESS BRIEF - s171.8 docs + tests backfill (overnight run)
 
 > **Staged**: 2026-05-12 ~02:15 by Claude Opus 4.7
 > **Mode**: `/loop` self-paced, 1M context
 > **Cap**: 5 commits OR 4 hours OR test failure (whichever first)
-> **Risk profile**: LOW — docs + tests only, no behavior changes
+> **Risk profile**: LOW - docs + tests only, no behavior changes
 
 ## Goal
 
@@ -12,26 +12,26 @@ during session 172 (commits `3e3b14e`, `1aba0da`, `876fd01`). That session
 fixed three live bugs and one meta-bug, but the doc/test coverage was
 tactical not strategic. This brief closes that.
 
-## Context — you have no memory of session 172, read these first
+## Context - you have no memory of session 172, read these first
 
-1. `CLAUDE.md` — project conventions, frozen file list, restart workflow
-2. `WAKEUP_NOTES.md` — last 3 sessions (s171.8 is the most recent at top)
-3. `git log --oneline -10` — the four s171.8 commits to understand
-4. `docs/ARCHITECTURE.md` — module map (sections on dashboard + view router)
-5. `docs/adr/ADR-007-event-coach-pivot.md` — most recent ADR for tone match
+1. `CLAUDE.md` - project conventions, frozen file list, restart workflow
+2. `WAKEUP_NOTES.md` - last 3 sessions (s171.8 is the most recent at top)
+3. `git log --oneline -10` - the four s171.8 commits to understand
+4. `docs/ARCHITECTURE.md` - module map (sections on dashboard + view router)
+5. `docs/adr/ADR-007-event-coach-pivot.md` - most recent ADR for tone match
 
-## Tasks (in strict order — each is its own commit, push between)
+## Tasks (in strict order - each is its own commit, push between)
 
 ### Task 1: Integration tests for view-router state machine
 
 **Files**:
-- New: `tests/test_view_router_state.py` (or similar — match repo's
+- New: `tests/test_view_router_state.py` (or similar - match repo's
   pytest convention; existing tests live under `tests/` or
   `agents/agent3_testing/suite/`)
 
 **Why**: s171.8 added sticky-guard inference + dodge clearing in
 `web/js/main.js:_viewAutoDerive` (around line 482-551). The logic is
-non-trivial but currently has zero unit coverage — only the static
+non-trivial but currently has zero unit coverage - only the static
 panel snapshot tests touch it. Operator can't easily re-verify the
 state machine without playing a live game.
 
@@ -40,14 +40,14 @@ form. Two options, pick whichever has less impact:
 
   - **A**: Port the transition logic to a Python helper in a new
     `dashboard/view_router_state.py` module, then call it from tests.
-    Don't change main.js — keep the JS as the source of truth for
+    Don't change main.js - keep the JS as the source of truth for
     runtime, the Python as a test mirror. Mark the module as a "test
     mirror" in its docstring so future drift is obvious.
 
   - **B**: Add a Node-driven unit test under `tests/` that imports
     `web/js/main.js` via dynamic ESM and drives `_viewAutoDerive`
     directly. Requires extracting that function from inside the IIFE
-    closure — invasive.
+    closure - invasive.
 
   Recommend A unless B turns out clean. A risk: drift between JS and
   Python mirror. Mitigation: docstring with "if you change one, change
@@ -55,11 +55,11 @@ form. Two options, pick whichever has less impact:
 
 **Cover**:
 - ChampSelect → GameStart → InProgress → EndOfGame → Lobby (clean cycle)
-- ChampSelect → Lobby (dodge — sticky should clear, not get stuck)
+- ChampSelect → Lobby (dodge - sticky should clear, not get stuck)
 - ChampSelect → null → GameStart (transient null, sticky should hold)
-- ChampSelect → null (extended, no GameStart observed) — sticky-guard
+- ChampSelect → null (extended, no GameStart observed) - sticky-guard
   inference advances to "game-start" per s171.8 fix
-- InProgress → null/None/Lobby — gameStarted stays "in-progress"
+- InProgress → null/None/Lobby - gameStarted stays "in-progress"
 - EndOfGame after in-progress → clears sticky
 - Manual view sticky → auto-derive returns same view + urgent banner
 
@@ -76,10 +76,10 @@ all green; full smoke suite still green
 **Files**: `ROADMAP.md`
 
 **What to add**:
-- New entry (likely #29 — check current numbering) summarizing:
+- New entry (likely #29 - check current numbering) summarizing:
   - Loading-view sticky-guard inference (`web/js/main.js:491-551`)
   - Phase 3 file_ingest LCU phase overlay (`agents/agent2_backend/file_ingest.py`)
-  - Build-variant persistence (`web/js/panels/champ_select.js` —
+  - Build-variant persistence (`web/js/panels/champ_select.js` -
     `_csvBuildVariantsFor` + `_csvSaveChoice`)
   - Unified asset-hash + auto-reload (`dashboard/_static.py` +
     `dashboard/routes_state.py`)
@@ -90,7 +90,7 @@ all green; full smoke suite still green
 **Don't**: rewrite history, restructure existing entries, or remove
 completed items. Append + cross-reference only.
 
-**Commit message**: `docs: sync ROADMAP — s171.8 view-router + asset-hash fixes`
+**Commit message**: `docs: sync ROADMAP - s171.8 view-router + asset-hash fixes`
 
 ---
 
@@ -99,8 +99,8 @@ completed items. Append + cross-reference only.
 **Files**: New: `docs/adr/ADR-008-unified-asset-hash.md`
 
 **Why**: The two-divergent-file-lists bug was a textbook example of
-parallel-implementations drift. The architectural lesson — "one
-source of truth for cache-busting" — deserves capture so a future
+parallel-implementations drift. The architectural lesson - "one
+source of truth for cache-busting" - deserves capture so a future
 contributor doesn't re-introduce it.
 
 **Structure** (match `docs/adr/ADR-007-event-coach-pivot.md` for tone):
@@ -128,12 +128,12 @@ contributor doesn't re-introduce it.
 
 **What**: Move the s170 section (currently the oldest in WAKEUP_NOTES)
 to `docs/history_notes.md`. Keep last 3 sessions in WAKEUP_NOTES
-(s171, s171 wrap, s171.8 — the new entry from task 5 below).
+(s171, s171 wrap, s171.8 - the new entry from task 5 below).
 
 **Check first**: `scripts/wakeup_prune.py` may exist and automate this.
 If so, run it. If not, do it by hand.
 
-**Commit message**: `chore: prune WAKEUP_NOTES — s170 → history_notes`
+**Commit message**: `chore: prune WAKEUP_NOTES - s170 → history_notes`
 
 ---
 
@@ -143,13 +143,13 @@ If so, run it. If not, do it by hand.
 
 **Structure** (match the existing s171 wrap entry for shape):
 - Session date + theme
-- Ships table (4 commits: 3e3b14e, 1aba0da, 876fd01 — and the wrap
+- Ships table (4 commits: 3e3b14e, 1aba0da, 876fd01 - and the wrap
   commit /done will create)
 - Findings table (esp. the two-asset-hash drift bug)
 - Open items
 - Files touched
 
-**Commit message**: `docs: WAKEUP wrap — s171.8 view-router + cache-bust unification`
+**Commit message**: `docs: WAKEUP wrap - s171.8 view-router + cache-bust unification`
 
 ---
 
@@ -171,7 +171,7 @@ If so, run it. If not, do it by hand.
 - Commit one task at a time; `gh run watch <id>` after each push;
   wait for green before starting the next task
 - Conventional Commit format (project enforces via commit-msg hook):
-  `<type>(<scope>)?: <description>` — types: feat, fix, docs, chore,
+  `<type>(<scope>)?: <description>` - types: feat, fix, docs, chore,
   refactor, test, perf, ci, build, style
 - Co-Authored-By trailer: `Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>`
 - Frozen files (do NOT modify): `main.py`, `core/log_setup.py`,
@@ -187,7 +187,7 @@ If so, run it. If not, do it by hand.
 ## End-of-run
 
 When all 5 tasks ship green, append one final line to
-`WAKEUP_NOTES.md` (top section): `**headless run complete** — N commits,
+`WAKEUP_NOTES.md` (top section): `**headless run complete** - N commits,
 T elapsed. Operator: run morning audit brief (`HEADLESS_BRIEF_2026-05-12_AUDIT.md`)
 when ready.`
 

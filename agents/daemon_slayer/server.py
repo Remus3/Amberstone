@@ -1,27 +1,27 @@
-"""Phase 3 — local HTTP server for the Daemon Slayer engine.
+"""Phase 3 - local HTTP server for the Daemon Slayer engine.
 
 Wraps `stats`, `dps`, `rank` (and snapshot metadata) in plain-HTTP routes
 on `:8893`. Stdlib ``ThreadingHTTPServer`` to match the rest of RC; no
 FastAPI/aiohttp dependency. Snapshot is loaded once at startup and held
-in memory — patch hot-reload lands in Phase 7 alongside the supervisor
+in memory - patch hot-reload lands in Phase 7 alongside the supervisor
 entry.
 
 Routes (all accept GET with query params for read-only sanity checking;
 POST + JSON body is the contract for production callers):
 
-  GET  /                  — index page with usage examples
-  GET  /health            — engine + snapshot health
-  GET  /snapshot          — patch + counts + manifest excerpt
-  POST /stats             — body: {champion, level, items?, mode?}
-  POST /dps               — body: {champion, level, items?, mode?,
+  GET  /                  - index page with usage examples
+  GET  /health            - engine + snapshot health
+  GET  /snapshot          - patch + counts + manifest excerpt
+  POST /stats             - body: {champion, level, items?, mode?}
+  POST /dps               - body: {champion, level, items?, mode?,
                                     target_armor?, target_mr?,
                                     target_max_hp?, phase?}
-  POST /rank              — body: {champion, level, items?, mode?,
+  POST /rank              - body: {champion, level, items?, mode?,
                                     target_armor?, target_mr?,
                                     target_max_hp?, phase?,
                                     budget?, slots?, top?, sort?,
                                     include_components?, only?}
-  POST /beam              — body: {champion, level, items?, mode?,
+  POST /beam              - body: {champion, level, items?, mode?,
                                     target_armor?, target_mr?,
                                     target_max_hp?, phase?,
                                     slots?, beam_width?, top?,
@@ -29,10 +29,10 @@ POST + JSON body is the contract for production callers):
                                     only?, boots_unique?}
 
 Errors map to:
-  400 — body parse failure, missing required field, bad enum value
-  404 — unknown champion or item id (KeyError from engine)
-  422 — value-out-of-range / engine ValueError
-  500 — anything unexpected
+  400 - body parse failure, missing required field, bad enum value
+  404 - unknown champion or item id (KeyError from engine)
+  422 - value-out-of-range / engine ValueError
+  500 - anything unexpected
 """
 
 from __future__ import annotations
@@ -89,7 +89,7 @@ _INDEX_HTML = """<!doctype html>
   td, th {{ padding: 4px 10px; border-bottom: 1px solid #eee; text-align: left; }}
   .ok {{ color: #1f7a1f; font-weight: 600; }}
 </style>
-<h1>Daemon Slayer engine — v{version}</h1>
+<h1>Daemon Slayer engine - v{version}</h1>
 <p class=ok>snapshot patch <code>{patch}</code> &middot; {n_champ} champions &middot; {n_items} items</p>
 
 <h2>Routes</h2>
@@ -390,7 +390,7 @@ def _route_rank(body: dict) -> dict:
 
 
 def _route_ehp(body: dict) -> dict:
-    """POST /ehp — compute Effective HP for the caster build.
+    """POST /ehp - compute Effective HP for the caster build.
 
     Body shape mirrors /dps but swaps ``target_armor`` / ``target_mr`` for
     ``enemy_ad_share`` / ``enemy_ap_share`` (the operator's *exposure* to
@@ -420,11 +420,11 @@ def _route_ehp(body: dict) -> dict:
 
 
 def _route_rank_tank(body: dict) -> dict:
-    """POST /rank-tank — rank items by Effective HP gained.
+    """POST /rank-tank - rank items by Effective HP gained.
 
     Mirror of ``/rank`` for the EHP scorer. Same body shape with two
     swaps: ``enemy_ad_share`` / ``enemy_ap_share`` (floats) replace
-    ``target_armor`` / ``target_mr`` (irrelevant to EHP — they describe
+    ``target_armor`` / ``target_mr`` (irrelevant to EHP - they describe
     the target, not the caster's exposure).
     """
     snap = _CACHE.get()
@@ -480,7 +480,7 @@ def _opt_weight(body: dict, key: str) -> Optional[float]:
 
 
 def _route_hybrid(body: dict) -> dict:
-    """POST /hybrid — compute combined DPS+EHP score for the caster build.
+    """POST /hybrid - compute combined DPS+EHP score for the caster build.
 
     Phase 2 (s175, 2026-05-12). Body shape is the union of /dps and /ehp
     parameters plus optional ``alpha`` / ``beta`` weight overrides.
@@ -520,7 +520,7 @@ def _route_hybrid(body: dict) -> dict:
 
 
 def _route_rank_bruiser(body: dict) -> dict:
-    """POST /rank-bruiser — rank items by weighted DPS+EHP delta.
+    """POST /rank-bruiser - rank items by weighted DPS+EHP delta.
 
     Phase 2 (s175, 2026-05-12). Body is the union of /rank and /rank-tank
     parameters. ``alpha`` / ``beta`` default to per-champion overrides
@@ -603,7 +603,7 @@ def _parse_max_priority(body: dict) -> Optional[tuple[str, str, str]]:
 
 
 def _parse_form_index(body: dict) -> Optional[dict[str, int]]:
-    """Decode the optional ``form_index`` body field — JSON dict only."""
+    """Decode the optional ``form_index`` body field - JSON dict only."""
     raw_form = body.get("form_index")
     if isinstance(raw_form, dict):
         return {str(k).upper(): int(v) for k, v in raw_form.items()}
@@ -624,7 +624,7 @@ def _block_index_scalar_ok(x) -> bool:
 def _parse_block_index(
     body: dict,
 ) -> "Optional[dict[str, int | list[int] | dict[str, int | list[int]]]]":
-    """Decode the optional ``block_index`` body field — JSON dict only.
+    """Decode the optional ``block_index`` body field - JSON dict only.
 
     Phase 5.9 (s191, 2026-05-14). Per-(champion, key) damage block_index
     override. ``{"E": 1}`` selects Cassiopeia's "Total Enhanced Damage"
@@ -641,10 +641,10 @@ def _parse_block_index(
     Phase 5.9.28 (s228, 2026-05-16): values may ALSO be a conditional
     dict ``{"default": int|list[int], "<condition>": int|list[int]}``
     (target-state schema lift). Only well-formed conditional dicts are
-    accepted — must contain ``"default"``, every other key must be in
+    accepted - must contain ``"default"``, every other key must be in
     ``_BLOCK_INDEX_CONDITIONS``, every nested value must be int|list[int].
     Malformed dicts are skipped (untrusted body path: preserve the
-    no-500 / fall-back-to-registry property — the engine's
+    no-500 / fall-back-to-registry property - the engine's
     ``_normalize_block_index_value`` is the hard validator for the
     trusted on-disk registry, where a typo SHOULD raise).
     """
@@ -655,7 +655,7 @@ def _parse_block_index(
     for k, v in raw.items():
         key = str(k).upper()
         if isinstance(v, bool):
-            # bool is an int subtype in Python — reject explicitly.
+            # bool is an int subtype in Python - reject explicitly.
             continue
         if isinstance(v, int):
             out[key] = v
@@ -665,7 +665,7 @@ def _parse_block_index(
             out[key] = list(v)
         elif isinstance(v, dict):
             # Conditional schema (s228). Accept only if fully well-formed;
-            # else skip (defensive — same stance as the scalar branches).
+            # else skip (defensive - same stance as the scalar branches).
             if _BLOCK_INDEX_DEFAULT_KEY not in v:
                 continue
             if not all(
@@ -693,7 +693,7 @@ def _parse_combo_sequence(body: dict) -> Optional[tuple[str, ...]]:
     values take precedence.
 
     Accepts list / dash-string ("Q-W-E-AA-R-AA") / comma-string
-    ("Q,W,E,AA,R,AA"). The engine validates individual tokens —
+    ("Q,W,E,AA,R,AA"). The engine validates individual tokens -
     this helper just normalizes the list shape.
     """
     raw = body.get("combo_sequence")
@@ -711,21 +711,21 @@ def _parse_combo_sequence(body: dict) -> Optional[tuple[str, ...]]:
 
 
 def _route_ability_dps(body: dict) -> dict:
-    """POST /ability-dps — per-spell ability DPS for the caster build.
+    """POST /ability-dps - per-spell ability DPS for the caster build.
 
     Phase 4b (s178, 2026-05-12). Body mirrors /dps with these additions:
-      * ``target_current_hp_pct`` (float, default 1.0) — what fraction
+      * ``target_current_hp_pct`` (float, default 1.0) - what fraction
         of max HP the target sits at when the cast lands; affects
         ``target_current_hp_pct`` / ``target_missing_hp_pct`` blocks
-      * ``max_priority`` (str or list, default "QWE") — three keys
+      * ``max_priority`` (str or list, default "QWE") - three keys
         describing max order; comma-separated as a query param
-      * ``block_strategy`` (str, default "first") — global strategy for
+      * ``block_strategy`` (str, default "first") - global strategy for
         multi-block abilities; one of first|sum|max
-      * ``form_index`` (dict) — per-key form overrides for multi-form
+      * ``form_index`` (dict) - per-key form overrides for multi-form
         abilities (Aphelios weapons, Jayce stance); JSON only
-      * ``block_index`` (dict) — per-(champion, key) damage-block index
+      * ``block_index`` (dict) - per-(champion, key) damage-block index
         overrides; e.g. ``{"E": 1}`` for Cassi to score the "Total
-        Enhanced Damage" block. Phase 5.9 (s191) — see
+        Enhanced Damage" block. Phase 5.9 (s191) - see
         ``champion_block_index.json`` for the engine's defaults.
     """
     snap = _CACHE.get()
@@ -764,7 +764,7 @@ def _route_ability_dps(body: dict) -> dict:
 
 
 def _route_rank_mage(body: dict) -> dict:
-    """POST /rank-mage — rank items by total-ability-DPS delta.
+    """POST /rank-mage - rank items by total-ability-DPS delta.
 
     Phase 4c (s179, 2026-05-12). Body is the union of /ability-dps and
     /rank parameters: ``target_*`` + ``target_current_hp_pct`` for the
@@ -826,12 +826,12 @@ def _route_rank_mage(body: dict) -> dict:
 
 
 def _route_burst(body: dict) -> dict:
-    """POST /burst — single-combo burst damage for the caster build.
+    """POST /burst - single-combo burst damage for the caster build.
 
     Phase 5 (s180, 2026-05-13). Body mirrors /ability-dps with one
-    addition (Phase 5 — combo) plus all the shared registry overrides
-    (max_priority, form_index, block_index Phase 5.9 — s191):
-      * ``combo_sequence`` (list or "Q-W-E-AA-R-AA") — tokens to fire;
+    addition (Phase 5 - combo) plus all the shared registry overrides
+    (max_priority, form_index, block_index Phase 5.9 - s191):
+      * ``combo_sequence`` (list or "Q-W-E-AA-R-AA") - tokens to fire;
         AA = auto-attack, P/Q/W/E/R = one cast, Q2/W2/E2/R2 = repeat
         at same rank. Default: ("Q","W","E","AA","R","AA"); per-champion
         registry override via ``champion_combo_sequences.json``.
@@ -874,7 +874,7 @@ def _route_burst(body: dict) -> dict:
 
 
 def _route_rank_assassin(body: dict) -> dict:
-    """POST /rank-assassin — rank items by total-burst-damage delta.
+    """POST /rank-assassin - rank items by total-burst-damage delta.
 
     Phase 5 (s180, 2026-05-13). Body is the union of /burst and /rank
     parameters: ``target_*`` + ``target_current_hp_pct`` + ``combo_sequence``
@@ -938,7 +938,7 @@ def _route_rank_assassin(body: dict) -> dict:
 
 
 def _opt_targets_override(body: dict) -> Optional[float]:
-    """Phase 6 — optional targets_per_proc_override (float). None when absent."""
+    """Phase 6 - optional targets_per_proc_override (float). None when absent."""
     key = "targets_per_proc_override"
     if key not in body or body[key] in (None, ""):
         return None
@@ -949,13 +949,13 @@ def _opt_targets_override(body: dict) -> Optional[float]:
 
 
 def _route_hps(body: dict) -> dict:
-    """POST /hps — total healing+shielding+buff throughput for the build.
+    """POST /hps - total healing+shielding+buff throughput for the build.
 
     Phase 6 (s181, 2026-05-13). Body shape mirrors /ehp's caster-only
-    schema (no target_armor/_mr/_max_hp — these don't affect outgoing
+    schema (no target_armor/_mr/_max_hp - these don't affect outgoing
     heals/shields). Optional ``targets_per_proc_override`` (float)
     replaces the per-item curated targets count for ALL items in the
-    build — useful for Arena 2v2 scenarios (override=1).
+    build - useful for Arena 2v2 scenarios (override=1).
     """
     snap = _CACHE.get()
     champion = _resolve_champion_id(snap, _required_str(body, "champion"))
@@ -979,10 +979,10 @@ def _route_hps(body: dict) -> dict:
 
 
 def _route_rank_enchanter(body: dict) -> dict:
-    """POST /rank-enchanter — rank items by total-throughput delta.
+    """POST /rank-enchanter - rank items by total-throughput delta.
 
     Phase 6 (s181, 2026-05-13). Mirror of /rank-tank for the HPS scorer.
-    No target_* fields — outgoing healing doesn't care about enemy
+    No target_* fields - outgoing healing doesn't care about enemy
     resists. Optional ``enchanter_only`` (bool, default True) restricts
     the candidate pool to the curated enchanter formulas registry; set
     False to score every candidate (most will tie at delta=0).
@@ -1138,7 +1138,7 @@ _GET_DISPATCH_ROUTES = set(_POST_ROUTES.keys())
 class Handler(BaseHTTPRequestHandler):
     server_version = f"DaemonSlayer/{ENGINE_VERSION}"
 
-    # Quiet the default access-log spam — we surface our own.
+    # Quiet the default access-log spam - we surface our own.
     def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
         _log.debug("%s - %s", self.address_string(), format % args)
 
@@ -1254,7 +1254,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_error(404, f"no such route: {path}")
                 return
             body = self._read_json_body()
-            # Allow query-string overrides on POST too — handy for testing.
+            # Allow query-string overrides on POST too - handy for testing.
             if url.query:
                 merged = self._query_to_body(url.query)
                 merged.update(body)

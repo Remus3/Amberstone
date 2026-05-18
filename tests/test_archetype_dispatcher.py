@@ -1,4 +1,4 @@
-"""Phase 3 (s176, 2026-05-12) — rank_for_primary_archetype dispatcher tests.
+"""Phase 3 (s176, 2026-05-12) - rank_for_primary_archetype dispatcher tests.
 
 Covers the 6-archetype routing matrix. Underlying scorer calls are
 mocked so the test doesn't touch the live DS server on :8893.
@@ -48,7 +48,7 @@ def _make_bruiser_rows(n: int = 2):
 
 
 def _make_mage_rows(n: int = 2):
-    """Phase 4c (s179) — build mock MageRankedItem rows for the ability path."""
+    """Phase 4c (s179) - build mock MageRankedItem rows for the ability path."""
     return [
         daemon_slayer_client.MageRankedItem(
             item_id=f"30{i:02d}", item_name=f"MageItem{i}",
@@ -62,7 +62,7 @@ def _make_mage_rows(n: int = 2):
 
 
 def _make_assassin_rows(n: int = 2):
-    """Phase 5 (s180) — build mock AssassinRankedItem rows for the burst path."""
+    """Phase 5 (s180) - build mock AssassinRankedItem rows for the burst path."""
     return [
         daemon_slayer_client.AssassinRankedItem(
             item_id=f"30{i:02d}", item_name=f"AssassinItem{i}",
@@ -76,7 +76,7 @@ def _make_assassin_rows(n: int = 2):
 
 
 def _make_enchanter_rows(n: int = 2):
-    """Phase 6 (s181) — build mock EnchanterRankedItem rows for the hps path."""
+    """Phase 6 (s181) - build mock EnchanterRankedItem rows for the hps path."""
     return [
         daemon_slayer_client.EnchanterRankedItem(
             item_id=f"30{i:02d}", item_name=f"EnchanterItem{i}",
@@ -181,7 +181,7 @@ class TankRoutingTests(unittest.TestCase):
 
 
 class MageRoutingTests(unittest.TestCase):
-    """Phase 4c (s179) — mage routes to ds.ability via rank_mage_for."""
+    """Phase 4c (s179) - mage routes to ds.ability via rank_mage_for."""
 
     @mock.patch("core.daemon_slayer_client.rank_mage_for")
     def test_mage_routes_to_rank_mage_for(self, mock_rank):
@@ -238,7 +238,7 @@ class MageRoutingTests(unittest.TestCase):
 
 
 class AssassinRoutingTests(unittest.TestCase):
-    """Phase 5 (s180) — assassin routes to ds.burst via rank_assassin_for."""
+    """Phase 5 (s180) - assassin routes to ds.burst via rank_assassin_for."""
 
     @mock.patch("core.daemon_slayer_client.rank_assassin_for")
     def test_assassin_routes_to_rank_assassin_for(self, mock_rank):
@@ -295,7 +295,7 @@ class AssassinRoutingTests(unittest.TestCase):
 
 
 class EnchanterRoutingTests(unittest.TestCase):
-    """Phase 6 (s181) — enchanter routes to ds.hps via rank_enchanter_for."""
+    """Phase 6 (s181) - enchanter routes to ds.hps via rank_enchanter_for."""
 
     @mock.patch("core.daemon_slayer_client.rank_enchanter_for")
     def test_enchanter_routes_to_rank_enchanter_for(self, mock_rank):

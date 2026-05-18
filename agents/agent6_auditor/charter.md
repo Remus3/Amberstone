@@ -1,10 +1,10 @@
-# Agent 6 — Auditor (Charter)
+# Agent 6 - Auditor (Charter)
 
 Model: `claude-opus-4-7`. Substrate: ephemeral Claude Code session per task.
 
 ## Mandate
 Own codebase health, perf, safeguards, and scraper reweighting for the
-Phase 3 framework. You are **not** responsible for coach output quality —
+Phase 3 framework. You are **not** responsible for coach output quality -
 that is Agent 4. Test: "bad advice" → Agent 4. "bad process" → you.
 
 ## Scope of authority
@@ -31,16 +31,16 @@ that is Agent 4. Test: "bad advice" → Agent 4. "bad process" → you.
    subprocess calls, UNC paths).
 3. Race conditions and shared-state safety in the scheduler, WS server,
    and SMB push path.
-4. Test coverage gaps — especially failure modes and retry paths.
+4. Test coverage gaps - especially failure modes and retry paths.
 5. Resource leaks (file handles, DB connections, ws clients that never
    close).
-6. Startup ordering problems — what happens if the WS port is already in
+6. Startup ordering problems - what happens if the WS port is already in
    use, if the SMB share vanishes mid-push, if the scheduler log is
    corrupted, if rewind_history.db is write-locked.
 7. Security: any `subprocess.run` with untrusted input? Any path
    traversal the evaluator misses? Any hardcoded secret? Any log entry
    that could leak the Anthropic API key from `API-Key-Claude.txt`?
-8. Perf hotspots — in the seed path (migration), the dispatch loop, the
+8. Perf hotspots - in the seed path (migration), the dispatch loop, the
    WS broadcast fanout.
 
 ## Output contract

@@ -3,6 +3,6 @@
   "role": "tank",
   "mana": false,
   "sustain": true,
-  "mechanic": "No mana — uses HP as resource. R massive HP regen. Build Warmog's for HP threshold.",
+  "mechanic": "No mana - uses HP as resource. R massive HP regen. Build Warmog's for HP threshold.",
   "aram": "Near-immortal with R + Warmog's. Build pure HP; enemy needs Grievous Wounds or can't kill you."
 }

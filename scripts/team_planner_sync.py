@@ -25,7 +25,7 @@ lockfiles = [
 ]
 lf = next((p for p in lockfiles if p.exists()), None)
 if not lf:
-    print("NO_LOCKFILE — launch League client first"); sys.exit(1)
+    print("NO_LOCKFILE - launch League client first"); sys.exit(1)
 
 parts    = lf.read_text().strip().split(":")
 port, pw = parts[2], parts[3]
@@ -89,7 +89,7 @@ for comp_name, tier in target_comps:
     # Stable UUID per comp name
     team_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"riot-commander.{comp_name}"))
 
-    # Step 1: Create team slot (idempotent — 409 if exists)
+    # Step 1: Create team slot (idempotent - 409 if exists)
     lcu("POST", f"/lol-tft-team-planner/v1/sets/{SET_ID}/teams/{team_uuid}", silent=True)
 
     # Step 2: Clear existing champions

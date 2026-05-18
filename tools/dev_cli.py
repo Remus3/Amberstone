@@ -1,6 +1,6 @@
 """
 tools/dev_cli.py
-Riot Commander — local developer/operator CLI.
+Riot Commander - local developer/operator CLI.
 
 Usage (from project root):
     python tools/dev_cli.py <subcommand> [options]
@@ -162,7 +162,7 @@ def cmd_status():
         else:
             _miss(f"{cmd_name}: {rel_path}  -- MISSING")
 
-    # GUI launcher Python (pythonw.exe) — separate from tooling Python
+    # GUI launcher Python (pythonw.exe) - separate from tooling Python
     # start.bat and restart_clean.bat call pythonw.exe directly.
     # This is NOT the same as the tooling Python (_PYTHON above).
     print("\n[Launch Python / GUI Launcher]")

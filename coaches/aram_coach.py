@@ -1,6 +1,6 @@
-# arch: ARAM + Mayhem mode coach — DS-before-Haiku | section=coaching | frozen=no
+# arch: ARAM + Mayhem mode coach - DS-before-Haiku | section=coaching | frozen=no
 """
-coaches/aram_coach.py  — v3  (ARCH-002 BaseCoach inheritance)
+coaches/aram_coach.py  - v3  (ARCH-002 BaseCoach inheritance)
 
 ARAM / ARAM Mayhem full coaching engine.
 Inherits lifecycle from coaches.BaseCoach.
@@ -37,7 +37,7 @@ _APP_DIR = Path(__file__).parent.parent
 # milestone boundaries (game_start / 10/15/20/25/30 min / L6/11/16 spikes /
 # game_end) plus 60s periodic sampling. Flag is OFF by default so enabling
 # live metric capture is a deliberate act after verifying the coach
-# doesn't regress — flip to True here (or set RC_LIVE_METRICS=1 in env)
+# doesn't regress - flip to True here (or set RC_LIVE_METRICS=1 in env)
 # once you want to start building the live dataset.
 
 _RC_LIVE_METRICS_ENABLED = os.environ.get("RC_LIVE_METRICS", "0") == "1"
@@ -76,32 +76,32 @@ def _parse_item_reasons(reasons_str: str) -> dict:
 
 
 # Item-class peer table (2026-04-26): items in the same set are functional
-# alternates — buying a 2nd one is almost always wrong (you've already paid
+# alternates - buying a 2nd one is almost always wrong (you've already paid
 # the slot for the role). The dedup helper below uses this to strip from
 # the recommended next-buy any item whose CLASS PEER is already owned, not
 # just the literal owned name. Catches "MR owned, coach suggests LDR" (both
 # anti-armor + grievous-wounds for ADCs).
 _ITEM_CLASS_PEERS: tuple[tuple[str, ...], ...] = (
-    # Anti-armor / armor-pen ADC items — pick one. User-reported regression
+    # Anti-armor / armor-pen ADC items - pick one. User-reported regression
     # 2026-04-26: coach kept suggesting Lord Dominik's even after Mortal
     # Reminder was built, then Serylda's after that.
     ("lord dominik", "mortal reminder", "serylda"),
     # Anti-heal grievous-wounds items spanning roles (only ONE makes sense
     # and the *finished* slot covers it). Components like Executioner's /
-    # Oblivion Orb are NOT in this list — those are upgrade paths.
+    # Oblivion Orb are NOT in this list - those are upgrade paths.
     ("morellonomicon", "chempunk chainsword"),
     # Mythic mage burst-cap items that overlap heavily on AP scaling.
-    # ("luden", "shadowflame"),  # disabled — these stack fine in many builds
-    # ADC mythic-tier crit cores — IE is the canonical first; second crit
+    # ("luden", "shadowflame"),  # disabled - these stack fine in many builds
+    # ADC mythic-tier crit cores - IE is the canonical first; second crit
     # mythic is rare. Leave commented unless user complains.
     # ("infinity edge", "navori"),
-    # Boots — only ONE boot pair fits the slot. All purchasable boot types
+    # Boots - only ONE boot pair fits the slot. All purchasable boot types
     # are peers so the coach never recommends a second pair after boots are
     # owned. Gluttonous/Gunmetal Greaves (jungle/smite only) and Mobility
     # Boots (SR-only) are intentionally excluded as not ARAM-purchasable.
     ("berserker", "ionian", "steelcap", "mercury", "sorcerer", "symbiotic",
      "swiftness", "spellslinger"),
-    # Spellblade passive — shared by Trinity Force, Lich Bane, Divine
+    # Spellblade passive - shared by Trinity Force, Lich Bane, Divine
     # Sunderer, and Essence Reaver. Passive does NOT stack; only the
     # last-triggered proc applies, making a second Spellblade item a dead slot.
     # "sunderer" used (not "divine") to avoid collision with "Sword of the Divine".
@@ -112,7 +112,7 @@ _ITEM_CLASS_PEERS: tuple[tuple[str, ...], ...] = (
 def _dedup_build_vs_owned(item_build: str, items_display: str) -> str:
     """Strip from `item_build` any item already present in `items_display`,
     OR any item whose CLASS PEER is owned (e.g. don't suggest Lord Dominik's
-    when Mortal Reminder is built — both are anti-armor finishers).
+    when Mortal Reminder is built - both are anti-armor finishers).
 
     The LLM occasionally keeps the next-slot item the same as a completed
     item in inventory (Zhonya's appears in both "owned" and "next to buy"),
@@ -196,9 +196,9 @@ recall). Therefore:
     regen, or accept the death and use the respawn fountain time to
     reposition. NEVER advise leaving lane to fountain.
   - "reset / item" advice: only "Wait for respawn fountain" (passive,
-    after death) is acceptable phrasing — that means buying when you
+    after death) is acceptable phrasing - that means buying when you
     next die and respawn at fountain, not walking there now. Default
-    to "Buy after next death — N gold short of <item>" or
+    to "Buy after next death - N gold short of <item>" or
     "Complete <item> on respawn".
 
 ═══ FIGHT COMMITMENT RULES ═══
@@ -240,20 +240,20 @@ This is ARAM (Howling Abyss) NOT Summoner's Rift. STRICTLY:
 - No lane-specific quest items unavailable in ARAM
 - Recommend only items purchasable on Howling Abyss
 - ARAM has health packs, NOT bushes or warding zones
-- No dragon/baron/rift herald — only towers and Nexus matter
+- No dragon/baron/rift herald - only towers and Nexus matter
 Use enemy items (provided in user context) to adapt build recommendations.
 Item build MUST contain only FULLY COMPLETED items (e.g. Infinity Edge, Bloodthirster).
 
 OUTPUT FORMAT ═══
 Exactly 7 fields, NO markdown, NO filler:
-Action: <1-3 WORDS ALL-CAPS — single decision>
+Action: <1-3 WORDS ALL-CAPS - single decision>
 Immediate: <what to do right now + where to stand, [A]/[E] tags, max 12 words>
 Fight rule: <one engage condition, [E] ability to respect, max 12 words>
 Reset / item: <fountain yes/no + next ARAM item (no wards, no jungle items), max 10 words>
 Risk: <single most dangerous enemy ability, max 10 words>
-Item build: <comma-separated FULL COMPLETED items ONLY, 4-6 items — NO components (no Dagger, Long Sword, Pickaxe, B.F. Sword, etc.); omit boots unless critical; prefix 7th item with "+" if excess gold warrants it>
-Item extra: <ONLY if no 7th item: "Pot: X" for potion boots OR "Shard: X" for rune shard — else omit>
-Item reasons: <per-item one-liner (max 6 words each), semicolon-separated, format "ItemName=reason"; e.g. "Liandry's=anti-tank HP burn; Zhonya's=vs Zed R; Rylai's=kite slow" — only for items in Item build>
+Item build: <comma-separated FULL COMPLETED items ONLY, 4-6 items - NO components (no Dagger, Long Sword, Pickaxe, B.F. Sword, etc.); omit boots unless critical; prefix 7th item with "+" if excess gold warrants it>
+Item extra: <ONLY if no 7th item: "Pot: X" for potion boots OR "Shard: X" for rune shard - else omit>
+Item reasons: <per-item one-liner (max 6 words each), semicolon-separated, format "ItemName=reason"; e.g. "Liandry's=anti-tank HP burn; Zhonya's=vs Zed R; Rylai's=kite slow" - only for items in Item build>
 """
 
 _USER_TMPL = """\
@@ -345,7 +345,7 @@ def _load_rune_rec(champion: str, mode: str = "aram") -> str:
         note = rec.get("coaching_note", "")
         result = f"{ks} | {pri} / {sec}"
         if note:
-            result += f" — {note}"
+            result += f" - {note}"
         return result
     except Exception:
         return ""
@@ -363,7 +363,7 @@ def _load_build_note(champion: str) -> str:
             return ""
         tier = entry.get("aram_tier", "")
         note = entry.get("build_note", "")
-        result = f"{tier} tier — {note}" if tier and note else note or tier
+        result = f"{tier} tier - {note}" if tier and note else note or tier
         return result[:220]
     except Exception:
         return ""
@@ -503,7 +503,7 @@ class Coach(BaseCoach):
                 cur["augments"] = ", ".join(state["augments"])
             if state.get("augment_select") and state.get("augment_choices"):
                 self._handle_augment_select(state)
-            # (2026-04-25) Always-on champion + self-spell write — pulls
+            # (2026-04-25) Always-on champion + self-spell write - pulls
             # from self._last_state (live-client snapshot, refreshed every
             # 1.5s by _base_coach._poll_loop), so the dashboard's header
             # self-spells pill flips D/F → Flash/Heal as soon as the
@@ -531,12 +531,12 @@ class Coach(BaseCoach):
         except Exception as exc:
             logger.debug("ARAM vision run: %s", exc)
 
-    # ── Target-bonus-HP estimator (s74 — Phase 4 batch 19 wire-in) ──────────
+    # ── Target-bonus-HP estimator (s74 - Phase 4 batch 19 wire-in) ──────────
 
     def _estimate_target_bonus_hp(self, state: dict | None = None) -> float:
         """Estimate enemy bonus HP from items. ARAM port of arena_coach's
         s73 estimator, but with no round-count fallback (ARAM doesn't have
-        rounds — emit 0 = "no signal" when items unavailable).
+        rounds - emit 0 = "no signal" when items unavailable).
 
         Walks ``state["enemies"]`` (structured list, populated in
         ``_to_state``), filters alive opponents, resolves their item
@@ -584,12 +584,12 @@ class Coach(BaseCoach):
             gm       = state.get("game_mode", "ARAM")
             # Detect Mayhem via the canonical helper. Pre-2026-05-03 this
             # checked `"MAYHEM" in gm.upper()` which never matched because
-            # Riot's live value is "KIWI" — see core/mayhem_detect.py.
+            # Riot's live value is "KIWI" - see core/mayhem_detect.py.
             is_mayhem_mode = is_mayhem(gm)
             mayhem   = " Mayhem" if is_mayhem_mode else ""
             rune_rec  = _load_rune_rec(champ, gm)
             aram_meta = _load_build_note(champ)
-            # (2026-04-26) USER EXPERIMENTAL OVERRIDE — when the champ has a
+            # (2026-04-26) USER EXPERIMENTAL OVERRIDE - when the champ has a
             # current entry in experimental_builds.json, append it as a hard
             # override hint so Haiku biases item recommendations toward the
             # user's intended experimental build (e.g. on-hit AS Senna).
@@ -602,7 +602,7 @@ class Coach(BaseCoach):
                     _exp_items = _exp_cur.get("items") or []
                     if _exp_label and _exp_items:
                         _exp_line = (
-                            f"\n\nUSER EXPERIMENTAL INTENT (HARD OVERRIDE) — label: {_exp_label}. "
+                            f"\n\nUSER EXPERIMENTAL INTENT (HARD OVERRIDE) - label: {_exp_label}. "
                             f"Items pool: {', '.join(_exp_items)}. "
                             "Recommend ONLY items from this pool (complete the most-progressed "
                             "component first; do not pivot to the default "
@@ -641,7 +641,7 @@ class Coach(BaseCoach):
             event_line = "AUGMENT SELECTION ACTIVE" if vs.get("augment_select") else ""
 
             # Run DS before Haiku so picks appear in the user turn.
-            # Moved from post-Haiku (s74 wire-in) — ds_rows reused below
+            # Moved from post-Haiku (s74 wire-in) - ds_rows reused below
             # to write daemon_slayer_picks to the output JSON for the UI.
             # s182 (2026-05-13): swapped rank_for() -> archetype dispatcher
             # so the scorer matches the operator's chosen archetype for `champ`
@@ -788,7 +788,7 @@ class Coach(BaseCoach):
                 if _champ and (_spell_d or _spell_f) else {}
             )
             # AUDIT 2026-04-26: server-side fountain scrub.
-            # ARAM has no recall — the word "fountain" in Action/Immediate
+            # ARAM has no recall - the word "fountain" in Action/Immediate
             # is misleading unless the user has the "Cheater" augment.
             # Strip "FOUNTAIN" from Action label and rewrite Immediate
             # references to "fountain" → "respawn" so the coach never
@@ -834,13 +834,13 @@ class Coach(BaseCoach):
                 "my_team":       state.get("my_team", "ORDER"),
                 # Strip already-owned items from the build path so the
                 # Recommended tile never highlights a completed legendary
-                # (the "Zhonya's bug" — see _dedup_build_vs_owned docstring).
+                # (the "Zhonya's bug" - see _dedup_build_vs_owned docstring).
                 "item_build":    _dedup_build_vs_owned(
                                      flds.get("item build", ""),
                                      user.split("Items:")[-1].split("\n")[0].strip(),
                                  ),
                 "item_extra":    flds.get("item extra", ""),
-                # Per-item coach reasons — keyed by item name so the UI
+                # Per-item coach reasons - keyed by item name so the UI
                 # can show "why this next" on the Recommended tile hover
                 # (opts.reasons → tile.title in renderItemTiles).
                 "item_build_reasons": _parse_item_reasons(flds.get("item reasons", "")),
@@ -979,7 +979,7 @@ def _parse_state(raw: dict) -> dict:
         ]
         if _ei:
             enemy_items_map[_en] = _ei
-        # s74 — structured per-enemy entries for daemon_slayer
+        # s74 - structured per-enemy entries for daemon_slayer
         # target_bonus_hp estimator. Mirrors arena_coach's teams[] shape
         # (name + is_dead + items) but stays on a separate key so the
         # existing enemy_items / enemy_comp / dead_enemies flat fields
@@ -1015,7 +1015,7 @@ def _parse_state(raw: dict) -> dict:
         ],
         "enemy_comp":    [e.get("championName", "?") for e in enemies],
         "enemy_items":   enemy_items_str,
-        "enemies":       enemies_struct,  # s74 — structured per-enemy {name,is_dead,items}
+        "enemies":       enemies_struct,  # s74 - structured per-enemy {name,is_dead,items}
         "dead_enemies":     [e.get("championName", "?") for e in enemies if e.get("isDead")],
         "alive_enemies":    [e.get("championName", "?") for e in enemies if not e.get("isDead")],
         "dead_respawn_str": raw.get("dead_respawn_str", ""),  # from game_reader

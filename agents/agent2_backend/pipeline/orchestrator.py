@@ -1,4 +1,4 @@
-"""Agent 2 — Data pipeline orchestrator.
+"""Agent 2 - Data pipeline orchestrator.
 
 Ties together DDragon static data and the scraper primitives into a
 per-mode coach cache under ``data/coach_cache/``. That cache is the
@@ -30,7 +30,7 @@ Respects:
 
 Usage:
 
-    # Full refresh (all modes, all champions) — heavy
+    # Full refresh (all modes, all champions) - heavy
     python -m agents.agent2_backend.pipeline.orchestrator --all
 
     # One mode
@@ -106,7 +106,7 @@ class PipelineOrchestrator:
         return self._ddragon
 
     def champion_roster(self) -> list[str]:
-        """Return the current champion list (as Riot champion IDs — e.g. ``Ahri``,
+        """Return the current champion list (as Riot champion IDs - e.g. ``Ahri``,
         ``XinZhao``). Uses the most recent cached DDragon bundle."""
         champions = self.ddragon().champions()
         # DDragon's champion.json has shape {"data": {"Ahri": {...}, ...}}

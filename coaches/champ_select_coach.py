@@ -1,5 +1,5 @@
 """
-coaches/champ_select_coach.py — live coaching during ChampSelect.
+coaches/champ_select_coach.py - live coaching during ChampSelect.
 
 Calls Claude Haiku with the current pick state and returns a compact
 JSON advice payload the dashboard can render before the game starts.
@@ -16,13 +16,13 @@ Public API:
         "my_champion": "Ahri",          # resolved name (not ID)
         "my_team":    ["Yuumi", ...],   # ally champions, may include unknowns
         "their_team": ["Caitlyn", ...], # enemy champions
-        "bench":      ["Tristana", ...] # ARAM only — swappable picks
+        "bench":      ["Tristana", ...] # ARAM only - swappable picks
     }
 
 Returns:
     {
         "ok":           bool,
-        "advice":       str,    # 1-line headline ("Stay Ahri — clean wave clear vs Cait/Lux")
+        "advice":       str,    # 1-line headline ("Stay Ahri - clean wave clear vs Cait/Lux")
         "swap":         str,    # ARAM bench swap recommendation, "" if none
         "summoners":    str,    # suggested D/F spells ("Flash + Heal" or similar)
         "watchout":     str,    # primary threat to track
@@ -52,9 +52,9 @@ colon. No markdown, no preamble, no extra lines. Be concrete and
 specific to the comp/matchup. Keep each line under 100 characters.
 
 Format:
-Advice: <one-line headline — keep your champ, swap, or play-style>
-Swap: <ARAM ONLY — bench swap recommendation if any, else 'none'>
-Summoners: <D + F suggestion — "Flash + Heal", "Flash + Cleanse", etc.>
+Advice: <one-line headline - keep your champ, swap, or play-style>
+Swap: <ARAM ONLY - bench swap recommendation if any, else 'none'>
+Summoners: <D + F suggestion - "Flash + Heal", "Flash + Cleanse", etc.>
 Watchout: <primary enemy threat to track during the game>"""
 
 
@@ -90,7 +90,7 @@ def coach_pick(state: dict, api_key: str | None) -> dict[str, Any]:
         out["advice"] = "(no champion locked yet)"
         return out
     if not api_key:
-        out["advice"] = "(API key missing — coach disabled)"
+        out["advice"] = "(API key missing - coach disabled)"
         return out
 
     is_aram = bool(state.get("is_aram"))

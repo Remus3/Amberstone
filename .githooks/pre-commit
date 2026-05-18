@@ -12,7 +12,7 @@ set -e
 ROOT="$(git rev-parse --show-toplevel)"
 PY="${PYTHON:-py}"
 
-# Python 3.x — prefer `py` (the Windows launcher) but fall back to `python`.
+# Python 3.x - prefer `py` (the Windows launcher) but fall back to `python`.
 if ! command -v "$PY" >/dev/null 2>&1; then
     PY=python
 fi

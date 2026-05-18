@@ -32,7 +32,7 @@ export const CADENCE = {
 };
 
 // All navigable view IDs (matches data-view attribute and URL hash).
-// s209: dropped "loading" — games load too fast for the screen to be
+// s209: dropped "loading" - games load too fast for the screen to be
 // useful; ChampSelect now transitions directly to active-match.
 export const VIEW_IDS = [
   "home", "lobby", "champ-select", "active-match", "last-match",
@@ -53,7 +53,7 @@ export const VIEW_LABELS = {
 
 // View-router mutable state (current + manual override + banner tracking).
 //
-// s171 added ``gameStarted`` — a sticky "highest game-state we've seen
+// s171 added ``gameStarted`` - a sticky "highest game-state we've seen
 // this session" flag (champ-select | game-start | in-progress | null).
 // Used by _viewAutoDerive to ride through transient LCU phase=null /
 // phase=Lobby blips during the CS→loading→game flip without flushing

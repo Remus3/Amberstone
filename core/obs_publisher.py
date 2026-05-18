@@ -1,5 +1,5 @@
 """
-core/obs_publisher.py — push RC state to OBS Studio as a text-source update.
+core/obs_publisher.py - push RC state to OBS Studio as a text-source update.
 
 Tier 3 #11 (2026-05-01). Turns RC into a streaming overlay for free:
 the same data the dashboard renders gets formatted into a one-line
@@ -23,12 +23,12 @@ you set source_name to). The publisher updates that source's text every
 
 Resilience:
 * If the `obs` block is absent or `enabled` is false, `start_background()`
-  is a no-op — RC behavior unchanged.
+  is a no-op - RC behavior unchanged.
 * If OBS isn't running when the daemon starts, the publisher backs off
   10s and retries. Same for connection drops.
 * If the auth handshake fails (wrong password, mismatched protocol),
   it logs once and waits 15s before retrying.
-* All exceptions in the loop body are caught — the daemon never
+* All exceptions in the loop body are caught - the daemon never
   crashes RC.
 
 Architecture matches `core/vision_tracker.py` and `core/decision_detector.py`:
@@ -76,7 +76,7 @@ def _render_state() -> str:
     so the formatter sees the same merged liveclient + coach + health
     payload the dashboard does.
 
-    Returns empty string on any failure — caller treats that as "skip
+    Returns empty string on any failure - caller treats that as "skip
     this tick" and OBS keeps the previous text on screen.
     """
     try:
@@ -206,7 +206,7 @@ class OBSPublisher:
                 _log.debug("OBS connect failed for %s; backoff %ds",
                            url, _BACKOFF_AFTER_DROP_S)
             except websockets.exceptions.ConnectionClosed:
-                # Mid-session disconnect — common on OBS restart.
+                # Mid-session disconnect - common on OBS restart.
                 _log.debug("OBS connection closed; reconnecting in %ds",
                            _BACKOFF_AFTER_DROP_S)
             except Exception as exc:
@@ -256,7 +256,7 @@ class OBSPublisher:
 
     async def _set_text(self, ws, source_name: str, text: str) -> None:
         """Fire a SetInputSettings request to update the Text source's
-        `text` field. Fire-and-forget — we don't await the response, so
+        `text` field. Fire-and-forget - we don't await the response, so
         a slow OBS reply doesn't stall the publisher loop."""
         request = {
             "op": 6,

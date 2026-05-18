@@ -1,16 +1,16 @@
 """
 core/config_validator.py
-Phase 1 Step 1 — Config schema validation for Riot Commander.
+Phase 1 Step 1 - Config schema validation for Riot Commander.
 
 Non-fatal: validation results are logged as warnings/errors but never abort startup.
 Non-mutating: config files are never written or modified.
 Python 3.9 compatible: no walrus operator, no match statements, no X|Y unions.
 
 Validation statuses:
-  OK       — file present and all required keys found with correct types
-  WARNING  — file present but optional key has wrong type, or an advisory note
-  ERROR    — file present but required key missing or has wrong type
-  SKIP     — file not present and is marked as optional/future
+  OK       - file present and all required keys found with correct types
+  WARNING  - file present but optional key has wrong type, or an advisory note
+  ERROR    - file present but required key missing or has wrong type
+  SKIP     - file not present and is marked as optional/future
 
 Usage:
     from core.config_validator import validate_all
@@ -77,12 +77,12 @@ def _check_type(value: Any, expected: str) -> bool:
     """Return True if value matches the expected type string.
 
     bool is a subclass of int in Python, so isinstance(True, int) is True.
-    This must be rejected for both 'integer' and 'number' types — a JSON
+    This must be rejected for both 'integer' and 'number' types - a JSON
     boolean is never a valid substitute for a JSON number.
     """
     expected_types = _PYTHON_TYPE_MAP.get(expected)
     if expected_types is None:
-        return True  # unknown type spec — pass
+        return True  # unknown type spec - pass
     # Reject bool for any numeric type ('integer' or 'number').
     # This check must come before isinstance() because bool is a subclass of int.
     if expected in ("integer", "number"):
@@ -110,7 +110,7 @@ def _validate_config(
         if is_optional_file:
             return ValidationResult(
                 file=rel_path, status="SKIP",
-                message="Not present (optional/future file — expected for later Phase 1 step)",
+                message="Not present (optional/future file - expected for later Phase 1 step)",
                 issues=[],
             )
         return ValidationResult(
@@ -263,7 +263,7 @@ def _validate_self_monitor_profile() -> ValidationResult:
 
 def _validate_feature_flags() -> ValidationResult:
     """
-    Validate config/feature_flags.json — created in Step 7.
+    Validate config/feature_flags.json - created in Step 7.
     Checks that each mode block contains only known features with valid decision values.
     """
     path = APP_DIR / "config" / "feature_flags.json"
@@ -271,7 +271,7 @@ def _validate_feature_flags() -> ValidationResult:
         return ValidationResult(
             file="config/feature_flags.json",
             status="SKIP",
-            message="Not present (optional — runtime safe-defaults apply)",
+            message="Not present (optional - runtime safe-defaults apply)",
             issues=[],
         )
     data = _load_json(path)
@@ -344,7 +344,7 @@ def validate_all() -> List[ValidationResult]:
         try:
             result = fn()
         except Exception as exc:
-            # Validator itself crashed — log and continue
+            # Validator itself crashed - log and continue
             result = ValidationResult(
                 file="<unknown>", status="ERROR",
                 message=f"Validator raised unexpectedly: {exc}",
@@ -381,7 +381,7 @@ def validate_all() -> List[ValidationResult]:
 def print_results(results: List[ValidationResult]) -> None:
     """Print validation results to stdout in a human-readable format."""
     print("=" * 60)
-    print("Riot Commander — Config Validation")
+    print("Riot Commander - Config Validation")
     print("=" * 60)
     for r in results:
         print(f"  [{r.status:<7}]  {r.file}")

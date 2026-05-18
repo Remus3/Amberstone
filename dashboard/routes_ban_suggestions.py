@@ -1,4 +1,4 @@
-"""s210: Suggestions panel — global ban suggestions endpoint.
+"""s210: Suggestions panel - global ban suggestions endpoint.
 
 GET /api/champ-select/ban-suggestions?exclude=119,236,86,99,51,150&top=4
 
@@ -129,7 +129,7 @@ def _serve_ban_suggestions(h) -> None:
                 continue
             if cid in excluded:
                 continue
-            # Use the DDragon slug for the icon URL — name_to_id includes
+            # Use the DDragon slug for the icon URL - name_to_id includes
             # slug→cid mappings, so reverse-find via the icon path is
             # safest by always sanitizing the display name.
             slug = name.replace(" ", "").replace("'", "").replace(".", "")

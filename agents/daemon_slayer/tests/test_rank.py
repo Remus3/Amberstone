@@ -65,7 +65,7 @@ class CandidateFilterTests(unittest.TestCase):
             self.snap, "ARAM", set(), None, False, None,
         )}
         # Most ARAM-legal completed items are also SR-legal in 16.9.1.
-        # Don't pin equality — pin "ARAM is meaningfully smaller than SR".
+        # Don't pin equality - pin "ARAM is meaningfully smaller than SR".
         self.assertLess(len(aram), len(sr))
 
     def test_include_components_grows_candidate_count(self) -> None:
@@ -132,7 +132,7 @@ class RankItemsTests(unittest.TestCase):
         self.assertEqual(deltas, sorted(deltas, reverse=True))
 
     def test_efficiency_sort_can_reorder_top_pick(self) -> None:
-        # Top by absolute delta is rarely top by efficiency — IE (3500g) vs.
+        # Top by absolute delta is rarely top by efficiency - IE (3500g) vs.
         # a cheap stat stick (Doran's Blade, 450g, smaller delta but better g/dps).
         by_delta = rank_items(
             self.snap, "Aatrox", level=11, target_armor=80, top_n=5, sort_by="delta",
@@ -154,7 +154,7 @@ class RankItemsTests(unittest.TestCase):
             rank_items(self.snap, "Aatrox", level=1, sort_by="random")
 
     def test_full_inventory_raises(self) -> None:
-        # 6 already equipped — no slot for the candidate.
+        # 6 already equipped - no slot for the candidate.
         with self.assertRaises(ValueError):
             rank_items(
                 self.snap, "Aatrox", level=11,
@@ -196,11 +196,11 @@ class RankItemsTests(unittest.TestCase):
 
 
 class SharedUniqueFilterTests(unittest.TestCase):
-    """Phase 6 step 8 (2026-05-12) — filter candidates whose unique passive
+    """Phase 6 step 8 (2026-05-12) - filter candidates whose unique passive
     collides with an item already in current_item_ids.
 
     The engine's ``collect_effects`` correctly zeroes the duplicate proc/pen
-    contribution, but the candidate's stat block still lifts DPS — enough
+    contribution, but the candidate's stat block still lifts DPS - enough
     that items like Essence Reaver after Trinity Force would still rank
     well on stats alone. Operator-facing this is a bug: the wasted unique
     means worse value-per-gold than a non-redundant item.
@@ -224,13 +224,13 @@ class SharedUniqueFilterTests(unittest.TestCase):
         )
         ranked_ids = {ri.item_id for ri in r.ranked}
         self.assertNotIn("3508", ranked_ids,  # Essence Reaver
-                         "ER shares 'spellblade' key with Trinity — should be filtered")
-        # Lich Bane (3100) also shares spellblade — filtered too.
+                         "ER shares 'spellblade' key with Trinity - should be filtered")
+        # Lich Bane (3100) also shares spellblade - filtered too.
         self.assertNotIn("3100", ranked_ids,
-                         "Lich Bane shares 'spellblade' key with Trinity — should be filtered")
+                         "Lich Bane shares 'spellblade' key with Trinity - should be filtered")
 
     def test_trinity_then_er_surfaces_when_filter_off(self) -> None:
-        # filter_shared_uniques=False — ER appears with the flag set so the
+        # filter_shared_uniques=False - ER appears with the flag set so the
         # caller can decide what to do (warn? annotate? suppress?).
         r = rank_items(
             self.snap, "Aatrox", level=11, target_armor=80,
@@ -246,7 +246,7 @@ class SharedUniqueFilterTests(unittest.TestCase):
         self.assertEqual(er.dead_unique_key, "spellblade")
 
     def test_clean_build_has_no_dead_unique_flags(self) -> None:
-        # Naked Aatrox — no current items, no shared uniques possible.
+        # Naked Aatrox - no current items, no shared uniques possible.
         r = rank_items(
             self.snap, "Aatrox", level=11, target_armor=80, top_n=20,
         )
@@ -257,7 +257,7 @@ class SharedUniqueFilterTests(unittest.TestCase):
 
     def test_sterak_then_maw_lifeline_family_filtered(self) -> None:
         # Sterak's Gage (3053) and Maw of Malmortius (3156) both carry
-        # unique_passive_key="lifeline" — second one's shield is dead.
+        # unique_passive_key="lifeline" - second one's shield is dead.
         r = rank_items(
             self.snap, "Aatrox", level=11, target_armor=80,
             current_item_ids=["3053"],  # Sterak's Gage
@@ -265,7 +265,7 @@ class SharedUniqueFilterTests(unittest.TestCase):
         )
         ranked_ids = {ri.item_id for ri in r.ranked}
         self.assertNotIn("3156", ranked_ids,
-                         "Maw of Malmortius shares 'lifeline' key with Sterak's — filtered")
+                         "Maw of Malmortius shares 'lifeline' key with Sterak's - filtered")
 
     def test_sunfire_then_hollow_radiance_immolate_family_filtered(self) -> None:
         # Both carry unique_passive_key="immolate". Common ARAM tank trap.
@@ -277,10 +277,10 @@ class SharedUniqueFilterTests(unittest.TestCase):
         )
         ranked_ids = {ri.item_id for ri in r.ranked}
         self.assertNotIn("6664", ranked_ids,
-                         "Hollow Radiance shares 'immolate' key with Sunfire — filtered")
+                         "Hollow Radiance shares 'immolate' key with Sunfire - filtered")
 
     def test_to_dict_surfaces_new_fields(self) -> None:
-        # Schema regression guard — the HTTP server returns to_dict() so
+        # Schema regression guard - the HTTP server returns to_dict() so
         # consumers depend on these keys being present.
         r = rank_items(
             self.snap, "Aatrox", level=11, target_armor=80,

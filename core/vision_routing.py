@@ -1,5 +1,5 @@
 """
-core/vision_routing.py — cheap-first vision routing helper.
+core/vision_routing.py - cheap-first vision routing helper.
 
 AUDIT 2026-04-28 (proposal 5.2): coaches that need numeric HUD fields
 (gold/level/HP/round/stage) should call Tesseract first and only escalate
@@ -9,14 +9,14 @@ to Sonnet when the local OCR returns out-of-range or empty.
   1. Run `core.vision_tesseract.read_fast_fields` on the requested fields.
   2. Validate against the provided `validators` dict (or built-in
      defaults). Any field that fails validation is "missing".
-  3. If all required fields validated, return the dict — no API call.
+  3. If all required fields validated, return the dict - no API call.
   4. Otherwise call `escalate_fn(img_b64, missing_fields)`. The caller
      supplies the Sonnet path; this module stays free-of dependency on
      anthropic SDK and per-coach prompts.
 
 Wire-up: TFT vision (`tft/tft_vision_reader.py`) is the primary consumer;
 the audit note tracks it as broken post-2026-04-19 migration. Until that
-is restored, this module is unused — kept ready so the routing decision
+is restored, this module is unused - kept ready so the routing decision
 is in one place when it goes live.
 """
 from __future__ import annotations

@@ -2,23 +2,23 @@
 
 Two layers:
 
-* ``get_ult_casts_per_sec`` (s145, 2026-05-05) — R-only path used by
+* ``get_ult_casts_per_sec`` (s145, 2026-05-05) - R-only path used by
   Malignance Hatefog to convert ult cast frequency into a DPS-time proc
   rate. Reads ``data/daemon_slayer/ult_cast_rates.json``. Predates the
   Phase 4b spell-rate plumbing; kept for backward compat.
-* ``get_spell_casts_per_sec`` (s178, 2026-05-12 — Phase 4b) — full
+* ``get_spell_casts_per_sec`` (s178, 2026-05-12 - Phase 4b) - full
   Q/W/E/R surface used by ``ability_dps.compute_ability_dps()``. Reads
   ``data/daemon_slayer/spell_cast_rates.json``. Same shape and fallback
   chain, expanded to four keys.
 
 Both files are derived from ``rewind_history.db.participants.spell[1-4]_casts
 / matches.game_duration_s`` and refresh via ``scripts/build_spell_cast_rates.py``
-(new in Phase 4b — supersedes the s145 ad-hoc query).
+(new in Phase 4b - supersedes the s145 ad-hoc query).
 
 Fallback chain (both functions):
   champion+mode → champion global → dataset global_fallback → 0.0
 
-Returns 0.0 only when the JSON is missing entirely — safe no-op for any
+Returns 0.0 only when the JSON is missing entirely - safe no-op for any
 proc that multiplies by this value.
 """
 from __future__ import annotations
@@ -33,7 +33,7 @@ _SPELL_RATE_FILE = _DATA_ROOT / "spell_cast_rates.json"
 
 # Per-spell global fallback when even the file's global_fallback is missing.
 # Roughly matches the s145 ult-only dataset median; Phase 4b's broader
-# Q/W/E/R median is ~0.05/0.03/0.04/0.007 — close enough that pinning the
+# Q/W/E/R median is ~0.05/0.03/0.04/0.007 - close enough that pinning the
 # legacy 0.0073 here keeps R-only Malignance behavior identical.
 _LEGACY_GLOBAL_FALLBACK = 0.0073
 
@@ -83,7 +83,7 @@ def reset_cache() -> None:
 def get_ult_casts_per_sec(champion_name: str, mode: str) -> float:
     """Return median ult casts/sec for champion+mode.
 
-    Backward-compat shim — predates the Phase 4b spell-rate file. Reads
+    Backward-compat shim - predates the Phase 4b spell-rate file. Reads
     ``ult_cast_rates.json`` directly; falls through to the spell file's
     R-key when the ult file is missing or stale.
 
@@ -119,7 +119,7 @@ def get_spell_casts_per_sec(champion_name: str, key: str, mode: str) -> float:
       3. file-level global_fallback[key]
       4. 0.0 (file missing)
 
-    Raises ``ValueError`` if ``key`` isn't one of Q/W/E/R — passive
+    Raises ``ValueError`` if ``key`` isn't one of Q/W/E/R - passive
     damage isn't covered by this dataset.
     """
     if key not in _SPELL_KEYS:

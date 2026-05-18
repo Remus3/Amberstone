@@ -1,5 +1,5 @@
 # arch: Live Client + LCU + relay IO for game state polling | section=vision | frozen=no
-"""game_reader.poller — Live Client / LCU / vision-relay IO layer.
+"""game_reader.poller - Live Client / LCU / vision-relay IO layer.
 
 Holds the connectivity primitives for `GameReader`:
   - Relay path: vision server caches Game-PC's localhost Live Client API
@@ -8,7 +8,7 @@ Holds the connectivity primitives for `GameReader`:
   - Direct path: fallback when the relay snapshot is stale or absent.
   - LCU lockfile auth for champ-select reads.
 
-`_PollerMixin` is mixed into `GameReader` (`game_reader.__init__`) — methods
+`_PollerMixin` is mixed into `GameReader` (`game_reader.__init__`) - methods
 freely call into `_NormalizerMixin` (e.g. `self._process_game`) via MRO.
 """
 
@@ -60,7 +60,7 @@ class _PollerMixin:
     ]
 
     # ------------------------------------------------------------------
-    # Public — call from overlay's poll loop
+    # Public - call from overlay's poll loop
     # ------------------------------------------------------------------
 
     def _try_relay(self):
@@ -101,7 +101,7 @@ class _PollerMixin:
         """Read game_id from the LCU relay on the vision server.
 
         Returns '' if the relay is stale, unavailable, or game_id not yet
-        set (e.g. phase != InProgress). No caching — the vision server
+        set (e.g. phase != InProgress). No caching - the vision server
         already caches the last upload-lcu payload.
         """
         try:
@@ -135,7 +135,7 @@ class _PollerMixin:
             self.is_in_game = True
             self._read_error_count = 0
             return self._process_game(relay_raw)
-        # Relay says authoritatively "no game" — skip the direct API
+        # Relay says authoritatively "no game" - skip the direct API
         # attempt (Riot's :2999 binds localhost-only on Game-PC and only
         # times out from Legion). This used to spam ~700 timeout warnings
         # per day during client mode. Reset error counter too: the relay's
@@ -184,7 +184,7 @@ class _PollerMixin:
     def _warn_once(self, msg: str):
         """Rate-limited warning. Direct-API timeouts are EXPECTED post-2026-04-19
         migration whenever the relay snapshot momentarily ages past 12s
-        (jitter, Game-PC contention) — the next relay tick recovers within 1-2s.
+        (jitter, Game-PC contention) - the next relay tick recovers within 1-2s.
         Demote to DEBUG so the log doesn't fill with cosmetic warnings; only
         promote to WARNING after a sustained outage (~5 minutes of failures)."""
         count = getattr(self, "_read_error_count", 0) + 1
@@ -217,7 +217,7 @@ class _PollerMixin:
         if not result:
             return None
 
-        # eventdata structure differs from allgamedata — normalise
+        # eventdata structure differs from allgamedata - normalise
         ev = result.get("events")
         if isinstance(ev, dict) and "Events" not in ev:
             result["events"] = {"Events": list(ev.values())[0] if ev else []}

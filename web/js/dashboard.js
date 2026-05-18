@@ -1,4 +1,4 @@
-// Riot Commander — Phase 3 dashboard.
+// Riot Commander - Phase 3 dashboard.
 // Subscribes to the supervisor's /push WebSocket relay (which in turn
 // receives file-watcher pushes from agents/agent2_backend/file_ingest.py
 // while the Game-PC Forwarder is still deferred).
@@ -143,7 +143,7 @@
             // AUDIT 2026-04-28 (P-audit4-m04): build the row with
             // createElement + textContent so a future event payload that
             // overrides ts/op/event with HTML can't inject markup. The
-            // dashboard runs in an unsandboxed kiosk-mode Edge — any XSS
+            // dashboard runs in an unsandboxed kiosk-mode Edge - any XSS
             // here can same-origin call /api/* on the supervisor.
             const g = document.createElement("span"); g.className = "ev-glyph"; g.textContent = glyph;
             const t = document.createElement("span"); t.className = "ev-ts";    t.textContent = ts;
@@ -221,11 +221,11 @@
       }
       const d = await resp.json();
       TMODAL.id.textContent = d.id || taskId;
-      TMODAL.op.textContent = d.op || "—";
-      TMODAL.owner.textContent = d.owner_agent != null ? `agent${d.owner_agent}` : "—";
-      TMODAL.status.textContent = d.status || "—";
-      TMODAL.priority.textContent = (d.priority != null) ? String(d.priority) : "—";
-      TMODAL.ts.textContent = d.created_at || "—";
+      TMODAL.op.textContent = d.op || "-";
+      TMODAL.owner.textContent = d.owner_agent != null ? `agent${d.owner_agent}` : "-";
+      TMODAL.status.textContent = d.status || "-";
+      TMODAL.priority.textContent = (d.priority != null) ? String(d.priority) : "-";
+      TMODAL.ts.textContent = d.created_at || "-";
       // Events, newest at top
       TMODAL.events.innerHTML = "";
       const events = (d.events || []).slice().reverse();
@@ -302,7 +302,7 @@
           ADAPT_COPY_BTN.textContent = "NO DATA";
         } else {
           // Clipboard API. On iPad Chrome kiosk this requires a secure
-          // context or user gesture — the button click qualifies.
+          // context or user gesture - the button click qualifies.
           try {
             await navigator.clipboard.writeText(card);
             ADAPT_COPY_BTN.textContent = `COPIED (${payload.chars}c)`;
@@ -580,7 +580,7 @@
         _viewResolveAndApply();
       });
     });
-    // Prominent ↻ AUTO pill — clears the manual override in one click.
+    // Prominent ↻ AUTO pill - clears the manual override in one click.
     const autoPill = document.getElementById("view-auto-pill");
     if (autoPill) autoPill.addEventListener("click", () => {
       _viewSaveManual(null);
@@ -629,13 +629,13 @@
     const hashView = _viewFromHash();
     const manual = hashView || _VIEW.manual;
     if (manual) {
-      // Manual sticky — apply it
+      // Manual sticky - apply it
       applyView(manual);
       // Banner if auto wants to promote to an urgent target we're not on
       if (_viewIsUrgent(auto) && auto !== manual && auto !== _VIEW.bannerDismissed) {
         _viewBannerShow(auto,
           (auto === "lobby" ? "Champ Select active" : "Game in progress")
-          + " — switch to " + (VIEW_LABELS[auto] || auto) + "?");
+          + " - switch to " + (VIEW_LABELS[auto] || auto) + "?");
       } else {
         _viewBannerHide();
       }
@@ -658,11 +658,11 @@
 
   // Auto-fit text into a box by shrinking font-size until content height
   // fits, or min is reached. Used on the big headline texts so long
-  // coach output never gets ellipsized — the user-stated requirement is
+  // coach output never gets ellipsized - the user-stated requirement is
   // "never truncated or cutoff or snipped words". Cost ≤0.5ms per call.
   function fitText(elm, text, { max = 48, min = 16, step = 2, lines = null } = {}) {
     if (!elm) return;
-    // Idempotency guard — every state envelope (~3s) re-calls this with the
+    // Idempotency guard - every state envelope (~3s) re-calls this with the
     // same coach text. Without this check, we reset fontSize to `max` and
     // walk down again on every tick, which the user perceives as the big
     // text periodically flashing larger. Key includes max/min/lines so a
@@ -671,12 +671,12 @@
     if (elm.dataset.fitKey === fitKey) return;
     elm.dataset.fitKey = fitKey;
     elm.textContent = text;
-    if (!text || text === "—") return;
+    if (!text || text === "-") return;
     // Reset to max, then walk down. Browsers batch the layout reads.
     elm.style.fontSize = max + "px";
     let size = max;
     // Height budget. When `lines` is supplied, the budget scales WITH the
-    // font — shrinking the font only reduces the budget proportionally, so
+    // font - shrinking the font only reduces the budget proportionally, so
     // fitText must keep shrinking until text actually fits in that many
     // lines (rather than sneaking a 3rd line in at a smaller font because
     // the static clientHeight allowed it). 1.15 covers line-height: 1.1
@@ -697,7 +697,7 @@
 
   // logLine became a no-op when the Event Log panel was replaced with
   // the Adaptation panel in round 8. Kept as a stub so existing
-  // call-sites don't break — route to console if useful for debugging.
+  // call-sites don't break - route to console if useful for debugging.
   function logLine(src, body, cls) {
     // console.debug(`[${src}]`, body);
   }
@@ -733,7 +733,7 @@
     RN.action.title = "click to copy the coach's call";
     RN.action.addEventListener("click", () => {
       const text = RN.action.dataset.raw || RN.action.textContent || "";
-      if (!text || text === "—") return;
+      if (!text || text === "-") return;
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(() => {
           RN.action.classList.add("copied");
@@ -768,7 +768,7 @@
       if (!items.length) {
         const li = document.createElement("li");
         li.className = "ww-empty";
-        li.textContent = "—";
+        li.textContent = "-";
         ul.appendChild(li);
         return;
       }
@@ -798,11 +798,11 @@
     if (state === "alert") icon.classList.add("alert");
     else if (state === "warn") icon.classList.add("warn");
     // Label: short glyph + optional count ("⟳", "⟳ 3L", "⟳ SLUMP")
-    const tag = safe(p.digest_label) || (state === "none" ? "—" : state.toUpperCase());
+    const tag = safe(p.digest_label) || (state === "none" ? "-" : state.toUpperCase());
     label.textContent = tag;
     icon.title = safe(p.digest_tooltip) || "cross-session digest";
     // Populate popout fields from the same payload.
-    const setd = (id, v) => { const e = el(id); if (e) e.textContent = safe(v) || "—"; };
+    const setd = (id, v) => { const e = el(id); if (e) e.textContent = safe(v) || "-"; };
     setd("dig-state",      p.digest_state_long);
     setd("dig-streak",     p.digest_streak);
     setd("dig-recent",     p.digest_recent);
@@ -906,7 +906,7 @@
     const e = safe(p.game_sense_early);
     const m = safe(p.game_sense_mid);
     const l = safe(p.game_sense_late);
-    const hasAny = [e, m, l].some(v => v && v !== "—");
+    const hasAny = [e, m, l].some(v => v && v !== "-");
     gsBlock.style.display = hasAny ? "" : "none";
     if (!hasAny) return;
     const triples = [
@@ -918,12 +918,12 @@
       const wEl = el(wordId);
       const bEl = el(blurbId);
       if (wEl) {
-        wEl.textContent = (word || "—").toUpperCase();
+        wEl.textContent = (word || "-").toUpperCase();
         wEl.className = "game-sense-word " + _valenceClass(word);
       }
       if (bEl) bEl.textContent = safe(blurb) || "";
     }
-    // Trend line — last N matches aggregate. Coach-emitted string.
+    // Trend line - last N matches aggregate. Coach-emitted string.
     const trendEl = el("gs-trend");
     if (trendEl) {
       const trend = safe(p.game_sense_trend);
@@ -935,12 +935,12 @@
   // ── STATS panel renderer ─────────────────────────────────────────
   // Populates the in-game STATS view (replaces Adaptation for in-game
   // modes). Each field reads a specific payload key; when the coach hasn't
-  // emitted that field yet, the placeholder "—" stays. Coach-side work
+  // emitted that field yet, the placeholder "-" stays. Coach-side work
   // to populate these from live-client + Riot API is a separate pass.
   //
   // Level breakdown math (Lane/Jungle and Jungle Camp rows):
   // Both rows compute independently from p.xp_to_next and don't influence
-  // each other — they show parallel paths to the next level (take lane
+  // each other - they show parallel paths to the next level (take lane
   // minions OR jungle camps, not a mix).
   //
   // Lane minion XP (mid-game approximation, patch-independent enough):
@@ -972,31 +972,31 @@
   function renderStats(p) {
     if (!p) return;
     const $ = id => el(id);
-    const setv = (id, v) => { const e = $(id); if (e) e.textContent = v == null || v === "" ? "—" : v; };
+    const setv = (id, v) => { const e = $(id); if (e) e.textContent = v == null || v === "" ? "-" : v; };
     // LANING PHASE
-    // Level row: "Ln — need X xp"
+    // Level row: "Ln - need X xp"
     if (p.level != null && p.xp_to_next != null) {
-      setv("st-level", `L${p.level} — need ${p.xp_to_next} xp`);
+      setv("st-level", `L${p.level} - need ${p.xp_to_next} xp`);
     } else if (p.level != null) {
       setv("st-level", `L${p.level}`);
     } else {
-      setv("st-level", "—");
+      setv("st-level", "-");
     }
-    // Two independent breakdowns below Level — lane minions vs jungle camps.
+    // Two independent breakdowns below Level - lane minions vs jungle camps.
     // Neither influences the other; both re-derive from the same xp_to_next.
     const brk = _levelBreakdowns(p.xp_to_next);
     setv("st-level-lane",   brk.lane);
     setv("st-level-jungle", brk.jungle);
     setv("st-cannon",       p.cannon_cs_summary);
-    // Spike hit + Next spike collapsed (2026-04-24) — power-spike status
+    // Spike hit + Next spike collapsed (2026-04-24) - power-spike status
     // now carries the next-item spike hint appended after the level-hit
     // summary so one row covers both views.
     {
       const sh = safe(p.powerspike_status) || "";
       const ns = safe(p.next_spike) || "";
       let v = sh;
-      if (ns && ns !== "—") v = sh ? `${sh} · ${ns}` : ns;
-      setv("st-spike-status", v || "—");
+      if (ns && ns !== "-") v = sh ? `${sh} · ${ns}` : ns;
+      setv("st-spike-status", v || "-");
     }
     setv("st-cs-at-10",     p.cs_at_10);
     setv("st-csd-15",       p.csd_at_15);
@@ -1020,15 +1020,15 @@
     setv("st-cc",           p.cc_score_summary);
     setv("st-heal",         p.heal_shield_summary);
     setv("st-peel",         p.peel_on_carry);
-    // Alive/Dead collapsed — two lines worth of info ("28s dead" +
+    // Alive/Dead collapsed - two lines worth of info ("28s dead" +
     // "98% alive") on one row so the reader sees the death cost and
     // life ratio together.
     {
       const td = safe(p.time_dead_summary) || "";
       const ta = safe(p.time_alive_pct) || "";
       let v = td;
-      if (ta && ta !== "—") v = td ? `${td} · alive ${ta}` : `alive ${ta}`;
-      setv("st-time-dead", v || "—");
+      if (ta && ta !== "-") v = td ? `${td} · alive ${ta}` : `alive ${ta}`;
+      setv("st-time-dead", v || "-");
     }
     setv("st-skillshot",    p.skillshot_summary);
     setv("st-combo-hit",    p.combo_hit_rate);
@@ -1070,27 +1070,27 @@
     setv("st-mastery",      p.mastery_summary);
     setv("st-runes",        p.runes_chosen);
     setv("st-spike-map",    p.power_spike_map);
-    // Matchup row collapsed (2026-04-24 reorganize) — both history and
+    // Matchup row collapsed (2026-04-24 reorganize) - both history and
     // counter warning surface on the same line so the eye sees "this
     // opponent, here's the record + threat" in one glance.
     const mh = safe(p.matchup_history) || "";
     const cw = safe(p.counter_warning) || "";
     let matchup = mh;
-    if (cw && cw !== "—") matchup = mh ? `${mh} · ${cw}` : cw;
-    setv("st-matchup", matchup || "—");
+    if (cw && cw !== "-") matchup = mh ? `${mh} · ${cw}` : cw;
+    setv("st-matchup", matchup || "-");
     setv("st-champ-key",    p.champ_key_metric);
     setv("st-keystone",     p.keystone_procs);
     setv("st-rune-adapt",   p.rune_adapt_hint);
     // RANK / SESSION
     setv("st-rank",         p.current_rank_lp);
     setv("st-lp-forecast",  p.lp_forecast);
-    // Session row collapsed — LP delta + session duration on one line.
+    // Session row collapsed - LP delta + session duration on one line.
     {
       const sd = safe(p.lp_session_delta) || "";
       const dur = safe(p.session_duration) || "";
       let v = sd;
-      if (dur && dur !== "—") v = sd ? `${sd} · ${dur}` : dur;
-      setv("st-session-delta", v || "—");
+      if (dur && dur !== "-") v = sd ? `${sd} · ${dur}` : dur;
+      setv("st-session-delta", v || "-");
     }
     setv("st-gold-diff-trend", p.team_gold_diff_trend);
     setv("st-promo",        p.promo_status);
@@ -1100,15 +1100,15 @@
     setv("st-benchmark",    p.rank_benchmark);
     setv("st-improve",      p.improvement_target);
     setv("st-chat-tone",    p.chat_tone);
-    // Perf row collapsed — strength (+) and weakness (−) of the game
+    // Perf row collapsed - strength (+) and weakness (−) of the game
     // in one line, sign-prefixed so the eye reads both as a unit.
     {
       const sg = safe(p.strength_of_game) || "";
       const wg = safe(p.weakness_of_game) || "";
       const parts = [];
-      if (sg && sg !== "—") parts.push(`+ ${sg}`);
-      if (wg && wg !== "—") parts.push(`− ${wg}`);
-      setv("st-strength", parts.join("   ") || "—");
+      if (sg && sg !== "-") parts.push(`+ ${sg}`);
+      if (wg && wg !== "-") parts.push(`− ${wg}`);
+      setv("st-strength", parts.join("   ") || "-");
     }
     setv("st-adjust",       p.adjustment_rate);
     setv("st-tilt",         p.tilt_meter);
@@ -1126,9 +1126,9 @@
     const arena = isArenaPayload(p);
     let rawAction = safe(p.action);
     // DEAD state: the coral `DEAD Ns` pill in the header is the authoritative
-    // countdown. When the coach echoes "DEAD — 18s" as the action headline,
+    // countdown. When the coach echoes "DEAD - 18s" as the action headline,
     // rewrite so the big text carries the 1-line next-action (headline) and
-    // the sub-headline carries the 1-line why/threat — matching the live-
+    // the sub-headline carries the 1-line why/threat - matching the live-
     // game pattern (action = what to do, immediate = detail). Both kept to
     // 1 sentence so the panel reads without duplication.
     let overriddenImmediate = null;
@@ -1148,7 +1148,7 @@
     }
     const hasAction = !!rawAction;
     const klass = hasAction ? classifyAction(rawAction) : "empty";
-    // Detect content change for fresh-state flash — only pulse when the
+    // Detect content change for fresh-state flash - only pulse when the
     // headline actually changes, not on every re-emit of the same text.
     const prevAction = RN.action.dataset.raw || "";
     if (hasAction && rawAction !== prevAction) {
@@ -1159,7 +1159,7 @@
     }
     RN.action.dataset.raw = rawAction;
     RN.action.className = "action action-" + klass;
-    // Priority glyph prefix — a quick shape-read for peripheral vision.
+    // Priority glyph prefix - a quick shape-read for peripheral vision.
     // Skip the glyph when we have no action text to avoid a lonely "►".
     // Also skip if the fixture/coach already starts the string with a
     // matching glyph, to avoid double "⚠ ⚠ DEFEAT".
@@ -1168,13 +1168,13 @@
                 :                      "► ";
     const alreadyGlyphed = hasAction && /^[⚠✓►•⚡⛔🚨✳▶◉→]/.test(rawAction);
     // Fixed-height .action slot with CSS line-clamp (see .action in
-    // dashboard.css). No fitText shrinking — font stays at the CSS-defined
+    // dashboard.css). No fitText shrinking - font stays at the CSS-defined
     // 48-56px, long content ellipsizes at line 2. Short content sits at
     // the top of the fixed 130px box; the box itself never changes size
     // so subsequent rows stay pinned across fixtures.
     RN.action.textContent = hasAction
       ? (alreadyGlyphed ? rawAction : glyph + rawAction)
-      : "—";
+      : "-";
     // Arena: in pregame (no round yet / no round_strategy), surface the
     // full pregame card as the immediate content. Once the live coach
     // starts writing round_strategy, swap to that.
@@ -1182,8 +1182,8 @@
       const liveStrategy = safe(p.round_strategy);
       const hasLiveRound = (typeof p.round === "number" && p.round > 0) || !!liveStrategy;
       const imm = hasLiveRound
-        ? (liveStrategy || safe(p.immediate) || "—")
-        : (safe(p.pregame) || safe(p.immediate) || "—");
+        ? (liveStrategy || safe(p.immediate) || "-")
+        : (safe(p.pregame) || safe(p.immediate) || "-");
       RN.immediate.classList.toggle("is-pregame", !hasLiveRound && !!safe(p.pregame));
       RN.immediate.textContent = imm;
     } else {
@@ -1192,15 +1192,15 @@
       // single-sentence "why" so headline and sub don't duplicate each other.
       const immText = overriddenImmediate !== null
         ? overriddenImmediate
-        : (safe(p.immediate) || safe(p.pregame) || "—");
+        : (safe(p.immediate) || safe(p.pregame) || "-");
       RN.immediate.textContent = immText;
     }
-    RN.risk.textContent   = safe(p.risk) || "—";
-    RN.fight.textContent  = safe(p.fight_rule) || "—";
+    RN.risk.textContent   = safe(p.risk) || "-";
+    RN.fight.textContent  = safe(p.fight_rule) || "-";
     // Reset item: if the text has a "(Ng)" price tag, color-code by
     // whether the current gold clears it. "Dark Seal + boots (950g)".
     if (RN.reset) {
-      const resetTxt = safe(p.reset_item) || "—";
+      const resetTxt = safe(p.reset_item) || "-";
       const mg = /\((\d+)\s*g\)/.exec(resetTxt);
       RN.reset.textContent = resetTxt;
       RN.reset.classList.remove("can-afford", "short-gold");
@@ -1213,10 +1213,10 @@
     // (who to focus) since that's the single highest-value per-fight datum.
     if (arena) {
       const tgt = safe(p.target_priority);
-      RN.reset.textContent = tgt || safe(p.anvil_advice) || "—";
+      RN.reset.textContent = tgt || safe(p.anvil_advice) || "-";
       RN.reset.parentElement.firstElementChild.textContent = "Target";
     } else {
-      RN.reset.textContent = safe(p.reset_item) || "—";
+      RN.reset.textContent = safe(p.reset_item) || "-";
       RN.reset.parentElement.firstElementChild.textContent = "Base";
     }
     state.lastTouch.right_now = Date.now() / 1000;
@@ -1232,7 +1232,7 @@
   //   30 – 65 %     wave-mid   (potion green)  → TRADE
   //   65 – 80 %     wave-warn  (gold)          → CRASH
   //   >= 80 %       wave-bad   (vibrant red)   → DISENGAGE
-  //   null / —      wave-dim   (faint)         (no suffix)
+  //   null / -      wave-dim   (faint)         (no suffix)
   function _classifyWavePct(pct) {
     if (pct == null || isNaN(pct)) return "wave-dim";
     if (pct >= 80) return "wave-bad";
@@ -1256,13 +1256,13 @@
   }
   function _waveLineHtml(lane, pct, isMine) {
     // (2026-04-25) Each lane wrapped in a `.wave-line` block so it
-    // renders as exactly one row (white-space:nowrap) — earlier the
+    // renders as exactly one row (white-space:nowrap) - earlier the
     // <br>-separated inline form let BOT's "50%" wrap to a 4th line
     // when the inline span sat at a sub-pixel-tight width. Marker is
     // a fixed-width slot so the lane labels TOP/MID/BOT line up by
     // column whether or not the ▶ is present.
     const cls    = _classifyWavePct(pct);
-    const pctTxt = (pct == null || isNaN(pct)) ? "—" : `${Math.round(pct)}%`;
+    const pctTxt = (pct == null || isNaN(pct)) ? "-" : `${Math.round(pct)}%`;
     const verb   = _waveVerb(pct);
     // Each segment in its own fixed-width span so the four columns
     // (label / pct / arrow / verb) lock to identical X positions
@@ -1294,13 +1294,13 @@
       // Single-lane modes: just the percentage with classification.
       const pct = p.wave_pct;
       if (pct == null) {
-        NX.wave.textContent = safe(p.wave) || "—";
+        NX.wave.textContent = safe(p.wave) || "-";
       } else {
         const cls = _classifyWavePct(pct);
         NX.wave.innerHTML = `<span class="wave-pct ${cls}">${Math.round(pct)}%</span>`;
       }
     } else {
-      NX.wave.textContent = safe(p.wave) || "—";
+      NX.wave.textContent = safe(p.wave) || "-";
     }
   }
 
@@ -1311,17 +1311,17 @@
       // ADVICE layout for aftergame / client. Headline reads as the
       // coach's session take; body rows relabel to "Objective" (stays),
       // "Key Points to Review" (3 bullets), "What to Review in Clips".
-      NX.next.textContent        = safe(p.advice_headline) || safe(p.next) || safe(p.action) || "—";
-      NX.objective.textContent   = safe(p.objective) || safe(p.advice_objective) || "—";
-      NX.positioning.textContent = safe(p.key_points_review) || safe(p.positioning) || "—";
-      NX.wave.textContent        = safe(p.clips_review) || safe(p.wave) || "—";
+      NX.next.textContent        = safe(p.advice_headline) || safe(p.next) || safe(p.action) || "-";
+      NX.objective.textContent   = safe(p.objective) || safe(p.advice_objective) || "-";
+      NX.positioning.textContent = safe(p.key_points_review) || safe(p.positioning) || "-";
+      NX.wave.textContent        = safe(p.clips_review) || safe(p.wave) || "-";
       const rows = NX.root.querySelectorAll(".kv span:first-child");
       if (rows[0]) rows[0].textContent = "Objective";
       if (rows[1]) rows[1].textContent = "Key Points";
       if (rows[2]) rows[2].textContent = "Clips";
     } else if (state.mode === "aram" || state.mode === "brawl") {
       // ARAM/Brawl/Mayhem coach (coaches/aram_coach.py) doesn't emit
-      // next/objective/positioning/wave — those rows would all show "—".
+      // next/objective/positioning/wave - those rows would all show "-".
       // Map to fields the coach DOES emit so the panel actually fires.
       // 2026-04-26 user-reported regression mid-game.
       // Headline: reset_item is the "what's next" call (build, recall,
@@ -1330,14 +1330,14 @@
       const _action = safe(p.action) || "";
       let _head = _resetTxt;
       if (!_head || _head === _action) _head = safe(p.next) || _action || "";
-      NX.next.textContent = _head || "—";
-      // Objective row → item rationale (item_extra) — long-form per-item
+      NX.next.textContent = _head || "-";
+      // Objective row → item rationale (item_extra) - long-form per-item
       // build context. Truncated by CSS line-clamp.
-      NX.objective.textContent = safe(p.item_extra) || safe(p.objective) || "—";
+      NX.objective.textContent = safe(p.item_extra) || safe(p.objective) || "-";
       // Positioning row → HP pack status (TOP / BOT availability). Coach
       // emits hp_packs as [top:bool, bot:bool].
       const hpPacks = Array.isArray(p.hp_packs) ? p.hp_packs : null;
-      let hpLine = "—";
+      let hpLine = "-";
       if (hpPacks && hpPacks.length >= 2) {
         const tag = (b) => (b ? "✓" : "✗");
         hpLine = `TOP ${tag(hpPacks[0])} · BOT ${tag(hpPacks[1])}`;
@@ -1345,10 +1345,10 @@
         hpLine = safe(p.positioning);
       }
       NX.positioning.textContent = hpLine;
-      // Wave row → wave_pct (int 0-100) — minion wave progress.
+      // Wave row → wave_pct (int 0-100) - minion wave progress.
       const wp = p.wave_pct;
       NX.wave.textContent = (typeof wp === "number")
-        ? `${wp}% to next wave` : (safe(p.wave) || "—");
+        ? `${wp}% to next wave` : (safe(p.wave) || "-");
       const rows = NX.root.querySelectorAll(".kv span:first-child");
       if (rows[0]) rows[0].textContent = "Build";
       if (rows[1]) rows[1].textContent = "HP Packs";
@@ -1357,10 +1357,10 @@
       // Headline: round # + rank + alive teams, since those drive every decision.
       const rd = p.round != null ? `Round ${p.round}` : "";
       const rk = p.rank != null && p.rank !== "?" ? `#${p.rank}/${p.alive_teams || 8}` : "";
-      const head = [rd, rk].filter(Boolean).join(" · ") || safe(p.action) || "—";
+      const head = [rd, rk].filter(Boolean).join(" · ") || safe(p.action) || "-";
       NX.next.textContent = head;
       // Objective → anvil advice (what to buy/take between rounds)
-      NX.objective.textContent   = safe(p.anvil_advice) || "—";
+      NX.objective.textContent   = safe(p.anvil_advice) || "-";
       // Positioning → partner name + synergy one-liner
       NX.positioning.textContent = arenaPartnerLine(p);
       // Wave → camp-phase or next-opponent hint
@@ -1371,7 +1371,7 @@
       if (rows[1]) rows[1].textContent = "Partner";
       if (rows[2]) rows[2].textContent = "Camp/Opp";
     } else {
-      // Fixed font, no shrink. Readability matters more than fit — the
+      // Fixed font, no shrink. Readability matters more than fit - the
       // coach is expected to produce concise, glanceable copy. Hard 2-line
       // cap on headline and 3-line cap on body rows is enforced by CSS
       // -webkit-line-clamp; anything longer gets ellipsized rather than
@@ -1380,14 +1380,14 @@
       // when p.next was empty, which produced an exact echo of the Right
       // Now panel headline (e.g. both saying "FOUNTAIN NOW" while dead).
       // Now we only fall back to p.action if it's strictly different;
-      // otherwise show "—" so the duplication is visible rather than
+      // otherwise show "-" so the duplication is visible rather than
       // pretending two coaching slots have content.
       const _action = safe(p.action) || "";
       let _nextHead = safe(p.next);
       if (!_nextHead || _nextHead === _action) _nextHead = "";
-      NX.next.textContent        = _nextHead || "—";
-      NX.objective.textContent   = safe(p.objective)   || "—";
-      NX.positioning.textContent = safe(p.positioning) || "—";
+      NX.next.textContent        = _nextHead || "-";
+      NX.objective.textContent   = safe(p.objective)   || "-";
+      NX.positioning.textContent = safe(p.positioning) || "-";
       // (2026-04-25) Wave state: SR shows all-three-lanes per row with a
       // ▶ marker on the player's lane and color-coded percentages
       // matching coach-prompt thresholds. Other modes (ARAM single-lane,
@@ -1401,11 +1401,11 @@
     state.lastTouch.next = Date.now() / 1000;
   }
 
-  // Item icon index — lazy-loaded once from /data/items_index.json.
+  // Item icon index - lazy-loaded once from /data/items_index.json.
   // Shape: { version: "16.8.1", byName: {"ludenscompanion": "6655", ...}, byId: {...} }
   const ITEMS = { ready: false, version: "16.8.1", byName: {}, byId: {} };
   // Race fix (2026-04-24): renderItemBuild can run before the async
-  // items_index fetch completes — especially in sim/dev-preview mode
+  // items_index fetch completes - especially in sim/dev-preview mode
   // where FakeSocket fires its state envelope on next tick. When that
   // happens every tile gets `.no-icon` because _resolveItemId returns
   // null for an empty byName. Stash the last state so the ITEMS loader
@@ -1501,10 +1501,10 @@
     container.dataset.tilesSig = sig;
     container.innerHTML = "";
     if (!names.length) {
-      container.textContent = "—";
+      container.textContent = "-";
       return;
     }
-    const CAP = opts.cap || 6;   // glance-read cap — extra tiles summarized as "+N"
+    const CAP = opts.cap || 6;   // glance-read cap - extra tiles summarized as "+N"
     const shown = names.slice(0, CAP);
     const extra = names.length - shown.length;
     const ver = ITEMS.version;
@@ -1513,7 +1513,7 @@
       tile.className = "item-tile";
       const iid = _resolveItemId(name);
       // Tooltip: item name + cost + (if provided) coach's reason for the
-      // build choice. Reasons are looked up from opts.reasons[name] — the
+      // build choice. Reasons are looked up from opts.reasons[name] - the
       // coach populates this via p.item_build_reasons (or equivalent)
       // when available; otherwise the tooltip just shows name + cost.
       const reason = opts.reasons && opts.reasons[name];
@@ -1521,7 +1521,7 @@
       const parts = [name];
       if (cost) parts.push(cost);
       if (reason) parts.push(reason);
-      tile.title = parts.join(" — ");
+      tile.title = parts.join(" - ");
       const iconWrap = document.createElement("div");
       iconWrap.className = "item-icon";
       if (iid) {
@@ -1564,7 +1564,7 @@
           if (pct >= 1) tile.classList.add("can-afford");
           // Gold caption: "need N" = remaining gold to complete the buy.
           // TODO: subtract owned sub-item values once items_recipes.json is
-          // generated — for now N = cost − currentGold, clamped to 0 for
+          // generated - for now N = cost − currentGold, clamped to 0 for
           // the can-afford case.
           const need = Math.max(0, Math.round(cost - opts.currentGold));
           const cap = document.createElement("div");
@@ -1647,13 +1647,13 @@
     const arena = isArenaPayload(p);
     // Update header label with champion + active variant.
     _updateItemBuildHeader(p.champion, state.mode);
-    // In-game multi-build picker (2026-04-26 user request) — mirrors the
+    // In-game multi-build picker (2026-04-26 user request) - mirrors the
     // cs-build-list inside ITEM BUILD, lets the user hot-swap the item
     // set mid-game. Runes + summoners are locked at game start so we
     // only push items; the LCU agent updates the recommended shop order.
     _ibMaybeRenderBuilds(p);
     const owned = _splitItemList(p.items_display || p.items || p.owned_items, false);
-    // SR coach doesn't emit item_build — fall back to sr_items (liveclient-derived
+    // SR coach doesn't emit item_build - fall back to sr_items (liveclient-derived
     // build path overlaid by _state_builder) when available.
     const _srItemPath = Array.isArray(p.sr_items)
       ? p.sr_items.filter(i => i && i.next).map(i => i.name)
@@ -1679,18 +1679,18 @@
     // Coach can emit per-item reasons via p.item_build_reasons (a map from
     // item name → short one-liner). Passed to the Recommended tiles so
     // hover shows the "why this next" coaching note. Owned tiles just
-    // show name + cost (no reason — it's already bought).
+    // show name + cost (no reason - it's already bought).
     const itemReasons = (p && p.item_build_reasons) || {};
     renderItemTiles(IB.owned, owned, { withArrows: false });
     renderItemTiles(IB.recommended, pathDedup, {
       withArrows: true, currentGold: p.gold, reasons: itemReasons,
     });
-    // Augments pill (header row 2) — always-visible per the static-pill
+    // Augments pill (header row 2) - always-visible per the static-pill
     // rule. Content = comma-separated list of augments the player
     // currently possesses (not advice). Mode-gated:
     //   arena → always has augments (3 picks per game)
     //   aram  → assumes Mayhem (user's default ARAM; internal mode code is
-    //           KIWI — see core/game_snapshot.py where KIWI → MODE_ARAM)
+    //           KIWI - see core/game_snapshot.py where KIWI → MODE_ARAM)
     //   tft   → Set 17+ adds gods + augments; gated later when TFT returns
     //   other → static "Mode does not support Augments" placeholder
     if (IB.augments) {
@@ -1709,7 +1709,7 @@
       IB.augments.classList.toggle("no-support", !modeSupportsAugments);
       IB.augments.title = modeSupportsAugments ? "" : content;
     }
-    // DS Engine picks — daemon_slayer_picks: [{id, name, delta_dps, gold}, ...]
+    // DS Engine picks - daemon_slayer_picks: [{id, name, delta_dps, gold}, ...]
     const dsPicks = Array.isArray(p.daemon_slayer_picks) ? p.daemon_slayer_picks : [];
     if (IB.dsBlock) {
       if (dsPicks.length) {
@@ -1739,7 +1739,7 @@
     "Nami":     "Nami Q bubble = free headshot. Stay in her E AS-buff range during trades.",
     "Lulu":     "Lulu W polymorph = free headshot. Stay in her shield during all-ins.",
     "Janna":    "Janna shield bonus AD on your autos. R disengage lets you kite-reset any fight.",
-    "Soraka":   "Sustain pair — poke with R + traps, she globals you at 30% HP. Avoid all-ins.",
+    "Soraka":   "Sustain pair - poke with R + traps, she globals you at 30% HP. Avoid all-ins.",
     "Seraphine":"Triple-note stun = full burst window. Stack her shield then all-in.",
   };
   function arenaDetectPartner(p) {
@@ -1757,25 +1757,25 @@
       if (m) {
         // Pregame header is all-caps ("PARTNER: LUX"); combo table is title-case.
         const name = m[1][0].toUpperCase() + m[1].slice(1).toLowerCase();
-        return `${name} (planned) — ${CAITLYN_PARTNER_COMBOS[name] || "synergy loads at game start."}`;
+        return `${name} (planned) - ${CAITLYN_PARTNER_COMBOS[name] || "synergy loads at game start."}`;
       }
-      return "—";
+      return "-";
     }
     const combo = CAITLYN_PARTNER_COMBOS[partner] || "Stay 550-600u back. Peel for each other.";
-    return `${partner} — ${combo}`;
+    return `${partner} - ${combo}`;
   }
   function arenaWaveLine(p) {
-    if (p.camp_phase) return "CAMP — buy/upgrade + heal";
-    if (!Array.isArray(p.teams)) return "—";
+    if (p.camp_phase) return "CAMP - buy/upgrade + heal";
+    if (!Array.isArray(p.teams)) return "-";
     const nxt = p.teams.find(t => t && t.is_next_opponent);
     if (nxt) {
       const hp = nxt.hp_pct != null ? ` (${nxt.hp_pct}% HP)` : "";
       return `vs ${nxt.name || nxt.champion || "?"}${hp}`;
     }
-    return "—";
+    return "-";
   }
 
-  // Live game-time tracker — extrapolates current game-time from the
+  // Live game-time tracker - extrapolates current game-time from the
   // last-received envelope so objective countdowns tick every second
   // without needing a server push each time.
   state.gameClock = { startedAt: 0, anchorS: 0, raw: "" };
@@ -1801,7 +1801,7 @@
     if (phase !== _lastPhase) {
       _lastPhase = phase;
       document.body.dataset.phase = phase;
-      // Mark transition — briefly pulse the marker + announce via status.
+      // Mark transition - briefly pulse the marker + announce via status.
       if (marker && _lastPhase) {
         marker.classList.remove("phase-transition");
         void marker.offsetWidth;
@@ -1869,11 +1869,11 @@
       tile.classList.add("no-icon");
       tile.textContent = (name || "?")[0];
     }
-    // Target-priority crosshair — the coach's "focus this one" flag.
+    // Target-priority crosshair - the coach's "focus this one" flag.
     if (opts.isTarget) {
       tile.classList.add("target");
     }
-    // Dead overlay — coral ring + respawn timer inside the portrait.
+    // Dead overlay - coral ring + respawn timer inside the portrait.
     if (typeof opts.respawnIn === "number" && opts.respawnIn > 0) {
       tile.classList.add("dead");
       const rt = document.createElement("span");
@@ -1916,7 +1916,7 @@
     return wrap;
   }
 
-  // Tick every second — pull current cd from state.spellCds and update
+  // Tick every second - pull current cd from state.spellCds and update
   // each cell's display. Avoids full strip re-render for just cd change.
   // Cheap no-op when tab is backgrounded.
   function _tickSpellCooldowns() {
@@ -1929,13 +1929,13 @@
       if (rem > 0) {
         rt.textContent = rem;
       } else {
-        // Respawned — remove timer + unflag the dead class on parent tile.
+        // Respawned - remove timer + unflag the dead class on parent tile.
         const tile = rt.closest(".team-tile");
         if (tile) tile.classList.remove("dead");
         rt.remove();
       }
     });
-    // Combined selector — covers ally/enemy tile spells (.tile-spell)
+    // Combined selector - covers ally/enemy tile spells (.tile-spell)
     // AND the user's own header spells (.self-spell).
     document.querySelectorAll(".tile-spell[data-cd-key], .self-spell[data-cd-key]").forEach(cell => {
       const key = cell.dataset.cdKey;
@@ -1944,7 +1944,7 @@
       if (rem > 0) {
         cell.classList.add("on-cd");
         if (label) label.textContent = rem >= 60 ? Math.round(rem/60) + "m" : rem;
-        cell.title = (cell.title.split(" — ")[0]) + ` — ${rem}s`;
+        cell.title = (cell.title.split(" - ")[0]) + ` - ${rem}s`;
       } else {
         // If the cell was on cooldown last tick, briefly flash "ready".
         if (cell.classList.contains("on-cd")) {
@@ -2000,7 +2000,7 @@
   }
 
   // Default spawn-cycle durations per objective (seconds) used as the
-  // progress-bar denominator. Not scientific — Riot timings shift — but
+  // progress-bar denominator. Not scientific - Riot timings shift - but
   // gives a glanceable "how close are we" feel.
   const _OBJ_CYCLE = {
     dragon: 300,  // 5:00 between drakes
@@ -2016,10 +2016,10 @@
     if (elm.id === "mm-atakhan") return "atakhan";
     return null;
   }
-  // Minimap canvas renderer — Zone of Influence (ZOI) + position dots.
+  // Minimap canvas renderer - Zone of Influence (ZOI) + position dots.
   //
   // ZOI: for each pixel, compute net "pressure" = Σ ally_pressure − Σ enemy_pressure.
-  // Each champion contributes a compact-support "bubble" of influence — peaks
+  // Each champion contributes a compact-support "bubble" of influence - peaks
   // at 1 at the champ, falls smoothly to exactly 0 at radius R. Beyond R the
   // champion contributes nothing, so the DMZ (the low-|net| band) visibly
   // fills gaps between bubbles and bulges where opposing bubbles press into
@@ -2046,22 +2046,22 @@
       radius: pf("zoi-R", 0.32),
       // Small deadband around net=0 stays transparent (the "DMZ").
       deadband: pf("zoi-DB", 0.10),
-      // Baseline diagonal bias — top-left to bottom-right split (SR map).
+      // Baseline diagonal bias - top-left to bottom-right split (SR map).
       // Blue base is bot-left, red base is top-right. Champion pressure
       // warps this default. Keep weak so ganks + split-push still read.
       baselineStrength: pf("zoi-BL", 0.55),
     };
   })();
-  // Phase-aware radius — early game champs are lane-contained, late game
+  // Phase-aware radius - early game champs are lane-contained, late game
   // they rotate freely. Called with game_time_s from the state envelope.
   function _zoiRadius(gtS) {
     if (typeof gtS !== "number") return ZOI.radius;
-    if (gtS < 600)  return 0.22;   // <10:00 — tight lanes
-    if (gtS < 1200) return 0.28;   // 10-20 — grouping phase
-    if (gtS < 1800) return 0.34;   // 20-30 — rotations
-    return 0.40;                    // 30+ — pure teamfight / split
+    if (gtS < 600)  return 0.22;   // <10:00 - tight lanes
+    if (gtS < 1200) return 0.28;   // 10-20 - grouping phase
+    if (gtS < 1800) return 0.34;   // 20-30 - rotations
+    return 0.40;                    // 30+ - pure teamfight / split
   }
-  // Compact-support influence bubble. d2 is (dist/R)² — already normalized
+  // Compact-support influence bubble. d2 is (dist/R)² - already normalized
   // by the caller. Outside the bubble (d2 >= 1) the champion contributes
   // nothing, so the DMZ forms naturally in gaps and is pushed/pulled by
   // wherever bubbles actually reach.
@@ -2081,7 +2081,7 @@
     // Team color RGB.
     const myRGB    = myIsRed ? [240, 126, 139] : [138, 140, 240];   // coral vs lavender
     const enemyRGB = myIsRed ? [138, 140, 240] : [240, 126, 139];
-    // Keep weights flat but summable. Radius in normalized units —
+    // Keep weights flat but summable. Radius in normalized units -
     // scales with game phase so late-game teamfights read wider.
     const R = _zoiRadius(gtS);
     const DB = ZOI.deadband;
@@ -2137,7 +2137,7 @@
         // Smooth exponential ramp: light pressure = subtle tint, heavy
         // concentration (3+ champs stacked) = near-cap saturation.
         // Scale chosen so 1 champion at influence radius ≈ half-cap.
-        // Opacity caps tuned for SR underlay — 0.42/0.22 lets the map
+        // Opacity caps tuned for SR underlay - 0.42/0.22 lets the map
         // read through the tint while still clearly team-coded.
         if (net > DB) {
           r = myRGB[0]; g = myRGB[1]; b = myRGB[2];
@@ -2149,7 +2149,7 @@
           r = g = b = 0; a = 0;
         }
         if (edge) {
-          // Boundary line between ally/enemy pressure — a soft gold stripe
+          // Boundary line between ally/enemy pressure - a soft gold stripe
           // that reads against both tinted zones without blend-mode tricks.
           r = 245; g = 184; b = 124; a = 0.75;
         }
@@ -2161,7 +2161,7 @@
       }
     }
     offCtx.putImageData(img, 0, 0);
-    // Upscale with soft interpolation — looks like a gradient, not pixels.
+    // Upscale with soft interpolation - looks like a gradient, not pixels.
     ctx.clearRect(0, 0, W, H);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
@@ -2189,7 +2189,7 @@
     const myColor = myTeam === "red" ? "#F07E8B" : "#8A8CF0";
     const enemyColor = myTeam === "red" ? "#8A8CF0" : "#F07E8B";
 
-    // Drop positions for dead champions — they're not exerting pressure.
+    // Drop positions for dead champions - they're not exerting pressure.
     // *_respawns keys → remaining seconds; >0 = dead, skip contribution.
     const deadE = new Set(Object.entries(p.enemy_respawns || {})
         .filter(([, s]) => typeof s === "number" && s > 0)
@@ -2209,14 +2209,14 @@
     const ctx = posCanvas.getContext("2d");
     const W = posCanvas.width, H = posCanvas.height;
     ctx.clearRect(0, 0, W, H);
-    // Objective spawn markers — approximate SR positions. Draws a small
+    // Objective spawn markers - approximate SR positions. Draws a small
     // translucent icon glyph so the user has map landmarks without the
     // live PNG. ARAM doesn't have these; skip if mode differs.
     if (state.mode === "sr") {
       const marks = [
-        { x: 0.68, y: 0.70, label: "D", color: "rgba(240,126,139,0.55)" },  // Dragon — bot-right river
-        { x: 0.32, y: 0.30, label: "B", color: "rgba(192,139,150,0.55)" },  // Baron — top-left river
-        { x: 0.32, y: 0.30, label: "H", color: "rgba(245,184,124,0.45)", offset: true },  // Herald — same pit pre-20
+        { x: 0.68, y: 0.70, label: "D", color: "rgba(240,126,139,0.55)" },  // Dragon - bot-right river
+        { x: 0.32, y: 0.30, label: "B", color: "rgba(192,139,150,0.55)" },  // Baron - top-left river
+        { x: 0.32, y: 0.30, label: "H", color: "rgba(245,184,124,0.45)", offset: true },  // Herald - same pit pre-20
       ];
       ctx.save();
       ctx.font = "bold 11px Lato, sans-serif";
@@ -2236,7 +2236,7 @@
     function drawDot(x, y, color, isSelf) {
       const cx = Math.round(x * W), cy = Math.round(y * H);
       if (isSelf) {
-        // Champion sight-range halo — ~1200 units on a 15000-unit SR map
+        // Champion sight-range halo - ~1200 units on a 15000-unit SR map
         // ≈ 0.08 normalized. Thin gold stroke + soft glow. Gives the user
         // a "what can I actually see" read without flipping to the minimap.
         const vR = 0.085 * W;
@@ -2315,7 +2315,7 @@
         const d2 = (dx*dx + dy*dy) / (_R * _R);
         netAtSelf -= _bubbleKernel(d2);
       }
-      // ?debug=1 — show ZOI pressure readouts under the legend.
+      // ?debug=1 - show ZOI pressure readouts under the legend.
       if (/[?&]debug=1/.test(location.search)) {
         const dbg = el("zoi-debug");
         if (dbg) {
@@ -2342,7 +2342,7 @@
           zonePill.className = "zone-pill zone-safe";
           document.body.dataset.zone = "safe";
         } else {
-          zoneLabel.textContent = "— DMZ";
+          zoneLabel.textContent = "- DMZ";
           zonePill.className = "zone-pill zone-dmz";
           document.body.dataset.zone = "dmz";
         }
@@ -2428,7 +2428,7 @@
     const nowS = _currentGameTimeS();
     for (const elm of [MM.dragon, MM.baron, MM.herald]) {
       if (!elm) continue;
-      const raw = elm.dataset.raw || "—";
+      const raw = elm.dataset.raw || "-";
       if (nowS == null) { elm.textContent = raw; continue; }
       const target = _extractSpawnTime(raw);
       // Find (or lazy-create) the tick progress bar on the containing .kv row.
@@ -2464,7 +2464,7 @@
       }
     }
   }
-  // Tick every 1s — objective countdowns are the primary live pulse.
+  // Tick every 1s - objective countdowns are the primary live pulse.
   // Skip work entirely when the tab is hidden (iPad battery / CPU).
   setInterval(() => {
     if (document.hidden) return;
@@ -2481,7 +2481,7 @@
     _updateGameClock(p);
     // Coaching-JSON fields surface objective state when the coach has
     // computed it. When absent, keep the placeholder. Fields queried:
-    //   p.dragon_state / p.dragon_stack / p.soul — if the coach computed them
+    //   p.dragon_state / p.dragon_stack / p.soul - if the coach computed them
     //   p.baron_alive / p.baron_timer
     //   p.herald_alive / p.atakhan_state
     //   p.my_tower_hp / p.enemy_tower_hp (ARAM) or towers_us/towers_them (SR)
@@ -2490,12 +2490,12 @@
     // Store the raw state text in data-raw so the countdown tick can
     // re-render from it without a fresh state envelope.
     // Strip "(Cloud taken 12:04)" / "(Chemtech taken 8:30)" style parentheticals
-    // — the kill count + next-spawn line already convey the important bits;
+    // - the kill count + next-spawn line already convey the important bits;
     // the parenthetical just eats horizontal space.
-    const _cleanObj = s => String(s || "—")
+    const _cleanObj = s => String(s || "-")
       .replace(/\s*\([^)]*taken[^)]*\)\s*/gi, " ")
       .replace(/  +/g, " ")
-      .trim() || "—";
+      .trim() || "-";
     for (const [elm, val] of [
       [MM.dragon,  _cleanObj(p.dragon_state  || p.dragon)],
       [MM.baron,   _cleanObj(p.baron_state   || p.baron)],
@@ -2514,17 +2514,17 @@
     renderGoldDiff(p);
     renderMinimapCanvases(p);
     // Tower count / team kills / game time chips were removed from the
-    // Map State panel 2026-04-23 — those signals live on the header row 2.
+    // Map State panel 2026-04-23 - those signals live on the header row 2.
     // Guarded writes so the removal doesn't require touching MM init.
     if (MM.towers) {
       const tUs = p.towers_us ?? p.my_tower_hp;
       const tThem = p.towers_them ?? p.enemy_tower_hp;
-      MM.towers.textContent = (tUs != null && tThem != null) ? `${tUs} / ${tThem}` : "—";
+      MM.towers.textContent = (tUs != null && tThem != null) ? `${tUs} / ${tThem}` : "-";
     }
-    if (MM.score) MM.score.textContent = p.score || p.team_score || p.kda_aggregate || "—";
+    if (MM.score) MM.score.textContent = p.score || p.team_score || p.kda_aggregate || "-";
     if (MM.gameTime) {
       MM.gameTime.textContent = (typeof p.game_time_s === "number")
-        ? _fmtMMSS(p.game_time_s) : (p.game_time || "—");
+        ? _fmtMMSS(p.game_time_s) : (p.game_time || "-");
     }
 
     // Live marker when we have ANY real datum; otherwise scaffold.
@@ -2532,14 +2532,14 @@
                      || p.atakhan_state || p.my_tower_hp != null
                      || p.towers_us != null || p.game_time);
     MM.status.className = "minimap-state" + (hasAny ? " live" : "");
-    // Dynamic status line — more actionable than the old dev-y scaffold text.
+    // Dynamic status line - more actionable than the old dev-y scaffold text.
     // 2026-04-26: hide the pill entirely when we have liveclient AND the
-    // minimap image is showing — the live cropped minimap is the primary
+    // minimap image is showing - the live cropped minimap is the primary
     // signal; "waiting on positions" is just noise that overlaps the map
     // visually. Only show the pill when there's something useful to say
     // (ZOI populated) or no data at all (offline state).
     // Shared-vision modes (ARAM/KIWI per core/vision_tracker._SHARED_VISION_MODES)
-    // have no Live Client positions — refreshVisionOverlay populates this
+    // have no Live Client positions - refreshVisionOverlay populates this
     // pill from /api/vision-state.summary instead. Don't clobber its text.
     const sharedVision = state.mode === "aram";
     if (sharedVision) {
@@ -2559,7 +2559,7 @@
         _renderMmStateLine(MM.status, `${allyCount} ally · ${enemyCount} enemy`);
         MM.status.classList.remove("hidden");
       } else {
-        // Liveclient up but no positions yet — hide the pill so it
+        // Liveclient up but no positions yet - hide the pill so it
         // doesn't sit on top of the minimap image.
         MM.status.textContent = "";
         MM.status.classList.add("hidden");
@@ -2581,7 +2581,7 @@
     if (!host._wired) {
       host._wired = true;
       host.innerHTML = '<span class="mm-heart" aria-hidden="true"></span>'
-        + '<span class="mm-counts">— · —</span>'
+        + '<span class="mm-counts">- · -</span>'
         + '<span class="mm-age">0s ago</span>';
       // Single global timer; re-uses host._lastT as the source of truth.
       setInterval(() => {
@@ -2609,7 +2609,7 @@
     }
   }
 
-  // Lightweight ephemeral burst above the KDA pill — kill/assist/death
+  // Lightweight ephemeral burst above the KDA pill - kill/assist/death
   // surfaces briefly then fades. One-shot DOM elements so overlaps
   // don't collapse. No hits on the main render path.
   function showKdaBurst(kind) {
@@ -2627,7 +2627,7 @@
     // there's no live game; in-game pills (CS/KDA/level/gold/vision/ult/game-time)
     // would just show stale values from the prior game. Hide the lot and return.
     // Exception: keep KDA visible in aftergame so the operator can review the
-    // just-finished match — but blank the in-game-only pills.
+    // just-finished match - but blank the in-game-only pills.
     if (state.mode === "client") {
       const inGamePills = ["lvl-pill", "vis-pill", "ult-pill", "cs-pill", "gold-pill"];
       for (const id of inGamePills) {
@@ -2705,7 +2705,7 @@
         const g = Math.round(p.gold);
         goldVal.textContent = g >= 1000 ? (g/1000).toFixed(1) + "k" : g;
         goldPill.classList.remove("hidden");
-        // CSS also — CSS/m (creep-score per minute) as tooltip.
+        // CSS also - CSS/m (creep-score per minute) as tooltip.
         if (typeof p.game_time_s === "number" && p.game_time_s > 60 && typeof p.cs === "number") {
           const cspm = (p.cs / (p.game_time_s / 60)).toFixed(1);
           goldPill.title = `gold · CS/m ${cspm}`;
@@ -2724,7 +2724,7 @@
     let kdaRatioClass = "";
     if (p.kda != null) {
       // KDA pill shows only the raw x/y/z. Ratio is still computed for
-      // color class (carry/even/struggle) but no longer rendered as text —
+      // color class (carry/even/struggle) but no longer rendered as text -
       // the color communicates performance band at a glance.
       const m = /^(\d+)\/(\d+)\/(\d+)$/.exec(safe(p.kda));
       if (m) {
@@ -2733,7 +2733,7 @@
         kdaRatioClass = r >= 3 ? "kda-carry" : r >= 1.5 ? "kda-even" : "kda-struggle";
       }
       const newText = safe(p.kda);
-      if (kdaEl.textContent !== newText && kdaEl.textContent !== "—") {
+      if (kdaEl.textContent !== newText && kdaEl.textContent !== "-") {
         // Diff prior vs new K/D/A to decide which event fired.
         const mPrev = /(\d+)\/(\d+)\/(\d+)/.exec(kdaEl.textContent);
         const mNext = /(\d+)\/(\d+)\/(\d+)/.exec(newText);
@@ -2754,7 +2754,7 @@
       kdaEl.classList.remove("kda-carry", "kda-even", "kda-struggle");
       if (kdaRatioClass) kdaEl.classList.add(kdaRatioClass);
     }
-    // Live win probability pill — hidden if state doesn't provide it.
+    // Live win probability pill - hidden if state doesn't provide it.
     const winPill = el("win-pill");
     const winVal = el("win-pct-val");
     if (winPill && winVal) {
@@ -2777,7 +2777,7 @@
     }
 
     const hpFill = el("hp-bar-fill");
-    // Mana / resource bar — hidden when champion has none (Tryndamere etc)
+    // Mana / resource bar - hidden when champion has none (Tryndamere etc)
     const mpGroup = el("mp-group"), mpBar = el("mp-bar"), mpFill = el("mp-bar-fill");
     if (mpGroup && mpBar && mpFill) {
       if (typeof p.mp_pct === "number" && p.mp_pct >= 0) {
@@ -2818,7 +2818,7 @@
     // and positionally stable.
     const selfSpellsEl = el("self-spells");
     const selfSpellsData = (p.ally_spells || {})[p.champion];
-    // Skip the DOM build entirely when the slot is hidden by CSS — the
+    // Skip the DOM build entirely when the slot is hidden by CSS - the
     // header `display: none !important` rule kills layout/paint anyway,
     // but every coach tick was still creating + destroying spell cells
     // that never rendered. Cheap getComputedStyle check on a stable
@@ -2848,18 +2848,18 @@
           selfSpellsEl.appendChild(cell);
         });
       } else {
-        // D / F placeholders — matches League's default hotkey convention
+        // D / F placeholders - matches League's default hotkey convention
         // for summoner spells so the reader's mental model is consistent.
         ["D", "F"].forEach(letter => {
           const cell = document.createElement("span");
           cell.className = "self-spell placeholder";
           cell.textContent = letter;
-          cell.title = `summoner ${letter} — no data`;
+          cell.title = `summoner ${letter} - no data`;
           selfSpellsEl.appendChild(cell);
         });
       }
     }
-    // Dynamic page title — mode + champion, falls back to mode-only.
+    // Dynamic page title - mode + champion, falls back to mode-only.
     const modeTag = (state.mode || "").toUpperCase();
     const gt = p.game_time || "";
     const parts = ["RC"];
@@ -2893,7 +2893,7 @@
   })();
   // DDragon-rename overrides: champions whose live display name doesn't
   // normalize cleanly to their DDragon file. Loaded async from
-  // /data/champion_aliases.json — the canonical source also consumed by
+  // /data/champion_aliases.json - the canonical source also consumed by
   // web/js/lib/items_index.js and tools/daemon_slayer_extract.py.
   const _CHAMP_RENAME_OVERRIDES = {};
   (async () => {
@@ -2912,7 +2912,7 @@
     return null;
   }
 
-  // Summoner spell icon resolver — loaded async from /data/spells_index.json.
+  // Summoner spell icon resolver - loaded async from /data/spells_index.json.
   const SPELLS = { ready: false, byName: {} };
   (async () => {
     try {
@@ -2963,7 +2963,7 @@
   function setChampionPill(name, source) {
     if (!champPill) return;
     if (!name) {
-      champPill.textContent = "—";
+      champPill.textContent = "-";
       champPill.className = "champion-pill stale";
       championPillState = { name: null, source: null };
       return;
@@ -3008,7 +3008,7 @@
       if (data.champion) {
         setChampionPill(data.champion, data.source || "fallback");
       }
-    } catch { /* silent — we'll retry */ }
+    } catch { /* silent - we'll retry */ }
   }
   setInterval(refreshChampionFallback, 15000);
   refreshChampionFallback();     // kick one immediately
@@ -3018,7 +3018,7 @@
     const p = env.payload || {};
     state.latest[env.mode] = p;
 
-    // 2026-04-26: faster mode-switch — onState envelopes carry the source
+    // 2026-04-26: faster mode-switch - onState envelopes carry the source
     // mode in env.mode (mode_key from /api/state). Previously mode flipped
     // ONLY on the next health envelope (~5s gap from MetricsCache cadence).
     // Treating env.mode as authoritative for in-game tags shaves 3-5s off
@@ -3093,7 +3093,7 @@
     ]) {
       const touched = state.lastTouch[panelKey];
       if (!touched) {
-        elm.textContent = "—";
+        elm.textContent = "-";
         elm.className = "staleness";
         rootElm.classList.remove("stale", "severe");
         continue;
@@ -3158,7 +3158,7 @@
       TRENDS.fetchedAt = Date.now();
       renderStreaks(data);
     } catch (e) {
-      /* network err — leave prior render in place */
+      /* network err - leave prior render in place */
     } finally {
       TRENDS.inflight = false;
     }
@@ -3181,11 +3181,11 @@
     if (!data || !data.present) {
       AD.status.textContent = "no data";
       AD.status.className = "counter";
-      AD.champ.textContent = data && data.champion ? data.champion : "—";
-      AD.baseline.textContent = "—";
-      AD.recent.textContent = "—";
-      if (AD.kda) AD.kda.textContent = "—";
-      AD.counters.textContent = "—";
+      AD.champ.textContent = data && data.champion ? data.champion : "-";
+      AD.baseline.textContent = "-";
+      AD.recent.textContent = "-";
+      if (AD.kda) AD.kda.textContent = "-";
+      AD.counters.textContent = "-";
       if (trendEl) trendEl.classList.add("hidden");
       if (adaptPanel) adaptPanel.classList.add("adapt-empty");
       return;
@@ -3194,7 +3194,7 @@
     AD.status.textContent = `${data.games_played} games`;
     AD.champ.textContent = `${data.champion}  (${data.mode})`;
     AD.baseline.textContent = `${(data.win_rate * 100).toFixed(1)}%  ${data.wins}W-${data.losses}L`;
-    // Trend arrow: recent vs baseline WR — glance read for hot/cold streak.
+    // Trend arrow: recent vs baseline WR - glance read for hot/cold streak.
     let arrow = "", cls = "";
     if (data.recent_win_rate != null && data.win_rate != null) {
       const delta = data.recent_win_rate - data.win_rate;
@@ -3204,11 +3204,11 @@
     }
     const recentPart = data.recent_win_rate != null
       ? `${(data.recent_win_rate * 100).toFixed(0)}% over last ${data.recent_sample_size}`
-      : "—";
+      : "-";
     AD.recent.textContent = recentPart + arrow;
     AD.recent.className = cls;
 
-    // Typical KDA — shown once we have ≥5 samples; otherwise placeholder.
+    // Typical KDA - shown once we have ≥5 samples; otherwise placeholder.
     if (AD.kda) {
       const kda = data.avg_kda;
       if (kda && (kda.sample || 0) >= 5) {
@@ -3223,11 +3223,11 @@
         }
         AD.kda.textContent = line;
       } else {
-        AD.kda.textContent = "—";
+        AD.kda.textContent = "-";
       }
     }
 
-    // Trend pill in the header — prefers 30d window, falls back to rolling.
+    // Trend pill in the header - prefers 30d window, falls back to rolling.
     if (trendEl) {
       trendEl.classList.remove("hidden", "up", "down", "neutral");
       const r30 = data.recency_30d;
@@ -3299,7 +3299,7 @@
   }
 
   async function fetchAdaptation(champion, modeTag, enemies) {
-    // Trending is mode-dependent only — fire regardless of champion.
+    // Trending is mode-dependent only - fire regardless of champion.
     fetchTrending(modeTag);
     if (!champion || champion === "Unknown") {
       renderAdaptation({ present: false });
@@ -3317,7 +3317,7 @@
       : "";
     const key = `${champion}|${mode}|${enemies ? enemies.join(",") : ""}`;
 
-    // Skip if same key within the last 8s — no need to hammer the endpoint.
+    // Skip if same key within the last 8s - no need to hammer the endpoint.
     if (key === ADAPT.lastKey && (Date.now() - ADAPT.fetchedAt) < 8000) return;
     if (ADAPT.inflight) return;
     ADAPT.inflight = true;
@@ -3357,7 +3357,7 @@
   // bench_swap (LCU bypasses the 5s client cooldown so it's instant).
   // Click reroll/lock → fires the corresponding LCU command.
   function lcuCmd(cmdObj) {
-    // Endpoint expects FLAT shape: {cmd: "name", ...args} — not wrapped.
+    // Endpoint expects FLAT shape: {cmd: "name", ...args} - not wrapped.
     return fetch("/api/lcu-cmd", {
       method: "POST", cache: "no-store",
       headers: { "Content-Type": "application/json" },
@@ -3405,7 +3405,7 @@
     return (cid && CHAMPS.byId[String(cid)]) || "";
   }
 
-  // Loadout state — tracks what we've applied to avoid spam-pushing on
+  // Loadout state - tracks what we've applied to avoid spam-pushing on
   // every 2s poll. Re-pushes when champion or variant key changes, or
   // when the user explicitly picks a different variant from the selector.
   const _csLoadout = {
@@ -3413,7 +3413,7 @@
     lastMode:  "",       // mode we last pushed for
     variants:  [],       // [{key,label,is_default}] for current champion+mode
     chosen:    "",       // user-chosen variant key (sticky until champ change)
-    inflight:  false,    // POST in flight — block re-entry
+    inflight:  false,    // POST in flight - block re-entry
     lastAppliedKey: "",  // `${champ}|${mode}|${variant}` of last successful push
   };
 
@@ -3435,7 +3435,7 @@
   }
 
   // Build the set of item_ids that appear in some variants but NOT all
-  // — these are the "differing" items that distinguish one build from
+  // - these are the "differing" items that distinguish one build from
   // another. Used by both renderers to mark items with .cs-build-item--diff
   // so the user's eye lands on exactly what trades off between variants.
   // Returns an empty set when there's only one variant (nothing to diff).
@@ -3457,7 +3457,7 @@
   // Render the variant list as selectable rows. Each row carries inline
   // keystone + first-N item icons so the user can compare builds at a
   // glance. Clicking a row selects it (radio-style) and triggers an
-  // /api/loadout/apply push. Rebuilt 2026-04-26 — the old <select>
+  // /api/loadout/apply push. Rebuilt 2026-04-26 - the old <select>
   // dropdown hid alternate builds behind a click and gave the user the
   // impression there was only one choice. 2026-05-01: items that differ
   // across variants get .cs-build-item--diff so the eye lands on the
@@ -3469,7 +3469,7 @@
     if (!variants || !variants.length) {
       wrap.innerHTML =
         '<div class="cs-loadout-empty">No builds defined for this champion ' +
-        'in this mode — add one to data/champion_loadouts.json</div>';
+        'in this mode - add one to data/champion_loadouts.json</div>';
       return;
     }
     const ver = CHAMPS.version || "latest";
@@ -3499,7 +3499,7 @@
       meta.appendChild(label);
       const runes = document.createElement("div");
       runes.className = "cs-build-runes";
-      const ks = v.keystone || (isExp ? "auto-generated on pick" : "—");
+      const ks = v.keystone || (isExp ? "auto-generated on pick" : "-");
       const tree = v.primary ? ` · ${v.primary}${v.secondary ? "/" + v.secondary : ""}` : "";
       runes.textContent = ks + tree;
       meta.appendChild(runes);
@@ -3592,7 +3592,7 @@
       meta.appendChild(label);
       const runes = document.createElement("div");
       runes.className = "cs-build-runes";
-      runes.textContent = (v.keystone || "—");
+      runes.textContent = (v.keystone || "-");
       meta.appendChild(runes);
       row.appendChild(meta);
       const items = document.createElement("div");
@@ -3665,7 +3665,7 @@
         const block = document.getElementById("ib-builds-block");
         if (!data || !data.variants || data.variants.length < 2) {
           // <2 variants is uninteresting (just "default + experimental")
-          // — hide rather than clutter the small panel.
+          // - hide rather than clutter the small panel.
           if (block) block.hidden = true;
           return;
         }
@@ -3789,7 +3789,7 @@
         }
         _csLoadout.lastAppliedKey = key;
         if (force) {
-          // Send the override AFTER the build apply — set_summoners is
+          // Send the override AFTER the build apply - set_summoners is
           // its own LCU command path, doesn't conflict with item/rune push.
           lcuCmd({ cmd: "set_summoners", d: 4, f: 32 });
         }
@@ -3813,7 +3813,7 @@
   }
 
   function _csOnChampionOrModeChange(championName, championId, mode) {
-    // Reset chosen variant — sticky only within same champion.
+    // Reset chosen variant - sticky only within same champion.
     _csLoadout.lastChamp = championId;
     _csLoadout.lastMode  = mode;
     _csLoadout.chosen    = "";
@@ -3844,7 +3844,7 @@
   }
 
   // ── SR Draft Theatre chooser (Phase 8 step 5, 2026-05-04) ──────────
-  // Gated on cs.sr_draft (true for queue ids 400/420/430/440 — Normal
+  // Gated on cs.sr_draft (true for queue ids 400/420/430/440 - Normal
   // Draft, Ranked Solo/Duo, Normal Blind, Ranked Flex). Pulls 3 engine-
   // generated profiles + N user-curated additive builds from
   // /api/sr-draft/profile, renders them as .cs-build-row siblings, and
@@ -3856,8 +3856,8 @@
   // the route layer (see dashboard/routes_sr_draft._serve_sr_draft_profile_post);
   // the frontend just renders whatever order they arrive in.
   const _srDraft = {
-    lastChamp:  0,        // championId — dedupe key
-    lastSig:    "",       // (champ|role|allies|enemies|queue) — dedupe key
+    lastChamp:  0,        // championId - dedupe key
+    lastSig:    "",       // (champ|role|allies|enemies|queue) - dedupe key
     profiles:   [],
     chosen:     "",
     inflight:   false,
@@ -3936,7 +3936,7 @@
     wrap.innerHTML = "";
     if (!profiles || !profiles.length) {
       wrap.innerHTML =
-        '<div class="cs-loadout-empty">No engine profiles available — ' +
+        '<div class="cs-loadout-empty">No engine profiles available - ' +
         'is the Daemon Slayer engine running on :8893?</div>';
       return;
     }
@@ -3958,7 +3958,7 @@
       const label = document.createElement("div");
       label.className = "cs-build-label";
       label.textContent = p.label || p.key;
-      // engine vs user tag — surface so the user knows which row is
+      // engine vs user tag - surface so the user knows which row is
       // their own curated build vs the auto-generated profiles.
       const tag = document.createElement("span");
       tag.className = "cs-build-kind " + (p.kind === "user" ? "user" : "engine");
@@ -3968,22 +3968,22 @@
 
       const runes = document.createElement("div");
       runes.className = "cs-build-runes";
-      const ks = (p.runes && p.runes.keystone) || p.keystone || "—";
+      const ks = (p.runes && p.runes.keystone) || p.keystone || "-";
       const tree = (p.runes && p.runes.primary)
         ? ` · ${p.runes.primary}${p.runes.secondary ? "/" + p.runes.secondary : ""}`
         : "";
       runes.textContent = ks + tree;
       meta.appendChild(runes);
 
-      // Engine stat line — quick "why this build" scan: dps + gold.
+      // Engine stat line - quick "why this build" scan: dps + gold.
       // Hidden for user profiles (no engine eval available).
       if (p.kind !== "user" && p.engine) {
         const stats = document.createElement("div");
         stats.className = "cs-build-engine-stats";
         const dps = p.engine.final_dps != null
-          ? Math.round(p.engine.final_dps).toLocaleString() : "—";
+          ? Math.round(p.engine.final_dps).toLocaleString() : "-";
         const gold = p.engine.total_gold != null
-          ? (p.engine.total_gold / 1000).toFixed(1) + "k" : "—";
+          ? (p.engine.total_gold / 1000).toFixed(1) + "k" : "-";
         stats.textContent = `${dps} dps · ${gold} gold`;
         meta.appendChild(stats);
       }
@@ -4089,7 +4089,7 @@
             _srDraftSetStatus("fetch failed", "err");
             return;
           }
-          // Profiles arrive engine-first then user-additive — render in
+          // Profiles arrive engine-first then user-additive - render in
           // the order the route returns (operator-additive invariant).
           const profiles = data.profiles || [];
           _srDraft.profiles = profiles;
@@ -4126,7 +4126,7 @@
       return;
     }
     _srDraftWireRoleSelectOnce();
-    if (!myCid || !myName || myName === "—") {
+    if (!myCid || !myName || myName === "-") {
       // Show the block with a placeholder so the user knows the chooser
       // exists during early draft phases (banning, hovering).
       block.hidden = false;
@@ -4175,7 +4175,7 @@
     if (key === _csAnalyzer.lastKey) return;
     if (_csAnalyzer.inflight) return;
     if (_csAnalyzer.debounceTimer) clearTimeout(_csAnalyzer.debounceTimer);
-    // 4s debounce — bench/team churn during active draft shouldn't burn calls
+    // 4s debounce - bench/team churn during active draft shouldn't burn calls
     _csAnalyzer.debounceTimer = setTimeout(() => {
       _csAnalyzer.lastKey = key;
       _csAnalyzer.inflight = true;
@@ -4216,7 +4216,7 @@
     const confEl = document.getElementById("cs-analyzer-conf");
     const reasonEl = document.getElementById("cs-analyzer-reason");
     if (!data || !data.ok) {
-      if (verdictEl) { verdictEl.className = "cs-analyzer-verdict"; verdictEl.textContent = "—"; }
+      if (verdictEl) { verdictEl.className = "cs-analyzer-verdict"; verdictEl.textContent = "-"; }
       if (reasonEl) reasonEl.textContent = (data && data.reason) || "analyzer unavailable";
       return;
     }
@@ -4231,7 +4231,7 @@
     if (confEl) confEl.textContent = (data.confidence || "") + " conf";
     if (reasonEl) reasonEl.textContent = data.reason || "";
 
-    // Apply highlights — bench cell for swap, build row for variant.
+    // Apply highlights - bench cell for swap, build row for variant.
     document.querySelectorAll(".cs-bench-cell.recommended").forEach(
       (el) => el.classList.remove("recommended")
     );
@@ -4270,7 +4270,7 @@
   function _csMaybeRunAnalyzer(cs, myCid, myName, mode) {
     // Only in ARAM (or ARAM Mayhem). Other modes don't have bench/swap
     // and the analyzer prompt is ARAM-tuned. Mayhem queue_ids don't
-    // always set cs.is_aram (LCU agent only flags 450/920) — fall back
+    // always set cs.is_aram (LCU agent only flags 450/920) - fall back
     // to "bench present" or mode === aram as additional ARAM signals
     // so Mayhem games surface the analyzer too. (2026-04-26 user-
     // reported regression: analyzer never rendered during Mayhem.)
@@ -4282,7 +4282,7 @@
       if (block) block.hidden = true;
       return;
     }
-    if (!myCid || !myName || myName === "—") return;
+    if (!myCid || !myName || myName === "-") return;
     if (!CHAMPS.ready) return;
     const myTeam = (cs.my_team || [])
       .map((p) => CHAMPS.byId[String(p && p.championId)])
@@ -4293,7 +4293,7 @@
     const bench = (cs.bench || [])
       .map((id) => CHAMPS.byId[String(id)])
       .filter(Boolean);
-    // Skip when there's no swap target AND no variant alternatives —
+    // Skip when there's no swap target AND no variant alternatives -
     // analyzer won't have anything to recommend.
     if (!bench.length && (!_csLoadout.variants || _csLoadout.variants.length <= 1)) {
       const block = document.getElementById("cs-analyzer-block");
@@ -4344,19 +4344,19 @@
       .then((d) => {
         if (!d) return;
         const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-        set("session-window", d.window_label || "—");
+        set("session-window", d.window_label || "-");
         set("session-games", d.games || "0");
         const sec = (d.time_played_s | 0);
         const hh = Math.floor(sec / 3600), mm = Math.floor((sec % 3600) / 60);
         set("session-time", hh > 0 ? `${hh}h ${mm}m` : `${mm}m`);
-        set("session-start", d.started_at || "—");
-        set("session-last", d.last_at || "—");
-        set("session-kda", d.total_kda || "—");
-        set("session-avg", d.avg_kda != null ? d.avg_kda.toFixed(2) : "—");
+        set("session-start", d.started_at || "-");
+        set("session-last", d.last_at || "-");
+        set("session-kda", d.total_kda || "-");
+        set("session-avg", d.avg_kda != null ? d.avg_kda.toFixed(2) : "-");
         set("session-grades",
-          d.grades ? Object.entries(d.grades).map(([g,n]) => `${g}×${n}`).join(" ") : "—");
+          d.grades ? Object.entries(d.grades).map(([g,n]) => `${g}×${n}`).join(" ") : "-");
         set("session-modes",
-          d.modes ? Object.entries(d.modes).map(([m,n]) => `${m} ${n}`).join(" · ") : "—");
+          d.modes ? Object.entries(d.modes).map(([m,n]) => `${m} ${n}`).join(" · ") : "-");
         const champUl = document.getElementById("session-champs");
         if (champUl) {
           champUl.innerHTML = "";
@@ -4365,7 +4365,7 @@
             li.className = "history-match-row";
             li.innerHTML = `<span style="flex:1">${c.champion}</span>` +
               `<span class="dim">${c.games}g</span>` +
-              `<span style="margin-left:10px">${c.kda || "—"}</span>`;
+              `<span style="margin-left:10px">${c.kda || "-"}</span>`;
             champUl.appendChild(li);
           });
           if (!champUl.children.length) champUl.innerHTML = '<li class="home-empty">no champs in session</li>';
@@ -4376,7 +4376,7 @@
           (d.matches || []).forEach((m) => {
             const li = document.createElement("li");
             li.className = "history-match-row";
-            const grade = String(m.grade || "—")[0];
+            const grade = String(m.grade || "-")[0];
             li.innerHTML = `<span class="home-recent-grade ${grade}">${grade}</span>` +
               `<span style="flex:1; margin-left:8px">${m.champion} · ${m.mode}</span>` +
               `<span class="dim">${m.kda}</span>` +
@@ -4422,9 +4422,9 @@
         }
         // Season stats panel
         const ss = d.season_stats || {};
-        set("history-season-total", ss.total != null ? ss.total : "—");
-        set("history-season-kda",   ss.avg_kda != null ? ss.avg_kda.toFixed(2) : "—");
-        set("history-season-fav",   ss.favorite || "—");
+        set("history-season-total", ss.total != null ? ss.total : "-");
+        set("history-season-kda",   ss.avg_kda != null ? ss.avg_kda.toFixed(2) : "-");
+        set("history-season-fav",   ss.favorite || "-");
       })
       .catch(() => {});
   }
@@ -4435,7 +4435,7 @@
     (session.matches || []).forEach((m) => {
       const li = document.createElement("li");
       li.className = "history-match-row";
-      const grade = String(m.grade || "—")[0];
+      const grade = String(m.grade || "-")[0];
       li.innerHTML = `<span class="home-recent-grade ${grade}">${grade}</span>` +
         `<span style="flex:1; margin-left:8px">${m.champion} · ${m.mode}</span>` +
         `<span class="dim">${m.kda}</span>` +
@@ -4496,7 +4496,7 @@
     if (m) m.addEventListener("change", _loadoutsFetchAndRender);
   }
 
-  // ── User Builds view (Phase 8 step 6 — 2026-05-04) ───────────────
+  // ── User Builds view (Phase 8 step 6 - 2026-05-04) ───────────────
   // CRUD over data/daemon_slayer/user_builds.json via
   // /api/sr-draft/user-builds (action-keyed POST: list/add/update/delete).
   // Builds saved here APPEND to the engine-generated SR-draft profiles
@@ -4534,7 +4534,7 @@
     });
   }
   function _ubFormatSpells(pair) {
-    if (!Array.isArray(pair) || pair.length !== 2) return "—";
+    if (!Array.isArray(pair) || pair.length !== 2) return "-";
     const NAMES = {
       1: "Cleanse", 3: "Exhaust", 4: "Flash", 6: "Ghost", 7: "Heal",
       11: "Smite", 12: "Teleport", 13: "Clarity", 14: "Ignite",
@@ -4562,7 +4562,7 @@
     if (!champ) {
       list.innerHTML = '<li class="home-empty">pick a champion above ↑</li>';
       if (lbl) lbl.textContent = "No champion selected";
-      if (cnt) cnt.textContent = "—";
+      if (cnt) cnt.textContent = "-";
       if (hint) hint.textContent = "Pick a champion to view their saved builds.";
       _UB.builds = [];
       return;
@@ -4578,7 +4578,7 @@
         if (cnt) cnt.textContent = `${builds.length} build${builds.length === 1 ? "" : "s"}`;
         list.innerHTML = "";
         if (!builds.length) {
-          list.innerHTML = '<li class="home-empty">no builds yet — click + Add build above.</li>';
+          list.innerHTML = '<li class="home-empty">no builds yet - click + Add build above.</li>';
           return;
         }
         for (const b of builds) {
@@ -4746,7 +4746,7 @@
     if (_UB.champion) {
       try { localStorage.setItem("rc-ub-last-champ", _UB.champion); } catch (_) {}
     }
-    // Close any open form when the champion changes — editingId is
+    // Close any open form when the champion changes - editingId is
     // scoped to the previous champion's builds.
     const pane = _ubEl("ub-form-pane");
     if (pane) pane.hidden = true;
@@ -4812,7 +4812,7 @@
         document.body.style.zoom = zoom.value;
       });
     }
-    // Live metrics status (read-only — env var)
+    // Live metrics status (read-only - env var)
     fetch("/api/diagnostics", { cache: "no-store" })
       .then((r) => (r && r.ok ? r.json() : null))
       .then((d) => {
@@ -5106,7 +5106,7 @@
           li.dataset.matchId = m.match_id;
           const champ = (m.tracked && m.tracked.champion_name) || "?";
           const verdict = m.tracked && m.tracked.win === true ? "W" :
-                          m.tracked && m.tracked.win === false ? "L" : "—";
+                          m.tracked && m.tracked.win === false ? "L" : "-";
           const top = document.createElement("div");
           top.className = "replay-match-top";
           const span1 = document.createElement("span");
@@ -5186,9 +5186,9 @@
         ["replay-col-team",   p.team_id === 200 ? "R" : "B"],
         ["replay-col-champ",  null, _replayChampIconUrl(p.champion_name), p.champion_name],
         ["replay-col-name",   p.summoner_name || ""],
-        ["replay-col-num",    e.level != null ? String(e.level) : "—"],
-        ["replay-col-num",    e.total_gold != null ? e.total_gold.toLocaleString() : "—"],
-        ["replay-col-num",    e.cs != null ? String(e.cs) : "—"],
+        ["replay-col-num",    e.level != null ? String(e.level) : "-"],
+        ["replay-col-num",    e.total_gold != null ? e.total_gold.toLocaleString() : "-"],
+        ["replay-col-num",    e.cs != null ? String(e.cs) : "-"],
       ];
       for (const c of cells) {
         const td = document.createElement("td");
@@ -5263,7 +5263,7 @@
       const card = document.createElement("div");
       card.className = "home-recent-card";
       card.dataset.matchId = m.match_id || "";
-      const gradeRaw = String(m.grade || "—").toUpperCase()[0] || "—";
+      const gradeRaw = String(m.grade || "-").toUpperCase()[0] || "-";
       const tier = (gradeRaw === "S" || gradeRaw === "A") ? "tier-good"
                  : (gradeRaw === "D" || gradeRaw === "F") ? "tier-bad"
                  : "tier-mid";
@@ -5298,7 +5298,7 @@
       main.append(champ, meta);
       const kda = document.createElement("span");
       kda.className = "home-recent-kda";
-      kda.textContent = m.kda || "—";
+      kda.textContent = m.kda || "-";
       const grade = document.createElement("span");
       grade.className = `home-recent-grade-badge ${gradeRaw}`;
       grade.textContent = gradeRaw;
@@ -5328,7 +5328,7 @@
     for (const r of rows) {
       const row = document.createElement("div");
       row.className = "home-week-bar-row";
-      const gradeRaw = String(r.best_grade || "—").toUpperCase()[0] || "—";
+      const gradeRaw = String(r.best_grade || "-").toUpperCase()[0] || "-";
       const pct = Math.round(((r.games || 0) / maxGames) * 100);
 
       const name = document.createElement("span");
@@ -5343,12 +5343,12 @@
 
       const kda = document.createElement("span");
       kda.className = "home-week-bar-kda";
-      kda.textContent = (r.avg_kda != null) ? r.avg_kda.toFixed(1) : "—";
+      kda.textContent = (r.avg_kda != null) ? r.avg_kda.toFixed(1) : "-";
 
       const grade = document.createElement("span");
       grade.className = `home-recent-grade-badge ${gradeRaw}`;
       grade.textContent = gradeRaw;
-      // No inline sizing — the .home-week-bar-row .home-recent-grade-badge
+      // No inline sizing - the .home-week-bar-row .home-recent-grade-badge
       // selector in CSS handles the inline-row variant (28x28 / 13px).
       row.append(name, games, kda, grade);
       host.appendChild(row);
@@ -5401,7 +5401,7 @@
         headline.textContent = "Ready when you are";
         headline.classList.add("flat");
       } else {
-        const avgStr = avg != null ? avg.toFixed(2) : "—";
+        const avgStr = avg != null ? avg.toFixed(2) : "-";
         headline.textContent = `${games} game${games===1?"":"s"} · ${avgStr} avg KDA`;
         if (avg != null) {
           if (avg >= 2.5) headline.classList.add("up");
@@ -5412,28 +5412,28 @@
     }
 
     // Chips
-    set("home-hero-kda", t && t.total_kda ? t.total_kda : "—");
-    set("home-hero-avg", avg != null ? avg.toFixed(2) : "—");
+    set("home-hero-kda", t && t.total_kda ? t.total_kda : "-");
+    set("home-hero-avg", avg != null ? avg.toFixed(2) : "-");
     const gradeStr = t && t.grades
       ? Object.entries(t.grades).map(([g,n]) => `${g}×${n}`).join(" ")
-      : "—";
-    set("home-hero-grades", gradeStr || "—");
+      : "-";
+    set("home-hero-grades", gradeStr || "-");
     const modeStr = t && t.modes
       ? Object.entries(t.modes).map(([m,n]) => `${m} ${n}`).join(" · ")
-      : "—";
-    set("home-hero-modes", modeStr || "—");
+      : "-";
+    set("home-hero-modes", modeStr || "-");
 
     // Legacy IDs (set if present so any external reader still works).
     set("home-today-count", games > 0 ? `${games} game${games===1?"":"s"}` : "");
-    set("home-today-kda",   t && t.total_kda ? t.total_kda : "—");
-    set("home-today-avg",   avg != null ? avg.toFixed(2) : "—");
-    set("home-today-grades", gradeStr || "—");
-    set("home-today-modes",  modeStr || "—");
+    set("home-today-kda",   t && t.total_kda ? t.total_kda : "-");
+    set("home-today-avg",   avg != null ? avg.toFixed(2) : "-");
+    set("home-today-grades", gradeStr || "-");
+    set("home-today-modes",  modeStr || "-");
   }
   function _homeRenderServices(rows) {
     // V1 redesign 2026-04-29: render as a thin strip of compact pills
     // (dot + name) instead of a card-sized bulleted list. Detail string
-    // moves to the title attribute (hover tooltip) — services are a
+    // moves to the title attribute (hover tooltip) - services are a
     // glance check, not browsable content. Container changed from <ul>
     // to <div class="home-services-strip"> in the new HTML.
     const strip = document.getElementById("home-services-list");
@@ -5490,7 +5490,7 @@
       const svg = chip.querySelector(".home-hero-spark");
       if (!svg) continue;
       // Set the chip's headline value to the latest non-null trend point
-      // (CS / GOLD only — KDA chip val stays driven by _homeRenderToday
+      // (CS / GOLD only - KDA chip val stays driven by _homeRenderToday
       // which uses today's KDA, more relevant than 14d-latest).
       const latest = [...points].reverse().find(p => p && p.value != null);
       if (latest != null && metric !== "kda") {
@@ -5623,7 +5623,7 @@
   }
   // Champion motif on the hero bg. Picks the most-played champion from
   // this_week (or the most-recent match as a fallback) and sets the
-  // local DDragon icon as the hero background. Local-only — no CDN
+  // local DDragon icon as the hero background. Local-only - no CDN
   // round-trip; falls back silently if no champion data is available.
   function _homeUpdateHeroMotif(data) {
     const bg = document.getElementById("home-hero-bg");
@@ -5661,8 +5661,8 @@
     const digBadge = document.getElementById("home-alerts-digest-val");
     if (digLabel && digBtn && digBadge) {
       const t = (digLabel.textContent || "").trim();
-      const hasData = !!t && t !== "—";
-      digBadge.textContent = hasData ? t : "—";
+      const hasData = !!t && t !== "-";
+      digBadge.textContent = hasData ? t : "-";
       digBtn.classList.toggle("has-data", hasData);
       digBtn.title = hasData ? `Cross-session digest: ${t}` : "No streak data yet";
     }
@@ -5739,21 +5739,21 @@
   // is the richer presentation when the user explicitly navigates
   // here OR auto-mode resolves to lobby.
   const _LV = { wired: false };
-  // Static queue-tip table — per queue_id, a list of short tips.
+  // Static queue-tip table - per queue_id, a list of short tips.
   // Hardcoded since they don't change per-game; feel free to extend.
   const LV_QUEUE_TIPS = {
     450:  ["Bench-swap is instant via the LCU API (5s client cooldown bypassed).",
            "Snowball + Flash is the standard summoner combo.",
-           "ARAM Mayhem? Coach treats KIWI mode as ARAM — same loadouts apply."],
-    920:  ["ARAM Mayhem rolls 2-3 champions per slot — pick from the cs-overlay.",
+           "ARAM Mayhem? Coach treats KIWI mode as ARAM - same loadouts apply."],
+    920:  ["ARAM Mayhem rolls 2-3 champions per slot - pick from the cs-overlay.",
            "Augments roll mid-game; the panel surfaces them in the header pill.",
-           "Score 1-100 for a win, not 0 deaths — fight more often."],
-    400:  ["Normal Draft — 6 bans per side, hover before lock.",
+           "Score 1-100 for a win, not 0 deaths - fight more often."],
+    400:  ["Normal Draft - 6 bans per side, hover before lock.",
            "Counterpick last-pick role if possible."],
-    420:  ["Ranked Solo — match decides LP. Don't dodge unless griefed.",
+    420:  ["Ranked Solo - match decides LP. Don't dodge unless griefed.",
            "Ban on what enemy team comp / role threats."],
-    440:  ["Ranked Flex — premade up to 5; matchmaking pools differ from solo."],
-    1700: ["Arena 2v2v2v2 — pick a synergy duo.",
+    440:  ["Ranked Flex - premade up to 5; matchmaking pools differ from solo."],
+    1700: ["Arena 2v2v2v2 - pick a synergy duo.",
            "Anvil decisions matter more than build path. Read the augment."],
   };
   function _lvSetStatus(text, cls) {
@@ -5808,15 +5808,15 @@
     const qName = document.getElementById("lv-queue-name");
     if (qName) qName.textContent = lobby
       ? (lobby.queue_name || ("queue " + (lobby.queue_id || "?"))).toUpperCase()
-      : "—";
+      : "-";
 
     const party = document.getElementById("lv-party-pill");
     if (party) {
       if (lobby) {
         const size = lobby.party_size | 0;
         const max  = lobby.max_party_size | 0;
-        party.textContent = max > 0 ? `Party ${size || 1}/${max}` : "Party —";
-      } else party.textContent = "Party —";
+        party.textContent = max > 0 ? `Party ${size || 1}/${max}` : "Party -";
+      } else party.textContent = "Party -";
     }
     const leaderTag = document.getElementById("lv-leader-tag");
     if (leaderTag) leaderTag.hidden = !(lobby && lobby.is_leader);
@@ -5845,7 +5845,7 @@
     }
     if (searching)               _lvSetStatus("Searching…", "searching");
     else if (found)              _lvSetStatus("Match Found · accept in client", "found");
-    else if (!lobby)             _lvSetStatus("Click Find Match — LCU enforces leader check (no lobby feed yet)", "");
+    else if (!lobby)             _lvSetStatus("Click Find Match - LCU enforces leader check (no lobby feed yet)", "");
     else if (!lobby.is_leader)   _lvSetStatus("Awaiting party leader", "");
     else if (!lobby.can_search)  _lvSetStatus("Lobby not ready", "err");
     else                         _lvSetStatus("Ready to queue", "");
@@ -5857,7 +5857,7 @@
     if (cnt) cnt.textContent = members.length + (members.length === 1 ? " member" : " members");
     if (ul) {
       if (!members.length) {
-        ul.innerHTML = '<li class="home-empty">no members visible — Game-PC LCU agent needs to forward lcu.lobby.members[]</li>';
+        ul.innerHTML = '<li class="home-empty">no members visible - Game-PC LCU agent needs to forward lcu.lobby.members[]</li>';
       } else {
         ul.innerHTML = "";
         members.forEach((m) => {
@@ -5892,7 +5892,7 @@
       if (tips && tips.length) {
         tipsEl.innerHTML = tips.map((t) => `<div class="tip-row">${t}</div>`).join("");
       } else if (lobby) {
-        tipsEl.innerHTML = `<div class="home-empty">no tips defined for queue ${lobby.queue_id} — extend LV_QUEUE_TIPS in dashboard.js</div>`;
+        tipsEl.innerHTML = `<div class="home-empty">no tips defined for queue ${lobby.queue_id} - extend LV_QUEUE_TIPS in dashboard.js</div>`;
       } else {
         tipsEl.innerHTML = '<div class="home-empty">queue-specific tips populate when lobby data is available</div>';
       }
@@ -5918,13 +5918,13 @@
         filtered.slice(0, 5).forEach((m) => {
           const li = document.createElement("li");
           li.className = "lv-recent-row";
-          const grade = String(m.grade || "—")[0];
+          const grade = String(m.grade || "-")[0];
           const dur = m.duration_s
             ? `${Math.floor(m.duration_s / 60)}:${String(m.duration_s % 60).padStart(2, "0")}` : "";
           li.innerHTML =
             `<span class="lv-recent-grade home-recent-grade ${grade}">${grade}</span>` +
             `<span><strong>${m.champion}</strong> <span class="dim">${_to12((m.timestamp||"").split(" ")[1]?.slice(0,5) || "")}</span></span>` +
-            `<span class="dim">${m.kda || "—"}</span>` +
+            `<span class="dim">${m.kda || "-"}</span>` +
             `<span class="dim">${dur}</span>`;
           ul2.appendChild(li);
         });
@@ -5996,7 +5996,7 @@
     });
   }
   // Render the party member list from lcu.lobby.members[]. Each member
-  // shape (forwarded by Game-PC LCU agent — pending):
+  // shape (forwarded by Game-PC LCU agent - pending):
   //   { puuid, summoner_name, is_self, is_leader,
   //     played_with_me_count, played_with_me_record }  // local match_history join
   function _renderLobbyMembers(members, meIsLeader) {
@@ -6028,7 +6028,7 @@
       } else if (!m.is_self) {
         stats.push(`<span class="lobby-member-stat" style="color:var(--text-faint)">no shared games</span>`);
       }
-      // Public-stats fallback link (no Riot key — user opens manually).
+      // Public-stats fallback link (no Riot key - user opens manually).
       const lookup = (m.summoner_name && !m.is_self)
         ? `<a class="lobby-member-link" href="https://aggregator-b.invalid/lol/profile/na1/${encodeURIComponent(m.summoner_name)}" target="_blank" rel="noopener">aggregator-b ↗</a>`
         : "";
@@ -6073,7 +6073,7 @@
     if (party) {
       const size = lobby.party_size | 0;
       const max  = lobby.max_party_size | 0;
-      party.textContent = max > 0 ? `Party ${size || 1}/${max}` : "Party —";
+      party.textContent = max > 0 ? `Party ${size || 1}/${max}` : "Party -";
     }
     const leaderTag = document.getElementById("lobby-leader-tag");
     if (leaderTag) leaderTag.hidden = !lobby.is_leader;
@@ -6101,7 +6101,7 @@
           : (lobby.is_leader ? "Find Match" : "Leader-only");
       }
     }
-    // Status line — reads as a single peripheral signal.
+    // Status line - reads as a single peripheral signal.
     if (searching) _setLobbyStatus("Searching…", "searching");
     else if (found) _setLobbyStatus("Match Found · accept in client", "found");
     else if (!lobby.is_leader) _setLobbyStatus("Awaiting party leader", "");
@@ -6144,13 +6144,13 @@
     overlay.setAttribute("aria-hidden", "false");
     _csWireButtonsOnce();
     _csWireForceSummsOnce();
-    if (!CHAMPS.ready) return;  // names not loaded yet — wait next tick
+    if (!CHAMPS.ready) return;  // names not loaded yet - wait next tick
 
     const cs = lcu.champ_select || {};
     // ARAM-style mode? Used to hide the enemy team block + collapse the
     // ally row to full width since ARAM doesn't reveal enemies pre-game.
     // Mayhem queue_ids don't always set cs.is_aram, so accept "bench
-    // present" as an additional ARAM signal — same fallback used by the
+    // present" as an additional ARAM signal - same fallback used by the
     // bench renderer + analyzer.
     {
       const _aramish = !!(cs.is_aram
@@ -6158,18 +6158,18 @@
       overlay.classList.toggle("aram-mode", _aramish);
     }
     const myCid = cs.my_champion | 0;
-    const myName = _csChampName(myCid) || "—";
+    const myName = _csChampName(myCid) || "-";
     const locked = !!cs.my_completed;
     const csMode = _csNormalizeMode(cs);
 
-    // Champion/mode change detection — re-fetches variant list and fires
+    // Champion/mode change detection - re-fetches variant list and fires
     // a fresh apply with the default variant. Skipped when champion is
     // unset (null/0) so we don't push during the brief pre-pick window.
-    if (myCid > 0 && myName && myName !== "—" &&
+    if (myCid > 0 && myName && myName !== "-" &&
         (myCid !== _csLoadout.lastChamp || csMode !== _csLoadout.lastMode)) {
       _csOnChampionOrModeChange(myName, myCid, csMode);
     }
-    // SR Draft Theatre chooser — debounced fetch keyed on (champ, role,
+    // SR Draft Theatre chooser - debounced fetch keyed on (champ, role,
     // allies, enemies, queue). The block is always visible-or-hidden
     // based on cs.sr_draft, so the call is idempotent on every poll.
     _srDraftMaybeRender(cs, myCid, myName);
@@ -6191,7 +6191,7 @@
       }
     }
 
-    // Run the team-comp analyzer (ARAM only) — debounced internally so
+    // Run the team-comp analyzer (ARAM only) - debounced internally so
     // bench churn during teammate rerolls doesn't burn API calls.
     _csMaybeRunAnalyzer(cs, myCid, myName, csMode);
 
@@ -6200,7 +6200,7 @@
     if (cs.phase) subBits.push(String(cs.phase).toUpperCase());
     if (cs.queue_id) subBits.push("queue " + cs.queue_id);
     const sub = document.getElementById("cs-phase-sub");
-    if (sub) sub.textContent = subBits.join(" · ") || "—";
+    if (sub) sub.textContent = subBits.join(" · ") || "-";
 
     const iconEl = document.getElementById("cs-my-icon");
     if (iconEl) {
@@ -6216,7 +6216,7 @@
     const stateEl = document.getElementById("cs-my-state");
     if (stateEl) {
       stateEl.textContent = locked ? "✓ LOCKED"
-        : (myCid ? "⌛ HOVERING — lock to confirm" : "no pick yet");
+        : (myCid ? "⌛ HOVERING - lock to confirm" : "no pick yet");
     }
 
     const rerollBtn = document.getElementById("cs-reroll-btn");
@@ -6240,7 +6240,7 @@
       const el = document.getElementById(containerId);
       if (!el) return;
       // Allies render vertically (top-to-bottom matches in-game ARAM
-      // screen orientation). Enemies stay horizontal — no interaction.
+      // screen orientation). Enemies stay horizontal - no interaction.
       el.className = "cs-team-row" + (isAllies ? " cs-team-vert" : "");
       el.innerHTML = "";
       const arr = (team || []).slice(0, 5);
@@ -6250,11 +6250,11 @@
         const cid = (p && p.championId) | 0;
         const isMe = !!(includeMe && cid && cid === myCid);
         const baseStateCls = !cid ? "empty" : (p.completed ? "locked" : "hovering");
-        const champNm = _csChampName(cid) || (cid ? "cid:" + cid : "—");
+        const champNm = _csChampName(cid) || (cid ? "cid:" + cid : "-");
         const summ = (p && p.summonerName) || "";
         const url = _csChampImg(cid);
 
-        // Trade interaction — only for ARAM, only for allies, never for me,
+        // Trade interaction - only for ARAM, only for allies, never for me,
         // and only when the cell has a champion.
         let tradeCls = "";
         const trade = (p && typeof p.cellId === "number") ? tradesByCell[p.cellId] : null;
@@ -6297,7 +6297,7 @@
             lcuCmd({ cmd: "trade_request", cell_id: cellId });
           });
         } else if (tradeCls === " trade-received" && p && typeof p.cellId === "number") {
-          // Incoming offer — append accept-pill + decline-× into the cell.
+          // Incoming offer - append accept-pill + decline-× into the cell.
           // Click anywhere on the cell (except the × button) accepts the
           // trade; the cell's ::after badge is replaced by inline actions.
           const cellId = p.cellId;
@@ -6333,7 +6333,7 @@
     // (2026-04-26) The LCU agent sets cs.is_aram only when queue_id is
     // 450/920. Mayhem variants get other queue ids and slip through, hiding
     // the bench even though it's clearly populated. Treat "has bench" as
-    // an authoritative ARAM-style signal — bench champ selection only
+    // an authoritative ARAM-style signal - bench champ selection only
     // exists in ARAM modes regardless of queue id.
     // (2026-04-26 v2) Mayhem rolled options surface in cs.rolled_options
     // (extracted from action.championOptions / myTeam[].championOptions /
@@ -6356,12 +6356,12 @@
     const benchLabel = benchBlock.querySelector(".cs-bench-label");
     if (benchLabel) {
       benchLabel.textContent = _showAsRolls
-        ? "Rolled options — click to pick"
-        : "Bench — click for instant swap (no cooldown)";
+        ? "Rolled options - click to pick"
+        : "Bench - click for instant swap (no cooldown)";
     }
     const list = _showAsRolls ? _rolls : (cs.bench || []);
     if (!list.length) {
-      grid.innerHTML = '<div class="cs-bench-empty">No bench champs yet — wait for a teammate to reroll</div>';
+      grid.innerHTML = '<div class="cs-bench-empty">No bench champs yet - wait for a teammate to reroll</div>';
       return;
     }
     grid.innerHTML = "";
@@ -6396,7 +6396,7 @@
   // Resolves championId integers to names via the CHAMPS byId index.
   const _CS_LIVE = { lastKey: "", inflight: false, lastFetch: 0, lastResult: null };
 
-  // DS Engine preview — fires once per (champion, dsMode) pair during
+  // DS Engine preview - fires once per (champion, dsMode) pair during
   // champ-select. Keyed separately from _CS_LIVE so drafting ally/enemy
   // changes don't re-hit DS (build order doesn't change mid-draft).
   const _CS_DS = { lastKey: "", inflight: false };
@@ -6462,14 +6462,14 @@
     const adaptMode = modeMap[cs.queue_id] || "aram";
     fetchAdaptation(myName, adaptMode === "sr_draft" ? "sr" : adaptMode, enemies);
 
-    // DS Engine pre-game build preview — fires once per (champion, mode)
+    // DS Engine pre-game build preview - fires once per (champion, mode)
     // pair; keyed separately from Haiku so draft changes don't re-hit DS.
     const dsMode = (adaptMode === "aram") ? "ARAM"
                  : (adaptMode === "arena") ? "ARENA"
                  : "SR";
     _fetchDsPreview(myName, dsMode);
 
-    // Live Haiku coaching — debounced + key-deduped so we only fire when
+    // Live Haiku coaching - debounced + key-deduped so we only fire when
     // the actual pick state changes (champion or team comp), not on every
     // 2 s state poll. ~1 Haiku call per ~10 s of active drafting.
     const liveKey = [
@@ -6504,7 +6504,7 @@
       .catch(() => { _CS_LIVE.inflight = false; });
   }
 
-  // Light renderer — drops the Haiku output into the Right Now action +
+  // Light renderer - drops the Haiku output into the Right Now action +
   // immediate slots while in champ-select. Keeps the existing in-game
   // UI surface; switches content when phase=ChampSelect.
   function renderChampSelectCoach(data) {
@@ -6535,7 +6535,7 @@
           const turns = warmInfo.turns || 0;
           const idle = warmInfo.idle_sec;
           warmEl.title = warmInfo.warm
-            ? `warm — ${turns} turn(s), idle ${idle}s`
+            ? `warm - ${turns} turn(s), idle ${idle}s`
             : "cold (first send will warm)";
         }
         // Latency footer
@@ -6547,7 +6547,7 @@
             if (lat.avg_ms >= 2500) LAT.footer.classList.add("severe");
             else if (lat.avg_ms >= 1500) LAT.footer.classList.add("slow");
           } else {
-            LAT.footer.textContent = "latency —";
+            LAT.footer.textContent = "latency -";
             LAT.footer.classList.remove("slow", "severe");
           }
         }
@@ -6585,7 +6585,7 @@
           adaptNotice.classList.remove("pending", "running", "hidden");
           if (az.state === "running") {
             adaptNotice.classList.add("running");
-            adaptNotice.textContent = "refreshing historic data — new match being incorporated";
+            adaptNotice.textContent = "refreshing historic data - new match being incorporated";
           } else if (az.state === "pending") {
             const r = Math.max(0, Math.round(az.fires_in_sec || 0));
             const mm = Math.floor(r / 60);
@@ -6606,7 +6606,7 @@
   // Polls /api/minimap-crop on a fast cadence when the dedicated Game-PC
   // minimap stream is live (5-10Hz pre-cropped JPEGs on source=minimap),
   // otherwise the supervisor falls back to crop-from-full-frame which is
-  // bounded by the 2s full-frame upload cadence — pointless to poll
+  // bounded by the 2s full-frame upload cadence - pointless to poll
   // faster than that. We pick the interval based on which path served
   // the last response: JPEG = fast stream, PNG = slow re-crop.
   const MINIMAP_MODES = new Set(["sr", "aram", "brawl"]);
@@ -6673,7 +6673,7 @@
   // SR / ARAM map sizes in game units (Howling Abyss is smaller than SR).
   const VT_MAP_SIZE = { CLASSIC: 14800, ARAM: 13800, KIWI: 13800,
                         URF: 14800, NEXUSBLITZ: 14800, ULTBOOK: 14800 };
-  // Mirror of core/vision_tracker._SHARED_VISION_MODES — modes where the
+  // Mirror of core/vision_tracker._SHARED_VISION_MODES - modes where the
   // whole map is visible to both teams and Live Client emits no positions.
   const VT_SHARED_VISION = new Set(["ARAM", "KIWI"]);
 
@@ -6692,7 +6692,7 @@
       VT_OVERLAY.style.display = "none";
       return;
     }
-    // Shared-vision modes (ARAM/KIWI) — Live Client has no positions, so
+    // Shared-vision modes (ARAM/KIWI) - Live Client has no positions, so
     // the dot-overlay won't draw anything useful, but vision_tracker still
     // produces a meaningful summary (visible/dead counts, on_bridge zone).
     // Drive the MAP STATE pill from that summary.
@@ -6710,7 +6710,7 @@
           MM.status.className = "minimap-state live";
         }
       } else {
-        // Same summary — refresh the timestamp so "Xs ago" stays at 0
+        // Same summary - refresh the timestamp so "Xs ago" stays at 0
         // instead of climbing while data is actually fresh.
         MM.status._lastT = Date.now();
       }
@@ -6720,7 +6720,7 @@
       return;
     }
     // Size the canvas to the rendered <img> bounds (it's centered in the
-    // wrap with margin auto and padded — getBoundingClientRect gives the
+    // wrap with margin auto and padded - getBoundingClientRect gives the
     // post-layout box we need to align to).
     const img = MM.img;
     if (!img.complete || !img.naturalWidth) {
@@ -6810,7 +6810,7 @@
     const C = COACH_DECISIONS;
     if (!C.section || !C.list) return;
     if (!Array.isArray(pending) || pending.length === 0) {
-      // Don't hide while animating — would yank the row mid-animation.
+      // Don't hide while animating - would yank the row mid-animation.
       if (C.resolving.size === 0) C.section.hidden = true;
       C.list.innerHTML = "";
       return;
@@ -6888,7 +6888,7 @@
       COACH_DECISIONS.resolving.delete(id);
       return;
     }
-    // Success — let CSS finish the fade, then remove + clear resolving.
+    // Success - let CSS finish the fade, then remove + clear resolving.
     setTimeout(() => {
       try { li.remove(); } catch (_) {}
       COACH_DECISIONS.resolving.delete(id);
@@ -6926,7 +6926,7 @@
   };
 
   function _formatRelativeAge(unixSec) {
-    if (!unixSec) return "—";
+    if (!unixSec) return "-";
     const ageS = Math.max(0, (Date.now() / 1000) - unixSec);
     if (ageS < 60)    return `${Math.round(ageS)}s ago`;
     if (ageS < 3600)  return `${Math.round(ageS / 60)}m ago`;
@@ -6982,7 +6982,7 @@
   pollRecentCoachCalls();
 
   // ── Bridge Pending escalations (2026-05-03) ────────────────────────
-  // Reads /api/bridge/pending every 20s — the bridge_watcher writes
+  // Reads /api/bridge/pending every 20s - the bridge_watcher writes
   // the queue, this only displays it. Render is idempotent (sig
   // change-detection) to avoid flicker. Menu badge shows depth so the
   // operator sees pending work without navigating; sub-page shows full
@@ -7150,7 +7150,7 @@
   };
 
   function _fmtNum(n) {
-    if (n == null) return "—";
+    if (n == null) return "-";
     if (typeof n !== "number") return String(n);
     if (n >= 1000) return (n / 1000).toFixed(1) + "k";
     return String(n);
@@ -7185,7 +7185,7 @@
     if (F.empty) F.empty.hidden = liveCount > 0;
 
     // Sig: node + received_at + alive + queue_depth + escalations_since_boot.
-    // Don't include age_s — it ticks every poll and would force rebuilds.
+    // Don't include age_s - it ticks every poll and would force rebuilds.
     const sig = entries.map(([k, r]) => {
       const hb = r.heartbeat || {};
       return [k, r.received_at || 0, r.stale ? 1 : 0, hb.alive ? 1 : 0,
@@ -7245,7 +7245,7 @@
         ["auto-err 24h", _fmtNum(hb.auto_err_24h)],
         ["errors 24h", _fmtNum(hb.errors_24h)],
         ["spend today", hb.tokens_used_today_usd != null
-          ? "$" + Number(hb.tokens_used_today_usd).toFixed(2) : "—"],
+          ? "$" + Number(hb.tokens_used_today_usd).toFixed(2) : "-"],
       ];
       for (const [label, value] of cells) {
         const cell = document.createElement("div");
@@ -7346,7 +7346,7 @@
     const meta = document.createElement("div");
     meta.className = "turn-meta";
     const parts = [];
-    parts.push(`intent: ${env.intent || "—"}`);
+    parts.push(`intent: ${env.intent || "-"}`);
     if (env.spawn_path) parts.push(env.spawn_path);
     if (!isError && elapsedMs != null) parts.push(`${Math.round(elapsedMs)}ms`);
     if (env.filed && env.filed.length) {
@@ -7383,7 +7383,7 @@
   const SIM_THREAD = [];       // [{user, reply, intent}, ...]
   const SIM_THREAD_CAP = 5;
 
-  // Detect sim mode from URL — matches the ?sim=<name> gate used by
+  // Detect sim mode from URL - matches the ?sim=<name> gate used by
   // sim.js. Stays false when no sim param is present.
   const SIM_ACTIVE = new URLSearchParams(window.location.search).has("sim");
   const SIM_FIXTURE = new URLSearchParams(window.location.search).get("sim") || null;
@@ -7461,14 +7461,14 @@
         INPUT.turns.lastChild.appendChild(status);
         const out = await _pollTaskUntilDone(tid);
         if (out.ok) {
-          status.textContent = "applied — reloading…";
+          status.textContent = "applied - reloading…";
           setTimeout(() => window.location.reload(), 400);
         } else if (out.timeout) {
           status.textContent =
-            `still dispatching (task ${tid}) — refresh manually when ready`;
+            `still dispatching (task ${tid}) - refresh manually when ready`;
         } else {
           status.textContent =
-            `apply failed (task ${tid}) — open it for error detail`;
+            `apply failed (task ${tid}) - open it for error detail`;
           status.classList.add("ui-proposal-failed");
         }
       }
@@ -7523,7 +7523,7 @@
       }
       if (env.type === "health") { _pulseStatus(); return onHealth(env); }
       if (env.type === "state")  { _pulseStatus(); return onState(env); }
-      // Unknown envelope — log raw.
+      // Unknown envelope - log raw.
       logLine("ws", JSON.stringify(env).slice(0, 200));
     };
   }
@@ -7570,7 +7570,7 @@
     badge.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openLatest(); }
     });
-    // Lightweight advisory toast — coral card that slides in from the
+    // Lightweight advisory toast - coral card that slides in from the
     // bottom-right, tap to dismiss, auto-fades after 8s.
     function _showAdvisoryToast(a) {
       let t = document.getElementById("advisory-toast");
@@ -7592,7 +7592,7 @@
 
   // Restore persisted preferences (zoom / zen) from prior session. Also
   // builds a footer chip listing the active flags. The Shift+L header-lock
-  // mechanism was removed 2026-04-23 — it broke the UI composition when
+  // mechanism was removed 2026-04-23 - it broke the UI composition when
   // hidden pills were temporarily un-hidden during measurement, which
   // displaced the visible pills' captured positions. The natural flex
   // layout is stable enough once the advisory badge height is normalised.
@@ -7627,7 +7627,7 @@
     } catch (_) {}
   })();
 
-  // Footer prefs chip — shows "zen:off" and/or "zoom:1×" when the user is
+  // Footer prefs chip - shows "zen:off" and/or "zoom:1×" when the user is
   // running with non-default prefs. Recomputed from live state on each call
   // so a Z-toggle (or zoom hotkey) updates the chip immediately rather
   // than reflecting the value at page-load time only.
@@ -7664,7 +7664,7 @@
     chip.textContent = flags.join(" · ");
   }
 
-  // Post-auto-reload banner — lets user know the rebuild landed.
+  // Post-auto-reload banner - lets user know the rebuild landed.
   try {
     if (sessionStorage.getItem("rc-just-reloaded") === "1") {
       sessionStorage.removeItem("rc-just-reloaded");
@@ -7713,7 +7713,7 @@
       window.location.reload();
       return;
     }
-    // A triggers the ANALYZE NOW footer button — quick kickoff.
+    // A triggers the ANALYZE NOW footer button - quick kickoff.
     if ((e.key === "a" || e.key === "A") && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const tgt = e.target;
       if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA")) return;
@@ -7729,10 +7729,10 @@
       e.preventDefault();
       return;
     }
-    // Z toggles "zen" mode — hides Next + Adaptation panels so the grid
+    // Z toggles "zen" mode - hides Next + Adaptation panels so the grid
     // re-composes around Minimap + Right Now + Item Build. Uses body data
     // attribute so CSS does the rest. Zen is the default view, so we
-    // persist "0" on opt-out (not "" — restorePrefs treats null as on).
+    // persist "0" on opt-out (not "" - restorePrefs treats null as on).
     if ((e.key === "z" || e.key === "Z") && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const tgt = e.target;
       if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA")) return;
@@ -7825,7 +7825,7 @@
     show();
   })();
 
-  // Input clear button — shows only when the field has content.
+  // Input clear button - shows only when the field has content.
   (function setupInputClear() {
     const input = el("input-text"), clear = el("input-clear");
     if (!input || !clear) return;
@@ -7848,7 +7848,7 @@
   // restart, transient network drop during a match).
   //
   // Bug history (2026-04-25): the fallback was synthesising
-  // onState({mode: st.mode || "client"}) — but /api/state returns the
+  // onState({mode: st.mode || "client"}) - but /api/state returns the
   // mode under `mode_key`, not `mode`, so st.mode was ALWAYS undefined
   // and the fallback always declared mode="client". Same for the
   // health-envelope wrapping: /api/state's `health` is flat (alive,
@@ -7867,7 +7867,7 @@
         return;
       }
       // Tier 4 #16: skip when /api/state-stream pushed something within
-      // the last 4s — SSE has already delivered the same payload.
+      // the last 4s - SSE has already delivered the same payload.
       if (Date.now() - state.lastSseTs < 4000) return;
       const ageMs = Date.now() - lastFrameTs;
       if (ageMs < 4000) return;
@@ -7878,23 +7878,23 @@
         ]);
         if (hlResp.ok) {
           const hp = await hlResp.json();
-          // /api/health returns raw health.json — contains aram_mode,
+          // /api/health returns raw health.json - contains aram_mode,
           // arena_mode, tft_mode, has_game, mode flags onHealth needs.
           onHealth({ type: "health", source: "health-http", payload: hp });
         }
         if (stResp.ok) {
           const st = await stResp.json();
           const fileMode = st.mode_key || "client";
-          // The "coach" sub-object is the state envelope's payload —
+          // The "coach" sub-object is the state envelope's payload -
           // contains action, immediate, kda, augments, item_build, etc.
           const coachPayload = st.coach || st;
           onState({ type: "state", source: "state-http",
                     mode: fileMode, payload: coachPayload });
-          // 2026-04-25: cold-start champ-select prep — surface adaptation
+          // 2026-04-25: cold-start champ-select prep - surface adaptation
           // history during champ-select via the LCU snapshot.
           handleChampSelect(st.lcu);
         }
-      } catch (_) { /* ignore — WS may come back */ }
+      } catch (_) { /* ignore - WS may come back */ }
     }
     setInterval(pollIfStale, 2000);
   })();
@@ -7925,7 +7925,7 @@
           onState({ type: "state", source: "state-sse",
                     mode: fileMode, payload: coachPayload });
           if (st.lcu) handleChampSelect(st.lcu);
-        } catch (_) { /* malformed event — skip */ }
+        } catch (_) { /* malformed event - skip */ }
       };
       es.onerror = () => {
         // EventSource auto-reconnects per the server's `retry: 2000`
@@ -7967,7 +7967,7 @@
   // ── Voice TTS toggle ─────────────────────────────────────────────
   // (2026-04-25, revised same-day) Speech now uses the browser's
   // window.speechSynthesis (Web Speech API) so audio plays on the
-  // device viewing the dashboard — iPad, Game-PC, Legion, whatever —
+  // device viewing the dashboard - iPad, Game-PC, Legion, whatever -
   // not on the server. The server-side /api/speak endpoint is kept
   // for parity / curl testing but the dashboard no longer uses it.
   // State persisted in localStorage; off by default.
@@ -8046,7 +8046,7 @@
         return;
       }
       btn.textContent = on ? "🔊 VOICE" : "🔇 VOICE";
-      btn.title = on ? "Voice on — speaks Right Now headline changes" : "Voice off";
+      btn.title = on ? "Voice on - speaks Right Now headline changes" : "Voice off";
       btn.classList.toggle("active", on);
       if (picker) picker.style.display = on ? "" : "none";
     }
@@ -8079,7 +8079,7 @@
     function maybeSpeak() {
       if (!on) return;
       const txt = (actionEl.textContent || "").replace(/^[▶►⚠️\s]+/, "").trim();
-      if (!txt || txt === "—") return;
+      if (!txt || txt === "-") return;
       if (/awaiting|loading|no advice/i.test(txt)) return;
       const now = Date.now();
       if (txt === lastSpoken && (now - lastSpokenTs) < _DEDUP_MS) return;
@@ -8105,7 +8105,7 @@
   // leave a JS trace; this makes them visible from the Legion side.
   // Throttled to ≤2 posts/sec so a render-loop crash can't flood RC's
   // log file. The original console.error is preserved (DevTools still
-  // shows it) — we just tee a copy server-side.
+  // shows it) - we just tee a copy server-side.
   (function setupConsoleErrorPipe() {
     let lastSend = 0;
     let dropCount = 0;
@@ -8133,13 +8133,13 @@
           s = JSON.stringify(trimmed);
         }
         localStorage.setItem(QUEUE_KEY, s);
-      } catch (_) { /* localStorage full / disabled — ignore */ }
+      } catch (_) { /* localStorage full / disabled - ignore */ }
     }
     function flushQueueAfterSuccess() {
       const queued = readQueue();
       if (!queued.length) return;
       try { localStorage.removeItem(QUEUE_KEY); } catch (_) {}
-      // Best-effort drain — fire-and-forget so we don't block the tab.
+      // Best-effort drain - fire-and-forget so we don't block the tab.
       queued.forEach((entry, i) => {
         setTimeout(() => {
           try {
@@ -8179,7 +8179,7 @@
             const q = readQueue(); q.push(body); writeQueue(q);
           }
         }).catch(() => {
-          // Network failure / endpoint down — queue for next success.
+          // Network failure / endpoint down - queue for next success.
           const q = readQueue(); q.push(body); writeQueue(q);
         });
       } catch (_) { /* don't recurse on send errors */ }
@@ -8206,7 +8206,7 @@
         stack:   (isErr && r.stack) || "",
       });
     });
-    // Tee console.error → pipe. We don't tee console.warn/log — too
+    // Tee console.error → pipe. We don't tee console.warn/log - too
     // noisy and most real bugs surface as either thrown errors or
     // explicit console.error calls in our own code.
     const origErr = console.error.bind(console);
@@ -8283,7 +8283,7 @@
   //     tip would clip past the right/bottom edge
   //   - native `title` is stashed in `data-tt` on first hover and the DOM
   //     `title` is cleared so Chromium's delayed popup never shadows ours.
-  // Event delegation on document.body — catches dynamically-rendered
+  // Event delegation on document.body - catches dynamically-rendered
   // elements too (champion-pill, item tiles, etc.) without re-init.
   (function initTooltips() {
     const tip = document.createElement("div");
@@ -8325,7 +8325,7 @@
     // Body-zoom compensation: the dashboard sets `body { zoom: 1.33 }`,
     // so all UI content scales up uniformly. `event.clientX/Y` reports
     // viewport device pixels, but the tip is a descendant of the zoomed
-    // body — its `style.left` is interpreted in body-zoom CSS pixels and
+    // body - its `style.left` is interpreted in body-zoom CSS pixels and
     // rendered at that × zoom visually. Without dividing cursor coords
     // by the zoom factor the tip drifted roughly `cursorX × (zoom − 1)`
     // to the right, producing the "~1 inch down, 2 inches over" offset
@@ -8336,7 +8336,7 @@
       tip.style.left = "-9999px"; tip.style.top = "-9999px";
       const tr = tip.getBoundingClientRect();
       // tr is in viewport device pixels, but the final position needs to
-      // be expressed in body-zoom CSS pixels — convert everything once.
+      // be expressed in body-zoom CSS pixels - convert everything once.
       const trW = tr.width  / z;
       const trH = tr.height / z;
       const vw  = window.innerWidth  / z;
@@ -8369,7 +8369,7 @@
       activeEl = null;
       tip.classList.remove("show");
     }
-    // Track cursor continuously — mousemove fires during hover so the tip
+    // Track cursor continuously - mousemove fires during hover so the tip
     // follows the pointer if the user drags the cursor inside the anchor.
     document.body.addEventListener("mousemove", e => {
       cursorX = e.clientX; cursorY = e.clientY;
@@ -8394,25 +8394,25 @@
     document.body.addEventListener("click", hide, true);
   })();
 
-  // ───── AUDIT 2026-04-28 — proposals 3.3, 3.6 + 4.4, 2.1 ─────
+  // ───── AUDIT 2026-04-28 - proposals 3.3, 3.6 + 4.4, 2.1 ─────
   // Sticky-header compression on scroll + skeleton loaders + health
-  // rollup dot + cost-tile poll. All passive — no-ops if the target
+  // rollup dot + cost-tile poll. All passive - no-ops if the target
   // elements are absent.
   (function rcAuditUiEnhancements() {
     const header = document.querySelector("header");
     const COMPRESS_AT = 200;
     if (header) {
-      // 3.3 — compress on scroll-Y > 200, restore below.
+      // 3.3 - compress on scroll-Y > 200, restore below.
       window.addEventListener("scroll", () => {
         const y = window.scrollY || document.documentElement.scrollTop || 0;
         if (y > COMPRESS_AT) header.dataset.compressed = "1";
         else delete header.dataset.compressed;
       }, { passive: true });
 
-      // 4.4 — health rollup dot ("claude cost pill" — tooltip carries
+      // 4.4 - health rollup dot ("claude cost pill" - tooltip carries
       // Claude $/day + supervisor + vision health). 2026-04-29: moved
       // from header.header-row-2 to the footer (right of mode-pill) per
-      // user — it was visually distracting in the header. Lookup goes
+      // user - it was visually distracting in the header. Lookup goes
       // both header AND footer for back-compat with any cached layout.
       try {
         let dot = document.querySelector(".health-dot");
@@ -8486,7 +8486,7 @@
       } catch (e) { /* never let the dot break the dashboard */ }
     }
 
-    // 3.7 — Hot-reload poller (2026-04-30). Polls /api/asset-stamp
+    // 3.7 - Hot-reload poller (2026-04-30). Polls /api/asset-stamp
     // every 3s; on mtime increase, hard-reload the page so CSS/JS
     // edits Legion-side land on Game-PC's secondary display without
     // an alt-tab. Disabled if `localStorage.rc_hot_reload === '0'`.
@@ -8513,8 +8513,8 @@
       setInterval(tick, 3000);
     })();
 
-    // 3.6 — flag elements with data-rc-skel for the first 500 ms after
-    // game-start. Anything bearing the attribute that still reads "—"
+    // 3.6 - flag elements with data-rc-skel for the first 500 ms after
+    // game-start. Anything bearing the attribute that still reads "-"
     // gets the .rc-skel class until the first data tick lands.
     document.querySelectorAll("[data-rc-skel]").forEach(el => {
       el.classList.add("rc-skel");
@@ -8524,7 +8524,7 @@
     window.addEventListener("rc:state-tick", () => {
       document.querySelectorAll(".rc-skel").forEach(el => {
         const t = (el.textContent || "").trim();
-        if (t && t !== "—" && t.length > 0) el.classList.remove("rc-skel");
+        if (t && t !== "-" && t.length > 0) el.classList.remove("rc-skel");
       });
     });
   })();

@@ -7,7 +7,7 @@ Owns the HTTP/TLS multiplexing socket layer (the 2026-04-28 Game-PC fix
 for plain-HTTP clients hanging on a TLS-only listen socket), the cert
 lookup at ops/tls/rc.pem + rc-key.pem, and the daemon-thread bootstrap
 that spins up the vision_tracker and obs_publisher loops alongside
-the server. (decision_detector moved to agents/supervisor.py — T3 #15.)
+the server. (decision_detector moved to agents/supervisor.py - T3 #15.)
 
 Tier 2 #7 (2026-05-01): `Handler` was extracted out of web_dashboard.py
 into `dashboard/_handler.py`. We import it directly here. The
@@ -31,7 +31,7 @@ HOST = "0.0.0.0"
 class _DualProtocolHTTPServer(ThreadingHTTPServer):
     """Accept BOTH plain HTTP and TLS on the same port (2026-04-28
     Game-PC fix). Stdlib wrap_socket() over the listen socket forces every
-    accept() into a TLS handshake — a plaintext `http://` request from a
+    accept() into a TLS handshake - a plaintext `http://` request from a
     LAN host then connects, never receives bytes back, and times out.
 
     This server peeks the first byte per connection:
@@ -56,7 +56,7 @@ class _DualProtocolHTTPServer(ThreadingHTTPServer):
             except OSError: pass
             raise
         if first == b"\x16":
-            # TLS ClientHello — wrap and hand off. Wrap can raise on a
+            # TLS ClientHello - wrap and hand off. Wrap can raise on a
             # malformed handshake; that's a normal scanner / probe and
             # should be silently dropped.
             try:
@@ -67,7 +67,7 @@ class _DualProtocolHTTPServer(ThreadingHTTPServer):
                 try: sock.close()
                 except OSError: pass
                 raise OSError(f"TLS handshake failed: {exc}")
-        # Plain HTTP — answer with a 301 inline + close.
+        # Plain HTTP - answer with a 301 inline + close.
         try:
             self._inline_redirect(sock)
         except OSError:
@@ -80,7 +80,7 @@ class _DualProtocolHTTPServer(ThreadingHTTPServer):
 
     def _inline_redirect(self, sock) -> None:
         """Read enough of the request to extract Host + path, send a 301,
-        close. Best-effort — scanner/garbage traffic just gets a generic
+        close. Best-effort - scanner/garbage traffic just gets a generic
         redirect to /."""
         sock.settimeout(2.0)
         buf = b""
@@ -197,7 +197,7 @@ def start_dashboard(app_dir: Path) -> None:
                 close_fds=True,
                 creationflags=0x08000000,  # CREATE_NO_WINDOW
             )
-            _log.info("vision server not running — spawned %s", _vis.name)
+            _log.info("vision server not running - spawned %s", _vis.name)
     except Exception as exc:
         _log.warning("vision server startup check failed: %s", exc)
 
@@ -219,7 +219,7 @@ def start_dashboard(app_dir: Path) -> None:
         _log.warning("vision_tracker failed to start: %s", exc)
 
     # Decision detector loop now runs in the Phase 3 supervisor process
-    # (agents/supervisor.py) — Tier 3 #15, 2026-05-01. The dashboard still
+    # (agents/supervisor.py) - Tier 3 #15, 2026-05-01. The dashboard still
     # reads pending + writes choices via DecisionStore directly; cross-
     # process locking on data/decisions_pending.json is provided by
     # core.decision_detector._decisions_critical_section.

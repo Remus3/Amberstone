@@ -1,5 +1,5 @@
 """
-performance_tracker.py — Per-mode rating + match history DB.
+performance_tracker.py - Per-mode rating + match history DB.
 Modes: SR, ARAM, ARENA, BRAWL, TFT (incl. Double Up 4-team grading).
 Double Up placement: (alive_others+1)//2 maps individual deaths to team placement.
 """
@@ -10,7 +10,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 _log = logging.getLogger("rc.tracker")
-# 2026-04-27: unification — the per-mode last_<mode>.json files are the
+# 2026-04-27: unification - the per-mode last_<mode>.json files are the
 # canonical source of truth. The "last across all modes" is now derived as
 # the most-recently-modified per-mode file (see _latest_rating_file). This
 # removes the dual-write that ignored RC_ACCOUNT_ID namespacing.
@@ -18,7 +18,7 @@ RATINGS_DIR = "data/ratings"
 
 
 def _atomic_write_json(path: Path, data: dict) -> None:
-    """Atomic JSON write — CLAUDE.md §Hard rules. Overlays/dashboard poll
+    """Atomic JSON write - CLAUDE.md §Hard rules. Overlays/dashboard poll
     mid-write, so the only safe pattern is tmp.write → os.replace.
     AUDIT C4 (2026-04-22): replaces direct path.write_text usage below."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -48,7 +48,7 @@ def _get_db(sd):
 # Maps the rating category back to the coaching-state JSON each coach
 # writes per tick. Used by save_rating to attach the engine's last DS
 # pick set to matches.raw_data so the historical row carries the
-# recommendation alongside the actual outcome — calibration analysis no
+# recommendation alongside the actual outcome - calibration analysis no
 # longer needs to JOIN against ds_calibration.jsonl on (champion, mode,
 # approximate timestamp).
 _DS_COACH_FILE_BY_CATEGORY = {
@@ -62,7 +62,7 @@ _DS_COACH_FILE_BY_CATEGORY = {
 def _ds_picks_snapshot(sd, category):
     """Return the most recent DS pick list the coach wrote for this mode.
 
-    Soft-fails to [] — DS persistence is observability, never gates the
+    Soft-fails to [] - DS persistence is observability, never gates the
     match save. Caller passes the result into raw_data so the persisted
     row carries the engine's recommendation at game-end."""
     fname = _DS_COACH_FILE_BY_CATEGORY.get((category or "").upper())
@@ -352,7 +352,7 @@ def save_rating(script_dir,champion,game_state,ally_kills_total):
     # 2026-04-25: adaptation feedback loop. Translate the user's grade
     # (S/A/B/C/D/F) into a confidence multiplier on the cache entry for
     # this game's final state. Future similar states get advice weighted
-    # by past success. Non-fatal — the rating save proceeds regardless.
+    # by past success. Non-fatal - the rating save proceeds regardless.
     try:
         from coaches.feedback import apply_grade
         apply_grade(grade, game_state)

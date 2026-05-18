@@ -1,4 +1,4 @@
-// Map State panel — minimap canvas, game clock, spell CDs, gold diff,
+// Map State panel - minimap canvas, game clock, spell CDs, gold diff,
 // objective countdowns.
 import { el, safe, fmtList, _formatRelativeAge } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
@@ -45,7 +45,7 @@ function _applyGamePhase(gtS) {
   if (phase !== _lastPhase) {
     _lastPhase = phase;
     document.body.dataset.phase = phase;
-    // Mark transition — briefly pulse the marker + announce via status.
+    // Mark transition - briefly pulse the marker + announce via status.
     if (marker && _lastPhase) {
       marker.classList.remove("phase-transition");
       void marker.offsetWidth;
@@ -81,7 +81,7 @@ function _extractSpawnTime(text) {
   return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
 }
 
-// Tick every second — pull current cd from state.spellCds and update
+// Tick every second - pull current cd from state.spellCds and update
 // each header self-spell cell's display.
 function _tickSpellCooldowns() {
   if (document.hidden) return;
@@ -92,7 +92,7 @@ function _tickSpellCooldowns() {
     if (rem > 0) {
       cell.classList.add("on-cd");
       if (label) label.textContent = rem >= 60 ? Math.round(rem/60) + "m" : rem;
-      cell.title = (cell.title.split(" — ")[0]) + ` — ${rem}s`;
+      cell.title = (cell.title.split(" - ")[0]) + ` - ${rem}s`;
     } else {
       // If the cell was on cooldown last tick, briefly flash "ready".
       if (cell.classList.contains("on-cd")) {
@@ -107,7 +107,7 @@ function _tickSpellCooldowns() {
 setInterval(_tickSpellCooldowns, 1000);
 
 // Default spawn-cycle durations per objective (seconds) used as the
-// progress-bar denominator. Not scientific — Riot timings shift — but
+// progress-bar denominator. Not scientific - Riot timings shift - but
 // gives a glanceable "how close are we" feel.
 const _OBJ_CYCLE = {
   dragon: 300,  // 5:00 between drakes
@@ -123,10 +123,10 @@ function _kindOf(elm) {
   if (elm.id === "mm-atakhan") return "atakhan";
   return null;
 }
-// Minimap canvas renderer — Zone of Influence (ZOI) + position dots.
+// Minimap canvas renderer - Zone of Influence (ZOI) + position dots.
 //
 // ZOI: for each pixel, compute net "pressure" = Σ ally_pressure − Σ enemy_pressure.
-// Each champion contributes a compact-support "bubble" of influence — peaks
+// Each champion contributes a compact-support "bubble" of influence - peaks
 // at 1 at the champ, falls smoothly to exactly 0 at radius R. Beyond R the
 // champion contributes nothing, so the DMZ (the low-|net| band) visibly
 // fills gaps between bubbles and bulges where opposing bubbles press into
@@ -153,22 +153,22 @@ const ZOI = (() => {
     radius: pf("zoi-R", 0.32),
     // Small deadband around net=0 stays transparent (the "DMZ").
     deadband: pf("zoi-DB", 0.10),
-    // Baseline diagonal bias — top-left to bottom-right split (SR map).
+    // Baseline diagonal bias - top-left to bottom-right split (SR map).
     // Blue base is bot-left, red base is top-right. Champion pressure
     // warps this default. Keep weak so ganks + split-push still read.
     baselineStrength: pf("zoi-BL", 0.55),
   };
 })();
-// Phase-aware radius — early game champs are lane-contained, late game
+// Phase-aware radius - early game champs are lane-contained, late game
 // they rotate freely. Called with game_time_s from the state envelope.
 function _zoiRadius(gtS) {
   if (typeof gtS !== "number") return ZOI.radius;
-  if (gtS < 600)  return 0.22;   // <10:00 — tight lanes
-  if (gtS < 1200) return 0.28;   // 10-20 — grouping phase
-  if (gtS < 1800) return 0.34;   // 20-30 — rotations
-  return 0.40;                    // 30+ — pure teamfight / split
+  if (gtS < 600)  return 0.22;   // <10:00 - tight lanes
+  if (gtS < 1200) return 0.28;   // 10-20 - grouping phase
+  if (gtS < 1800) return 0.34;   // 20-30 - rotations
+  return 0.40;                    // 30+ - pure teamfight / split
 }
-// Compact-support influence bubble. d2 is (dist/R)² — already normalized
+// Compact-support influence bubble. d2 is (dist/R)² - already normalized
 // by the caller. Outside the bubble (d2 >= 1) the champion contributes
 // nothing, so the DMZ forms naturally in gaps and is pushed/pulled by
 // wherever bubbles actually reach.
@@ -188,7 +188,7 @@ function _drawZoi(ctx, W, H, allies, enemies, myTeam, gtS) {
   // Team color RGB.
   const myRGB    = myIsRed ? [240, 126, 139] : [138, 140, 240];   // coral vs lavender
   const enemyRGB = myIsRed ? [138, 140, 240] : [240, 126, 139];
-  // Keep weights flat but summable. Radius in normalized units —
+  // Keep weights flat but summable. Radius in normalized units -
   // scales with game phase so late-game teamfights read wider.
   const R = _zoiRadius(gtS);
   const DB = ZOI.deadband;
@@ -244,7 +244,7 @@ function _drawZoi(ctx, W, H, allies, enemies, myTeam, gtS) {
       // Smooth exponential ramp: light pressure = subtle tint, heavy
       // concentration (3+ champs stacked) = near-cap saturation.
       // Scale chosen so 1 champion at influence radius ≈ half-cap.
-      // Opacity caps tuned for SR underlay — 0.42/0.22 lets the map
+      // Opacity caps tuned for SR underlay - 0.42/0.22 lets the map
       // read through the tint while still clearly team-coded.
       if (net > DB) {
         r = myRGB[0]; g = myRGB[1]; b = myRGB[2];
@@ -256,7 +256,7 @@ function _drawZoi(ctx, W, H, allies, enemies, myTeam, gtS) {
         r = g = b = 0; a = 0;
       }
       if (edge) {
-        // Boundary line between ally/enemy pressure — a soft gold stripe
+        // Boundary line between ally/enemy pressure - a soft gold stripe
         // that reads against both tinted zones without blend-mode tricks.
         r = 245; g = 184; b = 124; a = 0.75;
       }
@@ -268,7 +268,7 @@ function _drawZoi(ctx, W, H, allies, enemies, myTeam, gtS) {
     }
   }
   offCtx.putImageData(img, 0, 0);
-  // Upscale with soft interpolation — looks like a gradient, not pixels.
+  // Upscale with soft interpolation - looks like a gradient, not pixels.
   ctx.clearRect(0, 0, W, H);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
@@ -296,7 +296,7 @@ function renderMinimapCanvases(p) {
   const myColor = myTeam === "red" ? "#F07E8B" : "#8A8CF0";
   const enemyColor = myTeam === "red" ? "#8A8CF0" : "#F07E8B";
 
-  // Drop positions for dead champions — they're not exerting pressure.
+  // Drop positions for dead champions - they're not exerting pressure.
   // *_respawns keys → remaining seconds; >0 = dead, skip contribution.
   const deadE = new Set(Object.entries(p.enemy_respawns || {})
       .filter(([, s]) => typeof s === "number" && s > 0)
@@ -316,14 +316,14 @@ function renderMinimapCanvases(p) {
   const ctx = posCanvas.getContext("2d");
   const W = posCanvas.width, H = posCanvas.height;
   ctx.clearRect(0, 0, W, H);
-  // Objective spawn markers — approximate SR positions. Draws a small
+  // Objective spawn markers - approximate SR positions. Draws a small
   // translucent icon glyph so the user has map landmarks without the
   // live PNG. ARAM doesn't have these; skip if mode differs.
   if (state.mode === "sr") {
     const marks = [
-      { x: 0.68, y: 0.70, label: "D", color: "rgba(240,126,139,0.55)" },  // Dragon — bot-right river
-      { x: 0.32, y: 0.30, label: "B", color: "rgba(192,139,150,0.55)" },  // Baron — top-left river
-      { x: 0.32, y: 0.30, label: "H", color: "rgba(245,184,124,0.45)", offset: true },  // Herald — same pit pre-20
+      { x: 0.68, y: 0.70, label: "D", color: "rgba(240,126,139,0.55)" },  // Dragon - bot-right river
+      { x: 0.32, y: 0.30, label: "B", color: "rgba(192,139,150,0.55)" },  // Baron - top-left river
+      { x: 0.32, y: 0.30, label: "H", color: "rgba(245,184,124,0.45)", offset: true },  // Herald - same pit pre-20
     ];
     ctx.save();
     ctx.font = "bold 11px Lato, sans-serif";
@@ -343,7 +343,7 @@ function renderMinimapCanvases(p) {
   function drawDot(x, y, color, isSelf) {
     const cx = Math.round(x * W), cy = Math.round(y * H);
     if (isSelf) {
-      // Champion sight-range halo — ~1200 units on a 15000-unit SR map
+      // Champion sight-range halo - ~1200 units on a 15000-unit SR map
       // ≈ 0.08 normalized. Thin gold stroke + soft glow. Gives the user
       // a "what can I actually see" read without flipping to the minimap.
       const vR = 0.085 * W;
@@ -422,7 +422,7 @@ function renderMinimapCanvases(p) {
       const d2 = (dx*dx + dy*dy) / (_R * _R);
       netAtSelf -= _bubbleKernel(d2);
     }
-    // ?debug=1 — show ZOI pressure readouts under the legend.
+    // ?debug=1 - show ZOI pressure readouts under the legend.
     if (/[?&]debug=1/.test(location.search)) {
       const dbg = el("zoi-debug");
       if (dbg) {
@@ -449,7 +449,7 @@ function renderMinimapCanvases(p) {
         zonePill.className = "zone-pill zone-safe";
         document.body.dataset.zone = "safe";
       } else {
-        zoneLabel.textContent = "— DMZ";
+        zoneLabel.textContent = "- DMZ";
         zonePill.className = "zone-pill zone-dmz";
         document.body.dataset.zone = "dmz";
       }
@@ -535,7 +535,7 @@ function _tickObjectiveCountdowns() {
   const nowS = _currentGameTimeS();
   for (const elm of [MM.dragon, MM.baron, MM.herald]) {
     if (!elm) continue;
-    const raw = elm.dataset.raw || "—";
+    const raw = elm.dataset.raw || "-";
     if (nowS == null) { elm.textContent = raw; continue; }
     const target = _extractSpawnTime(raw);
     // Find (or lazy-create) the tick progress bar on the containing .kv row.
@@ -571,7 +571,7 @@ function _tickObjectiveCountdowns() {
     }
   }
 }
-// Tick every 1s — objective countdowns are the primary live pulse.
+// Tick every 1s - objective countdowns are the primary live pulse.
 // Skip work entirely when the tab is hidden (iPad battery / CPU).
 setInterval(() => {
   if (document.hidden) return;
@@ -587,7 +587,7 @@ function renderMinimap(p) {
   _updateGameClock(p);
   // Coaching-JSON fields surface objective state when the coach has
   // computed it. When absent, keep the placeholder. Fields queried:
-  //   p.dragon_state / p.dragon_stack / p.soul — if the coach computed them
+  //   p.dragon_state / p.dragon_stack / p.soul - if the coach computed them
   //   p.baron_alive / p.baron_timer
   //   p.herald_alive / p.atakhan_state
   //   p.my_tower_hp / p.enemy_tower_hp (ARAM) or towers_us/towers_them (SR)
@@ -596,12 +596,12 @@ function renderMinimap(p) {
   // Store the raw state text in data-raw so the countdown tick can
   // re-render from it without a fresh state envelope.
   // Strip "(Cloud taken 12:04)" / "(Chemtech taken 8:30)" style parentheticals
-  // — the kill count + next-spawn line already convey the important bits;
+  // - the kill count + next-spawn line already convey the important bits;
   // the parenthetical just eats horizontal space.
-  const _cleanObj = s => String(s || "—")
+  const _cleanObj = s => String(s || "-")
     .replace(/\s*\([^)]*taken[^)]*\)\s*/gi, " ")
     .replace(/  +/g, " ")
-    .trim() || "—";
+    .trim() || "-";
   for (const [elm, val] of [
     [MM.dragon,  _cleanObj(p.dragon_state  || p.dragon)],
     [MM.baron,   _cleanObj(p.baron_state   || p.baron)],
@@ -610,23 +610,23 @@ function renderMinimap(p) {
     if (elm) elm.dataset.raw = val;
   }
   _tickObjectiveCountdowns();
-  // Keep self-spell CDs current — feeds the header summoner-spell pill.
+  // Keep self-spell CDs current - feeds the header summoner-spell pill.
   _snapshotSpells(p.ally_spells);
   _tickSpellCooldowns();
   renderGoldDiff(p);
   renderMinimapCanvases(p);
   // Tower count / team kills / game time chips were removed from the
-  // Map State panel 2026-04-23 — those signals live on the header row 2.
+  // Map State panel 2026-04-23 - those signals live on the header row 2.
   // Guarded writes so the removal doesn't require touching MM init.
   if (MM.towers) {
     const tUs = p.towers_us ?? p.my_tower_hp;
     const tThem = p.towers_them ?? p.enemy_tower_hp;
-    MM.towers.textContent = (tUs != null && tThem != null) ? `${tUs} / ${tThem}` : "—";
+    MM.towers.textContent = (tUs != null && tThem != null) ? `${tUs} / ${tThem}` : "-";
   }
-  if (MM.score) MM.score.textContent = p.score || p.team_score || p.kda_aggregate || "—";
+  if (MM.score) MM.score.textContent = p.score || p.team_score || p.kda_aggregate || "-";
   if (MM.gameTime) {
     MM.gameTime.textContent = (typeof p.game_time_s === "number")
-      ? _fmtMMSS(p.game_time_s) : (p.game_time || "—");
+      ? _fmtMMSS(p.game_time_s) : (p.game_time || "-");
   }
 
   // Live marker when we have ANY real datum; otherwise scaffold.
@@ -634,14 +634,14 @@ function renderMinimap(p) {
                    || p.atakhan_state || p.my_tower_hp != null
                    || p.towers_us != null || p.game_time);
   MM.status.className = "minimap-state" + (hasAny ? " live" : "");
-  // Dynamic status line — more actionable than the old dev-y scaffold text.
+  // Dynamic status line - more actionable than the old dev-y scaffold text.
   // 2026-04-26: hide the pill entirely when we have liveclient AND the
-  // minimap image is showing — the live cropped minimap is the primary
+  // minimap image is showing - the live cropped minimap is the primary
   // signal; "waiting on positions" is just noise that overlaps the map
   // visually. Only show the pill when there's something useful to say
   // (ZOI populated) or no data at all (offline state).
   // Shared-vision modes (ARAM/KIWI per core/vision_tracker._SHARED_VISION_MODES)
-  // have no Live Client positions — refreshVisionOverlay populates this
+  // have no Live Client positions - refreshVisionOverlay populates this
   // pill from /api/vision-state.summary instead. Don't clobber its text.
   const sharedVision = state.mode === "aram";
   if (sharedVision) {
@@ -661,7 +661,7 @@ function renderMinimap(p) {
       _renderMmStateLine(MM.status, `${allyCount} ally · ${enemyCount} enemy`);
       MM.status.classList.remove("hidden");
     } else {
-      // Liveclient up but no positions yet — hide the pill so it
+      // Liveclient up but no positions yet - hide the pill so it
       // doesn't sit on top of the minimap image.
       MM.status.textContent = "";
       MM.status.classList.add("hidden");
@@ -683,7 +683,7 @@ function _renderMmStateLine(host, countText) {
   if (!host._wired) {
     host._wired = true;
     host.innerHTML = '<span class="mm-heart" aria-hidden="true"></span>'
-      + '<span class="mm-counts">— · —</span>'
+      + '<span class="mm-counts">- · -</span>'
       + '<span class="mm-age">0s ago</span>';
     // Single global timer; re-uses host._lastT as the source of truth.
     setInterval(() => {
@@ -711,7 +711,7 @@ function _renderMmStateLine(host, countText) {
   }
 }
 
-// Lightweight ephemeral burst above the KDA pill — kill/assist/death
+// Lightweight ephemeral burst above the KDA pill - kill/assist/death
 // surfaces briefly then fades. One-shot DOM elements so overlaps
 
 // Live spell-cooldown state. Each key is champion|spell, value is

@@ -1,8 +1,8 @@
 {
-  "_doc": "Per-host secrets for the RC↔Peer cross-Claude bridge. Copy this file to ops/local_paths.json (gitignored) and fill in the real values. Empty values disable the bridge — RC's /api/bridge/inbox returns 503 and outbound bridge.send() returns (False, 'bridge_not_configured').",
+  "_doc": "Per-host secrets for the RC↔Peer cross-Claude bridge. Copy this file to ops/local_paths.json (gitignored) and fill in the real values. Empty values disable the bridge - RC's /api/bridge/inbox returns 503 and outbound bridge.send() returns (False, 'bridge_not_configured').",
 
   "bridge_shared_secret": "",
-  "_secret_note": "A long random string, identical on both RC and Peer. Generate with: python -c \"import secrets; print(secrets.token_urlsafe(32))\". Treat as a credential — never commit, never log, never paste into chat.",
+  "_secret_note": "A long random string, identical on both RC and Peer. Generate with: python -c \"import secrets; print(secrets.token_urlsafe(32))\". Treat as a credential - never commit, never log, never paste into chat.",
 
   "bridge_remote_url": "",
   "_url_note": "Base URL of the peer (no trailing slash). Same-host today: e.g. https://127.0.0.1:8888 for Peer, https://127.0.0.1:8888 for RC if both bind loopback. Cross-host later: routable hostname/IP. The peer must be serving /api/bridge/inbox at this base URL."

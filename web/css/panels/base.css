@@ -1,28 +1,28 @@
 :root {
   /* ───── Neo-fintech palette ──────────────────────────────────── */
-  --canvas:        #171821;   /* deep blue-black — page bg */
-  --surface:       #21222D;   /* panel bg — one step lighter */
+  --canvas:        #171821;   /* deep blue-black - page bg */
+  --surface:       #21222D;   /* panel bg - one step lighter */
   --surface-head:  #272836;   /* panel header bg */
   --surface-alt:   #1C1D27;   /* subtle alt / input bg */
   --text:          #F5F5F7;   /* primary text */
   --text-dim:      #9DA0B3;   /* secondary text / labels */
   --text-faint:    #6B6D7C;   /* ternary / captions */
-  --border:        #2E3040;   /* de-emphasized — panels rely on tone */
+  --border:        #2E3040;   /* de-emphasized - panels rely on tone */
   --border-soft:   #262734;   /* dashed dividers */
 
   /* Accent pairs. Primary live-data accent is coral pink; secondary
    * comparative accent is lavender. Greens / warm alerts kept for
    * positive / destructive semantics but retuned to the palette. */
-  --good:          #7FD19A;   /* cool mint — up / success / positive */
+  --good:          #7FD19A;   /* cool mint - up / success / positive */
   --good-soft:     #2E4A3A;
-  --bad:           #F07E8B;   /* coral pink — down / error / hot live data */
+  --bad:           #F07E8B;   /* coral pink - down / error / hot live data */
   --bad-soft:      #4A2A31;
-  --gold:          #F5B87C;   /* soft coral-amber — action / KDA / emphasis */
+  --gold:          #F5B87C;   /* soft coral-amber - action / KDA / emphasis */
   --gold-soft:     #4A3723;
 
-  --info:          #8A8CF0;   /* lavender — info / intents / passive series */
+  --info:          #8A8CF0;   /* lavender - info / intents / passive series */
   --info-soft:     #2E2E4A;
-  --advisory:      #F07E8B;   /* coral pink — cold-streak advisories */
+  --advisory:      #F07E8B;   /* coral pink - cold-streak advisories */
   --advisory-soft: #4A2A31;
 
   /* Shape language */
@@ -44,7 +44,7 @@
 .app-tooltip {
   position: fixed;
   /* Width is content-driven since JS wraps at 6 words per line. max-width
-   * is just a safety ceiling for very long words (no break-word — a long
+   * is just a safety ceiling for very long words (no break-word - a long
    * item name should never split mid-word). */
   max-width: 480px;
   padding: 10px 16px;
@@ -60,7 +60,7 @@
   letter-spacing: 0.02em;
   border: 1px solid rgba(255,255,255,0.7);
   /* s162 v14: stronger layered drop shadow signals "popover above
-   * content" — same treatment now applied to .lq-mode-menu so the
+   * content" - same treatment now applied to .lq-mode-menu so the
    * Change-Lobby-Mode dropdown reads as a popover rather than a
    * layout collision when it opens over the Mains panel. */
   box-shadow:
@@ -77,7 +77,7 @@
 .app-tooltip.show { opacity: 1; }
 
 /* s213: richer tooltip surface for LoL item/keystone descriptions.
- * The tooltip receives innerHTML when an element has `data-tt-html` —
+ * The tooltip receives innerHTML when an element has `data-tt-html` -
  * these classes style that HTML's title-row / gold-pill / tree-label
  * elements. The body text inherits the .app-tooltip base sizing. */
 .app-tooltip .lol-tt-title {
@@ -109,7 +109,7 @@
 /* `data-tt-html` content is rendered as HTML, which means white-space
  * pre-wrap inherited from the base rule would render literal newlines
  * inside the HTML weirdly. Override to `normal` only for the HTML
- * path — JS-inserted plain text still gets pre-wrap. */
+ * path - JS-inserted plain text still gets pre-wrap. */
 .app-tooltip:has(.lol-tt-title) { white-space: normal; }
 .app-tooltip .lol-tt-title + i {
   display: block;
@@ -121,7 +121,7 @@
 html { height: 100%; }
 
 body {
-  /* Flex column — header, main, activity, input-bar, footer stack and
+  /* Flex column - header, main, activity, input-bar, footer stack and
    * main flex-grows to fill remaining height. Zoom-safe: no vh math. */
   display: flex;
   flex-direction: column;
@@ -145,12 +145,12 @@ body {
 body { zoom: 1.0; }
 body.cursor-hidden, body.cursor-hidden * { cursor: none !important; }
 
-/* Game-phase theming — JS sets body[data-phase] from game_time_s:
+/* Game-phase theming - JS sets body[data-phase] from game_time_s:
  * early  <15:00  calm blue tint
  * mid    15–25   engaged gold tint
  * late   25+     urgent coral tint
  * The tint is a single-pixel-thick top border + title-accent shift. */
-/* (2026-04-23) Phase-tinted title-left border removed — user wanted the
+/* (2026-04-23) Phase-tinted title-left border removed - user wanted the
  * title position identical across client and in-game states; the border
  * was shifting "RIOT COMMANDER" 16px right whenever data-phase was set. */
 body[data-phase="mid"]   header { background: linear-gradient(180deg, color-mix(in srgb, var(--gold) 6%, var(--canvas)) 0%, var(--canvas) 100%); }

@@ -1,6 +1,6 @@
 # arch: DevRuntime remediation callbacks | section=orchestration | frozen=yes
 """
-app/_remediation.py — RemediationService (post-T2 #6 dashboard-only)
+app/_remediation.py - RemediationService (post-T2 #6 dashboard-only)
 
 DevRuntime callbacks. restart_game_poll restarts the SrAramWorker.
 rebuild_panel_* are kept as no-ops because main.py (frozen) registers them
@@ -14,9 +14,9 @@ import threading
 class RemediationService:
     """
     Owns:
-      restart_game_poll()             — restart SrAramWorker safely
-      rebuild_panel(key)              — no-op (panels removed in T2 #6)
-      rebuild_panel_game_{bottom,rtop,rbot}() — no-op wrappers
+      restart_game_poll()             - restart SrAramWorker safely
+      rebuild_panel(key)              - no-op (panels removed in T2 #6)
+      rebuild_panel_game_{bottom,rtop,rbot}() - no-op wrappers
 
     OverlayApp delegates all five methods here.
     """
@@ -41,7 +41,7 @@ class RemediationService:
                     app._sr_aram_worker.restart()
                     result_q.put({"ok": True, "detail": "SrAramWorker restarted"})
                 else:
-                    # Legacy path: no SrAramWorker — spawn a bare thread
+                    # Legacy path: no SrAramWorker - spawn a bare thread
                     app._game_poll_gen += 1
                     new_gen = app._game_poll_gen
                     app._none_streak = 0

@@ -10,7 +10,7 @@ Wire shape:
   GET  /api/team-context           ← Dashboard poll. No auth (loopback /
                                     Tailnet-only, served by HTTPS dashboard).
 
-Storage: in-memory dict guarded by a Lock — single-process. The cache
+Storage: in-memory dict guarded by a Lock - single-process. The cache
 survives RC reload because it's reset on supervisor restart, which is the
 desired lifetime for a per-game enrichment payload.
 
@@ -24,11 +24,11 @@ Soft-fail invariants:
 Fan-out (FU02 main):
   After the skeleton roster is stored, the POST handler dispatches a
   background worker that calls `core.riot_api` to enrich each entry.
-  Priority-1 (mastery + rank) fires first — those land in <30s of
+  Priority-1 (mastery + rank) fires first - those land in <30s of
   champ-select start under the 100/2min rate limit. Priority-2
   (mains + winrate + W/L streak) fires after, paced through the
   remaining ~60s of champ-select. The dashboard polls /api/state and
-  re-renders as each field arrives — no blocking on full enrichment.
+  re-renders as each field arrives - no blocking on full enrichment.
 
   Dispatch is via a module-level `_FANOUT_DISPATCHER` callable so tests
   can replace it with a no-op without monkey-patching `core.riot_api`.
@@ -64,7 +64,7 @@ _MAX_ROSTER = 10
 _WORKER: Optional[threading.Thread] = None
 # Ranked-queue gate: queue IDs where summoner names must NOT be sent to
 # the dashboard until loading-screen flag flips. Match-V5 docs queue
-# list — Ranked Solo (420), Ranked Flex (440). The render layer also
+# list - Ranked Solo (420), Ranked Flex (440). The render layer also
 # enforces this; backend blanking is defense in depth.
 _RANKED_BLANK_QUEUES = frozenset({420, 440})
 
@@ -144,7 +144,7 @@ def _skeleton_entry(slot: dict, blank_names: bool = False) -> dict:
     worker, which mutates each entry in place.
 
     When `blank_names` is True (ranked queues 420/440), summoner_name is
-    forced empty regardless of what the LCU payload supplied — keeps the
+    forced empty regardless of what the LCU payload supplied - keeps the
     Riot-policy compliance gate visible at the storage layer too.
     """
     name = "" if blank_names else str(slot.get("summoner_name") or "")
@@ -164,7 +164,7 @@ def _skeleton_entry(slot: dict, blank_names: bool = False) -> dict:
 # ── Riot API fan-out ────────────────────────────────────────────────────
 
 # Number of recent matches to scan for mains / winrate / streak.
-# Personal-tier ceiling makes 20 the practical max — 10 players × 20
+# Personal-tier ceiling makes 20 the practical max - 10 players × 20
 # matches × ~1 cache-miss per call ≈ 200 calls in a cold cache, well
 # under the 100/2min × full-window budget once paced.
 _RECENT_MATCH_DEPTH = 20
@@ -189,7 +189,7 @@ def _enrich_priority_1(entry: dict, locked_champion_id: Optional[int]) -> None:
     team = "allies" if int(entry.get("team_id") or 0) != 200 else "enemies"
 
     # League-V4 rank. Empty list = unranked; we still want to flag the
-    # entry as "looked up" so the skeleton "—" is replaced with the
+    # entry as "looked up" so the skeleton "-" is replaced with the
     # actual rank string ("UNRANKED" sentinel left blank for now;
     # render shows skel placeholder when rank == "").
     entries = riot_api.get_summoner_rank(puuid)
@@ -231,7 +231,7 @@ def _enrich_priority_2(entry: dict) -> None:
 # Map the locked-champion name (LCU payload key) → numeric ID. The LCU
 # agent posts `locked_champion` as the champion's display name string;
 # Champion-Mastery-V4 needs the numeric ID. The mapping is loaded from
-# data/ddragon at module-import time and refreshed on miss. Soft-fail —
+# data/ddragon at module-import time and refreshed on miss. Soft-fail -
 # missing IDs just skip the mastery call for that entry.
 _CHAMP_NAME_TO_ID_CACHE: Optional[dict] = None
 
@@ -270,7 +270,7 @@ def _champ_name_to_id(name: str) -> Optional[int]:
 
 
 def _fanout_worker(allies: list, enemies: list, queue_id: int) -> None:
-    """Fan-out worker — runs in a daemon thread.
+    """Fan-out worker - runs in a daemon thread.
 
     Walks the roster twice: priority-1 across all players first, then
     priority-2. The rate limiter inside `core.riot_api` provides natural
@@ -282,8 +282,8 @@ def _fanout_worker(allies: list, enemies: list, queue_id: int) -> None:
     log.info("team-context fan-out start: queue=%d roster=%d",
              queue_id, len(everyone))
 
-    # Priority-1 — mastery + rank for every entry. Tight loop, no pacing
-    # — short bucket (20/s) handles 20 calls in ~1s.
+    # Priority-1 - mastery + rank for every entry. Tight loop, no pacing
+    # - short bucket (20/s) handles 20 calls in ~1s.
     for entry in everyone:
         if time.monotonic() >= deadline:
             log.warning("team-context fan-out priority-1 hit deadline")
@@ -291,10 +291,10 @@ def _fanout_worker(allies: list, enemies: list, queue_id: int) -> None:
         try:
             cid = _champ_name_to_id(entry.get("locked_champion") or "")
             _enrich_priority_1(entry, cid)
-        except Exception as exc:    # noqa: BLE001 — must not kill the worker
+        except Exception as exc:    # noqa: BLE001 - must not kill the worker
             log.warning("team-context priority-1 entry failed: %s", exc)
 
-    # Priority-2 — recent matches per player. Cold-cache cost is heavy
+    # Priority-2 - recent matches per player. Cold-cache cost is heavy
     # (each player = 1 list call + ≤20 match-detail calls); the long
     # bucket (100/120s) gates this naturally so we don't have to add
     # explicit sleeps.
@@ -312,7 +312,7 @@ def _fanout_worker(allies: list, enemies: list, queue_id: int) -> None:
 
 
 def _default_dispatch_fanout(allies: list, enemies: list, queue_id: int) -> None:
-    """Default fan-out dispatcher — spawns a daemon thread iff the
+    """Default fan-out dispatcher - spawns a daemon thread iff the
     Riot API is configured. Tests override _FANOUT_DISPATCHER to skip
     real network work."""
     try:
@@ -341,14 +341,14 @@ def _default_dispatch_fanout(allies: list, enemies: list, queue_id: int) -> None
     t.start()
 
 
-# Pluggable dispatcher — tests replace this to assert call shape without
+# Pluggable dispatcher - tests replace this to assert call shape without
 # spawning real network work. The route handler always dispatches via
 # this module-level reference.
 _FANOUT_DISPATCHER: Callable[[list, list, int], None] = _default_dispatch_fanout
 
 
 def _serve_refresh_post(h, body) -> None:
-    """POST /api/team-context/refresh — receive 10-player roster from
+    """POST /api/team-context/refresh - receive 10-player roster from
     Game-PC LCU agent on ChampSelect transition.
 
     Body shape:
@@ -420,7 +420,7 @@ def _serve_refresh_post(h, body) -> None:
 
     # Dispatch the Riot-API fan-out. Default dispatcher spawns a daemon
     # thread iff `core.riot_api.is_configured()`; tests swap in a no-op.
-    # Failure here MUST NOT break the route — the skeleton is already
+    # Failure here MUST NOT break the route - the skeleton is already
     # stored, the dashboard renders just fine without enrichment.
     try:
         _FANOUT_DISPATCHER(allies, enemies, queue_id)
@@ -434,7 +434,7 @@ def _serve_refresh_post(h, body) -> None:
 
 
 def _serve_get(h) -> None:
-    """GET /api/team-context — dashboard poll.
+    """GET /api/team-context - dashboard poll.
 
     Returns `{"team_context": <obj|null>, "age_s": <float>}`. Age is
     computed from the last successful refresh; null cache → age=null.

@@ -14,10 +14,10 @@
     "  - item display names are fuzzy-resolved against ddragon (apostrophes, spaces, case stripped).",
     "  - summoner IDs: 1 cleanse, 3 exhaust, 4 flash, 6 ghost, 7 heal, 11 smite, 12 teleport, 14 ignite, 21 barrier, 32 mark/snowball.",
     "",
-    "Builds are hand-curated to match the champion's actual meta playstyle —",
+    "Builds are hand-curated to match the champion's actual meta playstyle -",
     "ARAM variants intentionally include funky off-meta options (on-hit Lulu,",
     "tank Veigar, AP Sona) where they're genuinely viable in the random-pick",
-    "context. Add more by hand-editing — resolver re-checks mtime per call."
+    "context. Add more by hand-editing - resolver re-checks mtime per call."
   ],
   "champions": {
     "Aatrox": {

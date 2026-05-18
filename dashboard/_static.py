@@ -16,7 +16,7 @@ log = logging.getLogger("rc.web_dashboard")
 
 
 # Cache for the asset hash so back-to-back index requests don't re-stat
-# every file. 2 s TTL — same window /api/ui-version uses.
+# every file. 2 s TTL - same window /api/ui-version uses.
 _ASSET_HASH_CACHE: dict = {"hash": "", "mtime": 0.0}
 
 
@@ -35,7 +35,7 @@ def compute_asset_hash() -> str:
     # also bust browser caches. Without this, view-router / handler
     # changes are invisible until a hard-reload. Also walk the panels/
     # subdirs so edits to per-panel ESM modules and per-panel CSS bust
-    # the cache too — they're loaded through main.js / dashboard.css
+    # the cache too - they're loaded through main.js / dashboard.css
     # imports, so without this any edit to a panel went unnoticed by
     # browsers until manual cache-clear.
     for rel in ("index.html", "css/dashboard.css", "js/dashboard.js",

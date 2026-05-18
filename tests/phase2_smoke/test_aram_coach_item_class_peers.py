@@ -2,9 +2,9 @@
 ``coaches/aram_coach.py``.
 
 Covers two peer classes salvaged from PR #3:
-  - Boots (all boot types are peers — only one pair fits the slot)
+  - Boots (all boot types are peers - only one pair fits the slot)
   - Spellblade passive (Trinity Force / Lich Bane / Divine Sunderer /
-    Essence Reaver — passive does not stack; only the last-triggered
+    Essence Reaver - passive does not stack; only the last-triggered
     proc applies, so a second Spellblade item is a dead slot)
 
 Each test verifies that ``_dedup_build_vs_owned`` strips a class-peer
@@ -72,7 +72,7 @@ class BootsPeerTests(unittest.TestCase):
 
 
 class SpellbladePeerTests(unittest.TestCase):
-    """Trinity / Lich Bane / Divine Sunderer / Essence Reaver — non-stacking passive."""
+    """Trinity / Lich Bane / Divine Sunderer / Essence Reaver - non-stacking passive."""
 
     def test_trinity_owned_strips_lich_bane(self) -> None:
         result = _dedup_build_vs_owned(

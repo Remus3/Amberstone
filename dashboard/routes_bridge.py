@@ -1,7 +1,7 @@
 """Bridge / preview-build / champions routes.
 
 Slice 2C-6 (2026-05-01): handlers carved out of web_dashboard._Handler.
-Group 6 — three GET endpoints:
+Group 6 - three GET endpoints:
 
   /api/bridge          cross-Claude message log read
   /api/preview-build   champ-select build + runes + ally-notes brief
@@ -96,7 +96,7 @@ def _serve_preview_build(h) -> None:
 
 
 # Module-level cache for /api/champions. None on first hit, dict
-# thereafter. Migrated from web_dashboard._CHAMP_MAP_CACHE — nothing
+# thereafter. Migrated from web_dashboard._CHAMP_MAP_CACHE - nothing
 # else reads it.
 _CACHE: dict | None = None
 
@@ -152,12 +152,12 @@ def _serve_bridge_post(h, payload) -> None:
 
 
 def _serve_bridge_inbox(h, payload) -> None:
-    # POST /api/bridge/inbox — receive a message from the peer (Peer).
+    # POST /api/bridge/inbox - receive a message from the peer (Peer).
     # Mirrors Peer's /api/bridge/inbox per RC_BRIDGE_CONTRACT.md (v0).
-    #   503 — no shared_secret configured
-    #   401 — Authorization header missing or doesn't match
-    #   400 — no `summary` field in payload
-    #   200 — appended to bridge log; returns {ok, entry}
+    #   503 - no shared_secret configured
+    #   401 - Authorization header missing or doesn't match
+    #   400 - no `summary` field in payload
+    #   200 - appended to bridge log; returns {ok, entry}
     try:
         if not _bridge.is_configured():
             h._send(503, b'{"error":"bridge_not_configured"}', "application/json")
@@ -196,7 +196,7 @@ def _serve_bridge_inbox(h, payload) -> None:
 
 
 def _serve_bridge_status(h) -> None:
-    # GET /api/bridge/status — operator-facing config gate; never leaks the secret.
+    # GET /api/bridge/status - operator-facing config gate; never leaks the secret.
     try:
         h._send(200, json.dumps(_bridge.status_summary()).encode("utf-8"),
                 "application/json")
@@ -207,7 +207,7 @@ def _serve_bridge_status(h) -> None:
 
 # ── route table ──────────────────────────────────────────────────────
 
-# /api/bridge accepts query strings (`?since=…&limit=…`) — equals()
+# /api/bridge accepts query strings (`?since=…&limit=…`) - equals()
 # already handles the `?…` suffix. /api/preview-build is the same.
 # /api/champions is exact.
 GET_ROUTES = [

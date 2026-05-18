@@ -1,7 +1,7 @@
 # arch: pydantic v2 schemas for RC dashboard HTTP API shapes | section=dashboard | frozen=no
 """Pydantic v2 models for RC dashboard HTTP API request/response shapes.
 
-GETs use extra="allow" (forward-compat — new fields never break validation).
+GETs use extra="allow" (forward-compat - new fields never break validation).
 POST body models use extra="forbid" (strict input gates).
 
 The coaching payload inside StateResponse.coach is validated separately by
@@ -95,7 +95,7 @@ class DsPreviewRequest(_AllowExtra):
     mode: str = "SR"
     level: int = 6
     items: list[str] = []
-    archetype: str = ""  # s182+ — optional override (CS picker hover preview)
+    archetype: str = ""  # s182+ - optional override (CS picker hover preview)
 
 
 class DsPreviewItem(_AllowExtra):
@@ -103,14 +103,14 @@ class DsPreviewItem(_AllowExtra):
     item_name: str
     delta_dps: float
     gold: int
-    scorer: str = "dps"  # s183 — per-row scorer label for unit suffix routing
+    scorer: str = "dps"  # s183 - per-row scorer label for unit suffix routing
 
 
 class DsPreviewResponse(_AllowExtra):
     ok: bool
     ranked: list[DsPreviewItem] = []
-    scorer: str = "dps"      # s182+ — top-level scorer (engine branch used)
-    archetype: str = "carry"  # s182+ — resolved primary archetype
+    scorer: str = "dps"      # s182+ - top-level scorer (engine branch used)
+    archetype: str = "carry"  # s182+ - resolved primary archetype
     error: str = ""
 
 
@@ -128,7 +128,7 @@ class BuildOrderRequest(_AllowExtra):
 # ── POST /api/archetype-nudge/dismiss ────────────────────────────────────
 
 class ArchetypeNudgeDismissRequest(_ForbidExtra):
-    """s184 — operator clicked the chip's X. Server is idempotent."""
+    """s184 - operator clicked the chip's X. Server is idempotent."""
     champion: str
 
 

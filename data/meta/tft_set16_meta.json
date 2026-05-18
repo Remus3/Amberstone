@@ -1,5 +1,5 @@
 {
-  "_source": "TFT guide author X + aggregator J + TFT guide site W — Set 16 Patch 16.8",
+  "_source": "TFT guide author X + aggregator J + TFT guide site W - Set 16 Patch 16.8",
   "_updated": "2026-04-09",
 
   "tier_list": {
@@ -28,9 +28,9 @@
 
   "positioning": {
     "general": {
-      "tanks_frontline": "Row 4 spread wide (cols 1,3,5 or 1,4,7) — prevent clumped AoE",
+      "tanks_frontline": "Row 4 spread wide (cols 1,3,5 or 1,4,7) - prevent clumped AoE",
       "ranged_carry": "Row 1 col 6-7 (standard) or col 1 (anti-assassin)",
-      "frontline_carry": "Row 3 NOT row 4 — survives longer behind tanks",
+      "frontline_carry": "Row 3 NOT row 4 - survives longer behind tanks",
       "cc_tank": "Row 4 center (col 3-4) to intercept max targets",
       "support_enchanter": "Row 2 adjacent to carry for buff radius",
       "anti_assassin": "Move carry to opposite corner from enemy assassins",
@@ -50,9 +50,9 @@
         "udyr": "B3 or B5 (second row flex)"
       },
       "annie_sylas": {
-        "annie": "A3 or A4 (frontline center — needs first cast)",
+        "annie": "A3 or A4 (frontline center - needs first cast)",
         "sylas": "A1 or A7 (frontline corner, defensive items)",
-        "tibbers": "spawns from Annie — tank items on Annie",
+        "tibbers": "spawns from Annie - tank items on Annie",
         "carries": "D6-D7 backline"
       },
       "ionia_yone": {
@@ -78,8 +78,8 @@
     "key_thresholds": {
       "20g": "minimum econ target by 2-3",
       "30g": "1-cost reroll threshold at 3-1",
-      "50g": "max interest — standard rolldown threshold",
-      "10g": "emergency — board strength over econ"
+      "50g": "max interest - standard rolldown threshold",
+      "10g": "emergency - board strength over econ"
     }
   },
 

@@ -1,13 +1,13 @@
 """
-scripts/wakeup_prune.py — auto-prune WAKEUP_NOTES.md per the /done ritual.
+scripts/wakeup_prune.py - auto-prune WAKEUP_NOTES.md per the /done ritual.
 
-# arch: phase 7 (2026-05-09) — automate /done section 6c WAKEUP_NOTES archival
+# arch: phase 7 (2026-05-09) - automate /done section 6c WAKEUP_NOTES archival
 
 Keeps the most recent N session blocks (default 3) in WAKEUP_NOTES.md and
 moves older blocks to docs/history_notes.md, preserving newest-first order.
 
 Why this exists:
-    Bridge spawn overhead grows linearly with WAKEUP_NOTES.md size — each
+    Bridge spawn overhead grows linearly with WAKEUP_NOTES.md size - each
     `claude --print` cold-loads it. Per /done section 6c, the file must be
     pruned at every session wrap. Doing it manually drifts; this helper makes
     it mechanical.
@@ -32,12 +32,12 @@ ARCHIVE = ROOT / "docs" / "history_notes.md"
 
 SEP = "\n---\n\n"
 # A session heading is either:
-#   legacy — `# s171 wrap`, `# s171.8 wrap`, `# s209–s213 wrap` (en-dash or
+#   legacy - `# s171 wrap`, `# s171.8 wrap`, `# s209–s213 wrap` (en-dash or
 #            hyphen ranges); or
-#   dated  — `# 2026-05-17 (late) — …`, `# 2026-05-17 wrap — …`,
-#            `# 2026-05-17 OVERNIGHT RUN-1 — …` (any suffix after the date).
-# A leading pinned block (`# ✅ RESOLVED 2026-05-17 — …`) matches NEITHER —
-# the date is not at heading-start — so split_sessions folds it into the
+#   dated  - `# 2026-05-17 (late) - …`, `# 2026-05-17 wrap - …`,
+#            `# 2026-05-17 OVERNIGHT RUN-1 - …` (any suffix after the date).
+# A leading pinned block (`# ✅ RESOLVED 2026-05-17 - …`) matches NEITHER -
+# the date is not at heading-start - so split_sessions folds it into the
 # header rather than archiving it.
 SESSION_RE = re.compile(
     r"^# (?:"
@@ -95,7 +95,7 @@ def render(header: str, sessions: list[str]) -> str:
 
     Each block is normalised to end with exactly one `\\n`, then joined with
     `\\n---\\n\\n`. That produces the file shape: `<content>\\n\\n---\\n\\n`
-    between sections — i.e. blank line BEFORE the rule and blank line AFTER.
+    between sections - i.e. blank line BEFORE the rule and blank line AFTER.
     """
     header = header.rstrip("\n") + "\n"
     if not sessions:
@@ -140,7 +140,7 @@ def prune(*, keep: int, dry_run: bool) -> int:
     new_archive = render(a_header, move_sessions + a_sessions)
 
     if dry_run:
-        print("(dry-run — no files written)")
+        print("(dry-run - no files written)")
         return 0
 
     _atomic_write(WAKEUP, new_wakeup)

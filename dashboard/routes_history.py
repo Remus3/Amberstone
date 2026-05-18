@@ -1,7 +1,7 @@
 """History / home / session-summary / loadouts routes.
 
 Slice 2C (2026-05-01): handlers carved out of web_dashboard._Handler.
-Group 3 — read-only aggregates over data/match_history.db, all
+Group 3 - read-only aggregates over data/match_history.db, all
 backed by builders already extracted into `dashboard.builders`.
 
 Each route receives the BaseHTTPRequestHandler (`h`) as its sole
@@ -59,7 +59,7 @@ def _serve_loadouts_all(h) -> None:
 
 def _serve_home_summary(h) -> None:
     # Read-only aggregate for the dashboard's home/lobby view.
-    # Pulls from data/match_history.db (the freshest source —
+    # Pulls from data/match_history.db (the freshest source -
     # rewind_history.db is stale).
     try:
         h._send(200, json.dumps(_build_home_summary()).encode("utf-8"),

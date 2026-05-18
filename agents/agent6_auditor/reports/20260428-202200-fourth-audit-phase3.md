@@ -1,8 +1,8 @@
-# Agent 6 — Fourth Audit (Phase 3 repo pass)
+# Agent 6 - Fourth Audit (Phase 3 repo pass)
 
 - **Date:** 2026-04-28
 - **Auditor:** Agent 6 (Opus 4.7, ephemeral session under task `t-db28173acbb2`)
-- **Scope:** Phase 3 subtree — `agents/`, `lib/`, `web/` — cross-referenced
+- **Scope:** Phase 3 subtree - `agents/`, `lib/`, `web/` - cross-referenced
   against `agents/state/resolved_decisions.json@phase3-1.1`.
 - **Follows:** `20260422-134400-third-audit-phase3.md`. All 10 third-audit
   proposals verified landed in code:
@@ -21,15 +21,15 @@
 
 ### MEDIUM
 
-**M-01 — Icon downloader concatenates DDragon-supplied filename without basename guard**
+**M-01 - Icon downloader concatenates DDragon-supplied filename without basename guard**
 - **File:line:** `lib/icons/downloader.py:69-70` (champions),
-  `:83-84` (spells), `:97-98` (items). Runes path is fine — `Path(icon).name`
+  `:83-84` (spells), `:97-98` (items). Runes path is fine - `Path(icon).name`
   on lines 111 and 120 strips directory components.
 - **What's wrong:** `img = (meta.get("image") or {}).get("full")` and then
   `_download(url, out / img, force)`. If a DDragon response (or a MITM with
   TLS bypass; or a future Riot CDN bug) returned `"full": "../../../etc/x.png"`
   or `"full": "abs\\path"`, `Path("data/icons/champion") / img` would resolve
-  outside `data/icons/`. The breaker/blocklist won't catch this — it's a
+  outside `data/icons/`. The breaker/blocklist won't catch this - it's a
   filesystem write at the consumer.
 - **Why:** Defense-in-depth. The icon root is the only place external
   data crosses into a path operation without a `.name` reduction or
@@ -45,7 +45,7 @@
   ```
 - **Action:** Proposal `P-audit4-m01-icon-basename-guard` filed for Agent 2.
 
-**M-02 — `SUPPORTED_MODES` duplicated in 4 places; no enforcement against `resolved_decisions.json`**
+**M-02 - `SUPPORTED_MODES` duplicated in 4 places; no enforcement against `resolved_decisions.json`**
 - **File:line:** `agents/agent4_coach_mentor/analyzer.py:40`,
   `agents/agent2_backend/pipeline/orchestrator.py:66`,
   `coaches/adaptation_hint.py` (re-exported and consumed by
@@ -60,14 +60,14 @@
   cross-check.
 - **Why:** Adding a sixth mode (e.g. URF, an event mode) would require
   hand-edits to ≥4 files, none of them caught by tests. Conversely,
-  removing one would not be caught — orphan code paths persist silently.
+  removing one would not be caught - orphan code paths persist silently.
 - **Fix:** Introduce a single `lib.modes.PHASE3_MODES` constant that
   `lib/modes/__init__.py` reads from the decisions file at import. Then
   `assert PHASE3_MODES == decisions["db"]["files"]` at supervisor start.
   Replace each hardcoded tuple with an import.
 - **Action:** Proposal `P-audit4-m02-modes-single-source` filed for Agent 2.
 
-**M-03 — Per-task log dumps full claude stdout/stderr without secret redaction**
+**M-03 - Per-task log dumps full claude stdout/stderr without secret redaction**
 - **File:line:** `agents/supervisor.py:1411-1423`.
 - **What's wrong:** The per-task log writes
   `f"--- stdout ---\n{proc.stdout}\n\n--- stderr ---\n{proc.stderr}\n"`
@@ -75,7 +75,7 @@
   1. The ephemeral agent's transcript may echo a fragment of its system
      prompt, which currently includes the contents of `CLAUDE.md` and the
      charter. Neither references the API key today, but the supervisor
-     also injects `ANTHROPIC_API_KEY` into the env — and any traceback or
+     also injects `ANTHROPIC_API_KEY` into the env - and any traceback or
      error message that surfaces `os.environ` (Python's default repr on
      `KeyError` etc.) would put it in stdout/stderr.
   2. A misbehaving agent that runs `env`-equivalent introspection writes
@@ -101,20 +101,20 @@
   Wrap stdout/stderr with `_redact(...)` before write_text.
 - **Action:** Proposal `P-audit4-m03-task-log-redact` filed for Agent 2.
 
-**M-04 — `web/js/dashboard.js` injects activity-feed timestamps via `innerHTML` template**
+**M-04 - `web/js/dashboard.js` injects activity-feed timestamps via `innerHTML` template**
 - **File:line:** `web/js/dashboard.js:113-118`.
 - **What's wrong:** `span.innerHTML = '<span class="ev-glyph">${glyph}</span><span class="ev-ts">${ts}</span>...'`.
-  `glyph` is hardcoded by `_opGlyph()` — safe. `ts = (e.ts || "").slice(11, 19)`
-  — pulled from `/api/activity` events, which are populated from
+  `glyph` is hardcoded by `_opGlyph()` - safe. `ts = (e.ts || "").slice(11, 19)`
+  - pulled from `/api/activity` events, which are populated from
   `task_queue.jsonl` records. Today the timestamps are server-generated
-  ISO strings, but the `slice(11, 19)` doesn't validate format — a future
+  ISO strings, but the `slice(11, 19)` doesn't validate format - a future
   agent payload that overrides `ts` (or a corrupted line that survives the
   audit3 M-04 logging guard) could land HTML in there. The two
   `textContent` assignments on lines 119-120 do this correctly; the
   template should follow the same pattern.
 - **Why:** Defense-in-depth XSS hardening for the kiosk. The dashboard
   is on a LAN-only origin today, but the kiosk runs unsandboxed Edge
-  in fullscreen — any script execution there can keylog the user, hit
+  in fullscreen - any script execution there can keylog the user, hit
   the supervisor's `/api/*` from same-origin, etc.
 - **Fix:** Build the structure with `createElement` and
   `textContent`:
@@ -129,7 +129,7 @@
 
 ### LOW / INFO
 
-**L-01 — `lib/ddragon/fetch.py` does not deduplicate concurrent pulls of the same bundle**
+**L-01 - `lib/ddragon/fetch.py` does not deduplicate concurrent pulls of the same bundle**
 - **File:line:** `lib/ddragon/fetch.py` `_pull` / cache-read pair.
 - **What's wrong:** Two Agent 4 / Agent 5 spawns racing on a cold cache
   both miss, both hit DDragon, both write `tmp → replace`. The replace is
@@ -140,61 +140,61 @@
   cross-process anyway. A file-lock (`portalocker` or `msvcrt.locking`)
   on `<bundle>.json.lock` is the right fix if we want this.
 - **Why:** Cosmetic perf only. Not a correctness problem. Filing as
-  INFO so it doesn't get re-flagged in future audits — the cross-process
+  INFO so it doesn't get re-flagged in future audits - the cross-process
   nature is the real gating constraint.
 - **Action:** No proposal. Logged here as a known quantity.
 
-**L-02 — `lib/scrapers/_base.py` `_load_robots` not lock-protected**
+**L-02 - `lib/scrapers/_base.py` `_load_robots` not lock-protected**
 - **File:line:** `lib/scrapers/_base.py:45-60`.
-- **What's wrong:** Same concurrent-pull pattern as L-01 — two callers
+- **What's wrong:** Same concurrent-pull pattern as L-01 - two callers
   on a cold robots state both fetch. `RobotFileParser` mutation is
   thread-naive. In a single-process scraper run (today's reality) this
   is a benign duplicate fetch; if the scraper is ever fanned out across
   threads or processes the duplicate goes from cosmetic to potentially
   rate-limit-tripping at the target.
-- **Why:** Same as L-01 — Phase 3 single-process topology means this
+- **Why:** Same as L-01 - Phase 3 single-process topology means this
   is latent, not active.
 - **Action:** No proposal. Already noted in audit 3's "Deferred"
   section under the same multi-process caveat.
 
-**L-03 — `lib/http/client.py` blocklist not auto-reloaded on file modification**
+**L-03 - `lib/http/client.py` blocklist not auto-reloaded on file modification**
 - **File:line:** `lib/http/client.py:96-120`.
 - **What's wrong:** The blocklist is loaded once in `__init__` and only
   refreshed when `reload_blocklist()` is explicitly called. Agent 6's
   charter grants autonomous edits to the file, but a stale supervisor
   process between an Agent 6 edit and the next supervisor restart will
   not see the change.
-- **Why:** Documented design — the comment on line 119 says "Agent 6
+- **Why:** Documented design - the comment on line 119 says "Agent 6
   calls this after editing blocklist.json." But there's no programmatic
   enforcement, and Agent 6 ephemeral sessions can't reach into the
   long-running supervisor's `HttpClient` instance.
-- **Fix (option A — file mtime check):** In `request()`, stat the
+- **Fix (option A - file mtime check):** In `request()`, stat the
   blocklist path and reload if mtime changed. Cheap (~1 syscall per
   outbound request).
-- **Fix (option B — supervisor SIGHUP-equivalent):** Have the supervisor
+- **Fix (option B - supervisor SIGHUP-equivalent):** Have the supervisor
   poll the blocklist mtime in `_dispatch_loop` and call
   `client.reload_blocklist()` itself.
 - **Action:** Proposal `P-audit4-l03-blocklist-mtime-reload` filed for
-  Agent 2 (option A — simpler, no new wiring).
+  Agent 2 (option A - simpler, no new wiring).
 
-**L-04 — `agents/agent5_ui/champion_fallback.py` SQLite connection not closed in error path**
+**L-04 - `agents/agent5_ui/champion_fallback.py` SQLite connection not closed in error path**
 - **File:line:** `agents/agent5_ui/champion_fallback.py:117-127`.
 - **What's wrong:** `conn = sqlite3.connect(...); ... .fetchone()`; if
   any non-`sqlite3.Error` exception fires between the connect and the
   explicit `conn.close()` on line 124, conn leaks. In practice all
   exceptions from execute/fetchone are `sqlite3.Error` subclasses, so
   this is theoretical.
-- **Fix:** `with sqlite3.connect(...) as conn:` — context manager
+- **Fix:** `with sqlite3.connect(...) as conn:` - context manager
   closes regardless.
 - **Action:** No proposal. Marked LOW because it's theoretical and the
   fix is trivial enough that it can ride the next pass through this
   file.
 
-**L-05 — `agents/agent2_backend/smb_push._backup_existing` may leave empty backup dir on copy failure**
+**L-05 - `agents/agent2_backend/smb_push._backup_existing` may leave empty backup dir on copy failure**
 - **File:line:** `agents/agent2_backend/smb_push.py:98-107`.
 - **What's wrong:** `backup_dir.mkdir(parents=True, exist_ok=True)` runs
   before `shutil.copy2`; if the SMB share vanishes between mkdir and
-  copy2, the empty directory is left on the share. Cosmetic — the next
+  copy2, the empty directory is left on the share. Cosmetic - the next
   push picks a new timestamp directory.
 - **Action:** No proposal. INFO.
 
@@ -207,18 +207,18 @@ For the record so these don't reappear in future passes:
 | `_handle_push` early `ConnectionClosed` leaves ws in `_push_clients` | `ws_server.py:153-170` | **False.** The `try/finally` on line 162-170 always runs `discard(ws)` regardless of whether the initial-frame send raised. |
 | `Scheduler.next_ready` requeue race against `approve()`/`_agent0_review()` | `scheduler.py:490-523` | **False.** Entire loop body is held under `with self._lock:`. Any concurrent caller must wait. Requeue heappush is inside the same lock window. |
 | DDragon missing `championFull.json` is a defect | `lib/ddragon/fetch.py` `pull_all` | **Feature request, not defect.** Coaches read the data they need; nothing in Phase 3 requests `championFull` and adding it would expand DDragon traffic without a consumer. |
-| `web/index.html` hardcodes WS hostname unsafely | `web/js/ws_client.js:4` | **False.** `WS_HOST = location.hostname \|\| "legion-pc.local"` — runtime hostname is preferred and the literal is only a fallback for `file://` or empty hostname. |
+| `web/index.html` hardcodes WS hostname unsafely | `web/js/ws_client.js:4` | **False.** `WS_HOST = location.hostname \|\| "legion-pc.local"` - runtime hostname is preferred and the literal is only a fallback for `file://` or empty hostname. |
 | `_handle_file_task` redaction is missing | (subagent placed at supervisor.py:1414) | **Misattributed.** The line cited is the *per-task log writer for ephemeral spawns*, not file-task handling. Real concern recast as M-03. |
 
 ## Autonomous actions taken this pass
 
-1. **`agents/agent6_auditor/safeguards/startup_checks.md`** — updated
+1. **`agents/agent6_auditor/safeguards/startup_checks.md`** - updated
    the invariant table to reflect:
-   - Invariant 5 / 6 (port preflight) are now `Yes` — `_port_available`
+   - Invariant 5 / 6 (port preflight) are now `Yes` - `_port_available`
      at supervisor.py:286, called at supervisor.py:1499-1501.
-   - Invariant 7 (queue corruption) now `Partial — bad lines logged
+   - Invariant 7 (queue corruption) now `Partial - bad lines logged
      loudly` per audit3 M-04.
-   - Invariant 8 (decisions version check) now `Yes` —
+   - Invariant 8 (decisions version check) now `Yes` -
      `_verify_decisions_version` at supervisor.py:258-282, called at
      supervisor.py:1489.
 2. No `source_quality.json` changes; the third-audit fan-out (5 sources)
@@ -239,7 +239,7 @@ For the record so these don't reappear in future passes:
 ## Queue state
 
 - Third audit: 10 proposals → all 10 verified landed in code this pass.
-- This pass: 5 proposals filed (no high/critical findings — code base
+- This pass: 5 proposals filed (no high/critical findings - code base
   is in better shape than at audit 3), 1 audit task completing.
 - No safeguard updates required follow-up tasks; all autonomous actions
   applied directly.

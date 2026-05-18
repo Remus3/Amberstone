@@ -80,7 +80,7 @@ def main() -> int:
                 continue
             base = vals[0] if vals and vals[0] else None
             if base is None:
-                # form 0 has no damage — any later damage form is a strong signal
+                # form 0 has no damage - any later damage form is a strong signal
                 later = [(i, v) for i, v in enumerate(vals)
                          if i > 0 and v]
                 if later:

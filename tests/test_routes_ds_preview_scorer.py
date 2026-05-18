@@ -1,4 +1,4 @@
-"""s183 — /api/ds-preview per-row scorer stamp.
+"""s183 - /api/ds-preview per-row scorer stamp.
 
 After s182 the response carries a top-level ``scorer`` field but each row
 in ``ranked`` did not. The champ-select Build Chooser caches just the
@@ -111,7 +111,7 @@ class DsPreviewPerRowScorerStampTests(unittest.TestCase):
     @mock.patch("core.archetype_picks.get_archetype_for")
     def test_hybrid_pct_scoring_stamps_hybrid(self, mock_arch, mock_disp):
         mock_arch.return_value = {"primary": "bruiser"}
-        # hybrid rows carry hybrid_delta_pct instead of delta — the route's
+        # hybrid rows carry hybrid_delta_pct instead of delta - the route's
         # _delta() helper scales by 100; that's tested elsewhere. Here we
         # only assert the per-row stamp.
         mock_disp.return_value = _dispatcher_response("hybrid", [

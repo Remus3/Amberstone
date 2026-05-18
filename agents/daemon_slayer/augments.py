@@ -89,30 +89,30 @@ def _v(aug: Augment, key: str, idx: int = 0, default: float = 0.0) -> float:
 # post-combine merge is faithful. Skipped categories (and why):
 #
 # * **AS-bearing augments** (Deft, Chauffeur, DualWield, Quest_AngelofRetribution,
-#   MadScientist) — engine treats item AS as multiplicative on base via
+#   MadScientist) - engine treats item AS as multiplicative on base via
 #   ``_combine_items`` (``base_as × (1 + bonus_pct)``). The augment overlay
 #   merges AFTER ``_combine_items`` as a flat add, which is wrong by the
 #   factor of base_as for AS. Needs an ``as_pct``-style overlay channel
 #   before these can land. Tracked for a follow-up pass.
 # * **AbilityHaste-only augments** (Recursion, BacktoBasics, BreadSandwich,
-#   Dashing) — ``ah`` is not a canonical stat key in stats.py.
-# * **Omnivamp augments** (Goredrink, Vengeance) — not modeled.
-# * **AdaptiveForce augments** (SlapAround, Dematerialize, MagicalGirl) —
+#   Dashing) - ``ah`` is not a canonical stat key in stats.py.
+# * **Omnivamp augments** (Goredrink, Vengeance) - not modeled.
+# * **AdaptiveForce augments** (SlapAround, Dematerialize, MagicalGirl) -
 #   AF resolves to AD or AP via game-side rules; needs caller context.
 #   Most are also stack/conditional grants.
 # * **Conditional / active-mechanic** augments (Firefox autocast, Homeguard
 #   speed-burst, Quest_*, MadScientist random per-round, BigBrain's AP=1.0
-#   ratio anchor) — overlay can't honestly capture uptime/triggered grants.
+#   ratio anchor) - overlay can't honestly capture uptime/triggered grants.
 # * **Ratio / tradeoff** augments (Chauffeur immobility, DrawYourSword
-#   melee-conversion) — mechanic cost not modeled.
+#   melee-conversion) - mechanic cost not modeled.
 _AUGMENT_STAT_OVERLAYS: dict[str, callable] = {
     # Silver: +20 AD, +10 ability haste, +10 lethality. (Lethality not yet a
-    # canonical stat key — silently dropped; AD overlay is what matters.)
+    # canonical stat key - silently dropped; AD overlay is what matters.)
     "TheBrutalizer": lambda a: {
         "ad": _v(a, "AD"),
     },
     # Gold: +1000 HP. Augment also imposes a damage-reduction debuff, but
-    # the engine doesn't model damage taken/dealt mods — stat is honest.
+    # the engine doesn't model damage taken/dealt mods - stat is honest.
     "CelestialBody": lambda a: {
         "hp": _v(a, "Health"),
     },
@@ -167,7 +167,7 @@ def compute_augment_stats(
     """Sum stat overlays for the given augments.
 
     Accepts ``Augment`` instances, raw cdragon records (dicts), or
-    id/apiName references (int/str) — refs are resolved via ``snapshot``.
+    id/apiName references (int/str) - refs are resolved via ``snapshot``.
     Unknown augments are silently treated as zero overlay until their entry
     lands in :data:`_AUGMENT_STAT_OVERLAYS`. This is intentional: we
     progressively add stat-bearing augments without breaking calls that

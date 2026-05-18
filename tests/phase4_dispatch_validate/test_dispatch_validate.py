@@ -1,6 +1,6 @@
 """Phase 4.1 dispatch-level soft-warn validation tests.
 
-Covers `dashboard._dispatch._validate_request_body` — the soft-warn POST
+Covers `dashboard._dispatch._validate_request_body` - the soft-warn POST
 body validator that mirrors the Phase 4.3 coaching_payload pattern.
 Validation never rejects; it only logs warnings. These tests pin the
 warning surface so a future schema drift becomes visible.
@@ -14,7 +14,7 @@ import pytest
 from dashboard._dispatch import _REQUEST_MODELS, _validate_request_body
 
 
-# Single source of truth — anything that adds a path here without
+# Single source of truth - anything that adds a path here without
 # updating api_schema.py will fail this test.
 _EXPECTED_KNOWN_PATHS = {
     "/api/input",
@@ -45,7 +45,7 @@ class TestRegistry:
 
 
 class TestUnmappedPath:
-    """Paths not in _REQUEST_MODELS should pass silently — no false noise."""
+    """Paths not in _REQUEST_MODELS should pass silently - no false noise."""
 
     def test_unknown_path_with_garbage_body_is_silent(self, caplog):
         with caplog.at_level(logging.WARNING, logger="rc.dispatch"):
@@ -112,7 +112,7 @@ class TestKnownPathInvalid:
         assert any("text" in m for m in msgs), msgs
 
     def test_input_extra_field_warns_forbid_extra(self, caplog):
-        # InputRequest uses _ForbidExtra — extras should warn.
+        # InputRequest uses _ForbidExtra - extras should warn.
         with caplog.at_level(logging.WARNING, logger="rc.dispatch"):
             _validate_request_body("/api/input",
                                    {"text": "ok", "rogue": True})
@@ -127,7 +127,7 @@ class TestKnownPathInvalid:
         assert any("extra" in m for m in msgs), msgs
 
     def test_bridge_inbox_extra_field_passes_allow_extra(self, caplog):
-        # BridgeInboxRequest uses _AllowExtra — extras should NOT warn.
+        # BridgeInboxRequest uses _AllowExtra - extras should NOT warn.
         with caplog.at_level(logging.WARNING, logger="rc.dispatch"):
             _validate_request_body("/api/bridge/inbox", {
                 "source": "peer", "summary": "ok",

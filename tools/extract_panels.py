@@ -29,7 +29,7 @@ os.makedirs(PANELS_DIR, exist_ok=True)
 
 # ── 1. right_now.js ──────────────────────────────────────────────────────────
 RIGHT_NOW_HEADER = """\
-// Right Now panel — immediate coaching actions, game-sense, stats, digest.
+// Right Now panel - immediate coaching actions, game-sense, stats, digest.
 import { el, safe, fmtList, classifyAction, isArenaPayload, logLine, _formatRelativeAge } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 
@@ -48,7 +48,7 @@ print("✓ right_now.js")
 
 # ── 2. next.js ───────────────────────────────────────────────────────────────
 NEXT_HEADER = """\
-// Next panel — wave state, objective row, arena partner info.
+// Next panel - wave state, objective row, arena partner info.
 import { el, safe, isArenaPayload } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 
@@ -68,7 +68,7 @@ print("✓ next.js")
 
 # ── 3. item_build.js ─────────────────────────────────────────────────────────
 ITEM_BUILD_HEADER = """\
-// Item Build panel — owned/recommended tiles, DS picks, in-game build switcher.
+// Item Build panel - owned/recommended tiles, DS picks, in-game build switcher.
 import { el, safe, fmtList, isArenaPayload } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { ITEMS, ITEM_COSTS, _resolveItemId, _splitItemList } from '../lib/items_index.js';
@@ -93,7 +93,7 @@ print("✓ item_build.js")
 
 # ── 4. map_state.js ──────────────────────────────────────────────────────────
 MAP_STATE_HEADER = """\
-// Map State panel — minimap canvas, game clock, spell CDs, gold diff,
+// Map State panel - minimap canvas, game clock, spell CDs, gold diff,
 // objective countdowns.
 import { el, safe, fmtList, _formatRelativeAge } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
@@ -119,7 +119,7 @@ mm_funcs      = L(1546, 2377) # _updateGameClock … _renderMmStateLine
 mm_spell_fns  = L(2644, 2675) # state.spellCds comment + _spellKey … _currentSpellCd
 
 # Remove the state.gameClock / state.spellCds init lines that are inline in
-# the function blocks — they're lifted to the header. Lines 1545, 1606, 2647
+# the function blocks - they're lifted to the header. Lines 1545, 1606, 2647
 # in original. The extractor pulls them verbatim; having duplicate assignments
 # is harmless (second wins, same value).
 with open(f"{PANELS_DIR}/map_state.js", "w", encoding="utf-8") as f:
@@ -128,7 +128,7 @@ print("✓ map_state.js")
 
 # ── 5. champ_select.js ───────────────────────────────────────────────────────
 CHAMP_SELECT_HEADER = """\
-// Champ Select panel — interactive overlay during ChampSelect phase,
+// Champ Select panel - interactive overlay during ChampSelect phase,
 // SR draft build chooser, champ-select analyzer.
 // _ib* functions live in item_build.js (avoid circular dep).
 import { el, safe, fmtList, isArenaPayload } from '../lib/helpers.js';
@@ -152,7 +152,7 @@ cs_funcs1a  = L(3072, 3269)   # lcuCmd … _csMarkSelectedRow (before _ib* block
 cs_funcs1b  = L(3420, 4051)   # _csOnBuildRowClick … _csWireButtonsOnce (after _ib* block)
 cs_panel    = L(5816, 6223)   # renderChampSelectPanel, handleChampSelect, renderChampSelectCoach
 
-# renderChampSelectCoach uses RN.action / RN.immediate — rewrite to el() to
+# renderChampSelectCoach uses RN.action / RN.immediate - rewrite to el() to
 # avoid importing RN from right_now.js (creates unnecessary cross-panel dep).
 cs_panel_fixed = cs_panel.replace(
     "if (!RN.action || !RN.immediate) return;\n    const head = data.advice || \"(no advice)\";\n    RN.action.innerHTML = \"▶ \" + head;\n",
@@ -168,7 +168,7 @@ print("✓ champ_select.js")
 
 # ── 6. bridge_pending.js ─────────────────────────────────────────────────────
 BRIDGE_PENDING_HEADER = """\
-// Bridge Pending panel — coach decisions banner, recent coach calls log,
+// Bridge Pending panel - coach decisions banner, recent coach calls log,
 // bridge task pending display. setIntervals start at module load.
 import { el, safe, _formatRelativeAge } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
@@ -186,7 +186,7 @@ print("✓ bridge_pending.js")
 
 # ── 7. dev.js ────────────────────────────────────────────────────────────────
 DEV_HEADER = """\
-// Dev panel — settings, diagnostics, dev/sim fixture viewer, replay scrubber.
+// Dev panel - settings, diagnostics, dev/sim fixture viewer, replay scrubber.
 import { el, safe, fmtList, _to12, logLine } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { ITEMS, CHAMPS } from '../lib/items_index.js';
@@ -206,7 +206,7 @@ with open(f"{PANELS_DIR}/dev.js", "w", encoding="utf-8") as f:
     f.write(DEV_HEADER + dev_funcs + DEV_FOOTER)
 print("✓ dev.js")
 
-# ── 8. main.js — generate import block addition ──────────────────────────────
+# ── 8. main.js - generate import block addition ──────────────────────────────
 # Print the 7 import lines to prepend after the existing lib imports.
 PANEL_IMPORTS = """
 // ── Panel modules ─────────────────────────────────────────────────────────

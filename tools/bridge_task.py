@@ -1,5 +1,5 @@
 # arch: dispatch a task to the other Claude via the bridge | section=bridge | frozen=no
-"""bridge_task.py — Phase 6 shim. Real code lives in tools/bridge_cli.py.
+"""bridge_task.py - Phase 6 shim. Real code lives in tools/bridge_cli.py.
 
 Preserves the original CLI surface:
     py tools/bridge_task.py --target gamepc --summary "..." --prompt "..."

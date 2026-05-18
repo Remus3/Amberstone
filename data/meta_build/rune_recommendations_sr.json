@@ -1,7 +1,7 @@
 {
   "_meta": {
     "description": "Per-champion SR rune recommendations for RC coaching. Hand-curated from challenger SR bot lane data, patch 16.8.",
-    "format": "primary_keystone | primary_tree / secondary_tree — reasoning",
+    "format": "primary_keystone | primary_tree / secondary_tree - reasoning",
     "last_updated": "2026-04-18",
     "patch": "16.8.1"
   },
@@ -18,7 +18,7 @@
       "Adaptive Force",
       "Armor"
     ],
-    "reasoning": "Tempo is mandatory — Vayne's silver bolt DPS requires sustained autos. Short-range means you need the DPS ramp to justify the all-in.",
+    "reasoning": "Tempo is mandatory - Vayne's silver bolt DPS requires sustained autos. Short-range means you need the DPS ramp to justify the all-in.",
     "situational": {
       "vs_poke_lane": "Fleet Footwork for healing in rough lane matchups",
       "vs_engage_support": "Conqueror for extended fights in tanky metas"
@@ -43,7 +43,7 @@
       "ahead": "Dark Harvest for reset snowball playstyle",
       "vs_burst": "Fleet Footwork in assassin-heavy metas"
     },
-    "coaching_note": "Stay back in lane — poke with rockets when safe. Tempo fights: switch to rockets after 4 stacks. Never stop moving."
+    "coaching_note": "Stay back in lane - poke with rockets when safe. Tempo fights: switch to rockets after 4 stacks. Never stop moving."
   },
   "Tristana": {
     "keystone": "Lethal Tempo",
@@ -78,9 +78,9 @@
       "Adaptive Force",
       "Armor"
     ],
-    "reasoning": "Fleet Footwork on SR for sustained laning — headshot procs give free healing. Manaflow handles early mana demands. Range abuse lane doesn't need Tempo.",
+    "reasoning": "Fleet Footwork on SR for sustained laning - headshot procs give free healing. Manaflow handles early mana demands. Range abuse lane doesn't need Tempo.",
     "situational": {
-      "stomp_lane": "Lethal Tempo if heavily favored — maximize damage output",
+      "stomp_lane": "Lethal Tempo if heavily favored - maximize damage output",
       "vs_melee_support": "Arcane Comet for poke damage vs immobile supports"
     },
     "coaching_note": "Arcane Comet on traps/Q poke. Manaflow + Gathering Storm for scaling. Triumph + Alacrity secondary for lane sustain and team fight contribution."
@@ -135,13 +135,13 @@
     "keystone": "Arcane Comet",
     "primary_tree": "Sorcery",
     "secondary_tree": "Domination",
-    "coaching_note": "Arcane Comet procs on Q hits — landed Mystic Shot is a guaranteed comet. Manaflow stacks via Q spam. Gathering Storm provides scaling AD. Sudden Impact for lethality on E."
+    "coaching_note": "Arcane Comet procs on Q hits - landed Mystic Shot is a guaranteed comet. Manaflow stacks via Q spam. Gathering Storm provides scaling AD. Sudden Impact for lethality on E."
   },
   "Jhin": {
     "keystone": "Fleet Footwork",
     "primary_tree": "Precision",
     "secondary_tree": "Sorcery",
-    "coaching_note": "Fleet Footwork sustain in lane — crits trigger it. Presence of Mind for mana on kills. Gathering Storm for scaling AD since Jhin gains AD from crit %."
+    "coaching_note": "Fleet Footwork sustain in lane - crits trigger it. Presence of Mind for mana on kills. Gathering Storm for scaling AD since Jhin gains AD from crit %."
   },
   "Ashe": {
     "keystone": "Lethal Tempo",
@@ -183,7 +183,7 @@
     "keystone": "Lethal Tempo",
     "primary_tree": "Precision",
     "secondary_tree": "Domination",
-    "coaching_note": "Lethal Tempo into Coup de Grace — axes deal bonus AD so getting 3 autos per trade is critical. Sudden Impact + Treasure Hunter for kill snowball."
+    "coaching_note": "Lethal Tempo into Coup de Grace - axes deal bonus AD so getting 3 autos per trade is critical. Sudden Impact + Treasure Hunter for kill snowball."
   },
   "Sivir": {
     "keystone": "Lethal Tempo",

@@ -1,6 +1,6 @@
 # arch: vision server proxy | section=core | frozen=yes
 """
-core/moon_proxy.py — Transparent proxy to the local vision server.
+core/moon_proxy.py - Transparent proxy to the local vision server.
 RC calls this instead of calling Claude directly for vision + coaching.
 
 Post-2026-04-19: vision server is in-process on Legion at 127.0.0.1:8889

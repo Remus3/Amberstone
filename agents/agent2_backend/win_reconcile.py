@@ -1,4 +1,4 @@
-"""Win-signal reconciliation — postgame_stats.db → mode DBs.
+"""Win-signal reconciliation - postgame_stats.db → mode DBs.
 
 Live-phase3 rows (filed by ``game_ingest`` on game-end) start with
 ``win=NULL`` because the coaching JSON doesn't carry an authoritative
@@ -13,7 +13,7 @@ supervisor's ``_auto_analyze_after_idle`` so by the time the 2-min idle
 window elapses, postgame_stats has been populated.
 
 Safety:
-  * Idempotent — only UPDATEs rows where win IS NULL.
+  * Idempotent - only UPDATEs rows where win IS NULL.
   * Per-row confidence check: if multiple postgame rows are in-window,
     skip rather than guess.
   * Read-only to postgame_stats.db; write-only to the live-phase3 rows.
@@ -72,8 +72,8 @@ def _lookup_postgame_result(
       1. Filter to ``is_local_player=1`` and exact champion match.
       2. Keep rows whose ``captured_at`` is within ±window_sec.
       3. If exactly one candidate remains, use its ``team_result``.
-      4. If 0 — return (None, "no candidate").
-      5. If >1 — pick the row with captured_at closest to ended_at.
+      4. If 0 - return (None, "no candidate").
+      5. If >1 - pick the row with captured_at closest to ended_at.
          If the two closest rows are within 5s of each other and have
          different team_result, bail out ("ambiguous").
     """

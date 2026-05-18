@@ -16,5 +16,5 @@ Alternative: scheduled task + headless `claude --print` call on each poll cycle.
 ## Consequences
 
 **Good:** Bridge auto-flow survives Claude restarts. `rc_facts.py` surfaces daemon health (`watcher_alive`, `queue`, `age`). No operator babysitting.  
-**Trade-off:** Daemon complexity — `bridge_watcher_classify.py` + `bridge_watcher_actions.py` + `bridge_watcher_history.py` are all frozen because a bad deploy breaks cross-Claude communication.  
+**Trade-off:** Daemon complexity - `bridge_watcher_classify.py` + `bridge_watcher_actions.py` + `bridge_watcher_history.py` are all frozen because a bad deploy breaks cross-Claude communication.  
 **Watch for:** `auto_ok_since_boot` vs `auto_err_since_boot` in bridge health. 50+ auto-action samples needed to validate acceptance criteria. Until then, monitor these counters.

@@ -1,7 +1,7 @@
 {
   "champion": "Ashe",
   "aram_tier": "S",
-  "build_note": "RFC first — empowered Frost Shot at max range procs Ranger's Focus (Q) for AOE slow. IE second (RFC 25% crit; IE 25% = 50% total before adding IE — need one more crit item first). Fix: RFC → Collector (50% total) → IE (75%, fully active). Ult any grouped fight from max range at fight start — it's free damage and disruption.",
+  "build_note": "RFC first - empowered Frost Shot at max range procs Ranger's Focus (Q) for AOE slow. IE second (RFC 25% crit; IE 25% = 50% total before adding IE - need one more crit item first). Fix: RFC → Collector (50% total) → IE (75%, fully active). Ult any grouped fight from max range at fight start - it's free damage and disruption.",
   "core_items": ["Rapid Firecannon", "The Collector", "Infinity Edge"],
   "full_build": [
     "Berserker's Greaves",
@@ -11,9 +11,9 @@
     "Lord Dominik's Regards",
     "Bloodthirster"
   ],
-  "vs_tanks": "Lord Dominik's Regards mandatory — perma-slow keeps tanks in range for LDR procs",
-  "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies — never run both",
-  "vs_burst": "Immortal Shieldbow replaces Bloodthirster — ISB + perma-slow = bait dive then shield",
-  "kit_notes": "Q (Ranger's Focus) at max stacks: fires cone of arrows that AOE slow. Every auto is a slow. W (Volley) pokes and slows the entire ARAM corridor. Crystal Arrow (R) travels the full ARAM map — throw it at fight start from fountain for guaranteed hit. Hawkshot vision before fights.",
-  "aram_specific": "R from fountain range hits any grouped ARAM fight. Never stand in melee range — RFC + max range Frost Shot means you can slow everything without being in danger. Q stack up before fights using minions, then dump on enemy frontline for AOE slow."
+  "vs_tanks": "Lord Dominik's Regards mandatory - perma-slow keeps tanks in range for LDR procs",
+  "vs_healing": "Mortal Reminder replaces Lord Dominik's if 2+ sustain enemies - never run both",
+  "vs_burst": "Immortal Shieldbow replaces Bloodthirster - ISB + perma-slow = bait dive then shield",
+  "kit_notes": "Q (Ranger's Focus) at max stacks: fires cone of arrows that AOE slow. Every auto is a slow. W (Volley) pokes and slows the entire ARAM corridor. Crystal Arrow (R) travels the full ARAM map - throw it at fight start from fountain for guaranteed hit. Hawkshot vision before fights.",
+  "aram_specific": "R from fountain range hits any grouped ARAM fight. Never stand in melee range - RFC + max range Frost Shot means you can slow everything without being in danger. Q stack up before fights using minions, then dump on enemy frontline for AOE slow."
 }

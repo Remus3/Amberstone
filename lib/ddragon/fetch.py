@@ -77,7 +77,7 @@ class DDragon:
         return data
 
     # AUDIT P-audit3-m02 (2026-04-22): wrap every cache read in the same
-    # stale-while-revalidate pattern — a corrupt/partial cache file used
+    # stale-while-revalidate pattern - a corrupt/partial cache file used
     # to crash the caller (every coach hits this path). Now we log at
     # WARNING and re-pull.
     def _read_cached(self, name: str):
@@ -88,7 +88,7 @@ class DDragon:
             return json.loads(p.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError, UnicodeDecodeError) as e:
             logger.warning(
-                "ddragon cache %s corrupt (%s) — re-pulling", p.name, e,
+                "ddragon cache %s corrupt (%s) - re-pulling", p.name, e,
             )
             return None
 

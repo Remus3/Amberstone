@@ -1,5 +1,5 @@
 """
-overlay.py — Thin entry point for Riot Commander overlay.
+overlay.py - Thin entry point for Riot Commander overlay.
 
 Imports OverlayApp from app.py (modular) and re-exports it.
 main.py references `overlay.OverlayApp`, so this file must exist

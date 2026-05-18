@@ -1,5 +1,5 @@
 # arch: consolidated bridge CLI entrypoint (Phase 6) | section=bridge | frozen=no
-"""tools/bridge_cli.py — single entrypoint for the small bridge CLIs.
+"""tools/bridge_cli.py - single entrypoint for the small bridge CLIs.
 
 Phase 6 of RC_FUTUREPROOFING_PLAN consolidates seven scripts that each
 re-implemented the same SSL/HTTP/state-file boilerplate:
@@ -16,7 +16,7 @@ The original files are kept as ~10-line shims that call into `main([cmd, ...])`
 so cron tasks (`py tools/bridge_pull_tasks.py --target legion`) keep working
 without scheduled-task XML edits.
 
-Behavior is preserved exactly — flag names, defaults, exit codes, and JSON
+Behavior is preserved exactly - flag names, defaults, exit codes, and JSON
 output shapes match the originals byte-for-byte. The frozen scripts
 `bridge_post_result.py` and `bridge_pull_tasks.py` are converted under
 explicit operator approval (Phase 6 sign-off recorded in the plan).
@@ -123,7 +123,7 @@ def _write_last_seen(ts: float) -> None:
 
 
 def _record_post(kind: str, target: str) -> None:
-    """Record a successful POST. Best-effort — never raises."""
+    """Record a successful POST. Best-effort - never raises."""
     try:
         from core.prom_metrics import BridgeMetrics
         BridgeMetrics.posts_total.inc(kind=kind or "note",
@@ -308,7 +308,7 @@ def cmd_fetch(args: argparse.Namespace) -> int:
     if not peer_msgs:
         _record_fetch("self_only")
         return 0
-    lines = ["[Cross-Claude bridge — recent activity from the other machine]"]
+    lines = ["[Cross-Claude bridge - recent activity from the other machine]"]
     for m in peer_msgs:
         ts = time.strftime("%H:%M:%S", time.localtime(m.get("ts", 0)))
         src = m.get("source", "?")
@@ -403,7 +403,7 @@ def cmd_heartbeat(args: argparse.Namespace) -> int:
             format="%(asctime)s %(levelname)s heartbeat %(message)s",
         )
     source = f"heartbeat-{platform.node().lower()}"
-    log.info("starting — %s every %ds -> %s",
+    log.info("starting - %s every %ds -> %s",
              source, HEARTBEAT_INTERVAL_S, LEGION_BRIDGE)
     start_ts = time.time()
     consec_fail = 0
@@ -444,7 +444,7 @@ def _post_heartbeat(source: str, summary: str) -> None:
 
 
 def cmd_post(args: argparse.Namespace) -> int:
-    """Stop-hook poster — extract last assistant text from the transcript
+    """Stop-hook poster - extract last assistant text from the transcript
     referenced by the JSON payload on stdin, then POST a one-line summary."""
     source = args.source or "unknown"
     try:
@@ -458,7 +458,7 @@ def cmd_post(args: argparse.Namespace) -> int:
         _post_simple({"source": source, "summary": summary}, timeout=1.5)
         _record_post("note", "")
     except Exception:
-        # Bridge unreachable — fail silently per Stop-hook contract.
+        # Bridge unreachable - fail silently per Stop-hook contract.
         pass
     return 0
 
@@ -537,7 +537,7 @@ def build_parser() -> argparse.ArgumentParser:
                     choices=["gamepc", "legion"])
 
     sub.add_parser("fetch",
-                   help="UserPromptSubmit hook — print recent peer activity")
+                   help="UserPromptSubmit hook - print recent peer activity")
 
     sub.add_parser("ping",
                    help="round-trip bridge + vision health probe")
@@ -548,7 +548,7 @@ def build_parser() -> argparse.ArgumentParser:
                     help="post one heartbeat and exit (test harness)")
 
     pp2 = sub.add_parser("post",
-                         help="Stop-hook poster — extract summary from stdin transcript and post")
+                         help="Stop-hook poster - extract summary from stdin transcript and post")
     pp2.add_argument("source", nargs="?", default="unknown")
 
     return parser

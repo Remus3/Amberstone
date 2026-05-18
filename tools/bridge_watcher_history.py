@@ -1,14 +1,14 @@
-"""bridge_watcher_history.py — past-task memory for the auto-action lane.
+"""bridge_watcher_history.py - past-task memory for the auto-action lane.
 
 Stores every auto-action outcome (prompt + lane + status + cost + latency)
 in a sqlite ledger. Two read paths the watcher uses:
 
-  1. lookup_recent_match(prompt, lane) — exact-or-similar prompt seen recently?
+  1. lookup_recent_match(prompt, lane) - exact-or-similar prompt seen recently?
      Returns the cached outcome so the watcher can short-circuit:
        - recent OK match  → return cached body, $0 cost, 0ms latency
        - recent ERR match → escalate (don't burn tokens repeating a failure)
 
-  2. pattern_stats(pattern, since_ts) — success rate for one classifier pattern.
+  2. pattern_stats(pattern, since_ts) - success rate for one classifier pattern.
      Watcher emits this in heartbeat so operator can spot weak patterns to
      downgrade.
 
@@ -217,7 +217,7 @@ def lookup_recent_match(*, db_path: Path, prompt: str, lane: str,
 def pattern_stats(*, db_path: Path, since_ts: Optional[float] = None,
                   limit: int = 20) -> list:
     """Aggregate by pattern_matched for the time window. Returns a list of
-    dicts sorted by attempts desc — caller can also re-sort by success_rate.
+    dicts sorted by attempts desc - caller can also re-sort by success_rate.
     """
     if since_ts is None:
         since_ts = time.time() - 7 * 86400  # 7d default
@@ -257,7 +257,7 @@ def pattern_stats(*, db_path: Path, since_ts: Optional[float] = None,
 
 def hot_failures(*, db_path: Path, since_ts: Optional[float] = None,
                  limit: int = 5) -> list:
-    """Most recent failure summaries — operator-facing 'why are tasks erroring'."""
+    """Most recent failure summaries - operator-facing 'why are tasks erroring'."""
     if since_ts is None:
         since_ts = time.time() - 24 * 3600
     try:

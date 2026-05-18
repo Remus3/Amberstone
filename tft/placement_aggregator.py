@@ -1,5 +1,5 @@
 """
-tft/placement_aggregator.py — Positional heatmap builder for TFT units.
+tft/placement_aggregator.py - Positional heatmap builder for TFT units.
 
 Reads all completed game ratings from data/ratings/*.json that contain
 tft_unit_positions, aggregates placement frequency per unit per board cell,
@@ -29,7 +29,7 @@ def parse_unit_placement(text: str) -> dict:
     {unit_name: (row_letter, col_int)} dict.
     """
     positions = {}
-    if not text or text in ("—", "N/A", "none"):
+    if not text or text in ("-", "N/A", "none"):
         return positions
     for m in re.finditer(
         r"([A-Za-z][A-Za-z''& \-]+?)\s+([A-Da-d])(\d)", text

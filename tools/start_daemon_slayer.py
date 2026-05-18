@@ -1,13 +1,13 @@
 """Boot launcher for the Daemon Slayer engine on :8893.
 
 Wrapper around ``agents.daemon_slayer.cli serve`` that pins ``cwd`` to the
-project root before importing — scheduled tasks invoke us with whatever
+project root before importing - scheduled tasks invoke us with whatever
 working directory the scheduler hands over (``C:\\Windows\\System32`` for
 SYSTEM-context tasks), and ``data_loader`` resolves snapshots relative to
 ``cwd`` if no ``--data-root`` is given.
 
 Used by the ``RC-DaemonSlayer`` scheduled task. Manual invocation works
-too — ``py tools/start_daemon_slayer.py``.
+too - ``py tools/start_daemon_slayer.py``.
 """
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ _LOG_FILE = _PROJECT_ROOT / "logs" / "daemon_slayer_startup.log"
 # The RC-DaemonSlayer scheduled task runs as SYSTEM; appends under
 # _PROJECT_ROOT can fail there, and the launcher is invoked via pythonw.exe
 # (no console) so sys.stderr may be unusable too. ProgramData is always
-# SYSTEM-writable — fall back to it so a boot-time failure still leaves a
+# SYSTEM-writable - fall back to it so a boot-time failure still leaves a
 # trace instead of vanishing into a swallowed OSError.
 _FALLBACK_LOG_FILE = (
     Path(os.environ.get("ProgramData") or r"C:\ProgramData")
@@ -82,7 +82,7 @@ if __name__ == "__main__":
         s.close()
     except OSError:
         s.close()
-        _log_startup("port 8893 already bound — skipping (exit 0)")
+        _log_startup("port 8893 already bound - skipping (exit 0)")
         sys.exit(0)
 
     _log_startup("starting serve_forever()")

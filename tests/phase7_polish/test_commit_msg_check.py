@@ -1,6 +1,6 @@
 """
 tests/phase7_polish/test_commit_msg_check.py
-Phase 7 — Conventional Commits validator.
+Phase 7 - Conventional Commits validator.
 
 Verifies the validator accepts every shape recently in `git log` and rejects
 the common malformed cases.
@@ -40,10 +40,10 @@ class TestValidate(unittest.TestCase):
 
     def test_recent_commits_accepted(self):
         for subj in [
-            "feat(arch): Phase 7 — normalize phase-marker comments + auto-index",
-            "docs: sync living docs — Phase 7 phase-markers (s141)",
-            "feat(vision): Phase 2.4 — split moon_vision_server.py into package",
-            "feat(coaching): Phase 2.3 — split coach_integration.py into package",
+            "feat(arch): Phase 7 - normalize phase-marker comments + auto-index",
+            "docs: sync living docs - Phase 7 phase-markers (s141)",
+            "feat(vision): Phase 2.4 - split moon_vision_server.py into package",
+            "feat(coaching): Phase 2.3 - split coach_integration.py into package",
             "chore: archive s128 to history_notes; trim WAKEUP_NOTES to 3 sessions",
             "fix(coach): NameError on manual_level path",
         ]:

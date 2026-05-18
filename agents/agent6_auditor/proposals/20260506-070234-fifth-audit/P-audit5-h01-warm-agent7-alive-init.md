@@ -1,4 +1,4 @@
-# P-audit5-h01 — initialize `_warm_agent7_alive` in Supervisor.__init__
+# P-audit5-h01 - initialize `_warm_agent7_alive` in Supervisor.__init__
 
 **Owner:** Agent 2
 **Severity:** HIGH

@@ -1,14 +1,14 @@
-"""FU01 — 3-path resolver for /api/minimap-crop bbox lookups.
+"""FU01 - 3-path resolver for /api/minimap-crop bbox lookups.
 
 Resolution order (highest precedence first):
 
-  1. Caller override (handled by the HTTP route — `?bbox=x1,y1,x2,y2` —
+  1. Caller override (handled by the HTTP route - `?bbox=x1,y1,x2,y2` -
      not this module).
   2. Persisted user calibration in `data/vision_regions.json` under
      `_minimap_<mode>` keys (4-int [l, t, r, b] arrays).
   3. Hardcoded fallback (1920×1080 windowed-borderless defaults).
 
-The hardcoded fallback matches what shipped before this resolver existed —
+The hardcoded fallback matches what shipped before this resolver existed -
 correct for the operator's primary setup but brittle to HUD-scale changes,
 left-side minimap toggle, and non-1080p displays. Persisting a per-mode
 calibration via the underscore-prefixed key keeps the file's main region
@@ -91,7 +91,7 @@ def resolve(mode: str) -> Optional[tuple[int, int, int, int]]:
     """Resolve a minimap bbox for the given mode.
 
     Order: persisted → hardcoded fallback. Returns None when the mode is
-    unsupported (e.g. arena) — the caller should map that to HTTP 404.
+    unsupported (e.g. arena) - the caller should map that to HTTP 404.
 
     Caller-side `?bbox=` overrides are NOT consulted here; the HTTP route
     parses and validates those before calling this resolver.

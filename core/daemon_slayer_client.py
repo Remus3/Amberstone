@@ -1,7 +1,7 @@
 """Thin HTTP client for the local Daemon Slayer engine on :8893.
 
 Phase 7 wire-in. Coach ticks need a non-blocking call into the engine
-that fails silently when the server isn't up — the engine is opt-in
+that fails silently when the server isn't up - the engine is opt-in
 infrastructure, never load-bearing. Timeouts are tight (250 ms connect,
 500 ms read) so a slow engine can't stall a coach loop.
 
@@ -103,7 +103,7 @@ def ensure_running() -> None:
             close_fds=True,
             creationflags=0x08000000,  # CREATE_NO_WINDOW
         )
-        logger.info("daemon_slayer not running — spawned %s", launcher.name)
+        logger.info("daemon_slayer not running - spawned %s", launcher.name)
     except Exception as exc:  # noqa: BLE001
         logger.warning("daemon_slayer auto-start failed: %s", exc)
 
@@ -127,7 +127,7 @@ def rank_for(
     """Call POST /rank and return the parsed top-N rows. None on engine failure.
 
     Empty list (vs. None) means the engine responded but had no candidates
-    — e.g. champion already has 6 mode-legal items. Callers should treat
+    - e.g. champion already has 6 mode-legal items. Callers should treat
     None and [] differently (engine down vs. nothing to recommend).
 
     ``augments`` is an optional list of Arena augment apiName strings (e.g.
@@ -138,7 +138,7 @@ def rank_for(
     ``target_max_hp`` (Phase 4 batch 5) activates %-target-HP procs
     (BotRK, Eclipse). ``target_bonus_hp`` (Phase 4 batch 19) activates
     target-conditional damage amps (LDR Giant Slayer). Both default
-    0.0 — engine treats 0 as "no signal" and procs gracefully no-op,
+    0.0 - engine treats 0 as "no signal" and procs gracefully no-op,
     so pre-batch callers see identical behavior.
     """
     body = {
@@ -165,7 +165,7 @@ def rank_for(
 
 @dataclass(frozen=True)
 class TankRankedItem:
-    """Mirror of ``agents.daemon_slayer.ehp.EhpRankedItem`` — EHP scorer
+    """Mirror of ``agents.daemon_slayer.ehp.EhpRankedItem`` - EHP scorer
     Phase 1 sibling of ``RankedItem``."""
     item_id: str
     item_name: str
@@ -203,14 +203,14 @@ def rank_tank_for(
 ) -> Optional[list[TankRankedItem]]:
     """Call POST /rank-tank and return the parsed top-N rows. None on engine failure.
 
-    Phase 1 (s174, 2026-05-12) — Tank EHP scorer. Same engine-down semantics as
+    Phase 1 (s174, 2026-05-12) - Tank EHP scorer. Same engine-down semantics as
     ``rank_for`` (None = unreachable, [] = nothing to recommend).
 
     ``enemy_ad_share`` / ``enemy_ap_share`` are floats in [0,1] summing to ≤ 1.0;
     remainder is true-damage share. Defaults to 50/50 as a "no info" baseline.
 
     ``only_item_ids`` is the integration point for ``core/defensive_picks.py``
-    Option B layering — pass the curated defensive item catalog as a whitelist
+    Option B layering - pass the curated defensive item catalog as a whitelist
     so the EHP-driven ranking happens within an operator-vetted pool.
     """
     body: dict = {
@@ -265,7 +265,7 @@ def ehp_for(
 
 @dataclass(frozen=True)
 class BruiserRankedItem:
-    """Mirror of ``agents.daemon_slayer.hybrid.HybridRankedItem`` — Phase 2
+    """Mirror of ``agents.daemon_slayer.hybrid.HybridRankedItem`` - Phase 2
     sibling of ``RankedItem`` / ``TankRankedItem``.
 
     ``hybrid_delta_pct`` is the operator-facing sort key: a weighted sum of
@@ -318,7 +318,7 @@ def rank_bruiser_for(
 ) -> Optional[list[BruiserRankedItem]]:
     """Call POST /rank-bruiser and return the parsed top-N rows. None on engine failure.
 
-    Phase 2 (s175, 2026-05-12) — Bruiser hybrid scorer. Same engine-down
+    Phase 2 (s175, 2026-05-12) - Bruiser hybrid scorer. Same engine-down
     semantics as ``rank_for`` (None = unreachable, [] = nothing to recommend).
 
     ``alpha`` / ``beta`` default to per-champion ``archetype_weights.json``
@@ -358,7 +358,7 @@ def rank_bruiser_for(
 @dataclass(frozen=True)
 class MageRankedItem:
     """Mirror of ``agents.daemon_slayer.ability_dps.AbilityDpsRankedItem``
-    — Phase 4c sibling of ``RankedItem`` / ``TankRankedItem`` /
+    - Phase 4c sibling of ``RankedItem`` / ``TankRankedItem`` /
     ``BruiserRankedItem``.
 
     ``delta_ability_dps`` is the raw total-ability-DPS gain over the
@@ -408,11 +408,11 @@ def rank_mage_for(
 ) -> Optional[list[MageRankedItem]]:
     """Call POST /rank-mage and return the parsed top-N rows. None on engine failure.
 
-    Phase 4c (s179, 2026-05-12) — Mage ability DPS scorer. Same engine-down
+    Phase 4c (s179, 2026-05-12) - Mage ability DPS scorer. Same engine-down
     semantics as ``rank_for`` (None = unreachable, [] = nothing to recommend).
 
     ``target_current_hp_pct`` is the fraction of max HP the assumed target
-    sits at when the cast lands — affects target_missing_hp_pct /
+    sits at when the cast lands - affects target_missing_hp_pct /
     target_current_hp_pct damage blocks (Eve R, Garen R thresholds).
 
     ``max_priority`` is a 3-tuple of ability keys describing max order
@@ -496,7 +496,7 @@ def ability_dps_for(
 
 @dataclass(frozen=True)
 class AssassinRankedItem:
-    """Mirror of ``agents.daemon_slayer.burst.BurstRankedItem`` — Phase 5
+    """Mirror of ``agents.daemon_slayer.burst.BurstRankedItem`` - Phase 5
     sibling of ``MageRankedItem`` / ``BruiserRankedItem`` / ``TankRankedItem``.
 
     ``delta_burst`` is the total-burst-damage gain over the baseline;
@@ -547,11 +547,11 @@ def rank_assassin_for(
 ) -> Optional[list[AssassinRankedItem]]:
     """Call POST /rank-assassin and return the parsed top-N rows. None on engine failure.
 
-    Phase 5 (s180, 2026-05-13) — Assassin burst-window scorer. Same engine-down
+    Phase 5 (s180, 2026-05-13) - Assassin burst-window scorer. Same engine-down
     semantics as ``rank_for`` (None = unreachable, [] = nothing to recommend).
 
     ``target_current_hp_pct`` is the fraction of max HP the assumed target
-    sits at when the combo lands — affects target_missing_hp_pct /
+    sits at when the combo lands - affects target_missing_hp_pct /
     target_current_hp_pct damage blocks (Zed R execute, Garen R threshold).
 
     ``combo_sequence`` is an iterable of tokens (AA / P / Q / W / E / R /
@@ -682,7 +682,7 @@ def hybrid_for(
 
 @dataclass(frozen=True)
 class EnchanterRankedItem:
-    """Mirror of ``agents.daemon_slayer.hps.HpsRankedItem`` — HPS scorer
+    """Mirror of ``agents.daemon_slayer.hps.HpsRankedItem`` - HPS scorer
     Phase 6 sibling of ``RankedItem`` / ``TankRankedItem`` / ``BruiserRankedItem``
     / ``MageRankedItem`` / ``AssassinRankedItem``."""
     item_id: str
@@ -723,7 +723,7 @@ def rank_enchanter_for(
 ) -> Optional[list[EnchanterRankedItem]]:
     """Call POST /rank-enchanter and return the parsed top-N rows. None on engine failure.
 
-    Phase 6 (s181, 2026-05-13) — Enchanter healing throughput scorer. Same
+    Phase 6 (s181, 2026-05-13) - Enchanter healing throughput scorer. Same
     engine-down semantics as ``rank_for`` (None = unreachable, [] = nothing
     to recommend).
 
@@ -820,10 +820,10 @@ def rank_for_primary_archetype(
     filter_shared_uniques: bool = True,
     timeout: float = DEFAULT_TIMEOUT,
 ) -> Optional[dict]:
-    """Phase 3 + 4c + 5 + 6 (s176/s179/s180/s181, 2026-05-12+) — route to the right scorer per archetype.
+    """Phase 3 + 4c + 5 + 6 (s176/s179/s180/s181, 2026-05-12+) - route to the right scorer per archetype.
 
     The DS engine ships 6 scorers (ds.dps, ds.ehp, ds.hybrid, ds.ability,
-    ds.burst, ds.hps) — one per archetype branch. This dispatcher exposes
+    ds.burst, ds.hps) - one per archetype branch. This dispatcher exposes
     a single call shape that the coaches + UI use, routing based on the
     operator's pick from ``state.cs_archetype_pick.primary``.
 
@@ -836,7 +836,7 @@ def rank_for_primary_archetype(
             "fell_back":   bool,  # always False post-Phase-6 (all archetypes wired)
         }
     ``ok=False`` means the engine was unreachable. ``fell_back`` is kept
-    for backward compatibility — all 6 archetype branches return
+    for backward compatibility - all 6 archetype branches return
     ``fell_back=False`` now that ds.hps shipped (Phase 6 s181). Unknown
     archetype strings fall through to ds.dps with ``fell_back=False`` too.
 
@@ -849,7 +849,7 @@ def rank_for_primary_archetype(
     """
     arch = (archetype or "").strip().lower()
 
-    # Routing table — explicit so future Phase 5-6 scorers slot in by
+    # Routing table - explicit so future Phase 5-6 scorers slot in by
     # adding one branch each.
     if arch == "tank":
         rows = rank_tank_for(

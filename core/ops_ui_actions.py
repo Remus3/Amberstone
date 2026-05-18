@@ -1,6 +1,6 @@
 """
 core/ops_ui_actions.py
-Phase 1 Step 6 — Allowlisted manual deploy/rollback action runner.
+Phase 1 Step 6 - Allowlisted manual deploy/rollback action runner.
 
 Exposes exactly three manual actions:
   - preflight:     run rc_transactional_deploy.py --preflight
@@ -13,7 +13,7 @@ Design rules:
   - Actions run asynchronously on a daemon thread so the Tk main thread
     never blocks.
   - Results are delivered via a callback(ok: bool, summary: str).
-  - Failures are caught and delivered cleanly — never crash the caller.
+  - Failures are caught and delivered cleanly - never crash the caller.
   - rollback_last requires explicit confirmation from the caller before
     this module runs it (confirmed= parameter must be True).
 
@@ -30,7 +30,7 @@ from typing import Callable, Optional
 
 _log = logging.getLogger("rc.ops_ui_actions")
 
-# Project root — one level above this file (core/)
+# Project root - one level above this file (core/)
 _PROJECT_DIR = Path(__file__).parent.parent
 _DEPLOY_SCRIPT = _PROJECT_DIR / "ops" / "rc_transactional_deploy.py"
 

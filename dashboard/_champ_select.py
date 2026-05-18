@@ -2,8 +2,8 @@
 
 Tier 2 helper-shake (2026-05-01): extracted from web_dashboard.py.
 
-`brief_via_coach()` asks Claude Haiku for a unified champ-select brief —
-build path + runes + ally notes — in a single API call. Cached
+`brief_via_coach()` asks Claude Haiku for a unified champ-select brief -
+build path + runes + ally notes - in a single API call. Cached
 aggressively (10 minute TTL, keyed by champion + enemies + allies +
 role + mode) because dashboard polls hit the same context repeatedly
 during a single champ-select phase.
@@ -12,7 +12,7 @@ The cache is a module-level dict trimmed to ~100 entries when it grows
 past 200; LRU-by-timestamp eviction. Nothing outside this module reads
 it.
 
-API key sourced from `<APP_DIR>/API-Key-Claude.txt` — same path
+API key sourced from `<APP_DIR>/API-Key-Claude.txt` - same path
 convention as the rest of RC. Returns the empty `{build: [], runes: {},
 ally_notes: ""}` shape on any error so callers don't need to guard.
 """
@@ -53,7 +53,7 @@ def brief_via_coach(champ: str, enemies: list, allies: list,
         aram_note = ""
         if mode.upper() in ("ARAM", "KIWI"):
             aram_note = (
-                "This is ARAM — no lane phase, single mid lane, can't recall to "
+                "This is ARAM - no lane phase, single mid lane, can't recall to "
                 "base. Prioritize items that complete fast, sustain (BT/Shieldbow "
                 "for squishy carries, Spirit Visage for AP bruisers). Skip Teleport. "
                 "Prefer one early tank/sustain item over pure damage for mid-game "

@@ -58,13 +58,13 @@
 
   "antiheal_ad_components": {
     "kind": "functional",
-    "rule": "Anti-heal effect doesn't stack across sources — pick the one that fits your slot priority.",
+    "rule": "Anti-heal effect doesn't stack across sources - pick the one that fits your slot priority.",
     "items": ["Executioner's Calling", "Mortal Reminder", "Chempunk Chainsword", "Morellonomicon"]
   },
 
   "antiheal_ap": {
     "kind": "functional",
-    "rule": "Anti-heal doesn't stack — Cryptbloom and Morellonomicon each provide it; one is enough.",
+    "rule": "Anti-heal doesn't stack - Cryptbloom and Morellonomicon each provide it; one is enough.",
     "items": ["Oblivion Orb", "Morellonomicon", "Cryptbloom"]
   },
 
@@ -126,7 +126,7 @@
 
   "qss_active": {
     "kind": "functional",
-    "rule": "QSS-style cleanse actives — only one can be on cooldown at a time effectively, and game caps duplicate uniques.",
+    "rule": "QSS-style cleanse actives - only one can be on cooldown at a time effectively, and game caps duplicate uniques.",
     "items": ["Quicksilver Sash", "Mercurial Scimitar", "Banshee's Veil"]
   },
 
@@ -138,7 +138,7 @@
 
   "doran_blade": {
     "kind": "soft",
-    "rule": "Stacking 2x Doran's Blade is rare — typically only 1 starter.",
+    "rule": "Stacking 2x Doran's Blade is rare - typically only 1 starter.",
     "items": ["Doran's Blade"]
   },
 

@@ -1,4 +1,4 @@
-"""File-watcher ingest — bridges the existing RC coaching JSON files
+"""File-watcher ingest - bridges the existing RC coaching JSON files
 into the Phase 3 /push WebSocket stream while the Game-PC Forwarder is
 still deferred (§12 of the spec).
 
@@ -37,7 +37,7 @@ logger = logging.getLogger("agent2.file_ingest")
 # WS health envelope here too. ``dashboard/_state_builder.build_state``
 # already does this for the HTTP /api/state route (s153), but the
 # supervisor's WS /push path reads health.json directly and broadcasts
-# the raw payload — bypassing the mirror. Result: dashboard onHealth
+# the raw payload - bypassing the mirror. Result: dashboard onHealth
 # saw aram_mode/arena_mode/tft_mode/has_game all False during lobby
 # and computed tag="client" every cadence cycle, racing onState's
 # in-game env.mode for the just-completed game ("sr"). Mode pill
@@ -51,7 +51,7 @@ try:
     )
     _PREFLIP_AVAILABLE = True
 except Exception as _imp_exc:  # noqa: BLE001
-    # Tests / dev runs without the dashboard package — fall back to
+    # Tests / dev runs without the dashboard package - fall back to
     # raw passthrough rather than failing the supervisor's startup.
     logger.warning("preflip mirror unavailable: %s", _imp_exc)
     _PREFLIP_AVAILABLE = False
@@ -72,13 +72,13 @@ WATCHED: tuple[tuple[str, Path, str], ...] = (
 HEALTH_PATH = _PROJECT_ROOT / "ops" / "runtime" / "health.json"
 
 POLL_SEC = 0.5          # matches the existing :8888 dashboard cadence
-MAX_PAYLOAD_BYTES = 128 * 1024   # sanity cap — coaching JSON ≈ 1-2 KB
+MAX_PAYLOAD_BYTES = 128 * 1024   # sanity cap - coaching JSON ≈ 1-2 KB
 
 
 class FileIngest:
     def __init__(self, ws_server, on_mode_transition=None) -> None:
         """``on_mode_transition(prev, new)`` is called when
-        ``health.json.mode`` changes — supervisor wires this to the
+        ``health.json.mode`` changes - supervisor wires this to the
         warm Agent 7 session (charter: "warm starts when game begins").
         """
         self._ws = ws_server
@@ -113,7 +113,7 @@ class FileIngest:
                 pass
 
     async def _tick(self) -> None:
-        # Health first — panels need current mode before anything else.
+        # Health first - panels need current mode before anything else.
         await self._check_one(HEALTH_PATH, "health", mode="any",
                               envelope_type="health")
         for label, path, mode in WATCHED:
@@ -176,7 +176,7 @@ class FileIngest:
         #
         # s171.8: on Legion, LCU lockfile isn't visible (it lives on
         # Game-PC), so the main RC writes health.mode="client" through
-        # the entire ChampSelect + GameStart window — the supervisor
+        # the entire ChampSelect + GameStart window - the supervisor
         # only sees the transition once LiveClient finally fires (well
         # into InProgress). Warm Agent 7 misses the early-game prime
         # window. Overlay an LCU-phase-derived mode here so the

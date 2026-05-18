@@ -1,6 +1,6 @@
 """
 tests/phase2_smoke/test_daemon_slayer_client_target_bonus_hp.py
-Phase 4 batch 19 wire-in — daemon_slayer_client passes target_max_hp +
+Phase 4 batch 19 wire-in - daemon_slayer_client passes target_max_hp +
 target_bonus_hp through to /rank and /dps request bodies.
 
 The client is a thin urllib wrapper, so the test surface is the request
@@ -23,7 +23,7 @@ class RankForTargetBonusHpTests(unittest.TestCase):
     """rank_for must thread target_max_hp + target_bonus_hp into the body."""
 
     def test_kwargs_default_zero(self) -> None:
-        # Pre-batch-19 callers omit the kwargs — body should still
+        # Pre-batch-19 callers omit the kwargs - body should still
         # carry both fields with 0.0 (engine treats 0 as no signal).
         captured: dict = {}
 

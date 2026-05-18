@@ -1,24 +1,24 @@
-"""Phase 5.9.24 (s224, 2026-05-16) — unmapped-key pass on COVERED
+"""Phase 5.9.24 (s224, 2026-05-16) - unmapped-key pass on COVERED
 champions: Bel'Veth R entry + _UNIT_TO_FIELD health-variant completion.
 
 The s223 5-way scan proved the *uncovered-champion* block_index space
-saturated. s224 worked the orthogonal space — ability KEYS on already-
-covered champions not yet in the registry — via a pre-filter over all
+saturated. s224 worked the orthogonal space - ability KEYS on already-
+covered champions not yet in the registry - via a pre-filter over all
 125 covered champs. It surfaced:
 
-  PART 1 (block_index) — Bel'Veth R=1. "Endless Banquet" block 1 is the
+  PART 1 (block_index) - Bel'Veth R=1. "Endless Banquet" block 1 is the
   canonical recast nuke (150-250 + 100% AP + 25% missing-HP); the engine
   defaulted to block 0 (6-10 per-takedown true dmg, ~25x under). This
-  CORRECTS s223's over-conservative "no entry, already parsed" call —
+  CORRECTS s223's over-conservative "no entry, already parsed" call -
   field-parsed ≠ engine-block-selected. Bel'Veth → {E:2, R:1}.
 
-  PART 2 (parser, s223-sibling) — `_UNIT_TO_FIELD` was missing a family
+  PART 2 (parser, s223-sibling) - `_UNIT_TO_FIELD` was missing a family
   of Meraki text-drift health-unit variants (double-space, "the
   target's", caster pronoun/name forms). 8 keys added; a deterministic
   audit-gated migration promoted exactly 32 modifiers across 13
   champions (Ambessa Q · Braum Q · Briar W · Fiddlesticks Q · Gnar E ·
   Gwen Q·R · Maokai Q · Sejuani W · Skarner E · TahmKench R · Trundle R ·
-  Varus W · Zac Q) whose %HP component was silently dropped — Trundle R
+  Varus W · Zac Q) whose %HP component was silently dropped - Trundle R
   and Fiddlesticks Q evaluated to 0 entirely pre-s224.
 
 ENGINE_VERSION 0.95.0 → 0.96.0 pinned.
@@ -50,7 +50,7 @@ def _snap() -> DataSnapshot:
     return DataSnapshot.load()
 
 
-# ─── PART 2a — _UNIT_TO_FIELD variant additions ──────────────────────────────
+# ─── PART 2a - _UNIT_TO_FIELD variant additions ──────────────────────────────
 
 
 class UnitTableVariantTests(unittest.TestCase):
@@ -78,7 +78,7 @@ class UnitTableVariantTests(unittest.TestCase):
         self.assertEqual(_UNIT_TO_FIELD.get(canon), "target_max_hp_pct")
 
     def test_existing_keys_untouched(self) -> None:
-        """Pure additions — the pre-s224 keys keep their mapping."""
+        """Pure additions - the pre-s224 keys keep their mapping."""
         self.assertEqual(_UNIT_TO_FIELD["% AD"], "total_ad_pct")
         self.assertEqual(_UNIT_TO_FIELD["% of target's missing health"],
                          "target_missing_hp_pct")
@@ -86,7 +86,7 @@ class UnitTableVariantTests(unittest.TestCase):
                          "caster_max_hp_pct")
 
 
-# ─── PART 2b — migration applied to the live snapshot ────────────────────────
+# ─── PART 2b - migration applied to the live snapshot ────────────────────────
 
 
 class SnapshotMigrationS224Tests(unittest.TestCase):
@@ -106,7 +106,7 @@ class SnapshotMigrationS224Tests(unittest.TestCase):
         self.assertEqual(self._b("Ambessa", "Q", 0, 1).target_max_hp_pct[0], 2.0)
 
     def test_trundle_R_recovered_from_zero(self) -> None:
-        """Trundle R 'Subjugate' was all-None (evaluated 0) pre-s224 —
+        """Trundle R 'Subjugate' was all-None (evaluated 0) pre-s224 -
         the double-space "the target's" maximum-health drain now types."""
         b = self._b("Trundle", "R", 0, 0)
         self.assertIsNotNone(b.target_max_hp_pct)
@@ -139,7 +139,7 @@ class SnapshotMigrationS224Tests(unittest.TestCase):
             )
 
 
-# ─── PART 1 — Bel'Veth R entry + A/B ─────────────────────────────────────────
+# ─── PART 1 - Bel'Veth R entry + A/B ─────────────────────────────────────────
 
 
 class BelvethREntryTests(unittest.TestCase):
@@ -176,7 +176,7 @@ class BelvethREntryTests(unittest.TestCase):
                                places=6)
 
 
-# ─── Backward-compat — s223 + prior entries intact ───────────────────────────
+# ─── Backward-compat - s223 + prior entries intact ───────────────────────────
 
 
 class BackwardCompatS224Tests(unittest.TestCase):
@@ -209,7 +209,7 @@ class BackwardCompatS224Tests(unittest.TestCase):
         self.assertEqual(get_block_index_for("Thresh")[0].get("E"), [1, 2])
 
     def test_champion_count_unchanged(self) -> None:
-        """s224 added a KEY to an already-covered champ (Bel'Veth) — the
+        """s224 added a KEY to an already-covered champ (Bel'Veth) - the
         champion count stays 125 (s223's number)."""
         import json
         from pathlib import Path

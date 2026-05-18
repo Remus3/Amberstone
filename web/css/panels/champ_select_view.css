@@ -1,6 +1,6 @@
-/* Champ Select VIEW (s164 — Phase 3 step 3 scaffold).
+/* Champ Select VIEW (s164 - Phase 3 step 3 scaffold).
  *
- * Styles the top-level <section id="view-champ-select"> page — full-page
+ * Styles the top-level <section id="view-champ-select"> page - full-page
  * redesign in the same series as view-lobby / view-active-match.
  */
 
@@ -8,7 +8,7 @@
   display: grid;
   grid-template-columns: 1fr 1.2fr 1fr;
   /* Row 2 has an explicit floor so pickban content (role + 3 picks +
-   * mood + gaps + header chrome ≈ 354px) always fits — independent of
+   * mood + gaps + header chrome ≈ 354px) always fits - independent of
    * the live viewport height. No more section-level scrollbar. */
   grid-template-rows: auto minmax(354px, 1fr);
   /* s210: Enemies sits in row 1 (matching Allies); the new Suggestions
@@ -19,7 +19,7 @@
     "pickban  mypick   suggestions";
   /* s212: tightened row-gap 12→4px to bring the left + right stacked
    * panels visually closer to each other.
-   * s214 v2: column-gap tightened 12→4px per operator — reduces dead
+   * s214 v2: column-gap tightened 12→4px per operator - reduces dead
    * space between the left (Allies / Pick & Ban), center (My Pick),
    * and right (Enemies / Suggestions) panels so the data zones sit
    * closer to each other. Card padding still provides interior
@@ -37,12 +37,12 @@
 .csv-card-allies   { grid-area: allies; }
 /* Allies header stays panel-centered (default). Summoner-name column
  * below is aligned to wherever the "A" lands via a CSS var driven by
- * JS measurement on each render — see _csvAlignAllies(). */
+ * JS measurement on each render - see _csvAlignAllies(). */
 /* Hardcoded width chosen so the summoner col (and the lock/timer at
  * its left edge) lands near the "A" of the centered "Allies" title
  * on the 1920-wide viewport. Adjust this number to shift the locks
  * left/right. Operator nudges so far: 110→100 (−10), 100→90 (−10
- * more) — net 20px left of the centered "A". */
+ * more) - net 20px left of the centered "A". */
 .csv-card-allies { --csv-champname-col: 90px; }
 .csv-card-allies .csv-team-cell {
   grid-template-columns: 36px var(--csv-champname-col) 1fr auto;
@@ -50,7 +50,7 @@
 /* Mirror the Allies champname column on Enemies so the two panels
  * align visually now that they share the same row height. */
 .csv-card-enemies { --csv-champname-col: 90px; }
-/* Hide the PICK & BAN RECOMMENDATIONS panel title — the PICK / BAN
+/* Hide the PICK & BAN RECOMMENDATIONS panel title - the PICK / BAN
  * labels inside Row 2 act as the column headers instead. */
 .csv-card-pickban > .csv-card-head { display: none; }
 .csv-card-pickban     { grid-area: pickban; min-height: 0; overflow: hidden; }
@@ -82,7 +82,7 @@
 
 .csv-card-body {
   flex: 1 1 auto;
-  /* s214 v3: per operator — no scrollbars in champ-select panels
+  /* s214 v3: per operator - no scrollbars in champ-select panels
    * unless explicitly authorized. Content that doesn't fit is clipped
    * via overflow:hidden; layout already keeps the 4 build rows + arch
    * picker + lock button + portrait inside the My Pick card at the
@@ -91,16 +91,16 @@
   min-height: 0;
 }
 
-/* MY PICK center card — big champion icon, name, lock state. */
+/* MY PICK center card - big champion icon, name, lock state. */
 .csv-mypick {
   align-items: stretch;
   text-align: center;
 }
-/* s214 v5: portrait row is now a 3-col GRID — [state | icon | name].
+/* s214 v5: portrait row is now a 3-col GRID - [state | icon | name].
  * The 1fr/auto/1fr template guarantees the icon sits at the EXACT
  * horizontal center of the My Pick card regardless of state/name
  * content widths. Operator's requirement: "center the locked in
- * champion icon to the panel — text follows the icon, doesn't
+ * champion icon to the panel - text follows the icon, doesn't
  * influence its positioning". Outer columns are right-aligned (state)
  * and left-aligned (name) so the text reads as flanking the centered
  * portrait. */
@@ -119,14 +119,14 @@
   /* s214 v5: in the new 3-col grid the name column is `1fr` flanking
    * the icon. min-width:0 lets long champion names ellipsize rather
    * than blow out the grid. justify-self: start pins to the icon's
-   * right edge — `1fr` width fills the remainder of the panel. */
+   * right edge - `1fr` width fills the remainder of the panel. */
   min-width: 0;
   justify-self: start;
 }
 .csv-mypick-name {
   /* s214 v5: ellipsize on overflow so long names like "Aurelion Sol"
    * stay on one line and don't push the grid. The full name is in the
-   * portrait `<img alt>` + visible — minor truncation is acceptable. */
+   * portrait `<img alt>` + visible - minor truncation is acceptable. */
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -172,7 +172,7 @@
   /* s214 v5: grid-cell-aligned. min-height matches icon (88+2+2=92px)
    * so state text vertically centers against portrait center via flex.
    * justify-self: end pins the cell content to the right edge of its
-   * 1fr column — visually the text sits just-left-of-icon since the
+   * 1fr column - visually the text sits just-left-of-icon since the
    * column ends at the icon's left edge. */
   min-height: 92px;
   display: flex;
@@ -185,7 +185,7 @@
 .csv-mypick-state.locked { color: #4ade80; }
 .csv-mypick-state.hovering { color: #fbbf24; }
 
-/* s171: LOCK IN button — only rendered while a champion is hovered.
+/* s171: LOCK IN button - only rendered while a champion is hovered.
  * Sits between the state line and the build chooser. Green-on-click
  * mirrors the legacy overlay's cs-lock-btn. */
 .csv-lock-btn {
@@ -211,9 +211,9 @@
 }
 .csv-lock-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
 
-/* Phase 3 (s176, 2026-05-12) — scorer-archetype picker.
+/* Phase 3 (s176, 2026-05-12) - scorer-archetype picker.
  * Sits between lock button and build chooser. 6 buttons in a 3×2 grid.
- * Unimplemented scorers (mage/assassin/enchanter — Phases 4-6) are
+ * Unimplemented scorers (mage/assassin/enchanter - Phases 4-6) are
  * grayed and labeled as DPS placeholders, but still clickable so the
  * coach falls back to ds.dps with a fell_back=True tag. */
 .csv-archetype-picker {
@@ -263,7 +263,7 @@
   text-align: center;
   display: inline-block;
 }
-/* s211: AUTO button — same typography as the source pill. When the
+/* s211: AUTO button - same typography as the source pill. When the
  * picker is on the DDragon-tag default (no operator override), the
  * button is `.is-active` with a slight green hue + border so the
  * operator can see "auto mode is engaged". Click reverts to default. */
@@ -331,10 +331,10 @@
 }
 .csv-arch-btn.active {
   /* s212 v4 (audit consider #3 options 1-2-4 combined):
-   *   (1) thinner overall border — base button uses 1px now; active
+   *   (1) thinner overall border - base button uses 1px now; active
    *       state keeps that 1px ring so the perimeter isn't competing
    *       with LOCKED's 2px green portrait outline above.
-   *   (2) 4px left-edge accent — mirrors the color-coded left borders
+   *   (2) 4px left-edge accent - mirrors the color-coded left borders
    *       on the Pick & Ban rec rows so "active state" reads as the
    *       same system-wide visual grammar across panels.
    *   (4) recolor blue → indigo/violet (#a78bfa / #7c3aed) so the
@@ -357,19 +357,19 @@
 }
 .csv-arch-btn.placeholder .csv-arch-label { color: #9ca3af; }
 .csv-arch-btn.placeholder.active {
-  /* operator chose an unimplemented archetype — still highlights but
+  /* operator chose an unimplemented archetype - still highlights but
    * dimmer than the implemented ones so the placeholder semantics
    * stay visible. */
   opacity: 0.85;
 }
 
-/* Team panels — vertical stack of 5 cells. */
+/* Team panels - vertical stack of 5 cells. */
 .csv-team-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
   /* Reset browser <ul> defaults so cells start at card-content-left
-   * — otherwise the 40px default padding pushes usernames out of sync
+   * - otherwise the 40px default padding pushes usernames out of sync
    * with the ALLIES header alignment math. */
   margin: 0;
   padding: 0;
@@ -406,7 +406,7 @@
 .csv-team-cell-icon img { width: 100%; height: 100%; object-fit: cover; }
 
 .csv-team-cell-nm {
-  /* Reduced 14→13 per operator — frees up a few pixels to the right
+  /* Reduced 14→13 per operator - frees up a few pixels to the right
    * for the lock/timer column in narrow panels. s214: expanded inline
    * padding so the hover target for the champion-name tooltip is the
    * full cell-width column, not just the visible text glyph row.
@@ -438,14 +438,14 @@
  * up vertically with the centered "ENEMIES" panel title above. The
  * role pip is explicitly placed in grid col 4 (otherwise it auto-
  * flows into the 1fr col since summ is absolutely positioned and
- * removed from grid flow) — then nudged 20px right via translateX. */
+ * removed from grid flow) - then nudged 20px right via translateX. */
 .csv-card-enemies .csv-team-cell {
   position: relative;
 }
 /* s213 v3: enemy cell grid expanded from 4 cols to 5 so tags +
  * confidence have explicit homes. Old: `36px 88px 1fr auto` with
  * summoner-col absolute-positioned at 50%. New: `36px 88px auto auto
- * 1fr auto auto` — col 3 = timer, col 4 = 2-piece tag chips, col 5 =
+ * 1fr auto auto` - col 3 = timer, col 4 = 2-piece tag chips, col 5 =
  * 1fr spacer, col 6 = role pip, col 7 = confidence pill. The flex
  * spacer separates "champion identity" (cols 1-4) from "role guess +
  * confidence" (cols 6-7). */
@@ -454,7 +454,7 @@
   grid-template-rows: auto;
   gap: 6px;
 }
-/* All children pinned to grid-row 1 — without this, grid auto-flow
+/* All children pinned to grid-row 1 - without this, grid auto-flow
  * generates a second row whenever the DOM insertion order doesn't
  * match the explicit grid-column assignments (s213 v3 fix). */
 .csv-card-enemies .csv-team-cell-icon       { grid-column: 1; grid-row: 1; }
@@ -463,7 +463,7 @@
 .csv-card-enemies .csv-team-cell-tags       { grid-column: 4; grid-row: 1; position: static; transform: none; }
 .csv-card-enemies .csv-team-cell-pos        { grid-column: 6; grid-row: 1; }
 .csv-card-enemies .csv-team-cell-confidence { grid-column: 7; grid-row: 1; position: static; transform: none; }
-/* Enemy-only "(guess)" tag — sits between the centered lock/timer
+/* Enemy-only "(guess)" tag - sits between the centered lock/timer
  * (at 50%) and the right-aligned role pip (~85% area). Positioned
  * at 70% so it's vertically aligned across every row regardless of
  * what's in the lock slot or how wide the pip text is. */
@@ -503,7 +503,7 @@
 .csv-team-cell-tag--adc      { color: #fca5a5; border-color: #b8410c; }
 .csv-team-cell-tag--mage     { color: #c4b5fd; border-color: #6d4ed1; }
 .csv-team-cell-tag--flex     { color: #cbd5e1; border-color: #2a2f37; }
-/* s213 v3: confidence pill — grid col 7 (rightmost). No abs positioning. */
+/* s213 v3: confidence pill - grid col 7 (rightmost). No abs positioning. */
 .csv-card-enemies .csv-team-cell-confidence {
   font-size: 11px;
   font-weight: 700;
@@ -533,7 +533,7 @@
   color: #9ca3af;
   text-align: left;
 }
-/* s214: lock + countdown timer styles retired — the inline 🔒 was
+/* s214: lock + countdown timer styles retired - the inline 🔒 was
  * dropped in s213 v2 and the per-cell countdown was dropped in s214.
  * The cell border (green=locked / amber=hovering / red=banning /
  * gold=picking) carries those signals without per-cell glyphs. The
@@ -591,7 +591,7 @@
   opacity: 0.55;
 }
 
-/* Trade choice popup — singleton element appended to body. Layout:
+/* Trade choice popup - singleton element appended to body. Layout:
  *   [ SWAP / TRADE  (full-width header row) ]
  *   [ CHAMPION ][ Nth PICK ][ ROLE ]   (equal-width buttons row)
  * Buttons share the same width via flex:1; the header spans the same
@@ -693,7 +693,7 @@
 /* Active-round indicator: a 2px solid colored border around the
  * cell. Red for ban rounds, gold for picks. Drawn via inset
  * box-shadow so it doesn't shift the cell layout. Earlier LED-dot
- * animation removed per operator — wasn't rendering reliably. */
+ * animation removed per operator - wasn't rendering reliably. */
 .csv-team-cell.is-banning,
 .csv-team-cell.is-picking {
   position: relative;
@@ -759,7 +759,7 @@
 }
 
 .csv-pb-role-row {
-  /* Same column template as the pick rows below — col 1 gets PICK,
+  /* Same column template as the pick rows below - col 1 gets PICK,
    * col 2 gets CURRENT ROLE chip, col 3 gets BAN slot (with internal
    * 3-col sub-grid so BAN centers over the middle ban icon). */
   display: grid;
@@ -792,7 +792,7 @@
    * captions they actually are. */
   justify-self: center;
 }
-/* s212 v7: .csv-pb-role-mid retained for backward-compat only — the
+/* s212 v7: .csv-pb-role-mid retained for backward-compat only - the
  * centered ROLE chip it styled was retired from the JS render earlier
  * (operator: role is already shown on their ally row). No JS callsite
  * renders this class anymore; kept the rule so a future re-introduction
@@ -814,7 +814,7 @@
   /* s211 v3: center BAN within the col-3 slot so it sits horizontally
    * over the middle of the 3 ban-icon strip below. col-3 is 138px wide
    * and the 3 ban icons share that space evenly via .csv-pb-bans-col's
-   * 1fr/1fr/1fr sub-grid — centering BAN in the same col puts the
+   * 1fr/1fr/1fr sub-grid - centering BAN in the same col puts the
    * label over the middle ban icon. */
   justify-content: center;
 }
@@ -871,7 +871,7 @@
   gap: 2px;
 }
 /* Source label (PERFORMANCE / MASTERY / META) now lives in reason col
- * as a header above the explanation text — see .csv-pb-source-label
+ * as a header above the explanation text - see .csv-pb-source-label
  * and .csv-pb-reason-text below. */
 .csv-pb-source-label {
   font-size: 12px;
@@ -1039,7 +1039,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  /* s212 v2 (font-floor fix): 11→15px — interactive surfaces need to
+  /* s212 v2 (font-floor fix): 11→15px - interactive surfaces need to
    * meet the operator's clickables floor for across-room viewing. */
   font-size: 16px;
   font-weight: 700;
@@ -1070,9 +1070,9 @@
  * from renderChampSelectView(). SR is the historical default; the
  * other 2 modes adjust grid template, hide pickban, and route the
  * central pane / enemies pane to mode-specific renderers.
- * s214 v2: Brawl branch retired — mode removed from live rotation.
+ * s214 v2: Brawl branch retired - mode removed from live rotation.
  *
- * Pick&Ban panel is SR-only — ARAM/Arena have no bans. We hide
+ * Pick&Ban panel is SR-only - ARAM/Arena have no bans. We hide
  * the entire pickban card and collapse the grid so allies grows to
  * fill row 2.
  */
@@ -1088,7 +1088,7 @@
   grid-template-areas: "allies mypick enemies";
 }
 
-/* In ARAM the allies cell layout drops the role pip — collapse
+/* In ARAM the allies cell layout drops the role pip - collapse
  * the 4th column so the summoner name flexes into the freed space.
  * (allowRolePip:false in the JS render path prevents the pip element
  * from being emitted, but the grid-template-columns rule keeps the
@@ -1119,7 +1119,7 @@
   display: none;
 }
 /* Ensure the champ name on the LEFT col gets the full available width
- * — without this override the var(--csv-champname-col) cap leaves the
+ * - without this override the var(--csv-champname-col) cap leaves the
  * 1fr col empty + the name col fixed-narrow. */
 #view-champ-select[data-cs-mode="aram"] .csv-card-enemies .csv-team-cell-nm {
   text-align: left;
@@ -1127,7 +1127,7 @@
 
 /* ── ARAM bench (under MY PICK) ─────────────────────────────────────
  * Horizontal strip of 5 bench champions. Click → fires bench_swap
- * via the LCU agent (instant — bypasses the 5s client cooldown). */
+ * via the LCU agent (instant - bypasses the 5s client cooldown). */
 .csv-bench {
   margin-top: 10px;
   padding-top: 10px;
@@ -1224,7 +1224,7 @@
 }
 /* Row 2: ban-suggestion cards. During the ban phase the grid carries
  * 4 horizontally-arranged cards (.is-suggestions-grid). Post ban phase
- * it switches to .is-banned-grid — 2 stacked rows of 5 cells each,
+ * it switches to .is-banned-grid - 2 stacked rows of 5 cells each,
  * ally bans on top + enemy bans below. s213 v3. */
 .csv-sugg-bans-grid {
   display: grid;
@@ -1320,7 +1320,7 @@
    * audit follow-up. Clears the 13px tertiary floor with even more
    * headroom for across-room viewing distance.
    * s214 v4: min-height pinned so the 3 tip rows have uniform
-   * vertical rhythm — single-line + wrapped-two-line tips render at
+   * vertical rhythm - single-line + wrapped-two-line tips render at
    * the same height. Audit subagent flagged uneven heights as a
    * visual-hierarchy distraction. */
   font-size: 16px;
@@ -1336,7 +1336,7 @@
   min-width: 14px;
   text-align: center;
 }
-/* s211: Row 4 (DS engine item strip) removed — moved to the
+/* s211: Row 4 (DS engine item strip) removed - moved to the
  * Experimental row in the build chooser. */
 
 /* ── Build chooser rows (SR / ARAM / Arena) ───────────────────────── */
@@ -1345,7 +1345,7 @@
   flex-direction: column;
   gap: 4px;
 }
-/* s211: 4-column row — checkbox / meta (3 stacked: badge, main tree,
+/* s211: 4-column row - checkbox / meta (3 stacked: badge, main tree,
  * sub tree) / summoners stacked / items (larger now). */
 .csv-build-row {
   display: grid;
@@ -1377,7 +1377,7 @@
 /* s214: meta column switched from center- to start-aligned children so
  * the keystone strip's anchor X is the SAME across all 4 build-chooser
  * rows. Pre-s214 the badge centered horizontally and the rune strip
- * `align-self: flex-start`-snapped to the column's left edge — but
+ * `align-self: flex-start`-snapped to the column's left edge - but
  * different badge widths shifted the strip's own X slightly because
  * the column was flexing to fit its widest child. Setting
  * `align-items: flex-start` + `width: 100%` on the meta makes every
@@ -1401,11 +1401,11 @@
   text-overflow: ellipsis;
   text-align: center;
 }
-/* s211: variant badge — colored pill replacing the per-row trailing
+/* s211: variant badge - colored pill replacing the per-row trailing
  * tag. The pre-s211 .csv-build-experimental-tag was the only badge
  * (amber); now every variant gets its own hue, keyed off the variant
  * key in JS (_csvVariantBadgeClass). s214 v3: badge now has a FIXED
- * width so all 4 rows share the same right boundary — the keystone
+ * width so all 4 rows share the same right boundary - the keystone
  * strip below uses the same `--csv-badge-w` width, so its right edge
  * aligns with the badge's. Pre-s214v3 the badge was content-sized
  * (min-width:96px, grew with label), which let "Experimental" stretch
@@ -1441,13 +1441,13 @@
 .csv-build-badge-support     { color: #fde68a; background: #2a2010; border-color: #b8800c; }
 .csv-build-badge-experimental{ color: #fb923c; background: #2a1810; border-color: #b8610c; }
 .csv-build-badge-default     { color: #cbd5e1; background: #1a1d23; border-color: #2a2f37; }
-/* s211: pre-s211 [default] / [experimental] inline tags removed —
+/* s211: pre-s211 [default] / [experimental] inline tags removed -
  * variant identity is now carried entirely by the colored badge label
  * (.csv-build-badge / .csv-build-badge-experimental / etc.). */
 /* s214 v3: rune strip pinned to the SAME 150px width as the badge
  * above so the two share a right boundary. Layout: 30px keystone
  * disc, 1fr name (can wrap to 2 lines). min-height pinned so single-
- * line and two-line names produce identical row heights — without it,
+ * line and two-line names produce identical row heights - without it,
  * a row with "Conqueror" (1 line) sits taller via the icon (30px) and
  * a row with "Grasp of the Undying" (2 lines, ~30px text) sit at
  * roughly the same height anyway, but min-height makes it explicit
@@ -1482,7 +1482,7 @@
 .csv-build-rune-tree-name {
   /* s212 v3 (audit consider #1): 12→13px to clear the tertiary floor
    * with no row-height growth (line-height stays implicit).
-   * s214 v3 (operator follow-up): keystone names can wrap to 2 lines —
+   * s214 v3 (operator follow-up): keystone names can wrap to 2 lines -
    * "Grasp of the Undying" / "Glacial Augment" / "Unsealed Spellbook"
    * all benefit from soft-wrap rather than ellipsis. Clamped to 2
    * lines via line-clamp so a hypothetical 3-line name doesn't push
@@ -1498,12 +1498,12 @@
   /* s214 v6: keystone NAME always renders as 2 left-aligned rows
    * (operator: "the build chooser keystone text need to be 2 rows
    * left aligned"). Pattern:
-   *   - display: block — establishes block formatting for wrapping
-   *   - text-align: left — explicit left-anchor (matches operator)
-   *   - white-space: normal — allow wrap at whitespace
+   *   - display: block - establishes block formatting for wrapping
+   *   - text-align: left - explicit left-anchor (matches operator)
+   *   - white-space: normal - allow wrap at whitespace
    *   - height = 2 × line-height (exactly 2 rows always)
-   *   - overflow: hidden — clip if a hypothetical 3-line name lands
-   * Short names ("Conqueror", "Aftershock") fill line 1 only — line
+   *   - overflow: hidden - clip if a hypothetical 3-line name lands
+   * Short names ("Conqueror", "Aftershock") fill line 1 only - line
    * 2 stays empty BUT the height is reserved, so all 4 build rows
    * have the same vertical rhythm. Long names ("Press the Attack",
    * "Glacial Augment") naturally wrap "Word\nWord". */
@@ -1516,8 +1516,8 @@
   height: 2.3em;
   min-width: 0;
 }
-/* s209 v2: stack summoners vertically — D (slot 0) on top of F (slot 1)
- * — matches the in-client layout the operator sees alongside the build.
+/* s209 v2: stack summoners vertically - D (slot 0) on top of F (slot 1)
+ * - matches the in-client layout the operator sees alongside the build.
  * Both icons share a single 18px column inside the loadout strip. */
 .csv-build-spells {
   display: inline-flex;
@@ -1572,7 +1572,7 @@
 }
 /* s211 v2: item icons bumped 36→42px after the subtree row was dropped
  * and the card height rolled into bigger art. s214: tightened gap from
- * 3→6px so each cell has a 3px hover-safe margin on either side — the
+ * 3→6px so each cell has a 3px hover-safe margin on either side - the
  * larger gap doubles as a click cushion without growing the icon size
  * itself. cursor:help advertises tooltip; hover ring confirms the
  * cell is hot. */

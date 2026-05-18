@@ -1,5 +1,5 @@
 """
-scripts/precommit_pycompile.py — pre-commit guard.
+scripts/precommit_pycompile.py - pre-commit guard.
 
 AUDIT 2026-04-28 (proposal 4.1): py_compile every staged .py file before
 the commit lands. CLAUDE.md already mandates py_compile before any

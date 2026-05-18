@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================
-REM  Riot Commander — Auto-start on Windows login
+REM  Riot Commander - Auto-start on Windows login
 REM  Place shortcut to this file in:
 REM  %APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup
 REM ============================================================

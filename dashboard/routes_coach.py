@@ -1,8 +1,8 @@
 """Coach / replay / cost routes.
 
 Slice 2C-5 (2026-05-01): handlers carved out of web_dashboard._Handler.
-Group 5 — read-only, self-contained endpoints. All consumers live in
-core.* / coaches.* — no `_VISION_TOKEN`, no Live Client probes, no
+Group 5 - read-only, self-contained endpoints. All consumers live in
+core.* / coaches.* - no `_VISION_TOKEN`, no Live Client probes, no
 imports from web_dashboard, so no deferred-import circular guard
 needed (compare with routes_diag).
 
@@ -75,7 +75,7 @@ def _serve_replay_match(h) -> None:
     # /api/replay/match/<match_id>
     try:
         mid = h.path[len("/api/replay/match/"):].split("?", 1)[0]
-        # match_id format: "NA1_5438342899" — alnum + underscore only.
+        # match_id format: "NA1_5438342899" - alnum + underscore only.
         import re as _re
         if not _re.match(r"^[A-Z0-9_]{6,40}$", mid):
             h._send(400, b'{"error":"bad match_id"}', "application/json")
@@ -212,7 +212,7 @@ def _serve_speak_post(h, payload) -> None:
 
 
 def _serve_champ_select_coach_post(h, payload) -> None:
-    # Live champ-select coaching — Haiku call with the current pick state.
+    # Live champ-select coaching - Haiku call with the current pick state.
     # Dashboard POSTs whenever picks change (debounced).
     # Body: {is_aram, queue_id, my_champion, my_team, their_team, bench}
     try:

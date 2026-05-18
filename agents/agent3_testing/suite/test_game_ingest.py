@@ -1,4 +1,4 @@
-"""Round 20 — live-match → mode DB ingester."""
+"""Round 20 - live-match → mode DB ingester."""
 from __future__ import annotations
 
 import json
@@ -138,14 +138,14 @@ def test_ingest_enemy_comp_preserved(seeded_db: Path) -> None:
 
 
 def test_analyzer_sees_live_phase3_matches_in_recency(seeded_db: Path) -> None:
-    """Full loop — ingest a 'today' match, run the analyzer, verify
+    """Full loop - ingest a 'today' match, run the analyzer, verify
     recency_30d bucket populates."""
     from agents.agent2_backend.game_ingest import ingest_game_summary
     now = datetime.now(timezone.utc).isoformat()
     # Insert 6 Ahri matches all within the last 30 days.
     # Win signal is null (MVP), so analyzer's recency_30d shows 0
     # games, BUT the matchup iteration still runs and the row exists
-    # — important: we document the win-loss gap lives in the consumer
+    # - important: we document the win-loss gap lives in the consumer
     # until live win detection is wired.
     for i in range(6):
         ingest_game_summary({

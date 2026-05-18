@@ -1,14 +1,14 @@
 {
   "_note": "Persists summoner spell mode preference across sessions.",
   "_modes": {
-    "snowball": "Flash(4) + Snowball/Mark(32) — ARAM default",
+    "snowball": "Flash(4) + Snowball/Mark(32) - ARAM default",
     "exhaust": "Flash(4) + Exhaust(3)",
     "ai": "AI-recommended per champion/mode"
   },
   "aram_mode": "snowball",
   "sr_mode": "teleport",
   "_sr_modes": {
-    "teleport": "Flash(4) + Teleport(12) — SR ADC default",
+    "teleport": "Flash(4) + Teleport(12) - SR ADC default",
     "exhaust": "Flash(4) + Exhaust(3)",
     "ignite": "Flash(4) + Ignite(14)"
   }

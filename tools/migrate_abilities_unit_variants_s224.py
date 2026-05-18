@@ -1,4 +1,4 @@
-"""s224 — deterministic in-place migration: promote the Meraki
+"""s224 - deterministic in-place migration: promote the Meraki
 text-drift health-unit variants newly added to ``_UNIT_TO_FIELD`` in
 s224 (double-space / "the target's" target-health forms + caster-max
 pronoun/name forms) out of ``unparsed_modifiers`` into typed fields.
@@ -6,7 +6,7 @@ pronoun/name forms) out of ``unparsed_modifiers`` into typed fields.
 Same mechanism + safety contract as ``migrate_abilities_nested_hp_s223``
 (zero re-fetch, imports the extractor's own logic, hard audit-gate
 aborts on change-set drift). Reuses that module's generic ``_promote``
-/ ``_recompute_parse_status`` helpers — only the expected change-set
+/ ``_recompute_parse_status`` helpers - only the expected change-set
 constants differ. s223 already promoted its 22; re-parsing those is a
 no-op (idempotent), so this run touches exactly the s224 set.
 
@@ -78,12 +78,12 @@ def main(argv: list[str]) -> int:
               f"{t[5]!r} -> {t[6]}={t[7]}")
 
     if champs != _EXPECTED_CHAMPS:
-        print(f"\n!! CHANGE SET DRIFT — expected {sorted(_EXPECTED_CHAMPS)}, "
+        print(f"\n!! CHANGE SET DRIFT - expected {sorted(_EXPECTED_CHAMPS)}, "
               f"got {sorted(champs)}. Aborting without write.")
         return 2
     if len(touched) != _EXPECTED_BLOCKS:
         print(f"\n!! expected {_EXPECTED_BLOCKS} promotions, got "
-              f"{len(touched)} — aborting.")
+              f"{len(touched)} - aborting.")
         return 2
 
     snap["coverage"] = _coverage_summary(data)

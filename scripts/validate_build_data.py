@@ -1,4 +1,4 @@
-"""validate_build_data.py — cross-mode item contamination validator.
+"""validate_build_data.py - cross-mode item contamination validator.
 
 Scans a build JSON file (Phase 1/2 refresh format OR canonical format)
 and reports champions that reference items that don't belong in the
@@ -18,7 +18,7 @@ import json
 import sys
 from pathlib import Path
 
-# Items that are exclusive to specific modes — referencing them in a
+# Items that are exclusive to specific modes - referencing them in a
 # different mode's build is a data-integrity bug. Sourced from
 # docs/{ARENA,SR,ARAM_MAYHEM}_*_2026-05-02.md research findings AND
 # verified against data/meta/ddragon_items.json `maps` field.
@@ -27,11 +27,11 @@ from pathlib import Path
 # reference_items_index_alias_ids.md). Items like Hexoptics C44, Sundered
 # Sky, Overlord's Bloodmail have both an SR/ARAM-available id (e.g. 2523,
 # 6610, 2501) AND an arena-only id (22xxxx, 226610, 447111) under the
-# same display name. We can NOT flag those by name — stats sites refer
+# same display name. We can NOT flag those by name - stats sites refer
 # to the SR/ARAM variant in SR/ARAM builds. Only items that have NO
 # SR/ARAM-available alias-id are listed below.
 ARENA_ONLY = {
-    "Reaper's Toll",          # id 443090 only — Arena=True, no SR/ARAM variant
+    "Reaper's Toll",          # id 443090 only - Arena=True, no SR/ARAM variant
     "Arcane Sweeper",         # arena anvil
     "Goliath",                # Prismatic upgrade
     "Mystic Punch",           # Prismatic upgrade
@@ -170,10 +170,10 @@ def main():
                     total_violations += 1
 
     if total_violations == 0:
-        print("  ✓ clean — no cross-mode contamination")
+        print("  ✓ clean - no cross-mode contamination")
         sys.exit(0)
     else:
-        print(f"\n{total_violations} violation(s) — fix before merging into canonical build files")
+        print(f"\n{total_violations} violation(s) - fix before merging into canonical build files")
         sys.exit(1)
 
 

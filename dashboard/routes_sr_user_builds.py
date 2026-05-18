@@ -11,7 +11,7 @@
 
   DELETE /api/sr-draft/user-builds?champion=Tristana&id=abc123ef
        (sent as POST with cmd:"delete" since the dashboard handler
-        only routes GET/POST today — single endpoint, action-keyed)
+        only routes GET/POST today - single endpoint, action-keyed)
 
 To stay consistent with the existing dashboard handler shape (only
 GET + POST in `_dispatch`), the destructive ops live as POST sub-actions:
@@ -21,7 +21,7 @@ GET + POST in `_dispatch`), the destructive ops live as POST sub-actions:
   {"action": "delete", "champion": "...", "id": "..."}
 
 Defaults to `add` when `action` is missing on POST and a `build` key
-is present — keeps the simplest case ergonomic.
+is present - keeps the simplest case ergonomic.
 """
 import json
 import logging

@@ -1,28 +1,28 @@
-// Team Context panel — 5+5 champ-select enrichment row.
+// Team Context panel - 5+5 champ-select enrichment row.
 //
 // Renders the FU02 team-context payload (mains, rank, mastery on locked,
 // recent winrate) for both ally and enemy rosters during ChampSelect.
 // Until `core/riot_api.py` ships the actual fan-out, every cell renders
 // in skeleton mode (champion icon + name placeholder, dashes for the
 // enrichment fields). The shape and DOM are stable across that
-// transition — the same rows will fill in field-by-field as the
+// transition - the same rows will fill in field-by-field as the
 // progressive-reveal poll cadence lands payload.partial=False.
 //
 // Render rules:
 // 1. Hidden when lcu.phase !== "ChampSelect" OR coach.team_context is null.
-// 2. Idempotent (sig-on-container) — no flicker on every 500ms /api/state poll.
+// 2. Idempotent (sig-on-container) - no flicker on every 500ms /api/state poll.
 // 3. Ranked-queue obfuscation gate: when payload.queue_id ∈ {420, 440},
 //    summoner_name field is force-blanked at the render layer regardless
 //    of what the backend stored. The FU02 ticket calls this out as a
 //    Riot-policy compliance requirement (loading-screen reveal only).
-// 4. Soft-fail: any single empty field renders as "—" with a .skel class
+// 4. Soft-fail: any single empty field renders as "-" with a .skel class
 //    so the user can see the row exists but the data hasn't landed.
 
 import { CHAMPS } from '../lib/items_index.js';
 import { idempotentRender, makeSig } from '../lib/idempotent_render.js';
 
 // Queue IDs where Riot obfuscates summoner names until loading screen.
-// Match-V5 docs queue list — Ranked Solo (420), Ranked Flex (440).
+// Match-V5 docs queue list - Ranked Solo (420), Ranked Flex (440).
 const _RANKED_BLANK_QUEUES = new Set([420, 440]);
 
 function _champImg(name) {
@@ -32,7 +32,7 @@ function _champImg(name) {
 }
 
 function _renderSlot(entry, blankNames) {
-  // entry: TeamContextEntry shape — see core/coaching_payload.py
+  // entry: TeamContextEntry shape - see core/coaching_payload.py
   const wrap = document.createElement("div");
   wrap.className = "tc-slot";
   const champ = entry.locked_champion || "";
@@ -54,7 +54,7 @@ function _renderSlot(entry, blankNames) {
   const nameEl = document.createElement("span");
   nameEl.className = "tc-slot-name";
   const showName = !blankNames && entry.summoner_name;
-  nameEl.textContent = showName ? entry.summoner_name : (champ || "—");
+  nameEl.textContent = showName ? entry.summoner_name : (champ || "-");
   if (!showName) nameEl.classList.add("skel");
   head.appendChild(nameEl);
 
@@ -66,12 +66,12 @@ function _renderSlot(entry, blankNames) {
   } else {
     const rank = document.createElement("span");
     rank.className = "tc-slot-rank skel";
-    rank.textContent = "—";
+    rank.textContent = "-";
     head.appendChild(rank);
   }
   meta.appendChild(head);
 
-  // Sub line: champion (always — even when name is blanked, champion is
+  // Sub line: champion (always - even when name is blanked, champion is
   // safe to show) + mastery on locked.
   const sub = document.createElement("div");
   sub.className = "tc-slot-sub";
@@ -103,7 +103,7 @@ function _renderSlot(entry, blankNames) {
   } else {
     const mains = document.createElement("span");
     mains.className = "tc-slot-mains skel";
-    mains.textContent = "mains: —";
+    mains.textContent = "mains: -";
     tail.appendChild(mains);
   }
   if (entry.win_rate_recent > 0) {
@@ -167,7 +167,7 @@ function renderTeamContext(state) {
     return;
   }
 
-  // We have a payload — clear the waiting paint flag so future renders
+  // We have a payload - clear the waiting paint flag so future renders
   // commit on every change.
   const a = document.getElementById("tc-allies");
   const e = document.getElementById("tc-enemies");

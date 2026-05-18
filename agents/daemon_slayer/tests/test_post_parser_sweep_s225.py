@@ -1,4 +1,4 @@
-"""Phase 5.9.25 (s225, 2026-05-16) — post-parser-fix block_index sweep.
+"""Phase 5.9.25 (s225, 2026-05-16) - post-parser-fix block_index sweep.
 
 The s223 (nested-paren) + s224 (text-drift variant) parser fixes
 re-parsed %HP scalings onto many blocks. Re-running the unmapped-key
@@ -6,16 +6,16 @@ pre-filter over the POST-s224 snapshot (champions whose candidate
 blocks evaluated ~0 pre-migration now show real ratios) surfaced one
 clean block_index ADD:
 
-  Varus W=2 — 'Blighted Quiver'. Block 2 'Bonus Magic Damage at Max
+  Varus W=2 - 'Blighted Quiver'. Block 2 'Bonus Magic Damage at Max
   Stacks' is exactly 3× block 1's per-Blight-stack value (verified
   per-rank) = the canonical 3-stack detonation, Varus's standard combo
   (W-passive stacks via AAs/Q, then Q/R detonates). The engine
   defaulted to block 0 'Bonus Magic Damage' (the trivial 6-30 + 35% AP
   passive on-hit), scoring Varus W at ~7% of reality (live A/B 18→240
-  raw, 13.3×). Pattern D resource-state amp — operator fully controls
+  raw, 13.3×). Pattern D resource-state amp - operator fully controls
   the 3-stack build (precedent: Twitch E 6-stack s198, Renekton full
   Fury s197). Block 2 (not block 4 'Maximum…at Max Stacks' = 1.5×
-  block 2) because block 4 entangles Varus R's Blight amplification —
+  block 2) because block 4 entangles Varus R's Blight amplification -
   W's contribution must be scored R-independent (R is its own
   ability_dps key). Varus → {Q:1, W:2}.
 
@@ -85,7 +85,7 @@ class VarusWEntryTests(unittest.TestCase):
 
     def test_block2_is_R_independent_choice(self) -> None:
         """Block 4 ('Maximum…at Max Stacks') is strictly larger than the
-        chosen block 2 — confirming we deliberately took the smaller,
+        chosen block 2 - confirming we deliberately took the smaller,
         R-independent 3-stack value, not the R-amplified one."""
         b2 = self._w(forced=2).raw_damage_per_cast
         b4 = self._w(forced=4).raw_damage_per_cast
@@ -128,7 +128,7 @@ class BackwardCompatS225Tests(unittest.TestCase):
 
         Fiddlesticks Q was specifically deferred to the *conditional-
         schema bucket* ("fear-sequence conditional"). That call was
-        CORRECT: s230 Phase 5.9.30 delivered it there exactly — Q is now
+        CORRECT: s230 Phase 5.9.30 delivered it there exactly - Q is now
         a conditional ({default:[2,3] feared/amped sum,
         target_no_setup:[0,1] un-amped}, the Terrify double-vs-feared
         mechanic). Fizz W / LeBlanc R remain deliberately absent."""
@@ -147,7 +147,7 @@ class BackwardCompatS225Tests(unittest.TestCase):
         self.assertEqual(leb.get("E"), 1)       # prior, preserved
 
     def test_champion_count_unchanged(self) -> None:
-        """s225 added a KEY to already-covered Varus — count stays 125."""
+        """s225 added a KEY to already-covered Varus - count stays 125."""
         import json
         from pathlib import Path
         reg = json.loads(

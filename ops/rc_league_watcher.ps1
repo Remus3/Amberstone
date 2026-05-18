@@ -10,9 +10,9 @@
 #   → Cleanly stops the full stack
 #
 # Phase 0: Deprecated paths
-#   watchdog.ps1              — replaced by rc_self_monitor inside rc_supervisor
-#   run_self_healing_watchdog.ps1 — supervisor now owns self-healing directly
-#   restart.bat / restart_clean.bat / start.bat — replaced by this watcher
+#   watchdog.ps1              - replaced by rc_self_monitor inside rc_supervisor
+#   run_self_healing_watchdog.ps1 - supervisor now owns self-healing directly
+#   restart.bat / restart_clean.bat / start.bat - replaced by this watcher
 #
 # Install: run ops\install_startup.bat once to add this to Windows startup.
 
@@ -33,7 +33,7 @@ $runtimeDir  = if ($config.runtime_dir) { $config.runtime_dir } else { Join-Path
 $logDir      = Join-Path $runtimeDir "logs"
 $logFile     = Join-Path $logDir "league_watcher.log"
 $stopFile    = Join-Path $runtimeDir "watchdog.stop"
-# Use python_exe from config — consistent with supervisor and bridge
+# Use python_exe from config - consistent with supervisor and bridge
 $pythonExe   = if ($config.python_exe) { $config.python_exe } else { "pythonw.exe" }
 
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
@@ -71,7 +71,7 @@ function Stack-Running {
 }
 
 function Start-Stack {
-    Write-Log "League detected — starting Riot Commander stack"
+    Write-Log "League detected - starting Riot Commander stack"
 
     # Clear stale stop file so watchdog doesn't immediately exit
     Remove-Item $stopFile -Force -ErrorAction SilentlyContinue
@@ -92,7 +92,7 @@ function Start-Stack {
 
     # ── Kill deprecated watchdog processes first ──────────────────────────
     # watchdog.ps1 (old) and run_self_healing_watchdog.ps1 must not run
-    # alongside the new supervisor stack — they create duplicate restarts.
+    # alongside the new supervisor stack - they create duplicate restarts.
     $legacyWatchdogs = @(
         "*\\watchdog.ps1*",
         "*run_self_healing_watchdog.ps1*"
@@ -107,7 +107,7 @@ function Start-Stack {
         }
     }
 
-    # ── Check PID lock — don't start supervisor if one is already running ─
+    # ── Check PID lock - don't start supervisor if one is already running ─
     if (Test-Path $pidLockFile) {
         $existingPid = $null
         try {
@@ -128,7 +128,7 @@ function Start-Stack {
         if ($existingPid) {
             $existingProc = Get-Process -Id $existingPid -ErrorAction SilentlyContinue
             if ($existingProc) {
-                Write-Log "Supervisor already running (PID=$existingPid) — skipping start"
+                Write-Log "Supervisor already running (PID=$existingPid) - skipping start"
                 return
             }
         }
@@ -142,7 +142,7 @@ function Start-Stack {
         -WindowStyle Hidden
     Start-Sleep -Seconds 1
 
-    # Start file bridge — skip if a healthy instance is already running
+    # Start file bridge - skip if a healthy instance is already running
     $bridgePidFile = Join-Path $runtimeDir "bridge.pid"
     $bridgeAlreadyRunning = $false
     if (Test-Path $bridgePidFile) {
@@ -150,7 +150,7 @@ function Start-Stack {
             $bRaw = (Get-Content $bridgePidFile -Raw).Trim()
             $bPid = if ($bRaw.StartsWith('{')) { [int]($bRaw | ConvertFrom-Json).pid } else { [int]$bRaw }
             if ($bPid -and (Get-Process -Id $bPid -ErrorAction SilentlyContinue)) {
-                Write-Log "Bridge already running (PID=$bPid) — skipping start"
+                Write-Log "Bridge already running (PID=$bPid) - skipping start"
                 $bridgeAlreadyRunning = $true
             }
         } catch {}
@@ -166,7 +166,7 @@ function Start-Stack {
 }
 
 function Stop-Stack {
-    Write-Log "League closed — stopping Riot Commander stack"
+    Write-Log "League closed - stopping Riot Commander stack"
 
     # Ask supervisor to shut down cleanly via its request dir.
     # Supervisor will stop the app by owned PID and release the lock.
@@ -220,7 +220,7 @@ function Stop-Stack {
 }
 
 # ── Main loop ─────────────────────────────────────────────────────────────────
-Write-Log "League watcher started (PID=$PID) — polling every ${pollInterval}s"
+Write-Log "League watcher started (PID=$PID) - polling every ${pollInterval}s"
 Write-Log "Watching for: $($leagueProcesses -join ', ')"
 
 $stackRunning    = $false
@@ -243,12 +243,12 @@ while ($true) {
         # League not detected
         if ($stackRunning) {
             if ($leagueGoneTime -eq $null) {
-                # First poll where League is gone — start grace period
+                # First poll where League is gone - start grace period
                 $leagueGoneTime = Get-Date
-                Write-Log "League not detected — grace period started (${gracePeriod}s)"
+                Write-Log "League not detected - grace period started (${gracePeriod}s)"
             }
             elseif (((Get-Date) - $leagueGoneTime).TotalSeconds -ge $gracePeriod) {
-                # Grace period expired — stop the stack
+                # Grace period expired - stop the stack
                 Stop-Stack
                 $stackRunning   = $false
                 $leagueGoneTime = $null

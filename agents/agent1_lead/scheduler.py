@@ -1,4 +1,4 @@
-"""Agent 1 — Lead: the single writer of ``agents/state/task_queue.jsonl``.
+"""Agent 1 - Lead: the single writer of ``agents/state/task_queue.jsonl``.
 
 Responsibilities (§7, §11.7):
 
@@ -12,7 +12,7 @@ Responsibilities (§7, §11.7):
         Agent 0 accepts or rejects autonomously.
       - Ungated (2, 3, 4, 6) → straight to ``ready``.
   * User-override flag bypasses Agent 0 rejection (§7).
-  * Dispatch: the scheduler exposes ``next_ready()`` — the supervisor pulls
+  * Dispatch: the scheduler exposes ``next_ready()`` - the supervisor pulls
     the highest-priority ready task and invokes the right substrate.
 """
 from __future__ import annotations
@@ -52,7 +52,7 @@ _APPEND_LOCK_MAX_WAIT_SEC = 5.0
 # (`_load`, `_latest_status_from_log`, `recent_events`) scans the whole
 # file. Without periodic compaction the file grows unbounded and slows
 # the cold-start `_load()`. Compaction keeps only the latest event per
-# task_id — `_load()` already has latest-wins semantics, so this preserves
+# task_id - `_load()` already has latest-wins semantics, so this preserves
 # the in-memory state reconstruction exactly.
 _COMPACT_INTERVAL_S = 3600.0  # hourly check
 _COMPACT_THRESHOLD_BYTES = 2 * 1024 * 1024  # compact above 2 MB
@@ -93,7 +93,7 @@ FROZEN_FILES = frozenset({
 def _detect_frozen_references(payload: dict[str, Any]) -> list[str]:
     """Scan payload values for references to any frozen file path.
 
-    Returns the list of frozen files mentioned — empty when none.
+    Returns the list of frozen files mentioned - empty when none.
     Scans string/list/dict values recursively. Matches on normalized
     forward-slash paths so ``app\\__init__.py`` and ``app/__init__.py``
     both hit. Bounded scan depth prevents deep-nested payload runaway.
@@ -148,7 +148,7 @@ class QueueTask:
     updated_at: str = ""
     blocks: list[str] = field(default_factory=list)   # task ids this blocks
     blocked_by: list[str] = field(default_factory=list)
-    user_override: bool = False   # direct user order — bypass Agent 0 reject
+    user_override: bool = False   # direct user order - bypass Agent 0 reject
     retry_count: int = 0
     last_error: str | None = None
     result: Any = None
@@ -177,7 +177,7 @@ class Scheduler:
         # that monkeypatch the module-level constant take effect.
         self._queue_log = queue_log if queue_log is not None else QUEUE_LOG
         self._tasks: dict[str, QueueTask] = {}
-        # heap holds (priority, counter, task_id) — counter breaks ties by
+        # heap holds (priority, counter, task_id) - counter breaks ties by
         # insertion order so heap is FIFO within same priority.
         self._heap: list[tuple[int, int, str]] = []
         self._counter = itertools.count()
@@ -203,13 +203,13 @@ class Scheduler:
                 elif _HAS_FCNTL:
                     fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                 else:
-                    # No locking primitives available — proceed without.
+                    # No locking primitives available - proceed without.
                     # Logged once at module level via the scheduler.
                     return
                 return
             except (OSError, BlockingIOError):
                 if time.monotonic() >= deadline:
-                    logger.error("append lock wait exceeded %ss — proceeding unlocked",
+                    logger.error("append lock wait exceeded %ss - proceeding unlocked",
                                  _APPEND_LOCK_MAX_WAIT_SEC)
                     return
                 time.sleep(_APPEND_LOCK_RETRY_SEC)
@@ -251,7 +251,7 @@ class Scheduler:
         """Rewrite ``task_queue.jsonl`` to keep only the latest event per task_id.
 
         Returns ``(lines_before, lines_after)``. Safe to call from any
-        thread — holds the in-process RLock and the cross-process file
+        thread - holds the in-process RLock and the cross-process file
         lock for the entire read-truncate-rewrite cycle so concurrent
         ``_append_log`` calls from any process block until done.
 
@@ -375,7 +375,7 @@ class Scheduler:
                 loaded += 1
         if corrupt:
             logger.error(
-                "task_queue.jsonl: %d corrupt line(s) dropped on load — "
+                "task_queue.jsonl: %d corrupt line(s) dropped on load - "
                 "consider filing an audit-queue-corruption task",
                 corrupt,
             )
@@ -404,7 +404,7 @@ class Scheduler:
     ) -> QueueTask:
         with self._lock:
             tid = task_id or f"t-{uuid.uuid4().hex[:12]}"
-            # Audit M4: drop any blocked_by ids that don't resolve — silently
+            # Audit M4: drop any blocked_by ids that don't resolve - silently
             # blocking forever is worse than warning and running.
             raw_blocked_by = list(blocked_by or [])
             resolved_blocked_by: list[str] = []
@@ -413,9 +413,9 @@ class Scheduler:
                     resolved_blocked_by.append(bid)
                 else:
                     logger.warning(
-                        "file_task %s: unknown blocked_by id %r — dropping", op, bid,
+                        "file_task %s: unknown blocked_by id %r - dropping", op, bid,
                     )
-            # Frozen-file guardrail — scan payload for CLAUDE.md §Hard
+            # Frozen-file guardrail - scan payload for CLAUDE.md §Hard
             # rules files. Without user_override, auto-add category 1 so
             # the task lands in NEEDS_APPROVAL rather than READY.
             final_categories = list(categories or [])
@@ -424,7 +424,7 @@ class Scheduler:
                 if 1 not in final_categories:
                     final_categories.append(1)
                 logger.warning(
-                    "file_task %s: frozen-file references detected (%s) — "
+                    "file_task %s: frozen-file references detected (%s) - "
                     "gating to NEEDS_APPROVAL; pass user_override=True to bypass",
                     op, ", ".join(frozen_hits),
                 )
@@ -492,10 +492,10 @@ class Scheduler:
 
     def _agent0_review(self, task: QueueTask) -> None:
         if self._agent0_evaluate is None:
-            # Agent 0 not wired — tasks sit in agent0_review until enabled.
-            logger.warning("agent0 not configured — task %s stalled in agent0_review", task.id)
+            # Agent 0 not wired - tasks sit in agent0_review until enabled.
+            logger.warning("agent0 not configured - task %s stalled in agent0_review", task.id)
             return
-        # Build an agent0 Task from payload — caller is expected to have
+        # Build an agent0 Task from payload - caller is expected to have
         # populated payload.remote_path, payload.payload_ext, payload.tag.
         from agents.agent0_gatekeeper import Task as Agent0Task
 
@@ -520,7 +520,7 @@ class Scheduler:
         task.last_error = f"agent0:{rej.reason_code}:{rej.reason_label}:{rej.message}"
 
         if task.user_override:
-            logger.warning("user_override=True — forcing task %s past agent0 rejection %s",
+            logger.warning("user_override=True - forcing task %s past agent0 rejection %s",
                            task.id, rej.reason_code)
             task.status = TaskStatus.READY
             task.updated_at = _iso_now()
@@ -563,7 +563,7 @@ class Scheduler:
     def _latest_status_from_log(self, task_id: str) -> str | None:
         """Return the most-recent on-disk status for *task_id* in task_queue.jsonl.
 
-        Scans the log forward, keeping the last match — the JSONL is
+        Scans the log forward, keeping the last match - the JSONL is
         append-only so the final entry for a task is authoritative.
         Returns None when the log is absent or the task has no entries.
 
@@ -596,7 +596,7 @@ class Scheduler:
         """Pop the highest-priority READY task whose dependencies are satisfied.
 
         Blocked tasks are re-queued for a later pass and the scan continues
-        to lower-priority candidates — a blocked high-prio task must not
+        to lower-priority candidates - a blocked high-prio task must not
         starve ready lower-prio ones.
 
         Cross-process guard (P-audit3-followup-single-scheduler): before
@@ -626,7 +626,7 @@ class Scheduler:
                     t.updated_at = _iso_now()
                     logger.warning(
                         "next_ready: task %s heap says READY but disk=%s "
-                        "— dropping stale entry (cross-process race guard)",
+                        "- dropping stale entry (cross-process race guard)",
                         tid, disk_status,
                     )
                     continue

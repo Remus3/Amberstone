@@ -1,4 +1,4 @@
-"""Round 25 — matchup-level KDA deltas + insight card KDA."""
+"""Round 25 - matchup-level KDA deltas + insight card KDA."""
 from __future__ import annotations
 
 import json
@@ -44,10 +44,10 @@ def test_matchup_kda_ratio_and_delta(tmp_path: Path, monkeypatch) -> None:
 
     db = tmp_path / "aram.db"
     with sqlite3.connect(db) as conn:
-        # 10 games not vs Zed — strong KDA (10/3/15 → ratio (10+15)/3 = 8.33)
+        # 10 games not vs Zed - strong KDA (10/3/15 → ratio (10+15)/3 = 8.33)
         for i in range(10):
             _insert_match(conn, "Ahri", ["Garen"], 1, 10, 3, 15, i)
-        # 5 games vs Zed — bad KDA (2/10/3 → ratio (2+3)/10 = 0.5)
+        # 5 games vs Zed - bad KDA (2/10/3 → ratio (2+3)/10 = 0.5)
         for i in range(5):
             _insert_match(conn, "Ahri", ["Zed"], 0, 2, 10, 3, 100 + i)
         conn.commit()
@@ -160,7 +160,7 @@ def test_hint_line_annotates_matchup_kda(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_hint_line_skips_tiny_kda_delta(tmp_path: Path, monkeypatch) -> None:
-    """|kda_delta| < 0.3 is below the noise floor — don't clutter the line."""
+    """|kda_delta| < 0.3 is below the noise floor - don't clutter the line."""
     from coaches import adaptation_hint
     _init(tmp_path, monkeypatch)
 

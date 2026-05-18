@@ -16,7 +16,7 @@ Intended use by coach output code:
     # e.g. "above-p75" → coach line: "CS lead at 10 is your top quartile"
 
 Benchmarks are weighted by provenance when built (see
-scripts/build_champion_benchmarks.py) — source_truth rows count full,
+scripts/build_champion_benchmarks.py) - source_truth rows count full,
 inferred rows count less. The weighted_n field in each metric shows the
 effective sample size.
 

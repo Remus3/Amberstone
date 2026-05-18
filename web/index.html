@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=1920, initial-scale=1, user-scalable=no" />
-  <title>Riot Commander — Phase 3</title>
+  <title>Riot Commander - Phase 3</title>
   <link rel="stylesheet" href="/css/dashboard.css?v=2026051125" />
 </head>
 <!-- s209 v2: pre-stamp data-view="home" so the cold-load frame between
      DOMContentLoaded and the first health/state/lcu envelope shows the
      home overlay (the canonical "no game in progress" state) rather
      than the bare in-game panel grid. Without this, the first frame on
-     hard-refresh briefly flashes NEXT/RIGHT NOW/MAP STATE/etc. — the
-     in-game default — which looks like an "after match" page no matter
+     hard-refresh briefly flashes NEXT/RIGHT NOW/MAP STATE/etc. - the
+     in-game default - which looks like an "after match" page no matter
      what state the LCU is actually in. The view-router overwrites
      data-view to the correct value once the first envelope arrives. -->
 <body data-view="home">
@@ -19,7 +19,7 @@
     <!-- Row 1: identity + instantaneous game state (champion, level, ult,
          zone, clock, KDA, CS, gold, status/heartbeat).
          Row 2: bars + session-level info (HP/MP, win%, trend, augments).
-         Pills are always present with a "—" placeholder when no data; the
+         Pills are always present with a "-" placeholder when no data; the
          static-pill rule means layout never reshuffles across modes. -->
     <div class="header-row header-row-1">
       <!-- Title is the dropdown trigger for the view router (2026-04-26).
@@ -59,7 +59,7 @@
         <button type="button" class="view-banner-accept" id="view-banner-accept">Switch</button>
         <button type="button" class="view-banner-dismiss" id="view-banner-dismiss" aria-label="dismiss">×</button>
       </div>
-      <span class="champion-pill" id="champion-pill" title="from live-client or fallback">—</span>
+      <span class="champion-pill" id="champion-pill" title="from live-client or fallback">-</span>
       <!-- self-spells (D/F summoners) hidden via .self-spells { display:none }
            per user 2026-04-25. JS still populates the cells so the data
            is queryable; un-hide one line of CSS to restore. -->
@@ -67,43 +67,43 @@
       <!-- WIN pill moved to row 1 (2026-04-25), occupying the slot
            where the summoner-spells used to live. Anchors the win-prob
            reading near the champion identity. -->
-      <span class="win-pill" id="win-pill" title="live win probability for this game"><b id="win-pct-val">—</b><span class="win-pct-label">WIN</span></span>
-      <span class="zone-pill" id="zone-pill" title="your position relative to team ZOI" aria-live="polite" aria-atomic="true"><b id="zone-label">—</b></span>
-      <span class="game-time" id="game-time">—</span>
+      <span class="win-pill" id="win-pill" title="live win probability for this game"><b id="win-pct-val">-</b><span class="win-pct-label">WIN</span></span>
+      <span class="zone-pill" id="zone-pill" title="your position relative to team ZOI" aria-live="polite" aria-atomic="true"><b id="zone-label">-</b></span>
+      <span class="game-time" id="game-time">-</span>
       <!-- KDA pill (2026-04-25) hidden via .kda { display: none }. JS still
            updates this element so the value stays available for tooltips,
            cross-checks, and a quick CSS un-hide if the user changes their
            mind. -->
-      <span class="kda" id="kda">—</span>
-      <span class="cs-pill" id="cs-pill" title="creep score">CS <b id="cs-val">—</b></span>
+      <span class="kda" id="kda">-</span>
+      <span class="cs-pill" id="cs-pill" title="creep score">CS <b id="cs-val">-</b></span>
       <!-- vis-pill moved here from row 2 (2026-04-25): user wants it to
            sit right of CS where the eye already lands during gameplay. -->
-      <span class="vis-pill" id="vis-pill" title="vision score"><svg class="obj-ico"><use href="#obj-herald"/></svg><b id="vis-val">—</b></span>
+      <span class="vis-pill" id="vis-pill" title="vision score"><svg class="obj-ico"><use href="#obj-herald"/></svg><b id="vis-val">-</b></span>
       <!-- heartbeat moved up to row 1 (2026-04-25), pinned to right via
            .hb's margin-left:auto so the connection-state heartbeat sits
            at a fixed position regardless of which row-1 pills populate. -->
-      <span id="heartbeat" class="hb hb-offline">♥ —</span>
+      <span id="heartbeat" class="hb hb-offline">♥ -</span>
     </div>
     <div class="header-row header-row-2">
       <span class="hp-group" id="hp-group">
         <span class="hp-bar-vis" id="hp-bar-vis" aria-hidden="true"><i id="hp-bar-fill"></i></span>
-        <span class="hp" id="hp-bar">HP —</span>
+        <span class="hp" id="hp-bar">HP -</span>
       </span>
       <span class="mp-group" id="mp-group">
         <span class="mp-bar-vis" id="mp-bar-vis" aria-hidden="true"><i id="mp-bar-fill"></i></span>
-        <span class="mp" id="mp-bar">MP —</span>
+        <span class="mp" id="mp-bar">MP -</span>
       </span>
-      <span class="gold-pill" id="gold-pill" title="gold"><b id="gold-val">—</b></span>
+      <span class="gold-pill" id="gold-pill" title="gold"><b id="gold-val">-</b></span>
       <!-- Mode pill moved to footer 2026-04-29. Row 2 keeps gold + HP/MP
            groups (the latter hidden in client mode by an existing rule).
            min-height: 27px keeps the row visually present in client mode
            so the header doesn't shift when a game starts. -->
-      <span class="augments-pill" id="augments-pill">—</span>
+      <span class="augments-pill" id="augments-pill">-</span>
       <!-- DS pill (2026-05-09): glanceable top DS pick + delta-dps so the
            operator can read the engine's call without scanning the
            Item Build panel. Hidden in client/tft modes; populated from
            coach.daemon_slayer_picks[0] by panels/ds_pill.js. -->
-      <span class="ds-pill" id="ds-pill" hidden title="">—</span>
+      <span class="ds-pill" id="ds-pill" hidden title="">-</span>
       <!-- Archetype-mismatch chip (s184.1, 2026-05-13): yellow warn-style
            nudge that fires when the operator's CS archetype pick doesn't
            match the dispatcher's top-15 for their first completed item.
@@ -146,27 +146,27 @@
       <!-- 3 stat chips with inline 14-day sparklines (V3 redesign
            2026-04-30): replaces the standalone trends row. Each chip
            shows a label + latest-day value + tiny inline sparkline.
-           GRADES + MODES dropped — they were redundant with the
+           GRADES + MODES dropped - they were redundant with the
            headline string + duplicate of THIS WEEK panel data. -->
       <div class="home-hero-chips">
         <span class="home-hero-chip" data-metric="kda">
           <span class="home-hero-chip-lbl">KDA</span>
           <span class="home-hero-chip-row">
-            <span class="home-hero-chip-val" id="home-hero-kda">—</span>
+            <span class="home-hero-chip-val" id="home-hero-kda">-</span>
             <svg class="home-hero-spark" viewBox="0 0 60 18" preserveAspectRatio="none"></svg>
           </span>
         </span>
         <span class="home-hero-chip" data-metric="cs_per_min">
           <span class="home-hero-chip-lbl">CS / MIN</span>
           <span class="home-hero-chip-row">
-            <span class="home-hero-chip-val" id="home-hero-cs">—</span>
+            <span class="home-hero-chip-val" id="home-hero-cs">-</span>
             <svg class="home-hero-spark" viewBox="0 0 60 18" preserveAspectRatio="none"></svg>
           </span>
         </span>
         <span class="home-hero-chip" data-metric="gold_per_min">
           <span class="home-hero-chip-lbl">GOLD / MIN</span>
           <span class="home-hero-chip-row">
-            <span class="home-hero-chip-val" id="home-hero-gold">—</span>
+            <span class="home-hero-chip-val" id="home-hero-gold">-</span>
             <svg class="home-hero-spark" viewBox="0 0 60 18" preserveAspectRatio="none"></svg>
           </span>
         </span>
@@ -184,18 +184,18 @@
         <symbol id="hi-swords" viewBox="0 0 24 24">
           <path fill="currentColor" d="M3 3h4l8.5 8.5-3 3L3 6V3Zm15 4 3-3v4l-7 7-2-2 6-6Zm-2.5 9.5 3-3 4 4v3h-3l-4-4ZM4.5 17.5 7 15l5 5-2.5 2.5H7v-3l-2.5-2Z"/>
         </symbol>
-        <!-- Find Match: hexagonal "play" badge — mirrors League client's
+        <!-- Find Match: hexagonal "play" badge - mirrors League client's
              PLAY-button silhouette (hex outline with an inner triangle). -->
         <symbol id="hi-hex-play" viewBox="0 0 24 24">
           <path fill="currentColor" d="M12 1.5 2.5 7v10L12 22.5 21.5 17V7L12 1.5Zm0 2.3 7.5 4.3v7.8L12 20.2 4.5 15.9V8.1L12 3.8Zm-2.5 4.7v7l6-3.5-6-3.5Z"/>
         </symbol>
-        <!-- Builds: Hextech crystal — cut-gem silhouette with internal
+        <!-- Builds: Hextech crystal - cut-gem silhouette with internal
              facet lines. Reads as the rune-page / hextech crafting gem
              icon. Single bold shape so it survives at 28px. -->
         <symbol id="hi-crystal" viewBox="0 0 24 24">
           <path fill="currentColor" d="M12 1.5 3.5 9 12 22.5 20.5 9 12 1.5Zm0 2.6L17.6 9H6.4L12 4.1Zm-5.5 6.4h11L12 19l-5.5-9Z"/>
         </symbol>
-        <!-- Settings: classic 8-tooth gear (no hex wrapper — hexes
+        <!-- Settings: classic 8-tooth gear (no hex wrapper - hexes
              repeat across the other tiles, so a clean gear gives this
              tile its own silhouette). -->
         <symbol id="hi-gear-clean" viewBox="0 0 24 24">
@@ -221,7 +221,7 @@
          a single-click shortcut to a manual view; the JS click handler
          (main.js:2346) calls applyView(target) which the dropdown menu
          also uses.
-         Find Match (data-flow="find-match-launch") — operator wants this
+         Find Match (data-flow="find-match-launch") - operator wants this
          to fire the change-lobby-mode picker from the lobby view (forced
          choice → posts lobby type to the game client → routes UI to the
          Pre-Game Lobby page). For now it routes to "lobby" and the
@@ -303,7 +303,7 @@
          Section 1: champion intro (icon + name + meta).
          Section 2: The Good / The Bad / The Ugly rows. PLACEHOLDER copy
            pending wire-up to Last Match analysis output.
-           TODO(s218-dummy-data): replace "—" with real strings when
+           TODO(s218-dummy-data): replace "-" with real strings when
            the post-match analyzer provides them. Tagged for removal on
            "I am done with Home page" cleanup.
          Section 3: Streak + Open Advisories as sub-header rows
@@ -315,30 +315,30 @@
           <div class="home-pick-section home-pick-section-1">
             <img class="home-coach-pick-img" id="home-coach-pick-img" alt="" />
             <div class="home-coach-pick-meta">
-              <span class="home-coach-pick-champ" id="home-coach-pick-champ">—</span>
-              <span class="home-coach-pick-reason" id="home-coach-pick-reason">—</span>
+              <span class="home-coach-pick-champ" id="home-coach-pick-champ">-</span>
+              <span class="home-coach-pick-reason" id="home-coach-pick-reason">-</span>
             </div>
           </div>
           <div class="home-pick-section home-pick-section-2"
                data-dummy-data="tonights-pick-tips">
             <div class="home-pick-tip-row">
               <span class="home-pick-tip-label">The Good</span>
-              <span class="home-pick-tip-value" id="home-pick-good">—</span>
+              <span class="home-pick-tip-value" id="home-pick-good">-</span>
             </div>
             <div class="home-pick-tip-row">
               <span class="home-pick-tip-label">The Bad</span>
-              <span class="home-pick-tip-value" id="home-pick-bad">—</span>
+              <span class="home-pick-tip-value" id="home-pick-bad">-</span>
             </div>
             <div class="home-pick-tip-row">
               <span class="home-pick-tip-label">The Ugly</span>
-              <span class="home-pick-tip-value" id="home-pick-ugly">—</span>
+              <span class="home-pick-tip-value" id="home-pick-ugly">-</span>
             </div>
           </div>
           <div class="home-pick-section home-pick-section-3">
             <span class="home-pick-meta-label">Streak</span>
-            <span class="home-pick-meta-value" id="home-pick-streak-val">—</span>
+            <span class="home-pick-meta-value" id="home-pick-streak-val">-</span>
             <span class="home-pick-meta-label">Advisories</span>
-            <span class="home-pick-meta-value" id="home-pick-advisories-val">—</span>
+            <span class="home-pick-meta-value" id="home-pick-advisories-val">-</span>
           </div>
         </div>
       </div>
@@ -365,7 +365,7 @@
       </div>
     </div>
 
-    <!-- Services strip removed from home overlay 2026-04-30 — the
+    <!-- Services strip removed from home overlay 2026-04-30 - the
          footer health-dot already aggregates RC + Vision + Supervisor
          status. Element removed entirely; if a service goes down the
          dot in the footer turns yellow/red. -->
@@ -384,8 +384,8 @@
   <div id="lobby-overlay" class="lobby-overlay hidden" aria-hidden="true">
     <div class="lobby-card">
       <div class="lobby-head">
-        <span class="lobby-queue" id="lobby-queue">—</span>
-        <span class="lobby-party" id="lobby-party">—</span>
+        <span class="lobby-queue" id="lobby-queue">-</span>
+        <span class="lobby-party" id="lobby-party">-</span>
         <span class="lobby-leader-tag" id="lobby-leader-tag" hidden>★ LEADER</span>
         <!-- Change-queue control: triggers a list of common queues
              (ARAM, ARAM Mayhem, Normal Draft, etc) → posts
@@ -407,7 +407,7 @@
         </button>
         <button type="button" class="lobby-cancel-match" id="lobby-cancel-match" hidden>Cancel Search</button>
       </div>
-      <div class="lobby-status" id="lobby-status">—</div>
+      <div class="lobby-status" id="lobby-status">-</div>
       <!-- Party member list (2026-04-26 scaffold). Each row =
            {name, puuid, is_self, is_leader, played_with_me_count}.
            Meta-stats chips show "played 3 with you · 2W1L" from local
@@ -436,7 +436,7 @@
     <section id="minimap" class="panel panel-minimap">
       <div class="panel-head">
         <span class="panel-title" id="mm-panel-title">MAP STATE</span>
-        <span class="staleness" data-for="minimap">—</span>
+        <span class="staleness" data-for="minimap">-</span>
       </div>
       <div class="panel-body minimap-body">
         <div class="phase-strip hidden" id="phase-strip" aria-hidden="true">
@@ -447,12 +447,12 @@
         </div>
         <!-- Image + ZOI/position canvas stack. Order (2026-04-24): image
              first, state chip second (below the image), then gold diff.
-             The minimap is the hero — the state chip ("ZOI · N ally · M
+             The minimap is the hero - the state chip ("ZOI · N ally · M
              enemy") sits under it so the eye lands on the map first. -->
         <div class="minimap-img-wrap hidden" id="mm-img-wrap">
           <img id="mm-img" alt="minimap crop" />
           <canvas id="mm-vt-overlay" class="mm-vt-overlay"></canvas>
-          <span class="minimap-img-caption" id="mm-img-caption">—</span>
+          <span class="minimap-img-caption" id="mm-img-caption">-</span>
         </div>
         <div class="mm-canvas-stack hidden" id="mm-canvas-stack">
           <canvas id="mm-zoi-canvas" class="mm-zoi-canvas" width="720" height="720"></canvas>
@@ -460,22 +460,22 @@
         </div>
         <div class="minimap-state" id="mm-state">awaiting liveclient data…</div>
         <div class="zoi-debug hidden" id="zoi-debug" aria-hidden="true"></div>
-        <!-- Team gold diff — slim bar showing our team's gold lead / deficit. -->
+        <!-- Team gold diff - slim bar showing our team's gold lead / deficit. -->
         <div class="gold-diff hidden" id="gold-diff">
           <div class="gold-diff-track">
             <div class="gold-diff-fill" id="gold-diff-fill"></div>
             <div class="gold-diff-center"></div>
           </div>
-          <div class="gold-diff-label"><span id="gold-diff-val">—</span> gold</div>
+          <div class="gold-diff-label"><span id="gold-diff-val">-</span> gold</div>
         </div>
-        <!-- Tower/score/game-time chips removed 2026-04-23 — all three
+        <!-- Tower/score/game-time chips removed 2026-04-23 - all three
              signals live on the header row 2 group already, no value in
              duplicating them inside the map panel. -->
-        <!-- Objectives — full-width rows with state text (in-game view). -->
+        <!-- Objectives - full-width rows with state text (in-game view). -->
         <div class="minimap-grid" id="mm-objectives-view">
-          <div class="kv"><span class="kv-with-icon"><svg class="obj-ico"><use href="#obj-dragon"/></svg>Dragon</span><span id="mm-dragon">—</span></div>
-          <div class="kv"><span class="kv-with-icon"><svg class="obj-ico"><use href="#obj-baron"/></svg>Baron</span><span id="mm-baron">—</span></div>
-          <div class="kv"><span class="kv-with-icon"><svg class="obj-ico"><use href="#obj-herald"/></svg>Herald</span><span id="mm-herald">—</span></div>
+          <div class="kv"><span class="kv-with-icon"><svg class="obj-ico"><use href="#obj-dragon"/></svg>Dragon</span><span id="mm-dragon">-</span></div>
+          <div class="kv"><span class="kv-with-icon"><svg class="obj-ico"><use href="#obj-baron"/></svg>Baron</span><span id="mm-baron">-</span></div>
+          <div class="kv"><span class="kv-with-icon"><svg class="obj-ico"><use href="#obj-herald"/></svg>Herald</span><span id="mm-herald">-</span></div>
           <!-- Atakhan removed 2026-04-23: not present in the live season. -->
           <!-- Ally/Enemy team strips removed 2026-04-23: giving minimap panel more visual space. -->
         </div>
@@ -486,11 +486,11 @@
         <div class="what-went-view" id="mm-whatwent-view">
           <div class="what-went-section what-went-good">
             <div class="what-went-title">WHAT WENT GOOD</div>
-            <ul class="what-went-list" id="ww-good"><li class="ww-empty">—</li></ul>
+            <ul class="what-went-list" id="ww-good"><li class="ww-empty">-</li></ul>
           </div>
           <div class="what-went-section what-went-bad">
             <div class="what-went-title">WHAT WENT BAD</div>
-            <ul class="what-went-list" id="ww-bad"><li class="ww-empty">—</li></ul>
+            <ul class="what-went-list" id="ww-bad"><li class="ww-empty">-</li></ul>
           </div>
         </div>
       </div>
@@ -499,19 +499,19 @@
     <section id="right-now" class="panel panel-right-now">
       <div class="panel-head">
         <span class="panel-title" id="rn-panel-title">RIGHT NOW</span>
-        <span class="staleness" data-for="right-now">—</span>
+        <span class="staleness" data-for="right-now">-</span>
       </div>
       <div class="panel-body">
-        <div class="action" id="rn-action">—</div>
+        <div class="action" id="rn-action">-</div>
         <div class="immediate" id="rn-immediate">awaiting coach output…</div>
         <div class="kv">
-          <span>Watch</span><span id="rn-risk">—</span>
+          <span>Watch</span><span id="rn-risk">-</span>
         </div>
         <div class="kv">
-          <span>Fight</span><span id="rn-fight-rule">—</span>
+          <span>Fight</span><span id="rn-fight-rule">-</span>
         </div>
         <div class="kv">
-          <span>Base</span><span id="rn-reset">—</span>
+          <span>Base</span><span id="rn-reset">-</span>
         </div>
       </div>
     </section>
@@ -519,18 +519,18 @@
     <section id="next" class="panel panel-next">
       <div class="panel-head">
         <span class="panel-title" id="nx-panel-title">NEXT</span>
-        <span class="staleness" data-for="next">—</span>
+        <span class="staleness" data-for="next">-</span>
       </div>
       <div class="panel-body">
-        <div class="action-mid" id="nx-next">—</div>
+        <div class="action-mid" id="nx-next">-</div>
         <div class="kv">
-          <span>Objective</span><span id="nx-objective">—</span>
+          <span>Objective</span><span id="nx-objective">-</span>
         </div>
         <div class="kv">
-          <span>Positioning</span><span id="nx-positioning">—</span>
+          <span>Positioning</span><span id="nx-positioning">-</span>
         </div>
         <div class="kv">
-          <span>Waves</span><span id="nx-wave">—</span>
+          <span>Waves</span><span id="nx-wave">-</span>
         </div>
       </div>
     </section>
@@ -538,18 +538,18 @@
     <section id="item-build" class="panel panel-item-build">
       <div class="panel-head">
         <span class="panel-title">ITEM BUILD</span>
-        <span class="staleness" data-for="item-build">—</span>
+        <span class="staleness" data-for="item-build">-</span>
       </div>
       <div class="panel-body">
         <div class="build-section">
           <div class="build-label" id="ib-build-label">Recommended · next to buy</div>
-          <div class="item-tiles is-path" id="ib-recommended">—</div>
+          <div class="item-tiles is-path" id="ib-recommended">-</div>
         </div>
         <div class="build-section">
           <div class="build-label">Owned</div>
-          <div class="item-tiles" id="ib-owned">—</div>
+          <div class="item-tiles" id="ib-owned">-</div>
         </div>
-        <!-- DS Engine ranked picks — populated from daemon_slayer_picks in coaching JSON -->
+        <!-- DS Engine ranked picks - populated from daemon_slayer_picks in coaching JSON -->
         <div class="build-section" id="ib-ds-block" hidden>
           <div class="build-label">DS Engine · top by DPS gain</div>
           <div class="ds-picks" id="ib-ds-picks"></div>
@@ -574,7 +574,7 @@
     <section id="adaptation" class="panel panel-adaptation">
       <div class="panel-head">
         <span class="panel-title" id="adapt-panel-title">ADAPTATION</span>
-        <span class="counter" id="adapt-status">—</span>
+        <span class="counter" id="adapt-status">-</span>
       </div>
       <div class="panel-body">
         <!-- STATS view (in-game modes: sr/aram/arena/tft). Mode-toggled
@@ -588,125 +588,125 @@
           <div class="stats-group" data-stage="early">
             <div class="stats-group-title">LANING PHASE</div>
             <!-- Glance during laning: what's my level, am I ahead? -->
-            <div class="stats-row"><span class="stats-label">Level</span><span class="stats-val" id="st-level">—</span></div>
-            <div class="stats-row"><span class="stats-label">Lane/Jungle</span><span class="stats-val" id="st-level-lane">—</span></div>
-            <div class="stats-row"><span class="stats-label">Jungle Camp</span><span class="stats-val" id="st-level-jungle">—</span></div>
-            <div class="stats-row"><span class="stats-label">Lane prio</span><span class="stats-val" id="st-lane-prio">—</span></div>
-            <div class="stats-row"><span class="stats-label">Wave now</span><span class="stats-val" id="st-wave-now">—</span></div>
-            <div class="stats-row"><span class="stats-label">Spike</span><span class="stats-val" id="st-spike-status">—</span></div>
+            <div class="stats-row"><span class="stats-label">Level</span><span class="stats-val" id="st-level">-</span></div>
+            <div class="stats-row"><span class="stats-label">Lane/Jungle</span><span class="stats-val" id="st-level-lane">-</span></div>
+            <div class="stats-row"><span class="stats-label">Jungle Camp</span><span class="stats-val" id="st-level-jungle">-</span></div>
+            <div class="stats-row"><span class="stats-label">Lane prio</span><span class="stats-val" id="st-lane-prio">-</span></div>
+            <div class="stats-row"><span class="stats-label">Wave now</span><span class="stats-val" id="st-wave-now">-</span></div>
+            <div class="stats-row"><span class="stats-label">Spike</span><span class="stats-val" id="st-spike-status">-</span></div>
             <!-- Benchmarks (look periodically) -->
-            <div class="stats-row"><span class="stats-label">CS @ 10</span><span class="stats-val" id="st-cs-at-10">—</span></div>
-            <div class="stats-row"><span class="stats-label">CSD @ 15</span><span class="stats-val" id="st-csd-15">—</span></div>
-            <div class="stats-row"><span class="stats-label">GD @ 15</span><span class="stats-val" id="st-gd-15">—</span></div>
-            <div class="stats-row"><span class="stats-label">Cannon CS</span><span class="stats-val" id="st-cannon">— / —</span></div>
-            <div class="stats-row"><span class="stats-label">Trades</span><span class="stats-val" id="st-trades">—</span></div>
+            <div class="stats-row"><span class="stats-label">CS @ 10</span><span class="stats-val" id="st-cs-at-10">-</span></div>
+            <div class="stats-row"><span class="stats-label">CSD @ 15</span><span class="stats-val" id="st-csd-15">-</span></div>
+            <div class="stats-row"><span class="stats-label">GD @ 15</span><span class="stats-val" id="st-gd-15">-</span></div>
+            <div class="stats-row"><span class="stats-label">Cannon CS</span><span class="stats-val" id="st-cannon">- / -</span></div>
+            <div class="stats-row"><span class="stats-label">Trades</span><span class="stats-val" id="st-trades">-</span></div>
             <!-- Reference / meta -->
-            <div class="stats-row"><span class="stats-label">First back</span><span class="stats-val" id="st-first-recall">—</span></div>
-            <div class="stats-row"><span class="stats-label">Back gold</span><span class="stats-val" id="st-back-gold">—</span></div>
-            <div class="stats-row"><span class="stats-label">Enemy side</span><span class="stats-val" id="st-enemy-side">—</span></div>
-            <div class="stats-row"><span class="stats-label">Waves</span><span class="stats-val" id="st-waves">—</span></div>
-            <div class="stats-row"><span class="stats-label">Freezes</span><span class="stats-val" id="st-freezes">—</span></div>
-            <div class="stats-row"><span class="stats-label">Roams</span><span class="stats-val" id="st-roams">—</span></div>
-            <div class="stats-row"><span class="stats-label">Build dev</span><span class="stats-val" id="st-build-dev">—</span></div>
-            <div class="stats-row"><span class="stats-label">Jg path</span><span class="stats-val" id="st-jungle-path">—</span></div>
-            <div class="stats-row"><span class="stats-label">Enemy mast</span><span class="stats-val" id="st-enemy-mastery">—</span></div>
+            <div class="stats-row"><span class="stats-label">First back</span><span class="stats-val" id="st-first-recall">-</span></div>
+            <div class="stats-row"><span class="stats-label">Back gold</span><span class="stats-val" id="st-back-gold">-</span></div>
+            <div class="stats-row"><span class="stats-label">Enemy side</span><span class="stats-val" id="st-enemy-side">-</span></div>
+            <div class="stats-row"><span class="stats-label">Waves</span><span class="stats-val" id="st-waves">-</span></div>
+            <div class="stats-row"><span class="stats-label">Freezes</span><span class="stats-val" id="st-freezes">-</span></div>
+            <div class="stats-row"><span class="stats-label">Roams</span><span class="stats-val" id="st-roams">-</span></div>
+            <div class="stats-row"><span class="stats-label">Build dev</span><span class="stats-val" id="st-build-dev">-</span></div>
+            <div class="stats-row"><span class="stats-label">Jg path</span><span class="stats-val" id="st-jungle-path">-</span></div>
+            <div class="stats-row"><span class="stats-label">Enemy mast</span><span class="stats-val" id="st-enemy-mastery">-</span></div>
           </div>
           <div class="stats-group" data-stage="mid late">
             <div class="stats-group-title">COMBAT / TEAMFIGHT</div>
-            <!-- Live actionable — can I fight, and how? -->
-            <div class="stats-row"><span class="stats-label">Win-con up</span><span class="stats-val" id="st-winc">—</span></div>
-            <div class="stats-row"><span class="stats-label">Fight window</span><span class="stats-val" id="st-fight-window">—</span></div>
-            <div class="stats-row"><span class="stats-label">Flash disc</span><span class="stats-val" id="st-flash-disc">—</span></div>
-            <div class="stats-row"><span class="stats-label">Ally summs</span><span class="stats-val" id="st-ally-summs">—</span></div>
-            <div class="stats-row"><span class="stats-label">Enemy summs</span><span class="stats-val" id="st-enemy-summs">—</span></div>
-            <div class="stats-row"><span class="stats-label">Top threat</span><span class="stats-val" id="st-top-threat">—</span></div>
-            <div class="stats-row"><span class="stats-label">Carry idx</span><span class="stats-val" id="st-carry-idx">—</span></div>
-            <div class="stats-row"><span class="stats-label">Comp ID</span><span class="stats-val" id="st-comp-id">—</span></div>
-            <!-- Live contribution — where am I putting my damage/time -->
-            <div class="stats-row"><span class="stats-label">KP</span><span class="stats-val" id="st-kp">—</span></div>
-            <div class="stats-row"><span class="stats-label">Dmg share</span><span class="stats-val" id="st-dmg-share">—</span></div>
-            <div class="stats-row"><span class="stats-label">Dmg taken</span><span class="stats-val" id="st-dmg-taken">—</span></div>
-            <div class="stats-row"><span class="stats-label">CC</span><span class="stats-val" id="st-cc">—</span></div>
-            <div class="stats-row"><span class="stats-label">Peel</span><span class="stats-val" id="st-peel">—</span></div>
-            <div class="stats-row"><span class="stats-label">Heal/shield</span><span class="stats-val" id="st-heal">—</span></div>
+            <!-- Live actionable - can I fight, and how? -->
+            <div class="stats-row"><span class="stats-label">Win-con up</span><span class="stats-val" id="st-winc">-</span></div>
+            <div class="stats-row"><span class="stats-label">Fight window</span><span class="stats-val" id="st-fight-window">-</span></div>
+            <div class="stats-row"><span class="stats-label">Flash disc</span><span class="stats-val" id="st-flash-disc">-</span></div>
+            <div class="stats-row"><span class="stats-label">Ally summs</span><span class="stats-val" id="st-ally-summs">-</span></div>
+            <div class="stats-row"><span class="stats-label">Enemy summs</span><span class="stats-val" id="st-enemy-summs">-</span></div>
+            <div class="stats-row"><span class="stats-label">Top threat</span><span class="stats-val" id="st-top-threat">-</span></div>
+            <div class="stats-row"><span class="stats-label">Carry idx</span><span class="stats-val" id="st-carry-idx">-</span></div>
+            <div class="stats-row"><span class="stats-label">Comp ID</span><span class="stats-val" id="st-comp-id">-</span></div>
+            <!-- Live contribution - where am I putting my damage/time -->
+            <div class="stats-row"><span class="stats-label">KP</span><span class="stats-val" id="st-kp">-</span></div>
+            <div class="stats-row"><span class="stats-label">Dmg share</span><span class="stats-val" id="st-dmg-share">-</span></div>
+            <div class="stats-row"><span class="stats-label">Dmg taken</span><span class="stats-val" id="st-dmg-taken">-</span></div>
+            <div class="stats-row"><span class="stats-label">CC</span><span class="stats-val" id="st-cc">-</span></div>
+            <div class="stats-row"><span class="stats-label">Peel</span><span class="stats-val" id="st-peel">-</span></div>
+            <div class="stats-row"><span class="stats-label">Heal/shield</span><span class="stats-val" id="st-heal">-</span></div>
             <!-- Initiative / positioning outcomes -->
-            <div class="stats-row"><span class="stats-label">Engage</span><span class="stats-val" id="st-engage">—</span></div>
-            <div class="stats-row"><span class="stats-label">Dive</span><span class="stats-val" id="st-dive">—</span></div>
-            <div class="stats-row"><span class="stats-label">Flank</span><span class="stats-val" id="st-flank">—</span></div>
-            <div class="stats-row"><span class="stats-label">TF record</span><span class="stats-val" id="st-tf-outcomes">—</span></div>
+            <div class="stats-row"><span class="stats-label">Engage</span><span class="stats-val" id="st-engage">-</span></div>
+            <div class="stats-row"><span class="stats-label">Dive</span><span class="stats-val" id="st-dive">-</span></div>
+            <div class="stats-row"><span class="stats-label">Flank</span><span class="stats-val" id="st-flank">-</span></div>
+            <div class="stats-row"><span class="stats-label">TF record</span><span class="stats-val" id="st-tf-outcomes">-</span></div>
             <!-- Mechanical accuracy -->
-            <div class="stats-row"><span class="stats-label">Combo hit</span><span class="stats-val" id="st-combo-hit">—</span></div>
-            <div class="stats-row"><span class="stats-label">Ult eff</span><span class="stats-val" id="st-ult-eff">—</span></div>
-            <div class="stats-row"><span class="stats-label">Skillshots</span><span class="stats-val" id="st-skillshot">—</span></div>
+            <div class="stats-row"><span class="stats-label">Combo hit</span><span class="stats-val" id="st-combo-hit">-</span></div>
+            <div class="stats-row"><span class="stats-label">Ult eff</span><span class="stats-val" id="st-ult-eff">-</span></div>
+            <div class="stats-row"><span class="stats-label">Skillshots</span><span class="stats-val" id="st-skillshot">-</span></div>
             <!-- Death analysis -->
-            <div class="stats-row"><span class="stats-label">Alive/Dead</span><span class="stats-val" id="st-time-dead">—</span></div>
-            <div class="stats-row"><span class="stats-label">Deaths</span><span class="stats-val" id="st-death-pattern">—</span></div>
-            <div class="stats-row"><span class="stats-label">Solo deaths</span><span class="stats-val" id="st-solo-death">—</span></div>
-            <div class="stats-row"><span class="stats-label">Wall deaths</span><span class="stats-val" id="st-wall-deaths">—</span></div>
-            <div class="stats-row"><span class="stats-label">Death heat</span><span class="stats-val" id="st-death-heat">—</span></div>
+            <div class="stats-row"><span class="stats-label">Alive/Dead</span><span class="stats-val" id="st-time-dead">-</span></div>
+            <div class="stats-row"><span class="stats-label">Deaths</span><span class="stats-val" id="st-death-pattern">-</span></div>
+            <div class="stats-row"><span class="stats-label">Solo deaths</span><span class="stats-val" id="st-solo-death">-</span></div>
+            <div class="stats-row"><span class="stats-label">Wall deaths</span><span class="stats-val" id="st-wall-deaths">-</span></div>
+            <div class="stats-row"><span class="stats-label">Death heat</span><span class="stats-val" id="st-death-heat">-</span></div>
             <!-- Input hygiene (reference) -->
-            <div class="stats-row"><span class="stats-label">AA mix</span><span class="stats-val" id="st-aa-mix">—</span></div>
-            <div class="stats-row"><span class="stats-label">AA cancels</span><span class="stats-val" id="st-cancel-windows">—</span></div>
-            <div class="stats-row"><span class="stats-label">Anim cancels</span><span class="stats-val" id="st-anim-cancels">—</span></div>
-            <div class="stats-row"><span class="stats-label">APM</span><span class="stats-val" id="st-apm">—</span></div>
-            <div class="stats-row"><span class="stats-label">Reaction</span><span class="stats-val" id="st-reaction">—</span></div>
-            <div class="stats-row"><span class="stats-label">Misclicks</span><span class="stats-val" id="st-wasted-clicks">—</span></div>
+            <div class="stats-row"><span class="stats-label">AA mix</span><span class="stats-val" id="st-aa-mix">-</span></div>
+            <div class="stats-row"><span class="stats-label">AA cancels</span><span class="stats-val" id="st-cancel-windows">-</span></div>
+            <div class="stats-row"><span class="stats-label">Anim cancels</span><span class="stats-val" id="st-anim-cancels">-</span></div>
+            <div class="stats-row"><span class="stats-label">APM</span><span class="stats-val" id="st-apm">-</span></div>
+            <div class="stats-row"><span class="stats-label">Reaction</span><span class="stats-val" id="st-reaction">-</span></div>
+            <div class="stats-row"><span class="stats-label">Misclicks</span><span class="stats-val" id="st-wasted-clicks">-</span></div>
           </div>
           <div class="stats-group" data-stage="mid late">
             <div class="stats-group-title">MAP PRESENCE</div>
             <!-- Live-actionable map awareness -->
-            <div class="stats-row"><span class="stats-label">Jg track</span><span class="stats-val" id="st-jg-track">—</span></div>
-            <div class="stats-row"><span class="stats-label">Vision</span><span class="stats-val" id="st-vision">—</span></div>
-            <div class="stats-row"><span class="stats-label">Pink ward</span><span class="stats-val" id="st-pink-uptime">—</span></div>
-            <div class="stats-row"><span class="stats-label">Trinket</span><span class="stats-val" id="st-trinket">—</span></div>
+            <div class="stats-row"><span class="stats-label">Jg track</span><span class="stats-val" id="st-jg-track">-</span></div>
+            <div class="stats-row"><span class="stats-label">Vision</span><span class="stats-val" id="st-vision">-</span></div>
+            <div class="stats-row"><span class="stats-label">Pink ward</span><span class="stats-val" id="st-pink-uptime">-</span></div>
+            <div class="stats-row"><span class="stats-label">Trinket</span><span class="stats-val" id="st-trinket">-</span></div>
             <!-- Objective prep + outcomes -->
-            <div class="stats-row"><span class="stats-label">Obj setup</span><span class="stats-val" id="st-obj-setup">—</span></div>
-            <div class="stats-row"><span class="stats-label">Baron prep</span><span class="stats-val" id="st-baron-prep">—</span></div>
-            <div class="stats-row"><span class="stats-label">Obj dance</span><span class="stats-val" id="st-obj-dance">—</span></div>
-            <div class="stats-row"><span class="stats-label">Scuttles</span><span class="stats-val" id="st-scuttle">—</span></div>
+            <div class="stats-row"><span class="stats-label">Obj setup</span><span class="stats-val" id="st-obj-setup">-</span></div>
+            <div class="stats-row"><span class="stats-label">Baron prep</span><span class="stats-val" id="st-baron-prep">-</span></div>
+            <div class="stats-row"><span class="stats-label">Obj dance</span><span class="stats-val" id="st-obj-dance">-</span></div>
+            <div class="stats-row"><span class="stats-label">Scuttles</span><span class="stats-val" id="st-scuttle">-</span></div>
             <!-- Contribution / reference -->
-            <div class="stats-row"><span class="stats-label">Vis denied</span><span class="stats-val" id="st-vision-denied">—</span></div>
-            <div class="stats-row"><span class="stats-label">Split push</span><span class="stats-val" id="st-split-push">—</span></div>
+            <div class="stats-row"><span class="stats-label">Vis denied</span><span class="stats-val" id="st-vision-denied">-</span></div>
+            <div class="stats-row"><span class="stats-label">Split push</span><span class="stats-val" id="st-split-push">-</span></div>
           </div>
           <div class="stats-group" data-stage="all">
             <div class="stats-group-title">IDENTITY</div>
-            <!-- Matchup + Counter collapsed — same opponent, both facts shown. -->
-            <div class="stats-row"><span class="stats-label">Matchup</span><span class="stats-val" id="st-matchup">—</span></div>
-            <div class="stats-row"><span class="stats-label">Rune adapt</span><span class="stats-val" id="st-rune-adapt">—</span></div>
-            <div class="stats-row"><span class="stats-label">Keystone</span><span class="stats-val" id="st-keystone">—</span></div>
-            <div class="stats-row"><span class="stats-label">Champ key</span><span class="stats-val" id="st-champ-key">—</span></div>
-            <div class="stats-row"><span class="stats-label">Spike map</span><span class="stats-val" id="st-spike-map">—</span></div>
-            <div class="stats-row"><span class="stats-label">Runes</span><span class="stats-val" id="st-runes">—</span></div>
-            <div class="stats-row"><span class="stats-label">Mastery</span><span class="stats-val" id="st-mastery">—</span></div>
+            <!-- Matchup + Counter collapsed - same opponent, both facts shown. -->
+            <div class="stats-row"><span class="stats-label">Matchup</span><span class="stats-val" id="st-matchup">-</span></div>
+            <div class="stats-row"><span class="stats-label">Rune adapt</span><span class="stats-val" id="st-rune-adapt">-</span></div>
+            <div class="stats-row"><span class="stats-label">Keystone</span><span class="stats-val" id="st-keystone">-</span></div>
+            <div class="stats-row"><span class="stats-label">Champ key</span><span class="stats-val" id="st-champ-key">-</span></div>
+            <div class="stats-row"><span class="stats-label">Spike map</span><span class="stats-val" id="st-spike-map">-</span></div>
+            <div class="stats-row"><span class="stats-label">Runes</span><span class="stats-val" id="st-runes">-</span></div>
+            <div class="stats-row"><span class="stats-label">Mastery</span><span class="stats-val" id="st-mastery">-</span></div>
           </div>
           <div class="stats-group" data-stage="all">
             <div class="stats-group-title">RANK / SESSION</div>
             <!-- Live-game macro read -->
-            <div class="stats-row"><span class="stats-label">Rank</span><span class="stats-val" id="st-rank">—</span></div>
-            <div class="stats-row"><span class="stats-label">Forecast</span><span class="stats-val" id="st-lp-forecast">—</span></div>
-            <div class="stats-row"><span class="stats-label">Comeback</span><span class="stats-val" id="st-comeback">—</span></div>
-            <div class="stats-row"><span class="stats-label">Close ETA</span><span class="stats-val" id="st-game-eta">—</span></div>
-            <div class="stats-row"><span class="stats-label">Wincon phase</span><span class="stats-val" id="st-wincon-phase">—</span></div>
-            <div class="stats-row"><span class="stats-label">Comp align</span><span class="stats-val" id="st-comp-align">—</span></div>
-            <div class="stats-row"><span class="stats-label">Gold diff</span><span class="stats-val" id="st-gold-diff-trend">—</span></div>
+            <div class="stats-row"><span class="stats-label">Rank</span><span class="stats-val" id="st-rank">-</span></div>
+            <div class="stats-row"><span class="stats-label">Forecast</span><span class="stats-val" id="st-lp-forecast">-</span></div>
+            <div class="stats-row"><span class="stats-label">Comeback</span><span class="stats-val" id="st-comeback">-</span></div>
+            <div class="stats-row"><span class="stats-label">Close ETA</span><span class="stats-val" id="st-game-eta">-</span></div>
+            <div class="stats-row"><span class="stats-label">Wincon phase</span><span class="stats-val" id="st-wincon-phase">-</span></div>
+            <div class="stats-row"><span class="stats-label">Comp align</span><span class="stats-val" id="st-comp-align">-</span></div>
+            <div class="stats-row"><span class="stats-label">Gold diff</span><span class="stats-val" id="st-gold-diff-trend">-</span></div>
             <!-- Mental / session meta -->
-            <div class="stats-row"><span class="stats-label">Tilt</span><span class="stats-val" id="st-tilt">—</span></div>
-            <div class="stats-row"><span class="stats-label">Break?</span><span class="stats-val" id="st-break">—</span></div>
-            <div class="stats-row"><span class="stats-label">Self-judge</span><span class="stats-val" id="st-self-judge">—</span></div>
-            <div class="stats-row"><span class="stats-label">Coach use</span><span class="stats-val" id="st-coach-use">—</span></div>
-            <div class="stats-row"><span class="stats-label">Chat tone</span><span class="stats-val" id="st-chat-tone">—</span></div>
-            <div class="stats-row"><span class="stats-label">Adjust</span><span class="stats-val" id="st-adjust">—</span></div>
+            <div class="stats-row"><span class="stats-label">Tilt</span><span class="stats-val" id="st-tilt">-</span></div>
+            <div class="stats-row"><span class="stats-label">Break?</span><span class="stats-val" id="st-break">-</span></div>
+            <div class="stats-row"><span class="stats-label">Self-judge</span><span class="stats-val" id="st-self-judge">-</span></div>
+            <div class="stats-row"><span class="stats-label">Coach use</span><span class="stats-val" id="st-coach-use">-</span></div>
+            <div class="stats-row"><span class="stats-label">Chat tone</span><span class="stats-val" id="st-chat-tone">-</span></div>
+            <div class="stats-row"><span class="stats-label">Adjust</span><span class="stats-val" id="st-adjust">-</span></div>
             <!-- Session stats -->
-            <div class="stats-row"><span class="stats-label">Session</span><span class="stats-val" id="st-session-delta">—</span></div>
-            <div class="stats-row"><span class="stats-label">Session Δ</span><span class="stats-val" id="st-session-compare">—</span></div>
-            <div class="stats-row"><span class="stats-label">Promo</span><span class="stats-val" id="st-promo">—</span></div>
-            <div class="stats-row"><span class="stats-label">Goal</span><span class="stats-val" id="st-goal">—</span></div>
+            <div class="stats-row"><span class="stats-label">Session</span><span class="stats-val" id="st-session-delta">-</span></div>
+            <div class="stats-row"><span class="stats-label">Session Δ</span><span class="stats-val" id="st-session-compare">-</span></div>
+            <div class="stats-row"><span class="stats-label">Promo</span><span class="stats-val" id="st-promo">-</span></div>
+            <div class="stats-row"><span class="stats-label">Goal</span><span class="stats-val" id="st-goal">-</span></div>
             <!-- Benchmark / improvement -->
-            <div class="stats-row"><span class="stats-label">Benchmark</span><span class="stats-val" id="st-benchmark">—</span></div>
-            <div class="stats-row"><span class="stats-label">Perf</span><span class="stats-val" id="st-strength">—</span></div>
-            <div class="stats-row"><span class="stats-label">Improve</span><span class="stats-val" id="st-improve">—</span></div>
-            <div class="stats-row"><span class="stats-label">Lobby MMR</span><span class="stats-val" id="st-lobby-mmr">—</span></div>
-            <div class="stats-row"><span class="stats-label">Comp synergy</span><span class="stats-val" id="st-comp-synergy">—</span></div>
+            <div class="stats-row"><span class="stats-label">Benchmark</span><span class="stats-val" id="st-benchmark">-</span></div>
+            <div class="stats-row"><span class="stats-label">Perf</span><span class="stats-val" id="st-strength">-</span></div>
+            <div class="stats-row"><span class="stats-label">Improve</span><span class="stats-val" id="st-improve">-</span></div>
+            <div class="stats-row"><span class="stats-label">Lobby MMR</span><span class="stats-val" id="st-lobby-mmr">-</span></div>
+            <div class="stats-row"><span class="stats-label">Comp synergy</span><span class="stats-val" id="st-comp-synergy">-</span></div>
           </div>
         </div>
         <!-- ADAPTATION / GAME SENSE view (client + aftergame). In-game mode
@@ -716,45 +716,45 @@
              coach_integration.py). Rest is the legacy adaptation content. -->
         <div class="adapt-view" id="adapt-view">
           <div class="game-sense-block" id="game-sense-block">
-            <div class="game-sense-title">GAME SENSE — this match</div>
+            <div class="game-sense-title">GAME SENSE - this match</div>
             <div class="game-sense-row">
               <span class="game-sense-phase">EARLY</span>
-              <span class="game-sense-word" id="gs-early">—</span>
+              <span class="game-sense-word" id="gs-early">-</span>
               <span class="game-sense-blurb" id="gs-early-blurb"></span>
             </div>
             <div class="game-sense-row">
               <span class="game-sense-phase">MID</span>
-              <span class="game-sense-word" id="gs-mid">—</span>
+              <span class="game-sense-word" id="gs-mid">-</span>
               <span class="game-sense-blurb" id="gs-mid-blurb"></span>
             </div>
             <div class="game-sense-row">
               <span class="game-sense-phase">LATE</span>
-              <span class="game-sense-word" id="gs-late">—</span>
+              <span class="game-sense-word" id="gs-late">-</span>
               <span class="game-sense-blurb" id="gs-late-blurb"></span>
             </div>
-            <div class="game-sense-trend" id="gs-trend">—</div>
+            <div class="game-sense-trend" id="gs-trend">-</div>
           </div>
-          <div class="adapt-notice hidden" id="adapt-notice">—</div>
+          <div class="adapt-notice hidden" id="adapt-notice">-</div>
           <div class="kv">
-            <span>Champion</span><span id="adapt-champ">—</span>
-          </div>
-          <div class="kv">
-            <span>Baseline</span><span id="adapt-baseline">—</span>
+            <span>Champion</span><span id="adapt-champ">-</span>
           </div>
           <div class="kv">
-            <span>Recent</span><span id="adapt-recent">—</span>
+            <span>Baseline</span><span id="adapt-baseline">-</span>
           </div>
           <div class="kv">
-            <span>Typical KDA</span><span id="adapt-kda">—</span>
+            <span>Recent</span><span id="adapt-recent">-</span>
+          </div>
+          <div class="kv">
+            <span>Typical KDA</span><span id="adapt-kda">-</span>
           </div>
           <div class="adapt-section-head">Active matchups</div>
-          <div id="adapt-counters">—</div>
+          <div id="adapt-counters">-</div>
           <div class="adapt-section-head">Historic items</div>
-          <div id="adapt-items">—</div>
+          <div id="adapt-items">-</div>
           <div class="adapt-section-head">KDA streaks (last 10)</div>
           <div id="adapt-streaks">
-            <div class="streak-row hot"><span class="streak-label">↑</span><span id="streaks-hot">—</span></div>
-            <div class="streak-row cold"><span class="streak-label">↓</span><span id="streaks-cold">—</span></div>
+            <div class="streak-row hot"><span class="streak-label">↑</span><span id="streaks-hot">-</span></div>
+            <div class="streak-row cold"><span class="streak-label">↓</span><span id="streaks-cold">-</span></div>
           </div>
           <div class="adapt-footer">
             <span id="adapt-flag">RC_COACH_ADAPTATION=<b id="adapt-flag-val">?</b></span>
@@ -776,7 +776,7 @@
          here instead). -->
     <section id="view-lobby" class="view-section" hidden>
       <!-- s162 v5: NORMAL DRAFT + PARTY titles relocated back into
-           their respective panels (anchored centering — no JS math). -->
+           their respective panels (anchored centering - no JS math). -->
       <div class="view-section-head">
         <h2>Pre-Game Lobby</h2>
         <span class="view-section-sub" id="lv-window">awaiting LCU lobby data…</span>
@@ -784,7 +784,7 @@
       <div class="view-section-body">
         <div class="lobby-view-grid">
           <div class="lobby-view-card lobby-view-card-queue">
-            <div class="lv-panel-title" id="lv-queue-name">—</div>
+            <div class="lv-panel-title" id="lv-queue-name">-</div>
             <div class="lobby-view-queue-block">
               <!-- s162 v4: queue name moved up to the section header
                    row (centered above the queue panel column). -->
@@ -795,7 +795,7 @@
                   <span class="lq-btn-line2" id="lv-auto-accept-state">Off</span>
                 </button>
                 <button type="button" class="lq-btn lq-party-toggle is-open" id="lv-party-toggle"
-                        data-tt="Party visibility — Open lets randoms join via invite link">
+                        data-tt="Party visibility - Open lets randoms join via invite link">
                   <span class="lq-btn-line1">Party</span>
                   <span class="lq-btn-line2" id="lv-party-toggle-state">Open</span>
                 </button>
@@ -831,7 +831,7 @@
                     <span class="lq-btn-line1">Primary</span>
                     <span class="lq-btn-line2-icon">
                       <img class="lq-lane-icon" alt="" src="" hidden />
-                      <span class="lq-lane-empty">—</span>
+                      <span class="lq-lane-empty">-</span>
                     </span>
                   </button>
                   <button type="button" class="lq-btn lq-lane-pref" id="lv-lane-secondary"
@@ -839,7 +839,7 @@
                     <span class="lq-btn-line1">Secondary</span>
                     <span class="lq-btn-line2-icon">
                       <img class="lq-lane-icon" alt="" src="" hidden />
-                      <span class="lq-lane-empty">—</span>
+                      <span class="lq-lane-empty">-</span>
                     </span>
                   </button>
                 </div>
@@ -854,10 +854,10 @@
                   <span class="lq-btn-line2" id="lv-find-match-label">Match</span>
                 </button>
               </div>
-              <!-- ROW 4 — Change Lobby Mode dropdown (full-width). The
+              <!-- ROW 4 - Change Lobby Mode dropdown (full-width). The
                    queue-block uses justify-content: space-evenly so
                    buttons-row + CLM share equal top/middle/bottom
-                   spacing — mirrors the CLM's centering above and the
+                   spacing - mirrors the CLM's centering above and the
                    buttons-row's centering below symmetrically. -->
               <div class="lobby-view-mode-switcher">
                 <button type="button" class="lq-mode-trigger" id="lv-mode-trigger"
@@ -903,7 +903,7 @@
           <div class="lobby-view-card lobby-view-card-party">
             <div class="lv-panel-title"><span class="lv-panel-title-text">PARTY</span></div>
             <ul class="lobby-members-list" id="lv-members-list">
-              <li class="home-empty">no members visible — Game-PC LCU agent needs to forward lcu.lobby.members[]</li>
+              <li class="home-empty">no members visible - Game-PC LCU agent needs to forward lcu.lobby.members[]</li>
             </ul>
           </div>
           <div class="lobby-view-card lobby-view-card-mainchamps">
@@ -936,7 +936,7 @@
             </div>
           </div>
           <div class="lobby-view-card lobby-view-card-friends">
-            <!-- s162 v5 (2026-05-10): repurposed to "My Top 8" —
+            <!-- s162 v5 (2026-05-10): repurposed to "My Top 8" -
                  operator-curated short list of favorites. 8 shell rows
                  (sorted by added date, oldest top; manual reorder
                  persists) + a search row below for adding new entries.
@@ -956,7 +956,7 @@
                      id="lv-top8-search-input" placeholder="Search summoner profile…"
                      autocomplete="off" />
               <!-- s162 v10: online/offline dot removed from the search row
-                   (it never represented a real signal — search has no
+                   (it never represented a real signal - search has no
                    target until the operator types). Spacer keeps the
                    add/reorder/remove buttons aligned with rows above. -->
               <span class="lv-top8-spacer-dot"></span>
@@ -970,9 +970,9 @@
       </div>
     </section>
 
-    <!-- Champ Select view (s164 — Phase 3 step 3 scaffold).
+    <!-- Champ Select view (s164 - Phase 3 step 3 scaffold).
          Top-level page rendered while lcu.phase === "ChampSelect".
-         Layout: 3-col grid — ALLIES | MY PICK + BUILDS | ENEMIES. -->
+         Layout: 3-col grid - ALLIES | MY PICK + BUILDS | ENEMIES. -->
     <section id="view-champ-select" class="view-section" hidden>
       <div class="view-section-head">
         <h2>Champ Select</h2>
@@ -988,7 +988,7 @@
               </ul>
             </div>
           </div>
-          <!-- Pick & Ban Recommendations panel — sits below Allies in
+          <!-- Pick & Ban Recommendations panel - sits below Allies in
                the same column. JS populates rows: role chip / 3 pick
                rows (performance / mastery / meta) / mood toggle. Real
                data wiring (perf scoring, counter matrix, 500ms blocker
@@ -1003,7 +1003,7 @@
             <div class="csv-card-head">My Pick</div>
             <div class="csv-card-body csv-mypick">
               <div class="csv-mypick-icon empty" id="csv-mypick-icon">?</div>
-              <div class="csv-mypick-name" id="csv-mypick-name">—</div>
+              <div class="csv-mypick-name" id="csv-mypick-name">-</div>
               <div class="csv-mypick-state" id="csv-mypick-state">no pick yet</div>
               <div class="csv-builds">
                 <div class="csv-builds-title">Build chooser</div>
@@ -1021,7 +1021,7 @@
               </ul>
             </div>
           </div>
-          <!-- s210: Suggestions panel — row 2 right, replacing the
+          <!-- s210: Suggestions panel - row 2 right, replacing the
                bottom half of the old Enemies span. Four sub-rows:
                (1) title (.csv-card-head), (2) 4-card ban-suggestion
                strip (global top bans, filtered against already-banned),
@@ -1030,7 +1030,7 @@
           <div class="csv-card csv-card-suggestions">
             <div class="csv-card-head">Suggestions</div>
             <div class="csv-card-body">
-              <!-- s214: row label dropped per operator — the parent
+              <!-- s214: row label dropped per operator - the parent
                    "Suggestions" card head + post-phase per-row visual
                    already communicate the bans context without the
                    redundant SUGGESTED BANS / CURRENT BANS title. -->
@@ -1043,13 +1043,13 @@
               <div class="csv-sugg-section csv-sugg-pickorder"
                    id="csv-sugg-pickorder">
                 <!-- s213 v3: "SUGGESTED PICK ORDER" label removed per
-                     operator — the tip rows below are self-explanatory
+                     operator - the tip rows below are self-explanatory
                      and the label was eating vertical room. -->
                 <div class="csv-sugg-pickorder-body" id="csv-sugg-pickorder-body">
-                  <div class="csv-sugg-empty">—</div>
+                  <div class="csv-sugg-empty">-</div>
                 </div>
               </div>
-              <!-- s211: DS engine item output removed — the build chooser's
+              <!-- s211: DS engine item output removed - the build chooser's
                    Experimental row now carries the same DS top-picks payload
                    in a richer rune+spell+item layout. -->
 
@@ -1062,31 +1062,31 @@
     <section id="view-session" class="view-section" hidden>
       <div class="view-section-head">
         <h2>SESSION</h2>
-        <span class="view-section-sub" id="session-window">—</span>
+        <span class="view-section-sub" id="session-window">-</span>
       </div>
       <div class="view-section-body" id="session-body">
         <div class="session-grid">
           <div class="session-card">
             <div class="session-card-head">OVERVIEW</div>
-            <div class="session-row"><span>Games</span><span id="session-games">—</span></div>
-            <div class="session-row"><span>Time played</span><span id="session-time">—</span></div>
-            <div class="session-row"><span>Started</span><span id="session-start">—</span></div>
-            <div class="session-row"><span>Last game</span><span id="session-last">—</span></div>
+            <div class="session-row"><span>Games</span><span id="session-games">-</span></div>
+            <div class="session-row"><span>Time played</span><span id="session-time">-</span></div>
+            <div class="session-row"><span>Started</span><span id="session-start">-</span></div>
+            <div class="session-row"><span>Last game</span><span id="session-last">-</span></div>
           </div>
           <div class="session-card">
             <div class="session-card-head">PERFORMANCE</div>
-            <div class="session-row"><span>Total KDA</span><span id="session-kda">—</span></div>
-            <div class="session-row"><span>Avg ratio</span><span id="session-avg">—</span></div>
-            <div class="session-row"><span>Grades</span><span id="session-grades">—</span></div>
-            <div class="session-row"><span>Modes</span><span id="session-modes">—</span></div>
+            <div class="session-row"><span>Total KDA</span><span id="session-kda">-</span></div>
+            <div class="session-row"><span>Avg ratio</span><span id="session-avg">-</span></div>
+            <div class="session-row"><span>Grades</span><span id="session-grades">-</span></div>
+            <div class="session-row"><span>Modes</span><span id="session-modes">-</span></div>
           </div>
           <div class="session-card session-card-wide">
             <div class="session-card-head">CHAMPIONS THIS SESSION</div>
-            <ul class="session-champ-list" id="session-champs"><li class="home-empty">—</li></ul>
+            <ul class="session-champ-list" id="session-champs"><li class="home-empty">-</li></ul>
           </div>
           <div class="session-card session-card-wide">
             <div class="session-card-head">MATCHES</div>
-            <ul class="session-match-list" id="session-matches"><li class="home-empty">—</li></ul>
+            <ul class="session-match-list" id="session-matches"><li class="home-empty">-</li></ul>
           </div>
         </div>
       </div>
@@ -1105,7 +1105,7 @@
       <div class="view-section-body" id="history-body">
         <div class="history-grid">
           <div class="history-card history-card-sessions">
-            <div class="history-card-head">SESSIONS <span class="history-count" id="history-session-count">—</span></div>
+            <div class="history-card-head">SESSIONS <span class="history-count" id="history-session-count">-</span></div>
             <ul class="history-session-list" id="history-session-list"><li class="home-empty">loading…</li></ul>
           </div>
           <div class="history-card history-card-detail">
@@ -1114,10 +1114,10 @@
           </div>
           <div class="history-card history-card-season">
             <div class="history-card-head">SEASON STATS</div>
-            <div class="session-row"><span>Total matches</span><span id="history-season-total">—</span></div>
-            <div class="session-row"><span>Avg KDA</span><span id="history-season-kda">—</span></div>
-            <div class="session-row"><span>Most-played</span><span id="history-season-fav">—</span></div>
-            <div class="session-row"><span>Win-rate</span><span id="history-season-wr">— <span class="dim">(needs Riot key)</span></span></div>
+            <div class="session-row"><span>Total matches</span><span id="history-season-total">-</span></div>
+            <div class="session-row"><span>Avg KDA</span><span id="history-season-kda">-</span></div>
+            <div class="session-row"><span>Most-played</span><span id="history-season-fav">-</span></div>
+            <div class="session-row"><span>Win-rate</span><span id="history-season-wr">- <span class="dim">(needs Riot key)</span></span></div>
           </div>
         </div>
       </div>
@@ -1131,7 +1131,7 @@
     <section id="view-user-builds" class="view-section" hidden>
       <div class="view-section-head">
         <h2>USER BUILDS</h2>
-        <span class="view-section-sub">SR Draft Theatre — operator-curated additive builds (data/daemon_slayer/user_builds.json)</span>
+        <span class="view-section-sub">SR Draft Theatre - operator-curated additive builds (data/daemon_slayer/user_builds.json)</span>
       </div>
       <div class="view-section-body" id="user-builds-body">
         <div class="ub-toolbar">
@@ -1145,7 +1145,7 @@
           <aside class="ub-list-pane">
             <div class="ub-list-head">
               <span id="ub-list-label">No champion selected</span>
-              <span class="ub-count" id="ub-count">—</span>
+              <span class="ub-count" id="ub-count">-</span>
             </div>
             <ul class="ub-build-list" id="ub-build-list">
               <li class="home-empty">pick a champion above ↑</li>
@@ -1251,8 +1251,8 @@
           <div class="settings-card-head">DATA / METRICS</div>
           <label class="settings-row settings-row-static">
             <span>Live metric streamer</span>
-            <span id="set-live-metrics-status">—</span>
-            <span class="dim">(env var RC_LIVE_METRICS — supervisor restart required to change)</span>
+            <span id="set-live-metrics-status">-</span>
+            <span class="dim">(env var RC_LIVE_METRICS - supervisor restart required to change)</span>
           </label>
         </div>
         <div class="settings-card">
@@ -1261,7 +1261,7 @@
             <span>Rank-tier comparison</span>
             <select id="set-pgr-rank-tier"
                     data-tt="Canonical home for the Post Game Review rank-tier comparison. Shares the same setting as the dropdown on that page.">
-              <option value="">— off —</option>
+              <option value="">- off -</option>
               <option value="iron">Iron</option>
               <option value="bronze">Bronze</option>
               <option value="silver">Silver</option>
@@ -1290,7 +1290,7 @@
           <label class="settings-row">
             <span>Party default</span>
             <select id="set-lobby-party-default"
-                    data-tt="Remembered party-type preference, synced with the lobby Party toggle. Persists across sessions; not auto-applied — flip it in-lobby when you want it to take effect.">
+                    data-tt="Remembered party-type preference, synced with the lobby Party toggle. Persists across sessions; not auto-applied - flip it in-lobby when you want it to take effect.">
               <option value="open">Open</option>
               <option value="closed">Closed</option>
             </select>
@@ -1318,7 +1318,7 @@
         <main class="replay-main-pane">
           <div class="replay-meta-row">
             <div class="replay-meta" id="replay-meta">Select a match from the list ←</div>
-            <div class="replay-clock" id="replay-clock">—</div>
+            <div class="replay-clock" id="replay-clock">-</div>
           </div>
           <input type="range" id="replay-slider"
                  class="replay-slider"
@@ -1346,7 +1346,7 @@
       </div>
     </section>
 
-    <!-- s159: Active Match — curated mid-game view that replaces the
+    <!-- s159: Active Match - curated mid-game view that replaces the
          5-panel grid for in-game modes (sr / aram / arena).
          Three-pane layout:
            CALL  - folded RIGHT NOW + NEXT advice as a continuous block.
@@ -1355,7 +1355,7 @@
          Auto-promote gated on ?am=1 (or localStorage.activeMatch='1')
          while we A/B against the existing layout. Step 1 ships the
          empty scaffold; panels populate in subsequent steps. -->
-    <!-- s219: Last Match — post-game review for the most-recent
+    <!-- s219: Last Match - post-game review for the most-recent
          completed non-TFT match in data/match_history.db. Layout mirrors
          the Home page's hierarchy (hero → stats → build → team → review)
          so the visual language matches what the operator just left. The
@@ -1372,12 +1372,12 @@
       <div class="view-section-body lm-body" id="lm-body">
 
         <!-- s219 v6: hero row split into 3 sections.
-             section 1 — identity cluster (champ + name + mode + KDA
+             section 1 - identity cluster (champ + name + mode + KDA
                          text + KDA ratio + W/L pill + grade letter)
-             section 2 — operator's match stats in a 2-row 4-col grid:
+             section 2 - operator's match stats in a 2-row 4-col grid:
                          row 1: [blank], Vision, CS, Tanked-Dmg
                          row 2: KP%, Damage, CS/min, Healing+Shielding
-             section 3 — rank-tier comparison panel in matching 2-row
+             section 3 - rank-tier comparison panel in matching 2-row
                          grid; column 1 carries the dropdown selector +
                          the KDA-average value (so it lines up vertically
                          with section 2's empty + KP% cells). -->
@@ -1386,49 +1386,49 @@
             <img class="lm-hero-portrait" id="lm-portrait" alt="" />
             <div class="lm-hero-name">
               <span class="lm-hero-champ" id="lm-champion-name" role="button" tabindex="0"
-                    data-tt="Open History filtered to this champion">—</span>
-              <span class="lm-hero-mode" id="lm-mode-tag">—</span>
+                    data-tt="Open History filtered to this champion">-</span>
+              <span class="lm-hero-mode" id="lm-mode-tag">-</span>
             </div>
             <div class="lm-hero-kda">
-              <span class="lm-kda-text" id="lm-kda-text">—/—/—</span>
-              <span class="lm-kda-ratio" id="lm-kda-ratio">—</span>
+              <span class="lm-kda-text" id="lm-kda-text">-/-/-</span>
+              <span class="lm-kda-ratio" id="lm-kda-ratio">-</span>
             </div>
-            <div class="lm-hero-result" id="lm-result-badge" data-result="" hidden>—</div>
-            <div class="lm-hero-grade" id="lm-grade-badge" data-grade="">—</div>
+            <div class="lm-hero-result" id="lm-result-badge" data-result="" hidden>-</div>
+            <div class="lm-hero-grade" id="lm-grade-badge" data-grade="">-</div>
           </div>
 
           <div class="lm-hero-stats-grid">
             <!-- Row 1: leading blank, Vision, CS, Tanked Damage -->
             <div class="lm-hero-stat lm-hero-stat-blank" aria-hidden="true"></div>
-            <div class="lm-hero-stat" data-tt="Vision score — wards placed + wards killed + control wards seen by the team.">
+            <div class="lm-hero-stat" data-tt="Vision score - wards placed + wards killed + control wards seen by the team.">
               <span class="lm-hero-stat-label">Vision</span>
-              <span class="lm-hero-stat-value" id="lm-vision">—</span>
+              <span class="lm-hero-stat-value" id="lm-vision">-</span>
             </div>
-            <div class="lm-hero-stat" data-tt="Creep score — minions + monsters killed.">
+            <div class="lm-hero-stat" data-tt="Creep score - minions + monsters killed.">
               <span class="lm-hero-stat-label">CS</span>
-              <span class="lm-hero-stat-value" id="lm-cs">—</span>
+              <span class="lm-hero-stat-value" id="lm-cs">-</span>
             </div>
             <div class="lm-hero-stat" data-tt="Total damage taken from champions, minions, monsters, towers.">
               <span class="lm-hero-stat-label">Tanked</span>
-              <span class="lm-hero-stat-value" id="lm-tank-dmg">—</span>
+              <span class="lm-hero-stat-value" id="lm-tank-dmg">-</span>
             </div>
 
             <!-- Row 2: KP%, Damage, CS/min, Healing+Shielding -->
-            <div class="lm-hero-stat" data-tt="Kill participation — share of team kills you took part in.">
+            <div class="lm-hero-stat" data-tt="Kill participation - share of team kills you took part in.">
               <span class="lm-hero-stat-label">KP%</span>
-              <span class="lm-hero-stat-value" id="lm-kp">—</span>
+              <span class="lm-hero-stat-value" id="lm-kp">-</span>
             </div>
             <div class="lm-hero-stat" data-tt="Damage dealt to enemy champions.">
               <span class="lm-hero-stat-label">Damage</span>
-              <span class="lm-hero-stat-value" id="lm-damage">—</span>
+              <span class="lm-hero-stat-value" id="lm-damage">-</span>
             </div>
             <div class="lm-hero-stat" data-tt="Creep score per minute.">
               <span class="lm-hero-stat-label">CS/min</span>
-              <span class="lm-hero-stat-value" id="lm-cs-per-min">—</span>
+              <span class="lm-hero-stat-value" id="lm-cs-per-min">-</span>
             </div>
             <div class="lm-hero-stat" data-tt="Healing + shielding contributed to teammates (excludes self-heal).">
               <span class="lm-hero-stat-label">Heal+Shield</span>
-              <span class="lm-hero-stat-value" id="lm-healing">—</span>
+              <span class="lm-hero-stat-value" id="lm-healing">-</span>
             </div>
           </div>
 
@@ -1440,7 +1440,7 @@
             <div class="lm-rank-compare-head" style="grid-area: selector;">
               <select class="lm-rank-select" id="lm-rank-select"
                       data-tt="Pick a rank tier to compare this match against the typical expected values at that tier (Mode + Tier-averaged stats).">
-                <option value="">— off —</option>
+                <option value="">- off -</option>
                 <option value="iron">Iron</option>
                 <option value="bronze">Bronze</option>
                 <option value="silver">Silver</option>
@@ -1455,39 +1455,39 @@
             </div>
             <div class="lm-rank-cell" style="grid-area: vision-avg;" data-tt="Tier-average Vision score.">
               <span class="lm-rank-cell-label">Vision</span>
-              <span class="lm-rank-cell-value" id="lm-rank-vision">—</span>
+              <span class="lm-rank-cell-value" id="lm-rank-vision">-</span>
             </div>
             <div class="lm-rank-cell" style="grid-area: cs-avg;" data-tt="Tier-average CS.">
               <span class="lm-rank-cell-label">CS</span>
-              <span class="lm-rank-cell-value" id="lm-rank-cs">—</span>
+              <span class="lm-rank-cell-value" id="lm-rank-cs">-</span>
             </div>
             <div class="lm-rank-cell" style="grid-area: tank-avg;" data-tt="Tier-average damage taken.">
               <span class="lm-rank-cell-label">Tanked</span>
-              <span class="lm-rank-cell-value" id="lm-rank-tank">—</span>
+              <span class="lm-rank-cell-value" id="lm-rank-tank">-</span>
             </div>
             <!-- s220: KDA + KP% paired side-by-side in col 1 row 2,
                  directly beneath the (widened) rank selector. -->
             <div class="lm-rank-kdakp" style="grid-area: kda-kp;">
               <div class="lm-rank-cell lm-rank-cell-kda" data-tt="Tier-average KDA ratio.">
                 <span class="lm-rank-cell-label">KDA</span>
-                <span class="lm-rank-cell-value" id="lm-rank-kda">—</span>
+                <span class="lm-rank-cell-value" id="lm-rank-kda">-</span>
               </div>
               <div class="lm-rank-cell" data-tt="Tier-average kill participation.">
                 <span class="lm-rank-cell-label">KP%</span>
-                <span class="lm-rank-cell-value" id="lm-rank-kp">—</span>
+                <span class="lm-rank-cell-value" id="lm-rank-kp">-</span>
               </div>
             </div>
             <div class="lm-rank-cell" style="grid-area: damage-avg;" data-tt="Tier-average damage to champions.">
               <span class="lm-rank-cell-label">Damage</span>
-              <span class="lm-rank-cell-value" id="lm-rank-damage">—</span>
+              <span class="lm-rank-cell-value" id="lm-rank-damage">-</span>
             </div>
             <div class="lm-rank-cell" style="grid-area: cspm-avg;" data-tt="Tier-average CS per minute.">
               <span class="lm-rank-cell-label">CS/min</span>
-              <span class="lm-rank-cell-value" id="lm-rank-cspm">—</span>
+              <span class="lm-rank-cell-value" id="lm-rank-cspm">-</span>
             </div>
             <div class="lm-rank-cell" style="grid-area: heal-avg;" data-tt="Tier-average heal + shield contribution.">
               <span class="lm-rank-cell-label">Heal+Shield</span>
-              <span class="lm-rank-cell-value" id="lm-rank-heal">—</span>
+              <span class="lm-rank-cell-value" id="lm-rank-heal">-</span>
             </div>
           </div>
         </div>
@@ -1508,40 +1508,40 @@
             </div>
           </nav>
 
-          <!-- COMP tab — ally + enemy rosters side-by-side -->
+          <!-- COMP tab - ally + enemy rosters side-by-side -->
           <div class="lm-tab-panel is-active" data-tab-panel="comp">
             <div class="lm-tc-table lm-row-half" id="lm-tc-table" hidden>
               <div class="lm-tc-group lm-tc-ally" data-side="ally">
                 <div class="lm-tc-group-head">
                   <span class="lm-tc-group-label">ALLY</span>
-                  <span class="lm-tc-group-result" id="lm-tc-ally-result">—</span>
+                  <span class="lm-tc-group-result" id="lm-tc-ally-result">-</span>
                 </div>
                 <ul class="lm-tc-list" id="lm-tc-ally-list"></ul>
               </div>
               <div class="lm-tc-group lm-tc-enemy" data-side="enemy">
                 <div class="lm-tc-group-head">
                   <span class="lm-tc-group-label">ENEMY</span>
-                  <span class="lm-tc-group-result" id="lm-tc-enemy-result">—</span>
+                  <span class="lm-tc-group-result" id="lm-tc-enemy-result">-</span>
                 </div>
                 <ul class="lm-tc-list" id="lm-tc-enemy-list"></ul>
               </div>
             </div>
             <div class="lm-pending" id="lm-tc-pending" data-dummy-data="last-match-team">
-              Team roster pending — auto-ingests on EndOfGame; or Refresh-from-Riot button (v2) on the page header.
+              Team roster pending - auto-ingests on EndOfGame; or Refresh-from-Riot button (v2) on the page header.
             </div>
           </div>
 
-          <!-- CHART tab — team comparison bars (ally vs enemy aggregates) -->
+          <!-- CHART tab - team comparison bars (ally vs enemy aggregates) -->
           <div class="lm-tab-panel" data-tab-panel="chart" hidden>
             <div class="lm-chart-wrap" id="lm-chart-wrap" hidden>
               <ul class="lm-chart-list" id="lm-chart-list"></ul>
             </div>
             <div class="lm-pending" id="lm-chart-pending">
-              Chart pending — populates from LCU enrichment alongside the Comp roster.
+              Chart pending - populates from LCU enrichment alongside the Comp roster.
             </div>
           </div>
 
-          <!-- TIMELINE tab — per-minute gold/XP/CS differential + objective
+          <!-- TIMELINE tab - per-minute gold/XP/CS differential + objective
                ribbon (s220 Item E phase 1). Phase 2 reuses the same
                ingested timeline for an interactive replay minimap. -->
           <div class="lm-tab-panel" data-tab-panel="timeline" hidden>
@@ -1551,11 +1551,11 @@
               <ul class="lm-tl-ribbon" id="lm-tl-ribbon"></ul>
             </div>
             <div class="lm-pending" id="lm-tl-pending">
-              Timeline unavailable — gold / XP / CS deltas + objective events load from the Riot Match-V5 timeline once a valid Riot API key is configured.
+              Timeline unavailable - gold / XP / CS deltas + objective events load from the Riot Match-V5 timeline once a valid Riot API key is configured.
             </div>
           </div>
 
-          <!-- INSIGHTS tab — the 3-column Quick Review folded in. (The
+          <!-- INSIGHTS tab - the 3-column Quick Review folded in. (The
                "Review" tab is a nav button → deep-review page, no panel.) -->
           <div class="lm-tab-panel" data-tab-panel="insights" hidden>
             <div class="lm-tab-panel-hint">hover any row for the data behind it</div>
@@ -1616,14 +1616,14 @@
 
   <div id="activity-strip" class="activity-strip">
     <span class="activity-label">QUEUE</span>
-    <span id="activity-line" class="activity-line">—</span>
+    <span id="activity-line" class="activity-line">-</span>
     <span id="activity-count" class="activity-count">0/0</span>
   </div>
 
   <div id="input-bar" class="input-bar">
     <form id="input-form" autocomplete="off">
       <span class="input-prompt">&gt;</span>
-      <input id="input-text" type="text" placeholder="Ask Agent 7 — audit, note, status, or chitchat (Enter to send)" />
+      <input id="input-text" type="text" placeholder="Ask Agent 7 - audit, note, status, or chitchat (Enter to send)" />
       <button id="input-clear" type="button" class="input-clear hidden" title="clear" aria-label="clear input">×</button>
       <button id="input-send" type="submit">SEND</button>
       <span class="warm-indicator" id="warm-indicator" title="warm Agent 7 session">·</span>
@@ -1638,20 +1638,20 @@
   </div>
 
   <footer>
-    <span>Legion-PC · <code id="ws-url">—</code></span>
+    <span>Legion-PC · <code id="ws-url">-</code></span>
     <span class="spacer"></span>
     <!-- s162: dev-banner footer toggle removed. Sim mode now renders as
          a top-right corner pill that never pushes layout, so there's
          nothing to toggle off. ?banner=0 in URL still suppresses the
          pill for pixel-perfect screenshots. -->
 
-    <!-- Voice TTS toggle — when on, every change to the Right Now action
+    <!-- Voice TTS toggle - when on, every change to the Right Now action
          text gets spoken via the browser's Web Speech API on whatever
          device is viewing the dashboard. State lives in localStorage
          [rc-voice-on]. Voice selection lives in [rc-voice-name]. -->
     <button id="voice-toggle" class="footer-btn voice-toggle" type="button" title="Toggle voice TTS for Right Now headline">🔇 VOICE</button>
     <select id="voice-picker" class="voice-picker" title="Pick TTS voice" aria-label="Voice"></select>
-    <!-- Mode pill — moved here from row 2 2026-04-29. Tells you whether
+    <!-- Mode pill - moved here from row 2 2026-04-29. Tells you whether
          RC is in client/lobby vs an active game mode. Scaled down via
          `footer .mode-pill` rule so it fits the footer height. The
          JS-inserted prefs-chip (.prefs-chip = "ZEN:OFF") is dropped
@@ -1667,14 +1667,14 @@
          #advisory-count / #digest-label keeps writing to defined
          elements without errors; no visual footprint. -->
     <span id="advisory-badge" class="advisory-badge" hidden role="button" aria-label="Open latest advisory"><b id="advisory-count">0</b></span>
-    <span id="digest-icon" class="digest-icon" hidden role="button" aria-label="Open cross-session digest"><b id="digest-label">—</b></span>
-    <span id="input-latency-footer" class="latency-stat">latency —</span>
+    <span id="digest-icon" class="digest-icon" hidden role="button" aria-label="Open cross-session digest"><b id="digest-label">-</b></span>
+    <span id="input-latency-footer" class="latency-stat">latency -</span>
     <span id="analyze-footer" class="analyze-stat">analyze idle</span>
     <button id="analyze-now" class="footer-btn" type="button" title="Run Agent 4 analyzer across all mode DBs now">ANALYZE NOW</button>
     <span id="frame-count">0 frames</span>
   </footer>
 
-  <!-- Cross-session digest popout — opened by clicking #digest-icon.
+  <!-- Cross-session digest popout - opened by clicking #digest-icon.
        Carries cold-streak / slump / trend data that used to live inside
        an in-panel surface before the header-icon redesign. -->
   <div id="digest-popout" class="digest-popout hidden" role="dialog" aria-labelledby="digest-popout-title">
@@ -1684,14 +1684,14 @@
         <button id="digest-popout-close" type="button" aria-label="close">×</button>
       </div>
       <div class="digest-popout-content">
-        <div class="kv"><span>State</span><span id="dig-state">—</span></div>
-        <div class="kv"><span>Streak</span><span id="dig-streak">—</span></div>
-        <div class="kv"><span>Recent</span><span id="dig-recent">—</span></div>
-        <div class="kv"><span>KDA trend</span><span id="dig-kda-trend">—</span></div>
-        <div class="kv"><span>Time of day</span><span id="dig-tod">—</span></div>
-        <div class="kv"><span>Fatigue</span><span id="dig-fatigue">—</span></div>
-        <div class="digest-popout-advice" id="dig-advice">—</div>
-        <div class="digest-insights-head">TOP INSIGHTS <span id="dig-insights-count" class="dim">—</span></div>
+        <div class="kv"><span>State</span><span id="dig-state">-</span></div>
+        <div class="kv"><span>Streak</span><span id="dig-streak">-</span></div>
+        <div class="kv"><span>Recent</span><span id="dig-recent">-</span></div>
+        <div class="kv"><span>KDA trend</span><span id="dig-kda-trend">-</span></div>
+        <div class="kv"><span>Time of day</span><span id="dig-tod">-</span></div>
+        <div class="kv"><span>Fatigue</span><span id="dig-fatigue">-</span></div>
+        <div class="digest-popout-advice" id="dig-advice">-</div>
+        <div class="digest-insights-head">TOP INSIGHTS <span id="dig-insights-count" class="dim">-</span></div>
         <ul id="dig-insights" class="digest-insights"><li class="dim">loading…</li></ul>
       </div>
     </div>
@@ -1704,16 +1704,16 @@
         <button id="task-modal-close" type="button">×</button>
       </div>
       <div class="task-modal-kv">
-        <div class="kv"><span>ID</span><span id="tm-id">—</span></div>
-        <div class="kv"><span>Op</span><span id="tm-op">—</span></div>
-        <div class="kv"><span>Owner</span><span id="tm-owner">—</span></div>
-        <div class="kv"><span>Status</span><span id="tm-status">—</span></div>
-        <div class="kv"><span>Priority</span><span id="tm-priority">—</span></div>
-        <div class="kv"><span>Filed at</span><span id="tm-ts">—</span></div>
+        <div class="kv"><span>ID</span><span id="tm-id">-</span></div>
+        <div class="kv"><span>Op</span><span id="tm-op">-</span></div>
+        <div class="kv"><span>Owner</span><span id="tm-owner">-</span></div>
+        <div class="kv"><span>Status</span><span id="tm-status">-</span></div>
+        <div class="kv"><span>Priority</span><span id="tm-priority">-</span></div>
+        <div class="kv"><span>Filed at</span><span id="tm-ts">-</span></div>
       </div>
       <div class="task-modal-section">
         <div class="task-section-head">Event history</div>
-        <div id="tm-events">—</div>
+        <div id="tm-events">-</div>
       </div>
     </div>
   </div>
