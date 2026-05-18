@@ -162,8 +162,8 @@ if ($mcpProcs) {
 # 5. Bridge infra — the ONLY logon persistence kept (operator decision):
 #    coordination must survive a reboot without the shortcut. Ensure the
 #    RC-BridgeDaemon scheduled task exists + running. RC-BridgeWatcher-GamePC
-#    and RC-WatcherHealthPublisher-GamePC are pre-existing ONLOGON tasks and
-#    are intentionally NOT touched here.
+#    and RC-WatcherHealthPublisher-GamePC are pre-existing ONLOGON tasks —
+#    hardened (not fabricated) in step 5b below (Audit7 H-01).
 $daemonScript = Join-Path $dest 'gamepc_bridge_daemon.py'
 $pyW314 = 'C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe'
 if (-not (Test-Path $pyW314)) { $pyW314 = $pyW }
@@ -179,6 +179,40 @@ if (-not (Get-ScheduledTask -TaskName 'RC-BridgeDaemon' -ErrorAction SilentlyCon
 } else { Write-Host '  RC-BridgeDaemon task present' -ForegroundColor Green }
 $dt = Get-ScheduledTask -TaskName 'RC-BridgeDaemon' -ErrorAction SilentlyContinue
 if ($dt -and $dt.State -ne 'Running') { Start-ScheduledTask -TaskName 'RC-BridgeDaemon'; Write-Host '  RC-BridgeDaemon started' -ForegroundColor Green }
+
+# 5b. Harden the pre-existing bridge watcher + health-publisher ONLOGON
+#     tasks (Audit7 H-01, 2026-05-18). They predate the RC-BridgeDaemon
+#     pattern above and shipped with ExecutionTimeLimit=PT72H (Task
+#     Scheduler force-kills these infinite daemons after 72h) and a
+#     logon-only trigger (once RestartCount exhausts they stay dead until
+#     the next logon - the 2026-05-17 ~3h silent-publisher incident that
+#     Audit7 H-01's alarm now also detects). Re-apply the same robust
+#     settings as RC-BridgeDaemon plus a 10-min self-heal repetition
+#     (IgnoreNew makes the re-fire a no-op while alive), and start any
+#     that aren't running. Idempotent. We harden existing tasks but do
+#     NOT fabricate them - the canonical --node/--*-file/--*-url args
+#     live in the installer; warn if absent so the drift stays visible.
+foreach ($tn in 'RC-BridgeWatcher-GamePC','RC-WatcherHealthPublisher-GamePC') {
+    $bt = Get-ScheduledTask -TaskName $tn -ErrorAction SilentlyContinue
+    if (-not $bt) {
+        Write-Host "  $tn ABSENT - run the installer (not fabricated here)" -ForegroundColor Yellow
+        continue
+    }
+    try {
+        $tLogon  = New-ScheduledTaskTrigger -AtLogOn -User 'Administrator'
+        $tRepeat = New-ScheduledTaskTrigger -Once -At (Get-Date).Date -RepetitionInterval (New-TimeSpan -Minutes 10) -RepetitionDuration (New-TimeSpan -Days 3650)
+        $bset    = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero) -StartWhenAvailable
+        Set-ScheduledTask -TaskName $tn -Trigger @($tLogon, $tRepeat) -Settings $bset | Out-Null
+        Write-Host "  $tn hardened (ETL=0, +10m self-heal)" -ForegroundColor Green
+    } catch {
+        Write-Host "  $tn harden failed: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+    $bt = Get-ScheduledTask -TaskName $tn -ErrorAction SilentlyContinue
+    if ($bt -and $bt.State -ne 'Running') {
+        Start-ScheduledTask -TaskName $tn
+        Write-Host "  $tn started" -ForegroundColor Green
+    }
+}
 
 Write-Host ''
 Write-Host '=== agents up ===' -ForegroundColor Cyan
