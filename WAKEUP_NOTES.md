@@ -4,34 +4,32 @@
 
 ---
 
-# ✅ RESOLVED 2026-05-17 — champ-select wrong for ARAM / ARAM-Mayhem / Arena
+# 2026-05-17 — `open item research.txt` liftability-triage integrated (docs only, no code)
 
-**Fixed `3eb2e2d`, proven live.** Root cause was a flat **queue-ID gap**, NOT
-the phase/retention/router hypothesis in the leads below: ARAM Mayhem reports
-`queueId=2400` (KIWI) but `core/queue_modes` only mapped `920` (Poro King —
-the codebase had conflated 920↔2400) and the agent's `is_aram` likewise
-omitted 2400 → `is_aram=False` → `_csvDetectMode`→"sr", bench/quick-swap
-never rendered; `mode_key` stuck "client". The "phase:InProgress already"
-signature was the *old broken state*, not Mayhem reporting InProgress —
-disproven live (`cs_debug.raw_phase=ChampSelect`), so the phase-driven
-view-router was correct and left unchanged. The plain-ARAM/Arena half was a
-genuine transient champ_select loss → fixed by new `dashboard/_cs_retention.py`.
-**Proven in a real Mayhem champ-select:** `queue_id=2400 is_aram=True
-mode_key=aram`, populated `bench`, `raw_phase=ChampSelect`. Deployed (RC pid
-12668 + Game-PC agent pid 8464 via bridge). Full write-up: ROADMAP ✅ keystone
-entry + the 2026-05-17 (late) hand-off below. The original investigation leads
-are kept verbatim below as the (partly-off) historical record — do not act on
-them, the bug is closed.
+**Operator instruction:** implement the referenced multi-agent research methodology, run it on `Desktop/open item research.txt` (~90 links), triage NOW/FUTURE/CLOSED, "go over what to keep" → 3 decisions locked → integrate.
 
-Operator report, verbatim: *"the champ select screen is all wrong for aram + aram mayhem + arena."*
-No detail captured yet — "all wrong" is unspecified (layout vs data vs render vs which elements). When picked up, gather specifics live: needs a champ-select pop in **each** of ARAM, ARAM-Mayhem, and Arena to see what's broken (a Game-PC `capture_monitor` of the dashboard during champ-select is fine — capture is only Vanguard-unsafe *in-game*, not in champ-select/client).
-Leads for whoever investigates: champ-select had heavy recent churn (s164–s214 redesign, s208 legacy `#cs-overlay` retirement) and this 2026-05-17 session disabled the Game-PC screen agents + reworked the shortcut-only boot model — view-router / mode-detection regressions are plausible suspects. Not yet investigated; fix not started.
+## Methodology (reusable — memory `reference_liftability_triage.md`)
+s234 link-list triage + the two referenced agent memories (investigate-command: conditions+table+"no fixes yet"; parallel-batch-agents: subagents own slices, supervisor synthesizes). 6 parallel general-purpose slice agents (WebFetch + `gh`), fixed per-link schema: what-it-is / single-most-liftable-thing / RC-fit / license. Supervisor synthesized; agents proposed no fixes.
 
-**2026-05-17 live-session leads (operator detail + code probe — partial diagnosis):**
-- **Operator-reported specific symptom:** the **quick-swap (ARAM bench champion swap) is not active** on RC's champ-select screen for ARAM **and** ARAM-Mayhem.
-- **Code path EXISTS end-to-end (capture-free probe this session) — the bug is NOT missing UI code:** `web/js/panels/champ_select.js` has `_csvBenchHtml(cs)` (renders the 5-cell bench from `cs.bench`) + `_csvWireBench(body)` (wires `.csv-bench-cell` click → `bench_swap` LCU cmd), both gated `if (mode === "aram")`; `_csvDetectMode(cs)` maps queue **450 AND 920 (Mayhem)** + `cs.is_aram` → `"aram"`; Game-PC `tools/gamepc_lcu_agent.py` populates `cs.bench` from `sess.benchChampions` and has the `bench_swap` POST handler (`/lol-champ-select/v1/session/bench/swap/{cid}`).
-- **Strong hypothesis (root cause lead):** across **3 ARAM-Mayhem games this session**, every `/api/state` check during/just-after "champ-select" showed `lcu.phase: InProgress` **already** + `champ_select: {}` (`cs.keys: []`). RC never observed a populated champ-select state for ARAM-Mayhem. With empty `cs`, `_csvDetectMode` falls through to `"sr"` (no queue_id/is_aram) → the bench/quick-swap branch never fires → matches BOTH "champ-select all wrong" AND "quick swap not active". So the defect is **upstream of the UI**: the Game-PC LCU agent isn't forwarding (or RC isn't retaining) the ARAM-Mayhem champ-select session through the very fast ChampSelect→InProgress transition.
-- **Next step for the fix (not done):** instrument/inspect `gamepc_lcu_agent.py` champ-select handling for **KIWI / queue 920** specifically — verify the agent even enters its champ-select poll/forward path for Mayhem (it may gate on queue types that exclude Mayhem), and/or add last-champ-select-snapshot retention in the RC state-builder so the dashboard view survives the sub-second transition. Needs a live ARAM-Mayhem champ-select with the agent instrumented (champ-select capture/curl is Vanguard-safe). The "fast transition" is itself a bug signature, not just bad luck — RC has missed the champ-select window on 3/3 Mayhem games.
+## 3 decisions LOCKED (don't re-litigate)
+1. **Fold Morello** (`noaboa07/Morello`, **MIT**) `badges.ts` + `match-insights.ts` + 5-tab card → reference impl for the s220 PGR **0–100 score** + Deep-Review tabs.
+2. **Shared smoothed-rate primitive** — ONE module (Laplace/Beta over own match DB; algo ref `Maelian25/lol-draft-prediction`, **no license → reimplement clean**) for #88 augment + pick/ban synergy + PGR score. Same family already locked for #88.
+3. **101.qq.com** CN duo-synergy — worth a one-off Game-PC Network-tab capture (static `game.gtimg.cn` JSON; exact path needs the live capture).
+
+## Integrated (docs only — `/done` will commit)
+- `CLAUDE.md` new active-priority **#90** (full triage + 3 decisions + CLOSED corpus).
+- `ROADMAP.md`: augment-recommender item cross-linked; new 🟡 **shared smoothed-rate primitive** + 🔵 **101.qq.com capture** one-off.
+- `BACKLOG.md` "Research / inspiration": DDragon-mirror item annotated with vendor-safe tooling found (download-data-dragon Unlicense + get-league-patch MIT + Nyx0ra/lol-asset-downloader MIT + OriannaBot MIT); full FUTURE + CLOSED triage block appended.
+- Memory: `project_lcu_pengu_pregame_postgame.md` findings appended (LCU corpus CLOSED, KebsCS still canonical, league_record=video-not-rofl); new `reference_liftability_triage.md` + MEMORY.md index.
+
+## Don't-redo / NEXT
+- **Don't re-research:** the 27-repo LCU corpus (zero lobby payloads anywhere — #89 needs live capture/KebsCS); ML/CV/voice/`riot-offline-mode` repos; `.rofl` (reinforced CLOSED).
+- **NEXT:** shared-primitive build = its own `/clear`'d scoped session (Task-1 = the #88 data-audit gate already in ROADMAP). 101.qq.com capture = one-off Game-PC step. No RC code shipped — nothing to verify live.
+
+## Game-PC (also this session — investigated live via :8892 MCP; memory captured)
+- **ARAM-Mayhem match misbehaved:** operator moved the Duet display below-main, then League booted **exclusive-Fullscreen** → window vanished (alt-tab-out) → couldn't tab back. Recovered: taskbar-close → in-game leave-prompt → switch off fullscreen. **Not RC** (screen-agent disabled s221, no capture ran during web research). **Not the Vanguard 0x50 BSOD** (window lockup at match *start*, no crash). Captured: new `feedback_gamepc_league_fullscreen_lockup.md` + `reference_gamepc_monitor_index_volatility.md` updated (Duet now 1920×1280 @ y=1080 below main; resolution discriminator still valid 1080=game/1280=dash).
+- **Game-PC daemons all UP** — verified live: gamepc_lcu_agent / liveclient_relay / hotkey / mcp_server / bridge_daemon all running, RC-BridgeDaemon task Running. Operator closed only Claude Code → **do NOT restart the daemons**; only a Game-PC Claude Code session needs reopening for `/process-bridge-tasks` autoflow.
+- League persisted `WindowMode=2` (Windowed @1920×1080 main monitor) — safe (only exclusive Fullscreen=0 triggers the lockup). Re-verify the Window-Mode dropdown **in-client** before any live Game-PC test (PersistedSettings.json can overwrite game.cfg; League resets to Fullscreen on some patches/driver updates). This is now effectively a precondition for the #89 lobby-verify + Mayhem-recommender live runs.
 
 ---
 
@@ -130,58 +128,3 @@ the header so it's never archived; (3) `--dry-run` and eyeball that the
 RIGHT (oldest) blocks move before writing. Until then §6c stays skipped;
 WAKEUP grows unbounded (marginal bridge cold-load cost — tolerable, not a
 /clear blocker).
-
----
-
-# 2026-05-17 (eve) — build-order UI (B+C) + live augment-OCR PROVEN + KNOWN-BUG keystone lead
-
-Operator-driven session off the OVERNIGHT RUN-1 hand-off.
-
-**Shipped:** `2d7da9e` build-order UI — (B) collapsible vertical "Build Order"
-card in the champ-select My Pick panel + (C) in-game `#ds-pill` next-2-in-order
-glance, both consuming the already-live `/api/build-order`. New
-`web/js/panels/build_order.{js,css}` + hooks in champ_select.js/item_build.js;
-ADR-008 auto-served (no RC restart — go-live was already serving from the
-morning restart). Headless-verified: node --check, 38 snapshot+view-router
-green. Density pass applied (collapsed→1-line for the tight My Pick panel).
-
-**Augment — RESOLVED + PROVEN:** rigorous AT-picker-open probe (Game-PC
-`C:\RC-Agent\rc_augment_probe.py`) → **no capture-free LCU/:2999 augment API**
-exists for Mayhem (all `/lol-cherry/*`+`/lol-game-augments/*` 404; :2999
-"augment" = i18n red-herring). On-demand `mcp__gamepc__capture_monitor`
-survived **2/2 full Mayhem matches** incl. match-end + augment pickers → no
-BSOD → augment-OCR→coach **proven end-to-end live** (read Prismatic+Gold
-pickers, operator took the rec'd Magic Missile). Upgraded to "working
-augment-OCR substrate, operator-gated". DON'T re-pitch the augment API
-(dead); continuous DXGI screen-agent stays DISABLED; capture stays
-operator-gated. Latency protocol: operator says "now" AND holds pick until
-"got it".
-
-**KNOWN-BUG keystone (root-cause lead, see the ⚠ section up top):** 3/3
-ARAM-Mayhem games showed `champ_select:{}` / `phase:InProgress` already —
-RC never holds champ-select state for Mayhem. UI code IS present; defect is
-upstream (gamepc_lcu_agent.py forwarding / state retention through the
-sub-second ChampSelect→InProgress flip). **Blocks BOTH the KNOWN BUG fix
-AND the build-order B-card live verify** — this is the next keystone.
-
-**Other notes (in the docs commit):** ROADMAP — surrender-tag / pengu-list
-(`Desktop/pengu list.txt`) / DS-augment-flag / augment-resolution. Lolmath
-gap review at `Desktop/LOLMATH_GAP_REVIEW_2026-05-17.md` (no scrape drift,
-no gaps where lolmath leads, reverse-gap shareables listed — don't re-run).
-
-**NEXT:** (1) champ-select-state-for-Mayhem keystone (instrument
-`gamepc_lcu_agent.py` for KIWI/queue-920 + state retention) — unblocks the
-KNOWN BUG + B-card; (2) then C-pill curl-verify + B-card live-verify (a
-non-Mayhem champ-select renders fine); (3) productize augment capture→OCR
-→coach. Nothing mid-game; safe.
-
-**⚠ TOOLING BUG (found this /done):** `scripts/wakeup_prune.py` crashes
-(`SESSION_RE.search(b).group(0)` → None, line 105) — it treats every
-`---`-delimited block as a dated session and chokes on the **pinned
-`# ⚠ KNOWN BUG` non-session block** at the top of this file (added
-2026-05-17; the pruner predates it). Prune was SKIPPED this /done — WAKEUP
-is intact but unpruned (longer than the 3-session target → bridge cold-load
-cost). **Fix before next /done:** make the pruner skip the file-header +
-any non-`SESSION_RE` pinned block (or relocate the KNOWN BUG section out of
-the `---` ledger). Until fixed, every /done's §6c will fail the same way —
-don't re-investigate from scratch.
