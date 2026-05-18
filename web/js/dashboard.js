@@ -1229,8 +1229,8 @@
   // in one glance.
   //
   //   <= 30 %       wave-our   (icy blue)      → FREEZE
-  //   30 – 65 %     wave-mid   (potion green)  → TRADE
-  //   65 – 80 %     wave-warn  (gold)          → CRASH
+  //   30 - 65 %     wave-mid   (potion green)  → TRADE
+  //   65 - 80 %     wave-warn  (gold)          → CRASH
   //   >= 80 %       wave-bad   (vibrant red)   → DISENGAGE
   //   null / -      wave-dim   (faint)         (no suffix)
   function _classifyWavePct(pct) {
@@ -1792,7 +1792,7 @@
   }
   // Three phases mapped to body[data-phase] so CSS can tint subtly:
   //   early  < 15:00   (calm blue)
-  //   mid    15–25:00  (engaged gold)
+  //   mid    15-25:00  (engaged gold)
   //   late   25:00+    (urgent coral)
   let _lastPhase = null;
   function _applyGamePhase(gtS) {
@@ -7789,7 +7789,7 @@
         <div><kbd>A</kbd> run Analyze Now</div>
         <div><kbd>Shift</kbd>+<kbd>R</kbd> reset saved prefs</div>
         <div><kbd>Z</kbd> toggle Zen (hide side panels)</div>
-        <div><kbd>1</kbd>–<kbd>9</kbd> switch sim fixture (dev mode only)</div>
+        <div><kbd>1</kbd>-<kbd>9</kbd> switch sim fixture (dev mode only)</div>
         <div><kbd>←</kbd> <kbd>→</kbd> cycle sim fixture (dev mode)</div>
         <div><kbd>?</kbd> or <kbd>H</kbd> show this</div>
       `;

@@ -193,7 +193,7 @@ def _reco_mode_for(game_mode) -> str:
 
 
 def _parse_stage(round_val) -> int | None:
-    """Mayhem augment stage 1–5 from the coach's ``~N`` round string.
+    """Mayhem augment stage 1-5 from the coach's ``~N`` round string.
     None outside that range - stage priors only sharpen Mayhem; Arena
     rounds are not Mayhem stages."""
     import re

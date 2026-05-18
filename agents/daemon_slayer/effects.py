@@ -83,7 +83,7 @@ class CallContext:
     via ``dataclasses.replace`` in ``_rotation_attack_dps``.
 
     ``crit_chance`` (added 2026-05-04, Phase 4 batch 21) is the build's
-    resolved crit chance as a fraction (0.0–1.0), engine-derived from
+    resolved crit chance as a fraction (0.0-1.0), engine-derived from
     ``stats.get("crit")`` and clamped at 1.0. Required for crit-scaling
     procs (Essence Reaver Spellblade scales linearly: +0.5 bonus
     physical per 1% crit, capped at +50 at 100%). Default 0.0 means
@@ -309,7 +309,7 @@ class ItemEffect:
     #   pattern as a Sundered Sky lambda-as-constant).
     # - ``crit_chance_bonus_max_pct`` + ``crit_chance_bonus_per_bonus_hp_cap``
     #   - linear ramp with caster_bonus_hp, max at cap (Atma's Reckoning
-    #   "Big Hands" 0–30% over 0–3000 bonus HP). Same shape as
+    #   "Big Hands" 0-30% over 0-3000 bonus HP). Same shape as
     #   target_bonus_hp_amp from batch 19, just on the caster side.
     # The summed contribution is added to the build's stats.crit and
     # clamped at 1.0 in compute_dps; CallContext.crit_chance and the
@@ -872,7 +872,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     #    strike chance, scaling 0.5 damage per 1% crit) bonus physical
     #    damage on-hit and restores mana equal to half that amount."
     # Crit-chance scaling: 0.5 damage per 1% crit → 50 * crit_chance
-    # (where crit_chance is 0.0–1.0). At 0% crit ER procs for 1.25 *
+    # (where crit_chance is 0.0-1.0). At 0% crit ER procs for 1.25 *
     # base_ad; at 100% crit, +50 flat on top. Cooldown 1.5s real, but
     # rotation cadence is ability-cast-frequency-bound - match the
     # ~3s assumption already pinned for Trinity Force / Lich Bane (see
@@ -2032,7 +2032,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         note="Night Harvester: Soulrend 125 (+15% AP) magic / 10s per champion (Meraki 444636 ref)",
     ),
     # Fiendhunter Bolts (2512): Opening Barrage CD=45s (Meraki confirmed).
-    # After ult: next 3 attacks in 8s gain guaranteed crit bonus (60–80% total AD);
+    # After ult: next 3 attacks in 8s gain guaranteed crit bonus (60-80% total AD);
     # using 70% of total_AD as midpoint. Base AD from auto DPS already in rotation;
     # this models the additional crit bonus damage per proc window.
     "2512": ItemEffect(
@@ -2143,7 +2143,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         giant_slayer_max_pct=0.15,
         note=(
             "Perplexity: 22% armor pen + 30% magic pen (dual-pen). "
-            "Giant Slayer 0–15% damage amp based on (target_max_hp – caster_max_hp) "
+            "Giant Slayer 0-15% damage amp based on (target_max_hp - caster_max_hp) "
             "÷ 100 × 0.6%, capped at 15% (2500 HP diff = cap). "
             "Key: MAX HP diff, not bonus HP - distinct from LDR Giant Slayer schema"
         ),
@@ -2497,7 +2497,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Gambler's Blade",
         defensive_only=True,
         note=(
-            "Gambler's Blade (447101): Money In The Bank 12% chance to store 30–240g on attack/ability - "
+            "Gambler's Blade (447101): Money In The Bank 12% chance to store 30-240g on attack/ability - "
             "gold-economy mechanic, not a DPS proc; variable payout not modelable in sustained DPS"
         ),
     ),
@@ -2533,14 +2533,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     # Innervating Locket (447104): Fill the Soul - 30 ability charges (self + allies
     # within 800 units) → grants pp|100 to 250 AP at max charge for rest of round.
     # No CD; fires once per Arena round. Models as bonus_ap_stacked=175 (midpoint of
-    # 100–250 AP across levels 1–18). In Arena, 30 stacks are reliably reached early
+    # 100-250 AP across levels 1-18). In Arena, 30 stacks are reliably reached early
     # each round given ally casts; AP applies for most of the round.
     "447104": ItemEffect(
         item_id="447104",
         name="Innervating Locket",
         bonus_ap_stacked=175.0,
         unique_passive_key="innervating_fill",
-        note="Innervating Locket: Fill the Soul 30-charge AP burst; pp|100–250 AP at max charge; 175 AP midpoint (Arena-only; ally casts count)",
+        note="Innervating Locket: Fill the Soul 30-charge AP burst; pp|100-250 AP at max charge; 175 AP midpoint (Arena-only; ally casts count)",
     ),
     "447105": ItemEffect(
         item_id="447105",
@@ -2644,7 +2644,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         crit_damage_bonus=0.25,
         note=(
             "Sword of the Divine (Arena 443060): Excoriate +25% crit damage bonus "
-            "(EV of uniform 0–50% range)"
+            "(EV of uniform 0-50% range)"
         ),
     ),
     "443069": ItemEffect(
@@ -2946,7 +2946,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         crit_chance_bonus_max_pct=0.30,
         crit_chance_bonus_per_bonus_hp_cap=3000.0,
         note=(
-            "Atma's Reckoning (663039 Arena variant): Big Hands 0–30% bonus crit chance "
+            "Atma's Reckoning (663039 Arena variant): Big Hands 0-30% bonus crit chance "
             "scaling with bonus HP (same coefficients as SR 3039, capped at 3000 bonus HP)"
         ),
     ),
@@ -3768,7 +3768,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Atma's Reckoning",
         crit_chance_bonus_max_pct=0.30,
         crit_chance_bonus_per_bonus_hp_cap=3000.0,
-        note="Atma's Reckoning (Arena 223039): same as SR 3039 - Big Hands 0–30% crit over 0–3000 caster bonus HP",
+        note="Atma's Reckoning (Arena 223039): same as SR 3039 - Big Hands 0-30% crit over 0-3000 caster bonus HP",
     ),
     "223053": ItemEffect(
         item_id="223053",
@@ -5408,7 +5408,7 @@ def total_crit_chance_bonus(
 ) -> float:
     """Sum item-effect-contributed crit chance (Phase 4 batch 26).
 
-    Two flavors compose additively, returning a single fraction (0.0–N)
+    Two flavors compose additively, returning a single fraction (0.0-N)
     intended to be added to the build's ``stats["crit"]`` and clamped at
     1.0 by the caller (compute_dps). The clamp lives at the call site so
     intermediate sums are exposed faithfully - a build with 60% Yun Tal
@@ -5539,7 +5539,7 @@ def total_giant_slayer_multiplier(
 ) -> float:
     """Giant Slayer target HP advantage damage amp (Phase 4 batch 38).
 
-    Perplexity's Giant Slayer deals 0–15% increased damage based on how
+    Perplexity's Giant Slayer deals 0-15% increased damage based on how
     much more max HP the target has vs the caster (0.6% per 100 HP diff,
     capped at 15%). Keyed off MAX HP difference - distinct from LDR's
     ``target_bonus_hp_amp`` which is keyed off target BONUS HP only.

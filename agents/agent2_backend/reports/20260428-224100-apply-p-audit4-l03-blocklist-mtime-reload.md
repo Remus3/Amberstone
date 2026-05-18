@@ -24,13 +24,13 @@ self._blocklist_mtime: float = 0.0
 
 ### Reload logic
 
-`_reload_blocklist()` (lines 110–132) issues a `stat()` before parsing, stores
+`_reload_blocklist()` (lines 110-132) issues a `stat()` before parsing, stores
 `stat.st_mtime` into `self._blocklist_mtime` on success, and also updates the
 field (to the new mtime) when parse fails - so a subsequent correct edit is
 still detected rather than being skipped because the mtime "changed" to the
 failed-parse value.
 
-`_maybe_reload_blocklist()` (lines 134–144) is the cheap on-request check:
+`_maybe_reload_blocklist()` (lines 134-144) is the cheap on-request check:
 
 ```python
 def _maybe_reload_blocklist(self) -> None:
@@ -58,7 +58,7 @@ This gives the proposal's desired "stat on each outbound request" behaviour.
 
 ### Backward-compatible manual override
 
-`reload_blocklist()` (lines 146–149) is preserved as a public method for
+`reload_blocklist()` (lines 146-149) is preserved as a public method for
 callers that want to force an immediate reload without waiting for the next
 `is_blocked()` check. The docstring notes it is now optional rather than
 required.

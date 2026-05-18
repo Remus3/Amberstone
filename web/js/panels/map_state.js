@@ -36,7 +36,7 @@ function _updateGameClock(p) {
 }
 // Three phases mapped to body[data-phase] so CSS can tint subtly:
 //   early  < 15:00   (calm blue)
-//   mid    15–25:00  (engaged gold)
+//   mid    15-25:00  (engaged gold)
 //   late   25:00+    (urgent coral)
 let _lastPhase = null;
 function _applyGamePhase(gtS) {

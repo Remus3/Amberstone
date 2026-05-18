@@ -10,7 +10,7 @@
 
 ## What was verified
 
-The file contains `_safe_basename()` (lines 36–58) which is **stronger** than
+The file contains `_safe_basename()` (lines 36-58) which is **stronger** than
 the audit's suggested one-liner:
 
 | Check | Audit suggestion | Landed implementation |

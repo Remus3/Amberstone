@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-09
 **Status:** Accepted (supersedes prior memory rule "no Riot API key - local-data first")
-**Personal-tier key issued:** 2026-05-09 (same-day approval - well inside the documented 2–6 week window; FU03 daily-renewal helper is vestigial and skipped)
+**Personal-tier key issued:** 2026-05-09 (same-day approval - well inside the documented 2-6 week window; FU03 daily-renewal helper is vestigial and skipped)
 
 ## Context
 
@@ -41,8 +41,8 @@ If a future requirement ever needs to redistribute RC or expose API-derived data
 **Trade-off:** introduces an external dependency on Riot's developer portal - key tier, key expiry, rate limits, and ToS are all things RC now has to track. Adds operator burden for the application + (until production-tier approval) periodic dev-tier renewal.
 
 **Watch for:**
-- **Key tier:** Personal tier was granted on 2026-05-09 (same-day approval, well inside the documented 2–6 week window). Headline limits remain 20/s + 100/2min, identical to Dev tier. Daily renewal scaffolding (FU03) is now vestigial - Personal keys do not expire.
-- **Rate-limit headroom is tight, not generous.** Personal tier inherits Dev tier's 20/s + 100/2min ceilings. The all-10-player champ-select fan-out is ~80–150 calls per **cold** fire; close to the 100/2min wall. Mitigations are not optional:
+- **Key tier:** Personal tier was granted on 2026-05-09 (same-day approval, well inside the documented 2-6 week window). Headline limits remain 20/s + 100/2min, identical to Dev tier. Daily renewal scaffolding (FU03) is now vestigial - Personal keys do not expire.
+- **Rate-limit headroom is tight, not generous.** Personal tier inherits Dev tier's 20/s + 100/2min ceilings. The all-10-player champ-select fan-out is ~80-150 calls per **cold** fire; close to the 100/2min wall. Mitigations are not optional:
   - Account-V1 PUUIDs cache forever (Riot IDs stable) - amortizes after first session with any given player.
   - Match-V5 detail caches forever (immutable) - repeat lobbies hit cache.
   - Spread fetch across the champ-select window (~90s on SR) - token bucket prevents burst.

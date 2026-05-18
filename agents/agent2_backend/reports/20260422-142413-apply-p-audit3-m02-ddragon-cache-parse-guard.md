@@ -12,10 +12,10 @@
 P-audit3-m02.  The code was applied (presumably by an earlier agent session)
 and includes:
 
-1. **Audit comment** (lines 79–82) explicitly citing P-audit3-m02 and the
+1. **Audit comment** (lines 79-82) explicitly citing P-audit3-m02 and the
    rationale (corrupt/partial cache used to crash coaches on first call).
 
-2. **`_read_cached` helper** (lines 83–93) centralising all four cache reads:
+2. **`_read_cached` helper** (lines 83-93) centralising all four cache reads:
    ```python
    def _read_cached(self, name: str):
        p = self._cached(name)
@@ -31,7 +31,7 @@ and includes:
    ```
 
 3. **All four bundle methods** (`champions`, `items`, `runes`,
-   `summoner_spells`) - lines 95–121 - route through `_read_cached()` instead
+   `summoner_spells`) - lines 95-121 - route through `_read_cached()` instead
    of the former bare `json.loads(p.read_text())`.  A `None` return causes
    each method to fall through to `self._pull(name)`, re-fetching from CDN
    and atomically overwriting the corrupt file.

@@ -147,7 +147,7 @@ body.cursor-hidden, body.cursor-hidden * { cursor: none !important; }
 
 /* Game-phase theming - JS sets body[data-phase] from game_time_s:
  * early  <15:00  calm blue tint
- * mid    15–25   engaged gold tint
+ * mid    15-25   engaged gold tint
  * late   25+     urgent coral tint
  * The tint is a single-pixel-thick top border + title-accent shift. */
 /* (2026-04-23) Phase-tinted title-left border removed - user wanted the

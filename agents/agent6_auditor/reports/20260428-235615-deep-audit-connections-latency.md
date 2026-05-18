@@ -1,7 +1,7 @@
 # RC Deep Audit - connections, smoke-tests, efficiency, latency, OCR setup
 
 - **Date:** 2026-04-28 18:56 America/Chicago (23:56 UTC)
-- **Branch:** main @ 7995e96 (after batches 1–12 + dot-row fix)
+- **Branch:** main @ 7995e96 (after batches 1-12 + dot-row fix)
 - **Trigger:** user-requested full diagnostic pass
 - **Method:** live probes against running RC + vision server + agents :8890 +
   Game-PC LAN; no code changes from this audit (read-only).

@@ -2,7 +2,7 @@
 schema lift (operator-signed-off option B; Part 1).
 
 Closes the long-deferred "conditional-target-state schema lift" carry-forward
-that every prior block_index batch (s191–s227) parked. Operator chose option
+that every prior block_index batch (s191-s227) parked. Operator chose option
 B (the multi-session lift): this is **Part 1** - schema + validator +
 resolver + 3 flagship seeds. Part 2 (live liveclient HP%/CC predicate
 plumbing into the ranking call) is a follow-up session.

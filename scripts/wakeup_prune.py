@@ -32,7 +32,7 @@ ARCHIVE = ROOT / "docs" / "history_notes.md"
 
 SEP = "\n---\n\n"
 # A session heading is either:
-#   legacy - `# s171 wrap`, `# s171.8 wrap`, `# s209–s213 wrap` (en-dash or
+#   legacy - `# s171 wrap`, `# s171.8 wrap`, `# s209-s213 wrap` (en-dash or
 #            hyphen ranges); or
 #   dated  - `# 2026-05-17 (late) - …`, `# 2026-05-17 wrap - …`,
 #            `# 2026-05-17 OVERNIGHT RUN-1 - …` (any suffix after the date).
@@ -41,7 +41,7 @@ SEP = "\n---\n\n"
 # header rather than archiving it.
 SESSION_RE = re.compile(
     r"^# (?:"
-    r"s\d+(?:\.\d+)*(?:[–-]s\d+(?:\.\d+)*)? wrap\b"
+    r"s\d+(?:\.\d+)*(?:[--]s\d+(?:\.\d+)*)? wrap\b"
     r"|\d{4}-\d{2}-\d{2}\b"
     r")",
     re.M,
@@ -50,8 +50,8 @@ SESSION_RE = re.compile(
 ARCHIVE_HEADER = (
     "# RC session history archive\n"
     "\n"
-    "Sessions older than the last 2–3 full sessions are progressively compacted here.\n"
-    "Current WAKEUP_NOTES.md keeps only the most recent 2–3 sessions.\n"
+    "Sessions older than the last 2-3 full sessions are progressively compacted here.\n"
+    "Current WAKEUP_NOTES.md keeps only the most recent 2-3 sessions.\n"
     "Compaction rule: 3+ sessions old → 1-2 line summary entry below.\n"
 )
 

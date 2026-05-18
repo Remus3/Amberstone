@@ -6,7 +6,7 @@ Cold-start substrate for the augment recommender (CLAUDE.md #88, plan
 
 RC's own ingested augment history is extremely sparse (Task-1 audit
 2026-05-17: 13 Mayhem matches, ~48 tracked-player augment-instances over a
-~199-augment pool → per-augment n_own ≈ 0–2). The recommender therefore
+~199-augment pool → per-augment n_own ≈ 0-2). The recommender therefore
 bootstraps from an external per-augment marginal win-rate prior and blends
 toward own-history as ingest grows (`w = n_own/(n_own+K)`).
 
@@ -118,7 +118,7 @@ class AugmentPriorTable:
         return int(n) if isinstance(n, (int, float)) else 0
 
     def stage_win_rate(self, augment_id, stage) -> Optional[float]:
-        """Per-Mayhem-round (1–5) win-rate, for optional round-aware
+        """Per-Mayhem-round (1-5) win-rate, for optional round-aware
         sharpening. None if absent."""
         row = self._row(augment_id)
         if not row:

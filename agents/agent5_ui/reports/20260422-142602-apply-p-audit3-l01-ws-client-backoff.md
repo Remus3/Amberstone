@@ -8,17 +8,17 @@
 
 ## Finding
 
-`web/js/ws_client.js` lines 30–56 already contain the full fix described in
+`web/js/ws_client.js` lines 30-56 already contain the full fix described in
 proposal P-audit3-l01.  The implementation was applied (presumably by an
 earlier agent session) and includes:
 
-1. **Audit comment** (lines 30–33) explicitly citing P-audit3-l01 and the
+1. **Audit comment** (lines 30-33) explicitly citing P-audit3-l01 and the
    rationale (reconnect storm prevention across multiple kiosks/tabs).
 
 2. **Backoff table** (line 34): `[1500, 3000, 6000, 12000, 30000]` - exact
    sequence from the proposal (1.5s → 3s → 6s → 12s → 30s ceiling).
 
-3. **`nextBackoff()` function** (lines 36–42): increments `backoffIdx` each
+3. **`nextBackoff()` function** (lines 36-42): increments `backoffIdx` each
    call, applies ±25% jitter, floors at 500ms.
 
 4. **Reset on success** (line 51): `backoffIdx = 0` inside `ws.onopen`,

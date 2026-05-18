@@ -311,7 +311,7 @@ def parse_page(name: str, slug: str, tags: list[str], html: str) -> dict:
         entry["ideal_core_priority"] = core_default(tags)
         entry["_core_synthetic"] = True
 
-    # boots – look for "X is the recommended boots choice"
+    # boots - look for "X is the recommended boots choice"
     m = re.search(r"([A-Z][\w' ]+?) is the recommended boots choice", combined)
     if m:
         entry["boots"] = m.group(1).strip()
