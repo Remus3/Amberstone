@@ -220,7 +220,7 @@ function _replayQueueLabel(q) {
   return ({
     400:"Normal Draft",420:"Ranked Solo",430:"Normal Blind",
     440:"Ranked Flex",450:"ARAM",700:"Clash",900:"ARURF",
-    920:"ARAM Mayhem",1700:"Arena",1900:"URF",
+    920:"Poro King",1700:"Arena",1900:"URF",2400:"ARAM Mayhem",
   })[q] || ("queue " + q);
 }
 function _replayDurStr(s) {

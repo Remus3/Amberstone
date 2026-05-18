@@ -1599,7 +1599,7 @@
 /* ── Arena duo + augments (replaces MY PICK central pane) ─────────── */
 .csv-duo-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr); /* s234/#89: Arena 6 teams of 3 (me + 2 teammates) */
   gap: 8px;
   margin: 6px 0 12px;
 }
@@ -1761,7 +1761,7 @@
 }
 .csv-arena-team-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr); /* s234/#89: Arena sub-teams are 3 champs */
   gap: 6px;
 }
 .csv-arena-cell {
