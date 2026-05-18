@@ -6375,6 +6375,25 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
               const dsLine = ds.alive
                 ? `DS engine up · v${ds.engine_version || "?"} · ${ds.items ?? "?"}i/${ds.champions ?? "?"}c`
                 : "DS engine DOWN";
+              // Audit7 H-01: surface peer bridge health-publisher age so
+              // hovering the (now peer-aware, see rollup status) dot tells
+              // you WHICH node is silent — the rc_facts probe rendered
+              // this but nothing on the dashboard did.
+              const peers = j.peers || {};
+              const peerBits = [];
+              for (const node of Object.keys(peers).sort()) {
+                const p = peers[node] || {};
+                if (p.status === "no_data") { peerBits.push(`${node} no-data`); continue; }
+                const a = p.age_s;
+                if (a == null) continue;
+                const ago = a < 60 ? `${Math.round(a)}s`
+                          : a < 3600 ? `${Math.round(a/60)}m`
+                          : `${(a/3600).toFixed(1)}h`;
+                const st = p.status === "green" ? "ok"
+                         : p.status === "yellow" ? "stale"
+                         : "DEAD";
+                peerBits.push(`${node} ${st} ${ago}`);
+              }
               const lines = [
                 `RC ${rcVer} (pid ${j.rc?.pid ?? "?"})`,
                 `supervisor pid ${sup.pid ?? "?"} · run_id ${runId} · ${oslock}`,
@@ -6384,6 +6403,7 @@ import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOn
                 `cost $${(cost.today_usd || 0).toFixed(2)} · ${banner}`,
                 bridgeLine,
               ];
+              if (peerBits.length) lines.push(`publishers: ${peerBits.join(" · ")}`);
               dot.title = lines.join("\n");
               dot.setAttribute("data-tt", dot.title);
             })
