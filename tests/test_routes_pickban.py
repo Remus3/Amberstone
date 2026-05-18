@@ -640,5 +640,380 @@ class TestEndToEnd(unittest.TestCase):
         self.assertEqual(code, 503)
 
 
+class TestChampRecordQuery(unittest.TestCase):
+    """s239 - the operator's personal record ON a champion. All-roles
+    headline + at-role qualifier. None when zero all-roles games."""
+
+    def setUp(self):
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self._tmp.close()
+        self.db_path = Path(self._tmp.name)
+
+    def tearDown(self):
+        self.db_path.unlink(missing_ok=True)
+
+    def test_all_roles_plus_role_split(self):
+        # Vayne: 5 BOT (4W) + 3 TOP (0W) = 8 games / 4 wins all-roles;
+        # at BOTTOM = 5 games / 4 wins.
+        rows = []
+        for i in range(5):
+            rows.append({"match_id": f"b{i}", "puuid": "me",
+                         "team_position": "BOTTOM", "champion_id": 67,
+                         "champion_name": "Vayne", "win": 1 if i < 4 else 0})
+        for i in range(3):
+            rows.append({"match_id": f"t{i}", "puuid": "me",
+                         "team_position": "TOP", "champion_id": 67,
+                         "champion_name": "Vayne", "win": 0})
+        _build_test_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            rec = routes_pickban._query_champ_record(
+                conn, "me", 67, (420,), role="BOTTOM")
+        finally:
+            conn.close()
+        self.assertIsNotNone(rec)
+        self.assertEqual(rec["champId"], 67)
+        self.assertEqual(rec["champName"], "Vayne")
+        self.assertEqual(rec["games"], 8)
+        self.assertEqual(rec["wins"], 4)
+        self.assertEqual(rec["wr_pct"], 50)
+        self.assertEqual(rec["role"], "BOTTOM")
+        self.assertEqual(rec["role_games"], 5)
+        self.assertEqual(rec["role_wins"], 4)
+        self.assertEqual(rec["role_wr_pct"], 80)
+
+    def test_no_role_arg_leaves_role_fields_none(self):
+        rows = [{"match_id": f"v{i}", "puuid": "me", "team_position": "BOTTOM",
+                 "champion_id": 67, "champion_name": "Vayne", "win": 1}
+                for i in range(4)]
+        _build_test_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            rec = routes_pickban._query_champ_record(conn, "me", 67, (420,))
+        finally:
+            conn.close()
+        self.assertEqual(rec["games"], 4)
+        self.assertIsNone(rec["role"])
+        self.assertIsNone(rec["role_games"])
+        self.assertIsNone(rec["role_wr_pct"])
+
+    def test_role_with_zero_role_games(self):
+        # Played only TOP; asking for BOTTOM role split → role_* None but
+        # all-roles still populated (the headline still shows).
+        rows = [{"match_id": f"t{i}", "puuid": "me", "team_position": "TOP",
+                 "champion_id": 67, "champion_name": "Vayne", "win": 1}
+                for i in range(4)]
+        _build_test_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            rec = routes_pickban._query_champ_record(
+                conn, "me", 67, (420,), role="BOTTOM")
+        finally:
+            conn.close()
+        self.assertEqual(rec["games"], 4)
+        self.assertEqual(rec["role"], "BOTTOM")
+        self.assertEqual(rec["role_games"], 0)
+        self.assertIsNone(rec["role_wr_pct"])
+
+    def test_none_when_never_played(self):
+        rows = [{"match_id": "a", "puuid": "me", "team_position": "BOTTOM",
+                 "champion_id": 67, "champion_name": "Vayne", "win": 1}]
+        _build_test_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            rec = routes_pickban._query_champ_record(conn, "me", 222, (420,))
+        finally:
+            conn.close()
+        self.assertIsNone(rec)
+
+    def test_queue_filter_applies(self):
+        rows = []
+        for i in range(4):
+            rows.append({"match_id": f"q{i}", "puuid": "me", "queue_id": 420,
+                         "team_position": "BOTTOM", "champion_id": 67,
+                         "champion_name": "Vayne", "win": 1})
+        for i in range(4):
+            rows.append({"match_id": f"a{i}", "puuid": "me", "queue_id": 450,
+                         "team_position": "BOTTOM", "champion_id": 67,
+                         "champion_name": "Vayne", "win": 0})
+        _build_test_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            rec = routes_pickban._query_champ_record(conn, "me", 67, (420,))
+        finally:
+            conn.close()
+        self.assertEqual(rec["games"], 4)  # the 450 losses excluded
+        self.assertEqual(rec["wins"], 4)
+
+
+class TestWithAllyQuery(unittest.TestCase):
+    """s239 - operator's record when a given ally champion is on their
+    team, regardless of what the operator played (assumption A2)."""
+
+    def setUp(self):
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self._tmp.close()
+        self.db_path = Path(self._tmp.name)
+
+    def tearDown(self):
+        self.db_path.unlink(missing_ok=True)
+
+    def _match(self, mid, op_champ, op_win, ally_champ, ally_team=100):
+        return [
+            {"match_id": mid, "puuid": "me", "team_id": 100,
+             "team_position": "BOTTOM", "champion_id": op_champ,
+             "champion_name": f"C{op_champ}", "win": op_win},
+            {"match_id": mid, "puuid": "ally_p", "team_id": ally_team,
+             "team_position": "UTILITY", "champion_id": ally_champ,
+             "champion_name": "Thresh", "win": op_win if ally_team == 100 else 1 - op_win},
+        ]
+
+    def test_counts_only_same_team_ally(self):
+        # 3 games with Thresh(412) on my team (2W); 2 games where Thresh
+        # was on the ENEMY team (must NOT count toward "with ally").
+        rows = []
+        for i in range(3):
+            rows.extend(self._match(f"w{i}", 67, 1 if i < 2 else 0, 412))
+        for i in range(2):
+            rows.extend(self._match(f"x{i}", 67, 1, 412, ally_team=200))
+        _build_test_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            rec = routes_pickban._query_with_ally(conn, "me", 412, (420,))
+        finally:
+            conn.close()
+        self.assertEqual(rec["champId"], 412)
+        self.assertEqual(rec["champName"], "Thresh")
+        self.assertEqual(rec["games"], 3)
+        self.assertEqual(rec["wins"], 2)
+        self.assertEqual(rec["wr_pct"], 67)
+
+    def test_independent_of_operator_champion(self):
+        # Operator plays different champs (Vayne, Jinx) but Thresh is on
+        # team both times - both count (assumption A2).
+        rows = []
+        rows.extend(self._match("a", 67, 1, 412))
+        rows.extend(self._match("b", 222, 0, 412))
+        _build_test_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            rec = routes_pickban._query_with_ally(conn, "me", 412, (420,))
+        finally:
+            conn.close()
+        self.assertEqual(rec["games"], 2)
+        self.assertEqual(rec["wins"], 1)
+
+    def test_zero_games_returns_entry_not_none(self):
+        # Never had champ 999 as an ally - return a 0-game entry so the
+        # UI can show "first time w/ X" (assumption A5).
+        rows = self._match("a", 67, 1, 412)
+        _build_test_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            rec = routes_pickban._query_with_ally(conn, "me", 999, (420,))
+        finally:
+            conn.close()
+        self.assertIsNotNone(rec)
+        self.assertEqual(rec["champId"], 999)
+        self.assertEqual(rec["games"], 0)
+        self.assertEqual(rec["wins"], 0)
+        self.assertEqual(rec["wr_pct"], 0)
+
+
+class TestVsEnemyQuery(unittest.TestCase):
+    """s239 - operator's record when a given champion was on the
+    opposing team, anywhere (assumption A1 - not lane-strict)."""
+
+    def setUp(self):
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self._tmp.close()
+        self.db_path = Path(self._tmp.name)
+
+    def tearDown(self):
+        self.db_path.unlink(missing_ok=True)
+
+    def _match(self, mid, op_win, enemy_champ, enemy_pos="TOP"):
+        return [
+            {"match_id": mid, "puuid": "me", "team_id": 100,
+             "team_position": "BOTTOM", "champion_id": 67,
+             "champion_name": "Vayne", "win": op_win},
+            {"match_id": mid, "puuid": "enemy_p", "team_id": 200,
+             "team_position": enemy_pos, "champion_id": enemy_champ,
+             "champion_name": "Darius", "win": 1 - op_win},
+        ]
+
+    def test_counts_opposing_team_any_lane(self):
+        # vs Darius(122): 5 encounters, operator wins 1 → 20% WR.
+        # enemy_pos varies (TOP/JUNGLE) - lane-agnostic per A1.
+        rows = []
+        for i in range(5):
+            rows.extend(self._match(
+                f"d{i}", 1 if i == 0 else 0, 122,
+                "TOP" if i % 2 == 0 else "JUNGLE"))
+        _build_test_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            rec = routes_pickban._query_vs_enemy(conn, "me", 122, (420,))
+        finally:
+            conn.close()
+        self.assertEqual(rec["champId"], 122)
+        self.assertEqual(rec["champName"], "Darius")
+        self.assertEqual(rec["games"], 5)
+        self.assertEqual(rec["wins"], 1)
+        self.assertEqual(rec["losses"], 4)
+        self.assertEqual(rec["wr_pct"], 20)
+
+    def test_same_team_does_not_count(self):
+        # Darius on operator's OWN team → not a "vs" encounter.
+        rows = [
+            {"match_id": "a", "puuid": "me", "team_id": 100,
+             "team_position": "BOTTOM", "champion_id": 67,
+             "champion_name": "Vayne", "win": 1},
+            {"match_id": "a", "puuid": "mate", "team_id": 100,
+             "team_position": "TOP", "champion_id": 122,
+             "champion_name": "Darius", "win": 1},
+        ]
+        _build_test_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            rec = routes_pickban._query_vs_enemy(conn, "me", 122, (420,))
+        finally:
+            conn.close()
+        self.assertEqual(rec["games"], 0)
+
+    def test_zero_games_returns_entry(self):
+        rows = self._match("a", 1, 122)
+        _build_test_db(self.db_path, rows)
+        conn = sqlite3.connect(str(self.db_path))
+        try:
+            rec = routes_pickban._query_vs_enemy(conn, "me", 555, (420,))
+        finally:
+            conn.close()
+        self.assertEqual(rec["champId"], 555)
+        self.assertEqual(rec["games"], 0)
+        self.assertEqual(rec["wr_pct"], 0)
+
+
+class TestPersonalRecordEndToEnd(unittest.TestCase):
+    """s239 - _serve_personal_record HTTP shape via the stubbed handler."""
+
+    def setUp(self):
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self._tmp.close()
+        self.db_path = Path(self._tmp.name)
+        self._db_patch = mock.patch.object(
+            routes_pickban, "_REWIND_DB", self.db_path)
+        self._db_patch.start()
+
+    def tearDown(self):
+        self._db_patch.stop()
+        self.db_path.unlink(missing_ok=True)
+
+    def _make_handler(self, path):
+        h = mock.MagicMock()
+        h.path = path
+        return h
+
+    def _payload(self, h):
+        import json as _json
+        h._send.assert_called_once()
+        code, body, ctype = h._send.call_args[0]
+        return code, _json.loads(body)
+
+    def test_full_shape(self):
+        rows = []
+        # operator Vayne(67) 4/5 BOT
+        for i in range(5):
+            rows.append({"match_id": f"v{i}", "puuid": "me", "team_id": 100,
+                         "team_position": "BOTTOM", "champion_id": 67,
+                         "champion_name": "Vayne", "win": 1 if i < 4 else 0})
+            # ally Thresh(412) on team for 3 of them
+            if i < 3:
+                rows.append({"match_id": f"v{i}", "puuid": "thr", "team_id": 100,
+                             "team_position": "UTILITY", "champion_id": 412,
+                             "champion_name": "Thresh", "win": 1 if i < 4 else 0})
+            # enemy Darius(122) opposing all 5
+            rows.append({"match_id": f"v{i}", "puuid": "dar", "team_id": 200,
+                         "team_position": "TOP", "champion_id": 122,
+                         "champion_name": "Darius", "win": 0 if i < 4 else 1})
+        # Filler solo "me" matches so the operator is the unambiguous
+        # most-frequent puuid (resolver tie-break is arbitrary). Champ 1
+        # at MIDDLE in distinct matches - doesn't touch the 67/412/122
+        # queries under test.
+        for i in range(4):
+            rows.append({"match_id": f"f{i}", "puuid": "me", "team_id": 100,
+                         "team_position": "MIDDLE", "champion_id": 1,
+                         "champion_name": "Annie", "win": 1})
+        _build_test_db(self.db_path, rows)
+        h = self._make_handler(
+            "/api/champ-select/personal-record"
+            "?champ=67&role=BOT&allies=412&enemies=122")
+        routes_pickban._serve_personal_record(h)
+        code, p = self._payload(h)
+        self.assertEqual(code, 200)
+        self.assertTrue(p["ok"])
+        self.assertEqual(p["champ"]["champName"], "Vayne")
+        self.assertEqual(p["champ"]["wr_pct"], 80)
+        self.assertEqual(p["champ"]["role_wr_pct"], 80)
+        self.assertEqual(len(p["with_allies"]), 1)
+        self.assertEqual(p["with_allies"][0]["champName"], "Thresh")
+        self.assertEqual(p["with_allies"][0]["games"], 3)
+        self.assertEqual(len(p["vs_enemies"]), 1)
+        self.assertEqual(p["vs_enemies"][0]["champName"], "Darius")
+        self.assertEqual(p["vs_enemies"][0]["games"], 5)
+        self.assertEqual(p["vs_enemies"][0]["wins"], 4)
+
+    def test_no_champ_arg_ok(self):
+        # Early CS - no champ hovered yet; allies/enemies still resolve.
+        rows = [
+            {"match_id": "a", "puuid": "me", "team_id": 100,
+             "team_position": "BOTTOM", "champion_id": 67,
+             "champion_name": "Vayne", "win": 1},
+            {"match_id": "a", "puuid": "thr", "team_id": 100,
+             "team_position": "UTILITY", "champion_id": 412,
+             "champion_name": "Thresh", "win": 1},
+        ]
+        # Filler so "me" is the unambiguous most-frequent puuid.
+        for i in range(2):
+            rows.append({"match_id": f"f{i}", "puuid": "me", "team_id": 100,
+                         "team_position": "MIDDLE", "champion_id": 1,
+                         "champion_name": "Annie", "win": 1})
+        _build_test_db(self.db_path, rows)
+        h = self._make_handler(
+            "/api/champ-select/personal-record?allies=412")
+        routes_pickban._serve_personal_record(h)
+        code, p = self._payload(h)
+        self.assertEqual(code, 200)
+        self.assertIsNone(p["champ"])
+        self.assertEqual(p["with_allies"][0]["champName"], "Thresh")
+        self.assertEqual(p["vs_enemies"], [])
+
+    def test_missing_db_503(self):
+        self.db_path.unlink(missing_ok=True)
+        h = self._make_handler(
+            "/api/champ-select/personal-record?champ=67")
+        routes_pickban._serve_personal_record(h)
+        code, _ = self._payload(h)
+        self.assertEqual(code, 503)
+
+    def test_empty_query_ok_all_empty(self):
+        rows = [{"match_id": "a", "puuid": "me", "team_position": "BOTTOM",
+                 "champion_id": 67, "champion_name": "Vayne", "win": 1}]
+        _build_test_db(self.db_path, rows)
+        h = self._make_handler("/api/champ-select/personal-record")
+        routes_pickban._serve_personal_record(h)
+        code, p = self._payload(h)
+        self.assertEqual(code, 200)
+        self.assertTrue(p["ok"])
+        self.assertIsNone(p["champ"])
+        self.assertEqual(p["with_allies"], [])
+        self.assertEqual(p["vs_enemies"], [])
+
+    def test_route_registered(self):
+        paths = [pred for pred, _ in routes_pickban.GET_ROUTES]
+        self.assertTrue(
+            any(p("/api/champ-select/personal-record") for p in paths))
+
+
 if __name__ == "__main__":
     unittest.main()

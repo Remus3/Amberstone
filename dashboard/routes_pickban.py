@@ -582,6 +582,175 @@ def _query_bans(conn: sqlite3.Connection, puuid: str, role: str,
     return out
 
 
+# ────────────────────────────────────────────────────────────────────
+# s239 (AUTONOMOUS_AUDIT opportunity #2): the per-user CONTEXTUAL read.
+# The mood queries above RECOMMEND picks; these REPORT the operator's
+# actual personal record against the champions already on the board in
+# the current draft - "your WR with/against", the differentiator no
+# cohort-averaged SaaS can do per-user.
+#
+# Design assumptions (stated per the project hard rule):
+#   A1  "vs enemy"  = that champ ANYWHERE on the opposing team, not
+#                     lane-strict (CS doesn't know final lanes; broader
+#                     = more games on a stale DB). _query_bans stays
+#                     lane-strict for *recommendations* by design.
+#   A2  "with ally" = that ally champ on the operator's team regardless
+#                     of what the operator played (conditioning on the
+#                     operator's champ would shred sample size).
+#   A4  displayed wr_pct = RAW observed rate (s238 invariant - this
+#                     REPORTS history, it does not RANK, so no smoothing).
+#   A5  zero-game entries are still returned (games:0) so the UI can
+#                     surface "first time vs/with X" - a real draft signal.
+#   A7  ALL-TIME history (no recency window) - so it has live data
+#                     despite rewind_history.db recency staleness;
+#                     lifetime head-to-head is the meaningful per-user
+#                     signal and is recency-independent by design.
+# ────────────────────────────────────────────────────────────────────
+
+
+def _query_champ_record(conn: sqlite3.Connection, puuid: str, champ_id: int,
+                         queue_ids: tuple[int, ...],
+                         role: str | None = None) -> dict | None:
+    """Operator's lifetime record ON ``champ_id``: all-roles headline
+    plus an at-role qualifier when ``role`` (LCU form) is supplied.
+    Returns None when the operator has never played the champion (so the
+    UI can show a clean "no history" instead of a 0/0)."""
+    placeholders = ",".join("?" * len(queue_ids))
+    name, games, wins = conn.execute(
+        f"""
+        SELECT champion_name,
+               COUNT(*) AS games,
+               SUM(CASE WHEN win=1 THEN 1 ELSE 0 END) AS wins
+        FROM participants
+        WHERE puuid = ?
+          AND champion_id = ?
+          AND match_id IN (
+            SELECT match_id FROM matches WHERE queue_id IN ({placeholders})
+          )
+        """,
+        (puuid, champ_id, *queue_ids),
+    ).fetchone()
+    games = int(games or 0)
+    wins = int(wins or 0)
+    if games == 0:
+        return None
+    champ_name = name or _load_champ_id_to_name().get(int(champ_id)) or "?"
+    out: dict = {
+        "champId":     int(champ_id),
+        "champName":   str(champ_name),
+        "games":       games,
+        "wins":        wins,
+        "wr_pct":      int(round(100 * wins / games)),
+        "role":        None,
+        "role_games":  None,
+        "role_wins":   None,
+        "role_wr_pct": None,
+    }
+    if role:
+        rg, rw = conn.execute(
+            f"""
+            SELECT COUNT(*) AS games,
+                   SUM(CASE WHEN win=1 THEN 1 ELSE 0 END) AS wins
+            FROM participants
+            WHERE puuid = ?
+              AND champion_id = ?
+              AND team_position = ?
+              AND match_id IN (
+                SELECT match_id FROM matches WHERE queue_id IN ({placeholders})
+              )
+            """,
+            (puuid, champ_id, role, *queue_ids),
+        ).fetchone()
+        rg = int(rg or 0)
+        rw = int(rw or 0)
+        out["role"] = role
+        out["role_games"] = rg
+        out["role_wins"] = rw
+        out["role_wr_pct"] = int(round(100 * rw / rg)) if rg else None
+    return out
+
+
+def _query_with_ally(conn: sqlite3.Connection, puuid: str, ally_id: int,
+                      queue_ids: tuple[int, ...]) -> dict:
+    """Operator's lifetime record in matches where ``ally_id`` was on
+    their team (A2 - independent of what the operator played). Always
+    returns an entry; ``games`` may be 0 (A5)."""
+    placeholders = ",".join("?" * len(queue_ids))
+    name, games, wins = conn.execute(
+        f"""
+        SELECT
+          (SELECT champion_name FROM participants
+             WHERE champion_id = ? LIMIT 1) AS champ_name,
+          COUNT(*) AS games,
+          SUM(CASE WHEN op.win=1 THEN 1 ELSE 0 END) AS wins
+        FROM participants op
+        WHERE op.puuid = ?
+          AND op.match_id IN (
+            SELECT match_id FROM matches WHERE queue_id IN ({placeholders})
+          )
+          AND EXISTS (
+            SELECT 1 FROM participants a
+            WHERE a.match_id = op.match_id
+              AND a.team_id = op.team_id
+              AND a.puuid != op.puuid
+              AND a.champion_id = ?
+          )
+        """,
+        (ally_id, puuid, *queue_ids, ally_id),
+    ).fetchone()
+    games = int(games or 0)
+    wins = int(wins or 0)
+    champ_name = name or _load_champ_id_to_name().get(int(ally_id)) or "?"
+    return {
+        "champId":   int(ally_id),
+        "champName": str(champ_name),
+        "games":     games,
+        "wins":      wins,
+        "wr_pct":    int(round(100 * wins / games)) if games else 0,
+    }
+
+
+def _query_vs_enemy(conn: sqlite3.Connection, puuid: str, enemy_id: int,
+                    queue_ids: tuple[int, ...]) -> dict:
+    """Operator's lifetime record in matches where ``enemy_id`` was on
+    the OPPOSING team, any lane (A1). Always returns an entry; ``games``
+    may be 0 (A5). Carries ``losses`` since the ban-side framing is
+    "how often does this champ beat me"."""
+    placeholders = ",".join("?" * len(queue_ids))
+    name, games, wins = conn.execute(
+        f"""
+        SELECT
+          (SELECT champion_name FROM participants
+             WHERE champion_id = ? LIMIT 1) AS champ_name,
+          COUNT(*) AS games,
+          SUM(CASE WHEN op.win=1 THEN 1 ELSE 0 END) AS wins
+        FROM participants op
+        WHERE op.puuid = ?
+          AND op.match_id IN (
+            SELECT match_id FROM matches WHERE queue_id IN ({placeholders})
+          )
+          AND EXISTS (
+            SELECT 1 FROM participants e
+            WHERE e.match_id = op.match_id
+              AND e.team_id != op.team_id
+              AND e.champion_id = ?
+          )
+        """,
+        (enemy_id, puuid, *queue_ids, enemy_id),
+    ).fetchone()
+    games = int(games or 0)
+    wins = int(wins or 0)
+    champ_name = name or _load_champ_id_to_name().get(int(enemy_id)) or "?"
+    return {
+        "champId":   int(enemy_id),
+        "champName": str(champ_name),
+        "games":     games,
+        "wins":      wins,
+        "losses":    games - wins,
+        "wr_pct":    int(round(100 * wins / games)) if games else 0,
+    }
+
+
 def _parse_csv_ints(raw: str) -> tuple[int, ...]:
     """Parse "1,2,3" → (1,2,3). Silently drops blanks + non-int tokens
     so a malformed param doesn't 400 the whole endpoint."""
@@ -700,6 +869,76 @@ def _serve_pickban_recs(h) -> None:
                 "application/json")
 
 
+def _serve_personal_record(h) -> None:
+    """s239 - GET /api/champ-select/personal-record. The per-user
+    CONTEXTUAL read: given the champions in the current draft
+    (``champ`` = operator's hovered/locked pick, ``allies`` /
+    ``enemies`` = locked draft ids), return the operator's actual
+    lifetime record. All params optional - early CS has no champ yet."""
+    try:
+        qs = parse_qs(urlparse(h.path).query)
+
+        champ_raw = (qs.get("champ") or [""])[0].strip()
+        try:
+            champ_id = int(champ_raw) if champ_raw else 0
+        except ValueError:
+            champ_id = 0
+
+        # role optional - drives only the champ at-role qualifier.
+        role = _normalize_role((qs.get("role") or [""])[0])
+        ally_ids = _parse_csv_ints((qs.get("allies") or [""])[0])
+        enemy_ids = _parse_csv_ints((qs.get("enemies") or [""])[0])
+
+        queue_raw = (qs.get("queue") or [""])[0]
+        if queue_raw:
+            try:
+                queue_ids = tuple(int(x) for x in queue_raw.split(",") if x.strip())
+            except ValueError:
+                queue_ids = _DEFAULT_SR_QUEUES
+            if not queue_ids:
+                queue_ids = _DEFAULT_SR_QUEUES
+        else:
+            queue_ids = _DEFAULT_SR_QUEUES
+
+        if not _REWIND_DB.exists():
+            h._send(503,
+                    json.dumps({"ok": False, "error": "rewind_history.db missing"}).encode(),
+                    "application/json")
+            return
+
+        t0 = time.time()
+        conn = sqlite3.connect(f"file:{_REWIND_DB}?mode=ro", uri=True, timeout=2.0)
+        try:
+            puuid = _resolve_operator_puuid(conn)
+            if not puuid:
+                h._send(503,
+                        json.dumps({"ok": False, "error": "no operator puuid in rewind_history.db"}).encode(),
+                        "application/json")
+                return
+            champ = (_query_champ_record(conn, puuid, champ_id, queue_ids, role)
+                     if champ_id else None)
+            with_allies = [_query_with_ally(conn, puuid, a, queue_ids)
+                           for a in ally_ids]
+            vs_enemies = [_query_vs_enemy(conn, puuid, e, queue_ids)
+                          for e in enemy_ids]
+        finally:
+            conn.close()
+
+        h._send(200, json.dumps({
+            "ok": True,
+            "queue_ids": list(queue_ids),
+            "role": role,
+            "champ": champ,
+            "with_allies": with_allies,
+            "vs_enemies": vs_enemies,
+            "elapsed_ms": int((time.time() - t0) * 1000),
+        }).encode("utf-8"), "application/json")
+    except Exception as exc:
+        log.warning("api/champ-select/personal-record: %s", exc)
+        h._send(500, json.dumps({"ok": False, "error": str(exc)[:200]}).encode(),
+                "application/json")
+
+
 # Route table - imported by dashboard/_dispatch.py at module load.
 
 def _equals(p: str):
@@ -710,4 +949,5 @@ def _equals(p: str):
 
 GET_ROUTES = [
     (_equals("/api/champ-select/pickban-recs"), _serve_pickban_recs),
+    (_equals("/api/champ-select/personal-record"), _serve_personal_record),
 ]

@@ -2307,6 +2307,114 @@ function _csvFetchPickBanRecs(role, queueId, mood, opts, onLoad) {
   return cached ? cached.data : null;
 }
 
+// s239 (AUTONOMOUS_AUDIT opportunity #2): the per-user CONTEXTUAL read.
+// /api/champ-select/personal-record reports the operator's actual
+// lifetime record against the champions ALREADY on the board in this
+// draft - distinct from the mood recs above (which RECOMMEND picks).
+// This is the headline differentiator: "your WR with/against", a
+// per-user signal no cohort-averaged SaaS can produce. Same 60s
+// in-memory dedupe pattern as _csvFetchPickBanRecs (operator history
+// doesn't change mid-champ-select). No queue param by design - the
+// lifetime read spans all SR queues (A7), so a normal-draft lobby
+// still counts the operator's ranked Vayne games.
+const _CSV_PR_CACHE = {};
+const _CSV_PR_INFLIGHT = {};
+const _CSV_PR_TTL_MS = 60_000;
+
+function _csvFetchPersonalRecord(role, champId, allyIds, enemyIds, onLoad) {
+  const a = (allyIds || []).slice().sort((x, y) => x - y);
+  const e = (enemyIds || []).slice().sort((x, y) => x - y);
+  const c = champId | 0;
+  // Nothing on the board yet - no champ hovered + no locks.
+  if (!c && !a.length && !e.length) return null;
+  const cacheKey = [
+    role || "-", c, `a:${a.join(",")}`, `e:${e.join(",")}`,
+  ].join("|");
+  const now = Date.now();
+  const cached = _CSV_PR_CACHE[cacheKey];
+  if (cached && (now - cached.fetchedAt) < _CSV_PR_TTL_MS) return cached.data;
+  if (_CSV_PR_INFLIGHT[cacheKey]) return cached ? cached.data : null;
+  _CSV_PR_INFLIGHT[cacheKey] = true;
+  let url = "/api/champ-select/personal-record?v=1";
+  if (role && role !== "-") url += `&role=${encodeURIComponent(role)}`;
+  if (c) url += `&champ=${c}`;
+  if (a.length) url += `&allies=${encodeURIComponent(a.join(","))}`;
+  if (e.length) url += `&enemies=${encodeURIComponent(e.join(","))}`;
+  fetch(url)
+    .then((r) => r.ok ? r.json() : null)
+    .then((j) => {
+      _CSV_PR_INFLIGHT[cacheKey] = false;
+      if (j && j.ok) {
+        _CSV_PR_CACHE[cacheKey] = { data: j, fetchedAt: Date.now() };
+        if (typeof onLoad === "function") onLoad();
+      }
+    })
+    .catch(() => { _CSV_PR_INFLIGHT[cacheKey] = false; });
+  return cached ? cached.data : null;
+}
+
+// WR -> tint class. Uniform semantics for both rows: high operator WR is
+// green, low is red. Reads correctly both ways - high "with ally" =
+// good synergy; low "vs enemy" = they beat you = ban-worthy red.
+function _csvPrTint(wr) {
+  return wr >= 55 ? "is-good" : (wr >= 45 ? "is-mid" : "is-bad");
+}
+
+function _csvPrChip(name, wr, games) {
+  // Champ names are trusted DDragon/DB data - interpolated raw, same as
+  // the existing _csvRenderPickBan rows (d.champName / b.name).
+  const nm = String(name || "?");
+  if (!games) {
+    return `<span class="csv-pr-chip is-new">${nm}<em>first time</em></span>`;
+  }
+  return `<span class="csv-pr-chip ${_csvPrTint(wr)}">`
+       + `${nm}<b>${wr}%</b><em>${games}g</em></span>`;
+}
+
+// Build the foregrounded "YOUR RECORD" headline. Always renders the
+// titled block (foregrounding = a named, present headline, not
+// conditional filler) - falls to a muted hint when the board is empty.
+function _csvRenderPersonalRecordBlock(pr, selfCid) {
+  let inner = "";
+  if (pr && pr.champ) {
+    const c = pr.champ;
+    const sub = `${c.wins}-${c.games - c.wins} (${c.games}g)`;
+    let roleBit = "";
+    if (c.role && c.role_games) {
+      roleBit = ` <span class="csv-pr-champ-role">`
+              + `${_csvShortRole(c.role)} ${c.role_wr_pct}%`
+              + ` (${c.role_games}g)</span>`;
+    }
+    inner += `<div class="csv-pr-champ">`
+           + `<span class="csv-pr-champ-name">${String(c.champName || "?").toUpperCase()}</span>`
+           + `<span class="csv-pr-champ-wr ${_csvPrTint(c.wr_pct)}">${c.wr_pct}%</span>`
+           + `<span class="csv-pr-champ-sub">${sub}</span>${roleBit}</div>`;
+  } else if (selfCid) {
+    const nm = String(_csChampName(selfCid) || "?").toUpperCase();
+    inner += `<div class="csv-pr-champ is-new">`
+           + `<span class="csv-pr-champ-name">${nm}</span>`
+           + `<em>no games on record</em></div>`;
+  }
+  const allies = (pr && Array.isArray(pr.with_allies)) ? pr.with_allies : [];
+  const enemies = (pr && Array.isArray(pr.vs_enemies)) ? pr.vs_enemies : [];
+  if (allies.length) {
+    inner += `<div class="csv-pr-row"><span class="csv-pr-tag">WITH</span>`
+           + allies.map((x) => _csvPrChip(x.champName, x.wr_pct, x.games)).join("")
+           + `</div>`;
+  }
+  if (enemies.length) {
+    inner += `<div class="csv-pr-row"><span class="csv-pr-tag">VS</span>`
+           + enemies.map((x) => _csvPrChip(x.champName, x.wr_pct, x.games)).join("")
+           + `</div>`;
+  }
+  if (!inner) {
+    inner = `<div class="csv-pr-hint">your lifetime record vs this draft `
+          + `appears here as champs lock in</div>`;
+  }
+  return `<div class="csv-pr">`
+       + `<div class="csv-pr-title">YOUR RECORD</div>${inner}</div>`;
+}
+
 function _csvMergePickBanData(role, liveRecs, placeholder) {
   // Layer live performance over placeholder mastery/meta. When the
   // live performance row is missing (operator has no SR history at
@@ -2383,6 +2491,26 @@ function _csvRenderPickBan(cs, myCid) {
     .filter((p) => p && p.completed && p.championId)
     .map((p) => p.championId | 0)
     .filter((x) => x > 0);
+
+  // s239: per-user CONTEXTUAL read. enemyIds mirrors allyIds (locked
+  // only). selfCid = operator's own champ, falling back to the operator
+  // cell's championId / hover intent so the headline populates the
+  // moment they hover - when it's most useful during the draft.
+  const enemyIds = (cs.their_team || [])
+    .filter((p) => p && p.completed && p.championId)
+    .map((p) => p.championId | 0)
+    .filter((x) => x > 0);
+  let selfCid = myCid | 0;
+  if (!selfCid) {
+    const meRow = (cs.my_team || []).find(
+      (p) => p && p.cellId === cs.local_cell);
+    if (meRow) selfCid = (meRow.championId | 0) || (meRow.championPickIntent | 0);
+  }
+  const prData = _csvFetchPersonalRecord(
+    role, selfCid, allyIds, enemyIds,
+    () => _csvRenderPickBan(cs, myCid),
+  );
+  const prHtml = _csvRenderPersonalRecordBlock(prData, selfCid);
 
   // ── Mood branch ────────────────────────────────────────────────
   // COMFORT: keep the legacy 3-source layout (perf|mastery|meta).
@@ -2483,7 +2611,10 @@ function _csvRenderPickBan(cs, myCid) {
   // right. Operator removed the centered ROLE chip - the user's role
   // is already shown on their ally row (gold "BOT" pip), so the
   // duplicate chip here was redundant.
-  let html = `
+  // s239: the foregrounded per-user headline sits ABOVE the mood recs -
+  // the per-user model is the first, strongest thing in this card
+  // (which is otherwise a header-hidden buried panel).
+  let html = prHtml + `
     <div class="csv-pb-role-row">
       <div class="csv-pb-pick-header">PICK</div>
       <div class="csv-pb-bans-header-slot">
