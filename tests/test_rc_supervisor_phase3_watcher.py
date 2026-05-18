@@ -13,11 +13,13 @@ import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest import mock
 from unittest.mock import MagicMock
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
+from ops import rc_supervisor as rc_sup  # noqa: E402
 from ops.rc_supervisor import _Phase3Watcher  # noqa: E402
 
 
@@ -96,7 +98,8 @@ class LockfileReadingTests(unittest.TestCase):
         self.assertEqual(r["state"], "restarting")
         self.assertEqual(r["trigger"], "missing_lockfile")
         self.assertTrue(r["acted"])
-        restarter.assert_called_once_with("RC-Phase3-Supervisor")
+        # No lockfile -> pid 0 -> the watcher passes None as the stale pid.
+        restarter.assert_called_once_with("RC-Phase3-Supervisor", None)
 
     def test_malformed_lockfile_treated_as_missing(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -307,7 +310,9 @@ class StaleCodeDetectionTests(unittest.TestCase):
         self.assertTrue(res["acted"])
         self.assertEqual(res["trigger"], "stale_code")
         self.assertEqual(res["state"], "restarting")
-        r.assert_called_once_with("RC-Phase3-Supervisor")
+        # stale_code keeps the process alive -> its pid is threaded to
+        # the restarter so it can be killed before schtasks /Run.
+        r.assert_called_once_with("RC-Phase3-Supervisor", 9999)
         self.assertTrue(any("phase3 stale_code" in ln for ln in logs))
 
     def test_agents_package_py_also_watched(self) -> None:
@@ -318,6 +323,39 @@ class StaleCodeDetectionTests(unittest.TestCase):
             _write_lockfile_started(lf, 9999, self._now(), started)
             _make_code_file(root, "agents/agent2_backend/file_ingest.py",
                              started.timestamp() + 600)
+            res = w.check()
+        self.assertTrue(res["acted"])
+        self.assertEqual(res["trigger"], "stale_code")
+
+    def test_daemon_slayer_edit_does_not_trigger_stale_code(self) -> None:
+        # agents/daemon_slayer is the standalone DS engine (its own
+        # process on :8893); it is excluded from the Phase 3 watch so
+        # the active DS work cadence does not bounce the supervisor.
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            w, lf, r, _clk, _logs = _build_watcher(root)
+            started = self._now() - timedelta(hours=2)
+            _write_lockfile_started(lf, 9999, self._now(), started)
+            _make_code_file(root, "agents/daemon_slayer/ability_dps.py",
+                            started.timestamp() + 600)
+            res = w.check()
+        self.assertFalse(res["acted"])
+        self.assertEqual(res["state"], "healthy")
+        r.assert_not_called()
+
+    def test_non_ds_agents_edit_still_triggers_when_ds_also_changed(self) -> None:
+        # The exclusion is scoped, not global: a real Phase-3
+        # import-chain edit still triggers even if a newer
+        # daemon_slayer file is also present.
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            w, lf, r, _clk, _logs = _build_watcher(root)
+            started = self._now() - timedelta(hours=2)
+            _write_lockfile_started(lf, 9999, self._now(), started)
+            _make_code_file(root, "agents/daemon_slayer/ability_dps.py",
+                            started.timestamp() + 9000)   # newer, excluded
+            _make_code_file(root, "agents/agent7_context/warm_session.py",
+                            started.timestamp() + 600)     # triggers
             res = w.check()
         self.assertTrue(res["acted"])
         self.assertEqual(res["trigger"], "stale_code")
@@ -414,6 +452,69 @@ class StaleCodeToDictTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             w, _lf, _r, _clk, _logs = _build_watcher(Path(td))
             self.assertIn("stale_code_grace_s", w.to_dict())
+
+
+class DefaultRestarterTests(unittest.TestCase):
+    """The production _default_restarter must terminate an alive stale
+    pid before `schtasks /Run` (the task is IgnoreNew - /Run alone is
+    refused with 0x800710E0 while an instance is live), and must NOT
+    taskkill when the pid is already dead or not supplied. The DI tests
+    above stub the restarter, so this is the only coverage of the real
+    kill-then-run path."""
+
+    @staticmethod
+    def _fake_run_collector(calls):
+        def fake_run(args, **kw):
+            calls.append(list(args))
+            m = MagicMock()
+            m.returncode = 0
+            return m
+        return fake_run
+
+    def test_alive_pid_killed_before_run(self) -> None:
+        calls = []
+        # alive at the gate check, dead immediately after kill so the
+        # bounded wait loop exits without a real sleep.
+        alive = MagicMock(side_effect=[True, False])
+        with mock.patch.object(rc_sup.subprocess, "run",
+                               side_effect=self._fake_run_collector(calls)), \
+             mock.patch.object(rc_sup, "_pid_alive", alive):
+            ok = _Phase3Watcher._default_restarter("RC-Phase3-Supervisor", 4242)
+        self.assertTrue(ok)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0], ["taskkill", "/F", "/PID", "4242"])
+        self.assertEqual(
+            calls[1], ["schtasks", "/Run", "/TN", "RC-Phase3-Supervisor"])
+
+    def test_dead_pid_no_taskkill(self) -> None:
+        calls = []
+        with mock.patch.object(rc_sup.subprocess, "run",
+                               side_effect=self._fake_run_collector(calls)), \
+             mock.patch.object(rc_sup, "_pid_alive", lambda _p: False):
+            ok = _Phase3Watcher._default_restarter("RC-Phase3-Supervisor", 4242)
+        self.assertTrue(ok)
+        self.assertEqual(
+            calls, [["schtasks", "/Run", "/TN", "RC-Phase3-Supervisor"]])
+
+    def test_no_pid_no_taskkill(self) -> None:
+        calls = []
+        with mock.patch.object(rc_sup.subprocess, "run",
+                               side_effect=self._fake_run_collector(calls)), \
+             mock.patch.object(rc_sup, "_pid_alive", lambda _p: True):
+            ok = _Phase3Watcher._default_restarter("RC-Phase3-Supervisor", None)
+        self.assertTrue(ok)
+        self.assertEqual(
+            calls, [["schtasks", "/Run", "/TN", "RC-Phase3-Supervisor"]])
+
+    def test_run_nonzero_returns_false(self) -> None:
+        def fake_run(args, **kw):
+            m = MagicMock()
+            m.returncode = 1
+            return m
+        with mock.patch.object(rc_sup.subprocess, "run", side_effect=fake_run), \
+             mock.patch.object(rc_sup, "_pid_alive", lambda _p: False):
+            ok = _Phase3Watcher._default_restarter("RC-Phase3-Supervisor", None)
+        self.assertFalse(ok)
 
 
 if __name__ == "__main__":

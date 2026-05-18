@@ -375,6 +375,12 @@ class _Phase3Watcher:
         "core/queue_modes.py",
     )
     _WATCHED_CODE_DIRS = ("agents",)
+    # agents/daemon_slayer is the standalone Daemon Slayer engine - it
+    # runs as its own process on :8893 (supervised independently) and is
+    # NOT imported by the Phase 3 supervisor. Edits there (the active DS
+    # work cadence) must not bounce Phase 3, so prune it from the
+    # recursive agents/ scan.
+    _EXCLUDED_CODE_DIRS = ("agents/daemon_slayer",)
 
     def __init__(
         self,
@@ -407,14 +413,40 @@ class _Phase3Watcher:
         self._last_acted_at: Optional[str] = None
 
     @staticmethod
-    def _default_restarter(task_name: str) -> bool:
+    def _default_restarter(task_name: str, stale_pid: Optional[int] = None) -> bool:
+        """Restart the Phase 3 scheduled task.
+
+        The task is MultipleInstancesPolicy=IgnoreNew, so a bare
+        `schtasks /Run` is refused (0x800710E0) while an instance is
+        still alive - which is exactly the `stale_code` trigger (the
+        process is healthy, it just imported old code) and a hung
+        `stale_heartbeat` (process alive but not beating). When the
+        recorded pid is still alive, terminate it first so the
+        scheduler can launch a fresh instance. taskkill /F is used
+        deliberately (never Stop-Process - it hangs the MCP pipe, per
+        the project hard rule).
+        """
         try:
+            if stale_pid and _pid_alive(int(stale_pid)):
+                subprocess.run(
+                    ["taskkill", "/F", "/PID", str(int(stale_pid))],
+                    capture_output=True, timeout=10,
+                )
+                # Wait for the process to actually exit so the task slot
+                # is released before /Run (else IgnoreNew still refuses).
+                # Bounded - if it outlives the wait the next watcher tick
+                # retries cleanly (pid now dead -> a plain /Run works).
+                deadline = time.monotonic() + 5.0
+                while time.monotonic() < deadline:
+                    if not _pid_alive(int(stale_pid)):
+                        break
+                    time.sleep(0.25)
             result = subprocess.run(
                 ["schtasks", "/Run", "/TN", task_name],
                 capture_output=True, timeout=10,
             )
             return result.returncode == 0
-        except (OSError, subprocess.SubprocessError):
+        except (OSError, subprocess.SubprocessError, ValueError):
             return False
 
     def _read_lockfile(self) -> Optional[Dict[str, Any]]:
@@ -460,11 +492,16 @@ class _Phase3Watcher:
                     continue
                 if newest is None or m > newest:
                     newest = m
+            excluded = tuple(
+                self._project_root / e for e in self._EXCLUDED_CODE_DIRS
+            )
             for rel in self._WATCHED_CODE_DIRS:
                 base = self._project_root / rel
                 if not base.is_dir():
                     continue
                 for p in base.rglob("*.py"):
+                    if any(p.is_relative_to(ex) for ex in excluded):
+                        continue
                     try:
                         m = p.stat().st_mtime
                     except OSError:
@@ -554,7 +591,7 @@ class _Phase3Watcher:
                     "trigger": state,
                     "budget_cooldown_s": round(self._budget.seconds_until_reset(), 1)}
 
-        ok = self._restarter(self._SCHED_TASK_NAME)
+        ok = self._restarter(self._SCHED_TASK_NAME, pid or None)
         self._last_restart_mono = now_mono
         self._last_acted_at = utc_now()
         result_state = "restarting" if ok else "restart_invocation_failed"
