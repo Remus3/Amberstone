@@ -19,8 +19,8 @@ const NX = {
 // in one glance.
 //
 //   <= 30 %       wave-our   (icy blue)      → FREEZE
-//   30 – 65 %     wave-mid   (potion green)  → TRADE
-//   65 – 80 %     wave-warn  (gold)          → CRASH
+//   30 - 65 %     wave-mid   (potion green)  → TRADE
+//   65 - 80 %     wave-warn  (gold)          → CRASH
 //   >= 80 %       wave-bad   (vibrant red)   → DISENGAGE
 //   null / -      wave-dim   (faint)         (no suffix)
 function _classifyWavePct(pct) {

@@ -13,7 +13,7 @@ _When an item moves to active work, migrate it to ROADMAP.md "Open items"._
 
 ## Cross-Claude infrastructure
 
-- **Cross-Claude lessons Phase 4**: confidence scoring, symmetry check, auto-revert (Phases 1–3 shipped 2026-05-06).
+- **Cross-Claude lessons Phase 4**: confidence scoring, symmetry check, auto-revert (Phases 1-3 shipped 2026-05-06).
 - **Bridge MCP tool wrapper**: REPL-style access to `/api/bridge` query params from any Claude session.
 
 ## Coaching depth
@@ -60,7 +60,7 @@ _When an item moves to active work, migrate it to ROADMAP.md "Open items"._
 
 ### `open item research.txt` (~90 links) triage - 2026-05-17 (multi-agent, s234 methodology)
 
-3 decisions LOCKED + integrated to ROADMAP + CLAUDE #90 (do not re-litigate): fold `Morello` (MIT) into the s220 PGR 0–100 score; build ONE shared smoothed-rate primitive (Laplace/Beta over own match DB) for #88 augment + pick/ban synergy + PGR score; 101.qq.com CN duo-synergy is worth a one-off Game-PC Network-tab capture.
+3 decisions LOCKED + integrated to ROADMAP + CLAUDE #90 (do not re-litigate): fold `Morello` (MIT) into the s220 PGR 0-100 score; build ONE shared smoothed-rate primitive (Laplace/Beta over own match DB) for #88 augment + pick/ban synergy + PGR score; 101.qq.com CN duo-synergy is worth a one-off Game-PC Network-tab capture.
 
 **FUTURE (noted, not scheduled):**
 - **baronbuff.com** - closed-source *methodology* template: draft = single win-prob model fusing counters+synergy+comp+pool; PGR = "the decisions/phases that mattered, with evidence." Frames pick/ban + the s220 Deep-Review. Reference-only.

@@ -7,7 +7,7 @@
 
 ## Finding
 
-`agents/agent1_lead/scheduler.py` `Scheduler._load()` (lines 176–208) already
+`agents/agent1_lead/scheduler.py` `Scheduler._load()` (lines 176-208) already
 contains the full P-audit3-m04 fix as of this session:
 
 ```python
@@ -22,7 +22,7 @@ except json.JSONDecodeError as e:
     continue
 ```
 
-And after the loop (lines 203–208):
+And after the loop (lines 203-208):
 
 ```python
 if corrupt:

@@ -81,7 +81,7 @@ calls (higher quality at the moment when it matters).
 ## Consequences
 
 **Good:**
-- Token spend reframes from O(20 prompts/game) to O(3–5 decisions/game).
+- Token spend reframes from O(20 prompts/game) to O(3-5 decisions/game).
   At that volume metered Anthropic API is the right answer; the
   Max-plan workaround discussion from s169 (P6) becomes moot.
 - The coach respects the operator's attention budget - silent when

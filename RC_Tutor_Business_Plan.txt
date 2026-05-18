@@ -161,7 +161,7 @@ into full coaching territory.
 
 --- PROGUIDES ---
 Founded: 2017. Platform: Web + video courses + human coaches.
-Pricing: $9.99–$29.99/mo.
+Pricing: $9.99-$29.99/mo.
 
 How it started: A curated library of pro player educational videos.
 "ProGuides Challenger Series" content by rank-specific coaches. Pivoted into
@@ -220,7 +220,7 @@ CORE VALUE PROPOSITION
 - live, during your game, on your second screen."
 
 TARGET USERS
-- Primary: Improvement-focused players in Gold–Diamond who think critically
+- Primary: Improvement-focused players in Gold-Diamond who think critically
   about builds and decisions (estimated 15-20% of the active player base)
 - Secondary: Content creators who want explainable, defensible coaching
   insight for their audience
