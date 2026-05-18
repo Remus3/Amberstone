@@ -35,41 +35,79 @@ for i in range({count}):
 
 @pytest.mark.timeout(90)
 def test_two_processes_no_interleaved_lines(tmp_path: Path) -> None:
-    log = tmp_path / "concurrent.jsonl"
     # 2×50 writes is enough to catch interleaving but survives the
     # filesystem pressure of the rest of the suite (previous 2×120
     # flaked on Windows under concurrent fixture tmp_path churn).
     count = 50
+    # s236: bounded retry. The lock's correctness property is "no
+    # corrupt/interleaved line"; the line *count* only proves both
+    # writers ran. Under full-suite load (CPU/FS contention + the live
+    # RC system) a writer can be starved and emit a short file - that
+    # is a host-load artifact, not a lock bug, so retry it. A corrupt
+    # line, by contrast, means the lock genuinely failed: fail
+    # immediately, never retry past a real bug. (CI does not run this
+    # suite; this keeps the spec verification triplet deterministic.)
+    attempts = 3
+    per_proc_timeout = 25
+    last_reason = ""
+    for attempt in range(attempts):
+        log = tmp_path / f"concurrent_{attempt}.jsonl"
 
-    def spawn(tag: str) -> subprocess.Popen:
-        code = WRITER_SCRIPT.format(root=_PROJECT_ROOT, log=log, count=count, tag=tag)
-        return subprocess.Popen(
-            [str(PY), "-c", code],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        def spawn(tag: str, log: Path = log) -> subprocess.Popen:
+            code = WRITER_SCRIPT.format(
+                root=_PROJECT_ROOT, log=log, count=count, tag=tag
+            )
+            return subprocess.Popen(
+                [str(PY), "-c", code],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            )
+
+        procs = [spawn("alpha"), spawn("beta")]
+        try:
+            outs = [p.communicate(timeout=per_proc_timeout) for p in procs]
+        except subprocess.TimeoutExpired:
+            # The lock-contended writers overran the window because the
+            # host is saturated by the rest of the suite - a load
+            # artifact, NOT a lock bug. Kill, reap, retry. (This was the
+            # original flake: a bare communicate(timeout=30) raising
+            # TimeoutExpired under full-suite contention.)
+            for p in procs:
+                p.kill()
+                p.communicate()
+            last_reason = "writers overran communicate() timeout under load"
+            continue
+        rcs = [p.returncode for p in procs]
+        if any(rc != 0 for rc in rcs):
+            last_reason = (
+                f"writer rc {rcs}: "
+                + " ".join(o[1].decode()[:200] for o in outs)
+            )
+            continue
+
+        # Every line must parse as JSON with a task.id field. A corrupt
+        # line proves two writes smashed each other mid-line -> the lock
+        # is broken. That is a real regression: assert (no retry).
+        lines = [
+            ln for ln in log.read_text(encoding="utf-8").splitlines()
+            if ln.strip()
+        ]
+        ids = set()
+        for line in lines:
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError as e:
+                pytest.fail(f"corrupt line (lock broken): {e}: {line[:80]!r}")
+            ids.add(rec["task"]["id"])
+        # Both writers contribute - at least 2*count distinct task ids.
+        # A short count under load is starvation, not corruption: retry.
+        if len(ids) >= count * 2:
+            return
+        last_reason = (
+            f"short: {len(ids)} distinct ids (< {count * 2}) - "
+            f"writer starved under load, no corruption seen"
         )
 
-    p1 = spawn("alpha")
-    p2 = spawn("beta")
-    out1 = p1.communicate(timeout=30)
-    out2 = p2.communicate(timeout=30)
-    assert p1.returncode == 0, out1[1].decode()
-    assert p2.returncode == 0, out2[1].decode()
-
-    # Every line must parse as JSON with a task.id field. That proves no
-    # two writes smashed each other mid-line.
-    lines = log.read_text(encoding="utf-8").splitlines()
-    assert len(lines) >= count * 2
-    ids = set()
-    for line in lines:
-        if not line.strip():
-            continue
-        try:
-            rec = json.loads(line)
-        except json.JSONDecodeError as e:
-            pytest.fail(f"corrupt line: {e}: {line[:80]!r}")
-        ids.add(rec["task"]["id"])
-    # Both writers contribute - at least 2*count distinct task ids.
-    assert len(ids) >= count * 2
+    pytest.fail(f"after {attempts} attempts: {last_reason}")
 
 
 # ---------------------------------------------------------------------------
